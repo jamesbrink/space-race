@@ -136,7 +136,6 @@ export class Stage {
   private readonly shellMaterials = new Map<string, Map<THREE.Material, THREE.Material>>();
   private cut = false;
   private readonly bounds = new THREE.Sphere();
-  private shadowFit = -1;
   /** Keys being held down, lower case. */
   private readonly held = new Set<string>();
   /** Something on show has changed and the next frame must be drawn. */
@@ -359,8 +358,7 @@ export class Stage {
       if (snap) this.setApart(i, this.apartGoal[i]!);
     });
     this.highlight(null, null);
-    this.shadowFit = -1;
-    this.fitShadows(0);
+    this.fitShadows();
     this.view(def.home ?? 'all', snap);
   }
 
@@ -503,7 +501,7 @@ export class Stage {
   setExplode(t: number): void {
     this.apartGoal[this.current] = this.apartOwn[this.current] = t;
     this.setApart(this.current, t);
-    this.fitShadows(t);
+    this.fitBounds();
     this.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
   }
 
@@ -518,8 +516,7 @@ export class Stage {
       moved = true;
     });
     if (!moved) return;
-    this.shadowFit = -1;
-    this.fitShadows(0);
+    this.fitBounds();
   }
 
   setAutoRotate(on: boolean): void {
@@ -643,19 +640,34 @@ export class Stage {
     };
   }
 
-  /** Fit the shadow map and the scene's bounds. Called on load and as the slider moves. */
-  private fitShadows(t: number): void {
-    if (!this.root || (this.shadowFit >= 0 && Math.abs(t - this.shadowFit) < 0.02)) return;
-    this.shadowFit = t;
-    // everything on show, for the camera's depth range and its default aim
+  /** Measure everything on show, for the camera's depth range and its limits. Called whenever something moves. */
+  private fitBounds(): void {
+    if (!this.root) return;
     const all = new THREE.Box3().setFromObject(this.root);
     this.bounds.set(all.getCenter(new THREE.Vector3()), all.getSize(new THREE.Vector3()).length() / 2 + 0.5);
     this.centreY = this.bounds.center.y;
-    // but the shadow map is spent on the model being looked at, plus its surroundings out to
-    // twice its size: one map stretched over a whole launch pad gives the rocket sawtooth shadows
-    const box = new THREE.Box3().setFromObject(this.main ?? this.root);
+  }
+
+  /**
+   * Aim the shadow map, once per section. It is spent on the model being studied and its
+   * surroundings, since one map stretched over a whole launch pad gives the rocket sawtooth
+   * shadows; and it is sized for that model fully taken apart, so that moving the slider never
+   * changes it. (Refitting it as parts moved made every other shadow on the pad shift and
+   * change sharpness with the slider.)
+   */
+  private fitShadows(): void {
+    const own = this.staged[this.current];
+    if (!this.root || !own) return;
+    this.fitBounds();
+    const box = new THREE.Box3().setFromObject(own.group);
+    own.explode(1);
+    box.expandByObject(own.group);
+    own.explode(this.apart[this.current] ?? 0);
     const centre = box.getCenter(new THREE.Vector3());
-    const radius = Math.min(this.bounds.radius, box.getSize(new THREE.Vector3()).length() + 2);
+    const radius = Math.min(
+      this.bounds.radius,
+      box.getSize(new THREE.Vector3()).length() / 2 + Math.max(6, box.getSize(new THREE.Vector3()).length() * 0.5),
+    );
     this.sun.target.position.copy(centre);
     this.sun.position.copy(centre).addScaledVector(this.setting.sunDir, radius + 10);
     Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
