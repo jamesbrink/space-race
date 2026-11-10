@@ -302,6 +302,11 @@ export class Stage {
       const staged = new Staged(scenes[i]!, def.parts);
       staged.group.position.set(...(def.position ?? [0, 0, 0]));
       staged.group.rotation.y = def.rotationY ?? 0;
+      for (const l of def.lights ?? []) {
+        const lamp = new THREE.PointLight(l.colour, l.intensity, l.reach, 2);
+        lamp.position.set(...l.position);
+        staged.group.add(lamp);
+      }
       return staged;
     });
     this.apart = this.staged.map(() => 0);

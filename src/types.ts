@@ -153,6 +153,11 @@ export interface ModelDef {
   wide?: boolean;
   /** Which spec groups are this model's: they are listed first. */
   specGroups?: string[];
+  /**
+   * Lamps the model carries: cabin floodlights, so an interior seen through a window is not a
+   * black hole. Positions in the model's own coordinates, metres; `reach` is where it fades out.
+   */
+  lights?: { position: [number, number, number]; colour: number; intensity: number; reach: number }[];
   /** The view shown first (default: 'all', everything on show). */
   home?: string;
   /**

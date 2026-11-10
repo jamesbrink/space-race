@@ -112,28 +112,77 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
 
 function scrub(groundY: number): THREE.InstancedMesh {
   const count = 6000;
-  // one lumpy mound, turned and stretched differently each time it is used
-  // (welded, so that it shades as one rounded mass of leaf and not as a faceted rock)
-  const mound = mergeVertices(new THREE.IcosahedronGeometry(1, 3).deleteAttribute('normal').deleteAttribute('uv'));
-  const at = mound.getAttribute('position');
+  // One clump of saw palmetto, turned and stretched differently each time it is used: a low
+  // mass of shade with fans of blades arching out of it. Up close it has leaves; from across
+  // the pad it is a dark tuft with a lit top, which is what the Cape's scrub looks like.
+  const positions: number[] = [];
+  const colours: number[] = [];
+  const indices: number[] = [];
+  let r = 7;
+  const noise = () => ((r = (r * 16807) % 2147483647) - 1) / 2147483646;
+  const push = (p: THREE.Vector3, shade: number, dry: number) => {
+    positions.push(p.x, p.y, p.z);
+    colours.push(shade * (0.95 + 0.5 * dry), shade * (1 + 0.15 * dry), shade * (0.7 - 0.2 * dry));
+    return positions.length / 3 - 1;
+  };
+  // the shaded mass underneath
+  const core = mergeVertices(new THREE.IcosahedronGeometry(1, 1).deleteAttribute('normal').deleteAttribute('uv'));
+  const corePos = core.getAttribute('position');
   const v = new THREE.Vector3();
-  for (let i = 0; i < at.count; i++) {
-    v.fromBufferAttribute(at, i);
-    const lump = 1 + 0.22 * Math.sin(v.x * 5.1 + 1.3) * Math.sin(v.z * 4.3) + 0.14 * Math.sin(v.y * 9.0 + v.x * 6.0);
-    v.multiplyScalar(lump);
-    if (v.y < 0) v.y *= 0.25;
-    at.setXYZ(i, v.x, v.y, v.z);
+  const base = positions.length / 3;
+  for (let i = 0; i < corePos.count; i++) {
+    v.fromBufferAttribute(corePos, i).multiply(new THREE.Vector3(0.42, 0.2, 0.42));
+    if (v.y < 0) v.y *= 0.3;
+    push(v, 0.3 + 0.35 * Math.max(0, v.y), 0);
   }
+  for (const i of core.getIndex()!.array) indices.push(base + i);
+  // fans: each a stem rising from the mass and a spray of blades folding outward from its tip
+  for (let f = 0; f < 15; f++) {
+    const yaw = (f / 15) * Math.PI * 2 * 2.4 + noise() * 0.6; // wound round twice and a bit, so no two fans line up
+    const lean = noise() ** 0.8; // some stand straight up in the middle, most reach outward
+    const tip = new THREE.Vector3(Math.cos(yaw) * lean * 0.42, 0.16 + (1 - lean) * 0.4 + noise() * 0.14, Math.sin(yaw) * lean * 0.42);
+    // a fan faces up and out: nearly flat to the sky in the middle, tilted over at the edge
+    const out = new THREE.Vector3(Math.cos(yaw) * (0.35 + lean), 1.1 - 0.6 * lean, Math.sin(yaw) * (0.35 + lean)).normalize();
+    const side = new THREE.Vector3(-Math.sin(yaw), 0, Math.cos(yaw));
+    const up = new THREE.Vector3().crossVectors(side, out);
+    const dry = noise() < 0.2 ? 0.8 : noise() * 0.25; // a few fronds have gone brown
+    // its stalk, from the heart of the clump
+    const root = new THREE.Vector3(tip.x * 0.25, 0.04, tip.z * 0.25);
+    const s0 = push(root.clone().addScaledVector(side, 0.02), 0.4, dry);
+    const s1 = push(root.clone().addScaledVector(side, -0.02), 0.4, dry);
+    const s2 = push(tip.clone().addScaledVector(side, 0.015), 0.6, dry);
+    const s3 = push(tip.clone().addScaledVector(side, -0.015), 0.6, dry);
+    indices.push(s0, s2, s1, s1, s2, s3);
+    for (let b = -4; b <= 4; b++) {
+      const a = b * 0.27 + (noise() - 0.5) * 0.1;
+      const dir = out.clone().multiplyScalar(Math.cos(a)).addScaledVector(side, Math.sin(a));
+      const across = new THREE.Vector3().crossVectors(dir, up).normalize();
+      const length = (0.42 + noise() * 0.2) * (1 - 0.035 * b * b);
+      const mid = tip
+        .clone()
+        .addScaledVector(dir, length * 0.55)
+        .addScaledVector(up, 0.06);
+      const end = tip
+        .clone()
+        .addScaledVector(dir, length)
+        .addScaledVector(up, -0.03 - noise() * 0.07); // the tip droops a little
+      const i0 = push(tip, 0.55, dry);
+      const i1 = push(mid.clone().addScaledVector(across, 0.055), 0.95, dry);
+      const i2 = push(mid.clone().addScaledVector(across, -0.055), 0.8, dry);
+      const i3 = push(end, 1.15, dry);
+      indices.push(i0, i1, i2, i1, i3, i2);
+    }
+  }
+  const mound = new THREE.BufferGeometry();
+  mound.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  mound.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+  mound.setIndex(indices);
   mound.computeVertexNormals();
-  // sunlit leaf on top, shade and dead fronds underneath; broken up so no two clumps read alike
-  const tint = new Float32Array(at.count * 3);
-  for (let i = 0; i < at.count; i++) {
-    v.fromBufferAttribute(at, i);
-    const k = 0.45 + 0.75 * Math.max(0, v.y) + 0.18 * Math.sin(v.x * 13.0) * Math.sin(v.z * 11.0 + v.y * 7.0);
-    tint.set([k * 1.05, k, k * 0.8], i * 3);
-  }
-  mound.setAttribute('color', new THREE.BufferAttribute(tint, 3));
-  const mesh = new THREE.InstancedMesh(mound, new THREE.MeshStandardMaterial({ roughness: 1, vertexColors: true }), count);
+  const mesh = new THREE.InstancedMesh(
+    mound,
+    new THREE.MeshStandardMaterial({ roughness: 1, vertexColors: true, side: THREE.DoubleSide }),
+    count,
+  );
   let seed = 23;
   const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
   const m = new THREE.Matrix4(),
@@ -159,10 +208,10 @@ function scrub(groundY: number): THREE.InstancedMesh {
     if (Math.abs(x) < 40 && Math.abs(z + 163) < 40) continue; // pad 6
     // saw palmetto and sea grape: knee to head high, wider than tall, in clumps
     const w = 0.5 + rand() * rand() * 2.2;
-    s.set(w, 0.3 + rand() * 0.6 + w * 0.25, w * (0.7 + rand() * 0.6));
+    s.set(w, w * (0.75 + rand() * 0.5), w * (0.7 + rand() * 0.6));
     q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, rand() * 6.28);
-    mesh.setMatrixAt(i, m.compose(p.set(x, groundY + s.y * 0.35, z), q, s));
-    const g = 0.04 + rand() * 0.06;
+    mesh.setMatrixAt(i, m.compose(p.set(x, groundY + s.y * 0.04, z), q, s));
+    const g = 0.1 + rand() * 0.11;
     mesh.setColorAt(i, colour.setRGB(g * (0.5 + rand() * 0.45), g, g * (0.3 + rand() * 0.3)));
     i++;
   }

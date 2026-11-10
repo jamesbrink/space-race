@@ -274,6 +274,11 @@ const vehicle: ModelDef = {
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts: vehicleParts,
   position: [0, VEHICLE_Y, 0],
+  // the cabin floodlights, either side of the instrument panel: what the portholes show is lit by them
+  lights: [
+    { position: [0.3, 0.72, -0.25], colour: 0xffe4c0, intensity: 0.11, reach: 1.1 },
+    { position: [-0.3, 0.72, 0.25], colour: 0xffe4c0, intensity: 0.11, reach: 1.1 },
+  ],
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
