@@ -60,6 +60,13 @@ for (const file of files) {
         assert.ok(nodes.has(part.node), `part ${part.node} is not a top-level node of ${model.url}`);
         assert.ok(Number.isInteger(part.order) && part.order >= 0, `${part.node}: order`);
       }
+      // the coarser levels of detail are the same model: every part is in each of them
+      for (const level of [1, 2]) {
+        const lod = glb.replace(/\.glb$/, `.lod${level}.glb`);
+        assert.ok(existsSync(lod), `${model.url} has no level ${level}: run pnpm models`);
+        const lodNodes = topLevelNodes(lod);
+        for (const part of model.parts) assert.ok(lodNodes.has(part.node), `part ${part.node} is missing from level ${level}`);
+      }
       const parts = model.parts.map((p) => p.node);
       assert.equal(new Set(parts).size, parts.length, 'part nodes repeat');
       const views = model.views.map((v) => v.id);

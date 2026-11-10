@@ -30,6 +30,8 @@ export interface Setting {
   fog: THREE.FogExp2 | null;
   /** Scenery that is part of the place rather than the model. */
   scenery: THREE.Object3D[];
+  /** How far from the model there is something to look at, metres: the view can be walked and pulled back this far. */
+  reach?: number;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
 }
@@ -128,6 +130,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
     exposure: 0.8,
     fog: new THREE.FogExp2(HORIZON.clone().multiplyScalar(0.96), 0.00042),
     scenery: cape.scenery,
+    reach: 1400,
     tick: cape.tick,
   };
 }
