@@ -8,7 +8,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import type { Flight, ModelDef } from '../types';
-import { type Setting, Settings } from './backdrops';
+import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { Exploder } from './explode';
 import { wearTexture } from './space';
 
@@ -457,7 +457,11 @@ export class Stage {
     this.following = { view: id };
     this.onView(id);
     this.controls.minDistance = Math.max(0.35, Math.min(1.4, span * 0.2));
-    this.controls.maxDistance = Math.max(140, size.length() * 4);
+    // no further out than half as far again as it takes to see everything on show: beyond that
+    // the subject is a speck in a field of scrub
+    const all = new THREE.Box3().setFromObject(this.root).getSize(new THREE.Vector3());
+    const widest = Math.max(all.y, Math.hypot(all.x, all.z) / this.camera.aspect);
+    this.controls.maxDistance = Math.max(30, (1.5 * widest) / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / fill);
     if (snap) {
       this.controls.target.copy(target);
       this.camera.position.copy(position);
@@ -523,7 +527,15 @@ export class Stage {
   private fitDepth(): void {
     const toCentre = this.camera.position.distanceTo(this.bounds.center);
     const toTarget = this.camera.position.distanceTo(this.controls.target);
-    const near = Math.max(0.03, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
+    let near = Math.max(0.03, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
+    if (this.setting.floor) {
+      // ...but never past the ground at the camera's feet. The nearest ground in view is at the
+      // corner of the frame, no nearer along the view than the camera's height times the cosine
+      // of the frame's half-diagonal; a near plane beyond that slices the foreground away.
+      const tan = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect);
+      const height = this.camera.position.y - GROUND_Y;
+      near = Math.min(near, Math.max(0.03, (0.9 * height) / Math.hypot(1, tan)));
+    }
     const far = toCentre + this.bounds.radius + (this.setting.floor ? 9000 : 10);
     if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.near = near;
