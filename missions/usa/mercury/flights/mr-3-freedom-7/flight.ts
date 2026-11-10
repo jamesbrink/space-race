@@ -66,7 +66,8 @@ const vehicleParts: Part[] = [
       detail:
         'The first design bolted the hatch on with 70 bolts, which would have left the pilot sealed in until ' +
         'someone came. Spacecraft No. 7 flew a heavier hatch held by mechanical latches, with a release handle ' +
-        'inside and out. The explosive hatch, lighter at 23 lb, arrived one flight later on Liberty Bell 7.',
+        'inside and out. It was lost in the sea during recovery. The explosive hatch, lighter at 23 lb, arrived ' +
+        'one flight later on Liberty Bell 7.',
       facts: [
         ['Type', 'mechanical latch'],
         ['Mass', '69 lb (31 kg)'],
@@ -167,8 +168,9 @@ const vehicleParts: Part[] = [
       detail:
         'On the Redstone missile this section flew on with the warhead. Here it stays bolted to the tanks and ' +
         'carries the LEV-3 autopilot and the abort sensing system, which watches attitude, rates, chamber pressure ' +
-        'and electrical power and fires the escape tower without asking anyone. Above the instruments, 487 lb of ' +
-        'steel ballast and some 340 lb of lead-loaded damping compound tame a vibration found on earlier flights.',
+        'and electrical power and fires the escape tower without asking anyone. Above the instruments sit 487 lb ' +
+        'of steel ballast, restoring the stability the long nose took away, and some 340 lb of lead-loaded ' +
+        'compound to damp a vibration found on earlier flights.',
       facts: [
         ['Length', '139.64 in, plus a 7.08 in stretch'],
         ['Instrument compartment', '53.66 in, pressurised'],
@@ -183,9 +185,10 @@ const vehicleParts: Part[] = [
       name: 'Centre unit',
       summary: 'Alcohol above, liquid oxygen below.',
       detail:
-        'The tank walls are the airframe. They are six feet longer than the missile’s, borrowed from the Jupiter-C, ' +
-        'which stretched the burn by twenty seconds to 143.5. The fuel is 75% ethyl alcohol and 25% water: less ' +
-        'energetic than the Jupiter-C’s Hydyne, and far less toxic to a pilot sitting on top of it.',
+        'The tank walls are the airframe. They are the Jupiter-C’s lengthened tanks, which stretched the burn by ' +
+        'twenty seconds to 143.5. The fuel is ethyl alcohol cut with water: less energetic than the Jupiter-C’s ' +
+        'Hydyne, and far less toxic to a pilot sitting on top of it. The alcohol’s feed line runs down through ' +
+        'the middle of the oxygen tank.',
       facts: [
         ['Length', '37.50 ft (11.43 m)'],
         ['Alcohol tank', '18.8 ft · 3,348 US gal'],
@@ -222,10 +225,10 @@ const vehicleParts: Part[] = [
         'runs on steam from decomposed hydrogen peroxide. It cannot swivel, so four graphite vanes sit in the ' +
         'exhaust and deflect it.',
       facts: [
-        ['Thrust', '78,000 lbf (350 kN) at sea level'],
+        ['Thrust', '78,000 lbf (347 kN) at sea level'],
         ['Burn', '143.5 s nominal; 141.8 s on MR-3'],
         ['Specific impulse', '214.8 s measured on MR-3'],
-        ['Steering', '4 carbon jet vanes, ±27°'],
+        ['Steering', '4 carbon jet vanes, ±27.5°'],
         ['Turbopump', 'hydrogen-peroxide steam'],
       ],
       explode: [0, 0, 0],
@@ -237,6 +240,9 @@ const vehicleParts: Part[] = [
 const PEDESTAL = 6 * 0.3048;
 /** The vehicle's origin is the capsule's heat-shield plane, 716.5 in above the fins. */
 const VEHICLE_Y = PEDESTAL + 716.5 * IN;
+
+/** Where the pilot stands in every scene: at the foot of the vehicle, on the hatch side. */
+const PILOT = { position: [3.4, 0, 2.6] as [number, number, number], rotationY: 0.9 };
 
 const vehicle: ModelDef = {
   id: 'vehicle',
@@ -255,7 +261,11 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Engine', centreY: PEDESTAL + 1.5, span: 5.5 },
   ],
   // the pad as it was at liftoff: structure rolled back, cherry picker withdrawn
-  with: [{ model: 'pad', position: [0, 0, 0], exploded: 1 }],
+  with: [
+    { model: 'pad', position: [0, 0, 0], exploded: 1 },
+    // the pilot at the foot of the vehicle: 1.8 m of man against 25.4 m of rocket
+    { model: 'crew', ...PILOT },
+  ],
 };
 
 const padParts: Part[] = [
@@ -291,7 +301,7 @@ const padParts: Part[] = [
       ['At the hatch', 'from T−55 min to the last minutes'],
       ['Control', 'ground, cab, or blockhouse'],
     ],
-    explode: [24, 0, 0],
+    explode: [16, 0, -44],
     order: 0,
   },
   {
@@ -358,7 +368,7 @@ const pad: ModelDef = {
   with: [
     { model: 'vehicle', position: [0, VEHICLE_Y, 0] },
     // the pilot, standing on the hardstand: nothing else on a pad tells you how big it is
-    { model: 'crew', position: [5.2, 0, 4.4], rotationY: 0.9 },
+    { model: 'crew', ...PILOT },
   ],
 };
 
@@ -377,7 +387,7 @@ const crewParts: Part[] = [
       ['Outlet hose', 'right side'],
       ['Visor seal', 'pneumatic, fed at the left jaw'],
     ],
-    explode: [0, 0.34, 0],
+    explode: [0, 0, 0],
     order: 0,
   },
   {
@@ -387,8 +397,7 @@ const crewParts: Part[] = [
     detail:
       'A Navy Mark IV high-altitude suit by B.F. Goodrich, reworked for Mercury: the grey outer shell became ' +
       'aluminium-coated nylon, and the breathing loop was closed so that one flow of oxygen both cools and ' +
-      'feeds the pilot. It enters at the waist. The long zipper winds diagonally round the body; getting in ' +
-      'took a quarter of an hour and a helper.',
+      'feeds the pilot. It enters at the waist. The long entry zipper runs diagonally across the chest.',
     facts: [
       ['Suit', 'Navy Mark IV, B.F. Goodrich'],
       ['Mass', '22 lb (10 kg)'],
@@ -397,7 +406,7 @@ const crewParts: Part[] = [
       ['Each pilot had', 'three: training, flight, spare'],
     ],
     explode: [0, 0, 0],
-    order: 2,
+    order: 0,
   },
   {
     node: 'Arms',
@@ -407,8 +416,8 @@ const crewParts: Part[] = [
       'A pressurised sleeve wants to straighten like a balloon. Cords and lacing along each arm stop it ' +
       'ballooning and set its length to the man; even so, bending a pressurised elbow is work. The gauge on the ' +
       'left forearm shows suit pressure.',
-    explode: [0.32, 0, 0],
-    order: 1,
+    explode: [0, 0, 0],
+    order: 0,
   },
   {
     node: 'Gloves',
@@ -422,19 +431,18 @@ const crewParts: Part[] = [
       ['Attachment on MR-3', 'zipper'],
       ['From MR-4', 'ring lock with wrist bearing'],
     ],
-    explode: [0.5, -0.12, 0],
+    explode: [0, 0, 0],
     order: 0,
   },
   {
     node: 'Legs',
     name: 'Legs',
-    summary: 'Snug by design; the biomedical plug is on the thigh.',
+    summary: 'Tailored and laced; the biomedical plug is on the thigh.',
     detail:
-      'The fit is tight on purpose: if the suit ever pressurises, it squeezes the legs and keeps blood from ' +
-      'pooling there under load. A flap on the right thigh covers the connector that carries heartbeat, ' +
-      'breathing and temperature to the telemetry.',
-    explode: [0, -0.3, 0],
-    order: 1,
+      'Each suit was tailored to its pilot and laced snug. A flap on the right thigh covers the connector that ' +
+      'carries heartbeat, breathing and temperature to the telemetry.',
+    explode: [0, 0, 0],
+    order: 0,
   },
   {
     node: 'Boots',
@@ -443,7 +451,7 @@ const crewParts: Part[] = [
     detail:
       'Separate lace-up boots worn over the pressure suit’s socks. The last Mercury flight built the boots into ' +
       'the suit.',
-    explode: [0, -0.5, 0],
+    explode: [0, 0, 0],
     order: 0,
   },
   {
@@ -454,7 +462,7 @@ const crewParts: Part[] = [
       'A sealed suit has no way to shed heat, so from the suiting room to the capsule Shepard carried his own ' +
       'air-conditioning: a blower and cooler in a case, plugged into the waist inlet. At the capsule the hose ' +
       'came off and the spacecraft’s own system took over.',
-    explode: [0.45, 0, 0],
+    explode: [0, 0, 0],
     order: 0,
   },
 ];
@@ -464,12 +472,19 @@ const crew: ModelDef = {
   name: 'Crew',
   url: 'models/usa/mercury/mr-3-freedom-7/crew.glb',
   scale: 'Alan B. Shepard Jr. · 1.80 m, 1.89 m suited · to scale',
-  backdrop: 'studio',
-  slider: ['Suited', 'Laid out'],
+  backdrop: 'ground',
   parts: crewParts,
+  ...PILOT,
+  home: 'figure',
   views: [
-    { id: 'helmet', label: 'Helmet', centreY: 1.72, span: 0.6 },
-    { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.6 },
+    { id: 'figure', label: 'Pilot', centreY: 0.98, span: 2.5 },
+    { id: 'helmet', label: 'Helmet', centreY: 1.72, span: 0.62 },
+    { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.62 },
+    { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62 },
+  ],
+  with: [
+    { model: 'vehicle', position: [0, VEHICLE_Y, 0] },
+    { model: 'pad', position: [0, 0, 0], exploded: 1 },
   ],
 };
 
@@ -493,7 +508,7 @@ export const flight: Flight = {
     { label: 'Liftoff', value: '5 May 1961, 14:34:13 UTC' },
     { label: 'Pilot', value: 'Alan B. Shepard Jr.' },
     { label: 'Duration', value: '15 min 22 s' },
-    { label: 'Apogee', value: '187.5 km' },
+    { label: 'Apogee', value: '187.4 km' },
     { label: 'Range', value: '487.3 km' },
     { label: 'Peak velocity', value: '8,107 km/h' },
     { label: 'Peak load', value: '11.0 g on entry' },
@@ -545,8 +560,8 @@ export const flight: Flight = {
     { group: 'Spacecraft', label: 'Mass after separation', value: 2855.14 * LB, unit: 'kg', confidence: 'documented', note: '2,855 lb' },
     { group: 'Spacecraft', label: 'Mass at entry', value: 2579 * LB, unit: 'kg', confidence: 'documented', note: '2,579 lb' },
     { group: 'Spacecraft', label: 'Mass afloat', value: 2316.03 * LB, unit: 'kg', confidence: 'documented', note: '2,316 lb' },
-    { group: 'Pressure suit', label: 'Pilot height', value: 1.8, unit: 'm', confidence: 'documented', note: 'Shepard: 5 ft 11 in' },
-    { group: 'Pressure suit', label: 'Suit mass', value: 22 * LB, unit: 'kg', confidence: 'documented', note: '22 lb' },
+    { group: 'Pressure suit', label: 'Pilot height', value: 1.803, unit: 'm', confidence: 'documented', note: 'Shepard: 5 ft 11 in' },
+    { group: 'Pressure suit', label: 'Suit mass', value: 22 * LB, unit: 'kg', confidence: 'documented', note: '22 lb (Wikipedia); NASA’s own fact sheet says 20 lb' },
     { group: 'Pressure suit', label: 'Operating pressure', value: 3.7 * 6.894757, unit: 'kPa', confidence: 'documented', note: '3.7 psi, only if the cabin loses pressure' },
     { group: 'Launch pad', label: 'Mobile aerial tower reach', value: 125 * 0.3048, unit: 'm', confidence: 'documented', note: '125 ft (TM X-53107, 7.3.3.1)' },
     { group: 'Launch pad', label: 'White room', value: 3, unit: 'level', confidence: 'documented', note: 'level 3 of the service structure' },

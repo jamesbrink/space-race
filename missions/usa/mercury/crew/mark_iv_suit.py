@@ -63,7 +63,8 @@ def materials() -> dict:
         "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
         "aluminium": m("aluminium", (0.78, 0.78, 0.77), 1.0, 0.32),
         "shell": m("helmet-fibreglass-white", (0.86, 0.86, 0.83), 0.0, 0.28),
-        "glass": m("glass", (0.02, 0.03, 0.04), 0.0, 0.04),
+        # not named glass: the viewer makes glass transparent, and there is no face behind this visor
+        "glass": m("visor-tinted", (0.02, 0.03, 0.04), 0.0, 0.04),
         "rubber": m("rubber", (0.02, 0.02, 0.02), 0.0, 0.9),
         "boot": m("boot-leather-aluminized", (0.55, 0.56, 0.57), 0.6, 0.5),
         "lace": m("lace-cord", (0.70, 0.69, 0.64), 0.0, 0.85),

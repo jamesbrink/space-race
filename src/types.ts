@@ -73,13 +73,15 @@ export interface ModelDef {
   /** The line under the controls, e.g. '25.41 m on the pad'. */
   scale: string;
   backdrop: BackdropKind;
-  /** Labels for the two ends of the slider. */
-  slider: [string, string];
+  /** Labels for the two ends of the slider; left out, the model has no slider. */
+  slider?: [string, string];
   parts: Part[];
   /** Framings offered beside the automatic 'Everything'. */
   views: ViewDef[];
   /** Where the model stands, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
+  /** Which way it faces: radians about the vertical. */
+  rotationY?: number;
   /** The view shown first (default: 'all', everything on show). */
   home?: string;
   /** Other models of this flight shown alongside for context, e.g. the vehicle standing on its pad. */

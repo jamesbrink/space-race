@@ -112,7 +112,7 @@ fasteners. The inventory uses 1.0. When the simulator needs distant LODs, add th
   model's overall size, which must match what `flight.ts` says.
 - **Model in the source's units.** Mercury drawings are in inches and the pad's in feet; the
   scripts keep those and multiply by `IN` or `FT` once. Soviet hardware will be in millimetres. Do not pre-convert.
-- **Model the flight, not the type.** Freedom 7 is spacecraft No. 7: portholes, a bolted hatch, a
+- **Model the flight, not the type.** Freedom 7 is spacecraft No. 7: portholes, a latch hatch, a
   beryllium heat sink. Friendship 7 is a different model with its own folder.
 - **Cite it.** A `documented` figure names its source: document and section, figure or page.
   `docs/sources.md` is the bibliography, including sources we know of but have not read.
@@ -137,7 +137,7 @@ fasteners. The inventory uses 1.0. When the simulator needs distant LODs, add th
 - GLB materials are named in Blender (`shingle-rene41`, `tower-red`); the viewer keys on those
   names (`WORN` in `stage.ts`) rather than on mesh names.
 - A setting's sky is its own scene and camera (`backdrops.ts`), drawn first, so it never shares
-  depth with the model. The orbit setting (Earth at true angular size from 187.5 km) is not used
+  depth with the model. The orbit setting (Earth at true angular size from 187.4 km) is not used
   by Freedom 7 at present, which stands on its pad; it is kept for flights shown in space.
 - The page must work on a phone: under 760 px the data panel is a bottom sheet and the model
   keeps the space above it. Check both widths after changing `style.css`.

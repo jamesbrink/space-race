@@ -124,7 +124,10 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "nozzle": m("nozzle", (0.09, 0.085, 0.08), 0.9, 0.55, double_sided=True),
         "tower": m("tower-red", (0.40, 0.022, 0.012), 0.0, 0.5),
         "dielectric": m("dielectric-window", (0.62, 0.59, 0.50), 0.0, 0.6),
-        "glass": m("glass", (0.02, 0.03, 0.04), 0.0, 0.04),
+        # the viewer swaps anything named glass for a transparent, reflective material; what is
+        # seen through it is the unlit cabin, stood in for by window-void
+        "glass": m("glass", (0.6, 0.75, 0.8), 0.0, 0.03),
+        "void": m("window-void", (0.004, 0.004, 0.005), 0.0, 0.95),
         "paint_white": m("paint-white", (0.9, 0.9, 0.88), 0.0, 0.6, double_sided=True),
         "flag": m("flag", (1, 1, 1), 0.0, 0.6, double_sided=True, image=flag_image()),
         "couch": m("couch-fibreglass", (0.55, 0.50, 0.38), 0.0, 0.7, double_sided=True),
@@ -263,12 +266,12 @@ def build_afterbody(M, font) -> None:
     ta, tb = t_h0 + inset / CONE.r(hz0), t_h1 - inset / CONE.r(hz0)
     za, zb = hz0 + inset, hz1 - inset
     for t, z in ((ta, za), (tb, za), (ta, zb), (tb, zb), ((ta + tb) / 2, za), ((ta + tb) / 2, zb), (ta, (za + zb) / 2), (tb, (za + zb) / 2)):
-        hb.box((2.2 * IN, 1.3 * IN, 0.7 * IN), CONE.frame(t, z, 0.1))                     # latch housings
+        hb.box((1.5 * IN, 0.9 * IN, 0.5 * IN), CONE.frame(t, z, 0.1))                     # latch housings
     hb.box((1.1 * IN, 6.5 * IN, 1.0 * IN), CONE.frame(t_h0 + 0.82 * (t_h1 - t_h0), (za + zb) / 2 - 3.0, 0.25))   # external release handle
     panels.build("Afterbody_Shingles", M["shingle"], g, sharp_angle=None)
     bolts.build("Afterbody_Fasteners", M["bolt"], g)
     hp.build("Hatch_Shingles", M["shingle"], hatch, sharp_angle=None)
-    hb.build("Hatch_Latches", M["steel"], hatch, smooth=False)
+    hb.build("Hatch_Latches", M["bolt"], hatch, smooth=False)
 
     # structure under the shingles, with the hatch opening left out
     under = MeshBuilder()
@@ -287,20 +290,23 @@ def build_afterbody(M, font) -> None:
     lathe_obj("Afterbody_AttachRing", prof([(SHIELD_R, 0.02), (SHIELD_R + 0.05, 0.3), (CONE.r(2.0) + 0.12, 2.0)]),
               M["steel"], g, segs=160)
 
-    detail, dark, glass = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    detail, dark, glass, void = MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder()
     # two 10 in portholes: No. 7 predates the trapezoidal overhead window
     for t, z in ((deg(52), 37.0), (deg(-128), 31.0)):
         f = CONE.frame(t, z)
-        detail.lathe(prof([(6.0, -1.0), (6.0, 0.55), (5.0, 0.55), (4.9, 0.3)]), 48, matrix=f)
-        glass.lathe(prof([(4.9, 0.3), (0.0, 0.3)]), 48, matrix=f)
+        # a bezel standing proud of the shingles, a pane set into it, and the dark cabin behind
+        detail.lathe(prof([(6.0, -1.0), (6.0, 0.7), (5.0, 0.7), (4.9, 0.22)]), 48, matrix=f)
+        void.lathe(prof([(4.9, 0.22), (0.0, 0.22)]), 48, matrix=f)
+        glass.lathe(prof([(4.95, 0.52), (0.0, 0.52)]), 48, matrix=f)
         for i in range(16):
             a = TAU * i / 16
-            detail.disc(f @ Vector((5.5 * math.cos(a) * IN, 5.5 * math.sin(a) * IN, 0.55 * IN)), CONE.n(t), 0.17 * IN, 0.06 * IN)
+            detail.disc(f @ Vector((5.5 * math.cos(a) * IN, 5.5 * math.sin(a) * IN, 0.7 * IN)), CONE.n(t), 0.17 * IN, 0.06 * IN)
     # periscope: door frame and the extended objective, on the Earth-facing side
     f = CONE.frame(deg(180), 11.0)
     detail.box((6.0 * IN, 10.0 * IN, 0.5 * IN), f)
-    detail.lathe(prof([(2.4, 0.0), (2.4, 3.6), (2.0, 4.0), (1.9, 3.7)]), 32, matrix=f)
-    glass.lathe(prof([(1.9, 3.7), (0.0, 3.7)]), 32, matrix=f)
+    detail.lathe(prof([(2.4, 0.0), (2.4, 3.6), (2.0, 4.0), (1.9, 3.2)]), 32, matrix=f)
+    void.lathe(prof([(1.9, 3.2), (0.0, 3.2)]), 32, matrix=f)
+    glass.lathe(prof([(1.93, 3.75), (0.0, 3.85)]), 32, matrix=f)   # the objective, slightly domed
     # umbilical receptacle
     f = CONE.frame(deg(-90), 8.0)
     detail.lathe(prof([(2.6, -0.3), (2.6, 0.45), (2.1, 0.45), (2.0, 0.25), (0.0, 0.25)]), 32, matrix=f)
@@ -313,6 +319,7 @@ def build_afterbody(M, font) -> None:
     detail.build("Afterbody_Fittings", M["steel"], g)
     dark.build("Afterbody_ThrusterThroats", M["nozzle"], g)
     glass.build("Afterbody_Glass", M["glass"], g)
+    void.build("Afterbody_WindowWells", M["void"], g)
 
     paint, flags = MeshBuilder(), MeshBuilder()
     for t in (deg(135), deg(-45)):

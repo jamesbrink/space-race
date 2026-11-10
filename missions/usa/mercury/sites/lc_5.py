@@ -47,7 +47,8 @@ def materials() -> dict:
         "grey": m("paint-structure-grey", (0.25, 0.27, 0.28), 0.1, 0.6),
         "deck": m("galvanised-deck", (0.42, 0.43, 0.44), 0.9, 0.6),
         "scorched": m("steel-scorched", (0.085, 0.075, 0.07), 0.8, 0.7),
-        "glass": m("glass", (0.02, 0.03, 0.04), 0.0, 0.05),
+        "glass": m("glass", (0.6, 0.75, 0.8), 0.0, 0.03),   # the viewer makes this transparent
+        "void": m("window-void", (0.004, 0.004, 0.005), 0.0, 0.95),
         "tyre": m("rubber", (0.02, 0.02, 0.02), 0.0, 0.9),
         "yellow": m("paint-vehicle-yellow", (0.62, 0.42, 0.03), 0.0, 0.5),
         "lamp": m("lamp", (0.9, 0.9, 0.85), 0.0, 0.3, emission=(1.0, 0.95, 0.8), emission_strength=0.6),
@@ -162,13 +163,14 @@ def build_umbilical_mast(M) -> None:
     The umbilical dropped at about T-35 s and the boom fell away just before ignition."""
     g = group("UmbilicalMast")
     mast, cable = MeshBuilder(), MeshBuilder()
-    cy, top, w = -11.0, 66.0, 0.75
+    cy, top, w = -11.0, 68.0, 0.75
+    plug = (0.0, -2.92, PEDESTAL_TOP + (716.5 + 8.0) / 12)   # the capsule's umbilical receptacle
     corner = lambda i, z: (-1.5 + w * (1 if i in (0, 3) else -1), cy + w * (1 if i < 2 else -1), z)   # noqa: E731
     lattice(mast, corner, [0.3 + k * (top - 0.3) / 12 for k in range(13)], 0.22, 0.14)
     box(mast, (-3.2, cy - 1.7, 0.0), (0.2, cy + 1.7, 0.3))
-    beam(mast, (-1.5, cy, top - 0.6), (-1.5, -3.4, top - 0.6), 0.3)       # arm to the capsule
+    beam(mast, (-1.5, cy, top - 0.6), (-1.5, -3.5, top - 0.6), 0.3)       # arm to the capsule
     # the umbilical drooping from the arm to the receptacle low on the capsule's cone
-    path = [(-1.5, -3.6, top - 0.7), (-1.2, -3.3, top - 1.6), (-0.6, -3.15, top - 1.4), (-0.1, -3.05, top - 0.75)]
+    path = [(-1.5, -3.6, top - 0.7), (-1.3, -4.6, plug[2] - 1.9), (-0.5, -4.1, plug[2] - 1.4), (-0.05, -3.4, plug[2] - 0.25), plug]
     cable.loft([P(*p) for p in path], [(0.11 * FT, 0.11 * FT)] * len(path), 8, ref=(1, 0, 0))
     mast.build("Mast_Truss", M["grey"], g, smooth=False)
     cable.build("Mast_Umbilical", M["cable"], g)
@@ -179,7 +181,7 @@ def build_service_structure(M) -> None:
     serves pads 5 and 6. For Mercury it gained a remote control, an enclosed, air-conditioned
     white room at capsule level (level 3), and a blast deflector against the escape rocket."""
     g = group("ServiceStructure")
-    red, white, deck, glass, dark = (MeshBuilder() for _ in range(5))
+    red, white, deck, glass, dark, void = (MeshBuilder() for _ in range(6))
     cx = STRUCTURE_X
     half_y = RAIL_GAUGE / 2
 
@@ -217,15 +219,21 @@ def build_service_structure(M) -> None:
     z = LEVELS[2]
     x0 = corner(0, z)[0] - 0.4
     xa, xb, hy, zt = x0 + 1.0, x0 + reach - 0.6, 10.9, z + 12.0
+    # side walls built round their window openings, so the glass is really a window
+    sill, head = z + 4.5, z + 8.5
+    panes = [(xa + 2.0 + k * 4.4, xa + 5.4 + k * 4.4) for k in range(4)]
+    posts = [xa] + [x for pane in panes for x in pane] + [xb]
     for y0, y1 in ((-hy, -hy + 0.35), (hy - 0.35, hy)):
-        box(white, (xa, y0, z + 0.02), (xb, y1, zt))
+        box(white, (xa, y0, z + 0.02), (xb, y1, sill))
+        box(white, (xa, y0, head), (xb, y1, zt))
+        for x0, x1 in zip(posts[0::2], posts[1::2]):
+            box(white, (x0, y0, sill), (x1, y1, head))
+        for x0, x1 in panes:
+            box(glass, (x0, (y0 + y1) / 2 - 0.03, sill), (x1, (y0 + y1) / 2 + 0.03, head))
     box(white, (xa, -hy + 0.4, z + 0.02), (xa + 0.35, hy - 0.4, zt))
     box(white, (xa - 0.3, -hy - 0.3, zt - 0.15), (xb + 0.3, hy + 0.3, zt + 0.5))               # roof, lapping the walls
     for sy in (-1, 1):   # the open front is closed by two leaves that part round the capsule
         box(white, (xb - 0.4, sy * 3.2, z + 0.02), (xb - 0.05, sy * (hy - 0.4), zt))
-        for k in range(4):   # a band of windows down each side
-            xw = xa + 2.0 + k * 4.4
-            box(glass, (xw, sy * (hy + 0.04) - 0.03, z + 4.5), (xw + 3.4, sy * (hy + 0.04) + 0.03, z + 8.5))
     # elevator up the back face, and the hammerhead crane on top
     ex = corner(1, 60)[0] - 4.8
     lattice(red, lambda i, zz: (ex + 2.6 * (1 if i in (0, 3) else -1), 3.0 * (1 if i < 2 else -1), zz),
@@ -243,6 +251,11 @@ def build_service_structure(M) -> None:
             beam(red, jib(i, xb_), jib(j, xb_), 0.3)
             beam(red, jib(i, xa_), jib(j, xb_), 0.26)
     box(white, (cx - 16.0, -3.4, zc + 1.4), (cx - 8.0, 3.4, zc + 8.4))                          # machinery house
+    for sy in (-1, 1):   # the crane driver's windows: glass over a dark interior
+        y0, y1 = sorted((sy * 3.3, sy * 3.56))
+        box(void, (cx - 14.5, y0, zc + 4.6), (cx - 9.5, y1, zc + 7.4))
+        y0, y1 = sorted((sy * 3.62, sy * 3.66))
+        box(glass, (cx - 14.5, y0, zc + 4.6), (cx - 9.5, y1, zc + 7.4))
     box(dark, (xs[-2] - 1.5, -1.6, zc - 0.1), (xs[-2] + 1.5, 1.6, zc + 1.0))                    # trolley
     beam(dark, (xs[-2], 0, zc - 0.1), (xs[-2], 0, zc - 14.0), 0.1)
     box(dark, (xs[-2] - 0.5, -0.5, zc - 15.6), (xs[-2] + 0.5, 0.5, zc - 14.0))
@@ -251,6 +264,7 @@ def build_service_structure(M) -> None:
     white.build("Structure_WhiteRoomAndRails", M["white"], g, smooth=False)
     deck.build("Structure_Decks", M["deck"], g, smooth=False)
     glass.build("Structure_Windows", M["glass"], g, smooth=False)
+    void.build("Structure_WindowWells", M["void"], g, smooth=False)
     dark.build("Structure_RunningGear", M["grey"], g, sharp_angle=30)
 
 
@@ -260,11 +274,19 @@ def build_cherry_picker(M) -> None:
     by remote control from the blockhouse. It left for its launch position in the last minutes of
     the count: T-4 min by one section of the report, T-2:30 by the MR-4 countdown."""
     g = group("CherryPicker")
-    body, boom, tyres, cab, glass = (MeshBuilder() for _ in range(5))
+    body, boom, tyres, cab, glass, void = (MeshBuilder() for _ in range(6))
     tx, ty = 46.0, -6.0
     box(body, (tx - 16.0, ty - 4.2, 3.4), (tx + 14.0, ty + 4.2, 5.0))                           # carrier deck
     box(body, (tx + 14.0, ty - 4.2, 3.4), (tx + 21.0, ty + 4.2, 9.6))                           # driver's cab
-    box(glass, (tx + 21.0, ty - 3.4, 6.6), (tx + 21.06, ty + 3.4, 9.0))
+    # windows: a dark well standing proud of the cab, glass over it. (A thin panel lying on a
+    # big flat face flickers from across the pad; these are 5 cm clear.)
+    box(void, (tx + 20.9, ty - 3.4, 6.6), (tx + 21.16, ty + 3.4, 9.0))
+    box(glass, (tx + 21.22, ty - 3.4, 6.6), (tx + 21.26, ty + 3.4, 9.0))
+    for sy in (-1, 1):
+        y0, y1 = sorted((ty + sy * 4.1, ty + sy * 4.36))
+        box(void, (tx + 15.2, y0, 6.6), (tx + 19.6, y1, 9.0))
+        y0, y1 = sorted((ty + sy * 4.42, ty + sy * 4.46))
+        box(glass, (tx + 15.2, y0, 6.6), (tx + 19.6, y1, 9.0))
     box(body, (tx - 8.0, ty - 3.6, 5.0), (tx + 2.0, ty + 3.6, 9.5))                             # turntable house
     for dx in (-12.0, -7.0, 9.0, 17.0):
         for sy in (-1, 1):
@@ -299,7 +321,9 @@ def build_cherry_picker(M) -> None:
             j = (i + 1) % 4
             beam(boom, jb(i, k1), jb(j, k1), 0.18)
             beam(boom, jb(i, k0), jb(j, k1), 0.16)
-    beam(boom, tuple(tip), tuple(cab_c + Vector((0, 0, 3.6))), 0.35)
+    for sy in (-1, 1):   # a yoke from the jib head to the cab's roof beams
+        beam(boom, tuple(tip), tuple(cab_c + Vector((0.0, sy * 2.2, 3.75))), 0.3)
+        beam(boom, tuple(cab_c + Vector((-2.0, sy * 2.2, 3.75))), tuple(cab_c + Vector((2.0, sy * 2.2, 3.75))), 0.3)
     # the cab: an open-sided box the pilot steps into from the hatch
     c = cab_c
     box(cab, (c.x - 2.2, c.y - 2.4, c.z - 3.5), (c.x + 2.2, c.y + 2.4, c.z - 3.2))               # floor
@@ -312,7 +336,8 @@ def build_cherry_picker(M) -> None:
     boom.build("CherryPicker_Boom", M["yellow"], g, smooth=False)
     tyres.build("CherryPicker_Tyres", M["tyre"], g, sharp_angle=30)
     cab.build("CherryPicker_Cab", M["white"], g, smooth=False)
-    glass.build("CherryPicker_Windscreen", M["glass"], g, smooth=False)
+    glass.build("CherryPicker_Windows", M["glass"], g, smooth=False)
+    void.build("CherryPicker_WindowWells", M["void"], g, smooth=False)
 
 
 def build_floodlights(M) -> None:

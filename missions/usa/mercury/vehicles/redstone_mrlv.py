@@ -1,6 +1,6 @@
 """The Mercury-Redstone Launch Vehicle (MRLV): one stage, one Rocketdyne A-7.
 
-Shared by the flights that rode it (MR-3, MR-4); a flight's build.py imports this module and
+Shared by the flights that rode it (MR-3, MR-4); a flight's model/vehicle.py imports this module and
 calls build(). Dimensions are inches. Stations here are measured up from the booster's base
 (the fin trailing edges); `base_z` places that base in the flight's own coordinates.
 
@@ -41,6 +41,8 @@ def materials() -> dict:
         "red": m("paint-booster-red", (0.45, 0.02, 0.015), 0.0, 0.5, double_sided=True),
         "inner": m("aluminium-structure", (0.55, 0.56, 0.55), 1.0, 0.5, double_sided=True),
         "alu": m("aluminium", (0.78, 0.78, 0.77), 1.0, 0.32),
+        # sheet fittings on the outside: weathered, or they mirror the sky and read as glass
+        "sheet": m("aluminium-sheet", (0.56, 0.57, 0.57), 0.9, 0.66),
         "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
         "engine": m("engine-steel", (0.30, 0.29, 0.28), 1.0, 0.42, double_sided=True),
         "graphite": m("graphite", (0.03, 0.03, 0.032), 0.3, 0.6),
@@ -164,7 +166,7 @@ def build(base_z: float, font=None) -> None:
         f = body.frame(deg(22.5 + 90 * i), up(S_TANK + AFT_LOWER * 0.5))
         antennas.box((1.0 * IN, 9.0 * IN, 5.0 * IN), f @ Matrix.Translation((0, 0, 2.0 * IN)))
         antennas.box((4.0 * IN, 12.0 * IN, 0.5 * IN), f)
-    antennas.build("AftUnit_Antennas", M["alu"], g, smooth=False)
+    antennas.build("AftUnit_Antennas", M["sheet"], g, smooth=False)
     doors.build("AftUnit_AccessDoors", M["white"], g, smooth=False)
     rivets.build("AftUnit_Fasteners", M["bolt"], g)
     caps.build("AftUnit_Bulkheads", M["inner"], g)
@@ -233,7 +235,7 @@ def build(base_z: float, font=None) -> None:
     black.build("TailUnit_SkinBlack", M["black"], g, sharp_angle=None)
     fins_w.build("TailUnit_FinsWhite", M["white"], g, smooth=False)
     fins_b.build("TailUnit_FinsBlack", M["black"], g, smooth=False)
-    rudders.build("TailUnit_AirRudders", M["alu"], g, smooth=False)
+    rudders.build("TailUnit_AirRudders", M["sheet"], g, smooth=False)
     _rivet_lines(rivets, BODY_R, up(14), up(S_TAIL - 5), 24)
     shields = MeshBuilder()
     for i in range(4):   # stainless shields on the fin roots, added for the longer burn
@@ -241,7 +243,7 @@ def build(base_z: float, font=None) -> None:
         _prism(shields, [(BODY_R - 0.6, 0.6), (BODY_R + 15, 0.6), (BODY_R + 15, 20), (BODY_R - 0.6, 30)], 5.0, 4.3, BODY_R, BODY_R + 15, rot)
     for t in (deg(0), deg(180)):   # engine bay access doors
         shields.box((20 * IN, 26 * IN, 0.5 * IN), body.frame(t, up(S_TAIL - 34), 0.0))
-    shields.build("TailUnit_ShieldsAndDoors", M["alu"], g, smooth=False)
+    shields.build("TailUnit_ShieldsAndDoors", M["sheet"], g, smooth=False)
     rivets.build("TailUnit_Fasteners", M["bolt"], g)
     inner.build("TailUnit_Structure", M["inner"], g)
 

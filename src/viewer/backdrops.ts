@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { BackdropKind } from '../types';
+import { buildCape } from './cape';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -29,9 +30,15 @@ export interface Setting {
   fog: THREE.FogExp2 | null;
   /** Scenery that is part of the place rather than the model. */
   scenery: THREE.Object3D[];
+  /** Anything in the setting that moves (surf). */
+  tick?: (dt: number) => void;
 }
 
-/** Height of the ground-setting's terrain, metres. The model's own surface is at 0. */
+/**
+ * Height of the ground setting's terrain, metres; the model's own surface is at 0. Nothing may
+ * lie close above the terrain (it flickers at a distance), so models that stand on the ground
+ * reach down past this (lc_5.py: FOOTING).
+ */
 export const GROUND_Y = -0.45;
 
 /** Linear colour of the sky at the horizon; the fog uses the same so ground and sky meet without a seam. */
@@ -90,58 +97,12 @@ function pmrem(renderer: THREE.WebGLRenderer, scene: THREE.Scene): THREE.Texture
   return texture;
 }
 
-/** A tiling canvas of speckle: palmetto scrub from above, or sand, depending on the tint. */
-function speckle(base: string, marks: string[], repeat: number): THREE.Texture {
-  const size = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const g = canvas.getContext('2d')!;
-  g.fillStyle = base;
-  g.fillRect(0, 0, size, size);
-  let seed = 9;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-  for (let i = 0; i < 5200; i++) {
-    g.fillStyle = marks[i % marks.length]!;
-    g.globalAlpha = 0.25 + rand() * 0.5;
-    const x = rand() * size, y = rand() * size, r = 1 + rand() * 5;
-    for (const dx of [0, -size]) for (const dy of [0, -size]) {
-      g.beginPath();
-      g.ellipse(x + dx, y + dy, r, r * (0.5 + rand()), rand() * 3, 0, 7);
-      g.fill();
-    }
-  }
-  const t = new THREE.CanvasTexture(canvas);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(repeat, repeat);
-  t.anisotropy = 8;
-  return t;
-}
-
 function ground(renderer: THREE.WebGLRenderer): Setting {
   // 09:34 EST on 5 May at the Cape: the Sun is about 50 degrees up in the east-south-east
   const sunDir = new THREE.Vector3(0.52, 0.72, 0.46).normalize();
   const envScene = new THREE.Scene();
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(sunDir, false)));
-  // Three surfaces laid edge to edge, never overlapping: two planes a few centimetres apart
-  // cannot be told apart by the depth buffer at the horizon, and would flicker.
-  const SHORE = 350, SURF = 440, FAR = 6000;   // metres east of the pad: scrub ends, beach ends
-  const strip = (x0: number, x1: number, material: THREE.Material) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, 2 * FAR), material);
-    m.rotation.x = -Math.PI / 2;
-    // Half a metre under the pad's surface. These triangles are kilometres long, and depth
-    // interpolated across them is too coarse to separate anything lying a few centimetres above.
-    // Models that stand on the ground must reach down past this (lc_5.py: FOOTING).
-    m.position.set((x0 + x1) / 2, GROUND_Y, 0);
-    return m;
-  };
-  const scrubMap = speckle('#6f6a4c', ['#4c5a2e', '#3d4a26', '#8a8260', '#59623a'], 1);
-  scrubMap.repeat.set((FAR + SHORE) / 7, (2 * FAR) / 7);
-  const sandMap = speckle('#cfc3a0', ['#bfb28d', '#ddd3b4'], 1);
-  sandMap.repeat.set((SURF - SHORE) / 6, (2 * FAR) / 6);
-  const floor = strip(-FAR, SHORE, new THREE.MeshStandardMaterial({ map: scrubMap, roughness: 1 }));
-  const beach = strip(SHORE, SURF, new THREE.MeshStandardMaterial({ map: sandMap, roughness: 1 }));
-  const sea = strip(SURF, FAR, new THREE.MeshStandardMaterial({ color: 0x0c3a52, roughness: 0.18, metalness: 0 }));
+  const cape = buildCape(GROUND_Y);
   return {
     backdrop: new DomeBackdrop(skyMaterial(sunDir, true)),
     environment: pmrem(renderer, envScene),
@@ -151,11 +112,12 @@ function ground(renderer: THREE.WebGLRenderer): Setting {
     sunIntensity: 3.9,
     // sky fill kept low and close to neutral: shadows should read as shade, not as blue paint
     fill: [0xb9c6d6, 0x7a715c, 0.28],
-    floor,
+    floor: cape.floor,
     maxPolar: Math.PI / 2 - 0.015,
     exposure: 0.8,
     fog: new THREE.FogExp2(HORIZON.clone().multiplyScalar(0.96), 0.00042),
-    scenery: [beach, sea],
+    scenery: cape.scenery,
+    tick: cape.tick,
   };
 }
 

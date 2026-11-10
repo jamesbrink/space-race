@@ -17,6 +17,28 @@ const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-boos
 /** Materials that also take it as a bump map: cloth and poured concrete are never flat. */
 const ROUGH_SURFACE = /^(suit|concrete)/;
 
+/**
+ * Window glass. Mostly you look through it; what you see of the pane itself is the sky in it,
+ * strongest at a glancing angle. Models name a material `glass` and put the real thing behind it:
+ * a room, or a dark `window-void` standing in for an unlit interior.
+ */
+const GLASS = new THREE.MeshPhysicalMaterial({
+  name: 'glass',
+  // nearly black, nearly clear: a pane has almost no colour of its own, only what it reflects
+  color: 0x0c1418,
+  transparent: true,
+  opacity: 0.16,
+  roughness: 0.02,
+  metalness: 0,
+  ior: 1.52,
+  specularIntensity: 1,
+  clearcoat: 1,
+  clearcoatRoughness: 0.02,
+  envMapIntensity: 1.6,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
+
 /** Put every part of a model back where it was built. */
 function rest(object: THREE.Object3D): void {
   object.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
@@ -160,6 +182,7 @@ export class Stage {
     for (const o of this.setting.scenery) this.scene.remove(o);
     rest(main);
     main.position.set(...(def.position ?? [0, 0, 0]));
+    main.rotation.y = def.rotationY ?? 0;
     this.root = new THREE.Group();
     this.root.add(main, ...extras);
     this.scene.add(this.root);
@@ -205,6 +228,12 @@ export class Stage {
       if (!mesh.isMesh) return;
       mesh.castShadow = mesh.receiveShadow = true;
       const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (mat.name.startsWith('glass')) {
+        mesh.material = GLASS;
+        mesh.castShadow = false;
+        mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
+        return;
+      }
       if (seen.has(mat)) return;
       seen.add(mat);
       if (mat.map) mat.map.anisotropy = anisotropy;
@@ -299,23 +328,38 @@ export class Stage {
     }
   }
 
-  /**
-   * Shadow-map texels are spent on a sphere around what is on show. Assembled, that is the
-   * model; exploded it is larger, and shadows soften to match.
-   */
+  /** Fit the shadow map and the scene's bounds. Called on load and as the slider moves. */
   private fitShadows(t: number): void {
     if (!this.root || (this.shadowFit >= 0 && Math.abs(t - this.shadowFit) < 0.02)) return;
     this.shadowFit = t;
-    const box = new THREE.Box3().setFromObject(this.root);
+    // everything on show, for the camera's depth range and its default aim
+    const all = new THREE.Box3().setFromObject(this.root);
+    this.bounds.set(all.getCenter(new THREE.Vector3()), all.getSize(new THREE.Vector3()).length() / 2 + 0.5);
+    this.centreY = this.bounds.center.y;
+    // but the shadow map is spent on the model being looked at, plus its surroundings out to
+    // twice its size: one map stretched over a whole launch pad gives the rocket sawtooth shadows
+    const box = new THREE.Box3().setFromObject(this.main ?? this.root);
     const centre = box.getCenter(new THREE.Vector3());
-    const radius = box.getSize(new THREE.Vector3()).length() / 2 + 0.5;
-    this.centreY = centre.y;
-    this.bounds.set(centre, radius);
+    const radius = Math.min(this.bounds.radius, box.getSize(new THREE.Vector3()).length() + 2);
     this.sun.target.position.copy(centre);
     this.sun.position.copy(centre).addScaledVector(this.setting.sunDir, radius + 10);
     Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
+  }
+
+  /**
+   * Where there is ground, the camera stays above it, and so does the point it orbits: a
+   * camera under the pad sees the inside of the concrete and the underside of the terrain.
+   */
+  private keepAboveGround(): void {
+    if (!this.setting.floor) return;
+    const EYE = 0.35; // metres above the surface the model stands on
+    if (this.controls.target.y < 0.1) this.controls.target.y = 0.1;
+    if (this.camera.position.y < EYE) {
+      this.camera.position.y = EYE;
+      this.camera.lookAt(this.controls.target);
+    }
   }
 
   /**
@@ -373,13 +417,17 @@ export class Stage {
       if (f.t >= 1) this.flyTo = null;
     }
     this.controls.update(dt);
+    this.keepAboveGround();
     if (this.pointerDirty && !this.down) {
       this.pointerDirty = false;
       this.setHover(this.pick());
     }
     this.fitDepth();
     const { backdrop } = this.setting;
-    if (!this.frozen) backdrop.update(dt);
+    if (!this.frozen) {
+      backdrop.update(dt);
+      this.setting.tick?.(dt);
+    }
     backdrop.scene.visible = !this.frozen;
     backdrop.camera.quaternion.copy(this.camera.quaternion);
     if (backdrop.camera.aspect !== this.camera.aspect) {

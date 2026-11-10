@@ -6,8 +6,8 @@
 // are taken: A, then B with the camera turned 0.005 degrees, then A again. Honest geometry
 // barely changes under a turn that small. Two faces fighting for the same depth swap pixels
 // wholesale, so a pixel that jumps between A and B and comes back in the second A is a flip.
-// Lone flips (glints) and one-pixel lines (thin edges) are ignored; a flip counts when at
-// least five of its eight neighbours flipped too. A pose fails if it has more than FLIPS of those.
+// Lone flips (glints) and lines one or two pixels wide (edges, some right beside the camera)
+// are ignored; a flip counts when at least six of its eight neighbours flipped too. A pose fails if it has more than FLIPS of those.
 //
 // The geometric cause is caught earlier and more exactly by srlib.check_clearance at build
 // time; this is the end-to-end check that the renderer's depth range is doing its part.
@@ -67,7 +67,7 @@ const flipsAt = (view, az) =>
           const p = y * w + x;
           let near = 0;
           if (mask[p]) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) near += mask[p + dy * w + dx];
-          const flip = near >= 6;
+          const flip = near >= 7; // itself and six of its eight neighbours: a patch, not a two-pixel edge
           if (flip) flips++;
           const i = p * 4;
           b[i] = flip ? 255 : a[i] >> 2;

@@ -89,15 +89,31 @@ small { display: block; color: var(--faint); font: 11px/1.35 var(--sans); white-
 .timeline li { display: grid; grid-template-columns: 74px 1fr; padding: 7px 0; border-bottom: 1px solid rgba(243, 239, 230, 0.07); }
 time { color: var(--amber); padding-top: 2px; }
 
+/* --- the label beside the pointer ------------------------------------------------ */
+.tip { position: fixed; top: 0; left: 0; max-width: 260px; padding: 9px 13px 10px; pointer-events: none !important; z-index: 3;
+  background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 2px; }
+.tip.left { border-left: 1px solid var(--line); border-right: 2px solid var(--amber); }
+/* a short leader from the label toward the pointer */
+.tip::before { content: ''; position: absolute; top: 14px; left: -19px; width: 16px; height: 1px; background: var(--amber); }
+.tip.left::before { left: auto; right: -19px; }
+.tip b { display: block; color: var(--ink); font-weight: 600; }
+.tip span { display: block; color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+[hidden] { display: none !important; }
+
 /* --- controls -------------------------------------------------------------------- */
-.controls { position: absolute; left: 50%; bottom: var(--edge); transform: translateX(-50%); display: grid; justify-items: center; gap: 12px; padding: 14px 18px 12px; max-width: calc(100vw - 2 * var(--edge)); }
-.explode { display: flex; align-items: center; gap: 14px; color: var(--dim); white-space: nowrap; }
-input[type='range'] { appearance: none; -webkit-appearance: none; width: min(320px, 30vw); height: 28px; background: none; cursor: ew-resize; }
+/* never wider than the gap between the title block and the data panel */
+.controls { position: absolute; left: 50%; bottom: var(--edge); transform: translateX(-50%); display: grid; justify-items: center; gap: 12px; padding: 14px 18px 12px;
+  max-width: calc(100vw - 2 * (min(360px, 30vw) + var(--edge) + 14px)); }
+.explode { display: flex; align-items: center; gap: 14px; color: var(--dim); white-space: nowrap; width: 100%; max-width: 520px; }
+input[type='range'] { appearance: none; -webkit-appearance: none; flex: 1; min-width: 60px; width: 0; height: 28px; background: none; cursor: ew-resize; }
 input[type='range']::-webkit-slider-runnable-track { height: 1px; background: var(--dim); }
 input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 3px; height: 19px; margin-top: -9px; background: var(--amber); box-shadow: 0 0 10px var(--amber); }
 input[type='range']::-moz-range-track { height: 1px; background: var(--dim); }
 input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; border-radius: 0; background: var(--amber); }
-.buttons { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+/* the row scrolls sideways when it does not fit, and fades at the edge to say so */
+.buttons { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; scrollbar-width: none;
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); padding-right: 22px; }
 .buttons::-webkit-scrollbar { display: none; }
 .buttons button { flex: none; padding: 8px 13px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); white-space: nowrap; }
 .buttons button:hover { color: var(--ink); border-color: var(--dim); }
@@ -118,7 +134,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 }
 
 /* --- phone and small tablet: the model fills the screen, the panel is a sheet -------- */
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-height: 520px) {
   :root { --edge: 10px; }
   html, body { height: 100dvh; }
   .title { width: auto; right: auto; max-width: calc(100vw - 20px); padding: 12px 14px 13px; }
@@ -126,6 +142,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
   h1 { font-size: 30px; margin: 0 0 5px; }
   .sub { font-size: 10px; }
   .models { top: auto; bottom: calc(52px + 118px + env(safe-area-inset-bottom)); max-width: calc(100vw - 20px); }
+  .controls { max-width: none; }
   .models button { padding: 10px 14px; }
   .controls { bottom: calc(52px + env(safe-area-inset-bottom)); width: calc(100vw - 20px); gap: 8px; padding: 8px 10px 9px; border-bottom: 0; border-radius: 3px 3px 0 0; }
   .explode { width: 100%; gap: 10px; }
@@ -146,9 +163,17 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
   .panel:not(.open) section { display: none; }
   .parts button { padding: 13px 16px; }
 }
-@media (max-width: 760px) and (max-height: 520px) {
-  /* a phone on its side: no room for the title and the controls at once */
+@media (max-height: 520px) {
+  /* a phone on its side: the sheet takes the right-hand side, the model the left */
   .title { display: none; }
-  .models { bottom: auto; top: 10px; }
+  .models { bottom: auto; top: 10px; left: 10px; transform: none; }
+  .scale { display: none; }
+  .controls { left: 10px; right: auto; transform: none; width: calc(56vw - 20px); max-width: none; bottom: 10px; border-bottom: 1px solid var(--line); border-radius: 3px; }
+  .panel, .panel.open { top: 10px; bottom: 10px; left: auto; right: 10px; width: calc(44vw - 10px); height: auto; border: 1px solid var(--line); }
+  .panel:not(.open) section { display: block; }
+  .panel:not(.open) section[hidden] { display: none; }
+  body:has(.panel.open) #stage { height: 100dvh; }
+  body:has(.panel.open) :is(.controls, .models) { display: grid; }
+  body:has(.panel.open) .models { display: flex; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }

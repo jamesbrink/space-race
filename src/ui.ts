@@ -33,6 +33,7 @@ const legend = `<p class="fine legend">${dot('documented')}published figure ${do
 /** The DOM half of the app. Everything it shows comes from the flight's data file. */
 export class Ui {
   private selected: string | null = null;
+  private pointer: [number, number] = [0, 0];
   private model: ModelDef;
 
   constructor(private readonly root: HTMLElement, private readonly flight: Flight, private readonly on: UiHandlers) {
@@ -88,6 +89,7 @@ export class Ui {
         <div class="buttons"></div>
         <p class="scale"></p>
       </footer>
+      <div class="tip" hidden><b></b><span></span></div>
       <div class="loading"><span>Loading</span><i></i></div>`;
 
     // On a phone the panel is a sheet: tapping a tab opens it, tapping the open tab closes it.
@@ -115,7 +117,22 @@ export class Ui {
       if (b?.dataset.view) on.view(b.dataset.view);
       else if (b?.hasAttribute('data-rotate')) this.setRotate(b.getAttribute('aria-pressed') !== 'true');
     });
+    // the label that follows the pointer over the model
+    window.addEventListener('pointermove', (e) => {
+      this.pointer = [e.clientX, e.clientY];
+      this.placeTip();
+    });
     this.setModel(this.model.id);
+  }
+
+  /** Beside the pointer, on whichever side has room. */
+  private placeTip(): void {
+    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    if (tip.hidden) return;
+    const [x, y] = this.pointer;
+    const left = x > window.innerWidth * 0.6;
+    tip.classList.toggle('left', left);
+    tip.style.transform = `translate(${left ? x - 26 - tip.offsetWidth : x + 26}px, ${Math.max(8, y - 14)}px)`;
   }
 
   private get slider(): HTMLInputElement {
@@ -139,8 +156,9 @@ export class Ui {
       [{ id: 'all', label: 'Everything' }, ...m.views].map((v) => `<button data-view="${v.id}">${esc(v.label)}</button>`).join('') +
       `<button data-rotate aria-pressed="${rotating}">Rotate</button>`;
     r.querySelector('.scale')!.textContent = m.scale;
-    r.querySelector('[data-slider="0"]')!.textContent = m.slider[0];
-    r.querySelector('[data-slider="1"]')!.textContent = m.slider[1];
+    r.querySelector<HTMLElement>('.explode')!.hidden = !m.slider;
+    r.querySelector('[data-slider="0"]')!.textContent = m.slider?.[0] ?? '';
+    r.querySelector('[data-slider="1"]')!.textContent = m.slider?.[1] ?? '';
     this.slider.value = '0';
     this.selected = null;
     this.tab('Parts');
@@ -174,6 +192,14 @@ export class Ui {
 
   /** A part under the pointer in the 3D view. */
   hover(node: string | null): void {
+    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    const part = this.model.parts.find((p) => p.node === node);
+    tip.hidden = !part || matchMedia('(hover: none)').matches;
+    if (part) {
+      tip.querySelector('b')!.textContent = part.name;
+      tip.querySelector('span')!.textContent = part.summary;
+      this.placeTip();
+    }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => b.classList.toggle('hot', b.dataset.node === node));
   }
 
