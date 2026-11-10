@@ -258,9 +258,19 @@ const PEDESTAL = 5.5 * 0.3048; // the launcher's support level (lc5/site.py: LAU
 /** The vehicle's origin is the capsule's plane of maximum diameter, 716.0 in above the fins. */
 const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 
-/** Where the pilot stands in every scene: at the foot of the vehicle, clear of the cutaway's opening. */
-// between the launcher and the structure's base girder, which is where there is room to stand
-const PILOT = { position: [-1.372, 0, 1.981] as [number, number, number], rotationY: -0.59 };
+/**
+ * Where the pilot stands in every scene: on open concrete seven metres from the launcher, on the
+ * side opposite the hatch, with nothing between him and a camera in front of him. (Where he
+ * actually stood is not the point: he walked from the transfer van to the structure's lift.)
+ */
+const PILOT_FACING = -Math.PI / 2; // toward -X, the sunlit side that morning, his back to the vehicle
+const PILOT = { position: [-7, 0, -0.9] as [number, number, number], rotationY: PILOT_FACING };
+/** A direction to look at the pilot from: in front of him, turned `aside` radians, `lift` up. */
+const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [
+  Math.sin(PILOT_FACING + aside),
+  lift,
+  Math.cos(PILOT_FACING + aside),
+];
 
 /** The spacecraft without its tower. */
 const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
@@ -661,11 +671,11 @@ const crew: ModelDef = {
   home: 'walkout',
   views: [
     // from low on his far side, so the vehicle he is about to ride stands up behind him
-    { id: 'walkout', label: 'Walk-out', centreY: 2.4, span: 6.2, from: [-0.5, -0.3, 0.82] },
-    { id: 'figure', label: 'Pilot', centreY: 0.98, span: 2.5, from: [-0.55, 0.05, 0.83] },
-    { id: 'helmet', label: 'Helmet', centreY: 1.72, span: 0.62, from: [-0.55, 0.05, 0.83] },
-    { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.62, from: [-0.55, 0.05, 0.83] },
-    { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: [-0.55, 0.2, 0.83] },
+    { id: 'walkout', label: 'Walk-out', centreY: 2.4, span: 6.2, from: facingPilot(-0.3) },
+    { id: 'figure', label: 'Pilot', centreY: 0.98, span: 2.5, from: facingPilot(0.05) },
+    { id: 'helmet', label: 'Helmet', centreY: 1.72, span: 0.62, from: facingPilot(0.05) },
+    { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.62, from: facingPilot(0.05) },
+    { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: facingPilot(0.2) },
   ],
   // just after rollback, so that he can be seen: when he walked out the gantry still stood round the rocket
   with: [{ model: 'pad', exploded: 0.32 }],
