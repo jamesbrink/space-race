@@ -105,8 +105,10 @@ section (Vehicle, Launch pad, Crew) is not a different scene: choosing one flies
 model and gives it the panel, the slider and the cutaway. Clicking a model does the same. While a
 section is open the others take the state its `with` asks of them (the pad cleared for launch while
 the rocket is studied), moving there as hardware would. The view drifts round whatever was last
-chosen; taking the camera pauses the drift and the next choice restarts it, unless the user has
-switched Auto-orbit off. A view that names parts (`nodes`) frames them wherever they are, so it
+chosen; taking the camera (a drag, moving or turning it by key) pauses the drift and the next choice
+restarts it, unless the user has switched Auto-orbit off. Adjusting the view does not pause it:
+zooming, tilting, the slider and the cutaway all leave it turning, and a view framed again as the
+slider moves keeps the direction the camera has reached. A view that names parts (`nodes`) frames them wherever they are, so it
 follows them as the slider takes the model apart.
 
 ## Cutaway and what is inside

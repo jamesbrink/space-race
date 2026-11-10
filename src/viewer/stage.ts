@@ -186,11 +186,16 @@ export class Stage {
     this.controls.autoRotateSpeed = 0.5;
     this.controls.zoomToCursor = true; // the wheel zooms toward what the pointer is on
     this.controls.screenSpacePanning = false; // panning slides over the ground, not up into the sky
+    // Taking hold of the view (a drag) stops the drift round it. Zooming does not: the wheel
+    // changes how close the view is, and it goes on turning.
+    let wheel = false;
+    canvas.addEventListener('wheel', () => (wheel = true), { capture: true, passive: true });
     this.controls.addEventListener('start', () => {
       this.following = null;
       this.onView(null);
       this.flyTo = null;
-      this.onInteract();
+      if (!wheel) this.onInteract();
+      wheel = false;
     });
 
     // Multisampled HDR target: trusses are all thin bright lines against a plain background.
@@ -260,11 +265,17 @@ export class Stage {
       if (key === '0' || key === 'home') return this.onHome(); // 0, since a laptop has no Home key
       if (!KEYS.has(key)) return;
       e.preventDefault();
-      if (!this.held.size) {
-        this.following = null;
+      if (!this.held.has(key)) {
+        // Tilting and zooming adjust the view and leave it drifting; a tilt even keeps it framed
+        // on what was chosen. Moving or turning it by hand takes it over.
+        const tilt = key === 'arrowup' || key === 'arrowdown';
+        const zoom = ['r', 'f', '+', '=', '-'].includes(key);
         this.flyTo = null;
-        this.onView(null);
-        this.onInteract();
+        if (!tilt) {
+          this.following = null;
+          this.onView(null);
+        }
+        if (!tilt && !zoom) this.onInteract();
       }
       this.held.add(key);
     });
@@ -539,7 +550,7 @@ export class Stage {
   private refollow(): void {
     const snap = !this.flyTo; // a flight under way is sent to the new framing instead of cut short
     if (this.following?.part) this.focus(this.following.part, snap);
-    else if (this.following?.view) this.view(this.following.view, snap);
+    else if (this.following?.view) this.view(this.following.view, snap, true);
   }
 
   /** Take the section's model apart this far (its slider). */
@@ -619,7 +630,7 @@ export class Stage {
   }
 
   /** Frame 'all' (everything on show) or one of the model's named views. */
-  view(id: string, snap = false): void {
+  view(id: string, snap = false, keepDirection = false): void {
     if (!this.root || !this.def) return;
     const named = this.def.views.find((v) => v.id === id);
     // 'all' is everything on show; a named view with no numbers is the model alone, as it stands;
@@ -644,7 +655,13 @@ export class Stage {
     const lift = this.setting.floor ? 0.16 : span < 4 ? 0.22 : 0.1;
     // aim under the subject, so it sits in the middle of the frame that the controls leave clear
     target.y -= ((span / fill) * this.inset) / 2;
-    const from = named?.from ? new THREE.Vector3(...named.from) : new THREE.Vector3(-0.62, lift, 0.78); // the sunlit side, and the one the cutaway opens toward
+    // Framed again because the subject changed shape (the slider, a resize): from wherever the
+    // camera has got to, so a view that is drifting round or has been tilted is not thrown back.
+    const from = keepDirection
+      ? this.camera.position.clone().sub(this.controls.target)
+      : named?.from
+        ? new THREE.Vector3(...named.from)
+        : new THREE.Vector3(-0.62, lift, 0.78); // the sunlit side, and the one the cutaway opens toward
     const position = target.clone().addScaledVector(from.normalize(), distance);
     this.following = { view: id };
     this.onView(id);
