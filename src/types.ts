@@ -147,10 +147,16 @@ export interface ModelDef {
   cutaway?: boolean;
   /**
    * This model is a person the site can be walked as (viewer/walk.ts): the walk starts where the
-   * figure stands, at its eye height. `eyes` names the node whose middle is the eye level; without
-   * it a usual fraction of the figure's height is used.
+   * figure stands, at its eye height, looking the way it faces. A flight may have several.
    */
-  walker?: { eyes?: string };
+  walker?: {
+    /** The node (anywhere in the model) whose middle is the eye level; without it a usual fraction of the figure's height is used. */
+    eyes?: string;
+    /** Which way the figure faces as built: a unit (x, z) in the model's own coordinates (default [0, 1]: +Z, Blender's front). */
+    forward?: [number, number];
+    /** Half the figure's width, metres: how near its middle can come to a wall (default 0.26, a clothed adult's shoulders). */
+    radius?: number;
+  };
   /** Where the model stands in the flight's one scene, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */

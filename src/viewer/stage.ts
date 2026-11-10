@@ -91,16 +91,21 @@ export class Stage {
   /** The reset key (0): back to where the section starts. */
   onHome: () => void = () => {};
   /**
-   * Walking on foot is starting (called before anything changes, so the caller can open the
-   * pilot's section first) or has ended (the caller sends the camera somewhere).
+   * Walking on foot as one of the flight's figures (a model with a `walker`) is starting (called
+   * before anything changes, so the caller can open that model's section first) or has ended
+   * (the caller sends the camera somewhere).
    */
-  onWalk: (on: boolean) => void = () => {};
+  onWalk: (on: boolean, model: string) => void = () => {};
   /** While walking: the mouse has been captured for looking round, or let go. */
   onWalkLook: (captured: boolean) => void = () => {};
   /** First-person walking (walk.ts). While it is active the orbiting camera's rules are all suspended. */
   readonly walk: Walker;
-  /** The last tap, for telling a double tap on the pilot. */
-  private tap = { t: 0, x: 0, y: 0, pilot: false };
+  /** The last tap, and the figure that can be walked as that it landed on, for telling a double tap on one. */
+  private tap: { t: number; x: number; y: number; walker: string | null } = { t: 0, x: 0, y: 0, walker: null };
+  /** Which model is being walked as: an index into `staged`, or -1. */
+  private walked = -1;
+  /** The orbiting camera's lens, vertical degrees. Views are framed for it even while the walker's wider one is easing in or out. */
+  private readonly lens = 35;
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -260,16 +265,13 @@ export class Stage {
       const down = this.down;
       this.down = null;
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 5) return;
-      // a second tap straight after one on the pilot: walk as him (the first has already been acted on)
+      // a second tap straight after one on a figure that can be walked as: walk as it (the first has already been acted on)
       const last = this.tap;
-      const again = last.pilot && e.timeStamp - last.t < 400 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30;
-      this.tap = {
-        t: e.timeStamp,
-        x: e.clientX,
-        y: e.clientY,
-        pilot: down.model === this.walkerId || (this.def?.id === this.walkerId && down.node !== null),
-      };
-      if (again) return void this.enterWalk();
+      const again = last.walker && e.timeStamp - last.t < 400 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30;
+      // the figure is another model standing by, or the section's own model (any part of it)
+      const on = down.model ? this.defs.find((m) => m.id === down.model) : down.node !== null ? this.def : null;
+      this.tap = { t: e.timeStamp, x: e.clientX, y: e.clientY, walker: on?.walker ? on.id : null };
+      if (again) return void this.enterWalk(last.walker!);
       if (down.pane) this.lookIn(down.pane.point, down.pane.normal);
       else if (down.model && !down.node) this.onModel(down.model);
       else this.onSelect(down.node);
@@ -313,11 +315,11 @@ export class Stage {
 
     this.walk = new Walker(canvas, this.camera, {
       solids: () => [
-        ...this.staged.flatMap((s, i) => (this.defs[i]!.walker ? [] : [s.shown])),
+        ...this.staged.flatMap((s, i) => (i === this.walked ? [] : [s.shown])), // every model but the one you are
         ...(this.surroundings ? [this.surroundings] : []),
         ...this.setting.scenery,
       ],
-      // the terrain is one level plane (cape.ts): its height is asked for, not its triangles
+      // a setting's floor is one level plane: its height is asked for, not its triangles
       ground: () => this.setting.floor?.position.y ?? null,
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
       leave: () => this.exitWalk(),
@@ -327,11 +329,6 @@ export class Stage {
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
     this.renderer.setAnimationLoop(() => this.frame());
-  }
-
-  /** The model the site can be walked as (ModelDef.walker), if the flight has one. */
-  get walkerId(): string | null {
-    return this.defs.find((m) => m.walker)?.id ?? null;
   }
 
   private get def(): ModelDef | null {
@@ -645,7 +642,7 @@ export class Stage {
     const target = box.getCenter(new THREE.Vector3());
     // never closer than a 1.6 m subject would be: a small part is seen with its surroundings
     const span = Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect, 1.6);
-    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.5;
+    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / 0.5;
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
     if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
     // no closer than just outside the part: nearer than that the camera is inside its skin
@@ -690,7 +687,7 @@ export class Stage {
     const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect) * (subjects.length ? 1.12 : 1);
     // the subject fills most of the frame above the controls, which sit over the bottom of it
     const fill = (1 - this.inset) * 0.9;
-    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / fill;
+    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / fill;
     // a named view looks at the model's own axis; 'all' looks at the middle of everything
     const mid = box.getCenter(new THREE.Vector3());
     const target =
@@ -715,7 +712,7 @@ export class Stage {
     // the subject is a speck in a field of scrub
     const all = new THREE.Box3().setFromObject(this.root).getSize(new THREE.Vector3());
     const widest = Math.max(all.y, Math.hypot(all.x, all.z) / this.camera.aspect);
-    const wide = (1.5 * widest) / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / fill;
+    const wide = (1.5 * widest) / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / fill;
     // ...unless there is a site round it worth seeing from the air
     this.controls.maxDistance = Math.max(30, wide, this.setting.reach ?? 0);
     if (snap) {
@@ -1001,6 +998,7 @@ export class Stage {
     this.settle(dt);
     if (this.walk.active) this.stepWalk(dt);
     else {
+      if (this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
       this.drive(dt);
       this.fitDetail();
       this.controls.update(dt);
@@ -1043,30 +1041,27 @@ export class Stage {
   }
 
   /**
-   * Get down and walk: the camera becomes the pilot's eyes, where he stands, and the keys and
-   * the mouse become his (walk.ts). His own figure is put away while you are him. The eye height
-   * is the model's: the middle of its eyes above its soles (mark-iv-suit.md: a 1.803 m man,
-   * estimated, on a 2.8 cm heel), which comes to about 1.72 m.
+   * Get down and walk as one of the flight's figures (`model`: a model with a `walker`; left out,
+   * the first there is). The camera becomes its eyes, where it stands, looking the way it faces,
+   * and the keys and the mouse become the walker's (walk.ts). The figure itself is put away
+   * while you are it. Eye height and stature are the model's own: the middle of the node its
+   * `walker.eyes` names above its soles, and the top of its bounds; they are as good as the model.
    */
-  enterWalk(): boolean {
-    const at = this.defs.findIndex((m) => m.walker);
+  enterWalk(model?: string): boolean {
+    const at = this.defs.findIndex((m) => m.walker && (!model || m.id === model));
     if (at < 0 || !this.root || this.walk.active) return false;
-    this.onWalk(true);
-    const pilot = this.staged[at]!;
+    const walker = this.defs[at]!.walker!;
+    this.onWalk(true, this.defs[at]!.id);
+    this.walked = at;
+    const figure = this.staged[at]!;
     this.scene.updateMatrixWorld(true);
-    const feet = pilot.group.getWorldPosition(new THREE.Vector3());
-    const height = new THREE.Box3().setFromObject(pilot.full).max.y - feet.y;
-    const named = this.defs[at]!.walker?.eyes;
-    const eyes = named ? pilot.full.getObjectByName(named) : undefined;
-    const middle = (o: THREE.Object3D) => new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
-    const eye = eyes ? middle(eyes).y - feet.y : height * EYE_FRACTION;
-    // you look where he is looking: his eyes are in the front of his helmet. A figure with no
-    // eyes faces what he came out to, the first of the flight's other models.
-    const helmet = pilot.full.getObjectByName('Helmet');
-    const toward =
-      eyes && helmet
-        ? middle(eyes).sub(middle(helmet)).setY(0).setLength(10).add(feet)
-        : (this.staged.find((_, i) => i !== at)?.group ?? this.root).getWorldPosition(new THREE.Vector3());
+    const feet = figure.group.getWorldPosition(new THREE.Vector3());
+    const height = new THREE.Box3().setFromObject(figure.full).max.y - feet.y;
+    const eyes = walker.eyes ? figure.full.getObjectByName(walker.eyes) : undefined;
+    const eye = eyes ? new THREE.Box3().setFromObject(eyes).getCenter(new THREE.Vector3()).y - feet.y : height * EYE_FRACTION;
+    // you look the way the figure faces: its own forward, turned as the model is turned on the stage
+    const [fx, fz] = walker.forward ?? [0, 1];
+    const toward = new THREE.Vector3(fx, 0, fz).transformDirection(figure.group.matrixWorld).setY(0).setLength(10).add(feet);
     this.flyTo = null;
     this.following = null;
     this.held.clear();
@@ -1074,25 +1069,26 @@ export class Stage {
     this.setHover(NOTHING);
     this.highlight(null, null);
     this.controls.enabled = false;
-    pilot.group.visible = false;
-    this.renderer.shadowMap.needsUpdate = true; // his shadow goes with him
+    figure.group.visible = false;
+    this.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.dirty = true;
-    this.walk.start(feet, toward, eye, height);
+    this.walk.start(feet, toward, eye, height, walker.radius);
     return true;
   }
 
-  /** Stop walking: the pilot is back where he stood, and the orbiting camera takes over from where the walker was looking. */
+  /** Stop walking: the figure is back where it stood, and the orbiting camera takes over from where the walker was looking. */
   exitWalk(): void {
     if (!this.walk.active) return;
     this.walk.stop();
-    const pilot = this.staged[this.defs.findIndex((m) => m.walker)];
-    if (pilot) pilot.group.visible = true;
+    const at = this.walked;
+    this.walked = -1;
+    if (this.staged[at]) this.staged[at].group.visible = true;
     this.controls.enabled = true;
     // orbit a point a few steps ahead, so the flight back starts from this very view
     this.controls.target.copy(this.camera.position).add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
-    this.onWalk(false);
+    this.onWalk(false, this.defs[at]?.id ?? '');
   }
 
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */

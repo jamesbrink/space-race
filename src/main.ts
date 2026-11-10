@@ -42,7 +42,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
     stage.setCutaway(on);
   },
   cel: (on) => stage.setLook(on ? 'cel' : 'real'),
-  walk: (on) => (on ? void stage.enterWalk() : stage.exitWalk()),
+  walk: (on) => (on ? void stage.enterWalk(current.id) : stage.exitWalk()),
   walkStick: (x, y) => stage.walk.stick(x, y),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
@@ -120,14 +120,12 @@ stage.onInteract = () => {
   ui.showRotate(false);
 };
 stage.onView = (id) => ui.setView(id);
-// Walking is done from the pilot's section, wherever it was asked for; stopping returns to that section's view.
-stage.onWalk = (on) => {
-  const walker = flight.models.find((m) => m.walker);
-  if (!walker) return;
-  if (on && current.id !== walker.id) show(walker.id);
+// Walking as a figure is done from that figure's section, wherever it was asked for; stopping returns to that section's view.
+stage.onWalk = (on, model) => {
+  if (on && current.id !== model) show(model);
   if (on && selected) select(null);
   ui.setWalking(on);
-  if (!on) show(walker.id);
+  if (!on) show(model);
 };
 stage.onWalkLook = (captured) => ui.setWalkLook(captured);
 stage.onHome = () => (selected ? select(null) : show(current.id));

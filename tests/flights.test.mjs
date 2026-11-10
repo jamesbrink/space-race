@@ -20,6 +20,12 @@ function topLevelNodes(file) {
   return new Set(names(scene.nodes));
 }
 
+/** The names of every node in a GLB, at any depth. */
+function allNodes(file) {
+  const glb = readFileSync(file);
+  return new Set(JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.map((n) => n.name));
+}
+
 const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: root });
 assert.ok(files.length > 0, 'no flights found');
 const index = readFileSync(join(root, 'missions/index.ts'), 'utf8');
@@ -80,6 +86,10 @@ for (const file of files) {
           `with: no model ${w.model}`,
         );
       }
+      // a figure that can be walked as: its eye level is measured off a node, which has to be there
+      if (model.walker?.eyes) assert.ok(allNodes(glb).has(model.walker.eyes), `walker.eyes: no node ${model.walker.eyes} in ${model.url}`);
+      if (model.walker?.forward)
+        assert.ok(Math.abs(Math.hypot(...model.walker.forward) - 1) < 1e-6, 'walker.forward must be a unit (x, z)');
       const groups = new Set(flight.specs.map((s) => s.group));
       for (const g of model.specGroups ?? []) assert.ok(groups.has(g), `specGroups: no specs in group ${g}`);
     });

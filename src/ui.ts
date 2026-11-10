@@ -9,7 +9,7 @@ export interface UiHandlers {
   cutaway(on: boolean): void;
   /** Draw the scene as a cel-shaded drawing, or as it would look. */
   cel(on: boolean): void;
-  /** Get down and walk the site as the pilot, or stop. */
+  /** Get down and walk the site as the figure whose section this is, or stop. */
   walk(on: boolean): void;
   /** The on-screen stick while walking: x to the right, y forward, each -1 to 1. */
   walkStick(x: number, y: number): void;
@@ -137,7 +137,7 @@ export class Ui {
             <div><dt>right-drag</dt><dd>move</dd></div>
             <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
-            <div><dt>double-click pilot</dt><dd>walk</dd></div>
+            ${f.models.some((m) => m.walker) ? `<div><dt>double-click ${esc(f.models.find((m) => m.walker)!.name.toLowerCase())}</dt><dd>walk</dd></div>` : ''}
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>C</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
@@ -364,7 +364,7 @@ export class Ui {
       `<span class="set" role="group" aria-label="View">${[...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]), ...m.views]
         .map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`)
         .join('')}</span>` +
-      `<span class="set" role="group" aria-label="Show">${m.walker ? '<button data-walk title="Walk the site as the pilot (or double-click him)">Walk</button>' : ''}${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
+      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
       `<button data-rotate aria-pressed="${rotating}">Auto-orbit</button>` +
       `<button data-cel aria-pressed="${prefs.get('cel')}" title="Cel shading (C)">Cel shading</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
@@ -479,7 +479,7 @@ export class Ui {
     if (!tip.dataset.model) tip.hidden = !part || node === this.selected || matchMedia('(hover: none)').matches;
     if (part) {
       tip.querySelector('b')!.textContent = part.name;
-      tip.querySelector('span')!.textContent = part.summary + (this.model.walker ? ' Double-click to walk as him.' : '');
+      tip.querySelector('span')!.textContent = part.summary + (this.model.walker ? ` Double-click to walk as ${this.model.name}.` : '');
       this.placeTip();
     }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => b.classList.toggle('hot', b.dataset.node === node));
@@ -514,7 +514,7 @@ export class Ui {
     tip.dataset.model = model.id;
     tip.hidden = matchMedia('(hover: none)').matches;
     tip.querySelector('b')!.textContent = model.name;
-    tip.querySelector('span')!.textContent = model.walker ? 'Click to open · double-click to walk as him' : 'Click to open';
+    tip.querySelector('span')!.textContent = model.walker ? `Click to open · double-click to walk as ${model.name}` : 'Click to open';
     this.placeTip();
   }
 

@@ -171,28 +171,36 @@ be handed to `Looks.add` (models are, in `dress`; a setting's floor and scenery 
 
 ## Walking
 
-The Walk button in the Crew section, or a double-click on the pilot from anywhere, puts the camera
-at his eyes and lets you walk the site (`viewer/walk.ts`; `sr.stage.enterWalk()`, `sr.stage.walk`).
-Escape or the Exit walk bar ends it and the camera flies back to the Crew section. First person
-only: the pilot is a posed figure with no skeleton, so there is nobody to show walking, and his
-model is hidden while you are him.
+A model with a `walker` entry in `flight.ts` (types.ts: `ModelDef.walker`) is a figure the site
+can be walked as; a flight may have several. The Walk button in that model's section, or a
+double-click on the figure from anywhere, puts the camera at its eyes and lets you walk the site
+(`viewer/walk.ts`; `sr.stage.enterWalk(id?)`, `sr.stage.walk`). Escape or the Exit walk bar ends
+it and the camera flies back to that section. First person only: a crew model is a posed figure
+with no skeleton, so there is nobody to show walking, and the figure is hidden while you are it.
+Nothing in `walk.ts` or its hooks in `stage.ts` knows any one flight: keep it that way.
 
-- **The world is solid as posed.** `Solids` asks each mesh on show (pad, vehicle, surroundings,
-  a setting's scenery; not instanced scrub) through its world matrix, with a `three-mesh-bvh`
+- **The figure comes from the flight's data.** It starts where the model stands (`position`),
+  facing `walker.forward` (the model's own frame) turned by `rotationY`; `walker.eyes` names the
+  node whose middle is the eye level, and the top of the model's bounds is its height, so both are
+  as good as the model's `.md` says the model is. `walker.radius` is half its width (default 0.26 m).
+
+- **The world is solid as posed.** `Solids` asks each mesh on show (every other model of the
+  flight, its surroundings, the setting's scenery; not instanced plants) through its world matrix, with a `three-mesh-bvh`
   hierarchy built per geometry the first time something comes near. Nothing is baked, so a
   platform that has slid or a truck that has driven off is solid where it is this frame.
 - **Feet and body are separate.** Rays straight down find the floor: anything up to `STEP`
   (0.3 m) above the feet is stepped onto, further down than that is a fall. A capsule from
-  `STEP` above the feet to the top of the helmet is pushed sideways out of whatever it meets. So
+  `STEP` above the feet to the top of the head is pushed sideways out of whatever it meets. So
   a model's stairs need risers of 0.3 m or less, and a ladder cannot be climbed.
-- **The terrain is a level, not a mesh.** It lies at `GROUND_Y`, everywhere, and cannot be
-  fallen through. It is sunk under the pad only for the depth buffer's sake, so from down there
-  a riser is measured from y = 0: the hardstand's edge is not a kerb.
+- **The terrain is a level, not a mesh.** It lies at the height of the setting's floor,
+  everywhere, and cannot be fallen through. Where that is below the models' surface (`GROUND_Y`)
+  it is so only for the depth buffer's sake, so from down there a riser is measured from y = 0:
+  the edge of a pad is not a kerb.
 - **The orbiting camera's rules are off while walking** (`Stage.stepWalk`): no drift, bounds,
   picking or `fitDepth`. The walker sets its own near plane from the nearest surface (5 cm
-  indoors, up to 30 cm in the open) and a wider lens, which the backdrop's camera copies.
-- Eye height and stature are measured off the crew model (`Helmet_Eyes`, the figure's bounds), so
-  they are as good as `mark-iv-suit.md` says the model is.
+  indoors, up to 30 cm in the open) and a wider lens, eased in and out over half a second
+  (`Walker.lens`), which the backdrop's camera copies. Views are always framed for the orbiting
+  lens (`Stage.lens`).
 
 ## Levels of detail
 

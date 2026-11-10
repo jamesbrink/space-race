@@ -2,16 +2,18 @@ import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 
 /**
- * Walking the site on foot, in first person: you are the pilot, at his eye height, and the world
- * is solid. Three layers, each usable without the next:
+ * Walking a flight's site on foot, in first person: you are one of its figures (a model with a
+ * `walker` entry in the flight's data), at that figure's eye height, and the world is solid.
+ * Nothing here knows any one flight: it walks whatever models and scenery the stage has on show.
+ * Four layers, each usable without the next:
  *
  *   settle   where the feet go vertically: stand, step up a riser, step down, fall, land (pure)
  *   Solids   the meshes that can be stood on and bumped into, as they are posed now
  *   Body     a standing figure moved through them: walls stop it, floors carry it
  *   Walker   keys, mouse and touch on a canvas, driving a Body and placing the camera at its eyes
  *
- * There is no third person: the pilot's model is a posed figure with no skeleton, and a statue
- * sliding over the concrete is worse than no figure at all.
+ * There is no third person: a crew model is a posed figure with no skeleton, and a statue
+ * sliding over the ground is worse than no figure at all.
  */
 
 /** Metres per second: an unhurried walk, and a run. */
@@ -22,12 +24,12 @@ export const STEP = 0.3;
 /** How fast the feet follow a floor that has stepped up or down under them, m/s: a stair is climbed, not teleported. */
 export const STEP_RATE = 3;
 export const GRAVITY = 9.81;
-/** Half the width of a man in a pressure suit, near enough: shoulder breadth is 0.51 m (mark-iv-suit.md). */
+/** Half the width of a clothed adult across the shoulders, metres: what a figure is given when its flight does not say (ModelDef.walker.radius). */
 export const RADIUS = 0.26;
 /**
  * Where the eyes are in a standing figure, as a fraction of its whole height, for a figure whose
- * model has no eyes to measure: 0.936 of stature (the usual anthropometric ratio; estimated),
- * which for the suited pilot (1.803 m, a 2.8 cm heel, 1.891 m to the top of the helmet) is 0.907.
+ * model names no eyes to measure. The usual anthropometric ratio is 0.936 of stature; a figure's
+ * model is taller than its stature by its footwear and headgear, so a little less is taken. Estimated.
  */
 export const EYE_FRACTION = 0.907;
 
@@ -258,8 +260,10 @@ export class Body {
   readonly position = new THREE.Vector3();
   vy = 0;
   grounded = true;
-  /** Standing height, metres: the top of the helmet. */
+  /** Standing height, metres: the top of whatever is on its head. */
   height = 1.89;
+  /** Half its width, metres. */
+  radius = RADIUS;
   /** The level of the open ground, which is everywhere and cannot be fallen through; null where there is none. */
   ground: number | null = null;
   /**
@@ -303,7 +307,7 @@ export class Body {
     const p = this.position;
     this.heights.length = 0;
     for (const [dx, dz] of PROBES) {
-      const h = this.solids.below(p.x + dx * RADIUS, p.y + riser, p.z + dz * RADIUS, this.ground);
+      const h = this.solids.below(p.x + dx * this.radius, p.y + riser, p.z + dz * this.radius, this.ground);
       if (h !== null) this.heights.push(h);
     }
     return pickFloor(this.heights, p.y, riser);
@@ -315,9 +319,9 @@ export class Body {
    */
   move(dx: number, dz: number, dt: number): void {
     const distance = Math.hypot(dx, dz);
-    const strides = Math.max(1, Math.ceil(distance / (RADIUS * 0.4)));
+    const strides = Math.max(1, Math.ceil(distance / (this.radius * 0.4)));
     const p = this.position;
-    this.solids.gather(p, distance + RADIUS + 1, STEP + 2 + Math.abs(this.vy) * dt);
+    this.solids.gather(p, distance + this.radius + 1, STEP + 2 + Math.abs(this.vy) * dt);
     this.heading.set(dx, 0, dz);
     if (distance) this.heading.divideScalar(distance);
     for (let i = 0; i < strides; i++) {
@@ -328,7 +332,7 @@ export class Body {
       // out of whatever that stride went into; a corner takes more than one push
       let depth = 0;
       for (let pass = 0; pass < 4; pass++) {
-        depth = this.solids.push(p, riser, this.height, RADIUS, this.heading);
+        depth = this.solids.push(p, riser, this.height, this.radius, this.heading);
         if (depth < 1e-4) break;
       }
       // still inside something after that: the stride is not taken
@@ -372,6 +376,8 @@ const TURN = 1.9;
 /** The first-person lens, vertical degrees: wide enough to see where the feet are going. */
 const FOV = 62;
 const FOV_UPRIGHT = 80;
+/** How long the lens takes to widen on getting down to walk, and to close again after. */
+const LENS_SECONDS = 0.5;
 
 /**
  * First-person walking: input on a canvas, a Body in the stage's solids, the camera at its eyes.
@@ -394,7 +400,8 @@ export class Walker {
   private readonly stickAt = new THREE.Vector2();
   private drag: { id: number; x: number; y: number } | null = null;
   private wasLocked = false;
-  private fovBefore = 35;
+  /** The lens the camera had before anyone walked: what it eases back to. */
+  private readonly rest: number;
   private moved = true;
   private readonly euler = new THREE.Euler(0, 0, 0, 'YXZ');
   private readonly eyes = new THREE.Vector3();
@@ -403,6 +410,7 @@ export class Walker {
     this.canvas = canvas;
     this.camera = camera;
     this.host = host;
+    this.rest = camera.fov;
     window.addEventListener('keydown', (e) => {
       if (!this.active) return;
       const key = e.key.toLowerCase();
@@ -464,9 +472,10 @@ export class Walker {
 
   /**
    * Start walking from a point on the ground, looking toward `toward`. `eye` is how far the
-   * eyes are above the feet and `height` the top of the head, both from the figure being walked.
+   * eyes are above the feet, `height` the top of the head and `radius` half the body's width,
+   * all from the figure being walked.
    */
-  start(at: THREE.Vector3, toward: THREE.Vector3, eye: number, height: number): void {
+  start(at: THREE.Vector3, toward: THREE.Vector3, eye: number, height: number, radius = RADIUS): void {
     this.active = true;
     this.eye = eye;
     this.held.clear();
@@ -474,26 +483,42 @@ export class Walker {
     this.drag = null;
     this.solids.set(this.host.solids());
     this.body.height = height;
+    this.body.radius = radius;
     this.body.ground = this.host.ground();
     this.body.place(at.x, at.y, at.z);
     this.yaw = Math.atan2(-(toward.x - at.x), -(toward.z - at.z));
     this.pitch = 0;
-    this.fovBefore = this.camera.fov;
     this.moved = true;
     this.wasLocked = false;
     this.capture();
     this.update(0);
   }
 
-  /** Stop: the camera's lens is put back and the pointer let go. Where the camera is left is the caller's business. */
+  /**
+   * Stop: the pointer is let go. Where the camera is left is the caller's business, and so is
+   * calling `lens` each frame afterwards, which eases the camera's lens back to what it was.
+   */
   stop(): void {
     if (!this.active) return;
     this.active = false;
     this.held.clear();
     this.drag = null;
-    this.camera.fov = this.fovBefore;
-    this.camera.updateProjectionMatrix();
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
+  }
+
+  /**
+   * Ease the camera's lens toward the walker's wide one while walking, and back to the one it
+   * had otherwise, over about half a second either way. True while it is still changing.
+   */
+  lens(dt: number): boolean {
+    const camera = this.camera;
+    const wide = camera.aspect < 1 ? FOV_UPRIGHT : FOV;
+    const goal = this.active ? wide : this.rest;
+    if (camera.fov === goal) return false;
+    const most = (Math.abs(wide - this.rest) / LENS_SECONDS) * dt;
+    camera.fov = Math.abs(goal - camera.fov) <= most ? goal : camera.fov + Math.sign(goal - camera.fov) * most;
+    camera.updateProjectionMatrix();
+    return true;
   }
 
   /** Turn the head: radians to the right, and up. */
@@ -545,16 +570,16 @@ export class Walker {
     const camera = this.camera;
     camera.position.set(p.x, p.y + this.eye, p.z);
     camera.quaternion.setFromEuler(this.euler.set(this.pitch, this.yaw, 0));
+    if (this.lens(dt)) this.moved = true;
     const fov = camera.aspect < 1 ? FOV_UPRIGHT : FOV;
     // The near plane goes out as far as the nearest thing allows, as it does for the orbiting
-    // camera and for the same reason (depth resolution across the pad), but never past the
+    // camera and for the same reason (depth resolution across the site), but never past the
     // corner of the frame reaching that thing: indoors it comes in to a few centimetres.
     const corner = Math.hypot(1, Math.tan(THREE.MathUtils.degToRad(fov / 2)) * Math.hypot(1, camera.aspect));
     let clear = this.solids.nearest(camera.position, 0.6);
     if (this.body.ground !== null) clear = Math.min(clear, camera.position.y - this.body.ground);
     const near = THREE.MathUtils.clamp((0.85 * clear) / corner, 0.05, 0.3);
-    if (camera.fov !== fov || Math.abs(near - camera.near) > near * 0.05) {
-      camera.fov = fov;
+    if (Math.abs(near - camera.near) > near * 0.05) {
       camera.near = near;
       camera.updateProjectionMatrix();
     }
