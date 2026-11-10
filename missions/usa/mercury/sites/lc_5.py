@@ -72,9 +72,9 @@ def beam(mb: MeshBuilder, a, b, width: float) -> None:
 
 def lattice(mb: MeshBuilder, corner, levels, col: float, brace: float, faces=(0, 1, 2, 3)) -> None:
     """A four-legged truss tower. corner(i, z) gives leg i's position at height z."""
-    for i in range(4):
-        beam(mb, corner(i, levels[0]), corner(i, levels[-1]), col)
     for z0, z1 in zip(levels, levels[1:]):
+        for i in range(4):  # a leg is drawn level by level, so it follows a tower that changes slope
+            beam(mb, corner(i, z0), corner(i, z1), col)
         for i in faces:
             j = (i + 1) % 4
             beam(mb, corner(i, z1), corner(j, z1), brace)
@@ -191,7 +191,7 @@ def build_service_structure(M) -> None:
         hx, hy = 13.0 + (5.0 - 13.0) * k, half_y + (6.5 - half_y) * k
         return (cx + hx * (1 if i in (0, 3) else -1), hy * (1 if i < 2 else -1), z)
 
-    levels = [3.0, 14.0, 26.0, 38.0, 48.0, 58.0, 70.0, 82.0, 94.0, 106.0, STRUCTURE_TOP]
+    levels = [3.0, 14.0, 26.0, 38.0, 48.0, 58.0, 70.0, 82.0, 95.5, 106.0, STRUCTURE_TOP]  # none at a deck's height
     lattice(red, corner, levels, 1.1, 0.5)
     # bogies on the rails
     for sy in (-1, 1):
@@ -211,6 +211,9 @@ def build_service_structure(M) -> None:
         hy = 10.5 if n != 2 else 11.5
         box(deck, (x0, -hy, z - 0.45), (x0 + reach, hy, z))
         for y in (-hy + 0.6, 0.0, hy - 0.6):  # cantilever beams and their struts back to the tower
+            if n == 3:  # no struts under the level above the white room: they would run through it
+                box(red, (x0 - 3.0, y - 0.35, z - 2.6), (x0 + reach - 0.5, y + 0.35, z - 0.5))
+                continue
             box(red, (x0 - 3.0, y - 0.35, z - 1.6), (x0 + reach - 0.5, y + 0.35, z - 0.5))
             beam(red, (x0 + reach - 3.0, y, z - 1.2), (x0 - 0.2, y, z - 11.0), 0.45)
         if n != 2:
@@ -218,10 +221,10 @@ def build_service_structure(M) -> None:
     # level 3 white room: wind panels and windows round the capsule's work area
     z = LEVELS[2]
     x0 = corner(0, z)[0] - 0.4
-    xa, xb, hy, zt = x0 + 1.0, x0 + reach - 0.6, 10.9, z + 12.0
+    xa, xb, hy, zt = x0 + 1.7, x0 + reach - 0.6, 10.9, z + 12.0  # the back wall stands clear of the tower's legs
     # side walls built round their window openings, so the glass is really a window
     sill, head = z + 4.5, z + 8.5
-    panes = [(xa + 2.0 + k * 4.4, xa + 5.4 + k * 4.4) for k in range(4)]
+    panes = [(xa + 1.6 + k * 4.4, xa + 5.0 + k * 4.4) for k in range(4)]
     posts = [xa] + [x for pane in panes for x in pane] + [xb]
     for y0, y1 in ((-hy, -hy + 0.35), (hy - 0.35, hy)):
         box(white, (xa, y0, z + 0.02), (xb, y1, sill))
@@ -241,14 +244,14 @@ def build_service_structure(M) -> None:
     )
     box(white, (ex - 2.2, -2.6, 30.0), (ex + 2.2, 2.6, 38.5))
     # a caged ladder up one leg, for when the elevator is not running
-    lx, ly = corner(0, 60)[0] + 1.6, corner(0, 60)[1] + 1.4
+    lx, ly = corner(0, 60)[0] - 1.9, corner(0, 60)[1] + 1.4  # on the tower's side face, behind the white room
     for dy in (-0.75, 0.75):
         beam(white, (lx, ly + dy, 58.5), (lx, ly + dy, STRUCTURE_TOP - 0.5), 0.14)
     for k in range(int((STRUCTURE_TOP - 60) / 1.0)):
         beam(white, (lx, ly - 0.75, 59.0 + k), (lx, ly + 0.75, 59.0 + k), 0.09)
     for k in range(int((STRUCTURE_TOP - 66) / 4.0)):  # safety hoops
         zh = 66.0 + k * 4.0
-        hoop = [(lx + 1.25 * math.sin(a), ly + 1.25 * math.cos(a), zh) for a in (math.pi * i / 6 for i in range(7))]
+        hoop = [(lx - 1.25 * math.sin(a), ly + 1.25 * math.cos(a), zh) for a in (math.pi * i / 6 for i in range(7))]
         for p0, p1 in zip(hoop, hoop[1:]):
             beam(white, p0, p1, 0.09)
     # work lights under each platform, and the obstruction beacon on the crane

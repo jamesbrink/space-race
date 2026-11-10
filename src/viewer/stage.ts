@@ -153,7 +153,7 @@ export class Stage {
     this.outline.visibleEdgeColor.set(0xffc46b);
     this.outline.hiddenEdgeColor.set(0x9a7434); // dimmer than the visible edge, but still an outline
     this.composer.addPass(this.outline);
-    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.6, 2.2));
+    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.14, 0.6, 2.4));
     this.composer.addPass(new OutputPass());
     this.applySetting();
 
@@ -476,6 +476,8 @@ export class Stage {
     Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
+    // a texel of the map covers more ground the wider it is spread; a wall the Sun grazes needs the depth bias to match
+    this.sun.shadow.bias = -Math.max(0.0002, radius / 40000);
     this.renderer.shadowMap.needsUpdate = true;
   }
 
