@@ -193,7 +193,12 @@ class Bend:
     `angle`; within `half` either side of the joint the limb follows a circular arc, its
     cross-sections staying whole, so its length down the middle does not change."""
 
-    def __init__(self, joint: Sequence[float], axis: Sequence[float], along: Sequence[float], half: float, angle: float) -> None:
+    def __init__(
+        self, joint: Sequence[float], axis: Sequence[float], along: Sequence[float], half: float, angle: float, hollow: float | None = None
+    ) -> None:
+        # hollow: on the inside of a sharp bend the limb's two halves press together and the flesh
+        # gives; nothing may lie nearer the bend's centre than this fraction of the way to it
+        self.hollow = hollow
         self.j, self.n = Vector(joint), Vector(axis).normalized()
         a = Vector(along)
         self.a = (a - self.n * a.dot(self.n)).normalized()
@@ -205,8 +210,15 @@ class Bend:
             return p
         rel = p - self.j
         u = rel.dot(self.a)
+        if self.hollow is not None:
+            radius = 2 * self.half / self.angle
+            # the limit eases off with distance from the joint, as the two halves draw apart
+            limit = self.hollow * radius + max(0.0, abs(u) - self.half) / math.tan(self.angle / 2)
+            inward = rel.dot(self.b)
+            if limit - inward < 6.0:
+                rel = rel - self.b * (inward - limit + 0.5 * math.log1p(math.exp((limit - inward) / 0.5)))
         if u <= -self.half:
-            return p
+            return self.j + rel
         q = rel - self.a * u  # where the point sits in its cross-section
         t = min(u, self.half) + self.half
         th = self.angle * t / (2 * self.half)
@@ -219,12 +231,32 @@ class Bend:
         return centre + self.a * (qa * c - qb * s) + self.b * (qa * s + qb * c) + self.n * qn
 
 
+class Twist:
+    """A limb turned about its own length: nothing before `start` centimetres along `along` from
+    `joint`, the whole `angle` beyond `end`, the cloth wound evenly between."""
+
+    def __init__(self, joint: Sequence[float], along: Sequence[float], start: float, end: float, angle: float) -> None:
+        self.j, self.a = Vector(joint), Vector(along).normalized()
+        self.start, self.end, self.angle = start, end, angle
+
+    def __call__(self, p: Vector) -> Vector:
+        rel = p - self.j
+        u = rel.dot(self.a)
+        turn = self.angle * smooth(u, self.start, self.end)
+        if abs(turn) < 1e-9:
+            return p
+        return self.j + Matrix.Rotation(turn, 3, self.a) @ rel
+
+
 class Rig:
     """Where the meshes go and how they get there. The default is the standing figure: no joint
     turned, top-level nodes, centimetres to metres and nothing else."""
 
     def __init__(self) -> None:
-        self.bends: dict[tuple[str, int], list[Bend]] = {}  # (limb, side) -> joints, furthest from the body first
+        self.bends: dict[tuple[str, int], list[Bend | Twist]] = {}  # (limb, side) -> joints, furthest from the body first
+        self.angles: dict[str, float] = {}  # the pose's joint angles in degrees, for what the cloth does at a bent joint
+        self.grip = 0.0  # 0: the hand hangs relaxed; 1: closed round a hand controller
+        self.press: Callable[[Vector, str], Vector] | None = None  # flesh giving way where two parts of the body meet
         self.to_frame: Matrix | None = None  # rest pose (cm) -> the pose's own frame (cm)
         self.place: Matrix | None = None  # that frame, in metres -> the caller's space
         self.parent: bpy.types.Object | None = None
@@ -241,7 +273,10 @@ class Rig:
         if limb:
             for bend in self.bends.get((limb, 1 if v.x >= 0 else -1), ()):
                 v = bend(v)
-        return self.to_frame @ v if self.to_frame is not None else v
+        if self.to_frame is None:
+            return v
+        v = self.to_frame @ v
+        return self.press(v, limb) if self.press and limb else v
 
 
 _rig = Rig()
@@ -651,8 +686,12 @@ def build_head(head: MeshBuilder, eyes: MeshBuilder, dark: MeshBuilder, hair: Me
         at = head_point(sx * 3.15, 0.5)
         ball = Matrix.Translation(at + Vector((0, 0.72, 0))) @ Matrix.Diagonal((1.45, 1.0, 0.78, 1.0))
         eyes.lathe(arc_profile(0, 0, 1.0, -90, 90, 10), 20, matrix=ball)
-        iris = Matrix.Translation(at + Vector((0, -0.2, 0.02))) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Diagonal((0.56, 0.56, 0.36, 1.0))
+        iris = Matrix.Translation(at + Vector((0, -0.2, 0.02))) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Diagonal((0.56, 0.56, 0.26, 1.0))
         dark.lathe(arc_profile(0, 0, 1.0, 0, 90, 6), 16, matrix=iris)
+        # eyelids: skin over the top of the ball and a rim under it, 2.5 mm proud of the iris
+        lid = Matrix.Translation(at + Vector((0, 0.72, 0))) @ Matrix.Diagonal((1.45 * 1.14, 1.5, 0.78 * 1.25, 1.0))
+        head.lathe(arc_profile(0, 0, 1.0, 33, 90, 6), 20, matrix=lid)
+        head.lathe(arc_profile(0, 0, 1.0, -90, -42, 4), 20, matrix=lid)
         if not fine:
             continue
         # eyebrows, lying in the skin along the brow ridge: (across, girth up and down, girth out of the skin)
@@ -840,6 +879,7 @@ def torso_tube() -> Tube:
     # creases stop short of the straps, the zipper and the inlet
     t.relief = [
         Folds(106.0 - TORSO_Z0, 118.5 - TORSO_Z0, 6, 0.46, 0.5, spread=3.0, mask=flat),
+        Folds(121.5 - TORSO_Z0, 129.0 - TORSO_Z0, 4, 0.36, 3.1, -TAU / 4, spread=1.5, width=0.7, mask=flat),  # slack under the chest
         Folds(87.5 - TORSO_Z0, 99.5 - TORSO_Z0, 4, 0.4, 1.9, spread=3.0, mask=flat),
     ]
     return t
@@ -861,7 +901,7 @@ def relax(verts: list[Vector], faces: Sequence[tuple[int, ...]], weight: dict[in
             verts[i] = p
 
 
-def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]]) -> None:
+def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]], frozen: set[int]) -> None:
     """Folds fanning out from each armpit across the chest and the back, where the cloth of a
     soft suit is gathered when the arms hang: valleys a few millimetres deep, pressed in along
     the skin's own normal after the shoulders have been stitched on."""
@@ -874,17 +914,17 @@ def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]]) -> None:
         pit = Vector((sx * 18.5, 0.0, Z_PIT + 1.0))
         for side in (-1, 1):  # chest, back
             fan = [
-                (math.radians(18 + 21 * k + 14 * rnd(k, sx + side)), 0.24 + 0.2 * rnd(k + 9, 2 * sx + side), 0.85 + 0.5 * rnd(k + 5, sx - side))
+                (math.radians(18 + 21 * k + 14 * rnd(k, sx + side)), 0.36 + 0.26 * rnd(k + 9, 2 * sx + side), 0.85 + 0.5 * rnd(k + 5, sx - side))
                 for k in range(4)
             ]
             for i, p in enumerate(verts):
                 v = p - pit
-                if v.y * side <= 0.5 or not 2.5 < v.length < 17.0 or v.x * sx > 4.0:
+                if i in frozen or v.y * side <= 0.5 or not 2.5 < v.length < 19.0 or v.x * sx > 4.0:
                     continue
                 reach = v.length
                 psi = math.atan2(v.z, -v.x * sx)  # up from the horizontal, swinging in toward the chest's middle
                 fall = sum(-dep * math.exp(-(((psi - a - 0.12 * math.sin(reach / 3.0 + a * 7)) * reach / w) ** 2)) for a, dep, w in fan)
-                verts[i] = p + normal[i].normalized() * fall * smooth(reach, 2.5, 6.0) * (1 - smooth(reach, 10.5, 17.0)) * smooth(
+                verts[i] = p + normal[i].normalized() * fall * smooth(reach, 2.5, 6.0) * (1 - smooth(reach, 11.5, 19.0)) * smooth(
                     v.y * side, 0.5, 3.0
                 )
 
@@ -892,7 +932,7 @@ def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]]) -> None:
 def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
     """The torso and both shoulders as one skin. The torso is a grid with an armhole cut in each
     side; from each hole's edge a sleeve is lofted over the shoulder and down to SLEEVE_HEM on the
-    upper arm, where the Arms node's sleeve takes over under a turned hem. Stitched to the hole
+    upper arm, where the Arms node's sleeve carries on from the same ring of points. Stitched to the hole
     and relaxed, the cloth runs from chest to arm without a crease."""
     n = sides(72)
     rows = t.rows(must=(Z_PIT - TORSO_Z0, Z_YOKE - TORSO_Z0))
@@ -919,6 +959,7 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
         faces += [(c, r * n + (j + 1) % n, r * n + j) if r == 0 else (c, r * n + j, r * n + (j + 1) % n) for j in range(n)]
 
     weight: dict[int, float] = {}
+    frozen: set[int] = set()
     for sx in (1, -1):
         arm = arms[sx]
         hole = [ra * n + col(sx, k) for k in range(-jw, jw + 1)] + [rb * n + col(sx, k) for k in range(-jw, jw + 1)]
@@ -964,13 +1005,7 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
             for q in range(steps - 1):
                 a, b = base + k * steps + q, base + ((k + 1) % m) * steps + q
                 faces.append((a, b, b + 1, a + 1))
-        # the hem: the cloth turns in over the sleeve that carries on below
-        lip = len(verts)
-        for k in range(m):
-            verts.append(arm.at(SLEEVE_HEM + 0.15, TAU * k / m, -0.5))
-            uvs.append((TAU * k / m * 6.0, 80.0 + SLEEVE_HEM + 0.15))
-            a, b = base + k * steps + steps - 1, base + ((k + 1) % m) * steps + steps - 1
-            faces.append((a, b, lip + (k + 1) % m, lip + k))
+        frozen.update(base + k * steps + q for k in range(m) for q in (steps - 2, steps - 1))  # the seam's ring is the sleeve's too
         # stitch the armhole's edge to the sleeve's first ring
         first, i, k, e = [base + k * steps for k in range(m)], 0, 0, len(hole)
         while i < e or k < m:
@@ -993,7 +1028,7 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
                 if reach < 5.5:
                     weight[i] = max(weight.get(i, 0.0), 1 - smooth(reach, 1.0, 5.5))
     relax(verts, faces, weight, max(3, round(14 / grain())))
-    drape(verts, faces)
+    drape(verts, faces, frozen)
     mb.add([tuple(v) for v in verts], faces, uvs)
 
 
@@ -1074,15 +1109,24 @@ def palm_centre(sx: int) -> Vector:
     return wrist_point(sx, 6.5)
 
 
+def palm_rest(sx: int) -> Vector:
+    """The middle of the palm's skin: what lies on a hand controller's knob."""
+    hand = Hand(sx, wrist_point(sx), wrist_point(sx, 1.0) - wrist_point(sx))
+    return hand.p(-2.4, 0.0, 5.0)
+
+
 def arm_tube(sx: int) -> Tube:
     t = Tube([(sx * x, y, z) for x, y, z, _, _ in ARM], [(a, b) for *_, a, b in ARM], resample=14)
     d_el = t.key_d(4)
     th_in = t.toward((-0.3 * sx, -1, 0), d_el)  # the crook of the elbow faces forward
     th_pit = t.toward((-sx, 0, 0), t.key_d(3))
-    t.fold = lambda d, th: 0.008 * math.sin(TAU * d / 6.1 + 2 * th) * smooth(d, 12, 18) * (1 - smooth(d, t.length - 14, t.length - 8))
+    t.fold = lambda d, th: (
+        0.008 * math.sin(TAU * d / 6.1 + 2 * th) * smooth(d, SLEEVE_HEM + 2, SLEEVE_HEM + 8) * (1 - smooth(d, t.length - 14, t.length - 8))
+    )
     t.relief = [
         Folds(d_el - 4.5, d_el + 4.5, 7, 0.6, 0.7 * sx, th_in, spread=1.7),
-        Folds(t.key_d(2) + 1.0, t.key_d(3) + 6.0, 5, 0.3, 2.1 * sx, th_pit, spread=1.2),  # bunched where the arm hangs against the side
+        # bunched where the arm hangs against the side; smooth for 2 cm either side of the seam with the shoulder
+        Folds(t.key_d(2) + 1.0, t.key_d(3) + 6.0, 5, 0.3, 2.1 * sx, th_pit, spread=1.2, mask=lambda d, th: smooth(abs(d - SLEEVE_HEM), 1.0, 2.6)),
         Folds(t.length - 17.0, t.length - 9.5, 3, 0.22, 3.3 * sx, th_in, spread=1.0),
     ]
     return t
@@ -1096,9 +1140,11 @@ def build_arms(M: dict, tubes: dict[int, Tube]) -> None:
     sleeves, strips, cords, eyelets, alu, face, needle = (MeshBuilder() for _ in range(7))
     for sx in (1, -1):
         t = tubes[sx]
-        # tucked 2.4 mm under the shoulder's hem and easing out to full girth below it
-        tuck = lambda d: 0.36 - 0.12 * smooth(d, SLEEVE_HEM - 1.0, SLEEVE_HEM) - 0.24 * smooth(d, SLEEVE_HEM + 0.6, SLEEVE_HEM + 3.0)  # noqa: E731
-        t.mesh(sleeves, 32, t.rows(SLEEVE_HEM - 1.0, must=(SLEEVE_HEM, SLEEVE_HEM + 0.6, SLEEVE_HEM + 3.0)), caps=(False, True), sunk=tuck)
+        # The sleeve starts on the ring of points the shoulder's skin ends on, so the two read as
+        # one cloth. A band 2.5 mm underneath backs the join: if rounding ever opens a hair's
+        # breadth between the two meshes, what shows through is sleeve.
+        t.mesh(sleeves, 32, t.rows(SLEEVE_HEM), caps=(False, True))
+        t.mesh(sleeves, 32, [SLEEVE_HEM - 1.2, SLEEVE_HEM + 0.6], caps=(False, False), sunk=lambda d: 0.25)
         d_el = t.key_d(4)
         out = t.toward((sx, 0.25, 0), d_el)
         lacing(t, t.key_d(2) + 4.0, d_el - 6.5, out, 2.4, strips, cords, eyelets)
@@ -1159,6 +1205,9 @@ FINGERS = [
 
 # the thumb's bones: (toward the fingertips, out to the side, forward of the palm), length
 THUMB = [((0.74, 0.58, 0.34), 4.5), ((0.94, 0.2, 0.26), 3.3), ((0.97, 0.04, 0.24), 2.6)]
+# closed round a hand controller's knob (estimated): each finger's flexion, and the thumb's bones
+GRIP = [(46, 56, 32), (40, 48, 28), (48, 56, 32), (46, 54, 32)]
+THUMB_GRIP = [((0.72, 0.42, 0.55), 4.5), ((0.84, 0.02, 0.54), 3.3), ((0.74, -0.2, 0.64), 2.6)]
 
 
 def digit(mb: MeshBuilder, hand: Hand, root: Vector, start: Vector, bones: Sequence[tuple[Vector, float]], r: float, thick: float = 1.0) -> None:
@@ -1175,7 +1224,8 @@ def digit(mb: MeshBuilder, hand: Hand, root: Vector, start: Vector, bones: Seque
             radii.append((r * k * girth * (0.94 if last else 1.0), r * k * girth))
         p = p + along * length
         pts.append(p)
-        radii.append((r * k * 0.42, r * k * 0.46) if last else (r * (k - 0.09) * 1.07, r * (k - 0.09) * 1.03))
+        # a knuckle swells on a straight finger; bent round a grip the cloth there is drawn thin, or it would fold through itself
+        radii.append((r * k * 0.42, r * k * 0.46) if last else (r * (k - 0.09) * (1.07 - 0.3 * _rig.grip), r * (k - 0.09) * 1.03))
     t = Tube(pts, radii, ref=hand.W, resample=3)
     t.mesh(mb, 12, [t.dist[i] for i in range(len(t.dist))])
 
@@ -1201,22 +1251,31 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
         # round at the cuff, squared off across the palm so the knuckles stay inside it; ribbed
         # fabric across the back of the hand, hollowed a little between the tendons
         palm.fold = lambda d, th, tb=th_back: (
-            squareness(th, 4.2) * smooth(d, 6, 10)
+            squareness(th, 4.2 - 1.3 * max(0.0, math.cos(th - tb))) * smooth(d, 6, 10)  # squarer in the palm than across the back
             + 0.018 * max(0.0, math.cos(th - tb)) * math.sin(TAU * d / 1.3) * smooth(d, 9.5, 11) * (1 - smooth(d, 15.5, 17))
             - 0.05 * max(0.0, -math.cos(th - tb)) ** 2 * gauss(d, 13.0, 2.5)  # the hollow of the palm
+            + 0.1 * max(0.0, math.cos(th - tb)) ** 3 * gauss(d, 13.5, 3.5)  # the back of the hand is domed, not flat
         )
         palm.mesh(shell, 28, palm.rows(step=0.45), least=14)  # a hand of eight flats lays its faces along the thumb's
-        for v, w0, lengths, bends, r, fan in FINGERS:
+        grip = _rig.grip
+        for (v, w0, lengths, bends, r, fan), closed in zip(FINGERS, GRIP):
             angle, bones = 0.0, []
-            for length, bend in zip(lengths, bends):
-                angle += math.radians(bend)
+            for length, bend, shut in zip(lengths, bends, closed):
+                angle += math.radians(bend + (shut - bend) * grip)
                 bones.append(((hand.curl(angle) + hand.W * math.tan(math.radians(fan))).normalized(), length))
-            start = hand.p(0.12, v, w0)
-            digit(shell, hand, hand.p(-0.1, v * 0.8, w0 - 2.4), start, bones, r, 1.14)
+            start = hand.p(0.12 - 0.4 * grip, v, w0)  # a bent knuckle's crown stays under the back of the hand's skin
+            # the root inside the palm leans half the first knuckle's bend, so a closed finger turns
+            # through two easy corners there and not one its own skin would fold over on
+            lean = math.radians(bends[0] + (closed[0] - bends[0]) * grip) / 2
+            root = start - (hand.D * math.cos(lean) - hand.B * math.sin(lean) + hand.W * math.tan(math.radians(fan))).normalized() * 2.4
+            digit(shell, hand, root, start, bones, r, 1.14)
         # thumb: from the heel of the hand, out to the side and forward of the palm, lying
         # along the first finger
         base = hand.p(-0.7, -3.3, 0.8)
-        bones = [((hand.D * kd - hand.W * kw - hand.B * kb).normalized(), length) for (kd, kw, kb), length in THUMB]
+        bones = []
+        for ((kd, kw, kb), length), ((gd, gw, gb), _) in zip(THUMB, THUMB_GRIP):
+            kd, kw, kb = kd + (gd - kd) * grip, kw + (gw - kw) * grip, kb + (gb - kb) * grip
+            bones.append(((hand.D * kd - hand.W * kw - hand.B * kb).normalized(), length))
         digit(shell, hand, base - bones[0][0] * 2.2, base + bones[0][0] * 0.2, bones, 1.42, 1.15)
         knuckle = base + bones[0][0] * (0.2 + bones[0][1])
         # the web of cloth from the thumb's knuckle to the first finger's
@@ -1272,7 +1331,10 @@ def leg_tube(sx: int) -> Tube:
 
     t.fold = fold
     t.relief = [
-        Folds(d_knee - 6.0, d_knee + 6.0, 8, 0.62, 1.0 * sx, th_front + math.pi, spread=1.6),  # deepest behind the knee
+        # deepest behind the knee; a knee bent double has one big fold there, not these
+        Folds(
+            d_knee - 6.0, d_knee + 6.0, 8, 0.62 * (1 - 0.75 * smooth(_rig.angles.get("knee", 0.0), 30, 90)), 1.0 * sx, th_front + math.pi, spread=1.6
+        ),
         Folds(t.key_d(2) - 2.0, t.key_d(2) + 3.5, 4, 0.3, 2.6 * sx, t.toward((-sx, -0.6, 0), t.key_d(2)), spread=1.0),  # the groin
         Folds(t.key_d(7) - 0.5, t.key_d(7) + 4.3, 3, 0.3, 0.3 * sx, spread=3.0),  # bunched over the boot
     ]
@@ -1520,9 +1582,14 @@ SEATED = {
     "ankle": 30.0,  # toes drawn up toward the shin
     "knees_in": 4.0,  # legs brought together from the standing stance
     "pelvis": 40.0,  # the seat of the suit rolls under as the thighs come up
-    "elbow": 24.0,  # forearms raised to the hand controllers
-    "elbow_toe_in": 20.0,  # the elbow's hinge turned so the hands come in to 27 cm off the centre line
+    "elbow": 21.5,  # forearms raised to the hand controllers
+    "elbow_toe_in": 20.5,  # the hinge turned so the palms come in over the controllers, 27.2 cm off the centre line
+    "pronate": 62.0,  # forearms turned palm down onto the controllers' knobs
+    "grip": 1.0,  # hands closed round them
 }
+# where a thigh pressed against the belly stops, in seat-frame centimetres: the crease starts this
+# far toward the head from the hip joints, at the height of the belly's skin, and opens at this slope
+LAP_CREASE, LAP_SKIN, LAP_SLOPE = -2.0, 11.0, 1.2
 INCH = 2.54
 CABIN_R0, CABIN_TAPER = 35.97, 0.364  # pressure vessel's inner radius in inches: R0 - TAPER * z
 
@@ -1535,16 +1602,33 @@ def seated_rig() -> Rig:
     for sx in (1, -1):
         rig.bends[("leg", sx)] = [
             Bend((sx * STANCE, 0.5, ANKLE_Z), (-1, 0, 0), down, 7.0, math.radians(q["ankle"])),
-            Bend((sx * 12.3, -1.0, Z_KNEE), (1, 0, 0), down, 10.0, math.radians(q["knee"])),
+            Bend((sx * 12.3, -1.0, Z_KNEE), (1, 0, 0), down, 10.0, math.radians(q["knee"]), hollow=0.68),
             Bend((sx * HIP_X, 0.0, Z_HIP), (0, sx, 0), down, 8.0, math.radians(q["knees_in"])),
             Bend((sx * HIP_X, 0.0, Z_HIP), (-1, 0, 0), down, 8.0, math.radians(q["hip"])),
         ]
         rig.bends[("pelvis", sx)] = [Bend((0, 0, Z_HIP - 3.0), (-1, 0, 0), down, 9.0, math.radians(q["pelvis"]))]
         ex, ey, ez = ELBOW
         hinge = (-math.cos(toe_in), sx * math.sin(toe_in), 0)
-        rig.bends[("arm", sx)] = [Bend((sx * ex, ey, ez), hinge, (sx * 0.19, -0.07, -1), 6.0, math.radians(q["elbow"]))]
+        fore = wrist_point(sx) - Vector((sx * ex, ey, ez))
+        rig.bends[("arm", sx)] = [
+            Twist((sx * ex, ey, ez), fore, -1.5, 5.5, sx * math.radians(q["pronate"])),  # wound into the elbow's own folds, clear of the lacing
+            Bend((sx * ex, ey, ez), hinge, (sx * 0.19, -0.07, -1), 6.0, math.radians(q["elbow"])),
+        ]
     # seat frame: origin between the hip joints, head toward -Y, chest toward +Z, his right toward +X
     rig.to_frame = Matrix(((-1, 0, 0, 0), (0, 0, -1, Z_HIP), (0, -1, 0, 0), (0, 0, 0, 1)))
+    rig.angles, rig.grip = dict(q), q["grip"]
+
+    def press(p: Vector, limb: str) -> Vector:
+        """The front of each thigh, where it would pass through the belly, gives way instead and
+        lies against it: a soft wall that the thigh's skin cannot cross, leaving a groin crease
+        below the waist strap. Only the trousers' cloth is there, so nothing laid on it is crushed."""
+        if limb != "leg" or p.z > 26.0:
+            return p
+        wall = LAP_CREASE - LAP_SLOPE * max(0.0, p.z - LAP_SKIN)
+        over = (p.y - wall) / 1.2
+        return Vector((p.x, wall + 1.2 * (math.log1p(math.exp(over)) if over < 30 else over), p.z))
+
+    rig.press = press
     return rig
 
 
@@ -1604,6 +1688,7 @@ def seated_key_points() -> dict:
         "heels": both(lambda sx: rig.carry((sx * STANCE, 8.2, 0.0), "leg")),
         "toes": both(lambda sx: rig.carry((sx * STANCE, -23.0, 1.8), "leg")),
         "hands": both(lambda sx: rig.carry(palm_centre(sx), "arm")),
+        "grips": both(lambda sx: rig.carry(palm_rest(sx), "arm")),
         "wrists": both(lambda sx: rig.carry(wrist_point(sx), "arm")),
         "back_plane_z": lowest("Torso_Shell"),
         "seat_y": max(p.y for p in pts["Torso_Shell"]),

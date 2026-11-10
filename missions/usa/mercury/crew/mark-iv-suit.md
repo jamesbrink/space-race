@@ -77,7 +77,9 @@ torso, shoulders and upper arms do not move.
 | Knee | 128° of flexion: shins slope 28° down toward the ankles | estimated | same |
 | Ankle | toes drawn 30° up toward the shin | estimated | same; more than a relaxed ankle gives |
 | Legs brought together | 4° each | estimated | same |
-| Elbow | 24° of flexion, hinge turned 20° in | estimated | puts the palms 27 cm either side of the centre line, 8 cm toward the feet from the hips and 19 cm above them |
+| Elbow | 21.5° of flexion, hinge turned 20.5° in | estimated | puts the middle of each palm on a hand controller's knob: 27.2 cm off the centre line, 9.3 cm toward the feet from the hips, 14.7 cm above them |
+| Forearm | turned 62° palm down, wound into the elbow's folds | estimated | so the palm lies on the knob. On MR-3 the glove could not turn at the wrist; the turn is in the sleeve |
+| Grip | fingers flexed about 46°, 56° and 32° at their three joints, thumb brought round | estimated | a hand closed on a knob of about 2.3 cm radius |
 | Seat of the suit | rolled 40° under | estimated | so the torso's lower end does not stand out behind the raised thighs |
 
 `seated_fits(y_hip_in, z_hip_in)` gives the smallest gap to a pressure wall of radius
@@ -92,24 +94,25 @@ The real couch was moulded to each pilot; its angles were not found.
   lips, chin and jaw, eyes and eyebrows, in a textbook adult's proportions. It is there so the
   helmet is not empty; it is **not a likeness of Shepard** and was not made from photographs of
   him. Skin, eye and hair colours are arbitrary. No ears (the cap covers where they would be),
-  no hair but the brows, no eyelids: the eyes are white balls set back in the sockets.
+  no hair but the brows. The eyelids are plain caps of skin over white balls set back in the sockets.
 - **The visor is modelled clear, as the real one was**; the viewer tints it.
 - **The body is a mannequin**: elliptical tubes with a little muscle shape, not Shepard's build.
 - **Shoulders.** The torso and both shoulders are one skin: a sleeve is lofted from an armhole cut
   in each side of the torso, stitched to its edge and smoothed. The shape that results (deltoid,
   armpit) is what the smoothing gives, not anatomy and not the suit's pattern.
-- **The hem on each upper arm is the model's, not the suit's.** It is where the `Torso` node's
-  skin ends and the `Arms` node's sleeve carries on, tucked 2.4 mm underneath. The real suit's
-  seams were not traced.
+- **Where `Torso` ends and `Arms` begins** (28.5 cm down each arm) is the model's division, not a
+  seam of the suit. The two skins share one ring of points there, so nothing shows; a band 2.5 mm
+  underneath backs the join.
 - **Folds are invented.** Creases a few millimetres deep are modelled at the elbows, knees,
   waist, groin, wrists, over the boot tops, on the upper arms where they hang against the sides,
   and fanning from each armpit across chest and back. They are generated from seeded numbers so
   that left and right differ; none is copied from a photograph. They show an unpressurised suit,
   which is how it was worn on the walk-out. They stop short of the zipper, straps, lacing and
-  inlet, which real folds would not.
+  inlet, which real folds would not. Slack is also modelled under the chest.
 - **Hands.** Fingers are of four lengths, swell at the knuckles and curl a little; the thumb has
-  a web to the first finger. The back of the hand is still a squared slab, and there are no
-  seams. The palms are suit fabric; the real gloves' palm material was not checked.
+  a web to the first finger; the back of the hand is domed. There are no seams. The palms are
+  suit fabric; the real gloves' palm material was not checked. The seated figure's grip is a
+  guess at a hand on a knob, not copied from a photograph of the controller in use.
 - **Both middle fingers are straight.** NASA's sheet says the left only (see the table).
 - **Strap layout is a guess.** NASA's procedure names underarm, shoulder-to-shoulder and
   shoulder-to-side straps, neck zippers, a waist zipper and ankle zippers; none of those is
@@ -125,9 +128,14 @@ The real couch was moulded to each pilot; its angles were not found.
 - **Boots**: plain laced boots. The Smithsonian's "with clips" was not seen first hand and is
   only hinted at by the lacing hooks.
 - **The ventilator is a silver suitcase with a hose.** He carried it; here it stands on the floor.
-- **Seated, the joints are hose bends.** Thighs pass through the front of the lower torso and the
-  calves through the backs of the thighs where flesh and cloth would press together; the crotch
-  straps disappear into the crease. The folds are the standing figure's, bent, not a seated suit's.
+- **Seated, the joints are hose bends, with two corrections.** Where a thigh would pass through
+  the belly its skin stops against a sloping wall instead (`LAP_CREASE`), leaving a groin crease
+  2 cm below the hip joints' line: the waist strap and its buckle stay in view above it. The
+  crotch straps run from the waist strap down into that crease and are hidden beyond it, under
+  the thighs, which at 100° of flexion is where they would be. Behind the knee the flesh is
+  hollowed so that thigh and calf fold together rather than through one another, and the knee's
+  small creases are eased off. Neither is a cloth simulation, and there is no bunched roll of
+  fabric in the lap, only the crease.
 - **Coarser levels of detail leave things out**: eyebrows and lips below detail 0.75, eyes below 0.5.
 - No mass properties.
 
