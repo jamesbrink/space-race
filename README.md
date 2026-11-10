@@ -3,6 +3,8 @@
 Every crewed spacecraft, modelled to scale and shown as it flew. The first is **Freedom 7**, the
 Mercury capsule that carried Alan Shepard on 5 May 1961.
 
+**Live: https://jamesbrink.github.io/space-race/**
+
 ```sh
 pnpm install
 pnpm dev        # http://localhost:5180

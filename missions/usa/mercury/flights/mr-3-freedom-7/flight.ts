@@ -156,5 +156,5 @@ export const flight: Flight = {
       order: 6,
     },
   ],
-  model: { url: '/models/usa/mercury/mr-3-freedom-7.glb', heightM: 7.904, diameterM: 1.892 },
+  model: { url: 'models/usa/mercury/mr-3-freedom-7.glb', heightM: 7.904, diameterM: 1.892 },
 };

@@ -19,6 +19,11 @@ pnpm model:mr-3       # rebuild Freedom 7's GLB from its Blender script
 pnpm models           # rebuild every flight's GLB
 ```
 
+CI (`.github/workflows/pages.yml`) typechecks and builds every push and pull request, and deploys
+`main` to GitHub Pages at https://jamesbrink.github.io/space-race/. Pages serves from a
+sub-path, so asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a
+leading-slash URL in `flight.ts`. The GLBs are committed, so CI needs no Blender.
+
 Models need Blender 5.x: `$BLENDER`, then `/Applications/Blender.app`, then `blender` on PATH.
 It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Vite reloads the page when a
 GLB under `public/` changes. `node tools/build-model.mjs <id> --preview <dir>` also writes EEVEE

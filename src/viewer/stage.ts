@@ -118,7 +118,7 @@ export class Stage {
   }
 
   async load(flight: Flight, onProgress?: (fraction: number) => void): Promise<void> {
-    const gltf = await new GLTFLoader().loadAsync(flight.model.url, (e) => {
+    const gltf = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + flight.model.url, (e) => {
       if (e.total) onProgress?.(e.loaded / e.total);
     });
     if (this.model) this.scene.remove(this.model);
