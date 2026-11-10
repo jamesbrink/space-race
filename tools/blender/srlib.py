@@ -504,6 +504,13 @@ def export_glb(path: str) -> None:
         export_tangents=False,
         export_cameras=False,
         export_lights=False,
+        # Draco: about a sixth of the size. Positions are quantised per mesh, so 18 bits keeps
+        # the error under 0.05 mm on the longest part (the 11 m tank) and the 1 mm clearance holds.
+        export_draco_mesh_compression_enable=True,
+        export_draco_mesh_compression_level=7,
+        export_draco_position_quantization=18,
+        export_draco_normal_quantization=12,
+        export_draco_texcoord_quantization=14,
     )
 
 
