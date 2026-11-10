@@ -60,6 +60,8 @@ interface Journey {
 interface Picked {
   node: string | null;
   model: string | null;
+  /** A window of the section's model: where on the pane, and which way the pane faces. */
+  pane?: { point: THREE.Vector3; normal: THREE.Vector3 };
 }
 const NOTHING: Picked = { node: null, model: null };
 
@@ -80,6 +82,8 @@ export class Stage {
   /** A model standing beside the one on show was clicked: the caller opens it. */
   onModel: (id: string) => void = () => {};
   onHoverModel: (id: string | null) => void = () => {};
+  /** The pointer is over a window of the section's model (a click looks in), or has left it. */
+  onHoverWindow: (over: boolean) => void = () => {};
   /** The Home key: back to where the section starts. */
   onHome: () => void = () => {};
 
@@ -113,6 +117,7 @@ export class Stage {
   /** Where each model's own slider was left: what it returns to when it is the section again. */
   private apartOwn: number[] = [];
   private hoveredModel: string | null = null;
+  private overPane = false;
   private parts = new Map<string, THREE.Object3D>();
   private hovered: string | null = null;
   private selected: string | null = null;
@@ -228,7 +233,8 @@ export class Stage {
       const down = this.down;
       this.down = null;
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 5) return;
-      if (down.model && !down.node) this.onModel(down.model);
+      if (down.pane) this.lookIn(down.pane.point, down.pane.normal);
+      else if (down.model && !down.node) this.onModel(down.model);
       else this.onSelect(down.node);
     });
     canvas.addEventListener('pointercancel', () => (this.down = null));
@@ -551,6 +557,20 @@ export class Stage {
     } else this.fly(target, position);
   }
 
+  /**
+   * Go up to a window and look through it: the camera swings round to face the pane square on,
+   * close enough that the opening fills the view, looking at what is just inside.
+   */
+  lookIn(point: THREE.Vector3, normal: THREE.Vector3): void {
+    const target = point.clone().addScaledVector(normal, -0.45);
+    const position = point.clone().addScaledVector(normal, 0.55);
+    this.following = null;
+    this.onView(null);
+    this.onInteract(); // drifting round would carry the view off the window again
+    this.controls.minDistance = 0.2;
+    this.fly(target, position);
+  }
+
   /** Frame 'all' (everything on show) or one of the model's named views. */
   view(id: string, snap = false): void {
     if (!this.root || !this.def) return;
@@ -760,17 +780,37 @@ export class Stage {
       if (at >= 0 && at !== this.current) return { node: null, model: this.defs[at]!.id };
       if (at === this.current) break;
     }
+    // a window pane of this model: a click goes up to it and looks in
+    const mesh = hit?.object as THREE.Mesh | undefined;
+    if (hit?.face && mesh && (mesh.material as THREE.Material).name.startsWith('glass')) {
+      const normal = hit.face.normal.clone().transformDirection(mesh.matrixWorld);
+      if (normal.dot(this.raycaster.ray.direction) > 0) normal.negate(); // toward the viewer, whichever side was hit
+      // aim at the middle of this pane, not at where the click happened to land: the mean of the
+      // mesh's vertices within arm's reach of the hit (one mesh may hold several windows)
+      const at = mesh.geometry.getAttribute('position');
+      const centre = new THREE.Vector3();
+      const v = new THREE.Vector3();
+      let n = 0;
+      for (let i = 0; i < at.count; i++) {
+        mesh.localToWorld(v.fromBufferAttribute(at, i));
+        if (v.distanceTo(hit.point) > 0.6) continue;
+        centre.add(v);
+        n++;
+      }
+      return { node: null, model: null, pane: { point: n ? centre.divideScalar(n) : hit.point.clone(), normal } };
+    }
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent)
       if (this.parts.has(o.name)) return { node: o.name, model: null };
     return { node: null, model: null };
   }
 
-  private setHover({ node, model }: Picked): void {
+  private setHover({ node, model, pane }: Picked): void {
     if (model !== this.hoveredModel) {
       this.hoveredModel = model;
       this.onHoverModel(model);
     }
-    this.canvas.style.cursor = node || model ? 'pointer' : 'grab';
+    if (Boolean(pane) !== this.overPane) this.onHoverWindow((this.overPane = Boolean(pane)));
+    this.canvas.style.cursor = node || model || pane ? 'pointer' : 'grab';
     if (node === this.hovered) return;
     this.highlight(node);
     this.onHover(node);

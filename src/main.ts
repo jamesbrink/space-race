@@ -108,6 +108,7 @@ stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
 stage.onModel = (id) => show(id); // a click on the pad, the rocket or the pilot goes to it
 stage.onHoverModel = (id) => ui.hoverModel(id);
+stage.onHoverWindow = (over) => ui.hint(over ? ['Window', 'Click to look inside'] : null);
 // taking the camera pauses the drift; it starts again with the next thing chosen
 stage.onInteract = () => {
   stage.setAutoRotate(false);

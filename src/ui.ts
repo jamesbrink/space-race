@@ -407,6 +407,23 @@ export class Ui {
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => b.classList.toggle('hot', b.dataset.node === node));
   }
 
+  /** A label beside the pointer for something that is not a part: a window to look through. */
+  hint(text: [title: string, line: string] | null): void {
+    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    if (!text) {
+      if (tip.dataset.model === '-') {
+        tip.hidden = true;
+        delete tip.dataset.model;
+      }
+      return;
+    }
+    tip.dataset.model = '-';
+    tip.hidden = matchMedia('(hover: none)').matches;
+    tip.querySelector('b')!.textContent = text[0];
+    tip.querySelector('span')!.textContent = text[1];
+    this.placeTip();
+  }
+
   /** Another of the flight's models under the pointer: a click would open it. */
   hoverModel(id: string | null): void {
     const tip = this.root.querySelector<HTMLElement>('.tip')!;
