@@ -29,7 +29,7 @@ const NOISE = /* glsl */ `
  * It lives in its own scene, drawn first with a camera that copies the main camera's
  * rotation but never its position: the Earth is 6,371 km of backdrop, not a prop.
  */
-export class Backdrop {
+export class OrbitBackdrop {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(35, 1, 0.001, 200);
   private readonly earth: THREE.Mesh;
@@ -132,22 +132,13 @@ export class Backdrop {
   update(dt: number): void {
     this.earth.rotateX(dt * 0.004);
   }
-
-  follow(camera: THREE.PerspectiveCamera): void {
-    this.camera.quaternion.copy(camera.quaternion);
-    if (this.camera.fov !== camera.fov || this.camera.aspect !== camera.aspect) {
-      this.camera.fov = camera.fov;
-      this.camera.aspect = camera.aspect;
-      this.camera.updateProjectionMatrix();
-    }
-  }
 }
 
 /**
  * The light the spacecraft reflects: black sky, a soft Sun, and the Earth filling the lower
  * hemisphere with blue. Metal has no colour of its own; this is what it will look like.
  */
-export function buildEnvironment(renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3): THREE.Texture {
+export function orbitEnvironment(renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3): THREE.Texture {
   const scene = new THREE.Scene();
   scene.add(
     new THREE.Mesh(

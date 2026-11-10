@@ -10,13 +10,18 @@ Conventions
 from __future__ import annotations
 
 import math
-from typing import Callable, Iterable, Sequence
+import argparse
+import os
+import sys
+from typing import Callable, Sequence
 
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
 IN = 0.0254
+FT = 0.3048
+CM = 0.01
 TAU = math.tau
 
 Vec3 = tuple[float, float, float]
@@ -215,6 +220,66 @@ class MeshBuilder:
         faces = [(2 * i, 2 * i + 1, 2 * i + 3, 2 * i + 2) for i in range(len(path) - 1)]
         self.add(verts, faces, uvs)
 
+    def loft(
+        self,
+        path: Sequence[Sequence[float]],
+        radii: Sequence[tuple[float, float]],
+        segs: int = 24,
+        *,
+        ref: Sequence[float] = (0, 1, 0),
+        resample: int = 5,
+        ripple: Callable[[float, float], float] | None = None,
+        caps: tuple[bool, bool] = (True, True),
+    ) -> None:
+        """An elliptical tube along a smoothed path: limbs, hoses, anything grown rather than turned.
+
+        radii[i] = (a, b): `a` across the path along ref x tangent, `b` along the remaining axis.
+        ripple(s, theta) scales the radius, s running 0..1 along the path: folds and wrinkles."""
+        pts = [Vector(p) for p in path]
+        n = len(pts)
+
+        def cr(seq, i, t):   # Catmull-Rom through seq[i]..seq[i+1]
+            p0, p1, p2, p3 = (seq[max(0, min(n - 1, k))] for k in (i - 1, i, i + 1, i + 2))
+            return 0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t**3)
+
+        ra = [Vector((a, b, 0)) for a, b in radii]
+        centres, rads = [], []
+        for i in range(n - 1):
+            for k in range(resample):
+                centres.append(cr(pts, i, k / resample))
+                rads.append(cr(ra, i, k / resample))
+        centres.append(pts[-1])
+        rads.append(ra[-1])
+        m = len(centres)
+        r = Vector(ref)
+        frames = []
+        for i in range(m):
+            t = (centres[min(m - 1, i + 1)] - centres[max(0, i - 1)]).normalized()
+            side = r.cross(t)
+            side = side.normalized() if side.length > 1e-6 else Vector((1, 0, 0))
+            frames.append((side, t.cross(side)))
+        rows = list(range(m))
+        scale = [1.0] * m
+        if caps[0]:
+            rows.insert(0, 0)
+            scale.insert(0, 0.0)
+        if caps[1]:
+            rows.append(m - 1)
+            scale.append(0.0)
+        us = [TAU * i / segs for i in range(segs)]
+        length = [0.0]
+        for a, b in zip(centres, centres[1:]):
+            length.append(length[-1] + (b - a).length)
+
+        def pt(u, j):
+            i = rows[j]
+            side, other = frames[i]
+            k = scale[j] * (1.0 + (ripple(i / (m - 1), u) if ripple else 0.0))
+            return centres[i] + side * (rads[i].x * k * math.cos(u)) + other * (rads[i].y * k * math.sin(u))
+
+        self.grid(pt, us, range(len(rows)), closed_u=True,
+                  uv=lambda u, j: (u * max(rads[rows[j]].x, 1e-4), length[rows[j]]))
+
     # -- output ------------------------------------------------------------------
 
     def build(
@@ -407,3 +472,34 @@ def render_preview(path: str, target: Sequence[float], distance: float, azimuth:
     bpy.ops.render.render(write_still=True)
     for obj in made:
         bpy.data.objects.remove(obj)
+
+
+def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> None:
+    """The main() every model script shares: parse args, build, export, report, preview.
+
+    `build` constructs the scene and returns a one-line summary of its size.
+    `previews` are (filename, target, distance, {kwargs for render_preview})."""
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--preview", help="directory for EEVEE preview stills")
+    args = ap.parse_args(argv)
+    reset_scene()
+    summary = build()
+    out = os.path.abspath(args.out)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    export_glb(out)
+    n, tris = stats()
+    print(f"{name}: {n} meshes, {tris:,} triangles, {summary}, {os.path.getsize(out) / 1e6:.2f} MB -> {out}")
+    if args.preview:
+        os.makedirs(args.preview, exist_ok=True)
+        for filename, target, distance, kw in previews:
+            render_preview(os.path.join(args.preview, filename), target, distance, **kw)
+
+
+def load_font():
+    """A bold sans for painted lettering; falls back to Blender's built-in font."""
+    for path in ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"):
+        if os.path.exists(path):
+            return bpy.data.fonts.load(path)
+    return None

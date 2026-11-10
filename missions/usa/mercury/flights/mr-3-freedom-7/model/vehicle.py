@@ -3,6 +3,9 @@
 Run headless:
     pnpm model:mr-3            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
+This is the flight's vehicle: spacecraft and launch vehicle. Its pad and its pilot are
+pad.py and crew.py beside it.
+
 Every dimension below is in inches (the units of the McDonnell drawings) and converted
 once, at the point of use, with IN. Station 0 is the heat shield's maximum-diameter plane;
 +Z is toward the nose. See ../spacecraft.md for what each number rests on.
@@ -16,7 +19,6 @@ and, from ../../../vehicles/redstone_mrlv.py, the launch vehicle:
 
 from __future__ import annotations
 
-import argparse
 import math
 import os
 import sys
@@ -31,8 +33,8 @@ while not os.path.isdir(os.path.join(_root, "tools", "blender")):
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
 from srlib import (  # noqa: E402
-    IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, export_glb, frame, group, lathe_obj,
-    lettering, material, prof, render_preview, reset_scene, stats,
+    IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, frame, group, lathe_obj,
+    lettering, load_font, material, prof, run,
 )
 import redstone_mrlv  # noqa: E402
 
@@ -505,19 +507,8 @@ def build_escape_tower(M) -> None:
 # ---------------------------------------------------------------------------- main
 
 
-def main() -> None:
-    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--preview", help="directory for EEVEE preview stills")
-    args = ap.parse_args(argv)
-
-    reset_scene()
-    font = None
-    for path in ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"):
-        if os.path.exists(path):
-            font = bpy.data.fonts.load(path)
-            break
+def build() -> str:
+    font = load_font()
     M = make_materials()
     build_heat_shield(M)
     build_retropack(M)
@@ -527,23 +518,12 @@ def main() -> None:
     build_antenna_canister(M)
     build_escape_tower(M)
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
+    return (f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, "
+            f"spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m")
 
-    out = os.path.abspath(args.out)
-    os.makedirs(os.path.dirname(out), exist_ok=True)
-    export_glb(out)
-    n, tris = stats()
-    height = (Z_TOP - Z_BOOSTER_BASE) * IN
-    print(f"freedom-7: {n} meshes, {tris:,} triangles, {height:.3f} m tall on the pad, "
-          f"spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m, {os.path.getsize(out) / 1e6:.2f} MB -> {out}")
-
-    if args.preview:
-        os.makedirs(args.preview, exist_ok=True)
-        shot = lambda name, *a, **k: render_preview(os.path.join(args.preview, name), *a, **k)   # noqa: E731
-        shot("stack.png", (0, 0, (Z_TOP + Z_BOOSTER_BASE) / 2 * IN), 70, azimuth=20, res=(700, 1600))
-        shot("spacecraft.png", (0, 0, (Z_TOP + Z_RETRO_BOTTOM) / 2 * IN), 26, azimuth=20)
-        shot("capsule.png", (0, 0, 1.2), 12, azimuth=25, elevation=8, res=(1200, 1200))
-        shot("tail.png", (0, 0, (Z_BOOSTER_BASE + 60) * IN), 22, azimuth=30, elevation=-25, res=(1200, 1200))
-        shot("aft.png", (0, 0, -3.0), 22, azimuth=60, elevation=10, res=(1200, 1200))
 
 if __name__ == "__main__":
-    main()
+    run("mr-3 vehicle", build, [
+        ("vehicle-stack.png", (0, 0, (Z_TOP + Z_BOOSTER_BASE) / 2 * IN), 70, dict(azimuth=20, res=(700, 1600))),
+        ("vehicle-capsule.png", (0, 0, 1.2), 12, dict(azimuth=25, elevation=8, res=(1200, 1200))),
+    ])

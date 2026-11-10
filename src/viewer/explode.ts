@@ -34,7 +34,9 @@ export class Exploder {
         console.warn(`explode: model has no node named ${part.node}`);
         continue;
       }
-      this.entries.push({ object, home: object.position.clone(), part });
+      // remember where it was built, so the model can be shown again later from a clean state
+      const home = ((object.userData.home as THREE.Vector3 | undefined) ??= object.position.clone());
+      this.entries.push({ object, home, part });
     }
   }
 

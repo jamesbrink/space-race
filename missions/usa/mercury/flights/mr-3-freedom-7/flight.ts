@@ -1,81 +1,10 @@
-import type { Flight } from '../../../../../src/types';
+import type { Flight, ModelDef, Part } from '../../../../../src/types';
 
 const IN = 0.0254;
 const LBF = 4.4482216;
 const LB = 0.45359237;
 
-/** Mercury-Redstone 3. Prose versions of this file: ./README.md (flight), ./spacecraft.md (ship). */
-export const flight: Flight = {
-  id: 'usa/mercury/mr-3-freedom-7',
-  nation: 'USA',
-  agency: 'NASA',
-  program: 'Project Mercury',
-  designation: 'Mercury-Redstone 3',
-  callsign: 'Freedom 7',
-  spacecraft: 'Mercury spacecraft No. 7 (McDonnell Aircraft)',
-  launchVehicle: 'Mercury-Redstone MRLV, MR-7',
-  launch: '1961-05-05T14:34:13Z',
-  launchSite: 'Cape Canaveral, Launch Complex 5',
-  crew: ['Alan B. Shepard Jr.'],
-  summary:
-    'The first American in space. A fifteen-minute suborbital arc from Cape Canaveral to the Atlantic, ' +
-    'during which Shepard took manual control of the spacecraft in all three axes.',
-  facts: [
-    { label: 'Launch', value: '5 May 1961, 14:34:13 UTC' },
-    { label: 'Pilot', value: 'Alan B. Shepard Jr.' },
-    { label: 'Duration', value: '15 min 22 s' },
-    { label: 'Apogee', value: '187.5 km' },
-    { label: 'Range', value: '487.3 km' },
-    { label: 'Peak velocity', value: '8,340 km/h' },
-    { label: 'Peak load', value: '11.6 g on entry' },
-    { label: 'Recovery', value: 'USS Lake Champlain' },
-  ],
-  timeline: [
-    { t: 0, event: 'Liftoff' },
-    { t: 84, event: 'Maximum dynamic pressure' },
-    { t: 140, event: 'Booster engine cutoff, 6.3 g' },
-    { t: 142, event: 'Escape tower jettison' },
-    { t: 144, event: 'Spacecraft separation: posigrade motors fire' },
-    { t: 155, event: 'Turnaround to heat-shield-forward; manual control tests begin' },
-    { t: 300, event: 'Apogee, 187.5 km' },
-    { t: 315, event: 'Retrofire: three motors, five seconds apart' },
-    { t: 375, event: 'Retropack jettison' },
-    { t: 578, event: 'Drogue parachute' },
-    { t: 615, event: 'Main parachute' },
-    { t: 922, event: 'Splashdown, 27°14′N 75°53′W' },
-  ],
-  specs: [
-    { label: 'Heat shield diameter', value: 74.5 * IN, unit: 'm', confidence: 'documented', note: '74.5 in' },
-    { label: 'Heat shield radius of curvature', value: 80 * IN, unit: 'm', confidence: 'documented', note: '80 in' },
-    { label: 'Afterbody half-angle', value: 20, unit: 'deg', confidence: 'documented' },
-    { label: 'Recovery compartment diameter', value: 32 * IN, unit: 'm', confidence: 'documented', note: '32 in' },
-    { label: 'Recovery compartment length', value: 20 * IN, unit: 'm', confidence: 'documented', note: '20 in' },
-    { label: 'Afterbody length', value: 58.38 * IN, unit: 'm', confidence: 'derived', note: 'frustum from 74.5 in to 32 in at 20 degrees' },
-    { label: 'Antenna canister length', value: 24 * IN, unit: 'm', confidence: 'documented', note: '24 in' },
-    { label: 'Antenna canister diameters', value: 30 * IN, unit: 'm', confidence: 'estimated', note: 'modelled 30 in tapering to 25 in' },
-    { label: 'Length, retro nozzles to canister top', value: 3.33, unit: 'm', confidence: 'documented', note: 'model: 3.30 m' },
-    { label: 'Length with escape tower', value: 7.9, unit: 'm', confidence: 'documented', note: '25 ft 11 in; model: 7.904 m' },
-    { label: 'Escape tower truss and motor layout', value: 5.23, unit: 'm', confidence: 'estimated', note: 'overall length fixed by the two figures above; bay spacing from photographs' },
-    { label: 'Height on the pad', value: 25.414, unit: 'm', confidence: 'documented', note: '83.38 ft, fins to spike; model: 25.413 m' },
-    { label: 'Booster diameter', value: 70 * IN, unit: 'm', confidence: 'documented', note: '70 in' },
-    { label: 'Booster length without spacecraft', value: 59 * 12 * IN, unit: 'm', confidence: 'documented', note: '59 ft; model: 716.5 in to the heat-shield plane' },
-    { label: 'Booster section breaks', value: 135 * IN, unit: 'm', confidence: 'estimated', note: 'tail 135 in, tanks 373 in, aft unit 160 in, adapter 48.5 in' },
-    { label: 'Fin span', value: 152 * IN, unit: 'm', confidence: 'estimated', note: '12 ft 8 in, from the Redstone missile' },
-    { label: 'Liftoff mass, whole vehicle', value: 66098 * LB, unit: 'kg', confidence: 'documented', note: '66,098 lb' },
-    { label: 'Spacecraft launch mass', value: 4040 * LB, unit: 'kg', confidence: 'documented', note: '4,040 lb, with escape tower' },
-    { label: 'Landing mass', value: 2316 * LB, unit: 'kg', confidence: 'documented', note: '2,316 lb' },
-  ],
-  motors: [
-    { name: 'Rocketdyne A-7 (booster)', count: 1, thrustN: 78000 * LBF, burnS: 143.5, propellant: '75% ethyl alcohol / liquid oxygen', confidence: 'documented', note: 'sea level; Isp 215 s; steered by four graphite jet vanes' },
-    { name: 'Escape motor (Grand Central 1-KS-52000)', count: 1, thrustN: 52000 * LBF, burnS: 1, propellant: 'solid', confidence: 'documented', note: 'three nozzles canted 19 degrees' },
-    { name: 'Tower jettison motor', count: 1, thrustN: 800 * LBF, burnS: 1.5, propellant: 'solid', confidence: 'documented' },
-    { name: 'Posigrade motor', count: 3, thrustN: 400 * LBF, burnS: 1, propellant: 'solid', confidence: 'documented' },
-    { name: 'Retrograde motor (Thiokol TE-316)', count: 3, thrustN: 1000 * LBF, burnS: 10, propellant: 'solid', confidence: 'documented', note: 'fired at 5 s intervals' },
-    { name: 'Pitch and yaw thruster, high', count: 4, thrustN: 24 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system' },
-    { name: 'Roll thruster, high', count: 2, thrustN: 6 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system' },
-    { name: 'Attitude thruster, low', count: 6, thrustN: 1 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system, all axes' },
-  ],
-  parts: [
+const vehicleParts: Part[] = [
     {
       node: 'EscapeTower',
       name: 'Launch escape tower',
@@ -217,6 +146,93 @@ export const flight: Flight = {
       explode: [0, -12.2, 0],
       order: 11,
     },
+];
+
+const vehicle: ModelDef = {
+  id: 'vehicle',
+  name: 'Vehicle',
+  url: 'models/usa/mercury/mr-3-freedom-7/vehicle.glb',
+  scale: '25.41 m on the pad · spacecraft 7.90 m · to scale',
+  backdrop: 'orbit',
+  slider: ['Assembled', 'Exploded'],
+  parts: vehicleParts,
+  views: [
+    { id: 'spacecraft', label: 'Spacecraft', centreY: 3.26, span: 8.6 },
+    { id: 'capsule', label: 'Capsule', centreY: 0.95, span: 3.4 },
   ],
-  model: { url: 'models/usa/mercury/mr-3-freedom-7.glb', heightM: 25.413, diameterM: 1.778, spacecraftHeightM: 7.904 },
 };
+
+/** Mercury-Redstone 3. Prose versions of this file: ./README.md (flight), ./spacecraft.md (ship). */
+export const flight: Flight = {
+  id: 'usa/mercury/mr-3-freedom-7',
+  nation: 'USA',
+  agency: 'NASA',
+  program: 'Project Mercury',
+  designation: 'Mercury-Redstone 3',
+  callsign: 'Freedom 7',
+  spacecraft: 'Mercury spacecraft No. 7 (McDonnell Aircraft)',
+  launchVehicle: 'Mercury-Redstone MRLV, MR-7',
+  launch: '1961-05-05T14:34:13Z',
+  launchSite: 'Cape Canaveral, Launch Complex 5',
+  crew: ['Alan B. Shepard Jr.'],
+  summary:
+    'The first American in space. A fifteen-minute suborbital arc from Cape Canaveral to the Atlantic, ' +
+    'during which Shepard took manual control of the spacecraft in all three axes.',
+  facts: [
+    { label: 'Launch', value: '5 May 1961, 14:34:13 UTC' },
+    { label: 'Pilot', value: 'Alan B. Shepard Jr.' },
+    { label: 'Duration', value: '15 min 22 s' },
+    { label: 'Apogee', value: '187.5 km' },
+    { label: 'Range', value: '487.3 km' },
+    { label: 'Peak velocity', value: '8,340 km/h' },
+    { label: 'Peak load', value: '11.6 g on entry' },
+    { label: 'Recovery', value: 'USS Lake Champlain' },
+  ],
+  timeline: [
+    { t: 0, event: 'Liftoff' },
+    { t: 84, event: 'Maximum dynamic pressure' },
+    { t: 140, event: 'Booster engine cutoff, 6.3 g' },
+    { t: 142, event: 'Escape tower jettison' },
+    { t: 144, event: 'Spacecraft separation: posigrade motors fire' },
+    { t: 155, event: 'Turnaround to heat-shield-forward; manual control tests begin' },
+    { t: 300, event: 'Apogee, 187.5 km' },
+    { t: 315, event: 'Retrofire: three motors, five seconds apart' },
+    { t: 375, event: 'Retropack jettison' },
+    { t: 578, event: 'Drogue parachute' },
+    { t: 615, event: 'Main parachute' },
+    { t: 922, event: 'Splashdown, 27°14′N 75°53′W' },
+  ],
+  specs: [
+    { group: 'Spacecraft', label: 'Heat shield diameter', value: 74.5 * IN, unit: 'm', confidence: 'documented', note: '74.5 in' },
+    { group: 'Spacecraft', label: 'Heat shield radius of curvature', value: 80 * IN, unit: 'm', confidence: 'documented', note: '80 in' },
+    { group: 'Spacecraft', label: 'Afterbody half-angle', value: 20, unit: 'deg', confidence: 'documented' },
+    { group: 'Spacecraft', label: 'Recovery compartment diameter', value: 32 * IN, unit: 'm', confidence: 'documented', note: '32 in' },
+    { group: 'Spacecraft', label: 'Recovery compartment length', value: 20 * IN, unit: 'm', confidence: 'documented', note: '20 in' },
+    { group: 'Spacecraft', label: 'Afterbody length', value: 58.38 * IN, unit: 'm', confidence: 'derived', note: 'frustum from 74.5 in to 32 in at 20 degrees' },
+    { group: 'Spacecraft', label: 'Antenna canister length', value: 24 * IN, unit: 'm', confidence: 'documented', note: '24 in' },
+    { group: 'Spacecraft', label: 'Antenna canister diameters', value: 30 * IN, unit: 'm', confidence: 'estimated', note: 'modelled 30 in tapering to 25 in' },
+    { group: 'Spacecraft', label: 'Length, retro nozzles to canister top', value: 3.33, unit: 'm', confidence: 'documented', note: 'model: 3.30 m' },
+    { group: 'Spacecraft', label: 'Length with escape tower', value: 7.9, unit: 'm', confidence: 'documented', note: '25 ft 11 in; model: 7.904 m' },
+    { group: 'Spacecraft', label: 'Escape tower truss and motor layout', value: 5.23, unit: 'm', confidence: 'estimated', note: 'overall length fixed by the two figures above; bay spacing from photographs' },
+    { group: 'Launch vehicle', label: 'Height on the pad', value: 25.414, unit: 'm', confidence: 'documented', note: '83.38 ft, fins to spike; model: 25.413 m' },
+    { group: 'Launch vehicle', label: 'Booster diameter', value: 70 * IN, unit: 'm', confidence: 'documented', note: '70 in' },
+    { group: 'Launch vehicle', label: 'Booster length without spacecraft', value: 59 * 12 * IN, unit: 'm', confidence: 'documented', note: '59 ft; model: 716.5 in to the heat-shield plane' },
+    { group: 'Launch vehicle', label: 'Booster section breaks', value: 135 * IN, unit: 'm', confidence: 'estimated', note: 'tail 135 in, tanks 373 in, aft unit 160 in, adapter 48.5 in' },
+    { group: 'Launch vehicle', label: 'Fin span', value: 152 * IN, unit: 'm', confidence: 'estimated', note: '12 ft 8 in, from the Redstone missile' },
+    { group: 'Launch vehicle', label: 'Liftoff mass, whole vehicle', value: 66098 * LB, unit: 'kg', confidence: 'documented', note: '66,098 lb' },
+    { group: 'Spacecraft', label: 'Spacecraft launch mass', value: 4040 * LB, unit: 'kg', confidence: 'documented', note: '4,040 lb, with escape tower' },
+    { group: 'Spacecraft', label: 'Landing mass', value: 2316 * LB, unit: 'kg', confidence: 'documented', note: '2,316 lb' },
+  ],
+  motors: [
+    { name: 'Rocketdyne A-7 (booster)', count: 1, thrustN: 78000 * LBF, burnS: 143.5, propellant: '75% ethyl alcohol / liquid oxygen', confidence: 'documented', note: 'sea level; Isp 215 s; steered by four graphite jet vanes' },
+    { name: 'Escape motor (Grand Central 1-KS-52000)', count: 1, thrustN: 52000 * LBF, burnS: 1, propellant: 'solid', confidence: 'documented', note: 'three nozzles canted 19 degrees' },
+    { name: 'Tower jettison motor', count: 1, thrustN: 800 * LBF, burnS: 1.5, propellant: 'solid', confidence: 'documented' },
+    { name: 'Posigrade motor', count: 3, thrustN: 400 * LBF, burnS: 1, propellant: 'solid', confidence: 'documented' },
+    { name: 'Retrograde motor (Thiokol TE-316)', count: 3, thrustN: 1000 * LBF, burnS: 10, propellant: 'solid', confidence: 'documented', note: 'fired at 5 s intervals' },
+    { name: 'Pitch and yaw thruster, high', count: 4, thrustN: 24 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system' },
+    { name: 'Roll thruster, high', count: 2, thrustN: 6 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system' },
+    { name: 'Attitude thruster, low', count: 6, thrustN: 1 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system, all axes' },
+  ],
+  models: [vehicle],
+};
+

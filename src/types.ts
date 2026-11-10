@@ -12,6 +12,8 @@
 export type Confidence = 'documented' | 'derived' | 'estimated';
 
 export interface Spec {
+  /** Which thing the figure describes: 'Spacecraft', 'Launch vehicle', 'Launch pad', 'Pressure suit'. */
+  group: string;
   label: string;
   /** SI. Imperial originals go in `note`. */
   value: number;
@@ -49,6 +51,35 @@ export interface Part {
   order: number;
 }
 
+/** What is drawn behind a model: Earth from apogee, the Cape at ground level, or a dark studio. */
+export type BackdropKind = 'orbit' | 'ground' | 'studio';
+
+/** A camera framing: look at height `centreY` from far enough back to fit `span` metres. */
+export interface ViewDef {
+  id: string;
+  label: string;
+  centreY: number;
+  span: number;
+}
+
+/** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
+export interface ModelDef {
+  id: string;
+  name: string;
+  /** Relative to the site root (no leading slash): the viewer prefixes Vite's base path. */
+  url: string;
+  /** The line under the controls, e.g. '25.41 m on the pad'. */
+  scale: string;
+  backdrop: BackdropKind;
+  /** Labels for the two ends of the slider. */
+  slider: [string, string];
+  parts: Part[];
+  /** Framings offered beside the automatic 'Everything'. */
+  views: ViewDef[];
+  /** Other models of this flight shown alongside for context, e.g. the vehicle standing on its pad. */
+  with?: { model: string; position: [number, number, number]; rotationY?: number }[];
+}
+
 export interface Flight {
   /** <nation>/<program>/<flight>: also its path under missions/ and public/models/. */
   id: string;
@@ -68,7 +99,5 @@ export interface Flight {
   timeline: TimelineEvent[];
   specs: Spec[];
   motors: Motor[];
-  parts: Part[];
-  /** `url` is relative to the site root (no leading slash): the viewer prefixes Vite's base path. */
-  model: { url: string; heightM: number; diameterM: number; spacecraftHeightM: number };
+  models: ModelDef[];
 }
