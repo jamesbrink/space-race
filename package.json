@@ -12,7 +12,7 @@
     "lint": "biome lint . && ruff check .",
     "format": "biome format --write . && ruff format .",
     "format:check": "biome format . && ruff format --check .",
-    "test": "node --test tests/",
+    "test": "node --test \"tests/*.test.mjs\"",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "models": "node tools/build-model.mjs --all",
     "test:flicker": "node tools/flicker-test.mjs",
