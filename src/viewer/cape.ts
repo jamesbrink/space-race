@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { NOISE } from './space';
 
 /**
@@ -112,7 +113,8 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
 function scrub(groundY: number): THREE.InstancedMesh {
   const count = 6000;
   // one lumpy mound, turned and stretched differently each time it is used
-  const mound = new THREE.IcosahedronGeometry(1, 3);
+  // (welded, so that it shades as one rounded mass of leaf and not as a faceted rock)
+  const mound = mergeVertices(new THREE.IcosahedronGeometry(1, 3).deleteAttribute('normal').deleteAttribute('uv'));
   const at = mound.getAttribute('position');
   const v = new THREE.Vector3();
   for (let i = 0; i < at.count; i++) {
@@ -123,7 +125,15 @@ function scrub(groundY: number): THREE.InstancedMesh {
     at.setXYZ(i, v.x, v.y, v.z);
   }
   mound.computeVertexNormals();
-  const mesh = new THREE.InstancedMesh(mound, new THREE.MeshStandardMaterial({ roughness: 1 }), count);
+  // sunlit leaf on top, shade and dead fronds underneath; broken up so no two clumps read alike
+  const tint = new Float32Array(at.count * 3);
+  for (let i = 0; i < at.count; i++) {
+    v.fromBufferAttribute(at, i);
+    const k = 0.45 + 0.75 * Math.max(0, v.y) + 0.18 * Math.sin(v.x * 13.0) * Math.sin(v.z * 11.0 + v.y * 7.0);
+    tint.set([k * 1.05, k, k * 0.8], i * 3);
+  }
+  mound.setAttribute('color', new THREE.BufferAttribute(tint, 3));
+  const mesh = new THREE.InstancedMesh(mound, new THREE.MeshStandardMaterial({ roughness: 1, vertexColors: true }), count);
   let seed = 23;
   const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
   const m = new THREE.Matrix4(),
