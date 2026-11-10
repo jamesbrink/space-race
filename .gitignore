@@ -1,0 +1,7 @@
+node_modules
+dist
+.direnv
+.claude
+*.blend1
+__pycache__
+.playwright-mcp
