@@ -76,8 +76,8 @@ export class Looks {
   }
 
   private twin(real: THREE.Material): THREE.Material {
-    let twin = this.twins.get(real);
-    if (twin) return twin;
+    const made = this.twins.get(real);
+    if (made) return made;
     const from = real as THREE.MeshStandardMaterial;
     const glass = real.name.startsWith('glass');
     const toon = new THREE.MeshToonMaterial({
