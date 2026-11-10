@@ -13,6 +13,9 @@ earlier, single-mission take on the same idea (vanilla JS, toon-shaded, real orb
 ```sh
 pnpm install
 pnpm dev              # Vite with hot reload, http://localhost:5180
+pnpm check            # typecheck, lint, format check: must pass before a commit
+pnpm lint             # Biome (TS, JS, CSS, JSON) and Ruff (Python)
+pnpm format           # rewrite files in place: Biome and Ruff (`nix fmt` does the same, plus Nix)
 pnpm typecheck        # tsc --noEmit, strict
 pnpm build            # typecheck, then a production bundle in dist/
 pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their Blender scripts
@@ -20,8 +23,8 @@ pnpm models           # rebuild every flight's GLBs
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
 ```
 
-CI (`.github/workflows/pages.yml`) typechecks and builds every push and pull request, and deploys
-`main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a sub-path, so
+CI (`.github/workflows/pages.yml`) runs `pnpm check` and builds every push and pull request, and
+deploys `main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a sub-path, so
 asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a leading-slash URL
 in `flight.ts`. The GLBs are committed, so CI needs no Blender.
 
@@ -33,6 +36,20 @@ EEVEE stills (the quick way to look at geometry without the browser).
 `window.sr` is the debug handle: `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
 frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly.
 The address bar's `#vehicle` / `#pad` / `#crew` selects the model.
+
+### Code quality
+
+- `pnpm check` must pass before a commit. It needs `ruff` on PATH: the Nix devshell provides it
+  (and `biome`); the pinned `@biomejs/biome` in `package.json` is the one the scripts run.
+- Formatting is the tools' job. Run `pnpm format`; do not hand-align or argue with the result.
+- TypeScript, JS, JSON: Biome, configured in `biome.jsonc` (140 columns, single quotes). CSS is
+  linted but not formatted, so `style.css` keeps one rule per line. Markdown is left alone.
+- Python: Ruff, configured in `pyproject.toml` (150 columns, double quotes). The scripts run inside
+  Blender, so `bpy`, `bmesh` and `mathutils` cannot be installed and there is no type checker for
+  them. Imports that follow the `sys.path` setup carry `# noqa: E402`; a lambda given a name
+  carries `# noqa: E731`.
+- A rule is switched off only with a one-line reason beside it in the config. Prefer fixing the
+  code.
 
 ## Layout
 

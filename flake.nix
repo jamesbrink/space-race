@@ -32,6 +32,8 @@
             packages = [
               pkgs.nodejs
               pkgs.pnpm
+              pkgs.ruff
+              pkgs.biome
             ]
             ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.blender ];
           };
@@ -40,6 +42,24 @@
             projectRootFile = "flake.nix";
             programs.nixfmt.enable = true;
             programs.ruff-format.enable = true;
+            # Biome as a plain formatter rather than programs.biome, which generates its own
+            # config: this way `nix fmt` and `pnpm format` both read biome.jsonc. Ruff reads
+            # pyproject.toml either way.
+            settings.formatter.biome = {
+              command = lib.getExe pkgs.biome;
+              options = [
+                "format"
+                "--write"
+                "--no-errors-on-unmatched"
+              ];
+              includes = [
+                "*.ts"
+                "*.mjs"
+                "*.js"
+                "*.json"
+                "*.jsonc"
+              ];
+            };
           };
         };
     };

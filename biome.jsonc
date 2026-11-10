@@ -1,0 +1,47 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    // Markdown is the record (hard-wrapped prose and tables): written by hand, not reformatted.
+    "includes": [
+      "**",
+      "!dist",
+      "!public",
+      "!node_modules",
+      "!.playwright-mcp",
+      "!.claude",
+      "!.direnv",
+      "!**/*.glb",
+      "!**/*.md",
+      "!pnpm-lock.yaml",
+      "!flake.lock"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
+  "javascript": { "formatter": { "quoteStyle": "single" } },
+  // style.css keeps one rule per line; Biome can only put every declaration on its own line,
+  // so CSS is linted but not formatted.
+  "css": { "formatter": { "enabled": false } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // the UI renders its own markup, then looks it up: querySelector(...)! is known to match
+        "noNonNullAssertion": "off",
+        // compares selectors under different parents (.models button + button vs .tabs button)
+        "noDescendingSpecificity": "off"
+      },
+      "suspicious": {
+        // one-line forEach((b) => b.addEventListener(...)): the returned value is ignored on purpose
+        "useIterableCallbackReturn": "off",
+        // const m = (this.model = ...), the seeded rand() in cape.ts, ??= on userData
+        "noAssignInExpressions": "off"
+      },
+      "complexity": {
+        // [hidden] and pointer-events overrides must beat every later rule
+        "noImportantStyles": "off"
+      }
+    }
+  }
+}
