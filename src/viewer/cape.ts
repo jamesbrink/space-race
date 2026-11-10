@@ -47,11 +47,12 @@ const TRACKS: [number, number, number, number, number][] = [
   [-140, -214, 0, -214, 3.2],
 ];
 
-function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => void } {
+function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; tick: (dt: number) => void } {
   const time = { value: 0 };
   const material = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = time;
+    shader.uniforms.uCel = cel;
     shader.uniforms.uTracks = { value: TRACKS.map((t) => new THREE.Vector4(t[0], t[1], t[2], t[3])) };
     shader.uniforms.uTrackWidth = { value: TRACKS.map((t) => t[4]) };
     shader.vertexShader = shader.vertexShader
@@ -63,6 +64,7 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
         /* glsl */ `#include <common>
         varying vec3 vCape;
         uniform float uTime;
+        uniform float uCel;    // 1 in the cel look: the same land in a few flat colours with hard edges
         uniform vec4 uTracks[${TRACKS.length}];
         uniform float uTrackWidth[${TRACKS.length}];
         ${NOISE}
@@ -80,12 +82,15 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
         float big = fbm(vec3(p * 0.0035, 1.0));           // the lie of the land: hundreds of metres
         float mid = fbm(vec3(p * 0.028, 7.0));            // thickets and clearings
         float fine = noise(vec3(p * 1.3, 3.0));           // individual plants
+        fine = mix(fine, 0.5, uCel);
         vec3 sand = vec3(0.50, 0.45, 0.33), dry = vec3(0.30, 0.29, 0.15);
         vec3 scrub = vec3(0.085, 0.15, 0.05), thicket = vec3(0.035, 0.07, 0.03);
         float veg = smoothstep(0.40, 0.60, big * 0.55 + mid * 0.45);
         vec3 c = mix(mix(sand, dry, smoothstep(0.3, 0.62, mid)), mix(scrub, thicket, smoothstep(0.3, 0.8, fine)), veg);
+        c = mix(c, mix(sand, vec3(0.12, 0.22, 0.07), step(0.5, veg)), uCel);
         // ground cleared and graded round the pad
         float apron = 1.0 - smoothstep(42.0, 70.0, max(abs(pad.x), abs(pad.y)) + 14.0 * (mid - 0.5));
+        apron = mix(apron, step(0.5, apron), uCel);
         c = mix(c, sand * (0.9 + 0.25 * fine), apron * 0.9);
         // crushed-shell tracks, a little paler down the wheel lines
         float track = 0.0;
@@ -93,21 +98,25 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
           float d = segment(p, uTracks[i]) + 1.2 * (mid - 0.5);
           track = max(track, 1.0 - smoothstep(uTrackWidth[i] - 0.7, uTrackWidth[i] + 0.9, d));
         }
+        track = mix(track, step(0.5, track), uCel);
         c = mix(c, vec3(0.56, 0.53, 0.45) * (0.88 + 0.2 * fine), track);
         // the shore wanders; beach, then water that darkens as it deepens
         float shore = p.x + 26.0 * (fbm(vec3(p.y * 0.006, 0.0, 4.0)) - 0.5);
         float beach = smoothstep(${SHORE.toFixed(1)} - 14.0, ${SHORE.toFixed(1)} + 6.0, shore);
+        beach = mix(beach, step(0.5, beach), uCel);
         c = mix(c, vec3(0.66, 0.60, 0.46) * (0.92 + 0.14 * fine), beach);
         float lap = 3.5 * sin(uTime * 0.5 + p.y * 0.035) + 2.0 * sin(uTime * 0.31 + p.y * 0.011);
         capeSea = smoothstep(${SURF.toFixed(1)} - 2.0, ${SURF.toFixed(1)} + 2.0, shore + lap);
         float depth = clamp((shore - ${SURF.toFixed(1)}) / 900.0, 0.0, 1.0);
+        depth = mix(depth, pow(floor(pow(depth, 0.45) * 3.0 + 0.5) / 3.0, 2.22), uCel);   // the sea in bands
         vec3 water = mix(vec3(0.07, 0.30, 0.30), vec3(0.012, 0.075, 0.16), pow(depth, 0.45));
         // lines of surf rolling in, breaking up along their length
         float roll = fract((shore + lap) * 0.035 - uTime * 0.06);
         float foam = smoothstep(0.86, 1.0, roll) * (1.0 - smoothstep(0.0, 110.0, shore - ${SURF.toFixed(1)}))
                    * smoothstep(0.35, 0.6, noise(vec3(p * 0.16, uTime * 0.25)));
         foam = max(foam, (1.0 - smoothstep(0.0, 5.0, abs(shore + lap - ${SURF.toFixed(1)}))) * 0.85);
-        c = mix(c, mix(water, vec3(0.92), foam), capeSea);
+        foam = mix(foam, step(0.5, foam), uCel);
+        c = mix(c, mix(water, vec3(0.92), foam), mix(capeSea, step(0.5, capeSea), uCel));
         diffuseColor.rgb = c;`,
       )
       .replace(
@@ -121,7 +130,7 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
         // chop: tilt the water's normal with moving noise, so the Sun breaks up on it
         vec2 w = vCape.xz * 0.22 + vec2(uTime * 0.35, uTime * 0.2);
         vec3 chop = vec3(noise(vec3(w, 0.0)) - 0.5, 0.0, noise(vec3(w, 9.0)) - 0.5);
-        normal = normalize(normal + capeSea * 0.22 * (viewMatrix * vec4(chop, 0.0)).xyz);`,
+        normal = normalize(normal + (1.0 - uCel) * capeSea * 0.22 * (viewMatrix * vec4(chop, 0.0)).xyz);`,
       );
   };
   // Many small triangles, not two big ones: depth interpolated across a kilometres-long
@@ -132,7 +141,7 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
   return { mesh, tick: (dt) => (time.value += dt) };
 }
 
-function scrub(groundY: number): THREE.InstancedMesh {
+function scrub(groundY: number): { plants: THREE.InstancedMesh; tufts: THREE.InstancedMesh } {
   const count = 6000;
   // One clump of saw palmetto, turned and stretched differently each time it is used: a low
   // mass of shade with fans of blades arching out of it. Up close it has leaves; from across
@@ -239,7 +248,21 @@ function scrub(groundY: number): THREE.InstancedMesh {
     i++;
   }
   mesh.castShadow = false;
-  return mesh;
+  // The same plants as a drawing would have them: one rounded tuft each, where the real look
+  // has a clump of fronds. Same places, sizes and colours; only one of the two is ever shown.
+  const tuft = mergeVertices(new THREE.IcosahedronGeometry(1, 1).deleteAttribute('normal').deleteAttribute('uv'));
+  const at = tuft.getAttribute('position');
+  for (let i = 0; i < at.count; i++) at.setXYZ(i, at.getX(i) * 0.5, Math.max(at.getY(i), -0.12) * 0.42 + 0.05, at.getZ(i) * 0.5);
+  tuft.computeVertexNormals();
+  const tufts = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({ roughness: 1 }), count);
+  tufts.instanceMatrix = mesh.instanceMatrix;
+  for (let i = 0; i < count; i++) {
+    mesh.getColorAt(i, colour);
+    tufts.setColorAt(i, colour.multiplyScalar(2.2)); // the fronds' own colours brightened these; a tuft has only this one
+  }
+  tufts.castShadow = false;
+  tufts.visible = false;
+  return { plants: mesh, tufts };
 }
 
 const concrete = new THREE.MeshStandardMaterial({ color: 0x8d8a82, roughness: 0.95 });
@@ -337,10 +360,17 @@ function missileRow(groundY: number): THREE.Group {
 }
 
 /** Everything round the pad. `groundY` is the terrain's height; the pad's own surface is 0. */
-export function buildCape(groundY: number): { floor: THREE.Mesh; scenery: THREE.Object3D[]; tick: (dt: number) => void } {
-  const { mesh, tick } = terrain(groundY);
-  const plants = scrub(groundY);
-  plants.receiveShadow = true;
+export function buildCape(groundY: number): {
+  floor: THREE.Mesh;
+  scenery: THREE.Object3D[];
+  tick: (dt: number) => void;
+  /** Draw the land and its plants in full, or simplified for the cel look. */
+  simplify: (on: boolean) => void;
+} {
+  const cel = { value: 0 };
+  const { mesh, tick } = terrain(groundY, cel);
+  const { plants, tufts } = scrub(groundY);
+  plants.receiveShadow = tufts.receiveShadow = true;
   const built = [blockhouse(groundY), padSix(groundY), lighthouse(groundY), missileRow(groundY)];
   for (const group of built)
     group.traverse((o) => {
@@ -348,7 +378,12 @@ export function buildCape(groundY: number): { floor: THREE.Mesh; scenery: THREE.
     });
   // laid out on the compass, then turned as one to lie round the pad model
   const site = new THREE.Group();
-  site.add(plants, ...built);
+  site.add(plants, tufts, ...built);
   site.rotation.y = COMPASS;
-  return { floor: mesh, scenery: [site], tick };
+  const simplify = (on: boolean) => {
+    cel.value = Number(on);
+    plants.visible = !on;
+    tufts.visible = on;
+  };
+  return { floor: mesh, scenery: [site], tick, simplify };
 }

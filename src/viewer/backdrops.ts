@@ -34,6 +34,8 @@ export interface Setting {
   reach?: number;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
+  /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
+  simplify?: (on: boolean) => void;
 }
 
 /**
@@ -138,6 +140,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
     scenery: cape.scenery,
     reach: 1400,
     tick: cape.tick,
+    simplify: cape.simplify,
   };
 }
 

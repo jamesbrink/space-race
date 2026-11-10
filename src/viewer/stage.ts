@@ -535,6 +535,7 @@ export class Stage {
   private light(): void {
     const cel = this.looks.current === 'cel';
     this.fill.intensity = this.setting.fill[2] * (cel ? CEL_FILL : 1);
+    this.setting.simplify?.(cel);
     this.renderer.toneMapping = cel ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
   }
 
@@ -577,6 +578,9 @@ export class Stage {
 
   setAutoRotate(on: boolean): void {
     this.controls.autoRotate = on;
+    // While the view drifts round its subject the wheel only changes how close it is. Zooming
+    // toward the pointer moves the point being orbited: that is for a view the user has taken.
+    this.controls.zoomToCursor = !on;
   }
 
   /** Highlight a part from outside (the parts list). */
