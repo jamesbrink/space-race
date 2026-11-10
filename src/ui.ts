@@ -132,6 +132,41 @@ export class Ui {
     const stage = document.querySelector<HTMLElement>('#stage')!;
     stage.addEventListener('pointerdown', () => panel.classList.remove('open'));
     root.querySelector('.close')!.addEventListener('click', () => panel.classList.remove('open'));
+    // A sheet is put away by swiping it down: from its tabs at any time, or from its content
+    // once that is scrolled to the top (otherwise the swipe is a scroll). It follows the finger.
+    let swipe: { y: number; pulling: boolean } | null = null;
+    panel.addEventListener(
+      'touchstart',
+      (e) => {
+        const target = e.target as HTMLElement;
+        const pane = target.closest<HTMLElement>('[data-pane]');
+        const sheet = panel.classList.contains('open') && matchMedia('(max-width: 960px) and (min-height: 521px)').matches;
+        swipe = sheet && e.touches.length === 1 && (!pane || pane.scrollTop <= 0) ? { y: e.touches[0]!.clientY, pulling: false } : null;
+      },
+      { passive: true },
+    );
+    panel.addEventListener(
+      'touchmove',
+      (e) => {
+        if (!swipe) return;
+        const dy = e.touches[0]!.clientY - swipe.y;
+        if (dy < 0 && !swipe.pulling) return void (swipe = null); // upward first: a scroll, not a dismissal
+        swipe.pulling = dy > 6;
+        if (e.cancelable) e.preventDefault(); // or the browser takes the gesture for a scroll and cancels the touch
+        panel.style.transition = 'none';
+        panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
+      },
+      { passive: false },
+    );
+    const release = (e: TouchEvent) => {
+      if (!swipe) return;
+      const dy = (e.changedTouches[0]?.clientY ?? swipe.y) - swipe.y;
+      swipe = null;
+      panel.style.transition = panel.style.transform = '';
+      if (dy > 70) panel.classList.remove('open');
+    };
+    panel.addEventListener('touchend', release);
+    panel.addEventListener('touchcancel', release);
     root.querySelector('.loading button')!.addEventListener('click', () => on.model(this.model.id));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
     root.querySelector('.tabs')!.addEventListener('keydown', (e) => {
@@ -247,7 +282,6 @@ export class Ui {
     const b = this.root.querySelector('[data-cut]');
     if (!b) return;
     b.setAttribute('aria-pressed', String(on));
-    if (on) this.setRotate(false); // the opening faces one way; turning would hide it
     this.on.cutaway(on);
   }
 
