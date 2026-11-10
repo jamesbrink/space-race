@@ -10,6 +10,8 @@ once, at the point of use, with IN. Station 0 is the heat shield's maximum-diame
 Top-level nodes (the viewer's part list keys on these names):
     HeatShield  Retropack  Afterbody  Hatch  CrewCabin  RecoveryCompartment
     AntennaCanister  EscapeTower
+and, from ../../../vehicles/redstone_mrlv.py, the launch vehicle:
+    RedstoneAdapter  RedstoneAftUnit  RedstoneCenterUnit  RedstoneTailUnit  RedstoneEngine
 """
 
 from __future__ import annotations
@@ -27,10 +29,12 @@ _root = os.path.dirname(os.path.abspath(__file__))
 while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
+sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
 from srlib import (  # noqa: E402
-    IN, TAU, MeshBuilder, arc_profile, export_glb, frame, group, lathe_obj, material,
-    render_preview, reset_scene, stats, text_mesh,
+    IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, export_glb, frame, group, lathe_obj,
+    lettering, material, prof, render_preview, reset_scene, stats,
 )
+import redstone_mrlv  # noqa: E402
 
 # ------------------------------------------------------------------ dimensions (in)
 
@@ -53,6 +57,7 @@ Z_RETRO_BOTTOM = -27.2
 Z_TRUSS_TOP = 196.0
 Z_MOTOR = 205.0
 Z_MOTOR_TOP = 268.0
+Z_BOOSTER_BASE = -redstone_mrlv.LENGTH   # the Redstone's fin trailing edges
 Z_TOP = 284.0             # tip of the aerodynamic spike: 311.2 in (7.90 m) above the retro nozzles
 
 PANELS = 24               # shingles around the cone
@@ -68,44 +73,9 @@ WALL = 1.2                # outer shingle to pressure vessel
 # ------------------------------------------------------------------------ surfaces
 
 
-class Surf:
-    """A cone or cylinder about Z: points, normals, and offsets along the normal."""
-
-    def __init__(self, r0: float, z0: float, half_angle: float) -> None:
-        self.r0, self.z0, self.a = r0, z0, half_angle
-
-    def r(self, z: float) -> float:
-        return self.r0 - (z - self.z0) * math.tan(self.a)
-
-    def n(self, theta: float) -> Vector:
-        ca = math.cos(self.a)
-        return Vector((ca * math.cos(theta), ca * math.sin(theta), math.sin(self.a)))
-
-    def p(self, theta: float, z: float, off: float = 0.0) -> Vector:
-        """Inches in, metres out."""
-        r = self.r(z)
-        return (Vector((r * math.cos(theta), r * math.sin(theta), z)) + off * self.n(theta)) * IN
-
-    def frame(self, theta: float, z: float, off: float = 0.0) -> Matrix:
-        return frame(self.p(theta, z, off), self.n(theta))
-
-    def wrap(self, theta0: float, z0: float, a: float, b: float, off: float) -> Vector:
-        """Lay a flat decal on the surface: `a` inches to the right, `b` inches up the slant."""
-        z = z0 + b * math.cos(self.a)
-        return self.p(theta0 + a / self.r(z), z, off)
-
-
 CONE = Surf(SHIELD_R, 0.0, CONE_HALF_ANGLE)
 CYL = Surf(NECK_R, Z_CYL, 0.0)
 VESSEL = Surf(SHIELD_R - WALL / math.cos(CONE_HALF_ANGLE), 0.0, CONE_HALF_ANGLE)
-
-
-def prof(points):
-    return [(r * IN, z * IN) for r, z in points]
-
-
-def deg(d: float) -> float:
-    return math.radians(d)
 
 
 # ----------------------------------------------------------------------- materials
@@ -210,25 +180,6 @@ def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, 
             for i in range(n_end + 1):
                 s = margin + (1 - 2 * margin) * i / n_end
                 bolts.disc(surf.p(theta(s, z), z), surf.n(theta(s, z)), 0.2 * IN, 0.07 * IN)
-
-
-def decal(mb: MeshBuilder, surf: Surf, theta0: float, z0: float, verts, faces, vertical: bool, off=0.2) -> None:
-    """Paint flat XY geometry (inches) onto a surface. `vertical` text reads nose-ward."""
-    out = []
-    for x, y, _ in verts:
-        a, b = (-y, x) if vertical else (x, y)
-        out.append(tuple(surf.wrap(theta0, z0, a, b, off)))
-    mb.add(out, faces)
-
-
-def lettering(mb: MeshBuilder, surf: Surf, body: str, length: float, theta0: float, z0: float,
-              vertical: bool, font) -> None:
-    verts, faces = text_mesh(body, 1.0, font)
-    xs, ys = [v[0] for v in verts], [v[1] for v in verts]
-    scale = length / (max(xs) - min(xs))
-    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
-    verts = [((x - cx) * scale, (y - cy) * scale, 0.0) for x, y, _ in verts]
-    decal(mb, surf, theta0, z0, verts, faces, vertical)
 
 
 # --------------------------------------------------------------------------- parts
@@ -575,23 +526,24 @@ def main() -> None:
     build_recovery_compartment(M)
     build_antenna_canister(M)
     build_escape_tower(M)
+    redstone_mrlv.build(Z_BOOSTER_BASE, font)
 
     out = os.path.abspath(args.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     export_glb(out)
     n, tris = stats()
-    height = (Z_TOP - Z_RETRO_BOTTOM) * IN
-    print(f"freedom-7: {n} meshes, {tris:,} triangles, {height:.3f} m tall, "
-          f"{2 * SHIELD_R * IN:.3f} m across, {os.path.getsize(out) / 1e6:.2f} MB -> {out}")
+    height = (Z_TOP - Z_BOOSTER_BASE) * IN
+    print(f"freedom-7: {n} meshes, {tris:,} triangles, {height:.3f} m tall on the pad, "
+          f"spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m, {os.path.getsize(out) / 1e6:.2f} MB -> {out}")
 
     if args.preview:
         os.makedirs(args.preview, exist_ok=True)
-        mid = (Z_TOP + Z_RETRO_BOTTOM) / 2 * IN
-        render_preview(os.path.join(args.preview, "full.png"), (0, 0, mid), 26, azimuth=20)
-        render_preview(os.path.join(args.preview, "capsule.png"), (0, 0, 1.2), 12, azimuth=25, elevation=8, res=(1200, 1200))
-        render_preview(os.path.join(args.preview, "capsule-back.png"), (0, 0, 1.2), 12, azimuth=150, elevation=8, res=(1200, 1200))
-        render_preview(os.path.join(args.preview, "retro.png"), (0, 0, 0.2), 9, azimuth=60, elevation=-50, res=(1200, 1200))
-
+        shot = lambda name, *a, **k: render_preview(os.path.join(args.preview, name), *a, **k)   # noqa: E731
+        shot("stack.png", (0, 0, (Z_TOP + Z_BOOSTER_BASE) / 2 * IN), 70, azimuth=20, res=(700, 1600))
+        shot("spacecraft.png", (0, 0, (Z_TOP + Z_RETRO_BOTTOM) / 2 * IN), 26, azimuth=20)
+        shot("capsule.png", (0, 0, 1.2), 12, azimuth=25, elevation=8, res=(1200, 1200))
+        shot("tail.png", (0, 0, (Z_BOOSTER_BASE + 60) * IN), 22, azimuth=30, elevation=-25, res=(1200, 1200))
+        shot("aft.png", (0, 0, -3.0), 22, azimuth=60, elevation=10, res=(1200, 1200))
 
 if __name__ == "__main__":
     main()

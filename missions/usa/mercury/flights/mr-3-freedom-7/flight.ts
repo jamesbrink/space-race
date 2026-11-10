@@ -56,10 +56,17 @@ export const flight: Flight = {
     { label: 'Length, retro nozzles to canister top', value: 3.33, unit: 'm', confidence: 'documented', note: 'model: 3.30 m' },
     { label: 'Length with escape tower', value: 7.9, unit: 'm', confidence: 'documented', note: '25 ft 11 in; model: 7.904 m' },
     { label: 'Escape tower truss and motor layout', value: 5.23, unit: 'm', confidence: 'estimated', note: 'overall length fixed by the two figures above; bay spacing from photographs' },
-    { label: 'Launch mass', value: 4040 * LB, unit: 'kg', confidence: 'documented', note: '4,040 lb, with escape tower' },
+    { label: 'Height on the pad', value: 25.414, unit: 'm', confidence: 'documented', note: '83.38 ft, fins to spike; model: 25.413 m' },
+    { label: 'Booster diameter', value: 70 * IN, unit: 'm', confidence: 'documented', note: '70 in' },
+    { label: 'Booster length without spacecraft', value: 59 * 12 * IN, unit: 'm', confidence: 'documented', note: '59 ft; model: 716.5 in to the heat-shield plane' },
+    { label: 'Booster section breaks', value: 135 * IN, unit: 'm', confidence: 'estimated', note: 'tail 135 in, tanks 373 in, aft unit 160 in, adapter 48.5 in' },
+    { label: 'Fin span', value: 152 * IN, unit: 'm', confidence: 'estimated', note: '12 ft 8 in, from the Redstone missile' },
+    { label: 'Liftoff mass, whole vehicle', value: 66098 * LB, unit: 'kg', confidence: 'documented', note: '66,098 lb' },
+    { label: 'Spacecraft launch mass', value: 4040 * LB, unit: 'kg', confidence: 'documented', note: '4,040 lb, with escape tower' },
     { label: 'Landing mass', value: 2316 * LB, unit: 'kg', confidence: 'documented', note: '2,316 lb' },
   ],
   motors: [
+    { name: 'Rocketdyne A-7 (booster)', count: 1, thrustN: 78000 * LBF, burnS: 143.5, propellant: '75% ethyl alcohol / liquid oxygen', confidence: 'documented', note: 'sea level; Isp 215 s; steered by four graphite jet vanes' },
     { name: 'Escape motor (Grand Central 1-KS-52000)', count: 1, thrustN: 52000 * LBF, burnS: 1, propellant: 'solid', confidence: 'documented', note: 'three nozzles canted 19 degrees' },
     { name: 'Tower jettison motor', count: 1, thrustN: 800 * LBF, burnS: 1.5, propellant: 'solid', confidence: 'documented' },
     { name: 'Posigrade motor', count: 3, thrustN: 400 * LBF, burnS: 1, propellant: 'solid', confidence: 'documented' },
@@ -155,6 +162,61 @@ export const flight: Flight = {
       explode: [0, -2.6, 0],
       order: 6,
     },
+    {
+      node: 'RedstoneAdapter',
+      name: 'Spacecraft adapter',
+      summary: 'Joins a 74.5-inch capsule to a 70-inch booster.',
+      detail:
+        'A short flared ring with the retropack nested inside it. A Marman clamp at its top rim holds the capsule; ' +
+        'at separation explosive bolts open the clamp and the posigrade motors push the capsule clear. MR-3 carried ' +
+        '340 lb of ballast here to tame vibration.',
+      explode: [0, -4.1, 0],
+      order: 7,
+    },
+    {
+      node: 'RedstoneAftUnit',
+      name: 'Aft unit',
+      summary: 'Instrument compartment: autopilot and abort sensing.',
+      detail:
+        'On the Redstone missile this section flew on with the warhead. Here it stays bolted to the tanks and ' +
+        'carries the LEV-3 autopilot and the abort sensing system, which watches attitude, rates, chamber pressure ' +
+        'and electrical power and fires the escape tower without asking anyone.',
+      explode: [0, -5.4, 0],
+      order: 8,
+    },
+    {
+      node: 'RedstoneCenterUnit',
+      name: 'Centre unit',
+      summary: 'Alcohol above, liquid oxygen below.',
+      detail:
+        'The tank walls are the airframe. They are six feet longer than the missile’s, borrowed from the Jupiter-C, ' +
+        'which stretched the burn by twenty seconds to 143.5. The fuel is 75% ethyl alcohol and 25% water: less ' +
+        'energetic than the Jupiter-C’s Hydyne, and far less toxic to a pilot sitting on top of it.',
+      explode: [0, -6.9, 0],
+      order: 9,
+    },
+    {
+      node: 'RedstoneTailUnit',
+      name: 'Tail unit',
+      summary: 'Four fins, four air rudders, the engine bay.',
+      detail:
+        'The fins keep the vehicle stable; the small rudders at their tips steer it while there is air to push ' +
+        'against. The quartered black-and-white paint is a roll pattern: tracking cameras read the vehicle’s roll ' +
+        'angle from it.',
+      explode: [0, -8.6, 0],
+      order: 10,
+    },
+    {
+      node: 'RedstoneEngine',
+      name: 'A-7 engine',
+      summary: '78,000 lbf; steered by graphite vanes in the exhaust.',
+      detail:
+        'Rocketdyne’s A-7, a direct descendant of the V-2’s engine: a single fixed chamber fed by a turbopump that ' +
+        'runs on steam from decomposed hydrogen peroxide. It cannot swivel, so four graphite vanes sit in the ' +
+        'exhaust and deflect it.',
+      explode: [0, -12.2, 0],
+      order: 11,
+    },
   ],
-  model: { url: 'models/usa/mercury/mr-3-freedom-7.glb', heightM: 7.904, diameterM: 1.892 },
+  model: { url: 'models/usa/mercury/mr-3-freedom-7.glb', heightM: 25.413, diameterM: 1.778, spacecraftHeightM: 7.904 },
 };

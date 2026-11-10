@@ -1,8 +1,9 @@
 import type { Confidence, Flight } from './types';
+import type { View } from './viewer/stage';
 
 export interface UiHandlers {
   explode(t: number): void;
-  view(view: 'stack' | 'capsule'): void;
+  view(view: View): void;
   autoRotate(on: boolean): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
@@ -78,10 +79,11 @@ export class Ui {
           <span>Exploded</span></label>
         <div class="buttons">
           <button data-view="stack">Full stack</button>
+          <button data-view="spacecraft">Spacecraft</button>
           <button data-view="capsule">Capsule</button>
           <button data-rotate aria-pressed="true">Rotate</button>
         </div>
-        <p class="scale">${f.model.heightM.toFixed(2)} m tall <b>·</b> ${f.model.diameterM.toFixed(2)} m across <b>·</b> to scale</p>
+        <p class="scale">${f.model.heightM.toFixed(2)} m on the pad <b>·</b> spacecraft ${f.model.spacecraftHeightM.toFixed(2)} m <b>·</b> to scale</p>
       </footer>
       <div class="loading"><span>Loading spacecraft</span><i></i></div>`;
 
@@ -95,7 +97,7 @@ export class Ui {
     root.querySelector<HTMLInputElement>('input[type=range]')!.addEventListener('input', (e) =>
       on.explode(Number((e.target as HTMLInputElement).value)));
     root.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) =>
-      b.addEventListener('click', () => on.view(b.dataset.view as 'stack' | 'capsule')));
+      b.addEventListener('click', () => on.view(b.dataset.view as View)));
     root.querySelector<HTMLButtonElement>('[data-rotate]')!.addEventListener('click', () => this.setRotate(!this.rotating));
   }
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 from typing import Callable, Iterable, Sequence
 
+import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
@@ -258,8 +259,11 @@ def arc_profile(cx: float, cz: float, radius: float, a0: float, a1: float, n: in
     ]
 
 
-def text_mesh(body: str, size: float, font: bpy.types.VectorFont | None = None):
-    """Flat text as (verts, faces) in the XY plane, origin at left baseline."""
+def text_mesh(body: str, size: float, font: bpy.types.VectorFont | None = None, cuts: int = 3):
+    """Flat text as (verts, faces) in the XY plane, origin at left baseline.
+
+    Faces are triangulated and each edge cut `cuts` times: a letter wrapped round a cylinder
+    must bend with it, or the middle of every stroke sinks under the skin."""
     curve = bpy.data.curves.new("txt", "FONT")
     curve.body = body
     curve.size = size
@@ -270,12 +274,78 @@ def text_mesh(body: str, size: float, font: bpy.types.VectorFont | None = None):
     bpy.context.scene.collection.objects.link(obj)
     deps = bpy.context.evaluated_depsgraph_get()
     mesh = bpy.data.meshes.new_from_object(obj.evaluated_get(deps))
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    if cuts:
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=cuts, use_grid_fill=True)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bm.to_mesh(mesh)
+    bm.free()
     verts = [tuple(v.co) for v in mesh.vertices]
     faces = [tuple(p.vertices) for p in mesh.polygons]
     bpy.data.objects.remove(obj)
     bpy.data.curves.remove(curve)
     bpy.data.meshes.remove(mesh)
     return verts, faces
+
+
+# ------------------------------------------------------- surfaces in drawing units
+
+
+def prof(points, unit: float = IN):
+    """A profile in drawing units (inches by default), converted to metres."""
+    return [(r * unit, z * unit) for r, z in points]
+
+
+def deg(d: float) -> float:
+    return math.radians(d)
+
+
+class Surf:
+    """A cone or cylinder about Z: points, normals, and offsets along the normal."""
+
+    def __init__(self, r0: float, z0: float, half_angle: float) -> None:
+        self.r0, self.z0, self.a = r0, z0, half_angle
+
+    def r(self, z: float) -> float:
+        return self.r0 - (z - self.z0) * math.tan(self.a)
+
+    def n(self, theta: float) -> Vector:
+        ca = math.cos(self.a)
+        return Vector((ca * math.cos(theta), ca * math.sin(theta), math.sin(self.a)))
+
+    def p(self, theta: float, z: float, off: float = 0.0) -> Vector:
+        """Inches in, metres out."""
+        r = self.r(z)
+        return (Vector((r * math.cos(theta), r * math.sin(theta), z)) + off * self.n(theta)) * IN
+
+    def frame(self, theta: float, z: float, off: float = 0.0) -> Matrix:
+        return frame(self.p(theta, z, off), self.n(theta))
+
+    def wrap(self, theta0: float, z0: float, a: float, b: float, off: float) -> Vector:
+        """Lay a flat decal on the surface: `a` inches to the right, `b` inches up the slant."""
+        z = z0 + b * math.cos(self.a)
+        return self.p(theta0 + a / self.r(z), z, off)
+
+
+def decal(mb: MeshBuilder, surf: Surf, theta0: float, z0: float, verts, faces, vertical: bool, off=0.2) -> None:
+    """Paint flat XY geometry (inches) onto a surface. `vertical` text reads nose-ward."""
+    out = []
+    for x, y, _ in verts:
+        a, b = (-y, x) if vertical else (x, y)
+        out.append(tuple(surf.wrap(theta0, z0, a, b, off)))
+    mb.add(out, faces)
+
+
+def lettering(mb: MeshBuilder, surf: Surf, body: str, length: float, theta0: float, z0: float,
+              vertical: bool, font) -> None:
+    verts, faces = text_mesh(body, 1.0, font)
+    xs, ys = [v[0] for v in verts], [v[1] for v in verts]
+    scale = length / (max(xs) - min(xs))
+    cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+    verts = [((x - cx) * scale, (y - cy) * scale, 0.0) for x, y, _ in verts]
+    decal(mb, surf, theta0, z0, verts, faces, vertical)
 
 
 # -------------------------------------------------------------------------- export

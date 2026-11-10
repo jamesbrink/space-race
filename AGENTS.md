@@ -1,7 +1,7 @@
 # Working notes for agents in this repo
 
-SPACE RACE: every crewed spacecraft, modelled to scale in Blender and shown in three.js. Today it
-is a viewer with one flight (Freedom 7). The goal is a simulator in which you fly the USA's, the
+SPACE RACE: every crewed spacecraft and its launch vehicle, modelled to scale in Blender and shown
+in three.js. Today it is a viewer with one flight (Freedom 7 on its Mercury-Redstone). The goal is a simulator in which you fly the USA's, the
 USSR's and later programmes from the historical record to the present, so **the models and the
 numbers have to be right, and where they are not yet right the repo has to say so**.
 
@@ -20,7 +20,7 @@ pnpm models           # rebuild every flight's GLB
 ```
 
 CI (`.github/workflows/pages.yml`) typechecks and builds every push and pull request, and deploys
-`main` to GitHub Pages at https://jamesbrink.github.io/space-race/. Pages serves from a
+`main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a
 sub-path, so asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a
 leading-slash URL in `flight.ts`. The GLBs are committed, so CI needs no Blender.
 
@@ -44,6 +44,8 @@ missions/                             the record: one folder per nation, program
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
       model/build.py                  the Blender script that builds the spacecraft
+    vehicles/<vehicle>.py             a launch vehicle shared by several flights (imported by build.py)
+    vehicles/<vehicle>.md             its dimensions, confidence and simplifications
 public/models/<nation>/<programme>/<flight>.glb     built models (committed)
 src/
   types.ts                            Flight, Part, Spec, Motor, Confidence
@@ -89,4 +91,5 @@ under `missions/`, its GLB under `public/models/`, and its `pnpm model:*` argume
   names (`WORN` in `stage.ts`) rather than on mesh names.
 - The backdrop is its own scene and camera (`space.ts`): the Earth is drawn at true angular size
   for 187.5 km and never shares depth with the spacecraft.
+- `main` is protected by a ruleset: push directly, but no force-pushes and no deletion.
 - Conventional Commits. No AI attribution in commits.

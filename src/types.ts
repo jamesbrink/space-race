@@ -70,5 +70,5 @@ export interface Flight {
   motors: Motor[];
   parts: Part[];
   /** `url` is relative to the site root (no leading slash): the viewer prefixes Vite's base path. */
-  model: { url: string; heightM: number; diameterM: number };
+  model: { url: string; heightM: number; diameterM: number; spacecraftHeightM: number };
 }

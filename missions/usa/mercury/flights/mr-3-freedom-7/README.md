@@ -8,14 +8,14 @@ The first American in space, and the first person to control a spacecraft's atti
 | Site | Cape Canaveral, Launch Complex 5 |
 | Pilot | Alan B. Shepard Jr. (backup: John Glenn) |
 | Spacecraft | Mercury No. 7, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
-| Launch vehicle | Mercury-Redstone MRLV, MR-7 |
+| Launch vehicle | Mercury-Redstone MRLV, MR-7: [redstone-mrlv.md](../../vehicles/redstone-mrlv.md) |
 | Trajectory | suborbital; apogee 187.5 km (101.2 nmi), range 487.3 km (263.1 nmi) |
 | Peak velocity | about 8,340 km/h (5,180 mph) |
 | Loads | 6.3 g at booster cutoff, 11.6 g on entry |
 | Duration | 15 min 22 s |
 | Splashdown | 27°14′N 75°53′W, North Atlantic |
 | Recovery | helicopter to USS *Lake Champlain*, 11 minutes after splashdown |
-| Mass | 1,830 kg (4,040 lb) at launch; 1,051 kg (2,316 lb) at landing |
+| Mass | spacecraft 1,830 kg (4,040 lb) at launch, 1,051 kg (2,316 lb) at landing; whole vehicle 29,982 kg (66,098 lb) at liftoff |
 
 ## What happened
 

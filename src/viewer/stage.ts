@@ -10,7 +10,10 @@ import type { Flight } from '../types';
 import { Exploder } from './explode';
 import { Backdrop, buildEnvironment, wearTexture } from './space';
 
-export type View = 'stack' | 'capsule';
+export type View = 'stack' | 'spacecraft' | 'capsule';
+
+/** Centre height and vertical span of the fixed views, metres. Station 0 is the heat-shield plane. */
+const FRAMES = { spacecraft: [3.26, 8.6], capsule: [0.95, 3.4] } as const;
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap)/;
@@ -23,13 +26,14 @@ export class Stage {
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.05, 200);
+  private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.05, 600);
   private readonly controls: OrbitControls;
   private readonly composer: EffectComposer;
   private readonly outline: OutlinePass;
   private readonly bloom: UnrealBloomPass;
   private readonly backdrop: Backdrop;
   private readonly sunDir = new THREE.Vector3(0.62, 0.42, 0.66).normalize();
+  private readonly sun = new THREE.DirectionalLight(0xfff4e6, 4.0);
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private readonly timer = new THREE.Timer();
@@ -42,7 +46,8 @@ export class Stage {
   private pointerDirty = false;
   private down: { x: number; y: number } | null = null;
   private flyTo: { target: THREE.Vector3; position: THREE.Vector3; t: number } | null = null;
-  private height = 8;
+  private centreY = 0;
+  private shadowFit = -1;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -58,12 +63,9 @@ export class Stage {
 
     // The Sun is the only hard light in orbit. Everything else is the Earth, which the
     // environment map supplies; the faint hemisphere keeps shadowed paint from going to ink.
-    const sun = new THREE.DirectionalLight(0xfff4e6, 4.0);
-    sun.position.copy(this.sunDir).multiplyScalar(30).add(new THREE.Vector3(0, 3.3, 0));
-    sun.target.position.set(0, 3.3, 0);
+    const sun = this.sun;
     sun.castShadow = true;
     sun.shadow.mapSize.set(4096, 4096);
-    Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 8, bottom: -8, near: 5, far: 60 });
     sun.shadow.bias = -0.0002;
     sun.shadow.normalBias = 0.012;
     this.scene.add(sun, sun.target, new THREE.HemisphereLight(0x0a0c12, 0x3a5c9c, 0.5));
@@ -72,7 +74,7 @@ export class Stage {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.06;
     this.controls.minDistance = 1.2;
-    this.controls.maxDistance = 45;
+    this.controls.maxDistance = 140;
     this.controls.autoRotate = true;
     this.controls.autoRotateSpeed = 0.5;
     this.controls.addEventListener('start', () => {
@@ -147,12 +149,30 @@ export class Stage {
       }),
     );
     this.exploder = new Exploder(gltf.scene, flight.parts);
-    this.height = flight.model.heightM;
+    this.fitShadows(0);
     this.view('stack', true);
   }
 
   setExplode(t: number): void {
     this.exploder?.set(t);
+    this.fitShadows(t);
+  }
+
+  /**
+   * Shadow-map texels are spent on a box around the vehicle. Assembled, that box is the
+   * vehicle; exploded it is about twice as tall, and shadows soften to match.
+   */
+  private fitShadows(t: number): void {
+    if (!this.model || (this.shadowFit >= 0 && Math.abs(t - this.shadowFit) < 0.02)) return;
+    this.shadowFit = t;
+    const box = new THREE.Box3().setFromObject(this.model);
+    const centre = box.getCenter(new THREE.Vector3());
+    const radius = box.getSize(new THREE.Vector3()).length() / 2 + 0.5;
+    this.centreY = centre.y;
+    this.sun.target.position.copy(centre);
+    this.sun.position.copy(centre).addScaledVector(this.sunDir, radius + 10);
+    Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
+    this.sun.shadow.camera.updateProjectionMatrix();
   }
 
   setAutoRotate(on: boolean): void {
@@ -171,12 +191,11 @@ export class Stage {
 
   view(view: View, snap = false): void {
     const box = new THREE.Box3().setFromObject(this.model ?? this.scene);
-    const centreY = view === 'stack' ? (box.min.y + box.max.y) / 2 : 0.95;
-    const span = view === 'stack' ? box.max.y - box.min.y : 3.4;
+    const [centreY, span] = view === 'stack' ? [(box.min.y + box.max.y) / 2, box.max.y - box.min.y] : FRAMES[view];
     // far enough back that `span` fills 80% of the frame's height
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.8;
     const target = new THREE.Vector3(0, centreY, 0);
-    const dir = new THREE.Vector3(0.82, view === 'stack' ? 0.1 : 0.22, 0.56).normalize();
+    const dir = new THREE.Vector3(0.82, view === 'capsule' ? 0.22 : 0.1, 0.56).normalize();
     const position = target.clone().addScaledVector(dir, distance);
     if (snap) {
       this.controls.target.copy(target);
@@ -234,7 +253,7 @@ export class Stage {
   }
 
   /** For tests and screenshots: stop the drift and put the camera somewhere exact. */
-  pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.height / 2 - 0.69): void {
+  pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY): void {
     this.controls.autoRotate = false;
     this.flyTo = null;
     const az = THREE.MathUtils.degToRad(azimuthDeg), el = THREE.MathUtils.degToRad(elevationDeg);

@@ -71,7 +71,9 @@ Top-level nodes in the GLB, bottom to top. These names are the `node` fields in 
 | `AntennaCanister` | housing, dielectric window, horizon scanners, drogue mortar, destabilising flap |
 | `EscapeTower` | clamp ring, truss, escape motor, three canted nozzles, jettison motor nozzle, spike |
 
-40 meshes, about 134,000 triangles.
+The same GLB also holds the launch vehicle's five nodes: see
+[../../vehicles/redstone-mrlv.md](../../vehicles/redstone-mrlv.md). Together: 63 meshes, about
+196,000 triangles.
 
 ## What the model gets wrong or leaves out
 
@@ -85,7 +87,6 @@ Top-level nodes in the GLB, bottom to top. These names are the `node` fields in 
 - **Retropack**: motors are not canted toward the centre of mass as the real ones are; no
   umbilical detail or heat blanket.
 - **No mass properties.** The model has no centre of mass or moments of inertia. The simulator needs them.
-- **No booster.** The Mercury-Redstone launch vehicle and the spacecraft adapter are not modelled.
 - Parachutes, the recovery aids (dye marker, SOFAR bomb, whip antenna) and the periscope's
   retracted state are not modelled.
 

@@ -32,6 +32,13 @@ The capsule changed from flight to flight, which is why each flight here has its
 | Landing bag | none | fitted | fitted |
 | Recovery section skin | beryllium shingles | beryllium shingles | René 41 shingles |
 
+## Launch vehicles
+
+| Vehicle | Flights | In this repo |
+| --- | --- | --- |
+| Mercury-Redstone (one stage, A-7 engine) | MR-3, MR-4 | [redstone-mrlv.md](vehicles/redstone-mrlv.md) |
+| Mercury-Atlas (Atlas LV-3B, stage-and-a-half) | MA-6 to MA-9 | |
+
 ## Sources for the programme
 
 - *Mercury Project Summary Including Results of the Fourth Manned Orbital Flight*, NASA SP-45 (1963).
