@@ -139,14 +139,15 @@ function ground(renderer: THREE.WebGLRenderer): Setting {
   return {
     backdrop: new DomeBackdrop(skyMaterial(sunDir, true)),
     environment: pmrem(renderer, envScene),
-    environmentIntensity: 0.8,
+    environmentIntensity: 0.55,
     sunDir,
-    sunColor: 0xfff0d8,
-    sunIntensity: 3.0,
-    fill: [0x9db8d8, 0x6a6450, 0.4],
+    sunColor: 0xffedd0,
+    sunIntensity: 3.9,
+    // sky fill kept low and close to neutral: shadows should read as shade, not as blue paint
+    fill: [0xb9c6d6, 0x7a715c, 0.28],
     floor,
     maxPolar: Math.PI / 2 - 0.015,
-    exposure: 0.82,
+    exposure: 0.8,
     fog: new THREE.FogExp2(HORIZON.clone().multiplyScalar(0.96), 0.00042),
     scenery: [beach, sea],
   };

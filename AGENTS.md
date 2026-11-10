@@ -15,22 +15,24 @@ pnpm install
 pnpm dev              # Vite with hot reload, http://localhost:5180
 pnpm typecheck        # tsc --noEmit, strict
 pnpm build            # typecheck, then a production bundle in dist/
-pnpm model:mr-3       # rebuild Freedom 7's GLB from its Blender script
-pnpm models           # rebuild every flight's GLB
+pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their Blender scripts
+pnpm models           # rebuild every flight's GLBs
+pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
 ```
 
 CI (`.github/workflows/pages.yml`) typechecks and builds every push and pull request, and deploys
-`main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a
-sub-path, so asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a
-leading-slash URL in `flight.ts`. The GLBs are committed, so CI needs no Blender.
+`main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a sub-path, so
+asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a leading-slash URL
+in `flight.ts`. The GLBs are committed, so CI needs no Blender.
 
 Models need Blender 5.x: `$BLENDER`, then `/Applications/Blender.app`, then `blender` on PATH.
-It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Vite reloads the page when a
-GLB under `public/` changes. `node tools/build-model.mjs <id> --preview <dir>` also writes EEVEE
-stills, which is the quick way to look at geometry without the browser.
+It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Useful flags on
+`node tools/build-model.mjs <flight>`: `--only pad` builds one model, `--preview <dir>` also writes
+EEVEE stills (the quick way to look at geometry without the browser).
 
-`window.sr` is the debug handle: `sr.stage.pose(azimuthDeg, elevationDeg, distance, targetY)` stops
-the drift and places the camera exactly, for screenshots.
+`window.sr` is the debug handle: `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
+frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly.
+The address bar's `#vehicle` / `#pad` / `#crew` selects the model.
 
 ## Layout
 
@@ -39,27 +41,62 @@ missions/                             the record: one folder per nation, program
   index.ts                            the list of flights the viewer can show
   <nation>/<programme>/
     README.md                         the programme
+    vehicles/  sites/  crew/          hardware shared by several flights: <name>.py builds it,
+                                      <name>.md records its dimensions, confidence, simplifications
     flights/<flight>/
       README.md                       the flight: what happened, timeline, sources
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
-      model/build.py                  the Blender script that builds the spacecraft
-    vehicles/<vehicle>.py             a launch vehicle shared by several flights (imported by build.py)
-    vehicles/<vehicle>.md             its dimensions, confidence and simplifications
-public/models/<nation>/<programme>/<flight>.glb     built models (committed)
+      model/<name>.py                 one Blender script per model: vehicle, pad, crew
+public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)
+docs/sources.md                       every source used or wanted, and what each is good for
 src/
-  types.ts                            Flight, Part, Spec, Motor, Confidence
+  types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
   main.ts  ui.ts  style.css           the page
-  viewer/stage.ts                     renderer, lights, camera, picking, post-processing
-  viewer/space.ts                     Earth, stars, Sun; the environment map; the wear texture
+  viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
+  viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
+  viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
 tools/
-  build-model.mjs                     runs a flight's build.py through Blender
-  blender/srlib.py                    shared geometry helpers for build.py scripts
+  build-model.mjs                     runs a flight's model scripts through Blender
+  flicker-test.mjs                    browser check for z-fighting
+  blender/srlib.py                    shared geometry helpers, clearance check, run()
 ```
 
 A flight's id is its path: `usa/mercury/mr-3-freedom-7`. The same three segments locate its folder
-under `missions/`, its GLB under `public/models/`, and its `pnpm model:*` argument.
+under `missions/`, its GLBs under `public/models/`, and its `pnpm model:*` argument.
+
+This is the game's **inventory**: each flight's vehicle, pad and crew, shown at the highest detail
+with everything known about each part. A flight's `models` (in `flight.ts`) each have their own
+parts, views, slider and setting, and can ask for the others to be shown alongside (the vehicle
+stands on its pad; the pilot stands on the hardstand for scale).
+
+## No flicker
+
+Two faces in the same place flicker: the depth buffer cannot tell them apart and picks a
+different one per pixel per frame. Three things stop it, and all three must stay true.
+
+- **`srlib.check_clearance` runs on every model build and fails it** if two parallel,
+  same-facing faces are under 1 mm apart, printing the two meshes and where. Fix the geometry:
+  sink a fitting through the skin (so its hidden face is well inside) or stand it off by more
+  than a millimetre. Do not pass `--allow-clashes`. Faces that cross at an angle are fine, and so
+  are single-sided faces back to back; double-sided materials are held to the stricter rule, so
+  use `double_sided=True` only where both sides are really seen.
+- **`Stage.fitDepth` moves the near plane out every frame** so depth resolution stays under a
+  third of a millimetre at any distance. Do not give the camera a fixed near plane.
+- **Scenery never overlaps scenery.** Ground, beach and sea in `backdrops.ts` are laid edge to
+  edge. Two planes a few centimetres apart fight at the horizon no matter what the near plane is.
+
+`pnpm test:flicker` checks the result in a real browser: every model, every view, six
+directions, looking for patches of pixels that swap when the camera turns 0.02 degrees.
+`--shots <dir>` writes a map of any it finds. Run it after changing a model or the renderer.
+
+## Levels of detail
+
+Models are generated, so a lower level of detail is a rebuild, not a remodel:
+`blender ... -- --out x.glb --detail 0.3`. `srlib.DETAIL` thins every curve and, under 0.5, drops
+fasteners. The inventory uses 1.0. When the simulator needs distant LODs, add them to
+`build-model.mjs` as extra outputs per script; do not hand-edit geometry for them.
 
 ## Rules that keep the numbers honest
 
@@ -67,29 +104,39 @@ under `missions/`, its GLB under `public/models/`, and its `pnpm model:*` argume
   `derived` (computed from documented ones; say how), `estimated` (read off photographs, or chosen
   to look right). Never promote an estimate by rewording it. The simulator will refuse to depend on
   `estimated` values, so the label is load-bearing.
-- **One place per number.** A dimension lives in `model/build.py` (inches, as drawn) and is quoted
-  in `flight.ts` and `spacecraft.md`. Change all three together; `build.py` prints the model's
-  overall height and width on every build, and those two must match `flight.ts`'s `model` block.
-- **Model in the source's units.** Mercury drawings are in inches; `build.py` keeps inches and
-  multiplies by `IN` once. Soviet hardware will be in millimetres. Do not pre-convert.
+- **One place per number.** A dimension lives in a model script (in the drawing's units) and is
+  quoted in `flight.ts` and the hardware's `.md`. Change all three together; each build prints the
+  model's overall size, which must match what `flight.ts` says.
+- **Model in the source's units.** Mercury drawings are in inches and the pad's in feet; the
+  scripts keep those and multiply by `IN` or `FT` once. Soviet hardware will be in millimetres. Do not pre-convert.
 - **Model the flight, not the type.** Freedom 7 is spacecraft No. 7: portholes, a bolted hatch, a
   beryllium heat sink. Friendship 7 is a different model with its own folder.
-- **Say what is simplified.** Each `spacecraft.md` ends with a list of what the model gets wrong or
+- **Cite it.** A `documented` figure names its source: document and section, figure or page.
+  `docs/sources.md` is the bibliography, including sources we know of but have not read.
+- **Say what is simplified.** Each hardware `.md` ends with a list of what the model gets wrong or
   leaves out. Add to it when you cut a corner.
 
 ## Adding a flight
 
-1. Create `missions/<nation>/<programme>/flights/<flight>/` with the five files above.
-2. In `build.py`, name each top-level node (`srlib.group`) for a part; those names are the `node`
-   fields in `flight.ts`. +Z is the nose in Blender and becomes +Y in the viewer.
-3. Append the flight to `missions/index.ts` and add a `model:<flight>` script to `package.json`.
+1. Create `missions/<nation>/<programme>/flights/<flight>/` with the files above. Hardware that
+   other flights will reuse (a booster, a pad, a suit) goes in the programme's `vehicles/`,
+   `sites/` or `crew/`, with its own `.md`; the flight's `model/*.py` imports it.
+2. In each model script, name every top-level node (`srlib.group`) for a part; those names are
+   the `node` fields in `flight.ts`. +Z is up in Blender and becomes +Y in the viewer.
+3. Give each part a `summary`, a `detail` and a few `facts`. Write for someone choosing what to
+   look at: what it is, why it is the way it is, one thing they would not have guessed.
+4. Append the flight to `missions/index.ts` and add a `model:<flight>` script to `package.json`.
+5. Add what you read to `docs/sources.md`.
 
 ## Conventions
 
 - TypeScript strict; no framework. The UI is one class that renders from the flight's data.
 - GLB materials are named in Blender (`shingle-rene41`, `tower-red`); the viewer keys on those
   names (`WORN` in `stage.ts`) rather than on mesh names.
-- The backdrop is its own scene and camera (`space.ts`): the Earth is drawn at true angular size
-  for 187.5 km and never shares depth with the spacecraft.
+- A setting's sky is its own scene and camera (`backdrops.ts`), drawn first, so it never shares
+  depth with the model. The orbit setting (Earth at true angular size from 187.5 km) is not used
+  by Freedom 7 at present, which stands on its pad; it is kept for flights shown in space.
+- The page must work on a phone: under 760 px the data panel is a bottom sheet and the model
+  keeps the space above it. Check both widths after changing `style.css`.
 - `main` is protected by a ruleset: push directly, but no force-pushes and no deletion.
 - Conventional Commits. No AI attribution in commits.
