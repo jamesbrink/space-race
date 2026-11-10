@@ -3,7 +3,7 @@
 // --shots writes a map per pose that has any flips: the frame dimmed, the flipping pixels magenta.
 //
 // Each model is framed in each of its views from six directions. At every pose three frames
-// are taken: A, then B with the camera turned 0.02 degrees, then A again. Honest geometry
+// are taken: A, then B with the camera turned 0.005 degrees, then A again. Honest geometry
 // barely changes under a turn that small. Two faces fighting for the same depth swap pixels
 // wholesale, so a pixel that jumps between A and B and comes back in the second A is a flip.
 // Lone flips (glints) and one-pixel lines (thin edges) are ignored; a flip counts when at
@@ -17,6 +17,7 @@ import { chromium } from 'playwright-core';
 
 const FLIPS = 40; // pixels in solid patches, at 1280 x 800. Two fighting faces give hundreds; thin posts lining up give a few.
 const JUMP = 90; // summed RGB difference that counts as a jump
+const NUDGE = 0.005; // degrees. Small enough that a thin post 60 m off-axis moves a twentieth of a pixel.
 const BACK = 24; // and how close the second A must be to the first
 
 const args = process.argv.slice(2);
@@ -37,7 +38,7 @@ await page.addStyleTag({ content: '#ui { display: none !important }' });
 /** Take A, B (nudged), A again inside the page and count the pixels that jump and come back. */
 const flipsAt = (view, az) =>
   page.evaluate(
-    async ([view, az, JUMP, BACK]) => {
+    async ([view, az, JUMP, BACK, NUDGE]) => {
       window.sr.stage.frozen = true;
       const src = document.querySelector('#stage');
       const c = document.createElement('canvas');
@@ -50,7 +51,7 @@ const flipsAt = (view, az) =>
         g.drawImage(src, 0, 0); // the WebGL buffer is not preserved, so copy it in the same task as the frame
         return g.getImageData(0, 0, c.width, c.height).data;
       };
-      const a = await grab(0), b = await grab(0.02), a2 = await grab(0);
+      const a = await grab(0), b = await grab(NUDGE), a2 = await grab(0);
       const w = c.width, h = c.height;
       const mask = new Uint8Array(w * h);
       for (let i = 0, p = 0; i < a.length; i += 4, p++) {
@@ -76,7 +77,7 @@ const flipsAt = (view, az) =>
       g.putImageData(new ImageData(b, c.width, c.height), 0, 0);
       return { flips, map: flips ? c.toDataURL('image/png') : null };
     },
-    [view, az, JUMP, BACK],
+    [view, az, JUMP, BACK, NUDGE],
   );
 
 let failed = 0;
@@ -86,7 +87,8 @@ for (const model of models) {
   await page.waitForFunction(() => document.querySelector('.loading.done'));
   await page.waitForTimeout(400);
   for (const view of model.views)
-    for (const az of [0, 60, 120, 180, 240, 300]) {
+    // six directions, chosen so no pose puts the camera inside the pad's masts
+    for (const az of [20, 80, 140, 200, 260, 320]) {
       const { flips, map } = await flipsAt(view, az);
       const ok = flips <= FLIPS;
       if (!ok) failed++;

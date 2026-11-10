@@ -4,6 +4,9 @@ const IN = 0.0254;
 const LBF = 4.4482216;
 const LB = 0.45359237;
 
+/** Off until model/crew.py has produced crew.glb. */
+const CREW_READY: boolean = false;
+
 const vehicleParts: Part[] = [
     {
       node: 'EscapeTower',
@@ -120,7 +123,7 @@ const vehicleParts: Part[] = [
         ['Material', 'beryllium heat sink'],
         ['Orbital flights', 'ablative fibreglass and resin'],
       ],
-      explode: [0, 8.0, 0],
+      explode: [0, 8.3, 0],
       order: 5,
     },
     {
@@ -137,7 +140,7 @@ const vehicleParts: Part[] = [
         ['Posigrade motors', '3 × 400 lbf, 1 s'],
         ['Jettisoned', 'T+6:15'],
       ],
-      explode: [0, 7.2, 0],
+      explode: [0, 7.6, 0],
       order: 6,
     },
     {
@@ -153,7 +156,7 @@ const vehicleParts: Part[] = [
         ['Clamp', 'Marman ring, explosive bolts'],
         ['Ballast on MR-3', '340 lb'],
       ],
-      explode: [0, 6.2, 0],
+      explode: [0, 6.8, 0],
       order: 7,
     },
     {
@@ -170,7 +173,7 @@ const vehicleParts: Part[] = [
         ['Autopilot', 'LEV-3'],
         ['Skin', '0.090 in aluminium'],
       ],
-      explode: [0, 5.0, 0],
+      explode: [0, 5.8, 0],
       order: 8,
     },
     {
@@ -188,7 +191,7 @@ const vehicleParts: Part[] = [
         ['Skin', '0.063 in and 0.080 in aluminium'],
         ['Fuel', '75% ethyl alcohol, 25% water'],
       ],
-      explode: [0, 3.4, 0],
+      explode: [0, 4.6, 0],
       order: 9,
     },
     {
@@ -205,7 +208,7 @@ const vehicleParts: Part[] = [
         ['Skin', '0.125 in aluminium'],
         ['Attached by', '12 fasteners in tension'],
       ],
-      explode: [0, 2.0, 0],
+      explode: [0, 3.4, 0],
       order: 10,
     },
     {
@@ -249,7 +252,8 @@ const vehicle: ModelDef = {
     { id: 'capsule', label: 'Capsule', centreY: VEHICLE_Y + 0.95, span: 3.4 },
     { id: 'engine', label: 'Engine', centreY: PEDESTAL + 1.5, span: 5.5 },
   ],
-  with: [{ model: 'pad', position: [0, 0, 0] }],
+  // the pad as it was at liftoff: structure rolled back, cherry picker withdrawn
+  with: [{ model: 'pad', position: [0, 0, 0], exploded: 1 }],
 };
 
 const padParts: Part[] = [
@@ -346,7 +350,122 @@ const pad: ModelDef = {
     { id: 'pedestal', label: 'Pedestal', centreY: 1.4, span: 9 },
     { id: 'hatch', label: 'Hatch level', centreY: 21, span: 11 },
   ],
-  with: [{ model: 'vehicle', position: [0, VEHICLE_Y, 0] }],
+  with: [
+    { model: 'vehicle', position: [0, VEHICLE_Y, 0] },
+    // the pilot, standing on the hardstand: nothing else on a pad tells you how big it is
+    ...(CREW_READY ? [{ model: 'crew', position: [5.2, 0, 4.4] as [number, number, number], rotationY: 0.9 }] : []),
+  ],
+};
+
+const crewParts: Part[] = [
+  {
+    node: 'Helmet',
+    name: 'Helmet',
+    summary: 'Fibreglass shell, clear visor, pneumatic seal.',
+    detail:
+      'The visor closes against an inflatable seal fed from a small pressure bottle through a fitting by the left ' +
+      'jaw. Used oxygen leaves through the hose on the right side. In flight Shepard kept the visor closed; the ' +
+      'suit itself stayed soft, because the cabin held pressure and the suit is only the backup.',
+    facts: [
+      ['Shell', 'fibreglass'],
+      ['Neck ring', 'aluminium'],
+      ['Outlet hose', 'right side'],
+      ['Visor seal', 'pneumatic, fed at the left jaw'],
+    ],
+    explode: [0, 0.34, 0],
+    order: 0,
+  },
+  {
+    node: 'Torso',
+    name: 'Torso',
+    summary: 'Aluminised nylon over a rubber-coated bladder.',
+    detail:
+      'A Navy Mark IV high-altitude suit by B.F. Goodrich, reworked for Mercury: the grey outer shell became ' +
+      'aluminium-coated nylon, and the breathing loop was closed so that one flow of oxygen both cools and ' +
+      'feeds the pilot. It enters at the waist. The long zipper winds diagonally round the body; getting in ' +
+      'took a quarter of an hour and a helper.',
+    facts: [
+      ['Suit', 'Navy Mark IV, B.F. Goodrich'],
+      ['Mass', '22 lb (10 kg)'],
+      ['Pressure if the cabin fails', '3.7 psi'],
+      ['Oxygen inlet', 'waist'],
+      ['Each pilot had', 'three: training, flight, spare'],
+    ],
+    explode: [0, 0, 0],
+    order: 2,
+  },
+  {
+    node: 'Arms',
+    name: 'Arms',
+    summary: 'Laced to length, with restraint cords at the joints.',
+    detail:
+      'A pressurised sleeve wants to straighten like a balloon. Cords and lacing along each arm stop it ' +
+      'ballooning and set its length to the man; even so, bending a pressurised elbow is work. The gauge on the ' +
+      'left forearm shows suit pressure.',
+    explode: [0.32, 0, 0],
+    order: 1,
+  },
+  {
+    node: 'Gloves',
+    name: 'Gloves',
+    summary: 'Zipped to the sleeves; one straight finger.',
+    detail:
+      'Four fingers are curved to rest on the hand controller. The middle finger is straight, for pushing ' +
+      'buttons. On this flight the gloves were zipped directly to the sleeves, so the wrists could not turn; ' +
+      'the bearing-and-lock-ring wrist arrived on the next flight.',
+    facts: [
+      ['Attachment on MR-3', 'zipper'],
+      ['From MR-4', 'ring lock with wrist bearing'],
+    ],
+    explode: [0.5, -0.12, 0],
+    order: 0,
+  },
+  {
+    node: 'Legs',
+    name: 'Legs',
+    summary: 'Snug by design; the biomedical plug is on the thigh.',
+    detail:
+      'The fit is tight on purpose: if the suit ever pressurises, it squeezes the legs and keeps blood from ' +
+      'pooling there under load. A flap on the right thigh covers the connector that carries heartbeat, ' +
+      'breathing and temperature to the telemetry.',
+    explode: [0, -0.3, 0],
+    order: 1,
+  },
+  {
+    node: 'Boots',
+    name: 'Boots',
+    summary: 'Laced leather over the suit’s feet.',
+    detail:
+      'Separate lace-up boots worn over the pressure suit’s socks. The last Mercury flight built the boots into ' +
+      'the suit.',
+    explode: [0, -0.5, 0],
+    order: 0,
+  },
+  {
+    node: 'Ventilator',
+    name: 'Portable ventilator',
+    summary: 'The suitcase in every photograph of the walk-out.',
+    detail:
+      'A sealed suit has no way to shed heat, so from the suiting room to the capsule Shepard carried his own ' +
+      'air-conditioning: a blower and cooler in a case, plugged into the waist inlet. At the capsule the hose ' +
+      'came off and the spacecraft’s own system took over.',
+    explode: [0.45, 0, 0],
+    order: 0,
+  },
+];
+
+const crew: ModelDef = {
+  id: 'crew',
+  name: 'Crew',
+  url: 'models/usa/mercury/mr-3-freedom-7/crew.glb',
+  scale: 'Alan B. Shepard Jr. · 1.80 m · to scale',
+  backdrop: 'studio',
+  slider: ['Suited', 'Laid out'],
+  parts: crewParts,
+  views: [
+    { id: 'helmet', label: 'Helmet', centreY: 1.72, span: 0.6 },
+    { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.6 },
+  ],
 };
 
 /** Mercury-Redstone 3. Prose versions of this file: ./README.md (flight), ./spacecraft.md (ship). */
@@ -414,6 +533,9 @@ export const flight: Flight = {
     { group: 'Launch vehicle', label: 'Liftoff mass, whole vehicle', value: 66098 * LB, unit: 'kg', confidence: 'documented', note: '66,098 lb' },
     { group: 'Spacecraft', label: 'Spacecraft launch mass', value: 4040 * LB, unit: 'kg', confidence: 'documented', note: '4,040 lb, with escape tower' },
     { group: 'Spacecraft', label: 'Landing mass', value: 2316 * LB, unit: 'kg', confidence: 'documented', note: '2,316 lb' },
+    { group: 'Pressure suit', label: 'Pilot height', value: 1.8, unit: 'm', confidence: 'documented', note: 'Shepard: 5 ft 11 in' },
+    { group: 'Pressure suit', label: 'Suit mass', value: 22 * LB, unit: 'kg', confidence: 'documented', note: '22 lb' },
+    { group: 'Pressure suit', label: 'Operating pressure', value: 3.7 * 6.894757, unit: 'kPa', confidence: 'documented', note: '3.7 psi, only if the cabin loses pressure' },
     { group: 'Launch pad', label: 'Mobile aerial tower reach', value: 125 * 0.3048, unit: 'm', confidence: 'documented', note: '125 ft (TM X-53107, 7.3.3.1)' },
     { group: 'Launch pad', label: 'White room', value: 3, unit: 'level', confidence: 'documented', note: 'level 3 of the service structure' },
     { group: 'Launch pad', label: 'Pedestal height', value: 6 * 0.3048, unit: 'm', confidence: 'estimated', note: '6 ft, scaled off photographs' },
@@ -430,6 +552,6 @@ export const flight: Flight = {
     { name: 'Roll thruster, high', count: 2, thrustN: 6 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system' },
     { name: 'Attitude thruster, low', count: 6, thrustN: 1 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system, all axes' },
   ],
-  models: [vehicle, pad],
+  models: [vehicle, pad, ...(CREW_READY ? [crew] : [])],
 };
 

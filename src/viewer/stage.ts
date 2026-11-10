@@ -16,6 +16,11 @@ const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-boos
 /** Materials that also take it as a bump map: cloth and poured concrete are never flat. */
 const ROUGH_SURFACE = /^(suit|concrete)/;
 
+/** Put every part of a model back where it was built. */
+function rest(object: THREE.Object3D): void {
+  object.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
+}
+
 /** The 3D half of the app: one model at a time, in its setting, orbitable and explodable. */
 export class Stage {
   onHover: (node: string | null) => void = () => {};
@@ -129,7 +134,11 @@ export class Stage {
       (def.with ?? []).map(async (w) => {
         const other = flight.models.find((m) => m.id === w.model);
         if (!other) throw new Error(`${def.id} wants ${w.model}, which ${flight.id} does not have`);
-        const object = (await this.fetch(other.url)).clone(true);
+        const source = await this.fetch(other.url);
+        rest(source);
+        const object = source.clone(true);
+        object.traverse((o) => delete o.userData.home); // clone() turned the vectors into plain objects
+        if (w.exploded) new Exploder(object, other.parts).set(w.exploded);
         object.position.set(...w.position);
         object.rotation.y = w.rotationY ?? 0;
         return object;
@@ -140,7 +149,7 @@ export class Stage {
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
     for (const o of this.setting.scenery) this.scene.remove(o);
-    main.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
+    rest(main);
     main.position.set(...(def.position ?? [0, 0, 0]));
     this.root = new THREE.Group();
     this.root.add(main, ...extras);

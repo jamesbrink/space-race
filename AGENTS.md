@@ -88,7 +88,7 @@ different one per pixel per frame. Three things stop it, and all three must stay
   edge. Two planes a few centimetres apart fight at the horizon no matter what the near plane is.
 
 `pnpm test:flicker` checks the result in a real browser: every model, every view, six
-directions, looking for patches of pixels that swap when the camera turns 0.02 degrees.
+directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.
 `--shots <dir>` writes a map of any it finds. Run it after changing a model or the renderer.
 
 ## Levels of detail

@@ -83,7 +83,13 @@ export interface ModelDef {
   /** The view shown first (default: 'all', everything on show). */
   home?: string;
   /** Other models of this flight shown alongside for context, e.g. the vehicle standing on its pad. */
-  with?: { model: string; position: [number, number, number]; rotationY?: number }[];
+  with?: {
+    model: string;
+    position: [number, number, number];
+    rotationY?: number;
+    /** Show it with its own slider at this position, 0 to 1 (e.g. a pad already cleared for launch). */
+    exploded?: number;
+  }[];
 }
 
 export interface Flight {
