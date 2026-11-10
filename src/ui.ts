@@ -131,7 +131,7 @@ export class Ui {
             <div><dt>right-drag</dt><dd>move</dd></div>
             <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
-            <div><dt><kbd>Home</kbd></dt><dd>reset view</dd></div>
+            <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>

@@ -84,7 +84,7 @@ export class Stage {
   onHoverModel: (id: string | null) => void = () => {};
   /** The pointer is over a window of the section's model (a click looks in), or has left it. */
   onHoverWindow: (over: boolean) => void = () => {};
-  /** The Home key: back to where the section starts. */
+  /** The reset key (0): back to where the section starts. */
   onHome: () => void = () => {};
 
   private readonly renderer: THREE.WebGLRenderer;
@@ -238,7 +238,7 @@ export class Stage {
     });
     canvas.addEventListener('pointercancel', () => (this.down = null));
     // Keys fly the view: WASD moves it over the site, E and Q lift and lower it, the arrows swing
-    // it round and tilt it, R and F (or + and -) zoom, Home goes back to where the section starts. Held keys
+    // it round and tilt it, R and F (or + and -) zoom, 0 goes back to where the section starts. Held keys
     // are applied each frame. The legend in the corner of the page (ui.ts) lists these.
     const KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'r', 'f', '+', '=', '-', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
     window.addEventListener('keydown', (e) => {
@@ -247,7 +247,7 @@ export class Stage {
       const typing = el.matches?.('input, textarea, select, [contenteditable]');
       const widget = key.startsWith('arrow') && el.closest?.('[role=tablist], input');
       if (e.metaKey || e.ctrlKey || e.altKey || typing || widget) return;
-      if (key === 'home') return this.onHome();
+      if (key === '0' || key === 'home') return this.onHome(); // 0, since a laptop has no Home key
       if (!KEYS.has(key)) return;
       e.preventDefault();
       if (!this.held.size) {

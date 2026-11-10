@@ -213,6 +213,8 @@ script; do not hand-edit geometry for them.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
   them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
   A new panel gets the same control and a `Pref`.
+- Shortcuts use only keys every keyboard has: letters, digits, arrows. No Home, End, Page Up or
+  function keys (a Mac laptop has none).
 - The camera legend (bottom left) lists every key and gesture: keep it in step with the handlers
   in `stage.ts`. The line under it is diagnostics: loop rate, frames drawn, triangles, draw calls,
   and each model's level of detail.
