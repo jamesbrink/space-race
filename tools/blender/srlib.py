@@ -9,11 +9,12 @@ Conventions
 
 from __future__ import annotations
 
-import math
 import argparse
+import contextlib
+import math
 import os
 import sys
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 import bmesh
 import bpy
@@ -76,10 +77,8 @@ def material(
     image: bpy.types.Image | None = None,
 ) -> bpy.types.Material:
     mat = bpy.data.materials.new(name)
-    try:
+    with contextlib.suppress(Exception):
         mat.use_nodes = True
-    except Exception:
-        pass
     nodes = mat.node_tree.nodes
     bsdf = next((n for n in nodes if n.type == "BSDF_PRINCIPLED"), None)
     if bsdf is None:
@@ -192,8 +191,7 @@ class MeshBuilder:
             r, z = profile[j]
             return (r * math.cos(u), r * math.sin(u), z)
 
-        self.grid(pt, us, vs, closed_u=full, uv=lambda u, j: (u * rmax, path[j]),
-                  matrix=matrix, flip=flip)
+        self.grid(pt, us, vs, closed_u=full, uv=lambda u, j: (u * rmax, path[j]), matrix=matrix, flip=flip)
 
     def tube(self, p0, p1, radius: float, segs: int = 12, caps: bool = True) -> None:
         p0, p1 = Vector(p0), Vector(p1)
@@ -207,13 +205,11 @@ class MeshBuilder:
         """A capped stub: bolt heads, rivets, port covers. Left out below detail 0.5."""
         if DETAIL < 0.5:
             return
-        self.lathe([(radius, 0.0), (radius, height), (0.0, height)], segs,
-                   matrix=frame(origin, normal))
+        self.lathe([(radius, 0.0), (radius, height), (0.0, height)], segs, matrix=frame(origin, normal))
 
     def box(self, size: Sequence[float], matrix: Matrix) -> None:
         sx, sy, sz = (s / 2 for s in size)
-        v = [(-sx, -sy, -sz), (sx, -sy, -sz), (sx, sy, -sz), (-sx, sy, -sz),
-             (-sx, -sy, sz), (sx, -sy, sz), (sx, sy, sz), (-sx, sy, sz)]
+        v = [(-sx, -sy, -sz), (sx, -sy, -sz), (sx, sy, -sz), (-sx, sy, -sz), (-sx, -sy, sz), (sx, -sy, sz), (sx, sy, sz), (-sx, sy, sz)]
         f = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
         # split verts per face so the box shades flat
         verts, faces = [], []
@@ -255,7 +251,7 @@ class MeshBuilder:
         n = len(pts)
         segs = _segs(segs)
 
-        def cr(seq, i, t):   # Catmull-Rom through seq[i]..seq[i+1]
+        def cr(seq, i, t):  # Catmull-Rom through seq[i]..seq[i+1]
             p0, p1, p2, p3 = (seq[max(0, min(n - 1, k))] for k in (i - 1, i, i + 1, i + 2))
             return 0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t**3)
 
@@ -294,8 +290,7 @@ class MeshBuilder:
             k = scale[j] * (1.0 + (ripple(i / (m - 1), u) if ripple else 0.0))
             return centres[i] + side * (rads[i].x * k * math.cos(u)) + other * (rads[i].y * k * math.sin(u))
 
-        self.grid(pt, us, range(len(rows)), closed_u=True,
-                  uv=lambda u, j: (u * max(rads[rows[j]].x, 1e-4), length[rows[j]]))
+        self.grid(pt, us, range(len(rows)), closed_u=True, uv=lambda u, j: (u * max(rads[rows[j]].x, 1e-4), length[rows[j]]))
 
     # -- output ------------------------------------------------------------------
 
@@ -335,8 +330,7 @@ def lathe_obj(name, profile, mat, parent=None, segs=96, **kw) -> bpy.types.Objec
 def arc_profile(cx: float, cz: float, radius: float, a0: float, a1: float, n: int = 12):
     """(r, z) points on a circle in the profile plane; angles in degrees from +r toward +z."""
     return [
-        (cx + radius * math.cos(math.radians(a0 + (a1 - a0) * i / n)),
-         cz + radius * math.sin(math.radians(a0 + (a1 - a0) * i / n)))
+        (cx + radius * math.cos(math.radians(a0 + (a1 - a0) * i / n)), cz + radius * math.sin(math.radians(a0 + (a1 - a0) * i / n)))
         for i in range(n + 1)
     ]
 
@@ -420,8 +414,7 @@ def decal(mb: MeshBuilder, surf: Surf, theta0: float, z0: float, verts, faces, v
     mb.add(out, faces)
 
 
-def lettering(mb: MeshBuilder, surf: Surf, body: str, length: float, theta0: float, z0: float,
-              vertical: bool, font) -> None:
+def lettering(mb: MeshBuilder, surf: Surf, body: str, length: float, theta0: float, z0: float, vertical: bool, font) -> None:
     verts, faces = text_mesh(body, 1.0, font)
     xs, ys = [v[0] for v in verts], [v[1] for v in verts]
     scale = length / (max(xs) - min(xs))
@@ -442,7 +435,7 @@ def mark_shells(names: Sequence[str]) -> None:
 
 # ----------------------------------------------------------------------- clearance
 
-MIN_GAP = 0.001   # metres. The viewer keeps depth resolution under a third of this (stage.ts: fitDepth).
+MIN_GAP = 0.001  # metres. The viewer keeps depth resolution under a third of this (stage.ts: fitDepth).
 
 
 def check_clearance(min_gap: float = MIN_GAP) -> list[str]:
@@ -492,17 +485,16 @@ def check_clearance(min_gap: float = MIN_GAP) -> list[str]:
                     continue
                 d = n.dot(normals[hi])
                 if abs(d) < 0.97:
-                    continue   # crossing, not coplanar
+                    continue  # crossing, not coplanar
                 both = two_sided[owner[ti]] or two_sided[owner[hi]]
                 if d < 0 and not both:
-                    continue   # back to back or face to face: never both drawn
+                    continue  # back to back or face to face: never both drawn
                 key = tuple(sorted((objs[owner[ti]].name, objs[owner[hi]].name)))
                 found.setdefault(key, []).append((dist + eps, p.copy()))
     out = []
     for key, hits in sorted(found.items(), key=lambda kv: min(h[0] for h in kv[1])):
         gap, at = min(hits, key=lambda h: h[0])
-        out.append(f"{key[0]} / {key[1]}: {len(hits)} samples, closest {gap * 1000:.2f} mm "
-                   f"at ({at.x:.3f}, {at.y:.3f}, {at.z:.3f}) m")
+        out.append(f"{key[0]} / {key[1]}: {len(hits)} samples, closest {gap * 1000:.2f} mm at ({at.x:.3f}, {at.y:.3f}, {at.z:.3f}) m")
     return out
 
 
@@ -534,8 +526,9 @@ def stats() -> tuple[int, int]:
     return len(objs), sum(len(p.vertices) - 2 for o in objs for p in o.data.polygons)
 
 
-def render_preview(path: str, target: Sequence[float], distance: float, azimuth: float = 35.0,
-                   elevation: float = 12.0, res: tuple[int, int] = (900, 1400)) -> None:
+def render_preview(
+    path: str, target: Sequence[float], distance: float, azimuth: float = 35.0, elevation: float = 12.0, res: tuple[int, int] = (900, 1400)
+) -> None:
     """Quick EEVEE still, for eyeballing a build without opening the viewer."""
     scene = bpy.context.scene
     cam_data = bpy.data.cameras.new("PreviewCam")
@@ -557,10 +550,8 @@ def render_preview(path: str, target: Sequence[float], distance: float, azimuth:
         sun.rotation_euler = d.to_track_quat("Z", "Y").to_euler()
         made.append(sun)
     world = bpy.data.worlds.new("PreviewWorld")
-    try:
+    with contextlib.suppress(Exception):
         world.use_nodes = True
-    except Exception:
-        pass
     bg = next((n for n in world.node_tree.nodes if n.type == "BACKGROUND"), None)
     if bg:
         bg.inputs["Color"].default_value = (0.25, 0.27, 0.3, 1)
@@ -579,7 +570,7 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
 
     `build` constructs the scene and returns a one-line summary of its size.
     `previews` are (filename, target, distance, {kwargs for render_preview})."""
-    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--preview", help="directory for EEVEE preview stills")

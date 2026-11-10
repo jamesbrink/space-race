@@ -32,55 +32,91 @@ while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
-from srlib import (  # noqa: E402
-    IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, frame, group, lathe_obj,
-    interior, lettering, load_font, mark_shells, material, prof, run,
-)
 import redstone_mrlv  # noqa: E402
+from srlib import (  # noqa: E402
+    IN,
+    TAU,
+    MeshBuilder,
+    Surf,
+    arc_profile,
+    decal,
+    deg,
+    frame,
+    group,
+    interior,
+    lathe_obj,
+    lettering,
+    load_font,
+    mark_shells,
+    material,
+    prof,
+    run,
+)
 
 # ------------------------------------------------------------------ dimensions (in)
 
-SHIELD_R = 37.25          # 74.5 in maximum diameter
-SHIELD_SPHERE_R = 80.0    # heat shield radius of curvature
-SHIELD_EDGE = 2.5         # height of the shield's cylindrical edge
+SHIELD_R = 37.25  # 74.5 in maximum diameter
+SHIELD_SPHERE_R = 80.0  # heat shield radius of curvature
+SHIELD_EDGE = 2.5  # height of the shield's cylindrical edge
 CONE_HALF_ANGLE = math.radians(20.0)
-NECK_R = 16.0             # 32 in recovery compartment
-CONE_H = (SHIELD_R - NECK_R) / math.tan(CONE_HALF_ANGLE)   # 58.38
+NECK_R = 16.0  # 32 in recovery compartment
+CONE_H = (SHIELD_R - NECK_R) / math.tan(CONE_HALF_ANGLE)  # 58.38
 CYL_H = 20.0
 CAN_H = 24.0
 CAN_R0, CAN_R1 = 15.0, 12.5
 Z_CYL = CONE_H
 Z_CAN = CONE_H + CYL_H
 Z_CAN_TOP = Z_CAN + CAN_H
-SHIELD_CAP = SHIELD_SPHERE_R - math.sqrt(SHIELD_SPHERE_R**2 - SHIELD_R**2)   # 9.20
+SHIELD_CAP = SHIELD_SPHERE_R - math.sqrt(SHIELD_SPHERE_R**2 - SHIELD_R**2)  # 9.20
 Z_APEX = -(SHIELD_EDGE + SHIELD_CAP)
 Z_SPHERE_C = Z_APEX + SHIELD_SPHERE_R
 Z_RETRO_BOTTOM = -27.2
 Z_TRUSS_TOP = 196.0
 Z_MOTOR = 205.0
 Z_MOTOR_TOP = 268.0
-Z_BOOSTER_BASE = -redstone_mrlv.LENGTH   # the Redstone's fin trailing edges
-Z_TOP = 284.0             # tip of the aerodynamic spike: 311.2 in (7.90 m) above the retro nozzles
+Z_BOOSTER_BASE = -redstone_mrlv.LENGTH  # the Redstone's fin trailing edges
+Z_TOP = 284.0  # tip of the aerodynamic spike: 311.2 in (7.90 m) above the retro nozzles
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
 SHELLS = (
-    "HeatShield_HeatSink", "HeatShield_Fasteners", "Retropack_Housing",
-    "Afterbody_Shingles", "Afterbody_Fasteners", "Afterbody_Structure", "Afterbody_AttachRing", "Afterbody_Fittings",
-    "Afterbody_ThrusterThroats", "Afterbody_Glass", "Afterbody_WindowWells", "Afterbody_Lettering", "Afterbody_Flags",
-    "Hatch_Shingles", "Hatch_Latches", "Hatch_Structure", "CrewCabin_PressureVessel",
-    "Recovery_Shingles", "Recovery_Fasteners", "Recovery_Structure", "Recovery_ThrusterPorts", "Recovery_ThrusterThroats",
-    "Recovery_ParachuteCanisters", "Antenna_Housing", "Antenna_DielectricWindow", "Antenna_Fittings",
-    "Tower_EscapeMotor", "Tower_MotorBands",
+    "HeatShield_HeatSink",
+    "HeatShield_Fasteners",
+    "Retropack_Housing",
+    "Afterbody_Shingles",
+    "Afterbody_Fasteners",
+    "Afterbody_Structure",
+    "Afterbody_AttachRing",
+    "Afterbody_Fittings",
+    "Afterbody_ThrusterThroats",
+    "Afterbody_Glass",
+    "Afterbody_WindowWells",
+    "Afterbody_Lettering",
+    "Afterbody_Flags",
+    "Hatch_Shingles",
+    "Hatch_Latches",
+    "Hatch_Structure",
+    "CrewCabin_PressureVessel",
+    "Recovery_Shingles",
+    "Recovery_Fasteners",
+    "Recovery_Structure",
+    "Recovery_ThrusterPorts",
+    "Recovery_ThrusterThroats",
+    "Recovery_ParachuteCanisters",
+    "Antenna_Housing",
+    "Antenna_DielectricWindow",
+    "Antenna_Fittings",
+    "Tower_EscapeMotor",
+    "Tower_MotorBands",
 )
 
-PANELS = 24               # shingles around the cone
+PANELS = 24  # shingles around the cone
 PANEL_ARC = TAU / PANELS
-PANEL_PHASE = -1.5 * PANEL_ARC          # puts three panels symmetric about +X: the hatch
+PANEL_PHASE = -1.5 * PANEL_ARC  # puts three panels symmetric about +X: the hatch
 HATCH_PANELS = (0, 1, 2)
-ROWS = ((2.0, 20.0, 8), (20.0, 44.0, 6), (44.0, CONE_H - 0.4, 4))   # z0, z1, beads per shingle
+ROWS = ((2.0, 20.0, 8), (20.0, 44.0, 6), (44.0, CONE_H - 0.4, 4))  # z0, z1, beads per shingle
 HATCH_ROW = 1
-BEAD = 0.14               # corrugation height
-WALL = 1.2                # outer shingle to pressure vessel
+BEAD = 0.14  # corrugation height
+WALL = 1.2  # outer shingle to pressure vessel
 
 
 # ------------------------------------------------------------------------ surfaces
@@ -101,10 +137,10 @@ def flag_image() -> bpy.types.Image:
     px[..., 3] = 1.0
     red, white, blue = (0.70, 0.13, 0.20), (0.96, 0.96, 0.94), (0.20, 0.21, 0.42)
     stripe = h / 13
-    for i in range(13):   # image row 0 is the bottom; the bottom stripe is red
-        px[int(round(i * stripe)):int(round((i + 1) * stripe)), :, :3] = red if i % 2 == 0 else white
+    for i in range(13):  # image row 0 is the bottom; the bottom stripe is red
+        px[int(round(i * stripe)) : int(round((i + 1) * stripe)), :, :3] = red if i % 2 == 0 else white
     cw, ch = int(w * 0.4), int(round(7 * stripe))
-    px[h - ch:, :cw, :3] = blue
+    px[h - ch :, :cw, :3] = blue
     yy, xx = np.mgrid[0:h, 0:w]
     for row in range(9):
         count = 6 if row % 2 == 0 else 5
@@ -143,8 +179,7 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "flag": m("flag", (1, 1, 1), 0.0, 0.6, double_sided=True, image=flag_image()),
         "couch": m("couch-fibreglass", (0.55, 0.50, 0.38), 0.0, 0.7, double_sided=True),
         "panel": m("panel-grey", (0.20, 0.22, 0.23), 0.2, 0.6, double_sided=True),
-        "gauge": m("gauge-face", (0.02, 0.02, 0.02), 0.0, 0.25,
-                   emission=(0.55, 1.0, 0.65), emission_strength=0.35),
+        "gauge": m("gauge-face", (0.02, 0.02, 0.02), 0.0, 0.25, emission=(0.55, 1.0, 0.65), emission_strength=0.35),
         "lens": m("lens", (0.01, 0.01, 0.015), 0.0, 0.03),
         # what a cutaway shows
         "suit": m("suit-aluminized-nylon", (0.78, 0.79, 0.80), 1.0, 0.5),
@@ -160,16 +195,14 @@ def make_materials() -> dict[str, bpy.types.Material]:
 # ------------------------------------------------------------------------ shingles
 
 
-def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, z1: float,
-                count: int, phase: float, beads: int, which) -> None:
+def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, z1: float, count: int, phase: float, beads: int, which) -> None:
     """One ring of shingles. Each is its own patch: a flat fastened margin around a field of
     beads (the stiffening corrugations) that run along the meridian and fade out at each end."""
     arc = TAU / count
     margin = 0.07
-    gap = 0.045   # inches between neighbouring shingles
+    gap = 0.045  # inches between neighbouring shingles
     if beads:
-        ss = [0.0, margin * 0.6] + [margin + (1 - 2 * margin) * i / (beads * 6) for i in range(beads * 6 + 1)] \
-            + [1 - margin * 0.6, 1.0]
+        ss = [0.0, margin * 0.6] + [margin + (1 - 2 * margin) * i / (beads * 6) for i in range(beads * 6 + 1)] + [1 - margin * 0.6, 1.0]
     else:
         ss = [i / 6 for i in range(7)]
     rings = [(z0 + gap, 0.0), (z0 + 1.0, 0.0), (z0 + 2.0, 1.0), (z1 - 2.0, 1.0), (z1 - 1.0, 0.0), (z1 - gap, 0.0)]
@@ -190,7 +223,8 @@ def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, 
         rmid = surf.r((z0 + z1) / 2)
         panels.grid(
             lambda s, j: surf.p(theta(s, rings[j][0]), rings[j][0], height(s) * rings[j][1]),
-            ss, range(len(rings)),
+            ss,
+            range(len(rings)),
             uv=lambda s, j: ((t0 + arc * s) * rmid * IN, rings[j][0] * IN),
         )
         # fasteners: up the seam, and across both ends between the beads
@@ -212,16 +246,14 @@ def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, 
 def build_heat_shield(M) -> None:
     g = group("HeatShield")
     phi_max = math.asin(SHIELD_R / SHIELD_SPHERE_R)
-    cap = [(SHIELD_SPHERE_R * math.sin(phi_max * i / 40), Z_SPHERE_C - SHIELD_SPHERE_R * math.cos(phi_max * i / 40))
-           for i in range(41)]
+    cap = [(SHIELD_SPHERE_R * math.sin(phi_max * i / 40), Z_SPHERE_C - SHIELD_SPHERE_R * math.cos(phi_max * i / 40)) for i in range(41)]
     profile = cap + [(SHIELD_R, -0.25), (SHIELD_R - 0.25, 0.0), (SHIELD_R - 2.5, 0.0), (SHIELD_R - 3.0, -0.8), (0.0, -0.8)]
     lathe_obj("HeatShield_HeatSink", prof(profile), M["beryllium"], g, segs=160, sharp_angle=30)
     # attachment ring fasteners around the edge
     mb = MeshBuilder()
     for i in range(72):
         t = TAU * i / 72
-        mb.disc(Vector((SHIELD_R * math.cos(t), SHIELD_R * math.sin(t), -1.3)) * IN,
-                (math.cos(t), math.sin(t), 0), 0.28 * IN, 0.08 * IN)
+        mb.disc(Vector((SHIELD_R * math.cos(t), SHIELD_R * math.sin(t), -1.3)) * IN, (math.cos(t), math.sin(t), 0), 0.28 * IN, 0.08 * IN)
     mb.build("HeatShield_Fasteners", M["bolt"], g)
 
 
@@ -231,7 +263,7 @@ def build_retropack(M) -> None:
     lathe_obj("Retropack_Housing", prof(housing), M["aluminium"], g, segs=96, sharp_angle=35)
 
     motors, nozzles = MeshBuilder(), MeshBuilder()
-    for i in range(3):   # three solid retrograde motors, ripple-fired 5 s apart
+    for i in range(3):  # three solid retrograde motors, ripple-fired 5 s apart
         t = TAU * i / 3
         c = Vector((7.0 * math.cos(t), 7.0 * math.sin(t), 0.0))
         m = Matrix.Translation((c + Vector((0, 0, -19.0))) * IN)
@@ -239,7 +271,7 @@ def build_retropack(M) -> None:
         bell = [(1.1, -23.4), (1.9, -24.4), (2.7, -25.6), (3.2, -26.5), (3.45, Z_RETRO_BOTTOM)]
         nozzles.lathe(prof(bell), 32, matrix=Matrix.Translation(c * IN))
         nozzles.lathe(prof([(0.0, -23.6), (1.1, -23.4)]), 32, matrix=Matrix.Translation(c * IN))
-    for i in range(3):   # three small posigrade motors push the capsule off the booster
+    for i in range(3):  # three small posigrade motors push the capsule off the booster
         t = TAU * (i + 0.5) / 3
         c = Vector((9.6 * math.cos(t), 9.6 * math.sin(t), 0.0))
         m = Matrix.Translation(c * IN)
@@ -250,7 +282,7 @@ def build_retropack(M) -> None:
 
     straps, clips = MeshBuilder(), MeshBuilder()
     rs = SHIELD_SPHERE_R + 0.22
-    for i in range(3):   # three straps hold the pack to the shield until explosive bolts release it
+    for i in range(3):  # three straps hold the pack to the shield until explosive bolts release it
         t = TAU * (i + 0.5) / 3
         rad, side = Vector((math.cos(t), math.sin(t), 0)), (-math.sin(t), math.cos(t), 0)
         pts = [(13.15, -17.5), (13.15, -11.6)]
@@ -258,7 +290,9 @@ def build_retropack(M) -> None:
         pts += [(SHIELD_R + 0.3, -1.2), (SHIELD_R + 0.3, 1.2)]
         path = [(rad * r + Vector((0, 0, z))) * IN for r, z in pts]
         straps.ribbon(path, side, 2.2 * IN)
-        clips.box((1.4 * IN, 3.0 * IN, 2.4 * IN), frame((rad * (SHIELD_R + 0.7) + Vector((0, 0, 0.6))) * IN, rad) @ Matrix.Rotation(math.pi / 2, 4, "Y"))
+        clips.box(
+            (1.4 * IN, 3.0 * IN, 2.4 * IN), frame((rad * (SHIELD_R + 0.7) + Vector((0, 0, 0.6))) * IN, rad) @ Matrix.Rotation(math.pi / 2, 4, "Y")
+        )
         # umbilical conduit beside each strap, pack to shield edge
         o = Vector(side) * 1.9
         straps.tube((rad * 13.2 + o + Vector((0, 0, -14))) * IN, (rad * 14.5 + o + Vector((0, 0, -10.6))) * IN, 0.3 * IN, 8)
@@ -281,12 +315,12 @@ def build_afterbody(M, font) -> None:
     shingle_row(hp, MeshBuilder(), CONE, hz0, hz1, PANELS, PANEL_PHASE, ROWS[HATCH_ROW][2], HATCH_PANELS)
     # No. 7 carried the mechanical latch hatch (69 lb), with release handles inside and out.
     # The 70-bolt hatch was the original design and, with a detonating fuse, the later explosive one.
-    inset = 0.9   # inches in from the hatch edge
+    inset = 0.9  # inches in from the hatch edge
     ta, tb = t_h0 + inset / CONE.r(hz0), t_h1 - inset / CONE.r(hz0)
     za, zb = hz0 + inset, hz1 - inset
     for t, z in ((ta, za), (tb, za), (ta, zb), (tb, zb), ((ta + tb) / 2, za), ((ta + tb) / 2, zb), (ta, (za + zb) / 2), (tb, (za + zb) / 2)):
-        hb.box((1.5 * IN, 0.9 * IN, 0.5 * IN), CONE.frame(t, z, 0.1))                     # latch housings
-    hb.box((1.1 * IN, 6.5 * IN, 1.0 * IN), CONE.frame(t_h0 + 0.82 * (t_h1 - t_h0), (za + zb) / 2 - 3.0, 0.25))   # external release handle
+        hb.box((1.5 * IN, 0.9 * IN, 0.5 * IN), CONE.frame(t, z, 0.1))  # latch housings
+    hb.box((1.1 * IN, 6.5 * IN, 1.0 * IN), CONE.frame(t_h0 + 0.82 * (t_h1 - t_h0), (za + zb) / 2 - 3.0, 0.25))  # external release handle
     panels.build("Afterbody_Shingles", M["shingle"], g, sharp_angle=None)
     bolts.build("Afterbody_Fasteners", M["bolt"], g)
     hp.build("Hatch_Shingles", M["shingle"], hatch, sharp_angle=None)
@@ -294,20 +328,19 @@ def build_afterbody(M, font) -> None:
 
     # structure under the shingles, with the hatch opening left out
     under = MeshBuilder()
-    r = lambda z: CONE.r(z) - 0.1   # noqa: E731
+    r = lambda z: CONE.r(z) - 0.1  # noqa: E731
     under.lathe(prof([(r(0), 0.0), (r(hz0), hz0)]), 144)
     under.lathe(prof([(r(hz0), hz0), (r(hz1), hz1)]), 126, arc=(t_h1, t_h0 + TAU))
     under.lathe(prof([(r(hz1), hz1), (r(CONE_H), CONE_H)]), 144)
     under.build("Afterbody_Structure", M["underlay"], g, sharp_angle=None)
     hu = MeshBuilder()
     hu.lathe(prof([(r(hz0), hz0), (r(hz1), hz1)]), 18, arc=(t_h0, t_h1))
-    rv = lambda z: VESSEL.r(z)   # noqa: E731
+    rv = lambda z: VESSEL.r(z)  # noqa: E731
     hu.lathe(prof([(rv(hz0), hz0), (rv(hz1), hz1)]), 18, arc=(t_h0, t_h1), flip=True)
     hu.build("Hatch_Structure", M["titanium"], hatch, sharp_angle=None)
 
     # shield attach ring: the smooth band below the first row of shingles
-    lathe_obj("Afterbody_AttachRing", prof([(SHIELD_R, 0.02), (SHIELD_R + 0.05, 0.3), (CONE.r(2.0) + 0.12, 2.0)]),
-              M["steel"], g, segs=160)
+    lathe_obj("Afterbody_AttachRing", prof([(SHIELD_R, 0.02), (SHIELD_R + 0.05, 0.3), (CONE.r(2.0) + 0.12, 2.0)]), M["steel"], g, segs=160)
 
     detail, dark, glass, void = MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder()
     # two 10 in portholes: No. 7 predates the trapezoidal overhead window
@@ -325,7 +358,7 @@ def build_afterbody(M, font) -> None:
     detail.box((6.0 * IN, 10.0 * IN, 0.5 * IN), f)
     detail.lathe(prof([(2.4, 0.0), (2.4, 3.6), (2.0, 4.0), (1.9, 3.2)]), 32, matrix=f)
     void.lathe(prof([(1.9, 3.2), (0.0, 3.2)]), 32, matrix=f)
-    glass.lathe(prof([(1.93, 3.75), (0.0, 3.85)]), 32, matrix=f)   # the objective, slightly domed
+    glass.lathe(prof([(1.93, 3.75), (0.0, 3.85)]), 32, matrix=f)  # the objective, slightly domed
     # umbilical receptacle
     f = CONE.frame(deg(-90), 8.0)
     detail.lathe(prof([(2.6, -0.3), (2.6, 0.45), (2.1, 0.45), (2.0, 0.25), (0.0, 0.25)]), 32, matrix=f)
@@ -360,19 +393,18 @@ def build_crew_cabin(M) -> None:
     hz0, hz1, _ = ROWS[HATCH_ROW]
     rv = VESSEL.r
     v = MeshBuilder()
-    v.lathe(prof([(0.0, 0.5), (rv(0.5), 0.5), (rv(hz0), hz0)]), 144)             # aft pressure bulkhead + wall
+    v.lathe(prof([(0.0, 0.5), (rv(0.5), 0.5), (rv(hz0), hz0)]), 144)  # aft pressure bulkhead + wall
     v.lathe(prof([(rv(hz0), hz0), (rv(hz1), hz1)]), 126, arc=(t_h1, t_h0 + TAU))
-    v.lathe(prof([(rv(hz1), hz1), (rv(CONE_H - 0.3), CONE_H - 0.3), (0.0, CONE_H - 0.3)]), 144)   # small bulkhead
+    v.lathe(prof([(rv(hz1), hz1), (rv(CONE_H - 0.3), CONE_H - 0.3), (0.0, CONE_H - 0.3)]), 144)  # small bulkhead
     # hatch sill: closes the gap between pressure vessel and outer structure
     for t in (t_h0, t_h1):
         v.grid(lambda u, z: CONE.p(t, z, -0.1) * (1 - u) + VESSEL.p(t, z) * u, (0.0, 1.0), (hz0, hz1))
     for z in (hz0, hz1):
-        v.grid(lambda t, u: CONE.p(t, z, -0.1) * (1 - u) + VESSEL.p(t, z) * u,
-               [t_h0 + (t_h1 - t_h0) * i / 18 for i in range(19)], (0.0, 1.0))
+        v.grid(lambda t, u: CONE.p(t, z, -0.1) * (1 - u) + VESSEL.p(t, z) * u, [t_h0 + (t_h1 - t_h0) * i / 18 for i in range(19)], (0.0, 1.0))
     v.build("CrewCabin_PressureVessel", M["titanium"], g, sharp_angle=30)
 
     ribs = MeshBuilder()
-    for i in range(12):   # aft bulkhead stiffeners, seen when the shield is off
+    for i in range(12):  # aft bulkhead stiffeners, seen when the shield is off
         t = TAU * i / 12
         ribs.box((26 * IN, 0.8 * IN, 0.9 * IN), Matrix.Rotation(t, 4, "Z") @ Matrix.Translation((21 * IN, 0, 0.1 * IN)))
     ribs.lathe(prof([(7.5, 0.5), (7.5, -0.4), (6.5, -0.4), (6.5, 0.5)]), 48)
@@ -381,10 +413,12 @@ def build_crew_cabin(M) -> None:
     # form-fitted couch: the pilot lies on his back, head toward -Y, hatch at his right hand
     couch = MeshBuilder()
     width = 21.0
-    for (y0, z0), (y1, z1), thick in (((-27, 9.5), (-17, 5.5), 2.5),   # head rest
-                                      ((-17, 5.5), (5, 5.0), 3.0),      # back
-                                      ((5, 5.0), (15, 20.5), 2.5),      # thighs
-                                      ((15, 20.5), (27, 18.0), 2.0)):   # calves
+    for (y0, z0), (y1, z1), thick in (
+        ((-27, 9.5), (-17, 5.5), 2.5),  # head rest
+        ((-17, 5.5), (5, 5.0), 3.0),  # back
+        ((5, 5.0), (15, 20.5), 2.5),  # thighs
+        ((15, 20.5), (27, 18.0), 2.0),
+    ):  # calves
         a, b = Vector((0, y0, z0)), Vector((0, y1, z1))
         d = b - a
         rot = Matrix.Rotation(math.atan2(d.z, d.y), 4, "X")
@@ -398,7 +432,7 @@ def build_crew_cabin(M) -> None:
     panel.box((30 * IN, 19 * IN, 1.5 * IN), pm)
     panel.box((8 * IN, 14 * IN, 1.5 * IN), Matrix.Translation((-19 * IN, -3 * IN, (pz - 2) * IN)) @ Matrix.Rotation(deg(-25), 4, "Y"))
     panel.box((8 * IN, 14 * IN, 1.5 * IN), Matrix.Translation((19 * IN, -3 * IN, (pz - 2) * IN)) @ Matrix.Rotation(deg(25), 4, "Y"))
-    panel.tube((0, -3 * IN, pz * IN), (0, 14 * IN, (pz - 9) * IN), 2.6 * IN, 20)   # periscope tube
+    panel.tube((0, -3 * IN, pz * IN), (0, 14 * IN, (pz - 9) * IN), 2.6 * IN, 20)  # periscope tube
     down = (0, 0, -1)
     gauges.disc((0, -3 * IN, (pz - 0.76) * IN), down, 4.2 * IN, 0.1 * IN, 40)
     for gx in (-12.0, -8.0, 8.0, 12.0):
@@ -414,32 +448,45 @@ def build_cabin_contents(M, g) -> None:
     """What a cutaway of the cabin shows. The pilot's pose follows the couch; his size is Shepard's.
     The equipment is representative: the right kinds of thing in roughly the right places, not
     a survey of spacecraft No. 7's installation."""
-    P = lambda x, y, z: Vector((x, y, z)) * IN   # noqa: E731
-    R = lambda a, b=None: (a * IN, (b if b is not None else a) * IN)   # noqa: E731
+    P = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
+    R = lambda a, b=None: (a * IN, (b if b is not None else a) * IN)  # noqa: E731
     suit, helmet, gear, bottles, bag = (MeshBuilder() for _ in range(5))
-    along = (0, 0, 1)   # for limbs lying fore and aft: lateral radius first, then vertical
+    along = (0, 0, 1)  # for limbs lying fore and aft: lateral radius first, then vertical
 
     # torso and head, on his back, head toward -Y
     # (he is pressed a little way into the couch, as the couch was moulded to him)
-    suit.loft([P(0, -16.5, 10.6), P(0, -11, 10.9), P(0, -4, 10.4), P(0, 2.5, 9.8)], [R(6.6, 4.3), R(7.6, 4.8), R(7.0, 4.6), R(6.6, 4.4)], 28, ref=along)
+    suit.loft(
+        [P(0, -16.5, 10.6), P(0, -11, 10.9), P(0, -4, 10.4), P(0, 2.5, 9.8)], [R(6.6, 4.3), R(7.6, 4.8), R(7.0, 4.6), R(6.6, 4.4)], 28, ref=along
+    )
     helmet.lathe(prof(arc_profile(0, 0, 5.7, -90, 90, 14)), 32, matrix=Matrix.Translation(P(0, -22.3, 12.6)))
-    gear.lathe(prof([(4.4, 0.0), (4.4, 1.0), (3.6, 1.0)]), 28, matrix=frame(P(0, -17.6, 11.5), (0, -1, 0.15)))   # neck ring
+    gear.lathe(prof([(4.4, 0.0), (4.4, 1.0), (3.6, 1.0)]), 28, matrix=frame(P(0, -17.6, 11.5), (0, -1, 0.15)))  # neck ring
     for sx in (-1, 1):
         # thighs up the couch, shins along the top of it
-        suit.loft([P(sx * 5.8, 2.0, 9.4), P(sx * 6.0, 8.5, 15.4), P(sx * 6.0, 14.6, 23.6), P(sx * 6.0, 21.0, 22.2), P(sx * 6.0, 26.5, 20.8)],
-                  [R(3.4), R(3.2), R(2.9), R(2.5), R(2.2)], 18, ref=along)
-        gear.loft([P(sx * 6.0, 25.2, 21.2), P(sx * 6.0, 28.2, 22.2), P(sx * 6.0, 28.8, 25.8)], [R(3.0), R(2.9), R(2.1)], 14, ref=along,
-                  caps=(False, True))   # boots, pulled on over the shins
+        suit.loft(
+            [P(sx * 5.8, 2.0, 9.4), P(sx * 6.0, 8.5, 15.4), P(sx * 6.0, 14.6, 23.6), P(sx * 6.0, 21.0, 22.2), P(sx * 6.0, 26.5, 20.8)],
+            [R(3.4), R(3.2), R(2.9), R(2.5), R(2.2)],
+            18,
+            ref=along,
+        )
+        gear.loft(
+            [P(sx * 6.0, 25.2, 21.2), P(sx * 6.0, 28.2, 22.2), P(sx * 6.0, 28.8, 25.8)], [R(3.0), R(2.9), R(2.1)], 14, ref=along, caps=(False, True)
+        )  # boots, pulled on over the shins
         # arms forward to the controls: attitude stick under the right hand, abort handle under the left
         suit.loft([P(sx * 8.6, -13.0, 11.8), P(sx * 11.4, -5.0, 11.2), P(sx * 10.6, 2.5, 15.6)], [R(2.4), R(2.1), R(1.8)], 16, ref=along)
-        gear.loft([P(sx * 10.55, 3.4, 16.2), P(sx * 10.4, 5.4, 17.6)], [R(2.0, 1.6), R(1.6, 1.3)], 12, ref=along)                      # gloves
+        gear.loft([P(sx * 10.55, 3.4, 16.2), P(sx * 10.4, 5.4, 17.6)], [R(2.0, 1.6), R(1.6, 1.3)], 12, ref=along)  # gloves
         gear.tube(P(sx * 10.4, 5.0, 11.2), P(sx * 10.4, 5.0, 16.4), 0.55 * IN, 10)
         gear.lathe(prof(arc_profile(0, 0, 1.0, -90, 90, 6)), 12, matrix=Matrix.Translation(P(sx * 10.4, 5.0, 16.9)))
     # environmental control, electrics and recording: boxes and bottles along the cabin floor
-    for x, y, z, sx_, sy_, sz_ in ((-17.0, -6.0, 3.2, 9, 12, 5), (17.0, -6.0, 3.2, 9, 12, 5), (0.0, 19.5, 4.2, 14, 9, 7),
-                                   (-19.0, 9.0, 4.0, 7, 9, 6), (19.5, 9.5, 5.0, 6, 8, 8), (0.0, -27.5, 4.6, 12, 5, 6)):
+    for x, y, z, sx_, sy_, sz_ in (
+        (-17.0, -6.0, 3.2, 9, 12, 5),
+        (17.0, -6.0, 3.2, 9, 12, 5),
+        (0.0, 19.5, 4.2, 14, 9, 7),
+        (-19.0, 9.0, 4.0, 7, 9, 6),
+        (19.5, 9.5, 5.0, 6, 8, 8),
+        (0.0, -27.5, 4.6, 12, 5, 6),
+    ):
         gear.box((sx_ * IN, sy_ * IN, sz_ * IN), Matrix.Translation(P(x, y, z + sz_ / 2)))
-    for x, y in ((-10.5, 21.0), (10.5, 21.0)):   # oxygen: two spherical bottles, primary and reserve
+    for x, y in ((-10.5, 21.0), (10.5, 21.0)):  # oxygen: two spherical bottles, primary and reserve
         bottles.lathe(prof(arc_profile(0, 0, 3.7, -90, 90, 12)), 24, matrix=Matrix.Translation(P(x, y, 6.2)))
     # the landing bag, folded flat between the heat shield and the bulkhead
     bag.lathe(prof([(21.5, -0.55), (22.0, -0.7), (33.0, -0.7), (33.5, -0.55), (33.0, -0.42), (22.0, -0.42), (21.5, -0.55)]), 96)
@@ -461,22 +508,24 @@ def build_recovery_compartment(M) -> None:
     rr = NECK_R - 0.1
     s.lathe(prof([(0.0, Z_CYL + 0.2), (rr, Z_CYL + 0.2), (rr, Z_CAN), (0.0, Z_CAN)]), 96)
     s.build("Recovery_Structure", M["underlay"], g, sharp_angle=30)
-    chutes = MeshBuilder()   # main and reserve ring-sail canisters, seen with the antenna canister off
+    chutes = MeshBuilder()  # main and reserve ring-sail canisters, seen with the antenna canister off
     for y in (-6.6, 6.6):
-        chutes.lathe(prof([(6.2, Z_CAN), (6.2, Z_CAN + 0.5), (5.6, Z_CAN + 0.8), (0.0, Z_CAN + 0.8)]), 40,
-                     matrix=Matrix.Translation((0, y * IN, 0)))
+        chutes.lathe(prof([(6.2, Z_CAN), (6.2, Z_CAN + 0.5), (5.6, Z_CAN + 0.8), (0.0, Z_CAN + 0.8)]), 40, matrix=Matrix.Translation((0, y * IN, 0)))
     chutes.build("Recovery_ParachuteCanisters", M["aluminium"], g)
-    if interior():   # the packed main and reserve parachutes under those lids
+    if interior():  # the packed main and reserve parachutes under those lids
         packs = MeshBuilder()
         for y in (-6.6, 6.6):
-            packs.lathe(prof([(0.0, Z_CYL + 1.4), (5.6, Z_CYL + 1.4), (5.9, Z_CYL + 3.0), (5.9, Z_CAN - 2.2), (5.2, Z_CAN - 0.6), (0.0, Z_CAN - 0.6)]), 32,
-                        matrix=Matrix.Translation((0, y * IN, 0)))
+            packs.lathe(
+                prof([(0.0, Z_CYL + 1.4), (5.6, Z_CYL + 1.4), (5.9, Z_CYL + 3.0), (5.9, Z_CAN - 2.2), (5.2, Z_CAN - 0.6), (0.0, Z_CAN - 0.6)]),
+                32,
+                matrix=Matrix.Translation((0, y * IN, 0)),
+            )
         packs.build("Recovery_ParachutePacks", M["fabric"], g)
 
     fit, dark = MeshBuilder(), MeshBuilder()
-    for q in range(4):   # pitch and yaw thrusters: a 24 lbf and a 1 lbf nozzle at each quadrant
+    for q in range(4):  # pitch and yaw thrusters: a 24 lbf and a 1 lbf nozzle at each quadrant
         t = deg(90 * q + 45)
-        fit.box((5.0 * IN, 3.2 * IN, 0.9 * IN), CYL.frame(t, Z_CAN - 4.0, -0.2))   # sunk through the skin, proud by 0.25 in
+        fit.box((5.0 * IN, 3.2 * IN, 0.9 * IN), CYL.frame(t, Z_CAN - 4.0, -0.2))  # sunk through the skin, proud by 0.25 in
         for dz, rad in ((0.75, 0.8), (-0.85, 0.35)):
             f = CYL.frame(t, Z_CAN - 4.0 + dz, 0.25)
             fit.lathe(prof([(rad + 0.2, 0.0), (rad + 0.2, 0.25), (rad, 0.25)]), 16, matrix=f)
@@ -491,7 +540,7 @@ def can_r(z: float) -> float:
 
 def build_antenna_canister(M) -> None:
     g = group("AntennaCanister")
-    w0, w1 = Z_CAN + 7.0, Z_CAN + 15.0   # the dielectric window is 8 in (SEDR 104, 2-9)
+    w0, w1 = Z_CAN + 7.0, Z_CAN + 15.0  # the dielectric window is 8 in (SEDR 104, 2-9)
     lower = [(0.0, Z_CAN + 0.05), (CAN_R0, Z_CAN + 0.05), (can_r(w0), w0)]
     upper = [(can_r(w1), w1), (CAN_R1, Z_CAN_TOP - 0.4), (CAN_R1 - 0.4, Z_CAN_TOP), (0.0, Z_CAN_TOP)]
     mb = MeshBuilder()
@@ -499,29 +548,31 @@ def build_antenna_canister(M) -> None:
     mb.lathe(prof(upper), 96)
     fit, lens = MeshBuilder(), MeshBuilder()
     can = Surf(CAN_R0, Z_CAN, math.atan((CAN_R0 - CAN_R1) / CAN_H))
-    for i in range(4):   # supports bridging the bicone antenna's dielectric window
+    for i in range(4):  # supports bridging the bicone antenna's dielectric window
         t = deg(45 + 90 * i)
         fit.box((0.9 * IN, 0.25 * IN, (w1 - w0 + 1.2) * IN), can.frame(t, (w0 + w1) / 2, 0.05) @ Matrix.Rotation(math.pi / 2, 4, "Y"))
     for z in (w0 - 0.5, w1 + 0.5):
         for i in range(36):
             t = TAU * i / 36
             fit.disc(can.p(t, z), can.n(t), 0.17 * IN, 0.06 * IN)
-    for t in (deg(0), deg(90)):   # roll and pitch infrared horizon scanners
+    for t in (deg(0), deg(90)):  # roll and pitch infrared horizon scanners
         f = can.frame(t, Z_CAN + 18.5)
         fit.lathe(prof([(2.0, -0.4), (2.0, 1.3), (1.5, 1.6), (1.4, 1.3)]), 28, matrix=f)
         lens.lathe(prof([(1.4, 1.3), (0.0, 1.45)]), 28, matrix=f)
     # top: drogue mortar, and the destabilising flap that keeps the capsule from entering nose-first
-    fit.lathe(prof([(3.2, Z_CAN_TOP), (3.2, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 0.2), (0.0, Z_CAN_TOP + 0.2)]), 32,
-              matrix=Matrix.Translation((0, -5.5 * IN, 0)))
-    fit.box((11.0 * IN, 7.5 * IN, 0.25 * IN),
-            Matrix.Translation((0, 5.0 * IN, (Z_CAN_TOP + 0.55) * IN)) @ Matrix.Rotation(deg(5), 4, "X"))
+    fit.lathe(
+        prof([(3.2, Z_CAN_TOP), (3.2, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 0.2), (0.0, Z_CAN_TOP + 0.2)]),
+        32,
+        matrix=Matrix.Translation((0, -5.5 * IN, 0)),
+    )
+    fit.box((11.0 * IN, 7.5 * IN, 0.25 * IN), Matrix.Translation((0, 5.0 * IN, (Z_CAN_TOP + 0.55) * IN)) @ Matrix.Rotation(deg(5), 4, "X"))
     for x in (-4.0, 4.0):
         fit.tube((x * IN - 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), (x * IN + 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), 0.3 * IN, 10)
     mb.build("Antenna_Housing", M["beryllium_shingle"], g, sharp_angle=30)
     lathe_obj("Antenna_DielectricWindow", prof([(can_r(w0), w0), (can_r(w1), w1)]), M["dielectric"], g)
     fit.build("Antenna_Fittings", M["steel"], g)
     lens.build("Antenna_ScannerLenses", M["lens"], g)
-    if interior():   # the bicone itself: two cones point to point behind the dielectric window
+    if interior():  # the bicone itself: two cones point to point behind the dielectric window
         wm = (w0 + w1) / 2
         cone = MeshBuilder()
         cone.lathe(prof([(can_r(w0) - 0.9, w0 - 0.4), (1.1, wm - 0.25), (1.1, wm + 0.25), (can_r(w1) - 0.9, w1 + 0.4)]), 64)
@@ -531,8 +582,14 @@ def build_antenna_canister(M) -> None:
 
 def build_escape_tower(M) -> None:
     g = group("EscapeTower")
-    ring = [(NECK_R + 0.1, Z_CAN - 1.0), (NECK_R + 0.75, Z_CAN - 0.6), (NECK_R + 0.75, Z_CAN + 1.4),
-            (NECK_R - 0.2, Z_CAN + 1.8), (CAN_R0 + 0.15, Z_CAN + 1.8), (CAN_R0 + 0.15, Z_CAN + 0.1)]
+    ring = [
+        (NECK_R + 0.1, Z_CAN - 1.0),
+        (NECK_R + 0.75, Z_CAN - 0.6),
+        (NECK_R + 0.75, Z_CAN + 1.4),
+        (NECK_R - 0.2, Z_CAN + 1.8),
+        (CAN_R0 + 0.15, Z_CAN + 1.8),
+        (CAN_R0 + 0.15, Z_CAN + 0.1),
+    ]
     lathe_obj("Tower_ClampRing", prof(ring), M["steel"], g, sharp_angle=30)
 
     r_base, r_top = NECK_R + 0.2, 6.5
@@ -543,7 +600,7 @@ def build_escape_tower(M) -> None:
         return Vector((r * math.cos(legs[i % 3]), r * math.sin(legs[i % 3]), z)) * IN
 
     truss, steel = MeshBuilder(), MeshBuilder()
-    levels = [Z_CAN_TOP + 4.0, 136.0, 166.0, Z_TRUSS_TOP]   # no cross-members until clear of the canister
+    levels = [Z_CAN_TOP + 4.0, 136.0, 166.0, Z_TRUSS_TOP]  # no cross-members until clear of the canister
     for i in range(3):
         truss.tube(node(i, Z_CAN + 1.0), node(i, Z_TRUSS_TOP), 0.8 * IN, 14)
         for z in levels:
@@ -553,27 +610,41 @@ def build_escape_tower(M) -> None:
             j0, j1 = (i, i + 1) if b % 2 == 0 else (i + 1, i)
             truss.tube(node(j0, z0), node(j1, z1), 0.45 * IN, 10)
         # explosive-bolt housing where each leg meets the clamp ring
-        steel.box((3.2 * IN, 2.4 * IN, 3.0 * IN), frame(node(i, Z_CAN + 1.2), (math.cos(legs[i]), math.sin(legs[i]), 0)) @ Matrix.Rotation(math.pi / 2, 4, "Y"))
+        steel.box(
+            (3.2 * IN, 2.4 * IN, 3.0 * IN),
+            frame(node(i, Z_CAN + 1.2), (math.cos(legs[i]), math.sin(legs[i]), 0)) @ Matrix.Rotation(math.pi / 2, 4, "Y"),
+        )
     truss.lathe(prof([(0.0, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP + 0.6), (5.0, Z_MOTOR), (0.0, Z_MOTOR)]), 48)
     truss.build("Tower_Truss", M["tower"], g, sharp_angle=35)
     steel.build("Tower_BoltHousings", M["steel"], g, smooth=False)
 
     # escape motor: 52,000 lbf for one second through three nozzles canted 19 degrees off axis
-    case = [(0.0, Z_MOTOR), (7.5, Z_MOTOR), (7.5, Z_MOTOR_TOP), (6.6, Z_MOTOR_TOP + 3.0), (4.4, Z_MOTOR_TOP + 6.5),
-            (1.6, Z_MOTOR_TOP + 9.0), (0.7, Z_MOTOR_TOP + 9.6), (0.7, Z_TOP - 0.4), (0.0, Z_TOP)]
+    case = [
+        (0.0, Z_MOTOR),
+        (7.5, Z_MOTOR),
+        (7.5, Z_MOTOR_TOP),
+        (6.6, Z_MOTOR_TOP + 3.0),
+        (4.4, Z_MOTOR_TOP + 6.5),
+        (1.6, Z_MOTOR_TOP + 9.0),
+        (0.7, Z_MOTOR_TOP + 9.6),
+        (0.7, Z_TOP - 0.4),
+        (0.0, Z_TOP),
+    ]
     lathe_obj("Tower_EscapeMotor", prof(case), M["tower"], g, segs=64, sharp_angle=30)
     bands = MeshBuilder()
     for z in (Z_MOTOR + 1.0, Z_MOTOR + 30.0, Z_MOTOR_TOP - 1.0):
         bands.lathe(prof([(7.5, z - 0.6), (7.7, z - 0.4), (7.7, z + 0.4), (7.5, z + 0.6)]), 64)
     bands.build("Tower_MotorBands", M["steel"], g)
-    if interior():   # the solid-propellant grain that the case is wrapped round
+    if interior():  # the solid-propellant grain that the case is wrapped round
         grain = MeshBuilder()
-        grain.lathe(prof([(0.0, Z_MOTOR + 2.0), (6.9, Z_MOTOR + 2.0), (6.9, Z_MOTOR_TOP - 1.0), (5.0, Z_MOTOR_TOP + 2.0), (0.0, Z_MOTOR_TOP + 2.0)]), 40)
+        grain.lathe(
+            prof([(0.0, Z_MOTOR + 2.0), (6.9, Z_MOTOR + 2.0), (6.9, Z_MOTOR_TOP - 1.0), (5.0, Z_MOTOR_TOP + 2.0), (0.0, Z_MOTOR_TOP + 2.0)]), 40
+        )
         grain.build("Tower_PropellantGrain", M["propellant"], g)
     noz = MeshBuilder()
     cant = deg(19)
     for i in range(3):
-        t = deg(90 + 120 * i)   # between the legs
+        t = deg(90 + 120 * i)  # between the legs
         rad = Vector((math.cos(t), math.sin(t), 0))
         origin = (rad * 3.6 + Vector((0, 0, Z_MOTOR + 1.0))) * IN
         axis = rad * math.sin(cant) + Vector((0, 0, -math.cos(cant)))
@@ -598,12 +669,15 @@ def build() -> str:
     build_escape_tower(M)
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
     mark_shells(SHELLS + redstone_mrlv.SHELLS)
-    return (f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, "
-            f"spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m")
+    return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"
 
 
 if __name__ == "__main__":
-    run("mr-3 vehicle", build, [
-        ("vehicle-stack.png", (0, 0, (Z_TOP + Z_BOOSTER_BASE) / 2 * IN), 70, dict(azimuth=20, res=(700, 1600))),
-        ("vehicle-capsule.png", (0, 0, 1.2), 12, dict(azimuth=25, elevation=8, res=(1200, 1200))),
-    ])
+    run(
+        "mr-3 vehicle",
+        build,
+        [
+            ("vehicle-stack.png", (0, 0, (Z_TOP + Z_BOOSTER_BASE) / 2 * IN), 70, dict(azimuth=20, res=(700, 1600))),
+            ("vehicle-capsule.png", (0, 0, 1.2), 12, dict(azimuth=25, elevation=8, res=(1200, 1200))),
+        ],
+    )

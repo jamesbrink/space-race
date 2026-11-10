@@ -37,7 +37,11 @@ export class Ui {
   private pointer: [number, number] = [0, 0];
   private model: ModelDef;
 
-  constructor(private readonly root: HTMLElement, private readonly flight: Flight, private readonly on: UiHandlers) {
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly flight: Flight,
+    private readonly on: UiHandlers,
+  ) {
     const f = flight;
     this.model = f.models[0]!;
     const date = new Date(f.launch).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -61,17 +65,30 @@ export class Ui {
         </nav>
         <section data-pane="Parts"><ol class="parts"></ol></section>
         <section data-pane="Specs" hidden>
-          ${groups.map((g) => `
+          ${groups
+            .map(
+              (g) => `
             <h2>${esc(g)}</h2>
-            <table>${f.specs.filter((s) => s.group === g).map((s) => `
-              <tr><th>${dot(s.confidence)}${esc(s.label)}</th><td>${si(s.value, s.unit)}${s.note ? `<small>${esc(s.note)}</small>` : ''}</td></tr>`).join('')}
-            </table>`).join('')}
+            <table>${f.specs
+              .filter((s) => s.group === g)
+              .map(
+                (s) => `
+              <tr><th>${dot(s.confidence)}${esc(s.label)}</th><td>${si(s.value, s.unit)}${s.note ? `<small>${esc(s.note)}</small>` : ''}</td></tr>`,
+              )
+              .join('')}
+            </table>`,
+            )
+            .join('')}
           ${legend}
         </section>
         <section data-pane="Motors" hidden>
-          <table>${f.motors.map((m) => `
+          <table>${f.motors
+            .map(
+              (m) => `
             <tr><th>${dot(m.confidence)}${m.count} × ${esc(m.name)}<small>${esc(m.propellant)}${m.note ? ` · ${esc(m.note)}` : ''}</small></th>
-            <td>${si(m.thrustN, 'N')}${m.burnS ? `<small>${m.burnS} s burn</small>` : '<small>pulsed</small>'}</td></tr>`).join('')}
+            <td>${si(m.thrustN, 'N')}${m.burnS ? `<small>${m.burnS} s burn</small>` : '<small>pulsed</small>'}</td></tr>`,
+            )
+            .join('')}
           </table>
           ${legend}
         </section>
@@ -100,7 +117,8 @@ export class Ui {
         const same = b.getAttribute('aria-selected') === 'true';
         panel.classList.toggle('open', !(same && panel.classList.contains('open')));
         this.tab(b.dataset.tab!);
-      }));
+      }),
+    );
     document.querySelector('#stage')!.addEventListener('pointerdown', () => panel.classList.remove('open'));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
     this.slider.addEventListener('input', () => on.explode(Number(this.slider.value)));
@@ -146,13 +164,17 @@ export class Ui {
     const m = (this.model = this.flight.models.find((x) => x.id === id) ?? this.model);
     const r = this.root;
     r.querySelectorAll<HTMLElement>('[data-model]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.model === m.id)));
-    r.querySelector('.parts')!.innerHTML = m.parts.map((p, i) => `
+    r.querySelector('.parts')!.innerHTML = m.parts
+      .map(
+        (p, i) => `
       <li><button data-node="${p.node}">
         <span class="n">${String(i + 1).padStart(2, '0')}</span>
         <span class="name">${esc(p.name)}</span>
         <span class="what">${esc(p.summary)}</span>
         <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}</span>
-      </button></li>`).join('');
+      </button></li>`,
+      )
+      .join('');
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
     r.querySelector('.buttons')!.innerHTML =
       [{ id: 'all', label: 'Everything' }, ...m.views].map((v) => `<button data-view="${v.id}">${esc(v.label)}</button>`).join('') +

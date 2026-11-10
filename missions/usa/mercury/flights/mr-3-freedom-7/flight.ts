@@ -4,238 +4,237 @@ const IN = 0.0254;
 const LBF = 4.4482216;
 const LB = 0.45359237;
 
-
 const vehicleParts: Part[] = [
-    {
-      node: 'EscapeTower',
-      name: 'Launch escape tower',
-      summary: 'Pulls the capsule off a failing booster.',
-      detail:
-        'A welded steel-tube pylon about ten feet tall carrying a solid motor of 52,000 lbf that burns for under a ' +
-        'second through three nozzles canted 19° clear of the capsule. Unused, it is dead weight: at booster cutoff ' +
-        'the clamp ring lets go and the tower is fired clear. On MR-3 that was T+2:22.',
-      facts: [
-        ['Escape motor', '52,000 lbf for 0.78 s'],
-        ['Nozzles', '3, canted 19°'],
-        ['Jettison motor', '800 lbf for 1.5 s, 3 nozzles'],
-        ['Pylon', 'about 10 ft of 4130 steel tube'],
-        ['Jettisoned', 'T+2:22'],
-      ],
-      explode: [0, 12.6, 0],
-      order: 0,
-    },
-    {
-      node: 'AntennaCanister',
-      name: 'Antenna canister',
-      summary: 'Bicone antenna, horizon scanners, drogue parachute.',
-      detail:
-        'The pale band is an 8-inch dielectric window: the metal above and below it are the two halves of a bicone ' +
-        'antenna that handles voice, telemetry and command. Two infrared scanners find the horizon in pitch and ' +
-        'roll. The flap on top turns the capsule blunt-end-first if it ever enters nose-first.',
-      facts: [
-        ['Length', '24 in (0.61 m)'],
-        ['Antenna', 'bicone, voice and telemetry'],
-        ['Scanners', '2 infrared, pitch and roll'],
-        ['Jettisoned', 'at main parachute deploy'],
-      ],
-      explode: [0, 11.6, 0],
-      order: 1,
-    },
-    {
-      node: 'RecoveryCompartment',
-      name: 'Recovery compartment',
-      summary: 'Main and reserve parachutes; pitch and yaw thrusters.',
-      detail:
-        'A 32-inch cylinder holding a 63-foot ring-sail main parachute and its reserve, skinned in thick beryllium ' +
-        'shingles that soak up heat where the cone’s thin ones radiate it. Pitch and yaw thrusters sit at its top, ' +
-        'as far from the centre of mass as the vehicle allows.',
-      facts: [
-        ['Diameter', '32 in (0.81 m)'],
-        ['Length', '20 in (0.51 m)'],
-        ['Skin', 'beryllium shingles, 0.22 in'],
-        ['Main parachute', '63 ft ring-sail, plus reserve'],
-        ['Thrusters', 'pitch and yaw: 24 lbf and 1 lbf'],
-      ],
-      explode: [0, 10.8, 0],
-      order: 2,
-    },
-    {
-      node: 'Hatch',
-      name: 'Side hatch',
-      summary: 'A 69 lb mechanical latch hatch.',
-      detail:
-        'The first design bolted the hatch on with 70 bolts, which would have left the pilot sealed in until ' +
-        'someone came. Spacecraft No. 7 flew a heavier hatch held by mechanical latches, with a release handle ' +
-        'inside and out. It was lost in the sea during recovery. The explosive hatch, lighter at 23 lb, arrived ' +
-        'one flight later on Liberty Bell 7.',
-      facts: [
-        ['Type', 'mechanical latch'],
-        ['Mass', '69 lb (31 kg)'],
-        ['Release', 'handles inside and outside'],
-        ['Explosive hatch', '23 lb, from MR-4'],
-      ],
-      explode: [1.15, 9.9, 0],
-      order: 3,
-    },
-    {
-      node: 'Afterbody',
-      name: 'Conical afterbody',
-      summary: 'René 41 shingles over the pressure vessel.',
-      detail:
-        'Corrugated nickel-alloy shingles, 0.016 inch thick and oxidised blue-black, each fastened through ' +
-        'oversized holes so it can grow when hot. No. 7 has two 10-inch portholes instead of the later overhead ' +
-        'window, so the periscope was Shepard’s main view outside.',
-      facts: [
-        ['Half-angle', '20°'],
-        ['Length', '58.4 in (1.48 m)'],
-        ['Skin', 'René 41 shingles, 0.016 in'],
-        ['Portholes', '2, 10 in diameter'],
-        ['Thrusters', 'roll: 6 lbf and 1 lbf'],
-      ],
-      explode: [0, 9.9, 0],
-      order: 3,
-    },
-    {
-      node: 'CrewCabin',
-      inside: true,
-      name: 'Crew cabin',
-      summary: 'Titanium pressure vessel, couch, instrument panel.',
-      detail:
-        'A cone of two thin titanium skins holding pure oxygen at 5.1 psi. The pilot lies on a fibreglass couch ' +
-        'moulded to his body, back to the heat shield, so that launch and entry loads both push him into it. ' +
-        'Behind the heat shield a fabric landing bag drops four feet before splashdown to cushion the impact.',
-      facts: [
-        ['Structure', 'two skins of 0.010 in titanium'],
-        ['Atmosphere', 'pure oxygen at 5.1 psi'],
-        ['Pressurised volume', '100 ft³ (2.8 m³)'],
-        ['Couch', 'fibreglass, moulded to the pilot'],
-      ],
-      explode: [0, 8.9, 0],
-      order: 4,
-    },
-    {
-      node: 'HeatShield',
-      name: 'Heat shield',
-      summary: 'Beryllium heat sink, 74.5 inches across.',
-      detail:
-        'A suborbital entry is short enough that the Redstone flights used a solid beryllium shield that soaks up ' +
-        'the heat. The orbital flights replaced it with an ablative fibreglass-and-resin shield that chars away.',
-      facts: [
-        ['Diameter', '74.5 in (1.89 m)'],
-        ['Radius of curvature', '80 in'],
-        ['Material', 'beryllium heat sink, about 1 in'],
-        ['Orbital flights', 'ablative fibreglass and resin'],
-      ],
-      explode: [0, 8.3, 0],
-      order: 5,
-    },
-    {
-      node: 'Retropack',
-      name: 'Retropack',
-      summary: 'Three retrograde and three posigrade motors.',
-      detail:
-        'The small posigrade motors push the capsule away from the spent Redstone. The three large motors are the ' +
-        'braking burn that brings an orbital flight home; MR-3 was coming down anyway and fired them as a test. ' +
-        'Three straps hold the pack against the shield, joined under its centre by a single explosive bolt.',
-      facts: [
-        ['Retro motors', '3 × 1,000 lbf, 10 s each'],
-        ['Fired', '5 s apart, from T+5:14'],
-        ['Posigrade motors', '3 × 400 lbf, 1 s'],
-        ['Jettisoned', 'T+6:14'],
-      ],
-      explode: [0, 7.6, 0],
-      order: 6,
-    },
-    {
-      node: 'RedstoneAdapter',
-      name: 'Spacecraft adapter',
-      summary: 'Joins a 74.5-inch capsule to a 70-inch booster.',
-      detail:
-        'A short flared ring with the retropack nested inside it. A Marman clamp at its top rim holds the capsule; ' +
-        'at separation explosive bolts open the clamp and the posigrade motors push the capsule clear, ten seconds ' +
-        'after the engine has shut down.',
-      facts: [
-        ['Diameter', '70 in to 73.2 in'],
-        ['Clamp', 'Marman ring, explosive bolts'],
-        ['Separation', 'T+2:32, 74 km up'],
-      ],
-      explode: [0, 6.8, 0],
-      order: 7,
-    },
-    {
-      node: 'RedstoneAftUnit',
-      name: 'Aft unit',
-      summary: 'Instrument compartment: autopilot and abort sensing.',
-      detail:
-        'On the Redstone missile this section flew on with the warhead. Here it stays bolted to the tanks and ' +
-        'carries the LEV-3 autopilot and the abort sensing system, which watches attitude, rates, chamber pressure ' +
-        'and electrical power and fires the escape tower without asking anyone. Above the instruments sit 487 lb ' +
-        'of steel ballast, restoring the stability the long nose took away, and some 340 lb of lead-loaded ' +
-        'compound to damp a vibration found on earlier flights.',
-      facts: [
-        ['Length', '139.64 in, plus a 7.08 in stretch'],
-        ['Instrument compartment', '53.66 in, pressurised'],
-        ['Autopilot', 'LEV-3'],
-        ['Skin', '0.090 in aluminium'],
-      ],
-      explode: [0, 5.8, 0],
-      order: 8,
-    },
-    {
-      node: 'RedstoneCenterUnit',
-      name: 'Centre unit',
-      summary: 'Alcohol above, liquid oxygen below.',
-      detail:
-        'The tank walls are the airframe. They are the Jupiter-C’s lengthened tanks, which stretched the burn by ' +
-        'twenty seconds to 143.5. The fuel is ethyl alcohol cut with water: less energetic than the Jupiter-C’s ' +
-        'Hydyne, and far less toxic to a pilot sitting on top of it. The alcohol’s feed line runs down through ' +
-        'the middle of the oxygen tank.',
-      facts: [
-        ['Length', '37.50 ft (11.43 m)'],
-        ['Alcohol tank', '18.8 ft · 3,348 US gal'],
-        ['Oxygen tank', '16.83 ft · 3,072 US gal'],
-        ['Skin', '0.063 in and 0.080 in aluminium'],
-        ['Fuel', 'ethyl alcohol, cut with water'],
-      ],
-      explode: [0, 4.6, 0],
-      order: 9,
-    },
-    {
-      node: 'RedstoneTailUnit',
-      name: 'Tail unit',
-      summary: 'Four fins, four air rudders, the engine bay.',
-      detail:
-        'The fins keep the vehicle stable; the small rudders at their tips steer it while there is air to push ' +
-        'against. The quartered black-and-white paint is a roll pattern: tracking cameras read the vehicle’s roll ' +
-        'angle from it.',
-      facts: [
-        ['Length', '9.27 ft (2.83 m)'],
-        ['Fins', '4, with air rudders (±11°)'],
-        ['Skin', '0.125 in aluminium'],
-        ['Attached by', '12 fasteners in tension'],
-      ],
-      explode: [0, 3.4, 0],
-      order: 10,
-    },
-    {
-      node: 'RedstoneEngine',
-      inside: true,
-      name: 'A-7 engine',
-      summary: '78,000 lbf; steered by graphite vanes in the exhaust.',
-      detail:
-        'Rocketdyne’s A-7, a direct descendant of the V-2’s engine: a single fixed chamber fed by a turbopump that ' +
-        'runs on steam from decomposed hydrogen peroxide. It cannot swivel, so four graphite vanes sit in the ' +
-        'exhaust and deflect it.',
-      facts: [
-        ['Thrust', '78,000 lbf (347 kN) at sea level'],
-        ['Burn', '143.5 s nominal; 141.8 s on MR-3'],
-        ['Specific impulse', '214.8 s measured on MR-3'],
-        ['Steering', '4 carbon jet vanes, ±27.5°'],
-        ['Turbopump', 'hydrogen-peroxide steam'],
-      ],
-      explode: [0, 0, 0],
-      order: 11,
-    },
+  {
+    node: 'EscapeTower',
+    name: 'Launch escape tower',
+    summary: 'Pulls the capsule off a failing booster.',
+    detail:
+      'A welded steel-tube pylon about ten feet tall carrying a solid motor of 52,000 lbf that burns for under a ' +
+      'second through three nozzles canted 19° clear of the capsule. Unused, it is dead weight: at booster cutoff ' +
+      'the clamp ring lets go and the tower is fired clear. On MR-3 that was T+2:22.',
+    facts: [
+      ['Escape motor', '52,000 lbf for 0.78 s'],
+      ['Nozzles', '3, canted 19°'],
+      ['Jettison motor', '800 lbf for 1.5 s, 3 nozzles'],
+      ['Pylon', 'about 10 ft of 4130 steel tube'],
+      ['Jettisoned', 'T+2:22'],
+    ],
+    explode: [0, 12.6, 0],
+    order: 0,
+  },
+  {
+    node: 'AntennaCanister',
+    name: 'Antenna canister',
+    summary: 'Bicone antenna, horizon scanners, drogue parachute.',
+    detail:
+      'The pale band is an 8-inch dielectric window: the metal above and below it are the two halves of a bicone ' +
+      'antenna that handles voice, telemetry and command. Two infrared scanners find the horizon in pitch and ' +
+      'roll. The flap on top turns the capsule blunt-end-first if it ever enters nose-first.',
+    facts: [
+      ['Length', '24 in (0.61 m)'],
+      ['Antenna', 'bicone, voice and telemetry'],
+      ['Scanners', '2 infrared, pitch and roll'],
+      ['Jettisoned', 'at main parachute deploy'],
+    ],
+    explode: [0, 11.6, 0],
+    order: 1,
+  },
+  {
+    node: 'RecoveryCompartment',
+    name: 'Recovery compartment',
+    summary: 'Main and reserve parachutes; pitch and yaw thrusters.',
+    detail:
+      'A 32-inch cylinder holding a 63-foot ring-sail main parachute and its reserve, skinned in thick beryllium ' +
+      'shingles that soak up heat where the cone’s thin ones radiate it. Pitch and yaw thrusters sit at its top, ' +
+      'as far from the centre of mass as the vehicle allows.',
+    facts: [
+      ['Diameter', '32 in (0.81 m)'],
+      ['Length', '20 in (0.51 m)'],
+      ['Skin', 'beryllium shingles, 0.22 in'],
+      ['Main parachute', '63 ft ring-sail, plus reserve'],
+      ['Thrusters', 'pitch and yaw: 24 lbf and 1 lbf'],
+    ],
+    explode: [0, 10.8, 0],
+    order: 2,
+  },
+  {
+    node: 'Hatch',
+    name: 'Side hatch',
+    summary: 'A 69 lb mechanical latch hatch.',
+    detail:
+      'The first design bolted the hatch on with 70 bolts, which would have left the pilot sealed in until ' +
+      'someone came. Spacecraft No. 7 flew a heavier hatch held by mechanical latches, with a release handle ' +
+      'inside and out. It was lost in the sea during recovery. The explosive hatch, lighter at 23 lb, arrived ' +
+      'one flight later on Liberty Bell 7.',
+    facts: [
+      ['Type', 'mechanical latch'],
+      ['Mass', '69 lb (31 kg)'],
+      ['Release', 'handles inside and outside'],
+      ['Explosive hatch', '23 lb, from MR-4'],
+    ],
+    explode: [1.15, 9.9, 0],
+    order: 3,
+  },
+  {
+    node: 'Afterbody',
+    name: 'Conical afterbody',
+    summary: 'René 41 shingles over the pressure vessel.',
+    detail:
+      'Corrugated nickel-alloy shingles, 0.016 inch thick and oxidised blue-black, each fastened through ' +
+      'oversized holes so it can grow when hot. No. 7 has two 10-inch portholes instead of the later overhead ' +
+      'window, so the periscope was Shepard’s main view outside.',
+    facts: [
+      ['Half-angle', '20°'],
+      ['Length', '58.4 in (1.48 m)'],
+      ['Skin', 'René 41 shingles, 0.016 in'],
+      ['Portholes', '2, 10 in diameter'],
+      ['Thrusters', 'roll: 6 lbf and 1 lbf'],
+    ],
+    explode: [0, 9.9, 0],
+    order: 3,
+  },
+  {
+    node: 'CrewCabin',
+    inside: true,
+    name: 'Crew cabin',
+    summary: 'Titanium pressure vessel, couch, instrument panel.',
+    detail:
+      'A cone of two thin titanium skins holding pure oxygen at 5.1 psi. The pilot lies on a fibreglass couch ' +
+      'moulded to his body, back to the heat shield, so that launch and entry loads both push him into it. ' +
+      'Behind the heat shield a fabric landing bag drops four feet before splashdown to cushion the impact.',
+    facts: [
+      ['Structure', 'two skins of 0.010 in titanium'],
+      ['Atmosphere', 'pure oxygen at 5.1 psi'],
+      ['Pressurised volume', '100 ft³ (2.8 m³)'],
+      ['Couch', 'fibreglass, moulded to the pilot'],
+    ],
+    explode: [0, 8.9, 0],
+    order: 4,
+  },
+  {
+    node: 'HeatShield',
+    name: 'Heat shield',
+    summary: 'Beryllium heat sink, 74.5 inches across.',
+    detail:
+      'A suborbital entry is short enough that the Redstone flights used a solid beryllium shield that soaks up ' +
+      'the heat. The orbital flights replaced it with an ablative fibreglass-and-resin shield that chars away.',
+    facts: [
+      ['Diameter', '74.5 in (1.89 m)'],
+      ['Radius of curvature', '80 in'],
+      ['Material', 'beryllium heat sink, about 1 in'],
+      ['Orbital flights', 'ablative fibreglass and resin'],
+    ],
+    explode: [0, 8.3, 0],
+    order: 5,
+  },
+  {
+    node: 'Retropack',
+    name: 'Retropack',
+    summary: 'Three retrograde and three posigrade motors.',
+    detail:
+      'The small posigrade motors push the capsule away from the spent Redstone. The three large motors are the ' +
+      'braking burn that brings an orbital flight home; MR-3 was coming down anyway and fired them as a test. ' +
+      'Three straps hold the pack against the shield, joined under its centre by a single explosive bolt.',
+    facts: [
+      ['Retro motors', '3 × 1,000 lbf, 10 s each'],
+      ['Fired', '5 s apart, from T+5:14'],
+      ['Posigrade motors', '3 × 400 lbf, 1 s'],
+      ['Jettisoned', 'T+6:14'],
+    ],
+    explode: [0, 7.6, 0],
+    order: 6,
+  },
+  {
+    node: 'RedstoneAdapter',
+    name: 'Spacecraft adapter',
+    summary: 'Joins a 74.5-inch capsule to a 70-inch booster.',
+    detail:
+      'A short flared ring with the retropack nested inside it. A Marman clamp at its top rim holds the capsule; ' +
+      'at separation explosive bolts open the clamp and the posigrade motors push the capsule clear, ten seconds ' +
+      'after the engine has shut down.',
+    facts: [
+      ['Diameter', '70 in to 73.2 in'],
+      ['Clamp', 'Marman ring, explosive bolts'],
+      ['Separation', 'T+2:32, 74 km up'],
+    ],
+    explode: [0, 6.8, 0],
+    order: 7,
+  },
+  {
+    node: 'RedstoneAftUnit',
+    name: 'Aft unit',
+    summary: 'Instrument compartment: autopilot and abort sensing.',
+    detail:
+      'On the Redstone missile this section flew on with the warhead. Here it stays bolted to the tanks and ' +
+      'carries the LEV-3 autopilot and the abort sensing system, which watches attitude, rates, chamber pressure ' +
+      'and electrical power and fires the escape tower without asking anyone. Above the instruments sit 487 lb ' +
+      'of steel ballast, restoring the stability the long nose took away, and some 340 lb of lead-loaded ' +
+      'compound to damp a vibration found on earlier flights.',
+    facts: [
+      ['Length', '139.64 in, plus a 7.08 in stretch'],
+      ['Instrument compartment', '53.66 in, pressurised'],
+      ['Autopilot', 'LEV-3'],
+      ['Skin', '0.090 in aluminium'],
+    ],
+    explode: [0, 5.8, 0],
+    order: 8,
+  },
+  {
+    node: 'RedstoneCenterUnit',
+    name: 'Centre unit',
+    summary: 'Alcohol above, liquid oxygen below.',
+    detail:
+      'The tank walls are the airframe. They are the Jupiter-C’s lengthened tanks, which stretched the burn by ' +
+      'twenty seconds to 143.5. The fuel is ethyl alcohol cut with water: less energetic than the Jupiter-C’s ' +
+      'Hydyne, and far less toxic to a pilot sitting on top of it. The alcohol’s feed line runs down through ' +
+      'the middle of the oxygen tank.',
+    facts: [
+      ['Length', '37.50 ft (11.43 m)'],
+      ['Alcohol tank', '18.8 ft · 3,348 US gal'],
+      ['Oxygen tank', '16.83 ft · 3,072 US gal'],
+      ['Skin', '0.063 in and 0.080 in aluminium'],
+      ['Fuel', 'ethyl alcohol, cut with water'],
+    ],
+    explode: [0, 4.6, 0],
+    order: 9,
+  },
+  {
+    node: 'RedstoneTailUnit',
+    name: 'Tail unit',
+    summary: 'Four fins, four air rudders, the engine bay.',
+    detail:
+      'The fins keep the vehicle stable; the small rudders at their tips steer it while there is air to push ' +
+      'against. The quartered black-and-white paint is a roll pattern: tracking cameras read the vehicle’s roll ' +
+      'angle from it.',
+    facts: [
+      ['Length', '9.27 ft (2.83 m)'],
+      ['Fins', '4, with air rudders (±11°)'],
+      ['Skin', '0.125 in aluminium'],
+      ['Attached by', '12 fasteners in tension'],
+    ],
+    explode: [0, 3.4, 0],
+    order: 10,
+  },
+  {
+    node: 'RedstoneEngine',
+    inside: true,
+    name: 'A-7 engine',
+    summary: '78,000 lbf; steered by graphite vanes in the exhaust.',
+    detail:
+      'Rocketdyne’s A-7, a direct descendant of the V-2’s engine: a single fixed chamber fed by a turbopump that ' +
+      'runs on steam from decomposed hydrogen peroxide. It cannot swivel, so four graphite vanes sit in the ' +
+      'exhaust and deflect it.',
+    facts: [
+      ['Thrust', '78,000 lbf (347 kN) at sea level'],
+      ['Burn', '143.5 s nominal; 141.8 s on MR-3'],
+      ['Specific impulse', '214.8 s measured on MR-3'],
+      ['Steering', '4 carbon jet vanes, ±27.5°'],
+      ['Turbopump', 'hydrogen-peroxide steam'],
+    ],
+    explode: [0, 0, 0],
+    order: 11,
+  },
 ];
 
 /** Height of the pedestal's ring, where the fins rest: 6 ft. */
@@ -451,9 +450,7 @@ const crewParts: Part[] = [
     node: 'Boots',
     name: 'Boots',
     summary: 'Laced leather over the suit’s feet.',
-    detail:
-      'Separate lace-up boots worn over the pressure suit’s socks. The last Mercury flight built the boots into ' +
-      'the suit.',
+    detail: 'Separate lace-up boots worn over the pressure suit’s socks. The last Mercury flight built the boots into ' + 'the suit.',
     explode: [0, 0, 0],
     order: 0,
   },
@@ -539,51 +536,303 @@ export const flight: Flight = {
     { group: 'Spacecraft', label: 'Heat shield diameter', value: 74.5 * IN, unit: 'm', confidence: 'documented', note: '74.5 in' },
     { group: 'Spacecraft', label: 'Heat shield radius of curvature', value: 80 * IN, unit: 'm', confidence: 'documented', note: '80 in' },
     { group: 'Spacecraft', label: 'Afterbody half-angle', value: 20, unit: 'deg', confidence: 'documented' },
-    { group: 'Spacecraft', label: 'Recovery compartment diameter', value: 32 * IN, unit: 'm', confidence: 'documented', note: '32 in (NASA CR-649)' },
+    {
+      group: 'Spacecraft',
+      label: 'Recovery compartment diameter',
+      value: 32 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '32 in (NASA CR-649)',
+    },
     { group: 'Spacecraft', label: 'Recovery compartment length', value: 20 * IN, unit: 'm', confidence: 'documented', note: '20 in' },
-    { group: 'Spacecraft', label: 'Afterbody length', value: 58.38 * IN, unit: 'm', confidence: 'derived', note: 'frustum from 74.5 in to 32 in at 20 degrees' },
+    {
+      group: 'Spacecraft',
+      label: 'Afterbody length',
+      value: 58.38 * IN,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'frustum from 74.5 in to 32 in at 20 degrees',
+    },
     { group: 'Spacecraft', label: 'Antenna canister length', value: 24 * IN, unit: 'm', confidence: 'documented', note: '24 in' },
-    { group: 'Spacecraft', label: 'Antenna canister diameters', value: 30 * IN, unit: 'm', confidence: 'estimated', note: 'modelled 30 in tapering to 25 in from photographs; NASA CR-649 states 24 in to 20 in. Unresolved' },
-    { group: 'Spacecraft', label: 'Length, retro nozzles to canister top', value: 10.8 * 0.3048, unit: 'm', confidence: 'documented', note: '10.8 ft (Wikipedia, citing Catchpole); model: 3.30 m' },
-    { group: 'Spacecraft', label: 'Length with escape tower', value: 25.9 * 0.3048, unit: 'm', confidence: 'documented', note: '25.9 ft secondary; NASA says only “just under 26 feet”; model: 7.904 m' },
-    { group: 'Spacecraft', label: 'Escape tower truss and motor layout', value: 5.23, unit: 'm', confidence: 'estimated', note: 'overall length fixed by the two figures above; bay spacing from photographs' },
-    { group: 'Launch vehicle', label: 'Height on the pad', value: 25.414, unit: 'm', confidence: 'documented', note: '83.38 ft, fins to spike; model: 25.413 m' },
+    {
+      group: 'Spacecraft',
+      label: 'Antenna canister diameters',
+      value: 30 * IN,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'modelled 30 in tapering to 25 in from photographs; NASA CR-649 states 24 in to 20 in. Unresolved',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Length, retro nozzles to canister top',
+      value: 10.8 * 0.3048,
+      unit: 'm',
+      confidence: 'documented',
+      note: '10.8 ft (Wikipedia, citing Catchpole); model: 3.30 m',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Length with escape tower',
+      value: 25.9 * 0.3048,
+      unit: 'm',
+      confidence: 'documented',
+      note: '25.9 ft secondary; NASA says only “just under 26 feet”; model: 7.904 m',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Escape tower truss and motor layout',
+      value: 5.23,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'overall length fixed by the two figures above; bay spacing from photographs',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Height on the pad',
+      value: 25.414,
+      unit: 'm',
+      confidence: 'documented',
+      note: '83.38 ft, fins to spike; model: 25.413 m',
+    },
     { group: 'Launch vehicle', label: 'Booster diameter', value: 70 * IN, unit: 'm', confidence: 'documented', note: '70 in' },
-    { group: 'Launch vehicle', label: 'Booster length', value: 59 * 0.3048, unit: 'm', confidence: 'documented', note: '59.00 ft (TM X-53107, Figure 4-1)' },
-    { group: 'Launch vehicle', label: 'Booster top to heat-shield plane', value: 8.5 * IN, unit: 'm', confidence: 'derived', note: '8.5 in: what is left of 83.38 ft; fixes the adapter’s height in the model' },
-    { group: 'Launch vehicle', label: 'Tail unit length', value: 9.27 * 0.3048, unit: 'm', confidence: 'documented', note: '9.27 ft (TM X-53107, Figure 4-1)' },
-    { group: 'Launch vehicle', label: 'Centre section length', value: 37.5 * 0.3048, unit: 'm', confidence: 'documented', note: '37.50 ft: alcohol tank 18.8 ft over oxygen tank 16.83 ft' },
-    { group: 'Launch vehicle', label: 'Aft section length', value: 139.64 * IN, unit: 'm', confidence: 'documented', note: '139.64 in as drawn; the model’s is 146.76 in, taking in the 7.08 in Mercury stretch' },
-    { group: 'Launch vehicle', label: 'Booster dry mass', value: 8195 * LB, unit: 'kg', confidence: 'documented', note: '8,195 lb with airborne equipment' },
-    { group: 'Launch vehicle', label: 'Fuel volume', value: 3348 * 3.785411784, unit: 'L', confidence: 'documented', note: '3,348 US gal of alcohol' },
-    { group: 'Launch vehicle', label: 'Oxidiser volume', value: 3072 * 3.785411784, unit: 'L', confidence: 'documented', note: '3,072 US gal of liquid oxygen' },
-    { group: 'Launch vehicle', label: 'Fin span', value: 144 * IN, unit: 'm', confidence: 'estimated', note: '12 ft, from secondary sources on the Redstone missile' },
-    { group: 'Launch vehicle', label: 'Liftoff mass, whole vehicle', value: 66098 * LB, unit: 'kg', confidence: 'documented', note: '66,098 lb' },
-    { group: 'Spacecraft', label: 'Spacecraft launch mass', value: 4040 * LB, unit: 'kg', confidence: 'documented', note: '4,040 lb, with escape tower' },
+    {
+      group: 'Launch vehicle',
+      label: 'Booster length',
+      value: 59 * 0.3048,
+      unit: 'm',
+      confidence: 'documented',
+      note: '59.00 ft (TM X-53107, Figure 4-1)',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Booster top to heat-shield plane',
+      value: 8.5 * IN,
+      unit: 'm',
+      confidence: 'derived',
+      note: '8.5 in: what is left of 83.38 ft; fixes the adapter’s height in the model',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Tail unit length',
+      value: 9.27 * 0.3048,
+      unit: 'm',
+      confidence: 'documented',
+      note: '9.27 ft (TM X-53107, Figure 4-1)',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Centre section length',
+      value: 37.5 * 0.3048,
+      unit: 'm',
+      confidence: 'documented',
+      note: '37.50 ft: alcohol tank 18.8 ft over oxygen tank 16.83 ft',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Aft section length',
+      value: 139.64 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '139.64 in as drawn; the model’s is 146.76 in, taking in the 7.08 in Mercury stretch',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Booster dry mass',
+      value: 8195 * LB,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '8,195 lb with airborne equipment',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Fuel volume',
+      value: 3348 * 3.785411784,
+      unit: 'L',
+      confidence: 'documented',
+      note: '3,348 US gal of alcohol',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Oxidiser volume',
+      value: 3072 * 3.785411784,
+      unit: 'L',
+      confidence: 'documented',
+      note: '3,072 US gal of liquid oxygen',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Fin span',
+      value: 144 * IN,
+      unit: 'm',
+      confidence: 'estimated',
+      note: '12 ft, from secondary sources on the Redstone missile',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Liftoff mass, whole vehicle',
+      value: 66098 * LB,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '66,098 lb',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Spacecraft launch mass',
+      value: 4040 * LB,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '4,040 lb, with escape tower',
+    },
     { group: 'Spacecraft', label: 'Mass after separation', value: 2855.14 * LB, unit: 'kg', confidence: 'documented', note: '2,855 lb' },
     { group: 'Spacecraft', label: 'Mass at entry', value: 2579 * LB, unit: 'kg', confidence: 'documented', note: '2,579 lb' },
     { group: 'Spacecraft', label: 'Mass afloat', value: 2316.03 * LB, unit: 'kg', confidence: 'documented', note: '2,316 lb' },
     { group: 'Pressure suit', label: 'Pilot height', value: 1.803, unit: 'm', confidence: 'documented', note: 'Shepard: 5 ft 11 in' },
-    { group: 'Pressure suit', label: 'Suit mass', value: 22 * LB, unit: 'kg', confidence: 'documented', note: '22 lb (Wikipedia); NASA’s own fact sheet says 20 lb' },
-    { group: 'Pressure suit', label: 'Operating pressure', value: 3.7 * 6.894757, unit: 'kPa', confidence: 'documented', note: '3.7 psi, only if the cabin loses pressure' },
-    { group: 'Launch pad', label: 'Mobile aerial tower reach', value: 125 * 0.3048, unit: 'm', confidence: 'documented', note: '125 ft (TM X-53107, 7.3.3.1)' },
-    { group: 'Launch pad', label: 'White room', value: 3, unit: 'level', confidence: 'documented', note: 'level 3 of the service structure' },
-    { group: 'Launch pad', label: 'Pedestal height', value: 6 * 0.3048, unit: 'm', confidence: 'estimated', note: '6 ft, scaled off photographs' },
-    { group: 'Launch pad', label: 'Service structure height', value: 118 * 0.3048, unit: 'm', confidence: 'estimated', note: '118 ft to the crane, scaled off TM X-53107 Figure 7-7' },
-    { group: 'Launch pad', label: 'Hardstand', value: 204 * 0.3048, unit: 'm', confidence: 'derived', note: 'about 204 ft square: Figure 7-6 scaled on the 535 ft between pads 5 and 6' },
-    { group: 'Launch pad', label: 'Service structure launch position', value: 195 * 0.3048, unit: 'm', confidence: 'derived', note: 'about 195 ft from the pad centre, same scaling' },
-    { group: 'Launch pad', label: 'Blockhouse', value: 345 * 0.3048, unit: 'm', confidence: 'derived', note: 'about 345 ft from each pad centre; not modelled' },
+    {
+      group: 'Pressure suit',
+      label: 'Suit mass',
+      value: 22 * LB,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '22 lb (Wikipedia); NASA’s own fact sheet says 20 lb',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Operating pressure',
+      value: 3.7 * 6.894757,
+      unit: 'kPa',
+      confidence: 'documented',
+      note: '3.7 psi, only if the cabin loses pressure',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Mobile aerial tower reach',
+      value: 125 * 0.3048,
+      unit: 'm',
+      confidence: 'documented',
+      note: '125 ft (TM X-53107, 7.3.3.1)',
+    },
+    {
+      group: 'Launch pad',
+      label: 'White room',
+      value: 3,
+      unit: 'level',
+      confidence: 'documented',
+      note: 'level 3 of the service structure',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Pedestal height',
+      value: 6 * 0.3048,
+      unit: 'm',
+      confidence: 'estimated',
+      note: '6 ft, scaled off photographs',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Service structure height',
+      value: 118 * 0.3048,
+      unit: 'm',
+      confidence: 'estimated',
+      note: '118 ft to the crane, scaled off TM X-53107 Figure 7-7',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Hardstand',
+      value: 204 * 0.3048,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'about 204 ft square: Figure 7-6 scaled on the 535 ft between pads 5 and 6',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Service structure launch position',
+      value: 195 * 0.3048,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'about 195 ft from the pad centre, same scaling',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Blockhouse',
+      value: 345 * 0.3048,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'about 345 ft from each pad centre; not modelled',
+    },
   ],
   motors: [
-    { name: 'Rocketdyne A-7 (booster)', count: 1, thrustN: 78000 * LBF, burnS: 143.5, propellant: 'ethyl alcohol / liquid oxygen', confidence: 'documented', note: 'sea level, nominal. MR-3 measured 78,860 lbf, Isp 214.8 s, cutoff at 141.8 s' },
-    { name: 'Escape motor (Grand Central)', count: 1, thrustN: 52000 * LBF, burnS: 0.78, propellant: 'solid', confidence: 'documented', note: '52,000 lbf for 0.78 s, then decaying; three nozzles canted 19° (SEDR 104)' },
-    { name: 'Tower jettison motor', count: 1, thrustN: 800 * LBF, burnS: 1.5, propellant: 'solid', confidence: 'documented', note: 'SP-45 nominal; McDonnell gives 785 lbf. Three nozzles canted 30°' },
-    { name: 'Posigrade motor', count: 3, thrustN: 400 * LBF, burnS: 1, propellant: 'solid', confidence: 'documented', note: 'SP-45 nominal; McDonnell gives 370 lbf' },
-    { name: 'Retrograde motor (Thiokol)', count: 3, thrustN: 1000 * LBF, burnS: 10, propellant: 'solid', confidence: 'documented', note: 'SP-45 nominal; McDonnell gives 992 lbf over 13.2 s. Fired 5 s apart' },
-    { name: 'Pitch and yaw thruster, high', count: 4, thrustN: 24 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system' },
-    { name: 'Roll thruster, high', count: 2, thrustN: 6 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system' },
-    { name: 'Attitude thruster, low', count: 6, thrustN: 1 * LBF, burnS: 0, propellant: '90% hydrogen peroxide', confidence: 'documented', note: 'automatic system, all axes' },
+    {
+      name: 'Rocketdyne A-7 (booster)',
+      count: 1,
+      thrustN: 78000 * LBF,
+      burnS: 143.5,
+      propellant: 'ethyl alcohol / liquid oxygen',
+      confidence: 'documented',
+      note: 'sea level, nominal. MR-3 measured 78,860 lbf, Isp 214.8 s, cutoff at 141.8 s',
+    },
+    {
+      name: 'Escape motor (Grand Central)',
+      count: 1,
+      thrustN: 52000 * LBF,
+      burnS: 0.78,
+      propellant: 'solid',
+      confidence: 'documented',
+      note: '52,000 lbf for 0.78 s, then decaying; three nozzles canted 19° (SEDR 104)',
+    },
+    {
+      name: 'Tower jettison motor',
+      count: 1,
+      thrustN: 800 * LBF,
+      burnS: 1.5,
+      propellant: 'solid',
+      confidence: 'documented',
+      note: 'SP-45 nominal; McDonnell gives 785 lbf. Three nozzles canted 30°',
+    },
+    {
+      name: 'Posigrade motor',
+      count: 3,
+      thrustN: 400 * LBF,
+      burnS: 1,
+      propellant: 'solid',
+      confidence: 'documented',
+      note: 'SP-45 nominal; McDonnell gives 370 lbf',
+    },
+    {
+      name: 'Retrograde motor (Thiokol)',
+      count: 3,
+      thrustN: 1000 * LBF,
+      burnS: 10,
+      propellant: 'solid',
+      confidence: 'documented',
+      note: 'SP-45 nominal; McDonnell gives 992 lbf over 13.2 s. Fired 5 s apart',
+    },
+    {
+      name: 'Pitch and yaw thruster, high',
+      count: 4,
+      thrustN: 24 * LBF,
+      burnS: 0,
+      propellant: '90% hydrogen peroxide',
+      confidence: 'documented',
+      note: 'automatic system',
+    },
+    {
+      name: 'Roll thruster, high',
+      count: 2,
+      thrustN: 6 * LBF,
+      burnS: 0,
+      propellant: '90% hydrogen peroxide',
+      confidence: 'documented',
+      note: 'automatic system',
+    },
+    {
+      name: 'Attitude thruster, low',
+      count: 6,
+      thrustN: 1 * LBF,
+      burnS: 0,
+      propellant: '90% hydrogen peroxide',
+      confidence: 'documented',
+      note: 'automatic system, all axes',
+    },
   ],
   models: [vehicle, pad, crew],
 };
-

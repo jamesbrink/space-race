@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import bisect
 import math
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 import bpy
 from mathutils import Matrix, Vector
@@ -24,9 +24,9 @@ from mathutils import Matrix, Vector
 import srlib
 from srlib import CM, TAU, MeshBuilder, frame, group, material
 
-STATURE = 180.3           # documented: 5 ft 11 in
-HEEL = 2.8                # boot heel under the foot
-HELMET_OVER_CROWN = 6.0   # liner, shell and clearance above the top of the head
+STATURE = 180.3  # documented: 5 ft 11 in
+HEEL = 2.8  # boot heel under the foot
+HELMET_OVER_CROWN = 6.0  # liner, shell and clearance above the top of the head
 
 
 def landmark(fraction: float) -> float:
@@ -40,16 +40,16 @@ Z_HIP = landmark(0.530)
 Z_SHOULDER = landmark(0.818)
 Z_CROWN = landmark(1.0)
 
-STANCE = 13.5             # ankle centre off the midline: feet shoulder-width apart
+STANCE = 13.5  # ankle centre off the midline: feet shoulder-width apart
 BOOT_TOP = 27.0
-BOOT_LENGTH = 31.2        # sole, toe to heel
+BOOT_LENGTH = 31.2  # sole, toe to heel
 NECK_RING_R = 12.5
-HELMET_RX = 13.0          # shell half-width
-HELMET_MID = 175.0        # height of the shell's widest section
+HELMET_RX = 13.0  # shell half-width
+HELMET_MID = 175.0  # height of the shell's widest section
 HELMET_TOP = Z_CROWN + HELMET_OVER_CROWN
-HELMET_RIM = 159.4        # the shell's lower edge, inside the neck ring
-VENT_SIZE = (16.0, 42.0, 30.0)     # ventilator case: width, length, height
-VENT_AT = (47.0, -5.0)             # its centre on the floor, at his left
+HELMET_RIM = 159.4  # the shell's lower edge, inside the neck ring
+VENT_SIZE = (16.0, 42.0, 30.0)  # ventilator case: width, length, height
+VENT_AT = (47.0, -5.0)  # its centre on the floor, at his left
 
 FRONT, UP = Vector((0, -1, 0)), Vector((0, 0, 1))
 
@@ -112,9 +112,15 @@ class Tube:
 
     fold(d, theta) is loft's ripple with d in centimetres along the path instead of 0..1."""
 
-    def __init__(self, path: Sequence[Sequence[float]], radii: Sequence[tuple[float, float]], *,
-                 ref: Sequence[float] = (0, 1, 0), resample: int = 5,
-                 fold: Callable[[float, float], float] | None = None) -> None:
+    def __init__(
+        self,
+        path: Sequence[Sequence[float]],
+        radii: Sequence[tuple[float, float]],
+        *,
+        ref: Sequence[float] = (0, 1, 0),
+        resample: int = 5,
+        fold: Callable[[float, float], float] | None = None,
+    ) -> None:
         self.path = [Vector(p) for p in path]
         self.radii = list(radii)
         self.ref, self.resample, self.fold = Vector(ref), resample, fold
@@ -122,8 +128,7 @@ class Tube:
 
         def cr(seq, i, t):
             p0, p1, p2, p3 = (seq[max(0, min(n - 1, k))] for k in (i - 1, i, i + 1, i + 2))
-            return 0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t
-                          + (3 * p1 - p0 - 3 * p2 + p3) * t**3)
+            return 0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t**3)
 
         ra = [Vector((a, b, 0)) for a, b in radii]
         self.centres, self.rads = [], []
@@ -152,8 +157,7 @@ class Tube:
     def add(self, mb: MeshBuilder, segs: int = 24, caps: tuple[bool, bool] = (True, True)) -> None:
         m = len(self.centres)
         ripple = (lambda s, th: self.fold(self.dist[round(s * (m - 1))], th)) if self.fold else None
-        mb.loft(self.path, self.radii, segs, ref=tuple(self.ref), resample=self.resample,
-                ripple=ripple, caps=caps)
+        mb.loft(self.path, self.radii, segs, ref=tuple(self.ref), resample=self.resample, ripple=ripple, caps=caps)
 
     def _row(self, d: float) -> tuple[int, float]:
         d = min(max(d, 0.0), self.length)
@@ -177,8 +181,7 @@ class Tube:
         side = self.frames[i][0].lerp(self.frames[i + 1][0], f)
         other = self.frames[i][1].lerp(self.frames[i + 1][1], f)
         k = 1.0 + (self.fold(d, theta) if folded and self.fold else 0.0)
-        return (self.centres[i].lerp(self.centres[i + 1], f)
-                + side * (rad.x * k * math.cos(theta)) + other * (rad.y * k * math.sin(theta)))
+        return self.centres[i].lerp(self.centres[i + 1], f) + side * (rad.x * k * math.cos(theta)) + other * (rad.y * k * math.sin(theta))
 
     def normal(self, d: float, theta: float) -> Vector:
         """Outward normal of the unfolded skin: wrinkles would only make it jitter."""
@@ -198,8 +201,9 @@ class Tube:
             out.append((self.at(d, th), self.normal(d, th)))
         return out
 
-    def patch(self, mb: MeshBuilder, d0: float, d1: float, th0: float, th1: float, height: float, *,
-              nd: int = 8, nt: int = 6, sink: float = 0.3) -> None:
+    def patch(
+        self, mb: MeshBuilder, d0: float, d1: float, th0: float, th1: float, height: float, *, nd: int = 8, nt: int = 6, sink: float = 0.3
+    ) -> None:
         """A raised panel that follows the skin's curve: flaps, lacing strips, boot tongues."""
         rows = []
         for i in range(nd + 1):
@@ -213,8 +217,7 @@ class Tube:
         skin(mb, rows, self.centre((d0 + d1) / 2))
 
 
-def skin(mb: MeshBuilder, rows: Sequence[Sequence[Vector]], inside: Sequence[float] | None, *,
-         closed: bool = False, flip: bool = False) -> None:
+def skin(mb: MeshBuilder, rows: Sequence[Sequence[Vector]], inside: Sequence[float] | None, *, closed: bool = False, flip: bool = False) -> None:
     """A quad grid through explicit rows of points. With `inside` given, the faces are wound to
     look away from that point; otherwise the normal is (along a row) x (row to row), or its
     reverse with `flip`."""
@@ -257,16 +260,26 @@ def rails(trace: Sequence[tuple[Vector, Vector]], closed: bool = False) -> list[
     return out
 
 
-def band(mb: MeshBuilder, trace: Sequence[tuple[Vector, Vector]], width: float, height: float, *,
-         lift: float = 0.0, sink: float = 0.3, bevel: float = 0.12, closed: bool = False) -> None:
+def band(
+    mb: MeshBuilder,
+    trace: Sequence[tuple[Vector, Vector]],
+    width: float,
+    height: float,
+    *,
+    lift: float = 0.0,
+    sink: float = 0.3,
+    bevel: float = 0.12,
+    closed: bool = False,
+) -> None:
     """A flat tape along a traced line, its top `height` proud of the skin and its edges sunk
     through it. Keep it narrow against the skin's radius: the tape does not bend across itself."""
     h = width / 2
     rows = []
     for p, nm, ac in rails(trace, closed):
         p = p + nm * lift
-        rows.append([p - ac * h - nm * (sink + lift), p - ac * (h - bevel) + nm * height,
-                     p + ac * (h - bevel) + nm * height, p + ac * h - nm * (sink + lift)])
+        rows.append(
+            [p - ac * h - nm * (sink + lift), p - ac * (h - bevel) + nm * height, p + ac * (h - bevel) + nm * height, p + ac * h - nm * (sink + lift)]
+        )
     if closed:
         rows.append(rows[0])
     base = len(mb.verts)
@@ -282,8 +295,9 @@ def ring(tube: Tube, d: float, n: int = 40) -> list[tuple[Vector, Vector]]:
     return [(tube.at(d, TAU * i / n), tube.normal(d, TAU * i / n)) for i in range(n)]
 
 
-def lacing(tube: Tube, d0: float, d1: float, theta: float, width: float, strip: MeshBuilder,
-           cord: MeshBuilder, eyelet: MeshBuilder, pitch: float = 1.5) -> None:
+def lacing(
+    tube: Tube, d0: float, d1: float, theta: float, width: float, strip: MeshBuilder, cord: MeshBuilder, eyelet: MeshBuilder, pitch: float = 1.5
+) -> None:
     """A sizing strip: a tape down the limb with a cord crossed between two rows of eyelets."""
     half = width / 2 / max(tube.rads[tube._row((d0 + d1) / 2)[0]].x, 1.0)
     tube.patch(strip, d0, d1, theta - half, theta + half, 0.2, nd=max(4, round((d1 - d0) / 1.2)), nt=4)
@@ -297,14 +311,13 @@ def lacing(tube: Tube, d0: float, d1: float, theta: float, width: float, strip: 
         pairs.append([(tube.at(d, theta + s * inset, 0.2), tube.normal(d, theta + s * inset)) for s in (-1, 1)])
     for (a0, a1), (b0, b1) in zip(pairs, pairs[1:]):
         cord.tube(a0[0] + a0[1] * 0.1, b1[0] + b1[1] * 0.1, 0.11, 5)
-        cord.tube(a1[0] + a1[1] * 0.42, b0[0] + b0[1] * 0.42, 0.11, 5)   # the upper cord of each cross
+        cord.tube(a1[0] + a1[1] * 0.42, b0[0] + b0[1] * 0.42, 0.11, 5)  # the upper cord of each cross
     for pair in pairs:
         for p, nm in pair:
             eyelet.disc(p - nm * 0.3, nm, 0.3, 0.65, 8)
 
 
-def buckle(steel: MeshBuilder, web: MeshBuilder, p: Vector, nm: Vector, size: tuple[float, float],
-           spin: float = 0.0) -> None:
+def buckle(steel: MeshBuilder, web: MeshBuilder, p: Vector, nm: Vector, size: tuple[float, float], spin: float = 0.0) -> None:
     """A strap buckle: a steel frame with the webbing passing over its bar."""
     m = frame(p, nm) @ Matrix.Rotation(spin, 4, "Z")
     steel.box((size[0], size[1], 1.0), m @ Matrix.Translation((0, 0, 0.1)))
@@ -358,8 +371,9 @@ def build_helmet(M: dict) -> None:
     # earphone bulges, one each side
     for sx in (1, -1):
         phi = sx * math.radians(100)
-        shell.lathe([(3.8, 0.0), (3.7, 0.9), (3.2, 1.5), (2.0, 1.9), (0.0, 2.0)], 24,
-                    matrix=frame(helmet_at(phi, 171.5, -0.5), helmet_normal(phi, 171.5)))
+        shell.lathe(
+            [(3.8, 0.0), (3.7, 0.9), (3.2, 1.5), (2.0, 1.9), (0.0, 2.0)], 24, matrix=frame(helmet_at(phi, 171.5, -0.5), helmet_normal(phi, 171.5))
+        )
 
     # visor: a rounded opening from brow to chin, the Plexiglas riding outside the shell
     half_phi, zv, hv = math.radians(56), 173.0, 8.8
@@ -369,21 +383,33 @@ def build_helmet(M: dict) -> None:
         return half_phi * f * math.cos(psi), zv + hv * f * math.sin(psi)
 
     psis = [TAU * i / 56 - TAU / 4 for i in range(56)]
-    rows = [[helmet_at(*edge(psi, rho), 0.3 + 0.5 * (1 - rho * rho)) for psi in psis]
-            for rho in (0.0, 0.2, 0.4, 0.6, 0.8, 0.93, 1.0)]
+    rows = [[helmet_at(*edge(psi, rho), 0.3 + 0.5 * (1 - rho * rho)) for psi in psis] for rho in (0.0, 0.2, 0.4, 0.6, 0.8, 0.93, 1.0)]
     rows.append([helmet_at(*edge(psi), -0.4) for psi in psis])
     skin(visor, rows, centre, closed=True)
     rim = [helmet_at(*edge(psi), 0.2) for psi in psis]
     frame_mb = MeshBuilder()
     Tube([*rim, rim[0]], [(0.6, 0.6)] * (len(rim) + 1), resample=2).add(frame_mb, 10)
-    for sx in (1, -1):   # the visor's pivots at the temples
+    for sx in (1, -1):  # the visor's pivots at the temples
         phi = sx * math.radians(67)
         fit.disc(helmet_at(phi, zv, -0.2), helmet_normal(phi, zv), 1.3, 0.9, 20)
 
     # neck ring: the helmet locks to it; the suit's neck is bonded underneath
-    ringm.lathe([(9.8, 156.6), (12.2, 156.6), (NECK_RING_R, 157.0), (NECK_RING_R, 158.1), (12.1, 158.3),
-                 (12.1, 158.7), (NECK_RING_R, 158.9), (NECK_RING_R, 159.9), (12.1, 160.3), (10.8, 160.3)],
-                64, matrix=Matrix.Translation((0, -0.6, 0)))
+    ringm.lathe(
+        [
+            (9.8, 156.6),
+            (12.2, 156.6),
+            (NECK_RING_R, 157.0),
+            (NECK_RING_R, 158.1),
+            (12.1, 158.3),
+            (12.1, 158.7),
+            (NECK_RING_R, 158.9),
+            (NECK_RING_R, 159.9),
+            (12.1, 160.3),
+            (10.8, 160.3),
+        ],
+        64,
+        matrix=Matrix.Translation((0, -0.6, 0)),
+    )
 
     # suit outlet, low on the right: exhaled oxygen leaves here when the visor is shut
     phi = math.radians(-112)
@@ -408,9 +434,21 @@ def build_helmet(M: dict) -> None:
 TORSO_Z0 = 82.0
 # (z, half-width, half-depth), crotch to the neck inside the ring
 TORSO = [
-    (82.0, 11.5, 8.5), (84.5, 15.0, 10.6), (89.0, 17.6, 12.1), (95.0, 18.4, 12.6), (103.0, 17.4, 12.0),
-    (111.0, 16.2, 11.5), (120.0, 17.0, 12.1), (130.0, 18.7, 13.1), (140.0, 19.6, 13.2), (146.0, 19.6, 12.6),
-    (150.0, 18.0, 11.6), (153.0, 14.5, 10.6), (155.3, 11.4, 9.9), (157.0, 10.4, 9.6), (159.0, 10.2, 9.4),
+    (82.0, 11.5, 8.5),
+    (84.5, 15.0, 10.6),
+    (89.0, 17.6, 12.1),
+    (95.0, 18.4, 12.6),
+    (103.0, 17.4, 12.0),
+    (111.0, 16.2, 11.5),
+    (120.0, 17.0, 12.1),
+    (130.0, 18.7, 13.1),
+    (140.0, 19.6, 13.2),
+    (146.0, 19.6, 12.6),
+    (150.0, 18.0, 11.6),
+    (153.0, 14.5, 10.6),
+    (155.3, 11.4, 9.9),
+    (157.0, 10.4, 9.6),
+    (159.0, 10.2, 9.4),
 ]
 
 
@@ -418,11 +456,11 @@ def torso_fold(d: float, th: float) -> float:
     z = TORSO_Z0 + d
     front, back = max(0.0, -math.sin(th)), max(0.0, math.sin(th))
     f = squareness(th, 2.5) * (1 - smooth(z, 148.0, 156.0))
-    f += 0.05 * back * back * gauss(z, 94, 7)       # seat
-    f += 0.05 * front * gauss(z, 133, 9)            # chest
-    f -= 0.04 * back * gauss(z, 112, 8)             # small of the back
-    f += 0.04 * back * gauss(z, 138, 9)             # shoulder blades
-    f += 0.011 * creases(z, th, 3.4, 0.5) * gauss(z, 110, 7)   # gathers at the waist
+    f += 0.05 * back * back * gauss(z, 94, 7)  # seat
+    f += 0.05 * front * gauss(z, 133, 9)  # chest
+    f -= 0.04 * back * gauss(z, 112, 8)  # small of the back
+    f += 0.04 * back * gauss(z, 138, 9)  # shoulder blades
+    f += 0.011 * creases(z, th, 3.4, 0.5) * gauss(z, 110, 7)  # gathers at the waist
     f += 0.008 * creases(z, th, 3.8, 1.9) * gauss(z, 89, 5)
     return f
 
@@ -434,7 +472,7 @@ def build_torso(M: dict) -> tuple[Vector, Vector]:
     t = Tube([(0, 0, z) for z, _, _ in TORSO], [(a, b) for _, a, b in TORSO], resample=10, fold=torso_fold)
     t.add(shell, 56)
 
-    def az(deg: float) -> float:   # azimuth from straight ahead toward his left -> theta
+    def az(deg: float) -> float:  # azimuth from straight ahead toward his left -> theta
         return -TAU / 4 + math.radians(deg)
 
     def d(z: float) -> float:
@@ -481,17 +519,22 @@ def build_torso(M: dict) -> tuple[Vector, Vector]:
 
 # (x, y, z, radius across, radius fore-and-aft) for his left arm; the first point is inside the torso
 ARM = [
-    (11.5, 0.0, 146.0, 4.0, 4.2), (19.3, 0.0, Z_SHOULDER - 4.7, 6.4, 6.7), (22.8, 0.0, 139.5, 6.6, 6.9),
-    (24.9, 0.3, 130.5, 6.3, 6.5), (27.4, 0.8, 117.5, 5.6, 5.7), (28.6, -0.9, 108.5, 5.4, 5.4),
-    (29.6, -2.9, 100.5, 4.7, 4.7), (30.1, -3.9, 96.5, 4.3, 4.3),
+    (11.5, 0.0, 146.0, 4.0, 4.2),
+    (19.3, 0.0, Z_SHOULDER - 4.7, 6.4, 6.7),
+    (22.8, 0.0, 139.5, 6.6, 6.9),
+    (24.9, 0.3, 130.5, 6.3, 6.5),
+    (27.4, 0.8, 117.5, 5.6, 5.7),
+    (28.6, -0.9, 108.5, 5.4, 5.4),
+    (29.6, -2.9, 100.5, 4.7, 4.7),
+    (30.1, -3.9, 96.5, 4.3, 4.3),
 ]
-CUFF_TO_WRIST = 5.5   # the sleeve ends inside the glove's cuff, this far above the wrist
+CUFF_TO_WRIST = 5.5  # the sleeve ends inside the glove's cuff, this far above the wrist
 
 
 def arm_tube(sx: int) -> Tube:
     t = Tube([(sx * x, y, z) for x, y, z, _, _ in ARM], [(a, b) for *_, a, b in ARM], resample=14)
     d_sh, d_el = t.key_d(2), t.key_d(4)
-    th_in = t.toward((-0.3 * sx, -1, 0), d_el)   # the crook of the elbow faces forward
+    th_in = t.toward((-0.3 * sx, -1, 0), d_el)  # the crook of the elbow faces forward
 
     def fold(d: float, th: float) -> float:
         inner = 0.5 + 0.5 * math.cos(th - th_in)
@@ -517,7 +560,7 @@ def build_arms(M: dict) -> dict[int, Tube]:
         lacing(t, d_el + 4.5, t.length - 9.5, out, 2.2, strips, cords, eyelets)
     # suit pressure gauge on a strap round the left forearm
     t = tubes[1]
-    dg = t.length - 6.0   # the glove's cuff covers the last 2.5 cm of sleeve
+    dg = t.length - 6.0  # the glove's cuff covers the last 2.5 cm of sleeve
     band(strips, ring(t, dg, 32), 1.8, 0.3, closed=True)
     th = t.toward((0.55, -1, 0.2), dg)
     m = frame(t.at(dg, th, -0.2), t.normal(dg, th))
@@ -577,7 +620,7 @@ def finger(mb: MeshBuilder, hand: Hand, v: float, w0: float, lengths, bends, r: 
         pts += [p + step * 0.5, p + step]
         radii += [(r * taper, r * taper)] * 2
         p = p + step
-    pts[-1] = p - hand.curl(angle) * 0.5   # a rounded fingertip rather than a cut end
+    pts[-1] = p - hand.curl(angle) * 0.5  # a rounded fingertip rather than a cut end
     pts.append(p)
     radii.append((r * 0.45, r * 0.45))
     Tube(pts, radii, ref=hand.W, resample=3).add(mb, 10)
@@ -591,23 +634,36 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
         along = cuff - arms[sx].path[-2]
         hand = Hand(sx, cuff + along.normalized() * CUFF_TO_WRIST, along)
         # cuff, wrist, palm: (distance below the wrist, half-thickness, half-width)
-        keys = [(-8.0, 5.1, 5.1), (-6.0, 5.1, 5.1), (-2.5, 3.9, 4.4), (0.0, 2.9, 3.9), (3.0, 2.5, 4.6),
-                (6.5, 2.3, 5.2), (8.4, 1.9, 5.3), (9.3, 1.4, 5.25)]
+        keys = [
+            (-8.0, 5.1, 5.1),
+            (-6.0, 5.1, 5.1),
+            (-2.5, 3.9, 4.4),
+            (0.0, 2.9, 3.9),
+            (3.0, 2.5, 4.6),
+            (6.5, 2.3, 5.2),
+            (8.4, 1.9, 5.3),
+            (9.3, 1.4, 5.25),
+        ]
         palm = Tube([hand.p(0, 0, w) for w, _, _ in keys], [(a, b) for _, a, b in keys], ref=hand.W, resample=6)
         th_back = palm.toward(hand.B, 12.0)
         # round at the cuff, squared off across the palm so the knuckles stay inside it; ribbed
         # fabric across the back of the hand
         palm.fold = lambda d, th, tb=th_back: (
             squareness(th, 4.5) * smooth(d, 6, 10)
-            + 0.018 * max(0.0, math.cos(th - tb)) * math.sin(TAU * d / 1.3) * smooth(d, 9.5, 11) * (1 - smooth(d, 15.5, 17)))
+            + 0.018 * max(0.0, math.cos(th - tb)) * math.sin(TAU * d / 1.3) * smooth(d, 9.5, 11) * (1 - smooth(d, 15.5, 17))
+        )
         palm.add(shell, 28)
         for v, w0, lengths, bends, r in FINGERS:
             finger(shell, hand, v, w0, lengths, bends, r)
         # thumb, from the heel of the hand forward and across the palm
         p = hand.p(-0.6, -3.4, 1.0)
         pts, radii = [p], [(1.6, 1.8)]
-        for (kd, kw, kb), length, r in (((0.75, 0.60, 0.30), 4.6, 1.35), ((0.93, 0.25, 0.25), 3.3, 1.15),
-                                        ((0.97, 0.10, 0.20), 2.2, 0.98), ((0.97, 0.10, 0.20), 0.5, 0.45)):
+        for (kd, kw, kb), length, r in (
+            ((0.75, 0.60, 0.30), 4.6, 1.35),
+            ((0.93, 0.25, 0.25), 3.3, 1.15),
+            ((0.97, 0.10, 0.20), 2.2, 0.98),
+            ((0.97, 0.10, 0.20), 0.5, 0.45),
+        ):
             p = p + (hand.D * kd - hand.W * kw - hand.B * kb).normalized() * length
             pts.append(p)
             radii.append((r, r * 1.05))
@@ -632,9 +688,15 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
 
 # (x, y, z, radius across, radius fore-and-aft) for his left leg, from inside the hips to inside the boot
 LEG = [
-    (9.5, 0.0, Z_HIP + 0.5, 6.0, 6.6), (9.8, 0.0, 92.0, 7.0, 7.6), (10.2, 0.0, Z_CROTCH - 3.5, 9.7, 10.2),
-    (10.8, -0.3, 75.0, 9.3, 9.8), (11.6, -0.8, 65.0, 8.1, 8.5), (12.3, -1.0, Z_KNEE, 7.0, 7.3),
-    (12.8, 0.2, 43.0, 6.8, 7.2), (STANCE, 0.6, 32.0, 5.8, 6.1), (STANCE, 0.5, 20.0, 4.7, 4.9),
+    (9.5, 0.0, Z_HIP + 0.5, 6.0, 6.6),
+    (9.8, 0.0, 92.0, 7.0, 7.6),
+    (10.2, 0.0, Z_CROTCH - 3.5, 9.7, 10.2),
+    (10.8, -0.3, 75.0, 9.3, 9.8),
+    (11.6, -0.8, 65.0, 8.1, 8.5),
+    (12.3, -1.0, Z_KNEE, 7.0, 7.3),
+    (12.8, 0.2, 43.0, 6.8, 7.2),
+    (STANCE, 0.6, 32.0, 5.8, 6.1),
+    (STANCE, 0.5, 20.0, 4.7, 4.9),
 ]
 
 
@@ -649,7 +711,7 @@ def leg_tube(sx: int) -> Tube:
         f = 0.06 * back * gauss(d, d_calf, 8) + 0.04 * front * gauss(d, d_knee, 4)
         f += 0.04 * gauss(d, d_knee, 6.5) * (0.4 + 0.6 * back) * creases(d, th, 3.2, 1.0 * sx)
         f += 0.018 * gauss(d, d_hip, 6) * creases(d, th, 3.6, 2.6 * sx)
-        f += 0.012 * gauss(d, d_cuff, 4) * creases(d, th, 2.8, 0.3 * sx)   # bunching over the boot
+        f += 0.012 * gauss(d, d_cuff, 4) * creases(d, th, 2.8, 0.3 * sx)  # bunching over the boot
         return f
 
     t.fold = fold
@@ -689,19 +751,35 @@ def build_legs(M: dict) -> None:
 def build_boots(M: dict) -> None:
     g = group("Boots")
     uppers, soles, laces, eyelets, tongue = (MeshBuilder() for _ in range(5))
-    y0 = 0.5                      # ankle centre
+    y0 = 0.5  # ankle centre
     toe = y0 - 23.5
     heel = toe + BOOT_LENGTH
     for sx in (1, -1):
         x0 = sx * STANCE
-        shaft = Tube([(x0, y0, z) for z in (BOOT_TOP, BOOT_TOP - 1.5, 21.0, 15.0, 10.0, 5.0)],
-                     [(6.2, 6.5), (6.15, 6.45), (5.6, 5.9), (4.9, 5.3), (4.5, 5.1), (4.2, 4.8)], resample=5)
+        shaft = Tube(
+            [(x0, y0, z) for z in (BOOT_TOP, BOOT_TOP - 1.5, 21.0, 15.0, 10.0, 5.0)],
+            [(6.2, 6.5), (6.15, 6.45), (5.6, 5.9), (4.9, 5.3), (4.5, 5.1), (4.2, 4.8)],
+            resample=5,
+        )
         shaft.add(uppers, 28)
         # the foot: heel to toe, squared off underneath so the upper meets the sole at its edge
-        keys = [(7.4, 4.9, 2.0, 2.6), (6.8, 5.0, 3.4, 3.6), (3.5, 5.5, 4.3, 4.6), (-2.5, 6.4, 4.9, 5.3),
-                (-9.5, 5.4, 5.3, 4.2), (-15.5, 4.4, 5.3, 3.2), (-20.0, 3.9, 4.6, 2.6), (-22.6, 3.5, 2.8, 2.0)]
-        foot = Tube([(x0, y0 + y, z) for y, z, _, _ in keys], [(a, b) for *_, a, b in keys], ref=(0, 0, 1),
-                    resample=5, fold=lambda d, th: squareness(th, 4.0) * smooth(-math.sin(th), 0.0, 0.6))
+        keys = [
+            (7.4, 4.9, 2.0, 2.6),
+            (6.8, 5.0, 3.4, 3.6),
+            (3.5, 5.5, 4.3, 4.6),
+            (-2.5, 6.4, 4.9, 5.3),
+            (-9.5, 5.4, 5.3, 4.2),
+            (-15.5, 4.4, 5.3, 3.2),
+            (-20.0, 3.9, 4.6, 2.6),
+            (-22.6, 3.5, 2.8, 2.0),
+        ]
+        foot = Tube(
+            [(x0, y0 + y, z) for y, z, _, _ in keys],
+            [(a, b) for *_, a, b in keys],
+            ref=(0, 0, 1),
+            resample=5,
+            fold=lambda d, th: squareness(th, 4.0) * smooth(-math.sin(th), 0.0, 0.6),
+        )
         foot.add(uppers, 28)
 
         # sole: an outline of stations down the foot, raised at the heel
@@ -732,11 +810,11 @@ def build_boots(M: dict) -> None:
         th = shaft.toward(FRONT, 10.0)
         shaft.patch(tongue, 1.0, 15.0, th - 0.28, th + 0.28, 0.18, nd=10, nt=4)
         if srlib.DETAIL >= 0.5:
-            rows = [[(shaft.at(d, th + s * 0.33, 0.65), shaft.normal(d, th + s * 0.33)) for s in (-1, 1)]
-                    for d in (1.8, 4.0, 6.2, 8.4, 10.6, 12.8, 15.0)]
+            rows = [
+                [(shaft.at(d, th + s * 0.33, 0.65), shaft.normal(d, th + s * 0.33)) for s in (-1, 1)] for d in (1.8, 4.0, 6.2, 8.4, 10.6, 12.8, 15.0)
+            ]
             th = foot.toward(UP, 10.0)
-            rows += [[(foot.at(d, th - s * 0.33, 0.65), foot.normal(d, th - s * 0.33)) for s in (-1, 1)]
-                     for d in (9.4, 11.6, 13.8, 16.0)]
+            rows += [[(foot.at(d, th - s * 0.33, 0.65), foot.normal(d, th - s * 0.33)) for s in (-1, 1)] for d in (9.4, 11.6, 13.8, 16.0)]
             for (a0, a1), (b0, b1) in zip(rows, rows[1:]):
                 laces.tube(a0[0], b1[0], 0.13, 5)
                 laces.tube(a1[0] + a1[1] * 0.32, b0[0] + b0[1] * 0.32, 0.13, 5)
@@ -744,7 +822,7 @@ def build_boots(M: dict) -> None:
                 laces.tube(a0[0], a1[0], 0.13, 5)
             for pair in rows:
                 for p, nm in pair:
-                    eyelets.disc(p - nm * 0.9, nm, 0.3, 1.35, 8)   # lacing hooks
+                    eyelets.disc(p - nm * 0.9, nm, 0.3, 1.35, 8)  # lacing hooks
 
     emit(uppers, "Boots_Uppers", M["boot"], g)
     emit(tongue, "Boots_Tongues", M["boot"], g)
@@ -764,8 +842,7 @@ def polyline(keys: Sequence[Sequence[float]], step: float) -> list[Vector]:
         p0, p1, p2, p3 = (pts[max(0, min(n - 1, k))] for k in (i - 1, i, i + 1, i + 2))
         for k in range(24):
             t = k / 24
-            fine.append(0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t
-                               + (3 * p1 - p0 - 3 * p2 + p3) * t**3))
+            fine.append(0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t**3))
     fine.append(pts[-1])
     out, carry = [fine[0]], 0.0
     for a, b in zip(fine, fine[1:]):
@@ -789,31 +866,42 @@ def build_ventilator(M: dict, inlet: Vector, axis: Vector) -> None:
     cz = feet + hz / 2
     # the case is a loft across its width, squared up, with eased edges at the two faces
     xs = [(0.0, 0.93), (0.3, 0.975), (0.9, 1.0), (wx - 0.9, 1.0), (wx - 0.3, 0.975), (wx, 0.93)]
-    Tube([(cx - wx / 2 + x, cy, cz) for x, _ in xs], [(hz / 2 * k, ly / 2 * k) for _, k in xs], resample=1,
-         fold=lambda d, th: squareness(th, 10.0)).add(case, 72)
+    Tube(
+        [(cx - wx / 2 + x, cy, cz) for x, _ in xs], [(hz / 2 * k, ly / 2 * k) for _, k in xs], resample=1, fold=lambda d, th: squareness(th, 10.0)
+    ).add(case, 72)
     top = cz + hz / 2
     # carrying handle
     hy = cy + 1.0
-    Tube([(cx, hy + y, top + z) for y, z in ((-7.0, -0.6), (-6.6, 2.4), (-4.8, 3.6), (4.8, 3.6), (6.6, 2.4), (7.0, -0.6))],
-         [(0.75, 0.75)] * 6, ref=(1, 0, 0), resample=6).add(hard, 10)
+    Tube(
+        [(cx, hy + y, top + z) for y, z in ((-7.0, -0.6), (-6.6, 2.4), (-4.8, 3.6), (4.8, 3.6), (6.6, 2.4), (7.0, -0.6))],
+        [(0.75, 0.75)] * 6,
+        ref=(1, 0, 0),
+        resample=6,
+    ).add(hard, 10)
     for y in (-7.0, 7.0):
         hard.box((3.0, 2.4, 0.8), Matrix.Translation((cx, hy + y, top + 0.2)))
-    for y in (-11.0, 13.0):   # lid latches on the outboard face
+    for y in (-11.0, 13.0):  # lid latches on the outboard face
         hard.box((0.7, 3.0, 4.4), Matrix.Translation((cx + wx / 2, cy + y, top - 5.0)))
     for dx in (-1, 1):
         for dy in (-1, 1):
             hard.tube((cx + dx * 5.0, cy + dy * 16.0, 0.0), (cx + dx * 5.0, cy + dy * 16.0, feet + 0.6), 1.3, 12)
-    for k in range(6):        # blower louvres
+    for k in range(6):  # blower louvres
         grille.box((0.6, 16.0, 1.0), Matrix.Translation((cx + wx / 2, cy, feet + 6.0 + k * 2.1)))
     # hose: out of the top of the case, up and across to the inlet at his left waist
     py = cy - 15.0
-    fit.lathe([(2.9, -0.4), (2.9, 0.9), (2.3, 1.1), (2.3, 3.2), (1.45, 3.2)], 28,
-              matrix=Matrix.Translation((cx, py, top)))
-    keys = [(cx, py, top + 1.5), (cx, py, top + 8.0), (cx - 1.5, py - 4.0, top + 20.0), (cx - 9.0, py - 9.0, 68.0),
-            (cx - 19.0, py - 8.0, 84.0), tuple(inlet + axis * 16.0), tuple(inlet + axis * 6.0), tuple(inlet - axis * 1.2)]
+    fit.lathe([(2.9, -0.4), (2.9, 0.9), (2.3, 1.1), (2.3, 3.2), (1.45, 3.2)], 28, matrix=Matrix.Translation((cx, py, top)))
+    keys = [
+        (cx, py, top + 1.5),
+        (cx, py, top + 8.0),
+        (cx - 1.5, py - 4.0, top + 20.0),
+        (cx - 9.0, py - 9.0, 68.0),
+        (cx - 19.0, py - 8.0, 84.0),
+        tuple(inlet + axis * 16.0),
+        tuple(inlet + axis * 6.0),
+        tuple(inlet - axis * 1.2),
+    ]
     pts = polyline(keys, 0.4)
-    Tube(pts, [(1.5, 1.5)] * len(pts), resample=1,
-         fold=lambda d, th: 0.085 * math.sin(TAU * d / 1.6)).add(hose, 12)
+    Tube(pts, [(1.5, 1.5)] * len(pts), resample=1, fold=lambda d, th: 0.085 * math.sin(TAU * d / 1.6)).add(hose, 12)
 
     emit(case, "Ventilator_Case", M["aluminium"], g)
     emit(hard, "Ventilator_Hardware", M["steel"], g, sharp_angle=30)

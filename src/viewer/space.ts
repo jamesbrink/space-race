@@ -108,10 +108,13 @@ export class OrbitBackdrop {
     const c = new THREE.Color();
     for (let i = 0; i < count; i++) {
       v.set(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1);
-      if (v.lengthSq() > 1 || v.lengthSq() < 1e-4) { i--; continue; }
+      if (v.lengthSq() > 1 || v.lengthSq() < 1e-4) {
+        i--;
+        continue;
+      }
       v.normalize().multiplyScalar(90);
       pos.set([v.x, v.y, v.z], i * 3);
-      const b = 0.15 + 2.2 * Math.pow(rand(), 9);
+      const b = 0.15 + 2.2 * rand() ** 9;
       c.setHSL(rand() < 0.5 ? 0.6 : 0.09, 0.35 * rand(), 0.75).multiplyScalar(b);
       col.set([c.r, c.g, c.b], i * 3);
     }
@@ -120,10 +123,7 @@ export class OrbitBackdrop {
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     this.scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true })));
 
-    const sun = new THREE.Mesh(
-      new THREE.SphereGeometry(0.42, 24, 12),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(60, 56, 48) }),
-    );
+    const sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(60, 56, 48) }));
     sun.position.copy(sunDir).multiplyScalar(90).add(this.camera.position);
     this.scene.add(sun);
   }
@@ -181,7 +181,10 @@ export function wearTexture(): THREE.Texture {
   for (let i = 0; i < 2600; i++) {
     const shade = 120 + Math.floor(rand() * 135);
     g.fillStyle = `rgba(${shade},${shade},${shade},${0.04 + rand() * 0.1})`;
-    const x = rand() * size, y = rand() * size, w = 2 + rand() * 60, h = 1 + rand() * (rand() < 0.3 ? 90 : 6);
+    const x = rand() * size,
+      y = rand() * size,
+      w = 2 + rand() * 60,
+      h = 1 + rand() * (rand() < 0.3 ? 90 : 6);
     for (const dx of [0, -size]) for (const dy of [0, -size]) g.fillRect(x + dx, y + dy, w, h);
   }
   const texture = new THREE.CanvasTexture(canvas);

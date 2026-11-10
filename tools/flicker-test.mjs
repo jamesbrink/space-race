@@ -51,8 +51,11 @@ const flipsAt = (view, az) =>
         g.drawImage(src, 0, 0); // the WebGL buffer is not preserved, so copy it in the same task as the frame
         return g.getImageData(0, 0, c.width, c.height).data;
       };
-      const a = await grab(0), b = await grab(NUDGE), a2 = await grab(0);
-      const w = c.width, h = c.height;
+      const a = await grab(0),
+        b = await grab(NUDGE),
+        a2 = await grab(0);
+      const w = c.width,
+        h = c.height;
       const mask = new Uint8Array(w * h);
       for (let i = 0, p = 0; i < a.length; i += 4, p++) {
         const ab = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
@@ -91,16 +94,19 @@ for (const model of models) {
   // every view from six directions; then, where there is a cutaway, every view again looking into it
   const passes = model.cutaway ? [false, true] : [false];
   for (const cut of passes) {
-  await page.evaluate((on) => window.sr.stage.setCutaway(on), cut);
-  for (const view of model.views)
+    await page.evaluate((on) => window.sr.stage.setCutaway(on), cut);
     // six directions, chosen so no pose puts the camera inside the pad's masts
-    for (const az of cut ? [20] : [20, 80, 140, 200, 260, 320]) {
-      const { flips, map } = await flipsAt(view, az);
-      const ok = flips <= FLIPS;
-      if (!ok) failed++;
-      console.log(`${ok ? 'ok  ' : 'FAIL'} ${(model.id + (cut ? ' cut' : '')).padEnd(12)} ${view.padEnd(11)} az ${String(az).padStart(3)}   flips ${String(flips).padStart(5)} (<= ${FLIPS})`);
-      if (shots && map) writeFileSync(join(shots, `${model.id}${cut ? '-cut' : ''}-${view}-${az}-flips.png`), Buffer.from(map.split(',')[1], 'base64'));
-    }
+    for (const view of model.views)
+      for (const az of cut ? [20] : [20, 80, 140, 200, 260, 320]) {
+        const { flips, map } = await flipsAt(view, az);
+        const ok = flips <= FLIPS;
+        if (!ok) failed++;
+        console.log(
+          `${ok ? 'ok  ' : 'FAIL'} ${(model.id + (cut ? ' cut' : '')).padEnd(12)} ${view.padEnd(11)} az ${String(az).padStart(3)}   flips ${String(flips).padStart(5)} (<= ${FLIPS})`,
+        );
+        if (shots && map)
+          writeFileSync(join(shots, `${model.id}${cut ? '-cut' : ''}-${view}-${az}-flips.png`), Buffer.from(map.split(',')[1], 'base64'));
+      }
   }
 }
 if (errors.length) {

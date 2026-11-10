@@ -126,18 +126,24 @@ function scrub(groundY: number): THREE.InstancedMesh {
   const mesh = new THREE.InstancedMesh(mound, new THREE.MeshStandardMaterial({ roughness: 1 }), count);
   let seed = 23;
   const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  const m = new THREE.Matrix4(),
+    q = new THREE.Quaternion(),
+    s = new THREE.Vector3(),
+    p = new THREE.Vector3();
   const colour = new THREE.Color();
   const onTrack = (x: number, z: number) =>
     TRACKS.some(([x0, z0, x1, z1, w]) => {
-      const dx = x1 - x0, dz = z1 - z0;
+      const dx = x1 - x0,
+        dz = z1 - z0;
       const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
       return Math.hypot(x - x0 - dx * t, z - z0 - dz * t) < w + 2.5;
     });
   for (let i = 0; i < count; ) {
     // dense near the pad, where it gives the ground its depth; thinning with distance
-    const r = 52 + 760 * Math.pow(rand(), 1.6), a = rand() * Math.PI * 2;
-    const x = r * Math.cos(a), z = r * Math.sin(a);
+    const r = 52 + 760 * rand() ** 1.6,
+      a = rand() * Math.PI * 2;
+    const x = r * Math.cos(a),
+      z = r * Math.sin(a);
     if (Math.max(Math.abs(x), Math.abs(z)) < 50 || x > SHORE - 30 || onTrack(x, z)) continue;
     if (Math.abs(z) < 12 && x < 0 && x > -75) continue; // the service structure's track
     if (Math.abs(x) < 40 && Math.abs(z + 163) < 40) continue; // pad 6
@@ -190,9 +196,11 @@ function padSix(groundY: number): THREE.Group {
 /** Cape Canaveral Light: black and white bands, 46 m, the Cape's landmark since 1868. */
 function lighthouse(groundY: number): THREE.Group {
   const g = new THREE.Group();
-  const bands = 6, h = 39 / bands;
+  const bands = 6,
+    h = 39 / bands;
   for (let i = 0; i < bands; i++) {
-    const r0 = 4.0 - (i * 2.1) / bands, r1 = 4.0 - ((i + 1) * 2.1) / bands;
+    const r0 = 4.0 - (i * 2.1) / bands,
+      r1 = 4.0 - ((i + 1) * 2.1) / bands;
     const band = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, h, 24), paint(i % 2 ? 0xe9e6dc : 0x121212));
     band.position.y = groundY + h * (i + 0.5);
     g.add(band);
@@ -214,14 +222,22 @@ function lighthouse(groundY: number): THREE.Group {
 /** Missile Row: the service towers of the Atlas and Titan pads, marching up the coast into the haze. */
 function missileRow(groundY: number): THREE.Group {
   const g = new THREE.Group();
-  const red = paint(0x7a2018), white = paint(0xdedbd2);
+  const red = paint(0x7a2018),
+    white = paint(0xdedbd2);
   let seed = 5;
   const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
   for (let i = 0; i < 11; i++) {
-    const z = -900 - i * 520 - rand() * 160, x = 150 + rand() * 120;
-    const h = 38 + rand() * 22, w = 9 + rand() * 5;
+    const z = -900 - i * 520 - rand() * 160,
+      x = 150 + rand() * 120;
+    const h = 38 + rand() * 22,
+      w = 9 + rand() * 5;
     const tower = new THREE.Group();
-    for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const)
+    for (const [dx, dz] of [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ] as const)
       tower.add(boxAt(1.0, h, 1.0, (dx * w) / 2, groundY, (dz * w) / 2, red));
     for (let y = 6; y < h; y += 6) tower.add(boxAt(w + 1, 0.7, w + 1, 0, groundY + y, 0, y % 12 ? white : red));
     tower.add(boxAt(w * 1.9, 2.2, w * 0.7, w * 0.45, groundY + h, 0, red));

@@ -351,7 +351,9 @@ export class Stage {
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.7;
     // a named view looks at the model's own axis; 'all' looks at the middle of everything
     const mid = box.getCenter(new THREE.Vector3());
-    const target = named ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z) : new THREE.Vector3(mid.x, centreY, mid.z);
+    const target = named
+      ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z)
+      : new THREE.Vector3(mid.x, centreY, mid.z);
     const lift = this.setting.floor ? 0.16 : named && named.span < 4 ? 0.22 : 0.1;
     const position = target.clone().addScaledVector(new THREE.Vector3(0.82, lift, 0.56).normalize(), distance);
     this.controls.minDistance = Math.min(1.2, span * 0.15);
@@ -436,7 +438,8 @@ export class Stage {
   }
 
   private resize(): void {
-    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    const w = this.canvas.clientWidth,
+      h = this.canvas.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
@@ -451,7 +454,7 @@ export class Stage {
     if (this.flyTo) {
       const f = this.flyTo;
       f.t = Math.min(1, f.t + dt / 1.1);
-      const k = 1 - Math.pow(1 - f.t, 3);
+      const k = 1 - (1 - f.t) ** 3;
       this.controls.target.lerp(f.target, k);
       this.camera.position.lerp(f.position, k);
       if (f.t >= 1) this.flyTo = null;
@@ -495,7 +498,8 @@ export class Stage {
   pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY, targetX = 0, targetZ = 0): void {
     this.controls.autoRotate = false;
     this.flyTo = null;
-    const az = THREE.MathUtils.degToRad(azimuthDeg), el = THREE.MathUtils.degToRad(elevationDeg);
+    const az = THREE.MathUtils.degToRad(azimuthDeg),
+      el = THREE.MathUtils.degToRad(elevationDeg);
     this.controls.target.set(targetX, targetY, targetZ);
     this.camera.position.set(
       targetX + distance * Math.cos(el) * Math.cos(az),

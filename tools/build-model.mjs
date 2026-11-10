@@ -9,21 +9,20 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const blender =
-  process.env.BLENDER ??
-  ['/Applications/Blender.app/Contents/MacOS/Blender'].find(existsSync) ??
-  'blender';
+const blender = process.env.BLENDER ?? ['/Applications/Blender.app/Contents/MacOS/Blender'].find(existsSync) ?? 'blender';
 
 /** Every <nation>/<program>/<flight> that has a model/ directory. */
 function allFlights() {
   const out = [];
-  const dirs = (p) => readdirSync(p, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+  const dirs = (p) =>
+    readdirSync(p, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
   for (const nation of dirs(join(root, 'missions')))
     for (const program of dirs(join(root, 'missions', nation))) {
       const flights = join(root, 'missions', nation, program, 'flights');
       if (!existsSync(flights)) continue;
-      for (const flight of dirs(flights))
-        if (existsSync(join(flights, flight, 'model'))) out.push(`${nation}/${program}/${flight}`);
+      for (const flight of dirs(flights)) if (existsSync(join(flights, flight, 'model'))) out.push(`${nation}/${program}/${flight}`);
     }
   return out;
 }
@@ -43,7 +42,9 @@ const targets = args.includes('--all') ? allFlights() : args;
 for (const id of targets) {
   const [nation, program, flight] = id.split('/');
   const dir = join(root, 'missions', nation, program, 'flights', flight, 'model');
-  const scripts = readdirSync(dir).filter((f) => f.endsWith('.py') && (!only || f === `${only}.py`)).sort();
+  const scripts = readdirSync(dir)
+    .filter((f) => f.endsWith('.py') && (!only || f === `${only}.py`))
+    .sort();
   if (!scripts.length) {
     console.error(`no model scripts in ${dir}${only ? ` named ${only}.py` : ''}`);
     process.exit(2);
