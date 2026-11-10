@@ -2,7 +2,17 @@ import { flights } from '../missions';
 import { Ui } from './ui';
 import { Stage } from './viewer/stage';
 
-const flight = flights[0]!;
+/**
+ * The address bar's fragment says what is on show: `#<nation>/<programme>/<flight>/<model>`.
+ * A bare `#<model>` is the first flight's, so links made when there was one flight still work.
+ */
+function address(): { flightId: string; model: string } {
+  const parts = location.hash.slice(1).split('/').filter(Boolean);
+  const model = parts.length === 1 || parts.length === 4 ? parts.pop()! : '';
+  return { flightId: parts.join('/'), model };
+}
+
+const flight = flights.find((f) => f.id === address().flightId) ?? flights[0]!;
 document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
@@ -60,7 +70,8 @@ async function show(id: string): Promise<void> {
     current = model;
     ui.setModel(model.id);
     stage.setExplode(0);
-    if (location.hash !== `#${model.id}`) history.replaceState(null, '', `#${model.id}`);
+    const hash = `#${flight.id}/${model.id}`;
+    if (location.hash !== hash) history.replaceState(null, '', hash);
     ui.loaded();
   } catch (e) {
     console.error(e);
@@ -76,8 +87,13 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
 });
 
-void show(location.hash.slice(1));
-window.addEventListener('hashchange', () => void show(location.hash.slice(1)));
+void show(address().model);
+window.addEventListener('hashchange', () => {
+  const to = address();
+  // another flight is another page's worth of state: start clean rather than rebuild in place
+  if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
+  else void show(to.model);
+});
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
 Object.assign(window, { sr: { stage, ui, flight, show } });

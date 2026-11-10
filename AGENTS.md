@@ -40,7 +40,7 @@ add-on or preference reaches a model.
 
 `window.sr` is the debug handle: `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
 frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly;
-`sr.stage.setCutaway(true)` opens the cutaway. The address bar's `#vehicle` / `#pad` / `#crew`
+`sr.stage.setCutaway(true)` opens the cutaway. The address bar's `#<flight id>/<model>` (or just `#vehicle` / `#pad` / `#crew` for the first flight)
 selects the model. To look at a change, `node tools/shot.mjs out.png pad "sr.stage.pose(215, 9, 150, 14)"`
 takes one screenshot from its own headless browser (`--ui` keeps the panels, `--hover x,y` moves
 the mouse first); read the PNG.
@@ -129,6 +129,13 @@ different one per pixel per frame. Three things stop it, and all three must stay
 directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.
 `--shots <dir>` writes a map of any it finds. Run it after changing a model or the renderer.
 
+## Drawing only what changed
+
+`Stage.frame` skips the draw when nothing has changed: the camera has not moved and nothing set
+`dirty`. Scenery that moves by itself (surf) is redrawn twelve times a second. So anything new that
+changes what is on screen must set `this.dirty = true`, or it will show up late. The shadow map is
+likewise drawn on demand (`shadowMap.needsUpdate`): set it when something that casts a shadow moves.
+
 ## Levels of detail
 
 Models are generated, so a lower level of detail is a rebuild, not a remodel:
@@ -181,6 +188,9 @@ script; do not hand-edit geometry for them.
 - The page must work on a phone and a tablet: under 960 px wide (or 520 px tall) the data panel
   is a bottom sheet and the model keeps the space above it. Check 1280, 820 and 390 wide after
   changing `style.css`; nothing in the control block may be hidden at any of them.
+- A part with a `drive` (a truck) leaves by following a route on the ground, turning about its rear
+  axle with its wheels rolling and steering (`viewer/explode.ts`); its wheels are separate nodes
+  in the GLB, named by prefix.
 - Selection has one rule: choosing a part flies to it; choosing an `inside` part also opens the
   cutaway, which closes again when the selection moves on unless the user opened it by hand;
   Escape or a click on nothing deselects and returns to the section's first view. With nothing

@@ -97,7 +97,8 @@ function pmrem(renderer: THREE.WebGLRenderer, scene: THREE.Scene): THREE.Texture
   return texture;
 }
 
-function ground(renderer: THREE.WebGLRenderer): Setting {
+/** Cape Canaveral's Missile Row from Launch Complex 5, on a clear morning. */
+function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
   // 09:34 EST on 5 May at the Cape: the Sun is about 50 degrees up in the east-south-east
   const sunDir = new THREE.Vector3(0.52, 0.72, 0.46).normalize();
   const envScene = new THREE.Scene();
@@ -194,6 +195,9 @@ function orbit(renderer: THREE.WebGLRenderer): Setting {
 }
 
 /** Settings are expensive (shaders, an environment map each), so each is built once, on first use. */
+/** One builder per place a model can be shown. */
+const SETTINGS: Record<BackdropKind, (renderer: THREE.WebGLRenderer) => Setting> = { orbit, studio, 'cape-canaveral': capeCanaveral };
+
 export class Settings {
   private readonly cache = new Map<BackdropKind, Setting>();
   constructor(private readonly renderer: THREE.WebGLRenderer) {}
@@ -201,7 +205,7 @@ export class Settings {
   get(kind: BackdropKind): Setting {
     let s = this.cache.get(kind);
     if (!s) {
-      s = { orbit, ground, studio }[kind](this.renderer);
+      s = SETTINGS[kind](this.renderer);
       if (s.floor) s.floor.receiveShadow = true;
       for (const o of s.scenery) o.receiveShadow = true;
       this.cache.set(kind, s);

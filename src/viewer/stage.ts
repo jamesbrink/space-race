@@ -96,6 +96,11 @@ export class Stage {
   private readonly bounds = new THREE.Sphere();
   private shadowFit = -1;
   private loadToken = 0;
+  /** Something on show has changed and the next frame must be drawn. */
+  private dirty = true;
+  private sinceDrawn = 0;
+  private readonly lastView = new THREE.Matrix4();
+  private readonly lastProjection = new THREE.Matrix4();
   /** How much of the bottom of the canvas the controls cover, 0 to 1: views are framed above it. */
   private inset = 0.26;
 
@@ -332,6 +337,7 @@ export class Stage {
   /** Open or close the cutaway. With it open, shells show their inner faces too. */
   setCutaway(on: boolean): void {
     this.cut = on;
+    this.dirty = true;
     const at = this.main?.position ?? new THREE.Vector3();
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
     for (const m of this.shellMaterials.values()) {
@@ -359,6 +365,7 @@ export class Stage {
     for (const o of s.scenery) this.scene.add(o);
     this.scene.fog = s.fog;
     this.renderer.shadowMap.needsUpdate = true;
+    this.dirty = true;
   }
 
   /** Tell the stage how many pixels at the bottom of the canvas the controls cover. */
@@ -377,6 +384,7 @@ export class Stage {
   }
 
   setExplode(t: number): void {
+    this.dirty = true;
     this.exploder?.set(t);
     this.fitShadows(t);
     this.renderer.shadowMap.needsUpdate = true;
@@ -391,6 +399,7 @@ export class Stage {
   highlight(hovered: string | null, selected: string | null = this.selected): void {
     this.hovered = hovered;
     this.selected = selected;
+    this.dirty = true;
     this.outline.selectedObjects = [...new Set([hovered, selected])].flatMap((n) => {
       const o = n ? this.parts.get(n) : undefined;
       return o ? [o] : [];
@@ -553,6 +562,7 @@ export class Stage {
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.dirty = true;
     this.refollow(); // a framing made for the old shape no longer fits
   }
 
@@ -586,7 +596,19 @@ export class Stage {
       backdrop.camera.aspect = this.camera.aspect;
       backdrop.camera.updateProjectionMatrix();
     }
-    this.composer.render(dt);
+    // Draw only what has changed. A still view of a place where something moves by itself
+    // (surf, cloud) is redrawn a dozen times a second, which is enough for scenery; a still
+    // view of anything else is not redrawn at all.
+    this.camera.updateMatrixWorld();
+    const moved = !this.lastView.equals(this.camera.matrixWorld) || !this.lastProjection.equals(this.camera.projectionMatrix);
+    this.sinceDrawn += dt;
+    const ambient = this.frozen ? 0.5 : 1 / 12;
+    if (!(this.dirty || moved || this.renderer.shadowMap.needsUpdate || this.sinceDrawn >= ambient)) return;
+    this.lastView.copy(this.camera.matrixWorld);
+    this.lastProjection.copy(this.camera.projectionMatrix);
+    this.dirty = false;
+    this.composer.render(this.sinceDrawn);
+    this.sinceDrawn = 0;
   }
 
   /** For tests: nothing moves unless the camera is moved, and the sky (stars are single pixels) is hidden. */

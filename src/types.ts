@@ -40,6 +40,30 @@ export interface TimelineEvent {
   event: string;
 }
 
+/**
+ * A part that drives away instead of sliding: a truck. All lengths in metres, viewer space
+ * (+Y up); positions are in the part node's own coordinates.
+ */
+export interface Drive {
+  /** Where its rear axle goes on the ground, as (x, z) from where it starts: a smooth curve through these. */
+  path: [number, number][];
+  /** The middle of the rear axle: what the vehicle turns about. */
+  pivot: [number, number, number];
+  /** Which way it faces as built: a unit (x, z). */
+  forward: [number, number];
+  /** It backs along the route instead of driving nose first. */
+  reverse?: boolean;
+  wheelRadius: number;
+  /** Rear axle to front axle. */
+  wheelbase: number;
+  /** Nodes whose names start with this roll. */
+  wheels: string;
+  /** Nodes whose names start with this roll and steer. */
+  steered: string;
+  /** Which of a wheel node's own axes is its axle. */
+  axle: 'x' | 'z';
+}
+
 export interface Part {
   /** Name of the top-level node in the GLB. */
   node: string;
@@ -54,12 +78,17 @@ export interface Part {
   inside?: boolean;
   /** Where the part goes at full explode: metres, viewer space (+Y is the nose). */
   explode: [number, number, number];
+  /** It leaves by driving this route instead of sliding along `explode`. */
+  drive?: Drive;
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
   order: number;
 }
 
-/** What is drawn behind a model: Earth from apogee, the Cape at ground level, or a dark studio. */
-export type BackdropKind = 'orbit' | 'ground' | 'studio';
+/**
+ * What is drawn behind a model: Earth from orbit, a dark studio, or a launch site on the ground.
+ * A new site is a new name here and a new entry in `Settings` (viewer/backdrops.ts).
+ */
+export type BackdropKind = 'orbit' | 'studio' | 'cape-canaveral';
 
 /**
  * A camera framing: look at height `centreY` from far enough back to fit `span` metres.
