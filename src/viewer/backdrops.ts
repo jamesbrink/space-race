@@ -31,6 +31,9 @@ export interface Setting {
   scenery: THREE.Object3D[];
 }
 
+/** Height of the ground-setting's terrain, metres. The model's own surface is at 0. */
+export const GROUND_Y = -0.45;
+
 /** Linear colour of the sky at the horizon; the fog uses the same so ground and sky meet without a seam. */
 const HORIZON = new THREE.Color(0.4, 0.58, 0.86);
 
@@ -126,7 +129,10 @@ function ground(renderer: THREE.WebGLRenderer): Setting {
   const strip = (x0: number, x1: number, material: THREE.Material) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, 2 * FAR), material);
     m.rotation.x = -Math.PI / 2;
-    m.position.set((x0 + x1) / 2, -0.06, 0);
+    // Half a metre under the pad's surface. These triangles are kilometres long, and depth
+    // interpolated across them is too coarse to separate anything lying a few centimetres above.
+    // Models that stand on the ground must reach down past this (lc_5.py: FOOTING).
+    m.position.set((x0 + x1) / 2, GROUND_Y, 0);
     return m;
   };
   const scrubMap = speckle('#6f6a4c', ['#4c5a2e', '#3d4a26', '#8a8260', '#59623a'], 1);
@@ -175,21 +181,22 @@ function studio(renderer: THREE.WebGLRenderer): Setting {
   );
   const floor = new THREE.Mesh(
     new THREE.CircleGeometry(14, 96),
-    new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.55, metalness: 0.1 }),
+    new THREE.MeshStandardMaterial({ color: 0x0d0e11, roughness: 0.5, metalness: 0.1 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.002;
   return {
     backdrop,
     environment: pmrem(renderer, new RoomEnvironment()),
-    environmentIntensity: 0.75,
+    // aluminised cloth mirrors whatever lights it: a dim room and one soft key, or it burns out
+    environmentIntensity: 0.32,
     sunDir,
-    sunColor: 0xfff6ea,
-    sunIntensity: 2.4,
-    fill: [0x30343c, 0x101012, 0.5],
+    sunColor: 0xfff3e2,
+    sunIntensity: 1.5,
+    fill: [0x30343c, 0x101012, 0.35],
     floor,
     maxPolar: Math.PI / 2 - 0.01,
-    exposure: 1.0,
+    exposure: 0.9,
     fog: null,
     scenery: [],
   };

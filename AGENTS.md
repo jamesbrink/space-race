@@ -84,8 +84,11 @@ different one per pixel per frame. Three things stop it, and all three must stay
   use `double_sided=True` only where both sides are really seen.
 - **`Stage.fitDepth` moves the near plane out every frame** so depth resolution stays under a
   third of a millimetre at any distance. Do not give the camera a fixed near plane.
-- **Scenery never overlaps scenery.** Ground, beach and sea in `backdrops.ts` are laid edge to
-  edge. Two planes a few centimetres apart fight at the horizon no matter what the near plane is.
+- **Nothing lies close above the terrain.** The ground setting's terrain is three strips laid
+  edge to edge (never overlapping), each two triangles kilometres long. Depth interpolated over
+  triangles that size is coarse: concrete 6 cm above them flickered. So the terrain sits 0.45 m
+  below the pad's surface (`GROUND_Y`), and anything standing on the ground goes down past that
+  (`FOOTING` in `lc_5.py`).
 
 `pnpm test:flicker` checks the result in a real browser: every model, every view, six
 directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.

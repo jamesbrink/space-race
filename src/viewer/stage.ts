@@ -90,7 +90,13 @@ export class Stage {
     });
 
     // Multisampled HDR target: trusses are all thin bright lines against a plain background.
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+    // The depth texture is explicit: left to its default the target gets 16 bits of depth, which
+    // cannot tell concrete from the ground 6 cm under it across the pad. 24 bits can.
+    const target = new THREE.WebGLRenderTarget(1, 1, {
+      type: THREE.HalfFloatType,
+      samples: 4,
+      depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType),
+    });
     this.composer = new EffectComposer(this.renderer, target);
     this.backdropPass = new RenderPass(this.setting.backdrop.scene, this.setting.backdrop.camera);
     this.composer.addPass(this.backdropPass);
@@ -275,7 +281,8 @@ export class Stage {
     const centreY = named?.centreY ?? (box.min.y + box.max.y) / 2;
     // a wide, low model (a launch pad) must fit by width as well as by height
     const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect);
-    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.8;
+    // the subject fills 70% of the frame's height: the controls sit over the bottom of it
+    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.7;
     // a named view looks at the model's own axis; 'all' looks at the middle of everything
     const mid = box.getCenter(new THREE.Vector3());
     const target = named ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z) : new THREE.Vector3(mid.x, centreY, mid.z);

@@ -257,19 +257,18 @@ def build_afterbody(M, font) -> None:
         skip = HATCH_PANELS if row == HATCH_ROW else ()
         shingle_row(panels, bolts, CONE, z0, z1, PANELS, PANEL_PHASE, beads, [k for k in range(PANELS) if k not in skip])
     shingle_row(hp, MeshBuilder(), CONE, hz0, hz1, PANELS, PANEL_PHASE, ROWS[HATCH_ROW][2], HATCH_PANELS)
-    # Freedom 7's hatch was bolted on from outside: 70 bolts around its edge
-    inset = 0.55   # inches in from the hatch edge, clear of the neighbouring shingles' fasteners
+    # No. 7 carried the mechanical latch hatch (69 lb), with release handles inside and out.
+    # The 70-bolt hatch was the original design and, with a detonating fuse, the later explosive one.
+    inset = 0.9   # inches in from the hatch edge
     ta, tb = t_h0 + inset / CONE.r(hz0), t_h1 - inset / CONE.r(hz0)
     za, zb = hz0 + inset, hz1 - inset
-    for i in range(70):
-        f = i / 70 * 4
-        edge, u = int(f), f % 1.0
-        t, z = ((ta + (tb - ta) * u, za), (tb, za + (zb - za) * u), (tb - (tb - ta) * u, zb), (ta, zb - (zb - za) * u))[edge]
-        hb.disc(CONE.p(t, z), CONE.n(t), 0.26 * IN, 0.12 * IN, 6)
+    for t, z in ((ta, za), (tb, za), (ta, zb), (tb, zb), ((ta + tb) / 2, za), ((ta + tb) / 2, zb), (ta, (za + zb) / 2), (tb, (za + zb) / 2)):
+        hb.box((2.2 * IN, 1.3 * IN, 0.7 * IN), CONE.frame(t, z, 0.1))                     # latch housings
+    hb.box((1.1 * IN, 6.5 * IN, 1.0 * IN), CONE.frame(t_h0 + 0.82 * (t_h1 - t_h0), (za + zb) / 2 - 3.0, 0.25))   # external release handle
     panels.build("Afterbody_Shingles", M["shingle"], g, sharp_angle=None)
     bolts.build("Afterbody_Fasteners", M["bolt"], g)
     hp.build("Hatch_Shingles", M["shingle"], hatch, sharp_angle=None)
-    hb.build("Hatch_Bolts", M["bolt"], hatch)
+    hb.build("Hatch_Latches", M["steel"], hatch, smooth=False)
 
     # structure under the shingles, with the hatch opening left out
     under = MeshBuilder()
@@ -418,7 +417,7 @@ def can_r(z: float) -> float:
 
 def build_antenna_canister(M) -> None:
     g = group("AntennaCanister")
-    w0, w1 = Z_CAN + 7.5, Z_CAN + 13.5
+    w0, w1 = Z_CAN + 7.0, Z_CAN + 15.0   # the dielectric window is 8 in (SEDR 104, 2-9)
     lower = [(0.0, Z_CAN + 0.05), (CAN_R0, Z_CAN + 0.05), (can_r(w0), w0)]
     upper = [(can_r(w1), w1), (CAN_R1, Z_CAN_TOP - 0.4), (CAN_R1 - 0.4, Z_CAN_TOP), (0.0, Z_CAN_TOP)]
     mb = MeshBuilder()

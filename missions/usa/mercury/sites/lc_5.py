@@ -1,5 +1,5 @@
 """Launch Complex 5, Cape Canaveral, as configured for Mercury-Redstone at about T-55 minutes:
-service structure rolled back to its launch position, cherry picker's cab at the capsule hatch.
+service structure withdrawn to the edge of the pad, cherry picker's cab at the capsule hatch.
 
 Dimensions are feet. The origin is the pad centre at ground level; +X is the side the capsule
 hatch faces, and the service structure's rails run along X. See ./lc-5.md: almost nothing here
@@ -18,9 +18,13 @@ from mathutils import Matrix, Vector
 from srlib import FT, TAU, MeshBuilder, group, material
 
 PEDESTAL_TOP = 6.0        # the vehicle's fin trailing edges rest here
-HARDSTAND = 120.0         # square, side
+HARDSTAND = 204.0         # square, side: Figure 7-6 scaled on the 535 ft between pads 5 and 6; pad 6's is given as 203 ft
 RAIL_GAUGE = 28.0
-STRUCTURE_X = -78.0       # service structure centre when rolled back
+# How far the concrete and track bed go down. The viewer's ground is half a metre under the pad
+# surface (two parallel surfaces centimetres apart flicker at a distance), so they must go deeper.
+FOOTING = 3.0
+STRUCTURE_X = -78.0       # service structure centre at the edge of the pad (T-55 min)
+LAUNCH_POSITION_X = -195.0   # where it is driven to by remote control at T-8:45 (scaled off Figure 7-6)
 STRUCTURE_TOP = 118.0     # top of the tower, under the crane
 HATCH_HEIGHT = 68.4       # capsule hatch centre above ground, vehicle on the pedestal
 LEVELS = (22.0, 42.0, 62.5, 79.0, 94.0)   # work platforms; the third is the white room
@@ -100,21 +104,21 @@ def wheel(mb: MeshBuilder, centre, radius: float, width: float, axis=(0, 1, 0)) 
 def build_hardstand(M) -> None:
     g = group("Hardstand")
     slabs, joints, steel, gravel, rails = (MeshBuilder() for _ in range(5))
-    n, half = 6, HARDSTAND / 2
+    n, half = 10, HARDSTAND / 2
     size = HARDSTAND / n
     for i in range(n):
         for j in range(n):
             x0, y0 = -half + i * size, -half + j * size
-            box(slabs, (x0 + 0.06, y0 + 0.06, -1.0), (x0 + size - 0.06, y0 + size - 0.06, 0.0))
-    box(joints, (-half, -half, -1.1), (half, half, -0.12))
-    # steel blast plate under the pedestal, scorched by five earlier Redstone launches from this pad
+            box(slabs, (x0 + 0.06, y0 + 0.06, -FOOTING), (x0 + size - 0.06, y0 + size - 0.06, 0.0))
+    box(joints, (-half, -half, -FOOTING - 0.1), (half, half, -0.12))
+    # steel blast plate under the pedestal, scorched by the launches before this one
     box(steel, (-9, -9, 0.0), (9, 9, 0.12))
     # the service structure's track: two rails on a ballasted bed running off the hardstand
     for y in (-RAIL_GAUGE / 2, RAIL_GAUGE / 2):
-        box(gravel, (-185, y - 3.0, -0.8), (-half - 0.2, y + 3.0, -0.05))
-        box(rails, (-183, y - 0.12, 0.0), (22, y + 0.12, 0.5))
-        box(rails, (-183, y - 0.3, 0.0), (22, y + 0.3, 0.08))
-        for k in range(26):   # ties, off the hardstand
+        box(gravel, (-232, y - 3.0, -FOOTING), (-half - 0.2, y + 3.0, -0.05))
+        box(rails, (-230, y - 0.12, 0.0), (22, y + 0.12, 0.5))
+        box(rails, (-229.8, y - 0.3, 0.0), (21.8, y + 0.3, 0.08))   # foot, ending short of the web
+        for k in range(27):   # ties, off the hardstand
             x = -half - 2.0 - k * 4.7
             box(gravel, (x - 0.4, y - 2.6, -0.2), (x + 0.4, y + 2.6, 0.02))
     slabs.build("Hardstand_Slabs", M["concrete"], g, smooth=False)
@@ -154,7 +158,8 @@ def build_pedestal(M) -> None:
 
 
 def build_umbilical_mast(M) -> None:
-    """A slender boom beside the vehicle carrying the capsule's umbilical; it swings clear at liftoff."""
+    """Cable mast No. 2, carrying the capsule's umbilical. (No. 1, for the booster, is not modelled.)
+    The umbilical dropped at about T-35 s and the boom fell away just before ignition."""
     g = group("UmbilicalMast")
     mast, cable = MeshBuilder(), MeshBuilder()
     cy, top, w = -11.0, 66.0, 0.75
@@ -252,7 +257,8 @@ def build_service_structure(M) -> None:
 def build_cherry_picker(M) -> None:
     """The mobile aerial tower: once the structure rolled back, its cab stood at the hatch so
     the pilot could step out and be swung clear. It could reach 125 ft, and could be lowered
-    by remote control from the blockhouse. It left for its launch position minutes before liftoff."""
+    by remote control from the blockhouse. It left for its launch position in the last minutes of
+    the count: T-4 min by one section of the report, T-2:30 by the MR-4 countdown."""
     g = group("CherryPicker")
     body, boom, tyres, cab, glass = (MeshBuilder() for _ in range(5))
     tx, ty = 46.0, -6.0
@@ -312,8 +318,8 @@ def build_cherry_picker(M) -> None:
 def build_floodlights(M) -> None:
     g = group("Floodlights")
     poles, lamps = MeshBuilder(), MeshBuilder()
-    for sx, sy in ((1, 1), (1, -1), (-1, 1.35), (-1, -1.35)):
-        x, y = sx * 52.0, sy * 52.0
+    for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+        x, y = sx * 88.0, sy * 88.0
         poles.tube(P(x, y, 0), P(x, y, 44), 0.42 * FT, 10)
         box(poles, (x - 1.0, y - 1.0, 0.0), (x + 1.0, y + 1.0, 0.5))
         aim = Vector((-x, -y, 0)).normalized()

@@ -23,11 +23,12 @@ BODY_R = 35.0            # 70 in diameter
 LENGTH = 716.5           # base to the spacecraft's heat-shield plane: 59.7 ft
 S_TAIL = 111.24          # top of the tail unit: 9.27 ft (TM X-53107, Figure 4-1)
 S_TANK = S_TAIL + 450.0  # top of the centre unit: 37.50 ft; alcohol tank 18.8 ft over LOX tank 16.83 ft
-S_AFT = 708.0            # X-axis station zero, 59.00 ft up: top of the aft section; the adapter runs on to LENGTH
+S_AFT = 708.0            # top of the booster, 59.00 ft (Figure 4-1). The aft section is drawn as 139.64 in,
+                         # which leaves 7.1 in: the 7.08 in the aft unit was stretched for Mercury (4.8.2.2).
 AFT_LOWER = 42.16        # aft unit proper: nitrogen spheres, antennas, receivers
 INSTRUMENT = 53.66       # pressurised instrument compartment, above it; ballast section above that
 ADAPTER_TOP_R = 36.6     # just inside the capsule's 74.5 in heat shield
-FIN_SPAN = 152.0         # tip to tip
+FIN_SPAN = 144.0         # tip to tip: 12 ft, from secondary sources on the Redstone missile; no primary figure found
 FIN_ROOT, FIN_TIP = 100.0, 38.0   # chords
 NOZZLE_EXIT_R = 16.5
 
