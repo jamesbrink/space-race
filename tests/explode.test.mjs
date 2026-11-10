@@ -52,3 +52,38 @@ test('a route starts at the origin facing along its first leg and ends at its la
     last = p.z;
   }
 });
+
+test('a sequence plays each motion over its own stretch, and goes back the way it came', async () => {
+  const THREE = await import('three');
+  const { Exploder } = await import('../src/viewer/explode.ts');
+  const root = new THREE.Group();
+  const truck = new THREE.Group();
+  truck.name = 'Truck';
+  const arm = new THREE.Group();
+  arm.name = 'Arm';
+  arm.position.set(0, 2, 0);
+  truck.add(arm);
+  root.add(truck);
+  const part = {
+    node: 'Truck',
+    name: '',
+    summary: '',
+    detail: '',
+    explode: [0, 0, 0],
+    order: 0,
+    moves: [
+      { kind: 'swing', node: 'Arm', axis: [0, 0, 1], angle: Math.PI / 2, from: 0, to: 0.5 },
+      { kind: 'slide', by: [10, 0, 0], from: 0.5, to: 1 },
+    ],
+  };
+  const exploder = new Exploder(root, [part]);
+  const turn = () => 2 * Math.acos(Math.min(1, Math.abs(arm.quaternion.w)));
+  exploder.set(0.5); // half way along the slider the arm is down and the truck has not moved
+  assert.ok(Math.abs(turn() - Math.PI / 2) < 1e-6);
+  assert.ok(Math.abs(truck.position.x) < 1e-9);
+  exploder.set(1);
+  assert.ok(Math.abs(truck.position.x - 10) < 1e-9);
+  assert.equal(arm.position.y, 2, 'a swing turns a node about its own origin: it does not move it');
+  exploder.set(0);
+  assert.ok(turn() < 1e-9 && Math.abs(truck.position.x) < 1e-9, 'back where it was built');
+});

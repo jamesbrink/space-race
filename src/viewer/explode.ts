@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Drive, Part } from '../types';
+import type { Drive, Move, Part } from '../types';
 
 /**
  * How far along its travel a part is when the explode slider reads `t`.
@@ -134,9 +134,54 @@ class Driver {
   }
 }
 
+const ease = (x: number) => x * x * (3 - 2 * x);
+
+/**
+ * A part that leaves as hardware does: a sequence of motions, each on a node of the part and
+ * each over its own stretch of the slider (types.ts: Move).
+ */
+class Sequence {
+  private readonly nodes = new Map<THREE.Object3D, { position: THREE.Vector3; quaternion: THREE.Quaternion }>();
+  private readonly steps: { move: Move; object: THREE.Object3D; driver?: Driver }[] = [];
+
+  constructor(part: THREE.Object3D, home: THREE.Vector3, moves: Move[]) {
+    for (const move of moves) {
+      const object = move.node ? part.getObjectByName(move.node) : part;
+      if (!object) {
+        console.warn(`explode: ${part.name} has no node named ${move.node}`);
+        continue;
+      }
+      // where it was built: every setting of the slider starts again from here
+      if (!this.nodes.has(object))
+        this.nodes.set(object, {
+          position: object === part ? home.clone() : object.position.clone(),
+          quaternion: object.quaternion.clone(),
+        });
+      const rest = this.nodes.get(object)!.position;
+      this.steps.push({ move, object, driver: move.kind === 'drive' ? new Driver(object, rest, move) : undefined });
+    }
+  }
+
+  set(k: number): void {
+    for (const [object, rest] of this.nodes) {
+      object.position.copy(rest.position);
+      object.quaternion.copy(rest.quaternion);
+    }
+    for (const { move, object, driver } of this.steps) {
+      const u = ease(Math.min(1, Math.max(0, (k - move.from) / Math.max(1e-6, move.to - move.from))));
+      if (move.kind === 'swing') {
+        // in the parent's frame, so it goes before whatever turn the node already has
+        object.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...move.axis).normalize(), move.angle * u));
+      } else if (move.kind === 'slide') object.position.add(new THREE.Vector3(...move.by).multiplyScalar(u));
+      else driver?.set(u);
+    }
+  }
+}
+
+/** Moves a flight's parts between their assembled and exploded positions. */
 /** Moves a flight's parts between their assembled and exploded positions. */
 export class Exploder {
-  private readonly entries: { object: THREE.Object3D; home: THREE.Vector3; part: Part; driver?: Driver }[] = [];
+  private readonly entries: { object: THREE.Object3D; home: THREE.Vector3; part: Part; sequence?: Sequence }[] = [];
   private readonly orders: number;
 
   constructor(root: THREE.Object3D, parts: Part[]) {
@@ -149,20 +194,16 @@ export class Exploder {
       }
       // remember where it was built, so the model can be shown again later from a clean state
       const home = ((object.userData.home as THREE.Vector3 | undefined) ??= object.position.clone());
-      this.entries.push({ object, home, part, driver: part.drive && new Driver(object, home, part.drive) });
+      this.entries.push({ object, home, part, sequence: part.moves && new Sequence(object, home, part.moves) });
     }
   }
 
   set(t: number): void {
-    for (const { object, home, part, driver } of this.entries) {
+    for (const { object, home, part, sequence } of this.entries) {
+      // a sequence is timed against the slider itself (its motions say when); a plain slide takes its turn
       const k = partProgress(t, part.order, this.orders);
-      if (driver) driver.set(k);
-      else if (part.swing) {
-        // turn about the hinge: the pivot stays where it is and everything else goes round it
-        const pivot = new THREE.Vector3(...part.swing.pivot);
-        object.quaternion.setFromAxisAngle(new THREE.Vector3(...part.swing.axis).normalize(), part.swing.angle * k);
-        object.position.copy(home).add(pivot).sub(pivot.clone().applyQuaternion(object.quaternion));
-      } else object.position.set(home.x + part.explode[0] * k, home.y + part.explode[1] * k, home.z + part.explode[2] * k);
+      if (sequence) sequence.set(t);
+      else object.position.set(home.x + part.explode[0] * k, home.y + part.explode[1] * k, home.z + part.explode[2] * k);
     }
   }
 }

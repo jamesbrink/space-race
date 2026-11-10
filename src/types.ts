@@ -41,8 +41,8 @@ export interface TimelineEvent {
 }
 
 /**
- * A part that drives away instead of sliding: a truck. All lengths in metres, viewer space
- * (+Y up); positions are in the part node's own coordinates.
+ * How a wheeled vehicle drives. All lengths in metres, viewer space (+Y up); positions are in
+ * the part node's own coordinates.
  */
 export interface Drive {
   /** Where its rear axle goes on the ground, as (x, z) from where it starts: a smooth curve through these. */
@@ -64,6 +64,24 @@ export interface Drive {
   axle: 'x' | 'z';
 }
 
+/**
+ * One motion in a part's sequence, played over a stretch of the model's slider: `from` and `to`
+ * are positions on it, 0 to 1, and the motion eases in and out between them. `node` is a
+ * node inside the part (default: the part itself). Motions on one node add up, in order.
+ *
+ * swing  turn `angle` radians (right-handed) about `axis` through the node's own origin: the
+ *        model puts a hinged piece's origin on its hinge.
+ * slide  move by `by` metres.
+ * drive  a wheeled vehicle follows a route, turning with it, wheels rolling and steering.
+ *
+ * Axes and offsets are in the node's parent's coordinates (viewer space: +Y up).
+ */
+export type Move = { from: number; to: number; node?: string } & (
+  | { kind: 'swing'; axis: [number, number, number]; angle: number }
+  | { kind: 'slide'; by: [number, number, number] }
+  | ({ kind: 'drive' } & Drive)
+);
+
 export interface Part {
   /** Name of the top-level node in the GLB. */
   node: string;
@@ -78,14 +96,11 @@ export interface Part {
   inside?: boolean;
   /** Where the part goes at full explode: metres, viewer space (+Y is the nose). */
   explode: [number, number, number];
-  /** It leaves by driving this route instead of sliding along `explode`. */
-  drive?: Drive;
   /**
-   * It leaves by turning on a hinge instead of sliding: a mast that falls back, a boom that
-   * lowers. `pivot` is a point on the hinge line and `axis` its direction, in the part node's
-   * own coordinates (metres, +Y up); `angle` is how far it turns, radians, right-handed about `axis`.
+   * How it really leaves, as a sequence of motions (a boom lowers, legs fold, a truck drives
+   * off), each timed against the slider, instead of one slide along `explode`.
    */
-  swing?: { pivot: [number, number, number]; axis: [number, number, number]; angle: number };
+  moves?: Move[];
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
   order: number;
 }
