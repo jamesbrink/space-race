@@ -23,6 +23,7 @@ let current = flight.models[0]!;
 let ready = false;
 /** The user switched auto-orbit off themselves. Otherwise it is only ever paused, and the next move restarts it. */
 let orbitOff = prefs.get('orbitOff');
+stage.setLook(prefs.get('cel') ? 'cel' : 'real');
 
 const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   model: (id) => (ready ? show(id) : void start(id)), // before it has loaded, this is "try again"
@@ -40,6 +41,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
     autoCut = false; // asked for by hand: it stays until asked otherwise
     stage.setCutaway(on);
   },
+  cel: (on) => stage.setLook(on ? 'cel' : 'real'),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
   inset: (px) => stage.setInset(px),

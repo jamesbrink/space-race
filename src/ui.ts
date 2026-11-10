@@ -7,6 +7,8 @@ export interface UiHandlers {
   view(id: string): void;
   autoRotate(on: boolean): void;
   cutaway(on: boolean): void;
+  /** Draw the scene as a cel-shaded drawing, or as it would look. */
+  cel(on: boolean): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
   /** How many pixels at the bottom of the 3D view the controls cover. */
@@ -132,6 +134,7 @@ export class Ui {
             <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -190,6 +193,7 @@ export class Ui {
       const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
       if (e.key.toLowerCase() === 'h') bare(!root.classList.contains('bare'));
+      if (e.key.toLowerCase() === 'c') this.setCel(!prefs.get('cel'));
       if (e.key === '?') showLegend(legendKeys.classList.contains('folded'));
     });
     // A sheet is put away by swiping it down: from its tabs at any time, or from its content
@@ -253,6 +257,7 @@ export class Ui {
       if (b?.dataset.view) on.view(b.dataset.view);
       else if (b?.hasAttribute('data-rotate')) this.setRotate(b.getAttribute('aria-pressed') !== 'true');
       else if (b?.hasAttribute('data-cut')) this.setCutaway(b.getAttribute('aria-pressed') !== 'true');
+      else if (b?.hasAttribute('data-cel')) this.setCel(b.getAttribute('aria-pressed') !== 'true');
     });
     // the label that follows the pointer over the model
     window.addEventListener('pointermove', (e) => {
@@ -316,7 +321,8 @@ export class Ui {
         .map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`)
         .join('')}</span>` +
       `<span class="set" role="group" aria-label="Show">${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
-      `<button data-rotate aria-pressed="${rotating}">Auto-orbit</button></span>`;
+      `<button data-rotate aria-pressed="${rotating}">Auto-orbit</button>` +
+      `<button data-cel aria-pressed="${prefs.get('cel')}" title="Cel shading (C)">Cel shading</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
     // this model's own figures first
     const specs = r.querySelector('[data-pane="Specs"]')!;
@@ -343,6 +349,13 @@ export class Ui {
     if (!b) return;
     b.setAttribute('aria-pressed', String(on));
     this.on.cutaway(on);
+  }
+
+  /** Cel shading on or off: for every section, and remembered. */
+  setCel(on: boolean): void {
+    prefs.set('cel', on);
+    this.root.querySelector('[data-cel]')?.setAttribute('aria-pressed', String(on));
+    this.on.cel(on);
   }
 
   /** The user's own switch: on or off until they say otherwise. */

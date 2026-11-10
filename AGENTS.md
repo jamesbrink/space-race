@@ -82,6 +82,7 @@ src/
   viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
   viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
   viewer/lod.ts                       levels of detail: which one each model is drawn at
+  viewer/look.ts                      the real and cel-shaded looks, and the ink line
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -153,6 +154,17 @@ directions, looking for patches of pixels that swap when the camera turns 0.005 
 `dirty`. Scenery that moves by itself (surf) is redrawn twelve times a second. So anything new that
 changes what is on screen must set `this.dirty = true`, or it will show up late. The shadow map is
 likewise drawn on demand (`shadowMap.needsUpdate`): set it when something that casts a shadow moves.
+
+## Two looks
+
+The stage draws in one of two looks (`viewer/look.ts`), switched by the Cel shading button or C
+and remembered: `real`, the physically based one every model is built for, and `cel`, the same
+scene as a drawing. Nothing is authored twice. `Looks` derives a toon twin from each real material
+the first time it is needed (same name, colour, map and shader patches) and swaps meshes between
+the two; `InkPass` draws the line from the frame's depth buffer. So anything put in the scene must
+be handed to `Looks.add` (models are, in `dress`; a setting's floor and scenery are, in
+`applySetting`), and code that changes a real material after it is made (the cutaway) calls
+`Looks.sync`. Keep reading materials by name: the twin has the same one.
 
 ## Levels of detail
 

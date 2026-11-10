@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import type { Flight as FlightData, ModelDef } from '../types';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
+import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
@@ -45,6 +46,8 @@ VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
+/** How much stronger the sky's fill light is in the cel look. */
+const CEL_FILL = 4.5;
 
 /** A camera flight under way: where the orbit point and the camera's offset from it start and end. */
 interface Journey {
@@ -103,9 +106,14 @@ export class Stage {
   private readonly loader = new GLTFLoader();
   private readonly loaded = new Map<string, Promise<THREE.Object3D>>();
   private readonly wear = wearTexture();
+  /** Which way everything is drawn, real or cel (look.ts), and the cel look's ink line. */
+  private readonly looks = new Looks();
+  private readonly ink = new InkPass();
 
   private setting: Setting;
   private root: THREE.Group | null = null;
+  /** The place round the pad (Flight.surroundings): scenery, outside `root`, so it is never measured, picked or framed. */
+  private surroundings: THREE.Object3D | null = null;
   /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
   private defs: ModelDef[] = [];
@@ -200,6 +208,8 @@ export class Stage {
     main.clear = false;
     main.clearDepth = true;
     this.composer.addPass(main);
+    this.ink.enabled = false; // straight after the scene, while the frame's depth is still the scene's
+    this.composer.addPass(this.ink);
     this.outline = new OutlinePass(new THREE.Vector2(1, 1), this.scene, this.camera);
     this.outline.edgeStrength = 3;
     this.outline.edgeThickness = 1;
@@ -331,6 +341,19 @@ export class Stage {
     });
     this.setting = this.settings.get(flight.models[0]!.backdrop);
     this.applySetting();
+    // the place round the pad arrives when it arrives: the flight can be studied without it
+    if (this.surroundings) this.scene.remove(this.surroundings);
+    this.surroundings = null;
+    if (flight.surroundings)
+      this.fetch(flight.surroundings)
+        .then((object) => {
+          if (staged !== this.staged) return;
+          this.surroundings = object;
+          this.scene.add(object);
+          this.renderer.shadowMap.needsUpdate = true;
+          this.dirty = true;
+        })
+        .catch(() => {});
     this.section(flight.models[0]!.id, true);
   }
 
@@ -423,6 +446,7 @@ export class Stage {
       }
       if (shell) mesh.material = this.shellOf(mat, url);
     });
+    this.looks.add(object);
   }
 
   /**
@@ -457,6 +481,7 @@ export class Stage {
         m.clippingPlanes = open ? this.cutPlanes : null;
         m.side = open ? THREE.DoubleSide : (m.userData.side as THREE.Side);
         m.needsUpdate = true;
+        this.looks.sync(m);
       }
     }
     this.renderer.shadowMap.needsUpdate = true; // the light comes in through the opening
@@ -472,14 +497,34 @@ export class Stage {
     this.sun.intensity = s.sunIntensity;
     this.fill.color.set(s.fill[0]);
     this.fill.groundColor.set(s.fill[1]);
-    this.fill.intensity = s.fill[2];
+    this.light();
     this.controls.maxPolarAngle = s.maxPolar;
     this.renderer.toneMappingExposure = s.exposure;
     if (s.floor) this.scene.add(s.floor);
     for (const o of s.scenery) this.scene.add(o);
+    for (const o of [s.floor, ...s.scenery]) if (o) this.looks.add(o);
     this.scene.fog = s.fog;
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
+  }
+
+  /** Draw everything as it would look (`real`) or as a cel-shaded drawing with ink lines (`cel`). */
+  setLook(look: Look): void {
+    this.looks.set(look);
+    this.ink.enabled = look === 'cel';
+    this.light();
+    this.dirty = true;
+  }
+
+  /**
+   * The light that depends on the look. A drawing has no reflections to fill its shade, so the
+   * sky's fill is raised until shade is a flat tone of the surface's colour and not black; and
+   * its colours are left as painted, where the real look rolls bright ones off like film.
+   */
+  private light(): void {
+    const cel = this.looks.current === 'cel';
+    this.fill.intensity = this.setting.fill[2] * (cel ? CEL_FILL : 1);
+    this.renderer.toneMapping = cel ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
   }
 
   /** Tell the stage how many pixels at the bottom of the canvas the controls cover. */
@@ -924,6 +969,7 @@ export class Stage {
     this.lastView.copy(this.camera.matrixWorld);
     this.lastProjection.copy(this.camera.projectionMatrix);
     this.dirty = false;
+    this.ink.range(this.camera);
     this.renderer.info.reset();
     this.drawn++;
     this.composer.render(this.sinceDrawn);
