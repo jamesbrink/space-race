@@ -1,4 +1,4 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types';
+import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 
 const IN = 0.0254;
 const LBF = 4.4482216;
@@ -252,13 +252,15 @@ const vehicleParts: Part[] = [
 ];
 
 /** Height of the pedestal's ring, where the fins rest: 6 ft. */
-const PEDESTAL = 6 * 0.3048;
+/** Where liftoff falls on the pad's slider (see T, with the pad's parts). */
+const LIFTOFF = 0.8;
+const PEDESTAL = 5.5 * 0.3048; // the launcher's support level (lc5/site.py: LAUNCHER_TOP)
 /** The vehicle's origin is the capsule's plane of maximum diameter, 716.0 in above the fins. */
 const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 
 /** Where the pilot stands in every scene: at the foot of the vehicle, clear of the cutaway's opening. */
-// clear of the service structure's rails, which run 4.27 m either side of the pad's centre line
-const PILOT = { position: [-2.9, 0, 2.2] as [number, number, number], rotationY: -0.59 };
+// between the launcher and the structure's base girder, which is where there is room to stand
+const PILOT = { position: [-1.372, 0, 1.981] as [number, number, number], rotationY: -0.59 };
 
 /** The spacecraft without its tower. */
 const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
@@ -287,29 +289,100 @@ const vehicle: ModelDef = {
     { id: 'capsule', label: 'Capsule', nodes: CAPSULE },
     { id: 'engine', label: 'Engine', nodes: ['RedstoneTailUnit', 'RedstoneEngine'] },
   ],
-  // the pad as it was at liftoff: structure rolled back, cherry picker withdrawn
-  with: [{ model: 'pad', exploded: 1 }],
+  // the pad as it was at liftoff: structure at its launch position, masts down, the cab lowered
+  with: [{ model: 'pad', exploded: LIFTOFF }],
 };
+
+/**
+ * The pad's slider is the morning of 5 May 1961, from the pilot going aboard to the pad standing
+ * empty. These are the positions on it (0 to 1) at which things happen; the motions below are
+ * timed against them. Times are from TM X-53107's countdown and the MR-3 reports; how long each
+ * motion takes on the slider is ours.
+ */
+const T = {
+  platforms: 0.0, // T-85 to T-60: the work platforms part, two halves each, so the structure can leave
+  rollback: 0.13, // T-55 (06:37 EST): the structure rolls to the edge of the pad
+  cabIn: 0.33, // the cherry picker's cab comes to the hatch
+  launchPosition: 0.48, // T-8:45: the structure rolls on to its launch position
+  cabAway: 0.58, // T-4 or T-2:30: the cab is lowered "away and down" by remote control
+  umbilical: 0.72, // T-35 s: the capsule's mast is pulled over by its bungee
+  boom: 0.76, // about T-14 s: "boom drop"
+  liftoff: LIFTOFF, // 09:34 EST
+  stow: 0.82, // afterwards (not documented): the tower is folded down onto the truck
+  drive: 0.91, // and driven off
+};
+const DEG = Math.PI / 180;
+const X: [number, number, number] = [1, 0, 0];
+const Z: [number, number, number] = [0, 0, 1];
+/** A hinged piece turning `degrees` about `axis` between two positions on the slider. */
+const swing = (node: string, axis: [number, number, number], degrees: number, from: number, to: number): Move => ({
+  kind: 'swing',
+  node,
+  axis,
+  angle: degrees * DEG,
+  from,
+  to,
+});
+/** A pose held from the start: the piece is built somewhere else and stands here until it moves. */
+const held = (node: string, axis: [number, number, number], degrees: number): Move => swing(node, axis, degrees, -1, -0.5);
+const WHEEL_R = 0.457; // the structure's rail wheels
+const ROLL = [33.53, 19.2]; // metres: to the edge of the pad, then on to the launch position
 
 const padParts: Part[] = [
   {
     node: 'ServiceStructure',
     name: 'Service structure',
-    summary: 'The gantry, withdrawn to the edge of the pad.',
+    summary: 'The gantry: round the rocket until T−55 minutes, then rolled back.',
     detail:
-      'Built for Redstone and Jupiter launches, it runs on rails under its own power and served both pad 5 and ' +
-      'pad 6. For Mercury it was given remote control from the blockhouse, a blast deflector against an ' +
-      'accidental firing of the escape rocket, and on level 3 an enclosed, air-conditioned white room: films ' +
-      'from the unmanned flights had shown dust and debris floating round the cabin in weightlessness. It ' +
-      'stood at the pad’s edge through the last hour and was driven to its launch position at T−8:45.',
+      'A Noble Company "reclining single-mast" stand, modelled on an oil derrick: an open A-frame mast on a ' +
+      'steel base that rides four powered rail trucks. Its work platforms reach forward and close round the ' +
+      'vehicle, each in two halves that part to let it go. For Mercury it was given remote control from the ' +
+      'blockhouse, a deflector against an accidental firing of the escape rocket, and at capsule level an ' +
+      'enclosed, air-conditioned white room: films from the unmanned flights had shown dust floating round ' +
+      'the cabin in weightlessness. Shepard rode its elevator at 05:15 and entered the capsule from the white ' +
+      'room. It rolled to the edge of the pad at T−55 minutes and to its launch position at T−8:45.',
     facts: [
-      ['Height', 'about 36 m to the crane (estimated)'],
+      ['Height', 'about 135 ft (41 m); 140 ft is quoted'],
+      ['Built', 'Noble Co., Oakland; at this complex from 1955'],
       ['White room', 'level 3, added February–May 1961'],
+      ['Platforms', 'four, each in two halves'],
       ['Moves', 'on rails, under its own power'],
-      ['Control', 'remote, from the blockhouse'],
+      ['Rolled back', '06:37 EST, T−55 min'],
     ],
-    explode: [-35.7, 0, 0],
-    order: 1,
+    explode: [0, 0, 0],
+    order: 0,
+    moves: [
+      // the platforms part, lowest first and the white room last, before anything rolls
+      ...[1, 2, 4, 3].flatMap((level, i): Move[] => [
+        {
+          kind: 'slide',
+          node: `ServiceStructure_Platform${level}_Left`,
+          by: [-1.372, 0, 0],
+          from: T.platforms + i * 0.025,
+          to: T.platforms + 0.05 + i * 0.025,
+        },
+        {
+          kind: 'slide',
+          node: `ServiceStructure_Platform${level}_Right`,
+          by: [1.372, 0, 0],
+          from: T.platforms + i * 0.025,
+          to: T.platforms + 0.05 + i * 0.025,
+        },
+      ]),
+      { kind: 'slide', by: [0, 0, -ROLL[0]!], from: T.rollback, to: T.cabIn - 0.01 },
+      { kind: 'slide', by: [0, 0, -ROLL[1]!], from: T.launchPosition, to: T.cabAway - 0.02 },
+      ...[1, 2, 3, 4, 5, 6, 7, 8].flatMap((n): Move[] => [
+        { kind: 'swing', node: `ServiceStructure_Wheel_${n}`, axis: X, angle: -ROLL[0]! / WHEEL_R, from: T.rollback, to: T.cabIn - 0.01 },
+        {
+          kind: 'swing',
+          node: `ServiceStructure_Wheel_${n}`,
+          axis: X,
+          angle: -ROLL[1]! / WHEEL_R,
+          from: T.launchPosition,
+          to: T.cabAway - 0.02,
+        },
+      ]),
+    ],
   },
   {
     node: 'CherryPicker',
@@ -317,54 +390,142 @@ const padParts: Part[] = [
     summary: 'The “cherry picker”: the pilot’s way out.',
     detail:
       'Once the service structure had rolled back, this truck-mounted tower held a cab at the capsule hatch so ' +
-      'the pilot could step across and be swung clear. It could reach 125 feet and could be lowered from the ' +
-      'blockhouse by remote control. It stayed at the hatch from T−55 minutes until the last minutes of the count.',
+      'the pilot could step across and be swung clear. It could reach 125 feet, and a push-button in the ' +
+      'blockhouse sent the cab "away and down" in the last minutes of the count. The truck, an International ' +
+      'Harvester, stood on its outriggers through the launch: the liftoff photographs show it still there, ' +
+      'mast up and cab on the pad. Its folding and driving off afterwards, at the end of the slider, is how ' +
+      'such a tower travels, not something the record shows.',
     facts: [
       ['Reach', '125 ft (38 m)'],
-      ['At the hatch', 'from T−55 min to the last minutes'],
+      ['Stood', 'about 65 ft from the launcher, on the hatch side'],
+      ['At the hatch', 'from T−55 min'],
+      ['Cab lowered', 'T−4 min, or T−2:30 (sources differ)'],
       ['Control', 'ground, cab, or blockhouse'],
     ],
-    // It did not drive away: the liftoff photograph shows the truck still on the hardstand, mast up,
-    // cab lowered. Until the lowering is modelled it stays where it stands.
     explode: [0, 0, 0],
     order: 0,
+    moves: [
+      // standing by, clear of the structure, until it has gone; the cab hangs level whatever the jib does
+      held('CherryPicker_Jib', Z, 29.94),
+      held('CherryPicker_Cab', Z, -29.94),
+      swing('CherryPicker_Jib', Z, -29.94, T.cabIn, T.cabIn + 0.09),
+      swing('CherryPicker_Cab', Z, 29.94, T.cabIn, T.cabIn + 0.09),
+      // away and down, by remote control
+      swing('CherryPicker_Jib', Z, 71.27, T.cabAway, T.cabAway + 0.12),
+      swing('CherryPicker_Cab', Z, -71.27, T.cabAway, T.cabAway + 0.12),
+      // afterwards: jib folded, mast laid forward on its rest, legs up, and away
+      swing('CherryPicker_Jib', Z, -1.16, T.stow, T.stow + 0.03),
+      swing('CherryPicker_Mast', Z, -65.59, T.stow, T.stow + 0.07),
+      swing('CherryPicker_Cab', Z, 66.75, T.stow, T.stow + 0.07),
+      swing('CherryPicker_Outrigger_1', X, -105, T.stow + 0.06, T.drive),
+      swing('CherryPicker_Outrigger_3', X, -105, T.stow + 0.06, T.drive),
+      swing('CherryPicker_Outrigger_2', X, 105, T.stow + 0.06, T.drive),
+      swing('CherryPicker_Outrigger_4', X, 105, T.stow + 0.06, T.drive),
+      {
+        kind: 'drive',
+        from: T.drive,
+        to: 1,
+        // out along the stub road on the hatch side, then round toward the blockhouse road
+        path: [
+          [12, 0],
+          [26, 1],
+          [40, 8],
+          [50, 24],
+        ],
+        pivot: [0, 0.527, 0],
+        forward: [1, 0],
+        wheelRadius: 0.527,
+        wheelbase: 5.029,
+        wheels: 'CherryPicker_Wheel',
+        steered: 'CherryPicker_SteerWheel',
+        axle: 'z',
+      },
+    ],
   },
   {
     node: 'LaunchPedestal',
-    name: 'Launch pedestal',
-    summary: 'A ring on four legs over a flame deflector.',
+    name: 'Launcher',
+    summary: 'A ring table on four legs over a flame deflector.',
     detail:
-      'The Mercury-Redstone had no hold-down arms. It stood on the pedestal under its own weight, grounded and ' +
-      'fed through two connectors under one fin, and left when thrust exceeded weight. On MR-1 it rose 3.8 ' +
-      'inches, shut down, and settled back onto this ring.',
+      'The Redstone launch ring, turned to the flight azimuth and levelled before the count. The ' +
+      'Mercury-Redstone had no hold-down arms: it stood here under its own weight and left when thrust ' +
+      'exceeded it. Its last ties to the ground were two plugs on top of the ring under one fin, pulled out ' +
+      'by the rising vehicle. On MR-1 it rose 3.8 inches, shut down, and settled back. The ring stands on a ' +
+      'steel scale plate: the vehicle was weighed before and after each propellant was loaded.',
     facts: [
+      ['Table', 'about 10 ft across, 5.5 ft high (estimated)'],
       ['Hold-down arms', 'none'],
-      ['Ground connections', '2, under fin II'],
+      ['Tail plugs', '60-pin and 4-pin, under fin II'],
+      ['Flame deflector', 'four-sided'],
     ],
     explode: [0, 0, 0],
-    order: 2,
+    order: 0,
   },
   {
     node: 'UmbilicalMast',
-    name: 'Cable mast',
+    name: 'Capsule cable mast',
     summary: 'Carries the capsule’s umbilical until T−35 seconds.',
     detail:
-      'One of two cable masts, this one for the capsule (the booster’s is not modelled): ground power, cooling ' +
-      'and communications. The capsule’s umbilical dropped at about T−35 seconds, and the boom fell away just ' +
-      'before ignition.',
-    explode: [0, 0, 7],
+      'A slender pole beside the vehicle carrying the capsule’s ground power, cooling and communications. ' +
+      'At T−35 seconds the umbilical was ejected and a bungee cord pulled the released mast over about its ' +
+      'foot, clear of the rocket.',
+    facts: [
+      ['Released', 'pneumatically, at T−35 s'],
+      ['Pulled clear by', 'a bungee cord'],
+      ['Height', 'about 55–60 ft (estimated)'],
+    ],
+    explode: [0, 0, 0],
     order: 0,
+    moves: [swing('UmbilicalMast', X, 88, T.umbilical, T.umbilical + 0.035)],
+  },
+  {
+    node: 'BoosterMast',
+    name: 'Booster cable mast',
+    summary: 'Cooling and a plug for the booster; drops at about T−14 seconds.',
+    detail:
+      'The second mast served the booster: a plug, and a cooling package fed with liquid nitrogen for the ' +
+      'instrument compartment. The countdown calls its release "boom drop". Its form and exact place are ' +
+      'the least certain things on this pad.',
+    facts: [['Boom drop', 'about T−14 s']],
+    explode: [0, 0, 0],
+    order: 0,
+    moves: [swing('BoosterMast', X, 88, T.boom, T.boom + 0.035)],
   },
   {
     node: 'Hardstand',
     name: 'Hardstand and rails',
-    summary: 'Concrete apron; track for the service structure.',
+    summary: 'Two hundred feet of concrete; four rails for the service structure.',
     detail:
-      'Pad 5 is one of two pads of Complex 5/6, about 535 feet apart, sharing a blockhouse some 345 feet from ' +
-      'each. Twenty-three rockets left this pad between 1956 and 1961. The last was Liberty Bell 7; it never ' +
-      'launched again.',
+      'Pad 5 is one of two pads of Complex 5/6, 520 feet apart on one track, with a blockhouse about 350 ' +
+      'feet from each. The structure’s rails cross the slab flush either side of the launcher and run on to ' +
+      'its launch position. Twenty-three rockets left this pad between 1956 and 1961. The last was Liberty ' +
+      'Bell 7; it never launched again.',
+    facts: [
+      ['Slab', 'about 200 ft square'],
+      ['Rails', 'four, in two pairs'],
+      ['Launch azimuth', '105° for MR-3'],
+    ],
     explode: [0, 0, 0],
-    order: 2,
+    order: 0,
+  },
+  {
+    node: 'GroundEquipment',
+    name: 'Ground equipment',
+    summary: 'What was still on the pad at liftoff.',
+    detail:
+      'The liquid-oxygen topping trailer, which fed the tank until a minute before launch, the nitrogen ' +
+      'trailers, and the enclosures and cameras the liftoff photographs show round the launcher. Everything ' +
+      'else had left by T−35 minutes. Their positions here are read off photographs.',
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'CameraTowers',
+    name: 'Camera towers',
+    summary: 'Twenty engineering cameras watched the launch.',
+    detail: 'Slim lattice towers carrying some of the fixed cameras that filmed every launch from this pad for the engineers.',
+    explode: [0, 0, 0],
+    order: 0,
   },
   {
     node: 'Floodlights',
@@ -374,7 +535,7 @@ const padParts: Part[] = [
       'Shepard was woken at 01:10, went up the gantry at 05:15 and was in the capsule at 05:20, before sunrise. ' +
       'He waited there four hours and fourteen minutes.',
     explode: [0, 0, 0],
-    order: 2,
+    order: 0,
   },
 ];
 
@@ -384,12 +545,13 @@ const pad: ModelDef = {
   url: 'models/usa/mercury/mr-3-freedom-7/pad.glb',
   scale: 'Launch Complex 5 · hardstand 62 m square · to scale',
   backdrop: 'cape-canaveral',
-  slider: ['T−55 min', 'Liftoff'],
+  slider: ['Pilot aboard · 05:20', 'Pad clear'],
   specGroups: ['Launch pad'],
   parts: padParts,
   views: [
-    { id: 'pedestal', label: 'Pedestal', centreY: 1.4, span: 9 },
-    { id: 'hatch', label: 'Hatch level', centreY: 21, span: 11 },
+    { id: 'pedestal', label: 'Launcher', nodes: ['LaunchPedestal'] },
+    { id: 'hatch', label: 'Hatch level', centreY: 21, span: 12 },
+    { id: 'truck', label: 'Cherry picker', nodes: ['CherryPicker'] },
   ],
 };
 
@@ -505,7 +667,8 @@ const crew: ModelDef = {
     { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.62, from: [-0.55, 0.05, 0.83] },
     { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: [-0.55, 0.2, 0.83] },
   ],
-  with: [{ model: 'pad', exploded: 1 }],
+  // just after rollback, so that he can be seen: when he walked out the gantry still stood round the rocket
+  with: [{ model: 'pad', exploded: 0.32 }],
 };
 
 /** Mercury-Redstone 3. Prose versions of this file: ./README.md (flight), ./spacecraft.md (ship). */

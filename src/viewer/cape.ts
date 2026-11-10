@@ -4,13 +4,33 @@ import { NOISE } from './space';
 
 /**
  * Cape Canaveral round Launch Complex 5, May 1961, as scenery: enough of the place that the
- * pad is somewhere. Positions are metres in viewer space: +X is east (the Atlantic), -Z north.
+ * pad is somewhere. Everything here is laid out on the compass, in metres from pad 5: +X is
+ * east (the Atlantic), -Z north. The pad model has its own frame (the capsule's hatch on +X,
+ * the service structure's rails along Z), which lies at an angle to the compass; COMPASS turns
+ * the one into the other, and the whole site is turned by it.
  *
- * What is placed from a source: the sea to the east, pad 6 about 163 m north, the shared
- * blockhouse about 105 m off (TM X-53107 Figure 7-6, scaled on the pads' coordinates).
- * What is impression: the lighthouse's exact bearing, the tracks, and Missile Row's towers up
- * the coast, which are there to say "there were a dozen more pads this way", not to map them.
+ * What is placed from a source (the site plan in TM X-53107 Figure 7-6 and mapped outlines of
+ * what survives; see sites/lc-5.md): the sea to the east, the rail line on 025 degrees, pad 6
+ * 520 ft along it, the blockhouse 351 ft away on 348 degrees. What is impression: the
+ * lighthouse's exact bearing, the roads, and Missile Row's towers up the coast, which are there
+ * to say "there were a dozen more pads this way", not to map them.
  */
+
+/** The pad model's frame on the compass: its +X (the hatch) faces 295 degrees, west-north-west. Radians about the vertical. */
+export const COMPASS = THREE.MathUtils.degToRad(205);
+const COS = Math.cos(COMPASS);
+const SIN = Math.sin(COMPASS);
+/** A point on the compass, as the pad model sees it. */
+const toPad = (x: number, z: number): [number, number] => [x * COS + z * SIN, -x * SIN + z * COS];
+/** A direction on the compass (bearing in degrees), as a point `distance` metres along it. */
+const bearing = (degrees: number, distance: number): [number, number] => {
+  const a = THREE.MathUtils.degToRad(degrees);
+  return [distance * Math.sin(a), -distance * Math.cos(a)];
+};
+const RAIL = 25; // the structure's track runs 025/205 degrees, through pads 5 and 6 and on to complex 26
+const PAD6 = bearing(RAIL, 158.5);
+const BLOCKHOUSE = bearing(348, 107);
+const APRON = bearing(295, 31); // where the stub road leaves the hardstand, on the hatch side
 
 const SHORE = 330; // metres east of the pad where scrub gives way to beach
 const SURF = 410; // and beach to water
@@ -18,8 +38,9 @@ const FAR = 7000;
 
 /** Sand tracks, as [x0, z0, x1, z1, half-width]. Drawn in the terrain's shader: no geometry to fight with. */
 const TRACKS: [number, number, number, number, number][] = [
-  [-28, 31, -62, 86, 3.2], // hardstand to the blockhouse
-  [0, -31, 0, -132, 3.5], // to pad 6
+  [...bearing(RAIL + 180, 95), ...bearing(RAIL, 520), 4.2], // the rail line's ballast
+  [...APRON, ...bearing(295, 78), 3.4], // the stub road off the hardstand
+  [...bearing(295, 78), BLOCKHOUSE[0] - 26, BLOCKHOUSE[1] + 4, 3.2], // and round to the blockhouse
   [-260, 118, 300, 118, 4.0], // the road along the complex's south side
   [118, 118, 250, -420, 3.2], // Lighthouse Road
   [-140, 118, -140, -260, 3.2],
@@ -54,7 +75,8 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
       .replace(
         '#include <map_fragment>',
         /* glsl */ `
-        vec2 p = vCape.xz;
+        vec2 pad = vCape.xz;                              // the pad's own frame
+        vec2 p = vec2(pad.x * ${COS.toFixed(5)} - pad.y * ${SIN.toFixed(5)}, pad.x * ${SIN.toFixed(5)} + pad.y * ${COS.toFixed(5)});   // on the compass
         float big = fbm(vec3(p * 0.0035, 1.0));           // the lie of the land: hundreds of metres
         float mid = fbm(vec3(p * 0.028, 7.0));            // thickets and clearings
         float fine = noise(vec3(p * 1.3, 3.0));           // individual plants
@@ -63,7 +85,7 @@ function terrain(groundY: number): { mesh: THREE.Mesh; tick: (dt: number) => voi
         float veg = smoothstep(0.40, 0.60, big * 0.55 + mid * 0.45);
         vec3 c = mix(mix(sand, dry, smoothstep(0.3, 0.62, mid)), mix(scrub, thicket, smoothstep(0.3, 0.8, fine)), veg);
         // ground cleared and graded round the pad
-        float apron = 1.0 - smoothstep(42.0, 70.0, max(abs(p.x), abs(p.y)) + 14.0 * (mid - 0.5));
+        float apron = 1.0 - smoothstep(42.0, 70.0, max(abs(pad.x), abs(pad.y)) + 14.0 * (mid - 0.5));
         c = mix(c, sand * (0.9 + 0.25 * fine), apron * 0.9);
         // crushed-shell tracks, a little paler down the wheel lines
         float track = 0.0;
@@ -203,9 +225,10 @@ function scrub(groundY: number): THREE.InstancedMesh {
       a = rand() * Math.PI * 2;
     const x = r * Math.cos(a),
       z = r * Math.sin(a);
-    if (Math.max(Math.abs(x), Math.abs(z)) < 50 || x > SHORE - 30 || onTrack(x, z)) continue;
-    if (Math.abs(z) < 12 && x < 0 && x > -75) continue; // the service structure's track
-    if (Math.abs(x) < 40 && Math.abs(z + 163) < 40) continue; // pad 6
+    const [px, pz] = toPad(x, z);
+    if (Math.max(Math.abs(px), Math.abs(pz)) < 42 || x > SHORE - 30 || onTrack(x, z)) continue; // the hardstand
+    if (Math.abs(px) < 11 && pz > -100 && pz < 560) continue; // the rail line
+    if (Math.hypot(x - PAD6[0], z - PAD6[1]) < 48 || Math.hypot(x - BLOCKHOUSE[0], z - BLOCKHOUSE[1]) < 26) continue;
     // saw palmetto and sea grape: knee to head high, wider than tall, in clumps
     const w = 0.5 + rand() * rand() * 2.2;
     s.set(w, w * (0.75 + rand() * 0.5), w * (0.7 + rand() * 0.6));
@@ -235,8 +258,8 @@ function blockhouse(groundY: number): THREE.Group {
   g.add(boxAt(26, 0.5, 18, 0, groundY, 0, concrete));
   for (const x of [-6, 0, 6]) g.add(boxAt(3.2, 1.0, 0.25, x, groundY + 2.4, -7.05, paint(0x10151a)));
   for (const x of [-5, 5]) g.add(boxAt(0.3, 3.4, 0.3, x, groundY + 6.2, 0, paint(0x55585c)));
-  g.position.set(-62, 0, 86);
-  g.rotation.y = 0.6;
+  g.position.set(BLOCKHOUSE[0], 0, BLOCKHOUSE[1]);
+  g.rotation.y = THREE.MathUtils.degToRad(-RAIL - 90); // its long side along the rail line, its windows toward the pads
   return g;
 }
 
@@ -248,7 +271,8 @@ function padSix(groundY: number): THREE.Group {
   const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.6, 1.5, 24, 1, true), paint(0x3d4246));
   ring.position.set(0, groundY + 0.45 + 0.75 + 0.14, 0);
   g.add(ring);
-  g.position.set(0, 0, -163);
+  g.position.set(PAD6[0], 0, PAD6[1]);
+  g.rotation.y = THREE.MathUtils.degToRad(-RAIL); // square to the rails, like pad 5
   return g;
 }
 
@@ -315,10 +339,16 @@ function missileRow(groundY: number): THREE.Group {
 /** Everything round the pad. `groundY` is the terrain's height; the pad's own surface is 0. */
 export function buildCape(groundY: number): { floor: THREE.Mesh; scenery: THREE.Object3D[]; tick: (dt: number) => void } {
   const { mesh, tick } = terrain(groundY);
-  const scenery = [scrub(groundY), blockhouse(groundY), padSix(groundY), lighthouse(groundY), missileRow(groundY)];
-  for (const group of scenery)
+  const plants = scrub(groundY);
+  plants.receiveShadow = true;
+  const built = [blockhouse(groundY), padSix(groundY), lighthouse(groundY), missileRow(groundY)];
+  for (const group of built)
     group.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh && o !== scenery[0]) o.castShadow = true;
+      if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true;
     });
-  return { floor: mesh, scenery, tick };
+  // laid out on the compass, then turned as one to lie round the pad model
+  const site = new THREE.Group();
+  site.add(plants, ...built);
+  site.rotation.y = COMPASS;
+  return { floor: mesh, scenery: [site], tick };
 }

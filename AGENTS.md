@@ -65,7 +65,8 @@ missions/                             the record: one folder per nation, program
   index.ts                            the list of flights the viewer can show
   <nation>/<programme>/
     README.md                         the programme
-    vehicles/  sites/  crew/          hardware shared by several flights: <name>.py builds it,
+    vehicles/  sites/  crew/          hardware shared by several flights: <name>.py builds it (a big
+                                      one as a package of modules, e.g. sites/lc5/),
                                       <name>.md records its dimensions, confidence, simplifications
     flights/<flight>/
       README.md                       the flight: what happened, timeline, sources
@@ -80,6 +81,8 @@ src/
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
   viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
   viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
+  viewer/lod.ts                       levels of detail: which one each model is drawn at
+  prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
 tools/
@@ -207,9 +210,15 @@ script; do not hand-edit geometry for them.
 - The page must work on a phone and a tablet: under 960 px wide (or 520 px tall) the data panel
   is a bottom sheet and the model keeps the space above it. Check 1280, 820 and 390 wide after
   changing `style.css`; nothing in the control block may be hidden at any of them.
-- A part with a `drive` (a truck) leaves by following a route on the ground, turning about its rear
-  axle with its wheels rolling and steering (`viewer/explode.ts`); its wheels are separate nodes
-  in the GLB, named by prefix.
+- Parts leave as the hardware did. A part's `moves` (types.ts: `Move`) are swings, slides and
+  drives, each on a named child node and each timed against the model's slider: platforms part,
+  a structure rolls on its rails, a jib lowers, a truck folds its legs and drives off with its
+  wheels rolling and steering. The model builds each moving piece as its own node with its origin
+  on its hinge, in the pose it has at the start of the slider or at the hatch; `lc-5.md` tabulates
+  them. Say in the part's text which motions are documented and which are not.
+- A site has its own frame (the hatch on +X) and lies at an angle to the compass. Scenery is laid
+  out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is placed by its real
+  azimuth and elevation for the launch.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
   them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
   A new panel gets the same control and a `Pref`.

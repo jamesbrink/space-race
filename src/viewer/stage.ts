@@ -131,7 +131,7 @@ export class Stage {
   onView: (id: string | null) => void = () => {};
   private centreY = 0;
   /** The cutaway: a quarter of every shell removed, the quarter facing the default camera. */
-  private readonly cutPlanes = [new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)];
+  private readonly cutPlanes = [new THREE.Plane(new THREE.Vector3(1, 0, 0), 0), new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)];
   /** Per model file: each shell material's own clipped copy. Only the section's own model is ever cut. */
   private readonly shellMaterials = new Map<string, Map<THREE.Material, THREE.Material>>();
   private cut = false;
@@ -599,7 +599,7 @@ export class Stage {
     const lift = this.setting.floor ? 0.16 : span < 4 ? 0.22 : 0.1;
     // aim under the subject, so it sits in the middle of the frame that the controls leave clear
     target.y -= ((span / fill) * this.inset) / 2;
-    const from = named?.from ? new THREE.Vector3(...named.from) : new THREE.Vector3(0.82, lift, 0.56);
+    const from = named?.from ? new THREE.Vector3(...named.from) : new THREE.Vector3(-0.62, lift, 0.78); // the sunlit side, and the one the cutaway opens toward
     const position = target.clone().addScaledVector(from.normalize(), distance);
     this.following = { view: id };
     this.onView(id);

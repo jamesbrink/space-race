@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { BackdropKind } from '../types';
-import { buildCape } from './cape';
+import { buildCape, COMPASS } from './cape';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -101,8 +101,14 @@ function pmrem(renderer: THREE.WebGLRenderer, scene: THREE.Scene): THREE.Texture
 
 /** Cape Canaveral's Missile Row from Launch Complex 5, on a clear morning. */
 function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
-  // 09:34 EST on 5 May at the Cape: the Sun is about 50 degrees up in the east-south-east
-  const sunDir = new THREE.Vector3(0.52, 0.72, 0.46).normalize();
+  // 09:34 EST on 5 May at the Cape: the Sun is about 50 degrees up, a little south of east
+  // (azimuth 097). In the pad's frame that is behind the hatch: the capsule's hatch side was in shade.
+  const sun = THREE.MathUtils.degToRad(97);
+  const el = THREE.MathUtils.degToRad(50);
+  const sunDir = new THREE.Vector3(Math.sin(sun) * Math.cos(el), Math.sin(el), -Math.cos(sun) * Math.cos(el)).applyAxisAngle(
+    new THREE.Vector3(0, 1, 0),
+    COMPASS,
+  );
   const envScene = new THREE.Scene();
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(sunDir, false)));
   // Below the horizon there is sunlit sand and concrete, not more sky: without it bare metal

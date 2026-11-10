@@ -1,140 +1,170 @@
 # Launch Complex 5, Cape Canaveral
 
-The pad every Mercury-Redstone flew from. Model: [lc_5.py](lc_5.py), built for a flight by its
-`model/pad.py`. NASA's report calls the complex "VLF 56" (Vertical Launch Facility 5/6): pads 5
-and 6 shared one blockhouse and one rail-mounted service structure.
+The pad every Mercury-Redstone flew from. Model: [lc_5.py](lc_5.py), which puts together one module
+per piece in [lc5/](lc5/); built for a flight by its `model/pad.py`. NASA's report calls the complex
+"VLF 56" (Vertical Launch Facility 5/6): pads 5 and 6 shared one blockhouse, and one track that
+also runs on to Complex 26.
 
-The model shows the pad at about **T−55 minutes**: service structure withdrawn to the edge of the
-pad, the mobile aerial tower's cab at the capsule hatch. The viewer's slider takes it to liftoff:
-the structure driven out to its launch position, the tower withdrawn.
+**The model is built in the service position**: the service structure stands round the vehicle with
+its platforms closed and the white room round the capsule. Every moving part is its own node with
+its origin on its pivot (table below), so the viewer can take the pad from there through the
+rollback to liftoff. The cherry picker is built with its cab at the hatch, where it was from T-55.
+In the built pose it stands inside the closed white room; the viewer keeps it clear (standby pose)
+until the structure has gone.
 
-**This is a reconstruction.** The source gives what was there and how it was used, and four
-photographs and a site plan. It gives almost no dimensions. Heights were scaled off the
-photographs against the 83.38 ft vehicle (*estimated*); distances were scaled off the site plan
-against the 535 ft between pads 5 and 6, which comes from their coordinates (*derived*).
-The mobile aerial tower, the platforms' cut-outs and the white room's panels follow the NASA
-photographs listed under [Photographs](#photographs); what they show is recorded there.
+## The site's frame
 
-## What is documented
+Origin: the launcher's centre on the pad. Feet, as the sources give them.
 
-| Fact | Source |
-| --- | --- |
-| The mobile aerial tower ("cherry picker") could reach 125 ft; its cab stood at the capsule hatch after the structure rolled back, and could be lowered by remote control from the blockhouse | TM X-53107, 7.3.3.1 |
-| In the MR-4 count the service structure is at the edge of the pad from about T−55 min and is driven by remote control to its launch position at T−8:45. (Section 7.3.3.3 says "launch position" from T−55; the countdown is followed here) | TM X-53107, 7.2.3.2 |
-| The tower cab is at the hatch from T−55 min, and leaves at T−4 min (7.3.3.1) or T−2:30 (the MR-4 count) | TM X-53107, 7.2.3.2, 7.3.3.1 |
-| Two cable masts: No. 1 for the booster, No. 2 for the capsule. The capsule umbilical dropped at about T−35 s; the boom dropped just before ignition | TM X-53107, 7.1.3, 7.2.3.2 |
-| The service structure predates Mercury (Redstone, Jupiter, Jupiter-C) and runs on rails, serving both pads | TM X-53107, 7.5.1.1 |
-| For Mercury it gained: remote control from the blockhouse; an enclosed, air-conditioned white room on level 3; an escape-rocket flame deflector; an auxiliary platform at the base of the escape tower | TM X-53107, 4.8.9, 7.5.1.2 to 7.5.1.6 |
-| The white room was built between February and May 1961, after films from MR-1A and MR-2 showed debris floating in the cabin | TM X-53107, 7.5.1.2 |
-| The vehicle had no hold-down arms; it was grounded through two connectors under fin II | TM X-53107, 4.2 |
-| Platform three was rated for 10 people and 500 lb of equipment, and was reinforced after MR-1's mating overloaded it | TM X-53107, 7.5.1.7 |
-| The tower could be worked from a position on the ground at the rear of the truck-transporter, from within its cab, or lowered by a programmed descent "away and down" from push-buttons in the cab and the blockhouse | TM X-53107, 7.3.3.1 |
-| The mobile-pad egress tower was finished in July 1960 and reached the Cape on 24 October 1960 | NASA SP-4001, Part II (B), July 1960 (from STG Status Report No. 8) |
-| The service structure was the Redstone gantry built by the Noble Company of Oakland in 1953 for Launch Complex 4, moved to 5/6 in 1955: "a reclining type single-mast structure with cantilevered access platforms capable of encircling the missile", an "A" frame mast that "towered 140 feet above the launch pad", "modeled on the open-faced masts used in oil fields", on a steel base on railway tracks, with elevators up the mast and a 15-ton hammerhead crane | US Army Corps of Engineers, *History of the Canaveral District 1950-1971*, quoted in *Cape Canaveral: A Noble Endeavor* (rev 1.5.2), pp. 4-5, 9-10 |
+| Axis | Points | Basis |
+| --- | --- | --- |
+| +X | the side the capsule hatch faces: WNW, about 295° true, uprange, toward the blockhouse | estimated: Figure 7-6 puts the mobile tower on the blockhouse side, and liftoff photograph 6100884 shows its cab there; 285° is the reciprocal of the 105° azimuth |
+| +Y | along the rails toward the structure's parking places: SSW, 205° true | derived: OpenStreetMap's rails and pad outline, 25°/205° to within 1° |
+| True north | (0.423, −0.906, 0) in Blender, (0.423, 0, 0.906) in the viewer | derived from the two lines above |
 
-## Dimensions in the model
+Pad 6 is 520 ft along −Y (025° true); the blockhouse's middle is at about (211, −280) ft. Both are
+derived from OpenStreetMap: pad centres (6, −48) and (228, 422) ft in its own frame, blockhouse
+centroid (−66, 296) ft. Neither is modelled here.
+
+## Where things stood, and when (MR-3, 5 May 1961)
+
+| Time | Event | Source |
+| --- | --- | --- |
+| 04:35 EST | Shepard arrives at the pad | *Results*, p. 77; Postlaunch Report timeline |
+| 05:15 | "Ascend gantry" (by the gantry's elevator) | the same; *This New Ocean*: Shepard "ascended the gantry" |
+| 05:20 | Insertion begun: into the capsule from the white room on level 3 | the same |
+| T−90 | Capsule hatch installed (MR-4 standard count) | TM X-53107 p. 7-27 |
+| T−85 to T−60 | Platforms 2, 4, 3 opened (platform 1 at T−200) | TM X-53107 pp. 7-25, 7-27 to 7-28 |
+| 06:37 (T−55) | "Gantry removed": structure to the edge of the pad; cherry picker's cab to the hatch | *Results* p. 77; PLR §7.1 ("gantry removal at −55 minutes"); TM X-53107 p. 7-29 |
+| T−15 (MR-3) | 86 min hold, weather then an inverter change: "HOLDING: GANTRY IN" … "HOLDING: GANTRY AWAY"; recycled to T−35 | *Results* Fig. 1(a), events 16 and 18; PLR §10.2 |
+| T−8:45 | Structure driven by remote control to its launch position (Hammack: T−9) | TM X-53107 p. 7-32; Hammack p. 22 |
+| T−4 or T−2:30 | Cherry picker's cab lowered "away and down" (two sources disagree) | TM X-53107 7.3.3.1 (T−4); p. 7-33 and Hammack (T−2:30) |
+| T−35 s | Capsule umbilical dropped | TM X-53107 p. 7-33 |
+| ≈T−14 s | "Boom drop" | TM X-53107 p. 7-33; Hammack p. 22 |
+| 09:34 EST | Liftoff. The tail plugs pull out of the launcher as the vehicle rises | TM X-53107 4.2.4, Fig. 4-25 |
+
+How the pilot got in: the white room on level 3 enclosed the capsule. TM X-53107 7.5.1.2 calls it
+"enclosing and air conditioning the capsule on level three"; Hammack calls it a "white room
+enclosure" that "separated down the middle when the service structure was opened". Shepard went up
+by the elevator, walked into the white room, and entered by the hatch. The structure's mast is
+behind the vehicle (+Y) and its platforms reach forward past it. The hatch faces +X, sideways to
+the rails, so it opens into the white room's +X half (`ServiceStructure_Platform3_Right`). The
+cherry picker came in from the same side once the structure had gone.
+
+## The pieces
+
+| Top-level node | Module | Contains |
+| --- | --- | --- |
+| `Hardstand` | hardstand.py | 200 ft of 20 ft slabs, joints, burn and stain, painted 121 ft circle, four flush rails, scale plate, trench covers, WNW apron, track on ballast and sleepers |
+| `LaunchPedestal` | launcher.py | the launch ring, support pads and fin clamps, four legs with struts and jack feet, four-sided deflector, tail-plug housing, two ground cables |
+| `UmbilicalMast` | masts.py | cable mast No. 2 (the capsule's), its umbilical to the receptacle, eject line |
+| `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
+| `ServiceStructure` | service_structure.py | base, four rail trucks, office, A-frame mast, platform brackets, elevator, ladder, hammerhead crane; child nodes below |
+| `CherryPicker` | cherry_picker.py | International Harvester R-series truck, glazed cab with seat, wheel, dash; child nodes below |
+| `GroundEquipment` | ground_equipment.py | LOX topping unit, a second enclosure, chevron box, tripod cameras |
+| `CameraTowers` | ground_equipment.py | two lattice camera towers |
+| `Floodlights` | ground_equipment.py | six poles, crossarm and two lamps each |
+
+## Moving parts
+
+Blender axes and feet first; the viewer (metres, +Y up) maps Blender (x, y, z) to (x, z, −y). An axis
+in the viewer is the Blender axis mapped the same way. Angles are right-handed about the axis given.
+
+| Node | Parent | Origin (Blender ft) | Moves | Travel | When | Source / confidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ServiceStructure_Platform{1..4}_Left` | `ServiceStructure` | (0, 0, floor) | slides along −X | 4.5 ft (1.372 m) | before the structure moves: L1 T−200, L2 T−85, L4 T−65, L3 T−60 | parting documented (Hammack; TM X-53107 count); distance estimated |
+| `ServiceStructure_Platform{1..4}_Right` | `ServiceStructure` | (0, 0, floor) | slides along +X | 4.5 ft | the same | the same |
+| `ServiceStructure` | — | (0, 0, 0) | rolls along +Y (viewer −Z) | +110 ft (33.53 m) to the edge of the pad; +173 ft (52.73 m) in all to the launch position | T−55; T−8:45 | moves documented; 110 ft estimated (100 to 120); 173 ft derived (Fig. 7-6's 181 ft less 8 ft) |
+| `ServiceStructure_Wheel_1..8` | `ServiceStructure` | each axle's middle, 1.53 ft up | turns about +X | −d/1.5 ft rad for a roll of d ft along +Y | with the roll | wheel size estimated |
+| `CherryPicker_Mast` | `CherryPicker` | the turntable pin (67, 0, 7) | turns about Blender +Y (viewer −Z) | stow: +65.59° (viewer: −65.59° about +Z): lies forward on the bumper frame | after liftoff (drive-off, not documented) | estimated |
+| `CherryPicker_Jib` | `CherryPicker_Mast` | the mast-head pin (81.79, 0, 75.42) | turns about Blender +Y | lower to the pad: −71.27° (viewer +71.27° about +Z); standby, clear of the closed structure: −29.94° (viewer +29.94°); stow fold after lowering: +1.16° more (viewer −1.16°) | lower at T−4 or T−2:30 | lowering documented ("away and down"); angles derived from estimated lengths |
+| `CherryPicker_Cab` | `CherryPicker_Jib` | the hanger pin (9.9, 0, 71.4) | turns about Blender +Y | the negative of jib plus mast, to stay level: lowered +71.27°, standby +29.94°, stowed +4.52° (Blender) | with the jib | estimated |
+| `CherryPicker_Outrigger_1..4` | `CherryPicker` | each hinge pin | turns about +X | up beside the body: 1 and 3 (−Y side): −105°; 2 and 4 (+Y side): +105° | before the drive-off | estimated |
+| `CherryPicker_Wheel_1,2`, `CherryPicker_SteerWheel_1,2` | `CherryPicker` | hub centres | roll about their axle (Blender Y, viewer Z); steer about the vertical | — | drive-off | — |
+| `CherryPicker` | — | the rear axle's middle on the ground (71.5, 0, 0) | drives | faces +X (viewer (1, 0)); wheelbase 16.5 ft (5.029 m); tyre radius 1.73 ft (0.527 m) | after liftoff; the liftoff photographs show it still there | estimated |
+| `UmbilicalMast` | — | hinge pin (0, −8, 1) | turns about +X | +88° (top toward −Y, viewer +Z): lies on the pad | at the umbilical drop, ≈T−35 s (that it fell then is estimated) | mechanism documented (release valve, bungee); form and angle estimated (S61-02407) |
+| `BoosterMast` | — | hinge pin (−3, −13.5, 1) | turns about +X | +88° | "boom drop", ≈T−14 s | event documented; form estimated |
+
+Notes:
+- Order of the cherry picker's stow, after the lowering: jib fold (+1.16°), then mast (+65.59°
+  about Blender +Y), then the outriggers up, then drive. Its cab hangs off the truck's tail at
+  about 5 ft.
+- The platform halves clear the vehicle when parted: their inner edges are at ±4.56 ft against a
+  booster radius of 2.92 ft and a capsule radius of 3.10 ft.
+- Built pose: the clearance check passes at detail 1.0, 0.6 and 0.3.
+- The vehicle's geometry was tested against the pad in Blender (BVH overlap) in four poses:
+  service; T−55; liftoff; and standby with the structure closed. Only the umbilical touches the
+  capsule, at its receptacle.
+
+## Dimensions
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
-| Pedestal ring height | 6 ft | estimated | Figure 7-7 |
-| Pedestal ring | 7.4 ft across, 3.9 ft opening | estimated | sized to the 70 in tail and 33 in nozzle |
-| Hardstand | 204 ft square | derived | Figure 7-6 scaled on the 535 ft pad spacing; pad 6's is given elsewhere as 203 ft |
-| Service structure launch position | 195 ft from the pad centre | derived | same scaling |
-| Blockhouse | about 345 ft from each pad | derived | same scaling; drawn as scenery, not part of the model |
-| Rail gauge | 28 ft | estimated | Figure 7-7 |
-| Service structure height | 118 ft to the crane | estimated | Figure 7-7: about 1.4 times the vehicle on its pedestal |
-| Work platforms | 22, 42, 62.5, 79 and 94 ft | estimated | level 3 placed at the capsule; the others spaced evenly |
-| Structure at the pad's edge | 78 ft, pad centre to structure centre | estimated | Figure 7-7 |
-| Mobile aerial tower: cab | at the hatch, 68.4 ft | derived | follows from the vehicle and pedestal |
-| Mobile aerial tower: mast and jib | 70 ft and 52 ft | estimated | scaled off GPN-2000-001006 against the vehicle; together with the 7 ft foot pin they give the documented 125 ft reach to within a few feet |
-| Mobile aerial tower: where it stands | rear axle 56 ft from the pad centre, on the hatch side, facing away | estimated | GPN-2000-001006: the mast's foot is about 50 ft from the vehicle; the model's is 51.5 ft |
-| Truck | wheelbase 16.5 ft, track 6.5 ft, tyres 41.5 in (10.00-20), 8 ft wide, 28.6 ft over the bumper frame | estimated | GPN-2000-001008, against a truck of this class; no drawing found |
-| Platform cut-out | 80 in wide, 8.5 ft deep | estimated | the documented platforms encircled a 70 in missile; the width is the reviewer's figure, not a source's |
-| Cable mast No. 2 | 66 ft | estimated | reaches the capsule's umbilical |
-
-## Parts in the model
-
-| Node | Contains |
-| --- | --- |
-| `Hardstand` | concrete slabs and joints, blast plate, scorch and stain round it, cable trench covers, rails, track bed |
-| `LaunchPedestal` | channel ring with ribs, four H-section legs with gussets, vehicle support pads, conical flame deflector |
-| `UmbilicalMast` | cable mast No. 2: lattice mast, arm, capsule umbilical |
-| `ServiceStructure` | frame with gusset plates, four two-wheel bogies, five platforms each cut in a U, stairs between them, level 3 white room with doors, air-conditioning unit and duct, elevator, hammerhead crane |
-| `CherryPicker` | truck (cab, bonnet, wings, chassis, bed), four outriggers, turntable, mast with two rams, jib, sheaves, cab; and four wheel nodes (below) |
-
-The truck is built to be driven. Inside `CherryPicker`, each road wheel is its own node with its
-origin at the hub and its axle along Blender's local Y: `CherryPicker_SteerWheel_1` and `_2`
-(front left and right, single) and `CherryPicker_Wheel_1` and `_2` (rear left and right, each a
-dual pair). The truck faces +X; the rear axle's centre is at (56.0, 0, 1.73) ft. Outriggers,
-mast, jib and cab are part of the body.
-
-## Photographs
-
-What each shows, and so what the model takes from it. All are NASA, on Wikimedia Commons.
-
-| Photograph | Shows |
-| --- | --- |
-| GPN-2000-001008, "Astronaut Escape Testing" (MR-7 on the pad) | The tower close up, from the truck's front quarter. An International Harvester truck (IH badge, R-series bonnet and wings), two axles visible, single front wheels; a tall frame on the front bumper for the folded jib; a flat bed carrying gas bottles and valves; outriggers that swing down and out from the body's sides, each with a ram above it; a lattice mast raised by two rams at its foot; plate cheeks and two large sheaves at the mast's head; a lattice jib hinged there, with the cab at its tip |
-| GPN-2000-001006, "Mercury-Redstone 3 Prelaunch Activities" | The whole pad in the model's pose: structure rolled back, the tower's truck about 50 ft from the vehicle with its tail toward it, mast leaning slightly away, jib near level, cab at the hatch. The cab has windows in its sides and hangs from a pivot at the jib's tip. Also the structure: two lattice legs meeting at the top, platforms in two halves either side of the vehicle, glazed enclosures at the capsule levels, huts and stairs on the base |
-| MSFC-6414825, "Mercury-Redstone 3 Liftoff" (colour) | The tower at liftoff: truck, mast, jib and cab all yellow; a NASA insignia on the cab's side; four outriggers splayed round the turntable. **The truck is still on the hardstand**, mast raised, jib folded down, cab lowered to the ground beside it |
-| "Mercury-Redstone 3 egress test at Pad 5", 21 April 1961 (colour) | The service structure red; the white room's walls green panels in a light frame; the tower's cab yellow with framed side windows |
-| 61-MR4-65, MR-4 launch attempt of 19 July 1961 | The cab at the hatch, open toward the capsule, with a sill plate at its floor |
-| TM X-53107 Figure 7-5 | The tower beside a Mercury-Redstone; too coarse to add to the above |
-| `Floodlights` | four poles |
-
-## What the model gets wrong or leaves out
-
-- **No size here is a measurement.** The layout is right; the numbers are scaled off figures, one
-  of which (7-6) is a schematic, not a survey.
-- **The service structure is the wrong form.** The photographs and the Corps of Engineers history
-  show an open-faced A-frame: two lattice legs on a steel base, platforms in two halves. The
-  model is a four-legged lattice tower with one-piece decks. Its height is also in question: the
-  history says the mast "towered 140 feet above the launch pad"; the model's 118 ft was scaled off
-  Figure 7-7. Neither has been changed, because the height is quoted in `flight.ts`.
-- The platforms' U cut-outs stand for the real ones, which were two halves that closed round the
-  vehicle. Their width and depth are estimated.
-- The stairs between platforms, the gusset plates, the bogies (two flanged wheels, axle boxes, a
-  traction motor), the machinery deck at the base, and the air-conditioning unit and its duct are
-  representative: such things were there (the room was air-conditioned; the base carried huts and
-  stairs) but their form and place are not from a source.
-- The white room's green panels and light frame are from the colour photograph; the panel
-  layout, the windows and the two doors are estimated. The real enclosure was in two halves, with
-  a second, mesh-sided enclosure on the level below; the model has one room.
-- The escape-rocket flame deflector and the auxiliary platform are documented but not modelled.
-- The pedestal is a guess at a ring launcher: its H-section legs, ribbed ring and twelve-plate
-  conical deflector are representative. The real launcher's rotating table, levelling jacks and
-  tail-plug mast are not modelled.
-- The scorch and stain round the blast plate, and the cable trench and its covers, are
-  representative; their extent and the trench's route are not from a source.
-- Cable mast No. 2's form is a guess, and No. 1 (the booster's) is not modelled.
-- **Mobile aerial tower.** Its form is from the photographs; every size is estimated. Guessed
-  outright: the rear axle (drawn as one axle with dual wheels; a second rear axle cannot be ruled
-  out from the photographs), the wheelbase, what is under the bed (frame, springs, driveline,
-  tank, silencer), the bed's lockers, the hose reel, the winch, where the hoist lines run, and
-  how the jib is luffed and the cab kept level. The truck's make is from its badge; the model
-  (R-190 or thereabouts) and the tower's builder are not known.
-- The tower's truck stands square to the pad on the hatch side. Its real bearing from the pad is
-  not known.
-- At liftoff the real tower stayed on the hardstand with its cab lowered to the ground (see
-  MSFC-6414825); the report says only that it was removed "to launch position". Whether the truck
-  itself moved between T-55 min and liftoff is not established.
-- The red structure and yellow tower are from the colour photographs. The truck's cab is assumed
-  the same yellow; the black-and-white close-up shows only that it is light.
-- Not modelled: the blockhouse, pad 6, the propellant and peroxide servicing vehicles, the M-113
-  rescue carrier, fences, and the camera positions.
+| Hardstand | 200 ft square, sides along the rails | derived | OSM outline 195 to 202 ft; Figure 7-6, 157 px at 1.274 ft/px (pad centres 408 px = 520 ft) |
+| Painted circle | 121 ft across | derived | Figure 7-6, 95 px; the arc shows in 6100884 |
+| Apron (WNW) | 28 ft wide, 60 ft long | estimated | Figure 7-6 |
+| Rails | two pairs, about standard gauge (4 ft 8.5 in taken), pair centres 21 ft apart | estimated | 6100884 (fin span 142 px = 12.67 ft; pairs 223 px apart, about 20 ft); OSM lines 22.3 ft apart |
+| Track | to 245 ft along +Y; modelled 165 ft along −Y | derived | Figure 7-6 |
+| Launcher support pads | 5.5 ft above the pad | estimated | S63-02651: 4.9 to 6.0 ft (booster 137 px = 70 in) |
+| Launch ring | about 10 ft across, 3.05 ft opening | estimated | S63-02651, 6100884 |
+| Scale plate | 13 ft square | estimated | its existence: the museum's caption at pad 6 and the count's weighings |
+| Service structure height | 135 ft to the crane's top rail | derived | LC-26 twin "111 feet 9 inches to the top rail" (museum) + "about 23 feet" taller mast (Noble); COE: "towered 140 feet above the launch pad" (NHL p. 3) |
+| Mast | A-frame, legs 3 ft square, 21 ft apart at the base, 6 ft at the head | estimated | S61-03158, Hammack Figs 22 and 23, Figure 7-7 |
+| Base | girders over each rail pair, 48 ft long; four rail trucks of two axles | estimated (four trucks: museum) | Noble; LC-26 blueprint photograph |
+| Level floors | L1 45.1, L2 53.8, L3 64.6 (the white room), L4 75.8 ft | estimated | L3 at the capsule's heat-shield plane (vehicle stations); spacing scaled off Hammack Fig. 22 (L4 +11.7, L2 −10.4, L1 −19.2 ft) and Figure 7-7 |
+| Platform widths | L1 37 ft, L2 35 ft, white room and L4 27 ft; 22 ft deep | estimated | Hammack Fig. 22: white room 4.6 to 5.5 vehicle diameters; L1 and L2 1.43 and 1.37 times the white room |
+| White room | 10.4 ft high, glazed blue-green panels in a white frame | estimated (built Feb to May 1961: documented) | TM X-53107 7.5.1.2; colour from 6100884 |
+| Platform cut-outs | L1, L2: 3.6 ft radius (booster 2.92); L3: 3.7 (capsule 3.10); L4: 2.4 (tower) | estimated | clears the vehicle by 0.6 to 0.7 ft |
+| Mobile aerial tower | reach 125 ft | documented | TM X-53107 7.3.3.1 |
+| Truck position | tail 64 ft from the launcher on +X | documented 65 ft (secondary) | *This New Ocean* p. 329 (MR-BD stand-in); Figure 7-6 ≈64 ft |
+| Mast, jib | 70 ft, 72 ft | estimated | sized so the jib alone puts the cab on the pad beside the truck, as at liftoff |
+| Capsule cable mast | 61 ft tube, 8 in tapering to 5 in, 8 ft from the axis | estimated | S63-02651, Hammack Fig. 23 |
+| Floodlights | 40 ft, six poles | estimated | photographs |
 
 ## Sources
 
-See [docs/sources.md](../../../../docs/sources.md). The pad rests on NASA TM X-53107,
-*The Mercury-Redstone Project*, sections 4.8.9, 7.3 and 7.5 and Figures 7-5 to 7-11, and on:
+TM X-53107 sections 4.2.4, 4.8.9, 7.1 to 7.5, Figures 4-25 and 7-5 to 7-11; Hammack & Heberlig (ARS
+1961) pp. 19 to 22 and Figures 22 and 23; *Results* p. 77 and Fig. 1(a); the MR-3 Postlaunch Report;
+SP-45 Fig. 4-9; *This New Ocean* pp. 314 and 329; the NHL nomination 84003872 (quoting the
+Corps of Engineers history); the Space Force Museum's *Noble Endeavor* and LC-26 gantry pages;
+OpenStreetMap; NASA photographs S61-03158, 6100884, S61-01927, S61-02407 and S61-02408,
+S63-02651, S63-22731. Details in [docs/sources.md](../../../../docs/sources.md).
 
-- The photographs above: [GPN-2000-001008](https://commons.wikimedia.org/wiki/File:Astronaut_Escape_Testing_-_GPN-2000-001008.jpg),
-  [GPN-2000-001006](https://commons.wikimedia.org/wiki/File:Mercury_Redstone_3_Prelaunch_Activities_-_GPN-2000-001006.jpg),
-  [MSFC-6414825](https://commons.wikimedia.org/wiki/File:Mercury-Redstone_3_Liftoff_MSFC-6414825.jpg),
-  [the egress test of 21 April 1961](https://commons.wikimedia.org/wiki/File:Mercury-Redstone_3_egress_test_at_Pad_5.jpg),
-  [61-MR4-65](https://commons.wikimedia.org/wiki/File:Mercury-Redstone_4_July_19_launch_attempt_61-MR4-65.jpg).
-- [*Cape Canaveral: A Noble Endeavor*](https://ccspacemuseum.org/wp-content/uploads/displays/LC26gantry/Cape_Canaveral_Noble_Endeavor_v1.5.2.pdf)
-  (rev 1.5.2), Cape Canaveral Space Force Museum: the service structure's history, quoting the
-  Corps of Engineers.
-- [NASA SP-4001, *Project Mercury: A Chronology*, Part II (B)](https://www.nasa.gov/history/SP-4001/p2b.htm):
-  the egress tower's delivery.
+## What the model gets wrong or leaves out
+
+- **Only the structure's height and the cherry picker's reach are published.** Everything else is
+  scaled off photographs or the site plan:
+  - platform levels, widths and depths;
+  - rail spacing;
+  - truss pattern;
+  - launcher size;
+  - mast lengths and positions;
+  - the "edge of pad" distance.
+- The hatch's bearing (WNW) is inferred from the cherry picker's side in Figure 7-6 and in one
+  liftoff photograph.
+- The platforms are drawn as sliding apart sideways. The photographs show them parted, not how they
+  moved: hinge or slide is not known.
+- The LC-26 blueprint photograph shows the closed platform plan as a tapering six-sided enclosure.
+  These are rectangles.
+- Level 4 is a flat-roofed shelter, as the MR-3 photographs show it. TM X-53107 Figure 7-9 is a
+  design drawing of a gable-roofed deflector house that does not appear in those photographs. The
+  deflector plate inside is the drawing's, not measured.
+- The auxiliary platform at the escape tower's base is folded into level 4. The low-level
+  platform, stairs, cable boom, cable storage platform and TV cameras are left out.
+- Which fin is fin II is not recorded against the vehicle model. The tail-plug housing is put
+  beside the +X +Y fin. The tail-plug cover flaps (MR-2) are not modelled.
+- The flame deflector's size and shape are guessed: a pyramid, from "four-sided" (SP-4204,
+  secondary).
+- Cable mast No. 1's form, height and place are estimated, and so is its boom at the booster.
+  Which photographed pole is which mast is not established. The bungee cords are not modelled.
+- The cherry picker's make is assumed from photographs. Its mast and jib lengths are chosen to
+  reproduce the liftoff pose (cab on the pad on the vehicle's side), not measured. The stowed pose
+  and the drive-off are not documented: the liftoff photographs show the truck still on the pad
+  with its cab lowered. The mast's rams separate from their barrels when the mast is lowered.
+- Ground equipment, camera towers and floodlights are placed where photographs suggest. None of
+  their positions is recorded. The LOX topping trailer's position is unknown.
+- The office on the base has no windows. The crane has no operator's cab: none shows in the
+  photographs, and the hoist machinery is drawn as a closed house.
+- OpenStreetMap shows water-deluge monitors, a fuel-truck revetment and a generator building. Their
+  date is unknown and they are not modelled. Neither are the blockhouse, pad 6, fences or roads
+  (the viewer's scenery draws some of these).
