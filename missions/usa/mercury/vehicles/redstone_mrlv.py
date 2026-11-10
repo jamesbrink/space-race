@@ -114,8 +114,8 @@ def build(base_z: float, font=None) -> None:
     for i in range(24):   # stringers added for the Mercury capsule's weight
         t = TAU * i / 24
         a = Vector((math.cos(t), math.sin(t), 0))
-        inner.tube((a * (BODY_R - 0.9) + Vector((0, 0, up(S_AFT + 1)))) * IN,
-                   (a * (ADAPTER_TOP_R - 0.9) + Vector((0, 0, up(LENGTH - 2)))) * IN, 0.55 * IN, 6, caps=False)
+        inner.tube((a * (BODY_R - 1.2) + Vector((0, 0, up(S_AFT + 0.5)))) * IN,
+                   (a * (ADAPTER_TOP_R - 1.2) + Vector((0, 0, up(LENGTH - 1.4)))) * IN, 0.55 * IN, 6, caps=False)
     inner.build("Adapter_Structure", M["inner"], g)
     ring = MeshBuilder()   # Marman clamp ring: released by explosive bolts at separation
     ring.lathe(prof([(ADAPTER_TOP_R, up(LENGTH - 1.2)), (ADAPTER_TOP_R + 0.9, up(LENGTH - 1.2)),
@@ -219,6 +219,7 @@ def build(base_z: float, font=None) -> None:
     # driven by steam from hydrogen peroxide. It does not gimbal: four graphite vanes in the
     # exhaust steer the vehicle.
     g = group("RedstoneEngine")
+    eu = lambda s: up(s * 0.8)   # noqa: E731  engine stations, drawn for a taller bay and scaled to this one
     eng = MeshBuilder()
     bell = [(11.5, 118), (11.5, 96), (10.5, 88), (7.6, 78), (8.6, 70), (11.2, 52), (13.6, 34), (15.4, 16), (NOZZLE_EXIT_R, 2)]
     eng.lathe(prof([(r, eu(s)) for r, s in reversed(bell)]), 64)                 # outer wall, walked upward
