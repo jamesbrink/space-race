@@ -7,12 +7,14 @@ document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
 let selected: string | null = null;
+let current = flight.models[0]!;
 
 const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   model: show,
   explode: (t) => stage.setExplode(t),
   view: (id) => stage.view(id),
   autoRotate: (on) => stage.setAutoRotate(on),
+  cutaway: (on) => stage.setCutaway(on),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
 });
@@ -22,6 +24,8 @@ function select(node: string | null): void {
   stage.highlight(null, node);
   ui.select(node);
   if (node) {
+    // something inside something else is only worth flying to if it can be seen
+    if (current.parts.find((p) => p.node === node)?.inside) ui.setCutaway(true);
     stage.focus(node);
     ui.setRotate(false);
   }
@@ -34,6 +38,7 @@ async function show(id: string): Promise<void> {
   ui.loading(model.name);
   try {
     await stage.load(flight, model.id, (f) => ui.setProgress(f));
+    current = model;
     ui.setModel(model.id);
     stage.setExplode(0);
     if (location.hash !== `#${model.id}`) history.replaceState(null, '', `#${model.id}`);

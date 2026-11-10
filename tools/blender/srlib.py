@@ -31,6 +31,11 @@ Vec3 = tuple[float, float, float]
 DETAIL = 1.0
 
 
+def interior() -> bool:
+    """Whether to build what is only seen in a cutaway: crew, equipment, tank internals."""
+    return DETAIL >= 0.75
+
+
 def _segs(n: int) -> int:
     return n if DETAIL >= 1.0 else max(6, round(n * DETAIL))
 
@@ -423,6 +428,16 @@ def lettering(mb: MeshBuilder, surf: Surf, body: str, length: float, theta0: flo
     cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
     verts = [((x - cx) * scale, (y - cy) * scale, 0.0) for x, y, _ in verts]
     decal(mb, surf, theta0, z0, verts, faces, vertical)
+
+
+def mark_shells(names: Sequence[str]) -> None:
+    """Flag the meshes that enclose something. The viewer's cutaway slices these and nothing else,
+    so what is inside is seen whole. The flag travels as a glTF extra (`userData.shell`)."""
+    missing = [n for n in names if n not in bpy.data.objects]
+    if missing:
+        raise KeyError(f"mark_shells: no such mesh: {', '.join(missing)}")
+    for n in names:
+        bpy.data.objects[n]["shell"] = 1
 
 
 # ----------------------------------------------------------------------- clearance

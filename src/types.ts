@@ -47,6 +47,8 @@ export interface Part {
   detail: string;
   /** Key figures shown under the description: material, size, mass, rating. */
   facts?: [label: string, value: string][];
+  /** It is inside something: selecting it opens the cutaway so it can be seen. */
+  inside?: boolean;
   /** Where the part goes at full explode: metres, viewer space (+Y is the nose). */
   explode: [number, number, number];
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
@@ -78,6 +80,8 @@ export interface ModelDef {
   parts: Part[];
   /** Framings offered beside the automatic 'Everything'. */
   views: ViewDef[];
+  /** The model has internals and flagged shells (srlib.mark_shells): offer a cutaway. */
+  cutaway?: boolean;
   /** Where the model stands, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */

@@ -79,6 +79,10 @@ export class Stage {
   private down: { x: number; y: number } | null = null;
   private flyTo: { target: THREE.Vector3; position: THREE.Vector3; t: number } | null = null;
   private centreY = 0;
+  /** The cutaway: a quarter of every shell removed, the quarter facing the default camera. */
+  private readonly cutPlanes = [new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)];
+  private readonly shellMaterials = new Map<THREE.Material, THREE.Material>();
+  private cut = false;
   private readonly bounds = new THREE.Sphere();
   private shadowFit = -1;
   private loadToken = 0;
@@ -89,6 +93,7 @@ export class Stage {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.localClippingEnabled = true;
 
     // models are Draco-compressed; the decoder is served from public/draco
     this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
@@ -195,6 +200,7 @@ export class Stage {
       }),
     );
     this.exploder = new Exploder(main, def.parts);
+    this.setCutaway(false);
     this.setting = this.settings.get(def.backdrop);
     this.applySetting();
     this.highlight(null, null);
@@ -227,25 +233,56 @@ export class Stage {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       mesh.castShadow = mesh.receiveShadow = true;
+      const shell = Boolean(mesh.userData.shell);
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (mat.name.startsWith('glass')) {
-        mesh.material = GLASS;
+        mesh.material = shell ? this.shellOf(GLASS) : GLASS;
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
         return;
       }
-      if (seen.has(mat)) return;
-      seen.add(mat);
-      if (mat.map) mat.map.anisotropy = anisotropy;
-      if (WORN.test(mat.name)) {
-        mat.roughnessMap = this.wear;
-        mat.roughness = Math.min(1, mat.roughness * 1.3);
+      if (!seen.has(mat)) {
+        seen.add(mat);
+        if (mat.map) mat.map.anisotropy = anisotropy;
+        if (WORN.test(mat.name)) {
+          mat.roughnessMap = this.wear;
+          mat.roughness = Math.min(1, mat.roughness * 1.3);
+        }
+        if (ROUGH_SURFACE.test(mat.name)) {
+          mat.bumpMap = this.wear;
+          mat.bumpScale = 0.6;
+        }
       }
-      if (ROUGH_SURFACE.test(mat.name)) {
-        mat.bumpMap = this.wear;
-        mat.bumpScale = 0.6;
-      }
+      if (shell) mesh.material = this.shellOf(mat);
     });
+  }
+
+  /**
+   * A shell's own copy of a material: the one the cutaway clips. Internals keep the original,
+   * so a tank dome and the pipe inside it can share "aluminium" and only the dome is cut.
+   */
+  private shellOf(material: THREE.Material): THREE.Material {
+    let copy = this.shellMaterials.get(material);
+    if (!copy) {
+      copy = material.clone();
+      copy.userData.side = material.side;
+      copy.clipIntersection = true; // cut away only where both planes agree: one quadrant
+      copy.clipShadows = true; // and let the light in through the opening
+      this.shellMaterials.set(material, copy);
+    }
+    return copy;
+  }
+
+  /** Open or close the cutaway. With it open, shells show their inner faces too. */
+  setCutaway(on: boolean): void {
+    this.cut = on;
+    const at = this.main?.position ?? new THREE.Vector3();
+    for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
+    for (const m of this.shellMaterials.values()) {
+      m.clippingPlanes = on ? this.cutPlanes : null;
+      m.side = on ? THREE.DoubleSide : (m.userData.side as THREE.Side);
+      m.needsUpdate = true;
+    }
   }
 
   private applySetting(): void {
@@ -383,7 +420,10 @@ export class Stage {
   private pick(): string | null {
     if (!this.main) return null;
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = this.raycaster.intersectObject(this.main, true)[0];
+    // a ray does not know about the cutaway: skip what has been cut away to reach what is inside
+    const gone = (h: THREE.Intersection) =>
+      this.cut && h.object.userData.shell && this.cutPlanes.every((p) => p.distanceToPoint(h.point) < 0);
+    const hit = this.raycaster.intersectObject(this.main, true).find((h) => !gone(h));
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) if (this.parts.has(o.name)) return o.name;
     return null;
   }

@@ -5,6 +5,7 @@ export interface UiHandlers {
   explode(t: number): void;
   view(id: string): void;
   autoRotate(on: boolean): void;
+  cutaway(on: boolean): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
 }
@@ -116,6 +117,7 @@ export class Ui {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (b?.dataset.view) on.view(b.dataset.view);
       else if (b?.hasAttribute('data-rotate')) this.setRotate(b.getAttribute('aria-pressed') !== 'true');
+      else if (b?.hasAttribute('data-cut')) this.setCutaway(b.getAttribute('aria-pressed') !== 'true');
     });
     // the label that follows the pointer over the model
     window.addEventListener('pointermove', (e) => {
@@ -154,6 +156,7 @@ export class Ui {
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
     r.querySelector('.buttons')!.innerHTML =
       [{ id: 'all', label: 'Everything' }, ...m.views].map((v) => `<button data-view="${v.id}">${esc(v.label)}</button>`).join('') +
+      (m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : '') +
       `<button data-rotate aria-pressed="${rotating}">Rotate</button>`;
     r.querySelector('.scale')!.textContent = m.scale;
     r.querySelector<HTMLElement>('.explode')!.hidden = !m.slider;
@@ -162,6 +165,13 @@ export class Ui {
     this.slider.value = '0';
     this.selected = null;
     this.tab('Parts');
+  }
+
+  setCutaway(on: boolean): void {
+    const b = this.root.querySelector('[data-cut]');
+    if (!b) return;
+    b.setAttribute('aria-pressed', String(on));
+    this.on.cutaway(on);
   }
 
   setRotate(on: boolean): void {

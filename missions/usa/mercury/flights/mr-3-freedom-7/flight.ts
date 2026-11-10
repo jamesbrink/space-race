@@ -97,6 +97,7 @@ const vehicleParts: Part[] = [
     },
     {
       node: 'CrewCabin',
+      inside: true,
       name: 'Crew cabin',
       summary: 'Titanium pressure vessel, couch, instrument panel.',
       detail:
@@ -218,6 +219,7 @@ const vehicleParts: Part[] = [
     },
     {
       node: 'RedstoneEngine',
+      inside: true,
       name: 'A-7 engine',
       summary: '78,000 lbf; steered by graphite vanes in the exhaust.',
       detail:
@@ -241,8 +243,8 @@ const PEDESTAL = 6 * 0.3048;
 /** The vehicle's origin is the capsule's heat-shield plane, 716.5 in above the fins. */
 const VEHICLE_Y = PEDESTAL + 716.5 * IN;
 
-/** Where the pilot stands in every scene: at the foot of the vehicle, on the hatch side. */
-const PILOT = { position: [3.4, 0, 2.6] as [number, number, number], rotationY: 0.9 };
+/** Where the pilot stands in every scene: at the foot of the vehicle, clear of the cutaway's opening. */
+const PILOT = { position: [-2.6, 0, 3.9] as [number, number, number], rotationY: 0.9 };
 
 const vehicle: ModelDef = {
   id: 'vehicle',
@@ -251,6 +253,7 @@ const vehicle: ModelDef = {
   scale: '25.41 m tall · spacecraft 7.90 m · to scale',
   backdrop: 'ground',
   slider: ['Assembled', 'Exploded'],
+  cutaway: true,
   parts: vehicleParts,
   position: [0, VEHICLE_Y, 0],
   home: 'stack',

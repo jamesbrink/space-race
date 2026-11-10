@@ -81,20 +81,27 @@ const flipsAt = (view, az) =>
   );
 
 let failed = 0;
-const models = await page.evaluate(() => window.sr.flight.models.map((m) => ({ id: m.id, views: ['all', ...m.views.map((v) => v.id)] })));
+const models = await page.evaluate(() =>
+  window.sr.flight.models.map((m) => ({ id: m.id, cutaway: Boolean(m.cutaway), views: ['all', ...m.views.map((v) => v.id)] })),
+);
 for (const model of models) {
   await page.evaluate((id) => window.sr.show(id), model.id);
   await page.waitForFunction(() => document.querySelector('.loading.done'));
   await page.waitForTimeout(400);
+  // every view from six directions; then, where there is a cutaway, every view again looking into it
+  const passes = model.cutaway ? [false, true] : [false];
+  for (const cut of passes) {
+  await page.evaluate((on) => window.sr.stage.setCutaway(on), cut);
   for (const view of model.views)
     // six directions, chosen so no pose puts the camera inside the pad's masts
-    for (const az of [20, 80, 140, 200, 260, 320]) {
+    for (const az of cut ? [20] : [20, 80, 140, 200, 260, 320]) {
       const { flips, map } = await flipsAt(view, az);
       const ok = flips <= FLIPS;
       if (!ok) failed++;
-      console.log(`${ok ? 'ok  ' : 'FAIL'} ${model.id.padEnd(8)} ${view.padEnd(11)} az ${String(az).padStart(3)}   flips ${String(flips).padStart(5)} (<= ${FLIPS})`);
-      if (shots && map) writeFileSync(join(shots, `${model.id}-${view}-${az}-flips.png`), Buffer.from(map.split(',')[1], 'base64'));
+      console.log(`${ok ? 'ok  ' : 'FAIL'} ${(model.id + (cut ? ' cut' : '')).padEnd(12)} ${view.padEnd(11)} az ${String(az).padStart(3)}   flips ${String(flips).padStart(5)} (<= ${FLIPS})`);
+      if (shots && map) writeFileSync(join(shots, `${model.id}${cut ? '-cut' : ''}-${view}-${az}-flips.png`), Buffer.from(map.split(',')[1], 'base64'));
     }
+  }
 }
 if (errors.length) {
   failed++;

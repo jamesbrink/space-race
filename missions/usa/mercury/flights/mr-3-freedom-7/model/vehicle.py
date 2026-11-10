@@ -34,7 +34,7 @@ sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
 from srlib import (  # noqa: E402
     IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, frame, group, lathe_obj,
-    lettering, load_font, material, prof, run,
+    interior, lettering, load_font, mark_shells, material, prof, run,
 )
 import redstone_mrlv  # noqa: E402
 
@@ -61,6 +61,17 @@ Z_MOTOR = 205.0
 Z_MOTOR_TOP = 268.0
 Z_BOOSTER_BASE = -redstone_mrlv.LENGTH   # the Redstone's fin trailing edges
 Z_TOP = 284.0             # tip of the aerodynamic spike: 311.2 in (7.90 m) above the retro nozzles
+
+# Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
+SHELLS = (
+    "HeatShield_HeatSink", "HeatShield_Fasteners", "Retropack_Housing",
+    "Afterbody_Shingles", "Afterbody_Fasteners", "Afterbody_Structure", "Afterbody_AttachRing", "Afterbody_Fittings",
+    "Afterbody_ThrusterThroats", "Afterbody_Glass", "Afterbody_WindowWells", "Afterbody_Lettering", "Afterbody_Flags",
+    "Hatch_Shingles", "Hatch_Latches", "Hatch_Structure", "CrewCabin_PressureVessel",
+    "Recovery_Shingles", "Recovery_Fasteners", "Recovery_Structure", "Recovery_ThrusterPorts", "Recovery_ThrusterThroats",
+    "Recovery_ParachuteCanisters", "Antenna_Housing", "Antenna_DielectricWindow", "Antenna_Fittings",
+    "Tower_EscapeMotor", "Tower_MotorBands",
+)
 
 PANELS = 24               # shingles around the cone
 PANEL_ARC = TAU / PANELS
@@ -135,6 +146,14 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "gauge": m("gauge-face", (0.02, 0.02, 0.02), 0.0, 0.25,
                    emission=(0.55, 1.0, 0.65), emission_strength=0.35),
         "lens": m("lens", (0.01, 0.01, 0.015), 0.0, 0.03),
+        # what a cutaway shows
+        "suit": m("suit-aluminized-nylon", (0.78, 0.79, 0.80), 1.0, 0.5),
+        "helmet": m("helmet-fibreglass-white", (0.85, 0.85, 0.82), 0.0, 0.35),
+        "fabric": m("fabric-nylon", (0.80, 0.76, 0.66), 0.0, 0.9),
+        "equipment": m("equipment-grey", (0.13, 0.14, 0.15), 0.3, 0.55),
+        "bottle": m("bottle-green", (0.10, 0.22, 0.13), 0.4, 0.4),
+        "propellant": m("propellant-grain", (0.16, 0.13, 0.11), 0.0, 0.9),
+        "copper": m("antenna-copper", (0.72, 0.42, 0.20), 1.0, 0.35),
     }
 
 
@@ -387,6 +406,48 @@ def build_crew_cabin(M) -> None:
             gauges.disc((gx * IN, gy * IN, (pz - 0.76) * IN), down, 1.45 * IN, 0.1 * IN, 20)
     panel.build("CrewCabin_InstrumentPanel", M["panel"], g, smooth=False)
     gauges.build("CrewCabin_Instruments", M["gauge"], g)
+    if interior():
+        build_cabin_contents(M, g)
+
+
+def build_cabin_contents(M, g) -> None:
+    """What a cutaway of the cabin shows. The pilot's pose follows the couch; his size is Shepard's.
+    The equipment is representative: the right kinds of thing in roughly the right places, not
+    a survey of spacecraft No. 7's installation."""
+    P = lambda x, y, z: Vector((x, y, z)) * IN   # noqa: E731
+    R = lambda a, b=None: (a * IN, (b if b is not None else a) * IN)   # noqa: E731
+    suit, helmet, gear, bottles, bag = (MeshBuilder() for _ in range(5))
+    along = (0, 0, 1)   # for limbs lying fore and aft: lateral radius first, then vertical
+
+    # torso and head, on his back, head toward -Y
+    # (he is pressed a little way into the couch, as the couch was moulded to him)
+    suit.loft([P(0, -16.5, 10.6), P(0, -11, 10.9), P(0, -4, 10.4), P(0, 2.5, 9.8)], [R(6.6, 4.3), R(7.6, 4.8), R(7.0, 4.6), R(6.6, 4.4)], 28, ref=along)
+    helmet.lathe(prof(arc_profile(0, 0, 5.7, -90, 90, 14)), 32, matrix=Matrix.Translation(P(0, -22.3, 12.6)))
+    gear.lathe(prof([(4.4, 0.0), (4.4, 1.0), (3.6, 1.0)]), 28, matrix=frame(P(0, -17.6, 11.5), (0, -1, 0.15)))   # neck ring
+    for sx in (-1, 1):
+        # thighs up the couch, shins along the top of it
+        suit.loft([P(sx * 5.8, 2.0, 9.4), P(sx * 6.0, 8.5, 15.4), P(sx * 6.0, 14.6, 23.6), P(sx * 6.0, 21.0, 22.2), P(sx * 6.0, 26.5, 20.8)],
+                  [R(3.4), R(3.2), R(2.9), R(2.5), R(2.2)], 18, ref=along)
+        gear.loft([P(sx * 6.0, 25.2, 21.2), P(sx * 6.0, 28.2, 22.2), P(sx * 6.0, 28.8, 25.8)], [R(3.0), R(2.9), R(2.1)], 14, ref=along,
+                  caps=(False, True))   # boots, pulled on over the shins
+        # arms forward to the controls: attitude stick under the right hand, abort handle under the left
+        suit.loft([P(sx * 8.6, -13.0, 11.8), P(sx * 11.4, -5.0, 11.2), P(sx * 10.6, 2.5, 15.6)], [R(2.4), R(2.1), R(1.8)], 16, ref=along)
+        gear.loft([P(sx * 10.55, 3.4, 16.2), P(sx * 10.4, 5.4, 17.6)], [R(2.0, 1.6), R(1.6, 1.3)], 12, ref=along)                      # gloves
+        gear.tube(P(sx * 10.4, 5.0, 11.2), P(sx * 10.4, 5.0, 16.4), 0.55 * IN, 10)
+        gear.lathe(prof(arc_profile(0, 0, 1.0, -90, 90, 6)), 12, matrix=Matrix.Translation(P(sx * 10.4, 5.0, 16.9)))
+    # environmental control, electrics and recording: boxes and bottles along the cabin floor
+    for x, y, z, sx_, sy_, sz_ in ((-17.0, -6.0, 3.2, 9, 12, 5), (17.0, -6.0, 3.2, 9, 12, 5), (0.0, 19.5, 4.2, 14, 9, 7),
+                                   (-19.0, 9.0, 4.0, 7, 9, 6), (19.5, 9.5, 5.0, 6, 8, 8), (0.0, -27.5, 4.6, 12, 5, 6)):
+        gear.box((sx_ * IN, sy_ * IN, sz_ * IN), Matrix.Translation(P(x, y, z + sz_ / 2)))
+    for x, y in ((-10.5, 21.0), (10.5, 21.0)):   # oxygen: two spherical bottles, primary and reserve
+        bottles.lathe(prof(arc_profile(0, 0, 3.7, -90, 90, 12)), 24, matrix=Matrix.Translation(P(x, y, 6.2)))
+    # the landing bag, folded flat between the heat shield and the bulkhead
+    bag.lathe(prof([(21.5, -0.55), (22.0, -0.7), (33.0, -0.7), (33.5, -0.55), (33.0, -0.42), (22.0, -0.42), (21.5, -0.55)]), 96)
+    suit.build("CrewCabin_Pilot", M["suit"], g)
+    helmet.build("CrewCabin_PilotHelmet", M["helmet"], g)
+    gear.build("CrewCabin_Equipment", M["equipment"], g, sharp_angle=35)
+    bottles.build("CrewCabin_OxygenBottles", M["bottle"], g)
+    bag.build("CrewCabin_LandingBag", M["fabric"], g)
 
 
 def build_recovery_compartment(M) -> None:
@@ -405,6 +466,12 @@ def build_recovery_compartment(M) -> None:
         chutes.lathe(prof([(6.2, Z_CAN), (6.2, Z_CAN + 0.5), (5.6, Z_CAN + 0.8), (0.0, Z_CAN + 0.8)]), 40,
                      matrix=Matrix.Translation((0, y * IN, 0)))
     chutes.build("Recovery_ParachuteCanisters", M["aluminium"], g)
+    if interior():   # the packed main and reserve parachutes under those lids
+        packs = MeshBuilder()
+        for y in (-6.6, 6.6):
+            packs.lathe(prof([(0.0, Z_CYL + 1.4), (5.6, Z_CYL + 1.4), (5.9, Z_CYL + 3.0), (5.9, Z_CAN - 2.2), (5.2, Z_CAN - 0.6), (0.0, Z_CAN - 0.6)]), 32,
+                        matrix=Matrix.Translation((0, y * IN, 0)))
+        packs.build("Recovery_ParachutePacks", M["fabric"], g)
 
     fit, dark = MeshBuilder(), MeshBuilder()
     for q in range(4):   # pitch and yaw thrusters: a 24 lbf and a 1 lbf nozzle at each quadrant
@@ -454,6 +521,12 @@ def build_antenna_canister(M) -> None:
     lathe_obj("Antenna_DielectricWindow", prof([(can_r(w0), w0), (can_r(w1), w1)]), M["dielectric"], g)
     fit.build("Antenna_Fittings", M["steel"], g)
     lens.build("Antenna_ScannerLenses", M["lens"], g)
+    if interior():   # the bicone itself: two cones point to point behind the dielectric window
+        wm = (w0 + w1) / 2
+        cone = MeshBuilder()
+        cone.lathe(prof([(can_r(w0) - 0.9, w0 - 0.4), (1.1, wm - 0.25), (1.1, wm + 0.25), (can_r(w1) - 0.9, w1 + 0.4)]), 64)
+        cone.lathe(prof([(0.0, Z_CAN + 1.0), (1.0, Z_CAN + 1.0), (1.0, Z_CAN_TOP - 1.0), (0.0, Z_CAN_TOP - 1.0)]), 16)
+        cone.build("Antenna_Bicone", M["copper"], g)
 
 
 def build_escape_tower(M) -> None:
@@ -493,6 +566,10 @@ def build_escape_tower(M) -> None:
     for z in (Z_MOTOR + 1.0, Z_MOTOR + 30.0, Z_MOTOR_TOP - 1.0):
         bands.lathe(prof([(7.5, z - 0.6), (7.7, z - 0.4), (7.7, z + 0.4), (7.5, z + 0.6)]), 64)
     bands.build("Tower_MotorBands", M["steel"], g)
+    if interior():   # the solid-propellant grain that the case is wrapped round
+        grain = MeshBuilder()
+        grain.lathe(prof([(0.0, Z_MOTOR + 2.0), (6.9, Z_MOTOR + 2.0), (6.9, Z_MOTOR_TOP - 1.0), (5.0, Z_MOTOR_TOP + 2.0), (0.0, Z_MOTOR_TOP + 2.0)]), 40)
+        grain.build("Tower_PropellantGrain", M["propellant"], g)
     noz = MeshBuilder()
     cant = deg(19)
     for i in range(3):
@@ -520,6 +597,7 @@ def build() -> str:
     build_antenna_canister(M)
     build_escape_tower(M)
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
+    mark_shells(SHELLS + redstone_mrlv.SHELLS)
     return (f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, "
             f"spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m")
 
