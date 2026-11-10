@@ -26,6 +26,14 @@ TAU = math.tau
 
 Vec3 = tuple[float, float, float]
 
+# Level of detail, set by `--detail` (run()). 1.0 is the inventory model. Lower values thin
+# every curve and, under 0.5, leave out fasteners: the same script builds the game's far LODs.
+DETAIL = 1.0
+
+
+def _segs(n: int) -> int:
+    return n if DETAIL >= 1.0 else max(6, round(n * DETAIL))
+
 
 # --------------------------------------------------------------------------- scene
 
@@ -165,6 +173,7 @@ class MeshBuilder:
         flip: bool = False,
     ) -> None:
         """Revolve an (r, z) profile about local Z. UVs are in metres (arc, path)."""
+        segs = _segs(segs)
         full = abs((arc[1] - arc[0]) - TAU) < 1e-6
         n = segs if full else segs + 1
         us = [arc[0] + (arc[1] - arc[0]) * i / segs for i in range(n)]
@@ -190,7 +199,9 @@ class MeshBuilder:
         self.lathe(prof, segs, matrix=frame(p0, p1 - p0))
 
     def disc(self, origin, normal, radius: float, height: float, segs: int = 6) -> None:
-        """A capped stub: bolt heads, rivets, port covers."""
+        """A capped stub: bolt heads, rivets, port covers. Left out below detail 0.5."""
+        if DETAIL < 0.5:
+            return
         self.lathe([(radius, 0.0), (radius, height), (0.0, height)], segs,
                    matrix=frame(origin, normal))
 
@@ -237,6 +248,7 @@ class MeshBuilder:
         ripple(s, theta) scales the radius, s running 0..1 along the path: folds and wrinkles."""
         pts = [Vector(p) for p in path]
         n = len(pts)
+        segs = _segs(segs)
 
         def cr(seq, i, t):   # Catmull-Rom through seq[i]..seq[i+1]
             p0, p1, p2, p3 = (seq[max(0, min(n - 1, k))] for k in (i - 1, i, i + 1, i + 2))
@@ -451,7 +463,7 @@ def check_clearance(min_gap: float = MIN_GAP) -> list[str]:
         normals.append(n.normalized() if n.length > 1e-12 else None)
 
     eps = 2e-6
-    found: dict[tuple[str, str], list[float]] = {}
+    found: dict[tuple[str, str], list[tuple[float, Vector]]] = {}
     weights = ((1 / 3, 1 / 3, 1 / 3), (0.6, 0.2, 0.2), (0.2, 0.6, 0.2), (0.2, 0.2, 0.6))
     for ti, (a, b, c) in enumerate(tris):
         n = normals[ti]
@@ -470,9 +482,13 @@ def check_clearance(min_gap: float = MIN_GAP) -> list[str]:
                 if d < 0 and not both:
                     continue   # back to back or face to face: never both drawn
                 key = tuple(sorted((objs[owner[ti]].name, objs[owner[hi]].name)))
-                found.setdefault(key, []).append(dist + eps)
-    lines = sorted(((min(v), len(v), k) for k, v in found.items()))
-    return [f"{k[0]} / {k[1]}: {n} samples, closest {g * 1000:.2f} mm" for g, n, k in lines]
+                found.setdefault(key, []).append((dist + eps, p.copy()))
+    out = []
+    for key, hits in sorted(found.items(), key=lambda kv: min(h[0] for h in kv[1])):
+        gap, at = min(hits, key=lambda h: h[0])
+        out.append(f"{key[0]} / {key[1]}: {len(hits)} samples, closest {gap * 1000:.2f} mm "
+                   f"at ({at.x:.3f}, {at.y:.3f}, {at.z:.3f}) m")
+    return out
 
 
 # -------------------------------------------------------------------------- export
@@ -545,8 +561,11 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--preview", help="directory for EEVEE preview stills")
+    ap.add_argument("--detail", type=float, default=1.0, help="level of detail: 1 is full, 0.25 is a distant LOD")
     ap.add_argument("--allow-clashes", action="store_true", help="export even if the clearance check fails")
     args = ap.parse_args(argv)
+    global DETAIL
+    DETAIL = args.detail
     reset_scene()
     summary = build()
     bpy.context.view_layer.update()

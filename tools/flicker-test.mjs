@@ -6,8 +6,8 @@
 // are taken: A, then B with the camera turned 0.02 degrees, then A again. Honest geometry
 // barely changes under a turn that small. Two faces fighting for the same depth swap pixels
 // wholesale, so a pixel that jumps between A and B and comes back in the second A is a flip.
-// Lone flips are specular glints and are ignored; a flip with three flipped neighbours is
-// counted. A pose fails if it has more than FLIPS of those.
+// Lone flips (glints) and one-pixel lines (thin edges) are ignored; a flip counts when at
+// least five of its eight neighbours flipped too. A pose fails if it has more than FLIPS of those.
 //
 // The geometric cause is caught earlier and more exactly by srlib.check_clearance at build
 // time; this is the end-to-end check that the renderer's depth range is doing its part.
@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 
-const FLIPS = 12; // pixels, at 1280 x 800
+const FLIPS = 40; // pixels in solid patches, at 1280 x 800. Two fighting faces give hundreds; thin posts lining up give a few.
 const JUMP = 90; // summed RGB difference that counts as a jump
 const BACK = 24; // and how close the second A must be to the first
 
@@ -58,14 +58,15 @@ const flipsAt = (view, az) =>
         const aa = Math.abs(a[i] - a2[i]) + Math.abs(a[i + 1] - a2[i + 1]) + Math.abs(a[i + 2] - a2[i + 2]);
         if (ab > JUMP && aa < BACK) mask[p] = 1;
       }
-      // a lone pixel is a glint on a bolt head; fighting faces flip in patches
+      // a lone pixel is a glint on a bolt head and a thin line is a truss edge crossing a pixel
+      // boundary; fighting faces flip in solid patches
       let flips = 0;
       for (let y = 1; y < h - 1; y++)
         for (let x = 1; x < w - 1; x++) {
           const p = y * w + x;
           let near = 0;
           if (mask[p]) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) near += mask[p + dy * w + dx];
-          const flip = near >= 4;
+          const flip = near >= 6;
           if (flip) flips++;
           const i = p * 4;
           b[i] = flip ? 255 : a[i] >> 2;

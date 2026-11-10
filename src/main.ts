@@ -21,6 +21,10 @@ function select(node: string | null): void {
   selected = node;
   stage.highlight(null, node);
   ui.select(node);
+  if (node) {
+    stage.focus(node);
+    ui.setRotate(false);
+  }
 }
 
 /** Switch to one of the flight's models. The address bar's #fragment follows, so a view can be linked. */
@@ -32,7 +36,7 @@ async function show(id: string): Promise<void> {
     await stage.load(flight, model.id, (f) => ui.setProgress(f));
     ui.setModel(model.id);
     stage.setExplode(0);
-    history.replaceState(null, '', `#${model.id}`);
+    if (location.hash !== `#${model.id}`) history.replaceState(null, '', `#${model.id}`);
     ui.loaded();
   } catch (e) {
     console.error(e);
@@ -45,6 +49,7 @@ stage.onSelect = select;
 stage.onInteract = () => ui.setRotate(false);
 
 void show(location.hash.slice(1));
+window.addEventListener('hashchange', () => void show(location.hash.slice(1)));
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
 Object.assign(window, { sr: { stage, ui, flight, show } });

@@ -45,6 +45,8 @@ export interface Part {
   name: string;
   summary: string;
   detail: string;
+  /** Key figures shown under the description: material, size, mass, rating. */
+  facts?: [label: string, value: string][];
   /** Where the part goes at full explode: metres, viewer space (+Y is the nose). */
   explode: [number, number, number];
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
@@ -76,6 +78,10 @@ export interface ModelDef {
   parts: Part[];
   /** Framings offered beside the automatic 'Everything'. */
   views: ViewDef[];
+  /** Where the model stands, metres (default: the origin). The floor is y = 0. */
+  position?: [number, number, number];
+  /** The view shown first (default: 'all', everything on show). */
+  home?: string;
   /** Other models of this flight shown alongside for context, e.g. the vehicle standing on its pad. */
   with?: { model: string; position: [number, number, number]; rotationY?: number }[];
 }

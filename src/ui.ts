@@ -18,6 +18,8 @@ function si(value: number, unit: string): string {
   if (unit === 'kg') return `${value >= 100 ? Math.round(value).toLocaleString('en-US') : value.toFixed(1)} kg`;
   if (unit === 'deg') return `${value}°`;
   if (unit === 'kPa') return `${value.toFixed(1)} kPa`;
+  if (unit === 'L') return `${Math.round(value).toLocaleString('en-US')} L`;
+  if (unit === 'level') return `level ${value}`;
   return `${value.toFixed(value >= 10 ? 2 : 3)} ${unit}`;
 }
 
@@ -69,6 +71,8 @@ export class Ui {
           ${legend}
         </section>
         <section data-pane="Flight" hidden>
+          <p class="lede small-only">${esc(f.summary)}</p>
+          <dl class="facts small-only">${f.facts.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>
           <ol class="timeline">${f.timeline.map((e) => `<li><time>${clock(e.t)}</time><span>${esc(e.event)}</span></li>`).join('')}</ol>
           <p class="fine">${esc(f.spacecraft)}<br>${esc(f.launchVehicle)}<br>${esc(f.launchSite)}</p>
         </section>
@@ -83,7 +87,15 @@ export class Ui {
       </footer>
       <div class="loading"><span>Loading</span><i></i></div>`;
 
-    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.addEventListener('click', () => this.tab(b.dataset.tab!)));
+    // On a phone the panel is a sheet: tapping a tab opens it, tapping the open tab closes it.
+    const panel = root.querySelector<HTMLElement>('.panel')!;
+    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const same = b.getAttribute('aria-selected') === 'true';
+        panel.classList.toggle('open', !(same && panel.classList.contains('open')));
+        this.tab(b.dataset.tab!);
+      }));
+    document.querySelector('#stage')!.addEventListener('pointerdown', () => panel.classList.remove('open'));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
     this.slider.addEventListener('input', () => on.explode(Number(this.slider.value)));
     // parts and view buttons are rebuilt per model, so their clicks are delegated
@@ -117,7 +129,7 @@ export class Ui {
         <span class="n">${String(i + 1).padStart(2, '0')}</span>
         <span class="name">${esc(p.name)}</span>
         <span class="what">${esc(p.summary)}</span>
-        <span class="more">${esc(p.detail)}</span>
+        <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}</span>
       </button></li>`).join('');
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
     r.querySelector('.buttons')!.innerHTML =
@@ -164,7 +176,10 @@ export class Ui {
 
   select(node: string | null): void {
     this.selected = node;
-    if (node) this.tab('Parts');
+    if (node) {
+      this.tab('Parts');
+      this.root.querySelector('.panel')!.classList.add('open');
+    }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => {
       const on = b.dataset.node === node;
       b.setAttribute('aria-expanded', String(on));

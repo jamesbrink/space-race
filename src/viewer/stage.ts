@@ -24,7 +24,7 @@ export class Stage {
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.05, 6000);
+  private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.05, 9000);
   private readonly controls: OrbitControls;
   private readonly composer: EffectComposer;
   private readonly backdropPass: RenderPass;
@@ -139,7 +139,9 @@ export class Stage {
 
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
+    for (const o of this.setting.scenery) this.scene.remove(o);
     main.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
+    main.position.set(...(def.position ?? [0, 0, 0]));
     this.root = new THREE.Group();
     this.root.add(main, ...extras);
     this.scene.add(this.root);
@@ -157,7 +159,7 @@ export class Stage {
     this.highlight(null, null);
     this.shadowFit = -1;
     this.fitShadows(0);
-    this.view('all', true);
+    this.view(def.home ?? 'all', true);
   }
 
   private fetch(url: string, onProgress?: (fraction: number) => void): Promise<THREE.Object3D> {
@@ -213,6 +215,8 @@ export class Stage {
     this.controls.maxPolarAngle = s.maxPolar;
     this.renderer.toneMappingExposure = s.exposure;
     if (s.floor) this.scene.add(s.floor);
+    for (const o of s.scenery) this.scene.add(o);
+    this.scene.fog = s.fog;
   }
 
   setExplode(t: number): void {
@@ -234,6 +238,22 @@ export class Stage {
     });
   }
 
+  /** Fly to one part and frame it, keeping the direction the camera is already looking from. */
+  focus(node: string): void {
+    const object = this.parts.get(node);
+    if (!object) return;
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const target = box.getCenter(new THREE.Vector3());
+    const span = Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect, 0.4);
+    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.6;
+    const dir = this.camera.position.clone().sub(this.controls.target).normalize();
+    if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
+    this.controls.minDistance = Math.min(this.controls.minDistance, distance * 0.2);
+    this.controls.autoRotate = false;
+    this.flyTo = { target, position: target.clone().addScaledVector(dir, distance), t: 0 };
+  }
+
   /** Frame 'all' (everything on show) or one of the model's named views. */
   view(id: string, snap = false): void {
     if (!this.root || !this.def) return;
@@ -244,7 +264,9 @@ export class Stage {
     // a wide, low model (a launch pad) must fit by width as well as by height
     const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect);
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.8;
-    const target = new THREE.Vector3(0, centreY, 0);
+    // a named view looks at the model's own axis; 'all' looks at the middle of everything
+    const mid = box.getCenter(new THREE.Vector3());
+    const target = named ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z) : new THREE.Vector3(mid.x, centreY, mid.z);
     const lift = this.setting.floor ? 0.16 : named && named.span < 4 ? 0.22 : 0.1;
     const position = target.clone().addScaledVector(new THREE.Vector3(0.82, lift, 0.56).normalize(), distance);
     this.controls.minDistance = Math.min(1.2, span * 0.15);
@@ -287,7 +309,7 @@ export class Stage {
     const toCentre = this.camera.position.distanceTo(this.bounds.center);
     const toTarget = this.camera.position.distanceTo(this.controls.target);
     const near = Math.max(0.03, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
-    const far = toCentre + this.bounds.radius + (this.setting.floor ? 3200 : 10);
+    const far = toCentre + this.bounds.radius + (this.setting.floor ? 9000 : 10);
     if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.near = near;
       this.camera.far = far;
@@ -363,15 +385,15 @@ export class Stage {
   }
 
   /** For tests and screenshots: stop the drift and put the camera somewhere exact. */
-  pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY): void {
+  pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY, targetX = 0, targetZ = 0): void {
     this.controls.autoRotate = false;
     this.flyTo = null;
     const az = THREE.MathUtils.degToRad(azimuthDeg), el = THREE.MathUtils.degToRad(elevationDeg);
-    this.controls.target.set(0, targetY, 0);
+    this.controls.target.set(targetX, targetY, targetZ);
     this.camera.position.set(
-      distance * Math.cos(el) * Math.cos(az),
+      targetX + distance * Math.cos(el) * Math.cos(az),
       targetY + distance * Math.sin(el),
-      distance * Math.cos(el) * Math.sin(az),
+      targetZ + distance * Math.cos(el) * Math.sin(az),
     );
     this.controls.update();
   }

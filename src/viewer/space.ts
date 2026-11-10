@@ -3,7 +3,7 @@ import * as THREE from 'three';
 /** Altitude the backdrop is drawn from, in Earth radii: Freedom 7's apogee, 187.5 km. */
 const ALTITUDE = 187.5 / 6371;
 
-const NOISE = /* glsl */ `
+export const NOISE = /* glsl */ `
   float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
     p *= 17.0;
