@@ -27,10 +27,11 @@ The capsule changed from flight to flight, which is why each flight here has its
 | | MR-3 (No. 7) | MR-4 (No. 11) | Orbital flights |
 | --- | --- | --- | --- |
 | View out | two 10 in portholes, periscope | trapezoidal overhead window | window (periscope deleted on MA-9) |
-| Side hatch | bolted, 70 bolts | explosive | explosive |
+| Side hatch | mechanical latches, 69 lb | explosive, 23 lb | explosive |
 | Heat shield | beryllium heat sink | beryllium heat sink | ablative fibreglass and resin |
-| Landing bag | none | fitted | fitted |
-| Recovery section skin | beryllium shingles | beryllium shingles | René 41 shingles |
+| Suit gloves | zipped to the sleeves | ring lock with wrist bearing | ring lock |
+
+All of them carried a landing bag, and all had beryllium shingles on the recovery compartment.
 
 ## Launch vehicles
 
@@ -39,9 +40,13 @@ The capsule changed from flight to flight, which is why each flight here has its
 | Mercury-Redstone (one stage, A-7 engine) | MR-3, MR-4 | [redstone-mrlv.md](vehicles/redstone-mrlv.md) |
 | Mercury-Atlas (Atlas LV-3B, stage-and-a-half) | MA-6 to MA-9 | |
 
-## Sources for the programme
+## Pads and crew
 
-- *Mercury Project Summary Including Results of the Fourth Manned Orbital Flight*, NASA SP-45 (1963).
-- Swenson, Grimwood and Alexander, *This New Ocean: A History of Project Mercury*, NASA SP-4201 (1966).
-- McDonnell Aircraft, *Project Mercury Familiarization Manual*, SEDR 104 (1959–1962): the primary
-  source for drawings and stations. **Not yet checked line by line against the models here.**
+| | In this repo |
+| --- | --- |
+| Launch Complex 5 (the Redstone flights) | [lc-5.md](sites/lc-5.md) |
+| The Mark IV pressure suit | [mark-iv-suit.md](crew/mark-iv-suit.md) |
+
+## Sources
+
+[docs/sources.md](../../../docs/sources.md).

@@ -7,7 +7,8 @@ The record, organised the way the history is: nation, programme, flight.
 <nation>/<programme>/flights/<flight>/README.md   one flight
 <nation>/<programme>/flights/<flight>/spacecraft.md
 <nation>/<programme>/flights/<flight>/flight.ts
-<nation>/<programme>/flights/<flight>/model/build.py
+<nation>/<programme>/flights/<flight>/model/<name>.py      vehicle, pad, crew
+<nation>/<programme>/vehicles/  sites/  crew/              hardware shared between flights
 ```
 
 | Nation | Programme | Flights modelled |
