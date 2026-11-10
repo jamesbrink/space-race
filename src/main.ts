@@ -81,6 +81,8 @@ async function show(id: string): Promise<void> {
 
 stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
+stage.onModel = (id) => void show(id); // a click on the pad, the rocket or the pilot opens its section
+stage.onHoverModel = (id) => ui.hoverModel(id);
 stage.onInteract = () => ui.setRotate(false);
 stage.onView = (id) => ui.setView(id);
 window.addEventListener('keydown', (e) => {

@@ -318,13 +318,31 @@ export class Ui {
     const tip = this.root.querySelector<HTMLElement>('.tip')!;
     const part = this.model.parts.find((p) => p.node === node);
     // not for the part already selected: its name is on the panel, and the label would sit on it
-    tip.hidden = !part || node === this.selected || matchMedia('(hover: none)').matches;
+    if (part) delete tip.dataset.model;
+    // (with no part under the pointer the label may be showing a neighbouring model instead: leave it)
+    if (!tip.dataset.model) tip.hidden = !part || node === this.selected || matchMedia('(hover: none)').matches;
     if (part) {
       tip.querySelector('b')!.textContent = part.name;
       tip.querySelector('span')!.textContent = part.summary;
       this.placeTip();
     }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => b.classList.toggle('hot', b.dataset.node === node));
+  }
+
+  /** Another of the flight's models under the pointer: a click would open it. */
+  hoverModel(id: string | null): void {
+    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    const model = this.flight.models.find((m) => m.id === id);
+    if (!model) {
+      if (tip.dataset.model) tip.hidden = true;
+      delete tip.dataset.model;
+      return;
+    }
+    tip.dataset.model = model.id;
+    tip.hidden = matchMedia('(hover: none)').matches;
+    tip.querySelector('b')!.textContent = model.name;
+    tip.querySelector('span')!.textContent = 'Click to open';
+    this.placeTip();
   }
 
   select(node: string | null): void {

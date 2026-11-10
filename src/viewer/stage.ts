@@ -46,6 +46,13 @@ VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
+/** What a pointer is on: a part of the model on show, or another model standing beside it. */
+interface Picked {
+  node: string | null;
+  model: string | null;
+}
+const NOTHING: Picked = { node: null, model: null };
+
 /** A second copy of a loaded model, to stand beside another: put back together, and free to be taken apart by itself. */
 function copy(source: THREE.Object3D): THREE.Object3D {
   rest(source);
@@ -64,6 +71,9 @@ export class Stage {
   onHover: (node: string | null) => void = () => {};
   onSelect: (node: string | null) => void = () => {};
   onInteract: () => void = () => {};
+  /** A model standing beside the one on show was clicked: the caller opens it. */
+  onModel: (id: string) => void = () => {};
+  onHoverModel: (id: string | null) => void = () => {};
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -88,12 +98,15 @@ export class Stage {
   private def: ModelDef | null = null;
   /** Everything on show, each with its levels of detail; the first is the model itself. */
   private staged: Staged[] = [];
+  /** The ids of the models standing beside the one on show, in the order they are staged. */
+  private company: string[] = [];
+  private hoveredModel: string | null = null;
   private parts = new Map<string, THREE.Object3D>();
   private hovered: string | null = null;
   private selected: string | null = null;
   private pointerDirty = false;
   /** A press in progress: where it began and what was under it then. */
-  private down: { x: number; y: number; node: string | null } | null = null;
+  private down: ({ x: number; y: number } & Picked) | null = null;
   private flyTo: { target: THREE.Vector3; position: THREE.Vector3; t: number } | null = null;
   /** What the camera was last sent to look at; cleared when the user moves it. */
   private following: { view?: string; part?: string } | null = null;
@@ -186,18 +199,20 @@ export class Stage {
       aim(e);
       this.pointerDirty = e.pointerType === 'mouse'; // a finger has no hover
     });
-    canvas.addEventListener('pointerleave', () => this.setHover(null));
+    canvas.addEventListener('pointerleave', () => this.setHover(NOTHING));
     // The pick is made when the press starts: by the time it ends the page may have been laid
     // out again (a phone's sheet closes on the press) and the same point is a different part.
     canvas.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return; // right and middle buttons pan and zoom; they select nothing
       aim(e);
-      this.down = { x: e.clientX, y: e.clientY, node: this.pick() };
+      this.down = { x: e.clientX, y: e.clientY, ...this.pick() };
     });
     canvas.addEventListener('pointerup', (e) => {
       const down = this.down;
       this.down = null;
-      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) this.onSelect(down.node);
+      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 5) return;
+      if (down.model && !down.node) this.onModel(down.model);
+      else this.onSelect(down.node);
     });
     canvas.addEventListener('pointercancel', () => (this.down = null));
     // Keys walk the view over the site: WASD or the arrows move, Q and E turn, R and F (or + and -)
@@ -271,7 +286,7 @@ export class Stage {
       staged.explode(w.exploded ?? 0);
       staged.group.position.set(...w.position);
       staged.group.rotation.y = w.rotationY ?? 0;
-      return [{ staged, url: other.url }];
+      return [{ staged, url: other.url, id: other.id }];
     });
 
     if (this.root) this.scene.remove(this.root);
@@ -282,6 +297,7 @@ export class Stage {
     own.group.position.set(...(def.position ?? [0, 0, 0]));
     own.group.rotation.y = def.rotationY ?? 0;
     this.staged = [own, ...company.map((c) => c.staged)];
+    this.company = company.map((c) => c.id);
     this.root = new THREE.Group();
     this.root.add(...this.staged.map((s) => s.group));
     this.scene.add(this.root);
@@ -296,7 +312,7 @@ export class Stage {
       }),
     );
     // the coarser levels arrive behind the scenes; a model that has none simply stays as it is
-    [{ staged: own, url: def.url }, ...company].forEach(({ staged, url }, n) => {
+    [{ staged: own, url: def.url, id: def.id }, ...company].forEach(({ staged, url }, n) => {
       for (let level = 1; level <= LOD_ABOVE.length; level++)
         this.fetch(lodUrl(url, level))
           .then((object) => {
@@ -638,25 +654,41 @@ export class Stage {
     this.highlight(this.hovered);
   }
 
-  private pick(): string | null {
-    const shown = this.staged[0]?.shown;
-    if (!shown) return null;
+  /**
+   * What is under the pointer: one of this model's parts, or one of the models standing beside
+   * it (the pad under the rocket, the pilot at its foot), which a click opens.
+   */
+  private pick(): Picked {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     // a ray does not know about the cutaway: skip what has been cut away to reach what is inside
     const gone = (h: THREE.Intersection) =>
       this.cut && h.object.userData.shell && this.cutPlanes.every((p) => p.distanceToPoint(h.point) < 0);
-    const hit = this.raycaster.intersectObject(shown, true).find((h) => !gone(h));
-    for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) if (this.parts.has(o.name)) return o.name;
-    return null;
+    const hit = this.raycaster
+      .intersectObjects(
+        this.staged.map((s) => s.shown),
+        true,
+      )
+      .find((h) => !gone(h));
+    for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) {
+      const at = this.staged.findIndex((s) => s.shown === o);
+      if (at > 0) return { node: null, model: this.company[at - 1] ?? null };
+      if (at === 0) break;
+    }
+    for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent)
+      if (this.parts.has(o.name)) return { node: o.name, model: null };
+    return { node: null, model: null };
   }
 
-  private setHover(node: string | null): void {
+  private setHover({ node, model }: Picked): void {
+    if (model !== this.hoveredModel) {
+      this.hoveredModel = model;
+      this.onHoverModel(model);
+    }
+    this.canvas.style.cursor = node || model ? 'pointer' : 'grab';
     if (node === this.hovered) return;
     this.highlight(node);
-    this.canvas.style.cursor = node ? 'pointer' : 'grab';
     this.onHover(node);
   }
-
   private resize(): void {
     const w = this.canvas.clientWidth,
       h = this.canvas.clientHeight;

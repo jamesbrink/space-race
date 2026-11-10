@@ -39,6 +39,7 @@ from srlib import (  # noqa: E402
     MeshBuilder,
     Surf,
     arc_profile,
+    bore,
     decal,
     deg,
     frame,
@@ -113,6 +114,7 @@ SHELLS = (
     "Tower_MotorBands",
 )
 
+PORTHOLES = ((math.radians(52), 37.0), (math.radians(-128), 31.0))  # angle round the cone, station: two 10 in ports
 PANELS = 24  # shingles around the cone
 PANEL_ARC = TAU / PANELS
 PANEL_PHASE = -1.5 * PANEL_ARC  # puts three panels symmetric about +X: the hatch
@@ -348,11 +350,14 @@ def build_afterbody(M, font) -> None:
 
     detail, dark, glass, void = MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder()
     # two 10 in portholes: No. 7 predates the trapezoidal overhead window
-    for t, z in ((deg(52), 37.0), (deg(-128), 31.0)):
+    for t, z in PORTHOLES:
         f = CONE.frame(t, z)
         # a bezel standing proud of the shingles, a pane set into it, and the dark cabin behind
         detail.lathe(prof([(6.0, -1.0), (6.0, 0.7), (5.0, 0.7), (4.9, 0.22)]), 48, matrix=f)
-        void.lathe(prof([(4.9, 0.22), (0.0, 0.22)]), 48, matrix=f)
+        if interior():  # a real opening into the cabin (bored below), lined with a sleeve through the wall
+            detail.lathe(prof([(4.88, 0.22), (4.88, -2.4), (6.4, -2.4), (6.4, -2.0)]), 48, matrix=f, flip=True)  # and a frame inside
+        else:  # with no cabin modelled behind it, a dark disc stands in for one
+            void.lathe(prof([(4.9, 0.22), (0.0, 0.22)]), 48, matrix=f)
         glass.lathe(prof([(4.95, 0.52), (0.0, 0.52)]), 48, matrix=f)
         for i in range(16):
             a = TAU * i / 16
@@ -682,6 +687,9 @@ def build() -> str:
     build_retropack(M)
     build_afterbody(M, font)
     build_crew_cabin(M)
+    if interior():  # the two portholes go right through shingle, structure and pressure vessel
+        for t, z in PORTHOLES:
+            bore(("Afterbody_Shingles", "Afterbody_Structure", "CrewCabin_PressureVessel"), CONE.frame(t, z), 4.96 * IN, 3.0 * IN)
     build_recovery_compartment(M)
     build_antenna_canister(M)
     build_escape_tower(M)

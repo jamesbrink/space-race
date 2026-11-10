@@ -106,6 +106,14 @@ and do not list it; when you add skin, list it. A part marked `inside: true` in 
 the cutaway when selected. Interiors are built only at detail 0.75 and above (`srlib.interior()`),
 so a distant level of detail does not carry a pilot and plumbing nobody can see.
 
+## Windows are openings
+
+A window is glass over a hole, with the real thing behind it. `srlib.bore` cuts a round hole
+through skins (it divides the faces round the hole and removes those inside; a boolean would treat
+a lathe with bulkheads as a solid). Frame the hole with a bezel or sleeve that overlaps its rim.
+Name the pane's material `glass...` and the viewer makes it a clear pane. Only where nothing is
+modelled behind (a lower level of detail, a distant building) does a dark `window-void` stand in.
+
 ## No flicker
 
 Two faces in the same place flicker: the depth buffer cannot tell them apart and picks a
@@ -194,6 +202,8 @@ script; do not hand-edit geometry for them.
 - A part with a `drive` (a truck) leaves by following a route on the ground, turning about its rear
   axle with its wheels rolling and steering (`viewer/explode.ts`); its wheels are separate nodes
   in the GLB, named by prefix.
+- A click on a model standing beside the one on show (the pad under the rocket, the pilot at its
+  foot) opens that model's section; hovering says so.
 - Selection has one rule: choosing a part flies to it; choosing an `inside` part also opens the
   cutaway, which closes again when the selection moves on unless the user opened it by hand;
   Escape or a click on nothing deselects and returns to the section's first view. With nothing

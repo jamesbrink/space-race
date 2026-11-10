@@ -438,6 +438,57 @@ def mark_shells(names: Sequence[str]) -> None:
         bpy.data.objects[n]["shell"] = 1
 
 
+def bore(names: Sequence[str], matrix: Matrix, radius: float, depth: float) -> None:
+    """Cut a round hole through the named meshes: a window is an opening, not a dark disc.
+    The hole's axis is the local Z of `matrix` (metres); it reaches `depth` either way along it.
+
+    Not a boolean: these skins are open surfaces, and a boolean takes a lathe with bulkheads for
+    a solid and leaves the hole a floor. Instead the faces round the hole are divided until they
+    are small, those inside it are removed, and the rim left behind is drawn onto the circle.
+    Whatever frames the window (a bezel, a sleeve) should overlap that rim by a few millimetres."""
+    inv = matrix.inverted()
+    centre = matrix.translation
+    for name in names:
+        obj = bpy.data.objects[name]
+        to_hole = inv @ obj.matrix_world
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+
+        def polar(co, to_hole=to_hole):
+            c = to_hole @ co
+            return math.hypot(c.x, c.y), c.z
+
+        def passes(e, to_world=obj.matrix_world):  # whether an edge runs near the hole, wherever its ends are
+            a, b = to_world @ e.verts[0].co, to_world @ e.verts[1].co
+            ab = b - a
+            k = max(0.0, min(1.0, (centre - a).dot(ab) / max(ab.length_squared, 1e-12)))
+            return (a + ab * k - centre).length < radius * 1.5
+
+        for _ in range(7):
+            long = [e for e in bm.edges if e.calc_length() > radius * 0.16 and passes(e)]
+            if not long:
+                break
+            bmesh.ops.subdivide_edges(bm, edges=long, cuts=1, use_grid_fill=True)
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
+        inside = [f for f in bm.faces if (lambda rz: rz[0] < radius * 1.03 and abs(rz[1]) < depth)(polar(f.calc_center_median()))]
+        rim = {v for f in inside for v in f.verts}  # only what the hole touched: a panel's own edge stays put
+        bmesh.ops.delete(bm, geom=inside, context="FACES")
+        # a face left with every corner on the rim would be folded flat along the circle: it goes too
+        slivers = [f for f in bm.faces if all(v in rim for v in f.verts)]
+        bmesh.ops.delete(bm, geom=slivers, context="FACES")
+        from_hole = to_hole.inverted()
+        for v in rim:
+            if not v.is_valid:
+                continue
+            r, z = polar(v.co)
+            if r > 1e-9:
+                c = to_hole @ v.co
+                v.co = from_hole @ Vector((c.x * radius / r, c.y * radius / r, c.z))
+        bm.to_mesh(obj.data)
+        bm.free()
+        obj.data.update()
+
+
 # ----------------------------------------------------------------------- clearance
 
 MIN_GAP = 0.001  # metres. The viewer keeps depth resolution under a third of this (stage.ts: fitDepth).
