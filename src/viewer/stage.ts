@@ -78,6 +78,10 @@ export class Stage {
   private pointerDirty = false;
   private down: { x: number; y: number } | null = null;
   private flyTo: { target: THREE.Vector3; position: THREE.Vector3; t: number } | null = null;
+  /** What the camera was last sent to look at; cleared when the user moves it. */
+  private following: { view?: string; part?: string } | null = null;
+  /** Called when the framing stops being a named view (the user orbited, or a part was chosen). */
+  onView: (id: string | null) => void = () => {};
   private centreY = 0;
   /** The cutaway: a quarter of every shell removed, the quarter facing the default camera. */
   private readonly cutPlanes = [new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)];
@@ -112,6 +116,8 @@ export class Stage {
     this.controls.autoRotate = true;
     this.controls.autoRotateSpeed = 0.5;
     this.controls.addEventListener('start', () => {
+      this.following = null;
+      this.onView(null);
       this.flyTo = null;
       this.onInteract();
     });
@@ -136,22 +142,27 @@ export class Stage {
     this.outline.edgeThickness = 1;
     this.outline.edgeGlow = 0.4;
     this.outline.visibleEdgeColor.set(0xffc46b);
-    this.outline.hiddenEdgeColor.set(0x3a2a10);
+    this.outline.hiddenEdgeColor.set(0x9a7434); // dimmer than the visible edge, but still an outline
     this.composer.addPass(this.outline);
     this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.6, 2.2));
     this.composer.addPass(new OutputPass());
     this.applySetting();
 
-    canvas.addEventListener('pointermove', (e) => {
+    // A tap sends no pointermove first, so every handler that picks reads the pointer itself.
+    const aim = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-      this.pointerDirty = true;
+    };
+    canvas.addEventListener('pointermove', (e) => {
+      aim(e);
+      this.pointerDirty = e.pointerType === 'mouse'; // a finger has no hover
     });
     canvas.addEventListener('pointerleave', () => this.setHover(null));
     canvas.addEventListener('pointerdown', (e) => (this.down = { x: e.clientX, y: e.clientY }));
     canvas.addEventListener('pointerup', (e) => {
       const moved = this.down ? Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) : 99;
       this.down = null;
+      aim(e);
       if (moved < 5) this.onSelect(this.pick());
     });
 
@@ -306,6 +317,9 @@ export class Stage {
   setExplode(t: number): void {
     this.exploder?.set(t);
     this.fitShadows(t);
+    // keep looking at what was asked for, until the user takes the camera themselves
+    if (this.following?.part) this.focus(this.following.part, true);
+    else if (this.following?.view) this.view(this.following.view, true);
   }
 
   setAutoRotate(on: boolean): void {
@@ -323,7 +337,7 @@ export class Stage {
   }
 
   /** Fly to one part and frame it, keeping the direction the camera is already looking from. */
-  focus(node: string): void {
+  focus(node: string, snap = false): void {
     const object = this.parts.get(node);
     if (!object) return;
     const box = new THREE.Box3().setFromObject(object);
@@ -334,9 +348,17 @@ export class Stage {
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.5;
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
     if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
-    this.controls.minDistance = Math.min(this.controls.minDistance, distance * 0.2);
+    // no closer than just outside the part: nearer than that the camera is inside its skin
+    this.controls.minDistance = Math.max(0.35, Math.min(size.x, size.z) * 0.62);
     this.controls.autoRotate = false;
-    this.flyTo = { target, position: target.clone().addScaledVector(dir, distance), t: 0 };
+    this.following = { part: node };
+    this.onView(null);
+    const position = target.clone().addScaledVector(dir, distance);
+    if (snap) {
+      this.controls.target.copy(target);
+      this.camera.position.copy(position);
+      this.controls.update();
+    } else this.flyTo = { target, position, t: 0 };
   }
 
   /** Frame 'all' (everything on show) or one of the model's named views. */
@@ -357,8 +379,13 @@ export class Stage {
       ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z)
       : new THREE.Vector3(mid.x, centreY, mid.z);
     const lift = this.setting.floor ? 0.16 : span < 4 ? 0.22 : 0.1;
-    const position = target.clone().addScaledVector(new THREE.Vector3(0.82, lift, 0.56).normalize(), distance);
-    this.controls.minDistance = Math.min(1.2, span * 0.15);
+    // aim a little under the subject, so it sits in the upper part of the frame, clear of the controls
+    target.y -= span * 0.08;
+    const from = named?.from ? new THREE.Vector3(...named.from) : new THREE.Vector3(0.82, lift, 0.56);
+    const position = target.clone().addScaledVector(from.normalize(), distance);
+    this.following = { view: id };
+    this.onView(id);
+    this.controls.minDistance = Math.max(0.35, Math.min(1.4, span * 0.2));
     this.controls.maxDistance = Math.max(140, size.length() * 4);
     if (snap) {
       this.controls.target.copy(target);
@@ -387,6 +414,16 @@ export class Stage {
     Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
+  }
+
+  /** Panning cannot carry the orbit point off what is on show: there is nothing out there to look at. */
+  private keepInBounds(): void {
+    const t = this.controls.target;
+    const off = t.clone().sub(this.bounds.center);
+    if (off.length() <= this.bounds.radius) return;
+    const back = off.clone().setLength(this.bounds.radius).add(this.bounds.center).sub(t);
+    t.add(back);
+    this.camera.position.add(back);
   }
 
   /**
@@ -462,6 +499,7 @@ export class Stage {
       if (f.t >= 1) this.flyTo = null;
     }
     this.controls.update(dt);
+    this.keepInBounds();
     this.keepAboveGround();
     if (this.pointerDirty && !this.down) {
       this.pointerDirty = false;

@@ -170,7 +170,12 @@ fasteners. The inventory uses 1.0. When the simulator needs distant LODs, add th
 - A setting's sky is its own scene and camera (`backdrops.ts`), drawn first, so it never shares
   depth with the model. The orbit setting (Earth at true angular size from 187.4 km) is not used
   by Freedom 7 at present, which stands on its pad; it is kept for flights shown in space.
-- The page must work on a phone: under 760 px the data panel is a bottom sheet and the model
-  keeps the space above it. Check both widths after changing `style.css`.
+- The page must work on a phone and a tablet: under 960 px wide (or 520 px tall) the data panel
+  is a bottom sheet and the model keeps the space above it. Check 1280, 820 and 390 wide after
+  changing `style.css`; nothing in the control block may be hidden at any of them.
+- Selection has one rule: choosing a part flies to it; choosing an `inside` part also opens the
+  cutaway, which closes again when the selection moves on unless the user opened it by hand;
+  Escape or a click on nothing deselects and returns to the section's first view.
+- Small text uses `--faint` at the least, which is 4.5:1 on the glass. Do not go dimmer.
 - `main` is protected by a ruleset: push directly, but no force-pushes and no deletion.
 - Conventional Commits. No AI attribution in commits.

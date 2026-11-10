@@ -1,9 +1,10 @@
 :root {
   --ink: #f3efe6;
-  --dim: #b3ad9f;
-  --faint: #7b7669;
+  --dim: #cbc5b7;
+  /* the quietest text still carries figures and labels: 4.5:1 on the glass over bright sky */
+  --faint: #a8a294;
   --line: rgba(243, 239, 230, 0.14);
-  --glass: rgba(10, 11, 14, 0.66);
+  --glass: rgba(10, 11, 14, 0.78);
   --amber: #ffc46b;
   --sans: 'Avenir Next', 'Helvetica Neue', system-ui, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, monospace;
@@ -19,12 +20,14 @@ html, body { height: 100%; background: #000; color: var(--ink); font: 14px/1.45 
 #ui > * { pointer-events: auto; }
 b { font-weight: 400; color: var(--faint); }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 .small-only { display: none; }
 
 /* every block of text sits on the same smoked glass, so it reads over black space or a bright sky */
 .title, .panel, .models, .controls { background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
-  border: 1px solid var(--line); border-radius: 3px; }
+  border: 1px solid var(--line); border-radius: 3px;
+  /* a hair of light on the top edge and a soft shadow lift the panels off a bright sky */
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.28); }
 
 .crumbs, .sub, dt, .tabs button, .n, time, .scale, .explode span, .buttons button, .models button, .loading span, h2 {
   font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
@@ -34,7 +37,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .title { position: absolute; top: var(--edge); left: var(--edge); width: min(340px, 28vw); padding: 22px 24px 24px; pointer-events: none !important; }
 .crumbs { color: var(--dim); }
 h1 { font: 600 clamp(34px, 3.4vw, 50px)/0.98 var(--sans); letter-spacing: -0.03em; margin: 10px 0 10px -2px; white-space: nowrap; }
-.sub { color: var(--amber); }
+.sub { color: var(--amber); white-space: nowrap; }
 .lede { margin-top: 16px; color: #dcd7cb; }
 .facts { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; border-top: 1px solid var(--line); padding-top: 16px; }
 dt { color: var(--faint); font-size: 10px; }
@@ -62,6 +65,11 @@ dd { font-variant-numeric: tabular-nums; }
 .parts button[aria-expanded='true'] { border-left-color: var(--amber); background: rgba(255, 196, 107, 0.08); }
 .n { color: var(--faint); padding-top: 3px; }
 .name { font-weight: 600; }
+/* a part that is inside another: choosing it opens the cutaway */
+.name em { font: 9px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; font-style: normal; color: var(--faint);
+  border: 1px solid var(--line); border-radius: 2px; padding: 2px 5px 1px; margin-left: 8px; vertical-align: 2px; }
+.parts .group h2 { padding-top: 14px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+.parts .group:first-child h2 { padding-top: 10px; }
 .what, .more { grid-column: 2; color: var(--dim); font-size: 13px; }
 .more { display: none; color: #d6d1c5; margin-top: 8px; }
 [aria-expanded='true'] .more { display: block; }
@@ -76,14 +84,15 @@ tr { border-bottom: 1px solid rgba(243, 239, 230, 0.07); }
 th, td { padding: 9px 18px; vertical-align: top; font-weight: 400; text-align: left; }
 th { color: #dcd7cb; padding-right: 6px; }
 td { text-align: right; white-space: nowrap; font: 13px var(--mono); font-variant-numeric: tabular-nums; padding-left: 0; }
-small { display: block; color: var(--faint); font: 11px/1.35 var(--sans); white-space: normal; }
+small { display: block; color: var(--faint); font: 12px/1.35 var(--sans); white-space: normal; }
 .conf { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; vertical-align: 2px; }
 .conf.documented { background: #7fd49b; }
 .conf.derived { background: var(--amber); }
 .conf.estimated { background: transparent; box-shadow: inset 0 0 0 1px #e8806c; }
 .fine { padding: 14px 18px 0; color: var(--faint); font-size: 12px; }
-.legend .conf { margin-left: 10px; margin-right: 5px; }
-.legend .conf:first-child { margin-left: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.legend span { white-space: nowrap; }
+.legend .conf { margin-right: 6px; }
 
 .timeline { list-style: none; padding: 6px 18px 0; }
 .timeline li { display: grid; grid-template-columns: 74px 1fr; padding: 7px 0; border-bottom: 1px solid rgba(243, 239, 230, 0.07); }
@@ -104,20 +113,21 @@ time { color: var(--amber); padding-top: 2px; }
 /* --- controls -------------------------------------------------------------------- */
 /* never wider than the gap between the title block and the data panel */
 .controls { position: absolute; left: 50%; bottom: var(--edge); transform: translateX(-50%); display: grid; justify-items: center; gap: 12px; padding: 14px 18px 12px;
-  max-width: calc(100vw - 2 * (min(360px, 30vw) + var(--edge) + 14px)); }
+  max-width: calc(100vw - 2 * (min(360px, 30vw) + var(--edge) + 14px)); min-width: min(420px, 100%); }
 .explode { display: flex; align-items: center; gap: 14px; color: var(--dim); white-space: nowrap; width: 100%; max-width: 520px; }
 input[type='range'] { appearance: none; -webkit-appearance: none; flex: 1; min-width: 60px; width: 0; height: 28px; background: none; cursor: ew-resize; }
 input[type='range']::-webkit-slider-runnable-track { height: 1px; background: var(--dim); }
 input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 3px; height: 19px; margin-top: -9px; background: var(--amber); box-shadow: 0 0 10px var(--amber); }
 input[type='range']::-moz-range-track { height: 1px; background: var(--dim); }
 input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; border-radius: 0; background: var(--amber); }
-/* the row scrolls sideways when it does not fit, and fades at the edge to say so */
-.buttons { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; scrollbar-width: none;
-  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); padding-right: 22px; }
-.buttons::-webkit-scrollbar { display: none; }
+/* views in one set, toggles in the other; the row wraps rather than hide anything */
+.buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; max-width: 100%; }
+.set { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .buttons button { flex: none; padding: 8px 13px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); white-space: nowrap; }
-.buttons button:hover { color: var(--ink); border-color: var(--dim); }
-.buttons button[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.5); }
+.buttons button:hover { color: var(--ink); border-color: var(--faint); }
+/* current view: filled, like the section switcher (where am I). Toggles: outlined (what is on). */
+.buttons [data-view][aria-pressed='true'] { color: var(--ink); background: rgba(243, 239, 230, 0.12); border-color: var(--dim); }
+.buttons :is([data-cut], [data-rotate])[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
 .scale { color: var(--faint); text-align: center; }
 
 .loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; background: #000; transition: opacity 0.7s ease 0.1s; pointer-events: none !important; }
@@ -134,23 +144,27 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 }
 
 /* --- phone and small tablet: the model fills the screen, the panel is a sheet -------- */
-@media (max-width: 760px), (max-height: 520px) {
+@media (max-width: 960px), (max-height: 520px) {
   :root { --edge: 10px; }
   html, body { height: 100dvh; }
   .title { width: auto; right: auto; max-width: calc(100vw - 20px); padding: 12px 14px 13px; }
   .crumbs { display: none; }
   h1 { font-size: 30px; margin: 0 0 5px; }
   .sub { font-size: 10px; }
-  .models { top: auto; bottom: calc(52px + 118px + env(safe-area-inset-bottom)); max-width: calc(100vw - 20px); }
+  /* the switcher sits on top of the control block, as its first row */
+  .models { top: auto; bottom: calc(52px + var(--controls-h, 150px) + env(safe-area-inset-bottom)); left: 10px; right: 10px; transform: none; max-width: none; border-bottom: 0; border-radius: 3px 3px 0 0; }
+  .models button { flex: 1; }
   .controls { max-width: none; }
   .models button { padding: 10px 14px; }
-  .controls { bottom: calc(52px + env(safe-area-inset-bottom)); width: calc(100vw - 20px); gap: 8px; padding: 8px 10px 9px; border-bottom: 0; border-radius: 3px 3px 0 0; }
+  .controls { bottom: calc(52px + env(safe-area-inset-bottom)); width: calc(100vw - 20px); min-width: 0; gap: 8px; padding: 8px 10px 9px; border-bottom: 0; border-top: 0; border-radius: 0; }
   .explode { width: 100%; gap: 10px; }
   .explode span { font-size: 10px; }
   input[type='range'] { flex: 1; width: auto; min-width: 0; height: 34px; }
   input[type='range']::-webkit-slider-thumb { width: 5px; height: 25px; margin-top: -12px; }
-  .buttons { justify-content: flex-start; width: 100%; }
-  .buttons button { padding: 9px 12px; }
+  .buttons { justify-content: flex-start; width: 100%; gap: 6px 10px; }
+  .set { justify-content: flex-start; }
+  .buttons button { padding: 13px 13px 12px; }
+  .models button { padding: 14px 16px 13px; }
   .scale { display: none; }
   /* closed, the sheet is just its row of tabs; open, it rises over the lower two thirds */
   .panel { top: auto; left: 10px; right: 10px; bottom: 0; width: auto; height: calc(52px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);

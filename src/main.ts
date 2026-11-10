@@ -14,20 +14,36 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   explode: (t) => stage.setExplode(t),
   view: (id) => stage.view(id),
   autoRotate: (on) => stage.setAutoRotate(on),
-  cutaway: (on) => stage.setCutaway(on),
+  cutaway: (on) => {
+    autoCut = false; // asked for by hand: it stays until asked otherwise
+    stage.setCutaway(on);
+  },
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
 });
+
+/** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
+let autoCut = false;
 
 function select(node: string | null): void {
   selected = node;
   stage.highlight(null, node);
   ui.select(node);
+  const inside = Boolean(node && current.parts.find((p) => p.node === node)?.inside);
+  // something inside something else is only worth flying to if it can be seen; and once the
+  // selection moves on, an opening nobody asked for closes again
+  if (inside && !ui.cutaway) {
+    ui.setCutaway(true);
+    autoCut = true;
+  } else if (!inside && autoCut) {
+    ui.setCutaway(false);
+    autoCut = false;
+  }
   if (node) {
-    // something inside something else is only worth flying to if it can be seen
-    if (current.parts.find((p) => p.node === node)?.inside) ui.setCutaway(true);
     stage.focus(node);
     ui.setRotate(false);
+  } else {
+    stage.view(current.home ?? 'all'); // back to where this section starts
   }
 }
 
@@ -35,6 +51,7 @@ function select(node: string | null): void {
 async function show(id: string): Promise<void> {
   const model = flight.models.find((m) => m.id === id) ?? flight.models[0]!;
   selected = null;
+  autoCut = false;
   ui.loading(model.name);
   try {
     await stage.load(flight, model.id, (f) => ui.setProgress(f));
@@ -52,6 +69,10 @@ async function show(id: string): Promise<void> {
 stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
 stage.onInteract = () => ui.setRotate(false);
+stage.onView = (id) => ui.setView(id);
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && selected) select(null);
+});
 
 void show(location.hash.slice(1));
 window.addEventListener('hashchange', () => void show(location.hash.slice(1)));

@@ -47,6 +47,8 @@ export interface Part {
   detail: string;
   /** Key figures shown under the description: material, size, mass, rating. */
   facts?: [label: string, value: string][];
+  /** A heading in the parts list: parts with the same group are listed together under it. */
+  group?: string;
   /** It is inside something: selecting it opens the cutaway so it can be seen. */
   inside?: boolean;
   /** Where the part goes at full explode: metres, viewer space (+Y is the nose). */
@@ -67,6 +69,8 @@ export interface ViewDef {
   label: string;
   centreY?: number;
   span?: number;
+  /** Where the camera stands, as a direction from the subject (default: front right, slightly above). */
+  from?: [number, number, number];
 }
 
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
@@ -89,6 +93,10 @@ export interface ModelDef {
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */
   rotationY?: number;
+  /** Offer the wide view of everything on show (default: yes). Not for a model that is small in it. */
+  wide?: boolean;
+  /** Which spec groups are this model's: they are listed first. */
+  specGroups?: string[];
   /** The view shown first (default: 'all', everything on show). */
   home?: string;
   /** Other models of this flight shown alongside for context, e.g. the vehicle standing on its pad. */

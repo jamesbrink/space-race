@@ -29,11 +29,15 @@ function si(value: number, unit: string): string {
 
 const dot = (c: Confidence) => `<i class="conf ${c}" title="${c}"></i>`;
 
-const legend = `<p class="fine legend">${dot('documented')}published figure ${dot('derived')}computed from one ${dot('estimated')}read off photographs</p>`;
+const legend = `<p class="fine legend"><span>${dot('documented')}published</span><span>${dot('derived')}derived from published</span><span>${dot('estimated')}estimated</span></p>`;
 
 /** The DOM half of the app. Everything it shows comes from the flight's data file. */
 export class Ui {
   private selected: string | null = null;
+
+  get cutaway(): boolean {
+    return this.root.querySelector('[data-cut]')?.getAttribute('aria-pressed') === 'true';
+  }
   private pointer: [number, number] = [0, 0];
   private model: ModelDef;
 
@@ -68,7 +72,7 @@ export class Ui {
           ${groups
             .map(
               (g) => `
-            <h2>${esc(g)}</h2>
+            <div data-group="${esc(g)}"><h2>${esc(g)}</h2>
             <table>${f.specs
               .filter((s) => s.group === g)
               .map(
@@ -76,7 +80,7 @@ export class Ui {
               <tr><th>${dot(s.confidence)}${esc(s.label)}</th><td>${si(s.value, s.unit)}${s.note ? `<small>${esc(s.note)}</small>` : ''}</td></tr>`,
               )
               .join('')}
-            </table>`,
+            </table></div>`,
             )
             .join('')}
           ${legend}
@@ -102,7 +106,7 @@ export class Ui {
 
       <footer class="controls">
         <label class="explode"><span data-slider="0"></span>
-          <input type="range" min="0" max="1" step="0.001" value="0" aria-label="Take apart" />
+          <input type="range" min="0" max="1" step="0.01" value="0" />
           <span data-slider="1"></span></label>
         <div class="buttons"></div>
         <p class="scale"></p>
@@ -121,6 +125,15 @@ export class Ui {
     );
     document.querySelector('#stage')!.addEventListener('pointerdown', () => panel.classList.remove('open'));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
+    root.querySelector('.tabs')!.addEventListener('keydown', (e) => {
+      const key = (e as KeyboardEvent).key;
+      if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
+      const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+      const at = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      const next = tabs[(at + (key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]!;
+      this.tab(next.dataset.tab!);
+      next.focus();
+    });
     this.slider.addEventListener('input', () => on.explode(Number(this.slider.value)));
     // parts and view buttons are rebuilt per model, so their clicks are delegated
     const parts = root.querySelector<HTMLElement>('.parts')!;
@@ -142,6 +155,9 @@ export class Ui {
       this.pointer = [e.clientX, e.clientY];
       this.placeTip();
     });
+    // the phone layout stacks the switcher on the control block, whose height depends on wrapping
+    const controls = root.querySelector<HTMLElement>('.controls')!;
+    new ResizeObserver(() => root.style.setProperty('--controls-h', `${controls.offsetHeight}px`)).observe(controls);
     this.setModel(this.model.id);
   }
 
@@ -166,10 +182,14 @@ export class Ui {
     r.querySelectorAll<HTMLElement>('[data-model]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.model === m.id)));
     r.querySelector('.parts')!.innerHTML = m.parts
       .map(
-        (p, i) => `
+        (p, i) => `${
+          p.group && p.group !== m.parts[i - 1]?.group
+            ? `<li class="group"><h2>${esc(p.group)} <b>·</b> ${m.parts.filter((x) => x.group === p.group).length}</h2></li>`
+            : ''
+        }
       <li><button data-node="${p.node}">
         <span class="n">${String(i + 1).padStart(2, '0')}</span>
-        <span class="name">${esc(p.name)}</span>
+        <span class="name">${esc(p.name)}${p.inside ? '<em>inside</em>' : ''}</span>
         <span class="what">${esc(p.summary)}</span>
         <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}</span>
       </button></li>`,
@@ -177,9 +197,18 @@ export class Ui {
       .join('');
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
     r.querySelector('.buttons')!.innerHTML =
-      [{ id: 'all', label: 'Everything' }, ...m.views].map((v) => `<button data-view="${v.id}">${esc(v.label)}</button>`).join('') +
-      (m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : '') +
-      `<button data-rotate aria-pressed="${rotating}">Rotate</button>`;
+      `<span class="set" role="group" aria-label="View">${[...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]), ...m.views]
+        .map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`)
+        .join('')}</span>` +
+      `<span class="set" role="group" aria-label="Show">${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
+      `<button data-rotate aria-pressed="${rotating}">Auto-orbit</button></span>`;
+    this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
+    // this model's own figures first
+    const specs = r.querySelector('[data-pane="Specs"]')!;
+    for (const g of [...(m.specGroups ?? [])].reverse()) {
+      const el = specs.querySelector(`[data-group="${g}"]`);
+      if (el) specs.prepend(el);
+    }
     r.querySelector('.scale')!.textContent = m.scale;
     r.querySelector<HTMLElement>('.explode')!.hidden = !m.slider;
     r.querySelector('[data-slider="0"]')!.textContent = m.slider?.[0] ?? '';
@@ -189,10 +218,16 @@ export class Ui {
     this.tab('Parts');
   }
 
+  /** Which view button is current; null once the camera has been moved by hand. */
+  setView(id: string | null): void {
+    this.root.querySelectorAll<HTMLElement>('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === id)));
+  }
+
   setCutaway(on: boolean): void {
     const b = this.root.querySelector('[data-cut]');
     if (!b) return;
     b.setAttribute('aria-pressed', String(on));
+    if (on) this.setRotate(false); // the opening faces one way; turning would hide it
     this.on.cutaway(on);
   }
 
@@ -226,7 +261,8 @@ export class Ui {
   hover(node: string | null): void {
     const tip = this.root.querySelector<HTMLElement>('.tip')!;
     const part = this.model.parts.find((p) => p.node === node);
-    tip.hidden = !part || matchMedia('(hover: none)').matches;
+    // not for the part already selected: its name is on the panel, and the label would sit on it
+    tip.hidden = !part || node === this.selected || matchMedia('(hover: none)').matches;
     if (part) {
       tip.querySelector('b')!.textContent = part.name;
       tip.querySelector('span')!.textContent = part.summary;

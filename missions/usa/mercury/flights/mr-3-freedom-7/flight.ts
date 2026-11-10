@@ -7,6 +7,7 @@ const LB = 0.45359237;
 const vehicleParts: Part[] = [
   {
     node: 'EscapeTower',
+    group: 'Spacecraft',
     name: 'Launch escape tower',
     summary: 'Pulls the capsule off a failing booster.',
     detail:
@@ -25,6 +26,7 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'AntennaCanister',
+    group: 'Spacecraft',
     name: 'Antenna canister',
     summary: 'Bicone antenna, horizon scanners, drogue parachute.',
     detail:
@@ -42,6 +44,7 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'RecoveryCompartment',
+    group: 'Spacecraft',
     name: 'Recovery compartment',
     summary: 'Main and reserve parachutes; pitch and yaw thrusters.',
     detail:
@@ -60,8 +63,9 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'Hatch',
+    group: 'Spacecraft',
     name: 'Side hatch',
-    summary: 'A 69 lb mechanical latch hatch.',
+    summary: 'Held by latches, with a handle inside and out.',
     detail:
       'The first design bolted the hatch on with 70 bolts, which would have left the pilot sealed in until ' +
       'someone came. Spacecraft No. 7 flew a heavier hatch held by mechanical latches, with a release handle ' +
@@ -78,6 +82,7 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'Afterbody',
+    group: 'Spacecraft',
     name: 'Conical afterbody',
     summary: 'René 41 shingles over the pressure vessel.',
     detail:
@@ -96,9 +101,10 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'CrewCabin',
+    group: 'Spacecraft',
     inside: true,
     name: 'Crew cabin',
-    summary: 'Where the pilot lies. Open the cutaway to see in.',
+    summary: 'Where the pilot lies: couch, controls, instruments.',
     detail:
       'A cone of two thin titanium skins holding pure oxygen at 5.1 psi. The pilot lies on a fibreglass couch ' +
       'moulded to his body, back to the heat shield, so that launch and entry loads both push him into it. ' +
@@ -114,6 +120,8 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'HeatShield',
+    inside: true,
+    group: 'Spacecraft',
     name: 'Heat shield',
     summary: 'Beryllium heat sink, 74.5 inches across.',
     detail:
@@ -130,6 +138,8 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'Retropack',
+    inside: true,
+    group: 'Spacecraft',
     name: 'Retropack',
     summary: 'Three retrograde and three posigrade motors.',
     detail:
@@ -147,6 +157,7 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'RedstoneAdapter',
+    group: 'Launch vehicle',
     name: 'Spacecraft adapter',
     summary: 'Joins a 74.5-inch capsule to a 70-inch booster.',
     detail:
@@ -163,8 +174,9 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'RedstoneAftUnit',
+    group: 'Launch vehicle',
     name: 'Aft unit',
-    summary: 'Instrument compartment: autopilot and abort sensing.',
+    summary: 'Top of the booster: autopilot, abort sensing, ballast.',
     detail:
       'On the Redstone missile this section flew on with the warhead. Here it stays bolted to the tanks and ' +
       'carries the LEV-3 autopilot and the abort sensing system, which watches attitude, rates, chamber pressure ' +
@@ -182,6 +194,7 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'RedstoneCenterUnit',
+    group: 'Launch vehicle',
     name: 'Centre unit',
     summary: 'Alcohol above, liquid oxygen below.',
     detail:
@@ -201,6 +214,7 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'RedstoneTailUnit',
+    group: 'Launch vehicle',
     name: 'Tail unit',
     summary: 'Four fins, four air rudders, the engine bay.',
     detail:
@@ -218,9 +232,10 @@ const vehicleParts: Part[] = [
   },
   {
     node: 'RedstoneEngine',
+    group: 'Launch vehicle',
     inside: true,
     name: 'A-7 engine',
-    summary: '78,000 lbf. Open the cutaway to see it in its bay.',
+    summary: '78,000 lbf, steered by vanes in its own exhaust.',
     detail:
       'Rocketdyne’s A-7, a direct descendant of the V-2’s engine: a single fixed chamber fed by a turbopump that ' +
       'runs on steam from decomposed hydrogen peroxide. It cannot swivel, so four graphite vanes sit in the ' +
@@ -243,7 +258,7 @@ const PEDESTAL = 6 * 0.3048;
 const VEHICLE_Y = PEDESTAL + 716.5 * IN;
 
 /** Where the pilot stands in every scene: at the foot of the vehicle, clear of the cutaway's opening. */
-const PILOT = { position: [-2.6, 0, 3.9] as [number, number, number], rotationY: 0.9 };
+const PILOT = { position: [-2.6, 0, 3.9] as [number, number, number], rotationY: -0.59 };
 
 const vehicle: ModelDef = {
   id: 'vehicle',
@@ -253,6 +268,7 @@ const vehicle: ModelDef = {
   backdrop: 'ground',
   slider: ['Assembled', 'Exploded'],
   cutaway: true,
+  specGroups: ['Spacecraft', 'Launch vehicle'],
   parts: vehicleParts,
   position: [0, VEHICLE_Y, 0],
   home: 'stack',
@@ -362,6 +378,7 @@ const pad: ModelDef = {
   scale: 'Launch Complex 5 · hardstand 62 m square · to scale',
   backdrop: 'ground',
   slider: ['T−55 min', 'Liftoff'],
+  specGroups: ['Launch pad'],
   parts: padParts,
   views: [
     { id: 'pedestal', label: 'Pedestal', centreY: 1.4, span: 9 },
@@ -475,12 +492,16 @@ const crew: ModelDef = {
   backdrop: 'ground',
   parts: crewParts,
   ...PILOT,
-  home: 'figure',
+  wide: false,
+  specGroups: ['Pressure suit'],
+  home: 'walkout',
   views: [
-    { id: 'figure', label: 'Pilot', centreY: 0.98, span: 2.5 },
-    { id: 'helmet', label: 'Helmet', centreY: 1.72, span: 0.62 },
-    { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.62 },
-    { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62 },
+    // from low on his far side, so the vehicle he is about to ride stands up behind him
+    { id: 'walkout', label: 'Walk-out', centreY: 2.4, span: 6.2, from: [-0.5, -0.3, 0.82] },
+    { id: 'figure', label: 'Pilot', centreY: 0.98, span: 2.5, from: [-0.55, 0.05, 0.83] },
+    { id: 'helmet', label: 'Helmet', centreY: 1.72, span: 0.62, from: [-0.55, 0.05, 0.83] },
+    { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.62, from: [-0.55, 0.05, 0.83] },
+    { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: [-0.55, 0.2, 0.83] },
   ],
   with: [
     { model: 'vehicle', position: [0, VEHICLE_Y, 0] },
