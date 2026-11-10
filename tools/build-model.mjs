@@ -56,7 +56,8 @@ for (const id of targets) {
     });
     const lines = (r.stdout + r.stderr).split('\n');
     if (r.status !== 0) {
-      console.error(lines.slice(-30).join('\n'));
+      const at = lines.findIndex((l) => l.includes('CLEARANCE FAILED'));
+      console.error((at >= 0 ? lines.slice(at, at + 60) : lines.slice(-30)).join('\n'));
       process.exit(r.status ?? 1);
     }
     console.log(lines.filter((l) => l.includes(' triangles')).join('\n') || `built ${id}/${file}`);

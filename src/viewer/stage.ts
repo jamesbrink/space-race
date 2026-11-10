@@ -51,6 +51,7 @@ export class Stage {
   private down: { x: number; y: number } | null = null;
   private flyTo: { target: THREE.Vector3; position: THREE.Vector3; t: number } | null = null;
   private centreY = 0;
+  private readonly bounds = new THREE.Sphere();
   private shadowFit = -1;
   private loadToken = 0;
 
@@ -268,11 +269,30 @@ export class Stage {
     const centre = box.getCenter(new THREE.Vector3());
     const radius = box.getSize(new THREE.Vector3()).length() / 2 + 0.5;
     this.centreY = centre.y;
+    this.bounds.set(centre, radius);
     this.sun.target.position.copy(centre);
     this.sun.position.copy(centre).addScaledVector(this.setting.sunDir, radius + 10);
     Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
+  }
+
+  /**
+   * Keep the near plane as far out as the view allows, every frame. Depth precision at
+   * distance d is about d² / (near × 2²⁴): with a fixed 5 cm near plane, faces 3 mm apart
+   * fight from across the pad. Pushed out like this the resolution stays under a third of a
+   * millimetre, which is what lets the models' 1 mm clearance rule (srlib.check_clearance) hold.
+   */
+  private fitDepth(): void {
+    const toCentre = this.camera.position.distanceTo(this.bounds.center);
+    const toTarget = this.camera.position.distanceTo(this.controls.target);
+    const near = Math.max(0.03, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
+    const far = toCentre + this.bounds.radius + (this.setting.floor ? 3200 : 10);
+    if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
+      this.camera.near = near;
+      this.camera.far = far;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   private pick(): string | null {
@@ -316,14 +336,30 @@ export class Stage {
       this.pointerDirty = false;
       this.setHover(this.pick());
     }
+    this.fitDepth();
     const { backdrop } = this.setting;
-    backdrop.update(dt);
+    if (!this.frozen) backdrop.update(dt);
+    backdrop.scene.visible = !this.frozen;
     backdrop.camera.quaternion.copy(this.camera.quaternion);
     if (backdrop.camera.aspect !== this.camera.aspect) {
       backdrop.camera.aspect = this.camera.aspect;
       backdrop.camera.updateProjectionMatrix();
     }
     this.composer.render(dt);
+  }
+
+  /** For tests: nothing moves unless the camera is moved, and the sky (stars are single pixels) is hidden. */
+  frozen = false;
+
+  /** For tests: a named view, turned `azimuthDeg` about the vertical and nudged `nudgeDeg` more. */
+  shot(viewId: string, azimuthDeg: number, nudgeDeg = 0): void {
+    this.controls.autoRotate = false;
+    this.flyTo = null;
+    this.view(viewId, true);
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(azimuthDeg + nudgeDeg));
+    this.camera.position.copy(this.controls.target).add(offset);
+    this.controls.update();
   }
 
   /** For tests and screenshots: stop the drift and put the camera somewhere exact. */

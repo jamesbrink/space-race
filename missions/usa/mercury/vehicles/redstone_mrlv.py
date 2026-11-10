@@ -4,9 +4,9 @@ Shared by the flights that rode it (MR-3, MR-4); a flight's build.py imports thi
 calls build(). Dimensions are inches. Stations here are measured up from the booster's base
 (the fin trailing edges); `base_z` places that base in the flight's own coordinates.
 
-See ./redstone-mrlv.md for what each number rests on. Only the overall length (59 ft without
-the spacecraft) and the 70 in diameter are published figures; the section breaks, the fins and
-the engine are read off drawings and photographs.
+See ./redstone-mrlv.md for what each number rests on. Section lengths and the 70 in diameter
+are from NASA TM X-53107, Figure 4-1; the fins, engine and paint are read off its figures and
+photographs.
 
 Top-level nodes: RedstoneAdapter  RedstoneAftUnit  RedstoneCenterUnit  RedstoneTailUnit  RedstoneEngine
 """
@@ -21,12 +21,14 @@ from srlib import IN, TAU, MeshBuilder, Surf, arc_profile, deg, frame, group, le
 
 BODY_R = 35.0            # 70 in diameter
 LENGTH = 716.5           # base to the spacecraft's heat-shield plane: 59.7 ft
-S_TAIL = 135.0           # top of the tail unit
-S_TANK = 508.0           # top of the centre (tank) unit
-S_AFT = 668.0            # top of the aft unit; the adapter runs from here to LENGTH
+S_TAIL = 111.24          # top of the tail unit: 9.27 ft (TM X-53107, Figure 4-1)
+S_TANK = S_TAIL + 450.0  # top of the centre unit: 37.50 ft; alcohol tank 18.8 ft over LOX tank 16.83 ft
+S_AFT = 708.0            # X-axis station zero, 59.00 ft up: top of the aft section; the adapter runs on to LENGTH
+AFT_LOWER = 42.16        # aft unit proper: nitrogen spheres, antennas, receivers
+INSTRUMENT = 53.66       # pressurised instrument compartment, above it; ballast section above that
 ADAPTER_TOP_R = 36.6     # just inside the capsule's 74.5 in heat shield
 FIN_SPAN = 152.0         # tip to tip
-FIN_ROOT, FIN_TIP = 112.0, 38.0   # chords
+FIN_ROOT, FIN_TIP = 100.0, 38.0   # chords
 NOZZLE_EXIT_R = 16.5
 
 
@@ -38,10 +40,10 @@ def materials() -> dict:
         "red": m("paint-booster-red", (0.45, 0.02, 0.015), 0.0, 0.5, double_sided=True),
         "inner": m("aluminium-structure", (0.55, 0.56, 0.55), 1.0, 0.5, double_sided=True),
         "alu": m("aluminium", (0.78, 0.78, 0.77), 1.0, 0.32),
-        "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4, double_sided=True),
+        "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
         "engine": m("engine-steel", (0.30, 0.29, 0.28), 1.0, 0.42, double_sided=True),
         "graphite": m("graphite", (0.03, 0.03, 0.032), 0.3, 0.6),
-        "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.45),
+        "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.62),
     }
 
 
@@ -116,7 +118,7 @@ def build(base_z: float, font=None) -> None:
                    (a * (ADAPTER_TOP_R - 0.9) + Vector((0, 0, up(LENGTH - 2)))) * IN, 0.55 * IN, 6, caps=False)
     inner.build("Adapter_Structure", M["inner"], g)
     ring = MeshBuilder()   # Marman clamp ring: released by explosive bolts at separation
-    ring.lathe(prof([(ADAPTER_TOP_R - 0.3, up(LENGTH - 1.2)), (ADAPTER_TOP_R + 0.9, up(LENGTH - 1.2)),
+    ring.lathe(prof([(ADAPTER_TOP_R, up(LENGTH - 1.2)), (ADAPTER_TOP_R + 0.9, up(LENGTH - 1.2)),
                      (ADAPTER_TOP_R + 0.9, up(LENGTH - 0.1)), (ADAPTER_TOP_R - 0.3, up(LENGTH - 0.1))]), 128)
     for i in range(3):
         t = TAU * (i + 0.5) / 3 + deg(30)
@@ -130,15 +132,15 @@ def build(base_z: float, font=None) -> None:
     # missile this unit left with the warhead; on the MRLV it is bolted to the tanks for good.
     g = group("RedstoneAftUnit")
     white, black, rivets = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    white.lathe(prof([(BODY_R, up(S_TANK)), (BODY_R, up(S_TANK + 62))]), 128)
-    _quartered(white, black, BODY_R, up(S_TANK + 62), up(S_AFT), deg(45))
-    for s in (S_TANK + 1.5, S_TANK + 62, S_AFT - 1.5):
+    white.lathe(prof([(BODY_R, up(S_TANK)), (BODY_R, up(S_TANK + AFT_LOWER))]), 128)
+    _quartered(white, black, BODY_R, up(S_TANK + AFT_LOWER), up(S_AFT), deg(45))
+    for s in (S_TANK + 1.5, S_TANK + AFT_LOWER, S_TANK + AFT_LOWER + INSTRUMENT, S_AFT - 1.5):
         _rivet_ring(rivets, BODY_R, up(s))
     doors = MeshBuilder()
     for t in (deg(90), deg(270)):   # instrument compartment access doors, on the white quadrants
-        doors.box((16 * IN, 22 * IN, 0.25 * IN), body.frame(t, up(S_TANK + 112), 0.0))
+        doors.box((16 * IN, 22 * IN, 0.25 * IN), body.frame(t, up(S_TANK + AFT_LOWER + INSTRUMENT / 2), 0.0))
     for t in (deg(0), deg(180)):
-        doors.box((12 * IN, 12 * IN, 0.25 * IN), body.frame(t, up(S_TANK + 30), 0.0))
+        doors.box((12 * IN, 12 * IN, 0.25 * IN), body.frame(t, up(S_TANK + 21), 0.0))
     caps = MeshBuilder()
     caps.lathe(prof([(0, up(S_TANK + 0.3)), (BODY_R - 0.2, up(S_TANK + 0.3))]), 64, flip=True)
     caps.lathe(prof([(BODY_R - 0.2, up(S_AFT - 0.3)), (0, up(S_AFT - 0.3))]), 64, flip=True)
@@ -165,7 +167,7 @@ def build(base_z: float, font=None) -> None:
     # external conduit carrying wiring and pressurisation lines past the tanks
     for t in (deg(45), deg(225)):
         fit.box((5.0 * IN, (S_TANK - S_TAIL + 30) * IN, 2.4 * IN), body.frame(t, up((S_TANK + S_TAIL) / 2), 1.0))
-    for t, s in ((deg(135), S_TAIL + 150), (deg(315), S_TAIL + 340)):   # LOX and alcohol fill and vent
+    for t, s in ((deg(135), S_TAIL + 180), (deg(315), S_TAIL + 420)):   # LOX and alcohol fill and vent
         f = body.frame(t, up(s))
         fit.lathe(prof([(3.2, -0.2), (3.2, 0.5), (2.4, 0.5), (2.3, 0.2), (0, 0.2)]), 28, matrix=f)
     paint = MeshBuilder()
@@ -175,7 +177,7 @@ def build(base_z: float, font=None) -> None:
         for i, ch in enumerate(word):
             if ch == " ":
                 continue
-            s = S_TAIL + 186 + (len(word) - 1) * pitch / 2 - i * pitch
+            s = S_TAIL + 225 + (len(word) - 1) * pitch / 2 - i * pitch
             # scale by height: lettering() fits width, so size narrow letters down
             width = {"I": 5.0, "T": 16.0, "E": 15.0, "S": 16.5}.get(ch, 17.5)
             lettering(paint, body, ch, width, t, up(s), False, font)
@@ -200,7 +202,7 @@ def build(base_z: float, font=None) -> None:
     tip_r = FIN_SPAN / 2
     for i in range(4):
         rot = Matrix.Rotation(deg(45 + 90 * i), 4, "Z") @ Matrix.Translation((0, 0, base_z * IN))
-        fin = [(BODY_R - 0.5, 0), (tip_r - 15, 0), (tip_r - 15, 34), (tip_r, 34), (tip_r, FIN_TIP), (BODY_R - 0.5, FIN_ROOT)]
+        fin = [(BODY_R - 1.2, 0), (tip_r - 15, 0), (tip_r - 15, 34), (tip_r, 34), (tip_r, FIN_TIP), (BODY_R - 1.2, FIN_ROOT)]   # roots buried in the skin
         _prism(fins_w if i % 2 == 0 else fins_b, fin, 4.2, 1.6, BODY_R, tip_r, rot)
         # air rudder at each tip: steers once the air is thick enough to bite
         _prism(rudders, [(tip_r - 14.5, 0), (tip_r, 0), (tip_r, 33.5), (tip_r - 14.5, 33.5)], 1.9, 1.5, tip_r - 14.5, tip_r, rot)
@@ -219,19 +221,19 @@ def build(base_z: float, font=None) -> None:
     g = group("RedstoneEngine")
     eng = MeshBuilder()
     bell = [(11.5, 118), (11.5, 96), (10.5, 88), (7.6, 78), (8.6, 70), (11.2, 52), (13.6, 34), (15.4, 16), (NOZZLE_EXIT_R, 2)]
-    eng.lathe(prof([(r, up(s)) for r, s in reversed(bell)]), 64)                 # outer wall, walked upward
-    eng.lathe(prof([(0, up(119.5)), (6, up(121)), (11.5, up(118))][::-1]), 64, flip=True)   # injector dome
+    eng.lathe(prof([(r, eu(s)) for r, s in reversed(bell)]), 64)                 # outer wall, walked upward
+    eng.lathe(prof([(0, eu(119.5)), (6, eu(121)), (11.5, eu(118))][::-1]), 64, flip=True)   # injector dome
     for s in range(8, 76, 9):   # stiffening hoops on the double-walled chamber
         r = next(r0 + (r1 - r0) * (s - s0) / (s1 - s0) for (r0, s0), (r1, s1) in zip(bell, bell[1:]) if s1 <= s <= s0)
-        eng.lathe(prof([(r + 0.1, up(s - 0.7)), (r + 0.8, up(s)), (r + 0.1, up(s + 0.7))]), 48)
+        eng.lathe(prof([(r + 0.1, eu(s - 0.7)), (r + 0.8, eu(s)), (r + 0.1, eu(s + 0.7))]), 48)
     # turbopump and peroxide tank beside the chamber; thrust frame up to the tank
-    eng.tube((18 * IN, 4 * IN, up(84) * IN), (18 * IN, 4 * IN, up(116) * IN), 6.5 * IN, 24)
-    eng.lathe(prof(arc_profile(0, 0, 8.0, -90, 90, 12)), 24, matrix=Matrix.Translation((-19 * IN, -3 * IN, up(104) * IN)))
-    eng.tube((18 * IN, 4 * IN, up(100) * IN), (9 * IN, 2 * IN, up(112) * IN), 2.2 * IN, 12)
+    eng.tube((20 * IN, 4 * IN, eu(84) * IN), (20 * IN, 4 * IN, eu(116) * IN), 6.5 * IN, 24)
+    eng.lathe(prof(arc_profile(0, 0, 8.0, -90, 90, 12)), 24, matrix=Matrix.Translation((-21.5 * IN, -3 * IN, eu(104) * IN)))
+    eng.tube((20 * IN, 4 * IN, eu(100) * IN), (9 * IN, 2 * IN, eu(112) * IN), 2.2 * IN, 12)
     for i in range(4):
         t = deg(45 + 90 * i)
         a = Vector((math.cos(t), math.sin(t), 0))
-        eng.tube((a * 10.5 + Vector((0, 0, up(116)))) * IN, (a * 30 + Vector((0, 0, up(S_TAIL - 1)))) * IN, 1.3 * IN, 10)
+        eng.tube((a * 10.5 + Vector((0, 0, eu(116)))) * IN, (a * 30 + Vector((0, 0, up(S_TAIL - 1)))) * IN, 1.3 * IN, 10)
     eng.build("Engine_A7", M["engine"], g, sharp_angle=35)
     vanes = MeshBuilder()
     arms = MeshBuilder()

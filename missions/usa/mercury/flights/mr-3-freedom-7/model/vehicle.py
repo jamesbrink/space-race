@@ -115,11 +115,11 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "shingle": m("shingle-rene41", (0.035, 0.038, 0.046), 0.85, 0.42),
         "beryllium_shingle": m("shingle-beryllium", (0.05, 0.052, 0.058), 0.8, 0.5),
         "underlay": m("structure-dark", (0.02, 0.02, 0.022), 0.6, 0.7, double_sided=True),
-        "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.45),
+        "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.62),
         "beryllium": m("heatsink-beryllium", (0.47, 0.46, 0.44), 1.0, 0.38),
         "titanium": m("titanium", (0.52, 0.50, 0.47), 1.0, 0.45, double_sided=True),
         "aluminium": m("aluminium", (0.78, 0.78, 0.77), 1.0, 0.32),
-        "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4, double_sided=True),
+        "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
         "strap": m("strap-steel", (0.62, 0.61, 0.58), 1.0, 0.3, double_sided=True),
         "nozzle": m("nozzle", (0.09, 0.085, 0.08), 0.9, 0.55, double_sided=True),
         "tower": m("tower-red", (0.40, 0.022, 0.012), 0.0, 0.5),
@@ -171,15 +171,15 @@ def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, 
             ss, range(len(rings)),
             uv=lambda s, j: ((t0 + arc * s) * rmid * IN, rings[j][0] * IN),
         )
-        # fasteners: up both edges, and across both ends between the beads
+        # fasteners: up the seam, and across both ends between the beads
         n_edge = max(2, int((z1 - z0) / 2.4))
-        for s in (margin * 0.3, 1 - margin * 0.3):
-            for i in range(n_edge):
-                z = z0 + 1.6 + (z1 - z0 - 3.2) * i / (n_edge - 1)
-                bolts.disc(surf.p(theta(s, z), z), surf.n(theta(s, z)), 0.2 * IN, 0.07 * IN)
+        # one row per seam (on this shingle's leading edge; its neighbour supplies the other)
+        for i in range(n_edge):
+            z = z0 + 1.6 + (z1 - z0 - 3.2) * i / (n_edge - 1)
+            bolts.disc(surf.p(t0, z), surf.n(t0), 0.2 * IN, 0.07 * IN)
         n_end = beads or 4
         for z in (z0 + 0.55, z1 - 0.55):
-            for i in range(n_end + 1):
+            for i in range(1, n_end):
                 s = margin + (1 - 2 * margin) * i / n_end
                 bolts.disc(surf.p(theta(s, z), z), surf.n(theta(s, z)), 0.2 * IN, 0.07 * IN)
 
@@ -256,19 +256,15 @@ def build_afterbody(M, font) -> None:
     for row, (z0, z1, beads) in enumerate(ROWS):
         skip = HATCH_PANELS if row == HATCH_ROW else ()
         shingle_row(panels, bolts, CONE, z0, z1, PANELS, PANEL_PHASE, beads, [k for k in range(PANELS) if k not in skip])
-    shingle_row(hp, hb, CONE, hz0, hz1, PANELS, PANEL_PHASE, ROWS[HATCH_ROW][2], HATCH_PANELS)
+    shingle_row(hp, MeshBuilder(), CONE, hz0, hz1, PANELS, PANEL_PHASE, ROWS[HATCH_ROW][2], HATCH_PANELS)
     # Freedom 7's hatch was bolted on from outside: 70 bolts around its edge
+    inset = 0.55   # inches in from the hatch edge, clear of the neighbouring shingles' fasteners
+    ta, tb = t_h0 + inset / CONE.r(hz0), t_h1 - inset / CONE.r(hz0)
+    za, zb = hz0 + inset, hz1 - inset
     for i in range(70):
         f = i / 70 * 4
         edge, u = int(f), f % 1.0
-        if edge == 0:
-            t, z = t_h0 + (t_h1 - t_h0) * u, hz0 + 0.25
-        elif edge == 1:
-            t, z = t_h1 - 0.18 / CONE.r(hz0), hz0 + (hz1 - hz0) * u
-        elif edge == 2:
-            t, z = t_h1 - (t_h1 - t_h0) * u, hz1 - 0.25
-        else:
-            t, z = t_h0 + 0.18 / CONE.r(hz0), hz1 - (hz1 - hz0) * u
+        t, z = ((ta + (tb - ta) * u, za), (tb, za + (zb - za) * u), (tb - (tb - ta) * u, zb), (ta, zb - (zb - za) * u))[edge]
         hb.disc(CONE.p(t, z), CONE.n(t), 0.26 * IN, 0.12 * IN, 6)
     panels.build("Afterbody_Shingles", M["shingle"], g, sharp_angle=None)
     bolts.build("Afterbody_Fasteners", M["bolt"], g)
@@ -407,7 +403,7 @@ def build_recovery_compartment(M) -> None:
     fit, dark = MeshBuilder(), MeshBuilder()
     for q in range(4):   # pitch and yaw thrusters: a 24 lbf and a 1 lbf nozzle at each quadrant
         t = deg(90 * q + 45)
-        fit.box((5.0 * IN, 3.2 * IN, 0.35 * IN), CYL.frame(t, Z_CAN - 4.0, 0.1))
+        fit.box((5.0 * IN, 3.2 * IN, 0.9 * IN), CYL.frame(t, Z_CAN - 4.0, -0.2))   # sunk through the skin, proud by 0.25 in
         for dz, rad in ((0.75, 0.8), (-0.85, 0.35)):
             f = CYL.frame(t, Z_CAN - 4.0 + dz, 0.25)
             fit.lathe(prof([(rad + 0.2, 0.0), (rad + 0.2, 0.25), (rad, 0.25)]), 16, matrix=f)
@@ -470,7 +466,7 @@ def build_escape_tower(M) -> None:
     truss, steel = MeshBuilder(), MeshBuilder()
     levels = [Z_CAN_TOP + 4.0, 136.0, 166.0, Z_TRUSS_TOP]   # no cross-members until clear of the canister
     for i in range(3):
-        truss.tube(node(i, Z_CAN + 1.8), node(i, Z_TRUSS_TOP), 0.8 * IN, 14)
+        truss.tube(node(i, Z_CAN + 1.0), node(i, Z_TRUSS_TOP), 0.8 * IN, 14)
         for z in levels:
             truss.tube(node(i, z), node(i + 1, z), 0.5 * IN, 10)
             truss.lathe(prof(arc_profile(0, 0, 1.15, -90, 90, 8)), 12, matrix=Matrix.Translation(node(i, z)))

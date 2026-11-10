@@ -394,7 +394,7 @@ class Surf:
         return self.p(theta0 + a / self.r(z), z, off)
 
 
-def decal(mb: MeshBuilder, surf: Surf, theta0: float, z0: float, verts, faces, vertical: bool, off=0.2) -> None:
+def decal(mb: MeshBuilder, surf: Surf, theta0: float, z0: float, verts, faces, vertical: bool, off=0.3) -> None:
     """Paint flat XY geometry (inches) onto a surface. `vertical` text reads nose-ward."""
     out = []
     for x, y, _ in verts:
@@ -411,6 +411,68 @@ def lettering(mb: MeshBuilder, surf: Surf, body: str, length: float, theta0: flo
     cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
     verts = [((x - cx) * scale, (y - cy) * scale, 0.0) for x, y, _ in verts]
     decal(mb, surf, theta0, z0, verts, faces, vertical)
+
+
+# ----------------------------------------------------------------------- clearance
+
+MIN_GAP = 0.001   # metres. The viewer keeps depth resolution under a third of this (stage.ts: fitDepth).
+
+
+def check_clearance(min_gap: float = MIN_GAP) -> list[str]:
+    """Find faces that would z-fight: parallel, facing the same way, overlapping, under `min_gap` apart.
+
+    Two such faces land on the same depth value and the renderer picks between them per pixel,
+    per frame: the surface flickers. Every triangle in the scene fires short rays along its
+    normal from four points; a hit on a nearly parallel face inside `min_gap` is a violation.
+    Faces that cross at an angle are fine (they meet in a line), and so are single-sided faces
+    back to back or face to face (only one of the two is ever drawn).
+
+    Returns one line per offending pair of objects, worst first; empty means clean."""
+    from mathutils.bvhtree import BVHTree
+
+    verts: list[Vector] = []
+    tris: list[tuple[int, int, int]] = []
+    owner: list[int] = []
+    objs = [o for o in bpy.data.objects if o.type == "MESH"]
+    two_sided = []
+    for oi, obj in enumerate(objs):
+        mesh = obj.data
+        mesh.calc_loop_triangles()
+        base = len(verts)
+        mw = obj.matrix_world
+        verts.extend(mw @ v.co for v in mesh.vertices)
+        tris.extend((base + t.vertices[0], base + t.vertices[1], base + t.vertices[2]) for t in mesh.loop_triangles)
+        owner.extend([oi] * len(mesh.loop_triangles))
+        two_sided.append(not mesh.materials[0].use_backface_culling)
+    tree = BVHTree.FromPolygons(verts, tris, epsilon=0.0)
+    normals = []
+    for a, b, c in tris:
+        n = (verts[b] - verts[a]).cross(verts[c] - verts[a])
+        normals.append(n.normalized() if n.length > 1e-12 else None)
+
+    eps = 2e-6
+    found: dict[tuple[str, str], list[float]] = {}
+    weights = ((1 / 3, 1 / 3, 1 / 3), (0.6, 0.2, 0.2), (0.2, 0.6, 0.2), (0.2, 0.2, 0.6))
+    for ti, (a, b, c) in enumerate(tris):
+        n = normals[ti]
+        if n is None:
+            continue
+        for wa, wb, wc in weights:
+            p = verts[a] * wa + verts[b] * wb + verts[c] * wc
+            for sign in (1.0, -1.0):
+                hit, _hn, hi, dist = tree.ray_cast(p + n * (sign * eps), n * sign, min_gap)
+                if hit is None or hi == ti or normals[hi] is None:
+                    continue
+                d = n.dot(normals[hi])
+                if abs(d) < 0.97:
+                    continue   # crossing, not coplanar
+                both = two_sided[owner[ti]] or two_sided[owner[hi]]
+                if d < 0 and not both:
+                    continue   # back to back or face to face: never both drawn
+                key = tuple(sorted((objs[owner[ti]].name, objs[owner[hi]].name)))
+                found.setdefault(key, []).append(dist + eps)
+    lines = sorted(((min(v), len(v), k) for k, v in found.items()))
+    return [f"{k[0]} / {k[1]}: {n} samples, closest {g * 1000:.2f} mm" for g, n, k in lines]
 
 
 # -------------------------------------------------------------------------- export
@@ -483,9 +545,18 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--preview", help="directory for EEVEE preview stills")
+    ap.add_argument("--allow-clashes", action="store_true", help="export even if the clearance check fails")
     args = ap.parse_args(argv)
     reset_scene()
     summary = build()
+    bpy.context.view_layer.update()
+    clashes = check_clearance()
+    if clashes:
+        print(f"{name}: CLEARANCE FAILED: parallel faces under {MIN_GAP * 1000:.0f} mm apart will flicker")
+        for line in clashes:
+            print(f"  {line}")
+        if not args.allow_clashes:
+            sys.exit(1)
     out = os.path.abspath(args.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     export_glb(out)
