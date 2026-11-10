@@ -157,7 +157,12 @@ export class Exploder {
     for (const { object, home, part, driver } of this.entries) {
       const k = partProgress(t, part.order, this.orders);
       if (driver) driver.set(k);
-      else object.position.set(home.x + part.explode[0] * k, home.y + part.explode[1] * k, home.z + part.explode[2] * k);
+      else if (part.swing) {
+        // turn about the hinge: the pivot stays where it is and everything else goes round it
+        const pivot = new THREE.Vector3(...part.swing.pivot);
+        object.quaternion.setFromAxisAngle(new THREE.Vector3(...part.swing.axis).normalize(), part.swing.angle * k);
+        object.position.copy(home).add(pivot).sub(pivot.clone().applyQuaternion(object.quaternion));
+      } else object.position.set(home.x + part.explode[0] * k, home.y + part.explode[1] * k, home.z + part.explode[2] * k);
     }
   }
 }

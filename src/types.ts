@@ -80,6 +80,12 @@ export interface Part {
   explode: [number, number, number];
   /** It leaves by driving this route instead of sliding along `explode`. */
   drive?: Drive;
+  /**
+   * It leaves by turning on a hinge instead of sliding: a mast that falls back, a boom that
+   * lowers. `pivot` is a point on the hinge line and `axis` its direction, in the part node's
+   * own coordinates (metres, +Y up); `angle` is how far it turns, radians, right-handed about `axis`.
+   */
+  swing?: { pivot: [number, number, number]; axis: [number, number, number]; angle: number };
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
   order: number;
 }
