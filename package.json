@@ -16,6 +16,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "models": "node tools/build-model.mjs --all",
     "test:flicker": "node tools/flicker-test.mjs",
+    "test:lod": "node tools/build-model.mjs --all --detail 0.6 --out-dir .lod/0.6 && node tools/build-model.mjs --all --detail 0.3 --out-dir .lod/0.3",
     "model:mr-3": "node tools/build-model.mjs usa/mercury/mr-3-freedom-7"
   },
   "engines": {

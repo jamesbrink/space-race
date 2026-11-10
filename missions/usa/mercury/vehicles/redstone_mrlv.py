@@ -50,6 +50,7 @@ SHELLS = (
     "AftUnit_InstrumentCompartment",
     "CenterUnit_Tanks",
     "CenterUnit_Band",
+    "CenterUnit_Frost",
     "CenterUnit_InnerWall",
     "AftUnit_InnerWall",
     "CenterUnit_Fasteners",
@@ -79,6 +80,7 @@ def materials() -> dict:
         "inner": m("aluminium-structure", (0.55, 0.56, 0.55), 1.0, 0.5, double_sided=True),
         "alu": m("aluminium", (0.62, 0.62, 0.61), 1.0, 0.45),
         # the inside of a skin: unpolished, and what the cutaway shows most of
+        "frost": m("frost-lox", (0.90, 0.93, 0.96), 0.0, 0.95),
         "wall": m("aluminium-inner", (0.50, 0.51, 0.50), 0.9, 0.7),
         # sheet fittings on the outside: weathered, or they mirror the sky and read as glass
         "sheet": m("aluminium-sheet", (0.56, 0.57, 0.57), 0.9, 0.66),
@@ -287,7 +289,14 @@ def build(base_z: float, font=None) -> None:
     skin, rivets, fit = MeshBuilder(), MeshBuilder(), MeshBuilder()
     # a dark band round the tanks, 59% of the way up them in the liftoff photograph
     band0, band1 = S_TAIL + 261.0, S_TAIL + 269.0
-    skin.lathe(prof([(BODY_R, up(S_TAIL)), (BODY_R, up(band0))]), 128)
+    # Frost: on launch morning the oxygen tank's wall, at -183 C, is white with ice from the humid
+    # Cape air between its two domes. The alcohol tank above it stays bare paint.
+    frost0, frost1 = S_TAIL + 16.0, S_TAIL + 16.83 * 12 - 8.0
+    skin.lathe(prof([(BODY_R, up(S_TAIL)), (BODY_R, up(frost0))]), 128)
+    skin.lathe(prof([(BODY_R, up(frost1)), (BODY_R, up(band0))]), 128)
+    frost = MeshBuilder()
+    frost.lathe(prof([(BODY_R, up(frost0)), (BODY_R, up(frost1))]), 128)
+    frost.build("CenterUnit_Frost", M["frost"], g, sharp_angle=None)
     skin.lathe(prof([(BODY_R, up(band1)), (BODY_R, up(S_TANK))]), 128)
     band = MeshBuilder()
     band.lathe(prof([(BODY_R, up(band0)), (BODY_R, up(band1))]), 128)
@@ -334,7 +343,10 @@ def build(base_z: float, font=None) -> None:
             width = {"I": 5.0, "T": 16.0, "E": 15.0, "S": 16.5}.get(ch, 17.5)
             lettering(paint, body, ch, width, t, up(s), False, font)
     for i in range(6):  # longitudinal welds: each tank barrel is rolled from sheet
-        fit.box((1.1 * IN, (S_TANK - S_TAIL - 6) * IN, 0.5 * IN), body.frame(deg(15 + 60 * i), up((S_TANK + S_TAIL) / 2), -0.12))
+        # in two lengths, stopping short of the ring weld between the tanks: the two welds would
+        # otherwise lie in each other's surface at a coarse level of detail
+        for s0, s1 in ((S_TAIL + 3, s_mid - 9.0 - 1.6), (s_mid - 9.0 + 1.6, S_TANK - 3)):
+            fit.box((1.1 * IN, (s1 - s0) * IN, 0.5 * IN), body.frame(deg(15 + 60 * i), up((s0 + s1) / 2), -0.12))
     for s in (S_TAIL + 16.83 * 12,):  # the common bulkhead between the tanks shows as a ring weld
         fit.lathe(prof([(BODY_R - 0.1, up(s - 0.9)), (BODY_R + 0.22, up(s - 0.5)), (BODY_R + 0.22, up(s + 0.5)), (BODY_R - 0.1, up(s + 0.9))]), 128)
     skin.build("CenterUnit_Tanks", M["white"], g, sharp_angle=None)
@@ -472,6 +484,8 @@ def build(base_z: float, font=None) -> None:
         rot = Matrix.Rotation(deg(45 + 90 * i), 4, "Z") @ Matrix.Translation((0, 0, base_z * IN))
         _prism(vanes, [(6.5, 0.2), (15.0, 0.2), (15.0, 6.5), (11.5, 11.0), (6.5, 11.0)], 1.5, 1.5, 6.5, 15.0, rot)
         a = Vector((math.cos(deg(45 + 90 * i)), math.sin(deg(45 + 90 * i)), 0))
-        arms.tube((a * 15.0 + Vector((0, 0, up(5)))) * IN, (a * (BODY_R - 2) + Vector((0, 0, up(5)))) * IN, 1.1 * IN, 10)
+        arms.tube(
+            (a * 15.0 + Vector((0, 0, up(5)))) * IN, (a * (BODY_R - 1.25) + Vector((0, 0, up(5)))) * IN, 1.1 * IN, 10
+        )  # ends between the inner wall and the skin
     vanes.build("Engine_JetVanes", M["graphite"], g, smooth=False)
     arms.build("Engine_VaneShafts", M["steel"], g)

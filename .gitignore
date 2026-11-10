@@ -5,3 +5,4 @@ dist
 *.blend1
 __pycache__
 .playwright-mcp
+.lod/

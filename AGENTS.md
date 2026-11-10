@@ -22,6 +22,7 @@ pnpm build            # typecheck, then a production bundle in dist/
 pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their Blender scripts
 pnpm models           # rebuild every flight's GLBs
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
+pnpm test:lod         # every model at detail 0.6 and 0.3: the clearance check must hold there too
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB
@@ -133,8 +134,9 @@ directions, looking for patches of pixels that swap when the camera turns 0.005 
 Models are generated, so a lower level of detail is a rebuild, not a remodel:
 `blender ... -- --out x.glb --detail 0.3`. `srlib.DETAIL` thins every curve and, under 0.5, drops
 fasteners; eight sides or fewer is a shape, not a curve, and is kept. The inventory uses 1.0.
-The clearance check runs at every level, and coarser curves sit differently against each other:
-the pad and crew build clean at 0.6 and 0.3, the vehicle does not yet (see `redstone-mrlv.md`).
+The clearance check runs at every level, and coarser curves sit differently against each other,
+so a fitting that clears at 1.0 can land on its neighbour at 0.3: `pnpm test:lod` builds every
+model at 0.6 and 0.3 (into `.lod/`, ignored) and must pass after a model changes.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script; do not hand-edit geometry for them.
 

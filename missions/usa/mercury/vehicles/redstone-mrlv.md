@@ -79,10 +79,8 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
   pattern are read off or assumed. No source read gives colours; the red lettering is from memory
   of colour photographs.
 - **Fin shape** is an estimate; the fins are flat wedges with no aerofoil.
-- **Lower levels of detail do not build yet.** At `--detail` 0.6 and 0.3 the clearance check finds
-  near-coincident faces that full detail does not have: vane shafts against the tail's inner wall,
-  the conduits and the tower truss against themselves, hatch latches and afterbody fittings
-  against the structure under them. Each needs its fitting sunk or stood off further.
+- **The frost on the oxygen tank is representative**: its extent is the tank's cylindrical wall, its
+  edge is a clean line, and no photograph of MR-3 was used to place it.
 - **The engine is representative.** Chamber, jacket and the main lines are there; their routing
   and the turbopump's form are not from a drawing.
 - **Inside the aft unit** the equipment is representative boxes; the nitrogen spheres' number and

@@ -319,11 +319,11 @@ def build_afterbody(M, font) -> None:
     shingle_row(hp, MeshBuilder(), CONE, hz0, hz1, PANELS, PANEL_PHASE, ROWS[HATCH_ROW][2], HATCH_PANELS)
     # No. 7 carried the mechanical latch hatch (69 lb), with release handles inside and out.
     # The 70-bolt hatch was the original design and, with a detonating fuse, the later explosive one.
-    inset = 0.9  # inches in from the hatch edge
+    inset = 1.5  # inches in from the hatch edge, clear of the jamb
     ta, tb = t_h0 + inset / CONE.r(hz0), t_h1 - inset / CONE.r(hz0)
     za, zb = hz0 + inset, hz1 - inset
     for t, z in ((ta, za), (tb, za), (ta, zb), (tb, zb), ((ta + tb) / 2, za), ((ta + tb) / 2, zb), (ta, (za + zb) / 2), (tb, (za + zb) / 2)):
-        hb.box((1.5 * IN, 0.9 * IN, 0.5 * IN), CONE.frame(t, z, 0.1))  # latch housings
+        hb.box((1.5 * IN, 0.9 * IN, 0.6 * IN), CONE.frame(t, z, 0.05))  # latch housings, sunk well through the skin
     hb.box((1.1 * IN, 6.5 * IN, 1.0 * IN), CONE.frame(t_h0 + 0.82 * (t_h1 - t_h0), (za + zb) / 2 - 3.0, 0.25))  # external release handle
     panels.build("Afterbody_Shingles", M["shingle"], g, sharp_angle=None)
     bolts.build("Afterbody_Fasteners", M["bolt"], g)
@@ -359,7 +359,7 @@ def build_afterbody(M, font) -> None:
             detail.disc(f @ Vector((5.5 * math.cos(a) * IN, 5.5 * math.sin(a) * IN, 0.7 * IN)), CONE.n(t), 0.17 * IN, 0.06 * IN)
     # periscope: door frame and the extended objective, on the Earth-facing side
     f = CONE.frame(deg(180), 11.0)
-    detail.box((6.0 * IN, 10.0 * IN, 0.5 * IN), f)
+    detail.box((6.0 * IN, 10.0 * IN, 1.3 * IN), CONE.frame(deg(180), 11.0, -0.4))
     detail.lathe(prof([(2.4, 0.0), (2.4, 3.6), (2.0, 4.0), (1.9, 3.2)]), 32, matrix=f)
     void.lathe(prof([(1.9, 3.2), (0.0, 3.2)]), 32, matrix=f)
     glass.lathe(prof([(1.93, 3.75), (0.0, 3.85)]), 32, matrix=f)  # the objective, slightly domed
@@ -617,7 +617,6 @@ def build_escape_tower(M) -> None:
         truss.tube(node(i, Z_CAN + 1.0), node(i, Z_TRUSS_TOP), 0.8 * IN, 14)
         for z in levels:
             truss.tube(node(i, z), node(i + 1, z), 0.5 * IN, 10)
-            truss.lathe(prof(arc_profile(0, 0, 1.15, -90, 90, 8)), 12, matrix=Matrix.Translation(node(i, z)))
         for b, (z0, z1) in enumerate(zip(levels, levels[1:])):
             j0, j1 = (i, i + 1) if b % 2 == 0 else (i + 1, i)
             truss.tube(node(j0, z0), node(j1, z1), 0.45 * IN, 10)
