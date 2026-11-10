@@ -65,10 +65,10 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 | Node | What it is |
 | --- | --- |
 | `RedstoneAdapter` | flared ring carrying the capsule on a Marman clamp; the retropack sits inside it |
-| `RedstoneAftUnit` | from the top: ballast section, pressurised instrument compartment (autopilot, abort sensing), aft unit (nitrogen spheres, antennas, receivers). On the missile it separated with the warhead; here it is fixed |
-| `RedstoneCenterUnit` | alcohol tank over liquid-oxygen tank; the walls are the airframe |
+| `RedstoneAftUnit` | from the top: ballast section (steel ballast ring), pressurised instrument compartment (a drum holding the autopilot, abort sensing and telemetry), aft unit (nitrogen spheres, antennas, receivers). On the missile it separated with the warhead; here it is fixed |
+| `RedstoneCenterUnit` | alcohol tank over liquid-oxygen tank, sharing a bulkhead; the alcohol's feed line runs down through the oxygen tank (4.2.2); the walls are the airframe |
 | `RedstoneTailUnit` | engine bay, four fins, four air rudders |
-| `RedstoneEngine` | A-7 chamber and ribbed cooling jacket, feed lines, manifolds, turbopump, steam duct, thrust frame, four jet vanes |
+| `RedstoneEngine` | A-7 chamber wall, liner and ribbed cooling jacket, injector, feed lines, manifolds, turbopump, steam duct, thrust frame, four jet vanes |
 
 ## What the model gets wrong or leaves out
 
@@ -79,7 +79,9 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 - **Fin span and shape** are estimates; the fins are flat wedges with no aerofoil.
 - **The engine is representative.** Chamber, jacket and the main lines are there; their routing
   and the turbopump's form are not from a drawing.
-- No tank internals, no launch-pad fittings under fin II.
+- **Inside the aft unit** the equipment is representative boxes; the nitrogen spheres' number and
+  size, and the ballast's shape, are guesses at documented items.
+- No baffles or level sensors in the tanks; no launch-pad fittings under fin II.
 - **No mass properties** in the model.
 
 ## Sources

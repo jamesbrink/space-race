@@ -70,12 +70,12 @@ Top-level nodes in the GLB, bottom to top. These names are the `node` fields in 
 | --- | --- |
 | `Retropack` | housing, three retrograde motors, three posigrade motors, three straps and fittings |
 | `HeatShield` | beryllium heat sink, edge fasteners |
-| `CrewCabin` | titanium pressure vessel with hatch opening, aft bulkhead stiffeners, couch, instrument panel |
+| `CrewCabin` | titanium pressure vessel with hatch opening, aft bulkhead stiffeners, couch, instrument panel; and for the cutaway the pilot, hand controller and abort handle, equipment boxes, two oxygen bottles, the folded landing bag |
 | `Afterbody` | René 41 shingles and fasteners, structure, attach ring, portholes, periscope, umbilical, roll thrusters, lettering, flags |
 | `Hatch` | three shingles, latch housings, external release handle, inner and outer skins |
-| `RecoveryCompartment` | beryllium shingles, pitch and yaw thrusters, parachute canisters |
-| `AntennaCanister` | housing, dielectric window, horizon scanners, drogue mortar, destabilising flap |
-| `EscapeTower` | clamp ring, pylon, escape motor, three canted nozzles, jettison motor nozzle, spike |
+| `RecoveryCompartment` | beryllium shingles, pitch and yaw thrusters, parachute canisters; the packed main and reserve parachutes |
+| `AntennaCanister` | housing, dielectric window, horizon scanners, drogue mortar, destabilising flap; the bicone antenna inside |
+| `EscapeTower` | clamp ring, pylon, escape motor and its propellant grain, three canted nozzles, jettison motor nozzle, spike |
 
 The same GLB also holds the launch vehicle's five nodes: see
 [redstone-mrlv.md](../../vehicles/redstone-mrlv.md).
@@ -86,12 +86,14 @@ The same GLB also holds the launch vehicle's five nodes: see
 - **Shingle layout is regular; the real one is not.** Real shingles vary in size and are cut round
   the ports, hatch and periscope.
 - **The hatch is the wrong shape** (it follows shingle edges), and its latches are placeholders.
-- **The landing bag is not modelled.** It is folded behind the heat shield and out of sight.
+- **The landing bag** is a flat ring standing in for the folded bag; it does not deploy.
+- **The cabin's contents are representative**: a seated figure of Shepard's size, and equipment of
+  the right kinds in roughly the right places. It is not a survey of No. 7's installation.
 - **The retropack's straps** run from its sides. They should meet under its centre at one
   explosive bolt. The motors are not canted toward the centre of mass as the real ones are.
 - **The jettison motor has one nozzle** in the model; it had three.
-- **The interior is a sketch**: couch, panel and gauges are placeholders. No hand controller, no
-  environmental system, no periscope optics, no wiring.
+- **The couch, panel and gauges are placeholders.** No periscope optics, no wiring, no window
+  shades, no survival kit.
 - **The tower's bracing** (one diagonal per bay) is a simplification.
 - **Lettering is Arial Bold**, not the stencil McDonnell used; "FREEDOM 7" was hand-painted.
 - **No mass properties in the model.** The postlaunch report has the capsule's centre of gravity

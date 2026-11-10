@@ -1,0 +1,2 @@
+# Commits that only reformat. `git blame --ignore-revs-file .git-blame-ignore-revs` skips them.
+745b8630e88fe17e0d97bed7fe340c7287aa5027

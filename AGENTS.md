@@ -34,8 +34,11 @@ It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Useful fl
 EEVEE stills (the quick way to look at geometry without the browser).
 
 `window.sr` is the debug handle: `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
-frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly.
-The address bar's `#vehicle` / `#pad` / `#crew` selects the model.
+frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly;
+`sr.stage.setCutaway(true)` opens the cutaway. The address bar's `#vehicle` / `#pad` / `#crew`
+selects the model. To look at a change, `node tools/shot.mjs out.png pad "sr.stage.pose(215, 9, 150, 14)"`
+takes one screenshot from its own headless browser (`--ui` keeps the panels, `--hover x,y` moves
+the mouse first); read the PNG.
 
 ### Code quality
 
@@ -72,11 +75,13 @@ src/
   main.ts  ui.ts  style.css           the page
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
   viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
+  viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
+  shot.mjs                            one screenshot of the viewer, for looking at a change
   blender/srlib.py                    shared geometry helpers, clearance check, run()
 ```
 
@@ -87,6 +92,15 @@ This is the game's **inventory**: each flight's vehicle, pad and crew, shown at 
 with everything known about each part. A flight's `models` (in `flight.ts`) each have their own
 parts, views, slider and setting, and can ask for the others to be shown alongside (the vehicle
 stands on its pad; the pilot stands on the hardstand for scale).
+
+## Cutaway and what is inside
+
+The vehicle can be sliced open. A model script lists the meshes that enclose something in
+`SHELLS` and calls `srlib.mark_shells`; the viewer clips those (one quadrant, facing the default
+camera) and leaves everything else whole. So when you add an interior, build it as its own mesh
+and do not list it; when you add skin, list it. A part marked `inside: true` in `flight.ts` opens
+the cutaway when selected. Interiors are built only at detail 0.75 and above (`srlib.interior()`),
+so a distant level of detail does not carry a pilot and plumbing nobody can see.
 
 ## No flicker
 
