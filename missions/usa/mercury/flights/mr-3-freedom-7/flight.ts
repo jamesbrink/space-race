@@ -319,7 +319,9 @@ const padParts: Part[] = [
       ['At the hatch', 'from T−55 min to the last minutes'],
       ['Control', 'ground, cab, or blockhouse'],
     ],
-    explode: [9, 0, -15],
+    // It did not drive away: the liftoff photograph shows the truck still on the hardstand, mast up,
+    // cab lowered. Until the lowering is modelled it stays where it stands.
+    explode: [0, 0, 0],
     order: 0,
   },
   {

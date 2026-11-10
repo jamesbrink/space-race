@@ -28,6 +28,10 @@ Keys used in the hardware records: **primary** is a NASA or manufacturer documen
 | Stephens, NASA TM X-493, 1961 | [NTRS 19650003098](https://ntrs.nasa.gov/api/citations/19650003098/downloads/19650003098.pdf) | Big Joe boilerplate only | Not the production spacecraft |
 | McCutcheon, *The Redstone Engine*, AEHS | [enginehistory.org](https://enginehistory.org/Museums/USSRC/USSRC_Redstone.shtml) | A-7 lineage | Its A-7 performance line conflicts with TM X-53107 |
 
+| NASA photographs GPN-2000-001008, GPN-2000-001006, MSFC-6414825, 61-MR4-65, and the colour "egress test at Pad 5" of 21 April 1961 | Wikimedia Commons | The mobile aerial tower ("cherry picker") and its truck, the white room's colour, the pad at liftoff | Photographs: forms and colours, no dimensions |
+| NASA SP-4001, *Project Mercury: A Chronology*, Part II (B) | NASA History | The egress tower's dates: finished July 1960, at the Cape 24 October 1960 | |
+| Cape Canaveral Space Force Museum, *Cape Canaveral: A Noble Endeavor*, rev. 1.5.2 | museum publication | Quotes the Corps of Engineers history of the LC-5/6 gantry: an open-faced A-frame, 140 ft, platforms that encircle the missile | Secondary |
+
 ### Known, not yet read
 
 | Source | Would settle |
