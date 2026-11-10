@@ -42,6 +42,8 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
     stage.setCutaway(on);
   },
   cel: (on) => stage.setLook(on ? 'cel' : 'real'),
+  walk: (on) => (on ? void stage.enterWalk() : stage.exitWalk()),
+  walkStick: (x, y) => stage.walk.stick(x, y),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
   inset: (px) => stage.setInset(px),
@@ -81,6 +83,7 @@ function select(node: string | null): void {
  * Nothing is loaded and nothing leaves the scene. The address bar follows, so a view can be linked.
  */
 function show(id: string, snap = false): void {
+  if (stage.walk.active) stage.exitWalk(); // going anywhere else ends a walk
   const model = flight.models.find((m) => m.id === id) ?? flight.models[0]!;
   selected = null;
   autoCut = false;
@@ -117,6 +120,16 @@ stage.onInteract = () => {
   ui.showRotate(false);
 };
 stage.onView = (id) => ui.setView(id);
+// Walking is done from the pilot's section, wherever it was asked for; stopping returns to that section's view.
+stage.onWalk = (on) => {
+  const walker = flight.models.find((m) => m.walker);
+  if (!walker) return;
+  if (on && current.id !== walker.id) show(walker.id);
+  if (on && selected) select(null);
+  ui.setWalking(on);
+  if (!on) show(walker.id);
+};
+stage.onWalkLook = (captured) => ui.setWalkLook(captured);
 stage.onHome = () => (selected ? select(null) : show(current.id));
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);

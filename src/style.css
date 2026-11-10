@@ -53,7 +53,7 @@ dd { font-variant-numeric: tabular-nums; }
 .title.tucked { padding-bottom: 16px; }
 .title.tucked :is(.lede, .facts) { display: none; }
 /* H: nothing between the viewer and the view */
-#ui.bare > :not(.loading, .stats) { opacity: 0; pointer-events: none !important; }
+#ui.bare > :not(.loading, .stats, .walkbar, .stick) { opacity: 0; pointer-events: none !important; }
 /* ...but say how to get them back, faintly, so a reload into this state is not a dead end */
 #ui.bare::after { content: 'H  shows the panels'; position: absolute; right: var(--edge); bottom: var(--edge); font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 0.55; text-shadow: 0 0 4px #000; }
 #ui > * { transition: opacity 0.25s ease; }
@@ -85,8 +85,25 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .legend-body dl div { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 .legend-body dt { font: 10px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
 .legend-body dd { font-size: 12px; color: var(--dim); white-space: nowrap; }
+/* on foot the legend lists the walker's keys instead */
+.legend-body.on-foot { display: none; grid-template-columns: repeat(3, auto); }
+#ui.walking .legend-body:not(.on-foot) { display: none; }
+#ui.walking .legend-keys:not(.folded) .legend-body.on-foot { display: grid; }
 /* keys are no use to a finger, and a small window has no room */
 @media (hover: none), (max-width: 1180px) { .legend-keys { display: none; } }
+
+/* --- walking: the panels make way, one bar says how to stop, and a finger gets a stick --- */
+#ui.walking > :is(.title, .models, .panel, .controls, .tip) { display: none; }
+.walkbar { position: absolute; top: var(--edge); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 7px 7px 7px 16px;
+  width: max-content; max-width: calc(100vw - 2 * var(--edge)); background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  border: 1px solid var(--line); border-radius: 3px; font: 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.walkbar button { flex: none; font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 8px 13px; color: var(--amber); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; white-space: nowrap; }
+.walkbar button:hover { color: var(--ink); border-color: var(--ink); }
+.buttons [data-walk] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+.stick { display: none; position: absolute; left: calc(var(--edge) + 14px + env(safe-area-inset-left)); bottom: calc(var(--edge) + 22px + env(safe-area-inset-bottom)); width: 124px; height: 124px;
+  border-radius: 50%; background: var(--glass); border: 1px solid var(--faint); touch-action: none; }
+.stick i { position: absolute; inset: 37px; border-radius: 50%; background: rgba(243, 239, 230, 0.3); border: 1px solid var(--ink); pointer-events: none; }
+@media (hover: none), (pointer: coarse) { #ui.walking .stick { display: block; } }
 
 /* --- model switcher -------------------------------------------------------------- */
 .models { position: absolute; top: var(--edge); left: 50%; transform: translateX(-50%); display: flex; overflow: hidden; }
@@ -232,6 +249,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
   .panel.tucked { bottom: 0; }
   .title .tuck { display: none; }
   .stats { bottom: auto; top: 64px; left: 12px; font-size: 9px; }
+  .walkbar { padding-left: 12px; gap: 10px; font-size: 10px; }
   /* with the sheet up, the model keeps the space above it, so a selected part is never underneath */
   body:has(.panel.open) #stage { height: calc(100dvh - min(60dvh, 520px)); }
   body:has(.panel.open) :is(.controls, .models) { display: none; }

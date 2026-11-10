@@ -666,6 +666,7 @@ const crew: ModelDef = {
   backdrop: 'cape-canaveral',
   parts: crewParts,
   ...PILOT,
+  walker: { eyes: 'Helmet_Eyes' },
   wide: false,
   specGroups: ['Pressure suit'],
   home: 'walkout',

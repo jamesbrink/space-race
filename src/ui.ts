@@ -9,6 +9,10 @@ export interface UiHandlers {
   cutaway(on: boolean): void;
   /** Draw the scene as a cel-shaded drawing, or as it would look. */
   cel(on: boolean): void;
+  /** Get down and walk the site as the pilot, or stop. */
+  walk(on: boolean): void;
+  /** The on-screen stick while walking: x to the right, y forward, each -1 to 1. */
+  walkStick(x: number, y: number): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
   /** How many pixels at the bottom of the 3D view the controls cover. */
@@ -133,12 +137,26 @@ export class Ui {
             <div><dt>right-drag</dt><dd>move</dd></div>
             <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
+            <div><dt>double-click pilot</dt><dd>walk</dd></div>
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>C</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
+        <div class="legend-body on-foot">
+          <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>walk</em></div>
+          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>walk · turn</em></div>
+          <div class="cluster"><kbd>Shift</kbd><em>run</em></div>
+          <dl>
+            <div><dt>mouse</dt><dd>look round</dd></div>
+            <div><dt><kbd>Esc</kbd></dt><dd>stop walking</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+          </dl>
+        </div>
       </aside>
+      <div class="walkbar" hidden><span></span><button data-walk-exit>Exit walk</button></div>
+      <div class="stick" aria-hidden="true"><i></i></div>
       <output class="stats" aria-label="Diagnostics"></output>
       <div class="tip" hidden><b></b><span></span></div>
       <div class="loading"><span>Loading</span><i></i><button hidden>Try again</button></div>`;
@@ -231,6 +249,31 @@ export class Ui {
     };
     panel.addEventListener('touchend', release);
     panel.addEventListener('touchcancel', release);
+    root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
+    // The walking stick, for a finger: push it the way you want to go, further to go faster.
+    const stick = root.querySelector<HTMLElement>('.stick')!;
+    const knob = stick.querySelector<HTMLElement>('i')!;
+    const push = (e: PointerEvent | null) => {
+      const r = stick.getBoundingClientRect();
+      const reach = r.width / 2;
+      let x = e ? (e.clientX - r.left - reach) / reach : 0;
+      let y = e ? (e.clientY - r.top - reach) / reach : 0;
+      const length = Math.hypot(x, y);
+      if (length > 1) {
+        x /= length;
+        y /= length;
+      }
+      knob.style.transform = `translate(${x * reach * 0.6}px, ${y * reach * 0.6}px)`;
+      on.walkStick(x, -y);
+    };
+    stick.addEventListener('pointerdown', (e) => {
+      stick.setPointerCapture(e.pointerId);
+      push(e);
+    });
+    stick.addEventListener('pointermove', (e) => {
+      if (stick.hasPointerCapture(e.pointerId)) push(e);
+    });
+    for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) stick.addEventListener(end, () => push(null));
     root.querySelector('.loading button')!.addEventListener('click', () => on.model(this.model.id));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
     root.querySelector('.tabs')!.addEventListener('keydown', (e) => {
@@ -257,6 +300,7 @@ export class Ui {
       if (b?.dataset.view) on.view(b.dataset.view);
       else if (b?.hasAttribute('data-rotate')) this.setRotate(b.getAttribute('aria-pressed') !== 'true');
       else if (b?.hasAttribute('data-cut')) this.setCutaway(b.getAttribute('aria-pressed') !== 'true');
+      else if (b?.hasAttribute('data-walk')) on.walk(true);
       else if (b?.hasAttribute('data-cel')) this.setCel(b.getAttribute('aria-pressed') !== 'true');
     });
     // the label that follows the pointer over the model
@@ -320,7 +364,7 @@ export class Ui {
       `<span class="set" role="group" aria-label="View">${[...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]), ...m.views]
         .map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`)
         .join('')}</span>` +
-      `<span class="set" role="group" aria-label="Show">${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
+      `<span class="set" role="group" aria-label="Show">${m.walker ? '<button data-walk title="Walk the site as the pilot (or double-click him)">Walk</button>' : ''}${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
       `<button data-rotate aria-pressed="${rotating}">Auto-orbit</button>` +
       `<button data-cel aria-pressed="${prefs.get('cel')}" title="Cel shading (C)">Cel shading</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
@@ -376,6 +420,27 @@ export class Ui {
     prefs.set('panelTucked', on);
   }
 
+  /** Walking on foot has begun or ended: the panels make way for the view, and one bar says how to stop. */
+  setWalking(on: boolean): void {
+    this.root.classList.toggle('walking', on);
+    this.root.querySelector<HTMLElement>('.walkbar')!.hidden = !on;
+    this.root.querySelector('.panel')!.classList.remove('open'); // a phone's sheet would keep its share of the screen
+    if (on) {
+      (document.activeElement as HTMLElement | null)?.blur?.(); // or Space would press the button just used
+      this.setWalkLook(false);
+    } else this.on.walkStick(0, 0);
+  }
+
+  /** While walking: whether the mouse has been captured for looking round. The bar says what to do next. */
+  setWalkLook(captured: boolean): void {
+    const touch = matchMedia('(hover: none), (pointer: coarse)').matches;
+    this.root.querySelector('.walkbar span')!.textContent = touch
+      ? 'Drag to look · stick walks'
+      : captured
+        ? 'Mouse looks · WASD walks · Shift runs · Esc stops'
+        : 'Click the view to look round · WASD walks · Esc stops';
+  }
+
   /** The diagnostics line: this is an early build, and the numbers are worth having in view. */
   setStats(text: string): void {
     this.root.querySelector('.stats')!.textContent = text;
@@ -414,7 +479,7 @@ export class Ui {
     if (!tip.dataset.model) tip.hidden = !part || node === this.selected || matchMedia('(hover: none)').matches;
     if (part) {
       tip.querySelector('b')!.textContent = part.name;
-      tip.querySelector('span')!.textContent = part.summary;
+      tip.querySelector('span')!.textContent = part.summary + (this.model.walker ? ' Double-click to walk as him.' : '');
       this.placeTip();
     }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => b.classList.toggle('hot', b.dataset.node === node));
@@ -449,7 +514,7 @@ export class Ui {
     tip.dataset.model = model.id;
     tip.hidden = matchMedia('(hover: none)').matches;
     tip.querySelector('b')!.textContent = model.name;
-    tip.querySelector('span')!.textContent = 'Click to open';
+    tip.querySelector('span')!.textContent = model.walker ? 'Click to open · double-click to walk as him' : 'Click to open';
     this.placeTip();
   }
 

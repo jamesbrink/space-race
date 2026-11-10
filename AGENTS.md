@@ -83,6 +83,7 @@ src/
   viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
+  viewer/walk.ts                      walking the site on foot: footing, collision, input, the eye camera
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -167,6 +168,31 @@ the two; `InkPass` draws the line from the frame's depth buffer. So anything put
 be handed to `Looks.add` (models are, in `dress`; a setting's floor and scenery are, in
 `applySetting`), and code that changes a real material after it is made (the cutaway) calls
 `Looks.sync`. Keep reading materials by name: the twin has the same one.
+
+## Walking
+
+The Walk button in the Crew section, or a double-click on the pilot from anywhere, puts the camera
+at his eyes and lets you walk the site (`viewer/walk.ts`; `sr.stage.enterWalk()`, `sr.stage.walk`).
+Escape or the Exit walk bar ends it and the camera flies back to the Crew section. First person
+only: the pilot is a posed figure with no skeleton, so there is nobody to show walking, and his
+model is hidden while you are him.
+
+- **The world is solid as posed.** `Solids` asks each mesh on show (pad, vehicle, surroundings,
+  a setting's scenery; not instanced scrub) through its world matrix, with a `three-mesh-bvh`
+  hierarchy built per geometry the first time something comes near. Nothing is baked, so a
+  platform that has slid or a truck that has driven off is solid where it is this frame.
+- **Feet and body are separate.** Rays straight down find the floor: anything up to `STEP`
+  (0.3 m) above the feet is stepped onto, further down than that is a fall. A capsule from
+  `STEP` above the feet to the top of the helmet is pushed sideways out of whatever it meets. So
+  a model's stairs need risers of 0.3 m or less, and a ladder cannot be climbed.
+- **The terrain is a level, not a mesh.** It lies at `GROUND_Y`, everywhere, and cannot be
+  fallen through. It is sunk under the pad only for the depth buffer's sake, so from down there
+  a riser is measured from y = 0: the hardstand's edge is not a kerb.
+- **The orbiting camera's rules are off while walking** (`Stage.stepWalk`): no drift, bounds,
+  picking or `fitDepth`. The walker sets its own near plane from the nearest surface (5 cm
+  indoors, up to 30 cm in the open) and a wider lens, which the backdrop's camera copies.
+- Eye height and stature are measured off the crew model (`Helmet_Eyes`, the figure's bounds), so
+  they are as good as `mark-iv-suit.md` says the model is.
 
 ## Levels of detail
 

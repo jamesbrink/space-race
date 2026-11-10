@@ -22,7 +22,8 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "three": "^0.187.0"
+    "three": "^0.187.0",
+    "three-mesh-bvh": "0.9.16"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",

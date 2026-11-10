@@ -145,6 +145,12 @@ export interface ModelDef {
   views: ViewDef[];
   /** The model has internals and flagged shells (srlib.mark_shells): offer a cutaway. */
   cutaway?: boolean;
+  /**
+   * This model is a person the site can be walked as (viewer/walk.ts): the walk starts where the
+   * figure stands, at its eye height. `eyes` names the node whose middle is the eye level; without
+   * it a usual fraction of the figure's height is used.
+   */
+  walker?: { eyes?: string };
   /** Where the model stands in the flight's one scene, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */

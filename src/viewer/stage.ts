@@ -12,6 +12,7 @@ import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
+import { EYE_FRACTION, Walker } from './walk';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|concrete|suit|galvanised)/;
@@ -89,6 +90,17 @@ export class Stage {
   onHoverWindow: (over: boolean) => void = () => {};
   /** The reset key (0): back to where the section starts. */
   onHome: () => void = () => {};
+  /**
+   * Walking on foot is starting (called before anything changes, so the caller can open the
+   * pilot's section first) or has ended (the caller sends the camera somewhere).
+   */
+  onWalk: (on: boolean) => void = () => {};
+  /** While walking: the mouse has been captured for looking round, or let go. */
+  onWalkLook: (captured: boolean) => void = () => {};
+  /** First-person walking (walk.ts). While it is active the orbiting camera's rules are all suspended. */
+  readonly walk: Walker;
+  /** The last tap, for telling a double tap on the pilot. */
+  private tap = { t: 0, x: 0, y: 0, pilot: false };
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -239,6 +251,7 @@ export class Stage {
     // The pick is made when the press starts: by the time it ends the page may have been laid
     // out again (a phone's sheet closes on the press) and the same point is a different part.
     canvas.addEventListener('pointerdown', (e) => {
+      if (this.walk.active) return; // on foot there is nothing to pick: a drag looks round
       if (e.button !== 0) return; // right and middle buttons pan and zoom; they select nothing
       aim(e);
       this.down = { x: e.clientX, y: e.clientY, ...this.pick() };
@@ -247,6 +260,16 @@ export class Stage {
       const down = this.down;
       this.down = null;
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 5) return;
+      // a second tap straight after one on the pilot: walk as him (the first has already been acted on)
+      const last = this.tap;
+      const again = last.pilot && e.timeStamp - last.t < 400 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30;
+      this.tap = {
+        t: e.timeStamp,
+        x: e.clientX,
+        y: e.clientY,
+        pilot: down.model === this.walkerId || (this.def?.id === this.walkerId && down.node !== null),
+      };
+      if (again) return void this.enterWalk();
       if (down.pane) this.lookIn(down.pane.point, down.pane.normal);
       else if (down.model && !down.node) this.onModel(down.model);
       else this.onSelect(down.node);
@@ -261,7 +284,7 @@ export class Stage {
       const el = e.target as HTMLElement;
       const typing = el.matches?.('input, textarea, select, [contenteditable]');
       const widget = key.startsWith('arrow') && el.closest?.('[role=tablist], input');
-      if (e.metaKey || e.ctrlKey || e.altKey || typing || widget) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || typing || widget || this.walk.active) return; // on foot the keys are the walker's
       if (key === '0' || key === 'home') return this.onHome(); // 0, since a laptop has no Home key
       if (!KEYS.has(key)) return;
       e.preventDefault();
@@ -288,9 +311,27 @@ export class Stage {
     };
     watchRatio();
 
+    this.walk = new Walker(canvas, this.camera, {
+      solids: () => [
+        ...this.staged.flatMap((s, i) => (this.defs[i]!.walker ? [] : [s.shown])),
+        ...(this.surroundings ? [this.surroundings] : []),
+        ...this.setting.scenery,
+      ],
+      // the terrain is one level plane (cape.ts): its height is asked for, not its triangles
+      ground: () => this.setting.floor?.position.y ?? null,
+      reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
+      leave: () => this.exitWalk(),
+      locked: (on) => this.onWalkLook(on),
+    });
+
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
     this.renderer.setAnimationLoop(() => this.frame());
+  }
+
+  /** The model the site can be walked as (ModelDef.walker), if the flight has one. */
+  get walkerId(): string | null {
+    return this.defs.find((m) => m.walker)?.id ?? null;
   }
 
   private get def(): ModelDef | null {
@@ -958,16 +999,19 @@ export class Stage {
       if (f.t >= 1) this.flyTo = null;
     }
     this.settle(dt);
-    this.drive(dt);
-    this.fitDetail();
-    this.controls.update(dt);
-    this.keepInBounds();
-    this.keepAboveGround();
-    if (this.pointerDirty && !this.down) {
-      this.pointerDirty = false;
-      this.setHover(this.pick());
+    if (this.walk.active) this.stepWalk(dt);
+    else {
+      this.drive(dt);
+      this.fitDetail();
+      this.controls.update(dt);
+      this.keepInBounds();
+      this.keepAboveGround();
+      if (this.pointerDirty && !this.down) {
+        this.pointerDirty = false;
+        this.setHover(this.pick());
+      }
+      this.fitDepth();
     }
-    this.fitDepth();
     const { backdrop } = this.setting;
     if (!this.frozen) {
       backdrop.update(dt);
@@ -975,7 +1019,8 @@ export class Stage {
     }
     backdrop.scene.visible = !this.frozen;
     backdrop.camera.quaternion.copy(this.camera.quaternion);
-    if (backdrop.camera.aspect !== this.camera.aspect) {
+    if (backdrop.camera.aspect !== this.camera.aspect || backdrop.camera.fov !== this.camera.fov) {
+      backdrop.camera.fov = this.camera.fov; // the walker's lens is wider, and the sky must turn with the ground
       backdrop.camera.aspect = this.camera.aspect;
       backdrop.camera.updateProjectionMatrix();
     }
@@ -995,6 +1040,71 @@ export class Stage {
     this.drawn++;
     this.composer.render(this.sinceDrawn);
     this.sinceDrawn = 0;
+  }
+
+  /**
+   * Get down and walk: the camera becomes the pilot's eyes, where he stands, and the keys and
+   * the mouse become his (walk.ts). His own figure is put away while you are him. The eye height
+   * is the model's: the middle of its eyes above its soles (mark-iv-suit.md: a 1.803 m man,
+   * estimated, on a 2.8 cm heel), which comes to about 1.72 m.
+   */
+  enterWalk(): boolean {
+    const at = this.defs.findIndex((m) => m.walker);
+    if (at < 0 || !this.root || this.walk.active) return false;
+    this.onWalk(true);
+    const pilot = this.staged[at]!;
+    this.scene.updateMatrixWorld(true);
+    const feet = pilot.group.getWorldPosition(new THREE.Vector3());
+    const height = new THREE.Box3().setFromObject(pilot.full).max.y - feet.y;
+    const named = this.defs[at]!.walker?.eyes;
+    const eyes = named ? pilot.full.getObjectByName(named) : undefined;
+    const middle = (o: THREE.Object3D) => new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+    const eye = eyes ? middle(eyes).y - feet.y : height * EYE_FRACTION;
+    // you look where he is looking: his eyes are in the front of his helmet. A figure with no
+    // eyes faces what he came out to, the first of the flight's other models.
+    const helmet = pilot.full.getObjectByName('Helmet');
+    const toward =
+      eyes && helmet
+        ? middle(eyes).sub(middle(helmet)).setY(0).setLength(10).add(feet)
+        : (this.staged.find((_, i) => i !== at)?.group ?? this.root).getWorldPosition(new THREE.Vector3());
+    this.flyTo = null;
+    this.following = null;
+    this.held.clear();
+    this.down = null;
+    this.setHover(NOTHING);
+    this.highlight(null, null);
+    this.controls.enabled = false;
+    pilot.group.visible = false;
+    this.renderer.shadowMap.needsUpdate = true; // his shadow goes with him
+    this.dirty = true;
+    this.walk.start(feet, toward, eye, height);
+    return true;
+  }
+
+  /** Stop walking: the pilot is back where he stood, and the orbiting camera takes over from where the walker was looking. */
+  exitWalk(): void {
+    if (!this.walk.active) return;
+    this.walk.stop();
+    const pilot = this.staged[this.defs.findIndex((m) => m.walker)];
+    if (pilot) pilot.group.visible = true;
+    this.controls.enabled = true;
+    // orbit a point a few steps ahead, so the flight back starts from this very view
+    this.controls.target.copy(this.camera.position).add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
+    this.renderer.shadowMap.needsUpdate = true;
+    this.dirty = true;
+    this.onWalk(false);
+  }
+
+  /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
+  private stepWalk(dt: number): void {
+    if (this.walk.update(dt)) this.dirty = true;
+    this.fitDetail();
+    // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting
+    const far = this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.floor ? 9000 : 10);
+    if (Math.abs(far - this.camera.far) > far * 0.02) {
+      this.camera.far = far;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   /** For tests: nothing moves unless the camera is moved, and the sky (stars are single pixels) is hidden. */
