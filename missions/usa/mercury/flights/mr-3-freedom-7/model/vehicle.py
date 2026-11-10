@@ -61,21 +61,25 @@ SHIELD_EDGE = 2.5  # height of the shield's cylindrical edge
 CONE_HALF_ANGLE = math.radians(20.0)
 NECK_R = 16.0  # 32 in recovery compartment
 CONE_H = (SHIELD_R - NECK_R) / math.tan(CONE_HALF_ANGLE)  # 58.38
-CYL_H = 20.0
-CAN_H = 24.0
-CAN_R0, CAN_R1 = 15.0, 12.5
+# Stations along the axis are measured from the plane of maximum diameter, McDonnell's Z104.50
+# (SEDR 104, Figure 1-3): subtract 104.50 from a Z station to get a height here.
 Z_CYL = CONE_H
-Z_CAN = CONE_H + CYL_H
-Z_CAN_TOP = Z_CAN + CAN_H
+Z_CAN = 81.14  # top of the recovery compartment (CR-649 Figure 1 and Hammack & Heberlig Figure 17)
+Z_CAN_TOP = 104.57  # Z209.07
+CYL_H = Z_CAN - Z_CYL  # 22.76
+CAN_H = Z_CAN_TOP - Z_CAN
+CAN_R0, CAN_R1 = 12.0, 10.0  # 24 in tapering to 20 in (CR-649)
 SHIELD_CAP = SHIELD_SPHERE_R - math.sqrt(SHIELD_SPHERE_R**2 - SHIELD_R**2)  # 9.20
 Z_APEX = -(SHIELD_EDGE + SHIELD_CAP)
 Z_SPHERE_C = Z_APEX + SHIELD_SPHERE_R
-Z_RETRO_BOTTOM = -27.2
-Z_TRUSS_TOP = 196.0
-Z_MOTOR = 205.0
-Z_MOTOR_TOP = 268.0
+Z_RETRO_BOTTOM = -27.0  # Z77.50
+TRUSS_BAYS = (106.08, 137.03, 167.98, 198.93)  # Z210.58, Z241.53, Z272.48, Z303.43
+Z_TRUSS_TOP = TRUSS_BAYS[-1]
+Z_MOTOR = 202.0  # bottom of the motor case, above its nozzle manifold: read off the figure
+Z_MOTOR_TOP = 249.55  # Z354.05
+Z_MOTOR_CAP = 253.55  # Z358.05: the domed cap the spike stands on
 Z_BOOSTER_BASE = -redstone_mrlv.LENGTH  # the Redstone's fin trailing edges
-Z_TOP = 284.0  # tip of the aerodynamic spike: 311.2 in (7.90 m) above the retro nozzles
+Z_TOP = 284.55  # Z389.05, tip of the aerodynamic spike: 311.55 in (7.913 m) above the retro nozzles
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
 SHELLS = (
@@ -164,12 +168,12 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "underlay": m("structure-dark", (0.02, 0.02, 0.022), 0.6, 0.7, double_sided=True),
         "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.62),
         "beryllium": m("heatsink-beryllium", (0.47, 0.46, 0.44), 1.0, 0.38),
-        "titanium": m("titanium", (0.52, 0.50, 0.47), 1.0, 0.45, double_sided=True),
-        "aluminium": m("aluminium", (0.78, 0.78, 0.77), 1.0, 0.32),
+        "titanium": m("titanium", (0.46, 0.44, 0.42), 1.0, 0.5, double_sided=True),
+        "aluminium": m("aluminium", (0.62, 0.62, 0.61), 1.0, 0.45),
         "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
         "strap": m("strap-steel", (0.62, 0.61, 0.58), 1.0, 0.3, double_sided=True),
         "nozzle": m("nozzle", (0.09, 0.085, 0.08), 0.9, 0.55, double_sided=True),
-        "tower": m("tower-red", (0.40, 0.022, 0.012), 0.0, 0.5),
+        "tower": m("tower-red", (0.40, 0.022, 0.012), 0.0, 0.64),
         "dielectric": m("dielectric-window", (0.62, 0.59, 0.50), 0.0, 0.6),
         # the viewer swaps anything named glass for a transparent, reflective material; what is
         # seen through it is the unlit cabin, stood in for by window-void
@@ -182,7 +186,7 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "gauge": m("gauge-face", (0.02, 0.02, 0.02), 0.0, 0.25, emission=(0.55, 1.0, 0.65), emission_strength=0.35),
         "lens": m("lens", (0.01, 0.01, 0.015), 0.0, 0.03),
         # what a cutaway shows
-        "suit": m("suit-aluminized-nylon", (0.78, 0.79, 0.80), 1.0, 0.5),
+        "suit": m("suit-aluminized-nylon", (0.66, 0.67, 0.69), 0.6, 0.6),
         "helmet": m("helmet-fibreglass-white", (0.85, 0.85, 0.82), 0.0, 0.35),
         "fabric": m("fabric-nylon", (0.80, 0.76, 0.66), 0.0, 0.9),
         "equipment": m("equipment-grey", (0.13, 0.14, 0.15), 0.3, 0.55),
@@ -414,11 +418,11 @@ def build_crew_cabin(M) -> None:
     couch = MeshBuilder()
     width = 21.0
     for (y0, z0), (y1, z1), thick in (
-        ((-27, 9.5), (-17, 5.5), 2.5),  # head rest
-        ((-17, 5.5), (5, 5.0), 3.0),  # back
-        ((5, 5.0), (15, 20.5), 2.5),  # thighs
-        ((15, 20.5), (27, 18.0), 2.0),
-    ):  # calves
+        ((-29, 9.5), (-19, 5.5), 2.5),  # head rest
+        ((-19, 5.5), (3, 5.0), 3.0),  # back
+        ((3, 5.0), (12.3, 19.6), 2.5),  # thighs
+        ((12.3, 19.6), (21, 18.2), 2.0),  # calves
+    ):
         a, b = Vector((0, y0, z0)), Vector((0, y1, z1))
         d = b - a
         rot = Matrix.Rotation(math.atan2(d.z, d.y), 4, "X")
@@ -456,26 +460,27 @@ def build_cabin_contents(M, g) -> None:
     # torso and head, on his back, head toward -Y
     # (he is pressed a little way into the couch, as the couch was moulded to him)
     suit.loft(
-        [P(0, -16.5, 10.6), P(0, -11, 10.9), P(0, -4, 10.4), P(0, 2.5, 9.8)], [R(6.6, 4.3), R(7.6, 4.8), R(7.0, 4.6), R(6.6, 4.4)], 28, ref=along
+        [P(0, -18.5, 10.6), P(0, -13, 10.9), P(0, -6, 10.4), P(0, 0.5, 9.8)], [R(6.6, 4.3), R(7.6, 4.8), R(7.0, 4.6), R(6.6, 4.4)], 28, ref=along
     )
-    helmet.lathe(prof(arc_profile(0, 0, 5.7, -90, 90, 14)), 32, matrix=Matrix.Translation(P(0, -22.3, 12.6)))
-    gear.lathe(prof([(4.4, 0.0), (4.4, 1.0), (3.6, 1.0)]), 28, matrix=frame(P(0, -17.6, 11.5), (0, -1, 0.15)))  # neck ring
+    helmet.lathe(prof(arc_profile(0, 0, 5.7, -90, 90, 14)), 32, matrix=Matrix.Translation(P(0, -24.3, 12.6)))
+    gear.lathe(prof([(4.4, 0.0), (4.4, 1.0), (3.6, 1.0)]), 28, matrix=frame(P(0, -19.6, 11.5), (0, -1, 0.15)))  # neck ring
     for sx in (-1, 1):
-        # thighs up the couch, shins along the top of it
+        # thighs up the couch, shins along the top of it: knees drawn up tight, because a man
+        # 71 in tall lies across a cabin 63 in wide
         suit.loft(
-            [P(sx * 5.8, 2.0, 9.4), P(sx * 6.0, 8.5, 15.4), P(sx * 6.0, 14.6, 23.6), P(sx * 6.0, 21.0, 22.2), P(sx * 6.0, 26.5, 20.8)],
+            [P(sx * 5.8, 0.0, 9.4), P(sx * 5.9, 4.3, 16.0), P(sx * 6.0, 8.5, 22.5), P(sx * 6.0, 14.2, 21.8), P(sx * 6.0, 20.0, 21.0)],
             [R(3.4), R(3.2), R(2.9), R(2.5), R(2.2)],
             18,
             ref=along,
         )
         gear.loft(
-            [P(sx * 6.0, 25.2, 21.2), P(sx * 6.0, 28.2, 22.2), P(sx * 6.0, 28.8, 25.8)], [R(3.0), R(2.9), R(2.1)], 14, ref=along, caps=(False, True)
+            [P(sx * 6.0, 18.8, 21.3), P(sx * 6.0, 21.8, 22.2), P(sx * 6.0, 22.4, 25.6)], [R(3.0), R(2.9), R(2.1)], 14, ref=along, caps=(False, True)
         )  # boots, pulled on over the shins
         # arms forward to the controls: attitude stick under the right hand, abort handle under the left
-        suit.loft([P(sx * 8.6, -13.0, 11.8), P(sx * 11.4, -5.0, 11.2), P(sx * 10.6, 2.5, 15.6)], [R(2.4), R(2.1), R(1.8)], 16, ref=along)
-        gear.loft([P(sx * 10.55, 3.4, 16.2), P(sx * 10.4, 5.4, 17.6)], [R(2.0, 1.6), R(1.6, 1.3)], 12, ref=along)  # gloves
-        gear.tube(P(sx * 10.4, 5.0, 11.2), P(sx * 10.4, 5.0, 16.4), 0.55 * IN, 10)
-        gear.lathe(prof(arc_profile(0, 0, 1.0, -90, 90, 6)), 12, matrix=Matrix.Translation(P(sx * 10.4, 5.0, 16.9)))
+        suit.loft([P(sx * 8.6, -15.0, 11.8), P(sx * 11.4, -7.0, 11.2), P(sx * 10.6, 0.5, 15.6)], [R(2.4), R(2.1), R(1.8)], 16, ref=along)
+        gear.loft([P(sx * 10.55, 1.4, 16.2), P(sx * 10.4, 3.4, 17.6)], [R(2.0, 1.6), R(1.6, 1.3)], 12, ref=along)  # gloves
+        gear.tube(P(sx * 10.4, 3.0, 11.2), P(sx * 10.4, 3.0, 16.4), 0.55 * IN, 10)
+        gear.lathe(prof(arc_profile(0, 0, 1.0, -90, 90, 6)), 12, matrix=Matrix.Translation(P(sx * 10.4, 3.0, 16.9)))
     # environmental control, electrics and recording: boxes and bottles along the cabin floor
     for x, y, z, sx_, sy_, sz_ in (
         (-17.0, -6.0, 3.2, 9, 12, 5),
@@ -483,7 +488,7 @@ def build_cabin_contents(M, g) -> None:
         (0.0, 19.5, 4.2, 14, 9, 7),
         (-19.0, 9.0, 4.0, 7, 9, 6),
         (19.5, 9.5, 5.0, 6, 8, 8),
-        (0.0, -27.5, 4.6, 12, 5, 6),
+        (0.0, -27.5, 1.2, 12, 5, 2.4),
     ):
         gear.box((sx_ * IN, sy_ * IN, sz_ * IN), Matrix.Translation(P(x, y, z + sz_ / 2)))
     for x, y in ((-10.5, 21.0), (10.5, 21.0)):  # oxygen: two spherical bottles, primary and reserve
@@ -495,6 +500,13 @@ def build_cabin_contents(M, g) -> None:
     gear.build("CrewCabin_Equipment", M["equipment"], g, sharp_angle=35)
     bottles.build("CrewCabin_OxygenBottles", M["bottle"], g)
     bag.build("CrewCabin_LandingBag", M["fabric"], g)
+    # nothing in the cabin may reach the pressure vessel: the clearance check cannot see a boot
+    # through the hull, because the two surfaces cross instead of lying together
+    for name in ("CrewCabin_Pilot", "CrewCabin_PilotHelmet", "CrewCabin_Equipment", "CrewCabin_OxygenBottles", "CrewCabin_Couch"):
+        for v in bpy.data.objects[name].data.vertices:
+            x, y, z = (c / IN for c in v.co)
+            room = VESSEL.r(z) - math.hypot(x, y)
+            assert room > 0.3, f"{name} is {-room:.1f} in outside the pressure vessel at ({x:.1f}, {y:.1f}, {z:.1f}) in"
 
 
 def build_recovery_compartment(M) -> None:
@@ -565,7 +577,7 @@ def build_antenna_canister(M) -> None:
         32,
         matrix=Matrix.Translation((0, -5.5 * IN, 0)),
     )
-    fit.box((11.0 * IN, 7.5 * IN, 0.25 * IN), Matrix.Translation((0, 5.0 * IN, (Z_CAN_TOP + 0.55) * IN)) @ Matrix.Rotation(deg(5), 4, "X"))
+    fit.box((9.0 * IN, 6.0 * IN, 0.25 * IN), Matrix.Translation((0, 4.0 * IN, (Z_CAN_TOP + 0.55) * IN)) @ Matrix.Rotation(deg(5), 4, "X"))
     for x in (-4.0, 4.0):
         fit.tube((x * IN - 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), (x * IN + 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), 0.3 * IN, 10)
     mb.build("Antenna_Housing", M["beryllium_shingle"], g, sharp_angle=30)
@@ -600,7 +612,7 @@ def build_escape_tower(M) -> None:
         return Vector((r * math.cos(legs[i % 3]), r * math.sin(legs[i % 3]), z)) * IN
 
     truss, steel = MeshBuilder(), MeshBuilder()
-    levels = [Z_CAN_TOP + 4.0, 136.0, 166.0, Z_TRUSS_TOP]  # no cross-members until clear of the canister
+    levels = list(TRUSS_BAYS)  # no cross-members until clear of the canister
     for i in range(3):
         truss.tube(node(i, Z_CAN + 1.0), node(i, Z_TRUSS_TOP), 0.8 * IN, 14)
         for z in levels:
@@ -614,25 +626,32 @@ def build_escape_tower(M) -> None:
             (3.2 * IN, 2.4 * IN, 3.0 * IN),
             frame(node(i, Z_CAN + 1.2), (math.cos(legs[i]), math.sin(legs[i]), 0)) @ Matrix.Rotation(math.pi / 2, 4, "Y"),
         )
-    truss.lathe(prof([(0.0, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP + 0.6), (5.0, Z_MOTOR), (0.0, Z_MOTOR)]), 48)
+    truss.lathe(
+        prof(
+            [(0.0, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP + 0.6), (5.2, Z_TRUSS_TOP + 0.6), (5.2, Z_MOTOR), (0.0, Z_MOTOR)]
+        ),
+        48,
+    )
     truss.build("Tower_Truss", M["tower"], g, sharp_angle=35)
     steel.build("Tower_BoltHousings", M["steel"], g, smooth=False)
 
-    # escape motor: 52,000 lbf for one second through three nozzles canted 19 degrees off axis
+    # escape motor: 52,000 lbf for 0.78 s (SEDR 104) through three nozzles canted 19 degrees off axis
     case = [
         (0.0, Z_MOTOR),
         (7.5, Z_MOTOR),
         (7.5, Z_MOTOR_TOP),
-        (6.6, Z_MOTOR_TOP + 3.0),
-        (4.4, Z_MOTOR_TOP + 6.5),
-        (1.6, Z_MOTOR_TOP + 9.0),
-        (0.7, Z_MOTOR_TOP + 9.6),
+        (7.2, Z_MOTOR_TOP + 1.2),
+        (6.2, Z_MOTOR_CAP - 1.2),
+        (5.0, Z_MOTOR_CAP),
+        (2.2, Z_MOTOR_CAP + 0.6),
+        (1.3, Z_MOTOR_CAP + 2.4),
+        (0.7, Z_MOTOR_CAP + 3.2),
         (0.7, Z_TOP - 0.4),
         (0.0, Z_TOP),
     ]
     lathe_obj("Tower_EscapeMotor", prof(case), M["tower"], g, segs=64, sharp_angle=30)
     bands = MeshBuilder()
-    for z in (Z_MOTOR + 1.0, Z_MOTOR + 30.0, Z_MOTOR_TOP - 1.0):
+    for z in (Z_MOTOR + 1.0, (Z_MOTOR + Z_MOTOR_TOP) / 2, Z_MOTOR_TOP - 1.0):
         bands.lathe(prof([(7.5, z - 0.6), (7.7, z - 0.4), (7.7, z + 0.4), (7.5, z + 0.6)]), 64)
     bands.build("Tower_MotorBands", M["steel"], g)
     if interior():  # the solid-propellant grain that the case is wrapped round

@@ -39,6 +39,11 @@ const GLASS = new THREE.MeshPhysicalMaterial({
   depthWrite: false,
 });
 
+/** A helmet visor: the same pane, but the face behind it is in the helmet's shade and the sky is on the glass. */
+const VISOR = GLASS.clone();
+VISOR.name = 'glass-visor';
+VISOR.opacity = 0.5;
+
 /** Put every part of a model back where it was built. */
 function rest(object: THREE.Object3D): void {
   object.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
@@ -76,7 +81,8 @@ export class Stage {
   private hovered: string | null = null;
   private selected: string | null = null;
   private pointerDirty = false;
-  private down: { x: number; y: number } | null = null;
+  /** A press in progress: where it began and what was under it then. */
+  private down: { x: number; y: number; node: string | null } | null = null;
   private flyTo: { target: THREE.Vector3; position: THREE.Vector3; t: number } | null = null;
   /** What the camera was last sent to look at; cleared when the user moves it. */
   private following: { view?: string; part?: string } | null = null;
@@ -90,13 +96,16 @@ export class Stage {
   private readonly bounds = new THREE.Sphere();
   private shadowFit = -1;
   private loadToken = 0;
+  /** How much of the bottom of the canvas the controls cover, 0 to 1: views are framed above it. */
+  private inset = 0.26;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    // nothing that casts a shadow moves by itself: the map is redrawn when something is changed
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.localClippingEnabled = true;
 
     // models are Draco-compressed; the decoder is served from public/draco
@@ -158,40 +167,72 @@ export class Stage {
       this.pointerDirty = e.pointerType === 'mouse'; // a finger has no hover
     });
     canvas.addEventListener('pointerleave', () => this.setHover(null));
-    canvas.addEventListener('pointerdown', (e) => (this.down = { x: e.clientX, y: e.clientY }));
-    canvas.addEventListener('pointerup', (e) => {
-      const moved = this.down ? Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) : 99;
-      this.down = null;
+    // The pick is made when the press starts: by the time it ends the page may have been laid
+    // out again (a phone's sheet closes on the press) and the same point is a different part.
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return; // right and middle buttons pan and zoom; they select nothing
       aim(e);
-      if (moved < 5) this.onSelect(this.pick());
+      this.down = { x: e.clientX, y: e.clientY, node: this.pick() };
     });
+    canvas.addEventListener('pointerup', (e) => {
+      const down = this.down;
+      this.down = null;
+      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) this.onSelect(down.node);
+    });
+    canvas.addEventListener('pointercancel', () => (this.down = null));
+    // the pixel ratio changes when the window moves to another display or the page is zoomed
+    const watchRatio = () => {
+      matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change', watchRatio, { once: true });
+      this.resize();
+    };
+    watchRatio();
 
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
-  /** Show one of a flight's models, with whatever it asks to be shown alongside. */
-  async load(flight: Flight, modelId: string, onProgress?: (fraction: number) => void): Promise<void> {
+  /**
+   * Show one of a flight's models, with whatever it asks to be shown alongside.
+   * Resolves to false if a later load() overtook this one: the caller's model is not the one on show.
+   */
+  async load(flight: Flight, modelId: string, onProgress?: (fraction: number) => void): Promise<boolean> {
     const def = flight.models.find((m) => m.id === modelId);
     if (!def) throw new Error(`${flight.id} has no model named ${modelId}`);
     const token = ++this.loadToken;
-    const main = await this.fetch(def.url, onProgress);
-    const extras = await Promise.all(
-      (def.with ?? []).map(async (w) => {
-        const other = flight.models.find((m) => m.id === w.model);
-        if (!other) throw new Error(`${def.id} wants ${w.model}, which ${flight.id} does not have`);
-        const source = await this.fetch(other.url);
-        rest(source);
-        const object = source.clone(true);
-        object.traverse((o) => delete o.userData.home); // clone() turned the vectors into plain objects
-        if (w.exploded) new Exploder(object, other.parts).set(w.exploded);
-        object.position.set(...w.position);
-        object.rotation.y = w.rotationY ?? 0;
-        return object;
-      }),
-    );
-    if (token !== this.loadToken) return; // a later load() overtook this one
+    const others = (def.with ?? []).map((w) => {
+      const other = flight.models.find((m) => m.id === w.model);
+      if (!other) throw new Error(`${def.id} wants ${w.model}, which ${flight.id} does not have`);
+      return { w, other };
+    });
+    // every file is asked for at once, and the bar is the average of them all
+    const fractions = new Array<number>(others.length + 1).fill(0);
+    const progress = (i: number) => (f: number) => {
+      fractions[i] = f;
+      onProgress?.(fractions.reduce((a, b) => a + b, 0) / fractions.length);
+    };
+    const [mainResult, ...extraResults] = await Promise.allSettled([
+      this.fetch(def.url, progress(0)),
+      ...others.map(({ other }, i) => this.fetch(other.url, progress(i + 1))),
+    ]);
+    if (token !== this.loadToken) return false;
+    if (mainResult.status === 'rejected') throw mainResult.reason;
+    const main = mainResult.value;
+    // company that failed to arrive is left out: the model asked for is still worth showing
+    const extras = others.flatMap(({ w, other }, i) => {
+      const result = extraResults[i]!;
+      if (result.status === 'rejected') {
+        console.warn(`${def.id}: shown without ${other.id}:`, result.reason);
+        return [];
+      }
+      rest(result.value);
+      const object = result.value.clone(true);
+      object.traverse((o) => delete o.userData.home); // clone() turned the vectors into plain objects
+      if (w.exploded) new Exploder(object, other.parts).set(w.exploded);
+      object.position.set(...w.position);
+      object.rotation.y = w.rotationY ?? 0;
+      return [object];
+    });
 
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
@@ -218,6 +259,7 @@ export class Stage {
     this.shadowFit = -1;
     this.fitShadows(0);
     this.view(def.home ?? 'all', true);
+    return true;
   }
 
   private fetch(url: string, onProgress?: (fraction: number) => void): Promise<THREE.Object3D> {
@@ -232,7 +274,9 @@ export class Stage {
           return gltf.scene;
         });
       this.loaded.set(url, promise);
+      promise.catch(() => this.loaded.delete(url)); // a failure is not remembered: the next try fetches again
     }
+    void promise.then(() => onProgress?.(1));
     return promise;
   }
 
@@ -247,7 +291,8 @@ export class Stage {
       const shell = Boolean(mesh.userData.shell);
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (mat.name.startsWith('glass')) {
-        mesh.material = shell ? this.shellOf(GLASS) : GLASS;
+        const pane = mat.name.startsWith('glass-visor') ? VISOR : GLASS;
+        mesh.material = shell ? this.shellOf(pane) : pane;
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
         return;
@@ -294,6 +339,7 @@ export class Stage {
       m.side = on ? THREE.DoubleSide : (m.userData.side as THREE.Side);
       m.needsUpdate = true;
     }
+    this.renderer.shadowMap.needsUpdate = true; // the light comes in through the opening
   }
 
   private applySetting(): void {
@@ -312,14 +358,29 @@ export class Stage {
     if (s.floor) this.scene.add(s.floor);
     for (const o of s.scenery) this.scene.add(o);
     this.scene.fog = s.fog;
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  /** Tell the stage how many pixels at the bottom of the canvas the controls cover. */
+  setInset(pixels: number): void {
+    const inset = THREE.MathUtils.clamp(pixels / Math.max(1, this.canvas.clientHeight), 0, 0.5);
+    if (Math.abs(inset - this.inset) < 0.01) return;
+    this.inset = inset;
+    this.refollow();
+  }
+
+  /** Frame again whatever the camera was last sent to: the canvas or the model has changed shape. */
+  private refollow(): void {
+    const snap = !this.flyTo; // a flight under way is sent to the new framing instead of cut short
+    if (this.following?.part) this.focus(this.following.part, snap);
+    else if (this.following?.view) this.view(this.following.view, snap);
   }
 
   setExplode(t: number): void {
     this.exploder?.set(t);
     this.fitShadows(t);
-    // keep looking at what was asked for, until the user takes the camera themselves
-    if (this.following?.part) this.focus(this.following.part, true);
-    else if (this.following?.view) this.view(this.following.view, true);
+    this.renderer.shadowMap.needsUpdate = true;
+    this.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
   }
 
   setAutoRotate(on: boolean): void {
@@ -371,16 +432,17 @@ export class Stage {
     const centreY = named?.centreY ?? (box.min.y + box.max.y) / 2;
     // a wide, low subject (a launch pad) must fit by width as well as by height
     const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect);
-    // the subject fills 70% of the frame's height: the controls sit over the bottom of it
-    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.7;
+    // the subject fills most of the frame above the controls, which sit over the bottom of it
+    const fill = (1 - this.inset) * 0.9;
+    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / fill;
     // a named view looks at the model's own axis; 'all' looks at the middle of everything
     const mid = box.getCenter(new THREE.Vector3());
     const target = named
       ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z)
       : new THREE.Vector3(mid.x, centreY, mid.z);
     const lift = this.setting.floor ? 0.16 : span < 4 ? 0.22 : 0.1;
-    // aim a little under the subject, so it sits in the upper part of the frame, clear of the controls
-    target.y -= span * 0.08;
+    // aim under the subject, so it sits in the middle of the frame that the controls leave clear
+    target.y -= ((span / fill) * this.inset) / 2;
     const from = named?.from ? new THREE.Vector3(...named.from) : new THREE.Vector3(0.82, lift, 0.56);
     const position = target.clone().addScaledVector(from.normalize(), distance);
     this.following = { view: id };
@@ -414,6 +476,7 @@ export class Stage {
     Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   /** Panning cannot carry the orbit point off what is on show: there is nothing out there to look at. */
@@ -480,11 +543,15 @@ export class Stage {
     const w = this.canvas.clientWidth,
       h = this.canvas.clientHeight;
     if (!w || !h) return;
+    // a phone's GPU has four times the pixels to fill per inch and a fraction of the power
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
     this.renderer.setSize(w, h, false);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.refollow(); // a framing made for the old shape no longer fits
   }
 
   private frame(): void {
@@ -528,6 +595,7 @@ export class Stage {
     this.controls.autoRotate = false;
     this.flyTo = null;
     this.view(viewId, true);
+    this.following = null; // an exact pose: a resize must not frame it again
     const offset = this.camera.position.clone().sub(this.controls.target);
     offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(azimuthDeg + nudgeDeg));
     this.camera.position.copy(this.controls.target).add(offset);
@@ -538,6 +606,7 @@ export class Stage {
   pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY, targetX = 0, targetZ = 0): void {
     this.controls.autoRotate = false;
     this.flyTo = null;
+    this.following = null;
     const az = THREE.MathUtils.degToRad(azimuthDeg),
       el = THREE.MathUtils.degToRad(elevationDeg);
     this.controls.target.set(targetX, targetY, targetZ);

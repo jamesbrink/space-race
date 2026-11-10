@@ -20,7 +20,11 @@ from mathutils import Matrix, Vector
 from srlib import IN, TAU, MeshBuilder, Surf, arc_profile, deg, frame, group, interior, lettering, material, prof
 
 BODY_R = 35.0  # 70 in diameter
-LENGTH = 716.5  # base to the spacecraft's heat-shield plane: 59.7 ft
+# Base to the spacecraft's plane of maximum diameter. Derived: the vehicle is 83.38 ft (1000.56 in)
+# tall (TM X-53107, 4.1) and the escape tower's tip is 284.55 in above that plane (SEDR 104,
+# Figure 1-3). Hammack & Heberlig's Figure 17 draws 710.27 in instead; its own total is 4.5 in
+# short of the 83.38 ft its Figure 18 gives, so the booster's report is followed here.
+LENGTH = 716.0
 S_TAIL = 111.24  # top of the tail unit: 9.27 ft (TM X-53107, Figure 4-1)
 S_TANK = S_TAIL + 450.0  # top of the centre unit: 37.50 ft; alcohol tank 18.8 ft over LOX tank 16.83 ft
 S_AFT = 708.0  # top of the booster, 59.00 ft (Figure 4-1). The aft section is drawn as 139.64 in,
@@ -28,7 +32,7 @@ S_AFT = 708.0  # top of the booster, 59.00 ft (Figure 4-1). The aft section is d
 AFT_LOWER = 42.16  # aft unit proper: nitrogen spheres, antennas, receivers
 INSTRUMENT = 53.66  # pressurised instrument compartment, above it; ballast section above that
 ADAPTER_TOP_R = 36.6  # just inside the capsule's 74.5 in heat shield
-FIN_SPAN = 144.0  # tip to tip: 12 ft, from secondary sources on the Redstone missile; no primary figure found
+FIN_SPAN = 152.0  # across the air rudders' tips (Hammack & Heberlig, Figure 17)
 FIN_ROOT, FIN_TIP = 100.0, 38.0  # chords
 NOZZLE_EXIT_R = 16.5
 
@@ -45,6 +49,9 @@ SHELLS = (
     "AftUnit_Bulkheads",
     "AftUnit_InstrumentCompartment",
     "CenterUnit_Tanks",
+    "CenterUnit_Band",
+    "CenterUnit_InnerWall",
+    "AftUnit_InnerWall",
     "CenterUnit_Fasteners",
     "CenterUnit_Conduits",
     "CenterUnit_TankDomes",
@@ -70,7 +77,9 @@ def materials() -> dict:
         "black": m("paint-booster-black", (0.018, 0.018, 0.02), 0.0, 0.5),
         "red": m("paint-booster-red", (0.45, 0.02, 0.015), 0.0, 0.5, double_sided=True),
         "inner": m("aluminium-structure", (0.55, 0.56, 0.55), 1.0, 0.5, double_sided=True),
-        "alu": m("aluminium", (0.78, 0.78, 0.77), 1.0, 0.32),
+        "alu": m("aluminium", (0.62, 0.62, 0.61), 1.0, 0.45),
+        # the inside of a skin: unpolished, and what the cutaway shows most of
+        "wall": m("aluminium-inner", (0.50, 0.51, 0.50), 0.9, 0.7),
         # sheet fittings on the outside: weathered, or they mirror the sky and read as glass
         "sheet": m("aluminium-sheet", (0.56, 0.57, 0.57), 0.9, 0.66),
         "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
@@ -79,7 +88,7 @@ def materials() -> dict:
         "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.62),
         # what a cutaway shows
         "equipment": m("equipment-grey", (0.13, 0.14, 0.15), 0.3, 0.55),
-        "ballast": m("ballast-steel", (0.20, 0.19, 0.18), 1.0, 0.6),
+        "ballast": m("ballast-steel", (0.34, 0.33, 0.31), 0.9, 0.62),
         "liner": m("chamber-liner", (0.34, 0.24, 0.18), 1.0, 0.45, double_sided=True),
     }
 
@@ -99,11 +108,12 @@ def _reuse(mats: dict) -> dict:
     return out
 
 
-def _quartered(mb_a: MeshBuilder, mb_b: MeshBuilder, r: float, z0: float, z1: float, phase: float, off=0.0) -> None:
-    """Roll pattern: four quadrants, alternating, so a camera can read the vehicle's roll."""
-    for q in range(4):
+def _banded(mb_a: MeshBuilder, mb_b: MeshBuilder, r: float, z0: float, z1: float, phase: float, count: int = 4) -> None:
+    """Roll pattern: `count` panels round the body, alternating, so a camera can read the vehicle's roll."""
+    arc = TAU / count
+    for q in range(count):
         mb = mb_a if q % 2 == 0 else mb_b
-        mb.lathe(prof([(r + off, z0), (r + off, z1)]), 24, arc=(phase + q * TAU / 4, phase + (q + 1) * TAU / 4))
+        mb.lathe(prof([(r, z0), (r, z1)]), max(2, 96 // count), arc=(phase + q * arc, phase + (q + 1) * arc))
 
 
 def _rivet_ring(mb: MeshBuilder, r: float, z: float, count: int = 96) -> None:
@@ -201,12 +211,17 @@ def build(base_z: float, font=None) -> None:
     # missile this unit left with the warhead; on the MRLV it is bolted to the tanks for good.
     g = group("RedstoneAftUnit")
     white, black, rivets = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    white.lathe(prof([(BODY_R, up(S_TANK)), (BODY_R, up(S_TANK + AFT_LOWER))]), 128)
-    _quartered(white, black, BODY_R, up(S_TANK + AFT_LOWER), up(S_AFT), deg(45))
+    # Roll pattern, read off the liftoff photograph (MR-3 Postlaunch Report, Figure 3.2-1): narrow
+    # upright stripes the height of the unit, with a row of checks at top and bottom where the
+    # colours swap. Sixteen stripes is a count from that photograph, not a drawing.
+    stripes, check = 16, 14.0
+    _banded(black, white, BODY_R, up(S_TANK), up(S_TANK + check), 0.0, stripes)
+    _banded(white, black, BODY_R, up(S_TANK + check), up(S_AFT - check), 0.0, stripes)
+    _banded(black, white, BODY_R, up(S_AFT - check), up(S_AFT), 0.0, stripes)
     for s in (S_TANK + 1.5, S_TANK + AFT_LOWER, S_TANK + AFT_LOWER + INSTRUMENT, S_AFT - 1.5):
         _rivet_ring(rivets, BODY_R, up(s))
     doors = MeshBuilder()
-    for t in (deg(90), deg(270)):  # instrument compartment access doors, on the white quadrants
+    for t in (deg(90), deg(270)):  # instrument compartment access doors
         doors.box((16 * IN, 22 * IN, 0.25 * IN), body.frame(t, up(S_TANK + AFT_LOWER + INSTRUMENT / 2), 0.0))
     for t in (deg(0), deg(180)):
         doors.box((12 * IN, 12 * IN, 0.25 * IN), body.frame(t, up(S_TANK + 21), 0.0))
@@ -225,6 +240,10 @@ def build(base_z: float, font=None) -> None:
     doors.build("AftUnit_AccessDoors", M["white"], g, smooth=False)
     rivets.build("AftUnit_Fasteners", M["bolt"], g)
     caps.build("AftUnit_Bulkheads", M["inner"], g)
+    # the skin's inner face, standing off it: fittings sunk through the skin end behind this
+    wall = MeshBuilder()
+    wall.lathe(prof([(BODY_R - 0.9, up(S_TANK + 0.3)), (BODY_R - 0.9, up(S_AFT))]), 96, flip=True)
+    wall.build("AftUnit_InnerWall", M["wall"], g, sharp_angle=None)
     if interior():
         z0, z1 = S_TANK + AFT_LOWER, S_TANK + AFT_LOWER + INSTRUMENT
         can = MeshBuilder()  # the pressurised instrument compartment: a drum inside the skin
@@ -266,19 +285,30 @@ def build(base_z: float, font=None) -> None:
     # Alcohol tank above, liquid oxygen below; the tank walls are the airframe.
     g = group("RedstoneCenterUnit")
     skin, rivets, fit = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    skin.lathe(prof([(BODY_R, up(S_TAIL)), (BODY_R, up(S_TANK))]), 128)
+    # a dark band round the tanks, 59% of the way up them in the liftoff photograph
+    band0, band1 = S_TAIL + 261.0, S_TAIL + 269.0
+    skin.lathe(prof([(BODY_R, up(S_TAIL)), (BODY_R, up(band0))]), 128)
+    skin.lathe(prof([(BODY_R, up(band1)), (BODY_R, up(S_TANK))]), 128)
+    band = MeshBuilder()
+    band.lathe(prof([(BODY_R, up(band0)), (BODY_R, up(band1))]), 128)
+    band.build("CenterUnit_Band", M["black"], g, sharp_angle=None)
+    wall = MeshBuilder()  # the tank wall's inner face: the conduits' and ports' roots end behind it
+    wall.lathe(prof([(BODY_R - 0.8, up(S_TAIL)), (BODY_R - 0.8, up(S_TANK))]), 96, flip=True)
+    wall.build("CenterUnit_InnerWall", M["wall"], g, sharp_angle=None)
     for s in range(int(S_TAIL) + 2, int(S_TANK), 47):  # skin rings
         _rivet_ring(rivets, BODY_R, up(s), 72)
     _rivet_ring(rivets, BODY_R, up(S_TANK - 2), 72)
     dome = 14.0
     caps = MeshBuilder()
-    top = [((BODY_R - 0.3) * math.cos(a), up(S_TANK - dome - 0.5) + dome * math.sin(a)) for a in (math.pi / 2 * i / 10 for i in range(11))]
+    top = [((BODY_R - 1.3) * math.cos(a), up(S_TANK - dome - 0.5) + dome * math.sin(a)) for a in (math.pi / 2 * i / 10 for i in range(11))]
     caps.lathe(prof(top), 64)
-    bot = [((BODY_R - 0.3) * math.sin(a), up(S_TAIL + dome + 0.5) - dome * math.cos(a)) for a in (math.pi / 2 * i / 10 for i in range(11))]
+    bot = [((BODY_R - 1.3) * math.sin(a), up(S_TAIL + dome + 0.5) - dome * math.cos(a)) for a in (math.pi / 2 * i / 10 for i in range(11))]
     caps.lathe(prof(bot), 64)
     s_mid = S_TAIL + 16.83 * 12 + 9.0  # the bulkhead the two tanks share
-    mid = [((BODY_R - 0.3) * math.cos(a), up(s_mid) + dome * math.sin(a)) for a in (math.pi / 2 * i / 10 for i in range(11))]
+    mid = [((BODY_R - 1.3) * math.cos(a), up(s_mid) + dome * math.sin(a)) for a in (math.pi / 2 * i / 10 for i in range(11))]
     caps.lathe(prof(mid), 64)
+    for z in (S_TANK - dome - 0.5, S_TAIL + dome + 0.5, s_mid):  # each dome's rim, welded to the wall
+        caps.lathe(prof([(BODY_R - 1.5, up(z)), (BODY_R - 0.6, up(z))]), 64)
     if interior():  # the alcohol's feed line runs down the middle of the oxygen tank, lagged with glass wool
         feed = MeshBuilder()
         feed.tube((0, 0, up(S_TAIL + 1.0) * IN), (0, 0, up(s_mid + dome - 1.0) * IN), 3.6 * IN, 24)
@@ -316,13 +346,13 @@ def build(base_z: float, font=None) -> None:
     # ---------------------------------------------------------------- tail unit
     g = group("RedstoneTailUnit")
     white, black, rivets = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    _quartered(white, black, BODY_R, up(8), up(S_TAIL), deg(0))
+    _banded(white, black, BODY_R, up(8), up(S_TAIL), deg(0))
     white.lathe(prof([(BODY_R - 1.5, up(0)), (BODY_R, up(8))]), 128)
     for s in (10, S_TAIL - 2):
         _rivet_ring(rivets, BODY_R, up(s))
     inner = MeshBuilder()
-    inner.lathe(prof([(BODY_R - 0.4, up(0)), (BODY_R - 0.4, up(S_TAIL))]), 64, flip=True)
-    inner.lathe(prof([(BODY_R - 0.4, up(S_TAIL - 0.4)), (0, up(S_TAIL - 0.4))]), 64, flip=True)
+    inner.lathe(prof([(BODY_R - 1.6, up(0)), (BODY_R - 1.6, up(S_TAIL))]), 64, flip=True)  # inside the fin roots
+    inner.lathe(prof([(BODY_R - 1.6, up(S_TAIL - 0.4)), (0, up(S_TAIL - 0.4))]), 64, flip=True)
     inner.lathe(prof([(NOZZLE_EXIT_R + 2.0, up(6)), (BODY_R - 0.4, up(6))]), 64)  # base heat shield
     fins_w, fins_b, rudders = MeshBuilder(), MeshBuilder(), MeshBuilder()
     tip_r = FIN_SPAN / 2

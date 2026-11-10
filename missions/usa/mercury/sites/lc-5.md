@@ -35,7 +35,7 @@ against the 535 ft between pads 5 and 6, which comes from their coordinates (*de
 | Pedestal ring | 7.4 ft across, 3.9 ft opening | estimated | sized to the 70 in tail and 33 in nozzle |
 | Hardstand | 204 ft square | derived | Figure 7-6 scaled on the 535 ft pad spacing; pad 6's is given elsewhere as 203 ft |
 | Service structure launch position | 195 ft from the pad centre | derived | same scaling |
-| Blockhouse | about 345 ft from each pad | derived | same scaling; not modelled |
+| Blockhouse | about 345 ft from each pad | derived | same scaling; drawn as scenery, not part of the model |
 | Rail gauge | 28 ft | estimated | Figure 7-7 |
 | Service structure height | 118 ft to the crane | estimated | Figure 7-7: about 1.4 times the vehicle on its pedestal |
 | Work platforms | 22, 42, 62.5, 79 and 94 ft | estimated | level 3 placed at the capsule; the others spaced evenly |

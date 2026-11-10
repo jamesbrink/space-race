@@ -164,7 +164,7 @@ def build_umbilical_mast(M) -> None:
     g = group("UmbilicalMast")
     mast, cable = MeshBuilder(), MeshBuilder()
     cy, top, w = -11.0, 68.0, 0.75
-    plug = (0.0, -2.92, PEDESTAL_TOP + (716.5 + 8.0) / 12)  # the capsule's umbilical receptacle
+    plug = (0.0, -2.92, PEDESTAL_TOP + (716.0 + 8.0) / 12)  # the capsule's umbilical receptacle
     corner = lambda i, z: (-1.5 + w * (1 if i in (0, 3) else -1), cy + w * (1 if i < 2 else -1), z)  # noqa: E731
     lattice(mast, corner, [0.3 + k * (top - 0.3) / 12 for k in range(13)], 0.22, 0.14)
     box(mast, (-3.2, cy - 1.7, 0.0), (0.2, cy + 1.7, 0.3))

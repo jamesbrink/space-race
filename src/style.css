@@ -21,7 +21,6 @@ html, body { height: 100%; background: #000; color: var(--ink); font: 14px/1.45 
 b { font-weight: 400; color: var(--faint); }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
-.small-only { display: none; }
 
 /* every block of text sits on the same smoked glass, so it reads over black space or a bright sky */
 .title, .panel, .models, .controls { background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
@@ -42,6 +41,8 @@ h1 { font: 600 clamp(34px, 3.4vw, 50px)/0.98 var(--sans); letter-spacing: -0.03e
 .facts { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; border-top: 1px solid var(--line); padding-top: 16px; }
 dt { color: var(--faint); font-size: 10px; }
 dd { font-variant-numeric: tabular-nums; }
+/* the flight's summary, repeated in the panel for layouts where the title block has no room for it */
+.panel .small-only { display: none; }
 
 /* --- model switcher -------------------------------------------------------------- */
 .models { position: absolute; top: var(--edge); left: 50%; transform: translateX(-50%); display: flex; overflow: hidden; }
@@ -57,6 +58,8 @@ dd { font-variant-numeric: tabular-nums; }
 .tabs button { flex: 1; padding: 13px 0 11px; color: var(--dim); border-bottom: 1px solid transparent; margin-bottom: -1px; }
 .tabs button:hover { color: var(--ink); }
 .tabs button[aria-selected='true'] { color: var(--amber); border-bottom-color: var(--amber); }
+/* only a sheet needs closing */
+.tabs .close { display: none; flex: none; padding-inline: 16px; color: var(--faint); border-left: 1px solid var(--line); }
 .panel section { overflow-y: auto; padding: 6px 0 14px; scrollbar-width: thin; scrollbar-color: var(--faint) transparent; overscroll-behavior: contain; }
 
 .parts { list-style: none; padding: 0; }
@@ -128,19 +131,23 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 /* current view: filled, like the section switcher (where am I). Toggles: outlined (what is on). */
 .buttons [data-view][aria-pressed='true'] { color: var(--ink); background: rgba(243, 239, 230, 0.12); border-color: var(--dim); }
 .buttons :is([data-cut], [data-rotate])[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
-.scale { color: var(--faint); text-align: center; }
+.scale { color: var(--faint); text-align: center; text-transform: none; letter-spacing: 0.08em; text-wrap: balance; }
 
 .loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; background: #000; transition: opacity 0.7s ease 0.1s; pointer-events: none !important; }
 .loading.done { opacity: 0; }
-.loading.failed span { color: #e8806c; }
+/* a failure is a notice over the page, not the end of it: the panels stay usable */
+.loading.failed { inset: auto auto 50% 50%; transform: translate(-50%, 50%); padding: 22px 28px; background: var(--glass); border: 1px solid var(--line); border-radius: 3px; pointer-events: auto !important; z-index: 4; }
+.loading.failed span { color: #e8806c; max-width: 60vw; text-align: center; }
+.loading.failed i { display: none; }
+.loading button { font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; padding: 9px 14px; border: 1px solid var(--dim); border-radius: 2px; }
 .loading i { width: 180px; height: 1px; background: linear-gradient(90deg, var(--amber) calc(var(--p, 0) * 100%), var(--faint) 0); }
 
 /* --- narrow desktop: drop the long text before anything overlaps ------------------- */
 @media (max-width: 1180px) {
   .title .lede, .title .facts { display: none; }
-  .small-only { display: block; }
-  dl.small-only { display: grid; margin: 14px 18px 4px; }
-  p.small-only { margin: 12px 18px 0; }
+  .panel .small-only { display: block; }
+  .panel dl.small-only { display: grid; margin: 14px 18px 4px; }
+  .panel p.small-only { margin: 12px 18px 0; }
 }
 
 /* --- phone and small tablet: the model fills the screen, the panel is a sheet -------- */
@@ -170,6 +177,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
   .panel { top: auto; left: 10px; right: 10px; bottom: 0; width: auto; height: calc(52px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
     border-bottom: 0; border-radius: 0 0 0 0; transition: height 0.28s ease; z-index: 2; }
   .panel.open { height: min(60dvh, 520px); }
+  .panel.open .close { display: block; }
   /* with the sheet up, the model keeps the space above it, so a selected part is never underneath */
   body:has(.panel.open) #stage { height: calc(100dvh - min(60dvh, 520px)); }
   body:has(.panel.open) :is(.controls, .models) { display: none; }
@@ -180,13 +188,14 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 @media (max-height: 520px) {
   /* a phone on its side: the sheet takes the right-hand side, the model the left */
   .title { display: none; }
-  .models { bottom: auto; top: 10px; left: 10px; transform: none; }
+  .models { bottom: auto; top: 10px; left: 10px; right: calc(44vw + 10px); transform: none; border-bottom: 1px solid var(--line); border-radius: 3px; }
+  #stage, body:has(.panel.open) #stage { width: 56vw; height: 100dvh; }
+  .panel.open .close { display: none; }
   .scale { display: none; }
   .controls { left: 10px; right: auto; transform: none; width: calc(56vw - 20px); max-width: none; bottom: 10px; border-bottom: 1px solid var(--line); border-radius: 3px; }
   .panel, .panel.open { top: 10px; bottom: 10px; left: auto; right: 10px; width: calc(44vw - 10px); height: auto; border: 1px solid var(--line); }
   .panel:not(.open) section { display: block; }
   .panel:not(.open) section[hidden] { display: none; }
-  body:has(.panel.open) #stage { height: 100dvh; }
   body:has(.panel.open) :is(.controls, .models) { display: grid; }
   body:has(.panel.open) .models { display: flex; }
 }

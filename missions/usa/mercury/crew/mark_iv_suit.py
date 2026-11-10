@@ -22,7 +22,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 import srlib
-from srlib import CM, TAU, MeshBuilder, frame, group, material
+from srlib import CM, TAU, MeshBuilder, arc_profile, frame, group, material
 
 STATURE = 180.3  # documented: 5 ft 11 in
 HEEL = 2.8  # boot heel under the foot
@@ -57,14 +57,17 @@ FRONT, UP = Vector((0, -1, 0)), Vector((0, 0, 1))
 def materials() -> dict:
     m = material
     return {
-        "suit": m("suit-aluminized-nylon", (0.66, 0.67, 0.69), 0.75, 0.42),
+        "suit": m("suit-aluminized-nylon", (0.66, 0.67, 0.69), 0.6, 0.6),
         "webbing": m("webbing-nylon", (0.40, 0.41, 0.40), 0.2, 0.75),
         "tape": m("zipper-tape", (0.10, 0.10, 0.11), 0.0, 0.8),
         "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
-        "aluminium": m("aluminium", (0.78, 0.78, 0.77), 1.0, 0.32),
+        "aluminium": m("aluminium", (0.62, 0.62, 0.61), 1.0, 0.45),
         "shell": m("helmet-fibreglass-white", (0.86, 0.86, 0.83), 0.0, 0.28),
-        # not named glass: the viewer makes glass transparent, and there is no face behind this visor
-        "glass": m("visor-tinted", (0.02, 0.03, 0.04), 0.0, 0.04),
+        # named glass: the viewer makes it a clear pane, as the Plexiglas visor was
+        "glass": m("glass-visor", (0.02, 0.03, 0.04), 0.0, 0.04),
+        "liner": m("helmet-liner", (0.06, 0.06, 0.06), 0.0, 0.9),
+        "skin": m("skin", (0.62, 0.42, 0.33), 0.0, 0.65),
+        "cap": m("cap-fabric", (0.82, 0.82, 0.78), 0.0, 0.9),
         "rubber": m("rubber", (0.02, 0.02, 0.02), 0.0, 0.9),
         "boot": m("boot-leather-aluminized", (0.55, 0.56, 0.57), 0.6, 0.5),
         "lace": m("lace-cord", (0.70, 0.69, 0.64), 0.0, 0.85),
@@ -217,10 +220,19 @@ class Tube:
         skin(mb, rows, self.centre((d0 + d1) / 2))
 
 
-def skin(mb: MeshBuilder, rows: Sequence[Sequence[Vector]], inside: Sequence[float] | None, *, closed: bool = False, flip: bool = False) -> None:
+def skin(
+    mb: MeshBuilder,
+    rows: Sequence[Sequence[Vector]],
+    inside: Sequence[float] | None,
+    *,
+    closed: bool = False,
+    flip: bool = False,
+    inward: bool = False,
+    keep: Callable[[int, int], bool] | None = None,
+) -> None:
     """A quad grid through explicit rows of points. With `inside` given, the faces are wound to
-    look away from that point; otherwise the normal is (along a row) x (row to row), or its
-    reverse with `flip`."""
+    look away from that point (toward it with `inward`); otherwise the normal is (along a row) x
+    (row to row), or its reverse with `flip`. `keep(row, column)` leaves an opening where it is false."""
     nu = len(rows[0])
     verts = [Vector(p) for row in rows for p in row]
     cols = nu if closed else nu - 1
@@ -236,8 +248,11 @@ def skin(mb: MeshBuilder, rows: Sequence[Sequence[Vector]], inside: Sequence[flo
             n = (p[2] - p[0]).cross(p[3] - p[1])
             if n.length > best:
                 best, flip = n.length, n.dot((p[0] + p[2]) / 2 - centre) < 0
+        flip = flip != inward
     if flip:
         faces = [f[::-1] for f in faces]
+    if keep is not None:
+        faces = [f for k, f in enumerate(faces) if keep(k // cols, k % cols)]
     uvs, v = [], 0.0
     for j, row in enumerate(rows):
         if j:
@@ -366,17 +381,47 @@ def build_helmet(M: dict) -> None:
     rows.append([helmet_point(0, HELMET_TOP - 0.02) * 1.0 for _ in phis])
     apex = sum(rows[-2], Vector()) / len(phis)
     rows[-1] = [Vector((apex.x, apex.y, HELMET_TOP)) for _ in phis]
-    skin(shell, rows, centre, closed=True)
-
-    # earphone bulges, one each side
-    for sx in (1, -1):
-        phi = sx * math.radians(100)
-        shell.lathe(
-            [(3.8, 0.0), (3.7, 0.9), (3.2, 1.5), (2.0, 1.9), (0.0, 2.0)], 24, matrix=frame(helmet_at(phi, 171.5, -0.5), helmet_normal(phi, 171.5))
-        )
-
     # visor: a rounded opening from brow to chin, the Plexiglas riding outside the shell
     half_phi, zv, hv = math.radians(56), 173.0, 8.8
+
+    def solid(j: int, i: int) -> bool:
+        """Whether the shell is there: not where the visor's opening is (a little inside its frame)."""
+        if j + 1 >= len(zs):
+            return True
+        phi = (phis[i] + TAU / 112 + math.pi) % TAU - math.pi
+        u, v = abs(phi / half_phi), abs(((zs[j] + zs[j + 1]) / 2 - zv) / hv)
+        return (u**3.2 + v**3.2) ** (1 / 3.2) > 0.88
+
+    skin(shell, rows, centre, closed=True, keep=solid)
+    # the padded liner, seen through the visor: without it the shell has no inside
+    liner = MeshBuilder()
+    skin(liner, [[centre + (p - centre) * 0.94 for p in row] for row in rows], centre, closed=True, inward=True, keep=solid)
+
+    # the pivots' bosses at the temples: flat discs
+    for sx in (1, -1):
+        phi = sx * math.radians(100)
+        shell.lathe([(2.6, 0.0), (2.6, 0.7), (2.2, 1.0), (0.0, 1.0)], 24, matrix=frame(helmet_at(phi, 171.5, -0.5), helmet_normal(phi, 171.5)))
+
+    # the man inside: enough of a head that the visor has a face behind it, not a likeness
+    head, cap, dark = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    ball = arc_profile(0, 0, 1.0, -90, 90, 16)
+    hc = Vector((0, -1.2, Z_CROWN - 11.0))
+    head.lathe(ball, 40, matrix=Matrix.Translation(hc) @ Matrix.Diagonal((7.6, 9.6, 11.0, 1.0)))
+    head.tube((0, 1.0, 150.0), (0, 0.4, hc.z - 6.0), 5.6, 24)  # neck
+    nose = Vector((0, hc.y - 9.5, hc.z - 1.2))
+    head.lathe([(1.2, 0.0), (0.95, 0.8), (0.45, 1.25), (0.0, 1.3)], 16, matrix=frame(nose, (0, -1, -0.45)) @ Matrix.Diagonal((1.0, 1.7, 1.0, 1.0)))
+    # the white communications cap: a bowl over the crown and the back of the head, standing
+    # off the scalp all round so that the two never meet at any level of detail
+    bowl = Matrix.Diagonal((8.2, 10.3, 11.8, 1.0)) @ Matrix.Rotation(math.radians(-50), 4, "X")
+    cap.lathe(arc_profile(0, 0, 1.0, -15, 90, 14), 40, matrix=Matrix.Translation(hc) @ bowl)
+    for sx in (1, -1):
+        ex, ez = sx * 3.1, 1.6
+        ey = hc.y - 9.6 * math.sqrt(1 - (ex / 7.6) ** 2 - (ez / 11.0) ** 2)
+        n = Vector((ex / 7.6**2, (ey - hc.y) / 9.6**2, ez / 11.0**2)).normalized()
+        dark.disc(Vector((ex, ey, hc.z + ez)) - n * 0.3, n, 0.62, 0.4, 16)  # eyes: no more than a suggestion
+    # lip microphone on its boom from the left ear
+    dark.tube((7.4, hc.y - 2.0, hc.z - 4.0), (2.2, hc.y - 10.6, hc.z - 6.0), 0.3, 8)
+    dark.box((1.8, 1.0, 1.2), Matrix.Translation((1.4, hc.y - 10.8, hc.z - 6.0)))
 
     def edge(psi: float, rho: float = 1.0) -> tuple[float, float]:
         f = rho * (1 + squareness(psi, 3.2))
@@ -386,6 +431,9 @@ def build_helmet(M: dict) -> None:
     rows = [[helmet_at(*edge(psi, rho), 0.3 + 0.5 * (1 - rho * rho)) for psi in psis] for rho in (0.0, 0.2, 0.4, 0.6, 0.8, 0.93, 1.0)]
     rows.append([helmet_at(*edge(psi), -0.4) for psi in psis])
     skin(visor, rows, centre, closed=True)
+    # the visor's seal: a dark band on the shell inside the frame, which is also where the opening's edge is
+    seal = MeshBuilder()
+    skin(seal, [[helmet_at(*edge(psi, rho), 0.15) for psi in psis] for rho in (0.72, 0.82, 0.92, 1.0)], centre, closed=True)
     rim = [helmet_at(*edge(psi), 0.2) for psi in psis]
     frame_mb = MeshBuilder()
     Tube([*rim, rim[0]], [(0.6, 0.6)] * (len(rim) + 1), resample=2).add(frame_mb, 10)
@@ -422,7 +470,12 @@ def build_helmet(M: dict) -> None:
     fit.lathe([(0.75, 0.0), (0.75, 1.1), (0.42, 1.1), (0.42, 2.0), (0.0, 2.0)], 12, matrix=m)
 
     emit(shell, "Helmet_Shell", M["shell"], g)
+    emit(liner, "Helmet_Liner", M["liner"], g)
+    emit(head, "Helmet_Head", M["skin"], g)
+    emit(cap, "Helmet_CommCap", M["cap"], g)
+    emit(dark, "Helmet_FaceDetail", M["rubber"], g, sharp_angle=30)
     emit(visor, "Helmet_Visor", M["glass"], g)
+    emit(seal, "Helmet_VisorSeal", M["rubber"], g)
     emit(frame_mb, "Helmet_VisorFrame", M["aluminium"], g)
     emit(ringm, "Helmet_NeckRing", M["aluminium"], g, sharp_angle=30)
     emit(fit, "Helmet_Fittings", M["aluminium"], g, sharp_angle=30)
@@ -774,8 +827,10 @@ def build_boots(M: dict) -> None:
             (-22.6, 3.5, 2.8, 2.0),
         ]
         foot = Tube(
-            [(x0, y0 + y, z) for y, z, _, _ in keys],
-            [(a, b) for *_, a, b in keys],
+            # sunk 6 mm further into the sole than drawn: at a coarse level of detail the squared
+            # underside would otherwise land on the sole's top face
+            [(x0, y0 + y, z - 0.3) for y, z, _, _ in keys],
+            [(a, b + 0.3) for *_, a, b in keys],
             ref=(0, 0, 1),
             resample=5,
             fold=lambda d, th: squareness(th, 4.0) * smooth(-math.sin(th), 0.0, 0.6),
@@ -789,7 +844,9 @@ def build_boots(M: dict) -> None:
             a = math.pi * i / n
             c, s = math.cos(a), math.sin(a)
             y = centre_y - half * math.copysign(abs(c) ** 0.75, c)
-            w = (5.9 + 0.3 * c) * s**0.75
+            # blunt at toe and heel, with a welt: the sole's wall stands clear of the upper's all
+            # round, at any level of detail (a pointed heel let the upper overhang it)
+            w = (5.9 + 0.3 * c) * s**0.55 + 0.4 * s**0.25
             h = smooth(y, y0 - 9.0, y0 + 0.5)
             st.append((y, w, 1.3 * h, 1.8 + 1.4 * h))
         inside = Vector((x0, centre_y, 1.0))

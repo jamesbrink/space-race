@@ -16,16 +16,16 @@ From NASA TM X-53107 unless noted. Stations in the model are inches above the fi
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
-| Height with spacecraft and tower | 83.38 ft (25.414 m) | documented | section 4.1; model: 25.413 m |
+| Height with spacecraft and tower | 83.38 ft (25.414 m) | documented | section 4.1; model: 25.414 m |
 | Booster length | 59.00 ft (708 in) | documented | Figure 4-1 |
 | Body diameter | 70 in | documented | Figure 4-11 |
 | Tail unit | 9.27 ft (111.24 in) | documented | Figure 4-1 |
-| Centre section | 37.50 ft: alcohol tank 18.8 ft over oxygen tank 16.83 ft | documented | Figure 4-1 |
+| Centre section | 37.50 ft: alcohol tank 18.8 ft over oxygen tank 16.83 ft | documented | Figure 4-1. The two tanks sum to 35.63 ft; the figure does not say where the other 1.87 ft is |
 | Aft section | 139.64 in: aft unit 42.16 in, instrument compartment 53.66 in, ballast section above | documented | Figure 4-1, 4.2.3 |
 | Aft section in the model | 146.76 in | derived | the three lengths above sum to 700.88 in, 7.1 in short of 59.00 ft; the aft unit was stretched 7.08 in for Mercury (4.8.2.2), so the stretch is taken to be what is missing |
-| Booster top to the capsule's heat-shield plane | 8.5 in | derived | what is left of 83.38 ft after the booster and the capsule model. It sets the adapter's height in the model |
+| Booster top to the capsule's plane of maximum diameter | 8.0 in | derived | 83.38 ft less the 59.00 ft booster and the 284.55 in from that plane to the spike tip (SEDR 104, Figure 1-3). It sets the adapter's height. Hammack and Heberlig's Figure 17 draws 710.27 in to that plane (2.3 in of adapter), but its total, 996.07 in, is 4.5 in short of the 83.38 ft its own Figure 18 gives |
 | Skin | aft 0.090, alcohol tank 0.063, oxygen tank 0.080, tail 0.125 in; 5052 aluminium | documented | 4.2.1, 4.2.2 |
-| Fin span | 12 ft | estimated | secondary sources on the Redstone missile; no primary figure found |
+| Fin span | 152 in | documented | across the air rudders' tips: Hammack and Heberlig, Figure 17 |
 | Fin chords | root 100 in, tip 38 in | estimated | Figure 4-1 |
 | Nozzle exit diameter | 33 in | estimated | |
 
@@ -37,7 +37,7 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 | | | Confidence |
 | --- | --- | --- |
 | Liftoff mass, MR-3 | 66,098 lb (29,982 kg) | documented (Table 8-1) |
-| Dry mass with airborne equipment | 8,195 lb | documented (4.2.1) |
+| Dry mass with airborne equipment | 8,195 lb as tabulated; about 8,093 lb for MR-3 | documented (4.2.1); the MR-3 figure is derived: the table counts 442 lb of damping compound, 102 lb of which was added for MR-4 |
 | Structure | aft 437.4, centre 1,659, tail 902.6 lb | documented |
 | Steel ballast | 487 lb | documented |
 | Damping compound | 330 or 340 lb on MR-3 (the report gives both) | documented |
@@ -72,11 +72,17 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 
 ## What the model gets wrong or leaves out
 
-- **The adapter's height is a remainder**, not a measurement.
-- **Paint is unverified.** White, quartered black roll patterns on the tail and aft unit, "UNITED
-  STATES" stacked in red. TM X-53107 gives no colours; its Figure 7-7 shows dark stacked lettering
-  on a light body. The red is from memory of colour photographs.
-- **Fin span and shape** are estimates; the fins are flat wedges with no aerofoil.
+- **The adapter's height is a remainder**, not a measurement, and one primary figure disagrees with it (see above).
+- **Paint is from one black-and-white photograph** (MR-3 Postlaunch Report, Figure 3.2-1): upright
+  stripes round the aft unit with a row of checks at top and bottom, a dark band round the tanks,
+  dark stacked "UNITED STATES". The stripe count (16), the band's height and the tail's quartered
+  pattern are read off or assumed. No source read gives colours; the red lettering is from memory
+  of colour photographs.
+- **Fin shape** is an estimate; the fins are flat wedges with no aerofoil.
+- **Lower levels of detail do not build yet.** At `--detail` 0.6 and 0.3 the clearance check finds
+  near-coincident faces that full detail does not have: vane shafts against the tail's inner wall,
+  the conduits and the tower truss against themselves, hatch latches and afterbody fittings
+  against the structure under them. Each needs its fitting sunk or stood off further.
 - **The engine is representative.** Chamber, jacket and the main lines are there; their routing
   and the turbopump's form are not from a drawing.
 - **Inside the aft unit** the equipment is representative boxes; the nitrogen spheres' number and

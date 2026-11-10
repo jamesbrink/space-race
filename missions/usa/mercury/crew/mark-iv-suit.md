@@ -6,9 +6,9 @@ for the capsule. Model: [mark_iv_suit.py](mark_iv_suit.py), imported by each fli
 with the portable ventilator standing beside him.
 
 **It is a backup, not a spacesuit in the later sense.** The cabin held pressure; the suit would
-only have inflated, to 3.7 psi, if the cabin had failed. On MR-3 it never did.
+only have inflated, to 4.6 psi, if the cabin had failed. On MR-3 it never did.
 
-**Almost every length here is an estimate.** One length is published: the pilot's height. The
+**Every length here is an estimate.** The pilot's height is the commonly given one. The
 body under the suit follows textbook segment proportions for that height. The suit's bulk, the
 helmet, every fitting and the ventilator are sized by eye from photographs. No drawing of the
 suit was found.
@@ -17,9 +17,9 @@ suit was found.
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
-| Pilot's stature | 5 ft 11 in (1.803 m) | documented | widely published for Shepard |
-| Suit mass | 22 lb (10 kg) | documented | Wikipedia; NASA's MA-8 fact sheet says "20-pound" |
-| Operating pressure | 3.7 psi (26 kPa) | documented | Wikipedia |
+| Pilot's stature | 5 ft 11 in (1.803 m) | estimated | widely given for Shepard, and the selection limit; no primary record read |
+| Suit mass | about 20 lb (9 kg) | estimated | NASA's MA-8 fact sheet says "20-pound"; Wikipedia says 22 lb |
+| Operating pressure | 4.6 psi (31.7 kPa) | documented | SEDR 104 (suit regulator, 4.6 ± 0.2 psia); *Results of the First U.S. Manned Suborbital Space Flight*. The MR-3 Postlaunch Report (5.3.1) says 5.5 psi; 3.7 psi is the generic Navy Mark IV figure |
 | Outer shell | aluminium-coated nylon | documented | Wikipedia; NASA fact sheet ("aluminum-coated nylon-rubber") |
 | Oxygen in at the waist, out at the helmet | | documented | NASA fact sheet; Wikipedia gives the helmet's right side |
 | Visor seal connector by the left jaw | | documented | Wikipedia |

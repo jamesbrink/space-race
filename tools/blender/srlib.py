@@ -38,7 +38,9 @@ def interior() -> bool:
 
 
 def _segs(n: int) -> int:
-    return n if DETAIL >= 1.0 else max(6, round(n * DETAIL))
+    """Sides for a curve at this level of detail. Eight or fewer is a shape (a square beam, a hex
+    nut), not a curve, so it is kept; a curve is thinned but never below eight or above what was asked."""
+    return n if DETAIL >= 1.0 or n <= 8 else min(n, max(8, round(n * DETAIL)))
 
 
 # --------------------------------------------------------------------------- scene
@@ -427,9 +429,12 @@ def mark_shells(names: Sequence[str]) -> None:
     """Flag the meshes that enclose something. The viewer's cutaway slices these and nothing else,
     so what is inside is seen whole. The flag travels as a glTF extra (`userData.shell`)."""
     missing = [n for n in names if n not in bpy.data.objects]
-    if missing:
+    # a shell that is itself interior (a chamber liner, a compartment wall) is not built at low detail
+    if missing and interior():
         raise KeyError(f"mark_shells: no such mesh: {', '.join(missing)}")
     for n in names:
+        if n in missing:
+            continue
         bpy.data.objects[n]["shell"] = 1
 
 

@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # typecheck, lint, format check: the same `pnpm check` people run before a commit
+  # typecheck, lint, format check, tests: the same `pnpm check` people run before a commit
   check:
     runs-on: ubuntu-latest
     steps:
@@ -23,7 +23,7 @@ jobs:
           version: 12
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       # puts ruff on PATH; keep the version in step with the one flake.lock gives the devshell
       - uses: astral-sh/ruff-action@v3
@@ -42,7 +42,7 @@ jobs:
           version: 12
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # typecheck, then bundle. The GLBs are committed, so CI needs no Blender.

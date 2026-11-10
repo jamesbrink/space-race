@@ -2,6 +2,7 @@
 // public/models/<nation>/<programme>/<flight>/<name>.glb.
 //   node tools/build-model.mjs usa/mercury/mr-3-freedom-7 [--only pad] [--preview <dir>]
 //   node tools/build-model.mjs --all
+//   node tools/build-model.mjs --all --detail 0.3 --out-dir <dir>    a lower level of detail, written elsewhere
 // Blender is found at $BLENDER, on PATH, or in /Applications (macOS).
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
@@ -28,15 +29,26 @@ function allFlights() {
 }
 
 const args = process.argv.slice(2);
-const previewAt = args.indexOf('--preview');
-const preview = previewAt >= 0 ? args.splice(previewAt, 2)[1] : null;
+/** Remove `--name value` from the arguments and return the value. */
+function option(name) {
+  const at = args.indexOf(name);
+  return at >= 0 ? args.splice(at, 2)[1] : null;
+}
+const preview = option('--preview');
+const detail = option('--detail');
+const outDir = option('--out-dir');
+const only = option('--only');
+if (detail && !outDir) {
+  console.error('--detail needs --out-dir: the committed GLBs are the full-detail ones');
+  process.exit(2);
+}
 if (!args.length) {
-  console.error('usage: build-model.mjs <nation>/<program>/<flight> | --all   [--only <name>] [--preview <dir>]');
+  console.error(
+    'usage: build-model.mjs <nation>/<program>/<flight> | --all   [--only <name>] [--preview <dir>] [--detail <0..1> --out-dir <dir>]',
+  );
   process.exit(2);
 }
 
-const onlyAt = args.indexOf('--only');
-const only = onlyAt >= 0 ? args.splice(onlyAt, 2)[1] : null;
 const targets = args.includes('--all') ? allFlights() : args;
 
 for (const id of targets) {
@@ -50,11 +62,14 @@ for (const id of targets) {
     process.exit(2);
   }
   for (const file of scripts) {
-    const out = join(root, 'public', 'models', nation, program, flight, file.replace(/\.py$/, '.glb'));
-    const extra = preview ? ['--preview', preview] : [];
-    const r = spawnSync(blender, ['-b', '--python-exit-code', '1', '-P', join(dir, file), '--', '--out', out, ...extra], {
-      encoding: 'utf8',
-    });
+    const out = join(outDir ?? join(root, 'public', 'models'), nation, program, flight, file.replace(/\.py$/, '.glb'));
+    const extra = [...(preview ? ['--preview', preview] : []), ...(detail ? ['--detail', detail] : [])];
+    // --factory-startup: no user preferences or add-ons, so the same script gives the same model anywhere
+    const r = spawnSync(
+      blender,
+      ['-b', '--factory-startup', '--python-exit-code', '1', '-P', join(dir, file), '--', '--out', out, ...extra],
+      { encoding: 'utf8' },
+    );
     const lines = (r.stdout + r.stderr).split('\n');
     if (r.status !== 0) {
       const at = lines.findIndex((l) => l.includes('CLEARANCE FAILED'));

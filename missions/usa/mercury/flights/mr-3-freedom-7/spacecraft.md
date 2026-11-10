@@ -16,25 +16,26 @@ the model is too.
 | Heat shield diameter | 74.5 in (1.892 m) | documented | NASA CR-649 |
 | Heat shield radius of curvature | 80 in | documented | CR-649 |
 | Afterbody half-angle | 20° | documented | CR-649 |
-| Recovery compartment | 32 in diameter, 20 in long | documented | CR-649 |
+| Recovery compartment | 32 in diameter, 22.76 in long | documented | CR-649 Figure 1, stations 58.38 to 81.14 (its text says 20 in); Hammack and Heberlig Figure 17 also carries 81.14. SEDR 104 Figure 1-3 gives 22.86 in |
 | Afterbody length | 58.38 in | derived | frustum from 74.5 in to 32 in at 20° |
 | Heat shield depth | 9.20 in | derived | spherical cap, R = 80 in, 74.5 in chord |
+| Stations | heights above the plane of maximum diameter, McDonnell's Z104.50 | documented | Postlaunch Report ("maximum diameter ... at Z = 104.50"); SEDR 104 Figure 1-3 |
 | Heat shield edge height | 2.5 in | estimated | photographs |
-| Antenna canister length | 24 in | documented | CR-649 |
-| Antenna canister diameters | 30 in tapering to 25 in | estimated | **conflicts with CR-649**, which states 24 in to 20 in; photographs show a wider canister. Unresolved |
+| Antenna canister length | 23.43 in | derived | from 81.14 in to its top at Z209.07 (SEDR 104, Figure 1-3). CR-649 says 24 in |
+| Antenna canister diameters | 24 in tapering to 20 in | documented | CR-649; SEDR 104 Figure 1-3 scales to the same. The model was 30 to 25 in until November 2026 |
 | Dielectric window | 8 in | documented | SEDR 104, 2-9 |
-| Length, retro nozzles to canister top | 3.30 m in the model | documented | 10.8 ft (Wikipedia, citing Catchpole) |
-| Length with tower | 311.2 in (7.904 m) in the model | documented | 25.9 ft secondary; NASA says only "just under 26 feet" |
+| Length, retro nozzles to canister top | 131.57 in (3.342 m) | documented | SEDR 104 Figure 1-3, Z77.50 to Z209.07; Hammack and Heberlig Figure 2 |
+| Length with tower | 311.55 in (7.913 m) | documented | SEDR 104 Figure 1-3, Z77.50 to Z389.05; Hammack and Heberlig Figure 2 |
 | Tower pylon | 10 ft | documented | SEDR 104, 2-12: about 10 ft of 4130 steel tube |
-| Tower bay heights, tube sizes | | estimated | photographs |
-| Escape motor | 15 in diameter; case 63 in in the model | estimated | SEDR 104 gives about 70 in overall and 15 in |
+| Tower stations | truss nodes at 106.08, 137.03, 167.98, 198.93 in; motor case top 249.55; cap 253.55; spike tip 284.55 | documented | SEDR 104 Figure 1-3, less Z104.50. Tube sizes are estimated from photographs |
+| Escape motor | 15 in diameter; case to 249.55 in, spike 31 in | documented | SEDR 104 Figure 1-3; Hammack and Heberlig Figure 17 gives the 31.00 in spike. The case's lower end (202 in) is read off the figure |
 | Shingle layout | 24 around, three rows, 8/6/4 beads | estimated | photographs; the real layout is irregular |
 | Shingle gauges | cone: René 41, 0.016 in. Cylinder: beryllium, 0.22 in | documented | Hammack and Heberlig; CR-649 |
 | Corrugation height | 0.14 in | estimated | |
 | Portholes | two, 10 in | documented | *This New Ocean*, p. 366; positions estimated |
 | Hatch | 45° of arc, stations 20 to 44 | estimated | sized to three shingles |
 | Pressure vessel | two skins of 0.010 in titanium | documented | Hammack and Heberlig |
-| Heat shield | beryllium heat sink, about 1 in | documented | *Results of the First U.S. Manned Suborbital Space Flight* |
+| Heat shield | beryllium heat sink, about 1 in | documented | Hammack and Heberlig ("approximately 1-inch-thick") |
 
 ## Propulsion
 
@@ -55,7 +56,8 @@ section 5). 52,000 is the nominal axial figure.
 ## What makes No. 7 different
 
 - Two 10-inch portholes; the trapezoidal window arrived with No. 11.
-- A 69 lb hatch held by mechanical latches, with release handles inside and out. The first design
+- A hatch held by a 69 lb mechanical latch mechanism (*This New Ocean*'s wording: the mechanism, not
+  necessarily the whole hatch), with release handles inside and out. The first design
   bolted the hatch on with 70 bolts; the explosive hatch (23 lb, 70 bolts and a detonating fuse)
   arrived with No. 11.
 - A beryllium heat-sink shield, not the ablative shield of the orbital flights.

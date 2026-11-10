@@ -27,7 +27,8 @@ export interface Motor {
   count: number;
   /** Per motor, newtons. */
   thrustN: number;
-  burnS: number;
+  /** Seconds. Left out for a thruster that fires in pulses. */
+  burnS?: number;
   propellant: string;
   confidence: Confidence;
   note?: string;
@@ -85,7 +86,7 @@ export interface ModelDef {
   /** Labels for the two ends of the slider; left out, the model has no slider. */
   slider?: [string, string];
   parts: Part[];
-  /** Framings offered beside the automatic 'Everything'. */
+  /** Framings offered beside the automatic wide view of everything on show. */
   views: ViewDef[];
   /** The model has internals and flagged shells (srlib.mark_shells): offer a cutaway. */
   cutaway?: boolean;

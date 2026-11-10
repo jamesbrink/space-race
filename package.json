@@ -12,13 +12,14 @@
     "lint": "biome lint . && ruff check .",
     "format": "biome format --write . && ruff format .",
     "format:check": "biome format . && ruff format --check .",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "test": "node --test tests/",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "models": "node tools/build-model.mjs --all",
     "test:flicker": "node tools/flicker-test.mjs",
     "model:mr-3": "node tools/build-model.mjs usa/mercury/mr-3-freedom-7"
   },
   "engines": {
-    "node": ">=20.13.0"
+    "node": ">=22.18.0"
   },
   "dependencies": {
     "three": "^0.187.0"

@@ -53,7 +53,7 @@ const vehicleParts: Part[] = [
       'as far from the centre of mass as the vehicle allows.',
     facts: [
       ['Diameter', '32 in (0.81 m)'],
-      ['Length', '20 in (0.51 m)'],
+      ['Length', '22.8 in (0.58 m)'],
       ['Skin', 'beryllium shingles, 0.22 in'],
       ['Main parachute', '63 ft ring-sail, plus reserve'],
       ['Thrusters', 'pitch and yaw: 24 lbf and 1 lbf'],
@@ -73,7 +73,7 @@ const vehicleParts: Part[] = [
       'one flight later on Liberty Bell 7.',
     facts: [
       ['Type', 'mechanical latch'],
-      ['Mass', '69 lb (31 kg)'],
+      ['Latch mechanism', '69 lb (31 kg)'],
       ['Release', 'handles inside and outside'],
       ['Explosive hatch', '23 lb, from MR-4'],
     ],
@@ -111,8 +111,7 @@ const vehicleParts: Part[] = [
       'Behind the heat shield a fabric landing bag drops four feet before splashdown to cushion the impact.',
     facts: [
       ['Structure', 'two skins of 0.010 in titanium'],
-      ['Atmosphere', 'pure oxygen at 5.1 psi'],
-      ['Pressurised volume', '100 ft³ (2.8 m³)'],
+      ['Atmosphere', 'pure oxygen, 5.1 psi nominal'],
       ['Couch', 'fibreglass, moulded to the pilot'],
     ],
     explode: [0, 8.9, 0],
@@ -219,8 +218,8 @@ const vehicleParts: Part[] = [
     summary: 'Four fins, four air rudders, the engine bay.',
     detail:
       'The fins keep the vehicle stable; the small rudders at their tips steer it while there is air to push ' +
-      'against. The quartered black-and-white paint is a roll pattern: tracking cameras read the vehicle’s roll ' +
-      'angle from it.',
+      'against. The black-and-white paint, here and striped round the aft unit, is a roll pattern: tracking ' +
+      'cameras read the vehicle’s roll angle from it.',
     facts: [
       ['Length', '9.27 ft (2.83 m)'],
       ['Fins', '4, with air rudders (±11°)'],
@@ -254,17 +253,18 @@ const vehicleParts: Part[] = [
 
 /** Height of the pedestal's ring, where the fins rest: 6 ft. */
 const PEDESTAL = 6 * 0.3048;
-/** The vehicle's origin is the capsule's heat-shield plane, 716.5 in above the fins. */
-const VEHICLE_Y = PEDESTAL + 716.5 * IN;
+/** The vehicle's origin is the capsule's plane of maximum diameter, 716.0 in above the fins. */
+const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 
 /** Where the pilot stands in every scene: at the foot of the vehicle, clear of the cutaway's opening. */
-const PILOT = { position: [-2.6, 0, 3.9] as [number, number, number], rotationY: -0.59 };
+// clear of the service structure's rails, which run 4.27 m either side of the pad's centre line
+const PILOT = { position: [-2.9, 0, 2.2] as [number, number, number], rotationY: -0.59 };
 
 const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/usa/mercury/mr-3-freedom-7/vehicle.glb',
-  scale: '25.41 m tall · spacecraft 7.90 m · to scale',
+  scale: '25.41 m tall · spacecraft 7.91 m · to scale',
   backdrop: 'ground',
   slider: ['Assembled', 'Exploded'],
   cutaway: true,
@@ -319,7 +319,7 @@ const padParts: Part[] = [
       ['At the hatch', 'from T−55 min to the last minutes'],
       ['Control', 'ground, cab, or blockhouse'],
     ],
-    explode: [16, 0, -44],
+    explode: [9, 0, -15],
     order: 0,
   },
   {
@@ -419,8 +419,8 @@ const crewParts: Part[] = [
       'feeds the pilot. It enters at the waist. The long entry zipper runs diagonally across the chest.',
     facts: [
       ['Suit', 'Navy Mark IV, B.F. Goodrich'],
-      ['Mass', '22 lb (10 kg)'],
-      ['Pressure if the cabin fails', '3.7 psi'],
+      ['Mass', 'about 20 lb (9 kg)'],
+      ['Pressure if the cabin fails', '4.6 psi'],
       ['Oxygen inlet', 'waist'],
       ['Each pilot had', 'three: training, flight, spare'],
     ],
@@ -543,7 +543,7 @@ export const flight: Flight = {
     { t: 142.2, event: 'Escape tower released and fired clear' },
     { t: 152.3, event: 'Spacecraft separation at 74.3 km: posigrade motors fire' },
     { t: 157, event: 'Turnaround to heat-shield-forward' },
-    { t: 190, event: 'Manual control: pitch, then yaw, then roll' },
+    { t: 184, event: 'Manual control: pitch, then yaw, then roll' },
     { t: 311, event: 'Apogee, 187.4 km' },
     { t: 314.1, event: 'Retrofire: three motors, five seconds apart' },
     { t: 373.6, event: 'Retropack jettison' },
@@ -556,7 +556,7 @@ export const flight: Flight = {
   specs: [
     { group: 'Spacecraft', label: 'Heat shield diameter', value: 74.5 * IN, unit: 'm', confidence: 'documented', note: '74.5 in' },
     { group: 'Spacecraft', label: 'Heat shield radius of curvature', value: 80 * IN, unit: 'm', confidence: 'documented', note: '80 in' },
-    { group: 'Spacecraft', label: 'Afterbody half-angle', value: 20, unit: 'deg', confidence: 'documented' },
+    { group: 'Spacecraft', label: 'Afterbody half-angle', value: 20, unit: 'deg', confidence: 'documented', note: 'NASA CR-649' },
     {
       group: 'Spacecraft',
       label: 'Recovery compartment diameter',
@@ -565,7 +565,14 @@ export const flight: Flight = {
       confidence: 'documented',
       note: '32 in (NASA CR-649)',
     },
-    { group: 'Spacecraft', label: 'Recovery compartment length', value: 20 * IN, unit: 'm', confidence: 'documented', note: '20 in' },
+    {
+      group: 'Spacecraft',
+      label: 'Recovery compartment length',
+      value: 22.76 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '22.76 in: stations 58.38 to 81.14 (NASA CR-649, Figure 1; its text says 20 in). SEDR 104 Figure 1-3 gives 22.86 in',
+    },
     {
       group: 'Spacecraft',
       label: 'Afterbody length',
@@ -574,38 +581,45 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'frustum from 74.5 in to 32 in at 20 degrees',
     },
-    { group: 'Spacecraft', label: 'Antenna canister length', value: 24 * IN, unit: 'm', confidence: 'documented', note: '24 in' },
     {
       group: 'Spacecraft',
-      label: 'Antenna canister diameters',
-      value: 30 * IN,
+      label: 'Antenna canister length',
+      value: 23.43 * IN,
       unit: 'm',
-      confidence: 'estimated',
-      note: 'modelled 30 in tapering to 25 in from photographs; NASA CR-649 states 24 in to 20 in. Unresolved',
+      confidence: 'derived',
+      note: '23.43 in: from the cylinder top at 81.14 in to the canister top at Z209.07 (SEDR 104, Figure 1-3). CR-649 says 24 in',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Antenna canister base diameter',
+      value: 24 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '24 in, tapering to 20 in at the top (NASA CR-649); SEDR 104 Figure 1-3 scales to the same',
     },
     {
       group: 'Spacecraft',
       label: 'Length, retro nozzles to canister top',
-      value: 10.8 * 0.3048,
+      value: 131.57 * IN,
       unit: 'm',
       confidence: 'documented',
-      note: '10.8 ft (Wikipedia, citing Catchpole); model: 3.30 m',
+      note: '131.57 in: Z77.50 to Z209.07 (SEDR 104, Figure 1-3; Hammack & Heberlig, Figure 2)',
     },
     {
       group: 'Spacecraft',
       label: 'Length with escape tower',
-      value: 25.9 * 0.3048,
+      value: 311.55 * IN,
       unit: 'm',
       confidence: 'documented',
-      note: '25.9 ft secondary; NASA says only “just under 26 feet”; model: 7.904 m',
+      note: '311.55 in: Z77.50 to Z389.05 (SEDR 104, Figure 1-3; Hammack & Heberlig, Figure 2)',
     },
     {
       group: 'Spacecraft',
-      label: 'Escape tower truss and motor layout',
-      value: 5.23,
+      label: 'Escape tower length',
+      value: 203.6 * IN,
       unit: 'm',
-      confidence: 'estimated',
-      note: 'overall length fixed by the two figures above; bay spacing from photographs',
+      confidence: 'documented',
+      note: '203.60 in: pylon base ring at Z185.45 to spike tip at Z389.05; truss bays, motor case and spike at the stations of SEDR 104, Figure 1-3',
     },
     {
       group: 'Launch vehicle',
@@ -613,7 +627,7 @@ export const flight: Flight = {
       value: 25.414,
       unit: 'm',
       confidence: 'documented',
-      note: '83.38 ft, fins to spike; model: 25.413 m',
+      note: '83.38 ft, fins to spike (TM X-53107, 4.1); model: 25.414 m',
     },
     { group: 'Launch vehicle', label: 'Booster diameter', value: 70 * IN, unit: 'm', confidence: 'documented', note: '70 in' },
     {
@@ -626,11 +640,11 @@ export const flight: Flight = {
     },
     {
       group: 'Launch vehicle',
-      label: 'Booster top to heat-shield plane',
-      value: 8.5 * IN,
+      label: 'Booster top to the capsule’s widest plane',
+      value: 8.0 * IN,
       unit: 'm',
       confidence: 'derived',
-      note: '8.5 in: what is left of 83.38 ft; fixes the adapter’s height in the model',
+      note: '8.0 in: 83.38 ft less the 59.00 ft booster and the 284.55 in from that plane to the spike tip. Hammack & Heberlig Figure 17 implies 2.3 in; its total is 4.5 in short of 83.38 ft',
     },
     {
       group: 'Launch vehicle',
@@ -659,10 +673,10 @@ export const flight: Flight = {
     {
       group: 'Launch vehicle',
       label: 'Booster dry mass',
-      value: 8195 * LB,
+      value: 8093 * LB,
       unit: 'kg',
-      confidence: 'documented',
-      note: '8,195 lb with airborne equipment',
+      confidence: 'derived',
+      note: '8,093 lb: the 8,195 lb of TM X-53107 4.2.1, which counts 442 lb of damping compound, less the 102 lb of it added after MR-3',
     },
     {
       group: 'Launch vehicle',
@@ -683,10 +697,10 @@ export const flight: Flight = {
     {
       group: 'Launch vehicle',
       label: 'Fin span',
-      value: 144 * IN,
+      value: 152 * IN,
       unit: 'm',
-      confidence: 'estimated',
-      note: '12 ft, from secondary sources on the Redstone missile',
+      confidence: 'documented',
+      note: '152 in across the air rudders (Hammack & Heberlig, Figure 17)',
     },
     {
       group: 'Launch vehicle',
@@ -707,22 +721,29 @@ export const flight: Flight = {
     { group: 'Spacecraft', label: 'Mass after separation', value: 2855.14 * LB, unit: 'kg', confidence: 'documented', note: '2,855 lb' },
     { group: 'Spacecraft', label: 'Mass at entry', value: 2579 * LB, unit: 'kg', confidence: 'documented', note: '2,579 lb' },
     { group: 'Spacecraft', label: 'Mass afloat', value: 2316.03 * LB, unit: 'kg', confidence: 'documented', note: '2,316 lb' },
-    { group: 'Pressure suit', label: 'Pilot height', value: 1.803, unit: 'm', confidence: 'documented', note: 'Shepard: 5 ft 11 in' },
+    {
+      group: 'Pressure suit',
+      label: 'Pilot height',
+      value: 1.803,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Shepard is widely given as 5 ft 11 in, the selection limit; no primary record read',
+    },
     {
       group: 'Pressure suit',
       label: 'Suit mass',
-      value: 22 * LB,
+      value: 20 * LB,
       unit: 'kg',
-      confidence: 'documented',
-      note: '22 lb (Wikipedia); NASA’s own fact sheet says 20 lb',
+      confidence: 'estimated',
+      note: '20 lb in NASA’s fact sheet, 22 lb elsewhere: secondary figures that disagree',
     },
     {
       group: 'Pressure suit',
       label: 'Operating pressure',
-      value: 3.7 * 6.894757,
+      value: 4.6 * 6.894757,
       unit: 'kPa',
       confidence: 'documented',
-      note: '3.7 psi, only if the cabin loses pressure',
+      note: '4.6 psi, held by the suit regulator only if the cabin loses pressure (SEDR 104; Results of the First U.S. Manned Suborbital Space Flight)',
     },
     {
       group: 'Launch pad',
@@ -778,7 +799,7 @@ export const flight: Flight = {
       value: 345 * 0.3048,
       unit: 'm',
       confidence: 'derived',
-      note: 'about 345 ft from each pad centre; not modelled',
+      note: 'about 345 ft from each pad centre; drawn as scenery',
     },
   ],
   motors: [
@@ -831,7 +852,6 @@ export const flight: Flight = {
       name: 'Pitch and yaw thruster, high',
       count: 4,
       thrustN: 24 * LBF,
-      burnS: 0,
       propellant: '90% hydrogen peroxide',
       confidence: 'documented',
       note: 'automatic system',
@@ -840,7 +860,6 @@ export const flight: Flight = {
       name: 'Roll thruster, high',
       count: 2,
       thrustN: 6 * LBF,
-      burnS: 0,
       propellant: '90% hydrogen peroxide',
       confidence: 'documented',
       note: 'automatic system',
@@ -849,7 +868,6 @@ export const flight: Flight = {
       name: 'Attitude thruster, low',
       count: 6,
       thrustN: 1 * LBF,
-      burnS: 0,
       propellant: '90% hydrogen peroxide',
       confidence: 'documented',
       note: 'automatic system, all axes',

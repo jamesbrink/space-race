@@ -27,7 +27,7 @@ The capsule changed from flight to flight, which is why each flight here has its
 | | MR-3 (No. 7) | MR-4 (No. 11) | Orbital flights |
 | --- | --- | --- | --- |
 | View out | two 10 in portholes, periscope | trapezoidal overhead window | window (periscope deleted on MA-9) |
-| Side hatch | mechanical latches, 69 lb | explosive, 23 lb | explosive |
+| Side hatch | mechanical latches (mechanism 69 lb) | explosive, 23 lb | explosive |
 | Heat shield | beryllium heat sink | beryllium heat sink | ablative fibreglass and resin |
 | Suit gloves | zipped to the sleeves | ring lock with wrist bearing | ring lock |
 

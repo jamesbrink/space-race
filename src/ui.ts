@@ -8,6 +8,8 @@ export interface UiHandlers {
   cutaway(on: boolean): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
+  /** How many pixels at the bottom of the 3D view the controls cover. */
+  inset(pixels: number): void;
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -29,7 +31,10 @@ function si(value: number, unit: string): string {
 
 const dot = (c: Confidence) => `<i class="conf ${c}" title="${c}"></i>`;
 
-const legend = `<p class="fine legend"><span>${dot('documented')}published</span><span>${dot('derived')}derived from published</span><span>${dot('estimated')}estimated</span></p>`;
+const legend = `<p class="fine legend"><span>${dot('documented')}documented</span><span>${dot('derived')}derived from documented</span><span>${dot('estimated')}estimated</span></p>`;
+
+const TABS = ['Parts', 'Specs', 'Motors', 'Flight'] as const;
+const pane = (name: (typeof TABS)[number]) => `data-pane="${name}" id="pane-${name}" role="tabpanel" aria-labelledby="tab-${name}"`;
 
 /** The DOM half of the app. Everything it shows comes from the flight's data file. */
 export class Ui {
@@ -65,10 +70,11 @@ export class Ui {
 
       <aside class="panel">
         <nav class="tabs" role="tablist">
-          ${['Parts', 'Specs', 'Motors', 'Flight'].map((t, i) => `<button role="tab" data-tab="${t}" aria-selected="${i === 0}">${t}</button>`).join('')}
+          ${TABS.map((t) => `<button role="tab" id="tab-${t}" data-tab="${t}" aria-controls="pane-${t}">${t}</button>`).join('')}
+          <button class="close" aria-label="Close panel">Close</button>
         </nav>
-        <section data-pane="Parts"><ol class="parts"></ol></section>
-        <section data-pane="Specs" hidden>
+        <section ${pane('Parts')}><ol class="parts"></ol></section>
+        <section ${pane('Specs')} hidden>
           ${groups
             .map(
               (g) => `
@@ -85,7 +91,7 @@ export class Ui {
             .join('')}
           ${legend}
         </section>
-        <section data-pane="Motors" hidden>
+        <section ${pane('Motors')} hidden>
           <table>${f.motors
             .map(
               (m) => `
@@ -96,7 +102,7 @@ export class Ui {
           </table>
           ${legend}
         </section>
-        <section data-pane="Flight" hidden>
+        <section ${pane('Flight')} hidden>
           <p class="lede small-only">${esc(f.summary)}</p>
           <dl class="facts small-only">${f.facts.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>
           <ol class="timeline">${f.timeline.map((e) => `<li><time>${clock(e.t)}</time><span>${esc(e.event)}</span></li>`).join('')}</ol>
@@ -112,7 +118,7 @@ export class Ui {
         <p class="scale"></p>
       </footer>
       <div class="tip" hidden><b></b><span></span></div>
-      <div class="loading"><span>Loading</span><i></i></div>`;
+      <div class="loading"><span>Loading</span><i></i><button hidden>Try again</button></div>`;
 
     // On a phone the panel is a sheet: tapping a tab opens it, tapping the open tab closes it.
     const panel = root.querySelector<HTMLElement>('.panel')!;
@@ -123,7 +129,10 @@ export class Ui {
         this.tab(b.dataset.tab!);
       }),
     );
-    document.querySelector('#stage')!.addEventListener('pointerdown', () => panel.classList.remove('open'));
+    const stage = document.querySelector<HTMLElement>('#stage')!;
+    stage.addEventListener('pointerdown', () => panel.classList.remove('open'));
+    root.querySelector('.close')!.addEventListener('click', () => panel.classList.remove('open'));
+    root.querySelector('.loading button')!.addEventListener('click', () => on.model(this.model.id));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
     root.querySelector('.tabs')!.addEventListener('keydown', (e) => {
       const key = (e as KeyboardEvent).key;
@@ -157,7 +166,18 @@ export class Ui {
     });
     // the phone layout stacks the switcher on the control block, whose height depends on wrapping
     const controls = root.querySelector<HTMLElement>('.controls')!;
-    new ResizeObserver(() => root.style.setProperty('--controls-h', `${controls.offsetHeight}px`)).observe(controls);
+    const switcher = root.querySelector<HTMLElement>('.models')!;
+    const measure = new ResizeObserver(() => {
+      root.style.setProperty('--controls-h', `${controls.offsetHeight}px`);
+      // whatever sits over the lower half of the 3D view hides that much of it: views are framed above
+      const view = stage.getBoundingClientRect();
+      const tops = [controls, switcher]
+        .filter((el) => el.offsetParent !== null)
+        .map((el) => el.getBoundingClientRect().top)
+        .filter((top) => top > view.top + view.height / 2);
+      on.inset(Math.max(0, view.bottom - Math.min(view.bottom, ...tops)));
+    });
+    for (const el of [controls, switcher, stage, panel]) measure.observe(el);
     this.setModel(this.model.id);
   }
 
@@ -239,6 +259,7 @@ export class Ui {
   loading(what: string): void {
     const el = this.root.querySelector<HTMLElement>('.loading')!;
     el.classList.remove('done', 'failed');
+    el.querySelector('button')!.hidden = true;
     el.querySelector('span')!.textContent = `Loading ${what.toLowerCase()}`;
     this.setProgress(0);
   }
@@ -254,6 +275,7 @@ export class Ui {
   failed(message: string): void {
     const el = this.root.querySelector<HTMLElement>('.loading')!;
     el.classList.add('failed');
+    el.querySelector('button')!.hidden = false;
     el.querySelector('span')!.textContent = `Could not load: ${message}`;
   }
 
@@ -285,7 +307,10 @@ export class Ui {
   }
 
   private tab(name: string): void {
-    this.root.querySelectorAll<HTMLElement>('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    this.root.querySelectorAll<HTMLElement>('[data-tab]').forEach((b) => {
+      b.setAttribute('aria-selected', String(b.dataset.tab === name));
+      b.tabIndex = b.dataset.tab === name ? 0 : -1; // one stop in the tab order; the arrow keys move within
+    });
     this.root.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => (p.hidden = p.dataset.pane !== name));
   }
 }

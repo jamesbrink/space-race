@@ -102,6 +102,16 @@ function ground(renderer: THREE.WebGLRenderer): Setting {
   const sunDir = new THREE.Vector3(0.52, 0.72, 0.46).normalize();
   const envScene = new THREE.Scene();
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(sunDir, false)));
+  // Below the horizon there is sunlit sand and concrete, not more sky: without it bare metal
+  // reflects blue from every side and reads as frosted glass.
+  const earth = new THREE.Mesh(
+    new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(0.42, 0.39, 0.33), side: THREE.BackSide }),
+  );
+  // and the Sun itself: a small bright patch, so a polished edge has something to catch
+  const disc = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(30, 27, 22) }));
+  disc.position.copy(sunDir).multiplyScalar(46);
+  envScene.add(earth, disc);
   const cape = buildCape(GROUND_Y);
   return {
     backdrop: new DomeBackdrop(skyMaterial(sunDir, true)),

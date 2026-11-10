@@ -20,12 +20,14 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   },
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
+  inset: (px) => stage.setInset(px),
 });
 
 /** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
 let autoCut = false;
 
 function select(node: string | null): void {
+  if (!node && !selected) return; // a click on nothing, with nothing chosen, is not a request to move the camera
   selected = node;
   stage.highlight(null, node);
   ui.select(node);
@@ -54,7 +56,7 @@ async function show(id: string): Promise<void> {
   autoCut = false;
   ui.loading(model.name);
   try {
-    await stage.load(flight, model.id, (f) => ui.setProgress(f));
+    if (!(await stage.load(flight, model.id, (f) => ui.setProgress(f)))) return; // overtaken by a later choice
     current = model;
     ui.setModel(model.id);
     stage.setExplode(0);

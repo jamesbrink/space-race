@@ -13,7 +13,8 @@ earlier, single-mission take on the same idea (vanilla JS, toon-shaded, real orb
 ```sh
 pnpm install
 pnpm dev              # Vite with hot reload, http://localhost:5180
-pnpm check            # typecheck, lint, format check: must pass before a commit
+pnpm check            # typecheck, lint, format check, tests: must pass before a commit
+pnpm test             # node --test: explode motion, and every flight.ts against its GLBs
 pnpm lint             # Biome (TS, JS, CSS, JSON) and Ruff (Python)
 pnpm format           # rewrite files in place: Biome and Ruff (`nix fmt` does the same, plus Nix)
 pnpm typecheck        # tsc --noEmit, strict
@@ -23,7 +24,8 @@ pnpm models           # rebuild every flight's GLBs
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
 ```
 
-CI (`.github/workflows/pages.yml`) runs `pnpm check` and builds every push and pull request, and
+CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB
+fails the build) and builds every push and pull request, and
 deploys `main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a sub-path, so
 asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a leading-slash URL
 in `flight.ts`. The GLBs are committed, so CI needs no Blender.
@@ -31,7 +33,9 @@ in `flight.ts`. The GLBs are committed, so CI needs no Blender.
 Models need Blender 5.x: `$BLENDER`, then `/Applications/Blender.app`, then `blender` on PATH.
 It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Useful flags on
 `node tools/build-model.mjs <flight>`: `--only pad` builds one model, `--preview <dir>` also writes
-EEVEE stills (the quick way to look at geometry without the browser).
+EEVEE stills (the quick way to look at geometry without the browser), `--detail 0.3 --out-dir <dir>`
+builds a lower level of detail somewhere else. Blender runs with `--factory-startup`, so no user
+add-on or preference reaches a model.
 
 `window.sr` is the debug handle: `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
 frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly;
@@ -115,11 +119,10 @@ different one per pixel per frame. Three things stop it, and all three must stay
   use `double_sided=True` only where both sides are really seen.
 - **`Stage.fitDepth` moves the near plane out every frame** so depth resolution stays under a
   third of a millimetre at any distance. Do not give the camera a fixed near plane.
-- **Nothing lies close above the terrain.** The ground setting's terrain is three strips laid
-  edge to edge (never overlapping), each two triangles kilometres long. Depth interpolated over
-  triangles that size is coarse: concrete 6 cm above them flickered. So the terrain sits 0.45 m
-  below the pad's surface (`GROUND_Y`), and anything standing on the ground goes down past that
-  (`FOOTING` in `lc_5.py`).
+- **Nothing lies close above the terrain.** Depth interpolated across a triangle kilometres long
+  is coarse: concrete 6 cm above such terrain flickered. So the terrain is one finely divided
+  grid (`cape.ts`), it sits 0.45 m below the pad's surface (`GROUND_Y`), and anything standing
+  on the ground goes down past that (`FOOTING` in `lc_5.py`).
 
 `pnpm test:flicker` checks the result in a real browser: every model, every view, six
 directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.
@@ -129,8 +132,11 @@ directions, looking for patches of pixels that swap when the camera turns 0.005 
 
 Models are generated, so a lower level of detail is a rebuild, not a remodel:
 `blender ... -- --out x.glb --detail 0.3`. `srlib.DETAIL` thins every curve and, under 0.5, drops
-fasteners. The inventory uses 1.0. When the simulator needs distant LODs, add them to
-`build-model.mjs` as extra outputs per script; do not hand-edit geometry for them.
+fasteners; eight sides or fewer is a shape, not a curve, and is kept. The inventory uses 1.0.
+The clearance check runs at every level, and coarser curves sit differently against each other:
+the pad and crew build clean at 0.6 and 0.3, the vehicle does not yet (see `redstone-mrlv.md`).
+When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
+script; do not hand-edit geometry for them.
 
 ## Rules that keep the numbers honest
 
@@ -175,7 +181,10 @@ fasteners. The inventory uses 1.0. When the simulator needs distant LODs, add th
   changing `style.css`; nothing in the control block may be hidden at any of them.
 - Selection has one rule: choosing a part flies to it; choosing an `inside` part also opens the
   cutaway, which closes again when the selection moves on unless the user opened it by hand;
-  Escape or a click on nothing deselects and returns to the section's first view.
+  Escape or a click on nothing deselects and returns to the section's first view. With nothing
+  selected a click on nothing does nothing: the camera is the user's.
+- Views are framed in the part of the canvas the controls leave clear (`Stage.setInset`, fed by
+  the UI's measurement), and framed again when the canvas changes shape.
 - Small text uses `--faint` at the least, which is 4.5:1 on the glass. Do not go dimmer.
 - `main` is protected by a ruleset: push directly, but no force-pushes and no deletion.
 - Conventional Commits. No AI attribution in commits.

@@ -10,7 +10,7 @@ The first American in space, and the first person to control a spacecraft's atti
 | Spacecraft | Mercury No. 7, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Redstone MRLV, MR-7: [redstone-mrlv.md](../../vehicles/redstone-mrlv.md) |
 | Trajectory | suborbital; apogee 187.4 km (101.2 nmi), range 487.3 km (263.1 nmi) |
-| Velocity at cutoff | 7,388 ft/s inertial (8,107 km/h); 6,414 ft/s relative to the ground |
+| Velocity at cutoff (tabulated at capsule separation) | 7,388 ft/s inertial (8,107 km/h); 6,414 ft/s relative to the ground |
 | Loads | 6.3 g at booster cutoff, 11.0 g on entry |
 | Weightless | 5 min 4 s |
 | Duration | 15 min 22 s |
