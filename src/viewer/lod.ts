@@ -59,6 +59,15 @@ export class Staged {
     for (const e of this.exploders) e.set(t);
   }
 
+  /** The model as built: level 0, whether or not it is the one being drawn. */
+  get full(): THREE.Object3D {
+    return this.levels[0]!;
+  }
+
+  get shownLevel(): number {
+    return this.level;
+  }
+
   /** The level being drawn. */
   get shown(): THREE.Object3D {
     return this.levels[this.level]!;

@@ -260,6 +260,9 @@ const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 // clear of the service structure's rails, which run 4.27 m either side of the pad's centre line
 const PILOT = { position: [-2.9, 0, 2.2] as [number, number, number], rotationY: -0.59 };
 
+/** The spacecraft without its tower. */
+const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
+
 const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
@@ -274,16 +277,13 @@ const vehicle: ModelDef = {
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
-    { id: 'spacecraft', label: 'Spacecraft', centreY: VEHICLE_Y + 3.26, span: 8.6 },
-    { id: 'capsule', label: 'Capsule', centreY: VEHICLE_Y + 0.95, span: 3.4 },
-    { id: 'engine', label: 'Engine', centreY: PEDESTAL + 1.5, span: 5.5 },
+    // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
+    { id: 'spacecraft', label: 'Spacecraft', nodes: [...CAPSULE, 'EscapeTower'] },
+    { id: 'capsule', label: 'Capsule', nodes: CAPSULE },
+    { id: 'engine', label: 'Engine', nodes: ['RedstoneTailUnit', 'RedstoneEngine'] },
   ],
   // the pad as it was at liftoff: structure rolled back, cherry picker withdrawn
-  with: [
-    { model: 'pad', position: [0, 0, 0], exploded: 1 },
-    // the pilot at the foot of the vehicle: 1.8 m of man against 25.4 m of rocket
-    { model: 'crew', ...PILOT },
-  ],
+  with: [{ model: 'pad', exploded: 1 }],
 };
 
 const padParts: Part[] = [
@@ -383,11 +383,6 @@ const pad: ModelDef = {
   views: [
     { id: 'pedestal', label: 'Pedestal', centreY: 1.4, span: 9 },
     { id: 'hatch', label: 'Hatch level', centreY: 21, span: 11 },
-  ],
-  with: [
-    { model: 'vehicle', position: [0, VEHICLE_Y, 0] },
-    // the pilot, standing on the hardstand: nothing else on a pad tells you how big it is
-    { model: 'crew', ...PILOT },
   ],
 };
 
@@ -503,10 +498,7 @@ const crew: ModelDef = {
     { id: 'hands', label: 'Gloves', centreY: 0.95, span: 0.62, from: [-0.55, 0.05, 0.83] },
     { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: [-0.55, 0.2, 0.83] },
   ],
-  with: [
-    { model: 'vehicle', position: [0, VEHICLE_Y, 0] },
-    { model: 'pad', position: [0, 0, 0], exploded: 1 },
-  ],
+  with: [{ model: 'pad', exploded: 1 }],
 };
 
 /** Mercury-Redstone 3. Prose versions of this file: ./README.md (flight), ./spacecraft.md (ship). */

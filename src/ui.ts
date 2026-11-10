@@ -1,3 +1,4 @@
+import { prefs } from './prefs';
 import type { Confidence, Flight, ModelDef } from './types';
 
 export interface UiHandlers {
@@ -57,6 +58,7 @@ export class Ui {
     const groups = [...new Set(f.specs.map((s) => s.group))];
     root.innerHTML = `
       <header class="title">
+        <button class="tuck chevron" aria-label="Show or hide the flight summary" aria-expanded="true" title="Tuck away"></button>
         <p class="crumbs">Space Race <b>/</b> ${esc(f.nation)} <b>/</b> ${esc(f.program)}</p>
         <h1>${esc(f.callsign)}</h1>
         <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
@@ -71,7 +73,7 @@ export class Ui {
       <aside class="panel">
         <nav class="tabs" role="tablist">
           ${TABS.map((t) => `<button role="tab" id="tab-${t}" data-tab="${t}" aria-controls="pane-${t}">${t}</button>`).join('')}
-          <button class="close" aria-label="Close panel">Close</button>
+          <button class="close chevron" aria-label="Show or hide the panel" aria-expanded="true" title="Tuck away"></button>
         </nav>
         <section ${pane('Parts')}><ol class="parts"></ol></section>
         <section ${pane('Specs')} hidden>
@@ -117,6 +119,24 @@ export class Ui {
         <div class="buttons"></div>
         <p class="scale"></p>
       </footer>
+      <aside class="legend-keys" aria-label="Camera controls">
+        <button class="legend-toggle" aria-expanded="true" title="Camera controls (?)">Controls<i class="chevron"></i></button>
+        <div class="legend-body">
+          <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>move</em></div>
+          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>orbit · tilt</em></div>
+          <div class="cluster"><span class="pad pair"><kbd>E</kbd><kbd>Q</kbd></span><em>up · down</em></div>
+          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
+          <dl>
+            <div><dt>drag</dt><dd>orbit</dd></div>
+            <div><dt>right-drag</dt><dd>move</dd></div>
+            <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
+            <div><dt>click</dt><dd>go to it</dd></div>
+            <div><dt><kbd>Home</kbd></dt><dd>reset view</dd></div>
+            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+          </dl>
+        </div>
+      </aside>
+      <output class="stats" aria-label="Diagnostics"></output>
       <div class="tip" hidden><b></b><span></span></div>
       <div class="loading"><span>Loading</span><i></i><button hidden>Try again</button></div>`;
 
@@ -126,12 +146,52 @@ export class Ui {
       b.addEventListener('click', () => {
         const same = b.getAttribute('aria-selected') === 'true';
         panel.classList.toggle('open', !(same && panel.classList.contains('open')));
+        this.tuckPanel(false);
         this.tab(b.dataset.tab!);
       }),
     );
     const stage = document.querySelector<HTMLElement>('#stage')!;
     stage.addEventListener('pointerdown', () => panel.classList.remove('open'));
-    root.querySelector('.close')!.addEventListener('click', () => panel.classList.remove('open'));
+    // Panels tuck away. The data panel shuts to its row of tabs (on a phone it is a sheet that
+    // does the same) and any tab opens it again; the title card folds to its heading; H clears
+    // the lot for an unobstructed view.
+    // Each of these choices is remembered (prefs.ts), so the page comes back the way it was left.
+    this.tuckPanel(prefs.get('panelTucked'));
+    root.querySelector('.close')!.addEventListener('click', () => {
+      const tucked = panel.classList.contains('tucked');
+      panel.classList.toggle('open', tucked);
+      this.tuckPanel(!tucked);
+    });
+    const title = root.querySelector<HTMLElement>('.title')!;
+    const tuck = title.querySelector<HTMLElement>('.tuck')!;
+    const tuckTitle = (on: boolean) => {
+      title.classList.toggle('tucked', on);
+      tuck.setAttribute('aria-expanded', String(!on));
+      prefs.set('titleTucked', on);
+    };
+    tuckTitle(prefs.get('titleTucked'));
+    tuck.addEventListener('click', () => tuckTitle(!title.classList.contains('tucked')));
+    const bare = (on: boolean) => {
+      root.classList.toggle('bare', on);
+      prefs.set('bare', on);
+    };
+    bare(prefs.get('bare'));
+    // the camera legend folds to a word; whether it is open is remembered
+    const legendKeys = root.querySelector<HTMLElement>('.legend-keys')!;
+    const legendToggle = legendKeys.querySelector<HTMLElement>('.legend-toggle')!;
+    const showLegend = (open: boolean) => {
+      legendKeys.classList.toggle('folded', !open);
+      legendToggle.setAttribute('aria-expanded', String(open));
+      prefs.set('legendFolded', !open);
+    };
+    showLegend(!prefs.get('legendFolded'));
+    legendToggle.addEventListener('click', () => showLegend(legendKeys.classList.contains('folded')));
+    window.addEventListener('keydown', (e) => {
+      const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+      if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
+      if (e.key.toLowerCase() === 'h') bare(!root.classList.contains('bare'));
+      if (e.key === '?') showLegend(legendKeys.classList.contains('folded'));
+    });
     // A sheet is put away by swiping it down: from its tabs at any time, or from its content
     // once that is scrolled to the top (otherwise the swipe is a scroll). It follows the finger.
     let swipe: { y: number; pulling: boolean } | null = null;
@@ -231,7 +291,7 @@ export class Ui {
   }
 
   /** Rebuild everything that belongs to one model: its parts, its views, its scale line. */
-  setModel(id: string): void {
+  setModel(id: string, apart = 0): void {
     const m = (this.model = this.flight.models.find((x) => x.id === id) ?? this.model);
     const r = this.root;
     r.querySelectorAll<HTMLElement>('[data-model]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.model === m.id)));
@@ -268,7 +328,7 @@ export class Ui {
     r.querySelector<HTMLElement>('.explode')!.hidden = !m.slider;
     r.querySelector('[data-slider="0"]')!.textContent = m.slider?.[0] ?? '';
     r.querySelector('[data-slider="1"]')!.textContent = m.slider?.[1] ?? '';
-    this.slider.value = '0';
+    this.slider.value = String(apart);
     this.selected = null;
     this.tab('Parts');
   }
@@ -285,9 +345,27 @@ export class Ui {
     this.on.cutaway(on);
   }
 
+  /** The user's own switch: on or off until they say otherwise. */
   setRotate(on: boolean): void {
-    this.root.querySelector('[data-rotate]')!.setAttribute('aria-pressed', String(on));
+    this.showRotate(on);
     this.on.autoRotate(on);
+  }
+
+  /** Show whether the view is drifting, without it being the user's decision (a drag pauses it). */
+  showRotate(on: boolean): void {
+    this.root.querySelector('[data-rotate]')?.setAttribute('aria-pressed', String(on));
+  }
+
+  /** Shut the data panel to its row of tabs, or open it again. */
+  private tuckPanel(on: boolean): void {
+    this.root.querySelector('.panel')!.classList.toggle('tucked', on);
+    this.root.querySelector('.close')!.setAttribute('aria-expanded', String(!on));
+    prefs.set('panelTucked', on);
+  }
+
+  /** The diagnostics line: this is an early build, and the numbers are worth having in view. */
+  setStats(text: string): void {
+    this.root.querySelector('.stats')!.textContent = text;
   }
 
   loading(what: string): void {
@@ -350,6 +428,7 @@ export class Ui {
     if (node) {
       this.tab('Parts');
       this.root.querySelector('.panel')!.classList.add('open');
+      this.tuckPanel(false);
     }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => {
       const on = b.dataset.node === node;

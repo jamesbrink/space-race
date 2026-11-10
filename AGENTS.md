@@ -93,9 +93,17 @@ A flight's id is its path: `usa/mercury/mr-3-freedom-7`. The same three segments
 under `missions/`, its GLBs under `public/models/`, and its `pnpm model:*` argument.
 
 This is the game's **inventory**: each flight's vehicle, pad and crew, shown at the highest detail
-with everything known about each part. A flight's `models` (in `flight.ts`) each have their own
-parts, views, slider and setting, and can ask for the others to be shown alongside (the vehicle
-stands on its pad; the pilot stands on the hardstand for scale).
+with everything known about each part.
+
+**One scene, one camera.** All of a flight's models are on the stage at once, each where its
+`position` in `flight.ts` puts it (the rocket on its pedestal, the pilot on the hardstand). A
+section (Vehicle, Launch pad, Crew) is not a different scene: choosing one flies the camera to that
+model and gives it the panel, the slider and the cutaway. Clicking a model does the same. While a
+section is open the others take the state its `with` asks of them (the pad cleared for launch while
+the rocket is studied), moving there as hardware would. The view drifts round whatever was last
+chosen; taking the camera pauses the drift and the next choice restarts it, unless the user has
+switched Auto-orbit off. A view that names parts (`nodes`) frames them wherever they are, so it
+follows them as the slider takes the model apart.
 
 ## Cutaway and what is inside
 
@@ -202,8 +210,12 @@ script; do not hand-edit geometry for them.
 - A part with a `drive` (a truck) leaves by following a route on the ground, turning about its rear
   axle with its wheels rolling and steering (`viewer/explode.ts`); its wheels are separate nodes
   in the GLB, named by prefix.
-- A click on a model standing beside the one on show (the pad under the rocket, the pilot at its
-  foot) opens that model's section; hovering says so.
+- Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
+  them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
+  A new panel gets the same control and a `Pref`.
+- The camera legend (bottom left) lists every key and gesture: keep it in step with the handlers
+  in `stage.ts`. The line under it is diagnostics: loop rate, frames drawn, triangles, draw calls,
+  and each model's level of detail.
 - Selection has one rule: choosing a part flies to it; choosing an `inside` part also opens the
   cutaway, which closes again when the selection moves on unless the user opened it by hand;
   Escape or a click on nothing deselects and returns to the section's first view. With nothing

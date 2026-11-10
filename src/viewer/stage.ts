@@ -7,7 +7,7 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import type { Flight, ModelDef } from '../types';
+import type { Flight as FlightData, ModelDef } from '../types';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { wearTexture } from './space';
@@ -46,6 +46,16 @@ VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
+/** A camera flight under way: where the orbit point and the camera's offset from it start and end. */
+interface Journey {
+  target0: THREE.Vector3;
+  target1: THREE.Vector3;
+  offset0: THREE.Vector3;
+  offset1: THREE.Vector3;
+  t: number;
+  seconds: number;
+}
+
 /** What a pointer is on: a part of the model on show, or another model standing beside it. */
 interface Picked {
   node: string | null;
@@ -53,20 +63,16 @@ interface Picked {
 }
 const NOTHING: Picked = { node: null, model: null };
 
-/** A second copy of a loaded model, to stand beside another: put back together, and free to be taken apart by itself. */
-function copy(source: THREE.Object3D): THREE.Object3D {
-  rest(source);
-  const object = source.clone(true);
-  object.traverse((o) => delete o.userData.home); // clone() turned the vectors into plain objects
-  return object;
-}
-
 /** Put every part of a model back where it was built. */
 function rest(object: THREE.Object3D): void {
   object.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
 }
 
-/** The 3D half of the app: one model at a time, in its setting, orbitable and explodable. */
+/**
+ * The 3D half of the app: one scene holding all of a flight's models, in its setting. One of
+ * them is the section being studied: its parts can be picked, cut open and taken apart. Moving
+ * between sections is a flight of the camera, never a change of scene.
+ */
 export class Stage {
   onHover: (node: string | null) => void = () => {};
   onSelect: (node: string | null) => void = () => {};
@@ -74,6 +80,8 @@ export class Stage {
   /** A model standing beside the one on show was clicked: the caller opens it. */
   onModel: (id: string) => void = () => {};
   onHoverModel: (id: string | null) => void = () => {};
+  /** The Home key: back to where the section starts. */
+  onHome: () => void = () => {};
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -94,12 +102,16 @@ export class Stage {
 
   private setting: Setting;
   private root: THREE.Group | null = null;
-  private main: THREE.Object3D | null = null;
-  private def: ModelDef | null = null;
-  /** Everything on show, each with its levels of detail; the first is the model itself. */
+  /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
-  /** The ids of the models standing beside the one on show, in the order they are staged. */
-  private company: string[] = [];
+  private defs: ModelDef[] = [];
+  /** Which of them is the section being studied. */
+  private current = 0;
+  /** How far apart each model is taken (0 to 1), and how far it is being moved to. */
+  private apart: number[] = [];
+  private apartGoal: number[] = [];
+  /** Where each model's own slider was left: what it returns to when it is the section again. */
+  private apartOwn: number[] = [];
   private hoveredModel: string | null = null;
   private parts = new Map<string, THREE.Object3D>();
   private hovered: string | null = null;
@@ -107,7 +119,7 @@ export class Stage {
   private pointerDirty = false;
   /** A press in progress: where it began and what was under it then. */
   private down: ({ x: number; y: number } & Picked) | null = null;
-  private flyTo: { target: THREE.Vector3; position: THREE.Vector3; t: number } | null = null;
+  private flyTo: Journey | null = null;
   /** What the camera was last sent to look at; cleared when the user moves it. */
   private following: { view?: string; part?: string } | null = null;
   /** Called when the framing stops being a named view (the user orbited, or a part was chosen). */
@@ -115,16 +127,20 @@ export class Stage {
   private centreY = 0;
   /** The cutaway: a quarter of every shell removed, the quarter facing the default camera. */
   private readonly cutPlanes = [new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0), new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)];
-  private readonly shellMaterials = new Map<THREE.Material, THREE.Material>();
+  /** Per model file: each shell material's own clipped copy. Only the section's own model is ever cut. */
+  private readonly shellMaterials = new Map<string, Map<THREE.Material, THREE.Material>>();
   private cut = false;
   private readonly bounds = new THREE.Sphere();
   private shadowFit = -1;
-  private loadToken = 0;
   /** Keys being held down, lower case. */
   private readonly held = new Set<string>();
   /** Something on show has changed and the next frame must be drawn. */
   private dirty = true;
   private sinceDrawn = 0;
+  private frames = 0;
+  private drawn = 0;
+  private work = 0;
+  private statsAt = performance.now();
   private readonly lastView = new THREE.Matrix4();
   private readonly lastProjection = new THREE.Matrix4();
   /** How much of the bottom of the canvas the controls cover, 0 to 1: views are framed above it. */
@@ -138,6 +154,7 @@ export class Stage {
     // nothing that casts a shadow moves by itself: the map is redrawn when something is changed
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.localClippingEnabled = true;
+    this.renderer.info.autoReset = false; // counted per frame drawn, across every pass (stats())
 
     // models are Draco-compressed; the decoder is served from public/draco
     this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
@@ -215,8 +232,9 @@ export class Stage {
       else this.onSelect(down.node);
     });
     canvas.addEventListener('pointercancel', () => (this.down = null));
-    // Keys walk the view over the site: WASD or the arrows move, Q and E turn, R and F (or + and -)
-    // zoom, Home goes back to where the section starts. Held keys are applied each frame.
+    // Keys fly the view: WASD moves it over the site, E and Q lift and lower it, the arrows swing
+    // it round and tilt it, R and F (or + and -) zoom, Home goes back to where the section starts. Held keys
+    // are applied each frame. The legend in the corner of the page (ui.ts) lists these.
     const KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'r', 'f', '+', '=', '-', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
     window.addEventListener('keydown', (e) => {
       const key = e.key.toLowerCase();
@@ -224,7 +242,7 @@ export class Stage {
       const typing = el.matches?.('input, textarea, select, [contenteditable]');
       const widget = key.startsWith('arrow') && el.closest?.('[role=tablist], input');
       if (e.metaKey || e.ctrlKey || e.altKey || typing || widget) return;
-      if (key === 'home') return this.view(this.def?.home ?? 'all');
+      if (key === 'home') return this.onHome();
       if (!KEYS.has(key)) return;
       e.preventDefault();
       if (!this.held.size) {
@@ -249,88 +267,102 @@ export class Stage {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
-  /**
-   * Show one of a flight's models, with whatever it asks to be shown alongside.
-   * Resolves to false if a later load() overtook this one: the caller's model is not the one on show.
-   */
-  async load(flight: Flight, modelId: string, onProgress?: (fraction: number) => void): Promise<boolean> {
-    const def = flight.models.find((m) => m.id === modelId);
-    if (!def) throw new Error(`${flight.id} has no model named ${modelId}`);
-    const token = ++this.loadToken;
-    const others = (def.with ?? []).map((w) => {
-      const other = flight.models.find((m) => m.id === w.model);
-      if (!other) throw new Error(`${def.id} wants ${w.model}, which ${flight.id} does not have`);
-      return { w, other };
-    });
-    // every file is asked for at once, and the bar is the average of them all
-    const fractions = new Array<number>(others.length + 1).fill(0);
-    const progress = (i: number) => (f: number) => {
-      fractions[i] = f;
-      onProgress?.(fractions.reduce((a, b) => a + b, 0) / fractions.length);
-    };
-    const [mainResult, ...extraResults] = await Promise.allSettled([
-      this.fetch(def.url, progress(0)),
-      ...others.map(({ other }, i) => this.fetch(other.url, progress(i + 1))),
-    ]);
-    if (token !== this.loadToken) return false;
-    if (mainResult.status === 'rejected') throw mainResult.reason;
-    const main = mainResult.value;
-    // company that failed to arrive is left out: the model asked for is still worth showing
-    const company = others.flatMap(({ w, other }, i) => {
-      const result = extraResults[i]!;
-      if (result.status === 'rejected') {
-        console.warn(`${def.id}: shown without ${other.id}:`, result.reason);
-        return [];
-      }
-      const staged = new Staged(copy(result.value), other.parts);
-      staged.explode(w.exploded ?? 0);
-      staged.group.position.set(...w.position);
-      staged.group.rotation.y = w.rotationY ?? 0;
-      return [{ staged, url: other.url, id: other.id }];
-    });
+  private get def(): ModelDef | null {
+    return this.defs[this.current] ?? null;
+  }
 
+  /** The section's own model. */
+  private get main(): THREE.Object3D | null {
+    return this.staged[this.current]?.group ?? null;
+  }
+
+  /** Put all of a flight's models on the stage, each where it stands. Rejects if any cannot be fetched. */
+  async load(flight: FlightData, onProgress?: (fraction: number) => void): Promise<void> {
+    const fractions = new Array<number>(flight.models.length).fill(0);
+    const scenes = await Promise.all(
+      flight.models.map((m, i) =>
+        this.fetch(m.url, (f) => {
+          fractions[i] = f;
+          onProgress?.(fractions.reduce((a, b) => a + b, 0) / fractions.length); // the bar is the average of them all
+        }),
+      ),
+    );
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
     for (const o of this.setting.scenery) this.scene.remove(o);
-    rest(main);
-    const own = new Staged(main, def.parts);
-    own.group.position.set(...(def.position ?? [0, 0, 0]));
-    own.group.rotation.y = def.rotationY ?? 0;
-    this.staged = [own, ...company.map((c) => c.staged)];
-    this.company = company.map((c) => c.id);
+    this.defs = flight.models;
+    this.staged = flight.models.map((def, i) => {
+      rest(scenes[i]!);
+      const staged = new Staged(scenes[i]!, def.parts);
+      staged.group.position.set(...(def.position ?? [0, 0, 0]));
+      staged.group.rotation.y = def.rotationY ?? 0;
+      return staged;
+    });
+    this.apart = this.staged.map(() => 0);
+    this.apartGoal = this.staged.map(() => 0);
+    this.apartOwn = this.staged.map(() => 0);
     this.root = new THREE.Group();
     this.root.add(...this.staged.map((s) => s.group));
     this.scene.add(this.root);
     this.root.updateMatrixWorld(true);
     for (const s of this.staged) s.measure();
-    this.main = own.group;
-    this.def = def;
-    this.parts = new Map(
-      def.parts.flatMap((p) => {
-        const o = main.getObjectByName(p.node);
-        return o ? [[p.node, o] as const] : [];
-      }),
-    );
     // the coarser levels arrive behind the scenes; a model that has none simply stays as it is
-    [{ staged: own, url: def.url, id: def.id }, ...company].forEach(({ staged, url }, n) => {
+    const staged = this.staged;
+    flight.models.forEach((def, i) => {
       for (let level = 1; level <= LOD_ABOVE.length; level++)
-        this.fetch(lodUrl(url, level))
+        this.fetch(lodUrl(def.url, level))
           .then((object) => {
-            if (token !== this.loadToken) return;
-            if (!n) rest(object);
-            staged.add(level, n ? copy(object) : object);
+            if (staged !== this.staged) return;
+            rest(object);
+            staged[i]!.add(level, object);
             this.dirty = true;
           })
           .catch(() => {});
     });
-    this.setCutaway(false);
-    this.setting = this.settings.get(def.backdrop);
+    this.setting = this.settings.get(flight.models[0]!.backdrop);
     this.applySetting();
+    this.section(flight.models[0]!.id, true);
+  }
+
+  /**
+   * Make one model the section being studied and fly to where it starts. The others take the
+   * state the section asks for (the pad cleared for launch while the rocket is studied), moving
+   * there as they would: the structure rolls back, the truck drives off.
+   */
+  section(id: string, snap = false): void {
+    const at = this.defs.findIndex((m) => m.id === id);
+    if (at < 0) return;
+    this.setCutaway(false);
+    this.current = at;
+    const def = this.defs[at]!;
+    const own = this.staged[at]!;
+    this.parts = new Map(
+      def.parts.flatMap((p) => {
+        const o = own.full.getObjectByName(p.node);
+        return o ? [[p.node, o] as const] : [];
+      }),
+    );
+    this.defs.forEach((other, i) => {
+      // its own state is wherever its slider was left; the others take what this section asks of them
+      this.apartGoal[i] = i === at ? this.apartOwn[i]! : (def.with?.find((w) => w.model === other.id)?.exploded ?? 0);
+      if (snap) this.setApart(i, this.apartGoal[i]!);
+    });
     this.highlight(null, null);
     this.shadowFit = -1;
     this.fitShadows(0);
-    this.view(def.home ?? 'all', true);
-    return true;
+    this.view(def.home ?? 'all', snap);
+  }
+
+  /** How far apart a model has been taken, 0 to 1: what its slider should read. */
+  exploded(id: string): number {
+    return this.apartOwn[this.defs.findIndex((m) => m.id === id)] ?? 0;
+  }
+
+  private setApart(i: number, t: number): void {
+    this.apart[i] = t;
+    this.staged[i]?.explode(t);
+    this.dirty = true;
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   private fetch(url: string, onProgress?: (fraction: number) => void): Promise<THREE.Object3D> {
@@ -341,7 +373,7 @@ export class Stage {
           if (e.total) onProgress?.(e.loaded / e.total);
         })
         .then((gltf) => {
-          this.dress(gltf.scene);
+          this.dress(gltf.scene, url);
           return gltf.scene;
         });
       this.loaded.set(url, promise);
@@ -352,7 +384,7 @@ export class Stage {
   }
 
   /** What Blender's export cannot carry: shadows, anisotropy, and the wear on every surface. */
-  private dress(object: THREE.Object3D): void {
+  private dress(object: THREE.Object3D, url: string): void {
     const anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const seen = new Set<THREE.Material>();
     object.traverse((o) => {
@@ -363,7 +395,7 @@ export class Stage {
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (mat.name.startsWith('glass')) {
         const pane = mat.name.startsWith('glass-visor') ? VISOR : GLASS;
-        mesh.material = shell ? this.shellOf(pane) : pane;
+        mesh.material = shell ? this.shellOf(pane, url) : pane;
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
         return;
@@ -380,7 +412,7 @@ export class Stage {
           mat.bumpScale = 0.6;
         }
       }
-      if (shell) mesh.material = this.shellOf(mat);
+      if (shell) mesh.material = this.shellOf(mat, url);
     });
   }
 
@@ -388,14 +420,16 @@ export class Stage {
    * A shell's own copy of a material: the one the cutaway clips. Internals keep the original,
    * so a tank dome and the pipe inside it can share "aluminium" and only the dome is cut.
    */
-  private shellOf(material: THREE.Material): THREE.Material {
-    let copy = this.shellMaterials.get(material);
+  private shellOf(material: THREE.Material, url: string): THREE.Material {
+    let shells = this.shellMaterials.get(url);
+    if (!shells) this.shellMaterials.set(url, (shells = new Map()));
+    let copy = shells.get(material);
     if (!copy) {
       copy = material.clone();
       copy.userData.side = material.side;
       copy.clipIntersection = true; // cut away only where both planes agree: one quadrant
       copy.clipShadows = true; // and let the light in through the opening
-      this.shellMaterials.set(material, copy);
+      shells.set(material, copy);
     }
     return copy;
   }
@@ -406,10 +440,15 @@ export class Stage {
     this.dirty = true;
     const at = this.main?.position ?? new THREE.Vector3();
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
-    for (const m of this.shellMaterials.values()) {
-      m.clippingPlanes = on ? this.cutPlanes : null;
-      m.side = on ? THREE.DoubleSide : (m.userData.side as THREE.Side);
-      m.needsUpdate = true;
+    // only the section's own model opens (and only its full level has an inside to show)
+    for (const [url, shells] of this.shellMaterials) {
+      const open = on && url === this.def?.url;
+      for (const m of shells.values()) {
+        if (Boolean(m.clippingPlanes) === open) continue;
+        m.clippingPlanes = open ? this.cutPlanes : null;
+        m.side = open ? THREE.DoubleSide : (m.userData.side as THREE.Side);
+        m.needsUpdate = true;
+      }
     }
     this.renderer.shadowMap.needsUpdate = true; // the light comes in through the opening
   }
@@ -449,12 +488,27 @@ export class Stage {
     else if (this.following?.view) this.view(this.following.view, snap);
   }
 
+  /** Take the section's model apart this far (its slider). */
   setExplode(t: number): void {
-    this.dirty = true;
-    this.staged[0]?.explode(t);
+    this.apartGoal[this.current] = this.apartOwn[this.current] = t;
+    this.setApart(this.current, t);
     this.fitShadows(t);
-    this.renderer.shadowMap.needsUpdate = true;
     this.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
+  }
+
+  /** Move every model toward the state it has been asked for: a rollback or a drive-off takes a few seconds. */
+  private settle(dt: number): void {
+    let moved = false;
+    this.apartGoal.forEach((goal, i) => {
+      const now = this.apart[i]!;
+      if (now === goal) return;
+      const step = this.frozen ? 1 : dt / 4; // (a test wants the scene still at once)
+      this.setApart(i, Math.abs(goal - now) <= step ? goal : now + Math.sign(goal - now) * step);
+      moved = true;
+    });
+    if (!moved) return;
+    this.shadowFit = -1;
+    this.fitShadows(0);
   }
 
   setAutoRotate(on: boolean): void {
@@ -468,7 +522,7 @@ export class Stage {
     this.dirty = true;
     // outlined in the level of detail that is on show
     this.outline.selectedObjects = [...new Set([hovered, selected])].flatMap((n) => {
-      const o = n ? this.staged[0]?.part(n) : undefined;
+      const o = n ? this.staged[this.current]?.part(n) : undefined;
       return o ? [o] : [];
     });
   }
@@ -487,7 +541,6 @@ export class Stage {
     if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
     // no closer than just outside the part: nearer than that the camera is inside its skin
     this.controls.minDistance = Math.max(0.35, Math.min(size.x, size.z) * 0.62);
-    this.controls.autoRotate = false;
     this.following = { part: node };
     this.onView(null);
     const position = target.clone().addScaledVector(dir, distance);
@@ -495,27 +548,32 @@ export class Stage {
       this.controls.target.copy(target);
       this.camera.position.copy(position);
       this.controls.update();
-    } else this.flyTo = { target, position, t: 0 };
+    } else this.fly(target, position);
   }
 
   /** Frame 'all' (everything on show) or one of the model's named views. */
   view(id: string, snap = false): void {
     if (!this.root || !this.def) return;
     const named = this.def.views.find((v) => v.id === id);
-    // 'all' is everything on show; a named view with no numbers is the model alone, as it stands
-    const box = new THREE.Box3().setFromObject(named && this.main ? this.main : this.root);
+    // 'all' is everything on show; a named view with no numbers is the model alone, as it stands;
+    // one that names parts is those parts wherever they are now, so it follows them as they come apart
+    const box = new THREE.Box3();
+    const subjects = (named?.nodes ?? []).flatMap((n) => this.parts.get(n) ?? []);
+    if (subjects.length) for (const o of subjects) box.expandByObject(o);
+    else box.setFromObject(named && this.main ? this.main : this.root);
     const size = box.getSize(new THREE.Vector3());
     const centreY = named?.centreY ?? (box.min.y + box.max.y) / 2;
     // a wide, low subject (a launch pad) must fit by width as well as by height
-    const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect);
+    const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect) * (subjects.length ? 1.12 : 1);
     // the subject fills most of the frame above the controls, which sit over the bottom of it
     const fill = (1 - this.inset) * 0.9;
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / fill;
     // a named view looks at the model's own axis; 'all' looks at the middle of everything
     const mid = box.getCenter(new THREE.Vector3());
-    const target = named
-      ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z)
-      : new THREE.Vector3(mid.x, centreY, mid.z);
+    const target =
+      named && !subjects.length
+        ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z)
+        : new THREE.Vector3(mid.x, centreY, mid.z);
     const lift = this.setting.floor ? 0.16 : span < 4 ? 0.22 : 0.1;
     // aim under the subject, so it sits in the middle of the frame that the controls leave clear
     target.y -= ((span / fill) * this.inset) / 2;
@@ -535,9 +593,29 @@ export class Stage {
       this.controls.target.copy(target);
       this.camera.position.copy(position);
       this.controls.update();
-    } else {
-      this.flyTo = { target, position, t: 0 };
-    }
+    } else this.fly(target, position);
+  }
+
+  /**
+   * Send the camera somewhere. It swings round what it is looking at while that slides to the
+   * new subject, and pulls back or closes in as it goes: an arc, not a straight line through
+   * the rocket. Longer journeys take longer, up to a limit.
+   */
+  private fly(target: THREE.Vector3, position: THREE.Vector3): void {
+    const from = this.camera.position.clone().sub(this.controls.target);
+    const to = position.clone().sub(target);
+    const journey =
+      this.controls.target.distanceTo(target) +
+      Math.abs(to.length() - from.length()) +
+      from.angleTo(to) * Math.min(from.length(), to.length());
+    this.flyTo = {
+      target0: this.controls.target.clone(),
+      target1: target.clone(),
+      offset0: from,
+      offset1: to,
+      t: 0,
+      seconds: THREE.MathUtils.clamp(0.7 + 0.55 * Math.log2(1 + journey / 4), 0.9, 2.8),
+    };
   }
 
   /** Fit the shadow map and the scene's bounds. Called on load and as the slider moves. */
@@ -584,12 +662,20 @@ export class Stage {
     const forward = new THREE.Vector3(-offset.x, 0, -offset.z).normalize();
     const right = new THREE.Vector3().crossVectors(forward, UP);
     const step = new THREE.Vector3()
-      .addScaledVector(forward, Number(has('w', 'arrowup')) - Number(has('s', 'arrowdown')))
-      .addScaledVector(right, Number(has('d', 'arrowright')) - Number(has('a', 'arrowleft')))
+      .addScaledVector(forward, Number(has('w')) - Number(has('s')))
+      .addScaledVector(right, Number(has('d')) - Number(has('a')))
+      .addScaledVector(UP, (Number(has('e')) - Number(has('q'))) * 0.7)
       .multiplyScalar(distance * 0.9 * dt); // a screen's width in about a second, at any zoom
     this.controls.target.add(step);
     this.camera.position.add(step);
-    const turn = (Number(has('q')) - Number(has('e'))) * 1.2 * dt;
+    const turn = (Number(has('arrowleft')) - Number(has('arrowright'))) * 1.2 * dt;
+    // tilt: up the sky or down toward the horizon, within what the setting allows
+    const tilt = (Number(has('arrowup')) - Number(has('arrowdown'))) * 0.9 * dt;
+    if (tilt) {
+      const polar = THREE.MathUtils.clamp(offset.angleTo(UP) - tilt, 0.05, this.controls.maxPolarAngle);
+      const flat = new THREE.Vector3(offset.x, 0, offset.z).normalize();
+      offset.copy(flat.multiplyScalar(Math.sin(polar)).addScaledVector(UP, Math.cos(polar))).multiplyScalar(distance);
+    }
     const zoom = Math.exp((Number(has('f', '-')) - Number(has('r', '+', '='))) * 1.4 * dt);
     const to = THREE.MathUtils.clamp(distance * zoom, this.controls.minDistance, this.controls.maxDistance);
     offset.applyAxisAngle(UP, turn).setLength(to);
@@ -646,7 +732,7 @@ export class Stage {
     let changed = false;
     this.staged.forEach((s, i) => {
       const distance = Math.max(this.camera.position.distanceTo(s.sphere.center) - s.sphere.radius * 0.6, s.sphere.radius * 0.1);
-      changed = s.choose(scale / distance, i === 0 && this.cut) || changed;
+      changed = s.choose(scale / distance, i === this.current && this.cut) || changed;
     });
     if (!changed) return;
     this.dirty = true;
@@ -671,8 +757,8 @@ export class Stage {
       .find((h) => !gone(h));
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) {
       const at = this.staged.findIndex((s) => s.shown === o);
-      if (at > 0) return { node: null, model: this.company[at - 1] ?? null };
-      if (at === 0) break;
+      if (at >= 0 && at !== this.current) return { node: null, model: this.defs[at]!.id };
+      if (at === this.current) break;
     }
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent)
       if (this.parts.has(o.name)) return { node: o.name, model: null };
@@ -705,17 +791,50 @@ export class Stage {
     this.refollow(); // a framing made for the old shape no longer fits
   }
 
+  /**
+   * For the diagnostics readout: how fast the loop is turning over and what a drawn frame costs.
+   * `fps` is the loop (what motion would get); `drawn` is how many of those frames were actually
+   * drawn, since a still view is not redrawn.
+   */
+  stats(): { fps: number; drawn: number; ms: number; triangles: number; calls: number; levels: number[] } {
+    const now = performance.now();
+    const seconds = Math.max(1e-3, (now - this.statsAt) / 1000);
+    const out = {
+      fps: this.frames / seconds,
+      drawn: this.drawn / seconds,
+      ms: this.frames ? this.work / this.frames : 0,
+      triangles: this.renderer.info.render.triangles,
+      calls: this.renderer.info.render.calls,
+      levels: this.staged.map((s) => s.shownLevel),
+    };
+    this.statsAt = now;
+    this.frames = this.drawn = this.work = 0;
+    return out;
+  }
+
   private frame(): void {
+    const began = performance.now();
+    this.step();
+    this.frames++;
+    this.work += performance.now() - began;
+  }
+
+  private step(): void {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
     if (this.flyTo) {
       const f = this.flyTo;
-      f.t = Math.min(1, f.t + dt / 1.1);
-      const k = 1 - (1 - f.t) ** 3;
-      this.controls.target.lerp(f.target, k);
-      this.camera.position.lerp(f.position, k);
+      f.t = Math.min(1, f.t + dt / f.seconds);
+      const k = f.t * f.t * f.t * (f.t * (f.t * 6 - 15) + 10); // eased at both ends
+      this.controls.target.lerpVectors(f.target0, f.target1, k);
+      // the offset turns and changes length separately: lengths blend by ratio, so a long pull-back starts gently
+      const turn = new THREE.Quaternion().setFromUnitVectors(f.offset0.clone().normalize(), f.offset1.clone().normalize());
+      const offset = f.offset0.clone().applyQuaternion(new THREE.Quaternion().slerp(turn, k));
+      offset.setLength(f.offset0.length() * (f.offset1.length() / f.offset0.length()) ** k);
+      this.camera.position.copy(this.controls.target).add(offset);
       if (f.t >= 1) this.flyTo = null;
     }
+    this.settle(dt);
     this.drive(dt);
     this.fitDetail();
     this.controls.update(dt);
@@ -748,6 +867,8 @@ export class Stage {
     this.lastView.copy(this.camera.matrixWorld);
     this.lastProjection.copy(this.camera.projectionMatrix);
     this.dirty = false;
+    this.renderer.info.reset();
+    this.drawn++;
     this.composer.render(this.sinceDrawn);
     this.sinceDrawn = 0;
   }

@@ -1,4 +1,5 @@
 import { flights } from '../missions';
+import { prefs } from './prefs';
 import { Ui } from './ui';
 import { Stage } from './viewer/stage';
 
@@ -18,12 +19,23 @@ document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
 let selected: string | null = null;
 let current = flight.models[0]!;
+/** Everything is on the stage: until then a choice of section has nothing to fly to. */
+let ready = false;
+/** The user switched auto-orbit off themselves. Otherwise it is only ever paused, and the next move restarts it. */
+let orbitOff = prefs.get('orbitOff');
 
 const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
-  model: show,
+  model: (id) => (ready ? show(id) : void start(id)), // before it has loaded, this is "try again"
   explode: (t) => stage.setExplode(t),
-  view: (id) => stage.view(id),
-  autoRotate: (on) => stage.setAutoRotate(on),
+  view: (id) => {
+    stage.view(id);
+    orbit();
+  },
+  autoRotate: (on) => {
+    orbitOff = !on;
+    prefs.set('orbitOff', orbitOff);
+    stage.setAutoRotate(on);
+  },
   cutaway: (on) => {
     autoCut = false; // asked for by hand: it stays until asked otherwise
     stage.setCutaway(on);
@@ -35,6 +47,12 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
 
 /** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
 let autoCut = false;
+
+/** Drift round whatever was just chosen, unless the user has said not to. */
+function orbit(): void {
+  stage.setAutoRotate(!orbitOff);
+  ui.showRotate(!orbitOff);
+}
 
 function select(node: string | null): void {
   if (!node && !selected) return; // a click on nothing, with nothing chosen, is not a request to move the camera
@@ -51,27 +69,34 @@ function select(node: string | null): void {
     ui.setCutaway(false);
     autoCut = false;
   }
-  if (node) {
-    stage.focus(node);
-    ui.setRotate(false);
-  } else {
-    stage.view(current.home ?? 'all'); // back to where this section starts
-  }
+  if (node) stage.focus(node);
+  else stage.view(current.home ?? 'all'); // back to where this section starts
+  orbit();
 }
 
-/** Switch to one of the flight's models. The address bar's #fragment follows, so a view can be linked. */
-async function show(id: string): Promise<void> {
+/**
+ * Go to one of the flight's sections: the camera flies there and the panels change to match.
+ * Nothing is loaded and nothing leaves the scene. The address bar follows, so a view can be linked.
+ */
+function show(id: string, snap = false): void {
   const model = flight.models.find((m) => m.id === id) ?? flight.models[0]!;
   selected = null;
   autoCut = false;
-  ui.loading(model.name);
+  current = model;
+  ui.setModel(model.id, stage.exploded(model.id));
+  stage.section(model.id, snap);
+  orbit();
+  const hash = `#${flight.id}/${model.id}`;
+  if (location.hash !== hash) history.replaceState(null, '', hash);
+}
+
+/** Fetch the flight's models and open on a section. */
+async function start(id: string): Promise<void> {
+  ui.loading(flight.callsign);
   try {
-    if (!(await stage.load(flight, model.id, (f) => ui.setProgress(f)))) return; // overtaken by a later choice
-    current = model;
-    ui.setModel(model.id);
-    stage.setExplode(0);
-    const hash = `#${flight.id}/${model.id}`;
-    if (location.hash !== hash) history.replaceState(null, '', hash);
+    await stage.load(flight, (f) => ui.setProgress(f));
+    ready = true;
+    show(id, true);
     ui.loaded();
   } catch (e) {
     console.error(e);
@@ -81,21 +106,35 @@ async function show(id: string): Promise<void> {
 
 stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
-stage.onModel = (id) => void show(id); // a click on the pad, the rocket or the pilot opens its section
+stage.onModel = (id) => show(id); // a click on the pad, the rocket or the pilot goes to it
 stage.onHoverModel = (id) => ui.hoverModel(id);
-stage.onInteract = () => ui.setRotate(false);
+// taking the camera pauses the drift; it starts again with the next thing chosen
+stage.onInteract = () => {
+  stage.setAutoRotate(false);
+  ui.showRotate(false);
+};
 stage.onView = (id) => ui.setView(id);
+stage.onHome = () => (selected ? select(null) : show(current.id));
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
 });
 
-void show(address().model);
+void start(address().model);
 window.addEventListener('hashchange', () => {
   const to = address();
   // another flight is another page's worth of state: start clean rather than rebuild in place
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
-  else void show(to.model);
+  else if (ready && to.model !== current.id) show(to.model);
 });
+
+// diagnostics, twice a second
+setInterval(() => {
+  const s = stage.stats();
+  const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
+  ui.setStats(
+    `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}`,
+  );
+}, 500);
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
 Object.assign(window, { sr: { stage, ui, flight, show } });

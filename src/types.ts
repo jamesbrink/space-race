@@ -105,6 +105,11 @@ export interface ViewDef {
   label: string;
   centreY?: number;
   span?: number;
+  /**
+   * Parts (node names) this view is of. It frames them wherever they are now, so it follows
+   * them as the model is taken apart, and `centreY` and `span` are not needed.
+   */
+  nodes?: string[];
   /** Where the camera stands, as a direction from the subject (default: front right, slightly above). */
   from?: [number, number, number];
 }
@@ -125,7 +130,7 @@ export interface ModelDef {
   views: ViewDef[];
   /** The model has internals and flagged shells (srlib.mark_shells): offer a cutaway. */
   cutaway?: boolean;
-  /** Where the model stands, metres (default: the origin). The floor is y = 0. */
+  /** Where the model stands in the flight's one scene, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */
   rotationY?: number;
@@ -135,14 +140,12 @@ export interface ModelDef {
   specGroups?: string[];
   /** The view shown first (default: 'all', everything on show). */
   home?: string;
-  /** Other models of this flight shown alongside for context, e.g. the vehicle standing on its pad. */
-  with?: {
-    model: string;
-    position: [number, number, number];
-    rotationY?: number;
-    /** Show it with its own slider at this position, 0 to 1 (e.g. a pad already cleared for launch). */
-    exploded?: number;
-  }[];
+  /**
+   * The state the flight's other models take while this one is being studied: how far along
+   * their own sliders, 0 to 1 (the pad cleared for launch while the rocket is looked at).
+   * A model not listed is shown as built.
+   */
+  with?: { model: string; exploded: number }[];
 }
 
 export interface Flight {
