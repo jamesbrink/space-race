@@ -58,12 +58,15 @@ export interface Part {
 /** What is drawn behind a model: Earth from apogee, the Cape at ground level, or a dark studio. */
 export type BackdropKind = 'orbit' | 'ground' | 'studio';
 
-/** A camera framing: look at height `centreY` from far enough back to fit `span` metres. */
+/**
+ * A camera framing: look at height `centreY` from far enough back to fit `span` metres.
+ * Leave both out and the view frames the model itself, however far it has been taken apart.
+ */
 export interface ViewDef {
   id: string;
   label: string;
-  centreY: number;
-  span: number;
+  centreY?: number;
+  span?: number;
 }
 
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */

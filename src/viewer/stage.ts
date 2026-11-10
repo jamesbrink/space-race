@@ -329,8 +329,9 @@ export class Stage {
     const box = new THREE.Box3().setFromObject(object);
     const size = box.getSize(new THREE.Vector3());
     const target = box.getCenter(new THREE.Vector3());
-    const span = Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect, 0.4);
-    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.6;
+    // never closer than a 1.6 m subject would be: a small part is seen with its surroundings
+    const span = Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect, 1.6);
+    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.5;
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
     if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
     this.controls.minDistance = Math.min(this.controls.minDistance, distance * 0.2);
@@ -342,10 +343,11 @@ export class Stage {
   view(id: string, snap = false): void {
     if (!this.root || !this.def) return;
     const named = this.def.views.find((v) => v.id === id);
-    const box = new THREE.Box3().setFromObject(this.root);
+    // 'all' is everything on show; a named view with no numbers is the model alone, as it stands
+    const box = new THREE.Box3().setFromObject(named && this.main ? this.main : this.root);
     const size = box.getSize(new THREE.Vector3());
     const centreY = named?.centreY ?? (box.min.y + box.max.y) / 2;
-    // a wide, low model (a launch pad) must fit by width as well as by height
+    // a wide, low subject (a launch pad) must fit by width as well as by height
     const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect);
     // the subject fills 70% of the frame's height: the controls sit over the bottom of it
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / 0.7;
@@ -354,7 +356,7 @@ export class Stage {
     const target = named
       ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z)
       : new THREE.Vector3(mid.x, centreY, mid.z);
-    const lift = this.setting.floor ? 0.16 : named && named.span < 4 ? 0.22 : 0.1;
+    const lift = this.setting.floor ? 0.16 : span < 4 ? 0.22 : 0.1;
     const position = target.clone().addScaledVector(new THREE.Vector3(0.82, lift, 0.56).normalize(), distance);
     this.controls.minDistance = Math.min(1.2, span * 0.15);
     this.controls.maxDistance = Math.max(140, size.length() * 4);

@@ -98,7 +98,7 @@ const vehicleParts: Part[] = [
     node: 'CrewCabin',
     inside: true,
     name: 'Crew cabin',
-    summary: 'Titanium pressure vessel, couch, instrument panel.',
+    summary: 'Where the pilot lies. Open the cutaway to see in.',
     detail:
       'A cone of two thin titanium skins holding pure oxygen at 5.1 psi. The pilot lies on a fibreglass couch ' +
       'moulded to his body, back to the heat shield, so that launch and entry loads both push him into it. ' +
@@ -220,7 +220,7 @@ const vehicleParts: Part[] = [
     node: 'RedstoneEngine',
     inside: true,
     name: 'A-7 engine',
-    summary: '78,000 lbf; steered by graphite vanes in the exhaust.',
+    summary: '78,000 lbf. Open the cutaway to see it in its bay.',
     detail:
       'Rocketdyne’s A-7, a direct descendant of the V-2’s engine: a single fixed chamber fed by a turbopump that ' +
       'runs on steam from decomposed hydrogen peroxide. It cannot swivel, so four graphite vanes sit in the ' +
@@ -257,7 +257,7 @@ const vehicle: ModelDef = {
   position: [0, VEHICLE_Y, 0],
   home: 'stack',
   views: [
-    { id: 'stack', label: 'Full stack', centreY: PEDESTAL + 12.7, span: 27 },
+    { id: 'stack', label: 'Full stack' },
     { id: 'spacecraft', label: 'Spacecraft', centreY: VEHICLE_Y + 3.26, span: 8.6 },
     { id: 'capsule', label: 'Capsule', centreY: VEHICLE_Y + 0.95, span: 3.4 },
     { id: 'engine', label: 'Engine', centreY: PEDESTAL + 1.5, span: 5.5 },

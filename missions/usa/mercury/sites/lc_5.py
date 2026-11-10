@@ -240,6 +240,29 @@ def build_service_structure(M) -> None:
         red, lambda i, zz: (ex + 2.6 * (1 if i in (0, 3) else -1), 3.0 * (1 if i < 2 else -1), zz), [4.5 + k * 11.0 for k in range(10)], 0.4, 0.25
     )
     box(white, (ex - 2.2, -2.6, 30.0), (ex + 2.2, 2.6, 38.5))
+    # a caged ladder up one leg, for when the elevator is not running
+    lx, ly = corner(0, 60)[0] + 1.6, corner(0, 60)[1] + 1.4
+    for dy in (-0.75, 0.75):
+        beam(white, (lx, ly + dy, 58.5), (lx, ly + dy, STRUCTURE_TOP - 0.5), 0.14)
+    for k in range(int((STRUCTURE_TOP - 60) / 1.0)):
+        beam(white, (lx, ly - 0.75, 59.0 + k), (lx, ly + 0.75, 59.0 + k), 0.09)
+    for k in range(int((STRUCTURE_TOP - 66) / 4.0)):  # safety hoops
+        zh = 66.0 + k * 4.0
+        hoop = [(lx + 1.25 * math.sin(a), ly + 1.25 * math.cos(a), zh) for a in (math.pi * i / 6 for i in range(7))]
+        for p0, p1 in zip(hoop, hoop[1:]):
+            beam(white, p0, p1, 0.09)
+    # work lights under each platform, and the obstruction beacon on the crane
+    lamps = MeshBuilder()
+    for zl in LEVELS:
+        x0 = corner(0, zl)[0] - 0.4
+        for y in (-7.0, 7.0):
+            lamps.lathe([(0.45 * FT, 0.0), (0.0, 0.0)], 12, matrix=Matrix.Translation(P(x0 + 9.0, y, zl - 1.7)), flip=True)
+            dark.lathe([(0.2 * FT, 0.45 * FT), (0.5 * FT, 0.0)], 12, matrix=Matrix.Translation(P(x0 + 9.0, y, zl - 1.7)))
+    lamps.lathe(
+        [(0.0, 0.0), (0.45 * FT, 0.0), (0.45 * FT, 1.0 * FT), (0.0, 1.25 * FT)],
+        12,
+        matrix=Matrix.Translation(P(cx - 12.0, 0.0, STRUCTURE_TOP + 8.45)),
+    )
     zc = STRUCTURE_TOP
     box(red, (cx - 7.0, -7.5, zc), (cx + 7.0, 7.5, zc + 1.2))
     jib = lambda i, x: (x, 2.2 * (1 if i < 2 else -1), zc + 1.2 + (5.0 if i in (0, 3) else 0.0))  # noqa: E731
@@ -264,6 +287,7 @@ def build_service_structure(M) -> None:
     red.build("Structure_Frame", M["red"], g, smooth=False)
     white.build("Structure_WhiteRoomAndRails", M["white"], g, smooth=False)
     deck.build("Structure_Decks", M["deck"], g, smooth=False)
+    lamps.build("Structure_Lights", M["lamp"], g)
     glass.build("Structure_Windows", M["glass"], g, smooth=False)
     void.build("Structure_WindowWells", M["void"], g, smooth=False)
     dark.build("Structure_RunningGear", M["grey"], g, sharp_angle=30)
@@ -289,6 +313,31 @@ def build_cherry_picker(M) -> None:
         y0, y1 = sorted((ty + sy * 4.42, ty + sy * 4.46))
         box(glass, (tx + 15.2, y0, 6.6), (tx + 19.6, y1, 9.0))
     box(body, (tx - 8.0, ty - 3.6, 5.0), (tx + 2.0, ty + 3.6, 9.5))  # turntable house
+    dark, lamps = MeshBuilder(), MeshBuilder()
+    # the things that make a truck a truck: chassis rails, bumper, grille, lights, fenders, steps, stack
+    for sy in (-1, 1):
+        box(dark, (tx - 15.5, ty + sy * 2.2 - 0.3, 2.2), (tx + 20.5, ty + sy * 2.2 + 0.3, 3.3))  # chassis rail
+        y0, y1 = sorted((ty + sy * 2.9, ty + sy * 4.5))
+        for dx0, dx1 in ((-14.4, -4.6), (6.6, 19.4)):  # fenders over each pair of axles
+            box(body, (tx + dx0, y0, 3.9), (tx + dx1, y1, 4.25))
+        box(dark, (tx + 14.6, ty + sy * 4.5 - 0.5 * (sy > 0), 2.0), (tx + 16.8, ty + sy * 4.5 + 0.5 * (sy < 0), 2.3))  # cab step
+        lamps.tube(P(tx + 21.5, ty + sy * 3.2, 4.4), P(tx + 21.75, ty + sy * 3.2, 4.4), 0.42 * FT, 16)  # headlight
+        beam(dark, (tx + 20.2, ty + sy * 4.5, 8.2), (tx + 20.2, ty + sy * 5.6, 8.6), 0.12)  # mirror arm
+        box(dark, (tx + 20.0, ty + sy * 5.5 - 0.1, 7.9), (tx + 20.4, ty + sy * 5.5 + 0.1, 9.2))
+    box(dark, (tx + 21.3, ty - 4.5, 2.4), (tx + 21.9, ty + 4.5, 3.4))  # bumper
+    box(dark, (tx + 21.05, ty - 2.2, 3.7), (tx + 21.3, ty + 2.2, 5.9))  # grille
+    for k in range(6):
+        box(body, (tx + 21.3, ty - 2.1, 3.9 + k * 0.33), (tx + 21.38, ty + 2.1, 4.05 + k * 0.33))
+    box(body, (tx + 13.6, ty - 4.5, 9.6), (tx + 21.6, ty + 4.5, 9.85))  # roof, overhanging
+    dark.tube(P(tx + 13.4, ty + 3.4, 5.0), P(tx + 13.4, ty + 3.4, 11.4), 0.28 * FT, 12)  # exhaust stack
+    # on the deck: the hydraulic power pack, a cable drum, the operator's stand at the rear
+    box(dark, (tx + 4.0, ty - 3.4, 5.0), (tx + 9.5, ty + 3.4, 7.6))
+    dark.tube(P(tx + 11.0, ty - 2.6, 6.2), P(tx + 11.0, ty + 2.6, 6.2), 1.15 * FT, 20)
+    box(body, (tx - 15.6, ty - 3.0, 5.0), (tx - 12.4, ty + 3.0, 5.25))
+    handrail(dark, [(tx - 15.6, ty - 3.0, 5.25), (tx - 15.6, ty + 3.0, 5.25), (tx - 12.4, ty + 3.0, 5.25)], 3.2)
+    box(dark, (tx - 14.6, ty - 0.9, 5.25), (tx - 13.4, ty + 0.9, 8.3))  # control pedestal
+    for sy in (-1, 1):  # rams that raise the mast
+        beam(dark, (tx + 1.0, ty + sy * 2.6, 9.6), (tx - 4.6, ty + sy * 1.6, 22.0), 0.55)
     for dx in (-12.0, -7.0, 9.0, 17.0):
         for sy in (-1, 1):
             wheel(tyres, (tx + dx, ty + sy * 3.9, 1.9), 1.9, 1.3)
@@ -338,6 +387,8 @@ def build_cherry_picker(M) -> None:
         box(cab, (c.x - 0.6, c.y + sy * 2.4 - 0.12, c.z - 3.2), (c.x + 1.95, c.y + sy * 2.4 + 0.12, c.z + 3.3))
         beam(cab, (c.x - 2.1, c.y + sy * 2.3, c.z - 3.2), (c.x - 2.1, c.y + sy * 2.3, c.z + 3.3), 0.2)
     body.build("CherryPicker_Carrier", M["yellow"], g, smooth=False)
+    dark.build("CherryPicker_RunningGear", M["grey"], g, sharp_angle=30)
+    lamps.build("CherryPicker_Headlights", M["lamp"], g)
     boom.build("CherryPicker_Boom", M["yellow"], g, smooth=False)
     tyres.build("CherryPicker_Tyres", M["tyre"], g, sharp_angle=30)
     cab.build("CherryPicker_Cab", M["white"], g, smooth=False)
