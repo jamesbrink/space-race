@@ -281,6 +281,12 @@ function act(): void {
     stopWorking();
     return;
   }
+  // in a seat (a couch), the act key gets out of it
+  if (stage.seated) {
+    stage.leaveSeat();
+    ui.setWalkNote(null);
+    return;
+  }
   // at the wheel of something, the act key gets out of it
   if (stage.driving) {
     stage.walkAlight();
@@ -326,7 +332,12 @@ function perform(on: Target, { verb }: Choice): void {
     ui.showWalkCard(null);
     stage.becomeWalk(verb.model);
   } else if (verb.do === 'operate') startWorking(verb);
-  else if (verb.do === 'action') {
+  else if (verb.do === 'board') {
+    ui.showWalkCard(null);
+    const why = stage.boardSeat(verb.model, verb.seat);
+    ui.setWalkNote(why ? `Not now: ${why}` : 'Mouse looks · E gets out');
+    if (why) setTimeout(() => !stage.seated && ui.setWalkNote(null), 4000);
+  } else if (verb.do === 'action') {
     if (verb.action.do.kind === 'slider') stage.operate(verb.model, verb.action.do.to);
     else stage.workAction(verb.model, verb.node, verb.action, verb.stop);
   } else if (verb.do === 'inspect') {
@@ -358,7 +369,14 @@ function startWorking(verb: NonNullable<typeof working>): void {
 function noteWorking(refused: string | null): void {
   if (!working) return;
   const [back, on] = working.ends ?? ['back', 'on'];
-  ui.setWalkNote(refused ? `${working.name}: ${refused}` : `${working.name} · hold W: ${on} · S: ${back} · E done`);
+  const touch = matchMedia('(hover: none), (pointer: coarse)').matches;
+  ui.setWalkNote(
+    refused
+      ? `${working.name}: ${refused}`
+      : touch
+        ? `${working.name} · hold a button to run it`
+        : `${working.name} · hold W: ${on} · S: ${back} · E done`,
+  );
 }
 function stopWorking(): void {
   if (!working) return;

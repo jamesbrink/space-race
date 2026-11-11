@@ -1840,6 +1840,7 @@ export class Stage {
   exitWalk(): void {
     if (!this.walk.active) return;
     const at = this.walked;
+    if (this.boarded) this.leaveSeat(); // (out of a couch first, back where he boarded it)
     if (this.wheel) {
       // leaving the walk from a driving seat: out at once, no ceremony
       const vehicle = this.wheel;
@@ -2157,6 +2158,91 @@ export class Stage {
     this.setAim(null);
   }
 
+  /** In a place in a model (ModelDef.seats): which, the node the eyes are carried by, and where the walker stood to board it. */
+  private boarded: {
+    model: string;
+    seat: NonNullable<ModelDef['seats']>[number];
+    node: THREE.Object3D;
+    from: THREE.Vector3;
+    facing: number;
+  } | null = null;
+
+  /** The place in a model the walker is in, if it is in one. */
+  get seated(): { model: string; seat: string; label: string } | null {
+    const b = this.boarded;
+    return b && { model: b.model, seat: b.seat.node, label: b.seat.label };
+  }
+
+  /**
+   * While walking: take a place in a model (a couch). Refused, with the reason, outside the time
+   * it could be boarded: the clock is not moved for it. The eyes go to the place's, its view is
+   * the walker's to turn, and E (leaveSeat) gets out again where he got in.
+   */
+  boardSeat(model: string, name: string): string | null {
+    const at = this.defs.findIndex((m) => m.id === model);
+    const seat = this.defs[at]?.seats?.find((s) => s.node === name);
+    if (!seat || this.wheel || this.boarded || !this.walk.active) return 'there is nowhere to sit';
+    const now = this.clock?.t ?? 0;
+    if (now < seat.open[0] || now > seat.open[1]) {
+      const span = (t: number) =>
+        `T${t < 0 ? '−' : '+'}${Math.floor(Math.abs(t) / 3600)}:${String(Math.floor((Math.abs(t) % 3600) / 60)).padStart(2, '0')}`;
+      return `${seat.label} could be boarded from ${span(seat.open[0])} to ${span(seat.open[1])}`;
+    }
+    const level = this.staged[at]!.full;
+    let place = level.getObjectByName(seat.node);
+    if (!place && seat.standIn) {
+      // (a placeholder until the model has the node: at the middle of the stand-in, facing along `look`)
+      const mesh = level.getObjectByName(seat.standIn.mesh);
+      if (!mesh?.parent) return 'there is nowhere to sit';
+      level.updateWorldMatrix(true, true);
+      const middle = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+      const look = new THREE.Vector3(...seat.standIn.look).transformDirection(level.matrixWorld);
+      place = new THREE.Object3D();
+      place.name = seat.node;
+      mesh.parent.add(place);
+      place.position.copy(mesh.parent.worldToLocal(middle));
+      const parent = mesh.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+      place.quaternion.copy(parent.multiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), look)));
+      console.info(`seat ${seat.node}: a placeholder at the middle of ${seat.standIn.mesh}; the model has no such node`);
+    }
+    if (!place) return 'there is nowhere to sit';
+    const node: THREE.Object3D = place;
+    node.updateWorldMatrix(true, false);
+    const ahead = new THREE.Vector3(0, 0, 1).transformDirection(node.matrixWorld);
+    // (looking nearly straight up or down, which way is ahead over the ground is the way the place's top points)
+    const flat = Math.hypot(ahead.x, ahead.z) > 0.2 ? ahead : new THREE.Vector3(0, 1, 0).transformDirection(node.matrixWorld);
+    const facing = Math.atan2(-flat.z, flat.x);
+    this.boarded = { model, seat, node, from: this.walk.body.position.clone(), facing };
+    this.showSeatHidden(at, seat.hide, false);
+    const eye = new THREE.Vector3(...(seat.eye ?? [0, 0, 0]));
+    this.walk.sit({ drive: () => {}, eyes: (to) => node.localToWorld(to.copy(eye)), facing: () => facing });
+    this.walk.pitch = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(ahead.y, -1, 1)), -1.45, 1.45);
+    this.setAim(null);
+    this.dirty = true;
+    return null;
+  }
+
+  /** Out of the place taken (boardSeat), standing where he boarded it from. */
+  leaveSeat(): void {
+    const b = this.boarded;
+    if (!b) return;
+    this.boarded = null;
+    this.showSeatHidden(
+      this.defs.findIndex((m) => m.id === b.model),
+      b.seat.hide,
+      true,
+    );
+    this.walk.sit(null, b.from);
+    const figure = this.staged[this.walked];
+    if (figure) figure.group.visible = true;
+    this.renderer.shadowMap.needsUpdate = true;
+    this.dirty = true;
+  }
+
+  private showSeatHidden(at: number, names: string[] | undefined, shown: boolean): void {
+    if (names?.length) this.staged[at]?.group.traverse((o) => names.includes(o.name) && (o.visible = shown));
+  }
+
   /** While driving: get out (the door opens first, and shuts behind), and stand beside the driver's door. */
   walkAlight(): void {
     const vehicle = this.wheel;
@@ -2379,6 +2465,15 @@ export class Stage {
     // at the wheel of something it sits: its hips on the seat's hip point, its hands on the wheel and going round with it
     walk.gait.seated = this.wheel !== null;
     if (this.wheel) walk.gait.wheel = this.wheel.lock;
+    // in a couch the figure is the model's own (the pilot built into it): the walker's is not drawn
+    if (this.boarded) {
+      if (group.visible) {
+        group.visible = false;
+        this.renderer.shadowMap.needsUpdate = true;
+        this.dirty = true;
+      }
+      return;
+    }
     if (this.fallen(figure, at)) return;
     // Through its own eyes the figure is still there for the light: it is drawn into the shadow
     // map and into nothing else, so you see your own shadow walk in front of you.
@@ -2656,7 +2751,7 @@ export class Stage {
         : hit && vehicle
           ? { target: { vehicle: vehicle.name, vehicleName: called }, hit, vehicle }
           : null;
-    this.setAim(this.wheel ? null : aim); // (at the wheel, there is nothing to point at)
+    this.setAim(this.wheel || this.boarded ? null : aim); // (at the wheel, or in a couch, there is nothing to point at)
     this.fitDetail();
     this.walkDt = dt;
     this.board(dt);

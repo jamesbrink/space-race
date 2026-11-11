@@ -328,6 +328,24 @@ const MIN = 60;
 const GANTRY_REMOVED = est(6, 37);
 /** The structure stands at the edge of the pad and the pilot can be seen in his window: what the crew section asks of the pad. */
 const ROLLED_BACK = GANTRY_REMOVED + 5 * MIN;
+/**
+ * The couch, boarded on foot through the hatch from the white room: from the start of insertion
+ * (05:20 EST, documented, as in the pad's sequence) until the structure and its white room rolled
+ * back (06:37, documented). When the hatch was closed within that is not recorded here, so the
+ * window ends at the last moment there was a way to the hatch at all. The model has no seat node
+ * yet: the place is a stand-in at the middle of the pilot's visor, looking up the capsule's axis
+ * at the instrument panel (vehicle.md should give the couch a `Seat_Pilot` empty at the eyes).
+ */
+vehicle.seats = [
+  {
+    node: 'Seat_Pilot',
+    label: 'the couch',
+    from: 'Hatch',
+    open: [est(5, 20), GANTRY_REMOVED],
+    hide: ['CrewCabin_Pilot_Helmet_Visor', 'CrewCabin_Pilot_Helmet_VisorFrame', 'CrewCabin_Pilot_Helmet_VisorSeal'],
+    standIn: { mesh: 'CrewCabin_Pilot_Helmet_Visor', look: [0, 1, 0] },
+  },
+];
 const TMX = 'NASA TM X-53107, section 7.5, countdown pp. 7-25 to 7-33';
 const NOT_RECORDED = 'not recorded: how long the motion took is ours, from its distance at a walking pace';
 const HOLDS = 'Postlaunch Report for Mercury-Redstone No. 3, section 10.2';

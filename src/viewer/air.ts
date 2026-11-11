@@ -276,6 +276,7 @@ export class CloudLayer {
         float bright = dot(col, vec3(0.3)) / max(dot(uSunLight + uSkyLight, vec3(0.3)), 1e-4);
         col = mix(col, mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, step(0.55, bright)), uCel);
         alpha = mix(alpha, step(0.5, alpha), uCel);
+        if (alpha < 0.5 && uCel > 0.5) discard;   // (the toon twin has no alpha to coverage)
         // the haze between the eye and the cloud (air.ts)
         vec3 eye = cameraPosition + uOrigin;
         float a = max(eye.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
@@ -328,6 +329,7 @@ export class CloudLayer {
           vec3 col = uSkyLight * (0.62 - 0.12 * dens) + uSunLight * max(uSunDir.y, 0.0) * (0.22 - 0.1 * dens) + vec3(0.02, 0.018, 0.014);
           col = mix(col, uSkyLight * 0.75 + uSunLight * 0.1, uCel);
           alpha = mix(alpha, step(0.5, alpha), uCel);
+          if (alpha < 0.5 && uCel > 0.5) discard;
           vec3 eye = cameraPosition + uOrigin;
           float a = max(eye.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
           float bb = max(world.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};

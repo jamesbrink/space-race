@@ -494,7 +494,12 @@ const PLANT_FRAGMENT = /* glsl */ `
     if (vShape < 0.5) return 1.0;
     if (vShape > 3.5) {
       // a mass of leaves seen from further off: solid in the middle, broken into leaf clusters toward its outline
-      #ifdef PLANT_RIM
+      #if defined(PLANT_RIM) && defined(PLANT_CEL)
+        // drawn: a mass with a scalloped edge of big leaf clusters, one flat tone
+        float n = noise(vPlant * 4.0);
+        float rim = 1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition)));
+        return step(rim * rim * 1.1, n);
+      #elif defined(PLANT_RIM)
         float n = noise(vPlant * 9.0) * 0.6 + noise(vPlant * 23.0) * 0.4;
         tint = 0.55 + 0.75 * n;
         float rim = 1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition)));
@@ -584,6 +589,8 @@ function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth' 
       });
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
+    // the cel look's twin (look.ts) runs this same patch on a toon shader: a drawn plant is flat colour with a shaped edge
+    const cel = (shader as unknown as { shaderType: string }).shaderType === 'MeshToonMaterial';
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${PLANT_VERTEX}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${PLANT_SWAY}\ntransformed *= plantSize;`)
@@ -597,7 +604,7 @@ function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth' 
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <clipping_planes_pars_fragment>',
-        `#include <clipping_planes_pars_fragment>\n${depth ? '' : '#define PLANT_RIM'}\n${PLANT_FRAGMENT}`,
+        `#include <clipping_planes_pars_fragment>\n${depth ? '' : '#define PLANT_RIM'}\n${cel ? '#define PLANT_CEL' : ''}\n${PLANT_FRAGMENT}`,
       )
       .replace(
         depth ? '#include <clipping_planes_fragment>' : '#include <alphatest_fragment>',
@@ -628,7 +635,9 @@ function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth' 
           float facing = dot(normal, toEye);
           if (facing < 0.2) normal = normalize(normal + toEye * (0.2 - facing));
         }
-        if (vShape > 3.5) normal = normalize(normal + 0.9 * vec3(noise(vPlant * 7.0 + 1.0) - 0.5, noise(vPlant * 7.0 + 2.0) - 0.5, noise(vPlant * 7.0 + 3.0) - 0.5));`,
+        #ifndef PLANT_CEL
+        if (vShape > 3.5) normal = normalize(normal + 0.9 * vec3(noise(vPlant * 7.0 + 1.0) - 0.5, noise(vPlant * 7.0 + 2.0) - 0.5, noise(vPlant * 7.0 + 3.0) - 0.5));
+        #endif`,
       );
   };
   material.customProgramCacheKey = () => `plant:${use}:${use === 'cast' && form.kind === 'shrub'}`;
@@ -739,7 +748,7 @@ export class Flora {
     this.shared.time.value += dt;
   }
 
-  /** The cel look: every plant in its drawn form. */
+  /** The cel look: the same plants, drawn (the toon twin of each material flattens their light: see plantMaterial); fewer grass tufts. */
   simplify(on: boolean): void {
     this.drawnLook = on;
     this.arrange(this.sorted.x, this.sorted.y, this.sorted.z);
@@ -856,17 +865,13 @@ export class Flora {
             const list = lists[plant.species]!;
             const v = plant.variant;
             if (sp.form.kind === 'tuft') {
-              if (this.drawnLook) continue; // in a drawing the grass is the ground's colour
+              if (this.drawnLook && d > sp.near * 0.6) continue; // in a drawing only the nearest grass is drawn blade by blade
               if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near)
                 put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, -sp.near * 0.7, -sp.near]);
               continue;
             }
             const hand = sp.near - 3; // where the near form starts to give way to the far: a short crossing, so few plants are half drawn at once
             const end: [number, number] = plant.thicket ? UNDER : [sp.reach * 0.9, sp.reach];
-            if (this.drawnLook) {
-              if (d < end[1] + RESORT && list.far[v]! < CAPACITY.far) put(drawn.far[v]!, list.far[v]!++, plant, [-1, 0, -end[0], -end[1]]);
-              continue;
-            }
             if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near) put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, hand, sp.near]);
             if (d < SHADOWED + RESORT && list.shadow[v]! < CAPACITY.near)
               put(drawn.shadow[v]!, list.shadow[v]!++, plant, [-1, 0, 1e5, 1e5]);

@@ -604,6 +604,24 @@ export class Land {
             g.rough = mix(g.rough, 0.8, roofed);
             g.bump = mix(g.bump, 0.25 * crown + 0.05 * (masses - 0.5) + 0.03 * (leaves - 0.5) * seen(0.1), roofed);
           }
+          // Drawn: the land in a few flat tones with shapes of its own, not the real ground posterised. Each cover
+          // is one colour, chosen by its map with an edge that wanders like a brush's; a second, darker tone lies in
+          // patches tens of metres across; the canopy's crowns are lit or in shade. The grain is gone.
+          if (uCel > 0.5) {
+            float wander = noise(vec3(landAt * 0.08, 50.0)) - 0.5;
+            float grassed = step(0.42, coverA.g + 0.35 * wander);
+            float under = step(0.45, coverA.r + 0.3 * wander);
+            vec3 flat_ = mix(${vec3(p.sand)} * 1.08, mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, 0.45) * 1.05, grassed);
+            flat_ = mix(flat_, ${vec3(p.litter)} * 1.3, under);
+            flat_ *= 1.0 - 0.1 * step(0.62, noise(vec3(landAt * 0.03, 51.0)));
+            if (roofed > 0.0) {
+              float crownCel = mix(0.6, crowns(landAt), seen(${spec.crown.toFixed(2)}));
+              vec3 roof = mix(${vec3(p.leaf)} * 1.25, ${vec3(p.leafLit)} * 1.1, step(0.5, crownCel));
+              flat_ = mix(flat_, roof, step(0.5, roofed));
+            }
+            g.albedo = flat_;
+            g.bump = 0.0;
+          }
           paint(landAt, coverA, coverB, g);
           landBump = g.bump;
           landWater = g.water;
