@@ -99,7 +99,8 @@ The same GLB also holds the launch vehicle's five nodes: see
 - **The tower's bracing** (one diagonal per bay) is a simplification.
 - **Lettering is Arial Bold**, not the stencil McDonnell used; "FREEDOM 7" was hand-painted.
 - **No mass properties in the model.** The postlaunch report has the capsule's centre of gravity
-  and moments of inertia; they are not yet in `flight.ts`. The simulator needs them.
+  and moments of inertia; they have not been read. The simulator flies on estimates of them
+  (`trajectory.body.capsule` in `flight.ts`, labelled `estimated`): replace them from the report.
 - Parachutes, the recovery aids and the periscope's retracted state are not modelled.
 
 ## Sources

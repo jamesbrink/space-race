@@ -99,7 +99,7 @@ export class Flown {
     }).join('');
     const rows = checks
       .map((c) => {
-        const got = (results as unknown as Record<string, number>)[c.id];
+        const got = results[c.id];
         if (got === undefined || !Number.isFinite(got)) return '';
         const off = got - c.value;
         const out = Math.abs(off) > c.tolerance;
@@ -116,9 +116,7 @@ export class Flown {
         Dashed lines are what the reports give. <span class="flown-phase"></span></p>
       <div class="traces" title="Drag to move the clock">${traces}</div>
       <table class="flown-checks"><thead><tr><th></th><td>Report</td><td>Flown</td><td></td></tr></thead>${rows}</table>
-      <p class="fine">Amber rows are outside the tolerance set for them. The powered flight ends 4 % too fast, and what follows from that is high and long:
-        leaving the pad at 1.19 g, one per cent in thrust or weight is four in speed, and the engine is two figures from a summary table. Flown from the separation the
-        report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs). In the view the vehicle flies this run from liftoff to landing; C to the chase camera follows it.</p>`;
+      <p class="fine">Amber rows are outside the tolerance set for them. ${flight.flownNote ?? ''} In the view the vehicle flies this run from liftoff to landing; C to the chase camera follows it.</p>`;
     this.cursors = [...root.querySelectorAll<SVGLineElement>('line.now')];
     this.values = [...root.querySelectorAll<HTMLElement>('.trace b')];
     this.phase = root.querySelector('.flown-phase');

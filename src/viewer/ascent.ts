@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
+import { normalize, type Quat, turn, unturn } from '../sim/rigid.ts';
+import type { LiveSample } from '../sim/vehicle.ts';
 import type { Flight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
@@ -11,6 +13,7 @@ import {
   inertialToEcefVelocity,
   type Site,
   siteFrame,
+  sub,
   type Vec3,
 } from '../world/frames.ts';
 
@@ -32,13 +35,35 @@ import {
  *
  * Before liftoff and after the landing the vehicle is not flying, and the scene shows the
  * inventory: the stack on its pad.
+ *
+ * A flight being flown by hand (sim/vehicle.ts, by way of `use`) is shown the same way from its
+ * own samples, which carry the body's whole attitude: the model turns as the rigid body does,
+ * about its centre of mass, and what it sheds leaves when the pilot lets it go. Such a run has no
+ * end until it is put away: after the landing the spacecraft stays where it came down.
  */
+
+/** A flight for the scene to show: the record's, or one being flown. */
+export interface Run {
+  /** In order of time. A live run's are `LiveSample`s. */
+  samples: readonly Sample[];
+  /** When it came down, seconds from liftoff: Infinity until it has. */
+  duration: number;
+  /** When the engine stopped: Infinity while it burns. */
+  cutoff: number;
+  /** When each of `Flight.flies.drops` left, in their order: Infinity for one still aboard. */
+  dropped: number[];
+  /** Flown by hand: placed by its samples' own attitude, and kept on show after it lands. */
+  live: boolean;
+}
+
 export class Ascent {
   /** The model that flies. */
   readonly model: string;
   private readonly flight: Flight;
   private readonly site: Site;
-  private run: { samples: Sample[]; duration: number; axis: (t: number) => Vec3 } | null = null;
+  private record: Run | null = null;
+  private live: Run | null = null;
+  private axis: ((t: number) => Vec3) | null = null;
   /** The offset of the model's origin from the point flown, in the model's frame on the pad, and as it stood at separation. */
   private readonly home = new THREE.Vector3();
   private readonly arc = new THREE.Quaternion();
@@ -56,19 +81,35 @@ export class Ascent {
     return flight.trajectory && flight.flies && flight.models.some((m) => m.id === flight.flies!.model) ? new Ascent(flight) : null;
   }
 
-  /** The run, made the first time it is wanted (the readout has usually made it already: sim/fly.ts flownOnce). */
-  private flown() {
-    if (!this.run) {
+  /** Show a flight being flown by hand instead of the record's, or (null) the record's again. */
+  use(run: Run | null): void {
+    this.live = run;
+    this.released.length = 0;
+  }
+
+  /** The run on show: the one being flown, or the record's, made the first time it is wanted (the readout has usually made it already: sim/fly.ts flownOnce). */
+  private flown(): Run {
+    if (this.live) return this.live;
+    if (!this.record) {
       const tr = this.flight.trajectory!;
       const { samples, results } = flownOnce(tr, this.site, this.flight.site.seaLevel.value);
-      this.run = { samples, duration: results.duration, axis: axisOf(tr, this.site) };
+      this.record = {
+        samples,
+        duration: results.duration,
+        cutoff: tr.engine.cutoff.value,
+        dropped: this.flight.flies!.drops.map((d) => d.at),
+        live: false,
+      };
+      this.axis = axisOf(tr, this.site);
     }
-    return this.run;
+    return this.record;
   }
 
   /** Whether the vehicle is off its pad at `t`, seconds from liftoff. */
   flying(t: number): boolean {
-    return t > 0 && Boolean(this.flight.trajectory) && t < this.flown().duration;
+    if (!this.flight.trajectory || t <= 0) return false;
+    const run = this.flown();
+    return run.live ? run.samples.length > 1 : t < run.duration;
   }
 
   /**
@@ -79,7 +120,7 @@ export class Ascent {
    */
   burn(t: number): { on: number; vacuum: number } {
     if (!this.flying(t)) return { on: 0, vacuum: 0 };
-    const cutoff = this.flight.trajectory!.engine.cutoff.value;
+    const { cutoff } = this.flown();
     const on = THREE.MathUtils.smoothstep(t, 0, 0.5) * (1 - THREE.MathUtils.smoothstep(t, cutoff, cutoff + 0.5));
     if (on <= 0) return { on: 0, vacuum: 1 };
     const { r } = between(this.flown().samples, t);
@@ -89,17 +130,18 @@ export class Ascent {
 
   /** The parts that have left the vehicle by `t`. */
   dropped(t: number): string[] {
-    return this.flying(t) ? this.flight.flies!.drops.filter((d) => t >= d.at).flatMap((d) => d.nodes) : [];
+    return this.flying(t) ? this.drops.filter((d) => t >= d.at).flatMap((d) => d.nodes) : [];
   }
 
-  /** When the engine stops, seconds from liftoff. */
+  /** When the engine stops, seconds from liftoff: Infinity for one still burning. */
   get cutoff(): number {
-    return this.flight.trajectory!.engine.cutoff.value;
+    return this.flown().cutoff;
   }
 
-  /** What leaves the vehicle on the way, in order: `Flight.flies.drops`. */
+  /** What leaves the vehicle on the way, in order (`Flight.flies.drops`), each at the time it left on the run on show. */
   get drops(): readonly { at: number; nodes: string[] }[] {
-    return this.flight.flies!.drops;
+    const { dropped } = this.flown();
+    return this.flight.flies!.drops.map((d, i) => ({ at: dropped[i] ?? d.at, nodes: d.nodes }));
   }
 
   /**
@@ -114,13 +156,16 @@ export class Ascent {
     const drop = this.drops[i];
     if (!drop || t < drop.at || !this.flying(t)) return false;
     let from = this.released[i];
+    if (from && from.at !== drop.at) from = undefined; // (let go at another moment than the one worked out for)
     if (!from) {
       const p = new THREE.Vector3();
       const q = new THREE.Quaternion();
       const p2 = new THREE.Vector3();
       this.place(drop.at, padTurn, p, q);
-      this.place(drop.at + 0.05, padTurn, p2, new THREE.Quaternion());
-      from = this.released[i] = { p, q, v: p2.sub(p).divideScalar(0.05) };
+      // (a part let go this instant has no later sample to be measured against yet: it is measured from just before)
+      const back = this.flown().live;
+      this.place(drop.at + (back ? -0.05 : 0.05), padTurn, p2, new THREE.Quaternion());
+      from = this.released[i] = { at: drop.at, p, q, v: (back ? p.clone().sub(p2) : p2.sub(p)).divideScalar(0.05) };
     }
     const dt = t - drop.at;
     const axis = Y.clone().applyQuaternion(from.q);
@@ -141,7 +186,7 @@ export class Ascent {
   }
 
   /** Each drop's pose and velocity as it left, worked out once. */
-  private readonly released: ({ p: THREE.Vector3; q: THREE.Quaternion; v: THREE.Vector3 } | undefined)[] = [];
+  private readonly released: ({ at: number; p: THREE.Vector3; q: THREE.Quaternion; v: THREE.Vector3 } | undefined)[] = [];
 
   /**
    * Put the model where it is at `t`: `position` for its origin, `quaternion` for its turn, given
@@ -149,7 +194,10 @@ export class Ascent {
    */
   place(t: number, padTurn: THREE.Quaternion, position: THREE.Vector3, quaternion: THREE.Quaternion): boolean {
     if (!this.flying(t)) return false;
-    const { samples, axis } = this.flown();
+    const run = this.flown();
+    if (run.live) return this.placeLive(run.samples as readonly LiveSample[], t, padTurn, position, quaternion);
+    const { samples } = run;
+    const axis = this.axis!;
     const separation = this.flight.trajectory!.separation.at.value;
     const turned = Math.max(separation, this.flight.flies!.turned ?? separation);
     const { r, v } = between(samples, t);
@@ -174,16 +222,91 @@ export class Ascent {
     position.copy(toThree(at)).add(offset);
     return true;
   }
+
+  /** The body's three axes at a sample (nose, left, against the azimuth: sim/vehicle.ts) as directions in the site's frame. */
+  private basis(s: LiveSample, into: THREE.Matrix4): THREE.Matrix4 {
+    const spin = EARTH_ROTATION_RATE * s.t;
+    const [x, y, z] = BODY.map((b) => toThree(ecefToSiteDirection(this.site, inertialToEcef(turn(s.attitude, b), spin))));
+    return into.makeBasis(x!, y!, z!);
+  }
+
+  /**
+   * A flight flown by hand: the model turned as the body is, from how it stood on the pad, and held by the point the
+   * simulator flies. On the booster that is the stack's base. Alone, the spacecraft turns about its own centre of
+   * mass, so the model's origin (far below it, where the booster's base was) is carried round that centre as it lay in
+   * the body when they parted.
+   */
+  private placeLive(
+    samples: readonly LiveSample[],
+    t: number,
+    padTurn: THREE.Quaternion,
+    position: THREE.Vector3,
+    quaternion: THREE.Quaternion,
+  ): boolean {
+    t = Math.min(t, samples[samples.length - 1]!.t); // (past its last sample it is where that left it, on an Earth that has not turned under it)
+    const [a, b, k] = either(samples, t);
+    const first = samples[0]!;
+    const stood = this.basis(first, new THREE.Matrix4()).transpose(); // (a rotation's inverse)
+    const qa = new THREE.Quaternion().setFromRotationMatrix(this.basis(a, new THREE.Matrix4()).multiply(stood));
+    const qb = new THREE.Quaternion().setFromRotationMatrix(this.basis(b, new THREE.Matrix4()).multiply(stood));
+    this.arc.copy(qa).slerp(qb, k);
+    quaternion.copy(this.arc).multiply(padTurn);
+    const spin = EARTH_ROTATION_RATE * t;
+    const offset = this.home.clone().applyQuaternion(this.arc);
+    if (riding(b)) {
+      const { r } = between(samples, t);
+      position.copy(toThree(ecefToSite(this.site, inertialToEcef(r, spin)))).add(offset);
+      return true;
+    }
+    // where the model's origin lay from the centre of mass, in the body's axes, when the spacecraft left
+    const parted = samples.find((s) => !riding(s))!;
+    const arm = unturn(parted.attitude, sub(parted.r, parted.centre));
+    const centre = between(samples, t, (s) => (s as LiveSample).centre).r;
+    const now = turn(nlerp(a.attitude, b.attitude, k), arm);
+    position
+      .copy(toThree(ecefToSite(this.site, inertialToEcef(centre, spin))))
+      .add(toThree(ecefToSiteDirection(this.site, inertialToEcef(now, spin))))
+      .add(offset);
+    return true;
+  }
+}
+
+/** The two samples either side of `t`, and how far between them it is: both the last, at or past the end. */
+function either<S extends Sample>(samples: readonly S[], t: number): [S, S, number] {
+  let lo = 0;
+  let hi = samples.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (samples[mid]!.t <= t) lo = mid;
+    else hi = mid;
+  }
+  const a = samples[lo]!;
+  const b = samples[hi]!;
+  if (t >= b.t) return [b, b, 0];
+  return [a, b, b.t > a.t ? Math.min(1, Math.max(0, (t - a.t) / (b.t - a.t))) : 0];
+}
+
+/** An attitude between two close ones: the straight blend, made a rotation again (they are a tenth of a second apart at most). */
+function nlerp(a: Quat, b: Quat, k: number): Quat {
+  const sign = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0 ? -1 : 1;
+  return normalize([0, 1, 2, 3].map((i) => a[i]! + (sign * b[i]! - a[i]!) * k) as unknown as Quat);
 }
 
 const Y = new THREE.Vector3(0, 1, 0);
 const G = 9.80665;
+const BODY: readonly Vec3[] = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+];
+/** A sample's part of the flight: on the booster, or the spacecraft alone. */
+const riding = (s: Sample): boolean => s.phase === 'powered' || s.phase === 'coast';
 /** How fast something shed turns end over end, degrees a second: drawn. */
 const TUMBLE = 6;
 const toThree = (v: Vec3) => new THREE.Vector3(v[0], v[1], v[2]);
 
 /** Position and velocity at `t` between the run's samples: a cubic Hermite through the two either side. */
-function between(samples: readonly Sample[], t: number): { r: Vec3; v: Vec3 } {
+function between(samples: readonly Sample[], t: number, point: (s: Sample) => Vec3 = (s) => s.r): { r: Vec3; v: Vec3 } {
   let lo = 0;
   let hi = samples.length - 1;
   while (hi - lo > 1) {
@@ -194,11 +317,11 @@ function between(samples: readonly Sample[], t: number): { r: Vec3; v: Vec3 } {
   const a = samples[lo]!;
   const b = samples[hi]!;
   const h = b.t - a.t;
-  if (h <= 1e-9 || t <= a.t) return { r: a.r, v: a.v };
-  if (t >= b.t) return { r: b.r, v: b.v };
+  if (h <= 1e-9 || t <= a.t) return { r: point(a), v: a.v };
+  if (t >= b.t) return { r: point(b), v: b.v };
   const s = (t - a.t) / h;
   const [h00, h10, h01, h11] = [2 * s ** 3 - 3 * s ** 2 + 1, s ** 3 - 2 * s ** 2 + s, -2 * s ** 3 + 3 * s ** 2, s ** 3 - s ** 2];
-  const r: Vec3 = [0, 1, 2].map((i) => h00 * a.r[i]! + h10 * h * a.v[i]! + h01 * b.r[i]! + h11 * h * b.v[i]!) as unknown as Vec3;
+  const r: Vec3 = [0, 1, 2].map((i) => h00 * point(a)[i]! + h10 * h * a.v[i]! + h01 * point(b)[i]! + h11 * h * b.v[i]!) as unknown as Vec3;
   const v: Vec3 = [0, 1, 2].map((i) => a.v[i]! + (b.v[i]! - a.v[i]!) * s) as unknown as Vec3;
   return { r, v };
 }

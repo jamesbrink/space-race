@@ -25,13 +25,16 @@ earlier, single-mission take on the same idea (vanilla JS, toon-shaded, real orb
 pnpm install
 pnpm dev              # Vite with hot reload, http://localhost:5180
 pnpm check            # typecheck, lint, format check, tests: must pass before a commit
-pnpm test             # node --test: explode motion, and every flight.ts against its GLBs
+pnpm test             # node --test tests/: the world, both simulators, the gait, the walk, every flight.ts against its GLBs
 pnpm lint             # Biome (TS, JS, CSS, JSON) and Ruff (Python)
 pnpm format           # rewrite files in place: Biome and Ruff (`nix fmt` does the same, plus Nix)
 pnpm typecheck        # tsc --noEmit, strict
 pnpm build            # typecheck, then a production bundle in dist/
 pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their Blender scripts
+pnpm model:lc-5       # rebuild the place round the pad (the site's own model)
 pnpm models           # rebuild every flight's GLBs
+pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region
+pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
 ```
 
@@ -132,7 +135,14 @@ src/
   viewer/plume.ts                     the engine's fire, drawn: tone bands and shock diamonds, opening as the air thins
   viewer/trail.ts                     the trail it leaves, drawn: a ribbon along the path flown, widening and thinning with age
   sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air
+  sim/vehicle.ts  sim/rigid.ts        the live simulator: the same flight stepped a frame at a time and steered, as a rigid body; quaternions and mass properties
+  sim/autopilot.ts                    what flies it when a hand does not: the control law (`steer`), the sequencer, a whole flight flown live (`flyLive`)
   flown.ts                            the Flown panel: the simulator's run against the clock, and against the reports' figures
+  cockpit.ts  cockpit.css             flying the flight by hand: the live simulator stepped by the clock, the keys, the instruments
+  title.ts  logo.ts  title.css        the front page and the mark
+  callout.css                         the idle show's callouts
+  audio.ts                            what the walk is heard as: an interface, silent until something that plays is given
+  viewer/fly.ts                       the camera off foot: orbit, free, chase (`CAMERA_MODES`)
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
@@ -143,6 +153,7 @@ tools/
   logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
+  blender/interiors.py                rooms' insides: what is seen through a site's windows
   blender/vehicles.py                 period road vehicles from parameters, built to be driven
 ```
 
@@ -393,6 +404,40 @@ never adjusted to bring a check in.
 - **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
   because of it; the capsule flown from the report's separation passes all but one. The flight's
   README ("The flight as flown") states the numbers.
+- **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
+  (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
+  the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,
+  pitch, yaw and roll from -1 to 1, and the events (tower, separation, retrofire, retropack,
+  parachutes) as commands. To fly.ts's forces it adds the body's turning: thrust turned by the
+  vanes, the air's push on nose and fins (so it weathercocks, lifts and damps), the spacecraft's
+  jets, a parachute pulling at its attachment, with mass, centre of mass and inertia following the
+  propellant down the tanks (`sim/rigid.ts`). What it needs beyond fly.ts's inputs is
+  `Trajectory.body`, each figure with its confidence; most are `estimated`, and
+  `tests/vehicle.test.mjs` lists them. The body's +X is the nose; on the pad +Z points against
+  the azimuth, so positive pitch tips it downrange. `sim/autopilot.ts` is not physics: it returns
+  the same `Controls` a hand does (the tilt programme held by `steer`, the one control law; the
+  record's event times) and any axis of it can be switched off or overridden (`blend`), or its
+  programme leaned by a pilot's `trim`. It is held
+  to fly.ts, not fitted to it: with the air's sideways push off the two agree to 0.05 per cent, and
+  with it on the live flight is 0.5 per cent higher at apogee by its lift, which the test states.
+  A new force goes in `forces`, a new event in `command` and `Controls`; an abort on the escape
+  rocket is a typed hook, not flown.
+- **The flight can be flown by hand.** Fly it (the button by the clock, or L) takes the flight
+  deck (`src/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
+  camera's, the page out of the way. Space lights the engine and after that sets off the next
+  event; the clock runs the flight (stopped, so is the flight; faster, so is the flight, up to
+  five seconds of it a frame), and each time it moves the cockpit steps the vehicle up to it.
+  With guidance on (G) the autopilot flies the programme and W S A D lean it, three degrees a
+  second (the vanes at full throw turn the stack end over end in four seconds); with it off, and
+  on the spacecraft alone, the keys are the controls themselves; Q E roll. The sequencer (B)
+  sets events off at the record's times. The scene shows it through the same `Ascent`, given the
+  live run (`Stage.flyRun`, ascent.ts `Run`): placed by each sample's own attitude, the spacecraft
+  turning about its centre of mass, what it sheds leaving when it is let go
+  (`Flight.flies.drops[].on`), the plume out when the engine really stops, and after the landing
+  it stays where it came down beside a card of the flight against the reports' figures. Put the
+  clock back and it shows what was flown; the record's own run is untouched and comes back on
+  leaving. The cockpit reads only the flight's data: a new flight with a `trajectory.body` and
+  `flies` can be flown without being told how.
 
 ## Two looks
 

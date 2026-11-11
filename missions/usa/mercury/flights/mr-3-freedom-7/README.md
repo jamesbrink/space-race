@@ -94,6 +94,36 @@ report gives, the capsule's half agrees to a per cent, except the entry's greate
 (5.4 % low). Every miss is recorded with its likely cause in the test, which fails if one appears,
 grows or goes away.
 
+**Flown live.** `src/sim/vehicle.ts` flies the same inputs as a rigid body that is steered, by a
+hand or by an autopilot holding the tilt programme, and for that it needs figures the reports
+above do not give (`trajectory.body` in [flight.ts](flight.ts)):
+
+| Input | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| Structure, ballast, damping compound along the booster | 902.6, 1,659, 1,254 lb in the tail, centre and aft sections | documented | TM X-53107, 4.2.1 and Figure 4-1 |
+| The rest of the dry booster (engine, pumps, instruments) | 4,277 lb, 55 % in the tail unit and 45 % in the aft section | estimated | the remainder of the 8,093 lb dry weight; the split is ours |
+| Liquids at liftoff | 53,965 lb, 29,250 : 24,000 between the oxygen tank (lower) and the alcohol tank | derived | liftoff weight less dry booster and capsule; the tanks' volumes at assumed densities |
+| Spacecraft and tower on the stack | 2,855 lb and 1,185 lb | documented, derived | Postlaunch Report 3.1: the "orbit" weight, and the launch weight less it |
+| Tower jettison | 02:22.2 | documented | Postlaunch Report 4.1 |
+| Burning time before a propellant runs out | 143.5 s | derived | TM X-53107's nominal burn, taken as depletion |
+| Normal-force slope and station: nose, fins | 2.0 per radian at 751 in; 3.15 at 55 in | estimated | slender-body theory and Barrowman's method, subsonic, held at all speeds. No tunnel figure read |
+| Thrust deflection, where it acts, roll arm | 4°, the base, 0.3 m | estimated | the vanes turn 27.5° (4.4.8); what that does to the thrust is not given |
+| Spacecraft's centre of mass | 25 in above the heat shield's tip | estimated | the Postlaunch Report gives it; not read |
+| Spacecraft's radii of gyration | 0.55 m in roll, 0.75 m across | estimated | likewise |
+| Spacecraft's normal-force slope and where it acts | 0.5 per radian, 55 in behind the centre of mass | estimated | the shield's centre of curvature (80 in, CR-649) less the centre of mass above |
+| Attitude jets' torque | 21 N m in roll, 192 N m in pitch and yaw | estimated | 6 and 24 lbf chambers (Hammack and Heberlig) on arms of 0.8 and 1.8 m, which are ours |
+| Where the parachutes pull | 1.8 m from the centre of mass | estimated | |
+| The autopilot's gains | 20 per radian and 14 s per radian (booster); 2.2 and 3.9 (spacecraft) | estimated | chosen from the control authority; the LEV-3's were not found |
+
+By these the stack is stable all the way up, but only just: its centre of pressure is 0.45 m behind
+its centre of mass at liftoff and 0.08 m at about a minute, before the emptying tanks carry the
+centre of mass forward. Hands off it holds its nose to the air and falls into a gravity turn.
+Under the autopilot it holds the programme to 0.03° at an angle of attack under a degree through
+the greatest dynamic pressure. Against the run above (which has no lift) it separates 0.13 % slower
+and 0.26° steeper and reaches an apogee 0.5 % higher: the nose is held a little above the path, and
+the air lifts it. With that push switched off the two runs agree to 0.05 %
+(`tests/vehicle.test.mjs`). An abort on the escape rocket is not flown.
+
 **Space-fixed and Earth-fixed.** The report gives the speed at separation twice, and the larger,
 7,388 ft/s, is the one quoted as Freedom 7's velocity. It is space-fixed: measured in a frame that
 does not turn with the Earth, so it includes the eastward 409 m/s (1,472 km/h) the pad itself was

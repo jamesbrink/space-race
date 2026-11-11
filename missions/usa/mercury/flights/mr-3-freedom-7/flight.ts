@@ -1,4 +1,16 @@
-import type { Action, Flight, FlightCheck, Keyframe, Measure, ModelDef, Move, Part, Trajectory } from '../../../../../src/types';
+import type {
+  Action,
+  Body,
+  Flight,
+  FlightCheck,
+  Keyframe,
+  MassPart,
+  Measure,
+  ModelDef,
+  Move,
+  Part,
+  Trajectory,
+} from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
 
 const IN = 0.0254;
@@ -1101,16 +1113,181 @@ const TILT_FIGURE: [number, number][] = [
 const TILT_BEGINS = 15.0;
 const TILT_ARREST = 131.7;
 
+/** Postlaunch Report, event table: the escape tower fired clear at 02:22.2, and the capsule had turned heat shield first by 02:37. */
+const TOWER_OFF = 142.2;
+const TURNED = 157;
+
+const TMX_4 = 'NASA TM X-53107, section 4';
+/** Stations on the stack, inches above the fin trailing edges (vehicles/redstone-mrlv.md), where the sections meet. */
+const TAIL_TOP = 111.24;
+const CENTRE_TOP = TAIL_TOP + 37.5 * 12;
+const BOOSTER_TOP = 708;
+/** The capsule's plane of greatest diameter on the stack, the tip of its heat shield below that, its canister's top and the tower's spike above. */
+const CAPSULE_PLANE = 716;
+const SHIELD_TIP = CAPSULE_PLANE - 9.2;
+const CANISTER_TOP = CAPSULE_PLANE + 104.57;
+const SPIKE_TIP = CAPSULE_PLANE + 284.55;
+/** The oxygen tank stands on the tail unit and the alcohol tank on it; the 1.87 ft Figure 4-1 leaves unexplained is taken to be above them. */
+const LOX_TOP = TAIL_TOP + 16.83 * 12;
+const ALCOHOL_TOP = LOX_TOP + 18.8 * 12;
+/** The capsule's centre of mass above the tip of its heat shield, inches: a guess. The Postlaunch Report has it; it has not been read for it. */
+const CAPSULE_CG = 25;
+/** Pounds. The booster dry for MR-3, what of that the tables place, and the capsule with and without its tower. */
+const BOOSTER_DRY = 8093;
+const PLACED = 902.6 + 1659 + 437.4 + 487 + 330;
+const CAPSULE_LAUNCH = 4040.28;
+const CAPSULE_ORBIT = 2855.14;
+/** Everything liquid aboard at liftoff, lb: the liftoff weight less everything that is not. */
+const FLUIDS = 66_098 - BOOSTER_DRY - CAPSULE_LAUNCH;
+const STRUCTURE = `${TMX_4}.2.1: structural weights; stations from Figure 4-1 (vehicles/redstone-mrlv.md)`;
+const part = (
+  name: string,
+  from: number,
+  to: number,
+  pounds: number,
+  confidence: MassPart['confidence'],
+  source: string,
+  more: Partial<MassPart> = {},
+): MassPart => ({ name, from: from * IN, to: to * IN, mass: pounds * LB, confidence, source, ...more });
+
+/**
+ * The stack as a body that turns (src/sim/vehicle.ts). The lengths and most of the weights are
+ * the reports'; how the weight lies along each section, where the air pushes and how hard the
+ * vanes steer are not in anything read, and say so.
+ */
+const body: Body = {
+  radius: doc(35 * IN, `${TMX_4}, Figure 4-11: body diameter 70 in`),
+  parts: [
+    part('tail unit', 0, TAIL_TOP, 902.6, 'documented', STRUCTURE),
+    part('centre section', TAIL_TOP, CENTRE_TOP, 1659, 'documented', STRUCTURE),
+    part('aft section, ballast and damping compound', CENTRE_TOP, BOOSTER_TOP, 437.4 + 487 + 330, 'documented', STRUCTURE),
+    part(
+      'engine and tail equipment',
+      0,
+      TAIL_TOP,
+      (BOOSTER_DRY - PLACED) * 0.55,
+      'estimated',
+      `the dry booster (8,093 lb for MR-3) less the structure, ballast and compound the tables place leaves ${BOOSTER_DRY - PLACED} lb of engine, pumps, pressurisation and instruments: ` +
+        '55 per cent of it is put in the tail unit and the rest in the aft section. The split is ours',
+    ),
+    part(
+      'instruments and aft equipment',
+      CENTRE_TOP,
+      BOOSTER_TOP,
+      (BOOSTER_DRY - PLACED) * 0.45,
+      'estimated',
+      'the rest of the same remainder',
+    ),
+    part(
+      'liquid oxygen',
+      TAIL_TOP,
+      LOX_TOP,
+      (FLUIDS * 29_250) / 53_250,
+      'derived',
+      'everything liquid at liftoff (the liftoff weight less the dry booster and the capsule: 53,965 lb, peroxide and nitrogen with it), shared between the tanks as their volumes at assumed densities ' +
+        '(29,250 to 24,000 lb: vehicles/redstone-mrlv.md); the oxygen tank is the lower (Figure 4-1), 16.83 ft long',
+      { fluid: true },
+    ),
+    part(
+      'alcohol',
+      LOX_TOP,
+      ALCOHOL_TOP,
+      (FLUIDS * 24_000) / 53_250,
+      'derived',
+      'the rest of the same; the alcohol tank is 18.8 ft long, over the oxygen',
+      {
+        fluid: true,
+      },
+    ),
+    part(
+      'spacecraft',
+      SHIELD_TIP,
+      CANISTER_TOP,
+      CAPSULE_ORBIT,
+      'documented',
+      `${PLR}, section 3.1: 2855.14 lb in the "orbit" configuration; SEDR 104, Figure 1-3 for its length. Taken as a uniform cylinder of 0.6 m radius, which it is not`,
+      { radius: 0.6 },
+    ),
+    part(
+      'escape tower',
+      CANISTER_TOP,
+      SPIKE_TIP,
+      CAPSULE_LAUNCH - CAPSULE_ORBIT,
+      'derived',
+      `${PLR}, section 3.1: the launch weight (4040.28 lb) less the weight in the "orbit" configuration: 1,185 lb, which is the tower and whatever else left with it`,
+      { radius: 0.2, sheds: 'tower' },
+    ),
+  ],
+  surfaces: [
+    {
+      name: 'nose',
+      station: (CANISTER_TOP - (104.57 * 2) / 3) * IN,
+      slope: 2,
+      confidence: 'estimated',
+      source:
+        'slender-body theory: any nose has a normal-force slope of 2 per radian on its base area, here the capsule’s; a cone’s acts two thirds of the way back from its tip, ' +
+        'taken from the canister’s top. The tower ahead of it is left out. Not from a tunnel',
+    },
+    {
+      name: 'fins',
+      station: 55.2 * IN,
+      slope: 3.15,
+      confidence: 'estimated',
+      source:
+        'Barrowman’s method for four fins of 41 in exposed span, 100 in root and 38 in tip chord (the chords themselves estimated: vehicles/redstone-mrlv.md) on a 70 in body, referred to the capsule’s area. ' +
+        'Subsonic, and held at every Mach number: how the real centre of pressure moved through the speed of sound is not taken from any report',
+    },
+  ],
+  control: {
+    deflection: guess(
+      4,
+      `${TMX_4}.4.8: four carbon jet vanes turning 27.5 degrees either way. How far that turns the thrust is not given: 4 degrees is what vanes of the kind are credited with, and is ours`,
+    ),
+    station: guess(0, 'the vanes stand in the exhaust at the nozzle’s exit, taken as the base'),
+    rollArm: guess(0.3, 'the vanes’ distance from the axis, from the 33 in nozzle exit (itself estimated)'),
+  },
+  tower: { at: doc(TOWER_OFF, `${PLR}, section 4.1: the escape tower released at 02:22.2`) },
+  capsule: {
+    centre: guess(
+      (SHIELD_TIP + CAPSULE_CG) * IN,
+      'the capsule’s centre of mass taken as 25 in above the tip of its heat shield, in the wide end where the weight is. The Postlaunch Report gives it; that page has not been read',
+    ),
+    gyration: {
+      roll: guess(0.55, 'a solid cone of the capsule’s base has 0.52 m; the weight is nearer the skin than that'),
+      across: guess(
+        0.75,
+        'judged from its 3.3 m length with most of the weight in the wide end. The Postlaunch Report gives the moments of inertia; not read',
+      ),
+    },
+    surfaces: [
+      {
+        name: 'heat shield',
+        station: (80 - CAPSULE_CG) * IN,
+        slope: 0.5,
+        confidence: 'estimated',
+        source:
+          'the pressure on a spherical shield acts through its centre of curvature, 80 in behind its tip (CR-649: an 80 in radius), which is 55 in behind the centre of mass assumed above. ' +
+          `The slope, 0.5 per radian, is a guess at ${TMX_491}’s curves, not a reading of them`,
+      },
+    ],
+    jets: {
+      roll: guess(6 * LBF * 0.8, 'a 6 lbf roll chamber (Hammack and Heberlig) at about 0.8 m from the axis: the arm is ours'),
+      pitch: guess(
+        24 * LBF * 1.8,
+        'a 24 lbf pitch chamber (Hammack and Heberlig) on the small end, about 1.8 m from the centre of mass: the arm is ours',
+      ),
+      yaw: guess(24 * LBF * 1.8, 'as pitch'),
+    },
+    chuteArm: guess(1.8, 'the parachutes pull at the top of the recovery compartment, about 1.8 m from the centre of mass assumed above'),
+  },
+};
+
 /**
  * What the simulator flies Freedom 7 from (src/sim/fly.ts). Every figure is an input from a
  * report; none was adjusted against the results below. Where a report gives no figure the entry
  * is `estimated` and says what it stands on: tests/sim.test.mjs prints how far each of those moves
  * each result.
  */
-/** Postlaunch Report, event table: the escape tower fired clear at 02:22.2, and the capsule had turned heat shield first by 02:37. */
-const TOWER_OFF = 142.2;
-const TURNED = 157;
-
 const trajectory: Trajectory = {
   azimuth: doc(
     105,
@@ -1129,6 +1306,10 @@ const trajectory: Trajectory = {
         'which over one atmosphere is 652 sq in of nozzle exit. (The A-7 is elsewhere rated 78,000 lbf at sea level and 89,000 lbf in vacuum: Aircraft Engine Historical Society, "The Redstone Engine". That is 749 sq in, and would give 6.4 g.)',
     ),
     cutoff: doc(CUTOFF, `${PLR}, section 4.1: booster cut-off at 02:21.8, by the velocity integrator`),
+    depletion: derived(
+      143.5,
+      `${TMX_4}: a nominal burning time of 143.5 s, taken as when a propellant would have run out, which the report does not say (1,285 lb of liquids are then still aboard by our count)`,
+    ),
   },
   tilt: {
     points: TILT_FIGURE.map(([t, tilt]) => [TILT_BEGINS + ((t - 24.3) * (TILT_ARREST - TILT_BEGINS)) / (TILT_ARREST - 24.3), tilt]),
@@ -1217,6 +1398,7 @@ const trajectory: Trajectory = {
       'it comes out reefed and then opens: the pilot reports "main on green" at 10:15, "main chute is reefed" at 10:18, "coming unreefed" at 10:22 and "good" at 10:28 (Postlaunch Report, air-ground transcript). Nine seconds from out to full, evenly, is ours',
     ),
   },
+  body,
 };
 
 /**
@@ -1224,7 +1406,7 @@ const trajectory: Trajectory = {
  * before it was run: 2 per cent on heights and distances, 1 per cent on speeds, half a g, ten
  * seconds, a degree. tests/sim.test.mjs.
  */
-const check = (id: string, label: string, value: number, unit: string, tolerance: number, source: string): FlightCheck => ({
+const check = (id: FlightCheck['id'], label: string, value: number, unit: string, tolerance: number, source: string): FlightCheck => ({
   id,
   label,
   value,
@@ -1661,15 +1843,18 @@ export const flight: Flight = {
   ],
   trajectory,
   checks,
+  flownNote:
+    'The powered flight ends 4 % too fast, and what follows from that is high and long: leaving the pad at 1.19 g, one per cent in thrust or weight is four in speed, and the engine is two figures from a summary table. Flown from the separation the report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs).',
   flies: {
     model: 'vehicle',
     drops: [
-      { at: TOWER_OFF, nodes: ['EscapeTower'] },
+      { at: TOWER_OFF, nodes: ['EscapeTower'], on: 'tower' },
       {
         at: trajectory.separation.at.value,
+        on: 'separation',
         nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
       },
-      { at: trajectory.retropack.at.value, nodes: ['Retropack'] },
+      { at: trajectory.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
     ],
     turned: TURNED,
     engine: 'RedstoneEngine',

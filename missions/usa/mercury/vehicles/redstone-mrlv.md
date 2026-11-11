@@ -92,7 +92,8 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 - **Inside the aft unit** the equipment is representative boxes; the nitrogen spheres' number and
   size, and the ballast's shape, are guesses at documented items.
 - No baffles or level sensors in the tanks; no launch-pad fittings under fin II.
-- **No mass properties** in the model.
+- **No mass properties** in the model. The simulator's are in the flight's `flight.ts` (`trajectory.body`): the
+  documented section weights as uniform cylinders, the rest of the dry weight split by estimate.
 
 ## Sources
 

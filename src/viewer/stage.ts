@@ -11,7 +11,7 @@ import { sameTarget, type Target, type Workings } from '../actions';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
-import { Ascent } from './ascent';
+import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { Carry } from './carry';
 import { CloudPass } from './clouds';
@@ -273,6 +273,9 @@ export class Stage {
   private lamps = new Lamps();
   /** The flight off the pad (ascent.ts), and what has been done to the model that flies: the clock's instant it was put at, the nodes it has shed, how far it moved this frame. */
   private ascent: Ascent | null = null;
+  private flightData: FlightData | null = null;
+  /** The flight is being flown by hand: the keys that steer it are not the camera's. */
+  piloted = false;
   /**
    * What is drawn without depth and may stand in front of cloud: the engine's fire, its trail and
    * every pane of glass. The clouds pass draws them again on their own so cloud behind them shows
@@ -507,6 +510,7 @@ export class Stage {
       const typing = el.matches?.('input, textarea, select, [contenteditable]');
       const widget = key.startsWith('arrow') && el.closest?.('[role=tablist], input');
       if (e.metaKey || e.ctrlKey || e.altKey || typing || widget || this.walk.active) return; // on foot the keys are the walker's
+      if (this.piloted && 'wasdqe'.includes(key)) return; // at the controls of the flight, those keys steer it (cockpit.ts)
       if (key === '0' || key === 'home') return this.onHome(); // 0, since a laptop has no Home key
       if (!KEYS.has(key)) return;
       e.preventDefault();
@@ -617,6 +621,7 @@ export class Stage {
     this.lifted.t = Number.NaN;
     this.debris.length = 0; // (their holders were under the last flight's root)
     this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => o.parent)); // (the last flight's are gone with its models)
+    this.flightData = flight;
     this.hangPlume(flight);
     this.lamps = new Lamps();
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
@@ -897,6 +902,18 @@ export class Stage {
     const flier = this.flier;
     if (mode === 'chase' && flier) this.frameBox(new THREE.Box3().setFromObject(flier.group), false);
     else this.fitShadows();
+    this.dirty = true;
+  }
+
+  /**
+   * Show a flight being flown by hand (ascent.ts `Run`) in place of the record's, or the record's again (null).
+   * The trail starts afresh: the one laid belongs to the flight before.
+   */
+  flyRun(run: Run | null): void {
+    if (!this.ascent) return;
+    this.ascent.use(run);
+    if (this.flightData) this.hangPlume(this.flightData);
+    this.lifted.t = Number.NaN;
     this.dirty = true;
   }
 

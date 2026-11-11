@@ -2,6 +2,7 @@
  * The shape every flight's data file has. The viewer renders it today; the simulator will
  * fly from the same numbers, so each one says how far it can be trusted.
  */
+import type { Results } from './sim/fly.ts';
 
 /**
  * documented — a published figure (NASA report, manufacturer manual, museum record).
@@ -405,6 +406,8 @@ export interface Trajectory {
     exitArea: Measure;
     /** Seconds from liftoff at which it is shut down. */
     cutoff: Measure;
+    /** How long it can burn before a propellant runs out, s: the live simulator (sim/vehicle.ts) stops it then if nobody has. */
+    depletion?: Measure;
   };
   /** The tilt programme: degrees from the vertical at launch against seconds, held in inertial space by the gyros, in the plane of the azimuth. */
   tilt: Curve;
@@ -437,12 +440,80 @@ export interface Trajectory {
   /** Each parachute: the height it is let out at, m, the drag area (coefficient times area) it adds once full, m^2, and how long it takes to fill, s. */
   drogue: { altitude: Measure; dragArea: Measure; fills: Measure };
   main: { altitude: Measure; dragArea: Measure; fills: Measure };
+  /** The vehicle as a body that turns: what the live simulator (src/sim/vehicle.ts) needs beyond the above. `fly` does not read it. */
+  body?: Body;
+}
+
+/**
+ * One part of a vehicle's mass: a uniform cylinder between two stations, metres along the long
+ * axis from the vehicle's base. The confidence is the least sure of its figures.
+ */
+export interface MassPart {
+  name: string;
+  from: number;
+  to: number;
+  /** kg: for a `fluid`, what the tank holds at liftoff. */
+  mass: number;
+  /** Metres, where it is not the body's. */
+  radius?: number;
+  /** A liquid in a tank: it drains, with every other, as the engine burns, and lies against the tank's lower end. */
+  fluid?: boolean;
+  /** What takes it away: 'tower' for the escape tower's jettison. */
+  sheds?: string;
+  confidence: Confidence;
+  source: string;
+}
+
+/**
+ * Something the air pushes sideways on (a nose, the fins): the slope of its normal-force
+ * coefficient against angle of attack, per radian, on the trajectory's `area`, acting at a
+ * station. The whole vehicle's slope is their sum, its centre of pressure their mean, and its
+ * damping follows from where each stands.
+ */
+export interface AeroSurface {
+  name: string;
+  /** Metres from the base on the stack; for the spacecraft alone, from its centre of mass toward its small end. */
+  station: number;
+  slope: number;
+  confidence: Confidence;
+  source: string;
+}
+
+/** A vehicle as a rigid body: mass along its length, where the air and the engine push, and what steers it. */
+export interface Body {
+  /** The body's radius, m: what a part's own inertia is worked from. */
+  radius: Measure;
+  /** The stack on the pad, base to tip. The fixed parts and the liquids sum to `liftoffMass`. */
+  parts: MassPart[];
+  surfaces: AeroSurface[];
+  control: {
+    /** The furthest the thrust can be turned off the axis, degrees, either way in pitch and in yaw. */
+    deflection: Measure;
+    /** Where the turned thrust acts, m from the base. */
+    station: Measure;
+    /** The arm the same deflection has about the long axis, m: roll torque is thrust times the sine of the deflection times this. */
+    rollArm: Measure;
+  };
+  /** When the escape tower is let go on a flight without an abort, seconds from liftoff. */
+  tower?: { at: Measure };
+  /** The spacecraft alone, after separation. */
+  capsule: {
+    /** Its centre of mass on the stack, m from the base. */
+    centre: Measure;
+    /** Radii of gyration about its long axis and across it, m. */
+    gyration: { roll: Measure; across: Measure };
+    surfaces: AeroSurface[];
+    /** The torque its attitude jets give about each axis at full command, N m. */
+    jets: { roll: Measure; pitch: Measure; yaw: Measure };
+    /** How far from its centre of mass, toward the small end, a parachute pulls, m. */
+    chuteArm: Measure;
+  };
 }
 
 /** A result the reports give, for the simulator to be held against: tests/sim.test.mjs integrates the trajectory and compares. */
 export interface FlightCheck {
-  /** What src/sim/fly.ts calls it: 'apogee', 'range', 'maxSpeed'. */
-  id: string;
+  /** What src/sim/fly.ts calls it, a field of its `Results`: 'apogee', 'range', 'separationSpeed'. */
+  id: keyof Results;
   label: string;
   /** SI. */
   value: number;
@@ -477,6 +548,8 @@ export interface Flight {
   /** What the flight is integrated from, and what the result is checked against (src/sim). Left out: it cannot be flown yet. */
   trajectory?: Trajectory;
   checks?: FlightCheck[];
+  /** What the Flown panel says under the checks: how the simulator's run stands against the reports today, and why. This flight's own verdict, in a sentence or three. */
+  flownNote?: string;
   /**
    * The flight in the scene: which model the trajectory carries off the pad (after liftoff it is
    * where the simulator has it), and the parts of it that leave it on the way, at seconds from
@@ -484,7 +557,8 @@ export interface Flight {
    */
   flies?: {
     model: string;
-    drops: { at: number; nodes: string[] }[];
+    /** `on`: which of the simulator's events lets them go, for a flight flown by hand (sim/vehicle.ts), where it happens when the pilot says. */
+    drops: { at: number; nodes: string[]; on?: 'tower' | 'separation' | 'retropack' }[];
     /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
     turned?: number;
     /** The node whose lowest point is the nozzle's exit: the engine's fire is drawn from there while it burns. */

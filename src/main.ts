@@ -1,10 +1,11 @@
+import { Box3, type Object3D, Vector3 } from 'three';
 import { flights } from '../missions';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
 import { Callout } from './callout';
+import { Cockpit } from './cockpit';
 import { Demo, IDLE_TITLE } from './demo';
-import { prefs } from './prefs';
-import { Box3, type Object3D, Vector3 } from 'three';
 import { Flown } from './flown';
+import { prefs } from './prefs';
 import { TimeBar } from './timebar';
 import { Title } from './title';
 import { Ui } from './ui';
@@ -94,6 +95,20 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
 // the flight as the simulator flies it, beside the reports' figures: in the Flight tab
 new Flown(document.querySelector<HTMLElement>('#ui .flown')!, clock, flight);
+// the flight flown by hand: the live simulator at the keys, shown in the scene in place of the record's run
+const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
+  fly: (run) => stage.flyRun(run),
+  piloting: (on) => {
+    if (on && stage.walk.active) stage.exitWalk();
+    stage.piloted = on;
+    document.querySelector('#ui')!.classList.toggle('piloting', on);
+    const flier = flight.flies?.model;
+    if (on && flier && current.id !== flier) show(flier);
+    if (on && selected) select(null);
+    ui.setCamera(on ? 'chase' : 'orbit');
+    if (!on) show(current.id);
+  },
+});
 // a section whose slider is a sequence of events reads the clock: as the clock moves, so does its slider
 clock.listen(() => {
   if (current.sequence) ui.setSlider(stage.exploded(current.id));
@@ -565,4 +580,4 @@ setInterval(() => {
 }, 500);
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
-Object.assign(window, { sr: { stage, ui, flight, show, clock, demo } });
+Object.assign(window, { sr: { stage, ui, flight, show, clock, demo, cockpit } });

@@ -242,6 +242,9 @@ test('which inputs are not documented, and how far each moves the results', (t) 
     ['retro.pitch (derived)', (tr) => (tr.retro.pitch.value *= 1.05), tr0.retro.pitch.confidence],
     ['drogue.dragArea (estimated)', (tr) => (tr.drogue.dragArea.value *= 1.05), tr0.drogue.dragArea.confidence],
     ['main.dragArea (derived)', (tr) => (tr.main.dragArea.value *= 1.05), tr0.main.dragArea.confidence],
+    ['area (derived)', (tr) => (tr.area.value *= 1.05), tr0.area.confidence],
+    ['drogue.fills (estimated)', (tr) => (tr.drogue.fills.value *= 1.05), tr0.drogue.fills.confidence],
+    ['main.fills (estimated)', (tr) => (tr.main.fills.value *= 1.05), tr0.main.fills.confidence],
     ['engine.thrust (documented)', (tr) => (tr.engine.thrust.value *= 1.05), tr0.engine.thrust.confidence],
     ['engine.isp (documented)', (tr) => (tr.engine.isp.value *= 1.05), tr0.engine.isp.confidence],
     ['liftoffMass (documented)', (tr) => (tr.liftoffMass.value *= 1.05), tr0.liftoffMass.confidence],
@@ -266,16 +269,24 @@ test('which inputs are not documented, and how far each moves the results', (t) 
   const walk = (o, path) => {
     if (o && typeof o === 'object') {
       if (o.confidence && o.confidence !== 'documented') estimated.push(`${path} (${o.confidence})`);
-      for (const [k, v] of Object.entries(o)) if (k !== 'points') walk(v, path ? `${path}.${k}` : k);
+      // `body` is the live simulator's (sim/vehicle.ts): fly() does not read it, and tests/vehicle.test.mjs lists what in it is not documented
+      for (const [k, v] of Object.entries(o)) if (k !== 'points' && k !== 'body') walk(v, path ? `${path}.${k}` : k);
     }
   };
   walk(tr0, '');
   t.diagnostic(`not documented: ${estimated.join(', ')}`);
+  // every one of them is weighed above (but the engine's run-dry time, which only the live simulator reads)
+  const weighed = new Set(inputs.map(([name]) => name.split(' (')[0].replace('tilt programme', 'tilt')));
+  for (const e of estimated) {
+    const name = e.split(' ')[0];
+    assert.ok(weighed.has(name) || name === 'engine.depletion', `${name} is not documented and is not weighed`);
+  }
   assert.deepEqual(estimated.map((e) => e.split(' ')[0]).sort(), [
     'area',
     'ascentDrag',
     'drogue.dragArea',
     'drogue.fills',
+    'engine.depletion',
     'engine.exitArea',
     'main.dragArea',
     'main.fills',

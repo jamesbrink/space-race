@@ -1,7 +1,7 @@
 import { prefs } from './prefs';
-import { CAMERA_MODES, type CameraMode } from './viewer/fly';
 import type { Confidence, Flight, ModelDef, Part } from './types';
 import { functionsOf } from './viewer/explode';
+import { CAMERA_MODES, type CameraMode } from './viewer/fly';
 import { Wheel } from './wheel';
 
 export interface UiHandlers {
@@ -172,6 +172,7 @@ export class Ui {
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
             <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
+            ${f.trajectory?.body && f.flies ? '<div><dt><kbd>L</kbd></dt><dd>fly it yourself</dd></div>' : ''}
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>

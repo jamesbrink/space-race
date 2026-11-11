@@ -53,9 +53,9 @@ export const G0 = 9.80665;
 /** The Earth's oblateness: the second zonal harmonic of WGS 84's gravity model (EGM96's C20, unnormalised). */
 export const J2 = 1.082_629_989e-3;
 /** Sea-level air pressure, Pa: what a sea-level thrust is quoted at. */
-const P0 = 101_325;
+export const P0 = 101_325;
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
-const MEAN_RADIUS = 6_371_008.8;
+export const MEAN_RADIUS = 6_371_008.8;
 
 /** Gravity at a position in an Earth-centred frame whose +Z is the pole, m/s^2. `j2`: the oblateness (0 for a point mass). */
 export function gravity(r: Vec3, j2 = J2): Vec3 {
