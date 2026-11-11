@@ -1,9 +1,12 @@
 import { flights } from '../missions';
-import { type Choice, choices, lookUp, nameOf, spaced, type Target } from './actions';
+import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
 import { prefs } from './prefs';
+import { Box3, Vector3 } from 'three';
+import { TimeBar } from './timebar';
 import { Title } from './title';
 import { Ui } from './ui';
 import { Stage } from './viewer/stage';
+import { Clock } from './world/clock.ts';
 
 /**
  * The address bar's fragment says what is on show: `#<nation>/<programme>/<flight>/<model>`.
@@ -19,6 +22,9 @@ const flight = flights.find((f) => f.id === address().flightId) ?? flights[0]!;
 document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
+/** The instant on show: stopped at liftoff until it is run or moved (the time bar, or `sr.clock`). */
+const clock = new Clock(flight.launch);
+stage.clock = clock;
 let selected: string | null = null;
 let current = flight.models[0]!;
 /** Everything is on the stage: until then a choice of section has nothing to fly to. */
@@ -77,6 +83,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   selectPart: select,
   inset: (px) => stage.setInset(px),
 });
+new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
 
 /** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
 let autoCut = false;
@@ -111,14 +118,14 @@ function select(node: string | null): void {
  * Go to one of the flight's sections: the camera flies there and the panels change to match.
  * Nothing is loaded and nothing leaves the scene. The address bar follows, so a view can be linked.
  */
-function show(id: string, snap = false): void {
+function show(id: string, snap = false, asItStands = false): void {
   if (stage.walk.active) stage.exitWalk(); // going anywhere else ends a walk
   const model = flight.models.find((m) => m.id === id) ?? flight.models[0]!;
   selected = null;
   autoCut = false;
   current = model;
   ui.setModel(model.id, stage.exploded(model.id));
-  stage.section(model.id, snap);
+  stage.section(model.id, snap, asItStands);
   orbit();
   const hash = `#${flight.id}/${model.id}`;
   if (!title.showing && location.hash !== hash) history.replaceState(null, '', hash); // the front page has no address of its own
@@ -144,6 +151,21 @@ stage.onSelect = select;
 stage.onModel = (id) => show(id); // a click on the pad, the rocket or the pilot goes to it
 stage.onHoverModel = (id) => ui.hoverModel(id);
 stage.onHoverPlace = (name) => ui.hint(name ? [spaced(name), 'Click to go and look'] : null);
+// A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
+stage.onSpot = (page, point, floor) => {
+  const walker = flight.models.find((m) => m.walker);
+  ui.menu(page.x, page.y, [
+    ...(walker && floor
+      ? [{ label: `Walk from here as ${walker.name.toLowerCase()}`, run: () => void stage.enterWalk(walker.id, point) }]
+      : []),
+    {
+      label: 'Look at this',
+      run: () => {
+        stage.visit(new Box3().setFromCenterAndSize(point, new Vector3(8, 4, 8)));
+      },
+    },
+  ]);
+};
 stage.onVisit = orbit; // the view drifts round whatever was last chosen
 stage.onHoverWindow = (over) => ui.hint(over ? ['Window', 'Click to look inside'] : null);
 // taking the camera pauses the drift; it starts again with the next thing chosen
@@ -154,7 +176,7 @@ stage.onInteract = () => {
 stage.onView = (id) => ui.setView(id);
 // Walking as a figure is done from that figure's section, wherever it was asked for; stopping returns to that section's view.
 stage.onWalk = (on, model) => {
-  if (on && current.id !== model) show(model);
+  if (on && current.id !== model) show(model, false, true); // the hardware stays where it is while someone is walking on it
   if (on && selected) select(null);
   ui.setWalking(on);
   if (on) ui.setWalkView(stage.walk.third);
@@ -162,7 +184,7 @@ stage.onWalk = (on, model) => {
     stage.walk.motion = MOTION[motion()];
     ui.setWalkMotion(motion());
   }
-  if (!on) show(model);
+  if (!on) show(model, false, true);
 };
 stage.onWalkLook = (captured) => ui.setWalkLook(captured);
 stage.onWalkView = (third) => {
@@ -174,10 +196,18 @@ stage.onWalkView = (third) => {
 let target: Target | null = null;
 /** Where the walker stood when the info card was opened: walking away from it puts it down. */
 let cardAt: { x: number; z: number } | null = null;
+let naming = 0;
 stage.onWalkTarget = (found) => {
-  target = found && choices(found, flight, stage.walkingAs ?? '', stage.workings).length ? found : null;
-  ui.setWalkTarget(target ? nameOf(target, flight) : null);
+  const offered = found ? choices(found, flight, stage.walkingAs ?? '', stage.workings) : [];
+  target = found && offered.length ? found : null;
   ui.wheel.close(); // what it was about is no longer in front of you
+  // the ground under your own feet is named only once it has been looked at for a second (E works on it at once all the same)
+  clearTimeout(naming);
+  const name = target ? nameOf(target, flight) : null;
+  if (target && quiet(target, offered)) {
+    ui.setWalkTarget(null);
+    naming = window.setTimeout(() => ui.setWalkTarget(name), 1000);
+  } else ui.setWalkTarget(name);
 };
 stage.onWalkAct = act;
 
@@ -295,4 +325,4 @@ setInterval(() => {
 }, 500);
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
-Object.assign(window, { sr: { stage, ui, flight, show } });
+Object.assign(window, { sr: { stage, ui, flight, show, clock } });

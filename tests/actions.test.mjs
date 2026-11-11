@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { choices, lookUp, nameOf, sameTarget, spaced } from '../src/actions.ts';
+import { choices, lookUp, nameOf, quiet, sameTarget, spaced } from '../src/actions.ts';
 import { seat, sector } from '../src/wheel.ts';
 
 /** A flight with nothing of any real one in it: a machine with a part that can be worked, and two people. */
@@ -71,6 +71,32 @@ test('doors and lifts a model marks on its own nodes are offered like declared o
     ['Info', 'Lower it', 'Ride to level 1', 'Inspect'],
   );
   assert.ok(!sameTarget(scenery, { place: 'Hut' }), 'a door coming into view is a change of target');
+  // a lift the flight declares for itself is not offered a second time from the model's mark
+  const own = {
+    id: 'up',
+    label: 'Call it',
+    do: {
+      kind: 'lift',
+      node: 'Tower_Lift',
+      stops: [
+        { name: 'Pad', by: [0, 0, 0] },
+        { name: 'Top', by: [0, 9, 0] },
+      ],
+    },
+  };
+  const declared = { models: [{ id: 'rig', name: 'Rig', parts: [{ ...flight.models[0].parts[1], actions: [own] }] }] };
+  assert.deepEqual(
+    choices({ model: 'rig', node: 'Cab', marked: { under: 'Tower', actions: [lift, door] } }, declared, 'ann', open).map((c) => c.label),
+    ['Info', 'Ride to Top', 'Close', 'Inspect'],
+  );
+});
+
+test('the ground under your own feet is quiet unless there is something to do with it', () => {
+  const quietly = (t) => quiet(t, choices(t, flight, 'ann'));
+  assert.ok(quietly({ model: 'rig', node: 'Cab', underfoot: true }), 'only Info and Inspect: not worth a prompt at once');
+  assert.ok(!quietly({ model: 'rig', node: 'Cab' }), 'the same part in front of you is');
+  assert.ok(!quietly({ model: 'rig', node: 'Arm', underfoot: true }), 'a part with a verb of its own always is');
+  assert.ok(!quietly({ model: 'rig', node: 'Cab', pane: true, underfoot: true }));
 });
 
 test('a model hit where it has no part, and nothing at all, offer nothing', () => {

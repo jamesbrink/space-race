@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type Heavens, MOON_GLSL } from './heavens';
+import { Heavens, MOON_GLSL } from './heavens';
 
 /** Altitude the backdrop is drawn from, in Earth radii: Freedom 7's apogee, 187.4 km. */
 const ALTITUDE = 187.4 / 6371;
@@ -38,6 +38,8 @@ export class OrbitBackdrop {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(35, 1, 0.001, 200);
   private readonly earth: THREE.Mesh;
+  private readonly sun: THREE.Mesh;
+  private moon: THREE.Mesh | null = null;
 
   /** `sky`: a flight's heavens, or just the stars for a setting with no flight. */
   constructor(sunDir: THREE.Vector3, sky: Heavens | THREE.Object3D) {
@@ -106,12 +108,25 @@ export class OrbitBackdrop {
     this.scene.add(air);
 
     // the stars and planets are points at infinity; the Earth, nearer, hides those behind it
-    this.scene.add('stars' in sky ? sky.stars : sky);
-    if ('stars' in sky && sky.moonUp) this.scene.add(moonCard(sky, this.camera.position));
+    this.scene.add(sky instanceof Heavens ? sky.stars : sky);
+    if (sky instanceof Heavens) this.scene.add((this.moon = moonCard(sky)));
 
-    const sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(60, 56, 48) }));
-    sun.position.copy(sunDir).multiplyScalar(90).add(this.camera.position);
-    this.scene.add(sun);
+    this.sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(60, 56, 48) }));
+    this.sun.position.copy(sunDir).multiplyScalar(90).add(this.camera.position);
+    this.scene.add(this.sun);
+    if (sky instanceof Heavens) this.place(sky);
+  }
+
+  /** The sky has moved to another instant: put the Sun and the Moon where it has them. */
+  place(sky: Heavens): void {
+    const eye = this.camera.position;
+    this.sun.position.copy(sky.sunDir).multiplyScalar(90).add(eye);
+    this.sun.scale.setScalar((90 * Math.sin(sky.sunRadius)) / 0.42); // its true size: half a degree across
+    if (!this.moon) return;
+    this.moon.scale.setScalar(90 * (sky.moon.uMoonSize.value as number) * 3);
+    this.moon.position.copy(sky.moonDir).multiplyScalar(90).add(eye);
+    this.moon.lookAt(eye);
+    (this.moon.material as THREE.ShaderMaterial).uniforms.uEye!.value = eye;
   }
 
   /** The ground track sliding by underneath. */
@@ -125,12 +140,11 @@ export class OrbitBackdrop {
  * shader draws the lit part of a sphere (heavens.ts: MOON_GLSL) and adds it to the black behind.
  * It stands among the stars, 90 units off, so the Earth's limb hides it when it is below the horizon.
  */
-function moonCard(sky: Heavens, eye: THREE.Vector3): THREE.Mesh {
-  const distance = 90;
-  const card = new THREE.Mesh(
+function moonCard(sky: Heavens): THREE.Mesh {
+  return new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1),
     new THREE.ShaderMaterial({
-      uniforms: { ...sky.moon, uEye: { value: eye } },
+      uniforms: { ...sky.moon, uEye: { value: new THREE.Vector3() } },
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -147,10 +161,6 @@ function moonCard(sky: Heavens, eye: THREE.Vector3): THREE.Mesh {
         void main() { gl_FragColor = vec4(moonLight(normalize(vWorld - uEye)), 1.0); }`,
     }),
   );
-  card.scale.setScalar(distance * (sky.moon.uMoonSize.value as number) * 3);
-  card.position.copy(sky.moonDir).multiplyScalar(distance).add(eye);
-  card.lookAt(eye);
-  return card;
 }
 
 /**

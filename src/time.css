@@ -1,0 +1,39 @@
+/* --- the clock: under the section switcher, on the same glass ---------------------- */
+.timebar { position: absolute; top: calc(var(--edge) + 52px); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 2 * var(--edge));
+  background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-radius: 3px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.28); }
+.time-row { display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 4px; }
+.timebar button, .time-read, .time-scrub span { font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.time-play { min-width: 58px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); }
+.time-play:hover { color: var(--ink); border-color: var(--faint); }
+.time-play[aria-pressed='true'] { color: #0b0a07; background: var(--amber); border-color: var(--amber); }
+.time-read { display: flex; gap: 14px; padding: 0 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.time-local { color: var(--ink); }
+.time-count { color: var(--faint); }
+.timebar.away .time-count { color: var(--amber); }
+.time-toggle { width: 28px; height: 28px; color: var(--faint); }
+.time-toggle:hover { color: var(--ink); }
+.timebar.folded .time-body { display: none; }
+.time-body { border-top: 1px solid var(--line); padding: 4px 10px 9px; }
+.time-scrub { display: flex; align-items: center; gap: 10px; }
+.time-scrub span { color: var(--faint); font-size: 10px; }
+.time-scrub input { min-width: 180px; }
+.time-rates { display: flex; gap: 6px; margin-top: 4px; }
+.time-rates button { flex: 1; padding: 5px 8px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); white-space: nowrap; text-transform: none; letter-spacing: 0.08em; }
+.time-rates button:hover:not(:disabled) { color: var(--ink); border-color: var(--faint); }
+.time-rates button[aria-pressed='true'] { color: var(--amber); border-color: var(--amber); }
+.time-rates .time-home { flex: none; margin-left: 8px; text-transform: uppercase; letter-spacing: 0.14em; }
+.time-rates button:disabled { color: var(--faint); opacity: 0.6; cursor: default; }
+/* a flight with one section has no switcher above it */
+#ui:has(.models button:only-child) .timebar { top: var(--edge); }
+
+/* phone and small tablet: the switcher has gone to the bottom, so the clock sits under the title */
+@media (max-width: 960px), (max-height: 520px) {
+  .timebar { top: 82px; left: 10px; transform: none; max-width: calc(100vw - 20px); }
+  #ui.walking .timebar { top: 58px; }
+  .time-play { padding: 10px 12px; }
+  .time-toggle { width: 36px; height: 36px; }
+  .time-rates button { padding: 10px 8px; }
+  .time-scrub input { min-width: 0; }
+}
+@media (max-height: 520px) { .timebar { top: 10px; left: auto; right: 10px; } }

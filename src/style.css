@@ -34,6 +34,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 /* --- title block ----------------------------------------------------------------- */
 .title { position: absolute; top: var(--edge); left: var(--edge); width: min(340px, 28vw); padding: 22px 24px 24px; pointer-events: none !important; }
+.spot-menu { position: fixed; z-index: 5; display: grid; min-width: 190px; padding: 5px; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.spot-menu button { padding: 9px 12px; text-align: left; font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); border-radius: 2px; }
+.spot-menu button:is(:hover, :focus-visible) { background: rgba(255, 196, 107, 0.14); color: var(--amber); outline: none; }
 .crumbs { color: var(--dim); }
 .crumbs button { pointer-events: auto; font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 0; }
 .crumbs button:is(:hover, :focus-visible) { color: var(--amber); }

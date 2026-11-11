@@ -2,26 +2,28 @@
 // the stars are turned to the place and hour. The positions themselves are tests/world.test.mjs's.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { airmass, daylight, heavens, limitingMagnitude } from '../src/viewer/heavens.ts';
+import { airmass, dayLight, limitingMagnitude } from '../src/viewer/daysky.ts';
+import { Heavens } from '../src/viewer/heavens.ts';
 import { skyFrom } from '../src/world/ephemeris.ts';
 import { DEG } from '../src/world/frames.ts';
 import { julianDate } from '../src/world/time.ts';
 
 const LC5 = { latitude: 28.439426, longitude: -80.573292, height: -27, bearingX: 295 };
-const at = (iso, air = true) => heavens(LC5, skyFrom(LC5, julianDate(iso)), air, 1, 1);
+const at = (iso, air = true) => {
+  const h = new Heavens(LC5, air, 1);
+  h.at(skyFrom(LC5, julianDate(iso)));
+  return h;
+};
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
 
 test('air: one thickness overhead, about 38 at the horizon', () => {
-  near(airmass(90 * DEG), 1, 1e-3, 'zenith');
-  near(airmass(30 * DEG), 2, 0.01, '30 degrees');
+  near(airmass(90), 1, 1e-3, 'zenith');
+  near(airmass(30), 2, 0.01, '30 degrees');
   near(airmass(0), 38, 1, 'horizon');
 });
 
 test('daylight hides the stars in order of faintness', () => {
-  assert.equal(daylight(50), 1);
-  assert.equal(daylight(-18), 0);
-  assert.ok(daylight(-3) > 0 && daylight(-3) < 1, 'twilight is in between');
   let last = Infinity;
   for (let el = -30; el <= 60; el += 1) {
     const limit = limitingMagnitude(el);
@@ -33,13 +35,69 @@ test('daylight hides the stars in order of faintness', () => {
   assert.ok(limitingMagnitude(50) > -4.4, 'Venus at its brightest just does');
 });
 
+test('mid-morning is the look the place was tuned to: warm white sunlight at full strength', () => {
+  const day = dayLight(50, null);
+  assert.equal(day.light.from, 'sun');
+  near(day.light.intensity, 3.9, 1e-9, 'strength');
+  day.light.colour.forEach((c, i) => near(c, [1, 0.84, 0.63][i], 1e-9, 'colour'));
+  day.zenith.forEach((c, i) => near(c, [0.025, 0.11, 0.42][i], 0.002, 'zenith'));
+  day.horizon.forEach((c, i) => near(c, [0.4, 0.58, 0.86][i], 0.002, 'horizon'));
+  day.glow.forEach((c) => assert.equal(c, 0, 'no twilight glow at mid-morning'));
+  day.cloud.forEach((c) => near(c, 1.02, 0.04, 'white cloud'));
+  near(day.exposure, 0.8, 1e-9, 'exposure');
+  assert.equal(day.ambient, 1);
+});
+
+test('the Sun reddens and weakens as it sinks, and is gone when its disc is', () => {
+  let last = Infinity;
+  for (const el of [50, 30, 15, 8, 4, 2, 1, 0.3, 0]) {
+    const { light } = dayLight(el, null);
+    assert.equal(light.from, 'sun');
+    assert.ok(light.intensity < last + 1e-9, `weaker at ${el}`);
+    last = light.intensity;
+    assert.ok(light.colour[0] >= light.colour[1] && light.colour[1] >= light.colour[2], `red over green over blue at ${el}`);
+  }
+  const low = dayLight(1, null).light;
+  assert.ok(low.colour[2] < 0.05 && low.intensity < 1.2 && low.intensity > 0.02, 'a degree up: a dim red light that still casts a shadow');
+  assert.equal(dayLight(-0.5, null).light.from, 'none');
+  assert.equal(dayLight(-0.5, null).light.intensity, 0);
+});
+
+test('twilight: the sky dims in step, a glow stands toward the Sun, and the eye opens', () => {
+  let sky = Infinity;
+  let exposure = 0;
+  for (let el = 20; el >= -20; el -= 1) {
+    const d = dayLight(el, null);
+    assert.ok(d.ambient <= sky, `no brighter at ${el}`);
+    assert.ok(d.exposure >= exposure - 1e-9, `the eye no more closed at ${el}`);
+    assert.ok(d.zenith[2] >= d.zenith[0], `the zenith stays blue at ${el}`);
+    sky = d.ambient;
+    exposure = d.exposure;
+  }
+  const dusk = dayLight(-3, null);
+  assert.ok(dusk.glow[0] > dusk.glow[1] && dusk.glow[1] > dusk.glow[2], 'the glow is orange');
+  assert.ok(dusk.glow[0] > dusk.horizon[0], 'and brighter than the horizon it stands on');
+  dayLight(-16, null).glow.forEach((c) => assert.equal(c, 0, 'gone by full night'));
+  near(dayLight(-20, null).exposure, 6.4, 1e-9, 'night exposure');
+});
+
+test('by night the light is the Moon’s, if it is up', () => {
+  const full = dayLight(-30, { elevation: 60, lit: 1 });
+  assert.equal(full.light.from, 'moon');
+  near(full.light.intensity, 3.9 * 0.006, 0.002, 'full moonlight');
+  assert.ok(dayLight(-30, { elevation: 60, lit: 0.1 }).light.intensity < full.light.intensity / 5, 'a crescent gives little');
+  assert.ok(dayLight(-30, { elevation: 3, lit: 1 }).light.intensity < full.light.intensity / 3, 'a low Moon is dimmed by the air');
+  assert.equal(dayLight(-30, null).light.from, 'none');
+  assert.equal(dayLight(40, { elevation: 60, lit: 1 }).light.from, 'sun', 'by day the Moon lights nothing');
+});
+
 test('Freedom 7’s liftoff from the ground: the Sun high in the east, the Moon low and nearly lost', () => {
   const h = at('1961-05-05T14:34:13Z');
   near(h.sunElevation, 50.26, 0.01, 'the Sun’s apparent elevation');
   assert.ok(h.sunDir.x < -0.5, 'behind the hatch side');
   near(h.sunDir.length(), 1, 1e-12, 'a direction');
   assert.equal(h.moonUp, true);
-  near(Math.asin(h.moonDir.y) / DEG, 4.78, 0.01, 'the Moon’s apparent elevation, lifted 0.17 degrees by the air');
+  near(h.moonElevation, 4.78, 0.01, 'the Moon’s apparent elevation, lifted 0.17 degrees by the air');
   near(h.moonLit, 0.736, 0.002, 'lit');
   const light = h.moon.uMoonLight.value;
   assert.ok(light > 0 && light < 0.03, `through eleven thicknesses of air it adds a few per cent to the haze: ${light}`);
@@ -54,9 +112,12 @@ test('Freedom 7’s liftoff from the ground: the Sun high in the east, the Moon 
 test('the same instant from above the air: nothing lifted, nothing dimmed, every star out', () => {
   const h = at('1961-05-05T14:34:13Z', false);
   near(h.sunElevation, 50.25, 0.01, 'geometric');
-  near(Math.asin(h.moonDir.y) / DEG, 4.6, 0.01, 'geometric');
+  near(h.moonElevation, 4.6, 0.01, 'geometric');
   assert.equal(h.moon.uMoonLight.value, 0.16);
   assert.equal(h.stars.children[0].material.uniforms.uLimit.value, 6.5);
+  h.show(-3.8, 0.5);
+  assert.equal(h.stars.children[0].material.uniforms.uLimit.value, -3.8);
+  assert.equal(h.stars.children[0].material.uniforms.uGain.value, 0.5);
 });
 
 test('a Moon under the horizon is not in the ground’s sky', () => {
@@ -81,4 +142,18 @@ test('the stars are turned to the place and hour: Polaris stands due north at th
   near(Math.asin(y) / DEG, LC5.latitude, 1.0, 'elevation');
   // north in the pad's frame is (sin 25, 0, cos 25)
   near(Math.atan2(x, z) / DEG, 25, 1.2, 'bearing in the pad’s frame');
+});
+
+test('moved to another instant, the same sky object follows: the vectors shaders hold are the same ones', () => {
+  const h = at('1961-05-05T14:34:13Z');
+  const [sun, moon, planets] = [h.sunDir, h.moonDir, h.stars.children[1]];
+  const before = sun.clone();
+  h.at(skyFrom(LC5, julianDate('1961-05-05T15:34:13Z')));
+  assert.equal(h.sunDir, sun);
+  assert.equal(h.moonDir, moon);
+  assert.equal(h.moon.uMoon.value, moon);
+  assert.equal(h.stars.children[1], planets, 'the planets are moved, not rebuilt');
+  assert.equal(h.stars.children.length, 2);
+  near(sun.angleTo(before) / DEG, 14.4, 0.2, 'an hour later the Sun has gone 14.4 degrees (15 times the cosine of its declination)');
+  near(h.sunElevation, 63.0, 0.2, 'and climbed');
 });

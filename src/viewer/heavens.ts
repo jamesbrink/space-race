@@ -2,12 +2,14 @@ import * as THREE from 'three';
 import { refraction, type Seen, type Sky } from '../world/ephemeris.ts';
 import { DEG, enuToSite, fromEquatorial, fromHorizontal, j2000ToSite, type Site, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { STAR_STRIDE, STARS } from '../world/stars.ts';
+import { airmass } from './daysky.ts';
 
 /**
  * What is in the sky besides the Sun: the Moon, the stars and the planets, each where
  * src/world/ephemeris.ts puts it for a site and an instant, in the site's own frame (which is the
  * models'). Both skies draw from here: the ground's dome (backdrops.ts) and the view from orbit
- * (space.ts). Nothing here moves, so nothing here asks for a redraw.
+ * (space.ts). It is moved to an instant by `Heavens.at`; whoever calls that knows whether the
+ * change is worth a redraw.
  *
  * Positions, sizes, the Moon's phase and the tilt of its lit limb are computed. How bright each
  * thing is drawn is chosen by eye against the sky's own colours, from these facts: the sunlit Moon
@@ -17,47 +19,11 @@ import { STAR_STRIDE, STARS } from '../world/stars.ts';
  * faintness. The Moon is a plain grey ball: no maria, no earthshine, no libration.
  */
 
-const vector = (v: Vec3): THREE.Vector3 => new THREE.Vector3(v[0], v[1], v[2]);
-
-/** How many thicknesses of atmosphere a line of sight at this apparent elevation (radians) passes through: Kasten and Young, 1989. */
-export function airmass(elevation: number): number {
-  const h = Math.max(elevation / DEG, 0);
-  return 1 / (Math.sin(h * DEG) + 0.50572 * (h + 6.07995) ** -1.6364);
-}
-
 /** The fraction of light that gets through that much air on a clear night at sea level: 0.2 magnitudes an airmass. */
-const transmission = (elevation: number): number => 10 ** (-0.4 * 0.2 * airmass(elevation));
+const transmission = (elevation: number): number => 10 ** (-0.4 * 0.2 * airmass(elevation / DEG));
 
 /** The sunlit Moon against the sky shader's colours, where a sunlit cloud is about 1. */
 const MOON_RADIANCE = 0.16;
-
-/**
- * The faintest magnitude that shows, by how high the Sun is (degrees): Venus alone by day, for
- * someone who knows where to look; Jupiter and Sirius about sunset; first-magnitude stars by the
- * end of civil twilight; everything by the end of astronomical twilight.
- */
-export function limitingMagnitude(sunElevation: number): number {
-  const steps: [number, number][] = [
-    [-18, 6.5],
-    [-12, 4.5],
-    [-6, 1.5],
-    [0, -2.5],
-    [5, -3.8],
-  ];
-  if (sunElevation <= steps[0]![0]) return steps[0]![1];
-  for (let i = 1; i < steps.length; i++) {
-    const [e0, m0] = steps[i - 1]!;
-    const [e1, m1] = steps[i]!;
-    if (sunElevation <= e1) return m0 + ((m1 - m0) * (sunElevation - e0)) / (e1 - e0);
-  }
-  return steps[steps.length - 1]![1];
-}
-
-/**
- * How much of the day is left, 0 to 1, by the Sun's elevation in degrees: full with the Sun a few
- * degrees up, gone by the end of nautical twilight. It scales the sky's colours and the fill light.
- */
-export const daylight = (sunElevation: number): number => THREE.MathUtils.smoothstep(sunElevation, -10, 3) ** 2;
 
 /**
  * The Moon as light arriving along a direction: a sphere lit by the Sun, shaded by the
@@ -160,71 +126,102 @@ function catalogue(): { directions: Vec3[]; mags: number[]; bvs: number[] } {
   return { directions, mags, bvs };
 }
 
-export interface Heavens {
-  /** Toward the Sun, in the site's frame. */
-  sunDir: THREE.Vector3;
-  /** The Sun's apparent elevation, degrees, and half its apparent width, radians. */
-  sunElevation: number;
-  sunRadius: number;
-  /** Toward the Moon, the same way; whether any of it is above the horizon; how much of its disc is lit. */
-  moonDir: THREE.Vector3;
-  moonUp: boolean;
-  moonLit: number;
-  /** For a shader that includes MOON_GLSL. */
-  moon: MoonUniforms;
-  /** The stars and planets: add to a backdrop's scene, after whatever they shine through. */
-  stars: THREE.Object3D;
-}
-
 /**
- * The sky for a place and an instant. `air`: it is seen from the ground, so the Sun and Moon are
- * lifted by refraction, what is low is dimmed, what is under the horizon is not there, and
- * daylight hides the stars. Without it (from orbit) everything is where geometry puts it and the
- * sky is black at noon. `gain` scales the stars' brightness: the reciprocal of whatever the
- * setting's exposure has been raised by, so that they are drawn as bright as the eye sees them.
+ * The sky for a place, movable to any instant. `air`: it is seen from the ground, so the Sun and
+ * Moon are lifted by refraction, what is low is dimmed, what is under the horizon is not there,
+ * and daylight hides the stars. Without it (from orbit) everything is where geometry puts it and
+ * the sky is black at noon.
  */
-export function heavens(site: Site, sky: Sky, air: boolean, pixelRatio: number, gain: number): Heavens {
-  const toward = (seen: Seen): Vec3 =>
-    air ? enuToSite(site.bearingX, fromHorizontal(seen.azimuth, seen.elevation + refraction(seen.elevation))) : seen.direction;
-  const sun = toward(sky.sun);
-  const moon = toward(sky.moon);
-  const sunElevation = Math.asin(sun[1]) / DEG;
-  const moonElevation = Math.asin(moon[1]);
-  const moonUp = !air || moonElevation > -sky.moon.angularRadius;
-  // the Sun as the Moon sees it: the two are 150 million km apart, so this is nearly the Sun's own direction
-  const moonSun = unit(sub(scale(sky.sun.direction, sky.sun.distance), scale(sky.moon.direction, sky.moon.distance)));
-
-  const material = pointsMaterial(air ? limitingMagnitude(sunElevation) : 6.5, air, pixelRatio, gain);
-  const stars = catalogue();
-  const fixed = points(stars.directions, stars.mags, stars.bvs, material);
-  // one rotation takes the catalogue's frame to the site's: precession, the Earth's turn, latitude, bearing
-  const m = j2000ToSite(site, sky.siderealTime, sky.jdTT);
-  fixed.matrix.set(m[0][0], m[0][1], m[0][2], 0, m[1][0], m[1][1], m[1][2], 0, m[2][0], m[2][1], m[2][2], 0, 0, 0, 0, 1);
-  fixed.matrixAutoUpdate = false;
-  const wanderers = points(
-    sky.planets.map((p) => p.direction),
-    sky.planets.map((p) => p.magnitude),
-    sky.planets.map((p) => PLANET_BV[p.body.id] ?? 0.8),
-    material,
-  );
-  const group = new THREE.Group();
-  group.add(fixed, wanderers);
-
-  return {
-    sunDir: vector(sun),
-    sunElevation,
-    sunRadius: sky.sun.angularRadius,
-    moonDir: vector(moon),
-    moonUp,
-    moonLit: sky.moon.illuminated,
-    moon: {
-      uMoon: { value: vector(moon) },
-      uMoonSun: { value: vector(moonSun) },
-      uMoonSize: { value: Math.sin(sky.moon.angularRadius) },
-      uMoonLight: { value: moonUp ? MOON_RADIANCE * (air ? transmission(Math.max(moonElevation, 0)) : 1) : 0 },
-    },
-    stars: group,
+export class Heavens {
+  /** Toward the Sun and the Moon, in the site's frame. The same vectors throughout: shaders hold them. */
+  readonly sunDir = new THREE.Vector3(0, 1, 0);
+  readonly moonDir = new THREE.Vector3(0, 1, 0);
+  /** Apparent elevations, degrees. */
+  sunElevation = 90;
+  moonElevation = 90;
+  /** Half the Sun's apparent width, radians. */
+  sunRadius = 0.00465;
+  /** Whether any of the Moon is above the horizon, and how much of its disc is lit. */
+  moonUp = false;
+  moonLit = 0;
+  /** For a shader that includes MOON_GLSL. */
+  readonly moon: MoonUniforms = {
+    uMoon: { value: this.moonDir },
+    uMoonSun: { value: new THREE.Vector3(0, 1, 0) },
+    uMoonSize: { value: 0.0045 },
+    uMoonLight: { value: 0 },
   };
+  /** The stars and planets: add to a backdrop's scene, after whatever they shine through. */
+  readonly stars = new THREE.Group();
+  private readonly site: Site;
+  private readonly air: boolean;
+  private readonly material: THREE.ShaderMaterial;
+  private readonly fixed: THREE.Points;
+  private wanderers: THREE.Points | null = null;
+
+  constructor(site: Site, air: boolean, pixelRatio: number) {
+    this.site = site;
+    this.air = air;
+    this.material = pointsMaterial(6.5, air, pixelRatio, 1);
+    const stars = catalogue();
+    this.fixed = points(stars.directions, stars.mags, stars.bvs, this.material);
+    this.fixed.matrixAutoUpdate = false;
+    this.stars.add(this.fixed);
+  }
+
+  /** Put everything where it is at an instant. */
+  at(sky: Sky): void {
+    const { site, air } = this;
+    const toward = (seen: Seen): Vec3 =>
+      air ? enuToSite(site.bearingX, fromHorizontal(seen.azimuth, seen.elevation + refraction(seen.elevation))) : seen.direction;
+    const sun = toward(sky.sun);
+    const moon = toward(sky.moon);
+    this.sunDir.set(sun[0], sun[1], sun[2]);
+    this.moonDir.set(moon[0], moon[1], moon[2]);
+    this.sunElevation = Math.asin(sun[1]) / DEG;
+    this.moonElevation = Math.asin(moon[1]) / DEG;
+    this.sunRadius = sky.sun.angularRadius;
+    this.moonUp = !air || this.moonElevation * DEG > -sky.moon.angularRadius;
+    this.moonLit = sky.moon.illuminated;
+    // the Sun as the Moon sees it: the two are 150 million km apart, so this is nearly the Sun's own direction
+    const moonSun = unit(sub(scale(sky.sun.direction, sky.sun.distance), scale(sky.moon.direction, sky.moon.distance)));
+    (this.moon.uMoonSun.value as THREE.Vector3).set(moonSun[0], moonSun[1], moonSun[2]);
+    this.moon.uMoonSize.value = Math.sin(sky.moon.angularRadius);
+    this.moon.uMoonLight.value = this.moonUp ? MOON_RADIANCE * (air ? transmission(Math.max(this.moonElevation * DEG, 0)) : 1) : 0;
+
+    // one rotation takes the catalogue's frame to the site's: precession, the Earth's turn, latitude, bearing
+    const m = j2000ToSite(site, sky.siderealTime, sky.jdTT);
+    this.fixed.matrix.set(m[0][0], m[0][1], m[0][2], 0, m[1][0], m[1][1], m[1][2], 0, m[2][0], m[2][1], m[2][2], 0, 0, 0, 0, 1);
+    this.fixed.matrixWorldNeedsUpdate = true;
+
+    if (!this.wanderers) {
+      this.wanderers = points(
+        sky.planets.map((p) => p.direction),
+        sky.planets.map((p) => p.magnitude),
+        sky.planets.map((p) => PLANET_BV[p.body.id] ?? 0.8),
+        this.material,
+      );
+      this.stars.add(this.wanderers);
+    } else {
+      const position = this.wanderers.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const mag = this.wanderers.geometry.getAttribute('mag') as THREE.BufferAttribute;
+      sky.planets.forEach((p, i) => {
+        position.setXYZ(i, p.direction[0], p.direction[1], p.direction[2]);
+        mag.setX(i, p.magnitude);
+      });
+      position.needsUpdate = mag.needsUpdate = true;
+    }
+  }
+
+  /**
+   * How the stars are shown: the faintest magnitude the sky lets through, and a scale on their
+   * brightness (the reciprocal of whatever the setting's exposure has been raised by, so that they
+   * are drawn as bright as the eye sees them).
+   */
+  show(limit: number, gain: number): void {
+    this.material.uniforms.uLimit!.value = limit;
+    this.material.uniforms.uGain!.value = gain;
+  }
 }
 
 /** A sky with nothing in it but the catalogue's stars, turned to no place: for a setting shown before any flight. */

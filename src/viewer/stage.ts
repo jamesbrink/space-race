@@ -9,6 +9,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { sameTarget, type Target, type Workings } from '../actions';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
+import type { Clock } from '../world/clock.ts';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
@@ -53,8 +54,11 @@ VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
+const DOWN = new THREE.Vector3(0, -1, 0);
 /** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
 const WALK_SHADOW = 26;
+/** Texels along a side of the Sun's shadow map, as the orbiting views use it. */
+const SHADOW_MAP = 4096;
 /** How much of a slider, short of where it was put, is played at the sequence's own pace. */
 const NEAR_PACE = 0.12;
 /** The lowest a free camera flies, metres above the surface the model stands on. */
@@ -96,6 +100,8 @@ function rest(object: THREE.Object3D): void {
  * between sections is a flight of the camera, never a change of scene.
  */
 export class Stage {
+  /** The instant everything is shown at: the setting's sky and light follow it. Stopped, it costs nothing. */
+  clock: Clock | null = null;
   onHover: (node: string | null) => void = () => {};
   onSelect: (node: string | null) => void = () => {};
   onInteract: () => void = () => {};
@@ -108,6 +114,8 @@ export class Stage {
   onVisit: () => void = () => {};
   /** The pointer is over a window of the section's model (a click looks in), or has left it. */
   onHoverWindow: (over: boolean) => void = () => {};
+  /** A right click on something: where on the page, where in the world, and whether it can be stood on. */
+  onSpot: (page: { x: number; y: number }, point: THREE.Vector3, floor: boolean) => void = () => {};
   /** The reset key (0): back to where the section starts. */
   onHome: () => void = () => {};
   /**
@@ -137,6 +145,7 @@ export class Stage {
   /** The doors and lifts of the flight's models, as they stand (works.ts). */
   private readonly works = new Works();
   private walkDt = 0;
+  private readonly below = new THREE.Vector3();
   /** While walking: the figure is drawn into the shadow map only (the view is through its eyes). */
   private unseen = false;
   /** While walking: what is being looked at from within reach, and where the ray met it. */
@@ -233,7 +242,7 @@ export class Stage {
     this.setting = this.settings.get('orbit');
 
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(4096, 4096);
+    this.sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
     this.sun.shadow.bias = -0.0002;
     this.sun.shadow.normalBias = 0.012;
     this.scene.add(this.sun, this.sun.target, this.fill);
@@ -302,6 +311,20 @@ export class Stage {
     canvas.addEventListener('pointerleave', () => this.setHover(NOTHING));
     // The pick is made when the press starts: by the time it ends the page may have been laid
     // out again (a phone's sheet closes on the press) and the same point is a different part.
+    // A right click (not a right drag, which moves the view) asks what can be done at that spot.
+    let asked: { x: number; y: number } | null = null;
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('pointerdown', (e) => {
+      asked = e.button === 2 && !this.walk.active ? { x: e.clientX, y: e.clientY } : null;
+    });
+    canvas.addEventListener('pointerup', (e) => {
+      const from = asked;
+      asked = null;
+      if (e.button !== 2 || !from || Math.hypot(e.clientX - from.x, e.clientY - from.y) >= 5) return;
+      aim(e);
+      const spot = this.spot();
+      if (spot) this.onSpot({ x: e.clientX, y: e.clientY }, spot.point, spot.floor);
+    });
     canvas.addEventListener('pointerdown', (e) => {
       if (this.walk.active) return; // on foot there is nothing to pick: a drag looks round
       if (e.button !== 0) return; // right and middle buttons pan and zoom; they select nothing
@@ -475,7 +498,7 @@ export class Stage {
    * state the section asks for (the pad cleared for launch while the rocket is studied), moving
    * there as they would: the structure rolls back, the truck drives off.
    */
-  section(id: string, snap = false): void {
+  section(id: string, snap = false, asItStands = false): void {
     const at = this.defs.findIndex((m) => m.id === id);
     if (at < 0) return;
     this.setCutaway(false);
@@ -490,7 +513,10 @@ export class Stage {
     );
     this.defs.forEach((other, i) => {
       // its own state is wherever its slider was left; the others take what this section asks of them
-      this.apartGoal[i] = i === at ? this.apartOwn[i]! : (def.with?.find((w) => w.model === other.id)?.exploded ?? 0);
+      // Going on foot, or coming back from it, leaves every model as it stands: a tower that rolled
+      // away as you stepped onto it would be no place to stand.
+      if (asItStands) this.apartGoal[i] = this.apart[i]!;
+      else this.apartGoal[i] = i === at ? this.apartOwn[i]! : (def.with?.find((w) => w.model === other.id)?.exploded ?? 0);
       if (snap) this.setApart(i, this.apartGoal[i]!);
     });
     this.highlight(null, null);
@@ -599,6 +625,29 @@ export class Stage {
       }
     }
     this.renderer.shadowMap.needsUpdate = true; // the light comes in through the opening
+  }
+
+  /**
+   * The setting has moved to another instant (Setting.at): take up its light again. Shadows are
+   * drawn again only if the light has moved far enough to show.
+   */
+  private relight(shadows: boolean): void {
+    const s = this.setting;
+    this.scene.environment = s.environment;
+    this.sun.color.set(s.sunColor);
+    this.sun.intensity = s.sunIntensity;
+    this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
+    this.renderer.toneMappingExposure = s.exposure;
+    if (shadows) {
+      if (this.walk.active) this.fitWalkShadows(true);
+      else {
+        const target = this.sun.target.position;
+        const back = this.sun.position.distanceTo(target); // as far up the light's line as it was fitted
+        this.sun.position.copy(target).addScaledVector(s.sunDir, back);
+      }
+      this.renderer.shadowMap.needsUpdate = true;
+    }
+    this.dirty = true;
   }
 
   private applySetting(): void {
@@ -887,7 +936,30 @@ export class Stage {
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
     // a texel of the map covers more ground the wider it is spread; a wall the Sun grazes needs the depth bias to match
     this.sun.shadow.bias = -Math.max(0.0002, radius / 40000);
+    this.shadowGrain(SHADOW_MAP, 1);
     this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  /** Give the Sun's shadow map this many texels a side and this much softening of its edges (a change of size makes a new map). */
+  private shadowGrain(size: number, radius: number): void {
+    const shadow = this.sun.shadow;
+    shadow.radius = radius;
+    if (shadow.mapSize.x === size) return;
+    shadow.mapSize.set(size, size);
+    shadow.map?.dispose();
+    shadow.map = null;
+  }
+
+  /**
+   * How the shadow map is spent on foot. From eye height a wall two metres off that the Sun
+   * grazes shows every texel of the map as a tooth along a shadow's edge, so the map is made as
+   * fine as the machine allows: 8192 a side over 52 m of ground (6 mm a texel) where the GPU
+   * takes a texture that size and is not a phone's, and otherwise the usual 4096 over a smaller
+   * 36 m (9 mm); and its edges are softened by a texel or two either way.
+   */
+  private walkShadow(): { half: number; size: number; radius: number } {
+    const big = this.renderer.capabilities.maxTextureSize >= 8192 && !matchMedia('(pointer: coarse)').matches;
+    return big ? { half: WALK_SHADOW, size: 8192, radius: 1.5 } : { half: 18, size: SHADOW_MAP, radius: 2 };
   }
 
   /** Panning cannot carry the orbit point off what is on show: there is nothing out there to look at. */
@@ -1118,6 +1190,12 @@ export class Stage {
   private step(): void {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
+    // the simulation's clock: the setting follows it, and says when that is worth showing
+    if (this.clock) {
+      this.clock.advance(dt);
+      const change = this.setting.at?.(this.clock.jdUT);
+      if (change) this.relight(change.shadows);
+    }
     if (this.flyTo) {
       const f = this.flyTo;
       f.t = Math.min(1, f.t + dt / f.seconds);
@@ -1184,9 +1262,16 @@ export class Stage {
    * while you are it. Eye height and stature are the model's own: the middle of the node its
    * `walker.eyes` names above its soles, and the top of its bounds; they are as good as the model.
    */
-  enterWalk(model?: string): boolean {
+  enterWalk(model?: string, from?: THREE.Vector3): boolean {
     const at = this.defs.findIndex((m) => m.walker && (!model || m.id === model));
     if (at < 0 || !this.root || this.walk.active) return false;
+    if (from) {
+      // put the figure there first: the walk starts wherever the figure stands
+      const figure = this.staged[at]!;
+      figure.group.position.copy(from);
+      figure.group.updateMatrixWorld(true);
+      figure.measure();
+    }
     this.onWalk(true, this.defs[at]!.id);
     this.flyTo = null;
     this.following = null;
@@ -1197,6 +1282,27 @@ export class Stage {
     this.controls.enabled = false;
     this.embody(at);
     return true;
+  }
+
+  /**
+   * What is under the pointer, anywhere: on a model, in the place round it, or on the ground.
+   * `floor` says whether it is something to stand on (it faces up).
+   */
+  private spot(): { point: THREE.Vector3; floor: boolean } | null {
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.raycaster
+      .intersectObjects(
+        [
+          ...this.staged.map((s) => s.shown),
+          ...(this.surroundings ? [this.surroundings] : []),
+          ...(this.setting.floor ? [this.setting.floor] : []),
+        ],
+        true,
+      )
+      .find((h) => h.face && !(h.object as THREE.InstancedMesh).isInstancedMesh);
+    if (!hit?.face) return null;
+    const up = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).y;
+    return { point: hit.point.clone(), floor: up > 0.7 };
   }
 
   /** The model being walked as, or null. */
@@ -1546,11 +1652,13 @@ export class Stage {
   private fitWalkShadows(force = false): void {
     const p = this.walk.body.position;
     const shadow = this.sun.shadow;
-    if (!force && this.sun.target.position.distanceTo(p) < WALK_SHADOW * 0.35) return;
+    const { half, size, radius } = this.walkShadow();
+    if (!force && this.sun.target.position.distanceTo(p) < half * 0.35) return;
+    this.shadowGrain(size, radius);
     const dir = this.setting.sunDir;
     const right = new THREE.Vector3().crossVectors(UP, dir).normalize();
     const up = new THREE.Vector3().crossVectors(dir, right);
-    const texel = (2 * WALK_SHADOW) / shadow.mapSize.x;
+    const texel = (2 * half) / shadow.mapSize.x;
     const snap = (v: number) => Math.round(v / texel) * texel;
     const centre = new THREE.Vector3()
       .addScaledVector(right, snap(p.dot(right)))
@@ -1560,16 +1668,16 @@ export class Stage {
     this.sun.target.position.copy(centre);
     this.sun.position.copy(centre).addScaledVector(dir, back);
     Object.assign(shadow.camera, {
-      left: -WALK_SHADOW,
-      right: WALK_SHADOW,
-      top: WALK_SHADOW,
-      bottom: -WALK_SHADOW,
+      left: -half,
+      right: half,
+      top: half,
+      bottom: -half,
       near: 1,
-      far: back + WALK_SHADOW + 20,
+      far: back + half + 20,
     });
     shadow.camera.updateProjectionMatrix();
-    shadow.normalBias = Math.max(0.012, WALK_SHADOW / 900);
-    shadow.bias = -Math.max(0.0002, WALK_SHADOW / 40000);
+    shadow.normalBias = Math.max(0.012, half / 900);
+    shadow.bias = -Math.max(0.0002, half / 40000);
     this.renderer.shadowMap.needsUpdate = true;
   }
 
@@ -1584,6 +1692,14 @@ export class Stage {
     if (this.walk.update(dt)) this.dirty = true;
     const hit = this.walk.aimed;
     const found = hit && this.targetOf(hit);
+    if (found && hit) {
+      // is it the very thing being stood on? (the page is slower to point that out)
+      const feet = this.walk.body.position;
+      const floor = this.walk.body.grounded && this.walk.solids.cast(this.below.set(feet.x, feet.y + 0.3, feet.z), DOWN, 0.8);
+      const under = floor ? this.targetOf(floor)?.target : null;
+      const t = found.target;
+      if (under && under.model === t.model && under.node === t.node && under.place === t.place) t.underfoot = true;
+    }
     this.setAim(found && hit ? { ...found, hit } : null);
     this.fitDetail();
     this.walkDt = dt;

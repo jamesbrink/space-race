@@ -17,6 +17,8 @@ export interface Target {
   pane?: boolean;
   /** Something in the flight's surroundings, by its node's name. */
   place?: string;
+  /** It is what the walker is standing on (the same part of the same model, or the same place). */
+  underfoot?: boolean;
   /** It is a ladder (a mesh a model marked `climb`). */
   climb?: boolean;
   /**
@@ -64,9 +66,18 @@ export const sameTarget = (a: Target | null, b: Target | null): boolean =>
     a.pane === b.pane &&
     a.place === b.place &&
     a.climb === b.climb &&
+    a.underfoot === b.underfoot &&
     a.path?.join() === b.path?.join() &&
     marks(a) === marks(b));
 const marks = (t: Target): string => `${t.marked?.under}:${t.marked?.actions.map((a) => a.id).join()}`;
+
+/**
+ * Is a target not worth a prompt the moment it is looked at? The ground you stand on is in front
+ * of you every time you look down: unless there is something to do with it beyond reading about
+ * it and going to look at it, it is named only once it has been looked at for a while.
+ */
+export const quiet = (target: Target, offered: readonly Choice[]): boolean =>
+  Boolean(target.underfoot) && offered.every((c) => c.verb.do === 'info' || c.verb.do === 'inspect');
 
 /** A node is named in one word (Pad6Gantry): spaced out, it is a label. */
 export const spaced = (name: string): string =>
@@ -104,7 +115,13 @@ export function choices(target: Target, flight: Flight, as: string, works?: Work
   const declared = (part?.actions ?? [])
     .filter((a) => !a.on || target.path?.includes(a.on))
     .map((action) => ({ action, node: part!.node }));
-  const marked = (target.marked?.actions ?? []).map((action) => ({ action, node: target.marked!.under }));
+  // (what the model marks is not offered twice when the flight has declared the same node's working itself)
+  const driven = (a: Action): string | undefined =>
+    a.do.kind === 'lift' ? a.do.node : a.do.kind === 'toggle' ? a.do.moves[0]?.node : undefined;
+  const claimed = new Set((part?.actions ?? []).map(driven));
+  const marked = (target.marked?.actions ?? [])
+    .filter((a) => !claimed.has(driven(a)))
+    .map((action) => ({ action, node: target.marked!.under }));
   for (const { action, node } of [...declared, ...marked]) {
     const verb = { do: 'action', model: model?.id ?? '', node, action } as const;
     const id = `action:${action.id}`;

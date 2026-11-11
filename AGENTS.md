@@ -266,7 +266,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   prefers-reduced-motion) scales all of it and never touches where the mouse points. A standing
   figure breathes in steps of a twelfth of a second, the rate a still view is redrawn at anyway.
 - **The walker has a shadow, always.** While walking the shadow map is fitted round the walker
-  (`fitWalkShadows`: 52 m square, moved in whole texels) instead of round the section's model.
+  (`fitWalkShadows`: 52 m square, moved in whole texels) instead of round the section's model,
+  and made finer (`walkShadow`: 8192 a side, 6 mm a texel, where the GPU allows; otherwise 4096
+  over 36 m), because from eye height a wall the Sun grazes shows every texel as a tooth.
   Through its own eyes the figure is still posed and drawn into the shadow map only
   (`shadowOnly`), so you see your own shadow; its shadow is not redrawn for breathing.
 
@@ -291,6 +293,11 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   sidestep or a jump lets go, and at the top the body steps onto the floor beyond if there is
   one. From the deck above, walk to its top looking down and keep walking: forward goes on
   meaning down until the legs stop. The wheel offers Climb on a ladder too.
+- **Stairs are walked, not hopped.** The floor is sensed under the middle of the body and four
+  points round it, so open treads with daylight between them carry it; the feet follow a flight
+  as fast as the legs go (`settle`'s `rate`), a step down is as deep as a step up is tall, and
+  the eyes lag the risers into a slope. Unit-tested on open-tread flights of 0.2 and 0.25 m
+  risers at a walk and a run, both ways, with no frame in the air.
 - **What is in front of you can be acted on.** Each frame a ray from the eyes finds what is
   within `REACH` (2.5 m); `Stage.targetOf` says what it is in the flight's terms (a `Target`:
   model and part, a window pane, a place in the surroundings) and the reticle names it. E (a
@@ -310,7 +317,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   part (the door, a call button). A model can also mark these on its own nodes, as
   `tools/blender/sitelib.py` does (extras `door` with `swing`, `lift` with `stops`): the stage
   turns the marks into the same actions (`Stage.markedOn`), which is how scenery, having no
-  parts, gets working doors; a marked lift is called from anywhere on its structure. A driven node has the same name at every level of detail and
+  parts, gets working doors; a marked lift is called from anywhere on its structure. A lift's
+  `stops` are heights above where the car was built, or `[across, up]` pairs for a car that
+  shifts sideways as it rises, in metres in the car's parent's frame; `stop_names` names them.
+  What a flight declares for a node is not offered a second time from the node's mark. A driven node has the same name at every level of detail and
   is not also in the part's slider `moves`.
 - **The orbiting camera's rules are off while walking** (`Stage.stepWalk`): no drift, bounds,
   picking or `fitDepth`. The walker sets its own near plane from the nearest surface (5 cm

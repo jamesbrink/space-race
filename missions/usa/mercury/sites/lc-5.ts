@@ -26,6 +26,8 @@ export const LC5: SiteDef = {
       'about 2 m above mean sea level (USGS GNIS feature 285392, "Launch Complex 5": 6 ft), and mean sea level at the Cape is ' +
       'about 29 m below the WGS 84 ellipsoid (EGM96 geoid, read to the nearest metre). It moves the Sun by nothing that can be measured',
   },
+  // Eastern Standard Time: Florida kept no daylight time in 1961, and every report of the flight gives its times in EST
+  zone: { name: 'EST', utcOffset: -5 },
   bearingX: {
     value: 295,
     confidence: 'estimated',

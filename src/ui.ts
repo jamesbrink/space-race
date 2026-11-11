@@ -152,6 +152,7 @@ export class Ui {
           <dl>
             <div><dt>drag</dt><dd>orbit</dd></div>
             <div><dt>right-drag</dt><dd>move</dd></div>
+            <div><dt>right-click</dt><dd>walk from there</dd></div>
             <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
             ${f.models.some((m) => m.walker) ? `<div><dt>double-click ${esc(f.models.find((m) => m.walker)!.name.toLowerCase())}</dt><dd>walk</dd></div>` : ''}
@@ -550,8 +551,8 @@ export class Ui {
     this.root.querySelector('.walkbar span')!.textContent = touch
       ? 'Drag to look · stick walks'
       : captured
-        ? 'Mouse looks · WASD walks · Shift runs · Esc stops'
-        : 'Click the view to look round · WASD walks · Esc stops';
+        ? 'Mouse looks · WASD walks · E acts · C view · V or Esc leaves'
+        : 'Click the view to look round · WASD walks · V or Esc leaves';
   }
 
   /** The diagnostics line: this is an early build, and the numbers are worth having in view. */
@@ -596,6 +597,39 @@ export class Ui {
       this.placeTip();
     }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => b.classList.toggle('hot', b.dataset.node === node));
+  }
+
+  /** A small menu at a point on the page: what can be done with what was right-clicked. Goes away on a choice, Escape or a click elsewhere. */
+  menu(x: number, y: number, items: { label: string; run: () => void }[]): void {
+    this.root.querySelector('.spot-menu')?.remove();
+    if (!items.length) return;
+    const menu = document.createElement('div');
+    menu.className = 'spot-menu';
+    menu.setAttribute('role', 'menu');
+    for (const item of items) {
+      const b = document.createElement('button');
+      b.setAttribute('role', 'menuitem');
+      b.textContent = item.label;
+      b.addEventListener('click', () => {
+        close();
+        item.run();
+      });
+      menu.append(b);
+    }
+    const close = () => {
+      menu.remove();
+      window.removeEventListener('pointerdown', away, true);
+      window.removeEventListener('keydown', key, true);
+    };
+    const away = (e: Event) => !menu.contains(e.target as Node) && close();
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    this.root.append(menu);
+    // kept on the page: opened near an edge, it opens the other way
+    menu.style.left = `${Math.min(x, window.innerWidth - menu.offsetWidth - 8)}px`;
+    menu.style.top = `${Math.min(y, window.innerHeight - menu.offsetHeight - 8)}px`;
+    menu.querySelector('button')?.focus();
+    window.addEventListener('pointerdown', away, true);
+    window.addEventListener('keydown', key, true);
   }
 
   /** A label beside the pointer for something that is not a part: a window to look through. */

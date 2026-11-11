@@ -263,6 +263,8 @@ export interface SiteDef {
   height: Measure;
   /** The bearing of the site frame's +X, degrees clockwise from true north. +Y is up; +Z bears 90 degrees more. */
   bearingX: Measure;
+  /** The civil time kept there on the day: what its clocks were called, and their hours ahead of UTC (negative west of Greenwich). */
+  zone: { name: string; utcOffset: number };
 }
 
 export interface Flight {

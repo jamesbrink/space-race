@@ -8,6 +8,7 @@ export type Pref =
   | 'titleTucked'
   | 'bare'
   | 'legendFolded'
+  | 'timeOpen'
   | 'orbitOff'
   | 'cel'
   | 'fly'

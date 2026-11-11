@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
 
 /**
  * Cape Canaveral beyond Complex 5/6 on 5 May 1961: the other launch complexes that stood that
@@ -17,8 +18,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * Everything is on the compass, metres from pad 5: +X east, -Z north. See docs/sources.md, "The Cape".
  */
 
-/** Pad 5's launcher: OpenStreetMap relation 16884747, which agrees with Wikipedia's 28.43944 N, 80.57333 W to a metre. */
-const PAD5 = { lat: 28.439426, lon: -80.573292 };
+/** Pad 5's launcher: the site's own record (sites/lc-5.ts). */
+const PAD5 = { lat: LC5.latitude.value, lon: LC5.longitude.value };
 /** Metres to a degree at this latitude (WGS 84 series): northward, eastward. */
 const M_LAT = 110_826.5;
 const M_LON = 97_960;
