@@ -908,7 +908,7 @@ export class Stage {
       .addScaledVector(forward, Number(has('w')) - Number(has('s')))
       .addScaledVector(right, Number(has('d')) - Number(has('a')))
       .addScaledVector(UP, (Number(has('e')) - Number(has('q'))) * 0.7)
-      .multiplyScalar(distance * 0.9 * dt); // a screen's width in about a second, at any zoom
+      .multiplyScalar(distance * 0.9 * dt * (this.fast ? 3 : 1)); // a screen's width in about a second, at any zoom; Shift hurries
     this.controls.target.add(step);
     this.camera.position.add(step);
     const turn = (Number(has('arrowleft')) - Number(has('arrowright'))) * 1.2 * dt;

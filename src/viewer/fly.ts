@@ -15,10 +15,12 @@ const LOOK = 0.0035;
 const SPEED = 4;
 const SPEED_PER_METRE = 0.8;
 const FASTEST = 200;
+/** How much faster with Shift held. */
+export const BOOST = 5;
 
 /** How fast the camera flies at a given height above the ground, m/s. */
 export function flySpeed(height: number, fast: boolean): number {
-  return Math.min(FASTEST, SPEED + SPEED_PER_METRE * Math.max(0, height)) * (fast ? 3 : 1);
+  return Math.min(FASTEST, SPEED + SPEED_PER_METRE * Math.max(0, height)) * (fast ? BOOST : 1);
 }
 
 /**
