@@ -5,6 +5,12 @@ in three.js. Today it is a viewer with one flight (Freedom 7 on its Mercury-Reds
 USSR's and later programmes from the historical record to the present, so **the models and the
 numbers have to be right, and where they are not yet right the repo has to say so**.
 
+Where it is going: an orbital space programme for our own solar system. The Earth to scale (true
+continents, detail at the places that matter, not everywhere), the Moon and lunar orbit, the Sun,
+the other planets as placeholders at first; sites you can walk and drive round, vehicles you can
+board, launch and fly. Build each piece so the next can stand on it: `src/world/` holds the
+bodies, frames and ephemeris; a site is a local frame placed on the Earth.
+
 Accuracy is half of it. The other half is **being there**: you should feel the size of the vehicle
 and of the place it stands in. A person is 1.8 m tall and a Redstone is fourteen of them; the work
 is done when that is felt, not when it is stated. See "Being there" below.
