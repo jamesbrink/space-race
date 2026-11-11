@@ -19,6 +19,8 @@ export interface UiHandlers {
   walkStick(x: number, y: number): void;
   /** The on-screen jump button while walking. */
   walkJump(): void;
+  /** While walking: the next setting of how much the view moves with the body. */
+  walkMotion(): void;
   /** The on-screen view button while walking: through the figure's eyes, or over its shoulder. */
   walkView(): void;
   /** The on-screen act button while walking: offer what can be done with what is being looked at. */
@@ -185,13 +187,13 @@ export class Ui {
             <div><dt>mouse</dt><dd>look round</dd></div>
             <div><dt><kbd>E</kbd></dt><dd>act on what you face</dd></div>
             <div><dt><kbd>C</kbd></dt><dd>eyes · over the shoulder</dd></div>
-            <div><dt><kbd>Esc</kbd></dt><dd>stop walking</dd></div>
+            <div><dt><kbd>V</kbd> <kbd>Esc</kbd></dt><dd>back to the camera</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
       </aside>
-      <div class="walkbar" hidden><span></span><button data-walk-exit>Exit walk</button></div>
+      <div class="walkbar" hidden><span></span><button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-exit>Exit walk</button></div>
       <div class="stick" aria-hidden="true"><i></i></div>
       <div class="walk-buttons"><button data-walk-jump>Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-act hidden>Act</button></div>
       <div class="reticle" aria-hidden="true"><i></i><p><kbd>E</kbd><span></span></p></div>
@@ -297,6 +299,7 @@ export class Ui {
     this.wheel = new Wheel(root);
     root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());
     root.querySelector('[data-walk-view]')!.addEventListener('click', () => on.walkView());
+    root.querySelector('[data-walk-motion]')!.addEventListener('click', () => on.walkMotion());
     root.querySelector('.card-close')!.addEventListener('click', () => this.showWalkCard(null));
     // (on the press, not the click: a jump is wanted now, and a finger held on the button must not look round)
     root.querySelector('[data-walk-jump]')!.addEventListener('pointerdown', (e) => {
@@ -503,6 +506,11 @@ export class Ui {
       this.setWalkTarget(null);
       this.showWalkCard(null);
     }
+  }
+
+  /** While walking: how much the view moves with the body, as the bar's button says it. */
+  setWalkMotion(level: 'full' | 'reduced' | 'off'): void {
+    this.root.querySelector('[data-walk-motion]')!.textContent = `Motion · ${level}`;
   }
 
   /** While walking: whether the view is over the figure's shoulder (and not through its eyes). */

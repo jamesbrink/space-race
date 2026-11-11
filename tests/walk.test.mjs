@@ -9,6 +9,8 @@ import {
   JUMP_SPEED,
   jump,
   pickFloor,
+  QUICKEN,
+  quicken,
   RADIUS,
   RUN_SPEED,
   STEP,
@@ -197,4 +199,31 @@ test('off the slab there is always the ground, and without ground the body goes 
   empty.place(0, 0, 0);
   empty.move(1, 0, 0.1);
   assert.deepEqual(empty.position.toArray(), [0, 0, 0]);
+});
+
+test('a body gathers its speed and loses it: most of the way in a quarter of a second, never past what was asked, and then truly at rest', () => {
+  let v = [0, 0];
+  let t = 0;
+  while (v[0] < 0.95 * WALK_SPEED && t < 2) {
+    v = quicken(v[0], v[1], WALK_SPEED, 0, 1 / 120);
+    t += 1 / 120;
+    assert.ok(v[0] <= WALK_SPEED && v[1] === 0);
+  }
+  assert.ok(t > 0.2 && t < 0.3, `walking pace in ${t} s`);
+  assert.ok(Math.abs(t - 3 * QUICKEN) < 0.02);
+  t = 0;
+  while ((v[0] !== 0 || v[1] !== 0) && t < 2) {
+    v = quicken(v[0], v[1], 0, 0, 1 / 120);
+    t += 1 / 120;
+  }
+  assert.ok(t > 0.15 && t < 0.4, `at rest in ${t} s`);
+  // a change of direction goes round, not through a stop
+  const turn = quicken(WALK_SPEED, 0, 0, WALK_SPEED, 0.05);
+  assert.ok(turn[0] > 0 && turn[1] > 0 && Math.hypot(...turn) > 0.6 * WALK_SPEED);
+  // and the same whatever the frame rate
+  let a = [0, 0];
+  for (let i = 0; i < 12; i++) a = quicken(a[0], a[1], 4, 0, 1 / 120);
+  let b = [0, 0];
+  for (let i = 0; i < 3; i++) b = quicken(b[0], b[1], 4, 0, 1 / 30);
+  assert.ok(Math.abs(a[0] - b[0]) < 1e-9);
 });

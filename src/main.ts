@@ -28,6 +28,26 @@ let orbitOff = prefs.get('orbitOff');
 stage.setLook(prefs.get('cel') ? 'cel' : 'real');
 stage.walk.third = prefs.get('walkThird');
 
+/**
+ * How much the view on foot moves with the body: all of it, some, or none (a steady camera).
+ * Remembered; until it has been chosen, none for anyone who has asked their system for less motion.
+ */
+const MOTION = { full: 1, reduced: 0.4, off: 0 } as const;
+type Motion = keyof typeof MOTION;
+function motion(): Motion {
+  if (prefs.get('motionOff')) return 'off';
+  if (prefs.get('motionReduced')) return 'reduced';
+  if (prefs.get('motionFull')) return 'full';
+  return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : 'full';
+}
+function setMotion(level: Motion): void {
+  prefs.set('motionFull', level === 'full');
+  prefs.set('motionReduced', level === 'reduced');
+  prefs.set('motionOff', level === 'off');
+  stage.walk.motion = MOTION[level];
+  ui.setWalkMotion(level);
+}
+
 const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   model: (id) => (ready ? show(id) : void start(id)), // before it has loaded, this is "try again"
   explode: (t) => stage.setExplode(t),
@@ -52,6 +72,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   walkJump: () => stage.walk.jump(),
   walkAct: () => act(),
   walkView: () => stage.walk.setThird(!stage.walk.third),
+  walkMotion: () => setMotion(({ full: 'reduced', reduced: 'off', off: 'full' } as const)[motion()]),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
   inset: (px) => stage.setInset(px),
@@ -137,6 +158,10 @@ stage.onWalk = (on, model) => {
   if (on && selected) select(null);
   ui.setWalking(on);
   if (on) ui.setWalkView(stage.walk.third);
+  if (on) {
+    stage.walk.motion = MOTION[motion()];
+    ui.setWalkMotion(motion());
+  }
   if (!on) show(model);
 };
 stage.onWalkLook = (captured) => ui.setWalkLook(captured);

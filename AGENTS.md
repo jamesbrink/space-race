@@ -227,8 +227,20 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   `pose(phase, speed, air)` is a pure function to the fifteen joints every crew figure is built
   with (srlib.FIGURE: `Hips`, `Spine`, `Head`, `UpperArm.L` ... `Foot.R`, found by name with or
   without the dot), and the phase advances by distance gone over the length of a stride, so a
-  planted foot stays put. Standing is the pose as built, so a still figure is not redrawn. A
-  model with none of those joints still works: it glides rigid, and the diagnostics line says so.
+  planted foot stays put. A model with none of those joints still works: it glides rigid, and
+  the diagnostics line says so.
+- **Both views are one walk.** `Walker.gait` is the only stride there is. From outside it poses
+  the figure; from inside, `view()` reads the eyes' rise, sway, tip and nod off the same moment,
+  so a footfall seen is a footfall felt. The body has inertia (`quicken`: walking pace in a
+  quarter of a second), the knees give on a landing in proportion to the fall (`give`,
+  `landing`), the eyes come up a riser a moment after the feet, the lens opens 2.5 degrees at a
+  run. The walk bar's Motion setting (full, reduced, off; remembered; off by default under
+  prefers-reduced-motion) scales all of it and never touches where the mouse points. A standing
+  figure breathes in steps of a twelfth of a second, the rate a still view is redrawn at anyway.
+- **The walker has a shadow, always.** While walking the shadow map is fitted round the walker
+  (`fitWalkShadows`: 52 m square, moved in whole texels) instead of round the section's model.
+  Through its own eyes the figure is still posed and drawn into the shadow map only
+  (`shadowOnly`), so you see your own shadow; its shadow is not redrawn for breathing.
 
 - **The world is solid as posed.** `Solids` asks each mesh on show (every other model of the
   flight, its surroundings, the setting's scenery; not instanced plants) through its world matrix, with a `three-mesh-bvh`

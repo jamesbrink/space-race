@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { cycleLength, Gait, JOINTS, jointKey, pose, swing } from '../src/viewer/gait.ts';
+import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, swing, view } from '../src/viewer/gait.ts';
+
+/** The pose at a phase and speed, with whatever else the moment has. */
+const pose = (phase, speed, air = 0, more = {}) => poseOf({ phase, speed, air, ...more });
 
 const near = (a, b, eps = 1e-9) => Math.abs(a - b) < eps;
 
@@ -129,9 +132,10 @@ test('a gait moves the joints a model has, by distance gone, and leaves a model 
     assert.ok(Math.abs(f.thigh.rotation.x + f.thighR.rotation.x) < 1e-6 && Math.abs(f.thigh.rotation.x) > 0.05, 'the thighs are opposite');
     assert.ok(f.hips.position.y <= 0.95 && f.hips.position.y > 0.9);
     // standing again, the pose eases back to as built, and then nothing changes
-    let changed = true;
+    let changed = 2;
+    gait.breathing = false;
     for (let i = 0; i < 300 && changed; i++) changed = gait.advance(0, 0, false, 1 / 60);
-    assert.equal(changed, false, 'a standing figure stops asking to be drawn');
+    assert.equal(changed, 0, 'a standing figure that is not breathing stops asking to be drawn');
     gait.apply(f.root);
     assert.ok(Math.abs(f.thigh.rotation.x) < 1e-9 && f.hips.position.y === 0.95);
     // and rest puts back whatever was there
@@ -145,4 +149,105 @@ test('a gait moves the joints a model has, by distance gone, and leaves a model 
   const gait = new Gait();
   assert.equal(gait.jointed(plain), false);
   assert.equal(gait.apply(plain), false);
+});
+
+const DEG = Math.PI / 180;
+const LOADS = [undefined, { L: 1, R: 0 }, { L: 0, R: 1 }, { L: 0.5, R: 0.5 }];
+
+test('nothing jumps: from one twentieth of a degree of the cycle to the next no joint moves more than a few degrees, at any speed, loaded or not', () => {
+  const n = 720;
+  for (const speed of [0.3, 1.4, 2.6, 4])
+    for (const load of LOADS)
+      for (const crouch of [0, 0.8])
+        for (let i = 0; i < n; i++) {
+          const a = pose(i / n, speed, 0, { load, crouch });
+          const b = pose((i + 1) / n, speed, 0, { load, crouch });
+          for (const j of JOINTS)
+            assert.ok(Math.abs(a[j] - b[j]) < 1.2 * DEG, `${j} at ${i / n}, ${speed} m/s: ${(a[j] - b[j]) / DEG} deg`);
+          assert.ok(Math.abs(a.rise - b.rise) < 0.002 && Math.abs(a.shift - b.shift) < 0.001);
+          const va = view({ phase: i / n, speed, load, crouch });
+          const vb = view({ phase: (i + 1) / n, speed, load, crouch });
+          for (const k of ['x', 'y', 'roll', 'pitch']) assert.ok(Math.abs(va[k] - vb[k]) < 0.002, `view.${k} at ${i / n}`);
+        }
+});
+
+test('nothing jumps as a figure speeds up, leaves the ground, or lands either', () => {
+  for (const phase of [0, 0.2, 0.55, 0.8]) {
+    for (let v = 0; v < 5; v += 0.02)
+      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, v)[j] - pose(phase, v + 0.02)[j]) < 1.5 * DEG, `${j} at ${v} m/s`);
+    for (let air = 0; air < 1; air += 0.02)
+      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, 3, air)[j] - pose(phase, 3, air + 0.02)[j]) < 2.5 * DEG, `${j} at air ${air}`);
+  }
+  let last = 0;
+  for (let t = -0.01; t < 0.6; t += 0.004) {
+    const g = give(t);
+    assert.ok(g >= 0 && g <= 1 && Math.abs(g - last) < 0.2, `give(${t})`);
+    last = g;
+  }
+  assert.equal(give(0), 0);
+  assert.equal(give(1), 0);
+  assert.ok(give(0.07) > 0.99, 'the knees are furthest down a fourteenth of a second after the feet touch');
+  assert.ok(
+    landing(0.4) < 0.5 && landing(2) > 1.4 && landing(50) === landing(20),
+    'a hop is a flex, two metres a knee-bend, and there is a limit',
+  );
+});
+
+test('a hand that carries something swings a third as much, on a straighter arm held a little out, and the body leans away', () => {
+  const free = pose(0.25, 1.4);
+  const left = pose(0.25, 1.4, 0, { load: { L: 1, R: 0 } });
+  assert.ok(Math.abs(left['UpperArm.L'] / free['UpperArm.L'] - 0.33) < 0.01);
+  assert.equal(left['UpperArm.R'], free['UpperArm.R'], 'the other arm is as it was');
+  assert.ok(
+    Math.abs(left['LowerArm.L']) < Math.abs(pose(0.25, 4)['LowerArm.L']) &&
+      Math.abs(pose(0.25, 4, 0, { load: { L: 1, R: 0 } })['LowerArm.L']) < 0.1,
+    'even at a run',
+  );
+  assert.ok(left.sideways['UpperArm.L'] > 0 && left.sideways.Spine > 0, 'left arm out to the left, trunk to the right');
+  const right = pose(0.25, 1.4, 0, { load: { L: 0, R: 1 } });
+  assert.ok(right.sideways['UpperArm.R'] < 0 && right.sideways.Spine < 0);
+  // mirrored: the right hand's load half a cycle on is the left hand's
+  const mirrored = pose(0.75, 1.4, 0, { load: { L: 0, R: 1 } });
+  for (const limb of ['UpperArm', 'LowerArm', 'Hand', 'UpperLeg', 'LowerLeg'])
+    assert.ok(near(left[`${limb}.L`], mirrored[`${limb}.R`]), limb);
+  assert.ok(Math.abs(left['Hand.L']) > 0.01 && Math.abs(left['Hand.L']) < 8 * DEG, 'what it carries swings a few degrees');
+  assert.ok(near(free['Hand.L'], 0));
+});
+
+test('the eyes go where the body carries them: down twice a stride at each footfall, side to side once', () => {
+  const ys = [];
+  const xs = [];
+  for (let i = 0; i < 400; i++) {
+    const v = view({ phase: i / 400, speed: 1.4 });
+    ys.push(v.y);
+    xs.push(v.x);
+    assert.equal(v.y, pose(i / 400, 1.4).rise, 'the view rises and falls exactly as the hips do');
+  }
+  const lows = ys.flatMap((y, i) => (y < ys.at(i - 1) && y <= ys[(i + 1) % 400] ? [i / 400] : []));
+  assert.deepEqual(lows, [0.25, 0.75], 'lowest as each foot lands');
+  const depth = Math.max(...ys) - Math.min(...ys);
+  assert.ok(depth > 0.03 && depth < 0.04, `a walking bob of ${depth} m`);
+  const runDepth = Math.max(...Array.from({ length: 100 }, (_, i) => -view({ phase: i / 100, speed: 4 }).y));
+  assert.ok(runDepth > depth && runDepth < 0.08);
+  const turns = xs.filter((x, i) => Math.sign(x) !== Math.sign(xs.at(i - 1)) && x !== 0).length;
+  assert.equal(turns, 2, 'one sway a stride: across the middle twice');
+  assert.ok(Math.max(...xs) > 0.015 && Math.max(...xs) < 0.02);
+  // standing: nothing but the breath, a few millimetres
+  assert.deepEqual(view({ phase: 0.3, speed: 0 }), { x: -0, y: 0, roll: 0, pitch: -0 });
+  const breath = view({ phase: 0, speed: 0, breath: 0.25 });
+  assert.ok(breath.y > 0.002 && breath.y < 0.005 && breath.roll === 0);
+  // a landing takes the eyes down with the knees
+  assert.ok(view({ phase: 0, speed: 0, crouch: 1 }).y < -0.1);
+});
+
+test('a gait breathes in steps a still view is redrawn at anyway, and says a landing is a change', () => {
+  const gait = new Gait();
+  let breaths = 0;
+  for (let i = 0; i < 600; i++) if (gait.advance(0, 0, false, 1 / 60) === 1) breaths++;
+  assert.ok(breaths >= 118 && breaths <= 121, `${breaths} steps of breathing in ten seconds`);
+  gait.land(1.5);
+  assert.equal(gait.advance(0, 0, false, 1 / 60), 2);
+  assert.ok(gait.moment.crouch > 0);
+  for (let i = 0; i < 60; i++) gait.advance(0, 0, false, 1 / 60);
+  assert.equal(gait.moment.crouch, 0, 'and it is over within the second');
 });

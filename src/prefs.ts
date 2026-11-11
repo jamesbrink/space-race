@@ -3,7 +3,18 @@
  * drifts. Kept in the browser's local storage; where that is not allowed (private browsing)
  * nothing is remembered and nothing breaks.
  */
-export type Pref = 'panelTucked' | 'titleTucked' | 'bare' | 'legendFolded' | 'orbitOff' | 'cel' | 'fly' | 'walkThird';
+export type Pref =
+  | 'panelTucked'
+  | 'titleTucked'
+  | 'bare'
+  | 'legendFolded'
+  | 'orbitOff'
+  | 'cel'
+  | 'fly'
+  | 'walkThird'
+  | 'motionFull'
+  | 'motionReduced'
+  | 'motionOff';
 
 const KEY = 'space-race.prefs';
 

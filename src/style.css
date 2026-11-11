@@ -104,6 +104,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
   border: 1px solid var(--line); border-radius: 3px; font: 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
 .walkbar button { flex: none; font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 8px 13px; color: var(--amber); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; white-space: nowrap; }
 .walkbar button:hover { color: var(--ink); border-color: var(--ink); }
+.walkbar [data-walk-motion] { color: var(--dim); border-color: var(--line); }
 .buttons [data-walk] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
 .stick { display: none; position: absolute; left: calc(var(--edge) + 14px + env(safe-area-inset-left)); bottom: calc(var(--edge) + 22px + env(safe-area-inset-bottom)); width: 124px; height: 124px;
   border-radius: 50%; background: var(--glass); border: 1px solid var(--faint); touch-action: none; }

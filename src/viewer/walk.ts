@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
+// (with its extension: the tests run this file under Node, which adds none)
+import { Gait, type Stir, view } from './gait.ts';
 
 /**
  * Walking a flight's site on foot, in first person or over the shoulder: you are one of its figures (a model with a
@@ -87,6 +89,23 @@ export function jump(from: Footing): Footing {
 export function bump(from: Footing, ceiling: number | null, height: number): Footing {
   if (ceiling === null || from.vy <= 0 || from.y + height <= ceiling) return from;
   return { y: ceiling - height, vy: 0, grounded: false };
+}
+
+/** How long a body takes to get most of the way to the speed asked of it, seconds, and to lose it: a start is not a switch, and a stop is a little quicker than a start. */
+export const QUICKEN = 0.085;
+export const SLACKEN = 0.065;
+
+/**
+ * A body's velocity over the ground a moment later, on its way to the one that is wanted: it
+ * closes most of the gap in about a quarter of a second, a little faster when slowing. (x, z) in m/s.
+ */
+export function quicken(vx: number, vz: number, wantX: number, wantZ: number, dt: number): [number, number] {
+  const slowing = Math.hypot(wantX, wantZ) < Math.hypot(vx, vz);
+  const k = 1 - Math.exp(-dt / (slowing ? SLACKEN : QUICKEN));
+  const x = vx + (wantX - vx) * k;
+  const z = vz + (wantZ - vz) * k;
+  // (and it does come to rest: an asymptote would keep the view creeping, and being redrawn, for seconds)
+  return wantX === 0 && wantZ === 0 && Math.hypot(x, z) < 0.01 ? [0, 0] : [x, z];
 }
 
 /** How fast a stick pushed this far (0 to 1) walks: a walk over most of its travel, a run at the rim. */
@@ -477,7 +496,7 @@ const SHOULDER = 0.55;
 const OVER = 0.3;
 /** How close to something behind it the camera may come, metres; and nearer the head than this, the figure is not drawn (the camera would be in it). */
 const BOOM_CLEAR = 0.25;
-const BOOM_LEAST = 0.75;
+const BOOM_LEAST = 1.2;
 /** How long the camera takes to pull back over the shoulder and to come in again, seconds. */
 const VIEW_SECONDS = 0.3;
 /** How fast the figure turns to face the way it is going, radians a second. */
@@ -513,6 +532,25 @@ export class Walker {
   pace = 0;
   /** The camera is far enough from the head for the figure to be drawn. */
   outside = false;
+  /** The figure's stride: the limbs seen from outside and the motion of the view from inside are both read off it (gait.ts). */
+  readonly gait = new Gait();
+  /** What the last frame did to the stride (see Stir). */
+  stir: Stir = 0;
+  /**
+   * How much of the body's motion reaches the view through its eyes, 0 to 1: the rise and fall of
+   * a stride, the sway, the give of a landing, breathing. 0 is a steady camera. It never touches
+   * where the mouse points: that stays exact and immediate.
+   */
+  motion = 1;
+  /** The body's velocity over the ground, m/s: what the keys ask for, eased (quicken). */
+  private readonly vel = new THREE.Vector2();
+  private turning = 0;
+  /** The top of the jump or fall under way, to know how hard the landing is. */
+  private apex = 0;
+  /** The feet's height as the eyes feel it: a moment behind a riser. */
+  private feltY = 0;
+  /** Degrees the lens opens at a run. */
+  private kick = 0;
   /** How far over the shoulder the camera has pulled back, 0 (the eyes) to 1. */
   private viewK = 0;
   private readonly boom = new THREE.Vector3();
@@ -649,6 +687,9 @@ export class Walker {
     this.viewK = 0; // the camera starts at the eyes and pulls back from there
     this.outside = false;
     this.stepped = this.pace = 0;
+    this.vel.set(0, 0);
+    this.turning = 0;
+    this.apex = this.feltY = this.body.position.y;
     this.moved = true;
     this.wasLocked = document.pointerLockElement === this.canvas; // already captured when one figure is left for another
     this.modal = null;
@@ -710,7 +751,7 @@ export class Walker {
   lens(dt: number): boolean {
     const camera = this.camera;
     const wide = camera.aspect < 1 ? FOV_UPRIGHT : FOV;
-    const goal = this.active ? wide : this.rest;
+    const goal = this.active ? wide + this.kick : this.rest;
     if (camera.fov === goal) return false;
     const most = (Math.abs(wide - this.rest) / LENS_SECONDS) * dt;
     camera.fov = Math.abs(goal - camera.fov) <= most ? goal : camera.fov + Math.sign(goal - camera.fov) * most;
@@ -749,8 +790,11 @@ export class Walker {
     if (!this.active) return false;
     const has = (...keys: string[]) => keys.some((k) => this.held.has(k));
     this.solids.set(this.host.solids()); // a level of detail may have changed since the last frame
-    const turn = Number(has('arrowright')) - Number(has('arrowleft'));
-    if (turn) this.look(turn * TURN * dt, 0);
+    // the arrows turn the head as a neck does, not as a switch: up to speed and down again in a tenth of a second
+    const turn = this.modal ? 0 : Number(has('arrowright')) - Number(has('arrowleft'));
+    this.turning += (turn * TURN - this.turning) * (1 - Math.exp(-dt / 0.06));
+    if (!turn && Math.abs(this.turning) < 0.01) this.turning = 0;
+    if (this.turning) this.look(this.turning * dt, 0);
     // keys give a direction at walking or running pace; the stick gives both at once
     let forward = Number(has('w', 'arrowup')) - Number(has('s', 'arrowdown'));
     let right = Number(has('d')) - Number(has('a'));
@@ -763,13 +807,20 @@ export class Walker {
     if (this.modal) forward = right = 0;
     const length = Math.hypot(forward, right);
     if (length || !this.body.grounded) this.peekAt = null; // a step, or a hop, and the eyes come back from the window
-    const stride = length ? (speed * dt) / length : 0;
+    const pace = length ? speed / length : 0;
     const sin = Math.sin(this.yaw),
       cos = Math.cos(this.yaw);
     const p = this.body.position;
     const was = this.eyes.copy(p);
-    // forward is (-sin, -cos) over the ground, right is (cos, -sin)
-    this.body.move((-sin * forward + cos * right) * stride, (-cos * forward - sin * right) * stride, dt);
+    const flying = !this.body.grounded;
+    // forward is (-sin, -cos) over the ground, right is (cos, -sin); the body gathers and loses its speed (quicken)
+    const wantX = (-sin * forward + cos * right) * pace;
+    const wantZ = (-cos * forward - sin * right) * pace;
+    this.vel.fromArray(quicken(this.vel.x, this.vel.y, wantX, wantZ, dt));
+    this.body.move(this.vel.x * dt, this.vel.y * dt, dt);
+    // a landing is felt in the knees, by how far it fell
+    this.apex = this.body.grounded && !flying ? p.y : Math.max(this.apex, p.y);
+    if (flying && this.body.grounded) this.gait.land(this.apex - p.y);
     // there is nothing out past the edge of the site
     const reach = this.host.reach();
     const out = Math.hypot(p.x, p.z);
@@ -780,6 +831,9 @@ export class Walker {
     if (was.distanceToSquared(p) > 1e-10) this.moved = true;
     this.stepped = Math.hypot(p.x - was.x, p.z - was.z);
     this.pace = dt > 0 ? this.stepped / dt : 0;
+    this.gait.breathing = this.motion > 0;
+    this.stir = dt > 0 ? this.gait.advance(this.stepped, this.pace, !this.body.grounded, dt) : 0;
+    if (this.stir) this.moved = true;
     // through its eyes the body faces where they look; seen from behind it turns to face the way it is sent
     if (!this.third) this.heading = this.yaw;
     else if (length) {
@@ -792,12 +846,35 @@ export class Walker {
     }
 
     const camera = this.camera;
-    camera.position.set(p.x, p.y + this.eye, p.z);
+    // The eyes are carried by the body: they rise and fall and sway with the stride, tip toward
+    // the planted foot, drop with the knees on a landing, and come up a riser a moment after the
+    // feet. All of it is scaled by `motion`, and fades out as the camera pulls back over the
+    // shoulder, where it is the figure that is seen to do these things.
+    const felt = this.motion * (1 - this.viewK);
+    const lagging = this.body.grounded && this.motion > 0;
+    this.feltY = lagging ? THREE.MathUtils.clamp(this.feltY + (p.y - this.feltY) * (1 - Math.exp(-dt / 0.07)), p.y - 0.2, p.y + 0.2) : p.y;
+    if (Math.abs(this.feltY - p.y) < 1e-4) this.feltY = p.y;
+    else this.moved = true;
+    const seen = view(this.gait.moment);
+    // and it leans: a degree or two into a sidestep, and forward into getting going
+    const sideways = (this.vel.x * cos - this.vel.y * sin) / WALK_SPEED;
+    const urge = ((wantX - this.vel.x) * -sin + (wantZ - this.vel.y) * -cos) / WALK_SPEED;
+    const roll = (seen.roll - 0.022 * THREE.MathUtils.clamp(sideways, -1.5, 1.5)) * felt;
+    const nod = (seen.pitch - 0.014 * THREE.MathUtils.clamp(urge, -1, 1)) * felt;
+    camera.position.set(
+      p.x + cos * seen.x * felt,
+      p.y + (this.feltY - p.y) * (1 - this.viewK) + this.eye + seen.y * felt,
+      p.z - sin * seen.x * felt,
+    );
+    // the lens opens a little at a run
+    const run = THREE.MathUtils.smoothstep(this.pace, WALK_SPEED + 0.4, RUN_SPEED - 0.2) * 2.5 * this.motion;
+    this.kick += (run - this.kick) * (1 - Math.exp(-dt / 0.25));
+    if (Math.abs(this.kick - run) < 0.01) this.kick = run;
     // leaning in to a window, or coming back from one: the eyes glide between the head and the pane
     const k = this.peekK;
     this.peekK = THREE.MathUtils.clamp(k + (this.peekAt ? dt : -dt) / PEEK_SECONDS, 0, 1);
     if (this.peekK !== k) this.moved = true;
-    camera.quaternion.setFromEuler(this.euler.set(this.pitch, this.yaw, 0));
+    camera.quaternion.setFromEuler(this.euler.set(this.pitch + nod, this.yaw, roll));
     const gaze = camera.getWorldDirection(this.gaze);
     // what the body could touch was gathered for its move; what the eyes, the hand and the camera can reach is gathered now
     const far = REACH + BOOM + 0.5;

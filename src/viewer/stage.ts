@@ -11,7 +11,6 @@ import { sameTarget, type Target } from '../actions';
 import type { Flight as FlightData, ModelDef } from '../types';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
-import { Gait } from './gait';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
@@ -50,6 +49,8 @@ VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
+/** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
+const WALK_SHADOW = 26;
 /** The lowest a free camera flies, metres above the surface the model stands on. */
 const FLY_FLOOR = 0.35;
 /** The most of a scenery object that is framed at once, metres across: beyond this a click looks at where it landed. */
@@ -123,8 +124,8 @@ export class Stage {
   private tap: { t: number; x: number; y: number; walker: string | null } = { t: 0, x: 0, y: 0, walker: null };
   /** Which model is being walked as: an index into `staged`, or -1. */
   private walked = -1;
-  /** The stride of the figure being walked as, for when it is seen from outside (gait.ts). */
-  private readonly gait = new Gait();
+  /** While walking: the figure is drawn into the shadow map only (the view is through its eyes). */
+  private unseen = false;
   /** While walking: what is being looked at from within reach, and where the ray met it. */
   private aim: { target: Target; hit: Hit; box?: THREE.Box3 } | null = null;
   /** The orbiting camera's lens, vertical degrees. Views are framed for it even while the walker's wider one is easing in or out. */
@@ -1205,10 +1206,12 @@ export class Stage {
     const [fx, fz] = walker.forward ?? [0, 1];
     const toward = new THREE.Vector3(fx, 0, fz).transformDirection(figure.group.matrixWorld).setY(0).setLength(10).add(feet);
     figure.group.visible = false;
+    this.unseen = false;
     this.leftBehind(at, false);
     this.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.dirty = true;
     this.walk.start(feet, toward, eye, height, walker.radius);
+    this.fitWalkShadows(true);
   }
 
   /** The figure being walked as is stood where it was walked to, facing the way it was looking, and can be seen again. */
@@ -1218,7 +1221,8 @@ export class Stage {
     if (!figure) return;
     figure.group.position.copy(this.walk.body.position);
     figure.group.rotation.y = this.facing(at);
-    for (const level of figure.group.children) this.gait.rest(level); // standing as it was built, at every level of detail
+    for (const level of figure.group.children) this.walk.gait.rest(level); // standing as it was built, at every level of detail
+    this.shadowOnly(figure.group, (this.unseen = false));
     this.leftBehind(at, true);
     figure.group.visible = true;
     figure.group.updateMatrixWorld(true);
@@ -1310,32 +1314,93 @@ export class Stage {
    * (gait.ts) and rigid if it has not. Through its own eyes, or with the camera pressed up
    * against its head by a wall, it is not drawn.
    */
-  private poseFigure(dt: number): void {
+  private poseFigure(): void {
     const at = this.walked;
     const figure = this.staged[at];
     if (!figure) return;
     const walk = this.walk;
-    const stride = this.gait.advance(walk.stepped, walk.pace, !walk.body.grounded, dt);
     const group = figure.group;
-    const show = walk.outside;
-    let changed = group.visible !== show;
-    group.visible = show;
-    if (show) {
-      const turn = this.facing(at);
-      changed ||= stride || group.rotation.y !== turn || !group.position.equals(walk.body.position);
-      group.position.copy(walk.body.position);
-      group.rotation.y = turn;
-      this.gait.apply(figure.shown);
-    }
-    if (!changed) return;
-    this.renderer.shadowMap.needsUpdate = true; // its shadow walks with it
-    this.dirty = true;
+    // Through its own eyes the figure is still there for the light: it is drawn into the shadow
+    // map and into nothing else, so you see your own shadow walk in front of you.
+    const unseen = !walk.outside;
+    const turn = this.facing(at);
+    const placed = !group.visible || this.unseen !== unseen || group.rotation.y !== turn || !group.position.equals(walk.body.position);
+    group.visible = true;
+    if (this.unseen !== unseen) this.shadowOnly(group, (this.unseen = unseen));
+    group.position.copy(walk.body.position);
+    group.rotation.y = turn;
+    walk.gait.apply(figure.shown);
+    // Breathing alone moves him by millimetres: seen from outside it is worth drawing, but
+    // nobody's shadow is redrawn for it.
+    if (placed || walk.stir === 2) this.renderer.shadowMap.needsUpdate = true; // its shadow walks with it
+    if (placed || walk.stir === 2 || (walk.stir === 1 && !unseen)) this.dirty = true;
+  }
+
+  /**
+   * Make everything under `root` cast its shadow and otherwise draw nothing, or put it back. It
+   * is done as each mesh is drawn (the shadow pass does not call these), on whatever material
+   * the look in force has given it, so it survives a change of look and touches no shared state.
+   */
+  private shadowOnly(root: THREE.Object3D, on: boolean): void {
+    const hide = (_r: unknown, _s: unknown, _c: unknown, _g: unknown, material: THREE.Material) => {
+      material.userData.wrote ??= [material.colorWrite, material.depthWrite];
+      material.colorWrite = material.depthWrite = false;
+    };
+    const show = (_r: unknown, _s: unknown, _c: unknown, _g: unknown, material: THREE.Material) => {
+      const wrote = material.userData.wrote as [boolean, boolean] | undefined;
+      if (!wrote) return;
+      [material.colorWrite, material.depthWrite] = wrote;
+      material.userData.wrote = undefined;
+    };
+    const nothing = THREE.Object3D.prototype.onBeforeRender;
+    root.traverse((o) => {
+      if (!(o as THREE.Mesh).isMesh) return;
+      o.onBeforeRender = on ? hide : nothing;
+      o.onAfterRender = on ? show : nothing;
+    });
+  }
+
+  /**
+   * While walking, the shadow map is spent on the ground round the walker: the section's own fit
+   * (fitShadows) is a few metres round where the figure started, and a figure walked out of it
+   * had no shadow at all. The map moves in steps of whole texels, in the light's own frame, so
+   * that a shadow's edge does not crawl as he walks; and it reaches up the Sun's line far enough
+   * for whatever stands over him to shade him.
+   */
+  private fitWalkShadows(force = false): void {
+    const p = this.walk.body.position;
+    const shadow = this.sun.shadow;
+    if (!force && this.sun.target.position.distanceTo(p) < WALK_SHADOW * 0.35) return;
+    const dir = this.setting.sunDir;
+    const right = new THREE.Vector3().crossVectors(UP, dir).normalize();
+    const up = new THREE.Vector3().crossVectors(dir, right);
+    const texel = (2 * WALK_SHADOW) / shadow.mapSize.x;
+    const snap = (v: number) => Math.round(v / texel) * texel;
+    const centre = new THREE.Vector3()
+      .addScaledVector(right, snap(p.dot(right)))
+      .addScaledVector(up, snap(p.dot(up)))
+      .addScaledVector(dir, p.dot(dir));
+    const back = Math.min(400, this.bounds.radius + 20);
+    this.sun.target.position.copy(centre);
+    this.sun.position.copy(centre).addScaledVector(dir, back);
+    Object.assign(shadow.camera, {
+      left: -WALK_SHADOW,
+      right: WALK_SHADOW,
+      top: WALK_SHADOW,
+      bottom: -WALK_SHADOW,
+      near: 1,
+      far: back + WALK_SHADOW + 20,
+    });
+    shadow.camera.updateProjectionMatrix();
+    shadow.normalBias = Math.max(0.012, WALK_SHADOW / 900);
+    shadow.bias = -Math.max(0.0002, WALK_SHADOW / 40000);
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   /** For the diagnostics: the figure is being shown from outside but its model has no joints, so it glides. */
   get walkRigid(): boolean {
     const figure = this.staged[this.walked];
-    return Boolean(figure && this.walk.active && this.walk.third && !this.gait.jointed(figure.shown));
+    return Boolean(figure && this.walk.active && this.walk.third && !this.walk.gait.jointed(figure.shown));
   }
 
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
@@ -1345,7 +1410,8 @@ export class Stage {
     const found = hit && this.targetOf(hit);
     this.setAim(found && hit ? { ...found, hit } : null);
     this.fitDetail();
-    this.poseFigure(dt);
+    this.poseFigure();
+    this.fitWalkShadows();
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting
     const far = this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.floor ? 9000 : 10);
     if (Math.abs(far - this.camera.far) > far * 0.02) {
