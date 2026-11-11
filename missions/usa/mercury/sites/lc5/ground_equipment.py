@@ -36,7 +36,6 @@ from .site import (
     ftp,
     lattice,
     lettering,
-    obox,
     offset_poly,
     plate,
     ring,
@@ -122,12 +121,8 @@ def build(parts: Parts) -> None:
             stripe.add(verts, [(0, 1, 2, 5), (5, 2, 3, 4)] if face < 0 else [(0, 5, 2, 1), (5, 4, 3, 2)])
 
     # tripod cameras round the pad (TM X-53107 7.5.5.3: twenty fixed cameras near the pad)
-    for tx, ty in TRIPODS:
-        for k in range(3):
-            a = math.tau * k / 3
-            beam(dark, (tx + 1.2 * math.cos(a), ty + 1.2 * math.sin(a), 0.0), (tx, ty, 4.2), 0.12)
-        aim = Vector((-tx, -ty, 8.0)).normalized()
-        obox(black, (tx, ty, 4.75), (aim.x, aim.y, aim.z), (0, 0, 1) if abs(aim.z) < 0.9 else (1, 0, 0), (1.4, 0.7, 0.9))
+    for tx, ty in TRIPODS:  # each a 35 mm camera on a wooden tripod, aimed at the booster's tail (sitelib.film_camera)
+        sitelib.film_camera(parts, "GroundEquipment", (tx, ty), (0.0, 0.0, 12.0))
 
     # camera towers: narrow galvanised lattices with a platform at the top
     parts.node("CameraTowers")

@@ -171,6 +171,12 @@ standing in it: on foot at eye height beside the thing, and from across the pad.
 - **The place is real.** What stands round the pad is what stood there that day, at its real
   distance and bearing, lit by the Sun where it was. No stand-ins that are there only to fill space:
   either the real thing, labelled with how sure we are, or nothing.
+- **Designed, not photographic.** The look is lunar-lift's (../lunar-lift): clean, deliberate
+  forms with a strong silhouette, drawn so they read at any distance, then given real shading,
+  shadow and surface grain in the real look and flat tones with ink in the cel look. Accuracy is
+  in sizes, places, proportions and colours, not in imitating a photograph: no leaf cards, grass
+  blades or noise standing in for detail. A tree is a designed crown on a trunk, a shrub a few
+  clean masses, a cloud a soft-shaded volume with an edge.
 - **Nothing breaks the spell.** No flicker, no clipping through walls or ground, no pops between
   levels of detail or between poses, no object that is a flat box up close. A lower level of detail
   is for distance only.

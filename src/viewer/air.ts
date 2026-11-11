@@ -78,6 +78,12 @@ const cloudField = (c: Clouds | undefined) =>
     vec2 q = (xz - uCloudDrift.xz) / ${c.size.toFixed(1)};
     float n = airNoise(q) * 0.5 + airNoise(q * 2.13 + 7.1) * 0.27 + airNoise(q * 4.37 + 3.3) * 0.15 + airNoise(q * 9.1 + 1.9) * 0.08;
     return smoothstep(${(1 - c.cover - 0.06).toFixed(3)}, ${(1 - c.cover + 0.14).toFixed(3)}, n);
+  }
+  // the same without its finest octaves, for finding a cloud before looking at it closely
+  float cloudRough(vec2 xz) {
+    vec2 q = (xz - uCloudDrift.xz) / ${c.size.toFixed(1)};
+    float n = airNoise(q) * 0.5 + airNoise(q * 2.13 + 7.1) * 0.27 + 0.115;
+    return smoothstep(${(1 - c.cover - 0.06).toFixed(3)}, ${(1 - c.cover + 0.14).toFixed(3)}, n);
   }`
     : '';
 
@@ -196,6 +202,7 @@ export class CloudLayer {
           gl_Position = projectionMatrix * viewMatrix * at;
         }`;
     const fragmentShader = /* glsl */ `
+        uniform vec4 uCloudDrift;
         uniform vec3 uOrigin, uSunDir, uSunLight, uSkyLight, uHaze;
         uniform float uHazeDensity, uReach, uCel;
         varying vec3 vAt;
@@ -213,31 +220,43 @@ export class CloudLayer {
             t1 = min(far, max(ta, tb));
           } else if (eye.y < lo || eye.y > hi) discard;
           if (t1 <= t0) discard;
-          // steps scaled to the length inside, and fewer far off where a cloud is a few pixels
-          const int STEPS = 14;
-          float span = t1 - t0;
-          float cover = 0.0;
-          vec3 light = vec3(0.0);
-          float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-          for (int i = 0; i < STEPS; i++) {
-            float t = t0 + span * (float(i) + jitter) / float(STEPS);
+          // A cloud is a heap on a flat base: over a point it rises from the base to a height its density
+          // gives, a dome in the heart and nothing at the edge. March the ray to the first point under that
+          // surface, then close in on it; light it by the surface's slope.
+          const int STEPS = 40;
+          float span = t1 - t0, dt = span / float(STEPS);
+          float hit = -1.0;
+          float prev = t0;
+          for (int i = 0; i <= STEPS; i++) {
+            float t = t0 + dt * float(i);
             vec3 p = eye + d * t;
-            float h = clamp((p.y - lo) / (hi - lo), 0.0, 1.0);   // 0 at the base, 1 at the tops
-            float dens = cloudAt(p.xz);
-            // the heart of a cloud reaches the tops, its edges only part way: a dome on a flat base
-            float inside = smoothstep(h * h * 0.85, h * h * 0.85 + 0.1, dens) * smoothstep(0.0, 0.03, dens);
-            if (inside <= 0.0) continue;
-            // lit from above and from the Sun's side, grey underneath; the light that gets in falls off into the heart
-            float toSun = clamp(cloudAt(p.xz + uSunDir.xz * 260.0) - dens, -1.0, 1.0);   // less cloud toward the Sun: a lit face
-            float lit = clamp(0.35 + 0.65 * h + 0.5 * -toSun, 0.15, 1.0);
-            vec3 c = uSunLight * lit * max(uSunDir.y, 0.05) * 0.9 + uSkyLight * (0.55 + 0.45 * h);
-            float a = (1.0 - cover) * min(1.0, inside * span / float(STEPS) / 90.0);
-            light += a * c;
-            cover += a;
-            if (cover > 0.985) break;
+            if (p.y < lo + (hi - lo) * pow(cloudRough(p.xz), 0.55)) { hit = t; break; }
+            prev = t;
           }
-          if (cover < 0.003) discard;
-          vec3 col = light / cover;
+          if (hit < 0.0) discard;
+          float a0 = prev, a1 = hit;
+          for (int i = 0; i < 6; i++) {
+            float t = 0.5 * (a0 + a1);
+            vec3 p = eye + d * t;
+            if (p.y < lo + (hi - lo) * pow(cloudAt(p.xz), 0.55)) a1 = t; else a0 = t;
+          }
+          vec3 p = eye + d * a1;
+          float dens = cloudAt(p.xz);
+          float h = clamp((p.y - lo) / (hi - lo), 0.0, 1.0);
+          // the surface's normal: the base faces down; a dome's flank faces out by its slope
+          float e = 40.0;
+          vec3 n = vec3(0.0, -1.0, 0.0);
+          if (p.y > lo + 2.0) {
+            float hx = (hi - lo) * (pow(cloudAt(p.xz + vec2(e, 0.0)), 0.55) - pow(cloudAt(p.xz - vec2(e, 0.0)), 0.55));
+            float hz = (hi - lo) * (pow(cloudAt(p.xz + vec2(0.0, e)), 0.55) - pow(cloudAt(p.xz - vec2(0.0, e)), 0.55));
+            n = normalize(vec3(-hx, 2.0 * e, -hz));
+          }
+          // sunlit faces bright, a soft wrap round into the shade, the base grey with light from below; tufts at the edge
+          float sun = clamp(dot(n, uSunDir) * 0.6 + 0.4, 0.0, 1.0) * (0.55 + 0.45 * smoothstep(0.0, 0.5, h));
+          float tuft = airNoise(p.xz / 35.0) * 0.6 + airNoise(p.xz / 13.0) * 0.4;
+          vec3 col = uSunLight * sun * max(uSunDir.y, 0.05) * (0.8 + 0.3 * tuft) + uSkyLight * (0.6 + 0.4 * max(n.y, 0.0));
+          float cover = smoothstep(0.0, 0.12, dens) * smoothstep(0.0, 0.25, dens + 0.3 * (tuft - 0.5));
+          t0 = a1; t1 = a1;   // the haze is measured to the hit
           // drawn: two tones and a hard edge
           col = mix(col, mix(uSkyLight * 0.8 + uSunLight * 0.2, uSunLight * 0.85 + uSkyLight, step(0.62, dot(col, vec3(0.3)) / max(dot(uSunLight * 0.9 + uSkyLight, vec3(0.3)), 1e-4))), uCel);
           cover = mix(cover, step(0.35, cover), uCel);

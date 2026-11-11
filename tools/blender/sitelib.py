@@ -1223,3 +1223,51 @@ def _convex(pts) -> list:
             upper.pop()
         upper.append(p)
     return lower[:-1] + upper[:-1]
+
+
+def film_camera(parts: Parts, node: str, at, aim_at, *, ground: float = 0.0, height: float | None = None) -> None:
+    """A 35 mm engineering film camera of the period on a wooden tripod, pointed at `aim_at` (site
+    units): a body with its lens turret and lens, the twin round magazine on top, a drive motor on
+    the right, a finder along the left, on a geared head with its pan bar; the tripod's three
+    doubled legs, spiked feet and a spreader on the ground. Of the kind (a Mitchell or a
+    Photo-Sonics was the usual), not any one camera. `at` is (x, y), where it stands. Materials:
+    `plank` (the legs), `black` (the camera), `chassis` (the head, the spreader), `chrome` (lens rims)."""
+    f = foot()
+    h = 4.4 * f if height is None else height
+    wood, cam, iron, bright = parts(node, "plank/tripod"), parts(node, "black/camera", True), parts(node, "chassis"), parts(node, "chrome", True)
+    top = Vector((at[0], at[1], ground + h))
+    for k in range(3):  # the legs: two rails each, from the head's crown to a spiked foot
+        a = TAU_ * k / 3 + 0.3
+        out = Vector((math.cos(a), math.sin(a), 0.0))
+        side = Vector((-out.y, out.x, 0.0))
+        footp = Vector((at[0], at[1], ground)) + out * (1.7 * f)
+        crown, knee = top - Vector((0, 0, 0.15 * f)) + out * (0.22 * f), footp + Vector((0, 0, 0.25 * f))
+        for s in (-1, 1):
+            beam(wood, tuple(crown + side * (s * 0.07 * f)), tuple(knee + side * (s * 0.05 * f)), 0.08 * f)
+        beam(iron, tuple(footp + Vector((0, 0, 0.3 * f))), tuple(footp - Vector((0, 0, 0.05 * f))), 0.07 * f)  # the spike
+        beam(iron, (at[0], at[1], ground + 0.06 * f), tuple(footp + Vector((0, 0, 0.06 * f))), 0.06 * f)  # the spreader's arm
+    box(iron, (at[0] - 0.3 * f, at[1] - 0.3 * f, ground + h - 0.2 * f), (at[0] + 0.3 * f, at[1] + 0.3 * f, ground + h))  # the crown
+    fwd = Vector(aim_at) - top
+    fwd.normalize()
+    flat = Vector((fwd.x, fwd.y, 0.0)).normalized()
+    right = flat.cross(Vector((0, 0, 1))).normalized()
+    up = right.cross(fwd).normalized()
+    head = top + Vector((0, 0, 0.25 * f))
+    obox(iron, tuple(head), tuple(flat), (0, 0, 1), (0.6 * f, 0.5 * f, 0.5 * f))  # the geared head
+    grip = head - flat * (1.8 * f) + right * (0.35 * f) - Vector((0, 0, 0.5 * f))
+    beam(iron, tuple(head - flat * (0.2 * f) + right * (0.15 * f)), tuple(grip), 0.06 * f)  # the pan bar
+    c = head + up * (0.65 * f)
+    obox(cam, tuple(c), tuple(fwd), tuple(up), (1.0 * f, 0.6 * f, 0.75 * f))  # the body
+    for d in (-0.3, 0.3):  # the twin magazine: two drums side by side along the body, on top
+        m = axes(tuple(c + fwd * (d * f) + up * (0.65 * f) - right * (0.18 * f)), tuple(fwd), tuple(right))
+        drum = [(0.0, 0.0), (0.38, 0.0), (0.4, 0.03), (0.4, 0.33), (0.38, 0.36), (0.0, 0.36)]
+        cam.lathe(profile([(a * f, b * f) for a, b in drum]), 20, matrix=m)
+    box_at = c + fwd * (0.5 * f)
+    m = axes(tuple(box_at), tuple(right), tuple(fwd))  # the turret plate and the lens on it, along the line of sight
+    cam.lathe(profile([(0.0, 0.0), (0.3 * f, 0.0), (0.3 * f, 0.06 * f), (0.0, 0.06 * f)]), 18, matrix=m)
+    lens = [(0.0, 0.06), (0.12, 0.06), (0.12, 0.45), (0.15, 0.47), (0.15, 0.6), (0.0, 0.6)]
+    bright.lathe(profile([(a * f, b * f) for a, b in lens]), 16, matrix=m)
+    side_m = axes(tuple(c + right * (0.3 * f) - up * (0.1 * f) - fwd * (0.25 * f)), tuple(fwd), tuple(right))
+    cam.lathe(profile([(0.0, 0.0), (0.17 * f, 0.0), (0.17 * f, 0.55 * f), (0.0, 0.55 * f)]), 14, matrix=side_m)  # the motor
+    finder = c - right * (0.36 * f) + up * (0.15 * f)
+    cam.tube(tuple((finder - fwd * (0.6 * f)) * UNIT), tuple((finder + fwd * (0.45 * f)) * UNIT), 0.08 * f * UNIT, 10)

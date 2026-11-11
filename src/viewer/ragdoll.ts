@@ -252,11 +252,26 @@ export class Limp {
       const n = t3.crossVectors(line, h.normalize()); // the front, for a limb hanging at the side
       const off = t4.subVectors(b, a).dot(n) * bend.side;
       if (off >= -bend.most) continue;
+      // The joint one way and the ends the other, as much as each is free to go: an end held by the
+      // world (lying on the ground) does not move, and the others take its share. (Pushed into the
+      // ground and put back by it every pass, an end would leave the joint all the push, and a
+      // figure lying against its limits would kick for ever.)
       const by = (-bend.most - off) * sure * bend.side;
-      b.addScaledVector(n, (by * 2) / 3);
-      a.addScaledVector(n, -by / 3);
-      c.addScaledVector(n, -by / 3);
+      const wa = this.touching[bend.a] ? 0 : 1;
+      const wc = this.touching[bend.c] ? 0 : 1;
+      const wb = this.touching[bend.b] ? 0 : 2;
+      if (!(wa + wb + wc)) continue;
+      // (the joint's offset from the line changes by as much as the joint moves less the mean of the ends' moves)
+      const k = by / (wb + (wa + wc) / 2);
+      this.place(bend.b, n, k * wb);
+      this.place(bend.a, n, -k * wa);
+      this.place(bend.c, n, -k * wc);
     }
+  }
+
+  /** Move a point along a way. */
+  private place(i: number, way: THREE.Vector3, by: number): void {
+    if (by) this.points[i]!.addScaledVector(way, by);
   }
 
   /** How far each stick is from the length it should be, as a fraction of it: the worst of them. */

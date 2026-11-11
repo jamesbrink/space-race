@@ -1904,7 +1904,7 @@ class Tractor(Car):
         sp = Vector((bx - 9.0, 18.0, 63.0))
         self.wheel_into(kit, srlib.frame(sp, (-1, 0, 0)))
         for z, end in ((52.0, bx + 1.5), (74.0, bx + 0.2)):  # its carrier: into the back wall low, the curtain's frame high
-            box(dark, (sp.x + 3.6, 9.0, z - 1.0), (end, 27.0, z + 1.0))
+            box(dark, (sp.x + 4.9, 9.0, z - 1.0), (end, 27.0, z + 1.0))
         stack = kit("under/exhaust")
         stack.tube(Vector((bx - 4.0, -29.0, 38.0)), Vector((bx - 4.0, -29.0, 104.0)), 2.2, 10)
         stack.tube(Vector((bx - 4.0, -29.0, 104.0)), Vector((bx - 7.0, -29.0, 106.5)), 2.2, 10)
@@ -2057,6 +2057,9 @@ def m275_tractor(paint: str = "white", **kw) -> Car:
         mass=11179.0,
         turning=72.0,
         cabin=(113.0, 112.0, 67.0, 66.0),
+        top=[(-48.0, 69.6), (180.0, 69.6)],  # the belt, the cab's sill and its half-width, for what the car's methods ask
+        bottom=[(-48.0, 34.0), (180.0, 34.0)],
+        plan=[(-48.0, 36.6), (180.0, 36.6)],
         lamp_at=(14.5, 50.0, 3.6),
         grille=(9.0, 40.0, 58.0),
         cap_r=4.5,
