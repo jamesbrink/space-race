@@ -83,7 +83,7 @@ interface Picked {
   node: string | null;
   model: string | null;
   /** Something in the place round the pad (Flight.surroundings): what it is called, and the part of it to go and look at. */
-  place?: { name: string; box: THREE.Box3 };
+  place?: { name: string; box: THREE.Box3; title?: string };
   /** A window of the section's model: where on the pane, and which way the pane faces. */
   pane?: { point: THREE.Vector3; normal: THREE.Vector3 };
 }
@@ -109,7 +109,7 @@ export class Stage {
   onModel: (id: string) => void = () => {};
   onHoverModel: (id: string | null) => void = () => {};
   /** The pointer is over something in the place round the pad (its node's name), or has left it. A click goes over to it. */
-  onHoverPlace: (name: string | null) => void = () => {};
+  onHoverPlace: (name: string | null, title?: string) => void = () => {};
   /** The camera has been sent to something in the place round the pad. */
   onVisit: () => void = () => {};
   /** The pointer is over a window of the section's model (a click looks in), or has left it. */
@@ -486,6 +486,12 @@ export class Stage {
           if (staged !== this.staged) return;
           this.surroundings = object;
           this.scene.add(object);
+          // rooms are lit where the model says a lamp hangs: an empty named Light_<room>, with how bright and how far
+          object.traverse((o) => {
+            if (!o.name.startsWith('Light_')) return;
+            const lamp = new THREE.PointLight(0xfff1d6, Number(o.userData.intensity) || 6, Number(o.userData.reach) || 8, 2);
+            o.add(lamp);
+          });
           this.renderer.shadowMap.needsUpdate = true;
           this.dirty = true;
         })
@@ -1099,7 +1105,13 @@ export class Stage {
   }
 
   /** Something in the place round the pad that `object` belongs to: what it is called, and the part of it to go and look at. */
-  private placeOf(object: THREE.Object3D, point: THREE.Vector3): { name: string; box: THREE.Box3 } | null {
+  private placeOf(object: THREE.Object3D, point: THREE.Vector3): { name: string; box: THREE.Box3; title?: string } | null {
+    // A thing the model has named for people (a custom property `label`, or `vehicle` on a car)
+    // is that thing, however deep it sits: one car in a car park, not the car park.
+    for (let o: THREE.Object3D | null = object; o && o !== this.surroundings; o = o.parent) {
+      const title = (o.userData.label ?? o.userData.vehicle) as unknown;
+      if (typeof title === 'string' && title) return { name: o.name, box: new THREE.Box3().setFromObject(o), title };
+    }
     for (let o: THREE.Object3D | null = object; o && this.surroundings; o = o.parent) {
       if (o.parent !== this.surroundings && o.parent?.parent !== this.surroundings) continue;
       if (!o.name || (o as THREE.Mesh).isMesh) continue;
@@ -1135,7 +1147,7 @@ export class Stage {
       this.hoveredModel = model;
       this.onHoverModel(model);
     }
-    if ((place?.name ?? null) !== this.hoveredPlace) this.onHoverPlace((this.hoveredPlace = place?.name ?? null));
+    if ((place?.name ?? null) !== this.hoveredPlace) this.onHoverPlace((this.hoveredPlace = place?.name ?? null), place?.title);
     if (Boolean(pane) !== this.overPane) this.onHoverWindow((this.overPane = Boolean(pane)));
     this.canvas.style.cursor = node || model || pane || place ? 'pointer' : 'grab';
     if (node === this.hovered) return;

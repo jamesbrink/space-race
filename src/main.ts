@@ -150,7 +150,7 @@ stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
 stage.onModel = (id) => show(id); // a click on the pad, the rocket or the pilot goes to it
 stage.onHoverModel = (id) => ui.hoverModel(id);
-stage.onHoverPlace = (name) => ui.hint(name ? [spaced(name), 'Click to go and look'] : null);
+stage.onHoverPlace = (name, title) => ui.hint(name ? [title ?? spaced(name), 'Click to go and look'] : null);
 // A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
 stage.onSpot = (page, point, floor) => {
   const walker = flight.models.find((m) => m.walker);

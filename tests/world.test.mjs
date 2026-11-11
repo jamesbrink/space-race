@@ -382,6 +382,7 @@ test('every flight has a site with sourced numbers, and its sky is the one its r
       assert.ok(m.source.length > 8, `${flight.id}: site.${key} source`);
     }
     assert.ok(Number.isFinite(julianDate(flight.launch)), `${flight.id}: launch instant`);
+    assert.ok(flight.site.zone.name.length > 1 && Math.abs(flight.site.zone.utcOffset) <= 14, `${flight.id}: the site's civil time`);
   }
   // Freedom 7: the figures quoted in its README ("The sky at liftoff") and in sites/lc-5.md
   const mr3 = flights.find((f) => f.id === 'usa/mercury/mr-3-freedom-7');
