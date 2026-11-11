@@ -237,8 +237,10 @@ a hemisphere light's direction). So:
 - Read and write positions as they are; nothing outside the draw needs converting.
 - Code that runs during the draw (`onBeforeRender`, a pass) sees eye-relative world matrices: put
   them back with `absolute()`.
-- A shader that wants a position in the scene's frame from `modelMatrix` adds `uOrigin` (as
-  `surface.ts`'s grain does); a position in an object's own frame needs nothing.
+- A shader that wants a position in the scene's frame from `modelMatrix` or `cameraPosition` adds
+  `uOrigin` (as `surface.ts`'s grain and `air.ts`'s fog do); a position in an object's own frame
+  needs nothing. `uOrigin` is declared in three's `common` chunk and given to every built-in
+  material, so a shader patch uses it without declaring it (a second declaration will not compile).
 - `sr.stage.origin.enabled = false` draws the old way: the two must look the same (checked from
   fixed views, frozen: a few dozen pixels in 640,000 differ, by one level, from rounding).
 

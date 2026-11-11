@@ -194,6 +194,59 @@ export class Vehicle {
     return (this.seat ?? this.root).getWorldQuaternion(to);
   }
 
+  /** Where on its steering wheel's rim the hands go, in the wheel's own frame (found the first time they are asked for). */
+  private rim: THREE.Vector3[] | null = null;
+
+  /**
+   * Where the driver's hands hold the wheel, in the world: at ten to two on the rim, going round
+   * with it. `left` is the driver's left, as a way in the world (to tell the two hands apart).
+   * False if it has no steering wheel.
+   */
+  grips(left: THREE.Vector3, toL: THREE.Vector3, toR: THREE.Vector3): boolean {
+    const tiller = this.tiller;
+    if (!tiller) return false;
+    if (!this.rim) {
+      // the rim lies square to the column (the node's own Y), as far out as the wheel reaches, less half the rim's thickness
+      const box = new THREE.Box3();
+      tiller.node.updateWorldMatrix(true, true);
+      const inverse = tiller.node.matrixWorld.clone().invert();
+      tiller.node.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        box.union(mesh.geometry.boundingBox!.clone().applyMatrix4(mesh.matrixWorld.clone().premultiply(inverse)));
+      });
+      const radius = box.isEmpty() ? 0.2 : Math.max(0.1, Math.min(box.max.x - box.min.x, box.max.z - box.min.z) / 2 - 0.012);
+      // twelve o'clock is the way up from the hub as the wheel stands at rest, in its own frame
+      const turn = (tiller.node.parent?.getWorldQuaternion(new THREE.Quaternion()) ?? new THREE.Quaternion()).multiply(tiller.rest);
+      const twelve = new THREE.Vector3(0, 1, 0).applyQuaternion(turn.invert()).setY(0);
+      if (twelve.lengthSq() < 1e-6) twelve.set(1, 0, 0);
+      twelve.normalize();
+      // the hands at ten to two: sixty degrees either side of the top, about the column
+      this.rim = [-1, 1].map((k) =>
+        twelve
+          .clone()
+          .applyAxisAngle(COLUMN, (k * Math.PI) / 3)
+          .multiplyScalar(radius),
+      );
+    }
+    const [a, b] = this.rim.map((p) => tiller.node.localToWorld(p.clone()));
+    const centre = tiller.node.getWorldPosition(new THREE.Vector3());
+    // (the two are told apart by which lies further to the driver's left)
+    const aLeft = a!.clone().sub(centre).dot(left) > b!.clone().sub(centre).dot(left);
+    toL.copy(aLeft ? a! : b!);
+    toR.copy(aLeft ? b! : a!);
+    return true;
+  }
+
+  /** A point given in the driver's seat's own frame, in the world (`to` is changed), and back. */
+  fromSeat(to: THREE.Vector3): THREE.Vector3 {
+    return (this.seat ?? this.root).localToWorld(to);
+  }
+  toSeat(to: THREE.Vector3): THREE.Vector3 {
+    return (this.seat ?? this.root).worldToLocal(to);
+  }
+
   /** Has it somewhere to sit? */
   get drivable(): boolean {
     return Boolean(this.seat);

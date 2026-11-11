@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
+import { type Clouds, driftClouds, installAir } from './air';
 import { buildCape1961, CLEARINGS, COAST, RIVER, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { type FloraSpec, Flora } from './flora';
@@ -171,6 +172,27 @@ const SHARED = /* glsl */ `
     for (int i = 0; i < ${STRIPS.length}; i++) d = min(d, segment(p, uStrips[i]) - uStripWidth[i]);
     return d;
   }`;
+
+/**
+ * How the haze thins with height, metres (air.ts). The Cape's May mornings are mixed up to the
+ * cumulus bases, median 720 m (NOAA ISD, the Skid Strip, 1959 to 1963): the haze is taken to
+ * fall off over about twice that. Estimated.
+ */
+const HAZE_SCALE = 1400;
+
+/**
+ * The cumulus at launch: scattered, no ceiling, at 09:00 EST (NOAA ISD, the Skid Strip); bases at
+ * 720 m, the median for May mornings 1959 to 1963 (the 07:00 deck was at 750 m). The wind aloft is
+ * taken as the surface's, from 090, a little stronger. Their depth, size and cover (scattered: three
+ * to four eighths) are estimated.
+ */
+const CLOUDS: Clouds = {
+  height: 720,
+  depth: 650,
+  cover: 0.36,
+  size: 900,
+  wind: [-7 * COS, 7 * SIN], // toward 270, in the pad's frame
+};
 
 /** The sea's surface, metres above the ground at the complex (GROUND_Y): the land there is about 9.5 ft above NAVD 88 (USGS 3DEP). */
 const SEA = -2.9;
@@ -641,6 +663,8 @@ export function buildCape(
   /** The ground's height at a point in the world (the pad's frame): flat at `groundY` wherever anything is built. */
   groundAt: (x: number, z: number) => number;
 } {
+  // the haze lies in the lowest air, under the cumulus at 720 m, and thins upward (air.ts)
+  installAir({ scale: HAZE_SCALE, base: groundY + SEA, clouds: CLOUDS });
   const land = new Land(renderer, landSpec(), groundY, COMPASS);
   const flora = new Flora(floraSpec(), land);
   flora.group.position.y = groundY;
@@ -660,6 +684,7 @@ export function buildCape(
     floor: land.mesh,
     scenery: [site],
     tick: (dt) => {
+      driftClouds(dt);
       land.tick(dt);
       flora.tick(dt);
     },

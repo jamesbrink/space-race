@@ -14,11 +14,14 @@ import math
 from mathutils import Matrix
 
 import interiors
-from srlib import interior
+import sitelib
+import srlib
+from srlib import FT, interior
 
 from .site import FOOTING, GROUND, P, Parts, box, building, fence, fine, flat_roof, ftp, roof_vent
 
 FLOOR = GROUND + 0.5
+WALL = 0.55  # sitelib.building's walls
 
 
 def shell(parts: Parts, node: str, key: str, rect, eave: float, openings: dict, **kw) -> list:
@@ -106,18 +109,46 @@ def build(parts: Parts) -> None:
     for x in (129.0, 135.3, 141.6):
         roof_vent(grey, x, -106.6, e + 0.7, 1.1)
     grey.tube(P(144.0, -100.5, e + 0.5), P(144.0, -100.5, e + 6.5), 0.35 * 0.3048, 10)
-    if interior():  # the sets, seen through the louvres and the door
-        for x in (127.5, 137.0):
-            box(parts(g, "console"), (x, -112.0, FLOOR), (x + 6.0, -101.0, FLOOR + 5.5))
-    # its fuel tank on cradles outside
+    if interior():  # the sets, seen through the louvres and the door: radiators to the louvred wall (estimated, of the kind)
+        font = srlib.load_font()
+        for x in (131.5, 141.0):
+            interiors.generator_set(parts, g, interiors.at((x, -106.5, FLOOR), 180.0), 11.0, font=font)
+        interiors.panel(
+            parts,
+            g,
+            sitelib.axes_local((124.1 + WALL + 0.01, -101.6, FLOOR + 3.0), (0, 1, 0), (0, 0, 1)),  # on the -X wall, beside the door
+            2.6,
+            3.5,
+            [("meters", 3), ("lamps", "gr"), ("switches", 4), ("label", "SET 1    SET 2    PAD")],
+            title="TRANSFER",
+            font=font,
+            seed=17,
+        )
+    # its fuel tank on cradles outside: dished heads, steel saddles on concrete piers, straps, the fill
+    # and vent on top, a gauge, the line to the building (estimated: the ordinary arrangement)
     tank = parts(g, "trailer/tank", True)
+    head = [(0.0, 0.0), (0.7, 0.04), (1.25, 0.15), (1.65, 0.38), (1.85, 0.65), (1.9, 0.85)]
     tank.lathe(
-        ftp([(0.0, 0.0), (1.4, 0.15), (1.9, 0.8), (1.9, 9.2), (1.4, 9.85), (0.0, 10.0)]),
-        16,
+        ftp(head + [(r_, 10.0 - z) for r_, z in reversed(head)]),
+        40,
         matrix=Matrix.Translation(P(150.5, -112.0, GROUND + 3.2)) @ Matrix.Rotation(math.radians(-90), 4, "X"),
     )
+    conc, metal = parts(g, "concrete/piers"), parts(g, "grey/tankfittings", True)
     for y in (-110.0, -104.0):
-        box(dark, (149.0, y - 0.3, GROUND - 0.5), (152.0, y + 0.3, GROUND + 2.1))
+        box(conc, (149.0, y - 0.6, GROUND - 1.0), (152.0, y + 0.6, GROUND + 0.6))
+        box(dark, (149.3, y - 0.25, GROUND + 0.6), (151.7, y + 0.25, GROUND + 1.6))
+        strap = ftp([(1.93, -0.12), (1.98, -0.12), (1.98, 0.12), (1.93, 0.12), (1.93, -0.12)])
+        metal.lathe(strap, 40, matrix=Matrix.Translation(P(150.5, y, GROUND + 3.2)) @ Matrix.Rotation(math.radians(-90), 4, "X"))
+    top = GROUND + 3.2 + 1.9
+    metal.tube(P(150.5, -109.0, top - 0.2), P(150.5, -109.0, top + 0.7), 0.12 * FT, 10)  # the fill, capped
+    metal.lathe(ftp([(0.0, 0.0), (0.2, 0.0), (0.2, 0.18), (0.0, 0.18)]), 12, matrix=Matrix.Translation(P(150.5, -109.0, top + 0.7)))
+    metal.tube(P(150.5, -106.0, top - 0.2), P(150.5, -106.0, top + 2.4), 0.07 * FT, 8)  # the vent, turned down at its head
+    metal.tube(P(150.5, -106.0, top + 2.4), P(150.5, -106.6, top + 2.4), 0.07 * FT, 8)
+    metal.tube(P(150.5, -106.6, top + 2.4), P(150.5, -106.6, top + 1.9), 0.07 * FT, 8)
+    metal.lathe(ftp([(0.0, 0.0), (0.3, 0.0), (0.3, 0.15), (0.0, 0.15)]), 12, matrix=Matrix.Translation(P(150.5, -103.5, top - 0.1)))  # gauge
+    feed = [(150.5, -104.0, GROUND + 1.6), (150.5, -102.0, GROUND + 1.0), (147.2, -102.0, GROUND + 1.0)]
+    for a, b in zip(feed, feed[1:]):  # the line from the tank's underside to the building's wall
+        metal.tube(P(*a), P(*b), 0.05 * FT, 8)
 
     # ---- the shed west of the track, between the pads: a corrugated roof with one ventilator (F16_017)
     r = (36.9, -270.4, 63.2, -254.6)

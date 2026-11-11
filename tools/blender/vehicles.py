@@ -108,6 +108,9 @@ OTHERS = {
     "insignia": ("paint-insignia-blue", (0.03, 0.09, 0.35), 0.0, 0.5),
     "headliner": ("headliner-cloth", (0.62, 0.6, 0.54), 0.0, 0.95),
     "dial": ("instrument-face", (0.8, 0.79, 0.72), 0.0, 0.5),
+    "canvas": ("canvas-cab-top", (0.1, 0.1, 0.085), 0.0, 0.95),  # a soft-top cab's roof and back curtain
+    "engine": ("engine-enamel", (0.16, 0.18, 0.12), 0.1, 0.6),  # blocks, heads, an air cleaner's can
+    "radiator": ("radiator-core", (0.04, 0.04, 0.04), 0.4, 0.7),
 }
 
 
@@ -341,6 +344,7 @@ class Car:
     bumper_size: tuple[float, float] = (1.5, 2.5)
     bumper_w: tuple[float, float] = (0.0, 0.0)  # half-width of each; 0 for the body's
     cap_r: float = 5.0  # hub cap radius: 5 is a small cap on a painted wheel, 7 and over a full cover
+    hub: str = "chrome"  # what the cap or cover is: a material key
     back: Callable[[Car, Kit], None] | None = None  # what is built behind a flat tail
     duals: bool = False  # two wheels a side on the rear axle
     rear_track: float = 0.0  # between the middles of the rear wheels (or pairs), where it differs from the front
@@ -976,7 +980,7 @@ class Car:
         paint_key = self.wheel or self.paint
         if not trimmed():
             kit("rubber").lathe([(0.0, -hw + 1.2), (R - 1.0, -hw), (R, -hw + 1.5), (R, hw - 1.5), (R - 1.0, hw), (rr, hw - 0.3)], 16, matrix=out)
-            kit("chrome" if self.cap_r >= rr - 1.0 else paint_key).lathe([(rr, hw - 0.3), (0.0, hw + 0.4)], 16, matrix=out)
+            kit(self.hub if self.cap_r >= rr - 1.0 else paint_key).lathe([(rr, hw - 0.3), (0.0, hw + 0.4)], 16, matrix=out)
             return
         segs = 32 if srlib.DETAIL >= 0.75 else 20
         # a tyre in section: bead, a sidewall that swells, a shoulder, a tread with a little crown
@@ -1009,7 +1013,7 @@ class Car:
             kit(paint_key).lathe(
                 [(rr, hw - 0.35), (rr - 0.25, hw - 0.1), (rr - 0.6, hw - 1.3), (cr + 1.2, hw - 1.6), (cr, hw - 0.9)], segs, matrix=out
             )
-            kit("chrome").lathe(
+            kit(self.hub).lathe(
                 [(cr, hw - 0.9), (cr - 0.35, hw - 0.2), (0.62 * cr, hw + 0.25), (0.5 * cr, hw + 0.7), (0.22 * cr, hw + 0.95), (0.0, hw + 1.0)],
                 segs,
                 matrix=out,
@@ -1024,7 +1028,7 @@ class Car:
                 (0.3 * cr, hw + 0.85),
                 (0.0, hw + 0.95),
             ]
-            kit("chrome").lathe(cover, segs, matrix=out)
+            kit(self.hub).lathe(cover, segs, matrix=out)
 
     def rear_axles(self) -> list[float]:
         """X of each axle behind: one, or a tandem's two either side of the origin."""
@@ -1671,3 +1675,4 @@ def ford_f600_tractor(paint: str = "white", **kw) -> Car:
         paint=paint,
     )
     return Car(**{**car, **kw})
+

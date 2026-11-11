@@ -24,6 +24,7 @@ import math
 from mathutils import Matrix, Vector
 
 import interiors
+import sitelib
 import srlib
 from srlib import FT, TAU, interior
 
@@ -482,7 +483,7 @@ def annex(parts: Parts) -> None:
         interiors.lockers(parts, g, interiors.at(S(um - 0.25 - 1.53, -38.0, FLOOR), 0.0), 5, width=1.6)
         interiors.desk(parts, g, interiors.at(S(i0 + 2.55, -33.6, FLOOR), 180.0), phone=False)
         interiors.chair(parts, g, interiors.at(S(i0 + 3.7, -33.4, FLOOR), 185.0))
-        interiors.board(parts, g, axes_local(S(i0 + 0.01, -46.0, FLOOR + 3.6), (0, 1, 0), (0, 0, 1)), 6.0, 3.0, seed=4)
+        interiors.board(parts, g, sitelib.axes_local(S(i0 + 0.01, -46.0, FLOOR + 3.6), (0, 1, 0), (0, 0, 1)), 6.0, 3.0, seed=4)
         interiors.clock(parts, g, axes(S(i0 + 0.02, -38.5, FLOOR + 8.0), (0, 1, 0), (1, 0, 0)))
         # the kitchen: a counter and sink under the back window, a range, a refrigerator, a table
         interiors.counter(parts, g, interiors.at(S(i1 - 2.02, -42.4, FLOOR), 0.0), 10.0, sink=4.0)
@@ -492,7 +493,7 @@ def annex(parts: Parts) -> None:
         interiors.table(parts, g, interiors.at(S(80.0, -48.0, FLOOR), 90.0), 4.0, 3.0)
         for u, v, a in ((78.9, -49.0, 90.0), (81.1, -49.0, 90.0), (78.9, -43.8, 270.0), (81.1, -43.8, 270.0)):
             interiors.chair(parts, g, interiors.at(S(u, v, FLOOR), a))
-        interiors.clock(parts, g, axes(S(um + 0.27, -45.0, FLOOR + 8.0), (0, -1, 0), (1, 0, 0)))
+        interiors.clock(parts, g, axes(S(um + 0.27, -45.0, FLOOR + 8.0), (0, 1, 0), (1, 0, 0)))
 
 
 def paving(parts: Parts) -> None:

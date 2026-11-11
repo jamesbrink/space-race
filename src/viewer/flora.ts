@@ -514,11 +514,15 @@ const PLANT_FRAGMENT = /* glsl */ `
       return mix(2.0 * half_, clamp(d / max(fwidth(s), 1e-4) + 0.5, 0.0, 1.0), sharp);
     }
     if (vShape < 2.5) {
-      // a sprig: a twig up the card with leaves either side, alternately, pointing up
+      // a sprig: a twig up the card with leaves either side, alternately, pointing up. A leaf is never drawn thinner
+      // than a pixel and a half (it swells as it shrinks on screen), so far off it covers what it covers and does not
+      // break up into a speckle or a translucent veil
       vec2 c = vCard;
+      float px = length(fwidth(c));
       float twig = 0.5 + 0.06 * sin(c.y * 4.0);
-      float cover = (1.0 - smoothstep(0.008, 0.016, abs(c.x - twig))) * step(c.y, 0.92);
+      float cover = (1.0 - smoothstep(0.008 + px, 0.016 + px, abs(c.x - twig))) * step(c.y, 0.92);
       float n = uLeaf.x;
+      float swell = max(0.0, 1.5 * px - uLeaf.z * 0.5);
       for (int k = 0; k < 9; k++) {
         if (float(k) >= n) break;
         float t = 0.1 + 0.85 * (float(k) + 0.5) / n;
@@ -527,17 +531,15 @@ const PLANT_FRAGMENT = /* glsl */ `
         vec2 axis = vec2(sin(a), cos(a));
         vec2 centre = vec2(0.5 + 0.06 * sin(t * 4.0), t) + axis * uLeaf.y * 0.5;
         vec2 q = c - centre;
-        float along = dot(q, axis) / (uLeaf.y * 0.5);
-        float across = (q.x * axis.y - q.y * axis.x) / (uLeaf.z * 0.5);
+        float along = dot(q, axis) / (uLeaf.y * 0.5 + swell);
+        float across = (q.x * axis.y - q.y * axis.x) / (uLeaf.z * 0.5 + swell);
         // a leaf: widest a little below its middle, pointed
         float w = sqrt(max(0.0, 1.0 - along * along)) * (1.0 - 0.25 * along);
-        float leaf = step(abs(across), w) * step(abs(along), 1.0);
-        if (leaf > 0.0) tint = 0.8 + 0.4 * fract(float(k) * 0.618 + vPlant.x * 3.1);
+        float leaf = clamp((w - abs(across)) * (uLeaf.z * 0.5 + swell) / max(px, 1e-4) + 0.5, 0.0, 1.0) * step(abs(along), 1.0);
+        if (leaf > 0.5) tint = 0.8 + 0.4 * fract(float(k) * 0.618 + vPlant.x * 3.1);
         cover = max(cover, leaf);
       }
-      // leaves smaller than a pixel or two: the card is a veil of leaf, as dense as the sprig is on average
-      float sharp = 1.0 - smoothstep(0.3, 0.8, length(fwidth(c)) / uLeaf.z);
-      return mix(0.45, cover, sharp);
+      return cover;
     }
     // a blade: narrowing to its tip
     float d = (0.5 - abs(vCard.x - 0.5)) - 0.5 * vCard.y * vCard.y;

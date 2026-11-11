@@ -27,8 +27,17 @@ import * as THREE from 'three';
  * eye-relative one: `absolute()` puts it back. Nothing else needs it.
  */
 
-/** The eye, in the scene's frame, for shaders: add it to `modelMatrix * position` for a position in the scene's frame. */
-export const uOrigin: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3() };
+/**
+ * The eye, in the scene's frame, for shaders: `uOrigin` in GLSL, declared in every material that
+ * includes three's `common` chunk and given to all of them. Add it to `modelMatrix * position`,
+ * or to `cameraPosition`, for a place in the scene's frame. It is a plain object, not a Vector3,
+ * so that three's copying of each material's uniforms shares it rather than copying it.
+ */
+const EYE = { x: 0, y: 0, z: 0 };
+export const uOrigin: THREE.IUniform<typeof EYE> = { value: EYE };
+THREE.ShaderChunk.common = `${THREE.ShaderChunk.common}\nuniform vec3 uOrigin;`;
+for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uOrigin = uOrigin;
+THREE.UniformsLib.fog = { ...THREE.UniformsLib.fog, uOrigin } as typeof THREE.UniformsLib.fog; // for a ShaderMaterial that takes the fog
 
 let drawing = false;
 const eye = new THREE.Vector3();
@@ -70,13 +79,13 @@ export class Origin {
   /** Draw (`render` draws the scene through the camera, in as many passes as it likes) from the eye. */
   draw(render: () => void): void {
     if (!this.enabled) {
-      uOrigin.value.set(0, 0, 0);
+      Object.assign(EYE, { x: 0, y: 0, z: 0 });
       render();
       return;
     }
     const { scene, camera } = this;
     eye.copy(camera.position);
-    uOrigin.value.copy(eye);
+    Object.assign(EYE, { x: eye.x, y: eye.y, z: eye.z });
     this.lights.length = 0;
     this.skies.length = 0;
     scene.traverseVisible((o) => {

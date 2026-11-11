@@ -75,6 +75,12 @@ export interface Moment {
    */
   sit?: number;
   wheel?: number;
+  /**
+   * Sitting, how much further back the trunk lies than an upright sitter's, radians: a tall
+   * figure in a low car slides down and leans back until its head clears the roof. The thighs and
+   * the head are turned back by as much, so the knees stay up and the eyes stay on the road.
+   */
+  recline?: number;
   /** What each hand is carrying, 0 (nothing) to 1 (a case by its handle): that arm hangs straighter and swings a third as much, and the body leans a little away. */
   load?: { L: number; R: number };
 }
@@ -179,22 +185,24 @@ export function pose(m: Moment): Pose {
   const seated = m.sit ?? 0;
   if (seated) {
     const round = 0.3 * (m.wheel ?? 0);
+    const back = m.recline ?? 0;
     const sat = {
       'UpperArm.L': -1.05 - round,
       'UpperArm.R': -1.05 + round,
       'LowerArm.L': -0.75 + round,
       'LowerArm.R': -0.75 - round,
-      'UpperLeg.L': -1.45,
-      'UpperLeg.R': -1.45,
-      'LowerLeg.L': 1.35,
-      'LowerLeg.R': 1.35,
+      'UpperLeg.L': -1.45 + back,
+      'UpperLeg.R': -1.45 + back,
+      'LowerLeg.L': 1.35 - 0.3 * back,
+      'LowerLeg.R': 1.35 - 0.3 * back,
       'Foot.L': 0.1,
       'Foot.R': 0.1,
       'Hand.L': 0,
       'Hand.R': 0,
-      Hips: -0.12,
-      Spine: 0.1,
-      Head: 0.02,
+      Hips: -0.12 - back,
+      // (and a man that tall slumps a little: the back rounds, the chin comes forward)
+      Spine: 0.1 + 0.25 * back,
+      Head: 0.02 + 0.75 * back,
     } satisfies Record<Joint, number>;
     for (const j of JOINTS) out[j] += (sat[j] - out[j]) * seated;
     out.rise *= 1 - seated;
@@ -405,6 +413,8 @@ export class Gait {
   /** Sitting (at a wheel): the pose eases in and out. And how far the wheel is over, -1 to 1. */
   seated = false;
   wheel = 0;
+  /** Sitting: how far back it leans to fit under the roof (see Moment.recline). */
+  recline = 0;
   /** Getting up off the ground: how long it has been at it, and from which side; null when it is not. */
   private up: { t: number; faceDown: boolean } | null = null;
   /** A landing being absorbed: how hard, and how long ago. */
@@ -429,6 +439,7 @@ export class Gait {
       fall: this.fall,
       sit: this.sat,
       wheel: this.wheel,
+      recline: this.recline,
       crouch: this.hard * give(this.since),
       breath: this.breath,
       load: this.load,
@@ -585,4 +596,77 @@ export class Gait {
       if (joint === 'Hips') node.position.set(x, y, z);
     }
   }
+}
+
+const s1 = new THREE.Vector3();
+const s2 = new THREE.Vector3();
+const s3 = new THREE.Vector3();
+const s4 = new THREE.Vector3();
+const r1 = new THREE.Quaternion();
+const r2 = new THREE.Quaternion();
+
+/** Turn a node so that the line from `from` to `at` (world points, `at` carried by the node) comes to point at `to`, in the world. */
+function aim(node: THREE.Object3D, from: THREE.Vector3, at: THREE.Vector3, to: THREE.Vector3): void {
+  const now = s3.subVectors(at, from);
+  const want = s4.subVectors(to, from);
+  if (now.lengthSq() < 1e-10 || want.lengthSq() < 1e-10) return;
+  const turn = r1.setFromUnitVectors(now.normalize(), want.normalize());
+  const world = node.getWorldQuaternion(r2).premultiply(turn);
+  const parent = node.parent!.getWorldQuaternion(new THREE.Quaternion()).invert();
+  node.quaternion.copy(parent.multiply(world));
+  node.updateMatrixWorld(true);
+}
+
+/**
+ * Put a posed figure's hand on something: the arm's two bones (`UpperArm`, `LowerArm`) are turned
+ * so that the grip (`Grip.L`/`Grip.R` under the hand, else the hand itself) is at `target`, in the
+ * world, bending the elbow the way the pose already had it. If the target is out of reach the arm
+ * points at it as far as it goes. False if the figure has not the joints.
+ */
+export function reach(root: THREE.Object3D, side: 'L' | 'R', target: THREE.Vector3): boolean {
+  const named = new Map<string, THREE.Object3D>();
+  root.traverse((o) => {
+    if (o.name) named.set(jointKey(o.name), o);
+  });
+  const upper = named.get(jointKey(`UpperArm.${side}`));
+  const lower = named.get(jointKey(`LowerArm.${side}`));
+  const hand = named.get(jointKey(`Grip.${side}`)) ?? named.get(jointKey(`Hand.${side}`));
+  if (!upper?.parent || !lower?.parent || !hand) return false;
+  root.updateWorldMatrix(true, true);
+  const s = upper.getWorldPosition(new THREE.Vector3());
+  const e = lower.getWorldPosition(new THREE.Vector3());
+  const h = hand.getWorldPosition(new THREE.Vector3());
+  const a = s.distanceTo(e);
+  const b = e.distanceTo(h);
+  const way = s1.subVectors(target, s);
+  const d = THREE.MathUtils.clamp(way.length(), Math.abs(a - b) + 1e-3, a + b - 1e-3);
+  way.normalize();
+  // the elbow goes where the two bones meet on the way to the target, bent the way it is bent now
+  const along = (a * a - b * b + d * d) / (2 * d);
+  const out = s2.subVectors(e, s);
+  out.addScaledVector(way, -out.dot(way));
+  if (out.lengthSq() < 1e-8) out.set(0, -1, 0).addScaledVector(way, -way.y);
+  out.normalize();
+  const elbow = new THREE.Vector3()
+    .copy(s)
+    .addScaledVector(way, along)
+    .addScaledVector(out, Math.sqrt(Math.max(0, a * a - along * along)));
+  aim(upper, s, e, elbow);
+  aim(lower, elbow, hand.getWorldPosition(new THREE.Vector3()), target);
+  return true;
+}
+
+/**
+ * How a figure sits in a seat under a roof: `tall` is the top of its head (helmet and all) over
+ * its hips, standing, and `roof` the first thing over the seat's hip point, metres. If the head
+ * would not clear it by a few centimetres, the figure sinks into the cushion (`drop`, up to 6 cm)
+ * and then leans back (`recline`, radians, up to about 30 degrees) until it does. A man of six
+ * foot two in a pressure suit does not sit up straight in a 1960 compact.
+ */
+export function seatFit(tall: number, roof: number): { drop: number; recline: number } {
+  const room = roof - 0.04;
+  const need = tall - room;
+  if (!(need > 0)) return { drop: 0, recline: 0 };
+  const drop = Math.min(0.06, need);
+  return { drop, recline: Math.min(0.52, Math.acos(Math.min(1, (room + drop) / tall))) };
 }

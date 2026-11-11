@@ -26,7 +26,7 @@ import { Vehicle } from './drive';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { Carry } from './carry';
-import { pose } from './gait';
+import { jointKey, pose, reach, seatFit } from './gait';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|concrete|suit|galvanised)/;
@@ -2005,12 +2005,45 @@ export class Stage {
     }
   }
 
+  /** Sitting: how far he has sunk into the cushion (seatFit), where his eyes are in the seat's frame, and in his head's. */
+  private sunk = 0;
+  private seatEyes: THREE.Vector3 | null = null;
+  private headEye: THREE.Vector3 | null = null;
+
+  /** One of the fifteen joints of a figure's level of detail, by name. */
+  private jointOf(root: THREE.Object3D, joint: string): THREE.Object3D | undefined {
+    let found: THREE.Object3D | undefined;
+    const key = jointKey(joint);
+    root.traverse((o) => {
+      if (!found && jointKey(o.name) === key) found = o;
+    });
+    return found;
+  }
+
   /** Sit the walker at a vehicle's wheel: the keys are its pedals and wheel from now on. */
   private takeWheel(vehicle: Vehicle): void {
     const root = vehicle.root;
     vehicle.read();
     this.wheel = vehicle;
     const walk = this.walk;
+    // How he fits: the first thing over the seat's hip point (before the vehicle is left out of the
+    // solids) against the top of his head over his hips. A tall man sinks and leans back (seatFit).
+    const shown = this.staged[this.walked]?.shown ?? this.scene;
+    const hip = vehicle.hips(new THREE.Vector3());
+    walk.solids.gather(hip, 1, 0.5, 2.5);
+    const roof = walk.solids.cast(new THREE.Vector3(hip.x, hip.y + 0.15, hip.z), UP, 2.5);
+    const fit = seatFit(walk.body.height - walk.gait.hipHeight(shown), roof ? roof.point.y - hip.y : Number.POSITIVE_INFINITY);
+    walk.gait.recline = fit.recline;
+    this.sunk = fit.drop;
+    this.seatEyes = null;
+    // where the eyes are in the head: measured off the figure as it stands at the door
+    const head = this.jointOf(shown, 'Head');
+    if (head) {
+      head.updateWorldMatrix(true, false);
+      const feet = walk.body.position;
+      this.headEye = head.worldToLocal(head.getWorldPosition(new THREE.Vector3()).setY(feet.y + walk.eye));
+      this.headEye.z += 0.09; // (in front of the neck's pivot)
+    } else this.headEye = null;
     walk.solids.without = root;
     const ground = () => this.setting.floor?.position.y ?? null;
     const road = {
@@ -2034,8 +2067,11 @@ export class Stage {
           this.renderer.shadowMap.needsUpdate = true;
         }
       },
-      // a sitter's eyes are as far over their hips as the figure's own are, standing
-      eyes: (to) => driven.hips(to).setY(to.y + walk.eye - walk.gait.hipHeight(this.staged[this.walked]?.shown ?? this.scene)),
+      // a sitter's eyes are where the posed head has them, in the seat's frame (so they go with it at once); until it has been posed, as far over the hips as standing
+      eyes: (to) =>
+        this.seatEyes
+          ? driven.fromSeat(to.copy(this.seatEyes))
+          : driven.hips(to).setY(to.y + walk.eye - walk.gait.hipHeight(this.staged[this.walked]?.shown ?? this.scene)),
       facing: () => driven.motion.heading,
       chase: () => driven.chase(this.camera.position),
     });
@@ -2268,17 +2304,30 @@ export class Stage {
     // Through its own eyes the figure is still there for the light: it is drawn into the shadow
     // map and into nothing else, so you see your own shadow walk in front of you.
     const unseen = !walk.outside;
-    const turn = this.facing(at);
-    // (seated, its feet are wherever its hips on the seat put them; otherwise they are the walker's)
-    const where = this.wheel ? this.wheel.hips(this.below).setY(this.below.y - walk.gait.hipHeight(figure.shown)) : walk.body.position;
-    const placed = !group.visible || this.unseen !== unseen || group.rotation.y !== turn || !group.position.equals(where);
+    const was = this.placedAs.copy(group.quaternion);
+    const from = this.below.copy(group.position);
+    if (this.wheel) {
+      // Seated, it is turned as the seat is (the seat has a figure's axes: a tilted seat tilts him)
+      // and its hips are on the seat's hip point, sunk into the cushion as far as he must be to fit.
+      const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
+      const turn = this.wheel.seatTurn(this.seatQ).multiply(spin.setFromAxisAngle(UP, -Math.atan2(fx, fz)));
+      group.parent?.updateWorldMatrix(true, false);
+      const parent = group.parent?.getWorldQuaternion(new THREE.Quaternion()) ?? new THREE.Quaternion();
+      group.quaternion.copy(parent.invert().multiply(turn));
+      const hips = this.wheel.hips(new THREE.Vector3()).addScaledVector(UP, -this.sunk);
+      hips.sub(new THREE.Vector3(0, walk.gait.hipHeight(figure.shown), 0).applyQuaternion(turn));
+      group.position.copy(group.parent ? group.parent.worldToLocal(hips) : hips);
+    } else {
+      group.rotation.set(0, this.facing(at), 0);
+      group.position.copy(walk.body.position);
+    }
+    const placed = !group.visible || this.unseen !== unseen || !group.quaternion.equals(was) || !group.position.equals(from);
     group.visible = true;
     if (this.unseen !== unseen) this.shadowOnly(group, (this.unseen = unseen));
-    group.position.copy(where);
-    group.rotation.y = turn;
     // getting up, it eases out of however it was lying and into the first of the get-up over the first half second
     const rising = walk.gait.rising;
     walk.gait.apply(figure.shown, rising !== null && rising < 0.5 ? 1 - Math.exp(-this.walkDt * 10) : 1);
+    if (this.wheel) this.atTheWheel(figure.shown, group);
     if (walk.down === 'rising' && walk.gait.rising === null) {
       walk.stand(group.position); // on its feet: the legs are the walker's again
       for (const level of group.children) for (const carry of this.carriesOf(level, at)) carry.pickUp(); // and what it dropped is in its hand again
@@ -2288,6 +2337,24 @@ export class Stage {
     // nobody's shadow is redrawn for it.
     if (placed || walk.stir === 2) this.renderer.shadowMap.needsUpdate = true; // its shadow walks with it
     if (placed || walk.stir === 2 || (walk.stir === 1 && !unseen)) this.dirty = true;
+  }
+
+  /**
+   * Seated at a wheel and posed: the hands are put on its rim at ten to two (they go round with
+   * it), and where the eyes are is taken off the posed head, in the seat's frame, for the view.
+   */
+  private atTheWheel(root: THREE.Object3D, group: THREE.Object3D): void {
+    const wheel = this.wheel!;
+    group.updateMatrixWorld(true);
+    const left = new THREE.Vector3(1, 0, 0).transformDirection(group.matrixWorld);
+    const toL = new THREE.Vector3();
+    const toR = new THREE.Vector3();
+    if (wheel.grips(left, toL, toR)) {
+      reach(root, 'L', toL);
+      reach(root, 'R', toR);
+    }
+    const head = this.headEye && this.jointOf(root, 'Head');
+    if (head) this.seatEyes = wheel.toSeat(head.localToWorld(this.headEye!.clone()));
   }
 
   /** What is in the figure's hands hangs plumb and swings a little behind the stride; a hose hangs from it. */
@@ -2387,9 +2454,23 @@ export class Stage {
     return false;
   }
 
+  private readonly sweep = new THREE.Vector3();
+  private readonly seatQ = new THREE.Quaternion();
+  private readonly placedAs = new THREE.Quaternion();
   /** The world as something falling meets it (ragdoll.ts: Collide): the solids round the walker, and under everything the open ground, which is a level and not a mesh. */
-  private readonly solid: Collide = (point, radius) => {
-    const out = this.walk.solids.out(point, radius);
+  private readonly solid: Collide = (point, radius, from) => {
+    let swept: THREE.Vector3 | null = null;
+    // gone right through a surface since `from`: back on the side it came from, touching it
+    if (from) {
+      const way = this.sweep.subVectors(point, from);
+      const far = way.length();
+      const hit = far > radius * 0.5 ? this.walk.solids.cast(from, way.divideScalar(far), far + radius) : null;
+      if (hit && hit.distance < far + radius) {
+        point.copy(hit.point).addScaledVector(hit.normal, radius);
+        swept = hit.normal;
+      }
+    }
+    const out = this.walk.solids.out(point, radius) ?? swept;
     const ground = this.setting.floor?.position.y ?? null;
     if (ground === null || point.y >= ground + radius) return out;
     point.y = ground + radius;

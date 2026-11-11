@@ -19,9 +19,11 @@ import math
 
 from mathutils import Vector
 
+import interiors
+import sitelib
 import srlib
 import vehicles as cars
-from srlib import FT
+from srlib import FT, interior
 
 from .site import (
     P,
@@ -31,6 +33,7 @@ from .site import (
     box,
     ear_clip,
     fine,
+    ftp,
     lattice,
     lettering,
     obox,
@@ -64,42 +67,47 @@ def build(parts: Parts) -> None:
     x0, y0 = -30.0, -26.0
     box(white, (x0 - 4.0, y0 - 11.0, 1.6), (x0 + 4.0, y0 + 11.0, 8.0))
     box(dark, (x0 - 3.2, y0 - 10.0, 1.0), (x0 + 3.2, y0 + 10.0, 1.62))
+    head = [(2.75 * math.sin(math.radians(t)), 2.5 * (1.0 - math.cos(math.radians(t)))) for t in range(0, 91, 9)]  # a 2:1 dished head
     tank.lathe(
-        [
-            (0, 0),
-            (1.6 * FT, 0.3 * FT),
-            (2.6 * FT, 1.3 * FT),
-            (2.75 * FT, 2.5 * FT),
-            (2.75 * FT, 16.5 * FT),
-            (2.6 * FT, 17.7 * FT),
-            (1.6 * FT, 18.7 * FT),
-            (0, 19.0 * FT),
-        ],
-        24,
+        ftp(head + [(r_, 19.0 - z) for r_, z in reversed(head)]),
+        48,
         matrix=axes((x0, y0 - 9.5, 10.85), (1, 0, 0), (0, 1, 0)),
     )
-    for dy in (-6.0, 6.0):  # saddles
-        box(white, (x0 - 2.2, y0 + dy - 0.4, 8.0), (x0 + 2.2, y0 + dy + 0.4, 9.1))
+    for dy in (-6.0, 6.0):  # saddles, and a strap over the tank at each
+        box(white, (x0 - 2.2, y0 + dy - 0.4, 8.0), (x0 + 2.2, y0 + dy + 0.4, 8.85))
+        strap = ftp([(2.78, -0.2), (2.84, -0.2), (2.84, 0.2), (2.78, 0.2), (2.78, -0.2)])
+        tank.lathe(strap, 48, matrix=axes((x0, y0 + dy, 10.85), (1, 0, 0), (0, 1, 0)))
     for side in (-1, 1):
         for dy in (-6.5, -3.5):
-            dark.tube(P(x0 + side * 3.3, y0 + dy, 1.4), P(x0 + side * 3.95, y0 + dy, 1.4), 1.4 * FT, 16)
+            trailer_wheel(parts, "GroundEquipment", (x0 + side * 3.625, y0 + dy, 1.4), side)
     box(dark, (x0 - 0.5, y0 + 11.0, 0.9), (x0 + 0.5, y0 + 15.0, 1.3))  # drawbar
     if fine():
         for k in range(3):  # louvres and a door on the enclosure
             box(black, (x0 - 4.05, y0 - 8.0 + k * 3.0, 4.0), (x0 - 3.9, y0 - 6.0 + k * 3.0, 6.5))
         box(black, (x0 + 3.9, y0 + 2.0, 1.8), (x0 + 4.05, y0 + 5.0, 7.0))
+    # the tank's fittings: a vent stack with its cap, relief valves, a manway; the control end and the hose end
+    metal = parts("GroundEquipment", "grey/fittings", True)
+    metal.tube(P(x0, y0 - 7.5, 13.4), P(x0, y0 - 7.5, 17.5), 0.12 * FT, 10)
+    metal.lathe(ftp([(0.0, 0.0), (0.4, 0.0), (0.4, 0.25), (0.0, 0.4)]), 12, matrix=axes((x0, y0 - 7.5, 17.6), (1, 0, 0), (0, 0, 1)))
+    for dy in (-3.0, -2.2):
+        metal.tube(P(x0 + 0.6, y0 + dy, 13.3), P(x0 + 0.6, y0 + dy, 14.3), 0.1 * FT, 8)
+    metal.lathe(ftp([(0.0, 0.0), (0.9, 0.0), (0.9, 0.25), (0.0, 0.25)]), 20, matrix=axes((x0, y0 + 2.0, 13.5), (1, 0, 0), (0, 0, 1)))
+    end_fittings(parts, (x0, y0 - 11.0), -1, 8.0, "LOX TOPPING", seed=21)
+    hose_end(parts, (x0, y0 + 11.0), 1, ("OXYGEN", "NO SMOKING"))
 
     # a second, smaller enclosure: LN2 or the peroxide unit (estimated)
     x1, y1 = -24.0, 22.0
     box(white, (x1 - 4.0, y1 - 5.5, 1.6), (x1 + 4.0, y1 + 5.5, 7.5))
     box(dark, (x1 - 3.2, y1 - 4.5, 1.0), (x1 + 3.2, y1 + 4.5, 1.62))
     for side in (-1, 1):
-        dark.tube(P(x1 + side * 3.3, y1 - 2.0, 1.4), P(x1 + side * 3.95, y1 - 2.0, 1.4), 1.4 * FT, 16)
+        trailer_wheel(parts, "GroundEquipment", (x1 + side * 3.625, y1 - 2.0, 1.4), side)
     tank.lathe(
-        [(0, 0), (1.3 * FT, 0), (1.3 * FT, 4.0 * FT), (0.9 * FT, 4.6 * FT), (0, 4.8 * FT)],
-        20,
+        ftp([(0, 0), (1.3, 0), (1.3, 4.0), (1.15, 4.45), (0.8, 4.7), (0, 4.8)]),
+        40,
         matrix=axes((x1 + 1.5, y1 + 2.0, 7.5), (1, 0, 0), (0, 0, 1)),
     )
+    end_fittings(parts, (x1, y1 + 5.5), 1, 7.5, "LIQUID NITROGEN", seed=33)
+    hose_end(parts, (x1, y1 - 5.5), -1, ("NITROGEN",))
 
     # the low box painted in chevrons, 15 to 20 ft from the launcher
     sx, sy = -20.0, 8.0  # clear of the service structure's base
@@ -158,6 +166,90 @@ def build(parts: Parts) -> None:
 
     furniture(parts)
     lights(parts)
+
+
+def trailer_wheel(parts: Parts, node: str, centre, side: int) -> None:
+    """A trailer's road wheel standing still: a tyre on a pressed-steel disc, its outer face toward `side` (+1: +X)."""
+    m = axes(centre, (0, 1, 0), (side, 0, 0))
+    tyre = [(0.85, -0.3), (1.15, -0.33), (1.32, -0.3), (1.4, -0.18), (1.4, 0.18), (1.32, 0.3), (1.15, 0.33), (0.85, 0.3)]
+    parts(node, "tyre", True).lathe(ftp(tyre), 28, matrix=m)
+    rim = [(0.0, -0.28), (0.86, -0.28), (0.86, 0.2), (0.55, 0.22), (0.3, 0.24), (0.27, 0.34), (0.0, 0.34)]
+    parts(node, "grey/wheels", True).lathe(ftp(rim), 28, matrix=m)
+
+
+def _wall(cx: float, yw: float, d: int):
+    """A point on an end wall at y = yw whose outside faces d (+1: +Y): `a` across it (to the right of someone facing it), `out` from it."""
+    return lambda a, out, z: (cx - d * a, yw + d * out, z)
+
+
+def end_fittings(parts: Parts, at, d: int, top: float, title: str, *, seed: int = 1) -> None:
+    """The working end of a cryogenic trailer's enclosure (estimated: the kind, not this one): a cabinet with its
+    gauges and switches, two lines down the end with a valve and handwheel each, a gauge, and the hose coupling
+    at the foot. `at` is (x, y) of the end wall's middle, `d` the way it faces (+1: +Y), `top` the enclosure's top."""
+    g = "GroundEquipment"
+    W = _wall(at[0], at[1], d)
+    right = (-d, 0, 0)
+    case, metal = parts(g, "trailer/cabinets"), parts(g, "grey/fittings", True)
+    box(case, *sorted_box(W(-3.4, -0.05, 3.0), W(-0.7, 0.55, 6.7)))
+    interiors.panel(
+        parts,
+        g,
+        sitelib.axes_local(W(-3.3, 0.55, 3.1), right, (0, 0, 1)),
+        2.5,
+        3.45,
+        [("meters", 3), ("lamps", "gar"), ("switches", 4), ("label", "PRESS  LEVEL  FLOW")],
+        title=title,
+        font=srlib.load_font(),
+        seed=seed,
+    )
+    for a in (1.0, 2.4):
+        metal.tube(P(*W(a, 0.45, top - 0.4)), P(*W(a, 0.45, 2.2)), 0.12 * FT, 10)
+        metal.tube(P(*W(a, -0.05, top - 0.4)), P(*W(a, 0.57, top - 0.4)), 0.12 * FT, 10)
+        box(metal, *sorted_box(W(a - 0.25, 0.2, 4.3), W(a + 0.25, 0.7, 4.9)))  # the valve
+        if fine():
+            metal.tube(P(*W(a, 0.7, 4.6)), P(*W(a, 1.0, 4.6)), 0.04 * FT, 6)
+            wheel = axes(W(a, 1.0, 4.6), (1, 0, 0), (0, d, 0))
+            metal.lathe(ftp([(0.36, -0.04), (0.45, -0.04), (0.45, 0.04), (0.36, 0.04), (0.36, -0.04)]), 16, matrix=wheel)
+            for k in range(3):
+                q = math.tau * k / 3
+                beam(metal, W(a, 1.0, 4.6), W(a + 0.38 * math.cos(q), 1.0, 4.6 + 0.38 * math.sin(q)), 0.05)
+            gauge = axes(W(a, 0.55, 6.2), (1, 0, 0), (0, d, 0))  # a pressure gauge on the line
+            metal.lathe(ftp([(0.0, 0.0), (0.22, 0.0), (0.22, 0.17), (0.0, 0.17)]), 14, matrix=gauge)
+            parts(g, "sign/dials", True).lathe(ftp([(0.0, 0.17), (0.18, 0.17), (0.18, 0.185), (0.0, 0.185)]), 14, matrix=gauge)
+        for z in (3.0, 6.9):  # brackets to the wall
+            box(metal, *sorted_box(W(a - 0.06, -0.05, z - 0.1), W(a + 0.06, 0.45, z + 0.1)))
+    metal.tube(P(*W(1.7, 0.45, 2.2)), P(*W(1.7, 1.1, 2.2)), 0.15 * FT, 10)  # the coupling at the foot, capped
+    box(metal, *sorted_box(W(0.9, 0.3, 2.05), W(2.5, 0.6, 2.35)))
+    cap = axes(W(1.7, 1.1, 2.2), (1, 0, 0), (0, d, 0))
+    parts(g, "black/caps", True).lathe(ftp([(0.0, 0.0), (0.2, 0.0), (0.2, 0.25), (0.0, 0.25)]), 12, matrix=cap)
+
+
+def hose_end(parts: Parts, at, d: int, words) -> None:
+    """The other end of a trailer's enclosure: the transfer hose wound on its reel, and the placards over it (estimated)."""
+    g = "GroundEquipment"
+    W = _wall(at[0], at[1], d)
+    metal, hose = parts(g, "grey/fittings", True), parts(g, "cable/hose", True)
+    reel = axes(W(-1.25, 1.0, 4.4), (0, d, 0), (-d, 0, 0))  # its axle across the end
+    metal.lathe(ftp([(0.0, 0.1), (0.5, 0.1), (0.5, 2.4), (0.0, 2.4)]), 20, matrix=reel)
+    hose.lathe(ftp([(0.5, 0.15), (0.82, 0.15), (0.82, 2.35), (0.5, 2.35)]), 24, matrix=reel)
+    for z in (0.05, 2.45):  # its flanges
+        metal.lathe(ftp([(0.0, z - 0.05), (1.0, z - 0.05), (1.0, z + 0.05), (0.0, z + 0.05)]), 24, matrix=reel)
+    for a in (-1.4, 1.4):  # the reel's brackets
+        box(metal, *sorted_box(W(a - 0.06, -0.05, 3.2), W(a + 0.06, 1.05, 4.5)))
+    font = srlib.load_font()
+    sign, ink = parts(g, "sign/placards"), parts(g, "black/lettering")
+    for k, word in enumerate(words):
+        z = 6.3 + k * 0.75
+        box(sign, *sorted_box(W(-1.6, -0.03, z), W(1.6, 0.05, z + 0.6)))
+        lettering(ink, word, 0.4, W(0.0, 0.065, z + 0.1), right_of(d), (0, 0, 1), font)
+
+
+def right_of(d: int) -> tuple:
+    return (-d, 0, 0)
+
+
+def sorted_box(a, b) -> tuple:
+    return tuple(min(p, q) for p, q in zip(a, b)), tuple(max(p, q) for p, q in zip(a, b))
 
 
 def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
@@ -322,9 +414,40 @@ def furniture(parts: Parts) -> None:
     wall_door(parts, f"{g}_TrailerDoor", tr, sides[1], 9.0, 12.0, tz, tz + 6.7, mat="grey", sign="SP-1")
     box(parts(tr, "plank/vanfloor"), (tx0 + 0.1, ty0 + 0.1, 3.4), (tx1 - 0.1, ty1 - 0.1, tz))
     box(parts(tr, "trailer/vanroof"), (tx0 - 0.1, ty0 - 0.1, troof), (tx1 + 0.1, ty1 + 0.1, troof + 0.25))
-    fit = parts(tr, "console")
-    box(fit, (tx0 + 0.2, ty0 + 14.0, tz), (tx0 + 2.4, ty1 - 0.4, tz + 3.0))  # a bench of test sets along the far wall (invented)
-    box(fit, (tx0 + 0.2, ty0 + 0.4, tz), (tx0 + 2.2, ty0 + 6.0, tz + 6.4))
+    # Inside, what a pad test trailer of the period held, of its kind and from no photograph: racks of
+    # test equipment along the far wall and beyond the door, a bench of portable test sets, a desk on
+    # the raised floor at the front, stools, a clock, a cable tray, its lights. Every legend is invented.
+    if interior():
+        racks = [
+            ("TELEMETRY", [("meters", 3), ("lamps", "gggr")], 2.0),
+            ("", [("recorder",)], 2.0),
+            ("CAPSULE POWER", [("meters", 4), ("switches", 6)], 2.0),
+            ("", [("lamps", "ggaarr"), ("buttons", 4)], 1.5),
+            ("COMMUNICATIONS", [("meters", 2), ("switches", 4), ("label", "UHF   HF   INTERCOM")], 2.0),
+            ("", [("screen",)], 2.0),
+            ("RECORDERS", [("recorder",)], 2.0),
+            ("", [("recorder",)], 2.0),
+        ]
+        for k, y in enumerate((82.0, 84.0, 86.0, 88.0)):
+            interiors.rack(parts, tr, interiors.at((tx0 + 2.25, y, tz), 180.0), racks[2 * k : 2 * k + 2] + [("", [], 1.0)], font=font, seed=k + 40)
+        for k, y in enumerate((83.0, 85.0)):
+            panels = [("TIMING", [("label", "T - 00 : 55 : 00"), ("lamps", "gar")], 1.5), ("", [("meters", 2), ("switches", 3)], 1.5), ("", [], 2.0)]
+            interiors.rack(parts, tr, interiors.at((tx1 - 2.22, y, tz), 0.0), panels if k == 0 else racks[2:4], font=font, seed=k + 50)
+        sets = [
+            ("OSCILLOSCOPE", [("screen",), ("switches", 3)], 1.6),
+            ("POWER SUPPLY", [("meters", 2), ("switches", 2)], 1.4),
+            ("SIGNAL GEN", [("meters", 1), ("buttons", 3)], 1.4),
+            ("METER", [("meters", 1), ("switches", 2)], 1.1),
+        ]
+        interiors.workbench(parts, tr, interiors.at((tx0 + 2.52, 93.0, tz), 180.0), 7.2, sets, font=font, seed=7)
+        interiors.cabinet(parts, tr, interiors.at((tx1 - 2.52, 94.5, tz), 0.0))
+        interiors.desk(parts, tr, interiors.at(((tx0 + tx1) / 2, ty0 + 3.4, tz + 0.55), 270.0), width=4.0)
+        for x, y, z in ((34.3, 86.5, tz), (34.3, 92.0, tz), (34.0, ty0 + 4.6, tz + 0.55)):
+            interiors.stool(parts, tr, interiors.at((x, y, z), 0.0))
+        interiors.clock(parts, tr, axes(((tx0 + tx1) / 2, ty1 - 0.22, tz + 7.2), (1, 0, 0), (0, -1, 0)))
+        interiors.tray(parts, tr, (tx0 + 1.2, 80.5, troof - 0.9), (tx0 + 1.2, ty1 - 0.6, troof - 0.9))
+    interiors.ceiling_light(parts, tr, "Trailer", ((tx0 + tx1) / 2, 87.0, troof - 0.02), along=(0, 1), intensity=0.7, reach=5.0)
+    interiors.ceiling_light(parts, tr, None, ((tx0 + tx1) / 2, 75.0, troof - 0.02), along=(0, 1))
     frame = parts(tr, "chassis")
     box(frame, (tx0 + 1.2, ty0 + 8.0, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
     # Coupled to it, a tractor unit to take it away when the pad is cleared: a late-1950s medium
@@ -332,7 +455,7 @@ def furniture(parts: Parts) -> None:
     # shows what moved this trailer. Its fifth wheel stands 9 cm higher than this trailer's floor, so
     # the floor steps up over it at the front, as a semi-trailer's does. The tractor is built facing
     # its own +X under a node turned to face the way the trailer does (-Y), so that it can be driven.
-    box(parts(tr, "plank/vanstep"), (tx0 + 1.5, ty0 + 0.25, tz - 0.05), (tx1 - 1.5, ty0 + 6.2, tz + 0.55))
+    box(parts(tr, "plank/vanstep"), (tx0 + 0.25, ty0 + 0.25, tz - 0.05), (tx1 - 0.25, ty0 + 6.2, tz + 0.55))  # wall to wall, over the tractor's wings
     bay = parts.node("GroundEquipment_TractorBay", g, ((tx0 + tx1) / 2, ty0 + 3.0, 0.0))
     bay.rotation_euler = (0.0, 0.0, -math.pi / 2)
     tractor = cars.ford_f600_tractor("white")

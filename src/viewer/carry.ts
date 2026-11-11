@@ -247,7 +247,7 @@ export class Tossed {
           b.sub(d);
         }
         this.points.forEach((p, i) => {
-          const out = collide(p, 0.01);
+          const out = collide(p, 0.01, pass === 0 ? this.before[i] : undefined);
           if (!out) return;
           touching[i] = true;
           const was = this.before[i]!;

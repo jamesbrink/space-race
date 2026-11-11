@@ -111,8 +111,13 @@ const BENDS: readonly { a: Point; b: Point; c: Point; side: 1 | -1; most: number
 const RADIUS: Partial<Record<Point, number>> = { Hips: 0.14, Spine: 0.15, Head: 0.1, Crown: 0.12 };
 const SMALL = 0.06;
 
-/** Where a point of this size may not be: given the point, it is moved out of the world and the way out (a unit vector) is returned, or null if it was clear. */
-export type Collide = (point: THREE.Vector3, radius: number) => THREE.Vector3 | null;
+/**
+ * Where a point of this size may not be: given the point, it is moved out of the world and the
+ * way out (a unit vector) is returned, or null if it was clear. Given where it was, `from`, a
+ * point that has gone right through a surface since (a floor's one face, at the speed of a long
+ * fall) is put back on the side it came from.
+ */
+export type Collide = (point: THREE.Vector3, radius: number, from?: THREE.Vector3) => THREE.Vector3 | null;
 
 const GRAVITY = 9.81;
 const t1 = new THREE.Vector3();
@@ -206,7 +211,8 @@ export class Limp {
       // the world, last in each pass: whatever else is asked of a point, it is not inside anything
       if (pass % 2 === 1 || pass === passes - 1)
         this.points.forEach((p, i) => {
-          const out = collide(p, RADIUS[POINTS[i]!] ?? SMALL);
+          // (the first time in a tick, from where it started the tick: nothing falls through a floor between frames)
+          const out = collide(p, RADIUS[POINTS[i]!] ?? SMALL, pass === 1 ? this.before[i] : undefined);
           if (pass === passes - 1) this.touching[i] = out !== null;
           if (!out) return;
           // it does not bounce: what speed it had into the surface is gone

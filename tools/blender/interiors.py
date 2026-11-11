@@ -565,7 +565,7 @@ def workbench(parts: Parts, node: str, m: Matrix, length: float, sets=(), *, fon
     d, h = 2.3 * f, 3.0 * f
     steel, top = parts(node, "console"), parts(node, "black/shelf")
     _box(top, m, (-length / 2, 0.0, h - 0.12 * f), (length / 2, d, h))
-    _box(steel, m, (-length / 2 + 0.1 * f, 0.15 * f, 0.5 * f), (length / 2 - 0.1 * f, d - 0.05 * f, 0.6 * f))
+    _box(steel, m, (-length / 2 + 0.15 * f, 0.18 * f, 0.5 * f), (length / 2 - 0.15 * f, d - 0.05 * f, 0.6 * f))  # the shelf, inside the legs
     for x in (-length / 2 + 0.1 * f, length / 2 - 0.2 * f):
         for y in (0.15 * f, d - 0.15 * f):
             _box(steel, m, (x, y - 0.1 * f, 0.0), (x + 0.1 * f, y, h - 0.12 * f))
