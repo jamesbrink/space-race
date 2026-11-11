@@ -406,7 +406,9 @@ export class Stage {
     this.outline.hiddenEdgeColor.set(0x9a7434); // dimmer than the visible edge, but still an outline
     this.composer.addPass(this.outline);
     this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.14, 0.6, 2.4));
-    this.composer.addPass(new OutputPass());
+    const output = new OutputPass();
+    this.clouds.adopt(output); // (the clouds are laid over the frame as it goes to the screen)
+    this.composer.addPass(output);
     // A multisampled target resolves its depth after every draw into it by default, and every pass after the
     // scene's draws into one: a costly resolve of depth nothing has changed. Only the scene's own draw writes
     // the depth the ink and the clouds read, so only it resolves.

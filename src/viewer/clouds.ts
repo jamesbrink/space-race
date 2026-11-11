@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 import { type Clouds, cloudMiddle, cloudNoiseGlsl, cloudRise, cloudUniform, hazeAboveUniform, installedAir } from './air';
 import { fieldAs, hash2 } from './field';
@@ -9,10 +10,11 @@ import { uOrigin } from './origin';
  *
  * A cloud stands where the field's noise is over its cut (`cloudMiddle`, which makes the record's
  * cover), on a flat base at the layer's height, and rises the higher the further the noise is over
- * it, to the layer's full depth in the heart of the biggest: so each is a domed heap, wider at the
- * foot than the top. Its outline is eaten into by billows, round lumps of three sizes (a tiling 3D
- * noise of cells, `billows`), small at the base and big at the top, where a cumulus is cauliflower;
- * the base is left flat. The billows churn slowly upward (`cloudRise`) as the field drifts.
+ * it, to the layer's full depth in the heart of the biggest: a fair-weather heap, wider than it is
+ * tall. Billows, round lumps of three sizes (a tiling 3D noise of cells, `billows`), stand out from
+ * it and cut into it, small at the foot and quickly bigger above, so a cumulus is cauliflower on top;
+ * the base is left flat, and lit a lighter grey by the ground. The billows churn slowly upward
+ * (`cloudRise`) as the field drifts.
  *
  * Each frame drawn, a ray from the eye through each pixel of a target half the window's size each
  * way (in CSS pixels, so a sixteenth of a dense screen's) is marched through the layer, as far as
@@ -27,16 +29,23 @@ import { uOrigin } from './origin';
  * the haze between it and the eye, as anything else is (air.ts). The layer lies on the Earth's
  * curve, so downrange the clouds stay at their height over the sea.
  *
- * The result is brought up to the frame's size and laid over it in place after the scene and its
- * ink. Besides its colour and opacity each low pixel keeps where along its ray the cloud began and
- * where it became half opaque; a pixel of the frame takes cloud from its low neighbours only as far
- * as its own surface lies past those, so the rocket and the gantry cut the clouds on their own
- * edges, not on a coarse pixel's. In the cel look the cloud is a drawing: its opacity is cut at one
- * half and its light in two flat tones, at the frame's resolution, so the edge is clean.
+ * Far off, past what is baked or where a cloud is a few pixels across (`near`), the same field is
+ * drawn flat on a shell through the layer instead (`flatCover`), fading in as the volume fades out;
+ * where its clouds are under a pixel it is the record's cover, evenly. So from orbit the whole
+ * Earth in view has its tenth of cumulus, and nothing shimmers. Their shadows are air.ts's
+ * (`cloudShade`), on the ground and the globe alike.
+ *
+ * The result is brought up to the frame's size and laid over it in the output's own pass, as the
+ * frame goes to the screen (`adopt`). Besides its colour and opacity each low pixel keeps where
+ * along its ray the cloud began and where it became half opaque; a pixel of the frame takes cloud
+ * from its low neighbours only as far as its own surface lies past those, so the rocket and the
+ * gantry cut the clouds on their own edges, not on a coarse pixel's. The fire and its trail write no
+ * depth (`veils`): they are drawn again on their own, and cloud behind them is seen through them
+ * only as much as they let through. In the cel look the cloud is a drawing: its opacity is cut at
+ * one half and its light in two flat tones, at the frame's resolution, so the edge is clean.
  *
  * Nothing in it moves by itself between frames (no temporal jitter), so a still view of drifting
- * cloud does not shimmer. What it does not do yet: things that do not write depth (the plume, the
- * trail, glass) are drawn before it, so a cloud behind them is laid over them too.
+ * cloud does not shimmer. Glass, which writes no depth either, is still laid over by cloud behind it.
  */
 
 /** Texels a side of the baked field, and metres a texel: 131 km across, laid round the eye. */
@@ -187,6 +196,7 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
   ${fieldAs('m_')}
   ${cloudNoiseGlsl(clouds, 'm_')}
   layout(location = 0) out vec4 oColour;   // light sent toward the eye (premultiplied), and opacity
+  layout(location = 2) out vec4 oEven;     // how much of it is the far cover spread evenly, not clouds drawn (cel), per opacity
   layout(location = 1) out vec4 oInfo;     // where the cloud began, where it was half opaque; its light (cel) and haze, per opacity
 
   #define EXTENT ${EXTENT.toFixed(1)}
@@ -218,10 +228,11 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
   // The far clouds: the field painted flat on a shell through the layer, at \`f\` in the field's own frame (metres), seen
   // with pixels \`fp\` metres across. Its edge widens with the pixel, and where a cloud is under a pixel the cover is the
   // record's, evenly: so nothing too small to draw is drawn, and nothing shimmers as it drifts.
-  float flatCover(vec2 f, float fp) {
+  float flatCover(vec2 f, float fp, out float even) {
     float w = ${SOFT.toFixed(3)} + 0.25 * fp / ${clouds.size.toFixed(1)};
     float c = smoothstep(${cloudMiddle(clouds).toFixed(4)} - w, ${cloudMiddle(clouds).toFixed(4)} + w, cloudNoise(f));
-    return mix(c, ${clouds.cover.toFixed(3)}, smoothstep(${(0.08 * clouds.size).toFixed(1)}, ${(0.5 * clouds.size).toFixed(1)}, fp));
+    even = smoothstep(${(0.08 * clouds.size).toFixed(1)}, ${(0.5 * clouds.size).toFixed(1)}, fp);
+    return mix(c, ${clouds.cover.toFixed(3)}, even);
   }
 
   // how big the billows are at a height in the layer: quickly bigger above the foot, so a low cloud has turrets too
@@ -275,6 +286,7 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
     vec3 dir = normalize(uTurn * ray);
     oColour = vec4(0.0);
     oInfo = vec4(6e4, 6e4, 0.0, 0.0);
+    oEven = vec4(0.0);
 
     // the stretch of the ray inside the layer
     float ud = dot(uUp, dir);
@@ -306,7 +318,7 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
     vec3 white = uSunLight + uSkyLight;
     float whiteLum = max(dot(white, vec3(0.2126, 0.7152, 0.0722)), 1e-5);
 
-    float T = 1.0, lit = 0.0, haze = 0.0, front = 6e4, mid = 6e4;
+    float T = 1.0, lit = 0.0, haze = 0.0, even = 0.0, front = 6e4, mid = 6e4;
     vec3 colour = vec3(0.0);
     // Outside a cloud the ray strides over clear air; where it crosses into one the surface is found exactly
     // (bisection), and the march goes on from there in steps laid from the surface, short at first. So every pixel's
@@ -400,7 +412,8 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
       vec3 v = dir * tm;
       vec3 up = normalize(uRe * uUp + v);
       float fp = tm * uPixel / max(abs(dot(up, dir)), 0.1);
-      float c = flatCover(uCorner + uEye + v.xz, fp) * (1.0 - near(v));
+      float spread;
+      float c = flatCover(uCorner + uEye + v.xz, fp, spread) * (1.0 - near(v));
       if (c > 0.0) {
         // its top in the Sun and the sky, or its base, lit by what the ground sends up: as the volume's are, on the whole
         float sunUp = dot(up, uSun);
@@ -412,6 +425,7 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
         colour += w * mix(light, uHaze, hz);
         lit += w * dot(light, vec3(0.2126, 0.7152, 0.0722)) / whiteLum;
         haze += w * hz;
+        even += w * spread;
         T *= 1.0 - a;
         if (front > 5e4) front = tm;
         if (mid > 5e4 && T < 0.5) mid = tm + 1.0;
@@ -422,20 +436,21 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
     if (opacity < 1e-4) return;
     oColour = vec4(colour, opacity);
     oInfo = vec4(front, max(mid, front + 1.0), lit / opacity, haze / opacity);
+    oEven = vec4(even / opacity, 0.0, 0.0, 1.0);
   }`;
 
-/** Laid over the frame where it is: premultiplied, blended onto what is there (one, one minus alpha). */
-const COMPOSITE = /* glsl */ `
-  precision highp float; precision highp int;
-  ${DEPTH}
-  uniform sampler2D tCloud, tInfo, tVeil, tVeilDepth;
+/**
+ * The clouds laid over a pixel of the frame: premultiplied colour and opacity (`cloudsOver`), for the
+ * output's shader to put over what is there (adopt), or for a pass of their own (COMPOSITE).
+ */
+const OVER = /* glsl */ `
+  uniform sampler2D tCloud, tInfo, tEven, tVeil, tVeilDepth;
   uniform vec3 uSunLight, uSkyLight, uHaze;
   uniform float uCel, uVeils;
-  in vec2 vUv;
-  out vec4 oColour;
-  void main() {
+  float w4(int k, vec2 fr) { return ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y); }
+  vec4 cloudsOver(vec2 uv) {
     ivec2 size = textureSize(tCloud, 0);
-    vec2 p = vUv * vec2(size) - 0.5;
+    vec2 p = uv * vec2(size) - 0.5;
     vec2 i0 = floor(p), fr = p - i0;
     ivec2 at[4];
     vec4 c[4];
@@ -446,41 +461,52 @@ const COMPOSITE = /* glsl */ `
       any += c[k].a;
     }
     // (the real look has no derivatives to keep, so most of the frame, under no cloud, stops here)
-    if (uCel < 0.5 && any <= 0.0) discard;
-    vec3 ray = viewRay(vUv);
-    float d = sceneDistance(texture(tDepth, vUv).x, ray);
+    if (uCel < 0.5 && any <= 0.0) return vec4(0.0);
+    vec3 ray = viewRay(uv);
+    float d = sceneDistance(texture(tDepth, uv).x, ray);
     // fire and smoke, which write no depth and were drawn with the scene: what of them is in front of the scene here,
     // and how far off. Cloud behind them is seen through them, so only as much as they let through
     float veil = 0.0, dv = 1e9;
     if (uVeils > 0.5) {
-      dv = sceneDistance(texture(tVeilDepth, vUv).x, ray);
-      veil = dv < d ? texture(tVeil, vUv).a : 0.0;
+      dv = sceneDistance(texture(tVeilDepth, uv).x, ray);
+      veil = dv < d ? texture(tVeil, uv).a : 0.0;
     }
     vec4 cloud = vec4(0.0);
-    float lit = 0.0, haze = 0.0;
+    float lit = 0.0, haze = 0.0, even = 0.0;
     for (int k = 0; k < 4; k++) {
       vec4 info = texelFetch(tInfo, at[k], 0);
+      if (uCel > 0.5) even += w4(k, fr) * c[k].a * texelFetch(tEven, at[k], 0).r;
       // only the cloud this pixel's own surface lies beyond, and of that, behind the fire or smoke, what shows through it
-      float w = ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y) * smoothstep(info.x, info.y, d);
+      float w = w4(k, fr) * smoothstep(info.x, info.y, d);
       w *= mix(1.0 - veil, 1.0, smoothstep(info.x, info.y, dv));
       cloud += w * c[k];
       lit += w * c[k].a * info.z;
       haze += w * c[k].a * info.w;
     }
-    if (uCel < 0.5) {
-      oColour = cloud;
-      return;
-    }
+    if (uCel < 0.5) return cloud;
     // drawn: cut at half opacity, in two tones, at this resolution
+    // (where the far cover is spread evenly there are no clouds to draw, only their tint: that is laid on as it is)
     float a = cloud.a;
+    float spread = even / max(a, 1e-4);
     float edge = max(fwidth(a), 1e-3);
-    float alpha = smoothstep(0.5 - edge, 0.5 + edge, a);
+    float alpha = mix(smoothstep(0.5 - edge, 0.5 + edge, a), a, spread);
     float l = lit / max(a, 1e-4);
-    float le = max(fwidth(l), 1e-3);
+    float le = max(fwidth(l), 1e-3) + spread;
     vec3 tone = mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, smoothstep(0.62 - le, 0.62 + le, l));
     tone = mix(tone, uHaze, haze / max(a, 1e-4));
-    if (alpha <= 0.0) discard;
-    oColour = vec4(tone * alpha, alpha);
+    return vec4(tone * alpha, alpha);
+  }`;
+
+/** A pass of their own, laid over the frame where it is: blended onto what is there (one, one minus alpha). */
+const COMPOSITE = /* glsl */ `
+  precision highp float; precision highp int;
+  ${DEPTH}
+  ${OVER}
+  in vec2 vUv;
+  out vec4 oColour;
+  void main() {
+    oColour = cloudsOver(vUv);
+    if (oColour.a <= 0.0) discard;
   }`;
 
 /**
@@ -570,9 +596,9 @@ export class DepthMark extends Pass {
 }
 
 /**
- * The clouds' pass: marches them and lays them over the frame. It goes after the ink and before
- * the outline and bloom; `mark` goes straight after the scene. Does nothing where no air with
- * clouds is installed (air.ts) or the scene has no haze (a studio, orbit).
+ * The clouds' pass: marches them, and lays them over the frame itself unless the output has
+ * adopted them (`adopt`). It goes after the ink; `mark` goes straight after the scene. Does nothing
+ * where no air with clouds is installed (air.ts) or the scene has no haze (a studio, orbit).
  */
 export class CloudPass extends Pass {
   readonly mark = new DepthMark();
@@ -585,7 +611,7 @@ export class CloudPass extends Pass {
   veils: THREE.Object3D[] = [];
   private readonly quad = new FullScreenQuad();
   private readonly low = new THREE.WebGLRenderTarget(1, 1, {
-    count: 2,
+    count: 3,
     type: THREE.HalfFloatType,
     format: THREE.RGBAFormat,
     minFilter: THREE.NearestFilter,
@@ -634,9 +660,11 @@ export class CloudPass extends Pass {
     uCorner: { value: new THREE.Vector2() },
     tCloud: { value: this.low.textures[0]! },
     tInfo: { value: this.low.textures[1]! },
+    tEven: { value: this.low.textures[2]! },
     tVeil: { value: this.veil.texture },
     tVeilDepth: { value: this.veil.depthTexture },
     uVeils: { value: 0 },
+    uClouds: { value: 0 },
   };
   /** What was baked: for which clouds, round which point of the field (its frame, metres). */
   private baked: { clouds: Clouds; x: number; z: number } | null = null;
@@ -659,6 +687,32 @@ export class CloudPass extends Pass {
     this.composite.transparent = true;
     this.needsSwap = false;
   }
+
+  /**
+   * Lay the clouds over the frame in the output's own pass (three's OutputPass, the last, which draws
+   * the frame to the screen), instead of in a pass of their own: a pass over the multisampled frame
+   * costs a millisecond and a half on a dense screen, and the output reads every pixel anyway. They
+   * are then over the outline and the bloom as well as the scene. Call before the output is first drawn.
+   */
+  adopt(output: OutputPass): void {
+    const material = output.material;
+    // (in GLSL ES 3.00, which the clouds' lookups need)
+    material.glslVersion = THREE.GLSL3;
+    material.vertexShader = material.vertexShader.replaceAll('attribute ', 'in ').replaceAll('varying ', 'out ');
+    material.fragmentShader = material.fragmentShader
+      .replace('varying vec2 vUv;', `in vec2 vUv;\nout highp vec4 oOutput;\n${DEPTH}\n${OVER}\nuniform float uClouds;`)
+      .replace(
+        'gl_FragColor = texture2D( tDiffuse, vUv );',
+        `gl_FragColor = texture2D( tDiffuse, vUv );
+        if (uClouds > 0.5) { vec4 clouds = cloudsOver(vUv); gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - clouds.a) + clouds.rgb; }`,
+      )
+      .replaceAll('texture2D(', 'texture(')
+      .replaceAll('gl_FragColor', 'oOutput');
+    if (!material.fragmentShader.includes('cloudsOver(vUv)')) throw new Error('clouds: the output pass has changed its shader');
+    Object.assign(material.uniforms, this.uniforms);
+    this.adopted = true;
+  }
+  private adopted = false;
 
   /** Make what the clouds are drawn with before anyone is looking, a little at a time (Stage.warm). */
   async warm(): Promise<void> {
@@ -687,6 +741,7 @@ export class CloudPass extends Pass {
     const air = installedAir();
     const clouds = air?.clouds;
     const fog = this.scene.fog as THREE.FogExp2 | null;
+    this.uniforms.uClouds.value = 0;
     if (!air || !clouds || !fog || !this.mark.texture) return;
     this.fit(renderer, readBuffer);
     const u = this.uniforms;
@@ -731,6 +786,8 @@ export class CloudPass extends Pass {
     this.quad.render(renderer);
 
     u.uVeils.value = Number(this.drawVeils(renderer, readBuffer));
+    u.uClouds.value = 1;
+    if (this.adopted) return; // (the output lays them over)
 
     // over the frame as it stands, in place
     // (the depth is the scene's still: it need not be resolved out of the multisampled buffer again)
