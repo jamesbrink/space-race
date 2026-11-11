@@ -52,6 +52,7 @@ export class Lamps {
   private readonly homes: { mesh: THREE.Mesh; fitting: Fitting }[] = [];
   private readonly lenses = new Set<THREE.MeshStandardMaterial>();
   private level = -1;
+  private exposure = 1;
 
   /**
    * Find the lamps under `root` and make a light for each fitting, kept in `scene`. A light is
@@ -99,16 +100,21 @@ export class Lamps {
   }
 
   /** How dark it is, 0 by day to 1 at night. True if what is lit changed. */
-  set(night: number): boolean {
-    const level = Math.round(THREE.MathUtils.clamp(night, 0, 1) * 20) / 20;
-    if (level === this.level) return false;
+  set(night: number, exposure = 1): boolean {
+    // followed closely: a lamp that came on in steps would be seen stepping as dusk falls quickly
+    const level = THREE.MathUtils.clamp(night, 0, 1);
+    if (Math.abs(level - this.level) < 0.004 && Math.abs(exposure - this.exposure) < 0.02 * exposure) return false;
     this.level = level;
+    this.exposure = exposure;
     for (const light of this.lights) {
       light.visible = level > 0; // out by day: a light that is off is still work, one that is not there is none
       light.intensity = CANDELA * level;
     }
     // a lit lens glows whether or not it is night; after dark it is the brightest thing there
-    for (const lens of this.lenses) lens.emissiveIntensity = 0.6 + 1.6 * level;
+    // ...but no brighter on the screen at night than by day. The night's exposure is several
+    // times the day's, and a lens a pixel or two across, eight times over-bright, is a spark
+    // that comes and goes with every move of the camera: the lamps looked as if they flickered.
+    for (const lens of this.lenses) lens.emissiveIntensity = (0.6 + 1.0 * level) / Math.max(1, exposure / 0.8);
     return true;
   }
 }

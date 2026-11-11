@@ -161,6 +161,7 @@ class Parts:
         self.nodes: dict[str, tuple] = {}
         self.meshes: dict[tuple[str, str], tuple[MeshBuilder, bool]] = {}
         self.ladders: list[tuple] = []
+        self.props: dict[tuple[str, str], dict] = {}
 
     def node(self, name: str, parent: str | None = None, origin=(0.0, 0.0, 0.0), **props):
         """A named node. `props` travel to the viewer as the node's extras (userData): a door
@@ -190,6 +191,11 @@ class Parts:
         `face`. It becomes its own object `<node>_Ladder<Key>`, marked `climb` (srlib.ladder)."""
         self.ladders.append((node, key, Vector(foot), Vector(top), tuple(face), mat, width))
 
+    def mark(self, node: str, mat: str, **props) -> None:
+        """Custom properties for the mesh that `node` and `mat` make: they travel to the viewer as
+        the mesh's extras (a searchlight's lens says its `candela` and `spread`)."""
+        self.props.setdefault((node, mat), {}).update(props)
+
     def build(self) -> None:
         for node, key, foot, top, face, mat, width in self.ladders:
             obj, origin = self.nodes[node]
@@ -212,7 +218,9 @@ class Parts:
             mb.verts = [(x - off.x, y - off.y, z - off.z) for x, y, z in mb.verts]
             # a key "material/what" lets one node carry two meshes of the same material
             label = "".join(w.capitalize() for w in mat.replace("/", "_").split("_"))
-            mb.build(f"{node}_{label}", self.M[mat.split("/")[0]], obj, smooth=smooth, sharp_angle=30 if smooth else None)
+            built = mb.build(f"{node}_{label}", self.M[mat.split("/")[0]], obj, smooth=smooth, sharp_angle=30 if smooth else None)
+            for key, value in self.props.get((node, mat), {}).items():
+                built[key] = value
 
 
 # --------------------------------------------------------------------------- helpers
@@ -793,6 +801,52 @@ def rail_clamp(mb: MeshBuilder, x: float, y: float, rail_top: float) -> None:
     for xa, xb in ((x - 0.48 * f, x - 0.17 * f), (x + 0.17 * f, x + 0.48 * f)):
         box(mb, (xa, y - 0.28 * f, rail_top + 0.03 * f), (xb, y + 0.28 * f, rail_top + 0.75 * f))
     box(mb, (x - 0.5 * f, y - 0.3 * f, rail_top + 0.7 * f), (x + 0.5 * f, y + 0.3 * f, rail_top + 1.0 * f))
+
+
+def searchlight(
+    parts: Parts,
+    node: str,
+    parent: str | None,
+    at,
+    aim_at,
+    *,
+    ground: float = 0.0,
+    diameter: float | None = None,
+    candela: float = 8.0e8,
+    spread: float = 1.25,
+) -> None:
+    """A mobile searchlight of the 60-inch Army kind: a drum on a yoke on a four-wheeled trailer,
+    its glass toward `aim_at` (site units, like `at`, which is where the yoke's pivot stands on the
+    ground). Its own node `node`, so it can be towed away. The lens is the mesh of material `search`
+    (which a site names `lamp-flood-search`), and carries `candela` and `spread` (the beam's whole
+    angle, degrees) for the viewer: a 60-inch carbon arc gave about 800 million candela in a beam
+    a degree and a quarter wide. Materials: `search`, `car-olive` (its paint), `tyre`, `chassis`."""
+    f = foot()
+    d = 5.0 * f if diameter is None else diameter
+    o = Vector((at[0], at[1], ground))
+    parts.node(node, parent, tuple(o), label="Searchlight")
+    paint, dark, tyre = parts(node, "car-olive", True), parts(node, "chassis", True), parts(node, "tyre", True)
+    aim = (Vector(aim_at) - (o + Vector((0, 0, 5.5 * f)))).normalized()
+    flat = Vector((aim.x, aim.y, 0.0)).normalized()
+    side = Vector((-flat.y, flat.x, 0.0))
+    up = Vector((0, 0, 1))
+    obox(dark, tuple(o + up * (1.9 * f)), tuple(flat), (0, 0, 1), (8.0 * f, 4.8 * f, 0.5 * f))  # the trailer's bed
+    for a in (-2.8, 2.8):
+        for s in (-1, 1):
+            c = o + flat * (a * f) + side * (s * 2.9 * f) + up * (1.3 * f)
+            tyre.tube((c - side * (0.35 * f)) * UNIT, (c + side * (0.35 * f)) * UNIT, 1.3 * f * UNIT, 14)
+    beam(dark, tuple(o + flat * (4.0 * f) + up * (1.9 * f)), tuple(o + flat * (7.5 * f) + up * (1.6 * f)), 0.3 * f)  # the drawbar
+    pivot = o + up * (5.5 * f)
+    for s in (-1, 1):  # the yoke
+        beam(paint, tuple(o + side * (s * (d / 2 + 0.35 * f)) + up * (2.1 * f)), tuple(pivot + side * (s * (d / 2 + 0.35 * f))), 0.4 * f)
+    obox(paint, tuple(o + up * (2.3 * f)), tuple(side), (0, 0, 1), (d + 1.1 * f, 1.0 * f, 0.4 * f))
+    m = axes(tuple(pivot), tuple(side), tuple(aim))
+    r, depth = d / 2, 2.6 * f
+    paint.lathe(
+        profile([(0.0, -depth * 0.55), (r * 0.7, -depth * 0.5), (r, -depth * 0.3), (r, depth * 0.45), (r * 0.96, depth * 0.45)]), 20, matrix=m
+    )
+    parts(node, "search", True).lathe(profile([(r * 0.96, depth * 0.4), (0.0, depth * 0.4)]), 20, matrix=m, flip=True)
+    parts.mark(node, "search", candela=float(candela), spread=float(spread))
 
 
 def lettering(mb: MeshBuilder, body: str, size: float, origin, right, up, font=None) -> None:

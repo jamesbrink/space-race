@@ -330,13 +330,16 @@ const GANTRY_REMOVED = est(6, 37);
 const ROLLED_BACK = GANTRY_REMOVED + 5 * MIN;
 const TMX = 'NASA TM X-53107, section 7.5, countdown pp. 7-25 to 7-33';
 const NOT_RECORDED = 'not recorded: how long the motion took is ours, from its distance at a walking pace';
-const AFTER_HOLDS =
-  'in the count, which This New Ocean says was held again at T-2:40; taken as that many seconds before liftoff, which is right only if nothing was held after it';
+const HOLDS = 'Postlaunch Report for Mercury-Redstone No. 3, section 10.2';
+const AFTER_HOLDS = `the count was held once more after this, for one minute at T-2 (${HOLDS}), so it was a minute longer before liftoff than the count says`;
 /**
  * The morning on the clock: when each stop on the pad's slider (T, above) happened, in seconds
- * from liftoff. The count did not run straight (it was held 86 minutes at T-15 and recycled to
- * T-35), so only the events the reports give by the wall clock, and those of the last minute, are
- * fixed; the rest are placed from them and say so. sites/lc-5.md, "Where things stood, and when".
+ * from liftoff. The count did not run straight: after the gantry's removal at T-55 it was held a
+ * minute at T-30, 86 minutes at T-15 and recycled to T-35, 17 minutes at T-15 again and a minute at
+ * T-2 (Postlaunch Report, section 10.2). So a time in the count is a time before liftoff only
+ * once the holds after it are added: the events of the last two minutes are fixed, those between
+ * T-15 and T-2 are a minute earlier than they read, and the reports give 05:20 and 06:37 by the
+ * wall clock. How long each motion took is nowhere recorded. sites/lc-5.md, "Where things stood".
  */
 const MORNING: Keyframe[] = [
   {
@@ -347,11 +350,11 @@ const MORNING: Keyframe[] = [
     source: 'Results of the First U.S. Manned Suborbital Space Flight, p. 77; Postlaunch Report timeline: 05:20 EST',
   },
   {
-    at: GANTRY_REMOVED - 30 * MIN,
+    at: GANTRY_REMOVED - 37 * MIN,
     slider: T.platforms,
     event: 'T-85: the work platforms begin to open',
     confidence: 'estimated',
-    source: `${TMX}: T-85 to T-60 in the MR-4 standard count; placed 30 minutes before the gantry's removal at T-55, as if nothing was held between`,
+    source: `${TMX}: T-85 to T-60 in the MR-4 standard count; placed 30 minutes of count and the 7 minute hold at T-80 (${HOLDS}) before the gantry's removal at T-55`,
   },
   {
     at: GANTRY_REMOVED - 5 * MIN,
@@ -383,33 +386,33 @@ const MORNING: Keyframe[] = [
   },
   { at: ROLLED_BACK + 2.5 * MIN, slider: T.cabIn + 0.09, event: 'The cab is at the hatch', confidence: 'estimated', source: NOT_RECORDED },
   {
-    at: -(8 * MIN + 45),
+    at: -(8 * MIN + 45) - 1 * MIN,
     slider: T.launchPosition,
     event: 'T-8:45: the structure is driven on to its launch position',
-    confidence: 'estimated',
+    confidence: 'derived',
     source: `${TMX}, p. 7-32 (Hammack: T-9): ${AFTER_HOLDS}`,
   },
   {
-    at: -(6 * MIN + 45),
+    at: -(6 * MIN + 45) - 1 * MIN,
     slider: T.cabAway - 0.02,
     event: 'The structure is at its launch position',
     confidence: 'estimated',
     source: NOT_RECORDED,
   },
   {
-    at: -(2 * MIN + 30),
+    at: -(2 * MIN + 30) - 1 * MIN,
     slider: T.cabAway,
     event: 'T-2:30: the cab is lowered away and down',
-    confidence: 'estimated',
+    confidence: 'derived',
     source: `${TMX}, p. 7-33, and Hammack (7.3.3.1 has T-4): ${AFTER_HOLDS}`,
   },
-  { at: -(1 * MIN + 30), slider: T.cabAway + 0.12, event: 'The cab is down', confidence: 'estimated', source: NOT_RECORDED },
+  { at: -(1 * MIN + 30) - 1 * MIN, slider: T.cabAway + 0.12, event: 'The cab is down', confidence: 'estimated', source: NOT_RECORDED },
   {
     at: -35,
     slider: T.umbilical,
     event: 'T-35 s: the capsule umbilical is dropped',
     confidence: 'derived',
-    source: `${TMX}, p. 7-33: in the count, with no hold after it`,
+    source: `${TMX}, p. 7-33: in the count, and nothing was held after T-2 (${HOLDS})`,
   },
   {
     at: -33,
@@ -423,7 +426,7 @@ const MORNING: Keyframe[] = [
     slider: T.boom,
     event: 'T-14 s: boom drop',
     confidence: 'derived',
-    source: `${TMX}, p. 7-33 ("about"); Hammack p. 22: in the count, with no hold after it`,
+    source: `${TMX}, p. 7-33 ("about"); Hammack p. 22: in the count, and nothing was held after T-2 (${HOLDS})`,
   },
   { at: -12, slider: T.boom + 0.035, event: 'The booster mast is down', confidence: 'estimated', source: 'as the capsule mast' },
   {
@@ -599,6 +602,7 @@ const padParts: Part[] = [
     ],
     explode: [0, 0, 0],
     order: 0,
+    actions: [doorAction('driver-door', 'CherryPicker_Door_1', -70)],
     moves: [
       // standing by, clear of the structure, until it has gone; the cab hangs level whatever the jib does
       held('CherryPicker_Jib', Z, 29.94),
@@ -715,12 +719,55 @@ const padParts: Part[] = [
       'week; the huts and the barricade are from photographs taken in July. The shower cart and the packing ' +
       'case are wheeled and carried off up the road toward pad 6 while the platforms open: that they left, ' +
       'when, and where to are all estimated. Each hut is dragged off on its skids by a pickup, which is ' +
-      'estimated too: nothing records how the huts were moved, or that they were. The trailer is still shown ' +
-      'standing at liftoff, which is not established either way.',
+      'estimated too: nothing records how the huts were moved, or that they were. The trailer leaves behind a ' +
+      'tractor unit, north off the pad: also estimated, as is the tractor.',
     moves: [
       // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
       { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11 },
       { kind: 'slide', node: 'GroundEquipment_Case', by: [2.51, 0, 42.4], from: T.platforms + 0.03, to: T.platforms + 0.12 },
+      // the trailer taken away behind a tractor unit, north off the pad past the cherry picker (estimated throughout)
+      {
+        kind: 'drive',
+        node: 'GroundEquipment_Tractor',
+        from: T.platforms + 0.01,
+        to: T.platforms + 0.12,
+        // in the frame of the bay it stands in, which faces the way it does: x ahead, z to its left
+        path: [
+          [6.4, -1.83],
+          [12.5, -3.66],
+          [39.93, -3.66],
+          [55.17, -3.66],
+          [82.6, -3.66],
+        ],
+        pivot: [0, 0.483, 0],
+        forward: [1, 0],
+        wheelRadius: 0.483,
+        wheelbase: 3.353,
+        wheels: 'GroundEquipment_Tractor_Wheel',
+        steered: 'GroundEquipment_Tractor_SteerWheel',
+        axle: 'z',
+      },
+      {
+        kind: 'drive',
+        node: 'GroundEquipment_Trailer',
+        from: T.platforms + 0.01,
+        to: T.platforms + 0.12,
+        // its bogie follows the tractor's rear axle, a trailer's length behind
+        path: [
+          [0, 6.54],
+          [1.83, 12.94],
+          [3.66, 19.03],
+          [3.66, 46.47],
+          [3.66, 82.58],
+        ],
+        pivot: [0, 0.472, 0],
+        forward: [0, 1],
+        wheelRadius: 0.472,
+        wheelbase: 6.54,
+        wheels: 'GroundEquipment_Trailer_Wheel',
+        steered: 'GroundEquipment_Trailer_NoSteer',
+        axle: 'x',
+      },
       // each hut dragged off on its skids by a pickup, straight out across the pad's edge to the road behind (estimated)
       ...[1, 2].flatMap((k): Move[] => [
         { kind: 'slide', node: `GroundEquipment_Hut${k}`, by: [72, 0, 0], from: T.platforms + 0.03 * k, to: T.platforms + 0.03 * k + 0.08 },
@@ -976,8 +1023,9 @@ const trajectory: Trajectory = {
       `${TMX_8_1}: engine specific impulse, sea level, 214.8 s (so 367.1 lb/s, taken as the whole flow, turbine exhaust included)`,
     ),
     exitArea: derived(
-      (11_000 * LBF) / 101_325,
-      'the A-7 is rated 78,000 lbf at sea level and 89,000 lbf in vacuum (Aircraft Engine Historical Society, "The Redstone Engine", secondary): the 11,000 lbf between them over one atmosphere is 749 sq in of nozzle exit',
+      (6.3 * 9.80665 * CUTOFF_MASS - THRUST) / 101_325,
+      `${PLR}, section 4.2: the load at cutoff was 6.3 g, so the thrust there, in near vacuum, was 6.3 times the weight left (14,040 lb): 88,450 lbf, 9,590 lbf more than at sea level, ` +
+        'which over one atmosphere is 652 sq in of nozzle exit. (The A-7 is elsewhere rated 78,000 lbf at sea level and 89,000 lbf in vacuum: Aircraft Engine Historical Society, "The Redstone Engine". That is 749 sq in, and would give 6.4 g.)',
     ),
     cutoff: doc(CUTOFF, `${PLR}, section 4.1: booster cut-off at 02:21.8, by the velocity integrator`),
   },
@@ -1054,6 +1102,7 @@ const trajectory: Trajectory = {
       0.5 * Math.PI * (3 * FT) ** 2,
       'a 6 ft conical ribbon parachute (Hammack p. 12) at a drag coefficient of 0.5, the usual figure for the type: no measured figure found',
     ),
+    fills: guess(1, 'a small ribbon parachute fills in about a second: not recorded'),
   },
   main: {
     altitude: doc(10_000 * FT, 'Results, p. 7; Hammack p. 12: main parachute at 10,000 ft'),
@@ -1061,6 +1110,10 @@ const trajectory: Trajectory = {
       (2 * 2579.0 * LB * 9.80665) / (1.225 * (29 * FT) ** 2) - 1.0 * CAPSULE_AREA,
       'what brings the re-entry weight down at 29 ft/s at sea level ("descent velocities of 28 to 30 feet per second were always achieved", Hammack p. 28), less the capsule’s own drag: ' +
         '0.82 on a 63 ft canopy',
+    ),
+    fills: guess(
+      9,
+      'it comes out reefed and then opens: the pilot reports "main on green" at 10:15, "main chute is reefed" at 10:18, "coming unreefed" at 10:22 and "good" at 10:28 (Postlaunch Report, air-ground transcript). Nine seconds from out to full, evenly, is ours',
     ),
   },
 };
@@ -1124,6 +1177,7 @@ const checks: FlightCheck[] = [
     0.05 * 586 * PSF,
     `${PLR}, section 4.2: maximum exit dynamic pressure 586 lb/sq ft`,
   ),
+  // not an independent check: the nozzle's exit area above is derived from this figure
   check('exitG', 'Greatest load, going up', 6.3, 'g', 0.5, `${PLR}, section 4.2: maximum exit longitudinal load factor 6.3 g`),
   check(
     'entryQ',
@@ -1162,7 +1216,7 @@ export const flight: Flight = {
     { label: 'Duration', value: '15 min 22 s' },
     { label: 'Apogee', value: '187.4 km' },
     { label: 'Range', value: '487.3 km' },
-    { label: 'Peak velocity', value: '8,107 km/h' },
+    { label: 'Peak velocity', value: '8,107 km/h, space-fixed' },
     { label: 'Peak load', value: '11.0 g on entry' },
     { label: 'Recovery', value: 'USS Lake Champlain' },
   ],

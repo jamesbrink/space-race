@@ -28,6 +28,11 @@ export const LC5: SiteDef = {
   },
   // Eastern Standard Time: Florida kept no daylight time in 1961, and every report of the flight gives its times in EST
   zone: { name: 'EST', utcOffset: -5 },
+  seaLevel: {
+    value: -29,
+    confidence: 'estimated',
+    source: 'the EGM96 geoid at the Cape, read to the nearest metre: the same figure the height above stands on',
+  },
   bearingX: {
     value: 295,
     confidence: 'estimated',

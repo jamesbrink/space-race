@@ -12,6 +12,7 @@ export type Pref =
   | 'orbitOff'
   | 'cel'
   | 'fly'
+  | 'demo'
   | 'walkThird'
   | 'motionFull'
   | 'motionReduced'

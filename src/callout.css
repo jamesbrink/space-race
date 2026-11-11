@@ -1,0 +1,23 @@
+/* A mark on something in the scene and a card beside it (callout.ts). Nothing here takes the pointer. */
+.callout { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+.callout[hidden] { display: none; }
+.callout svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.callout line { stroke: var(--amber); stroke-width: 1; opacity: 0; transition: opacity 0.4s ease; }
+.callout-mark { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border: 1.5px solid var(--amber); border-radius: 50%; opacity: 0; transition: opacity 0.4s ease; box-shadow: 0 0 0 4px rgba(255, 196, 107, 0.16); }
+.callout-mark::after { content: ''; position: absolute; inset: 3.5px; background: var(--amber); border-radius: 50%; }
+.callout-card { position: absolute; left: clamp(16px, 5vw, 72px); bottom: clamp(84px, 16vh, 150px); width: min(340px, calc(100vw - 32px)); padding: 16px 18px 17px; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.3);
+  opacity: 0; transition: opacity 0.4s ease; }
+@media (max-width: 700px) { .callout-card { left: 16px; right: 16px; width: auto; bottom: 64px; padding: 13px 15px 14px; } .callout-card h2 { font-size: 18px; } .callout-clock { font-size: 9px; letter-spacing: 0.1em; bottom: 16px; max-width: calc(100vw - 24px); padding: 6px 10px; } }
+.callout-card p { font: 10px/1.4 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber); }
+.callout-card h2 { margin: 5px 0 0; padding: 0; border: 0; font: 600 21px/1.15 var(--sans); letter-spacing: 0.01em; text-transform: none; color: var(--ink); }
+.callout-card div { margin-top: 7px; font-size: 13.5px; line-height: 1.45; color: var(--dim); }
+.callout.showing .callout-card { opacity: 1; }
+.callout.showing.pointed :is(.callout-mark, line) { opacity: 0.9; }
+.callout-clock { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); padding: 7px 14px; white-space: nowrap; font: 11px/1.4 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink); background: rgba(10, 11, 14, 0.5); border-radius: 2px; }
+.callout-clock:empty { display: none; }
+/* behind the front page the show says nothing */
+body.titled .callout { display: none; }
+/* while the show runs the page is only the picture */
+body.demo #ui { visibility: hidden; }
+body.demo #stage { cursor: none; }

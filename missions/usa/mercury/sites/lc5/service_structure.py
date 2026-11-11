@@ -323,6 +323,32 @@ def lift_stops() -> list[tuple[str, float, float]]:
     return [("Pad", *PAD_STOP)] + [(f"Level {n}", car_x(z), z) for n, z in LEVELS.items()] + [("Crane", car_x(TOP_LEVEL), TOP_LEVEL)]
 
 
+def work_lights(parts: Parts) -> None:
+    """The lamps the night photographs show: deep dome reflectors hung under the lowest platform,
+    three each side of the vehicle and one behind it, shining down on the booster (S61-03158,
+    KSC-61-4457; FHSU F20_010 to F20_014 for MR-4): documented that they were there, their places
+    estimated. And a lamp in each enclosed level, the office and the white room, whose windows the
+    photographs show lit: each a fitting and a `Light_` empty for the viewer. TM X-53107 7.5.1.8:
+    "Additional lights were provided in the shelter house and on the structure level"."""
+    dome = ftp([(0.12, 0.0), (0.2, -0.5), (0.75, -1.2)])
+    lens = ftp([(0.72, -1.17), (0.0, -1.17)])
+    hung = [("ServiceStructure", (0.0, 10.6))]
+    for s in (-1, 1):
+        hung += [(f"ServiceStructure_Platform1_{'Left' if s < 0 else 'Right'}", (s * x, y)) for x, y in ((6.0, -8.0), (9.5, -1.0), (6.0, 6.0))]
+    for node, (x, y) in hung:
+        c = Matrix.Translation(P(*L(x, y, LEVELS[1] - 1.7)))
+        parts(node, "grey/shades", True).lathe(dome, 12, matrix=c)
+        parts(node, "lamp", True).lathe(lens, 12, matrix=c)
+    rooms = [("Office", "ServiceStructure", (0.0, 25.0, 17.2), 0.6, 4.0)]
+    for n, zr in ((2, 7.4), (3, 9.6), (4, 8.4)):
+        for s in (-1, 1):
+            side = "Left" if s < 0 else "Right"
+            rooms.append((f"Level{n}{side}", f"ServiceStructure_Platform{n}_{side}", (s * (10.5 if n == 2 else 7.0), -1.0, LEVELS[n] + zr), 0.7, 5.0))
+    for room, node, at, intensity, reach in rooms:
+        lbox(parts(node, "lamp-room"), (at[0] - 1.5, at[1] - 0.25, at[2] - 0.12), (at[0] + 1.5, at[1] + 0.25, at[2]))
+        parts.node(f"Light_{room}", node, L(at[0], at[1], at[2] - 1.0), intensity=intensity, reach=reach)
+
+
 def access(parts: Parts) -> None:
     """How people went up: the lift, the decks between the legs, the ladders and their landings."""
     g = "ServiceStructure"
@@ -400,7 +426,6 @@ def build(parts: Parts) -> None:
     parts.node("ServiceStructure", None, L(0.0, 0.0, 0.0))
     g = "ServiceStructure"
     red, grey, deck, white, dark = parts(g, "red"), parts(g, "grey", True), parts(g, "deck"), parts(g, "white"), parts(g, "chassis", True)
-    lamps = parts(g, "lamp", True)
 
     # ---- the base: a girder over each pair of rails on two trucks, joined behind the vehicle
     k = 0
@@ -527,7 +552,10 @@ def build(parts: Parts) -> None:
     lbeam(white, (-3.4, jy[-1] - 0.2, zc1 + 0.6 + 2.9), (3.4, jy[-1] - 0.2, zc1 + 0.6 + 2.9), 0.13)
     lbeam(white, (-3.4, jy[-1] - 0.2, zc1 + 0.6 + 1.45), (3.4, jy[-1] - 0.2, zc1 + 0.6 + 1.45), 0.13)
 
-    lamps.lathe(ftp([(0.0, 0.0), (0.4, 0.0), (0.4, 0.9), (0.0, 1.1)]), 12, matrix=Matrix.Translation(P(*L(0.0, jy[0] + 0.6, zc1 + 0.6))))  # beacon
+    for bx in (-3.0, 3.0):  # red obstruction lights at the crane's ends (estimated: the usual practice; no photograph shows their colour)
+        for by in (jy[0] + 0.6, jy[-1] - 0.6):
+            red_lamp = parts(g, "lamp-red", True)
+            red_lamp.lathe(ftp([(0.0, 0.0), (0.3, 0.0), (0.3, 0.7), (0.0, 0.9)]), 10, matrix=Matrix.Translation(P(*L(bx, by, zc1 + 0.6 + 2.95))))
     lbox(grey, (-3.4, 16.0, zc0 - 6.0), (3.4, 26.0, zc0 - 0.02))  # hoist machinery under the girder's tail
     for yt in (-8.0, -3.0):  # the dual travelling trolleys and hoists
         lbox(dark, (-2.0, yt - 1.4, zc0 - 1.2), (2.0, yt + 1.4, zc0 - 0.02))
@@ -544,3 +572,4 @@ def build(parts: Parts) -> None:
     for n in LEVELS:
         for s in (-1, 1):
             platform(parts, n, s)
+    work_lights(parts)

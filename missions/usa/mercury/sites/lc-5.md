@@ -245,7 +245,7 @@ horn ring on its column, a mirror and a headliner: enough to look out from the d
 the right pillars, not a likeness of any one car's cabin.
 
 `lc5/vehicles.py`'s `check_standing()`, run once the site is built, drops a ray from every wheel
-and reports any tyre more than 2 cm off the paving or the terrain under it; on this site it
+and reports any tyre more than 5 mm off the paving or the terrain under it (the place's build runs it); on this site it
 reports none (the shell apron at −0.6 ft for eight vehicles, the terrain at −0.45 m for the three
 at the hut).
 
@@ -268,8 +268,8 @@ source. The simulator must not depend on them until they are.
 
 | Level of detail | A vehicle | All eleven | Left out |
 | --- | --- | --- | --- |
-| 1.0 | 9,000 to 11,600 triangles | 120,200 | nothing |
-| 0.6 | 4,100 to 5,250 | 53,900 | the interior (panes become dark), shut lines, handles, plates, wipers, over-riders |
+| 1.0 | 12,900 to 15,900 triangles | 164,000 | nothing |
+| 0.6 | 4,700 to 5,800 | 60,000 | the interior (panes become dark), shut lines, handles, plates, wipers, over-riders |
 | 0.3 | 1,420 to 1,610 | 16,900 | also the bright trim, whitewalls and lamp rims; wheels have eight sides |
 
 Every node is there at every level, with the same name.

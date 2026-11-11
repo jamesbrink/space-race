@@ -199,6 +199,10 @@ interface Near {
 }
 
 const DOWN = new THREE.Vector3(0, -1, 0);
+const under = (o: THREE.Object3D, root: THREE.Object3D): boolean => {
+  for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p === root) return true;
+  return false;
+};
 const UP = new THREE.Vector3(0, 1, 0);
 
 /**
@@ -216,6 +220,8 @@ export class Solids {
   private near: Near[] = [];
   /** The ladders among them (`userData.climb`): not walls and not floors, but something to climb. */
   private rungs: Near[] = [];
+  /** Something that is not solid for now: whatever is under this object is left out (the vehicle being driven: it cannot be in its own way). */
+  without: THREE.Object3D | null = null;
   /** How many hierarchies have been built, for the diagnostics. */
   built = 0;
 
@@ -258,6 +264,7 @@ export class Solids {
     for (const root of this.roots)
       for (const mesh of this.meshes(root)) {
         if (!mesh.visible) continue;
+        if (this.without && under(mesh, this.without)) continue;
         const geometry = mesh.geometry;
         if (!geometry.boundingBox) geometry.computeBoundingBox();
         let record = this.records.get(mesh);
@@ -414,6 +421,31 @@ export class Solids {
       best = { mesh: n.mesh, point, normal, distance };
     }
     return best;
+  }
+
+  /**
+   * Push a ball out of whatever it is in: the point is moved until it is `radius` clear of the
+   * nearest surface among what was gathered, and the way it was moved (a unit vector) is
+   * returned; null if it was clear already.
+   */
+  out(point: THREE.Vector3, radius: number): THREE.Vector3 | null {
+    let moved: THREE.Vector3 | null = null;
+    for (const n of this.near) {
+      if (n.box.distanceToPoint(point) >= radius) continue;
+      const local = this.point.copy(point).applyMatrix4(n.inverse);
+      const hit = n.bvh.closestPointToPoint(local, undefined, 0, radius / n.scale);
+      if (!hit) continue;
+      const on = hit.point.clone().applyMatrix4(n.mesh.matrixWorld);
+      const away = this.away.subVectors(point, on);
+      const gap = away.length();
+      if (gap >= radius) continue;
+      // (dead on the surface there is no way out to read: up will do)
+      if (gap < 1e-6) away.set(0, 1, 0);
+      else away.divideScalar(gap);
+      point.addScaledVector(away, radius - gap);
+      moved = (moved ?? new THREE.Vector3()).add(away);
+    }
+    return moved ? moved.normalize() : null;
   }
 
   /** How far the nearest surface is from a point, if it is within `within` metres. */
@@ -714,6 +746,20 @@ export class Body {
   }
 }
 
+/**
+ * Something the figure sits in and is carried by (a vehicle's driving seat): while it is seated
+ * its legs do nothing, the walking keys are the pedals and the wheel, and its eyes are where the
+ * seat puts them.
+ */
+export interface Seat {
+  /** A frame at the controls: `pedal` 1 is the throttle and -1 the brake and reverse; `wheel` 1 is to the left. */
+  drive(pedal: number, wheel: number, dt: number): void;
+  /** Where the sitter's eyes are, in the world. */
+  eyes(to: THREE.Vector3): THREE.Vector3;
+  /** Which way the seat faces over the ground, radians: only its changes matter (the head turns with the seat). */
+  facing(): number;
+}
+
 /** What the walker needs from the stage it walks on. */
 export interface WalkHost {
   /** Everything solid, as shown now. */
@@ -740,6 +786,11 @@ const TURN = 1.9;
 /** The first-person lens, vertical degrees: wide enough to see where the feet are going. */
 const FOV = 62;
 const FOV_UPRIGHT = 80;
+/** How long the knees dip before a jump leaves the ground, seconds. */
+const WIND_UP = 0.09;
+/** How far a fall must be to be caught in a deep crouch and a stagger, and how far to knock the figure off its feet altogether, metres. */
+export const STAGGER_FALL = 1.5;
+export const LIMP_FALL = 3;
 /** Over the shoulder: how far behind the head the camera sits, how far to the right of it and above it, metres. */
 const BOOM = 3.4;
 const SHOULDER = 0.55;
@@ -796,6 +847,24 @@ export class Walker {
   private readonly vel = new THREE.Vector2();
   private turning = 0;
   private climbed = false;
+  /**
+   * Down: knocked off its feet by a long fall. `limp` while the figure tumbles (the stage has it:
+   * ragdoll.ts) and `rising` while it gets up; null on its feet. Down, the legs take no orders,
+   * the body is held where the figure's hips are (`pin`), and the view is from outside.
+   */
+  down: 'limp' | 'rising' | null = null;
+  /** A fall hard enough to go limp has just ended: how far, and how the body was moving. The stage takes it from here (and clears it). */
+  fell: { height: number; velocity: THREE.Vector3 } | null = null;
+  private readonly pinned = new THREE.Vector3();
+  /** How far the camera's pivot is brought down from the eyes while the figure is down, metres (eased). */
+  private low = 0;
+  /** A jump being wound up: seconds until the feet leave the ground (0: none). */
+  private winding = 0;
+  /** After a middling fall: seconds for which the legs are busy catching the body and take no orders. */
+  private stagger = 0;
+  /** What the figure is sitting in, if it is: see Seat. */
+  private seat: Seat | null = null;
+  private seatFaced = 0;
   /** What the body stands on or climbs, where on it (in the mesh's own coordinates) and how the mesh was turned: see ride. */
   private perch: { mesh: THREE.Mesh; at: THREE.Vector3; facing: number; stood: THREE.Vector3 } | null = null;
   private readonly ridden = new THREE.Matrix4();
@@ -847,7 +916,7 @@ export class Walker {
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
       if (key === 'escape') return this.modal ? this.modal.cancel() : this.host.leave();
       if (this.modal) return; // the keys are the menu's
-      if (key === 'e' && !e.repeat) return this.host.act();
+      if (key === 'e' && !e.repeat) return this.down ? undefined : this.host.act();
       if (key === 'c' && !e.repeat) return this.setThird(!this.third);
       if (!WALK_KEYS.has(key)) return;
       e.preventDefault();
@@ -951,6 +1020,11 @@ export class Walker {
     this.peekK = 0;
     this.aimed = null;
     this.perch = null;
+    this.seat = null;
+    this.solids.without = null;
+    this.down = null;
+    this.fell = null;
+    this.stagger = this.low = 0;
     this.capture();
     this.update(0);
   }
@@ -1075,9 +1149,53 @@ export class Walker {
     this.moved = true;
   }
 
+  /** Sit in something (look the way it faces), or get up from it (null); getting up, the body is stood at `at`. */
+  sit(seat: Seat | null, at?: THREE.Vector3): void {
+    this.seat = seat;
+    this.vel.set(0, 0);
+    this.perch = null;
+    this.body.on = null;
+    if (seat) {
+      this.seatFaced = seat.facing();
+      this.yaw = this.heading = this.seatFaced - Math.PI / 2;
+      this.pitch = 0;
+    } else if (at) {
+      this.solids.without = null;
+      this.solids.set(this.host.solids());
+      this.body.place(at.x, at.y, at.z);
+      this.feltY = this.apex = this.body.position.y;
+    }
+    this.moved = true;
+  }
+
+  get seated(): boolean {
+    return this.seat !== null;
+  }
+
+  /** Down (see `down`): the body is wherever the figure's hips are over the ground. */
+  pin(at: THREE.Vector3): void {
+    this.pinned.copy(at);
+  }
+
+  /** On its feet again, here. */
+  stand(at: THREE.Vector3): void {
+    this.down = null;
+    this.body.place(at.x, at.y, at.z);
+    this.feltY = this.apex = this.body.position.y;
+    this.vel.set(0, 0);
+    this.perch = null;
+    this.moved = true;
+  }
+
   /** Hop (Space, or the page's button). */
   jump(): void {
-    if (this.active && !this.modal) this.body.jump();
+    if (!this.active || this.modal || this.down) return;
+    // off a ladder it is letting go, at once; from the ground the knees dip first and the feet leave a moment later
+    if (this.body.on || !this.body.grounded) this.body.jump();
+    else if (!this.winding) {
+      this.winding = WIND_UP;
+      this.gait.land(0.25);
+    }
   }
 
   /** An on-screen stick: x to the right, y forward, each -1 to 1. (0, 0) lets go. */
@@ -1106,7 +1224,12 @@ export class Walker {
       right = this.stickAt.x;
       speed = stickSpeed(this.stickAt.length());
     }
-    if (this.modal) forward = right = 0;
+    this.stagger = Math.max(0, this.stagger - dt);
+    if (this.winding && (this.winding -= dt) <= 0) {
+      this.winding = 0;
+      this.body.jump();
+    }
+    if (this.modal || this.down || this.stagger) forward = right = 0;
     // on a ladder forward is up and back is down; a step to the side lets go of it
     const body = this.body;
     body.climbing = forward;
@@ -1127,11 +1250,43 @@ export class Walker {
     // forward is (-sin, -cos) over the ground, right is (cos, -sin); the body gathers and loses its speed (quicken)
     const wantX = (-sin * forward + cos * right) * pace;
     const wantZ = (-cos * forward - sin * right) * pace;
-    this.vel.fromArray(quicken(this.vel.x, this.vel.y, wantX, wantZ, dt));
-    this.body.move(this.vel.x * dt, this.vel.y * dt, dt);
+    if (this.down) {
+      // off its feet: the body is where the figure lies, and nothing moves it but that
+      p.copy(this.pinned);
+      this.vel.set(0, 0);
+      body.grounded = true;
+      body.vy = 0;
+      this.feltY = p.y;
+    } else if (this.seat) {
+      // sitting: the keys are the pedals and the wheel, the head turns with the seat, and the body is wherever the seat is
+      if (dt > 0 && !this.modal) this.seat.drive(forward, -right, dt);
+      const faced = this.seat.facing();
+      this.yaw += faced - this.seatFaced;
+      this.seatFaced = faced;
+      this.seat.eyes(p).y -= this.eye;
+      this.vel.set(0, 0);
+      body.grounded = true;
+      body.vy = 0;
+      this.feltY = p.y;
+    } else {
+      this.vel.fromArray(quicken(this.vel.x, this.vel.y, wantX, wantZ, dt));
+      this.body.move(this.vel.x * dt, this.vel.y * dt, dt);
+    }
     // a landing is felt in the knees, by how far it fell
     this.apex = this.body.grounded && !flying ? p.y : Math.max(this.apex, p.y);
-    if (flying && this.body.grounded && !this.climbed) this.gait.land(this.apex - p.y);
+    if (flying && this.body.grounded && !this.climbed) {
+      const height = this.apex - p.y;
+      if (height >= LIMP_FALL && this.motion > 0 && !this.seat) {
+        // too far to land on the feet: the figure goes limp, and the stage's ragdoll has it until it lies still
+        this.fell = { height, velocity: new THREE.Vector3(this.vel.x, -Math.sqrt(2 * GRAVITY * height), this.vel.y) };
+        this.down = 'limp';
+        this.pinned.copy(p);
+      } else {
+        this.gait.land(height);
+        // a middling drop is caught in a deep crouch and a step: the legs are busy for a moment
+        if (height >= STAGGER_FALL) this.stagger = 0.55;
+      }
+    }
     // (stepping off a ladder is not a landing)
     this.climbed = Boolean(body.on);
     if (body.on) this.apex = p.y;
@@ -1149,13 +1304,24 @@ export class Walker {
     const rungs = body.on ? Math.abs(p.y - was.y) : null;
     this.stir =
       dt > 0
-        ? this.gait.advance(rungs ?? this.stepped, rungs === null ? this.pace : 0, !this.body.grounded && !body.on, dt, rungs !== null)
+        ? this.gait.advance(
+            rungs ?? this.stepped,
+            rungs === null ? this.pace : 0,
+            !this.body.grounded && !body.on,
+            dt,
+            rungs !== null,
+            this.body.grounded ? 0 : this.apex - p.y,
+          )
         : 0;
     if (this.stir) this.moved = true;
     // through its eyes the body faces where they look; seen from behind it turns to face the way it is sent
     if (body.on)
       this.heading = Math.atan2(body.on.nx, body.on.nz); // facing the rungs
-    else if (!this.third) this.heading = this.yaw;
+    else if (this.seat)
+      this.heading = this.seatFaced - Math.PI / 2; // sitting, it faces the way the seat does
+    else if (this.down) {
+      // (lying, or getting up: it faces the way it fell, which the stage has set)
+    } else if (!this.third) this.heading = this.yaw;
     else if (length) {
       const to = Math.atan2(sin * forward - cos * right, cos * forward + sin * right);
       const off = Math.atan2(Math.sin(to - this.heading), Math.cos(to - this.heading));
@@ -1171,6 +1337,15 @@ export class Walker {
     // feet. All of it is scaled by `motion`, and fades out as the camera pulls back over the
     // shoulder, where it is the figure that is seen to do these things.
     const felt = this.motion * (1 - this.viewK);
+    // down, the view is of the figure on the ground: the camera turns about its middle, not about where its eyes were
+    const lower =
+      this.down === 'limp'
+        ? this.eye - 0.7
+        : this.down === 'rising'
+          ? (this.eye - 0.7) * Math.max(0, 1 - (this.gait.rising ?? 9) / 2.6)
+          : 0;
+    this.low += (lower - this.low) * (1 - Math.exp(-dt * 6));
+    if (Math.abs(this.low - lower) > 1e-3) this.moved = true;
     const lagging = this.body.grounded && this.motion > 0;
     // (long enough to turn a flight of stairs' risers into a slope under the eyes)
     this.feltY = lagging
@@ -1186,7 +1361,7 @@ export class Walker {
     const nod = (seen.pitch - 0.014 * THREE.MathUtils.clamp(urge, -1, 1)) * felt;
     camera.position.set(
       p.x + cos * seen.x * felt,
-      p.y + (this.feltY - p.y) * (1 - this.viewK) + this.eye + seen.y * felt,
+      p.y + (this.feltY - p.y) * (1 - this.viewK) + this.eye - this.low + seen.y * felt,
       p.z - sin * seen.x * felt,
     );
     // the lens opens a little at a run
@@ -1205,7 +1380,7 @@ export class Walker {
     // Over the shoulder: back along the line of sight, to the right and up a little. If there is
     // a wall between the head and there, the camera comes in to just short of it.
     const pulled = this.viewK;
-    this.viewK = THREE.MathUtils.clamp(pulled + (this.third ? dt : -dt) / VIEW_SECONDS, 0, 1);
+    this.viewK = THREE.MathUtils.clamp(pulled + (this.third || this.down ? dt : -dt) / VIEW_SECONDS, 0, 1);
     if (this.viewK !== pulled) this.moved = true;
     let back = 0;
     if (this.viewK > 0) {
@@ -1232,7 +1407,8 @@ export class Walker {
     const corner = Math.hypot(1, Math.tan(THREE.MathUtils.degToRad(fov / 2)) * Math.hypot(1, camera.aspect));
     let clear = this.solids.nearest(camera.position, 0.6);
     if (this.body.ground !== null) clear = Math.min(clear, camera.position.y - this.body.ground);
-    const near = THREE.MathUtils.clamp((0.85 * clear) / corner, 0.05, 0.3);
+    // (seated, what is nearest is the cab round the head, which is left out of the solids: keep the plane close)
+    const near = this.seat ? 0.06 : THREE.MathUtils.clamp((0.85 * clear) / corner, 0.05, 0.3);
     if (Math.abs(near - camera.near) > near * 0.05) {
       camera.near = near;
       camera.updateProjectionMatrix();

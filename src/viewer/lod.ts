@@ -67,6 +67,12 @@ export class Staged {
     }
   }
 
+  /** Draw every level at once (so that all of them are built and sent to the GPU), or go back to the one that suits. */
+  everyLevel(on: boolean): void {
+    if (on) for (const o of this.levels) if (o) o.visible = true;
+    if (!on) this.show(this.wanted);
+  }
+
   /** The model as built: level 0, whether or not it is the one being drawn. */
   get full(): THREE.Object3D {
     return this.levels[0]!;

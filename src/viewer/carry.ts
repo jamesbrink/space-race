@@ -113,14 +113,14 @@ export class Carry {
    * A frame, after the figure has been posed and its matrices brought up to date. The item is
    * turned in the hand so that it hangs as it did at rest, plus `swing` radians fore and aft (a
    * weight on an arm lags the stride); the hose is hung between its anchors, above `floor` and
-   * outside `body`.
+   * outside `body`. True while the hose is still moving: it wants drawing again.
    */
-  update(dt: number, swing: number, floor: number | null, body: KeepOut | null): void {
-    if (!this.held || !this.item || !this.grip) return;
+  update(dt: number, swing: number, floor: number | null, body: KeepOut | null): boolean {
+    if (!this.held || !this.item || !this.grip) return false;
     const upright = this.root.getWorldQuaternion(q1).multiply(q2.setFromAxisAngle(X, swing)).multiply(this.plumb);
     this.item.quaternion.copy(this.grip.getWorldQuaternion(q2).invert()).multiply(upright);
     this.item.updateMatrixWorld(true);
-    if (!this.hose || !this.from || !this.to) return;
+    if (!this.hose || !this.from || !this.to) return false;
     this.hose.update(
       this.from.getWorldPosition(v1),
       v2.set(0, 1, 0).transformDirection(this.from.matrixWorld),
@@ -130,6 +130,12 @@ export class Carry {
       floor,
       body,
     );
+    return this.hose.speed > 0.03;
+  }
+
+  /** The hose is to be laid out afresh (this level of detail has just come on show: its hose is wherever it was last). */
+  relay(): void {
+    this.hose?.reset();
   }
 }
 

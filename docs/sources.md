@@ -82,6 +82,18 @@ What `src/world/` is built from (bodies, time, frames, ephemeris, stars) and che
 | Hoffleit and Warren, *Yale Bright Star Catalogue*, 5th rev. ed., 1991 (CDS V/50) | [CDS](https://cdsarc.cds.unistra.fr/ftp/cats/V/50/) | The 518 stars to magnitude 4.0: J2000 position, V, B−V (`src/world/stars.ts`) | Public domain. Proper motion not applied |
 | OpenStreetMap relation 16884747; USGS GNIS feature 285392 ("Launch Complex 5") | [OSM](https://www.openstreetmap.org/relation/16884747), [TopoQuest](https://www.topoquest.com/place/florida/locale/launch-complex-5/285392) | LC-5's launcher at 28.439426° N, 80.573292° W; ground 6 ft above the sea | Traced from imagery, not surveyed. GNIS's own point (28.43806, −80.57033, NAD 83) is 330 m off the pad: a locale, not the launcher |
 
+### The flight as flown
+
+What `flight.ts`'s `trajectory` and `checks` and `src/sim/` rest on.
+
+| Source | Where | Good for | Caveats |
+| --- | --- | --- | --- |
+| *Postlaunch Report for Mercury-Redstone No. 3*, sections 3.1, 4.1, 4.2, 10.2 and the air-ground transcript | as above | **The checks**: event times; height, speed, climb angle and heading at separation, space-fixed and Earth-fixed; range, greatest height, dynamic pressures and loads; capsule weight in each configuration; separation and retrofire velocities; the retro attitude flown (20°); every hold in the count; the parachute's reefing as the pilot called it. Figures 4.2-3 to 4.2-8: time histories | The 8,107 km/h (7,388 ft/s) is space-fixed, at capsule separation; Earth-fixed it was 6,414 ft/s. Section 2.0 gives the .05 g relay as 07:38 where the table has 07:48.2 |
+| NASA TM X-53107, Table 3-1, Figure 4-9, Table 8-1, Table 8-4 | as above | Tilt programme: begins 15.0 s on MR-3, arrested 131.7 s, the pulse programme drawn to 41°; MR-3's sea-level thrust (78,860 lb), specific impulse (214.8 s) and liftoff weight (66,098 lb); booster dry weight 8,195 lb | Figure 4-9 is the earlier flights' programme (begins 24.3 s); MR-3's own curve is not given. Section 8.3.1's prose has cutoff at 141.3 s and separation at 141.8 s, which the Postlaunch Report contradicts |
+| Brown and Moseley, *Summary of Wind-Tunnel Investigations of the Static Longitudinal Stability Characteristics of the Production Mercury Configurations at Mach Numbers from 0.05 to 20*, NASA TM X-491, 1961 | [NTRS 19710069960](https://ntrs.nasa.gov/api/citations/19710069960/downloads/19710069960.pdf) | Drag coefficient at no angle of attack against Mach number: Figure 20 (capsule with escape tower), Figure 22 (re-entry, 1.6 above Mach 4); reference area the capsule's 74.5 in cross-section | Figures read to 0.02 or 0.03. Nothing on the capsule mounted on a Redstone |
+| Aircraft Engine Historical Society, *The Redstone Engine* | [enginehistory.org](https://www.enginehistory.org/Museums/USSRC/USSRC_Redstone.shtml) | The A-7 rated 78,000 lbf at sea level and 89,000 lbf in vacuum; chamber pressure 318 psia | Secondary; its specific impulses (235 and 265 s) are the Hydyne engine's, not Mercury-Redstone's alcohol. Used only as a cross-check on the nozzle exit area derived from the flight's 6.3 g |
+| *U.S. Standard Atmosphere, 1976*, NOAA-S/T 76-1562 | NOAA / NASA / USAF | The air (`src/sim/atmosphere.ts`): the defining layers to 86 km, Table I's densities above | A mean year at mid-latitude. The flight was planned on the annual Patrick AFB atmosphere, which we do not have |
+
 ### Known, not yet read
 
 | Source | Would settle |
@@ -100,6 +112,8 @@ What `src/world/` is built from (bodies, time, frames, ephemeris, stars) and che
 | Corps of Engineers drawings of the Redstone "Missile Service Stand" (LC-4/5 and LC-26), at full resolution | The structure's base, platform plans and heights, rail gauge |
 | Army Redstone ground equipment manuals (launcher, cable masts) | The launch ring's size, levelling and azimuth gear, the masts' form |
 | *Emergency Handbook for Pad Area Rescue* (LOD, 1961; TM X-53107 7.4.4) | Where the cherry picker, M-113 and fire trucks stood, and the cab's programmed descent |
+| MSFC MTP-M-S&M-P-61-16, *Mercury-Redstone MR-3 Flight Evaluation of Propulsion Unit and Associated Systems* (Riquelmy and King, 3 August 1961); MSFC MTP-LOD-MP-61-17.3, *Firing Site Weight Report ... MR-3* (Heezen, 22 May 1961); MSFC MPR-M-61-5, *Description of Mercury-Redstone Launch Vehicle for Flight No. MR-3* | Thrust and flow against time, thrust build-up and tail-off, the weights at liftoff and cutoff to the pound: the simulator's powered flight ends 4% fast on the two summary figures it has, and one per cent in thrust is four in speed |
+| MSFC MTP-AERO reports on the Mercury-Redstone's aerodynamics and the MR-3 trajectory (the MR-BD ones are MTP-AERO-61-36 and -43); the MR-3 tilt programme as flown | Drag coefficient of the whole vehicle against Mach number; the tilt programme's own curve for the "flatter trajectory" |
 | A surveyed position for pad 5's launcher: the Air Force Eastern Test Range's geodetic survey of the Cape's pads, or an NGS datasheet for a mark on the complex | Latitude, longitude and height of the site's origin: today read off OpenStreetMap (a few metres) with the height estimated |
 | Colour launch-day photographs of MR-7 | Lettering colour, the roll pattern's stripe count, structure and vehicle colours |
 | Smithsonian 3D scan of Shepard's suit, and the records for his helmet (A19770563001) and gloves | Boots, gloves, helmet fittings, the suit's girths |

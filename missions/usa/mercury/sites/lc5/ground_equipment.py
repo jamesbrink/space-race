@@ -37,6 +37,7 @@ from .site import (
     offset_poly,
     plate,
     ring,
+    searchlight,
     slab,
     stood,
     timber_pole,
@@ -156,6 +157,7 @@ def build(parts: Parts) -> None:
         timber_pole(parts, "Floodlights", x, y, FLOOD_HEIGHT, lamps=3, aim=(-x, -y, 0))
 
     furniture(parts)
+    lights(parts)
 
 
 def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
@@ -183,6 +185,23 @@ def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
     slab(parts(g, f"trailer/{key}roof"), offset_poly(outline, 0.5), 8.6, 8.95, bottom=True)
     for y in (y0 + 1.0, y1 - 1.0):  # the skids
         box(parts(g, "chassis"), (x0 - 0.6, y - 0.3, 0.0), (x1 + 0.6, y + 0.3, 0.5))
+
+
+# Searchlights. That crewed searchlights worked in the pad area through the night is documented (TM
+# X-53107 p. 7-21: "photo and searchlight crews to clear area"; 8.3.2: at T-30 on MR-4 "the
+# searchlight crew [secured] the searchlights because of interference with telemetry"). How many,
+# of what kind and where is not: S61-03158 shows MR-3 lit hard from the blockhouse side, FHSU
+# F19_001 (MR-4) two sources at the pad's far edge, and F19_008 a large drum on a four-wheeled
+# trailer that looks like a 60-inch Army unit. So: three of those, one toward the blockhouse and two
+# across the pad, each aimed at the vehicle's middle. All estimated.
+SEARCHLIGHTS = ((72.0, -82.0), (-86.0, -30.0), (-84.0, 45.0))
+
+
+def lights(parts: Parts) -> None:
+    source = "TM X-53107 p. 7-21 and 8.3.2 (that there were); S61-03158, FHSU F19_001, F19_008"
+    if stood("Searchlights round pad 5", since="1961-05", confidence="estimated", source=source):
+        for k, (x, y) in enumerate(SEARCHLIGHTS, 1):
+            searchlight(parts, f"GroundEquipment_Searchlight{k}", "GroundEquipment", (x, y), (0.0, 0.0, 45.0))
 
 
 def furniture(parts: Parts) -> None:
@@ -307,7 +326,19 @@ def furniture(parts: Parts) -> None:
     box(fit, (tx0 + 0.2, ty0 + 14.0, tz), (tx0 + 2.4, ty1 - 0.4, tz + 3.0))  # a bench of test sets along the far wall (invented)
     box(fit, (tx0 + 0.2, ty0 + 0.4, tz), (tx0 + 2.2, ty0 + 6.0, tz + 6.4))
     frame = parts(tr, "chassis")
-    box(frame, (tx0 + 1.2, ty0 + 0.5, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
+    box(frame, (tx0 + 1.2, ty0 + 8.0, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
+    # Coupled to it, a tractor unit to take it away when the pad is cleared: a late-1950s medium
+    # conventional from tools/blender/vehicles.py, every figure of which is estimated. No photograph
+    # shows what moved this trailer. Its fifth wheel stands 9 cm higher than this trailer's floor, so
+    # the floor steps up over it at the front, as a semi-trailer's does. The tractor is built facing
+    # its own +X under a node turned to face the way the trailer does (-Y), so that it can be driven.
+    box(parts(tr, "plank/vanstep"), (tx0 + 1.5, ty0 + 0.25, tz - 0.05), (tx1 - 1.5, ty0 + 6.2, tz + 0.55))
+    bay = parts.node("GroundEquipment_TractorBay", g, ((tx0 + tx1) / 2, ty0 + 3.0, 0.0))
+    bay.rotation_euler = (0.0, 0.0, -math.pi / 2)
+    tractor = cars.ford_f600_tractor("white")
+    built = tractor.build("GroundEquipment_Tractor", bay, (0.0, 0.0, 0.0), 0.0)
+    radius, base = tractor.tyre[0] * 0.0254, tractor.wheelbase * 0.0254
+    print(f"  GroundEquipment_Tractor: wheel radius {radius:.3f} m, wheelbase {base:.3f} m, {built['triangles']:,} triangles")
     k = 0
     for y in (ty1 - 6.5, ty1 - 2.6):  # the bogie at the back: each pair of tyres its own node on its hub, to roll
         for s in (-1, 1):

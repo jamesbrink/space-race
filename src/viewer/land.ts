@@ -1,0 +1,626 @@
+import * as THREE from 'three';
+import { FIELD } from './field';
+import { NOISE } from './space';
+
+/**
+ * The ground of a place, from its parameters: one mesh from under the walker's feet to the
+ * horizon, painted from maps of what grows where. Nothing here knows which place it is; a site
+ * (cape.ts) supplies a `LandSpec`.
+ *
+ * **What covers the ground** is the site's GLSL, `coverA` and `coverB`, evaluated once on the GPU
+ * into two maps: a detailed one round the site and a coarse one to the horizon. The terrain's
+ * shader reads the maps, and the plants (flora.ts) read the detailed one back: what is painted
+ * green has plants on it and nothing else does, from one definition.
+ *
+ * **How high the ground is** is the site's `relief`, written twice (JavaScript and GLSL, with the
+ * integer noise of field.ts so the two agree): the mesh is lifted by it on the GPU, and the
+ * walker and the plants stand on it.
+ *
+ * **The mesh** follows the eye: a quadtree of square patches, each a 16 by 16 grid, half a metre
+ * a cell within 40 m of the eye and twice as coarse every time the distance doubles, out to 64 m
+ * cells. Where a finer patch meets a coarser one the finer one's in-between vertices have slid
+ * onto the coarser grid by the time they get there (continuous distance-dependent level of
+ * detail, Strugar 2009), so there are no cracks and no pops. Depth never has to interpolate
+ * across a triangle more than 64 m long (AGENTS.md, No flicker).
+ *
+ * **Thickets** are the ground lifted: where the cover map says woody plants close their canopy,
+ * the mesh rises into a lumpy roof of crowns as it gets further from the eye, so the scrub on the
+ * horizon stands up as a band and not a painted line, at no cost per plant. Near the eye it is
+ * flat ground and the plants stand on it.
+ */
+
+/** Linear colours of the ground's materials. */
+export interface Palette {
+  /** Bare sand, its pale and its dark. */
+  sand: THREE.Color;
+  sandDark: THREE.Color;
+  /** Low herbs and grasses: cured and still green. */
+  herbDry: THREE.Color;
+  herbGreen: THREE.Color;
+  /** Fallen leaves and humus under woody plants. */
+  litter: THREE.Color;
+  /** A canopy of leaves in shade and lit, and the second kind of leaf mixed into it. */
+  leaf: THREE.Color;
+  leafLit: THREE.Color;
+  leafOther: THREE.Color;
+  /** Fragments in the sand (shell, gravel): the colour and how many, 0 to 1. */
+  grit: THREE.Color;
+  gritAmount: number;
+}
+
+export interface LandSpec {
+  /** Half the side of the detailed map, metres, and its texels along a side. */
+  near: number;
+  texels: number;
+  /** Half the side of all the land, metres. */
+  far: number;
+  /**
+   * GLSL defining `vec4 coverA(vec2 p)` (woody cover, herb cover, bare ground, zone) and
+   * `vec4 coverB(vec2 p)` (worked ground, wet, loose sand, spare), each 0 to 1, at `p` metres in the
+   * land's frame. `zone` is the site's own ordering of its plant communities. May use NOISE, FIELD
+   * and anything in `shared`. Run once, into the maps.
+   */
+  cover: string;
+  /** GLSL put in both the cover's bake and the terrain's shader: functions both need. */
+  shared: string;
+  /** Height of the ground above the land's base level at (x, z) in its frame, metres; and the same in GLSL as `float relief(vec2 p)`. */
+  relief: (x: number, z: number) => number;
+  reliefGlsl: string;
+  /** GLSL `float canopyHeight(vec4 A, vec4 B)`: metres a closed stand of woody plants reaches here. */
+  canopy: string;
+  /** Size of one crown in a closed canopy, metres. */
+  crown: number;
+  /**
+   * GLSL `void paint(vec2 p, vec4 A, vec4 B, inout Ground g)`: the site's own marks laid over the
+   * ground once it is painted (roads, water). Its uniforms are `uniforms`.
+   */
+  paint: string;
+  uniforms?: Record<string, THREE.IUniform>;
+  palette: Palette;
+}
+
+/** Cells along a patch's side. */
+const GRID = 16;
+/** The finest cell, metres. */
+const CELL = 0.5;
+/** Levels of detail: cells of 0.5 m to 64 m. */
+const LEVELS = 8;
+/** Within this far of the eye (metres) the finest level is used; each level's reach doubles. */
+const RANGE0 = 40;
+const RANGES = Array.from({ length: LEVELS }, (_, k) => RANGE0 * 2 ** k);
+/** Where in its band a level starts to slide onto the next one's grid. */
+const MORPH = 0.72;
+/** The canopy rises from nothing to its full height between these distances from the eye, metres. */
+const SHELL: [number, number] = [18, 55];
+
+const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
+
+/** GLSL to read the two maps at a point, the detailed one blended into the coarse one at its edge. */
+const MAPS = /* glsl */ `
+  uniform sampler2D uNearA, uNearB, uFarA, uFarB;
+  uniform float uNearSize, uFarSize;
+  float nearWeight(vec2 p) {
+    vec2 q = abs(p / uNearSize);
+    return 1.0 - smoothstep(0.9, 0.985, max(q.x, q.y));
+  }
+  vec4 landA(vec2 p) {
+    return mix(textureLod(uFarA, p / (2.0 * uFarSize) + 0.5, 0.0), textureLod(uNearA, p / (2.0 * uNearSize) + 0.5, 0.0), nearWeight(p));
+  }
+  vec4 landB(vec2 p) {
+    return mix(textureLod(uFarB, p / (2.0 * uFarSize) + 0.5, 0.0), textureLod(uNearB, p / (2.0 * uNearSize) + 0.5, 0.0), nearWeight(p));
+  }
+  // in the fragment shader, filtered for the pixel's footprint
+  vec4 landAf(vec2 p) {
+    return mix(texture(uFarA, p / (2.0 * uFarSize) + 0.5), texture(uNearA, p / (2.0 * uNearSize) + 0.5), nearWeight(p));
+  }
+  vec4 landBf(vec2 p) {
+    return mix(texture(uFarB, p / (2.0 * uFarSize) + 0.5), texture(uNearB, p / (2.0 * uNearSize) + 0.5), nearWeight(p));
+  }`;
+
+/** GLSL: the domes of a closed canopy, one crown to a cell of `size` metres, each a little off its middle: 0 between them, 1 on top. */
+const crowns = (size: number) => /* glsl */ `
+  float crowns(vec2 p) {
+    vec2 c = p / ${size.toFixed(2)};
+    vec2 i = floor(c);
+    float top = 0.0;
+    for (int y = -1; y <= 1; y++)
+      for (int x = -1; x <= 1; x++) {
+        ivec2 n = ivec2(i) + ivec2(x, y);
+        vec2 o = vec2(n) + vec2(hash2(n, 71), hash2(n, 72)) * 0.8 + 0.1;
+        float r = 0.55 + 0.4 * hash2(n, 73);
+        float d = length(c - o) / r;
+        top = max(top, sqrt(max(0.0, 1.0 - d * d)) * (0.75 + 0.25 * hash2(n, 74)));
+      }
+    return top;
+  }`;
+
+/** Render the site's cover into a square map `half` metres each way of the origin. */
+function bake(renderer: THREE.WebGLRenderer, spec: LandSpec, which: 'A' | 'B', half: number, texels: number): THREE.WebGLRenderTarget {
+  const target = new THREE.WebGLRenderTarget(texels, texels, {
+    depthBuffer: false,
+    generateMipmaps: true,
+    minFilter: THREE.LinearMipmapLinearFilter,
+    magFilter: THREE.LinearFilter,
+    wrapS: THREE.ClampToEdgeWrapping,
+    wrapT: THREE.ClampToEdgeWrapping,
+  });
+  target.texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const material = new THREE.ShaderMaterial({
+    uniforms: { uHalf: { value: half }, uTexels: { value: texels }, ...spec.uniforms },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: /* glsl */ `
+      uniform float uHalf, uTexels;
+      ${NOISE}
+      ${FIELD}
+      ${spec.shared}
+      ${spec.reliefGlsl}
+      ${spec.cover}
+      void main() {
+        vec2 p = (gl_FragCoord.xy / uTexels * 2.0 - 1.0) * uHalf;
+        gl_FragColor = clamp(cover${which}(p), 0.0, 1.0);
+      }`,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const scene = new THREE.Scene();
+  const quad = new THREE.Mesh(new THREE.BufferGeometry(), material);
+  quad.geometry.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
+  quad.frustumCulled = false;
+  scene.add(quad);
+  const before = renderer.getRenderTarget();
+  renderer.setRenderTarget(target);
+  renderer.render(scene, new THREE.OrthographicCamera());
+  renderer.setRenderTarget(before);
+  material.dispose();
+  quad.geometry.dispose();
+  return target;
+}
+
+/** One patch's grid: (GRID + 1)² vertices in grid units, shared by every patch. */
+function patchGeometry(): THREE.InstancedBufferGeometry {
+  const geometry = new THREE.InstancedBufferGeometry();
+  const positions: number[] = [];
+  for (let j = 0; j <= GRID; j++) for (let i = 0; i <= GRID; i++) positions.push(i, 0, j);
+  const index: number[] = [];
+  for (let j = 0; j < GRID; j++)
+    for (let i = 0; i < GRID; i++) {
+      const a = j * (GRID + 1) + i,
+        b = a + 1,
+        c = a + GRID + 1,
+        d = c + 1;
+      // the diagonal alternates, so a morphing grid folds evenly
+      if ((i + j) % 2) index.push(a, c, b, b, c, d);
+      else index.push(a, c, d, a, d, b);
+    }
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  return geometry;
+}
+
+export class Land {
+  readonly mesh: THREE.Mesh;
+  /** The cover maps, for anything else that wants to read them on the GPU. */
+  readonly uniforms: Record<string, THREE.IUniform>;
+  private readonly spec: LandSpec;
+  /** The detailed map's first channels, read back: woody, herb, bare, zone as bytes. */
+  readonly coverBytes: Uint8Array;
+  private readonly patches: THREE.InstancedBufferAttribute;
+  private readonly geometry: THREE.InstancedBufferGeometry;
+  private readonly eye = new THREE.Vector4();
+  private readonly time = { value: 0 };
+  private readonly cel = { value: 0 };
+  private roots: [number, number][] = [];
+  private rootLevel = LEVELS - 1;
+  mesh_debug: THREE.IUniform | null = null;
+
+  /** `baseY`: the height the land's relief is measured from, in the mesh's parent; `turn`: radians about the vertical from the land's frame to its parent's. */
+  constructor(renderer: THREE.WebGLRenderer, spec: LandSpec, baseY: number, turn: number) {
+    this.spec = spec;
+    const nearA = bake(renderer, spec, 'A', spec.near, spec.texels);
+    const nearB = bake(renderer, spec, 'B', spec.near, spec.texels);
+    const farTexels = 512;
+    const farA = bake(renderer, spec, 'A', spec.far, farTexels);
+    const farB = bake(renderer, spec, 'B', spec.far, farTexels);
+    this.coverBytes = new Uint8Array(spec.texels * spec.texels * 4);
+    renderer.readRenderTargetPixels(nearA, 0, 0, spec.texels, spec.texels, this.coverBytes);
+
+    this.uniforms = {
+      uNearA: { value: nearA.texture },
+      uNearB: { value: nearB.texture },
+      uFarA: { value: farA.texture },
+      uFarB: { value: farB.texture },
+      uNearSize: { value: spec.near },
+      uFarSize: { value: spec.far },
+    };
+
+    const top = CELL * GRID * 2 ** this.rootLevel * 2; // a root's side
+    const n = Math.ceil(spec.far / top);
+    for (let i = -n; i < n; i++) for (let j = -n; j < n; j++) this.roots.push([i * top, j * top]);
+
+    this.geometry = patchGeometry();
+    this.patches = new THREE.InstancedBufferAttribute(new Float32Array(4 * 4096), 4);
+    this.patches.setUsage(THREE.DynamicDrawUsage);
+    this.geometry.setAttribute('aPatch', this.patches);
+    this.geometry.instanceCount = 0;
+
+    const material = new THREE.MeshStandardMaterial({ name: 'land', roughness: 1, metalness: 0 });
+    this.shade(material);
+    this.mesh = new THREE.Mesh(this.geometry, material);
+    this.mesh.frustumCulled = false; // the patches are placed in the shader; there is always some ground in view
+    this.mesh.position.y = baseY;
+    this.mesh.rotation.y = turn;
+    this.mesh.raycast = (raycaster, hits) => this.raycast(raycaster, hits);
+    this.mesh.userData.land = this; // for the debug handle: sr.stage.setting.floor.userData.land
+    this.select(0, 30, 0);
+  }
+
+  /** Height of the ground above the land's base level at a point in its frame, metres. */
+  heightAt(x: number, z: number): number {
+    return this.spec.relief(x, z);
+  }
+
+  /** What covers the ground at a point in the land's frame (the detailed map, as the GPU filters it): woody, herb, bare, zone, each 0 to 1. Outside the map: nothing. */
+  coverAt(x: number, z: number, out: Float32Array | number[]): boolean {
+    const t = this.spec.texels;
+    const fx = ((x / this.spec.near) * 0.5 + 0.5) * t - 0.5;
+    const fz = ((z / this.spec.near) * 0.5 + 0.5) * t - 0.5;
+    if (fx < 0 || fz < 0 || fx >= t - 1 || fz >= t - 1) return false;
+    const i = Math.floor(fx),
+      j = Math.floor(fz);
+    const u = fx - i,
+      v = fz - j;
+    const b = this.coverBytes;
+    const at = (j * t + i) * 4,
+      up = at + t * 4;
+    for (let c = 0; c < 4; c++) {
+      const a = b[at + c]! * (1 - u) + b[at + 4 + c]! * u;
+      const d = b[up + c]! * (1 - u) + b[up + 4 + c]! * u;
+      out[c] = (a * (1 - v) + d * v) / 255;
+    }
+    return true;
+  }
+
+  /** The eye, in the land's frame: the patches are chosen round it. */
+  attend(eye: THREE.Vector3): void {
+    this.select(eye.x, eye.y - this.spec.relief(eye.x, eye.z), eye.z);
+  }
+
+  tick(dt: number): void {
+    this.time.value += dt;
+  }
+
+  /** The cel look's flat land, or the real one. */
+  simplify(on: boolean): void {
+    this.cel.value = Number(on);
+  }
+
+  /**
+   * Choose the patches for an eye at (x, z), `height` above the ground. A patch at level k is
+   * used where it lies within RANGES[k] of the eye and not within RANGES[k - 1]; where only some
+   * of a patch is that near, its quarters are used at the finer level and the rest at its own.
+   * Distances are measured with the eye's height in them, as the shader measures its morph.
+   */
+  private select(x: number, height: number, z: number): void {
+    this.eye.set(x, Math.max(0, height), z, 0);
+    const h2 = this.eye.y * this.eye.y;
+    const data = this.patches.array as Float32Array;
+    let count = 0;
+    const add = (px: number, pz: number, level: number) => {
+      if (count >= 4096) return;
+      data.set([px, pz, CELL * 2 ** level, level], count++ * 4);
+    };
+    // squared distance from the eye to a square's nearest point, with the eye's height
+    const near = (px: number, pz: number, side: number) => {
+      const dx = Math.max(px - x, 0, x - px - side),
+        dz = Math.max(pz - z, 0, z - pz - side);
+      return dx * dx + dz * dz + h2;
+    };
+    // a node of `level` whose side is two patches of that level; it covers its four quarters
+    const visit = (px: number, pz: number, level: number) => {
+      const quarter = CELL * GRID * 2 ** level;
+      if (level === 0 || near(px, pz, 2 * quarter) > RANGES[level - 1]! ** 2) {
+        for (const [qx, qz] of [
+          [0, 0],
+          [quarter, 0],
+          [0, quarter],
+          [quarter, quarter],
+        ] as const)
+          add(px + qx, pz + qz, level);
+        return;
+      }
+      for (const [qx, qz] of [
+        [0, 0],
+        [quarter, 0],
+        [0, quarter],
+        [quarter, quarter],
+      ] as const) {
+        // a quarter near enough for the next level down is that level's node; the rest stays at this one
+        if (near(px + qx, pz + qz, quarter) <= RANGES[level - 1]! ** 2) visit(px + qx, pz + qz, level - 1);
+        else add(px + qx, pz + qz, level);
+      }
+    };
+    for (const [rx, rz] of this.roots) visit(rx, rz, this.rootLevel);
+    this.geometry.instanceCount = count;
+    this.patches.clearUpdateRanges();
+    this.patches.addUpdateRange(0, count * 4);
+    this.patches.needsUpdate = true;
+  }
+
+  /** The ground under a ray, by stepping along it: the mesh is placed by the shader, so its triangles cannot be asked. */
+  private raycast(raycaster: THREE.Raycaster, hits: THREE.Intersection[]): void {
+    const inverse = new THREE.Matrix4().copy(this.mesh.matrixWorld).invert();
+    const ray = raycaster.ray.clone().applyMatrix4(inverse);
+    if (ray.direction.y >= -1e-4) return;
+    // the plane of the base level, then the relief there, a few times over: the land is gentle
+    let t = -ray.origin.y / ray.direction.y;
+    const p = new THREE.Vector3();
+    for (let i = 0; i < 4; i++) {
+      ray.at(t, p);
+      t = (this.spec.relief(p.x, p.z) - ray.origin.y) / ray.direction.y;
+    }
+    if (t < 0) return;
+    ray.at(t, p);
+    const e = 0.5;
+    const normal = new THREE.Vector3(
+      this.spec.relief(p.x - e, p.z) - this.spec.relief(p.x + e, p.z),
+      2 * e,
+      this.spec.relief(p.x, p.z - e) - this.spec.relief(p.x, p.z + e),
+    ).normalize();
+    const point = p.clone().applyMatrix4(this.mesh.matrixWorld);
+    const distance = raycaster.ray.origin.distanceTo(point);
+    if (distance < raycaster.near || distance > raycaster.far) return;
+    hits.push({ distance, point, object: this.mesh, face: { a: 0, b: 0, c: 0, normal, materialIndex: 0 } });
+  }
+
+  private shade(material: THREE.MeshStandardMaterial): void {
+    const spec = this.spec;
+    const p = spec.palette;
+    const uniforms = {
+      ...this.uniforms,
+      ...spec.uniforms,
+      uEye: { value: this.eye },
+      uRanges: { value: RANGES },
+      uTime: this.time,
+      uCel: this.cel,
+      uDebug: { value: 0 },
+    };
+    this.mesh_debug = uniforms.uDebug;
+    material.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, uniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          '#include <common>',
+          /* glsl */ `#include <common>
+          attribute vec4 aPatch;          // (x, z) of its corner in the land's frame, its cell in metres, its level
+          uniform vec4 uEye;              // the eye in the land's frame: x, height over the ground, z
+          uniform float uRanges[${LEVELS}];
+          varying vec3 vLand;             // this point in the land's frame
+          varying float vCanopy;          // how far the thicket's roof stands above the ground here, metres
+          varying float vCrown;           // 0 between crowns, 1 on their tops
+          ${MAPS}
+          ${NOISE}
+          ${FIELD}
+          ${spec.shared}
+          ${spec.reliefGlsl}
+          ${spec.canopy}
+          ${crowns(spec.crown)}
+          // the thicket's roof above the ground at p, which is far metres from the eye on a grid of cell metres
+          float roof(vec2 p, float far, float cell, out float crown) {
+            vec4 A = landA(p);
+            float stand = canopyHeight(A, landB(p)) * smoothstep(0.5, 0.75, A.r);   // inside what the pixels paint as thicket, so a coarse cell's slope is never painted as ground
+            crown = mix(crowns(p), 0.6, smoothstep(0.4, 1.2, cell / ${spec.crown.toFixed(2)}));   // crowns finer than the grid would only alias
+            return stand * (0.5 + 0.5 * crown) * smoothstep(${SHELL[0].toFixed(1)}, ${SHELL[1].toFixed(1)}, far);
+          }`,
+        )
+        .replace(
+          '#include <beginnormal_vertex>',
+          /* glsl */ `
+          vec2 grid = position.xz;
+          float cell = aPatch.z;
+          int level = int(aPatch.w + 0.5);
+          vec2 at = aPatch.xy + grid * cell;
+          // slide this patch's in-between vertices onto the next level's grid as it nears the end of its band
+          float reach = uRanges[level], from = level > 0 ? uRanges[level - 1] : 0.0;
+          float far = length(vec3(at.x - uEye.x, uEye.y, at.y - uEye.z));
+          float morph = clamp((far - mix(from, reach, ${MORPH})) / (reach - mix(from, reach, ${MORPH})), 0.0, 1.0);
+          grid -= (grid - 2.0 * floor(grid * 0.5)) * morph;
+          at = aPatch.xy + grid * cell;
+          far = length(vec3(at.x - uEye.x, uEye.y, at.y - uEye.z));
+          float span = cell * (1.0 + morph);
+          float crown, c1, c2;
+          float lift = roof(at, far, span, crown);
+          float ground = relief(at);
+          float hx = relief(at + vec2(span, 0.0)) + roof(at + vec2(span, 0.0), far, span, c1);
+          float hz = relief(at + vec2(0.0, span)) + roof(at + vec2(0.0, span), far, span, c2);
+          vec3 objectNormal = normalize(vec3(ground + lift - hx, span, ground + lift - hz));
+          vLand = vec3(at.x, ground, at.y);
+          vCanopy = lift;
+          vCrown = crown;
+          vec3 landPoint = vec3(at.x, ground + lift, at.y);
+          #ifdef USE_TANGENT
+            vec3 objectTangent = vec3(1.0, 0.0, 0.0);
+          #endif`,
+        )
+        .replace('#include <begin_vertex>', 'vec3 transformed = landPoint;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <common>',
+          /* glsl */ `#include <common>
+          varying vec3 vLand;
+          varying float vCanopy;
+          varying float vCrown;
+          uniform float uTime;
+          uniform float uCel;
+          uniform float uDebug;
+          uniform vec4 uEye;
+          ${MAPS}
+          ${NOISE}
+          ${FIELD}
+          ${spec.shared}
+          ${crowns(spec.crown)}
+          struct Ground { vec3 albedo; float rough; float bump; float water; };
+          float landPixel;   // metres across one pixel, here
+          // how much of a feature this many metres across can be made out: none once it is under two pixels
+          float seen(float size) { return 1.0 - smoothstep(0.25, 0.5, landPixel / size); }
+          float landBump;
+          float landWater;
+          float landRough;
+          ${spec.paint}
+          // Bare sand, grass and what falls under shrubs, from the maps, with the grain each has close to.
+          Ground ground(vec2 p, vec4 A, vec4 B) {
+            float woody = A.r, herb = A.g, worked = B.r, wet = B.g, loose = B.b;
+            Ground g;
+            g.water = 0.0;
+            // sand: paler and darker over tens of metres; scuffed, drifted and trodden over decimetres; grains
+            float drift = noise(vec3(p * 0.035, 1.0)) * 0.7 + noise(vec3(p * 0.21, 2.0)) * 0.3;
+            vec3 sand = mix(${vec3(p.sandDark)}, ${vec3(p.sand)}, drift);
+            float tread = noise(vec3(p * 2.4, 5.0)) * 0.6 + noise(vec3(p * 7.0, 6.0)) * 0.4;
+            float grain = noise(vec3(p * 160.0, 2.0)) * 0.6 + noise(vec3(p * 430.0, 4.0)) * 0.4;
+            sand *= 1.0 + 0.24 * (tread - 0.5) * seen(0.12) + 0.24 * (grain - 0.5) * seen(0.004);
+            // crumbs: in each 3 cm cell a small clod standing up, or a dimple where something pressed; the light picks them out
+            vec2 cc = p * 33.0, cci = floor(cc), ccf = cc - cci - 0.5;
+            float ch = hash(vec3(cci, 35.0));
+            vec2 co = vec2(hash(vec3(cci, 36.0)), hash(vec3(cci, 37.0))) - 0.5;
+            float cr = length((ccf - co * 0.5) * vec2(1.0, 0.6 + 0.8 * hash(vec3(cci, 39.0)))) / (0.12 + 0.3 * hash(vec3(cci, 38.0)));
+            float crumb = (0.5 + 0.5 * cos(3.1416 * min(cr, 1.0))) * (ch > 0.78 ? 1.0 : ch < 0.12 ? -0.7 : 0.0) * (0.4 + 0.6 * hash(vec3(cci, 40.0))) * seen(0.03);
+            sand *= 1.0 + 0.1 * crumb;
+            // grit: a fragment in some of the 4 cm cells, a sliver turned any way, pale
+            vec2 cellAt = p * 24.0, ci = floor(cellAt), cf = cellAt - ci - 0.5;
+            float pick = hash(vec3(ci, 3.0));
+            float a = pick * 40.0;
+            vec2 off = vec2(hash(vec3(ci, 4.0)), hash(vec3(ci, 5.0))) - 0.5;
+            vec2 q = mat2(cos(a), sin(a), -sin(a), cos(a)) * (cf - off * 0.5);
+            float sliver = 1.0 - smoothstep(0.7, 1.0, length(q * vec2(1.0, 2.2)) / (0.12 + 0.2 * hash(vec3(ci, 6.0))));
+            float grit = sliver * step(1.0 - ${p.gritAmount.toFixed(3)} * (1.0 - 0.6 * herb), pick) * seen(0.01);
+            sand = mix(sand, ${vec3(p.grit)} * (0.8 + 0.4 * hash(vec3(ci, 7.0))), grit * 0.85);
+            // loose dry sand lies in wind ripples, crests across the wind
+            float rip = sin((p.x + 0.35 * noise(vec3(p * 0.6, 8.0)) + 0.08 * p.y) * 62.8);
+            float ripples = loose * seen(0.05);
+            sand *= 1.0 + 0.05 * rip * ripples;
+            g.bump = 0.004 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12) + 0.002 * grit + 0.004 * crumb;
+            // patches a stride across: damper and darker, or a dry pale crust
+            float patches = noise(vec3(p * 0.45, 24.0)) * 0.65 + noise(vec3(p * 1.3, 25.0)) * 0.35;
+            sand *= 1.0 + 0.22 * (patches - 0.5) * seen(0.5);
+            // worked ground: graded, and driven over; each vehicle's track two lines of pressed sand 1.5 m apart, wandering
+            float tyres = 0.0;
+            for (int k = 0; k < 2; k++) {
+              float a = 0.7 + 1.9 * float(k);
+              vec2 dir = vec2(cos(a), sin(a));
+              float across = dot(p, vec2(-dir.y, dir.x)) + 9.0 * noise(vec3(p * 0.025, 26.0 + float(k)));
+              float lane = floor(across / 23.0);
+              float f = across - (lane + 0.5) * 23.0;
+              float wheel = 1.0 - smoothstep(0.08, 0.16, abs(abs(f) - 0.75));
+              // a track runs for a while and gives out; tread marks across it
+              float runs = smoothstep(0.45, 0.6, noise(vec3(dot(p, dir) * 0.03, lane, 27.0 + float(k))));
+              float tread = 0.75 + 0.25 * step(0.5, fract(dot(p, dir) * 9.0));
+              tyres = max(tyres, wheel * runs * mix(1.0, tread, seen(0.06)));
+            }
+            tyres *= worked * seen(0.3);
+            sand = mix(sand, sand * 0.84, tyres);
+            sand = mix(sand, sand * 1.05, worked);
+            g.bump += 0.02 * (patches - 0.5) * seen(0.5) - 0.012 * tyres;
+            g.albedo = sand;
+            g.rough = 1.0;
+            // grass: clumps of a hand's breadth to a stride, with sand between where it is thin
+            float clump = noise(vec3(p * 1.7, 9.0)) * 0.6 + noise(vec3(p * 5.5, 10.0)) * 0.4;
+            float grass = smoothstep(clump - 0.3, clump + 0.2, herb * 1.25 + 0.25 * (noise(vec3(p * 9.0, 41.0)) - 0.5) * seen(0.1));
+            grass = mix(herb, grass, seen(0.35));
+            // near the eye the grass stands up as tufts (flora.ts), and between them is sand and thatch; further off they are this colour
+            grass *= mix(0.55, 1.0, smoothstep(14.0, 30.0, length(vec3(p - uEye.xz, uEye.y))));
+            vec3 straw = mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, smoothstep(0.25, 0.75, noise(vec3(p * 0.09, 11.0)) * 0.7 + clump * 0.3));
+            // blades lying every way: in each 5 cm cell, one or two short strokes, each its own shade
+            float lying = 0.0, shade = 0.5;
+            vec2 bc = p * 13.0;
+            vec2 bi = floor(bc);
+            for (int y = -1; y <= 1; y++)
+              for (int x = -1; x <= 1; x++) {
+                vec2 n = bi + vec2(x, y);
+                float h = hash(vec3(n, 31.0));
+                float a = h * 6.283;
+                vec2 o = n + vec2(hash(vec3(n, 32.0)), hash(vec3(n, 33.0)));
+                vec2 d = vec2(cos(a), sin(a));
+                vec2 q = bc - o;
+                float t = clamp(dot(q, d), -1.1, 1.1);
+                float w = length(q - d * t);
+                float stroke = (1.0 - smoothstep(0.03, 0.07, w)) * step(0.35, h);
+                if (stroke > lying) { lying = stroke; shade = 0.35 + 0.3 * hash(vec3(n, 34.0)); }
+              }
+            float blades = mix(0.5, mix(0.35, shade, lying), seen(0.02));
+            straw *= 0.72 + 0.56 * blades + 0.3 * (clump - 0.5) * seen(0.2);
+            // the thatch between live blades: last year's, grey and pale
+            straw = mix(straw, ${vec3(p.herbDry)} * 1.25, 0.25 * (1.0 - lying) * seen(0.02));
+            g.albedo = mix(g.albedo, straw, grass);
+            g.bump += 0.012 * grass * (lying - 0.5) * seen(0.02);
+            // under shrubs: fallen leaves and shade
+            float under = smoothstep(0.12, 0.55, woody + 0.3 * (noise(vec3(p * 0.8, 14.0)) - 0.5));
+            // fallen leaves: one to each 5 cm cell, an oval turned any way, each its own brown or grey
+            vec2 lc = p * 19.0, li = floor(lc), lf = lc - li - 0.5;
+            float la = hash(vec3(li, 42.0)) * 6.283;
+            vec2 lq = mat2(cos(la), sin(la), -sin(la), cos(la)) * (lf - (vec2(hash(vec3(li, 43.0)), hash(vec3(li, 44.0))) - 0.5) * 0.3);
+            float leafAt = (1.0 - smoothstep(0.8, 1.0, length(lq * vec2(1.0, 2.0)) / 0.42)) * seen(0.025);
+            vec3 litter = ${vec3(p.litter)} * (0.75 + 0.5 * noise(vec3(p * 3.0, 15.0)));
+            litter = mix(litter, ${vec3(p.litter)} * (0.9 + 1.1 * hash(vec3(li, 45.0))) * vec3(1.15, 1.0, 0.8), leafAt);
+            g.albedo = mix(g.albedo, litter, under);
+            g.bump = mix(g.bump, 0.003 * leafAt + 0.01 * (noise(vec3(p * 3.0, 15.0)) - 0.5), under);
+            // damp ground is darker and has a sheen
+            g.albedo *= 1.0 - 0.38 * wet;
+            g.rough = mix(g.rough, 0.55, wet);
+            return g;
+          }`,
+        )
+        .replace(
+          '#include <map_fragment>',
+          /* glsl */ `
+          vec2 landAt = vLand.xz;
+          landPixel = max(length(fwidth(landAt)), 1e-5);
+          vec4 coverA = landAf(landAt), coverB = landBf(landAt);
+          Ground g = ground(landAt, coverA, coverB);
+          // the thicket's roof: leaf masses on each crown, deep shade between them
+          // where the map says the thicket closes, as far from the eye as its roof has risen: per pixel, so its edge is the map's and not the grid's
+          float eyeFar = length(vec3(landAt - uEye.xz, uEye.y));
+          float roofed = smoothstep(0.3, 0.62, coverA.r) * smoothstep(${SHELL[0].toFixed(1)}, ${SHELL[1].toFixed(1)}, eyeFar);
+          if (roofed > 0.0) {
+            float crown = mix(0.6, crowns(landAt), seen(${spec.crown.toFixed(2)}));
+            float masses = noise(vec3(landAt * 1.9, 16.0));
+            float leaves = noise(vec3(landAt * 9.0, 17.0)) * 0.6 + noise(vec3(landAt * 23.0, 18.0)) * 0.4;
+            vec3 leaf = mix(${vec3(p.leaf)}, ${vec3(p.leafOther)}, smoothstep(0.35, 0.75, noise(vec3(landAt * 0.12, 19.0))));
+            leaf = mix(leaf, ${vec3(p.leafLit)}, smoothstep(0.2, 0.95, crown * 0.65 + masses * 0.35));
+            leaf *= mix(0.3, 1.0, smoothstep(0.1, 0.7, crown)) * (0.7 + 0.6 * mix(0.5, leaves, seen(0.1))) * (0.8 + 0.4 * masses);
+            g.albedo = mix(g.albedo, leaf, roofed);
+            g.rough = mix(g.rough, 0.8, roofed);
+            g.bump = mix(g.bump, 0.25 * crown + 0.05 * (masses - 0.5) + 0.03 * (leaves - 0.5) * seen(0.1), roofed);
+          }
+          paint(landAt, coverA, coverB, g);
+          landBump = g.bump;
+          landWater = g.water;
+          landRough = g.rough;
+          diffuseColor.rgb = g.albedo;
+          if (uDebug > 0.5) diffuseColor.rgb = vec3(nearWeight(landAt), coverA.g, coverA.r);`,
+        )
+        .replace(
+          '#include <roughnessmap_fragment>',
+          /* glsl */ `#include <roughnessmap_fragment>
+          roughnessFactor = landRough;`,
+        )
+        .replace(
+          '#include <normal_fragment_maps>',
+          /* glsl */ `#include <normal_fragment_maps>
+          {
+            // the grain's relief, as a bump map would tilt the normal: from how the bump changes across the pixel
+            vec3 dx = dFdx(-vViewPosition), dy = dFdy(-vViewPosition);
+            float bx = dFdx(landBump), by = dFdy(landBump);
+            vec3 r1 = cross(dy, normal), r2 = cross(normal, dx);
+            float det = dot(dx, r1);
+            vec3 grad = sign(det) * (bx * r1 + by * r2);
+            normal = normalize(abs(det) * normal - (1.0 - uCel) * grad);
+            // water: chop that moves, so the Sun breaks up on it
+            vec2 w = landAt * 0.22 + vec2(uTime * 0.35, uTime * 0.2);
+            vec3 chop = vec3(noise(vec3(w, 0.0)) - 0.5, 0.0, noise(vec3(w, 9.0)) - 0.5);
+            normal = normalize(normal + (1.0 - uCel) * landWater * 0.22 * (viewMatrix * vec4(chop, 0.0)).xyz);
+          }`,
+        );
+    };
+    material.customProgramCacheKey = () => 'land';
+  }
+}

@@ -42,6 +42,8 @@ export interface Setting {
   horizon?: number;
   /** Where the eye is: a place may draw what is near it in more detail. True if that changed what is drawn. */
   attend?: (eye: THREE.Vector3) => boolean;
+  /** The ground's height at (x, z) in the world, where the setting's floor is not level: the walker stands on it. */
+  groundAt?: (x: number, z: number) => number;
   /**
    * Move the setting to an instant: a Julian date in UT, the simulation clock's. The Sun, the
    * Moon and the stars go where they were then, and the light, the sky and the reflections follow;
@@ -155,16 +157,20 @@ let cape: ReturnType<typeof buildCape> | undefined;
 
 /** The sky turns 15 arcseconds a second. Under this many seconds of it nothing has moved a pixel, and the view is left alone. */
 const SKY_STEP = 4;
-/** How far the light must move before shadows are drawn again, and before the reflections are baked again: degrees. */
-const SHADOW_STEP = 0.05;
-const BAKE_STEP = 1;
 /**
  * With the clock run fast the light moves every frame. Drawing the shadow map and baking the
- * reflections are the two things that cost, so each is done no more often than this, in
- * milliseconds of ours; whatever is owed when the clock stops is paid then.
+ * reflections are the two things that cost, so each is done only when the light has moved this
+ * far (degrees) and no more often than this (milliseconds of ours); whatever is owed when the
+ * clock stops is paid then. `unhurried` is for a view nobody is steering (the idle show): the
+ * light is allowed to move further between each, which nobody watching a whole day pass can
+ * see, and the frames between come out even.
  */
-const SHADOW_EVERY = 50;
-const BAKE_EVERY = 500;
+const BRISK = { shadowStep: 0.05, bakeStep: 1, shadowEvery: 50, bakeEvery: 500 };
+const UNHURRIED = { shadowStep: 0.3, bakeStep: 4, shadowEvery: 400, bakeEvery: 5000 };
+let cadence = BRISK;
+export function unhurried(on: boolean): void {
+  cadence = on ? UNHURRIED : BRISK;
+}
 
 const colour = (target: THREE.Color, rgb: RGB): THREE.Color => target.setRGB(rgb[0], rgb[1], rgb[2]);
 
@@ -199,7 +205,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   // and the Sun itself: a small bright patch, so a polished edge has something to catch
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), ground), patch);
-  cape ??= buildCape(GROUND_Y);
+  cape ??= buildCape(renderer, GROUND_Y);
   const fog = new THREE.FogExp2(0, 0.00042);
   const gen = new THREE.PMREMGenerator(renderer);
   let baked: THREE.WebGLRenderTarget | null = null;
@@ -234,6 +240,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     tick: cape.tick,
     simplify: cape.simplify,
     attend: cape.attend,
+    groundAt: cape.groundAt,
   };
 
   const bake = (ambient: number): void => {
@@ -249,7 +256,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
 
   setting.at = (jdUT) => {
     const now = performance.now();
-    const due = (stale && now - bakedAt >= BAKE_EVERY) || (shadowsOwed && now - shadowsAt >= SHADOW_EVERY);
+    const due = (stale && now - bakedAt >= cadence.bakeEvery) || (shadowsOwed && now - shadowsAt >= cadence.shadowEvery);
     if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due) return null;
     if (jdUT !== shownAt) {
       shownAt = jdUT;
@@ -272,8 +279,8 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     setting.sunIntensity = light.light.intensity;
     setting.fill[2] = 0.28 * light.ambient;
     setting.exposure = light.exposure;
-    shadowsOwed ||= light.light.from !== source || setting.sunDir.angleTo(shadowed) > SHADOW_STEP * DEG;
-    const shadows = shadowsOwed && now - shadowsAt >= SHADOW_EVERY;
+    shadowsOwed ||= light.light.from !== source || setting.sunDir.angleTo(shadowed) > cadence.shadowStep * DEG;
+    const shadows = shadowsOwed && now - shadowsAt >= cadence.shadowEvery;
     if (shadows) {
       shadowed.copy(setting.sunDir);
       shadowsAt = now;
@@ -287,9 +294,9 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     patch.position.copy(h.sunDir).multiplyScalar(46);
     stale ||=
       light.light.from !== source ||
-      h.sunDir.angleTo(bakedSun) > BAKE_STEP * DEG ||
+      h.sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG ||
       Math.abs(light.ambient - bakedAmbient) > 0.08 * Math.max(light.ambient, bakedAmbient);
-    if (!baked || (stale && now - bakedAt >= BAKE_EVERY)) bake(light.ambient);
+    if (!baked || (stale && now - bakedAt >= cadence.bakeEvery)) bake(light.ambient);
     source = light.light.from;
     return { shadows };
   };
@@ -378,12 +385,12 @@ function orbit(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
       shownAt = jdUT;
       h.at(skyFrom(site, jdUT));
       backdrop.place(h);
-      if (sunDir.angleTo(bakedSun) > BAKE_STEP * DEG) {
+      if (sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG) {
         setting.environment.dispose();
         setting.environment = orbitEnvironment(renderer, sunDir);
         bakedSun.copy(sunDir);
       }
-      const shadows = sunDir.angleTo(shadowed) > SHADOW_STEP * DEG;
+      const shadows = sunDir.angleTo(shadowed) > cadence.shadowStep * DEG;
       if (shadows) shadowed.copy(sunDir);
       return { shadows };
     };

@@ -133,6 +133,8 @@ def gantry(parts: Parts) -> None:
     for dx in (-0.5, 0.5):
         beam(dark, (dx, gy, BOX[3] + 3.4), (dx, gy, z1 - 2.2), 0.07)
     box(dark, (-0.9, gy - 0.6, BOX[3] + 1.5), (0.9, gy + 0.6, BOX[3] + 3.5))  # the hook block
+    for x in (-span + 0.6, span - 0.6):  # red obstruction lights at the top's ends (estimated: the usual practice)
+        parts(g, "lamp-red", True).tube(P(x, gy + LEG, GANTRY_TOP + 3.95), P(x, gy + LEG, GANTRY_TOP + 4.7), 0.3 * FT, 10)
     for x in (-span + 1.0, span - 1.0):  # whips on the corners
         dark.tube(P(x, gy, GANTRY_TOP + 0.6), P(x, gy, GANTRY_TOP + 11.0), 0.04 * FT, 6)
 

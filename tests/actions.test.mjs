@@ -99,6 +99,13 @@ test('the ground under your own feet is quiet unless there is something to do wi
   assert.ok(!quietly({ model: 'rig', node: 'Cab', pane: true, underfoot: true }));
 });
 
+test('a vehicle can be got into, whether it is a part of a model or scenery', () => {
+  assert.deepEqual(ids({ vehicle: 'Car_05' }), ['drive']);
+  assert.equal(nameOf({ vehicle: 'Car_05' }, flight), 'Car 05');
+  assert.deepEqual(ids({ model: 'rig', node: 'Cab', vehicle: 'Rig_Truck' }), ['drive', 'info', 'inspect']);
+  assert.equal(nameOf({ model: 'rig', node: 'Cab', vehicle: 'Rig_Truck' }, flight), 'The Cab');
+});
+
 test('a model hit where it has no part, and nothing at all, offer nothing', () => {
   assert.deepEqual(ids({ model: 'rig' }), []);
   assert.deepEqual(ids({}), []);

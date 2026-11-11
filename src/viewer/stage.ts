@@ -11,7 +11,7 @@ import { sameTarget, type Target, type Workings } from '../actions';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
-import { GROUND_Y, type Setting, Settings } from './backdrops';
+import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { Lamps } from './lamps';
@@ -20,6 +20,8 @@ import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
+import { Vehicle } from './drive';
+import { Ragdoll, type Tumbler } from './ragdoll';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { Carry } from './carry';
 import { pose } from './gait';
@@ -57,6 +59,8 @@ VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
+/** How long a vehicle's door is given to swing before the figure gets in or out through it, seconds. */
+const DOOR_SECONDS = 1.05;
 const DOWN = new THREE.Vector3(0, -1, 0);
 /** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
 const WALK_SHADOW = 26;
@@ -157,7 +161,7 @@ export class Stage {
    * times its pace: it eases to a stop). The slider is the script; these hold until the script
    * next moves the hardware, then ease back to it.
    */
-  private readonly handset = new Map<string, { at: number; fn: Fn; v: number; pace: number; push: number }>();
+  private readonly handset = new Map<string, { at: number; fn: Fn; v: number; pace: number; push: number; back?: boolean }>();
   private readonly fns = new WeakMap<object, Fn[]>();
   /** The lifts a model marks under each of its top-level nodes, found once (markedOn). */
   private readonly lifts = new WeakMap<THREE.Object3D, Action[]>();
@@ -166,11 +170,20 @@ export class Stage {
   /** The doors and lifts of the flight's models, as they stand (works.ts). */
   private readonly works = new Works();
   private walkDt = 0;
+  private carriedLevel: THREE.Object3D | null = null;
   private readonly below = new THREE.Vector3();
   /** While walking: the figure is drawn into the shadow map only (the view is through its eyes). */
   private unseen = false;
   /** While walking: what is being looked at from within reach, and where the ray met it. */
-  private aim: { target: Target; hit: Hit; box?: THREE.Box3 } | null = null;
+  private aim: { target: Target; hit: Hit; box?: THREE.Box3; vehicle?: THREE.Object3D } | null = null;
+  /** A figure knocked off its feet by a long fall, tumbling (ragdoll.ts) until it lies still; and each level of detail's ragdoll, made once. */
+  private tumble: Tumbler | null = null;
+  private readonly dolls = new WeakMap<THREE.Object3D, Ragdoll | null>();
+  /** The vehicle the walker is at the wheel of (drive.ts), and every vehicle that has been driven, by its node. */
+  private wheel: Vehicle | null = null;
+  /** Getting into or out of a vehicle through its door: which, which way, and how long the door has been swinging. */
+  private boarding: { vehicle: Vehicle; out: boolean; t: number; door: ReturnType<Stage['doorOf']> } | null = null;
+  private readonly vehicles = new WeakMap<THREE.Object3D, Vehicle>();
   /** The orbiting camera's lens, vertical degrees. Views are framed for it even while the walker's wider one is easing in or out. */
   private readonly lens = 35;
 
@@ -196,6 +209,11 @@ export class Stage {
   private fast = false;
   /** Which way everything is drawn, real or cel (look.ts), and the cel look's ink line. */
   private readonly looks = new Looks();
+  private shadowsOwed = false;
+  private shadowsAt = 0;
+  private easy = false;
+  /** What is still on its way after `load` returns: coarser levels of detail, the place round the pad. */
+  private arriving: Promise<unknown>[] = [];
   /** The floodlights the models carry: lit when the Sun is down. */
   private lamps = new Lamps();
   private readonly ink = new InkPass();
@@ -502,16 +520,17 @@ export class Stage {
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
     // the coarser levels arrive behind the scenes; a model that has none simply stays as it is
     const staged = this.staged;
+    this.arriving = [];
     flight.models.forEach((def, i) => {
       for (let level = 1; level <= LOD_ABOVE.length; level++)
-        this.fetch(lodUrl(def.url, level))
-          .then((object) => {
+        this.arriving.push(
+          this.fetch(lodUrl(def.url, level)).then((object) => {
             if (staged !== this.staged) return;
             rest(object);
             staged[i]!.add(level, object);
             this.dirty = true;
-          })
-          .catch(() => {});
+          }),
+        );
     });
     this.setting = this.settings.get(flight.models[0]!.backdrop, flight);
     this.applySetting();
@@ -519,8 +538,8 @@ export class Stage {
     if (this.surroundings) this.scene.remove(this.surroundings);
     this.surroundings = null;
     if (flight.surroundings)
-      this.fetch(flight.surroundings)
-        .then((object) => {
+      this.arriving.push(
+        this.fetch(flight.surroundings).then((object) => {
           if (staged !== this.staged) return;
           this.surroundings = object;
           this.scene.add(object);
@@ -532,8 +551,9 @@ export class Stage {
           });
           this.renderer.shadowMap.needsUpdate = true;
           this.dirty = true;
-        })
-        .catch(() => {});
+        }),
+      );
+    for (const p of this.arriving) p.catch(() => {}); // a level that does not arrive is done without
     this.section(flight.models[0]!.id, true);
   }
 
@@ -593,7 +613,7 @@ export class Stage {
     this.staged[i]?.explode(t);
     this.lamps.place(); // lamps ride the hardware they are on
     this.dirty = true;
-    this.renderer.shadowMap.needsUpdate = true;
+    this.shadowsOwed = true; // drawn again in frame(): at once, or a few times a second in a view nobody is steering
   }
 
   private fetch(url: string, onProgress?: (fraction: number) => void): Promise<THREE.Object3D> {
@@ -705,7 +725,7 @@ export class Stage {
     this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
     this.renderer.toneMappingExposure = s.exposure;
     // the floodlights come on as the direct light fails (the Sun low, or only the Moon)
-    this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6));
+    this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6), s.exposure);
     if (shadows) {
       if (this.walk.active) this.fitWalkShadows(true);
       else {
@@ -882,11 +902,136 @@ export class Stage {
   }
 
   /** Fly to one part and frame it, keeping the direction the camera is already looking from. */
-  focus(node: string, snap = false): void {
+  focus(node: string, snap = false, from?: { turn: number; rise: number }): void {
     const object = this.parts.get(node);
     if (!object) return;
-    this.frameBox(new THREE.Box3().setFromObject(object), snap);
+    this.frameBox(new THREE.Box3().setFromObject(object), snap, from);
     this.following = { part: node };
+  }
+
+  /**
+   * Be ready to be looked at. The scene can be drawn as soon as the models are in, but the
+   * first frames of it are not smooth: the coarser levels of detail and the place round the pad
+   * are still arriving, and every material's shader is built the first time it is drawn, which
+   * holds the page for a moment each time. This waits for what is arriving (up to `patience`
+   * milliseconds), builds every shader without holding the page, and lets a few frames go by,
+   * so that whoever lifts the curtain afterwards sees motion that is already steady.
+   */
+  async warm(patience = 9000): Promise<void> {
+    const settled = Promise.allSettled(this.arriving);
+    await Promise.race([settled, new Promise((done) => setTimeout(done, patience))]);
+    const frames = async (n: number) => {
+      for (let i = 0; i < n; i++) {
+        this.dirty = true;
+        await new Promise((done) => requestAnimationFrame(done));
+      }
+    };
+    // Everything that will ever be drawn is drawn now, unseen: every level of detail, whether
+    // or not it is in view, by day and with the lamps lit (a scene with lamps on is a different
+    // set of shaders). What is built and sent to the GPU here is not built in front of anyone.
+    const culled: THREE.Object3D[] = [];
+    this.scene.traverse((o) => {
+      if (o.frustumCulled) {
+        o.frustumCulled = false;
+        culled.push(o);
+      }
+    });
+    for (const s of this.staged) s.everyLevel(true);
+    for (const night of [1, 0]) {
+      this.lamps.set(night, 1);
+      await this.renderer.compileAsync(this.scene, this.camera).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
+      this.renderer.shadowMap.needsUpdate = true;
+      await frames(2);
+    }
+    for (const o of culled) o.frustumCulled = true;
+    for (const s of this.staged) s.everyLevel(false);
+    this.relight(true);
+    await frames(3);
+  }
+
+  /** The view is not being steered (the idle show): the light may be followed less closely, for even frames. */
+  setUnhurried(on: boolean): void {
+    this.easy = on;
+    unhurried(on);
+  }
+
+  /** The Sun is down: what is seen is what the lamps light. */
+  get dark(): boolean {
+    return this.setting.sunIntensity < 0.6;
+  }
+
+  /** Nothing is picked out under the pointer: the scene is being shown, not used. */
+  inert = false;
+
+  /** Where on the page a part's middle, or a point in the world, is now; null if it is behind the camera. */
+  screenOf(what: string | THREE.Vector3): { x: number; y: number } | null {
+    const point = new THREE.Vector3();
+    if (typeof what === 'string') {
+      const object = this.parts.get(what);
+      if (!object) return null;
+      // Where its bulk is, not the middle of the box round it: a truck with a boom is pointed
+      // at on the truck. Each mesh counts for as much as it has vertices, which goes with size.
+      let weight = 0;
+      const middle = new THREE.Vector3();
+      object.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        const count = mesh.isMesh ? (mesh.geometry.getAttribute('position')?.count ?? 0) : 0;
+        if (!count || !mesh.visible) return;
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        point.addScaledVector(mesh.localToWorld(mesh.geometry.boundingBox!.getCenter(middle)), count);
+        weight += count;
+      });
+      if (!weight) return null;
+      point.divideScalar(weight);
+    } else point.copy(what);
+    point.project(this.camera);
+    if (point.z > 1) return null;
+    const r = this.canvas.getBoundingClientRect();
+    return { x: r.left + ((point.x + 1) / 2) * r.width, y: r.top + ((1 - point.y) / 2) * r.height };
+  }
+
+  /** The windows of the section's model: the middle of each pane and the way it faces, outward. */
+  panes(): { point: THREE.Vector3; normal: THREE.Vector3 }[] {
+    const model = this.main;
+    const out: { point: THREE.Vector3; normal: THREE.Vector3 }[] = [];
+    if (!model) return out;
+    const middle = new THREE.Box3().setFromObject(model).getCenter(new THREE.Vector3());
+    this.staged[this.current]!.full.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      const material = (mesh.userData.real ?? mesh.material) as THREE.Material | undefined;
+      const at = mesh.isMesh ? mesh.geometry.getAttribute('position') : undefined;
+      const facing = mesh.isMesh ? mesh.geometry.getAttribute('normal') : undefined;
+      if (
+        !at ||
+        !facing ||
+        !material ||
+        Array.isArray(material) ||
+        !material.name.startsWith('glass') ||
+        material.name.startsWith('glass-visor')
+      )
+        return;
+      const first = mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(at, 0));
+      const point = this.paneCentre(mesh, first);
+      const normal = new THREE.Vector3().fromBufferAttribute(facing, 0).transformDirection(mesh.matrixWorld);
+      // outward: away from the middle of the model it is a window of
+      if (normal.dot(point.clone().sub(middle).setY(0)) < 0) normal.negate();
+      out.push({ point, normal });
+    });
+    return out;
+  }
+
+  /** How fast the view drifts round its subject, as a multiple of the usual: a show turns faster than a study. */
+  setDrift(times: number): void {
+    this.controls.autoRotateSpeed = 0.5 * times;
+  }
+
+  /** Come round the subject on show by `turn` radians, to `rise` radians above the level, at the same distance: a new angle on the same thing. */
+  swing(turn: number, rise: number): void {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const distance = offset.length();
+    const flat = new THREE.Vector3(offset.x, 0, offset.z).normalize().applyAxisAngle(UP, turn);
+    offset.copy(flat.multiplyScalar(Math.cos(rise)).addScaledVector(UP, Math.sin(rise))).multiplyScalar(distance);
+    this.fly(this.controls.target.clone(), this.controls.target.clone().add(offset));
   }
 
   /** Go over to something that is not part of any model (a building beside the pad) and look at it: the view then turns about it. */
@@ -896,13 +1041,18 @@ export class Stage {
   }
 
   /** Fly to whatever fills `box` and frame it, keeping the direction the camera is already looking from. */
-  private frameBox(box: THREE.Box3, snap: boolean): void {
+  private frameBox(box: THREE.Box3, snap: boolean, from?: { turn: number; rise: number }): void {
     const size = box.getSize(new THREE.Vector3());
     const target = box.getCenter(new THREE.Vector3());
     // never closer than a 1.6 m subject would be: a small part is seen with its surroundings
     const span = Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect, 1.6);
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / 0.5;
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
+    if (from) {
+      // seen from somewhere else: round from where the camera is, and at a height of its own
+      const flat = new THREE.Vector3(dir.x, 0, dir.z).normalize().applyAxisAngle(UP, from.turn);
+      dir.copy(flat.multiplyScalar(Math.cos(from.rise)).addScaledVector(UP, Math.sin(from.rise)));
+    }
     if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
     // no closer than just outside the part: nearer than that the camera is inside its skin
     this.controls.minDistance = Math.max(0.35, Math.min(size.x, size.z) * 0.62);
@@ -1291,6 +1441,14 @@ export class Stage {
   private frame(): void {
     const began = performance.now();
     if (this.setting.attend?.(this.camera.position)) this.dirty = true;
+    // Hardware that has moved wants its shadows drawn again. Steered by hand that is done at
+    // once; in a view nobody is steering, where hardware may be moving for minutes on end,
+    // five times a second, which the eye does not catch and the frame rate does.
+    if (this.shadowsOwed && began - this.shadowsAt >= (this.easy ? 300 : 0)) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowsOwed = false;
+      this.shadowsAt = began;
+    }
     this.step();
     this.frames++;
     this.work += performance.now() - began;
@@ -1332,7 +1490,7 @@ export class Stage {
       this.keepAboveGround();
       if (this.pointerDirty && !this.down) {
         this.pointerDirty = false;
-        this.setHover(this.pick());
+        this.setHover(this.inert ? NOTHING : this.pick());
       }
       this.fitDepth();
     }
@@ -1470,6 +1628,7 @@ export class Stage {
     if (!figure) return;
     figure.group.position.copy(this.walk.body.position);
     figure.group.rotation.y = this.facing(at);
+    this.tumble = null;
     for (const level of figure.group.children) this.walk.gait.rest(level); // standing as it was built, at every level of detail
     this.shadowOnly(figure.group, (this.unseen = false));
     for (const level of figure.group.children) for (const carry of this.carriesOf(level, at)) carry.putDown();
@@ -1485,6 +1644,13 @@ export class Stage {
   exitWalk(): void {
     if (!this.walk.active) return;
     const at = this.walked;
+    if (this.wheel) {
+      // leaving the walk from a driving seat: out at once, no ceremony
+      const vehicle = this.wheel;
+      this.wheel = null;
+      this.boarding = null;
+      this.walk.sit(null, vehicle.standing(new THREE.Vector3()));
+    }
     this.standFigure();
     this.setAim(null);
     this.walk.stop();
@@ -1609,6 +1775,108 @@ export class Stage {
     if (hit && this.aim?.target.climb) this.walk.body.mount(this.walk.solids.ladderOf(hit.mesh));
   }
 
+  /** Is the walker at the wheel of something? */
+  get driving(): boolean {
+    return this.wheel !== null;
+  }
+
+  /**
+   * While walking: get into the vehicle being looked at and drive it (drive.ts). The walking
+   * keys become its pedals and wheel, the eyes are at its driver's seat, and it is not in its
+   * own way. False if it has nowhere to sit.
+   */
+  walkDrive(): boolean {
+    const root = this.aim?.vehicle;
+    if (!root || this.wheel || this.boarding) return false;
+    let vehicle = this.vehicles.get(root);
+    if (!vehicle) this.vehicles.set(root, (vehicle = new Vehicle(root)));
+    if (!vehicle.drivable) return false;
+    // through the driver's door, if it has one: it opens, he gets in, it shuts
+    const door = vehicle.door ? this.doorOf(vehicle.door) : null;
+    if (door && !this.works.isOpen(door.key)) this.works.toggle(door.key, door.action, door.levels, door.under);
+    this.boarding = { vehicle, out: false, t: door ? 0 : DOOR_SECONDS, door };
+    this.walk.hold(
+      () => {},
+      () => {},
+    );
+    this.setAim(null);
+    return true;
+  }
+
+  /** The working of a door a model marks (`door`, `swing`): the same one the wheel's Open and Close use, so the two agree on how it stands. */
+  private doorOf(node: THREE.Object3D): { key: string; action: Action; levels: THREE.Object3D[]; under: string } | null {
+    let at = -1;
+    let root: THREE.Object3D | null = null;
+    for (let o: THREE.Object3D | null = node; o && !root; o = o.parent) {
+      at = this.staged.findIndex((s) => s.shown === o);
+      if (at >= 0 || o === this.surroundings) root = o;
+    }
+    if (!root) return null;
+    const marked = this.markedOn(node, root);
+    const action = marked?.actions.find((a) => a.id === `door:${node.name}`);
+    if (!marked || !action) return null;
+    const model = at >= 0 ? this.defs[at]!.id : '';
+    return { key: `${model}/${marked.under}/${action.id}`, action, levels: this.levelsOf(model), under: marked.under };
+  }
+
+  /** A frame of getting in or out: once the door has swung, the figure changes places and the door is shut behind it. */
+  private board(dt: number): void {
+    const b = this.boarding;
+    if (!b) return;
+    b.t += dt;
+    if (b.t < DOOR_SECONDS) return;
+    this.boarding = null;
+    this.walk.release();
+    if (b.out) {
+      this.wheel = null;
+      b.vehicle.motion.speed = 0;
+      this.walk.sit(null, b.vehicle.standing(new THREE.Vector3()));
+    } else this.takeWheel(b.vehicle);
+    if (b.door && this.works.isOpen(b.door.key)) this.works.toggle(b.door.key, b.door.action, b.door.levels, b.door.under);
+  }
+
+  /** Sit the walker at a vehicle's wheel: the keys are its pedals and wheel from now on. */
+  private takeWheel(vehicle: Vehicle): void {
+    const root = vehicle.root;
+    vehicle.read();
+    this.wheel = vehicle;
+    const walk = this.walk;
+    walk.solids.without = root;
+    const ground = () => this.setting.floor?.position.y ?? null;
+    const road = {
+      ground: (x: number, z: number, near: number) => walk.solids.below(x, near + 0.6, z, ground()),
+      ahead: (from: THREE.Vector3, way: THREE.Vector3, far: number) => walk.solids.cast(from, way, far)?.distance ?? null,
+    };
+    const driven = vehicle;
+    walk.sit({
+      drive: (pedal, steer, dt) => {
+        driven.drive(pedal, steer, dt, road);
+        if (driven.motion.speed) {
+          this.dirty = true;
+          this.renderer.shadowMap.needsUpdate = true;
+        }
+      },
+      // a sitter's eyes are as far over their hips as the figure's own are, standing
+      eyes: (to) => driven.hips(to).setY(to.y + walk.eye - walk.gait.hipHeight(this.staged[this.walked]?.shown ?? this.scene)),
+      facing: () => driven.motion.heading,
+    });
+    this.setAim(null);
+  }
+
+  /** While driving: get out (the door opens first, and shuts behind), and stand beside the driver's door. */
+  walkAlight(): void {
+    const vehicle = this.wheel;
+    if (!vehicle || this.boarding) return;
+    vehicle.motion.speed = 0;
+    const door = vehicle.door ? this.doorOf(vehicle.door) : null;
+    if (door && !this.works.isOpen(door.key)) this.works.toggle(door.key, door.action, door.levels, door.under);
+    this.boarding = { vehicle, out: true, t: door ? 0 : DOOR_SECONDS, door };
+    this.walk.hold(
+      () => {},
+      () => {},
+    );
+  }
+
   /** While walking: stop, and go and look at the place in the surroundings that was being looked at. */
   walkVisit(): void {
     const box = this.aim?.box;
@@ -1652,6 +1920,7 @@ export class Stage {
     if (push && found.refused) return found.refused;
     const held = this.handset.get(key) ?? { at, fn: found.fn, v: found.value, pace: 0, push: 0 };
     held.push = push;
+    if (push) held.back = false; // taken in hand again
     this.handset.set(key, held);
     return null;
   }
@@ -1679,9 +1948,10 @@ export class Stage {
     for (const [key, held] of this.handset) {
       const { fn, at } = held;
       const script = scriptedAt(fn, this.apart[at] ?? 0);
-      if (this.scripted && !held.push) {
-        // the script is moving the hardware again: back to where it has this function, at the function's own pace, and let go
-        const step = dt / fn.seconds;
+      if (this.scripted && !held.push) held.back = true;
+      if (held.back && !held.push) {
+        // the script has moved the hardware: back to where it has this function, at the function's own pace (or in a few seconds, if that is longer), and let go
+        const step = dt / Math.min(fn.seconds, 6);
         held.v = Math.abs(script - held.v) <= step ? script : held.v + Math.sign(script - held.v) * step;
         if (held.v === script) {
           this.handset.delete(key);
@@ -1785,29 +2055,129 @@ export class Stage {
     if (!figure) return;
     const walk = this.walk;
     const group = figure.group;
+    // at the wheel of something it sits: its hips on the seat's hip point, its hands on the wheel and going round with it
+    walk.gait.seated = this.wheel !== null;
+    if (this.wheel) walk.gait.wheel = this.wheel.lock;
+    if (this.fallen(figure, at)) return;
     // Through its own eyes the figure is still there for the light: it is drawn into the shadow
     // map and into nothing else, so you see your own shadow walk in front of you.
     const unseen = !walk.outside;
     const turn = this.facing(at);
-    const placed = !group.visible || this.unseen !== unseen || group.rotation.y !== turn || !group.position.equals(walk.body.position);
+    // (seated, its feet are wherever its hips on the seat put them; otherwise they are the walker's)
+    const where = this.wheel ? this.wheel.hips(this.below).setY(this.below.y - walk.gait.hipHeight(figure.shown)) : walk.body.position;
+    const placed = !group.visible || this.unseen !== unseen || group.rotation.y !== turn || !group.position.equals(where);
     group.visible = true;
     if (this.unseen !== unseen) this.shadowOnly(group, (this.unseen = unseen));
-    group.position.copy(walk.body.position);
+    group.position.copy(where);
     group.rotation.y = turn;
-    walk.gait.apply(figure.shown);
-    // what is in its hands hangs plumb and swings a little behind the stride; a hose hangs from it
-    const carried = this.carriesOf(figure.shown, at);
-    if (carried.length) {
-      group.updateMatrixWorld(true);
-      const now = pose(walk.gait.moment);
-      const p = walk.body.position;
-      const body = { x: p.x, z: p.z, radius: 0.17, bottom: p.y, top: p.y + walk.eye - 0.25 };
-      for (const carry of carried) carry.update(this.walkDt, now[`Hand.${carry.hand}`], walk.body.grounded ? p.y + 0.02 : null, body);
-    }
+    // getting up, it eases out of however it was lying and into the first of the get-up over the first half second
+    const rising = walk.gait.rising;
+    walk.gait.apply(figure.shown, rising !== null && rising < 0.5 ? 1 - Math.exp(-this.walkDt * 10) : 1);
+    if (walk.down === 'rising' && walk.gait.rising === null) walk.stand(group.position); // on its feet: the legs are the walker's again
+    this.carryOn(figure, at);
     // Breathing alone moves him by millimetres: seen from outside it is worth drawing, but
     // nobody's shadow is redrawn for it.
     if (placed || walk.stir === 2) this.renderer.shadowMap.needsUpdate = true; // its shadow walks with it
     if (placed || walk.stir === 2 || (walk.stir === 1 && !unseen)) this.dirty = true;
+  }
+
+  /** What is in the figure's hands hangs plumb and swings a little behind the stride; a hose hangs from it. */
+  private carryOn(figure: Staged, at: number): void {
+    const carried = this.carriesOf(figure.shown, at);
+    if (!carried.length) return;
+    const walk = this.walk;
+    figure.group.updateMatrixWorld(true);
+    const now = pose(walk.gait.moment);
+    const p = walk.body.position;
+    // (down, there is no upright body to keep the hose out of)
+    const body = walk.down ? null : { x: p.x, z: p.z, radius: 0.17, bottom: p.y, top: p.y + walk.eye - 0.25 };
+    // a level of detail that has just come on show lays its hose afresh; and a hose still swinging after he has stopped is drawn until it hangs still
+    const fresh = this.carriedLevel !== figure.shown;
+    this.carriedLevel = figure.shown;
+    for (const carry of carried) {
+      if (fresh) carry.relay();
+      if (!carry.update(this.walkDt, now[`Hand.${carry.hand}`], walk.body.grounded ? p.y + 0.02 : null, body)) continue;
+      this.dirty = true;
+      this.renderer.shadowMap.needsUpdate = true;
+    }
+  }
+
+  /**
+   * A figure off its feet. A fall the walker could not land (`walk.fell`) hands the figure to a
+   * ragdoll, from the pose it hit in and at the speed it hit; while that tumbles the figure is
+   * wherever its points are and the walker's body is held under its hips. When it lies still it
+   * is turned over to the gait to get up: the figure's own place is moved to under its hips,
+   * facing the way it lies, without moving a bone in the world, and the get-up starts from
+   * there. True while the ragdoll has the figure (the caller has nothing to pose).
+   */
+  private fallen(figure: Staged, at: number): boolean {
+    const walk = this.walk;
+    const group = figure.group;
+    const root = figure.shown;
+    if (walk.fell) {
+      const { velocity } = walk.fell;
+      walk.fell = null;
+      let doll = this.dolls.get(root);
+      if (doll === undefined) {
+        // its bones are measured standing as built, once; then it is put back in the pose it was in
+        group.position.copy(walk.body.position);
+        group.rotation.y = this.facing(at);
+        walk.gait.rest(root);
+        group.updateMatrixWorld(true);
+        doll = Ragdoll.of(root);
+        this.dolls.set(root, doll);
+      }
+      if (!doll) {
+        walk.stand(walk.body.position); // a figure with no joints cannot go limp: it lands on its feet after all
+        return false;
+      }
+      walk.gait.apply(root);
+      group.updateMatrixWorld(true);
+      doll.throw(velocity);
+      this.tumble = doll;
+    }
+    const doll = this.tumble;
+    if (!doll) return false;
+    group.visible = true;
+    if (this.unseen) this.shadowOnly(group, (this.unseen = false));
+    const ground = this.setting.floor?.position.y ?? null;
+    const lift = new THREE.Vector3();
+    doll.step(Math.max(this.walkDt, 1e-3), (point, radius) => {
+      const out = walk.solids.out(point, radius);
+      if (ground === null || point.y >= ground + radius) return out;
+      // (the open ground is a level, not a mesh: it is under everything)
+      point.y = ground + radius;
+      return out ? out.setY(out.y + 1).normalize() : new THREE.Vector3(0, 1, 0);
+    });
+    this.carryOn(figure, at);
+    // the walker's body lies under the hips, on whatever is there
+    const hips = doll.hips;
+    const floor = walk.solids.below(hips.x, hips.y + 0.2, hips.z, ground) ?? hips.y;
+    walk.pin(lift.set(hips.x, floor, hips.z));
+    this.renderer.shadowMap.needsUpdate = true;
+    this.dirty = true;
+    if (!doll.atRest) return true;
+    // Lying still. The figure is put under its own hips, facing the way it lies (head first on its
+    // front, feet first on its back), and its hips are given back the place and turn they have
+    // in the world: nothing is seen to move. Then it gets up.
+    this.tumble = null;
+    const joint = root.getObjectByName('Hips');
+    const [hx, hz] = doll.headward;
+    const [fx, fz] = doll.faceDown ? [hx, hz] : [-hx, -hz];
+    walk.heading = Math.atan2(-fx, -fz);
+    if (joint?.parent) {
+      const where = joint.getWorldPosition(new THREE.Vector3());
+      const turned = joint.getWorldQuaternion(new THREE.Quaternion());
+      group.position.set(hips.x, floor, hips.z);
+      group.rotation.y = this.facing(at);
+      group.updateMatrixWorld(true);
+      joint.position.copy(joint.parent.worldToLocal(where));
+      joint.quaternion.copy(joint.parent.getWorldQuaternion(new THREE.Quaternion()).invert()).multiply(turned);
+    }
+    walk.pin(group.position);
+    walk.down = 'rising';
+    walk.gait.rise(doll.faceDown);
+    return false;
   }
 
   /**
@@ -1892,9 +2262,21 @@ export class Stage {
       const t = found.target;
       if (under && under.model === t.model && under.node === t.node && under.place === t.place) t.underfoot = true;
     }
-    this.setAim(found && hit ? { ...found, hit } : null);
+    // is it (part of) something that can be driven? the nearest node above it that says it is a vehicle
+    let vehicle: THREE.Object3D | undefined;
+    for (let o: THREE.Object3D | null = hit?.mesh ?? null; o && !vehicle; o = o.parent) if (o.userData.vehicle && o.name) vehicle = o;
+    const called = typeof vehicle?.userData.vehicle === 'string' ? (vehicle.userData.vehicle as string) : undefined;
+    if (found && vehicle) Object.assign(found.target, { vehicle: vehicle.name, vehicleName: called });
+    const aim =
+      found && hit
+        ? { ...found, hit, vehicle }
+        : hit && vehicle
+          ? { target: { vehicle: vehicle.name, vehicleName: called }, hit, vehicle }
+          : null;
+    this.setAim(this.wheel ? null : aim); // (at the wheel, there is nothing to point at)
     this.fitDetail();
     this.walkDt = dt;
+    this.board(dt);
     this.poseFigure();
     this.fitWalkShadows();
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting

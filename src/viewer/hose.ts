@@ -106,9 +106,16 @@ export class Hose {
   readonly mesh: THREE.Mesh;
   private readonly points = new Float32Array(POINTS * 3);
   private readonly before = new Float32Array(POINTS * 3);
+  private readonly scratch = new Float32Array(POINTS * 3);
+  private readonly endA = new THREE.Vector3();
+  private readonly endB = new THREE.Vector3();
+  /** How long it has hung nearly still with its ends still, seconds. */
+  private calm = 0;
   private readonly link: number;
   private readonly radius: number;
   private laid = false;
+  /** The fastest any point of it moved in the last frame, m/s: under a few centimetres a second it has settled. */
+  speed = 0;
   private readonly curve = new THREE.CatmullRomCurve3(
     Array.from({ length: POINTS }, () => new THREE.Vector3()),
     false,
@@ -160,6 +167,18 @@ export class Hose {
         relax(points, this.before, a.toArray(), aOut.toArray(), b.toArray(), bOut.toArray(), this.link, 1 / 60, floor, keepOut);
     }
     // in steps no longer than a sixtieth of a second, or a slow frame would fling it
+    // Hanging nearly still between ends that are not moving, it is let be: a chain like this
+    // never quite stops trembling, and a hose that trembles is drawn again every frame.
+    const shifted = Math.max(a.distanceTo(this.endA), b.distanceTo(this.endB));
+    this.endA.copy(a);
+    this.endB.copy(b);
+    if (shifted > 0.002) this.calm = 0;
+    if (this.calm >= 0.6) {
+      this.speed = 0;
+      return;
+    }
+    const was = this.scratch;
+    was.set(points);
     const steps = Math.max(1, Math.min(4, Math.ceil(dt * 60)));
     for (let i = 0; i < steps; i++)
       relax(
@@ -174,12 +193,19 @@ export class Hose {
         floor,
         keepOut,
       );
+    let far = 0;
+    for (let i = 0; i < points.length; i += 3)
+      far = Math.max(far, Math.hypot(points[i]! - was[i]!, points[i + 1]! - was[i + 1]!, points[i + 2]! - was[i + 2]!));
+    this.speed = dt > 0 ? far / dt : 0;
+    // (still enough: where it is pressed against the body it goes on shivering by a few millimetres for ever)
+    this.calm = this.speed < 0.5 && shifted <= 0.002 ? this.calm + dt : 0;
     this.draw();
   }
 
   /** Lay it out afresh next time (it has been somewhere else). */
   reset(): void {
     this.laid = false;
+    this.calm = 0;
   }
 
   private draw(): void {

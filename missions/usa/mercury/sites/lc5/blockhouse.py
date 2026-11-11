@@ -465,6 +465,9 @@ def annex(parts: Parts) -> None:
         q = Vector(w.p(s, -0.8, 9.6))
         beam(grey, w.p(s, 0.1, 9.4), tuple(q), 0.12)
         lamp_head(grey, lamps, q + Vector((0, 0, 0.3)), Vector((-w.n.x, -w.n.y, -0.8)), 0.7)
+    # a lamp in each room, for the lit windows the place had before dawn (estimated: no night view of it is known)
+    for room, u, v in (("ReadyRoom", u0 + 8.0, (v0 + v1) / 2), ("Kitchen", u1 - 8.0, (v0 + v1) / 2)):
+        interiors.ceiling_light(parts, g, room, S(u, v, ANNEX_EAVE - 0.05), intensity=0.9, reach=7.0)
     if interior():  # a wall across, a table and benches, lockers, a counter
         dark, con, plank = parts(g, "interior"), parts(g, "console"), parts(g, "plank")
         um = (u0 + u1) / 2

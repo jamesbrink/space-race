@@ -137,6 +137,7 @@ export class Ui {
         <section ${pane('Flight')} hidden>
           <p class="lede small-only">${esc(f.summary)}</p>
           <dl class="facts small-only">${f.facts.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>
+          <div class="flown"></div>
           <ol class="timeline">${f.timeline.map((e) => `<li><time>${clock(e.t)}</time><span>${esc(e.event)}</span></li>`).join('')}</ol>
           <p class="fine">${esc(f.spacecraft)}<br>${esc(f.launchVehicle)}<br>${esc(f.launchSite)}</p>
         </section>

@@ -303,6 +303,8 @@ export interface SiteDef {
   longitude: Measure;
   /** Metres above the WGS 84 ellipsoid, which is not sea level. */
   height: Measure;
+  /** Where mean sea level is there, metres above the ellipsoid (the geoid's height: negative where the sea is below it). */
+  seaLevel: Measure;
   /** The bearing of the site frame's +X, degrees clockwise from true north. +Y is up; +Z bears 90 degrees more. */
   bearingX: Measure;
   /** The civil time kept there on the day: what its clocks were called, and their hours ahead of UTC (negative west of Greenwich). */
@@ -364,9 +366,9 @@ export interface Trajectory {
   retropack: { at: Measure; mass: Measure };
   /** Drag coefficient against Mach number, coming down heat shield first. */
   entryDrag: Curve;
-  /** Each parachute: the height it opens at, m, and the drag area (coefficient times area) it adds, m^2. */
-  drogue: { altitude: Measure; dragArea: Measure };
-  main: { altitude: Measure; dragArea: Measure };
+  /** Each parachute: the height it is let out at, m, the drag area (coefficient times area) it adds once full, m^2, and how long it takes to fill, s. */
+  drogue: { altitude: Measure; dragArea: Measure; fills: Measure };
+  main: { altitude: Measure; dragArea: Measure; fills: Measure };
 }
 
 /** A result the reports give, for the simulator to be held against: tests/sim.test.mjs integrates the trajectory and compares. */

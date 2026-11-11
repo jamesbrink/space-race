@@ -100,7 +100,9 @@ src/
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
   viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
+  viewer/ragdoll.ts                   a figure gone limp after a long fall: points, sticks, and the bones laid along them
   viewer/works.ts                     things that work when worked: doors (toggles) and lifts, from a part's actions
+  viewer/drive.ts                     driving: a kinematic bicycle model and the vehicle contract's nodes
   viewer/carry.ts                     what a walking figure has in its hand, by the model's grip contract
   viewer/hose.ts                      a hose or tether of fixed length hanging between two moving anchors
   prefs.ts                            what is remembered between visits
@@ -113,6 +115,8 @@ src/
   world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
   timebar.ts  time.css                the clock's control
+  demo.ts  callout.ts                 the idle show: the day run round, a tour of the flight, a callout on each thing
+  viewer/lamps.ts                     floodlights: every lamp lens a model carries lights the scene after dark
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
@@ -303,6 +307,17 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   run. The walk bar's Motion setting (full, reduced, off; remembered; off by default under
   prefers-reduced-motion) scales all of it and never touches where the mouse points. A standing
   figure breathes in steps of a twelfth of a second, the rate a still view is redrawn at anyway.
+- **Falls.** More than a hop off the ground the figure falls (`Moment.fall`: arms out, legs
+  trailing). Landings go by height: under 1.5 m the knees give; from 1.5 m a deep crouch and a
+  moment in which the legs take no orders; from 3 m (`LIMP_FALL`) the figure goes limp. Limp is
+  `viewer/ragdoll.ts`: eighteen points held the bones' lengths apart by sticks (bones, braces
+  and limits), falling under gravity, kept out of the solids (`Solids.out`) and losing their
+  speed to them; the bones are laid along the points each frame. It stands behind `Tumbler`
+  so an engine can replace it. When it lies still the figure's place is moved under its hips
+  without moving a bone, and `rising()` in gait.ts gets it up (hands and knees or sitting up,
+  one knee, a crouch, standing: about three seconds). Nobody is hurt. Down, the walker's body
+  is pinned under the hips, the keys do nothing but leave, and the view is from outside; with
+  Motion off there is no tumble, only the crouch.
 - **The walker has a shadow, always.** While walking the shadow map is fitted round the walker
   (`fitWalkShadows`: 52 m square, moved in whole texels) instead of round the section's model,
   and made finer (`walkShadow`: 8192 a side, 6 mm a texel, where the GPU allows; otherwise 4096
@@ -348,6 +363,35 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   `Part` in `flight.ts` (today one kind, `slider`: run the part's model along its slider, so its
   `moves` play). A new kind of action is a new member of `Action['do']` and one line in
   `perform` (main.ts); never a test for a particular part.
+- **What has been worked stays worked.** A door left open, a lift left at a level, a function set
+  by hand, a car driven off and a figure walked somewhere all stay as they were left for as long
+  as the page is open: ending a walk resets none of them. The one thing that takes hardware back
+  is the script (the clock moving a sequenced model), and then only that model's own functions.
+- **Nothing slides out from under anyone.** `Walker.ride` remembers the mesh under the feet
+  (or the ladder in the hands) and where on it the body stood; next frame the body is where that
+  place on the mesh has gone, and has turned as it turned. So a lift, a structure rolling on its
+  rails, a clock put to another hour, a part worked by hand, all carry whoever is on them.
+- **What a part does can be worked by hand.** A function (`explode.ts`: `functionsOf`) is the
+  `moves` of one node of a part, or of several the flight puts together in `Part.functions`,
+  which also names it, paces it and gives it interlocks (`needs`, with the reason said when it
+  refuses). The slider is the script; `Exploder.hold` plays one node at a reading of its own.
+  On foot the wheel offers Operate: hold W or S to run it, eased, E to let go; in orbit the
+  selected part has a slider for each function. A function set by hand holds while the script is
+  still and goes back to it when the script next moves the hardware (`Stage.scripted`).
+- **Vehicles are driven.** Anything built to the vehicle contract (`tools/blender/vehicles.py`:
+  a node marked `vehicle` with `wheelbase`, `wheel_radius` and `turning_circle`, its origin under
+  the rear axle, and `_Wheel_n`, `_Knuckle_n`/`_SteerWheel_n`, `_Seat_Driver` and `_Stand_Driver`
+  under it) offers "Get in and drive" on the wheel. `viewer/drive.ts` is kinematic for now:
+  `roll` is a bicycle model (pure), `Vehicle` puts the node where it says, rolls and steers the
+  wheels, stops short of what is in its way and stays on the ground under its axles. What it
+  asks of the world goes through `Road`, so a physics engine can replace `roll` later. Seated
+  (`Walker.sit`), W and S are the throttle and the brake (then reverse), A and D steer, C
+  changes between the seat and a chase view, E gets out beside the door. Getting in and out
+  go through the driver's door, which opens and shuts by the same working the wheel's Open uses.
+  The figure sits (`Moment.sit`): its hips on the seat's hip point, its hands on the wheel and
+  going round with it; the steering wheel turns sixteen times as far as the road wheels. The
+  vehicle's pieces are found by their extras (`steer`, `seat`, `stand`, `steering`, `door`)
+  before their names. The vehicle is left out of the solids while it is driven.
 - **There is always a way up.** Stairs (risers of 0.3 m or less), a ladder, or one of the two
   actions that open the way, both played by `viewer/works.ts` at every level of detail and solid
   as posed: `toggle` (a door: `Move`s played forward and back; the wheel says Open or Close by
@@ -456,6 +500,12 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   lies over the scene as it loads. Going in writes `#<flight id>/<model>`, so a refresh or a link
   comes straight back to that section; the Space Race crumb goes back out. V goes on foot as the
   crew from anywhere and back (the key that will board and leave a crew member in the simulator).
+- Left alone, the page shows itself (`demo.ts`, the idle show): the clock runs the day round and
+  the camera goes from one thing to the next with the panels away and a callout on each
+  (`callout.ts`). It plays behind the front page, which gives way to it after half a minute; any
+  touch ends it; a reload comes back to it. It reads only the flight's data, so a new flight is
+  shown without being told how. Before any of it is seen the scene is warmed (`Stage.warm`): every
+  level of detail and both day and lamp-lit shaders are built unseen, then the canvas fades up.
 - Shortcuts use only keys every keyboard has: letters, digits, arrows. No Home, End, Page Up or
   function keys (a Mac laptop has none).
 - The camera legend (bottom left) lists every key and gesture: keep it in step with the handlers

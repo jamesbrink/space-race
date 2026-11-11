@@ -338,6 +338,8 @@ class Car:
     bumper_w: tuple[float, float] = (0.0, 0.0)  # half-width of each; 0 for the body's
     cap_r: float = 5.0  # hub cap radius: 5 is a small cap on a painted wheel, 7 and over a full cover
     back: Callable[[Car, Kit], None] | None = None  # what is built behind a flat tail
+    duals: bool = False  # two wheels a side on the rear axle
+    rear_track: float = 0.0  # between the middles of the rear wheels (or pairs), where it differs from the front
     bonnet: bool = True  # the lid ahead of the windscreen is its own node, hinged at the scuttle
     boot: bool = True  # and the lid behind the back light, hinged under it, where the body has one
     # for the simulator; say how sure each is where the car is described
@@ -434,7 +436,7 @@ class Car:
         xs += [self.cabin[0], self.cabin[3]]
         edges = [*self.doors, *(x for span in self.lids().values() for x in span)]  # where a door or a lid is cut from the skin
         keep = [lo, hi, *(x for x in (self.cabin[0], self.cabin[3], *edges) if lo < x < hi)]
-        m = max(3, round(16 / grain()))
+        m = max(3, round((24 if srlib.DETAIL >= 0.75 else 16) / grain()))
         for k, xa in enumerate(self.axles):
             if self.arch > 0 and self.arches[k]:
                 arc = [xa - self.arch * math.cos(math.pi * i / m) for i in range(m + 1)]
@@ -952,19 +954,26 @@ class Car:
                     bright.tube(at - Vector((0, s * 3.2, 1.6)), at, 0.3, 5)
                     bright.lathe([(0.0, -0.5), (2.3, -0.3), (2.3, 0.4), (0.0, 0.7)], 12, matrix=srlib.frame(at, (-1, 0, 0)))
 
-    def build_wheel(self, name: str, parent: bpy.types.Object, hub: Vector, side: int) -> int:
-        """One road wheel as its own node: origin at the hub, axle along local Y."""
-        R, w, rr = self.tyre
+    def build_wheel(self, name: str, parent: bpy.types.Object, hub: Vector, side: int, dual: bool = False) -> int:
+        """One road wheel as its own node: origin at the hub, axle along local Y. A `dual` is two
+        wheels side by side on one hub, the node's origin between them."""
         node = group(name, parent)
         node.location = hub * IN
         kit = Kit()
+        w = self.tyre[1]
+        for off in (-(w / 2 + 0.7), w / 2 + 0.7) if dual else (0.0,):
+            # the lathe's +Z becomes outboard
+            self.wheel_into(kit, Matrix.Rotation(-side * math.pi / 2, 4, "X") @ Matrix.Translation((0, 0, off)))
+        return kit.build(name, node)
+
+    def wheel_into(self, kit: Kit, out: Matrix) -> None:
+        R, w, rr = self.tyre
         hw = w / 2
-        out = Matrix.Rotation(-side * math.pi / 2, 4, "X")  # the lathe's +Z becomes outboard
         paint_key = self.wheel or self.paint
         if not trimmed():
             kit("rubber").lathe([(0.0, -hw + 1.2), (R - 1.0, -hw), (R, -hw + 1.5), (R, hw - 1.5), (R - 1.0, hw), (rr, hw - 0.3)], 16, matrix=out)
             kit("chrome" if self.cap_r >= rr - 1.0 else paint_key).lathe([(rr, hw - 0.3), (0.0, hw + 0.4)], 16, matrix=out)
-            return kit.build(name, node)
+            return
         segs = 32 if srlib.DETAIL >= 0.75 else 20
         # a tyre in section: bead, a sidewall that swells, a shoulder, a tread with a little crown
         bulge, mid = hw + 0.28, rr + 0.5 * (R - rr)
@@ -1011,7 +1020,6 @@ class Car:
                 (0.0, hw + 0.95),
             ]
             kit("chrome").lathe(cover, segs, matrix=out)
-        return kit.build(name, node)
 
     def build(self, name: str, parent: bpy.types.Object | None, at: Sequence[float], heading: float = 0.0) -> dict:
         """Build it as node `name` under `parent`, the middle of its rear axle on the ground at
@@ -1074,7 +1082,7 @@ class Car:
         R, w, _ = self.tyre
         for k, s in ((1, 1), (2, -1)):
             wheels.append(f"{name}_Wheel_{k}")
-            tris += self.build_wheel(wheels[-1], node, Vector((self.axles[0], s * self.track / 2, R)), s)
+            tris += self.build_wheel(wheels[-1], node, Vector((self.axles[0], s * (self.rear_track or self.track) / 2, R)), s, self.duals)
             # a front wheel hangs on a knuckle, whose origin is on the kingpin: steer the knuckle, roll the wheel
             pin = Vector((self.axles[1], s * (self.track / 2 - w / 2 - 1.5), R))
             knuckle = group(f"{name}_Knuckle_{k}", node, steer=1)
@@ -1114,7 +1122,7 @@ class Pod:
         n = max(4, round((hi - lo) / (4.0 * grain() ** 1.3)))
         xs = [lo + (hi - lo) * i / n for i in range(n + 1)]
         if self.axle is not None:
-            m = max(3, round(10 / grain()))
+            m = max(3, round((20 if srlib.DETAIL >= 0.75 else 10) / grain()))
             arc = [self.axle - self.arch * math.cos(math.pi * i / m) for i in range(m + 1)]
             xs = sorted([x for x in xs if all(abs(x - q) > 1.4 * grain() for q in arc)] + [x for x in arc if lo < x < hi])
         ns, na = car.shape()
@@ -1572,6 +1580,78 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
         bumper=(21.0, 0.0),
         seats=(66.0,),
         pods=(wing,),
+        back=back,
+        paint=paint,
+    )
+    return Car(**{**car, **kw})
+
+
+def ford_f600_tractor(paint: str = "white", **kw) -> Car:
+    """A late-1950s Ford F-600 as a tractor unit: a medium conventional cab on a short chassis,
+    dual rear wheels, a fifth wheel for a semi-trailer. **Every figure is estimated**: wheelbase
+    132 in, 205 in long, 80 in wide over the cab (92 over the duals), 82 in high, 8.25-20 tyres;
+    no drawing or specification was read. The fifth wheel's plate is 47 in above the ground and
+    over the rear axle."""
+    wb, nose, L = 132.0, 34.0, 205.0
+    x1 = wb + nose
+    x0 = x1 - L
+    cab = 62.0
+
+    def back(car: Car, kit: Kit) -> None:
+        dark, steel = kit("under"), kit("under/plate")
+        for s in (1, -1):  # the frame's rails, and a mudguard over each pair of wheels
+            ya, yb = sorted((s * 14.5, s * 17.5))
+            box(dark, (x0 + 2, ya, 27.0), (cab - 1.0, yb, 35.0))
+            ya, yb = sorted((s * 24.0, s * 45.5))
+            for x in (-23.0, 23.0):
+                poly(dark, [(x, ya, 44.5), (x, yb, 44.5), (0.6 * x, yb, 47.5), (0.6 * x, ya, 47.5)], (x, 0, 1))
+            poly(dark, [(-13.8, ya, 47.5), (13.8, ya, 47.5), (13.8, yb, 47.5), (-13.8, yb, 47.5)], (0, 0, 1))
+        for x in (x0 + 4, -22.0, 24.0, 52.0):  # cross-members
+            box(dark, (x - 1.5, -14.5, 28.0), (x + 1.5, 14.5, 34.0))
+        dark.tube(Vector((0, -30.0, car.tyre[0])), Vector((0, 30.0, car.tyre[0])), 4.5, 12)  # the axle
+        dark.lathe([(0.0, -9.0), (8.0, -8.0), (9.5, 0.0), (8.0, 8.0), (0.0, 9.0)], 12, matrix=srlib.frame((0, 0, car.tyre[0]), (1, 0, 0)))
+        # the fifth wheel: a saddle on the rails, a round plate with its slot to the rear
+        box(dark, (-10.0, -17.5, 35.0), (10.0, 17.5, 44.0))
+        steel.lathe([(0.0, 44.0), (17.0, 44.0), (18.0, 45.0), (18.0, 46.4), (17.0, 47.0), (0.0, 47.0)], 20)
+        dark.tube(Vector((38.0, 30.0, 30.0)), Vector((58.0, 30.0, 30.0)), 7.0, 14)  # the fuel tank
+        kit("chrome").loft([(x0 - 1.0, -30.0, 30.0), (x0 - 1.0, 0, 30.0), (x0 - 1.0, 30.0, 30.0)], [(1.2, 2.2)] * 3, 8, ref=(0, 0, 1), resample=1)
+        for s in (1, -1):
+            lamp(kit, "tail", (x0 + 2.0, s * 20.0, 36.0), (-1, 0, 0), 1.8)
+
+    car = dict(
+        what="late-1950s Ford F-600 tractor",
+        wheelbase=wb,
+        length=L,
+        width=80.0,
+        height=82.0,
+        nose=nose,
+        track=66.0,
+        rear_track=70.0,
+        duals=True,
+        tyre=(19.0, 8.3, 10.5),
+        mass=7200.0,
+        turning=50.0,
+        top=[(cab, 57.0), (98, 58.0), (150, 56.5), (x1 - 3, 53.5), (x1, 48.0)],
+        bottom=[(cab, 23.0), (154, 23.0), (x1 - 6, 26.0), (x1, 29.0)],
+        plan=[(cab, 39.0), (146, 40.0), (x1 - 5, 38.0), (x1, 32.0)],
+        shoulder=4.5,
+        crown=1.6,
+        tuck=2.0,
+        arch=23.0,
+        arches=(False, True),
+        flat_tail=cab,
+        cabin=(98.0, 88.0, 69.0, 65.0),
+        tumble=4.0,
+        bow=5.0,
+        wrap=8.0,
+        roof_reach=(1.5, 2.5),
+        doors=(102.0, 68.0),
+        lamp_at=(0.0, 46.0, 3.6),
+        grille=(27.0, 34.0, 44.5),
+        bumper=(27.0, 0.0),
+        bumper_size=(1.8, 3.4),
+        seats=(92.0,),
+        cap_r=5.5,
         back=back,
         paint=paint,
     )

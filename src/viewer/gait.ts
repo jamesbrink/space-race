@@ -64,6 +64,17 @@ export interface Moment {
   breath?: number;
   /** On a ladder, 0 to 1: the hands are up on the rungs and the limbs go hand over hand, `phase` counting two rungs to the cycle. */
   climb?: number;
+  /**
+   * Falling, 0 to 1: more than a hop off the ground. The arms go out and up, the legs trail and
+   * pedal (by `phase`, which runs on time while falling), the trunk pitches forward.
+   */
+  fall?: number;
+  /**
+   * Sitting at a wheel, 0 to 1: hips and knees at a right angle, the hands up on the wheel and
+   * going round with it (`wheel`: -1 hard right to 1 hard left). The hips are the seat's.
+   */
+  sit?: number;
+  wheel?: number;
   /** What each hand is carrying, 0 (nothing) to 1 (a case by its handle): that arm hangs straighter and swings a third as much, and the body leans a little away. */
   load?: { L: number; R: number };
 }
@@ -162,6 +173,64 @@ export function pose(m: Moment): Pose {
   out.rise = (-at(speed, 0.035, 0.06) * s * s - CROUCH_DROP * crouch) * g + 0.003 * breath;
   // and they ride over whichever foot has the weight: the left's from its landing (phase 0.25) until the right's
   out.shift = at(speed, 0.018, 0.012) * Math.sin(a - Math.PI / 4) * g;
+  // standing, the weight goes slowly from one foot to the other: a few millimetres, once in three breaths
+  if (speed < WALK) out.shift += 0.005 * Math.sin(((m.breath ?? 0) * Math.PI * 2) / 3) * (1 - speed / WALK) * g;
+  // Sitting at a wheel: thighs level, shins down, a little back in the seat, the hands at ten to two and turning with it.
+  const seated = m.sit ?? 0;
+  if (seated) {
+    const round = 0.3 * (m.wheel ?? 0);
+    const sat = {
+      'UpperArm.L': -1.05 - round,
+      'UpperArm.R': -1.05 + round,
+      'LowerArm.L': -0.75 + round,
+      'LowerArm.R': -0.75 - round,
+      'UpperLeg.L': -1.45,
+      'UpperLeg.R': -1.45,
+      'LowerLeg.L': 1.35,
+      'LowerLeg.R': 1.35,
+      'Foot.L': 0.1,
+      'Foot.R': 0.1,
+      'Hand.L': 0,
+      'Hand.R': 0,
+      Hips: -0.12,
+      Spine: 0.1,
+      Head: 0.02,
+    } satisfies Record<Joint, number>;
+    for (const j of JOINTS) out[j] += (sat[j] - out[j]) * seated;
+    out.rise *= 1 - seated;
+    out.shift *= 1 - seated;
+    for (const j of JOINTS) {
+      if (out.sideways[j]) out.sideways[j] *= 1 - seated;
+      if (out.twist[j]) out.twist[j] *= 1 - seated;
+    }
+  }
+  // Falling: arms flung out and up, legs trailing and pedalling, pitched into it.
+  const f = m.fall ?? 0;
+  if (f) {
+    const pedal = 0.35 * s;
+    const down = {
+      'UpperArm.L': -1.0,
+      'UpperArm.R': -1.0,
+      'LowerArm.L': -0.5,
+      'LowerArm.R': -0.5,
+      'UpperLeg.L': 0.15 - pedal,
+      'UpperLeg.R': 0.15 + pedal,
+      'LowerLeg.L': 0.7 + pedal,
+      'LowerLeg.R': 0.7 - pedal,
+      'Foot.L': 0.3,
+      'Foot.R': 0.3,
+      'Hand.L': 0,
+      'Hand.R': 0,
+      Hips: 0.12,
+      Spine: 0.22,
+      Head: -0.3,
+    } satisfies Record<Joint, number>;
+    for (const j of JOINTS) out[j] += (down[j] - out[j]) * f;
+    out.sideways['UpperArm.L'] = (out.sideways['UpperArm.L'] ?? 0) + (1.15 * (1 - load.L) - (out.sideways['UpperArm.L'] ?? 0)) * f;
+    out.sideways['UpperArm.R'] = (out.sideways['UpperArm.R'] ?? 0) + (-1.15 * (1 - load.R) - (out.sideways['UpperArm.R'] ?? 0)) * f;
+    out.rise *= 1 - f;
+    out.shift *= 1 - f;
+  }
   // On a ladder everything above is set aside for the climb: hands up at the rungs, one reaching
   // as the other pulls; the knee of the leg going up bent high, the other pushing straight.
   const k = m.climb ?? 0;
@@ -213,21 +282,96 @@ export function view(m: Moment): View {
   const g = 1 - (m.air ?? 0);
   const a = m.phase * Math.PI * 2;
   const amount = swing(m.speed) / swing(WALK);
+  // on a ladder the eyes rise a little with each reach and tip toward the hand that has the rung
+  const rung = m.climb ?? 0;
   return {
     x: -p.shift,
-    y: p.rise,
-    roll: (p.shift / 0.018) * 0.016 * Math.min(1, amount),
+    y: p.rise + 0.012 * rung * Math.sin(2 * a) ** 2,
+    roll: (p.shift / 0.018) * 0.016 * Math.min(1, amount) + 0.012 * rung * Math.sin(a),
     // the nod comes just after the foot has landed (phase 0.25 and 0.75)
     pitch: (-0.007 * amount * Math.max(0, Math.sin(2 * a - Math.PI / 2 - 0.5)) ** 2 - 0.05 * (m.crouch ?? 0)) * g,
   };
 }
+
+/**
+ * Getting up off the ground, `t` seconds after starting to, from lying on the front or on the
+ * back: up on to hands and knees (or sitting up), one knee, a crouch, standing. `hips` is how
+ * high the hips are standing as built, metres. Null once it is over: the figure is on its feet.
+ * It is laid out for a figure whose Hips joint stands over where its feet will be.
+ */
+export function rising(t: number, faceDown: boolean, hips = 0.98): Pose | null {
+  const keys = faceDown ? PRONE : SUPINE;
+  if (t >= keys.at(-1)![0]) return null;
+  let i = 0;
+  while (i < keys.length - 2 && t >= keys[i + 1]![0]) i++;
+  const [t0, a] = keys[i]!;
+  const [t1, b] = keys[i + 1]!;
+  const u = Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
+  const k = u * u * (3 - 2 * u);
+  const out = { sideways: {}, twist: {}, shift: 0 } as Pose;
+  for (const j of JOINTS) {
+    const from = a[j] ?? a[SHARED[j] ?? j] ?? 0;
+    const to = b[j] ?? b[SHARED[j] ?? j] ?? 0;
+    out[j] = from + (to - from) * k;
+  }
+  // `up` is how high the hips are; the pose's `rise` is how far that is below where they stand
+  const high = (key: Key) => (key.up === STAND ? hips : key.up);
+  out.rise = high(a) + (high(b) - high(a)) * k - hips;
+  return out;
+}
+/** A key of the get-up: a turn about X for each joint that has one (a side left out is as the other; `Arm`, `Leg` and so on serve both sides), and how high the hips are, metres (`STAND`: as built). */
+type Key = Partial<Record<Joint | 'UpperArm' | 'LowerArm' | 'UpperLeg' | 'LowerLeg' | 'Foot', number>> & { up: number };
+const STAND = -1;
+const SHARED: Partial<Record<Joint, 'UpperArm' | 'LowerArm' | 'UpperLeg' | 'LowerLeg' | 'Foot'>> = {
+  'UpperArm.L': 'UpperArm',
+  'UpperArm.R': 'UpperArm',
+  'LowerArm.L': 'LowerArm',
+  'LowerArm.R': 'LowerArm',
+  'UpperLeg.L': 'UpperLeg',
+  'UpperLeg.R': 'UpperLeg',
+  'LowerLeg.L': 'LowerLeg',
+  'LowerLeg.R': 'LowerLeg',
+  'Foot.L': 'Foot',
+  'Foot.R': 'Foot',
+};
+const KNEEL: Key = {
+  up: 0.52,
+  Hips: 0.45,
+  'UpperLeg.L': -1.75,
+  'LowerLeg.L': 1.5,
+  'UpperLeg.R': -0.45,
+  'LowerLeg.R': 1.57,
+  'Foot.R': 0.6,
+  UpperArm: -0.4,
+  LowerArm: -0.3,
+};
+const CROUCH: Key = { up: 0.72, Hips: 0.35, UpperLeg: -1.0, LowerLeg: 1.2, Foot: -0.2, UpperArm: -0.25, LowerArm: -0.4, Spine: 0.1 };
+const UPRIGHT: Key = { up: STAND };
+/** Lying on the front: flat, then up on hands and knees, one knee up, a crouch, standing, a moment to steady. */
+const PRONE: readonly [number, Key][] = [
+  [0, { up: 0.16, Hips: 1.5, UpperArm: -2.3, LowerArm: -0.9, Head: -0.3 }],
+  [0.9, { up: 0.47, Hips: 1.3, UpperLeg: -1.3, LowerLeg: 1.55, UpperArm: -1.3, Head: -0.4 }],
+  [1.7, KNEEL],
+  [2.4, CROUCH],
+  [2.9, UPRIGHT],
+  [3.1, UPRIGHT],
+];
+/** Lying on the back: flat, sitting up on the hands, round on to one knee, a crouch, standing, a moment to steady. */
+const SUPINE: readonly [number, Key][] = [
+  [0, { up: 0.16, Hips: -1.5, UpperArm: 0.15 }],
+  [0.9, { up: 0.15, Hips: -0.35, UpperLeg: -1.2, LowerLeg: 0.15, UpperArm: 0.7, LowerArm: -0.2, Head: 0.2 }],
+  [1.8, KNEEL],
+  [2.5, CROUCH],
+  [3.0, UPRIGHT],
+  [3.2, UPRIGHT],
+];
 
 /** A joint's name as any exporter or loader may have left it: `UpperArm.L`, `UpperArm_L` and `UpperArmL` are one joint. */
 export const jointKey = (name: string): string => name.replace(/[._\s]/g, '').toLowerCase();
 
 /** The joints one model has, each with how it sat when it was found. */
 interface Rig {
-  joints: { joint: Joint; node: THREE.Object3D; rest: THREE.Quaternion; x: number; y: number }[];
+  joints: { joint: Joint; node: THREE.Object3D; rest: THREE.Quaternion; x: number; y: number; z: number }[];
   /** Hip to sole, metres, as built. */
   leg: number;
 }
@@ -236,6 +380,8 @@ const X = new THREE.Vector3(1, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
 const turn = new THREE.Quaternion();
+const want = new THREE.Quaternion();
+const place = new THREE.Vector3();
 
 /** How far up a ladder one cycle of the limbs goes, metres: a rung with each foot, at a foot apart. */
 const RUNGS = 0.61;
@@ -254,6 +400,13 @@ export class Gait {
   private speed = 0;
   private air = 0;
   private climb = 0;
+  private fall = 0;
+  private sat = 0;
+  /** Sitting (at a wheel): the pose eases in and out. And how far the wheel is over, -1 to 1. */
+  seated = false;
+  wheel = 0;
+  /** Getting up off the ground: how long it has been at it, and from which side; null when it is not. */
+  private up: { t: number; faceDown: boolean } | null = null;
   /** A landing being absorbed: how hard, and how long ago. */
   private hard = 0;
   private since = Infinity;
@@ -273,6 +426,9 @@ export class Gait {
       speed: this.speed,
       air: this.air,
       climb: this.climb,
+      fall: this.fall,
+      sit: this.sat,
+      wheel: this.wheel,
       crouch: this.hard * give(this.since),
       breath: this.breath,
       load: this.load,
@@ -294,7 +450,7 @@ export class Gait {
     root.traverse((o) => {
       const joint = wanted.get(jointKey(o.name));
       if (!joint || joints.some((j) => j.joint === joint)) return;
-      joints.push({ joint, node: o, rest: o.quaternion.clone(), x: o.position.x, y: o.position.y });
+      joints.push({ joint, node: o, rest: o.quaternion.clone(), x: o.position.x, y: o.position.y, z: o.position.z });
     });
     rig = null;
     if (joints.length) {
@@ -311,6 +467,11 @@ export class Gait {
     return rig;
   }
 
+  /** How high the hips of the model under `root` stand over its feet as built, metres (0.98 if it has no joints to say). */
+  hipHeight(root: THREE.Object3D): number {
+    return this.rig(root)?.joints.find((j) => j.joint === 'Hips')?.y ?? 0.98;
+  }
+
   /** Has this model joints to move? */
   jointed(root: THREE.Object3D): boolean {
     return this.rig(root) !== null;
@@ -320,8 +481,26 @@ export class Gait {
    * A frame has passed in which the figure went `distance` metres over the ground at `speed`,
    * on the ground or `airborne`. Says how much the pose has changed: see Stir.
    */
-  advance(distance: number, speed: number, airborne: boolean, dt: number, climbing = false): Stir {
-    const was = [this.phase, this.speed, this.air, this.hard * give(this.since), this.climb];
+  advance(distance: number, speed: number, airborne: boolean, dt: number, climbing = false, dropped = 0): Stir {
+    const was = [
+      this.phase,
+      this.speed,
+      this.air,
+      this.hard * give(this.since),
+      this.climb,
+      this.fall,
+      this.up?.t ?? -1,
+      this.sat,
+      this.wheel,
+    ];
+    this.sat += ((this.seated ? 1 : 0) - this.sat) * (1 - Math.exp(-dt * 8));
+    if (!this.seated && this.sat < 0.01) this.sat = 0;
+    if (this.seated && this.sat > 0.99) this.sat = 1;
+    // more than a hop's worth down from the top of it is a fall: the pose comes in over a fifth of a second
+    const falling = airborne && dropped > 0.7 ? 1 : 0;
+    this.fall += (falling - this.fall) * (1 - Math.exp(-dt * 12));
+    if (!falling && this.fall < 0.01) this.fall = 0;
+    if (this.up) this.up.t += dt;
     this.climb += ((climbing ? 1 : 0) - this.climb) * (1 - Math.exp(-dt * 10));
     if (!climbing && this.climb < 0.01) this.climb = 0;
     this.speed += (speed - this.speed) * (1 - Math.exp(-dt * 14));
@@ -330,10 +509,22 @@ export class Gait {
     if (!airborne && this.air < 0.01) this.air = 0;
     this.since += dt;
     // by distance, not by time: the feet go as far as the figure does
-    if (climbing) this.phase = (this.phase + distance / RUNGS) % 1;
+    if (falling)
+      this.phase = (this.phase + dt * 1.6) % 1; // the legs pedal on time: there is no ground to measure by
+    else if (climbing) this.phase = (this.phase + distance / RUNGS) % 1;
     else if (!airborne) this.phase = (this.phase + distance / cycleLength(this.speed, this.leg)) % 1;
-    if (this.speed === 0 && this.air === 0 && this.climb === 0) this.phase = 0; // standing: the next step starts from the same foot
-    const now = [this.phase, this.speed, this.air, this.hard * give(this.since), this.climb];
+    if (this.speed === 0 && this.air === 0 && this.climb === 0 && this.fall === 0) this.phase = 0; // standing: the next step starts from the same foot
+    const now = [
+      this.phase,
+      this.speed,
+      this.air,
+      this.hard * give(this.since),
+      this.climb,
+      this.fall,
+      this.up?.t ?? -1,
+      this.sat,
+      this.wheel,
+    ];
     // breathing goes on in steps, a dozen a second: a still view is redrawn that often for the scenery anyway
     this.clock += dt;
     const breath = this.breathing ? Math.floor(this.clock * BREATH_RATE) / BREATH_RATE / BREATH : 0;
@@ -342,32 +533,56 @@ export class Gait {
     return now.some((v, i) => v !== was[i]) ? 2 : breathed ? 1 : 0;
   }
 
-  /** Put the model under `root` in the pose of the moment. False if it has no joints (it is left as built). */
-  apply(root: THREE.Object3D): boolean {
+  /** Start getting up off the ground, from lying on the front or the back (the figure's hips must be over where its feet will be). */
+  rise(faceDown: boolean): void {
+    this.up = { t: 0, faceDown };
+    this.phase = this.speed = this.air = this.fall = this.hard = 0;
+  }
+
+  /** Getting up, and how far along: null when it is on its feet. */
+  get rising(): number | null {
+    return this.up?.t ?? null;
+  }
+
+  /**
+   * Put the model under `root` in the pose of the moment. False if it has no joints (it is left
+   * as built). `toward` under 1 moves each joint only that fraction of the way from where it is
+   * now: called every frame, the figure eases into the pose from wherever it was left (limp).
+   */
+  apply(root: THREE.Object3D, toward = 1): boolean {
     const rig = this.rig(root);
     if (!rig) return false;
     this.leg = rig.leg;
-    const p = pose(this.moment);
-    for (const { joint, node, rest, x, y } of rig.joints) {
-      node.quaternion.copy(rest);
+    const hips = rig.joints.find((j) => j.joint === 'Hips')?.y ?? 0.98;
+    let p = this.up ? rising(this.up.t, this.up.faceDown, hips) : null;
+    if (this.up && !p) this.up = null; // on its feet
+    p ??= pose(this.moment);
+    for (const { joint, node, rest, x, y, z } of rig.joints) {
+      const q = want.copy(rest);
       // sideways and twist first, in the joint's own frame as built, then the swing
       const side = p.sideways[joint];
       const twist = p.twist[joint];
-      if (twist) node.quaternion.multiply(turn.setFromAxisAngle(Y, twist));
-      if (side) node.quaternion.multiply(turn.setFromAxisAngle(Z, side));
-      node.quaternion.multiply(turn.setFromAxisAngle(X, p[joint]));
-      if (joint === 'Hips') node.position.set(x + p.shift, y + p.rise, node.position.z);
+      if (twist) q.multiply(turn.setFromAxisAngle(Y, twist));
+      if (side) q.multiply(turn.setFromAxisAngle(Z, side));
+      q.multiply(turn.setFromAxisAngle(X, p[joint]));
+      if (toward >= 1) node.quaternion.copy(q);
+      else node.quaternion.slerp(q, toward);
+      if (joint !== 'Hips') continue;
+      if (toward >= 1) node.position.set(x + p.shift, y + p.rise, z);
+      else node.position.lerp(place.set(x + p.shift, y + p.rise, z), toward);
     }
     return true;
   }
 
   /** Stand the figure as it was built, and start the next walk from the beginning. */
   rest(root: THREE.Object3D): void {
-    this.phase = this.speed = this.air = this.hard = this.climb = 0;
+    this.phase = this.speed = this.air = this.hard = this.climb = this.fall = this.sat = this.wheel = 0;
+    this.seated = false;
+    this.up = null;
     const rig = this.rig(root);
-    for (const { joint, node, rest, x, y } of rig?.joints ?? []) {
+    for (const { joint, node, rest, x, y, z } of rig?.joints ?? []) {
       node.quaternion.copy(rest);
-      if (joint === 'Hips') node.position.set(x, y, node.position.z);
+      if (joint === 'Hips') node.position.set(x, y, z);
     }
   }
 }

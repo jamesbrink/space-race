@@ -211,9 +211,20 @@ def build(parts: Parts) -> dict:
         for x in (3.6, 6.4):
             tb(trim, (x - 0.12, y - 0.4, DECK_Z), (x + 0.12, y + 0.4, DECK_Z + 0.2))
     # the control station at the rear of the transporter (documented), reached from the ground
-    tb(trim, (-8.35, 1.2, 3.3), (-8.0, 3.4, 4.9))
-    for k in range(4):
-        tbeam(trim, (-8.35, 1.6 + k * 0.45, 4.4), (-8.75, 1.6 + k * 0.45, 4.75), 0.07)
+    # ("the controls ... at the rear of the transporter", TM X-53107 7.3.3.1). Its own node, each lever
+    # a child on its pivot so that it can be thrown: which lever worked what is not recorded, and
+    # neither is their number; these are the tower's four motions, left to right.
+    ctl = "CherryPicker_Controls"
+    parts.node(ctl, g, T(-8.35, 2.3, 4.1))
+    tb(parts(ctl, "grey"), (-8.35, 1.2, 3.3), (-8.0, 3.4, 4.9))
+    for k, what in enumerate(("Mast", "Jib", "Cab", "Outriggers")):
+        y = 1.6 + k * 0.4
+        lever = f"{ctl}_{what}"
+        parts.node(lever, ctl, T(-8.35, y, 4.45), lever=1, function=what.lower(), swing=25.0, axis="z")
+        tbeam(parts(lever, "chassis"), (-8.3, y, 4.45), (-8.8, y, 4.45), 0.06)
+        tb(parts(lever, "black"), (-8.95, y - 0.07, 4.38), (-8.78, y + 0.07, 4.52))  # its knob
+        if fine():
+            tb(parts(ctl, "sign/plates"), (-8.4, y - 0.14, 4.0), (-8.34, y + 0.14, 4.18))  # a legend plate under each
 
     # ---- the truck's cab, bonnet and wings, after the International R-series
     # the cab below the waist: a hollow shell (floor, firewall, doors) with what the windows show inside
@@ -221,11 +232,22 @@ def build(parts: Parts) -> dict:
     tb(shell, (11.0, -3.2, 3.35), (15.8, 3.2, 3.6))  # floor pan
     tb(shell, (15.45, -3.2, 3.6), (15.8, 3.2, 6.1))  # firewall under the screen
     tb(shell, (11.0, -3.2, 3.6), (11.2, 3.2, 6.1))  # back wall
+    # The driver's door is its own node, hinged at its front edge, built shut (the contract every
+    # vehicle keeps: tools/blender/vehicles.py). The other door is part of the cab.
+    drv = "CherryPicker_Door_1"
+    parts.node(drv, g, T(15.45, 3.2, 3.6), door=1, swing=-70.0, axis="y")
     for sy in (-1, 1):  # doors, with their inner panels
         y0, y1 = sorted((sy * 2.95, sy * 3.2))
-        tb(shell, (11.2, y0, 3.6), (15.45, y1, 6.1))
+        tb(parts(drv, "yellow") if sy > 0 else shell, (11.2 + 0.05 * (sy > 0), y0, 3.6), (15.45 - 0.05 * (sy > 0), y1, 6.1))
         y0, y1 = sorted((sy * 2.85, sy * 2.95))
-        tb(inner, (11.6, y0, 4.0), (15.2, y1, 5.9))
+        tb(parts(drv, "grey") if sy > 0 else inner, (11.6, y0, 4.0), (15.2, y1, 5.9))
+    seat_at = parts.node("CherryPicker_Seat_Driver", g, T(12.3, 1.45, 5.45))
+    seat_at.rotation_euler = (0.0, 0.0, math.pi / 2)  # a figure faces its node's -Y: the truck's front is +X
+    parts.node("CherryPicker_Stand_Driver", g, T(13.3, 5.6, 0.0))
+    for k, (x, y) in enumerate(((15.1, 0.95), (15.1, 1.55), (15.0, 2.25))):  # clutch, brake, accelerator
+        tb(inner, (x, y - 0.14 - 0.05 * (k == 2), 3.9), (x + 0.12, y + 0.14 + 0.05 * (k == 2), 4.3 + 0.3 * (k == 2)))
+        tbeam(inner, (x + 0.1, y, 4.1), (15.5, y, 4.6), 0.05)
+    ttube(seat, (14.3, 0.2, 3.68), (13.6, 0.2, 4.7), 0.05, 8)  # the handbrake
     tb(inner, (11.2, -2.95, 3.6), (15.45, 2.95, 3.68))  # floor mat
     tb(seat, (11.4, -2.8, 4.6), (12.9, 2.8, 5.3))  # bench seat
     tb(seat, (11.25, -2.8, 5.3), (11.7, 2.8, 7.3))  # its back
@@ -234,6 +256,8 @@ def build(parts: Parts) -> dict:
     for k in range(3):  # its dials
         inner.disc(P(*T(14.84, 1.0 + k * 0.45, 5.85)), (-1, 0, 0), 0.16 * FT, 0.03 * FT, 12)
     ttube(seat, (15.2, 1.45, 4.6), (14.15, 1.45, 6.45), 0.11, 10)  # steering column
+    parts.node("CherryPicker_SteeringWheel", g, T(14.12, 1.45, 6.5))
+    seat = parts("CherryPicker_SteeringWheel", "chassis", True)
     seat.lathe(
         ftp([(0.72, -0.05), (0.85, -0.05), (0.85, 0.05), (0.72, 0.05), (0.72, -0.05)]),
         28,
@@ -245,6 +269,7 @@ def build(parts: Parts) -> dict:
         e1, e2 = Vector((0, 1, 0)), w.cross(Vector((0, 1, 0)))
         hub = Vector(T(14.12, 1.45, 6.5))
         beam(seat, tuple(hub), tuple(hub + (e1 * c + e2 * s_) * 0.75), 0.06)
+    seat = parts(g, "chassis/seat", True)
     ttube(seat, (14.6, -1.2, 3.68), (14.1, -1.2, 5.2), 0.06, 8)  # gear lever
     hull(
         shell,
@@ -268,13 +293,18 @@ def build(parts: Parts) -> dict:
         tb(shell, (11.2, y0, 6.1), (11.55, y1, 8.25))  # rear corner post
         tb(shell, (13.9, sy * 3.2 - 0.12 * (sy > 0), 6.1), (14.0, sy * 3.2 + 0.12 * (sy < 0), 8.25))  # quarter-light post
         tplate(shell, [(15.45, sy * 3.05, 6.1), (15.8, sy * 3.05, 6.1), (14.85, sy * 3.05, 8.25), (14.5, sy * 3.05, 8.25)], 0.3)  # screen pillar
-        tplate(glass, [(11.55, sy * 3.12, 6.1), (15.45, sy * 3.12, 6.1), (14.5, sy * 3.12, 8.25), (11.55, sy * 3.12, 8.25)], 0.04)
+        tplate(
+            parts(drv, "glass") if sy > 0 else glass,
+            [(11.55, sy * 3.12, 6.1), (15.45, sy * 3.12, 6.1), (14.5, sy * 3.12, 8.25), (11.55, sy * 3.12, 8.25)],
+            0.04,
+        )
         # door: its shut lines, handle, and a mirror on an arm
         yo = sorted((sy * 3.17, sy * 3.23))
-        for x in (11.75, 15.3):
-            tb(void, (x, yo[0], 3.7), (x + 0.05, yo[1], 6.1))  # door shut lines
-        tb(void, (11.8, yo[0], 3.7), (15.3, yo[1], 3.75))
-        tb(metal, (11.95, sy * 3.2 - 0.1 * (sy < 0), 5.5), (12.4, sy * 3.2 + 0.1 * (sy > 0), 5.6))
+        if sy < 0:  # the driver's door is a leaf of its own: its edges are its shut lines
+            for x in (11.75, 15.3):
+                tb(void, (x, yo[0], 3.7), (x + 0.05, yo[1], 6.1))  # door shut lines
+            tb(void, (11.8, yo[0], 3.7), (15.3, yo[1], 3.75))
+        tb(parts(drv, "deck") if sy > 0 else metal, (11.95, sy * 3.2 - 0.1 * (sy < 0), 5.5), (12.4, sy * 3.2 + 0.1 * (sy > 0), 5.6))
         tbeam(chassis, (15.2, sy * 3.2, 6.5), (15.5, sy * 4.3, 6.9), 0.08)
         ttube(chassis, (15.46, sy * 4.3, 7.05), (15.56, sy * 4.3, 7.05), 0.36, 16)
         ttube(metal, (15.4, sy * 4.3, 7.05), (15.46, sy * 4.3, 7.05), 0.32, 16)

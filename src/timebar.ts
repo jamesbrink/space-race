@@ -22,6 +22,8 @@ export class TimeBar {
   private readonly count: HTMLElement;
   private readonly play: HTMLButtonElement;
   private readonly scrub: HTMLInputElement;
+  /** A finer scrub over the flight itself, where the flight has a trajectory to fly. */
+  private readonly flightScrub: HTMLInputElement | null;
   private readonly rates: HTMLButtonElement[];
   private readonly home: HTMLButtonElement;
 
@@ -40,6 +42,7 @@ export class TimeBar {
       </div>
       <div class="time-body">
         <label class="time-scrub"><span>00:00</span><input type="range" min="0" max="86400" step="30" aria-label="Time of day at the site" /><span>24:00</span></label>
+        ${flight.trajectory ? `<label class="time-scrub time-flight"><span>T−1:00</span><input type="range" min="-60" max="${flightSpan(flight)}" step="0.5" aria-label="The flight, from a minute before liftoff to landing" /><span>Landing</span></label>` : ''}
         <div class="time-rates" role="group" aria-label="How fast time runs">
           ${RATES.map((r) => `<button data-rate="${r}" aria-pressed="false" title="${rateTitle(r)}">${r}×</button>`).join('')}
           <button class="time-home" title="Back to liftoff, stopped">Liftoff</button>
@@ -51,6 +54,11 @@ export class TimeBar {
     this.count = q('.time-count');
     this.play = q('.time-play');
     this.scrub = q('.time-scrub input');
+    this.flightScrub = root.querySelector<HTMLInputElement>('.time-flight input');
+    this.flightScrub?.addEventListener('input', () => {
+      clock.pause();
+      clock.seek(Number(this.flightScrub!.value));
+    });
     this.rates = [...root.querySelectorAll<HTMLButtonElement>('[data-rate]')];
     this.home = q('.time-home');
 
@@ -96,9 +104,16 @@ export class TimeBar {
     // off the launch day the hand waits at the end it left by
     const hand = String(Math.max(0, Math.min(86_400, Math.round(clock.t + this.launchAt))));
     if (document.activeElement !== this.scrub || this.scrub.value !== hand) this.scrub.value = hand;
+    if (this.flightScrub) {
+      const along = String(Math.max(-60, Math.min(Number(this.flightScrub.max), Math.round(clock.t * 2) / 2)));
+      if (this.flightScrub.value !== along) this.flightScrub.value = along;
+    }
     this.root.classList.toggle('away', clock.t !== 0);
   }
 }
+
+/** How far a flight's own scrub runs past liftoff, seconds: a minute past its documented landing, or seventeen minutes where that is not recorded. */
+const flightSpan = (flight: Flight): number => Math.ceil(((flight.checks?.find((c) => c.id === 'duration')?.value ?? 960) + 60) / 10) * 10;
 
 /** Only touch the page when what it says has changed: the clock may tell us sixty times a second. */
 function set(el: HTMLElement, text: string): void {

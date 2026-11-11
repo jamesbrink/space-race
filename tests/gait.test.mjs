@@ -251,3 +251,61 @@ test('a gait breathes in steps a still view is redrawn at anyway, and says a lan
   for (let i = 0; i < 60; i++) gait.advance(0, 0, false, 1 / 60);
   assert.equal(gait.moment.crouch, 0, 'and it is over within the second');
 });
+
+test('falling flings the arms out and up and trails the legs, and comes in without a jump', async () => {
+  const p = pose(0.2, 1.4, 1, { fall: 1 });
+  assert.ok(
+    p['UpperArm.L'] < -0.8 && p.sideways['UpperArm.L'] > 0.9 && p.sideways['UpperArm.R'] < -0.9,
+    'arms out to the sides and forward',
+  );
+  assert.ok(p['LowerLeg.L'] > 0.2 && p['LowerLeg.R'] > 0.2 && p.Spine > 0.15, 'knees bent behind, pitched into it');
+  const loaded = pose(0.2, 1.4, 1, { fall: 1, load: { L: 0, R: 1 } });
+  assert.ok(Math.abs(loaded.sideways['UpperArm.R']) < 0.2, 'the arm with something in its hand keeps hold of it');
+  for (let f = 0; f < 1; f += 0.02)
+    for (const j of JOINTS)
+      assert.ok(Math.abs(pose(0.3, 2, 1, { fall: f })[j] - pose(0.3, 2, 1, { fall: f + 0.02 })[j]) < 2.5 * DEG, `${j} at fall ${f}`);
+});
+
+test('getting up starts flat, ends standing as built, and never jumps on the way', async () => {
+  const { rising } = await import('../src/viewer/gait.ts');
+  for (const faceDown of [true, false]) {
+    const first = rising(0, faceDown, 0.98);
+    assert.ok(
+      Math.abs(Math.abs(first.Hips) - 1.5) < 1e-9 && Math.sign(first.Hips) === (faceDown ? 1 : -1),
+      'flat on the ground, the right way up',
+    );
+    assert.ok(Math.abs(first.rise - (0.16 - 0.98)) < 1e-9, 'hips a hand above the ground');
+    let last = first;
+    let t = 0;
+    for (; t < 6; t += 1 / 120) {
+      const now = rising(t, faceDown, 0.98);
+      if (!now) break;
+      for (const j of JOINTS) assert.ok(Math.abs(now[j] - last[j]) < 3 * DEG, `${j} at ${t} s`);
+      assert.ok(Math.abs(now.rise - last.rise) < 0.02 && now.rise <= 1e-9, `hips at ${t} s`);
+      last = now;
+    }
+    assert.ok(t > 2.8 && t < 3.4, `about three seconds: ${t}`);
+    for (const j of JOINTS) assert.ok(Math.abs(last[j]) < 1e-6, `${j} is as built at the end`);
+    assert.ok(Math.abs(last.rise) < 1e-6);
+    assert.equal(rising(9, faceDown), null);
+  }
+});
+
+test('sitting at a wheel: thighs level, shins down, hands up and going round with the wheel', () => {
+  const sat = pose(0.3, 0, 0, { sit: 1 });
+  assert.ok(Math.abs(sat['UpperLeg.L'] + 1.45) < 1e-9 && sat['LowerLeg.L'] > 1.2 && sat['UpperArm.L'] < -0.9);
+  assert.equal(sat.rise, 0, "the hips are the seat's: nothing of the stride is left");
+  const left = pose(0, 0, 0, { sit: 1, wheel: 1 });
+  const right = pose(0, 0, 0, { sit: 1, wheel: -1 });
+  assert.ok(
+    left['UpperArm.L'] < sat['UpperArm.L'] && left['UpperArm.R'] > sat['UpperArm.R'],
+    'hard left: the left hand goes up and over, the right comes down',
+  );
+  assert.ok(
+    near(left['UpperArm.L'], right['UpperArm.R']) && near(left['LowerArm.R'], right['LowerArm.L']),
+    'and the mirror of that, hard right',
+  );
+  for (let k = 0; k < 1; k += 0.02)
+    for (const j of JOINTS)
+      assert.ok(Math.abs(pose(0.2, 1, 0, { sit: k })[j] - pose(0.2, 1, 0, { sit: k + 0.02 })[j]) < 2.5 * DEG, `${j} sitting down at ${k}`);
+});

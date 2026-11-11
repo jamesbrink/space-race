@@ -13,6 +13,7 @@ import math
 
 from mathutils import Matrix
 
+import interiors
 from srlib import interior
 
 from .site import FOOTING, GROUND, P, Parts, box, building, fence, fine, flat_roof, ftp, roof_vent
@@ -42,6 +43,7 @@ def build(parts: Parts) -> None:
         {0: [(2.5, 5.7, FLOOR, FLOOR + 6.8, "door"), (10.5, 15.5, FLOOR, FLOOR + 6.8, "door")], 2: [(6.0, 11.0, FLOOR + 3.4, FLOOR + 6.4, "window")]},
     )
     flat_roof(parts, g, "hut1", r, e)
+    interiors.ceiling_light(parts, g, "Hut1", ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, e - 0.02), length=3.0, intensity=0.6, reach=5.0)
     # the fenced yard beside it: two transformers behind chain link
     yx0, yy0, yx1, yy1 = 231.0, -190.5, 251.0, -179.8
     fence(parts, g, [(yx0, yy0), (yx1, yy0), (yx1, yy1), (yx0, yy1)], ground=GROUND)
@@ -77,6 +79,7 @@ def build(parts: Parts) -> None:
         },
     )
     flat_roof(parts, g, "hut2", r, e)
+    interiors.ceiling_light(parts, g, "Hut2", ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, e - 0.02), length=3.0, intensity=0.6, reach=5.0)
     box(grey, (297.0, -165.5, e + 0.8), (301.5, -160.0, e + 2.6))
     box(grey, (305.0, -164.5, e + 0.8), (312.0, -160.5, e + 1.9))
     roof_vent(grey, 303.2, -159.6, e + 0.7, 0.7)
@@ -99,6 +102,7 @@ def build(parts: Parts) -> None:
         },
     )
     flat_roof(parts, g, "gen", r, e)
+    interiors.ceiling_light(parts, g, "Generators", ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, e - 0.02), length=3.0, intensity=0.6, reach=5.0)
     for x in (129.0, 135.3, 141.6):
         roof_vent(grey, x, -106.6, e + 0.7, 1.1)
     grey.tube(P(144.0, -100.5, e + 0.5), P(144.0, -100.5, e + 6.5), 0.35 * 0.3048, 10)

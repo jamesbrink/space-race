@@ -1,12 +1,15 @@
 import { flights } from '../missions';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
+import { Callout } from './callout';
+import { Demo, IDLE_TITLE } from './demo';
 import { prefs } from './prefs';
 import { Box3, Vector3 } from 'three';
+import { Flown } from './flown';
 import { TimeBar } from './timebar';
 import { Title } from './title';
 import { Ui } from './ui';
 import { Stage } from './viewer/stage';
-import { Clock } from './world/clock.ts';
+import { Clock, localTime, missionTime } from './world/clock.ts';
 
 /**
  * The address bar's fragment says what is on show: `#<nation>/<programme>/<flight>/<model>`.
@@ -86,6 +89,8 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   inset: (px) => stage.setInset(px),
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
+// the flight as the simulator flies it, beside the reports' figures: in the Flight tab
+new Flown(document.querySelector<HTMLElement>('#ui .flown')!, clock, flight);
 // a section whose slider is a sequence of events reads the clock: as the clock moves, so does its slider
 clock.listen(() => {
   if (current.sequence) ui.setSlider(stage.exploded(current.id));
@@ -134,7 +139,7 @@ function show(id: string, snap = false, asItStands = false): void {
   stage.section(model.id, snap, asItStands);
   orbit();
   const hash = `#${flight.id}/${model.id}`;
-  if (!title.showing && location.hash !== hash) history.replaceState(null, '', hash); // the front page has no address of its own
+  if (!title.showing && !demo.active && location.hash !== hash) history.replaceState(null, '', hash); // the front page has no address of its own
 }
 
 /** Fetch the flight's models and open on a section. */
@@ -142,10 +147,25 @@ async function start(id: string): Promise<void> {
   ui.loading(flight.callsign);
   try {
     await stage.load(flight, (f) => ui.setProgress(f));
-    ready = true;
     show(id, true);
+    // The scene is kept dark until it can move smoothly (stage.warm): shown sooner, it would
+    // stutter as the rest arrived and then jump. The front page waits over it meanwhile.
+    await stage.warm();
+    ready = true;
+    // whatever is going to be playing when the curtain lifts is already playing
+    if (prefs.get('demo') || (title.showing && !unattended)) demo.start();
+    await new Promise((done) => setTimeout(done, 500));
+    // (a script taking pictures does not wait for a fade)
+    if (navigator.webdriver && !location.search.includes('demo')) document.body.classList.add('instant');
+    document.body.classList.add('scene-ready');
     ui.loaded();
     if (prefs.get('fly')) ui.setCamera('fly');
+    if (prefs.get('demo')) {
+      // it was showing itself when the page was left: it goes on doing so
+      if (title.showing) title.hide();
+      demo.start();
+      prefs.set('demo', true);
+    }
   } catch (e) {
     console.error(e);
     ui.failed(e instanceof Error ? e.message : String(e));
@@ -224,6 +244,12 @@ function act(): void {
     ui.wheel.close();
     return;
   }
+  // at the wheel of something, the act key gets out of it
+  if (stage.driving) {
+    stage.walkAlight();
+    ui.setWalkNote(null);
+    return;
+  }
   const on = target;
   if (!on) {
     ui.showWalkCard(null);
@@ -252,7 +278,10 @@ function perform(on: Target, { verb }: Choice): void {
     cardAt = { x: stage.walk.body.position.x, z: stage.walk.body.position.z };
   } else if (verb.do === 'look') stage.walkLookIn();
   else if (verb.do === 'climb') stage.walkClimb();
-  else if (verb.do === 'become') {
+  else if (verb.do === 'drive') {
+    ui.showWalkCard(null);
+    if (stage.walkDrive()) ui.setWalkNote('W throttle · S brake, then reverse · A D steer · C view · E get out');
+  } else if (verb.do === 'become') {
     ui.showWalkCard(null);
     stage.becomeWalk(verb.model);
   } else if (verb.do === 'operate') startWorking(verb);
@@ -337,6 +366,7 @@ const title = new Title(document.body, flights, (id) => {
     location.hash = `#${id}`;
     return location.reload(); // another flight is another page's worth of state
   }
+  demo.stop(); // going in is taking over
   title.hide();
   history.replaceState(null, '', `#${flight.id}/${current.id}`);
   orbit();
@@ -347,6 +377,106 @@ document.addEventListener('click', (e) => {
   history.replaceState(null, '', location.pathname + location.search);
   title.show();
 });
+
+/**
+ * The idle show (demo.ts): left alone, the day runs and the camera goes round the flight. It
+ * plays behind the front page from the start, and anywhere else once the page has been left
+ * alone a while; any touch ends it. Not for a browser being driven by a script, nor for anyone
+ * who has asked their system for less motion.
+ */
+const callout = new Callout(document.body);
+const zone = flight.site.zone;
+/** The window the show is looking in at, for its callout to point to. */
+let pane: Vector3 | null = null;
+const demo = new Demo(flight, clock, {
+  show: (id) => {
+    if (id !== current.id) show(id);
+  },
+  whole: (turn, rise) => {
+    stage.setCutaway(false);
+    stage.view(current.home ?? 'all');
+    stage.swing(turn, rise);
+    orbit();
+  },
+  part: (node, inside, turn, rise) => {
+    stage.setCutaway(inside); // what is inside is only worth going to if it can be seen
+    stage.focus(node, false, { turn, rise });
+    orbit();
+  },
+  apart: (t) => {
+    if (!current.sequence) stage.setExplode(t);
+  },
+  window: (n) => {
+    const panes = stage.panes();
+    if (!panes.length) return false;
+    const to = panes[n % panes.length]!;
+    stage.setCutaway(false);
+    pane = to.point;
+    stage.lookIn(to.point, to.normal);
+    return true;
+  },
+  say: (text, at) => callout.show(text, at === null ? null : () => (at === 'window' ? pane && stage.screenOf(pane) : stage.screenOf(at))),
+  dark: () => stage.dark,
+  busy: () => !ready || stage.walk.active || stage.frozen || document.hidden,
+  running: (on) => {
+    document.body.classList.toggle('demo', on);
+    stage.inert = on; // shown, not used: nothing lights up under the pointer
+    stage.setDrift(on ? 2.4 : 1);
+    stage.setUnhurried(on);
+    // the show is a state of the page like any other: a reload comes back to it
+    if (!on) prefs.set('demo', false);
+    else if (!title.showing) prefs.set('demo', true);
+    if (on) {
+      select(null);
+      stage.highlight(null, null);
+      return;
+    }
+    // hand it back as it is studied: together, closed, at this section's own view
+    callout.hide();
+    if (!current.sequence) stage.setExplode(0);
+    ui.setCutaway(false);
+    show(current.id);
+    if (!title.showing) history.replaceState(null, '', `#${flight.id}/${current.id}`); // where the show left off is now the place
+  },
+});
+clock.listen(() => {
+  if (demo.active)
+    callout.time(
+      `${localTime(clock.jdUT, zone.utcOffset).text.slice(0, 5)} ${zone.name} · ${missionTime(clock.t).slice(0, -3)} · ${matchMedia('(pointer: coarse)').matches ? 'tap' : 'click anywhere'} to begin`,
+    );
+});
+// (a script driving the browser asks for the show with ?demo in the address)
+const unattended = (navigator.webdriver && !location.search.includes('demo')) || matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Seconds the front page has been left alone. */
+let titleIdle = 0;
+for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart'] as const)
+  window.addEventListener(
+    touch,
+    (e) => {
+      if (title.showing) {
+        titleIdle = 0; // the front page is being read: the show stays behind it (going in ends it, below)
+        return;
+      }
+      if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+      demo.stop(Boolean((e.target as HTMLElement | null)?.closest?.('.timebar')));
+    },
+    { capture: true, passive: true },
+  );
+let demoAt = performance.now();
+setInterval(() => {
+  const now = performance.now();
+  const dt = Math.min(1, (now - demoAt) / 1000);
+  demoAt = now;
+  if (unattended && !demo.active) return;
+  if (title.showing && ready && !demo.active) demo.start(); // behind the front page it plays at once
+  // a front page nobody goes in from gives way to what is behind it
+  titleIdle = title.showing ? titleIdle + dt : 0;
+  if (title.showing && demo.active && titleIdle >= IDLE_TITLE) {
+    title.hide();
+    prefs.set('demo', true);
+  }
+  demo.tick(dt);
+}, 200);
 
 void start(address().model);
 window.addEventListener('hashchange', () => {
@@ -371,4 +501,4 @@ setInterval(() => {
 }, 500);
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
-Object.assign(window, { sr: { stage, ui, flight, show, clock } });
+Object.assign(window, { sr: { stage, ui, flight, show, clock, demo } });
