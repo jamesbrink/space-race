@@ -185,11 +185,12 @@ def build(parts: Parts) -> None:
     roof_vent(grey, (r[0] + r[2]) / 2, (r[1] + r[3]) / 2, (lo + hi) / 2 + 0.1, 1.3)
 
     # what each is called when pointed at (its walls and roof): the uses are estimated (see the module's note)
-    for key, mats in (
-        ("Hut", ("block/hut1", "block/hut1roof", "block/hut2", "block/hut2roof")),
-        ("Generator building", ("block/gen", "block/genroof")),
-        ("Generator fuel tank", ("trailer/tank",)),
-        ("Shed", ("corrugated/shed", "corrugated/roof", "corrugated/gable")),
+    known = "Its plan and place are OpenStreetMap's map of the building that stands there today; its height, doors and use are estimated."
+    for key, about, mats in (
+        ("Hut", known, ("block/hut1", "block/hut1roof", "block/hut2", "block/hut2roof")),
+        ("Generator building", "Taken for the complex's generator house from its louvred walls. " + known, ("block/gen", "block/genroof")),
+        ("Generator fuel tank", "The generators' diesel on cradles beside the house: its form and fittings are estimated.", ("trailer/tank",)),
+        ("Shed", known, ("corrugated/shed", "corrugated/roof", "corrugated/gable")),
     ):
         for mat in mats:
-            parts.mark(g, mat, label=key)
+            parts.mark(g, mat, label=key, about=about)

@@ -360,11 +360,12 @@ def prism(mb: MeshBuilder, outline, z0: float, z1: float) -> None:
 
 
 def lamp_head(poles: MeshBuilder, lamps: MeshBuilder, centre, aim, size: float | None = None) -> None:
-    """A floodlight: a reflector bowl and its lens, pointed along `aim`; `size` is its radius."""
+    """A floodlight: a reflector bowl and its lens, pointed along `aim`; `size` is its radius. The
+    lens faces out, along `aim`: its mesh must carry `lens_out` (Parts.mark), as every lamp's does."""
     size = 0.85 * foot() if size is None else size
     m = Matrix.Translation(Vector(centre) * UNIT) @ Vector((0, 0, 1)).rotation_difference(Vector(aim).normalized()).to_matrix().to_4x4()
     poles.lathe([(0.3 * size * UNIT, -0.8 * size * UNIT), (size * UNIT, 0.0)], 14, matrix=m)
-    lamps.lathe([(0.96 * size * UNIT, -0.035 * size * UNIT), (0.0, -0.035 * size * UNIT)], 14, matrix=m, flip=True)
+    lamps.lathe([(0.96 * size * UNIT, -0.035 * size * UNIT), (0.0, -0.035 * size * UNIT)], 14, matrix=m)
 
 
 # ------------------------------------------------------- buildings, paving and what is placed
@@ -596,7 +597,8 @@ def timber_pole(
             for dz in (-0.15, 0.15):
                 metal.disc(P(*(t - side * 0.01 * f + Vector((0, 0, dz * f)))), tuple(-side), 0.025 * f * UNIT, 0.02 * f * UNIT, 6)
     if lamps:
-        glow = parts(node, "lamp", True)
+        glow = parts(node, "lamp/floods", True)
+        parts.mark(node, "lamp/floods", lens_out=1)
         offs = [0.0] if lamps == 1 else [arm * 0.42 * (2 * k / (lamps - 1) - 1) for k in range(lamps)]
         for o in offs:
             q = c + side * o + Vector((0, 0, 0.19 * f))
@@ -849,39 +851,103 @@ def searchlight(
     diameter: float | None = None,
     candela: float = 8.0e8,
     spread: float = 1.25,
+    label: str = "Searchlight, 60-inch, on trailer",
+    about: str = "",
 ) -> None:
-    """A mobile searchlight of the 60-inch Army kind: a drum on a yoke on a four-wheeled trailer,
-    its glass toward `aim_at` (site units, like `at`, which is where the yoke's pivot stands on the
-    ground). Its own node `node`, so it can be towed away. The lens is the mesh of material `search`
-    (which a site names `lamp-flood-search`), and carries `candela` and `spread` (the beam's whole
-    angle, degrees) for the viewer: a 60-inch carbon arc gave about 800 million candela in a beam
-    a degree and a quarter wide. Materials: `search`, `car-olive` (its paint), `tyre`, `chassis`."""
+    """A mobile carbon-arc searchlight of the 60-inch Army kind on its trailer, its own node `node`
+    (origin on the ground under the turntable), so it can be towed away. The barrel is a deep drum
+    turned toward `aim_at` (site units) on trunnions in a yoke: at its front a door ring holding the
+    glass, inside a parabolic mirror, at its back the arc lamp's housing with its vent. The trailer:
+    a bed on two axles of wheels under mudguards, a tow bar to a lunette eye, screw jacks at the
+    corners. The glass faces out (material `search`, a site's `lamp-flood-search`, marked
+    `lens_out`) and carries `candela` and `spread` (the beam's whole angle, degrees): a 60-inch arc
+    gave about 800 million candela in a beam a degree and a quarter wide (a figure for the type,
+    from memory). The mirror is `reflector` (a site's `chrome-reflector`). Of the kind, not any one
+    light; designed to read, not measured. Other materials: `car-olive`, `tyre`, `chassis`, `grey`."""
     f = foot()
     d = 5.0 * f if diameter is None else diameter
+    r = d / 2
     o = Vector((at[0], at[1], ground))
-    parts.node(node, parent, tuple(o), label="Searchlight")
-    paint, dark, tyre = parts(node, "car-olive", True), parts(node, "chassis", True), parts(node, "tyre", True)
-    aim = (Vector(aim_at) - (o + Vector((0, 0, 5.5 * f)))).normalized()
+    parts.node(node, parent, tuple(o), label=label, about=about)
+    paint, dark, tyre, metal = parts(node, "car-olive", True), parts(node, "chassis", True), parts(node, "tyre", True), parts(node, "grey", True)
+    up = Vector((0, 0, 1))
+
+    def fp(pts):  # a lathe profile given in feet
+        return profile([(a * f, b * f) for a, b in pts])
+
+    def run(mb, p, q, radius, segs):  # a tube between two points in site units
+        mb.tube(tuple(p * UNIT), tuple(q * UNIT), radius * f * UNIT, segs)
+
+    pivot = o + up * (5.6 * f)
+    aim = (Vector(aim_at) - pivot).normalized()
     flat = Vector((aim.x, aim.y, 0.0)).normalized()
     side = Vector((-flat.y, flat.x, 0.0))
-    up = Vector((0, 0, 1))
-    obox(dark, tuple(o + up * (1.9 * f)), tuple(flat), (0, 0, 1), (8.0 * f, 4.8 * f, 0.5 * f))  # the trailer's bed
-    for a in (-2.8, 2.8):
+    # the trailer: its bed, two axles, wheels under mudguards, the tow bar, four jacks
+    obox(dark, tuple(o + up * (2.05 * f)), tuple(flat), (0, 0, 1), (8.0 * f, 4.6 * f, 0.35 * f))
+    obox(paint, tuple(o + up * (2.45 * f)), tuple(flat), (0, 0, 1), (7.6 * f, 4.2 * f, 0.45 * f))  # its deck
+    for a in (-2.6, 2.6):
+        run(dark, o + flat * (a * f) - side * (2.55 * f) + up * (1.3 * f), o + flat * (a * f) + side * (2.55 * f) + up * (1.3 * f), 0.12, 8)
         for s in (-1, 1):
-            c = o + flat * (a * f) + side * (s * 2.9 * f) + up * (1.3 * f)
-            tyre.tube((c - side * (0.35 * f)) * UNIT, (c + side * (0.35 * f)) * UNIT, 1.3 * f * UNIT, 14)
-    beam(dark, tuple(o + flat * (4.0 * f) + up * (1.9 * f)), tuple(o + flat * (7.5 * f) + up * (1.6 * f)), 0.3 * f)  # the drawbar
-    pivot = o + up * (5.5 * f)
-    for s in (-1, 1):  # the yoke
-        beam(paint, tuple(o + side * (s * (d / 2 + 0.35 * f)) + up * (2.1 * f)), tuple(pivot + side * (s * (d / 2 + 0.35 * f))), 0.4 * f)
-    obox(paint, tuple(o + up * (2.3 * f)), tuple(side), (0, 0, 1), (d + 1.1 * f, 1.0 * f, 0.4 * f))
+            hub = o + flat * (a * f) + side * (s * 2.75 * f) + up * (1.3 * f)
+            m = axes(tuple(hub), tuple(flat), tuple(side * s))
+            tyre.lathe(fp([(0.75, -0.3), (1.1, -0.33), (1.27, -0.25), (1.3, 0.0), (1.27, 0.25), (1.1, 0.33), (0.75, 0.3)]), 24, matrix=m)
+            metal.lathe(fp([(0.0, -0.28), (0.76, -0.28), (0.76, 0.22), (0.3, 0.26), (0.0, 0.36)]), 20, matrix=m)
+            g = o + flat * (a * f) + side * (s * 2.75 * f)  # the mudguard: a plate bent over the wheel
+            ts = (0.35, 1.1, 2.05, 2.8)
+            pts = [g + flat * (math.cos(t) * 1.55 * f) + up * (1.3 * f + math.sin(t) * 1.55 * f) for t in ts]
+            for (p, q), t in zip(zip(pts, pts[1:]), ts):
+                tm = t + 0.4  # about the middle of the segment: the plate's thin way is out from the wheel
+                obox(
+                    paint,
+                    tuple((p + q) / 2),
+                    tuple((q - p).normalized()),
+                    tuple(flat * math.cos(tm) + up * math.sin(tm)),
+                    ((q - p).length + 0.05 * f, 0.75 * f, 0.06 * f),
+                )
+    nose = o + flat * (8.2 * f) + up * (1.7 * f)
+    for s in (-1, 1):
+        beam(dark, tuple(o + flat * (4.0 * f) + side * (s * 1.6 * f) + up * (1.95 * f)), tuple(nose - flat * (0.35 * f)), 0.22 * f)
+    eye = axes(tuple(nose), tuple(flat), (0, 0, 1))  # the lunette
+    dark.lathe(fp([(0.2, -0.08), (0.38, -0.08), (0.38, 0.08), (0.2, 0.08), (0.2, -0.08)]), 14, matrix=eye)
+    for a, s in ((3.5, -1), (3.5, 1), (-3.7, -1), (-3.7, 1)):  # the jacks, wound down
+        c = o + flat * (a * f) + side * (s * 2.0 * f)
+        metal.tube(tuple((c + up * (0.15 * f)) * UNIT), tuple((c + up * (1.95 * f)) * UNIT), 0.1 * f * UNIT, 10)
+        obox(dark, tuple(c + up * (0.06 * f)), tuple(flat), (0, 0, 1), (0.6 * f, 0.6 * f, 0.12 * f))
+        beam(metal, tuple(c + up * (1.6 * f)), tuple(c + up * (1.6 * f) + flat * (0.5 * f)), 0.05 * f)  # its crank
+    # the turntable and the yoke, its arms up to the trunnions either side of the barrel
+    table = Matrix.Translation((o + up * (2.68 * f)) * UNIT)
+    paint.lathe(fp([(0.0, 0.0), (1.6, 0.0), (1.6, 0.3), (1.2, 0.45), (0.0, 0.45)]), 28, matrix=table)
+    for s in (-1, 1):
+        foot_ = o + up * (3.1 * f) + side * (s * (r + 0.4 * f))  # the arms stand clear of the drum
+        arm = pivot + side * (s * (r + 0.4 * f))
+        obox(paint, tuple((foot_ + arm) / 2), tuple((arm - foot_).normalized()), tuple(flat), ((arm - foot_).length, 0.35 * f, 0.7 * f))
+        boss = axes(tuple(pivot + side * (s * (r + 0.1 * f))), tuple(flat), tuple(side * s))  # the trunnion
+        paint.lathe(fp([(0.0, 0.0), (0.45, 0.0), (0.45, 0.3), (0.0, 0.3)]), 18, matrix=boss)
+    obox(paint, tuple(o + up * (3.1 * f)), tuple(side), (0, 0, 1), (d + 1.4 * f, 0.6 * f, 0.35 * f))
+    # the barrel: a drum with a dome behind, the door ring and its glass in front, the mirror inside
     m = axes(tuple(pivot), tuple(side), tuple(aim))
-    r, depth = d / 2, 2.6 * f
-    paint.lathe(
-        profile([(0.0, -depth * 0.55), (r * 0.7, -depth * 0.5), (r, -depth * 0.3), (r, depth * 0.45), (r * 0.96, depth * 0.45)]), 20, matrix=m
-    )
-    parts(node, "search", True).lathe(profile([(r * 0.96, depth * 0.4), (0.0, depth * 0.4)]), 20, matrix=m, flip=True)
-    parts.mark(node, "search", candela=float(candela), spread=float(spread))
+    front, back = 1.7 * f, -1.5 * f
+    drum = [(0.0, back - 0.75 * f), (0.9 * f, back - 0.72 * f), (r * 0.85, back - 0.3 * f), (r, back), (r, front), (r - 0.12 * f, front)]
+    paint.lathe(profile(drum), 40, matrix=m)
+    door = [(r - 0.25 * f, front - 0.05 * f), (r + 0.12 * f, front - 0.05 * f), (r + 0.12 * f, front + 0.22 * f), (r - 0.25 * f, front + 0.22 * f)]
+    paint.lathe(profile(door + door[:1]), 40, matrix=m)
+    lens = parts(node, "search", True)
+    lens.lathe(profile([(r - 0.2 * f, front + 0.08 * f), (0.0, front + 0.13 * f)]), 40, matrix=m)
+    depth = 1.6 * f
+    focal = (r - 0.2 * f) ** 2 / (4 * depth)
+    mirror = [(rr, back + 0.1 * f + rr * rr / (4 * focal)) for rr in [(r - 0.2 * f) * k / 10 for k in range(11)]]
+    parts(node, "reflector", True).lathe(profile(mirror), 40, matrix=m, flip=True)
+    if fine():
+        for k in range(8):  # the door's clamps round the ring
+            t = TAU_ * (k + 0.5) / 8
+            q = pivot + side * (math.cos(t) * (r + 0.16 * f)) + aim.cross(side) * (math.sin(t) * (r + 0.16 * f)) + aim * (front + 0.08 * f)
+            obox(metal, tuple(q), tuple(aim), tuple(side * math.cos(t) + aim.cross(side) * math.sin(t)), (0.3 * f, 0.15 * f, 0.12 * f))
+    lamp = pivot - aim * (2.55 * f)  # the arc lamp's housing behind, its vent chimney, a carbon feed box
+    obox(paint, tuple(lamp), tuple(side), tuple(aim), (1.3 * f, 1.3 * f, 1.0 * f))
+    metal.tube(tuple((lamp + up * (0.6 * f)) * UNIT), tuple((lamp + up * (1.5 * f)) * UNIT), 0.22 * f * UNIT, 12)
+    metal.lathe(profile([(0.0, 0.0), (0.45 * f, 0.0), (0.0, 0.25 * f)]), 12, matrix=Matrix.Translation((lamp + up * (1.55 * f)) * UNIT))
+    obox(dark, tuple(lamp + side * (0.75 * f)), tuple(side), tuple(aim), (0.25 * f, 0.8 * f, 0.6 * f))
+    parts.mark(node, "search", candela=float(candela), spread=float(spread), lens_out=1)
 
 
 def lettering(mb: MeshBuilder, body: str, size: float, origin, right, up, font=None) -> None:

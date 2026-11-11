@@ -90,8 +90,6 @@ const PALETTE: Palette = {
   leaf: srgb(0x30362a),
   leafLit: srgb(0x535a3e),
   leafOther: srgb(0x5a603c),
-  grit: srgb(0xd8d0c0),
-  gritAmount: 0.16,
 };
 const glsl3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
@@ -406,7 +404,7 @@ const PAINT = /* glsl */ `
     float depth = ${SEA.toFixed(2)} - vLand.y;
     // the beach: dry sand paler and finer above the reach of the waves, a line of wrack where the last high water left it
     float beach = 1.0 - smoothstep(36.0, 50.0, shore);
-    // (a tint on the ground's own sand, so its grain, crumbs and grit carry on down the beach)
+    // (a tint on the ground's own sand, so its grain carries on down the beach)
     vec3 dry = vec3(0.62, 0.56, 0.45) / ${glsl3(PALETTE.sand)};
     g.albedo = mix(g.albedo, g.albedo * mix(vec3(1.0), dry, 0.75), beach);
     // (a scatter of weed and shell along a line, thin and broken: bits of a few centimetres)
@@ -502,14 +500,14 @@ const c = srgb;
  */
 function floraSpec(): FloraSpec {
   return {
-    spacing: { woody: 1.7, herb: 0.38, tree: 10 },
+    spacing: { woody: 1.7, herb: 2.2, tree: 10 },
     // salt-pruned near the sea: the strand's canopy "slants up away from the coast" (FNAI)
     stature: (zone) => Math.min(1, 0.45 + (zone / 0.42) * 0.55),
     wind: { toward: THREE.MathUtils.degToRad(270), strength: 1 }, // the morning's breeze, from 090 at 10 knots (NOAA ISD, Cape station, 09:00 EST)
     species: [
       {
         name: 'saw-palmetto',
-        form: { kind: 'fan', fans: [12, 20], stalk: [0.4, 0.8], blade: [0.3, 0.45], segments: 22, dead: 0.18 },
+        form: { kind: 'fan', fans: [9, 14], blade: [0.34, 0.46] },
         layer: 'woody',
         abundance: [
           [0.08, 0],
@@ -527,7 +525,7 @@ function floraSpec(): FloraSpec {
       },
       {
         name: 'scrub-oak',
-        form: { kind: 'shrub', masses: [7, 11], spread: 1.5, leaf: [9, 0.11, 0.06, 0.8] },
+        form: { kind: 'shrub', masses: [4, 6], spread: 1.5 },
         layer: 'woody',
         abundance: [
           [0.15, 0],
@@ -545,7 +543,7 @@ function floraSpec(): FloraSpec {
       },
       {
         name: 'wax-myrtle',
-        form: { kind: 'shrub', masses: [5, 8], spread: 1.0, leaf: [7, 0.26, 0.06, 0.55] },
+        form: { kind: 'shrub', masses: [3, 5], spread: 1.0 },
         layer: 'woody',
         abundance: [
           [0.14, 0],
@@ -562,7 +560,7 @@ function floraSpec(): FloraSpec {
       },
       {
         name: 'sea-grape',
-        form: { kind: 'shrub', masses: [4, 7], spread: 1.6, leaf: [3, 0.4, 0.36, 0.95] },
+        form: { kind: 'shrub', masses: [3, 5], spread: 1.6 },
         layer: 'woody',
         abundance: [
           [0.08, 0.6],
@@ -579,7 +577,7 @@ function floraSpec(): FloraSpec {
       },
       {
         name: 'cabbage-palm',
-        form: { kind: 'palm', trunk: [0.016, 0.022], fronds: 22, blade: 0.2, dead: 5 },
+        form: { kind: 'palm', trunk: [0.016, 0.022], fronds: 14 },
         layer: 'tree',
         abundance: [
           [0.12, 0.012],
@@ -596,40 +594,8 @@ function floraSpec(): FloraSpec {
         rough: 0.5,
       },
       {
-        name: 'grass',
-        form: { kind: 'tuft', blades: [16, 26], heads: 0, lean: 1.1 },
-        layer: 'herb',
-        abundance: [
-          [0.1, 0],
-          [0.2, 1],
-          [1, 1],
-        ],
-        height: [0.16, 0.34],
-        colours: [c(0x8a8058), c(0x626a3c)],
-        near: 26,
-        reach: 26,
-        sway: 0.8,
-        rough: 0.85,
-      },
-      {
-        name: 'bluestem',
-        form: { kind: 'tuft', blades: [8, 14], heads: 3, lean: 0.7 },
-        layer: 'herb',
-        abundance: [
-          [0.12, 0],
-          [0.2, 0.4],
-          [1, 0.4],
-        ],
-        height: [0.3, 0.55],
-        colours: [c(0x9a8a5e), c(0x7a7444)],
-        near: 26,
-        reach: 26,
-        sway: 0.9,
-        rough: 0.85,
-      },
-      {
         name: 'sea-oats',
-        form: { kind: 'tuft', blades: [8, 12], heads: 2, lean: 0.6 },
+        form: { kind: 'shrub', masses: [2, 4], spread: 1.1 }, // a low clump of pale grass on the dune
         layer: 'herb',
         abundance: [
           [0.07, 0],
@@ -637,12 +603,12 @@ function floraSpec(): FloraSpec {
           [0.15, 1],
           [0.2, 0],
         ],
-        height: [0.7, 1.2],
-        colours: [c(0x8e8a5a), c(0x6f7444)],
-        near: 26,
-        reach: 26,
-        sway: 1,
-        rough: 0.8,
+        height: [0.5, 0.9],
+        colours: [c(0x9c9466), c(0x7d7c4c)],
+        near: 30,
+        reach: 260,
+        sway: 0.6,
+        rough: 0.85,
       },
     ],
   };

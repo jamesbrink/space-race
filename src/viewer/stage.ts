@@ -519,6 +519,7 @@ export class Stage {
       ],
       // a setting's floor is one level plane: its height is asked for, not its triangles
       ground: () => this.setting.floor?.position.y ?? null,
+      groundAt: (x, z) => this.groundAt(x, z),
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
       leave: () => this.exitWalk(),
       act: () => this.onWalkAct(),
@@ -2125,9 +2126,8 @@ export class Stage {
       this.headEye.z += 0.09; // (in front of the neck's pivot)
     } else this.headEye = null;
     walk.solids.without = root;
-    const ground = () => this.setting.floor?.position.y ?? null;
     const road = {
-      ground: (x: number, z: number, near: number) => walk.solids.below(x, near + 0.6, z, ground()),
+      ground: (x: number, z: number, near: number) => walk.solids.below(x, near + 0.6, z, this.groundAt(x, z)),
       ahead: (from: THREE.Vector3, way: THREE.Vector3, far: number) => walk.solids.cast(from, way, far)?.distance ?? null,
     };
     const driven = vehicle;
@@ -2597,14 +2597,16 @@ export class Stage {
     const doll = this.tumble;
     if (!doll) return false;
     group.visible = true;
-    if (this.unseen) this.shadowOnly(group, (this.unseen = false));
-    const ground = this.setting.floor?.position.y ?? null;
+    // (seen from outside as it falls; but where the camera cannot pull back from the head, a wall
+    // behind it, the figure and what it carried are not drawn in front of the eyes)
+    const unseen = !walk.outside;
+    if (this.unseen !== unseen) this.shadowOnly(group, (this.unseen = unseen));
     const lift = new THREE.Vector3();
     doll.step(Math.max(this.walkDt, 1e-3), this.solid);
     this.carryOn(figure, at);
     // the walker's body lies under the hips, on whatever is there
     const hips = doll.hips;
-    const floor = walk.solids.below(hips.x, hips.y + 0.2, hips.z, ground) ?? hips.y;
+    const floor = walk.solids.below(hips.x, hips.y + 0.2, hips.z, this.groundAt(hips.x, hips.z)) ?? hips.y;
     walk.pin(lift.set(hips.x, floor, hips.z));
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
@@ -2635,6 +2637,11 @@ export class Stage {
   private readonly sweep = new THREE.Vector3();
   private readonly seatQ = new THREE.Quaternion();
   private readonly placedAs = new THREE.Quaternion();
+  /** The open ground under a point: the land's height where the setting has relief (Setting.groundAt), else its level floor; null where there is none. */
+  private groundAt(x: number, z: number): number | null {
+    return this.setting.groundAt?.(x, z) ?? this.setting.floor?.position.y ?? null;
+  }
+
   /** The world as something falling meets it (ragdoll.ts: Collide): the solids round the walker, and under everything the open ground, which is a level and not a mesh. */
   private readonly solid: Collide = (point, radius, from) => {
     let swept: THREE.Vector3 | null = null;
@@ -2651,7 +2658,7 @@ export class Stage {
     }
     // (put back where it came from, it is touching what it went through: pushed out of the nearest surface instead, a point inside a slab can be sent out of its underside)
     const out = swept ?? this.walk.solids.out(point, radius);
-    const ground = this.setting.floor?.position.y ?? null;
+    const ground = this.groundAt(point.x, point.z);
     if (ground === null || point.y >= ground + radius) return out;
     point.y = ground + radius;
     return out ? out.setY(out.y + 1).normalize() : new THREE.Vector3(0, 1, 0);

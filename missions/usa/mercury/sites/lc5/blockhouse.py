@@ -213,7 +213,8 @@ def build(parts: Parts) -> None:
     ramp.add([tuple(q * FT) for q in v + low], [(3, 2, 1, 0), (0, 4, 7, 3), (1, 2, 6, 5), (2, 3, 7, 6)])
 
     # ---- on the walls: floodlights at the corners, conduit and boxes, a second door, the ladder
-    grey, lamps = parts(g, "grey", True), parts(g, "lamp", True)
+    grey, lamps = parts(g, "grey", True), parts(g, "lamp/floods", True)
+    parts.mark(g, "lamp/floods", lens_out=1)
     for w, s in ((face6, 14.0), (face5, face5.length - 14.0), (back, 8.0), (back, 40.0), (side6, 30.0)):
         q = Vector(w.p(s, -0.9, 13.4))
         beam(grey, w.p(s, 0.1, 13.2), tuple(q), 0.14)
@@ -461,7 +462,8 @@ def annex(parts: Parts) -> None:
                 ],
                 0.04,
             )
-    lamps = parts(g, "lamp", True)
+    lamps = parts(g, "lamp/floods", True)
+    parts.mark(g, "lamp/floods", lens_out=1)
     for w, s in ((far, 4.0), (far, 30.0), (pads, 15.0)):
         q = Vector(w.p(s, -0.8, 9.6))
         beam(grey, w.p(s, 0.1, 9.4), tuple(q), 0.12)

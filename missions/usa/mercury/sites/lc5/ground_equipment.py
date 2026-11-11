@@ -115,8 +115,9 @@ def build(parts: Parts) -> None:
     hose_end(parts, u, (x1, y1 - 5.5), -1, ("NITROGEN",))
 
     # the low box painted in chevrons, 15 to 20 ft from the launcher
-    black = parts("GroundEquipment", "black")
     sx, sy = -20.0, 8.0  # clear of the service structure's base
+    parts.node("GroundEquipment_ChevronBox", "GroundEquipment", (sx, sy, 0.0))
+    black, stripe = parts("GroundEquipment_ChevronBox", "black"), parts("GroundEquipment_ChevronBox", "orange")
     box(black, (sx - 4.5, sy - 2.0, 0.0), (sx + 4.5, sy + 2.0, 3.0))
     n = 6
     for k in range(n):  # orange chevrons on the long faces, a few millimetres proud of the black
@@ -135,9 +136,11 @@ def build(parts: Parts) -> None:
 
     # camera towers: narrow galvanised lattices with a platform at the top
     parts.node("CameraTowers", label="Camera towers")
-    galv, deck = parts("CameraTowers", "galv"), parts("CameraTowers", "deck")
-    for cx, cy, h in CAMERA_TOWERS:
+    for k, (cx, cy, h) in enumerate(CAMERA_TOWERS, 1):
         w = 2.5
+        tower = f"CameraTowers_Tower{k}"
+        parts.node(tower, "CameraTowers", (cx, cy, 0.0))
+        galv, deck = parts(tower, "galv"), parts(tower, "deck")
 
         def corner(i: int, z: float, cx=cx, cy=cy, w=w):
             return (cx + w * (1 if i in (0, 3) else -1), cy + w * (1 if i < 2 else -1), z)
@@ -146,7 +149,7 @@ def build(parts: Parts) -> None:
         lattice(galv, corner, levels, 0.28, 0.16)
         for z in (h * 0.55, h):
             box(deck, (cx - w - 0.6, cy - w - 0.6, z - 0.2), (cx + w + 0.6, cy + w + 0.6, z))
-        box(black, (cx - 0.7, cy - 0.5, h), (cx + 0.7, cy + 0.5, h + 1.0))  # the camera
+        box(parts(tower, "black"), (cx - 0.7, cy - 0.5, h), (cx + 0.7, cy + 0.5, h + 1.0))  # the camera
         # the way up: a ladder on the face toward the launcher, to the top deck (estimated)
         parts.ladder(
             "CameraTowers",
@@ -165,8 +168,10 @@ def build(parts: Parts) -> None:
 
     # floodlights: timber poles with a crossarm and three lamps, aimed at the vehicle
     parts.node("Floodlights")
-    for x, y in FLOOD_POLES:
-        timber_pole(parts, "Floodlights", x, y, FLOOD_HEIGHT, lamps=3, aim=(-x, -y, 0))
+    for k, (x, y) in enumerate(FLOOD_POLES, 1):  # each pole its own node, so each is named when pointed at
+        pole = f"Floodlights_Pole{k}"
+        parts.node(pole, "Floodlights", (x, y, 0.0))
+        timber_pole(parts, pole, x, y, FLOOD_HEIGHT, lamps=3, aim=(-x, -y, 0))
 
     furniture(parts)
     lights(parts)
@@ -295,7 +300,16 @@ def lights(parts: Parts) -> None:
     source = "TM X-53107 p. 7-21 and 8.3.2 (that there were); S61-03158, FHSU F19_001, F19_008"
     if stood("Searchlights round pad 5", since="1961-05", confidence="estimated", source=source):
         for k, (x, y) in enumerate(SEARCHLIGHTS, 1):
-            searchlight(parts, f"GroundEquipment_Searchlight{k}", "GroundEquipment", (x, y), (0.0, 0.0, 45.0))
+            searchlight(
+                parts,
+                f"GroundEquipment_Searchlight{k}",
+                "GroundEquipment",
+                (x, y),
+                (0.0, 0.0, 45.0),
+                about="A 60-inch carbon-arc searchlight: crews lit the pad with them through the night count, and "
+                "switched them off before launch. That there were searchlights is documented; their kind, number and "
+                "places here are estimated.",
+            )
 
 
 def furniture(parts: Parts) -> None:
@@ -372,7 +386,10 @@ def furniture(parts: Parts) -> None:
 
     # ---- DANGER boards on stands by the cherry picker, and a striped barricade at the pad's corner
     white, dark, red, ink = parts(g, "sign"), parts(g, "chassis", True), parts(g, "signred"), parts(g, "black/lettering")
-    for x, y, turn in ((57.0, -13.0, 20.0), (58.5, 13.5, -15.0)):
+    for k, (x, y, turn) in enumerate(((57.0, -13.0, 20.0), (58.5, 13.5, -15.0)), 1):
+        board = f"GroundEquipment_Danger{k}"
+        parts.node(board, g, (x, y, 0.0))
+        white, dark, red = parts(board, "sign"), parts(board, "chassis", True), parts(board, "signred")
         a = math.radians(turn)
         r = Vector((math.sin(a), -math.cos(a), 0))
         n = Vector((-math.cos(a), -math.sin(a), 0))  # faces the vehicle
@@ -478,10 +495,14 @@ def furniture(parts: Parts) -> None:
         x = (tx0 + tx1) / 2 + s * 2.6
         beam(frame, (x, ty0 + 5.0, 0.0), (x, ty0 + 5.0, 2.7), 0.35)
         box(frame, (x - 0.5, ty0 + 4.5, 0.0), (x + 0.5, ty0 + 5.5, 0.12))
-    for k in range(4):  # steps up to the door
-        box(parts(tr, "deck"), (tx1 + 0.1 + k * 0.9, ty0 + 9.0, 2.85 - k * 0.72 - 0.1), (tx1 + 1.0 + k * 0.9, ty0 + 12.0, 2.85 - k * 0.72))
+    # the steps up to the door: their own node, hinged at the top along the trailer's side, so they fold
+    # up before it is towed (flight.ts) and nothing hangs below the frame while it moves (estimated)
+    st = "GroundEquipment_TrailerSteps"
+    parts.node(st, tr, (tx1 + 0.1, ty0 + 10.5, 2.85))
+    for k in range(4):
+        box(parts(st, "deck"), (tx1 + 0.1 + k * 0.9, ty0 + 9.0, 2.85 - k * 0.72 - 0.1), (tx1 + 1.0 + k * 0.9, ty0 + 12.0, 2.85 - k * 0.72))
     for y in (ty0 + 9.0, ty0 + 12.0):
-        beam(frame, (tx1 + 0.2, y, 2.75), (tx1 + 3.7, y, 0.0), 0.14)
+        beam(parts(st, "chassis"), (tx1 + 0.2, y, 2.75), (tx1 + 3.7, y, 0.0), 0.14)
     lettering(ink, "NASA", 1.25, (tx1 + 0.012, ty1 - 9.0, 9.3), (0, 1, 0), (0, 0, 1), font)
     lettering(ink, "SP-No 1", 0.9, (tx1 + 0.012, ty1 - 9.0, 7.6), (0, 1, 0), (0, 0, 1), font)
     if fine():

@@ -485,6 +485,15 @@ export class Body {
   /** The level of the open ground, which is everywhere and cannot be fallen through; null where there is none. */
   ground: number | null = null;
   /**
+   * Where the land has relief (dunes, a beach, a river bank), its height under a point: the
+   * open ground there, in place of the one level. Left out, the ground is `ground` everywhere.
+   */
+  groundAt: ((x: number, z: number) => number | null) | null = null;
+  /** The open ground under a point: the land's height there, or the one level. */
+  level(x: number, z: number): number | null {
+    return this.groundAt?.(x, z) ?? this.ground;
+  }
+  /**
    * How far the open ground lies under the surface the models stand on (y = 0). The terrain is
    * kept that far down only so that nothing lying on it flickers (backdrops.ts: GROUND_Y); it is
    * not a kerb, and a riser met from down there is measured from the surface, not from the feet.
@@ -537,7 +546,9 @@ export class Body {
     const p = this.position;
     this.heights.length = 0;
     for (const [dx, dz] of PROBES) {
-      const h = this.solids.below(p.x + dx * this.radius, p.y + riser, p.z + dz * this.radius, this.ground);
+      const x = p.x + dx * this.radius;
+      const z = p.z + dz * this.radius;
+      const h = this.solids.below(x, p.y + riser, z, this.level(x, z));
       if (h !== null) this.heights.push(h);
     }
     return pickFloor(this.heights, p.y, riser);
@@ -567,7 +578,7 @@ export class Body {
       for (const side of [1, -1] as const) {
         const there = hang(ladder, p.x, p.z, this.radius, side);
         this.solids.gather(this.before.set(there.x, p.y, there.z), this.radius + 0.5, STEP + 1, this.height);
-        const floor = this.solids.below(there.x, p.y + STEP, there.z, this.ground);
+        const floor = this.solids.below(there.x, p.y + STEP, there.z, this.level(there.x, there.z));
         if (floor === null || floor < p.y - STEP - 0.05) hold = there;
       }
       y = Math.min(ladder.top, p.y) - 0.05;
@@ -769,6 +780,8 @@ export interface WalkHost {
   solids(): THREE.Object3D[];
   /** The level of the open ground, or null where there is none. */
   ground(): number | null;
+  /** The land's height under a point, where it has relief (Setting.groundAt). */
+  groundAt?(x: number, z: number): number | null;
   /** How far from the middle of the site there is anything to walk to, metres. */
   reach(): number;
   /** The walker wants out (Escape). */
@@ -1012,6 +1025,7 @@ export class Walker {
     this.body.height = height;
     this.body.radius = radius;
     this.body.ground = this.host.ground();
+    this.body.groundAt = this.host.groundAt ? (x, z) => this.host.groundAt!(x, z) : null;
     this.body.place(at.x, at.y, at.z);
     this.yaw = this.heading = Math.atan2(-(toward.x - at.x), -(toward.z - at.z));
     this.pitch = 0;
@@ -1441,7 +1455,8 @@ export class Walker {
     // corner of the frame reaching that thing: indoors it comes in to a few centimetres.
     const corner = Math.hypot(1, Math.tan(THREE.MathUtils.degToRad(fov / 2)) * Math.hypot(1, camera.aspect));
     let clear = this.solids.nearest(camera.position, 0.6);
-    if (this.body.ground !== null) clear = Math.min(clear, camera.position.y - this.body.ground);
+    const under = this.body.level(camera.position.x, camera.position.z);
+    if (under !== null) clear = Math.min(clear, camera.position.y - under);
     // (seated, what is nearest is the cab round the head, which is left out of the solids: keep the plane close)
     const near = this.seat ? 0.06 : THREE.MathUtils.clamp((0.85 * clear) / corner, 0.05, 0.3);
     if (Math.abs(near - camera.near) > near * 0.05) {

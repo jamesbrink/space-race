@@ -9,34 +9,36 @@ import { NOISE } from './space';
  * `FloraSpec` (the species, how common each is along its zones, how tall) and a way to read its
  * cover and its ground's height.
  *
- * **Forms.** Every species is built from one of a few forms, by parameters:
- * - `fan`: a palmetto: fans of pleated blades on stalks, split into pointed segments at the edge.
- * - `shrub`: a woody shrub: crooked stems and clusters of leafy sprigs round a few masses.
- * - `palm`: a tree palm: a trunk, a crown of drooping fans, and a skirt of dead ones.
- * - `tuft`: a bunch of grass blades, with or without seed heads.
- * Leaves are cards whose outline is drawn in the fragment shader (a fan's segments, a sprig's
- * leaves): no texture files, crisp at any distance, and a few hundred triangles a plant.
+ * **Designed forms, not photographs** (AGENTS.md, Being there). A plant is a few clean shapes with
+ * a strong silhouette, built so it reads at any distance: welded low-poly balls with the sphere's
+ * normals (so the light, or the cel look's ramp, makes the tones and the polygon makes the outline),
+ * flat fans and fronds. No leaf cards, no blades, nothing drawn thinner than it can be seen. The
+ * real look gives the same forms lit shading, shadows and a gentle mottle from where each point is;
+ * the cel look gives them flat tones and the ink line. Every species is built from one of:
+ * - `shrub`: a few squashed masses heaped on a dome (scrub oak, wax myrtle, sea grape; sea oats as
+ *   a low pale clump).
+ * - `fan`: a palmetto: a low core and a cluster of flat fans with serrated edges, leaning out.
+ * - `palm`: a tree palm: a tapering trunk, a ball of old leaf bases, a star of arched flat fronds.
  *
- * **Distance.** Each plant is drawn in full near the eye, as its `far` form further off, and
- * not at all beyond its reach; where one gives way to the next both are drawn and each is
- * dissolved by a screen-door dither against the other, so nothing pops. A plant standing in a
- * closed thicket hands over to the land's canopy at 50 to 60 m; one standing alone (the edge of a
- * clearing, a palm) carries on to its full reach.
+ * **Distance.** Each plant is drawn as its near form close to the eye (balls of 80 faces), its far
+ * form further off (20 faces, fewer fans), and not at all beyond its reach; the near form gives way
+ * over three metres by a screen door, and at the reach the plant shrinks to its root. A plant
+ * standing in a closed thicket hands over to the land's canopy at 50 to 60 m; one standing alone
+ * carries on to its full reach.
  *
  * **Wind.** Near plants lean and bob a little with a breeze from the site's quarter: a vertex
  * shift by how far a point is from the plant's root, at the rate the still view is redrawn.
  */
 
 export type Form =
-  | { kind: 'fan'; fans: [number, number]; stalk: [number, number]; blade: [number, number]; segments: number; dead: number }
-  | { kind: 'shrub'; masses: [number, number]; spread: number; leaf: [count: number, length: number, width: number, angle: number] }
-  | { kind: 'palm'; trunk: [number, number]; fronds: number; blade: number; dead: number }
-  | { kind: 'tuft'; blades: [number, number]; heads: number; lean: number };
+  | { kind: 'shrub'; masses: [number, number]; spread: number }
+  | { kind: 'fan'; fans: [number, number]; blade: [number, number] }
+  | { kind: 'palm'; trunk: [number, number]; fronds: number };
 
 export interface Species {
   name: string;
   form: Form;
-  /** The cover it grows in: shrubs in the woody cover, grasses in the herb cover; trees are few and stand in the woody cover, placed on their own wider spacing. */
+  /** The cover it grows in: shrubs in the woody cover, low clumps in the herb cover; trees are few and stand in the woody cover, placed on their own wider spacing. */
   layer: 'woody' | 'herb' | 'tree';
   /** How common along the site's zone, 0 to 1: [zone, weight] points, linear between. */
   abundance: [number, number][];
@@ -75,373 +77,244 @@ const RESORT = 5;
 const THICKET = 0.55;
 /** Where a plant in a thicket is gone, metres from the eye: under the land's canopy by then. */
 const UNDER: [number, number] = [52, 60];
-/** Within this far of the eye a plant casts a shadow, metres: the walker's shadow map is 52 m across (stage.ts). */
-const SHADOWED = 18;
 /** Variants built of each species. */
 const VARIANTS = 3;
 
 // ----------------------------------------------------------------------------------------------
-// Building the forms. Every vertex carries: colour (a tint on the instance's), `aFlex` (how far
-// it moves in the wind, 0 at the root), `aShape` (which outline its card has: 0 solid, 1 fan
-// segments, 2 sprig of leaves, 3 blade) and `uv` (where on its card it is).
+// Building the forms. Every vertex carries a colour (a tint on the instance's) and `aFlex` (how far
+// it moves in the wind, 0 at the root).
 
 class Builder {
   positions: number[] = [];
   normals: number[] = [];
   colours: number[] = [];
-  uvs: number[] = [];
   flex: number[] = [];
-  shape: number[] = [];
   indices: number[] = [];
-  vertex(p: THREE.Vector3, n: THREE.Vector3, c: THREE.Color, u: number, v: number, flex: number, shape: number): number {
+  vertex(p: THREE.Vector3, n: THREE.Vector3, c: THREE.Color, flex: number): number {
     this.positions.push(p.x, p.y, p.z);
     this.normals.push(n.x, n.y, n.z);
     this.colours.push(c.r, c.g, c.b);
-    this.uvs.push(u, v);
     this.flex.push(flex);
-    this.shape.push(shape);
     return this.positions.length / 3 - 1;
   }
   tri(a: number, b: number, c: number): void {
     this.indices.push(a, b, c);
   }
-  quad(a: number, b: number, c: number, d: number): void {
-    this.indices.push(a, b, c, b, d, c);
-  }
-  /** A tapering stick of `sides` sides from a to b, radius r0 to r1. */
-  stick(a: THREE.Vector3, b: THREE.Vector3, r0: number, r1: number, c: THREE.Color, flex0: number, flex1: number, sides = 4): void {
+  /** A tapering shaft of `sides` sides from a to b, radius r0 to r1. */
+  shaft(a: THREE.Vector3, b: THREE.Vector3, r0: number, r1: number, c: THREE.Color, flex0: number, flex1: number, sides: number): void {
     const axis = b.clone().sub(a).normalize();
-    const side = new THREE.Vector3(0, 1, 0).cross(axis);
+    const side = new THREE.Vector3(0, 0, 1).cross(axis);
     if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
     side.normalize();
     const other = axis.clone().cross(side);
     const first = this.positions.length / 3;
-    for (let i = 0; i <= sides; i++) {
+    for (let i = 0; i < sides; i++) {
       const t = (i / sides) * Math.PI * 2;
       const n = side.clone().multiplyScalar(Math.cos(t)).addScaledVector(other, Math.sin(t));
-      this.vertex(a.clone().addScaledVector(n, r0), n, c, i / sides, 0, flex0, 0);
-      this.vertex(b.clone().addScaledVector(n, r1), n, c, i / sides, 1, flex1, 0);
+      this.vertex(a.clone().addScaledVector(n, r0), n, c, flex0);
+      this.vertex(b.clone().addScaledVector(n, r1), n, c, flex1);
     }
-    for (let i = 0; i < sides; i++) this.quad(first + 2 * i, first + 2 * i + 2, first + 2 * i + 1, first + 2 * i + 3);
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      const a0 = first + 2 * i,
+        a1 = first + 2 * j;
+      this.indices.push(a0, a1, a0 + 1, a0 + 1, a1, a1 + 1);
+    }
+  }
+  /**
+   * A welded low-poly ball (icosahedron of `detail` 1 or 0, octahedron at -1) at `at`, radii `r`,
+   * its normals the sphere's, bent toward `out` (the whole plant's outside) by `bend` so the plant is
+   * lit as one body; `jitter` dents it so no two are the same.
+   */
+  ball(
+    at: THREE.Vector3,
+    r: THREE.Vector3,
+    detail: number,
+    c: THREE.Color,
+    flex: number,
+    seed: number,
+    out = new THREE.Vector3(),
+    bend = 0,
+  ): void {
+    const poly = detail < 0 ? new THREE.OctahedronGeometry(1, 0) : new THREE.IcosahedronGeometry(1, detail);
+    const p = poly.getAttribute('position');
+    const keys = new Map<string, number>();
+    const v = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).normalize();
+      const key = `${Math.round(v.x * 1e4)},${Math.round(v.y * 1e4)},${Math.round(v.z * 1e4)}`;
+      let k = keys.get(key);
+      if (k === undefined) {
+        const dent = 0.88 + 0.24 * hash2(Math.round(v.x * 50), Math.round(v.y * 50 + v.z * 30), seed);
+        const n = v.clone().lerp(out, bend).normalize();
+        const at2 = new THREE.Vector3(v.x * r.x, v.y * r.y, v.z * r.z).multiplyScalar(dent).add(at);
+        k = this.vertex(at2, n, c, flex);
+        keys.set(key, k);
+      }
+      this.indices.push(k);
+    }
+    poly.dispose();
+  }
+  /**
+   * A flat fan: from `at`, opening along `along` over `sweep` radians, facing `facing`; `points`
+   * serrations round its edge (each a point and a notch), cupped a little. Seen from either side.
+   */
+  fan(
+    at: THREE.Vector3,
+    facing: THREE.Vector3,
+    along: THREE.Vector3,
+    radius: number,
+    sweep: number,
+    points: number,
+    cup: number,
+    c: THREE.Color,
+    flex: number,
+  ): void {
+    const across = new THREE.Vector3().crossVectors(facing, along).normalize();
+    const hub = this.vertex(at, facing, c, flex * 0.6);
+    const edge: number[] = [];
+    const steps = points * 2;
+    for (let s = 0; s <= steps; s++) {
+      const a = (s / steps - 0.5) * sweep;
+      const reach = radius * (s % 2 ? 0.78 : 1);
+      const dir = along.clone().multiplyScalar(Math.cos(a)).addScaledVector(across, Math.sin(a));
+      const p = at
+        .clone()
+        .addScaledVector(dir, reach)
+        .addScaledVector(facing, cup * radius * (2 * Math.abs(s / steps - 0.5)) - 0.12 * radius);
+      edge.push(this.vertex(p, facing.clone().addScaledVector(dir, 0.25).normalize(), c, flex));
+    }
+    for (let s = 0; s < steps; s++) this.tri(hub, edge[s]!, edge[s + 1]!);
   }
   geometry(): THREE.BufferGeometry {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.colours, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uvs, 2));
     g.setAttribute('aFlex', new THREE.Float32BufferAttribute(this.flex, 1));
-    g.setAttribute('aShape', new THREE.Float32BufferAttribute(this.shape, 1));
     g.setIndex(this.indices);
     g.computeBoundingSphere();
     return g;
   }
 }
 
-/**
- * A fan: a pleated blade on the end of a stalk. `at` is the stalk's top, `facing` the way the
- * fan's face looks, `along` the way the fan opens (from stalk toward its far edge), `radius` its
- * size, `sweep` how much of a circle it spreads round (radians), `droop` how far its far edge
- * falls (radians, bent down along its length), `spokes` its pleats (even). The fan's normals face
- * `facing`. Its segments are cut by the fragment shader along u.
- */
-function fan(
-  b: Builder,
-  at: THREE.Vector3,
-  facing: THREE.Vector3,
-  along: THREE.Vector3,
-  radius: number,
-  sweep: number,
-  droop: number,
-  spokes: number,
-  rings: number,
-  colour: THREE.Color,
-  flex: number,
-): void {
-  const across = new THREE.Vector3().crossVectors(facing, along).normalize();
-  const first = b.positions.length / 3;
-  const hub = b.vertex(at, facing, colour, 0.5, 0, flex * 0.6, 1);
-  for (let r = 1; r <= rings; r++) {
-    const f = r / rings;
-    for (let s = 0; s <= spokes; s++) {
-      const a = (s / spokes - 0.5) * sweep;
-      // the pleat: ridges and valleys alternate round the fan, deeper toward its edge
-      const pleat = (s % 2 ? 1 : -1) * 0.07 * radius * f;
-      // bent down along its length: the far edge falls by `droop`, more toward the tip
-      const bend = droop * f * f;
-      const dir = along.clone().multiplyScalar(Math.cos(a)).addScaledVector(across, Math.sin(a));
-      const out = dir
-        .clone()
-        .multiplyScalar(Math.cos(bend))
-        .addScaledVector(facing, -Math.sin(bend) * Math.cos(a * 0.5));
-      const p = at
-        .clone()
-        .addScaledVector(out, radius * f)
-        .addScaledVector(facing, pleat);
-      const n = facing
-        .clone()
-        .addScaledVector(dir, 0.35 * f)
-        .normalize();
-      b.vertex(p, n, colour, s / spokes, f, flex * (0.6 + 0.4 * f), 1);
-    }
-  }
-  const row = spokes + 1;
-  for (let s = 0; s < spokes; s++) b.tri(hub, first + 1 + s, first + 2 + s);
-  for (let r = 1; r < rings; r++)
-    for (let s = 0; s < spokes; s++) {
-      const a = first + 1 + (r - 1) * row + s,
-        c = first + 1 + r * row + s;
-      b.quad(a, a + 1, c, c + 1);
-    }
-}
-
-/** Saw palmetto and its kind: fans on stalks from a few crowns at the ground, the old ones lower and brown. */
-function buildFan(form: Extract<Form, { kind: 'fan' }>, seed: number, near: boolean): THREE.BufferGeometry {
-  const r = sequence(seed);
-  const b = new Builder();
-  const green = new THREE.Color(1, 1, 1);
-  const brown = new THREE.Color(3.4, 2.3, 2.6); // a tint that turns the instance's green to a dead frond's grey-brown
-  const stem = new THREE.Color(0.9, 0.75, 0.5);
-  const crowns = 1 + Math.floor(r() * 3);
-  const fans = Math.round((form.fans[0] + r() * (form.fans[1] - form.fans[0])) * (near ? 1 : 0.6));
-  for (let i = 0; i < fans; i++) {
-    const crown = i % crowns;
-    const ca = (crown / crowns) * Math.PI * 2 + seed;
-    const base = new THREE.Vector3(Math.cos(ca) * 0.22 * (crowns > 1 ? 1 : 0), 0.02, Math.sin(ca) * 0.22 * (crowns > 1 ? 1 : 0));
-    const yaw = r() * Math.PI * 2;
-    const dead = r() < form.dead;
-    // young fans stand up in the middle; old ones lean out and down
-    const lean = dead ? 0.95 + r() * 0.5 : 0.15 + r() * 0.75;
-    const length = (form.stalk[0] + r() * (form.stalk[1] - form.stalk[0])) * (dead ? 0.85 : 1);
-    const out = new THREE.Vector3(Math.cos(yaw) * Math.sin(lean), Math.cos(lean), Math.sin(yaw) * Math.sin(lean));
-    const top = base.clone().addScaledVector(out, length);
-    top.y = Math.max(top.y, 0.08);
-    const colour = dead ? brown.clone().multiplyScalar(0.8 + r() * 0.4) : green.clone().multiplyScalar(0.8 + r() * 0.45);
-    if (near) b.stick(base, top, 0.012, 0.008, stem, 0, 0.5, 3);
-    // the fan faces up and away from the plant's middle, tilted over more the further it leans
-    const facing = new THREE.Vector3(Math.cos(yaw) * Math.sin(lean * 0.9), Math.cos(lean * 0.9), Math.sin(yaw) * Math.sin(lean * 0.9));
-    facing.lerp(new THREE.Vector3(0, 1, 0), 0.25).normalize();
-    const along = out.clone().addScaledVector(facing, -out.dot(facing)).normalize();
-    if (along.lengthSq() < 0.5) along.set(Math.cos(yaw), 0, Math.sin(yaw));
-    const radius = form.blade[0] + r() * (form.blade[1] - form.blade[0]);
-    fan(b, top, facing, along, radius, 4.6 + r() * 0.8, dead ? 0.9 : 0.25 + r() * 0.3, near ? 12 : 6, near ? 3 : 1, colour, 1);
-  }
-  return b.geometry();
-}
-
-/** A woody shrub: crooked stems from the root to a few leafy masses, each a cluster of sprig cards. */
+/** A shrub: a few squashed masses heaped on a dome, the biggest in the middle, lit as one body. 1 tall before scaling. */
 function buildShrub(form: Extract<Form, { kind: 'shrub' }>, seed: number, near: boolean): THREE.BufferGeometry {
   const r = sequence(seed);
   const b = new Builder();
-  const bark = new THREE.Color(0.55, 0.5, 0.45);
-  const masses = Math.round((form.masses[0] + r() * (form.masses[1] - form.masses[0])) * (near ? 1 : 0.6));
-  // masses on a dome: the plant is 1 m tall and `spread` wide before the instance scales it
-  const centres: { c: THREE.Vector3; s: number; shade: number }[] = [];
+  const masses = Math.round(form.masses[0] + r() * (form.masses[1] - form.masses[0]));
+  const middle = new THREE.Vector3(0, 0.35, 0);
   for (let i = 0; i < masses; i++) {
-    const a = (i / masses) * Math.PI * 2 * 1.618 * 3 + r();
-    const out = Math.sqrt((i + 0.5) / masses) * 0.5 * form.spread;
-    // a dome of leaf from near the ground up: scrub is leafy to its foot, not a tree on stems
-    const y = 0.2 + 0.68 * (1 - (out / (0.5 * form.spread)) ** 2) * (0.55 + 0.45 * ((i * 0.618) % 1)) + (r() - 0.5) * 0.12;
-    const s = (0.24 + r() * 0.14) * Math.max(0.8, form.spread * 0.7);
-    centres.push({ c: new THREE.Vector3(Math.cos(a) * out, y, Math.sin(a) * out), s, shade: 0.8 + r() * 0.4 });
-  }
-  const middle = new THREE.Vector3(0, 0.55, 0);
-  if (near)
-    for (const { c } of centres) {
-      // a stem: from near the root, kinked once, into the mass
-      const root = new THREE.Vector3((r() - 0.5) * 0.15, 0, (r() - 0.5) * 0.15);
-      const kink = root
-        .clone()
-        .lerp(c, 0.5)
-        .add(new THREE.Vector3((r() - 0.5) * 0.15, (r() - 0.5) * 0.1, (r() - 0.5) * 0.15));
-      b.stick(root, kink, 0.014, 0.01, bark, 0, 0.3, 4);
-      b.stick(kink, c, 0.01, 0.005, bark, 0.3, 0.7, 3);
-    }
-  const card = 0.34;
-  for (const { c, s, shade } of centres) {
-    const cards = near ? Math.round(18 * (s / 0.3) ** 2) : 0;
-    if (!near) {
-      // far, and for its shadow: the mass as a low-poly lump, crumpled, its leaves drawn on it by the shader
-      const lump = new THREE.IcosahedronGeometry((s + card * 0.5) * 1.05, 0); // as far out as the near form's cards reach
-      const pos = lump.getAttribute('position');
-      const first = b.positions.length / 3;
-      const p = new THREE.Vector3();
-      for (let i = 0; i < pos.count; i++) {
-        p.fromBufferAttribute(pos, i);
-        const n = p.clone().normalize();
-        p.multiplyScalar(0.72 + 0.5 * hash2(Math.round(p.x * 97), Math.round(p.z * 89 + p.y * 53), seed));
-        const outward = c.clone().sub(middle).normalize();
-        const normal = n.clone().lerp(outward, 0.3).normalize();
-        b.vertex(p.add(c), normal, new THREE.Color(shade, shade, shade), 0, 0, 0.8, 4);
-      }
-      const idx = lump.index ? lump.index.array : Array.from({ length: pos.count }, (_, i) => i);
-      for (let i = 0; i < idx.length; i += 3) b.tri(first + idx[i]!, first + idx[i + 1]!, first + idx[i + 2]!);
-      continue;
-    }
-    for (let k = 0; k < cards; k++) {
-      // a card on the mass's surface, facing out, turned any way about its normal
-      const u = r() * 2 - 1,
-        t = r() * Math.PI * 2;
-      const n = new THREE.Vector3(
-        Math.sqrt(1 - u * u) * Math.cos(t),
-        Math.abs(u) * 0.6 + u * 0.4,
-        Math.sqrt(1 - u * u) * Math.sin(t),
-      ).normalize();
-      const at = c.clone().addScaledVector(n, s * (0.55 + r() * 0.45));
-      const tangent = new THREE.Vector3(-n.z, 0, n.x);
-      if (tangent.lengthSq() < 1e-4) tangent.set(1, 0, 0);
-      tangent.normalize().applyAxisAngle(n, r() * Math.PI * 2);
-      // the sprig points out of the mass, so its base is inside and its leaves at the surface
-      const up = tangent.clone().lerp(n, 0.5).normalize();
-      const side = new THREE.Vector3().crossVectors(up, n).normalize();
-      const face = new THREE.Vector3().crossVectors(side, up).normalize();
-      // its normal leans toward the plant's outside: the shrub is lit as one body, not as a heap of cards
-      const normal = n.clone().lerp(at.clone().sub(middle).normalize(), 0.5).normalize();
-      const tone = new THREE.Color(1, 1, 1).multiplyScalar(shade * (0.8 + 0.4 * r()) * (0.75 + 0.35 * Math.max(0, n.y)));
-      const base = at.clone().addScaledVector(up, -card * 0.45);
-      const corners = [
-        [-0.5, 0],
-        [0.5, 0],
-        [-0.5, 1],
-        [0.5, 1],
-      ].map(([x, y]) =>
-        b.vertex(
-          base
-            .clone()
-            .addScaledVector(side, x! * card)
-            .addScaledVector(up, y! * card)
-            .addScaledVector(face, y! * y! * 0.05),
-          normal,
-          tone,
-          x! + 0.5,
-          y!,
-          0.7 + 0.3 * y!,
-          2,
-        ),
-      );
-      b.quad(corners[0]!, corners[1]!, corners[2]!, corners[3]!);
-    }
+    const a = i * 2.39996 + r() * 0.5;
+    const out = i === 0 ? 0 : (0.25 + 0.75 * Math.sqrt(i / masses)) * 0.5 * form.spread;
+    const size = (i === 0 ? 0.42 : 0.3 + 0.12 * r()) * Math.max(0.8, form.spread * 0.75);
+    const at = new THREE.Vector3(Math.cos(a) * out, 0, Math.sin(a) * out);
+    at.y = Math.max(size * 0.7, 1 - size - 0.55 * (out / (0.5 * form.spread)) ** 2 + (r() - 0.5) * 0.1);
+    const shade = new THREE.Color(1, 1, 1).multiplyScalar(0.88 + 0.24 * r());
+    const outward = at.clone().sub(middle).normalize();
+    b.ball(at, new THREE.Vector3(size, size * 0.82, size), near ? 1 : 0, shade, 0.4 + 0.6 * at.y, seed + i, outward, 0.35);
   }
   return b.geometry();
 }
 
-/** A cabbage palm: a trunk with old leaf bases on its lower part, a round crown of drooping fans, a skirt of dead ones. */
+/** Saw palmetto: a low dark core and a cluster of flat serrated fans on short stalks, leaning out. 1 tall before scaling. */
+function buildFan(form: Extract<Form, { kind: 'fan' }>, seed: number, near: boolean): THREE.BufferGeometry {
+  const r = sequence(seed);
+  const b = new Builder();
+  b.ball(new THREE.Vector3(0, 0.18, 0), new THREE.Vector3(0.32, 0.24, 0.32), near ? 1 : 0, new THREE.Color(0.7, 0.72, 0.65), 0.2, seed);
+  const fans = Math.round((form.fans[0] + r() * (form.fans[1] - form.fans[0])) * (near ? 1 : 0.5));
+  for (let i = 0; i < fans; i++) {
+    const yaw = i * 2.39996 + r() * 0.4;
+    const lean = 0.25 + 0.85 * ((i * 0.618) % 1);
+    const out = new THREE.Vector3(Math.cos(yaw) * Math.sin(lean), Math.cos(lean), Math.sin(yaw) * Math.sin(lean));
+    const radius = form.blade[0] + r() * (form.blade[1] - form.blade[0]);
+    const at = new THREE.Vector3(0, 0.15, 0).addScaledVector(out, 0.75 - radius);
+    // the fan faces up and away from the middle; it opens along its stalk
+    const facing = out
+      .clone()
+      .lerp(new THREE.Vector3(0, 1, 0), 0.45)
+      .normalize();
+    const along = out.clone().addScaledVector(facing, -out.dot(facing)).normalize();
+    if (along.lengthSq() < 0.5) along.set(Math.cos(yaw), 0, Math.sin(yaw));
+    const tone = new THREE.Color(1, 1, 1).multiplyScalar(0.85 + 0.3 * r());
+    if (near) b.shaft(new THREE.Vector3(0, 0.12, 0), at, 0.012, 0.01, new THREE.Color(0.75, 0.7, 0.55), 0, 0.6, 3);
+    b.fan(at, facing, along, radius, 2.4 + 0.6 * r(), near ? 6 : 3, 0.25, tone, 1);
+  }
+  return b.geometry();
+}
+
+/** A cabbage palm: a tapering trunk, a ball of old leaf bases under the crown, a star of arched flat fronds. 1 tall before scaling. */
 function buildPalm(form: Extract<Form, { kind: 'palm' }>, seed: number, near: boolean): THREE.BufferGeometry {
   const r = sequence(seed);
   const b = new Builder();
-  // the instance scales the whole palm by its height: build it 1 tall
-  const lean = new THREE.Vector3((r() - 0.5) * 0.12, 1, (r() - 0.5) * 0.12).normalize();
-  const crownAt = lean.clone().multiplyScalar(0.86);
+  const lean = new THREE.Vector3((r() - 0.5) * 0.1, 1, (r() - 0.5) * 0.1).normalize();
+  const crown = lean.clone().multiplyScalar(0.84);
   const width = form.trunk[0] + r() * (form.trunk[1] - form.trunk[0]);
-  const trunk = new THREE.Color(0.85, 0.82, 0.76);
-  const boots = new THREE.Color(1.15, 0.95, 0.7);
-  const rings = near ? 6 : 1;
-  for (let i = 0; i < rings; i++) {
-    const a = crownAt.clone().multiplyScalar(i / rings),
-      c = crownAt.clone().multiplyScalar((i + 1) / rings);
-    // a slight swelling at the foot; the leaf bases (boots) make the upper trunk rougher and browner
-    const ra = width * (i === 0 ? 1.25 : 1),
-      rc = width;
-    b.stick(a, c, ra, rc, i >= rings - 2 ? boots : trunk, (i / rings) ** 2 * 0.3, ((i + 1) / rings) ** 2 * 0.3, near ? 7 : 4);
-  }
-  const fronds = near ? form.fronds : Math.round(form.fronds * 0.45);
-  const green = new THREE.Color(1, 1, 1);
-  const brown = new THREE.Color(3.2, 2.3, 2.4);
+  const bark = new THREE.Color(1.6, 1.45, 1.2);
+  b.shaft(new THREE.Vector3(0, -0.02, 0), crown, width * 1.25, width, bark, 0, 0.25, near ? 8 : 5);
+  b.ball(
+    crown.clone().addScaledVector(lean, -0.02),
+    new THREE.Vector3(width * 2.4, 0.06, width * 2.4),
+    near ? 1 : 0,
+    new THREE.Color(1.5, 1.25, 0.85),
+    0.3,
+    seed,
+  );
+  const fronds = near ? form.fronds : Math.round(form.fronds * 0.6);
   for (let i = 0; i < fronds; i++) {
-    const dead = i >= fronds - Math.round(form.dead * (near ? 1 : 0.6));
-    // spread round the crown on a golden angle; live ones rise and arch over, dead ones hang
-    const yaw = i * 2.39996 + r() * 0.3;
-    const rise = dead ? -1.2 + r() * 0.3 : -0.1 + ((i * 7) % fronds) / fronds + (r() - 0.5) * 0.2;
-    const out = new THREE.Vector3(Math.cos(yaw) * Math.cos(rise), Math.sin(rise), Math.sin(yaw) * Math.cos(rise));
-    const stalk = (dead ? 0.08 : 0.1 + r() * 0.05) * 1;
-    const top = crownAt.clone().addScaledVector(out, stalk);
-    if (near) b.stick(crownAt, top, 0.008, 0.006, dead ? brown : trunk, 0.5, 0.8, 3);
-    const facing = new THREE.Vector3(0, 1, 0)
-      .addScaledVector(out, -out.y)
-      .normalize()
-      .lerp(new THREE.Vector3(0, 1, 0), 0.6)
-      .normalize();
-    const along = out.clone().addScaledVector(facing, -out.dot(facing)).normalize();
-    fan(
-      b,
-      top,
-      facing,
-      along,
-      form.blade * (0.8 + r() * 0.35),
-      2.6 + r() * 0.7,
-      dead ? 0.4 : 0.6 + r() * 0.5,
-      near ? 10 : 4,
-      near ? 3 : 1,
-      dead ? brown.clone().multiplyScalar(0.8 + r() * 0.3) : green.clone().multiplyScalar(0.85 + r() * 0.3),
-      1,
-    );
-  }
-  return b.geometry();
-}
-
-/** A bunch of grass: blades from a tight base, arching out; a few with seed heads on bare stems. */
-function buildTuft(form: Extract<Form, { kind: 'tuft' }>, seed: number): THREE.BufferGeometry {
-  const r = sequence(seed);
-  const b = new Builder();
-  const blades = Math.round(form.blades[0] + r() * (form.blades[1] - form.blades[0]));
-  for (let i = 0; i < blades; i++) {
-    const yaw = r() * Math.PI * 2;
-    const lean = (0.15 + r() * 0.6) * form.lean;
-    const h = 0.55 + r() * 0.45;
-    const root = new THREE.Vector3(Math.cos(yaw) * 0.03 * r(), 0, Math.sin(yaw) * 0.03 * r());
-    const dir = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw));
-    const side = new THREE.Vector3(-dir.z, 0, dir.x);
-    const width = 0.02 + r() * 0.012; // the instance scales a tuft by its height: a blade a few millimetres wide on a hand-high tuft
-    // three points along a blade that leans out more as it rises
-    const pts = [0, 0.5, 1].map((t) =>
-      root
+    const yaw = i * 2.39996 + r() * 0.25;
+    const rise = 0.75 - 1.3 * ((i * 0.618) % 1); // the young ones up, the old ones down
+    const length = 0.24 + 0.06 * r();
+    const dir = new THREE.Vector3(Math.cos(yaw) * Math.cos(rise), Math.sin(rise), Math.sin(yaw) * Math.cos(rise));
+    const side = new THREE.Vector3(-Math.sin(yaw), 0, Math.cos(yaw));
+    const tone = new THREE.Color(1, 1, 1).multiplyScalar(0.85 + 0.3 * r());
+    // a frond: a narrow leaf, widest a third of the way out, arching down to its tip
+    const segs = near ? 4 : 2;
+    let last: [number, number] | null = null;
+    let at = crown.clone().addScaledVector(dir, 0.02);
+    let heading = dir.clone();
+    for (let k = 0; k <= segs; k++) {
+      const t = k / segs;
+      const halfWidth = length * 0.16 * Math.sin(Math.PI * Math.min(1, t * 1.3 + 0.05)) * (1 - 0.6 * t);
+      const up = new THREE.Vector3().crossVectors(side, heading).normalize();
+      const flex = 0.5 + 0.5 * t;
+      const a = b.vertex(at.clone().addScaledVector(side, halfWidth), up, tone, flex);
+      const c = b.vertex(
+        at
+          .clone()
+          .addScaledVector(side, -halfWidth)
+          .addScaledVector(up, halfWidth * 0.35),
+        up,
+        tone,
+        flex,
+      );
+      if (last) {
+        b.tri(last[0], a, last[1]);
+        b.tri(last[1], a, c);
+      }
+      last = [a, c];
+      at = at.clone().addScaledVector(heading, length / segs);
+      heading = heading
         .clone()
-        .addScaledVector(dir, Math.sin(lean * t * 1.6) * h * t * 0.9)
-        .setY(h * t * Math.cos(lean * t)),
-    );
-    const normal = new THREE.Vector3(0, 1, 0).lerp(dir, 0.5).normalize();
-    // base greener and darker, tip cured to straw: the instance's colour does the rest
-    const base = new THREE.Color(0.55, 0.7, 0.45),
-      tip = new THREE.Color(1.2, 1.1, 0.95);
-    const v0 = b.vertex(pts[0]!.clone().addScaledVector(side, -width), normal, base, 0, 0, 0, 3);
-    const v1 = b.vertex(pts[0]!.clone().addScaledVector(side, width), normal, base, 1, 0, 0, 3);
-    const v2 = b.vertex(pts[1]!.clone().addScaledVector(side, -width * 0.8), normal, base.clone().lerp(tip, 0.6), 0, 0.5, 0.3, 3);
-    const v3 = b.vertex(pts[1]!.clone().addScaledVector(side, width * 0.8), normal, base.clone().lerp(tip, 0.6), 1, 0.5, 0.3, 3);
-    const v4 = b.vertex(pts[2]!, normal, tip, 0.5, 1, 1, 3);
-    b.quad(v0, v1, v2, v3);
-    b.tri(v2, v3, v4);
-  }
-  for (let i = 0; i < form.heads; i++) {
-    // a seed stalk: taller than the leaves, nearly straight; at its top a loose spray of fine branches, nodding
-    const yaw = r() * Math.PI * 2;
-    const tip = new THREE.Vector3(Math.cos(yaw) * 0.12, 1.2 + r() * 0.4, Math.sin(yaw) * 0.12);
-    const straw = new THREE.Color(1.35, 1.2, 0.95);
-    b.stick(new THREE.Vector3(), tip, 0.006, 0.004, straw, 0, 1, 3);
-    for (let k = 0; k < 5; k++) {
-      const a = yaw + (r() - 0.5) * 1.6;
-      const from = tip.clone().add(new THREE.Vector3(0, -0.04 * k, 0));
-      const to = from
-        .clone()
-        .add(new THREE.Vector3(Math.cos(a) * (0.05 + r() * 0.06), -0.1 - r() * 0.12, Math.sin(a) * (0.05 + r() * 0.06)));
-      b.stick(from, to, 0.005, 0.002, straw.clone().multiplyScalar(0.85 + r() * 0.3), 1, 1, 3);
+        .add(new THREE.Vector3(0, -0.45 / segs, 0))
+        .normalize();
     }
   }
   return b.geometry();
 }
 
-function build(species: Species, seed: number, form: 'near' | 'far' | 'cast'): THREE.BufferGeometry {
+function build(species: Species, seed: number, form: 'near' | 'far'): THREE.BufferGeometry {
   const f = species.form;
   const near = form === 'near';
   if (f.kind === 'fan') return buildFan(f, seed, near);
   if (f.kind === 'shrub') return buildShrub(f, seed, near);
-  if (f.kind === 'palm') return buildPalm(f, seed, near);
-  return buildTuft(f, seed);
+  return buildPalm(f, seed, near);
 }
 
 // ----------------------------------------------------------------------------------------------
-// The material: lit as one body, outlines from the shape, fading by dither, moving in the wind.
+// The material: lit as solid forms, a gentle mottle in the real look, fading by dither, moving in the wind.
 
-/** Per material: the leaf shape and the breeze. Shared: time, eye and wind. */
+/** Shared by every plant: time, eye and wind. */
 interface Shared {
   time: { value: number };
   eye: { value: THREE.Vector3 };
@@ -450,16 +323,13 @@ interface Shared {
 
 const PLANT_VERTEX = /* glsl */ `
   attribute float aFlex;
-  attribute float aShape;
   attribute vec4 aBand;          // in from, in to, out from, out to: metres from the eye
   uniform vec3 uEye;             // the eye in the plants' frame
   uniform vec3 uWind;            // which way, and how hard (its length)
   uniform float uTime;
   uniform float uSway;
-  varying vec2 vCard;
-  varying float vShape;
   varying float vFade;
-  varying vec3 vPlant;           // the point in the plants' frame, for grain
+  varying vec3 vPlant;           // the point in the plants' frame, for the mottle
 `;
 
 const PLANT_SWAY = /* glsl */ `
@@ -471,8 +341,6 @@ const PLANT_SWAY = /* glsl */ `
   float plantOut = 1.0 - smoothstep(abs(aBand.z), abs(aBand.w), plantFar);
   vFade = aBand.w < 0.0 ? plantIn : plantIn * plantOut;
   float plantSize = aBand.w < 0.0 ? plantOut : 1.0;
-  vCard = uv;
-  vShape = aShape;
   // the breeze: a slow lean and a quicker flutter, out of step plant to plant; none at the root
   float phase = dot(plantRoot.xz, vec2(0.37, 0.23));
   float gust = 0.6 + 0.4 * sin(uTime * 0.7 + phase * 0.3);
@@ -481,75 +349,9 @@ const PLANT_SWAY = /* glsl */ `
 `;
 
 const PLANT_FRAGMENT = /* glsl */ `
-  uniform vec4 uLeaf;            // a sprig: leaves, their length and width on the card, their angle off the twig
-  uniform float uSegments;       // a fan's segments across its sweep
-  varying vec2 vCard;
-  varying float vShape;
   varying float vFade;
   varying vec3 vPlant;
   ${NOISE}
-  // the outline on a card: 1 inside, 0 out, softened over a pixel
-  float plantOutline(out float tint) {
-    tint = 1.0;
-    if (vShape < 0.5) return 1.0;
-    if (vShape > 3.5) {
-      // a mass of leaves seen from further off: solid in the middle, broken into leaf clusters toward its outline
-      #if defined(PLANT_RIM) && defined(PLANT_CEL)
-        // drawn: a mass with a scalloped edge of big leaf clusters, one flat tone
-        float n = noise(vPlant * 4.0);
-        float rim = 1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition)));
-        return step(rim * rim * 1.1, n);
-      #elif defined(PLANT_RIM)
-        float n = noise(vPlant * 9.0) * 0.6 + noise(vPlant * 23.0) * 0.4;
-        tint = 0.55 + 0.75 * n;
-        float rim = 1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition)));
-        return step(rim * rim * 0.95, n);
-      #else
-        return 1.0;   // its shadow is the mass, whole: a shadow map at a few millimetres a texel cannot afford a fragment's noise
-      #endif
-    }
-    if (vShape < 1.5) {
-      // a fan: whole to halfway out, then split into segments that taper to points
-      float s = fract(vCard.x * uSegments);
-      float half_ = mix(0.5, 0.05, smoothstep(0.42, 1.0, vCard.y));
-      float d = half_ - abs(s - 0.5);
-      tint = 0.85 + 0.3 * fract(floor(vCard.x * uSegments) * 0.618);
-      // once a segment is under a couple of pixels its outline only aliases: the fan is then as much of a veil as it is leaf
-      float sharp = 1.0 - smoothstep(0.25, 0.6, fwidth(vCard.x * uSegments));
-      return mix(2.0 * half_, clamp(d / max(fwidth(s), 1e-4) + 0.5, 0.0, 1.0), sharp);
-    }
-    if (vShape < 2.5) {
-      // a sprig: a twig up the card with leaves either side, alternately, pointing up. A leaf is never drawn thinner
-      // than a pixel and a half (it swells as it shrinks on screen), so far off it covers what it covers and does not
-      // break up into a speckle or a translucent veil
-      vec2 c = vCard;
-      float px = length(fwidth(c));
-      float twig = 0.5 + 0.06 * sin(c.y * 4.0);
-      float cover = (1.0 - smoothstep(0.008 + px, 0.016 + px, abs(c.x - twig))) * step(c.y, 0.92);
-      float n = uLeaf.x;
-      float swell = max(0.0, 1.5 * px - uLeaf.z * 0.5);
-      for (int k = 0; k < 9; k++) {
-        if (float(k) >= n) break;
-        float t = 0.1 + 0.85 * (float(k) + 0.5) / n;
-        float side = mod(float(k), 2.0) * 2.0 - 1.0;
-        float a = uLeaf.w * side;
-        vec2 axis = vec2(sin(a), cos(a));
-        vec2 centre = vec2(0.5 + 0.06 * sin(t * 4.0), t) + axis * uLeaf.y * 0.5;
-        vec2 q = c - centre;
-        float along = dot(q, axis) / (uLeaf.y * 0.5 + swell);
-        float across = (q.x * axis.y - q.y * axis.x) / (uLeaf.z * 0.5 + swell);
-        // a leaf: widest a little below its middle, pointed
-        float w = sqrt(max(0.0, 1.0 - along * along)) * (1.0 - 0.25 * along);
-        float leaf = clamp((w - abs(across)) * (uLeaf.z * 0.5 + swell) / max(px, 1e-4) + 0.5, 0.0, 1.0) * step(abs(along), 1.0);
-        if (leaf > 0.5) tint = 0.8 + 0.4 * fract(float(k) * 0.618 + vPlant.x * 3.1);
-        cover = max(cover, leaf);
-      }
-      return cover;
-    }
-    // a blade: narrowing to its tip
-    float d = (0.5 - abs(vCard.x - 0.5)) - 0.5 * vCard.y * vCard.y;
-    return clamp(d / max(fwidth(vCard.x), 1e-4) + 0.5, 0.0, 1.0);
-  }
   // a threshold for each pixel, with no pattern to it: where a plant is half faded, half its pixels are drawn
   float plantDither() {
     vec2 q = fract(gl_FragCoord.xy * vec2(0.1031, 0.1030));
@@ -558,38 +360,23 @@ const PLANT_FRAGMENT = /* glsl */ `
   }
 `;
 
-/**
- * A species' material: `drawn` for the view; `depth` for a shadow, outline and fade as drawn; `cast` for the far form
- * casting near the eye, which is never faded and, being a mass of leaf, needs no outline: a shader without `discard`,
- * which the GPU can rasterise as fast as it likes.
- */
-function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth' | 'cast'): THREE.Material {
-  const depth = use !== 'drawn';
-  const form = species.form;
-  const leaf = form.kind === 'shrub' ? new THREE.Vector4(...form.leaf) : new THREE.Vector4(6, 0.2, 0.08, 0.7);
-  const segments = form.kind === 'fan' ? form.segments : form.kind === 'palm' ? 22 : 1;
-  const uniforms = {
-    uEye: shared.eye,
-    uWind: shared.wind,
-    uTime: shared.time,
-    uSway: { value: species.sway },
-    uLeaf: { value: leaf },
-    uSegments: { value: segments },
-  };
+/** A species' material: `drawn` for the view, `depth` for its shadow (faded as drawn). */
+function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth'): THREE.Material {
+  const depth = use === 'depth';
+  const uniforms = { uEye: shared.eye, uWind: shared.wind, uTime: shared.time, uSway: { value: species.sway } };
   const material = depth
-    ? new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking })
+    ? new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side: THREE.DoubleSide })
     : new THREE.MeshStandardMaterial({
         name: `plant-${species.name}`,
         vertexColors: true,
         roughness: species.rough,
         metalness: 0,
-        envMapIntensity: 0.4,
+        envMapIntensity: 0.5,
         side: THREE.DoubleSide,
-        alphaToCoverage: true,
       });
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
-    // the cel look's twin (look.ts) runs this same patch on a toon shader: a drawn plant is flat colour with a shaped edge
+    // the cel look's twin (look.ts) runs this same patch on a toon shader: there the forms are flat tones
     const cel = (shader as unknown as { shaderType: string }).shaderType === 'MeshToonMaterial';
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${PLANT_VERTEX}`)
@@ -602,45 +389,24 @@ function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth' 
         vPlant = plantRoot + transformed;`,
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <clipping_planes_pars_fragment>',
-        `#include <clipping_planes_pars_fragment>\n${depth ? '' : '#define PLANT_RIM'}\n${cel ? '#define PLANT_CEL' : ''}\n${PLANT_FRAGMENT}`,
-      )
+      .replace('#include <clipping_planes_pars_fragment>', `#include <clipping_planes_pars_fragment>\n${PLANT_FRAGMENT}`)
       .replace(
         depth ? '#include <clipping_planes_fragment>' : '#include <alphatest_fragment>',
         /* glsl */ `${depth ? '#include <clipping_planes_fragment>' : '#include <alphatest_fragment>'}
-        float plantTint;
-        float plantCover = plantOutline(plantTint);
+        if (plantDither() >= vFade) discard;
         ${
-          use === 'cast'
-            ? form.kind === 'shrub'
-              ? ''
-              : 'if (plantCover < 0.5) discard;'
-            : depth
-              ? 'if (plantCover < 0.5 || plantDither() >= vFade) discard;'
-              : // drawn: the outline's soft edge is coverage (smooth leaf edges); the fade is a screen door of unordered holes
-                'if (plantCover < 0.02 || plantDither() >= vFade) discard;\n diffuseColor.a = plantCover;\n diffuseColor.rgb *= plantTint;\n #ifdef PLANT_CEL\n diffuseColor.rgb *= 1.4; if (plantCover < 0.5) discard;\n #endif'
+          depth || cel
+            ? ''
+            : // the real look: leaf masses a hand across, lighter and darker, faded out before they are under a pixel
+              `{
+          float px = length(fwidth(vPlant));
+          float mottle = noise(vPlant * 4.0) * 0.6 + noise(vPlant * 11.0) * 0.4;
+          diffuseColor.rgb *= 1.0 + 0.24 * (mottle - 0.5) * (1.0 - smoothstep(0.03, 0.12, px));
+        }`
         }`,
       );
-    if (!depth)
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <normal_fragment_begin>',
-        // lit as the plant's outside, from either face: a leaf seen from behind is still the shrub's surface
-        /* glsl */ `#include <normal_fragment_begin>
-        normal = normalize(vNormal);
-        // a leaf whose borrowed normal faces away from the eye would be lit at a grazing angle and mirror the sky:
-        // turn it just far enough toward the eye that it is lit as foliage, not as glass
-        {
-          vec3 toEye = normalize(vViewPosition);
-          float facing = dot(normal, toEye);
-          if (facing < 0.2) normal = normalize(normal + toEye * (0.2 - facing));
-        }
-        #ifndef PLANT_CEL
-        if (vShape > 3.5) normal = normalize(normal + 0.9 * vec3(noise(vPlant * 7.0 + 1.0) - 0.5, noise(vPlant * 7.0 + 2.0) - 0.5, noise(vPlant * 7.0 + 3.0) - 0.5));
-        #endif`,
-      );
   };
-  material.customProgramCacheKey = () => `plant:${use}:${use === 'cast' && form.kind === 'shrub'}`;
+  material.customProgramCacheKey = () => `plant:${use}`;
   return material;
 }
 
@@ -669,8 +435,6 @@ interface Drawn {
   species: Species;
   near: THREE.InstancedMesh[];
   far: THREE.InstancedMesh[];
-  /** The plants near enough to cast a shadow the map can hold, in their far form: drawn into the shadow map only. */
-  shadow: THREE.InstancedMesh[];
 }
 
 const CAPACITY = { near: 6000, far: 12000 };
@@ -683,7 +447,6 @@ export class Flora {
   private readonly drawn: Drawn[] = [];
   private readonly tiles = new Map<string, Plant[]>();
   private readonly sorted = new THREE.Vector3(1e9, 0, 1e9);
-  private drawnLook = false;
   /** How far each layer's plants are drawn, metres. */
   private readonly reach: Record<Layer, number> = { herb: 0, woody: 0, tree: 0 };
 
@@ -698,49 +461,34 @@ export class Flora {
     };
     this.group.userData.flora = this; // for the debug handle
     for (const s of spec.species) this.reach[s.layer] = Math.max(this.reach[s.layer], s.reach);
-    // what a shadow caster is drawn with in the view: nothing (every vertex put outside the frame), in either look
-    const hidden = new THREE.MeshBasicMaterial({ name: 'plant-shadow', colorWrite: false, depthWrite: false });
-    hidden.onBeforeCompile = (shader) => {
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <fog_vertex>',
-        '#include <fog_vertex>\ngl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
-      );
-    };
-    hidden.customProgramCacheKey = () => 'plant-shadow';
     spec.species.forEach((species, index) => {
       const material = plantMaterial(species, this.shared, 'drawn');
       const depth = plantMaterial(species, this.shared, 'depth');
-      const cast = plantMaterial(species, this.shared, 'cast');
-      // Shadows are cast by each plant's far form, and only within SHADOWED of the eye: the shadow map covers the
-      // ground round the walker or the model (stage.ts) at a few millimetres a texel, and a thicket's leaf cards
-      // drawn into it fragment by fragment cost more than the whole frame. A grass tuft casts its own.
-      const mesh = (geometry: THREE.BufferGeometry, capacity: number, use: 'drawn' | 'cast' | 'both') => {
+      // the near forms cast shadows (the shadow map covers the ground round the walker or the model: stage.ts); the
+      // far forms do not: thousands of them drawn into it would be shadows nobody sees at that size
+      const mesh = (geometry: THREE.BufferGeometry, capacity: number, cast: boolean) => {
         geometry.setAttribute('aBand', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
-        const m = new THREE.InstancedMesh(geometry, use === 'cast' ? hidden : material, capacity);
+        const m = new THREE.InstancedMesh(geometry, material, capacity);
         m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
         m.count = 0;
         m.visible = false;
         m.frustumCulled = false;
-        m.castShadow = use !== 'drawn';
-        m.receiveShadow = use !== 'cast';
-        m.customDepthMaterial = use === 'cast' ? cast : depth;
+        m.castShadow = cast;
+        m.receiveShadow = true;
+        m.customDepthMaterial = depth;
         m.raycast = () => {}; // plants are not solid and not picked
         onlyAsItself(m);
         this.group.add(m);
         return m;
       };
       const near: THREE.InstancedMesh[] = [],
-        far: THREE.InstancedMesh[] = [],
-        shadow: THREE.InstancedMesh[] = [];
-      const tuft = species.form.kind === 'tuft';
+        far: THREE.InstancedMesh[] = [];
       for (let v = 0; v < VARIANTS; v++) {
         const seed = 1000 * (index + 1) + 17 * v;
-        near.push(mesh(build(species, seed, 'near'), CAPACITY.near, tuft ? 'both' : 'drawn'));
-        if (tuft) continue;
-        far.push(mesh(build(species, seed, 'far'), CAPACITY.far, 'drawn'));
-        shadow.push(mesh(build(species, seed, 'cast'), CAPACITY.near, 'cast'));
+        near.push(mesh(build(species, seed, 'near'), CAPACITY.near, true));
+        far.push(mesh(build(species, seed, 'far'), CAPACITY.far, false));
       }
-      this.drawn.push({ species, near, far, shadow });
+      this.drawn.push({ species, near, far });
     });
   }
 
@@ -748,11 +496,8 @@ export class Flora {
     this.shared.time.value += dt;
   }
 
-  /** The cel look: the same shrubs and palms, drawn (the toon twin of each material flattens their light: see plantMaterial); no grass tufts. */
-  simplify(on: boolean): void {
-    this.drawnLook = on;
-    this.arrange(this.sorted.x, this.sorted.y, this.sorted.z);
-  }
+  /** The cel look: the same forms, drawn (the toon twin of each material makes them flat tones: see plantMaterial). */
+  simplify(_on: boolean): void {}
 
   /** The eye, in the plants' frame. True if what is drawn changed. */
   attend(eye: THREE.Vector3): boolean {
@@ -838,7 +583,7 @@ export class Flora {
    */
   private arrange(ex: number, ey: number, ez: number): void {
     this.sorted.set(ex, ey, ez);
-    const lists = this.drawn.map((d) => ({ near: d.near.map(() => 0), far: d.far.map(() => 0), shadow: d.shadow.map(() => 0) }));
+    const lists = this.drawn.map((d) => ({ near: d.near.map(() => 0), far: d.far.map(() => 0) }));
     const put = (mesh: THREE.InstancedMesh, at: number, plant: Plant, band: [number, number, number, number]) => {
       (mesh.instanceMatrix.array as Float32Array).set(plant.matrix, at * 16);
       (mesh.instanceColor!.array as Float32Array).set(plant.colour, at * 3);
@@ -864,17 +609,9 @@ export class Flora {
             const sp = drawn.species;
             const list = lists[plant.species]!;
             const v = plant.variant;
-            if (sp.form.kind === 'tuft') {
-              if (this.drawnLook) continue; // in a drawing the grass is the ground's own flat tone: inked blade by blade it goes to black
-              if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near)
-                put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, -sp.near * 0.7, -sp.near]);
-              continue;
-            }
             const hand = sp.near - 3; // where the near form starts to give way to the far: a short crossing, so few plants are half drawn at once
             const end: [number, number] = plant.thicket ? UNDER : [sp.reach * 0.9, sp.reach];
             if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near) put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, hand, sp.near]);
-            if (d < SHADOWED + RESORT && list.shadow[v]! < CAPACITY.near)
-              put(drawn.shadow[v]!, list.shadow[v]!++, plant, [-1, 0, 1e5, 1e5]);
             if (d > hand - RESORT && d < end[1] + RESORT && list.far[v]! < CAPACITY.far)
               put(drawn.far[v]!, list.far[v]!++, plant, [hand, sp.near, -end[0], -end[1]]);
           }
@@ -884,7 +621,6 @@ export class Flora {
       for (const [meshes, counts] of [
         [d.near, lists[k]!.near],
         [d.far, lists[k]!.far],
-        [d.shadow, lists[k]!.shadow],
       ] as const)
         meshes.forEach((mesh, v) => {
           const n = counts[v]!;

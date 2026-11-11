@@ -798,6 +798,8 @@ const padParts: Part[] = [
       // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
       { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11 },
       { kind: 'slide', node: 'GroundEquipment_Case', by: [2.51, 0, 42.4], from: T.platforms + 0.03, to: T.platforms + 0.12 },
+      // the trailer's door steps fold up first, so nothing hangs below its frame while it is towed (estimated)
+      swing('GroundEquipment_TrailerSteps', Z, 95, T.platforms, T.platforms + 0.008),
       // the trailer taken away behind a tractor unit, north off the pad past the cherry picker (estimated throughout)
       {
         kind: 'drive',

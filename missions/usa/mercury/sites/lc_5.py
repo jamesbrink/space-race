@@ -19,7 +19,20 @@ hatch faces (WNW); +Y runs along the rails toward the structure's parking places
 from __future__ import annotations
 
 import sitelib
-from lc5 import blockhouse, cherry_picker, ground_equipment, grounds, hardstand, launcher, masts, outbuildings, pad6, service_structure, vehicles
+from lc5 import (
+    blockhouse,
+    cherry_picker,
+    ground_equipment,
+    grounds,
+    hardstand,
+    labels,
+    launcher,
+    masts,
+    outbuildings,
+    pad6,
+    service_structure,
+    vehicles,
+)
 from lc5.site import HARDSTAND, LAUNCHER_TOP, STRUCTURE_LAUNCH, STRUCTURE_T55, STRUCTURE_TOP, TRUE_NORTH, Parts, materials, stood
 
 PEDESTAL_TOP = LAUNCHER_TOP  # where the fins rest: what the viewer stands the vehicle on
@@ -40,6 +53,7 @@ def build(date: str | None = None) -> dict:
     if stood("Mobile aerial tower (cherry picker)", since="1960-10-24", confidence="documented", source="SP-4001: at the Cape 24 October 1960"):
         pose = cherry_picker.build(parts)
     ground_equipment.build(parts)
+    labels.apply(parts)
     parts.build()
     print(sitelib.standing())
     return pose
@@ -68,6 +82,7 @@ def build_place(date: str | None = None) -> None:
         source="FHSU F16_016, July 1961: July's cars, in July's places; no view of the parking in May has been found",
     ):
         vehicles.build(parts)
+    labels.apply(parts)
     parts.build()
     if hasattr(vehicles, "check_standing"):  # every tyre against what is under it, now that the site is built
         for line in vehicles.check_standing():

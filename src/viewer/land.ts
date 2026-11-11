@@ -44,9 +44,6 @@ export interface Palette {
   leaf: THREE.Color;
   leafLit: THREE.Color;
   leafOther: THREE.Color;
-  /** Fragments in the sand (shell, gravel): the colour and how many, 0 to 1. */
-  grit: THREE.Color;
-  gritAmount: number;
 }
 
 export interface LandSpec {
@@ -489,29 +486,13 @@ export class Land {
             float tread = noise(vec3(p * 2.4, 5.0)) * 0.6 + noise(vec3(p * 7.0, 6.0)) * 0.4;
             float grain = noise(vec3(p * 160.0, 2.0)) * 0.6 + noise(vec3(p * 430.0, 4.0)) * 0.4;
             sand *= 1.0 + 0.24 * (tread - 0.5) * seen(0.12) + 0.24 * (grain - 0.5) * seen(0.004);
-            // crumbs: in each 3 cm cell a small clod standing up, or a dimple where something pressed; the light picks them out
-            vec2 cc = p * 33.0, cci = floor(cc), ccf = cc - cci - 0.5;
-            float ch = hash(vec3(cci, 35.0));
-            vec2 co = vec2(hash(vec3(cci, 36.0)), hash(vec3(cci, 37.0))) - 0.5;
-            float cr = length((ccf - co * 0.5) * vec2(1.0, 0.6 + 0.8 * hash(vec3(cci, 39.0)))) / (0.12 + 0.3 * hash(vec3(cci, 38.0)));
-            float crumb = (0.5 + 0.5 * cos(3.1416 * min(cr, 1.0))) * (ch > 0.78 ? 1.0 : ch < 0.12 ? -0.7 : 0.0) * (0.4 + 0.6 * hash(vec3(cci, 40.0))) * seen(0.03);
-            sand *= 1.0 + 0.1 * crumb;
-            // grit: a fragment in some of the 4 cm cells, a sliver turned any way, pale
-            vec2 cellAt = p * 24.0, ci = floor(cellAt), cf = cellAt - ci - 0.5;
-            float pick = hash(vec3(ci, 3.0));
-            float a = pick * 40.0;
-            vec2 off = vec2(hash(vec3(ci, 4.0)), hash(vec3(ci, 5.0))) - 0.5;
-            vec2 q = mat2(cos(a), sin(a), -sin(a), cos(a)) * (cf - off * 0.5);
-            float sliver = 1.0 - smoothstep(0.7, 1.0, length(q * vec2(1.0, 2.2)) / (0.12 + 0.2 * hash(vec3(ci, 6.0))));
-            float grit = sliver * step(1.0 - ${p.gritAmount.toFixed(3)} * (1.0 - 0.6 * herb), pick) * seen(0.01);
-            sand = mix(sand, ${vec3(p.grit)} * (0.8 + 0.4 * hash(vec3(ci, 7.0))), grit * 0.85);
             // loose dry sand lies in wind ripples, crests across the wind
             // ripples: crests a hand apart, wandering and forking, stronger in patches where the wind has worked longest
             float ripWarp = noise(vec3(p * 0.6, 8.0)) * 0.35 + noise(vec3(p * 2.3, 8.5)) * 0.04;
             float rip = sin((p.x + ripWarp + 0.08 * p.y) * 62.8);
             float ripples = loose * (1.0 - smoothstep(0.05, 0.3, herb)) * seen(0.06) * smoothstep(0.3, 0.7, noise(vec3(p * 0.18, 8.9)));
             sand *= 1.0 + 0.03 * rip * ripples;
-            g.bump = 0.003 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12) + 0.002 * grit + 0.004 * crumb;
+            g.bump = 0.003 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12);
             // patches a stride across: damper and darker, or a dry pale crust
             float patches = noise(vec3(p * 0.45, 24.0)) * 0.65 + noise(vec3(p * 1.3, 25.0)) * 0.35;
             sand *= 1.0 + 0.22 * (patches - 0.5) * seen(0.5);
@@ -538,44 +519,16 @@ export class Land {
             float clump = noise(vec3(p * 1.7, 9.0)) * 0.6 + noise(vec3(p * 5.5, 10.0)) * 0.4;
             float grass = smoothstep(clump - 0.3, clump + 0.2, herb * 1.25 + 0.25 * (noise(vec3(p * 9.0, 41.0)) - 0.5) * seen(0.1));
             grass = mix(herb, grass, seen(0.35));
-            // near the eye the grass stands up as tufts (flora.ts), and between them is sand and thatch; further off they are this colour
-            grass *= mix(0.75, 1.0, smoothstep(14.0, 30.0, length(vec3(p - uEye.xz, uEye.y))));
             vec3 straw = mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, smoothstep(0.25, 0.75, noise(vec3(p * 0.09, 11.0)) * 0.7 + clump * 0.3));
-            // blades lying every way: in each 5 cm cell, one or two short strokes, each its own shade
-            float lying = 0.0, shade = 0.5;
-            vec2 bc = p * 13.0;
-            vec2 bi = floor(bc);
-            if (seen(0.02) > 0.0 && herb > 0.02)   // only where they can be made out: the eye's few metres
-            for (int y = -1; y <= 1; y++)
-              for (int x = -1; x <= 1; x++) {
-                vec2 n = bi + vec2(x, y);
-                float h = hash(vec3(n, 31.0));
-                float a = h * 6.283;
-                vec2 o = n + vec2(hash(vec3(n, 32.0)), hash(vec3(n, 33.0)));
-                vec2 d = vec2(cos(a), sin(a));
-                vec2 q = bc - o;
-                float t = clamp(dot(q, d), -1.1, 1.1);
-                float w = length(q - d * t);
-                float stroke = (1.0 - smoothstep(0.03, 0.07, w)) * step(0.35, h);
-                if (stroke > lying) { lying = stroke; shade = 0.35 + 0.3 * hash(vec3(n, 34.0)); }
-              }
-            float blades = mix(0.5, mix(0.35, shade, lying), seen(0.02));
-            straw *= 0.72 + 0.56 * blades + 0.3 * (clump - 0.5) * seen(0.2);
-            // the thatch between live blades: last year's, grey and pale
-            straw = mix(straw, ${vec3(p.herbDry)} * 1.25, 0.25 * (1.0 - lying) * seen(0.02));
+            // the grass's colour by its clumps: no blades, just tone, faded by pixel size like everything else
+            straw *= 0.85 + 0.3 * (clump - 0.5) * seen(0.2) + 0.12 * (noise(vec3(p * 3.1, 12.0)) - 0.5) * seen(0.08);
             g.albedo = mix(g.albedo, straw, grass);
-            g.bump += 0.012 * grass * (lying - 0.5) * seen(0.02);
+            g.bump += 0.01 * grass * (clump - 0.5) * seen(0.2);
             // under shrubs: fallen leaves and shade
             float under = smoothstep(0.12, 0.55, woody + 0.3 * (noise(vec3(p * 0.8, 14.0)) - 0.5));
-            // fallen leaves: one to each 5 cm cell, an oval turned any way, each its own brown or grey
-            vec2 lc = p * 19.0, li = floor(lc), lf = lc - li - 0.5;
-            float la = hash(vec3(li, 42.0)) * 6.283;
-            vec2 lq = mat2(cos(la), sin(la), -sin(la), cos(la)) * (lf - (vec2(hash(vec3(li, 43.0)), hash(vec3(li, 44.0))) - 0.5) * 0.3);
-            float leafAt = (1.0 - smoothstep(0.8, 1.0, length(lq * vec2(1.0, 2.0)) / 0.42)) * seen(0.025);
-            vec3 litter = ${vec3(p.litter)} * (0.75 + 0.5 * noise(vec3(p * 3.0, 15.0)));
-            litter = mix(litter, ${vec3(p.litter)} * (0.9 + 1.1 * hash(vec3(li, 45.0))) * vec3(1.15, 1.0, 0.8), leafAt);
+            vec3 litter = ${vec3(p.litter)} * (0.75 + 0.5 * noise(vec3(p * 3.0, 15.0)) * mix(1.0, 0.6 + 0.8 * noise(vec3(p * 11.0, 16.0)), seen(0.05)));
             g.albedo = mix(g.albedo, litter, under);
-            g.bump = mix(g.bump, 0.003 * leafAt + 0.01 * (noise(vec3(p * 3.0, 15.0)) - 0.5), under);
+            g.bump = mix(g.bump, 0.01 * (noise(vec3(p * 3.0, 15.0)) - 0.5), under);
             // damp ground is darker and has a sheen
             g.albedo *= 1.0 - 0.38 * wet;
             g.rough = mix(g.rough, 0.55, wet);

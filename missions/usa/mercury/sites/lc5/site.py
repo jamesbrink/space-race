@@ -209,6 +209,7 @@ def materials() -> dict:
         "lamp-amber": m("lamp-amber", (0.8, 0.45, 0.03), 0.0, 0.3, emission=(1.0, 0.6, 0.05), emission_strength=0.8),
         # a fitting that glows but lights nothing itself: the viewer puts the room's light at a Light_ empty
         "lamp-room": m("lamp-room", (0.95, 0.93, 0.85), 0.0, 0.3, emission=(1.0, 0.95, 0.8), emission_strength=0.8),
+        "reflector": m("chrome-reflector", (0.92, 0.93, 0.95), 1.0, 0.1),  # a searchlight's mirror
         "search": m("lamp-flood-search", (0.95, 0.97, 1.0), 0.0, 0.2, emission=(0.85, 0.92, 1.0), emission_strength=1.5),
         "void": m("window-void", (0.02, 0.022, 0.025), 0.0, 0.6),
         "sign": m("paint-sign-white", (0.82, 0.82, 0.8), 0.0, 0.5),
