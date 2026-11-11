@@ -409,16 +409,6 @@ export class Stage {
     const output = new OutputPass();
     this.clouds.adopt(output); // (the clouds are laid over the frame as it goes to the screen)
     this.composer.addPass(output);
-    // A multisampled target resolves its depth after every draw into it by default, and every pass after the
-    // scene's draws into one: a costly resolve of depth nothing has changed. Only the scene's own draw writes
-    // the depth the ink and the clouds read, so only it resolves.
-    for (const t of [this.composer.renderTarget1, this.composer.renderTarget2]) t.resolveDepthBuffer = false;
-    const drawScene = main.render.bind(main);
-    main.render = (renderer, write, read, delta, mask) => {
-      read.resolveDepthBuffer = true;
-      drawScene(renderer, write, read, delta, mask);
-      read.resolveDepthBuffer = false;
-    };
     this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes);
     this.applySetting();
 
