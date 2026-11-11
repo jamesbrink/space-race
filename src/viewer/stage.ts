@@ -1202,6 +1202,7 @@ export class Stage {
    * so that whoever lifts the curtain afterwards sees motion that is already steady.
    */
   async warm(patience = 9000): Promise<void> {
+    const clouds = this.clouds.warm(); // (made a little at a time while the rest arrives)
     const settled = Promise.allSettled(this.arriving);
     await Promise.race([settled, new Promise((done) => setTimeout(done, patience))]);
     const frames = async (n: number) => {
@@ -1210,6 +1211,7 @@ export class Stage {
         await new Promise((done) => requestAnimationFrame(done));
       }
     };
+    await clouds;
     // Everything that will ever be drawn is drawn now, unseen: every level of detail, whether
     // or not it is in view, by day and with the lamps lit (a scene with lamps on is a different
     // set of shaders). What is built and sent to the GPU here is not built in front of anyone.

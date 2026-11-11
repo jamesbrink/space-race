@@ -334,15 +334,24 @@ export class Globe {
   private madeHeight = 0;
   private arrived = false;
   private readonly hole: Hole | null;
+  /** Whether the site's air has cumulus (air.ts), whose shadows fall on the globe too. */
+  private readonly clouds: boolean;
 
   /**
    * `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `hole`: the site's own ground;
    * `region`: the name of the site's region's maps (RegionDef.name), if it has them.
    */
-  constructor(site: Site, seaLevel: number, hole: Hole | null, haze: { scale: number } | null, region: string | null = null) {
+  constructor(
+    site: Site,
+    seaLevel: number,
+    hole: Hole | null,
+    haze: { scale: number; clouds?: unknown } | null,
+    region: string | null = null,
+  ) {
     this.site = site;
     this.seaLevel = seaLevel;
     this.hole = hole;
+    this.clouds = Boolean(haze?.clouds);
     this.origin = geodeticToEcef(site);
     this.axes = [siteToEcefDirection(site, [1, 0, 0]), siteToEcefDirection(site, [0, 1, 0]), siteToEcefDirection(site, [0, 0, 1])];
     this.radius = gaussianRadius(site.latitude);
@@ -664,11 +673,6 @@ export class Globe {
           }`,
         )
         .replace(
-          '#include <fog_pars_fragment>',
-          /* glsl */ `#include <fog_pars_fragment>
-          #define cloudAt(xz) 0.0`, // the cumulus are the site's (air.ts): their shadows stay there
-        )
-        .replace(
           '#include <map_fragment>',
           /* glsl */ `
           // the site's own ground is drawn there (but not on the far side of the Earth, whose x and z are the same)
@@ -696,6 +700,18 @@ export class Globe {
           {
             // away from the site, the true Sun through the air over each place in place of the scene's light
             float away = uGlobeHalf > 0.0 ? smoothstep(uGlobeHalf, 3.0 * uGlobeHalf, length(vGlobeSite)) : 1.0;
+            // the cumulus's shadows (air.ts: cloudShade), on the scene's light as the shared chunk has already put
+            // them, and on the Sun's; worked out here, outside the branch, so the pixel's footprint is measured evenly
+            float sceneShade = 1.0, sunShade = 1.0;
+            ${
+              this.clouds
+                ? `#ifdef USE_FOG
+            float footprint = length(fwidth(vFogWorld.xz));
+            sceneShade = cloudShade(vFogWorld, transpose(mat3(viewMatrix)) * directionalLights[0].direction, footprint);
+            sunShade = cloudShade(vFogWorld, uGlobeSun, footprint);
+            #endif`
+                : ''
+            }
             if (away > 0.0) {
               ReflectedLight scene = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
               IncidentLight light;
@@ -707,8 +723,8 @@ export class Globe {
               light.color = uGlobeSunLight * exp(-(vec3(${RAYLEIGH.map((v) => v.toFixed(4)).join(', ')}) + uGlobeAerosol) * chapman(0.0, mu, ${this.radius.toFixed(1)}));
               light.visible = true;
               RE_Direct(light, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, sun);
-              reflectedLight.directDiffuse += away * (sun.directDiffuse - scene.directDiffuse);
-              reflectedLight.directSpecular += away * (sun.directSpecular - scene.directSpecular);
+              reflectedLight.directDiffuse += away * (sun.directDiffuse * sunShade - scene.directDiffuse * sceneShade);
+              reflectedLight.directSpecular += away * (sun.directSpecular * sunShade - scene.directSpecular * sceneShade);
             }
           }
           #endif`,

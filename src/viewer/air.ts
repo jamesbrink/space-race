@@ -144,6 +144,18 @@ const cloudField = (c: Clouds | undefined) =>
   ${cloudNoiseGlsl(c, 'air_')}
   float cloudAt(vec2 xz) {
     return smoothstep(${edges(c)[0].toFixed(3)}, ${edges(c)[1].toFixed(3)}, cloudNoise(xz - uCloudDrift.xz));
+  }
+  // How much of the direct light toward \`toLight\` (the scene's frame) reaches a point of the scene: read where the ray
+  // toward it crosses the layer's middle, which far off is lower in the scene's frame as the sea falls away round the
+  // Earth's curve. Where a cloud's shadow is under a pixel (\`fp\`, metres), the record's cover dims it evenly instead,
+  // so a far coast does not crawl as the shadows drift.
+  float cloudShade(vec3 world, vec3 toLight, float fp) {
+    if (toLight.y <= 0.02) return 1.0;
+    float layer = 0.5 * (uCloudDrift.y + uCloudDrift.w) - dot(world.xz, world.xz) / ${(2 * 6_371_000).toFixed(1)};
+    vec2 under = world.xz + toLight.xz / toLight.y * (layer - world.y);
+    float w = 0.25 * fp / ${c.size.toFixed(1)};
+    float dark = 0.8 * smoothstep(0.1, 0.6, smoothstep(${edges(c)[0].toFixed(3)} - w, ${edges(c)[1].toFixed(3)} + w, cloudNoise(under - uCloudDrift.xz)));
+    return 1.0 - mix(dark, ${(0.8 * c.cover).toFixed(3)}, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
   }`
     : '';
 
@@ -199,18 +211,14 @@ export function installAir(air: Air): void {
       }
     #endif`;
   // the shadow of a cloud: the direct light is taken from wherever the ray toward it crosses the layer's middle
-  if (c && !chunks.lights_fragment_end.includes('cloudAt'))
+  if (c && !chunks.lights_fragment_end.includes('cloudShade'))
     chunks.lights_fragment_end = /* glsl */ `${chunks.lights_fragment_end}
     #if defined( USE_FOG ) && NUM_DIR_LIGHTS > 0
       {
         vec3 toLight = transpose(mat3(viewMatrix)) * directionalLights[0].direction;
-        if (toLight.y > 0.02) {
-          float layer = 0.5 * (uCloudDrift.y + uCloudDrift.w);
-          vec2 under = vFogWorld.xz + toLight.xz / toLight.y * (layer - vFogWorld.y);
-          float shade = 1.0 - 0.8 * smoothstep(0.1, 0.6, cloudAt(under));
-          reflectedLight.directDiffuse *= shade;
-          reflectedLight.directSpecular *= shade;
-        }
+        float shade = cloudShade(vFogWorld, toLight, length(fwidth(vFogWorld.xz)));
+        reflectedLight.directDiffuse *= shade;
+        reflectedLight.directSpecular *= shade;
       }
     #endif`;
   chunks.fog_fragment = /* glsl */ `
