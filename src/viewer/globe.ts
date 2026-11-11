@@ -65,7 +65,7 @@ const FACES = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 
 /** Linear colours, chosen by eye against photographs from orbit (estimated): the sea's is the Cape's offshore water (cape.ts). */
 const SEA = new THREE.Color().setRGB(0.018, 0.07, 0.12);
-const LAND = new THREE.Color(0x56603f);
+const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: cape.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
@@ -137,8 +137,13 @@ const SCALE = 8_000;
  * light scattered twice. The scattering coefficients are Rayleigh's at sea level
  * for 680, 550 and 440 nm (Bucholtz 1995, rounded).
  */
-/** The Sun's light above the air, in the scene's units (a directional light's intensity): a little over the light at noon (daysky.ts). Estimated. */
-const SUNLIGHT = 4.5;
+/**
+ * The Sun's light as the air scatters it back up, in the scene's units (a directional light's intensity). Estimated,
+ * and set by eye for the look (AGENTS.md, Designed, not photographic): at the light's own strength at noon (about 4.5)
+ * the air lay over the whole Earth as a pale veil from 40 km up; at this the limb still glows and the land, the
+ * coast and the sea under it keep their own colours.
+ */
+const SUNLIGHT = 2.4;
 /** Rayleigh's optical depth straight up from the sea, for 680, 550 and 440 nm: BETA times SCALE. */
 const RAYLEIGH = [5.8e-6 * SCALE, 13.5e-6 * SCALE, 33.1e-6 * SCALE] as const;
 

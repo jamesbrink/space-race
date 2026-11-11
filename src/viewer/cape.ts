@@ -722,6 +722,8 @@ export function buildCape(
   simplify: (on: boolean) => void;
   /** Where the eye is (world): what is near it is drawn in full. True if that changed what is drawn. */
   attend: (eye: THREE.Vector3) => boolean;
+  /** The camera as it is about to draw: the ground out of its sight is not drawn. */
+  view: (camera: THREE.Camera) => void;
   /** The ground's height at a point in the world (the pad's frame): flat at `groundY` wherever anything is built. */
   groundAt: (x: number, z: number) => number;
 } {
@@ -760,6 +762,7 @@ export function buildCape(
       land.attend(eye);
       return flora.attend(eye);
     },
+    view: (camera) => land.view(camera),
     groundAt: (x, z) => {
       // the world point on the compass: the inverse of the site's turn
       const cx = x * COS - z * SIN,

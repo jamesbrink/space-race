@@ -45,6 +45,8 @@ export interface Setting {
   horizon?: number;
   /** Where the eye is: a place may draw what is near it in more detail. True if that changed what is drawn. */
   attend?: (eye: THREE.Vector3) => boolean;
+  /** The camera as it is about to draw, for a place that leaves out what it cannot see. */
+  view?: (camera: THREE.Camera) => void;
   /** The ground's height at (x, z) in the world, where the setting's floor is not level: the walker stands on it. */
   groundAt?: (x: number, z: number) => number;
   /**
@@ -96,8 +98,9 @@ const SKY = /* glsl */ `
     // high cloud, thin and sparse: one eighth of altocumulus at 3,600 m at Patrick at 10:00 (NOAA ISD). The cumulus
     // under it are a volume marched through over the scene (clouds.ts), not painted on the sky
     vec2 uv = d.xz / (h + 0.12);
-    float c = fbm(vec3(uv * 1.3, 0.0)) * 0.7 + fbm(vec3(uv * 5.0, 3.0)) * 0.3;
-    float cloud = smoothstep(0.6, 0.74, c) * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
+    // (worked out only in the band of sky they lie in, and only while they are there to be seen)
+    float cloud = uWisps * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
+    if (cloud > 0.0) cloud = smoothstep(0.6, 0.74, fbm(vec3(uv * 1.3, 0.0)) * 0.7 + fbm(vec3(uv * 5.0, 3.0)) * 0.3) * cloud / uWisps;
     float s = max(dot(d, uSun), 0.0);
     col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.45 * uWisps);   // (none once the eye is up among them)
     col = mix(low * 0.96, col, smoothstep(-0.004, 0.012, up));   // below the horizon: haze
@@ -412,6 +415,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
       return cape!.attend(eye) || moved;
     },
     groundAt: cape.groundAt,
+    view: cape.view,
   };
 
   /** `fade`: milliseconds to fade the bake in over; 0 puts it in at once. */

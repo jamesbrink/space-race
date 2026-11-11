@@ -113,6 +113,9 @@ const SHELL: [number, number] = [18, 55];
  * show as a square of another tone set in the globe, and the detail it carries is under a pixel.
  */
 const LIFT: [number, number] = [3000, 20000];
+/** The lowest and highest the land's mesh ever is, metres from its base level, with room to spare: the box a patch is culled by. */
+const DEEPEST = -120;
+const TALLEST = 30;
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
@@ -229,6 +232,13 @@ export class Land {
   private readonly patches: THREE.InstancedBufferAttribute;
   private readonly geometry: THREE.InstancedBufferGeometry;
   private readonly eye = new THREE.Vector4();
+  /** The patches chosen round the eye (x, z, cell, level each), and how many: `view` draws those of them in sight. */
+  private readonly chosen = new Float32Array(4 * 4096);
+  private chosenCount = 0;
+  private readonly seen = new THREE.Matrix4();
+  private readonly viewed = new THREE.Matrix4();
+  private readonly frustum = new THREE.Frustum();
+  private readonly box = new THREE.Box3();
   private readonly time = { value: 0 };
   private readonly cel = { value: 0 };
   private roots: [number, number][] = [];
@@ -338,13 +348,19 @@ export class Land {
    * Distances are measured with the eye's height in them, as the shader measures its morph.
    */
   private select(x: number, height: number, z: number): void {
-    this.eye.set(x, Math.max(0, height), z, 0);
+    const h = Math.max(0, height);
+    if (this.chosenCount > 0 && x === this.eye.x && h === this.eye.y && z === this.eye.z) return; // a still eye has what it had
+    this.eye.set(x, h, z, 0);
     const h2 = this.eye.y * this.eye.y;
-    const data = this.patches.array as Float32Array;
+    const data = this.chosen;
     let count = 0;
     const add = (px: number, pz: number, level: number) => {
       if (count >= 4096) return;
-      data.set([px, pz, CELL * 2 ** level, level], count++ * 4);
+      const at = count++ * 4;
+      data[at] = px;
+      data[at + 1] = pz;
+      data[at + 2] = CELL * 2 ** level;
+      data[at + 3] = level;
     };
     // squared distance from the eye to a square's nearest point, with the eye's height
     const near = (px: number, pz: number, side: number) => {
@@ -377,6 +393,39 @@ export class Land {
       }
     };
     for (const [rx, rz] of this.roots) visit(rx, rz, this.rootLevel);
+    this.chosenCount = count;
+    this.viewed.set(Number.NaN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0); // what is drawn of them is owed again
+  }
+
+  /**
+   * Of the patches chosen round the eye, draw the ones `camera` can see: two thirds of them are behind it or off to
+   * the side, and each costs its vertices the relief and the roof. Called with the camera as it will draw, just before
+   * it does, so a turn never shows a patch late. Each patch is tested as a box as tall as anything the ground does
+   * (the sea bed and the curve it bends onto below, the tallest canopy above) and a cell wider all round.
+   */
+  view(camera: THREE.Camera): void {
+    this.mesh.updateMatrixWorld();
+    const m = this.seen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(this.mesh.matrixWorld);
+    if (m.equals(this.viewed)) return;
+    this.viewed.copy(m);
+    this.frustum.setFromProjectionMatrix(m);
+    const from = this.chosen;
+    const to = this.patches.array as Float32Array;
+    const box = this.box;
+    let count = 0;
+    for (let i = 0; i < this.chosenCount; i++) {
+      const at = i * 4;
+      const cell = from[at + 2]!;
+      const side = cell * GRID;
+      box.min.set(from[at]! - cell, DEEPEST, from[at + 1]! - cell);
+      box.max.set(from[at]! + side + cell, TALLEST, from[at + 1]! + side + cell);
+      if (!this.frustum.intersectsBox(box)) continue;
+      to[count * 4] = from[at]!;
+      to[count * 4 + 1] = from[at + 1]!;
+      to[count * 4 + 2] = cell;
+      to[count * 4 + 3] = from[at + 3]!;
+      count++;
+    }
     this.geometry.instanceCount = count;
     this.patches.clearUpdateRanges();
     this.patches.addUpdateRange(0, count * 4);
@@ -531,14 +580,19 @@ export class Land {
             // sand: paler and darker over tens of metres; scuffed, drifted and trodden over decimetres; grains
             float drift = noise(vec3(p * 0.035, 1.0)) * 0.7 + noise(vec3(p * 0.21, 2.0)) * 0.3;
             vec3 sand = mix(${vec3(p.sandDark)}, ${vec3(p.sand)}, drift);
-            float tread = noise(vec3(p * 2.4, 5.0)) * 0.6 + noise(vec3(p * 7.0, 6.0)) * 0.4;
-            float grain = noise(vec3(p * 160.0, 2.0)) * 0.6 + noise(vec3(p * 430.0, 4.0)) * 0.4;
+            // (each grain is worked out only where it can be made out: past that its share is nought, so nothing changes but the cost)
+            float tread = 0.5, grain = 0.5;
+            if (seen(0.12) > 0.0) tread = noise(vec3(p * 2.4, 5.0)) * 0.6 + noise(vec3(p * 7.0, 6.0)) * 0.4;
+            if (seen(0.004) > 0.0) grain = noise(vec3(p * 160.0, 2.0)) * 0.6 + noise(vec3(p * 430.0, 4.0)) * 0.4;
             sand *= 1.0 + 0.24 * (tread - 0.5) * seen(0.12) + 0.24 * (grain - 0.5) * seen(0.004);
             // loose dry sand lies in wind ripples, crests across the wind
             // ripples: crests a hand apart, wandering and forking, stronger in patches where the wind has worked longest
-            float ripWarp = noise(vec3(p * 0.6, 8.0)) * 0.35 + noise(vec3(p * 2.3, 8.5)) * 0.04;
-            float rip = sin((p.x + ripWarp + 0.08 * p.y) * 62.8);
-            float ripples = loose * (1.0 - smoothstep(0.05, 0.3, herb)) * seen(0.06) * smoothstep(0.3, 0.7, noise(vec3(p * 0.18, 8.9)));
+            float rip = 0.0, ripples = loose * (1.0 - smoothstep(0.05, 0.3, herb)) * seen(0.06);
+            if (ripples > 0.0) {
+              float ripWarp = noise(vec3(p * 0.6, 8.0)) * 0.35 + noise(vec3(p * 2.3, 8.5)) * 0.04;
+              rip = sin((p.x + ripWarp + 0.08 * p.y) * 62.8);
+              ripples *= smoothstep(0.3, 0.7, noise(vec3(p * 0.18, 8.9)));
+            }
             sand *= 1.0 + 0.03 * rip * ripples;
             g.bump = 0.003 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12);
             // patches a stride across: damper and darker, or a dry pale crust
@@ -546,7 +600,7 @@ export class Land {
             sand *= 1.0 + 0.22 * (patches - 0.5) * seen(0.5);
             // worked ground: graded, and driven over; each vehicle's track two lines of pressed sand 1.5 m apart, wandering
             float tyres = 0.0;
-            for (int k = 0; k < 2; k++) {
+            if (worked * seen(0.3) > 0.0) for (int k = 0; k < 2; k++) {
               float a = 0.7 + 1.9 * float(k);
               vec2 dir = vec2(cos(a), sin(a));
               float across = dot(p, vec2(-dir.y, dir.x)) + 9.0 * noise(vec3(p * 0.025, 26.0 + float(k)));

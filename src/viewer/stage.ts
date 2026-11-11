@@ -288,6 +288,8 @@ export class Stage {
     flying: false,
     shed: '',
     shrank: false,
+    /** Whether its shadow could fall inside the shadow map when last put somewhere. */
+    shadowed: false,
     hidden: [] as THREE.Object3D[],
     by: new THREE.Vector3(),
   };
@@ -926,6 +928,7 @@ export class Stage {
       g.position.set(...(def.position ?? [0, 0, 0]));
       g.quaternion.copy(pad);
     }
+    const changed = flying !== this.lifted.flying;
     this.lifted.flying = flying;
     const shed = ascent.dropped(t);
     if (shed.join() !== this.lifted.shed) {
@@ -949,9 +952,14 @@ export class Stage {
     this.lifted.by.subVectors(g.position, before);
     g.updateMatrixWorld(true);
     s.measure(); // levels of detail are chosen by the distance to it
-    this.fitBounds();
+    if (changed) this.fitBounds(); // (a vehicle in flight is left out of them, so they change only as it leaves and comes back)
     this.dirty = true;
-    this.shadowsOwed = true;
+    // its shadow is drawn again only while it can fall inside the shadow map (which goes with it under the chase camera):
+    // a rocket long gone from a map fitted to the pad casts nothing there
+    const box = this.sun.shadow.camera;
+    const within = this.mode === 'chase' || g.position.distanceTo(this.sun.target.position) < 2 * box.right + 60;
+    if (within || this.lifted.shadowed || changed || this.lifted.shrank) this.shadowsOwed = true;
+    this.lifted.shadowed = within;
   }
 
   /**
@@ -1909,6 +1917,7 @@ export class Stage {
     this.ink.range(this.camera);
     this.renderer.info.reset();
     this.drawn++;
+    this.setting.view?.(this.camera);
     this.origin.draw(() => this.composer.render(this.sinceDrawn));
     this.sinceDrawn = 0;
   }
