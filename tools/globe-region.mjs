@@ -48,7 +48,11 @@ const FADE = { near: 8_000, wide: 30_000 };
 const LAKE_MIN = { near: 0.05e6, wide: 1e6 };
 /** Degrees the data is fetched past the region's bounds, so no shore that reaches into it is cut short. */
 const PAD = 0.25;
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
 
 const sitePath = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--from');
 if (!sitePath) throw new Error('usage: node tools/globe-region.mjs <sites/<site>.ts> [--from <dir>]');
@@ -67,14 +71,22 @@ async function source() {
   };
   for (const [name, query] of Object.entries(queries)) {
     let body = null;
-    for (const url of OVERPASS) {
-      const res = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }) });
-      const text = await res.text();
-      if (res.ok && text.startsWith('{')) {
-        body = text;
-        break;
+    // the public servers turn away a client with no name, and are often busy: each is tried in turn, then again after a wait
+    for (let round = 0; round < 4 && !body; round++) {
+      if (round) await new Promise((r) => setTimeout(r, 30_000 * round));
+      for (const url of OVERPASS) {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'User-Agent': 'globe-region-bake/1.0', Accept: 'application/json' },
+          body: new URLSearchParams({ data: query }),
+        }).catch((e) => ({ ok: false, status: e.message, text: async () => '' }));
+        const text = await res.text();
+        if (res.ok && text.startsWith('{')) {
+          body = text;
+          break;
+        }
+        console.log(`${url}: ${res.status}, trying the next`);
       }
-      console.log(`${url}: ${res.status}, trying the next`);
     }
     if (!body) throw new Error(`${name}: no Overpass server answered`);
     writeFileSync(join(dir, `${name}.json`), body);

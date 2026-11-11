@@ -293,7 +293,8 @@ const marchShader = (scale: number) => /* glsl */ `
           continue;
         }
         float sd = inside(v, uEye + v.xz, lod, y);
-        if (sd <= 0.0) { was = t; t += max(st, -0.8 * sd); continue; }
+        // (close to a surface the steps shorten, so a lump thinner than a step is not caught one frame and missed the next)
+        if (sd <= 0.0) { was = t; t += max(min(st, 0.25 * st - 0.5 * sd), -0.8 * sd); continue; }
         float a = was, b = t;
         for (int k = 0; k < 6; k++) {
           float m = 0.5 * (a + b);
@@ -608,12 +609,16 @@ export class CloudPass extends Pass {
     this.quad.render(renderer);
 
     // over the frame as it stands, in place
-    const autoClear = renderer.autoClear;
+    // (the depth is the scene's still: it need not be resolved out of the multisampled buffer again)
+    const autoClear = renderer.autoClear,
+      resolve = readBuffer.resolveDepthBuffer;
     renderer.autoClear = false;
+    readBuffer.resolveDepthBuffer = false;
     renderer.setRenderTarget(readBuffer);
     this.quad.material = this.composite;
     this.quad.render(renderer);
     renderer.autoClear = autoClear;
+    readBuffer.resolveDepthBuffer = resolve;
   }
 
   /** Bake the field round the eye (x, z in the field's frame) if it has gone far over the last bake. */

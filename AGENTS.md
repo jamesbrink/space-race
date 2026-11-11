@@ -85,7 +85,8 @@ missions/                             the record: one folder per nation, program
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)
-public/globe/                         the globe's land and ice maps, six cube faces each (committed; tools/globe.mjs)
+public/globe/                         the globe's land and ice maps, six cube faces each (committed; tools/globe.mjs), and each
+                                      site's region: <region>.near.png, .wide.png, .json (tools/globe-region.mjs)
 docs/sources.md                       every source used or wanted, and what each is good for
 src/
   types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
@@ -98,7 +99,8 @@ src/
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
   viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
-  viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), cumulus as puffs with flat bases, their shadows
+  viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground
+  viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, ray-marched at a quarter of the pixels, laid over the frame
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
@@ -117,6 +119,7 @@ src/
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
   world/surface.ts                    the sea as a shape: the ellipsoid at a site's sea level, radii of curvature, the horizon
+  world/region.ts                     a piece of the Earth laid flat: the gnomonic plane a region's map is baked on and read from
   viewer/globe.ts                     the Earth to scale under the site: land and ice from Natural Earth, the haze over it, the air's limb
   world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run
   world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
@@ -135,6 +138,8 @@ tools/
   flicker-test.mjs                    browser check for z-fighting
   shot.mjs                            one screenshot of the viewer, for looking at a change
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces
+  globe-region.mjs                    bakes a site's region (SiteDef.region) from OpenStreetMap's coast and lakes, as it stood on its date
+  png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
   logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
@@ -373,8 +378,17 @@ never adjusted to bring a check in.
   camera's (at what it turns about, `Stage.alignUp`), so the horizon there is level. Away from the
   site the globe is lit by the true Sun through the air over each place (`chapman`), so the
   terminator reddens and the night side is dark whatever the site's hour; near it, by the scene's
-  light, so the two agree where they meet. Still to do: the coast is Natural Earth's 1:10
-  million everywhere, the Cape included.
+  light, so the two agree where they meet. Round the site the coast is finer: a site's
+  `region` (types.ts: RegionDef) names the country its flights see, and tools/globe-region.mjs
+  bakes it from OpenStreetMap's coastline and larger lakes onto two gnomonic planes
+  (world/region.ts): `near`, 160 km square at 39 m a texel, and `wide`, the region (for the
+  Cape, Flagler Beach to Miami and out past Abaco to the landing) at 155 m. The globe
+  reads them where they cover, each faded in over the map under it by mixing distances, not
+  colours, so a shore that two maps put apart moves across the fade and is never doubled. The
+  region is dated (`asOf`): each work in `later` (a causeway, a canal) built after it is undone
+  along its line, so the Cape's lagoons are 1961's. Where the ground drawn round the pad hands
+  over, its shore lines (cape1961.ts) follow the same coastline, so the two agree to tens of
+  metres there; change one, change the other, and rebake (`pnpm globe:region`).
 - **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
   because of it; the capsule flown from the report's separation passes all but one. The flight's
   README ("The flight as flown") states the numbers.

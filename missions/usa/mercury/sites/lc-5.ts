@@ -49,7 +49,7 @@ export const LC5: SiteDef = {
     why:
       'what a suborbital flight from the Cape sees under it: MR-3 flew 487 km to 27.23 N 75.88 W (the flight README), over the ' +
       'Little Bahama Bank with Grand Bahama and Great Abaco south of the track; the box takes in the Florida coast from Flagler ' +
-      'Beach to Fort Lauderdale, Lake Okeechobee, and the sea past the landing',
+      'Beach to Miami, Lake Okeechobee, and the sea past the landing',
     asOf: '1961-05-05',
     // Each line read off OpenStreetMap: the road or canal's way, between where it leaves the natural shore (tools/globe-region.mjs's
     // land on both sides within 160 m for a causeway, water between banks for a canal). The widths put back are estimated.

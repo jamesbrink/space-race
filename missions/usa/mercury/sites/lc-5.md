@@ -593,9 +593,33 @@ and 32 B, 36 (finished in 1961; whether its tower stood by May is not establishe
 25 C and D (not begun). Which way each pad is turned is not published: Complex 26 lies on pad 5's
 rail line and the rest are set square to their stretch of shore.
 
-The shore is today's, from OpenStreetMap, thinned to 23 points for the Atlantic and 15 for the
-Banana River's east shore, 33 for its west and 12 for the Indian River's east: not 1961's exactly (the Cape's point has moved and the port has grown). Port
-Canaveral's basins are not drawn. The keepers' houses at the lighthouse probably still stood
+The shore is today's, from OpenStreetMap, thinned to 31 points for the Atlantic and 22 for the
+Banana River's east shore, 42 for its west, 12 for the Indian River's east and 11 for each of
+Newfound Harbor's two: not 1961's exactly (the Cape's point has moved and the port has grown).
+Toward the edge of the ground drawn round the pad, where it hands over to the globe (south of the
+port, the Banana River north of 28.5, Newfound Harbor), the lines are read off the globe's own
+coast (below) so the two agree to tens of metres. Port Canaveral's basins are not drawn, though the
+port had been open since 1953.
+
+### The region round it, and when its shore was made
+
+From height the globe draws the country round the site from OpenStreetMap's coastline and lakes
+(`LC5.region` in lc-5.ts; tools/globe-region.mjs): 25.6 to 29.6° N, 81.5 to 75.2° W, Flagler
+Beach to Miami and out past Great Abaco to Freedom 7's landing. Its shore is today's
+except for these, which were built after 5 May 1961 and are undone along their lines:
+
+| Work | Built | In 1961 | Confidence |
+| --- | --- | --- | --- |
+| Bennett Causeway (SR 528), Indian River and Banana River crossings | spans of 1963; the Bee Line opened 1967 | water | year documented (bridge inventory); the width put back, 260 m, estimated |
+| NASA Causeway (SR 405), Indian River, and NASA Causeway East, Banana River | 1964 | water | the Indian River bridge's year documented (FDOT); the East crossing's taken as the same |
+| Canaveral Barge Canal across Merritt Island, and its lock | 1965 | land | documented (Corps of Engineers, via Wikipedia) |
+| Complex 39's turning basin and barge canal by the Vehicle Assembly Building | after NASA bought Merritt Island, from 1962 | land | that it is later than 1961 is documented; the year is not |
+
+Kept, because they stood in 1961: the SR 520 causeways (1941), Port Canaveral's harbour (1953),
+the Haulover Canal. Not undone, though some may be later: the spoil islands along the dredged
+channels in the Banana and Indian Rivers, the Max Brewer and Eau Gallie causeways, Cocoa Beach's
+and Merritt Island's finger canals, the fill at the Bennett Causeway's landings. Known to be later and not yet undone: the
+Pineda Causeway (1972), 27 km south, whose line was not traced. The keepers' houses at the lighthouse probably still stood
 (they were demolished later in the 1960s) and are not drawn.
 
 These landmarks take the same haze as the land (`src/viewer/air.ts`: 25 km visibility at sea level,
