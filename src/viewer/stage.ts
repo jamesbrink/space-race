@@ -543,12 +543,7 @@ export class Stage {
           if (staged !== this.staged) return;
           this.surroundings = object;
           this.scene.add(object);
-          // rooms are lit where the model says a lamp hangs: an empty named Light_<room>, with how bright and how far
-          object.traverse((o) => {
-            if (!o.name.startsWith('Light_')) return;
-            const lamp = new THREE.PointLight(0xfff1d6, Number(o.userData.intensity) || 6, Number(o.userData.reach) || 8, 2);
-            o.add(lamp);
-          });
+          this.lamps.add(object, this.scene); // its floods, and a light in each room where the model hangs one (Light_<room>)
           this.renderer.shadowMap.needsUpdate = true;
           this.dirty = true;
         }),
@@ -1441,6 +1436,7 @@ export class Stage {
   private frame(): void {
     const began = performance.now();
     if (this.setting.attend?.(this.camera.position)) this.dirty = true;
+    if (this.lamps.near(this.camera.position)) this.dirty = true; // the rooms nearest the eye are the ones lit
     // Hardware that has moved wants its shadows drawn again. Steered by hand that is done at
     // once; in a view nobody is steering, where hardware may be moving for minutes on end,
     // five times a second, which the eye does not catch and the frame rate does.
