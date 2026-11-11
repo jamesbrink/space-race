@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildCape1961, CLEARINGS, COAST, RIVER, shoreAt } from './cape1961';
+import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
 import { NOISE } from './space';
 
 /**
@@ -19,8 +20,11 @@ import { NOISE } from './space';
  * photograph, so the roads here end where the photographs do.
  */
 
-/** The pad model's frame on the compass: its +X (the hatch) faces 295 degrees, west-north-west. Radians about the vertical. */
-export const COMPASS = THREE.MathUtils.degToRad(205);
+/**
+ * The pad model's frame on the compass: its +X (the hatch) faces 295 degrees, west-north-west, so the compass frame's
+ * +X (east, 090) is 205 degrees round from it. Radians about the vertical, from the site's own record.
+ */
+export const COMPASS = THREE.MathUtils.degToRad(LC5.bearingX.value - 90);
 const COS = Math.cos(COMPASS);
 const SIN = Math.sin(COMPASS);
 /** A point on the compass, as the pad model sees it. */

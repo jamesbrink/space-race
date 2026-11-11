@@ -21,6 +21,11 @@ Origin: the launcher's centre on the pad. Feet, as the sources give them.
 | +X | the side the capsule hatch faces: WNW, about 295° true, uprange, toward the blockhouse | estimated: Figure 7-6 puts the mobile tower on the blockhouse side, and liftoff photograph 6100884 shows its cab there; 285° is the reciprocal of the 105° azimuth |
 | +Y | along the rails toward the structure's parking places: SSW, 205° true | derived: OpenStreetMap's rails and pad outline, 25°/205° to within 1° |
 | True north | (0.423, −0.906, 0) in Blender, (0.423, 0, 0.906) in the viewer | derived from the two lines above |
+| Origin | 28.439426° N, 80.573292° W (WGS 84), about 27 m below the ellipsoid (2 m above the sea) | position documented: OpenStreetMap relation 16884747, traced from imagery, a few metres; no surveyed coordinate found. Height estimated: GNIS gives 6 ft, and the sea is about 29 m below the ellipsoid here |
+
+The same figures as typed data, with their sources, are [lc-5.ts](lc-5.ts) (`SiteDef`): the viewer's
+compass and the sky over the pad are computed from it (`src/world/`), so there is no second copy
+of the bearing or of the Sun's place.
 
 Pad 6 is 520 ft along −Y (025° true); the blockhouse's point is at (157.3, −261.0) ft, 305 ft from
 pad 5's centre and 304 ft from pad 6's, and its long axis lies along X. Both are derived from

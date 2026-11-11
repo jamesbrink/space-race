@@ -1,4 +1,5 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
+import { LC5 } from '../../sites/lc-5.ts';
 
 const IN = 0.0254;
 const LBF = 4.4482216;
@@ -699,7 +700,8 @@ export const flight: Flight = {
   spacecraft: 'Mercury spacecraft No. 7 (McDonnell Aircraft)',
   launchVehicle: 'Mercury-Redstone MRLV, MR-7',
   launch: '1961-05-05T14:34:13Z',
-  launchSite: 'Cape Canaveral, Launch Complex 5',
+  launchSite: LC5.name,
+  site: LC5,
   crew: ['Alan B. Shepard Jr.'],
   summary:
     'The first American in space. A fifteen-minute suborbital arc from Cape Canaveral into the Atlantic, ' +

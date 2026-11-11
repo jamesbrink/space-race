@@ -53,6 +53,22 @@ to 4 hours 14 minutes.
 
 The same events, in seconds, are `timeline` in [flight.ts](flight.ts).
 
+## The sky at liftoff
+
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`sites/lc-5.ts`) and the
+launch instant, 14:34:13 UTC (09:34:13 EST). All `derived`; the Sun and Moon agree with JPL Horizons
+to 0.002° (`tests/world.test.mjs`). Elevations are geometric; air lifts the Moon another 0.17°.
+
+| Body | Azimuth (true) | Elevation | Note |
+| --- | --- | --- | --- |
+| Sun | 098.8° | 50.2° | Behind the hatch side (the pad frame's +X faces 295°): the hatch was in shade |
+| Moon | 245.2° | 4.6° | Low in the west-south-west, setting; waning gibbous, 74% lit, 0.54° across. Last quarter was two days later |
+| Venus | 154.5° | 66.4° | A 16% crescent near greatest brilliancy, magnitude about −4.1: in the sky but not to be seen without knowing where to look |
+| Jupiter, Saturn | 233.0°, 236.5° | 20.8°, 15.0° | Above the Moon, lost in daylight |
+| Mercury | 094.0° | 47.2° | Four degrees from the Sun |
+
+Mars, Uranus and Neptune were below the horizon.
+
 ## Where sources disagree
 
 | Figure | Used here | Also published | Why |

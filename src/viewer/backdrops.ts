@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import type { BackdropKind } from '../types';
-import { buildCape, COMPASS } from './cape';
+import type { BackdropKind, Flight } from '../types';
+import { refraction, type Seen, type Sky, skyFrom } from '../world/ephemeris.ts';
+import { enuToSite, fromHorizontal, siteFrame, type Vec3 } from '../world/frames.ts';
+import { julianDate } from '../world/time.ts';
+import { buildCape } from './cape';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -105,16 +108,31 @@ function pmrem(renderer: THREE.WebGLRenderer, scene: THREE.Scene): THREE.Texture
   return texture;
 }
 
-/** Cape Canaveral's Missile Row from Launch Complex 5, on a clear morning. */
-function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
-  // 09:34 EST on 5 May at the Cape: the Sun is about 50 degrees up, a little south of east
-  // (azimuth 097). In the pad's frame that is behind the hatch: the capsule's hatch side was in shade.
-  const sun = THREE.MathUtils.degToRad(97);
-  const el = THREE.MathUtils.degToRad(50);
-  const sunDir = new THREE.Vector3(Math.sin(sun) * Math.cos(el), Math.sin(el), -Math.cos(sun) * Math.cos(el)).applyAxisAngle(
-    new THREE.Vector3(0, 1, 0),
-    COMPASS,
-  );
+/**
+ * When and where a setting is: a flight's site and launch instant. The Sun is put where it stood
+ * over that place at that moment (src/world/ephemeris.ts), in the site's own frame, which is the
+ * models'. Nothing about the sky is placed by hand.
+ */
+export type Occasion = Pick<Flight, 'site' | 'launch'>;
+
+const skyOf = (when: Occasion): Sky => skyFrom(siteFrame(when.site), julianDate(when.launch));
+const vector = (v: Vec3): THREE.Vector3 => new THREE.Vector3(v[0], v[1], v[2]);
+/** Where an eye on the ground sees something: its direction in the site's frame, lifted by the air's refraction. */
+const throughAir = (seen: Seen, when: Occasion): THREE.Vector3 =>
+  vector(enuToSite(when.site.bearingX.value, fromHorizontal(seen.azimuth, seen.elevation + refraction(seen.elevation))));
+
+/** The Cape's ground is the same on any day: built once, whatever the instant. */
+let cape: ReturnType<typeof buildCape> | undefined;
+
+/**
+ * Cape Canaveral's Missile Row from Launch Complex 5. For Freedom 7 (14:34:13 UTC, 5 May 1961)
+ * the Sun comes out on 098.8 degrees true, 50.2 degrees up: in the pad's frame that is behind the
+ * hatch side, so the capsule's hatch was in shade. The light's colour and strength and the sky's
+ * own colours are still those of a clear mid-morning, chosen by eye; only the directions are computed.
+ */
+function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
+  if (!when) throw new Error('a place on the ground needs a site and an instant: Settings.get(kind, flight)');
+  const sunDir = throughAir(skyOf(when).sun, when);
   const envScene = new THREE.Scene();
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(sunDir, false)));
   // Below the horizon there is sunlit sand and concrete, not more sky: without it bare metal
@@ -127,7 +145,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
   const disc = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(30, 27, 22) }));
   disc.position.copy(sunDir).multiplyScalar(46);
   envScene.add(earth, disc);
-  const cape = buildCape(GROUND_Y);
+  cape ??= buildCape(GROUND_Y);
   return {
     backdrop: new DomeBackdrop(skyMaterial(sunDir, true)),
     environment: pmrem(renderer, envScene),
@@ -194,8 +212,13 @@ function studio(renderer: THREE.WebGLRenderer): Setting {
   };
 }
 
-function orbit(renderer: THREE.WebGLRenderer): Setting {
-  const sunDir = new THREE.Vector3(0.62, 0.42, 0.66).normalize();
+/**
+ * Above the Earth. Given a flight, the Sun is where it stood over the flight's site at launch,
+ * seen from above the air; with none (the stage before any flight is loaded) it is a key light
+ * from nowhere in particular.
+ */
+function orbit(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
+  const sunDir = when ? vector(skyOf(when).sun.direction) : new THREE.Vector3(0.62, 0.42, 0.66).normalize();
   return {
     backdrop: new OrbitBackdrop(sunDir),
     environment: orbitEnvironment(renderer, sunDir),
@@ -213,21 +236,34 @@ function orbit(renderer: THREE.WebGLRenderer): Setting {
   };
 }
 
-/** Settings are expensive (shaders, an environment map each), so each is built once, on first use. */
-/** One builder per place a model can be shown. */
-const SETTINGS: Record<BackdropKind, (renderer: THREE.WebGLRenderer) => Setting> = { orbit, studio, 'cape-canaveral': capeCanaveral };
+/** One builder per kind of place a model can be shown in. The studio is nowhere and has no hour; the others take theirs from the flight. */
+const SETTINGS: Record<BackdropKind, (renderer: THREE.WebGLRenderer, when?: Occasion) => Setting> = {
+  orbit,
+  studio: (renderer) => studio(renderer),
+  'cape-canaveral': capeCanaveral,
+};
 
+/**
+ * Settings are expensive (shaders, an environment map each), so each is built once, on first use:
+ * once for each kind of place at each site and instant it is asked for.
+ */
 export class Settings {
-  private readonly cache = new Map<BackdropKind, Setting>();
+  private readonly cache = new Map<string, Setting>();
   constructor(private readonly renderer: THREE.WebGLRenderer) {}
 
-  get(kind: BackdropKind): Setting {
-    let s = this.cache.get(kind);
+  /** The setting of a kind for a flight: its site at its launch instant. Leave the flight out for a setting with no place or hour. */
+  get(kind: BackdropKind, when?: Occasion): Setting {
+    const { site } = when ?? {};
+    const key =
+      when && site && kind !== 'studio'
+        ? [kind, site.latitude.value, site.longitude.value, site.height.value, site.bearingX.value, when.launch].join(' ')
+        : kind;
+    let s = this.cache.get(key);
     if (!s) {
-      s = SETTINGS[kind](this.renderer);
+      s = SETTINGS[kind](this.renderer, when);
       if (s.floor) s.floor.receiveShadow = true;
       for (const o of s.scenery) o.receiveShadow = true;
-      this.cache.set(kind, s);
+      this.cache.set(key, s);
     }
     return s;
   }

@@ -65,6 +65,22 @@ Where things stood on 5 May 1961, for the scenery beyond Complex 5/6 (`src/viewe
 | Benson and Faherty, *Moonport* (NASA SP-4204), ch. 2 | NASA History | Complex 34 in spring 1961: the service structure 310 ft high on a 70 by 130 ft base, first moved on its rails on 26 March 1961, parked 185 m west of the pad; the pedestal 42 ft square and 27 ft high; the umbilical tower stopped at 27 ft; dedication on 5 June 1961 | Secondary |
 | McDowell, *General Catalog of Artificial Space Objects*, launch log and launch-point list | [planet4589.org](https://planet4589.org/space/gcat/) | Which pad launched what, and when, round 5 May 1961: which complexes were in use | |
 
+### The Earth and the sky
+
+What `src/world/` is built from (bodies, time, frames, ephemeris, stars) and checked against.
+
+| Source | Where | Good for | Caveats |
+| --- | --- | --- | --- |
+| Meeus, *Astronomical Algorithms*, 2nd ed., Willmann-Bell, 1998 | book | The methods: sidereal time (ch. 12), precession (ch. 21), nutation (ch. 22), the Sun (ch. 25, low accuracy), the Moon (ch. 47, cut to its 32 and 30 largest terms), the Moon's phase and bright limb (ch. 48), planets' magnitudes (ch. 41), refraction (ch. 16); its worked examples are the unit tests | The Sun to 0.01°; the Moon as cut here to about 0.01° |
+| JPL Horizons, DE441 | [ssd.jpl.nasa.gov/horizons](https://ssd.jpl.nasa.gov/horizons/) | Reference values: airless apparent azimuth, elevation and range of the Sun, Moon and planets from LC-5, Baikonur, LC-39A, Greenwich and 0° N 0° E at five instants (queried November 2026) | Before 1962 its "UT" is UT1 |
+| JPL, *Astrodynamic Parameters* and *Planetary Physical Parameters* | [astro_par](https://ssd.jpl.nasa.gov/astro_par.html), [phys_par](https://ssd.jpl.nasa.gov/planets/phys_par.html) | GM of the Sun, Moon and planets (DE440); equatorial radii; rotation periods; the au | GMs are of each planet's whole system |
+| Standish, *Keplerian Elements for Approximate Positions of the Major Planets* | [approx_pos](https://ssd.jpl.nasa.gov/planets/approx_pos.html), Table 1 | Mean elements and rates, 1800 to 2050 | Jupiter and Saturn to about 0.1°. No Pluto in the current table |
+| Archinal et al., *Report of the IAU Working Group on Cartographic Coordinates and Rotational Elements: 2015*, Celest. Mech. Dyn. Astr. 130:22, 2018 | journal | Polar radii and the direction of each body's north pole | Quoted from the published tables, not re-read for this work: check before anything depends on a pole |
+| NIMA TR8350.2, *World Geodetic System 1984*, 3rd ed.; IERS Conventions (2010), Table 1.1 | [NGA](https://earth-info.nga.mil/) | The ellipsoid (a, 1/f), the Earth's rotation rate and GM | |
+| Espenak and Meeus, *Five Millennium Canon of Solar Eclipses*, NASA/TP-2006-214141: polynomial expressions for delta-T | [eclipse.gsfc.nasa.gov](https://eclipse.gsfc.nasa.gov/SEcat5/deltatpoly.html) | TT − UT: 33.7 s in May 1961 | Within a second for 1900 to 2010; two seconds high by 2020 |
+| Hoffleit and Warren, *Yale Bright Star Catalogue*, 5th rev. ed., 1991 (CDS V/50) | [CDS](https://cdsarc.cds.unistra.fr/ftp/cats/V/50/) | The 518 stars to magnitude 4.0: J2000 position, V, B−V (`src/world/stars.ts`) | Public domain. Proper motion not applied |
+| OpenStreetMap relation 16884747; USGS GNIS feature 285392 ("Launch Complex 5") | [OSM](https://www.openstreetmap.org/relation/16884747), [TopoQuest](https://www.topoquest.com/place/florida/locale/launch-complex-5/285392) | LC-5's launcher at 28.439426° N, 80.573292° W; ground 6 ft above the sea | Traced from imagery, not surveyed. GNIS's own point (28.43806, −80.57033, NAD 83) is 330 m off the pad: a locale, not the launcher |
+
 ### Known, not yet read
 
 | Source | Would settle |
@@ -83,6 +99,7 @@ Where things stood on 5 May 1961, for the scenery beyond Complex 5/6 (`src/viewe
 | Corps of Engineers drawings of the Redstone "Missile Service Stand" (LC-4/5 and LC-26), at full resolution | The structure's base, platform plans and heights, rail gauge |
 | Army Redstone ground equipment manuals (launcher, cable masts) | The launch ring's size, levelling and azimuth gear, the masts' form |
 | *Emergency Handbook for Pad Area Rescue* (LOD, 1961; TM X-53107 7.4.4) | Where the cherry picker, M-113 and fire trucks stood, and the cab's programmed descent |
+| A surveyed position for pad 5's launcher: the Air Force Eastern Test Range's geodetic survey of the Cape's pads, or an NGS datasheet for a mark on the complex | Latitude, longitude and height of the site's origin: today read off OpenStreetMap (a few metres) with the height estimated |
 | Colour launch-day photographs of MR-7 | Lettering colour, the roll pattern's stripe count, structure and vehicle colours |
 | Smithsonian 3D scan of Shepard's suit, and the records for his helmet (A19770563001) and gloves | Boots, gloves, helmet fittings, the suit's girths |
 

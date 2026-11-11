@@ -46,6 +46,33 @@ test('a ladder can be climbed, whatever else it is part of', () => {
   assert.ok(!sameTarget({ model: 'rig', node: 'Cab' }, { model: 'rig', node: 'Cab', climb: true }));
 });
 
+test('doors and lifts a model marks on its own nodes are offered like declared ones, even on scenery that has no parts', () => {
+  const door = { id: 'door:Hut_Door', label: 'Open', do: { kind: 'toggle', back: 'Close', moves: [] } };
+  const lift = {
+    id: 'lift:Tower_Lift',
+    label: 'Call the lift',
+    do: {
+      kind: 'lift',
+      node: 'Tower_Lift',
+      stops: [
+        { name: 'the bottom', by: [0, 0, 0] },
+        { name: 'level 1', by: [0, 9, 0] },
+      ],
+    },
+  };
+  const scenery = { place: 'Hut', marked: { under: 'Hut', actions: [door] } };
+  assert.deepEqual(ids(scenery), ['action:door:Hut_Door', 'inspect']);
+  assert.deepEqual(choices(scenery, flight, 'ann')[0].verb, { do: 'action', model: '', node: 'Hut', action: door });
+  const open = { open: () => true, riding: () => true, stop: () => 0 };
+  assert.equal(choices(scenery, flight, 'ann', open)[0].label, 'Close');
+  const tower = { model: 'rig', node: 'Arm', marked: { under: 'Tower', actions: [lift] } };
+  assert.deepEqual(
+    choices(tower, flight, 'ann', open).map((c) => c.label),
+    ['Info', 'Lower it', 'Ride to level 1', 'Inspect'],
+  );
+  assert.ok(!sameTarget(scenery, { place: 'Hut' }), 'a door coming into view is a change of target');
+});
+
 test('a model hit where it has no part, and nothing at all, offer nothing', () => {
   assert.deepEqual(ids({ model: 'rig' }), []);
   assert.deepEqual(ids({}), []);

@@ -444,7 +444,7 @@ export class Stage {
           })
           .catch(() => {});
     });
-    this.setting = this.settings.get(flight.models[0]!.backdrop);
+    this.setting = this.settings.get(flight.models[0]!.backdrop, flight);
     this.applySetting();
     // the place round the pad arrives when it arrives: the flight can be studied without it
     if (this.surroundings) this.scene.remove(this.surroundings);

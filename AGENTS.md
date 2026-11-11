@@ -296,7 +296,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   as posed: `toggle` (a door: `Move`s played forward and back; the wheel says Open or Close by
   how it stands) and `lift` (a platform node that slides between named stops and carries whoever
   stands on it: Ride from on it, Call from off it). `Action.on` limits a verb to one node of the
-  part (the door, a call button). A driven node has the same name at every level of detail and
+  part (the door, a call button). A model can also mark these on its own nodes, as
+  `tools/blender/sitelib.py` does (extras `door` with `swing`, `lift` with `stops`): the stage
+  turns the marks into the same actions (`Stage.markedOn`), which is how scenery, having no
+  parts, gets working doors; a marked lift is called from anywhere on its structure. A driven node has the same name at every level of detail and
   is not also in the part's slider `moves`.
 - **The orbiting camera's rules are off while walking** (`Stage.stepWalk`): no drift, bounds,
   picking or `fitDepth`. The walker sets its own near plane from the nearest surface (5 cm
@@ -377,8 +380,8 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   on its hinge, in the pose it has at the start of the slider or at the hatch; `lc-5.md` tabulates
   them. Say in the part's text which motions are documented and which are not.
 - A site has its own frame (the hatch on +X) and lies at an angle to the compass. Scenery is laid
-  out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is placed by its real
-  azimuth and elevation for the launch.
+  out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is where it
+  was: `src/world` computes it from the flight's `site` and `launch`.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
   them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
   A new panel gets the same control and a `Pref`.

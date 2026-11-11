@@ -71,6 +71,14 @@ export interface Site extends Geodetic {
   bearingX: number;
 }
 
+/** A site as a flight records it (types.ts: SiteDef, each number with its confidence and source), as plain numbers. */
+export const siteFrame = (def: Record<keyof Site, { value: number }>): Site => ({
+  latitude: def.latitude.value,
+  longitude: def.longitude.value,
+  height: def.height.value,
+  bearingX: def.bearingX.value,
+});
+
 const F = 1 / WGS84_INVERSE_FLATTENING;
 /** First eccentricity squared of the WGS 84 ellipsoid. */
 const E2 = F * (2 - F);

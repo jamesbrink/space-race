@@ -2,7 +2,10 @@
 // and JPL Horizons (ssd.jpl.nasa.gov/horizons, DE441, queried November 2026) for what the whole
 // chain gives from a place on the ground: airless apparent azimuth and elevation, observer range.
 import assert from 'node:assert/strict';
+import { globSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { pathToFileURL } from 'node:url';
 import { AU, BODIES, EARTH, MOON, PLANETS, SUN, WGS84_B } from '../src/world/bodies.ts';
 import { moonPhase, moonPosition, planetMagnitude, refraction, skyFrom, sunPosition } from '../src/world/ephemeris.ts';
 import {
@@ -26,6 +29,7 @@ import {
   length,
   rotate,
   siteToEcef,
+  siteFrame,
   siteToEnu,
 } from '../src/world/frames.ts';
 import { STAR_STRIDE, STARS } from '../src/world/stars.ts';
@@ -363,4 +367,28 @@ test('the bodies: every number has a source, and the figures hang together', () 
   near(EARTH.rotationPeriod.value, 86164.1, 0.01, 'the Earth’s turn against the stars, seconds');
   // a satellite skimming the Earth's equator takes 84.5 minutes
   near((2 * Math.PI * Math.sqrt(EARTH.equatorialRadius.value ** 3 / EARTH.gm.value)) / 60, 84.49, 0.01, 'the lowest orbit');
+});
+
+test('every flight has a site with sourced numbers, and its sky is the one its record states', async () => {
+  // missions/index.ts imports without extensions (it is bundled); each flight.ts loads as it stands
+  const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: join(import.meta.dirname, '..') });
+  const flights = await Promise.all(files.map(async (f) => (await import(pathToFileURL(join(import.meta.dirname, '..', f)).href)).flight));
+  assert.ok(flights.length > 0);
+  for (const flight of flights) {
+    for (const key of ['latitude', 'longitude', 'height', 'bearingX']) {
+      const m = flight.site[key];
+      assert.ok(Number.isFinite(m.value), `${flight.id}: site.${key}`);
+      assert.ok(['documented', 'derived', 'estimated'].includes(m.confidence), `${flight.id}: site.${key} confidence`);
+      assert.ok(m.source.length > 8, `${flight.id}: site.${key} source`);
+    }
+    assert.ok(Number.isFinite(julianDate(flight.launch)), `${flight.id}: launch instant`);
+  }
+  // Freedom 7: the figures quoted in its README ("The sky at liftoff") and in sites/lc-5.md
+  const mr3 = flights.find((f) => f.id === 'usa/mercury/mr-3-freedom-7');
+  const sky = skyFrom(siteFrame(mr3.site), julianDate(mr3.launch));
+  near(sky.sun.azimuth / DEG, 98.8, 0.05, 'Sun azimuth');
+  near(sky.sun.elevation / DEG, 50.2, 0.05, 'Sun elevation');
+  near(sky.moon.azimuth / DEG, 245.2, 0.05, 'Moon azimuth');
+  near(sky.moon.elevation / DEG, 4.6, 0.05, 'Moon elevation');
+  near(sky.moon.illuminated, 0.74, 0.005, 'Moon lit');
 });

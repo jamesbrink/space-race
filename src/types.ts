@@ -223,6 +223,31 @@ export interface ModelDef {
   with?: { model: string; exploded: number }[];
 }
 
+/** A figure that is not a model's dimension (a place on the Earth), with how far it can be trusted and where it came from. */
+export interface Measure {
+  value: number;
+  confidence: Confidence;
+  /** Document and section, or the survey or map it was read from; for `derived`, how. */
+  source: string;
+}
+
+/**
+ * Where a site is on the Earth, and how its own frame lies there (src/world/frames.ts: Site). The
+ * origin is the model's origin (the launcher's centre on the pad's surface); from it and the
+ * launch instant the Sun, the Moon and the stars are put where they were (src/world/ephemeris.ts).
+ */
+export interface SiteDef {
+  name: string;
+  /** Degrees north, WGS 84. */
+  latitude: Measure;
+  /** Degrees east, WGS 84: negative in the Americas. */
+  longitude: Measure;
+  /** Metres above the WGS 84 ellipsoid, which is not sea level. */
+  height: Measure;
+  /** The bearing of the site frame's +X, degrees clockwise from true north. +Y is up; +Z bears 90 degrees more. */
+  bearingX: Measure;
+}
+
 export interface Flight {
   /** <nation>/<program>/<flight>: also its path under missions/ and public/models/. */
   id: string;
@@ -236,6 +261,8 @@ export interface Flight {
   /** ISO 8601, UTC. */
   launch: string;
   launchSite: string;
+  /** Where that is, as numbers: the sky over the models is computed from this and `launch`. */
+  site: SiteDef;
   crew: string[];
   summary: string;
   facts: { label: string; value: string }[];
