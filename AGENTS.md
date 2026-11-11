@@ -140,6 +140,9 @@ standing in it: on foot at eye height beside the thing, and from across the pad.
 - **Nothing breaks the spell.** No flicker, no clipping through walls or ground, no pops between
   levels of detail or between poses, no object that is a flat box up close. A lower level of detail
   is for distance only.
+- **Performance is won without giving up quality.** What is near is drawn at the highest detail
+  there is; frames are saved on what is far, hidden or unchanged (levels of detail, drawing only
+  what changed, culling), never by making the thing in front of the viewer coarser.
 - **The page gets out of the way.** Panels tuck, H clears them, and the world is the full window
   when walking.
 
