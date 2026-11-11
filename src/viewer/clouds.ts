@@ -91,8 +91,8 @@ const BILLOW = 140;
 /** The billows' mean (billows()), about which they stand out and cut in; and how far out they stand at most, as a multiple of their size. */
 const LUMPS = 0.54;
 const STANDS = 2 * (1 - LUMPS);
-/** Billows at a cloud's foot, metres: a quarter of the top's. */
-const FOOT = 35;
+/** Billows at a cloud's foot, metres: over half the top's, so the rim of a flat base is ragged, not the clean edge of a saucer seen from under it. */
+const FOOT = 80;
 /**
  * The least excess at which there can be cloud at any height (`side`: SIDE_PER_SIZE times the
  * cells' size): where the billows at their highest (STANDS times their size) stand out further than
