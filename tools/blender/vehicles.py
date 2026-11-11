@@ -314,13 +314,13 @@ class Car:
     reaches ahead of the front axle."""
 
     what: str  # the make, model and year it is meant to be, for the record
-    about: str = ""  # a sentence or two on what it is and how sure we are, shown when it is clicked
     wheelbase: float
     length: float
     width: float
     height: float
     nose: float
     track: float = 58.0
+    about: str = ""  # a sentence or two on what it is and how sure we are, shown when it is clicked
     tyre: tuple[float, float, float] = (13.4, 6.7, 7.0)  # outside radius, section width, rim radius
     # the lower body: keys along X (inches forward of the rear axle); `plan` is the half-width
     top: Keys = ()
@@ -353,6 +353,13 @@ class Car:
     roof_reach: tuple[float, float] = (1.5, 1.5)  # the roof's overhang, front and back
     doors: Sequence[float] = ()  # X of the shut lines
     seats: Sequence[float] = ()  # X of each bench's front edge
+    # where a driver sits, estimated (period sedans put the hip about 10 to 11 in over the floor and
+    # gave about 34 in of head room over it; trucks sat higher and more upright, the wheel flatter)
+    seat_h: float = 10.5  # the hip point over the floor
+    headroom: float = 35.0  # at least this from the hip point up to the headliner, a little behind it
+    bench_gap: float = 3.5  # from the tub's back wall to the back bench's back
+    hip_back: float = 7.5  # from a bench's back to the hip point
+    tilt: float = 0.42  # the steering column's rise for each inch it runs back
     lhd: bool = True
     # what is hung on it
     pods: Sequence[Pod] = ()
@@ -723,7 +730,7 @@ class Car:
         elif self.arch > 0 and abs(x0) < self.arch + 2.0:
             x0 = -self.arch - 2.0  # its back wall stands behind the rear wheel's well, not in it
         wy = min(self.glass_y(foot), self.glass_y(back)) - 2.2
-        return x0, x1, wy, max(self._bottom(0.5 * (x0 + x1)) + 4.0, 11.0)
+        return x0, x1, wy, max(self._bottom(0.5 * (x0 + x1)) + 1.5, 8.0)
 
     def housings(self) -> list[tuple[float, float, float]]:
         """The wheel housings that stand into the cabin: X from, X to, and the height of the top."""
@@ -737,24 +744,38 @@ class Car:
     def benches(self) -> list[tuple[float, float]]:
         """Each bench, front to back, as the X of its back and front edges."""
         x0, x1, _, _ = self.tub()
-        return [(max(xf - 19.0, x0 + 3.5), xf) for xf in (list(self.seats) or [x1 - 24.0, x0 + 26.0])]
+        return [(max(xf - 19.0, x0 + self.bench_gap), xf) for xf in (list(self.seats) or [x1 - 24.0, x0 + 26.0])]
+
+    def headliner(self, x: float) -> float:
+        """The headliner's height at x, over a seat (a little in from the roof's edge)."""
+        return self.roof_z(x) - 1.6 - 0.75 * self.roof_roll
+
+    def hip(self, xr: float) -> float:
+        """The hip point's height on the bench whose back is at xr: `seat_h` over the floor, lowered
+        if need be to leave `headroom` under the headliner, never lower than 6 in over the floor."""
+        zf = self.tub()[3]
+        return max(zf + 6.0, min(zf + self.seat_h, self.headliner(xr + self.hip_back - 3.0) - self.headroom))
 
     def column(self) -> tuple[Vector, Vector]:
-        """The steering wheel's middle, and the way its column points (up and back toward the driver)."""
+        """The steering wheel's middle, and the way its column points (up and back toward the driver):
+        about 19 in ahead of the driver's hip and 15 in over it, behind the dashboard's hood."""
         _, x1, wy, _ = self.tub()
-        return Vector((x1 - 15.5, (1 if self.lhd else -1) * 0.52 * wy, self.belt(x1) - 3.0)), Vector((-1, 0, 0.42)).normalized()
+        xr, _ = self.benches()[0]
+        hx, hz = xr + self.hip_back, self.hip(xr)
+        hub = Vector((min(x1 - 15.5, hx + 19.0), (1 if self.lhd else -1) * 0.52 * wy, min(hz + 15.0, self.belt(x1) - 1.5)))
+        return hub, Vector((-1, 0, self.tilt)).normalized()
 
     def anchors(self) -> dict[str, tuple[Vector, float]]:
         """Where people go, as (place, turn about the vertical in degrees): `Seat_Driver` and
         `Seat_Passenger_n` at the hips of someone sitting (the node has a figure's axes: its own
         -Y, Blender, is the way they face, which is the car's front), and `Stand_Driver` on the
         ground outside the driver's door, facing it."""
-        _, _, wy, zf = self.tub()
+        _, _, wy, _ = self.tub()
         side = 1 if self.lhd else -1
         out, n = {}, 0
         for k, (xr, _) in enumerate(self.benches()):
             for s in (side, -side):
-                at = Vector((xr + 7.5, s * 0.52 * wy, zf + 13.5))
+                at = Vector((xr + self.hip_back, s * 0.52 * wy, self.hip(xr)))
                 if k == 0 and s == side:
                     out["Seat_Driver"] = (at, 90.0)
                 else:
@@ -959,21 +980,29 @@ class Car:
         trim.tube(hub - axis * 0.7, hub - axis * 9.0, 0.8, 8)  # the column
         for xr, xf in self.benches():
             # a bench in side view: a cushion rolled at its front, a back that leans and is rolled at its top
-            z = min(zf + 30.0, self.belt(xr) + 3.0)
+            c = self.hip(xr) - zf - 13.5  # the cushion stands 2.9 in under the hip point
+            z = min(self.hip(xr) + 16.5, self.belt(xr) + 3.0)
             side_view = [
                 (xr - 1.0, zf - 1.0),
                 (xf - 0.6, zf - 1.0),
-                (xf, zf + 6.5),
-                (xf - 0.9, zf + 9.6),
-                (xf - 3.5, zf + 10.6),
-                (xr + 6.0, zf + 9.4),
+                (xf, zf + 6.5 + c),
+                (xf - 0.9, zf + 9.6 + c),
+                (xf - 3.5, zf + 10.6 + c),
+                (xr + 6.0, zf + 9.4 + c),
             ]
-            side_view += [(xr + 4.2, zf + 12.0), (xr + 1.4, z - 2.0), (xr - 0.4, z), (xr - 2.6, z - 0.6), (xr - 3.6, z - 3.0), (xr - 1.6, zf + 8.0)]
+            side_view += [
+                (xr + 4.2, zf + 12.0 + c),
+                (xr + 1.4, z - 2.0),
+                (xr - 0.4, z),
+                (xr - 2.6, z - 0.6),
+                (xr - 3.6, z - 3.0),
+                (xr - 1.6, zf + 8.0 + c),
+            ]
             wide = wy - 1.0
             if any(lo < xf and xr - 3.6 < hi for lo, hi, _ in housings):
                 wide = min(wide, inner - 0.6)  # a back seat sits between the wheel housings
             ys = [-wide, -(wide - 1.2), -1.0, 1.0, wide - 1.2, wide]  # a seam down the middle; the ends drawn in a little
-            mid = Vector((xr + 4.0, 0, zf + 8.0))
+            mid = Vector((xr + 4.0, 0, zf + 8.0 + c))
             loops = [
                 [mid + (Vector((x, 0, zz)) - mid) * (0.93 if k in (0, 5) else 1.0) + Vector((0, y, 0)) for x, zz in side_view]
                 for k, y in enumerate(ys)
@@ -1597,6 +1626,7 @@ def corvair_1960(paint: str = "white", **kw) -> Car:
     x0 = x1 - L
     car = dict(
         what="1960 Chevrolet Corvair 700 sedan",
+        sill=7.0,  # no shaft under it: the floor is low
         engine="rear",
         mass=2350.0,
         turning=39.5,
@@ -1783,6 +1813,8 @@ def suburban_1960(paint: str = "white", **kw) -> Car:
         grille=(26.0, 27.0, 33.5),
         bumper=(21.0, 21.0),
         seats=(52.0, 16.0, -18.0),
+        seat_h=12.5,
+        tilt=0.7,
         paint=paint,
     )
     return Car(**{**car, **kw})
@@ -1797,7 +1829,7 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
     wb, nose, L = 110.0, 32.0, 190.0
     x1 = wb + nose
     x0 = x1 - L
-    cab = 46.0  # the cab's back, 46 in ahead of the rear axle (the photographs: about half way between the axles)
+    cab = 42.0  # the cab's back, 42 in ahead of the rear axle (the photographs: about half way between the axles)
 
     def back(car: Car, kit: Kit) -> None:
         key = (utility or paint) + "/box"
@@ -1858,6 +1890,8 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
     step = Pod(top=[(21.0, 13.6), (cab - 1.0, 13.6)], out=[(21.0, 33.0), (cab - 1.0, 33.0)], inner=23.0, bottom=12.4, shoulder=0.6, paint="black")
     car = dict(
         what="1957-60 Ford F-100 Flareside" + (" with a utility body" if utility else ""),
+        about="A 1957-60 Ford F-100 Flareside pickup. Its 110 in wheelbase is Ford's; its length, width and shape are estimated from photographs"
+        " of the type, its colour is a guess.",
         mass=3700.0 if utility else 3200.0,
         turning=41.0,
         wheelbase=wb,
@@ -1885,80 +1919,12 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
         lamp_at=(0.0, 36.5, 3.6),
         grille=(25.0, 26.0, 33.0),
         bumper=(21.0, 0.0),
-        seats=(74.0,),
+        seats=(66.0,),
+        seat_h=13.0,  # a truck's: higher and more upright, the wheel flatter (estimated)
+        bench_gap=2.0,
+        hip_back=6.0,
+        tilt=0.8,
         pods=(wing, step),
-        back=back,
-        paint=paint,
-    )
-    return Car(**{**car, **kw})
-
-
-def ford_f600_tractor(paint: str = "white", **kw) -> Car:
-    """Not from the record (see m275_tractor, which is). A late-1950s Ford F-600 as a tractor unit: a medium conventional cab on a short chassis,
-    dual rear wheels, a fifth wheel for a semi-trailer. **Every figure is estimated**: wheelbase
-    132 in, 205 in long, 80 in wide over the cab (92 over the duals), 82 in high, 8.25-20 tyres;
-    no drawing or specification was read. The fifth wheel's plate is 47 in above the ground and
-    over the rear axle."""
-    wb, nose, L = 132.0, 34.0, 205.0
-    x1 = wb + nose
-    x0 = x1 - L
-    cab = 62.0
-
-    def back(car: Car, kit: Kit) -> None:
-        dark, steel = kit("under"), kit("under/plate")
-        for s in (1, -1):  # the frame's rails, and a mudguard over each pair of wheels
-            ya, yb = sorted((s * 14.5, s * 17.5))
-            box(dark, (x0 + 2, ya, 27.0), (cab - 1.0, yb, 35.0))
-            ya, yb = sorted((s * 24.0, s * 45.5))
-            for x in (-23.0, 23.0):
-                poly(dark, [(x, ya, 44.5), (x, yb, 44.5), (0.6 * x, yb, 47.5), (0.6 * x, ya, 47.5)], (x, 0, 1))
-            poly(dark, [(-13.8, ya, 47.5), (13.8, ya, 47.5), (13.8, yb, 47.5), (-13.8, yb, 47.5)], (0, 0, 1))
-        for x in (x0 + 4, -22.0, 24.0, 52.0):  # cross-members
-            box(dark, (x - 1.5, -14.5, 28.0), (x + 1.5, 14.5, 34.0))
-        dark.tube(Vector((0, -30.0, car.tyre[0])), Vector((0, 30.0, car.tyre[0])), 4.5, 12)  # the axle
-        dark.lathe([(0.0, -9.0), (8.0, -8.0), (9.5, 0.0), (8.0, 8.0), (0.0, 9.0)], 12, matrix=srlib.frame((0, 0, car.tyre[0]), (1, 0, 0)))
-        # the fifth wheel: a saddle on the rails, a round plate with its slot to the rear
-        box(dark, (-10.0, -17.5, 35.0), (10.0, 17.5, 44.0))
-        steel.lathe([(0.0, 44.0), (17.0, 44.0), (18.0, 45.0), (18.0, 46.4), (17.0, 47.0), (0.0, 47.0)], 20)
-        dark.tube(Vector((38.0, 30.0, 30.0)), Vector((58.0, 30.0, 30.0)), 7.0, 14)  # the fuel tank
-        kit("chrome").loft([(x0 - 1.0, -30.0, 30.0), (x0 - 1.0, 0, 30.0), (x0 - 1.0, 30.0, 30.0)], [(1.2, 2.2)] * 3, 8, ref=(0, 0, 1), resample=1)
-        for s in (1, -1):
-            lamp(kit, "tail", (x0 + 2.0, s * 20.0, 36.0), (-1, 0, 0), 1.8)
-
-    car = dict(
-        what="late-1950s Ford F-600 tractor",
-        wheelbase=wb,
-        length=L,
-        width=80.0,
-        height=82.0,
-        nose=nose,
-        track=66.0,
-        rear_track=70.0,
-        duals=True,
-        tyre=(19.0, 8.3, 10.5),
-        mass=7200.0,
-        turning=50.0,
-        top=[(cab, 57.0), (98, 58.0), (150, 56.5), (x1 - 3, 53.5), (x1, 48.0)],
-        bottom=[(cab, 23.0), (154, 23.0), (x1 - 6, 26.0), (x1, 29.0)],
-        plan=[(cab, 39.0), (146, 40.0), (x1 - 5, 38.0), (x1, 32.0)],
-        shoulder=4.5,
-        crown=1.6,
-        tuck=2.0,
-        arch=23.0,
-        arches=(False, True),
-        flat_tail=cab,
-        cabin=(98.0, 88.0, 69.0, 65.0),
-        tumble=4.0,
-        bow=5.0,
-        wrap=8.0,
-        roof_reach=(1.5, 2.5),
-        doors=(102.0, 68.0),
-        lamp_at=(0.0, 46.0, 3.6),
-        grille=(27.0, 34.0, 44.5),
-        bumper=(27.0, 0.0),
-        bumper_size=(1.8, 3.4),
-        seats=(92.0,),
-        cap_r=5.5,
         back=back,
         paint=paint,
     )

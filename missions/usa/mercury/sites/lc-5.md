@@ -303,7 +303,7 @@ deeper glass, and its tail lamps stand upright in the tops of the rear wings; th
 doors are cut round the wheel openings back to the C post and its strip's V moved back to the front
 door's trailing edge; the Corvair's glass stands 14 in further forward, with nothing ahead of it but
 the luggage; the Suburban's sides are near upright and its windscreen stands up; the F-100's cab was
-lengthened (its back 46 in ahead of the rear axle, the windscreen's foot 26 in behind the front one),
+lengthened (its back 42 in ahead of the rear axle, the windscreen's foot 26 in behind the front one),
 raised to 73 in, its hood and wings made one flat top, and a step put between the cab and the rear
 wing. Not matched: the fronts' and tails' detail (grilles, the 1959 Chevrolet's spread fins and the
 Suburban's pods over its head lamps are suggested, not shaped), wrapped glass (flat panes between
@@ -342,7 +342,14 @@ the rear overhang. The pickup's utility-body doors are not separate. The inside 
 shaped benches, door linings with an arm rest and a window winder, a dashboard with a hooded pair
 of dials, a glovebox lid and a radio, three pedals, a steering wheel with a horn ring on its
 column, a mirror and a headliner: enough to look out from the driver's seat past the right
-pillars, not a likeness of any one car's cabin. None of what is under the lids is from any record:
+pillars, not a likeness of any one car's cabin. Where a driver sits is estimated, to fit a tall
+figure (1.89 m in a helmet: 0.91 m from the hip to the helmet's top): the hip point stands 10.5 in
+over the floor in a car and 12.5 to 13 in a truck, lowered where needed to leave 35 in of head
+room under the headliner (to 6 in over the floor at least; the Corvair, 51 in high, keeps 33.8),
+and the steering wheel stands 15.5 to 19 in ahead of the hip and 15 in over it, its rim's lowest
+point 3 to 5 in over the thighs. Head room as built: the cars 33.8 to 37.6 in, the Suburban 41,
+the F-100 40, the M275 40.5. Real cabins of the period gave about as much; no maker's interior
+drawing was read. None of what is under the lids is from any record:
 it is there so that an open lid shows something of the right size where the engine or the spare
 was.
 
@@ -391,8 +398,7 @@ coupled to a dark tractor with the same cab. That these are G742 trucks is read 
 (firm); that they are the M275 and not the longer M48 is estimated from the short gap between the
 cab and the tandem. Nothing found names what towed the Redstone's trailer (the boosters came by
 air), and no photograph of 5 May 1961 shows a tractor at all: that the same trucks served MR-3 is
-an inference. The old `ford_f600_tractor` (every figure invented) is kept in vehicles.py only
-until the pad's script uses the new one.
+an inference. The pad's script tows with it; the invented Ford F-600 it replaced is gone.
 
 `vehicles.m275_tractor()` builds it to the contract above, its origin under the middle of the
 tandem (what a tandem turns about), its rear wheels `_Wheel_1` to `_4`, duals:
