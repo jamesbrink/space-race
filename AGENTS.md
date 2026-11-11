@@ -548,7 +548,10 @@ so a fitting that clears at 1.0 can land on its neighbour at 0.3.
 Every model build writes three files: `<name>.glb`, and `<name>.lod1.glb` and `.lod2.glb` at detail
 0.6 and 0.3. The viewer draws whichever suits the model's size on screen (`viewer/lod.ts`): the
 thresholds sit where what the coarser level leaves out is under a pixel, so the change cannot be
-seen and nothing is cross-faded. A model that is cut open is always drawn in full.
+seen and nothing is cross-faded. A model that is cut open is always drawn in full. The place round the pad (`Flight.surroundings`)
+is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
+the level its own size on screen calls for, so the building beside the walker is always the finest;
+level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script; do not hand-edit geometry for them.
 

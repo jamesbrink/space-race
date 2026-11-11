@@ -19,7 +19,7 @@ import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode'
 import { type CameraMode, Flyer } from './fly';
 import { jointKey, pose, reach, seatFit } from './gait';
 import { Lamps } from './lamps';
-import { LOD_ABOVE, lodUrl, Staged } from './lod';
+import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { Origin } from './origin';
 import { Plume } from './plume';
@@ -285,6 +285,8 @@ export class Stage {
   private root: THREE.Group | null = null;
   /** The place round the pad (Flight.surroundings): scenery, outside `root`, so it is never measured, picked or framed. */
   private surroundings: THREE.Object3D | null = null;
+  /** Its levels of detail, chosen building by building (lod.ts): `surroundings` is its level 0. */
+  private scenery: Scenery | null = null;
   /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
   private defs: ModelDef[] = [];
@@ -600,6 +602,7 @@ export class Stage {
             if (staged !== this.staged) return;
             rest(object);
             staged[i]!.add(level, object);
+            this.lamps.glow(object);
             this.dirty = true;
           }),
         );
@@ -607,17 +610,32 @@ export class Stage {
     this.setting = this.settings.get(flight.models[0]!.backdrop, flight);
     this.applySetting();
     // the place round the pad arrives when it arrives: the flight can be studied without it
-    if (this.surroundings) this.scene.remove(this.surroundings);
+    for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) this.scene.remove(o);
     this.surroundings = null;
-    if (flight.surroundings)
+    this.scenery = null;
+    const place = flight.surroundings;
+    if (place)
       this.arriving.push(
-        this.fetch(flight.surroundings).then((object) => {
+        this.fetch(place).then((object) => {
           if (staged !== this.staged) return;
           this.surroundings = object;
           this.scene.add(object);
+          const scenery = (this.scenery = new Scenery(object));
           this.lamps.add(object, this.scene); // its floods, and a light in each room where the model hangs one (Light_<room>)
           this.renderer.shadowMap.needsUpdate = true;
           this.dirty = true;
+          // its coarser levels, for the buildings that are far off
+          for (let level = 1; level <= LOD_ABOVE.length; level++)
+            this.arriving.push(
+              this.fetch(lodUrl(place, level)).then((coarse) => {
+                if (this.scenery !== scenery) return;
+                this.scene.add(coarse);
+                scenery.add(level, coarse);
+                this.lamps.glow(coarse);
+                this.renderer.shadowMap.needsUpdate = true;
+                this.dirty = true;
+              }),
+            );
         }),
       );
     for (const p of this.arriving) p.catch(() => {}); // a level that does not arrive is done without
@@ -1145,6 +1163,7 @@ export class Stage {
       }
     });
     for (const s of this.staged) s.everyLevel(true);
+    this.scenery?.everyLevel(true);
     if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
     for (const night of [1, 0]) {
       this.lamps.set(night, 1);
@@ -1154,6 +1173,7 @@ export class Stage {
     }
     for (const o of culled) o.frustumCulled = true;
     for (const s of this.staged) s.everyLevel(false);
+    this.scenery?.everyLevel(false);
     if (this.plume) this.plume.mesh.visible = false;
     this.relight(true);
     await frames(3);
@@ -1544,6 +1564,7 @@ export class Stage {
       const distance = Math.max(this.camera.position.distanceTo(s.sphere.center) - s.sphere.radius * 0.6, s.sphere.radius * 0.1);
       changed = s.choose(scale / distance, i === this.current && this.cut) || changed;
     });
+    if (this.scenery?.choose(this.camera.position, scale)) changed = true;
     if (!changed) return;
     this.dirty = true;
     this.renderer.shadowMap.needsUpdate = true;
@@ -2432,7 +2453,7 @@ export class Stage {
 
   /** The levels of detail of a model: an action moves the same node in each. */
   private levelsOf(model: string): THREE.Object3D[] {
-    if (!model) return this.surroundings ? [this.surroundings] : []; // scenery: no model, one level
+    if (!model) return this.scenery?.all ?? (this.surroundings ? [this.surroundings] : []); // scenery: its levels, finest first
     return this.staged[this.defs.findIndex((m) => m.id === model)]?.group.children ?? [];
   }
 

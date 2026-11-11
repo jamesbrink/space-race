@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { Group, Sphere, Box3 } from 'three';
+import { Box3, Group, Sphere } from 'three';
 import type { Part } from '../types';
 import { markDriven } from './drive';
 import { Exploder } from './explode';
@@ -22,6 +22,91 @@ export function chooseLevel(ppm: number, current: number): number {
   while (level > 0 && ppm > LOD_ABOVE[level - 1]! * 1.12) level--;
   while (level < LOD_ABOVE.length && ppm < LOD_ABOVE[level]! * 0.9) level++;
   return level;
+}
+
+/**
+ * The place round the pad (Flight.surroundings) at its levels of detail, chosen piece by piece:
+ * it spreads over half a kilometre, so one level for all of it would be the finest whenever any
+ * of it is near, or a coarse one for the building in front of the walker. Each top-level node (a
+ * building, the track, the poles) is a piece and is drawn at the level its own size on screen
+ * calls for. Level 0 is the one the stage knows (picked, walked on, lit, worked: a hidden node
+ * still answers a ray); the coarser levels are only drawn. A piece that is driven (it carries a
+ * `vehicle`) is always drawn from level 0, which is the one that moves.
+ */
+export class Scenery {
+  private readonly levels: (THREE.Object3D | undefined)[] = [];
+  private readonly pieces: { name: string; sphere: Sphere; nodes: (THREE.Object3D | undefined)[]; wanted: number }[] = [];
+  private every = false;
+
+  constructor(full: THREE.Object3D) {
+    this.levels[0] = full;
+    full.updateMatrixWorld(true);
+    for (const node of full.children) {
+      let driven = false;
+      node.traverse((o) => {
+        if (o.userData.vehicle) driven = true;
+      });
+      if (driven) continue;
+      const sphere = new Box3().setFromObject(node).getBoundingSphere(new Sphere());
+      if (sphere.radius > 0) this.pieces.push({ name: node.name, sphere, nodes: [node], wanted: 0 });
+    }
+  }
+
+  /** A coarser level has arrived: its pieces take their places; what has no piece at level 0 is not drawn from it. */
+  add(level: number, object: THREE.Object3D): void {
+    this.levels[level] = object;
+    for (const node of object.children) {
+      const piece = this.pieces.find((p) => p.name === node.name);
+      if (piece) piece.nodes[level] = node;
+      else node.visible = false;
+    }
+    for (const piece of this.pieces) this.show(piece);
+  }
+
+  /** Every level, level 0 first: what a working door or lift moves at once. */
+  get all(): THREE.Object3D[] {
+    return this.levels.filter((o): o is THREE.Object3D => Boolean(o));
+  }
+
+  /** The coarser levels: drawn, never asked. */
+  get coarser(): THREE.Object3D[] {
+    return this.all.slice(1);
+  }
+
+  /** Pick each piece's level for an eye at `eye`, `scale` pixels per radian. True if what is drawn changed. */
+  choose(eye: THREE.Vector3, scale: number): boolean {
+    let changed = false;
+    for (const piece of this.pieces) {
+      const { center, radius } = piece.sphere;
+      const distance = Math.max(eye.distanceTo(center) - radius * 0.6, radius * 0.1);
+      const wanted = chooseLevel(scale / distance, piece.wanted);
+      if (wanted === piece.wanted) continue;
+      piece.wanted = wanted;
+      changed = this.show(piece) || changed;
+    }
+    return changed;
+  }
+
+  /** Draw every level at once (so all are built and sent to the GPU), or go back to the ones that suit. */
+  everyLevel(on: boolean): void {
+    this.every = on;
+    for (const piece of this.pieces) this.show(piece);
+  }
+
+  /** Show the piece's wanted level, or until it has arrived the nearest finer one that has. */
+  private show(piece: Scenery['pieces'][number]): boolean {
+    let level = piece.wanted;
+    while (level > 0 && !piece.nodes[level]) level--;
+    let changed = false;
+    piece.nodes.forEach((node, i) => {
+      const visible = this.every || i === level;
+      if (node && node.visible !== visible) {
+        node.visible = visible;
+        changed = true;
+      }
+    });
+    return changed;
+  }
 }
 
 /** One model on the stage: its levels of detail, of which one is drawn, all taken apart together. */

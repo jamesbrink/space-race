@@ -165,6 +165,22 @@ export class Lamps {
     this.place();
   }
 
+  /**
+   * Light the lenses under `root` without making lights for them: a coarser level of detail of
+   * something `add` has had, whose lenses must glow (and a searchlight's front be glass) as the
+   * finer level's do, while its lights are the finer level's.
+   */
+  glow(root: THREE.Object3D): void {
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      const material = (mesh.userData.real ?? mesh.material) as THREE.MeshStandardMaterial | undefined;
+      if (!mesh.isMesh || !material || Array.isArray(material) || !isLamp(material.name)) return;
+      if (described(mesh)) this.glass(material);
+      else this.lenses.add(material);
+    });
+    this.level = -1; // (so the next `set` reaches them)
+  }
+
   /** How many lights there are: spotlights at fittings, and room lights. */
   get count(): number {
     return this.lights.length + this.roomPool.length;

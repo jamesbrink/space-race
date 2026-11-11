@@ -3,7 +3,7 @@ import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
 import { type Air, CloudLayer, type Clouds, driftClouds, installAir } from './air';
 import { buildCape1961, CLEARINGS, COAST, RIVER, shoreAt } from './cape1961';
 import { fbm2 } from './field';
-import { type FloraSpec, Flora } from './flora';
+import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
 
 /**
