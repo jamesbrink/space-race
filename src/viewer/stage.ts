@@ -210,8 +210,6 @@ export class Stage {
   /** Which way everything is drawn, real or cel (look.ts), and the cel look's ink line. */
   private readonly looks = new Looks();
   private shadowsOwed = false;
-  private shadowsAt = 0;
-  private easy = false;
   /** What is still on its way after `load` returns: coarser levels of detail, the place round the pad. */
   private arriving: Promise<unknown>[] = [];
   /** The floodlights the models carry: lit when the Sun is down. */
@@ -946,7 +944,6 @@ export class Stage {
 
   /** The view is not being steered (the idle show): the light may be followed less closely, for even frames. */
   setUnhurried(on: boolean): void {
-    this.easy = on;
     unhurried(on);
   }
 
@@ -1437,13 +1434,11 @@ export class Stage {
     const began = performance.now();
     if (this.setting.attend?.(this.camera.position)) this.dirty = true;
     if (this.lamps.near(this.camera.position)) this.dirty = true; // the rooms nearest the eye are the ones lit
-    // Hardware that has moved wants its shadows drawn again. Steered by hand that is done at
-    // once; in a view nobody is steering, where hardware may be moving for minutes on end,
-    // five times a second, which the eye does not catch and the frame rate does.
-    if (this.shadowsOwed && began - this.shadowsAt >= (this.easy ? 300 : 0)) {
+    // Hardware that has moved wants its shadows drawn again, in the same frame: a shadow drawn
+    // a moment late lags behind what casts it and then jumps after it.
+    if (this.shadowsOwed) {
       this.renderer.shadowMap.needsUpdate = true;
       this.shadowsOwed = false;
-      this.shadowsAt = began;
     }
     this.step();
     this.frames++;
