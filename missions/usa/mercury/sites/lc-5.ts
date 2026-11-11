@@ -118,6 +118,17 @@ export const LC5: SiteDef = {
         source: 'the canal and the Canaveral Lock were dedicated in 1965 (Wikipedia, Canaveral Barge Canal and Port Canaveral)',
       },
       {
+        what: "the Canaveral Lock and its cut from the Banana River to Port Canaveral's west basin",
+        built: 1965,
+        was: 'land',
+        path: [
+          [28.40918, -80.6398],
+          [28.4092, -80.6265],
+        ],
+        width: 140,
+        source: 'as the barge canal: until the lock the port opened only to the sea (Wikipedia, Port Canaveral)',
+      },
+      {
         what: "Complex 39's turning basin by the Vehicle Assembly Building, and its canal to the Banana River",
         built: 1965,
         was: 'land',

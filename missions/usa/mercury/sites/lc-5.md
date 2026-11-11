@@ -612,7 +612,7 @@ except for these, which were built after 5 May 1961 and are undone along their l
 | --- | --- | --- | --- |
 | Bennett Causeway (SR 528), Indian River and Banana River crossings | spans of 1963; the Bee Line opened 1967 | water | year documented (bridge inventory); the width put back, 260 m, estimated |
 | NASA Causeway (SR 405), Indian River, and NASA Causeway East, Banana River | 1964 | water | the Indian River bridge's year documented (FDOT); the East crossing's taken as the same |
-| Canaveral Barge Canal across Merritt Island, and its lock | 1965 | land | documented (Corps of Engineers, via Wikipedia) |
+| Canaveral Barge Canal across Merritt Island, and the lock's cut from the Banana River to the port | 1965 | land | documented (Corps of Engineers, via Wikipedia) |
 | Complex 39's turning basin and barge canal by the Vehicle Assembly Building | after NASA bought Merritt Island, from 1962 | land | that it is later than 1961 is documented; the year is not |
 
 Kept, because they stood in 1961: the SR 520 causeways (1941), Port Canaveral's harbour (1953),

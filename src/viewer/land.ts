@@ -107,6 +107,12 @@ const RANGES = Array.from({ length: LEVELS }, (_, k) => RANGE0 * 2 ** k);
 const MORPH = 0.72;
 /** The canopy rises from nothing to its full height between these distances from the eye, metres. */
 const SHELL: [number, number] = [18, 55];
+/**
+ * Heights of the eye over the ground, metres, between which the whole of the land takes the colours
+ * of what lies beyond it (`Beyond`), all but its made ground: from high up its own paint would
+ * show as a square of another tone set in the globe, and the detail it carries is under a pixel.
+ */
+const LIFT: [number, number] = [3000, 20000];
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
@@ -483,7 +489,9 @@ export class Land {
             vBeyond = base.xyz + uOrigin;   // in the scene's frame, at the land's base level
             vHanded = smoothstep(uBeyond.x, uBeyond.y, max(abs(at.x), abs(at.y)));
             landPoint.y = mix(landPoint.y, beyondHeight(vBeyond) - vBeyond.y, vHanded);
-            objectNormal = normalize(mix(objectNormal, vec3(0.0, 1.0, 0.0), vHanded));
+            // from high up the ground is lit as what lies beyond is: flat (its colours follow, in the fragment)
+            float lifted = smoothstep(${LIFT[0].toFixed(1)}, ${LIFT[1].toFixed(1)}, uEye.y);
+            objectNormal = normalize(mix(objectNormal, vec3(0.0, 1.0, 0.0), max(vHanded, lifted)));
           }
           #endif
           #ifdef USE_TANGENT
@@ -629,13 +637,15 @@ export class Land {
           }
           paint(landAt, coverA, coverB, g);
           #ifdef LAND_BEYOND
-          if (vHanded > 0.0) {
+          // across the last stretch, and everywhere from high up but where the ground is made (worked: roads, aprons, clearings)
+          float handed = max(vHanded, smoothstep(${LIFT[0].toFixed(1)}, ${LIFT[1].toFixed(1)}, uEye.y) * (1.0 - smoothstep(0.1, 0.35, coverB.r)));
+          if (handed > 0.0) {
             float rough;
             vec3 albedo = beyondAlbedo(vBeyond, rough);
-            g.albedo = mix(g.albedo, albedo, vHanded);
-            g.rough = mix(g.rough, rough, vHanded);
-            g.bump *= 1.0 - vHanded;
-            g.water *= 1.0 - vHanded;
+            g.albedo = mix(g.albedo, albedo, handed);
+            g.rough = mix(g.rough, rough, handed);
+            g.bump *= 1.0 - handed;
+            g.water *= 1.0 - handed;
           }
           #endif
           landBump = g.bump;
