@@ -696,10 +696,10 @@ export function buildCape(
       flora.simplify(on);
     },
     attend: (at) => {
-      clouds.follow(at);
+      const laid = clouds.follow(at);
       local(at);
       land.attend(eye);
-      return flora.attend(eye);
+      return flora.attend(eye) || laid;
     },
     groundAt: (x, z) => {
       // the world point on the compass: the inverse of the site's turn

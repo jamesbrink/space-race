@@ -2007,6 +2007,8 @@ export class Stage {
 
   /** Sitting: how far he has sunk into the cushion (seatFit), where his eyes are in the seat's frame, and in his head's. */
   private sunk = 0;
+  /** How far the first thing over the seat's hip point is above it, metres. */
+  private headroom = Number.POSITIVE_INFINITY;
   private seatEyes: THREE.Vector3 | null = null;
   private headEye: THREE.Vector3 | null = null;
 
@@ -2031,8 +2033,12 @@ export class Stage {
     const shown = this.staged[this.walked]?.shown ?? this.scene;
     const hip = vehicle.hips(new THREE.Vector3());
     walk.solids.gather(hip, 1, 0.5, 2.5);
-    const roof = walk.solids.cast(new THREE.Vector3(hip.x, hip.y + 0.15, hip.z), UP, 2.5);
-    const fit = seatFit(walk.body.height - walk.gait.hipHeight(shown), roof ? roof.point.y - hip.y : Number.POSITIVE_INFINITY);
+    // (straight up from the hips, past the steering wheel if that is over them)
+    const up = new THREE.Vector3(hip.x, hip.y + 0.15, hip.z);
+    let roof = walk.solids.cast(up, UP, 2.5);
+    for (let i = 0; roof && vehicle.steers(roof.mesh) && i < 3; i++) roof = walk.solids.cast(up.setY(roof.point.y + 0.01), UP, 2.5);
+    this.headroom = roof ? roof.point.y - hip.y : Number.POSITIVE_INFINITY;
+    const fit = seatFit(walk.body.height - walk.gait.hipHeight(shown), this.headroom);
     walk.gait.recline = fit.recline;
     this.sunk = fit.drop;
     this.seatEyes = null;
@@ -2354,7 +2360,10 @@ export class Stage {
       reach(root, 'R', toR);
     }
     const head = this.headEye && this.jointOf(root, 'Head');
-    if (head) this.seatEyes = wheel.toSeat(head.localToWorld(this.headEye!.clone()));
+    if (!head) return;
+    // (and always under its roof: a cab too low for him puts his helmet through it, not the view)
+    this.seatEyes = wheel.toSeat(head.localToWorld(this.headEye!.clone()));
+    this.seatEyes.y = Math.min(this.seatEyes.y, this.headroom - 0.12);
   }
 
   /** What is in the figure's hands hangs plumb and swings a little behind the stride; a hose hangs from it. */

@@ -82,12 +82,13 @@ const SKY = /* glsl */ `
     vec3 col = mix(mix(uHorizon, low, exp(-h * 7.0)), uZenith, pow(h, 0.5));
     // the Moon is beyond the air, so its light is added to the sky's and the clouds pass in front of it
     if (discs) col += moonLight(d);
-    // fair-weather cumulus, low over the Atlantic: flat bases, thinning upward
+    // high cloud, thin and sparse: one eighth of altocumulus at 3,600 m at Patrick at 10:00 (NOAA ISD). The cumulus
+    // under it are things in the scene (air.ts: CloudLayer), not painted on the sky
     vec2 uv = d.xz / (h + 0.12);
     float c = fbm(vec3(uv * 1.3, 0.0)) * 0.7 + fbm(vec3(uv * 5.0, 3.0)) * 0.3;
-    float cloud = smoothstep(0.47, 0.62, c) * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
+    float cloud = smoothstep(0.6, 0.74, c) * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
     float s = max(dot(d, uSun), 0.0);
-    col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.9);
+    col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.45);
     col = mix(low * 0.96, col, smoothstep(-0.004, 0.012, d.y));   // below the horizon: haze
     col += vec3(1.0, 0.9, 0.75) * uSunLight * (pow(s, 10.0) * 0.18 + pow(s, 300.0) * 1.6);
     return col;

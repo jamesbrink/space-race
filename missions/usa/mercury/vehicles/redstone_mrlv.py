@@ -163,6 +163,62 @@ def _prism(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root
     mb.add(verts, faces, None, matrix)
 
 
+def _offset(pts, d: float) -> list:
+    """An anticlockwise (r, z) outline moved outward by d at every side, mitred; negative d moves it in."""
+    n = len(pts)
+    out = []
+    for i in range(n):
+        p0, p1, p2 = pts[i - 1], pts[i], pts[(i + 1) % n]
+        la, lb = math.hypot(p1[0] - p0[0], p1[1] - p0[1]), math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+        n1 = ((p1[1] - p0[1]) / la, -(p1[0] - p0[0]) / la)
+        n2 = ((p2[1] - p1[1]) / lb, -(p2[0] - p1[0]) / lb)
+        k = d / (1.0 + n1[0] * n2[0] + n1[1] * n2[1])
+        out.append((p1[0] + (n1[0] + n2[0]) * k, p1[1] + (n1[1] + n2[1]) * k))
+    return out
+
+
+def _fin(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: float, r_tip: float, matrix: Matrix, *, rivets=None, rows=()) -> None:
+    """A fin or an air rudder: `outline` is (r, z) points in its plane, anticlockwise; its thickness
+    tapers from root to tip and every edge is rounded, from the mid-plane at the outline to the flat
+    faces 1.2 in inside it. `rows` are rows of flush fasteners on both faces, each ((r, z), (r, z),
+    pitch): where the skin is riveted to a spar, a rib or the root fitting (estimated: the usual
+    layout, read off no drawing). Inches."""
+    k = (thick_tip - thick_root) / 2 / (r_tip - r_root)
+
+    def half(r: float) -> float:
+        return thick_root / 2 + k * (r - r_root)
+
+    rings = [(0.0, 0.0), (0.12, 0.55), (0.45, 0.88), (1.2, 1.0)]  # inset, share of the half thickness
+    loops = [_offset(outline, -d) for d, _ in rings]
+    n = len(outline)
+    verts, faces = [(r * IN, 0.0, z * IN) for r, z in loops[0]], []
+    rows_of = {}
+    for side in (1, -1):
+        prev = list(range(n))
+        for (_, share), loop in zip(rings[1:], loops[1:]):
+            base = len(verts)
+            verts += [(r * IN, side * share * half(r) * IN, z * IN) for r, z in loop]
+            cur = list(range(base, base + n))
+            for i in range(n):
+                j = (i + 1) % n
+                faces.append((cur[i], cur[j], prev[j], prev[i]) if side > 0 else (prev[i], prev[j], cur[j], cur[i]))
+            prev = cur
+        rows_of[side] = prev
+        faces.append(tuple(reversed(prev)) if side > 0 else tuple(prev))
+    mb.add(verts, faces, None, matrix)
+    if rivets is None:
+        return
+    rot = matrix.to_3x3()
+    for side in (1, -1):
+        normal = rot @ Vector((-k * side, side, 0.0)).normalized()
+        for (r0, z0), (r1, z1), pitch in rows:
+            count = max(1, round(math.hypot(r1 - r0, z1 - z0) / pitch))
+            for q in range(count + 1):
+                r, z = r0 + (r1 - r0) * q / count, z0 + (z1 - z0) * q / count
+                at = matrix @ Vector((r * IN, side * (half(r) - 0.01) * IN, z * IN))
+                rivets.disc(at, normal, 0.2 * IN, 0.09 * IN)  # their heads stand 2 mm proud: closer, and the face would fight them
+
+
 def build(base_z: float, font=None) -> None:
     """Build the booster with its base at station `base_z` (inches) of the flight's frame."""
     M = _reuse(materials())
@@ -378,14 +434,32 @@ def build(base_z: float, font=None) -> None:
             (tip_r, FIN_TIP),
             (BODY_R - 1.2, FIN_ROOT),
         ]  # roots buried in the skin
-        _prism(fins_w if i % 2 == 0 else fins_b, fin, 4.2, 1.6, BODY_R, tip_r, rot)
-        # air rudder at each tip: steers once the air is thick enough to bite
-        _prism(rudders, [(tip_r - 14.5, 0), (tip_r, 0), (tip_r, 33.5), (tip_r - 14.5, 33.5)], 1.9, 1.5, tip_r - 14.5, tip_r, rot)
+        # Rows of fasteners where the skins meet the root fitting, a spar along the leading edge, a rib over
+        # the rudder's bay and the edge of that bay; the rudders' own along their inboard edge (estimated)
+        lead = Vector((BODY_R - 1.2 - tip_r, FIN_ROOT - FIN_TIP)).normalized()
+        inward = Vector((-lead.y, lead.x))  # into the fin from its leading edge
+        spar = [Vector((tip_r, FIN_TIP)) + lead * t + inward * 9.0 for t in (9.0, 55.0)]
+        rows = [
+            ((BODY_R + 2.5, 3.0), (BODY_R + 2.5, FIN_ROOT - 6.0), 2.5),
+            (tuple(spar[0]), tuple(spar[1]), 2.5),
+            ((BODY_R + 3.0, 36.5), (tip_r - 16.5, 36.5), 2.5),
+            ((tip_r - 17.0, 3.0), (tip_r - 17.0, 33.0), 2.5),
+            ((BODY_R + 3.0, 2.5), (tip_r - 17.0, 2.5), 2.5),
+        ]
+        _fin(fins_w if i % 2 == 0 else fins_b, fin, 4.2, 1.6, BODY_R, tip_r, rot, rivets=rivets, rows=rows)
+        # air rudder at each tip: steers once the air is thick enough to bite. Each turns on a shaft across
+        # the gap from the fin, its bearing boss on either face (where the shaft is is estimated)
+        rudder = [(tip_r - 14.5, 0), (tip_r, 0), (tip_r, 33.5), (tip_r - 14.5, 33.5)]
+        _fin(rudders, rudder, 1.9, 1.5, tip_r - 14.5, tip_r, rot, rivets=rivets, rows=[((tip_r - 12.5, 2.0), (tip_r - 12.5, 31.5), 2.5)])
+        rudders.tube(rot @ Vector(((tip_r - 16.0) * IN, 0, 24.0 * IN)), rot @ Vector(((tip_r - 12.0) * IN, 0, 24.0 * IN)), 0.6 * IN, 12)
+        for side in (1, -1):
+            hub = rot @ Vector(((tip_r - 9.0) * IN, side * 0.85 * IN, 24.0 * IN))
+            rudders.lathe(prof([(0.0, 0.0), (1.3, 0.0), (1.1, 0.35), (0.0, 0.4)]), 16, matrix=frame(hub, rot.to_3x3() @ Vector((0, side, 0))))
     white.build("TailUnit_SkinWhite", M["white"], g, sharp_angle=None)
     black.build("TailUnit_SkinBlack", M["black"], g, sharp_angle=None)
-    fins_w.build("TailUnit_FinsWhite", M["white"], g, smooth=False)
-    fins_b.build("TailUnit_FinsBlack", M["black"], g, smooth=False)
-    rudders.build("TailUnit_AirRudders", M["sheet"], g, smooth=False)
+    fins_w.build("TailUnit_FinsWhite", M["white"], g, sharp_angle=50)  # flat faces, rounded edges
+    fins_b.build("TailUnit_FinsBlack", M["black"], g, sharp_angle=50)
+    rudders.build("TailUnit_AirRudders", M["sheet"], g, sharp_angle=50)
     _rivet_lines(rivets, BODY_R, up(14), up(S_TAIL - 5), 24)
     shields = MeshBuilder()
     for i in range(4):  # stainless shields on the fin roots, added for the longer burn

@@ -85,3 +85,6 @@ export function sequence(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/** The same GLSL with its names prefixed, for a shader that may already have the plain ones (a chunk every material takes). */
+export const fieldAs = (prefix: string): string => FIELD.replace(/\b(hash2|noise2|fbm2)\b/g, `${prefix}$1`);

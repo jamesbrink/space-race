@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { fieldAs, noise2, sequence } from './field';
 
 /**
  * The air between the eye and what it sees, for every material that takes the scene's fog.
@@ -63,27 +64,34 @@ export function driftClouds(dt: number): void {
   DRIFT.z += wind[1] * dt;
 }
 
-/** The cloud field in GLSL, with its own names (a material may have its own noise): `cloudAt(xz)`, 0 to 1, how much cloud is over a point at the layer. */
+/** The cloud field's breadth of change: 0 at its threshold, 1 well inside a cloud. */
+const edges = (c: Clouds): [number, number] => [1 - c.cover - 0.06, 1 - c.cover + 0.14];
+
+/**
+ * The cloud field, in JavaScript and GLSL alike (field.ts's integer noise, so the clouds drawn and
+ * the shadows cast agree): 0 clear, rising to 1 in a cloud's heart, at a point of the layer `xz`
+ * metres in the world, for clouds drifted by `drift`.
+ */
+export function cloudAt(c: Clouds, x: number, z: number, driftX: number, driftZ: number): number {
+  const qx = (x - driftX) / c.size,
+    qz = (z - driftZ) / c.size;
+  const n =
+    noise2(qx, qz, 91) * 0.5 +
+    noise2(qx * 2.13 + 7.1, qz * 2.13 + 7.1, 92) * 0.27 +
+    noise2(qx * 4.37 + 3.3, qz * 4.37 + 3.3, 93) * 0.15 +
+    0.04;
+  const [lo, hi] = edges(c);
+  const t = Math.min(1, Math.max(0, (n - lo) / (hi - lo)));
+  return t * t * (3 - 2 * t);
+}
 const cloudField = (c: Clouds | undefined) =>
   c
     ? /* glsl */ `
-  float airHash(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
-  float airNoise(vec2 x) {
-    vec2 i = floor(x), f = fract(x);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(airHash(i), airHash(i + vec2(1.0, 0.0)), f.x), mix(airHash(i + vec2(0.0, 1.0)), airHash(i + vec2(1.0, 1.0)), f.x), f.y);
-  }
-  // 0 clear, rising to 1 in a cloud's heart; the layer's own coordinates move with the wind
+  ${fieldAs('air_')}
   float cloudAt(vec2 xz) {
     vec2 q = (xz - uCloudDrift.xz) / ${c.size.toFixed(1)};
-    float n = airNoise(q) * 0.5 + airNoise(q * 2.13 + 7.1) * 0.27 + airNoise(q * 4.37 + 3.3) * 0.15 + airNoise(q * 9.1 + 1.9) * 0.08;
-    return smoothstep(${(1 - c.cover - 0.06).toFixed(3)}, ${(1 - c.cover + 0.14).toFixed(3)}, n);
-  }
-  // the same without its finest octaves, for finding a cloud before looking at it closely
-  float cloudRough(vec2 xz) {
-    vec2 q = (xz - uCloudDrift.xz) / ${c.size.toFixed(1)};
-    float n = airNoise(q) * 0.5 + airNoise(q * 2.13 + 7.1) * 0.27 + 0.115;
-    return smoothstep(${(1 - c.cover - 0.06).toFixed(3)}, ${(1 - c.cover + 0.14).toFixed(3)}, n);
+    float n = air_noise2(q, 91) * 0.5 + air_noise2(q * 2.13 + 7.1, 92) * 0.27 + air_noise2(q * 4.37 + 3.3, 93) * 0.15 + 0.04;
+    return smoothstep(${edges(c)[0].toFixed(3)}, ${edges(c)[1].toFixed(3)}, n);
   }`
     : '';
 
@@ -159,31 +167,40 @@ export function installAir(air: Air): void {
 }
 
 /**
- * The clouds as a thing in the scene: a slab from their bases to their tops, `reach` metres each
- * way round the eye, drawn after everything solid. Each pixel of its far side marches the eye's
- * ray through the slab and adds up the cloud it passes, so a cloud has a flat base and a heaped
- * top from below, from the side and from above, and stands in front of the ground when the eye
- * is over it. It takes the haze (air.ts) like anything else, and its light from the scene's Sun
- * and sky, read as it is drawn. Beyond `reach` the sky's own clouds carry on to the horizon.
+ * The clouds as things in the scene: each cumulus a heap of round puffs, set where the cloud
+ * field says there is cloud, bigger and higher in a cloud's heart, each puff a disc that always
+ * faces the eye and is drawn as the sphere it stands for (its surface found per pixel, lit by the
+ * Sun on that surface). Below the layer's base a puff is cut off flat: the cloud has a flat base.
+ * They take the haze like anything else and their light from the scene's Sun and sky, read as
+ * they are drawn. The field drifts with the wind; the puffs are laid out again round the eye once
+ * it has moved far enough over the field.
  */
 export class CloudLayer {
-  readonly mesh: THREE.Mesh;
+  readonly mesh: THREE.InstancedMesh;
   private readonly sunDir = new THREE.Vector3(0, 1, 0);
   private readonly sunLight = new THREE.Color();
   private readonly skyLight = new THREE.Color();
   private readonly hazeColour = new THREE.Color();
   private readonly hazeDensity = { value: 0 };
+  private readonly cel = { value: 0 };
   private sun: THREE.DirectionalLight | null = null;
   private sky: THREE.HemisphereLight | null = null;
+  /** Where the eye was over the field (x, z) when the puffs were last laid out. */
+  private laid = new THREE.Vector2(1e9, 1e9);
+  private readonly clouds: Clouds;
+  private readonly base: number;
+  private readonly reach: number;
+  private readonly spacing: number;
 
-  private readonly cel = { value: 0 };
-
-  constructor(clouds: Clouds, air: Air, reach = 9000) {
-    const base = air.base + clouds.height,
-      top = base + clouds.depth;
-    const geometry = new THREE.BoxGeometry(2 * reach, top - base, 2 * reach).translate(0, (base + top) / 2, 0);
+  constructor(clouds: Clouds, air: Air, reach = 11000) {
+    this.clouds = clouds;
+    this.base = air.base + clouds.height;
+    this.reach = reach;
+    this.spacing = clouds.size / 7;
+    const capacity = 12000;
+    const geometry = new THREE.PlaneGeometry(2, 2);
     // a plain material whose shader is wholly replaced: so the cel look's twin of it (look.ts) is the same shader
-    const material = new THREE.MeshBasicMaterial({ name: 'clouds', side: THREE.BackSide, transparent: true, depthWrite: false });
+    const material = new THREE.MeshBasicMaterial({ name: 'clouds', alphaToCoverage: true });
     const uniforms = {
       uCloudDrift: cloudUniform,
       uSunDir: { value: this.sunDir },
@@ -191,97 +208,85 @@ export class CloudLayer {
       uSkyLight: { value: this.skyLight },
       uHaze: { value: this.hazeColour },
       uHazeDensity: this.hazeDensity,
-      uReach: { value: reach },
       uCel: this.cel,
     };
     const vertexShader = /* glsl */ `
-        varying vec3 vAt;   // this point of the slab's far side, relative to the eye
-        void main() {
-          vec4 at = modelMatrix * vec4(position, 1.0);
-          vAt = at.xyz - cameraPosition;
-          gl_Position = projectionMatrix * viewMatrix * at;
-        }`;
+      uniform vec4 uCloudDrift;
+      varying vec2 vUv;
+      varying vec3 vCentre;   // the puff's centre, relative to the eye
+      varying vec3 vSpot;     // this point of its disc, relative to the eye
+      varying float vRadius, vSeed;
+      void main() {
+        vec3 centre = (modelMatrix * vec4(instanceMatrix[3].xyz, 1.0)).xyz;
+        float radius = length(instanceMatrix[0].xyz);
+        // the disc faces the eye, and is a little bigger than the sphere so its outline is the sphere's
+        vec3 toEye = normalize(cameraPosition - centre);
+        vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), toEye));
+        if (dot(right, right) < 0.5) right = vec3(1.0, 0.0, 0.0);
+        vec3 up = cross(toEye, right);
+        vec3 at = centre + (right * position.x + up * position.y) * radius * 1.05 + toEye * radius;
+        vUv = position.xy * 1.05;
+        vCentre = centre - cameraPosition;
+        vSpot = at - cameraPosition;
+        vRadius = radius;
+        vSeed = fract(instanceMatrix[3].x * 0.0137 + instanceMatrix[3].z * 0.0071);
+        gl_Position = projectionMatrix * viewMatrix * vec4(at, 1.0);
+      }`;
     const fragmentShader = /* glsl */ `
-        uniform vec4 uCloudDrift;
-        uniform vec3 uOrigin, uSunDir, uSunLight, uSkyLight, uHaze;
-        uniform float uHazeDensity, uReach, uCel;
-        varying vec3 vAt;
-        ${cloudField(clouds)}
-        void main() {
-          vec3 eye = cameraPosition + uOrigin;
-          float far = length(vAt);
-          vec3 d = vAt / far;
-          // where the ray is inside the slab: from its entry (or the eye) to this far side
-          float lo = uCloudDrift.y, hi = uCloudDrift.w;
-          float t0 = 0.0, t1 = far;
-          if (abs(d.y) > 1e-4) {
-            float ta = (lo - eye.y) / d.y, tb = (hi - eye.y) / d.y;
-            t0 = max(0.0, min(ta, tb));
-            t1 = min(far, max(ta, tb));
-          } else if (eye.y < lo || eye.y > hi) discard;
-          if (t1 <= t0) discard;
-          // A cloud is a heap on a flat base: over a point it rises from the base to a height its density
-          // gives, a dome in the heart and nothing at the edge. March the ray to the first point under that
-          // surface, then close in on it; light it by the surface's slope.
-          const int STEPS = 40;
-          float span = t1 - t0, dt = span / float(STEPS);
-          float hit = -1.0;
-          float prev = t0;
-          for (int i = 0; i <= STEPS; i++) {
-            float t = t0 + dt * float(i);
-            vec3 p = eye + d * t;
-            if (p.y < lo + (hi - lo) * pow(cloudRough(p.xz), 0.55)) { hit = t; break; }
-            prev = t;
-          }
-          if (hit < 0.0) discard;
-          float a0 = prev, a1 = hit;
-          for (int i = 0; i < 6; i++) {
-            float t = 0.5 * (a0 + a1);
-            vec3 p = eye + d * t;
-            if (p.y < lo + (hi - lo) * pow(cloudAt(p.xz), 0.55)) a1 = t; else a0 = t;
-          }
-          vec3 p = eye + d * a1;
-          float dens = cloudAt(p.xz);
-          float h = clamp((p.y - lo) / (hi - lo), 0.0, 1.0);
-          // the surface's normal: the base faces down; a dome's flank faces out by its slope
-          float e = 40.0;
-          vec3 n = vec3(0.0, -1.0, 0.0);
-          if (p.y > lo + 2.0) {
-            float hx = (hi - lo) * (pow(cloudAt(p.xz + vec2(e, 0.0)), 0.55) - pow(cloudAt(p.xz - vec2(e, 0.0)), 0.55));
-            float hz = (hi - lo) * (pow(cloudAt(p.xz + vec2(0.0, e)), 0.55) - pow(cloudAt(p.xz - vec2(0.0, e)), 0.55));
-            n = normalize(vec3(-hx, 2.0 * e, -hz));
-          }
-          // sunlit faces bright, a soft wrap round into the shade, the base grey with light from below; tufts at the edge
-          float sun = clamp(dot(n, uSunDir) * 0.6 + 0.4, 0.0, 1.0) * (0.55 + 0.45 * smoothstep(0.0, 0.5, h));
-          float tuft = airNoise(p.xz / 35.0) * 0.6 + airNoise(p.xz / 13.0) * 0.4;
-          vec3 col = uSunLight * sun * max(uSunDir.y, 0.05) * (0.8 + 0.3 * tuft) + uSkyLight * (0.6 + 0.4 * max(n.y, 0.0));
-          float cover = smoothstep(0.0, 0.12, dens) * smoothstep(0.0, 0.25, dens + 0.3 * (tuft - 0.5));
-          t0 = a1; t1 = a1;   // the haze is measured to the hit
-          // drawn: two tones and a hard edge
-          col = mix(col, mix(uSkyLight * 0.8 + uSunLight * 0.2, uSunLight * 0.85 + uSkyLight, step(0.62, dot(col, vec3(0.3)) / max(dot(uSunLight * 0.9 + uSkyLight, vec3(0.3)), 1e-4))), uCel);
-          cover = mix(cover, step(0.35, cover), uCel);
-          // the haze between the eye and the cloud, as air.ts takes it for everything else: at the cloud's middle
-          vec3 mid = eye + d * 0.5 * (t0 + t1);
-          float a = max(eye.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
-          float b = max(mid.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
-          float mean = abs(a - b) < 1e-3 ? exp(-0.5 * (a + b)) : (exp(-min(a, b)) - exp(-max(a, b))) / abs(b - a);
-          float fogged = 1.0 - exp(-uHazeDensity * 0.5 * (t0 + t1) * mean);
-          col = mix(col, uHaze, fogged);
-          // out at the edge of the slab the sky's own clouds take over: fade over the last tenth
-          float edge = 1.0 - smoothstep(0.85, 1.0, length(mid.xz - eye.xz) / uReach);
-          gl_FragColor = vec4(col, cover * edge);
-          #include <tonemapping_fragment>
-          #include <colorspace_fragment>
-        }`;
+      uniform vec4 uCloudDrift;
+      uniform vec3 uOrigin, uSunDir, uSunLight, uSkyLight, uHaze;
+      uniform float uHazeDensity, uCel;
+      varying vec2 vUv;
+      varying vec3 vCentre, vSpot;
+      varying float vRadius, vSeed;
+      ${fieldAs('air_')}
+      void main() {
+        // the ray from the eye through this pixel, against the puff's sphere
+        vec3 d = normalize(vSpot);
+        float b = dot(d, vCentre), c = dot(vCentre, vCentre) - vRadius * vRadius;
+        float disc = b * b - c;
+        float edge = 1.0 - length(vUv);
+        if (edge < -0.06) discard;
+        // its edge is cauliflower, not a circle: lumps of a fifth of the puff
+        vec2 lump = vUv * 2.6 + vSeed * 17.0;
+        float rim = air_noise2(lump, 5) * 0.6 + air_noise2(lump * 2.3, 6) * 0.4;
+        float alpha = smoothstep(0.0, 0.3, edge - 0.3 * (rim - 0.5) - 0.04);
+        if (alpha <= 0.0) discard;
+        float t = b - sqrt(max(disc, 0.0));
+        vec3 p = d * t;                               // the surface, relative to the eye
+        vec3 world = p + cameraPosition + uOrigin;
+        // the layer's base: everything under it is gone, so the heap stands on a flat floor
+        if (world.y < uCloudDrift.y) discard;
+        vec3 n = normalize(p - vCentre);
+        float h = clamp((world.y - uCloudDrift.y) / (uCloudDrift.w - uCloudDrift.y), 0.0, 1.0);
+        // lit by the Sun across the sphere with a soft wrap; the underside grey with the light that comes up from below
+        // (one puff among many: its own roundness is muted, the heap's height counts more)
+        float sun = clamp(dot(n, uSunDir) * 0.35 + 0.65, 0.0, 1.0) * (0.55 + 0.45 * smoothstep(0.0, 0.7, h));
+        float grain = air_noise2(vUv * 6.0 + vSeed * 31.0, 7) * 0.5 + 0.5;
+        vec3 col = uSunLight * sun * (0.9 + 0.2 * grain) + uSkyLight * (0.6 + 0.4 * max(n.y, 0.0));
+        // drawn: two tones
+        float bright = dot(col, vec3(0.3)) / max(dot(uSunLight + uSkyLight, vec3(0.3)), 1e-4);
+        col = mix(col, mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, step(0.55, bright)), uCel);
+        alpha = mix(alpha, step(0.5, alpha), uCel);
+        // the haze between the eye and the cloud (air.ts)
+        vec3 eye = cameraPosition + uOrigin;
+        float a = max(eye.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
+        float bb = max(world.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
+        float mean = abs(a - bb) < 1e-3 ? exp(-0.5 * (a + bb)) : (exp(-min(a, bb)) - exp(-max(a, bb))) / abs(bb - a);
+        col = mix(col, uHaze, 1.0 - exp(-uHazeDensity * length(p) * mean));
+        gl_FragColor = vec4(col, alpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`;
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = vertexShader;
       shader.fragmentShader = fragmentShader;
     };
     material.customProgramCacheKey = () => 'clouds';
-    this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh = new THREE.InstancedMesh(geometry, material, capacity);
+    this.mesh.count = 0;
     this.mesh.frustumCulled = false;
-    this.mesh.renderOrder = 10; // after the land and everything on it
     this.mesh.raycast = () => {};
     this.mesh.onBeforeRender = (_renderer, scene) => this.light(scene);
   }
@@ -291,12 +296,52 @@ export class CloudLayer {
     this.cel.value = Number(on);
   }
 
-  /** Follow the eye (scene frame), so the slab is always round it. */
-  follow(eye: THREE.Vector3): void {
-    this.mesh.position.set(eye.x, 0, eye.z);
+  /** Follow the eye (scene frame): the puffs drift with the field and are laid out again round the eye as it moves over it. */
+  follow(eye: THREE.Vector3): boolean {
+    this.mesh.position.set(cloudUniform.value.x, 0, cloudUniform.value.z);
+    const fx = eye.x - cloudUniform.value.x,
+      fz = eye.z - cloudUniform.value.z;
+    if (Math.hypot(fx - this.laid.x, fz - this.laid.y) < this.reach * 0.15) return false;
+    this.lay(fx, fz);
+    return true;
   }
 
-  /** Take the light of the scene the slab is drawn in: its Sun, its sky, its haze. */
+  /** Lay the puffs out over the field round (x, z) in the field's frame. */
+  private lay(x: number, z: number): void {
+    this.laid.set(x, z);
+    const c = this.clouds,
+      step = this.spacing;
+    const m = new THREE.Matrix4(),
+      q = new THREE.Quaternion(),
+      s = new THREE.Vector3(),
+      p = new THREE.Vector3();
+    let n = 0;
+    const i0 = Math.floor((x - this.reach) / step),
+      i1 = Math.floor((x + this.reach) / step),
+      j0 = Math.floor((z - this.reach) / step),
+      j1 = Math.floor((z + this.reach) / step);
+    for (let i = i0; i <= i1 && n < this.mesh.instanceMatrix.count; i++)
+      for (let j = j0; j <= j1 && n < this.mesh.instanceMatrix.count; j++) {
+        const r = sequence((i * 73856093) ^ (j * 19349663));
+        const px = (i + r()) * step,
+          pz = (j + r()) * step;
+        if (Math.hypot(px - x, pz - z) > this.reach) continue;
+        const dens = cloudAt(c, px, pz, 0, 0);
+        if (dens < 0.12) continue;
+        // in the heart, big puffs heaped high; at the edge small ones low on the base
+        const radius = step * (0.6 + 0.8 * dens) * (0.75 + 0.5 * r());
+        // the lowest puffs sit with their middles under the base, so the base is cut flat across the whole cloud
+        const height = this.base + radius * (0.1 + 0.3 * r()) + c.depth * 0.8 * dens ** 1.6 * (0.6 + 0.8 * r());
+        m.compose(p.set(px, height, pz), q, s.setScalar(radius));
+        this.mesh.setMatrixAt(n++, m);
+      }
+    this.mesh.count = n;
+    this.mesh.instanceMatrix.clearUpdateRanges();
+    this.mesh.instanceMatrix.addUpdateRange(0, Math.max(1, n) * 16);
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  /** Take the light of the scene the clouds are drawn in: its Sun, its sky, its haze. */
   private light(scene: THREE.Scene): void {
     if (!this.sun || !this.sky)
       scene.traverse((o) => {

@@ -247,6 +247,12 @@ export class Vehicle {
     return (this.seat ?? this.root).worldToLocal(to);
   }
 
+  /** Is this node (part of) its steering wheel? */
+  steers(node: THREE.Object3D): boolean {
+    for (let o: THREE.Object3D | null = node; o && o !== this.root; o = o.parent) if (o === this.tiller?.node) return true;
+    return false;
+  }
+
   /** Has it somewhere to sit? */
   get drivable(): boolean {
     return Boolean(this.seat);

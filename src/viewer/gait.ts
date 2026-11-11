@@ -659,14 +659,15 @@ export function reach(root: THREE.Object3D, side: 'L' | 'R', target: THREE.Vecto
 /**
  * How a figure sits in a seat under a roof: `tall` is the top of its head (helmet and all) over
  * its hips, standing, and `roof` the first thing over the seat's hip point, metres. If the head
- * would not clear it by a few centimetres, the figure sinks into the cushion (`drop`, up to 6 cm)
- * and then leans back (`recline`, radians, up to about 30 degrees) until it does. A man of six
- * foot two in a pressure suit does not sit up straight in a 1960 compact.
+ * would not clear it by a few centimetres, the figure sinks into the cushion (`drop`, up to 8 cm)
+ * and then leans back (`recline`, radians, up to 35 degrees) until it does. A man of six foot
+ * two in a pressure suit does not sit up straight in a 1960 compact. Past that he does not fit,
+ * and what is wrong is the cab: the stage keeps the eyes under its roof all the same.
  */
 export function seatFit(tall: number, roof: number): { drop: number; recline: number } {
   const room = roof - 0.04;
   const need = tall - room;
   if (!(need > 0)) return { drop: 0, recline: 0 };
-  const drop = Math.min(0.06, need);
-  return { drop, recline: Math.min(0.52, Math.acos(Math.min(1, (room + drop) / tall))) };
+  const drop = Math.min(0.08, need);
+  return { drop, recline: Math.min(0.61, Math.acos(Math.min(1, (room + drop) / tall))) };
 }
