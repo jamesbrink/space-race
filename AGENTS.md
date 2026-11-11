@@ -106,6 +106,12 @@ src/
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
+  world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, rotation, mean orbits
+  world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
+  world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
+  world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run
+  viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
+  timebar.ts  time.css                the clock's control
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
@@ -212,6 +218,29 @@ directions, looking for patches of pixels that swap when the camera turns 0.005 
 `dirty`. Scenery that moves by itself (surf) is redrawn twelve times a second. So anything new that
 changes what is on screen must set `this.dirty = true`, or it will show up late. The shadow map is
 likewise drawn on demand (`shadowMap.needsUpdate`): set it when something that casts a shadow moves.
+
+## The world and the sky
+
+`src/world/` is pure TypeScript in doubles with no three.js, and everything in it is tested against
+published values (`tests/world.test.mjs`: Meeus's worked examples and JPL Horizons). Read the header
+of `frames.ts` before using a frame: it states every convention once. Lengths are metres and angles
+radians, except that a place is recorded in degrees as published. A site's frame is the viewer's
+and the model's: +Y up, +X on the site's stated bearing, +Z a quarter turn clockwise from it.
+
+Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, defined once in
+`missions/<nation>/<programme>/sites/<site>.ts`) and the clock's instant give the Sun, the Moon
+with its phase, the planets and the stars (`ephemeris.ts`); `viewer/heavens.ts` draws them and
+`viewer/daysky.ts` derives the light's colour and strength, the sky's colours and the exposure
+from the Sun's height. Positions, sizes and phase are computed; brightnesses are a model fitted by
+eye and say so. Stated accuracy: Sun 0.006 degrees, Moon 0.008, planets 0.01 to 0.13; do not
+quote better.
+
+The simulation clock (`world/clock.ts`, `sr.clock`, the time bar under the section switcher)
+counts seconds from the flight's launch and is stopped at launch until run. A setting follows it
+through `Setting.at(jdUT)`, which returns null unless something on screen changed, so a stopped
+clock costs nothing and a running one redraws only as fast as the sky visibly moves. Anything new
+that depends on the hour takes its instant from the clock and reports change the same way; it does
+not read `flight.launch` or keep its own time.
 
 ## Two looks
 
@@ -376,6 +405,10 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 1. Create `missions/<nation>/<programme>/flights/<flight>/` with the files above. Hardware that
    other flights will reuse (a booster, a pad, a suit) goes in the programme's `vehicles/`,
    `sites/` or `crew/`, with its own `.md`; the flight's `model/*.py` imports it.
+   Record where it flew from: if the site is new, add `sites/<site>.ts` exporting a `SiteDef`
+   (latitude and longitude in WGS 84 degrees, height above the ellipsoid, the bearing of the model
+   frame's +X, the time zone kept that day, each with its confidence and source), set `site` in
+   `flight.ts` from it, and state the computed Sun and Moon in the flight's README.
 2. In each model script, name every top-level node (`srlib.group`) for a part; those names are
    the `node` fields in `flight.ts`. +Z is up in Blender and becomes +Y in the viewer.
 3. Give each part a `summary`, a `detail` and a few `facts`. Write for someone choosing what to
