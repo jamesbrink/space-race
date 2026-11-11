@@ -65,18 +65,18 @@ TRUCK_Y = (-10.0, 26.0)  # the rail trucks' centres
 AXLE = 2.6  # each truck's two axles, either side of its centre
 WHEEL_R = 1.5
 SIDE_X = (7.6, 13.4)  # the base's two side girders, one over each pair of rails
-# Getting up it. That there was a lift is documented; everything else here is estimated: the deck
-# before the lift, the lift's floor at the base and where it stops, the way from the lift between
-# the legs to each platform (its half width, and the ladder well let into one side of it), and the
-# deck over the lift shaft from which the last ladder climbs to the crane.
+# Getting up it (see ../lc-5.md, "Getting about on foot", for what each rests on). The lift is an
+# open mesh cage that runs up the outboard face of the hatch side's leg, boarded from the pad
+# (FHSU F19_051, "Emergency Egress Exercise for MR-4"; NASA 61-MR4-45). Ladders climb the legs in
+# stages between small landings (FHSU F19_004), and a last one goes up the head of the mast to the
+# crane. A deck between the legs joins the two halves of each level behind the vehicle.
 PIT_FRONT = 10.0
-LIFT_FLOOR = 9.4
-LIFT_STOPS = (LIFT_FLOOR, *LEVELS.values())
-WAY = 3.4
-WELL = (1.4, 10.9, 13.2)  # the ladder well in the way: from this x out to the way's edge, between these y
-LADDER_X, LADDER_Y = 3.3, 12.05  # the ladders stand on the well's outer side, the climber facing outward
-SHAFT_DECK = LEVELS[4] + 9.4
-CRANE_LADDER = (4.4, 15.2)
+CAR_W, CAR_Y, CAR_H = 4.0, (10.6, 13.5), 7.2  # the lift's car: across, its front and back, its height
+PAD_STOP = (14.7, 2.3)  # at the pad the car stands outboard of the base: its inner face, and its floor two steps up
+TOP_LEVEL = 112.0  # the landing under the crane: the lift's top stop, and the foot of the last ladder
+LADDER_PLANE = 14.4  # the leg ladders stand this far back (y), the climber behind them facing the leg
+LANDING_BACK = 18.2
+CRANE_LADDER = (4.5, 9.0)
 
 
 def L(x: float, y: float, z: float) -> tuple:
@@ -164,18 +164,20 @@ def frames(mb, s: int, plane: str, at: float, posts, z0: float, z1: float, t=0.2
             sbox(mb, s, p - 0.12, p + 0.12, at - 0.07, at + t + 0.07, z0 + 0.05, z1 - 0.05)
 
 
-def back_wall(parts: Parts, name: str, skin, s: int, X: float, zf: float, h: float, door_side: int) -> None:
-    """The wall of an enclosed level toward the mast. One half has the door from the lift's way in
-    it (the half away from that level's ladder well): its own node, hinged on its outer edge,
-    opening into the room."""
+def back_wall(parts: Parts, name: str, skin, s: int, x0: float, X: float, zf: float, h: float) -> None:
+    """The wall of an enclosed level toward the mast, from x0 out to the level's side. On the hatch
+    side it has the door from the lift in it, where the car stops: its own node, hinged on its
+    outer edge, opening into the room."""
     y0, y1 = DECK_BACK - 0.25, DECK_BACK
-    if s != door_side:
-        sbox(skin, s, 0.06, X - 0.25, y0, y1, zf, zf + h)
+    if s < 0:
+        sbox(skin, s, x0, X - 0.25, y0, y1, zf, zf + h)
         return
-    sbox(skin, s, 0.06, 0.5, y0, y1, zf, zf + h)
-    sbox(skin, s, 0.5, 3.5, y0, y1, zf + 6.8, zf + h)
-    sbox(skin, s, 3.5, X - 0.25, y0, y1, zf, zf + h)
-    door(parts, f"{name}_Door", name, L(s * 3.48, DECK_BACK - 0.125, zf), (-s, 0), 2.96, 6.75, swing=s * 100.0, mat="white")
+    a = car_x(zf) + 0.5
+    b = a + 3.0
+    sbox(skin, s, x0, a, y0, y1, zf, zf + h)
+    sbox(skin, s, a, b, y0, y1, zf + 6.8, zf + h)
+    sbox(skin, s, b, X - 0.25, y0, y1, zf, zf + h)
+    door(parts, f"{name}_LiftDoor", name, L(b - 0.02, DECK_BACK - 0.125, zf), (-1, 0), 2.96, 6.75, swing=100.0, mat="white")
 
 
 def platform(parts: Parts, n: int, s: int) -> None:
@@ -203,7 +205,7 @@ def platform(parts: Parts, n: int, s: int) -> None:
         h, sill, head = 8.0, 3.2, 6.4
         wall(red, glass, s, "x", X, (DECK_FRONT, DECK_BACK), zf, zf + h, [(-9.0, -5.6), (-3.4, 0.0), (2.2, 5.6)], zf + sill, zf + head)
         wall(red, glass, s, "y", DECK_FRONT, (CABIN_IN, X - 0.25), zf, zf + h, [(10.0, 15.0)], zf + sill, zf + head)
-        wall(red, glass, s, "y", DECK_BACK - 0.25, (CABIN_IN, X - 0.25), zf, zf + h)
+        back_wall(parts, name, red, s, CABIN_IN, X, zf, h)
         for y0, y1 in ((DECK_FRONT + 0.25, -3.0), (0.0, DECK_BACK - 0.25)):  # the inner wall, round its doorway
             sbox(red, s, CABIN_IN, CABIN_IN + 0.25, y0, y1, zf, zf + h)
         sbox(red, s, CABIN_IN, CABIN_IN + 0.25, -3.0, 0.0, zf + 6.8, zf + h)
@@ -216,7 +218,8 @@ def platform(parts: Parts, n: int, s: int) -> None:
                 sbox(white, s, X - 0.3, X + 0.05, DECK_FRONT + 0.5, DECK_BACK - 0.5, zz, zz + 0.13)
                 sbox(white, s, CABIN_IN + 0.45, X - 0.55, DECK_FRONT - 0.05, DECK_FRONT + 0.3, zz, zz + 0.13)
         handrail(rails, [L(s * 1.0, DECK_FRONT + 0.25, zf), L(s * (CABIN_IN - 0.3), DECK_FRONT + 0.25, zf)])
-        sbox(fit, s, CABIN_IN + 3.0, X - 0.5, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)  # bench, seen through the windows
+        if s < 0:  # a bench along the back wall, seen through the windows (the hatch side's has the lift's door)
+            sbox(fit, s, CABIN_IN + 3.0, X - 0.5, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
         sbox(fit, s, X - 2.4, X - 0.35, DECK_FRONT + 2.0, DECK_FRONT + 4.5, zf, zf + 5.5)  # a cabinet
     elif n == 3:  # the white room: blue-green panels in a white frame, round the capsule
         h, sill, head = LEVELS[4] - LEVELS[3] - 0.85, 3.4, 8.2  # its roof stands just under level 4's deck
@@ -225,21 +228,22 @@ def platform(parts: Parts, n: int, s: int) -> None:
         front_w = [(1.2, 5.6), (7.4, 11.8)]
         wall(skin, glass, s, "x", X, (DECK_FRONT, DECK_BACK), zf, zf + h, side_w, zf + sill, zf + head)
         wall(skin, glass, s, "y", DECK_FRONT, (0.06, X - 0.25), zf, zf + h, front_w, zf + sill, zf + head)
-        back_wall(parts, name, skin, s, X, zf, h, -1)  # level 3's well is on the hatch side
+        back_wall(parts, name, skin, s, 0.06, X, zf, h)
         notched_half(white, s, zf + h, zf + h + 0.35, holes)
         frames(white, s, "x", X, [DECK_FRONT + 0.35] + [e for w in side_w for e in w] + [DECK_BACK - 0.35], zf, zf + h)
         frames(white, s, "y", DECK_FRONT, [e for w in front_w for e in w] + [X - 0.4], zf, zf + h)
         for zz in (zf + sill - 0.16, zf + head + 0.03):
             sbox(white, s, X - 0.3, X + 0.05, DECK_FRONT + 0.5, DECK_BACK - 0.5, zz, zz + 0.13)
         # inside: a bench along the back wall, a cabinet, a cable tray (TM X-53107 7.5.1.8)
-        sbox(fit, s, 6.0, 12.6, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
+        if s < 0:
+            sbox(fit, s, 6.0, 12.6, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
         sbox(fit, s, 11.0, 13.1, DECK_FRONT + 2.0, DECK_FRONT + 4.5, zf, zf + 5.5)
         sbox(fit, s, 2.0, 12.8, DECK_BACK - 0.95, DECK_BACK - 0.35, zf + h - 1.2, zf + h - 0.9)
     else:  # level 4: the shelter round the escape tower, with the deflector inside, and a railed roof
         h = 9.0
         wall(red, glass, s, "x", X, (DECK_FRONT, DECK_BACK), zf, zf + h, [(-8.0, -4.5), (-2.5, 1.0), (3.0, 6.5)], zf + 4.0, zf + 7.5)
         wall(red, glass, s, "y", DECK_FRONT, (0.06, X - 0.25), zf, zf + h, [(5.0, 10.5)], zf + 4.0, zf + 7.5)
-        back_wall(parts, name, red, s, X, zf, h, 1)
+        back_wall(parts, name, red, s, 0.06, X, zf, h)
         notched_half(red, s, zf + h, zf + h + 0.35, [(0.0, NOTCH[4])])  # the roof: the tower's tip stands through it
         if fine():
             frames(white, s, "x", X, [DECK_FRONT + 0.35, -8.0, -4.5, -2.5, 1.0, 3.0, 6.5, DECK_BACK - 0.35], zf, zf + h)
@@ -268,7 +272,8 @@ def platform(parts: Parts, n: int, s: int) -> None:
         for x in (2.8, 8.6):
             for y0 in (-6.8, 6.4):
                 sbox(red, s, x - 0.2, x + 0.2, y0, y0 + 0.4, zf, zf + 5.1 + 2.6 * ((x - 2.4) / 6.6) ** 1.6)
-        sbox(fit, s, 9.5, 13.1, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
+        if s < 0:
+            sbox(fit, s, 9.5, 13.1, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
 
 
 # ------------------------------------------------------------------------ the rest
@@ -300,6 +305,89 @@ def wheelset(parts: Parts, k: int, sx: int, yc: float) -> None:
         inward = -d  # toward the pair's middle: the flange runs inside the rail
         steel.lathe(ftp(tread), 32, matrix=axes(L(x, yc, zc), (0, 1, 0), (inward, 0, 0)))
     steel.tube(P(*L(sx * RAIL_PAIR_X - 3.45, yc, zc)), P(*L(sx * RAIL_PAIR_X + 3.45, yc, zc)), 0.25 * FT, 12)
+
+
+def car_x(z: float) -> float:
+    """The inner face of the lift's car when its floor is at height z: it rides the leg's outboard face."""
+    return leg_x(max(z, BASE_Z)) + LEG + 0.4
+
+
+def lift_stops() -> list[tuple[str, float, float]]:
+    """The lift's stops: name, the car's inner face (x), its floor (z)."""
+    return [("Pad", *PAD_STOP)] + [(f"Level {n}", car_x(z), z) for n, z in LEVELS.items()] + [("Crane", car_x(TOP_LEVEL), TOP_LEVEL)]
+
+
+def access(parts: Parts) -> None:
+    """How people went up: the lift, the decks between the legs, the ladders and their landings."""
+    g = "ServiceStructure"
+    deck, white, grey = parts(g, "deck"), parts(g, "white"), parts(g, "grey", True)
+    y0, y1 = CAR_Y
+
+    # ---- the lift: an open cage of mesh panels in an angle frame, its own node, built at the pad
+    car = "ServiceStructure_Lift"
+    stops = lift_stops()
+    xi, zf = PAD_STOP
+    parts.node(car, g, L(xi + CAR_W / 2, (y0 + y1) / 2, zf), lift=1, stops=[[round((x - xi) * FT, 3), round((z - zf) * FT, 3)] for _, x, z in stops])
+    frame, floor, panel = parts(car, "grey"), parts(car, "deck"), parts(car, "mesh")
+    lbox(floor, (xi, y0, zf - 0.18), (xi + CAR_W, y1, zf))
+    lbox(frame, (xi - 0.05, y0 - 0.05, zf + CAR_H), (xi + CAR_W + 0.05, y1 + 0.05, zf + CAR_H + 0.12))
+    for x in (xi + 0.07, xi + CAR_W - 0.07):
+        for y in (y0 + 0.07, y1 - 0.07):
+            lbeam(frame, (x, y, zf), (x, y, zf + CAR_H), 0.14)
+        lbeam(frame, (x, y0 + 0.14, zf + 3.5), (x, y1 - 0.14, zf + 3.5), 0.1)
+    lbeam(frame, (xi + 0.14, y1 - 0.07, zf + 3.5), (xi + CAR_W - 0.14, y1 - 0.07, zf + 3.5), 0.1)
+    for a, b in (((xi + 0.07, y0), (xi + 0.07, y1)), ((xi + CAR_W - 0.07, y0), (xi + CAR_W - 0.07, y1)), ((xi, y1 - 0.07), (xi + CAR_W, y1 - 0.07))):
+        quad = [P(*L(*a, zf + 0.1)), P(*L(*b, zf + 0.1)), P(*L(*b, zf + CAR_H - 0.1)), P(*L(*a, zf + CAR_H - 0.1))]
+        panel.add([tuple(v) for v in quad], [(0, 1, 2, 3)])
+    # steps up to it from the pad, and from the track bed when the structure has rolled off the slab:
+    # at the service position the lower two are inside the hardstand
+    for k, top in enumerate((-0.75, -0.05, 0.77, 1.53)):
+        lbox(deck, (xi, y0 - 4.05 + k, -1.6), (xi + CAR_W, y0 - 3.05 + k if k < 3 else y0 - 0.05, top))
+    # its guides up the leg, both sides (the pad 6 side's lift is not built: see lc-5.md)
+    for sx in (-1, 1):
+        for y in (y0 + 0.5, y1 - 0.5):
+            for za, zb in zip(range(10, int(TOP_LEVEL) + 8, 14), range(24, int(TOP_LEVEL) + 22, 14)):
+                zb = min(zb, TOP_LEVEL + 9.0)
+                lbeam(grey, (sx * (car_x(za) - 0.2), y, za), (sx * (car_x(zb) - 0.2), y, zb), 0.16)
+    # a sill at each stop from the car to the level
+    for _, x, z in stops[1:]:
+        lbox(deck, (x, DECK_BACK + 0.02, z - 0.2), (x + CAR_W, y0 - 0.05, z))
+
+    # ---- at each level a deck between the legs, joining the halves behind the vehicle, and behind the
+    # hatch side's leg a landing for the ladders. Each ladder run stands on one landing and comes up
+    # through a gap in the next, beside the floor it steps off on to.
+    floors = [BASE_Z + 0.3, *LEVELS.values(), TOP_LEVEL]
+    arrive = leg_x(floors[1]) + 3.25  # where the first run stands, on the base's deck
+    for k, zf in enumerate(floors[1:], 1):
+        lx = leg_x(zf)
+        w = lx - LEG - 0.05
+        lbox(deck, (-w, DECK_BACK + 0.03, zf - 0.3), (w, LANDING_BACK, zf))
+        lbox(deck, (w, 16.2, zf - 0.3), (lx + 4.2, LANDING_BACK, zf))
+        for xa, xb in ((w, arrive - 0.9), (arrive + 0.9, lx + 4.2)):
+            if xb - xa > 0.3:
+                lbox(deck, (xa, MAST_Y + LEG + 0.15, zf - 0.3), (xb, 16.2, zf))
+        handrail(
+            white,
+            [L(-w + 0.1, MAST_Y + LEG + 0.2, zf), L(-w + 0.1, LANDING_BACK - 0.1, zf), L(lx + 4.1, LANDING_BACK - 0.1, zf), L(lx + 4.1, 16.3, zf)],
+            3.5,
+        )
+        parts.ladder(g, f"leg{k}", L(arrive, LADDER_PLANE, floors[k - 1]), L(arrive, LADDER_PLANE, zf), face=(0, -1, 0))
+        for z in range(int(floors[k - 1]) + 6, int(zf) - 2, 10):  # its stand-offs to the leg
+            to = min(max(arrive, leg_x(z) - 0.8), leg_x(z) + 0.8)
+            for dx in (-0.74, 0.74):
+                lbeam(white, (arrive + dx, LADDER_PLANE, z), (to + dx * 0.6, MAST_Y + LEG - 0.1, z), 0.1)
+        arrive = lx - 0.6 if arrive > lx + 1.3 else arrive + 2.6  # the next run stands on the floored side
+
+    # ---- under the crane: the deck runs forward past the legs to the lift's top stop, and the last
+    # ladder climbs from it beside the crane's girder to a step off on to the walkway
+    zt, wt = TOP_LEVEL, leg_x(TOP_LEVEL) - LEG - 0.05
+    xo = car_x(zt) + CAR_W + 0.1
+    lbox(deck, (-wt, 7.6, zt - 0.3), (wt, DECK_BACK + 0.03, zt))
+    lbox(deck, (wt, 7.6, zt - 0.3), (xo, y0 - 0.05, zt - 0.2))
+    handrail(white, [L(-wt + 0.1, DECK_BACK, zt), L(-wt + 0.1, 7.7, zt), L(xo - 0.1, 7.7, zt), L(xo - 0.1, y0 - 0.2, zt)], 3.5)
+    zw = MAST_TOP + 5.5 + 0.6  # the crane's walkway
+    lbox(deck, (3.6, CRANE_LADDER[1] - 1.6, zw - 0.3), (4.3, CRANE_LADDER[1] + 1.6, zw))
+    parts.ladder(g, "crane", L(*CRANE_LADDER, zt - 0.2), L(*CRANE_LADDER, zw), face=(-1, 0, 0))
 
 
 def build(parts: Parts) -> None:
@@ -351,9 +439,13 @@ def build(parts: Parts) -> None:
     lbox(fit, (2.0, 30.2, 9.32), (6.9, 31.6, 15.2))
     # the stairs up to the base's deck from the pad, at the back on the hatch side (the photographs
     # show a flight here; where it stood on the base is estimated)
-    foot, top = L(10.5, 45.4, 0.0), L(10.5, 32.0, 9.3)
-    stairs(dark, foot, top, 3.0, rise=0.63)
-    stair_rails(white, foot, top, 3.0, 3.2)
+    # (NASA 61-MR4-45: a straight flight at the outboard end of the base, descending away from the
+    # vehicle). Its foot is 9 in under the pad's surface: inside the hardstand while the structure
+    # stands on it, and on the track's ballast once it has rolled back, so the first step is never
+    # more than a riser either way.
+    foot, top = L(10.5, 46.6, -0.75), L(10.5, 32.0, 9.3)
+    stairs(dark, foot, top, 3.0)
+    stair_rails(white, L(10.5, 45.5, 0.0), top, 3.0, 3.2)
     lbox(deck, (-7.42, PIT_FRONT, 9.0), (7.42, 18.0, 9.3))  # the deck before the lift, between the legs
     handrail(white, [L(-7.2, PIT_FRONT + 0.2, 9.3), L(7.2, PIT_FRONT + 0.2, 9.3)], 3.5)
     lbox(deck, (-SIDE_X[1], 18.0, 9.0), (-7.42, 32.0, 9.3))
@@ -382,7 +474,7 @@ def build(parts: Parts) -> None:
 
     def way_clear(za: float, zb: float) -> bool:
         """Whether a member across the A between two heights leaves every level's way from the lift to its platform open."""
-        return all(zb < zf - 0.7 or za > zf + 7.0 for zf in (*LEVELS.values(), SHAFT_DECK))
+        return all(zb < zf - 0.7 or za > zf + 7.0 for zf in (*LEVELS.values(), TOP_LEVEL))
 
     for i, z in enumerate(zs[2:-1:2]):  # ties across the A, and an X between each pair, where no way through is wanted
         for yy in (MAST_Y - LEG, MAST_Y + LEG):
@@ -396,53 +488,10 @@ def build(parts: Parts) -> None:
     # the brackets the platforms slide on, across the mast's front under each level
     for zf in LEVELS.values():
         lbox(red, (-DECK_X + 0.2, DECK_BACK + 0.02, zf - 1.6), (DECK_X - 0.2, MAST_Y - LEG + 0.4, zf - 0.6))  # level 4's sits on level 3
-        for sx in (-1, 1):  # and a knee under each end, back to the leg
-            lbeam(red, (sx * (DECK_X - 1.0), DECK_BACK + 0.5, zf - 1.6), (sx * (leg_x(zf - 9.0) + LEG), MAST_Y - LEG, zf - 9.0), 0.4)
+        # and a knee under the pad 6 side's end, back to the leg (the lift runs where the other would be)
+        lbeam(red, (-(DECK_X - 1.0), DECK_BACK + 0.5, zf - 1.6), (-(leg_x(zf - 9.0) + LEG), MAST_Y - LEG, zf - 9.0), 0.4)
 
-    # ---- the lift up the back of the mast: a shaft of angle iron, open toward the mast, and its car.
-    # That Shepard went up by the structure's elevator is documented (Results, p. 77); where it
-    # ran and what it looked like are not. The car is its own node, at the base, to be driven.
-    ey = MAST_Y + LEG + 0.4
-    top_e = SHAFT_DECK - 0.3
-
-    def shaft(i: int, z: float):
-        return L(2.4 * (1 if i in (0, 3) else -1), ey + 4.6 * (1 if i < 2 else 0), z)
-
-    ez = [BASE_Z + 0.3 + (top_e - BASE_Z - 0.3) * i / 10 for i in range(11)]
-    for z0, z1 in zip(ez, ez[1:]):
-        for i in range(4):
-            beam(white, shaft(i, z0), shaft(i, z1), 0.3)
-        for i, j in ((3, 0), (0, 1), (1, 2)):  # braced on its sides and back
-            beam(white, shaft(i, z1), shaft(j, z1), 0.2)
-            beam(white, shaft(i, z0), shaft(j, z1), 0.16)
-    car = "ServiceStructure_Lift"
-    cy0, cy1 = ey + 0.4, ey + 4.0
-    parts.node(car, g, L(0.0, (cy0 + cy1) / 2, LIFT_FLOOR), lift=1, stops=[round((z - LIFT_FLOOR) * FT, 3) for z in LIFT_STOPS])
-    cage, cfloor = parts(car, "grey"), parts(car, "deck")
-    lbox(cfloor, (-2.0, cy0, LIFT_FLOOR - 0.18), (2.0, cy1, LIFT_FLOOR))
-    lbox(cage, (-2.0, cy0, LIFT_FLOOR + 7.3), (2.0, cy1, LIFT_FLOOR + 7.5))
-    lbox(cage, (-2.0, cy1 - 0.12, LIFT_FLOOR), (2.0, cy1, LIFT_FLOOR + 7.3))  # its back
-    for sx in (-1, 1):  # its sides: plate to waist height, a rail above, a post at the front
-        sbox(cage, sx, 1.88, 2.0, cy0 + 0.1, cy1 - 0.12, LIFT_FLOOR, LIFT_FLOOR + 3.6)
-        sbox(cage, sx, 1.84, 2.0, cy0, cy0 + 0.16, LIFT_FLOOR, LIFT_FLOOR + 7.3)
-        lbeam(cage, (sx * 1.94, cy0 + 0.1, LIFT_FLOOR + 5.4), (sx * 1.94, cy1 - 0.12, LIFT_FLOOR + 5.4), 0.1)
-    # ---- at every level a way forward from the lift between the legs to the platform, railed, with a
-    # ladder well in one side of it. The ladders go up in runs from level to level, changing sides,
-    # so each run's foot is on floor and its head comes up through the next level's well.
-    floors = [9.3, *LEVELS.values(), SHAFT_DECK]
-    for k, zf in enumerate(floors[1:]):
-        hole = 1 if k % 2 == 0 else -1  # which side this level's well is on
-        x0, ya, yb = WELL
-        lbox(deck, (-WAY, DECK_BACK + 0.03, zf - 0.3), (WAY, ya, zf))
-        lbox(deck, (-WAY, yb, zf - 0.3), (WAY, cy0 - 0.05, zf))
-        sbox(deck, -hole, -x0, WAY, ya, yb, zf - 0.3, zf)
-        for sx in (-1, 1):
-            handrail(white, [L(sx * (WAY - 0.1), MAST_Y - LEG + 0.2, zf), L(sx * (WAY - 0.1), cy0 - 0.2, zf)], 3.5)
-        parts.ladder(g, f"level{k + 1}", L(hole * LADDER_X, LADDER_Y, floors[k]), L(hole * LADDER_X, LADDER_Y, zf), face=(hole, 0, 0))
-    # the deck over the shaft, with the lift's winding gear on it, and the ladder from it to the crane
-    lbox(deck, (-2.6, cy0, SHAFT_DECK - 0.3), (6.6, ey + 4.6, SHAFT_DECK))
-    lbox(grey, (-1.8, ey + 1.4, SHAFT_DECK), (0.8, ey + 3.8, SHAFT_DECK + 2.6))
-    handrail(white, [L(6.5, ey + 0.1, SHAFT_DECK), L(6.5, ey + 4.5, SHAFT_DECK), L(-2.5, ey + 4.5, SHAFT_DECK), L(-2.5, ey + 0.1, SHAFT_DECK)], 3.5)
+    access(parts)
 
     # ---- the hammerhead crane on the head: a girder fore and aft, two trolleys and their hooks
     zc0, zc1 = MAST_TOP, MAST_TOP + 5.5
@@ -468,13 +517,6 @@ def build(parts: Parts) -> None:
     handrail(white, [L(3.4, jy[-1] - 0.2, zc1 + 0.6), L(3.4, CRANE_LADDER[1] + 1.7, zc1 + 0.6)], 2.9)
     lbeam(white, (-3.4, jy[-1] - 0.2, zc1 + 0.6 + 2.9), (3.4, jy[-1] - 0.2, zc1 + 0.6 + 2.9), 0.13)
     lbeam(white, (-3.4, jy[-1] - 0.2, zc1 + 0.6 + 1.45), (3.4, jy[-1] - 0.2, zc1 + 0.6 + 1.45), 0.13)
-
-    # the last ladder: up the back of the mast beside the crane's girder, to a step off on to its walkway
-    lbox(deck, (3.6, CRANE_LADDER[1] - 1.6, zc1 + 0.3), (4.3, CRANE_LADDER[1] + 1.6, zc1 + 0.6))
-    parts.ladder(g, "crane", L(*CRANE_LADDER, SHAFT_DECK), L(*CRANE_LADDER, zc1 + 0.6), face=(-1, 0, 0))
-    for k in range(1, int((MAST_TOP - SHAFT_DECK) / 12.0) + 1):  # its stand-offs to the mast's leg
-        z = SHAFT_DECK + k * 12.0 - 0.5
-        lbeam(white, (CRANE_LADDER[0], CRANE_LADDER[1] - 0.74, z), (CRANE_LADDER[0], MAST_Y + LEG - 0.2, z), 0.1)
 
     lamps.lathe(ftp([(0.0, 0.0), (0.4, 0.0), (0.4, 0.9), (0.0, 1.1)]), 12, matrix=Matrix.Translation(P(*L(0.0, jy[0] + 0.6, zc1 + 0.6))))  # beacon
     lbox(grey, (-3.4, 16.0, zc0 - 6.0), (3.4, 26.0, zc0 - 0.02))  # hoist machinery under the girder's tail

@@ -1,4 +1,4 @@
-import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
+import type { Action, Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
 
 const IN = 0.0254;
@@ -339,6 +339,14 @@ const held = (node: string, axis: [number, number, number], degrees: number): Mo
 const WHEEL_R = 0.457; // the structure's rail wheels
 const ROLL = [33.53, 19.2]; // metres: to the edge of the pad, then on to the launch position
 
+/** A door leaf on its own hinged node, opened and shut on foot. `degrees` is its `swing` in the model: about the vertical, anticlockwise from above. */
+const doorAction = (id: string, node: string, degrees: number): Action => ({
+  id,
+  label: 'Open',
+  on: node,
+  do: { kind: 'toggle', moves: [swing(node, [0, 1, 0], degrees, 0, 1)], back: 'Close' },
+});
+
 const padParts: Part[] = [
   {
     node: 'ServiceStructure',
@@ -351,7 +359,7 @@ const padParts: Part[] = [
       'blockhouse, a deflector against an accidental firing of the escape rocket, and at capsule level an ' +
       'enclosed, air-conditioned white room: films from the unmanned flights had shown dust floating round ' +
       'the cabin in weightlessness. Shepard rode its elevator at 05:15 and entered the capsule from the white ' +
-      'room. It rolled to the edge of the pad at T−55 minutes and to its launch position at T−8:45.',
+      'room. The elevator was an open mesh cage boarded from the pad; ladders climbed the legs in stages beside it. It rolled to the edge of the pad at T−55 minutes and to its launch position at T−8:45.',
     facts: [
       ['Height', 'about 135 ft (41 m); 140 ft is quoted'],
       ['Built', 'Noble Co., Oakland; at this complex from 1955'],
@@ -359,6 +367,34 @@ const padParts: Part[] = [
       ['Platforms', 'four, each in two halves'],
       ['Moves', 'on rails, under its own power'],
       ['Rolled back', '06:37 EST, T−55 min'],
+      ['Lift', 'an open cage up the hatch side’s leg, from the pad'],
+    ],
+    actions: [
+      {
+        // The car rides the leaning leg's outboard face, so each stop is a little further in than the one below.
+        // `by` is from where it is built, at the pad: metres across (toward the mast is negative) and up.
+        id: 'lift',
+        label: 'Lift',
+        on: 'ServiceStructure_Lift',
+        do: {
+          kind: 'lift',
+          node: 'ServiceStructure_Lift',
+          stops: [
+            { name: 'Pad', by: [0, 0, 0] },
+            { name: 'Level 1', by: [-1.415, 13.188, 0] },
+            { name: 'Level 2', by: [-1.585, 15.839, 0] },
+            { name: 'Level 3 · white room', by: [-1.787, 18.979, 0] },
+            { name: 'Level 4', by: [-2.015, 22.545, 0] },
+            { name: 'Crane', by: [-2.714, 33.437, 0] },
+          ],
+        },
+      },
+      doorAction('office-door', 'ServiceStructure_OfficeDoor', 100),
+      doorAction('level-2-lift-door', 'ServiceStructure_Platform2_Right_LiftDoor', 100),
+      doorAction('level-2-cabin-door', 'ServiceStructure_Platform2_Right_Door', 100),
+      doorAction('level-2-far-cabin-door', 'ServiceStructure_Platform2_Left_Door', -100),
+      doorAction('white-room-door', 'ServiceStructure_Platform3_Right_LiftDoor', 100),
+      doorAction('level-4-door', 'ServiceStructure_Platform4_Right_LiftDoor', 100),
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -529,6 +565,11 @@ const padParts: Part[] = [
       'else had left by T−35 minutes. Their positions here are read off photographs. The emergency shower ' +
       'at the pad’s edge and the trailer lettered NASA SP-No 1 are in NASA’s photographs of this pad that ' +
       'week; the huts and the barricade are from photographs taken in July.',
+    actions: [
+      doorAction('trailer-door', 'GroundEquipment_TrailerDoor', -100),
+      doorAction('hut-1-door', 'GroundEquipment_Hut1Door', -100),
+      doorAction('hut-2-door', 'GroundEquipment_Hut2Door', -100),
+    ],
     explode: [0, 0, 0],
     order: 0,
   },

@@ -450,6 +450,7 @@ def ladder(
     spacing: float = 0.3,
     rail: float = 0.045,
     rung: float = 0.025,
+    proud: float = 1.0,
     origin: Sequence[float] = (0.0, 0.0, 0.0),
 ) -> bpy.types.Object:
     """A fixed ladder, as its own object, which the viewer lets a walker climb.
@@ -462,8 +463,10 @@ def ladder(
 
     The contract with the viewer (walk mode) is the custom property `climb`, which travels as a
     glTF extra like `shell` does: the walker climbs anything so marked, inside its bounding box.
-    So nothing but the run itself belongs in this object: no cage, no handholds standing above
-    the top (draw those in the structure's own mesh). It also needs a floor within 0.3 m of the
+    It knows the ladder only by that box (foot, top, and which way is thin: the thin way is the
+    side it is climbed from), so nothing but stringers and rungs belongs in this object: no cage,
+    no stand-offs, no landing. The stringers stand `proud` of the top floor (a metre, as real ones
+    do), which is also what lets a walker on that floor find the ladder to go down. It also needs a floor within 0.3 m of the
     run's top and 0.6 m of clear standing room at each end; that is the caller's to provide."""
     a, b = Vector(foot), Vector(top)
     up = b - a
@@ -471,8 +474,9 @@ def ladder(
     side = Vector((0.0, 0.0, 1.0)).cross(f).normalized() * (width / 2)
     o = Vector(origin)
     mb = MeshBuilder()
+    head = b + up.normalized() * proud  # the stringers stand proud of the floor they reach, to be held on the way off
     for s in (-1.0, 1.0):
-        mb.tube(a + side * s - o, b + side * s - o, rail / 2 * math.sqrt(2), 4)
+        mb.tube(a + side * s - o, head + side * s - o, rail / 2 * math.sqrt(2), 4)
     step = spacing if DETAIL >= 0.5 else spacing * 2
     n = max(1, int(up.length / step))
     for k in range(1, n + 1):

@@ -452,7 +452,9 @@ def stairs(
     n = max(2, math.ceil((b.z - a.z) / rise - 1e-6))
     for k in range(1, n):  # the nth riser lands on the upper floor
         c = a + run * ((k - 0.5) / (n - 1)) + Vector((0, 0, (b.z - a.z) * k / n - tread_t / 2))
-        obox(mb, tuple(c), tuple(along), (0, 0, 1), (run.length / (n - 1) + 0.08 * f, width, tread_t))
+        obox(
+            mb, tuple(c), tuple(along), (0, 0, 1), (run.length / (n - 1) + 0.2 * f, width, tread_t)
+        )  # each tread laps the one below: no gap to fall through
     for s in (-1, 1):
         lo = a + side * (s * (width / 2 + 0.06 * f)) + Vector((0, 0, 0.1 * f))
         hi = b + side * (s * (width / 2 + 0.06 * f)) + Vector((0, 0, -0.25 * f))

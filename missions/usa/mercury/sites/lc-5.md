@@ -238,21 +238,21 @@ structure is built and labelled estimated.
 
 | Structure | Way up, from the ground | Basis |
 | --- | --- | --- |
-| Service structure, to the base's deck | stairs from the pad at the base's back corner, hatch side: 15 risers of 7.4 in, 3 ft wide | a flight at the base: documented (GPN-2000-001006); which corner: estimated |
-| …to levels 1 to 4 | **the lift** (`ServiceStructure_Lift`, origin at its floor's middle, built at the base) from the deck between the legs; stops at 0, 11.02, 13.68, 16.82 and 20.38 m above its lowest (the base, levels 1, 2, 3, 4). From each stop a railed way 6.8 ft wide runs forward between the legs to the platform | lift: documented (Shepard "ascended the gantry" by its elevator, *Results* p. 77). Its place behind the mast, its car, its stops' heights and the ways: estimated |
-| …the same without the lift | five ladders in a well in that way, base to level 1 to 2 to 3 to 4 to the deck over the lift shaft, changing sides at each level so that every run starts on floor | ladders on the mast: seen in the photographs; this arrangement: estimated |
+| Service structure: the lift | **an open cage of mesh panels**, boarded from the pad by two steps on the hatch side, outboard of the base. It rides the outboard face of that side's leg (`ServiceStructure_Lift`, origin at its floor's middle, built at the pad). Stops: the pad, levels 1 to 4, and the landing under the crane, at 0, 13.19, 15.84, 18.98, 22.55 and 33.44 m above the pad stop, each 0.2 to 0.7 m further in than the last as the leg leans | **documented**: that there were lifts ("elevators on each side", Noble's plans; "Elevators traveled up and down the mast, with stops at various work-levels, to a 15-ton hammerhead crane", Corps of Engineers history, both in *A Noble Endeavor*); that Shepard used one (NASA caption 71P-0270: "makes his way from the elevator to the cleanroom"; *Results* p. 77: "0515 ascend gantry"); the car, its mesh, its canopy and that it was boarded from the pad (FHSU F19_051, MR-4's egress exercise; NASA 61-MR4-45). **Estimated**: that it rode the leg's face (no photograph shows its guides), its size (4 by 2.9 by 7.2 ft), where it stopped, which side Shepard rode |
+| …from the lift into each level | level 1: straight on to the open deck. Levels 2, 3 (the white room) and 4: a door in the level's back wall where the car stops (`…Platform2_Right_LiftDoor`, `…Platform3_Right_LiftDoor`, `…Platform4_Right_LiftDoor`), opening inward | GPN-2000-001012 shows Shepard stepping through a narrow doorway into the white room: documented that there was one; its place estimated |
+| …between the two halves of a level | a deck between the legs behind the vehicle, at every level | at level 1: documented (a catwalk with chain rails joins the halves; the 21 April egress-test photograph, 61-MR4-65). At the other levels: estimated |
+| …to the base's deck | stairs from the pad at the outboard end of the base on the hatch side, descending away from the vehicle: 17 risers of 7.1 in, going 11 in, 3 ft between the rails | documented (61-MR4-45; FHSU F19_004) |
+| …up without the lift | **ladders up the hatch side's leg in stages**, each run from one small railed landing behind the leg to the next: base deck to level 1 (36 ft), then to levels 2, 3, 4 and the landing under the crane at 112 ft | ladders in stages on the legs' outboard and rear faces with small landings: documented (F19_004, 61-MR4-45: an uncaged ladder from the deck to the lowest platform). Which face, the landings' sizes and that they stand at the levels: estimated. The real top run had safety hoops; none is built |
+| …to the crane's walkway | from the landing under the crane, a ladder beside the crane's girder, 20 ft | a hooped ladder up the head of the mast: documented (the egress-test photograph; F16_015). Its place: estimated |
 | …into level 2's cabins | a door in each cabin's inner wall (`…Platform2_Left_Door`, `…_Right_Door`) | estimated |
-| …into the white room (level 3) | a door in its back wall, pad 6 side (`…Platform3_Left_Door`): the lift's way leads to it | that the pilot walked in from the lift: documented; the door's place: estimated |
-| …into level 4's shelter | a door in its back wall, hatch side (`…Platform4_Right_Door`) | estimated |
-| …to the crane's walkway | from the deck over the lift shaft (85.2 ft), a ladder up the back of the mast beside the crane's girder, 47 ft, to a step on to the walkway | estimated |
-| …into the office | its door (`ServiceStructure_OfficeDoor`), from the deck before the lift | estimated |
+| …into the office | its door (`ServiceStructure_OfficeDoor`), from the deck between the legs | estimated: see "What the model gets wrong" for where the office really was |
 | Camera towers | a ladder up the face toward the launcher, ground to the top deck | estimated |
 | Cherry picker | none: its cab was reached from the ground with the jib lowered, or from the capsule's hatch | its use: documented (TM X-53107 7.3.3) |
 | Trailer NASA SP-No 1, the pad's two huts | four steps and a door; a step and a door | estimated |
 | Blockhouse | the ramp to the blast doors in the back wall (`Blockhouse_BlastDoor1`, `_BlastDoor2`); the plate door on the pad 6 side (`Blockhouse_SideDoor`) with a step | doors: documented in kind (double blast doors); their places: the 2005 photograph and F16_016 |
-| …its roof | the ladder on the pad 5 side's wall, 16 ft, on to the roof's edge | there today; not seen in 1961: estimated |
+| …its roof | the ladder on the pad 5 side's wall, 16 ft, on to the roof's edge | estimated: F16_016 shows no ladder on the two faces it sees (the pad 6 side and the back), so it was on a face it does not; Complex 26's twin has an outside ladder today |
 | Ready rooms | a door to the drive and one under the breezeway (`ReadyRoom_Door1`, `_Door2`), a 10 in step up from the shell | estimated |
-| Pad 6's gantry | stairs from the pad on to the east truck (12 risers); a ladder up the east leg's south face to a landing level with the deck under the enclosure (39 ft up); a second ladder from that landing to the walkway across the top (98.6 ft) | ladders on the legs: F19_008; the rest: estimated. The work enclosure is a closed box with nothing inside: it cannot be entered |
+| Pad 6's gantry | stairs from the pad on to the east truck (12 risers); a ladder up the east leg's south face to a landing level with the deck under the enclosure (39 ft up); a second ladder from that landing to the walkway across the top (98.6 ft) | hooped ladders on the outboard face of each leg with small landings, and a light stair to the deck: documented (*A Noble Endeavor* p. 10, 1959). Which face and where the landing is: estimated. It also had "elevators" (the same page): not built. The work enclosure is a closed box with nothing inside: it cannot be entered |
 | Scaffold stair tower | six flights of 10 risers, a boarded landing at each turn | F19_008 |
 | Outbuildings | each has its doors as nodes (`Outbuildings_<Hut1/Hut2/Gen/Shed>Door<n>`) and a floor inside, 6 in above the ground | estimated |
 
@@ -260,17 +260,36 @@ Ladders (each its own object `<node>_Ladder<Name>`, marked `climb`, at all three
 
 | Object | From | To |
 | --- | --- | --- |
-| `ServiceStructure_LadderLevel1` … `Level4` | the base's deck (9.3 ft), then each level's way | level 1 (45.1 ft), 2 (53.8), 3 (64.6), 4 (75.8) |
-| `ServiceStructure_LadderLevel5` | level 4's way | the deck over the lift shaft (85.2 ft) |
-| `ServiceStructure_LadderCrane` | the deck over the lift shaft | the crane's walkway (132.1 ft) |
+| `ServiceStructure_LadderLeg1` | the base's deck (9.3 ft) | level 1's landing (45.1 ft) |
+| `ServiceStructure_LadderLeg2`, `Leg3`, `Leg4` | each level's landing | levels 2 (53.8), 3 (64.6), 4 (75.8 ft) |
+| `ServiceStructure_LadderLeg5` | level 4's landing | the landing under the crane (112 ft) |
+| `ServiceStructure_LadderCrane` | the landing under the crane | the crane's walkway (132.1 ft) |
 | `CameraTowers_LadderTower1`, `_LadderTower2` | the pad | the towers' top decks (62 and 50 ft) |
 | `Blockhouse_LadderRoof` | the shell paving | the roof's edge (15.6 ft) |
 | `Pad6Gantry_LadderLower` | the east truck's top (7 ft) | the landing (39 ft) |
 | `Pad6Gantry_LadderUpper` | the landing | the walkway across the top (98.6 ft) |
 
-Doors are built shut, each leaf its own node with its origin on its hinge line and `swing` (degrees
-about the vertical, anticlockwise from above) saying how it opens. The lift's `stops` are metres
-above its lowest stop.
+Every ladder's stringers stand a metre proud of the floor it reaches. Doors are built shut, each
+leaf its own node with its origin on its hinge line and `swing` (degrees about the vertical,
+anticlockwise from above) saying how it opens. The lift's `stops` are (across, up) in metres from
+where it is built. The pad's doors and its lift are declared as `actions` on its parts in
+`flight.ts`; the scenery's doors are marked in the model and not yet declared anywhere.
+
+Stairs, measured (riser; going; from what to what):
+
+| Flight | Risers | Going | Foot | Head |
+| --- | --- | --- | --- | --- |
+| Pad to the structure's base deck | 17 of 0.180 m | 0.28 m, treads lapping 6 cm | 0.23 m under the pad's surface: on the slab the first tread showing is 0.13 m up; rolled back at T−55 and at launch (+110 ft, +173 ft) the foot is over the track, and the first riser from the ballast is 0.18 m, from a sleeper 0.09 m | the deck's edge |
+| Steps to the lift | 0.23, 0.23 and 0.23 m to the car's floor at 0.70 m | 0.30 m | the slab; off the slab two more steps go down to the ballast (0.21 m) and the ground beyond it (0.22 m) | the car |
+| Trailer SP-No 1 | 0.21, 0.22, 0.22, 0.22 m, then 0.23 m to the floor | 0.27 m | the slab | the door |
+| Pad 6's gantry, pad to truck | 12 of 0.178 m | 0.32 m | pad 6's slab | the truck's top |
+| Scaffold stair, each of six flights | 10 of 0.198 m | 0.24 m | the ground, then each landing | the next landing |
+
+The structure's stairs, steps and ladders roll with it. Between its three positions the stair's foot
+and the lift's steps hang over whatever is under them; at each of the three they meet the slab or
+the track bed as the table says.
+
+
 
 ## Beyond the complex
 
@@ -373,6 +392,10 @@ The rest of the complex:
   surface, and nothing may lie close above it. So the road, the walks and the trench covers are at
   the pad's level on concrete that goes down into the ground, and the shell paving is a low bank
   with sloped edges. In life all of it was flush with the grass.
+- **The far-field rule.** `check_clearance` passes faces a millimetre apart, which is enough only
+  close to. Seen from 150 m with the camera near something else, parallel faces under about 5 cm
+  apart cannot be told apart in depth and flicker. So anything that will be looked at from another
+  pad away keeps its parallel faces 5 cm apart or more.
 - **Far things stand further apart.** Pad 6 and the track beyond pad 5 are seen from 100 m and
   more, where two faces a centimetre apart cannot be told apart in depth. So their rails stand
   1.8 in proud of the concrete (pad 5's: 9 mm), pad 6's burn marks and trench covers an inch
@@ -414,9 +437,19 @@ The rest of the complex:
 - Roads are painted on the viewer's ground (`TRACKS` in `src/viewer/cape.ts`), not modelled: the
   road behind the blockhouse and the drive past its back door follow F16_016 loosely. No road is
   drawn beyond what that photograph shows, so none leads to the other complexes.
-- Getting about: see "Getting about on foot" for which ways up are documented. The service
-  structure's ladder wells, the ways from its lift, the deck over the lift shaft, and pad 6's
-  stairs and landing are plausible arrangements, not the record. The service structure's
-  platforms part for the rollback, which carries levels 3 and 4's doors away from the lift's way.
+- Getting about: see "Getting about on foot" for which ways up are documented.
+  - Only the hatch side's lift is built. The plans had "elevators on each side" and the
+    photographs show a mesh enclosure at the base on both sides; whether both worked in 1961 is
+    not established. The car has no gate and no canopy.
+  - **The base is not the real one.** The July 1961 photographs (61-MR4-45, F19_004) show the
+    office under the deck at pad level between the legs, corrugated, with windows and a door, and
+    the deck about 8 to 9 ft up over it; a short stair on the deck between the legs up to a small
+    landing whose purpose is not established; cable reels and conduit up the legs. Here the
+    office stands on the deck behind the mast and none of the rest is built.
+  - The platforms part for the rollback, which carries the lift's doors on levels 2 to 4 sideways
+    by 4.5 ft, away from where the car stops.
+  - Pad 6's gantry stood on two rubber-tyred trailers (*A Noble Endeavor* p. 10: Noble's 1958
+    "Portable Guided Missile Service Structure", its mast four feet taller than pad 5's); here it
+    stands on rail trucks.
 - Beyond the complex: see "Beyond the complex". Every neighbouring structure is a stand-in for
   its type.
