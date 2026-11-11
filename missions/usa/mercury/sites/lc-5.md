@@ -606,6 +606,18 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   case, trailer and huts left before the rollback at all is an assumption, and so are their routes
   and times. The trailer's route is computed to follow the tractor's (a tractrix), but sampled at
   points, so the kingpin wanders up to 2.4 cm off the fifth wheel mid-turn.
+- The searchlights are designed after the 60-inch Army carbon-arc kind, not measured: a deep drum
+  on trunnions in a yoke, the door ring and its glass in front (facing out, `lens_out`), a
+  parabolic mirror inside (`chrome-reflector`), the arc lamp's housing and vent behind, on a
+  two-axle trailer with mudguards, a tow bar and four jacks. Every lamp's lens now faces out and
+  says so (`lens_out`), floodlights' too.
+- The trailer SP-No 1's door steps are their own node, hinged at the top
+  (`GroundEquipment_TrailerSteps`), and fold up 95° before the tow (slider 0 to 0.008): that
+  they folded, and how, is estimated.
+- Every node of both models carries a `label` and an `about` (lc5/labels.py: one table, the
+  confidences of this record restated); where several things shared a node each now has its own
+  (`Floodlights_Pole1..6`, `CameraTowers_Tower1..2`, `GroundEquipment_Danger1..2`,
+  `…_ChevronBox`, `…_Camera1..4`).
 - The searchlights are three of one kind (a 60-inch Army drum on a four-wheeled trailer) in places
   chosen to match two photographs' lighting; their beam is a figure for the type from no source.
   They stay through liftoff and burn whenever the Sun is down; MR-3's were not switched off at any

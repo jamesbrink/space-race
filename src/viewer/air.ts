@@ -202,7 +202,7 @@ export class CloudLayer {
     this.clouds = clouds;
     this.base = air.base + clouds.height;
     this.reach = reach;
-    this.spacing = clouds.size / 9;
+    this.spacing = clouds.size / 5;
     const capacity = 16000;
     const geometry = new THREE.PlaneGeometry(2, 2);
     // a plain material whose shader is wholly replaced: so the cel look's twin of it (look.ts) is the same shader
@@ -245,7 +245,7 @@ export class CloudLayer {
       varying vec2 vUv;
       varying vec3 vCentre, vSpot;
       varying float vRadius, vSeed;
-      ${fieldAs('air_')}
+      ${cloudField(clouds)}
       void main() {
         // the ray from the eye through this pixel, against the puff's sphere
         vec3 d = normalize(vSpot);
@@ -265,13 +265,18 @@ export class CloudLayer {
         // the layer's base: everything under it is gone, so the heap stands on a flat floor (drawn as its own sheet)
         if (world.y < uCloudDrift.y) discard;
         float h = clamp((world.y - uCloudDrift.y) / (uCloudDrift.w - uCloudDrift.y), 0.0, 1.0);
-        // lit by the Sun across the sphere with a soft wrap; the underside grey with the light that comes up from below
-        // (one puff among many: its own roundness is muted, the heap's height counts more)
-        // each ball's own roundness counts for little: what is lit is the heap, by its height and which side faces the Sun
-        vec3 heap = normalize(mix(n, vec3(0.0, 1.0, 0.0), 0.5));
-        float sun = clamp(dot(heap, uSunDir) * 0.25 + 0.75, 0.0, 1.0) * (0.5 + 0.5 * smoothstep(0.0, 0.75, h));
-        float grain = air_noise2(vUv * 6.0 + vSeed * 31.0, 7) * 0.5 + 0.5;
-        vec3 col = uSunLight * sun * (0.9 + 0.2 * grain) + uSkyLight * (0.6 + 0.4 * max(n.y, 0.0));
+        // Lit as one body, not as balls: the light at a point is the whole cloud's, from the field's own slope there
+        // (the heap's outside faces away from its heart) and the height in the cloud, so where two lobes overlap they
+        // are the same colour and the cloud reads as one mass; each lobe's roundness adds only a little.
+        float e = ${(clouds.size * 0.08).toFixed(1)};
+        vec2 slope = vec2(cloudAt(world.xz + vec2(e, 0.0)) - cloudAt(world.xz - vec2(e, 0.0)), cloudAt(world.xz + vec2(0.0, e)) - cloudAt(world.xz - vec2(0.0, e)));
+        vec3 body = normalize(vec3(-slope.x * 2.2, 0.35 + h, -slope.y * 2.2));
+        vec3 shape = normalize(mix(body, n, 0.22));
+        float sun = clamp(dot(shape, uSunDir) * 0.5 + 0.55, 0.0, 1.0) * (0.55 + 0.45 * smoothstep(0.0, 0.8, h));
+        // toward the Sun the thin edge of the cloud glows: its silver lining
+        float lining = pow(1.0 - clamp(edge * 3.0, 0.0, 1.0), 2.0) * pow(max(dot(-d, uSunDir) * -1.0, 0.0), 6.0) * (1.0 - uCel);
+        float grain = air_noise2(world.xz / 60.0, 7) * 0.5 + air_noise2(world.xz / 23.0, 8) * 0.5;
+        vec3 col = uSunLight * (sun * (0.92 + 0.16 * grain) + 0.6 * lining) + uSkyLight * (0.55 + 0.45 * max(shape.y, 0.0));
         // drawn: two tones
         float bright = dot(col, vec3(0.3)) / max(dot(uSunLight + uSkyLight, vec3(0.3)), 1e-4);
         col = mix(col, mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, step(0.55, bright)), uCel);
@@ -384,11 +389,11 @@ export class CloudLayer {
           pz = (j + r()) * step;
         if (Math.hypot(px - x, pz - z) > this.reach) continue;
         const dens = cloudAt(c, px, pz, 0, 0);
-        if (dens < 0.12) continue;
+        if (dens < 0.2) continue;
         // in the heart, big puffs heaped high; at the edge small ones low on the base
-        const radius = step * (0.6 + 0.8 * dens) * (0.75 + 0.5 * r());
+        const radius = step * (0.75 + 0.75 * dens) * (0.85 + 0.3 * r());
         // the lowest puffs sit with their middles under the base, so the base is cut flat across the whole cloud
-        const height = this.base + radius * (0.1 + 0.3 * r()) + c.depth * 0.8 * dens ** 1.6 * (0.6 + 0.8 * r());
+        const height = this.base + radius * (0.15 + 0.2 * r()) + c.depth * 0.75 * dens ** 1.4 * (0.85 + 0.3 * r());
         this.puffs.push({ x: px, y: height, z: pz, radius, far: 0 });
       }
   }
