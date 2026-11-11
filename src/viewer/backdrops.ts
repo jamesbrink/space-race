@@ -51,8 +51,10 @@ export interface Setting {
    * the fields above are changed in place. Returns null while nothing on screen has changed (the
    * instant is the same, or the sky has turned by less than can be seen); otherwise what the stage
    * must take up again, with `shadows` set if the light has moved far enough to redraw them.
+   * `height`: the eye's height over the setting's ground, metres; the sky darkens as the air
+   * above the eye thins (`airAbove`).
    */
-  at?: (jdUT: number) => { shadows: boolean } | null;
+  at?: (jdUT: number, height?: number) => { shadows: boolean } | null;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
@@ -72,7 +74,7 @@ export const GROUND_Y = -0.45;
  * and night. A cloud takes its light from uCloudLight and the haze from uHorizon.
  */
 const SKY = /* glsl */ `
-  uniform vec3 uSun, uZenith, uHorizon, uGlow, uCloudLight, uSunLight; varying vec3 vDir;
+  uniform vec3 uSun, uZenith, uHorizon, uGlow, uCloudLight, uSunLight; uniform float uWisps; varying vec3 vDir;
   ${NOISE}
   ${MOON_GLSL}
   vec3 sky(vec3 d, bool discs) {
@@ -89,13 +91,13 @@ const SKY = /* glsl */ `
     float c = fbm(vec3(uv * 1.3, 0.0)) * 0.7 + fbm(vec3(uv * 5.0, 3.0)) * 0.3;
     float cloud = smoothstep(0.6, 0.74, c) * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
     float s = max(dot(d, uSun), 0.0);
-    col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.45);
+    col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.45 * uWisps);   // (none once the eye is up among them)
     col = mix(low * 0.96, col, smoothstep(-0.004, 0.012, d.y));   // below the horizon: haze
     col += vec3(1.0, 0.9, 0.75) * uSunLight * (pow(s, 10.0) * 0.18 + pow(s, 300.0) * 1.6);
     return col;
   }`;
 
-type SkyUniforms = Record<'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow' | 'uCloudLight' | 'uSunLight', THREE.IUniform>;
+type SkyUniforms = Record<'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow' | 'uCloudLight' | 'uSunLight' | 'uWisps', THREE.IUniform>;
 
 /**
  * The sky's material. `discs`: with the Sun's disc and the Moon in it, as the eye sees it; without,
@@ -268,6 +270,17 @@ let cape: ReturnType<typeof buildCape> | undefined;
 
 /** The sky turns 15 arcseconds a second. Under this many seconds of it nothing has moved a pixel, and the view is left alone. */
 const SKY_STEP = 4;
+
+/**
+ * How much of the sea-level sky's glow is left at `height` metres: the sky's blue is sunlight
+ * scattered by the air above the eye, so it goes as the pressure there, which falls by e over a
+ * scale height (about 8 km low down). By 50 km the sky is black at noon, as the X-15's pilots and
+ * Shepard saw it. The horizon keeps its glow longer: the eye looks along through more air there.
+ * In steps of half a percent, so a climbing camera redraws the sky only when it visibly changes.
+ */
+export function airAbove(height: number): number {
+  return Math.round(Math.exp(-Math.max(0, height) / 8000) * 200) / 200;
+}
 /**
  * With the clock run fast the light moves every frame. Drawing the shadow map and baking the
  * reflections are the two things that cost, so each is done only when the light has moved this
@@ -316,6 +329,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     uGlow: { value: new THREE.Color() },
     uCloudLight: { value: new THREE.Color() },
     uSunLight: { value: new THREE.Color() },
+    uWisps: { value: 1 },
   };
   const envScene = new THREE.Scene();
   const envGain = { value: 1 };
@@ -378,7 +392,9 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     stale = false;
   };
 
-  setting.at = (jdUT) => {
+  let shownAir = 1;
+  setting.at = (jdUT, height = 0) => {
+    const air = airAbove(height);
     const now = performance.now();
     // a jump (the clock put somewhere, not run there) is shown at once, not faded to
     const jumped = Math.abs(jdUT - askedAt) * 86_400 > SKY_STEP + 4000 * Math.max(0.1, (now - askedMs) / 1000);
@@ -386,7 +402,8 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     askedMs = now;
     const fading = reflections.step(now);
     const due = (stale && now - bakedAt >= cadence.bakeEvery) || (shadowsOwed && now - shadowsAt >= cadence.shadowEvery);
-    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped) return fading ? { shadows: false } : null;
+    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped && air === shownAir) return fading ? { shadows: false } : null;
+    shownAir = air;
     if (jdUT !== shownAt) {
       shownAt = jdUT;
       h.at(skyFrom(site, jdUT));
@@ -394,10 +411,14 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     const light = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
     h.show(light.limitingMagnitude, 1 / light.adaptation);
     uniforms.uSunSize.value = Math.sin(h.sunRadius);
-    colour(uniforms.uZenith.value, light.zenith);
-    colour(uniforms.uHorizon.value, light.horizon);
-    colour(uniforms.uGlow.value, light.glow);
+    const along = Math.sqrt(air); // (toward the horizon the eye looks through more of what air there is)
+    const thin = ([r, g, b]: readonly number[], k: number) => [r! * k, g! * k, b! * k] as const;
+    colour(uniforms.uZenith.value, thin(light.zenith, air));
+    colour(uniforms.uHorizon.value, thin(light.horizon, along));
+    colour(uniforms.uGlow.value, thin(light.glow, along));
     colour(uniforms.uCloudLight.value, light.cloud);
+    // the high cloud is painted on the sky, at 3,600 m: from up there it would be below, so it goes as the eye nears it
+    uniforms.uWisps.value = 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
     colour(uniforms.uSunLight.value, light.sun);
     colour(fog.color, light.haze);
 

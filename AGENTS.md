@@ -124,6 +124,7 @@ src/
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
   viewer/plume.ts                     the engine's fire, drawn: tone bands and shock diamonds, opening as the air thins
+  viewer/trail.ts                     the trail it leaves, drawn: a ribbon along the path flown, widening and thinning with age
   sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air
   flown.ts                            the Flown panel: the simulator's run against the clock, and against the reports' figures
 tools/
@@ -345,12 +346,15 @@ never adjusted to bring a check in.
   than flown, and put back when the clock goes back. Before liftoff and after
   the landing it stands on its pad, whole: the inventory, which the idle show tours. While the engine burns, `viewer/plume.ts` draws
   its fire under the node `flies.engine` names: a designed shape (flat tone bands, shock diamonds
-  in thick air, a widening veil as the air thins), sized to read, not measured. The chase camera (`CAMERA_MODES`: C) turns
-  about it and is carried with it, and carries the Sun's shadow map too. The site's frame is flat:
-  downrange the sea falls away below it (18.6 km by the landing), and the sky is the ground's at
-  any height. A globe needs the scene's frame to become the Earth-centred one (origin.ts already
-  draws from the eye), the Earth drawn to scale under the site's local detail, the sky computed
-  for the eye's height, and the vehicle put in it from `fly`'s inertial state without the site's
+  in thick air, a widening veil as the air thins), sized to read, not measured; `viewer/trail.ts`
+  lays the white trail it leaves along the path flown, widening and thinning with age and with
+  the air it was laid in. The chase camera (`CAMERA_MODES`: C) turns
+  about it and is carried with it, and carries the Sun's shadow map too. The sky darkens with the
+  eye's height as the air above it thins (`airAbove` in backdrops.ts: black by 50 km). The site's
+  frame is flat: downrange the sea falls away below it (18.6 km by the landing), and from high up
+  there is nothing drawn below the horizon. A globe needs the scene's frame to become the
+  Earth-centred one (origin.ts already draws from the eye), the Earth drawn to scale under the
+  site's local detail, and the vehicle put in it from `fly`'s inertial state without the site's
   frame in between.
 - **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
   because of it; the capsule flown from the report's separation passes all but one. The flight's

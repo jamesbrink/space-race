@@ -92,6 +92,11 @@ export class Ascent {
     return this.flying(t) ? this.flight.flies!.drops.filter((d) => t >= d.at).flatMap((d) => d.nodes) : [];
   }
 
+  /** When the engine stops, seconds from liftoff. */
+  get cutoff(): number {
+    return this.flight.trajectory!.engine.cutoff.value;
+  }
+
   /** What leaves the vehicle on the way, in order: `Flight.flies.drops`. */
   get drops(): readonly { at: number; nodes: string[] }[] {
     return this.flight.flies!.drops;

@@ -26,6 +26,7 @@ import { Plume } from './plume';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
+import { TRAIL_STEP, Trail } from './trail';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 
@@ -265,6 +266,8 @@ export class Stage {
   private ascent: Ascent | null = null;
   /** The flown vehicle's engine fire, hung at its nozzle's exit (plume.ts). */
   private plume: Plume | null = null;
+  /** The trail it leaves in the air while the engine burns (trail.ts), in the scene's frame. */
+  private trail: Trail | null = null;
   private readonly lifted = {
     t: Number.NaN,
     flying: false,
@@ -914,6 +917,7 @@ export class Stage {
     this.fall(ascent, s, pad, t, flying);
     const { on, vacuum } = ascent.burn(t);
     this.plume?.set(on, vacuum, performance.now() / 1000, this.renderer.toneMappingExposure);
+    this.layTrail(ascent, pad, t, flying);
     this.lifted.by.subVectors(g.position, before);
     g.updateMatrixWorld(true);
     s.measure(); // levels of detail are chosen by the distance to it
@@ -962,10 +966,39 @@ export class Stage {
     }
   }
 
+  /**
+   * Lay the trail up to `t` (it is laid once, point by point, as far as the clock has gone while
+   * the engine burns; going back only shows less of it) and show it as it stands at `t`.
+   */
+  private layTrail(ascent: Ascent, pad: THREE.Quaternion, t: number, flying: boolean): void {
+    const trail = this.trail;
+    const nozzle = this.plume?.mesh.position;
+    if (!trail || !nozzle) return;
+    const upTo = flying ? Math.min(t, ascent.cutoff) : -1;
+    const at = new THREE.Vector3();
+    const turn = new THREE.Quaternion();
+    while ((trail.laid + 1) * TRAIL_STEP <= upTo) {
+      const born = (trail.laid + 1) * TRAIL_STEP;
+      if (!ascent.place(born, pad, at, turn)) break;
+      at.add(nozzle.clone().applyQuaternion(turn));
+      const along = UP.clone().applyQuaternion(turn);
+      trail.reach(at, along, born, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
+    }
+    // and from the last point to the nozzle as it is now, while it burns
+    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn)) {
+      at.add(nozzle.clone().applyQuaternion(turn));
+      trail.head(at, UP.clone().applyQuaternion(turn), t, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
+    } else trail.headless();
+    trail.show(flying ? t : null, this.setting.sunIntensity / 3 + 0.1);
+  }
+
   /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
   private hangPlume(flight: FlightData): void {
     this.plume?.mesh.removeFromParent();
     this.plume = null;
+    this.trail?.mesh.removeFromParent();
+    this.trail?.dispose();
+    this.trail = null;
     const s = this.flier;
     const engine = flight.flies?.engine && s?.full.getObjectByName(flight.flies.engine);
     const exitArea = flight.trajectory?.engine.exitArea.value;
@@ -975,6 +1008,8 @@ export class Stage {
     this.plume = new Plume(Math.sqrt(exitArea / Math.PI));
     this.plume.mesh.position.copy(s.group.worldToLocal(exit));
     s.group.add(this.plume.mesh);
+    this.trail = new Trail();
+    this.scene.add(this.trail.mesh);
   }
 
   /**
@@ -1165,6 +1200,7 @@ export class Stage {
     for (const s of this.staged) s.everyLevel(true);
     this.scenery?.everyLevel(true);
     if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
+    if (this.trail) this.trail.mesh.visible = true; // (and its trail: drawn empty, its shader is built)
     for (const night of [1, 0]) {
       this.lamps.set(night, 1);
       await this.renderer.compileAsync(this.scene, this.camera).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
@@ -1175,6 +1211,7 @@ export class Stage {
     for (const s of this.staged) s.everyLevel(false);
     this.scenery?.everyLevel(false);
     if (this.plume) this.plume.mesh.visible = false;
+    if (this.trail) this.trail.mesh.visible = false;
     this.relight(true);
     await frames(3);
   }
@@ -1725,7 +1762,7 @@ export class Stage {
     // the simulation's clock: the setting follows it, and says when that is worth showing
     if (this.clock) {
       this.clock.advance(dt);
-      const change = this.setting.at?.(this.clock.jdUT);
+      const change = this.setting.at?.(this.clock.jdUT, this.camera.position.y - GROUND_Y);
       if (change) this.relight(change.shadows);
     }
     this.follow(dt);
