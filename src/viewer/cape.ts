@@ -231,7 +231,7 @@ const CLOUDS: Clouds = {
   height: 720,
   depth: 650,
   cover: 0.1,
-  size: 900,
+  size: 1500,
   wind: [-7 * COS, 7 * SIN], // toward 270, in the pad's frame
 };
 

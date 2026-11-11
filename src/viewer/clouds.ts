@@ -64,27 +64,32 @@ const RANGE = 0.4;
 /** Excess at which a cloud's top reaches the layer's full depth: the noise's greatest, 0.22 over the cut (its 99th percentile is 0.11). */
 const TOWER = 0.2;
 /** A cloud's top rises as this power of the distance in from its edge: under 1, so its sides are steep and its top rounded. */
-const DOME = 0.6;
-/** Metres from a cloud's edge per unit of excess: the reciprocal of the noise's mean slope, 5.3e-4 a metre. */
-const SIDE_M = 2000;
+const DOME = 0.8;
+/**
+ * Metres from a cloud's edge per unit of excess, for every metre of the field's cells (Clouds.size):
+ * the reciprocal of the noise's mean slope, 5.3e-4 a metre at 900 m cells.
+ */
+const SIDE_PER_SIZE = 2000 / 900;
 /** How far the billows stand out from a cloud's dome at its top, metres (and as far again cut into it). */
 const BILLOW = 140;
 /** The billows' mean (billows()), about which they stand out and cut in; and how far out they stand at most, as a multiple of their size. */
 const LUMPS = 0.54;
 const STANDS = 2 * (1 - LUMPS);
-/** Billows at a cloud's foot, metres: a fifth of the top's. */
-const FOOT = 25;
+/** Billows at a cloud's foot, metres: a quarter of the top's. */
+const FOOT = 35;
 /**
- * The least excess at which there can be cloud at any height: where the billows at their highest
- * (STANDS times their size) stand out further than the dome is in from its edge. The dome narrows
- * upward faster than the billows grow, so this is at the foot, a little outside the field's edge.
+ * The least excess at which there can be cloud at any height (`side`: SIDE_PER_SIZE times the
+ * cells' size): where the billows at their highest (STANDS times their size) stand out further than
+ * the dome is in from its edge. The dome narrows upward faster than the billows grow, so this is at
+ * the foot, a little outside the field's edge.
  */
-const REACHES = Math.min(
-  ...Array.from({ length: 101 }, (_, i) => {
-    const y = i / 100;
-    return (TOWER * SIDE_M * y ** (1 / DOME) - STANDS * (FOOT + (BILLOW - FOOT) * y)) / SIDE_M;
-  }),
-);
+const reaches = (side: number): number =>
+  Math.min(
+    ...Array.from({ length: 101 }, (_, i) => {
+      const y = i / 100;
+      return (TOWER * side * y ** (1 / DOME) - STANDS * (FOOT + (BILLOW - FOOT) * Math.sqrt(y))) / side;
+    }),
+  );
 /** The Earth's mean radius: the layer is a shell this far plus its height from the centre under the site. */
 const EARTH = 6_371_000;
 
@@ -155,7 +160,7 @@ const DEPTH = /* glsl */ `
     return 2.0 * n * f / (f + n - z * (f - n)) / max(-ray.z, 1e-4);
   }`;
 
-const marchShader = (scale: number) => /* glsl */ `
+const marchShader = (scale: number, side: number) => /* glsl */ `
   precision highp float; precision highp int; precision highp sampler3D;
   ${DEPTH}
   uniform sampler2D tField, tClear;
@@ -198,6 +203,9 @@ const marchShader = (scale: number) => /* glsl */ `
     return vec2(min(t0, t1), max(t0, t1));
   }
 
+  // how big the billows are at a height in the layer: quickly bigger above the foot, so a low cloud has turrets too
+  float billow(float y) { return mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, sqrt(max(y, 0.0))); }
+
   // how far inside a cloud the point v from the eye is, metres, roughly (negative outside); f: the same point in the
   // baked field's frame; y: its height in the layer, 0 at the base to 1 at the greatest top
   float inside(vec3 v, vec2 f, float lod, out float y, bool billowed) {
@@ -210,12 +218,12 @@ const marchShader = (scale: number) => /* glsl */ `
     // the heap: a dome on the field, rising from its edge as the DOME power of the distance in from it, so steeply at
     // first and then rounding over; the biggest (the noise furthest over its cut) reaching the layer's full depth.
     // Measured across (metres in from its side at this height), so the sides are as sharp as the top.
-    float heap = x * ${SIDE_M.toFixed(1)} - pow(h / uDome, ${(1 / DOME).toFixed(4)});
-    if (!billowed || heap <= -${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, y)) return heap; // (no billow reaches out so far)
+    float heap = x * ${side.toFixed(1)} - pow(h / uDome, ${(1 / DOME).toFixed(4)});
+    if (!billowed || heap <= -${STANDS.toFixed(3)} * billow(y)) return heap; // (no billow reaches out so far)
     // and billows heaped on it and cut into it, bigger the higher up: lumps of 200, 95 and 45 m, so a cumulus is
     // cauliflower at the top and only scalloped at the foot
     vec3 b = textureLod(tBillows, vec3(f.x, h - uRise, f.y) / TILE, lod).rgb;
-    float sd = heap + mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, y) * 2.0 * (dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)});
+    float sd = heap + billow(y) * 2.0 * (dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)});
     return min(sd, h); // the base is flat
   }
   // the cloud's extinction there, per metre: rising over \`ramp\` metres from its surface, and fading out far from the eye
@@ -303,7 +311,7 @@ const marchShader = (scale: number) => /* glsl */ `
           // Clear air: stride as far as the heap could rise to where its billows might reach out, at its steepest;
           // among billows, which change faster, a third of the way to the nearest; close to a surface, short
           // steps, so a lump thinner than a step is not caught one frame and missed the next as the cloud drifts
-          float reach = ${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, clamp(y, 0.0, 1.0));
+          float reach = ${STANDS.toFixed(3)} * billow(clamp(y, 0.0, 1.0));
           was = t;
           t += sd < -reach ? 0.5 * st + 0.5 * (-sd - reach) : max(min(st, 0.1 * st - 0.35 * sd), -0.35 * sd);
           continue;
@@ -345,7 +353,10 @@ const marchShader = (scale: number) => /* glsl */ `
         // the sky's light is shut out of the creases between billows and from under more cloud
         vec3 up = v + uUp * 80.0;
         float open = 1.0 - 0.4 * smoothstep(-20.0, 150.0, inside(up, uEye + up.xz, lod + 1.0, yy, true));
-        vec3 light = uSunLight * sun + (uSkyLight * (0.3 + 0.6 * y) + uGroundLight * 0.25 * (1.0 - y)) * open;
+        // and the base, flat and facing down, is lit by the sunlit ground and the light the cloud's sides scatter
+        // into it: a lighter grey than its shade, not a dark cave
+        vec3 light = uSunLight * (sun + 0.08 * (1.0 - y) * max(uSun.y, 0.0))
+          + (uSkyLight * (0.4 + 0.55 * y) + uGroundLight * 0.35 * (1.0 - y)) * open;
         float hz = hazeLost(y * (uLayer.y - uLayer.x) + uLayer.x, t);
         float a = 1.0 - exp(-d * min(step, t1 - t));
         float w = T * a;
@@ -369,9 +380,9 @@ const marchShader = (scale: number) => /* glsl */ `
 const COMPOSITE = /* glsl */ `
   precision highp float; precision highp int;
   ${DEPTH}
-  uniform sampler2D tCloud, tInfo;
+  uniform sampler2D tCloud, tInfo, tVeil, tVeilDepth;
   uniform vec3 uSunLight, uSkyLight, uHaze;
-  uniform float uCel;
+  uniform float uCel, uVeils;
   in vec2 vUv;
   out vec4 oColour;
   void main() {
@@ -388,13 +399,22 @@ const COMPOSITE = /* glsl */ `
     }
     // (the real look has no derivatives to keep, so most of the frame, under no cloud, stops here)
     if (uCel < 0.5 && any <= 0.0) discard;
-    float d = sceneDistance(texture(tDepth, vUv).x, viewRay(vUv));
+    vec3 ray = viewRay(vUv);
+    float d = sceneDistance(texture(tDepth, vUv).x, ray);
+    // fire and smoke, which write no depth and were drawn with the scene: what of them is in front of the scene here,
+    // and how far off. Cloud behind them is seen through them, so only as much as they let through
+    float veil = 0.0, dv = 1e9;
+    if (uVeils > 0.5) {
+      dv = sceneDistance(texture(tVeilDepth, vUv).x, ray);
+      veil = dv < d ? texture(tVeil, vUv).a : 0.0;
+    }
     vec4 cloud = vec4(0.0);
     float lit = 0.0, haze = 0.0;
     for (int k = 0; k < 4; k++) {
       vec4 info = texelFetch(tInfo, at[k], 0);
-      // only the cloud this pixel's own surface lies beyond
+      // only the cloud this pixel's own surface lies beyond, and of that, behind the fire or smoke, what shows through it
       float w = ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y) * smoothstep(info.x, info.y, d);
+      w *= mix(1.0 - veil, 1.0, smoothstep(info.x, info.y, dv));
       cloud += w * c[k];
       lit += w * c[k].a * info.z;
       haze += w * c[k].a * info.w;
@@ -507,6 +527,11 @@ export class CloudPass extends Pass {
   readonly mark = new DepthMark();
   /** The cel look: cut at half opacity, two flat tones. */
   cel = false;
+  /**
+   * What is drawn with the scene but writes no depth and can stand in front of a cloud: the engine's fire and its
+   * trail. Cloud behind them is laid over them only as far as they let it through.
+   */
+  veils: THREE.Object3D[] = [];
   private readonly quad = new FullScreenQuad();
   private readonly low = new THREE.WebGLRenderTarget(1, 1, {
     count: 2,
@@ -516,6 +541,8 @@ export class CloudPass extends Pass {
     magFilter: THREE.NearestFilter,
     depthBuffer: false,
   });
+  /** Fire and smoke in front of the scene (`veils`), drawn again on their own: how much they cover, and how far off the nearest is. */
+  private readonly veil = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType) });
   private readonly field = target(SIDE, true);
   private readonly cells = target(SIDE / (CELL / TEXEL), false);
   private readonly row = target(SIDE / (CELL / TEXEL), false);
@@ -526,7 +553,7 @@ export class CloudPass extends Pass {
     tFrom: { value: null },
     uMode: { value: 0 },
     uBlock: { value: CELL / TEXEL },
-    uOccupied: { value: (BELOW + REACHES) / RANGE - 0.5 / 255 },
+    uOccupied: { value: 0 },
   });
   private readonly composite: THREE.RawShaderMaterial;
   private readonly uniforms = {
@@ -555,6 +582,9 @@ export class CloudPass extends Pass {
     uCel: { value: 0 },
     tCloud: { value: this.low.textures[0]! },
     tInfo: { value: this.low.textures[1]! },
+    tVeil: { value: this.veil.texture },
+    tVeilDepth: { value: this.veil.depthTexture },
+    uVeils: { value: 0 },
   };
   /** What was baked: for which clouds, round which point of the field (its frame, metres). */
   private baked: { clouds: Clouds; x: number; z: number } | null = null;
@@ -611,7 +641,7 @@ export class CloudPass extends Pass {
     u.uRe.value = r;
     u.uUp.value.set(eye.x / r, cy / r, eye.z / r);
     u.uLayer.value.set(clouds.height, clouds.height + clouds.depth);
-    u.uDome.value = clouds.depth / (TOWER * SIDE_M) ** DOME;
+    u.uDome.value = clouds.depth / (TOWER * SIDE_PER_SIZE * clouds.size) ** DOME;
     u.uProjInv.value.copy(camera.projectionMatrixInverse);
     u.uRange.value.set(camera.near, camera.far);
     u.uTurn.value.setFromMatrix4(this.turn.extractRotation(camera.matrixWorld));
@@ -620,11 +650,13 @@ export class CloudPass extends Pass {
     u.uCel.value = Number(this.cel);
     this.light(fog);
 
-    this.march ??= raw(marchShader(air.scale), u);
+    this.march ??= raw(marchShader(air.scale, SIDE_PER_SIZE * clouds.size), u);
     u.tBillows.value ??= billows();
     renderer.setRenderTarget(this.low);
     this.quad.material = this.march;
     this.quad.render(renderer);
+
+    u.uVeils.value = Number(this.drawVeils(renderer, readBuffer));
 
     // over the frame as it stands, in place
     // (the depth is the scene's still: it need not be resolved out of the multisampled buffer again)
@@ -639,6 +671,39 @@ export class CloudPass extends Pass {
     readBuffer.resolveDepthBuffer = resolve;
   }
 
+  /** Draw the veils on show on their own, with their depth: false if none is. */
+  private drawVeils(renderer: THREE.WebGLRenderer, frame: THREE.WebGLRenderTarget): boolean {
+    const shown = this.veils.filter((o) => {
+      let p: THREE.Object3D = o;
+      for (; p.parent; p = p.parent) if (!p.visible) return false;
+      return p === this.scene; // (in the scene, and shown all the way up)
+    });
+    if (!shown.length) return false;
+    if (this.veil.width !== frame.width || this.veil.height !== frame.height) this.veil.setSize(frame.width, frame.height);
+    const clear = renderer.getClearColor(new THREE.Color()),
+      alpha = renderer.getClearAlpha(),
+      autoClear = renderer.autoClear;
+    renderer.setRenderTarget(this.veil);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear(true, true, false);
+    renderer.autoClear = false;
+    for (const o of shown) {
+      // (writing depth here, so the nearest of it is kept where it overlaps itself)
+      const materials: THREE.Material[] = [];
+      o.traverse((m) => {
+        const material = (m as THREE.Mesh).material;
+        if (material) materials.push(...(Array.isArray(material) ? material : [material]));
+      });
+      const wrote = materials.map((m) => m.depthWrite);
+      for (const m of materials) m.depthWrite = true;
+      renderer.render(o, this.camera);
+      materials.forEach((m, i) => (m.depthWrite = wrote[i]!));
+    }
+    renderer.autoClear = autoClear;
+    renderer.setClearColor(clear, alpha);
+    return true;
+  }
+
   /** Bake the field round the eye (x, z in the field's frame) if it has gone far over the last bake. */
   private bake(renderer: THREE.WebGLRenderer, clouds: Clouds, x: number, z: number): void {
     const b = this.baked;
@@ -648,6 +713,7 @@ export class CloudPass extends Pass {
     if (!b || b.clouds !== clouds) {
       this.bakeMaterial?.dispose();
       this.bakeMaterial = raw(bakeShader(clouds), { uCorner: { value: new THREE.Vector2() } });
+      this.reduce.uniforms.uOccupied!.value = (BELOW + reaches(SIDE_PER_SIZE * clouds.size)) / RANGE - 0.5 / 255;
     }
     this.baked = { clouds, x: cx, z: cz };
     const bake = this.bakeMaterial!;
@@ -699,7 +765,7 @@ export class CloudPass extends Pass {
   }
 
   dispose(): void {
-    for (const t of [this.low, this.field, this.cells, this.row, this.clearAir]) t.dispose();
+    for (const t of [this.low, this.veil, this.field, this.cells, this.row, this.clearAir]) t.dispose();
     this.uniforms.tBillows.value?.dispose();
     this.quad.dispose();
   }

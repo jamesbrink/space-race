@@ -1031,6 +1031,7 @@ export class Stage {
     s.group.add(this.plume.mesh);
     this.trail = new Trail();
     this.scene.add(this.trail.mesh);
+    this.clouds.veils = [this.plume.mesh, this.trail.mesh]; // (cloud behind them shows through them: clouds.ts)
   }
 
   /**
