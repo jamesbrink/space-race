@@ -65,7 +65,10 @@ And the programmes after them:
 | Apollo | USA | 1968 to 1972 | Saturn IB and Saturn V; lunar orbit and the Moon | planned |
 | Salyut, Skylab, Apollo-Soyuz | USSR, USA | 1971 to 1986 | The first space stations | planned |
 | Space Shuttle, Mir | USA, USSR and Russia | 1981 to 2011 | A reusable orbiter; a station built in orbit | planned |
-| International Space Station and after | many | 1998 onward | Shenzhou, Crew Dragon and the rest | planned |
+| International Space Station | many | 1998 onward | A station crewed without a break since 2000 | planned |
+| Shenzhou and Tiangong | China | 2003 onward | China's crewed spacecraft and its own stations | planned |
+| Commercial crew | USA | 2020 onward | Crew Dragon and Starliner | planned |
+| Artemis | USA and partners | 2020s | Orion and the Space Launch System; back to the Moon | planned |
 
 The dates and crews above are the published ones; each flight's own record, with sources, is
 written when the flight is built.
