@@ -361,6 +361,9 @@ function sample(map, field, x, y) {
 function bake(map, coast, lakeList, later, asOfYear) {
   const began = performance.now();
   const { field, clashes } = coastField(map, coast);
+  // a coastline with a way missing (an Overpass server not up to date, an edit half made) lets the sea's side
+  // spread inland through the gap, and the two sides meet in straight lines across the land: refuse it
+  if (clashes) throw new Error(`${map.name}: the coastline's sides disagree at ${clashes} texels; fetch it again, or from another server`);
   const { width: w, height: h } = map;
   // lakes inside the land (a lagoon the coastline already goes round is the sea's): most of the ring's points on land
   const rings = [];

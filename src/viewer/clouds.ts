@@ -59,6 +59,8 @@ const BELOW = 0.1;
 const RANGE = 0.4;
 /** Excess at which a cloud's top reaches the layer's full depth: the noise's greatest, 0.22 over the cut (its 99th percentile is 0.11). */
 const TOWER = 0.2;
+/** A cloud's top rises as this power of the distance in from its edge: under 1, so its sides are steep and its top rounded. */
+const DOME = 0.6;
 /** Metres from a cloud's edge per unit of excess: the reciprocal of the noise's mean slope, 5.3e-4 a metre. */
 const SIDE_M = 2000;
 /** How far the billows stand out from a cloud's dome at its top, metres (and as far again cut into it). */
@@ -76,7 +78,7 @@ const FOOT = 25;
 const REACHES = Math.min(
   ...Array.from({ length: 101 }, (_, i) => {
     const y = i / 100;
-    return (TOWER * SIDE_M * y ** (4 / 3) - STANDS * (FOOT + (BILLOW - FOOT) * y)) / SIDE_M;
+    return (TOWER * SIDE_M * y ** (1 / DOME) - STANDS * (FOOT + (BILLOW - FOOT) * y)) / SIDE_M;
   }),
 );
 /** The Earth's mean radius: the layer is a shell this far plus its height from the centre under the site. */
@@ -162,7 +164,7 @@ const marchShader = (scale: number) => /* glsl */ `
   uniform vec3 uUp;          // straight up at the eye
   uniform vec2 uLayer;       // the clouds' base and greatest top above the sea
   uniform float uRise;       // how far the billows have risen
-  uniform float uDome;       // a dome's height for each metre^(3/4) in from its edge
+  uniform float uDome;       // a dome's height for each metre^DOME in from its edge
   uniform vec3 uSun, uSunLight, uSkyLight, uGroundLight, uHaze;
   uniform float uHazeDensity;
   uniform float uPixel;      // radians a low pixel
@@ -201,10 +203,10 @@ const marchShader = (scale: number) => /* glsl */ `
     if (h < 0.0) return h;
     if (y > 1.0) return (1.0 - y) * depth;
     float x = texture(tField, f / EXTENT).r * ${RANGE.toFixed(3)} - ${BELOW.toFixed(3)};
-    // the heap: a dome on the field, rising from its edge as the 3/4 power of the distance in from it, so steeply at
+    // the heap: a dome on the field, rising from its edge as the DOME power of the distance in from it, so steeply at
     // first and then rounding over; the biggest (the noise furthest over its cut) reaching the layer's full depth.
     // Measured across (metres in from its side at this height), so the sides are as sharp as the top.
-    float heap = x * ${SIDE_M.toFixed(1)} - pow(h / uDome, 4.0 / 3.0);
+    float heap = x * ${SIDE_M.toFixed(1)} - pow(h / uDome, ${(1 / DOME).toFixed(4)});
     if (heap <= -${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, y)) return heap; // (no billow reaches out so far)
     // and billows heaped on it and cut into it, bigger the higher up: lumps of 200, 95 and 45 m, so a cumulus is
     // cauliflower at the top and only scalloped at the foot
@@ -213,8 +215,8 @@ const marchShader = (scale: number) => /* glsl */ `
     return min(sd, h); // the base is flat
   }
   // the cloud's extinction there, per metre: rising over \`ramp\` metres from its surface, and fading out far from the eye
-  float density(vec3 v, float ramp, float lod, out float y) {
-    float sd = inside(v, uEye + v.xz, lod, y);
+  float density(vec3 v, float ramp, float lod, out float y, out float sd) {
+    sd = inside(v, uEye + v.xz, lod, y);
     return SIGMA * smoothstep(0.0, ramp, sd) * (1.0 - smoothstep(${FADE[0].toFixed(1)}, ${FADE[1].toFixed(1)}, length(v.xz)));
   }
 
@@ -293,8 +295,15 @@ const marchShader = (scale: number) => /* glsl */ `
           continue;
         }
         float sd = inside(v, uEye + v.xz, lod, y);
-        // (close to a surface the steps shorten, so a lump thinner than a step is not caught one frame and missed the next)
-        if (sd <= 0.0) { was = t; t += max(min(st, 0.25 * st - 0.5 * sd), -0.8 * sd); continue; }
+        if (sd <= 0.0) {
+          // Clear air: stride as far as the heap could rise to where its billows might reach out, at its steepest;
+          // among billows, which change faster, a third of the way to the nearest; close to a surface, short
+          // steps, so a lump thinner than a step is not caught one frame and missed the next as the cloud drifts
+          float reach = ${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, clamp(y, 0.0, 1.0));
+          was = t;
+          t += sd < -reach ? 0.1 * st + 0.5 * (-sd - reach) : max(min(st, 0.1 * st - 0.3 * sd), -0.3 * sd);
+          continue;
+        }
         float a = was, b = t;
         for (int k = 0; k < 6; k++) {
           float m = 0.5 * (a + b);
@@ -307,19 +316,27 @@ const marchShader = (scale: number) => /* glsl */ `
       }
       float step = st * min(0.25 + 0.35 * float(deep), 1.6);
       v = dir * (t + 0.5 * step);
-      float ramp = max(18.0, st);
-      float d = density(v, ramp, lod, y);
+      float ramp = clamp(t * 0.005, 3.0, 60.0); // the skin: a few pixels deep at any distance
+      float sd;
+      float d = density(v, ramp, lod, y, sd);
+      if (sd <= 0.0) {
+        // out of it again, between billows or past the cloud: back to looking for cloud, from here
+        t += 0.5 * step;
+        was = t;
+        deep = -1;
+        continue;
+      }
       if (d > 0.0) {
         // toward the Sun: how much cloud the light has come through
-        float tau = 0.0, s = 0.0, yy;
+        float tau = 0.0, s = 0.0, yy, ss;
         for (int k = 0; k < 5; k++) {
           float ds = 12.0 * exp2(float(k));
           s += ds * 0.5;
-          tau += density(v + uSun * s, ramp, lod + float(k) * 0.5, yy) * ds;
+          tau += density(v + uSun * s, ramp, lod + float(k) * 0.5, yy, ss) * ds;
           s += ds * 0.5;
         }
         // octaves of scattering: each deeper one less dimmed and less forward
-        float sun = phases.x * exp(-tau) + 0.4 * phases.y * exp(-tau * 0.35) + 0.12 * phases.z * exp(-tau * 0.12);
+        float sun = phases.x * exp(-tau) + 0.4 * phases.y * exp(-tau * 0.3) + 0.3 * phases.z * exp(-tau * 0.06);
         sun *= mix(1.0, 1.0 - exp(-d * 100.0), powderMix) * sunGain;
         // the sky's light is shut out of the creases between billows and from under more cloud
         vec3 up = v + uUp * 50.0;
@@ -336,10 +353,7 @@ const marchShader = (scale: number) => /* glsl */ `
         if (mid > 5e4 && T < 0.5) mid = t;
       }
       t += step;
-      if (d <= 0.0 && inside(v, uEye + v.xz, lod, y) < -ramp) {
-        deep = -1; // out again
-        was = t;
-      } else deep++;
+      deep++;
     }
     float opacity = 1.0 - T;
     if (opacity < 1e-4) return;
@@ -485,6 +499,7 @@ export class DepthMark extends Pass {
  * the outline and bloom; `mark` goes straight after the scene. Does nothing where no air with
  * clouds is installed (air.ts) or the scene has no haze (a studio, orbit).
  */
+(globalThis as unknown as { __drift: unknown }).__drift = cloudUniform; // DEBUG
 export class CloudPass extends Pass {
   readonly mark = new DepthMark();
   /** The cel look: cut at half opacity, two flat tones. */
@@ -593,7 +608,7 @@ export class CloudPass extends Pass {
     u.uRe.value = r;
     u.uUp.value.set(eye.x / r, cy / r, eye.z / r);
     u.uLayer.value.set(clouds.height, clouds.height + clouds.depth);
-    u.uDome.value = clouds.depth / (TOWER * SIDE_M) ** 0.75;
+    u.uDome.value = clouds.depth / (TOWER * SIDE_M) ** DOME;
     u.uProjInv.value.copy(camera.projectionMatrixInverse);
     u.uRange.value.set(camera.near, camera.far);
     u.uTurn.value.setFromMatrix4(this.turn.extractRotation(camera.matrixWorld));
