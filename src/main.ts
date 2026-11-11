@@ -84,6 +84,10 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   inset: (px) => stage.setInset(px),
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
+// a section whose slider is a sequence of events reads the clock: as the clock moves, so does its slider
+clock.listen(() => {
+  if (current.sequence) ui.setSlider(stage.exploded(current.id));
+});
 
 /** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
 let autoCut = false;

@@ -1,4 +1,4 @@
-import type { Action, Flight, ModelDef, Move, Part } from '../../../../../src/types';
+import type { Action, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
 
 const IN = 0.0254;
@@ -301,7 +301,7 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Engine', nodes: ['RedstoneTailUnit', 'RedstoneEngine'] },
   ],
   // the pad as it was at liftoff: structure at its launch position, masts down, the cab lowered
-  with: [{ model: 'pad', exploded: LIFTOFF }],
+  with: [{ model: 'pad', at: 0 }],
 };
 
 /**
@@ -322,6 +322,133 @@ const T = {
   stow: 0.82, // afterwards (not documented): the tower is folded down onto the truck
   drive: 0.91, // and driven off
 };
+/** Seconds from liftoff (09:34:13 EST) of a time on the Cape's clocks that morning. */
+const est = (hours: number, minutes: number): number => (hours * 60 + minutes) * 60 - (9 * 3600 + 34 * 60 + 13);
+const MIN = 60;
+const GANTRY_REMOVED = est(6, 37);
+/** The structure stands at the edge of the pad and the pilot can be seen in his window: what the crew section asks of the pad. */
+const ROLLED_BACK = GANTRY_REMOVED + 5 * MIN;
+const TMX = 'NASA TM X-53107, section 7.5, countdown pp. 7-25 to 7-33';
+const NOT_RECORDED = 'not recorded: how long the motion took is ours, from its distance at a walking pace';
+const AFTER_HOLDS =
+  'in the count, which This New Ocean says was held again at T-2:40; taken as that many seconds before liftoff, which is right only if nothing was held after it';
+/**
+ * The morning on the clock: when each stop on the pad's slider (T, above) happened, in seconds
+ * from liftoff. The count did not run straight (it was held 86 minutes at T-15 and recycled to
+ * T-35), so only the events the reports give by the wall clock, and those of the last minute, are
+ * fixed; the rest are placed from them and say so. sites/lc-5.md, "Where things stood, and when".
+ */
+const MORNING: Keyframe[] = [
+  {
+    at: est(5, 20),
+    slider: T.platforms,
+    event: 'Pilot aboard: insertion begun from the white room',
+    confidence: 'documented',
+    source: 'Results of the First U.S. Manned Suborbital Space Flight, p. 77; Postlaunch Report timeline: 05:20 EST',
+  },
+  {
+    at: GANTRY_REMOVED - 30 * MIN,
+    slider: T.platforms,
+    event: 'T-85: the work platforms begin to open',
+    confidence: 'estimated',
+    source: `${TMX}: T-85 to T-60 in the MR-4 standard count; placed 30 minutes before the gantry's removal at T-55, as if nothing was held between`,
+  },
+  {
+    at: GANTRY_REMOVED - 5 * MIN,
+    slider: T.platforms + 0.125,
+    event: 'T-60: the platforms are open',
+    confidence: 'estimated',
+    source: `${TMX}: placed 5 minutes before the gantry's removal, the same way`,
+  },
+  {
+    at: GANTRY_REMOVED,
+    slider: T.rollback,
+    event: 'Gantry removed: the structure starts for the edge of the pad',
+    confidence: 'documented',
+    source: 'Results, p. 77: 06:37 EST; Postlaunch Report 7.1: "gantry removal at -55 minutes"',
+  },
+  {
+    at: ROLLED_BACK,
+    slider: T.cabIn - 0.01,
+    event: 'The structure stands at the edge of the pad',
+    confidence: 'estimated',
+    source: NOT_RECORDED,
+  },
+  {
+    at: ROLLED_BACK + 0.5 * MIN,
+    slider: T.cabIn,
+    event: 'The cherry picker’s cab starts for the hatch',
+    confidence: 'estimated',
+    source: `${TMX}, p. 7-29: once the structure had gone; the minute is ours`,
+  },
+  { at: ROLLED_BACK + 2.5 * MIN, slider: T.cabIn + 0.09, event: 'The cab is at the hatch', confidence: 'estimated', source: NOT_RECORDED },
+  {
+    at: -(8 * MIN + 45),
+    slider: T.launchPosition,
+    event: 'T-8:45: the structure is driven on to its launch position',
+    confidence: 'estimated',
+    source: `${TMX}, p. 7-32 (Hammack: T-9): ${AFTER_HOLDS}`,
+  },
+  {
+    at: -(6 * MIN + 45),
+    slider: T.cabAway - 0.02,
+    event: 'The structure is at its launch position',
+    confidence: 'estimated',
+    source: NOT_RECORDED,
+  },
+  {
+    at: -(2 * MIN + 30),
+    slider: T.cabAway,
+    event: 'T-2:30: the cab is lowered away and down',
+    confidence: 'estimated',
+    source: `${TMX}, p. 7-33, and Hammack (7.3.3.1 has T-4): ${AFTER_HOLDS}`,
+  },
+  { at: -(1 * MIN + 30), slider: T.cabAway + 0.12, event: 'The cab is down', confidence: 'estimated', source: NOT_RECORDED },
+  {
+    at: -35,
+    slider: T.umbilical,
+    event: 'T-35 s: the capsule umbilical is dropped',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-33: in the count, with no hold after it`,
+  },
+  {
+    at: -33,
+    slider: T.umbilical + 0.035,
+    event: 'The capsule mast is down',
+    confidence: 'estimated',
+    source: 'a mast pulled over by a bungee falls in a second or two',
+  },
+  {
+    at: -14,
+    slider: T.boom,
+    event: 'T-14 s: boom drop',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-33 ("about"); Hammack p. 22: in the count, with no hold after it`,
+  },
+  { at: -12, slider: T.boom + 0.035, event: 'The booster mast is down', confidence: 'estimated', source: 'as the capsule mast' },
+  {
+    at: 0,
+    slider: T.liftoff,
+    event: 'Liftoff',
+    confidence: 'documented',
+    source: 'Postlaunch Report for Mercury-Redstone No. 3: 09:34:13 EST',
+  },
+  {
+    at: 10 * MIN,
+    slider: T.stow,
+    event: 'The cherry picker is folded down',
+    confidence: 'estimated',
+    source: 'not documented: when the pad was cleared afterwards is ours',
+  },
+  { at: 13 * MIN, slider: T.drive, event: 'It drives off', confidence: 'estimated', source: 'not documented, as above' },
+  {
+    at: 13.5 * MIN,
+    slider: 1,
+    event: 'The pad is clear',
+    confidence: 'estimated',
+    source: 'not documented, as above; half a minute to cross the apron',
+  },
+];
 const DEG = Math.PI / 180;
 const X: [number, number, number] = [1, 0, 0];
 const Z: [number, number, number] = [0, 0, 1];
@@ -601,7 +728,7 @@ const pad: ModelDef = {
   scale: 'Launch Complex 5 · hardstand 62 m square · to scale',
   backdrop: 'cape-canaveral',
   slider: ['Pilot aboard · 05:20', 'Pad clear'],
-  sliderSeconds: 70, // so the truck's drive, the last tenth of it, takes about six seconds
+  sequence: MORNING,
   specGroups: ['Launch pad'],
   parts: padParts,
   views: [
@@ -733,7 +860,7 @@ const crew: ModelDef = {
     { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: facingPilot(0.2) },
   ],
   // just after rollback, so that he can be seen: when he walked out the gantry still stood round the rocket
-  with: [{ model: 'pad', exploded: 0.32 }],
+  with: [{ model: 'pad', at: ROLLED_BACK }],
 };
 
 /** Mercury-Redstone 3. Prose versions of this file: ./README.md (flight), ./spacecraft.md (ship). */

@@ -271,6 +271,173 @@ as one node each, and a bench and a steering wheel in its cab. It lacks the king
 hinged cab doors and bonnet, the steering wheel as a node of its own, seat and standing points,
 pedals and instruments, and any mass or turning figure.
 
+## How far things are from pad 5
+
+Checked against the sources, from the launcher's centre. The buildings are where OpenStreetMap
+maps the ones that survive, to within its own error (a few feet): the complex really is this
+tight, with the blockhouse's point 305 ft from each pad. What the record leaves free is listed last.
+
+| Thing | In the model | In the source | Off by | Confidence |
+| --- | --- | --- | --- | --- |
+| Blockhouse, its point | 305 ft on 354° | 305 ft on 354° (OSM way 195709358) | 0 ft | derived |
+| Ready rooms, centre | 383 ft on 348° | 383 ft on 348° (the same outline's north part) | 1 ft | derived |
+| Generator building | 172 ft on 333° | 172 ft on 333° (OSM way 1219671661) | 0 ft | derived |
+| Shed by the track | 267 ft on 014° | 267 ft on 014° (OSM way 1219678280) | 0 ft | derived |
+| Hut behind the blockhouse | 312 ft on 335° | 312 ft on 335° (OSM way 1219671665) | 0 ft | derived |
+| Hut by the road | 345 ft on 323° | 346 ft on 323° (OSM way 1219671664) | 0 ft | derived |
+| Pad 6, centre | 520 ft on 025.0° | 519 ft on 025.3° (OSM way 195709356); 520 ft (TM X-53107 Fig. 7-6, 408 px) | 2 ft | derived |
+| Road between the pads | its near edge 30 ft east of the rails' centre line | OSM way 577612542 meets pad 5's north edge 32 ft east of it | 2 ft | derived |
+| Cherry picker's tail | 64 ft on 295° | 65 ft (*This New Ocean* p. 329); about 64 ft (Fig. 7-6) | 1 ft | documented |
+
+Placed by eye from an oblique photograph, with no scale but the things round them: each of these
+could be 20 to 40 ft from where it really stood, and nothing in the record would say so.
+
+| Thing | In the model | Read from |
+| --- | --- | --- |
+| Pad 6's gantry | 442 ft on 025°, at pad 6's south edge | F16_017, F19_008 (July 1961) |
+| Cable racks | 174 ft on 057° | F16_017, F19_008 |
+| Scaffold stair | 203 ft on 072° | F19_008 |
+| Shower cart | 108 ft on 058°, at the pad's north edge | GPN-2000-001006 |
+| Two huts on the pad | 99 ft on 274°, at the hatch side's edge | F16_017 |
+| Trailer NASA SP-No 1 | 89 ft on 228° | S61-03158 |
+| Cars at the ready rooms | 403 ft on 350° | F16_016 |
+| Pole line | 420 ft on 326° at its nearest, along the road behind the blockhouse | F16_016 |
+| LOX unit, second enclosure, chevron box, tripods, camera towers, floodlight poles | on the hardstand, 20 to 110 ft out | the liftoff photographs; none of their positions is recorded |
+
+## What stood when
+
+A builder asks `sitelib.stood(thing, since=, until=, confidence=, source=)` before building anything
+that was not always there; a state script (`lc5/model/<date>.py`) or a flight's pad script names
+its date, and what did not stand then is left out. Each build prints what it asked and what it
+built. Mercury-Redstone 4 (21 July 1961) needs a `1961-07.py` naming its date, and whatever is then
+known to have changed.
+
+| Thing | From | Until | Confidence | Source |
+| --- | --- | --- | --- | --- |
+| Blockhouse and ready rooms | 1955 | standing today | documented | NHL nomination: built 1955 |
+| Pad 6 | 1955 | the slab is there today | documented | the museum: first launch 20 April 1955, last 27 June 1961 |
+| Pad 6's square-topped gantry | 1959 | not known | estimated | on pad 6 in 1959 (*A Noble Endeavor* p. 10), on 8 March 1961 (the museum) and in July 1961 (F19_008); where on the track it stood on a given day is not recorded |
+| Cable racks and scaffold stair north of pad 5 | not known | not known | estimated | seen July 1961 (F16_017, F19_008): assumed for May |
+| Cars at the blockhouse | not known | not known | estimated | July's cars in July's places (F16_016): assumed for May, which is certainly wrong car for car |
+| Mobile aerial tower (cherry picker) | 24 October 1960 | not known | documented | SP-4001 |
+| White room on level 3 | February 1961 | not known | documented | TM X-53107 7.5.1.2: built February to May 1961. Before it, level 3 was an open platform, which is not built |
+| Emergency shower on its cart | 2 May 1961 | not known | documented | KSC-61-4457; not looked for in MR-4's photographs |
+| Trailer NASA SP-No 1 | May 1961 | not known | documented | S61-03158; a white NASA trailer stands beside the structure in July too (F16_017) |
+| Two huts at the pad's hatch-side edge | not known | not known | estimated | seen July 1961 (F16_017): assumed for May |
+
+Not dated because nothing is known to have changed between May and July 1961: the hardstand, the
+launcher, the masts, the service structure, the track, the road, the cable trenches, the
+outbuildings, the pole line. Also seen only in July and assumed for May, without their own entry:
+the roof's telemetry helix (F16_015), the striped barricade, the floodlights' timber poles.
+
+Known to differ for MR-4 and not yet built: pad 6 had flown its last Redstone (27 June), so its
+gantry need not be at the pad; the transfer van and a second white trailer stood on pad 5
+(F19_008, F16_017).
+
+## Getting about on foot
+
+The viewer's walker is 0.26 m in radius and 1.89 m tall, steps up 0.3 m, climbs any mesh marked
+`climb`, opens any node marked `door` and rides any node marked `lift` (the three marks are set by
+`tools/blender/sitelib.py`, which documents them; they travel as glTF extras). So everything a
+person could go up has a continuous way from the ground to its top. Where the record shows how
+people went up, that is what is built; where it does not, the usual arrangement for that kind of
+structure is built and labelled estimated.
+
+| Structure | Way up, from the ground | Basis |
+| --- | --- | --- |
+| Service structure: the lift | **an open cage of mesh panels**, boarded from the pad by two steps on the hatch side, outboard of the base. It rides the outboard face of that side's leg (`ServiceStructure_Lift`, origin at its floor's middle, built at the pad). Stops: the pad, levels 1 to 4, and the landing under the crane, at 0, 13.19, 15.84, 18.98, 22.55 and 33.44 m above the pad stop, each 0.2 to 0.7 m further in than the last as the leg leans | **documented**: that there were lifts ("elevators on each side", Noble's plans; "Elevators traveled up and down the mast, with stops at various work-levels, to a 15-ton hammerhead crane", Corps of Engineers history, both in *A Noble Endeavor*); that Shepard used one (NASA caption 71P-0270: "makes his way from the elevator to the cleanroom"; *Results* p. 77: "0515 ascend gantry"); the car, its mesh, its canopy and that it was boarded from the pad (FHSU F19_051, MR-4's egress exercise; NASA 61-MR4-45). **Estimated**: that it rode the leg's face (no photograph shows its guides), its size (4 by 2.9 by 7.2 ft), where it stopped, which side Shepard rode |
+| …from the lift into each level | level 1: straight on to the open deck. Levels 2, 3 (the white room) and 4: a door in the level's back wall where the car stops (`…Platform2_Right_LiftDoor`, `…Platform3_Right_LiftDoor`, `…Platform4_Right_LiftDoor`), opening inward | GPN-2000-001012 shows Shepard stepping through a narrow doorway into the white room: documented that there was one; its place estimated |
+| …between the two halves of a level | a deck between the legs behind the vehicle, at every level | at level 1: documented (a catwalk with chain rails joins the halves; the 21 April egress-test photograph, 61-MR4-65). At the other levels: estimated |
+| …to the base's deck | stairs from the pad at the outboard end of the base on the hatch side, descending away from the vehicle: 17 risers of 7.1 in, going 11 in, 3 ft between the rails | documented (61-MR4-45; FHSU F19_004) |
+| …up without the lift | **ladders up the hatch side's leg in stages**, each run from one small railed landing behind the leg to the next: base deck to level 1 (36 ft), then to levels 2, 3, 4 and the landing under the crane at 112 ft | ladders in stages on the legs' outboard and rear faces with small landings: documented (F19_004, 61-MR4-45: an uncaged ladder from the deck to the lowest platform). Which face, the landings' sizes and that they stand at the levels: estimated. The real top run had safety hoops; none is built |
+| …to the crane's walkway | from the landing under the crane, a ladder beside the crane's girder, 20 ft | a hooped ladder up the head of the mast: documented (the egress-test photograph; F16_015). Its place: estimated |
+| …into level 2's cabins | a door in each cabin's inner wall (`…Platform2_Left_Door`, `…_Right_Door`) | estimated |
+| …into the office | its door (`ServiceStructure_OfficeDoor`), from the deck between the legs | estimated: see "What the model gets wrong" for where the office really was |
+| Camera towers | a ladder up the face toward the launcher, ground to the top deck | estimated |
+| Cherry picker | none: its cab was reached from the ground with the jib lowered, or from the capsule's hatch | its use: documented (TM X-53107 7.3.3) |
+| Trailer NASA SP-No 1, the pad's two huts | four steps and a door; a step and a door | estimated |
+| Blockhouse | the ramp to the blast doors in the back wall (`Blockhouse_BlastDoor1`, `_BlastDoor2`); the plate door on the pad 6 side (`Blockhouse_SideDoor`) with a step | doors: documented in kind (double blast doors); their places: the 2005 photograph and F16_016 |
+| …its roof | the ladder on the pad 5 side's wall, 16 ft, on to the roof's edge | estimated: F16_016 shows no ladder on the two faces it sees (the pad 6 side and the back), so it was on a face it does not; Complex 26's twin has an outside ladder today |
+| Ready rooms | a door to the drive and one under the breezeway (`ReadyRoom_Door1`, `_Door2`), a 10 in step up from the shell | estimated |
+| Pad 6's gantry | stairs from the pad on to the east truck (12 risers); a ladder up the east leg's south face to a landing level with the deck under the enclosure (39 ft up); a second ladder from that landing to the walkway across the top (98.6 ft) | hooped ladders on the outboard face of each leg with small landings, and a light stair to the deck: documented (*A Noble Endeavor* p. 10, 1959). Which face and where the landing is: estimated. It also had "elevators" (the same page): not built. The work enclosure is a closed box with nothing inside: it cannot be entered |
+| Scaffold stair tower | six flights of 10 risers, a boarded landing at each turn | F19_008 |
+| Outbuildings | each has its doors as nodes (`Outbuildings_<Hut1/Hut2/Gen/Shed>Door<n>`) and a floor inside, 6 in above the ground | estimated |
+
+Ladders (each its own object `<node>_Ladder<Name>`, marked `climb`, at all three levels of detail):
+
+| Object | From | To |
+| --- | --- | --- |
+| `ServiceStructure_LadderLeg1` | the base's deck (9.3 ft) | level 1's landing (45.1 ft) |
+| `ServiceStructure_LadderLeg2`, `Leg3`, `Leg4` | each level's landing | levels 2 (53.8), 3 (64.6), 4 (75.8 ft) |
+| `ServiceStructure_LadderLeg5` | level 4's landing | the landing under the crane (112 ft) |
+| `ServiceStructure_LadderCrane` | the landing under the crane | the crane's walkway (132.1 ft) |
+| `CameraTowers_LadderTower1`, `_LadderTower2` | the pad | the towers' top decks (62 and 50 ft) |
+| `Blockhouse_LadderRoof` | the shell paving | the roof's edge (15.6 ft) |
+| `Pad6Gantry_LadderLower` | the east truck's top (7 ft) | the landing (39 ft) |
+| `Pad6Gantry_LadderUpper` | the landing | the walkway across the top (98.6 ft) |
+
+Every ladder's stringers stand a metre proud of the floor it reaches. Doors are built shut, each
+leaf its own node with its origin on its hinge line and `swing` (degrees about the vertical,
+anticlockwise from above) saying how it opens. The lift's `stops` are (across, up) in metres from
+where it is built. The pad's doors and its lift are declared as `actions` on its parts in
+`flight.ts`; the scenery's doors are marked in the model and not yet declared anywhere.
+
+Stairs, measured (riser; going; from what to what):
+
+| Flight | Risers | Going | Foot | Head |
+| --- | --- | --- | --- | --- |
+| Pad to the structure's base deck | 17 of 0.180 m | 0.28 m, treads lapping 6 cm | 0.23 m under the pad's surface: on the slab the first tread showing is 0.13 m up; rolled back at T−55 and at launch (+110 ft, +173 ft) the foot is over the track, and the first riser from the ballast is 0.18 m, from a sleeper 0.09 m | the deck's edge |
+| Steps to the lift | 0.23, 0.23 and 0.23 m to the car's floor at 0.70 m | 0.30 m | the slab; off the slab two more steps go down to the ballast (0.21 m) and the ground beyond it (0.22 m) | the car |
+| Trailer SP-No 1 | 0.21, 0.22, 0.22, 0.22 m, then 0.23 m to the floor | 0.27 m | the slab | the door |
+| Pad 6's gantry, pad to truck | 12 of 0.178 m | 0.32 m | pad 6's slab | the truck's top |
+| Scaffold stair, each of six flights | 10 of 0.198 m | 0.24 m | the ground, then each landing | the next landing |
+
+The structure's stairs, steps and ladders roll with it. Between its three positions the stair's foot
+and the lift's steps hang over whatever is under them; at each of the three they meet the slab or
+the track bed as the table says.
+
+
+
+## Beyond the complex
+
+The other launch complexes, the lighthouse and the shore are drawn by the viewer
+(`src/viewer/cape1961.ts`), not modelled in Blender. **Each is at its published place**: the
+coordinates of its pad (OpenStreetMap's outline of the pad or its ruin, agreeing with Wikipedia's
+to a few metres), turned into metres east and north of pad 5 (28.439426° N, 80.573292° W). That
+much is documented. **Its shape is a stand-in for its type**, drawn so that the kinds can be told
+apart on the horizon and no more: estimated, except the few sizes given below.
+
+| Complex | From pad 5 | On 5 May 1961 | Drawn as | Sizes that are documented |
+| --- | --- | --- | --- | --- |
+| 26 A and B | 640 m and 481 m on 025° | Jupiter and Juno II; one gantry for both pads, twin of pad 5's | the A-frame gantry on pad B (Juno II flew from it on 27 April and 24 May; where the gantry stood on 5 May is not recorded); pad A bare | 111 ft 9 in to its top rail |
+| 30 A and B | 608 m on 273°, 686 m on 261° | Pershing: "two launch pads with service towers" | a small lattice tower on each | none: 13 m estimated |
+| 25 A and B, 29 A | 835 m, 942 m and 1,128 m on 198° to 200° | Polaris: an "access stand" at each | an open stand of three decks | none: 14 m estimated |
+| 17 A and B | 1,169 m on 042°, 1,019 m on 045° | Thor-Delta and Thor-Ablestar | a tall rolling gantry beside a launch stand and its mast | none: 35 m estimated |
+| 18 A and B | 1,663 m on 041°, 1,551 m on 047° | Blue Scout | the pad's concrete only: what stood on them is not established | |
+| 9 | 1,969 m on 044° | Navaho; inactive since 1958 | its concrete launch pedestal; the erector is not drawn (whether it still stood is not established) | pedestal 66 ft 8 in by 30 ft |
+| 31 A and 32 A | 2,166 m on 050°, 2,349 m on 047° | Minuteman flat pads | a roll-back service tower and an umbilical tower | 65 ft and 35 ft |
+| 21 | 3,995 m on 054° | Mace: a hardened launch building, finished February 1960 | a low concrete building with two cells | none |
+| 11, 13, 14 | 5,176 m on 040°, 5,883 m on 029°, 6,300 m on 024° | Atlas | ramp, launch stand, umbilical mast, and the service tower drawn back from the stand | Complex 14's, used for all three: ramp 92 ft rising 22 ft, stand 60 by 78 ft, mast 84 ft 6 in, tower 154 ft 8 in |
+| 12 | 5,521 m on 034° | Atlas; being rebuilt for Atlas-Agena | the same without a tower: its tower burned in September 1959 and what stood in May 1961 is not established | as above |
+| 15, 16, 19, 20 | 6,741 m on 020°, 7,234 m on 017°, 7,711 m on 014°, 8,250 m on 011° | Titan I (15 and 16 being converted for Titan II) | launch stand, umbilical tower, and the erector lying down | none: 33 m and 30 m estimated |
+| 34 | 9,240 m on 007° | Saturn; under construction, dedicated 5 June 1961 | the service structure at its parking place 185 m west of the pad, the launch pedestal, the umbilical tower's first 27 ft | all of those: 310 ft on a 70 by 130 ft base; 42 ft square and 27 ft high; 27 ft |
+| Cape Canaveral Light | 3,732 m on 051° | lit since 1894 on this site; automated 1960 | a tapering tower in six bands, black at the foot, black lantern; the brick oil house | 151 ft; three black and three white bands |
+
+Left out, because nothing above the ground can be shown for that day: Complexes 1 to 4 (flat pads
+by then, inactive), 10 (demolished in 1959), 22 (a revetted soft pad), the Minuteman silos 31 B
+and 32 B, 36 (finished in 1961; whether its tower stood by May is not established), and 37, 43 and
+25 C and D (not begun). Which way each pad is turned is not published: Complex 26 lies on pad 5's
+rail line and the rest are set square to their stretch of shore.
+
+The shore is today's, from OpenStreetMap, thinned to 23 points for the Atlantic and 7 for the
+Banana River: not 1961's exactly (the Cape's point has moved and the port has grown). Port
+Canaveral's basins are not drawn. The keepers' houses at the lighthouse probably still stood
+(they were demolished later in the 1960s) and are not drawn.
+
+These landmarks take less of the viewer's haze than the land does (`HAZE` in `cape1961.ts`), so
+that the Atlas pads and Complex 34 can be made out from pad 5 as they could on a clear morning.
+
+
 ## Sources
 
 TM X-53107 sections 4.2.4, 4.8.9, 7.1 to 7.5, Figures 4-25 and 7-5 to 7-11; Hammack & Heberlig (ARS

@@ -160,6 +160,7 @@ export class Ui {
             ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -176,6 +177,7 @@ export class Ui {
             ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -191,6 +193,7 @@ export class Ui {
             <div><dt><kbd>C</kbd></dt><dd>eyes · over the shoulder</dd></div>
             <div><dt><kbd>V</kbd> <kbd>Esc</kbd></dt><dd>back to the camera</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -392,6 +395,12 @@ export class Ui {
     const left = x > window.innerWidth * 0.6;
     tip.classList.toggle('left', left);
     tip.style.transform = `translate(${left ? x - 26 - tip.offsetWidth : x + 26}px, ${Math.max(8, y - 14)}px)`;
+  }
+
+  /** The slider has been moved from elsewhere (the clock): show where it is now. */
+  setSlider(to: number): void {
+    const value = String(to);
+    if (this.slider.value !== value) this.slider.value = value;
   }
 
   private get slider(): HTMLInputElement {

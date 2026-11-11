@@ -110,7 +110,7 @@ def roof_z(x: float, y: float, outline) -> float:
 
 def build(parts: Parts) -> None:
     g = "Blockhouse"
-    parts.node(g)
+    parts.node(g, label="Blockhouse, Complexes 5 and 6")
     conc, steel, frame, glass = parts(g, "bunker"), parts(g, "blast"), parts(g, "frame"), parts(g, "glass")
     walls = ring(OUTLINE, WALL)
     face6, side6, back, side5, face5 = walls
@@ -401,7 +401,7 @@ def annex(parts: Parts) -> None:
     the blockhouse (NHL nomination). Its plan is the rest of OpenStreetMap's outline; its height,
     pilasters, door and vent are F16_016's; its other windows and all of its inside are estimated."""
     g = "ReadyRoom"
-    parts.node(g)
+    parts.node(g, label="Ready rooms")
     u0, u1, v0, v1 = ANNEX
     outline = [S(u0, v0), S(u1, v0), S(u1, v1), S(u0, v1)]
     block, tar, frame = parts(g, "block"), parts(g, "tar"), parts(g, "frame")

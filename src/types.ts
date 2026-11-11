@@ -83,6 +83,20 @@ export type Move = { from: number; to: number; node?: string } & (
 );
 
 /**
+ * One instant on a model's slider: at `at` seconds from launch the slider reads `slider`
+ * (world/sequence.ts). The time is the record, with its confidence and source like any number;
+ * where it falls on the slider is layout, chosen so each event can be seen.
+ */
+export interface Keyframe {
+  at: number;
+  slider: number;
+  /** What happens then: 'Gantry removed: the structure starts for the edge of the pad'. */
+  event: string;
+  confidence: Confidence;
+  source: string;
+}
+
+/**
  * Something a person standing at a part can do to it: a verb on the action wheel (src/actions.ts),
  * offered beside the ones every part has (Info, Inspect). A flight adds verbs here as data; the
  * wheel knows none of them by name.
@@ -179,13 +193,13 @@ export interface ModelDef {
   /** Labels for the two ends of the slider; left out, the model has no slider. */
   slider?: [string, string];
   /**
-   * The slider tells a sequence of events (a launch morning) and this is how long the whole of it
-   * takes at its own pace, seconds. The model then follows the slider instead of jumping to it:
-   * a long move is hurried, and the last stretch before where the slider was put is played at this
-   * pace, so what happens there (a truck driving off) is seen happening. Left out: the model is
-   * wherever the slider is, at once (an exploded view).
+   * The slider tells a sequence of events (a launch morning), and these are the instants along it:
+   * the model is then on the simulation clock (world/clock.ts, world/sequence.ts). Its slider is
+   * where the clock's instant falls on the sequence, dragging it moves the clock, and running the
+   * clock plays the events at their own pace. Left out: the slider is not time, and the model is
+   * wherever it is put, at once (an exploded view).
    */
-  sliderSeconds?: number;
+  sequence?: Keyframe[];
   parts: Part[];
   /** Framings offered beside the automatic wide view of everything on show. */
   views: ViewDef[];
@@ -233,11 +247,13 @@ export interface ModelDef {
   /** The view shown first (default: 'all', everything on show). */
   home?: string;
   /**
-   * The state the flight's other models take while this one is being studied: how far along
-   * their own sliders, 0 to 1 (the pad cleared for launch while the rocket is looked at).
-   * A model not listed is shown as built.
+   * The state the flight's other models take while this one is being studied (the pad cleared for
+   * launch while the rocket is looked at). For a model with a `sequence` it is an instant, `at`
+   * seconds from launch: choosing this section puts the clock there, unless the clock is running.
+   * For any other it is how far along its slider, 0 to 1. A model not listed is left to the clock,
+   * or shown as built.
    */
-  with?: { model: string; exploded: number }[];
+  with?: ({ model: string; exploded: number } | { model: string; at: number })[];
 }
 
 /** A figure that is not a model's dimension (a place on the Earth), with how far it can be trusted and where it came from. */

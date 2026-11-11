@@ -69,4 +69,7 @@ def build_place(date: str | None = None) -> None:
     ):
         vehicles.build(parts)
     parts.build()
+    if hasattr(vehicles, "check_standing"):  # every tyre against what is under it, now that the site is built
+        for line in vehicles.check_standing():
+            print(line)
     print(sitelib.standing())

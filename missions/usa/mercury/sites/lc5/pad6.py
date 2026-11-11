@@ -58,7 +58,7 @@ LOWER, UPPER = (-LEG_X - 1.8, GANTRY_Y + LEG + 0.9), (-LEG_X + 1.8, GANTRY_Y + L
 
 def build(parts: Parts) -> None:
     g = "Pad6"
-    parts.node(g)
+    parts.node(g, label="Pad 6")
     cy = PAD6[1]
     hardstand.field(parts, g, cy, inset=0.6)
     hardstand.burns(parts, g, cy, lift=FAR)
@@ -79,7 +79,7 @@ def build(parts: Parts) -> None:
 
 def gantry(parts: Parts) -> None:
     g = "Pad6Gantry"
-    parts.node(g)
+    parts.node(g, label="Pad 6's service gantry")
     red, white, dark, deck = parts(g, "red"), parts(g, "white"), parts(g, "chassis", True), parts(g, "deck")
     gy = GANTRY_Y
     z0, z1 = 7.0, GANTRY_TOP - HEAD

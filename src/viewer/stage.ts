@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { sameTarget, type Target, type Workings } from '../actions';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
 import type { Clock } from '../world/clock.ts';
+import { sliderAt, timeAt } from '../world/sequence.ts';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
@@ -59,8 +60,9 @@ const DOWN = new THREE.Vector3(0, -1, 0);
 const WALK_SHADOW = 26;
 /** Texels along a side of the Sun's shadow map, as the orbiting views use it. */
 const SHADOW_MAP = 4096;
-/** How much of a slider, short of where it was put, is played at the sequence's own pace. */
-const NEAR_PACE = 0.12;
+/** After the clock has been put somewhere, the hardware plays the last stretch before that instant (seconds of the sequence) at this many times life. */
+const CATCH_UP_NEAR = 20;
+const CATCH_UP_PACE = 4;
 /** The lowest a free camera flies, metres above the surface the model stands on. */
 const FLY_FLOOR = 0.35;
 /** The most of a scenery object that is framed at once, metres across: beyond this a click looks at where it landed. */
@@ -102,6 +104,15 @@ function rest(object: THREE.Object3D): void {
 export class Stage {
   /** The instant everything is shown at: the setting's sky and light follow it. Stopped, it costs nothing. */
   clock: Clock | null = null;
+  /**
+   * The instant the hardware is shown at. A model with a `sequence` stands where its sequence has
+   * it then. It is the clock's instant while the clock runs; after a jump (a scrub, a section
+   * chosen) it catches the clock up over a second or two, so a structure rolls back and a truck
+   * drives off instead of vanishing.
+   */
+  private shownT = 0;
+  /** The clock moved hardware this frame: something operated by hand gives way to the script. */
+  scripted = false;
   onHover: (node: string | null) => void = () => {};
   onSelect: (node: string | null) => void = () => {};
   onInteract: () => void = () => {};
@@ -521,8 +532,19 @@ export class Stage {
       // its own state is wherever its slider was left; the others take what this section asks of them
       // Going on foot, or coming back from it, leaves every model as it stands: a tower that rolled
       // away as you stepped onto it would be no place to stand.
+      // A model on the clock stands where the clock has it. What this section asks of it is an
+      // instant, and the clock is put there: unless it is running, which is someone watching time pass.
+      const asked = def.with?.find((w) => w.model === other.id);
+      if (other.sequence && this.clock) {
+        if (asked && 'at' in asked && !asItStands && !this.clock.running) this.clock.seek(asked.at);
+        if (snap) {
+          this.shownT = this.clock.t;
+          this.follow(0);
+        }
+        return;
+      }
       if (asItStands) this.apartGoal[i] = this.apart[i]!;
-      else this.apartGoal[i] = i === at ? this.apartOwn[i]! : (def.with?.find((w) => w.model === other.id)?.exploded ?? 0);
+      else this.apartGoal[i] = i === at ? this.apartOwn[i]! : asked && 'exploded' in asked ? asked.exploded : 0;
       if (snap) this.setApart(i, this.apartGoal[i]!);
     });
     this.highlight(null, null);
@@ -532,7 +554,11 @@ export class Stage {
 
   /** How far apart a model has been taken, 0 to 1: what its slider should read. */
   exploded(id: string): number {
-    return this.apartOwn[this.defs.findIndex((m) => m.id === id)] ?? 0;
+    const at = this.defs.findIndex((m) => m.id === id);
+    const sequence = this.defs[at]?.sequence;
+    // on the clock, the slider reads the clock's instant, which the hardware may still be catching up
+    if (sequence && this.clock) return sliderAt(sequence, this.clock.t);
+    return this.apartOwn[at] ?? 0;
   }
 
   private setApart(i: number, t: number): void {
@@ -742,11 +768,49 @@ export class Stage {
 
   /** Take the section's model apart this far (its slider). */
   setExplode(t: number): void {
+    // A slider that is a sequence of events is the clock seen through the hardware: taking hold of
+    // it stops the clock and puts it at that instant, and the hardware follows (follow).
+    if (this.def?.sequence && this.clock) {
+      this.clock.pause();
+      this.clock.seek(timeAt(this.def.sequence, t));
+      return;
+    }
     this.apartGoal[this.current] = this.apartOwn[this.current] = t;
-    if (this.def?.sliderSeconds && !this.frozen) return; // a sequence of events is followed (settle), not jumped to
     this.setApart(this.current, t);
     this.fitBounds();
     this.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
+  }
+
+  /**
+   * Stand every model that is on the clock where its sequence has it. The hardware's instant
+   * chases the clock's: in step with it while it runs, and after a jump hurrying over what is far
+   * off and playing the last stretch (CATCH_UP_NEAR seconds of the morning) at CATCH_UP_PACE times
+   * life, so what happens just before where the clock was put is seen happening.
+   */
+  private follow(dt: number): void {
+    this.scripted = false;
+    const clock = this.clock;
+    if (!clock) return;
+    const far = Math.abs(clock.t - this.shownT);
+    if (far > 0) {
+      const step = this.frozen
+        ? far
+        : dt * (CATCH_UP_PACE + 3 * Math.max(0, far - CATCH_UP_NEAR) + (clock.running ? Math.abs(clock.rate) : 0));
+      this.shownT = far <= step ? clock.t : this.shownT + Math.sign(clock.t - this.shownT) * step;
+    }
+    let following = false;
+    this.defs.forEach((def, i) => {
+      if (!def.sequence || !this.staged[i]) return;
+      const to = sliderAt(def.sequence, this.shownT);
+      if (to === this.apart[i]) return;
+      this.apartGoal[i] = this.apartOwn[i] = to;
+      this.setApart(i, to);
+      this.scripted = true;
+      if (i === this.current) following = true;
+    });
+    if (!this.scripted) return;
+    this.fitBounds();
+    if (following) this.refollow(); // keep looking at what was asked for, as it moves
   }
 
   /** Move every model toward the state it has been asked for: a rollback or a drive-off takes a few seconds. */
@@ -757,11 +821,8 @@ export class Stage {
       const now = this.apart[i]!;
       if (now === goal) return;
       const far = Math.abs(goal - now);
-      const seconds = i === this.current ? this.defs[i]?.sliderSeconds : undefined;
-      // A model following its own slider plays the last stretch at the sequence's own pace and
-      // hurries what is further off; a model sent somewhere by another section takes a few seconds.
-      const pace = seconds ? 1 / seconds + 2 * Math.max(0, far - NEAR_PACE) : 1 / 4;
-      const step = this.frozen ? 1 : dt * pace; // (a test wants the scene still at once)
+      // a model sent somewhere by another section takes a few seconds (one on the clock is not moved here: follow)
+      const step = this.frozen ? 1 : dt / 4; // (a test wants the scene still at once)
       this.setApart(i, far <= step ? goal : now + Math.sign(goal - now) * step);
       moved = true;
       if (i === this.current) following = true;
@@ -1214,6 +1275,7 @@ export class Stage {
       const change = this.setting.at?.(this.clock.jdUT);
       if (change) this.relight(change.shadows);
     }
+    this.follow(dt);
     if (this.flyTo) {
       const f = this.flyTo;
       f.t = Math.min(1, f.t + dt / f.seconds);
@@ -1526,7 +1588,10 @@ export class Stage {
   /** Run a model along its slider to `to` (0 to 1), at the pace it always moves: what an Action of kind `slider` does. */
   operate(model: string, to: number): void {
     const at = this.defs.findIndex((m) => m.id === model);
-    if (at >= 0) this.apartGoal[at] = this.apartOwn[at] = THREE.MathUtils.clamp(to, 0, 1);
+    const sequence = this.defs[at]?.sequence;
+    // on the clock, running a model along its slider is going to that moment: the hardware follows, and so does the Sun
+    if (sequence && this.clock) this.clock.seek(timeAt(sequence, THREE.MathUtils.clamp(to, 0, 1)));
+    else if (at >= 0) this.apartGoal[at] = this.apartOwn[at] = THREE.MathUtils.clamp(to, 0, 1);
   }
 
   /** The levels of detail of a model: an action moves the same node in each. */

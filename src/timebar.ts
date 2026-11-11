@@ -34,7 +34,7 @@ export class TimeBar {
     root.setAttribute('aria-label', 'Time');
     root.innerHTML = `
       <div class="time-row">
-        <button class="time-play" aria-pressed="false" title="Run or stop the clock"></button>
+        <button class="time-play" aria-pressed="false" title="Run or stop the clock (P)"></button>
         <p class="time-read" aria-live="off"><time class="time-local"></time><time class="time-count"></time></p>
         <button class="time-toggle chevron" aria-expanded="true" aria-label="Show or hide the time controls" title="Tuck away"></button>
       </div>
@@ -69,6 +69,12 @@ export class TimeBar {
     this.scrub.addEventListener('input', () => {
       clock.pause();
       clock.seek(Number(this.scrub.value) - this.launchAt);
+    });
+    // P runs and stops the clock from anywhere (the camera legend lists it)
+    window.addEventListener('keydown', (e) => {
+      const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+      if (e.metaKey || e.ctrlKey || e.altKey || typing || e.repeat) return;
+      if (e.key.toLowerCase() === 'p') clock.play(!clock.running);
     });
     clock.listen(() => this.render());
     this.render();

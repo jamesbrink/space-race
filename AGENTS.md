@@ -319,8 +319,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   property, like `shell`), one per run, near vertical, with a floor within 0.3 m of its top and
   standing room at both ends. It is not a wall or a floor: walking forward into its face takes
   hold (`Body.mount`), gravity is off, forward climbs at 0.6 m/s and back descends (`climb`), a
-  sidestep or a jump lets go, and at the top the body steps onto the floor beyond if there is
-  one. From the deck above, walk to its top looking down and keep walking: forward goes on
+  sidestep or a jump lets go. Going up, the body steps onto any floor its feet come level with,
+  beyond the ladder or to either side of it (stiles stand a metre above the deck they serve, and
+  a run in a well has its floor beside it), and at the top onto the floor beyond if there is one. From the deck above, walk to its top looking down and keep walking: forward goes on
   meaning down until the legs stop. The wheel offers Climb on a ladder too.
 - **Stairs are walked, not hopped.** The floor is sensed under the middle of the body and four
   points round it, so open treads with daylight between them carry it; the feet follow a flight
