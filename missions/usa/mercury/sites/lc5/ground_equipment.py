@@ -20,6 +20,7 @@ import math
 from mathutils import Vector
 
 import srlib
+import vehicles as cars
 from srlib import FT
 
 from .site import (
@@ -340,6 +341,16 @@ def furniture(parts: Parts) -> None:
     ):
         hut(parts, "hut1", (87.0, 24.0, 97.5, 35.0), 3, 0)
         hut(parts, "hut2", (88.5, 40.0, 97.5, 49.0), 3, 2)
+        # A pickup stands hitched to each by a chain, to drag it off on its skids when the pad is cleared.
+        # Nothing records how the huts were moved, or that they were: a half-ton pickup is the least
+        # that could do it (tools/blender/vehicles.py; its make is not from any photograph).
+        chain = parts(g, "chassis/chains", True)
+        for k, y in enumerate((29.5, 44.5), 1):
+            truck = cars.ford_f100("white", utility=None)
+            built = truck.build(f"GroundEquipment_Tow{k}", parts.nodes[g][0], (104.5 * FT, y * FT, 0.0), 0.0)
+            chain.tube(P(97.6, y, 0.45), P(101.2, y, 1.3), 0.03 * FT, 6)
+            radius, base = truck.tyre[0] * 0.0254, truck.wheelbase * 0.0254  # what flight.ts needs for the drive
+            print(f"  GroundEquipment_Tow{k}: wheel radius {radius:.3f} m, wheelbase {base:.3f} m, {built['triangles']:,} triangles")
 
 
 FOOT_DEPTH = 2.5

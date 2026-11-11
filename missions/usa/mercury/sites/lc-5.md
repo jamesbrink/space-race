@@ -91,6 +91,9 @@ in the viewer is the Blender axis mapped the same way. Angles are right-handed a
 | `UmbilicalMast` | — | hinge pin (0, −8, 1) | turns about +X | +88° (top toward −Y, viewer +Z): lies on the pad | at the umbilical drop, ≈T−35 s (that it fell then is estimated) | mechanism documented (release valve, bungee); form and angle estimated (S61-02407) |
 | `BoosterMast` | — | hinge pin (−3, −13.5, 1) | turns about +X | +88° | "boom drop", ≈T−14 s | event documented; form estimated |
 
+| `GroundEquipment_Shower`, `GroundEquipment_Case` | `GroundEquipment` | their middles on the pad | slide | up the road toward pad 6, about 150 ft | while the platforms open | estimated throughout: nothing records that they left, or when |
+| `GroundEquipment_Trailer` (wheels `…_Trailer_Wheel_1..4` on their hubs, axle along X), `GroundEquipment_Hut1`, `_Hut2`, `GroundEquipment_Barricade` | `GroundEquipment` | the trailer's: the middle of its bogie on the ground (34, 92.45, 0); the others: their middles | none yet | — | — | their own nodes so that they can be taken away; whether they stood on the pad at liftoff is not established |
+
 Notes:
 - Order of the cherry picker's stow, after the lowering: jib fold (+1.16°), then mast (+65.59°
   about Blender +Y), then the outriggers up, then drive. Its cab hangs off the truck's tail at
@@ -236,9 +239,15 @@ The vehicle's node carries `vehicle`, `wheelbase`, `track`, `wheel_radius`, `mas
 `turning_circle` as extras, in metres and kilograms. A door takes its skin, pane, lining, handle
 and (the driver's) mirror with it; behind a lid there is nothing (no engine, no boot floor). The
 wagon's and the carryall's tailgates, and the pickup's utility-body doors, are not separate. The
-inside is a floor, benches, a dashboard with a hooded pair of dials, three pedals, a steering
-wheel on its column, a mirror and a headliner: enough to look out from the driver's seat past the
-right pillars, not a likeness of any one car's cabin.
+inside is a floor, shaped benches, door linings with an arm rest and a window winder, a dashboard
+with a hooded pair of dials, a glovebox lid and a radio, three pedals, a steering wheel with a
+horn ring on its column, a mirror and a headliner: enough to look out from the driver's seat past
+the right pillars, not a likeness of any one car's cabin.
+
+`lc5/vehicles.py`'s `check_standing()`, run once the site is built, drops a ray from every wheel
+and reports any tyre more than 2 cm off the paving or the terrain under it; on this site it
+reports none (the shell apron at −0.6 ft for eight vehicles, the terrain at −0.45 m for the three
+at the hut).
 
 They are parked so that a walker can pass: 0.8 m and more between cars, 0.85 m between their
 noses and the ready rooms' wall, and nothing in front of its door.
@@ -259,9 +268,9 @@ source. The simulator must not depend on them until they are.
 
 | Level of detail | A vehicle | All eleven | Left out |
 | --- | --- | --- | --- |
-| 1.0 | 8,000 to 10,100 triangles | 105,100 | nothing |
-| 0.6 | 4,000 to 5,100 | 51,700 | the interior (panes become dark), shut lines, handles, plates, wipers, over-riders |
-| 0.3 | 1,420 to 1,610 | 16,300 | also the bright trim, whitewalls and lamp rims; wheels have eight sides |
+| 1.0 | 9,000 to 11,600 triangles | 120,200 | nothing |
+| 0.6 | 4,100 to 5,250 | 53,900 | the interior (panes become dark), shut lines, handles, plates, wipers, over-riders |
+| 0.3 | 1,420 to 1,610 | 16,900 | also the bright trim, whitewalls and lamp rims; wheels have eight sides |
 
 Every node is there at every level, with the same name.
 
@@ -541,8 +550,10 @@ The rest of the complex:
   of bonnet and boot, where the glass stands, the curve of the roof, the trim) is drawn from the
   look of the type, not from a drawing, and one loft with a handful of settings makes all of them,
   so a 1957 Ford and a 1959 Chevrolet differ in proportion, fins, lamps and trim and not in every
-  panel. The Volkswagen's back window is the right width and too tall. Windscreens are bowed in
-  plan but do not wrap round the corners as those of 1955 to 1960 did. No badges, bonnet
+  panel. The Volkswagen was checked against four photographs of 1960 and 1961 cars: its roof
+  still has a brim over the windscreen that the real one has not, and its wings are flatter in
+  side view. The other types were drawn from the look of the type without photographs beside
+  them. Windscreens that wrapped round the corners do so in two flat returns, not a curve. No badges, bonnet
   ornaments, door mirrors, aerials, number plates' characters, or engines; the insides are
   benches, a dashboard and a steering wheel. Colours are guesses: the photograph is black and
   white. The emblem on the pickup's door is a plain dark disc, since it cannot be read.

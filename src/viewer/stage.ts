@@ -310,12 +310,24 @@ export class Stage {
       const r = canvas.getBoundingClientRect();
       this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     };
+    let looked: { x: number; y: number } | null = null;
+    canvas.addEventListener('pointerdown', (e) => {
+      if (this.mode !== 'fly' || this.walk.active) return;
+      looked = { x: e.clientX, y: e.clientY };
+      canvas.setPointerCapture(e.pointerId); // the drag goes on if the pointer leaves the canvas
+    });
+    for (const end of ['pointerup', 'pointercancel'] as const) canvas.addEventListener(end, () => (looked = null));
     canvas.addEventListener('pointermove', (e) => {
       aim(e);
-      if (this.mode === 'fly' && !this.walk.active && e.buttons & 1 && this.down) {
-        this.flyer.look(e.movementX, e.movementY);
+      // Flying free, a drag with either button turns the camera the way the mouse goes. The
+      // distance is measured here from one event to the next: the browser's own movementX is
+      // scaled differently from one display to another, which made the view lurch.
+      if (this.mode === 'fly' && !this.walk.active && e.buttons & 3 && looked) {
+        this.flyer.look(e.clientX - looked.x, e.clientY - looked.y, this.camera.fov);
+        looked = { x: e.clientX, y: e.clientY };
         this.flyTo = null;
         this.dirty = true;
+        return; // nothing is hovered while the view is being turned
       }
       this.pointerDirty = e.pointerType === 'mouse'; // a finger has no hover
     });
@@ -1638,7 +1650,7 @@ export class Stage {
     if (!carried) return;
     this.dirty = true;
     this.renderer.shadowMap.needsUpdate = true;
-    for (const lift of carried) if (this.standsOn(lift.nodes)) this.walk.body.position.add(lift.delta);
+    // (whoever stands on a lift is carried by the walker's own rule: Walker.ride)
   }
 
   /** What one level of detail of a figure carries, as its flight says (ModelDef.walker.carries). */

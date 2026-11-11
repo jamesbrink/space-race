@@ -10,7 +10,7 @@ export const CAMERA_MODES: CameraMode[] = ['orbit', 'fly'];
 
 const UP = new THREE.Vector3(0, 1, 0);
 /** Radians of turn per pixel dragged. */
-const LOOK = 0.0035;
+const LOOK = 0.003;
 /** Metres per second near the ground, and how much faster per metre of height: far to go when high up, fine control when low. */
 const SPEED = 4;
 const SPEED_PER_METRE = 0.8;
@@ -40,10 +40,15 @@ export class Flyer {
     this.pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
   }
 
-  /** A drag: the scene follows the hand, as it does when orbiting. */
-  look(dx: number, dy: number): void {
-    this.yaw += dx * LOOK;
-    this.pitch = THREE.MathUtils.clamp(this.pitch + dy * LOOK, -1.5, 1.5);
+  /**
+   * A drag turns the camera the way the mouse goes: right looks right, up looks up, as in any
+   * first-person view. A narrow lens turns less per pixel, so what is under the pointer keeps
+   * about the same pace across the screen at any zoom.
+   */
+  look(dx: number, dy: number, fov = 35): void {
+    const rate = LOOK * (fov / 35);
+    this.yaw -= dx * rate;
+    this.pitch = THREE.MathUtils.clamp(this.pitch - dy * rate, -1.5, 1.5);
   }
 
   /** Move by the keys held. `floor` is the lowest the camera may go. Returns whether anything moved. */

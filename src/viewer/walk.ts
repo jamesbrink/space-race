@@ -104,6 +104,8 @@ const CLIMB_GAP = 0.04;
  * and its half-widths along x and z. The thinner way is the way it is climbed from.
  */
 export interface Ladder {
+  /** The mesh it is, where it is one: a ladder on something that moves takes its climber with it. */
+  mesh?: THREE.Mesh;
   bottom: number;
   top: number;
   x: number;
@@ -371,6 +373,7 @@ export class Solids {
       .copy(mesh.geometry.boundingBox ?? mesh.geometry.boundingSphere!.getBoundingBox(new THREE.Box3()))
       .applyMatrix4(mesh.matrixWorld);
     return {
+      mesh,
       bottom: box.min.y,
       top: box.max.y,
       x: (box.min.x + box.max.x) / 2,
@@ -383,6 +386,7 @@ export class Solids {
   /** The ladders among what was gathered. */
   ladders(): Ladder[] {
     return this.rungs.map((n) => ({
+      mesh: n.mesh,
       bottom: n.box.min.y,
       top: n.box.max.y,
       x: (n.box.min.x + n.box.max.x) / 2,
@@ -792,6 +796,9 @@ export class Walker {
   private readonly vel = new THREE.Vector2();
   private turning = 0;
   private climbed = false;
+  /** What the body stands on or climbs, where on it (in the mesh's own coordinates) and how the mesh was turned: see ride. */
+  private perch: { mesh: THREE.Mesh; at: THREE.Vector3; facing: number; stood: THREE.Vector3 } | null = null;
+  private readonly ridden = new THREE.Matrix4();
   /** The top of the jump or fall under way, to know how hard the landing is. */
   private apex = 0;
   /** The feet's height as the eyes feel it: a moment behind a riser. */
@@ -943,6 +950,7 @@ export class Walker {
     this.peekAt = null;
     this.peekK = 0;
     this.aimed = null;
+    this.perch = null;
     this.capture();
     this.update(0);
   }
@@ -1021,6 +1029,52 @@ export class Walker {
     this.host.viewed(third);
   }
 
+  /**
+   * Whatever the body stood on a frame ago has it still: a lift going up, a structure rolling
+   * along its rails, a truck's bed, a ladder on any of them. Where it stood on that mesh is
+   * where it stands now, wherever the mesh has gone, and it turns as the mesh turns. Nothing
+   * that moves slides out from under anyone, however far it goes in a frame: a clock put to
+   * another hour takes the structure somewhere else at once, and whoever stood on it goes too.
+   */
+  private ride(): void {
+    const perch = this.perch;
+    if (!perch) return;
+    const mesh = perch.mesh;
+    let rooted = false;
+    for (let o: THREE.Object3D | null = mesh; o; o = o.parent) rooted = o.type === 'Scene';
+    if (!rooted) {
+      this.perch = null;
+      return;
+    }
+    const p = this.body.position;
+    // (put somewhere else since the last frame, by a hand other than its own legs: that is not a ride)
+    if (p.distanceToSquared(perch.stood) > 1e-10) {
+      this.perch = null;
+      return;
+    }
+    mesh.updateWorldMatrix(true, false);
+    const to = this.gaze.copy(perch.at).applyMatrix4(mesh.matrixWorld);
+    const dx = to.x - p.x;
+    const dy = to.y - p.y;
+    const dz = to.z - p.z;
+    const far = Math.hypot(dx, dy, dz);
+    if (far < 1e-6) return;
+    p.copy(to);
+    this.feltY += dy;
+    this.apex += dy;
+    const turned = Math.atan2(mesh.matrixWorld.elements[8]!, mesh.matrixWorld.elements[10]!) - perch.facing;
+    this.yaw += turned;
+    this.heading += turned;
+    const on = this.body.on;
+    if (on) {
+      on.x += dx;
+      on.z += dz;
+      on.bottom += dy;
+      on.top += dy;
+    }
+    this.moved = true;
+  }
+
   /** Hop (Space, or the page's button). */
   jump(): void {
     if (this.active && !this.modal) this.body.jump();
@@ -1037,6 +1091,7 @@ export class Walker {
     if (!this.active) return false;
     const has = (...keys: string[]) => keys.some((k) => this.held.has(k));
     this.solids.set(this.host.solids()); // a level of detail may have changed since the last frame
+    this.ride();
     // the arrows turn the head as a neck does, not as a switch: up to speed and down again in a tenth of a second
     const turn = this.modal ? 0 : Number(has('arrowright')) - Number(has('arrowleft'));
     this.turning += (turn * TURN - this.turning) * (1 - Math.exp(-dt / 0.06));
@@ -1182,6 +1237,17 @@ export class Walker {
       camera.near = near;
       camera.updateProjectionMatrix();
     }
+    // remember what is being stood on (or climbed), and where on it: if it moves, so does whoever is on it (ride)
+    const held =
+      this.body.on?.mesh ?? (this.body.grounded ? this.solids.cast(this.eyes.set(p.x, p.y + 0.3, p.z), DOWN, 0.7)?.mesh : undefined);
+    if (held) {
+      this.perch ??= { mesh: held, at: new THREE.Vector3(), facing: 0, stood: new THREE.Vector3() };
+      this.perch.stood.copy(p);
+      this.perch.mesh = held;
+      held.updateWorldMatrix(true, false);
+      this.perch.at.copy(p).applyMatrix4(this.ridden.copy(held.matrixWorld).invert());
+      this.perch.facing = Math.atan2(held.matrixWorld.elements[8]!, held.matrixWorld.elements[10]!);
+    } else this.perch = null;
     const changed = this.moved;
     this.moved = false;
     return changed;

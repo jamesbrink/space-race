@@ -117,7 +117,7 @@ tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
   shot.mjs                            one screenshot of the viewer, for looking at a change
-  logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg for the README: run after changing it
+  logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
   blender/vehicles.py                 period road vehicles from parameters, built to be driven

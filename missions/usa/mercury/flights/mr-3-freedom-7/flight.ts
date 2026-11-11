@@ -691,7 +691,38 @@ const padParts: Part[] = [
       'trailers, and the enclosures and cameras the liftoff photographs show round the launcher. Everything ' +
       'else had left by T−35 minutes. Their positions here are read off photographs. The emergency shower ' +
       'at the pad’s edge and the trailer lettered NASA SP-No 1 are in NASA’s photographs of this pad that ' +
-      'week; the huts and the barricade are from photographs taken in July.',
+      'week; the huts and the barricade are from photographs taken in July. The shower cart and the packing ' +
+      'case are wheeled and carried off up the road toward pad 6 while the platforms open: that they left, ' +
+      'when, and where to are all estimated. Each hut is dragged off on its skids by a pickup, which is ' +
+      'estimated too: nothing records how the huts were moved, or that they were. The trailer is still shown ' +
+      'standing at liftoff, which is not established either way.',
+    moves: [
+      // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
+      { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11 },
+      { kind: 'slide', node: 'GroundEquipment_Case', by: [2.51, 0, 42.4], from: T.platforms + 0.03, to: T.platforms + 0.12 },
+      // each hut dragged off on its skids by a pickup, straight out across the pad's edge to the road behind (estimated)
+      ...[1, 2].flatMap((k): Move[] => [
+        { kind: 'slide', node: `GroundEquipment_Hut${k}`, by: [72, 0, 0], from: T.platforms + 0.03 * k, to: T.platforms + 0.03 * k + 0.08 },
+        {
+          kind: 'drive',
+          node: `GroundEquipment_Tow${k}`,
+          from: T.platforms + 0.03 * k,
+          to: T.platforms + 0.03 * k + 0.08,
+          path: [
+            [24, 0],
+            [48, 0],
+            [72, 0],
+          ],
+          pivot: [0, 0.361, 0],
+          forward: [1, 0],
+          wheelRadius: 0.361,
+          wheelbase: 2.794,
+          wheels: `GroundEquipment_Tow${k}_Wheel`,
+          steered: `GroundEquipment_Tow${k}_SteerWheel`,
+          axle: 'z',
+        },
+      ]),
+    ],
     actions: [
       doorAction('trailer-door', 'GroundEquipment_TrailerDoor', -100),
       doorAction('hut-1-door', 'GroundEquipment_Hut1Door', -100),
