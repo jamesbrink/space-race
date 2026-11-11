@@ -14,25 +14,29 @@ import { uOrigin } from './origin';
  * noise of cells, `billows`), small at the base and big at the top, where a cumulus is cauliflower;
  * the base is left flat. The billows churn slowly upward (`cloudRise`) as the field drifts.
  *
- * Each frame drawn, a ray from the eye through each pixel of a target a quarter the window's pixels
- * is marched through the layer, as far as the scene's depth: through the cloud in steps that
- * lengthen with distance, and over the clear air between clouds in strides (the field is baked
- * round the eye into a texture, with two coarser maps of where there is any cloud at all within a
- * cell and its neighbours, 256 m and 2 km across). At each step inside a cloud the light is marched
- * toward the Sun (Beer and Lambert, with octaves of multiple scattering and a powder term where
- * the cloud is thin), and the sky and the ground light it from above and below. Each step is seen
- * through the haze between it and the eye, as anything else is (air.ts). The layer lies on the
- * Earth's curve, so downrange the clouds stay at their height over the sea.
+ * Each frame drawn, a ray from the eye through each pixel of a target half the window's size each
+ * way (in CSS pixels, so a sixteenth of a dense screen's) is marched through the layer, as far as
+ * the scene's depth or the haze lets anything through. Over clear air it strides: the field is
+ * baked round the eye into a texture, with a map of how far each 128 m cell is from any that could
+ * hold cloud, and nearer cloud it steps by how far outside the heap it is. Where it crosses into a
+ * cloud the surface is found by bisection and the march goes on from there in steps laid from the
+ * surface, short at first, so neighbouring pixels sample the cloud's skin alike: no rings, and no
+ * noise to hide them with. At each step inside, the light is marched toward the Sun (Beer and
+ * Lambert, with octaves of multiple scattering and a powder term where the cloud is thin), and the
+ * sky and the ground light it from above and below, less in the creases. Each step is seen through
+ * the haze between it and the eye, as anything else is (air.ts). The layer lies on the Earth's
+ * curve, so downrange the clouds stay at their height over the sea.
  *
- * The result is brought up to the frame's size and laid over it after the scene (and its ink).
- * Besides its colour and opacity each low pixel keeps where along its ray the cloud began and where
- * it became half opaque; a pixel of the frame takes cloud from its low neighbours only as far as its
- * own surface lies past those, so the rocket and the gantry cut the clouds on their own edges, not on
- * a coarse pixel's. In the cel look the cloud is a drawing: its opacity is cut at one half and its
- * light in two flat tones, at the frame's resolution, so the edge is clean.
+ * The result is brought up to the frame's size and laid over it in place after the scene and its
+ * ink. Besides its colour and opacity each low pixel keeps where along its ray the cloud began and
+ * where it became half opaque; a pixel of the frame takes cloud from its low neighbours only as far
+ * as its own surface lies past those, so the rocket and the gantry cut the clouds on their own
+ * edges, not on a coarse pixel's. In the cel look the cloud is a drawing: its opacity is cut at one
+ * half and its light in two flat tones, at the frame's resolution, so the edge is clean.
  *
- * Nothing in it moves by itself between frames (no temporal jitter): the march's offset is fixed
- * to the pixel, so a still view of drifting cloud does not shimmer.
+ * Nothing in it moves by itself between frames (no temporal jitter), so a still view of drifting
+ * cloud does not shimmer. What it does not do yet: things that do not write depth (the plume, the
+ * trail, glass) are drawn before it, so a cloud behind them is laid over them too.
  */
 
 /** Texels a side of the baked field, and metres a texel: 131 km across, laid round the eye. */
@@ -196,7 +200,7 @@ const marchShader = (scale: number) => /* glsl */ `
 
   // how far inside a cloud the point v from the eye is, metres, roughly (negative outside); f: the same point in the
   // baked field's frame; y: its height in the layer, 0 at the base to 1 at the greatest top
-  float inside(vec3 v, vec2 f, float lod, out float y) {
+  float inside(vec3 v, vec2 f, float lod, out float y, bool billowed) {
     float depth = uLayer.y - uLayer.x;
     float h = heightAt(v) - uLayer.x;
     y = h / depth;
@@ -207,7 +211,7 @@ const marchShader = (scale: number) => /* glsl */ `
     // first and then rounding over; the biggest (the noise furthest over its cut) reaching the layer's full depth.
     // Measured across (metres in from its side at this height), so the sides are as sharp as the top.
     float heap = x * ${SIDE_M.toFixed(1)} - pow(h / uDome, ${(1 / DOME).toFixed(4)});
-    if (heap <= -${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, y)) return heap; // (no billow reaches out so far)
+    if (!billowed || heap <= -${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, y)) return heap; // (no billow reaches out so far)
     // and billows heaped on it and cut into it, bigger the higher up: lumps of 200, 95 and 45 m, so a cumulus is
     // cauliflower at the top and only scalloped at the foot
     vec3 b = textureLod(tBillows, vec3(f.x, h - uRise, f.y) / TILE, lod).rgb;
@@ -215,8 +219,8 @@ const marchShader = (scale: number) => /* glsl */ `
     return min(sd, h); // the base is flat
   }
   // the cloud's extinction there, per metre: rising over \`ramp\` metres from its surface, and fading out far from the eye
-  float density(vec3 v, float ramp, float lod, out float y, out float sd) {
-    sd = inside(v, uEye + v.xz, lod, y);
+  float density(vec3 v, float ramp, float lod, out float y, out float sd, bool billowed) {
+    sd = inside(v, uEye + v.xz, lod, y, billowed);
     return SIGMA * smoothstep(0.0, ramp, sd) * (1.0 - smoothstep(${FADE[0].toFixed(1)}, ${FADE[1].toFixed(1)}, length(v.xz)));
   }
 
@@ -294,21 +298,21 @@ const marchShader = (scale: number) => /* glsl */ `
           was = t;
           continue;
         }
-        float sd = inside(v, uEye + v.xz, lod, y);
+        float sd = inside(v, uEye + v.xz, lod, y, true);
         if (sd <= 0.0) {
           // Clear air: stride as far as the heap could rise to where its billows might reach out, at its steepest;
           // among billows, which change faster, a third of the way to the nearest; close to a surface, short
           // steps, so a lump thinner than a step is not caught one frame and missed the next as the cloud drifts
           float reach = ${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, clamp(y, 0.0, 1.0));
           was = t;
-          t += sd < -reach ? 0.1 * st + 0.5 * (-sd - reach) : max(min(st, 0.1 * st - 0.3 * sd), -0.3 * sd);
+          t += sd < -reach ? 0.5 * st + 0.5 * (-sd - reach) : max(min(st, 0.1 * st - 0.35 * sd), -0.35 * sd);
           continue;
         }
         float a = was, b = t;
         for (int k = 0; k < 6; k++) {
           float m = 0.5 * (a + b);
           vec3 w = dir * m;
-          if (inside(w, uEye + w.xz, lod, y) > 0.0) b = m;
+          if (inside(w, uEye + w.xz, lod, y, true) > 0.0) b = m;
           else a = m;
         }
         t = a;
@@ -318,7 +322,7 @@ const marchShader = (scale: number) => /* glsl */ `
       v = dir * (t + 0.5 * step);
       float ramp = clamp(t * 0.005, 3.0, 60.0); // the skin: a few pixels deep at any distance
       float sd;
-      float d = density(v, ramp, lod, y, sd);
+      float d = density(v, ramp, lod, y, sd, true);
       if (sd <= 0.0) {
         // out of it again, between billows or past the cloud: back to looking for cloud, from here
         t += 0.5 * step;
@@ -332,15 +336,15 @@ const marchShader = (scale: number) => /* glsl */ `
         for (int k = 0; k < 5; k++) {
           float ds = 12.0 * exp2(float(k));
           s += ds * 0.5;
-          tau += density(v + uSun * s, ramp, lod + float(k) * 0.5, yy, ss) * ds;
+          tau += density(v + uSun * s, max(ramp, 0.5 * ds), lod + float(k) * 0.5, yy, ss, k < 2) * ds; // (further off, the heap without its billows)
           s += ds * 0.5;
         }
         // octaves of scattering: each deeper one less dimmed and less forward
-        float sun = phases.x * exp(-tau) + 0.4 * phases.y * exp(-tau * 0.3) + 0.3 * phases.z * exp(-tau * 0.06);
+        float sun = phases.x * exp(-tau) + 0.4 * phases.y * exp(-tau * 0.3) + 0.22 * phases.z * exp(-tau * 0.07);
         sun *= mix(1.0, 1.0 - exp(-d * 100.0), powderMix) * sunGain;
         // the sky's light is shut out of the creases between billows and from under more cloud
-        vec3 up = v + uUp * 50.0;
-        float open = 1.0 - 0.5 * smoothstep(0.0, 60.0, inside(up, uEye + up.xz, lod + 1.0, yy));
+        vec3 up = v + uUp * 80.0;
+        float open = 1.0 - 0.4 * smoothstep(-20.0, 150.0, inside(up, uEye + up.xz, lod + 1.0, yy, true));
         vec3 light = uSunLight * sun + (uSkyLight * (0.3 + 0.6 * y) + uGroundLight * 0.25 * (1.0 - y)) * open;
         float hz = hazeLost(y * (uLayer.y - uLayer.x) + uLayer.x, t);
         float a = 1.0 - exp(-d * min(step, t1 - t));
@@ -499,7 +503,6 @@ export class DepthMark extends Pass {
  * the outline and bloom; `mark` goes straight after the scene. Does nothing where no air with
  * clouds is installed (air.ts) or the scene has no haze (a studio, orbit).
  */
-(globalThis as unknown as { __drift: unknown }).__drift = cloudUniform; // DEBUG
 export class CloudPass extends Pass {
   readonly mark = new DepthMark();
   /** The cel look: cut at half opacity, two flat tones. */
