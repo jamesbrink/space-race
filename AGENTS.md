@@ -339,8 +339,11 @@ never adjusted to bring a check in.
   pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
   the run's samples, in the Earth's turning axes, in the site's frame) and points it as the run
-  does (the gyros' tilt going up, heat shield first after the turnaround). Before liftoff and after
-  the landing it stands on its pad: the inventory. While the engine burns, `viewer/plume.ts` draws
+  does (the gyros' tilt going up, heat shield first after the turnaround). What it sheds falls
+  away (`Ascent.shed`, `Stage.fall`): the full level's own node is carried off with the speed it
+  had, under gravity, pushed back (the tower on its rocket) and turning slowly, all drawn rather
+  than flown, and put back when the clock goes back. Before liftoff and after
+  the landing it stands on its pad, whole: the inventory, which the idle show tours. While the engine burns, `viewer/plume.ts` draws
   its fire under the node `flies.engine` names: a designed shape (flat tone bands, shock diamonds
   in thick air, a widening veil as the air thins), sized to read, not measured. The chase camera (`CAMERA_MODES`: C) turns
   about it and is carried with it, and carries the Sun's shadow map too. The site's frame is flat:

@@ -11,23 +11,23 @@ import { sameTarget, type Target, type Workings } from '../actions';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
-import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
-import { type CameraMode, Flyer } from './fly';
-import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { Ascent } from './ascent';
+import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
+import { Carry } from './carry';
+import { Vehicle } from './drive';
+import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
+import { type CameraMode, Flyer } from './fly';
+import { jointKey, pose, reach, seatFit } from './gait';
 import { Lamps } from './lamps';
+import { LOD_ABOVE, lodUrl, Staged } from './lod';
+import { InkPass, type Look, Looks } from './look';
 import { Origin } from './origin';
 import { Plume } from './plume';
-import { InkPass, type Look, Looks } from './look';
+import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
-import { Vehicle } from './drive';
-import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
-import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
-import { Carry } from './carry';
-import { jointKey, pose, reach, seatFit } from './gait';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|concrete|suit|galvanised)/;
@@ -62,6 +62,7 @@ VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
+const ONE = new THREE.Vector3(1, 1, 1);
 /** How long a vehicle's door is given to swing before the figure gets in or out through it, seconds. */
 const DOOR_SECONDS = 1.05;
 const DOWN = new THREE.Vector3(0, -1, 0);
@@ -272,6 +273,12 @@ export class Stage {
     hidden: [] as THREE.Object3D[],
     by: new THREE.Vector3(),
   };
+  /**
+   * What the flown vehicle has shed and is still seen falling away (ascent.ts `shed`): each node
+   * taken out of the model's full level into a holder that stands where its parent would be, so it
+   * keeps its own place and turn under it; `rel` is that parent in the model's frame.
+   */
+  private readonly debris: { node: THREE.Object3D; parent: THREE.Object3D; drop: number; holder: THREE.Group; rel: THREE.Matrix4 }[] = [];
   private readonly ink = new InkPass();
 
   private setting: Setting;
@@ -579,6 +586,7 @@ export class Stage {
     this.lamps.clear();
     this.ascent = Ascent.of(flight);
     this.lifted.t = Number.NaN;
+    this.debris.length = 0; // (their holders were under the last flight's root)
     this.hangPlume(flight);
     this.lamps = new Lamps();
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
@@ -885,6 +893,7 @@ export class Stage {
       this.renderer.shadowMap.needsUpdate = true;
       this.lifted.shrank = flying;
     }
+    this.fall(ascent, s, pad, t, flying);
     const { on, vacuum } = ascent.burn(t);
     this.plume?.set(on, vacuum, performance.now() / 1000, this.renderer.toneMappingExposure);
     this.lifted.by.subVectors(g.position, before);
@@ -893,6 +902,46 @@ export class Stage {
     this.fitBounds();
     this.dirty = true;
     this.shadowsOwed = true;
+  }
+
+  /**
+   * Carry what the vehicle has shed away from it: the tower on its own rocket, the booster and
+   * the retropack falling behind (ascent.ts `shed`), instead of their vanishing. Each is the full
+   * level's own node, moved into a holder in the scene while it falls and put back when the clock
+   * goes back before it left or the flight is over.
+   */
+  private fall(ascent: Ascent, s: Staged, pad: THREE.Quaternion, t: number, flying: boolean): void {
+    const gone = (i: number) => flying && t >= ascent.drops[i]!.at;
+    for (let k = this.debris.length - 1; k >= 0; k--) {
+      const d = this.debris[k]!;
+      if (gone(d.drop)) continue;
+      d.parent.add(d.node);
+      d.holder.removeFromParent();
+      this.debris.splice(k, 1);
+    }
+    s.group.updateMatrixWorld(true);
+    const into = new THREE.Matrix4().copy(s.group.matrixWorld).invert();
+    ascent.drops.forEach((drop, i) => {
+      if (!gone(i) || this.debris.some((d) => d.drop === i)) return;
+      for (const name of drop.nodes) {
+        const node = s.full.getObjectByName(name);
+        const parent = node?.parent;
+        if (!node || !parent || !this.root) continue;
+        const holder = new THREE.Group();
+        holder.matrixAutoUpdate = false;
+        this.root.add(holder);
+        holder.add(node);
+        node.visible = true; // (hidden with the rest of what was shed, at every level, a moment ago)
+        this.debris.push({ node, parent, drop: i, holder, rel: into.clone().multiply(parent.matrixWorld) });
+      }
+    });
+    const at = new THREE.Vector3();
+    const turn = new THREE.Quaternion();
+    for (const d of this.debris) {
+      if (!ascent.shed(d.drop, t, pad, at, turn)) continue;
+      d.holder.matrix.compose(at, turn, ONE).multiply(d.rel);
+      d.holder.matrixWorldNeedsUpdate = true;
+    }
   }
 
   /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */

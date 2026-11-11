@@ -92,6 +92,52 @@ export class Ascent {
     return this.flying(t) ? this.flight.flies!.drops.filter((d) => t >= d.at).flatMap((d) => d.nodes) : [];
   }
 
+  /** What leaves the vehicle on the way, in order: `Flight.flies.drops`. */
+  get drops(): readonly { at: number; nodes: string[] }[] {
+    return this.flight.flies!.drops;
+  }
+
+  /**
+   * Where something shed (drop `i`) is at `t`: the model's pose (origin and turn, as `place` gives
+   * them) carried on from the moment it left. It keeps the vehicle's speed then and falls under
+   * gravity in the site's frame (flat, without air: it leaves high and fast, and it is seen for
+   * a minute at most), pushed off along the vehicle's axis and turning slowly end over end.
+   * The escape tower leaves on its own rocket. The push, the rocket's thrust and burn, and the
+   * tumble are drawn, not recorded. False if it has not left yet, or the flight is over.
+   */
+  shed(i: number, t: number, padTurn: THREE.Quaternion, position: THREE.Vector3, quaternion: THREE.Quaternion): boolean {
+    const drop = this.drops[i];
+    if (!drop || t < drop.at || !this.flying(t)) return false;
+    let from = this.released[i];
+    if (!from) {
+      const p = new THREE.Vector3();
+      const q = new THREE.Quaternion();
+      const p2 = new THREE.Vector3();
+      this.place(drop.at, padTurn, p, q);
+      this.place(drop.at + 0.05, padTurn, p2, new THREE.Quaternion());
+      from = this.released[i] = { p, q, v: p2.sub(p).divideScalar(0.05) };
+    }
+    const dt = t - drop.at;
+    const axis = Y.clone().applyQuaternion(from.q);
+    const tower = drop.nodes.some((n) => /tower/i.test(n));
+    // the tower's rocket: 3 g along the axis for a second, then it coasts; anything else is eased off at a metre a second backward
+    const push = tower ? 0.5 * 3 * G * Math.min(dt, 1) ** 2 + 3 * G * Math.max(0, dt - 1) : -1 * dt;
+    position
+      .copy(from.p)
+      .addScaledVector(from.v, dt)
+      .addScaledVector(axis, push)
+      .addScaledVector(Y, -0.5 * G * dt * dt);
+    const tumble = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(1, 0, 0).applyQuaternion(from.q),
+      THREE.MathUtils.degToRad(TUMBLE * dt),
+    );
+    quaternion.copy(tumble).multiply(from.q);
+    return true;
+  }
+
+  /** Each drop's pose and velocity as it left, worked out once. */
+  private readonly released: ({ p: THREE.Vector3; q: THREE.Quaternion; v: THREE.Vector3 } | undefined)[] = [];
+
   /**
    * Put the model where it is at `t`: `position` for its origin, `quaternion` for its turn, given
    * how it stands on the pad (`padTurn`). False, and nothing changed, if it is not flying.
@@ -126,6 +172,9 @@ export class Ascent {
 }
 
 const Y = new THREE.Vector3(0, 1, 0);
+const G = 9.80665;
+/** How fast something shed turns end over end, degrees a second: drawn. */
+const TUMBLE = 6;
 const toThree = (v: Vec3) => new THREE.Vector3(v[0], v[1], v[2]);
 
 /** Position and velocity at `t` between the run's samples: a cubic Hermite through the two either side. */
