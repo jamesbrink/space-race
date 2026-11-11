@@ -178,6 +178,14 @@ export interface ModelDef {
   backdrop: BackdropKind;
   /** Labels for the two ends of the slider; left out, the model has no slider. */
   slider?: [string, string];
+  /**
+   * The slider tells a sequence of events (a launch morning) and this is how long the whole of it
+   * takes at its own pace, seconds. The model then follows the slider instead of jumping to it:
+   * a long move is hurried, and the last stretch before where the slider was put is played at this
+   * pace, so what happens there (a truck driving off) is seen happening. Left out: the model is
+   * wherever the slider is, at once (an exploded view).
+   */
+  sliderSeconds?: number;
   parts: Part[];
   /** Framings offered beside the automatic wide view of everything on show. */
   views: ViewDef[];

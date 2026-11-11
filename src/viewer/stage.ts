@@ -55,6 +55,8 @@ VISOR.opacity = 0.5;
 const UP = new THREE.Vector3(0, 1, 0);
 /** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
 const WALK_SHADOW = 26;
+/** How much of a slider, short of where it was put, is played at the sequence's own pace. */
+const NEAR_PACE = 0.12;
 /** The lowest a free camera flies, metres above the surface the model stands on. */
 const FLY_FLOOR = 0.35;
 /** The most of a scenery object that is framed at once, metres across: beyond this a click looks at where it landed. */
@@ -680,6 +682,7 @@ export class Stage {
   /** Take the section's model apart this far (its slider). */
   setExplode(t: number): void {
     this.apartGoal[this.current] = this.apartOwn[this.current] = t;
+    if (this.def?.sliderSeconds && !this.frozen) return; // a sequence of events is followed (settle), not jumped to
     this.setApart(this.current, t);
     this.fitBounds();
     this.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
@@ -688,15 +691,23 @@ export class Stage {
   /** Move every model toward the state it has been asked for: a rollback or a drive-off takes a few seconds. */
   private settle(dt: number): void {
     let moved = false;
+    let following = false;
     this.apartGoal.forEach((goal, i) => {
       const now = this.apart[i]!;
       if (now === goal) return;
-      const step = this.frozen ? 1 : dt / 4; // (a test wants the scene still at once)
-      this.setApart(i, Math.abs(goal - now) <= step ? goal : now + Math.sign(goal - now) * step);
+      const far = Math.abs(goal - now);
+      const seconds = i === this.current ? this.defs[i]?.sliderSeconds : undefined;
+      // A model following its own slider plays the last stretch at the sequence's own pace and
+      // hurries what is further off; a model sent somewhere by another section takes a few seconds.
+      const pace = seconds ? 1 / seconds + 2 * Math.max(0, far - NEAR_PACE) : 1 / 4;
+      const step = this.frozen ? 1 : dt * pace; // (a test wants the scene still at once)
+      this.setApart(i, far <= step ? goal : now + Math.sign(goal - now) * step);
       moved = true;
+      if (i === this.current) following = true;
     });
     if (!moved) return;
     this.fitBounds();
+    if (following) this.refollow(); // keep looking at what was asked for, as it moves
   }
 
   setAutoRotate(on: boolean): void {
@@ -1309,19 +1320,21 @@ export class Stage {
     if (!lifts) {
       lifts = [];
       top.traverse((o) => {
-        const stops = o.userData.stops as number[] | undefined;
+        // a stop is a height above where the car was built, or [across, up] where the car also shifts
+        // sideways as it rises (up a leaning leg), or all three; in metres, in the car's parent's frame
+        const stops = o.userData.stops as (number | number[])[] | undefined;
         if (!o.userData.lift || !o.name || !Array.isArray(stops)) return;
+        const names = o.userData.stop_names as string[] | undefined;
         lifts!.push({
           id: `lift:${o.name}`,
           label: 'Call the lift',
-          // its stops are called what the model calls them (`stop_names`), or by their order
           do: {
             kind: 'lift',
             node: o.name,
-            stops: stops.map((y, i) => ({
-              name: (o.userData.stop_names as string[] | undefined)?.[i] ?? (i ? `level ${i}` : 'the bottom'),
-              by: [0, y, 0],
-            })),
+            stops: stops.map((stop, i) => {
+              const [a = 0, b = 0, c = 0] = typeof stop === 'number' ? [0, stop] : stop.length === 2 ? [stop[0], stop[1]] : stop;
+              return { name: names?.[i] ?? (i ? `level ${i}` : 'the bottom'), by: [a, b, c] as [number, number, number] };
+            }),
           },
         });
       });

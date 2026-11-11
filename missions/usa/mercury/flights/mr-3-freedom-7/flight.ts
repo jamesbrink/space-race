@@ -601,6 +601,7 @@ const pad: ModelDef = {
   scale: 'Launch Complex 5 · hardstand 62 m square · to scale',
   backdrop: 'cape-canaveral',
   slider: ['Pilot aboard · 05:20', 'Pad clear'],
+  sliderSeconds: 70, // so the truck's drive, the last tenth of it, takes about six seconds
   specGroups: ['Launch pad'],
   parts: padParts,
   views: [
