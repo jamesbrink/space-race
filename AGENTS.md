@@ -367,11 +367,11 @@ never adjusted to bring a check in.
   the blue over it, and comes in as the sky (backdrops.ts) goes out. The site's ground (land.ts)
   keeps the middle: the globe leaves a hole for it, and across its last two kilometres the
   ground bends onto the curve and takes the globe's colours (`Land.meet`), so where they overlap
-  they are one surface and which one the depth buffer picks cannot be seen. Downrange the sky's
-  up is the plumb line at the eye, not the site's. Still to do: the chase camera's up is the
-  site's (downrange the horizon tilts by the arc flown, 4.8 degrees at the landing), the sky's
-  light and the globe's are the site's Sun's (a globe lit from orbit at the site's night is lit by
-  the Moon), and the coast is Natural Earth's 1:10 million everywhere, the Cape included.
+  they are one surface and which one the depth buffer picks cannot be seen. Downrange, up is
+  the plumb line where it is, not the site's +Y: the sky's (at the eye) and the orbiting
+  camera's (at what it turns about, `Stage.alignUp`), so the horizon there is level. Still to
+  do: the globe's light is the site's (a globe seen from orbit at the site's night is lit by the
+  Moon), and the coast is Natural Earth's 1:10 million everywhere, the Cape included.
 - **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
   because of it; the capsule flown from the report's separation passes all but one. The flight's
   README ("The flight as flown") states the numbers.

@@ -454,6 +454,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
 
     // the one direct light: with neither Sun nor Moon it keeps its last direction, at no strength
     globe.sun.copy(h.sunDir);
+    globe.light(light.light.from === 'sun' ? light.light.intensity : null, fog.density * (installedAir()?.scale ?? 0));
     if (light.light.from === 'sun') setting.sunDir.copy(h.sunDir);
     else if (light.light.from === 'moon') setting.sunDir.copy(h.moonDir);
     colour(setting.sunColor as THREE.Color, light.light.colour);

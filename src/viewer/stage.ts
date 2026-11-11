@@ -1206,6 +1206,9 @@ export class Stage {
     this.scenery?.everyLevel(true);
     if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
     if (this.trail) this.trail.mesh.visible = true; // (and its trail: drawn empty, its shader is built)
+    const globe = this.setting.globe;
+    const shown = globe && [globe.mesh.visible, globe.air.visible];
+    if (globe) globe.mesh.visible = globe.air.visible = true; // the Earth and its air, first seen on the way up
     for (const night of [1, 0]) {
       this.lamps.set(night, 1);
       await this.renderer.compileAsync(this.scene, this.camera).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
@@ -1217,6 +1220,7 @@ export class Stage {
     this.scenery?.everyLevel(false);
     if (this.plume) this.plume.mesh.visible = false;
     if (this.trail) this.trail.mesh.visible = false;
+    if (globe && shown) [globe.mesh.visible, globe.air.visible] = shown;
     this.relight(true);
     await frames(3);
   }
@@ -1537,6 +1541,32 @@ export class Stage {
   }
 
   /**
+   * Up, for the orbiting camera, is the plumb line where the subject is: the site's +Y on the
+   * site, leaning with the Earth's curve beyond it (by the arc flown: 4.8 degrees at the landing),
+   * so the horizon downrange is level. It leans in over the second span of the site's ground
+   * beyond its edge, too little at a time to be seen.
+   */
+  private alignUp(): void {
+    const globe = this.setting.globe;
+    const t = this.controls.target;
+    const edge = this.setting.horizon ?? Infinity;
+    const lean = globe ? THREE.MathUtils.smoothstep(Math.hypot(t.x, t.z), edge, 2 * edge) : 0;
+    const up =
+      lean > 0
+        ? globe!
+            .up(t, new THREE.Vector3())
+            .lerp(UP, 1 - lean)
+            .normalize()
+        : UP;
+    if (this.camera.up.angleTo(up) < 1e-7) return;
+    this.camera.up.copy(up);
+    // OrbitControls keeps the turn from its up to +Y, made once: it is made again
+    const c = this.controls as unknown as { _quat: THREE.Quaternion; _quatInverse: THREE.Quaternion };
+    c._quat.setFromUnitVectors(up, UP);
+    c._quatInverse.copy(c._quat).invert();
+  }
+
+  /**
    * Where there is ground, the camera stays above it, and so does the point it orbits: a
    * camera under the pad sees the inside of the concrete and the underside of the terrain.
    */
@@ -1811,7 +1841,10 @@ export class Stage {
       this.drive(dt);
       this.fitDetail();
       if (this.mode === 'fly') this.flyer.aim(this.camera, this.controls.target, Boolean(this.flyTo));
-      else this.controls.update(dt);
+      else {
+        this.alignUp();
+        this.controls.update(dt);
+      }
       this.keepInBounds();
       this.keepAboveGround();
       if (this.pointerDirty && !this.down) {

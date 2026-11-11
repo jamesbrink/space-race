@@ -97,6 +97,17 @@ const SCALE = 8_000;
  */
 /** The Sun's light above the air, in the scene's units (a directional light's intensity): a little over the light at noon (daysky.ts). Estimated. */
 const SUNLIGHT = 4.5;
+/** Rayleigh's optical depth straight up from the sea, for 680, 550 and 440 nm: BETA times SCALE. */
+const RAYLEIGH = [5.8e-6 * SCALE, 13.5e-6 * SCALE, 33.1e-6 * SCALE] as const;
+
+/** Air masses toward the Sun at a zenith angle whose cosine is `mu` (Kasten and Young 1989); under the horizon, as good as none gets through. */
+export function airmass(mu: number): number {
+  const z = (Math.acos(Math.min(1, Math.max(-1, mu))) * 180) / Math.PI;
+  return z > 95 ? 1e4 : 1 / (Math.max(mu, 0) + 0.50572 * Math.max(96.07995 - z, 1) ** -1.6364);
+}
+
+/** How much of the Sun's green light reaches the sea through the air with it `mu` from the zenith, and `aerosol` of haze straight up. */
+export const transmission = (mu: number, aerosol: number): number => Math.exp(-(RAYLEIGH[1] + aerosol) * airmass(mu));
 const AIR = /* glsl */ `
   uniform vec3 uCentre, uSun;
   uniform float uAlt, uRadius, uWeight, uSunLight;
@@ -249,6 +260,8 @@ export class Globe {
       uGlobeHole: { value: hole ? hole.frame : new THREE.Matrix4() },
       uGlobeHalf: { value: hole ? hole.half : -1 },
       uGlobeHaze: { value: haze?.scale ?? 1400 },
+      uGlobeSunLight: { value: SUNLIGHT },
+      uGlobeAerosol: { value: 0 },
     };
 
     const material = new THREE.MeshStandardMaterial({ name: 'globe', roughness: 1, metalness: 0 });
@@ -322,6 +335,20 @@ export class Globe {
         ${COLOUR}
         vec3 beyondAlbedo(vec3 p, out float rough) { return globeAlbedo(normalize(uGlobeOrigin + uGlobeAxes * p), rough); }`,
     };
+  }
+
+  /**
+   * The Sun's light on the globe: the true Sun's, dimmed by the air it comes through to each
+   * place (so the terminator reddens) and by `aerosol` of haze straight up. Near the site the
+   * scene's own light is kept, so the globe and the site's ground agree where they meet; and the
+   * Sun's strength is set so that at the site the two are the same (`sunlight`: the scene's light
+   * when it is the Sun, null when it is not).
+   */
+  light(sunlight: number | null, aerosol: number): void {
+    const t = transmission(this.sun.y, aerosol); // the site's own up is +Y
+    this.uniforms.uGlobeSunLight!.value =
+      sunlight !== null && t > 0.05 ? THREE.MathUtils.clamp(sunlight / t, 0.5 * SUNLIGHT, 2 * SUNLIGHT) : SUNLIGHT;
+    this.uniforms.uGlobeAerosol!.value = aerosol;
   }
 
   /** Where the hole for the site's ground ends, as a distance from its middle in its frame: the ground has handed over by then. */
@@ -483,7 +510,11 @@ export class Globe {
           uniform vec3 uGlobeSun, uGlobeOrigin;
           uniform mat3 uGlobeAxes;
           uniform mat4 uGlobeHole;
-          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze;
+          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze, uGlobeSunLight, uGlobeAerosol;
+          float globeAirmass(float mu) {
+            float z = degrees(acos(clamp(mu, -1.0, 1.0)));
+            return z > 95.0 ? 1e4 : 1.0 / (max(mu, 0.0) + 0.50572 * pow(max(96.07995 - z, 1.0), -1.6364));
+          }
           float globeRough;
           ${COLOUR}
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
@@ -521,7 +552,27 @@ export class Globe {
             float day = smoothstep(-0.1, 0.06, dot(normalize(vGlobeNormal), uGlobeSun));
             reflectedLight.indirectDiffuse *= mix(0.02, 1.0, day);
             reflectedLight.indirectSpecular *= mix(0.02, 1.0, day);
-          }`,
+          }
+          #if NUM_DIR_LIGHTS > 0
+          {
+            // away from the site, the true Sun through the air over each place in place of the scene's light
+            float away = uGlobeHalf > 0.0 ? smoothstep(uGlobeHalf, 3.0 * uGlobeHalf, length(vGlobeSite)) : 1.0;
+            if (away > 0.0) {
+              ReflectedLight scene = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
+              IncidentLight light;
+              getDirectionalLightInfo(directionalLights[0], light);
+              RE_Direct(light, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, scene);
+              ReflectedLight sun = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
+              float mu = dot(normalize(vGlobeNormal), uGlobeSun);
+              light.direction = normalize((viewMatrix * vec4(uGlobeSun, 0.0)).xyz);
+              light.color = uGlobeSunLight * exp(-(vec3(${RAYLEIGH.map((v) => v.toFixed(4)).join(', ')}) + uGlobeAerosol) * globeAirmass(mu));
+              light.visible = true;
+              RE_Direct(light, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, sun);
+              reflectedLight.directDiffuse += away * (sun.directDiffuse - scene.directDiffuse);
+              reflectedLight.directSpecular += away * (sun.directSpecular - scene.directSpecular);
+            }
+          }
+          #endif`,
         )
         .replace(
           '#include <fog_fragment>',
