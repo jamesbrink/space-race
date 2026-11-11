@@ -186,6 +186,7 @@ export class Ui {
           <dl>
             <div><dt>mouse</dt><dd>look round</dd></div>
             <div><dt><kbd>E</kbd></dt><dd>act on what you face</dd></div>
+            <div><dt>ladder</dt><dd>W up · S down</dd></div>
             <div><dt><kbd>C</kbd></dt><dd>eyes · over the shoulder</dd></div>
             <div><dt><kbd>V</kbd> <kbd>Esc</kbd></dt><dd>back to the camera</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>

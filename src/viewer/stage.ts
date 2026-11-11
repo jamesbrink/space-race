@@ -1254,8 +1254,9 @@ export class Stage {
   private targetOf(hit: Hit): { target: Target; box?: THREE.Box3 } | null {
     const material = hit.mesh.material as THREE.Material | THREE.Material[];
     const pane = (Array.isArray(material) ? material[0] : material)?.name.startsWith('glass') || undefined;
+    const climb = Boolean(hit.mesh.userData.climb || hit.mesh.parent?.userData.climb) || undefined;
     const place = this.placeOf(hit.mesh, hit.point);
-    if (place) return { target: { place: place.name, pane }, box: place.box };
+    if (place) return { target: { place: place.name, pane, climb }, box: place.box };
     const names: string[] = [];
     for (let o: THREE.Object3D | null = hit.mesh; o; o = o.parent) {
       const at = this.staged.findIndex((s) => s.shown === o);
@@ -1264,9 +1265,9 @@ export class Stage {
         continue;
       }
       const def = this.defs[at]!;
-      return { target: { model: def.id, node: def.parts.find((p) => names.includes(p.node))?.node, pane } };
+      return { target: { model: def.id, node: def.parts.find((p) => names.includes(p.node))?.node, pane, climb } };
     }
-    return pane ? { target: { pane } } : null;
+    return pane || climb ? { target: { pane, climb } } : null;
   }
 
   private setAim(aim: Stage['aim']): void {
@@ -1281,6 +1282,12 @@ export class Stage {
     if (!hit || !this.aim?.target.pane) return;
     const centre = this.paneCentre(hit.mesh, hit.point);
     this.walk.peek(centre.clone().addScaledVector(hit.normal, 0.4), hit.normal.clone().negate());
+  }
+
+  /** While walking: get onto the ladder being looked at, from its foot or from the deck at its top. */
+  walkClimb(): void {
+    const hit = this.aim?.hit;
+    if (hit && this.aim?.target.climb) this.walk.body.mount(this.walk.solids.ladderOf(hit.mesh));
   }
 
   /** While walking: stop, and go and look at the place in the surroundings that was being looked at. */

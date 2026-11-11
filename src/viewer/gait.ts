@@ -62,6 +62,8 @@ export interface Moment {
   crouch?: number;
   /** Breaths taken, counted in breaths (the whole part does not matter). */
   breath?: number;
+  /** On a ladder, 0 to 1: the hands are up on the rungs and the limbs go hand over hand, `phase` counting two rungs to the cycle. */
+  climb?: number;
   /** What each hand is carrying, 0 (nothing) to 1 (a case by its handle): that arm hangs straighter and swings a third as much, and the body leans a little away. */
   load?: { L: number; R: number };
 }
@@ -160,6 +162,35 @@ export function pose(m: Moment): Pose {
   out.rise = (-at(speed, 0.035, 0.06) * s * s - CROUCH_DROP * crouch) * g + 0.003 * breath;
   // and they ride over whichever foot has the weight: the left's from its landing (phase 0.25) until the right's
   out.shift = at(speed, 0.018, 0.012) * Math.sin(a - Math.PI / 4) * g;
+  // On a ladder everything above is set aside for the climb: hands up at the rungs, one reaching
+  // as the other pulls; the knee of the leg going up bent high, the other pushing straight.
+  const k = m.climb ?? 0;
+  if (k) {
+    const up = {
+      'UpperArm.L': -2.1 - 0.45 * s,
+      'UpperArm.R': -2.1 + 0.45 * s,
+      'LowerArm.L': -0.7 + 0.45 * s,
+      'LowerArm.R': -0.7 - 0.45 * s,
+      'UpperLeg.L': -0.6 + 0.5 * s,
+      'UpperLeg.R': -0.6 - 0.5 * s,
+      'LowerLeg.L': 0.9 - 0.6 * s,
+      'LowerLeg.R': 0.9 + 0.6 * s,
+      'Foot.L': -0.2,
+      'Foot.R': -0.2,
+      'Hand.L': 0,
+      'Hand.R': 0,
+      Hips: 0,
+      Spine: 0.06,
+      Head: -0.25,
+    } satisfies Record<Joint, number>;
+    for (const j of JOINTS) out[j] += (up[j] - out[j]) * k;
+    out.rise *= 1 - k;
+    out.shift *= 1 - k;
+    for (const j of JOINTS) {
+      if (out.sideways[j]) out.sideways[j] *= 1 - k;
+      if (out.twist[j]) out.twist[j] *= 1 - k;
+    }
+  }
   return out;
 }
 
@@ -206,6 +237,8 @@ const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
 const turn = new THREE.Quaternion();
 
+/** How far up a ladder one cycle of the limbs goes, metres: a rung with each foot, at a foot apart. */
+const RUNGS = 0.61;
 /** How many times a second a standing figure's breathing is moved on: the rate a still view is redrawn at anyway. */
 const BREATH_RATE = 12;
 /** Seconds a breath takes: twelve a minute. */
@@ -220,6 +253,7 @@ export class Gait {
   /** The speed the pose is drawn for: the figure's own, smoothed, so a start and a stop take a moment. */
   private speed = 0;
   private air = 0;
+  private climb = 0;
   /** A landing being absorbed: how hard, and how long ago. */
   private hard = 0;
   private since = Infinity;
@@ -238,6 +272,7 @@ export class Gait {
       phase: this.phase,
       speed: this.speed,
       air: this.air,
+      climb: this.climb,
       crouch: this.hard * give(this.since),
       breath: this.breath,
       load: this.load,
@@ -285,17 +320,20 @@ export class Gait {
    * A frame has passed in which the figure went `distance` metres over the ground at `speed`,
    * on the ground or `airborne`. Says how much the pose has changed: see Stir.
    */
-  advance(distance: number, speed: number, airborne: boolean, dt: number): Stir {
-    const was = [this.phase, this.speed, this.air, this.hard * give(this.since)];
+  advance(distance: number, speed: number, airborne: boolean, dt: number, climbing = false): Stir {
+    const was = [this.phase, this.speed, this.air, this.hard * give(this.since), this.climb];
+    this.climb += ((climbing ? 1 : 0) - this.climb) * (1 - Math.exp(-dt * 10));
+    if (!climbing && this.climb < 0.01) this.climb = 0;
     this.speed += (speed - this.speed) * (1 - Math.exp(-dt * 14));
     if (speed === 0 && this.speed < 0.02) this.speed = 0;
     this.air += ((airborne ? 1 : 0) - this.air) * (1 - Math.exp(-dt * 14));
     if (!airborne && this.air < 0.01) this.air = 0;
     this.since += dt;
     // by distance, not by time: the feet go as far as the figure does
-    if (!airborne) this.phase = (this.phase + distance / cycleLength(this.speed, this.leg)) % 1;
-    if (this.speed === 0 && this.air === 0) this.phase = 0; // standing: the next step starts from the same foot
-    const now = [this.phase, this.speed, this.air, this.hard * give(this.since)];
+    if (climbing) this.phase = (this.phase + distance / RUNGS) % 1;
+    else if (!airborne) this.phase = (this.phase + distance / cycleLength(this.speed, this.leg)) % 1;
+    if (this.speed === 0 && this.air === 0 && this.climb === 0) this.phase = 0; // standing: the next step starts from the same foot
+    const now = [this.phase, this.speed, this.air, this.hard * give(this.since), this.climb];
     // breathing goes on in steps, a dozen a second: a still view is redrawn that often for the scenery anyway
     this.clock += dt;
     const breath = this.breathing ? Math.floor(this.clock * BREATH_RATE) / BREATH_RATE / BREATH : 0;
@@ -325,7 +363,7 @@ export class Gait {
 
   /** Stand the figure as it was built, and start the next walk from the beginning. */
   rest(root: THREE.Object3D): void {
-    this.phase = this.speed = this.air = this.hard = 0;
+    this.phase = this.speed = this.air = this.hard = this.climb = 0;
     const rig = this.rig(root);
     for (const { joint, node, rest, x, y } of rig?.joints ?? []) {
       node.quaternion.copy(rest);

@@ -256,13 +256,20 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
 - **Feet and body are separate.** Rays straight down find the floor: anything up to `STEP`
   (0.3 m) above the feet is stepped onto, further down than that is a fall. A capsule from
   `STEP` above the feet to the top of the head is pushed sideways out of whatever it meets. So
-  a model's stairs need risers of 0.3 m or less, and a ladder cannot be climbed. Space (a
+  a model's stairs need risers of 0.3 m or less. Space (a
   button on a touch screen) is a standing jump: 0.4 m under gravity, from the ground only, and
   the head stops at whatever is over it (`jump`, `bump`).
 - **The terrain is a level, not a mesh.** It lies at the height of the setting's floor,
   everywhere, and cannot be fallen through. Where that is below the models' surface (`GROUND_Y`)
   it is so only for the depth buffer's sake, so from down there a riser is measured from y = 0:
   the edge of a pad is not a kerb.
+- **Ladders are climbed.** A ladder is its own mesh with `userData.climb` (a Blender custom
+  property, like `shell`), one per run, near vertical, with a floor within 0.3 m of its top and
+  standing room at both ends. It is not a wall or a floor: walking forward into its face takes
+  hold (`Body.mount`), gravity is off, forward climbs at 0.6 m/s and back descends (`climb`), a
+  sidestep or a jump lets go, and at the top the body steps onto the floor beyond if there is
+  one. From the deck above, walk to its top looking down and keep walking: forward goes on
+  meaning down until the legs stop. The wheel offers Climb on a ladder too.
 - **What is in front of you can be acted on.** Each frame a ray from the eyes finds what is
   within `REACH` (2.5 m); `Stage.targetOf` says what it is in the flight's terms (a `Target`:
   model and part, a window pane, a place in the surroundings) and the reticle names it. E (a

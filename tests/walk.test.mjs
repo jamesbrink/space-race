@@ -4,6 +4,9 @@ import * as THREE from 'three';
 import {
   Body,
   bump,
+  CLIMB_SPEED,
+  climb,
+  hang,
   GRAVITY,
   JUMP_HEIGHT,
   JUMP_SPEED,
@@ -226,4 +229,129 @@ test('a body gathers its speed and loses it: most of the way in a quarter of a s
   let b = [0, 0];
   for (let i = 0; i < 3; i++) b = quicken(b[0], b[1], 4, 0, 1 / 30);
   assert.ok(Math.abs(a[0] - b[0]) < 1e-9);
+});
+
+test('a ladder is climbed at its own pace, between its foot and its top, and says which end was reached', () => {
+  const ladder = { bottom: 0, top: 3 };
+  assert.deepEqual(climb(1, 1, ladder, 0.5), { y: 1 + CLIMB_SPEED * 0.5, off: null });
+  assert.deepEqual(climb(1, -1, ladder, 0.5), { y: 1 - CLIMB_SPEED * 0.5, off: null });
+  assert.deepEqual(climb(1, 0, ladder, 0.5), { y: 1, off: null });
+  assert.deepEqual(climb(2.9, 1, ladder, 1), { y: 3, off: 'top' });
+  assert.deepEqual(climb(0.1, -1, ladder, 1), { y: 0, off: 'bottom' });
+  assert.deepEqual(
+    climb(3, -0.5, ladder, 1),
+    { y: 3 - CLIMB_SPEED * 0.5, off: null },
+    'half a push is half the pace, and the top going down is not an end',
+  );
+  assert.equal(climb(1, 5, ladder, 1).y, 1 + CLIMB_SPEED, 'no faster for pushing harder');
+});
+
+test('a body hangs just off the face of a ladder on the side it came from, across the thin way', () => {
+  const ladder = { bottom: 0, top: 3, x: 10, z: 4, hx: 0.03, hz: 0.25 };
+  const east = hang(ladder, 12, 4.2, 0.26);
+  assert.ok(Math.abs(east.x - (10 + 0.03 + 0.26 + 0.04)) < 1e-9 && east.z === 4 && east.nx === 1 && east.nz === 0);
+  const west = hang(ladder, 9, 3, 0.26);
+  assert.ok(west.x < 10 && west.nx === -1);
+  assert.equal(hang(ladder, 12, 4, 0.26, -1).nx, -1, 'or the side that is named');
+  const turned = hang({ ...ladder, hx: 0.25, hz: 0.03 }, 10, 9, 0.26);
+  assert.ok(turned.nz === 1 && turned.nx === 0 && turned.x === 10 && turned.z > 4.3);
+});
+
+/** A deck three metres up with a ladder on its east face, on a slab. */
+function tower() {
+  const root = new THREE.Group();
+  const box = (w, h, d, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d));
+    mesh.position.set(x, y + h / 2, z);
+    root.add(mesh);
+    return mesh;
+  };
+  box(40, 1, 40, 0, -1, 0); // the slab
+  box(4, 3, 4, 0, 0, 0); // the tower: its top a deck at 3.0, its east face at x = 2
+  const ladder = box(0.06, 3.0, 0.5, 2.1, 0, 0); // standing 7 cm off that face
+  ladder.userData.climb = true;
+  root.updateMatrixWorld(true);
+  const solids = new Solids();
+  solids.set([root]);
+  const body = new Body(solids);
+  body.ground = -0.45;
+  return { body, ladder, root };
+}
+
+/** Ask a body's legs for (x, z) for `seconds`: forward is up on a ladder. */
+function go(body, x, z, seconds, push = 1) {
+  const dt = 1 / 60;
+  body.climbing = push;
+  for (let t = 0; t < seconds; t += dt) body.move(x * WALK_SPEED * dt, z * WALK_SPEED * dt, dt);
+}
+
+test('walking into a ladder takes hold of it; forward climbs it and steps off onto the deck at its top', () => {
+  const { body } = tower();
+  body.place(5, 0, 0);
+  go(body, -1, 0, 3);
+  assert.ok(body.on, 'on the ladder');
+  assert.ok(Math.abs(body.position.x - (2.13 + RADIUS + 0.04)) < 1e-6 && body.position.z === 0, `hanging at x = ${body.position.x}`);
+  const y1 = body.position.y;
+  go(body, -1, 0, 1);
+  assert.ok(
+    Math.abs(body.position.y - y1 - CLIMB_SPEED) < 0.02,
+    'a second of climbing is 0.6 m, whatever the legs were doing over the ground',
+  );
+  assert.ok(Math.abs(body.position.x - (2.13 + RADIUS + 0.04)) < 1e-6);
+  go(body, -1, 0, 3.2);
+  assert.equal(body.on, null);
+  assert.ok(body.grounded && Math.abs(body.position.y - 3) < 1e-6 && body.position.x < 2, `on the deck: ${body.position.toArray()}`);
+});
+
+test('on a ladder nothing falls; back goes down to the ground; a hop lets go', () => {
+  const { body } = tower();
+  body.place(5, 0, 0);
+  go(body, -1, 0, 5);
+  const y = body.position.y;
+  assert.ok(body.on && y > 1);
+  go(body, 0, 0, 2, 0);
+  assert.equal(body.position.y, y, 'hanging on, it stays where it is');
+  go(body, 0, 0, 1, -1);
+  assert.ok(Math.abs(body.position.y - (y - CLIMB_SPEED)) < 0.02);
+  go(body, 0, 0, 6, -1);
+  assert.equal(body.on, null);
+  go(body, 0, 0, 0.3, 0);
+  assert.ok(body.grounded && Math.abs(body.position.y) < 1e-6, `down at the bottom: y = ${body.position.y}`);
+  // up again, and let go half way
+  go(body, -1, 0, 4);
+  assert.ok(body.on && body.position.y > 1);
+  body.jump();
+  assert.equal(body.on, null);
+  go(body, 0, 0, 1.5, 0);
+  assert.ok(body.grounded && Math.abs(body.position.y) < 1e-6 && body.position.x > 2.4, 'dropped clear of it');
+});
+
+test('a ladder is only taken hold of by walking at it; from the deck above, by walking to its top looking down', () => {
+  const { body } = tower();
+  // past it, close, but not into it
+  body.place(2.45, 0, -3);
+  go(body, 0, 1, 4);
+  assert.equal(body.on, null);
+  assert.ok(body.position.z > 2, 'walked on by');
+  // backing into it does not count either
+  body.place(3, 0, 0);
+  go(body, -1, 0, 2, -1);
+  assert.equal(body.on, null);
+  // on the deck, walking to the edge over it: looking ahead, off the edge; looking down, onto the ladder
+  body.place(0, 3, 0);
+  body.lookingDown = true;
+  go(body, 1, 0, 1.6);
+  assert.ok(body.on && body.on.nx === 1, 'on it, on its outer side');
+  assert.ok(body.position.x > 2.13 && body.position.y > 2.3 && body.position.y < 3, 'and going down it, since forward was the way down');
+  go(body, 0, 0, 0.1, 0);
+  const paused = body.position.y;
+  go(body, 0, 0, 0.5, 1);
+  assert.ok(body.position.y > paused, 'once the legs have stopped, forward is up again');
+  go(body, 0, 0, 6, -1);
+  go(body, 0, 0, 0.3, 0);
+  assert.ok(!body.on && body.grounded && Math.abs(body.position.y) < 1e-6);
+  // mount() does the same when asked (the wheel's Climb), from above or below
+  body.place(0, 3, 0);
+  body.mount(tower().body.solids.ladders()[0] ?? { bottom: 0, top: 3, x: 2.13, z: 0, hx: 0.03, hz: 0.25 });
+  assert.ok(body.on && body.on.nx === 1 && body.position.y > 2.9);
 });

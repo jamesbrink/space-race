@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { buildCape1961, CLEARINGS, COAST, RIVER, shoreAt } from './cape1961';
 import { NOISE } from './space';
 
 /**
@@ -11,12 +12,11 @@ import { NOISE } from './space';
  *
  * The complex itself (the blockhouse, pad 6, the track, the huts, the parked cars) is not here: it
  * is modelled in Blender like the pad, in the pad's frame (Flight.surroundings; sites/lc-5.md).
- * This file is the ground it stands on and what lies beyond. What is placed from a source: the
- * sea to the east, the rail line on 025 degrees, the shell roads round the blockhouse where the
- * July 1961 photographs show them. What is impression: the lighthouse's place (it really stands
- * 3.7 km away on 052 degrees, where this straight shore has sea), the other roads, and Missile
- * Row's towers up the coast, which are there to say "there were a dozen more pads this way",
- * not to map them.
+ * Nor is the rest of the Cape: the other complexes, the lighthouse and the line of the shore are
+ * cape1961.ts, each at its published place. This file is the ground itself: the land and the sea
+ * either side of that shore, the scrub, the rail line on 025 degrees, and the shell roads round
+ * the blockhouse where the July 1961 photographs show them. No road is drawn that is not in a
+ * photograph, so the roads here end where the photographs do.
  */
 
 /** The pad model's frame on the compass: its +X (the hatch) faces 295 degrees, west-north-west. Radians about the vertical. */
@@ -54,21 +54,20 @@ const STRIPS: [number, number, number, number, number][] = [
   [-95, -360, -150, -410, 26],
 ];
 
-const SHORE = 330; // metres east of the pad where scrub gives way to beach
-const SURF = 410; // and beach to water
-const FAR = 7000;
+/** The neighbouring pads near enough for their cleared ground to show: within 2.5 km. */
+const NEAR = CLEARINGS.filter(([x, z]) => Math.hypot(x, z) < 2500);
+const BEACH = 80; // metres of sand between the scrub and the surf line
+const FAR = 11000; // how far the ground is drawn: past Complex 34, 9.2 km up the coast
 
 /** Sand tracks, as [x0, z0, x1, z1, half-width]. Drawn in the terrain's shader: no geometry to fight with. */
 const TRACKS: [number, number, number, number, number][] = [
-  [...bearing(RAIL + 180, 95), ...bearing(RAIL, 520), 4.2], // the rail line's ballast
+  [...bearing(RAIL + 180, 95), ...bearing(RAIL, 700), 4.2], // the rail line's ballast, on past pad 6 to Complex 26's two pads
   [...site(166, 0), ...site(340, 0), 4.0], // the stub road from the foot of the apron's ramp
   [...site(340, 586), ...site(340, -900), 3.6], // the road behind the blockhouse, parallel to the track (F16_016)
   [...site(340, -215), ...site(293, -215), 3.2], // the drive in to the blockhouse,
   [...site(293, -215), ...site(293, -349), 3.4], // past its back door,
   [...site(293, -349), ...site(340, -349), 3.2], // and out again
   [...site(276, -147), ...site(340, -147), 4.4], // the hut's parking
-  [-260, 118, 300, 118, 4.0], // the road along the complex's south side
-  [118, 118, 250, -420, 3.2], // Lighthouse Road
 ];
 
 function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; tick: (dt: number) => void } {
@@ -79,6 +78,9 @@ function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; t
     shader.uniforms.uCel = cel;
     shader.uniforms.uTracks = { value: TRACKS.map((t) => new THREE.Vector4(t[0], t[1], t[2], t[3])) };
     shader.uniforms.uTrackWidth = { value: TRACKS.map((t) => t[4]) };
+    shader.uniforms.uCoast = { value: COAST.map(([n, x]) => new THREE.Vector2(n, x)) };
+    shader.uniforms.uRiver = { value: RIVER.map(([n, x]) => new THREE.Vector2(n, x)) };
+    shader.uniforms.uClear = { value: NEAR.map(([x, z, r]) => new THREE.Vector3(x, z, r)) };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vCape;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCape = (modelMatrix * vec4(transformed, 1.0)).xyz;');
@@ -92,7 +94,22 @@ function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; t
         uniform vec4 uTracks[${TRACKS.length}];
         uniform float uTrackWidth[${TRACKS.length}];
         ${NOISE}
+        uniform vec2 uCoast[${COAST.length}];   // the Atlantic shore: (metres north, metres east) of the pad, northward
+        uniform vec2 uRiver[${RIVER.length}];   // the Banana River's east shore, the same way
+        uniform vec3 uClear[${NEAR.length}];    // ground kept clear round the neighbouring pads: (x, z, radius)
         float capeSea;
+        float coastAt(float north) {
+          float x = uCoast[0].y;
+          for (int i = 0; i < ${COAST.length - 1}; i++)
+            if (north >= uCoast[i].x) x = mix(uCoast[i].y, uCoast[i + 1].y, clamp((north - uCoast[i].x) / (uCoast[i + 1].x - uCoast[i].x), 0.0, 1.0));
+          return x;
+        }
+        float riverAt(float north) {
+          float x = uRiver[0].y;
+          for (int i = 0; i < ${RIVER.length - 1}; i++)
+            if (north >= uRiver[i].x) x = mix(uRiver[i].y, uRiver[i + 1].y, clamp((north - uRiver[i].x) / (uRiver[i + 1].x - uRiver[i].x), 0.0, 1.0));
+          return x;
+        }
         float segment(vec2 p, vec4 s) {
           vec2 a = s.xy, b = s.zw, ab = b - a;
           return length(p - a - ab * clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0));
@@ -116,6 +133,7 @@ function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; t
         float apron = 1.0 - smoothstep(42.0, 70.0, max(abs(pad.x), abs(pad.y)) + 14.0 * (mid - 0.5));
         apron = max(apron, 1.0 - smoothstep(42.0, 62.0, max(abs(pad.x), abs(pad.y - 158.5)) + 12.0 * (mid - 0.5)));   // pad 6
         apron = max(apron, 1.0 - smoothstep(36.0, 58.0, length(pad - vec2(66.0, 84.0)) + 14.0 * (mid - 0.5)));        // the blockhouse
+        for (int i = 0; i < ${NEAR.length}; i++) apron = max(apron, 1.0 - smoothstep(uClear[i].z, uClear[i].z + 18.0, length(p - uClear[i].xy) + 12.0 * (mid - 0.5)));
         apron = mix(apron, step(0.5, apron), uCel);
         c = mix(c, sand * (0.9 + 0.25 * fine), apron * 0.9);
         // crushed-shell tracks, a little paler down the wheel lines
@@ -127,22 +145,28 @@ function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; t
         track = mix(track, step(0.5, track), uCel);
         c = mix(c, vec3(0.56, 0.53, 0.45) * (0.88 + 0.2 * fine), track);
         // the shore wanders; beach, then water that darkens as it deepens
-        float shore = p.x + 26.0 * (fbm(vec3(p.y * 0.006, 0.0, 4.0)) - 0.5);
-        float beach = smoothstep(${SHORE.toFixed(1)} - 14.0, ${SHORE.toFixed(1)} + 6.0, shore);
+        // the shore is the Cape's own (cape1961.ts), and wanders a little about it; shore is metres seaward of the surf line
+        float shore = p.x - coastAt(-p.y) + 26.0 * (fbm(vec3(p.y * 0.006, 0.0, 4.0)) - 0.5);
+        float beach = smoothstep(-${BEACH.toFixed(1)} - 14.0, -${BEACH.toFixed(1)} + 6.0, shore);
         beach = mix(beach, step(0.5, beach), uCel);
         c = mix(c, vec3(0.66, 0.60, 0.46) * (0.92 + 0.14 * fine), beach);
         float lap = 3.5 * sin(uTime * 0.5 + p.y * 0.035) + 2.0 * sin(uTime * 0.31 + p.y * 0.011);
-        capeSea = smoothstep(${SURF.toFixed(1)} - 2.0, ${SURF.toFixed(1)} + 2.0, shore + lap);
-        float depth = clamp((shore - ${SURF.toFixed(1)}) / 900.0, 0.0, 1.0);
+        capeSea = smoothstep(-2.0, 2.0, shore + lap);
+        float depth = clamp(shore / 900.0, 0.0, 1.0);
         depth = mix(depth, pow(floor(pow(depth, 0.45) * 3.0 + 0.5) / 3.0, 2.22), uCel);   // the sea in bands
         vec3 water = mix(vec3(0.07, 0.30, 0.30), vec3(0.012, 0.075, 0.16), pow(depth, 0.45));
         // lines of surf rolling in, breaking up along their length
         float roll = fract((shore + lap) * 0.035 - uTime * 0.06);
-        float foam = smoothstep(0.86, 1.0, roll) * (1.0 - smoothstep(0.0, 110.0, shore - ${SURF.toFixed(1)}))
+        float foam = smoothstep(0.86, 1.0, roll) * (1.0 - smoothstep(0.0, 110.0, shore))
                    * smoothstep(0.35, 0.6, noise(vec3(p * 0.16, uTime * 0.25)));
-        foam = max(foam, (1.0 - smoothstep(0.0, 5.0, abs(shore + lap - ${SURF.toFixed(1)}))) * 0.85);
+        foam = max(foam, (1.0 - smoothstep(0.0, 5.0, abs(shore + lap))) * 0.85);
         foam = mix(foam, step(0.5, foam), uCel);
         c = mix(c, mix(water, vec3(0.92), foam), mix(capeSea, step(0.5, capeSea), uCel));
+        // the Banana River behind the Cape: flat water, no surf
+        float river = smoothstep(-3.0, 3.0, riverAt(-p.y) - p.x + 30.0 * (big - 0.5));
+        river = mix(river, step(0.5, river), uCel);
+        c = mix(c, vec3(0.06, 0.24, 0.26), river);
+        capeSea = max(capeSea, river);
         diffuseColor.rgb = c;`,
       )
       .replace(
@@ -161,7 +185,7 @@ function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; t
   };
   // Many small triangles, not two big ones: depth interpolated across a kilometres-long
   // triangle is too coarse to keep anything near the ground from flickering.
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2 * FAR, 2 * FAR, 180, 180), material);
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2 * FAR, 2 * FAR, 260, 260), material);
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.y = groundY;
   return { mesh, tick: (dt) => (time.value += dt) };
@@ -261,7 +285,9 @@ function scrub(groundY: number): { plants: THREE.InstancedMesh; tufts: THREE.Ins
     const x = r * Math.cos(a),
       z = r * Math.sin(a);
     const [px, pz] = toPad(x, z);
-    if (Math.max(Math.abs(px), Math.abs(pz)) < 42 || x > SHORE - 30 || onTrack(x, z)) continue; // the hardstand
+    if (Math.max(Math.abs(px), Math.abs(pz)) < 42 || onTrack(x, z)) continue; // the hardstand
+    if (x > shoreAt(COAST, -z) - BEACH - 30 || x < shoreAt(RIVER, -z) + 30) continue; // the beach, the river
+    if (NEAR.some(([cx, cz, cr]) => Math.hypot(x - cx, z - cz) < cr + 6)) continue; // the neighbouring pads
     if (Math.abs(px) < 11 && pz > -100 && pz < 560) continue; // the rail line
     if (px > -18 && px < 0 && pz > 28 && pz < 130) continue; // the concrete road beside it
     if (Math.hypot(x - PAD6[0], z - PAD6[1]) < 48) continue;
@@ -304,75 +330,6 @@ function scrub(groundY: number): { plants: THREE.InstancedMesh; tufts: THREE.Ins
   return { plants: mesh, tufts };
 }
 
-const concrete = new THREE.MeshStandardMaterial({ color: 0x8d8a82, roughness: 0.95 });
-const paint = (hex: number) => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.6 });
-
-function boxAt(w: number, h: number, d: number, x: number, y: number, z: number, material: THREE.Material): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
-  mesh.position.set(x, y + h / 2, z);
-  return mesh;
-}
-
-/** Cape Canaveral Light: black and white bands, 46 m, the Cape's landmark since 1868. */
-function lighthouse(groundY: number): THREE.Group {
-  const g = new THREE.Group();
-  const bands = 6,
-    h = 39 / bands;
-  for (let i = 0; i < bands; i++) {
-    const r0 = 4.0 - (i * 2.1) / bands,
-      r1 = 4.0 - ((i + 1) * 2.1) / bands;
-    const band = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, h, 24), paint(i % 2 ? 0xe9e6dc : 0x121212));
-    band.position.y = groundY + h * (i + 0.5);
-    g.add(band);
-  }
-  const gallery = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 2.7, 0.4, 24), paint(0x121212));
-  gallery.position.y = groundY + 39.2;
-  const lantern = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.5, 1.5, 3.4, 12),
-    new THREE.MeshStandardMaterial({ color: 0xbfd6d8, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.55 }),
-  );
-  lantern.position.y = groundY + 41.1;
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(1.9, 2.2, 12), paint(0x121212));
-  cap.position.y = groundY + 43.9;
-  g.add(gallery, lantern, cap);
-  g.position.set(250, 0, -420);
-  return g;
-}
-
-/** Missile Row: the service towers of the Atlas and Titan pads, marching up the coast into the haze. */
-function missileRow(groundY: number): THREE.Group {
-  const g = new THREE.Group();
-  const red = paint(0x7a2018),
-    white = paint(0xdedbd2);
-  let seed = 5;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-  for (let i = 0; i < 11; i++) {
-    const z = -900 - i * 520 - rand() * 160,
-      x = 150 + rand() * 120;
-    const h = 38 + rand() * 22,
-      w = 9 + rand() * 5;
-    const tower = new THREE.Group();
-    for (const [dx, dz] of [
-      [-1, -1],
-      [1, -1],
-      [1, 1],
-      [-1, 1],
-    ] as const)
-      tower.add(boxAt(1.0, h, 1.0, (dx * w) / 2, groundY, (dz * w) / 2, red));
-    for (let y = 6; y < h; y += 6) tower.add(boxAt(w + 1, 0.7, w + 1, 0, groundY + y, 0, y % 12 ? white : red));
-    tower.add(boxAt(w * 1.9, 2.2, w * 0.7, w * 0.45, groundY + h, 0, red));
-    if (i % 3 !== 1) {
-      const rocket = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, h * 0.62, 12), white);
-      rocket.position.set(w * 1.15, groundY + h * 0.31 + 3, 0);
-      tower.add(rocket, boxAt(8, 3, 8, w * 1.15, groundY, 0, concrete));
-    }
-    tower.position.set(x, 0, z);
-    tower.rotation.y = rand() * 0.8 - 0.4;
-    g.add(tower);
-  }
-  return g;
-}
-
 /** Everything round the pad. `groundY` is the terrain's height; the pad's own surface is 0. */
 export function buildCape(groundY: number): {
   floor: THREE.Mesh;
@@ -385,11 +342,7 @@ export function buildCape(groundY: number): {
   const { mesh, tick } = terrain(groundY, cel);
   const { plants, tufts } = scrub(groundY);
   plants.receiveShadow = tufts.receiveShadow = true;
-  const built = [lighthouse(groundY), missileRow(groundY)];
-  for (const group of built)
-    group.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true;
-    });
+  const built = buildCape1961(groundY); // the other complexes and the lighthouse, where they stood
   // laid out on the compass, then turned as one to lie round the pad model
   const site = new THREE.Group();
   site.add(plants, tufts, ...built);

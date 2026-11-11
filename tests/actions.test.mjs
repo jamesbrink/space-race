@@ -39,6 +39,13 @@ test('another figure can be become; nobody becomes themselves; a figure with no 
   assert.equal(choices({ model: 'bob' }, flight, 'ann')[0].label, 'Become Bob');
 });
 
+test('a ladder can be climbed, whatever else it is part of', () => {
+  assert.deepEqual(ids({ climb: true }), ['climb']);
+  assert.deepEqual(ids({ model: 'rig', node: 'Cab', climb: true }), ['climb', 'info', 'inspect']);
+  assert.equal(nameOf({ model: 'rig', node: 'Cab', climb: true }, flight), 'Ladder');
+  assert.ok(!sameTarget({ model: 'rig', node: 'Cab' }, { model: 'rig', node: 'Cab', climb: true }));
+});
+
 test('a model hit where it has no part, and nothing at all, offer nothing', () => {
   assert.deepEqual(ids({ model: 'rig' }), []);
   assert.deepEqual(ids({}), []);

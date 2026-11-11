@@ -17,12 +17,15 @@ export interface Target {
   pane?: boolean;
   /** Something in the flight's surroundings, by its node's name. */
   place?: string;
+  /** It is a ladder (a mesh a model marked `climb`). */
+  climb?: boolean;
 }
 
 /** A verb the wheel can offer, and what the page needs to carry it out. */
 export type Verb =
   | { do: 'info' }
   | { do: 'look' }
+  | { do: 'climb' }
   | { do: 'inspect' }
   | { do: 'become'; model: string }
   | { do: 'action'; model: string; action: Action };
@@ -35,7 +38,7 @@ export interface Choice {
 
 /** The same target as before? (A new object is made every frame; only a change is news.) */
 export const sameTarget = (a: Target | null, b: Target | null): boolean =>
-  a === b || (!!a && !!b && a.model === b.model && a.node === b.node && a.pane === b.pane && a.place === b.place);
+  a === b || (!!a && !!b && a.model === b.model && a.node === b.node && a.pane === b.pane && a.place === b.place && a.climb === b.climb);
 
 /** A node is named in one word (Pad6Gantry): spaced out, it is a label. */
 export const spaced = (name: string): string =>
@@ -53,6 +56,7 @@ export function lookUp(target: Target, flight: Flight): { model?: ModelDef; part
 /** What to call a target: its part's name, else its model's, else the place's, else what it plainly is. */
 export function nameOf(target: Target, flight: Flight): string {
   const { model, part } = lookUp(target, flight);
+  if (target.climb) return 'Ladder';
   return part?.name ?? model?.name ?? (target.place ? spaced(target.place) : target.pane ? 'Window' : '');
 }
 
@@ -64,6 +68,7 @@ export function nameOf(target: Target, flight: Flight): string {
 export function choices(target: Target, flight: Flight, as: string): Choice[] {
   const { model, part } = lookUp(target, flight);
   const out: Choice[] = [];
+  if (target.climb) out.push({ id: 'climb', label: 'Climb', verb: { do: 'climb' } });
   if (part) out.push({ id: 'info', label: 'Info', verb: { do: 'info' } });
   if (target.pane) out.push({ id: 'look', label: 'Look inside', verb: { do: 'look' } });
   if (model?.walker && model.id !== as) out.push({ id: 'become', label: `Become ${model.name}`, verb: { do: 'become', model: model.id } });

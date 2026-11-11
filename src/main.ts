@@ -214,6 +214,7 @@ function perform(on: Target, { verb }: Choice): void {
     ui.showWalkCard(part);
     cardAt = { x: stage.walk.body.position.x, z: stage.walk.body.position.z };
   } else if (verb.do === 'look') stage.walkLookIn();
+  else if (verb.do === 'climb') stage.walkClimb();
   else if (verb.do === 'become') {
     ui.showWalkCard(null);
     stage.becomeWalk(verb.model);

@@ -91,6 +91,65 @@ export function bump(from: Footing, ceiling: number | null, height: number): Foo
   return { y: ceiling - height, vy: 0, grounded: false };
 }
 
+/** How fast a ladder is climbed, m/s: a rung a second or so, hand over hand. */
+export const CLIMB_SPEED = 0.6;
+/** How far off a ladder's face the body hangs, beyond its own half-width, metres. */
+const CLIMB_GAP = 0.04;
+
+/**
+ * A ladder: one near-vertical run, as a model declares it (a mesh with `userData.climb`). It is
+ * known by its bounds: the heights of its foot and its top, where its middle is over the ground,
+ * and its half-widths along x and z. The thinner way is the way it is climbed from.
+ */
+export interface Ladder {
+  bottom: number;
+  top: number;
+  x: number;
+  z: number;
+  hx: number;
+  hz: number;
+}
+
+/** A ladder with a climber on it: which side of it they are on (a unit way out from its face, over the ground). */
+export interface Hold extends Ladder {
+  nx: number;
+  nz: number;
+}
+
+/**
+ * Where a body of this half-width hangs on a ladder, coming to it from (px, pz): just off the
+ * face on the side it came from, in the middle of the rungs. `side` (1 or -1) names the side
+ * instead, for coming to a ladder from the deck at its top.
+ */
+export function hang(
+  ladder: Ladder,
+  px: number,
+  pz: number,
+  radius: number,
+  side?: 1 | -1,
+): { x: number; z: number; nx: number; nz: number } {
+  const alongX = ladder.hx <= ladder.hz; // climbed along x: the rungs run along z
+  const s = side ?? (((alongX ? px - ladder.x : pz - ladder.z) >= 0 ? 1 : -1) as 1 | -1);
+  const out = (alongX ? ladder.hx : ladder.hz) + radius + CLIMB_GAP;
+  return alongX ? { x: ladder.x + s * out, z: ladder.z, nx: s, nz: 0 } : { x: ladder.x, z: ladder.z + s * out, nx: 0, nz: s };
+}
+
+/**
+ * A tick on a ladder: `push` is 1 to climb, -1 to go down, and anything between. The feet go no
+ * higher than its top and no lower than its foot; `off` says which end has been reached, going that way.
+ */
+export function climb(
+  y: number,
+  push: number,
+  ladder: { bottom: number; top: number },
+  dt: number,
+): { y: number; off: 'top' | 'bottom' | null } {
+  const to = y + Math.max(-1, Math.min(1, push)) * CLIMB_SPEED * dt;
+  if (push > 0 && to >= ladder.top) return { y: ladder.top, off: 'top' };
+  if (push < 0 && to <= ladder.bottom) return { y: ladder.bottom, off: 'bottom' };
+  return { y: Math.max(ladder.bottom, Math.min(ladder.top, to)), off: null };
+}
+
 /** How long a body takes to get most of the way to the speed asked of it, seconds, and to lose it: a start is not a switch, and a stop is a little quicker than a start. */
 export const QUICKEN = 0.085;
 export const SLACKEN = 0.065;
@@ -151,6 +210,8 @@ export class Solids {
   private readonly trees = new WeakMap<THREE.BufferGeometry, MeshBVH>();
   private readonly records = new WeakMap<THREE.Mesh, Near>();
   private near: Near[] = [];
+  /** The ladders among them (`userData.climb`): not walls and not floors, but something to climb. */
+  private rungs: Near[] = [];
   /** How many hierarchies have been built, for the diagnostics. */
   built = 0;
 
@@ -187,6 +248,7 @@ export class Solids {
    */
   gather(centre: THREE.Vector3, reach: number, below: number, above = reach): void {
     this.near.length = 0;
+    this.rungs.length = 0;
     this.region.min.set(centre.x - reach, centre.y - below, centre.z - reach);
     this.region.max.set(centre.x + reach, centre.y + above, centre.z + reach);
     for (const root of this.roots)
@@ -211,7 +273,7 @@ export class Solids {
         record.bvh = tree;
         record.inverse.copy(mesh.matrixWorld).invert();
         record.scale = mesh.matrixWorld.getMaxScaleOnAxis();
-        this.near.push(record);
+        (mesh.userData.climb || mesh.parent?.userData.climb ? this.rungs : this.near).push(record);
       }
   }
 
@@ -301,10 +363,37 @@ export class Solids {
     return deepest;
   }
 
+  /** A ladder as its mesh stands now. */
+  ladderOf(mesh: THREE.Mesh): Ladder {
+    const box = this.region
+      .copy(mesh.geometry.boundingBox ?? mesh.geometry.boundingSphere!.getBoundingBox(new THREE.Box3()))
+      .applyMatrix4(mesh.matrixWorld);
+    return {
+      bottom: box.min.y,
+      top: box.max.y,
+      x: (box.min.x + box.max.x) / 2,
+      z: (box.min.z + box.max.z) / 2,
+      hx: (box.max.x - box.min.x) / 2,
+      hz: (box.max.z - box.min.z) / 2,
+    };
+  }
+
+  /** The ladders among what was gathered. */
+  ladders(): Ladder[] {
+    return this.rungs.map((n) => ({
+      bottom: n.box.min.y,
+      top: n.box.max.y,
+      x: (n.box.min.x + n.box.max.x) / 2,
+      z: (n.box.min.z + n.box.max.z) / 2,
+      hx: (n.box.max.x - n.box.min.x) / 2,
+      hz: (n.box.max.z - n.box.min.z) / 2,
+    }));
+  }
+
   /** The first surface along a ray, within `far` metres, or null. The normal is turned to face the ray's origin. */
   cast(origin: THREE.Vector3, direction: THREE.Vector3, far: number): Hit | null {
     let best: Hit | null = null;
-    for (const n of this.near) {
+    for (const n of [...this.near, ...this.rungs]) {
       this.ray.origin.copy(origin);
       this.ray.direction.copy(direction);
       if (!this.ray.intersectsBox(n.box)) continue;
@@ -365,6 +454,17 @@ export class Body {
     return this.ground === null ? 0 : Math.max(0, -this.ground);
   }
   readonly solids: Solids;
+  /** The ladder it is on, if it is on one: gravity has no say, and the only way is up or down. */
+  on: Hold | null = null;
+  /** On a ladder: 1 to climb, -1 to go down. Walking, it is what the legs are being asked for (forward is positive). */
+  climbing = 0;
+  /**
+   * It came onto the ladder from the deck above, walking forward: until the legs stop, forward
+   * goes on meaning the way it was going, which is down.
+   */
+  private stepping = false;
+  /** The eyes are turned well down: at the top of a ladder that means "I want to go down it". */
+  lookingDown = false;
   /** The last place it stood with a floor under it and nothing through it. */
   private readonly good = new THREE.Vector3();
   private readonly before = new THREE.Vector3();
@@ -378,6 +478,7 @@ export class Body {
   /** Stand it somewhere, on whatever is there. */
   place(x: number, y: number, z: number): void {
     this.position.set(x, y, z);
+    this.on = null;
     this.vy = 0;
     this.grounded = true;
     this.solids.gather(this.position, 2, 4, this.height + 1);
@@ -414,8 +515,117 @@ export class Body {
     return lowest;
   }
 
-  /** Hop: only from the ground. The next `move` carries it up and gravity brings it down. */
+  /**
+   * Get onto a ladder. From the ground or the air beside it, on the side it is on, at the height
+   * its feet are; from the deck at its top, on the side that has no floor, a step below the top.
+   */
+  mount(ladder: Ladder): void {
+    const p = this.position;
+    let hold = hang(ladder, p.x, p.z, this.radius);
+    let y = Math.max(ladder.bottom, Math.min(ladder.top, p.y));
+    if (p.y >= ladder.top - STEP) {
+      // from above: the climbing side is the one with nothing to stand on at the top
+      for (const side of [1, -1] as const) {
+        const there = hang(ladder, p.x, p.z, this.radius, side);
+        this.solids.gather(this.before.set(there.x, ladder.top, there.z), this.radius + 0.5, STEP + 1, this.height);
+        const floor = this.solids.below(there.x, ladder.top + STEP, there.z, this.ground);
+        if (floor === null || floor < ladder.top - STEP - 0.05) hold = there;
+      }
+      y = ladder.top - 0.05;
+    }
+    this.on = { ...ladder, nx: hold.nx, nz: hold.nz };
+    this.stepping = false;
+    p.set(hold.x, y, hold.z);
+    this.vy = 0;
+    this.grounded = false;
+  }
+
+  /** Let go of the ladder: gravity has it again. */
+  letGo(): void {
+    this.on = null;
+  }
+
+  /** A tick on a ladder: up or down it, and off at either end if there is somewhere to stand. */
+  private climbStep(dt: number): void {
+    const on = this.on!;
+    const p = this.position;
+    const hold = hang(on, 0, 0, this.radius, on.nx + on.nz > 0 ? 1 : -1);
+    this.solids.gather(p, this.radius + 1.5, STEP + 1, this.height + 1);
+    if (this.climbing <= 0) this.stepping = false;
+    const push = this.stepping ? -this.climbing : this.climbing;
+    const step = climb(p.y, push, on, dt);
+    p.set(hold.x, step.y, hold.z);
+    if (step.off === 'bottom') {
+      this.on = null; // and the floor, if there is one within a step, has the feet next tick
+      return;
+    }
+    // going down, the ground can come before the ladder's foot does
+    if (push < 0) {
+      const floor = this.floor(0.05);
+      if (floor !== null && p.y - floor < 0.03) {
+        p.y = floor;
+        this.on = null;
+        this.grounded = true;
+        return;
+      }
+    }
+    if (step.off !== 'top') return;
+    // over the top: onto whatever floor lies just beyond it, if there is one and room to stand
+    const beyond = (hold.nx ? on.hx : on.hz) + this.radius + 0.12;
+    p.set(on.x - hold.nx * beyond, on.top, on.z - hold.nz * beyond);
+    this.solids.gather(p, this.radius + 1, STEP + 1, this.height + 1);
+    const floor = this.floor(STEP);
+    const blocked = this.solids.push(this.before.copy(p), STEP, this.height, this.radius, this.heading.set(-hold.nx, 0, -hold.nz)) > 0.02;
+    if (floor === null || on.top - floor > STEP + 0.05 || blocked) {
+      p.set(hold.x, on.top, hold.z); // nowhere to go: still on the ladder, at its top
+      return;
+    }
+    p.y = floor;
+    this.on = null;
+    this.grounded = true;
+    this.vy = 0;
+    this.good.copy(p);
+  }
+
+  /** Walking into a ladder takes hold of it; so does walking at the top of one from the deck above, looking down it. */
+  private reach(): void {
+    const p = this.position;
+    for (const ladder of this.solids.ladders()) {
+      const hold = hang(ladder, p.x, p.z, this.radius);
+      const toward = -(this.heading.x * hold.nx + this.heading.z * hold.nz); // 1: straight at its face
+      const off = (p.x - hold.x) * hold.nx + (p.z - hold.z) * hold.nz; // how far short of hanging on it
+      const aside = Math.abs((p.x - hold.x) * hold.nz - (p.z - hold.z) * hold.nx);
+      const wide = (hold.nx ? ladder.hz : ladder.hx) + 0.15;
+      if (
+        toward > 0.5 &&
+        off < 0.12 &&
+        off > -3 * this.radius &&
+        aside < wide &&
+        p.y > ladder.bottom - STEP - this.sunk - 0.05 &&
+        p.y < ladder.top - 0.25
+      ) {
+        this.mount(ladder);
+        return;
+      }
+      // from the deck at its top: up to the edge over it, looking down
+      const over = Math.hypot(p.x - ladder.x, p.z - ladder.z);
+      const at = ((ladder.x - p.x) * this.heading.x + (ladder.z - p.z) * this.heading.z) / (over || 1);
+      if (this.grounded && this.lookingDown && Math.abs(p.y - ladder.top) <= STEP + 0.05 && over < 0.9 && at > 0.5) {
+        this.mount(ladder);
+        this.stepping = true;
+        return;
+      }
+    }
+  }
+
+  /** Hop: only from the ground. The next `move` carries it up and gravity brings it down. Off a ladder, it is letting go with a push. */
   jump(): void {
+    if (this.on) {
+      this.position.x += this.on.nx * 0.12;
+      this.position.z += this.on.nz * 0.12;
+      this.letGo();
+      return;
+    }
     const footing = jump({ y: this.position.y, vy: this.vy, grounded: this.grounded });
     this.vy = footing.vy;
     this.grounded = footing.grounded;
@@ -426,6 +636,10 @@ export class Body {
    * In short strides, so that nothing thinner than the figure can be stepped through.
    */
   move(dx: number, dz: number, dt: number): void {
+    if (this.on) {
+      this.climbStep(dt);
+      return;
+    }
     const distance = Math.hypot(dx, dz);
     const strides = Math.max(1, Math.ceil(distance / (this.radius * 0.4)));
     const p = this.position;
@@ -461,6 +675,7 @@ export class Body {
       this.grounded = footing.grounded;
       if (this.grounded && depth < 1e-4) this.good.copy(p);
     }
+    if (distance && this.climbing > 0) this.reach();
   }
 }
 
@@ -545,6 +760,7 @@ export class Walker {
   /** The body's velocity over the ground, m/s: what the keys ask for, eased (quicken). */
   private readonly vel = new THREE.Vector2();
   private turning = 0;
+  private climbed = false;
   /** The top of the jump or fall under way, to know how hard the landing is. */
   private apex = 0;
   /** The feet's height as the eyes feel it: a moment behind a riser. */
@@ -805,6 +1021,15 @@ export class Walker {
       speed = stickSpeed(this.stickAt.length());
     }
     if (this.modal) forward = right = 0;
+    // on a ladder forward is up and back is down; a step to the side lets go of it
+    const body = this.body;
+    body.climbing = forward;
+    body.lookingDown = this.pitch < -0.6;
+    if (body.on && right) body.letGo();
+    if (body.on) {
+      forward = right = 0;
+      this.vel.set(0, 0);
+    }
     const length = Math.hypot(forward, right);
     if (length || !this.body.grounded) this.peekAt = null; // a step, or a hop, and the eyes come back from the window
     const pace = length ? speed / length : 0;
@@ -820,7 +1045,10 @@ export class Walker {
     this.body.move(this.vel.x * dt, this.vel.y * dt, dt);
     // a landing is felt in the knees, by how far it fell
     this.apex = this.body.grounded && !flying ? p.y : Math.max(this.apex, p.y);
-    if (flying && this.body.grounded) this.gait.land(this.apex - p.y);
+    if (flying && this.body.grounded && !this.climbed) this.gait.land(this.apex - p.y);
+    // (stepping off a ladder is not a landing)
+    this.climbed = Boolean(body.on);
+    if (body.on) this.apex = p.y;
     // there is nothing out past the edge of the site
     const reach = this.host.reach();
     const out = Math.hypot(p.x, p.z);
@@ -832,10 +1060,16 @@ export class Walker {
     this.stepped = Math.hypot(p.x - was.x, p.z - was.z);
     this.pace = dt > 0 ? this.stepped / dt : 0;
     this.gait.breathing = this.motion > 0;
-    this.stir = dt > 0 ? this.gait.advance(this.stepped, this.pace, !this.body.grounded, dt) : 0;
+    const rungs = body.on ? Math.abs(p.y - was.y) : null;
+    this.stir =
+      dt > 0
+        ? this.gait.advance(rungs ?? this.stepped, rungs === null ? this.pace : 0, !this.body.grounded && !body.on, dt, rungs !== null)
+        : 0;
     if (this.stir) this.moved = true;
     // through its eyes the body faces where they look; seen from behind it turns to face the way it is sent
-    if (!this.third) this.heading = this.yaw;
+    if (body.on)
+      this.heading = Math.atan2(body.on.nx, body.on.nz); // facing the rungs
+    else if (!this.third) this.heading = this.yaw;
     else if (length) {
       const to = Math.atan2(sin * forward - cos * right, cos * forward + sin * right);
       const off = Math.atan2(Math.sin(to - this.heading), Math.cos(to - this.heading));
