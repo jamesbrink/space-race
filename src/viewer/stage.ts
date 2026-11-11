@@ -14,8 +14,11 @@ import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
+import { grain } from './surface';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
+import { Carry } from './carry';
+import { pose } from './gait';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|concrete|suit|galvanised)/;
@@ -127,8 +130,11 @@ export class Stage {
   private walked = -1;
   /** The lifts a model marks under each of its top-level nodes, found once (markedOn). */
   private readonly lifts = new WeakMap<THREE.Object3D, Action[]>();
+  /** What each level of detail of a figure carries when it is walked as (carry.ts), made the first time. */
+  private readonly carries = new WeakMap<THREE.Object3D, Carry[]>();
   /** The doors and lifts of the flight's models, as they stand (works.ts). */
   private readonly works = new Works();
+  private walkDt = 0;
   /** While walking: the figure is drawn into the shadow map only (the view is through its eyes). */
   private unseen = false;
   /** While walking: what is being looked at from within reach, and where the ray met it. */
@@ -548,6 +554,7 @@ export class Stage {
           mat.bumpMap = this.wear;
           mat.bumpScale = 0.6;
         }
+        grain(mat); // what a large plain surface looks like from a metre away
       }
       if (shell) mesh.material = this.shellOf(mat, url);
     });
@@ -1215,6 +1222,13 @@ export class Stage {
     figure.group.visible = false;
     this.unseen = false;
     this.leftBehind(at, false);
+    // what it carries goes into its hands, at every level of detail, and its arms know the weight
+    this.walk.gait.load.L = this.walk.gait.load.R = 0;
+    for (const level of figure.group.children)
+      for (const carry of this.carriesOf(level, at)) {
+        carry.take();
+        if (carry.ready) this.walk.gait.load[carry.hand] = 1;
+      }
     this.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.dirty = true;
     this.walk.start(feet, toward, eye, height, walker.radius);
@@ -1230,6 +1244,8 @@ export class Stage {
     figure.group.rotation.y = this.facing(at);
     for (const level of figure.group.children) this.walk.gait.rest(level); // standing as it was built, at every level of detail
     this.shadowOnly(figure.group, (this.unseen = false));
+    for (const level of figure.group.children) for (const carry of this.carriesOf(level, at)) carry.putDown();
+    this.walk.gait.load.L = this.walk.gait.load.R = 0;
     this.leftBehind(at, true);
     figure.group.visible = true;
     figure.group.updateMatrixWorld(true);
@@ -1415,6 +1431,17 @@ export class Stage {
     for (const lift of carried) if (this.standsOn(lift.nodes)) this.walk.body.position.add(lift.delta);
   }
 
+  /** What one level of detail of a figure carries, as its flight says (ModelDef.walker.carries). */
+  private carriesOf(level: THREE.Object3D, at: number): Carry[] {
+    let made = this.carries.get(level);
+    if (!made) {
+      const defs = level.children.length ? (this.defs[at]!.walker?.carries ?? []) : [];
+      made = defs.map((def) => new Carry(level, def, (mesh) => this.looks.add(mesh)));
+      this.carries.set(level, made);
+    }
+    return made;
+  }
+
   /** How a figure's model is turned on the stage to face the way the walker's body faces (which looks along (-sin, -cos) of its heading). */
   private facing(at: number): number {
     const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
@@ -1449,6 +1476,15 @@ export class Stage {
     group.position.copy(walk.body.position);
     group.rotation.y = turn;
     walk.gait.apply(figure.shown);
+    // what is in its hands hangs plumb and swings a little behind the stride; a hose hangs from it
+    const carried = this.carriesOf(figure.shown, at);
+    if (carried.length) {
+      group.updateMatrixWorld(true);
+      const now = pose(walk.gait.moment);
+      const p = walk.body.position;
+      const body = { x: p.x, z: p.z, radius: 0.17, bottom: p.y, top: p.y + walk.eye - 0.25 };
+      for (const carry of carried) carry.update(this.walkDt, now[`Hand.${carry.hand}`], walk.body.grounded ? p.y + 0.02 : null, body);
+    }
     // Breathing alone moves him by millimetres: seen from outside it is worth drawing, but
     // nobody's shadow is redrawn for it.
     if (placed || walk.stir === 2) this.renderer.shadowMap.needsUpdate = true; // its shadow walks with it
@@ -1529,6 +1565,7 @@ export class Stage {
     const found = hit && this.targetOf(hit);
     this.setAim(found && hit ? { ...found, hit } : null);
     this.fitDetail();
+    this.walkDt = dt;
     this.poseFigure();
     this.fitWalkShadows();
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting

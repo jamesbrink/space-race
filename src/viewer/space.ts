@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { type Heavens, MOON_GLSL } from './heavens';
 
 /** Altitude the backdrop is drawn from, in Earth radii: Freedom 7's apogee, 187.4 km. */
 const ALTITUDE = 187.4 / 6371;
@@ -25,16 +26,21 @@ export const NOISE = /* glsl */ `
 `;
 
 /**
- * What is behind the spacecraft: the Earth from apogee, its atmosphere, the Sun and stars.
- * It lives in its own scene, drawn first with a camera that copies the main camera's
+ * What is behind the spacecraft: the Earth from apogee, its atmosphere, the Sun, the Moon and the
+ * stars. It lives in its own scene, drawn first with a camera that copies the main camera's
  * rotation but never its position: the Earth is 6,371 km of backdrop, not a prop.
+ *
+ * The sky is real (heavens.ts): given a flight's `Heavens` the Moon, the planets and the 518
+ * brightest stars are where they stood over the flight's site at launch, +Y being straight up
+ * there. The Earth below is not yet: its continents are noise, and it is not turned to the hour.
  */
 export class OrbitBackdrop {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(35, 1, 0.001, 200);
   private readonly earth: THREE.Mesh;
 
-  constructor(sunDir: THREE.Vector3) {
+  /** `sky`: a flight's heavens, or just the stars for a setting with no flight. */
+  constructor(sunDir: THREE.Vector3, sky: Heavens | THREE.Object3D) {
     this.camera.position.set(0, 1 + ALTITUDE, 0);
 
     this.earth = new THREE.Mesh(
@@ -99,29 +105,9 @@ export class OrbitBackdrop {
     );
     this.scene.add(air);
 
-    // stars: brightness follows a steep power law, so a few are bright and most are dust
-    const count = 6000;
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    const rand = mulberry(7);
-    const v = new THREE.Vector3();
-    const c = new THREE.Color();
-    for (let i = 0; i < count; i++) {
-      v.set(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1);
-      if (v.lengthSq() > 1 || v.lengthSq() < 1e-4) {
-        i--;
-        continue;
-      }
-      v.normalize().multiplyScalar(90);
-      pos.set([v.x, v.y, v.z], i * 3);
-      const b = 0.15 + 2.2 * rand() ** 9;
-      c.setHSL(rand() < 0.5 ? 0.6 : 0.09, 0.35 * rand(), 0.75).multiplyScalar(b);
-      col.set([c.r, c.g, c.b], i * 3);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    this.scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true })));
+    // the stars and planets are points at infinity; the Earth, nearer, hides those behind it
+    this.scene.add('stars' in sky ? sky.stars : sky);
+    if ('stars' in sky && sky.moonUp) this.scene.add(moonCard(sky, this.camera.position));
 
     const sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(60, 56, 48) }));
     sun.position.copy(sunDir).multiplyScalar(90).add(this.camera.position);
@@ -132,6 +118,39 @@ export class OrbitBackdrop {
   update(dt: number): void {
     this.earth.rotateX(dt * 0.004);
   }
+}
+
+/**
+ * The Moon from above the air: a card facing the eye, a little larger than the disc, on which the
+ * shader draws the lit part of a sphere (heavens.ts: MOON_GLSL) and adds it to the black behind.
+ * It stands among the stars, 90 units off, so the Earth's limb hides it when it is below the horizon.
+ */
+function moonCard(sky: Heavens, eye: THREE.Vector3): THREE.Mesh {
+  const distance = 90;
+  const card = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.ShaderMaterial({
+      uniforms: { ...sky.moon, uEye: { value: eye } },
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: /* glsl */ `
+        varying vec3 vWorld;
+        void main() {
+          vec4 w = modelMatrix * vec4(position, 1.0);
+          vWorld = w.xyz;
+          gl_Position = projectionMatrix * viewMatrix * w;
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uEye; varying vec3 vWorld;
+        ${MOON_GLSL}
+        void main() { gl_FragColor = vec4(moonLight(normalize(vWorld - uEye)), 1.0); }`,
+    }),
+  );
+  card.scale.setScalar(distance * (sky.moon.uMoonSize.value as number) * 3);
+  card.position.copy(sky.moonDir).multiplyScalar(distance).add(eye);
+  card.lookAt(eye);
+  return card;
 }
 
 /**

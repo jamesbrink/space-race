@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { BackdropKind, Flight } from '../types';
-import { refraction, type Seen, type Sky, skyFrom } from '../world/ephemeris.ts';
-import { enuToSite, fromHorizontal, siteFrame, type Vec3 } from '../world/frames.ts';
+import { type Sky, skyFrom } from '../world/ephemeris.ts';
+import { siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
 import { buildCape } from './cape';
+import { daylight, type Heavens, heavens, MOON_GLSL, starsAlone } from './heavens';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -55,38 +56,61 @@ export const GROUND_Y = -0.45;
 /** Linear colour of the sky at the horizon; the fog uses the same so ground and sky meet without a seam. */
 const HORIZON = new THREE.Color(0.4, 0.58, 0.86);
 
+/** What is left of the sky's own light when the day has gone: starlight and airglow, far below anything else here. */
+const NIGHT = new THREE.Color(0.0005, 0.0008, 0.0018);
+
 const SKY = /* glsl */ `
-  uniform vec3 uSun; varying vec3 vDir;
+  uniform vec3 uSun; uniform float uDay; varying vec3 vDir;
   ${NOISE}
-  vec3 sky(vec3 d) {
+  ${MOON_GLSL}
+  vec3 sky(vec3 d, bool discs) {
     float h = max(d.y, 0.0);
     vec3 zenith = vec3(0.025, 0.11, 0.42), horizon = vec3(${HORIZON.r}, ${HORIZON.g}, ${HORIZON.b});
-    vec3 col = mix(horizon, zenith, pow(h, 0.5));
+    vec3 night = vec3(${NIGHT.r}, ${NIGHT.g}, ${NIGHT.b});
+    vec3 col = mix(horizon, zenith, pow(h, 0.5)) * uDay + night;
+    // the Moon is beyond the air, so its light is added to the sky's and the clouds pass in front of it
+    if (discs) col += moonLight(d);
     // fair-weather cumulus, low over the Atlantic: flat bases, thinning upward
     vec2 uv = d.xz / (h + 0.12);
     float c = fbm(vec3(uv * 1.3, 0.0)) * 0.7 + fbm(vec3(uv * 5.0, 3.0)) * 0.3;
     float cloud = smoothstep(0.47, 0.62, c) * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
     float s = max(dot(d, uSun), 0.0);
-    col = mix(col, vec3(1.0, 1.0, 1.02) * (0.9 + 0.35 * s), cloud * 0.9);
-    col = mix(horizon * 0.96, col, smoothstep(-0.004, 0.012, d.y));   // below the horizon: haze
-    col += vec3(1.0, 0.9, 0.75) * (pow(s, 10.0) * 0.18 + pow(s, 300.0) * 1.6);
+    col = mix(col, vec3(1.0, 1.0, 1.02) * (0.9 + 0.35 * s) * uDay + night * 3.0, cloud * 0.9);
+    col = mix(horizon * 0.96 * uDay + night, col, smoothstep(-0.004, 0.012, d.y));   // below the horizon: haze
+    col += vec3(1.0, 0.9, 0.75) * (pow(s, 10.0) * 0.18 + pow(s, 300.0) * 1.6) * uDay;
     return col;
   }`;
 
-function skyMaterial(sunDir: THREE.Vector3, withDisc: boolean): THREE.ShaderMaterial {
+/**
+ * The ground's sky. `discs`: with the Sun's disc and the Moon in it, as the eye sees it; without,
+ * it is the light the sky sheds, for the reflections (where the Sun is a patch of its own).
+ */
+function skyMaterial(h: Heavens, discs: boolean): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
-    uniforms: { uSun: { value: sunDir } },
+    uniforms: {
+      uSun: { value: h.sunDir },
+      uSunSize: { value: Math.sin(h.sunRadius) },
+      uDay: { value: daylight(h.sunElevation) },
+      ...h.moon,
+    },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
+      uniform float uSunSize;
       ${SKY}
       void main() {
         vec3 d = normalize(vDir);
-        vec3 col = sky(d);
-        ${withDisc ? 'col += vec3(40.0, 36.0, 30.0) * smoothstep(0.99996, 0.99999, dot(d, uSun));' : ''}
+        vec3 col = sky(d, ${discs});
+        ${
+          discs
+            ? /* glsl */ `// the Sun at its true size, half a degree across: the glow round it is the sky's and the bloom's
+        float off = length(cross(d, uSun)), edge = fwidth(off);
+        if (dot(d, uSun) > 0.0) col += vec3(40.0, 36.0, 30.0) * (1.0 - smoothstep(uSunSize - edge, uSunSize + edge, off));`
+            : ''
+        }
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
@@ -95,8 +119,10 @@ function skyMaterial(sunDir: THREE.Vector3, withDisc: boolean): THREE.ShaderMate
 class DomeBackdrop implements Backdrop {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  constructor(material: THREE.Material) {
+  /** `over`: what shines through the sky (stars, planets), drawn after it. */
+  constructor(material: THREE.Material, over?: THREE.Object3D) {
     this.scene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), material));
+    if (over) this.scene.add(over);
   }
   update(): void {}
 }
@@ -109,56 +135,81 @@ function pmrem(renderer: THREE.WebGLRenderer, scene: THREE.Scene): THREE.Texture
 }
 
 /**
- * When and where a setting is: a flight's site and launch instant. The Sun is put where it stood
- * over that place at that moment (src/world/ephemeris.ts), in the site's own frame, which is the
- * models'. Nothing about the sky is placed by hand.
+ * When and where a setting is: a flight's site and launch instant. The Sun, the Moon, the stars
+ * and the planets are put where they stood over that place at that moment
+ * (src/world/ephemeris.ts), in the site's own frame, which is the models'. Nothing in the sky is
+ * placed by hand.
  */
 export type Occasion = Pick<Flight, 'site' | 'launch'>;
 
 const skyOf = (when: Occasion): Sky => skyFrom(siteFrame(when.site), julianDate(when.launch));
-const vector = (v: Vec3): THREE.Vector3 => new THREE.Vector3(v[0], v[1], v[2]);
-/** Where an eye on the ground sees something: its direction in the site's frame, lifted by the air's refraction. */
-const throughAir = (seen: Seen, when: Occasion): THREE.Vector3 =>
-  vector(enuToSite(when.site.bearingX.value, fromHorizontal(seen.azimuth, seen.elevation + refraction(seen.elevation))));
 
 /** The Cape's ground is the same on any day: built once, whatever the instant. */
 let cape: ReturnType<typeof buildCape> | undefined;
 
+/** Exposure by day, and how far the eye opens up by night. */
+const DAY_EXPOSURE = 0.8;
+const NIGHT_ADAPTATION = 8;
+/** Direct sunlight, and full moonlight as a fraction of it: the true ratio is 1 to 400,000, which no screen can show. */
+const SUNLIGHT = 3.9;
+const MOONLIGHT = 0.006;
+
 /**
  * Cape Canaveral's Missile Row from Launch Complex 5. For Freedom 7 (14:34:13 UTC, 5 May 1961)
  * the Sun comes out on 098.8 degrees true, 50.2 degrees up: in the pad's frame that is behind the
- * hatch side, so the capsule's hatch was in shade. The light's colour and strength and the sky's
- * own colours are still those of a clear mid-morning, chosen by eye; only the directions are computed.
+ * hatch side, so the capsule's hatch was in shade. The Moon was up too: a waning gibbous 4.8
+ * degrees above the west-south-west horizon, where the haze all but hides it.
+ *
+ * Directions, sizes and the Moon's phase are computed. The colours are those of a clear
+ * mid-morning, chosen by eye, and dimmed as one as the Sun goes down: there is no red sunset and
+ * no twilight arch yet. By night the light is the Moon's, if it is up.
  */
 function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
   if (!when) throw new Error('a place on the ground needs a site and an instant: Settings.get(kind, flight)');
-  const sunDir = throughAir(skyOf(when).sun, when);
+  const sky = skyOf(when);
+  const day = daylight(sky.sun.elevation * THREE.MathUtils.RAD2DEG);
+  const exposure = DAY_EXPOSURE * (1 + (NIGHT_ADAPTATION - 1) * (1 - day));
+  // stars are drawn as the eye sees them, whatever the exposure the ground needs
+  const h = heavens(siteFrame(when.site), sky, true, renderer.getPixelRatio(), DAY_EXPOSURE / exposure);
+  // direct light: the Sun while any of it clears the horizon, then the Moon, then none
+  const sunUp = THREE.MathUtils.smoothstep(h.sunElevation, -0.8, 6);
+  const moonHeight = THREE.MathUtils.smoothstep(Math.asin(h.moonDir.y) * THREE.MathUtils.RAD2DEG, 0, 8);
+  const byMoon = sunUp === 0 && h.moonUp;
+  const sunDir = sunUp > 0 ? h.sunDir : byMoon ? h.moonDir : new THREE.Vector3(0, 1, 0);
   const envScene = new THREE.Scene();
-  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(sunDir, false)));
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(h, false)));
   // Below the horizon there is sunlit sand and concrete, not more sky: without it bare metal
   // reflects blue from every side and reads as frosted glass.
   const earth = new THREE.Mesh(
     new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(0.42, 0.39, 0.33), side: THREE.BackSide }),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(0.42, 0.39, 0.33).multiplyScalar(day).add(NIGHT), side: THREE.BackSide }),
   );
   // and the Sun itself: a small bright patch, so a polished edge has something to catch
-  const disc = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(30, 27, 22) }));
-  disc.position.copy(sunDir).multiplyScalar(46);
+  const disc = new THREE.Mesh(
+    new THREE.SphereGeometry(3.2, 16, 8),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(30, 27, 22).multiplyScalar(sunUp) }),
+  );
+  disc.position.copy(h.sunDir).multiplyScalar(46);
   envScene.add(earth, disc);
   cape ??= buildCape(GROUND_Y);
   return {
-    backdrop: new DomeBackdrop(skyMaterial(sunDir, true)),
+    backdrop: new DomeBackdrop(skyMaterial(h, true), h.stars),
     environment: pmrem(renderer, envScene),
     environmentIntensity: 0.55,
     sunDir,
-    sunColor: 0xffedd0,
-    sunIntensity: 3.9,
+    sunColor: sunUp > 0 ? 0xffedd0 : 0xc9d6f2,
+    sunIntensity: SUNLIGHT * (sunUp > 0 ? sunUp : byMoon ? MOONLIGHT * h.moonLit * moonHeight : 0),
     // sky fill kept low and close to neutral: shadows should read as shade, not as blue paint
-    fill: [0xb9c6d6, 0x7a715c, 0.28],
+    fill: [0xb9c6d6, 0x7a715c, 0.28 * Math.max(day, 0.004)],
     floor: cape.floor,
     maxPolar: Math.PI / 2 - 0.015,
-    exposure: 0.8,
-    fog: new THREE.FogExp2(HORIZON.clone().multiplyScalar(0.96), 0.00042),
+    exposure,
+    fog: new THREE.FogExp2(
+      HORIZON.clone()
+        .multiplyScalar(0.96 * day)
+        .add(NIGHT),
+      0.00042,
+    ),
     scenery: cape.scenery,
     reach: 1400,
     horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
@@ -213,14 +264,17 @@ function studio(renderer: THREE.WebGLRenderer): Setting {
 }
 
 /**
- * Above the Earth. Given a flight, the Sun is where it stood over the flight's site at launch,
- * seen from above the air; with none (the stage before any flight is loaded) it is a key light
- * from nowhere in particular.
+ * Above the Earth. Given a flight, the sky is the one over the flight's site at launch, seen from
+ * above the air: the Sun, the Moon and the planets where they stood, the stars turned to that
+ * place and hour (the 187 km between the pad and apogee moves the Moon by 0.03 degrees and nothing
+ * else by anything). With none (the stage before any flight is loaded) the Sun is a key light
+ * from nowhere in particular and the stars are turned to no place.
  */
 function orbit(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
-  const sunDir = when ? vector(skyOf(when).sun.direction) : new THREE.Vector3(0.62, 0.42, 0.66).normalize();
+  const h = when ? heavens(siteFrame(when.site), skyOf(when), false, renderer.getPixelRatio(), 1) : undefined;
+  const sunDir = h ? h.sunDir : new THREE.Vector3(0.62, 0.42, 0.66).normalize();
   return {
-    backdrop: new OrbitBackdrop(sunDir),
+    backdrop: new OrbitBackdrop(sunDir, h ?? starsAlone(renderer.getPixelRatio())),
     environment: orbitEnvironment(renderer, sunDir),
     environmentIntensity: 1.0,
     sunDir,

@@ -99,7 +99,7 @@ export class Looks {
     }
     // a material that paints itself in its shader (the Cape's terrain) paints its twin the same
     // way; what it says about roughness finds nothing to change in a toon shader and is dropped
-    toon.onBeforeCompile = real.onBeforeCompile;
+    if (!real.userData.plainWhenDrawn) toon.onBeforeCompile = real.onBeforeCompile;
     toon.customProgramCacheKey = () => `cel:${real.uuid}`;
     follow(toon, real);
     this.twins.set(real, toon);

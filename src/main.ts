@@ -241,8 +241,14 @@ window.addEventListener('keydown', (e) => {
   // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
   const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
   if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
-    if (stage.walk.active) stage.exitWalk();
-    else stage.enterWalk();
+    // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
+    const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);
+    const next = walkers[walkers.indexOf(stage.walkingAs ?? '') + 1];
+    if (!stage.walk.active) stage.enterWalk();
+    else if (next) {
+      ui.showWalkCard(null);
+      stage.becomeWalk(next);
+    } else stage.exitWalk();
   }
 });
 

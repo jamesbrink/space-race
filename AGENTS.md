@@ -97,9 +97,12 @@ src/
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
+  viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
   viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/works.ts                     things that work when worked: doors (toggles) and lifts, from a part's actions
+  viewer/carry.ts                     what a walking figure has in its hand, by the model's grip contract
+  viewer/hose.ts                      a hose or tether of fixed length hanging between two moving anchors
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -246,6 +249,14 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   without the dot), and the phase advances by distance gone over the length of a stride, so a
   planted foot stays put. A model with none of those joints still works: it glides rigid, and
   the diagnostics line says so.
+- **What it carries is in its hand.** `walker.carries` names a rigid node of the model and a
+  hand; `viewer/carry.ts` puts it in that hand by the contract every crew figure is built to
+  (`Grip.L`/`Grip.R` under the hands, `Fingers.L`/`.R` hooked 50 degrees, the item's origin on
+  its handle), keeps it hanging plumb as the arm swings, and puts it back where the model has it
+  when the walk ends. The gait knows the weight (`Gait.load`): that arm hangs straighter and
+  swings a third as much. A `hose` between two anchor nodes is hung by `viewer/hose.ts`: a chain
+  of fixed length under gravity, above the ground and outside the body, leaving each anchor
+  along its +Y, drawn as a tube in the hidden modelled hose's material.
 - **Both views are one walk.** `Walker.gait` is the only stride there is. From outside it poses
   the figure; from inside, `view()` reads the eyes' rise, sway, tip and nod off the same moment,
   so a footfall seen is a footfall felt. The body has inertia (`quicken`: walking pace in a

@@ -197,6 +197,15 @@ export interface ModelDef {
      * plugged into, which is not drawn while it is being walked as.
      */
     hide?: string[];
+    /**
+     * What the figure has in its hands when it walks (viewer/carry.ts): each a rigid node of the
+     * model whose origin is its handle, taken into the named hand at the model's `Grip.L` or
+     * `Grip.R`. `hose` is a line back to the figure: the two anchor nodes it hangs between (it
+     * leaves each along the anchor's +Y; `from`, on the item, carries `hose_length` and
+     * `hose_radius` in its extras) and `mesh`, the hose as modelled for the figure at rest,
+     * which is hidden while it is carried.
+     */
+    carries?: { node: string; hand: 'L' | 'R'; hose?: { mesh?: string; from: string; to: string } }[];
     /** Half the figure's width, metres: how near its middle can come to a wall (default 0.26, a clothed adult's shoulders). */
     radius?: number;
   };
