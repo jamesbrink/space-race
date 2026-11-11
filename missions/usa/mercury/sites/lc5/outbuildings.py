@@ -15,55 +15,14 @@ from mathutils import Matrix
 
 from srlib import interior
 
-from .site import FOOTING, GROUND, P, Parts, beam, box, ear_clip, fine, ftp, offset_poly, plate, ring, slab, window
+from .site import FOOTING, GROUND, P, Parts, box, building, fence, fine, flat_roof, ftp, roof_vent
 
 FLOOR = GROUND + 0.5
 
 
-def shell(parts: Parts, node: str, key: str, rect, eave: float, openings: dict, *, mat: str = "block", wall: float = 0.55) -> list:
-    """Four walls on a rectangle (x0, y0, x1, y1), with a floor. `openings` maps a wall's number
-    (0: the -Y side, 1: +X, 2: +Y, 3: -X; each runs anticlockwise) to its openings, each
-    (s0, s1, sill, head, kind): "door", "window" or "louvre"."""
-    x0, y0, x1, y1 = rect
-    outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-    walls = ring(outline, wall)
-    skin, steel, frame = parts(node, f"{mat}/{key}"), parts(node, "blast"), parts(node, "frame")
-    for i, w in enumerate(walls):
-        holes = sorted(openings.get(i, []))
-        w.build(skin, -FOOTING, eave, [(a, b, lo, hi) for a, b, lo, hi, _ in holes])
-        for a, b, lo, hi, kind in holes:
-            if kind == "window":
-                window(parts, node, w, a, b, lo, hi, mullions=[(a + b) / 2])
-            elif kind == "door":
-                w.box(steel, a + 0.02, b - 0.02, wall * 0.3, wall * 0.3 + 0.14, lo + 0.02, hi - 0.02)
-                w.box(frame, a - 0.12, b + 0.12, -0.05, 0.12, hi, hi + 0.25)
-            else:
-                w.box(frame, a - 0.1, a + 0.08, 0.05, wall - 0.05, lo - 0.1, hi + 0.1)
-                w.box(frame, b - 0.08, b + 0.1, 0.05, wall - 0.05, lo - 0.1, hi + 0.1)
-                n = max(2, round((hi - lo) / 0.4))
-                for k in range(n):
-                    z = lo + (hi - lo) * k / n
-                    plate(
-                        frame,
-                        [w.p(a, 0.05, z + (hi - lo) / n), w.p(b, 0.05, z + (hi - lo) / n), w.p(b, wall - 0.05, z), w.p(a, wall - 0.05, z)],
-                        0.04,
-                    )
-    inner = offset_poly(outline, -wall)
-    parts(node, "concrete/floor").add([tuple(P(x, y, FLOOR)) for x, y in inner], ear_clip(inner))
-    return walls
-
-
-def flat_roof(parts: Parts, node: str, key: str, rect, eave: float, over: float = 0.7) -> None:
-    x0, y0, x1, y1 = rect
-    outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-    slab(parts(node, f"block/{key}roof"), offset_poly(outline, over), eave, eave + 0.6, bottom=True)
-    slab(parts(node, "tar"), offset_poly(outline, over - 0.3), eave + 0.55, eave + 0.85)
-
-
-def vent(mb, x: float, y: float, z: float, size: float = 1.0) -> None:
-    """A roof ventilator: a stub and a mushroom cap."""
-    prof = [(0.0, -0.2), (0.45, -0.2), (0.45, 0.9), (0.95, 0.95), (0.95, 1.2), (0.6, 1.55), (0.0, 1.62)]
-    mb.lathe(ftp([(r * size, h * size) for r, h in prof]), 12, matrix=Matrix.Translation(P(x, y, z)))
+def shell(parts: Parts, node: str, key: str, rect, eave: float, openings: dict, **kw) -> list:
+    """sitelib.building on this site's ground: walls down to the footing, a floor half a foot up."""
+    return building(parts, node, key, rect, eave, openings, floor=FLOOR, footing=-FOOTING, **kw)
 
 
 def build(parts: Parts) -> None:
@@ -85,22 +44,7 @@ def build(parts: Parts) -> None:
     flat_roof(parts, g, "hut1", r, e)
     # the fenced yard beside it: two transformers behind chain link
     yx0, yy0, yx1, yy1 = 231.0, -190.5, 251.0, -179.8
-    mesh, galv = parts(g, "mesh"), parts(g, "galv", True)
-    corners = [(yx0, yy0), (yx1, yy0), (yx1, yy1), (yx0, yy1)]
-    for (ax, ay), (bx, by) in zip(corners, corners[1:] + corners[:1]):
-        n = max(1, round(math.hypot(bx - ax, by - ay) / 6.7))
-        for k in range(n):
-            galv.tube(
-                P(ax + (bx - ax) * k / n, ay + (by - ay) * k / n, GROUND - 1.0),
-                P(ax + (bx - ax) * k / n, ay + (by - ay) * k / n, GROUND + 7.2),
-                0.09 * 0.3048,
-                6,
-            )
-        beam(galv, (ax, ay, GROUND + 7.0), (bx, by, GROUND + 7.0), 0.1)
-        mesh.add(
-            [tuple(P(ax, ay, GROUND + 0.2)), tuple(P(bx, by, GROUND + 0.2)), tuple(P(bx, by, GROUND + 6.9)), tuple(P(ax, ay, GROUND + 6.9))],
-            [(0, 1, 2, 3)],
-        )
+    fence(parts, g, [(yx0, yy0), (yx1, yy0), (yx1, yy1), (yx0, yy1)], ground=GROUND)
     box(parts(g, "concrete/yard"), (yx0 + 1.0, yy0 + 1.0, -FOOTING), (yx1 - 1.0, yy1 - 1.0, GROUND + 0.4))
     for x in (yx0 + 4.0, yx0 + 12.0):
         box(grey, (x, yy0 + 2.6, GROUND + 0.4), (x + 4.4, yy1 - 2.6, GROUND + 4.8))
@@ -135,7 +79,7 @@ def build(parts: Parts) -> None:
     flat_roof(parts, g, "hut2", r, e)
     box(grey, (297.0, -165.5, e + 0.8), (301.5, -160.0, e + 2.6))
     box(grey, (305.0, -164.5, e + 0.8), (312.0, -160.5, e + 1.9))
-    vent(grey, 303.2, -159.6, e + 0.7, 0.7)
+    roof_vent(grey, 303.2, -159.6, e + 0.7, 0.7)
 
     # ---- the generator building, between the blockhouse and pad 5: louvred walls, roof ventilators, an exhaust
     r = (124.1, -115.6, 146.5, -97.5)
@@ -156,7 +100,7 @@ def build(parts: Parts) -> None:
     )
     flat_roof(parts, g, "gen", r, e)
     for x in (129.0, 135.3, 141.6):
-        vent(grey, x, -106.6, e + 0.7, 1.1)
+        roof_vent(grey, x, -106.6, e + 0.7, 1.1)
     grey.tube(P(144.0, -100.5, e + 0.5), P(144.0, -100.5, e + 6.5), 0.35 * 0.3048, 10)
     if interior():  # the sets, seen through the louvres and the door
         for x in (127.5, 137.0):
@@ -203,4 +147,4 @@ def build(parts: Parts) -> None:
         v = [P(x, r[1], lo), P(x + 0.35, r[1], lo), P(x + 0.35, r[3], lo), P(x, r[3], lo), P(x, r[3], hi - 0.25), P(x + 0.35, r[3], hi - 0.25)]
         gable.add([tuple(q) for q in v], [(0, 4, 3), (1, 2, 5), (3, 4, 5, 2), (0, 1, 5, 4)])
     box(gable, (r[0] + 0.35, r[3] - 0.35, lo), (r[2] - 0.35, r[3], hi - 0.2))
-    vent(grey, (r[0] + r[2]) / 2, (r[1] + r[3]) / 2, (lo + hi) / 2 + 0.1, 1.3)
+    roof_vent(grey, (r[0] + r[2]) / 2, (r[1] + r[3]) / 2, (lo + hi) / 2 + 0.1, 1.3)

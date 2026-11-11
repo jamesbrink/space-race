@@ -32,6 +32,8 @@ export interface Setting {
   scenery: THREE.Object3D[];
   /** How far from the model there is something to look at, metres: the view can be walked and pulled back this far. */
   reach?: number;
+  /** How far away the furthest thing in the place is, metres: the camera sees at least this far. Left out: only the model. */
+  horizon?: number;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
@@ -139,6 +141,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
     fog: new THREE.FogExp2(HORIZON.clone().multiplyScalar(0.96), 0.00042),
     scenery: cape.scenery,
     reach: 1400,
+    horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
     tick: cape.tick,
     simplify: cape.simplify,
   };
@@ -184,6 +187,7 @@ function studio(renderer: THREE.WebGLRenderer): Setting {
     exposure: 0.9,
     fog: null,
     scenery: [],
+    horizon: 30, // the floor's edge
   };
 }
 

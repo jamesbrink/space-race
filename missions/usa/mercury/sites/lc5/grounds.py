@@ -43,6 +43,7 @@ from .site import (
     fine,
     obox,
     slab,
+    solid,
     stair_rails,
     stairs,
     timber_pole,
@@ -53,26 +54,6 @@ TRACK_NORTH = PAD6[1] - 180.0  # how far the track is modelled beyond pad 6, tow
 STRIPS = (PAD6[1] + HARDSTAND / 2, PAD6[1] + HARDSTAND / 2 + 75.0)  # concrete laid between and beside the rails, nearest pad 6
 FAR_RAIL = RAIL_TOP + 0.12  # these rails are seen from far off: they stand an inch and a half proud of what is laid round them, not 9 mm
 SPUR_Y, SPUR_R, SPUR_ARC = -185.0, 250.0, 62.0  # the turnout: where it leaves, its radius, how many degrees are modelled
-
-
-def solid(mb, loops) -> None:
-    """A closed skin over a row of loops (feet), facing outward whichever way the loops wind."""
-    k = len(loops[0])
-    verts = [Vector(p) * FT for loop in loops for p in loop]
-    faces = []
-    for s in range(len(loops) - 1):
-        for i in range(k):
-            j = (i + 1) % k
-            faces.append((s * k + i, s * k + j, (s + 1) * k + j, (s + 1) * k + i))
-    faces.append(tuple(reversed(range(k))))
-    faces.append(tuple(range(len(verts) - k, len(verts))))
-    vol = 0.0
-    for f in faces:
-        for a in range(1, len(f) - 1):
-            vol += verts[f[0]].dot(verts[f[a]].cross(verts[f[a + 1]]))
-    if vol < 0:
-        faces = [f[::-1] for f in faces]
-    mb.add([tuple(v) for v in verts], faces)
 
 
 def track(parts: Parts) -> None:

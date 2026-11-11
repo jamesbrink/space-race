@@ -30,6 +30,7 @@ from .site import (
     box,
     fine,
     obox,
+    panels,
 )
 
 SLAB = 20.0  # slab pitch, both ways (estimated from 6100884)
@@ -43,17 +44,10 @@ def rails_x() -> list[float]:
 
 
 def field(parts: Parts, node: str, cy: float = 0.0, inset: float = 0.0) -> None:
-    """A pad's square of slabs and the joints between them, its middle at (0, cy). The joints are
-    one dark slab under the gaps; `inset` keeps its sides that far inside the slabs' outer faces
-    (a pad seen from another pad away cannot have two faces 18 mm apart)."""
-    slabs, joints = parts(node, "concrete"), parts(node, "joint")
+    """A pad's square of slabs and the joints between them, its middle at (0, cy). `inset` keeps
+    the joints' sides inside the slabs' outer faces, for a pad seen from another pad away."""
     half = HARDSTAND / 2
-    n = round(HARDSTAND / SLAB)
-    for i in range(n):
-        for j in range(n):
-            x0, y0 = -half + i * SLAB, cy - half + j * SLAB
-            box(slabs, (x0 + 0.06, y0 + 0.06, -FOOTING), (x0 + SLAB - 0.06, y0 + SLAB - 0.06, 0.0))
-    box(joints, (-half + inset, cy - half + inset, -FOOTING - 0.1), (half - inset, cy + half - inset, -0.12))
+    panels(parts(node, "concrete"), parts(node, "joint"), -half, cy - half, half, cy + half, SLAB, bottom=-FOOTING, inset=inset)
 
 
 def burns(parts: Parts, node: str, cy: float = 0.0, lift: float = 0.0) -> None:

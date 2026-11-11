@@ -94,10 +94,12 @@ src/
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
   viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
   viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
+  viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
   viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
   viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
+  viewer/works.ts                     things that work when worked: doors (toggles) and lifts, from a part's actions
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -107,6 +109,8 @@ tools/
   shot.mjs                            one screenshot of the viewer, for looking at a change
   logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg for the README: run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
+  blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
+  blender/vehicles.py                 period road vehicles from parameters, built to be driven
 ```
 
 A flight's id is its path: `usa/mercury/mr-3-freedom-7`. The same three segments locate its folder
@@ -189,6 +193,11 @@ different one per pixel per frame. Three things stop it, and all three must stay
   is coarse: concrete 6 cm above such terrain flickered. So the terrain is one finely divided
   grid (`cape.ts`), it sits 0.45 m below the pad's surface (`GROUND_Y`), and anything standing
   on the ground goes down past that (`FOOTING` in `lc_5.py`).
+
+- **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
+  camera is close to something else, faces under about 5 cm apart fight. Scenery that is looked at
+  from across the site (another pad's slab and its joints, a far track's rails) keeps that much
+  between parallel faces, or sinks one through the other.
 
 `pnpm test:flicker` checks the result in a real browser: every model, every view, six
 directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.
@@ -282,6 +291,13 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   `Part` in `flight.ts` (today one kind, `slider`: run the part's model along its slider, so its
   `moves` play). A new kind of action is a new member of `Action['do']` and one line in
   `perform` (main.ts); never a test for a particular part.
+- **There is always a way up.** Stairs (risers of 0.3 m or less), a ladder, or one of the two
+  actions that open the way, both played by `viewer/works.ts` at every level of detail and solid
+  as posed: `toggle` (a door: `Move`s played forward and back; the wheel says Open or Close by
+  how it stands) and `lift` (a platform node that slides between named stops and carries whoever
+  stands on it: Ride from on it, Call from off it). `Action.on` limits a verb to one node of the
+  part (the door, a call button). A driven node has the same name at every level of detail and
+  is not also in the part's slider `moves`.
 - **The orbiting camera's rules are off while walking** (`Stage.stepWalk`): no drift, bounds,
   picking or `fitDepth`. The walker sets its own near plane from the nearest surface (5 cm
   indoors, up to 30 cm in the open) and a wider lens, eased in and out over half a second

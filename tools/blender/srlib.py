@@ -438,6 +438,53 @@ def mark_shells(names: Sequence[str]) -> None:
         bpy.data.objects[n]["shell"] = 1
 
 
+def ladder(
+    name: str,
+    foot: Sequence[float],
+    top: Sequence[float],
+    mat: bpy.types.Material,
+    parent: bpy.types.Object | None = None,
+    *,
+    face: Sequence[float] = (1.0, 0.0, 0.0),
+    width: float = 0.45,
+    spacing: float = 0.3,
+    rail: float = 0.045,
+    rung: float = 0.025,
+    origin: Sequence[float] = (0.0, 0.0, 0.0),
+) -> bpy.types.Object:
+    """A fixed ladder, as its own object, which the viewer lets a walker climb.
+
+    `foot` and `top` are the middle of the bottom and of the top of the run (metres, the scene's
+    axes): the floor it stands on and the floor it reaches. One call is one run, vertical or
+    nearly so; a tall climb with a landing part-way is two. `face` is the horizontal direction
+    the climber looks while on it; the rungs lie across that. `origin` is the parent's place in
+    the scene, taken off every vertex, as for any mesh hung on a node.
+
+    The contract with the viewer (walk mode) is the custom property `climb`, which travels as a
+    glTF extra like `shell` does: the walker climbs anything so marked, inside its bounding box.
+    So nothing but the run itself belongs in this object: no cage, no handholds standing above
+    the top (draw those in the structure's own mesh). It also needs a floor within 0.3 m of the
+    run's top and 0.6 m of clear standing room at each end; that is the caller's to provide."""
+    a, b = Vector(foot), Vector(top)
+    up = b - a
+    f = Vector((face[0], face[1], 0.0)).normalized()
+    side = Vector((0.0, 0.0, 1.0)).cross(f).normalized() * (width / 2)
+    o = Vector(origin)
+    mb = MeshBuilder()
+    for s in (-1.0, 1.0):
+        mb.tube(a + side * s - o, b + side * s - o, rail / 2 * math.sqrt(2), 4)
+    step = spacing if DETAIL >= 0.5 else spacing * 2
+    n = max(1, int(up.length / step))
+    for k in range(1, n + 1):
+        c = a + up * (k * step / up.length) - o
+        if (c + o - a).length > up.length - 0.05:
+            break
+        mb.tube(c - side, c + side, rung / 2 * math.sqrt(2), 4, caps=False)
+    obj = mb.build(name, mat, parent, smooth=False)
+    obj["climb"] = 1
+    return obj
+
+
 def bore(names: Sequence[str], matrix: Matrix, radius: float, depth: float) -> None:
     """Cut a round hole through the named meshes: a window is an opening, not a dark disc.
     The hole's axis is the local Z of `matrix` (metres); it reaches `depth` either way along it.
@@ -581,11 +628,17 @@ FIGURE = {
 }
 
 
-def skeleton(joints: dict[str, Sequence[float]], name: str = "Skeleton") -> bpy.types.Object:
+def skeleton(
+    joints: dict[str, Sequence[float]], name: str = "Skeleton", hinges: dict[str, tuple[str, Sequence[float], Sequence[float]]] | None = None
+) -> bpy.types.Object:
     """The armature of a figure: one bone for each joint of FIGURE, its head at `joints[name]`
     (metres, the scene's axes). The figure must be modelled upright (+Z up), facing -Y, its left
     toward +X. A bone is a stub standing straight up, rolled so that its own X is the scene's:
-    that is what leaves every joint in the GLB without a rotation of its own."""
+    that is what leaves every joint in the GLB without a rotation of its own.
+
+    `hinges` adds joints a figure has beyond those: {name: (parent, where, axis)}. Such a joint
+    turns about one line, `axis`, which is made its own X; so unlike the others it has a rotation
+    at rest, and is turned from there about its own X (a hand's `Fingers.L`: positive closes)."""
     missing = [j for j in FIGURE if j not in joints]
     if missing:
         raise KeyError(f"skeleton: no position for {', '.join(missing)}")
@@ -601,8 +654,57 @@ def skeleton(joints: dict[str, Sequence[float]], name: str = "Skeleton") -> bpy.
         bone.align_roll(Vector((0.0, -1.0, 0.0)))
         if parent:
             bone.parent = data.edit_bones[parent]
+    for joint, (parent, where, axis) in (hinges or {}).items():
+        x = Vector(axis).normalized()
+        down = Vector((0.0, 0.0, -1.0))
+        y = (down - x * down.dot(x)).normalized()  # the stub hangs down, square to its hinge
+        bone = data.edit_bones.new(joint)
+        bone.head = Vector(where)
+        bone.tail = bone.head + y * 0.03
+        bone.align_roll(x.cross(y))
+        bone.parent = data.edit_bones[parent]
     bpy.ops.object.mode_set(mode="OBJECT")
     return obj
+
+
+def anchor(
+    name: str,
+    parent: bpy.types.Object | None,
+    at: Sequence[float],
+    z_axis: Sequence[float] = (0, 0, 1),
+    y_axis: Sequence[float] = (0, 1, 0),
+    *,
+    bone: str | None = None,
+    **props,
+) -> bpy.types.Object:
+    """A named point with a direction, for the viewer to hang or aim things by: where a hose
+    leaves a case, where it enters a suit. An empty at `at` (metres, the scene's axes) whose own
+    +Z is `z_axis` and whose +Y is as near `y_axis` as that allows. With `bone`, `parent` is a
+    skeleton and the anchor rides on that joint. `props` travel as the node's extras.
+    In the GLB, and so in three.js, Blender's +Z is the node's +Y and Blender's +Y its -Z."""
+    obj = group(name, parent, **props)
+    if bone:
+        obj.parent_type = "BONE"
+        obj.parent_bone = bone
+    z = Vector(z_axis).normalized()
+    y = Vector(y_axis)
+    y = (y - z * y.dot(z)).normalized()
+    m = Matrix((y.cross(z), y, z)).transposed().to_4x4()
+    m.translation = Vector(at)
+    bpy.context.view_layer.update()
+    obj.matrix_world = m
+    return obj
+
+
+def grip(rig: bpy.types.Object, bone: str, name: str, at: Sequence[float], along: Sequence[float]) -> bpy.types.Object:
+    """Where a hand holds a handle: an anchor on a hand's joint, upright in the rest pose, its
+    +Y (Blender) along the line a handle lies on across the closed fingers. A carried thing is
+    built the same way round: its node's origin at the middle of its handle, the handle along its
+    own Y, itself hanging below along -Z. Made a child of the grip with no transform of its own,
+    it is then in the hand. (In three.js terms: handle along the node's Z, hanging along -Y.)"""
+    y = Vector(along)
+    y.z = 0.0
+    return anchor(name, rig, at, (0, 0, 1), y, bone=bone)
 
 
 def bind(obj: bpy.types.Object, rig: bpy.types.Object, weights: Sequence[dict[str, float]]) -> None:
@@ -620,8 +722,8 @@ def bind(obj: bpy.types.Object, rig: bpy.types.Object, weights: Sequence[dict[st
         if not w or len(w) > 4:
             raise ValueError(f"bind: vertex {i} of {obj.name} follows {len(w)} joints")
         for joint, x in w.items():
-            if joint not in FIGURE:
-                raise KeyError(f"bind: {joint} is not a joint of a figure")
+            if joint not in rig.data.bones:
+                raise KeyError(f"bind: {joint} is not a joint of {rig.name}")
             if joint not in groups:
                 groups[joint] = obj.vertex_groups.new(name=joint)
             groups[joint].add([i], x / total, "REPLACE")

@@ -46,6 +46,7 @@ from .site import (
     plate,
     ring,
     slab,
+    wall_door,
     window,
 )
 
@@ -61,6 +62,7 @@ WINDOWS = ((5.0, 10.0), (16.5, 25.25))
 SILL, HEAD = 4.4, 8.9
 DOOR = (29.5, 36.5)  # the blast door in the back wall, feet from its pad 6 corner (2005 photograph)
 DOOR_HEAD = FLOOR + 7.5
+SIDE_DOOR = (4.0, 7.6)  # the door in the pad 6 side's wall, feet from the window face's corner (F16_016)
 # the ready rooms: the block building on the pad 6 side, its back wall in line with the blockhouse's
 ANNEX = (56.8, 90.0, -59.4, -29.0)  # u0, u1, v0, v1
 ANNEX_WALL, ANNEX_EAVE = 0.67, 11.0
@@ -118,7 +120,7 @@ def build(parts: Parts) -> None:
     win5 = [(n - s1, n - s0, SILL, HEAD) for s0, s1 in reversed(WINDOWS)]
     face6.build(conc, -FOOTING, EAVE, win6)
     face5.build(conc, -FOOTING, EAVE, win5)
-    side6.build(conc, -FOOTING, EAVE)
+    side6.build(conc, -FOOTING, EAVE, [(*SIDE_DOOR, FLOOR, FLOOR + 7.0)])
     side5.build(conc, -FOOTING, EAVE)
     back.build(conc, -FOOTING, EAVE, [(DOOR[0], DOOR[1], FLOOR, DOOR_HEAD)])
     for w, wins in ((face6, win6), (face5, win5)):
@@ -192,17 +194,13 @@ def build(parts: Parts) -> None:
     for s0, s1 in ((DOOR[0] - 0.5, DOOR[0] + 0.08), (DOOR[1] - 0.08, DOOR[1] + 0.5)):
         back.box(hood, s0, s1, -0.2, 0.3, FLOOR - 0.6, DOOR_HEAD - 0.02)
     mid = (DOOR[0] + DOOR[1]) / 2
-    back.box(steel, DOOR[0] + 0.02, mid - 0.03, 0.1, 0.45, FLOOR + 0.04, DOOR_HEAD - 0.06)  # the closed leaf
-    hinge = Vector(back.p(DOOR[1] - 0.05, 0.1, 0))
-    swing = math.radians(105)
-    along = -back.u.x * math.cos(swing) - back.n.x * math.sin(swing), -back.u.y * math.cos(swing) - back.n.y * math.sin(swing)
-    leaf_w = (DOOR[1] - DOOR[0]) / 2 - 0.05
-    c = hinge + Vector((along[0], along[1], 0)) * (leaf_w / 2)
-    obox(steel, (c.x, c.y, (FLOOR + DOOR_HEAD) / 2), (along[0], along[1], 0), (0, 0, 1), (leaf_w, 0.35, DOOR_HEAD - FLOOR - 0.1))
-    if fine():  # strap hinges on the closed leaf, and its dogs
-        for z in (FLOOR + 1.2, FLOOR + 3.7, FLOOR + 6.3):
-            back.box(hood, DOOR[0] - 0.3, DOOR[0] + 2.2, 0.0, 0.11, z - 0.14, z + 0.14)
-        back.box(hood, mid - 0.5, mid - 0.2, -0.05, 0.11, FLOOR + 3.0, FLOOR + 4.4)
+    for k, (s0, s1, side) in enumerate(((DOOR[0], mid, "s0"), (mid, DOOR[1], "s1"))):  # each leaf its own node, shut
+        leaf = f"{g}_BlastDoor{k + 1}"
+        wall_door(parts, leaf, g, back, s0, s1, FLOOR, DOOR_HEAD, hinge=side, depth=0.3, thick=0.35)
+        if fine():  # its strap hinges
+            a0, a1 = (s0 - 0.3, s0 + 2.2) if side == "s0" else (s1 - 2.2, s1 + 0.3)
+            for z in (FLOOR + 1.2, FLOOR + 3.7, FLOOR + 6.3):
+                back.box(parts(leaf, "blast/straps"), a0, a1, 0.02, 0.2, z - 0.14, z + 0.14)
     # the ramp up to it from the shell
     ramp = parts(g, "concrete/ramp")
     r0, r1 = back.p(DOOR[0] - 1.0, 0, 0), back.p(DOOR[1] + 1.0, 0, 0)
@@ -218,23 +216,20 @@ def build(parts: Parts) -> None:
         q = Vector(w.p(s, -0.9, 13.4))
         beam(grey, w.p(s, 0.1, 13.2), tuple(q), 0.14)
         lamp_head(grey, lamps, q + Vector((0, 0, 0.3)), Vector((-w.n.x, -w.n.y, -0.75)), 0.8)
-    side6.box(steel, 4.0, 7.6, -0.1, 0.15, FLOOR - 0.5, FLOOR + 7.2)  # a plate door to the breezeway side
-    side6.box(parts(g, "blast/doorframe"), 3.75, 7.85, -0.05, 0.15, FLOOR + 7.2, FLOOR + 7.55)
+    wall_door(parts, f"{g}_SideDoor", g, side6, *SIDE_DOOR, FLOOR, FLOOR + 7.0, depth=0.2, thick=0.25)  # the plate door on the pad 6 side
+    side6.box(parts(g, "blast/doorframe"), SIDE_DOOR[0] - 0.25, SIDE_DOOR[1] + 0.25, -0.15, 0.15, FLOOR + 7.0, FLOOR + 7.35)
+    side6.box(parts(g, "concrete/step"), SIDE_DOOR[0] - 0.5, SIDE_DOOR[1] + 0.5, -3.0, 0.0, APRON - 0.5, FLOOR - 0.42)
     for s, zb, size in ((12.0, 3.4, (1.2, 1.8)), (15.5, 3.0, (1.6, 2.4)), (20.5, 3.6, (1.0, 1.2))):  # switch and junction boxes
         side6.box(grey, s, s + size[0], -0.45, 0.1, zb, zb + size[1])
         grey.tube(P(*side6.p(s + size[0] / 2, -0.2, zb + size[1])), P(*side6.p(s + size[0] / 2, -0.2, EAVE + 0.4)), 0.08 * FT, 6)
-    # a ladder to the roof on the pad 5 side's wall, near the back (it is there today)
+    # the ladder to the roof on the pad 5 side's wall, near the back (it is there today; in 1961 not seen)
     ls = 8.0
-    for ds in (-0.75, 0.75):
-        beam(grey, side5.p(ls + ds, -0.5, APRON), side5.p(ls + ds, -0.5, EAVE + 3.4), 0.14)
-        beam(grey, side5.p(ls + ds, -0.5, EAVE + 3.4), side5.p(ls + ds, 1.6, EAVE + 3.4), 0.14)
-        beam(grey, side5.p(ls + ds, 1.6, EAVE + 3.4), side5.p(ls + ds, 1.6, EAVE - 0.1), 0.14)
-    for k in range(int((EAVE + 1.0 - APRON) / (1.0 if fine() else 2.0))):
-        z = APRON + 1.0 + k * (1.0 if fine() else 2.0)
-        beam(grey, side5.p(ls - 0.75, -0.5, z), side5.p(ls + 0.75, -0.5, z), 0.08)
+    parts.ladder(g, "roof", side5.p(ls, -0.55, APRON), side5.p(ls, -0.55, ROOF_EDGE), face=(side5.n.x, side5.n.y, 0), mat="grey", width=2.0)
     for z in (5.0, 11.0):
-        for ds in (-0.75, 0.75):
-            beam(grey, side5.p(ls + ds, -0.5, z), side5.p(ls + ds, 0.1, z), 0.1)
+        for ds in (-0.98, 0.98):
+            beam(grey, side5.p(ls + ds, -0.55, z), side5.p(ls + ds, 0.1, z), 0.1)
+    for ds in (-1.2, 1.2):  # handholds either side of where it lands
+        beam(grey, side5.p(ls + ds, 0.3, EAVE - 0.2), side5.p(ls + ds, 0.3, EAVE + 3.4), 0.14)
 
     # ---- on the roof (F16_016, F16_015): a railed stand of antennas, masts, a wind vane, cables, and
     # the telemetry helix with its mesh reflector, on a tripod held down with sandbags
@@ -347,7 +342,7 @@ def annex(parts: Parts) -> None:
     parts.node(g)
     u0, u1, v0, v1 = ANNEX
     outline = [S(u0, v0), S(u1, v0), S(u1, v1), S(u0, v1)]
-    block, tar, steel, frame = parts(g, "block"), parts(g, "tar"), parts(g, "blast"), parts(g, "frame")
+    block, tar, frame = parts(g, "block"), parts(g, "tar"), parts(g, "frame")
     far, rear, breeze, pads = ring(outline, ANNEX_WALL)  # v0 side, the back (u1), the breezeway side, the side toward the pads
     far.build(block, -FOOTING, ANNEX_EAVE, [(6.0, 10.5, 3.6, 7.2), (14.0, 17.2, FLOOR, FLOOR + 7.0), (21.0, 28.0, 3.6, 7.2)])
     rear.build(block, -FOOTING, ANNEX_EAVE, [(5.0, 11.0, 3.6, 7.2), (19.0, 25.0, 3.6, 7.2)])
@@ -363,12 +358,9 @@ def annex(parts: Parts) -> None:
     for k in range(6):
         z = 7.1 + k * 0.4
         plate(frame, [pads.p(4.05, 0.05, z + 0.3), pads.p(8.45, 0.05, z + 0.3), pads.p(8.45, 0.5, z), pads.p(4.05, 0.5, z)], 0.05)
-    # doors: the one under the breezeway stands open, the far one is shut
-    far.box(steel, 14.02, 17.18, 0.2, 0.36, FLOOR + 0.03, FLOOR + 6.96)
-    hinge = Vector(breeze.p(18.05, 0.3, 0))
-    leaf = Vector((breeze.n.x, breeze.n.y, 0)) * 0.94 + Vector((breeze.u.x, breeze.u.y, 0)) * 0.34
-    c = hinge + leaf * 1.6
-    obox(steel, (c.x, c.y, FLOOR + 3.5), tuple(leaf), (0, 0, 1), (3.2, 0.14, 6.9))
+    # doors: one to the drive, one under the breezeway; each leaf its own node, shut
+    wall_door(parts, f"{g}_Door1", g, far, 14.0, 17.2, FLOOR, FLOOR + 7.0, depth=0.28)
+    wall_door(parts, f"{g}_Door2", g, breeze, 18.0, 21.4, FLOOR, FLOOR + 7.0, depth=0.28)
     # pilasters, as the photograph shows them, and a plinth course
     for x, y in outline:  # a pier at each corner
         box(block, (x - 0.62, y - 0.62, -FOOTING + 0.5), (x + 0.62, y + 0.62, ANNEX_EAVE - 0.05))

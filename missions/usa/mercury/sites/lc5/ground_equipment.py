@@ -22,7 +22,7 @@ from mathutils import Vector
 import srlib
 from srlib import FT
 
-from .site import P, Parts, axes, beam, box, ear_clip, fine, lattice, obox, offset_poly, plate, ring, slab, timber_pole, window
+from .site import P, Parts, axes, beam, box, ear_clip, fine, lattice, lettering, obox, offset_poly, plate, ring, slab, timber_pole, wall_door, window
 
 FLOOD_POLES = ((-104.0, -62.0), (-104.0, 62.0), (-62.0, -104.0), (62.0, -104.0), (104.0, -70.0), (104.0, 66.0))  # in the grass at the pad's edge
 FLOOD_HEIGHT = 40.0
@@ -114,6 +114,18 @@ def build(parts: Parts) -> None:
         for z in (h * 0.55, h):
             box(deck, (cx - w - 0.6, cy - w - 0.6, z - 0.2), (cx + w + 0.6, cy + w + 0.6, z))
         box(black, (cx - 0.7, cy - 0.5, h), (cx + 0.7, cy + 0.5, h + 1.0))  # the camera
+        # the way up: a ladder on the face toward the launcher, to the top deck (estimated)
+        parts.ladder(
+            "CameraTowers",
+            f"tower{CAMERA_TOWERS.index((cx, cy, h)) + 1}",
+            (cx + w + 0.95, cy, 0.0),
+            (cx + w + 0.95, cy, h),
+            face=(-1, 0, 0),
+            mat="galv",
+        )
+        for z in (h * 0.3, h * 0.55, h * 0.8):
+            for dy in (-0.74, 0.74):
+                beam(galv, (cx + w + 0.95, cy + dy, z), (cx + w, cy + dy, z), 0.1)
         for i in range(4):
             px, py, _ = corner(i, 0)
             box(galv, (px - 0.6, py - 0.6, -FOOT_DEPTH), (px + 0.6, py + 0.6, 0.3))
@@ -124,16 +136,6 @@ def build(parts: Parts) -> None:
         timber_pole(parts, "Floodlights", x, y, FLOOD_HEIGHT, lamps=3, aim=(-x, -y, 0))
 
     furniture(parts)
-
-
-def lettering(mb, body: str, size: float, origin, right, up, font) -> None:
-    """Painted letters on a flat face: `origin` is the middle of the line's foot (feet), `right`
-    and `up` the directions it reads along; they stand off the face by whatever `origin` does."""
-    verts, faces = srlib.text_mesh(body, size, font, cuts=0)
-    xs = [v[0] for v in verts]
-    mid = (max(xs) + min(xs)) / 2
-    o, r, u = Vector(origin), Vector(right), Vector(up)
-    mb.add([tuple((o + r * (vx - mid) + u * vy) * FT) for vx, vy, _ in verts], faces)
 
 
 def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
@@ -153,7 +155,7 @@ def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
         if i == window_wall:
             window(parts, g, w, w.length / 2 - 2.0, w.length / 2 + 2.0, 3.8, 6.6, mullions=[w.length / 2])
         if i == door_wall:
-            w.box(parts(g, "grey/hutdoor"), w.length / 2 - 1.48, w.length / 2 + 1.48, 0.08, 0.2, 0.77, 7.38)
+            wall_door(parts, f"{g}_{key.capitalize()}Door", g, w, w.length / 2 - 1.5, w.length / 2 + 1.5, 0.75, 7.4, mat="grey")
             w.box(parts(g, "chassis"), w.length / 2 - 1.8, w.length / 2 + 1.8, -2.2, 0.0, 0.3, 0.72)  # the step
     inner = offset_poly(outline, -0.3)
     parts(g, "plank").add([tuple(P(x, y, 0.75)) for x, y in inner], ear_clip(inner))
@@ -248,9 +250,17 @@ def furniture(parts: Parts) -> None:
 
     # ---- the white trailer lettered NASA SP-No 1, beside where the structure stands back (S61-03158)
     tx0, ty0, tx1, ty1 = 30.0, 68.0, 38.0, 97.0
+    tz, troof = 3.62, 12.2  # its floor and the underside of its roof
     van = parts(g, "trailer/van")
-    box(van, (tx0, ty0, 3.4), (tx1, ty1, 12.2))
-    box(parts(g, "trailer/vanroof"), (tx0 - 0.1, ty0 - 0.1, 12.2), (tx1 + 0.1, ty1 + 0.1, 12.45))
+    sides = ring([(tx0, ty0), (tx1, ty0), (tx1, ty1), (tx0, ty1)], 0.2)
+    for i, w in enumerate(sides):
+        w.build(van, 3.4, troof, [(9.0, 12.0, tz, tz + 6.7)] if i == 1 else [])
+    wall_door(parts, f"{g}_TrailerDoor", g, sides[1], 9.0, 12.0, tz, tz + 6.7, mat="grey")
+    box(parts(g, "plank/vanfloor"), (tx0 + 0.1, ty0 + 0.1, 3.4), (tx1 - 0.1, ty1 - 0.1, tz))
+    box(parts(g, "trailer/vanroof"), (tx0 - 0.1, ty0 - 0.1, troof), (tx1 + 0.1, ty1 + 0.1, troof + 0.25))
+    fit = parts(g, "console")
+    box(fit, (tx0 + 0.2, ty0 + 14.0, tz), (tx0 + 2.4, ty1 - 0.4, tz + 3.0))  # a bench of test sets along the far wall (invented)
+    box(fit, (tx0 + 0.2, ty0 + 0.4, tz), (tx0 + 2.2, ty0 + 6.0, tz + 6.4))
     frame = parts(g, "chassis")
     box(frame, (tx0 + 1.2, ty0 + 0.5, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
     for y in (ty1 - 6.5, ty1 - 2.6):  # the bogie at the back
@@ -261,11 +271,10 @@ def furniture(parts: Parts) -> None:
         x = (tx0 + tx1) / 2 + s * 2.6
         beam(frame, (x, ty0 + 5.0, 0.0), (x, ty0 + 5.0, 2.7), 0.35)
         box(frame, (x - 0.5, ty0 + 4.5, 0.0), (x + 0.5, ty0 + 5.5, 0.12))
-    box(parts(g, "grey/vandoor"), (tx1, ty0 + 9.0, 3.9), (tx1 + 0.06, ty0 + 12.0, 10.4))  # the door, and steps up to it
-    for k in range(4):
-        box(parts(g, "deck"), (tx1 + 0.1 + k * 0.85, ty0 + 9.0, 3.2 - k * 0.78 - 0.1), (tx1 + 1.0 + k * 0.85, ty0 + 12.0, 3.2 - k * 0.78))
+    for k in range(4):  # steps up to the door
+        box(parts(g, "deck"), (tx1 + 0.1 + k * 0.9, ty0 + 9.0, 2.85 - k * 0.72 - 0.1), (tx1 + 1.0 + k * 0.9, ty0 + 12.0, 2.85 - k * 0.72))
     for y in (ty0 + 9.0, ty0 + 12.0):
-        beam(frame, (tx1 + 0.2, y, 3.1), (tx1 + 3.5, y, 0.0), 0.14)
+        beam(frame, (tx1 + 0.2, y, 2.75), (tx1 + 3.7, y, 0.0), 0.14)
     lettering(ink, "NASA", 1.25, (tx1 + 0.012, ty1 - 9.0, 9.3), (0, 1, 0), (0, 0, 1), font)
     lettering(ink, "SP-No 1", 0.9, (tx1 + 0.012, ty1 - 9.0, 7.6), (0, 1, 0), (0, 0, 1), font)
     if fine():

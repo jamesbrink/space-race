@@ -18,7 +18,24 @@ from srlib import FT
 
 from . import hardstand, launcher
 from .blockhouse import NOSE, S
-from .site import GAUGE, PAD6, RAIL_PAIR_X, RAIL_TOP, TRENCH_END, P, Parts, beam, box, fine, handrail, lattice, timber_pole, truss
+from .site import (
+    GAUGE,
+    PAD6,
+    RAIL_PAIR_X,
+    RAIL_TOP,
+    TRENCH_END,
+    P,
+    Parts,
+    beam,
+    box,
+    fine,
+    handrail,
+    lattice,
+    stair_rails,
+    stairs,
+    timber_pole,
+    truss,
+)
 
 TRENCH6_END = (TRENCH_END[0], PAD6[1] - TRENCH_END[1])  # pad 5's, mirrored about the blockhouse's axis
 TRENCH6_TO = S(NOSE - 2.1, -NOSE + 2.1)  # the pad 6 firing room's corner
@@ -31,6 +48,8 @@ GANTRY_TOP = 98.0  # 8 March 1961 photograph: 1.42 times the 69 ft missile insid
 LEG_X, LEG = 14.0, 3.6  # each leg's centre line and half its side: the legs stand outside the rails so a finned missile passes between
 HEAD = 6.5  # the depth of the truss across the top
 BOX = (9.0, 8.0, 47.0, 84.0)  # the work enclosure hung between the legs: half width, half depth, floor, roof
+# the two ladders on the east leg's south face (x, y): the lower from the truck, the upper to the top
+LOWER, UPPER = (-LEG_X - 1.8, GANTRY_Y + LEG + 0.9), (-LEG_X + 1.8, GANTRY_Y + LEG + 0.9)
 
 
 def build(parts: Parts) -> None:
@@ -78,13 +97,6 @@ def gantry(parts: Parts) -> None:
         for sy in (-1, 1):
             for dx in (-LEG, LEG):
                 beam(red, (sx * LEG_X + dx, gy + sy * 13.5, 7.0), (sx * LEG_X + dx, gy + sy * LEG, 34.0), 0.5)
-        # a ladder up the outside of each leg
-        lx = sx * (LEG_X + LEG + 0.5)
-        for dy in (-0.75, 0.75):
-            beam(white, (lx, gy + dy, 7.0), (lx, gy + dy, GANTRY_TOP + 3.0), 0.12)
-        step = 1.0 if fine() else 3.0
-        for n in range(int((GANTRY_TOP - 8.0) / step)):
-            beam(white, (lx, gy - 0.75, 8.0 + n * step), (lx, gy + 0.75, 8.0 + n * step), 0.07)
 
     # the square top: a box truss across the two legs, a walkway on it, the hoist under it
     def head(i: int, s: float):
@@ -94,13 +106,14 @@ def gantry(parts: Parts) -> None:
     truss(red, head, [-span + 2 * span * n / 8 for n in range(9)], 0.7, 0.36)
     box(deck, (-span, gy - LEG - 0.4, GANTRY_TOP + 0.35), (span, gy + LEG + 0.4, GANTRY_TOP + 0.6))
     c = [
-        (-span + 0.2, gy - LEG - 0.2),
-        (span - 0.2, gy - LEG - 0.2),
+        (UPPER[0] + 1.6, gy + LEG + 0.2),
         (span - 0.2, gy + LEG + 0.2),
+        (span - 0.2, gy - LEG - 0.2),
+        (-span + 0.2, gy - LEG - 0.2),
         (-span + 0.2, gy + LEG + 0.2),
-        (-span + 0.2, gy - LEG + 2.4),
+        (UPPER[0] - 1.6, gy + LEG + 0.2),
     ]
-    handrail(white, [(x, y, GANTRY_TOP + 0.6) for x, y in c], 3.3)
+    handrail(white, [(x, y, GANTRY_TOP + 0.6) for x, y in c], 3.3)  # open where the ladder comes up
     box(dark, (-2.5, gy - 2.0, z1 - 2.2), (2.5, gy + 2.0, z1 + 0.3))  # the trolley
     for dx in (-0.5, 0.5):
         beam(dark, (dx, gy, BOX[3] + 3.4), (dx, gy, z1 - 2.2), 0.07)
@@ -133,12 +146,33 @@ def gantry(parts: Parts) -> None:
                 xa, xb = sorted((sx * hw, sx * (hw + 0.22)))
                 for y in (gy - hd + 0.15, gy, gy + hd - 0.15):
                     box(white, (xa, y - 0.15, za + 0.02), (xb, y + 0.15, zc - 0.02))
-    # the door in the lowest storey's south face, and a lamp over it
-    box(dark, (-1.5, gy + hd - 0.1, zb + 0.5), (1.5, gy + hd + 0.3, zb + 7.3))
     low = zb - 8.0
     box(deck, (-hw - 2.0, gy - hd - 2.0, low - 0.4), (hw + 2.0, gy + hd + 2.0, low))
-    c = [(-hw - 1.8, gy - hd - 1.8), (hw + 1.8, gy - hd - 1.8), (hw + 1.8, gy + hd + 1.8), (-hw - 1.8, gy + hd + 1.8), (-hw - 1.8, gy - hd + 1.0)]
-    handrail(white, [(x, y, low) for x, y in c], 3.5)
+    c = [
+        (-hw - 1.8, LOWER[1] + 3.6),
+        (-hw - 1.8, gy + hd + 1.8),
+        (hw + 1.8, gy + hd + 1.8),
+        (hw + 1.8, gy - hd - 1.8),
+        (-hw - 1.8, gy - hd - 1.8),
+        (-hw - 1.8, LOWER[1] - 0.1),
+    ]
+    handrail(white, [(x, y, low) for x, y in c], 3.5)  # open where the landing joins it
+
+    # ---- the way up (not documented: F19_008 shows ladders on the legs and nothing else). Stairs
+    # from the pad on to the east truck; a ladder up the leg's south face to a landing level with
+    # the deck under the enclosure; a second from there to the walkway across the top.
+    truck = 7.0
+    foot, head_ = (-LEG_X - 17.0, gy + 6.8, 0.0), (-LEG_X - 5.5, gy + 6.8, truck)
+    stairs(dark, foot, head_, 3.0)
+    stair_rails(white, foot, head_, 3.0)
+    box(deck, (-LEG_X - 3.4, LOWER[1] + 0.1, low - 0.3), (-hw - 2.0, LOWER[1] + 3.4, low))  # the landing
+    handrail(white, [(-hw - 2.1, LOWER[1] + 3.3, low), (-LEG_X - 3.3, LOWER[1] + 3.3, low), (-LEG_X - 3.3, LOWER[1] + 0.3, low)], 3.5)
+    parts.ladder(g, "lower", (*LOWER, truck), (*LOWER, low), face=(0, -1, 0))
+    parts.ladder(g, "upper", (*UPPER, low), (*UPPER, GANTRY_TOP + 0.6), face=(0, -1, 0))
+    for z in range(int(truck) + 9, int(GANTRY_TOP - HEAD), 12):
+        x = LOWER[0] if z < low else UPPER[0]
+        for dx in (-0.74, 0.74):
+            beam(white, (x + dx, LOWER[1], z), (x + dx, gy + LEG, z), 0.1)
     for sx in (-1, 1):
         for y in (gy - LEG, gy + LEG):
             beam(red, (sx * (hw + 2.0), y, low - 0.2), (sx * (LEG_X - LEG), y, low - 0.2), 0.5)
