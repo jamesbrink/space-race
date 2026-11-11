@@ -619,7 +619,10 @@ export class Globe {
             // The scene's haze colour is the haze seen along the ground, warmed by the long path through it. Seen from
             // above (as the sky gives way to the air, uGlobeAbove) the haze is lit from over it: as bright, not warm, a
             // little blue; and over the night side, unlit. Without this the daytime limb had a brown line along it.
-            vec3 haze = mix(fogColor, vec3(dot(fogColor, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.86, 0.95, 1.1), uGlobeAbove);
+            // And far dimmer: from the ground the haze is seen against the light, lit by what it scatters forward along a
+            // long path; from above it sends back up only what it scatters backward, a third as much or less (aerosol
+            // phase functions; estimated), so the sea from orbit is the dark blue it is under a veil, not a pale grey.
+            vec3 haze = hazeSeen();   // (air.ts: hazeAboveUniform, which is uGlobeAbove)
             haze *= mix(1.0, smoothstep(-0.15, 0.1, dot(normalize(vGlobeNormal), uGlobeSun)), uGlobeAbove);
             gl_FragColor.rgb = mix(gl_FragColor.rgb, haze, 1.0 - exp(-fogDensity * tau));
           }

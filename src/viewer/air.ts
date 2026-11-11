@@ -55,6 +55,20 @@ const DRIFT = { x: 0, y: 1e5, z: 0, w: 1e5 };
 export const cloudUniform: THREE.IUniform<typeof DRIFT> = { value: DRIFT };
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uCloudDrift = cloudUniform;
 
+/**
+ * How far the eye has risen out of the air, 0 on the ground to 1 above it (the globe sets it:
+ * globe.ts `thin`). From the ground the haze is seen against the light, lit by what it scatters
+ * forward along a long path; from above it sends back up only what it scatters backward, a third
+ * as much or less (aerosol phase functions; estimated), neutral rather than warm. Every material
+ * that takes the haze uses it, so the land round the site and the globe beyond it go together.
+ */
+const ABOVE = { x: 0, y: 0 }; // (a plain object, shared by reference as DRIFT is: x is the value)
+export const hazeAboveUniform: THREE.IUniform<typeof ABOVE> = { value: ABOVE };
+export const setHazeAbove = (above: number): void => {
+  ABOVE.x = above;
+};
+for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uHazeAbove = hazeAboveUniform;
+
 let installed: Air | null = null;
 let wind: [number, number] = [0, 0];
 
@@ -155,6 +169,9 @@ export function installAir(air: Air): void {
         uniform float fogFar;
       #endif
       uniform vec4 uCloudDrift;
+      uniform vec2 uHazeAbove;
+      // the haze's colour as seen from where the eye is: hazeAboveUniform
+      vec3 hazeSeen() { return mix(fogColor, vec3(dot(fogColor, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.86, 0.95, 1.1) * 0.33, uHazeAbove.x); }
       ${cloudField(c)}
       // how much of the haze lies between the eye and a point, as a fraction of the light lost: 1 - exp(-tau)
       float airFog(vec3 at) {
@@ -188,7 +205,7 @@ export function installAir(air: Air): void {
       #else
         float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
       #endif
-      gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, hazeSeen(), fogFactor );
     #endif`;
 }
 
