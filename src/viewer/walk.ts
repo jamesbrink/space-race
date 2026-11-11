@@ -60,14 +60,16 @@ export function pickFloor(heights: readonly number[], feet: number, riser = STEP
 /**
  * One tick of the feet's height. `floor` is the surface under them (pickFloor), or null where
  * there is none, in which case they stay as they are and the caller decides what to do.
+ * `down` is how far below the feet a floor may be and still be stepped down to, not fallen to;
+ * `rate` is how fast the feet follow a floor that has stepped, m/s.
  */
-export function settle(from: Footing, floor: number | null, dt: number): Footing {
+export function settle(from: Footing, floor: number | null, dt: number, down = STEP, rate = STEP_RATE): Footing {
   if (floor === null) return { y: from.y, vy: 0, grounded: from.grounded };
   let { y, vy } = from;
   if (from.grounded) {
-    // a riser or a step down: follow it. Further down than a step, the ground has gone.
-    if (y - floor <= STEP + 1e-6) {
-      const most = STEP_RATE * dt;
+    // a riser or a step down (`down`: the deepest that is a step): follow it. Further down than that, the ground has gone.
+    if (y - floor <= down + 1e-6) {
+      const most = rate * dt;
       return { y: y + Math.max(-most, Math.min(most, floor - y)), vy: 0, grounded: true };
     }
     vy = 0;
@@ -668,7 +670,11 @@ export class Body {
         this.grounded = true;
         return;
       }
-      let footing = settle({ y: p.y, vy: this.vy, grounded: this.grounded }, floor, dt / strides);
+      // (a step down is as deep as a step up is tall: onto ground that lies below the models' surface, deeper by that much)
+      const down = STEP + Math.max(0, Math.min(this.sunk, -floor));
+      // (and the feet keep up with the legs: run at a steep flight and they climb it as fast as it rises)
+      const rate = Math.max(STEP_RATE, dt > 0 ? (1.3 * distance) / dt : 0);
+      let footing = settle({ y: p.y, vy: this.vy, grounded: this.grounded }, floor, dt / strides, down, rate);
       if (footing.vy > 0) footing = bump(footing, this.ceiling(), this.height); // a hop under a soffit
       p.y = footing.y;
       this.vy = footing.vy;
@@ -1086,7 +1092,10 @@ export class Walker {
     // shoulder, where it is the figure that is seen to do these things.
     const felt = this.motion * (1 - this.viewK);
     const lagging = this.body.grounded && this.motion > 0;
-    this.feltY = lagging ? THREE.MathUtils.clamp(this.feltY + (p.y - this.feltY) * (1 - Math.exp(-dt / 0.07)), p.y - 0.2, p.y + 0.2) : p.y;
+    // (long enough to turn a flight of stairs' risers into a slope under the eyes)
+    this.feltY = lagging
+      ? THREE.MathUtils.clamp(this.feltY + (p.y - this.feltY) * (1 - Math.exp(-dt / 0.11)), p.y - 0.25, p.y + 0.25)
+      : p.y;
     if (Math.abs(this.feltY - p.y) < 1e-4) this.feltY = p.y;
     else this.moved = true;
     const seen = view(this.gait.moment);

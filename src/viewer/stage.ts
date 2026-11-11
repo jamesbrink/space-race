@@ -1314,7 +1314,15 @@ export class Stage {
         lifts!.push({
           id: `lift:${o.name}`,
           label: 'Call the lift',
-          do: { kind: 'lift', node: o.name, stops: stops.map((y, i) => ({ name: i ? `level ${i}` : 'the bottom', by: [0, y, 0] })) },
+          // its stops are called what the model calls them (`stop_names`), or by their order
+          do: {
+            kind: 'lift',
+            node: o.name,
+            stops: stops.map((y, i) => ({
+              name: (o.userData.stop_names as string[] | undefined)?.[i] ?? (i ? `level ${i}` : 'the bottom'),
+              by: [0, y, 0],
+            })),
+          },
         });
       });
       this.lifts.set(top, lifts);

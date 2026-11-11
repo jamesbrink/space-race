@@ -124,8 +124,8 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
           float air = 1.0 / (max(dir.y, 0.0) + 0.025);                 // thicknesses of atmosphere, near enough
           seen *= smoothstep(0.0, 0.02, dir.y) * pow(10.0, -0.08 * (air - 1.0));
         }
-        gl_PointSize = uPixel * min(1.4 + 2.2 * pow(flux, 0.3), 7.0);
-        vColor = tint * min(0.35 + 1.4 * sqrt(flux), 3.0) * seen * uGain;
+        gl_PointSize = uPixel * min(1.8 + 2.2 * pow(flux, 0.3), 7.0);
+        vColor = tint * min(0.5 + 1.6 * sqrt(flux), 3.0) * seen * uGain;
       }`,
     fragmentShader: /* glsl */ `
       varying vec3 vColor;

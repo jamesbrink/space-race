@@ -355,3 +355,76 @@ test('a ladder is only taken hold of by walking at it; from the deck above, by w
   body.mount(tower().body.solids.ladders()[0] ?? { bottom: 0, top: 3, x: 2.13, z: 0, hx: 0.03, hz: 0.25 });
   assert.ok(body.on && body.on.nx === 1 && body.position.y > 2.9);
 });
+
+/** An open steel stair: thin treads with daylight between them and no risers, up to a deck, with a rail down each side. */
+function flight(rise, going = 0.27, steps = 12) {
+  const root = new THREE.Group();
+  const box = (w, h, d, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d));
+    mesh.position.set(x, y + h / 2, z);
+    root.add(mesh);
+  };
+  box(40, 1, 60, 0, -1, 0); // the slab
+  // tread i has its top at rise * i and runs from z = going * (i - 1) to going * i, less a gap at the back
+  for (let i = 1; i <= steps; i++) box(1, 0.03, going - 0.04, 0, rise * i - 0.03, going * (i - 0.5));
+  box(4, 0.2, 4, 0, rise * steps - 0.2, going * steps + 2); // the deck the flight reaches
+  for (const x of [-0.55, 0.55]) {
+    // each rail: a tube a metre above the pitch line, on posts
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, Math.hypot(going * steps, rise * steps)));
+    rail.position.set(x, (rise * steps) / 2 + 1, (going * steps) / 2);
+    rail.rotation.x = -Math.atan2(rise, going);
+    root.add(rail);
+  }
+  root.updateMatrixWorld(true);
+  const solids = new Solids();
+  solids.set([root]);
+  const body = new Body(solids);
+  body.ground = -0.45;
+  return { body, top: rise * steps, length: going * steps };
+}
+
+test('open-tread stairs are walked and run up and down without a hop, a stall or a fall between the treads', () => {
+  for (const rise of [0.2, 0.25])
+    for (const speed of [WALK_SPEED, RUN_SPEED]) {
+      const { body, top, length } = flight(rise);
+      const dt = 1 / 60;
+      const walkTo = (z0, z1) => {
+        let air = 0;
+        let worst = 0;
+        const way = Math.sign(z1 - z0);
+        body.place(0, body.position.y, z0);
+        for (let t = 0; t < 30 && (body.position.z - z1) * way < 0; t += dt) {
+          const before = body.position.clone();
+          body.move(0, way * speed * dt, dt);
+          if (!body.grounded) air++;
+          worst = Math.max(worst, Math.abs(body.position.y - before.y) / dt);
+          assert.ok(
+            Math.abs(body.position.z - before.z - way * speed * dt) < 1e-6,
+            `never held up: rise ${rise}, ${speed} m/s, at z = ${before.z}`,
+          );
+        }
+        return { air, worst };
+      };
+      body.place(0, 0, -1);
+      const up = walkTo(-1, length + 1.5);
+      assert.ok(Math.abs(body.position.y - top) < 1e-6, `up a flight of ${rise} m risers at ${speed} m/s: y = ${body.position.y}`);
+      assert.equal(up.air, 0, 'the feet never leave the treads going up');
+      const down = walkTo(length + 1.5, -1);
+      assert.ok(Math.abs(body.position.y) < 1e-6, `and down again: y = ${body.position.y}`);
+      assert.equal(down.air, 0, `nor going down (${rise} m risers at ${speed} m/s)`);
+      const most = Math.max(3, 1.3 * speed) + 1e-6;
+      assert.ok(up.worst <= most && down.worst <= most, 'and they never move faster than a foot follows a floor');
+    }
+});
+
+test("a stair's handrails keep a body on it", () => {
+  const { body, top } = flight(0.2);
+  body.place(0, top / 2, 0.27 * 6);
+  for (const way of [1, -1]) {
+    for (let t = 0; t < 2; t += 1 / 60) body.move((way * WALK_SPEED) / 60, 0, 1 / 60);
+    assert.ok(
+      Math.abs(body.position.x) < 0.55 - RADIUS + 0.03 && body.grounded && body.position.y > top / 2 - 0.3,
+      `held by the rail at x = ${body.position.x}`,
+    );
+  }
+});
