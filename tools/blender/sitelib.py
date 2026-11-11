@@ -873,11 +873,14 @@ def panels(
     bottom: float,
     gap: float | None = None,
     inset: float = 0.0,
+    slots=(),
 ) -> None:
     """Concrete laid in square panels with open joints: a hardstand, a road. Each panel is its
     own box `gap` short of its neighbours; under the gaps lies one dark slab (`joints`), its
     sides `inset` inside the panels' outer faces (keep that well over a centimetre for paving
-    seen from far off: two faces 18 mm apart cannot be told apart at 150 m)."""
+    seen from far off: two faces 18 mm apart cannot be told apart at 150 m). `slots` are bands
+    (x from, x to) left open the length of the paving, down to the dark slab: the channel a rail
+    is let into, with its flangeway."""
     f = foot()
     gap = 0.12 * f if gap is None else gap
     nx, ny = max(1, round((x1 - x0) / pitch)), max(1, round((y1 - y0) / pitch))
@@ -885,8 +888,23 @@ def panels(
         for j in range(ny):
             xa, ya = x0 + (x1 - x0) * i / nx, y0 + (y1 - y0) * j / ny
             xb, yb = x0 + (x1 - x0) * (i + 1) / nx, y0 + (y1 - y0) * (j + 1) / ny
-            box(slabs, (xa + gap / 2, ya + gap / 2, bottom), (xb - gap / 2, yb - gap / 2, top))
+            for xl, xr in free(xa + gap / 2, xb - gap / 2, slots):
+                box(slabs, (xl, ya + gap / 2, bottom), (xr, yb - gap / 2, top))
     box(joints, (x0 + inset, y0 + inset, bottom - 0.1 * f), (x1 - inset, y1 - inset, top - gap))
+
+
+def free(lo: float, hi: float, slots) -> list[tuple[float, float]]:
+    """What is left of the interval (lo, hi) once the `slots` (from, to) are taken out of it."""
+    out, at = [], lo
+    for s0, s1 in sorted(slots):
+        if s1 <= at or s0 >= hi:
+            continue
+        if s0 > at:
+            out.append((at, s0))
+        at = max(at, s1)
+    if at < hi:
+        out.append((at, hi))
+    return out
 
 
 def fence(parts: Parts, node: str, pts, *, ground: float, height: float | None = None, closed: bool = True) -> None:
@@ -985,3 +1003,223 @@ def roof_vent(mb: MeshBuilder, x: float, y: float, z: float, size: float = 1.0) 
     f = foot() * size
     prof = [(0.0, -0.2), (0.45, -0.2), (0.45, 0.9), (0.95, 0.95), (0.95, 1.2), (0.6, 1.55), (0.0, 1.62)]
     mb.lathe(profile([(r * f, h * f) for r, h in prof]), 12, matrix=Matrix.Translation(P(x, y, z)))
+
+
+# ------------------------------------------------------------------------ track
+
+# A flat-bottomed rail, half its section: inches out from the middle and up from the foot. The
+# proportions are a 100 lb ASCE section's (5 3/4 in high, 5 3/4 in across the foot, the head 2 3/4 in
+# wide, the web 9/16 in), set down from memory: estimated. Far off it is twelve points, a shape.
+RAIL_HEIGHT, RAIL_HEAD, RAIL_FOOT, RAIL_WEB = 5.75, 2.75, 5.75, 0.5625
+_RAIL = [(2.875, 0.0), (2.875, 0.3), (2.3, 0.45), (0.85, 0.95), (0.45, 1.25), (0.28, 1.7), (0.28, 3.85), (0.45, 4.2), (0.85, 4.42),
+         (1.3, 4.52), (1.375, 4.75), (1.375, 5.5), (1.28, 5.69), (1.05, 5.75)]  # fmt: skip
+_RAIL_FAR = [(2.875, 0.0), (2.875, 0.4), (0.3, 0.9), (0.3, 4.3), (1.375, 4.5), (1.375, 5.75)]
+FLANGEWAY = 1.875  # inches, beside a running rail's head where a wheel's flange passes (estimated: the usual)
+PLATE = (13.0, 7.75, 0.625)  # a tie plate, inches: across the rail, along it, thick (estimated: a typical plate)
+
+
+def inch() -> float:
+    return foot() / 12.0
+
+
+def rail_section(plane: float = 0.0, side: int = 1, foot_cut: bool = False) -> list[tuple[float, float]]:
+    """A rail's section as a closed loop (site units): x across it, z up from the foot. `plane`,
+    0 to 1, takes that much of the head off on the `side` side (+1 or -1), and `foot_cut` the foot
+    on that side back to the web: a switch point, planed to lie against its stock rail."""
+    half = _RAIL if fine() else _RAIL_FAR
+    i = inch()
+    out = []
+    for x, z in half + [(-x, z) for x, z in reversed(half)]:
+        if x * side > RAIL_WEB / 2 + 1e-6:
+            if z > 4.15:
+                x = side * (RAIL_WEB / 2 + (abs(x) - RAIL_WEB / 2) * (1.0 - plane))
+            elif foot_cut:
+                x = side * RAIL_WEB / 2
+        out.append((x * i, z * i))
+    return out
+
+
+def rail(mb: MeshBuilder, path, *, plane=None, side: int = 1, foot_cut: bool = False) -> None:
+    """A rail swept along `path`: points (x, y, top), site units, `top` the height of its head
+    there. `plane` (one value per point) and `side` (+1: the left of the way the path runs) plane
+    its head as rail_section() does; with `foot_cut` its foot is cut on that side all along."""
+    pts = [Vector(p) for p in path]
+    h = RAIL_HEIGHT * inch()
+    loops = []
+    for k, p in enumerate(pts):
+        a, b = pts[max(0, k - 1)], pts[min(len(pts) - 1, k + 1)]
+        t = Vector((b.x - a.x, b.y - a.y, 0.0)).normalized()
+        s = Vector((-t.y, t.x, 0.0))
+        sec = rail_section(plane[k] if plane else 0.0, side, foot_cut)
+        loops.append([tuple(Vector((p.x, p.y, p.z - h)) + s * x + Vector((0.0, 0.0, z))) for x, z in sec])
+    solid(mb, loops)
+
+
+def tie_plate(plates: MeshBuilder, spikes: MeshBuilder | None, at, along, top: float, *, seat: float | None = None, wide: float = 0.0) -> None:
+    """The plate a rail sits on at a sleeper, its top under the rail's foot at height `top` - the
+    rail's head height; with two spikes diagonally opposite, as on straight track, their heads over
+    the foot. `at` is the rail's middle (x, y). The plate is sunk half an inch into the sleeper, or,
+    given `seat` (the sleeper's top), stands on it. `wide` widens it toward the rail's left by that
+    much (site units), for two rails on one plate; then it carries no spikes."""
+    i = inch()
+    t = Vector((along[0], along[1], 0.0)).normalized()
+    s = Vector((-t.y, t.x, 0.0))
+    base = top - RAIL_HEIGHT * i
+    bottom = base - (PLATE[2] + 0.5) * i if seat is None else seat
+    c = Vector((at[0], at[1], (base + bottom) / 2)) + s * (wide / 2)
+    obox(plates, tuple(c), tuple(s), (0, 0, 1), (PLATE[0] * i + abs(wide), PLATE[1] * i, base - bottom))
+    if spikes is None or wide:
+        return
+    for d, e in ((1, 1.9), (-1, -1.9)):  # its head clear of the foot's edge, its shank sunk in the plate
+        q = Vector((at[0], at[1], base + 0.3 * i)) + s * (d * 3.3 * i) + t * (e * i)
+        obox(spikes, tuple(q), tuple(s), (0, 0, 1), (0.75 * i, 0.7 * i, 1.2 * i))
+
+
+def ties_and_plates(plates: MeshBuilder, spikes: MeshBuilder | None, ties, rails) -> None:
+    """A plate wherever a rail crosses a sleeper: `ties` are (centre (x, y), its axis, half its
+    length, its top), `rails` polylines of (x, y, top). The plate stands on the sleeper, turned to
+    the rail. Two rails crossing one sleeper within a plate's width of each other share one plate,
+    unspiked; a rail crossing two sleepers that cross each other gets a plate on the first only."""
+    w = PLATE[0] * inch()
+    placed: dict[int, list[Vector]] = {}
+    for (cx, cy), ax, half, seat in ties:
+        a = Vector((ax[0], ax[1])).normalized()
+        n = Vector((-a.y, a.x))
+        c = Vector((cx, cy))
+        hits = []
+        for r, path in enumerate(rails):
+            for p, q in zip(path, path[1:]):
+                d0, d1 = (Vector(p[:2]) - c).dot(n), (Vector(q[:2]) - c).dot(n)
+                if d0 == d1 or (d0 > 0) == (d1 > 0) and d0 != 0:
+                    continue
+                k = d0 / (d0 - d1)
+                x = Vector(p[:2]).lerp(Vector(q[:2]), k)
+                if abs((x - c).dot(a)) <= half - 0.6 * foot() and all((x - o).length > 1.1 * foot() for o in placed.get(r, [])):
+                    hits.append(((x - c).dot(a), x, Vector(q[:2]) - Vector(p[:2]), p[2] + (q[2] - p[2]) * k, r))
+                break
+        hits.sort(key=lambda h: h[0])
+        k = 0
+        while k < len(hits):
+            u, x, d, top, r = hits[k]
+            placed.setdefault(r, []).append(x)
+            if k + 1 < len(hits) and hits[k + 1][0] - u < w:  # the next rail is on this plate too
+                left = Vector((-d.y, d.x)).normalized()
+                span = (hits[k + 1][1] - x).dot(left)
+                placed.setdefault(hits[k + 1][4], []).append(hits[k + 1][1])
+                tie_plate(plates, None, x, d, max(top, hits[k + 1][3]), seat=seat, wide=span)
+                k += 2
+            else:
+                tie_plate(plates, spikes, x, d, top, seat=seat)
+                k += 1
+
+
+def clip(poly, a: float, b: float, c: float) -> list:
+    """The part of a polygon ((x, y) points) where a*x + b*y <= c (Sutherland-Hodgman)."""
+    out = []
+    for k, p in enumerate(poly):
+        q = poly[(k + 1) % len(poly)]
+        fp, fq = a * p[0] + b * p[1] - c, a * q[0] + b * q[1] - c
+        if fp <= 0:
+            out.append(p)
+        if (fp < 0 < fq) or (fq < 0 < fp):
+            t = fp / (fp - fq)
+            out.append((p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t))
+    return out
+
+
+def band(o, d, lo: float, hi: float, a: float, b: float) -> list:
+    """A rectangle along direction `d` from point `o` (2D): across it from `lo` to `hi` (to the
+    left of `d` positive), along it from `a` to `b`. Anticlockwise."""
+    d = Vector(d).normalized()
+    n = Vector((-d.y, d.x))
+    o = Vector(o)
+    return [tuple(o + d * u + n * v) for u, v in ((a, lo), (b, lo), (b, hi), (a, hi))]
+
+
+def minus_strip(poly, o, d, lo: float, hi: float) -> list:
+    """A convex polygon less a strip (across `d` from `lo` to `hi` about `o`): up to two pieces."""
+    d = Vector(d).normalized()
+    n = (-d.y, d.x)
+    c = n[0] * o[0] + n[1] * o[1]
+    pieces = [clip(poly, n[0], n[1], c + lo), clip(poly, -n[0], -n[1], -(c + hi))]
+    return [p for p in pieces if len(p) >= 3 and abs(_area(p)) > 1e-9]
+
+
+def _area(p) -> float:
+    return 0.5 * sum(p[k][0] * p[(k + 1) % len(p)][1] - p[(k + 1) % len(p)][0] * p[k][1] for k in range(len(p)))
+
+
+def frog(body: MeshBuilder, tops: MeshBuilder, o, da, ga: int, db, gb: int, top: float, reach, *, wings: bool = True) -> None:
+    """A cast frog where two rails cross at `o` (x, y): rail A along `da`, rail B along `db`, the
+    casting reaching `reach` = (a, b) along each from `o`. `ga`, `gb` say which side of each is its
+    gauge side (+1: the left of its direction), where its wheels' flanges run. The running surface
+    is both rails' heads less each one's flangeway; with `wings`, as a turnout's frog has, each
+    rail's head is carried on past the point beside the other's flangeway as a wing rail. The body
+    is the casting under it, its top a flangeway's depth (2 in) below the heads, at height `top`.
+    The rails themselves stop at the casting's ends. Done by cutting the casting's outline along
+    every edge and keeping the cells that are running surface, so no two tops overlap."""
+    i = inch()
+    h, fw = RAIL_HEAD * i / 2, FLANGEWAY * i
+    o = Vector(o[:2])
+    da, db = Vector(da[:2]).normalized(), Vector(db[:2]).normalized()
+    na, nb = Vector((-da.y, da.x)) * ga, Vector((-db.y, db.x)) * gb  # each toward its gauge side
+    wide = 3 * h + fw
+    outline = _convex(band(o, da, -wide, wide, -reach[0], reach[0]) + band(o, db, -wide, wide, -reach[1], reach[1]))
+    lines = [(n, o.dot(n) + off) for n in (na, nb) for off in (-h, h, h + fw, wide)]
+    # where the gauge faces cross (the frog's theoretical point), and the way the point faces
+    m = Matrix(((na.x, na.y), (nb.x, nb.y)))
+    pt = m.inverted() @ Vector((o.dot(na) + h, o.dot(nb) + h)) if abs(m.determinant()) > 1e-9 else o
+    w = -(na + nb).normalized()
+    lines.append((w, pt.dot(w) + 0.05 * foot()))  # just past the point, so three edges never meet in one place
+    cells = [outline]
+    for n, c in lines:
+        nxt = []
+        for cell in cells:
+            for piece in (clip(cell, n.x, n.y, c), clip(cell, -n.x, -n.y, -c)):
+                if len(piece) >= 3 and abs(_area(piece)) > 1e-10:
+                    nxt.append(piece)
+        cells = nxt
+
+    def running(cell) -> bool:
+        c = Vector((sum(x for x, _ in cell) / len(cell), sum(y for _, y in cell) / len(cell)))
+        sa, sb = (c - o).dot(na), (c - o).dot(nb)
+        if abs(sa) <= h and not h < sb <= h + fw:
+            return True
+        if abs(sb) <= h and not h < sa <= h + fw:
+            return True
+        if wings and (c - pt).dot(w) > 0:
+            return (h + fw < sb <= wide and sa <= h) or (h + fw < sa <= wide and sb <= h)
+        return False
+
+    zb = top - 2.0 * i
+    for cell in cells:
+        cell = [p for k, p in enumerate(cell) if (Vector(p) - Vector(cell[k - 1])).length > 1e-6]
+        edge = max((Vector(p) - Vector(cell[k - 1])).length for k, p in enumerate(cell))
+        if len(cell) >= 3 and 2 * abs(_area(cell)) / edge > 0.01 * foot() and running(cell):  # no slivers: their sides would fight
+            prism(tops, _ccw(cell), zb - 0.5 * i, top)
+    prism(body, outline, top - (RAIL_HEIGHT + PLATE[2] + 0.3) * i, zb)  # down into the sleepers
+
+
+def _ccw(p) -> list:
+    return list(p) if _area(p) > 0 else list(reversed(p))
+
+
+def _convex(pts) -> list:
+    """The convex hull of 2D points, anticlockwise (monotone chain)."""
+    pts = sorted(set((round(x, 9), round(y, 9)) for x, y in pts))
+    if len(pts) < 3:
+        return pts
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower, upper = [], []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]

@@ -56,9 +56,15 @@ export interface Drive {
   wheelRadius: number;
   /** Rear axle to front axle. */
   wheelbase: number;
-  /** Nodes whose names start with this roll. */
+  /**
+   * Between kerbs at full lock, metres: what it can be driven round on foot (viewer/drive.ts).
+   * A vehicle that drives itself off this way can also be got into and driven, if its model has
+   * a `_Seat_Driver` and faces +X with its wheels named as the vehicle contract names them.
+   */
+  turningCircle?: number;
+  /** Nodes named this and a number (`_1`, `_2`) roll. */
   wheels: string;
-  /** Nodes whose names start with this roll and steer. */
+  /** Nodes named this and a number roll and steer. */
   steered: string;
   /** Which of a wheel node's own axes is its axle. */
   axle: 'x' | 'z';
@@ -160,6 +166,13 @@ export interface Part {
     seconds?: number;
     /** Offer it on foot only when what is faced is under this node (its controls). Left out: anywhere on the part. */
     at?: string;
+    /**
+     * The lever that works it: a node the model marks `lever`, with `swing` (degrees) about its
+     * own `axis` in its extras. While the function is run by hand the lever is held over that far,
+     * forward running it toward the end of its travel and back toward the start, and springs
+     * back to the middle when let go.
+     */
+    lever?: string;
     /**
      * What must be so before it will move: other functions of the same part (by their first node),
      * each at least or at most this far along its travel (0 to 1). `why` is said when it is refused.
@@ -409,6 +422,17 @@ export interface Flight {
   /** What the flight is integrated from, and what the result is checked against (src/sim). Left out: it cannot be flown yet. */
   trajectory?: Trajectory;
   checks?: FlightCheck[];
+  /**
+   * The flight in the scene: which model the trajectory carries off the pad (after liftoff it is
+   * where the simulator has it), and the parts of it that leave it on the way, at seconds from
+   * liftoff (and are no longer drawn: what happens to them is not flown yet).
+   */
+  flies?: {
+    model: string;
+    drops: { at: number; nodes: string[] }[];
+    /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
+    turned?: number;
+  };
   models: ModelDef[];
   /** The place round the pad, built like a model (the site's own: sites/<site>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */
   surroundings?: string;

@@ -91,6 +91,22 @@ test('by night the light is the Moon’s, if it is up', () => {
   assert.equal(dayLight(40, { elevation: 60, lit: 1 }).light.from, 'sun', 'by day the Moon lights nothing');
 });
 
+test('the Sun hands over to the Moon through darkness: the one light turns round only when it is out', () => {
+  const moon = { elevation: 40, lit: 0.8 };
+  let last = dayLight(1, moon).light;
+  let swapped = false;
+  for (let el = 1; el >= -1; el -= 0.001) {
+    const { light } = dayLight(el, moon);
+    assert.ok(Math.abs(light.intensity - last.intensity) < 0.01, `no step at ${el.toFixed(3)}`);
+    if (light.from !== last.from) {
+      swapped = true;
+      assert.ok(light.intensity < 1e-3 && last.intensity < 1e-3, `out where it turns, at ${el.toFixed(3)}`);
+    }
+    last = light;
+  }
+  assert.ok(swapped && last.from === 'moon', 'and the Moon has it after');
+});
+
 test('Freedom 7’s liftoff from the ground: the Sun high in the east, the Moon low and nearly lost', () => {
   const h = at('1961-05-05T14:34:13Z');
   near(h.sunElevation, 50.26, 0.01, 'the Sun’s apparent elevation');

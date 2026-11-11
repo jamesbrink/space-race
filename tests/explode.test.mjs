@@ -185,3 +185,54 @@ test('a node held by hand is played to its own reading of the slider while the r
   exploder.set(0.6);
   assert.ok(gantry.position.z > 0.5 && gantry.position.z < 2, `where the slider has it: ${gantry.position.z}`);
 });
+
+test('a node let loose (a truck driven by hand) is left where it is put while the slider plays the rest', async () => {
+  const THREE = await import('three');
+  const { Exploder } = await import('../src/viewer/explode.ts');
+  const root = new THREE.Group();
+  const truck = new THREE.Group();
+  truck.name = 'Truck';
+  const mast = new THREE.Group();
+  mast.name = 'Truck_Mast';
+  const wheel = new THREE.Group();
+  wheel.name = 'Truck_Wheel_1';
+  const tyre = new THREE.Mesh();
+  tyre.name = 'Truck_Wheel_1_Tyre';
+  wheel.add(tyre);
+  truck.add(mast, wheel);
+  root.add(truck);
+  const drive = {
+    path: [[20, 0]],
+    pivot: [0, 0.5, 0],
+    forward: [1, 0],
+    wheelRadius: 0.5,
+    wheelbase: 4,
+    wheels: 'Truck_Wheel',
+    steered: 'Truck_SteerWheel',
+    axle: 'z',
+  };
+  const part = {
+    node: 'Truck',
+    name: '',
+    summary: '',
+    detail: '',
+    explode: [0, 0, 0],
+    order: 0,
+    moves: [
+      { kind: 'swing', node: 'Truck_Mast', axis: [0, 0, 1], angle: 1, from: 0, to: 0.5 },
+      { kind: 'drive', from: 0.5, to: 1, ...drive },
+    ],
+  };
+  const exploder = new Exploder(root, [part]);
+  exploder.set(0.75);
+  assert.ok(truck.position.x > 1, 'the script drives it');
+  assert.ok(wheel.rotation.z !== 0 && tyre.rotation.z === 0, 'a wheel rolls; the meshes under it go round with it, not again on their own');
+  exploder.loosen('Truck', true);
+  truck.position.set(-7, 0, 3);
+  exploder.set(0.25);
+  assert.deepEqual(truck.position.toArray(), [-7, 0, 3], 'left where it was driven');
+  assert.ok(Math.abs(mast.rotation.z - 0.5) < 0.01 || mast.quaternion.z > 0.1, 'while the rest of it follows the slider');
+  exploder.loosen('Truck', false);
+  exploder.set(0.25);
+  assert.equal(truck.position.x, 0, 'given back, it is where the slider has it');
+});

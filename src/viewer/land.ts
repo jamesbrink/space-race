@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FIELD } from './field';
+import { onlyAsItself } from './flora';
 import { NOISE } from './space';
 
 /**
@@ -66,6 +67,10 @@ export interface LandSpec {
   /** Height of the ground above the land's base level at (x, z) in its frame, metres; and the same in GLSL as `float relief(vec2 p)`. */
   relief: (x: number, z: number) => number;
   reliefGlsl: string;
+  /** The level of open water (the sea), metres above the land's base level, or null: where the ground is lower the mesh is the water's surface. */
+  sea?: number | null;
+  /** GLSL `float lift(vec2 p, float ground, float far)`: the water's swell above its level at p, `far` metres from the eye. Uniform uTime is the time. */
+  lift?: string;
   /** GLSL `float canopyHeight(vec4 A, vec4 B)`: metres a closed stand of woody plants reaches here. */
   canopy: string;
   /** Size of one crown in a closed canopy, metres. */
@@ -212,7 +217,6 @@ export class Land {
   private readonly cel = { value: 0 };
   private roots: [number, number][] = [];
   private rootLevel = LEVELS - 1;
-  mesh_debug: THREE.IUniform | null = null;
 
   /** `baseY`: the height the land's relief is measured from, in the mesh's parent; `turn`: radians about the vertical from the land's frame to its parent's. */
   constructor(renderer: THREE.WebGLRenderer, spec: LandSpec, baseY: number, turn: number) {
@@ -248,9 +252,11 @@ export class Land {
     this.shade(material);
     this.mesh = new THREE.Mesh(this.geometry, material);
     this.mesh.frustumCulled = false; // the patches are placed in the shader; there is always some ground in view
+    this.mesh.renderOrder = 1; // after the models and the plants: the ground they hide is never shaded
     this.mesh.position.y = baseY;
     this.mesh.rotation.y = turn;
     this.mesh.raycast = (raycaster, hits) => this.raycast(raycaster, hits);
+    onlyAsItself(this.mesh);
     this.mesh.userData.land = this; // for the debug handle: sr.stage.setting.floor.userData.land
     this.select(0, 30, 0);
   }
@@ -383,9 +389,7 @@ export class Land {
       uRanges: { value: RANGES },
       uTime: this.time,
       uCel: this.cel,
-      uDebug: { value: 0 },
     };
-    this.mesh_debug = uniforms.uDebug;
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = shader.vertexShader
@@ -395,6 +399,7 @@ export class Land {
           attribute vec4 aPatch;          // (x, z) of its corner in the land's frame, its cell in metres, its level
           uniform vec4 uEye;              // the eye in the land's frame: x, height over the ground, z
           uniform float uRanges[${LEVELS}];
+          uniform float uTime;
           varying vec3 vLand;             // this point in the land's frame
           varying float vCanopy;          // how far the thicket's roof stands above the ground here, metres
           varying float vCrown;           // 0 between crowns, 1 on their tops
@@ -411,6 +416,11 @@ export class Land {
             float stand = canopyHeight(A, landB(p)) * smoothstep(0.5, 0.75, A.r);   // inside what the pixels paint as thicket, so a coarse cell's slope is never painted as ground
             crown = mix(crowns(p), 0.6, smoothstep(0.4, 1.2, cell / ${spec.crown.toFixed(2)}));   // crowns finer than the grid would only alias
             return stand * (0.5 + 0.5 * crown) * smoothstep(${SHELL[0].toFixed(1)}, ${SHELL[1].toFixed(1)}, far);
+          }
+          ${spec.lift ?? 'float lift(vec2 p, float ground, float far) { return 0.0; }'}
+          // the top of the ground or of the water over it, and the water's swell
+          float surface(vec2 p, float ground, float far) {
+            ${spec.sea === undefined || spec.sea === null ? 'return ground;' : `return max(ground, ${spec.sea.toFixed(3)}) + lift(p, ground, far);`}
           }`,
         )
         .replace(
@@ -431,13 +441,15 @@ export class Land {
           float crown, c1, c2;
           float lift = roof(at, far, span, crown);
           float ground = relief(at);
-          float hx = relief(at + vec2(span, 0.0)) + roof(at + vec2(span, 0.0), far, span, c1);
-          float hz = relief(at + vec2(0.0, span)) + roof(at + vec2(0.0, span), far, span, c2);
-          vec3 objectNormal = normalize(vec3(ground + lift - hx, span, ground + lift - hz));
+          float top = surface(at, ground, far) + lift;
+          vec2 ax = at + vec2(span, 0.0), az = at + vec2(0.0, span);
+          float hx = surface(ax, relief(ax), far) + roof(ax, far, span, c1);
+          float hz = surface(az, relief(az), far) + roof(az, far, span, c2);
+          vec3 objectNormal = normalize(vec3(top - hx, span, top - hz));
           vLand = vec3(at.x, ground, at.y);
           vCanopy = lift;
           vCrown = crown;
-          vec3 landPoint = vec3(at.x, ground + lift, at.y);
+          vec3 landPoint = vec3(at.x, top, at.y);
           #ifdef USE_TANGENT
             vec3 objectTangent = vec3(1.0, 0.0, 0.0);
           #endif`,
@@ -452,14 +464,13 @@ export class Land {
           varying float vCrown;
           uniform float uTime;
           uniform float uCel;
-          uniform float uDebug;
           uniform vec4 uEye;
           ${MAPS}
           ${NOISE}
           ${FIELD}
           ${spec.shared}
           ${crowns(spec.crown)}
-          struct Ground { vec3 albedo; float rough; float bump; float water; };
+          struct Ground { vec3 albedo; float rough; float bump; float water; };   // bump: a height in metres, which tilts the normal as a bump map would
           float landPixel;   // metres across one pixel, here
           // how much of a feature this many metres across can be made out: none once it is under two pixels
           float seen(float size) { return 1.0 - smoothstep(0.25, 0.5, landPixel / size); }
@@ -495,10 +506,12 @@ export class Land {
             float grit = sliver * step(1.0 - ${p.gritAmount.toFixed(3)} * (1.0 - 0.6 * herb), pick) * seen(0.01);
             sand = mix(sand, ${vec3(p.grit)} * (0.8 + 0.4 * hash(vec3(ci, 7.0))), grit * 0.85);
             // loose dry sand lies in wind ripples, crests across the wind
-            float rip = sin((p.x + 0.35 * noise(vec3(p * 0.6, 8.0)) + 0.08 * p.y) * 62.8);
-            float ripples = loose * seen(0.05);
-            sand *= 1.0 + 0.05 * rip * ripples;
-            g.bump = 0.004 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12) + 0.002 * grit + 0.004 * crumb;
+            // ripples: crests a hand apart, wandering and forking, stronger in patches where the wind has worked longest
+            float ripWarp = noise(vec3(p * 0.6, 8.0)) * 0.35 + noise(vec3(p * 2.3, 8.5)) * 0.04;
+            float rip = sin((p.x + ripWarp + 0.08 * p.y) * 62.8);
+            float ripples = loose * (1.0 - smoothstep(0.05, 0.3, herb)) * seen(0.06) * smoothstep(0.3, 0.7, noise(vec3(p * 0.18, 8.9)));
+            sand *= 1.0 + 0.03 * rip * ripples;
+            g.bump = 0.003 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12) + 0.002 * grit + 0.004 * crumb;
             // patches a stride across: damper and darker, or a dry pale crust
             float patches = noise(vec3(p * 0.45, 24.0)) * 0.65 + noise(vec3(p * 1.3, 25.0)) * 0.35;
             sand *= 1.0 + 0.22 * (patches - 0.5) * seen(0.5);
@@ -527,12 +540,13 @@ export class Land {
             float grass = smoothstep(clump - 0.3, clump + 0.2, herb * 1.25 + 0.25 * (noise(vec3(p * 9.0, 41.0)) - 0.5) * seen(0.1));
             grass = mix(herb, grass, seen(0.35));
             // near the eye the grass stands up as tufts (flora.ts), and between them is sand and thatch; further off they are this colour
-            grass *= mix(0.55, 1.0, smoothstep(14.0, 30.0, length(vec3(p - uEye.xz, uEye.y))));
+            grass *= mix(0.75, 1.0, smoothstep(14.0, 30.0, length(vec3(p - uEye.xz, uEye.y))));
             vec3 straw = mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, smoothstep(0.25, 0.75, noise(vec3(p * 0.09, 11.0)) * 0.7 + clump * 0.3));
             // blades lying every way: in each 5 cm cell, one or two short strokes, each its own shade
             float lying = 0.0, shade = 0.5;
             vec2 bc = p * 13.0;
             vec2 bi = floor(bc);
+            if (seen(0.02) > 0.0 && herb > 0.02)   // only where they can be made out: the eye's few metres
             for (int y = -1; y <= 1; y++)
               for (int x = -1; x <= 1; x++) {
                 vec2 n = bi + vec2(x, y);
@@ -595,8 +609,7 @@ export class Land {
           landBump = g.bump;
           landWater = g.water;
           landRough = g.rough;
-          diffuseColor.rgb = g.albedo;
-          if (uDebug > 0.5) diffuseColor.rgb = vec3(nearWeight(landAt), coverA.g, coverA.r);`,
+          diffuseColor.rgb = g.albedo;`,
         )
         .replace(
           '#include <roughnessmap_fragment>',
@@ -614,10 +627,6 @@ export class Land {
             float det = dot(dx, r1);
             vec3 grad = sign(det) * (bx * r1 + by * r2);
             normal = normalize(abs(det) * normal - (1.0 - uCel) * grad);
-            // water: chop that moves, so the Sun breaks up on it
-            vec2 w = landAt * 0.22 + vec2(uTime * 0.35, uTime * 0.2);
-            vec3 chop = vec3(noise(vec3(w, 0.0)) - 0.5, 0.0, noise(vec3(w, 9.0)) - 0.5);
-            normal = normalize(normal + (1.0 - uCel) * landWater * 0.22 * (viewMatrix * vec4(chop, 0.0)).xyz);
           }`,
         );
     };

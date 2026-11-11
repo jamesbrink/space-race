@@ -316,3 +316,296 @@ def floor_joints(parts: Parts, node: str, x0: float, y0: float, x1: float, y1: f
     while x0 + n * pitch < x1:
         run(False, x0 + n * pitch, y0, y1)
         n += 1
+
+
+# ------------------------------------------------------------------ furniture and fittings
+# The ordinary contents of an office, a ready room, a kitchen, a test trailer and a generator house
+# of the period, by kind: none of it is any one maker's, and a site must say so in its record.
+# Each is placed by a frame from at(): on the floor at the middle of the edge its user stands at,
+# facing +Y. Bodies are built at every level (a room seen through a window is not empty); what only
+# someone in the room sees (drawer fronts, handles, a telephone) only at full detail.
+
+
+def _face(m: Matrix, origin, right, up) -> Matrix:
+    """A frame on a face of a piece, for panel(): origin its lower left corner (site units, in the piece's frame)."""
+    return m @ sitelib.axes_local(origin, right, up, sitelib.UNIT)
+
+
+def telephone(parts: Parts, node: str, m: Matrix) -> None:
+    """A desk telephone of the 1950s, its frame on the desk top under its middle, the dial toward -Y."""
+    if not close():
+        return
+    f = foot()
+    black, white = parts(node, "black/instruments", True), parts(node, "sign/dials", True)
+    _box(black, m, (-0.32 * f, -0.38 * f, 0.0), (0.32 * f, 0.38 * f, 0.22 * f))
+    _box(black, m, (-0.26 * f, -0.3 * f, 0.22 * f), (0.26 * f, 0.22 * f, 0.33 * f))
+    face = _face(m, (0.0, -0.36 * f, 0.15 * f), (1, 0, 0), (0, 0.45, 1))
+    _stub(white, face, (0.0, 0.0, 0.0), 0.15 * f, 0.03 * f, 14)
+    for s in (-1, 1):  # the cradle's horns and the handset across them
+        _stub(black, m, (s * 0.2 * f, 0.08 * f, 0.33 * f), 0.05 * f, 0.08 * f, 8)
+        _box(black, m, (s * 0.38 * f - 0.08 * f, -0.02 * f, 0.4 * f), (s * 0.38 * f + 0.08 * f, 0.18 * f, 0.5 * f))
+    _box(black, m, (-0.32 * f, 0.03 * f, 0.43 * f), (0.32 * f, 0.13 * f, 0.5 * f))
+
+
+def desk(parts: Parts, node: str, m: Matrix, *, width: float | None = None, phone: bool = True) -> None:
+    """A steel office desk: a lino top, a pedestal of three drawers on the right, a modesty panel,
+    a blotter and papers, a telephone. The sitter faces +Y."""
+    f = foot()
+    w, d, h = (5.0 * f if width is None else width) / 2, 2.5 * f, 2.5 * f
+    body, top = parts(node, "console"), parts(node, "black/shelf")
+    _box(top, m, (-w, 0.0, h - 0.1 * f), (w, d, h))
+    _box(body, m, (w - 1.35 * f, 0.08 * f, 0.0), (w - 0.06 * f, d - 0.06 * f, h - 0.1 * f))
+    _box(body, m, (-w + 0.06 * f, 0.08 * f, 0.0), (-w + 0.18 * f, d - 0.06 * f, h - 0.1 * f))
+    _box(body, m, (-w + 0.18 * f, d - 0.2 * f, 0.7 * f), (w - 1.35 * f, d - 0.12 * f, h - 0.1 * f))
+    if not close():
+        return
+    chrome, paper, blot = parts(node, "chrome", True), parts(node, "sign/paper"), parts(node, "interior/blotter")
+    for z0, z1 in ((0.1 * f, 0.95 * f), (1.0 * f, 1.65 * f), (1.7 * f, 2.33 * f)):
+        _box(body, m, (w - 1.3 * f, 0.03 * f, z0), (w - 0.11 * f, 0.1 * f, z1))
+        _rod(chrome, m, (w - 0.95 * f, 0.0, (z0 + z1) / 2 + 0.1 * f), (w - 0.46 * f, 0.0, (z0 + z1) / 2 + 0.1 * f), 0.025 * f)
+    _box(body, m, (-w + 0.3 * f, 0.03 * f, h - 0.4 * f), (w - 1.45 * f, 0.1 * f, h - 0.12 * f))  # the middle drawer
+    _box(blot, m, (-w + 0.6 * f, 0.25 * f, h), (w - 1.6 * f, 1.85 * f, h + 0.02 * f))
+    for k in range(3):
+        x, y, z = -w + 0.8 * f + k * 0.08 * f, 0.4 * f + k * 0.1 * f, h + 0.03 * f + k * 0.008 * f
+        _box(paper, m, (x, y, z), (x + 0.7 * f, y + 0.9 * f, z + 0.006 * f))
+    if phone:
+        telephone(parts, node, m @ Matrix.Translation(Vector((w - 0.8 * f, 1.4 * f, h)) * sitelib.UNIT))
+
+
+def lockers(parts: Parts, node: str, m: Matrix, n: int, *, width: float | None = None, height: float | None = None) -> None:
+    """A bank of `n` steel lockers on a dark plinth, their doors toward -Y: louvres top and bottom, a lift handle, a number plate."""
+    f = foot()
+    w, d, h = (1.2 * f if width is None else width), 1.5 * f, (6.0 * f if height is None else height)
+    x0 = -n * w / 2
+    _box(parts(node, "black/plinth"), m, (x0 + 0.05 * f, 0.1 * f, 0.0), (-x0 - 0.05 * f, d - 0.05 * f, 0.32 * f))
+    body = parts(node, "console")
+    _box(body, m, (x0, 0.04 * f, 0.3 * f), (-x0, d, h))
+    if not close():
+        return
+    dark, chrome, plate = parts(node, "black/vents"), parts(node, "chrome", True), parts(node, "sign/plates")
+    for k in range(n):
+        a, b = x0 + k * w + 0.04 * f, x0 + (k + 1) * w - 0.04 * f
+        _box(body, m, (a, -0.02 * f, 0.36 * f), (b, 0.06 * f, h - 0.06 * f))  # the door
+        for z in [h - 0.5 * f - j * 0.12 * f for j in range(5)] + [0.7 * f + j * 0.12 * f for j in range(4)]:
+            _box(dark, m, (a + 0.25 * f, -0.03 * f, z), (b - 0.25 * f, -0.01 * f, z + 0.05 * f))
+        _rod(chrome, m, (b - 0.18 * f, -0.02 * f, h * 0.48), (b - 0.18 * f, -0.12 * f, h * 0.48), 0.03 * f)
+        _box(chrome, m, (b - 0.26 * f, -0.04 * f, h * 0.44), (b - 0.1 * f, -0.01 * f, h * 0.53))
+        _box(plate, m, ((a + b) / 2 - 0.15 * f, -0.03 * f, h - 1.15 * f), ((a + b) / 2 + 0.15 * f, -0.015 * f, h - 0.95 * f))
+
+
+def cabinet(parts: Parts, node: str, m: Matrix, *, drawers: int = 4) -> None:
+    """A steel filing cabinet, its drawers toward -Y, each with a pull and a card holder."""
+    f = foot()
+    w, d, h = 1.25 * f, 2.3 * f, 4.4 * f
+    body = parts(node, "console")
+    _box(body, m, (-w / 2, 0.04 * f, 0.0), (w / 2, d, h))
+    if not close():
+        return
+    chrome = parts(node, "chrome", True)
+    for k in range(drawers):
+        z0 = 0.15 * f + k * (h - 0.25 * f) / drawers
+        z1 = z0 + (h - 0.25 * f) / drawers - 0.06 * f
+        _box(body, m, (-w / 2 + 0.05 * f, -0.03 * f, z0), (w / 2 - 0.05 * f, 0.06 * f, z1))
+        _box(chrome, m, (-0.25 * f, -0.09 * f, (z0 + z1) / 2 - 0.05 * f), (0.25 * f, -0.02 * f, (z0 + z1) / 2 + 0.03 * f))
+        _box(parts(node, "sign/plates"), m, (-0.18 * f, -0.045 * f, z1 - 0.3 * f), (0.18 * f, -0.02 * f, z1 - 0.15 * f))
+
+
+def table(parts: Parts, node: str, m: Matrix, width: float, depth: float, *, height: float | None = None) -> None:
+    """A table: a laminate top on four chromed tube legs, the frame under the middle of its near edge."""
+    f = foot()
+    h = 2.5 * f if height is None else height
+    _box(parts(node, "trailer/tabletop"), m, (-width / 2, 0.0, h - 0.1 * f), (width / 2, depth, h))
+    legs = parts(node, "chrome", True)
+    for x in (-width / 2 + 0.3 * f, width / 2 - 0.3 * f):
+        for y in (0.3 * f, depth - 0.3 * f):
+            _rod(legs, m, (x, y, 0.0), (x, y, h - 0.1 * f), 0.05 * f, 8)
+
+
+def bench(parts: Parts, node: str, m: Matrix, length: float) -> None:
+    """A slatted bench on two steel legs, the frame under the middle of its near edge."""
+    f = foot()
+    wood, steel = parts(node, "plank"), parts(node, "black/legs")
+    for k in range(3):
+        _box(wood, m, (-length / 2, 0.05 * f + k * 0.38 * f, 1.4 * f), (length / 2, 0.38 * f + k * 0.38 * f, 1.5 * f))
+    for x in (-length / 2 + 0.6 * f, length / 2 - 0.6 * f):
+        _box(steel, m, (x - 0.06 * f, 0.1 * f, 0.0), (x + 0.06 * f, 1.1 * f, 1.4 * f))
+
+
+def stool(parts: Parts, node: str, m: Matrix) -> None:
+    """A round steel stool, its frame on the floor under the seat."""
+    if not close():
+        return
+    f = foot()
+    _stub(parts(node, "interior/upholstery"), m, (0.0, 0.0, 2.0 * f), 0.55 * f, 0.15 * f, 14)
+    steel = parts(node, "chrome", True)
+    for k in range(4):
+        a = math.tau * (k + 0.5) / 4
+        _rod(steel, m, (0.3 * f * math.cos(a), 0.3 * f * math.sin(a), 2.0 * f), (0.55 * f * math.cos(a), 0.55 * f * math.sin(a), 0.0), 0.035 * f)
+
+
+def counter(parts: Parts, node: str, m: Matrix, length: float, *, sink: float | None = None) -> None:
+    """A kitchen counter against a wall at +Y: base cabinets with doors, a top with a backsplash and,
+    `sink` along it (from the left end), a sink with its tap. The frame is under the middle of its front."""
+    f = foot()
+    d, h = 2.0 * f, 3.0 * f
+    x0, x1 = -length / 2, length / 2
+    body, top = parts(node, "console"), parts(node, "trailer/tabletop")
+    _box(parts(node, "black/plinth"), m, (x0, 0.25 * f, 0.0), (x1, d, 0.35 * f))
+    if sink is None:
+        _box(body, m, (x0, 0.08 * f, 0.33 * f), (x1, d, h - 0.12 * f))
+    else:  # lower under the basin
+        s = x0 + sink
+        for a, b, z in ((x0, s - 1.0 * f, h - 0.12 * f), (s - 1.0 * f, s + 1.0 * f, h - 0.76 * f), (s + 1.0 * f, x1, h - 0.12 * f)):
+            _box(body, m, (a, 0.08 * f, 0.33 * f), (b, d, z))
+    edges = [(x0, x1)] if sink is None else [(x0, x0 + sink - 1.0 * f), (x0 + sink + 1.0 * f, x1)]
+    for a, b in edges:
+        _box(top, m, (a, 0.0, h - 0.12 * f), (b, d, h))
+    _box(top, m, (x0, d - 0.08 * f, h), (x1, d, h + 0.4 * f))  # backsplash
+    if sink is not None:
+        s = x0 + sink
+        steel = parts(node, "chrome", True)
+        _box(top, m, (s - 1.0 * f, 0.0, h - 0.12 * f), (s + 1.0 * f, 0.15 * f, h))
+        _box(top, m, (s - 1.0 * f, 1.6 * f, h - 0.12 * f), (s + 1.0 * f, d - 0.08 * f, h))
+        for lo, hi in (((s - 0.9 * f, 0.15 * f, h - 0.75 * f), (s + 0.9 * f, 1.6 * f, h - 0.7 * f)),):  # the basin's floor and sides
+            _box(steel, m, lo, hi)
+        for a, b in (((s - 1.0 * f, 0.15 * f), (s - 0.9 * f, 1.6 * f)), ((s + 0.9 * f, 0.15 * f), (s + 1.0 * f, 1.6 * f))):
+            _box(steel, m, (a[0], a[1], h - 0.75 * f), (b[0], b[1], h - 0.13 * f))
+        for y0, y1 in ((0.15 * f, 0.25 * f), (1.5 * f, 1.6 * f)):
+            _box(steel, m, (s - 0.9 * f, y0, h - 0.7 * f), (s + 0.9 * f, y1, h - 0.13 * f))
+        if close():
+            _rod(steel, m, (s, 1.85 * f, h), (s, 1.85 * f, h + 0.9 * f), 0.05 * f, 8)
+            _rod(steel, m, (s, 1.85 * f, h + 0.9 * f), (s, 1.3 * f, h + 0.75 * f), 0.04 * f, 8)
+    if not close():
+        return
+    chrome = parts(node, "chrome", True)
+    n = max(1, round(length / (1.5 * f)))
+    for k in range(n):
+        a, b = x0 + k * length / n + 0.05 * f, x0 + (k + 1) * length / n - 0.05 * f
+        _box(body, m, (a, 0.02 * f, 0.4 * f), (b, 0.1 * f, h - 0.55 * f))
+        _box(body, m, (a, 0.02 * f, h - 0.5 * f), (b, 0.1 * f, h - 0.17 * f))  # a drawer over it
+        _box(chrome, m, ((a + b) / 2 - 0.2 * f, -0.03 * f, h - 0.38 * f), ((a + b) / 2 + 0.2 * f, 0.03 * f, h - 0.3 * f))
+        _rod(chrome, m, (b - 0.15 * f, 0.0, h - 1.2 * f), (b - 0.15 * f, 0.0, h - 0.8 * f), 0.025 * f)
+
+
+def refrigerator(parts: Parts, node: str, m: Matrix) -> None:
+    """A refrigerator of the 1950s, its door toward -Y: a rounded white cabinet, a chrome latch handle, a dark plinth."""
+    f = foot()
+    w, d, h = 2.5 * f, 2.4 * f, 5.4 * f
+    white = parts(node, "white/appliances", True)
+    u = sitelib.UNIT
+    r = 0.35 * f
+    arc = [k * math.pi / 12 for k in range(7)]  # the rounded front of its top
+    prof = [(0.12 * f, 0.4 * f), (d, 0.4 * f), (d, h)] + [(0.12 * f + r - r * math.sin(a), h - r + r * math.cos(a)) for a in arc]
+    loops = [[m @ (Vector((x, y, z)) * u) for y, z in prof] for x in (-w / 2, w / 2)]
+    k = len(prof)
+    verts = [tuple(v) for loop in loops for v in loop]
+    white.add(verts, [(i, (i + 1) % k, k + (i + 1) % k, k + i) for i in range(k)] + [tuple(reversed(range(k))), tuple(range(k, 2 * k))])
+    _box(parts(node, "black/plinth"), m, (-w / 2 + 0.1 * f, 0.3 * f, 0.0), (w / 2 - 0.1 * f, d - 0.1 * f, 0.42 * f))
+    if close():
+        chrome = parts(node, "chrome", True)
+        _box(parts(node, "black/vents"), m, (-w / 2 + 0.06 * f, 0.08 * f, h - 1.9 * f), (w / 2 - 0.06 * f, 0.14 * f, h - 1.85 * f))
+        _box(chrome, m, (w / 2 - 0.45 * f, -0.05 * f, h - 2.6 * f), (w / 2 - 0.3 * f, 0.13 * f, h - 2.0 * f))
+        _box(chrome, m, (-0.4 * f, 0.08 * f, 0.5 * f), (0.4 * f, 0.13 * f, 0.62 * f))
+
+
+def stove(parts: Parts, node: str, m: Matrix) -> None:
+    """A gas range against a wall at +Y: four burners, a back guard with its knobs, an oven door."""
+    f = foot()
+    w, d, h = 3.0 * f, 2.2 * f, 3.0 * f
+    white = parts(node, "white/appliances", True)
+    _box(white, m, (-w / 2, 0.06 * f, 0.35 * f), (w / 2, d, h))
+    _box(white, m, (-w / 2, d - 0.25 * f, h), (w / 2, d, h + 0.8 * f))
+    _box(parts(node, "black/plinth"), m, (-w / 2 + 0.1 * f, 0.3 * f, 0.0), (w / 2 - 0.1 * f, d - 0.1 * f, 0.37 * f))
+    if not close():
+        return
+    black, chrome = parts(node, "black/instruments", True), parts(node, "chrome", True)
+    for x in (-0.7 * f, 0.7 * f):
+        for y in (0.6 * f, 1.4 * f):
+            _stub(black, m, (x, y, h), 0.32 * f, 0.04 * f, 14)
+            _stub(chrome, m, (x, y, h + 0.04 * f), 0.12 * f, 0.02 * f, 10)
+    for k in range(4):
+        _stub(chrome, _face(m, (-0.9 * f + k * 0.6 * f, d - 0.25 * f, h + 0.4 * f), (1, 0, 0), (0, 0, 1)), (0.0, 0.0, 0.0), 0.07 * f, 0.08 * f, 8)
+    _box(white, m, (-w / 2 + 0.15 * f, 0.0, 0.5 * f), (w / 2 - 0.15 * f, 0.08 * f, h - 0.6 * f))  # the oven door
+    _box(parts(node, "interior/screens"), m, (-0.6 * f, -0.01 * f, 1.3 * f), (0.6 * f, 0.02 * f, 2.0 * f))
+    _rod(chrome, m, (-0.8 * f, -0.08 * f, h - 0.75 * f), (0.8 * f, -0.08 * f, h - 0.75 * f), 0.03 * f)
+
+
+def urn(parts: Parts, node: str, m: Matrix) -> None:
+    """A coffee urn on a counter, its tap toward -Y: the frame on the counter under its middle."""
+    if not close():
+        return
+    f = foot()
+    chrome = parts(node, "chrome", True)
+    u = sitelib.UNIT
+    prof = [(0.0, 0.0), (0.42 * f, 0.0), (0.45 * f, 0.15 * f), (0.45 * f, 1.6 * f), (0.38 * f, 1.75 * f), (0.1 * f, 1.82 * f), (0.0, 1.95 * f)]
+    chrome.lathe([(r * u, z * u) for r, z in prof], 18, matrix=m)
+    _rod(chrome, m, (0.0, -0.4 * f, 0.4 * f), (0.0, -0.6 * f, 0.4 * f), 0.04 * f)
+    _rod(parts(node, "black/instruments", True), m, (0.0, -0.6 * f, 0.4 * f), (0.0, -0.6 * f, 0.25 * f), 0.035 * f)
+
+
+def board(parts: Parts, node: str, m: Matrix, width: float, height: float, *, seed: int = 1) -> None:
+    """A notice board on a wall, papers pinned to it: the frame at its lower left corner on the wall, Z out of it."""
+    f = foot()
+    _box(parts(node, "plank/board"), m, (0.0, 0.0, 0.0), (width, height, 0.06 * f))
+    if not close():
+        return
+    paper = parts(node, "sign/paper")
+    rnd = seed * 7919
+    for k in range(max(2, round(width * height / (1.2 * f * f)))):
+        rnd = (rnd * 16807 + 11) % 2147483647
+        x = 0.15 * f + (rnd % 1000) / 1000 * (width - 1.0 * f)
+        y = 0.15 * f + ((rnd // 1000) % 1000) / 1000 * (height - 1.2 * f)
+        _box(paper, m, (x, y, 0.065 * f + k * 0.004 * f), (x + 0.7 * f, y + 0.95 * f, 0.07 * f + k * 0.004 * f))
+
+
+def workbench(parts: Parts, node: str, m: Matrix, length: float, sets=(), *, font=None, seed: int = 1) -> None:
+    """A steel workbench against a wall at +Y, a shelf under it, and on it a row of portable test
+    sets, each a cabinet whose face is a panel(): `sets` are (title, rows, width)."""
+    f = foot()
+    d, h = 2.3 * f, 3.0 * f
+    steel, top = parts(node, "console"), parts(node, "black/shelf")
+    _box(top, m, (-length / 2, 0.0, h - 0.12 * f), (length / 2, d, h))
+    _box(steel, m, (-length / 2 + 0.1 * f, 0.15 * f, 0.5 * f), (length / 2 - 0.1 * f, d - 0.05 * f, 0.6 * f))
+    for x in (-length / 2 + 0.1 * f, length / 2 - 0.2 * f):
+        for y in (0.15 * f, d - 0.15 * f):
+            _box(steel, m, (x, y - 0.1 * f, 0.0), (x + 0.1 * f, y, h - 0.12 * f))
+    x = -length / 2 + 0.3 * f
+    for k, (title, rows, w) in enumerate(sets):
+        hgt = 1.4 * f
+        _box(parts(node, "black/cases"), m, (x, 0.5 * f, h), (x + w, d - 0.2 * f, h + hgt))
+        face = _face(m, (x + 0.05 * f, 0.5 * f, h + 0.05 * f), (1, 0, 0), (0, 0, 1))
+        panel(parts, node, face, w - 0.1 * f, hgt - 0.1 * f, rows, title=title, font=font, seed=seed * 13 + k)
+        x += w + 0.25 * f
+
+
+def generator_set(parts: Parts, node: str, m: Matrix, length: float, *, font=None) -> None:
+    """A diesel engine and its generator on a skid, the frame on the floor under the middle of the
+    skid's side that faces -Y: radiator at -X, engine, generator at +X, a control box on the
+    generator with its meters toward -Y, the exhaust up from the engine."""
+    f = foot()
+    x0, x1, w = -length / 2, length / 2, 3.2 * f
+    dark, paint = parts(node, "black/skid"), parts(node, "console")
+    for y in (0.2 * f, w - 0.6 * f):
+        _box(dark, m, (x0, y, 0.0), (x1, y + 0.4 * f, 0.6 * f))
+    re = x0 + 0.6 * f
+    _box(paint, m, (x0 + 0.1 * f, 0.4 * f, 0.6 * f), (re, w - 0.4 * f, 4.4 * f))  # radiator
+    _box(paint, m, (re + 0.3 * f, 0.6 * f, 0.6 * f), (re + 4.0 * f, w - 0.6 * f, 3.4 * f))  # engine block
+    _box(paint, m, (re + 0.6 * f, 0.9 * f, 3.4 * f), (re + 3.7 * f, w - 0.9 * f, 3.9 * f))  # rocker covers
+    gx = re + 4.0 * f
+    u = sitelib.UNIT
+    paint_s = parts(node, "console/round", True)
+    gl = (x1 - gx - 0.4 * f) * u
+    along = m @ sitelib.axes_local((gx + 0.2 * f, w / 2, 2.0 * f), (0, 1, 0), (0, 0, 1), u)  # its Z along the skid
+    paint_s.lathe([(0.0, 0.0), (1.25 * f * u, 0.0), (1.25 * f * u, gl), (0.0, gl)], 24, matrix=along)
+    _box(dark, m, (gx + 0.5 * f, w / 2 - 1.0 * f, 0.6 * f), (x1 - 0.5 * f, w / 2 + 1.0 * f, 0.9 * f))  # its feet
+    cb = (gx + 0.6 * f, x1 - 0.6 * f)
+    _box(paint, m, (cb[0], 0.5 * f, 3.25 * f), (cb[1], 2.0 * f, 4.9 * f))
+    face = _face(m, (cb[0] + 0.05 * f, 0.5 * f, 3.3 * f), (1, 0, 0), (0, 0, 1))
+    panel(parts, node, face, cb[1] - cb[0] - 0.1 * f, 1.55 * f, [("meters", 3), ("lamps", "gar"), ("switches", 3)], font=font, seed=5)
+    if close():
+        grey = parts(node, "grey", True)
+        for k in range(int((w - 1.0 * f) / (0.2 * f))):  # the radiator's grille
+            y = 0.55 * f + k * 0.2 * f
+            _box(dark, m, (x0 + 0.02 * f, y, 0.8 * f), (x0 + 0.12 * f, y + 0.08 * f, 4.2 * f))
+        _rod(grey, m, (re + 2.0 * f, w / 2, 3.9 * f), (re + 2.0 * f, w / 2, 6.5 * f), 0.22 * f, 10)  # the exhaust
+        _rod(grey, m, (re + 0.2 * f, w / 2, 2.6 * f), (re + 0.35 * f, w / 2, 2.6 * f), 0.5 * f, 12)  # the fan's hub housing

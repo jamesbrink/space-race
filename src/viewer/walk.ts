@@ -758,6 +758,8 @@ export interface Seat {
   eyes(to: THREE.Vector3): THREE.Vector3;
   /** Which way the seat faces over the ground, radians: only its changes matter (the head turns with the seat). */
   facing(): number;
+  /** Where the view from outside sits instead of over the shoulder: metres behind the eyes and above them (a vehicle's chase view). */
+  chase?(): { back: number; up: number };
 }
 
 /** What the walker needs from the stage it walks on. */
@@ -877,6 +879,7 @@ export class Walker {
   /** How far over the shoulder the camera has pulled back, 0 (the eyes) to 1. */
   private viewK = 0;
   private readonly boom = new THREE.Vector3();
+  private readonly pivot = new THREE.Vector3();
   private readonly canvas: HTMLCanvasElement;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly host: WalkHost;
@@ -1385,12 +1388,19 @@ export class Walker {
     let back = 0;
     if (this.viewK > 0) {
       const ease = this.viewK * this.viewK * (3 - 2 * this.viewK);
-      const boom = this.boom.set(cos * SHOULDER, OVER, -sin * SHOULDER).addScaledVector(gaze, -BOOM);
+      // seated in something, the view from outside is its chase view: behind the whole of it and over its roof
+      const chase = this.seat?.chase?.();
+      const boom = chase
+        ? this.boom.set(0, chase.up, 0).addScaledVector(gaze, -chase.back)
+        : this.boom.set(cos * SHOULDER, OVER, -sin * SHOULDER).addScaledVector(gaze, -BOOM);
       const length = boom.length();
       const wall = this.solids.cast(camera.position, boom.divideScalar(length), length + BOOM_CLEAR);
       const reach = Math.max(0, Math.min(length, (wall?.distance ?? Infinity) - BOOM_CLEAR)) * ease;
+      // (a chase view looks at the vehicle, a little ahead of the driver's eyes, not level over its roof)
+      if (chase) this.pivot.copy(camera.position).addScaledVector(gaze, 6);
       camera.position.addScaledVector(boom, reach);
-      back = (reach / length) * BOOM;
+      if (chase && reach > 0) camera.lookAt(this.pivot);
+      back = (reach / length) * (chase?.back ?? BOOM);
       this.outside = reach > BOOM_LEAST;
     } else this.outside = false;
     if (this.peekK > 0 && this.peekTo) {

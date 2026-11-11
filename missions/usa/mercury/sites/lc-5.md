@@ -34,20 +34,50 @@ They and the ground between are a second model in this frame: see "The rest of t
 
 ## Where things stood, and when (MR-3, 5 May 1961)
 
-| Time | Event | Source |
-| --- | --- | --- |
-| 04:35 EST | Shepard arrives at the pad | *Results*, p. 77; Postlaunch Report timeline |
-| 05:15 | "Ascend gantry" (by the gantry's elevator) | the same; *This New Ocean*: Shepard "ascended the gantry" |
-| 05:20 | Insertion begun: into the capsule from the white room on level 3 | the same |
-| T−90 | Capsule hatch installed (MR-4 standard count) | TM X-53107 p. 7-27 |
-| T−85 to T−60 | Platforms 2, 4, 3 opened (platform 1 at T−200) | TM X-53107 pp. 7-25, 7-27 to 7-28 |
-| 06:37 (T−55) | "Gantry removed": structure to the edge of the pad; cherry picker's cab to the hatch | *Results* p. 77; PLR §7.1 ("gantry removal at −55 minutes"); TM X-53107 p. 7-29 |
-| T−15 (MR-3) | 86 min hold, weather then an inverter change: "HOLDING: GANTRY IN" … "HOLDING: GANTRY AWAY"; recycled to T−35 | *Results* Fig. 1(a), events 16 and 18; PLR §10.2 |
-| T−8:45 | Structure driven by remote control to its launch position (Hammack: T−9) | TM X-53107 p. 7-32; Hammack p. 22 |
-| T−4 or T−2:30 | Cherry picker's cab lowered "away and down" (two sources disagree) | TM X-53107 7.3.3.1 (T−4); p. 7-33 and Hammack (T−2:30) |
-| T−35 s | Capsule umbilical dropped | TM X-53107 p. 7-33 |
-| ≈T−14 s | "Boom drop" | TM X-53107 p. 7-33; Hammack p. 22 |
-| 09:34 EST | Liftoff. The tail plugs pull out of the launcher as the vehicle rises | TM X-53107 4.2.4, Fig. 4-25 |
+The pad's slider is this morning on the clock: `MORNING` in the flight's `flight.ts` holds each
+instant, in seconds from liftoff, with its confidence and source, and the table is that sequence in
+wall-clock time. **The count did not run straight.** After the gantry's removal at T−55 it was held
+a minute at T−30 (Pad Safety clearing people from the pad), 86 minutes at T−15 (cloud, then a
+booster inverter) and recycled to T−35, 17 minutes at T−15 again (an IP-709 program check) and a
+minute at T−2 (a propulsion regulator's pressure). So a count time is a time before liftoff only
+once the holds after it are added: what happened after T−2 is fixed by the liftoff, what happened
+between T−15 and T−2 is a minute earlier than the count reads, and before the long hold only the
+reports' wall-clock times (05:20, 06:37) fix anything. Every hold is from the Postlaunch Report,
+section 10.2 (PLR below). Times are EST; "slider" is where the pad's slider reads at that instant.
+
+| Time (EST) | Count | Event | Slider | Confidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| 23:30, 4 May | T−390 | The count resumes after the planned 15-hour hold | before it | documented | PLR §10.2 |
+| about 01:35 | T−265 | 10 minute hold "to complete work preparatory to making RF checks with the gantry removed": in MR-4's standard count the structure goes to the edge of the pad (T−316) and the "photo and searchlight crews" are told to clear the area (T−305). It came back afterwards; when is not recorded | before it: not shown | event documented; time derived (125 minutes of count from 23:30) | PLR §10.2; TM X-53107 p. 7-21 |
+| 04:35 | | Shepard arrives at the pad | before it | documented | *Results*, p. 77 |
+| 05:15 | | "Ascend gantry", by the structure's lift | before it | documented | the same; *This New Ocean*: Shepard "ascended the gantry" |
+| 05:20 | | Insertion begun: into the capsule from the white room on level 3 | 0 | documented | *Results* p. 77; PLR timeline |
+| about 05:55 | T−90 | Capsule hatch installed | 0 | estimated: MR-4's standard count, 35 minutes of count and the 7 minute hold before T−55 | TM X-53107 p. 7-27; PLR §10.2 |
+| 06:00 | T−85 | The platforms begin to open: platforms 2, 4 and 3 (1 had opened at T−200) | 0 | estimated, the same way | TM X-53107 pp. 7-25, 7-27 to 7-28 |
+| 06:02 to 06:31 | | The shower cart and the packing case wheeled off; the trailer SP-No 1 towed away; the huts dragged off on their skids (the second still going as the structure starts) | 0.01 to 0.14 | estimated: that any of them left, when and how is not recorded | see "Moving parts" |
+| 06:32 | T−60 | The platforms are open | 0.125 | estimated | TM X-53107 |
+| 06:37 | T−55 | "Gantry removed": the structure starts for the edge of the pad | 0.13 | documented | *Results* p. 77; PLR §7.1 ("gantry removal at −55 minutes") |
+| 06:42 | | The structure stands at the edge of the pad | 0.32 | estimated: the motion's length is ours, at a walking pace | |
+| 06:42:30 to 06:44:30 | | The cherry picker's cab goes to the hatch | 0.33 to 0.42 | estimated: "once the structure had gone"; the minutes are ours | TM X-53107 p. 7-29 |
+| about 07:02 | T−30 | One minute's hold: Pad Safety clears "excessive personnel from the pad area" | between 0.42 and 0.48, where nothing moves | derived (25 minutes of count from 06:37) | PLR §10.2 |
+| 07:13 | T−15 | 86 minute hold, weather and then an inverter change; "HOLDING: GANTRY IN" … "HOLDING: GANTRY AWAY": the structure was brought back and taken away again during it; recycled to T−35 | the same: the structure's return is **not shown** | documented | *Results* p. 77 ("0713 hold for weather") and Fig. 1(b), events 16 and 18; PLR §10.2 |
+| about 09:01 to 09:18 | T−15 | 17 minute hold, an IP-709 program check | the same | derived back from the liftoff | PLR §10.2 |
+| 09:24:28 | T−8:45 | The structure driven by remote control to its launch position (Hammack: T−9) | 0.48 | derived: the count time, a minute earlier for the hold at T−2 | TM X-53107 p. 7-32; Hammack p. 22 |
+| 09:26:28 | | The structure stands at its launch position | 0.56 | estimated | |
+| 09:30:43 | T−2:30 | The cab lowered "away and down" (TM X-53107 7.3.3.1 has T−4) | 0.58 | derived, the same way | TM X-53107 p. 7-33; Hammack |
+| 09:31:43 | | The cab is down | 0.70 | estimated | |
+| 09:31:13 to 09:32:13 | T−2 | One minute's hold: propulsion regulator pressure, relieved by cycling the vent valve | 0.64 to 0.705: the cab is still coming down | derived | PLR §10.2 |
+| 09:33:38 | T−35 s | Capsule umbilical dropped; its mast down two seconds later | 0.72 to 0.755 | derived: nothing was held after T−2 | TM X-53107 p. 7-33 |
+| 09:33:59 | ≈T−14 s | "Boom drop"; the booster's mast down two seconds later | 0.76 to 0.795 | derived | TM X-53107 p. 7-33; Hammack p. 22 |
+| 09:34:13 | T−0 | Liftoff. The tail plugs pull out of the launcher as the vehicle rises | 0.8 | documented | PLR; TM X-53107 4.2.4, Fig. 4-25 |
+| 09:44:13 | | The cherry picker folded down | 0.82 | estimated: when the pad was cleared afterwards is not recorded | |
+| 09:47:13 to 09:47:43 | | It drives off; the pad is clear | 0.91 to 1 | estimated | |
+
+The searchlights (see "Lights at night") are not on the slider: they are switched off by day and
+stand where they are. MR-4's count shows the crews told to clear the area at T−305 and the lights
+"secured" during a hold at T−30 (TM X-53107 8.3.2), which *This New Ocean* (note 63 to its account of MR-4) calls
+"turning off pad-area searchlights": switching them off, not taking them away. Nothing records a
+searchlight being towed off a Redstone pad, so none is.
 
 How the pilot got in: the white room on level 3 enclosed the capsule. TM X-53107 7.5.1.2 calls it
 "enclosing and air conditioning the capsule on level three"; Hammack calls it a "white room
@@ -61,13 +91,13 @@ cherry picker came in from the same side once the structure had gone.
 
 | Top-level node | Module | Contains |
 | --- | --- | --- |
-| `Hardstand` | hardstand.py | 200 ft of 20 ft slabs, joints, burn and stain, painted 121 ft circle, four flush rails, scale plate, trench covers, WNW apron and the ramp off its end, track on ballast and sleepers |
+| `Hardstand` | hardstand.py | 200 ft of 20 ft slabs, joints, burn and stain, painted 121 ft circle, four flat-bottomed rails let into channels with a flangeway on the gauge side, scale plate, trench covers, WNW apron and the ramp off its end, track on ballast: sleepers, tie plates, spikes, fishplated joints |
 | `LaunchPedestal` | launcher.py | the launch ring, support pads and fin clamps, four legs with struts and jack feet, four-sided deflector, tail-plug housing, two ground cables |
 | `UmbilicalMast` | masts.py | cable mast No. 2 (the capsule's), its umbilical to the receptacle, eject line |
 | `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
-| `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, the lift and its shaft, a railed way from the lift to every level with a ladder well in it, hammerhead crane; child nodes below |
-| `CherryPicker` | cherry_picker.py | International Harvester R-series truck, glazed cab with seat, wheel, dash; child nodes below |
-| `GroundEquipment` | ground_equipment.py | LOX topping unit, a second enclosure, chevron box, tripod cameras; the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, two huts on skids |
+| `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, the lift and its shaft, a railed way from the lift to every level with a ladder well in it, hammerhead crane with red obstruction lamps at its ends; work lamps under level 1 and a room lamp in each enclosed level (see "Lights at night"); child nodes below |
+| `CherryPicker` | cherry_picker.py | International Harvester R-series truck: glazed cab with a bench, pedals, handbrake, gear lever, dash and dials, the driver's door and steering wheel as nodes of their own; on the bed the hydraulic tank, gas bottles and the valve bank; at the tail the control station with its four levers (`CherryPicker_Controls`); child nodes below |
+| `GroundEquipment` | ground_equipment.py | LOX topping unit, a second enclosure, chevron box, tripod cameras; the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1 and the tractor unit coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
 | `CameraTowers` | ground_equipment.py | two lattice camera towers, a ladder up each |
 | `Floodlights` | ground_equipment.py | six timber poles in the grass at the pad's edge, a crossarm and three lamps each |
 
@@ -90,9 +120,15 @@ in the viewer is the Blender axis mapped the same way. Angles are right-handed a
 | `CherryPicker` | — | the rear axle's middle on the ground (71.5, 0, 0) | drives | faces +X (viewer (1, 0)); wheelbase 16.5 ft (5.029 m); tyre radius 1.73 ft (0.527 m) | after liftoff; the liftoff photographs show it still there | estimated |
 | `UmbilicalMast` | — | hinge pin (0, −8, 1) | turns about +X | +88° (top toward −Y, viewer +Z): lies on the pad | at the umbilical drop, ≈T−35 s (that it fell then is estimated) | mechanism documented (release valve, bungee); form and angle estimated (S61-02407) |
 | `BoosterMast` | — | hinge pin (−3, −13.5, 1) | turns about +X | +88° | "boom drop", ≈T−14 s | event documented; form estimated |
-
-| `GroundEquipment_Shower`, `GroundEquipment_Case` | `GroundEquipment` | their middles on the pad | slide | up the road toward pad 6, about 150 ft | while the platforms open | estimated throughout: nothing records that they left, or when |
-| `GroundEquipment_Trailer` (wheels `…_Trailer_Wheel_1..4` on their hubs, axle along X), `GroundEquipment_Hut1`, `_Hut2`, `GroundEquipment_Barricade` | `GroundEquipment` | the trailer's: the middle of its bogie on the ground (34, 92.45, 0); the others: their middles | none yet | — | — | their own nodes so that they can be taken away; whether they stood on the pad at liftoff is not established |
+| `CherryPicker_Controls_Mast`, `_Jib`, `_Cab`, `_Outriggers` | `CherryPicker_Controls` | each lever's pivot, (63.15, 1.6 to 2.8, 4.45), at the tail on the driver's side | swings about the node's Z (extras `lever`, `function`, `swing` 25, `axis` "z") | 25° either way, springing back to the middle | while the function it names is worked by hand (types.ts: `Function.lever`) | a station at the rear of the truck: documented (TM X-53107 7.3.3.1: "the controls ... at the rear of the transporter"); four levers, their order and which worked what: estimated |
+| `CherryPicker_Door_1` | `CherryPicker` | the driver's door's front edge at its foot, truck (15.45, 3.2, 3.6) | `door`, `swing` −70° about the vertical | 70° | opened on foot | estimated |
+| `GroundEquipment_Shower`, `GroundEquipment_Case` | `GroundEquipment` | their middles on the pad | slide | up the road toward pad 6, about 150 ft | 0.02 to 0.11 and 0.03 to 0.12 (06:03 to 06:31) | estimated throughout: nothing records that they left, or when |
+| `GroundEquipment_TractorBay` | `GroundEquipment` | (34, 71, 0), turned −90° about Z, so that its +X is the trailer's way ahead (−Y) | none: the frame the tractor drives in | — | — | — |
+| `GroundEquipment_Tractor`, with `…_Wheel_1,2`, `…_Knuckle_1,2`, `…_SteerWheel_1,2`, doors and seats to the vehicle contract | `GroundEquipment_TractorBay` | the ground under its rear axle, which is under the fifth wheel: (34, 71, 0) | drives: starts straight ahead (−Y), eases 12 ft to its left (+X) over the first 40 m, clear of the structure's stair, then straight on | 82.6 m (271 ft) | 0.01 to 0.12 (06:02 to 06:31) | estimated throughout: no photograph shows what moved the trailer, or that it left |
+| `GroundEquipment_Trailer` (wheels `…_Trailer_Wheel_1..4` on their hubs, axle along X) | `GroundEquipment` | the middle of its bogie on the ground (34, 92.45, 0); kingpin 21.45 ft (6.538 m) ahead | drives behind the tractor: its bogie's route is the tractor's worked through as a trailer follows one (always heading for the kingpin: a tractrix), so the two stay coupled | the same | the same | the same. Coupling checked in the browser at 13 points along the slider: kingpin to fifth wheel 2.4 cm at worst, both ending square |
+| `GroundEquipment_Hut1`, `_Hut2` | `GroundEquipment` | their middles | slide out along +X (viewer +X) on their skids | 72 m | 0.03 to 0.11 and 0.06 to 0.14 (06:07 to 06:37: the second is still going as the structure starts) | estimated: nothing records how the huts were moved, or that they were |
+| `GroundEquipment_Tow1`, `_Tow2` (to the vehicle contract) | `GroundEquipment` | under the rear axle, (104.5, 29.5, 0) and (104.5, 44.5, 0), facing +X | drives straight ahead with its hut on a chain behind it | 72 m | with its hut | estimated: a half-ton pickup is the least that could drag a hut; its make is from no photograph |
+| `GroundEquipment_Barricade`, `GroundEquipment_Searchlight1..3` | `GroundEquipment` | their middles; a searchlight's at its yoke's foot | none | — | — | their own nodes so that they can be taken away. The searchlights stay: see "Where things stood" and "Lights at night" |
 
 Notes:
 - Order of the cherry picker's stow, after the lowering: jib fold (+1.16°), then mast (+65.59°
@@ -113,6 +149,10 @@ Notes:
 | Painted circle | 121 ft across | derived | Figure 7-6, 95 px; the arc shows in 6100884 |
 | Apron (WNW) | 28 ft wide, 60 ft long | estimated | Figure 7-6 |
 | Rails | two pairs, about standard gauge (4 ft 8.5 in taken), pair centres 21 ft apart | estimated | 6100884 (fin span 142 px = 12.67 ft; pairs 223 px apart, about 20 ft); OSM lines 22.3 ft apart |
+| Rail section | flat-bottomed, a 100 lb ASCE section's proportions: 5 3/4 in high, foot 5 3/4 in, head 2 3/4 in, web 9/16 in (`sitelib.rail`) | estimated: a common section of the period, set down from memory; what rail was laid here is not recorded | — |
+| Rails across the pad | heads 9 mm proud of the slabs, in a channel: a quarter inch on the outer side, a 1 7/8 in flangeway on the gauge side, 1.4 in deep | estimated: the usual way a rail is let into concrete | 6100884 shows the rails flush, not how |
+| Track off the pad | sleepers 8.5 ft by 9 in by 6 in, 2 ft apart; plates 13 by 7 3/4 by 5/8 in, two spikes each, diagonally; fishplates 24 in, four bolts, every 39 ft | estimated: ordinary practice | — |
+| Turnout | switch points 15 ft, the open one 4 3/4 in off its stock rail (set for the main line), two rods, a ground throw with a red target; the frog where the curve's outer rail crosses the main line at 11.1° (about a No. 5), its casting 10 ft long, flangeways 1 7/8 in; guard rails 11 ft opposite it; crossing frogs at 21° to 26° | estimated: the ordinary parts of a turnout and a crossing; the angles derived from the estimated radius and gauge | F16_017, F19_008 show that the turnout was there |
 | Track | to 245 ft along +Y; modelled 165 ft along −Y | derived | Figure 7-6 |
 | Launcher support pads | 5.5 ft above the pad | estimated | S63-02651: 4.9 to 6.0 ft (booster 137 px = 70 in) |
 | Launch ring | about 10 ft across, 3.05 ft opening | estimated | S63-02651, 6100884 |
@@ -133,8 +173,35 @@ Notes:
 | Emergency shower | 3.2 ft square, 8.6 ft tall, on a cart | estimated (that it stood at the pad's edge: documented) | GPN-2000-001006 (MR-3, cherry picker at the capsule); KSC-61-4457 (2 May 1961) |
 | Trailer "NASA SP-No 1" | 29 by 8 ft, 12.4 ft to its roof | estimated (its lettering and that it stood by the structure's base: documented) | S61-03158 |
 | Pad huts | 10.5 by 11 ft and 9 by 9 ft, 9 ft tall | estimated | FHSU F16_017 (July 1961): two huts at the hatch side's edge |
+| Tractor unit | a late-1950s Ford F-600 conventional: wheelbase 132 in, 205 in long, 80 in wide over the cab, 82 in high, 8.25-20 tyres (radius 0.483 m), dual rear wheels; fifth wheel 47 in up, over the rear axle | estimated, every figure (tools/blender/vehicles.py `ford_f600_tractor`): no drawing or specification read | no photograph shows the trailer's tractor; the trailer's floor steps up 9 cm at the front over the fifth wheel |
+| Pickups that drag the huts | 1957 to 1960 Ford F-100, white, no utility body: wheelbase 110 in (2.794 m), tyre radius 0.361 m; a chain to each hut's skids | wheelbase documented (see "The vehicles"); the rest estimated | no photograph shows how the huts were moved |
+| Searchlights | three 60-inch drums on yokes on four-wheeled trailers, 8 by 4.8 ft beds, drawn olive; lens 5 ft across; 800 million candela in a beam 1.25° wide (lens extras `candela`, `spread`) | that searchlights and their crews worked the pad at night: documented (TM X-53107 p. 7-21 and 8.3.2; *This New Ocean*); the kind, the number, the places and the beam: estimated. The candela and beam are a figure for the type set down from memory and checked against no source | S61-03158 (MR-3 lit hard from the blockhouse side); FHSU F19_001 (MR-4: two sources at the pad's far edge); F19_008 (a large drum on a four-wheeled trailer) |
+| Cherry picker's control station | a grey box at the tail, 2.2 ft wide, on the driver's side; four levers 0.5 ft long, 0.4 ft apart, with a legend plate under each | estimated (that the controls were at the rear: documented, TM X-53107 7.3.3.1) | not in any photograph read |
 | Office on the structure's base | 14.8 by 13.5 ft, 8.6 ft tall; windows 3.2 ft square and 6 by 3.2 ft | estimated | S61-03158 shows a lit room between the legs; its windows are placed by eye |
 | Stairs to the base's deck | 3 ft wide, 14 risers of 7.5 in | estimated | GPN-2000-001006 shows a flight at the base; its place on the base is not established |
+
+## Lights at night
+
+MR-3's count ran through the night: Shepard went up at 05:15 and the Sun rose at about 06:30. The
+viewer lights the scene after dark from what the models carry (`src/viewer/lamps.ts`): every lens of
+material `lamp` (or `lamp-flood…`) becomes a light, the lenses of one fitting one spotlight; a lens
+whose node carries `candela` and `spread` (degrees, the whole beam) is a searchlight, a narrow
+strong cone; and an empty named `Light_<room>`, carrying `intensity` and `reach` (metres), lights a
+room, the three nearest the eye at a time. Fittings of `lamp-room` (a room's own fitting, under its
+`Light_`) and `lamp-red` (obstruction lamps) glow and light nothing themselves.
+
+| What | Where, and what the model carries | Confidence | Source |
+| --- | --- | --- | --- |
+| Floodlight poles | six round the pad (`Floodlights`), three `lamp` heads on each crossarm aimed at the vehicle; four at pad 6 and a two-headed pole by the hut (the pole line along the road carries wires, not lamps) | form estimated, from July | FHSU F16_015, F16_017 |
+| Searchlights | `GroundEquipment_Searchlight1` at (72, −82) ft, on the blockhouse side; `_Searchlight2` and `_3` at (−86, −30) and (−84, 45) ft, across the pad; each aimed at the vehicle's middle 45 ft up; lens `lamp-flood-search` with `candela` 8×10⁸ and `spread` 1.25 | that crewed searchlights lit the pad at night: documented. Kind, number, places, aim and beam: estimated | TM X-53107 p. 7-21 ("photo and searchlight crews to clear area") and 8.3.2 (MR-4: the searchlights secured at T−30 "because of interference with telemetry"); S61-03158, FHSU F19_001 and F19_008 |
+| Work lamps under level 1 | seven deep dome reflectors hung 1.7 ft under level 1, three under each half (they part with it) and one between the legs behind the vehicle, shining down on the booster | that lamps hung there: documented in the night photographs; number and places estimated | S61-03158, KSC-61-4457; FHSU F20_010 to F20_014 (MR-4) |
+| The structure's rooms | `Light_Office` (0.6, 4 m); `Light_Level2Left`, `…Right` (the cabins), `Light_Level3Left`, `…Right` (the white room), `Light_Level4Left`, `…Right` (0.7, 5 m); each under a `lamp-room` fitting | lit windows: documented (S61-03158); fitting and place estimated | TM X-53107 7.5.1.8: "Additional lights were provided in the shelter house and on the structure level" |
+| Blockhouse | `Light_FiringRoom5`, `Light_FiringRoom6` (1.2, 10 m), `Light_EquipmentRoom` (1.0, 9 m) among fluorescent fittings; five floodlights on its walls, three on the ready rooms' | estimated: no night view of either building is known | |
+| Ready rooms, outbuildings | `Light_ReadyRoom`, `Light_Kitchen` (0.9, 7 m); `Light_Hut1`, `Light_Hut2`, `Light_Generators` (0.6, 5 m) | estimated | |
+| Obstruction lamps | four red at the corners of the crane's walkway, 135 ft up; two at the ends of pad 6's gantry top | estimated: the usual practice for a structure that tall; no photograph shows them or their colour | |
+
+The lights are on whenever the Sun is down, whatever the hour: nothing switches the searchlights
+off at a time in the count (for MR-3 it is not recorded; MR-4's were switched off at T−30).
 
 ## The rest of the complex
 
@@ -160,7 +227,7 @@ gantry's place, the trailers) is July's, not May's.
 | `Pad6` | pad6.py | pad 6's 200 ft of slabs, scale plate, burn marks, trench covers, four floodlight poles |
 | `Pad6Launcher` | launcher.py | a second launch ring, the same as pad 5's |
 | `Pad6Gantry` | pad6.py | the square-topped portal gantry: two lattice legs on rail trucks, the truss across the top with its hoist, the three-storey work enclosure and the railed deck under it |
-| `Track` | grounds.py | the four rails on from pad 5's track through pad 6 and 180 ft beyond, ballast and sleepers, the concrete laid in the track by pad 6, and the turnout curving east |
+| `Track` | grounds.py | the four rails on from pad 5's track through pad 6 and 180 ft beyond, ballast, sleepers, plates and spikes, the concrete laid in the track by pad 6; the turnout curving east: for each pair switch points with their rods and a ground throw, a cast frog with its wings and two guard rails, long sleepers and slide plates; and four crossing frogs where the +X pair's curve crosses the −X pair |
 | `Road` | grounds.py | the concrete road between the pads, NO SMOKING painted across it |
 | `CableTrenches` | grounds.py | the covered trench and its walk from each pad to its firing room |
 | `Yard` | grounds.py | two cable racks and the scaffold stair tower north of pad 5 |
@@ -276,9 +343,15 @@ Every node is there at every level, with the same name.
 
 **The cherry picker's truck against this contract** (`lc5/cherry_picker.py`): it has the origin
 under the rear axle and its wheels as nodes on their hubs, the front pair steering and rolling
-as one node each, and a bench and a steering wheel in its cab. It lacks the kingpin nodes,
-hinged cab doors and bonnet, the steering wheel as a node of its own, seat and standing points,
-pedals and instruments, and any mass or turning figure.
+as one node each; the driver's door (`CherryPicker_Door_1`, marked `door`, `swing` −70°), the
+steering wheel (`CherryPicker_SteeringWheel`, on its column) and the points `CherryPicker_Seat_Driver`
+(turned so a figure faces forward) and `CherryPicker_Stand_Driver` as nodes named to the contract;
+a bench, three pedals, a handbrake, a gear lever and a dash with three dials in its cab. It lacks
+the kingpin nodes, a passenger door and bonnet that open, the `vehicle`, `seat`, `stand` and
+`steering` marks, and any mass or turning figure, so it is not offered for driving: its drive-off
+is the script's (`moves`). Its door is opened on foot (the part's `driver-door` action). The tower's
+own controls are the four levers at the tail (see "Moving parts"), each marked `lever` with the
+`function` it works, for a flight's `Part.functions` to name.
 
 ## How far things are from pad 5
 
@@ -333,6 +406,8 @@ known to have changed.
 | Emergency shower on its cart | 2 May 1961 | not known | documented | KSC-61-4457; not looked for in MR-4's photographs |
 | Trailer NASA SP-No 1 | May 1961 | not known | documented | S61-03158; a white NASA trailer stands beside the structure in July too (F16_017) |
 | Two huts at the pad's hatch-side edge | not known | not known | estimated | seen July 1961 (F16_017): assumed for May |
+| Searchlights round pad 5 | May 1961 | not known | estimated | that searchlights worked the pad at night: TM X-53107 p. 7-21 (MR-4's count), 8.3.2; MR-3's night photograph S61-03158 shows the pad lit hard from the blockhouse side |
+| The tractor unit at the trailer, the pickups at the huts | not known | not known | estimated | built so that the trailer and huts can be taken away; no photograph shows them |
 
 Not dated because nothing is known to have changed between May and July 1961: the hardstand, the
 launcher, the masts, the service structure, the track, the road, the cable trenches, the
@@ -446,6 +521,33 @@ Canaveral's basins are not drawn. The keepers' houses at the lighthouse probably
 These landmarks take less of the viewer's haze than the land does (`HAZE` in `cape1961.ts`), so
 that the Atlas pads and Complex 34 can be made out from pad 5 as they could on a clear morning.
 
+## The land
+
+The ground the complex stands on, what grows on it, and the sea are drawn by the viewer from
+parameters (`src/viewer/cape.ts`, on the machinery of `land.ts` and `flora.ts`, which know no
+site), not modelled. **The communities and their order are documented; where each one lies, how
+dense and how tall, and every colour, are estimated** from photographs of 1958 to 1965.
+
+| What | As drawn | Confidence | From |
+| --- | --- | --- | --- |
+| The communities, from the sea | bare beach; the dune's sea oats and grasses with patches of sea grape; the coastal strand (saw palmetto, sea grape, wax myrtle) pruned low by the salt and rising inland; coastal and oak scrub (scrub oaks, saw palmetto, wax myrtle), close to continuous; hammock toward the Banana River; cabbage palms singly | documented in kind | Oddy and others 1999, pp. 13 to 17; FNAI 2010 |
+| Where each community starts | beach to 40 m inland of the surf line, dune to 70 to 95 m, strand thickening from 55 to 110 m, scrub beyond about 180 m; hammock within about 700 m of the river | estimated | the 1961 and 1963 aerials (KSC-61C-0873, 63PC-0033): a dune strip of 30 to 60 m |
+| How open the scrub was | woody cover about 0.9, with sandy openings tens of metres across and grassier swales between old beach ridges about 110 m apart | estimated; that 1961's scrub was more open than today's is documented ("an open, shrubby and herbaceous landscape" in 1943) | Oddy 1999; the 1950 USGS aerial for the ridges |
+| How tall | a closed stand 2.1 m in the scrub, 0.9 m at the strand's seaward edge; shrubs 1.1 to 3 m, saw palmetto 1.0 to 1.8 m, cabbage palms 5 to 11 m | estimated, within the published range (1.0 to 3.5 m after twenty years unburned) | Schmalzer and Hinkle 1991; Breininger 1992; 6100884 shows the scrub's tops about level with a 2 m fence |
+| Complex 5/6's clearing | a rectangle of mown grass and sand about 590 by 320 m along the rails, from 170 m south-south-west of pad 5 to 420 m beyond it, its edges straight; bare graded aprons round the two pads and the blockhouse | estimated: read off the museum's April 1965 aerial (650400) and assumed for May 1961 | |
+| The neighbouring pads | each in an oval of grass and sand 75 m beyond its pad | estimated | 63PC-0033 |
+| Firebreaks | straight sand lines on a grid square to the rails, about 270 by 240 m, some lengths left uncut | the kind is documented (every aerial of the period shows them); where each one ran is not, and these are invented | KSC-61C-0873, 650400 |
+| The breeze the plants move in | from 090° at about 10 knots | documented: the Skid Strip's 09:00 EST observation | NOAA ISD 74794012868 |
+| Colours of sand, grass, leaf and litter | as in `cape.ts` | estimated from period colour film, which has shifted | the photographs above |
+| The lie of the land | the complex's ground (y = -0.45 m in the viewer) taken as 9.5 ft above NAVD 88; the sea's surface 2.9 m below it; inland, old beach ridges and swales about 110 m apart and half a metre deep; the foredune's crest about 1.9 m above the sea, 45 to 62 m inland of the waterline; the beach face rising 1.35 m in its first 30 m to a berm | heights derived from today's survey (USGS 3DEP along 28.4394° N: ground near Complex 5 about 9.5 ft, dune crest 6 to 8 ft about 60 m from the water); the ridges' spacing read off the 1950 aerial; that 1961's ground was the same as today's is assumed | USGS 3DEP; USGS aerial 1950 |
+| Level ground | exactly level at the complex's height over Complex 5/6's clearing and roads and within 85 m of every other complex's pad, easing to the natural lie over 40 m | a rule of the viewer (the models stand on a flat datum), not a survey | |
+| Beach and sea | beach 40 to 50 m from the waterline to the dune, with a wrack line 17 m up; the bed falling 2.2 m in 100 m with a bar 75 m out; a swell of 55 m crests every 7.7 s, about 1 m crest to trough offshore, breaking on the bar and at the shore, so two lines of breakers | the swell's period and height documented as May medians (NOAA buoy 41009, 2010 to 2019); two lines of breakers read off KSC-61C-0873 and 63PC-0033; the bed's slope, the bar's place and the beach's width estimated | |
+| The Banana River's water | flat, grey-green, with a marsh edge | its shore documented (OpenStreetMap, today's); its colour and the marsh's width estimated | |
+
+A thicket far from the eye is drawn as the ground itself lifted into a roof of crowns, not as
+plants (`land.ts`); within about 60 m of the eye the plants stand on the ground one by one.
+
+
 
 ## Sources
 
@@ -494,6 +596,17 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 - Ground equipment, camera towers and floodlights are placed where photographs suggest. None of
   their positions is recorded. The LOX topping trailer's position is unknown. The huts, the
   barricade and the floodlights' form are from July 1961; that they were the same in May is assumed.
+- What takes the furniture away is invented: a Ford F-600 tractor for the trailer SP-No 1 and a
+  half-ton pickup on a chain for each hut, every figure of the tractor estimated. That the shower,
+  case, trailer and huts left before the rollback at all is an assumption, and so are their routes
+  and times. The trailer's route is computed to follow the tractor's (a tractrix), but sampled at
+  points, so the kingpin wanders up to 2.4 cm off the fifth wheel mid-turn.
+- The searchlights are three of one kind (a 60-inch Army drum on a four-wheeled trailer) in places
+  chosen to match two photographs' lighting; their beam is a figure for the type from no source.
+  They stay through liftoff and burn whenever the Sun is down; MR-3's were not switched off at any
+  recorded time.
+- The cherry picker's control station is a box with four levers at the tail: their number, order,
+  legends and which motion each worked are invented. The truck itself cannot be driven by a walker.
 - The office's windows, door and furniture are placed by eye, and so are the stairs to the base.
   The crane has no operator's cab: none shows in the photographs, and the hoist machinery is drawn
   as a closed house.
@@ -540,9 +653,16 @@ The rest of the complex:
   panels are not measured, and it has no platforms inside. Its launcher is pad 5's copied, with
   the Mercury tail-plug housing a tactical Redstone's launcher did not have. Pad 6 has no cable
   masts, no painted circle and no ground equipment: none is established.
-- The turnout has no frogs, blades or check rails: its rails stop short where they would cross the
-  main rails at a fine angle. It ends in a timber stop after 270 ft; where it really led is not known.
-  F16_017 shows a second curved track south of pad 5, which is not modelled.
+- The turnout is the ordinary kind, not this one: points, a cast frog with wings, guard rails and,
+  where one pair's curve crosses the other pair, four cast crossing frogs, all of sizes chosen for
+  the period, none read off a photograph. The points are set for the main line and do not move.
+  The frogs' castings are plain blocks with the running surface and flangeways on top; a real
+  crossing has knuckles and guard rails at its obtuse corners, which are not built. Curved rails
+  are chords 6.5 ft long. The turnout ends in a timber stop after 270 ft; where it really led is
+  not known. F16_017 shows a second curved track south of pad 5, which is not modelled.
+- Pad 6's rails stand an inch and a half proud of its slabs, for the far-field rule, so they need
+  no flangeway and have none; pad 5's are let into channels. Between the two the rails rise over
+  35 ft of ballast (y −305 to −340 ft), past the turnout and short of the concrete.
 - The outbuildings' uses are guesses from their roofs and from OpenStreetMap's tags. Their doors
   and windows are placed by eye.
 - **The cars are types, not the cars.** Each is built to a make and year that F16_016 suggests,
@@ -588,3 +708,12 @@ The rest of the complex:
     stands on rail trucks.
 - Beyond the complex: see "Beyond the complex". Every neighbouring structure is a stand-in for
   its type.
+- **The land is a reading of photographs, not a survey.** The clearing round the complex is a
+  1965 photograph's, the firebreaks are invented in kind, and the communities' edges, densities,
+  heights and colours are estimates. Each plant is one of a few built forms of its species, not a
+  plant that stood there. There are no forbs but grasses, no invasive Australian pine or Brazilian
+  pepper, no fence lines, no litter of the works. No drainage ditches beside the roads and no
+  borrow pits: where they were round this complex is not recorded in anything read. The relief is
+  today's survey's kind of ground, not 1961's. The swell's crests run straight along the shore and
+  no wave is ever stood in: the walker meets the still sea. Plants are not solid: the walker goes
+  through them.

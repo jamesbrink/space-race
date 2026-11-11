@@ -2,11 +2,12 @@ import * as THREE from 'three';
 
 /**
  * How the view is moved when nobody is being walked as. `orbit` turns about a subject; `fly` is a
- * camera on its own, looking where it is pointed and going where it is sent. The C key steps
- * through them (ui.ts). A mode that follows a vehicle in flight will be a third name here.
+ * camera on its own, looking where it is pointed and going where it is sent; `chase` turns about
+ * the vehicle the flight carries off the pad and goes with it (stage.ts: chase). The C key steps
+ * through them (ui.ts).
  */
-export type CameraMode = 'orbit' | 'fly';
-export const CAMERA_MODES: CameraMode[] = ['orbit', 'fly'];
+export type CameraMode = 'orbit' | 'fly' | 'chase';
+export const CAMERA_MODES: CameraMode[] = ['orbit', 'fly', 'chase'];
 
 const UP = new THREE.Vector3(0, 1, 0);
 /** Radians of turn per pixel dragged. */

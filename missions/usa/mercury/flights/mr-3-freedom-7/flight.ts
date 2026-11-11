@@ -603,6 +603,58 @@ const padParts: Part[] = [
     explode: [0, 0, 0],
     order: 0,
     actions: [doorAction('driver-door', 'CherryPicker_Door_1', -70)],
+    // What it does, each worked from its lever at the control station behind the cab (the model's
+    // `lever` marks). The interlocks are how any such truck is kept upright, not something the
+    // record shows of this one: it stood on its outriggers to raise the tower, and drove only with
+    // the tower down and the legs up.
+    functions: [
+      {
+        nodes: ['CherryPicker_Mast'],
+        name: 'Mast',
+        ends: ['raised', 'down on its rest'],
+        seconds: 40,
+        at: 'CherryPicker_Controls',
+        lever: 'CherryPicker_Controls_Mast',
+        needs: [{ node: 'CherryPicker_Outrigger_1', atMost: 0, why: 'the outriggers are up: it must stand on them first' }],
+      },
+      {
+        nodes: ['CherryPicker_Jib'],
+        name: 'Jib',
+        ends: ['standing by', 'folded'],
+        seconds: 40,
+        at: 'CherryPicker_Controls',
+        lever: 'CherryPicker_Controls_Jib',
+        needs: [{ node: 'CherryPicker_Outrigger_1', atMost: 0, why: 'the outriggers are up: it must stand on them first' }],
+      },
+      {
+        nodes: ['CherryPicker_Cab'],
+        name: 'Cab level',
+        ends: ['standing by', 'stowed'],
+        seconds: 30,
+        at: 'CherryPicker_Controls',
+        lever: 'CherryPicker_Controls_Cab',
+      },
+      {
+        nodes: [1, 2, 3, 4].map((n) => `CherryPicker_Outrigger_${n}`),
+        name: 'Outriggers',
+        ends: ['down', 'up'],
+        seconds: 15,
+        at: 'CherryPicker_Controls',
+        lever: 'CherryPicker_Controls_Outriggers',
+        needs: [{ node: 'CherryPicker_Mast', atLeast: 1, why: 'the mast is up: the legs hold it' }],
+      },
+      {
+        nodes: ['CherryPicker'],
+        name: 'Drive off',
+        ends: ['on station', 'gone'],
+        seconds: 40,
+        at: 'CherryPicker_SteeringWheel',
+        needs: [
+          { node: 'CherryPicker_Outrigger_1', atLeast: 1, why: 'the outriggers are down' },
+          { node: 'CherryPicker_Mast', atLeast: 1, why: 'the mast is up' },
+        ],
+      },
+    ],
     moves: [
       // standing by, clear of the structure, until it has gone; the cab hangs level whatever the jib does
       held('CherryPicker_Jib', Z, 29.94),
@@ -635,6 +687,8 @@ const padParts: Part[] = [
         forward: [1, 0],
         wheelRadius: 0.527,
         wheelbase: 5.029,
+        // estimated: a 5 m wheelbase at about 35 degrees of lock
+        turningCircle: 18,
         wheels: 'CherryPicker_Wheel',
         steered: 'CherryPicker_SteerWheel',
         axle: 'z',
@@ -720,7 +774,8 @@ const padParts: Part[] = [
       'case are wheeled and carried off up the road toward pad 6 while the platforms open: that they left, ' +
       'when, and where to are all estimated. Each hut is dragged off on its skids by a pickup, which is ' +
       'estimated too: nothing records how the huts were moved, or that they were. The trailer leaves behind a ' +
-      'tractor unit, north off the pad: also estimated, as is the tractor.',
+      'tractor unit, north off the pad: also estimated, as is the tractor. The three searchlights stay where they ' +
+      'stand: the record has their crews clearing the area and the lights switched off ("secured"), not taken away.',
     moves: [
       // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
       { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11 },
@@ -731,12 +786,16 @@ const padParts: Part[] = [
         node: 'GroundEquipment_Tractor',
         from: T.platforms + 0.01,
         to: T.platforms + 0.12,
-        // in the frame of the bay it stands in, which faces the way it does: x ahead, z to its left
+        // in the frame of the bay it stands in, which faces the way it does: x ahead, z to its right. It starts
+        // straight ahead (a route's first leg is the way it faces) and eases 12 ft to its left over 40 m, clear of
+        // the structure's stair, so that the trailer behind it tracks without cutting in
         path: [
-          [6.4, -1.83],
-          [12.5, -3.66],
-          [39.93, -3.66],
-          [55.17, -3.66],
+          [4, 0],
+          [10, -0.4],
+          [20, -1.83],
+          [30, -3.26],
+          [36, -3.6],
+          [44, -3.66],
           [82.6, -3.66],
         ],
         pivot: [0, 0.483, 0],
@@ -752,13 +811,31 @@ const padParts: Part[] = [
         node: 'GroundEquipment_Trailer',
         from: T.platforms + 0.01,
         to: T.platforms + 0.12,
-        // its bogie follows the tractor's rear axle, a trailer's length behind
+        // Its bogie heads always for the kingpin on the tractor's fifth wheel, 6.54 m ahead: the tractor's route
+        // worked through as a trailer follows it (a tractrix), so the two stay coupled to within 2 cm all the way
         path: [
-          [0, 6.54],
-          [1.83, 12.94],
-          [3.66, 19.03],
-          [3.66, 46.47],
-          [3.66, 82.58],
+          [0, 5.01],
+          [0.05, 8.01],
+          [0.16, 11],
+          [0.37, 13.99],
+          [0.66, 16.97],
+          [1.01, 19.95],
+          [1.4, 22.93],
+          [1.81, 25.91],
+          [2.23, 28.89],
+          [2.62, 31.86],
+          [2.94, 34.84],
+          [3.19, 37.82],
+          [3.36, 40.82],
+          [3.47, 43.81],
+          [3.54, 46.81],
+          [3.59, 49.81],
+          [3.62, 52.81],
+          [3.64, 55.81],
+          [3.65, 58.81],
+          [3.66, 66.81],
+          [3.66, 74.82],
+          [3.66, 82.6],
         ],
         pivot: [0, 0.472, 0],
         forward: [0, 1],
@@ -1010,6 +1087,10 @@ const TILT_ARREST = 131.7;
  * is `estimated` and says what it stands on: tests/sim.test.mjs prints how far each of those moves
  * each result.
  */
+/** Postlaunch Report, event table: the escape tower fired clear at 02:22.2, and the capsule had turned heat shield first by 02:37. */
+const TOWER_OFF = 142.2;
+const TURNED = 157;
+
 const trajectory: Trajectory = {
   azimuth: doc(
     105,
@@ -1225,9 +1306,9 @@ export const flight: Flight = {
     { t: 0, event: 'Liftoff' },
     { t: 84, event: 'Maximum dynamic pressure, 586 lb/ft²' },
     { t: 141.8, event: 'Booster engine cutoff, 6.3 g' },
-    { t: 142.2, event: 'Escape tower released and fired clear' },
+    { t: TOWER_OFF, event: 'Escape tower released and fired clear' },
     { t: 152.3, event: 'Spacecraft separation at 74.3 km: posigrade motors fire' },
-    { t: 157, event: 'Turnaround to heat-shield-forward' },
+    { t: TURNED, event: 'Turnaround to heat-shield-forward' },
     { t: 184, event: 'Manual control: pitch, then yaw, then roll' },
     { t: 311, event: 'Apogee, 187.4 km' },
     { t: 314.1, event: 'Retrofire: three motors, five seconds apart' },
@@ -1560,6 +1641,18 @@ export const flight: Flight = {
   ],
   trajectory,
   checks,
+  flies: {
+    model: 'vehicle',
+    drops: [
+      { at: TOWER_OFF, nodes: ['EscapeTower'] },
+      {
+        at: trajectory.separation.at.value,
+        nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
+      },
+      { at: trajectory.retropack.at.value, nodes: ['Retropack'] },
+    ],
+    turned: TURNED,
+  },
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-05.glb',
 };

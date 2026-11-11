@@ -124,3 +124,51 @@ test('the solver alone: two points and a stick fall as one and stop on the floor
   assert.ok(limp.strain() < 0.05 && limp.speed < 1);
   for (const p of limp.points) assert.ok(p.y > 0.05);
 });
+
+test('a knee never bends forward nor an elbow back, and a thigh does not swing far behind the trunk, however it lands', () => {
+  const P = (doll, name) => doll.points[POINTS.indexOf(name)];
+  // how far a joint lies on the wrong side of the line between the ends of its limb, as a fraction of that line
+  const wrong = (doll, [a, b, c, side, l, r]) => {
+    const line = P(doll, c).clone().sub(P(doll, a));
+    const length = line.length();
+    line.divideScalar(length);
+    const h = P(doll, l).clone().sub(P(doll, r));
+    const across = h.length();
+    h.addScaledVector(line, -h.dot(line));
+    if (h.length() < 0.7 * across) return 0; // (along the trunk's left and right, which way is its front is not defined)
+    const n = line.clone().cross(h.normalize());
+    return Math.max(0, -P(doll, b).clone().sub(P(doll, a)).dot(n) * side) / length;
+  };
+  const limbs = ['L', 'R'].flatMap((s) => [
+    [`UpperLeg.${s}`, `LowerLeg.${s}`, `Foot.${s}`, 1, 'UpperLeg.L', 'UpperLeg.R'],
+    [`UpperArm.${s}`, `LowerArm.${s}`, `Hand.${s}`, -1, 'UpperArm.L', 'UpperArm.R'],
+  ]);
+  const hips = ['L', 'R'].map((s) => ['Spine', `UpperLeg.${s}`, `LowerLeg.${s}`, -1, 'UpperLeg.L', 'UpperLeg.R']);
+  for (const v of [
+    [0, -8, 0],
+    [3, -8, 0],
+    [-3, -10, 1],
+    [0.5, -6, -4],
+    [4, -3, 2],
+  ]) {
+    const doll = rest();
+    doll.throw(new THREE.Vector3(...v));
+    doll.shift(new THREE.Vector3(0, 3, 0));
+    let worst = 0;
+    let lying = 0;
+    let behind = 0;
+    for (let i = 0; i < 360; i++) {
+      doll.step(1 / 60, world());
+      // (as it hits, a frame may catch a limb on its way back from being flung: lying, none is)
+      for (const limb of limbs) worst = Math.max(worst, wrong(doll, limb));
+      if (doll.atRest) for (const limb of limbs) lying = Math.max(lying, wrong(doll, limb));
+      if (doll.atRest) for (const hip of hips) behind = Math.max(behind, wrong(doll, hip));
+    }
+    assert.ok(doll.atRest, `thrown at ${v}: it comes to rest`);
+    assert.ok(
+      worst < 0.2 && lying < 0.08,
+      `thrown at ${v}: a joint bent the wrong way by ${worst} of its limb, and by ${lying} lying still`,
+    );
+    assert.ok(behind < 0.15, `thrown at ${v}: lying, a thigh is swung behind the trunk by ${behind}`);
+  }
+});

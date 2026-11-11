@@ -109,9 +109,11 @@ class Driver {
     const axle = this.axis === 'x' ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
     const forward = new THREE.Vector3(drive.forward[0], 0, drive.forward[1]);
     this.spin = Math.sign(axle.cross(UP).dot(forward)) * (drive.reverse ? -1 : 1) || 1;
+    // (a wheel is the node named so with its number: the meshes under it turn with it, not as well as it)
+    const named = (prefix: string, name: string) => name.startsWith(prefix) && /^_?\d+$/.test(name.slice(prefix.length));
     object.traverse((o) => {
-      const steered = o.name.startsWith(drive.steered);
-      if (!steered && !o.name.startsWith(drive.wheels)) return;
+      const steered = named(drive.steered, o.name);
+      if (!steered && !named(drive.wheels, o.name)) return;
       o.rotation.order = this.axis === 'x' ? 'YXZ' : 'YZX'; // turned about the vertical, then rolled about the axle
       this.rolling.push(o);
       if (steered) this.steering.push(o);
@@ -149,6 +151,8 @@ export interface Fn {
   seconds: number;
   ends?: [string, string];
   at?: string;
+  /** The lever that works it, which swings as it is run by hand. */
+  lever?: string;
   needs?: { node: string; atLeast?: number; atMost?: number; why: string }[];
 }
 
@@ -184,6 +188,7 @@ export function functionsOf(part: Part): Fn[] {
       seconds: said?.seconds ?? Math.min(20, Math.max(3, (to - from) * 60)),
       ends: said?.ends,
       at: said?.at,
+      lever: said?.lever,
       needs: said?.needs,
     });
   };
@@ -241,13 +246,19 @@ export class Sequence {
     }
   }
 
-  /** Play every motion to where it is when the slider reads `k`; a node in `held` is played to the reading held for it instead. */
-  set(k: number, held?: ReadonlyMap<string, number>): void {
+  /**
+   * Play every motion to where it is when the slider reads `k`; a node in `held` is played to the
+   * reading held for it instead, and one in `loose` is left wherever something else has put it
+   * (a vehicle being driven by hand).
+   */
+  set(k: number, held?: ReadonlyMap<string, number>, loose?: ReadonlySet<string>): void {
     for (const [object, rest] of this.nodes) {
+      if (loose?.has(object.name)) continue;
       object.position.copy(rest.position);
       object.quaternion.copy(rest.quaternion);
     }
     for (const { move, object, node, driver } of this.steps) {
+      if (loose?.has(object.name)) continue;
       const at = held?.get(node) ?? k;
       const u = ease(Math.min(1, Math.max(0, (at - move.from) / Math.max(1e-6, move.to - move.from))));
       if (move.kind === 'swing') {
@@ -260,12 +271,13 @@ export class Sequence {
 }
 
 /** Moves a flight's parts between their assembled and exploded positions. */
-/** Moves a flight's parts between their assembled and exploded positions. */
 export class Exploder {
   private readonly entries: { object: THREE.Object3D; home: THREE.Vector3; part: Part; sequence?: Sequence }[] = [];
   private readonly orders: number;
   /** Nodes being worked by hand: each is played to the slider reading held for it, whatever the slider says. */
   private readonly held = new Map<string, number>();
+  /** Nodes something else is moving (a vehicle being driven by hand): the slider leaves them where they are. */
+  private readonly loose = new Set<string>();
 
   constructor(root: THREE.Object3D, parts: Part[]) {
     this.orders = Math.max(0, ...parts.map((p) => p.order));
@@ -287,12 +299,19 @@ export class Exploder {
     else this.held.set(node, reading);
   }
 
+  /** Let something else move a node (true), or give it back to the slider (false). Takes effect at the next `set`. */
+  loosen(node: string, on: boolean): void {
+    if (on) this.loose.add(node);
+    else this.loose.delete(node);
+  }
+
   set(t: number): void {
     for (const { object, home, part, sequence } of this.entries) {
       // a sequence is timed against the slider itself (its motions say when); a plain slide takes its turn
       const k = partProgress(t, part.order, this.orders);
-      if (sequence) sequence.set(t, this.held);
-      else object.position.set(home.x + part.explode[0] * k, home.y + part.explode[1] * k, home.z + part.explode[2] * k);
+      if (sequence) sequence.set(t, this.held, this.loose);
+      else if (!this.loose.has(part.node))
+        object.position.set(home.x + part.explode[0] * k, home.y + part.explode[1] * k, home.z + part.explode[2] * k);
     }
   }
 }

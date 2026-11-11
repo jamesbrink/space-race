@@ -14,6 +14,10 @@ const FITTING = 3.2;
 const MOST = 12;
 /** The most room lights drawn at once (see `roomPool`). */
 const ROOMS = 3;
+/** A room keeps its light until another is this much nearer than the furthest lit one: the eye drifting between two does not flick it back and forth. */
+const KEEP = 1.25;
+/** Seconds for a room light to go out, or come on, when it is given to another room. */
+const HANDOVER = 0.6;
 /** Luminous intensity of one fitting, candela: a bank of 1,500 W incandescent floods is some hundred thousand; the scene's exposure at night is high, so far less is asked for. */
 const CANDELA = 110;
 /** A flood's beam: wide, soft-edged. */
@@ -79,6 +83,9 @@ export class Lamps {
    * must not change, or every material is built again. Only rooms the eye could be near matter.
    */
   private readonly roomPool: THREE.PointLight[] = [];
+  /** Which room each pooled light is lighting, which it is to light, and how far up it is (0 to 1). */
+  private readonly given: { room: number; want: number; level: number }[] = [];
+  private handedAt = 0;
   private readonly lenses = new Set<THREE.MeshStandardMaterial>();
   private level = -1;
   private exposure = 1;
@@ -98,6 +105,7 @@ export class Lamps {
           const light = new THREE.PointLight(0xfff1d6, 0, 8, 2);
           scene.add(light);
           this.roomPool.push(light);
+          this.given.push({ room: -1, want: -1, level: 0 });
         }
         return;
       }
@@ -149,23 +157,43 @@ export class Lamps {
 
   private readonly eye = new THREE.Vector3(1e9, 0, 0);
 
-  /** Give the room lights to the rooms nearest `eye`. True if that changed what is lit. */
+  /**
+   * Give the room lights to the rooms nearest `eye`. A light handed to another room goes out over
+   * a moment and comes on there, and a room keeps its light until another is clearly nearer, so
+   * nothing is seen to switch. True if that changed what is lit.
+   */
   near(eye: THREE.Vector3): boolean {
     this.eye.copy(eye);
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - this.handedAt) / 1000);
+    this.handedAt = now;
     if (!this.rooms.length) return false;
     const where = this.rooms.map((r) => {
       r.at.updateWorldMatrix(true, false);
-      return { r, p: new THREE.Vector3().setFromMatrixPosition(r.at.matrixWorld) };
+      return new THREE.Vector3().setFromMatrixPosition(r.at.matrixWorld);
     });
-    where.sort((a, b) => a.p.distanceToSquared(eye) - b.p.distanceToSquared(eye));
+    const far = where.map((p) => p.distanceTo(eye));
+    const order = far.map((_, i) => i).sort((a, b) => far[a]! - far[b]!);
+    const nearest = order.slice(0, this.roomPool.length);
+    const edge = far[nearest[nearest.length - 1]!]! * KEEP;
+    // the rooms to light: those already lit that are still near enough, then the nearest others
+    const keep = this.given.map((g) => (g.want >= 0 && far[g.want]! <= edge ? g.want : -1));
+    const others = nearest.filter((r) => !keep.includes(r));
+    for (const [i, g] of this.given.entries()) g.want = keep[i]! >= 0 ? keep[i]! : (others.shift() ?? -1);
     let changed = false;
     this.roomPool.forEach((light, i) => {
-      const room = where[i];
+      const g = this.given[i]!;
+      const step = dt / HANDOVER;
+      const level = g.room === g.want ? Math.min(1, g.level + step) : Math.max(0, g.level - step);
+      if (g.room !== g.want && level === 0) g.room = g.want; // out: it may move
+      if (level !== g.level) changed = true;
+      g.level = level;
+      const room = this.rooms[g.room];
       if (!room) return;
-      if (light.position.distanceToSquared(room.p) > 1e-6) changed = true;
-      light.position.copy(room.p);
-      light.distance = room.r.reach;
-      light.intensity = room.r.intensity;
+      if (light.position.distanceToSquared(where[g.room]!) > 1e-6) changed = true;
+      light.position.copy(where[g.room]!);
+      light.distance = room.reach;
+      light.intensity = room.intensity * g.level;
     });
     return changed;
   }
@@ -183,7 +211,7 @@ export class Lamps {
   set(night: number, exposure = 1): boolean {
     // followed closely: a lamp that came on in steps would be seen stepping as dusk falls quickly
     const level = THREE.MathUtils.clamp(night, 0, 1);
-    if (Math.abs(level - this.level) < 0.004 && Math.abs(exposure - this.exposure) < 0.02 * exposure) return false;
+    if (Math.abs(level - this.level) < 0.002 && Math.abs(exposure - this.exposure) < 0.004 * exposure) return false;
     this.level = level;
     this.exposure = exposure;
     this.lights.forEach((light, i) => {

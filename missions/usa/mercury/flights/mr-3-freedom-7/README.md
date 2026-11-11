@@ -69,6 +69,39 @@ to 0.002° (`tests/world.test.mjs`). Elevations are geometric; air lifts the Moo
 
 Mars, Uranus and Neptune were below the horizon.
 
+## The flight as flown
+
+`src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts) (thrust, specific
+impulse, masses, the tilt programme, drag, retrofire, parachutes; nothing fitted) and
+`tests/sim.test.mjs` holds the result against `checks`, the figures the Postlaunch Report gives.
+The page's Flown panel (`src/flown.ts`) shows the same run against the clock, and from liftoff to
+landing the vehicle in the scene flies it (`src/viewer/ascent.ts`; C to the chase camera), shedding
+the tower at 02:22.2, the booster at separation and the retropack at 06:13.6.
+
+| | Report | Flown whole | Capsule flown from the report's separation |
+| --- | --- | --- | --- |
+| Speed at separation, space-fixed | 2,251.9 m/s (7,388 ft/s) | 2,341.7 m/s, +4.0 % | (the report's, as the start) |
+| Speed at separation, Earth-fixed | 1,955.0 m/s (6,414 ft/s) | 2,043.5 m/s, +4.5 % | (the report's) |
+| Apogee | 187.4 km | 201.9 km, +7.7 % | 187.0 km |
+| Range | 487.3 km | 536.0 km, +10.0 % | 491.5 km |
+| Load going up, entry load | 6.3 g, 11.0 g | 6.29 g, 11.7 g | 10.7 g |
+| Landing | 15:22.0 | 15:38.0 | 15:22.2 |
+
+The powered flight ends 4 % fast, and everything after follows from that: leaving the pad at
+1.19 g, one per cent in thrust or weight is three to four in speed, and the engine is two figures
+from a summary table, held steady with no build-up or tail-off. Flown from the separation the
+report gives, the capsule's half agrees to a per cent, except the entry's greatest dynamic pressure
+(5.4 % low). Every miss is recorded with its likely cause in the test, which fails if one appears,
+grows or goes away.
+
+**Space-fixed and Earth-fixed.** The report gives the speed at separation twice, and the larger,
+7,388 ft/s, is the one quoted as Freedom 7's velocity. It is space-fixed: measured in a frame that
+does not turn with the Earth, so it includes the eastward 409 m/s (1,472 km/h) the pad itself was
+moving at. The Earth-fixed 6,414 ft/s is the speed over the turning ground. They differ by less
+than 409 m/s, and the climb angles differ (39.0° against 46.5°), because the two motions add at an
+angle: the ground's is level and due east, the capsule's was climbing on a heading of 105°. The
+Flown panel's speed trace is space-fixed, so it starts at 1,472 km/h standing on the pad.
+
 ## Where sources disagree
 
 | Figure | Used here | Also published | Why |

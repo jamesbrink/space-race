@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
-import { buildCape1961, CLEARINGS, COAST, RIVER } from './cape1961';
+import { buildCape1961, CLEARINGS, COAST, RIVER, shoreAt } from './cape1961';
+import { fbm2 } from './field';
 import { type FloraSpec, Flora } from './flora';
-import { Land, type LandSpec } from './land';
+import { Land, type LandSpec, type Palette } from './land';
 
 /**
  * Cape Canaveral round Launch Complex 5, May 1961, as scenery: the ground the complex stands on,
@@ -76,6 +77,23 @@ const TRACKS: [number, number, number, number, number, number][] = [
   [...site(276, -147), ...site(340, -147), 4.4, 1], // the hut's parking
 ];
 
+/** A colour as an sRGB hex (three converts it to its linear working space). */
+const srgb = (hex: number) => new THREE.Color(hex);
+/** The ground's colours, set against period colour photographs of the Cape (docs/sources.md, The Cape): estimated. */
+const PALETTE: Palette = {
+  sand: srgb(0xb2a998),
+  sandDark: srgb(0x8e877a),
+  herbDry: srgb(0x88845f),
+  herbGreen: srgb(0x666d48),
+  litter: srgb(0x3a342b),
+  leaf: srgb(0x30362a),
+  leafLit: srgb(0x535a3e),
+  leafOther: srgb(0x5a603c),
+  grit: srgb(0xd8d0c0),
+  gritAmount: 0.16,
+};
+const glsl3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
+
 /** GLSL both the cover's bake and the terrain's shader use: the shore, the ways, the clearings. */
 const SHARED = /* glsl */ `
   uniform vec2 uCoast[${COAST.length}];   // the Atlantic shore: (metres north, metres east) of pad 5, northward
@@ -83,6 +101,7 @@ const SHARED = /* glsl */ `
   uniform vec4 uTracks[${TRACKS.length}];
   uniform vec2 uTrackKind[${TRACKS.length}];   // half-width, kind
   uniform vec3 uClear[${NEAR.length}];    // the neighbouring pads: (x, z, radius of the pad itself)
+  uniform vec3 uSites[${CLEARINGS.length}];   // every complex placed, and the lighthouse: the ground is flat round each
   uniform vec3 uKept[${KEPT.length}];     // ground the complex's models stand on: (x, z, radius), metres
   uniform vec4 uStrips[${STRIPS.length}];
   uniform float uStripWidth[${STRIPS.length}];
@@ -125,8 +144,8 @@ const SHARED = /* glsl */ `
     vec2 c = (rail + vec2(205.0, 185.0)) / cellSize;
     vec2 f = abs(fract(c) - 0.5) * cellSize;   // metres from the cell's middle lines
     ivec2 n = ivec2(floor(c));
-    float alongU = hash2(n, 51) > 0.3 ? f.y : 1e9;   // a line across the rails' direction, cut or not
-    float alongV = hash2(n, 52) > 0.3 ? f.x : 1e9;
+    float alongU = hash2(n, 51) > 0.55 ? f.y : 1e9;   // a line across the rails' direction, cut or not
+    float alongV = hash2(n, 52) > 0.45 ? f.x : 1e9;
     return min(alongU, alongV) - 3.0;
   }
   // the clearing round Complex 5/6: a rectangle along the rails, graded and grassed (KSC aerial of 1965, ccspacemuseum.org)
@@ -153,6 +172,107 @@ const SHARED = /* glsl */ `
     return d;
   }`;
 
+/** The sea's surface, metres above the ground at the complex (GROUND_Y): the land there is about 9.5 ft above NAVD 88 (USGS 3DEP). */
+const SEA = -2.9;
+
+/*
+ * The lie of the land, in metres above the ground at the complex, written twice: in JavaScript for
+ * the walker and the plants, in GLSL for the mesh. Keep the two in step, line for line.
+ *
+ * From the sea: the bed falls 2.2 m in every 100 offshore, with a bar 75 m out; the beach face rises
+ * 1.35 m in its first 30 m to a berm, then the foredune to its crest 1 m higher, 45 to 62 m inland
+ * (crest 6 to 8 ft above NAVD 88: USGS 3DEP, today's), then down into the swale behind it. Inland,
+ * old beach ridges and swales half a metre apart, their low ground the same swales the cover map
+ * keeps grassy; toward the Banana River the land goes down to its water. Wherever anything is
+ * built (the complex's clearing, its roads, every other complex) the ground is exactly level at
+ * the complex's height, easing out to the natural lie over 40 m: nothing the models stand on moves.
+ */
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+const inlandAt = (x: number, z: number) => shoreAt(COAST, -z) - x + 26 * (fbm2(z * 0.006, 4, 5, 3) - 0.45);
+const riverwardAt = (x: number, z: number) => x - shoreAt(RIVER, -z) - 30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45);
+const lc56At = (x: number, z: number) => {
+  const px = x * COS + z * SIN,
+    pz = -x * SIN + z * COS;
+  const qx = Math.abs(pz - 125) - 295 + 25,
+    qy = Math.abs(px + 10) - 160 + 25;
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - 25;
+};
+const wayAt = (x: number, z: number) => {
+  let best = 1e9;
+  for (const [x0, z0, x1, z1, w] of TRACKS) {
+    const dx = x1 - x0,
+      dz = z1 - z0;
+    const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
+    best = Math.min(best, Math.hypot(x - x0 - dx * t, z - z0 - dz * t) - w);
+  }
+  return best;
+};
+function relief(x: number, z: number): number {
+  const s = inlandAt(x, z);
+  const crest = 1.05 * (0.75 + 0.5 * fbm2(z * 0.012, 7, 73, 3));
+  const bar = (s + 75) / 18;
+  let h =
+    SEA -
+    0.022 * Math.max(-s, 0) +
+    0.45 * Math.exp(-bar * bar) +
+    1.35 * smooth(0, 30, s) +
+    0.15 * smooth(30, 45, s) +
+    crest * smooth(44, 62, s) -
+    0.45 * smooth(60, 88, s);
+  const swale = Math.sin(s * 0.057 + 3 * fbm2(x * 0.004, z * 0.004, 35, 3)) * 0.5 + 0.5;
+  const inner = -0.55 - 0.5 * (swale - 0.5) + 0.3 * (fbm2(x * 0.008, z * 0.008, 71, 3) - 0.45);
+  h += (inner - h) * smooth(110, 220, s);
+  const r = riverwardAt(x, z);
+  h = SEA - 0.015 * Math.max(-r, 0) + (h - (SEA - 0.015 * Math.max(-r, 0))) * smooth(-8, 70, r);
+  let d = Math.min(lc56At(x, z) - 25, wayAt(x, z) - 6);
+  for (const [cx, cz, cr] of CLEARINGS) d = Math.min(d, Math.hypot(x - cx, z - cz) - cr - 85);
+  return Math.min(h * smooth(0, 40, d), 0.05);
+}
+const RELIEF = /* glsl */ `
+  float relief(vec2 p) {
+    float s = inland(p);
+    float crest = 1.05 * (0.75 + 0.5 * fbm2(vec2(p.y * 0.012, 7.0), 73, 3));
+    float bar = (s + 75.0) / 18.0;
+    float h = ${SEA.toFixed(2)} - 0.022 * max(-s, 0.0) + 0.45 * exp(-bar * bar)
+      + 1.35 * smoothstep(0.0, 30.0, s) + 0.15 * smoothstep(30.0, 45.0, s)
+      + crest * smoothstep(44.0, 62.0, s) - 0.45 * smoothstep(60.0, 88.0, s);
+    float swale = sin(s * 0.057 + 3.0 * fbm2(p * 0.004, 35, 3)) * 0.5 + 0.5;
+    float inner = -0.55 - 0.5 * (swale - 0.5) + 0.3 * (fbm2(p * 0.008, 71, 3) - 0.45);
+    h += (inner - h) * smoothstep(110.0, 220.0, s);
+    float r = riverward(p);
+    float bank = ${SEA.toFixed(2)} - 0.015 * max(-r, 0.0);
+    h = bank + (h - bank) * smoothstep(-8.0, 70.0, r);
+    float kind;
+    float d = min(lc56(p) - 25.0, way(p, kind) - 6.0);
+    for (int i = 0; i < ${CLEARINGS.length}; i++) d = min(d, length(p - uSites[i].xy) - uSites[i].z - 85.0);
+    return min(h * smoothstep(0.0, 40.0, d), 0.05);
+  }`;
+
+/**
+ * The swell, as height above the still sea at a point: crests along the shore, a 7.7 s period
+ * (NOAA buoy 41009's median for May), about a metre from trough to crest offshore (its median
+ * significant height, 0.95 m), steepening over the bar and the shore where it breaks. Drawn, not
+ * stood on: the walker meets the still sea.
+ */
+const PHASE = /* glsl */ `
+  // where a point is in the swell's cycle: crests 55 m apart, coming ashore every 7.7 s, not ruler-straight
+  float swellPhase(vec2 p) {
+    float out_ = -inland(p);
+    return out_ * 6.2832 / 55.0 + uTime * 6.2832 / 7.7 + 1.6 * (noise2(vec2(p.y * 0.015, 1.0), 81) - 0.5);
+  }`;
+const SWELL = /* glsl */ `
+  ${PHASE}
+  float lift(vec2 p, float ground, float far) {
+    float depth = ${SEA.toFixed(2)} - ground;
+    if (depth <= 0.0 || inland(p) > 0.0) return 0.0;   // the river lies still
+    float crest = pow(0.5 + 0.5 * sin(swellPhase(p)), 3.0);
+    float amp = 0.32 * smoothstep(0.0, 0.7, depth) * (1.0 + 0.5 * (1.0 - smoothstep(0.8, 2.5, depth)));
+    return (crest * 2.0 - 0.45) * amp * (1.0 - smoothstep(120.0, 350.0, far));   // too gentle to see further off, where the mesh is too coarse to carry it
+  }`;
+
 /**
  * What covers the ground, as the communities lie on the Cape's barrier island (Oddy and others
  * 1999; FNAI 2010): bare beach to the dune; sea oats and grasses on the dune with sea grape;
@@ -173,13 +293,13 @@ const COVER = /* glsl */ `
     swale = smoothstep(0.62, 0.95, swale) * smoothstep(0.42, 0.6, fbm2(p * 0.005, 36, 3));   // not every swale holds water long enough to keep the scrub out
     float woody = 0.93 - 0.75 * smoothstep(0.56, 0.68, open) - 0.45 * swale;
     woody -= 0.25 * smoothstep(0.55, 0.75, noise2(p * 0.07, 33));   // gaps between shrubs, metres across
-    float herb = 0.12 + 0.55 * (1.0 - woody);
+    float herb = 0.2 + 0.7 * (1.0 - woody) * (0.75 + 0.35 * noise2(p * 0.04, 34));   // the openings are grassed, thin in places
     // from the sea: beach, then the dune's grasses with patches of sea grape, then the strand thickening inland
     float beach = 1.0 - smoothstep(38.0, 48.0, shore);
     float dune = smoothstep(38.0, 48.0, shore) * (1.0 - smoothstep(70.0, 95.0, shore));
     woody *= smoothstep(55.0, 110.0, shore);
     woody = max(woody, dune * 0.5 * smoothstep(0.55, 0.7, noise2(p * 0.05, 37)));
-    herb = mix(herb, 0.55 + 0.25 * noise2(p * 0.1, 38), dune);
+    herb = mix(herb, 0.85 + 0.15 * noise2(p * 0.1, 38) - 0.55 * smoothstep(0.62, 0.75, noise2(p * 0.03, 39)), dune);   // sea oats, with blowouts
     herb *= 1.0 - beach;
     // toward the river the hammock closes overhead; at its edge, marsh grass
     float marsh = 1.0 - smoothstep(20.0, 90.0, river);
@@ -225,8 +345,9 @@ const COVER = /* glsl */ `
     float road = way(p, kind);
     float worked = max(1.0 - smoothstep(-6.0, 6.0, apron(p)), 1.0 - smoothstep(-0.5, 1.5, road));
     worked = max(worked, 0.35 * (1.0 - smoothstep(-2.0, 4.0, lc56(p))));
-    // wet: the marsh at the river's edge
+    // wet: the marsh at the river's edge, and the bottoms of the swales inland
     float wet = 1.0 - smoothstep(10.0, 60.0, riverward(p));
+    wet = max(wet, (1.0 - smoothstep(-1.02, -0.8, relief(p))) * smoothstep(150.0, 250.0, shore) * 0.6);
     // loose dry sand: the beach above the swash and the dune's blowouts
     float loose = smoothstep(4.0, 12.0, shore) * (1.0 - smoothstep(60.0, 90.0, shore));
     return vec4(worked, wet, loose, 0.0);
@@ -241,6 +362,7 @@ const CANOPY = /* glsl */ `
 
 /** The Cape's own marks on the ground: the roads and the rail line's ballast, and the sea and river. */
 const PAINT = /* glsl */ `
+  ${PHASE}
   void paint(vec2 p, vec4 A, vec4 B, inout Ground g) {
     // shell roads: crushed shell, two wheel ruts pressed darker; the ballast is grey stone
     float kind;
@@ -256,37 +378,68 @@ const PAINT = /* glsl */ `
       g.albedo = mix(g.albedo, c, on);
       g.bump = mix(g.bump, 0.01 * (noise(vec3(p * 12.0, 23.0)) - 0.5) - 0.02 * rut, on);
     }
-    // the Atlantic: beach, wet sand at the swash, surf lines rolling in, water deepening offshore
+    // The Atlantic. The ground's own height says where the water is and how deep (the mesh is the water's
+    // surface over it); the swell's phase says where its crests are, and where it is shallow they break.
     float shore = inland(p);
-    float lap = 3.5 * sin(uTime * 0.5 + p.y * 0.035) + 2.0 * sin(uTime * 0.31 + p.y * 0.011);
-    float beach = 1.0 - smoothstep(36.0, 48.0, shore);
-    g.albedo = mix(g.albedo, mix(g.albedo, vec3(0.62, 0.57, 0.46), 0.6), beach);
-    float wetSand = (1.0 - smoothstep(0.0, 10.0, shore + lap * 0.5)) * beach;
-    g.albedo *= 1.0 - 0.35 * wetSand;
-    g.rough = mix(g.rough, 0.35, wetSand);
-    float sea = smoothstep(-2.0, 2.0, -shore - lap);
-    float depth = clamp(-shore / 900.0, 0.0, 1.0);
-    depth = mix(depth, pow(floor(pow(depth, 0.45) * 3.0 + 0.5) / 3.0, 2.22), uCel);
-    vec3 water = mix(vec3(0.07, 0.30, 0.30), vec3(0.012, 0.075, 0.16), pow(depth, 0.45));
-    float roll = fract((-shore - lap) * 0.035 - uTime * 0.06);
-    float foam = smoothstep(0.86, 1.0, roll) * (1.0 - smoothstep(0.0, 110.0, -shore)) * smoothstep(0.35, 0.6, noise(vec3(p * 0.16, uTime * 0.25)));
-    foam = max(foam, (1.0 - smoothstep(0.0, 5.0, abs(shore + lap))) * 0.85);
-    foam = mix(foam, step(0.5, foam), uCel);
+    float depth = ${SEA.toFixed(2)} - vLand.y;
+    // the beach: dry sand paler and finer above the reach of the waves, a line of wrack where the last high water left it
+    float beach = 1.0 - smoothstep(36.0, 50.0, shore);
+    // (a tint on the ground's own sand, so its grain, crumbs and grit carry on down the beach)
+    vec3 dry = vec3(0.62, 0.56, 0.45) / ${glsl3(PALETTE.sand)};
+    g.albedo = mix(g.albedo, g.albedo * mix(vec3(1.0), dry, 0.75), beach);
+    // (a scatter of weed and shell along a line, thin and broken: bits of a few centimetres)
+    float wrack = (1.0 - smoothstep(0.1, 0.7, abs(shore - 17.0 - 3.0 * noise(vec3(p.y * 0.05, 0.0, 25.0))))) * smoothstep(0.55, 0.7, noise(vec3(p * 9.0, 26.0))) * smoothstep(0.35, 0.6, noise(vec3(p * 0.4, 28.0)));
+    g.albedo = mix(g.albedo, vec3(0.12, 0.1, 0.07), 0.7 * wrack * seen(0.05));
+    // the swash: each wave runs up the beach face and draws back; the sand it leaves is dark and shines
+    float run = 4.0 + 3.0 * sin(uTime * 0.816 + p.y * 0.05) + 1.5 * sin(uTime * 0.37 + p.y * 0.013);
+    float swash = 1.0 - smoothstep(run - 0.5, run + 0.5, shore);
+    float wet = (1.0 - smoothstep(run + 0.5, 11.0 + 2.0 * noise(vec3(p.y * 0.03, 0.0, 27.0)), shore)) * beach;
+    g.albedo *= 1.0 - 0.42 * wet;
+    g.rough = mix(g.rough, 0.25, wet);
+    // the water: green over sand where it is shallow, blue-grey offshore
+    float sea = max(smoothstep(-0.05, 0.05, depth), swash * smoothstep(-1.0, 0.0, shore + 1.0));
+    float deep = clamp(depth / 6.0, 0.0, 1.0);
+    deep = mix(deep, floor(deep * 3.0 + 0.5) / 3.0, uCel);   // the sea in bands, drawn
+    vec3 water = mix(vec3(0.16, 0.29, 0.25), mix(vec3(0.045, 0.14, 0.16), vec3(0.018, 0.07, 0.12), smoothstep(0.4, 1.0, deep)), smoothstep(0.0, 0.35, deep));
+    water = mix(water, g.albedo * vec3(0.75, 0.9, 0.85), (1.0 - smoothstep(0.0, 0.35, depth)) * 0.6);   // the sand shows through a thin sheet
+    // foam: the crest breaks where the water is shallow (on the bar, at the shore), a band of white
+    // trailing behind it and thinning, broken along its length; and the swash's lacy edge
+    float ph = swellPhase(p);
+    float behind = fract(-ph / 6.2832 + 0.25);   // 0 at the crest, rising toward the next one behind it
+    float breaking = (1.0 - smoothstep(0.7, 1.5, depth)) * (1.0 - smoothstep(-2.0, 0.0, shore));
+    float lace = noise(vec3(p * 0.35, uTime * 0.2)) * 0.6 + noise(vec3(p * 1.4, uTime * 0.35 + 3.0)) * 0.4;
+    // (the crest itself a solid white roll as it breaks; behind it a sheet of foam going to lace and then to nothing)
+    float roll = exp(-behind * 30.0) * smoothstep(0.15, 0.4, lace);
+    float trail = exp(-behind * 4.0) * smoothstep(0.15 + 0.6 * behind, 0.5 + 0.35 * behind, lace);
+    float foam = breaking * max(roll, trail);
+    foam = max(foam, (1.0 - smoothstep(0.0, 0.6, abs(shore - run))) * mix(0.6, smoothstep(0.3, 0.6, lace), seen(0.3)));
+    foam = max(foam, smoothstep(0.5, 0.9, depth) * (1.0 - smoothstep(1.2, 2.2, depth)) * (1.0 - smoothstep(-2.0, 0.0, shore)) * 0.25 * smoothstep(0.55, 0.8, lace));
+    foam = mix(foam, step(0.45, foam), uCel);
     sea = mix(sea, step(0.5, sea), uCel);
-    g.albedo = mix(g.albedo, mix(water, vec3(0.92), foam), sea);
-    g.rough = mix(g.rough, 0.16, sea);
-    g.bump *= 1.0 - sea;
-    g.water = max(g.water, sea);
+    g.albedo = mix(g.albedo, mix(water, vec3(0.86, 0.88, 0.86), foam), sea);
+    g.rough = mix(g.rough, mix(0.08, 0.7, foam), sea);
+    // its surface: wind waves on the swell, all running ashore from the east within forty degrees, each as tall as a
+    // fortieth of its length and moving at its own speed (deep water: c = sqrt(g L / 2 pi)); each fades out before it is under a pixel
+    float waves = 0.0;
+    for (int k = 0; k < 8; k++) {
+      float L = 11.0 * pow(0.68, float(k));
+      float a = 3.1416 + (hash(vec3(float(k), 1.0, 2.0)) - 0.5) * 1.8;
+      vec2 dir = vec2(cos(a), sin(a));
+      float w = 6.2832 / L;
+      // short-crested: each train comes and goes along its crests
+      float group = smoothstep(0.25, 0.75, noise(vec3(p * (0.35 / L), float(k) * 3.1 + uTime * 0.05)));
+      waves += L / 70.0 * group * sin(w * dot(dir, p) + 3.0 * noise(vec3(p * (0.6 / L), float(k))) - sqrt(9.8 * w) * uTime + float(k) * 1.7) * seen(L * 0.6);
+    }
+    waves += 0.03 * (noise(vec3(p * 0.45, uTime * 0.3)) - 0.5) * seen(2.0) + 0.012 * (noise(vec3(p * 2.6, uTime * 0.8)) - 0.5) * seen(0.4);
+    g.bump = mix(g.bump, waves * (1.0 - foam) + 0.02 * foam * lace, sea);
+    g.water = max(g.water, sea * (1.0 - foam));
     // the Banana River: flat water, no surf
     float river = smoothstep(-3.0, 3.0, -riverward(p));
     river = mix(river, step(0.5, river), uCel);
-    g.albedo = mix(g.albedo, vec3(0.06, 0.24, 0.26), river);
+    g.albedo = mix(g.albedo, vec3(0.045, 0.1, 0.11), river);
     g.rough = mix(g.rough, 0.16, river);
     g.water = max(g.water, river);
   }`;
-
-/** A colour as an sRGB hex (three converts it to its linear working space). */
-const srgb = (hex: number) => new THREE.Color(hex);
 
 /** The Cape's ground, as land.ts takes it. */
 function landSpec(): LandSpec {
@@ -296,8 +449,10 @@ function landSpec(): LandSpec {
     far: FAR,
     shared: SHARED,
     cover: COVER,
-    relief: () => 0,
-    reliefGlsl: 'float relief(vec2 p) { return 0.0; }',
+    relief,
+    reliefGlsl: RELIEF,
+    sea: SEA,
+    lift: SWELL,
     canopy: CANOPY,
     crown: 2.6,
     paint: PAINT,
@@ -307,23 +462,12 @@ function landSpec(): LandSpec {
       uTracks: { value: TRACKS.map((t) => new THREE.Vector4(t[0], t[1], t[2], t[3])) },
       uTrackKind: { value: TRACKS.map((t) => new THREE.Vector2(t[4], t[5])) },
       uClear: { value: NEAR.map(([x, z, r]) => new THREE.Vector3(x, z, r)) },
+      uSites: { value: CLEARINGS.map(([x, z, r]) => new THREE.Vector3(x, z, r)) },
       uKept: { value: KEPT.map(([x, y, r]) => new THREE.Vector3(...site(x, y), r * FT)) },
       uStrips: { value: STRIPS.map(([x0, y0, x1, y1]) => new THREE.Vector4(...site(x0, y0), ...site(x1, y1))) },
       uStripWidth: { value: STRIPS.map((s) => s[4] * FT) },
     },
-    // Linear albedos, set against period colour photographs of the Cape (docs/sources.md, The Cape): estimated.
-    palette: {
-      sand: srgb(0xa89f8f),
-      sandDark: srgb(0x857e70),
-      herbDry: srgb(0x7a7552),
-      herbGreen: srgb(0x5a6040),
-      litter: srgb(0x3a342b),
-      leaf: srgb(0x30362a),
-      leafLit: srgb(0x535a3e),
-      leafOther: srgb(0x5a603c),
-      grit: srgb(0xd8d0c0),
-      gritAmount: 0.16,
-    },
+    palette: PALETTE,
   };
 }
 
@@ -371,7 +515,7 @@ function floraSpec(): FloraSpec {
           [1, 0.5],
         ],
         height: [1.1, 2.0],
-        colours: [c(0x343c26), c(0x464e30)],
+        colours: [c(0x3e4730), c(0x535c3a)],
         near: 30,
         reach: 330,
         sway: 0.2,
@@ -388,7 +532,7 @@ function floraSpec(): FloraSpec {
           [0.9, 0.45],
         ],
         height: [1.6, 3.0],
-        colours: [c(0x46522a), c(0x5a6233)],
+        colours: [c(0x515d33), c(0x66703d)],
         near: 30,
         reach: 330,
         sway: 0.35,
@@ -413,18 +557,19 @@ function floraSpec(): FloraSpec {
       },
       {
         name: 'cabbage-palm',
-        form: { kind: 'palm', trunk: [0.016, 0.022], fronds: 18, blade: 0.17, dead: 5 },
+        form: { kind: 'palm', trunk: [0.016, 0.022], fronds: 22, blade: 0.2, dead: 5 },
         layer: 'tree',
         abundance: [
-          [0.15, 0.01],
-          [0.6, 0.012],
-          [0.85, 0.05],
+          [0.12, 0.012],
+          [0.3, 0.006],
+          [0.6, 0.002],
+          [0.85, 0.04],
           [1, 0.15],
         ],
         height: [5, 11],
         colours: [c(0x3f5228), c(0x52602f)],
         near: 90,
-        reach: 2200,
+        reach: 1800,
         sway: 0.3,
         rough: 0.5,
       },

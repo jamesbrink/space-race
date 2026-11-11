@@ -185,16 +185,8 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
   const capsuleDrag = tr.area.value;
   const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
-  // the launch vertical and the downrange level direction, fixed in inertial space at liftoff
   const pad = geodeticToEcef(site);
-  const axes = enuAxes(site);
-  const [e, n] = fromHorizontal(tr.azimuth.value * DEG, 0);
-  const up0 = axes.up;
-  const downrange0 = unit(add(scale(axes.east, e), scale(axes.north, n)));
-  const axisAt = (t: number): Vec3 => {
-    const tilt = along(tr.tilt, t) * DEG;
-    return add(scale(up0, Math.cos(tilt)), scale(downrange0, Math.sin(tilt)));
-  };
+  const axisAt = axisOf(tr, site);
 
   let t = 0;
   let phase: Phase = 'powered';
@@ -400,6 +392,30 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     }
   }
   return { samples, results };
+}
+
+/**
+ * The vehicle's axis going up, in the frame that does not turn: tilted from the launch vertical
+ * toward the launch azimuth by the programme, as the gyro platform holds it. Both directions are
+ * fixed in inertial space at liftoff.
+ */
+export function axisOf(trajectory: Trajectory, site: Geodetic): (t: number) => Vec3 {
+  const axes = enuAxes(site);
+  const [e, n] = fromHorizontal(trajectory.azimuth.value * DEG, 0);
+  const up0 = axes.up;
+  const downrange0 = unit(add(scale(axes.east, e), scale(axes.north, n)));
+  return (t) => {
+    const tilt = along(trajectory.tilt, t) * DEG;
+    return add(scale(up0, Math.cos(tilt)), scale(downrange0, Math.sin(tilt)));
+  };
+}
+
+const runs = new WeakMap<Trajectory, Flown>();
+/** The flight flown once, whoever asks first: the readout and the scene show the same run. */
+export function flownOnce(trajectory: Trajectory, site: Geodetic, seaLevel = 0): Flown {
+  let run = runs.get(trajectory);
+  if (!run) runs.set(trajectory, (run = fly(trajectory, site, seaLevel)));
+  return run;
 }
 
 /** The flight at an instant between samples: the nearest kept sample at or before `t`. */

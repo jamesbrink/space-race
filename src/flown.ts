@@ -1,5 +1,5 @@
 import './time.css';
-import { fly, type Sample, sampleAt } from './sim/fly.ts';
+import { flownOnce, type Sample, sampleAt } from './sim/fly.ts';
 import type { Flight, FlightCheck } from './types';
 import { type Clock, missionTime } from './world/clock.ts';
 import { siteFrame } from './world/frames.ts';
@@ -7,9 +7,8 @@ import { siteFrame } from './world/frames.ts';
 /**
  * The flight as the simulator flies it (sim/fly.ts), beside what the reports say happened: four
  * traces against time with the clock's instant marked on them, the figures at that instant, and
- * a table of the documented results with the simulator's and how far apart they are. It is a
- * readout, not a picture: the vehicle in the view stays on its pad until the scene can follow it
- * to 187 km, and says so.
+ * a table of the documented results with the simulator's and how far apart they are. The scene
+ * shows the same run (viewer/ascent.ts): from liftoff to landing the vehicle is where this has it.
  *
  * Dragging along a trace moves the clock, as the time bar's scrub does.
  */
@@ -77,7 +76,7 @@ export class Flown {
 
   private build(): void {
     const { flight, root } = this;
-    const { samples, results } = fly(flight.trajectory!, siteFrame(flight.site), flight.site.seaLevel.value);
+    const { samples, results } = flownOnce(flight.trajectory!, siteFrame(flight.site), flight.site.seaLevel.value);
     this.samples = samples;
     this.duration = results.duration;
     const x = (t: number) => (t / results.duration) * W;
@@ -119,7 +118,7 @@ export class Flown {
       <table class="flown-checks"><thead><tr><th></th><td>Report</td><td>Flown</td><td></td></tr></thead>${rows}</table>
       <p class="fine">Amber rows are outside the tolerance set for them. The powered flight ends 4 % too fast, and what follows from that is high and long:
         leaving the pad at 1.19 g, one per cent in thrust or weight is four in speed, and the engine is two figures from a summary table. Flown from the separation the
-        report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs). In the view the vehicle stays on its pad: it is flown here in numbers until the scene can follow it to 187 km.</p>`;
+        report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs). In the view the vehicle flies this run from liftoff to landing; C to the chase camera follows it.</p>`;
     this.cursors = [...root.querySelectorAll<SVGLineElement>('line.now')];
     this.values = [...root.querySelectorAll<HTMLElement>('.trace b')];
     this.phase = root.querySelector('.flown-phase');

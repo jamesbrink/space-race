@@ -202,8 +202,8 @@ def ridge(mb: MeshBuilder, pts: Sequence[Vector], normal: Sequence[float], half:
 
 
 class Kit:
-    """One node's meshes by material key, in inches. A key "material/what" lets a node carry
-    two meshes of one material."""
+    """One node's meshes by material key, in inches. A key "material/what" names what a piece is
+    for the reader; it is built into the one mesh of its material on that node."""
 
     def __init__(self) -> None:
         self.mbs: dict[str, MeshBuilder] = {}
@@ -219,13 +219,17 @@ class Kit:
         """Inches to metres, into `parent`'s frame. Returns the triangles built."""
         dx, dy, dz = shift
         tris = 0
+        # one mesh per material: each is a draw call, and a node's pieces of one material move together
+        merged: dict[str, MeshBuilder] = {}
         for key, mb in self.mbs.items():
-            if not mb.faces:
-                continue
+            if mb.faces:
+                into = merged.setdefault(key.split("/")[0], MeshBuilder())
+                into.add(mb.verts, mb.faces, mb.uvs)
+        for key, mb in merged.items():
             mb.verts = [((x + dx) * IN, (y + dy) * IN, (z + dz) * IN) for x, y, z in mb.verts]
-            label = "".join(w.capitalize() for w in key.replace("/", "-").split("-"))
-            flat = key.split("/")[0] in ("line", "plate", "void", "glass", "dial")
-            mb.build(f"{name}_{label}", _mat(key.split("/")[0]), parent, smooth=not flat, sharp_angle=38)
+            label = "".join(w.capitalize() for w in key.split("-"))
+            flat = key in ("line", "plate", "void", "glass", "dial")
+            mb.build(f"{name}_{label}", _mat(key), parent, smooth=not flat, sharp_angle=38)
             tris += sum(len(f) - 2 for f in mb.faces)
         return tris
 
@@ -998,7 +1002,8 @@ class Car:
         else:
             tyre += [(mid, bulge), (rr + 0.6, hw + 0.04), (rr, hw - 0.35)]
         kit("rubber").lathe(tyre, segs, matrix=out)
-        kit("well").lathe([(0.0, -hw - 1.6), (rr - 1.6, -hw - 1.6), (rr - 1.2, -hw + 1.2)], 14, matrix=out)  # the brake drum, seen from behind
+        # the brake drum, seen from behind: as black as the tyre, and in its mesh
+        kit("rubber/drum").lathe([(0.0, -hw - 1.6), (rr - 1.6, -hw - 1.6), (rr - 1.2, -hw + 1.2)], 14, matrix=out)
         cr = min(self.cap_r, rr - 0.7)
         if cr < rr - 1.0:  # a painted wheel with its rim's lip, and a cap with a raised middle
             kit(paint_key).lathe(
@@ -1020,6 +1025,24 @@ class Car:
                 (0.0, hw + 0.95),
             ]
             kit("chrome").lathe(cover, segs, matrix=out)
+
+    def rear_axles(self) -> list[float]:
+        """X of each axle behind: one, or a tandem's two either side of the origin."""
+        return [self.axles[0]]
+
+    def hinges(self) -> dict[str, tuple[Vector, dict]]:
+        """Each part that opens: its hinge (the node's origin) and its extras."""
+        out: dict[str, tuple[Vector, dict]] = {}
+        for k, (_, b) in enumerate(self.door_spans()):
+            for n, s in ((1, 1), (2, -1)):  # a door turns about the vertical through its front edge; left and right open opposite ways
+                out[f"Door_{2 * k + n}"] = (
+                    Vector((b, s * (self.side(b, self._bottom(b) + 12.0) - 1.0), self._bottom(b))),
+                    dict(door=1, swing=-70.0 * s, axis="y"),
+                )
+        for lid, (a, b) in self.lids().items():  # a lid turns about a line across the car: the bonnet's at its back, the boot's at its front
+            x = a if lid == "Bonnet" else b
+            out[lid] = (Vector((x, 0.0, self._top(x))), dict(hatch=1, swing=50.0 if lid == "Bonnet" else -55.0, axis="z"))
+        return out
 
     def build(self, name: str, parent: bpy.types.Object | None, at: Sequence[float], heading: float = 0.0) -> dict:
         """Build it as node `name` under `parent`, the middle of its rear axle on the ground at
@@ -1052,17 +1075,7 @@ class Car:
         tris = kit.build(name, node)
         # the parts that move, each a node with its origin on its hinge, built shut
         parts = []
-        hinges: dict[str, tuple[Vector, dict]] = {}
-        for k, (_, b) in enumerate(self.door_spans()):
-            for n, s in ((1, 1), (2, -1)):  # a door turns about the vertical through its front edge; left and right open opposite ways
-                hinges[f"Door_{2 * k + n}"] = (
-                    Vector((b, s * (self.side(b, self._bottom(b) + 12.0) - 1.0), self._bottom(b))),
-                    dict(door=1, swing=-70.0 * s, axis="y"),
-                )
-        for lid, (a, b) in self.lids().items():  # a lid turns about a line across the car: the bonnet's at its back, the boot's at its front
-            x = a if lid == "Bonnet" else b
-            hinges[lid] = (Vector((x, 0.0, self._top(x))), dict(hatch=1, swing=50.0 if lid == "Bonnet" else -55.0, axis="z"))
-        for part, (origin, props) in hinges.items():
+        for part, (origin, props) in self.hinges().items():
             sub = group(f"{name}_{part}", node, **props)
             sub.location = origin * IN
             tris += kit.parts.get(part, Kit()).build(f"{name}_{part}", sub, tuple(-origin))
@@ -1080,9 +1093,11 @@ class Car:
                 parts.append(sub.name)
         wheels = []
         R, w, _ = self.tyre
+        for i, xa in enumerate(self.rear_axles()):  # a tandem's forward axle is 1 and 2, the one behind it 3 and 4
+            for k, s in ((1, 1), (2, -1)):
+                wheels.append(f"{name}_Wheel_{2 * i + k}")
+                tris += self.build_wheel(wheels[-1], node, Vector((xa, s * (self.rear_track or self.track) / 2, R)), s, self.duals)
         for k, s in ((1, 1), (2, -1)):
-            wheels.append(f"{name}_Wheel_{k}")
-            tris += self.build_wheel(wheels[-1], node, Vector((self.axles[0], s * (self.rear_track or self.track) / 2, R)), s, self.duals)
             # a front wheel hangs on a knuckle, whose origin is on the kingpin: steer the knuckle, roll the wheel
             pin = Vector((self.axles[1], s * (self.track / 2 - w / 2 - 1.5), R))
             knuckle = group(f"{name}_Knuckle_{k}", node, steer=1)

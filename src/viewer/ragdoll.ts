@@ -89,6 +89,24 @@ const STICKS: readonly [Point, Point, least?: number, most?: number][] = [
   ['Hand.R', 'Hips', 0.5, 5],
 ];
 
+/**
+ * What a joint will not do: bend the wrong way. Each is three points, `a` `b` `c`, with the joint
+ * at `b`; seen across the trunk's left and right (`l` to `r`), `b` may lie to one `side` of the
+ * line from `a` to `c` as far as it likes and to the other only as far as `most` degrees of bend
+ * would take it. A knee comes forward of the line from hip to ankle as it bends, and goes back
+ * past it only by a few degrees; an elbow goes back of the line from shoulder to wrist; a hip goes
+ * back of the line from the chest to the knee as the thigh comes up in front, and forward of it
+ * only as far as a thigh swings behind (about 25 degrees). Estimated from the usual ranges of
+ * motion. The neck is held by its sticks.
+ */
+const BENDS: readonly { a: Point; b: Point; c: Point; side: 1 | -1; most: number; l: Point; r: Point }[] = [
+  ...(['L', 'R'] as const).flatMap((s) => [
+    { a: `UpperLeg.${s}`, b: `LowerLeg.${s}`, c: `Foot.${s}`, side: 1, most: 5, l: 'UpperLeg.L', r: 'UpperLeg.R' } as const,
+    { a: `UpperArm.${s}`, b: `LowerArm.${s}`, c: `Hand.${s}`, side: -1, most: 5, l: 'UpperArm.L', r: 'UpperArm.R' } as const,
+    { a: 'Spine', b: `UpperLeg.${s}`, c: `LowerLeg.${s}`, side: -1, most: 25, l: 'UpperLeg.L', r: 'UpperLeg.R' } as const,
+  ]),
+];
+
 /** How big each point is, metres: the head and the trunk are not points. */
 const RADIUS: Partial<Record<Point, number>> = { Hips: 0.14, Spine: 0.15, Head: 0.1, Crown: 0.12 };
 const SMALL = 0.06;
@@ -97,6 +115,10 @@ const SMALL = 0.06;
 export type Collide = (point: THREE.Vector3, radius: number) => THREE.Vector3 | null;
 
 const GRAVITY = 9.81;
+const t1 = new THREE.Vector3();
+const t2 = new THREE.Vector3();
+const t3 = new THREE.Vector3();
+const t4 = new THREE.Vector3();
 /** How much of its speed a point keeps each tick in the air, and along a surface it is touching (the rest is friction). */
 const AIR = 0.995;
 const GRIP = 0.4;
@@ -106,11 +128,29 @@ export class Limp {
   private readonly before: THREE.Vector3[] = POINTS.map(() => new THREE.Vector3());
   private readonly sticks: { a: number; b: number; least: number; most: number }[] = [];
   private readonly touching: boolean[] = POINTS.map(() => false);
+  /** Each bend (BENDS) with how far its joint may lie on the wrong side of its line, metres, from the bones' lengths at rest. */
+  private readonly bends: { a: number; b: number; c: number; side: number; most: number; l: number; r: number }[] = [];
   /** The fastest any point moved in the last tick, m/s. */
   speed = 0;
 
   /** `rest` is where every point is in the figure standing as built: the sticks are measured off it. */
   constructor(rest: readonly THREE.Vector3[]) {
+    for (const bend of BENDS) {
+      const ab = rest[at(bend.a)]!.distanceTo(rest[at(bend.b)]!);
+      const bc = rest[at(bend.b)]!.distanceTo(rest[at(bend.c)]!);
+      // (bent by an angle, the joint lies off the line between the ends by ab·bc·sin(angle) / ac)
+      const angle = THREE.MathUtils.degToRad(bend.most);
+      const ac = Math.sqrt(ab * ab + bc * bc + 2 * ab * bc * Math.cos(angle));
+      this.bends.push({
+        a: at(bend.a),
+        b: at(bend.b),
+        c: at(bend.c),
+        side: bend.side,
+        most: (ab * bc * Math.sin(angle)) / (ac || 1),
+        l: at(bend.l),
+        r: at(bend.r),
+      });
+    }
     for (const [a, b, least, most] of STICKS) {
       const length = rest[at(a)]!.distanceTo(rest[at(b)]!);
       this.sticks.push({ a: at(a), b: at(b), least: length * (least ?? 1), most: length * (most ?? 1) });
@@ -148,6 +188,8 @@ export class Limp {
       p.set(p.x + vx, p.y + vy - g, p.z + vz);
     });
     for (let pass = 0; pass < passes; pass++) {
+      // what the joints will not do first, so that the bones have the last word on their lengths
+      this.joints();
       for (const s of this.sticks) {
         const a = this.points[s.a]!;
         const b = this.points[s.b]!;
@@ -174,6 +216,38 @@ export class Limp {
         });
     }
     this.speed = Math.max(...this.points.map((p, i) => p.distanceTo(this.before[i]!))) / dt;
+  }
+
+  /**
+   * What the joints will not do, pass by pass (BENDS). A joint on the wrong side of its line is
+   * put back on the right side by moving it one way and the two ends the other, so that the
+   * three of them, and the figure, do not gain any speed from it: moved alone, a limb pushed off
+   * its limit would fling the figure, and one lying against it would never lie still.
+   */
+  private joints(): void {
+    const p = this.points;
+    for (const bend of this.bends) {
+      const a = p[bend.a]!;
+      const b = p[bend.b]!;
+      const c = p[bend.c]!;
+      const line = t1.subVectors(c, a);
+      const length = line.length();
+      if (length < 1e-6) continue;
+      line.divideScalar(length);
+      // across the trunk, square to the line; where the line runs along the trunk's left and right there is no telling front from back, and it is let go by degrees
+      const h = t2.subVectors(p[bend.l]!, p[bend.r]!);
+      const across = h.length();
+      h.addScaledVector(line, -h.dot(line));
+      const sure = THREE.MathUtils.smoothstep(h.length() / (across || 1), 0.35, 0.7);
+      if (!sure) continue;
+      const n = t3.crossVectors(line, h.normalize()); // the front, for a limb hanging at the side
+      const off = t4.subVectors(b, a).dot(n) * bend.side;
+      if (off >= -bend.most) continue;
+      const by = (-bend.most - off) * sure * bend.side;
+      b.addScaledVector(n, (by * 2) / 3);
+      a.addScaledVector(n, -by / 3);
+      c.addScaledVector(n, -by / 3);
+    }
   }
 
   /** How far each stick is from the length it should be, as a fraction of it: the worst of them. */

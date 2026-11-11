@@ -14,14 +14,16 @@ import { sliderAt, timeAt } from '../world/sequence.ts';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
+import { Ascent } from './ascent';
 import { Lamps } from './lamps';
+import { Origin } from './origin';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 import { Vehicle } from './drive';
-import { Ragdoll, type Tumbler } from './ragdoll';
+import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { Carry } from './carry';
 import { pose } from './gait';
@@ -62,6 +64,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 /** How long a vehicle's door is given to swing before the figure gets in or out through it, seconds. */
 const DOOR_SECONDS = 1.05;
 const DOWN = new THREE.Vector3(0, -1, 0);
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const spin = new THREE.Quaternion();
 /** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
 const WALK_SHADOW = 26;
 /** Texels along a side of the Sun's shadow map, as the orbiting views use it. */
@@ -161,7 +166,16 @@ export class Stage {
    * times its pace: it eases to a stop). The slider is the script; these hold until the script
    * next moves the hardware, then ease back to it.
    */
-  private readonly handset = new Map<string, { at: number; fn: Fn; v: number; pace: number; push: number; back?: boolean }>();
+  private readonly handset = new Map<
+    string,
+    { at: number; fn: Fn; v: number; pace: number; push: number; back?: boolean; lever?: number }
+  >();
+  /** A model's parts that have been driven by hand (a truck that drives itself off in the script, driven instead): the slider leaves them be until the script next moves it. */
+  private readonly driven = new Map<string, { at: number; node: string }>();
+  /** For a vehicle driven by hand, its named pieces paired with the same pieces in its model's other levels of detail, which are put as it is. */
+  private readonly twins = new WeakMap<THREE.Object3D, [THREE.Object3D, THREE.Object3D][]>();
+  /** Levers found by name in each level of detail (swingLever). */
+  private readonly levers = new WeakMap<THREE.Object3D, Map<string, THREE.Object3D | null>>();
   private readonly fns = new WeakMap<object, Fn[]>();
   /** The lifts a model marks under each of its top-level nodes, found once (markedOn). */
   private readonly lifts = new WeakMap<THREE.Object3D, Action[]>();
@@ -192,6 +206,8 @@ export class Stage {
   private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.05, 9000);
   private readonly controls: OrbitControls;
   private readonly composer: EffectComposer;
+  /** Draws the scene from the eye (origin.ts): the GPU sees only eye-relative positions; everything the code reads stays where it is. */
+  readonly origin: Origin;
   private readonly backdropPass: RenderPass;
   private readonly outline: OutlinePass;
   private readonly settings: Settings;
@@ -214,6 +230,16 @@ export class Stage {
   private arriving: Promise<unknown>[] = [];
   /** The floodlights the models carry: lit when the Sun is down. */
   private lamps = new Lamps();
+  /** The flight off the pad (ascent.ts), and what has been done to the model that flies: the clock's instant it was put at, the nodes it has shed, how far it moved this frame. */
+  private ascent: Ascent | null = null;
+  private readonly lifted = {
+    t: Number.NaN,
+    flying: false,
+    shed: '',
+    shrank: false,
+    hidden: [] as THREE.Object3D[],
+    by: new THREE.Vector3(),
+  };
   private readonly ink = new InkPass();
 
   private setting: Setting;
@@ -331,6 +357,7 @@ export class Stage {
     this.composer.addPass(this.outline);
     this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.14, 0.6, 2.4));
     this.composer.addPass(new OutputPass());
+    this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes);
     this.applySetting();
 
     // A tap sends no pointermove first, so every handler that picks reads the pointer itself.
@@ -514,6 +541,8 @@ export class Stage {
     this.root.updateMatrixWorld(true);
     for (const s of this.staged) s.measure();
     this.lamps.clear();
+    this.ascent = Ascent.of(flight);
+    this.lifted.t = Number.NaN;
     this.lamps = new Lamps();
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
     // the coarser levels arrive behind the scenes; a model that has none simply stays as it is
@@ -713,6 +742,7 @@ export class Stage {
   private relight(shadows: boolean): void {
     const s = this.setting;
     this.scene.environment = s.environment;
+    this.scene.environmentIntensity = s.environmentIntensity; // how bright the sky is changes every frame; what it looks like, by bakes
     this.sun.color.set(s.sunColor);
     this.sun.intensity = s.sunIntensity;
     this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
@@ -761,13 +791,95 @@ export class Stage {
     this.mode = mode;
     this.following = null;
     this.onView(null);
-    this.controls.enabled = mode === 'orbit' && !this.walk.active;
+    this.controls.enabled = mode !== 'fly' && !this.walk.active;
     if (mode === 'fly') {
       this.flyTo = null;
       this.controls.autoRotate = false;
       this.flyer.read(this.camera);
     }
+    // the chase starts by going to the vehicle; leaving it, the shadows go back to the section
+    const flier = this.flier;
+    if (mode === 'chase' && flier) this.frameBox(new THREE.Box3().setFromObject(flier.group), false);
+    else this.fitShadows();
     this.dirty = true;
+  }
+
+  /** The model the flight carries off the pad, if there is one. */
+  private get flier(): Staged | null {
+    const id = this.ascent?.model;
+    return this.staged[this.defs.findIndex((m) => m.id === id)] ?? null;
+  }
+
+  /**
+   * Put the flown vehicle where the simulator has it at the clock's instant (ascent.ts): from
+   * liftoff to landing it flies, without what it has shed; before and after it stands on its pad.
+   */
+  private lift(): void {
+    this.lifted.by.set(0, 0, 0);
+    const ascent = this.ascent;
+    const s = this.flier;
+    if (!ascent || !s || !this.clock) return;
+    const t = this.clock.t;
+    if (t === this.lifted.t) return;
+    this.lifted.t = t;
+    const def = this.defs.find((m) => m.id === ascent.model)!;
+    const g = s.group;
+    const before = g.position.clone();
+    const pad = new THREE.Quaternion().setFromAxisAngle(UP, def.rotationY ?? 0);
+    const flying = ascent.place(t, pad, g.position, g.quaternion);
+    if (!flying && !this.lifted.flying) return; // standing on its pad, as it was
+    if (!flying) {
+      g.position.set(...(def.position ?? [0, 0, 0]));
+      g.quaternion.copy(pad);
+    }
+    this.lifted.flying = flying;
+    const shed = ascent.dropped(t);
+    if (shed.join() !== this.lifted.shed) {
+      this.lifted.shed = shed.join();
+      for (const o of this.lifted.hidden) o.visible = true;
+      this.lifted.hidden = [];
+      const names = new Set(shed);
+      g.traverse((o) => {
+        if (names.has(o.name) && o.visible) {
+          o.visible = false;
+          this.lifted.hidden.push(o);
+        }
+      });
+      this.renderer.shadowMap.needsUpdate = true;
+      this.lifted.shrank = flying;
+    }
+    this.lifted.by.subVectors(g.position, before);
+    g.updateMatrixWorld(true);
+    s.measure(); // levels of detail are chosen by the distance to it
+    this.fitBounds();
+    this.dirty = true;
+    this.shadowsOwed = true;
+  }
+
+  /**
+   * The chase camera: it turns about the vehicle as the orbiting one does about anything, and is
+   * carried along with it, so the view moves only as the user moves it. The Sun's shadow map is
+   * carried too, so the vehicle shades itself all the way up.
+   */
+  private chase(): void {
+    const by = this.lifted.by;
+    this.controls.target.add(by);
+    this.camera.position.add(by);
+    if (this.flyTo) {
+      this.flyTo.target0.add(by);
+      this.flyTo.target1.add(by);
+    }
+    this.sun.position.add(by);
+    this.sun.target.position.add(by);
+    // it has shed something: the view closes in on what is left
+    const g = this.flier?.group;
+    if (!this.lifted.shrank || !g) return;
+    this.lifted.shrank = false;
+    const left = new THREE.Box3();
+    g.traverseVisible((o) => {
+      if ((o as THREE.Mesh).isMesh) left.expandByObject(o);
+    });
+    if (!left.isEmpty()) this.frameBox(left, false);
   }
 
   get cameraMode(): CameraMode {
@@ -876,7 +988,7 @@ export class Stage {
   }
 
   setAutoRotate(on: boolean): void {
-    this.controls.autoRotate = on && this.mode === 'orbit'; // a free camera has nothing to drift round
+    this.controls.autoRotate = on && this.mode !== 'fly'; // a free camera has nothing to drift round
     // While the view drifts round its subject the wheel only changes how close it is. Zooming
     // toward the pointer moves the point being orbited: that is for a view the user has taken.
     this.controls.zoomToCursor = !on;
@@ -1149,7 +1261,10 @@ export class Stage {
   /** Measure everything on show, for the camera's depth range and its limits. Called whenever something moves. */
   private fitBounds(): void {
     if (!this.root) return;
-    const all = new THREE.Box3().setFromObject(this.root);
+    // a vehicle in flight is left out: the view's limits are the place's (fitDepth reaches out to it)
+    const flying = this.lifted.flying ? this.flier?.group : null;
+    const all = new THREE.Box3();
+    for (const o of this.root.children) if (o !== flying) all.expandByObject(o);
     this.bounds.set(all.getCenter(new THREE.Vector3()), all.getSize(new THREE.Vector3()).length() / 2 + 0.5);
     this.centreY = this.bounds.center.y;
   }
@@ -1209,6 +1324,7 @@ export class Stage {
 
   /** Panning cannot carry the orbit point off what is on show: there is nothing out there to look at. */
   private keepInBounds(): void {
+    if (this.mode === 'chase') return; // the subject is wherever the vehicle has got to
     const t = this.controls.target;
     const off = t.clone().sub(this.bounds.center);
     // on the ground there is a site to walk over; anywhere else, only the model
@@ -1259,6 +1375,8 @@ export class Stage {
    */
   private keepAboveGround(): void {
     if (!this.setting.floor) return;
+    // beyond the site no ground is modelled, and the site's level is not the sea's 100 km off
+    if (Math.hypot(this.controls.target.x, this.controls.target.z) > (this.setting.reach ?? Infinity)) return;
     const EYE = 0.35; // metres above the surface the model stands on
     if (this.controls.target.y < 0.1) this.controls.target.y = 0.1;
     if (this.camera.position.y < EYE) {
@@ -1277,7 +1395,8 @@ export class Stage {
     const toCentre = this.camera.position.distanceTo(this.bounds.center);
     const toTarget = this.camera.position.distanceTo(this.controls.target);
     let near = Math.max(0.03, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
-    if (this.setting.floor) {
+    // (beyond the site there is no ground at the camera's feet to keep in view)
+    if (this.setting.floor && Math.hypot(this.camera.position.x, this.camera.position.z) <= (this.setting.reach ?? Infinity)) {
       // ...but never past the ground at the camera's feet. The nearest ground in view is at the
       // corner of the frame, no nearer along the view than the camera's height times the cosine
       // of the frame's half-diagonal; a near plane beyond that slices the foreground away.
@@ -1286,7 +1405,14 @@ export class Stage {
       // nor past scenery between the camera and what it is looking at
       near = Math.min(near, Math.max(0.03, (0.9 * height) / Math.hypot(1, tan)), Math.max(0.03, 0.25 * toTarget));
     }
-    const far = toCentre + this.bounds.radius + (this.setting.horizon ?? 10);
+    let far = toCentre + this.bounds.radius + (this.setting.horizon ?? 10);
+    // a vehicle in flight is seen as far off as it is, and the near plane is never beyond it
+    const flier = this.lifted.flying ? this.flier : null;
+    if (flier) {
+      const to = this.camera.position.distanceTo(flier.sphere.center);
+      far = Math.max(far, to + flier.sphere.radius);
+      near = Math.min(near, Math.max(0.03, 0.5 * (to - flier.sphere.radius), 0.01 * toTarget));
+    }
     if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.near = near;
       this.camera.far = far;
@@ -1345,6 +1471,10 @@ export class Stage {
 
   /** Something in the place round the pad that `object` belongs to: what it is called, and the part of it to go and look at. */
   private placeOf(object: THREE.Object3D, point: THREE.Vector3): { name: string; box: THREE.Box3; title?: string } | null {
+    // (only the surroundings have places: a model's parts are its own, even one marked a vehicle)
+    let o: THREE.Object3D | null = object;
+    while (o && o !== this.surroundings) o = o.parent;
+    if (!o) return null;
     // A thing the model has named for people (a custom property `label`, or `vehicle` on a car)
     // is that thing, however deep it sits: one car in a car park, not the car park.
     for (let o: THREE.Object3D | null = object; o && o !== this.surroundings; o = o.parent) {
@@ -1455,6 +1585,8 @@ export class Stage {
       if (change) this.relight(change.shadows);
     }
     this.follow(dt);
+    this.lift();
+    if (this.mode === 'chase') this.chase();
     if (this.flyTo) {
       const f = this.flyTo;
       f.t = Math.min(1, f.t + dt / f.seconds);
@@ -1511,7 +1643,7 @@ export class Stage {
     this.ink.range(this.camera);
     this.renderer.info.reset();
     this.drawn++;
-    this.composer.render(this.sinceDrawn);
+    this.origin.draw(() => this.composer.render(this.sinceDrawn));
     this.sinceDrawn = 0;
   }
 
@@ -1646,7 +1778,7 @@ export class Stage {
     this.setAim(null);
     this.walk.stop();
     this.walked = -1;
-    this.controls.enabled = this.mode === 'orbit';
+    this.controls.enabled = this.mode !== 'fly';
     this.flyer.read(this.camera);
     // orbit a point a few steps ahead, so the flight back starts from this very view
     this.controls.target.copy(this.camera.position).add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
@@ -1803,10 +1935,15 @@ export class Stage {
       if (at >= 0 || o === this.surroundings) root = o;
     }
     if (!root) return null;
+    // the flight's own working of that door, where it declares one, is the one its Open and Close use
+    const model = at >= 0 ? this.defs[at]!.id : '';
+    for (const part of at >= 0 ? this.defs[at]!.parts : [])
+      for (const action of part.actions ?? [])
+        if (action.do.kind === 'toggle' && action.do.moves[0]?.node === node.name)
+          return { key: `${model}/${part.node}/${action.id}`, action, levels: this.levelsOf(model), under: part.node };
     const marked = this.markedOn(node, root);
     const action = marked?.actions.find((a) => a.id === `door:${node.name}`);
     if (!marked || !action) return null;
-    const model = at >= 0 ? this.defs[at]!.id : '';
     return { key: `${model}/${marked.under}/${action.id}`, action, levels: this.levelsOf(model), under: marked.under };
   }
 
@@ -1826,6 +1963,48 @@ export class Stage {
     if (b.door && this.works.isOpen(b.door.key)) this.works.toggle(b.door.key, b.door.action, b.door.levels, b.door.under);
   }
 
+  /** The model and part a vehicle's node is, if it is one of a model's parts (not scenery). */
+  private ownerOf(node: THREE.Object3D): { at: number; node: string } | null {
+    for (let o: THREE.Object3D | null = node.parent; o; o = o.parent) {
+      const at = this.staged.findIndex((s) => s.group === o);
+      if (at >= 0) return this.defs[at]!.parts.some((p) => p.node === node.name) ? { at, node: node.name } : null;
+    }
+    return null;
+  }
+
+  /** Why the vehicle at the wheel will not move, if it will not: the interlocks of the function that drives it, if it is a part that has one. */
+  get wheelRefusal(): string | null {
+    const root = (this.wheel ?? this.boarding?.vehicle)?.root;
+    const owner = root && this.ownerOf(root);
+    if (!owner) return null;
+    const def = this.defs[owner.at]!;
+    return this.functions(def.id, owner.node).find((f) => f.fn.nodes.includes(owner.node))?.refused ?? null;
+  }
+
+  /** Put a vehicle's pieces in its model's other levels of detail where they are in the one being driven. */
+  private mirror(root: THREE.Object3D): void {
+    let pairs = this.twins.get(root);
+    if (!pairs) {
+      pairs = [];
+      const owner = this.ownerOf(root);
+      for (const level of owner ? this.staged[owner.at]!.group.children : []) {
+        const twin = level.getObjectByName(root.name);
+        if (!twin || twin === root) continue;
+        const named = new Map<string, THREE.Object3D>();
+        twin.traverse((o) => o.name && named.set(o.name, o));
+        root.traverse((o) => {
+          const other = named.get(o.name);
+          if (other) pairs!.push([o, other]);
+        });
+      }
+      this.twins.set(root, pairs);
+    }
+    for (const [from, to] of pairs) {
+      to.position.copy(from.position);
+      to.quaternion.copy(from.quaternion);
+    }
+  }
+
   /** Sit the walker at a vehicle's wheel: the keys are its pedals and wheel from now on. */
   private takeWheel(vehicle: Vehicle): void {
     const root = vehicle.root;
@@ -1839,10 +2018,18 @@ export class Stage {
       ahead: (from: THREE.Vector3, way: THREE.Vector3, far: number) => walk.solids.cast(from, way, far)?.distance ?? null,
     };
     const driven = vehicle;
+    // a part of a model (a truck the script drives off) is taken out of the slider's hands while it is driven, and left where it is driven to
+    const owner = this.ownerOf(root);
+    if (owner) {
+      this.driven.set(`${owner.at}/${root.name}`, owner);
+      this.staged[owner.at]!.loosen(root.name, true);
+    }
     walk.sit({
       drive: (pedal, steer, dt) => {
-        driven.drive(pedal, steer, dt, road);
-        if (driven.motion.speed) {
+        // (it will not move while its interlocks say no: a tower up, its legs down)
+        driven.drive(this.wheelRefusal ? 0 : pedal, steer, dt, road);
+        if (driven.motion.speed || driven.motion.steer) {
+          if (owner) this.mirror(root);
           this.dirty = true;
           this.renderer.shadowMap.needsUpdate = true;
         }
@@ -1850,6 +2037,7 @@ export class Stage {
       // a sitter's eyes are as far over their hips as the figure's own are, standing
       eyes: (to) => driven.hips(to).setY(to.y + walk.eye - walk.gait.hipHeight(this.staged[this.walked]?.shown ?? this.scene)),
       facing: () => driven.motion.heading,
+      chase: () => driven.chase(this.camera.position),
     });
     this.setAim(null);
   }
@@ -1934,6 +2122,15 @@ export class Stage {
 
   /** A frame of the functions worked by hand: those being pushed run, the rest stay; and all of them go back to the script when the script moves. */
   private runFunctions(dt: number): void {
+    // a vehicle driven by hand goes back where the script has it when the script moves it, unless it is being driven
+    if (this.scripted)
+      for (const [key, { at, node }] of this.driven) {
+        if (this.wheel?.root.name === node && this.ownerOf(this.wheel.root)?.at === at) continue;
+        this.driven.delete(key);
+        this.staged[at]?.loosen(node, false);
+        this.dirty = true;
+        this.renderer.shadowMap.needsUpdate = true;
+      }
     if (!this.handset.size) return;
     let moved = false;
     for (const [key, held] of this.handset) {
@@ -1954,6 +2151,8 @@ export class Stage {
       // pushed, it gathers its pace over a quarter of a second; let go, it loses it as quickly
       held.pace += (held.push - held.pace) * (1 - Math.exp(-dt / 0.2));
       if (!held.push && Math.abs(held.pace) < 0.01) held.pace = 0;
+      // its lever is held over as far as it is being pushed, and springs back to the middle
+      if (fn.lever && held.lever !== held.pace) this.swingLever(at, fn.lever, (held.lever = held.pace));
       if (!held.pace) continue;
       const to = THREE.MathUtils.clamp(held.v + (held.pace * dt) / fn.seconds, 0, 1);
       if (to === held.v) continue;
@@ -1962,6 +2161,22 @@ export class Stage {
       moved = true;
     }
     if (moved) this.fitBounds();
+  }
+
+  /** Hold a lever (Part.functions: lever) over by `k` of its swing, -1 to 1, at every level of detail. */
+  private swingLever(at: number, name: string, k: number): void {
+    for (const level of this.staged[at]?.group.children ?? []) {
+      let found = this.levers.get(level);
+      if (!found) this.levers.set(level, (found = new Map()));
+      if (!found.has(name)) found.set(name, level.getObjectByName(name) ?? null);
+      const lever = found.get(name);
+      if (!lever) continue;
+      const rest = ((lever.userData.rest as THREE.Quaternion | undefined) ??= lever.quaternion.clone());
+      const axis = String(lever.userData.axis ?? 'z');
+      const turn = THREE.MathUtils.degToRad(Number(lever.userData.swing) || 25) * k;
+      lever.quaternion.copy(rest).multiply(spin.setFromAxisAngle(axis === 'x' ? X_AXIS : axis === 'y' ? UP : Z_AXIS, turn));
+    }
+    this.dirty = true;
   }
 
   /** The levels of detail of a model: an action moves the same node in each. */
@@ -2064,7 +2279,10 @@ export class Stage {
     // getting up, it eases out of however it was lying and into the first of the get-up over the first half second
     const rising = walk.gait.rising;
     walk.gait.apply(figure.shown, rising !== null && rising < 0.5 ? 1 - Math.exp(-this.walkDt * 10) : 1);
-    if (walk.down === 'rising' && walk.gait.rising === null) walk.stand(group.position); // on its feet: the legs are the walker's again
+    if (walk.down === 'rising' && walk.gait.rising === null) {
+      walk.stand(group.position); // on its feet: the legs are the walker's again
+      for (const level of group.children) for (const carry of this.carriesOf(level, at)) carry.pickUp(); // and what it dropped is in its hand again
+    }
     this.carryOn(figure, at);
     // Breathing alone moves him by millimetres: seen from outside it is worth drawing, but
     // nobody's shadow is redrawn for it.
@@ -2073,7 +2291,7 @@ export class Stage {
   }
 
   /** What is in the figure's hands hangs plumb and swings a little behind the stride; a hose hangs from it. */
-  private carryOn(figure: Staged, at: number): void {
+  private carryOn(figure: Staged, at: number, collide?: Collide): void {
     const carried = this.carriesOf(figure.shown, at);
     if (!carried.length) return;
     const walk = this.walk;
@@ -2087,7 +2305,9 @@ export class Stage {
     this.carriedLevel = figure.shown;
     for (const carry of carried) {
       if (fresh) carry.relay();
-      if (!carry.update(this.walkDt, now[`Hand.${carry.hand}`], walk.body.grounded ? p.y + 0.02 : null, body)) continue;
+      // (one let go of in a fall is kept out of the world as the figure is)
+      if (!carry.update(this.walkDt, now[`Hand.${carry.hand}`], walk.body.grounded ? p.y + 0.02 : null, body, collide ?? this.solid))
+        continue;
       this.dirty = true;
       this.renderer.shadowMap.needsUpdate = true;
     }
@@ -2126,6 +2346,8 @@ export class Stage {
       group.updateMatrixWorld(true);
       doll.throw(velocity);
       this.tumble = doll;
+      // what was in its hands goes as it hits, and lands on its own
+      for (const carry of this.carriesOf(root, at)) carry.drop(velocity);
     }
     const doll = this.tumble;
     if (!doll) return false;
@@ -2133,13 +2355,7 @@ export class Stage {
     if (this.unseen) this.shadowOnly(group, (this.unseen = false));
     const ground = this.setting.floor?.position.y ?? null;
     const lift = new THREE.Vector3();
-    doll.step(Math.max(this.walkDt, 1e-3), (point, radius) => {
-      const out = walk.solids.out(point, radius);
-      if (ground === null || point.y >= ground + radius) return out;
-      // (the open ground is a level, not a mesh: it is under everything)
-      point.y = ground + radius;
-      return out ? out.setY(out.y + 1).normalize() : new THREE.Vector3(0, 1, 0);
-    });
+    doll.step(Math.max(this.walkDt, 1e-3), this.solid);
     this.carryOn(figure, at);
     // the walker's body lies under the hips, on whatever is there
     const hips = doll.hips;
@@ -2170,6 +2386,15 @@ export class Stage {
     walk.gait.rise(doll.faceDown);
     return false;
   }
+
+  /** The world as something falling meets it (ragdoll.ts: Collide): the solids round the walker, and under everything the open ground, which is a level and not a mesh. */
+  private readonly solid: Collide = (point, radius) => {
+    const out = this.walk.solids.out(point, radius);
+    const ground = this.setting.floor?.position.y ?? null;
+    if (ground === null || point.y >= ground + radius) return out;
+    point.y = ground + radius;
+    return out ? out.setY(out.y + 1).normalize() : new THREE.Vector3(0, 1, 0);
+  };
 
   /**
    * Make everything under `root` cast its shadow and otherwise draw nothing, or put it back. It

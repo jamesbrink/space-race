@@ -149,15 +149,19 @@ export function dayLight(sunElevation: number, moon: { elevation: number; lit: n
   const sunStrength = Math.max(sun[0] * SUN_COLOUR[0], sun[1] * SUN_COLOUR[1], sun[2] * SUN_COLOUR[2]);
   // moonlight is there all along; it shows once the sky has let go
   const moonStrength = moon && moon.elevation > 0 ? MOONLIGHT * moon.lit * Math.exp(-0.18 * (airmass(moon.elevation) - 1)) : 0;
+  // One direct light stands for both, so where the Sun hands over to the Moon it passes through
+  // nothing: the shadows swing round in the dark, not in plain sight. Only near the hand-over,
+  // where neither is three times the other, is it much dimmed.
+  const handover = 1 - (Math.min(sunStrength, moonStrength) / Math.max(sunStrength, moonStrength, 1e-12)) ** 2;
   const light: DayLight['light'] =
     sunStrength * SUN_STRENGTH > 1e-4 && sunStrength >= moonStrength
       ? {
           from: 'sun',
           colour: [(sun[0] * SUN_COLOUR[0]) / sunStrength, (sun[1] * SUN_COLOUR[1]) / sunStrength, (sun[2] * SUN_COLOUR[2]) / sunStrength],
-          intensity: SUN_STRENGTH * sunStrength,
+          intensity: SUN_STRENGTH * sunStrength * handover,
         }
       : moonStrength > 0
-        ? { from: 'moon', colour: MOON_COLOUR, intensity: SUN_STRENGTH * moonStrength }
+        ? { from: 'moon', colour: MOON_COLOUR, intensity: SUN_STRENGTH * moonStrength * handover }
         : { from: 'none', colour: MOON_COLOUR, intensity: 0 };
   // The eye opens as the light on the ground falls: level ground under a low Sun gets the sine of
   // its height, then only the sky. It makes up a third of each tenfold loss, as far as eight times.

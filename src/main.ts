@@ -280,7 +280,11 @@ function perform(on: Target, { verb }: Choice): void {
   else if (verb.do === 'climb') stage.walkClimb();
   else if (verb.do === 'drive') {
     ui.showWalkCard(null);
-    if (stage.walkDrive()) ui.setWalkNote('W throttle · S brake, then reverse · A D steer · C view · E get out');
+    // (one that will not move yet says why: a tower still up, its legs still down)
+    if (stage.walkDrive()) {
+      const why = stage.wheelRefusal;
+      ui.setWalkNote(why ? `It will not drive: ${why} · E get out` : 'W throttle · S brake, then reverse · A D steer · C view · E get out');
+    }
   } else if (verb.do === 'become') {
     ui.showWalkCard(null);
     stage.becomeWalk(verb.model);

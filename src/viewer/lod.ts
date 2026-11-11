@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import { Group, Sphere, Box3 } from 'three';
 import type { Part } from '../types';
+import { markDriven } from './drive';
 import { Exploder } from './explode';
 
 /**
@@ -33,6 +34,9 @@ export class Staged {
   private wanted = 0;
   private t = 0;
   private readonly parts: Part[];
+  /** What is being worked by hand, so that a level arriving later is posed the same (hold, loosen). */
+  private readonly held = new Map<string, number>();
+  private readonly loose = new Set<string>();
 
   constructor(full: THREE.Object3D, parts: Part[]) {
     this.parts = parts;
@@ -47,7 +51,10 @@ export class Staged {
   add(level: number, object: THREE.Object3D): void {
     this.levels[level] = object;
     this.group.add(object);
+    markDriven(object, this.parts);
     const exploder = new Exploder(object, this.parts);
+    for (const [node, reading] of this.held) exploder.hold(node, reading);
+    for (const node of this.loose) exploder.loosen(node, true);
     exploder.set(this.t);
     this.exploders.push(exploder);
     object.visible = false;
@@ -61,8 +68,20 @@ export class Staged {
 
   /** Hold one node's motions at a slider reading of its own, at every level of detail (null: release it), and show it. */
   hold(node: string, reading: number | null): void {
+    if (reading === null) this.held.delete(node);
+    else this.held.set(node, reading);
     for (const e of this.exploders) {
       e.hold(node, reading);
+      e.set(this.t);
+    }
+  }
+
+  /** Let something else move one node at every level of detail (a vehicle driven by hand), or give it back to the slider. */
+  loosen(node: string, on: boolean): void {
+    if (on) this.loose.add(node);
+    else this.loose.delete(node);
+    for (const e of this.exploders) {
+      e.loosen(node, on);
       e.set(this.t);
     }
   }

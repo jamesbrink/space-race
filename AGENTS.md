@@ -93,7 +93,10 @@ src/
   wheel.ts                            a radial menu: a few choices round a centre
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
   viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
-  viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
+  viewer/cape.ts                      Cape Canaveral's land as parameters: its plant communities, clearings, roads, palette, sea
+  viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
+  viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind
+  viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
@@ -117,6 +120,10 @@ src/
   timebar.ts  time.css                the clock's control
   demo.ts  callout.ts                 the idle show: the day run round, a tour of the flight, a callout on each thing
   viewer/lamps.ts                     floodlights: every lamp lens a model carries lights the scene after dark
+  viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
+  viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
+  sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air
+  flown.ts                            the Flown panel: the simulator's run against the clock, and against the reports' figures
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
@@ -204,8 +211,8 @@ different one per pixel per frame. Three things stop it, and all three must stay
 - **`Stage.fitDepth` moves the near plane out every frame** so depth resolution stays under a
   third of a millimetre at any distance. Do not give the camera a fixed near plane.
 - **Nothing lies close above the terrain.** Depth interpolated across a triangle kilometres long
-  is coarse: concrete 6 cm above such terrain flickered. So the terrain is one finely divided
-  grid (`cape.ts`), it sits 0.45 m below the pad's surface (`GROUND_Y`), and anything standing
+  is coarse: concrete 6 cm above such terrain flickered. So the terrain is finely divided (`land.ts`:
+  half-metre cells near the eye, never more than 64 m), it sits 0.45 m below the pad's surface (`GROUND_Y`), and anything standing
   on the ground goes down past that (`FOOTING` in `lc_5.py`).
 
 - **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
@@ -216,6 +223,24 @@ different one per pixel per frame. Three things stop it, and all three must stay
 `pnpm test:flicker` checks the result in a real browser: every model, every view, six
 directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.
 `--shots <dir>` writes a map of any it finds. Run it after changing a model or the renderer.
+
+## Drawn from the eye
+
+The GPU's floats step in 1 mm at 10 km and half a metre at the Earth's radius, so nothing is drawn
+where it is (`viewer/origin.ts`). Positions live in doubles in JavaScript, in the scene's frame,
+which is fixed to the Earth (today the site's): `position`, `matrixWorld`, a ray's hit, a box, at
+every moment the page's code can see them. `Origin.draw` moves the whole scene by minus the eye for
+the draw only, so every matrix uploaded is relative to the eye, then puts it back; it also moves
+what three keeps in the scene's frame between draws (the cutaway's planes, each shadow's lookup,
+a hemisphere light's direction). So:
+
+- Read and write positions as they are; nothing outside the draw needs converting.
+- Code that runs during the draw (`onBeforeRender`, a pass) sees eye-relative world matrices: put
+  them back with `absolute()`.
+- A shader that wants a position in the scene's frame from `modelMatrix` adds `uOrigin` (as
+  `surface.ts`'s grain does); a position in an object's own frame needs nothing.
+- `sr.stage.origin.enabled = false` draws the old way: the two must look the same (checked from
+  fixed views, frozen: a few dozen pixels in 640,000 differ, by one level, from rounding).
 
 ## Drawing only what changed
 
@@ -247,6 +272,16 @@ clock costs nothing and a running one redraws only as fast as the sky visibly mo
 that depends on the hour takes its instant from the clock and reports change the same way; it does
 not read `flight.launch` or keep its own time.
 
+Light must never step, at any clock rate (the idle show runs the night at 1200 times life).
+Everything cheap (the light's strength and colour, exposure, the sky, the fog, the lamps) is set
+every frame; of the two things that cost, the shadow map is drawn again whenever the light has
+moved a twentieth of a degree, and the reflections are baked at a day's brightness, scaled to the
+sky's every frame through `environmentIntensity`, and each new bake is faded in from the last
+(`Reflections` in backdrops.ts). Where the Sun hands over to the Moon the one direct light passes
+through nothing (daysky.ts), so shadows turn round unseen. Room lights are handed between rooms by
+fading. A change to the light is checked by sampling a still view's mean brightness frame by frame
+through dusk and dawn at 1200x: it should run one way, without jumps.
+
 A model whose slider tells a sequence of events has a `sequence` (types.ts: `Keyframe`): the
 instants, in seconds from launch, at which the slider reads each value, each with confidence and
 source. The times are the record; where they fall on the slider is layout. Such a model is on the
@@ -254,6 +289,57 @@ clock (`world/sequence.ts`): its slider reads the clock, dragging it stops and m
 and running the clock plays the events at their own pace. Another section's `with` asks for an
 instant (`at`), not a slider position. A slider without a sequence (the vehicle's exploded view)
 is not time and is left alone.
+
+## The simulator
+
+`src/sim/` flies a flight from the record, in doubles, with no three.js. `Flight.trajectory`
+(types.ts: `Trajectory`) is the input: masses, the engine's thrust, specific impulse, exit area and
+cutoff, the tilt programme, drag against Mach number, separation, retrofire, the parachutes, each a
+`Measure` with its confidence and source, in SI with the source's own units in `source`.
+`fly(trajectory, site, seaLevel)` integrates it (RK4 at 0.05 s, every step cut to end on the next
+event, so one input gives one flight to the last bit) in an Earth-centred frame that does not turn,
+under J2 gravity, the 1976 standard atmosphere and drag through air that turns with the Earth, and
+returns samples and `Results`. Attitude is prescribed, not flown: the gyros' tilt going up, heat
+shield first coming down. `from` starts it at separation from a given state, so the capsule's half
+can be flown from what the report says separation was, whatever the booster did.
+
+`Flight.checks` (types.ts: `FlightCheck`) are the figures the reports give (apogee, range,
+speeds and climb angles at separation, loads, event times), each with an `id` that names a field of
+`Results` and a `tolerance` **set before the simulator was run**. Nothing is fitted: an input is
+never adjusted to bring a check in.
+
+- **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
+  half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
+  is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails
+  on a miss nobody recorded, on a recorded miss that has moved past its slack, and on one that has
+  come within tolerance (take it off). So the list is the truth either way, and improving an input
+  means updating it.
+- **The inputs that are not documented are listed and weighed.** The last test names every
+  `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
+  new input that is not documented must be added there. Keep the label honest: the simulator
+  may come to refuse `estimated` inputs.
+- **Space-fixed is not Earth-fixed.** Speeds and climb angles come in both (`speed`,
+  `groundSpeed`); the reports quote both, and the larger, space-fixed one includes the pad's own
+  eastward motion. Say which in any label.
+- **The Flown panel** (`src/flown.ts`) flies the flight once, after the page has opened, and draws
+  height, range, space-fixed speed and load against time with the reports' figures as dashed
+  lines, the clock's instant as a cursor (dragging a trace moves the clock), and the checks as a
+  table, amber where out of tolerance. It reads the clock; it keeps no time of its own.
+- **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
+  pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
+  `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
+  the run's samples, in the Earth's turning axes, in the site's frame) and points it as the run
+  does (the gyros' tilt going up, heat shield first after the turnaround). Before liftoff and after
+  the landing it stands on its pad: the inventory. The chase camera (`CAMERA_MODES`: C) turns
+  about it and is carried with it, and carries the Sun's shadow map too. The site's frame is flat:
+  downrange the sea falls away below it (18.6 km by the landing), and the sky is the ground's at
+  any height. A globe needs the scene's frame to become the Earth-centred one (origin.ts already
+  draws from the eye), the Earth drawn to scale under the site's local detail, the sky computed
+  for the eye's height, and the vehicle put in it from `fly`'s inertial state without the site's
+  frame in between.
+- **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
+  because of it; the capsule flown from the report's separation passes all but one. The flight's
+  README ("The flight as flown") states the numbers.
 
 ## Two looks
 
@@ -494,7 +580,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
   A new panel gets the same control and a `Pref`.
 - C is the camera everywhere: off foot it steps through `CAMERA_MODES` (`viewer/fly.ts`: orbit about
-  a subject, or a free camera; a chase camera for a vehicle in flight will be a third), on foot
+  a subject, a free camera, or the chase camera, which turns about the flown vehicle and goes with it), on foot
   between first and third person. Each mode has its own block in the legend. T is the look.
 - The front page (`title.ts`, the mark in `logo.ts`) is what an address that names nothing shows; it
   lies over the scene as it loads. Going in writes `#<flight id>/<model>`, so a refresh or a link

@@ -24,6 +24,9 @@ import math
 
 from mathutils import Matrix
 
+import interiors
+import sitelib
+import srlib
 from srlib import FT
 
 from .site import (
@@ -468,9 +471,24 @@ def build(parts: Parts) -> None:
         for y in (18.5, 25.2, 31.9):  # ribs on its sides
             for sx in (-1, 1):
                 sbox(grey, sx, 7.39, 7.5, y - 0.12, y + 0.12, 9.0, 17.6)
-    fit = parts(g, "console")
-    lbox(fit, (-6.9, 29.0, 9.32), (-0.5, 31.6, 11.9))  # a desk along the back wall, and lockers
-    lbox(fit, (2.0, 30.2, 9.32), (6.9, 31.6, 15.2))
+    # what was in it: a desk with its chair and telephone, lockers, a filing cabinet, an intercom panel
+    # by the door, a clock. Of the period's kind (tools/blender/interiors.py), none of it from a photograph.
+    interiors.desk(parts, g, interiors.at(L(-3.8, 29.1, 9.32), 90.0))
+    interiors.chair(parts, g, interiors.at(L(-3.6, 27.9, 9.32), 95.0))
+    interiors.lockers(parts, g, interiors.at(L(4.6, 30.15, 9.32), 90.0), 3)
+    interiors.cabinet(parts, g, interiors.at(L(4.75, 20.4, 9.32), 0.0))
+    interiors.panel(
+        parts,
+        g,
+        sitelib.axes_local(L(-7.08, 19.3, 11.6), (0, 1, 0), (0, 0, 1)),
+        2.0,
+        2.6,
+        [("lamps", "gar"), ("switches", 4), ("buttons", 3), ("label", "PAD  BLOCKHOUSE  LEVELS")],
+        title="INTERCOM",
+        font=srlib.load_font(),
+        seed=11,
+    )
+    interiors.clock(parts, g, axes(L(-3.8, 31.68, 15.3), (1, 0, 0), (0, -1, 0)))
     # the stairs up to the base's deck from the pad, at the back on the hatch side (the photographs
     # show a flight here; where it stood on the base is estimated)
     # (NASA 61-MR4-45: a straight flight at the outboard end of the base, descending away from the

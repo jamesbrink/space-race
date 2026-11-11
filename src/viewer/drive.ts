@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Part } from '../types';
 
 /**
  * Driving. Any vehicle built to the contract (tools/blender/vehicles.py: one node with its
@@ -110,10 +111,12 @@ export class Vehicle {
   door: THREE.Object3D | undefined;
   private readonly seat: THREE.Object3D | undefined;
   private readonly stand: THREE.Object3D | undefined;
-  /** How far its body reaches ahead of and behind the rear axle, and to each side, metres. */
-  private readonly nose: number;
-  private readonly tail: number;
-  private readonly half: number;
+  /** How far its body reaches ahead of and behind the rear axle, and to each side, metres, as it stands when it is got into (a tower folded or not). */
+  private nose = 0;
+  private tail = 0;
+  private half = 0;
+  /** The top of it over the ground, metres. */
+  private top = 0;
   private turned = 0;
   private y = 0;
 
@@ -143,7 +146,13 @@ export class Vehicle {
     if (!this.knuckles.length) for (const o of this.rolling) if (/_SteerWheel_\d+$/.test(o.name)) this.knuckles.push(o);
     this.seat = seat ?? find(root, `${root.name}_Seat_Driver`);
     this.stand = stand ?? find(root, `${root.name}_Stand_Driver`);
-    // its length and width, as built, in its own frame
+    this.read();
+  }
+
+  /** Its length and width as it stands now, in its own frame. */
+  private measure(): void {
+    const root = this.root;
+    const wheelbase = this.chassis.wheelbase;
     root.updateWorldMatrix(true, true);
     const inverse = root.matrixWorld.clone().invert();
     const box = new THREE.Box3();
@@ -160,7 +169,19 @@ export class Vehicle {
     this.nose = Number.isFinite(box.max.x) ? box.max.x : wheelbase + 0.9;
     this.tail = Number.isFinite(box.min.x) ? -box.min.x : 1;
     this.half = Number.isFinite(box.max.z) ? Math.max(box.max.z, -box.min.z) : 0.9;
-    this.read();
+    this.top = Number.isFinite(box.max.y) ? box.max.y : 1.5;
+  }
+
+  /**
+   * Where a chase view of it sits from a point in its cab (the driver's eyes): far enough back
+   * to be clear of its tail and see the whole of it, and above its roof. Metres behind that
+   * point along its length, and above it.
+   */
+  chase(from: THREE.Vector3): { back: number; up: number } {
+    const local = this.root.worldToLocal(from.clone());
+    const back = local.x + this.tail + 4;
+    // (not so high that it looks down on a tower laid over the cab more than on the vehicle)
+    return { back, up: THREE.MathUtils.clamp(this.top + 1.2 - local.y, 0.8, 0.45 * back) };
   }
 
   /** How far its front wheels are over, as a fraction of full lock: -1 hard right to 1 hard left. */
@@ -184,6 +205,7 @@ export class Vehicle {
     const m = this.root.matrixWorld.elements;
     this.motion = { x: p.x, z: p.z, heading: Math.atan2(-m[2]!, m[0]!), speed: 0, steer: 0 };
     this.y = p.y;
+    this.measure();
   }
 
   /** Where the driver's hips are, and where one stands to get in or has got out to, in the world. */
@@ -255,5 +277,27 @@ export class Vehicle {
     this.root.rotation.order = 'YZX';
     this.root.rotation.set(0, turn, pitch);
     this.root.updateMatrixWorld(true);
+  }
+}
+
+/**
+ * A part that drives itself off in its flight's data (a `drive` move on the part's own node) can
+ * be driven by hand too, if it is built as the contract above asks (facing +X, rolling about its
+ * own Z, its wheels `<node>_Wheel_n` and `<node>_SteerWheel_n`): it is marked a vehicle here
+ * from that move's figures, unless its model has marked it already.
+ */
+export function markDriven(root: THREE.Object3D, parts: Part[]): void {
+  for (const part of parts) {
+    const drive = part.moves?.find((m) => m.kind === 'drive' && !m.node);
+    if (drive?.kind !== 'drive') continue;
+    const contract =
+      drive.forward[0] === 1 && drive.axle === 'z' && drive.wheels === `${part.node}_Wheel` && drive.steered === `${part.node}_SteerWheel`;
+    const node = contract ? root.getObjectByName(part.node) : undefined;
+    if (!node) continue;
+    const u = node.userData;
+    u.vehicle ??= part.name;
+    u.wheelbase ??= drive.wheelbase;
+    u.wheel_radius ??= drive.wheelRadius;
+    if (drive.turningCircle) u.turning_circle ??= drive.turningCircle;
   }
 }

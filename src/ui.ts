@@ -36,7 +36,7 @@ export interface UiHandlers {
   inset(pixels: number): void;
 }
 
-const CAMERA_LABEL: Record<CameraMode, string> = { orbit: 'Camera · orbit', fly: 'Camera · free fly' };
+const CAMERA_LABEL: Record<CameraMode, string> = { orbit: 'Camera · orbit', fly: 'Camera · free fly', chase: 'Camera · chase' };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -182,12 +182,26 @@ export class Ui {
             <div><dt>drag</dt><dd>look round</dd></div>
             <div><dt>scroll</dt><dd>forward · back</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>camera: orbit</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>camera: chase</dd></div>
             ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
             <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
+            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+          </dl>
+        </div>
+        <div class="legend-body chasing">
+          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>orbit · tilt</em></div>
+          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
+          <dl>
+            <div><dt>drag</dt><dd>turn round it</dd></div>
+            <div><dt>scroll</dt><dd>closer · further</dd></div>
+            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>camera: orbit</dd></div>
+            <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
+            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -498,6 +512,7 @@ export class Ui {
     this.cameraMode = mode;
     prefs.set('fly', mode === 'fly');
     this.root.classList.toggle('flying', mode === 'fly');
+    this.root.classList.toggle('chasing', mode === 'chase');
     const b = this.root.querySelector('[data-camera]');
     if (b) b.textContent = CAMERA_LABEL[mode];
     this.on.camera(mode);

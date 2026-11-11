@@ -74,7 +74,9 @@ const RESORT = 5;
 /** A plant in a thicket closer than this (woody cover) gives way to the land's canopy. */
 const THICKET = 0.55;
 /** Where a plant in a thicket is gone, metres from the eye: under the land's canopy by then. */
-const UNDER: [number, number] = [46, 60];
+const UNDER: [number, number] = [52, 60];
+/** Within this far of the eye a plant casts a shadow, metres: the walker's shadow map is 52 m across (stage.ts). */
+const SHADOWED = 18;
 /** Variants built of each species. */
 const VARIANTS = 3;
 
@@ -232,7 +234,7 @@ function buildShrub(form: Extract<Form, { kind: 'shrub' }>, seed: number, near: 
   const r = sequence(seed);
   const b = new Builder();
   const bark = new THREE.Color(0.55, 0.5, 0.45);
-  const masses = Math.round(form.masses[0] + r() * (form.masses[1] - form.masses[0]));
+  const masses = Math.round((form.masses[0] + r() * (form.masses[1] - form.masses[0])) * (near ? 1 : 0.6));
   // masses on a dome: the plant is 1 m tall and `spread` wide before the instance scales it
   const centres: { c: THREE.Vector3; s: number; shade: number }[] = [];
   for (let i = 0; i < masses; i++) {
@@ -259,15 +261,15 @@ function buildShrub(form: Extract<Form, { kind: 'shrub' }>, seed: number, near: 
   for (const { c, s, shade } of centres) {
     const cards = near ? Math.round(18 * (s / 0.3) ** 2) : 0;
     if (!near) {
-      // far: the mass as a low-poly lump, its leaves drawn on it by the shader
-      const lump = new THREE.IcosahedronGeometry(s * 1.2, 0);
+      // far, and for its shadow: the mass as a low-poly lump, crumpled, its leaves drawn on it by the shader
+      const lump = new THREE.IcosahedronGeometry((s + card * 0.5) * 1.05, 0); // as far out as the near form's cards reach
       const pos = lump.getAttribute('position');
       const first = b.positions.length / 3;
       const p = new THREE.Vector3();
       for (let i = 0; i < pos.count; i++) {
         p.fromBufferAttribute(pos, i);
         const n = p.clone().normalize();
-        p.multiplyScalar(0.85 + 0.3 * hash2(Math.round(p.x * 97), Math.round(p.z * 89 + p.y * 53), seed));
+        p.multiplyScalar(0.72 + 0.5 * hash2(Math.round(p.x * 97), Math.round(p.z * 89 + p.y * 53), seed));
         const outward = c.clone().sub(middle).normalize();
         const normal = n.clone().lerp(outward, 0.3).normalize();
         b.vertex(p.add(c), normal, new THREE.Color(shade, shade, shade), 0, 0, 0.8, 4);
@@ -333,16 +335,16 @@ function buildPalm(form: Extract<Form, { kind: 'palm' }>, seed: number, near: bo
   const width = form.trunk[0] + r() * (form.trunk[1] - form.trunk[0]);
   const trunk = new THREE.Color(0.85, 0.82, 0.76);
   const boots = new THREE.Color(1.15, 0.95, 0.7);
-  const rings = near ? 6 : 2;
+  const rings = near ? 6 : 1;
   for (let i = 0; i < rings; i++) {
     const a = crownAt.clone().multiplyScalar(i / rings),
       c = crownAt.clone().multiplyScalar((i + 1) / rings);
     // a slight swelling at the foot; the leaf bases (boots) make the upper trunk rougher and browner
     const ra = width * (i === 0 ? 1.25 : 1),
       rc = width;
-    b.stick(a, c, ra, rc, i >= rings - 2 ? boots : trunk, (i / rings) ** 2 * 0.3, ((i + 1) / rings) ** 2 * 0.3, near ? 7 : 5);
+    b.stick(a, c, ra, rc, i >= rings - 2 ? boots : trunk, (i / rings) ** 2 * 0.3, ((i + 1) / rings) ** 2 * 0.3, near ? 7 : 4);
   }
-  const fronds = near ? form.fronds : Math.round(form.fronds * 0.55);
+  const fronds = near ? form.fronds : Math.round(form.fronds * 0.45);
   const green = new THREE.Color(1, 1, 1);
   const brown = new THREE.Color(3.2, 2.3, 2.4);
   for (let i = 0; i < fronds; i++) {
@@ -366,10 +368,10 @@ function buildPalm(form: Extract<Form, { kind: 'palm' }>, seed: number, near: bo
       facing,
       along,
       form.blade * (0.8 + r() * 0.35),
-      2.2 + r() * 0.6,
-      dead ? 0.4 : 1.1 + r() * 0.4,
-      near ? 10 : 6,
-      near ? 3 : 2,
+      2.6 + r() * 0.7,
+      dead ? 0.4 : 0.6 + r() * 0.5,
+      near ? 10 : 4,
+      near ? 3 : 1,
       dead ? brown.clone().multiplyScalar(0.8 + r() * 0.3) : green.clone().multiplyScalar(0.85 + r() * 0.3),
       1,
     );
@@ -427,8 +429,9 @@ function buildTuft(form: Extract<Form, { kind: 'tuft' }>, seed: number): THREE.B
   return b.geometry();
 }
 
-function build(species: Species, seed: number, near: boolean): THREE.BufferGeometry {
+function build(species: Species, seed: number, form: 'near' | 'far' | 'cast'): THREE.BufferGeometry {
   const f = species.form;
+  const near = form === 'near';
   if (f.kind === 'fan') return buildFan(f, seed, near);
   if (f.kind === 'shrub') return buildShrub(f, seed, near);
   if (f.kind === 'palm') return buildPalm(f, seed, near);
@@ -462,7 +465,12 @@ const PLANT_VERTEX = /* glsl */ `
 const PLANT_SWAY = /* glsl */ `
   vec3 plantRoot = vec3(instanceMatrix[3]);
   float plantFar = distance(uEye, plantRoot);
-  vFade = smoothstep(aBand.x, aBand.y, plantFar) * (1.0 - smoothstep(aBand.z, aBand.w, plantFar));
+  // a band's end given negative is a reach: there the plant shrinks away to its root rather than dissolving, so it
+  // never hangs in the distance as a ghost, and a thicket's plants sink into the land's canopy as it rises
+  float plantIn = smoothstep(aBand.x, aBand.y, plantFar);
+  float plantOut = 1.0 - smoothstep(abs(aBand.z), abs(aBand.w), plantFar);
+  vFade = aBand.w < 0.0 ? plantIn : plantIn * plantOut;
+  float plantSize = aBand.w < 0.0 ? plantOut : 1.0;
   vCard = uv;
   vShape = aShape;
   // the breeze: a slow lean and a quicker flutter, out of step plant to plant; none at the root
@@ -470,8 +478,6 @@ const PLANT_SWAY = /* glsl */ `
   float gust = 0.6 + 0.4 * sin(uTime * 0.7 + phase * 0.3);
   float flutter = sin(uTime * 2.9 + phase + position.y * 3.0) * 0.35 + sin(uTime * 4.7 + phase * 1.7) * 0.15;
   vec3 sway = (uWind * (gust + flutter) + vec3(0.0, -0.25 * length(uWind) * flutter, 0.0)) * uSway * aFlex * aFlex * (1.0 - smoothstep(25.0, 60.0, plantFar));
-  // a plant going out of reach also sinks a little, so a tuft shrinks into the ground as it dissolves
-  float sink = 1.0 - vFade;
 `;
 
 const PLANT_FRAGMENT = /* glsl */ `
@@ -488,13 +494,13 @@ const PLANT_FRAGMENT = /* glsl */ `
     if (vShape < 0.5) return 1.0;
     if (vShape > 3.5) {
       // a mass of leaves seen from further off: solid in the middle, broken into leaf clusters toward its outline
-      float n = noise(vPlant * 9.0) * 0.6 + noise(vPlant * 23.0) * 0.4;
-      tint = 0.55 + 0.75 * n;
       #ifdef PLANT_RIM
+        float n = noise(vPlant * 9.0) * 0.6 + noise(vPlant * 23.0) * 0.4;
+        tint = 0.55 + 0.75 * n;
         float rim = 1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition)));
         return step(rim * rim * 0.95, n);
       #else
-        return step(0.3, n);
+        return 1.0;   // its shadow is the mass, whole: a shadow map at a few millimetres a texel cannot afford a fragment's noise
       #endif
     }
     if (vShape < 1.5) {
@@ -537,16 +543,24 @@ const PLANT_FRAGMENT = /* glsl */ `
     float d = (0.5 - abs(vCard.x - 0.5)) - 0.5 * vCard.y * vCard.y;
     return clamp(d / max(fwidth(vCard.x), 1e-4) + 0.5, 0.0, 1.0);
   }
-  // a fixed pattern of thresholds over the screen: where a plant is half faded, half its pixels are drawn
+  // a threshold for each pixel, with no pattern to it: where a plant is half faded, half its pixels are drawn
   float plantDither() {
-    return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+    vec2 q = fract(gl_FragCoord.xy * vec2(0.1031, 0.1030));
+    q += dot(q, q.yx + 33.33);
+    return fract((q.x + q.y) * q.x);
   }
 `;
 
-function plantMaterial(species: Species, shared: Shared, depth: boolean): THREE.Material {
+/**
+ * A species' material: `drawn` for the view; `depth` for a shadow, outline and fade as drawn; `cast` for the far form
+ * casting near the eye, which is never faded and, being a mass of leaf, needs no outline: a shader without `discard`,
+ * which the GPU can rasterise as fast as it likes.
+ */
+function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth' | 'cast'): THREE.Material {
+  const depth = use !== 'drawn';
   const form = species.form;
   const leaf = form.kind === 'shrub' ? new THREE.Vector4(...form.leaf) : new THREE.Vector4(6, 0.2, 0.08, 0.7);
-  const segments = form.kind === 'fan' ? form.segments : form.kind === 'palm' ? 36 : 1;
+  const segments = form.kind === 'fan' ? form.segments : form.kind === 'palm' ? 22 : 1;
   const uniforms = {
     uEye: shared.eye,
     uWind: shared.wind,
@@ -570,7 +584,7 @@ function plantMaterial(species: Species, shared: Shared, depth: boolean): THREE.
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${PLANT_VERTEX}`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>\n${PLANT_SWAY}\ntransformed.y -= sink * 0.6 * max(transformed.y, 0.0);`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\n${PLANT_SWAY}\ntransformed *= plantSize;`)
       .replace(
         '#include <project_vertex>',
         /* glsl */ `#include <project_vertex>
@@ -589,10 +603,14 @@ function plantMaterial(species: Species, shared: Shared, depth: boolean): THREE.
         float plantTint;
         float plantCover = plantOutline(plantTint);
         ${
-          depth
-            ? 'if (plantCover < 0.5 || plantDither() >= vFade) discard;'
-            : // drawn: outline and fade are coverage, so a plant half faded covers half the samples of each pixel, not every other pixel
-              'diffuseColor.a = plantCover * vFade;\n if (diffuseColor.a < 0.02) discard;\n diffuseColor.rgb *= plantTint;'
+          use === 'cast'
+            ? form.kind === 'shrub'
+              ? ''
+              : 'if (plantCover < 0.5) discard;'
+            : depth
+              ? 'if (plantCover < 0.5 || plantDither() >= vFade) discard;'
+              : // drawn: the outline's soft edge is coverage (smooth leaf edges); the fade is a screen door of unordered holes
+                'if (plantCover < 0.02 || plantDither() >= vFade) discard;\n diffuseColor.a = plantCover;\n diffuseColor.rgb *= plantTint;'
         }`,
       );
     if (!depth)
@@ -601,10 +619,17 @@ function plantMaterial(species: Species, shared: Shared, depth: boolean): THREE.
         // lit as the plant's outside, from either face: a leaf seen from behind is still the shrub's surface
         /* glsl */ `#include <normal_fragment_begin>
         normal = normalize(vNormal);
+        // a leaf whose borrowed normal faces away from the eye would be lit at a grazing angle and mirror the sky:
+        // turn it just far enough toward the eye that it is lit as foliage, not as glass
+        {
+          vec3 toEye = normalize(vViewPosition);
+          float facing = dot(normal, toEye);
+          if (facing < 0.2) normal = normalize(normal + toEye * (0.2 - facing));
+        }
         if (vShape > 3.5) normal = normalize(normal + 0.9 * vec3(noise(vPlant * 7.0 + 1.0) - 0.5, noise(vPlant * 7.0 + 2.0) - 0.5, noise(vPlant * 7.0 + 3.0) - 0.5));`,
       );
   };
-  material.customProgramCacheKey = () => `plant:${depth}`;
+  material.customProgramCacheKey = () => `plant:${use}:${use === 'cast' && form.kind === 'shrub'}`;
   return material;
 }
 
@@ -633,9 +658,11 @@ interface Drawn {
   species: Species;
   near: THREE.InstancedMesh[];
   far: THREE.InstancedMesh[];
+  /** The plants near enough to cast a shadow the map can hold, in their far form: drawn into the shadow map only. */
+  shadow: THREE.InstancedMesh[];
 }
 
-const CAPACITY = { near: 6000, far: 20000 };
+const CAPACITY = { near: 6000, far: 12000 };
 
 export class Flora {
   readonly group = new THREE.Group();
@@ -658,33 +685,51 @@ export class Flora {
       eye: { value: new THREE.Vector3() },
       wind: { value: new THREE.Vector3(Math.sin(w.toward), 0, -Math.cos(w.toward)).multiplyScalar(0.05 * w.strength) },
     };
+    this.group.userData.flora = this; // for the debug handle
     for (const s of spec.species) this.reach[s.layer] = Math.max(this.reach[s.layer], s.reach);
+    // what a shadow caster is drawn with in the view: nothing (every vertex put outside the frame), in either look
+    const hidden = new THREE.MeshBasicMaterial({ name: 'plant-shadow', colorWrite: false, depthWrite: false });
+    hidden.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <fog_vertex>',
+        '#include <fog_vertex>\ngl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
+      );
+    };
+    hidden.customProgramCacheKey = () => 'plant-shadow';
     spec.species.forEach((species, index) => {
-      const material = plantMaterial(species, this.shared, false);
-      const depth = plantMaterial(species, this.shared, true);
-      const mesh = (geometry: THREE.BufferGeometry, capacity: number) => {
+      const material = plantMaterial(species, this.shared, 'drawn');
+      const depth = plantMaterial(species, this.shared, 'depth');
+      const cast = plantMaterial(species, this.shared, 'cast');
+      // Shadows are cast by each plant's far form, and only within SHADOWED of the eye: the shadow map covers the
+      // ground round the walker or the model (stage.ts) at a few millimetres a texel, and a thicket's leaf cards
+      // drawn into it fragment by fragment cost more than the whole frame. A grass tuft casts its own.
+      const mesh = (geometry: THREE.BufferGeometry, capacity: number, use: 'drawn' | 'cast' | 'both') => {
         geometry.setAttribute('aBand', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
-        const m = new THREE.InstancedMesh(geometry, material, capacity);
+        const m = new THREE.InstancedMesh(geometry, use === 'cast' ? hidden : material, capacity);
         m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
         m.count = 0;
         m.visible = false;
         m.frustumCulled = false;
-        m.castShadow = true;
-        m.receiveShadow = true;
-        m.customDepthMaterial = depth;
+        m.castShadow = use !== 'drawn';
+        m.receiveShadow = use !== 'cast';
+        m.customDepthMaterial = use === 'cast' ? cast : depth;
         m.raycast = () => {}; // plants are not solid and not picked
+        onlyAsItself(m);
         this.group.add(m);
         return m;
       };
       const near: THREE.InstancedMesh[] = [],
-        far: THREE.InstancedMesh[] = [];
+        far: THREE.InstancedMesh[] = [],
+        shadow: THREE.InstancedMesh[] = [];
       const tuft = species.form.kind === 'tuft';
       for (let v = 0; v < VARIANTS; v++) {
         const seed = 1000 * (index + 1) + 17 * v;
-        near.push(mesh(build(species, seed, true), CAPACITY.near));
-        if (!tuft) far.push(mesh(build(species, seed, false), CAPACITY.far));
+        near.push(mesh(build(species, seed, 'near'), CAPACITY.near, tuft ? 'both' : 'drawn'));
+        if (tuft) continue;
+        far.push(mesh(build(species, seed, 'far'), CAPACITY.far, 'drawn'));
+        shadow.push(mesh(build(species, seed, 'cast'), CAPACITY.near, 'cast'));
       }
-      this.drawn.push({ species, near, far });
+      this.drawn.push({ species, near, far, shadow });
     });
   }
 
@@ -782,7 +827,7 @@ export class Flora {
    */
   private arrange(ex: number, ey: number, ez: number): void {
     this.sorted.set(ex, ey, ez);
-    const lists = this.drawn.map((d) => ({ near: d.near.map(() => 0), far: d.far.map(() => 0) }));
+    const lists = this.drawn.map((d) => ({ near: d.near.map(() => 0), far: d.far.map(() => 0), shadow: d.shadow.map(() => 0) }));
     const put = (mesh: THREE.InstancedMesh, at: number, plant: Plant, band: [number, number, number, number]) => {
       (mesh.instanceMatrix.array as Float32Array).set(plant.matrix, at * 16);
       (mesh.instanceColor!.array as Float32Array).set(plant.colour, at * 3);
@@ -811,18 +856,20 @@ export class Flora {
             if (sp.form.kind === 'tuft') {
               if (this.drawnLook) continue; // in a drawing the grass is the ground's colour
               if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near)
-                put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, sp.near * 0.7, sp.near]);
+                put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, -sp.near * 0.7, -sp.near]);
               continue;
             }
-            const hand = sp.near - 6; // where the near form starts to give way to the far
-            const end: [number, number] = plant.thicket ? UNDER : [sp.reach * 0.85, sp.reach];
+            const hand = sp.near - 3; // where the near form starts to give way to the far: a short crossing, so few plants are half drawn at once
+            const end: [number, number] = plant.thicket ? UNDER : [sp.reach * 0.9, sp.reach];
             if (this.drawnLook) {
-              if (d < end[1] + RESORT && list.far[v]! < CAPACITY.far) put(drawn.far[v]!, list.far[v]!++, plant, [-1, 0, end[0], end[1]]);
+              if (d < end[1] + RESORT && list.far[v]! < CAPACITY.far) put(drawn.far[v]!, list.far[v]!++, plant, [-1, 0, -end[0], -end[1]]);
               continue;
             }
             if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near) put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, hand, sp.near]);
+            if (d < SHADOWED + RESORT && list.shadow[v]! < CAPACITY.near)
+              put(drawn.shadow[v]!, list.shadow[v]!++, plant, [-1, 0, 1e5, 1e5]);
             if (d > hand - RESORT && d < end[1] + RESORT && list.far[v]! < CAPACITY.far)
-              put(drawn.far[v]!, list.far[v]!++, plant, [hand, sp.near, end[0], end[1]]);
+              put(drawn.far[v]!, list.far[v]!++, plant, [hand, sp.near, -end[0], -end[1]]);
           }
         }
     }
@@ -830,13 +877,23 @@ export class Flora {
       for (const [meshes, counts] of [
         [d.near, lists[k]!.near],
         [d.far, lists[k]!.far],
+        [d.shadow, lists[k]!.shadow],
       ] as const)
         meshes.forEach((mesh, v) => {
-          mesh.count = counts[v]!;
-          mesh.visible = mesh.count > 0;
-          mesh.instanceMatrix.needsUpdate = true;
-          mesh.instanceColor!.needsUpdate = true;
-          mesh.geometry.getAttribute('aBand').needsUpdate = true;
+          const n = counts[v]!;
+          if (n === 0 && mesh.count === 0) return;
+          mesh.count = n;
+          mesh.visible = n > 0;
+          // send only what is used: a whole buffer is a megabyte, and there are dozens
+          for (const [attribute, size] of [
+            [mesh.instanceMatrix, 16],
+            [mesh.instanceColor!, 3],
+            [mesh.geometry.getAttribute('aBand') as THREE.InstancedBufferAttribute, 4],
+          ] as const) {
+            attribute.clearUpdateRanges();
+            attribute.addUpdateRange(0, Math.max(1, n) * size);
+            attribute.needsUpdate = true;
+          }
         });
     });
     // forget tiles far behind, so a long walk does not keep the whole site in memory
@@ -848,6 +905,33 @@ export class Flora {
           this.tiles.delete(key);
       }
   }
+}
+
+/**
+ * A mesh placed by its own shader is drawn only with its own material (or its look's twin of it):
+ * a pass that draws the whole scene with one material of its own (the outline's depth, overrideMaterial)
+ * would put every instance where its raw matrix says, full size, and never faded.
+ */
+export function onlyAsItself(mesh: THREE.InstancedMesh | THREE.Mesh): void {
+  let skipped: number | null = null;
+  mesh.onBeforeRender = (_renderer, _scene, _camera, geometry, material) => {
+    if (material === mesh.material) return;
+    const instanced = mesh as THREE.InstancedMesh;
+    if (instanced.isInstancedMesh) {
+      skipped = instanced.count;
+      instanced.count = 0;
+    } else {
+      skipped = (geometry as THREE.InstancedBufferGeometry).instanceCount;
+      (geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
+    }
+  };
+  mesh.onAfterRender = (_renderer, _scene, _camera, geometry) => {
+    if (skipped === null) return;
+    const instanced = mesh as THREE.InstancedMesh;
+    if (instanced.isInstancedMesh) instanced.count = skipped;
+    else (geometry as THREE.InstancedBufferGeometry).instanceCount = skipped;
+    skipped = null;
+  };
 }
 
 /** A piecewise-linear curve through [x, y] points, read at x. */

@@ -98,17 +98,18 @@ type SkyUniforms = Record<'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow'
 /**
  * The sky's material. `discs`: with the Sun's disc and the Moon in it, as the eye sees it; without,
  * it is the light the sky sheds, for the reflections (where the Sun is a patch of its own).
+ * `gain` scales what it draws (the reflections are baked at a day's brightness: see `Reflections`).
  */
-function skyMaterial(uniforms: SkyUniforms, h: Heavens, discs: boolean): THREE.ShaderMaterial {
+function skyMaterial(uniforms: SkyUniforms, h: Heavens, discs: boolean, gain: THREE.IUniform<number> = { value: 1 }): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
-    uniforms: { ...uniforms, ...h.moon },
+    uniforms: { ...uniforms, ...h.moon, uGain: gain },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
-      uniform float uSunSize;
+      uniform float uSunSize, uGain;
       ${SKY}
       void main() {
         vec3 d = normalize(vDir);
@@ -121,9 +122,117 @@ function skyMaterial(uniforms: SkyUniforms, h: Heavens, discs: boolean): THREE.S
         if (dot(d, uSun) > 0.0) col += vec3(40.0, 36.0, 30.0) * uSunLight * (1.0 - smoothstep(uSunSize - edge, uSunSize + edge, off));`
             : ''
         }
-        gl_FragColor = vec4(col, 1.0);
+        gl_FragColor = vec4(col * uGain, 1.0);
       }`,
   });
+}
+
+/**
+ * The reflections a ground setting's light makes, changing as smoothly as the light does.
+ *
+ * Baking them (a PMREM of the sky) costs too much to do every frame, and a bake that lands all at
+ * once is seen: with the clock run fast the whole scene's reflected light jumped every few
+ * seconds. So the two things that change are kept apart. How bright the sky is changes every
+ * frame, through `environmentIntensity`: each bake is made at a day's brightness (the sky divided
+ * by its own level) and scaled back down as it is shown. What the sky looks like (its colours,
+ * where the Sun is in it) changes only with a bake, and each new one is faded in from what was
+ * shown, over about as long as bakes are coming apart, so the light never steps.
+ */
+class Reflections {
+  private readonly renderer: THREE.WebGLRenderer;
+  private shown: THREE.WebGLCubeRenderTarget | null = null;
+  private from: THREE.WebGLCubeRenderTarget | null = null;
+  private to: THREE.WebGLCubeRenderTarget | null = null;
+  private began = 0;
+  private over = 0;
+  private fading = false;
+  // A PMREM is a cube map whose mip levels are the sky blurred for rougher and rougher surfaces.
+  // Two of them are mixed level by level and face by face, texel onto texel, so the mix is one too.
+  private readonly mix = new THREE.ShaderMaterial({
+    uniforms: { uFrom: { value: null }, uTo: { value: null }, uK: { value: 0 }, uLod: { value: 0 } },
+    side: THREE.BackSide,
+    blending: THREE.NoBlending,
+    depthTest: false,
+    depthWrite: false,
+    vertexShader: THREE.ShaderChunk.cube_vert,
+    fragmentShader: /* glsl */ `
+      varying vec3 vWorldDirection;
+      uniform samplerCube uFrom, uTo; uniform float uK, uLod;
+      void main() {
+        vec3 d = normalize(vWorldDirection);
+        gl_FragColor = mix(textureLod(uFrom, d, uLod), textureLod(uTo, d, uLod), uK);
+      }`,
+  });
+  private readonly box = new THREE.Mesh(new THREE.BoxGeometry(), this.mix);
+  private readonly lens = new THREE.CubeCamera(0.1, 10, new THREE.WebGLCubeRenderTarget(1));
+
+  constructor(renderer: THREE.WebGLRenderer) {
+    this.renderer = renderer;
+  }
+
+  /** What the scene reflects: always the same texture, so materials never notice a bake. */
+  get texture(): THREE.Texture {
+    return this.shown!.texture;
+  }
+
+  /** A new bake, faded in from what is shown over `ms` milliseconds (0: at once). Takes ownership of it. */
+  take(bake: THREE.WebGLCubeRenderTarget, ms: number): void {
+    if (!this.shown) {
+      this.shown = like(bake);
+      this.from = like(bake);
+    } else this.draw(this.from!, this.shown, this.shown, 0); // start from wherever the last fade had got to
+    this.to?.dispose();
+    this.to = bake;
+    this.began = performance.now();
+    this.over = ms;
+    this.fading = true;
+    this.step(this.began);
+  }
+
+  /** Carry the fade on to `now`. True if what is reflected changed. */
+  step(now: number): boolean {
+    if (!this.fading) return false;
+    const k = this.over > 0 ? Math.min(1, (now - this.began) / this.over) : 1;
+    this.draw(this.shown!, this.from!, this.to!, k);
+    if (k >= 1) this.fading = false;
+    return true;
+  }
+
+  private draw(into: THREE.WebGLCubeRenderTarget, a: THREE.WebGLCubeRenderTarget, b: THREE.WebGLCubeRenderTarget, k: number): void {
+    const u = this.mix.uniforms;
+    u.uFrom!.value = a.texture;
+    u.uTo!.value = b.texture;
+    u.uK!.value = k;
+    const was = this.renderer.getRenderTarget();
+    this.lens.renderTarget = into;
+    into.texture.mipmaps.forEach((_, lod) => {
+      // (the renderer takes the target's viewport as it is, not scaled to the level: as PMREMGenerator does)
+      into.viewport.set(0, 0, into.width >> lod, into.width >> lod);
+      u.uLod!.value = lod;
+      this.lens.activeMipmapLevel = lod;
+      this.lens.update(this.renderer, this.box);
+    });
+    into.viewport.set(0, 0, into.width, into.height);
+    this.renderer.setRenderTarget(was);
+  }
+}
+
+/** An empty PMREM of the same size and levels as `pmrem`, as PMREMGenerator makes them. */
+function like(pmrem: THREE.WebGLCubeRenderTarget): THREE.WebGLCubeRenderTarget {
+  const target = new THREE.WebGLCubeRenderTarget(pmrem.width, {
+    minFilter: THREE.LinearMipmapLinearFilter,
+    generateMipmaps: false,
+    type: THREE.HalfFloatType,
+    colorSpace: THREE.LinearSRGBColorSpace,
+    depthBuffer: false,
+  });
+  const levels = pmrem.texture.mipmaps.length;
+  // only the levels' sizes: PMREMGenerator allocates them so, with no data
+  const sizes = target.texture.mipmaps as unknown as { width: number; height: number }[];
+  for (let lod = 0; lod < levels; lod++) sizes.push({ width: pmrem.width >> lod, height: pmrem.width >> lod });
+  target.texture.name = 'PMREM';
+  (target.texture as THREE.Texture & { isPMREMTexture: boolean }).isPMREMTexture = true;
+  return target;
 }
 
 class DomeBackdrop implements Backdrop {
@@ -161,18 +270,27 @@ const SKY_STEP = 4;
  * With the clock run fast the light moves every frame. Drawing the shadow map and baking the
  * reflections are the two things that cost, so each is done only when the light has moved this
  * far (degrees) and no more often than this (milliseconds of ours); whatever is owed when the
- * clock stops is paid then. `unhurried` is for a view nobody is steering (the idle show): the
- * light is allowed to move further between each, which nobody watching a whole day pass can
- * see, and the frames between come out even.
+ * clock stops is paid then. Shadows are drawn again whenever the light has moved a twentieth of a
+ * degree, every frame if need be: a redraw costs a millisecond or so, and shadows redrawn a few
+ * times a second were seen stepping as a fast dusk drew them out. A bake is never seen landing
+ * (Reflections fades each in), so `unhurried`, for a view nobody is steering (the idle show),
+ * bakes less often, which keeps the frames between even.
  */
-const BRISK = { shadowStep: 0.05, bakeStep: 1, shadowEvery: 50, bakeEvery: 500 };
-const UNHURRIED = { shadowStep: 0.3, bakeStep: 4, shadowEvery: 400, bakeEvery: 5000 };
+const BRISK = { shadowStep: 0.05, bakeStep: 1, shadowEvery: 0, bakeEvery: 500 };
+const UNHURRIED = { shadowStep: 0.05, bakeStep: 4, shadowEvery: 0, bakeEvery: 3000 };
 let cadence = BRISK;
 export function unhurried(on: boolean): void {
   cadence = on ? UNHURRIED : BRISK;
 }
 
 const colour = (target: THREE.Color, rgb: RGB): THREE.Color => target.setRGB(rgb[0], rgb[1], rgb[2]);
+
+/** How strongly a ground setting's sky is reflected by day. */
+const ENVIRONMENT = 0.55;
+/** How far the sky's colours (at a day's brightness) may drift before the reflections are baked again: the largest change in one, of 1. */
+const LOOK_STEP = 0.04;
+const apart = (a: number[], b: number[]): number =>
+  a.length === b.length ? a.reduce((most, v, i) => Math.max(most, Math.abs(v - b[i]!) / Math.max(1, Math.abs(v))), 0) : Infinity;
 
 /**
  * Cape Canaveral's Missile Row from Launch Complex 5, at any hour. For Freedom 7 (14:34:13 UTC,
@@ -198,7 +316,8 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     uSunLight: { value: new THREE.Color() },
   };
   const envScene = new THREE.Scene();
-  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(uniforms, h, false)));
+  const envGain = { value: 1 };
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(uniforms, h, false, envGain)));
   // Below the horizon there is sunlit sand and concrete, not more sky: without it bare metal
   // reflects blue from every side and reads as frosted glass.
   const ground = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
@@ -208,10 +327,12 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   cape ??= buildCape(renderer, GROUND_Y);
   const fog = new THREE.FogExp2(0, 0.00042);
   const gen = new THREE.PMREMGenerator(renderer);
-  let baked: THREE.WebGLRenderTarget | null = null;
+  const reflections = new Reflections(renderer);
 
   // what the screen last showed, to tell when it needs showing again
   let shownAt = Number.NaN;
+  let askedAt = Number.NaN;
+  let askedMs = 0;
   let bakedAt = Number.NEGATIVE_INFINITY;
   let stale = false;
   let shadowsAt = Number.NEGATIVE_INFINITY;
@@ -219,12 +340,13 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   let source = '';
   const shadowed = new THREE.Vector3();
   const bakedSun = new THREE.Vector3();
-  let bakedAmbient = 0;
+  /** The colours of the last bake at a day's brightness: a bake is owed when they have changed by more than can be seen. */
+  let bakedLook: number[] = [];
 
   const setting: Setting = {
     backdrop: new DomeBackdrop(skyMaterial(uniforms, h, true), h.stars),
     environment: null as unknown as THREE.Texture, // baked below, before anyone sees it
-    environmentIntensity: 0.55,
+    environmentIntensity: ENVIRONMENT,
     sunDir: new THREE.Vector3(0, 1, 0),
     sunColor: new THREE.Color(),
     sunIntensity: 0,
@@ -235,7 +357,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     exposure: 0.8,
     fog,
     scenery: cape.scenery,
-    reach: 1400,
+    reach: 2000, // the beach is 1.4 to 1.8 km east of pad 5: walkable
     horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
     tick: cape.tick,
     simplify: cape.simplify,
@@ -243,21 +365,25 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     groundAt: cape.groundAt,
   };
 
-  const bake = (ambient: number): void => {
-    const next = gen.fromScene(envScene, 0, 0.1, 200);
-    baked?.dispose();
-    baked = next;
-    setting.environment = next.texture;
+  /** `fade`: milliseconds to fade the bake in over; 0 puts it in at once. */
+  const bake = (look: number[], fade: number): void => {
+    reflections.take(gen.fromScene(envScene, 0, 0.1, 200) as THREE.WebGLCubeRenderTarget, fade);
+    setting.environment = reflections.texture;
     bakedSun.copy(h.sunDir);
-    bakedAmbient = ambient;
+    bakedLook = look;
     bakedAt = performance.now();
     stale = false;
   };
 
   setting.at = (jdUT) => {
     const now = performance.now();
+    // a jump (the clock put somewhere, not run there) is shown at once, not faded to
+    const jumped = Math.abs(jdUT - askedAt) * 86_400 > SKY_STEP + 4000 * Math.max(0.1, (now - askedMs) / 1000);
+    askedAt = jdUT;
+    askedMs = now;
+    const fading = reflections.step(now);
     const due = (stale && now - bakedAt >= cadence.bakeEvery) || (shadowsOwed && now - shadowsAt >= cadence.shadowEvery);
-    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due) return null;
+    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped) return fading ? { shadows: false } : null;
     if (jdUT !== shownAt) {
       shownAt = jdUT;
       h.at(skyFrom(site, jdUT));
@@ -287,16 +413,22 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
       shadowsOwed = false;
     }
 
+    // The reflections: everything they see is baked at a day's brightness (divided by the sky's
+    // level) and brought back down by environmentIntensity, every frame (see Reflections).
+    const day = 1 / light.ambient;
+    setting.environmentIntensity = ENVIRONMENT * light.ambient;
+    envGain.value = day;
     // the ground the reflections see is lit by that Sun and that sky
     const lit = (0.75 * light.light.intensity * Math.max(setting.sunDir.y, 0)) / (3.9 * Math.sin(50 * DEG)) + 0.25 * light.ambient;
-    ground.color.setRGB(0.42 * lit + 0.0005, 0.39 * lit + 0.0008, 0.33 * lit + 0.0018);
-    colour(patch.material.color, [30 * light.sun[0], 27 * light.sun[1], 22 * light.sun[2]]);
+    ground.color.setRGB((0.42 * lit + 0.0005) * day, (0.39 * lit + 0.0008) * day, (0.33 * lit + 0.0018) * day);
+    colour(patch.material.color, [30 * light.sun[0] * day, 27 * light.sun[1] * day, 22 * light.sun[2] * day]);
     patch.position.copy(h.sunDir).multiplyScalar(46);
-    stale ||=
-      light.light.from !== source ||
-      h.sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG ||
-      Math.abs(light.ambient - bakedAmbient) > 0.08 * Math.max(light.ambient, bakedAmbient);
-    if (!baked || (stale && now - bakedAt >= cadence.bakeEvery)) bake(light.ambient);
+    const look = [...light.zenith, ...light.horizon, ...light.glow, ...light.sun, lit].map((v) => v * day);
+    stale ||= light.light.from !== source || h.sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG || apart(look, bakedLook) > LOOK_STEP;
+    const first = !setting.environment;
+    if (first || jumped) bake(look, 0);
+    // faded in over as long as bakes are coming apart, so one fade runs into the next
+    else if (stale && now - bakedAt >= cadence.bakeEvery) bake(look, Math.min(6000, Math.max(250, now - bakedAt)));
     source = light.light.from;
     return { shadows };
   };

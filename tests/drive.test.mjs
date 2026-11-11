@@ -128,3 +128,41 @@ test('it stops short of what is in its way, stays on the ground under it, and no
   assert.ok(y > 0.3, `it has climbed: ${y}`);
   assert.ok(Math.abs(hill.root.rotation.z - Math.atan(0.1)) < 0.02, `nose up by the slope: ${hill.root.rotation.z}`);
 });
+
+test('a part its flight drives off is marked a vehicle from its drive, if it is built to the contract; a chase view clears it', async () => {
+  const { markDriven } = await import('../src/viewer/drive.ts');
+  const { root } = truck();
+  root.userData = {};
+  const drive = {
+    path: [[9, 0]],
+    pivot: [0, 0.4, 0],
+    forward: [1, 0],
+    wheelRadius: 0.4,
+    wheelbase: 3.5,
+    turningCircle: 14,
+    wheels: 'Truck_Wheel',
+    steered: 'Truck_SteerWheel',
+    axle: 'z',
+  };
+  const part = (d) => ({
+    node: 'Truck',
+    name: 'Tow truck',
+    summary: '',
+    detail: '',
+    explode: [0, 0, 0],
+    order: 0,
+    moves: [{ kind: 'drive', from: 0, to: 1, ...d }],
+  });
+  markDriven(root.parent, [part({ ...drive, axle: 'x' })]);
+  assert.equal(root.userData.vehicle, undefined, 'not to the contract: not driven by hand');
+  markDriven(root.parent, [part(drive)]);
+  assert.deepEqual(
+    [root.userData.vehicle, root.userData.wheelbase, root.userData.wheel_radius, root.userData.turning_circle],
+    ['Tow truck', 3.5, 0.4, 14],
+  );
+  const vehicle = new Vehicle(root);
+  assert.ok(Math.abs(vehicle.chassis.lock - lockFor(3.5, 14)) < 1e-9);
+  const eyes = vehicle.hips(new THREE.Vector3()).add(new THREE.Vector3(0, 0.7, 0));
+  const { back, up } = vehicle.chase(eyes);
+  assert.ok(back > 2.2 + 1.15 && up > 0, `behind its tail and above: ${back}, ${up}`);
+});

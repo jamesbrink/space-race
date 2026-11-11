@@ -468,23 +468,31 @@ def annex(parts: Parts) -> None:
     # a lamp in each room, for the lit windows the place had before dawn (estimated: no night view of it is known)
     for room, u, v in (("ReadyRoom", u0 + 8.0, (v0 + v1) / 2), ("Kitchen", u1 - 8.0, (v0 + v1) / 2)):
         interiors.ceiling_light(parts, g, room, S(u, v, ANNEX_EAVE - 0.05), intensity=0.9, reach=7.0)
-    if interior():  # a wall across, a table and benches, lockers, a counter
-        dark, con, plank = parts(g, "interior"), parts(g, "console"), parts(g, "plank")
+    if interior():  # a wall across; a table and benches, lockers, a desk; a kitchen. Of the period's kind, from no photograph
         um = (u0 + u1) / 2
         for a, b in ((v0 + ANNEX_WALL - 0.1, v0 + 12.0), (v0 + 15.5, v1 - ANNEX_WALL + 0.1)):
             box(block, S(um - 0.25, a, FLOOR - 0.2), S(um + 0.25, b, ANNEX_EAVE - 0.1))
         box(block, S(um - 0.25, v0 + 12.0, FLOOR + 7.0), S(um + 0.25, v0 + 15.5, ANNEX_EAVE - 0.1))
-        box(plank, S(u0 + 4.0, v0 + 9.0, FLOOR + 2.3), S(u0 + 12.0, v0 + 12.2, FLOOR + 2.5))
-        for u in (u0 + 4.4, u0 + 11.4):
-            box(dark, S(u, v0 + 9.4, FLOOR), S(u + 0.25, v0 + 11.8, FLOOR + 2.3))
-        for v in (v0 + 7.2, v0 + 12.9):
-            box(plank, S(u0 + 4.0, v, FLOOR + 1.3), S(u0 + 12.0, v + 1.0, FLOOR + 1.45))
-            for u in (u0 + 4.5, u0 + 11.3):
-                box(dark, S(u, v + 0.2, FLOOR), S(u + 0.2, v + 0.8, FLOOR + 1.3))
-        for k in range(6):
-            box(con, S(um - 1.8, v0 + 17.0 + k * 1.6, FLOOR), S(um - 0.26, v0 + 18.5 + k * 1.6, FLOOR + 6.0))
-        box(con, S(u1 - 3.2, v0 + 12.0, FLOOR), S(u1 - ANNEX_WALL, v0 + 22.0, FLOOR + 3.0))  # the kitchen's counter
-        box(parts(g, "trailer"), S(u1 - 3.4, v0 + 23.0, FLOOR), S(u1 - ANNEX_WALL - 0.1, v0 + 25.6, FLOOR + 5.4))  # and refrigerator
+        i0, i1 = u0 + ANNEX_WALL, u1 - ANNEX_WALL  # the inner faces of the end walls
+        # the ready room: a table with a bench each side, lockers against the wall across, a desk in the corner
+        interiors.table(parts, g, interiors.at(S(65.0, -50.4, FLOOR), 90.0), 8.0, 3.2)
+        interiors.bench(parts, g, interiors.at(S(65.0, -52.5, FLOOR), 90.0), 7.0)
+        interiors.bench(parts, g, interiors.at(S(65.0, -45.6, FLOOR), 270.0), 7.0)
+        interiors.telephone(parts, g, interiors.at(S(67.5, -48.5, FLOOR + 2.5), 90.0))
+        interiors.lockers(parts, g, interiors.at(S(um - 0.25 - 1.53, -38.0, FLOOR), 0.0), 5, width=1.6)
+        interiors.desk(parts, g, interiors.at(S(i0 + 2.55, -33.6, FLOOR), 180.0), phone=False)
+        interiors.chair(parts, g, interiors.at(S(i0 + 3.7, -33.4, FLOOR), 185.0))
+        interiors.board(parts, g, axes_local(S(i0 + 0.01, -46.0, FLOOR + 3.6), (0, 1, 0), (0, 0, 1)), 6.0, 3.0, seed=4)
+        interiors.clock(parts, g, axes(S(i0 + 0.02, -38.5, FLOOR + 8.0), (0, 1, 0), (1, 0, 0)))
+        # the kitchen: a counter and sink under the back window, a range, a refrigerator, a table
+        interiors.counter(parts, g, interiors.at(S(i1 - 2.02, -42.4, FLOOR), 0.0), 10.0, sink=4.0)
+        interiors.urn(parts, g, interiors.at(S(i1 - 1.0, -45.5, FLOOR + 3.0), 0.0))
+        interiors.stove(parts, g, interiors.at(S(i1 - 2.22, -49.2, FLOOR), 0.0))
+        interiors.refrigerator(parts, g, interiors.at(S(i1 - 2.43, -35.0, FLOOR), 0.0))
+        interiors.table(parts, g, interiors.at(S(80.0, -48.0, FLOOR), 90.0), 4.0, 3.0)
+        for u, v, a in ((78.9, -49.0, 90.0), (81.1, -49.0, 90.0), (78.9, -43.8, 270.0), (81.1, -43.8, 270.0)):
+            interiors.chair(parts, g, interiors.at(S(u, v, FLOOR), a))
+        interiors.clock(parts, g, axes(S(um + 0.27, -45.0, FLOOR + 8.0), (0, -1, 0), (1, 0, 0)))
 
 
 def paving(parts: Parts) -> None:
