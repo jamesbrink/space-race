@@ -1,5 +1,6 @@
 import type { Flight, ModelDef } from './types';
 import type { Clock } from './world/clock.ts';
+import { sliderAt } from './world/sequence.ts';
 
 /**
  * The idle show. Left alone, the page does not sit still: the day runs (quickly through the
@@ -73,6 +74,29 @@ export function programme(t: number, working: [number, number] | null, dark: boo
 
 /** How fast the clock runs during a programme. */
 export const pace = (p: Programme): number => PACE[p];
+
+/**
+ * How much of a slider may pass in one of our seconds while something is moving: the whole of
+ * a mast's fall or a cab's swing is seen happening, at any clock rate, instead of landing in a
+ * frame or two. Between events the clock runs at the programme's pace again.
+ */
+const WATCHABLE = 0.012;
+const SLOWEST = 4;
+
+/** The clock's rate at `t`: the programme's pace, slowed wherever the flight's hardware is moving fast. */
+export function watchablePace(flight: Flight, t: number, p: Programme): number {
+  let rate = PACE[p];
+  for (const m of flight.models) {
+    if (!m.sequence) continue;
+    // the fastest the slider moves from a little behind to well ahead (a few of our seconds at
+    // full pace), per second of the world: slowing starts before the motion does
+    let speed = 0;
+    for (let at = t - 60; at < t + rate * 4; at += 10)
+      speed = Math.max(speed, Math.abs(sliderAt(m.sequence, at + 10) - sliderAt(m.sequence, at)) / 10);
+    if (speed > 0) rate = Math.min(rate, Math.max(SLOWEST, WATCHABLE / speed));
+  }
+  return rate;
+}
 
 /** Everything worth seeing of one section, in the order it is best seen. */
 function sectionTour(m: ModelDef): Shot[] {
@@ -177,7 +201,10 @@ export class Demo {
     const from = this.working ? this.working[0] : -DAY / 2;
     if (clock.t > from + DAY) clock.seek(from);
     const doing = programme(clock.t, this.working, this.host.dark());
-    clock.setRate(pace(this.doing ?? doing));
+    // eased toward, so a change of pace is a slowing and a quickening, never a lurch
+    const want = watchablePace(this.flight, clock.t, this.doing ?? doing);
+    const k = Math.min(1, dt * 2.5);
+    clock.setRate(Math.exp(Math.log(clock.rate > 0 ? clock.rate : want) * (1 - k) + Math.log(want) * k));
     if (!clock.running) clock.play();
     // a section coming apart, or going together, does so over a few seconds
     if (this.apartNow !== this.apartGoal) {
