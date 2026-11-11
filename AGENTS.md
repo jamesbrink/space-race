@@ -78,6 +78,8 @@ docs/sources.md                       every source used or wanted, and what each
 src/
   types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
   main.ts  ui.ts  style.css           the page
+  actions.ts                          on foot: what can be done with the thing being looked at (from flight data)
+  wheel.ts                            a radial menu: a few choices round a centre
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
   viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
   viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
@@ -203,6 +205,17 @@ Nothing in `walk.ts` or its hooks in `stage.ts` knows any one flight: keep it th
   everywhere, and cannot be fallen through. Where that is below the models' surface (`GROUND_Y`)
   it is so only for the depth buffer's sake, so from down there a riser is measured from y = 0:
   the edge of a pad is not a kerb.
+- **What is in front of you can be acted on.** Each frame a ray from the eyes finds what is
+  within `REACH` (2.5 m); `Stage.targetOf` says what it is in the flight's terms (a `Target`:
+  model and part, a window pane, a place in the surroundings) and the reticle names it. E (a
+  finger held on the view, or the Act button) opens the wheel (`src/wheel.ts`: a radial menu that
+  knows nothing of what its choices mean) with the verbs `choices()` in `src/actions.ts` finds
+  for it: Info (a card of the part's text and facts), Look inside (a pane: the eyes lean in to
+  it), Become (another model with a `walker`), Inspect (leave the walk and orbit it), and
+  whatever the part's own `actions` are. **A mission adds a verb as data**: an `Action` on a
+  `Part` in `flight.ts` (today one kind, `slider`: run the part's model along its slider, so its
+  `moves` play). A new kind of action is a new member of `Action['do']` and one line in
+  `perform` (main.ts); never a test for a particular part.
 - **The orbiting camera's rules are off while walking** (`Stage.stepWalk`): no drift, bounds,
   picking or `fitDepth`. The walker sets its own near plane from the nearest surface (5 cm
   indoors, up to 30 cm in the open) and a wider lens, eased in and out over half a second

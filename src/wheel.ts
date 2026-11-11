@@ -45,6 +45,7 @@ export class Wheel {
   private onClose: () => void = () => {};
   /** The key that opened it also shuts it. */
   private toggleKey = '';
+  private openedAt = 0;
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement('div');
@@ -63,9 +64,9 @@ export class Wheel {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-item]');
       if (b) this.point(Number(b.dataset.item));
     });
-    // a click outside the choices shuts it
+    // a click outside the choices shuts it (but not the lifting of the finger whose rest opened it)
     this.el.addEventListener('click', (e) => {
-      if (e.target === this.el) this.close();
+      if (e.target === this.el && performance.now() - this.openedAt > 400) this.close();
     });
     // capture: while it is open the keys are its own, whatever else is listening
     window.addEventListener(
@@ -113,6 +114,7 @@ export class Wheel {
       .join('');
     this.ring.querySelectorAll('span').forEach((s, i) => (s.textContent = items[i]!.label));
     this.el.hidden = false;
+    this.openedAt = performance.now();
     this.el.classList.remove('pushed');
     this.el.style.removeProperty('--px');
     this.el.style.removeProperty('--py');

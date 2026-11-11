@@ -292,7 +292,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
   .title .tuck { display: none; }
   .stats { bottom: auto; top: 64px; left: 12px; font-size: 9px; }
   .walkbar { padding-left: 12px; gap: 10px; font-size: 10px; }
-  .walk-card { top: 60px; left: 10px; right: 10px; width: auto; max-height: 38vh; }
+  .walk-card { top: 84px; left: 10px; right: 10px; width: auto; max-height: 38vh; }
   .wheel-ring { --r: 108px; }
   .wheel-ring button { max-width: 112px; }
   /* with the sheet up, the model keeps the space above it, so a selected part is never underneath */
