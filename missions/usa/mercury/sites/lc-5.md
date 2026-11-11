@@ -756,6 +756,10 @@ The rest of the complex:
   the trailer SP-No 1, the huts, the LOX and nitrogen trailers, the cameras, the camera towers,
   the searchlights; in the place, the cable racks, the scaffold stair, the huts, the generator
   building and its tank, the shed. The tractor and pickups are named by `vehicle`.
+- **One sky's weather everywhere.** The cumulus are the Cape's at liftoff (1/10, bases at 720 m) and the
+  same field is drawn to the horizon, over the globe, from any height: the record says nothing of the
+  weather a hundred kilometres out, and nothing here invents it. From orbit the cover is the Cape's
+  morning repeated, not the day's synoptic chart.
 - **Paving stands a hand's breadth proud.** The viewer's ground is 0.12 m under the pad's
   surface (it was 0.45 m until November 2026, and the pads stood like table tops), and nothing may
   lie closer above it than that: parallel faces 5 to 6 cm apart flicker from across the site. So the
