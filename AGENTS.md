@@ -372,7 +372,8 @@ never adjusted to bring a check in.
   the blue over it, and comes in as the sky (backdrops.ts) goes out. The site's ground (land.ts)
   keeps the middle: the globe leaves a hole for it, and across its last kilometre and a
   half, inside its cover maps, the ground bends onto the curve and takes the globe's colours
-  (`Land.meet`), so where they overlap
+  (`Land.meet`); from 3 km up all of it takes them, but for its made ground, wholly by 20 km
+  (`LIFT` in land.ts), so from height the site is not a square of another tone; so where they overlap
   they are one surface and which one the depth buffer picks cannot be seen. Downrange, up is
   the plumb line where it is, not the site's +Y: the sky's (at the eye) and the orbiting
   camera's (at what it turns about, `Stage.alignUp`), so the horizon there is level. Away from the
