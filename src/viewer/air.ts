@@ -118,6 +118,9 @@ const cloudField = (c: Clouds | undefined) =>
   }`
     : '';
 
+/** The air installed, for a material that works its haze out in its own way (globe.ts: over the curved sea). */
+export const installedAir = (): Air | null => installed;
+
 export function installAir(air: Air): void {
   if (installed && installed.scale === air.scale && installed.base === air.base && installed.clouds === air.clouds) return;
   installed = air;

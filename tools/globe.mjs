@@ -86,11 +86,36 @@ function layer(dir, name) {
             const [lon2, lat2] = ring[(i + 1) % ring.length];
             return !((Math.abs(lon) === 180 && Math.abs(lon2) === 180) || (lat === -90 && lat2 === -90));
           });
-          out.push({ pts, shore });
+          out.push(shore.every(Boolean) ? { pts: rounded(pts), shore: rounded(pts).map(() => true) } : { pts, shore });
         }
     }
   }
   return out;
+}
+
+/**
+ * A closed ring with its corners cut (Chaikin, twice): Natural Earth's 1:10 million shore is a
+ * line of straight runs a few kilometres long, and from orbit its corners showed as kinks. The cut
+ * moves the line by at most a quarter of a run at a corner, inside the generalisation it already
+ * has. Rings with seams (above) are left as they are.
+ */
+const roundedCache = new WeakMap();
+function rounded(pts) {
+  let r = roundedCache.get(pts);
+  if (r) return r;
+  r = pts.slice(0, pts.length > 1 && pts[0].every((v, k) => v === pts[pts.length - 1][k]) ? -1 : undefined);
+  for (let pass = 0; pass < 2 && r.length >= 4; pass++) {
+    const next = [];
+    for (let i = 0; i < r.length; i++) {
+      const a = r[i],
+        b = r[(i + 1) % r.length];
+      next.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1], 0.75 * a[2] + 0.25 * b[2]]);
+      next.push([0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1], 0.25 * a[2] + 0.75 * b[2]]);
+    }
+    r = next;
+  }
+  roundedCache.set(pts, r);
+  return r;
 }
 
 /** Each face's (major axis, s axis, t axis) as OpenGL picks them: s = sc / ma, t = tc / ma. */

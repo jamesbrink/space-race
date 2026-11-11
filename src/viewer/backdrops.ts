@@ -4,10 +4,12 @@ import type { BackdropKind, Flight } from '../types';
 import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
-import { densityFor } from './air';
+import { densityFor, installedAir } from './air';
 import { buildCape } from './cape';
 import { dayLight, type RGB } from './daysky.ts';
+import { Globe } from './globe';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
+import type { Land } from './land';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -57,6 +59,8 @@ export interface Setting {
   at?: (jdUT: number, height?: number) => { shadows: boolean } | null;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
+  /** The Earth beyond the place, to scale (globe.ts): drawn once the eye can see past the place's own ground. */
+  globe?: Globe;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
   simplify?: (on: boolean) => void;
 }
@@ -343,6 +347,16 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), ground), patch);
   cape ??= buildCape(renderer, GROUND_Y);
+  // the Earth past the Cape's ground, which hands over to it across its last two kilometres
+  const land = cape.floor.userData.land as Land;
+  cape.floor.updateMatrixWorld();
+  const globe = new Globe(
+    site,
+    when.site.seaLevel.value,
+    { frame: cape.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
+    installedAir(),
+  );
+  land.meet(globe.beyond, land.extent - 2300, land.extent - 300);
   // the haze at sea level, thinning upward (air.ts): visibility was at the Skid Strip's 16 km cap at 09:00 (NOAA ISD); 25 km taken
   const fog = new THREE.FogExp2(0, densityFor(25_000));
   const gen = new THREE.PMREMGenerator(renderer);
@@ -380,7 +394,11 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
     tick: cape.tick,
     simplify: cape.simplify,
-    attend: cape.attend,
+    globe,
+    attend: (eye) => {
+      const moved = globe.attend(eye);
+      return cape!.attend(eye) || moved;
+    },
     groundAt: cape.groundAt,
   };
 
@@ -397,6 +415,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   let shownAir = 1;
   setting.at = (jdUT, height = 0) => {
     const air = airAbove(height);
+    globe.thin = 1 - air;
     const now = performance.now();
     // a jump (the clock put somewhere, not run there) is shown at once, not faded to
     const jumped = Math.abs(jdUT - askedAt) * 86_400 > SKY_STEP + 4000 * Math.max(0.1, (now - askedMs) / 1000);
@@ -425,6 +444,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     colour(fog.color, light.haze);
 
     // the one direct light: with neither Sun nor Moon it keeps its last direction, at no strength
+    globe.sun.copy(h.sunDir);
     if (light.light.from === 'sun') setting.sunDir.copy(h.sunDir);
     else if (light.light.from === 'moon') setting.sunDir.copy(h.moonDir);
     colour(setting.sunColor as THREE.Color, light.light.colour);

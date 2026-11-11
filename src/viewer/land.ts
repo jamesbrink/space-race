@@ -81,6 +81,19 @@ export interface LandSpec {
   palette: Palette;
 }
 
+/**
+ * What lies past the land's edge (globe.ts), for the land to hand over to across its last stretch:
+ * it bends down onto that surface and takes its colours, so that where the two overlap they are
+ * one surface. `vertex` is GLSL defining `float beyondHeight(vec3 p)`, the height in the scene's
+ * frame of that surface under a point p of the scene; `fragment` defines `vec3 beyondAlbedo(vec3 p,
+ * out float rough)`, its colour and roughness there.
+ */
+export interface Beyond {
+  vertex: string;
+  fragment: string;
+  uniforms: Record<string, THREE.IUniform>;
+}
+
 /** Cells along a patch's side. */
 const GRID = 16;
 /** The finest cell, metres. */
@@ -214,6 +227,9 @@ export class Land {
   private readonly cel = { value: 0 };
   private roots: [number, number][] = [];
   private rootLevel = LEVELS - 1;
+  /** Half the side of the square the land covers, metres: its patches tile out to here, a little past `LandSpec.far`. */
+  readonly extent: number;
+  private beyond: (Beyond & { from: { value: THREE.Vector2 } }) | null = null;
 
   /** `baseY`: the height the land's relief is measured from, in the mesh's parent; `turn`: radians about the vertical from the land's frame to its parent's. */
   constructor(renderer: THREE.WebGLRenderer, spec: LandSpec, baseY: number, turn: number) {
@@ -237,6 +253,7 @@ export class Land {
 
     const top = CELL * GRID * 2 ** this.rootLevel * 2; // a root's side
     const n = Math.ceil(spec.far / top);
+    this.extent = n * top;
     for (let i = -n; i < n; i++) for (let j = -n; j < n; j++) this.roots.push([i * top, j * top]);
 
     this.geometry = patchGeometry();
@@ -256,6 +273,16 @@ export class Land {
     onlyAsItself(this.mesh);
     this.mesh.userData.land = this; // for the debug handle: sr.stage.setting.floor.userData.land
     this.select(0, 30, 0);
+  }
+
+  /**
+   * Hand over to what lies beyond (`Beyond`) between `from` and `to` metres from the middle (along
+   * the land's own axes: its edge is a square): from `to` out the land is that surface. Before the
+   * land is first drawn.
+   */
+  meet(beyond: Beyond, from: number, to: number): void {
+    this.beyond = { ...beyond, from: { value: new THREE.Vector2(from, to) } };
+    (this.mesh.material as THREE.Material).needsUpdate = true;
   }
 
   /** Height of the ground above the land's base level at a point in its frame, metres. */
@@ -388,7 +415,8 @@ export class Land {
       uCel: this.cel,
     };
     material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, uniforms);
+      const beyond = this.beyond;
+      Object.assign(shader.uniforms, uniforms, beyond ? { ...beyond.uniforms, uBeyond: beyond.from } : {});
       shader.vertexShader = shader.vertexShader
         .replace(
           '#include <common>',
@@ -400,6 +428,7 @@ export class Land {
           varying vec3 vLand;             // this point in the land's frame
           varying float vCanopy;          // how far the thicket's roof stands above the ground here, metres
           varying float vCrown;           // 0 between crowns, 1 on their tops
+          ${beyond ? `#define LAND_BEYOND\n uniform vec2 uBeyond; varying float vHanded; varying vec3 vBeyond;\n${beyond.vertex}` : ''}
           ${MAPS}
           ${NOISE}
           ${FIELD}
@@ -447,6 +476,16 @@ export class Land {
           vCanopy = lift;
           vCrown = crown;
           vec3 landPoint = vec3(at.x, top, at.y);
+          #ifdef LAND_BEYOND
+          {
+            // the last stretch: down onto what lies beyond, and level with it
+            vec4 base = modelMatrix * vec4(at.x, 0.0, at.y, 1.0);
+            vBeyond = base.xyz + uOrigin;   // in the scene's frame, at the land's base level
+            vHanded = smoothstep(uBeyond.x, uBeyond.y, max(abs(at.x), abs(at.y)));
+            landPoint.y = mix(landPoint.y, beyondHeight(vBeyond) - vBeyond.y, vHanded);
+            objectNormal = normalize(mix(objectNormal, vec3(0.0, 1.0, 0.0), vHanded));
+          }
+          #endif
           #ifdef USE_TANGENT
             vec3 objectTangent = vec3(1.0, 0.0, 0.0);
           #endif`,
@@ -459,6 +498,7 @@ export class Land {
           varying vec3 vLand;
           varying float vCanopy;
           varying float vCrown;
+          ${beyond ? `#define LAND_BEYOND\n varying float vHanded; varying vec3 vBeyond;\n${beyond.fragment}` : ''}
           uniform float uTime;
           uniform float uCel;
           uniform vec4 uEye;
@@ -588,6 +628,16 @@ export class Land {
             g.bump = 0.0;
           }
           paint(landAt, coverA, coverB, g);
+          #ifdef LAND_BEYOND
+          if (vHanded > 0.0) {
+            float rough;
+            vec3 albedo = beyondAlbedo(vBeyond, rough);
+            g.albedo = mix(g.albedo, albedo, vHanded);
+            g.rough = mix(g.rough, rough, vHanded);
+            g.bump *= 1.0 - vHanded;
+            g.water *= 1.0 - vHanded;
+          }
+          #endif
           landBump = g.bump;
           landWater = g.water;
           landRough = g.rough;
@@ -612,6 +662,6 @@ export class Land {
           }`,
         );
     };
-    material.customProgramCacheKey = () => 'land';
+    material.customProgramCacheKey = () => (this.beyond ? 'land+beyond' : 'land');
   }
 }

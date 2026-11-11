@@ -567,6 +567,7 @@ export class Stage {
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
     for (const o of this.setting.scenery) this.scene.remove(o);
+    if (this.setting.globe) this.scene.remove(this.setting.globe.group);
     this.defs = flight.models;
     this.staged = flight.models.map((def, i) => {
       rest(scenes[i]!);
@@ -843,6 +844,10 @@ export class Stage {
     if (s.floor) this.scene.add(s.floor);
     for (const o of s.scenery) this.scene.add(o);
     for (const o of [s.floor, ...s.scenery]) if (o) this.looks.add(o);
+    if (s.globe) {
+      this.scene.add(s.globe.group);
+      this.looks.add(s.globe.mesh);
+    }
     this.scene.fog = s.fog;
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
@@ -1542,8 +1547,17 @@ export class Stage {
     // Beyond the drawn ground there is nothing to be under (and the site's level is not the sea's 100 km off).
     const c = this.camera.position;
     const extent = this.setting.horizon ?? this.setting.reach ?? Infinity;
-    if (Math.hypot(c.x, c.z) > extent) return;
     const EYE = 0.35; // metres above the ground under it
+    if (Math.hypot(c.x, c.z) > extent) {
+      // out there, above the globe's sea
+      const globe = this.setting.globe;
+      const below = globe ? EYE - globe.altitude(c) : 0;
+      if (globe && below > 0) {
+        c.addScaledVector(globe.up(c, new THREE.Vector3()), below);
+        this.camera.lookAt(this.controls.target);
+      }
+      return;
+    }
     const under = (x: number, z: number) => Math.max(0, this.setting.groundAt?.(x, z) ?? GROUND_Y);
     const t = this.controls.target;
     const floorT = under(t.x, t.z) + 0.1;
@@ -1575,7 +1589,13 @@ export class Stage {
       // nor past scenery between the camera and what it is looking at
       near = Math.min(near, Math.max(0.03, (0.9 * height) / Math.hypot(1, tan)), Math.max(0.03, 0.25 * toTarget));
     }
-    let far = toCentre + this.bounds.radius + (this.setting.horizon ?? 10);
+    // beyond the site's ground the globe's sea is under the camera instead, and it is seen out to its horizon
+    const globe = this.setting.globe;
+    if (globe?.mesh.visible) {
+      const tan = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect);
+      near = Math.min(near, Math.max(0.03, (0.9 * globe.altitude(this.camera.position)) / Math.hypot(1, tan)));
+    }
+    let far = Math.max(toCentre + this.bounds.radius + (this.setting.horizon ?? 10), globe?.reach(this.camera.position) ?? 0);
     // a vehicle in flight is seen as far off as it is, and the near plane is never beyond it
     const flier = this.lifted.flying ? this.flier : null;
     if (flier) {
@@ -2873,7 +2893,10 @@ export class Stage {
     this.poseFigure();
     this.fitWalkShadows();
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting
-    const far = this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.horizon ?? 10);
+    const far = Math.max(
+      this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.horizon ?? 10),
+      this.setting.globe?.reach(this.camera.position) ?? 0,
+    );
     if (Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.far = far;
       this.camera.updateProjectionMatrix();
