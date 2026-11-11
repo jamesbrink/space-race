@@ -91,6 +91,8 @@ const BILLOW = 140;
 /** The billows' mean (billows()), about which they stand out and cut in; and how far out they stand at most, as a multiple of their size. */
 const LUMPS = 0.54;
 const STANDS = 2 * (1 - LUMPS);
+/** How far the lumps over a cloud's base dent it up or hang it down, metres: its flatness is the condensation level's, give or take. */
+const BASE_DENT = 60;
 /** Billows at a cloud's foot, metres: over half the top's, so the rim of a flat base is ragged, not the clean edge of a saucer seen from under it. */
 const FOOT = 80;
 /**
@@ -258,8 +260,11 @@ const marchShader = (scale: number, clouds: Clouds) => /* glsl */ `
     // and billows heaped on it and cut into it, bigger the higher up: lumps of 200, 95 and 45 m, so a cumulus is
     // cauliflower at the top and only scalloped at the foot
     vec3 b = textureLod(tBillows, vec3(f.x, h - uRise, f.y) / TILE, lod).rgb;
-    float sd = heap + billow(y) * 2.0 * (dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)});
-    return min(sd, h); // the base is flat
+    float lumps = dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)};
+    float sd = heap + billow(y) * 2.0 * lumps;
+    // the base is flat, give or take the lumps over it: a plane exactly level met by an even wall drew, from under
+    // it, the same clean ring round every cloud, stacked like saucers; dented a little, its rim wanders as a real one does
+    return min(sd, h + ${BASE_DENT.toFixed(1)} * lumps);
   }
   // the cloud's extinction there, per metre: rising over \`ramp\` metres from its surface, and fading out far from the eye
   float density(vec3 v, float ramp, float lod, out float y, out float sd, bool billowed) {
