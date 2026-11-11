@@ -122,9 +122,12 @@ Hips ─ Spine ─ Head
 - **Parts are still parts**: each mesh stays under `Helmet`, `Torso`, `Arms`, `Gloves`, `Legs` or
   `Boots`, and is picked and outlined as before. But a skinned mesh is placed by its joints, not
   by its node, so these parts cannot be drawn apart on a slider. This model has none.
-- **The ventilator is set down.** `Ventilator` is not skinned: the case stands where it stood,
-  and its hose (`Ventilator_Hose`) ends at where his waist was. When he walks off, the viewer
-  should hide the hose, or the whole node. He carried it in fact; a carried case is not modelled.
+- **The ventilator can be carried.** On 5 May he carried it in his **right hand**, its hose
+  hanging in a loop below the case and coming up to the inlet at his left waist (NASA
+  GPN-2000-001012, stepping from the gantry's lift into the clean room: the case in his right
+  hand, the gauge on his left forearm toward the camera). In the inventory it stands on the
+  ground at his left with its hose to the inlet, as before; what the viewer needs to put it in
+  his hand is in the file (see [Carrying](#carrying)).
 - **The seated figure has no skeleton.** It is carried to its pose once, by `build_seated`.
 
 | Joint | Where (rest pose, cm: his left, his back, up) | Confidence | Basis |
@@ -144,6 +147,29 @@ Across a joint the cloth is shared between its two sides over a few centimetres 
 skin with the torso: its share of the arm runs from half at the armhole's edge to all of it a
 third of the way down to the hem, and the torso gives way for 7 cm round the hole. The seat of
 the suit goes up to 55% with each thigh. All of these are chosen to look right in a stride.
+
+### Carrying
+
+A contract for anything carried by any figure; `srlib.grip` and `srlib.anchor` make the pieces.
+Names are as in the GLB; three.js drops the dots (`GripR`, `FingersR`). Axes are given as three.js
+has them (+Y up; Blender's +Z is three's +Y, Blender's +Y three's −Z).
+
+| Node | Under | What it is |
+| --- | --- | --- |
+| `Grip.L`, `Grip.R` | `Hand.L`, `Hand.R` | where a handle lies in the hooked fingers: 8.4 cm down the hand from the wrist, 2.7 cm out of the palm. Upright at rest; the handle's line is its local Z, the thing carried hangs along its −Y |
+| `Fingers.L`, `Fingers.R` | `Hand.L`, `Hand.R` | a joint: the four fingers hinge together on the knuckles' line (the thumb stays). Unlike the other joints it has a rotation at rest: turn it about its own X from there (`rotateX`); **+50° hooks the fingers round a handle at the grip**, 0 is the relaxed hand of the inventory |
+| `Ventilator` | the scene | the case, rigid, not skinned. Its origin is the middle of its carrying handle, the handle along its local Z, the case hanging along −Y: made a child of `Grip.R` with no transform of its own, it is in his hand |
+| `Ventilator_HosePort` | `Ventilator` | where the hose leaves the top of the case; the hose leaves along its +Y. Carries `hose_radius` 0.015 m, `hose_length` 0.972 m and `hose_pitch` 0.016 m (the corrugations' spacing) as extras |
+| `Inlet` | `Spine` | the mouth of the suit's inlet fitting at the left waist; the hose leaves along its +Y (outward and down) |
+| `Ventilator_Hose` | `Ventilator` | the hose as modelled for the inventory, a mesh of its own (material `hose-rubber`, near black): hide it when he walks and draw one between `Inlet` and `Ventilator_HosePort` |
+
+The hose's radius, length and corrugation are the model's and estimated. GPN-2000-001012 shows a
+smooth black hose nearer 4 cm across than 3, hanging about 40 cm below the case before it rises
+to the suit, and a squarer, smaller case than the one modelled: neither has been remade to it.
+One hand pose serves both: the fingers have no joints of their own, so the hooked hand is the
+relaxed one turned at the knuckles, not a fist. It closes round this handle and looks right from
+walking distance; the thumb does not wrap. Carried rigidly on the grip the case swings with the
+hand; keeping it hanging plumb is the viewer's to do.
 
 ## What the model gets wrong or leaves out
 
@@ -195,7 +221,7 @@ the suit goes up to 55% with each thigh. All of these are chosen to look right i
   the biomedical fitting; tapes over each knee; straps over the boots' lacing; the orange neck dam.
 - **Boots**: plain laced boots. The Smithsonian's "with clips" was not seen first hand and is
   only hinted at by the lacing hooks.
-- **The ventilator is a silver suitcase with a hose.** He carried it; here it stands on the floor.
+- **The ventilator is a silver suitcase with a hose**, bigger and flatter than the grey box the photograph shows. He carried it in his right hand; in the inventory it stands on the floor at his left.
 - **Seated, the joints are hose bends, with two corrections.** Where a thigh would pass through
   the belly its skin stops against a sloping wall instead (`LAP_CREASE`), leaving a groin crease
   2 cm below the hip joints' line: the waist strap and its buckle stay in view above it. The
@@ -226,6 +252,8 @@ the suit goes up to 55% with each thigh. All of these are chosen to look right i
 - That Shepard carried a "portable air-conditioning unit" to the gantry is from *Time*'s 1961
   account and AmericaSpace's "briefcase-like" description, **seen only as search-result
   excerpts, not read in full**.
+- NASA GPN-2000-001012, "Shepard Enters Cleanroom" (5 May 1961, Wikimedia Commons): the ventilator in his
+  right hand and how its hose ran.
 - The Smithsonian's record of the flown suit, "Pressure Suit, Mercury, Shepard, MR-3, Flown"
   ([A19770563000](https://airandspace.si.edu/collection-objects/pressure-suit-mercury-shepard-mr-3-flown/nasm_A19770563000)):
   neck ring 9 1/2 in, materials, and seven photographs (NASM2022-00512, -00514, -00516;

@@ -272,6 +272,7 @@ class Rig:
         self.prefix = ""
         self.dry = False  # collect points only: no Blender objects
         self.points: dict[str, list[Vector]] = {}  # posed vertices by mesh name, in the pose's frame
+        self.inlet: tuple[Vector, Vector] | None = None  # the waist inlet's mouth and the way it points, rest pose
         self.skins: list[tuple[bpy.types.Object, list[dict[str, float]]]] = []  # the standing figure's meshes and the joints each vertex follows
 
     def posed(self) -> bool:
@@ -315,11 +316,32 @@ def joints() -> dict[str, Vector]:
     return out
 
 
-def joint_weights(node: str, p: Vector, arm: float = 0.0) -> dict[str, float]:
+def hand_of(sx: int) -> Hand:
+    return Hand(sx, wrist_point(sx), wrist_point(sx, 1.0) - wrist_point(sx))
+
+
+KNUCKLES = 9.1  # centimetres down the hand from the wrist: the line the four fingers hinge on
+GRIP_AT = (-2.7, 0.0, 8.4)  # where a handle lies in the hooked fingers: out of the palm, across it, down the hand
+HOOK = 50.0  # degrees the fingers turn at the knuckles to close on a handle
+
+
+def finger_hinges() -> dict[str, tuple[str, Vector, Vector]]:
+    """The fingers of each hand hinge together on the knuckles' line (the thumb does not): one
+    more joint a hand, so that it can hook round a handle. Positive closes."""
+    out = {}
+    for side, sx in (("L", 1), ("R", -1)):
+        hand = hand_of(sx)
+        out[f"Fingers.{side}"] = (f"Hand.{side}", hand.p(0, 0, KNUCKLES), hand.D.cross(-hand.B))
+    return out
+
+
+def joint_weights(node: str, p: Vector, share: float = 0.0) -> dict[str, float]:
     """How much of a rest-pose point of `node` follows each joint. Across a joint the cloth is
     shared between the two sides of it over a few centimetres, as a hose bends; a fitting well
-    clear of a joint follows one and keeps its shape. `arm` is the share of a point of the torso's
-    skin that belongs to the sleeve on its side (the shoulder is one skin with the torso)."""
+    clear of a joint follows one and keeps its shape. `share` is what only the builder knows: of
+    a point of the torso's skin, how much belongs to the sleeve on its side (the shoulder is one
+    skin with the torso); of a point of a glove, how much of it is finger beyond the knuckle."""
+    arm = share
     side = "L" if p.x >= 0 else "R"
     sx = 1 if p.x >= 0 else -1
     if node == "Helmet":
@@ -335,7 +357,13 @@ def joint_weights(node: str, p: Vector, arm: float = 0.0) -> dict[str, float]:
         along = (wrist - elbow).normalized()
         lower = smooth((p - elbow).dot(along), -5.0, 5.0)
         hand = smooth((p - wrist).dot(along), -2.5, 2.5)
-        return {f"UpperArm.{side}": 1 - lower, f"LowerArm.{side}": lower * (1 - hand), f"Hand.{side}": lower * hand}
+        fingers = share if node == "Gloves" else 0.0
+        return {
+            f"UpperArm.{side}": 1 - lower,
+            f"LowerArm.{side}": lower * (1 - hand),
+            f"Hand.{side}": lower * hand * (1 - fingers),
+            f"Fingers.{side}": lower * hand * fingers,
+        }
     # legs and boots
     thigh = smooth(Z_HIP + 4.0 - p.z, 0.0, 12.0)
     lower = smooth(Z_KNEE - p.z, -6.0, 6.0)
@@ -370,8 +398,10 @@ def emit(mb: MeshBuilder, name: str, mat, parent, **kw) -> bpy.types.Object | No
         name = f"{_rig.prefix}_{name}"
     else:
         node = name.split("_")[0]
-        arm = getattr(mb, "arm", None)  # how far each vertex is from torso to sleeve, where only the builder knows
-        follows = [joint_weights(node, Vector(v), arm[i] if arm else 0.0) for i, v in enumerate(mb.verts)] if node in JOINTED else None
+        share = getattr(mb, "share", None)  # per vertex, what only the builder knows: see joint_weights
+        follows = None
+        if node in JOINTED:
+            follows = [joint_weights(node, Vector(v), share[i] if share and i < len(share) else 0.0) for i, v in enumerate(mb.verts)]
         mb.verts = [(x * CM, y * CM, z * CM) for x, y, z in mb.verts]
     mb.uvs = [(u * CM, v * CM) for u, v in mb.uvs]
     obj = mb.build(name, mat, parent, **kw)
@@ -1107,7 +1137,7 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
                     share[i] = 0.5 * (1 - smooth(reach, 0.0, 7.0))
     relax(verts, faces, weight, max(3, round(14 / grain())))
     drape(verts, faces, frozen)
-    mb.arm = [share.get(i, 0.0) for i in range(len(verts))]
+    mb.share = [share.get(i, 0.0) for i in range(len(verts))]
     mb.add([tuple(v) for v in verts], faces, uvs)
 
 
@@ -1472,6 +1502,7 @@ def digit(mb: MeshBuilder, hand: Hand, root: Vector, start: Vector, bones: Seque
 def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
     g = group("Gloves")
     shell, tape, teeth, web, steel = (MeshBuilder() for _ in range(5))
+    fingers: list[float] = []
     for sx in (1, -1):
         hand = Hand(sx, wrist_point(sx), arms[sx].path[-1] - arms[sx].path[-2])
         # cuff, wrist, palm: (distance below the wrist, half-thickness, half-width)
@@ -1507,7 +1538,10 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
             # through two easy corners there and not one its own skin would fold over on
             lean = math.radians(bends[0] + (closed[0] - bends[0]) * grip) / 2
             root = start - (hand.D * math.cos(lean) - hand.B * math.sin(lean) + hand.W * math.tan(math.radians(fan))).normalized() * 2.4
+            first = len(shell.verts)
             digit(shell, hand, root, start, bones, r, 1.14)
+            # beyond its knuckle a finger follows the hand's Fingers joint
+            fingers += [0.0] * (first - len(fingers)) + [smooth((Vector(v) - start).dot(bones[0][0]), -1.5, 1.0) for v in shell.verts[first:]]
         # thumb: from the heel of the hand, out to the side and forward of the palm, lying
         # along the first finger
         base = hand.p(-0.7, -3.3, 0.8)
@@ -1536,6 +1570,7 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
         th = palm.toward(hand.B, 7.6)
         buckle(steel, web, palm.at(7.6, th, 0.25), palm.normal(7.6, th), (2.0, 2.4))
 
+    shell.share = fingers
     emit(shell, "Gloves_Shell", M["suit"], g)
     emit(tape, "Gloves_ZipperTape", M["tape"], g, smooth=False)
     emit(teeth, "Gloves_ZipperTeeth", M["steel"], g, smooth=False)
@@ -1731,6 +1766,9 @@ def build_hose_stub(M: dict, inlet: Vector, axis: Vector) -> None:
     emit(hose, "Torso_HoseStub", M["hose"], g)
 
 
+HOSE_R, HOSE_PITCH = 1.5, 1.6  # the ventilator hose: radius, and the spacing of its corrugations
+
+
 def build_ventilator(M: dict, inlet: Vector, axis: Vector) -> None:
     """The portable ventilator he carried from the van: a case with a blower and a hose to the
     suit's waist inlet. Its size and every detail of it are guesses from the walk-out photographs."""
@@ -1777,13 +1815,29 @@ def build_ventilator(M: dict, inlet: Vector, axis: Vector) -> None:
         tuple(inlet - axis * 1.2),
     ]
     pts = polyline(keys, 0.4)
-    Tube(pts, [(1.5, 1.5)] * len(pts), resample=1, fold=lambda d, th: 0.085 * math.sin(TAU * d / 1.6)).add(hose, 12)
+    Tube(pts, [(HOSE_R, HOSE_R)] * len(pts), resample=1, fold=lambda d, th: 0.085 * math.sin(TAU * d / HOSE_PITCH)).add(hose, 12)
 
     emit(case, "Ventilator_Case", M["aluminium"], g)
     emit(hard, "Ventilator_Hardware", M["steel"], g, sharp_angle=30)
     emit(grille, "Ventilator_Louvres", M["rubber"], g, smooth=False)
     emit(hose, "Ventilator_Hose", M["hose"], g)
     emit(fit, "Ventilator_HoseFitting", M["aluminium"], g, sharp_angle=30)
+    # the node's origin is the middle of the handle, which lies along Y with the case hanging
+    # below it: made a child of a hand's grip (srlib.grip), the case is carried
+    held = Vector((cx, hy, top + 3.6)) * CM
+    g.location = held
+    for obj in g.children:
+        obj.data.transform(Matrix.Translation(-held))
+    length = sum((b - a).length for a, b in zip(pts, pts[1:]))
+    srlib.anchor(
+        "Ventilator_HosePort",
+        g,
+        Vector((cx, py, top + 3.2)) * CM,
+        (0, 0, 1),
+        hose_radius=HOSE_R * CM,
+        hose_length=round(length * CM, 3),
+        hose_pitch=HOSE_PITCH * CM,
+    )
 
 
 # --------------------------------------------------------------------------- build
@@ -1793,6 +1847,7 @@ def build_figure(ventilator: bool) -> None:
     M = materials()
     build_helmet(M)
     inlet, axis, arms = build_torso(M)
+    _rig.inlet = (inlet, axis)
     build_arms(M, arms)
     build_gloves(M, arms)
     build_legs(M)
@@ -1808,9 +1863,16 @@ def build() -> float:
     global _rig
     _rig = Rig()
     build_figure(ventilator=True)
-    rig = srlib.skeleton({name: p * CM for name, p in joints().items()})
+    hinges = {name: (parent, at * CM, axis) for name, (parent, at, axis) in finger_hinges().items()}
+    rig = srlib.skeleton({name: p * CM for name, p in joints().items()}, hinges=hinges)
     for obj, follows in _rig.skins:
         srlib.bind(obj, rig, follows)
+    # what the viewer carries things by, and runs the ventilator's hose between
+    for side, sx in (("L", 1), ("R", -1)):
+        hand = hand_of(sx)
+        srlib.grip(rig, f"Hand.{side}", f"Grip.{side}", hand.p(*GRIP_AT) * CM, hand.W)
+    inlet, axis = _rig.inlet
+    srlib.anchor("Inlet", rig, inlet * CM, axis, bone="Spine")
     return max(v.co.z for o in bpy.data.objects if o.type == "MESH" for v in o.data.vertices)
 
 
