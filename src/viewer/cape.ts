@@ -23,8 +23,9 @@ import { Land, type LandSpec, type Palette } from './land';
  * What is documented and what is estimated is set out in missions/usa/mercury/sites/lc-5.md,
  * "The land". In short: the shore and the complexes' places are documented; the plant
  * communities, their order from the sea and their heights are published descriptions of the
- * Cape's vegetation; the clearing round Complex 5/6, the firebreaks, the colours and every
- * density are read off photographs of 1961 to 1965 or chosen by eye.
+ * Cape's vegetation; the clearing round Complex 5/6 is its fence line on the period's site plan;
+ * the firebreaks, the colours and every density are read off photographs of 1961 to 1965 or
+ * chosen by eye.
  */
 
 /**
@@ -70,12 +71,17 @@ const FAR = 11000; // how far the ground is drawn: past Complex 34, 9.2 km up th
 /** Made ways, as [x0, z0, x1, z1, half-width, kind]: 0 the rail line's ballast, 1 shell road. Drawn in the terrain's shader: no geometry to fight with. */
 const TRACKS: [number, number, number, number, number, number][] = [
   [...bearing(RAIL + 180, 95), ...bearing(RAIL, 700), 4.2, 0], // the rail line's ballast, on past pad 6 to Complex 26's two pads
-  [...site(166, 0), ...site(340, 0), 4.0, 1], // the stub road from the foot of the apron's ramp
-  [...site(340, 586), ...site(340, -900), 3.6, 1], // the road behind the blockhouse, parallel to the track (F16_016)
-  [...site(340, -215), ...site(293, -215), 3.2, 1], // the drive in to the blockhouse,
+  [...site(166, 0), ...site(404, 0), 4.0, 1], // the stub road from the foot of the apron's ramp
+  // the perimeter road just inside the fence, all round: TM X-53107 Figure 7-6 (the MR site plan), which matches
+  // today's roads (OSM ways 1220192254, 1219671682) within 6 m; the side behind the blockhouse is F16_016's. Derived
+  [...site(404, 394), ...site(404, -909), 3.6, 1],
+  [...site(-407, 394), ...site(-407, -909), 3.6, 1],
+  [...site(-407, 394), ...site(404, 394), 3.6, 1],
+  [...site(-407, -909), ...site(404, -909), 3.6, 1],
+  [...site(404, -215), ...site(293, -215), 3.2, 1], // the drive in to the blockhouse,
   [...site(293, -215), ...site(293, -349), 3.4, 1], // past its back door,
-  [...site(293, -349), ...site(340, -349), 3.2, 1], // and out again
-  [...site(276, -147), ...site(340, -147), 4.4, 1], // the hut's parking
+  [...site(293, -349), ...site(404, -349), 3.2, 1], // and out again
+  [...site(276, -147), ...site(404, -147), 4.4, 1], // the hut's parking
 ];
 
 /** A colour as an sRGB hex (three converts it to its linear working space). */
@@ -147,18 +153,21 @@ const SHARED = /* glsl */ `
     float alongV = hash2(n, 52) > 0.45 ? f.x : 1e9;
     return min(alongU, alongV) - 3.0;
   }
-  // the clearing round Complex 5/6: a rectangle along the rails, graded and grassed (KSC aerial of 1965, ccspacemuseum.org)
+  // the clearing round Complex 5/6: the frangible fence round its perimeter road, and the fence's jog out round the car park
+  // at the gate (TM X-53107 Figure 7-6, scaled by the pads' 520 ft; lc-5.md, The land)
   float lc56(vec2 p) {
     vec2 pad = toPad(p);
-    vec2 q = abs(vec2(pad.y - 125.0, pad.x + 10.0)) - vec2(295.0, 160.0) + 25.0;
-    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 25.0;
+    vec2 q = abs(vec2(pad.y - 80.5, pad.x - 1.0)) - vec2(216.0, 138.0) + 10.0;
+    float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 10.0;
+    vec2 g = abs(vec2(pad.y - 16.5, pad.x - 138.5)) - vec2(40.5, 18.5);
+    return min(d, length(max(g, 0.0)) + min(max(g.x, g.y), 0.0));
   }
-  // ground graded bare round the two pads and the blockhouse: the aprons
+  // ground worn to sand at the edge of the two pads' concrete and round the blockhouse's paving: the aprons
   float apron(vec2 p) {
     vec2 pad = toPad(p);
-    float d = max(abs(pad.x), abs(pad.y)) - 58.0;
-    d = min(d, max(abs(pad.x), abs(pad.y - 158.5)) - 52.0);
-    d = min(d, length(pad - vec2(66.0, 84.0)) - 48.0);
+    float d = max(abs(pad.x), abs(pad.y)) - 40.0;
+    d = min(d, max(abs(pad.x), abs(pad.y - 158.5)) - 40.0);
+    d = min(d, length(pad - vec2(66.0, 84.0)) - 34.0);
     return d;
   }
   // where the complex's models stand: nothing grows there
@@ -217,9 +226,12 @@ const riverwardAt = (x: number, z: number) => x - shoreAt(RIVER, -z) - 30 * (fbm
 const lc56At = (x: number, z: number) => {
   const px = x * COS + z * SIN,
     pz = -x * SIN + z * COS;
-  const qx = Math.abs(pz - 125) - 295 + 25,
-    qy = Math.abs(px + 10) - 160 + 25;
-  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - 25;
+  const qx = Math.abs(pz - 80.5) - 216 + 10,
+    qy = Math.abs(px - 1) - 138 + 10;
+  const d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - 10;
+  const gx = Math.abs(pz - 16.5) - 40.5,
+    gy = Math.abs(px - 138.5) - 18.5;
+  return Math.min(d, Math.hypot(Math.max(gx, 0), Math.max(gy, 0)) + Math.min(Math.max(gx, gy), 0));
 };
 const wayAt = (x: number, z: number) => {
   let best = 1e9;
@@ -361,7 +373,7 @@ const COVER = /* glsl */ `
     float marsh = 1.0 - smoothstep(20.0, 90.0, river);
     woody = mix(woody, 0.15, marsh);
     herb = mix(herb, 0.8, marsh);
-    // the clearings: Complex 5/6's rectangle and an oval of grass round each neighbouring pad
+    // the clearings: Complex 5/6's fenced rectangle and an oval of grass round each neighbouring pad
     float cleared = 1.0 - smoothstep(-2.0, 4.0, lc56(p) + 3.0 * (noise2(p * 0.2, 39) - 0.5));
     for (int i = 0; i < ${NEAR.length}; i++) {
       float d = length(p - uClear[i].xy) - uClear[i].z - 75.0 + 14.0 * (noise2(p * 0.03, 40 + i) - 0.5);

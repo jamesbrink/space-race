@@ -615,7 +615,8 @@ dense and how tall, and every colour, are estimated** from photographs of 1958 t
 | Where each community starts | beach to 40 m inland of the surf line, dune to 70 to 95 m, strand thickening from 55 to 110 m, scrub beyond about 180 m; hammock within about 700 m of the river | estimated | the 1961 and 1963 aerials (KSC-61C-0873, 63PC-0033): a dune strip of 30 to 60 m |
 | How open the scrub was | woody cover about 0.9, with sandy openings tens of metres across and grassier swales between old beach ridges about 110 m apart | estimated; that 1961's scrub was more open than today's is documented ("an open, shrubby and herbaceous landscape" in 1943) | Oddy 1999; the 1950 USGS aerial for the ridges |
 | How tall | a closed stand 2.1 m in the scrub, 0.9 m at the strand's seaward edge; shrubs 1.1 to 3 m, saw palmetto 1.0 to 1.8 m, cabbage palms 5 to 11 m | estimated, within the published range (1.0 to 3.5 m after twenty years unburned) | Schmalzer and Hinkle 1991; Breininger 1992; 6100884 shows the scrub's tops about level with a 2 m fence |
-| Complex 5/6's clearing | a rectangle of mown grass and sand about 590 by 320 m along the rails, from 170 m south-south-west of pad 5 to 420 m beyond it, its edges straight; bare graded aprons round the two pads and the blockhouse | estimated: read off the museum's April 1965 aerial (650400) and assumed for May 1961 | |
+| Complex 5/6's clearing | mown grass and sand inside the complex's frangible fence: 432 m along the rails, from 136 m south-south-west of pad 5 to 297 m north-north-east of it (139 m beyond pad 6), and 276 m across, 137 m each side of the rails (pad frame: x −137 to +139, y −136 to +297), corners rounded 10 m; the fence jogs out to 157 m west-north-west round the car park at the gate (y −24 to +57). Scrub comes up to the fence on every side; the perimeter road runs 13 to 20 m inside it | the outline derived: the fence and perimeter road on TM X-53107 Figure 7-6 (the Mercury-Redstone site plan, 1960 to 1961), scaled by the pads' 520 ft (1.274 ft a pixel); the road there lies within 6 m of today's (OSM: Museum Loop, way 1220192254, and the cross road, way 1219671682). That scrub stood right up to it is estimated from the April 1965 aerial (650400) and F16_016 (July 1961). What grew between the fence and Complex 26's clearing in 1961 is not known: by 1965 it was grassed | TM X-53107 Fig. 7-6; OSM; ccspacemuseum 650400; FHSU F16_016 |
+| Worn ground at the pads and the blockhouse | sand for about 10 m beyond each pad's concrete (to 40 m from its centre) and round the blockhouse's paving (34 m from its middle), mown grass beyond | estimated: the egress test at pad 5 (21 April 1961) and F16_015 to F16_017 (July 1961) show grass up to the concrete with sand worn through near it, not graded aprons | the photographs |
 | The neighbouring pads | each in an oval of grass and sand 75 m beyond its pad | estimated | 63PC-0033 |
 | Firebreaks | straight sand lines on a grid square to the rails, about 270 by 240 m, some lengths left uncut | the kind is documented (every aerial of the period shows them); where each one ran is not, and these are invented | KSC-61C-0873, 650400 |
 | The breeze the plants move in | from 090° at about 10 knots | documented: the Skid Strip's 09:00 EST observation | NOAA ISD 74794012868 |
@@ -828,8 +829,10 @@ The rest of the complex:
     stands on rail trucks.
 - Beyond the complex: see "Beyond the complex". Every neighbouring structure is a stand-in for
   its type.
-- **The land is a reading of photographs, not a survey.** The clearing round the complex is a
-  1965 photograph's, the firebreaks are invented in kind, and the communities' edges, densities,
+- **The land is a reading of photographs, not a survey.** The clearing round the complex is the
+  fence line of the period's site plan, which is a diagram, not a survey; the band of ground between
+  it and Complex 26 is drawn as scrub, which is not established for 1961. The firebreaks are
+  invented in kind, and the communities' edges, densities,
   heights and colours are estimates. Each plant is one of a few built forms of its species, not a
   plant that stood there. There are no forbs but grasses, no invasive Australian pine or Brazilian
   pepper, no fence lines, no litter of the works. No drainage ditches beside the roads and no
