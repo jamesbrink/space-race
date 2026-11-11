@@ -494,9 +494,9 @@ export class Body {
     return this.groundAt?.(x, z) ?? this.ground;
   }
   /**
-   * How far the open ground lies under the surface the models stand on (y = 0). The terrain is
-   * kept that far down only so that nothing lying on it flickers (backdrops.ts: GROUND_Y); it is
-   * not a kerb, and a riser met from down there is measured from the surface, not from the feet.
+   * How far the open ground lies under the surface the models stand on (y = 0): the sand a hand's
+   * breadth under the concrete at grade (backdrops.ts: GROUND_Y). It is not a kerb, and a riser
+   * met from down there is measured from the surface, not from the feet.
    */
   get sunk(): number {
     return this.ground === null ? 0 : Math.max(0, -this.ground);

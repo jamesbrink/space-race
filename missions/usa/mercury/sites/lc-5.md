@@ -169,7 +169,7 @@ Notes:
 | Mast, jib | 70 ft, 72 ft | estimated | sized so the jib alone puts the cab on the pad beside the truck, as at liftoff |
 | Capsule cable mast | 61 ft tube, 8 in tapering to 5 in, 8 ft from the axis | estimated | S63-02651, Hammack Fig. 23 |
 | Floodlights | 40 ft timber poles, six, three lamps each | estimated | FHSU F16_015 and F16_017 (July 1961): timber poles with two or three round floods on a crossarm, standing just off the slab |
-| Apron ramp | 14 ft long, down 1.5 ft to the road | estimated | the model's pad stands 0.45 m above the viewer's ground |
+| Apron ramp | 14 ft long, down to the road | estimated | the model's pad stands 0.12 m above the viewer's ground |
 | Emergency shower | 3.2 ft square, 8.6 ft tall, on a cart | estimated (that it stood at the pad's edge: documented) | GPN-2000-001006 (MR-3, cherry picker at the capsule); KSC-61-4457 (2 May 1961) |
 | Trailer "NASA SP-No 1" | 29 by 8 ft, 12.4 ft to its roof | estimated (its lettering and that it stood by the structure's base: documented) | S61-03158 |
 | Pad huts | 10.5 by 11 ft and 9 by 9 ft, 9 ft tall | estimated | FHSU F16_017 (July 1961): two huts at the hatch side's edge |
@@ -355,7 +355,7 @@ was.
 
 `lc5/vehicles.py`'s `check_standing()`, run once the site is built, drops a ray from every wheel
 and reports any tyre more than 5 mm off the paving or the terrain under it (the place's build runs it); on this site it
-reports none (the shell apron at −0.6 ft for eight vehicles, the terrain at −0.45 m for the three
+reports none (the shell apron at −0.6 ft for eight vehicles, the terrain at −0.12 m for the three
 at the hut).
 
 They are parked so that a walker can pass: 0.8 m and more between cars, 0.85 m between their
@@ -620,7 +620,7 @@ dense and how tall, and every colour, are estimated** from photographs of 1958 t
 | Firebreaks | straight sand lines on a grid square to the rails, about 270 by 240 m, some lengths left uncut | the kind is documented (every aerial of the period shows them); where each one ran is not, and these are invented | KSC-61C-0873, 650400 |
 | The breeze the plants move in | from 090° at about 10 knots | documented: the Skid Strip's 09:00 EST observation | NOAA ISD 74794012868 |
 | Colours of sand, grass, leaf and litter | as in `cape.ts` | estimated from period colour film, which has shifted | the photographs above |
-| The lie of the land | the complex's ground (y = -0.45 m in the viewer) taken as 9.5 ft above NAVD 88; the sea's surface 2.9 m below it; inland, old beach ridges and swales about 110 m apart and half a metre deep; the foredune's crest about 1.9 m above the sea, 45 to 62 m inland of the waterline; the beach face rising 1.35 m in its first 30 m to a berm | heights derived from today's survey (USGS 3DEP along 28.4394° N: ground near Complex 5 about 9.5 ft, dune crest 6 to 8 ft about 60 m from the water); the ridges' spacing read off the 1950 aerial; that 1961's ground was the same as today's is assumed | USGS 3DEP; USGS aerial 1950 |
+| The lie of the land | the complex's ground (y = -0.12 m in the viewer) taken as 9.5 ft above NAVD 88; the sea's surface 2.9 m below it; inland, old beach ridges and swales about 110 m apart and half a metre deep; the foredune's crest about 1.9 m above the sea, 45 to 62 m inland of the waterline; the beach face rising 1.35 m in its first 30 m to a berm | heights derived from today's survey (USGS 3DEP along 28.4394° N: ground near Complex 5 about 9.5 ft, dune crest 6 to 8 ft about 60 m from the water); the ridges' spacing read off the 1950 aerial; that 1961's ground was the same as today's is assumed | USGS 3DEP; USGS aerial 1950 |
 | Level ground | exactly level at the complex's height over Complex 5/6's clearing and roads and within 85 m of every other complex's pad, easing to the natural lie over 40 m | a rule of the viewer (the models stand on a flat datum), not a survey | |
 | Beach and sea | beach 40 to 50 m from the waterline to the dune, with a wrack line 17 m up; the bed falling 2.2 m in 100 m with a bar 75 m out; a swell of 55 m crests every 7.7 s, about 1 m crest to trough offshore, breaking on the bar and at the shore, so two lines of breakers | the swell's period and height documented as May medians (NOAA buoy 41009, 2010 to 2019); two lines of breakers read off KSC-61C-0873 and 63PC-0033; the bed's slope, the bar's place and the beach's width estimated | |
 | The Banana River's water | flat, grey-green, with a marsh edge | its shore documented (OpenStreetMap, today's); its colour and the marsh's width estimated | |
@@ -730,10 +730,14 @@ The rest of the complex:
   the trailer SP-No 1, the huts, the LOX and nitrogen trailers, the cameras, the camera towers,
   the searchlights; in the place, the cable racks, the scaffold stair, the huts, the generator
   building and its tank, the shed. The tractor and pickups are named by `vehicle`.
-- **Paving stands a foot and a half proud.** The viewer's ground is 0.45 m under the pad's
-  surface, and nothing may lie close above it. So the road, the walks and the trench covers are at
-  the pad's level on concrete that goes down into the ground, and the shell paving is a low bank
-  with sloped edges. In life all of it was flush with the grass.
+- **Paving stands a hand's breadth proud.** The viewer's ground is 0.12 m under the pad's
+  surface (it was 0.45 m until November 2026, and the pads stood like table tops), and nothing may
+  lie closer above it than that: parallel faces 5 to 6 cm apart flicker from across the site. So the
+  road, the walks and the trench covers are at the pad's level on concrete that goes down into the
+  ground, and the shell paving is a low bank with sloped edges. In life all of it was flush with
+  the grass. Along the track's ballast off the pads the ground is let down to 0.45 m again
+  (cape.ts: `trackAt`), easing back over a few metres, so the bed stands proud of its own ground
+  as track does; whether the real ground dipped there is not known.
 - **The far-field rule.** `check_clearance` passes faces a millimetre apart, which is enough only
   close to. Seen from 150 m with the camera near something else, parallel faces under about 5 cm
   apart cannot be told apart in depth and flicker. So anything that will be looked at from another

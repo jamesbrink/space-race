@@ -121,10 +121,10 @@ VEHICLE_TIP = LAUNCHER_TOP + 83.38  # escape tower's tip (Hammack & Heberlig, Fi
 
 HARDSTAND = 200.0  # side of the square: OSM outline 195 to 202 ft; TM X-53107 Figure 7-6, 157 px at 1.274 ft/px
 CIRCLE_R = 60.5  # the painted circle: 95 px on Figure 7-6 at 1.274 ft/px
-# How far concrete, ballast and footings go down. The viewer's terrain is 0.45 m (1.48 ft) under the
-# pad's surface, so anything standing on the ground must reach well past it.
+# How far concrete, ballast and footings go down. The viewer's terrain is 0.12 m (0.39 ft) under the
+# pad's surface (the pads and roads were at grade), so anything standing on the ground must reach past it.
 FOOTING = 3.0
-GROUND = -0.45 / 0.3048  # the viewer's terrain (backdrops.ts: GROUND_Y), in feet under the pad's surface
+GROUND = -0.12 / 0.3048  # the viewer's terrain (backdrops.ts: GROUND_Y), in feet under the pad's surface
 
 # The rest of Complex 5/6, in this frame. From OpenStreetMap, which maps what survives (see ../lc-5.md):
 PAD6 = (0.0, -520.0)  # pad 6's centre: 519 ft along 025.2 deg; taken on the rails' centre line, 520 ft

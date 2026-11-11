@@ -281,7 +281,7 @@ def road(parts: Parts) -> None:
     half = HARDSTAND / 2
     y0, y1 = PAD6[1] + half, -half
     x0, x1 = ROAD_X
-    slab(joints, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], GROUND - 0.6, -0.14, spread=2.4)
+    slab(joints, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], GROUND - 0.75, -0.14, spread=2.4)  # (its foot in the sand, clear of the rails)
     y = y0
     while y < y1 - 1.0:
         box(conc, (x0 + 0.06, y + 0.06, -FOOTING), (x1 - 0.06, min(y + 20.0, y1) - 0.06, -0.02))

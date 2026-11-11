@@ -231,6 +231,30 @@ const wayAt = (x: number, z: number) => {
   }
   return best;
 };
+/**
+ * The track's ballast off the pads: the bed is 0.23 m under the pads' surface (site.py: the
+ * ballast's top at -0.75 ft), below the sand round the paving (GROUND_Y, 12 cm under), so along it
+ * the ground is let down to where it was laid, 0.45 m under, and comes back up over a few metres
+ * either side: the bed stands proud of its own ground as track does. Where it runs, in the pad's
+ * frame (metres; +y toward pad 6): the main line 5.03 m either side of the middle (the pairs at
+ * 10.5 ft, the bed 6 ft beyond), from 75.6 m south of pad 5 to 214.3 m north (TRACK_END, TRACK_NORTH),
+ * and the turnout's curve (SPUR_Y 185 ft, SPUR_R 250 ft, from 6 to 63 degrees, 6.5 ft either side).
+ */
+const BED_DOWN = 0.33;
+const trackAt = (x: number, z: number): number => {
+  const px = x * COS + z * SIN,
+    py = -x * SIN + z * COS;
+  const qx = Math.abs(px) - 5.03,
+    qy = Math.abs(py - 69.35) - 144.95;
+  let d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0);
+  for (const xp of [-3.2, 3.2]) {
+    const cx = xp - 76.2,
+      cy = 56.39;
+    const t = Math.atan2(py - cy, px - cx);
+    if (t > 0.1 && t < 1.1) d = Math.min(d, Math.abs(Math.hypot(px - cx, py - cy) - 76.2) - 1.98);
+  }
+  return d;
+};
 function relief(x: number, z: number): number {
   const s = inlandAt(x, z);
   const crest = 1.05 * (0.75 + 0.5 * fbm2(z * 0.012, 7, 73, 3));
@@ -250,9 +274,20 @@ function relief(x: number, z: number): number {
   h = SEA - 0.015 * Math.max(-r, 0) + (h - (SEA - 0.015 * Math.max(-r, 0))) * smooth(-8, 70, r);
   let d = Math.min(lc56At(x, z) - 25, wayAt(x, z) - 6);
   for (const [cx, cz, cr] of CLEARINGS) d = Math.min(d, Math.hypot(x - cx, z - cz) - cr - 85);
-  return Math.min(h * smooth(0, 40, d), 0.05);
+  return Math.min(h * smooth(0, 40, d), 0.05) - BED_DOWN * (1 - smooth(0.3, 2.8, trackAt(x, z)));
 }
 const RELIEF = /* glsl */ `
+  float track(vec2 p) {   // trackAt, above
+    vec2 pad = toPad(p);
+    vec2 q = vec2(abs(pad.x) - 5.03, abs(pad.y - 69.35) - 144.95);
+    float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+    for (int i = 0; i < 2; i++) {
+      vec2 c = vec2((i == 0 ? -3.2 : 3.2) - 76.2, 56.39);
+      float t = atan(pad.y - c.y, pad.x - c.x);
+      if (t > 0.1 && t < 1.1) d = min(d, abs(length(pad - c) - 76.2) - 1.98);
+    }
+    return d;
+  }
   float relief(vec2 p) {
     float s = inland(p);
     float crest = 1.05 * (0.75 + 0.5 * fbm2(vec2(p.y * 0.012, 7.0), 73, 3));
@@ -269,7 +304,7 @@ const RELIEF = /* glsl */ `
     float kind;
     float d = min(lc56(p) - 25.0, way(p, kind) - 6.0);
     for (int i = 0; i < ${CLEARINGS.length}; i++) d = min(d, length(p - uSites[i].xy) - uSites[i].z - 85.0);
-    return min(h * smoothstep(0.0, 40.0, d), 0.05);
+    return min(h * smoothstep(0.0, 40.0, d), 0.05) - ${BED_DOWN.toFixed(2)} * (1.0 - smoothstep(0.3, 2.8, track(p)));
   }`;
 
 /**

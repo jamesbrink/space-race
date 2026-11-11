@@ -285,8 +285,18 @@ export class CloudLayer {
         vec3 p = d * t;                               // the surface, relative to the eye
         vec3 world = p + cameraPosition + uOrigin;
         vec3 n = normalize(p - vCentre);
-        // the layer's base: everything under it is gone, so the heap stands on a flat floor (drawn as its own sheet)
-        if (world.y < uCloudDrift.y) discard;
+        // the layer's base: everything under it is gone, so the heap stands on a flat floor. Where the ray meets the
+        // sphere below the base it goes on up into the puff and sees the floor itself, where it crosses the base inside
+        // the sphere: the puff's own flat underside (left as a hole, it showed the sky through every cut puff)
+        if (world.y < uCloudDrift.y) {
+          float lift = uCloudDrift.y - (cameraPosition.y + uOrigin.y);
+          if (d.y <= 1e-4 || lift < 0.0) discard;
+          vec3 floorAt = d * (lift / d.y);
+          if (dot(floorAt - vCentre, floorAt - vCentre) > vRadius * vRadius) discard;
+          p = floorAt;
+          world = p + cameraPosition + uOrigin;
+          n = vec3(0.0, -1.0, 0.0);   // (lit as the cloud's foot is, below: so it meets the sides without a seam)
+        }
         float h = clamp((world.y - uCloudDrift.y) / (uCloudDrift.w - uCloudDrift.y), 0.0, 1.0);
         // Lit as one body, not as balls: the light at a point is the whole cloud's, from the field's own slope there
         // (the heap's outside faces away from its heart) and the height in the cloud, so where two lobes overlap they

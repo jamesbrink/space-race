@@ -62,11 +62,13 @@ export interface Setting {
 }
 
 /**
- * Height of the ground setting's terrain, metres; the model's own surface is at 0. Nothing may
- * lie close above the terrain (it flickers at a distance), so models that stand on the ground
- * reach down past this (lc_5.py: FOOTING).
+ * Height of the ground setting's terrain, metres; the model's own surface is at 0. The pads and
+ * roads were at grade, so the sand is only a hand's breadth under the concrete: 12 cm, which is
+ * more than the 5 to 6 cm at which parallel faces seen from across the site began to flicker
+ * (AGENTS.md, "No flicker"). Models that stand on the ground reach down past it (site.py:
+ * FOOTING), and the site's builders take it as `GROUND`, in feet: change both together.
  */
-export const GROUND_Y = -0.45;
+export const GROUND_Y = -0.12;
 
 /**
  * The ground's sky. Its shape is here (the gradient, the clouds, the glow along the horizon); its

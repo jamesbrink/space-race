@@ -221,8 +221,9 @@ different one per pixel per frame. Three things stop it, and all three must stay
   third of a millimetre at any distance. Do not give the camera a fixed near plane.
 - **Nothing lies close above the terrain.** Depth interpolated across a triangle kilometres long
   is coarse: concrete 6 cm above such terrain flickered. So the terrain is finely divided (`land.ts`:
-  half-metre cells near the eye, never more than 64 m), it sits 0.45 m below the pad's surface (`GROUND_Y`), and anything standing
-  on the ground goes down past that (`FOOTING` in `lc_5.py`).
+  half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (`GROUND_Y`, and `GROUND` in
+  the site's builders: the pads and roads were at grade), and anything standing on the ground goes down past that (`FOOTING`
+  in `site.py`). Change the two together and rebuild the pad and the place.
 
 - **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
   camera is close to something else, faces under about 5 cm apart fight. Scenery that is looked at
