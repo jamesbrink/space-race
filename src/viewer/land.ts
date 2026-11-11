@@ -596,9 +596,9 @@ export class Land {
           float roofed = smoothstep(0.3, 0.62, coverA.r) * smoothstep(${SHELL[0].toFixed(1)}, ${SHELL[1].toFixed(1)}, eyeFar);
           if (roofed > 0.0) {
             float crown = mix(0.6, crowns(landAt), seen(${spec.crown.toFixed(2)}));
-            float masses = noise(vec3(landAt * 1.9, 16.0));
+            float masses = mix(0.5, noise(vec3(landAt * 1.9, 16.0)), seen(1.0));   // (a tone that is under a pixel is its mean, not a speckle)
             float leaves = noise(vec3(landAt * 9.0, 17.0)) * 0.6 + noise(vec3(landAt * 23.0, 18.0)) * 0.4;
-            vec3 leaf = mix(${vec3(p.leaf)}, ${vec3(p.leafOther)}, smoothstep(0.35, 0.75, noise(vec3(landAt * 0.12, 19.0))));
+            vec3 leaf = mix(${vec3(p.leaf)}, ${vec3(p.leafOther)}, smoothstep(0.42, 0.58, noise(vec3(landAt * 0.022, 19.0))));
             leaf = mix(leaf, ${vec3(p.leafLit)}, smoothstep(0.2, 0.95, crown * 0.65 + masses * 0.35));
             leaf *= mix(0.3, 1.0, smoothstep(0.1, 0.7, crown)) * (0.7 + 0.6 * mix(0.5, leaves, seen(0.1))) * (0.8 + 0.4 * masses);
             g.albedo = mix(g.albedo, leaf, roofed);

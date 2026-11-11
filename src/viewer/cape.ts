@@ -86,16 +86,20 @@ const TRACKS: [number, number, number, number, number, number][] = [
 
 /** A colour as an sRGB hex (three converts it to its linear working space). */
 const srgb = (hex: number) => new THREE.Color(hex);
-/** The ground's colours, set against period colour photographs of the Cape (docs/sources.md, The Cape): estimated. */
+/**
+ * The ground's colours: estimated. Hues from period colour photographs of the Cape (docs/sources.md, The Cape), then
+ * cleaned as the look asks (AGENTS.md, Designed, not photographic): each cover one clear tone, lighter and more saturated
+ * than a photograph's, so sand, grass and scrub read apart from any height.
+ */
 const PALETTE: Palette = {
-  sand: srgb(0xb2a998),
-  sandDark: srgb(0x8e877a),
-  herbDry: srgb(0x88845f),
-  herbGreen: srgb(0x666d48),
-  litter: srgb(0x3a342b),
-  leaf: srgb(0x30362a),
-  leafLit: srgb(0x535a3e),
-  leafOther: srgb(0x5a603c),
+  sand: srgb(0xd9cfae),
+  sandDark: srgb(0xbdb08a),
+  herbDry: srgb(0xa9a566),
+  herbGreen: srgb(0x7c9450),
+  litter: srgb(0x4a4332),
+  leaf: srgb(0x35532f),
+  leafLit: srgb(0x648a45),
+  leafOther: srgb(0x577a3a),
 };
 const glsl3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
@@ -609,7 +613,7 @@ function floraSpec(): FloraSpec {
           [1, 0.3],
         ],
         height: [1.0, 1.8],
-        colours: [c(0x46522e), c(0x5a6234)],
+        colours: [c(0x4a6a34), c(0x6a8a44)],
         near: 34,
         reach: 330,
         sway: 0.45,
@@ -627,7 +631,7 @@ function floraSpec(): FloraSpec {
           [1, 0.5],
         ],
         height: [1.1, 2.0],
-        colours: [c(0x3e4730), c(0x535c3a)],
+        colours: [c(0x3b5c33), c(0x5a8042)],
         near: 30,
         reach: 330,
         sway: 0.2,
@@ -644,7 +648,7 @@ function floraSpec(): FloraSpec {
           [0.9, 0.45],
         ],
         height: [1.6, 3.0],
-        colours: [c(0x515d33), c(0x66703d)],
+        colours: [c(0x56783a), c(0x74964a)],
         near: 30,
         reach: 330,
         sway: 0.35,
@@ -661,7 +665,7 @@ function floraSpec(): FloraSpec {
           [0.45, 0],
         ],
         height: [1.0, 2.2],
-        colours: [c(0x3d5226), c(0x526030)],
+        colours: [c(0x3f6a30), c(0x5e8a3e)],
         near: 30,
         reach: 330,
         sway: 0.25,
@@ -679,7 +683,7 @@ function floraSpec(): FloraSpec {
           [1, 0.15],
         ],
         height: [5, 11],
-        colours: [c(0x3f5228), c(0x52602f)],
+        colours: [c(0x456e32), c(0x64903f)],
         near: 90,
         reach: 1800,
         sway: 0.3,
@@ -696,7 +700,7 @@ function floraSpec(): FloraSpec {
           [0.2, 0],
         ],
         height: [0.5, 0.9],
-        colours: [c(0x9c9466), c(0x7d7c4c)],
+        colours: [c(0xc2b878), c(0x9aa05a)],
         near: 30,
         reach: 260,
         sway: 0.6,

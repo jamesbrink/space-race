@@ -622,8 +622,8 @@ and Merritt Island's finger canals, the fill at the Bennett Causeway's landings.
 Pineda Causeway (1972), 27 km south, whose line was not traced. The keepers' houses at the lighthouse probably still stood
 (they were demolished later in the 1960s) and are not drawn.
 
-These landmarks take the same haze as the land (`src/viewer/air.ts`: 25 km visibility at sea level,
-thinning with height), which leaves the Atlas pads and Complex 34 faint but there from pad 5, as
+These landmarks take the same haze as the land (`src/viewer/air.ts`: 80 km visibility at sea level,
+thinning with height), which leaves the Atlas pads and Complex 34 clear from pad 5, as
 on a clear morning.
 
 ## The land
@@ -650,7 +650,7 @@ dense and how tall, and every colour, are estimated** from photographs of 1958 t
 | Beach and sea | beach 40 to 50 m from the waterline to the dune, with a wrack line 17 m up; the bed falling 2.2 m in 100 m with a bar 75 m out; a swell of 55 m crests every 7.7 s, about 1 m crest to trough offshore, breaking on the bar and at the shore, so two lines of breakers | the swell's period and height documented as May medians (NOAA buoy 41009, 2010 to 2019); two lines of breakers read off KSC-61C-0873 and 63PC-0033; the bed's slope, the bar's place and the beach's width estimated | |
 | The Banana River's water | flat, grey-green, with a marsh edge | its shore documented (OpenStreetMap, today's); its colour and the marsh's width estimated | |
 | The Banana River's width, Merritt Island, the Indian River | the river between its two shores (5.7 km wide abreast of pad 5, 1.7 km 12 km north), Merritt Island's land west of it, the Indian River in the ground's south-west corner | documented, today's (OpenStreetMap relation 1204544, the Indian River Lagoon, traced every 300 m to 1.8 km) | Today's port, causeways and the barge canal (cut 1962 to 1965) are stepped over, not drawn; Sykes Creek inside Merritt Island is left out; the river's bed falls 1.5 m in every 100 from either shore, as the sea's does (estimated: the real river is a metre or two deep) |
-| The air | haze thinning with height over 1.4 km above the sea (src/viewer/air.ts), so a distant tree line goes blue from the ground and the site is clear from above | that the morning was clear is documented (visibility at the Skid Strip's 16 km cap at 09:00 EST, NOAA ISD); the haze's profile and its density are estimated | NOAA ISD 74794012868 |
+| The air | haze thinning with height over 1.4 km above the sea (src/viewer/air.ts), so a distant tree line goes blue from the ground and the site is clear from above | that the morning was clear is documented (visibility at the Skid Strip's 16 km cap at 09:00 EST, NOAA ISD); the haze's profile and its density are estimated (80 km visibility at sea level: clear air, chosen so the coast and the far complexes read) | NOAA ISD 74794012868 |
 | The cumulus | flat-based at 720 m, tops 650 m higher, a tenth of the sky, drifting west with the 090 wind, their shadows on the ground; thin high cloud above | 1/10 cumulus at liftoff (preferred to the station's "scattered" at 09:00), no ceiling, and the 720 m base (May mornings' median, 1959 to 1963; 750 m at 07:00 that day) documented; depth, size and the wind aloft estimated; where each cloud was is not known | MR-3 Postlaunch Report 10.3, p. 87; NOAA ISD; Kraft, p. 8 |
 
 A thicket far from the eye is drawn as the ground itself lifted into a roof of crowns, not as

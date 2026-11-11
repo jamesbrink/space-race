@@ -366,8 +366,8 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   // (by the edge of its cover maps, past which their last texels are smeared outward: Complex 34, the furthest built, is inside 9.5 km)
   const covered = land.uniforms.uFarSize!.value as number;
   land.meet(globe.beyond, covered - 1500, covered);
-  // the haze at sea level, thinning upward (air.ts): visibility was at the Skid Strip's 16 km cap at 09:00 (NOAA ISD); 25 km taken
-  const fog = new THREE.FogExp2(0, densityFor(25_000));
+  // the haze at sea level, thinning upward (air.ts): visibility was at the Skid Strip's 16 km cap at 09:00 (NOAA ISD), so how far past it is not recorded; 80 km taken, clear air: estimated
+  const fog = new THREE.FogExp2(0, densityFor(80_000));
   const gen = new THREE.PMREMGenerator(renderer);
   const reflections = new Reflections(renderer);
 
