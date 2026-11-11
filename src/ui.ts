@@ -610,7 +610,7 @@ export class Ui {
 
   /** A small menu at a point on the page: what can be done with what was right-clicked. Goes away on a choice, Escape or a click elsewhere. */
   menu(x: number, y: number, items: { label: string; run: () => void }[]): void {
-    this.root.querySelector('.spot-menu')?.remove();
+    document.querySelector('.spot-menu')?.remove();
     if (!items.length) return;
     const menu = document.createElement('div');
     menu.className = 'spot-menu';
@@ -632,7 +632,7 @@ export class Ui {
     };
     const away = (e: Event) => !menu.contains(e.target as Node) && close();
     const key = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    this.root.append(menu);
+    document.body.append(menu); // on the page itself, not among the panels: it is there when they are hidden
     // kept on the page: opened near an edge, it opens the other way
     menu.style.left = `${Math.min(x, window.innerWidth - menu.offsetWidth - 8)}px`;
     menu.style.top = `${Math.min(y, window.innerHeight - menu.offsetHeight - 8)}px`;
