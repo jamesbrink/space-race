@@ -26,6 +26,7 @@ let ready = false;
 /** The user switched auto-orbit off themselves. Otherwise it is only ever paused, and the next move restarts it. */
 let orbitOff = prefs.get('orbitOff');
 stage.setLook(prefs.get('cel') ? 'cel' : 'real');
+stage.walk.third = prefs.get('walkThird');
 
 const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   model: (id) => (ready ? show(id) : void start(id)), // before it has loaded, this is "try again"
@@ -50,6 +51,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   walkStick: (x, y) => stage.walk.stick(x, y),
   walkJump: () => stage.walk.jump(),
   walkAct: () => act(),
+  walkView: () => stage.walk.setThird(!stage.walk.third),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
   inset: (px) => stage.setInset(px),
@@ -134,9 +136,14 @@ stage.onWalk = (on, model) => {
   if (on && current.id !== model) show(model);
   if (on && selected) select(null);
   ui.setWalking(on);
+  if (on) ui.setWalkView(stage.walk.third);
   if (!on) show(model);
 };
 stage.onWalkLook = (captured) => ui.setWalkLook(captured);
+stage.onWalkView = (third) => {
+  prefs.set('walkThird', third);
+  ui.setWalkView(third);
+};
 
 /** While walking: what is being looked at from within reach, if there is anything to be done with it. */
 let target: Target | null = null;
@@ -250,7 +257,7 @@ setInterval(() => {
   const s = stage.stats();
   const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
   ui.setStats(
-    `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}`,
+    `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}${stage.walkRigid ? ' · figure rigid (no joints)' : ''}`,
   );
 }, 500);
 

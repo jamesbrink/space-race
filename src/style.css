@@ -111,6 +111,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .walk-buttons { display: none; position: absolute; right: calc(var(--edge) + 14px + env(safe-area-inset-right)); bottom: calc(var(--edge) + 30px + env(safe-area-inset-bottom)); gap: 12px; flex-direction: column-reverse; align-items: flex-end; }
 .walk-buttons button { width: 68px; height: 68px; border-radius: 50%; background: var(--glass); border: 1px solid var(--faint); color: var(--ink); font: 10px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; touch-action: none; }
 .walk-buttons button:active { background: rgba(243, 239, 230, 0.3); }
+.walk-buttons [aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
 @media (hover: none), (pointer: coarse) { #ui.walking .stick { display: block; } #ui.walking .walk-buttons { display: flex; } }
 /* on foot the view is the whole screen, whatever share a sheet had of it */
 body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }

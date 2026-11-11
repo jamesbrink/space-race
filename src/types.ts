@@ -173,6 +173,11 @@ export interface ModelDef {
     eyes?: string;
     /** Which way the figure faces as built: a unit (x, z) in the model's own coordinates (default [0, 1]: +Z, Blender's front). */
     forward?: [number, number];
+    /**
+     * Nodes of the model that stay behind when the figure walks: what it had put down or was
+     * plugged into, which is not drawn while it is being walked as.
+     */
+    hide?: string[];
     /** Half the figure's width, metres: how near its middle can come to a wall (default 0.26, a clothed adult's shoulders). */
     radius?: number;
   };

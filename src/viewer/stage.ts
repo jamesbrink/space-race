@@ -11,6 +11,7 @@ import { sameTarget, type Target } from '../actions';
 import type { Flight as FlightData, ModelDef } from '../types';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
+import { Gait } from './gait';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
@@ -112,6 +113,8 @@ export class Stage {
   onWalkTarget: (target: Target | null) => void = () => {};
   /** While walking: the act key, or a finger held on the view. The caller offers what can be done with the target. */
   onWalkAct: () => void = () => {};
+  /** While walking: the view was changed between the figure's eyes and over its shoulder. */
+  onWalkView: (third: boolean) => void = () => {};
   /** While walking: the mouse has been captured for looking round, or let go. */
   onWalkLook: (captured: boolean) => void = () => {};
   /** First-person walking (walk.ts). While it is active the orbiting camera's rules are all suspended. */
@@ -120,6 +123,8 @@ export class Stage {
   private tap: { t: number; x: number; y: number; walker: string | null } = { t: 0, x: 0, y: 0, walker: null };
   /** Which model is being walked as: an index into `staged`, or -1. */
   private walked = -1;
+  /** The stride of the figure being walked as, for when it is seen from outside (gait.ts). */
+  private readonly gait = new Gait();
   /** While walking: what is being looked at from within reach, and where the ray met it. */
   private aim: { target: Target; hit: Hit; box?: THREE.Box3 } | null = null;
   /** The orbiting camera's lens, vertical degrees. Views are framed for it even while the walker's wider one is easing in or out. */
@@ -367,6 +372,7 @@ export class Stage {
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
       leave: () => this.exitWalk(),
       act: () => this.onWalkAct(),
+      viewed: (third) => this.onWalkView(third),
       locked: (on) => this.onWalkLook(on),
     });
 
@@ -1199,6 +1205,7 @@ export class Stage {
     const [fx, fz] = walker.forward ?? [0, 1];
     const toward = new THREE.Vector3(fx, 0, fz).transformDirection(figure.group.matrixWorld).setY(0).setLength(10).add(feet);
     figure.group.visible = false;
+    this.leftBehind(at, false);
     this.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.dirty = true;
     this.walk.start(feet, toward, eye, height, walker.radius);
@@ -1209,9 +1216,10 @@ export class Stage {
     const at = this.walked;
     const figure = this.staged[at];
     if (!figure) return;
-    const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
     figure.group.position.copy(this.walk.body.position);
-    figure.group.rotation.y = this.walk.yaw + Math.PI - Math.atan2(fx, fz); // the eyes look along (-sin yaw, -cos yaw)
+    figure.group.rotation.y = this.facing(at);
+    for (const level of figure.group.children) this.gait.rest(level); // standing as it was built, at every level of detail
+    this.leftBehind(at, true);
     figure.group.visible = true;
     figure.group.updateMatrixWorld(true);
     figure.measure();
@@ -1284,6 +1292,52 @@ export class Stage {
     if (at >= 0) this.apartGoal[at] = this.apartOwn[at] = THREE.MathUtils.clamp(to, 0, 1);
   }
 
+  /** How a figure's model is turned on the stage to face the way the walker's body faces (which looks along (-sin, -cos) of its heading). */
+  private facing(at: number): number {
+    const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
+    return this.walk.heading + Math.PI - Math.atan2(fx, fz);
+  }
+
+  /** Show or hide what a figure does not take with it when it walks (walker.hide), at every level of detail. */
+  private leftBehind(at: number, shown: boolean): void {
+    const names = this.defs[at]!.walker?.hide;
+    if (names?.length) this.staged[at]!.group.traverse((o) => names.includes(o.name) && (o.visible = shown));
+  }
+
+  /**
+   * Seen over the shoulder, the figure being walked as is drawn: where the walker's body is,
+   * facing the way it is going, its limbs in the stride of the moment if its model has joints
+   * (gait.ts) and rigid if it has not. Through its own eyes, or with the camera pressed up
+   * against its head by a wall, it is not drawn.
+   */
+  private poseFigure(dt: number): void {
+    const at = this.walked;
+    const figure = this.staged[at];
+    if (!figure) return;
+    const walk = this.walk;
+    const stride = this.gait.advance(walk.stepped, walk.pace, !walk.body.grounded, dt);
+    const group = figure.group;
+    const show = walk.outside;
+    let changed = group.visible !== show;
+    group.visible = show;
+    if (show) {
+      const turn = this.facing(at);
+      changed ||= stride || group.rotation.y !== turn || !group.position.equals(walk.body.position);
+      group.position.copy(walk.body.position);
+      group.rotation.y = turn;
+      this.gait.apply(figure.shown);
+    }
+    if (!changed) return;
+    this.renderer.shadowMap.needsUpdate = true; // its shadow walks with it
+    this.dirty = true;
+  }
+
+  /** For the diagnostics: the figure is being shown from outside but its model has no joints, so it glides. */
+  get walkRigid(): boolean {
+    const figure = this.staged[this.walked];
+    return Boolean(figure && this.walk.active && this.walk.third && !this.gait.jointed(figure.shown));
+  }
+
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
   private stepWalk(dt: number): void {
     if (this.walk.update(dt)) this.dirty = true;
@@ -1291,6 +1345,7 @@ export class Stage {
     const found = hit && this.targetOf(hit);
     this.setAim(found && hit ? { ...found, hit } : null);
     this.fitDetail();
+    this.poseFigure(dt);
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting
     const far = this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.floor ? 9000 : 10);
     if (Math.abs(far - this.camera.far) > far * 0.02) {

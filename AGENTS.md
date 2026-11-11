@@ -89,7 +89,8 @@ src/
   viewer/cape.ts                      Cape Canaveral: terrain, shore and surf, scrub, landmarks
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
-  viewer/walk.ts                      walking the site on foot: footing, collision, input, the eye camera
+  viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
+  viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -209,14 +210,25 @@ A model with a `walker` entry in `flight.ts` (types.ts: `ModelDef.walker`) is a 
 can be walked as; a flight may have several. The Walk button in that model's section, or a
 double-click on the figure from anywhere, puts the camera at its eyes and lets you walk the site
 (`viewer/walk.ts`; `sr.stage.enterWalk(id?)`, `sr.stage.walk`). Escape or the Exit walk bar ends
-it and the camera flies back to that section. First person only: a crew model is a posed figure
-with no skeleton, so there is nobody to show walking, and the figure is hidden while you are it.
-Nothing in `walk.ts` or its hooks in `stage.ts` knows any one flight: keep it that way.
+it and the camera flies back to that section. C (a View button on a touch screen) changes
+between the figure's eyes and over its right shoulder, and the choice is remembered.
+Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one flight: keep it that way.
 
 - **The figure comes from the flight's data.** It starts where the model stands (`position`),
   facing `walker.forward` (the model's own frame) turned by `rotationY`; `walker.eyes` names the
   node whose middle is the eye level, and the top of the model's bounds is its height, so both are
-  as good as the model's `.md` says the model is. `walker.radius` is half its width (default 0.26 m).
+  as good as the model's `.md` says the model is. `walker.radius` is half its width (default 0.26 m);
+  `walker.hide` names nodes that stay behind (something it had put down) and are not drawn while
+  it is walked as.
+- **Over the shoulder the figure is drawn, and walks.** The camera sits behind, right of and
+  above the head and comes in to just short of anything between it and the head (a ray against
+  the same `Solids`); pressed right up to the head, the figure is not drawn. The figure stands
+  where the walker's body is, turned to the way it is going, and `viewer/gait.ts` moves its limbs:
+  `pose(phase, speed, air)` is a pure function to the fifteen joints every crew figure is built
+  with (srlib.FIGURE: `Hips`, `Spine`, `Head`, `UpperArm.L` ... `Foot.R`, found by name with or
+  without the dot), and the phase advances by distance gone over the length of a stride, so a
+  planted foot stays put. Standing is the pose as built, so a still figure is not redrawn. A
+  model with none of those joints still works: it glides rigid, and the diagnostics line says so.
 
 - **The world is solid as posed.** `Solids` asks each mesh on show (every other model of the
   flight, its surroundings, the setting's scenery; not instanced plants) through its world matrix, with a `three-mesh-bvh`

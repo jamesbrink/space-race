@@ -19,6 +19,8 @@ export interface UiHandlers {
   walkStick(x: number, y: number): void;
   /** The on-screen jump button while walking. */
   walkJump(): void;
+  /** The on-screen view button while walking: through the figure's eyes, or over its shoulder. */
+  walkView(): void;
   /** The on-screen act button while walking: offer what can be done with what is being looked at. */
   walkAct(): void;
   hoverPart(node: string | null): void;
@@ -182,6 +184,7 @@ export class Ui {
           <dl>
             <div><dt>mouse</dt><dd>look round</dd></div>
             <div><dt><kbd>E</kbd></dt><dd>act on what you face</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>eyes · over the shoulder</dd></div>
             <div><dt><kbd>Esc</kbd></dt><dd>stop walking</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
@@ -190,7 +193,7 @@ export class Ui {
       </aside>
       <div class="walkbar" hidden><span></span><button data-walk-exit>Exit walk</button></div>
       <div class="stick" aria-hidden="true"><i></i></div>
-      <div class="walk-buttons"><button data-walk-jump>Jump</button><button data-walk-act hidden>Act</button></div>
+      <div class="walk-buttons"><button data-walk-jump>Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-act hidden>Act</button></div>
       <div class="reticle" aria-hidden="true"><i></i><p><kbd>E</kbd><span></span></p></div>
       <aside class="walk-card" hidden aria-live="polite">
         <button class="card-close" aria-label="Close">×</button>
@@ -293,6 +296,7 @@ export class Ui {
     root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
     this.wheel = new Wheel(root);
     root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());
+    root.querySelector('[data-walk-view]')!.addEventListener('click', () => on.walkView());
     root.querySelector('.card-close')!.addEventListener('click', () => this.showWalkCard(null));
     // (on the press, not the click: a jump is wanted now, and a finger held on the button must not look round)
     root.querySelector('[data-walk-jump]')!.addEventListener('pointerdown', (e) => {
@@ -499,6 +503,11 @@ export class Ui {
       this.setWalkTarget(null);
       this.showWalkCard(null);
     }
+  }
+
+  /** While walking: whether the view is over the figure's shoulder (and not through its eyes). */
+  setWalkView(third: boolean): void {
+    this.root.querySelector('[data-walk-view]')!.setAttribute('aria-pressed', String(third));
   }
 
   /** While walking: the name of what is being looked at from within reach and can be acted on, or null. The reticle says so. */

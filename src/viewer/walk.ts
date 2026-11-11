@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 
 /**
- * Walking a flight's site on foot, in first person: you are one of its figures (a model with a
+ * Walking a flight's site on foot, in first person or over the shoulder: you are one of its figures (a model with a
  * `walker` entry in the flight's data), at that figure's eye height, and the world is solid.
  * Nothing here knows any one flight: it walks whatever models and scenery the stage has on show.
  * Four layers, each usable without the next:
@@ -10,10 +10,11 @@ import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
  *   settle   where the feet go vertically: stand, step up a riser, step down, fall, land (pure)
  *   Solids   the meshes that can be stood on and bumped into, as they are posed now
  *   Body     a standing figure moved through them: walls stop it, floors carry it
- *   Walker   keys, mouse and touch on a canvas, driving a Body and placing the camera at its eyes
+ *   Walker   keys, mouse and touch on a canvas, driving a Body and placing the camera at its
+ *            eyes, or behind its shoulder
  *
- * There is no third person: a crew model is a posed figure with no skeleton, and a statue
- * sliding over the ground is worse than no figure at all.
+ * Over the shoulder the figure is drawn, where the body is and facing the way it is going; that
+ * and its stride are the stage's business (gait.ts). Here there is only where the camera goes.
  */
 
 /** Metres per second: an unhurried walk, and a run. */
@@ -456,6 +457,8 @@ export interface WalkHost {
   leave(): void;
   /** The act key (E), or a finger held still on the view: do something with what is being looked at. */
   act(): void;
+  /** The view was changed (C): first person, or over the shoulder. */
+  viewed(third: boolean): void;
   /** The pointer was captured or let go: the page says how to look round accordingly. */
   locked(on: boolean): void;
 }
@@ -468,6 +471,17 @@ const TURN = 1.9;
 /** The first-person lens, vertical degrees: wide enough to see where the feet are going. */
 const FOV = 62;
 const FOV_UPRIGHT = 80;
+/** Over the shoulder: how far behind the head the camera sits, how far to the right of it and above it, metres. */
+const BOOM = 3.4;
+const SHOULDER = 0.55;
+const OVER = 0.3;
+/** How close to something behind it the camera may come, metres; and nearer the head than this, the figure is not drawn (the camera would be in it). */
+const BOOM_CLEAR = 0.25;
+const BOOM_LEAST = 0.75;
+/** How long the camera takes to pull back over the shoulder and to come in again, seconds. */
+const VIEW_SECONDS = 0.3;
+/** How fast the figure turns to face the way it is going, radians a second. */
+const FACE = 11;
 /** How long a finger must rest on the view, without sliding, to mean "act on this": milliseconds, and pixels of slack. */
 const HOLD_MS = 450;
 const HOLD_SLACK = 10;
@@ -490,6 +504,18 @@ export class Walker {
   pitch = 0;
   /** Eyes above the feet, metres. */
   eye = 1.72;
+  /** Seen over the shoulder, not through the eyes. Kept from one walk to the next. */
+  third = false;
+  /** Which way the body faces, as `yaw` is measured: the eyes' way in first person, the way it last went over the shoulder. */
+  heading = 0;
+  /** How far the body went over the ground in the last frame, metres, and how fast that was, m/s. */
+  stepped = 0;
+  pace = 0;
+  /** The camera is far enough from the head for the figure to be drawn. */
+  outside = false;
+  /** How far over the shoulder the camera has pulled back, 0 (the eyes) to 1. */
+  private viewK = 0;
+  private readonly boom = new THREE.Vector3();
   private readonly canvas: HTMLCanvasElement;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly host: WalkHost;
@@ -530,6 +556,7 @@ export class Walker {
       if (key === 'escape') return this.modal ? this.modal.cancel() : this.host.leave();
       if (this.modal) return; // the keys are the menu's
       if (key === 'e' && !e.repeat) return this.host.act();
+      if (key === 'c' && !e.repeat) return this.setThird(!this.third);
       if (!WALK_KEYS.has(key)) return;
       e.preventDefault();
       if (key === ' ' && !e.repeat) this.jump();
@@ -617,8 +644,11 @@ export class Walker {
     this.body.radius = radius;
     this.body.ground = this.host.ground();
     this.body.place(at.x, at.y, at.z);
-    this.yaw = Math.atan2(-(toward.x - at.x), -(toward.z - at.z));
+    this.yaw = this.heading = Math.atan2(-(toward.x - at.x), -(toward.z - at.z));
     this.pitch = 0;
+    this.viewK = 0; // the camera starts at the eyes and pulls back from there
+    this.outside = false;
+    this.stepped = this.pace = 0;
     this.moved = true;
     this.wasLocked = document.pointerLockElement === this.canvas; // already captured when one figure is left for another
     this.modal = null;
@@ -695,6 +725,14 @@ export class Walker {
     this.moved = true;
   }
 
+  /** See through the eyes, or over the shoulder (C, or the page's button). */
+  setThird(third: boolean): void {
+    if (third === this.third) return;
+    this.third = third;
+    this.moved = true;
+    this.host.viewed(third);
+  }
+
   /** Hop (Space, or the page's button). */
   jump(): void {
     if (this.active && !this.modal) this.body.jump();
@@ -740,6 +778,18 @@ export class Walker {
       p.z *= reach / out;
     }
     if (was.distanceToSquared(p) > 1e-10) this.moved = true;
+    this.stepped = Math.hypot(p.x - was.x, p.z - was.z);
+    this.pace = dt > 0 ? this.stepped / dt : 0;
+    // through its eyes the body faces where they look; seen from behind it turns to face the way it is sent
+    if (!this.third) this.heading = this.yaw;
+    else if (length) {
+      const to = Math.atan2(sin * forward - cos * right, cos * forward + sin * right);
+      const off = Math.atan2(Math.sin(to - this.heading), Math.cos(to - this.heading));
+      if (off) {
+        this.heading += Math.abs(off) <= FACE * dt ? off : Math.sign(off) * FACE * dt;
+        this.moved = true;
+      }
+    }
 
     const camera = this.camera;
     camera.position.set(p.x, p.y + this.eye, p.z);
@@ -747,11 +797,33 @@ export class Walker {
     const k = this.peekK;
     this.peekK = THREE.MathUtils.clamp(k + (this.peekAt ? dt : -dt) / PEEK_SECONDS, 0, 1);
     if (this.peekK !== k) this.moved = true;
-    if (this.peekK > 0 && this.peekTo) camera.position.lerp(this.peekTo, this.peekK * this.peekK * (3 - 2 * this.peekK));
     camera.quaternion.setFromEuler(this.euler.set(this.pitch, this.yaw, 0));
-    // what the body could touch was gathered for its move; what the eyes and the hand can reach is gathered now
-    this.solids.gather(camera.position, REACH + 0.5, REACH + 0.5);
-    this.aimed = this.solids.cast(camera.position, camera.getWorldDirection(this.gaze), REACH);
+    const gaze = camera.getWorldDirection(this.gaze);
+    // what the body could touch was gathered for its move; what the eyes, the hand and the camera can reach is gathered now
+    const far = REACH + BOOM + 0.5;
+    this.solids.gather(camera.position, far, far);
+    // Over the shoulder: back along the line of sight, to the right and up a little. If there is
+    // a wall between the head and there, the camera comes in to just short of it.
+    const pulled = this.viewK;
+    this.viewK = THREE.MathUtils.clamp(pulled + (this.third ? dt : -dt) / VIEW_SECONDS, 0, 1);
+    if (this.viewK !== pulled) this.moved = true;
+    let back = 0;
+    if (this.viewK > 0) {
+      const ease = this.viewK * this.viewK * (3 - 2 * this.viewK);
+      const boom = this.boom.set(cos * SHOULDER, OVER, -sin * SHOULDER).addScaledVector(gaze, -BOOM);
+      const length = boom.length();
+      const wall = this.solids.cast(camera.position, boom.divideScalar(length), length + BOOM_CLEAR);
+      const reach = Math.max(0, Math.min(length, (wall?.distance ?? Infinity) - BOOM_CLEAR)) * ease;
+      camera.position.addScaledVector(boom, reach);
+      back = (reach / length) * BOOM;
+      this.outside = reach > BOOM_LEAST;
+    } else this.outside = false;
+    if (this.peekK > 0 && this.peekTo) {
+      camera.position.lerp(this.peekTo, this.peekK * this.peekK * (3 - 2 * this.peekK));
+      back *= 1 - this.peekK;
+    }
+    // what is straight ahead, within arm's reach of the figure: from behind it, the ray starts level with its head
+    this.aimed = this.solids.cast(this.eyes.copy(camera.position).addScaledVector(gaze, back), gaze, REACH);
     if (this.lens(dt)) this.moved = true;
     const fov = camera.aspect < 1 ? FOV_UPRIGHT : FOV;
     // The near plane goes out as far as the nearest thing allows, as it does for the orbiting
