@@ -463,7 +463,9 @@ for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart'] as const)
     { capture: true, passive: true },
   );
 let demoAt = performance.now();
-setInterval(() => {
+// Every frame: the show moves things (a vehicle coming apart), and stepped a few times a second they jerk.
+const showFrame = (): void => {
+  requestAnimationFrame(showFrame);
   const now = performance.now();
   const dt = Math.min(1, (now - demoAt) / 1000);
   demoAt = now;
@@ -476,7 +478,8 @@ setInterval(() => {
     prefs.set('demo', true);
   }
   demo.tick(dt);
-}, 200);
+};
+requestAnimationFrame(showFrame);
 
 void start(address().model);
 window.addEventListener('hashchange', () => {
