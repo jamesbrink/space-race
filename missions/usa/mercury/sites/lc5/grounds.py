@@ -214,6 +214,8 @@ def racks(parts: Parts) -> None:
                 a, b = (sy, sy + d) if n % 2 else (sy + d, sy)
                 beam(tube, (x, a, z + 0.2), (x, b, z + lift), 0.11)
         for y in (sy, sy + d):
+            if n == 0 and y == sy:  # the way in: the end the first flight starts from is open to the ground
+                continue
             beam(tube, (sx, y, z + 3.4), (sx + w, y, z + 3.4), 0.13)
             beam(tube, (sx, y, z - 0.05), (sx + w, y, z - 0.05), 0.13)
         if n == 0:
@@ -221,8 +223,12 @@ def racks(parts: Parts) -> None:
         # the landing at this level: the end the flight below arrives at, full width
         end = sy + d if n % 2 else sy
         y0, y1 = sorted((end, end + (-2.4 if n % 2 else 2.4)))
-        if n == lifts:  # the top is boarded over
-            box(board, (sx + 0.1, sy, z - 0.16), (sx + w - 0.1, sy + d, z))
+        if n == lifts:  # the top is boarded over, but for the well the last flight comes up through
+            box(board, (sx + 0.1, sy, z - 0.16), (sx + w - 0.1, sy + 2.4, z))
+            box(board, (sx + 0.1, sy + 2.4, z - 0.16), (sx + w - 2.55, sy + d, z))
+            beam(tube, (sx + w - 2.5, sy + 2.5, z + 3.4), (sx + w - 2.5, sy + d, z + 3.4), 0.13)  # a rail along the well
+            for y in (sy + 2.5, sy + 7.0, sy + d - 0.1):
+                beam(tube, (sx + w - 2.5, y, z), (sx + w - 2.5, y, z + 3.4), 0.13)
         else:
             box(board, (sx + 0.1, y0, z - 0.16), (sx + w - 0.1, y1, z))
     for n in range(lifts):  # each flight climbs one way along the tower, the next comes back beside it

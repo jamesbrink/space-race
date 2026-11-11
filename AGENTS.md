@@ -110,6 +110,7 @@ src/
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
   world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run
+  world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
   timebar.ts  time.css                the clock's control
 tools/
@@ -241,6 +242,14 @@ through `Setting.at(jdUT)`, which returns null unless something on screen change
 clock costs nothing and a running one redraws only as fast as the sky visibly moves. Anything new
 that depends on the hour takes its instant from the clock and reports change the same way; it does
 not read `flight.launch` or keep its own time.
+
+A model whose slider tells a sequence of events has a `sequence` (types.ts: `Keyframe`): the
+instants, in seconds from launch, at which the slider reads each value, each with confidence and
+source. The times are the record; where they fall on the slider is layout. Such a model is on the
+clock (`world/sequence.ts`): its slider reads the clock, dragging it stops and moves the clock,
+and running the clock plays the events at their own pace. Another section's `with` asks for an
+instant (`at`), not a slider position. A slider without a sequence (the vehicle's exploded view)
+is not time and is left alone.
 
 ## Two looks
 

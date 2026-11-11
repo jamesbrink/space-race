@@ -159,8 +159,9 @@ def build(parts: Parts) -> None:
 
 def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
     """A small timber-framed hut on skids, a door in one wall and a window in another."""
-    g = "GroundEquipment"
     x0, y0, x1, y1 = rect
+    g = f"GroundEquipment_{key.capitalize()}"  # its own node: it is one thing, and can be taken away
+    parts.node(g, "GroundEquipment", ((x0 + x1) / 2, (y0 + y1) / 2, 0.0))
     outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     walls = ring(outline, 0.3)
     skin = parts(g, f"trailer/{key}")
@@ -174,7 +175,7 @@ def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
         if i == window_wall:
             window(parts, g, w, w.length / 2 - 2.0, w.length / 2 + 2.0, 3.8, 6.6, mullions=[w.length / 2])
         if i == door_wall:
-            wall_door(parts, f"{g}_{key.capitalize()}Door", g, w, w.length / 2 - 1.5, w.length / 2 + 1.5, 0.75, 7.4, mat="grey")
+            wall_door(parts, f"GroundEquipment_{key.capitalize()}Door", g, w, w.length / 2 - 1.5, w.length / 2 + 1.5, 0.75, 7.4, mat="grey")
             w.box(parts(g, "chassis"), w.length / 2 - 1.8, w.length / 2 + 1.8, -2.2, 0.0, 0.3, 0.72)  # the step
     inner = offset_poly(outline, -0.3)
     parts(g, "plank").add([tuple(P(x, y, 0.75)) for x, y in inner], ear_clip(inner))
@@ -203,7 +204,10 @@ def furniture(parts: Parts) -> None:
         source="S61-03158 (MR-3 on the pad at night); a white NASA trailer is beside the structure in July too (F16_017)",
     )
     sx, sy = -58.0, -91.0
-    tube = parts(g, "white/shower", True)
+    sh = "GroundEquipment_Shower"
+    parts.node(sh, g, (sx, sy, 0.0))
+    white, dark, red, ink = parts(sh, "sign"), parts(sh, "chassis", True), parts(sh, "signred"), parts(sh, "black/lettering")
+    tube = parts(sh, "white/shower", True)
     for dx in (-1.6, 1.6):
         for dy in (-1.6, 1.6):
             tube.tube(P(sx + dx, sy + dy, 0.9), P(sx + dx, sy + dy, 8.6), 0.07 * FT, 8)
@@ -211,7 +215,7 @@ def furniture(parts: Parts) -> None:
         tube.tube(P(sx + dx, sy - 1.6, 8.6), P(sx + dx, sy + 1.6, 8.6), 0.07 * FT, 8)
     for dy in (-1.6, 1.6):
         tube.tube(P(sx - 1.6, sy + dy, 8.6), P(sx + 1.6, sy + dy, 8.6), 0.07 * FT, 8)
-    box(parts(g, "deck"), (sx - 2.0, sy - 2.0, 0.75), (sx + 2.0, sy + 2.0, 0.95))  # its grating floor
+    box(parts(sh, "deck"), (sx - 2.0, sy - 2.0, 0.75), (sx + 2.0, sy + 2.0, 0.95))  # its grating floor
     tube.tube(P(sx, sy - 1.6, 8.6), P(sx, sy, 8.6), 0.05 * FT, 8)  # the supply to the head
     tube.lathe(
         [(0.0, 0.0), (0.5 * FT, -0.05 * FT), (0.5 * FT, -0.25 * FT), (0.06 * FT, -0.5 * FT), (0.0, -0.5 * FT)][::-1],
@@ -234,7 +238,7 @@ def furniture(parts: Parts) -> None:
         )
         lettering(ink, "EMERGENCY", 0.36, f + Vector((0, 0, 7.45)), r, (0, 0, 1), font)
         lettering(ink, "SHOWER", 0.36, f + Vector((0, 0, 6.85)), r, (0, 0, 1), font)
-    hose = parts(g, "cable", True)
+    hose = parts(sh, "cable", True)
     for k in range(4):  # the hose coiled on its hook
         hose.lathe(
             [(0.75 * FT, 0.0), (0.83 * FT, 0.08 * FT), (0.75 * FT, 0.16 * FT), (0.67 * FT, 0.08 * FT), (0.75 * FT, 0.0)],
@@ -243,7 +247,9 @@ def furniture(parts: Parts) -> None:
         )
 
     # ---- a packing case beside it (GPN-2000-001006)
-    wood = parts(g, "plank")
+    cs = "GroundEquipment_Case"
+    parts.node(cs, g, (-44.25, -92.85, 0.0))
+    wood = parts(cs, "plank")
     box(wood, (-48.0, -94.5, 0.0), (-40.5, -91.2, 2.7))
     if fine():
         for x in (-47.6, -44.25, -40.9):
@@ -251,6 +257,7 @@ def furniture(parts: Parts) -> None:
     box(wood, (-46.0, -93.8, 2.7), (-43.8, -92.2, 3.9))
 
     # ---- DANGER boards on stands by the cherry picker, and a striped barricade at the pad's corner
+    white, dark, red, ink = parts(g, "sign"), parts(g, "chassis", True), parts(g, "signred"), parts(g, "black/lettering")
     for x, y, turn in ((57.0, -13.0, 20.0), (58.5, 13.5, -15.0)):
         a = math.radians(turn)
         r = Vector((math.sin(a), -math.cos(a), 0))
@@ -263,11 +270,14 @@ def furniture(parts: Parts) -> None:
         plate(red, [tuple(c + r * e + n * 0.115 + Vector((0, 0, z))) for e, z in ((-0.9, 3.75), (0.9, 3.75), (0.9, 4.3), (-0.9, 4.3))], 0.012)
         lettering(white, "DANGER", 0.34, c + n * 0.13 + Vector((0, 0, 3.86)), r, (0, 0, 1), font)
     bx, by = 84.0, -93.0
-    stripe = parts(g, "orange")
+    bk = "GroundEquipment_Barricade"
+    parts.node(bk, g, (bx, by, 0.0))
+    white, dark, red, ink = parts(bk, "sign"), parts(bk, "chassis", True), parts(bk, "signred"), parts(bk, "black/lettering")
+    stripe = parts(bk, "orange")
     for d in (-4.5, 4.5):
         beam(dark, (bx + d - 0.9, by, 0.0), (bx + d, by, 3.4), 0.2)
         beam(dark, (bx + d + 0.9, by, 0.0), (bx + d, by, 3.4), 0.2)
-    box(parts(g, "black/barricade"), (bx - 5.5, by - 0.08, 2.2), (bx + 5.5, by + 0.08, 3.5))
+    box(parts(bk, "black/barricade"), (bx - 5.5, by - 0.08, 2.2), (bx + 5.5, by + 0.08, 3.5))
     for k in range(7):
         for face in (-1, 1):
             xa = bx - 5.3 + k * 1.5
@@ -281,29 +291,38 @@ def furniture(parts: Parts) -> None:
 
     # ---- the white trailer lettered NASA SP-No 1, beside where the structure stands back (S61-03158)
     tx0, ty0, tx1, ty1 = 30.0, 68.0, 38.0, 97.0
+    tr = "GroundEquipment_Trailer"
+    parts.node(tr, g, ((tx0 + tx1) / 2, ty1 - 4.55, 0.0))
+    white, dark, red, ink = parts(tr, "sign"), parts(tr, "chassis", True), parts(tr, "signred"), parts(tr, "black/lettering")
     tz, troof = 3.62, 12.2  # its floor and the underside of its roof
-    van = parts(g, "trailer/van")
+    van = parts(tr, "trailer/van")
     sides = ring([(tx0, ty0), (tx1, ty0), (tx1, ty1), (tx0, ty1)], 0.2)
     for i, w in enumerate(sides):
         w.build(van, 3.4, troof, [(9.0, 12.0, tz, tz + 6.7)] if i == 1 else [])
-    wall_door(parts, f"{g}_TrailerDoor", g, sides[1], 9.0, 12.0, tz, tz + 6.7, mat="grey", sign="SP-1")
-    box(parts(g, "plank/vanfloor"), (tx0 + 0.1, ty0 + 0.1, 3.4), (tx1 - 0.1, ty1 - 0.1, tz))
-    box(parts(g, "trailer/vanroof"), (tx0 - 0.1, ty0 - 0.1, troof), (tx1 + 0.1, ty1 + 0.1, troof + 0.25))
-    fit = parts(g, "console")
+    wall_door(parts, f"{g}_TrailerDoor", tr, sides[1], 9.0, 12.0, tz, tz + 6.7, mat="grey", sign="SP-1")
+    box(parts(tr, "plank/vanfloor"), (tx0 + 0.1, ty0 + 0.1, 3.4), (tx1 - 0.1, ty1 - 0.1, tz))
+    box(parts(tr, "trailer/vanroof"), (tx0 - 0.1, ty0 - 0.1, troof), (tx1 + 0.1, ty1 + 0.1, troof + 0.25))
+    fit = parts(tr, "console")
     box(fit, (tx0 + 0.2, ty0 + 14.0, tz), (tx0 + 2.4, ty1 - 0.4, tz + 3.0))  # a bench of test sets along the far wall (invented)
     box(fit, (tx0 + 0.2, ty0 + 0.4, tz), (tx0 + 2.2, ty0 + 6.0, tz + 6.4))
-    frame = parts(g, "chassis")
+    frame = parts(tr, "chassis")
     box(frame, (tx0 + 1.2, ty0 + 0.5, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
-    for y in (ty1 - 6.5, ty1 - 2.6):  # the bogie at the back
+    k = 0
+    for y in (ty1 - 6.5, ty1 - 2.6):  # the bogie at the back: each pair of tyres its own node on its hub, to roll
         for s in (-1, 1):
+            k += 1
             xa, xb = sorted((s * 2.3 + (tx0 + tx1) / 2, s * 3.9 + (tx0 + tx1) / 2))
-            dark.tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, 16)
+            wheel = f"{tr}_Wheel_{k}"
+            parts.node(wheel, tr, ((xa + xb) / 2, y, 1.55))
+            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, 16)
+            parts(wheel, "chassis", True).tube(P(xa - 0.03, y, 1.55), P(xb + 0.03, y, 1.55), 0.8 * FT, 10)
+        box(parts(tr, "chassis/axles"), ((tx0 + tx1) / 2 - 2.3, y - 0.2, 1.35), ((tx0 + tx1) / 2 + 2.3, y + 0.2, 1.75))
     for s in (-1, 1):  # the landing legs at the front
         x = (tx0 + tx1) / 2 + s * 2.6
         beam(frame, (x, ty0 + 5.0, 0.0), (x, ty0 + 5.0, 2.7), 0.35)
         box(frame, (x - 0.5, ty0 + 4.5, 0.0), (x + 0.5, ty0 + 5.5, 0.12))
     for k in range(4):  # steps up to the door
-        box(parts(g, "deck"), (tx1 + 0.1 + k * 0.9, ty0 + 9.0, 2.85 - k * 0.72 - 0.1), (tx1 + 1.0 + k * 0.9, ty0 + 12.0, 2.85 - k * 0.72))
+        box(parts(tr, "deck"), (tx1 + 0.1 + k * 0.9, ty0 + 9.0, 2.85 - k * 0.72 - 0.1), (tx1 + 1.0 + k * 0.9, ty0 + 12.0, 2.85 - k * 0.72))
     for y in (ty0 + 9.0, ty0 + 12.0):
         beam(frame, (tx1 + 0.2, y, 2.75), (tx1 + 3.7, y, 0.0), 0.14)
     lettering(ink, "NASA", 1.25, (tx1 + 0.012, ty1 - 9.0, 9.3), (0, 1, 0), (0, 0, 1), font)
