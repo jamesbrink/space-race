@@ -34,6 +34,18 @@ CIRCLE_R = 60.5  # the painted circle: 95 px on Figure 7-6 at 1.274 ft/px
 # How far concrete, ballast and footings go down. The viewer's terrain is 0.45 m (1.48 ft) under the
 # pad's surface, so anything standing on the ground must reach well past it.
 FOOTING = 3.0
+GROUND = -0.45 / 0.3048  # the viewer's terrain (backdrops.ts: GROUND_Y), in feet under the pad's surface
+
+# The rest of Complex 5/6, in this frame. From OpenStreetMap, which maps what survives (see ../lc-5.md):
+PAD6 = (0.0, -520.0)  # pad 6's centre: 519 ft along 025.2 deg; taken on the rails' centre line, 520 ft
+# The blockhouse is an arrow: a rectangle 44 ft wide with a right-angled point toward the pads, 90 ft
+# from the point to the back wall. The point is 305 ft from pad 5's centre and 304 ft from pad 6's.
+BLOCKHOUSE_TIP = (157.3, -261.0)
+BLOCKHOUSE_LENGTH, BLOCKHOUSE_HALF = 90.0, 22.0
+# The cable trench: its end on the pad (TM X-53107 Figure 7-6), and where it reaches the blockhouse, at
+# the pad 5 firing room's corner (the covers that survive run to it; FHSU F16_016 shows pad 6's the same).
+TRENCH_END = (51.0, -8.5)
+TRENCH_TO = (BLOCKHOUSE_TIP[0] + 19.9, BLOCKHOUSE_TIP[1] + 19.9)
 
 # The track: two pairs of rails, each about standard gauge, their centres about 21 ft apart
 # (6100884: fin span 142 px = 12.67 ft, pairs 223 px apart; OpenStreetMap maps two lines 22.3 ft apart).
@@ -123,6 +135,31 @@ def materials() -> dict:
         "stain": m("concrete-stained", (0.27, 0.26, 0.24), 0.0, 0.95),
         "blue": m("paint-insignia-blue", (0.03, 0.09, 0.35), 0.0, 0.5),
         "trailer": m("paint-trailer-white", (0.72, 0.72, 0.69), 0.0, 0.55),
+        # the blockhouse and what stood round it
+        "bunker": m("concrete-painted", (0.66, 0.64, 0.58), 0.0, 0.85),
+        "block": m("concrete-block-painted", (0.6, 0.59, 0.54), 0.0, 0.9),
+        "tar": m("roof-tar", (0.035, 0.035, 0.035), 0.0, 0.95),
+        "shell": m("shell-gravel", (0.47, 0.42, 0.32), 0.0, 1.0),
+        "timber": m("timber-pole", (0.13, 0.085, 0.05), 0.0, 0.9),
+        "plank": m("timber-plank", (0.38, 0.3, 0.2), 0.0, 0.85),
+        "blast": m("steel-blast-door", (0.17, 0.11, 0.085), 0.6, 0.6),
+        "frame": m("steel-window-frame", (0.07, 0.075, 0.075), 0.6, 0.55),
+        "console": m("paint-console-green", (0.3, 0.36, 0.33), 0.1, 0.5),
+        "corrugated": m("galvanised-corrugated", (0.5, 0.51, 0.5), 0.8, 0.5),
+        "mesh": m("galvanised-mesh", (0.42, 0.43, 0.42), 0.8, 0.6, double_sided=True),
+        "canvas": m("canvas-sandbag", (0.42, 0.38, 0.29), 0.0, 1.0),
+        "chrome": m("chrome", (0.75, 0.76, 0.78), 1.0, 0.18),
+        "taillamp": m("lamp-tail", (0.45, 0.02, 0.02), 0.0, 0.3),
+        "void": m("window-void", (0.02, 0.022, 0.025), 0.0, 0.6),
+        "sign": m("paint-sign-white", (0.82, 0.82, 0.8), 0.0, 0.5),
+        "signred": m("paint-sign-red", (0.6, 0.05, 0.04), 0.0, 0.5),
+        "car-seafoam": m("paint-car-seafoam", (0.33, 0.52, 0.45), 0.3, 0.3),
+        "car-cream": m("paint-car-cream", (0.74, 0.7, 0.58), 0.3, 0.3),
+        "car-blue": m("paint-car-blue", (0.16, 0.3, 0.48), 0.3, 0.3),
+        "car-red": m("paint-car-red", (0.5, 0.06, 0.05), 0.3, 0.3),
+        "car-black": m("paint-car-black", (0.03, 0.03, 0.035), 0.3, 0.25),
+        "car-white": m("paint-car-white", (0.8, 0.8, 0.77), 0.3, 0.3),
+        "car-olive": m("paint-car-olive", (0.2, 0.22, 0.13), 0.1, 0.6),
     }
 
 
@@ -178,7 +215,7 @@ class Parts:
 def box(mb: MeshBuilder, lo, hi) -> None:
     """Axis-aligned box from corner to corner, feet."""
     lo, hi = Vector(lo), Vector(hi)
-    mb.box(tuple((hi - lo) * FT), Matrix.Translation((lo + hi) / 2 * FT))
+    mb.box(tuple(abs(v) * FT for v in hi - lo), Matrix.Translation((lo + hi) / 2 * FT))
 
 
 def beam(mb: MeshBuilder, a, b, width: float) -> None:
@@ -301,3 +338,185 @@ def lamp_head(poles: MeshBuilder, lamps: MeshBuilder, centre, aim, size: float =
     m = Matrix.Translation(Vector(centre) * FT) @ Vector((0, 0, 1)).rotation_difference(Vector(aim).normalized()).to_matrix().to_4x4()
     poles.lathe([(0.3 * size * FT, -0.8 * size * FT), (size * FT, 0.0)], 14, matrix=m)
     lamps.lathe([(0.96 * size * FT, -0.03 * FT), (0.0, -0.03 * FT)], 14, matrix=m, flip=True)
+
+
+# ------------------------------------------------------- buildings, paving and what is placed
+
+
+def offset_poly(pts, d: float) -> list:
+    """An outline (anticlockwise) moved outward by d at every side, mitred; negative d moves it in."""
+    n = len(pts)
+    out = []
+    for i in range(n):
+        p0, p1, p2 = pts[i - 1], pts[i], pts[(i + 1) % n]
+        la, lb = math.hypot(p1[0] - p0[0], p1[1] - p0[1]), math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+        n1 = ((p1[1] - p0[1]) / la, -(p1[0] - p0[0]) / la)
+        n2 = ((p2[1] - p1[1]) / lb, -(p2[0] - p1[0]) / lb)
+        k = d / (1.0 + n1[0] * n2[0] + n1[1] * n2[1])
+        out.append((p1[0] + (n1[0] + n2[0]) * k, p1[1] + (n1[1] + n2[1]) * k))
+    return out
+
+
+def slab(mb: MeshBuilder, outline, z0: float, z1: float, spread: float = 0.0, bottom: bool = False) -> None:
+    """A slab over any simple outline (feet, anticlockwise): paving, a floor, a roof. With `spread`
+    its edges are battered, the foot that far outside the top: fill graded down to the ground, which
+    is also a ramp on to it. The underside is left off unless asked for: it is in the ground."""
+    k = len(outline)
+    tris = ear_clip(list(outline))
+    foot = offset_poly(outline, spread) if spread else outline
+    top = [tuple(P(x, y, z1)) for x, y in outline]
+    bot = [tuple(P(x, y, z0)) for x, y in foot]
+    mb.add(top, tris)
+    if bottom:
+        mb.add(bot, [t[::-1] for t in tris])
+    for i in range(k):
+        j = (i + 1) % k
+        mb.add([bot[i], bot[j], top[j], top[i]], [(0, 1, 2, 3)])
+
+
+class Wall:
+    """One side of a building's ring of walls, from outer[i] to outer[i + 1] (feet, anticlockwise),
+    mitred to its neighbours at each end. Distances `s` run along its outer face; `depth` is into
+    the wall from that face (negative: standing off it outside)."""
+
+    def __init__(self, outer, inner, i: int) -> None:
+        j = (i + 1) % len(outer)
+        self.a, self.b = Vector(outer[i]), Vector(outer[j])
+        self.ia, self.ib = Vector(inner[i]), Vector(inner[j])
+        self.length = (self.b - self.a).length
+        self.u = (self.b - self.a) / self.length
+        self.n = Vector((-self.u.y, self.u.x))  # into the building
+        self.thick = (self.ia - self.a).dot(self.n)
+
+    def p(self, s: float, depth: float, z: float) -> tuple:
+        q = self.a + self.u * s + self.n * depth
+        return (q.x, q.y, z)
+
+    def _plan(self, s: float):
+        o = self.a + self.u * s
+        if s <= 1e-6:
+            return self.a, self.ia
+        if s >= self.length - 1e-6:
+            return self.b, self.ib
+        return o, o + self.n * self.thick
+
+    def build(self, mb: MeshBuilder, z0: float, z1: float, openings=()) -> None:
+        """The wall, built round its openings: each (s0, s1, sill, head), in order along it."""
+
+        def piece(s0, s1, za, zb):
+            if s1 - s0 < 1e-6 or zb - za < 1e-6:
+                return
+            (o0, i0), (o1, i1) = self._plan(s0), self._plan(s1)
+            prism(mb, [tuple(o0), tuple(o1), tuple(i1), tuple(i0)], za, zb)
+
+        at = 0.0
+        for s0, s1, sill, head in openings:
+            piece(at, s0, z0, z1)
+            piece(s0, s1, z0, sill)
+            piece(s0, s1, head, z1)
+            at = s1
+        piece(at, self.length, z0, z1)
+
+    def box(self, mb: MeshBuilder, s0: float, s1: float, d0: float, d1: float, za: float, zb: float) -> None:
+        """A box on the wall: along it from s0 to s1, from depth d0 to d1, between two heights."""
+        c = self.a + self.u * ((s0 + s1) / 2) + self.n * ((d0 + d1) / 2)
+        obox(mb, (c.x, c.y, (za + zb) / 2), (self.u.x, self.u.y, 0), (0, 0, 1), (s1 - s0, d1 - d0, zb - za))
+
+
+def ring(outer, thick: float) -> list:
+    """The walls of a building whose outline is `outer` (feet, anticlockwise), each `thick` through."""
+    inner = offset_poly(outer, -thick)
+    return [Wall(outer, inner, i) for i in range(len(outer))]
+
+
+def window(
+    parts: Parts, node: str, w: Wall, s0: float, s1: float, sill: float, head: float, *, mullions=(), bar: float = 0.16, glass_at: float | None = None
+) -> None:
+    """Glass in an opening, in a steel frame that overlaps the opening's edges."""
+    glass, frame = parts(node, "glass"), parts(node, "frame")
+    d = w.thick / 2 if glass_at is None else glass_at
+    w.box(glass, s0 + 0.01, s1 - 0.01, d - 0.03, d + 0.03, sill + 0.01, head - 0.01)
+    d0, d1 = d - 0.12, d + 0.12
+    w.box(frame, s0 - 0.04, s0 + bar, d0, d1, sill - 0.04, head + 0.04)
+    w.box(frame, s1 - bar, s1 + 0.04, d0, d1, sill - 0.04, head + 0.04)
+    w.box(frame, s0 + bar, s1 - bar, d0, d1, sill - 0.04, sill + bar)
+    w.box(frame, s0 + bar, s1 - bar, d0, d1, head - bar, head + 0.04)
+    for m_ in mullions:
+        if isinstance(m_, tuple):  # ("h", height): a transom
+            w.box(frame, s0 + bar, s1 - bar, d0 + 0.02, d1 - 0.02, m_[1] - bar / 2, m_[1] + bar / 2)
+        else:
+            w.box(frame, m_ - bar / 2, m_ + bar / 2, d0 + 0.02, d1 - 0.02, sill + bar, head - bar)
+
+
+def placed(mb: MeshBuilder, built: MeshBuilder, at, heading: float = 0.0) -> None:
+    """Add what was built in a thing's own frame (its +X forward, feet turned to metres already)
+    at a place on the site, turned `heading` degrees anticlockwise from the site's +X."""
+    m = Matrix.Translation(Vector(at) * FT) @ Matrix.Rotation(math.radians(heading), 4, "Z")
+    mb.add(built.verts, built.faces, built.uvs, m)
+
+
+def stairs(mb: MeshBuilder, foot, top, width: float, *, rise: float = 0.62, tread_t: float = 0.12, stringer: float = 0.75) -> int:
+    """A straight flight of open steel stairs from `foot` to `top` (feet; the points are the
+    walking line's ends, on the lower floor and the upper): treads between two stringers. Returns
+    the number of risers."""
+    a, b = Vector(foot), Vector(top)
+    run = Vector((b.x - a.x, b.y - a.y, 0.0))
+    along = run.normalized()
+    side = Vector((-along.y, along.x, 0.0))
+    n = max(2, round((b.z - a.z) / rise))
+    for k in range(1, n):  # the nth riser lands on the upper floor
+        c = a + run * ((k - 0.5) / (n - 1)) + Vector((0, 0, (b.z - a.z) * k / n - tread_t / 2))
+        obox(mb, tuple(c), tuple(along), (0, 0, 1), (run.length / (n - 1) + 0.08, width, tread_t))
+    for s in (-1, 1):
+        lo = a + side * (s * (width / 2 + 0.06)) + Vector((0, 0, 0.1))
+        hi = b + side * (s * (width / 2 + 0.06)) + Vector((0, 0, -0.25))
+        d = (hi - lo).normalized()
+        obox(mb, tuple((lo + hi) / 2), tuple(d), tuple(side), ((hi - lo).length + 0.6, stringer, 0.1))
+    return n
+
+
+def stair_rails(mb: MeshBuilder, foot, top, width: float, height: float = 3.0) -> None:
+    """Handrails either side of a flight built by stairs()."""
+    a, b = Vector(foot), Vector(top)
+    side = Vector((-(b.y - a.y), b.x - a.x, 0.0)).normalized()
+    for s in (-1, 1):
+        off = side * (s * (width / 2 + 0.06))
+        n = max(1, round((b - a).length / 4.5))
+        for k in range(n + 1):
+            q = a + (b - a) * k / n + off
+            beam(mb, tuple(q), tuple(q + Vector((0, 0, height))), 0.13)
+        for h in (height, height * 0.5):
+            beam(mb, tuple(a + off + Vector((0, 0, h))), tuple(b + off + Vector((0, 0, h))), 0.11)
+
+
+def timber_pole(
+    parts: Parts, node: str, x: float, y: float, height: float, *, lamps: int = 0, aim=None, arm: float = 6.0, ground: float | None = None
+) -> None:
+    """A creosoted timber pole, tapering, with a crossarm on two braces. With `lamps`, that many
+    floodlights stand on the arm, aimed along `aim` (FHSU F16_015 and F16_017, July 1961: two or
+    three round floods on each pole at the pad's edge); without, it carries insulators for a line."""
+    wood, metal = parts(node, "timber", True), parts(node, "grey/polefittings", True)
+    z0 = (GROUND if ground is None else ground) - 2.0
+    wood.lathe(ftp([(0.0, z0), (0.55, z0), (0.36, height), (0.0, height)]), 10, matrix=Matrix.Translation(P(x, y, 0)))
+    a = Vector(aim if aim is not None else (1, 0, 0))
+    a.z = 0
+    a.normalize()
+    side = Vector((-a.y, a.x, 0))
+    c = Vector((x, y, height - 1.6)) + a * 0.45
+    obox(wood, tuple(c), tuple(side), (0, 0, 1), (arm, 0.3, 0.38))
+    for s in (-1, 1):
+        beam(metal, tuple(c + side * (s * arm * 0.36)), (x + a.x * 0.42, y + a.y * 0.42, height - 4.2), 0.1)
+    if lamps:
+        glow = parts(node, "lamp", True)
+        offs = [0.0] if lamps == 1 else [arm * 0.42 * (2 * k / (lamps - 1) - 1) for k in range(lamps)]
+        for o in offs:
+            q = c + side * o + Vector((0, 0, 0.19))
+            beam(metal, tuple(q), tuple(q + Vector((0, 0, 0.7))), 0.12)
+            lamp_head(metal, glow, q + Vector((0, 0, 1.25)), a + Vector((0, 0, -0.45)), 0.75)
+        # the conduit down the pole to a switch box
+        metal.tube(P(x - a.x * 0.5, y - a.y * 0.5, 1.0), P(x - a.x * 0.42, y - a.y * 0.42, height - 2.0), 0.05 * FT, 6)
+        obox(metal, (x - a.x * 0.62, y - a.y * 0.62, 4.6), tuple(a), (0, 0, 1), (0.5, 1.0, 1.4))
+    elif fine():
+        for o in (-arm * 0.42, -arm * 0.16, arm * 0.16, arm * 0.42):
+            q = c + side * o + Vector((0, 0, 0.19))
+            metal.lathe(ftp([(0.0, 0.0), (0.06, 0.0), (0.06, 0.25), (0.16, 0.3), (0.16, 0.5), (0.0, 0.55)]), 8, matrix=Matrix.Translation(q * FT))

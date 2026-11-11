@@ -9,11 +9,14 @@ import { NOISE } from './space';
  * the service structure's rails along Z), which lies at an angle to the compass; COMPASS turns
  * the one into the other, and the whole site is turned by it.
  *
- * What is placed from a source (the site plan in TM X-53107 Figure 7-6 and mapped outlines of
- * what survives; see sites/lc-5.md): the sea to the east, the rail line on 025 degrees, pad 6
- * 520 ft along it, the blockhouse 351 ft away on 348 degrees. What is impression: the
- * lighthouse's exact bearing, the roads, and Missile Row's towers up the coast, which are there
- * to say "there were a dozen more pads this way", not to map them.
+ * The complex itself (the blockhouse, pad 6, the track, the huts, the parked cars) is not here: it
+ * is modelled in Blender like the pad, in the pad's frame (Flight.surroundings; sites/lc-5.md).
+ * This file is the ground it stands on and what lies beyond. What is placed from a source: the
+ * sea to the east, the rail line on 025 degrees, the shell roads round the blockhouse where the
+ * July 1961 photographs show them. What is impression: the lighthouse's place (it really stands
+ * 3.7 km away on 052 degrees, where this straight shore has sea), the other roads, and Missile
+ * Row's towers up the coast, which are there to say "there were a dozen more pads this way",
+ * not to map them.
  */
 
 /** The pad model's frame on the compass: its +X (the hatch) faces 295 degrees, west-north-west. Radians about the vertical. */
@@ -27,10 +30,29 @@ const bearing = (degrees: number, distance: number): [number, number] => {
   const a = THREE.MathUtils.degToRad(degrees);
   return [distance * Math.sin(a), -distance * Math.cos(a)];
 };
+const FT = 0.3048;
+/** A point given in the pad model's own frame, in feet as its scripts have it (x toward the hatch side, y along the rails to the south-south-west), on the compass. */
+const site = (x: number, y: number): [number, number] => [x * FT * COS + y * FT * SIN, x * FT * SIN - y * FT * COS];
 const RAIL = 25; // the structure's track runs 025/205 degrees, through pads 5 and 6 and on to complex 26
 const PAD6 = bearing(RAIL, 158.5);
-const BLOCKHOUSE = bearing(348, 107);
-const APRON = bearing(295, 31); // where the stub road leaves the hardstand, on the hatch side
+/** Ground the modelled complex stands on, where no scrub grows: [x, y, radius] in the pad model's feet. */
+const KEPT: [number, number, number][] = [
+  [212, -283, 104], // the blockhouse, the ready rooms and their paving
+  [238, -192, 30], // the hut behind it and its transformer yard
+  [300, -155, 34], // the hut by the road
+  [137, -107, 26], // the generator building
+  [50, -262, 24], // the shed by the track
+  [-92, -148, 38], // the cable racks
+  [-148, -140, 14], // the scaffold stair
+];
+/** Strips kept clear the same way: the two cable trenches and the turnout's curve, as [x0, y0, x1, y1, half-width] in feet. */
+const STRIPS: [number, number, number, number, number][] = [
+  [100, -99, 178, -241, 10],
+  [100, -421, 178, -281, 10],
+  [-10, -185, -40, -290, 26],
+  [-40, -290, -95, -360, 26],
+  [-95, -360, -150, -410, 26],
+];
 
 const SHORE = 330; // metres east of the pad where scrub gives way to beach
 const SURF = 410; // and beach to water
@@ -39,12 +61,14 @@ const FAR = 7000;
 /** Sand tracks, as [x0, z0, x1, z1, half-width]. Drawn in the terrain's shader: no geometry to fight with. */
 const TRACKS: [number, number, number, number, number][] = [
   [...bearing(RAIL + 180, 95), ...bearing(RAIL, 520), 4.2], // the rail line's ballast
-  [...APRON, ...bearing(295, 78), 3.4], // the stub road off the hardstand
-  [...bearing(295, 78), BLOCKHOUSE[0] - 26, BLOCKHOUSE[1] + 4, 3.2], // and round to the blockhouse
+  [...site(166, 0), ...site(340, 0), 4.0], // the stub road from the foot of the apron's ramp
+  [...site(340, 586), ...site(340, -900), 3.6], // the road behind the blockhouse, parallel to the track (F16_016)
+  [...site(340, -215), ...site(293, -215), 3.2], // the drive in to the blockhouse,
+  [...site(293, -215), ...site(293, -349), 3.4], // past its back door,
+  [...site(293, -349), ...site(340, -349), 3.2], // and out again
+  [...site(276, -147), ...site(340, -147), 4.4], // the hut's parking
   [-260, 118, 300, 118, 4.0], // the road along the complex's south side
   [118, 118, 250, -420, 3.2], // Lighthouse Road
-  [-140, 118, -140, -260, 3.2],
-  [-140, -214, 0, -214, 3.2],
 ];
 
 function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; tick: (dt: number) => void } {
@@ -90,6 +114,8 @@ function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; t
         c = mix(c, mix(sand, vec3(0.12, 0.22, 0.07), step(0.5, veg)), uCel);
         // ground cleared and graded round the pad
         float apron = 1.0 - smoothstep(42.0, 70.0, max(abs(pad.x), abs(pad.y)) + 14.0 * (mid - 0.5));
+        apron = max(apron, 1.0 - smoothstep(42.0, 62.0, max(abs(pad.x), abs(pad.y - 158.5)) + 12.0 * (mid - 0.5)));   // pad 6
+        apron = max(apron, 1.0 - smoothstep(36.0, 58.0, length(pad - vec2(66.0, 84.0)) + 14.0 * (mid - 0.5)));        // the blockhouse
         apron = mix(apron, step(0.5, apron), uCel);
         c = mix(c, sand * (0.9 + 0.25 * fine), apron * 0.9);
         // crushed-shell tracks, a little paler down the wheel lines
@@ -237,7 +263,20 @@ function scrub(groundY: number): { plants: THREE.InstancedMesh; tufts: THREE.Ins
     const [px, pz] = toPad(x, z);
     if (Math.max(Math.abs(px), Math.abs(pz)) < 42 || x > SHORE - 30 || onTrack(x, z)) continue; // the hardstand
     if (Math.abs(px) < 11 && pz > -100 && pz < 560) continue; // the rail line
-    if (Math.hypot(x - PAD6[0], z - PAD6[1]) < 48 || Math.hypot(x - BLOCKHOUSE[0], z - BLOCKHOUSE[1]) < 26) continue;
+    if (px > -18 && px < 0 && pz > 28 && pz < 130) continue; // the concrete road beside it
+    if (Math.hypot(x - PAD6[0], z - PAD6[1]) < 48) continue;
+    const fx = px / FT,
+      fy = -pz / FT; // the pad model's feet
+    if (KEPT.some(([kx, ky, kr]) => Math.hypot(fx - kx, fy - ky) < kr)) continue;
+    if (
+      STRIPS.some(([x0, y0, x1, y1, w]) => {
+        const dx = x1 - x0,
+          dy = y1 - y0;
+        const t = Math.max(0, Math.min(1, ((fx - x0) * dx + (fy - y0) * dy) / (dx * dx + dy * dy)));
+        return Math.hypot(fx - x0 - dx * t, fy - y0 - dy * t) < w;
+      })
+    )
+      continue;
     // saw palmetto and sea grape: knee to head high, wider than tall, in clumps
     const w = 0.5 + rand() * rand() * 2.2;
     s.set(w, w * (0.75 + rand() * 0.5), w * (0.7 + rand() * 0.6));
@@ -272,31 +311,6 @@ function boxAt(w: number, h: number, d: number, x: number, y: number, z: number,
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
   mesh.position.set(x, y + h / 2, z);
   return mesh;
-}
-
-/** The blockhouse pads 5 and 6 shared: a low concrete bunker behind an earth bank. */
-function blockhouse(groundY: number): THREE.Group {
-  const g = new THREE.Group();
-  g.add(boxAt(22, 4.6, 14, 0, groundY, 0, concrete), boxAt(16, 1.6, 9, 0, groundY + 4.6, 0, concrete));
-  g.add(boxAt(26, 0.5, 18, 0, groundY, 0, concrete));
-  for (const x of [-6, 0, 6]) g.add(boxAt(3.2, 1.0, 0.25, x, groundY + 2.4, -7.05, paint(0x10151a)));
-  for (const x of [-5, 5]) g.add(boxAt(0.3, 3.4, 0.3, x, groundY + 6.2, 0, paint(0x55585c)));
-  g.position.set(BLOCKHOUSE[0], 0, BLOCKHOUSE[1]);
-  g.rotation.y = THREE.MathUtils.degToRad(-RAIL - 90); // its long side along the rail line, its windows toward the pads
-  return g;
-}
-
-/** Pad 6: the other half of the complex, empty today. */
-function padSix(groundY: number): THREE.Group {
-  const g = new THREE.Group();
-  g.add(boxAt(62, 1.2, 62, 0, groundY - 0.75, 0, concrete));
-  g.add(boxAt(5.5, 0.14, 5.5, 0, groundY + 0.45, 0, paint(0x1c1a19)));
-  const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.6, 1.5, 24, 1, true), paint(0x3d4246));
-  ring.position.set(0, groundY + 0.45 + 0.75 + 0.14, 0);
-  g.add(ring);
-  g.position.set(PAD6[0], 0, PAD6[1]);
-  g.rotation.y = THREE.MathUtils.degToRad(-RAIL); // square to the rails, like pad 5
-  return g;
 }
 
 /** Cape Canaveral Light: black and white bands, 46 m, the Cape's landmark since 1868. */
@@ -371,7 +385,7 @@ export function buildCape(groundY: number): {
   const { mesh, tick } = terrain(groundY, cel);
   const { plants, tufts } = scrub(groundY);
   plants.receiveShadow = tufts.receiveShadow = true;
-  const built = [blockhouse(groundY), padSix(groundY), lighthouse(groundY), missileRow(groundY)];
+  const built = [lighthouse(groundY), missileRow(groundY)];
   for (const group of built)
     group.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true;

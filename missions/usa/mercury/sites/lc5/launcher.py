@@ -24,10 +24,12 @@ FOOT_R = 5.5  # where the feet stand, on the scale plate
 FIN_II = math.radians(45.0)  # which fin is II is not recorded against the model: the fin at +X +Y is taken
 
 
-def build(parts: Parts) -> None:
-    parts.node("LaunchPedestal")
-    ring, legs = parts("LaunchPedestal", "black", True), parts("LaunchPedestal", "black/legs")
-    defl, fittings, cable = parts("LaunchPedestal", "scorched"), parts("LaunchPedestal", "grey", True), parts("LaunchPedestal", "cable", True)
+def build(parts: Parts, node: str = "LaunchPedestal") -> None:
+    """The launcher, at the origin. Pad 6's was the same Redstone ring: the scenery builds it under
+    another name and moves it there (Parts.shift)."""
+    parts.node(node)
+    ring, legs = parts(node, "black", True), parts(node, "black/legs")
+    defl, fittings, cable = parts(node, "scorched"), parts(node, "grey", True), parts(node, "cable", True)
     z1 = LAUNCHER_TOP
     zr = z1 - 0.95  # the table's underside
     ri, ro = RING_R

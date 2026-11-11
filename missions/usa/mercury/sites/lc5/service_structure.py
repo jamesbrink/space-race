@@ -42,6 +42,10 @@ from .site import (
     fine,
     ftp,
     handrail,
+    ring,
+    stair_rails,
+    stairs,
+    window,
 )
 
 Y0 = 0.0  # built in its service position, round the vehicle
@@ -177,6 +181,12 @@ def platform(parts: Parts, n: int, s: int) -> None:
         sbox(red, s, CABIN_IN, CABIN_IN + 0.25, -3.0, 0.0, zf + 6.8, zf + h)
         sbox(white, s, CABIN_IN + 0.3, CABIN_IN + 3.0, -0.2, -0.08, zf + 0.05, zf + 6.7)  # the door, open into the cabin
         notched_half(red, s, zf + h, zf + h + 0.35, [], x_in=CABIN_IN - 0.1, X=X + 0.2)  # the cabin's roof
+        if fine():  # the cabin's steel frame showing on its panels: an upright at each window's edge, rails at sill and head
+            frames(white, s, "x", X, [DECK_FRONT + 0.35, -9.0, -5.6, -3.4, 0.0, 2.2, 5.6, DECK_BACK - 0.35], zf, zf + h)
+            frames(white, s, "y", DECK_FRONT, [CABIN_IN + 0.3, 10.0, 15.0, X - 0.4], zf, zf + h)
+            for zz in (zf + sill - 0.16, zf + head + 0.03):
+                sbox(white, s, X - 0.3, X + 0.05, DECK_FRONT + 0.5, DECK_BACK - 0.5, zz, zz + 0.13)
+                sbox(white, s, CABIN_IN + 0.45, X - 0.55, DECK_FRONT - 0.05, DECK_FRONT + 0.3, zz, zz + 0.13)
         handrail(rails, [L(s * 1.0, DECK_FRONT + 0.25, zf), L(s * (CABIN_IN - 0.3), DECK_FRONT + 0.25, zf)])
         sbox(fit, s, CABIN_IN + 3.0, X - 0.5, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)  # bench, seen through the windows
         sbox(fit, s, X - 2.4, X - 0.35, DECK_FRONT + 2.0, DECK_FRONT + 4.5, zf, zf + 5.5)  # a cabinet
@@ -203,6 +213,12 @@ def platform(parts: Parts, n: int, s: int) -> None:
         wall(red, glass, s, "y", DECK_FRONT, (0.06, X - 0.25), zf, zf + h, [(5.0, 10.5)], zf + 4.0, zf + 7.5)
         wall(red, glass, s, "y", DECK_BACK - 0.25, (0.06, X - 0.25), zf, zf + h)
         notched_half(red, s, zf + h, zf + h + 0.35, [(0.0, NOTCH[4])])  # the roof: the tower's tip stands through it
+        if fine():
+            frames(white, s, "x", X, [DECK_FRONT + 0.35, -8.0, -4.5, -2.5, 1.0, 3.0, 6.5, DECK_BACK - 0.35], zf, zf + h)
+            frames(white, s, "y", DECK_FRONT, [0.5, 5.0, 10.5, X - 0.4], zf, zf + h)
+            for zz in (zf + 4.0 - 0.16, zf + 7.5 + 0.03):
+                sbox(white, s, X - 0.3, X + 0.05, DECK_FRONT + 0.5, DECK_BACK - 0.5, zz, zz + 0.13)
+                sbox(white, s, 0.65, X - 0.55, DECK_FRONT - 0.05, DECK_FRONT + 0.3, zz, zz + 0.13)
         handrail(
             rails,
             [
@@ -283,9 +299,34 @@ def build(parts: Parts) -> None:
     for y0, y1 in ((20.0, 23.0), (29.0, 32.0)):  # cross girders, behind the vehicle
         lbox(red, (-SIDE_X[0] - 0.01, y0, 3.6), (SIDE_X[0] + 0.01, y1, 8.8))
     # the office and utility room on the base, behind the vehicle (Noble's plans: "office at the base")
-    lbox(grey, (-7.4, 18.5, 9.0), (7.4, 32.0, 17.6))
+    # Its walls are built round a door and windows: the front's look at the vehicle (estimated; the
+    # photographs show a lit room here at night, S61-03158).
+    office = ring([L(-7.4, 18.5, 0)[:2], L(7.4, 18.5, 0)[:2], L(7.4, 32.0, 0)[:2], L(-7.4, 32.0, 0)[:2]], 0.3)
+    skin = parts(g, "grey/office")
+    office[0].build(skin, 9.0, 17.6, [(1.4, 4.6, 12.4, 15.6), (5.8, 9.0, 9.3, 16.0), (10.2, 13.4, 12.4, 15.6)])
+    office[1].build(skin, 9.0, 17.6, [(3.5, 9.5, 12.4, 15.6)])
+    office[2].build(skin, 9.0, 17.6)
+    office[3].build(skin, 9.0, 17.6, [(4.0, 10.0, 12.4, 15.6)])
+    window(parts, g, office[0], 1.4, 4.6, 12.4, 15.6)
+    window(parts, g, office[0], 10.2, 13.4, 12.4, 15.6)
+    window(parts, g, office[1], 3.5, 9.5, 12.4, 15.6, mullions=[6.5])
+    window(parts, g, office[3], 4.0, 10.0, 12.4, 15.6, mullions=[7.0])
     lbox(grey, (-7.9, 18.0, 17.6), (7.9, 32.5, 18.1))
-    lbox(dark, (-1.6, 18.44, 9.2), (1.6, 18.52, 16.0))  # its door
+    lbox(deck, (-7.1, 18.8, 9.0), (7.1, 31.7, 9.32))  # its floor
+    hinge = office[0].p(5.85, 0.1, 0.0)  # the door, standing open into the room
+    lbox(white, (hinge[0] - 0.06, hinge[1], 9.36), (hinge[0] + 0.06, hinge[1] + 3.1, 15.95))
+    if fine():
+        for y in (18.5, 25.2, 31.9):  # ribs on its sides
+            for sx in (-1, 1):
+                sbox(grey, sx, 7.39, 7.5, y - 0.12, y + 0.12, 9.0, 17.6)
+    fit = parts(g, "console")
+    lbox(fit, (-6.9, 29.0, 9.32), (-0.5, 31.6, 11.9))  # a desk along the back wall, and lockers
+    lbox(fit, (2.0, 30.2, 9.32), (6.9, 31.6, 15.2))
+    # the stairs up to the base's deck from the pad, at the back on the hatch side (the photographs
+    # show a flight here; where it stood on the base is estimated)
+    foot, top = L(10.5, 45.4, 0.5), L(10.5, 32.0, 9.3)
+    stairs(dark, foot, top, 3.0, rise=0.63)
+    stair_rails(white, foot, top, 3.0, 3.2)
     lbox(deck, (-7.42, 13.6, 9.0), (7.42, 18.0, 9.3))  # the elevator's pit
     lbox(deck, (-SIDE_X[1], 18.0, 9.0), (-7.42, 32.0, 9.3))
     lbox(deck, (7.42, 18.0, 9.0), (SIDE_X[1], 32.0, 9.3))

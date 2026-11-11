@@ -56,6 +56,12 @@ for (const file of files) {
     );
   });
 
+  if (flight.surroundings)
+    test(`${flight.id}: surroundings`, () => {
+      assert.ok(!flight.surroundings.startsWith('/'), 'url must be relative (Pages serves from a sub-path)');
+      assert.ok(existsSync(join(root, 'public', flight.surroundings)), `${flight.surroundings} is missing: run pnpm models`);
+    });
+
   for (const model of flight.models)
     test(`${flight.id}: ${model.id} matches its GLB`, () => {
       assert.ok(!model.url.startsWith('/'), 'url must be relative (Pages serves from a sub-path)');

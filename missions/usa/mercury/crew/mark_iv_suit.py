@@ -269,6 +269,7 @@ class Rig:
         self.prefix = ""
         self.dry = False  # collect points only: no Blender objects
         self.points: dict[str, list[Vector]] = {}  # posed vertices by mesh name, in the pose's frame
+        self.skins: list[tuple[bpy.types.Object, list[dict[str, float]]]] = []  # the standing figure's meshes and the joints each vertex follows
 
     def posed(self) -> bool:
         return self.to_frame is not None
@@ -286,6 +287,64 @@ class Rig:
 
 
 _rig = Rig()
+
+
+# ---------------------------------------------------------------------- the skeleton
+#
+# The standing figure can also be moved by the viewer: it is skinned to the joints every crew
+# figure has (srlib.FIGURE). The seated figure is not; it is carried to its pose above, once.
+
+JOINTED = ("Helmet", "Torso", "Arms", "Gloves", "Legs", "Boots")  # the ventilator is not part of him
+SPINE_Z = 106.0  # the waist: above it the torso follows Spine
+NECK_Z = 157.0
+
+
+def joints() -> dict[str, Vector]:
+    """Where each joint is in the rest pose, centimetres."""
+    out = {"Hips": Vector((0, 0, Z_HIP)), "Spine": Vector((0, 0, SPINE_Z)), "Head": Vector((0, 0, NECK_Z))}
+    for side, sx in (("L", 1), ("R", -1)):
+        out[f"UpperArm.{side}"] = Vector((sx * ARM[1][0], *ARM[1][1:3]))
+        out[f"LowerArm.{side}"] = Vector((sx * ELBOW[0], *ELBOW[1:]))
+        out[f"Hand.{side}"] = wrist_point(sx)
+        out[f"UpperLeg.{side}"] = Vector((sx * HIP_X, 0.0, Z_HIP))
+        out[f"LowerLeg.{side}"] = Vector((sx * 12.3, -1.0, Z_KNEE))
+        out[f"Foot.{side}"] = Vector((sx * STANCE, 0.5, ANKLE_Z))
+    return out
+
+
+def joint_weights(node: str, p: Vector, arm: float = 0.0) -> dict[str, float]:
+    """How much of a rest-pose point of `node` follows each joint. Across a joint the cloth is
+    shared between the two sides of it over a few centimetres, as a hose bends; a fitting well
+    clear of a joint follows one and keeps its shape. `arm` is the share of a point of the torso's
+    skin that belongs to the sleeve on its side (the shoulder is one skin with the torso)."""
+    side = "L" if p.x >= 0 else "R"
+    sx = 1 if p.x >= 0 else -1
+    if node == "Helmet":
+        return {"Head": 1.0}
+    if node == "Torso":
+        # the seat of the trousers goes a little way with each thigh, or it would stand out behind a leg swung forward
+        leg = 0.55 * (1 - smooth(p.z, Z_CROTCH, Z_HIP + 2.0)) * smooth(abs(p.x), 0.5, 6.0)
+        spine = smooth(p.z, SPINE_Z - 7.0, SPINE_Z + 7.0)
+        rest = 1 - arm
+        return {f"UpperArm.{side}": arm, f"UpperLeg.{side}": rest * leg, "Spine": rest * (1 - leg) * spine, "Hips": rest * (1 - leg) * (1 - spine)}
+    if node in ("Arms", "Gloves"):
+        elbow, wrist = Vector((sx * ELBOW[0], *ELBOW[1:])), wrist_point(sx)
+        along = (wrist - elbow).normalized()
+        lower = smooth((p - elbow).dot(along), -5.0, 5.0)
+        hand = smooth((p - wrist).dot(along), -2.5, 2.5)
+        return {f"UpperArm.{side}": 1 - lower, f"LowerArm.{side}": lower * (1 - hand), f"Hand.{side}": lower * hand}
+    # legs and boots
+    thigh = smooth(Z_HIP + 4.0 - p.z, 0.0, 12.0)
+    lower = smooth(Z_KNEE - p.z, -6.0, 6.0)
+    foot = 1 - smooth(p.z, ANKLE_Z - 2.0, ANKLE_Z + 7.0)
+    return {
+        "Hips": 1 - thigh,
+        f"UpperLeg.{side}": thigh * (1 - lower),
+        f"LowerLeg.{side}": lower * (1 - foot),
+        f"Foot.{side}": lower * foot,
+    }
+
+
 LIMB = {"Arms": "arm", "Gloves": "arm", "Legs": "leg", "Boots": "leg", "Torso": "pelvis"}  # which joints move a node's meshes
 
 
@@ -307,9 +366,15 @@ def emit(mb: MeshBuilder, name: str, mat, parent, **kw) -> bpy.types.Object | No
         mb.verts = [tuple(_rig.place @ (p * CM)) for p in pts]
         name = f"{_rig.prefix}_{name}"
     else:
+        node = name.split("_")[0]
+        arm = getattr(mb, "arm", None)  # how far each vertex is from torso to sleeve, where only the builder knows
+        follows = [joint_weights(node, Vector(v), arm[i] if arm else 0.0) for i, v in enumerate(mb.verts)] if node in JOINTED else None
         mb.verts = [(x * CM, y * CM, z * CM) for x, y, z in mb.verts]
     mb.uvs = [(u * CM, v * CM) for u, v in mb.uvs]
-    return mb.build(name, mat, parent, **kw)
+    obj = mb.build(name, mat, parent, **kw)
+    if not _rig.posed() and follows:
+        _rig.skins.append((obj, follows))
+    return obj
 
 
 class Tube:
@@ -966,6 +1031,7 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
 
     weight: dict[int, float] = {}
     frozen: set[int] = set()
+    share: dict[int, float] = {}  # how much of each vertex is sleeve: half at the armhole's edge, all of it a third of the way to the hem
     for sx in (1, -1):
         arm = arms[sx]
         hole = [ra * n + col(sx, k) for k in range(-jw, jw + 1)] + [rb * n + col(sx, k) for k in range(-jw, jw + 1)]
@@ -1005,6 +1071,7 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
                 w = smooth(u, 0.0, 0.5)
                 d = d0 + (SLEEVE_HEM - d0) * u
                 verts.append(arm._skin(d, th0 + turn * w) + gap * (1 - w))
+                share[len(verts) - 1] = 0.5 + 0.5 * smooth(u, 0.0, 0.35)
                 uvs.append((phi * 6.0, 80.0 + d))
                 if u < 0.6:
                     weight[base + k * steps + q - 1] = 1 - smooth(u, 0.2, 0.6)
@@ -1033,8 +1100,11 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
                 reach = min((verts[i] - p).length for p in edge)
                 if reach < 5.5:
                     weight[i] = max(weight.get(i, 0.0), 1 - smooth(reach, 1.0, 5.5))
+                if reach < 7.0:
+                    share[i] = 0.5 * (1 - smooth(reach, 0.0, 7.0))
     relax(verts, faces, weight, max(3, round(14 / grain())))
     drape(verts, faces, frozen)
+    mb.arm = [share.get(i, 0.0) for i in range(len(verts))]
     mb.add([tuple(v) for v in verts], faces, uvs)
 
 
@@ -1735,6 +1805,9 @@ def build() -> float:
     global _rig
     _rig = Rig()
     build_figure(ventilator=True)
+    rig = srlib.skeleton({name: p * CM for name, p in joints().items()})
+    for obj, follows in _rig.skins:
+        srlib.bind(obj, rig, follows)
     return max(v.co.z for o in bpy.data.objects if o.type == "MESH" for v in o.data.vertices)
 
 

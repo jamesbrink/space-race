@@ -506,8 +506,8 @@ const padParts: Part[] = [
     name: 'Hardstand and rails',
     summary: 'Two hundred feet of concrete; four rails for the service structure.',
     detail:
-      'Pad 5 is one of two pads of Complex 5/6, 520 feet apart on one track, with a blockhouse about 350 ' +
-      'feet from each. The structure’s rails cross the slab flush either side of the launcher and run on to ' +
+      'Pad 5 is one of two pads of Complex 5/6, 520 feet apart on one track, with a blockhouse whose point ' +
+      'is about 300 feet from each. The structure’s rails cross the slab flush either side of the launcher and run on to ' +
       'its launch position. Twenty-three rockets left this pad between 1956 and 1961. The last was Liberty ' +
       'Bell 7; it never launched again.',
     facts: [
@@ -525,7 +525,9 @@ const padParts: Part[] = [
     detail:
       'The liquid-oxygen topping trailer, which fed the tank until a minute before launch, the nitrogen ' +
       'trailers, and the enclosures and cameras the liftoff photographs show round the launcher. Everything ' +
-      'else had left by T−35 minutes. Their positions here are read off photographs.',
+      'else had left by T−35 minutes. Their positions here are read off photographs. The emergency shower ' +
+      'at the pad’s edge and the trailer lettered NASA SP-No 1 are in NASA’s photographs of this pad that ' +
+      'week; the huts and the barricade are from photographs taken in July.',
     explode: [0, 0, 0],
     order: 0,
   },
@@ -542,6 +544,7 @@ const padParts: Part[] = [
     name: 'Floodlights',
     summary: 'The count ran through the night.',
     detail:
+      'Timber poles in the grass at the pad’s edge, each with a crossarm of floodlights. ' +
       'Shepard was woken at 01:10, went up the gantry at 05:15 and was in the capsule at 05:20, before sunrise. ' +
       'He waited there four hours and fourteen minutes.',
     explode: [0, 0, 0],
@@ -1050,4 +1053,5 @@ export const flight: Flight = {
     },
   ],
   models: [vehicle, pad, crew],
+  surroundings: 'models/usa/mercury/mr-3-freedom-7/surroundings.glb',
 };

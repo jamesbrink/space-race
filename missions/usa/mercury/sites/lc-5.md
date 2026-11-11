@@ -22,9 +22,10 @@ Origin: the launcher's centre on the pad. Feet, as the sources give them.
 | +Y | along the rails toward the structure's parking places: SSW, 205° true | derived: OpenStreetMap's rails and pad outline, 25°/205° to within 1° |
 | True north | (0.423, −0.906, 0) in Blender, (0.423, 0, 0.906) in the viewer | derived from the two lines above |
 
-Pad 6 is 520 ft along −Y (025° true); the blockhouse's middle is at about (211, −280) ft. Both are
-derived from OpenStreetMap: pad centres (6, −48) and (228, 422) ft in its own frame, blockhouse
-centroid (−66, 296) ft. Neither is modelled here.
+Pad 6 is 520 ft along −Y (025° true); the blockhouse's point is at (157.3, −261.0) ft, 305 ft from
+pad 5's centre and 304 ft from pad 6's, and its long axis lies along X. Both are derived from
+OpenStreetMap (pad 6's centroid 519 ft away on 025.2°; the blockhouse's outline, way 195709358).
+They and the ground between are a second model in this frame: see "The rest of the complex" below.
 
 ## Where things stood, and when (MR-3, 5 May 1961)
 
@@ -55,15 +56,15 @@ cherry picker came in from the same side once the structure had gone.
 
 | Top-level node | Module | Contains |
 | --- | --- | --- |
-| `Hardstand` | hardstand.py | 200 ft of 20 ft slabs, joints, burn and stain, painted 121 ft circle, four flush rails, scale plate, trench covers, WNW apron, track on ballast and sleepers |
+| `Hardstand` | hardstand.py | 200 ft of 20 ft slabs, joints, burn and stain, painted 121 ft circle, four flush rails, scale plate, trench covers, WNW apron and the ramp off its end, track on ballast and sleepers |
 | `LaunchPedestal` | launcher.py | the launch ring, support pads and fin clamps, four legs with struts and jack feet, four-sided deflector, tail-plug housing, two ground cables |
 | `UmbilicalMast` | masts.py | cable mast No. 2 (the capsule's), its umbilical to the receptacle, eject line |
 | `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
-| `ServiceStructure` | service_structure.py | base, four rail trucks, office, A-frame mast, platform brackets, elevator, ladder, hammerhead crane; child nodes below |
+| `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, elevator, ladder, hammerhead crane; child nodes below |
 | `CherryPicker` | cherry_picker.py | International Harvester R-series truck, glazed cab with seat, wheel, dash; child nodes below |
-| `GroundEquipment` | ground_equipment.py | LOX topping unit, a second enclosure, chevron box, tripod cameras |
+| `GroundEquipment` | ground_equipment.py | LOX topping unit, a second enclosure, chevron box, tripod cameras; the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, two huts on skids |
 | `CameraTowers` | ground_equipment.py | two lattice camera towers |
-| `Floodlights` | ground_equipment.py | six poles, crossarm and two lamps each |
+| `Floodlights` | ground_equipment.py | six timber poles in the grass at the pad's edge, a crossarm and three lamps each |
 
 ## Moving parts
 
@@ -119,7 +120,70 @@ Notes:
 | Truck position | tail 64 ft from the launcher on +X | documented 65 ft (secondary) | *This New Ocean* p. 329 (MR-BD stand-in); Figure 7-6 ≈64 ft |
 | Mast, jib | 70 ft, 72 ft | estimated | sized so the jib alone puts the cab on the pad beside the truck, as at liftoff |
 | Capsule cable mast | 61 ft tube, 8 in tapering to 5 in, 8 ft from the axis | estimated | S63-02651, Hammack Fig. 23 |
-| Floodlights | 40 ft, six poles | estimated | photographs |
+| Floodlights | 40 ft timber poles, six, three lamps each | estimated | FHSU F16_015 and F16_017 (July 1961): timber poles with two or three round floods on a crossarm, standing just off the slab |
+| Apron ramp | 14 ft long, down 1.5 ft to the road | estimated | the model's pad stands 0.45 m above the viewer's ground |
+| Emergency shower | 3.2 ft square, 8.6 ft tall, on a cart | estimated (that it stood at the pad's edge: documented) | GPN-2000-001006 (MR-3, cherry picker at the capsule); KSC-61-4457 (2 May 1961) |
+| Trailer "NASA SP-No 1" | 29 by 8 ft, 12.4 ft to its roof | estimated (its lettering and that it stood by the structure's base: documented) | S61-03158 |
+| Pad huts | 10.5 by 11 ft and 9 by 9 ft, 9 ft tall | estimated | FHSU F16_017 (July 1961): two huts at the hatch side's edge |
+| Office on the structure's base | 14.8 by 13.5 ft, 8.6 ft tall; windows 3.2 ft square and 6 by 3.2 ft | estimated | S61-03158 shows a lit room between the legs; its windows are placed by eye |
+| Stairs to the base's deck | 3 ft wide, 14 risers of 7.5 in | estimated | GPN-2000-001006 shows a flight at the base; its place on the base is not established |
+
+## The rest of the complex
+
+A second model, `surroundings.glb`, built by a flight's `model/surroundings.py` from
+`lc_5.build_surroundings()`: scenery in the pad's frame, which the viewer draws round the pad and
+does not let you pick. Nothing in it moves.
+
+What it rests on. Published: the NHL nomination's description of the blockhouse and ready rooms;
+the museum's figures for Complex 26's blockhouse, which the nomination calls identical; the
+museum's dated photographs and launch list for pad 6. Derived: every plan position and plan size,
+from OpenStreetMap's outlines of what stands there today. Estimated: everything else, read off four
+photographs of July 1961 in the FHSU Project Mercury collection (F16_015, F16_016, F16_017,
+F19_008), taken eleven weeks after MR-3, and off the buildings as they stand. **No photograph of
+the blockhouse or pad 6 on 5 May 1961 has been found**, so what is movable here (the cars, the
+gantry's place, the trailers) is July's, not May's.
+
+| Top-level node | Module | Contains |
+| --- | --- | --- |
+| `Blockhouse` | blockhouse.py | the arrow-shaped bunker: 2 ft walls round six panes of foot-thick glass with steel shutters, the blast door (one leaf open) and its ramp, two firing rooms with consoles and an equipment room, the domed roof and what stood on it (railed antenna stand, whip, wind vane, the telemetry helix and its mesh reflector on a sandbagged tripod), wall floodlights, the roof ladder; round it the shell paving, the concrete walk, a tracking dish, the drive's banded posts |
+| `ReadyRoom` | blockhouse.py | the concrete-block ready-room building: pilasters, windows, two doors, a louvred vent, tar roof, the breezeway roof across to the blockhouse, the air handler between them; a table, benches, lockers and a kitchen counter inside |
+| `Pad6` | pad6.py | pad 6's 200 ft of slabs, scale plate, burn marks, trench covers, four floodlight poles |
+| `Pad6Launcher` | launcher.py | a second launch ring, the same as pad 5's |
+| `Pad6Gantry` | pad6.py | the square-topped portal gantry: two lattice legs on rail trucks, the truss across the top with its hoist, the three-storey work enclosure and the railed deck under it |
+| `Track` | grounds.py | the four rails on from pad 5's track through pad 6 and 180 ft beyond, ballast and sleepers, the concrete laid in the track by pad 6, and the turnout curving east |
+| `Road` | grounds.py | the concrete road between the pads, NO SMOKING painted across it |
+| `CableTrenches` | grounds.py | the covered trench and its walk from each pad to its firing room |
+| `Yard` | grounds.py | two cable racks and the scaffold stair tower north of pad 5 |
+| `Poles` | grounds.py | the pole line along the road behind the blockhouse; a floodlight pole by the hut |
+| `Outbuildings` | outbuildings.py | the hut behind the blockhouse and its fenced transformers, the hut by the road, the generator building and its fuel tank, the shed by the track |
+| `Vehicles` | vehicles.py | seven sedans and two station wagons, a pickup with a box body, a forward-control van |
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| Blockhouse plan | 90 ft from the point to the back wall, 44 ft wide; the point a right angle, its two faces 31.1 ft | derived | OSM way 195709358: back part 67.8 by 44.0 ft, faces 30.8 and 31.3 ft, on 160° and 070° true |
+| Blockhouse position | point at (157.3, −261.0) ft; 305 ft from pad 5, 304 ft from pad 6 | derived | the same; the museum gives "400 feet" for Complex 26's |
+| Walls | 2 ft thick | documented, of Complex 26's twin | the museum's *Launch Complex 26 Blockhouse* page; NHL nomination: the two are "identical" |
+| Roof | domed, 3 ft higher at the crown than at the edge | derived | the same page: "approximately five-feet thick along the edges to nearly eight-feet directly overhead". Modelled as a parabola over the whole plan; the 2005 photograph shows the arch from behind |
+| Wall height | 15 ft | estimated | F16_016, against the pickup beside it: 14 to 17 ft |
+| Windows | three panes to each firing room, one of 5 ft and a pair of 8.75 ft together, 4.5 ft high, sill 4.4 ft up; glass 1 ft thick | glass documented (Complex 26: "three segments of glass, each ... 15 layers of one-quarter inch glass"); sizes and places estimated | F16_016 (the pad 6 face in 1961); the 2010 photograph (the pad 5 face); the pad 5 face is taken as its mirror |
+| Shutters | steel, top-hung, propped open | estimated | the 2010 photograph; F16_016 shows banded shutters in 1961 |
+| Blast door | 7 ft wide, 7.5 ft high, two leaves, in the back wall 11 ft off the axis toward pad 5 | double plate doors documented (Complex 26); size and place estimated | the 2005 photograph |
+| Firing rooms | two, one to each pad, with an equipment room behind | two rooms documented (NHL nomination); the partition's line, the consoles and racks estimated | not from any drawing |
+| Roof equipment | railed stand 18 by 12 ft, tripod mast, whip, wind vane, helix 7.4 ft long on a 6.6 ft reflector | estimated | F16_016; F16_015 (the helix and its sandbags, close to) |
+| Ready-room building | 33.2 by 30.4 ft, 11 ft to the eaves, 7 ft from the blockhouse | plan derived (OSM); block walls, tar-and-gravel roof and breezeway documented (NHL nomination); height, gap, openings estimated | F16_016 |
+| Shell paving | to 126 ft behind the point and 80 ft to the pad 6 side | estimated | F16_016: shell on the pad 6 side and behind; the pad 5 side is not in the photograph |
+| Cable trenches | covers 3 ft wide, a walk beside; from each pad's edge to its firing room's corner | route derived for pad 5 (Figure 7-6's end on the pad; the covers surviving at the blockhouse), mirrored for pad 6; widths estimated | F16_016; the 2010 photographs |
+| Pad 6 | 200 ft square, its centre 520 ft from pad 5's | derived | OSM way 195709356: 199.7 by 199.2 ft, centroid 519 ft on 025.2° |
+| Pad 6 launch ring and scale plate | as pad 5's | existence documented (the museum: "A Redstone launch ring is at Pad 6. The square metal plate beneath the launch ring is the pad scale"); form estimated | a copy of pad 5's launcher |
+| Pad 6 gantry | 98 ft tall, 35 ft across its legs, legs 7.2 ft square; enclosure 18 by 16 ft, 37 ft tall, its floor 47 ft up | estimated | the museum's "Redstone in square top gantry, 8 March 1961, Pad 6" (1.42 times the 69 ft missile); F19_008 |
+| Gantry's place | at pad 6's south edge | estimated | where F16_017 and F19_008 have it in July 1961; on 5 May it is not recorded |
+| Road between the pads | 20 ft wide, 30 to 50 ft east of the rails' centre line | derived (line: OSM way 577612542, which meets pad 5's edge there); width estimated | F16_017 |
+| Turnout | both pairs curving east from 85 ft north of pad 5, radius 250 ft | estimated | F16_017, F19_008; where it led is not established and only 62° of it is modelled |
+| Cable racks | 25 ft long, 15 ft high | estimated | F19_008 |
+| Scaffold stair | 5 by 12 ft, six lifts of 6.5 ft | estimated | F19_008 |
+| Outbuildings | hut 18.9 by 16.8 ft; hut 22.7 by 10.2 ft; generator building 22.4 by 18.1 ft; shed 26.3 by 15.8 ft | plans and places derived (OSM ways 1219671665, 1219671664, 1219671661, 1219678280); heights, roofs, openings and uses estimated | F16_016, F16_015, F16_017 |
+| Vehicles | sedans 16.4 to 17.4 ft long, 6.3 ft wide | estimated | F16_016: kinds and places; makes not identified |
+| Cape Canaveral Light (viewer scenery) | really 12,250 ft from pad 5 on 051.6° true; 151 ft tall, six bands, black at the foot | derived (OSM way 1219644136; Wikipedia) | the viewer draws it 1,600 ft away as a landmark: its straight shore has sea where the light stands |
 
 ## Sources
 
@@ -128,7 +192,11 @@ TM X-53107 sections 4.2.4, 4.8.9, 7.1 to 7.5, Figures 4-25 and 7-5 to 7-11; Hamm
 SP-45 Fig. 4-9; *This New Ocean* pp. 314 and 329; the NHL nomination 84003872 (quoting the
 Corps of Engineers history); the Space Force Museum's *Noble Endeavor* and LC-26 gantry pages;
 OpenStreetMap; NASA photographs S61-03158, 6100884, S61-01927, S61-02407 and S61-02408,
-S63-02651, S63-22731. Details in [docs/sources.md](../../../../docs/sources.md).
+S63-02651, S63-22731, GPN-2000-001006, KSC-61-4457. For the rest of the complex: the NHL
+nomination's item 7; the museum's *Launch Complex 26 Blockhouse*, *Launch Complex 5/6* and *Launch
+Pads* pages and its dated photographs; the FHSU Project Mercury collection's July 1961 prints
+F16_015, F16_016, F16_017 and F19_008; Wikimedia Commons photographs of the blockhouse (2005, 2010)
+and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../docs/sources.md).
 
 ## What the model gets wrong or leaves out
 
@@ -162,9 +230,53 @@ S63-02651, S63-22731. Details in [docs/sources.md](../../../../docs/sources.md).
   and the drive-off are not documented: the liftoff photographs show the truck still on the pad
   with its cab lowered. The mast's rams separate from their barrels when the mast is lowered.
 - Ground equipment, camera towers and floodlights are placed where photographs suggest. None of
-  their positions is recorded. The LOX topping trailer's position is unknown.
-- The office on the base has no windows. The crane has no operator's cab: none shows in the
-  photographs, and the hoist machinery is drawn as a closed house.
-- OpenStreetMap shows water-deluge monitors, a fuel-truck revetment and a generator building. Their
-  date is unknown and they are not modelled. Neither are the blockhouse, pad 6, fences or roads
-  (the viewer's scenery draws some of these).
+  their positions is recorded. The LOX topping trailer's position is unknown. The huts, the
+  barricade and the floodlights' form are from July 1961; that they were the same in May is assumed.
+- The office's windows, door and furniture are placed by eye, and so are the stairs to the base.
+  The crane has no operator's cab: none shows in the photographs, and the hoist machinery is drawn
+  as a closed house.
+- The cabins' frames (white uprights and rails on the red panels) are a reading of the night
+  photograph S61-03158, which shows framed panels; their colour is not known.
+- OpenStreetMap shows water-deluge monitors and fuel-truck revetments at both pads. Their date is
+  unknown and they are not modelled. KSC-61-4457 shows a fire hose played across the pad on 2 May
+  1961; no hydrant, hose cart or fire truck is modelled.
+
+The rest of the complex:
+
+- **Paving stands a foot and a half proud.** The viewer's ground is 0.45 m under the pad's
+  surface, and nothing may lie close above it. So the road, the walks and the trench covers are at
+  the pad's level on concrete that goes down into the ground, and the shell paving is a low bank
+  with sloped edges. In life all of it was flush with the grass.
+- **Far things stand further apart.** Pad 6 and the track beyond pad 5 are seen from 100 m and
+  more, where two faces a centimetre apart cannot be told apart in depth. So their rails stand
+  1.8 in proud of the concrete (pad 5's: 9 mm), pad 6's burn marks and trench covers an inch
+  further off its slabs, and its stain is a ring round the burn, not a disc under it.
+- The blockhouse's roof is a parabola over the whole plan. The real profile, how far the slab is
+  set in from the walls, and whether the walls are the same height all round are not known. The
+  2005 photograph shows a lower wall across the back that is not understood and not modelled.
+- Both window faces are built alike, from one photograph of each taken fifty years apart. Whether
+  the shutters were open during a launch is not known; they are open.
+- One leaf of the blast door stands open so that the room can be seen and entered. For a launch
+  both were shut.
+- Everything inside the blockhouse and the ready rooms is invented furniture in plausible places:
+  no drawing or interior photograph of 1961 has been read. The second door on the pad 6 side wall
+  is a plate on the wall, not an opening.
+- The shell paving goes all round the blockhouse. The 1961 photograph shows lawn in front of the
+  pad 6 face, with only the walk and the trench crossing it.
+- Pad 6's gantry is a sketch of its type: the truss pattern, the trucks and the enclosure's
+  panels are not measured, and it has no platforms inside. Its launcher is pad 5's copied, with
+  the Mercury tail-plug housing a tactical Redstone's launcher did not have. Pad 6 has no cable
+  masts, no painted circle and no ground equipment: none is established.
+- The turnout has no frogs, blades or check rails: its rails stop short where they would cross the
+  main rails at a fine angle. It ends in a timber stop after 270 ft; where it really led is not known.
+  F16_017 shows a second curved track south of pad 5, which is not modelled.
+- The outbuildings' uses are guesses from their roofs and from OpenStreetMap's tags. Their doors
+  and windows are placed by eye.
+- The cars are of no particular make. There are no people, no fire trucks, no M-113 and no
+  transfer van: where those stood on 5 May is not recorded in anything read.
+- No fence is modelled: none shows in the 1961 photographs. No power or telephone wires are strung
+  between the poles.
+- Roads are painted on the viewer's ground (`TRACKS` in `src/viewer/cape.ts`), not modelled: the
+  road behind the blockhouse and the drive past its back door follow F16_016 loosely.
+- The lighthouse and Missile Row stay in the viewer's scenery as impressions, not at their real
+  places (see the table).

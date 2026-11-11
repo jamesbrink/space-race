@@ -1,6 +1,11 @@
 """What else stood on the pad at liftoff, the floodlights and the camera towers.
 
-None of these positions is documented. TM X-53107's countdown says the LOX topping trailer and the
+None of these positions is documented, and two things are dated: the emergency shower (NASA's
+prelaunch photograph of MR-3 with the cherry picker at the capsule, GPN-2000-001006, and KSC-61-4457
+of 2 May 1961, show it at the pad's edge: a tubular frame on a cart, its sign a red cross on a
+saltire) and the white trailer lettered "NASA SP-No 1" beside the structure's base (S61-03158). The
+huts at the hatch side's edge and the striped barricade are FHSU F16_017 and F16_015, of July 1961,
+and so are the floodlights' timber poles with two or three lamps on a crossarm. TM X-53107's countdown says the LOX topping trailer and the
 LN2 trailers stayed through liftoff (T-60 s "LOX topping Off"; secured after the launch); MR-3
 photographs (S61-01927, S61-02407/08) and MR-4's (S63-02651) show two white enclosures near the
 launcher, one with a horizontal tank on top, a low box painted in orange and black chevrons, tripod
@@ -14,11 +19,12 @@ import math
 
 from mathutils import Vector
 
+import srlib
 from srlib import FT
 
-from .site import P, Parts, axes, beam, box, fine, lamp_head, lattice, obox
+from .site import P, Parts, axes, beam, box, ear_clip, fine, lattice, obox, offset_poly, plate, ring, slab, timber_pole, window
 
-FLOOD_POLES = ((-95.0, -62.0), (-95.0, 62.0), (-62.0, -97.0), (62.0, -97.0), (95.0, -70.0), (95.0, 66.0))
+FLOOD_POLES = ((-104.0, -62.0), (-104.0, 62.0), (-62.0, -104.0), (62.0, -104.0), (104.0, -70.0), (104.0, 66.0))  # in the grass at the pad's edge
 FLOOD_HEIGHT = 40.0
 CAMERA_TOWERS = ((-72.0, -38.0, 62.0), (-58.0, 78.0, 50.0))  # x, y, height
 TRIPODS = ((-40.0, -30.0), (-45.0, 25.0), (30.0, -45.0), (-25.0, -55.0))
@@ -112,19 +118,166 @@ def build(parts: Parts) -> None:
             px, py, _ = corner(i, 0)
             box(galv, (px - 0.6, py - 0.6, -FOOT_DEPTH), (px + 0.6, py + 0.6, 0.3))
 
-    # floodlights: poles with a crossarm and two lamps, aimed at the vehicle
+    # floodlights: timber poles with a crossarm and three lamps, aimed at the vehicle
     parts.node("Floodlights")
-    poles, lamps = parts("Floodlights", "grey", True), parts("Floodlights", "lamp", True)
     for x, y in FLOOD_POLES:
-        poles.tube(P(x, y, -FOOT_DEPTH), P(x, y, FLOOD_HEIGHT), 0.42 * FT, 10)
-        box(poles, (x - 1.0, y - 1.0, -FOOT_DEPTH), (x + 1.0, y + 1.0, 0.5))
-        aim = Vector((-x, -y, 0)).normalized()
-        side = Vector((-aim.y, aim.x, 0))
-        bar = Vector((x, y, FLOOD_HEIGHT + 0.4))
-        beam(poles, tuple(bar - side * 3.0), tuple(bar + side * 3.0), 0.35)
-        for k in (-2.2, 2.2):
-            beam(poles, tuple(bar + side * k), tuple(bar + side * k + Vector((0, 0, 0.6))), 0.2)
-            lamp_head(poles, lamps, bar + side * k + Vector((0, 0, 1.2)), aim + Vector((0, 0, -0.35)), 1.1)
+        timber_pole(parts, "Floodlights", x, y, FLOOD_HEIGHT, lamps=3, aim=(-x, -y, 0))
+
+    furniture(parts)
+
+
+def lettering(mb, body: str, size: float, origin, right, up, font) -> None:
+    """Painted letters on a flat face: `origin` is the middle of the line's foot (feet), `right`
+    and `up` the directions it reads along; they stand off the face by whatever `origin` does."""
+    verts, faces = srlib.text_mesh(body, size, font, cuts=0)
+    xs = [v[0] for v in verts]
+    mid = (max(xs) + min(xs)) / 2
+    o, r, u = Vector(origin), Vector(right), Vector(up)
+    mb.add([tuple((o + r * (vx - mid) + u * vy) * FT) for vx, vy, _ in verts], faces)
+
+
+def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
+    """A small timber-framed hut on skids, a door in one wall and a window in another."""
+    g = "GroundEquipment"
+    x0, y0, x1, y1 = rect
+    outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    walls = ring(outline, 0.3)
+    skin = parts(g, f"trailer/{key}")
+    for i, w in enumerate(walls):
+        holes = []
+        if i == door_wall:
+            holes.append((w.length / 2 - 1.5, w.length / 2 + 1.5, 0.75, 7.4))
+        if i == window_wall:
+            holes.append((w.length / 2 - 2.0, w.length / 2 + 2.0, 3.8, 6.6))
+        w.build(skin, 0.5, 8.6, holes)
+        if i == window_wall:
+            window(parts, g, w, w.length / 2 - 2.0, w.length / 2 + 2.0, 3.8, 6.6, mullions=[w.length / 2])
+        if i == door_wall:
+            w.box(parts(g, "grey/hutdoor"), w.length / 2 - 1.48, w.length / 2 + 1.48, 0.08, 0.2, 0.77, 7.38)
+            w.box(parts(g, "chassis"), w.length / 2 - 1.8, w.length / 2 + 1.8, -2.2, 0.0, 0.3, 0.72)  # the step
+    inner = offset_poly(outline, -0.3)
+    parts(g, "plank").add([tuple(P(x, y, 0.75)) for x, y in inner], ear_clip(inner))
+    slab(parts(g, f"trailer/{key}roof"), offset_poly(outline, 0.5), 8.6, 8.95, bottom=True)
+    for y in (y0 + 1.0, y1 - 1.0):  # the skids
+        box(parts(g, "chassis"), (x0 - 0.6, y - 0.3, 0.0), (x1 + 0.6, y + 0.3, 0.5))
+
+
+def furniture(parts: Parts) -> None:
+    """What the photographs show standing about the pad: see the module's note for which and when."""
+    g = "GroundEquipment"
+    font = srlib.load_font()
+    white, dark, red, ink = parts(g, "sign"), parts(g, "chassis", True), parts(g, "signred"), parts(g, "black/lettering")
+
+    # ---- the emergency shower, at the pad's north edge: a frame of white tube on a cart
+    sx, sy = -58.0, -91.0
+    tube = parts(g, "white/shower", True)
+    for dx in (-1.6, 1.6):
+        for dy in (-1.6, 1.6):
+            tube.tube(P(sx + dx, sy + dy, 0.9), P(sx + dx, sy + dy, 8.6), 0.07 * FT, 8)
+            dark.tube(P(sx + dx * 1.15, sy + dy - 0.12, 0.42), P(sx + dx * 1.15, sy + dy + 0.12, 0.42), 0.42 * FT, 12)  # castors
+        tube.tube(P(sx + dx, sy - 1.6, 8.6), P(sx + dx, sy + 1.6, 8.6), 0.07 * FT, 8)
+    for dy in (-1.6, 1.6):
+        tube.tube(P(sx - 1.6, sy + dy, 8.6), P(sx + 1.6, sy + dy, 8.6), 0.07 * FT, 8)
+    box(parts(g, "deck"), (sx - 2.0, sy - 2.0, 0.75), (sx + 2.0, sy + 2.0, 0.95))  # its grating floor
+    tube.tube(P(sx, sy - 1.6, 8.6), P(sx, sy, 8.6), 0.05 * FT, 8)  # the supply to the head
+    tube.lathe(
+        [(0.0, 0.0), (0.5 * FT, -0.05 * FT), (0.5 * FT, -0.25 * FT), (0.06 * FT, -0.5 * FT), (0.0, -0.5 * FT)][::-1],
+        12,
+        matrix=axes((sx, sy, 8.55), (1, 0, 0), (0, 0, 1)),
+    )
+    # the sign on two of its faces: a red saltire, a cross in a disc, the words above
+    for face in ((0, 1, 0), (1, 0, 0)):
+        n = Vector(face)
+        r = Vector((0, 0, 1)).cross(n)  # reads left to right seen from outside
+        c = Vector((sx, sy, 0)) + n * 1.72
+        plate(white, [tuple(c + r * a + Vector((0, 0, z))) for a, z in ((-1.5, 1.6), (1.5, 1.6), (1.5, 8.2), (-1.5, 8.2))], 0.06)
+        f = c + n * 0.045
+        for d in (-1, 1):  # the saltire's two arms
+            plate(red, [tuple(f + r * (d * a) + Vector((0, 0, z))) for a, z in ((-1.35, 1.8), (-1.05, 1.8), (1.35, 6.0), (1.05, 6.0))], 0.012)
+        red.lathe(
+            [(0.0, 0.0), (0.62 * FT, 0.0), (0.62 * FT, 0.008 * FT), (0.0, 0.008 * FT)],
+            16,
+            matrix=axes(tuple(f + Vector((0, 0, 3.9)) + n * 0.01), tuple(r), tuple(n)),
+        )
+        lettering(ink, "EMERGENCY", 0.36, f + Vector((0, 0, 7.45)), r, (0, 0, 1), font)
+        lettering(ink, "SHOWER", 0.36, f + Vector((0, 0, 6.85)), r, (0, 0, 1), font)
+    hose = parts(g, "cable", True)
+    for k in range(4):  # the hose coiled on its hook
+        hose.lathe(
+            [(0.75 * FT, 0.0), (0.83 * FT, 0.08 * FT), (0.75 * FT, 0.16 * FT), (0.67 * FT, 0.08 * FT), (0.75 * FT, 0.0)],
+            14,
+            matrix=axes((sx - 1.75 - 0.17 * k, sy, 3.6), (0, 1, 0), (-1, 0, 0)),
+        )
+
+    # ---- a packing case beside it (GPN-2000-001006)
+    wood = parts(g, "plank")
+    box(wood, (-48.0, -94.5, 0.0), (-40.5, -91.2, 2.7))
+    if fine():
+        for x in (-47.6, -44.25, -40.9):
+            box(wood, (x - 0.2, -94.58, 0.02), (x + 0.2, -91.12, 2.78))
+    box(wood, (-46.0, -93.8, 2.7), (-43.8, -92.2, 3.9))
+
+    # ---- DANGER boards on stands by the cherry picker, and a striped barricade at the pad's corner
+    for x, y, turn in ((57.0, -13.0, 20.0), (58.5, 13.5, -15.0)):
+        a = math.radians(turn)
+        r = Vector((math.sin(a), -math.cos(a), 0))
+        n = Vector((-math.cos(a), -math.sin(a), 0))  # faces the vehicle
+        c = Vector((x, y, 0))
+        for d in (-0.8, 0.8):
+            beam(dark, tuple(c + r * d), tuple(c + r * d + Vector((0, 0, 4.2))), 0.1)
+            beam(dark, tuple(c + r * d - n * 1.0), tuple(c + r * d + n * 1.0), 0.1)
+        plate(white, [tuple(c + r * e + n * 0.08 + Vector((0, 0, z))) for e, z in ((-1.0, 2.6), (1.0, 2.6), (1.0, 4.4), (-1.0, 4.4))], 0.05)
+        plate(red, [tuple(c + r * e + n * 0.115 + Vector((0, 0, z))) for e, z in ((-0.9, 3.75), (0.9, 3.75), (0.9, 4.3), (-0.9, 4.3))], 0.012)
+        lettering(white, "DANGER", 0.34, c + n * 0.13 + Vector((0, 0, 3.86)), r, (0, 0, 1), font)
+    bx, by = 84.0, -93.0
+    stripe = parts(g, "orange")
+    for d in (-4.5, 4.5):
+        beam(dark, (bx + d - 0.9, by, 0.0), (bx + d, by, 3.4), 0.2)
+        beam(dark, (bx + d + 0.9, by, 0.0), (bx + d, by, 3.4), 0.2)
+    box(parts(g, "black/barricade"), (bx - 5.5, by - 0.08, 2.2), (bx + 5.5, by + 0.08, 3.5))
+    for k in range(7):
+        for face in (-1, 1):
+            xa = bx - 5.3 + k * 1.5
+            v = [
+                P(xa, by + face * 0.095, 2.25),
+                P(xa + 0.7, by + face * 0.095, 2.25),
+                P(xa + 1.4, by + face * 0.095, 3.45),
+                P(xa + 0.7, by + face * 0.095, 3.45),
+            ]
+            stripe.add([tuple(q) for q in v], [(0, 1, 2, 3)] if face < 0 else [(3, 2, 1, 0)])
+
+    # ---- the white trailer lettered NASA SP-No 1, beside where the structure stands back (S61-03158)
+    tx0, ty0, tx1, ty1 = 30.0, 68.0, 38.0, 97.0
+    van = parts(g, "trailer/van")
+    box(van, (tx0, ty0, 3.4), (tx1, ty1, 12.2))
+    box(parts(g, "trailer/vanroof"), (tx0 - 0.1, ty0 - 0.1, 12.2), (tx1 + 0.1, ty1 + 0.1, 12.45))
+    frame = parts(g, "chassis")
+    box(frame, (tx0 + 1.2, ty0 + 0.5, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
+    for y in (ty1 - 6.5, ty1 - 2.6):  # the bogie at the back
+        for s in (-1, 1):
+            xa, xb = sorted((s * 2.3 + (tx0 + tx1) / 2, s * 3.9 + (tx0 + tx1) / 2))
+            dark.tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, 16)
+    for s in (-1, 1):  # the landing legs at the front
+        x = (tx0 + tx1) / 2 + s * 2.6
+        beam(frame, (x, ty0 + 5.0, 0.0), (x, ty0 + 5.0, 2.7), 0.35)
+        box(frame, (x - 0.5, ty0 + 4.5, 0.0), (x + 0.5, ty0 + 5.5, 0.12))
+    box(parts(g, "grey/vandoor"), (tx1, ty0 + 9.0, 3.9), (tx1 + 0.06, ty0 + 12.0, 10.4))  # the door, and steps up to it
+    for k in range(4):
+        box(parts(g, "deck"), (tx1 + 0.1 + k * 0.85, ty0 + 9.0, 3.2 - k * 0.78 - 0.1), (tx1 + 1.0 + k * 0.85, ty0 + 12.0, 3.2 - k * 0.78))
+    for y in (ty0 + 9.0, ty0 + 12.0):
+        beam(frame, (tx1 + 0.2, y, 3.1), (tx1 + 3.5, y, 0.0), 0.14)
+    lettering(ink, "NASA", 1.25, (tx1 + 0.012, ty1 - 9.0, 9.3), (0, 1, 0), (0, 0, 1), font)
+    lettering(ink, "SP-No 1", 0.9, (tx1 + 0.012, ty1 - 9.0, 7.6), (0, 1, 0), (0, 0, 1), font)
+    if fine():
+        for y in (ty0 + 0.04, ty1 - 0.24):  # corner posts and a rub rail
+            for x in (tx0 - 0.05, tx1 - 0.15):
+                box(van, (x, y, 3.42), (x + 0.2, y + 0.2, 12.19))
+        box(frame, (tx1 - 0.02, ty0 + 0.3, 3.5), (tx1 + 0.07, ty0 + 8.6, 3.75))
+        box(frame, (tx1 - 0.02, ty0 + 12.4, 3.5), (tx1 + 0.07, ty1 - 0.3, 3.75))
+
+    # ---- two huts at the hatch side's edge (F16_017)
+    hut(parts, "hut1", (87.0, 24.0, 97.5, 35.0), 3, 0)
+    hut(parts, "hut2", (88.5, 40.0, 97.5, 49.0), 3, 2)
 
 
 FOOT_DEPTH = 2.5

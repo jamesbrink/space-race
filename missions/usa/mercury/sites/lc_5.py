@@ -18,12 +18,12 @@ hatch faces (WNW); +Y runs along the rails toward the structure's parking places
 
 from __future__ import annotations
 
-from lc5 import cherry_picker, ground_equipment, hardstand, launcher, masts, service_structure
+from lc5 import blockhouse, cherry_picker, ground_equipment, grounds, hardstand, launcher, masts, outbuildings, pad6, service_structure, vehicles
 from lc5.site import HARDSTAND, LAUNCHER_TOP, STRUCTURE_LAUNCH, STRUCTURE_T55, STRUCTURE_TOP, TRUE_NORTH, Parts, materials
 
 PEDESTAL_TOP = LAUNCHER_TOP  # where the fins rest: what the viewer stands the vehicle on
 
-__all__ = ["HARDSTAND", "PEDESTAL_TOP", "STRUCTURE_LAUNCH", "STRUCTURE_T55", "STRUCTURE_TOP", "TRUE_NORTH", "build"]
+__all__ = ["HARDSTAND", "PEDESTAL_TOP", "STRUCTURE_LAUNCH", "STRUCTURE_T55", "STRUCTURE_TOP", "TRUE_NORTH", "build", "build_surroundings"]
 
 
 def build() -> dict:
@@ -37,3 +37,20 @@ def build() -> dict:
     ground_equipment.build(parts)
     parts.build()
     return pose
+
+
+def build_surroundings() -> None:
+    """The rest of Complex 5/6, in the pad's frame, as scenery (a flight's model/surroundings.py):
+    Blockhouse, ReadyRoom           blockhouse.py     the arrow-shaped blockhouse, the ready rooms, their paving
+    Pad6, Pad6Launcher, Pad6Gantry  pad6.py           the other pad, its launch ring and its square-topped gantry
+    Track, Road, CableTrenches, Yard, Poles   grounds.py   what lies between
+    Outbuildings                    outbuildings.py   two huts, the generator building, the shed
+    Vehicles                        vehicles.py       the cars at the blockhouse
+    """
+    parts = Parts(materials())
+    blockhouse.build(parts)
+    pad6.build(parts)
+    grounds.build(parts)
+    outbuildings.build(parts)
+    vehicles.build(parts)
+    parts.build()
