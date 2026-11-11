@@ -444,8 +444,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   a model's stairs need risers of 0.3 m or less. Space (a
   button on a touch screen) is a standing jump: 0.4 m under gravity, from the ground only, and
   the head stops at whatever is over it (`jump`, `bump`).
-- **The terrain is a level, not a mesh.** It lies at the height of the setting's floor,
-  everywhere, and cannot be fallen through. Where that is below the models' surface (`GROUND_Y`)
+- **The terrain is a height, not a mesh.** It lies at `Setting.groundAt(x, z)` (dunes, the beach,
+  the land falling to the river; the setting's floor where it has none), and cannot be fallen
+  through: the walker, the ragdoll and a driven vehicle's `Road` all stand on it. Where that is below the models' surface (`GROUND_Y`)
   it is so only for the depth buffer's sake, so from down there a riser is measured from y = 0:
   the edge of a pad is not a kerb.
 - **Ladders are climbed.** A ladder is its own mesh with `userData.climb` (a Blender custom
