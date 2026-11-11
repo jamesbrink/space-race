@@ -353,7 +353,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), ground), patch);
   cape ??= buildCape(renderer, GROUND_Y);
-  // the Earth past the Cape's ground, which hands over to it across its last two kilometres
+  // the Earth past the Cape's ground, which hands over to it across its last kilometre and a half
   const land = cape.floor.userData.land as Land;
   cape.floor.updateMatrixWorld();
   const globe = new Globe(
@@ -362,7 +362,9 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     { frame: cape.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
     installedAir(),
   );
-  land.meet(globe.beyond, land.extent - 2300, land.extent - 300);
+  // (by the edge of its cover maps, past which their last texels are smeared outward: Complex 34, the furthest built, is inside 9.5 km)
+  const covered = land.uniforms.uFarSize!.value as number;
+  land.meet(globe.beyond, covered - 1500, covered);
   // the haze at sea level, thinning upward (air.ts): visibility was at the Skid Strip's 16 km cap at 09:00 (NOAA ISD); 25 km taken
   const fog = new THREE.FogExp2(0, densityFor(25_000));
   const gen = new THREE.PMREMGenerator(renderer);

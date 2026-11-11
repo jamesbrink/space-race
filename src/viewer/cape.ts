@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
 import { type Air, CloudLayer, type Clouds, driftClouds, installAir } from './air';
-import { buildCape1961, CLEARINGS, COAST, RIVER, shoreAt } from './cape1961';
+import { buildCape1961, CLEARINGS, COAST, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
@@ -103,6 +103,8 @@ const glsl3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${
 const SHARED = /* glsl */ `
   uniform vec2 uCoast[${COAST.length}];   // the Atlantic shore: (metres north, metres east) of pad 5, northward
   uniform vec2 uRiver[${RIVER.length}];   // the Banana River's east shore, the same way
+  uniform vec2 uRiverWest[${RIVER_WEST.length}];   // its west shore, Merritt Island's east
+  uniform vec2 uIndian[${INDIAN.length}];   // the Indian River's east shore, Merritt Island's west
   uniform vec4 uTracks[${TRACKS.length}];
   uniform vec2 uTrackKind[${TRACKS.length}];   // half-width, kind
   uniform vec3 uClear[${NEAR.length}];    // the neighbouring pads: (x, z, radius of the pad itself)
@@ -122,6 +124,18 @@ const SHARED = /* glsl */ `
       if (north >= uRiver[i].x) x = mix(uRiver[i].y, uRiver[i + 1].y, clamp((north - uRiver[i].x) / (uRiver[i + 1].x - uRiver[i].x), 0.0, 1.0));
     return x;
   }
+  float riverWestAt(float north) {
+    float x = uRiverWest[0].y;
+    for (int i = 0; i < ${RIVER_WEST.length - 1}; i++)
+      if (north >= uRiverWest[i].x) x = mix(uRiverWest[i].y, uRiverWest[i + 1].y, clamp((north - uRiverWest[i].x) / (uRiverWest[i + 1].x - uRiverWest[i].x), 0.0, 1.0));
+    return x;
+  }
+  float indianAt(float north) {
+    float x = uIndian[0].y;
+    for (int i = 0; i < ${INDIAN.length - 1}; i++)
+      if (north >= uIndian[i].x) x = mix(uIndian[i].y, uIndian[i + 1].y, clamp((north - uIndian[i].x) / (uIndian[i + 1].x - uIndian[i].x), 0.0, 1.0));
+    return x;
+  }
   float segment(vec2 p, vec4 s) {
     vec2 a = s.xy, b = s.zw, ab = b - a;
     return length(p - a - ab * clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0));
@@ -130,8 +144,11 @@ const SHARED = /* glsl */ `
   vec2 toPad(vec2 p) { return vec2(p.x * ${COS.toFixed(6)} + p.y * ${SIN.toFixed(6)}, -p.x * ${SIN.toFixed(6)} + p.y * ${COS.toFixed(6)}); }
   // metres inland of the surf line: the Cape's own shore (cape1961.ts), wandering a little about it
   float inland(vec2 p) { return coastAt(-p.y) - p.x + 26.0 * (fbm2(vec2(p.y * 0.006, 4.0), 5, 3) - 0.45); }
-  // metres east of the Banana River's shore
-  float riverward(vec2 p) { return p.x - riverAt(-p.y) - 30.0 * (fbm2(p * 0.0035, 6, 3) - 0.45); }
+  // metres from the nearest river's shore, out of the water (negative in it): the Banana River between its two shores, the Indian River west of its east one
+  float riverward(vec2 p) {
+    float n = -p.y;
+    return min(max(p.x - riverAt(n), riverWestAt(n) - p.x), p.x - indianAt(n)) - 30.0 * (fbm2(p * 0.0035, 6, 3) - 0.45);
+  }
   // the nearest made way: how far from its edge (negative inside), and its kind
   float way(vec2 p, out float kind) {
     float best = 1e9;
@@ -222,7 +239,13 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 const inlandAt = (x: number, z: number) => shoreAt(COAST, -z) - x + 26 * (fbm2(z * 0.006, 4, 5, 3) - 0.45);
-const riverwardAt = (x: number, z: number) => x - shoreAt(RIVER, -z) - 30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45);
+const riverwardAt = (x: number, z: number) => {
+  const n = -z;
+  return (
+    Math.min(Math.max(x - shoreAt(RIVER, n), shoreAt(RIVER_WEST, n) - x), x - shoreAt(INDIAN, n)) -
+    30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45)
+  );
+};
 const lc56At = (x: number, z: number) => {
   const px = x * COS + z * SIN,
     pz = -x * SIN + z * COS;
@@ -527,6 +550,8 @@ function landSpec(): LandSpec {
     uniforms: {
       uCoast: { value: COAST.map(([n, x]) => new THREE.Vector2(n, x)) },
       uRiver: { value: RIVER.map(([n, x]) => new THREE.Vector2(n, x)) },
+      uRiverWest: { value: RIVER_WEST.map(([n, x]) => new THREE.Vector2(n, x)) },
+      uIndian: { value: INDIAN.map(([n, x]) => new THREE.Vector2(n, x)) },
       uTracks: { value: TRACKS.map((t) => new THREE.Vector4(t[0], t[1], t[2], t[3])) },
       uTrackKind: { value: TRACKS.map((t) => new THREE.Vector2(t[4], t[5])) },
       uClear: { value: NEAR.map(([x, z, r]) => new THREE.Vector3(x, z, r)) },

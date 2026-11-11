@@ -365,8 +365,9 @@ never adjusted to bring a check in.
   line at any height; the haze is the scene's, worked along the ray over the curve; the air seen
   from above (`Globe.air`, a ball round the eye, single Rayleigh scattering) makes the limb and
   the blue over it, and comes in as the sky (backdrops.ts) goes out. The site's ground (land.ts)
-  keeps the middle: the globe leaves a hole for it, and across its last two kilometres the
-  ground bends onto the curve and takes the globe's colours (`Land.meet`), so where they overlap
+  keeps the middle: the globe leaves a hole for it, and across its last kilometre and a
+  half, inside its cover maps, the ground bends onto the curve and takes the globe's colours
+  (`Land.meet`), so where they overlap
   they are one surface and which one the depth buffer picks cannot be seen. Downrange, up is
   the plumb line where it is, not the site's +Y: the sky's (at the eye) and the orbiting
   camera's (at what it turns about, `Stage.alignUp`), so the horizon there is level. Away from the

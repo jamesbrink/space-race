@@ -137,6 +137,10 @@ const AIR = /* glsl */ `
   varying vec3 vDir;
   const float TOP = ${TOP.toFixed(1)}, H = ${SCALE.toFixed(1)};
   const vec3 BETA = vec3(5.8e-6, 13.5e-6, 33.1e-6);
+  // Along the eye's own line of sight the light scattered toward it is dimmed less selectively than single
+  // scattering says: light scattered more than once fills the blue back in. Taken as most of the way to grey,
+  // or a grazing line through the low air came out brown where the real limb is white (estimated).
+  const vec3 SEEN = mix(BETA, vec3(BETA.x + BETA.y + BETA.z) / 3.0, 0.75);
   float heightAt(vec3 p) { return length(p - uCentre) - uRadius; }
   ${CHAPMAN}
   void main() {
@@ -163,7 +167,7 @@ const AIR = /* glsl */ `
       float hm = max(heightAt(mid), 0.0);
       float mu = dot(normalize(mid - uCentre), uSun);
       float toSun = H * exp(-hm / H) * chapman(hm, mu, uRadius);
-      glow += od * exp(-BETA * (tau + 0.5 * od + toSun));
+      glow += od * exp(-SEEN * (tau + 0.5 * od) - BETA * toSun);
       tau += od;
       ha = hb;
     }
@@ -281,6 +285,7 @@ export class Globe {
       uGlobeHaze: { value: haze?.scale ?? 1400 },
       uGlobeSunLight: { value: SUNLIGHT },
       uGlobeAerosol: { value: 0 },
+      uGlobeAbove: { value: 0 },
     };
 
     const material = new THREE.MeshStandardMaterial({ name: 'globe', roughness: 1, metalness: 0 });
@@ -406,6 +411,10 @@ export class Globe {
       this.mesh.visible = shown;
       changed = true;
     }
+    if (this.uniforms.uGlobeAbove!.value !== this.thin) {
+      this.uniforms.uGlobeAbove!.value = this.thin;
+      changed = true;
+    }
     // the air: a ball round the eye, inside the far plane and outside whatever is being followed
     const thin = this.thin > 0.01;
     if (thin !== this.air.visible) {
@@ -529,7 +538,7 @@ export class Globe {
           uniform vec3 uGlobeSun, uGlobeOrigin;
           uniform mat3 uGlobeAxes;
           uniform mat4 uGlobeHole;
-          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze, uGlobeSunLight, uGlobeAerosol;
+          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze, uGlobeSunLight, uGlobeAerosol, uGlobeAbove;
           ${CHAPMAN}
           float globeRough;
           ${COLOUR}
@@ -607,7 +616,12 @@ export class Globe {
               tau += len * (abs(a - b) < 1e-3 ? exp(-0.5 * (a + b)) : (exp(-min(a, b)) - exp(-max(a, b))) / abs(b - a));
               a = b;
             }
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, 1.0 - exp(-fogDensity * tau));
+            // The scene's haze colour is the haze seen along the ground, warmed by the long path through it. Seen from
+            // above (as the sky gives way to the air, uGlobeAbove) the haze is lit from over it: as bright, not warm, a
+            // little blue; and over the night side, unlit. Without this the daytime limb had a brown line along it.
+            vec3 haze = mix(fogColor, vec3(dot(fogColor, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.86, 0.95, 1.1), uGlobeAbove);
+            haze *= mix(1.0, smoothstep(-0.15, 0.1, dot(normalize(vGlobeNormal), uGlobeSun)), uGlobeAbove);
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, haze, 1.0 - exp(-fogDensity * tau));
           }
           #endif`,
         );

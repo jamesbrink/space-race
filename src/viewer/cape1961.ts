@@ -55,8 +55,20 @@ const ATLANTIC: [number, number][] = [
   [28.5364, -80.56298],
   [28.56548, -80.56832],
 ];
-/** The Banana River's east shore, the same way and rougher. */
+/**
+ * The Banana River's east shore, the same way and rougher. South of 28.42 it is read from
+ * OpenStreetMap's Indian River Lagoon (relation 1204544) every 1.2 to 1.8 km: the main channel's
+ * edge, past today's port and causeways (not there in 1961, and not drawn).
+ */
 const BANANA_RIVER: [number, number][] = [
+  [28.32573, -80.61846],
+  [28.33656, -80.61846],
+  [28.34739, -80.61183],
+  [28.36363, -80.61489],
+  [28.37446, -80.60877],
+  [28.38529, -80.60877],
+  [28.39612, -80.61948],
+  [28.41236, -80.61846],
   [28.4204, -80.60361],
   [28.45573, -80.59621],
   [28.47555, -80.59086],
@@ -64,6 +76,66 @@ const BANANA_RIVER: [number, number][] = [
   [28.51653, -80.5848],
   [28.52445, -80.59328],
   [28.54318, -80.59209],
+];
+/**
+ * Its west shore, Merritt Island's east: from the same relation, the far edge of the river's
+ * water every 300 m of northing (across islands and causeways under 400 m), the median of five,
+ * thinned to one in two. The river is 5.7 km wide abreast of pad 5 and narrows to 1.7 km 12 km north.
+ */
+const BANANA_RIVER_WEST: [number, number][] = [
+  [28.32573, -80.65874],
+  [28.33656, -80.65976],
+  [28.34739, -80.66027],
+  [28.35822, -80.66078],
+  [28.36363, -80.66384],
+  [28.37446, -80.66486],
+  [28.37987, -80.66741],
+  [28.3907, -80.66792],
+  [28.40965, -80.66486],
+  [28.42048, -80.66013],
+  [28.43131, -80.65997],
+  [28.43943, -80.65833],
+  [28.44484, -80.65667],
+  [28.45025, -80.65452],
+  [28.45567, -80.65339],
+  [28.46108, -80.65092],
+  [28.4665, -80.64945],
+  [28.47191, -80.64726],
+  [28.47732, -80.64608],
+  [28.48274, -80.64327],
+  [28.48815, -80.64097],
+  [28.49356, -80.63818],
+  [28.49898, -80.63804],
+  [28.50439, -80.63575],
+  [28.50981, -80.62954],
+  [28.51522, -80.62611],
+  [28.52063, -80.62119],
+  [28.52605, -80.6187],
+  [28.53146, -80.61631],
+  [28.53688, -80.61393],
+  [28.54229, -80.61307],
+  [28.5477, -80.61097],
+  [28.55312, -80.60944],
+];
+/**
+ * The Indian River's east shore, Merritt Island's west, where it comes within reach: only in the
+ * south-west corner of the ground drawn round the pad, from the same relation. North of 28.375
+ * it is far to the west (the last two points only carry the line out of the way). Sykes Creek,
+ * inside Merritt Island, is left out.
+ */
+const INDIAN_RIVER: [number, number][] = [
+  [28.32573, -80.69247],
+  [28.33115, -80.694],
+  [28.33656, -80.70013],
+  [28.34198, -80.70268],
+  [28.34739, -80.7037],
+  [28.3528, -80.70523],
+  [28.35822, -80.70728],
+  [28.36363, -80.70932],
+  [28.36905, -80.71136],
+  [28.37446, -80.7134],
+  [28.37987, -80.74],
+  [28.38529, -80.9],
 ];
 /** A shore as the terrain's shader wants it: [metres north, metres east] of pad 5, northward. */
 const northing = (shore: [number, number][]): [number, number][] =>
@@ -73,6 +145,8 @@ const northing = (shore: [number, number][]): [number, number][] =>
   });
 export const COAST = northing(ATLANTIC);
 export const RIVER = northing(BANANA_RIVER);
+export const RIVER_WEST = northing(BANANA_RIVER_WEST);
+export const INDIAN = northing(INDIAN_RIVER);
 /** How far east a shore is at a given northing: the same reading of the line as the shader's. */
 export function shoreAt(shore: [number, number][], north: number): number {
   let x = shore[0]![1];
