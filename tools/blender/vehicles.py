@@ -314,6 +314,7 @@ class Car:
     reaches ahead of the front axle."""
 
     what: str  # the make, model and year it is meant to be, for the record
+    about: str = ""  # a sentence or two on what it is and how sure we are, shown when it is clicked
     wheelbase: float
     length: float
     width: float
@@ -1325,6 +1326,8 @@ class Car:
             name,
             parent,
             vehicle=self.what,
+            about=self.about
+            or f"A {self.what}. Its wheelbase, length and width are the maker's; its shape is read off photographs, its colour a guess.",
             wheelbase=round(self.wheelbase * IN, 4),
             track=round(self.track * IN, 4),
             wheel_radius=round(self.tyre[0] * IN, 4),
@@ -1891,7 +1894,7 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
 
 
 def ford_f600_tractor(paint: str = "white", **kw) -> Car:
-    """A late-1950s Ford F-600 as a tractor unit: a medium conventional cab on a short chassis,
+    """Not from the record (see m275_tractor, which is). A late-1950s Ford F-600 as a tractor unit: a medium conventional cab on a short chassis,
     dual rear wheels, a fifth wheel for a semi-trailer. **Every figure is estimated**: wheelbase
     132 in, 205 in long, 80 in wide over the cab (92 over the duals), 82 in high, 8.25-20 tyres;
     no drawing or specification was read. The fifth wheel's plate is 47 in above the ground and
@@ -2334,6 +2337,10 @@ def m275_tractor(paint: str = "white", **kw) -> Car:
     turning circle (72 ft)."""
     car = dict(
         what="M275 2-1/2-ton 6x6 truck tractor, NASA",
+        about=(
+            "An Army M275 2-1/2-ton 6x6 truck tractor of the kind NASA ran at the Cape in 1961, as July 1961 photographs show towing the"
+            " pad's van trailers. Its dimensions are the Army manual's; its shape is read off photographs, and that it served on 5 May is inferred."
+        ),
         wheelbase=142.0,
         length=228.0,
         width=93.0,

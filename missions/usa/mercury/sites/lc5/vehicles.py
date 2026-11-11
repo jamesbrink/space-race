@@ -63,6 +63,24 @@ def build(parts: Parts) -> None:
         (cars.ford_1956("green", None, whitewall=0.0, cap_r=5.0, spear=()), (300.0, -146.5), on_ground, 92.0, False),
         (cars.chevrolet_1959("white", upholstery="seat-red"), (309.5, -146.0), on_ground, 88.0, False),
     ]
+    # what each is, and how sure: shown when it is clicked
+    seen = "in a July 1961 photograph from pad 6's gantry (FHSU F16_016); the make is read off a few dozen pixels and the colour is a guess"
+    about = [
+        f"A 1957 Ford Custom 300 Fordor, parked nose-in at the ready rooms {seen}.",
+        "A Volkswagen Type 1, beside it in a July 1961 photograph from pad 6's gantry (FHSU F16_016): unmistakable even at a few dozen"
+        " pixels; the colour is a guess.",
+        f"A 1958-60 Rambler American, dark with a light roof, {seen}; a Studebaker Lark would fit as well.",
+        f"A 1959 Chevrolet Biscayne sedan, standing for a long flat-finned car on the drive {seen}.",
+        f"A 1960 Chevrolet Corvair 700 sedan, on the drive behind the blockhouse {seen}.",
+        f"A 1956 Ford Fairlane Town Sedan, its side strip dipping in a V, {seen}.",
+        f"A 1957 Ford Country Sedan station wagon, standing for a mid-1950s wagon {seen}.",
+        f"A 1957-60 Ford F-100 with a closed utility body and a dark emblem on its door, by the breezeway {seen}.",
+        f"A 1960 Chevrolet Suburban Carryall at the hut by the road {seen}.",
+        f"A 1956 Ford sedan standing for a dark car beside the carryall {seen}.",
+        f"A 1959 Chevrolet Biscayne sedan standing for a white car at the hut {seen}.",
+    ]
+    for car, text in zip((c for c, *_ in fleet), about):
+        car.about = text + " These are July's cars: no photograph of 5 May shows the parking."
     total = 0
     for k, (car, at, z, heading, by_nose) in enumerate(fleet, 1):
         built = park(lot, f"Car_{k:02d}", car, at, z, heading, by_nose=by_nose)
