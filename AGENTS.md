@@ -306,6 +306,16 @@ script; do not hand-edit geometry for them.
 - **Say what is simplified.** Each hardware `.md` ends with a list of what the model gets wrong or
   leaves out. Add to it when you cut a corner.
 
+## A place is built once and dated
+
+A site outlives a flight: Mercury-Redstone 4 flew from the same pad eleven weeks after Freedom 7,
+and the Cape round it is the same Cape for a decade of flights. So a site's hardware lives under
+`sites/` as modules that know nothing of any flight, and a flight's `model/*.py` only chooses what
+stood there on its day and how it was arranged. A later flight adds to the place and replaces what
+had changed (a new gantry, a pad rebuilt, a car park paved); it does not copy it. When something
+is built that did not stand there for every flight, record when it did (from, until, and how
+sure) in the site's `.md`, so the next flight can tell what to keep.
+
 ## Adding a flight
 
 1. Create `missions/<nation>/<programme>/flights/<flight>/` with the files above. Hardware that
