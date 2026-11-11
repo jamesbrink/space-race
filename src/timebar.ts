@@ -75,6 +75,9 @@ export class TimeBar {
       const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
       if (e.metaKey || e.ctrlKey || e.altKey || typing || e.repeat) return;
       if (e.key.toLowerCase() === 'p') clock.play(!clock.running);
+      // [ and ] step the rate down and up; the rate shows in the bar, which opens so the change is seen
+      if (e.key === '[') clock.step(-1);
+      if (e.key === ']') clock.step(1);
     });
     clock.listen(() => this.render());
     this.render();
@@ -85,7 +88,8 @@ export class TimeBar {
     const at = localTime(clock.jdUT, this.zone.utcOffset);
     set(this.local, `${at.text} ${this.zone.name}`);
     set(this.count, missionTime(clock.t));
-    set(this.play, clock.running ? 'Stop' : 'Run');
+    // the rate is on the button, so it is seen with the bar folded
+    set(this.play, `${clock.running ? 'Stop' : 'Run'}${Math.abs(clock.rate) === 1 ? '' : ` · ${clock.rate}×`}`);
     this.play.setAttribute('aria-pressed', String(clock.running));
     for (const b of this.rates) b.setAttribute('aria-pressed', String(Number(b.dataset.rate) === clock.rate));
     this.home.disabled = clock.t === 0 && !clock.running;

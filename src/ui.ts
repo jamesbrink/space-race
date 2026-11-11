@@ -1,6 +1,7 @@
 import { prefs } from './prefs';
 import { CAMERA_MODES, type CameraMode } from './viewer/fly';
 import type { Confidence, Flight, ModelDef, Part } from './types';
+import { functionsOf } from './viewer/explode';
 import { Wheel } from './wheel';
 
 export interface UiHandlers {
@@ -27,6 +28,10 @@ export interface UiHandlers {
   walkAct(): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
+  /** How far along its travel each function of a part is (0 to 1), and why it will not move, if it will not. */
+  fnValues(node: string): { id: string; value: number; refused: string | null }[];
+  /** Put a function of a part somewhere along its travel; returns where it now is. */
+  setFn(node: string, id: string, v: number): number;
   /** How many pixels at the bottom of the 3D view the controls cover. */
   inset(pixels: number): void;
 }
@@ -59,6 +64,8 @@ const pane = (name: (typeof TABS)[number]) => `data-pane="${name}" id="pane-${na
 
 /** The DOM half of the app. Everything it shows comes from the flight's data file. */
 export class Ui {
+  private note: string | null = null;
+  private captured = false;
   /** The radial menu of things to do with what a walker is looking at (wheel.ts). */
   readonly wheel: Wheel;
   private selected: string | null = null;
@@ -161,6 +168,7 @@ export class Ui {
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -178,6 +186,7 @@ export class Ui {
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -194,6 +203,7 @@ export class Ui {
             <div><dt><kbd>V</kbd> <kbd>Esc</kbd></dt><dd>back to the camera</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -356,6 +366,14 @@ export class Ui {
       const n = node(e);
       if (n) on.selectPart(this.selected === n ? null : n);
     });
+    // a function's slider under the selected part: worked by hand; if it will not move it says why and stays
+    parts.addEventListener('input', (e) => {
+      const input = e.target as HTMLInputElement;
+      const box = input.closest<HTMLElement>('[data-fns]');
+      if (!box || !input.dataset.fn) return;
+      input.value = String(on.setFn(box.dataset.fns!, input.dataset.fn, Number(input.value)));
+      this.showFns(box.dataset.fns!);
+    });
     root.querySelector<HTMLElement>('.buttons')!.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (b?.dataset.view) on.view(b.dataset.view);
@@ -424,7 +442,17 @@ export class Ui {
         <span class="name">${esc(p.name)}${p.inside ? '<em>inside</em>' : ''}</span>
         <span class="what">${esc(p.summary)}</span>
         <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}</span>
-      </button></li>`,
+      </button>${
+        // what the part does, each function workable by hand: shown under the part while it is selected
+        functionsOf(p).length
+          ? `<div class="fns" data-fns="${p.node}">${functionsOf(p)
+              .map(
+                (f) =>
+                  `<label><span>${esc(f.name)}</span><input type="range" min="0" max="1" step="0.005" value="0" data-fn="${esc(f.id)}" aria-label="${esc(f.name)}${f.ends ? `: ${esc(f.ends[0])} to ${esc(f.ends[1])}` : ''}" /></label>`,
+              )
+              .join('')}<p class="fn-why" hidden></p></div>`
+          : ''
+      }</li>`,
       )
       .join('');
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
@@ -519,6 +547,12 @@ export class Ui {
     }
   }
 
+  /** While walking: say something on the bar in place of the usual reminder (null: the reminder again). */
+  setWalkNote(text: string | null): void {
+    this.note = text;
+    this.setWalkLook(this.captured);
+  }
+
   /** While walking: how much the view moves with the body, as the bar's button says it. */
   setWalkMotion(level: 'full' | 'reduced' | 'off'): void {
     this.root.querySelector('[data-walk-motion]')!.textContent = `Motion · ${level}`;
@@ -556,12 +590,15 @@ export class Ui {
 
   /** While walking: whether the mouse has been captured for looking round. The bar says what to do next. */
   setWalkLook(captured: boolean): void {
+    this.captured = captured;
     const touch = matchMedia('(hover: none), (pointer: coarse)').matches;
-    this.root.querySelector('.walkbar span')!.textContent = touch
-      ? 'Drag to look · stick walks'
-      : captured
-        ? 'Mouse looks · WASD walks · E acts · C view · V or Esc leaves'
-        : 'Click the view to look round · WASD walks · V or Esc leaves';
+    this.root.querySelector('.walkbar span')!.textContent = this.note
+      ? this.note
+      : touch
+        ? 'Drag to look · stick walks'
+        : captured
+          ? 'Mouse looks · WASD walks · E acts · C view · V or Esc leaves'
+          : 'Click the view to look round · WASD walks · V or Esc leaves';
   }
 
   /** The diagnostics line: this is an early build, and the numbers are worth having in view. */
@@ -674,8 +711,24 @@ export class Ui {
     this.placeTip();
   }
 
+  /** Bring a part's function sliders up to date with the hardware, and say why any of them will not move. */
+  private showFns(node: string): void {
+    const box = this.root.querySelector<HTMLElement>(`[data-fns="${node}"]`);
+    if (!box) return;
+    const values = this.on.fnValues(node);
+    box.querySelectorAll<HTMLInputElement>('[data-fn]').forEach((input) => {
+      const v = values.find((f) => f.id === input.dataset.fn);
+      if (v && document.activeElement !== input) input.value = String(v.value);
+    });
+    const why = box.querySelector<HTMLElement>('.fn-why')!;
+    const refused = values.find((f) => f.refused);
+    why.hidden = !refused;
+    why.textContent = refused?.refused ?? '';
+  }
+
   select(node: string | null): void {
     this.selected = node;
+    if (node) this.showFns(node);
     if (node) {
       this.tab('Parts');
       this.root.querySelector('.panel')!.classList.add('open');

@@ -71,7 +71,7 @@ def build(parts: Parts) -> None:
     print(f"  vehicles: {total:,} triangles")
 
 
-def check_standing(ground: float = GROUND, slack: float = 0.02) -> list[str]:
+def check_standing(ground: float = GROUND, slack: float = 0.005) -> list[str]:
     """Call once the whole site is built (after `parts.build()`): what each tyre stands on. A ray
     is dropped from every wheel's hub to whatever of the site lies under it, or failing that to the
     viewer's terrain at `ground` (site feet); a line comes back, and is printed, for each tyre

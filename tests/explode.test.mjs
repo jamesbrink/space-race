@@ -87,3 +87,101 @@ test('a sequence plays each motion over its own stretch, and goes back the way i
   exploder.set(0);
   assert.ok(turn() < 1e-9 && Math.abs(truck.position.x) < 1e-9, 'back where it was built');
 });
+
+test('every node that moves is a function of its part; the flight names them and puts nodes together', async () => {
+  const { functionsOf, scriptedAt, sliderFor, refusal } = await import('../src/viewer/explode.ts');
+  const part = {
+    node: 'Gantry',
+    name: 'Gantry',
+    summary: '',
+    detail: '',
+    explode: [0, 0, 0],
+    order: 0,
+    functions: [
+      { nodes: ['Gantry_Left', 'Gantry_Right'], name: 'Platforms', ends: ['closed', 'parted'], seconds: 10 },
+      { nodes: ['Gantry', 'Gantry_Wheel'], name: 'Roll', needs: [{ node: 'Gantry_Left', atLeast: 1, why: 'the platforms are closed' }] },
+    ],
+    moves: [
+      { kind: 'swing', node: 'Gantry_Jib', axis: [1, 0, 0], angle: 1, from: -1, to: -0.5 }, // built one way, held another: not something it does
+      { kind: 'slide', node: 'Gantry_Left', by: [-1, 0, 0], from: 0.1, to: 0.2 },
+      { kind: 'slide', node: 'Gantry_Right', by: [1, 0, 0], from: 0.12, to: 0.22 },
+      { kind: 'slide', by: [0, 0, 30], from: 0.3, to: 0.5 },
+      { kind: 'slide', by: [0, 0, 20], from: 0.7, to: 0.9 },
+      { kind: 'swing', node: 'Gantry_Wheel', axis: [1, 0, 0], angle: 60, from: 0.3, to: 0.9 },
+      { kind: 'swing', node: 'Gantry_Lamp', axis: [0, 1, 0], angle: 1, from: 0.4, to: 0.45 },
+    ],
+  };
+  const fns = functionsOf(part);
+  assert.deepEqual(
+    fns.map((f) => [f.id, f.name, f.nodes.length, f.from, f.to]),
+    [
+      ['Gantry_Left', 'Platforms', 2, 0.1, 0.22],
+      ['Gantry', 'Roll', 2, 0.3, 0.9],
+      ['Gantry_Lamp', 'Lamp', 1, 0.4, 0.45],
+    ],
+  );
+  const [platforms, roll, lamp] = fns;
+  assert.equal(platforms.seconds, 10);
+  assert.ok(lamp.seconds >= 3, 'an unnamed function still has a pace');
+  // where it is at a slider reading, and back
+  assert.equal(scriptedAt(roll, 0.2), 0);
+  assert.ok(Math.abs(scriptedAt(roll, 0.6) - 0.5) < 1e-9);
+  assert.equal(scriptedAt(roll, 1), 1);
+  assert.ok(Math.abs(sliderFor(roll, 0.5) - 0.6) < 1e-9);
+  assert.equal(sliderFor(roll, 7), 0.9);
+  // the roll waits for the platforms
+  assert.equal(
+    refusal(roll, () => 0.4),
+    'the platforms are closed',
+  );
+  assert.equal(
+    refusal(roll, () => 1),
+    null,
+  );
+  assert.equal(
+    refusal(platforms, () => 0),
+    null,
+  );
+  assert.deepEqual(functionsOf({ ...part, moves: undefined, functions: undefined }), []);
+});
+
+test('a node held by hand is played to its own reading of the slider while the rest follow the slider', async () => {
+  const THREE = await import('three');
+  const { Exploder } = await import('../src/viewer/explode.ts');
+  const root = new THREE.Group();
+  const gantry = new THREE.Group();
+  gantry.name = 'Gantry';
+  const left = new THREE.Group();
+  left.name = 'Gantry_Left';
+  gantry.add(left);
+  root.add(gantry);
+  const part = {
+    node: 'Gantry',
+    name: '',
+    summary: '',
+    detail: '',
+    explode: [0, 0, 0],
+    order: 0,
+    moves: [
+      { kind: 'slide', node: 'Gantry_Left', by: [-2, 0, 0], from: 0, to: 0.5 },
+      { kind: 'slide', by: [0, 0, 10], from: 0.5, to: 1 },
+    ],
+  };
+  const exploder = new Exploder(root, [part]);
+  exploder.set(0.25);
+  assert.ok(Math.abs(left.position.x + 1) < 1e-9 && gantry.position.z === 0, 'the script: half parted, not yet rolling');
+  // the roll worked by hand to its end, with the slider where it was
+  exploder.hold('Gantry', 1);
+  exploder.set(0.25);
+  assert.ok(
+    Math.abs(gantry.position.z - 10) < 1e-9 && Math.abs(left.position.x + 1) < 1e-9,
+    'rolled by hand; the platform still where the slider has it',
+  );
+  // the slider moves on: the held node does not follow it
+  exploder.set(0.6);
+  assert.ok(Math.abs(gantry.position.z - 10) < 1e-9 && Math.abs(left.position.x + 2) < 1e-9);
+  // let go: back to the script
+  exploder.hold('Gantry', null);
+  exploder.set(0.6);
+  assert.ok(gantry.position.z > 0.5 && gantry.position.z < 2, `where the slider has it: ${gantry.position.z}`);
+});

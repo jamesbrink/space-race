@@ -1,4 +1,6 @@
 import type { Action, Flight, ModelDef, Part } from './types';
+// (with its extension: the tests run this file under Node, which adds none)
+import { functionsOf } from './viewer/explode.ts';
 
 /**
  * What can be done, on foot, with the thing being looked at. The stage says what that thing is
@@ -38,6 +40,7 @@ export type Verb =
   | { do: 'climb' }
   | { do: 'inspect' }
   | { do: 'become'; model: string }
+  | { do: 'operate'; model: string; node: string; fn: string; name: string; ends?: [string, string] }
   | { do: 'action'; model: string; node: string; action: Action; stop?: number | 'call' };
 
 /** How the things that work stand at the moment (the stage knows): what the wheel calls a verb depends on it. */
@@ -112,6 +115,14 @@ export function choices(target: Target, flight: Flight, as: string, works?: Work
   if (part) out.push({ id: 'info', label: 'Info', verb: { do: 'info' } });
   if (target.pane) out.push({ id: 'look', label: 'Look inside', verb: { do: 'look' } });
   if (model?.walker && model.id !== as) out.push({ id: 'become', label: `Become ${model.name}`, verb: { do: 'become', model: model.id } });
+  // what the part does can be worked by hand: each of its functions (from its moves), at its controls if it says where they are
+  for (const fn of part && model ? functionsOf(part) : [])
+    if (!fn.at || target.path?.includes(fn.at))
+      out.push({
+        id: `operate:${fn.id}`,
+        label: `Operate: ${fn.name}`,
+        verb: { do: 'operate', model: model!.id, node: part!.node, fn: fn.id, name: fn.name, ends: fn.ends },
+      });
   const declared = (part?.actions ?? [])
     .filter((a) => !a.on || target.path?.includes(a.on))
     .map((action) => ({ action, node: part!.node }));

@@ -525,6 +525,27 @@ const padParts: Part[] = [
     ],
     explode: [0, 0, 0],
     order: 0,
+    // what it does, each workable by hand: the four platform pairs, and the roll along the rails (which waits for them)
+    functions: [
+      ...[1, 2, 3, 4].map((level) => ({
+        nodes: [`ServiceStructure_Platform${level}_Left`, `ServiceStructure_Platform${level}_Right`],
+        name: level === 3 ? 'White room (level 3)' : `Level ${level} platforms`,
+        ends: ['closed', 'parted'] as [string, string],
+        seconds: 12,
+      })),
+      {
+        nodes: ['ServiceStructure', ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => `ServiceStructure_Wheel_${n}`)],
+        name: 'Roll along the rails',
+        ends: ['at the vehicle', 'rolled back'],
+        // 52.7 m at a walking pace
+        seconds: 110,
+        needs: [1, 2, 3, 4].map((level) => ({
+          node: `ServiceStructure_Platform${level}_Left`,
+          atLeast: 1,
+          why: 'the platforms are still closed round the rocket',
+        })),
+      },
+    ],
     moves: [
       // the platforms part, lowest first and the white room last, before anything rolls
       ...[1, 2, 4, 3].flatMap((level, i): Move[] => [

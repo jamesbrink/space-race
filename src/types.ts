@@ -140,6 +140,32 @@ export interface Part {
   detail: string;
   /** Key figures shown under the description: material, size, mass, rating. */
   facts?: [label: string, value: string][];
+  /**
+   * Names and rules for the part's functions. A function is one thing the part does: the moves
+   * (`moves`) of one node, or of several that go together, over the stretch of the slider they
+   * span. Every node that moves is a function whether it is listed here or not; listing it gives
+   * it a name, a pace and its interlocks. A function can be worked by hand (held, at its pace,
+   * released to stop) from the wheel on foot or from the part's panel, instead of only by the
+   * slider; the slider is the script, and a function worked by hand holds until the script next
+   * moves the hardware.
+   */
+  functions?: {
+    /** The node or nodes whose moves it is (Move.node; the part's own node for a move that names none). */
+    nodes: string[];
+    /** What it is called: 'Roll along the rails', 'White room'. */
+    name: string;
+    /** What each end of its travel is called, the start of the slider's stretch first: ['Closed', 'Open']. */
+    ends?: [string, string];
+    /** How long its whole travel takes when held, seconds. */
+    seconds?: number;
+    /** Offer it on foot only when what is faced is under this node (its controls). Left out: anywhere on the part. */
+    at?: string;
+    /**
+     * What must be so before it will move: other functions of the same part (by their first node),
+     * each at least or at most this far along its travel (0 to 1). `why` is said when it is refused.
+     */
+    needs?: { node: string; atLeast?: number; atMost?: number; why: string }[];
+  }[];
   /** What can be done to it from close by, on foot, beyond reading about it (see Action). */
   actions?: Action[];
   /** A heading in the parts list: parts with the same group are listed together under it. */
@@ -283,6 +309,80 @@ export interface SiteDef {
   zone: { name: string; utcOffset: number };
 }
 
+/** A curve read off a published figure or table: points in order of x, straight lines between, held flat beyond the ends. */
+export interface Curve {
+  points: [x: number, y: number][];
+  confidence: Confidence;
+  source: string;
+}
+
+/**
+ * What the simulator flies a ballistic flight from (src/sim/fly.ts): one engine burn on a stored
+ * tilt programme, then a capsule that separates, fires its retrorockets and comes down under
+ * parachutes. SI throughout; the source's own units are in each `source`. Every number here is an
+ * input: none is fitted to make the result come out.
+ */
+export interface Trajectory {
+  /** The bearing flown, degrees clockwise from true north. */
+  azimuth: Measure;
+  /** Everything that leaves the pad, kg. */
+  liftoffMass: Measure;
+  engine: {
+    /** Thrust at sea level, N, and specific impulse there, s: the flow is their quotient over g0. */
+    thrust: Measure;
+    isp: Measure;
+    /** Nozzle exit area, m^2: thrust grows by this times the fall in air pressure. */
+    exitArea: Measure;
+    /** Seconds from liftoff at which it is shut down. */
+    cutoff: Measure;
+  };
+  /** The tilt programme: degrees from the vertical at launch against seconds, held in inertial space by the gyros, in the plane of the azimuth. */
+  tilt: Curve;
+  /** The area drag coefficients are referred to, m^2. */
+  area: Measure;
+  /** Drag coefficient against Mach number, going up on the booster. */
+  ascentDrag: Curve;
+  separation: {
+    /** Seconds from liftoff. */
+    at: Measure;
+    /** The capsule alone, kg, and what it leaves behind, kg. */
+    mass: Measure;
+    boosterMass: Measure;
+    /** How fast the two part, m/s, shared between them by their masses. */
+    speed: Measure;
+  };
+  retro: {
+    /** When each retrorocket lights, seconds from liftoff. */
+    fires: Measure[];
+    /** Each one's thrust, N, and burning time, s. */
+    thrust: Measure;
+    burn: Measure;
+    /** How far below the local horizontal the thrust on the capsule points, degrees; horizontally it is against the motion. */
+    pitch: Measure;
+  };
+  /** The retropack is dropped: when, and the capsule's mass afterwards, kg. */
+  retropack: { at: Measure; mass: Measure };
+  /** Drag coefficient against Mach number, coming down heat shield first. */
+  entryDrag: Curve;
+  /** Each parachute: the height it opens at, m, and the drag area (coefficient times area) it adds, m^2. */
+  drogue: { altitude: Measure; dragArea: Measure };
+  main: { altitude: Measure; dragArea: Measure };
+}
+
+/** A result the reports give, for the simulator to be held against: tests/sim.test.mjs integrates the trajectory and compares. */
+export interface FlightCheck {
+  /** What src/sim/fly.ts calls it: 'apogee', 'range', 'maxSpeed'. */
+  id: string;
+  label: string;
+  /** SI. */
+  value: number;
+  unit: string;
+  /** How near the simulator must come, in the same unit: set before the simulator was run, not after. */
+  tolerance: number;
+  confidence: Confidence;
+  source: string;
+}
+
 export interface Flight {
   /** <nation>/<program>/<flight>: also its path under missions/ and public/models/. */
   id: string;
@@ -304,6 +404,9 @@ export interface Flight {
   timeline: TimelineEvent[];
   specs: Spec[];
   motors: Motor[];
+  /** What the flight is integrated from, and what the result is checked against (src/sim). Left out: it cannot be flown yet. */
+  trajectory?: Trajectory;
+  checks?: FlightCheck[];
   models: ModelDef[];
   /** The place round the pad, built like a model (the site's own: sites/<site>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */
   surroundings?: string;

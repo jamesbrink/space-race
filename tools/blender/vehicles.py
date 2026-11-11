@@ -93,7 +93,8 @@ OTHERS = {
     "void": ("window-void", (0.02, 0.022, 0.025), 0.0, 0.6),
     "rubber": ("rubber", (0.02, 0.02, 0.02), 0.0, 0.9),
     "whitewall": ("rubber-whitewall", (0.78, 0.77, 0.72), 0.0, 0.8),
-    "chrome": ("chrome-plate", (0.62, 0.63, 0.65), 1.0, 0.32),  # bright, but not a mirror for the Sun
+    "chrome": ("chrome-plate", (0.72, 0.72, 0.71), 0.6, 0.36),  # bright, but not a mirror for the Sun or the sky
+    "well": ("wheel-well", (0.012, 0.012, 0.013), 0.0, 1.0),  # the dark of a wheel's well and the underside
     "under": ("steel-chassis", (0.05, 0.05, 0.055), 0.3, 0.7),
     "line": ("panel-line", (0.015, 0.015, 0.015), 0.0, 0.8),
     "lamp": ("lamp-lens-clear", (0.85, 0.85, 0.8), 0.0, 0.15),
@@ -483,7 +484,7 @@ class Car:
         def what(s: int, j: int) -> str | None:
             i = j if j < n - 1 else m - j - 1
             if i < 3:
-                return "under"
+                return "well"
             mid = (xs[s] + xs[s + 1]) / 2
             if i >= lid and self.cabin[3] < mid < self.cabin[0]:
                 return None  # the cabin: the greenhouse stands here
@@ -626,6 +627,15 @@ class Car:
         wy = min(self.glass_y(foot), self.glass_y(back)) - 2.2
         return x0, x1, wy, max(self._bottom(0.5 * (x0 + x1)) + 4.0, 11.0)
 
+    def housings(self) -> list[tuple[float, float, float]]:
+        """The wheel housings that stand into the cabin: X from, X to, and the height of the top."""
+        x0, x1, _, _ = self.tub()
+        out = []
+        for k, xa in enumerate(self.axles):
+            if self.arch > 0 and self.arches[k] and x0 < xa + self.arch + 1.5 and xa - self.arch - 1.5 < x1:
+                out.append((max(x0, xa - self.arch - 1.5), min(x1, xa + self.arch + 1.5), min(self.tyre[0] + self.arch + 1.5, self.belt(x0) - 2.5)))
+        return out
+
     def benches(self) -> list[tuple[float, float]]:
         """Each bench, front to back, as the X of its back and front edges."""
         x0, x1, _, _ = self.tub()
@@ -665,32 +675,46 @@ class Car:
         x0, x1, wy, zf = self.tub()
         zb0, zb1 = self.belt(x0) - 0.5, self.belt(x1) - 0.5
         side = 1 if self.lhd else -1
-        poly(trim, [(x0, -wy, zf), (x1, -wy, zf), (x1, wy, zf), (x0, wy, zf)], (0, 0, 1))
+        # where a wheel's housing stands into the cabin the tub gives way to it, so that nothing of
+        # the inside is left in the wheel's well: (X from, X to, the housing's top)
+        housings = self.housings()
+        inner = self.well - 1.5
+
+        def housed(a: float, b: float) -> float:
+            """The top of the housing that the stretch a..b lies in; 0 if it lies in none."""
+            return next((z for lo, hi, z in housings if lo - 1e-6 <= a and b <= hi + 1e-6), 0.0)
+
+        cuts = sorted({x0, x1, *(x for x in self.doors if x0 < x < x1), *(x for lo, hi, _ in housings for x in (lo, hi) if x0 < x < x1)})
+        for a, b in zip(cuts, cuts[1:]):  # the floor, narrower between the housings
+            y = inner if housed(a, b) else wy
+            poly(trim, [(a, -y, zf), (b, -y, zf), (b, y, zf), (a, y, zf)], (0, 0, 1))
         for x, out in ((x0, 1), (x1, -1)):  # the back wall, and the front one under the dashboard
-            poly(trim, [(x, -wy, zf), (x, wy, zf), (x, wy, self.belt(x) - 0.5), (x, -wy, self.belt(x) - 0.5)], (out, 0, 0))
-        cuts = sorted({x0, x1, *(x for x in self.doors if x0 < x < x1)})
+            y = inner if any(lo - 1e-6 <= x <= hi + 1e-6 for lo, hi, _ in housings) else wy
+            poly(trim, [(x, -y, zf), (x, y, zf), (x, y, self.belt(x) - 0.5), (x, -y, self.belt(x) - 0.5)], (out, 0, 0))
         for s in (1, -1):  # the side walls and their tops, out to under the shoulder, door by door
             for a, b in zip(cuts, cuts[1:]):
                 to = "trim-dark" + self.part_of((a + b) / 2, 3, s, 99)
                 za, zb = self.belt(a) - 0.5, self.belt(b) - 0.5
-                poly(kit(to), [(a, s * wy, zf), (b, s * wy, zf), (b, s * wy, zb), (a, s * wy, za)], (0, -s, 0))
+                foot = max(zf, housed(a, b))  # over a housing the wall starts on top of it
+                poly(kit(to), [(a, s * wy, foot), (b, s * wy, foot), (b, s * wy, zb), (a, s * wy, za)], (0, -s, 0))
                 out = [(x, s * (self._plan(x) - 0.4 * self.shoulder), self.belt(x) - 5.0) for x in (a, b)]
                 poly(kit(to), [(a, s * wy, za), (b, s * wy, zb), out[1], out[0]], (0, 0, 1))
-                if "@" in to:  # a door has edges: close them between its skin and its lining
-                    for x in (a, b):
-                        lo = max(zf, self.arch_z(x) + 0.5)  # not down into a wheel's opening
-                        zs = [lo + (self.belt(a) - 5.0 - lo) * k / 3 for k in range(4)]
-                        edge = [(x, s * self.side(x, max(z, self._bottom(x), self.arch_z(x))), z) for z in zs]
+            for a, b in self.door_spans():  # a door has edges: close them between its skin and its lining
+                to = "trim-dark" + self.part_of((a + b) / 2, 3, s, 99)
+                for x in (a, b):
+                    over = max((z for lo, hi, z in housings if lo < x < hi), default=0.0)
+                    lo = max(zf, over, self.arch_z(x) + 0.5)  # not down into a wheel's well
+                    if x0 < x < x1 and lo < self.belt(x) - 6.0:
+                        zs = [lo + (self.belt(x) - 5.0 - lo) * k / 3 for k in range(4)]
+                        edge = [(x, s * self.side(x, z), z) for z in zs]
                         poly(kit(to), [(x, s * wy, zs[0]), *edge, (x, s * wy, zs[-1])], (x - (a + b) / 2, 0, 0))
-        for xa in self.axles:  # wheel housings that stand into the cabin
-            if self.arch > 0 and x0 < xa + self.arch and xa - self.arch < x1:
-                lo, hi = max(x0, xa - self.arch - 1.5), min(x1, xa + self.arch + 1.5)
-                z = min(self.tyre[0] + self.arch + 1.5, zb0 - 2)
-                for s in (1, -1):  # only the faces the cabin sees: the well itself is the body's
-                    ya, yb = s * (self.well - 1.5), s * (wy - 0.2)
-                    poly(trim, [(lo, ya, zf), (hi, ya, zf), (hi, ya, z), (lo, ya, z)], (0, -s, 0))
-                    poly(trim, [(lo, ya, z), (hi, ya, z), (hi, yb, z), (lo, yb, z)], (0, 0, 1))
-                    for x, out in ((lo, -1), (hi, 1)):
+        for lo, hi, z in housings:
+            for s in (1, -1):  # only the faces the cabin sees: the well itself is the body's
+                ya, yb = s * inner, s * wy
+                poly(trim, [(lo, ya, zf), (hi, ya, zf), (hi, ya, z), (lo, ya, z)], (0, -s, 0))
+                poly(trim, [(lo, ya, z), (hi, ya, z), (hi, yb, z), (lo, yb, z)], (0, 0, 1))
+                for x, out in ((lo, -1), (hi, 1)):
+                    if x0 + 1e-6 < x < x1 - 1e-6:
                         poly(trim, [(x, ya, zf), (x, yb, zf), (x, yb, z), (x, ya, z)], (out, 0, 0))
         dash = zb1 - 0.5
         hexa(
@@ -759,7 +783,9 @@ class Car:
             for s in (1, -1):
                 part = f"@Door_{2 * k + (1 if s > 0 else 2)}"
                 ya, yb = sorted((s * (wy - 0.1), s * (wy - 2.4)))
-                box(kit("trim-dark" + part), ((a + b) / 2 - 7.0, ya, zf + 12.5), ((a + b) / 2 + 5.0, yb, zf + 14.6))
+                rest = (max(a + 2.0, b - 22.0), b - 11.0)  # toward the door's front, clear of a wheel housing
+                if not any(lo < rest[1] and rest[0] < hi for lo, hi, _ in housings):
+                    box(kit("trim-dark" + part), (rest[0], ya, zf + 12.5), (rest[1], yb, zf + 14.6))
                 at = Vector((b - 9.0, s * (wy - 0.2), zf + 17.5))
                 kit("chrome" + part).tube(at, at - Vector((0, s * 1.1, 0)), 0.45, 6)
                 kit("chrome" + part).tube(at - Vector((0, s * 1.35, 0)), at - Vector((2.4, s * 1.35, 1.6)), 0.25, 5)
@@ -794,7 +820,10 @@ class Car:
                 (xr + 6.0, zf + 9.4),
             ]
             side_view += [(xr + 4.2, zf + 12.0), (xr + 1.4, z - 2.0), (xr - 0.4, z), (xr - 2.6, z - 0.6), (xr - 3.6, z - 3.0), (xr - 1.6, zf + 8.0)]
-            ys = [-(wy - 1.0), -(wy - 2.2), -1.0, 1.0, wy - 2.2, wy - 1.0]  # a seam down the middle; the ends drawn in a little
+            wide = wy - 1.0
+            if any(lo < xf and xr - 3.6 < hi for lo, hi, _ in housings):
+                wide = min(wide, inner - 0.6)  # a back seat sits between the wheel housings
+            ys = [-wide, -(wide - 1.2), -1.0, 1.0, wide - 1.2, wide]  # a seam down the middle; the ends drawn in a little
             mid = Vector((xr + 4.0, 0, zf + 8.0))
             loops = [
                 [mid + (Vector((x, 0, zz)) - mid) * (0.93 if k in (0, 5) else 1.0) + Vector((0, y, 0)) for x, zz in side_view]
@@ -876,9 +905,15 @@ class Car:
             run = [lo, *(x for x in self.stations() if lo < x < hi), hi]
             mb = kit("chrome" if self.spear_paint == "chrome" else self.spear_paint + "/spear")
             for s in (1, -1):
-                pts = [Vector((x, s * self.side(x, line(x)), line(x))) for x in run if self.arch_z(x) < line(x) - 1.2]
-                if len(pts) > 1:
-                    ridge(mb, pts, (0, s, 0), 0.55, 0.55)
+                runs: list[list[Vector]] = [[]]
+                for x in run:  # it stops at a wheel opening and starts again beyond it
+                    if self.arch_z(x) < line(x) - 1.2:
+                        runs[-1].append(Vector((x, s * self.side(x, line(x)), line(x))))
+                    elif runs[-1]:
+                        runs.append([])
+                for pts in runs:
+                    if len(pts) > 1:
+                        ridge(mb, pts, (0, s, 0), 0.55, 0.55)
         if not close:
             return
         for lid, (a, b) in self.lids().items():  # the lids' shut lines, and the bonnet's bright strip
@@ -892,10 +927,16 @@ class Car:
                 ridge(kit("chrome@Bonnet"), pts, (0, 0, 1), 0.5, 0.45, 0.3)
         for x in self.doors:  # shut lines and handles
             zs = self._top(x) - min(self.shoulder, 4.0) - 0.3
-            z0 = max(self._bottom(x), self.arch_z(x)) + 0.6
+            z0 = max(self._bottom(x) + 0.6, self.arch_z(x) + 1.4)  # it ends above a wheel opening's lip
+            runs = [(z0, zs)]
+            if self.spear and min(k[0] for k in self.spear) < x < max(k[0] for k in self.spear):
+                strip = curve(self.spear)(x)  # and stops either side of the bright strip
+                runs = [(z0, strip - 1.0), (strip + 1.0, zs)]
             for s in (1, -1):
-                pts = [Vector((x, s * self.side(x, z0 + (zs - z0) * i / 4), z0 + (zs - z0) * i / 4)) for i in range(5)]
-                ridge(kit("line"), pts, (0, s, 0), 0.16, 0.14, 0.3)
+                for lo, hi in runs:
+                    if hi - lo > 1.5:
+                        pts = [Vector((x, s * self.side(x, lo + (hi - lo) * i / 3), lo + (hi - lo) * i / 3)) for i in range(4)]
+                        ridge(kit("line"), pts, (0, s, 0), 0.16, 0.14, 0.3)
         for k, (a, _) in enumerate(self.door_spans()):  # a handle at each door's latch edge; a mirror on the driver's
             x = a + 4.5
             zs = self._top(x) - min(self.shoulder, 4.0) - 3.8
@@ -924,35 +965,52 @@ class Car:
             kit("rubber").lathe([(0.0, -hw + 1.2), (R - 1.0, -hw), (R, -hw + 1.5), (R, hw - 1.5), (R - 1.0, hw), (rr, hw - 0.3)], 16, matrix=out)
             kit("chrome" if self.cap_r >= rr - 1.0 else paint_key).lathe([(rr, hw - 0.3), (0.0, hw + 0.4)], 16, matrix=out)
             return kit.build(name, node)
-        segs = 20
+        segs = 32 if srlib.DETAIL >= 0.75 else 20
+        # a tyre in section: bead, a sidewall that swells, a shoulder, a tread with a little crown
+        bulge, mid = hw + 0.28, rr + 0.5 * (R - rr)
         tyre = [
             (0.0, -hw + 1.2),
             (rr, -hw + 1.2),
             (rr, -hw + 0.3),
-            (rr + 0.35 * (R - rr), -hw),
-            (R - 1.3, -hw),
-            (R - 0.35, -hw + 0.9),
-            (R, -hw + 1.9),
+            (rr + 0.5, -hw),
+            (mid, -bulge),
+            (R - 1.5, -hw),
+            (R - 0.45, -hw + 0.8),
+            (R - 0.08, -hw + 1.9),
+            (R, 0.0),
         ]
-        tyre += [(R, hw - 1.9), (R - 0.35, hw - 0.9), (R - 1.3, hw)]
+        tyre += [(R - 0.08, hw - 1.9), (R - 0.45, hw - 0.8), (R - 1.5, hw)]
         if self.whitewall:
-            edge = rr + 0.5 + self.whitewall
-            tyre += [(edge, hw + 0.1)]
-            kit("whitewall").lathe([(edge, hw + 0.1), (rr + 0.5, hw + 0.05), (rr, hw - 0.35)], segs, matrix=out)
+            edge = min(rr + 0.6 + self.whitewall, mid + 0.6)
+            inner_z = hw + 0.28 * (1 - abs(edge - mid) / (0.5 * (R - rr)))
+            tyre += [(mid + 1.2, bulge - 0.06)] if edge < mid + 1.0 else []
+            tyre += [(edge, inner_z)]
+            kit("whitewall").lathe([(edge, inner_z), (rr + 0.6, hw + 0.04), (rr, hw - 0.35)], segs, matrix=out)
         else:
-            tyre += [(rr + 0.5, hw + 0.05), (rr, hw - 0.35)]
+            tyre += [(mid, bulge), (rr + 0.6, hw + 0.04), (rr, hw - 0.35)]
         kit("rubber").lathe(tyre, segs, matrix=out)
-        kit("under").lathe([(0.0, -hw - 1.6), (rr - 1.6, -hw - 1.6), (rr - 1.2, -hw + 1.2)], 14, matrix=out)  # the brake drum, seen from behind
+        kit("well").lathe([(0.0, -hw - 1.6), (rr - 1.6, -hw - 1.6), (rr - 1.2, -hw + 1.2)], 14, matrix=out)  # the brake drum, seen from behind
         cr = min(self.cap_r, rr - 0.7)
-        if cr < rr - 1.0:
-            kit(paint_key).lathe([(rr, hw - 0.35), (rr - 0.45, hw - 1.3), (cr + 1.2, hw - 1.5), (cr, hw - 0.9)], segs, matrix=out)
-            kit("chrome").lathe([(cr, hw - 0.9), (cr - 0.5, hw - 0.1), (0.5 * cr, hw + 0.55), (0.0, hw + 0.7)], segs, matrix=out)
-        else:  # a full wheel cover
+        if cr < rr - 1.0:  # a painted wheel with its rim's lip, and a cap with a raised middle
+            kit(paint_key).lathe(
+                [(rr, hw - 0.35), (rr - 0.25, hw - 0.1), (rr - 0.6, hw - 1.3), (cr + 1.2, hw - 1.6), (cr, hw - 0.9)], segs, matrix=out
+            )
             kit("chrome").lathe(
-                [(rr, hw - 0.35), (rr - 0.5, hw - 1.0), (cr - 1.0, hw - 0.9), (0.6 * cr, hw + 0.3), (0.3 * cr, hw + 0.9), (0.0, hw + 1.0)],
+                [(cr, hw - 0.9), (cr - 0.35, hw - 0.2), (0.62 * cr, hw + 0.25), (0.5 * cr, hw + 0.7), (0.22 * cr, hw + 0.95), (0.0, hw + 1.0)],
                 segs,
                 matrix=out,
             )
+        else:  # a full wheel cover: a rim, a dished field, a raised middle
+            cover = [
+                (rr, hw - 0.35),
+                (rr - 0.3, hw - 0.05),
+                (rr - 0.9, hw - 0.5),
+                (0.72 * cr, hw - 0.75),
+                (0.6 * cr, hw + 0.2),
+                (0.3 * cr, hw + 0.85),
+                (0.0, hw + 0.95),
+            ]
+            kit("chrome").lathe(cover, segs, matrix=out)
         return kit.build(name, node)
 
     def build(self, name: str, parent: bpy.types.Object | None, at: Sequence[float], heading: float = 0.0) -> dict:
@@ -1075,7 +1133,7 @@ class Pod:
                 pts += [(w - 0.5 * (1 - j / ns) ** 2, za + (zs - za) * j / ns) for j in range(1, ns + 1)]
                 pts += [(w - r + r * math.cos(math.pi / 2 * k / na), zs + r * math.sin(math.pi / 2 * k / na)) for k in range(1, na + 1)]
                 loops.append([Vector((x, s * y, z)) for y, z in [*pts, (self.inner, zt + 0.3)]])
-            skin(kit, loops, lambda st, j, key=key: "under" if j == 0 else key, closed=False, flip=s < 0)
+            skin(kit, loops, lambda st, j, key=key: "well" if j == 0 else key, closed=False, flip=s < 0)
             cap(kit(key), loops[0], (-1, 0, 0))
             cap(kit(key), loops[-1], (1, 0, 0))
             if self.lamp:
@@ -1125,7 +1183,7 @@ def ford_1957(paint: str = "seafoam", roof: str | None = "white", *, wagon: bool
         tail_at=(0.0, 30.0, 3.3, 1.0),
         grille=(27.0, 17.5, 26.5),
         bumper=(13.5, 0.0),
-        spear=[(x0 + 5, 27.5), (0, 27.0), (100, 27.5), (x1 - 8, 28.5)],
+        spear=[(x0 + 5, 31.5), (0, 31.5), (100, 32.0), (x1 - 8, 32.0)],
         seats=(54.0, 20.0),
         whitewall=2.2,
         paint=paint,
@@ -1169,7 +1227,7 @@ def chevrolet_1959(paint: str = "navy", roof: str | None = None, **kw) -> Car:
         tail_at=(0.0, 29.0, 2.3, 2.5),
         grille=(31.0, 16.5, 22.5),
         bumper=(12.5, 0.0),
-        spear=[(x0 + 8, 29.0), (70, 29.5)],
+        spear=[(20, 26.6), (96, 26.8)],
         seats=(55.0, 19.0),
         paint=paint,
         roof=roof,

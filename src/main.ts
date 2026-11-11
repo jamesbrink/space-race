@@ -81,6 +81,8 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   walkMotion: () => setMotion(({ full: 'reduced', reduced: 'off', off: 'full' } as const)[motion()]),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
+  fnValues: (node) => stage.functions(current.id, node).map((f) => ({ id: f.fn.id, value: f.value, refused: f.refused })),
+  setFn: (node, id, v) => stage.setFunction(current.id, node, id, v),
   inset: (px) => stage.setInset(px),
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
@@ -182,6 +184,7 @@ stage.onView = (id) => ui.setView(id);
 stage.onWalk = (on, model) => {
   if (on && current.id !== model) show(model, false, true); // the hardware stays where it is while someone is walking on it
   if (on && selected) select(null);
+  if (!on) stopWorking();
   ui.setWalking(on);
   if (on) ui.setWalkView(stage.walk.third);
   if (on) {
@@ -252,7 +255,8 @@ function perform(on: Target, { verb }: Choice): void {
   else if (verb.do === 'become') {
     ui.showWalkCard(null);
     stage.becomeWalk(verb.model);
-  } else if (verb.do === 'action') {
+  } else if (verb.do === 'operate') startWorking(verb);
+  else if (verb.do === 'action') {
     if (verb.action.do.kind === 'slider') stage.operate(verb.model, verb.action.do.to);
     else stage.workAction(verb.model, verb.node, verb.action, verb.stop);
   } else if (verb.do === 'inspect') {
@@ -265,6 +269,44 @@ function perform(on: Target, { verb }: Choice): void {
     }
   }
 }
+/**
+ * A function of a part being worked by hand, on foot (Part.functions): while it is, the walker
+ * stands at the controls, W (or the up arrow) runs it toward the end of its travel and S back
+ * for as long as it is held, and E or Escape lets go of the controls.
+ */
+let working: Extract<Choice['verb'], { do: 'operate' }> | null = null;
+function startWorking(verb: NonNullable<typeof working>): void {
+  working = verb;
+  // (onClose of the wheel releases the walker after this returns: take the controls on the next turn)
+  setTimeout(() => {
+    if (working !== verb) return;
+    stage.walk.hold(() => {}, stopWorking);
+    noteWorking(null);
+  });
+}
+function noteWorking(refused: string | null): void {
+  if (!working) return;
+  const [back, on] = working.ends ?? ['back', 'on'];
+  ui.setWalkNote(refused ? `${working.name}: ${refused}` : `${working.name} · hold W: ${on} · S: ${back} · E done`);
+}
+function stopWorking(): void {
+  if (!working) return;
+  stage.pushFunction(working.model, working.node, working.fn, 0);
+  working = null;
+  stage.walk.release();
+  ui.setWalkNote(null);
+}
+const pushKey = (key: string): number => (key === 'w' || key === 'arrowup' ? 1 : key === 's' || key === 'arrowdown' ? -1 : 0);
+window.addEventListener('keydown', (e) => {
+  if (!working || e.metaKey || e.ctrlKey || e.altKey) return;
+  const key = e.key.toLowerCase();
+  if (key === 'e') stopWorking();
+  else if (pushKey(key) && !e.repeat) noteWorking(stage.pushFunction(working.model, working.node, working.fn, pushKey(key)));
+});
+window.addEventListener('keyup', (e) => {
+  if (working && pushKey(e.key.toLowerCase())) stage.pushFunction(working.model, working.node, working.fn, 0);
+});
+
 // with the mouse captured a click lands on no button: it chooses what the wheel is pointing at
 document.addEventListener('mousedown', () => {
   if (ui.wheel.isOpen && document.pointerLockElement) ui.wheel.confirm();

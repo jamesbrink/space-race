@@ -136,13 +136,87 @@ class Driver {
 
 const ease = (x: number) => x * x * (3 - 2 * x);
 
+/** One thing a part does (types.ts: Part.functions): its nodes, the stretch of the slider their moves span, and what the flight says of it. */
+export interface Fn {
+  /** Its first node: what it is known by. */
+  id: string;
+  name: string;
+  nodes: string[];
+  /** Where on the slider its moves begin and end. */
+  from: number;
+  to: number;
+  /** Seconds for its whole travel when held. */
+  seconds: number;
+  ends?: [string, string];
+  at?: string;
+  needs?: { node: string; atLeast?: number; atMost?: number; why: string }[];
+}
+
+/**
+ * The functions of a part, from its `moves`: every node that moves is one, and the flight's
+ * `functions` name them, pace them and put several nodes together. A move that is over before
+ * the slider starts (a piece built in one place and held in another) is not something it does.
+ */
+export function functionsOf(part: Part): Fn[] {
+  const spans = new Map<string, [number, number]>();
+  for (const move of part.moves ?? []) {
+    if (move.to <= 0) continue;
+    const node = move.node ?? part.node;
+    const span = spans.get(node);
+    spans.set(node, span ? [Math.min(span[0], move.from), Math.max(span[1], move.to)] : [move.from, move.to]);
+  }
+  const out: Fn[] = [];
+  const taken = new Set<string>();
+  const make = (nodes: string[], said?: NonNullable<Part['functions']>[number]): void => {
+    const moving = nodes.filter((n) => spans.has(n) && !taken.has(n));
+    if (!moving.length) return;
+    for (const n of moving) taken.add(n);
+    const from = Math.min(...moving.map((n) => spans.get(n)![0]));
+    const to = Math.max(...moving.map((n) => spans.get(n)![1]));
+    const plain = moving[0] === part.node ? part.name : moving[0]!.replace(`${part.node}_`, '').replace(/_/g, ' ');
+    out.push({
+      id: moving[0]!,
+      name: said?.name ?? plain,
+      nodes: moving,
+      from,
+      to,
+      // unsaid, a function takes a few seconds: longer the more of the slider's travel it is
+      seconds: said?.seconds ?? Math.min(20, Math.max(3, (to - from) * 60)),
+      ends: said?.ends,
+      at: said?.at,
+      needs: said?.needs,
+    });
+  };
+  for (const said of part.functions ?? []) make(said.nodes, said);
+  for (const node of spans.keys()) make([node]);
+  return out;
+}
+
+/** How far along its travel (0 to 1) a function is when the slider reads `t`. */
+export const scriptedAt = (fn: Fn, t: number): number => Math.min(1, Math.max(0, (t - fn.from) / Math.max(1e-9, fn.to - fn.from)));
+
+/** Where on the slider a function's moves are played to put it `v` (0 to 1) along its travel. */
+export const sliderFor = (fn: Fn, v: number): number => fn.from + Math.min(1, Math.max(0, v)) * (fn.to - fn.from);
+
+/**
+ * May a function move? Its `needs` are checked against how far along each other function is
+ * (`value`, by a function's id). Returns why not, or null if it may.
+ */
+export function refusal(fn: Fn, value: (id: string) => number): string | null {
+  for (const need of fn.needs ?? []) {
+    const v = value(need.node);
+    if ((need.atLeast !== undefined && v < need.atLeast - 1e-6) || (need.atMost !== undefined && v > need.atMost + 1e-6)) return need.why;
+  }
+  return null;
+}
+
 /**
  * A part that leaves as hardware does: a sequence of motions, each on a node of the part and
  * each over its own stretch of the slider (types.ts: Move).
  */
 export class Sequence {
   private readonly nodes = new Map<THREE.Object3D, { position: THREE.Vector3; quaternion: THREE.Quaternion }>();
-  private readonly steps: { move: Move; object: THREE.Object3D; driver?: Driver }[] = [];
+  private readonly steps: { move: Move; object: THREE.Object3D; node: string; driver?: Driver }[] = [];
 
   constructor(part: THREE.Object3D, home: THREE.Vector3, moves: Move[]) {
     for (const move of moves) {
@@ -158,17 +232,24 @@ export class Sequence {
           quaternion: object.quaternion.clone(),
         });
       const rest = this.nodes.get(object)!.position;
-      this.steps.push({ move, object, driver: move.kind === 'drive' ? new Driver(object, rest, move) : undefined });
+      this.steps.push({
+        move,
+        object,
+        node: move.node ?? part.name,
+        driver: move.kind === 'drive' ? new Driver(object, rest, move) : undefined,
+      });
     }
   }
 
-  set(k: number): void {
+  /** Play every motion to where it is when the slider reads `k`; a node in `held` is played to the reading held for it instead. */
+  set(k: number, held?: ReadonlyMap<string, number>): void {
     for (const [object, rest] of this.nodes) {
       object.position.copy(rest.position);
       object.quaternion.copy(rest.quaternion);
     }
-    for (const { move, object, driver } of this.steps) {
-      const u = ease(Math.min(1, Math.max(0, (k - move.from) / Math.max(1e-6, move.to - move.from))));
+    for (const { move, object, node, driver } of this.steps) {
+      const at = held?.get(node) ?? k;
+      const u = ease(Math.min(1, Math.max(0, (at - move.from) / Math.max(1e-6, move.to - move.from))));
       if (move.kind === 'swing') {
         // in the parent's frame, so it goes before whatever turn the node already has
         object.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...move.axis).normalize(), move.angle * u));
@@ -183,6 +264,8 @@ export class Sequence {
 export class Exploder {
   private readonly entries: { object: THREE.Object3D; home: THREE.Vector3; part: Part; sequence?: Sequence }[] = [];
   private readonly orders: number;
+  /** Nodes being worked by hand: each is played to the slider reading held for it, whatever the slider says. */
+  private readonly held = new Map<string, number>();
 
   constructor(root: THREE.Object3D, parts: Part[]) {
     this.orders = Math.max(0, ...parts.map((p) => p.order));
@@ -198,11 +281,17 @@ export class Exploder {
     }
   }
 
+  /** Hold a node's motions at a reading of the slider of its own (null: let it follow the slider again). Takes effect at the next `set`. */
+  hold(node: string, reading: number | null): void {
+    if (reading === null) this.held.delete(node);
+    else this.held.set(node, reading);
+  }
+
   set(t: number): void {
     for (const { object, home, part, sequence } of this.entries) {
       // a sequence is timed against the slider itself (its motions say when); a plain slide takes its turn
       const k = partProgress(t, part.order, this.orders);
-      if (sequence) sequence.set(t);
+      if (sequence) sequence.set(t, this.held);
       else object.position.set(home.x + part.explode[0] * k, home.y + part.explode[1] * k, home.z + part.explode[2] * k);
     }
   }

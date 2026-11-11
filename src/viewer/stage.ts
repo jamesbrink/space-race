@@ -14,11 +14,13 @@ import { sliderAt, timeAt } from '../world/sequence.ts';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
+import { Lamps } from './lamps';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
+import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { Carry } from './carry';
 import { pose } from './gait';
 
@@ -149,6 +151,14 @@ export class Stage {
   private tap: { t: number; x: number; y: number; walker: string | null } = { t: 0, x: 0, y: 0, walker: null };
   /** Which model is being walked as: an index into `staged`, or -1. */
   private walked = -1;
+  /**
+   * Functions being worked by hand (explode.ts: Fn), by `<model index>/<function id>`: how far
+   * along its travel each has been put (0 to 1), and how fast it is moving (in travels a second
+   * times its pace: it eases to a stop). The slider is the script; these hold until the script
+   * next moves the hardware, then ease back to it.
+   */
+  private readonly handset = new Map<string, { at: number; fn: Fn; v: number; pace: number; push: number }>();
+  private readonly fns = new WeakMap<object, Fn[]>();
   /** The lifts a model marks under each of its top-level nodes, found once (markedOn). */
   private readonly lifts = new WeakMap<THREE.Object3D, Action[]>();
   /** What each level of detail of a figure carries when it is walked as (carry.ts), made the first time. */
@@ -186,6 +196,8 @@ export class Stage {
   private fast = false;
   /** Which way everything is drawn, real or cel (look.ts), and the cel look's ink line. */
   private readonly looks = new Looks();
+  /** The floodlights the models carry: lit when the Sun is down. */
+  private lamps = new Lamps();
   private readonly ink = new InkPass();
 
   private setting: Setting;
@@ -485,6 +497,9 @@ export class Stage {
     this.scene.add(this.root);
     this.root.updateMatrixWorld(true);
     for (const s of this.staged) s.measure();
+    this.lamps.clear();
+    this.lamps = new Lamps();
+    for (const s of this.staged) this.lamps.add(s.full, this.scene);
     // the coarser levels arrive behind the scenes; a model that has none simply stays as it is
     const staged = this.staged;
     flight.models.forEach((def, i) => {
@@ -576,6 +591,7 @@ export class Stage {
   private setApart(i: number, t: number): void {
     this.apart[i] = t;
     this.staged[i]?.explode(t);
+    this.lamps.place(); // lamps ride the hardware they are on
     this.dirty = true;
     this.renderer.shadowMap.needsUpdate = true;
   }
@@ -688,6 +704,8 @@ export class Stage {
     this.sun.intensity = s.sunIntensity;
     this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
     this.renderer.toneMappingExposure = s.exposure;
+    // the floodlights come on as the direct light fails (the Sun low, or only the Moon)
+    this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6));
     if (shadows) {
       if (this.walk.active) this.fitWalkShadows(true);
       else {
@@ -1302,6 +1320,7 @@ export class Stage {
     }
     this.settle(dt);
     this.runWorks(dt);
+    this.runFunctions(dt);
     if (this.walk.active) this.stepWalk(dt);
     else {
       if (this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
@@ -1604,6 +1623,84 @@ export class Stage {
     // on the clock, running a model along its slider is going to that moment: the hardware follows, and so does the Sun
     if (sequence && this.clock) this.clock.seek(timeAt(sequence, THREE.MathUtils.clamp(to, 0, 1)));
     else if (at >= 0) this.apartGoal[at] = this.apartOwn[at] = THREE.MathUtils.clamp(to, 0, 1);
+  }
+
+  /** The functions of one part of a model (what it does, each workable by hand), with how far along each is and why it will not move, if it will not. */
+  functions(model: string, node: string): { fn: Fn; value: number; refused: string | null }[] {
+    const at = this.defs.findIndex((m) => m.id === model);
+    const part = this.defs[at]?.parts.find((p) => p.node === node);
+    if (!part) return [];
+    let fns = this.fns.get(part);
+    if (!fns) this.fns.set(part, (fns = functionsOf(part)));
+    const value = (id: string) => {
+      const fn = fns!.find((f) => f.id === id);
+      return this.handset.get(`${at}/${id}`)?.v ?? (fn ? scriptedAt(fn, this.apart[at] ?? 0) : 0);
+    };
+    return fns.map((fn) => ({ fn, value: value(fn.id), refused: refusal(fn, value) }));
+  }
+
+  /**
+   * Work a function by hand. `push` is 1 to run it toward the end of its travel, -1 back, 0 to
+   * let go: it runs at its own pace for as long as it is pushed and eases to a stop. Returns why
+   * it will not move, if it will not.
+   */
+  pushFunction(model: string, node: string, id: string, push: number): string | null {
+    const found = this.functions(model, node).find((f) => f.fn.id === id);
+    if (!found) return null;
+    const at = this.defs.findIndex((m) => m.id === model);
+    const key = `${at}/${id}`;
+    if (push && found.refused) return found.refused;
+    const held = this.handset.get(key) ?? { at, fn: found.fn, v: found.value, pace: 0, push: 0 };
+    held.push = push;
+    this.handset.set(key, held);
+    return null;
+  }
+
+  /** Put a function straight to a place along its travel (a slider in a panel). Returns where it now is: where it was, if it will not move. */
+  setFunction(model: string, node: string, id: string, v: number): number {
+    const found = this.functions(model, node).find((f) => f.fn.id === id);
+    if (!found || found.refused) return found?.value ?? 0;
+    const at = this.defs.findIndex((m) => m.id === model);
+    this.handset.set(`${at}/${id}`, { at, fn: found.fn, v: THREE.MathUtils.clamp(v, 0, 1), pace: 0, push: 0 });
+    this.poseFunction(at, found.fn, v);
+    return v;
+  }
+
+  private poseFunction(at: number, fn: Fn, v: number | null): void {
+    for (const node of fn.nodes) this.staged[at]?.hold(node, v === null ? null : sliderFor(fn, v));
+    this.dirty = true;
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  /** A frame of the functions worked by hand: those being pushed run, the rest stay; and all of them go back to the script when the script moves. */
+  private runFunctions(dt: number): void {
+    if (!this.handset.size) return;
+    let moved = false;
+    for (const [key, held] of this.handset) {
+      const { fn, at } = held;
+      const script = scriptedAt(fn, this.apart[at] ?? 0);
+      if (this.scripted && !held.push) {
+        // the script is moving the hardware again: back to where it has this function, at the function's own pace, and let go
+        const step = dt / fn.seconds;
+        held.v = Math.abs(script - held.v) <= step ? script : held.v + Math.sign(script - held.v) * step;
+        if (held.v === script) {
+          this.handset.delete(key);
+          this.poseFunction(at, fn, null);
+        } else this.poseFunction(at, fn, held.v);
+        moved = true;
+        continue;
+      }
+      // pushed, it gathers its pace over a quarter of a second; let go, it loses it as quickly
+      held.pace += (held.push - held.pace) * (1 - Math.exp(-dt / 0.2));
+      if (!held.push && Math.abs(held.pace) < 0.01) held.pace = 0;
+      if (!held.pace) continue;
+      const to = THREE.MathUtils.clamp(held.v + (held.pace * dt) / fn.seconds, 0, 1);
+      if (to === held.v) continue;
+      held.v = to;
+      this.poseFunction(at, fn, to);
+      moved = true;
+    }
+    if (moved) this.fitBounds();
   }
 
   /** The levels of detail of a model: an action moves the same node in each. */

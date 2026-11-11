@@ -59,6 +59,14 @@ export class Staged {
     for (const e of this.exploders) e.set(t);
   }
 
+  /** Hold one node's motions at a slider reading of its own, at every level of detail (null: release it), and show it. */
+  hold(node: string, reading: number | null): void {
+    for (const e of this.exploders) {
+      e.hold(node, reading);
+      e.set(this.t);
+    }
+  }
+
   /** The model as built: level 0, whether or not it is the one being drawn. */
   get full(): THREE.Object3D {
     return this.levels[0]!;
