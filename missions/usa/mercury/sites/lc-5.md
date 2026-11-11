@@ -97,7 +97,7 @@ cherry picker came in from the same side once the structure had gone.
 | `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
 | `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, the lift and its shaft, a railed way from the lift to every level with a ladder well in it, hammerhead crane with red obstruction lamps at its ends; work lamps under level 1 and a room lamp in each enclosed level (see "Lights at night"); child nodes below |
 | `CherryPicker` | cherry_picker.py | International Harvester R-series truck: glazed cab with a bench, pedals, handbrake, gear lever, dash and dials, the driver's door and steering wheel as nodes of their own; on the bed the hydraulic tank, gas bottles and the valve bank; at the tail the control station with its four levers (`CherryPicker_Controls`); child nodes below |
-| `GroundEquipment` | ground_equipment.py | the LOX topping trailer (`GroundEquipment_LoxTrailer`) and the nitrogen trailer (`…_NitrogenTrailer`), each with dished-head tank, wheels, a control end (cabinet, gauges, two lines with valves and handwheels, the hose coupling) and a hose end (reel, placards); chevron box; four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the tractor unit coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
+| `GroundEquipment` | ground_equipment.py | the LOX topping trailer (`GroundEquipment_LoxTrailer`) and the nitrogen trailer (`…_NitrogenTrailer`), each with dished-head tank, wheels, a control end (cabinet, gauges, two lines with valves and handwheels, the hose coupling) and a hose end (reel, placards); chevron box; four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the M275 tractor coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
 | `CameraTowers` | ground_equipment.py | two lattice camera towers, a ladder up each |
 | `Floodlights` | ground_equipment.py | six timber poles in the grass at the pad's edge, a crossarm bolted through and three lamps each; close to, the ground wire stapled down to its rod, a number tag at eye height, the conduit and switch box |
 
@@ -123,9 +123,9 @@ in the viewer is the Blender axis mapped the same way. Angles are right-handed a
 | `CherryPicker_Controls_Mast`, `_Jib`, `_Cab`, `_Outriggers` | `CherryPicker_Controls` | each lever's pivot, (63.15, 1.6 to 2.8, 4.45), at the tail on the driver's side | swings about the node's Z (extras `lever`, `function`, `swing` 25, `axis` "z") | 25° either way, springing back to the middle | while the function it names is worked by hand (types.ts: `Function.lever`) | a station at the rear of the truck: documented (TM X-53107 7.3.3.1: "the controls ... at the rear of the transporter"); four levers, their order and which worked what: estimated |
 | `CherryPicker_Door_1` | `CherryPicker` | the driver's door's front edge at its foot, truck (15.45, 3.2, 3.6) | `door`, `swing` −70° about the vertical | 70° | opened on foot | estimated |
 | `GroundEquipment_Shower`, `GroundEquipment_Case` | `GroundEquipment` | their middles on the pad | slide | up the road toward pad 6, about 150 ft | 0.02 to 0.11 and 0.03 to 0.12 (06:03 to 06:31) | estimated throughout: nothing records that they left, or when |
-| `GroundEquipment_TractorBay` | `GroundEquipment` | (34, 71, 0), turned −90° about Z, so that its +X is the trailer's way ahead (−Y) | none: the frame the tractor drives in | — | — | — |
-| `GroundEquipment_Tractor`, with `…_Wheel_1,2`, `…_Knuckle_1,2`, `…_SteerWheel_1,2`, doors and seats to the vehicle contract | `GroundEquipment_TractorBay` | the ground under its rear axle, which is under the fifth wheel: (34, 71, 0) | drives: starts straight ahead (−Y), eases 12 ft to its left (+X) over the first 40 m, clear of the structure's stair, then straight on | 82.6 m (271 ft) | 0.01 to 0.12 (06:02 to 06:31) | estimated throughout: no photograph shows what moved the trailer, or that it left |
-| `GroundEquipment_Trailer` (wheels `…_Trailer_Wheel_1..4` on their hubs, axle along X) | `GroundEquipment` | the middle of its bogie on the ground (34, 92.45, 0); kingpin 21.45 ft (6.538 m) ahead | drives behind the tractor: its bogie's route is the tractor's worked through as a trailer follows one (always heading for the kingpin: a tractrix), so the two stay coupled | the same | the same | the same. Coupling checked in the browser at 13 points along the slider: kingpin to fifth wheel 2.4 cm at worst, both ending square |
+| `GroundEquipment_TractorBay` | `GroundEquipment` | (34, 71.33, 0), turned −90° about Z, so that its +X is the trailer's way ahead (−Y) | none: the frame the tractor drives in | — | — | — |
+| `GroundEquipment_Tractor`, with `…_Wheel_1..4` (the tandem), `…_Knuckle_1,2`, `…_SteerWheel_1,2`, doors and seats to the vehicle contract | `GroundEquipment_TractorBay` | the ground under the middle of its tandem, 4 in behind the kingpin: (34, 71.33, 0) | drives: starts straight ahead (−Y), eases 12 ft to its left (+X) over the first 40 m, clear of the structure's stair, then straight on | 82.6 m (271 ft) | 0.01 to 0.12 (06:02 to 06:31) | estimated throughout: no photograph shows what moved the trailer, or that it left |
+| `GroundEquipment_Trailer` (wheels `…_Trailer_Wheel_1..4` on their hubs, axle along X) | `GroundEquipment` | the middle of its bogie on the ground (34, 92.45, 0); kingpin 21.45 ft (6.538 m) ahead | drives behind the tractor: its bogie's route is the tractor's worked through as a trailer follows one (always heading for the kingpin: a tractrix), so the two stay coupled | the same | the same | the same. Coupling checked in the browser at 10 points along the slider: kingpin to fifth wheel 1.9 cm at worst, both ending square |
 | `GroundEquipment_Hut1`, `_Hut2` | `GroundEquipment` | their middles | slide out along +X (viewer +X) on their skids | 72 m | 0.03 to 0.11 and 0.06 to 0.14 (06:07 to 06:37: the second is still going as the structure starts) | estimated: nothing records how the huts were moved, or that they were |
 | `GroundEquipment_Tow1`, `_Tow2` (to the vehicle contract) | `GroundEquipment` | under the rear axle, (104.5, 29.5, 0) and (104.5, 44.5, 0), facing +X | drives straight ahead with its hut on a chain behind it | 72 m | with its hut | estimated: a half-ton pickup is the least that could drag a hut; its make is from no photograph |
 | `GroundEquipment_Barricade`, `GroundEquipment_Searchlight1..3` | `GroundEquipment` | their middles; a searchlight's at its yoke's foot | none | — | — | their own nodes so that they can be taken away. The searchlights stay: see "Where things stood" and "Lights at night" |
@@ -173,7 +173,7 @@ Notes:
 | Emergency shower | 3.2 ft square, 8.6 ft tall, on a cart | estimated (that it stood at the pad's edge: documented) | GPN-2000-001006 (MR-3, cherry picker at the capsule); KSC-61-4457 (2 May 1961) |
 | Trailer "NASA SP-No 1" | 29 by 8 ft, 12.4 ft to its roof | estimated (its lettering and that it stood by the structure's base: documented) | S61-03158 |
 | Pad huts | 10.5 by 11 ft and 9 by 9 ft, 9 ft tall | estimated | FHSU F16_017 (July 1961): two huts at the hatch side's edge |
-| Tractor unit | a late-1950s Ford F-600 conventional: wheelbase 132 in, 205 in long, 80 in wide over the cab, 82 in high, 8.25-20 tyres (radius 0.483 m), dual rear wheels; fifth wheel 47 in up, over the rear axle | estimated, every figure (tools/blender/vehicles.py `ford_f600_tractor`): no drawing or specification read | no photograph shows the trailer's tractor; the trailer's floor steps up 9 cm at the front over the fifth wheel |
+| Tractor | an Army 2-1/2-ton 6x6 truck tractor (M275, `vehicles.m275_tractor("olive")`): fifth wheel's plate 52 in up, kingpin 4 in ahead of the middle of the tandem; the trailer's front floor steps up over it to 4.55 ft | see "What towed the trailers: the record" for which figures are documented | FHSU 544: a dark one of the family coupled to SP No 1; that it towed SP-1 off that morning, and its colour, are estimated |
 | Pickups that drag the huts | 1957 to 1960 Ford F-100, white, no utility body: wheelbase 110 in (2.794 m), tyre radius 0.361 m; a chain to each hut's skids | wheelbase documented (see "The vehicles"); the rest estimated | no photograph shows how the huts were moved |
 | Searchlights | three 60-inch drums on yokes on four-wheeled trailers, 8 by 4.8 ft beds, drawn olive; lens 5 ft across; 800 million candela in a beam 1.25° wide (lens extras `candela`, `spread`) | that searchlights and their crews worked the pad at night: documented (TM X-53107 p. 7-21 and 8.3.2; *This New Ocean*); the kind, the number, the places and the beam: estimated. The candela and beam are a figure for the type set down from memory and checked against no source | S61-03158 (MR-3 lit hard from the blockhouse side); FHSU F19_001 (MR-4: two sources at the pad's far edge); F19_008 (a large drum on a four-wheeled trailer) |
 | Cherry picker's control station | a grey box at the tail, 2.2 ft wide, on the driver's side; four levers 0.5 ft long, 0.4 ft apart, with a legend plate under each | estimated (that the controls were at the rear: documented, TM X-53107 7.3.3.1) | not in any photograph read |
@@ -282,7 +282,7 @@ estimated, as are tracks, tyres and everything about the shape. In inches.
 | `Car_05` | 1960 Chevrolet Corvair 700 sedan, white | 108 | 180 | 66.9 | 51.3* | on the drive, a low light car with a crease round its belt and no grille |
 | `Car_06` | 1956 Ford Fairlane Town Sedan, white with a blue roof | 115.5 | 198.5 | 75.9 | 61.0 | next to it, a white sedan whose side strip dips in a V: a 1955 or 1956 Fairlane |
 | `Car_07` | 1957 Ford Country Sedan wagon, tan | 116 | 203.5 | 77* | 59* | a mid-toned station wagon of the mid-1950s; its make is not told |
-| `Car_08` | 1957 to 1960 Ford F-100, separate rear wings, white, a closed utility body on the bed | 110 | 190* | 76* | 70* | by the breezeway: white, a rounded body with a window each side and two rear doors, a round dark emblem on the cab door |
+| `Car_08` | 1957 to 1960 Ford F-100, separate rear wings, white, a closed utility body on the bed | 110 | 190* | 76* | 73* | by the breezeway: white, a rounded body with a window each side and two rear doors, a round dark emblem on the cab door |
 | `Car_09` | 1960 Chevrolet Suburban Carryall, white | 115 | 199.5 | 79.5 | 72* | at the hut: a light carryall with windows all round and a bonnet (so not a forward-control van) |
 | `Car_10` | 1956 Ford sedan, dark green, plain | 115.5 | 198.5 | 75.9 | 61.0 | beside it, a dark car; its make is not told |
 | `Car_11` | 1959 Chevrolet Biscayne sedan, white | 119 | 210.9 | 79.6 | 56* | and a white one; its make is not told |
@@ -290,29 +290,61 @@ estimated, as are tracks, tyres and everything about the shape. In inches.
 In the photograph and not built: a small rounded import and a dark canvas-topped truck on the
 drive, a second long finned sedan there, and a fourth car at the ready rooms.
 
+**The shapes were checked against photographs** of each type side on and from the front and rear
+three-quarters (Wikimedia Commons; the files are listed in [docs/sources.md](../../../../docs/sources.md)),
+as the Volkswagen's had been. What changed (every figure here estimated, read by eye off the
+photographs against the documented wheelbase): the sedans' glass and roofs were moved forward and
+lengthened, the windscreen's posts standing 23 to 40 in behind the front axle and the roofs running
+back over the rear axle (the 1957 Ford's and the 1959 Chevrolet's back lights wrap round behind a
+C post, so a third post and a pane behind it stand for that); the 1957 Ford's side strip drops at
+the rear door and its wagon has the sedan's canted fins; the Rambler's nose was shortened to 27.5
+in (its rear overhang is 1.85 times its front in the photograph), its belt lowered 3 in under
+deeper glass, and its tail lamps stand upright in the tops of the rear wings; the Fairlane's rear
+doors are cut round the wheel openings back to the C post and its strip's V moved back to the front
+door's trailing edge; the Corvair's glass stands 14 in further forward, with nothing ahead of it but
+the luggage; the Suburban's sides are near upright and its windscreen stands up; the F-100's cab was
+lengthened (its back 46 in ahead of the rear axle, the windscreen's foot 26 in behind the front one),
+raised to 73 in, its hood and wings made one flat top, and a step put between the cab and the rear
+wing. Not matched: the fronts' and tails' detail (grilles, the 1959 Chevrolet's spread fins and the
+Suburban's pods over its head lamps are suggested, not shaped), wrapped glass (flat panes between
+posts), and every badge.
+
 **Built to be driven and got into.** Every vehicle follows one contract, set out at the head of
 `tools/blender/vehicles.py`: a node with its origin on the ground under the middle of its rear
 axle, facing its own +X, and under it (each name prefixed with the vehicle's, `Car_05_Door_1`):
 
 | Node | Origin | Moves by |
 | --- | --- | --- |
-| `_Wheel_1`, `_2` | the rear hubs, left and right | rolling about its axle (the viewer's local Z) |
+| `_Wheel_1`, `_2` | the rear hubs, left and right; on a tandem, the forward rear axle's, with `_3`, `_4` the one behind | rolling about its axle (the viewer's local Z) |
 | `_Knuckle_1`, `_2` | the front kingpins | turning about the vertical, to steer |
 | `_SteerWheel_1`, `_2` (under the knuckles) | the front hubs | rolling |
 | `_Door_1` to `_4` | the foot of each door's hinge line, at its front edge; 1 and 2 are the front doors, left and right | `door`, `swing` ∓70° about the vertical (`axis` "y") |
 | `_Bonnet`, `_Boot` | the hinge line: the bonnet's at the scuttle, the boot lid's under the back light | `hatch`, `swing` +50° and −55° about the node's Z in the viewer |
+| `_Tailgate` (the wagon and the carryall) | its foot, across the car just over the rear bumper | `hatch`, `swing` +90°: it falls open to lie level |
 | `_SteeringWheel` | its middle, on the column | turning about the column (the node's Y in the viewer) |
 | `_Seat_Driver`, `_Seat_Passenger_n` | the hips of someone sitting; a figure's axes, facing forward | `seat` |
 | `_Stand_Driver` | the ground outside the driver's door, facing it | `stand` |
 
 The vehicle's node carries `vehicle`, `wheelbase`, `track`, `wheel_radius`, `mass` and
 `turning_circle` as extras, in metres and kilograms. A door takes its skin, pane, lining, handle
-and (the driver's) mirror with it; behind a lid there is nothing (no engine, no boot floor). The
-wagon's and the carryall's tailgates, and the pickup's utility-body doors, are not separate. The
-inside is a floor, shaped benches, door linings with an arm rest and a window winder, a dashboard
-with a hooded pair of dials, a glovebox lid and a radio, three pedals, a steering wheel with a
-horn ring on its column, a mirror and a headliner: enough to look out from the driver's seat past
-the right pillars, not a likeness of any one car's cabin.
+and (the driver's) mirror with it, and is closed along its edges and its foot; where no other door
+meets it the body has a jamb (and under every door a sill), so an open door shows a frame and not
+the inside of the body. Every lid has an underside and closed edges. Under each lid, at detail 0.75
+and above, a compartment closed so nothing of the body's inside shows: walls that slope from the
+lid's edge out to the wheels' wells, a floor, a gutter from each wall's head to under the skin. In
+an engine's (the bonnet's, or the boot lid's on the Corvair and the Volkswagen) a block with two
+heads, an air cleaner, a radiator with a fan and a battery (a low flat block with a fan's housing
+behind); in a boot (the front one on the Corvair) a floor and the spare wheel lying flat. The
+Volkswagen's front compartment is too narrow in this model for its spare, which is left out. The
+wagon's and the carryall's tailgates are the middle of the back panel from over the bumper to the
+belt (the lamps stay on the body); behind them the load floor runs to the tail, stepping up over
+the rear overhang. The pickup's utility-body doors are not separate. The inside is a floor,
+shaped benches, door linings with an arm rest and a window winder, a dashboard with a hooded pair
+of dials, a glovebox lid and a radio, three pedals, a steering wheel with a horn ring on its
+column, a mirror and a headliner: enough to look out from the driver's seat past the right
+pillars, not a likeness of any one car's cabin. None of what is under the lids is from any record:
+it is there so that an open lid shows something of the right size where the engine or the spare
+was.
 
 `lc5/vehicles.py`'s `check_standing()`, run once the site is built, drops a ray from every wheel
 and reports any tyre more than 5 mm off the paving or the terrain under it (the place's build runs it); on this site it
@@ -336,13 +368,52 @@ noses and the ready rooms' wall, and nothing in front of its door.
 \* **Estimated**: typical figures for the type set down from memory and checked against no
 source. The simulator must not depend on them until they are.
 
-| Level of detail | A vehicle | All eleven | Left out |
-| --- | --- | --- | --- |
-| 1.0 | 12,900 to 15,900 triangles | 164,000 | nothing |
-| 0.6 | 4,700 to 5,800 | 60,000 | the interior (panes become dark), shut lines, handles, plates, wipers, over-riders |
-| 0.3 | 1,420 to 1,610 | 16,900 | also the bright trim, whitewalls and lamp rims; wheels have eight sides |
+| Level of detail | A vehicle | All eleven | Meshes (draw calls), all eleven | Left out |
+| --- | --- | --- | --- | --- |
+| 1.0 | 14,500 to 18,900 triangles | 184,000 | 510 | nothing |
+| 0.6 | 5,100 to 6,200 | 63,000 | 314 | the interior and what is under the lids (panes become dark), shut lines, handles, plates, wipers, over-riders |
+| 0.3 | 1,620 to 1,760 | 18,700 | 253 | also the bright trim, whitewalls and lamp rims; wheels have eight sides |
 
-Every node is there at every level, with the same name.
+Every node is there at every level, with the same name. A node's pieces of one material are one
+mesh (one draw call), and materials too alike to tell apart are built as one (`SAME` in
+vehicles.py: the shut lines are the wells' black, the radiator the chassis'); below 0.75 a lid's
+underside is its paint. Before this the eleven were 590, 363 and 255 meshes, with nothing under
+the lids.
+
+**What towed the trailers: the record.** FHSU Project Mercury items 263, 265 and 407 (prints of
+July 1961, their backs captioned "CCMTA, NASA/MERCURY, Pad 5 / Transfer van arrives at Pad 5",
+lab numbers LOD 61-6234 and 61-6218) show the van semi-trailer lettered NASA TV No 1 towed by a
+white **2-1/2-ton 6x6 truck tractor of the Army's G742 family**: soft-top two-seat cab, split
+windscreen, upright grille bars with guards over the head lamps, tandem behind; its doors lettered
+NATIONAL AERONAUTICS AND SPACE ADMINISTRATION, U.S.A.F. and a registration on the hood, plate
+U.S. GOVERNMENT NA-8561. Item 544 (MR-4's preparation, July 1961) shows the trailer NASA SP No 1
+coupled to a dark tractor with the same cab. That these are G742 trucks is read off the photographs
+(firm); that they are the M275 and not the longer M48 is estimated from the short gap between the
+cab and the tandem. Nothing found names what towed the Redstone's trailer (the boosters came by
+air), and no photograph of 5 May 1961 shows a tractor at all: that the same trucks served MR-3 is
+an inference. The old `ford_f600_tractor` (every figure invented) is kept in vehicles.py only
+until the pad's script uses the new one.
+
+`vehicles.m275_tractor()` builds it to the contract above, its origin under the middle of the
+tandem (what a tandem turns about), its rear wheels `_Wheel_1` to `_4`, duals:
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| Wheelbase | 142 in, front axle to the tandem's middle | documented | TM 55-2320-209-15-1, Figure 2-27 (drawn for the M275A2) |
+| Tandem | axles 48 in apart | documented | the same |
+| Bumper to front axle | 38 in (without a winch) | documented | the same |
+| Length, width | 228 in, 93 in | documented | the same, Table 2-1 (the M275's own row) |
+| Height | 99.5 in over the cab's top | documented | Figure 2-27; the exhaust stack stands 7 in above it, estimated |
+| Track | 70 in, the rear | documented | Figure 2-28; the front taken as the same, estimated |
+| Fifth wheel | 52 in high, the kingpin 4 in ahead of the tandem's middle | documented | Figure 2-27 |
+| Mass | 11,179 lb | documented | Table 2-1 ("weight", taken as empty) |
+| Tyres | 9.00-20, duals on the tandem; 40.4 in across | size documented for the family (Wikipedia, M35), duals Figure 2-28; diameter estimated |
+| Turning circle | 72 ft | estimated | not found |
+| Shape | cab, hood, wings, grille, steps, tank, spare, stack, cab interior | estimated | the drawings and photographs, by eye |
+
+Not modelled on it: the lettering, plate and registration, the brush guard's mesh (bars only),
+the air horn and the box on the cab's roof in the photographs, the fold-down windscreen's hinges,
+the cab's back window, the tread of the tyres.
 
 **The cherry picker's truck against this contract** (`lc5/cherry_picker.py`): it has the origin
 under the rear axle and its wheels as nodes on their hubs, the front pair steering and rolling
@@ -410,7 +481,7 @@ known to have changed.
 | Trailer NASA SP-No 1 | May 1961 | not known | documented | S61-03158; a white NASA trailer stands beside the structure in July too (F16_017) |
 | Two huts at the pad's hatch-side edge | not known | not known | estimated | seen July 1961 (F16_017): assumed for May |
 | Searchlights round pad 5 | May 1961 | not known | estimated | that searchlights worked the pad at night: TM X-53107 p. 7-21 (MR-4's count), 8.3.2; MR-3's night photograph S61-03158 shows the pad lit hard from the blockhouse side |
-| The tractor unit at the trailer, the pickups at the huts | not known | not known | estimated | built so that the trailer and huts can be taken away; no photograph shows them |
+| The M275 tractor at the trailer, the pickups at the huts | not known | not known | estimated | the tractor's kind is photographed coupled to SP No 1 (FHSU 544, July 1961; see "What towed the trailers"); that it stood there in May, and the pickups, are not |
 
 Not dated because nothing is known to have changed between May and July 1961: the hardstand, the
 launcher, the masts, the service structure, the track, the road, the cable trenches, the
@@ -602,11 +673,12 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 - Ground equipment, camera towers and floodlights are placed where photographs suggest. None of
   their positions is recorded. The LOX topping trailer's position is unknown. The huts, the
   barricade and the floodlights' form are from July 1961; that they were the same in May is assumed.
-- What takes the furniture away is invented: a Ford F-600 tractor for the trailer SP-No 1 and a
-  half-ton pickup on a chain for each hut, every figure of the tractor estimated. That the shower,
+- What takes the furniture away is partly invented: the M275 tractor for the trailer SP-No 1 is of
+  the kind photographed coupled to it (see "What towed the trailers"); a half-ton pickup on a chain
+  for each hut is from no photograph. That the shower,
   case, trailer and huts left before the rollback at all is an assumption, and so are their routes
   and times. The trailer's route is computed to follow the tractor's (a tractrix), but sampled at
-  points, so the kingpin wanders up to 2.4 cm off the fifth wheel mid-turn.
+  points, so the kingpin wanders up to 2 cm off the fifth wheel mid-turn (checked in the browser at ten points: 1.9 cm).
 - The searchlights are designed after the 60-inch Army carbon-arc kind, not measured: a deep drum
   on trunnions in a yoke, the door ring and its glass in front (facing out, `lens_out`), a
   parabolic mirror inside (`chrome-reflector`), the arc lamp's housing and vent behind, on a
@@ -706,11 +778,15 @@ The rest of the complex:
   so a 1957 Ford and a 1959 Chevrolet differ in proportion, fins, lamps and trim and not in every
   panel. The Volkswagen was checked against four photographs of 1960 and 1961 cars: its roof
   still has a brim over the windscreen that the real one has not, and its wings are flatter in
-  side view. The other types were drawn from the look of the type without photographs beside
-  them. Windscreens that wrapped round the corners do so in two flat returns, not a curve. No badges, bonnet
-  ornaments, door mirrors, aerials, number plates' characters, or engines; the insides are
-  benches, a dashboard and a steering wheel. Colours are guesses: the photograph is black and
-  white. The emblem on the pickup's door is a plain dark disc, since it cannot be read.
+  side view. The other eight types were checked against two to four photographs each (see "The
+  vehicles"), which moved their glass and roofs and some proportions; their noses and tails are
+  still suggested rather than shaped. Windscreens and back lights that wrapped round the corners
+  do so in flat panes between posts, not a curve. No badges, bonnet ornaments, aerials or number
+  plates' characters; the engines and boot floors under the lids are boxes of about the right
+  size, and the insides are benches, a dashboard and a steering wheel. Colours are guesses: the
+  photograph is black and white. The emblem on the pickup's door is a plain dark disc, since it
+  cannot be read. Opened (the viewer can open doors), a door's lower corner at its hinge comes
+  within a millimetre of the shut line's ridge on two or three cars; the check runs on the cars shut.
 - There are no people, no fire trucks, no M-113 and no transfer van: where those stood on 5 May
   is not recorded in anything read. F19_008 shows a box-bodied truck on the road beside the
   track in July, which the collection's caption calls the transfer van arriving.

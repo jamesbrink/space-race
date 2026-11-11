@@ -114,6 +114,10 @@ OTHERS = {
 }
 
 
+# materials too alike to be worth a draw call of their own: built as the one they name
+SAME = {"line": "well", "radiator": "under"}
+
+
 def paint(key: str, colour: Sequence[float]) -> None:
     """Add a body colour, or change one."""
     PAINTS[key] = tuple(colour)
@@ -226,7 +230,8 @@ class Kit:
         merged: dict[str, MeshBuilder] = {}
         for key, mb in self.mbs.items():
             if mb.faces:
-                into = merged.setdefault(key.split("/")[0], MeshBuilder())
+                base = key.split("/")[0]
+                into = merged.setdefault(SAME.get(base, base), MeshBuilder())
                 into.add(mb.verts, mb.faces, mb.uvs)
         for key, mb in merged.items():
             mb.verts = [((x + dx) * IN, (y + dy) * IN, (z + dz) * IN) for x, y, z in mb.verts]
@@ -561,7 +566,7 @@ class Car:
                 if len(piece) >= 3:
                     cap(kit(key), [Vector((x, y, z)) for y, z in piece], (-1, 0, 0))
             inner = [(x + 0.4, -yw, zh), (x + 0.4, yw, zh), (x + 0.4, yw, zt), (x + 0.4, -yw, zt)]
-            poly(kit("trim-dark@Tailgate" if srlib.interior() else "under@Tailgate"), inner, (1, 0, 0))
+            poly(kit("trim-dark@Tailgate" if srlib.interior() else self.paint + "@Tailgate"), inner, (1, 0, 0))
             for y in (-yw, yw):  # its edges, and the body's facing them
                 poly(kit(self.paint + "@Tailgate"), [(x, y, zh), (x + 0.4, y, zh), (x + 0.4, y, zt), (x, y, zt)], (0, y, 0))
                 poly(kit(self.paint), [(x, y, zh), (x + 0.4, y, zh), (x + 0.4, y, zt), (x, y, zt)], (0, -y, 0))
@@ -575,7 +580,8 @@ class Car:
             rows = [loop[lid : m - lid + 1] for x, loop in zip(xs, loops) if a - 1e-6 <= x <= b + 1e-6]
             # the underside is 0.4 in down, drawn in as far at its sides so that the edges lean (the shut lines' ridges are upright)
             under = [[p - Vector((0, (0.4 if p.y > 0 else -0.4) if k in (0, len(row) - 1) else 0.0, 0.4)) for k, p in enumerate(row)] for row in rows]
-            skin(kit, under, lambda st, j, name=name: f"under@{name}", closed=False, flip=True)
+            inside = "under" if srlib.interior() else self.paint  # from afar, one mesh with the lid's outside
+            skin(kit, under, lambda st, j, name=name: f"{inside}@{name}", closed=False, flip=True)
             for k, f in ((0, 1), (-1, -1)):
                 for r0, r1, u0, u1 in zip(rows, rows[1:], under, under[1:]):
                     poly(kit(f"{self.paint}@{name}"), (r0[k], r1[k], u1[k], u0[k]), (0, f, 0))
@@ -1464,20 +1470,28 @@ def ford_1957(paint: str = "seafoam", roof: str | None = "white", *, wagon: bool
         track=58.0,
         tyre=(13.4, 6.7, 7.0),
         top=[(x0, 32.5), (x0 + 3, 36.0), (-10, 38.5), (78, 39.5), (140, 38.0), (x1 - 2, 36.0), (x1, 32.0)],
-        fin=[] if wagon else [(-14, 0.0), (x0 + 14, 3.0), (x0 + 2, 3.4), (x0, 2.2)],
-        cabin=(78.0, 63.0, x0 + 11.0, x0 + 5.0) if wagon else (78.0, 63.0, 9.0, -11.0),
-        pillars=(38.0, 3.0, -30.0) if wagon else (38.0,),
-        sail=0.0 if wagon else 5.0,
+        fin=[(-14, 0.0), (x0 + 14, 3.0), (x0 + 2, 3.4), (x0, 2.2)],
+        # the greenhouse from the photographs (docs/sources.md): the posts at 87 (A, at the belt), 47 (B)
+        # and 17 (C); the sedan's back light wraps round behind the C post to -20, its roof ending over the axle
+        cabin=(93.0, 78.0, x0 + 11.0, x0 + 5.0) if wagon else (93.0, 78.0, 0.0, -20.0),
+        pillars=(47.0, 17.0),
+        sail=0.0,
         bow=6.5,
-        wrap=10.0,
-        hood=1.8,
-        doors=(82.0, 38.0, 4.0),
+        wrap=6.0,
+        hood=3.0,
+        doors=(89.0, 47.0, 17.5),
         lamp_at=(0.0, 0.0, 3.6),
         tail_at=(0.0, 30.0, 3.3, 1.0),
         grille=(27.0, 17.5, 26.5),
         bumper=(13.5, 0.0),
-        spear=[(x0 + 5, 31.5), (0, 31.5), (100, 32.0), (x1 - 8, 32.0)],
-        seats=(54.0, 20.0),
+        spear=[
+            (x1 - 8, 33.0),
+            (45, 31.5),
+            (24, 31.0),
+            (16, 26.5),
+            (x0 + 6, 27.5),
+        ],  # dropping at the rear door, as the Custom 300's and the wagons' did
+        seats=(69.0, 35.0),
         whitewall=2.2,
         paint=paint,
         roof=roof,
@@ -1507,21 +1521,21 @@ def chevrolet_1959(paint: str = "navy", roof: str | None = None, **kw) -> Car:
         fin=[(-18, 0.0), (x0 + 22, 1.8), (x0 + 3, 3.0), (x0, 2.0)],
         shoulder=3.4,
         crown=1.2,
-        cabin=(80.0, 62.0, 6.0, -15.0),
-        pillars=(37.0,),
+        cabin=(90.0, 70.0, -2.0, -20.0),  # A post at 79 at the belt, a long flat roof, the back light wrapping behind the C post
+        pillars=(40.0, 7.0),
         post=2.2,
-        sail=3.0,
+        sail=0.0,
         bow=7.5,
-        wrap=12.0,
+        wrap=11.0,
         tumble=6.0,
-        doors=(84.0, 37.0, 3.0),
+        doors=(82.0, 40.0, 7.0),
         lamps=2,
         lamp_at=(0.0, 24.5, 2.9),
         tail_at=(0.0, 29.0, 2.3, 2.5),
         grille=(31.0, 16.5, 22.5),
         bumper=(12.5, 0.0),
         spear=[(20, 26.6), (96, 26.8)],
-        seats=(55.0, 19.0),
+        seats=(64.0, 30.0),
         paint=paint,
         roof=roof,
     )
@@ -1550,19 +1564,19 @@ def ford_1956(paint: str = "white", roof: str | None = "blue", **kw) -> Car:
         fin=[(-12, 0.0), (x0 + 12, 1.6), (x0, 1.2)],
         shoulder=5.0,
         crown=2.2,
-        cabin=(76.0, 64.0, 8.0, -9.0),
-        pillars=(37.0,),
+        cabin=(90.0, 77.0, 2.0, -14.0),  # A post at 83 at the belt, the roof running back over the rear axle
+        pillars=(40.0,),
         sail=6.0,
         bow=6.0,
-        wrap=9.0,
+        wrap=7.0,
         hood=2.4,
-        doors=(81.0, 37.0, 5.0),
+        doors=(86.0, 40.0, -4.0),  # the rear door is cut round the wheel's opening, back to the C post
         lamp_at=(0.0, 0.0, 3.6),
         tail_at=(0.0, 31.0, 3.1, 1.0),
         grille=(26.0, 18.0, 27.5),
         bumper=(14.0, 0.0),
-        spear=[(x1 - 9, 36.0), (72, 35.5), (52, 28.0), (20, 28.5), (x0 + 5, 29.0)],
-        seats=(53.0, 20.0),
+        spear=[(x1 - 9, 36.0), (62, 35.5), (44, 28.0), (20, 28.5), (x0 + 5, 29.0)],
+        seats=(65.0, 30.0),
         whitewall=2.5,
         cap_r=7.5,
         paint=paint,
@@ -1595,18 +1609,18 @@ def corvair_1960(paint: str = "white", **kw) -> Car:
         crown=1.0,
         tuck=2.2,
         arch=15.0,
-        cabin=(72.0, 58.0, 5.0, -10.0),
-        pillars=(34.0,),
+        cabin=(86.0, 72.0, 2.0, -8.0),  # far forward, with no engine ahead of it; a long low roof over an upright back light
+        pillars=(42.0,),
         post=2.2,
         bow=6.0,
         roof_reach=(1.5, 4.5),
-        doors=(76.0, 34.0, 2.0),
+        doors=(90.0, 42.0, 15.5),
         lamps=2,
         lamp_at=(0.0, 24.5, 2.7),
         tail_at=(0.0, 25.0, 2.3, 1.0),
         spear=[(x0 + 3, 31.0), (x1 - 4, 31.4)],
         spear_paint=paint,
-        seats=(50.0, 18.0),
+        seats=(64.0, 32.0),
         whitewall=1.8,
         paint=paint,
     )
@@ -1617,7 +1631,7 @@ def rambler_american(paint: str = "black", roof: str | None = "white", **kw) -> 
     """1958 to 1960 Rambler American two-door sedan: 100 in wheelbase, 178.25 in long, 73 in wide,
     57.32 in high (documented). The 1950 Nash Rambler's rounded tub brought back, with the wheel
     openings cut out."""
-    wb, nose, L = 100.0, 32.0, 178.25
+    wb, nose, L = 100.0, 27.5, 178.25
     x1 = wb + nose
     x0 = x1 - L
     car = dict(
@@ -1631,21 +1645,21 @@ def rambler_american(paint: str = "black", roof: str | None = "white", **kw) -> 
         nose=nose,
         track=55.0,
         tyre=(12.8, 5.9, 7.5),
-        top=[(x0, 31.0), (x0 + 3, 35.0), (-8, 38.0), (66, 39.0), (124, 38.0), (x1 - 2, 36.0), (x1, 32.0)],
+        top=[(x0, 30.0), (x0 + 3, 33.5), (-8, 35.5), (66, 36.0), (124, 35.0), (x1 - 2, 33.0), (x1, 29.5)],  # a low belt under deep glass
         shoulder=6.5,
         crown=2.6,
         tuck=4.0,
         arch=15.0,
-        cabin=(66.0, 56.0, 8.0, -8.0),
-        pillars=(28.0,),
+        cabin=(77.0, 67.0, 7.0, -10.0),  # upright: the windscreen's foot 23 in behind the front axle, the roof ending over the rear one
+        pillars=(27.0,),
         sail=5.0,
         bow=3.5,
-        doors=(70.0, 28.0),
+        doors=(80.0, 27.0),
         lamp_at=(0.0, 0.0, 3.5),
-        tail_at=(0.0, 28.0, 2.2, 1.0),
+        tail_at=(0.0, 30.0, 3.0, 0.45),  # upright lamps in the tops of the rear wings
         grille=(21.0, 17.5, 25.0),
         bumper=(13.5, 0.0),
-        seats=(44.0, 17.0),
+        seats=(58.0, 24.0),
         paint=paint,
         roof=roof,
     )
@@ -1749,23 +1763,23 @@ def suburban_1960(paint: str = "white", **kw) -> Car:
         tyre=(14.2, 6.7, 7.5),
         sill=13.5,
         top=[(x0, 43.0), (x0 + 3, 46.5), (70, 48.0), (122, 47.0), (x1 - 3, 44.5), (x1, 40.0)],
-        shoulder=3.4,
-        crown=1.4,
-        tuck=2.0,
+        shoulder=2.6,
+        crown=1.0,
+        tuck=1.0,  # a truck's sides: near upright
         arch=17.5,
-        cabin=(70.0, 61.0, x0 + 10.0, x0 + 5.0),
-        pillars=(36.0, 2.0, -28.0),
-        tumble=4.0,
+        cabin=(74.0, 66.0, x0 + 10.0, x0 + 5.0),  # an upright windscreen 41 in behind the front axle
+        pillars=(38.0, 2.0, -28.0),
+        tumble=3.0,
         bow=4.5,
         wrap=8.0,
         roof_reach=(1.5, 1.0),
-        doors=(74.0, 36.0),
+        doors=(78.0, 38.0),
         lamps=2,
         lamp_at=(0.0, 36.5, 2.9),
         tail_at=(0.0, 36.0, 2.0, 1.0),
         grille=(26.0, 27.0, 33.5),
         bumper=(21.0, 21.0),
-        seats=(48.0, 14.0, -18.0),
+        seats=(52.0, 16.0, -18.0),
         paint=paint,
     )
     return Car(**{**car, **kw})
@@ -1773,13 +1787,14 @@ def suburban_1960(paint: str = "white", **kw) -> Car:
 
 def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: bool = False, **kw) -> Car:
     """1957 to 1960 Ford F-100 on the 110 in wheelbase (documented), with the separate-wing
-    (Flareside) back; about 190 in long, 76 in wide and 70 in high over the cab (estimated). With
+    (Flareside) back and a step between the cab and the wing; about 190 in long, 76 in wide and 73
+    in high over the cab (estimated). With
     `utility` (a paint), a closed body stands on the bed: rounded top, a window each side, two
     doors at the back. `insignia` puts a plain dark disc on each door."""
     wb, nose, L = 110.0, 32.0, 190.0
     x1 = wb + nose
     x0 = x1 - L
-    cab = 38.0
+    cab = 46.0  # the cab's back, 46 in ahead of the rear axle (the photographs: about half way between the axles)
 
     def back(car: Car, kit: Kit) -> None:
         key = (utility or paint) + "/box"
@@ -1826,7 +1841,7 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
                     ridge(kit("line"), [Vector((x0 - 1.0, y, 36.0)), Vector((x0 - 1.0, y, 72.0))], (-1, 0, 0), 0.2, 0.16, 0.3)
         if insignia and trimmed():
             for s in (1, -1):
-                at = Vector((58.0, s * car.side(58.0, 31.0), 31.0))
+                at = Vector((66.0, s * car.side(66.0, 31.0), 31.0))
                 kit("insignia").lathe([(4.2, -0.7), (0.0, 1.8)], 16, matrix=srlib.frame(at, (0, s, 0)))
 
     wing = Pod(
@@ -1837,6 +1852,7 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
         arch=16.5,
         bottom=14.0,
     )
+    step = Pod(top=[(21.0, 13.6), (cab - 1.0, 13.6)], out=[(21.0, 33.0), (cab - 1.0, 33.0)], inner=23.0, bottom=12.4, shoulder=0.6, paint="black")
     car = dict(
         what="1957-60 Ford F-100 Flareside" + (" with a utility body" if utility else ""),
         mass=3700.0 if utility else 3200.0,
@@ -1844,30 +1860,30 @@ def ford_f100(paint: str = "white", *, utility: str | None = "white", insignia: 
         wheelbase=wb,
         length=L,
         width=76.0,
-        height=70.0,
+        height=73.0,
         nose=nose,
         track=60.5,
         tyre=(14.2, 6.7, 7.5),
         top=[(cab, 45.5), (72, 46.5), (126, 45.5), (x1 - 3, 43.0), (x1, 38.5)],
         bottom=[(cab, 14.0), (130, 14.0), (x1 - 6, 17.0), (x1, 20.0)],
-        plan=[(cab, 37.2), (120, 38.0), (x1 - 5, 36.5), (x1, 31.0)],
-        shoulder=4.0,
-        crown=1.4,
+        plan=[(cab, 37.2), (120, 38.0), (x1 - 3, 37.0), (x1, 34.0)],  # square in plan: the wings and the hood one flat top
+        shoulder=2.8,
+        crown=0.9,
         tuck=2.0,
         arch=17.5,
         arches=(False, True),
         flat_tail=cab,
-        cabin=(72.0, 62.0, 45.0, 41.0),
-        tumble=4.0,
+        cabin=(84.0, 75.0, cab + 6.5, cab + 4.5),  # a tall cab: the windscreen's foot 26 in behind the front axle
+        tumble=3.0,
         bow=5.0,
         wrap=8.0,
         roof_reach=(1.5, 2.5),
-        doors=(76.0, 44.0),
+        doors=(88.0, cab + 5.5),
         lamp_at=(0.0, 36.5, 3.6),
         grille=(25.0, 26.0, 33.0),
         bumper=(21.0, 0.0),
-        seats=(66.0,),
-        pods=(wing,),
+        seats=(74.0,),
+        pods=(wing, step),
         back=back,
         paint=paint,
     )
