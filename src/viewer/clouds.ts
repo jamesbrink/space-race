@@ -40,9 +40,9 @@ const SIDE = 4096;
 const TEXEL = 32;
 const EXTENT = SIDE * TEXEL;
 /** The two maps of where there is cloud: cells this many metres across (whole texels of the field). */
-const CELL = 256;
+const CELL = 128;
 /** How many cells round each the map of clear air looks for cloud: so the longest stride over it is 3.8 km. */
-const REACH = 15;
+const REACH = 24;
 /** The bake is centred on multiples of this, which is whole cells and whole tiles of the billows: nothing moves when it is baked again. */
 const SNAP = 2048;
 /** The field is baked again once the eye is this far over it from the middle of the last bake. */
@@ -63,6 +63,22 @@ const TOWER = 0.2;
 const SIDE_M = 2000;
 /** How far the billows stand out from a cloud's dome at its top, metres (and as far again cut into it). */
 const BILLOW = 140;
+/** The billows' mean (billows()), about which they stand out and cut in; and how far out they stand at most, as a multiple of their size. */
+const LUMPS = 0.54;
+const STANDS = 2 * (1 - LUMPS);
+/** Billows at a cloud's foot, metres: a fifth of the top's. */
+const FOOT = 25;
+/**
+ * The least excess at which there can be cloud at any height: where the billows at their highest
+ * (STANDS times their size) stand out further than the dome is in from its edge. The dome narrows
+ * upward faster than the billows grow, so this is at the foot, a little outside the field's edge.
+ */
+const REACHES = Math.min(
+  ...Array.from({ length: 101 }, (_, i) => {
+    const y = i / 100;
+    return (TOWER * SIDE_M * y ** (4 / 3) - STANDS * (FOOT + (BILLOW - FOOT) * y)) / SIDE_M;
+  }),
+);
 /** The Earth's mean radius: the layer is a shell this far plus its height from the centre under the site. */
 const EARTH = 6_371_000;
 
@@ -151,7 +167,6 @@ const marchShader = (scale: number) => /* glsl */ `
   uniform float uHazeDensity;
   uniform float uPixel;      // radians a low pixel
   uniform float uCel;
-  uniform int uDebug;
   in vec2 vUv;
   layout(location = 0) out vec4 oColour;   // light sent toward the eye (premultiplied), and opacity
   layout(location = 1) out vec4 oInfo;     // where the cloud began, where it was half opaque; its light (cel) and haze, per opacity
@@ -190,11 +205,11 @@ const marchShader = (scale: number) => /* glsl */ `
     // first and then rounding over; the biggest (the noise furthest over its cut) reaching the layer's full depth.
     // Measured across (metres in from its side at this height), so the sides are as sharp as the top.
     float heap = x * ${SIDE_M.toFixed(1)} - pow(h / uDome, 4.0 / 3.0);
-    if (heap <= ${(-1.1 * BILLOW).toFixed(1)}) return heap;
-    // and billows heaped on it and cut into it, bigger the higher up: lumps of 250, 110 and 55 m, so a cumulus is
+    if (heap <= -${STANDS.toFixed(3)} * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, y)) return heap; // (no billow reaches out so far)
+    // and billows heaped on it and cut into it, bigger the higher up: lumps of 200, 95 and 45 m, so a cumulus is
     // cauliflower at the top and only scalloped at the foot
     vec3 b = textureLod(tBillows, vec3(f.x, h - uRise, f.y) / TILE, lod).rgb;
-    float sd = heap + mix(25.0, ${BILLOW.toFixed(1)}, y) * 2.0 * (dot(b, vec3(0.55, 0.3, 0.15)) - 0.45);
+    float sd = heap + mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, y) * 2.0 * (dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)});
     return min(sd, h); // the base is flat
   }
   // the cloud's extinction there, per metre: rising over \`ramp\` metres from its surface, and fading out far from the eye
@@ -241,9 +256,11 @@ const marchShader = (scale: number) => /* glsl */ `
       t0 = max(top.x, 0.0);
       t1 = base.x <= base.y && base.x > 0.0 ? base.x : top.y;
     }
-    t1 = min(t1, far);
+    // and no further than the haze lets anything through: 3 % of a cloud's light at the middle of the layer
+    float a = max(uEyeH, 0.0) / ${scale.toFixed(1)}, b = 0.5 * (uLayer.x + uLayer.y) / ${scale.toFixed(1)};
+    float mean = abs(a - b) < 1e-3 ? exp(-0.5 * (a + b)) : (exp(-min(a, b)) - exp(-max(a, b))) / abs(b - a);
+    t1 = min(min(t1, far), 3.5 / max(uHazeDensity * mean, 1e-9));
     if (t1 <= t0) return;
-    if (uDebug == 1) { oColour = vec4(0.0, 0.0, 0.0, 0.01); return; }
 
     float cosT = dot(dir, uSun);
     vec3 phases = vec3(phase(cosT, 0.6), phase(cosT, 0.3), phase(cosT, 0.15));
@@ -260,8 +277,7 @@ const marchShader = (scale: number) => /* glsl */ `
     // steps lie the same way through the cloud's skin as its neighbours': no rings, and nothing to hide with noise.
     float t = t0, was = t0;
     int deep = -1; // steps taken since the surface, or -1 while outside
-    int i = 0;
-    for (; i < 256; i++) {
+    for (int i = 0; i < 256; i++) {
       if (t >= t1 || T < 0.01) break;
       vec3 v = dir * t;
       float st = clamp(t * 0.004, 6.0, 120.0);
@@ -277,7 +293,7 @@ const marchShader = (scale: number) => /* glsl */ `
           continue;
         }
         float sd = inside(v, uEye + v.xz, lod, y);
-        if (sd <= 0.0) { was = t; t += max(st, -0.3 * sd); continue; }
+        if (sd <= 0.0) { was = t; t += max(st, -0.8 * sd); continue; }
         float a = was, b = t;
         for (int k = 0; k < 6; k++) {
           float m = 0.5 * (a + b);
@@ -295,7 +311,7 @@ const marchShader = (scale: number) => /* glsl */ `
       if (d > 0.0) {
         // toward the Sun: how much cloud the light has come through
         float tau = 0.0, s = 0.0, yy;
-        for (int k = 0; k < (uDebug == 2 ? 0 : 5); k++) {
+        for (int k = 0; k < 5; k++) {
           float ds = 12.0 * exp2(float(k));
           s += ds * 0.5;
           tau += density(v + uSun * s, ramp, lod + float(k) * 0.5, yy) * ds;
@@ -324,41 +340,48 @@ const marchShader = (scale: number) => /* glsl */ `
         was = t;
       } else deep++;
     }
-    if (uDebug == 3) { oColour = vec4(float(i) / 256.0, 0.0, 0.0, 1.0); oInfo = vec4(0.0, 1.0, 0.5, 0.0); return; }
     float opacity = 1.0 - T;
     if (opacity < 1e-4) return;
     oColour = vec4(colour, opacity);
     oInfo = vec4(front, max(mid, front + 1.0), lit / opacity, haze / opacity);
   }`;
 
+/** Laid over the frame where it is: premultiplied, blended onto what is there (one, one minus alpha). */
 const COMPOSITE = /* glsl */ `
   precision highp float; precision highp int;
   ${DEPTH}
-  uniform sampler2D tDiffuse, tCloud, tInfo;
+  uniform sampler2D tCloud, tInfo;
   uniform vec3 uSunLight, uSkyLight, uHaze;
   uniform float uCel;
   in vec2 vUv;
   out vec4 oColour;
   void main() {
-    vec4 scene = texture(tDiffuse, vUv);
-    float d = sceneDistance(texture(tDepth, vUv).x, viewRay(vUv));
     ivec2 size = textureSize(tCloud, 0);
     vec2 p = vUv * vec2(size) - 0.5;
     vec2 i0 = floor(p), fr = p - i0;
+    ivec2 at[4];
+    vec4 c[4];
+    float any = 0.0;
+    for (int k = 0; k < 4; k++) {
+      at[k] = clamp(ivec2(i0) + ivec2(k & 1, k >> 1), ivec2(0), size - 1);
+      c[k] = texelFetch(tCloud, at[k], 0);
+      any += c[k].a;
+    }
+    // (the real look has no derivatives to keep, so most of the frame, under no cloud, stops here)
+    if (uCel < 0.5 && any <= 0.0) discard;
+    float d = sceneDistance(texture(tDepth, vUv).x, viewRay(vUv));
     vec4 cloud = vec4(0.0);
     float lit = 0.0, haze = 0.0;
     for (int k = 0; k < 4; k++) {
-      ivec2 o = ivec2(k & 1, k >> 1);
-      ivec2 at = clamp(ivec2(i0) + o, ivec2(0), size - 1);
-      vec4 c = texelFetch(tCloud, at, 0), info = texelFetch(tInfo, at, 0);
+      vec4 info = texelFetch(tInfo, at[k], 0);
       // only the cloud this pixel's own surface lies beyond
-      float w = (o.x == 1 ? fr.x : 1.0 - fr.x) * (o.y == 1 ? fr.y : 1.0 - fr.y) * smoothstep(info.x, info.y, d);
-      cloud += w * c;
-      lit += w * c.a * info.z;
-      haze += w * c.a * info.w;
+      float w = ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y) * smoothstep(info.x, info.y, d);
+      cloud += w * c[k];
+      lit += w * c[k].a * info.z;
+      haze += w * c[k].a * info.w;
     }
     if (uCel < 0.5) {
-      oColour = vec4(scene.rgb * (1.0 - cloud.a) + cloud.rgb, scene.a);
+      oColour = cloud;
       return;
     }
     // drawn: cut at half opacity, in two tones, at this resolution
@@ -369,17 +392,19 @@ const COMPOSITE = /* glsl */ `
     float le = max(fwidth(l), 1e-3);
     vec3 tone = mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, smoothstep(0.62 - le, 0.62 + le, l));
     tone = mix(tone, uHaze, haze / max(a, 1e-4));
-    oColour = vec4(mix(scene.rgb, tone, alpha), scene.a);
+    if (alpha <= 0.0) discard;
+    oColour = vec4(tone * alpha, alpha);
   }`;
 
 /**
- * The billows: three octaves of round lumps (cellular noise, inverted: 1 at a lump's heart, 0 in
- * the creases between), 4, 9 and 19 to a tile, in red, green and blue. It repeats every NOISE texels.
+ * The billows: three octaves of round lumps (cellular noise made into balls: 1 at a lump's heart,
+ * falling to 0 in the creases between), 5, 11 and 23 to a tile, in red, green and blue; each has a
+ * mean of 0.54 (LUMPS). It repeats every NOISE texels.
  */
 function billows(): THREE.Data3DTexture {
   const n = NOISE;
   const data = new Uint8Array(n * n * n * 4);
-  [4, 9, 19].forEach((cells, channel) => {
+  [5, 11, 23].forEach((cells, channel) => {
     const points = new Float32Array(cells * cells * cells * 3);
     for (let i = 0; i < cells; i++)
       for (let j = 0; j < cells; j++)
@@ -408,7 +433,7 @@ function billows(): THREE.Data3DTexture {
                   ez = cz + dz + points[at + 2]! - pz;
                 best = Math.min(best, ex * ex + ey * ey + ez * ez);
               }
-          data[((z * n + y) * n + x) * 4 + channel] = Math.round(255 * Math.max(0, 1 - Math.sqrt(best) * 1.2));
+          data[((z * n + y) * n + x) * 4 + channel] = Math.round(255 * Math.sqrt(Math.max(0, 1 - best * 2.2))); // a ball, not a cone
         }
   });
   for (let i = 3; i < data.length; i += 4) data[i] = 255;
@@ -482,8 +507,7 @@ export class CloudPass extends Pass {
     tFrom: { value: null },
     uMode: { value: 0 },
     uBlock: { value: CELL / TEXEL },
-    // the field's value under which no billow can reach out to make cloud
-    uOccupied: { value: (BELOW - (1.1 * BILLOW) / SIDE_M) / RANGE - 0.5 / 255 },
+    uOccupied: { value: (BELOW + REACHES) / RANGE - 0.5 / 255 },
   });
   private readonly composite: THREE.RawShaderMaterial;
   private readonly uniforms = {
@@ -510,8 +534,6 @@ export class CloudPass extends Pass {
     uHazeDensity: { value: 0 },
     uPixel: { value: 0.001 },
     uCel: { value: 0 },
-    uDebug: { value: 0 },
-    tDiffuse: { value: null as THREE.Texture | null },
     tCloud: { value: this.low.textures[0]! },
     tInfo: { value: this.low.textures[1]! },
   };
@@ -528,6 +550,13 @@ export class CloudPass extends Pass {
   ) {
     super();
     this.composite = raw(COMPOSITE, this.uniforms);
+    this.composite.blending = THREE.CustomBlending;
+    this.composite.blendSrc = THREE.OneFactor;
+    this.composite.blendDst = THREE.OneMinusSrcAlphaFactor;
+    this.composite.blendSrcAlpha = THREE.ZeroFactor;
+    this.composite.blendDstAlpha = THREE.OneFactor;
+    this.composite.transparent = true;
+    this.needsSwap = false;
   }
 
   /** Half the window's size each way in CSS pixels (a quarter of its pixels on a plain screen, a sixteenth on a dense one). */
@@ -540,15 +569,11 @@ export class CloudPass extends Pass {
     this.uniforms.uLow.value.set(w, h);
   }
 
-  render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
+  render(renderer: THREE.WebGLRenderer, _writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
     const air = installedAir();
     const clouds = air?.clouds;
     const fog = this.scene.fog as THREE.FogExp2 | null;
-    if (!air || !clouds || !fog || !this.mark.texture) {
-      this.needsSwap = false;
-      return;
-    }
-    this.needsSwap = true;
+    if (!air || !clouds || !fog || !this.mark.texture) return;
     this.fit(renderer, readBuffer);
     const u = this.uniforms;
     const camera = this.camera;
@@ -582,11 +607,13 @@ export class CloudPass extends Pass {
     this.quad.material = this.march;
     this.quad.render(renderer);
 
-    u.tDiffuse.value = readBuffer.texture;
-    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
-    if (this.clear) renderer.clear();
+    // over the frame as it stands, in place
+    const autoClear = renderer.autoClear;
+    renderer.autoClear = false;
+    renderer.setRenderTarget(readBuffer);
     this.quad.material = this.composite;
     this.quad.render(renderer);
+    renderer.autoClear = autoClear;
   }
 
   /** Bake the field round the eye (x, z in the field's frame) if it has gone far over the last bake. */

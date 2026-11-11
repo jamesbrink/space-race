@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
 import { type Air, type Clouds, driftClouds, installAir } from './air';
-import { buildCape1961, CLEARINGS, COAST, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
+import { buildCape1961, CLEARINGS, COAST, HARBOR_EAST, HARBOR_WEST, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
@@ -105,6 +105,8 @@ const SHARED = /* glsl */ `
   uniform vec2 uRiver[${RIVER.length}];   // the Banana River's east shore, the same way
   uniform vec2 uRiverWest[${RIVER_WEST.length}];   // its west shore, Merritt Island's east
   uniform vec2 uIndian[${INDIAN.length}];   // the Indian River's east shore, Merritt Island's west
+  uniform vec2 uHarborWest[${HARBOR_WEST.length}];   // Newfound Harbor's west shore
+  uniform vec2 uHarborEast[${HARBOR_EAST.length}];   // and its east
   uniform vec4 uTracks[${TRACKS.length}];
   uniform vec2 uTrackKind[${TRACKS.length}];   // half-width, kind
   uniform vec3 uClear[${NEAR.length}];    // the neighbouring pads: (x, z, radius of the pad itself)
@@ -136,6 +138,18 @@ const SHARED = /* glsl */ `
       if (north >= uIndian[i].x) x = mix(uIndian[i].y, uIndian[i + 1].y, clamp((north - uIndian[i].x) / (uIndian[i + 1].x - uIndian[i].x), 0.0, 1.0));
     return x;
   }
+  float harborWestAt(float north) {
+    float x = uHarborWest[0].y;
+    for (int i = 0; i < ${HARBOR_WEST.length - 1}; i++)
+      if (north >= uHarborWest[i].x) x = mix(uHarborWest[i].y, uHarborWest[i + 1].y, clamp((north - uHarborWest[i].x) / (uHarborWest[i + 1].x - uHarborWest[i].x), 0.0, 1.0));
+    return x;
+  }
+  float harborEastAt(float north) {
+    float x = uHarborEast[0].y;
+    for (int i = 0; i < ${HARBOR_EAST.length - 1}; i++)
+      if (north >= uHarborEast[i].x) x = mix(uHarborEast[i].y, uHarborEast[i + 1].y, clamp((north - uHarborEast[i].x) / (uHarborEast[i + 1].x - uHarborEast[i].x), 0.0, 1.0));
+    return x;
+  }
   float segment(vec2 p, vec4 s) {
     vec2 a = s.xy, b = s.zw, ab = b - a;
     return length(p - a - ab * clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0));
@@ -144,10 +158,12 @@ const SHARED = /* glsl */ `
   vec2 toPad(vec2 p) { return vec2(p.x * ${COS.toFixed(6)} + p.y * ${SIN.toFixed(6)}, -p.x * ${SIN.toFixed(6)} + p.y * ${COS.toFixed(6)}); }
   // metres inland of the surf line: the Cape's own shore (cape1961.ts), wandering a little about it
   float inland(vec2 p) { return coastAt(-p.y) - p.x + 26.0 * (fbm2(vec2(p.y * 0.006, 4.0), 5, 3) - 0.45); }
-  // metres from the nearest river's shore, out of the water (negative in it): the Banana River between its two shores, the Indian River west of its east one
+  // metres from the nearest river's shore, out of the water (negative in it): the Banana River between its two shores, the Indian River west of its east one,
+  // Newfound Harbor between its two
   float riverward(vec2 p) {
     float n = -p.y;
-    return min(max(p.x - riverAt(n), riverWestAt(n) - p.x), p.x - indianAt(n)) - 30.0 * (fbm2(p * 0.0035, 6, 3) - 0.45);
+    float d = min(min(max(p.x - riverAt(n), riverWestAt(n) - p.x), p.x - indianAt(n)), max(harborWestAt(n) - p.x, p.x - harborEastAt(n)));
+    return d - 30.0 * (fbm2(p * 0.0035, 6, 3) - 0.45);
   }
   // the nearest made way: how far from its edge (negative inside), and its kind
   float way(vec2 p, out float kind) {
@@ -241,10 +257,11 @@ const smooth = (a: number, b: number, x: number) => {
 const inlandAt = (x: number, z: number) => shoreAt(COAST, -z) - x + 26 * (fbm2(z * 0.006, 4, 5, 3) - 0.45);
 const riverwardAt = (x: number, z: number) => {
   const n = -z;
-  return (
-    Math.min(Math.max(x - shoreAt(RIVER, n), shoreAt(RIVER_WEST, n) - x), x - shoreAt(INDIAN, n)) -
-    30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45)
+  const d = Math.min(
+    Math.min(Math.max(x - shoreAt(RIVER, n), shoreAt(RIVER_WEST, n) - x), x - shoreAt(INDIAN, n)),
+    Math.max(shoreAt(HARBOR_WEST, n) - x, x - shoreAt(HARBOR_EAST, n)),
   );
+  return d - 30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45);
 };
 const lc56At = (x: number, z: number) => {
   const px = x * COS + z * SIN,
@@ -552,6 +569,8 @@ function landSpec(): LandSpec {
       uRiver: { value: RIVER.map(([n, x]) => new THREE.Vector2(n, x)) },
       uRiverWest: { value: RIVER_WEST.map(([n, x]) => new THREE.Vector2(n, x)) },
       uIndian: { value: INDIAN.map(([n, x]) => new THREE.Vector2(n, x)) },
+      uHarborWest: { value: HARBOR_WEST.map(([n, x]) => new THREE.Vector2(n, x)) },
+      uHarborEast: { value: HARBOR_EAST.map(([n, x]) => new THREE.Vector2(n, x)) },
       uTracks: { value: TRACKS.map((t) => new THREE.Vector4(t[0], t[1], t[2], t[3])) },
       uTrackKind: { value: TRACKS.map((t) => new THREE.Vector2(t[4], t[5])) },
       uClear: { value: NEAR.map(([x, z, r]) => new THREE.Vector3(x, z, r)) },

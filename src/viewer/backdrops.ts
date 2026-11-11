@@ -94,7 +94,7 @@ const SKY = /* glsl */ `
     // the Moon is beyond the air, so its light is added to the sky's and the clouds pass in front of it
     if (discs) col += moonLight(d);
     // high cloud, thin and sparse: one eighth of altocumulus at 3,600 m at Patrick at 10:00 (NOAA ISD). The cumulus
-    // under it are things in the scene (air.ts: CloudLayer), not painted on the sky
+    // under it are a volume marched through over the scene (clouds.ts), not painted on the sky
     vec2 uv = d.xz / (h + 0.12);
     float c = fbm(vec3(uv * 1.3, 0.0)) * 0.7 + fbm(vec3(uv * 5.0, 3.0)) * 0.3;
     float cloud = smoothstep(0.6, 0.74, c) * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
@@ -361,6 +361,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     when.site.seaLevel.value,
     { frame: cape.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
     installedAir(),
+    when.site.region?.name ?? null,
   );
   // (by the edge of its cover maps, past which their last texels are smeared outward: Complex 34, the furthest built, is inside 9.5 km)
   const covered = land.uniforms.uFarSize!.value as number;

@@ -13,6 +13,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
+import { planeAt } from '../world/region.ts';
 import { ellipsoidNormal, gaussianRadius, horizonAngle, horizonDistance, seaPoint } from '../world/surface.ts';
 import type { Beyond } from './land';
 
@@ -34,6 +35,13 @@ import type { Beyond } from './land';
  * bakes it): a distance to the shore on the six faces of a cube, looked up by the direction from
  * the Earth's centre, so the coastline is a clean line at any magnification and there is no seam
  * or pole. Flat tones: one for the sea, one for land, one for ice. No imagery, no relief.
+ *
+ * **The site's region** (types.ts: RegionDef) is drawn from a finer map where it covers:
+ * OpenStreetMap's coast and larger lakes as they stood on the region's date (tools/globe-region.mjs
+ * bakes it), a distance to the shore again, on two planes touching the sphere (world/region.ts):
+ * `near`, 160 km square round the site at 39 m a texel, and `wide`, the region, at 155 m. Each
+ * is faded in over the coarser map under it, distances mixed rather than colours, so where two
+ * maps put a shore a little apart the shore moves across the fade and is never doubled.
  *
  * **The site's ground** is drawn by the site (land.ts) out to its edge, flat. The globe leaves a
  * hole for it (`Hole`) a little inside that edge, and the ground hands over to the globe across a
@@ -62,18 +70,52 @@ const ICE = new THREE.Color(0xe4eaee);
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
-/** GLSL: the globe's colour toward a direction from the Earth's centre (ECEF), with its roughness. Uniforms uGlobeLand, uGlobeIce. */
+/** The land's cube faces, texels a side (tools/globe.mjs: --size). */
+const FACE = 2048;
+/** The Earth's mean radius, metres: for turning the cube's texels into distances on the ground, near enough for mixing them. */
+const EARTH = 6_371_000;
+
+/**
+ * GLSL: the globe's colour toward a direction from the Earth's centre (ECEF), with its roughness.
+ * Uniforms uGlobeLand, uGlobeIce, and the region's two maps (`regionUniforms`).
+ */
 const COLOUR = /* glsl */ `
   uniform samplerCube uGlobeLand, uGlobeIce;
+  uniform sampler2D uGlobeNear, uGlobeWide;
+  uniform mat3 uGlobeNearPlane, uGlobeWidePlane;   // rows: the plane's east, north and middle (world/region.ts)
+  uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
+  uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
   float globeField(samplerCube map, vec3 d) { return (texture(map, d).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)}; }
+  // a region's map: the distance to the shore in metres, and how much it is to be believed here (w)
+  float regionField(sampler2D map, mat3 plane, vec4 box, vec2 scale, vec3 d, out float w) {
+    vec3 q = plane * d;
+    vec2 p = q.xy / max(q.z, 1e-3);
+    float edge = min(min(p.x - box.x, box.z - p.x), min(p.y - box.y, box.w - p.y));
+    w = q.z > 0.5 && scale.y > 0.0 ? smoothstep(0.0, scale.y, edge) : 0.0;
+    vec2 uv = vec2((p.x - box.x) / (box.z - box.x), (box.w - p.y) / (box.w - box.y));   // its rows run north to south
+    return (texture(map, uv).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)} * scale.x;
+  }
   vec3 globeAlbedo(vec3 d, out float rough) {
     // the land's distance taken as the mean of five lookups half a texel or so apart: a filtered distance's
     // zero bends at every texel, and from orbit those bends were kinks in the shore
     vec3 t1 = normalize(cross(d, abs(d.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0))), t2 = cross(d, t1);
-    float r = ${((0.6 * (Math.PI / 2)) / 2048).toExponential(4)};   // radians: 0.6 of a texel of the land's faces, at their middles
+    float r = ${((0.6 * (Math.PI / 2)) / FACE).toExponential(4)};   // radians: 0.6 of a texel of the land's faces, at their middles
     float l = (globeField(uGlobeLand, d) + globeField(uGlobeLand, d + t1 * r) + globeField(uGlobeLand, d - t1 * r)
       + globeField(uGlobeLand, d + t2 * r) + globeField(uGlobeLand, d - t2 * r)) / 5.0;
-    float land = smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03));   // the shore: a clean line, one pixel soft
+    // in metres: a face's texel spans 2 / FACE of its plane, which is that times m^2 of arc outward and m across, m the
+    // cosine from the face's middle; m^1.5 between the two
+    float m = max(max(abs(d.x), abs(d.y)), abs(d.z));
+    float texel = ${((2 / FACE) * EARTH).toFixed(3)} * m * sqrt(m);
+    l *= texel;
+    // the region's maps over it, the wide then the near, each faded in from its edge
+    float w;
+    float lw = regionField(uGlobeWide, uGlobeWidePlane, uGlobeWideBox, uGlobeWideScale, d, w);
+    l = mix(l, lw, w);
+    texel = mix(texel, uGlobeWideScale.x, w);
+    float ln = regionField(uGlobeNear, uGlobeNearPlane, uGlobeNearBox, uGlobeNearScale, d, w);
+    l = mix(l, ln, w);
+    texel = mix(texel, uGlobeNearScale.x, w);
+    float land = smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel));   // the shore: a clean line, one pixel soft
     float i = globeField(uGlobeIce, d);
     float ice = smoothstep(-0.5, 0.5, i / (fwidth(i) * 0.8 + 0.03));
     // (lakes are cut out of the land map, so they are the sea's colour)
@@ -219,6 +261,52 @@ function cube(faces: THREE.DataTexture[]): THREE.CubeTexture {
 /** A cube that is sea everywhere, until the maps arrive. */
 const empty = () => cube(FACES.map(() => new THREE.DataTexture(new Uint8Array([0]), 1, 1, THREE.RedFormat)));
 
+/** One of a region's maps as tools/globe-region.mjs describes it (public/globe/<region>.json). */
+interface RegionLevel {
+  name: 'near' | 'wide';
+  file: string;
+  /** The middle of its plane: latitude and longitude, degrees. */
+  centre: [number, number];
+  /** What it covers on the plane: x0, x1, y0, y1. */
+  box: [number, number, number, number];
+  width: number;
+  height: number;
+  /** Metres a texel. */
+  metres: number;
+  /** How far in from its edge it is faded in, plane units. */
+  fade: number;
+}
+
+/** The uniforms a region's map is drawn by, empty (weighed at nothing) until it arrives. */
+function regionUniforms(prefix: 'Near' | 'Wide'): Record<string, THREE.IUniform> {
+  const blank = new THREE.DataTexture(new Uint8Array([0]), 1, 1, THREE.RedFormat);
+  blank.needsUpdate = true;
+  return {
+    [`uGlobe${prefix}`]: { value: blank },
+    [`uGlobe${prefix}Plane`]: { value: new THREE.Matrix3() },
+    [`uGlobe${prefix}Box`]: { value: new THREE.Vector4(0, 0, 1, 1) },
+    [`uGlobe${prefix}Scale`]: { value: new THREE.Vector2(1, 0) },
+  };
+}
+
+/** A region's map as a texture of one channel: the PNG decoded by the browser and uploaded as it is. */
+async function loadRegion(level: RegionLevel): Promise<THREE.Texture> {
+  const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${level.file}`)).blob();
+  const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
+  const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
+  texture.format = THREE.RedFormat;
+  texture.type = THREE.UnsignedByteType;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.flipY = false;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.anisotropy = 8; // seen edge-on from low down; three keeps it to what the GPU allows
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export class Globe {
   /** Everything the globe draws: the surface, and the air seen from above (`air`). */
   readonly group = new THREE.Group();
@@ -247,8 +335,11 @@ export class Globe {
   private arrived = false;
   private readonly hole: Hole | null;
 
-  /** `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `hole`: the site's own ground. */
-  constructor(site: Site, seaLevel: number, hole: Hole | null, haze: { scale: number } | null) {
+  /**
+   * `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `hole`: the site's own ground;
+   * `region`: the name of the site's region's maps (RegionDef.name), if it has them.
+   */
+  constructor(site: Site, seaLevel: number, hole: Hole | null, haze: { scale: number } | null, region: string | null = null) {
     this.site = site;
     this.seaLevel = seaLevel;
     this.hole = hole;
@@ -286,6 +377,8 @@ export class Globe {
       uGlobeSunLight: { value: SUNLIGHT },
       uGlobeAerosol: { value: 0 },
       uGlobeAbove: { value: 0 },
+      ...regionUniforms('Near'),
+      ...regionUniforms('Wide'),
     };
 
     const material = new THREE.MeshStandardMaterial({ name: 'globe', roughness: 1, metalness: 0 });
@@ -339,6 +432,27 @@ export class Globe {
       this.uniforms.uGlobeIce!.value = ice;
       this.arrived = true;
     });
+    if (region) void this.loadRegion(region);
+  }
+
+  /** The site's region's maps: each drawn once it has arrived. */
+  private async loadRegion(name: string): Promise<void> {
+    const meta = (await (await fetch(`${import.meta.env.BASE_URL}globe/${name}.json`)).json()) as { spread: number; levels: RegionLevel[] };
+    if (meta.spread !== SPREAD) throw new Error(`globe/${name}.json: distances kept to ${meta.spread} texels, not ${SPREAD}`);
+    await Promise.all(
+      meta.levels.map(async (level) => {
+        const texture = await loadRegion(level);
+        const prefix = level.name === 'near' ? 'Near' : 'Wide';
+        const { east: e, north: n, centre: c } = planeAt(level.centre[0], level.centre[1]);
+        const u = this.uniforms;
+        u[`uGlobe${prefix}`]!.value = texture;
+        (u[`uGlobe${prefix}Plane`]!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);
+        const [x0, x1, y0, y1] = level.box;
+        (u[`uGlobe${prefix}Box`]!.value as THREE.Vector4).set(x0, y0, x1, y1);
+        (u[`uGlobe${prefix}Scale`]!.value as THREE.Vector2).set(level.metres, level.fade);
+        this.arrived = true;
+      }),
+    );
   }
 
   /** GLSL and uniforms for the site's ground to hand over to the globe across its last stretch (land.ts: Land.meet). */

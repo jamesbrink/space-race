@@ -29,8 +29,18 @@ export const fromPad5 = (lat: number, lon: number): [number, number] => [(lon - 
 /**
  * The Atlantic shore, south to north, as [latitude, longitude]: today's surf line from
  * OpenStreetMap, thinned. Not 1961's exactly: the Cape's point has moved and the port has grown.
+ * South of the port, where the ground drawn round the pad hands over to the globe, it is the
+ * globe's own shore (tools/globe-region.mjs, the same coastline) read every 0.01 degrees.
  */
 const ATLANTIC: [number, number][] = [
+  [28.32, -80.60725],
+  [28.33, -80.60663],
+  [28.34, -80.60578],
+  [28.35, -80.60462],
+  [28.36, -80.60309],
+  [28.37, -80.60129],
+  [28.38, -80.59899],
+  [28.39, -80.59624],
   [28.39845, -80.59374],
   [28.40794, -80.5888],
   [28.41119, -80.58372],
@@ -58,7 +68,8 @@ const ATLANTIC: [number, number][] = [
 /**
  * The Banana River's east shore, the same way and rougher. South of 28.42 it is read from
  * OpenStreetMap's Indian River Lagoon (relation 1204544) every 1.2 to 1.8 km: the main channel's
- * edge, past today's port and causeways (not there in 1961, and not drawn).
+ * edge, past today's port and causeways (not there in 1961, and not drawn). North of 28.52 it is
+ * the globe's shore every 0.0025 to 0.01 degrees, as the Atlantic's south of the port.
  */
 const BANANA_RIVER: [number, number][] = [
   [28.32573, -80.61846],
@@ -74,13 +85,21 @@ const BANANA_RIVER: [number, number][] = [
   [28.47555, -80.59086],
   [28.50282, -80.58444],
   [28.51653, -80.5848],
-  [28.52445, -80.59328],
-  [28.54318, -80.59209],
+  [28.5225, -80.59122],
+  [28.525, -80.599],
+  [28.5275, -80.60134],
+  [28.53, -80.59984],
+  [28.5325, -80.60053],
+  [28.535, -80.59757],
+  [28.5375, -80.59266],
+  [28.545, -80.59164],
+  [28.555, -80.58974],
 ];
 /**
  * Its west shore, Merritt Island's east: from the same relation, the far edge of the river's
  * water every 300 m of northing (across islands and causeways under 400 m), the median of five,
- * thinned to one in two. The river is 5.7 km wide abreast of pad 5 and narrows to 1.7 km 12 km north.
+ * thinned to one in two; north of 28.505 the globe's shore every 0.005 degrees. The river is 5.7 km
+ * wide abreast of pad 5 and narrows to 1.7 km 12 km north.
  */
 const BANANA_RIVER_WEST: [number, number][] = [
   [28.32573, -80.65874],
@@ -107,15 +126,17 @@ const BANANA_RIVER_WEST: [number, number][] = [
   [28.49356, -80.63818],
   [28.49898, -80.63804],
   [28.50439, -80.63575],
-  [28.50981, -80.62954],
-  [28.51522, -80.62611],
-  [28.52063, -80.62119],
-  [28.52605, -80.6187],
-  [28.53146, -80.61631],
-  [28.53688, -80.61393],
-  [28.54229, -80.61307],
-  [28.5477, -80.61097],
-  [28.55312, -80.60944],
+  [28.51, -80.62976],
+  [28.515, -80.62641],
+  [28.52, -80.62411],
+  [28.525, -80.6204],
+  [28.53, -80.61782],
+  [28.535, -80.61549],
+  [28.54, -80.61356],
+  [28.545, -80.61259],
+  [28.55, -80.61091],
+  [28.555, -80.60904],
+  [28.56, -80.60739],
 ];
 /**
  * The Indian River's east shore, Merritt Island's west, where it comes within reach: only in the
@@ -137,6 +158,36 @@ const INDIAN_RIVER: [number, number][] = [
   [28.37987, -80.74],
   [28.38529, -80.9],
 ];
+/**
+ * Newfound Harbor, between Merritt Island and the long peninsula south of it, where it reaches the
+ * south-west corner of the ground: its west shore and its east, from the globe's shore every 0.005
+ * degrees. Past its head at 28.371 the two lines cross, so the ground north of it is all land.
+ */
+const NEWFOUND_WEST: [number, number][] = [
+  [28.31, -80.67469],
+  [28.32, -80.67695],
+  [28.33, -80.67988],
+  [28.335, -80.68116],
+  [28.345, -80.6837],
+  [28.355, -80.68218],
+  [28.36, -80.68312],
+  [28.365, -80.68443],
+  [28.37, -80.68042],
+  [28.3715, -80.676],
+];
+const NEWFOUND_EAST: [number, number][] = [
+  [28.31, -80.66002],
+  [28.32, -80.6627],
+  [28.33, -80.66412],
+  [28.335, -80.66584],
+  [28.345, -80.66774],
+  [28.35, -80.66904],
+  [28.355, -80.67141],
+  [28.36, -80.67013],
+  [28.365, -80.67474],
+  [28.37, -80.67268],
+  [28.3715, -80.678],
+];
 /** A shore as the terrain's shader wants it: [metres north, metres east] of pad 5, northward. */
 const northing = (shore: [number, number][]): [number, number][] =>
   shore.map(([lat, lon]) => {
@@ -147,6 +198,8 @@ export const COAST = northing(ATLANTIC);
 export const RIVER = northing(BANANA_RIVER);
 export const RIVER_WEST = northing(BANANA_RIVER_WEST);
 export const INDIAN = northing(INDIAN_RIVER);
+export const HARBOR_WEST = northing(NEWFOUND_WEST);
+export const HARBOR_EAST = northing(NEWFOUND_EAST);
 /** How far east a shore is at a given northing: the same reading of the line as the shader's. */
 export function shoreAt(shore: [number, number][], north: number): number {
   let x = shore[0]![1];

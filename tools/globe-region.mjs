@@ -24,8 +24,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { planeAt, surfaceDirection, toPlane } from '../src/world/region.ts';
 import { gaussianRadius } from '../src/world/surface.ts';
-import { planeAt, toPlane, surfaceDirection } from '../src/world/region.ts';
 import { writeGreyPng } from './png.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -226,7 +226,7 @@ function coastField(map, chainList) {
         for (let i = i0; i <= i1; i++) {
           const px = i + 0.5 - a[0];
           const t = (px * dx + py * dy) / ll;
-          const tc = t < 0 ? 0 : t > 1 ? 1 : t;
+          const tc = Math.max(0, Math.min(1, t));
           const qx = px - tc * dx,
             qy = py - tc * dy;
           const d = qx * qx + qy * qy;
@@ -381,6 +381,29 @@ function bake(map, coast, lakeList, later, asOfYear) {
       const off = Math.sqrt(d[k]) - half; // texels outside the work's strip
       field[k] = work.was === 'water' ? Math.min(field[k], off) : Math.max(field[k], -off);
     }
+    // Round the strip, what the shore that has gone said of the distance is now too near: a causeway's sides
+    // left ridges in the water a texel deep, which drawn from far off showed as a ghost of it. Measured
+    // again from the land and water as they now are (to the nearest texel of the other kind, less half a texel),
+    // where that is further than what is there.
+    const xs = xy.map((p) => p[0]),
+      ys = xy.map((p) => p[1]);
+    const reach = half + 2 * SPREAD;
+    const i0 = Math.max(0, Math.floor(Math.min(...xs) - reach)),
+      i1 = Math.min(w - 1, Math.ceil(Math.max(...xs) + reach));
+    const j0 = Math.max(0, Math.floor(Math.min(...ys) - reach)),
+      j1 = Math.min(h - 1, Math.ceil(Math.max(...ys) + reach));
+    const was = field.slice();
+    for (let j = j0; j <= j1; j++)
+      for (let i = i0; i <= i1; i++) {
+        const k = j * w + i;
+        const land = was[k] > 0;
+        let best = SPREAD + 0.5;
+        for (let b = Math.max(0, j - SPREAD); b <= Math.min(h - 1, j + SPREAD); b++)
+          for (let a = Math.max(0, i - SPREAD); a <= Math.min(w - 1, i + SPREAD); a++)
+            if (was[b * w + a] > 0 !== land) best = Math.min(best, Math.hypot(a - i, b - j));
+        const again = Math.min(SPREAD, best - 0.5);
+        if (again > Math.abs(was[k]) + 1) field[k] = land ? again : -again;
+      }
     undone++;
   }
   const data = new Uint8Array(w * h);

@@ -11,7 +11,7 @@
 // the nearest shore, in texels, positive on land, clamped at SPREAD and stored as 128 + d * 127 /
 // SPREAD. Filtered, a distance field gives a clean coastline at any magnification: the edge is
 // where it crosses zero, found per pixel.
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
