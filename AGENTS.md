@@ -85,6 +85,7 @@ missions/                             the record: one folder per nation, program
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)
+public/globe/                         the globe's land and ice maps, six cube faces each (committed; tools/globe.mjs)
 docs/sources.md                       every source used or wanted, and what each is good for
 src/
   types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
@@ -115,6 +116,8 @@ src/
   world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, rotation, mean orbits
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
+  world/surface.ts                    the sea as a shape: the ellipsoid at a site's sea level, radii of curvature, the horizon
+  viewer/globe.ts                     the Earth to scale under the site: land and ice from Natural Earth, the haze over it, the air's limb
   world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run
   world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
@@ -131,6 +134,7 @@ tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
   shot.mjs                            one screenshot of the viewer, for looking at a change
+  globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces
   logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
@@ -351,12 +355,23 @@ never adjusted to bring a check in.
   lays the white trail it leaves along the path flown, widening and thinning with age and with
   the air it was laid in. The chase camera (`CAMERA_MODES`: C) turns
   about it and is carried with it, and carries the Sun's shadow map too. The sky darkens with the
-  eye's height as the air above it thins (`airAbove` in backdrops.ts: black by 50 km). The site's
-  frame is flat: downrange the sea falls away below it (18.6 km by the landing), and from high up
-  there is nothing drawn below the horizon. A globe needs the scene's frame to become the
-  Earth-centred one (origin.ts already draws from the eye), the Earth drawn to scale under the
-  site's local detail, and the vehicle put in it from `fly`'s inertial state without the site's
-  frame in between.
+  eye's height as the air above it thins (`airAbove` in backdrops.ts: black by 50 km). Under it
+  all is the Earth (`viewer/globe.ts`): the WGS 84 ellipsoid at the site's `seaLevel`, drawn in
+  the site's frame, which is exact anywhere (frames.ts), so the vehicle, placed from the run
+  where it truly is, comes down on the globe's sea 18.6 km below the pad's level. The globe is a
+  mesh made in doubles round the point under the eye and remade as the eye moves (rings spaced
+  so each triangle looks the same size, out past the horizon); land, lakes and ice are signed
+  distances to the shore on a cube map (tools/globe.mjs, Natural Earth), so the shore is a clean
+  line at any height; the haze is the scene's, worked along the ray over the curve; the air seen
+  from above (`Globe.air`, a ball round the eye, single Rayleigh scattering) makes the limb and
+  the blue over it, and comes in as the sky (backdrops.ts) goes out. The site's ground (land.ts)
+  keeps the middle: the globe leaves a hole for it, and across its last two kilometres the
+  ground bends onto the curve and takes the globe's colours (`Land.meet`), so where they overlap
+  they are one surface and which one the depth buffer picks cannot be seen. Downrange the sky's
+  up is the plumb line at the eye, not the site's. Still to do: the chase camera's up is the
+  site's (downrange the horizon tilts by the arc flown, 4.8 degrees at the landing), the sky's
+  light and the globe's are the site's Sun's (a globe lit from orbit at the site's night is lit by
+  the Moon), and the coast is Natural Earth's 1:10 million everywhere, the Cape included.
 - **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
   because of it; the capsule flown from the report's separation passes all but one. The flight's
   README ("The flight as flown") states the numbers.

@@ -67,7 +67,12 @@ const COLOUR = /* glsl */ `
   uniform samplerCube uGlobeLand, uGlobeIce;
   float globeField(samplerCube map, vec3 d) { return (texture(map, d).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)}; }
   vec3 globeAlbedo(vec3 d, out float rough) {
-    float l = globeField(uGlobeLand, d);
+    // the land's distance taken as the mean of five lookups half a texel or so apart: a filtered distance's
+    // zero bends at every texel, and from orbit those bends were kinks in the shore
+    vec3 t1 = normalize(cross(d, abs(d.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0))), t2 = cross(d, t1);
+    float r = ${((0.6 * (Math.PI / 2)) / 2048).toExponential(4)};   // radians: 0.6 of a texel of the land's faces, at their middles
+    float l = (globeField(uGlobeLand, d) + globeField(uGlobeLand, d + t1 * r) + globeField(uGlobeLand, d - t1 * r)
+      + globeField(uGlobeLand, d + t2 * r) + globeField(uGlobeLand, d - t2 * r)) / 5.0;
     float land = smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03));   // the shore: a clean line, one pixel soft
     float i = globeField(uGlobeIce, d);
     float ice = smoothstep(-0.5, 0.5, i / (fwidth(i) * 0.8 + 0.03));

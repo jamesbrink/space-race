@@ -1782,7 +1782,9 @@ export class Stage {
     // the simulation's clock: the setting follows it, and says when that is worth showing
     if (this.clock) {
       this.clock.advance(dt);
-      const change = this.setting.at?.(this.clock.jdUT, this.camera.position.y - GROUND_Y);
+      // (over the globe, the height is above the sea under the eye, which downrange is far below the site's level)
+      const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - GROUND_Y;
+      const change = this.setting.at?.(this.clock.jdUT, height);
       if (change) this.relight(change.shadows);
     }
     this.follow(dt);

@@ -80,13 +80,15 @@ export const GROUND_Y = -0.12;
  * and night. A cloud takes its light from uCloudLight and the haze from uHorizon.
  */
 const SKY = /* glsl */ `
-  uniform vec3 uSun, uZenith, uHorizon, uGlow, uCloudLight, uSunLight; uniform float uWisps; varying vec3 vDir;
+  uniform vec3 uSun, uZenith, uHorizon, uGlow, uCloudLight, uSunLight, uUp; uniform float uWisps; varying vec3 vDir;
   ${NOISE}
   ${MOON_GLSL}
   vec3 sky(vec3 d, bool discs) {
-    float h = max(d.y, 0.0);
+    // up is the plumb line where the eye is (uUp): downrange over the curved Earth it leans from the site's
+    float up = dot(d, uUp);
+    float h = max(up, 0.0);
     // twilight: the lit air lies along the horizon, deepest toward the Sun
-    float toward = dot(normalize(d.xz + 1e-6), normalize(uSun.xz + 1e-6)) * 0.5 + 0.5;
+    float toward = dot(normalize(d - uUp * up + 1e-6), normalize(uSun - uUp * dot(uSun, uUp) + 1e-6)) * 0.5 + 0.5;
     vec3 low = uHorizon + uGlow * (0.12 + 0.88 * toward * toward * toward);
     vec3 col = mix(mix(uHorizon, low, exp(-h * 7.0)), uZenith, pow(h, 0.5));
     // the Moon is beyond the air, so its light is added to the sky's and the clouds pass in front of it
@@ -98,12 +100,15 @@ const SKY = /* glsl */ `
     float cloud = smoothstep(0.6, 0.74, c) * smoothstep(0.012, 0.07, h) * (1.0 - smoothstep(0.3, 0.7, h));
     float s = max(dot(d, uSun), 0.0);
     col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.45 * uWisps);   // (none once the eye is up among them)
-    col = mix(low * 0.96, col, smoothstep(-0.004, 0.012, d.y));   // below the horizon: haze
+    col = mix(low * 0.96, col, smoothstep(-0.004, 0.012, up));   // below the horizon: haze
     col += vec3(1.0, 0.9, 0.75) * uSunLight * (pow(s, 10.0) * 0.18 + pow(s, 300.0) * 1.6);
     return col;
   }`;
 
-type SkyUniforms = Record<'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow' | 'uCloudLight' | 'uSunLight' | 'uWisps', THREE.IUniform>;
+type SkyUniforms = Record<
+  'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow' | 'uCloudLight' | 'uSunLight' | 'uWisps' | 'uUp',
+  THREE.IUniform
+>;
 
 /**
  * The sky's material. `discs`: with the Sun's disc and the Moon in it, as the eye sees it; without,
@@ -336,6 +341,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     uCloudLight: { value: new THREE.Color() },
     uSunLight: { value: new THREE.Color() },
     uWisps: { value: 1 },
+    uUp: { value: new THREE.Vector3(0, 1, 0) },
   };
   const envScene = new THREE.Scene();
   const envGain = { value: 1 };
@@ -396,7 +402,10 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     simplify: cape.simplify,
     globe,
     attend: (eye) => {
-      const moved = globe.attend(eye);
+      // the sky's up is the plumb line at the eye
+      const was = uniforms.uUp.value.clone();
+      const leans = globe.up(eye, uniforms.uUp.value).angleTo(was) > 1e-5;
+      const moved = globe.attend(eye) || leans;
       return cape!.attend(eye) || moved;
     },
     groundAt: cape.groundAt,
