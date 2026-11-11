@@ -91,8 +91,8 @@ const SCALE = 8_000;
  * setting under it. Drawn on a ball round the eye (so nothing nearer than it is hazed: the
  * vehicle the eye is following) and worked out along each ray through a spherical shell of air
  * whose density falls off exponentially: single Rayleigh scattering, in twelve pieces along the
- * ray, the sunlight reaching each dimmed by the air it has come through (Kasten and Young's air
- * mass), with no light scattered twice. The scattering coefficients are Rayleigh's at sea level
+ * ray, the sunlight reaching each dimmed by the air it has come through (`chapman`), with no
+ * light scattered twice. The scattering coefficients are Rayleigh's at sea level
  * for 680, 550 and 440 nm (Bucholtz 1995, rounded).
  */
 /** The Sun's light above the air, in the scene's units (a directional light's intensity): a little over the light at noon (daysky.ts). Estimated. */
@@ -100,14 +100,37 @@ const SUNLIGHT = 4.5;
 /** Rayleigh's optical depth straight up from the sea, for 680, 550 and 440 nm: BETA times SCALE. */
 const RAYLEIGH = [5.8e-6 * SCALE, 13.5e-6 * SCALE, 33.1e-6 * SCALE] as const;
 
-/** Air masses toward the Sun at a zenith angle whose cosine is `mu` (Kasten and Young 1989); under the horizon, as good as none gets through. */
-export function airmass(mu: number): number {
-  const z = (Math.acos(Math.min(1, Math.max(-1, mu))) * 180) / Math.PI;
-  return z > 95 ? 1e4 : 1 / (Math.max(mu, 0) + 0.50572 * Math.max(96.07995 - z, 1) ** -1.6364);
+/**
+ * How many times the air straight up a ray toward the Sun goes through, from `height` metres up
+ * with the Sun `mu` (a cosine) from the zenith, over an Earth of `radius` and air thinning by e
+ * every `scale` metres: the Chapman function, by Schüler's approximation (2012). It is the plain
+ * secant overhead, grows to about 38 along the horizon at sea level, and goes on growing smoothly
+ * as the Sun sinks under the horizon and the ray passes through the Earth's shadow, so a twilight
+ * fades and does not step.
+ */
+export function chapman(height: number, mu: number, radius: number, scale: number): number {
+  const X = radius / scale,
+    h = Math.max(height, 0) / scale;
+  // the grazing value sqrt(pi x / 2), and between it and 1 overhead Schüler's form; under the horizon, the
+  // function's own identity: twice the grazing value at the ray's lowest point, less the value looking up
+  const c = Math.sqrt((Math.PI / 2) * (X + h));
+  if (mu >= 0) return c / ((c - 1) * mu + 1);
+  const x0 = Math.sqrt(1 - mu * mu) * (X + h);
+  return 2 * Math.sqrt((Math.PI / 2) * x0) * Math.exp(X + h - x0) - c / (1 - (c - 1) * mu);
 }
 
 /** How much of the Sun's green light reaches the sea through the air with it `mu` from the zenith, and `aerosol` of haze straight up. */
-export const transmission = (mu: number, aerosol: number): number => Math.exp(-(RAYLEIGH[1] + aerosol) * airmass(mu));
+export const transmission = (mu: number, aerosol: number, radius: number): number =>
+  Math.exp(-(RAYLEIGH[1] + aerosol) * chapman(0, mu, radius, SCALE));
+/** GLSL: chapman() as in TypeScript. */
+const CHAPMAN = /* glsl */ `
+  float chapman(float height, float mu, float radius) {
+    float X = radius / ${SCALE.toFixed(1)}, h = max(height, 0.0) / ${SCALE.toFixed(1)};
+    float c = sqrt(1.5707963 * (X + h));
+    if (mu >= 0.0) return c / ((c - 1.0) * mu + 1.0);
+    float x0 = sqrt(1.0 - mu * mu) * (X + h);
+    return 2.0 * sqrt(1.5707963 * x0) * exp(min(X + h - x0, 80.0)) - c / (1.0 - (c - 1.0) * mu);
+  }`;
 const AIR = /* glsl */ `
   uniform vec3 uCentre, uSun;
   uniform float uAlt, uRadius, uWeight, uSunLight;
@@ -115,11 +138,7 @@ const AIR = /* glsl */ `
   const float TOP = ${TOP.toFixed(1)}, H = ${SCALE.toFixed(1)};
   const vec3 BETA = vec3(5.8e-6, 13.5e-6, 33.1e-6);
   float heightAt(vec3 p) { return length(p - uCentre) - uRadius; }
-  // air masses toward the Sun at a zenith angle whose cosine is mu (Kasten and Young 1989); under the horizon, none gets through
-  float airmass(float mu) {
-    float z = degrees(acos(clamp(mu, -1.0, 1.0)));
-    return z > 95.0 ? 1e4 : 1.0 / (max(mu, 0.0) + 0.50572 * pow(max(96.07995 - z, 1.0), -1.6364));
-  }
+  ${CHAPMAN}
   void main() {
     vec3 d = normalize(vDir);
     float b = dot(d, uCentre);
@@ -143,7 +162,7 @@ const AIR = /* glsl */ `
       vec3 mid = d * (tb - 0.5 * len);
       float hm = max(heightAt(mid), 0.0);
       float mu = dot(normalize(mid - uCentre), uSun);
-      float toSun = H * exp(-hm / H) * airmass(mu);
+      float toSun = H * exp(-hm / H) * chapman(hm, mu, uRadius);
       glow += od * exp(-BETA * (tau + 0.5 * od + toSun));
       tau += od;
       ha = hb;
@@ -345,7 +364,7 @@ export class Globe {
    * when it is the Sun, null when it is not).
    */
   light(sunlight: number | null, aerosol: number): void {
-    const t = transmission(this.sun.y, aerosol); // the site's own up is +Y
+    const t = transmission(this.sun.y, aerosol, this.radius); // the site's own up is +Y
     this.uniforms.uGlobeSunLight!.value =
       sunlight !== null && t > 0.05 ? THREE.MathUtils.clamp(sunlight / t, 0.5 * SUNLIGHT, 2 * SUNLIGHT) : SUNLIGHT;
     this.uniforms.uGlobeAerosol!.value = aerosol;
@@ -511,10 +530,7 @@ export class Globe {
           uniform mat3 uGlobeAxes;
           uniform mat4 uGlobeHole;
           uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze, uGlobeSunLight, uGlobeAerosol;
-          float globeAirmass(float mu) {
-            float z = degrees(acos(clamp(mu, -1.0, 1.0)));
-            return z > 95.0 ? 1e4 : 1.0 / (max(mu, 0.0) + 0.50572 * pow(max(96.07995 - z, 1.0), -1.6364));
-          }
+          ${CHAPMAN}
           float globeRough;
           ${COLOUR}
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
@@ -565,7 +581,7 @@ export class Globe {
               ReflectedLight sun = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
               float mu = dot(normalize(vGlobeNormal), uGlobeSun);
               light.direction = normalize((viewMatrix * vec4(uGlobeSun, 0.0)).xyz);
-              light.color = uGlobeSunLight * exp(-(vec3(${RAYLEIGH.map((v) => v.toFixed(4)).join(', ')}) + uGlobeAerosol) * globeAirmass(mu));
+              light.color = uGlobeSunLight * exp(-(vec3(${RAYLEIGH.map((v) => v.toFixed(4)).join(', ')}) + uGlobeAerosol) * chapman(0.0, mu, ${this.radius.toFixed(1)}));
               light.visible = true;
               RE_Direct(light, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, sun);
               reflectedLight.directDiffuse += away * (sun.directDiffuse - scene.directDiffuse);

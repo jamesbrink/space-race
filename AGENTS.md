@@ -369,9 +369,11 @@ never adjusted to bring a check in.
   ground bends onto the curve and takes the globe's colours (`Land.meet`), so where they overlap
   they are one surface and which one the depth buffer picks cannot be seen. Downrange, up is
   the plumb line where it is, not the site's +Y: the sky's (at the eye) and the orbiting
-  camera's (at what it turns about, `Stage.alignUp`), so the horizon there is level. Still to
-  do: the globe's light is the site's (a globe seen from orbit at the site's night is lit by the
-  Moon), and the coast is Natural Earth's 1:10 million everywhere, the Cape included.
+  camera's (at what it turns about, `Stage.alignUp`), so the horizon there is level. Away from the
+  site the globe is lit by the true Sun through the air over each place (`chapman`), so the
+  terminator reddens and the night side is dark whatever the site's hour; near it, by the scene's
+  light, so the two agree where they meet. Still to do: the coast is Natural Earth's 1:10
+  million everywhere, the Cape included.
 - **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
   because of it; the capsule flown from the report's separation passes all but one. The flight's
   README ("The flight as flown") states the numbers.
