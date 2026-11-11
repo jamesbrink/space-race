@@ -1,6 +1,8 @@
 // Runs a flight's Blender scripts headless: each model/<name>.py becomes
-// public/models/<nation>/<programme>/<flight>/<name>.glb.
+// public/models/<nation>/<programme>/<flight>/<name>.glb. A place's own models are built the same
+// way from missions/<nation>/<programme>/sites/<site>/model/<name>.py.
 //   node tools/build-model.mjs usa/mercury/mr-3-freedom-7 [--only pad] [--preview <dir>]
+//   node tools/build-model.mjs usa/mercury/sites/lc5 [--only 1961-05]
 //   node tools/build-model.mjs --all
 //   node tools/build-model.mjs --all --detail 0.3 --out-dir <dir>    a lower level of detail, written elsewhere
 // Blender is found at $BLENDER, on PATH, or in /Applications (macOS).
@@ -26,6 +28,10 @@ function allFlights() {
       const flights = join(root, 'missions', nation, program, 'flights');
       if (!existsSync(flights)) continue;
       for (const flight of dirs(flights)) if (existsSync(join(flights, flight, 'model'))) out.push(`${nation}/${program}/${flight}`);
+      // a place's own models: what stood there, as of a date, shared by every flight from it
+      const sites = join(root, 'missions', nation, program, 'sites');
+      if (existsSync(sites))
+        for (const site of dirs(sites)) if (existsSync(join(sites, site, 'model'))) out.push(`${nation}/${program}/sites/${site}`);
     }
   return out;
 }
@@ -54,8 +60,15 @@ if (!args.length) {
 const targets = args.includes('--all') ? allFlights() : args;
 
 for (const id of targets) {
-  const [nation, program, flight] = id.split('/');
-  const dir = join(root, 'missions', nation, program, 'flights', flight, 'model');
+  // A flight is <nation>/<programme>/<flight>; a place is <nation>/<programme>/sites/<site>. Either
+  // has a model/ directory of scripts, and its GLBs go to the same path under public/models/.
+  const parts = id.split('/');
+  const site = parts[2] === 'sites';
+  const [nation, program] = parts;
+  const flight = site ? join('sites', parts[3]) : parts[2];
+  const dir = site
+    ? join(root, 'missions', nation, program, 'sites', parts[3], 'model')
+    : join(root, 'missions', nation, program, 'flights', parts[2], 'model');
   const scripts = readdirSync(dir)
     .filter((f) => f.endsWith('.py') && (!only || f === `${only}.py`))
     .sort();
