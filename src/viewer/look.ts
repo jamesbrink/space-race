@@ -69,6 +69,8 @@ export class Looks {
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh || Array.isArray(mesh.material)) return;
+      // a material that is all its own shader (the engine's fire, the trail) draws itself in both looks: it has no twin
+      if ((mesh.material as THREE.ShaderMaterial).isShaderMaterial) return;
       // the real material is whatever the mesh had when it was first seen
       const real = ((mesh.userData.real as THREE.Material | undefined) ?? (mesh.userData.real = mesh.material)) as THREE.Material;
       mesh.material = this.look === 'cel' ? this.twin(real) : real;

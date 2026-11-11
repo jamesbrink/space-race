@@ -72,9 +72,8 @@ export interface Body {
 export const AU = 149_597_870_700;
 /** Speed of light, m/s: exact by definition. */
 export const C = 299_792_458;
-/** Seconds in a day; days in a Julian century. */
+/** Seconds in a day. */
 export const DAY = 86_400;
-export const CENTURY = 36_525;
 
 const DE440 = 'JPL DE440 (Park et al. 2021, AJ 161:105), as tabulated at ssd.jpl.nasa.gov/astro_par.html';
 const WGCCRE = 'IAU WGCCRE 2015 report (Archinal et al. 2018, Celest. Mech. Dyn. Astr. 130:22)';

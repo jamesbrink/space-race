@@ -127,6 +127,12 @@ export function thingOf(o: THREE.Object3D): Thing | undefined {
   return undefined;
 }
 
+/** Whether `inner` is `outer` or somewhere under it. */
+function contains(outer: THREE.Object3D, inner: THREE.Object3D | null): boolean {
+  for (let o = inner; o; o = o.parent) if (o === outer) return true;
+  return false;
+}
+
 /** Put every part of a model back where it was built. */
 function rest(object: THREE.Object3D): void {
   object.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
@@ -658,7 +664,7 @@ export class Stage {
             );
         }),
       );
-    for (const p of this.arriving) p.catch(() => {}); // a level that does not arrive is done without
+    for (const p of this.arriving) p.catch((e) => console.warn('a level of detail did not arrive, and is done without:', e));
     this.section(flight.models[0]!.id, true);
   }
 
@@ -938,7 +944,7 @@ export class Stage {
     }
     this.fall(ascent, s, pad, t, flying);
     const { on, vacuum } = ascent.burn(t);
-    this.plume?.set(on, vacuum, performance.now() / 1000, this.renderer.toneMappingExposure);
+    this.plume?.set(on, vacuum, t, this.renderer.toneMappingExposure); // (its flicker is the clock's: the same instant is the same fire)
     this.layTrail(ascent, pad, t, flying);
     this.lifted.by.subVectors(g.position, before);
     g.updateMatrixWorld(true);
@@ -1722,13 +1728,14 @@ export class Stage {
     if (!o) return null;
     // A thing the model has named for people (a custom property `label`, or `vehicle` on a car)
     // is that thing, however deep it sits: one car in a car park, not the car park.
-    for (let o: THREE.Object3D | null = object; o && o !== this.surroundings; o = o.parent) {
-      const title = (o.userData.label ?? o.userData.vehicle) as unknown;
-      if (typeof title === 'string' && title) {
-        const about = o.userData.about;
-        return { name: o.name, box: new THREE.Box3().setFromObject(o), title, ...(typeof about === 'string' ? { about } : {}) };
-      }
-    }
+    const thing = thingOf(object);
+    if (thing && thing.object !== this.surroundings && !contains(thing.object, this.surroundings))
+      return {
+        name: thing.object.name,
+        box: new THREE.Box3().setFromObject(thing.object),
+        title: thing.label,
+        ...(thing.about ? { about: thing.about } : {}),
+      };
     for (let o: THREE.Object3D | null = object; o && this.surroundings; o = o.parent) {
       if (o.parent !== this.surroundings && o.parent?.parent !== this.surroundings) continue;
       if (!o.name || (o as THREE.Mesh).isMesh) continue;
