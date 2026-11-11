@@ -271,6 +271,40 @@ def build(parts: Parts) -> dict:
         beam(seat, tuple(hub), tuple(hub + (e1 * c + e2 * s_) * 0.75), 0.06)
     seat = parts(g, "chassis/seat", True)
     ttube(seat, (14.6, -1.2, 3.68), (14.1, -1.2, 5.2), 0.06, 8)  # gear lever
+    if fine():
+        # What the windows show close to, of the period's trucks and from no photograph of this one: the
+        # dials' faces, a glovebox, the heater under the dash, a second floor lever for the power take-off
+        # that drove the tower's pump, the headliner, a mirror and visors, the bench's pleats, a ribbed mat.
+        white, pleat, chrome = parts(g, "sign/cab", True), parts(g, "black/cab"), parts(g, "chrome", True)
+        for k in range(3):
+            c = T(14.81, 1.0 + k * 0.45, 5.85)
+            white.disc(P(*c), (-1, 0, 0), 0.125 * FT, 0.02 * FT, 14)
+            q = math.radians(40 + 35 * k)
+            tbeam(pleat, (14.775, 1.0 + k * 0.45, 5.85), (14.775, 1.0 + k * 0.45 + 0.09 * math.cos(q), 5.85 + 0.09 * math.sin(q)), 0.012)
+        tb(inner, (14.82, -2.3, 5.45), (14.86, -1.0, 5.95))  # the glovebox's lid
+        ttube(chrome, (14.82, -1.65, 5.85), (14.76, -1.65, 5.85), 0.03, 8)
+        tb(pleat, (14.2, -2.4, 4.2), (15.4, -1.2, 5.0))  # the heater
+        ttube(seat, (14.7, -0.5, 3.68), (14.35, -0.5, 4.85), 0.045, 8)  # the power take-off lever
+        ttube(chrome, (14.35, -0.5, 4.85), (14.33, -0.5, 4.97), 0.07, 10)
+        tb(white, (11.3, -2.9, 8.1), (14.4, 2.9, 8.2))  # headliner
+        for sy in (-1, 1):  # sun visors
+            y0, y1 = sorted((sy * 0.35, sy * 2.6))
+            tb(white, (14.0, y0, 7.95), (14.4, y1, 8.05))
+        tb(pleat, (14.2, -0.35, 7.6), (14.25, 0.35, 7.9))  # the mirror on its stalk
+        tbeam(chrome, (14.22, 0.0, 7.9), (14.22, 0.0, 8.1), 0.04)
+        for k in range(9):  # pleats in the bench's back and cushion
+            y = -2.4 + k * 0.6
+            tb(pleat, (11.7, y - 0.04, 5.45), (11.73, y + 0.04, 7.15))
+            tb(pleat, (11.5, y - 0.04, 5.3), (12.8, y + 0.04, 5.33))
+        for k in range(10):  # the mat's ribs under the driver's feet
+            y = 0.3 + k * 0.25
+            tb(pleat, (12.9, y - 0.03, 3.68), (14.8, y + 0.03, 3.7))
+        door_chrome = parts(drv, "chrome", True)
+        tbeam(door_chrome, (12.4, 2.84, 5.3), (12.4, 2.72, 5.3), 0.05)  # the window winder, its crank and knob
+        tbeam(door_chrome, (12.4, 2.72, 5.3), (12.75, 2.72, 5.1), 0.04)
+        ttube(door_chrome, (12.75, 2.72, 5.1), (12.75, 2.6, 5.1), 0.04, 8)
+        tbeam(door_chrome, (14.6, 2.84, 5.55), (14.6, 2.74, 5.55), 0.04)  # the door's inside handle
+        tbeam(door_chrome, (14.6, 2.74, 5.55), (14.2, 2.74, 5.5), 0.04)
     hull(
         shell,
         [

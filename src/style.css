@@ -132,7 +132,7 @@ body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }
 .reticle { display: none; position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none !important; }
 #ui.walking .reticle { display: block; }
 /* the rim of the helmet's visor, through the eyes, when chosen: a soft dark edge and the curve of the seal at the corners, drawn over either look */
-.visor { display: none; position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.visor { display: none; position: absolute; inset: 0; z-index: -1; pointer-events: none !important; overflow: hidden; }
 #ui.walking.eyes.visor-on .visor { display: block; }
 .visor::before { content: ''; position: absolute; left: 50%; top: 47%; width: max(122vw, 150vh); height: max(112vh, 82vw); transform: translate(-50%, -50%); border-radius: 50%; box-shadow: 0 0 0 100vmax rgba(9, 10, 12, 0.62), inset 0 0 6vmin 2vmin rgba(9, 10, 12, 0.5); }
 .visor::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 62% at 50% 46%, transparent 62%, rgba(9, 10, 12, 0.16) 100%); }
