@@ -175,7 +175,7 @@ let target: Target | null = null;
 /** Where the walker stood when the info card was opened: walking away from it puts it down. */
 let cardAt: { x: number; z: number } | null = null;
 stage.onWalkTarget = (found) => {
-  target = found && choices(found, flight, stage.walkingAs ?? '').length ? found : null;
+  target = found && choices(found, flight, stage.walkingAs ?? '', stage.workings).length ? found : null;
   ui.setWalkTarget(target ? nameOf(target, flight) : null);
   ui.wheel.close(); // what it was about is no longer in front of you
 };
@@ -192,7 +192,7 @@ function act(): void {
     ui.showWalkCard(null);
     return;
   }
-  const list = choices(on, flight, stage.walkingAs ?? '');
+  const list = choices(on, flight, stage.walkingAs ?? '', stage.workings);
   // while it is open the walker stands still and the captured mouse points at choices; Escape shuts it
   stage.walk.hold(
     (dx, dy) => ui.wheel.nudge(dx, dy),
@@ -220,6 +220,7 @@ function perform(on: Target, { verb }: Choice): void {
     stage.becomeWalk(verb.model);
   } else if (verb.do === 'action') {
     if (verb.action.do.kind === 'slider') stage.operate(verb.model, verb.action.do.to);
+    else stage.workAction(verb.model, verb.node, verb.action, verb.stop);
   } else if (verb.do === 'inspect') {
     // out of the walk, and round the thing itself: a place in the surroundings, or a part in its own section
     if (on.place) stage.walkVisit();

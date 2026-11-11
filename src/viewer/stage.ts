@@ -7,14 +7,15 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { sameTarget, type Target } from '../actions';
-import type { Flight as FlightData, ModelDef } from '../types';
+import { sameTarget, type Target, type Workings } from '../actions';
+import type { Action, Flight as FlightData, ModelDef } from '../types';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
 import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
+import { Works } from './works';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|concrete|suit|galvanised)/;
@@ -124,6 +125,10 @@ export class Stage {
   private tap: { t: number; x: number; y: number; walker: string | null } = { t: 0, x: 0, y: 0, walker: null };
   /** Which model is being walked as: an index into `staged`, or -1. */
   private walked = -1;
+  /** The lifts a model marks under each of its top-level nodes, found once (markedOn). */
+  private readonly lifts = new WeakMap<THREE.Object3D, Action[]>();
+  /** The doors and lifts of the flight's models, as they stand (works.ts). */
+  private readonly works = new Works();
   /** While walking: the figure is drawn into the shadow map only (the view is through its eyes). */
   private unseen = false;
   /** While walking: what is being looked at from within reach, and where the ray met it. */
@@ -946,7 +951,7 @@ export class Stage {
       // nor past scenery between the camera and what it is looking at
       near = Math.min(near, Math.max(0.03, (0.9 * height) / Math.hypot(1, tan)), Math.max(0.03, 0.25 * toTarget));
     }
-    const far = toCentre + this.bounds.radius + (this.setting.floor ? 9000 : 10);
+    const far = toCentre + this.bounds.radius + (this.setting.horizon ?? 10);
     if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.near = near;
       this.camera.far = far;
@@ -1086,6 +1091,7 @@ export class Stage {
 
   private frame(): void {
     const began = performance.now();
+    if (this.setting.attend?.(this.camera.position)) this.dirty = true;
     this.step();
     this.frames++;
     this.work += performance.now() - began;
@@ -1107,6 +1113,7 @@ export class Stage {
       if (f.t >= 1) this.flyTo = null;
     }
     this.settle(dt);
+    this.runWorks(dt);
     if (this.walk.active) this.stepWalk(dt);
     else {
       if (this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
@@ -1251,12 +1258,61 @@ export class Stage {
    * What a ray from the walker's eyes has met, in the flight's terms: which model and part, whether
    * it is a window, or which place in the surroundings. Null for scenery that is nothing in particular.
    */
+  /**
+   * The doors and lifts a model marks on its own nodes (extras `door` with a `swing` in degrees
+   * about the vertical, anticlockwise from above; `lift` with the heights of its `stops`), as
+   * the Actions they amount to: the door `mesh` is part of, and every lift under the same
+   * top-level node (a lift is called from anywhere on its structure). `root` is the model.
+   */
+  private markedOn(mesh: THREE.Object3D, root: THREE.Object3D): Target['marked'] {
+    const actions: Action[] = [];
+    let top: THREE.Object3D = mesh;
+    for (let o: THREE.Object3D | null = mesh; o && o !== root; o = o.parent) {
+      if (o.name) top = o;
+      if (o.userData.door && o.name)
+        actions.push({
+          id: `door:${o.name}`,
+          label: 'Open',
+          do: {
+            kind: 'toggle',
+            back: 'Close',
+            moves: [
+              {
+                kind: 'swing',
+                node: o.name,
+                axis: [0, 1, 0],
+                angle: THREE.MathUtils.degToRad(Number(o.userData.swing) || 100),
+                from: 0,
+                to: 1,
+              },
+            ],
+          },
+        });
+    }
+    let lifts = this.lifts.get(top);
+    if (!lifts) {
+      lifts = [];
+      top.traverse((o) => {
+        const stops = o.userData.stops as number[] | undefined;
+        if (!o.userData.lift || !o.name || !Array.isArray(stops)) return;
+        lifts!.push({
+          id: `lift:${o.name}`,
+          label: 'Call the lift',
+          do: { kind: 'lift', node: o.name, stops: stops.map((y, i) => ({ name: i ? `level ${i}` : 'the bottom', by: [0, y, 0] })) },
+        });
+      });
+      this.lifts.set(top, lifts);
+    }
+    actions.push(...lifts);
+    return actions.length && top.name ? { under: top.name, actions } : undefined;
+  }
+
   private targetOf(hit: Hit): { target: Target; box?: THREE.Box3 } | null {
     const material = hit.mesh.material as THREE.Material | THREE.Material[];
     const pane = (Array.isArray(material) ? material[0] : material)?.name.startsWith('glass') || undefined;
     const climb = Boolean(hit.mesh.userData.climb || hit.mesh.parent?.userData.climb) || undefined;
     const place = this.placeOf(hit.mesh, hit.point);
-    if (place) return { target: { place: place.name, pane, climb }, box: place.box };
+    if (place) return { target: { place: place.name, pane, climb, marked: this.markedOn(hit.mesh, this.surroundings!) }, box: place.box };
     const names: string[] = [];
     for (let o: THREE.Object3D | null = hit.mesh; o; o = o.parent) {
       const at = this.staged.findIndex((s) => s.shown === o);
@@ -1265,7 +1321,16 @@ export class Stage {
         continue;
       }
       const def = this.defs[at]!;
-      return { target: { model: def.id, node: def.parts.find((p) => names.includes(p.node))?.node, pane, climb } };
+      return {
+        target: {
+          model: def.id,
+          node: def.parts.find((p) => names.includes(p.node))?.node,
+          pane,
+          climb,
+          path: names.filter(Boolean),
+          marked: this.markedOn(hit.mesh, o),
+        },
+      };
     }
     return pane || climb ? { target: { pane, climb } } : null;
   }
@@ -1301,6 +1366,53 @@ export class Stage {
   operate(model: string, to: number): void {
     const at = this.defs.findIndex((m) => m.id === model);
     if (at >= 0) this.apartGoal[at] = this.apartOwn[at] = THREE.MathUtils.clamp(to, 0, 1);
+  }
+
+  /** The levels of detail of a model: an action moves the same node in each. */
+  private levelsOf(model: string): THREE.Object3D[] {
+    if (!model) return this.surroundings ? [this.surroundings] : []; // scenery: no model, one level
+    return this.staged[this.defs.findIndex((m) => m.id === model)]?.group.children ?? [];
+  }
+
+  /**
+   * Work something a part declares as an action (types.ts: Action): open or shut a toggle, or
+   * send a lift to a stop (`'call'`: to the stop nearest the walker's feet).
+   */
+  workAction(model: string, node: string, action: Action, stop?: number | 'call'): void {
+    const key = `${model}/${node}/${action.id}`;
+    const levels = this.levelsOf(model);
+    if (action.do.kind === 'toggle') this.works.toggle(key, action, levels, node);
+    else if (action.do.kind === 'lift') {
+      const at = stop === 'call' || stop === undefined ? this.works.nearest(key, action, levels, node, this.walk.body.position.y) : stop;
+      this.works.send(key, action, levels, node, at);
+    }
+  }
+
+  /** How the doors and lifts stand: what the wheel needs to know to name their verbs. */
+  readonly workings: Workings = {
+    open: (model, node, action) => this.works.isOpen(`${model}/${node}/${action.id}`),
+    stop: (model, node, action) => this.works.stopOf(`${model}/${node}/${action.id}`),
+    riding: (model, node, action) =>
+      this.standsOn(this.works.platform(`${model}/${node}/${action.id}`, action, this.levelsOf(model), node)),
+  };
+
+  /** Is the walker standing on (a mesh under) one of these nodes? */
+  private standsOn(nodes: THREE.Object3D[]): boolean {
+    const walk = this.walk;
+    if (!walk.active || !walk.body.grounded || !nodes.length) return false;
+    const from = walk.body.position.clone().setY(walk.body.position.y + 0.3);
+    const under = walk.solids.cast(from, new THREE.Vector3(0, -1, 0), 0.7);
+    for (let o: THREE.Object3D | null = under?.mesh ?? null; o; o = o.parent) if (nodes.includes(o)) return true;
+    return false;
+  }
+
+  /** A frame of the doors and lifts: whatever is on its way goes on, and a lift takes the walker with it. */
+  private runWorks(dt: number): void {
+    const carried = this.works.step(dt);
+    if (!carried) return;
+    this.dirty = true;
+    this.renderer.shadowMap.needsUpdate = true;
+    for (const lift of carried) if (this.standsOn(lift.nodes)) this.walk.body.position.add(lift.delta);
   }
 
   /** How a figure's model is turned on the stage to face the way the walker's body faces (which looks along (-sin, -cos) of its heading). */
@@ -1420,7 +1532,7 @@ export class Stage {
     this.poseFigure();
     this.fitWalkShadows();
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting
-    const far = this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.floor ? 9000 : 10);
+    const far = this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.horizon ?? 10);
     if (Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.far = far;
       this.camera.updateProjectionMatrix();

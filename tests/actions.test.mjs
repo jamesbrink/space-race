@@ -22,7 +22,7 @@ test('a part offers its information, the verbs its flight gave it, and a closer 
   assert.deepEqual(ids({ model: 'rig', node: 'Arm' }), ['info', 'action:lower', 'inspect']);
   assert.deepEqual(ids({ model: 'rig', node: 'Cab' }), ['info', 'inspect']);
   const lower = choices({ model: 'rig', node: 'Arm' }, flight, 'ann')[1];
-  assert.deepEqual(lower.verb, { do: 'action', model: 'rig', action: flight.models[0].parts[0].actions[0] });
+  assert.deepEqual(lower.verb, { do: 'action', model: 'rig', node: 'Arm', action: flight.models[0].parts[0].actions[0] });
   assert.equal(lower.label, 'Lower it');
 });
 

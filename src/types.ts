@@ -90,13 +90,32 @@ export type Move = { from: number; to: number; node?: string } & (
  * slider  run the part's model along its slider to `to` (0 to 1), at the pace it always moves:
  *         whatever `moves` the model's parts have play out, so "Roll the structure back" or
  *         "Lower the cab" is a position on the slider.
+ * toggle  a door, a hatch, a gate: play `moves` (swings and slides, each on a named node of the
+ *         part with its origin on its hinge; `from` and `to` are fractions of this action's own
+ *         run) forward over `seconds` (default 1), and backward when chosen again, when the verb
+ *         shown is `back` ('Close'). It is solid as posed, so an open door must clear its opening.
+ * lift    `node` is a platform, built at its first stop; each stop is a name and a slide `by`
+ *         from where it was built, metres, in the node's parent's coordinates (as a `slide` move).
+ *         It travels at `speed` (default 1 m/s) and carries whoever stands on it. Standing on
+ *         it the wheel offers "Ride to <name>" for each other stop; from anywhere else, "Call".
+ *
+ * A node driven by a toggle or a lift must have the same name at every level of detail, and must
+ * not also be moved by the part's slider `moves`: the two would fight over it.
  */
 export interface Action {
   /** Unique among the part's actions. */
   id: string;
-  /** The verb as the wheel shows it: 'Roll back'. */
+  /** The verb as the wheel shows it: 'Roll back', 'Open'. */
   label: string;
-  do: { kind: 'slider'; to: number };
+  /**
+   * Offer it only when what is faced is under this node of the part (the door itself, a call
+   * button, the lift's car). Left out, it is offered anywhere on the part.
+   */
+  on?: string;
+  do:
+    | { kind: 'slider'; to: number }
+    | { kind: 'toggle'; moves: Move[]; seconds?: number; back: string }
+    | { kind: 'lift'; node: string; stops: { name: string; by: [number, number, number] }[]; speed?: number };
 }
 
 export interface Part {

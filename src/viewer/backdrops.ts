@@ -34,6 +34,8 @@ export interface Setting {
   reach?: number;
   /** How far away the furthest thing in the place is, metres: the camera sees at least this far. Left out: only the model. */
   horizon?: number;
+  /** Where the eye is: a place may draw what is near it in more detail. True if that changed what is drawn. */
+  attend?: (eye: THREE.Vector3) => boolean;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
@@ -144,6 +146,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer): Setting {
     horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
     tick: cape.tick,
     simplify: cape.simplify,
+    attend: cape.attend,
   };
 }
 

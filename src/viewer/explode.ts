@@ -140,7 +140,7 @@ const ease = (x: number) => x * x * (3 - 2 * x);
  * A part that leaves as hardware does: a sequence of motions, each on a node of the part and
  * each over its own stretch of the slider (types.ts: Move).
  */
-class Sequence {
+export class Sequence {
   private readonly nodes = new Map<THREE.Object3D, { position: THREE.Vector3; quaternion: THREE.Quaternion }>();
   private readonly steps: { move: Move; object: THREE.Object3D; driver?: Driver }[] = [];
 

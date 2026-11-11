@@ -191,7 +191,17 @@ function terrain(groundY: number, cel: { value: number }): { mesh: THREE.Mesh; t
   return { mesh, tick: (dt) => (time.value += dt) };
 }
 
-function scrub(groundY: number): { plants: THREE.InstancedMesh; tufts: THREE.InstancedMesh } {
+/** Within this far of the eye a plant is drawn frond by frond; beyond it, as one rounded tuft. Metres. */
+const FRONDS_WITHIN = 260;
+/** The plants are sorted into near and far again once the eye has moved this far. */
+const RESORT = 35;
+
+function scrub(groundY: number): {
+  plants: THREE.InstancedMesh;
+  tufts: THREE.InstancedMesh;
+  /** Sort the plants into those drawn in full and those drawn as tufts, for an eye at (x, z) on the compass; `drawn` is the cel look, all tufts. */
+  arrange: (x: number, z: number, drawn: boolean) => void;
+} {
   const count = 6000;
   // One clump of saw palmetto, turned and stretched differently each time it is used: a low
   // mass of shade with fans of blades arching out of it. Up close it has leaves; from across
@@ -320,14 +330,43 @@ function scrub(groundY: number): { plants: THREE.InstancedMesh; tufts: THREE.Ins
   for (let i = 0; i < at.count; i++) at.setXYZ(i, at.getX(i) * 0.5, Math.max(at.getY(i), -0.12) * 0.42 + 0.05, at.getZ(i) * 0.5);
   tuft.computeVertexNormals();
   const tufts = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({ roughness: 1 }), count);
-  tufts.instanceMatrix = mesh.instanceMatrix;
-  for (let i = 0; i < count; i++) {
-    mesh.getColorAt(i, colour);
-    tufts.setColorAt(i, colour.multiplyScalar(2.2)); // the fronds' own colours brightened these; a tuft has only this one
-  }
   tufts.castShadow = false;
-  tufts.visible = false;
-  return { plants: mesh, tufts };
+  // Every plant's place and colour, kept apart from the two meshes: each plant is in one of them
+  // at a time. A clump of fronds is 380 triangles and there are six thousand; drawn frond by
+  // frond only near the eye, where fronds can be seen, the far ones cost a fifth as much.
+  const places = Array.from({ length: count }, (_, i) => {
+    const matrix = new THREE.Matrix4();
+    const tone = new THREE.Color();
+    mesh.getMatrixAt(i, matrix);
+    mesh.getColorAt(i, tone);
+    return { matrix, tone, x: matrix.elements[12]!, z: matrix.elements[14]! };
+  });
+  const arrange = (x: number, z: number, drawn: boolean) => {
+    let near = 0;
+    let far = 0;
+    for (const place of places) {
+      if (!drawn && Math.hypot(place.x - x, place.z - z) < FRONDS_WITHIN) {
+        mesh.setMatrixAt(near, place.matrix);
+        mesh.setColorAt(near++, place.tone);
+      } else {
+        tufts.setMatrixAt(far, place.matrix);
+        // a tuft has one colour where the fronds had many lit faces: brighter, and brighter still as a drawing
+        tufts.setColorAt(far++, colour.copy(place.tone).multiplyScalar(drawn ? 2.2 : 1.25));
+      }
+    }
+    for (const [o, n] of [
+      [mesh, near],
+      [tufts, far],
+    ] as const) {
+      o.count = n;
+      o.visible = n > 0;
+      o.instanceMatrix.needsUpdate = true;
+      if (o.instanceColor) o.instanceColor.needsUpdate = true;
+      o.computeBoundingSphere();
+    }
+  };
+  arrange(0, 0, false);
+  return { plants: mesh, tufts, arrange };
 }
 
 /** Everything round the pad. `groundY` is the terrain's height; the pad's own surface is 0. */
@@ -337,20 +376,30 @@ export function buildCape(groundY: number): {
   tick: (dt: number) => void;
   /** Draw the land and its plants in full, or simplified for the cel look. */
   simplify: (on: boolean) => void;
+  /** Where the eye is (world): what is near it is drawn in full. True if that changed what is drawn. */
+  attend: (eye: THREE.Vector3) => boolean;
 } {
   const cel = { value: 0 };
   const { mesh, tick } = terrain(groundY, cel);
-  const { plants, tufts } = scrub(groundY);
+  const { plants, tufts, arrange } = scrub(groundY);
   plants.receiveShadow = tufts.receiveShadow = true;
   const built = buildCape1961(groundY); // the other complexes and the lighthouse, where they stood
   // laid out on the compass, then turned as one to lie round the pad model
   const site = new THREE.Group();
   site.add(plants, tufts, ...built);
   site.rotation.y = COMPASS;
+  const sorted = new THREE.Vector3(0, 0, 0); // where the eye was, on the compass, when the plants were last sorted
   const simplify = (on: boolean) => {
     cel.value = Number(on);
-    plants.visible = !on;
-    tufts.visible = on;
+    arrange(sorted.x, sorted.z, on);
   };
-  return { floor: mesh, scenery: [site], tick, simplify };
+  const eye = new THREE.Vector3();
+  const attend = (at: THREE.Vector3) => {
+    site.worldToLocal(eye.copy(at));
+    if (Math.hypot(eye.x - sorted.x, eye.z - sorted.z) < RESORT) return false;
+    sorted.copy(eye);
+    arrange(eye.x, eye.z, cel.value > 0);
+    return true;
+  };
+  return { floor: mesh, scenery: [site], tick, simplify, attend };
 }
