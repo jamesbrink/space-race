@@ -566,6 +566,38 @@ function* billowsMade(): Generator<void, THREE.Data3DTexture> {
   return texture;
 }
 
+/** The march's three results at its own (low) size: light and opacity, where the cloud is, the far cover's share. */
+const lowTarget = () =>
+  new THREE.WebGLRenderTarget(1, 1, {
+    count: 3,
+    type: THREE.HalfFloatType,
+    format: THREE.RGBAFormat,
+    minFilter: THREE.NearestFilter,
+    magFilter: THREE.NearestFilter,
+    depthBuffer: false,
+  });
+
+/** How much of the last blend each still frame keeps (`CloudPass.history`): about three frames' worth. */
+const KEEP = 0.65;
+
+/** The blend: light and the far cover mixed; where the cloud is, from whichever frame has any (an empty one says 6e4). */
+const SETTLE = /* glsl */ `
+  precision highp float;
+  uniform sampler2D tNew0, tNew1, tNew2, tOld0, tOld1, tOld2;
+  uniform float uKeep;
+  in vec2 vUv;
+  layout(location = 0) out vec4 oColour;
+  layout(location = 1) out vec4 oInfo;
+  layout(location = 2) out vec4 oEven;
+  void main() {
+    vec4 c = texture(tNew0, vUv), oc = texture(tOld0, vUv);
+    vec4 i = texture(tNew1, vUv), oi = texture(tOld1, vUv);
+    oColour = mix(c, oc, uKeep);
+    bool here = c.a > 1e-3, was = oc.a > 1e-3;
+    oInfo = here ? (was ? mix(i, oi, uKeep) : i) : (was && uKeep > 0.0 ? oi : i);
+    oEven = mix(texture(tNew2, vUv), texture(tOld2, vUv), uKeep);
+  }`;
+
 const target = (size: number, linear: boolean) =>
   new THREE.WebGLRenderTarget(size, size, {
     format: THREE.RedFormat,
@@ -613,13 +645,26 @@ export class CloudPass extends Pass {
    */
   veils: THREE.Object3D[] = [];
   private readonly quad = new FullScreenQuad();
-  private readonly low = new THREE.WebGLRenderTarget(1, 1, {
-    count: 3,
-    type: THREE.HalfFloatType,
-    format: THREE.RGBAFormat,
-    minFilter: THREE.NearestFilter,
-    magFilter: THREE.NearestFilter,
-    depthBuffer: false,
+  private readonly low = lowTarget();
+  /**
+   * The march's last results, blended (`settle`): while the eye is still, each frame's clouds are mixed with what
+   * came before, so an edge the march catches one frame and misses the next (a billow's tip thinner than its
+   * pixel, drifting) neither flickers nor fills a whole pixel; the moment the eye moves they start again.
+   */
+  private readonly history = [lowTarget(), lowTarget()];
+  private ping = 0;
+  private settled = false;
+  private readonly lastEye = new THREE.Vector3(Number.NaN, 0, 0);
+  private readonly lastTurn = new THREE.Quaternion();
+  private readonly lastLens = new THREE.Matrix4();
+  private readonly blend = raw(SETTLE, {
+    tNew0: { value: this.low.textures[0]! },
+    tNew1: { value: this.low.textures[1]! },
+    tNew2: { value: this.low.textures[2]! },
+    tOld0: { value: null as THREE.Texture | null },
+    tOld1: { value: null as THREE.Texture | null },
+    tOld2: { value: null as THREE.Texture | null },
+    uKeep: { value: 0 },
   });
   /** Fire and smoke in front of the scene (`veils`), drawn again on their own: how much they cover, and how far off the nearest is. */
   private readonly veil = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType) });
@@ -737,6 +782,8 @@ export class CloudPass extends Pass {
       h = Math.max(1, Math.ceil(frame.height / step));
     if (w === this.low.width && h === this.low.height) return;
     this.low.setSize(w, h);
+    for (const t of this.history) t.setSize(w, h);
+    this.settled = false;
     this.uniforms.uLow.value.set(w, h);
   }
 
@@ -787,6 +834,7 @@ export class CloudPass extends Pass {
     renderer.setRenderTarget(this.low);
     this.quad.material = this.march;
     this.quad.render(renderer);
+    this.settle(renderer, eye);
 
     u.uVeils.value = Number(this.drawVeils(renderer, readBuffer));
     u.uClouds.value = 1;
@@ -803,6 +851,35 @@ export class CloudPass extends Pass {
     this.quad.render(renderer);
     renderer.autoClear = autoClear;
     readBuffer.resolveDepthBuffer = resolve;
+  }
+
+  /** Blend the march's results into the history (see `history`), and have the composite read the blend. */
+  private settle(renderer: THREE.WebGLRenderer, eye: THREE.Vector3): void {
+    const camera = this.camera;
+    const still =
+      this.settled &&
+      eye.distanceToSquared(this.lastEye) < 1e-8 &&
+      camera.quaternion.angleTo(this.lastTurn) < 1e-7 &&
+      camera.projectionMatrix.equals(this.lastLens);
+    this.lastEye.copy(eye);
+    this.lastTurn.copy(camera.quaternion);
+    this.lastLens.copy(camera.projectionMatrix);
+    const from = this.history[this.ping]!,
+      to = this.history[1 - this.ping]!;
+    const b = this.blend.uniforms;
+    b.tOld0!.value = from.textures[0];
+    b.tOld1!.value = from.textures[1];
+    b.tOld2!.value = from.textures[2];
+    b.uKeep!.value = still ? KEEP : 0;
+    renderer.setRenderTarget(to);
+    this.quad.material = this.blend;
+    this.quad.render(renderer);
+    const u = this.uniforms;
+    u.tCloud.value = to.textures[0]!;
+    u.tInfo.value = to.textures[1]!;
+    u.tEven.value = to.textures[2]!;
+    this.ping = 1 - this.ping;
+    this.settled = true;
   }
 
   /** Draw the veils on show on their own, with their depth: false if none is. */
@@ -903,7 +980,7 @@ export class CloudPass extends Pass {
   }
 
   dispose(): void {
-    for (const t of [this.low, this.veil, this.field, this.cells, this.row, this.clearAir]) t.dispose();
+    for (const t of [this.low, ...this.history, this.veil, this.field, this.cells, this.row, this.clearAir]) t.dispose();
     this.uniforms.tBillows.value?.dispose();
     this.quad.dispose();
   }
