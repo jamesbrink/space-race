@@ -228,7 +228,7 @@ export class Ui {
       <div class="walkbar" hidden><span></span><button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-exit>Exit walk</button></div>
       <div class="visor" aria-hidden="true"></div>
       <div class="stick" aria-hidden="true"><i></i></div>
-      <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump>Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-act hidden>Act</button></div>
+      <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump>Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-act hidden>Act</button></div>
       <div class="reticle" aria-hidden="true"><i></i><p><kbd>E</kbd><span></span></p></div>
       <aside class="walk-card" hidden aria-live="polite">
         <button class="card-close" aria-label="Close">×</button>
@@ -336,11 +336,11 @@ export class Ui {
     // the visor's rim round the view through the eyes: a choice, remembered
     const visor = (shown: boolean) => {
       root.classList.toggle('visor-on', shown);
-      root.querySelector('[data-walk-visor]')!.setAttribute('aria-pressed', String(shown));
+      for (const b of root.querySelectorAll('[data-walk-visor]')) b.setAttribute('aria-pressed', String(shown));
       prefs.set('walkVisor', shown);
     };
     visor(prefs.get('walkVisor'));
-    root.querySelector('[data-walk-visor]')!.addEventListener('click', () => visor(!prefs.get('walkVisor')));
+    for (const b of root.querySelectorAll('[data-walk-visor]')) b.addEventListener('click', () => visor(!prefs.get('walkVisor')));
     root.querySelector('.card-close')!.addEventListener('click', () => this.showWalkCard(null));
     // (on the press, not the click: a jump is wanted now, and a finger held on the button must not look round)
     root.querySelector('[data-walk-jump]')!.addEventListener('pointerdown', (e) => {
@@ -352,8 +352,12 @@ export class Ui {
       const way = Number(b.dataset.walkPush);
       b.addEventListener('pointerdown', (e) => {
         e.preventDefault();
-        b.setPointerCapture(e.pointerId);
         on.walkPush(way);
+        try {
+          b.setPointerCapture(e.pointerId); // (so that a finger sliding off it still lets go here)
+        } catch {
+          // a pointer the browser no longer has: it lets go by itself
+        }
       });
       for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => on.walkPush(0));
     });

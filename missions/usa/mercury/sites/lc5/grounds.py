@@ -412,4 +412,6 @@ def build(parts: Parts) -> None:
         source="FHSU F16_017 and F19_008, July 1961; whether they stood in May is not known",
     ):
         racks(parts)
+        for mat, label in (("chassis", "Cable racks"), ("cable", "Cable racks"), ("galv", "Scaffold stair"), ("plank", "Scaffold stair")):
+            parts.mark("Yard", mat, label=label)
     poles(parts)

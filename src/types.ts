@@ -270,6 +270,24 @@ export interface ModelDef {
     /** Half the figure's width, metres: how near its middle can come to a wall (default 0.26, a clothed adult's shoulders). */
     radius?: number;
   };
+  /**
+   * Places in the model a walker can take (a couch, a seat): boarded on foot from the wheel, at
+   * `from` (a node of the model: the hatch), while the clock is within `open` (seconds from
+   * launch; boarding does not move the clock). Seated, the eyes are at `eye` in `node`'s frame
+   * (metres; default its origin), looking along its +Z, and the nodes in `hide` are not drawn
+   * (the helmet's visor that would be in front of the eyes). `standIn` is for a model that has no
+   * such node yet: the node is made at the middle of this mesh, its +Z along `look` (in the model's
+   * frame). Say so where it is used: it is a placeholder, not the model.
+   */
+  seats?: {
+    node: string;
+    label: string;
+    from: string;
+    open: [number, number];
+    eye?: [number, number, number];
+    hide?: string[];
+    standIn?: { mesh: string; look: [number, number, number] };
+  }[];
   /** Where the model stands in the flight's one scene, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */

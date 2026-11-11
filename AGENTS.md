@@ -97,6 +97,7 @@ src/
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
   viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
+  viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), cumulus as puffs with flat bases, their shadows
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
@@ -122,6 +123,7 @@ src/
   viewer/lamps.ts                     floodlights: every lamp lens a model carries lights the scene after dark
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
+  viewer/plume.ts                     the engine's fire, drawn: tone bands and shock diamonds, opening as the air thins
   sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air
   flown.ts                            the Flown panel: the simulator's run against the clock, and against the reports' figures
 tools/
@@ -338,7 +340,9 @@ never adjusted to bring a check in.
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
   the run's samples, in the Earth's turning axes, in the site's frame) and points it as the run
   does (the gyros' tilt going up, heat shield first after the turnaround). Before liftoff and after
-  the landing it stands on its pad: the inventory. The chase camera (`CAMERA_MODES`: C) turns
+  the landing it stands on its pad: the inventory. While the engine burns, `viewer/plume.ts` draws
+  its fire under the node `flies.engine` names: a designed shape (flat tone bands, shock diamonds
+  in thick air, a widening veil as the air thins), sized to read, not measured. The chase camera (`CAMERA_MODES`: C) turns
   about it and is carried with it, and carries the Sun's shadow map too. The site's frame is flat:
   downrange the sea falls away below it (18.6 km by the landing), and the sky is the ground's at
   any height. A globe needs the scene's frame to become the Earth-centred one (origin.ts already

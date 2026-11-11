@@ -125,7 +125,8 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .walk-buttons [data-walk-push] { padding: 6px; line-height: 1.25; letter-spacing: 0.06em; overflow-wrap: anywhere; }
 .walk-buttons [data-walk-push='1']::before { content: '\25B2'; display: block; margin-bottom: 3px; }
 .walk-buttons [data-walk-push='-1']::before { content: '\25BC'; display: block; margin-bottom: 3px; }
-@media (hover: none), (pointer: coarse) { #ui.walking .stick { display: block; } #ui.walking .walk-buttons { display: flex; } }
+@media (hover: none), (pointer: coarse) { #ui.walking .stick { display: block; } #ui.walking .walk-buttons { display: flex; } .walkbar [data-walk-visor] { display: none; } }
+/* (with a mouse the bar has the visor's switch, and the round buttons are not shown) */
 /* on foot the view is the whole screen, whatever share a sheet had of it */
 body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }
 /* the reticle: a dot where the eyes point; within reach of something, a ring and its name */

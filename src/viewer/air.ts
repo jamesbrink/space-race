@@ -190,6 +190,9 @@ export class CloudLayer {
   private sky: THREE.HemisphereLight | null = null;
   /** Where the eye was over the field (x, z) when the puffs were last laid out. */
   private laid = new THREE.Vector2(1e9, 1e9);
+  /** Where the eye was (field's frame) when they were last put in order. */
+  private readonly sorted = new THREE.Vector3(1e9, 0, 1e9);
+  private readonly puffs: { x: number; y: number; z: number; radius: number; far: number }[] = [];
   private readonly clouds: Clouds;
   private readonly base: number;
   private readonly reach: number;
@@ -203,7 +206,7 @@ export class CloudLayer {
     const capacity = 16000;
     const geometry = new THREE.PlaneGeometry(2, 2);
     // a plain material whose shader is wholly replaced: so the cel look's twin of it (look.ts) is the same shader
-    const material = new THREE.MeshBasicMaterial({ name: 'clouds', alphaToCoverage: true });
+    const material = new THREE.MeshBasicMaterial({ name: 'clouds', alphaToCoverage: true, depthWrite: false });
     const uniforms = {
       uCloudDrift: cloudUniform,
       uSunDir: { value: this.sunDir },
@@ -294,10 +297,11 @@ export class CloudLayer {
     this.mesh.frustumCulled = false;
     this.mesh.raycast = () => {};
     this.mesh.onBeforeRender = (_renderer, scene) => this.light(scene);
+    this.mesh.renderOrder = 11; // after everything solid, and after the bases' sheet
 
     // The clouds' flat bases, as one sheet under the whole layer facing down: where the field says there is
     // cloud it is the grey underside, lit by the sky and what the ground sends up, its edge soft
-    const sheet = new THREE.MeshBasicMaterial({ name: 'clouds', alphaToCoverage: true, side: THREE.FrontSide });
+    const sheet = new THREE.MeshBasicMaterial({ name: 'clouds', alphaToCoverage: true, depthWrite: false });
     sheet.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = /* glsl */ `
@@ -338,6 +342,7 @@ export class CloudLayer {
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * reach, 2 * reach, 1, 1).rotateX(Math.PI / 2), sheet);
     this.floor.position.y = this.base;
     this.floor.frustumCulled = false;
+    this.floor.renderOrder = 10;
     this.floor.raycast = () => {};
     this.floor.onBeforeRender = (_renderer, scene) => this.light(scene);
     this.group.add(this.mesh, this.floor);
@@ -354,8 +359,9 @@ export class CloudLayer {
     this.floor.position.set(eye.x, this.base, eye.z);
     const fx = eye.x - cloudUniform.value.x,
       fz = eye.z - cloudUniform.value.z;
-    if (Math.hypot(fx - this.laid.x, fz - this.laid.y) < this.reach * 0.15) return false;
-    this.lay(fx, fz);
+    if (Math.hypot(fx - this.laid.x, fz - this.laid.y) >= this.reach * 0.15) this.lay(fx, fz);
+    else if (Math.hypot(fx - this.sorted.x, fz - this.sorted.z, eye.y - this.sorted.y) < 60) return false;
+    this.sort(fx, eye.y, fz);
     return true;
   }
 
@@ -364,17 +370,13 @@ export class CloudLayer {
     this.laid.set(x, z);
     const c = this.clouds,
       step = this.spacing;
-    const m = new THREE.Matrix4(),
-      q = new THREE.Quaternion(),
-      s = new THREE.Vector3(),
-      p = new THREE.Vector3();
-    let n = 0;
+    this.puffs.length = 0;
     const i0 = Math.floor((x - this.reach) / step),
       i1 = Math.floor((x + this.reach) / step),
       j0 = Math.floor((z - this.reach) / step),
       j1 = Math.floor((z + this.reach) / step);
-    for (let i = i0; i <= i1 && n < this.mesh.instanceMatrix.count; i++)
-      for (let j = j0; j <= j1 && n < this.mesh.instanceMatrix.count; j++) {
+    for (let i = i0; i <= i1 && this.puffs.length < this.mesh.instanceMatrix.count; i++)
+      for (let j = j0; j <= j1 && this.puffs.length < this.mesh.instanceMatrix.count; j++) {
         const r = sequence((i * 73856093) ^ (j * 19349663));
         const px = (i + r()) * step,
           pz = (j + r()) * step;
@@ -385,12 +387,31 @@ export class CloudLayer {
         const radius = step * (0.6 + 0.8 * dens) * (0.75 + 0.5 * r());
         // the lowest puffs sit with their middles under the base, so the base is cut flat across the whole cloud
         const height = this.base + radius * (0.1 + 0.3 * r()) + c.depth * 0.8 * dens ** 1.6 * (0.6 + 0.8 * r());
-        m.compose(p.set(px, height, pz), q, s.setScalar(radius));
-        this.mesh.setMatrixAt(n++, m);
+        this.puffs.push({ x: px, y: height, z: pz, radius, far: 0 });
       }
-    this.mesh.count = n;
+  }
+
+  /**
+   * Put the puffs in order, furthest from the eye first. They write no depth (two discs a few metres apart
+   * in depth, seen from kilometres off, could not be told apart and would flicker), so each covers those
+   * drawn before it: drawn far to near, the nearest is in front.
+   */
+  private sort(x: number, y: number, z: number): void {
+    this.sorted.set(x, y, z);
+    for (const p of this.puffs) p.far = (p.x - x) ** 2 + (p.y - y) ** 2 + (p.z - z) ** 2;
+    this.puffs.sort((a, b) => b.far - a.far);
+    const e = this.mesh.instanceMatrix.array as Float32Array;
+    this.puffs.forEach((p, i) => {
+      e.fill(0, i * 16, i * 16 + 16);
+      e[i * 16] = e[i * 16 + 5] = e[i * 16 + 10] = p.radius;
+      e[i * 16 + 12] = p.x;
+      e[i * 16 + 13] = p.y;
+      e[i * 16 + 14] = p.z;
+      e[i * 16 + 15] = 1;
+    });
+    this.mesh.count = this.puffs.length;
     this.mesh.instanceMatrix.clearUpdateRanges();
-    this.mesh.instanceMatrix.addUpdateRange(0, Math.max(1, n) * 16);
+    this.mesh.instanceMatrix.addUpdateRange(0, Math.max(1, this.puffs.length) * 16);
     this.mesh.instanceMatrix.needsUpdate = true;
   }
 

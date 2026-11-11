@@ -46,6 +46,7 @@ export type Verb =
   | { do: 'inspect' }
   | { do: 'become'; model: string }
   | { do: 'operate'; model: string; node: string; fn: string; name: string; ends?: [string, string] }
+  | { do: 'board'; model: string; seat: string }
   | { do: 'action'; model: string; node: string; action: Action; stop?: number | 'call' };
 
 /** How the things that work stand at the moment (the stage knows): what the wheel calls a verb depends on it. */
@@ -158,6 +159,10 @@ export function choices(target: Target, flight: Flight, as: string, works?: Work
       } else out.push({ id, label: action.label, verb: { ...verb, stop: 'call' } });
     } else out.push({ id, label: action.label, verb });
   }
+  // a place in the model to be taken, from where it is boarded (ModelDef.seats)
+  for (const seat of model?.seats ?? [])
+    if (target.path?.includes(seat.from) || target.node === seat.from)
+      out.push({ id: `board:${seat.node}`, label: `Board: ${seat.label}`, verb: { do: 'board', model: model!.id, seat: seat.node } });
   // leaving the walk to study it from outside: a part of a model, or a place in the surroundings
   if (part || target.place) out.push({ id: 'inspect', label: 'Inspect', verb: { do: 'inspect' } });
   return out;

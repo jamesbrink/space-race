@@ -92,14 +92,14 @@ cherry picker came in from the same side once the structure had gone.
 | Top-level node | Module | Contains |
 | --- | --- | --- |
 | `Hardstand` | hardstand.py | 200 ft of 20 ft slabs, joints, burn and stain, painted 121 ft circle, four flat-bottomed rails let into channels with a flangeway on the gauge side, scale plate, trench covers, WNW apron and the ramp off its end, track on ballast: sleepers, tie plates, spikes, fishplated joints |
-| `LaunchPedestal` | launcher.py | the launch ring, support pads and fin clamps, four legs with struts and jack feet, four-sided deflector, tail-plug housing, two ground cables |
+| `LaunchPedestal` | launcher.py | the launch ring, support pads and fin clamps, four legs with struts and jack feet, four-sided deflector, tail-plug housing, two ground cables: each from a plug under the ring, hanging to the slab, lying in easy curves over the rails, up into a receptacle on its junction box |
 | `UmbilicalMast` | masts.py | cable mast No. 2 (the capsule's), its umbilical to the receptacle, eject line |
 | `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
 | `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, the lift and its shaft, a railed way from the lift to every level with a ladder well in it, hammerhead crane with red obstruction lamps at its ends; work lamps under level 1 and a room lamp in each enclosed level (see "Lights at night"); child nodes below |
 | `CherryPicker` | cherry_picker.py | International Harvester R-series truck: glazed cab with a bench, pedals, handbrake, gear lever, dash and dials, the driver's door and steering wheel as nodes of their own; on the bed the hydraulic tank, gas bottles and the valve bank; at the tail the control station with its four levers (`CherryPicker_Controls`); child nodes below |
-| `GroundEquipment` | ground_equipment.py | LOX topping unit, a second enclosure, chevron box, tripod cameras; the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1 and the tractor unit coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
+| `GroundEquipment` | ground_equipment.py | the LOX topping trailer (`GroundEquipment_LoxTrailer`) and the nitrogen trailer (`…_NitrogenTrailer`), each with dished-head tank, wheels, a control end (cabinet, gauges, two lines with valves and handwheels, the hose coupling) and a hose end (reel, placards); chevron box; four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the tractor unit coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
 | `CameraTowers` | ground_equipment.py | two lattice camera towers, a ladder up each |
-| `Floodlights` | ground_equipment.py | six timber poles in the grass at the pad's edge, a crossarm and three lamps each |
+| `Floodlights` | ground_equipment.py | six timber poles in the grass at the pad's edge, a crossarm bolted through and three lamps each; close to, the ground wire stapled down to its rod, a number tag at eye height, the conduit and switch box |
 
 ## Moving parts
 
@@ -177,7 +177,10 @@ Notes:
 | Pickups that drag the huts | 1957 to 1960 Ford F-100, white, no utility body: wheelbase 110 in (2.794 m), tyre radius 0.361 m; a chain to each hut's skids | wheelbase documented (see "The vehicles"); the rest estimated | no photograph shows how the huts were moved |
 | Searchlights | three 60-inch drums on yokes on four-wheeled trailers, 8 by 4.8 ft beds, drawn olive; lens 5 ft across; 800 million candela in a beam 1.25° wide (lens extras `candela`, `spread`) | that searchlights and their crews worked the pad at night: documented (TM X-53107 p. 7-21 and 8.3.2; *This New Ocean*); the kind, the number, the places and the beam: estimated. The candela and beam are a figure for the type set down from memory and checked against no source | S61-03158 (MR-3 lit hard from the blockhouse side); FHSU F19_001 (MR-4: two sources at the pad's far edge); F19_008 (a large drum on a four-wheeled trailer) |
 | Cherry picker's control station | a grey box at the tail, 2.2 ft wide, on the driver's side; four levers 0.5 ft long, 0.4 ft apart, with a legend plate under each | estimated (that the controls were at the rear: documented, TM X-53107 7.3.3.1) | not in any photograph read |
-| Office on the structure's base | 14.8 by 13.5 ft, 8.6 ft tall; windows 3.2 ft square and 6 by 3.2 ft | estimated | S61-03158 shows a lit room between the legs; its windows are placed by eye |
+| Office on the structure's base | 14.8 by 13.5 ft, 8.6 ft tall; windows 3.2 ft square and 6 by 3.2 ft; a desk with chair and telephone, three lockers, a filing cabinet, an intercom panel by the door, a clock | estimated | S61-03158 shows a lit room between the legs; its windows are placed by eye; its furniture is of the period's kind (tools/blender/interiors.py) |
+| Ground cables | 3.6 in across, two, from plugs under the ring to junction boxes 37 and 59 ft out | estimated | S61-02408 shows heavy cables lying slack on the slab; their routes and connectors are not recorded |
+| Engineering cameras on tripods | four, a 35 mm body with twin drum magazine, turret lens, motor and finder on a geared head, 4.4 ft up on a wooden tripod with a spreader | estimated: of the kind (Mitchell, Photo-Sonics), not any one camera | TM X-53107 7.5.5.3: twenty fixed cameras near the pad; S61-01927 shows tripod cameras |
+| LOX topping and nitrogen trailers | tanks with 2:1 dished heads; each enclosure's working end (gauges, lines, valves, coupling) and hose end (reel, OXYGEN / NITROGEN placards) | estimated, all but that the trailers stayed through liftoff (TM X-53107's count) | S61-01927, S61-02407/08, S63-02651 show the enclosures and tanks, not their ends |
 | Stairs to the base's deck | 3 ft wide, 14 risers of 7.5 in | estimated | GPN-2000-001006 shows a flight at the base; its place on the base is not established |
 
 ## Lights at night
@@ -222,7 +225,7 @@ gantry's place, the trailers) is July's, not May's.
 
 | Top-level node | Module | Contains |
 | --- | --- | --- |
-| `Blockhouse` | blockhouse.py | the arrow-shaped bunker: 2 ft walls round six panes of foot-thick glass with steel shutters, the blast door (one leaf open) and its ramp, two firing rooms with consoles and an equipment room, the domed roof and what stood on it (railed antenna stand, whip, wind vane, the telemetry helix and its mesh reflector on a sandbagged tripod), wall floodlights, the roof ladder; round it the shell paving, the concrete walk, a tracking dish, the drive's banded posts |
+| `Blockhouse` | blockhouse.py | the arrow-shaped bunker: 2 ft walls round six panes of foot-thick glass with steel shutters, the blast door (one leaf open) and its ramp, two firing rooms with consoles and an equipment room, the domed roof and what stood on it (railed antenna stand, whip, wind vane, the telemetry helix and its mesh reflector on a sandbagged tripod), wall floodlights, the roof ladder; round it the shell paving, the concrete walk, a tracking dish (a smooth paraboloid of mesh with its rolled rim, ribs, the feed on three struts, on a turntable and yoke), the drive's banded posts |
 | `ReadyRoom` | blockhouse.py | the concrete-block ready-room building: pilasters, windows, two doors, a louvred vent, tar roof, the breezeway roof across to the blockhouse, the air handler between them; a table, benches, lockers and a kitchen counter inside |
 | `Pad6` | pad6.py | pad 6's 200 ft of slabs, scale plate, burn marks, trench covers, four floodlight poles |
 | `Pad6Launcher` | launcher.py | a second launch ring, the same as pad 5's |
@@ -232,7 +235,7 @@ gantry's place, the trailers) is July's, not May's.
 | `CableTrenches` | grounds.py | the covered trench and its walk from each pad to its firing room |
 | `Yard` | grounds.py | two cable racks and the scaffold stair tower north of pad 5 |
 | `Poles` | grounds.py | the pole line along the road behind the blockhouse; a floodlight pole by the hut |
-| `Outbuildings` | outbuildings.py | the hut behind the blockhouse and its fenced transformers, the hut by the road, the generator building and its fuel tank, the shed by the track |
+| `Outbuildings` | outbuildings.py | the hut behind the blockhouse and its fenced transformers, the hut by the road, the generator building with two diesel sets and a transfer panel inside, its fuel tank (dished heads, saddles on piers, straps, fill, vent, gauge, the line to the building), the shed by the track |
 | `Vehicles` | vehicles.py | eleven parked vehicles, `Car_01` to `Car_11`, each its own node built to be driven: wheels, steering knuckles, hinged doors, bonnet and boot, a steering wheel, places to sit (see [The vehicles](#the-vehicles)): eight cars, a station wagon, a carryall, a pickup with a utility body |
 
 | Item | Value | Confidence | Basis |
@@ -543,6 +546,8 @@ dense and how tall, and every colour, are estimated** from photographs of 1958 t
 | Level ground | exactly level at the complex's height over Complex 5/6's clearing and roads and within 85 m of every other complex's pad, easing to the natural lie over 40 m | a rule of the viewer (the models stand on a flat datum), not a survey | |
 | Beach and sea | beach 40 to 50 m from the waterline to the dune, with a wrack line 17 m up; the bed falling 2.2 m in 100 m with a bar 75 m out; a swell of 55 m crests every 7.7 s, about 1 m crest to trough offshore, breaking on the bar and at the shore, so two lines of breakers | the swell's period and height documented as May medians (NOAA buoy 41009, 2010 to 2019); two lines of breakers read off KSC-61C-0873 and 63PC-0033; the bed's slope, the bar's place and the beach's width estimated | |
 | The Banana River's water | flat, grey-green, with a marsh edge | its shore documented (OpenStreetMap, today's); its colour and the marsh's width estimated | |
+| The air | haze thinning with height over 1.4 km above the sea (src/viewer/air.ts), so a distant tree line goes blue from the ground and the site is clear from above | that the morning was clear is documented (visibility at the Skid Strip's 16 km cap at 09:00 EST, NOAA ISD); the haze's profile and its density are estimated | NOAA ISD 74794012868 |
+| The cumulus | scattered, flat-based at 720 m, tops 650 m higher, about a third of the sky, drifting west with the 090 wind, their shadows on the ground; thin high cloud above | scattered cloud and no ceiling at 09:00 EST, and the 720 m base (May mornings' median, 1959 to 1963; 750 m at 07:00 that day) documented; cover, depth, size and the wind aloft estimated; where each cloud was is not known | NOAA ISD; Kraft, p. 8 |
 
 A thicket far from the eye is drawn as the ground itself lifted into a roof of crowns, not as
 plants (`land.ts`); within about 60 m of the eye the plants stand on the ground one by one.
@@ -608,7 +613,14 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 - The cherry picker's control station is a box with four levers at the tail: their number, order,
   legends and which motion each worked are invented. The truck itself cannot be driven by a walker.
 - The office's windows, door and furniture are placed by eye, and so are the stairs to the base.
-  The crane has no operator's cab: none shows in the photographs, and the hoist machinery is drawn
+  The furniture (desk, lockers, cabinet, intercom panel and its legends) is the period's kind,
+  not this room's; so is everything in the trailer SP-No 1 (racks, test sets, desk), whose
+  legends (TELEMETRY, CAPSULE POWER, COMMUNICATIONS, RECORDERS, TIMING) are invented.
+- The LOX and nitrogen trailers' ends (cabinet, gauges, lines and valves, coupling, hose reel,
+  placards) and their wheels are the ordinary fittings of such trailers, not read off a photograph.
+- The tripod cameras are a type, not the cameras; the launcher's cables' routes, thickness and
+  connectors are estimated.
+- The crane has no operator's cab: none shows in the photographs, and the hoist machinery is drawn
   as a closed house.
 - The cabins' frames (white uprights and rails on the red panels) are a reading of the night
   photograph S61-03158, which shows framed panels; their colour is not known.
@@ -618,6 +630,15 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 
 The rest of the complex:
 
+- The generator sets, the fuel tank's fittings, the tracking dish's mount and feed, the poles'
+  ground wires, tags, switch boxes and through-bolts, and the cherry picker's cab (dial faces,
+  glovebox, heater, a power take-off lever, headliner, visors, mirror, pleated bench, window
+  winder) are each the ordinary kind, from no photograph of these. The shell paving's batter is a
+  smooth curve, rounded at the top and easing out at the foot; its real edge is not known.
+- Things the viewer names when pointed at (`label`): the shower, the packing case, the barricade,
+  the trailer SP-No 1, the huts, the LOX and nitrogen trailers, the cameras, the camera towers,
+  the searchlights; in the place, the cable racks, the scaffold stair, the huts, the generator
+  building and its tank, the shed. The tractor and pickups are named by `vehicle`.
 - **Paving stands a foot and a half proud.** The viewer's ground is 0.45 m under the pad's
   surface, and nothing may lie close above it. So the road, the walks and the trench covers are at
   the pad's level on concrete that goes down into the ground, and the shell paving is a low bank
@@ -646,7 +667,7 @@ The rest of the complex:
   are invented from the systems TM X-53107 names, on hardware built by `tools/blender/interiors.py`
   for any site. The floor's tile joints are a 2 ft grid, estimated. The viewer lights each room
   from an empty the model carries: `Light_FiringRoom5`, `Light_FiringRoom6`, `Light_EquipmentRoom`
-  (properties `intensity`, and `reach` in metres). The ready rooms' furniture is still plain.
+  (properties `intensity`, and `reach` in metres). The ready rooms' furniture (a table and two benches, five lockers, a desk and chair, a notice board, clocks; in the kitchen a counter with its sink and tap, a coffee urn, a range, a refrigerator, a table and four chairs) is likewise the period's kind, from no photograph.
 - The shell paving goes all round the blockhouse. The 1961 photograph shows lawn in front of the
   pad 6 face, with only the walk and the trench crossing it.
 - Pad 6's gantry is a sketch of its type: the truss pattern, the trucks and the enclosure's

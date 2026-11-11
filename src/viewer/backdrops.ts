@@ -4,6 +4,7 @@ import type { BackdropKind, Flight } from '../types';
 import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
+import { densityFor } from './air';
 import { buildCape } from './cape';
 import { dayLight, type RGB } from './daysky.ts';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
@@ -326,7 +327,8 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), ground), patch);
   cape ??= buildCape(renderer, GROUND_Y);
-  const fog = new THREE.FogExp2(0, 0.00042);
+  // the haze at sea level, thinning upward (air.ts): visibility was at the Skid Strip's 16 km cap at 09:00 (NOAA ISD); 25 km taken
+  const fog = new THREE.FogExp2(0, densityFor(25_000));
   const gen = new THREE.PMREMGenerator(renderer);
   const reflections = new Reflections(renderer);
 

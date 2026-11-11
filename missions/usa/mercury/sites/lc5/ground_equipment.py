@@ -64,6 +64,9 @@ def build(parts: Parts) -> None:
     )
     # the LOX topping unit: a horizontal insulated tank on a white enclosure, on a trailer's wheels
     x0, y0 = -30.0, -26.0
+    u = "GroundEquipment_LoxTrailer"
+    parts.node(u, "GroundEquipment", (x0, y0, 0.0), label="LOX topping trailer")
+    white, dark, tank, black = parts(u, "trailer"), parts(u, "chassis", True), parts(u, "trailer/tank", True), parts(u, "black")
     box(white, (x0 - 4.0, y0 - 11.0, 1.6), (x0 + 4.0, y0 + 11.0, 8.0))
     box(dark, (x0 - 3.2, y0 - 10.0, 1.0), (x0 + 3.2, y0 + 10.0, 1.62))
     head = [(2.75 * math.sin(math.radians(t)), 2.5 * (1.0 - math.cos(math.radians(t)))) for t in range(0, 91, 9)]  # a 2:1 dished head
@@ -78,37 +81,41 @@ def build(parts: Parts) -> None:
         tank.lathe(strap, 48, matrix=axes((x0, y0 + dy, 10.85), (1, 0, 0), (0, 1, 0)))
     for side in (-1, 1):
         for dy in (-6.5, -3.5):
-            trailer_wheel(parts, "GroundEquipment", (x0 + side * 3.625, y0 + dy, 1.4), side)
+            trailer_wheel(parts, u, (x0 + side * 3.625, y0 + dy, 1.4), side)
     box(dark, (x0 - 0.5, y0 + 11.0, 0.9), (x0 + 0.5, y0 + 15.0, 1.3))  # drawbar
     if fine():
         for k in range(3):  # louvres and a door on the enclosure
             box(black, (x0 - 4.05, y0 - 8.0 + k * 3.0, 4.0), (x0 - 3.9, y0 - 6.0 + k * 3.0, 6.5))
         box(black, (x0 + 3.9, y0 + 2.0, 1.8), (x0 + 4.05, y0 + 5.0, 7.0))
     # the tank's fittings: a vent stack with its cap, relief valves, a manway; the control end and the hose end
-    metal = parts("GroundEquipment", "grey/fittings", True)
+    metal = parts(u, "grey/fittings", True)
     metal.tube(P(x0, y0 - 7.5, 13.4), P(x0, y0 - 7.5, 17.5), 0.12 * FT, 10)
     metal.lathe(ftp([(0.0, 0.0), (0.4, 0.0), (0.4, 0.25), (0.0, 0.4)]), 12, matrix=axes((x0, y0 - 7.5, 17.6), (1, 0, 0), (0, 0, 1)))
     for dy in (-3.0, -2.2):
         metal.tube(P(x0 + 0.6, y0 + dy, 13.3), P(x0 + 0.6, y0 + dy, 14.3), 0.1 * FT, 8)
     metal.lathe(ftp([(0.0, 0.0), (0.9, 0.0), (0.9, 0.25), (0.0, 0.25)]), 20, matrix=axes((x0, y0 + 2.0, 13.5), (1, 0, 0), (0, 0, 1)))
-    end_fittings(parts, (x0, y0 - 11.0), -1, 8.0, "LOX TOPPING", seed=21)
-    hose_end(parts, (x0, y0 + 11.0), 1, ("OXYGEN", "NO SMOKING"))
+    end_fittings(parts, u, (x0, y0 - 11.0), -1, 8.0, "LOX TOPPING", seed=21)
+    hose_end(parts, u, (x0, y0 + 11.0), 1, ("OXYGEN", "NO SMOKING"))
 
     # a second, smaller enclosure: LN2 or the peroxide unit (estimated)
     x1, y1 = -24.0, 22.0
+    u = "GroundEquipment_NitrogenTrailer"
+    parts.node(u, "GroundEquipment", (x1, y1, 0.0), label="Nitrogen trailer")
+    white, dark, tank = parts(u, "trailer"), parts(u, "chassis", True), parts(u, "trailer/tank", True)
     box(white, (x1 - 4.0, y1 - 5.5, 1.6), (x1 + 4.0, y1 + 5.5, 7.5))
     box(dark, (x1 - 3.2, y1 - 4.5, 1.0), (x1 + 3.2, y1 + 4.5, 1.62))
     for side in (-1, 1):
-        trailer_wheel(parts, "GroundEquipment", (x1 + side * 3.625, y1 - 2.0, 1.4), side)
+        trailer_wheel(parts, u, (x1 + side * 3.625, y1 - 2.0, 1.4), side)
     tank.lathe(
         ftp([(0, 0), (1.3, 0), (1.3, 4.0), (1.15, 4.45), (0.8, 4.7), (0, 4.8)]),
         40,
         matrix=axes((x1 + 1.5, y1 + 2.0, 7.5), (1, 0, 0), (0, 0, 1)),
     )
-    end_fittings(parts, (x1, y1 + 5.5), 1, 7.5, "LIQUID NITROGEN", seed=33)
-    hose_end(parts, (x1, y1 - 5.5), -1, ("NITROGEN",))
+    end_fittings(parts, u, (x1, y1 + 5.5), 1, 7.5, "LIQUID NITROGEN", seed=33)
+    hose_end(parts, u, (x1, y1 - 5.5), -1, ("NITROGEN",))
 
     # the low box painted in chevrons, 15 to 20 ft from the launcher
+    black = parts("GroundEquipment", "black")
     sx, sy = -20.0, 8.0  # clear of the service structure's base
     box(black, (sx - 4.5, sy - 2.0, 0.0), (sx + 4.5, sy + 2.0, 3.0))
     n = 6
@@ -121,11 +128,13 @@ def build(parts: Parts) -> None:
             stripe.add(verts, [(0, 1, 2, 5), (5, 2, 3, 4)] if face < 0 else [(0, 5, 2, 1), (5, 4, 3, 2)])
 
     # tripod cameras round the pad (TM X-53107 7.5.5.3: twenty fixed cameras near the pad)
-    for tx, ty in TRIPODS:  # each a 35 mm camera on a wooden tripod, aimed at the booster's tail (sitelib.film_camera)
-        sitelib.film_camera(parts, "GroundEquipment", (tx, ty), (0.0, 0.0, 12.0))
+    for k, (tx, ty) in enumerate(TRIPODS, 1):  # each a 35 mm camera on a wooden tripod, aimed at the booster's tail
+        cam = f"GroundEquipment_Camera{k}"
+        parts.node(cam, "GroundEquipment", (tx, ty, 0.0), label="Engineering camera")
+        sitelib.film_camera(parts, cam, (tx, ty), (0.0, 0.0, 12.0))
 
     # camera towers: narrow galvanised lattices with a platform at the top
-    parts.node("CameraTowers")
+    parts.node("CameraTowers", label="Camera towers")
     galv, deck = parts("CameraTowers", "galv"), parts("CameraTowers", "deck")
     for cx, cy, h in CAMERA_TOWERS:
         w = 2.5
@@ -177,11 +186,10 @@ def _wall(cx: float, yw: float, d: int):
     return lambda a, out, z: (cx - d * a, yw + d * out, z)
 
 
-def end_fittings(parts: Parts, at, d: int, top: float, title: str, *, seed: int = 1) -> None:
+def end_fittings(parts: Parts, g: str, at, d: int, top: float, title: str, *, seed: int = 1) -> None:
     """The working end of a cryogenic trailer's enclosure (estimated: the kind, not this one): a cabinet with its
     gauges and switches, two lines down the end with a valve and handwheel each, a gauge, and the hose coupling
-    at the foot. `at` is (x, y) of the end wall's middle, `d` the way it faces (+1: +Y), `top` the enclosure's top."""
-    g = "GroundEquipment"
+    at the foot, on node `g`. `at` is (x, y) of the end wall's middle, `d` the way it faces (+1: +Y), `top` the enclosure's top."""
     W = _wall(at[0], at[1], d)
     right = (-d, 0, 0)
     case, metal = parts(g, "trailer/cabinets"), parts(g, "grey/fittings", True)
@@ -219,9 +227,8 @@ def end_fittings(parts: Parts, at, d: int, top: float, title: str, *, seed: int 
     parts(g, "black/caps", True).lathe(ftp([(0.0, 0.0), (0.2, 0.0), (0.2, 0.25), (0.0, 0.25)]), 12, matrix=cap)
 
 
-def hose_end(parts: Parts, at, d: int, words) -> None:
-    """The other end of a trailer's enclosure: the transfer hose wound on its reel, and the placards over it (estimated)."""
-    g = "GroundEquipment"
+def hose_end(parts: Parts, g: str, at, d: int, words) -> None:
+    """The other end of a trailer's enclosure, on node `g`: the transfer hose wound on its reel, and the placards over it (estimated)."""
     W = _wall(at[0], at[1], d)
     metal, hose = parts(g, "grey/fittings", True), parts(g, "cable/hose", True)
     reel = axes(W(-1.25, 1.0, 4.4), (0, d, 0), (-d, 0, 0))  # its axle across the end
@@ -251,7 +258,7 @@ def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
     """A small timber-framed hut on skids, a door in one wall and a window in another."""
     x0, y0, x1, y1 = rect
     g = f"GroundEquipment_{key.capitalize()}"  # its own node: it is one thing, and can be taken away
-    parts.node(g, "GroundEquipment", ((x0 + x1) / 2, (y0 + y1) / 2, 0.0))
+    parts.node(g, "GroundEquipment", ((x0 + x1) / 2, (y0 + y1) / 2, 0.0), label="Hut")
     outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     walls = ring(outline, 0.3)
     skin = parts(g, f"trailer/{key}")
@@ -312,7 +319,7 @@ def furniture(parts: Parts) -> None:
     )
     sx, sy = -58.0, -91.0
     sh = "GroundEquipment_Shower"
-    parts.node(sh, g, (sx, sy, 0.0))
+    parts.node(sh, g, (sx, sy, 0.0), label="Emergency shower")
     white, dark, red, ink = parts(sh, "sign"), parts(sh, "chassis", True), parts(sh, "signred"), parts(sh, "black/lettering")
     tube = parts(sh, "white/shower", True)
     for dx in (-1.6, 1.6):
@@ -355,7 +362,7 @@ def furniture(parts: Parts) -> None:
 
     # ---- a packing case beside it (GPN-2000-001006)
     cs = "GroundEquipment_Case"
-    parts.node(cs, g, (-44.25, -92.85, 0.0))
+    parts.node(cs, g, (-44.25, -92.85, 0.0), label="Packing case")
     wood = parts(cs, "plank")
     box(wood, (-48.0, -94.5, 0.0), (-40.5, -91.2, 2.7))
     if fine():
@@ -378,7 +385,7 @@ def furniture(parts: Parts) -> None:
         lettering(white, "DANGER", 0.34, c + n * 0.13 + Vector((0, 0, 3.86)), r, (0, 0, 1), font)
     bx, by = 84.0, -93.0
     bk = "GroundEquipment_Barricade"
-    parts.node(bk, g, (bx, by, 0.0))
+    parts.node(bk, g, (bx, by, 0.0), label="Barricade")
     white, dark, red, ink = parts(bk, "sign"), parts(bk, "chassis", True), parts(bk, "signred"), parts(bk, "black/lettering")
     stripe = parts(bk, "orange")
     for d in (-4.5, 4.5):
@@ -399,7 +406,7 @@ def furniture(parts: Parts) -> None:
     # ---- the white trailer lettered NASA SP-No 1, beside where the structure stands back (S61-03158)
     tx0, ty0, tx1, ty1 = 30.0, 68.0, 38.0, 97.0
     tr = "GroundEquipment_Trailer"
-    parts.node(tr, g, ((tx0 + tx1) / 2, ty1 - 4.55, 0.0))
+    parts.node(tr, g, ((tx0 + tx1) / 2, ty1 - 4.55, 0.0), label="Trailer, NASA SP-No 1")
     white, dark, red, ink = parts(tr, "sign"), parts(tr, "chassis", True), parts(tr, "signred"), parts(tr, "black/lettering")
     tz, troof = 3.62, 12.2  # its floor and the underside of its roof
     van = parts(tr, "trailer/van")

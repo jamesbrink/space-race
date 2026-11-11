@@ -454,11 +454,15 @@ class Car:
         y1 = flat - (5.0 if h > 0.2 else 0.3 * flat)
         return [*pts, (y1, lid(y1)), (0.5 * y1, lid(0.5 * y1)), (0.0, zt + self.crown)]
 
-    def lid_z(self, x: float, y: float) -> float:
-        """The height of the crowned top at x, y (the bonnet's or the boot lid's outside)."""
-        w, zt = self._plan(x), self._top(x)
-        r = min(self.shoulder, 0.45 * (zt - self._bottom(x)), 0.5 * w)
-        return zt + self.crown * (1 - (y / (w - r)) ** 2)
+    def surface(self, x: float, y: float) -> float:
+        """The height of the top's skin at x, y, between the shoulders: the section's own polyline,
+        as the skin is built (a lid's outside, the crown over a fin's inside slope)."""
+        ns, na = self.shape()
+        pts = sorted(self.section(x)[3 + ns + na :])
+        y = min(abs(y), pts[-1][0])
+        i = max(1, bisect.bisect_left([p[0] for p in pts], y))
+        (y0, z0), (y1, z1) = pts[i - 1], pts[i]
+        return z0 + (z1 - z0) * (y - y0) / max(y1 - y0, 1e-6)
 
     def tailgate_cut(self) -> tuple[float, float, float]:
         """The tailgate's half-width, the height of its hinge (just over the rear bumper) and of its top."""
@@ -569,7 +573,8 @@ class Car:
         # each lid has an underside, and its edges are closed, so that it is a panel when raised
         for name, (a, b) in self.lids().items():
             rows = [loop[lid : m - lid + 1] for x, loop in zip(xs, loops) if a - 1e-6 <= x <= b + 1e-6]
-            under = [[p - Vector((0, 0, 0.4)) for p in row] for row in rows]
+            # the underside is 0.4 in down, drawn in as far at its sides so that the edges lean (the shut lines' ridges are upright)
+            under = [[p - Vector((0, (0.4 if p.y > 0 else -0.4) if k in (0, len(row) - 1) else 0.0, 0.4)) for k, p in enumerate(row)] for row in rows]
             skin(kit, under, lambda st, j, name=name: f"under@{name}", closed=False, flip=True)
             for k, f in ((0, 1), (-1, -1)):
                 for r0, r1, u0, u1 in zip(rows, rows[1:], under, under[1:]):
@@ -820,15 +825,31 @@ class Car:
                             xj = x - f * 0.3
                             jamb = [(xj, s * self.side(xj, z), z) for z in zs]
                             poly(trim, [(xj, s * wy, max(zf, over)), *jamb, (xj, s * wy, zs[-1])], (f, 0, 0))
-                # its foot, from the skin's lower edge in to the lining, and the sill under it
-                n = max(2, round((b - a) / (6.0 * grain())))
-                run = sorted({*(a + (b - a) * i / n for i in range(n + 1)), *(x for lo, hi, _ in housings for x in (lo, hi) if a < x < b)})
+                # its foot: level from an inch above the skin's lower edge in to the lining's plane, then up
+                # that to the lining's foot, with the body's sill under it. Over a wheel's opening the
+                # foot is the arch and the well is under it, so the door is closed by an inner panel instead
+                stations = [x for x in self.stations() if a < x < b]
+                run = sorted({a, b, *stations, *(x for lo, hi, _ in housings for x in (lo, hi) if a < x < b)})
                 for xa_, xb_ in zip(run, run[1:]):
                     inside = max(zf, housed(xa_, xb_))
-                    edge = [(x, self.side(x, self.door_foot(x)), self.door_foot(x)) for x in (xa_, xb_)]
-                    poly(kit(to), [(x, s * y, z) for x, y, z in edge] + [(xb_, s * wy, inside), (xa_, s * wy, inside)], (0, s * 0.3, -1))
-                    sill = [(x, s * (y - 0.6), z - 0.05) for x, y, z in edge] + [(xb_, s * wy, inside - 0.3), (xa_, s * wy, inside - 0.3)]
-                    poly(trim, sill, (0, -s * 0.3, 1))
+                    if any(self.arch_z(x) > self._bottom(x) + 0.5 for x in (xa_, xb_)):
+                        panel = [(x, self.side(x, self.door_foot(x)) - 1.2, self.door_foot(x) + 0.2) for x in (xa_, xb_)]
+                        if inside > max(z for _, _, z in panel) + 0.2:
+                            quad = [(x, s * y, z) for x, y, z in panel] + [(xb_, s * panel[1][1], inside), (xa_, s * panel[0][1], inside)]
+                            poly(kit(to), quad, (0, -s, 0))
+                            poly(
+                                kit(to),
+                                [(xa_, s * panel[0][1], inside), (xb_, s * panel[1][1], inside), (xb_, s * wy, inside), (xa_, s * wy, inside)],
+                                (0, 0, -1),
+                            )
+                        continue
+                    edge = [(x, self.side(x, self.door_foot(x) + 1.0), self.door_foot(x) + 1.0) for x in (xa_, xb_)]
+                    (_, _, za_), (_, _, zb_) = edge
+                    poly(kit(to), [(x, s * y, z) for x, y, z in edge] + [(xb_, s * wy, zb_), (xa_, s * wy, za_)], (0, 0, -1))
+                    if inside > max(za_, zb_) + 0.1:
+                        poly(kit(to), [(xa_, s * wy, za_), (xb_, s * wy, zb_), (xb_, s * wy, inside), (xa_, s * wy, inside)], (0, -s, 0))
+                    sill = [(x, s * (y - 0.6), z - 1.3) for x, y, z in edge] + [(xb_, s * wy, zb_ - 1.3), (xa_, s * wy, za_ - 1.3)]
+                    poly(trim, sill, (0, 0, 1))
         for lo, hi, z in housings:
             for s in (1, -1):  # only the faces the cabin sees: the well itself is the body's
                 ya, yb = s * inner, s * wy
@@ -977,25 +998,37 @@ class Car:
                 yin = min(self.well, self.side(x, self._bottom(x)) - 1.0)
                 return ye, ze, min(ye - 1.2, yin - 0.4), max(min(ye - 1.2, yin - 0.4), yin - 1.0)
 
+            def gutter(x: float) -> list[tuple[float, float]]:
+                """Across a side gutter at x, (y, z) from the wall's head out to under the skin past the
+                edge, by way of the lid's corner (the section's next point), under the lid throughout."""
+                ye, ze, top, _ = edge(x)
+                ym = min(max(self.section(x)[lid + 1][0], top + 0.3), ye - 0.3)
+                return [(top, self.surface(x, top) - 1.2), (ym, self.surface(x, ym) - 0.9), (ye + 0.4, ze - 0.45)]
+
             zf = max(self._bottom(x) for x in run) + 1.5
             dark = kit("under/bay")
             for s in (1, -1):
                 for xa, xb in zip(run, run[1:]):
-                    (ya, za, ta, la), (yb, zb, tb, lb) = edge(xa), edge(xb)
-                    wall = [(xa, s * la, zf), (xb, s * lb, zf), (xb, s * tb, zb - 1.2), (xa, s * ta, za - 1.2)]
+                    ga, gb = gutter(xa), gutter(xb)
+                    wall = [(xa, s * edge(xa)[3], zf), (xb, s * edge(xb)[3], zf), (xb, s * gb[0][0], gb[0][1]), (xa, s * ga[0][0], ga[0][1])]
                     poly(dark, wall, (0, -s, 0.2))
-                    gutter = [(xa, s * ta, za - 1.2), (xb, s * tb, zb - 1.2), (xb, s * (yb + 0.4), zb - 0.45), (xa, s * (ya + 0.4), za - 0.45)]
-                    poly(dark, gutter, (0, -s * 0.6, 1))
+                    if len(ga) == len(gb):
+                        for p0, p1, q0, q1 in zip(ga, ga[1:], gb, gb[1:]):
+                            poly(
+                                dark,
+                                [(xa, s * p0[0], p0[1]), (xb, s * q0[0], q0[1]), (xb, s * q1[0], q1[1]), (xa, s * p1[0], p1[1])],
+                                (0, -s * 0.3, 1),
+                            )
             for xa, xb in zip(run, run[1:]):
                 la, lb = edge(xa)[3], edge(xb)[3]
                 poly(dark, [(xa, -la, zf), (xb, -lb, zf), (xb, lb, zf), (xa, la, zf)], (0, 0, 1))
             for x, f in ((ends[0], 1), (ends[1], -1)):  # the end walls, under the lid's crown, and their gutters
                 _, _, top, foot = edge(x)
                 ys = [top * (1 - 2 * i / 6) for i in range(7)]
-                head = [(x, y, self.lid_z(x, y) - 1.2) for y in ys]
+                head = [(x, y, self.surface(x, y) - 1.2) for y in ys]
                 poly(dark, [(x, -foot, zf), (x, foot, zf), *head], (f, 0, 0))
                 out = x - f * 1.0
-                lip = [(out, y, self.lid_z(out, y) - 0.45) for y in ys]
+                lip = [(out, y, self.surface(out, y) - 0.45) for y in ys]
                 for p0, p1, q0, q1 in zip(head, head[1:], lip, lip[1:]):
                     poly(dark, (p0, p1, q1, q0), (f * 0.6, 0, 1))
             mid = (a + b) / 2
@@ -1012,7 +1045,7 @@ class Car:
         housing and an air cleaner."""
         eng = kit("engine")
         mid = (a + b) / 2
-        roof = min(self.lid_z(x, 0.0) for x in (a + 2.0, mid, b - 2.0)) - 1.6  # under the lid's crown, its underside and clear
+        roof = min(self.surface(x, y) for x in (a + 2.0, mid, b - 2.0) for y in (0.0, 0.6 * half)) - 1.6  # under the lid, and clear of it
         if ahead:
             length = min(30.0, b - a - 10.0)
             x0, x1 = a + 2.5, a + 2.5 + length
@@ -1155,7 +1188,7 @@ class Car:
             return
         for lid, (a, b) in self.lids().items():  # the lids' shut lines, and the bonnet's bright strip
             ns, na = self.shape()
-            run = [a, *(x for x in self.stations() if a < x < b), b]
+            run = [a - 0.3, *(x for x in self.stations() if a < x < b), b + 0.3]  # past the lid's closed ends
             for s in (1, -1):
                 pts = [Vector((x, s * self.section(x)[3 + ns + na][0], self.section(x)[3 + ns + na][1])) for x in run]
                 ridge(kit("line"), pts, (0, 0.2 * s, 1), 0.16, 0.14, 0.3)
@@ -1420,6 +1453,7 @@ def ford_1957(paint: str = "seafoam", roof: str | None = "white", *, wagon: bool
     x0 = x1 - L
     car = dict(
         what="1957 Ford Country Sedan" if wagon else "1957 Ford Custom 300 Fordor",
+        tailgate=wagon,
         mass=3600.0 if wagon else 3350.0,
         turning=41.0,
         wheelbase=wb,
@@ -1546,6 +1580,7 @@ def corvair_1960(paint: str = "white", **kw) -> Car:
     x0 = x1 - L
     car = dict(
         what="1960 Chevrolet Corvair 700 sedan",
+        engine="rear",
         mass=2350.0,
         turning=39.5,
         wheelbase=wb,
@@ -1645,6 +1680,7 @@ def volkswagen(paint: str = "cream", **kw) -> Car:
     board = Pod(top=[(18, 10.2), (75, 10.2)], out=[(18, 28.6), (75, 28.6)], inner=19.0, bottom=8.8, shoulder=0.7, paint="black")
     car = dict(
         what="Volkswagen Type 1, 1958-61",
+        engine="rear",
         mass=1610.0,
         turning=36.0,
         wheelbase=wb,
@@ -1701,6 +1737,7 @@ def suburban_1960(paint: str = "white", **kw) -> Car:
     x0 = x1 - L
     car = dict(
         what="1960 Chevrolet Suburban Carryall",
+        tailgate=True,
         mass=3900.0,
         turning=44.0,
         wheelbase=wb,

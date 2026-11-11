@@ -183,3 +183,13 @@ def build(parts: Parts) -> None:
         gable.add([tuple(q) for q in v], [(0, 4, 3), (1, 2, 5), (3, 4, 5, 2), (0, 1, 5, 4)])
     box(gable, (r[0] + 0.35, r[3] - 0.35, lo), (r[2] - 0.35, r[3], hi - 0.2))
     roof_vent(grey, (r[0] + r[2]) / 2, (r[1] + r[3]) / 2, (lo + hi) / 2 + 0.1, 1.3)
+
+    # what each is called when pointed at (its walls and roof): the uses are estimated (see the module's note)
+    for key, mats in (
+        ("Hut", ("block/hut1", "block/hut1roof", "block/hut2", "block/hut2roof")),
+        ("Generator building", ("block/gen", "block/genroof")),
+        ("Generator fuel tank", ("trailer/tank",)),
+        ("Shed", ("corrugated/shed", "corrugated/roof", "corrugated/gable")),
+    ):
+        for mat in mats:
+            parts.mark(g, mat, label=key)
