@@ -1,5 +1,7 @@
 import { prefs } from './prefs';
-import type { Confidence, Flight, ModelDef } from './types';
+import { CAMERA_MODES, type CameraMode } from './viewer/fly';
+import type { Confidence, Flight, ModelDef, Part } from './types';
+import { Wheel } from './wheel';
 
 export interface UiHandlers {
   model(id: string): void;
@@ -7,17 +9,25 @@ export interface UiHandlers {
   view(id: string): void;
   autoRotate(on: boolean): void;
   cutaway(on: boolean): void;
+  /** How the view is moved: turning about a subject, or flying free. */
+  camera(mode: CameraMode): void;
   /** Draw the scene as a cel-shaded drawing, or as it would look. */
   cel(on: boolean): void;
   /** Get down and walk the site as the figure whose section this is, or stop. */
   walk(on: boolean): void;
   /** The on-screen stick while walking: x to the right, y forward, each -1 to 1. */
   walkStick(x: number, y: number): void;
+  /** The on-screen jump button while walking. */
+  walkJump(): void;
+  /** The on-screen act button while walking: offer what can be done with what is being looked at. */
+  walkAct(): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
   /** How many pixels at the bottom of the 3D view the controls cover. */
   inset(pixels: number): void;
 }
+
+const CAMERA_LABEL: Record<CameraMode, string> = { orbit: 'Camera · orbit', fly: 'Camera · free fly' };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -45,7 +55,10 @@ const pane = (name: (typeof TABS)[number]) => `data-pane="${name}" id="pane-${na
 
 /** The DOM half of the app. Everything it shows comes from the flight's data file. */
 export class Ui {
+  /** The radial menu of things to do with what a walker is looking at (wheel.ts). */
+  readonly wheel: Wheel;
   private selected: string | null = null;
+  private cameraMode: CameraMode = 'orbit';
 
   get cutaway(): boolean {
     return this.root.querySelector('[data-cut]')?.getAttribute('aria-pressed') === 'true';
@@ -65,7 +78,7 @@ export class Ui {
     root.innerHTML = `
       <header class="title">
         <button class="tuck chevron" aria-label="Show or hide the flight summary" aria-expanded="true" title="Tuck away"></button>
-        <p class="crumbs">Space Race <b>/</b> ${esc(f.nation)} <b>/</b> ${esc(f.program)}</p>
+        <p class="crumbs"><button data-home title="Front page">Space Race</button> <b>/</b> ${esc(f.nation)} <b>/</b> ${esc(f.program)}</p>
         <h1>${esc(f.callsign)}</h1>
         <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
         <p class="lede">${esc(f.summary)}</p>
@@ -138,8 +151,26 @@ export class Ui {
             <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
             ${f.models.some((m) => m.walker) ? `<div><dt>double-click ${esc(f.models.find((m) => m.walker)!.name.toLowerCase())}</dt><dd>walk</dd></div>` : ''}
+            <div><dt><kbd>C</kbd></dt><dd>camera: free fly</dd></div>
+            ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+          </dl>
+        </div>
+        <div class="legend-body in-flight">
+          <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>fly</em></div>
+          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>look</em></div>
+          <div class="cluster"><span class="pad pair"><kbd>E</kbd><kbd>Q</kbd></span><em>up · down</em></div>
+          <div class="cluster"><kbd>Shift</kbd><em>faster</em></div>
+          <dl>
+            <div><dt>drag</dt><dd>look round</dd></div>
+            <div><dt>scroll</dt><dd>forward · back</dd></div>
+            <div><dt>click</dt><dd>go to it</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>camera: orbit</dd></div>
+            ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
+            <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
+            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
@@ -147,16 +178,24 @@ export class Ui {
           <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>walk</em></div>
           <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>walk · turn</em></div>
           <div class="cluster"><kbd>Shift</kbd><em>run</em></div>
+          <div class="cluster"><kbd>Space</kbd><em>jump</em></div>
           <dl>
             <div><dt>mouse</dt><dd>look round</dd></div>
+            <div><dt><kbd>E</kbd></dt><dd>act on what you face</dd></div>
             <div><dt><kbd>Esc</kbd></dt><dd>stop walking</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
         </div>
       </aside>
       <div class="walkbar" hidden><span></span><button data-walk-exit>Exit walk</button></div>
       <div class="stick" aria-hidden="true"><i></i></div>
+      <div class="walk-buttons"><button data-walk-jump>Jump</button><button data-walk-act hidden>Act</button></div>
+      <div class="reticle" aria-hidden="true"><i></i><p><kbd>E</kbd><span></span></p></div>
+      <aside class="walk-card" hidden aria-live="polite">
+        <button class="card-close" aria-label="Close">×</button>
+        <h3></h3><p class="card-what"></p><p class="card-more"></p><div class="pf"></div>
+      </aside>
       <output class="stats" aria-label="Diagnostics"></output>
       <div class="tip" hidden><b></b><span></span></div>
       <div class="loading"><span>Loading</span><i></i><button hidden>Try again</button></div>`;
@@ -211,7 +250,9 @@ export class Ui {
       const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
       if (e.key.toLowerCase() === 'h') bare(!root.classList.contains('bare'));
-      if (e.key.toLowerCase() === 'c') this.setCel(!prefs.get('cel'));
+      if (e.key.toLowerCase() === 't') this.setCel(!prefs.get('cel'));
+      // C is the camera: it steps through the ways of moving the view (on foot it is the walker's, between first and third person)
+      if (e.key.toLowerCase() === 'c' && !root.classList.contains('walking')) this.nextCamera();
       if (e.key === '?') showLegend(legendKeys.classList.contains('folded'));
     });
     // A sheet is put away by swiping it down: from its tabs at any time, or from its content
@@ -250,6 +291,14 @@ export class Ui {
     panel.addEventListener('touchend', release);
     panel.addEventListener('touchcancel', release);
     root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
+    this.wheel = new Wheel(root);
+    root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());
+    root.querySelector('.card-close')!.addEventListener('click', () => this.showWalkCard(null));
+    // (on the press, not the click: a jump is wanted now, and a finger held on the button must not look round)
+    root.querySelector('[data-walk-jump]')!.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      on.walkJump();
+    });
     // The walking stick, for a finger: push it the way you want to go, further to go faster.
     const stick = root.querySelector<HTMLElement>('.stick')!;
     const knob = stick.querySelector<HTMLElement>('i')!;
@@ -301,6 +350,7 @@ export class Ui {
       else if (b?.hasAttribute('data-rotate')) this.setRotate(b.getAttribute('aria-pressed') !== 'true');
       else if (b?.hasAttribute('data-cut')) this.setCutaway(b.getAttribute('aria-pressed') !== 'true');
       else if (b?.hasAttribute('data-walk')) on.walk(true);
+      else if (b?.hasAttribute('data-camera')) this.nextCamera();
       else if (b?.hasAttribute('data-cel')) this.setCel(b.getAttribute('aria-pressed') !== 'true');
     });
     // the label that follows the pointer over the model
@@ -365,8 +415,9 @@ export class Ui {
         .map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`)
         .join('')}</span>` +
       `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
+      `<button data-camera title="How the view moves (C)">${CAMERA_LABEL[this.cameraMode]}</button>` +
       `<button data-rotate aria-pressed="${rotating}">Auto-orbit</button>` +
-      `<button data-cel aria-pressed="${prefs.get('cel')}" title="Cel shading (C)">Cel shading</button></span>`;
+      `<button data-cel aria-pressed="${prefs.get('cel')}" title="Cel shading (T)">Cel shading</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
     // this model's own figures first
     const specs = r.querySelector('[data-pane="Specs"]')!;
@@ -393,6 +444,20 @@ export class Ui {
     if (!b) return;
     b.setAttribute('aria-pressed', String(on));
     this.on.cutaway(on);
+  }
+
+  /** How the view is moved, for every section, and remembered. */
+  setCamera(mode: CameraMode): void {
+    this.cameraMode = mode;
+    prefs.set('fly', mode === 'fly');
+    this.root.classList.toggle('flying', mode === 'fly');
+    const b = this.root.querySelector('[data-camera]');
+    if (b) b.textContent = CAMERA_LABEL[mode];
+    this.on.camera(mode);
+  }
+
+  private nextCamera(): void {
+    this.setCamera(CAMERA_MODES[(CAMERA_MODES.indexOf(this.cameraMode) + 1) % CAMERA_MODES.length]!);
   }
 
   /** Cel shading on or off: for every section, and remembered. */
@@ -428,7 +493,37 @@ export class Ui {
     if (on) {
       (document.activeElement as HTMLElement | null)?.blur?.(); // or Space would press the button just used
       this.setWalkLook(false);
-    } else this.on.walkStick(0, 0);
+    } else {
+      this.on.walkStick(0, 0);
+      this.wheel.close();
+      this.setWalkTarget(null);
+      this.showWalkCard(null);
+    }
+  }
+
+  /** While walking: the name of what is being looked at from within reach and can be acted on, or null. The reticle says so. */
+  setWalkTarget(name: string | null): void {
+    const reticle = this.root.querySelector<HTMLElement>('.reticle')!;
+    reticle.classList.toggle('on', Boolean(name));
+    reticle.querySelector('span')!.textContent = name ?? '';
+    reticle.querySelector('kbd')!.textContent = matchMedia('(hover: none), (pointer: coarse)').matches ? 'hold' : 'E';
+    this.root.querySelector<HTMLElement>('[data-walk-act]')!.hidden = !name;
+  }
+
+  /** While walking: a compact card of what the flight's data says about a part (not the orbit view's panel), or null to put it away. */
+  showWalkCard(part: Part | null): void {
+    const card = this.root.querySelector<HTMLElement>('.walk-card')!;
+    card.hidden = !part;
+    if (!part) return;
+    card.querySelector('h3')!.textContent = part.name;
+    card.querySelector('.card-what')!.textContent = part.summary;
+    card.querySelector('.card-more')!.textContent = part.detail;
+    card.querySelector('.pf')!.innerHTML = (part.facts ?? []).map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('');
+    card.scrollTop = 0;
+  }
+
+  get walkCardOpen(): boolean {
+    return !this.root.querySelector<HTMLElement>('.walk-card')!.hidden;
   }
 
   /** While walking: whether the mouse has been captured for looking round. The bar says what to do next. */

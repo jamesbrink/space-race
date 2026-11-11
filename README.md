@@ -15,13 +15,14 @@ pnpm models     # rebuild the models (needs Blender 5)
 Each flight is one scene with three things to study: its **vehicle**, standing on its **launch
 pad**, with its **crew**. Choosing a section, or clicking a model, flies the camera there.
 
-- **Look.** Drag to orbit, scroll to zoom, or let the view drift round on its own. Choose a part to
+- **Look.** Drag to orbit, scroll to zoom, or let the view drift round on its own; `C` switches to a
+  free camera that flies anywhere. Choose a part to
   fly to it and read about it; click a window to look in.
 - **Take it apart.** The slider explodes the vehicle; on the pad it runs the morning of the launch,
   from the gantry round the rocket to the pad cleared. **Cutaway** opens the capsule and booster.
-- **Walk.** In the Crew section, **Walk** (or a double-click on the pilot) puts you on the pad on
-  foot, in first person.
-- **Cel shading** (or `C`) redraws the whole scene as an inked drawing.
+- **Walk.** `V`, the **Walk** button in the Crew section, or a double-click on the pilot puts you
+  on the pad on foot; Space jumps.
+- **Cel shading** (or `T`) redraws the whole scene as an inked drawing.
 - **Check the numbers.** The **Specs** and **Motors** tabs mark each figure as documented, derived
   or estimated.
 

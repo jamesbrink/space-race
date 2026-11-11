@@ -165,7 +165,7 @@ likewise drawn on demand (`shadowMap.needsUpdate`): set it when something that c
 
 ## Two looks
 
-The stage draws in one of two looks (`viewer/look.ts`), switched by the Cel shading button or C
+The stage draws in one of two looks (`viewer/look.ts`), switched by the Cel shading button or T
 and remembered: `real`, the physically based one every model is built for, and `cel`, the same
 scene as a drawing. Nothing is authored twice. `Looks` derives a toon twin from each real material
 the first time it is needed (same name, colour, map and shader patches) and swaps meshes between
@@ -196,7 +196,9 @@ Nothing in `walk.ts` or its hooks in `stage.ts` knows any one flight: keep it th
 - **Feet and body are separate.** Rays straight down find the floor: anything up to `STEP`
   (0.3 m) above the feet is stepped onto, further down than that is a fall. A capsule from
   `STEP` above the feet to the top of the head is pushed sideways out of whatever it meets. So
-  a model's stairs need risers of 0.3 m or less, and a ladder cannot be climbed.
+  a model's stairs need risers of 0.3 m or less, and a ladder cannot be climbed. Space (a
+  button on a touch screen) is a standing jump: 0.4 m under gravity, from the ground only, and
+  the head stops at whatever is over it (`jump`, `bump`).
 - **The terrain is a level, not a mesh.** It lies at the height of the setting's floor,
   everywhere, and cannot be fallen through. Where that is below the models' surface (`GROUND_Y`)
   it is so only for the depth buffer's sake, so from down there a riser is measured from y = 0:
@@ -275,6 +277,13 @@ script; do not hand-edit geometry for them.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
   them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
   A new panel gets the same control and a `Pref`.
+- C is the camera everywhere: off foot it steps through `CAMERA_MODES` (`viewer/fly.ts`: orbit about
+  a subject, or a free camera; a chase camera for a vehicle in flight will be a third), on foot
+  between first and third person. Each mode has its own block in the legend. T is the look.
+- The front page (`title.ts`, the mark in `logo.ts`) is what an address that names nothing shows; it
+  lies over the scene as it loads. Going in writes `#<flight id>/<model>`, so a refresh or a link
+  comes straight back to that section; the Space Race crumb goes back out. V goes on foot as the
+  crew from anywhere and back (the key that will board and leave a crew member in the simulator).
 - Shortcuts use only keys every keyboard has: letters, digits, arrows. No Home, End, Page Up or
   function keys (a Mac laptop has none).
 - The camera legend (bottom left) lists every key and gesture: keep it in step with the handlers

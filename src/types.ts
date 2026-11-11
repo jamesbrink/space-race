@@ -82,6 +82,23 @@ export type Move = { from: number; to: number; node?: string } & (
   | ({ kind: 'drive' } & Drive)
 );
 
+/**
+ * Something a person standing at a part can do to it: a verb on the action wheel (src/actions.ts),
+ * offered beside the ones every part has (Info, Inspect). A flight adds verbs here as data; the
+ * wheel knows none of them by name.
+ *
+ * slider  run the part's model along its slider to `to` (0 to 1), at the pace it always moves:
+ *         whatever `moves` the model's parts have play out, so "Roll the structure back" or
+ *         "Lower the cab" is a position on the slider.
+ */
+export interface Action {
+  /** Unique among the part's actions. */
+  id: string;
+  /** The verb as the wheel shows it: 'Roll back'. */
+  label: string;
+  do: { kind: 'slider'; to: number };
+}
+
 export interface Part {
   /** Name of the top-level node in the GLB. */
   node: string;
@@ -90,6 +107,8 @@ export interface Part {
   detail: string;
   /** Key figures shown under the description: material, size, mass, rating. */
   facts?: [label: string, value: string][];
+  /** What can be done to it from close by, on foot, beyond reading about it (see Action). */
+  actions?: Action[];
   /** A heading in the parts list: parts with the same group are listed together under it. */
   group?: string;
   /** It is inside something: selecting it opens the cutaway so it can be seen. */

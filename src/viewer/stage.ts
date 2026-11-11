@@ -7,12 +7,14 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { sameTarget, type Target } from '../actions';
 import type { Flight as FlightData, ModelDef } from '../types';
 import { GROUND_Y, type Setting, Settings } from './backdrops';
+import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
-import { EYE_FRACTION, Walker } from './walk';
+import { EYE_FRACTION, type Hit, Walker } from './walk';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|concrete|suit|galvanised)/;
@@ -47,6 +49,8 @@ VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
+/** The lowest a free camera flies, metres above the surface the model stands on. */
+const FLY_FLOOR = 0.35;
 /** The most of a scenery object that is framed at once, metres across: beyond this a click looks at where it landed. */
 const PLACE = 60;
 /** How much stronger the sky's fill light is in the cel look. */
@@ -104,6 +108,10 @@ export class Stage {
    * (the caller sends the camera somewhere).
    */
   onWalk: (on: boolean, model: string) => void = () => {};
+  /** While walking: what is being looked at from within arm's reach has changed (null: nothing that is anything). */
+  onWalkTarget: (target: Target | null) => void = () => {};
+  /** While walking: the act key, or a finger held on the view. The caller offers what can be done with the target. */
+  onWalkAct: () => void = () => {};
   /** While walking: the mouse has been captured for looking round, or let go. */
   onWalkLook: (captured: boolean) => void = () => {};
   /** First-person walking (walk.ts). While it is active the orbiting camera's rules are all suspended. */
@@ -112,6 +120,8 @@ export class Stage {
   private tap: { t: number; x: number; y: number; walker: string | null } = { t: 0, x: 0, y: 0, walker: null };
   /** Which model is being walked as: an index into `staged`, or -1. */
   private walked = -1;
+  /** While walking: what is being looked at from within reach, and where the ray met it. */
+  private aim: { target: Target; hit: Hit; box?: THREE.Box3 } | null = null;
   /** The orbiting camera's lens, vertical degrees. Views are framed for it even while the walker's wider one is easing in or out. */
   private readonly lens = 35;
 
@@ -131,6 +141,10 @@ export class Stage {
   private readonly loader = new GLTFLoader();
   private readonly loaded = new Map<string, Promise<THREE.Object3D>>();
   private readonly wear = wearTexture();
+  /** How the view is moved when nobody is being walked as: turning about a subject, or flying free. */
+  private mode: CameraMode = 'orbit';
+  private readonly flyer = new Flyer();
+  private fast = false;
   /** Which way everything is drawn, real or cel (look.ts), and the cel look's ink line. */
   private readonly looks = new Looks();
   private readonly ink = new InkPass();
@@ -259,6 +273,11 @@ export class Stage {
     };
     canvas.addEventListener('pointermove', (e) => {
       aim(e);
+      if (this.mode === 'fly' && !this.walk.active && e.buttons & 1 && this.down) {
+        this.flyer.look(e.movementX, e.movementY);
+        this.flyTo = null;
+        this.dirty = true;
+      }
       this.pointerDirty = e.pointerType === 'mouse'; // a finger has no hover
     });
     canvas.addEventListener('pointerleave', () => this.setHover(NOTHING));
@@ -293,6 +312,7 @@ export class Stage {
     const KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'r', 'f', '+', '=', '-', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
     window.addEventListener('keydown', (e) => {
       const key = e.key.toLowerCase();
+      this.fast = e.shiftKey;
       const el = e.target as HTMLElement;
       const typing = el.matches?.('input, textarea, select, [contenteditable]');
       const widget = key.startsWith('arrow') && el.closest?.('[role=tablist], input');
@@ -314,7 +334,20 @@ export class Stage {
       }
       this.held.add(key);
     });
-    window.addEventListener('keyup', (e) => this.held.delete(e.key.toLowerCase()));
+    window.addEventListener('keyup', (e) => {
+      this.held.delete(e.key.toLowerCase());
+      this.fast = e.shiftKey;
+    });
+    canvas.addEventListener(
+      'wheel',
+      (e) => {
+        if (this.mode !== 'fly' || this.walk.active) return;
+        this.flyTo = null;
+        this.flyer.dolly(this.camera, Math.sign(e.deltaY), FLY_FLOOR, this.setting.floor ? GROUND_Y : this.camera.position.y);
+        this.dirty = true;
+      },
+      { passive: true },
+    );
     window.addEventListener('blur', () => this.held.clear());
     // the pixel ratio changes when the window moves to another display or the page is zoomed
     const watchRatio = () => {
@@ -333,6 +366,7 @@ export class Stage {
       ground: () => this.setting.floor?.position.y ?? null,
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
       leave: () => this.exitWalk(),
+      act: () => this.onWalkAct(),
       locked: (on) => this.onWalkLook(on),
     });
 
@@ -567,6 +601,28 @@ export class Stage {
     this.dirty = true;
   }
 
+  /**
+   * How the view is moved: `orbit` turns about what was chosen, `fly` is a free camera that looks
+   * where it is pointed and goes where it is sent. The view itself does not jump on changing.
+   */
+  setCamera(mode: CameraMode): void {
+    if (mode === this.mode) return;
+    this.mode = mode;
+    this.following = null;
+    this.onView(null);
+    this.controls.enabled = mode === 'orbit' && !this.walk.active;
+    if (mode === 'fly') {
+      this.flyTo = null;
+      this.controls.autoRotate = false;
+      this.flyer.read(this.camera);
+    }
+    this.dirty = true;
+  }
+
+  get cameraMode(): CameraMode {
+    return this.mode;
+  }
+
   /** Draw everything as it would look (`real`) or as a cel-shaded drawing with ink lines (`cel`). */
   setLook(look: Look): void {
     this.looks.set(look);
@@ -625,7 +681,7 @@ export class Stage {
   }
 
   setAutoRotate(on: boolean): void {
-    this.controls.autoRotate = on;
+    this.controls.autoRotate = on && this.mode === 'orbit'; // a free camera has nothing to drift round
     // While the view drifts round its subject the wheel only changes how close it is. Zooming
     // toward the pointer moves the point being orbited: that is for a view the user has taken.
     this.controls.zoomToCursor = !on;
@@ -818,6 +874,11 @@ export class Stage {
 
   /** Move the view by whatever keys are held: over the ground, round the subject, in and out. */
   private drive(dt: number): void {
+    if (this.mode === 'fly') {
+      const ground = this.setting.floor ? GROUND_Y : this.camera.position.y; // with no ground under it, one speed
+      if (this.flyer.drive(this.camera, this.held, this.fast, dt, this.setting.floor ? FLY_FLOOR : -Infinity, ground)) this.flyTo = null;
+      return;
+    }
     if (!this.held.size) return;
     const has = (...keys: string[]) => keys.some((k) => this.held.has(k));
     const offset = this.camera.position.clone().sub(this.controls.target);
@@ -916,15 +977,8 @@ export class Stage {
       .intersectObjects([...this.staged.map((s) => s.shown), ...(this.surroundings ? [this.surroundings] : [])], true)
       .find((h) => !gone(h));
     // something in the place round the pad: a click goes over to it
-    for (let o: THREE.Object3D | null = hit?.object ?? null; o && this.surroundings; o = o.parent) {
-      if (o.parent !== this.surroundings && o.parent?.parent !== this.surroundings) continue;
-      if (!o.name || (o as THREE.Mesh).isMesh) continue;
-      const box = new THREE.Box3().setFromObject(o);
-      // a building is looked at whole; a road or a row of poles, where it was clicked
-      if (box.getSize(new THREE.Vector3()).length() > PLACE)
-        box.setFromCenterAndSize(hit!.point, new THREE.Vector3(PLACE, 6, PLACE).multiplyScalar(0.5));
-      return { node: null, model: null, place: { name: o.name, box } };
-    }
+    const place = hit ? this.placeOf(hit.object, hit.point) : null;
+    if (place) return { node: null, model: null, place };
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) {
       const at = this.staged.findIndex((s) => s.shown === o);
       if (at >= 0 && at !== this.current) return { node: null, model: this.defs[at]!.id };
@@ -935,23 +989,43 @@ export class Stage {
     if (hit?.face && mesh && (mesh.material as THREE.Material).name.startsWith('glass')) {
       const normal = hit.face.normal.clone().transformDirection(mesh.matrixWorld);
       if (normal.dot(this.raycaster.ray.direction) > 0) normal.negate(); // toward the viewer, whichever side was hit
-      // aim at the middle of this pane, not at where the click happened to land: the mean of the
-      // mesh's vertices within arm's reach of the hit (one mesh may hold several windows)
-      const at = mesh.geometry.getAttribute('position');
-      const centre = new THREE.Vector3();
-      const v = new THREE.Vector3();
-      let n = 0;
-      for (let i = 0; i < at.count; i++) {
-        mesh.localToWorld(v.fromBufferAttribute(at, i));
-        if (v.distanceTo(hit.point) > 0.6) continue;
-        centre.add(v);
-        n++;
-      }
-      return { node: null, model: null, pane: { point: n ? centre.divideScalar(n) : hit.point.clone(), normal } };
+      return { node: null, model: null, pane: { point: this.paneCentre(mesh, hit.point), normal } };
     }
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent)
       if (this.parts.has(o.name)) return { node: o.name, model: null };
     return { node: null, model: null };
+  }
+
+  /** Something in the place round the pad that `object` belongs to: what it is called, and the part of it to go and look at. */
+  private placeOf(object: THREE.Object3D, point: THREE.Vector3): { name: string; box: THREE.Box3 } | null {
+    for (let o: THREE.Object3D | null = object; o && this.surroundings; o = o.parent) {
+      if (o.parent !== this.surroundings && o.parent?.parent !== this.surroundings) continue;
+      if (!o.name || (o as THREE.Mesh).isMesh) continue;
+      const box = new THREE.Box3().setFromObject(o);
+      // a building is looked at whole; a road or a row of poles, where it was clicked
+      if (box.getSize(new THREE.Vector3()).length() > PLACE)
+        box.setFromCenterAndSize(point, new THREE.Vector3(PLACE, 6, PLACE).multiplyScalar(0.5));
+      return { name: o.name, box };
+    }
+    return null;
+  }
+
+  /**
+   * The middle of the window pane that `point` is on, not where the pointer happened to land:
+   * the mean of the mesh's vertices within arm's reach of the point (one mesh may hold several windows).
+   */
+  private paneCentre(mesh: THREE.Mesh, point: THREE.Vector3): THREE.Vector3 {
+    const at = mesh.geometry.getAttribute('position');
+    const centre = new THREE.Vector3();
+    const v = new THREE.Vector3();
+    let n = 0;
+    for (let i = 0; i < at.count; i++) {
+      mesh.localToWorld(v.fromBufferAttribute(at, i));
+      if (v.distanceTo(point) > 0.6) continue;
+      centre.add(v);
+      n++;
+    }
+    return n ? centre.divideScalar(n) : point.clone();
   }
 
   private setHover({ node, model, pane, place }: Picked): void {
@@ -1031,7 +1105,8 @@ export class Stage {
       if (this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
       this.drive(dt);
       this.fitDetail();
-      this.controls.update(dt);
+      if (this.mode === 'fly') this.flyer.aim(this.camera, this.controls.target, Boolean(this.flyTo));
+      else this.controls.update(dt);
       this.keepInBounds();
       this.keepAboveGround();
       if (this.pointerDirty && !this.down) {
@@ -1080,9 +1155,40 @@ export class Stage {
   enterWalk(model?: string): boolean {
     const at = this.defs.findIndex((m) => m.walker && (!model || m.id === model));
     if (at < 0 || !this.root || this.walk.active) return false;
-    const walker = this.defs[at]!.walker!;
     this.onWalk(true, this.defs[at]!.id);
+    this.flyTo = null;
+    this.following = null;
+    this.held.clear();
+    this.down = null;
+    this.setHover(NOTHING);
+    this.highlight(null, null);
+    this.controls.enabled = false;
+    this.embody(at);
+    return true;
+  }
+
+  /** The model being walked as, or null. */
+  get walkingAs(): string | null {
+    return this.defs[this.walked]?.id ?? null;
+  }
+
+  /**
+   * While walking as one figure, become another (a model with a `walker`): the first is left
+   * standing where it was walked to, and the walk goes on from where the second stands.
+   */
+  becomeWalk(model: string): boolean {
+    const at = this.defs.findIndex((m) => m.walker && m.id === model);
+    if (at < 0 || !this.walk.active || at === this.walked) return false;
+    this.standFigure();
+    this.embody(at);
+    return true;
+  }
+
+  /** Put the walker in a figure's place: its eyes, its height, the way it faces. The figure itself is put away. */
+  private embody(at: number): void {
+    const walker = this.defs[at]!.walker!;
     this.walked = at;
+    this.setAim(null);
     const figure = this.staged[at]!;
     this.scene.updateMatrixWorld(true);
     const feet = figure.group.getWorldPosition(new THREE.Vector3());
@@ -1092,39 +1198,36 @@ export class Stage {
     // you look the way the figure faces: its own forward, turned as the model is turned on the stage
     const [fx, fz] = walker.forward ?? [0, 1];
     const toward = new THREE.Vector3(fx, 0, fz).transformDirection(figure.group.matrixWorld).setY(0).setLength(10).add(feet);
-    this.flyTo = null;
-    this.following = null;
-    this.held.clear();
-    this.down = null;
-    this.setHover(NOTHING);
-    this.highlight(null, null);
-    this.controls.enabled = false;
     figure.group.visible = false;
     this.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.dirty = true;
     this.walk.start(feet, toward, eye, height, walker.radius);
-    return true;
+  }
+
+  /** The figure being walked as is stood where it was walked to, facing the way it was looking, and can be seen again. */
+  private standFigure(): void {
+    const at = this.walked;
+    const figure = this.staged[at];
+    if (!figure) return;
+    const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
+    figure.group.position.copy(this.walk.body.position);
+    figure.group.rotation.y = this.walk.yaw + Math.PI - Math.atan2(fx, fz); // the eyes look along (-sin yaw, -cos yaw)
+    figure.group.visible = true;
+    figure.group.updateMatrixWorld(true);
+    figure.measure();
+    this.fitBounds();
   }
 
   /** Stop walking: the figure is back where it stood, and the orbiting camera takes over from where the walker was looking. */
   exitWalk(): void {
     if (!this.walk.active) return;
     const at = this.walked;
-    const figure = this.staged[at];
-    if (figure) {
-      // the figure is left where it was walked to, facing the way it was looking
-      const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
-      const look = this.camera.getWorldDirection(new THREE.Vector3());
-      figure.group.position.copy(this.walk.body.position);
-      figure.group.rotation.y = Math.atan2(look.x, look.z) - Math.atan2(fx, fz);
-      figure.group.visible = true;
-      figure.group.updateMatrixWorld(true);
-      figure.measure();
-      this.fitBounds();
-    }
+    this.standFigure();
+    this.setAim(null);
     this.walk.stop();
     this.walked = -1;
-    this.controls.enabled = true;
+    this.controls.enabled = this.mode === 'orbit';
+    this.flyer.read(this.camera);
     // orbit a point a few steps ahead, so the flight back starts from this very view
     this.controls.target.copy(this.camera.position).add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
     this.renderer.shadowMap.needsUpdate = true;
@@ -1132,9 +1235,61 @@ export class Stage {
     this.onWalk(false, this.defs[at]?.id ?? '');
   }
 
+  /**
+   * What a ray from the walker's eyes has met, in the flight's terms: which model and part, whether
+   * it is a window, or which place in the surroundings. Null for scenery that is nothing in particular.
+   */
+  private targetOf(hit: Hit): { target: Target; box?: THREE.Box3 } | null {
+    const material = hit.mesh.material as THREE.Material | THREE.Material[];
+    const pane = (Array.isArray(material) ? material[0] : material)?.name.startsWith('glass') || undefined;
+    const place = this.placeOf(hit.mesh, hit.point);
+    if (place) return { target: { place: place.name, pane }, box: place.box };
+    const names: string[] = [];
+    for (let o: THREE.Object3D | null = hit.mesh; o; o = o.parent) {
+      const at = this.staged.findIndex((s) => s.shown === o);
+      if (at < 0) {
+        names.push(o.name);
+        continue;
+      }
+      const def = this.defs[at]!;
+      return { target: { model: def.id, node: def.parts.find((p) => names.includes(p.node))?.node, pane } };
+    }
+    return pane ? { target: { pane } } : null;
+  }
+
+  private setAim(aim: Stage['aim']): void {
+    const changed = !sameTarget(aim?.target ?? null, this.aim?.target ?? null);
+    this.aim = aim;
+    if (changed) this.onWalkTarget(aim?.target ?? null);
+  }
+
+  /** While walking: lean in to the window being looked at, and look through it. */
+  walkLookIn(): void {
+    const hit = this.aim?.hit;
+    if (!hit || !this.aim?.target.pane) return;
+    const centre = this.paneCentre(hit.mesh, hit.point);
+    this.walk.peek(centre.clone().addScaledVector(hit.normal, 0.4), hit.normal.clone().negate());
+  }
+
+  /** While walking: stop, and go and look at the place in the surroundings that was being looked at. */
+  walkVisit(): void {
+    const box = this.aim?.box;
+    this.exitWalk();
+    if (box) this.visit(box);
+  }
+
+  /** Run a model along its slider to `to` (0 to 1), at the pace it always moves: what an Action of kind `slider` does. */
+  operate(model: string, to: number): void {
+    const at = this.defs.findIndex((m) => m.id === model);
+    if (at >= 0) this.apartGoal[at] = this.apartOwn[at] = THREE.MathUtils.clamp(to, 0, 1);
+  }
+
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
   private stepWalk(dt: number): void {
     if (this.walk.update(dt)) this.dirty = true;
+    const hit = this.walk.aimed;
+    const found = hit && this.targetOf(hit);
+    this.setAim(found && hit ? { ...found, hit } : null);
     this.fitDetail();
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting
     const far = this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.floor ? 9000 : 10);

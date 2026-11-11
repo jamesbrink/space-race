@@ -24,6 +24,10 @@ export const STEP = 0.3;
 /** How fast the feet follow a floor that has stepped up or down under them, m/s: a stair is climbed, not teleported. */
 export const STEP_RATE = 3;
 export const GRAVITY = 9.81;
+/** How high a standing jump lifts the feet, metres: an ordinary hop, not an athlete's. */
+export const JUMP_HEIGHT = 0.4;
+/** The speed the feet leave the ground at to reach it: v² = 2gh. */
+export const JUMP_SPEED = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 /** Half the width of a clothed adult across the shoulders, metres: what a figure is given when its flight does not say (ModelDef.walker.radius). */
 export const RADIUS = 0.26;
 /**
@@ -70,10 +74,35 @@ export function settle(from: Footing, floor: number | null, dt: number): Footing
   return y <= floor ? { y: floor, vy: 0, grounded: true } : { y, vy, grounded: false };
 }
 
+/** Jump: from the ground the feet leave it at JUMP_SPEED, and `settle` does the rest. In the air there is nothing to push off. */
+export function jump(from: Footing): Footing {
+  return from.grounded ? { y: from.y, vy: JUMP_SPEED, grounded: false } : from;
+}
+
+/**
+ * A rising figure `height` tall meets whatever is over it at `ceiling` (null: open sky): the
+ * head stops there and the figure starts down again. Standing or falling, a ceiling changes nothing.
+ */
+export function bump(from: Footing, ceiling: number | null, height: number): Footing {
+  if (ceiling === null || from.vy <= 0 || from.y + height <= ceiling) return from;
+  return { y: ceiling - height, vy: 0, grounded: false };
+}
+
 /** How fast a stick pushed this far (0 to 1) walks: a walk over most of its travel, a run at the rim. */
 export function stickSpeed(deflection: number): number {
   const m = Math.max(0, Math.min(1, deflection));
   return m < 0.75 ? (WALK_SPEED * m) / 0.75 : WALK_SPEED + ((RUN_SPEED - WALK_SPEED) * (m - 0.75)) / 0.25;
+}
+
+/** How far an arm reaches, metres: what is looked at from nearer than this can be acted on. */
+export const REACH = 2.5;
+
+/** What a ray met: the mesh, where, how far along, and which way the surface faces there. */
+export interface Hit {
+  mesh: THREE.Mesh;
+  point: THREE.Vector3;
+  normal: THREE.Vector3;
+  distance: number;
 }
 
 /** A mesh near enough to matter this tick, with what is needed to ask it questions in its own coordinates. */
@@ -87,6 +116,7 @@ interface Near {
 }
 
 const DOWN = new THREE.Vector3(0, -1, 0);
+const UP = new THREE.Vector3(0, 1, 0);
 
 /**
  * Everything solid: the meshes under a set of roots. Each geometry gets a bounding volume
@@ -131,11 +161,14 @@ export class Solids {
     return list;
   }
 
-  /** Choose the meshes within `reach` metres of a point: the only ones the questions that follow are put to. */
-  gather(centre: THREE.Vector3, reach: number, below: number): void {
+  /**
+   * Choose the meshes near a point, within `reach` metres sideways, `below` under it and `above`
+   * over it: the only ones the questions that follow are put to.
+   */
+  gather(centre: THREE.Vector3, reach: number, below: number, above = reach): void {
     this.near.length = 0;
     this.region.min.set(centre.x - reach, centre.y - below, centre.z - reach);
-    this.region.max.set(centre.x + reach, centre.y + reach, centre.z + reach);
+    this.region.max.set(centre.x + reach, centre.y + above, centre.z + reach);
     for (const root of this.roots)
       for (const mesh of this.meshes(root)) {
         if (!mesh.visible) continue;
@@ -175,6 +208,23 @@ export class Solids {
       if (!hit) continue;
       const height = this.point.copy(hit.point).applyMatrix4(n.mesh.matrixWorld).y;
       if (best === null || height > best) best = height;
+    }
+    return best;
+  }
+
+  /** The height of the first surface straight up from a point, or null under open sky. */
+  above(x: number, y: number, z: number): number | null {
+    let best: number | null = null;
+    for (const n of this.near) {
+      const b = n.box;
+      if (x < b.min.x || x > b.max.x || z < b.min.z || z > b.max.z || b.max.y < y || (best !== null && b.min.y >= best)) continue;
+      this.ray.origin.set(x, y, z);
+      this.ray.direction.copy(UP);
+      this.ray.applyMatrix4(n.inverse);
+      const hit = n.bvh.raycastFirst(this.ray, THREE.DoubleSide);
+      if (!hit) continue;
+      const height = this.point.copy(hit.point).applyMatrix4(n.mesh.matrixWorld).y;
+      if (best === null || height < best) best = height;
     }
     return best;
   }
@@ -229,6 +279,26 @@ export class Solids {
       });
     }
     return deepest;
+  }
+
+  /** The first surface along a ray, within `far` metres, or null. The normal is turned to face the ray's origin. */
+  cast(origin: THREE.Vector3, direction: THREE.Vector3, far: number): Hit | null {
+    let best: Hit | null = null;
+    for (const n of this.near) {
+      this.ray.origin.copy(origin);
+      this.ray.direction.copy(direction);
+      if (!this.ray.intersectsBox(n.box)) continue;
+      this.ray.applyMatrix4(n.inverse);
+      const hit = n.bvh.raycastFirst(this.ray, THREE.DoubleSide);
+      if (!hit) continue;
+      const point = hit.point.clone().applyMatrix4(n.mesh.matrixWorld);
+      const distance = point.distanceTo(origin);
+      if (distance > far || (best && distance >= best.distance)) continue;
+      const normal = (hit.face?.normal.clone() ?? new THREE.Vector3(0, 1, 0)).transformDirection(n.mesh.matrixWorld);
+      if (normal.dot(direction) > 0) normal.negate();
+      best = { mesh: n.mesh, point, normal, distance };
+    }
+    return best;
   }
 
   /** How far the nearest surface is from a point, if it is within `within` metres. */
@@ -290,7 +360,7 @@ export class Body {
     this.position.set(x, y, z);
     this.vy = 0;
     this.grounded = true;
-    this.solids.gather(this.position, 2, 4);
+    this.solids.gather(this.position, 2, 4, this.height + 1);
     const floor = this.floor(STEP);
     // on it if it is within a step; otherwise it starts in the air and comes down
     if (floor !== null && y - floor <= STEP) this.position.y = floor;
@@ -313,6 +383,24 @@ export class Body {
     return pickFloor(this.heights, p.y, riser);
   }
 
+  /** What is over the head, as the floor is under the feet: the lowest surface above the body's middle, or null. */
+  private ceiling(): number | null {
+    const p = this.position;
+    let lowest: number | null = null;
+    for (const [dx, dz] of PROBES) {
+      const h = this.solids.above(p.x + dx * this.radius, p.y + this.height / 2, p.z + dz * this.radius);
+      if (h !== null && (lowest === null || h < lowest)) lowest = h;
+    }
+    return lowest;
+  }
+
+  /** Hop: only from the ground. The next `move` carries it up and gravity brings it down. */
+  jump(): void {
+    const footing = jump({ y: this.position.y, vy: this.vy, grounded: this.grounded });
+    this.vy = footing.vy;
+    this.grounded = footing.grounded;
+  }
+
   /**
    * Move by (dx, dz) metres over the ground during `dt` seconds, and let gravity have its tick.
    * In short strides, so that nothing thinner than the figure can be stepped through.
@@ -321,7 +409,8 @@ export class Body {
     const distance = Math.hypot(dx, dz);
     const strides = Math.max(1, Math.ceil(distance / (this.radius * 0.4)));
     const p = this.position;
-    this.solids.gather(p, distance + this.radius + 1, STEP + 2 + Math.abs(this.vy) * dt);
+    // everything the body could touch this tick: a step and a fall below the feet, the whole figure and a hop above them
+    this.solids.gather(p, distance + this.radius + 1, STEP + 2 + Math.abs(this.vy) * dt, this.height + 1 + Math.abs(this.vy) * dt);
     this.heading.set(dx, 0, dz);
     if (distance) this.heading.divideScalar(distance);
     for (let i = 0; i < strides; i++) {
@@ -345,7 +434,8 @@ export class Body {
         this.grounded = true;
         return;
       }
-      const footing = settle({ y: p.y, vy: this.vy, grounded: this.grounded }, floor, dt / strides);
+      let footing = settle({ y: p.y, vy: this.vy, grounded: this.grounded }, floor, dt / strides);
+      if (footing.vy > 0) footing = bump(footing, this.ceiling(), this.height); // a hop under a soffit
       p.y = footing.y;
       this.vy = footing.vy;
       this.grounded = footing.grounded;
@@ -364,11 +454,13 @@ export interface WalkHost {
   reach(): number;
   /** The walker wants out (Escape). */
   leave(): void;
+  /** The act key (E), or a finger held still on the view: do something with what is being looked at. */
+  act(): void;
   /** The pointer was captured or let go: the page says how to look round accordingly. */
   locked(on: boolean): void;
 }
 
-const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
+const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ']);
 /** Radians of turn per pixel of mouse or finger. */
 const LOOK = 0.0023;
 /** Radians per second the left and right arrows turn the view. */
@@ -376,13 +468,18 @@ const TURN = 1.9;
 /** The first-person lens, vertical degrees: wide enough to see where the feet are going. */
 const FOV = 62;
 const FOV_UPRIGHT = 80;
+/** How long a finger must rest on the view, without sliding, to mean "act on this": milliseconds, and pixels of slack. */
+const HOLD_MS = 450;
+const HOLD_SLACK = 10;
+/** How long the eyes take to go up to a window and to come back from it, seconds. */
+const PEEK_SECONDS = 0.45;
 /** How long the lens takes to widen on getting down to walk, and to close again after. */
 const LENS_SECONDS = 0.5;
 
 /**
  * First-person walking: input on a canvas, a Body in the stage's solids, the camera at its eyes.
  * The mouse is captured for looking round where the browser allows it; otherwise (a phone, or a
- * refusal) a drag looks round, and `stick` takes an on-screen stick's position.
+ * refusal) a drag looks round, and `stick` and `jump` take an on-screen stick and button.
  */
 export class Walker {
   active = false;
@@ -405,6 +502,20 @@ export class Walker {
   private moved = true;
   private readonly euler = new THREE.Euler(0, 0, 0, 'YXZ');
   private readonly eyes = new THREE.Vector3();
+  private readonly gaze = new THREE.Vector3();
+  /** What is straight ahead of the eyes within arm's reach (REACH), as of the last frame. */
+  aimed: Hit | null = null;
+  /**
+   * Something on the page has taken the controls (a menu is open): the figure stands still, the
+   * mouse goes to `mouse` and not to the head, and Escape goes to `cancel` and does not stop the walk.
+   */
+  private modal: { mouse(dx: number, dy: number): void; cancel(): void } | null = null;
+  /** Leaning in to look through a window: where the eyes go, and how far there they are (0 to 1). */
+  private peekAt: THREE.Vector3 | null = null;
+  private peekK = 0;
+  /** The last place leaned to: where the eyes come back from. */
+  private peekTo: THREE.Vector3 | null = null;
+  private holdTimer = 0;
 
   constructor(canvas: HTMLCanvasElement, camera: THREE.PerspectiveCamera, host: WalkHost) {
     this.canvas = canvas;
@@ -416,16 +527,21 @@ export class Walker {
       const key = e.key.toLowerCase();
       const typing = (e.target as HTMLElement).matches?.('input, textarea, select, [contenteditable]');
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
-      if (key === 'escape') return this.host.leave();
+      if (key === 'escape') return this.modal ? this.modal.cancel() : this.host.leave();
+      if (this.modal) return; // the keys are the menu's
+      if (key === 'e' && !e.repeat) return this.host.act();
       if (!WALK_KEYS.has(key)) return;
       e.preventDefault();
+      if (key === ' ' && !e.repeat) this.jump();
       this.held.add(key);
     });
     window.addEventListener('keyup', (e) => this.held.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => this.held.clear());
     // captured, the mouse turns the head
     document.addEventListener('mousemove', (e) => {
-      if (this.active && document.pointerLockElement === canvas) this.look(e.movementX * LOOK, -e.movementY * LOOK);
+      if (!this.active || document.pointerLockElement !== canvas) return;
+      if (this.modal) this.modal.mouse(e.movementX, e.movementY);
+      else this.look(e.movementX * LOOK, -e.movementY * LOOK);
     });
     // Escape lets a captured pointer go before any key event is sent, so letting go is how
     // Escape is heard. Losing the window (another app) lets go too: that is not leaving.
@@ -434,7 +550,7 @@ export class Walker {
       if (!this.active || locked === this.wasLocked) return;
       this.wasLocked = locked;
       this.host.locked(locked);
-      if (!locked && document.hasFocus()) this.host.leave();
+      if (!locked && document.hasFocus()) this.modal ? this.modal.cancel() : this.host.leave();
     });
     document.addEventListener('pointerlockerror', () => this.host.locked(false));
     // not captured: a drag looks round, and a click asks for the pointer again
@@ -442,16 +558,31 @@ export class Walker {
       if (!this.active || document.pointerLockElement === canvas) return;
       this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
       canvas.setPointerCapture?.(e.pointerId);
+      // a finger that rests where it came down is asking to act on what is ahead
+      const from = { x: e.clientX, y: e.clientY };
+      clearTimeout(this.holdTimer);
+      if (e.pointerType !== 'mouse')
+        this.holdTimer = window.setTimeout(() => {
+          if (
+            this.active &&
+            !this.modal &&
+            this.drag?.id === e.pointerId &&
+            Math.hypot(this.drag.x - from.x, this.drag.y - from.y) < HOLD_SLACK
+          )
+            this.host.act();
+        }, HOLD_MS);
     });
     canvas.addEventListener('pointermove', (e) => {
-      if (!this.active || this.drag?.id !== e.pointerId) return;
+      if (!this.active || this.drag?.id !== e.pointerId || this.modal) return;
       // the view follows the finger: drag right to look right
       this.look((e.clientX - this.drag.x) * LOOK * 1.6, -(e.clientY - this.drag.y) * LOOK * 1.6);
       this.drag.x = e.clientX;
       this.drag.y = e.clientY;
     });
     const release = (e: PointerEvent) => {
-      if (this.drag?.id === e.pointerId) this.drag = null;
+      if (this.drag?.id !== e.pointerId) return;
+      this.drag = null;
+      clearTimeout(this.holdTimer);
     };
     canvas.addEventListener('pointerup', release);
     canvas.addEventListener('pointercancel', release);
@@ -489,9 +620,40 @@ export class Walker {
     this.yaw = Math.atan2(-(toward.x - at.x), -(toward.z - at.z));
     this.pitch = 0;
     this.moved = true;
-    this.wasLocked = false;
+    this.wasLocked = document.pointerLockElement === this.canvas; // already captured when one figure is left for another
+    this.modal = null;
+    this.peekAt = null;
+    this.peekK = 0;
+    this.aimed = null;
     this.capture();
     this.update(0);
+  }
+
+  /** Hand the controls to something on the page (a menu) until `release`: see `modal`. */
+  hold(mouse: (dx: number, dy: number) => void, cancel: () => void): void {
+    this.modal = { mouse, cancel };
+    this.held.clear();
+    this.stickAt.set(0, 0);
+  }
+
+  release(): void {
+    this.modal = null;
+  }
+
+  /**
+   * Lean in to a window: the eyes go to `at` (a point just outside the pane) and look along
+   * `toward`, and from there the head turns freely. The feet stay where they are; taking a step
+   * ends it and the eyes come back.
+   */
+  peek(at: THREE.Vector3, toward: THREE.Vector3): void {
+    this.peekAt = this.peekTo = at.clone();
+    this.yaw = Math.atan2(-toward.x, -toward.z);
+    this.pitch = Math.asin(THREE.MathUtils.clamp(toward.y / (toward.length() || 1), -1, 1));
+    this.moved = true;
+  }
+
+  get peeking(): boolean {
+    return this.peekAt !== null;
   }
 
   /**
@@ -503,6 +665,11 @@ export class Walker {
     this.active = false;
     this.held.clear();
     this.drag = null;
+    this.modal = null;
+    this.peekAt = null;
+    this.peekK = 0;
+    this.aimed = null;
+    clearTimeout(this.holdTimer);
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
   }
 
@@ -528,6 +695,11 @@ export class Walker {
     this.moved = true;
   }
 
+  /** Hop (Space, or the page's button). */
+  jump(): void {
+    if (this.active && !this.modal) this.body.jump();
+  }
+
   /** An on-screen stick: x to the right, y forward, each -1 to 1. (0, 0) lets go. */
   stick(x: number, y: number): void {
     this.stickAt.set(x, y);
@@ -550,7 +722,9 @@ export class Walker {
       right = this.stickAt.x;
       speed = stickSpeed(this.stickAt.length());
     }
+    if (this.modal) forward = right = 0;
     const length = Math.hypot(forward, right);
+    if (length || !this.body.grounded) this.peekAt = null; // a step, or a hop, and the eyes come back from the window
     const stride = length ? (speed * dt) / length : 0;
     const sin = Math.sin(this.yaw),
       cos = Math.cos(this.yaw);
@@ -569,7 +743,15 @@ export class Walker {
 
     const camera = this.camera;
     camera.position.set(p.x, p.y + this.eye, p.z);
+    // leaning in to a window, or coming back from one: the eyes glide between the head and the pane
+    const k = this.peekK;
+    this.peekK = THREE.MathUtils.clamp(k + (this.peekAt ? dt : -dt) / PEEK_SECONDS, 0, 1);
+    if (this.peekK !== k) this.moved = true;
+    if (this.peekK > 0 && this.peekTo) camera.position.lerp(this.peekTo, this.peekK * this.peekK * (3 - 2 * this.peekK));
     camera.quaternion.setFromEuler(this.euler.set(this.pitch, this.yaw, 0));
+    // what the body could touch was gathered for its move; what the eyes and the hand can reach is gathered now
+    this.solids.gather(camera.position, REACH + 0.5, REACH + 0.5);
+    this.aimed = this.solids.cast(camera.position, camera.getWorldDirection(this.gaze), REACH);
     if (this.lens(dt)) this.moved = true;
     const fov = camera.aspect < 1 ? FOV_UPRIGHT : FOV;
     // The near plane goes out as far as the nearest thing allows, as it does for the orbiting

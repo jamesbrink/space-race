@@ -1,0 +1,42 @@
+/* The front page: the mark over the scene, and the flights to go into. */
+#title { position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto; justify-items: center; align-items: center; gap: 28px;
+  padding: clamp(20px, 5vh, 56px) clamp(16px, 5vw, 56px); overflow-y: auto; color: var(--ink);
+  background: radial-gradient(120% 90% at 50% 38%, rgba(6, 8, 12, 0.5), rgba(6, 8, 12, 0.9) 70%), linear-gradient(rgba(6, 8, 12, 0.55), rgba(6, 8, 12, 0.82));
+  backdrop-filter: blur(5px) saturate(0.8); -webkit-backdrop-filter: blur(5px) saturate(0.8); transition: opacity 0.55s ease, backdrop-filter 0.55s ease; }
+#title[hidden] { display: none; }
+#title.leaving { opacity: 0; pointer-events: none; }
+/* while it is up, the page under it is not for using */
+body.titled #ui { visibility: hidden; }
+
+.title-mark { width: min(880px, 100%); align-self: end; text-align: center; }
+.logo { display: block; width: 100%; height: auto; overflow: visible; color: var(--ink); filter: drop-shadow(0 6px 28px rgba(0, 0, 0, 0.6)); }
+.logo-trail { stroke-dasharray: 1; stroke-dashoffset: 1; animation: logo-fly 1.5s cubic-bezier(0.3, 0, 0.2, 1) 0.25s forwards; }
+.logo-trail.late { animation-delay: 0.55s; }
+.logo-goal { opacity: 0; animation: logo-arrive 0.6s ease 1.5s forwards; }
+@keyframes logo-fly { to { stroke-dashoffset: 0; } }
+@keyframes logo-arrive { to { opacity: 1; } }
+.title-line { margin-top: clamp(10px, 2.4vh, 22px); font: clamp(10px, 1.5vw, 13px)/1.5 var(--mono); letter-spacing: 0.26em; text-transform: uppercase; color: var(--dim); }
+.title-line i { font-style: normal; color: var(--amber); margin: 0 0.5em; }
+
+.title-flights { width: min(720px, 100%); display: grid; gap: 10px; align-self: start; }
+.title-flights button { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; width: 100%; padding: 16px 20px; text-align: left;
+  background: var(--glass); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
+.title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.86); border-color: rgba(255, 196, 107, 0.6); transform: translateX(3px); }
+.title-flights .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--faint); }
+.title-flights .what { display: grid; gap: 3px; min-width: 0; }
+.title-flights .what b { font: 600 20px/1.15 var(--sans); color: var(--ink); letter-spacing: 0.01em; }
+.title-flights .what em { font-style: normal; font-size: 13px; color: var(--dim); }
+.title-flights .when { font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: right; white-space: nowrap; }
+.title-flights .go { font: 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); padding: 9px 12px; border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
+.title-foot { max-width: 60ch; text-align: center; font-size: 12px; color: var(--faint); }
+
+@media (max-width: 620px) {
+  .title-flights button { grid-template-columns: auto 1fr auto; padding: 14px; gap: 8px 12px; }
+  .title-flights .when { grid-column: 2 / -1; grid-row: 2; text-align: left; white-space: normal; }
+  .title-flights .go { grid-column: 3; grid-row: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-trail { animation: none; stroke-dashoffset: 0; }
+  .logo-goal { animation: none; opacity: 1; }
+  #title { transition: none; }
+}

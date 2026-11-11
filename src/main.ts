@@ -1,5 +1,7 @@
 import { flights } from '../missions';
+import { type Choice, choices, lookUp, nameOf, spaced, type Target } from './actions';
 import { prefs } from './prefs';
+import { Title } from './title';
 import { Ui } from './ui';
 import { Stage } from './viewer/stage';
 
@@ -42,8 +44,12 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
     stage.setCutaway(on);
   },
   cel: (on) => stage.setLook(on ? 'cel' : 'real'),
+  camera: (mode) => stage.setCamera(mode), // back in orbit the view holds still until something is chosen
+
   walk: (on) => (on ? void stage.enterWalk(current.id) : stage.exitWalk()),
   walkStick: (x, y) => stage.walk.stick(x, y),
+  walkJump: () => stage.walk.jump(),
+  walkAct: () => act(),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
   inset: (px) => stage.setInset(px),
@@ -92,7 +98,7 @@ function show(id: string, snap = false): void {
   stage.section(model.id, snap);
   orbit();
   const hash = `#${flight.id}/${model.id}`;
-  if (location.hash !== hash) history.replaceState(null, '', hash);
+  if (!title.showing && location.hash !== hash) history.replaceState(null, '', hash); // the front page has no address of its own
 }
 
 /** Fetch the flight's models and open on a section. */
@@ -103,6 +109,7 @@ async function start(id: string): Promise<void> {
     ready = true;
     show(id, true);
     ui.loaded();
+    if (prefs.get('fly')) ui.setCamera('fly');
   } catch (e) {
     console.error(e);
     ui.failed(e instanceof Error ? e.message : String(e));
@@ -113,16 +120,7 @@ stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
 stage.onModel = (id) => show(id); // a click on the pad, the rocket or the pilot goes to it
 stage.onHoverModel = (id) => ui.hoverModel(id);
-stage.onHoverPlace = (name) =>
-  // a node is named in one word (Pad6Gantry): spaced out, it is a label
-  ui.hint(
-    name
-      ? [
-          name.replace(/([a-z])([A-Z0-9])/g, '$1 $2').replace(/^(.)(.*)$/, (_, a: string, b: string) => a + b.toLowerCase()),
-          'Click to go and look',
-        ]
-      : null,
-  );
+stage.onHoverPlace = (name) => ui.hint(name ? [spaced(name), 'Click to go and look'] : null);
 stage.onVisit = orbit; // the view drifts round whatever was last chosen
 stage.onHoverWindow = (over) => ui.hint(over ? ['Window', 'Click to look inside'] : null);
 // taking the camera pauses the drift; it starts again with the next thing chosen
@@ -139,13 +137,105 @@ stage.onWalk = (on, model) => {
   if (!on) show(model);
 };
 stage.onWalkLook = (captured) => ui.setWalkLook(captured);
+
+/** While walking: what is being looked at from within reach, if there is anything to be done with it. */
+let target: Target | null = null;
+/** Where the walker stood when the info card was opened: walking away from it puts it down. */
+let cardAt: { x: number; z: number } | null = null;
+stage.onWalkTarget = (found) => {
+  target = found && choices(found, flight, stage.walkingAs ?? '').length ? found : null;
+  ui.setWalkTarget(target ? nameOf(target, flight) : null);
+  ui.wheel.close(); // what it was about is no longer in front of you
+};
+stage.onWalkAct = act;
+
+/** The act key: offer what can be done with what is being looked at, on the wheel. With nothing there, it puts the card away. */
+function act(): void {
+  if (ui.wheel.isOpen) {
+    ui.wheel.close();
+    return;
+  }
+  const on = target;
+  if (!on) {
+    ui.showWalkCard(null);
+    return;
+  }
+  const list = choices(on, flight, stage.walkingAs ?? '');
+  // while it is open the walker stands still and the captured mouse points at choices; Escape shuts it
+  stage.walk.hold(
+    (dx, dy) => ui.wheel.nudge(dx, dy),
+    () => ui.wheel.close(),
+  );
+  ui.wheel.open(
+    nameOf(on, flight),
+    list,
+    (id) => perform(on, list.find((c) => c.id === id)!),
+    () => stage.walk.release(),
+    'e',
+  );
+}
+
+/** Carry out a verb chosen on the wheel. */
+function perform(on: Target, { verb }: Choice): void {
+  const { part } = lookUp(on, flight);
+  if (verb.do === 'info' && part) {
+    ui.showWalkCard(part);
+    cardAt = { x: stage.walk.body.position.x, z: stage.walk.body.position.z };
+  } else if (verb.do === 'look') stage.walkLookIn();
+  else if (verb.do === 'become') {
+    ui.showWalkCard(null);
+    stage.becomeWalk(verb.model);
+  } else if (verb.do === 'action') {
+    if (verb.action.do.kind === 'slider') stage.operate(verb.model, verb.action.do.to);
+  } else if (verb.do === 'inspect') {
+    // out of the walk, and round the thing itself: a place in the surroundings, or a part in its own section
+    if (on.place) stage.walkVisit();
+    else if (on.model && on.node) {
+      stage.exitWalk();
+      show(on.model);
+      select(on.node);
+    }
+  }
+}
+// with the mouse captured a click lands on no button: it chooses what the wheel is pointing at
+document.addEventListener('mousedown', () => {
+  if (ui.wheel.isOpen && document.pointerLockElement) ui.wheel.confirm();
+});
 stage.onHome = () => (selected ? select(null) : show(current.id));
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
+  // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
+  const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (stage.walk.active) stage.exitWalk();
+    else stage.enterWalk();
+  }
+});
+
+/**
+ * The front page is what an address that names nothing shows. Going in names the place, so from
+ * then on a refresh or a link comes straight back to it.
+ */
+const title = new Title(document.body, flights, (id) => {
+  if (id !== flight.id) {
+    location.hash = `#${id}`;
+    return location.reload(); // another flight is another page's worth of state
+  }
+  title.hide();
+  history.replaceState(null, '', `#${flight.id}/${current.id}`);
+  orbit();
+});
+if (location.hash.length <= 1) title.show();
+document.addEventListener('click', (e) => {
+  if (!(e.target as HTMLElement).closest?.('[data-home]')) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  title.show();
 });
 
 void start(address().model);
 window.addEventListener('hashchange', () => {
+  if (location.hash.length <= 1) return title.show();
+  if (title.showing) title.hide();
   const to = address();
   // another flight is another page's worth of state: start clean rather than rebuild in place
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
@@ -154,6 +244,9 @@ window.addEventListener('hashchange', () => {
 
 // diagnostics, twice a second
 setInterval(() => {
+  // a card read and walked away from is put down
+  if (cardAt && ui.walkCardOpen && Math.hypot(stage.walk.body.position.x - cardAt.x, stage.walk.body.position.z - cardAt.z) > 3)
+    ui.showWalkCard(null);
   const s = stage.stats();
   const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
   ui.setStats(

@@ -3,7 +3,11 @@ import { test } from 'node:test';
 import * as THREE from 'three';
 import {
   Body,
+  bump,
   GRAVITY,
+  JUMP_HEIGHT,
+  JUMP_SPEED,
+  jump,
   pickFloor,
   RADIUS,
   RUN_SPEED,
@@ -60,6 +64,32 @@ test('the stick walks over most of its travel and runs at the rim', () => {
   assert.equal(stickSpeed(3), RUN_SPEED);
 });
 
+test('a jump leaves the ground at the speed that reaches its height, and only from the ground', () => {
+  const up = jump({ y: 1, vy: 0, grounded: true });
+  assert.deepEqual(up, { y: 1, vy: JUMP_SPEED, grounded: false });
+  assert.equal(jump(up), up, 'no second jump in the air');
+  let f = up;
+  let apex = 0;
+  let t = 0;
+  while (!f.grounded && t < 3) {
+    f = settle(f, 1, 1 / 240);
+    apex = Math.max(apex, f.y - 1);
+    t += 1 / 240;
+  }
+  assert.ok(Math.abs(apex - JUMP_HEIGHT) < 0.01, `apex ${apex}`);
+  assert.deepEqual(f, { y: 1, vy: 0, grounded: true });
+  assert.ok(Math.abs(t - (2 * JUMP_SPEED) / GRAVITY) < 0.02, `airborne ${t} s`);
+});
+
+test('a rising head stops at a ceiling; standing or falling under one changes nothing', () => {
+  assert.deepEqual(bump({ y: 0.3, vy: 2, grounded: false }, 2.1, 1.9), { y: 2.1 - 1.9, vy: 0, grounded: false });
+  const clear = { y: 0.1, vy: 2, grounded: false };
+  assert.equal(bump(clear, 2.1, 1.9), clear);
+  assert.equal(bump(clear, null, 1.9), clear);
+  const falling = { y: 0.3, vy: -1, grounded: false };
+  assert.equal(bump(falling, 2.1, 1.9), falling);
+});
+
 /** A small site: a slab at y = 0, a wall, three stairs up to a deck, and a platform that can be moved. */
 function site() {
   const root = new THREE.Group();
@@ -75,6 +105,7 @@ function site() {
   box(4, 0.75, 2, -3.15 - 0.9 - 2.15, 0, 0); // the deck the stairs reach: top at 0.75
   box(0.3, 1.0, 2, 0, 0, -6); // a kerb a metre high: too tall to step up
   const platform = box(2, 0.2, 2, 0, 1.8, 8); // top at 2.0
+  box(3, 0.2, 3, 12, 2.05, 12); // a soffit: its underside 2.05 m over the slab, 16 cm over a standing head
   root.updateMatrixWorld(true);
   const solids = new Solids();
   solids.set([root]);
@@ -132,6 +163,25 @@ test('walking off an edge falls and lands; a platform is solid wherever it has b
   body.place(10, 2.0, 8);
   walk(body, 0, 0, 0.2);
   assert.ok(body.grounded && Math.abs(body.position.y - 2) < 1e-6);
+});
+
+test('a body hops to its jump height in the open, and under a soffit only as far as its head allows', () => {
+  const { body } = site();
+  const hop = () => {
+    let apex = 0;
+    body.jump();
+    for (let i = 0; i < 120; i++) {
+      body.move(0, 0, 1 / 120);
+      apex = Math.max(apex, body.position.y);
+    }
+    return apex;
+  };
+  body.place(0, 0, 3);
+  const open = hop();
+  assert.ok(Math.abs(open - JUMP_HEIGHT) < 0.02 && body.grounded && body.position.y === 0, `open: ${open}`);
+  body.place(12, 0, 12);
+  const under = hop();
+  assert.ok(Math.abs(under - (2.05 - body.height)) < 0.01 && body.grounded && body.position.y === 0, `under the soffit: ${under}`);
 });
 
 test('off the slab there is always the ground, and without ground the body goes back where it last stood', () => {
