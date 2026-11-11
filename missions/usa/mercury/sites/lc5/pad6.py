@@ -64,7 +64,7 @@ def build(parts: Parts) -> None:
     hardstand.burns(parts, g, cy, lift=FAR)
     hardstand.scale_plate(parts, g, cy)
     hardstand.trench(parts, g, TRENCH6_END, TRENCH6_TO, cy, lift=FAR)
-    launcher.build(parts, "Pad6Launcher")
+    launcher.build(parts, "Pad6Launcher", rail_top=RAIL_TOP + 0.12)  # its cables ride over rails that stand proud (grounds.FAR_RAIL)
     parts.shift("Pad6Launcher", (0.0, cy, 0.0))
     for x, y in ((-104.0, -70.0), (-104.0, 70.0), (104.0, -70.0), (104.0, 70.0)):
         timber_pole(parts, g, x, cy + y, 38.0, lamps=3, aim=(-x, -y, 0))

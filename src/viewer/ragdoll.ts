@@ -131,6 +131,8 @@ const GRIP = 0.4;
 export class Limp {
   readonly points: THREE.Vector3[] = POINTS.map(() => new THREE.Vector3());
   private readonly before: THREE.Vector3[] = POINTS.map(() => new THREE.Vector3());
+  /** Where each point was at the start of the tick (`before` is also its speed, and the world takes speed out of it). */
+  private readonly start: THREE.Vector3[] = POINTS.map(() => new THREE.Vector3());
   private readonly sticks: { a: number; b: number; least: number; most: number }[] = [];
   private readonly touching: boolean[] = POINTS.map(() => false);
   /** Each bend (BENDS) with how far its joint may lie on the wrong side of its line, metres, from the bones' lengths at rest. */
@@ -190,6 +192,7 @@ export class Limp {
       const vy = (p.y - was.y) * (this.touching[i] ? Math.min(keep, 0.9) : AIR);
       const vz = (p.z - was.z) * keep;
       was.copy(p);
+      this.start[i]!.copy(p);
       p.set(p.x + vx, p.y + vy - g, p.z + vz);
     });
     for (let pass = 0; pass < passes; pass++) {
@@ -211,8 +214,8 @@ export class Limp {
       // the world, last in each pass: whatever else is asked of a point, it is not inside anything
       if (pass % 2 === 1 || pass === passes - 1)
         this.points.forEach((p, i) => {
-          // (the first time in a tick, from where it started the tick: nothing falls through a floor between frames)
-          const out = collide(p, RADIUS[POINTS[i]!] ?? SMALL, pass === 1 ? this.before[i] : undefined);
+          // (from where it started the tick: nothing goes through a floor, between frames or pushed by its own limbs)
+          const out = collide(p, RADIUS[POINTS[i]!] ?? SMALL, this.start[i]);
           if (pass === passes - 1) this.touching[i] = out !== null;
           if (!out) return;
           // it does not bounce: what speed it had into the surface is gone

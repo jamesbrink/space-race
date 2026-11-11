@@ -195,6 +195,7 @@ export class Tossed {
   private readonly corners: THREE.Vector3[] = [];
   private readonly points: THREE.Vector3[] = [];
   private readonly before: THREE.Vector3[] = [];
+  private readonly start: THREE.Vector3[] = [];
   private readonly sticks: [number, number, number][] = [];
   /** The middle of the box in the item's own frame: its origin is its handle, not its middle. */
   private readonly middle = new THREE.Vector3();
@@ -218,6 +219,7 @@ export class Tossed {
       const p = corner.clone().applyMatrix4(item.matrixWorld);
       this.points.push(p);
       this.before.push(p.clone().addScaledVector(velocity, -dt));
+      this.start.push(p.clone());
     }
     for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) this.sticks.push([i, j, this.corners[i]!.distanceTo(this.corners[j]!)]);
   }
@@ -234,6 +236,7 @@ export class Tossed {
         const was = this.before[i]!;
         const v = v1.subVectors(p, was).multiplyScalar(this.grounded ? 0.6 : 0.995);
         was.copy(p);
+        this.start[i]!.copy(p);
         p.add(v).setY(p.y - 9.81 * h * h);
       });
       for (let pass = 0; pass < 8; pass++) {
@@ -247,7 +250,7 @@ export class Tossed {
           b.sub(d);
         }
         this.points.forEach((p, i) => {
-          const out = collide(p, 0.01, pass === 0 ? this.before[i] : undefined);
+          const out = collide(p, 0.01, this.start[i]);
           if (!out) return;
           touching[i] = true;
           const was = this.before[i]!;

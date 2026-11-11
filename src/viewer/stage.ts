@@ -2464,13 +2464,15 @@ export class Stage {
     if (from) {
       const way = this.sweep.subVectors(point, from);
       const far = way.length();
-      const hit = far > radius * 0.5 ? this.walk.solids.cast(from, way.divideScalar(far), far + radius) : null;
+      const hit = far > 1e-5 ? this.walk.solids.cast(from, way.divideScalar(far), far + radius) : null;
       if (hit && hit.distance < far + radius) {
-        point.copy(hit.point).addScaledVector(hit.normal, radius);
+        // (back along the way it came, to where it met the surface: not out sideways, which would throw it)
+        point.copy(from).addScaledVector(way, Math.max(0, hit.distance - radius));
         swept = hit.normal;
       }
     }
-    const out = this.walk.solids.out(point, radius) ?? swept;
+    // (put back where it came from, it is touching what it went through: pushed out of the nearest surface instead, a point inside a slab can be sent out of its underside)
+    const out = swept ?? this.walk.solids.out(point, radius);
     const ground = this.setting.floor?.position.y ?? null;
     if (ground === null || point.y >= ground + radius) return out;
     point.y = ground + radius;

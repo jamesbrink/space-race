@@ -1676,3 +1676,393 @@ def ford_f600_tractor(paint: str = "white", **kw) -> Car:
     )
     return Car(**{**car, **kw})
 
+
+# ------------------------------------------------------------------- military trucks
+
+
+def extrude(mb: MeshBuilder, profile: Sequence[tuple[float, float]], xa: float, xb: float, caps: tuple[bool, bool] = (True, True)) -> None:
+    """A section in (y, z), either winding, carried straight along X from xa to xb: a plate with
+    its lips, a fender, a canvas top."""
+    pts = list(profile)
+    area = sum(p[0] * q[1] - q[0] * p[1] for p, q in zip(pts, pts[1:] + pts[:1]))
+    if area < 0:
+        pts.reverse()  # anticlockwise seen from +X: the outside of each edge is to its right
+    for (y0, z0), (y1, z1) in zip(pts, pts[1:] + pts[:1]):
+        poly(mb, [(xa, y0, z0), (xb, y0, z0), (xb, y1, z1), (xa, y1, z1)], (0, z1 - z0, -(y1 - y0)))
+    if caps[0]:
+        poly(mb, [(xa, y, z) for y, z in pts], (-1, 0, 0))
+    if caps[1]:
+        poly(mb, [(xb, y, z) for y, z in pts], (1, 0, 0))
+
+
+@dataclass
+class Tractor(Car):
+    """A military 6x6 truck tractor: a conventional cab with a soft top, flat wings over the front
+    wheels, a tandem behind on duals and a fifth wheel over it. Built from plates rather than
+    lofted, as it was made. The node's origin is on the ground under the middle of the tandem,
+    which is what a tandem turns about; `spread` is the distance between its two axles.
+
+    Its stations, in inches: X of the hood's hinge (`cowl`), the cab's back (`back_x`) and the
+    door's back and front edges (`door`); Z of the cab's floor, the belt (the top of the door and
+    the cowl), the underside of the soft top (`roof_z0`) and the top of the front wings (`wing`)."""
+
+    spread: float = 48.0
+    cowl: float = 124.5
+    back_x: float = 67.0
+    door: tuple[float, float] = (70.9, 110.5)
+    floor: float = 40.0
+    belt_z: float = 69.6
+    roof_z0: float = 96.5
+    wing: float = 46.8
+    fifth: tuple[float, float, float] = (4.0, 52.0, 18.0)  # the kingpin's X, the plate's height, its radius
+    cab_w: float = 36.6  # half the cab's width
+    hood_w: float = 20.0  # half the hood's
+    wing_w: float = 43.5  # half the width over the front wings
+
+    def rear_axles(self) -> list[float]:
+        return [self.spread / 2, -self.spread / 2]
+
+    def lids(self) -> dict[str, tuple[float, float]]:
+        return {"Bonnet": (self.cowl, self.x1 - 7.5)}
+
+    def door_spans(self) -> list[tuple[float, float]]:
+        return [self.door]
+
+    def hinges(self) -> dict[str, tuple[Vector, dict]]:
+        b = self.door[1]
+        out = {
+            f"Door_{n}": (Vector((b + 0.1, s * self.cab_w, self.floor - 0.8)), dict(door=1, swing=-70.0 * s, axis="y")) for n, s in ((1, 1), (2, -1))
+        }
+        out["Bonnet"] = (Vector((self.cowl, 0.0, self.hood_top(self.cowl))), dict(hatch=1, swing=45.0, axis="z"))
+        return out
+
+    def hood_top(self, x: float) -> float:
+        """The hood's top along its length: it falls 4.5 in from the cowl to its front."""
+        a, b = self.lids()["Bonnet"]
+        return 69.0 - 4.5 * (x - a) / (b - a)
+
+    def column(self) -> tuple[Vector, Vector]:
+        return Vector((96.0, (1 if self.lhd else -1) * 17.0, 74.5)), Vector((-1, 0, 0.9)).normalized()
+
+    def anchors(self) -> dict[str, tuple[Vector, float]]:
+        a, b = self.door
+        side = 1 if self.lhd else -1
+        return {
+            "Seat_Driver": (Vector((self.back_x + 13.0, side * 17.0, self.floor + 16.0)), 90.0),
+            "Seat_Passenger_1": (Vector((self.back_x + 13.0, -side * 17.0, self.floor + 16.0)), 90.0),
+            "Stand_Driver": (Vector(((a + b) / 2, side * (self.width / 2 + 22.0), 0.0)), 0.0 if side > 0 else 180.0),
+        }
+
+    # ---- the outside
+
+    def build_body(self, kit: Kit) -> None:
+        paint, dark = kit(self.paint), kit("under")
+        x0, x1, cw, hw, out = self.x0, self.x1, self.cab_w, self.hood_w, self.wing_w
+        a, b = self.door
+        bx, belt, fl, wing = self.back_x, self.belt_z, self.floor, self.wing
+        ha, hb = self.lids()["Bonnet"]
+        hf = hb + 0.5  # the hood's front edge, half an inch ahead of the panel
+        # the frame: two channel rails from the bumper to the tail, cross-members between
+        for s in (1, -1):
+            ya, yb = sorted((s * 14.5, s * 17.5))
+            box(dark, (x0 + 0.5, ya, 27.5), (x1 - 6.4, yb, 37.5))
+        for x in (-30.0, 30.0, 60.0, 128.0):
+            box(dark, (x - 1.5, -14.5, 29.0), (x + 1.5, 14.5, 36.0))
+        box(dark, (x0, -21.5, 28.0), (x0 + 2.0, 21.5, 37.0))  # the tail cross-member, its ends standing out for the lamps
+        # the front bumper: a deep channel the width of the wings, with lifting shackles
+        box(paint, (x1 - 6.5, -out - 0.5, 25.0), (x1, out + 0.5, 35.0))
+        if trimmed():
+            for s in (1, -1):
+                kit("under/shackles").lathe(
+                    [(0.0, -0.6), (1.7, -0.6), (1.7, 0.6), (0.0, 0.6)], 10, matrix=srlib.frame((x1 + 1.2, s * 30.0, 30.0), (0, 1, 0))
+                )
+                kit("under/shackles").tube(Vector((x1 - 0.5, s * 30.0, 28.6)), Vector((x1 + 1.4, s * 30.0, 28.6)), 0.5, 6)
+        # the front panel, with the headlamps and the grille in it, between the wings and under the hood
+        fz0, fz1 = 35.3, self.hood_top(hb) - 4.5
+        poly(paint, [(hb, -hw + 0.6, fz0), (hb, hw - 0.6, fz0), (hb, hw - 0.6, fz1), (hb, -hw + 0.6, fz1)], (1, 0, 0))
+        poly(
+            kit("under/bay"),
+            [(hb - 0.2, -hw + 0.6, fz0), (hb - 0.2, hw - 0.6, fz0), (hb - 0.2, hw - 0.6, fz1), (hb - 0.2, -hw + 0.6, fz1)],
+            (-1, 0, 0),
+        )
+        for s in (1, -1):
+            # the front wings: a flat top with a turned-down lip outside, an apron down to the bumper
+            # in front of the wheel, and behind it a slope down to the cab's step
+            top = [
+                (s * 19.5, wing - 0.8),
+                (s * (out - 0.8), wing - 0.8),
+                (s * (out - 0.8), wing - 5.0),
+                (s * out, wing - 5.0),
+                (s * out, wing),
+                (s * 19.5, wing),
+            ]
+            extrude(paint, top, ha - 0.5, hb + 0.6)
+            extrude(paint, [(s * 19.5, 35.2), (s * (out - 0.9), 35.2), (s * (out - 0.9), wing - 0.9), (s * 19.5, wing - 0.9)], hb - 0.2, hb + 0.6)
+            ya, yb = sorted((s * (cw + 0.4), s * out))
+            slope = [(ha - 0.5, wing), (ha - 11.5, 25.0), (ha - 12.3, 25.0), (ha - 0.5, wing - 0.8)]  # its upright end is the wing's own
+            for y, f in ((ya, -1), (yb, 1)):
+                poly(paint, [(x, y, z) for x, z in slope], (0, f, 0))
+            mid = sum((Vector((x, 0.0, z)) for x, z in slope), Vector()) / len(slope)
+            for (xa_, za), (xb_, zb) in zip(slope, slope[1:]):
+                poly(paint, [(xa_, ya, za), (xa_, yb, za), (xb_, yb, zb), (xb_, ya, zb)], Vector(((xa_ + xb_) / 2, 0.0, (za + zb) / 2)) - mid)
+            # the hood's sides are fixed: only its top lifts. Painted out, dark within
+            side = [(ha, s * hw, wing + 0.4), (hf, s * hw, wing + 0.4), (hf, s * hw, self.hood_top(hb) - 4.2), (ha, s * hw, self.hood_top(ha) - 4.2)]
+            poly(paint, side, (0, s, 0))
+            poly(kit("under/bay"), [(x, s * (hw - 0.3), z) for x, _, z in side], (0, -s, 0))
+            # the inner wing: the engine bay's wall over the wheel
+            poly(
+                kit("under/bay"),
+                [(ha, s * 19.3, 29.0), (hb - 0.3, s * 19.3, 29.0), (hb - 0.3, s * 19.3, wing - 0.9), (ha, s * 19.3, wing - 0.9)],
+                (0, -s, 0),
+            )
+        poly(kit("under/bay"), [(ha, -19.3, 29.0), (hb - 0.3, -19.3, 29.0), (hb - 0.3, 19.3, 29.0), (ha, 19.3, 29.0)], (0, 0, 1))
+        # the cab below the belt: the cowl ahead of the doors (its face is the bulkhead behind the
+        # engine), the back wall, a corner post and a sill each side, the floor
+        box(paint, (b + 0.3, -cw, 34.0), (ha + 0.1, cw, belt))
+        box(paint, (bx + 1.0, -cw + 3.0, 34.0), (bx + 2.2, cw - 3.0, belt))
+        for s in (1, -1):
+            ya, yb = sorted((s * (cw - 3.0), s * cw))
+            box(paint, (bx, ya, 34.0), (a - 0.3, yb, belt))
+            box(paint, (a - 0.3, ya, 34.0), (b + 0.3, yb, fl - 1.0))
+        box(paint, (bx + 2.2, -cw + 3.0, fl - 1.1), (b + 0.3, cw - 3.0, fl))
+        # the soft top: a canvas roof with rolled edges, and a curtain at the back down to the belt
+        r, n = 1.6, max(2, round(3 / grain()))
+        arc = [(cw + 0.4 - r + r * math.cos(math.pi / 2 * k / n), self.roof_z0 + 3.0 - r + r * math.sin(math.pi / 2 * k / n)) for k in range(n + 1)]
+        extrude(kit("canvas"), [(cw + 0.4, self.roof_z0), *arc, *[(-y, z) for y, z in reversed(arc)], (-cw - 0.4, self.roof_z0)], bx - 0.4, b + 3.7)
+        box(kit("canvas"), (bx - 0.2, -cw, belt), (bx + 0.6, cw, self.roof_z0))
+        for s in (1, -1):
+            ya, yb = sorted((s * (cw - 1.2), s * cw))
+            box(kit("canvas"), (bx + 0.6, ya, belt), (a - 0.4, yb, self.roof_z0))
+        # the windscreen: a frame of two panes standing on the cowl
+        xw = b + 1.1
+        box(paint, (xw, -cw + 0.6, belt), (xw + 1.8, cw - 0.6, belt + 1.6))
+        box(paint, (xw, -cw + 0.6, self.roof_z0 - 1.8), (xw + 1.8, cw - 0.6, self.roof_z0 - 0.1))
+        for y0, y1 in ((-cw + 0.6, -cw + 2.2), (-0.8, 0.8), (cw - 2.2, cw - 0.6)):
+            box(paint, (xw, y0, belt + 1.6), (xw + 1.8, y1, self.roof_z0 - 1.8))
+        glass = "glass" if srlib.interior() else "void"
+        for s in (1, -1):
+            y0, y1 = sorted((s * 0.5, s * (cw - 1.9)))
+            poly(
+                kit(glass),
+                [(xw + 0.9, y0, belt + 1.3), (xw + 0.9, y1, belt + 1.3), (xw + 0.9, y1, self.roof_z0 - 1.5), (xw + 0.9, y0, self.roof_z0 - 1.5)],
+                (1, 0, 0),
+            )
+        # the doors: a steel lower half, and a framed pane above it up to the top
+        for n, s in ((1, 1), (2, -1)):
+            leaf = f"@Door_{n}"
+            ya, yb = sorted((s * (cw - 1.2), s * cw))
+            box(kit(self.paint + leaf), (a, ya, fl - 0.8), (b, yb, belt - 0.2))
+            yf = s * (cw - 0.6)
+            ring = [(a + 0.7, belt - 0.2), (b - 0.7, belt - 0.2), (b - 0.7, self.roof_z0 - 0.9), (a + 0.7, self.roof_z0 - 0.9)]
+            for (xa_, za), (xb_, zb) in zip(ring, ring[1:] + ring[:1]):
+                kit(self.paint + "/frame" + leaf).tube(Vector((xa_, yf, za)), Vector((xb_, yf, zb)), 0.6, 6)
+            poly(
+                kit(glass + leaf),
+                [(a + 0.7, yf, belt), (b - 0.7, yf, belt), (b - 0.7, yf, self.roof_z0 - 0.9), (a + 0.7, yf, self.roof_z0 - 0.9)],
+                (0, s, 0),
+            )
+            if srlib.DETAIL >= 0.75:  # a handle at the latch edge
+                h = Vector((a + 4.0, s * (cw + 0.5), belt - 6.0))
+                kit("chrome" + leaf).tube(h, h + Vector((4.0, 0, 0)), 0.4, 6)
+                for dx in (0.3, 3.7):
+                    kit("chrome" + leaf).tube(h + Vector((dx, 0, 0)), h + Vector((dx, -s * 1.0, 0)), 0.3, 5)
+        # the hood's top, on its hinge at the cowl: flat with rolled edges and short skirts, painted
+        # out and dark within
+        ns = max(2, round(3 / grain()))
+
+        def hood(x: float, inset: float) -> list[tuple[float, float]]:
+            zt, r, w = self.hood_top(min(x, hb)) - inset, 1.8, hw - inset
+            arc = [(w - r + r * math.cos(math.pi / 2 * k / ns), zt - r + r * math.sin(math.pi / 2 * k / ns)) for k in range(ns + 1)]
+            return [(w, zt - 4.0 + inset), *arc, *[(-y, z) for y, z in reversed(arc)], (-w, zt - 4.0 + inset)]
+
+        for key, inset, flip in ((self.paint + "@Bonnet", 0.0, False), ("under@Bonnet", 0.3, True)):
+            skin(kit, [[Vector((x, y, z)) for y, z in hood(x, inset)] for x in (ha, hf)], lambda st, j, key=key: key, closed=False, flip=flip)
+        poly(kit(self.paint + "@Bonnet"), [(hf, y, z) for y, z in hood(hf, 0.0)], (1, 0, 0))
+        # the rear: the fifth wheel on its mounting, wings over the tandem, the spare upright behind
+        # the cab, the exhaust stack, the fuel tank and battery box under the cab, a step under each door
+        kx, kz, kr = self.fifth
+        box(dark, (kx - 12.0, -17.5, 37.5), (kx + 12.0, 17.5, kz - 2.6))
+        kit("under/fifth").lathe([(0.0, kz - 2.6), (kr - 1.0, kz - 2.6), (kr, kz - 1.6), (kr, kz - 0.6), (kr - 0.8, kz), (0.0, kz)], 24)
+        for s in (1, -1):
+            ya, yb = sorted((s * 3.5, s * 15.0))  # the ramps either side of the slot, falling away behind
+            hexa(
+                dark,
+                [(kx - kr - 10.0, ya, kz - 6.0), (kx - kr + 1.0, ya, kz - 1.4), (kx - kr + 1.0, yb, kz - 1.4), (kx - kr - 10.0, yb, kz - 6.0)],
+                [(kx - kr - 10.0, ya, kz - 5.0), (kx - kr + 1.0, ya, kz - 0.4), (kx - kr + 1.0, yb, kz - 0.4), (kx - kr - 10.0, yb, kz - 5.0)],
+            )
+            ya, yb = sorted((s * 24.0, s * 46.5))
+            extrude(dark, [(ya, 45.8), (yb, 45.8), (yb, 46.5), (ya, 46.5)], -self.spread / 2 - 22.0, self.spread / 2 + 22.0)
+            ya, yb = sorted((s * 17.0, s * 24.5))
+            for x in (-20.0, 20.0):
+                box(dark, (x - 1.0, ya, 36.0), (x + 1.0, yb, 45.8))
+            ya, yb = sorted((s * (cw - 2.0), s * (cw + 5.0)))
+            box(kit("under/step"), (a + 6.0, ya, 22.0), (b - 10.0, yb, 23.0))
+            for x in (a + 8.0, b - 12.0):
+                kit("under/step").tube(Vector((x, s * (cw + 3.0), 22.5)), Vector((x, s * 17.5, 33.0)), 0.5, 6)
+        box(dark, (a + 2.0, -31.0, 25.0), (b - 4.0, -18.5, 35.5))  # the fuel tank, under the passenger's side
+        box(dark, (a + 4.0, 18.5, 26.0), (a + 20.0, 30.0, 35.5))  # the battery box, under the driver's
+        sp = Vector((bx - 9.0, 18.0, 63.0))
+        self.wheel_into(kit, srlib.frame(sp, (-1, 0, 0)))
+        for z, end in ((52.0, bx + 1.5), (74.0, bx + 0.2)):  # its carrier: into the back wall low, the curtain's frame high
+            box(dark, (sp.x + 3.6, 9.0, z - 1.0), (end, 27.0, z + 1.0))
+        stack = kit("under/exhaust")
+        stack.tube(Vector((bx - 4.0, -29.0, 38.0)), Vector((bx - 4.0, -29.0, 104.0)), 2.2, 10)
+        stack.tube(Vector((bx - 4.0, -29.0, 104.0)), Vector((bx - 7.0, -29.0, 106.5)), 2.2, 10)
+        if srlib.interior():
+            self.build_engine(kit)
+
+    def build_engine(self, kit: Kit) -> None:
+        """Under the hood: a six in line, its rocker cover and air cleaner, the radiator and its fan."""
+        eng = kit("engine")
+        ha, hb = self.lids()["Bonnet"]
+        box(eng, (ha + 4.0, -9.0, 33.0), (ha + 34.0, 9.0, 51.0))
+        box(eng, (ha + 5.0, -5.0, 51.0), (ha + 33.0, 5.0, 55.0))
+        eng.lathe([(0.0, 0.0), (5.5, 0.0), (5.5, 7.0), (4.0, 8.5), (0.0, 8.8)], 16, matrix=Matrix.Translation((ha + 12.0, -13.5, 47.0)))
+        eng.tube(Vector((ha + 12.0, -10.0, 52.0)), Vector((ha + 18.0, -4.0, 53.0)), 1.5, 8)
+        box(kit("radiator"), (hb - 6.5, -16.0, 37.0), (hb - 2.0, 16.0, 59.0))
+        kit("under/bay").lathe([(0.0, -0.5), (10.0, -0.5), (10.0, 0.5), (0.0, 0.5)], 16, matrix=srlib.frame((hb - 9.0, 0.0, 46.0), (1, 0, 0)))
+        kit("under/bay").tube(Vector((ha + 34.0, 0.0, 46.0)), Vector((hb - 9.0, 0.0, 46.0)), 1.2, 8)
+        kit("rubber/hose").tube(Vector((ha + 33.0, 0.0, 54.0)), Vector((hb - 6.5, 0.0, 56.5)), 1.1, 8)
+
+    def build_greenhouse(self, kit: Kit) -> None:
+        """The soft top and the windscreen are the body's (build_body); the mirrors are here."""
+        if not trimmed():
+            return
+        xw = self.door[1] + 1.1
+        for s in (1, -1):  # on arms from the windscreen's posts, out past the wings
+            root = Vector((xw + 0.9, s * (self.cab_w - 1.2), self.belt_z + 14.0))
+            head = Vector((xw + 0.9, s * (self.cab_w + 7.5), self.belt_z + 16.0))
+            kit("under/mirror").tube(root, head, 0.4, 6)
+            box(kit("under/mirror"), (head.x - 0.6, head.y - 2.5, head.z - 4.5), (head.x + 0.6, head.y + 2.5, head.z + 4.5))
+
+    def build_interior(self, kit: Kit) -> None:
+        """Two seats with their backs to the cab's back wall, the engine's cover between them, the
+        gear and transfer levers, the pedals, a panel of dials on the bulkhead, the wheel on its column."""
+        trim, seat = kit("trim-dark"), kit(self.upholstery)
+        bx, fl, b = self.back_x + 2.2, self.floor, self.door[1] + 0.3
+        for s in (1, -1):
+            ya, yb = sorted((s * 6.5, s * 31.0))
+            hexa(
+                seat,
+                [(bx + 0.3, ya, fl + 9.5), (bx + 21.0, ya, fl + 9.5), (bx + 21.0, yb, fl + 9.5), (bx + 0.3, yb, fl + 9.5)],
+                [(bx + 0.3, ya, fl + 13.0), (bx + 21.0, ya, fl + 13.5), (bx + 21.0, yb, fl + 13.5), (bx + 0.3, yb, fl + 13.0)],
+            )
+            hexa(
+                seat,
+                [(bx + 0.3, ya, fl + 13.1), (bx + 4.0, ya, fl + 13.1), (bx + 4.0, yb, fl + 13.1), (bx + 0.3, yb, fl + 13.1)],
+                [(bx + 0.3, ya, fl + 30.0), (bx + 2.5, ya, fl + 30.0), (bx + 2.5, yb, fl + 30.0), (bx + 0.3, yb, fl + 30.0)],
+            )
+            for x in (bx + 3.0, bx + 18.0):  # the seat's frame
+                trim.tube(Vector((x, s * 18.0, fl - 0.5)), Vector((x, s * 18.0, fl + 9.6)), 0.5, 6)
+        box(trim, (b - 16.0, -6.0, fl - 0.5), (b - 0.2, 6.0, fl + 10.0))  # the engine's cover, standing into the cab
+        for dy, h in ((-2.0, 22.0), (1.0, 18.0), (3.5, 16.0)):  # the gear lever and the transfer case's two
+            p = Vector((b - 10.0, dy, fl + 10.0))
+            trim.tube(p, p + Vector((-3.0, 0.0, h)), 0.35, 6)
+            kit("trim-dark/knobs").lathe([(0.0, -0.2), (0.9, 0.0), (0.9, 1.4), (0.0, 1.8)], 8, matrix=Matrix.Translation(p + Vector((-3.0, 0.0, h))))
+        hub, axis = self.column()
+        for dy, wide in ((-5.0, 2.4), (-0.5, 3.0), (4.0, 3.0)):  # accelerator, brake, clutch
+            y = hub.y + dy
+            hexa(
+                trim,
+                [
+                    (b - 7.0, y - wide / 2, fl + 2.0),
+                    (b - 5.5, y - wide / 2, fl + 2.5),
+                    (b - 5.5, y + wide / 2, fl + 2.5),
+                    (b - 7.0, y + wide / 2, fl + 2.0),
+                ],
+                [
+                    (b - 5.2, y - wide / 2, fl + 6.0),
+                    (b - 4.2, y - wide / 2, fl + 6.4),
+                    (b - 4.2, y + wide / 2, fl + 6.4),
+                    (b - 5.2, y + wide / 2, fl + 6.0),
+                ],
+            )
+            trim.tube(Vector((b - 4.8, y, fl + 4.6)), Vector((b + 0.5, y, fl + 9.0)), 0.3, 5)
+        # the instrument panel: a dark plate on the bulkhead, its face leaning down, with five dials
+        top = self.belt_z - 1.0
+        hexa(
+            trim,
+            [(b - 0.5, -24.0, top - 10.0), (b + 0.5, -24.0, top - 10.0), (b + 0.5, 24.0, top - 10.0), (b - 0.5, 24.0, top - 10.0)],
+            [(b - 2.5, -24.0, top), (b + 0.5, -24.0, top), (b + 0.5, 24.0, top), (b - 2.5, 24.0, top)],
+        )
+        face = Vector((-1, 0, -0.2)).normalized()
+        for k in range(5):
+            y, x = -6.0 + 6.0 * k, b - 1.65  # on the face, half way up
+            kit("dial").lathe([(1.6, -0.5), (1.6, 0.3), (0.0, 0.3)], 12, matrix=srlib.frame((x, y, top - 5.0), face))
+        trim.tube(hub - axis * 0.7, hub - axis * 26.0, 0.9, 8)  # the column, down through the bulkhead
+        wheel = kit("trim-dark@SteeringWheel")
+        wheel.lathe([(8.6, 0.0), (9.0, -0.5), (9.4, 0.0), (9.0, 0.5), (8.6, 0.0)], 20)
+        wheel.lathe([(0.0, -0.6), (1.8, -0.6), (1.8, 0.7), (0.0, 1.0)], 10)
+        for ang in (0.25 * TAU, 0.58 * TAU, 0.92 * TAU):
+            wheel.tube(Vector((0, 0, 0)), Vector((8.7 * math.cos(ang), 8.7 * math.sin(ang), 0.0)), 0.45, 5)
+
+    def build_trim(self, kit: Kit) -> None:
+        _, hb = self.lids()["Bonnet"]
+        hy, hz, hr = self.lamp_at
+        for s in (1, -1):
+            lamp(kit, "lamp", (hb, s * hy, hz), (1, 0, 0), hr)
+            lamp(kit, "lamp", (hb, s * (hy + 0.5), hz + 6.6), (1, 0, 0), 1.2)  # the small lamp over each: blackout and marker
+            lamp(kit, "tail", (self.x0, s * 18.5, 32.5), (-1, 0, 0), 1.8)
+        if not trimmed():
+            return
+        # the grille: a dark panel leaning back into the front panel, upright bars across it
+        gw, g0, g1 = self.grille
+        dark = kit("under/grille")
+        foot, head = hb + 1.5, hb - 1.0
+        poly(dark, [(foot, -gw, g0), (foot, gw, g0), (head, gw, g1), (head, -gw, g1)], (1, 0, 0.2))
+        poly(dark, [(foot, -gw, g0), (foot, gw, g0), (hb - 1.0, gw, g0), (hb - 1.0, -gw, g0)], (0, 0, -1))
+        for s in (1, -1):
+            poly(dark, [(foot, s * gw, g0), (head, s * gw, g1), (hb - 1.0, s * gw, g0)], (0, s, 0))
+        bars = max(4, round(2 * gw / (1.9 if srlib.DETAIL >= 0.75 else 3.0)))
+        for i in range(1, bars):
+            y = -gw + 2 * gw * i / bars
+            ridge(kit(self.paint + "/bars"), [Vector((foot + 0.3, y, g0 - 0.2)), Vector((head + 0.3, y, g1 + 0.2))], (1, 0, 0.13), 0.45, 0.6)
+        # guards over the headlamps, as on the photographs
+        for s in (1, -1):
+            g = kit("under/guard")
+            yc, lo, hi = s * hy, hz - hr - 1.2, hz + hr + 1.2
+            for dz in (-2.0, 0.0, 2.0):
+                g.tube(Vector((hb + 5.0, yc - hr - 1.2, hz + dz)), Vector((hb + 5.0, yc + hr + 1.2, hz + dz)), 0.22, 5)
+            for dy in (-hr - 1.2, hr + 1.2):
+                g.tube(Vector((hb - 0.5, yc + dy, lo)), Vector((hb + 5.2, yc + dy, lo)), 0.3, 5)
+                g.tube(Vector((hb + 5.2, yc + dy, lo)), Vector((hb + 5.2, yc + dy, hi)), 0.3, 5)
+                g.tube(Vector((hb + 5.2, yc + dy, hi)), Vector((hb - 0.5, yc + dy, hi)), 0.3, 5)
+
+
+def m275_tractor(paint: str = "white", **kw) -> Car:
+    """A 2-1/2-ton 6x6 truck tractor of the Army's G742 family (M275), as NASA ran them at Cape
+    Canaveral in 1961: white, the doors lettered for the agency, towing the van semi-trailers to
+    the pads (FHSU Project Mercury items 263, 265 and 407, "Transfer van arrives at Pad 5", July
+    1961; item 544 shows a dark one coupled to SP No 1). That it is an M275 and not the longer M48
+    is estimated from the photographs: the short gap between the cab and the tandem.
+
+    Documented, TM 55-2320-209-15-1, Table 2-1 and Figures 2-27 and 2-28 (drawn for the M275A2;
+    the table gives the M275 its own length, width and weight): wheelbase 142 in from the front
+    axle to the middle of the tandem, the tandem's axles 48 in apart, 38 in from the bumper to the
+    front axle, 228 in long without a winch, 93 in wide, 99.5 in high over the cab, track 70 in,
+    the fifth wheel 52 in high with the kingpin 4 in ahead of the tandem's middle, 11,179 lb, duals
+    on the tandem. Estimated: the shape (the drawings and photographs read by eye), 9.00-20 tyres
+    (the family's size, taken as 40.4 in across), the front track (taken as the rear's), the
+    turning circle (72 ft)."""
+    car = dict(
+        what="M275 2-1/2-ton 6x6 truck tractor, NASA",
+        wheelbase=142.0,
+        length=228.0,
+        width=93.0,
+        height=99.5,
+        nose=38.0,
+        track=70.0,
+        duals=True,
+        tyre=(20.2, 9.3, 10.0),
+        mass=11179.0,
+        turning=72.0,
+        cabin=(113.0, 112.0, 67.0, 66.0),
+        lamp_at=(14.5, 50.0, 3.6),
+        grille=(9.0, 40.0, 58.0),
+        cap_r=4.5,
+        hub="under",
+        wheel="black",
+        upholstery="seat-green",
+        paint=paint,
+    )
+    return Tractor(**{**car, **kw})

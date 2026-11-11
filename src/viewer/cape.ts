@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
-import { type Clouds, driftClouds, installAir } from './air';
+import { type Air, CloudLayer, type Clouds, driftClouds, installAir } from './air';
 import { buildCape1961, CLEARINGS, COAST, RIVER, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { type FloraSpec, Flora } from './flora';
@@ -664,7 +664,9 @@ export function buildCape(
   groundAt: (x: number, z: number) => number;
 } {
   // the haze lies in the lowest air, under the cumulus at 720 m, and thins upward (air.ts)
-  installAir({ scale: HAZE_SCALE, base: groundY + SEA, clouds: CLOUDS });
+  const air: Air = { scale: HAZE_SCALE, base: groundY + SEA, clouds: CLOUDS };
+  installAir(air);
+  const clouds = new CloudLayer(CLOUDS, air);
   const land = new Land(renderer, landSpec(), groundY, COMPASS);
   const flora = new Flora(floraSpec(), land);
   flora.group.position.y = groundY;
@@ -682,17 +684,19 @@ export function buildCape(
   };
   return {
     floor: land.mesh,
-    scenery: [site],
+    scenery: [site, clouds.mesh],
     tick: (dt) => {
       driftClouds(dt);
       land.tick(dt);
       flora.tick(dt);
     },
     simplify: (on) => {
+      clouds.simplify(on);
       land.simplify(on);
       flora.simplify(on);
     },
     attend: (at) => {
+      clouds.follow(at);
       local(at);
       land.attend(eye);
       return flora.attend(eye);
