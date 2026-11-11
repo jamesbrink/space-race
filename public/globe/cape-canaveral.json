@@ -1,0 +1,44 @@
+{
+  "region": "cape-canaveral",
+  "asOf": "1961-05-05",
+  "data": "OpenStreetMap, © OpenStreetMap contributors, ODbL; coastline as of 2026-07-15T15:22:01Z",
+  "spread": 8,
+  "levels": [
+    {
+      "name": "near",
+      "file": "cape-canaveral.near.png",
+      "centre": [
+        28.439426,
+        -80.573292
+      ],
+      "box": [
+        -0.012566597031386075,
+        0.012566597031386075,
+        -0.012566597031386075,
+        0.012566597031386075
+      ],
+      "width": 4096,
+      "height": 4096,
+      "metres": 39.065,
+      "fade": 0.001256593559106665
+    },
+    {
+      "name": "wide",
+      "file": "cape-canaveral.wide.png",
+      "centre": [
+        27.6,
+        -78.35
+      ],
+      "box": [
+        -0.04970792606468255,
+        0.049707926064682315,
+        -0.034779958810290654,
+        0.035441511710651
+      ],
+      "width": 4096,
+      "height": 2880,
+      "metres": 154.863,
+      "fade": 0.004712609744968361
+    }
+  ]
+}

@@ -40,4 +40,17 @@ export const LC5: SiteDef = {
       'the hatch side is square to the rails, which run 025/205 degrees true (OpenStreetMap, within 1 degree); which of the ' +
       'two sides it was is read from TM X-53107 Figure 7-6 and liftoff photograph 6100884 (lc-5.md)',
   },
+  region: {
+    name: 'cape-canaveral',
+    south: 25.6,
+    north: 29.6,
+    west: -81.5,
+    east: -75.2,
+    why:
+      'what a suborbital flight from the Cape sees under it: MR-3 flew 487 km to 27.23 N 75.88 W (the flight README), over the ' +
+      'Little Bahama Bank with Grand Bahama and Great Abaco south of the track; the box takes in the Florida coast from Flagler ' +
+      'Beach to Fort Lauderdale, Lake Okeechobee, and the sea past the landing',
+    asOf: '1961-05-05',
+    later: [],
+  },
 };
