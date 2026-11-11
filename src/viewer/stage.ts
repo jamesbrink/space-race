@@ -17,6 +17,7 @@ import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { Ascent } from './ascent';
 import { Lamps } from './lamps';
 import { Origin } from './origin';
+import { Plume } from './plume';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
@@ -96,11 +97,32 @@ interface Picked {
   node: string | null;
   model: string | null;
   /** Something in the place round the pad (Flight.surroundings): what it is called, and the part of it to go and look at. */
-  place?: { name: string; box: THREE.Box3; title?: string };
+  place?: { name: string; box: THREE.Box3; title?: string; about?: string };
+  /** The object itself, if the model names it for people (custom properties `label`, `about`): one searchlight, not all the ground equipment. */
+  thing?: Thing;
   /** A window of the section's model: where on the pane, and which way the pane faces. */
   pane?: { point: THREE.Vector3; normal: THREE.Vector3 };
 }
 const NOTHING: Picked = { node: null, model: null };
+
+/** An object a model names for people: what it is, a sentence about it, and the node itself. */
+export interface Thing {
+  label: string;
+  about: string | null;
+  object: THREE.Object3D;
+}
+
+/** The nearest object at or above `o` that the model names (a `label`, or a vehicle's `vehicle`). */
+export function thingOf(o: THREE.Object3D): Thing | undefined {
+  for (let at: THREE.Object3D | null = o; at; at = at.parent) {
+    const label = (at.userData.label ?? at.userData.vehicle) as unknown;
+    if (typeof label === 'string' && label) {
+      const about = at.userData.about;
+      return { label, about: typeof about === 'string' ? about : null, object: at };
+    }
+  }
+  return undefined;
+}
 
 /** Put every part of a model back where it was built. */
 function rest(object: THREE.Object3D): void {
@@ -131,7 +153,12 @@ export class Stage {
   onModel: (id: string) => void = () => {};
   onHoverModel: (id: string | null) => void = () => {};
   /** The pointer is over something in the place round the pad (its node's name), or has left it. A click goes over to it. */
-  onHoverPlace: (name: string | null, title?: string) => void = () => {};
+  onHoverPlace: (name: string | null, title?: string, about?: string) => void = () => {};
+  /** The pointer is over a named object inside a part (a searchlight among the ground equipment), or has left it. */
+  onHoverThing: (thing: Thing | null) => void = () => {};
+  /** A named object was clicked: say what it is. */
+  onThing: (thing: Thing | null) => void = () => {};
+  private hoveredThing: THREE.Object3D | null = null;
   /** The camera has been sent to something in the place round the pad. */
   onVisit: () => void = () => {};
   /** The pointer is over a window of the section's model (a click looks in), or has left it. */
@@ -152,6 +179,9 @@ export class Stage {
   onWalkAct: () => void = () => {};
   /** While walking: the view was changed between the figure's eyes and over its shoulder. */
   onWalkView: (third: boolean) => void = () => {};
+  /** While walking, the view has gone from through the eyes to outside the figure, or back (over the shoulder, down after a fall, at the wheel's chase view). */
+  onWalkEyes: (through: boolean) => void = () => {};
+  private throughEyes: boolean | null = null;
   /** While walking: the mouse has been captured for looking round, or let go. */
   onWalkLook: (captured: boolean) => void = () => {};
   /** First-person walking (walk.ts). While it is active the orbiting camera's rules are all suspended. */
@@ -232,6 +262,8 @@ export class Stage {
   private lamps = new Lamps();
   /** The flight off the pad (ascent.ts), and what has been done to the model that flies: the clock's instant it was put at, the nodes it has shed, how far it moved this frame. */
   private ascent: Ascent | null = null;
+  /** The flown vehicle's engine fire, hung at its nozzle's exit (plume.ts). */
+  private plume: Plume | null = null;
   private readonly lifted = {
     t: Number.NaN,
     flying: false,
@@ -423,7 +455,10 @@ export class Stage {
       if (down.pane) this.lookIn(down.pane.point, down.pane.normal);
       else if (down.place) this.visit(down.place.box);
       else if (down.model && !down.node) this.onModel(down.model);
-      else this.onSelect(down.node);
+      else {
+        this.onSelect(down.node);
+        this.onThing(down.thing ?? null);
+      }
     });
     canvas.addEventListener('pointercancel', () => (this.down = null));
     // Keys fly the view: WASD moves it over the site, E and Q lift and lower it, the arrows swing
@@ -543,6 +578,7 @@ export class Stage {
     this.lamps.clear();
     this.ascent = Ascent.of(flight);
     this.lifted.t = Number.NaN;
+    this.hangPlume(flight);
     this.lamps = new Lamps();
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
     // the coarser levels arrive behind the scenes; a model that has none simply stays as it is
@@ -848,12 +884,29 @@ export class Stage {
       this.renderer.shadowMap.needsUpdate = true;
       this.lifted.shrank = flying;
     }
+    const { on, vacuum } = ascent.burn(t);
+    this.plume?.set(on, vacuum, performance.now() / 1000, this.renderer.toneMappingExposure);
     this.lifted.by.subVectors(g.position, before);
     g.updateMatrixWorld(true);
     s.measure(); // levels of detail are chosen by the distance to it
     this.fitBounds();
     this.dirty = true;
     this.shadowsOwed = true;
+  }
+
+  /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
+  private hangPlume(flight: FlightData): void {
+    this.plume?.mesh.removeFromParent();
+    this.plume = null;
+    const s = this.flier;
+    const engine = flight.flies?.engine && s?.full.getObjectByName(flight.flies.engine);
+    const exitArea = flight.trajectory?.engine.exitArea.value;
+    if (!s || !engine || !exitArea) return;
+    const box = new THREE.Box3().setFromObject(engine);
+    const exit = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
+    this.plume = new Plume(Math.sqrt(exitArea / Math.PI));
+    this.plume.mesh.position.copy(s.group.worldToLocal(exit));
+    s.group.add(this.plume.mesh);
   }
 
   /**
@@ -1042,6 +1095,7 @@ export class Stage {
       }
     });
     for (const s of this.staged) s.everyLevel(true);
+    if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
     for (const night of [1, 0]) {
       this.lamps.set(night, 1);
       await this.renderer.compileAsync(this.scene, this.camera).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
@@ -1050,6 +1104,7 @@ export class Stage {
     }
     for (const o of culled) o.frustumCulled = true;
     for (const s of this.staged) s.everyLevel(false);
+    if (this.plume) this.plume.mesh.visible = false;
     this.relight(true);
     await frames(3);
   }
@@ -1375,13 +1430,21 @@ export class Stage {
    */
   private keepAboveGround(): void {
     if (!this.setting.floor) return;
-    // beyond the site no ground is modelled, and the site's level is not the sea's 100 km off
-    if (Math.hypot(this.controls.target.x, this.controls.target.z) > (this.setting.reach ?? Infinity)) return;
-    const EYE = 0.35; // metres above the surface the model stands on
-    if (this.controls.target.y < 0.1) this.controls.target.y = 0.1;
-    if (this.camera.position.y < EYE) {
-      this.camera.position.y = EYE;
-      this.camera.lookAt(this.controls.target);
+    // Wherever the site's ground is drawn (out to its horizon), the camera stays above it, and so
+    // does the point it turns about: a camera under the ground sees the underside of the land.
+    // Beyond the drawn ground there is nothing to be under (and the site's level is not the sea's 100 km off).
+    const c = this.camera.position;
+    const extent = this.setting.horizon ?? this.setting.reach ?? Infinity;
+    if (Math.hypot(c.x, c.z) > extent) return;
+    const EYE = 0.35; // metres above the ground under it
+    const under = (x: number, z: number) => Math.max(0, this.setting.groundAt?.(x, z) ?? GROUND_Y);
+    const t = this.controls.target;
+    const floorT = under(t.x, t.z) + 0.1;
+    if (t.y < floorT) t.y = floorT;
+    const floorC = under(c.x, c.z) + EYE;
+    if (c.y < floorC) {
+      c.y = floorC;
+      this.camera.lookAt(t);
     }
   }
 
@@ -1464,13 +1527,14 @@ export class Stage {
       if (normal.dot(this.raycaster.ray.direction) > 0) normal.negate(); // toward the viewer, whichever side was hit
       return { node: null, model: null, pane: { point: this.paneCentre(mesh, hit.point), normal } };
     }
+    const thing = hit ? thingOf(hit.object) : undefined;
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent)
-      if (this.parts.has(o.name)) return { node: o.name, model: null };
+      if (this.parts.has(o.name)) return { node: o.name, model: null, ...(thing ? { thing } : {}) };
     return { node: null, model: null };
   }
 
   /** Something in the place round the pad that `object` belongs to: what it is called, and the part of it to go and look at. */
-  private placeOf(object: THREE.Object3D, point: THREE.Vector3): { name: string; box: THREE.Box3; title?: string } | null {
+  private placeOf(object: THREE.Object3D, point: THREE.Vector3): { name: string; box: THREE.Box3; title?: string; about?: string } | null {
     // (only the surroundings have places: a model's parts are its own, even one marked a vehicle)
     let o: THREE.Object3D | null = object;
     while (o && o !== this.surroundings) o = o.parent;
@@ -1479,7 +1543,10 @@ export class Stage {
     // is that thing, however deep it sits: one car in a car park, not the car park.
     for (let o: THREE.Object3D | null = object; o && o !== this.surroundings; o = o.parent) {
       const title = (o.userData.label ?? o.userData.vehicle) as unknown;
-      if (typeof title === 'string' && title) return { name: o.name, box: new THREE.Box3().setFromObject(o), title };
+      if (typeof title === 'string' && title) {
+        const about = o.userData.about;
+        return { name: o.name, box: new THREE.Box3().setFromObject(o), title, ...(typeof about === 'string' ? { about } : {}) };
+      }
     }
     for (let o: THREE.Object3D | null = object; o && this.surroundings; o = o.parent) {
       if (o.parent !== this.surroundings && o.parent?.parent !== this.surroundings) continue;
@@ -1511,17 +1578,23 @@ export class Stage {
     return n ? centre.divideScalar(n) : point.clone();
   }
 
-  private setHover({ node, model, pane, place }: Picked): void {
+  private setHover({ node, model, pane, place, thing }: Picked): void {
     if (model !== this.hoveredModel) {
       this.hoveredModel = model;
       this.onHoverModel(model);
     }
-    if ((place?.name ?? null) !== this.hoveredPlace) this.onHoverPlace((this.hoveredPlace = place?.name ?? null), place?.title);
+    if ((place?.name ?? null) !== this.hoveredPlace)
+      this.onHoverPlace((this.hoveredPlace = place?.name ?? null), place?.title, place?.about);
     if (Boolean(pane) !== this.overPane) this.onHoverWindow((this.overPane = Boolean(pane)));
     this.canvas.style.cursor = node || model || pane || place ? 'pointer' : 'grab';
-    if (node === this.hovered) return;
-    this.highlight(node);
-    this.onHover(node);
+    const thingChanged = (thing?.object ?? null) !== this.hoveredThing;
+    this.hoveredThing = thing?.object ?? null;
+    if (node !== this.hovered) {
+      this.highlight(node);
+      this.onHover(node);
+    }
+    // (after the part: a named object inside it is what the label is about)
+    if (thingChanged || (thing && node !== this.hovered)) this.onHoverThing(thing ?? null);
   }
   private resize(): void {
     const w = this.canvas.clientWidth,
@@ -2560,6 +2633,8 @@ export class Stage {
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
   private stepWalk(dt: number): void {
     if (this.walk.update(dt)) this.dirty = true;
+    const through = !this.walk.outside;
+    if (through !== this.throughEyes) this.onWalkEyes((this.throughEyes = through));
     const hit = this.walk.aimed;
     const found = hit && this.targetOf(hit);
     if (found && hit) {

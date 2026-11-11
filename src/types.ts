@@ -432,6 +432,8 @@ export interface Flight {
     drops: { at: number; nodes: string[] }[];
     /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
     turned?: number;
+    /** The node whose lowest point is the nozzle's exit: the engine's fire is drawn from there while it burns. */
+    engine?: string;
   };
   models: ModelDef[];
   /** The place round the pad, built like a model (the site's own: sites/<site>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */

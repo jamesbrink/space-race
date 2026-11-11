@@ -176,7 +176,10 @@ export function installAir(air: Air): void {
  * it has moved far enough over the field.
  */
 export class CloudLayer {
-  readonly mesh: THREE.InstancedMesh;
+  /** The puffs and the sheet of their bases. */
+  readonly group = new THREE.Group();
+  private readonly mesh: THREE.InstancedMesh;
+  private readonly floor: THREE.Mesh;
   private readonly sunDir = new THREE.Vector3(0, 1, 0);
   private readonly sunLight = new THREE.Color();
   private readonly skyLight = new THREE.Color();
@@ -196,8 +199,8 @@ export class CloudLayer {
     this.clouds = clouds;
     this.base = air.base + clouds.height;
     this.reach = reach;
-    this.spacing = clouds.size / 7;
-    const capacity = 12000;
+    this.spacing = clouds.size / 9;
+    const capacity = 16000;
     const geometry = new THREE.PlaneGeometry(2, 2);
     // a plain material whose shader is wholly replaced: so the cel look's twin of it (look.ts) is the same shader
     const material = new THREE.MeshBasicMaterial({ name: 'clouds', alphaToCoverage: true });
@@ -250,18 +253,20 @@ export class CloudLayer {
         // its edge is cauliflower, not a circle: lumps of a fifth of the puff
         vec2 lump = vUv * 2.6 + vSeed * 17.0;
         float rim = air_noise2(lump, 5) * 0.6 + air_noise2(lump * 2.3, 6) * 0.4;
-        float alpha = smoothstep(0.0, 0.3, edge - 0.3 * (rim - 0.5) - 0.04);
+        float alpha = smoothstep(0.0, 0.16, edge - 0.3 * (rim - 0.5) - 0.04);
         if (alpha <= 0.0) discard;
         float t = b - sqrt(max(disc, 0.0));
         vec3 p = d * t;                               // the surface, relative to the eye
         vec3 world = p + cameraPosition + uOrigin;
-        // the layer's base: everything under it is gone, so the heap stands on a flat floor
-        if (world.y < uCloudDrift.y) discard;
         vec3 n = normalize(p - vCentre);
+        // the layer's base: everything under it is gone, so the heap stands on a flat floor (drawn as its own sheet)
+        if (world.y < uCloudDrift.y) discard;
         float h = clamp((world.y - uCloudDrift.y) / (uCloudDrift.w - uCloudDrift.y), 0.0, 1.0);
         // lit by the Sun across the sphere with a soft wrap; the underside grey with the light that comes up from below
         // (one puff among many: its own roundness is muted, the heap's height counts more)
-        float sun = clamp(dot(n, uSunDir) * 0.35 + 0.65, 0.0, 1.0) * (0.55 + 0.45 * smoothstep(0.0, 0.7, h));
+        // each ball's own roundness counts for little: what is lit is the heap, by its height and which side faces the Sun
+        vec3 heap = normalize(mix(n, vec3(0.0, 1.0, 0.0), 0.5));
+        float sun = clamp(dot(heap, uSunDir) * 0.25 + 0.75, 0.0, 1.0) * (0.5 + 0.5 * smoothstep(0.0, 0.75, h));
         float grain = air_noise2(vUv * 6.0 + vSeed * 31.0, 7) * 0.5 + 0.5;
         vec3 col = uSunLight * sun * (0.9 + 0.2 * grain) + uSkyLight * (0.6 + 0.4 * max(n.y, 0.0));
         // drawn: two tones
@@ -289,6 +294,53 @@ export class CloudLayer {
     this.mesh.frustumCulled = false;
     this.mesh.raycast = () => {};
     this.mesh.onBeforeRender = (_renderer, scene) => this.light(scene);
+
+    // The clouds' flat bases, as one sheet under the whole layer facing down: where the field says there is
+    // cloud it is the grey underside, lit by the sky and what the ground sends up, its edge soft
+    const sheet = new THREE.MeshBasicMaterial({ name: 'clouds', alphaToCoverage: true, side: THREE.FrontSide });
+    sheet.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, uniforms);
+      shader.vertexShader = /* glsl */ `
+        varying vec3 vSpot;
+        void main() {
+          vec4 at = modelMatrix * vec4(position, 1.0);
+          vSpot = at.xyz - cameraPosition;
+          gl_Position = projectionMatrix * viewMatrix * at;
+        }`;
+      shader.fragmentShader = /* glsl */ `
+        uniform vec4 uCloudDrift;
+        uniform vec3 uOrigin, uSunDir, uSunLight, uSkyLight, uHaze;
+        uniform float uHazeDensity, uCel;
+        varying vec3 vSpot;
+        ${cloudField(clouds)}
+        void main() {
+          vec3 world = vSpot + cameraPosition + uOrigin;
+          float dens = cloudAt(world.xz);
+          // inside the puffs' footprint, and only where it is seen from below at some angle: edge on, the puffs' own
+          // flat-cut bottoms are the base, and a sheet would stand out from under them like a saucer
+          float alpha = smoothstep(0.55, 0.75, dens) * smoothstep(0.1, 0.35, normalize(vSpot).y);
+          if (alpha <= 0.0) discard;
+          // thicker cloud above, darker base
+          vec3 col = uSkyLight * (0.62 - 0.12 * dens) + uSunLight * max(uSunDir.y, 0.0) * (0.22 - 0.1 * dens) + vec3(0.02, 0.018, 0.014);
+          col = mix(col, uSkyLight * 0.75 + uSunLight * 0.1, uCel);
+          alpha = mix(alpha, step(0.5, alpha), uCel);
+          vec3 eye = cameraPosition + uOrigin;
+          float a = max(eye.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
+          float bb = max(world.y - ${air.base.toFixed(2)}, 0.0) / ${air.scale.toFixed(1)};
+          float mean = abs(a - bb) < 1e-3 ? exp(-0.5 * (a + bb)) : (exp(-min(a, bb)) - exp(-max(a, bb))) / abs(bb - a);
+          col = mix(col, uHaze, 1.0 - exp(-uHazeDensity * length(vSpot) * mean));
+          gl_FragColor = vec4(col, alpha);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`;
+    };
+    sheet.customProgramCacheKey = () => 'cloud-bases';
+    this.floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * reach, 2 * reach, 1, 1).rotateX(Math.PI / 2), sheet);
+    this.floor.position.y = this.base;
+    this.floor.frustumCulled = false;
+    this.floor.raycast = () => {};
+    this.floor.onBeforeRender = (_renderer, scene) => this.light(scene);
+    this.group.add(this.mesh, this.floor);
   }
 
   /** The cel look: the clouds in two tones with a hard edge. */
@@ -299,6 +351,7 @@ export class CloudLayer {
   /** Follow the eye (scene frame): the puffs drift with the field and are laid out again round the eye as it moves over it. */
   follow(eye: THREE.Vector3): boolean {
     this.mesh.position.set(cloudUniform.value.x, 0, cloudUniform.value.z);
+    this.floor.position.set(eye.x, this.base, eye.z);
     const fx = eye.x - cloudUniform.value.x,
       fz = eye.z - cloudUniform.value.z;
     if (Math.hypot(fx - this.laid.x, fz - this.laid.y) < this.reach * 0.15) return false;

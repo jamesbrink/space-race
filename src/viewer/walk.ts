@@ -839,6 +839,8 @@ export class Walker {
   readonly gait = new Gait();
   /** What the last frame did to the stride (see Stir). */
   stir: Stir = 0;
+  /** How far the body turned about its feet in the last frame, radians. */
+  private spun = 0;
   /**
    * How much of the body's motion reaches the view through its eyes, 0 to 1: the rise and fall of
    * a stride, the sway, the give of a landing, breathing. 0 is a steady camera. It never touches
@@ -1314,9 +1316,12 @@ export class Walker {
             dt,
             rungs !== null,
             this.body.grounded ? 0 : this.apex - p.y,
+            // (seen from outside, a figure turning where it stands steps round: the turn it made last frame)
+            this.third && this.body.grounded && !body.on && !this.seat && !this.down ? this.spun : 0,
           )
         : 0;
     if (this.stir) this.moved = true;
+    const facing = this.heading;
     // through its eyes the body faces where they look; seen from behind it turns to face the way it is sent
     if (body.on)
       this.heading = Math.atan2(body.on.nx, body.on.nz); // facing the rungs
@@ -1333,6 +1338,7 @@ export class Walker {
         this.moved = true;
       }
     }
+    this.spun = Math.atan2(Math.sin(this.heading - facing), Math.cos(this.heading - facing));
 
     const camera = this.camera;
     // The eyes are carried by the body: they rise and fall and sway with the stride, tip toward

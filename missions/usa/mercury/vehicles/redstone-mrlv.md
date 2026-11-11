@@ -78,7 +78,13 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
   dark stacked "UNITED STATES". The stripe count (16), the band's height and the tail's quartered
   pattern are read off or assumed. No source read gives colours; the red lettering is from memory
   of colour photographs.
-- **Fin shape** is an estimate; the fins are flat wedges with no aerofoil.
+- **Fin shape** is an estimate; the fins are flat wedges with no aerofoil. Their edges are rounded
+  over the last 1.2 in, the same all round (the real leading edge's form is not known). The rows
+  of flush fasteners on the fins (a root fitting, a spar 9 in behind the leading edge, a rib over
+  the rudder's bay, that bay's edge, the trailing edge) and on the rudders are the usual layout of
+  such a fin, not read off a drawing or a photograph; so is each rudder's pivot, a shaft across
+  the gap from the fin 24 in up, with a bearing boss on either face. That the rudders turned
+  (±11°) is documented; about what axis is not.
 - **The frost on the oxygen tank is representative**: its extent is the tank's cylindrical wall, its
   edge is a clean line, and no photograph of MR-3 was used to place it.
 - **The engine is representative.** Chamber, jacket and the main lines are there; their routing

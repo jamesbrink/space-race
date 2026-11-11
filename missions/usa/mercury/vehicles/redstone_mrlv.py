@@ -440,17 +440,17 @@ def build(base_z: float, font=None) -> None:
         inward = Vector((-lead.y, lead.x))  # into the fin from its leading edge
         spar = [Vector((tip_r, FIN_TIP)) + lead * t + inward * 9.0 for t in (9.0, 55.0)]
         rows = [
-            ((BODY_R + 2.5, 3.0), (BODY_R + 2.5, FIN_ROOT - 6.0), 2.5),
-            (tuple(spar[0]), tuple(spar[1]), 2.5),
-            ((BODY_R + 3.0, 36.5), (tip_r - 16.5, 36.5), 2.5),
-            ((tip_r - 17.0, 3.0), (tip_r - 17.0, 33.0), 2.5),
-            ((BODY_R + 3.0, 2.5), (tip_r - 17.0, 2.5), 2.5),
+            ((BODY_R + 2.5, 3.0), (BODY_R + 2.5, FIN_ROOT - 6.0), 3.5),
+            (tuple(spar[0]), tuple(spar[1]), 3.5),
+            ((BODY_R + 3.0, 36.5), (tip_r - 16.5, 36.5), 3.5),
+            ((tip_r - 17.0, 3.0), (tip_r - 17.0, 33.0), 3.5),
+            ((BODY_R + 3.0, 2.5), (tip_r - 17.0, 2.5), 3.5),
         ]
         _fin(fins_w if i % 2 == 0 else fins_b, fin, 4.2, 1.6, BODY_R, tip_r, rot, rivets=rivets, rows=rows)
         # air rudder at each tip: steers once the air is thick enough to bite. Each turns on a shaft across
         # the gap from the fin, its bearing boss on either face (where the shaft is is estimated)
         rudder = [(tip_r - 14.5, 0), (tip_r, 0), (tip_r, 33.5), (tip_r - 14.5, 33.5)]
-        _fin(rudders, rudder, 1.9, 1.5, tip_r - 14.5, tip_r, rot, rivets=rivets, rows=[((tip_r - 12.5, 2.0), (tip_r - 12.5, 31.5), 2.5)])
+        _fin(rudders, rudder, 1.9, 1.5, tip_r - 14.5, tip_r, rot, rivets=rivets, rows=[((tip_r - 12.5, 2.0), (tip_r - 12.5, 31.5), 3.5)])
         rudders.tube(rot @ Vector(((tip_r - 16.0) * IN, 0, 24.0 * IN)), rot @ Vector(((tip_r - 12.0) * IN, 0, 24.0 * IN)), 0.6 * IN, 12)
         for side in (1, -1):
             hub = rot @ Vector(((tip_r - 9.0) * IN, side * 0.85 * IN, 24.0 * IN))

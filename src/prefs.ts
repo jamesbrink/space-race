@@ -16,7 +16,8 @@ export type Pref =
   | 'walkThird'
   | 'motionFull'
   | 'motionReduced'
-  | 'motionOff';
+  | 'motionOff'
+  | 'walkVisor';
 
 const KEY = 'space-race.prefs';
 

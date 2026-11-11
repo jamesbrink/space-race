@@ -391,6 +391,10 @@ const turn = new THREE.Quaternion();
 const want = new THREE.Quaternion();
 const place = new THREE.Vector3();
 
+/** Turning on the spot: what a radian of turn is worth as pace over the ground (metres), and the pace the legs are drawn at for it, at most (m/s). Estimated. */
+const TURN_STEP = 0.3;
+const TURN_PACE = 0.9;
+
 /** How far up a ladder one cycle of the limbs goes, metres: a rung with each foot, at a foot apart. */
 const RUNGS = 0.61;
 /** How many times a second a standing figure's breathing is moved on: the rate a still view is redrawn at anyway. */
@@ -490,9 +494,16 @@ export class Gait {
 
   /**
    * A frame has passed in which the figure went `distance` metres over the ground at `speed`,
-   * on the ground or `airborne`. Says how much the pose has changed: see Stir.
+   * on the ground or `airborne`, and turned `turn` radians about its feet. Says how much the
+   * pose has changed: see Stir. A turn where it stands is stepped round (TURN_STEP), not slid.
    */
-  advance(distance: number, speed: number, airborne: boolean, dt: number, climbing = false, dropped = 0): Stir {
+  advance(distance: number, speed: number, airborne: boolean, dt: number, climbing = false, dropped = 0, turn = 0): Stir {
+    // turning on the spot, or nearly: the feet step round, a step for each eighth of a turn
+    const stepping = !airborne && !climbing && dt > 0 && speed < WALK * 0.7 ? Math.abs(turn) : 0;
+    if (stepping) {
+      speed = Math.max(speed, Math.min(TURN_PACE, (stepping / dt) * TURN_STEP));
+      distance = Math.max(distance, (stepping / (Math.PI / 4)) * 0.5 * cycleLength(TURN_PACE, this.leg));
+    }
     const was = [
       this.phase,
       this.speed,

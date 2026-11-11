@@ -26,6 +26,8 @@ export interface UiHandlers {
   walkView(): void;
   /** The on-screen act button while walking: offer what can be done with what is being looked at. */
   walkAct(): void;
+  /** Working something by hand on a touch screen: a finger held on a run button (1 toward the end of its travel, -1 back), or lifted (0). */
+  walkPush(push: number): void;
   hoverPart(node: string | null): void;
   selectPart(node: string | null): void;
   /** How far along its travel each function of a part is (0 to 1), and why it will not move, if it will not. */
@@ -223,9 +225,10 @@ export class Ui {
           </dl>
         </div>
       </aside>
-      <div class="walkbar" hidden><span></span><button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-exit>Exit walk</button></div>
+      <div class="walkbar" hidden><span></span><button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-exit>Exit walk</button></div>
+      <div class="visor" aria-hidden="true"></div>
       <div class="stick" aria-hidden="true"><i></i></div>
-      <div class="walk-buttons"><button data-walk-jump>Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-act hidden>Act</button></div>
+      <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump>Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-act hidden>Act</button></div>
       <div class="reticle" aria-hidden="true"><i></i><p><kbd>E</kbd><span></span></p></div>
       <aside class="walk-card" hidden aria-live="polite">
         <button class="card-close" aria-label="Close">×</button>
@@ -330,11 +333,29 @@ export class Ui {
     root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());
     root.querySelector('[data-walk-view]')!.addEventListener('click', () => on.walkView());
     root.querySelector('[data-walk-motion]')!.addEventListener('click', () => on.walkMotion());
+    // the visor's rim round the view through the eyes: a choice, remembered
+    const visor = (shown: boolean) => {
+      root.classList.toggle('visor-on', shown);
+      root.querySelector('[data-walk-visor]')!.setAttribute('aria-pressed', String(shown));
+      prefs.set('walkVisor', shown);
+    };
+    visor(prefs.get('walkVisor'));
+    root.querySelector('[data-walk-visor]')!.addEventListener('click', () => visor(!prefs.get('walkVisor')));
     root.querySelector('.card-close')!.addEventListener('click', () => this.showWalkCard(null));
     // (on the press, not the click: a jump is wanted now, and a finger held on the button must not look round)
     root.querySelector('[data-walk-jump]')!.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       on.walkJump();
+    });
+    // Working something by hand: a finger held on one of these runs it, for as long as it is held
+    root.querySelectorAll<HTMLButtonElement>('[data-walk-push]').forEach((b) => {
+      const way = Number(b.dataset.walkPush);
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        b.setPointerCapture(e.pointerId);
+        on.walkPush(way);
+      });
+      for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => on.walkPush(0));
     });
     // The walking stick, for a finger: push it the way you want to go, further to go faster.
     const stick = root.querySelector<HTMLElement>('.stick')!;
@@ -563,6 +584,26 @@ export class Ui {
     }
   }
 
+  /**
+   * Working something by hand (on foot, at its controls), or not (null): on a touch screen the
+   * jump button gives way to two that run it while a finger is on them, each named by the end of
+   * its travel it runs toward, and the act button says Done.
+   */
+  setWorking(ends: [string, string] | null): void {
+    const [back, on] = this.root.querySelectorAll<HTMLButtonElement>('[data-walk-push]');
+    back!.hidden = on!.hidden = !ends;
+    if (ends) [back!.textContent, on!.textContent] = ends;
+    this.root.querySelector<HTMLButtonElement>('[data-walk-jump]')!.hidden = Boolean(ends);
+    this.working = Boolean(ends);
+    this.updateAct();
+  }
+  private working = false;
+
+  /** While walking: the view is through the figure's eyes (not from outside it), so the visor's rim, if chosen, is round it. */
+  setThroughEyes(on: boolean): void {
+    this.root.classList.toggle('eyes', on);
+  }
+
   /** While walking: say something on the bar in place of the usual reminder (null: the reminder again). */
   setWalkNote(text: string | null): void {
     this.note = text;
@@ -585,7 +626,16 @@ export class Ui {
     reticle.classList.toggle('on', Boolean(name));
     reticle.querySelector('span')!.textContent = name ?? '';
     reticle.querySelector('kbd')!.textContent = matchMedia('(hover: none), (pointer: coarse)').matches ? 'hold' : 'E';
-    this.root.querySelector<HTMLElement>('[data-walk-act]')!.hidden = !name;
+    this.targetName = name;
+    this.updateAct();
+  }
+  private targetName: string | null = null;
+
+  /** The act button is there when there is something to act on, and says Done while something is being worked by hand. */
+  private updateAct(): void {
+    const act = this.root.querySelector<HTMLElement>('[data-walk-act]')!;
+    act.hidden = !this.targetName && !this.working;
+    act.textContent = this.working ? 'Done' : 'Act';
   }
 
   /** While walking: a compact card of what the flight's data says about a part (not the orbit view's panel), or null to put it away. */

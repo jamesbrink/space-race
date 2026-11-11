@@ -684,7 +684,7 @@ export function buildCape(
   };
   return {
     floor: land.mesh,
-    scenery: [site, clouds.mesh],
+    scenery: [site, clouds.group],
     tick: (dt) => {
       driftClouds(dt);
       land.tick(dt);

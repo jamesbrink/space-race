@@ -500,27 +500,53 @@ def paving(parts: Parts) -> None:
     """Round the buildings: crushed shell, a concrete walk along the window faces, and the posts
     along the drive's edge, banded black and white (F16_016)."""
     g = "Blockhouse"
-    shell, conc = parts(g, "shell"), parts(g, "concrete/walk")
+    shell, conc = parts(g, "shell", True), parts(g, "concrete/walk")
     hx = BLOCKHOUSE_HALF
     apron = [S(-15.0, -30.0), S(8.0, -80.0), S(126.0, -80.0), S(126.0, 36.0), S(8.0, 36.0), S(-15.0, 30.0)]
-    slab(shell, apron, GROUND - 0.6, APRON, spread=3.6)
+    slab(shell, apron, GROUND - 0.6, APRON, spread=3.6, soft=True)
     walk = [S(0, 0), S(NOSE, hx), S(NOSE - 3.9, hx + 3.9), S(-7.8, 0), S(NOSE - 3.9, -hx - 3.9), S(NOSE, -hx)]
     slab(conc, walk, -FOOTING, 0.0)
     # the tracking dish on its own slab at the point (F16_016, lower left): a mesh bowl on a pedestal
     box(conc, S(-14.0, -5.0, -FOOTING), S(-8.2, 5.0, -0.04))
-    grey, mesh = parts(g, "grey", True), parts(g, "mesh")
+    grey, mesh = parts(g, "grey", True), parts(g, "mesh/dish", True)
     dx, dy = S(-11.0, 0.0)
-    grey.tube(P(dx, dy, -0.1), P(dx, dy, 4.2), 0.25 * FT, 8)
+    grey.tube(P(dx, dy, -0.1), P(dx, dy, 4.2), 0.25 * FT, 16)
     for k in range(3):
         a = TAU * k / 3
         beam(grey, (dx + 2.0 * math.cos(a), dy + 2.0 * math.sin(a), -0.02), (dx, dy, 2.6), 0.12)
+    # The mount, as such dishes were mounted (estimated): a turntable on the post, a yoke, the
+    # elevation axle through the hub. The dish: a paraboloid of open mesh 6.4 ft across, 0.95 ft
+    # deep, its rim rolled, twelve ribs behind it, and the feed held at the focus on three struts.
     aim = Vector((-0.55, 0.45, 0.7)).normalized()
-    mesh.lathe(
-        ftp([(0.15, 0.0), (1.2, 0.12), (2.3, 0.45), (3.2, 0.95)]),
-        16,
-        matrix=axes((dx + aim.x * 0.6, dy + aim.y * 0.6, 4.4 + aim.z * 0.6), Vector((0, 0, 1)).cross(aim), aim),
-    )
-    beam(grey, (dx, dy, 4.2), (dx + aim.x * 2.6, dy + aim.y * 2.6, 4.4 + aim.z * 2.6), 0.08)
+    flat = Vector((aim.x, aim.y, 0.0)).normalized()
+    across = Vector((0, 0, 1)).cross(flat).normalized()  # the elevation axle
+    grey.lathe(ftp([(0.0, 0.0), (0.55, 0.0), (0.55, 0.2), (0.4, 0.3), (0.0, 0.3)]), 20, matrix=axes((dx, dy, 4.2), (1, 0, 0), (0, 0, 1)))
+    hub = Vector((dx, dy, 5.1))
+    for sgn in (-1, 1):  # the yoke's arms and the axle's bearings
+        beam(grey, (dx + across.x * sgn * 0.45, dy + across.y * sgn * 0.45, 4.45), tuple(hub + across * (sgn * 0.45)), 0.14)
+    grey.tube(P(*(hub - across * 0.55)), P(*(hub + across * 0.55)), 0.09 * FT, 10)
+    vertex = hub + aim * 0.45
+    grey.lathe(ftp([(0.0, -0.45), (0.3, -0.45), (0.35, -0.05), (0.0, 0.0)]), 16, matrix=axes(tuple(vertex), tuple(across), tuple(aim)))
+    focal = 3.2**2 / (4 * 0.95)
+    bowl = [(0.18 + k * (3.2 - 0.18) / 12, 0.0) for k in range(13)]
+    bowl = [(r, r * r / (4 * focal)) for r, _ in bowl]
+    frame = axes(tuple(vertex), tuple(across), tuple(aim))
+    mesh.lathe(ftp(bowl), 48, matrix=frame)
+    grey.lathe(ftp([(3.15, 0.92), (3.32, 0.92), (3.32, 1.02), (3.15, 1.02), (3.15, 0.92)]), 48, matrix=frame)  # the rim
+    up = aim.cross(across)
+    for k in range(12):  # ribs behind the mesh, following its curve
+        q = TAU * k / 12
+        d = across * math.cos(q) + up * math.sin(q)
+        pts = [vertex + d * r + aim * (r * r / (4 * focal) - 0.09) for r in (0.3, 1.0, 1.8, 2.5, 3.15)]
+        for p0, p1 in zip(pts, pts[1:]):
+            beam(grey, tuple(p0), tuple(p1), 0.07)
+    feed = vertex + aim * focal
+    for k in range(3):  # the struts out to the feed, and the feed: a horn looking back into the dish
+        q = TAU * k / 3 + 0.5
+        d = across * math.cos(q) + up * math.sin(q)
+        beam(grey, tuple(vertex + d * 3.2 + aim * 0.97), tuple(feed + d * 0.12), 0.06)
+    horn = axes(tuple(feed - aim * 0.1), tuple(across), tuple(aim))
+    grey.lathe(ftp([(0.0, 0.0), (0.22, 0.0), (0.12, 0.35), (0.1, 0.55), (0.0, 0.55)]), 12, matrix=horn)
     # posts along the drive: at the paving's back edge and its pad 6 side
     posts = [S(128.0, v) for v in range(-76, 37, 14)] + [S(u, -82.0) for u in range(14, 127, 14)]
     black, white = parts(g, "black/posts", True), parts(g, "white/posts", True)

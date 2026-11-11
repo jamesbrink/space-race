@@ -62,7 +62,7 @@ dd { font-variant-numeric: tabular-nums; }
 .title.tucked { padding-bottom: 16px; }
 .title.tucked :is(.lede, .facts) { display: none; }
 /* H: nothing between the viewer and the view */
-#ui.bare > :not(.loading, .stats, .walkbar, .stick, .walk-buttons, .wheel, .reticle) { opacity: 0; pointer-events: none !important; }
+#ui.bare > :not(.loading, .stats, .walkbar, .stick, .walk-buttons, .wheel, .reticle, .visor) { opacity: 0; pointer-events: none !important; }
 /* ...but say how to get them back, faintly, so a reload into this state is not a dead end */
 #ui.bare::after { content: 'H  shows the panels'; position: absolute; right: var(--edge); bottom: var(--edge); font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 0.55; text-shadow: 0 0 4px #000; }
 #ui > * { transition: opacity 0.25s ease; }
@@ -122,12 +122,20 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .walk-buttons button { width: 68px; height: 68px; border-radius: 50%; background: var(--glass); border: 1px solid var(--faint); color: var(--ink); font: 10px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; touch-action: none; }
 .walk-buttons button:active { background: rgba(243, 239, 230, 0.3); }
 .walk-buttons [aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+.walk-buttons [data-walk-push] { padding: 6px; line-height: 1.25; letter-spacing: 0.06em; overflow-wrap: anywhere; }
+.walk-buttons [data-walk-push='1']::before { content: '\25B2'; display: block; margin-bottom: 3px; }
+.walk-buttons [data-walk-push='-1']::before { content: '\25BC'; display: block; margin-bottom: 3px; }
 @media (hover: none), (pointer: coarse) { #ui.walking .stick { display: block; } #ui.walking .walk-buttons { display: flex; } }
 /* on foot the view is the whole screen, whatever share a sheet had of it */
 body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }
 /* the reticle: a dot where the eyes point; within reach of something, a ring and its name */
 .reticle { display: none; position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none !important; }
 #ui.walking .reticle { display: block; }
+/* the rim of the helmet's visor, through the eyes, when chosen: a soft dark edge and the curve of the seal at the corners, drawn over either look */
+.visor { display: none; position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#ui.walking.eyes.visor-on .visor { display: block; }
+.visor::before { content: ''; position: absolute; left: 50%; top: 47%; width: max(122vw, 150vh); height: max(112vh, 82vw); transform: translate(-50%, -50%); border-radius: 50%; box-shadow: 0 0 0 100vmax rgba(9, 10, 12, 0.62), inset 0 0 6vmin 2vmin rgba(9, 10, 12, 0.5); }
+.visor::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 62% at 50% 46%, transparent 62%, rgba(9, 10, 12, 0.16) 100%); }
 .reticle i { position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; border-radius: 50%; background: var(--ink); opacity: 0.75; box-shadow: 0 0 3px #000; transition: all 0.12s; }
 .reticle.on i { left: -8px; top: -8px; width: 16px; height: 16px; background: none; border: 1.5px solid var(--amber); opacity: 1; }
 .reticle p { display: none; position: absolute; top: 22px; left: 0; transform: translateX(-50%); align-items: center; gap: 8px; padding: 5px 10px 5px 6px; white-space: nowrap;

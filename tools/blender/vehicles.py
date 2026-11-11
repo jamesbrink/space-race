@@ -268,6 +268,22 @@ def cap(mb: MeshBuilder, loop: Sequence[Vector], facing: Sequence[float]) -> Non
     poly(mb, pts, facing)
 
 
+def clip(pts: Sequence[tuple[float, float]], axis: str, sense: int, at: float) -> list[tuple[float, float]]:
+    """The part of a polygon in (y, z) on one side of a line: where `axis` ("y" or "z") times
+    `sense` is at least `at` times `sense`."""
+    k = 0 if axis == "y" else 1
+    inside = [sense * (p[k] - at) >= 0 for p in pts]
+    out: list[tuple[float, float]] = []
+    for i, p in enumerate(pts):
+        q, qin = pts[i - 1], inside[i - 1]
+        if inside[i] != qin:
+            t = (at - q[k]) / (p[k] - q[k])
+            out.append((q[0] + (p[0] - q[0]) * t, q[1] + (p[1] - q[1]) * t))
+        if inside[i]:
+            out.append(p)
+    return out
+
+
 DOME = [(0.82, 3.3), (0.7, 4.2), (0.38, 4.8), (0.0, 5.05)]  # a lamp's lens: (share of its radius, inches along its axis)
 BEZEL = [(1.12, 0.0), (1.12, 2.6), (0.98, 3.7), (0.82, 3.3)]  # the bright ring round it
 
@@ -350,6 +366,8 @@ class Car:
     rear_track: float = 0.0  # between the middles of the rear wheels (or pairs), where it differs from the front
     bonnet: bool = True  # the lid ahead of the windscreen is its own node, hinged at the scuttle
     boot: bool = True  # and the lid behind the back light, hinged under it, where the body has one
+    tailgate: bool = False  # a wagon's: the middle of the back panel, from the bumper up, hinged at its foot to fall open
+    engine: str = "front"  # or "rear": then the bonnet covers the luggage and the spare, and the boot lid the engine
     # for the simulator; say how sure each is where the car is described
     mass: float = 0.0  # pounds, ready for the road and empty
     turning: float = 0.0  # feet, the circle between kerbs
@@ -436,6 +454,20 @@ class Car:
         y1 = flat - (5.0 if h > 0.2 else 0.3 * flat)
         return [*pts, (y1, lid(y1)), (0.5 * y1, lid(0.5 * y1)), (0.0, zt + self.crown)]
 
+    def lid_z(self, x: float, y: float) -> float:
+        """The height of the crowned top at x, y (the bonnet's or the boot lid's outside)."""
+        w, zt = self._plan(x), self._top(x)
+        r = min(self.shoulder, 0.45 * (zt - self._bottom(x)), 0.5 * w)
+        return zt + self.crown * (1 - (y / (w - r)) ** 2)
+
+    def tailgate_cut(self) -> tuple[float, float, float]:
+        """The tailgate's half-width, the height of its hinge (just over the rear bumper) and of its top."""
+        z = self.bumper[1] or self._bottom(self.tail + 6) + 3.5
+        ty, _, tr, wide = self.tail_at
+        ty = ty or 0.74 * self._plan(self.tail + 3)
+        _, _, wy, _ = self.tub()
+        return min(wy, ty - tr * wide - 1.5), z + self.bumper_size[1] + 0.1, self._top(self.tail) - 0.5
+
     def stations(self) -> list[float]:
         lo, hi = self.tail, self.x1
         n = max(2, round((hi - lo) / (4.6 * grain() ** (1.3 if trimmed() else 1.8))))
@@ -459,6 +491,12 @@ class Car:
         """Each side door, front to back, as the X of its back and front edges."""
         d = sorted(self.doors, reverse=True)
         return [(b, a) for a, b in zip(d, d[1:])]
+
+    def door_foot(self, x: float) -> float:
+        """The height of a door's lower edge at x: the skin's, where the side begins over the sill or a wheel's opening."""
+        zt = self._top(x) + self._fin(x)
+        r = min(self.shoulder, 0.45 * (self._top(x) - self._bottom(x)), 0.5 * self._plan(x))
+        return min(max(self._bottom(x), self.arch_z(x)), zt - r - 0.8)
 
     def lids(self) -> dict[str, tuple[float, float]]:
         """The bonnet and the boot lid as X ranges of the body's top; a lid too short to be one is left out."""
@@ -502,7 +540,43 @@ class Car:
 
         skin(kit, loops, what, closed=True)
         cap(kit(self.paint), loops[-1], (1, 0, 0))
-        cap(kit(self.paint), loops[0], (-1, 0, 0))
+        if self.tailgate:  # the back panel is cut: the tailgate is its middle, from over the bumper to the top
+            yw, zh, zt = self.tailgate_cut()
+            back = [(p.y, p.z) for p in loops[0]]
+            x = loops[0][0].x
+            for keep, key in (
+                ((("z", -1, zh),), self.paint),
+                ((("z", 1, zh), ("y", 1, yw)), self.paint),
+                ((("z", 1, zh), ("y", -1, -yw)), self.paint),
+                ((("z", 1, zt), ("y", -1, yw), ("y", 1, -yw)), self.paint),
+                ((("z", 1, zh), ("z", -1, zt), ("y", -1, yw), ("y", 1, -yw)), self.paint + "@Tailgate"),
+            ):
+                piece = back
+                for axis, sense, at in keep:
+                    piece = clip(piece, axis, sense, at)
+                if len(piece) >= 3:
+                    cap(kit(key), [Vector((x, y, z)) for y, z in piece], (-1, 0, 0))
+            inner = [(x + 0.4, -yw, zh), (x + 0.4, yw, zh), (x + 0.4, yw, zt), (x + 0.4, -yw, zt)]
+            poly(kit("trim-dark@Tailgate" if srlib.interior() else "under@Tailgate"), inner, (1, 0, 0))
+            for y in (-yw, yw):  # its edges, and the body's facing them
+                poly(kit(self.paint + "@Tailgate"), [(x, y, zh), (x + 0.4, y, zh), (x + 0.4, y, zt), (x, y, zt)], (0, y, 0))
+                poly(kit(self.paint), [(x, y, zh), (x + 0.4, y, zh), (x + 0.4, y, zt), (x, y, zt)], (0, -y, 0))
+            for z, f in ((zt, 1), (zh, -1)):
+                poly(kit(self.paint + "@Tailgate"), [(x, -yw, z), (x + 0.4, -yw, z), (x + 0.4, yw, z), (x, yw, z)], (0, 0, f))
+                poly(kit(self.paint), [(x, -yw, z), (x + 0.4, -yw, z), (x + 0.4, yw, z), (x, yw, z)], (0, 0, -f))
+        else:
+            cap(kit(self.paint), loops[0], (-1, 0, 0))
+        # each lid has an underside, and its edges are closed, so that it is a panel when raised
+        for name, (a, b) in self.lids().items():
+            rows = [loop[lid : m - lid + 1] for x, loop in zip(xs, loops) if a - 1e-6 <= x <= b + 1e-6]
+            under = [[p - Vector((0, 0, 0.4)) for p in row] for row in rows]
+            skin(kit, under, lambda st, j, name=name: f"under@{name}", closed=False, flip=True)
+            for k, f in ((0, 1), (-1, -1)):
+                for r0, r1, u0, u1 in zip(rows, rows[1:], under, under[1:]):
+                    poly(kit(f"{self.paint}@{name}"), (r0[k], r1[k], u1[k], u0[k]), (0, f, 0))
+            for row, low, f in ((rows[0], under[0], -1), (rows[-1], under[-1], 1)):
+                for p0, p1, q0, q1 in zip(row, row[1:], low, low[1:]):
+                    poly(kit(f"{self.paint}@{name}"), (p0, p1, q1, q0), (f, 0, 0))
 
     # ---- the greenhouse
 
@@ -632,7 +706,9 @@ class Car:
         """The cabin's inside: X of its back and front walls, its half-width, its floor's height."""
         foot, _, _, back = self.cabin
         x0, x1 = back - 1.0, foot + 0.5
-        if self.arch > 0 and abs(x0) < self.arch + 2.0:
+        if self.tailgate:
+            x0 = self.tail + 0.45  # a wagon's load floor runs to the tailgate
+        elif self.arch > 0 and abs(x0) < self.arch + 2.0:
             x0 = -self.arch - 2.0  # its back wall stands behind the rear wheel's well, not in it
         wy = min(self.glass_y(foot), self.glass_y(back)) - 2.2
         return x0, x1, wy, max(self._bottom(0.5 * (x0 + x1)) + 4.0, 11.0)
@@ -694,30 +770,65 @@ class Car:
             """The top of the housing that the stretch a..b lies in; 0 if it lies in none."""
             return next((z for lo, hi, z in housings if lo - 1e-6 <= a and b <= hi + 1e-6), 0.0)
 
-        cuts = sorted({x0, x1, *(x for x in self.doors if x0 < x < x1), *(x for lo, hi, _ in housings for x in (lo, hi) if x0 < x < x1)})
+        # a wagon's load floor steps up over the rear overhang, where the underside rises
+        load, zl = x0, zf
+        if self.tailgate and self._bottom(x0) + 1.5 > zf:
+            zl = self._bottom(x0) + 1.5
+            load = next(x0 + 0.5 * k for k in range(400) if self._bottom(x0 + 0.5 * k) + 1.5 <= zf)
+        cuts = sorted({x0, x1, load, *(x for x in self.doors if x0 < x < x1), *(x for lo, hi, _ in housings for x in (lo, hi) if x0 < x < x1)})
+
+        def floor(a: float, b: float) -> float:
+            return zl if b <= load + 1e-6 else zf
+
         for a, b in zip(cuts, cuts[1:]):  # the floor, narrower between the housings
             y = inner if housed(a, b) else wy
-            poly(trim, [(a, -y, zf), (b, -y, zf), (b, y, zf), (a, y, zf)], (0, 0, 1))
+            poly(trim, [(a, -y, floor(a, b)), (b, -y, floor(a, b)), (b, y, floor(a, b)), (a, y, floor(a, b))], (0, 0, 1))
+        if load > x0:
+            poly(trim, [(load, -wy, zf), (load, wy, zf), (load, wy, zl), (load, -wy, zl)], (1, 0, 0))
         for x, out in ((x0, 1), (x1, -1)):  # the back wall, and the front one under the dashboard
             y = inner if any(lo - 1e-6 <= x <= hi + 1e-6 for lo, hi, _ in housings) else wy
+            if out > 0 and self.tailgate:  # a wagon's back is the inside of its back panel, round the tailgate's
+                yw, zh, zt = self.tailgate_cut()
+                x = self.tail + 0.4
+                for lo_, hi_ in (((-wy, zl), (wy, zh)), ((yw, zh), (wy, zt)), ((-wy, zh), (-yw, zt))):
+                    poly(trim, [(x, lo_[0], lo_[1]), (x, hi_[0], lo_[1]), (x, hi_[0], hi_[1]), (x, lo_[0], hi_[1])], (1, 0, 0))
+                continue
             poly(trim, [(x, -y, zf), (x, y, zf), (x, y, self.belt(x) - 0.5), (x, -y, self.belt(x) - 0.5)], (out, 0, 0))
+        spans = self.door_spans()
+        # a door that reaches past the tub (a front door ahead of the dashboard) is lined there too
+        beyond = [(max(a, x1), b) for a, b in spans if b > x1 + 0.5] + [(a, min(b, x0)) for a, b in spans if a < x0 - 0.5]
         for s in (1, -1):  # the side walls and their tops, out to under the shoulder, door by door
-            for a, b in zip(cuts, cuts[1:]):
+            for a, b in [*zip(cuts, cuts[1:]), *beyond]:
                 to = "trim-dark" + self.part_of((a + b) / 2, 3, s, 99)
                 za, zb = self.belt(a) - 0.5, self.belt(b) - 0.5
-                foot = max(zf, housed(a, b))  # over a housing the wall starts on top of it
+                foot = max(floor(a, b), housed(a, b))  # over a housing the wall starts on top of it
                 poly(kit(to), [(a, s * wy, foot), (b, s * wy, foot), (b, s * wy, zb), (a, s * wy, za)], (0, -s, 0))
                 out = [(x, s * (self._plan(x) - 0.4 * self.shoulder), self.belt(x) - 5.0) for x in (a, b)]
                 poly(kit(to), [(a, s * wy, za), (b, s * wy, zb), out[1], out[0]], (0, 0, 1))
-            for a, b in self.door_spans():  # a door has edges: close them between its skin and its lining
+            for k, (a, b) in enumerate(spans):  # a door has edges: close them between its skin and its lining
                 to = "trim-dark" + self.part_of((a + b) / 2, 3, s, 99)
                 for x in (a, b):
                     over = max((z for lo, hi, z in housings if lo < x < hi), default=0.0)
-                    lo = max(zf, over, self.arch_z(x) + 0.5)  # not down into a wheel's well
-                    if x0 < x < x1 and lo < self.belt(x) - 6.0:
-                        zs = [lo + (self.belt(x) - 5.0 - lo) * k / 3 for k in range(4)]
+                    lo = self.door_foot(x)
+                    if lo < self.belt(x) - 6.0:
+                        zs = [lo + (self.belt(x) - 5.0 - lo) * i / 3 for i in range(4)]
                         edge = [(x, s * self.side(x, z), z) for z in zs]
-                        poly(kit(to), [(x, s * wy, zs[0]), *edge, (x, s * wy, zs[-1])], (x - (a + b) / 2, 0, 0))
+                        poly(kit(to), [(x, s * wy, max(zf, over)), *edge, (x, s * wy, zs[-1])], (x - (a + b) / 2, 0, 0))
+                        # where no other door meets it, the body has a jamb there: the opening's frame
+                        if not any(x in (c, d) for j, (c, d) in enumerate(spans) if j != k):
+                            f = 1.0 if x == a else -1.0
+                            xj = x - f * 0.3
+                            jamb = [(xj, s * self.side(xj, z), z) for z in zs]
+                            poly(trim, [(xj, s * wy, max(zf, over)), *jamb, (xj, s * wy, zs[-1])], (f, 0, 0))
+                # its foot, from the skin's lower edge in to the lining, and the sill under it
+                n = max(2, round((b - a) / (6.0 * grain())))
+                run = sorted({*(a + (b - a) * i / n for i in range(n + 1)), *(x for lo, hi, _ in housings for x in (lo, hi) if a < x < b)})
+                for xa_, xb_ in zip(run, run[1:]):
+                    inside = max(zf, housed(xa_, xb_))
+                    edge = [(x, self.side(x, self.door_foot(x)), self.door_foot(x)) for x in (xa_, xb_)]
+                    poly(kit(to), [(x, s * y, z) for x, y, z in edge] + [(xb_, s * wy, inside), (xa_, s * wy, inside)], (0, s * 0.3, -1))
+                    sill = [(x, s * (y - 0.6), z - 0.05) for x, y, z in edge] + [(xb_, s * wy, inside - 0.3), (xa_, s * wy, inside - 0.3)]
+                    poly(trim, sill, (0, -s * 0.3, 1))
         for lo, hi, z in housings:
             for s in (1, -1):  # only the faces the cabin sees: the well itself is the body's
                 ya, yb = s * inner, s * wy
@@ -843,8 +954,124 @@ class Car:
             cap(seat, loops[0], (0, -1, 0))
             cap(seat, loops[-1], (0, 1, 0))
         xs = self.benches()[-1][0] - 3.0
-        if xs > x0 + 4:  # the shelf behind the back seat
+        if xs > x0 + 4 and not self.tailgate:  # the shelf behind the back seat
             poly(trim, [(x0, -wy, zb0 - 1.0), (xs, -wy, zb0 - 1.0), (xs, wy, zb0 - 1.0), (x0, wy, zb0 - 1.0)], (0, 0, 1))
+
+    # ---- what is under the lids
+
+    def build_bays(self, kit: Kit) -> None:
+        """Under each lid a compartment, closed so that nothing of the body's inside shows when it
+        is raised: walls that slope out from the lid's edge to the wheels' wells, a floor, a gutter
+        from each wall's head to under the skin round the opening. In it the engine (block, rocker
+        covers, air cleaner, radiator, battery) or the luggage floor and the spare wheel."""
+        ns, na = self.shape()
+        lid = 3 + ns + na
+        for name, (a, b) in self.lids().items():
+            engine = (name == "Bonnet") == (self.engine == "front")
+            ends = (a + 0.6, b - 0.6)
+            run = sorted({*ends, *(x for x in self.stations() if ends[0] < x < ends[1])})
+
+            def edge(x: float) -> tuple[float, float, float, float]:
+                """At x: the opening's edge (y, z), and the wall's head and foot half-widths."""
+                ye, ze = self.section(x)[lid]
+                yin = min(self.well, self.side(x, self._bottom(x)) - 1.0)
+                return ye, ze, min(ye - 1.2, yin - 0.4), max(min(ye - 1.2, yin - 0.4), yin - 1.0)
+
+            zf = max(self._bottom(x) for x in run) + 1.5
+            dark = kit("under/bay")
+            for s in (1, -1):
+                for xa, xb in zip(run, run[1:]):
+                    (ya, za, ta, la), (yb, zb, tb, lb) = edge(xa), edge(xb)
+                    wall = [(xa, s * la, zf), (xb, s * lb, zf), (xb, s * tb, zb - 1.2), (xa, s * ta, za - 1.2)]
+                    poly(dark, wall, (0, -s, 0.2))
+                    gutter = [(xa, s * ta, za - 1.2), (xb, s * tb, zb - 1.2), (xb, s * (yb + 0.4), zb - 0.45), (xa, s * (ya + 0.4), za - 0.45)]
+                    poly(dark, gutter, (0, -s * 0.6, 1))
+            for xa, xb in zip(run, run[1:]):
+                la, lb = edge(xa)[3], edge(xb)[3]
+                poly(dark, [(xa, -la, zf), (xb, -lb, zf), (xb, lb, zf), (xa, la, zf)], (0, 0, 1))
+            for x, f in ((ends[0], 1), (ends[1], -1)):  # the end walls, under the lid's crown, and their gutters
+                _, _, top, foot = edge(x)
+                ys = [top * (1 - 2 * i / 6) for i in range(7)]
+                head = [(x, y, self.lid_z(x, y) - 1.2) for y in ys]
+                poly(dark, [(x, -foot, zf), (x, foot, zf), *head], (f, 0, 0))
+                out = x - f * 1.0
+                lip = [(out, y, self.lid_z(out, y) - 0.45) for y in ys]
+                for p0, p1, q0, q1 in zip(head, head[1:], lip, lip[1:]):
+                    poly(dark, (p0, p1, q1, q0), (f * 0.6, 0, 1))
+            mid = (a + b) / 2
+            room = edge(mid)
+            if engine:
+                self.build_engine(kit, a, b, zf, room[2], name == "Bonnet")
+            else:
+                self.build_spare(kit, ends, zf, lambda x: edge(x)[2])
+
+    def build_engine(self, kit: Kit, a: float, b: float, zf: float, half: float, ahead: bool) -> None:
+        """An engine in the bay from a to b, its floor at zf, `half` the room's half-width at its
+        head. In front (`ahead`), a block with two rocker covers, an air cleaner on top, the radiator
+        at the front and the battery beside; behind (a rear engine), a low flat block with its fan's
+        housing and an air cleaner."""
+        eng = kit("engine")
+        mid = (a + b) / 2
+        roof = min(self.lid_z(x, 0.0) for x in (a + 2.0, mid, b - 2.0)) - 1.6  # under the lid's crown, its underside and clear
+        if ahead:
+            length = min(30.0, b - a - 10.0)
+            x0, x1 = a + 2.5, a + 2.5 + length
+            wide = min(10.0, half - 6.0)
+            top = min(zf + 17.0, roof - 5.5)
+            if wide < 4.0 or top < zf + 6.0:
+                return
+            box(eng, (x0, -wide * 0.7, zf + 0.5), (x1, wide * 0.7, top - 3.0))
+            for s in (1, -1):  # the heads, leaning out as a V's do
+                ya, yb = sorted((s * 0.5, s * wide))
+                hexa(
+                    eng,
+                    [(x0 + 1, ya, top - 3.2), (x1 - 1, ya, top - 3.2), (x1 - 1, yb, top - 3.2), (x0 + 1, yb, top - 3.2)],
+                    [(x0 + 1, ya * 0.8, top), (x1 - 1, ya * 0.8, top), (x1 - 1, yb * 0.85, top - 0.6), (x0 + 1, yb * 0.85, top - 0.6)],
+                )
+            r = min(7.0, half - 2.0)
+            kit("engine/cleaner").lathe(
+                [(0.0, 0.0), (r, 0.0), (r, 2.6), (r - 0.8, 3.4), (0.0, 3.5)], 20, matrix=Matrix.Translation((x0 + length * 0.4, 0, top))
+            )
+            tall = min(roof - 1.5, top + 2.0) - zf - 2.0
+            box(kit("radiator"), (b - 4.0, -min(half - 1.0, 13.0), zf + 2.0), (b - 1.8, min(half - 1.0, 13.0), zf + 2.0 + tall))
+            kit("under/bay").lathe(
+                [(0.0, -0.3), (min(7.0, tall / 2 - 1.0), -0.3), (min(7.0, tall / 2 - 1.0), 0.3), (0.0, 0.3)],
+                12,
+                matrix=srlib.frame((b - 6.0, 0, zf + 2.0 + tall / 2), (1, 0, 0)),
+            )
+            kit("rubber/hose").tube(Vector((x1 - 1.0, 0, top - 1.0)), Vector((b - 4.0, 0, zf + tall - 1.0)), 0.9, 8)
+            side = -1 if self.lhd else 1
+            box(kit("under/battery"), (x1 + 1.0, side * (half - 7.5) - 3.5, zf + 0.5), (min(x1 + 10.0, b - 5.0), side * (half - 7.5) + 3.5, zf + 9.0))
+        else:
+            length = min(26.0, b - a - 6.0)
+            x0, x1 = a + 2.0, a + 2.0 + length
+            wide = min(15.0, half - 2.0)
+            top = min(zf + 11.0, roof - 6.0)
+            if wide < 4.0 or top < zf + 4.0:
+                return
+            box(eng, (x0, -wide, zf + 1.0), (x1, wide, top))
+            r = min(6.5, (roof - top) / 2.0 - 0.5, wide - 1.0)
+            if r > 2.0:
+                kit("engine/fan").tube(Vector((x1 - 3.0, 0, top + r)), Vector((x1 + 1.0, 0, top + r)), r, 16)
+                kit("engine/cleaner").lathe(
+                    [(0.0, 0.0), (3.5, 0.0), (3.5, 3.0), (0.0, 3.4)], 14, matrix=Matrix.Translation((x0 + 5.0, wide * 0.5, top))
+                )
+
+    def build_spare(self, kit: Kit, ends: tuple[float, float], zf: float, room: Callable[[float], float]) -> None:
+        """The spare wheel, lying flat on the luggage floor at the end nearest the car's end, if it fits."""
+        R, w, _ = self.tyre
+        a, b = ends
+        if b - a < 2 * R + 2.0:
+            return
+        x = b - R - 1.0 if self.engine == "rear" else a + R + 1.0  # toward the car's end
+        half = min(room(x - R), room(x), room(x + R))
+        if half < R + 0.5:
+            y = 0.0
+            if half + 3.5 < R:  # the walls lean out below their heads, but not this far
+                return
+        else:
+            y = (-1 if self.lhd else 1) * (half - R - 0.5)
+        self.wheel_into(kit, srlib.frame((x, y, zf + w / 2 + 0.3), (0, 0, 1)))
 
     # ---- what is hung on the body
 
@@ -1046,6 +1273,9 @@ class Car:
         for lid, (a, b) in self.lids().items():  # a lid turns about a line across the car: the bonnet's at its back, the boot's at its front
             x = a if lid == "Bonnet" else b
             out[lid] = (Vector((x, 0.0, self._top(x))), dict(hatch=1, swing=50.0 if lid == "Bonnet" else -55.0, axis="z"))
+        if self.tailgate:  # falls open about its foot, to lie level behind the car
+            _, zh, _ = self.tailgate_cut()
+            out["Tailgate"] = (Vector((self.tail, 0.0, zh)), dict(hatch=1, swing=90.0, axis="z"))
         return out
 
     def build(self, name: str, parent: bpy.types.Object | None, at: Sequence[float], heading: float = 0.0) -> dict:
@@ -1071,6 +1301,8 @@ class Car:
             self.build_greenhouse(kit)
             if srlib.interior():
                 self.build_interior(kit)
+        if srlib.interior():
+            self.build_bays(kit)
         for pod in self.pods:
             pod.build(self, kit)
         self.build_trim(kit)
@@ -1909,9 +2141,12 @@ class Tractor(Car):
         stack.tube(Vector((bx - 4.0, -29.0, 38.0)), Vector((bx - 4.0, -29.0, 104.0)), 2.2, 10)
         stack.tube(Vector((bx - 4.0, -29.0, 104.0)), Vector((bx - 7.0, -29.0, 106.5)), 2.2, 10)
         if srlib.interior():
-            self.build_engine(kit)
+            self.build_six(kit)
 
-    def build_engine(self, kit: Kit) -> None:
+    def build_bays(self, kit: Kit) -> None:
+        """Its engine is built with the body (build_six)."""
+
+    def build_six(self, kit: Kit) -> None:
         """Under the hood: a six in line, its rocker cover and air cleaner, the radiator and its fan."""
         eng = kit("engine")
         ha, hb = self.lids()["Bonnet"]

@@ -523,14 +523,13 @@ export class Land {
               float across = dot(p, vec2(-dir.y, dir.x)) + 9.0 * noise(vec3(p * 0.025, 26.0 + float(k)));
               float lane = floor(across / 23.0);
               float f = across - (lane + 0.5) * 23.0;
-              float wheel = 1.0 - smoothstep(0.08, 0.16, abs(abs(f) - 0.75));
-              // a track runs for a while and gives out; tread marks across it
+              float wheel = 1.0 - smoothstep(0.06, 0.15, abs(abs(f) - 0.75));
+              // a track runs for a while and gives out, pressed harder in places
               float runs = smoothstep(0.45, 0.6, noise(vec3(dot(p, dir) * 0.03, lane, 27.0 + float(k))));
-              float tread = 0.75 + 0.25 * step(0.5, fract(dot(p, dir) * 9.0));
-              tyres = max(tyres, wheel * runs * mix(1.0, tread, seen(0.06)));
+              tyres = max(tyres, wheel * runs * (0.5 + 0.5 * noise(vec3(p * 0.7, 29.0 + float(k)))));
             }
             tyres *= worked * seen(0.3);
-            sand = mix(sand, sand * 0.84, tyres);
+            sand = mix(sand, sand * 0.9, tyres);
             sand = mix(sand, sand * 1.05, worked);
             g.bump += 0.02 * (patches - 0.5) * seen(0.5) - 0.012 * tyres;
             g.albedo = sand;

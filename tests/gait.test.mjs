@@ -309,3 +309,50 @@ test('sitting at a wheel: thighs level, shins down, hands up and going round wit
     for (const j of JOINTS)
       assert.ok(Math.abs(pose(0.2, 1, 0, { sit: k })[j] - pose(0.2, 1, 0, { sit: k + 0.02 })[j]) < 2.5 * DEG, `${j} sitting down at ${k}`);
 });
+
+test('a tall figure under a low roof sinks into the seat and leans back until his head clears it, and no further than a body can', async () => {
+  const { seatFit } = await import('../src/viewer/gait.ts');
+  assert.deepEqual(seatFit(0.9, 1.2), { drop: 0, recline: 0 }, 'room enough: he sits up');
+  assert.deepEqual(seatFit(0.9, Number.POSITIVE_INFINITY), { drop: 0, recline: 0 }, 'no roof');
+  const short = seatFit(0.9, 0.9);
+  assert.ok(Math.abs(short.drop - 0.04) < 1e-9 && short.recline === 0, 'a little short: he sinks into the cushion');
+  const a = seatFit(0.9, 0.8);
+  assert.ok(
+    a.drop === 0.08 && a.recline > 0 && Math.abs(0.9 * Math.cos(a.recline) - a.drop - (0.8 - 0.04)) < 1e-9,
+    'shorter: he leans back too, until he just clears it',
+  );
+  const b = seatFit(0.9, 0.5);
+  assert.ok(b.recline <= 0.61 && b.drop <= 0.08, 'and no further than 35 degrees and 8 cm, however low the roof');
+  // the reclined pose keeps his eyes level and his knees up: what the hips give back, the head and thighs take
+  const sat = poseOf({ phase: 0, speed: 0, sit: 1, recline: 0.4 });
+  const up = poseOf({ phase: 0, speed: 0, sit: 1 });
+  assert.ok(sat.Hips < up.Hips - 0.39 && Math.abs(sat.Hips + sat['UpperLeg.L'] - (up.Hips + up['UpperLeg.L'])) < 1e-9);
+  assert.ok(sat.Head > up.Head);
+});
+
+test('a hand is put where it is sent, with the elbow bent the way it was', async () => {
+  const { reach } = await import('../src/viewer/gait.ts');
+  const root = new THREE.Group();
+  const add = (name, parent, x, y, z) => {
+    const o = new THREE.Object3D();
+    o.name = name;
+    o.position.set(x, y, z);
+    parent.add(o);
+    return o;
+  };
+  const upper = add('UpperArm.L', root, 0.2, 1.4, 0);
+  const lower = add('LowerArm.L', upper, 0, -0.3, 0);
+  lower.rotation.x = -0.3; // the elbow bent a little forward
+  const hand = add('Hand.L', lower, 0, -0.27, 0);
+  add('Grip.L', hand, 0, -0.08, 0);
+  root.updateMatrixWorld(true);
+  const target = new THREE.Vector3(0.15, 1.3, 0.45);
+  assert.ok(reach(root, 'L', target));
+  root.updateMatrixWorld(true);
+  const grip = root.getObjectByName('Grip.L').getWorldPosition(new THREE.Vector3());
+  assert.ok(grip.distanceTo(target) < 0.005, `the grip is on the target: ${grip.distanceTo(target)} m off`);
+  assert.ok(Math.abs(upper.position.distanceTo(new THREE.Vector3(0.2, 1.4, 0))) < 1e-9, 'the shoulder stays where it is');
+  const elbow = lower.getWorldPosition(new THREE.Vector3());
+  assert.ok(elbow.y < 1.4 && elbow.y < target.y, 'the elbow hangs below the line to the hand');
+  assert.equal(reach(new THREE.Group(), 'L', target), false, 'no arm, nothing done');
+});

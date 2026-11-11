@@ -116,8 +116,10 @@ export class Lamps {
       const own = described(mesh);
       // The site builders draw a lens as the inside face of the lamp's bowl (lamp_head, searchlight:
       // `flip=True`), so its normals face into the housing; the light goes the other way.
+      // (a lens built facing out says so, `lens_out`, and shines along its own normals)
+      const out = Boolean(mesh.userData.lens_out ?? mesh.parent?.userData.lens_out);
       for (const fitting of fittings(mesh)) {
-        fitting.facing.negate();
+        if (!out) fitting.facing.negate();
         all.push({ mesh, fitting, own });
       }
     });

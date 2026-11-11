@@ -384,21 +384,27 @@ def offset_poly(pts, d: float) -> list:
     return out
 
 
-def slab(mb: MeshBuilder, outline, z0: float, z1: float, spread: float = 0.0, bottom: bool = False) -> None:
+def slab(mb: MeshBuilder, outline, z0: float, z1: float, spread: float = 0.0, bottom: bool = False, soft: bool = False) -> None:
     """A slab over any simple outline (site units, anticlockwise): paving, a floor, a roof. With `spread`
     its edges are battered, the foot that far outside the top: fill graded down to the ground, which
-    is also a ramp on to it. The underside is left off unless asked for: it is in the ground."""
+    is also a ramp on to it; with `soft` too, the batter is a curve, rounded over at the top and
+    easing out at the foot, as tipped and raked fill lies (give it a smooth mesh). The underside is
+    left off unless asked for: it is in the ground."""
     k = len(outline)
     tris = ear_clip(list(outline))
-    foot = offset_poly(outline, spread) if spread else outline
-    top = [tuple(P(x, y, z1)) for x, y in outline]
-    bot = [tuple(P(x, y, z0)) for x, y in foot]
+    shares = [0.0, 0.12, 0.28, 0.5, 0.72, 0.88, 1.0] if soft and spread else [0.0, 1.0]
+    rings = []
+    for s in shares:  # each ring of the batter: out by its share of the spread, down by a smooth step
+        ring = offset_poly(outline, spread * s) if spread * s else outline
+        rings.append([tuple(P(x, y, z1 - (z1 - z0) * s * s * (3 - 2 * s))) for x, y in ring])
+    top, bot = rings[0], rings[-1]
     mb.add(top, tris)
     if bottom:
         mb.add(bot, [t[::-1] for t in tris])
-    for i in range(k):
-        j = (i + 1) % k
-        mb.add([bot[i], bot[j], top[j], top[i]], [(0, 1, 2, 3)])
+    for upper, lower in zip(rings, rings[1:]):
+        for i in range(k):
+            j = (i + 1) % k
+            mb.add([lower[i], lower[j], upper[j], upper[i]], [(0, 1, 2, 3)])
 
 
 class Wall:
@@ -545,13 +551,20 @@ def timber_pole(
     parts: Parts, node: str, x: float, y: float, height: float, *, ground: float, lamps: int = 0, aim=None, arm: float | None = None
 ) -> None:
     """A creosoted timber pole standing in ground at height `ground`, tapering, with a crossarm
-    on two braces. With `lamps`, that many floodlights stand on the arm, aimed along `aim`;
-    without, it carries insulators for a line. Meshes: `timber`, `grey/polefittings`, `lamp`."""
+    on two braces, bolted through. With `lamps`, that many floodlights stand on the arm, aimed
+    along `aim`; without, it carries insulators for a line. Close to, what is seen at eye height:
+    the ground wire stapled down one side to its rod, an aluminium number tag nailed on, and on a
+    lamp pole the conduit and its switch box. The ordinary fittings of such a pole, estimated.
+    Meshes: `timber`, `grey/polefittings`, `lamp`, `cable/groundwire`."""
     f = foot()
     arm = 6.0 * f if arm is None else arm
     wood, metal = parts(node, "timber", True), parts(node, "grey/polefittings", True)
     z0 = ground - 2.0 * f
-    wood.lathe(profile([(0.0, z0), (0.55 * f, z0), (0.36 * f, height), (0.0, height)]), 10, matrix=Matrix.Translation(P(x, y, 0)))
+    wood.lathe(profile([(0.0, z0), (0.55 * f, z0), (0.36 * f, height), (0.0, height)]), 18, matrix=Matrix.Translation(P(x, y, 0)))
+
+    def radius(z: float) -> float:
+        return 0.55 * f + (0.36 - 0.55) * f * (z - z0) / (height - z0)
+
     a = Vector(aim if aim is not None else (1, 0, 0))
     a.z = 0
     a.normalize()
@@ -560,6 +573,28 @@ def timber_pole(
     obox(wood, tuple(c), tuple(side), (0, 0, 1), (arm, 0.3 * f, 0.38 * f))
     for s in (-1, 1):
         beam(metal, tuple(c + side * (s * arm * 0.36)), (x + a.x * 0.42 * f, y + a.y * 0.42 * f, height - 4.2 * f), 0.1 * f)
+    if fine():  # the arm's through-bolt, a square washer and nut each end
+        zb = height - 1.6 * f
+        metal.tube(P(x - a.x * 0.5 * f, y - a.y * 0.5 * f, zb), P(x + a.x * 0.68 * f, y + a.y * 0.68 * f, zb), 0.035 * f * UNIT, 6)
+        for d in (-0.44, 0.62):
+            obox(metal, (x + a.x * d * f, y + a.y * d * f, zb), tuple(side), (0, 0, 1), (0.2 * f, 0.03 * f, 0.2 * f))
+        # the ground wire down the side to a rod at the foot, stapled every 2 ft; the tag at eye height
+        wire = parts(node, "cable/groundwire", True)
+        top, low = Vector((x, y, height - 2.2 * f)), Vector((x, y, ground - 0.3 * f))
+        wire.tube((top + side * (radius(top.z) + 0.02 * f)) * UNIT, (low + side * (radius(low.z) + 0.02 * f)) * UNIT, 0.02 * f * UNIT, 6)
+        rod = low + side * (radius(low.z) + 0.25 * f)
+        metal.tube(P(*(rod - Vector((0, 0, 0.5 * f)))), P(*(rod + Vector((0, 0, 0.45 * f)))), 0.04 * f * UNIT, 8)
+        if srlib.DETAIL >= 1.0:
+            z = ground + 1.0 * f
+            while z < height - 2.5 * f:
+                q = Vector((x, y, z)) + side * (radius(z) + 0.02 * f)
+                obox(metal, tuple(q), tuple(side), (0, 0, 1), (0.05 * f, 0.12 * f, 0.03 * f))
+                z += 2.0 * f
+        t = Vector((x, y, ground + 5.6 * f)) - side * (radius(ground + 5.6 * f) + 0.012 * f)
+        obox(parts(node, "chrome/tags"), tuple(t), tuple(-side), (0, 0, 1), (0.02 * f, 0.32 * f, 0.42 * f))
+        if srlib.DETAIL >= 1.0:
+            for dz in (-0.15, 0.15):
+                metal.disc(P(*(t - side * 0.01 * f + Vector((0, 0, dz * f)))), tuple(-side), 0.025 * f * UNIT, 0.02 * f * UNIT, 6)
     if lamps:
         glow = parts(node, "lamp", True)
         offs = [0.0] if lamps == 1 else [arm * 0.42 * (2 * k / (lamps - 1) - 1) for k in range(lamps)]

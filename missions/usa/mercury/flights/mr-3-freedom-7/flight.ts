@@ -1652,6 +1652,7 @@ export const flight: Flight = {
       { at: trajectory.retropack.at.value, nodes: ['Retropack'] },
     ],
     turned: TURNED,
+    engine: 'RedstoneEngine',
   },
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-05.glb',

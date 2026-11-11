@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import { atmosphere } from '../sim/atmosphere.ts';
 import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import type { Flight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
+  ecefToGeodetic,
   ecefToSite,
   ecefToSiteDirection,
   inertialToEcef,
@@ -67,6 +69,22 @@ export class Ascent {
   /** Whether the vehicle is off its pad at `t`, seconds from liftoff. */
   flying(t: number): boolean {
     return t > 0 && Boolean(this.flight.trajectory) && t < this.flown().duration;
+  }
+
+  /**
+   * How the engine burns at `t`: `on` from 0 (out) to 1, coming up over the first half second of
+   * flight and dying over half a second at cutoff (neither the start nor the tail-off is in the
+   * record: the run itself holds full thrust from liftoff to cutoff); `vacuum` from 0 in sea-level
+   * air to 1 in none, from the standard air's pressure at the height flown.
+   */
+  burn(t: number): { on: number; vacuum: number } {
+    if (!this.flying(t)) return { on: 0, vacuum: 0 };
+    const cutoff = this.flight.trajectory!.engine.cutoff.value;
+    const on = THREE.MathUtils.smoothstep(t, 0, 0.5) * (1 - THREE.MathUtils.smoothstep(t, cutoff, cutoff + 0.5));
+    if (on <= 0) return { on: 0, vacuum: 1 };
+    const { r } = between(this.flown().samples, t);
+    const height = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * t)).height - this.flight.site.seaLevel.value;
+    return { on, vacuum: 1 - (atmosphere(height).pressure / 101_325) ** 0.25 };
   }
 
   /** The parts that have left the vehicle by `t`. */

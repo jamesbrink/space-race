@@ -3,12 +3,12 @@ import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from
 import { Callout } from './callout';
 import { Demo, IDLE_TITLE } from './demo';
 import { prefs } from './prefs';
-import { Box3, Vector3 } from 'three';
+import { Box3, type Object3D, Vector3 } from 'three';
 import { Flown } from './flown';
 import { TimeBar } from './timebar';
 import { Title } from './title';
 import { Ui } from './ui';
-import { Stage } from './viewer/stage';
+import { Stage, type Thing } from './viewer/stage';
 import { Clock, localTime, missionTime } from './world/clock.ts';
 
 /**
@@ -80,6 +80,9 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   walkStick: (x, y) => stage.walk.stick(x, y),
   walkJump: () => stage.walk.jump(),
   walkAct: () => act(),
+  walkPush: (push) => {
+    if (working) noteWorking(stage.pushFunction(working.model, working.node, working.fn, push));
+  },
   walkView: () => stage.walk.setThird(!stage.walk.third),
   walkMotion: () => setMotion(({ full: 'reduced', reduced: 'off', off: 'full' } as const)[motion()]),
   hoverPart: (node) => stage.highlight(node, selected),
@@ -176,7 +179,35 @@ stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
 stage.onModel = (id) => show(id); // a click on the pad, the rocket or the pilot goes to it
 stage.onHoverModel = (id) => ui.hoverModel(id);
-stage.onHoverPlace = (name, title) => ui.hint(name ? [title ?? spaced(name), 'Click to go and look'] : null);
+stage.onHoverPlace = (name, title, about) => ui.hint(name ? [title ?? spaced(name), about ?? 'Click to go and look'] : null);
+// A named object inside a part (one searchlight among the ground equipment) is named on hover...
+stage.onHoverThing = (thing) => {
+  if (thing) ui.hint([thing.label, thing.about ?? 'Click for more']);
+  else ui.hint(null);
+};
+// ...and a click on it says what it is, pointing at it, until the next click elsewhere or Escape.
+let told: Thing | null = null;
+stage.onThing = (thing) => {
+  told = thing;
+  if (!thing) return void (demo.active || callout.hide());
+  const eyebrow = current.parts.find((p) => thing.object.getObjectByName(p.node) || thingWithin(p.node, thing))?.name ?? current.name;
+  callout.show({ eyebrow, title: thing.label, text: thing.about ?? 'Not yet described.' }, () => {
+    const at = new Vector3();
+    new Box3().setFromObject(thing.object).getCenter(at);
+    return stage.screenOf(at);
+  });
+};
+/** Whether `thing` is inside the part node `node` of the section on show. */
+function thingWithin(node: string, thing: Thing): boolean {
+  for (let o: Object3D | null = thing.object; o; o = o.parent) if (o.name === node) return true;
+  return false;
+}
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && told && !demo.active) {
+    told = null;
+    callout.hide();
+  }
+});
 // A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
 stage.onSpot = (page, point, floor) => {
   const walker = flight.models.find((m) => m.walker);
@@ -214,6 +245,7 @@ stage.onWalk = (on, model) => {
   if (!on) show(model, false, true);
 };
 stage.onWalkLook = (captured) => ui.setWalkLook(captured);
+stage.onWalkEyes = (through) => ui.setThroughEyes(through);
 stage.onWalkView = (third) => {
   prefs.set('walkThird', third);
   ui.setWalkView(third);
@@ -242,6 +274,11 @@ stage.onWalkAct = act;
 function act(): void {
   if (ui.wheel.isOpen) {
     ui.wheel.close();
+    return;
+  }
+  // working something by hand, it lets go of the controls (the touch screen's Done)
+  if (working) {
+    stopWorking();
     return;
   }
   // at the wheel of something, the act key gets out of it
@@ -315,6 +352,7 @@ function startWorking(verb: NonNullable<typeof working>): void {
     if (working !== verb) return;
     stage.walk.hold(() => {}, stopWorking);
     noteWorking(null);
+    ui.setWorking(verb.ends ?? ['Back', 'Run']);
   });
 }
 function noteWorking(refused: string | null): void {
@@ -328,6 +366,7 @@ function stopWorking(): void {
   working = null;
   stage.walk.release();
   ui.setWalkNote(null);
+  ui.setWorking(null);
 }
 const pushKey = (key: string): number => (key === 'w' || key === 'arrowup' ? 1 : key === 's' || key === 'arrowdown' ? -1 : 0);
 window.addEventListener('keydown', (e) => {
