@@ -41,6 +41,8 @@ const STRONGEST = 6;
 /** The narrowest beam drawn, degrees, whole beam. */
 const MIN_BEAM = 7;
 const FLOOD_CANDELA = 1e5;
+/** How much of a searchlight's front glass is seen by day: enough to carry the sky's glint, little enough to see the mirror through. */
+const GLASS_OPACITY = 0.35;
 const described = (o: THREE.Object3D): { candela: number; spread: number } | null => {
   for (let at: THREE.Object3D | null = o; at; at = at.parent) {
     const candela = Number(at.userData.candela);
@@ -87,7 +89,28 @@ export class Lamps {
   private readonly given: { room: number; want: number; level: number }[] = [];
   private handedAt = 0;
   private readonly lenses = new Set<THREE.MeshStandardMaterial>();
+  /** The front glass of searchlights: glass by day (the mirror behind it and the sky on it), the arc's glow after dark. */
+  private readonly fronts = new Set<THREE.MeshStandardMaterial>();
   private level = -1;
+
+  /**
+   * A searchlight's front is a sheet of glass over a mirror, and by day, with the arc out, that is
+   * what is seen: the sky glancing off it and the bright bowl inside. Drawn as an opaque glowing
+   * disc it read as a white plate. It is made a clear, glossy pane once, and `set` turns it from
+   * glass to glow as night falls (opacity and emission only, which need no new shader).
+   */
+  private glass(material: THREE.MeshStandardMaterial): void {
+    if (this.fronts.has(material)) return;
+    this.fronts.add(material);
+    material.color.setRGB(0.04, 0.045, 0.05);
+    material.roughness = 0.04;
+    material.metalness = 0;
+    material.transparent = true;
+    material.depthWrite = false;
+    material.opacity = GLASS_OPACITY;
+    material.emissiveIntensity = 0;
+    material.needsUpdate = true;
+  }
   private exposure = 1;
 
   /**
@@ -112,8 +135,9 @@ export class Lamps {
       const mesh = o as THREE.Mesh;
       const material = (mesh.userData.real ?? mesh.material) as THREE.MeshStandardMaterial | undefined;
       if (!mesh.isMesh || !material || Array.isArray(material) || !isLamp(material.name)) return;
-      this.lenses.add(material);
       const own = described(mesh);
+      if (own) this.glass(material);
+      else this.lenses.add(material);
       // The site builders draw a lens as the inside face of the lamp's bowl (lamp_head, searchlight:
       // `flip=True`), so its normals face into the housing; the light goes the other way.
       // (a lens built facing out says so, `lens_out`, and shines along its own normals)
@@ -225,6 +249,11 @@ export class Lamps {
     // times the day's, and a lens a pixel or two across, eight times over-bright, is a spark
     // that comes and goes with every move of the camera: the lamps looked as if they flickered.
     for (const lens of this.lenses) lens.emissiveIntensity = (0.6 + 1.0 * level) / Math.max(1, exposure / 0.8);
+    // (a searchlight's arc is struck only after dark: until then its front is glass)
+    for (const front of this.fronts) {
+      front.opacity = GLASS_OPACITY + (1 - GLASS_OPACITY) * level;
+      front.emissiveIntensity = (1.6 * level) / Math.max(1, exposure / 0.8);
+    }
     return true;
   }
 }

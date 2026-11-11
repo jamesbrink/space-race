@@ -460,8 +460,8 @@ def furniture(parts: Parts) -> None:
         ]
         interiors.workbench(parts, tr, interiors.at((tx0 + 2.52, 93.0, tz), 180.0), 7.2, sets, font=font, seed=7)
         interiors.cabinet(parts, tr, interiors.at((tx1 - 2.52, 94.5, tz), 0.0))
-        interiors.desk(parts, tr, interiors.at(((tx0 + tx1) / 2, ty0 + 3.4, tz + 0.55), 270.0), width=4.0)
-        for x, y, z in ((34.3, 86.5, tz), (34.3, 92.0, tz), (34.0, ty0 + 4.6, tz + 0.55)):
+        interiors.desk(parts, tr, interiors.at(((tx0 + tx1) / 2, ty0 + 3.4, STEP_TOP), 270.0), width=4.0)
+        for x, y, z in ((34.3, 86.5, tz), (34.3, 92.0, tz), (34.0, ty0 + 4.6, STEP_TOP)):
             interiors.stool(parts, tr, interiors.at((x, y, z), 0.0))
         interiors.clock(parts, tr, axes(((tx0 + tx1) / 2, ty1 - 0.22, tz + 7.2), (1, 0, 0), (0, -1, 0)))
         interiors.tray(parts, tr, (tx0 + 1.2, 80.5, troof - 0.9), (tx0 + 1.2, ty1 - 0.6, troof - 0.9))
@@ -469,15 +469,20 @@ def furniture(parts: Parts) -> None:
     interiors.ceiling_light(parts, tr, None, ((tx0 + tx1) / 2, 75.0, troof - 0.02), along=(0, 1))
     frame = parts(tr, "chassis")
     box(frame, (tx0 + 1.2, ty0 + 8.0, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
-    # Coupled to it, a tractor unit to take it away when the pad is cleared: a late-1950s medium
-    # conventional from tools/blender/vehicles.py, every figure of which is estimated. No photograph
-    # shows what moved this trailer. Its fifth wheel stands 9 cm higher than this trailer's floor, so
-    # the floor steps up over it at the front, as a semi-trailer's does. The tractor is built facing
-    # its own +X under a node turned to face the way the trailer does (-Y), so that it can be driven.
-    box(parts(tr, "plank/vanstep"), (tx0 + 0.25, ty0 + 0.25, tz - 0.05), (tx1 - 0.25, ty0 + 6.2, tz + 0.55))  # wall to wall, over the tractor's wings
-    bay = parts.node("GroundEquipment_TractorBay", g, ((tx0 + tx1) / 2, ty0 + 3.0, 0.0))
+    # Coupled to it, the tractor that takes it away when the pad is cleared: an Army 2-1/2-ton 6x6 truck
+    # tractor (M275) of the kind NASA ran at the Cape, from tools/blender/vehicles.py. FHSU item 544 shows a
+    # dark one of the family coupled to SP No 1 (the white one, items 263, 265 and 407, towed another van):
+    # olive is our reading of "dark", and that this one towed it away that morning is estimated. Its fifth
+    # wheel's plate is 52 in up, 4 in ahead of the middle of its tandem (the node's origin), under the
+    # trailer's kingpin; the floor steps up over it at the front, as a semi-trailer's does, its underside
+    # just clear of the plate. The tractor is built facing its own +X under a node turned to face the way
+    # the trailer does (-Y), so that it can be driven.
+    king, plate_z = 4.0 / 12, 52.0 / 12
+    box(parts(tr, "plank/vanstep"), (tx0 + 0.25, ty0 + 0.25, plate_z + 0.02), (tx1 - 0.25, ty0 + 6.2, STEP_TOP))  # wall to wall
+    box(parts(tr, "plank/vanstep"), (tx0 + 0.25, ty0 + 6.12, tz - 0.05), (tx1 - 0.25, ty0 + 6.2, plate_z + 0.02))  # its riser
+    bay = parts.node("GroundEquipment_TractorBay", g, ((tx0 + tx1) / 2, ty0 + 3.0 + king, 0.0))
     bay.rotation_euler = (0.0, 0.0, -math.pi / 2)
-    tractor = cars.ford_f600_tractor("white")
+    tractor = cars.m275_tractor("olive")
     built = tractor.build("GroundEquipment_Tractor", bay, (0.0, 0.0, 0.0), 0.0)
     radius, base = tractor.tyre[0] * 0.0254, tractor.wheelbase * 0.0254
     print(f"  GroundEquipment_Tractor: wheel radius {radius:.3f} m, wheelbase {base:.3f} m, {built['triangles']:,} triangles")
@@ -531,3 +536,4 @@ def furniture(parts: Parts) -> None:
 
 
 FOOT_DEPTH = 2.5
+STEP_TOP = 4.55  # the trailer's raised floor at the front, over the tractor's fifth wheel: 0.93 ft (0.28 m) above the rest

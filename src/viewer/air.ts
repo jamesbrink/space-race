@@ -271,7 +271,7 @@ export class CloudLayer {
         float e = ${(clouds.size * 0.08).toFixed(1)};
         vec2 slope = vec2(cloudAt(world.xz + vec2(e, 0.0)) - cloudAt(world.xz - vec2(e, 0.0)), cloudAt(world.xz + vec2(0.0, e)) - cloudAt(world.xz - vec2(0.0, e)));
         vec3 body = normalize(vec3(-slope.x * 2.2, 0.35 + h, -slope.y * 2.2));
-        vec3 shape = normalize(mix(body, n, 0.22));
+        vec3 shape = normalize(mix(body, n, 0.12));
         float sun = clamp(dot(shape, uSunDir) * 0.5 + 0.55, 0.0, 1.0) * (0.55 + 0.45 * smoothstep(0.0, 0.8, h));
         // toward the Sun the thin edge of the cloud glows: its silver lining
         float lining = pow(1.0 - clamp(edge * 3.0, 0.0, 1.0), 2.0) * pow(max(dot(-d, uSunDir) * -1.0, 0.0), 6.0) * (1.0 - uCel);
