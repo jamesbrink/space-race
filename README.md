@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.svg" alt="Space Race" width="640"></p>
+
 # Space Race
 
 Every crewed spacecraft, modelled to scale and shown as it flew, in the place it flew from. The

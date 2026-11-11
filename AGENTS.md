@@ -105,6 +105,7 @@ tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
   shot.mjs                            one screenshot of the viewer, for looking at a change
+  logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg for the README: run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
 ```
 

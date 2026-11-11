@@ -1,0 +1,13 @@
+<svg class="logo" viewBox="-52 -190 806 316" role="img" aria-label="Space Race" xmlns="http://www.w3.org/2000/svg"><rect x="-52" y="-190" width="806" height="316" rx="14" fill="#0a0b0e"/>
+<g fill="none" stroke-linecap="butt" stroke-linejoin="miter">
+<g class="logo-goal">
+<circle cx="690" cy="-118" r="17" stroke="#f3efe6" stroke-width="2.5" opacity="0.9"/>
+<path d="M690 -135a17 17 0 0 0 0 34a7.65 17 0 0 1 0 -34" fill="#f3efe6" stroke="none" opacity="0.9"/>
+</g>
+<path class="logo-trail" pathLength="1" stroke="#ffc46b" stroke-width="4" d="M178 -4C178 -86 348 -128 663 -116"/>
+<path class="logo-trail late" pathLength="1" stroke="#e8563c" stroke-width="4" d="M518 -4C518 -62 558 -92 664 -106"/>
+<g class="logo-word" stroke="#f3efe6" stroke-width="13"><path transform="translate(0 0)" d="M54 8H18L6 20V30L16 40H44L54 50V60L42 72H6"/><path transform="translate(74 0)" d="M6 72V8H42L54 20V32L42 44H6"/><path transform="translate(148 0)" d="M6 72L30 8L54 72"/><path transform="translate(222 0)" d="M54 8H18L6 20V60L18 72H54"/><path transform="translate(296 0)" d="M54 8H6V72H54M6 40H40"/><path transform="translate(414 0)" d="M6 72V8H42L54 20V32L42 44H6M32 44L54 72"/><path transform="translate(488 0)" d="M6 72L30 8L54 72"/><path transform="translate(562 0)" d="M54 8H18L6 20V60L18 72H54"/><path transform="translate(636 0)" d="M54 8H6V72H54M6 40H40"/></g>
+<path stroke="#ffc46b" stroke-width="5" d="M169 62H187"/>
+<path stroke="#e8563c" stroke-width="5" d="M509 62H527"/>
+</g>
+</svg>
