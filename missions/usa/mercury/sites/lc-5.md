@@ -387,6 +387,13 @@ The rest of the complex:
 - Roads are painted on the viewer's ground (`TRACKS` in `src/viewer/cape.ts`), not modelled: the
   road behind the blockhouse and the drive past its back door follow F16_016 loosely. No road is
   drawn beyond what that photograph shows, so none leads to the other complexes.
+- The base girders of the service structure and of pad 6's gantry are built-up box girders with
+  flanges, web stiffeners every 4 ft and one bolted splice each; their trucks have axle caps and
+  rail clamps. All of that is the ordinary practice of such steelwork (`sitelib.box_girder`,
+  `axle_cap`, `rail_clamp`), not read off these structures: the photographs show the girders'
+  depth and little else. No lettering or data plates are built: none can be read in a photograph.
+- Every door's hardware (frame, hinges, knob or bar handle, kickplate) and the two sign plates
+  ("SP-1", "READY ROOM") are estimated.
 - Getting about: see "Getting about on foot" for which ways up are documented.
   - Only the hatch side's lift is built. The plans had "elevators on each side" and the
     photographs show a mesh enclosure at the base on both sides; whether both worked in 1961 is

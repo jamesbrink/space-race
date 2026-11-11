@@ -525,15 +525,15 @@ export class Body {
     const p = this.position;
     let hold = hang(ladder, p.x, p.z, this.radius);
     let y = Math.max(ladder.bottom, Math.min(ladder.top, p.y));
-    if (p.y >= ladder.top - STEP) {
-      // from above: the climbing side is the one with nothing to stand on at the top
+    if (this.grounded && p.y > ladder.bottom + 0.6) {
+      // from a deck it serves (its stiles may stand a metre above that): the climbing side is the one with nothing to stand on at this height
       for (const side of [1, -1] as const) {
         const there = hang(ladder, p.x, p.z, this.radius, side);
-        this.solids.gather(this.before.set(there.x, ladder.top, there.z), this.radius + 0.5, STEP + 1, this.height);
-        const floor = this.solids.below(there.x, ladder.top + STEP, there.z, this.ground);
-        if (floor === null || floor < ladder.top - STEP - 0.05) hold = there;
+        this.solids.gather(this.before.set(there.x, p.y, there.z), this.radius + 0.5, STEP + 1, this.height);
+        const floor = this.solids.below(there.x, p.y + STEP, there.z, this.ground);
+        if (floor === null || floor < p.y - STEP - 0.05) hold = there;
       }
-      y = ladder.top - 0.05;
+      y = Math.min(ladder.top, p.y) - 0.05;
     }
     this.on = { ...ladder, nx: hold.nx, nz: hold.nz };
     this.stepping = false;
@@ -571,6 +571,31 @@ export class Body {
         return;
       }
     }
+    // Going up, a floor the feet have come level with is stepped onto: beyond the ladder, or to
+    // either side of it. (A ladder's stiles stand above the deck it serves, and a run in a well
+    // comes up through a hole with the floor beside it.) Not at its own foot.
+    if (push > 0 && p.y > on.bottom + 0.5) {
+      const across = (hold.nx ? on.hx : on.hz) + this.radius + 0.12;
+      const along = (hold.nx ? on.hz : on.hx) + this.radius + 0.12;
+      for (const [x, z] of [
+        [on.x - hold.nx * across, on.z - hold.nz * across],
+        [hold.x + hold.nz * along, hold.z + hold.nx * along],
+        [hold.x - hold.nz * along, hold.z - hold.nx * along],
+      ] as const) {
+        this.solids.gather(this.before.set(x, p.y, z), this.radius + 0.6, 1, this.height + 0.5);
+        const floor = this.solids.below(x, p.y + 0.03, z, null);
+        if (floor === null || p.y - floor > Math.max(0.08, 1.5 * CLIMB_SPEED * dt)) continue;
+        if (this.solids.push(this.before.set(x, floor, z), STEP, this.height, this.radius, this.heading.set(-hold.nx, 0, -hold.nz)) > 0.02)
+          continue;
+        p.set(x, floor, z);
+        this.on = null;
+        this.grounded = true;
+        this.vy = 0;
+        this.good.copy(p);
+        return;
+      }
+      this.solids.gather(p, this.radius + 1.5, STEP + 1, this.height + 1);
+    }
     if (step.off !== 'top') return;
     // over the top: onto whatever floor lies just beyond it, if there is one and room to stand
     const beyond = (hold.nx ? on.hx : on.hz) + this.radius + 0.12;
@@ -598,6 +623,14 @@ export class Body {
       const off = (p.x - hold.x) * hold.nx + (p.z - hold.z) * hold.nz; // how far short of hanging on it
       const aside = Math.abs((p.x - hold.x) * hold.nz - (p.z - hold.z) * hold.nx);
       const wide = (hold.nx ? ladder.hz : ladder.hx) + 0.15;
+      // from a deck it serves: up to the edge over it, looking down (first: on a deck, walking at it means going down it)
+      const over = Math.hypot(p.x - ladder.x, p.z - ladder.z);
+      const at = ((ladder.x - p.x) * this.heading.x + (ladder.z - p.z) * this.heading.z) / (over || 1);
+      if (this.grounded && this.lookingDown && p.y > ladder.bottom + 0.6 && p.y <= ladder.top + STEP && over < 0.9 && at > 0.5) {
+        this.mount(ladder);
+        this.stepping = true;
+        return;
+      }
       if (
         toward > 0.5 &&
         off < 0.12 &&
@@ -607,14 +640,6 @@ export class Body {
         p.y < ladder.top - 0.25
       ) {
         this.mount(ladder);
-        return;
-      }
-      // from the deck at its top: up to the edge over it, looking down
-      const over = Math.hypot(p.x - ladder.x, p.z - ladder.z);
-      const at = ((ladder.x - p.x) * this.heading.x + (ladder.z - p.z) * this.heading.z) / (over || 1);
-      if (this.grounded && this.lookingDown && Math.abs(p.y - ladder.top) <= STEP + 0.05 && over < 0.9 && at > 0.5) {
-        this.mount(ladder);
-        this.stepping = true;
         return;
       }
     }

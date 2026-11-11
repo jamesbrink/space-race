@@ -258,7 +258,7 @@ test('a body hangs just off the face of a ladder on the side it came from, acros
 });
 
 /** A deck three metres up with a ladder on its east face, on a slab. */
-function tower() {
+function tower(proud = 0) {
   const root = new THREE.Group();
   const box = (w, h, d, x, y, z) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d));
@@ -268,7 +268,7 @@ function tower() {
   };
   box(40, 1, 40, 0, -1, 0); // the slab
   box(4, 3, 4, 0, 0, 0); // the tower: its top a deck at 3.0, its east face at x = 2
-  const ladder = box(0.06, 3.0, 0.5, 2.1, 0, 0); // standing 7 cm off that face
+  const ladder = box(0.06, 3.0 + proud, 0.5, 2.1, 0, 0); // standing 7 cm off that face, and `proud` metres above the deck
   ladder.userData.climb = true;
   root.updateMatrixWorld(true);
   const solids = new Solids();
@@ -427,4 +427,32 @@ test("a stair's handrails keep a body on it", () => {
       `held by the rail at x = ${body.position.x}`,
     );
   }
+});
+
+test('a ladder whose stiles stand a metre above the deck is left at the deck, and taken from the deck on its open side', () => {
+  const { body } = tower(1);
+  body.place(5, 0, 0);
+  go(body, -1, 0, 1.9);
+  assert.ok(body.on);
+  let off = null;
+  for (let t = 0; t < 10 && body.on; t += 1 / 60) {
+    body.move(0, 0, 1 / 60);
+    off = body.position.y;
+  }
+  assert.equal(body.on, null);
+  assert.ok(
+    body.grounded && Math.abs(off - 3) < 1e-6 && body.position.x < 2,
+    `stepped onto the deck at its own height, not at the stiles' top: ${body.position.toArray()}`,
+  );
+  // and back: from the deck, at the ladder, looking down
+  body.place(0.5, 3, 0);
+  body.lookingDown = true;
+  go(body, 1, 0, 1.5);
+  assert.ok(
+    body.on && body.on.nx === 1 && body.position.y < 3 && body.position.x > 2.13,
+    `on its outer side, going down: ${body.position.toArray()}`,
+  );
+  go(body, 0, 0, 6, 1);
+  go(body, 0, 0, 0.3, 0);
+  assert.ok(!body.on && body.grounded && Math.abs(body.position.y) < 1e-6);
 });

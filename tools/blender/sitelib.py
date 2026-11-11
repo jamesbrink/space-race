@@ -608,8 +608,19 @@ def door(
     n = Vector((-u.y, u.x, 0.0)) * (1.0 if swing > 0 else -1.0)  # the side it opens toward
     parts.node(name, parent, tuple(h), door=1, swing=float(swing))
     gap = 0.03 * f
-    c = h + u * (width / 2) + Vector((0, 0, height / 2 + gap))
-    obox(parts(name, mat), tuple(c), tuple(u), (0, 0, 1), (width - 2 * gap, thick, height - 2 * gap))
+    # The kickplate is the leaf's foot, not a sheet laid on it, and a sign stands off on studs: seen
+    # from across a site, a plate a few millimetres proud of the face behind it would flicker.
+    kick = 0.9 * f if fittings != "none" else gap
+    mid = h + u * (width / 2)
+    obox(parts(name, mat), tuple(mid + Vector((0, 0, (kick + height - gap) / 2))), tuple(u), (0, 0, 1), (width - 2 * gap, thick, height - gap - kick))
+    if fittings != "none":
+        obox(
+            parts(name, "galv/kick"),
+            tuple(mid + Vector((0, 0, (gap + kick) / 2))),
+            tuple(u),
+            (0, 0, 1),
+            (width - 2 * gap, thick + 0.02 * f, kick - gap),
+        )
     if srlib.DETAIL < 1.0 or fittings == "none":
         return
     bright, plate_ = parts(name, "chrome", True), parts(name, "galv/kick")
@@ -617,7 +628,6 @@ def door(
     for z in (0.7 * f, height / 2, height - 0.7 * f):  # hinges: a knuckle on the side it opens toward
         k = h + n * (thick / 2 + 0.03 * f) + u * (0.04 * f) + up * z
         bright.tube((k - up * (0.18 * f)) * UNIT, (k + up * (0.18 * f)) * UNIT, 0.035 * f * UNIT, 8)
-    obox(plate_, tuple(h + u * (width / 2) + up * (0.5 * f + gap)), tuple(u), (0, 0, 1), (width - 0.3 * f, thick + 0.02 * f, 0.8 * f))
     grip = h + u * (width - 0.28 * f) + up * (3.0 * f)
     for side in (-1, 1):
         o = grip + n * (side * thick / 2)
@@ -641,15 +651,12 @@ def door(
     if sign:
         o = h + u * (width / 2) + up * (5.2 * f) + n * (thick / 2)
         right = up.cross(n)  # reads left to right seen from the side it opens toward
-        obox(
-            parts(name, "sign/plate"),
-            tuple(o + n * (0.012 * f)),
-            tuple(right),
-            (0, 0, 1),
-            (min(width - 0.6 * f, 0.16 * f * len(sign) + 0.3 * f), 0.024 * f, 0.36 * f),
-        )
+        wide = min(width - 0.6 * f, 0.16 * f * len(sign) + 0.3 * f)
+        obox(parts(name, "sign/plate"), tuple(o + n * (0.18 * f)), tuple(right), (0, 0, 1), (wide, 0.03 * f, 0.36 * f))
+        for dx in (-wide / 2 + 0.1 * f, wide / 2 - 0.1 * f):
+            bright.tube((o + right * dx) * UNIT, (o + right * dx + n * (0.17 * f)) * UNIT, 0.02 * f * UNIT, 6, caps=False)
         lettering(
-            parts(name, "black/lettering"), sign, 0.2 * f, tuple(o + n * (0.031 * f) - up * (0.07 * f)), tuple(right), (0, 0, 1), srlib.load_font()
+            parts(name, "black/lettering"), sign, 0.2 * f, tuple(o + n * (0.205 * f) - up * (0.07 * f)), tuple(right), (0, 0, 1), srlib.load_font()
         )
 
 
