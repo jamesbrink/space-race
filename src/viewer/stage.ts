@@ -47,6 +47,8 @@ VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
 
 const UP = new THREE.Vector3(0, 1, 0);
+/** The most of a scenery object that is framed at once, metres across: beyond this a click looks at where it landed. */
+const PLACE = 60;
 /** How much stronger the sky's fill light is in the cel look. */
 const CEL_FILL = 4.5;
 
@@ -64,6 +66,8 @@ interface Journey {
 interface Picked {
   node: string | null;
   model: string | null;
+  /** Something in the place round the pad (Flight.surroundings): what it is called, and the part of it to go and look at. */
+  place?: { name: string; box: THREE.Box3 };
   /** A window of the section's model: where on the pane, and which way the pane faces. */
   pane?: { point: THREE.Vector3; normal: THREE.Vector3 };
 }
@@ -86,6 +90,10 @@ export class Stage {
   /** A model standing beside the one on show was clicked: the caller opens it. */
   onModel: (id: string) => void = () => {};
   onHoverModel: (id: string | null) => void = () => {};
+  /** The pointer is over something in the place round the pad (its node's name), or has left it. A click goes over to it. */
+  onHoverPlace: (name: string | null) => void = () => {};
+  /** The camera has been sent to something in the place round the pad. */
+  onVisit: () => void = () => {};
   /** The pointer is over a window of the section's model (a click looks in), or has left it. */
   onHoverWindow: (over: boolean) => void = () => {};
   /** The reset key (0): back to where the section starts. */
@@ -142,6 +150,7 @@ export class Stage {
   /** Where each model's own slider was left: what it returns to when it is the section again. */
   private apartOwn: number[] = [];
   private hoveredModel: string | null = null;
+  private hoveredPlace: string | null = null;
   private overPane = false;
   private parts = new Map<string, THREE.Object3D>();
   private hovered: string | null = null;
@@ -273,6 +282,7 @@ export class Stage {
       this.tap = { t: e.timeStamp, x: e.clientX, y: e.clientY, walker: on?.walker ? on.id : null };
       if (again) return void this.enterWalk(last.walker!);
       if (down.pane) this.lookIn(down.pane.point, down.pane.normal);
+      else if (down.place) this.visit(down.place.box);
       else if (down.model && !down.node) this.onModel(down.model);
       else this.onSelect(down.node);
     });
@@ -637,7 +647,18 @@ export class Stage {
   focus(node: string, snap = false): void {
     const object = this.parts.get(node);
     if (!object) return;
-    const box = new THREE.Box3().setFromObject(object);
+    this.frameBox(new THREE.Box3().setFromObject(object), snap);
+    this.following = { part: node };
+  }
+
+  /** Go over to something that is not part of any model (a building beside the pad) and look at it: the view then turns about it. */
+  visit(box: THREE.Box3): void {
+    this.frameBox(box, false);
+    this.onVisit();
+  }
+
+  /** Fly to whatever fills `box` and frame it, keeping the direction the camera is already looking from. */
+  private frameBox(box: THREE.Box3, snap: boolean): void {
     const size = box.getSize(new THREE.Vector3());
     const target = box.getCenter(new THREE.Vector3());
     // never closer than a 1.6 m subject would be: a small part is seen with its surroundings
@@ -647,7 +668,7 @@ export class Stage {
     if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
     // no closer than just outside the part: nearer than that the camera is inside its skin
     this.controls.minDistance = Math.max(0.35, Math.min(size.x, size.z) * 0.62);
-    this.following = { part: node };
+    this.following = null;
     this.onView(null);
     const position = target.clone().addScaledVector(dir, distance);
     if (snap) {
@@ -702,7 +723,8 @@ export class Stage {
     const from = keepDirection
       ? this.camera.position.clone().sub(this.controls.target)
       : named?.from
-        ? new THREE.Vector3(...named.from)
+        ? // a view's direction is given for the model as the flight stands it: it turns with a model that has been turned (a figure walked somewhere else)
+          new THREE.Vector3(...named.from).applyAxisAngle(UP, (this.main?.rotation.y ?? 0) - (this.def.rotationY ?? 0))
         : new THREE.Vector3(-0.62, lift, 0.78); // the sunlit side, and the one the cutaway opens toward
     const position = target.clone().addScaledVector(from.normalize(), distance);
     this.following = { view: id };
@@ -891,11 +913,18 @@ export class Stage {
     const gone = (h: THREE.Intersection) =>
       this.cut && h.object.userData.shell && this.cutPlanes.every((p) => p.distanceToPoint(h.point) < 0);
     const hit = this.raycaster
-      .intersectObjects(
-        this.staged.map((s) => s.shown),
-        true,
-      )
+      .intersectObjects([...this.staged.map((s) => s.shown), ...(this.surroundings ? [this.surroundings] : [])], true)
       .find((h) => !gone(h));
+    // something in the place round the pad: a click goes over to it
+    for (let o: THREE.Object3D | null = hit?.object ?? null; o && this.surroundings; o = o.parent) {
+      if (o.parent !== this.surroundings && o.parent?.parent !== this.surroundings) continue;
+      if (!o.name || (o as THREE.Mesh).isMesh) continue;
+      const box = new THREE.Box3().setFromObject(o);
+      // a building is looked at whole; a road or a row of poles, where it was clicked
+      if (box.getSize(new THREE.Vector3()).length() > PLACE)
+        box.setFromCenterAndSize(hit!.point, new THREE.Vector3(PLACE, 6, PLACE).multiplyScalar(0.5));
+      return { node: null, model: null, place: { name: o.name, box } };
+    }
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) {
       const at = this.staged.findIndex((s) => s.shown === o);
       if (at >= 0 && at !== this.current) return { node: null, model: this.defs[at]!.id };
@@ -925,13 +954,14 @@ export class Stage {
     return { node: null, model: null };
   }
 
-  private setHover({ node, model, pane }: Picked): void {
+  private setHover({ node, model, pane, place }: Picked): void {
     if (model !== this.hoveredModel) {
       this.hoveredModel = model;
       this.onHoverModel(model);
     }
+    if ((place?.name ?? null) !== this.hoveredPlace) this.onHoverPlace((this.hoveredPlace = place?.name ?? null));
     if (Boolean(pane) !== this.overPane) this.onHoverWindow((this.overPane = Boolean(pane)));
-    this.canvas.style.cursor = node || model || pane ? 'pointer' : 'grab';
+    this.canvas.style.cursor = node || model || pane || place ? 'pointer' : 'grab';
     if (node === this.hovered) return;
     this.highlight(node);
     this.onHover(node);
@@ -1079,10 +1109,21 @@ export class Stage {
   /** Stop walking: the figure is back where it stood, and the orbiting camera takes over from where the walker was looking. */
   exitWalk(): void {
     if (!this.walk.active) return;
-    this.walk.stop();
     const at = this.walked;
+    const figure = this.staged[at];
+    if (figure) {
+      // the figure is left where it was walked to, facing the way it was looking
+      const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
+      const look = this.camera.getWorldDirection(new THREE.Vector3());
+      figure.group.position.copy(this.walk.body.position);
+      figure.group.rotation.y = Math.atan2(look.x, look.z) - Math.atan2(fx, fz);
+      figure.group.visible = true;
+      figure.group.updateMatrixWorld(true);
+      figure.measure();
+      this.fitBounds();
+    }
+    this.walk.stop();
     this.walked = -1;
-    if (this.staged[at]) this.staged[at].group.visible = true;
     this.controls.enabled = true;
     // orbit a point a few steps ahead, so the flight back starts from this very view
     this.controls.target.copy(this.camera.position).add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));

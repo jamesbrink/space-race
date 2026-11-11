@@ -112,6 +112,11 @@ zooming, tilting, the slider and the cutaway all leave it turning, and a view fr
 slider moves keeps the direction the camera has reached. A view that names parts (`nodes`) frames them wherever they are, so it
 follows them as the slider takes the model apart.
 
+**Anything can be gone to.** A click on a part flies to it; on another model, opens its section; on
+a window, looks in; on something in the place round the pad (`Flight.surroundings`: a blockhouse, a
+road), flies over and turns about it (`Stage.visit`). A figure that has been walked somewhere stays
+where it was left.
+
 ## Cutaway and what is inside
 
 The vehicle can be sliced open. A model script lists the meshes that enclose something in

@@ -113,6 +113,17 @@ stage.onHover = (node) => ui.hover(node);
 stage.onSelect = select;
 stage.onModel = (id) => show(id); // a click on the pad, the rocket or the pilot goes to it
 stage.onHoverModel = (id) => ui.hoverModel(id);
+stage.onHoverPlace = (name) =>
+  // a node is named in one word (Pad6Gantry): spaced out, it is a label
+  ui.hint(
+    name
+      ? [
+          name.replace(/([a-z])([A-Z0-9])/g, '$1 $2').replace(/^(.)(.*)$/, (_, a: string, b: string) => a + b.toLowerCase()),
+          'Click to go and look',
+        ]
+      : null,
+  );
+stage.onVisit = orbit; // the view drifts round whatever was last chosen
 stage.onHoverWindow = (over) => ui.hint(over ? ['Window', 'Click to look inside'] : null);
 // taking the camera pauses the drift; it starts again with the next thing chosen
 stage.onInteract = () => {
