@@ -673,7 +673,12 @@ const crew: ModelDef = {
   backdrop: 'cape-canaveral',
   parts: crewParts,
   ...PILOT,
-  walker: { eyes: 'Helmet_Eyes', forward: [0, 1], hide: ['Ventilator'] },
+  walker: {
+    eyes: 'Helmet_Eyes',
+    forward: [0, 1],
+    // the portable ventilator, in his right hand as on the day, its hose up to the inlet at his left waist
+    carries: [{ node: 'Ventilator', hand: 'R', hose: { mesh: 'Ventilator_Hose', from: 'Ventilator_HosePort', to: 'Inlet' } }],
+  },
   wide: false,
   specGroups: ['Pressure suit'],
   home: 'walkout',
