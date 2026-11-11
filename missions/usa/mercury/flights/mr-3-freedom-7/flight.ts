@@ -590,9 +590,12 @@ const crewParts: Part[] = [
     detail:
       'A Navy Mark IV high-altitude suit by B.F. Goodrich, reworked for Mercury: the grey outer shell became ' +
       'aluminium-coated nylon, and the breathing loop was closed so that one flow of oxygen both cools and ' +
-      'feeds the pilot. It enters at the waist. The long entry zipper runs diagonally across the chest.',
+      'feeds the pilot. It enters at the waist. The long entry zipper runs diagonally across the chest. On the ' +
+      'right chest are the NASA insignia and a leather name tag, and no mission patch: crews did not have ' +
+      'those until Gemini 5, four years later.',
     facts: [
       ['Suit', 'Navy Mark IV, B.F. Goodrich'],
+      ['Markings', 'NASA insignia, "A. B. SHEPARD"'],
       ['Mass', 'about 20 lb (9 kg)'],
       ['Pressure if the cabin fails', '4.6 psi'],
       ['Oxygen inlet', 'waist'],

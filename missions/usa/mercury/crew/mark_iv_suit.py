@@ -5,7 +5,8 @@ Dimensions are centimetres. The origin is the floor between the feet, +Z up, and
 faces -Y, so his left is +X. See ./mark-iv-suit.md: the pilot's stature is the only published
 length here. The body under the suit follows standard segment proportions for that stature;
 everything about the suit itself (bulk, helmet, fittings, where the zipper runs) is read off
-photographs and is an estimate.
+photographs and is an estimate. On the right chest are the NASA insignia and his name tag, as
+photographed that day; there is no mission patch, because Mercury flights had none.
 
 MR-3 configuration: gloves zipped to the sleeves, no wrist rings. MR-4 added the rings.
 
@@ -19,13 +20,15 @@ from __future__ import annotations
 
 import bisect
 import math
+import os
 from collections.abc import Callable, Sequence
 
 import bpy
+import numpy as np
 from mathutils import Matrix, Vector
 
 import srlib
-from srlib import CM, TAU, MeshBuilder, arc_profile, frame, material
+from srlib import CM, TAU, MeshBuilder, arc_profile, frame, material, text_mesh
 
 STATURE = 180.3  # documented: 5 ft 11 in
 HEEL = 2.8  # boot heel under the foot
@@ -58,11 +61,11 @@ FRONT, UP = Vector((0, -1, 0)), Vector((0, 0, 1))
 
 
 def materials() -> dict:
-    def m(name: str, *args) -> bpy.types.Material | None:
+    def m(name: str, *args, image: Callable[[], bpy.types.Image] | None = None) -> bpy.types.Material | None:
         if _rig.dry:
             return None
         # one of each in a file: the seated figure shares the standing one's, and the caller's
-        return bpy.data.materials.get(name) or material(name, *args)
+        return bpy.data.materials.get(name) or material(name, *args, image=image() if image else None)
 
     return {
         "suit": m("suit-aluminized-nylon", (0.66, 0.67, 0.69), 0.6, 0.6),
@@ -85,6 +88,9 @@ def materials() -> dict:
         "gauge": m("gauge-face", (0.02, 0.02, 0.02), 0.0, 0.25),
         "white": m("paint-white", (0.9, 0.9, 0.88), 0.0, 0.6),
         "hose": m("hose-rubber", (0.05, 0.05, 0.055), 0.0, 0.6),
+        # sewn-on cloth and leather: the colours are in the images
+        "insignia": m("patch-nasa-insignia", (1, 1, 1), 0.0, 0.85, image=insignia_image),
+        "nametag": m("name-tag-leather", (1, 1, 1), 0.0, 0.6, image=name_tag_image),
     }
 
 
@@ -1035,8 +1041,9 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
 def build_torso(M: dict) -> tuple[Vector, Vector, dict[int, Tube]]:
     """Returns the waist inlet's mouth and axis, for the ventilator hose, and the arms' tubes."""
     g = group("Torso")
-    shell, tape, teeth, web, steel, inlet = (MeshBuilder() for _ in range(6))
+    shell, tape, teeth, web, steel, inlet, patch, tag = (MeshBuilder() for _ in range(8))
     t = torso_tube()
+    build_insignia(t, patch, tag)
     arms = {sx: arm_tube(sx) for sx in (1, -1)}
     build_shell(shell, t, arms)
 
@@ -1080,7 +1087,166 @@ def build_torso(M: dict) -> tuple[Vector, Vector, dict[int, Tube]]:
     emit(web, "Torso_Straps", M["webbing"], g, smooth=False)
     emit(steel, "Torso_Buckles", M["steel"], g, smooth=False)
     emit(inlet, "Torso_InletFitting", M["aluminium"], g, sharp_angle=30)
+    emit(patch, "Torso_Insignia", M["insignia"], g, sharp_angle=None)
+    emit(tag, "Torso_NameTag", M["nametag"], g, sharp_angle=None)
     return p + axis * 2.6, axis, arms
+
+
+# ------------------------------------------------------------------------ insignia
+
+# What was sewn to the right chest on 5 May 1961: the NASA insignia of 1959 and, under it, a
+# leather name tag. There was no mission patch; the first of those flew on Gemini 5.
+INSIGNIA = (147.5, -24.0)  # the insignia's centre: (height, azimuth in degrees), 8 cm to the right of the middle
+INSIGNIA_R = 3.81  # a 3 in patch
+INSIGNIA_TIPS = ((42.0, 1.2), (225.0, 1.2))  # the red vector's two points, which stand out past the disc: (degrees from his left, radii)
+INSIGNIA_ART = 1.3  # its image covers this many radii either side of the centre
+NAME_TAG = (11.5, 2.5)  # width, height
+NAME_TAG_DROP = 5.6  # its centre below the insignia's
+PATCH_LIFT = 0.18  # how far a sewn patch stands off the cloth; its edge goes down through it
+
+
+class Art:
+    """A picture drawn in flat colours, in its own units with +Y up, twice as fine as it is kept."""
+
+    def __init__(self, name: str, w: int, h: int, half_width: float, colour: Sequence[float]) -> None:
+        self.name, self.w, self.h = name, w, h
+        self.px = np.empty((2 * h, 2 * w, 4), dtype=np.float32)
+        self.px[..., :3], self.px[..., 3] = colour, 1.0
+        step = half_width / w  # image row 0 is the bottom
+        self.yy, self.xx = np.mgrid[0 : 2 * h, 0 : 2 * w].astype(np.float32)
+        self.xx = (self.xx + 0.5 - w) * step
+        self.yy = (self.yy + 0.5 - h) * step
+
+    def where(self, mask: np.ndarray, colour: Sequence[float]) -> None:
+        self.px[mask, :3] = colour
+
+    def triangle(self, a: Sequence[float], b: Sequence[float], c: Sequence[float], colour: Sequence[float]) -> None:
+        def side(p: Sequence[float], q: Sequence[float]) -> np.ndarray:
+            return (q[0] - p[0]) * (self.yy - p[1]) - (q[1] - p[1]) * (self.xx - p[0])
+
+        s = [side(a, b), side(b, c), side(c, a)]
+        self.where((s[0] >= 0) & (s[1] >= 0) & (s[2] >= 0) | (s[0] <= 0) & (s[1] <= 0) & (s[2] <= 0), colour)
+
+    def text(self, body: str, width: float, centre: Sequence[float], colour: Sequence[float], font: bpy.types.VectorFont | None) -> None:
+        """Lettering `width` across, its middle at `centre`."""
+        verts, faces = text_mesh(body, 1.0, font, cuts=0)
+        xs, ys = [v[0] for v in verts], [v[1] for v in verts]
+        k = width / (max(xs) - min(xs))
+        ox, oy = centre[0] - k * (max(xs) + min(xs)) / 2, centre[1] - k * (max(ys) + min(ys)) / 2
+        for f in faces:
+            self.triangle(*((ox + k * verts[i][0], oy + k * verts[i][1]) for i in f), colour)
+
+    def image(self) -> bpy.types.Image:
+        img = bpy.data.images.new(self.name, self.w, self.h, alpha=False)
+        img.pixels.foreach_set(self.px.reshape(self.h, 2, self.w, 2, 4).mean(axis=(1, 3)).ravel())
+        img.file_format = "PNG"
+        img.pack()
+        return img
+
+
+def font(*paths: str) -> bpy.types.VectorFont | None:
+    """The first of these fonts this machine has; Blender's own if none."""
+    for path in paths:
+        if os.path.exists(path):
+            return bpy.data.fonts.load(path, check_existing=True)
+    return None
+
+
+def insignia_image() -> bpy.types.Image:
+    """The NASA insignia adopted in 1959, as an embroidered patch: a blue sphere, stars, an orbit,
+    the red vector whose two points overhang the edge, and the letters. Units are the disc's radius."""
+    blue, red, thread = (0.10, 0.16, 0.56), (0.78, 0.09, 0.15), (0.93, 0.91, 0.84)
+    art = Art("nasa-insignia-1959", 512, 512, INSIGNIA_ART, thread)
+    x, y = art.xx, art.yy
+    art.where(x * x + y * y < 0.95**2, blue)  # a rim of thread is left round it
+    for sx, sy, r in (
+        (-0.52, 0.56, 0.035),
+        (-0.22, 0.72, 0.028),
+        (0.12, 0.66, 0.035),
+        (-0.68, 0.30, 0.028),
+        (0.50, -0.42, 0.035),
+        (0.30, -0.62, 0.028),
+        (0.66, -0.20, 0.028),
+        (0.05, -0.74, 0.035),
+        (-0.30, -0.56, 0.028),
+        (0.44, -0.72, 0.022),
+        (-0.50, -0.34, 0.022),
+        (0.72, 0.28, 0.022),
+    ):
+        # four-pointed stars
+        art.where((np.abs(x - sx) + 3.2 * np.abs(y - sy) < 2.6 * r) | (3.2 * np.abs(x - sx) + np.abs(y - sy) < 2.6 * r), thread)
+    # the orbit: an ellipse tilted down to his left, about the letters
+    c, s = math.cos(math.radians(-22)), math.sin(math.radians(-22))
+    u, v = (x - 0.06) * c + (y + 0.04) * s, -(x - 0.06) * s + (y + 0.04) * c
+    art.where(np.abs(np.sqrt((u / 0.80) ** 2 + (v / 0.36) ** 2) - 1) < 0.045, thread)
+    # the vector: two slender wings from one point, thickest where they meet
+    (a0, k0), (a1, k1) = INSIGNIA_TIPS
+    apex = (k0 * math.cos(math.radians(a0)), k0 * math.sin(math.radians(a0)))
+    low = (1.25 * k1 * math.cos(math.radians(a1)), 1.25 * k1 * math.sin(math.radians(a1)))  # still a stripe where the cloth ends
+    high, crook = (-0.90, 0.24), (0.30, 0.20)
+    art.triangle(apex, crook, low, red)
+    art.triangle(apex, crook, high, red)
+    art.text(
+        "NASA",
+        1.42,
+        (0.0, 0.03),
+        thread,
+        font("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"),
+    )
+    return art.image()
+
+
+def name_tag_image() -> bpy.types.Image:
+    """Dark blue leather with the pilot's name stamped on it in silver. Units are half the tag's width."""
+    w, h = NAME_TAG
+    art = Art("name-tag-shepard", 512, round(512 * h / w), 1.0, (0.045, 0.06, 0.13))
+    x, y = art.xx, art.yy
+    art.where((np.abs(np.abs(x) - 0.965) < 0.006) | (np.abs(np.abs(y) - (h / w - 0.035)) < 0.006), (0.16, 0.18, 0.26))  # a line of stitching
+    art.text("A. B. SHEPARD", 1.36, (0.02, 0.0), (0.74, 0.75, 0.76), srlib.load_font())
+    return art.image()
+
+
+def lay(t: Tube, z: float, az: float) -> Callable[[float, float, float], Vector]:
+    """Where a flat thing sewn to the torso at (height, azimuth) has each of its points: `a`
+    centimetres toward his left measured round the cloth, `b` up, `off` proud of it."""
+    d0, th0 = z - TORSO_Z0, -TAU / 4 + math.radians(az)
+
+    def at(a: float, b: float, off: float) -> Vector:
+        d, th = d0 + b, th0
+        for _ in range(8):  # round a section that is not a circle, an eighth of the way at a time
+            th += a / 8 / ((t._skin(d, th + 0.01, False) - t._skin(d, th - 0.01, False)).length / 0.02)
+        return t.at(d, th, off)
+
+    return at
+
+
+def build_insignia(t: Tube, patch: MeshBuilder, tag: MeshBuilder) -> None:
+    z, az = INSIGNIA
+
+    # the insignia: a disc, drawn out to a point where each end of the vector overhangs it
+    at, r = lay(t, z, az), INSIGNIA_R
+    n = sides(40, 16)
+    spokes = {TAU * k / n: 1.0 for k in range(n)}
+    for deg, k in INSIGNIA_TIPS:
+        phi, half = math.radians(deg), 0.14
+        spokes = {a: v for a, v in spokes.items() if abs((a - phi + math.pi) % TAU - math.pi) > half * 1.05}
+        spokes.update({(phi - half) % TAU: 1.0, phi % TAU: k, (phi + half) % TAU: 1.0})
+    rings = max(3, round(6 / grain()))
+    flat = [[(f * r * k * math.cos(a), f * r * k * math.sin(a)) for a, k in sorted(spokes.items())] for f in (i / rings for i in range(rings + 1))]
+    base = len(patch.verts)
+    skin(patch, [[at(a, b, PATCH_LIFT) for a, b in row] for row in flat] + [[at(a, b, -0.3) for a, b in flat[-1]]], None, closed=True, flip=True)
+    half = INSIGNIA_ART * r
+    patch.uvs[base:] = [((a / half + 1) / 2 / CM, (b / half + 1) / 2 / CM) for row in [*flat, flat[-1]] for a, b in row]
+
+    # the name tag, level under it
+    at, (w, h) = lay(t, z - NAME_TAG_DROP, az), NAME_TAG
+    nx = max(4, round(10 / grain()))
+    xs = [-w / 2, *(w * (i / nx - 0.5) for i in range(nx + 1)), w / 2]
+    ys = [-h / 2, -h / 2, 0.0, h / 2, h / 2]
+    top = lambda i, j: 0 < i < len(xs) - 1 and 0 < j < len(ys) - 1  # noqa: E731
+    base = len(tag.verts)
+    skin(tag, [[at(a, b, 0.16 if top(i, j) else -0.3) for i, a in enumerate(xs)] for j, b in enumerate(ys)], None)
+    tag.uvs[base:] = [((a / w + 0.5) / CM, (b / h + 0.5) / CM) for b in ys for a in xs]
 
 
 # ---------------------------------------------------------------------------- arms

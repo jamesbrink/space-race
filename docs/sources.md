@@ -24,6 +24,8 @@ Keys used in the hardware records: **primary** is a NASA or manufacturer documen
 | NASM object record A19620021000, *Capsule, Mercury, MR-3* | [airandspace.si.edu](https://airandspace.si.edu/collection-objects/capsule-mercury-mr-3/nasm_A19620021000) | Where the spacecraft is now; its size as displayed | Repeats 15:28 and 5,180 mph |
 | NASA, *Project Mercury pressure suits* fact sheet (MA-8) | [PDF](https://www.nasa.gov/wp-content/uploads/static/history/40thmerc7/pressuresuits.pdf) | The suit, described 18 months after MR-3 | Later configuration than Shepard flew |
 | collectSPACE, *Shepard's Freedom 7 spacesuit* | [collectspace.com](https://www.collectspace.com/news/news-050521a-shepard-freedom-7-spacesuit-60th-smithsonian.html) | The flown suit as conserved | |
+| Smithsonian NASM, *Pressure Suit, Mercury, Shepard, MR-3, Flown*, A19770563000 | [airandspace.si.edu](https://airandspace.si.edu/collection-objects/pressure-suit-mercury-shepard-mr-3-flown/nasm_A19770563000) | The flown suit's photographs: the NASA insignia and "A. B. SHEPARD" name tag on the right chest, which way the zipper runs; neck ring 9 1/2 in | Shown as conserved, without the parachute harness. Only the insignia, tag and zipper were checked against the model; the 3D scan was not opened |
+| NASA photographs of 5 May 1961: S61-02727, S61-02775, S61-02792, GPN-2000-001023 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Alan_Shepard_pouso.jpg) and siblings | What the suit carried on the day: the insignia and name tag (S61-02727, colour, on the carrier's deck), the harness over it (S61-02792) | Commons dates some of the suit-up frames to April's rehearsals; the four named here are captioned 5 May |
 | Wikipedia: Mercury-Redstone 3, Mercury-Redstone Launch Vehicle, Navy Mark IV, Cape Canaveral Launch Complex 5 and 6 | [MR-3](https://en.wikipedia.org/wiki/Mercury-Redstone_3) and siblings | Pad coordinates, launch counts, the suit, pointers to primaries | MR-3's timeline table is unreliable (separation at 02:24, apogee at 05:00) |
 | Stephens, NASA TM X-493, 1961 | [NTRS 19650003098](https://ntrs.nasa.gov/api/citations/19650003098/downloads/19650003098.pdf) | Big Joe boilerplate only | Not the production spacecraft |
 | McCutcheon, *The Redstone Engine*, AEHS | [enginehistory.org](https://enginehistory.org/Museums/USSRC/USSRC_Redstone.shtml) | A-7 lineage | Its A-7 performance line conflicts with TM X-53107 |
@@ -54,7 +56,7 @@ Keys used in the hardware records: **primary** is a NASA or manufacturer documen
 | Army Redstone ground equipment manuals (launcher, cable masts) | The launch ring's size, levelling and azimuth gear, the masts' form |
 | *Emergency Handbook for Pad Area Rescue* (LOD, 1961; TM X-53107 7.4.4) | Where the cherry picker, M-113 and fire trucks stood, and the cab's programmed descent |
 | Colour launch-day photographs of MR-7 | Lettering colour, the roll pattern's stripe count, structure and vehicle colours |
-| Smithsonian object record for Shepard's suit (the pages refused automated requests) | Boots, gloves, markings |
+| Smithsonian 3D scan of Shepard's suit, and the records for his helmet (A19770563001) and gloves | Boots, gloves, helmet fittings, the suit's girths |
 
 The postlaunch report's Figure 3.2-1 is the liftoff photograph the booster's paint is read from;
 its Figure 3.1-4 is an axis sketch with no dimensions.

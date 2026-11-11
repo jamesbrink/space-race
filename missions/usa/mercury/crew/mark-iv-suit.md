@@ -25,7 +25,7 @@ suit was found.
 | Oxygen in at the waist, out at the helmet | | documented | NASA fact sheet; Wikipedia gives the helmet's right side |
 | Visor seal connector by the left jaw | | documented | Wikipedia |
 | Entry zipper diagonally across the chest | | documented | NASA fact sheet |
-| Which way the zipper runs (left collar to right waist) | | estimated | memory of photographs; could be mirrored |
+| Which way the zipper runs (left collar to right waist) | | estimated | read off the Smithsonian's photographs of the flown suit (NASM2022-00512, SI-2008-8609), which show it this way round |
 | Gloves zipped to the sleeves, no wrist ring (MR-3) | | documented | Wikipedia; rings came with MR-4 |
 | Straight middle finger, other fingers curved | | documented | Wikipedia. NASA's sheet says the *left* middle finger only; the model straightens both |
 | Biomedical connector flap, right thigh | | documented | Wikipedia. NASA's sheet puts the receptacle "near astronaut's knee" |
@@ -40,12 +40,18 @@ suit was found.
 | Shoulder breadth | 0.51 m | estimated | |
 | Stance | ankles 27 cm apart | estimated | pose |
 | Helmet shell | 26 cm wide, 30 cm deep, 32 cm from neck ring to top | estimated | photographs |
-| Neck ring | 25 cm across | estimated | photographs |
+| Neck ring | 25 cm across | estimated | photographs. The Smithsonian's record gives the flown suit's ring as 9 1/2 in (24.1 cm); the model has not been changed to it |
 | Visor opening | 17.6 cm high, about 26 cm round the shell | estimated | photographs |
 | Boots | 27 cm tall, sole 31.2 cm | estimated | |
 | Boot colour (aluminised) | | estimated | Wikipedia: Mercury boots were white coated leather first, aluminised later; which MR-3 used was not confirmed |
 | Glove | hand 20 cm from wrist to middle fingertip | estimated | |
 | Pressure gauge on the left forearm | 4.8 cm across | estimated | position and size from photographs |
+| NASA insignia on the right chest | worn on 5 May 1961 | documented | NASA photograph S61-02727 (Shepard on the deck of USS *Lake Champlain* after recovery, colour) shows it; the Smithsonian's record of the flown suit (A19770563000) shows the same patch in the same place |
+| Name tag under it, "A. B. SHEPARD" | worn on 5 May 1961 | documented | S61-02727 again, and S61-02775 (suited before the flight, the end of the tag in view); the Smithsonian's close-up NASM2022-00514 shows silver letters on dark blue leather |
+| No mission patch | | documented | none in any of those photographs. Mercury flights had none: the first crew patch flew on Gemini 5 in 1965, and the "Freedom 7" patches sold since are later souvenirs |
+| Insignia size | 3 in (7.6 cm) across the disc | estimated | about 7 cm in SI-2008-8609, scaled from the 9 1/2 in neck ring and foreshortened by the curve of the chest; set to 3 in as a likely made size, not a measured one |
+| Insignia position | centre 8 cm to the right of the centre line, 12 cm below the neck ring | estimated | SI-2008-8609 gives 8 cm and 10 cm on a limp suit on a stand; lowered 2 cm to lie on the model's chest rather than on the slope of its shoulder |
+| Name tag | 11.5 x 2.5 cm, its centre 5.6 cm below the insignia's | estimated | NASM2022-00514, scaled from the insignia; drawn level, though on the stand it hangs tilted |
 | Portable ventilator case | 42 x 16 x 30 cm | estimated | "briefcase-like"; every detail of it is invented to look plausible |
 | Ventilator hose | 3 cm across, about 1 m | estimated | |
 
@@ -54,7 +60,7 @@ suit was found.
 | Node | What it is |
 | --- | --- |
 | `Helmet` | white fibreglass shell with earphone bulges, visor and frame, visor pivots, aluminium neck ring, suit outlet low on the right, seal connector by the left jaw; inside it the head, communications cap and lip microphone |
-| `Torso` | shell with both shoulders (one skin, down to a hem on each upper arm), entry zipper, helmet tie-down strap, waist strap, two crotch straps, buckles, the waist inlet fitting |
+| `Torso` | shell with both shoulders (one skin, down to a hem on each upper arm), entry zipper, helmet tie-down strap, waist strap, two crotch straps, buckles, the waist inlet fitting, the NASA insignia and the name tag on the right chest |
 | `Arms` | sleeves from the hem down, lacing strips on upper arm and forearm, the pressure gauge and its strap on the left forearm |
 | `Gloves` | cuff, palm, four knuckled fingers, thumb and its web each hand; wrist zipper; restraint strap |
 | `Legs` | trousers, lacing strips on thigh and calf, biomedical flap on the right thigh |
@@ -62,6 +68,9 @@ suit was found.
 | `Ventilator` | case, handle, latches, louvres, hose to the waist inlet |
 
 The suit fabric is `suit-aluminized-nylon`; the viewer adds its weave to any material named `suit*`.
+The insignia (`patch-nasa-insignia`) and the name tag (`name-tag-leather`) are each a thin panel
+laid on the torso's curve, 1.8 and 1.6 mm proud of the cloth with their edges sunk through it,
+carrying a picture drawn by the script (512 pixels across), as the capsule's flags are.
 
 ## On the couch
 
@@ -124,7 +133,18 @@ The real couch was moulded to each pilot; its angles were not found.
   plain dark shell. The lip microphone and its boom are a guess at their shape. The visor frame
   is drawn as aluminium; its real finish was not checked.
 - No hose on the helmet outlet, and no seal bottle or its hose on the left-jaw connector.
-- No chest mirror (that came after MR-3), no name tag or insignia, no wrist mirrors.
+- No chest mirror (that came after MR-3), no wrist mirrors.
+- **The insignia is drawn from the 1959 design, not traced from the patch**: a blue disc with a
+  rim of thread, twelve stars placed by eye, the orbit as a plain tilted ellipse, the red vector
+  as two straight wings whose points overhang the disc, and "NASA" in a bold serif from the build
+  machine's fonts rather than the insignia's own letters. No embroidery, no stitching. The name
+  tag's lettering is a bold sans, not the stamped face of the real one.
+- **What the 5 May photographs and the flown suit show that the model lacks**: the personal
+  parachute harness worn over the suit (webbing crossed on the back, a chest strap, a grey strap
+  round the ribs with a quick-release fitting at the middle); the cream pleated stretch panels down
+  each upper arm and the tapes fanned over each shoulder; a second zipper round the waist and one
+  from waist to crotch; the square reinforcing patch round the waist inlet and the oval one round
+  the biomedical fitting; tapes over each knee; straps over the boots' lacing; the orange neck dam.
 - **Boots**: plain laced boots. The Smithsonian's "with clips" was not seen first hand and is
   only hinted at by the lacing hooks.
 - **The ventilator is a silver suitcase with a hose.** He carried it; here it stands on the floor.
@@ -151,8 +171,14 @@ The real couch was moulded to each pilot; its angles were not found.
 - That Shepard carried a "portable air-conditioning unit" to the gantry is from *Time*'s 1961
   account and AmericaSpace's "briefcase-like" description, **seen only as search-result
   excerpts, not read in full**.
-- The Smithsonian's records for the flown suit, helmet and gloves
-  ([A19770563000](https://www.airandspace.si.edu/es/collection-objects/pressure-suit-mercury-shepard-mr-3-flown/nasm_A19770563000))
-  could not be opened from the build machine. **Not yet checked against this model.**
+- The Smithsonian's record of the flown suit, "Pressure Suit, Mercury, Shepard, MR-3, Flown"
+  ([A19770563000](https://airandspace.si.edu/collection-objects/pressure-suit-mercury-shepard-mr-3-flown/nasm_A19770563000)):
+  neck ring 9 1/2 in, materials, and seven photographs (NASM2022-00512, -00514, -00516;
+  SI-2008-8609, -8610, -8625, -8626), read for the insignia, the name tag and the zipper. It shows
+  the suit as conserved, without the harness. **The rest of the model has not been checked
+  against it**, and its 3D scan, and the records for the helmet and gloves, were not opened.
+- NASA photographs of 5 May 1961, on Wikimedia Commons: S61-02727 (on the carrier's deck, colour:
+  the insignia and name tag as worn), S61-02775 (suited, helmet open), S61-02792 (at the capsule,
+  from behind: the harness), and GPN-2000-001023 (suit checks).
 - Drillis and Contini's body segment proportions (1966), as reproduced in Winter's
   *Biomechanics and Motor Control of Human Movement*: quoted from memory, not checked.
