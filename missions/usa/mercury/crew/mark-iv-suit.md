@@ -97,6 +97,54 @@ the wall (hips 5.0 in off the axis) a 1.80 m man's boots clear it by 0.76 in onl
 tuck. With thighs at 65° to 75° and level shins the toes go through the wall by several inches.
 The real couch was moulded to each pilot; its angles were not found.
 
+## Joints
+
+The standing figure can be moved: every mesh of his is skinned to one skeleton (node `Skeleton`
+in the GLB, at all three levels of detail). The joints and their names are the same for every
+crew figure, so the viewer needs to know nothing about this suit: `srlib.FIGURE` is the list,
+`srlib.skeleton` builds it and `srlib.bind` hangs a mesh on it.
+
+```
+Hips ─ Spine ─ Head
+     │       ├ UpperArm.L ─ LowerArm.L ─ Hand.L      (and .R)
+     └ UpperLeg.L ─ LowerLeg.L ─ Foot.L              (and .R)
+```
+
+- **Names.** The GLB has them as written, with the dot. three.js drops the dot when it loads a
+  file: there they are `UpperArmL`, `LowerLegR` and so on (`Hips`, `Spine`, `Head` unchanged).
+- **Axes.** A joint has its origin on the joint and no rotation of its own at rest. In the file
+  its axes are the model's: +X his left, +Y up, +Z the way he faces. Turning one about its local X
+  swings what hangs from it forward and back: **positive is backward** for a limb that hangs
+  (a thigh, an upper arm), so a knee bends with a positive turn of `LowerLeg` and an elbow with a
+  negative turn of `LowerArm`. Y twists a limb about its length; Z swings it sideways.
+- **A stride**, in degrees about X: `UpperLeg.L` −25, `UpperLeg.R` +25, `LowerLeg.L` +20,
+  `LowerLeg.R` +5, `UpperArm.L` +15, `UpperArm.R` −15. Moving `Hips` moves all of him.
+- **Parts are still parts**: each mesh stays under `Helmet`, `Torso`, `Arms`, `Gloves`, `Legs` or
+  `Boots`, and is picked and outlined as before. But a skinned mesh is placed by its joints, not
+  by its node, so these parts cannot be drawn apart on a slider. This model has none.
+- **The ventilator is set down.** `Ventilator` is not skinned: the case stands where it stood,
+  and its hose (`Ventilator_Hose`) ends at where his waist was. When he walks off, the viewer
+  should hide the hose, or the whole node. He carried it in fact; a carried case is not modelled.
+- **The seated figure has no skeleton.** It is carried to its pose once, by `build_seated`.
+
+| Joint | Where (rest pose, cm: his left, his back, up) | Confidence | Basis |
+| --- | --- | --- | --- |
+| `Hips` | 0, 0, 98.4 | derived | midway between the hip joints |
+| `Spine` | 0, 0, 106 | estimated | the waist, just above the waist strap |
+| `Head` | 0, 0, 157 | estimated | the base of the neck, inside the neck ring |
+| `UpperArm` | ±19.3, 0, 145.6 | derived | the arm's own path at the shoulder |
+| `LowerArm` | ±27.4, 0.8, 117.5 | derived | the elbow the sleeve is built round |
+| `Hand` | ±30.8, −5.2, 91.2 | derived | the wrist, 5.5 cm beyond the sleeve's end |
+| `UpperLeg` | ±9.6, 0, 98.4 | derived | hip height from the segment proportions; 9.6 cm off the centre line is a guess |
+| `LowerLeg` | ±12.3, −1.0, 54.2 | derived | knee height from the segment proportions |
+| `Foot` | ±13.5, 0.5, 10.0 | estimated | the ankle, in the boot |
+
+Across a joint the cloth is shared between its two sides over a few centimetres (12 at the knee,
+10 at the elbow, 5 at the wrist, 9 at the ankle, 12 below the hip, 14 at the waist). The shoulder is one
+skin with the torso: its share of the arm runs from half at the armhole's edge to all of it a
+third of the way down to the hem, and the torso gives way for 7 cm round the hole. The seat of
+the suit goes up to 55% with each thigh. All of these are chosen to look right in a stride.
+
 ## What the model gets wrong or leaves out
 
 - **The face is nobody's.** Behind the visor there is a head with a brow, eye sockets, a nose,
@@ -157,6 +205,13 @@ The real couch was moulded to each pilot; its angles were not found.
   small creases are eased off. Neither is a cloth simulation, and there is no bunched roll of
   fabric in the lap, only the crease.
 - **Coarser levels of detail leave things out**: eyebrows and lips below detail 0.75, eyes below 0.5.
+- **Moved, he is a jointed doll in one skin.** Cloth stretches and shears at a joint instead of
+  folding: the creases modelled at knee and elbow are the standing ones and do not deepen. The
+  helmet turns with `Head`, neck ring and all, though the real ring was fixed to the suit and the
+  head turned inside it. No joints in the fingers, toes, collarbones or along the spine. A fitting
+  that lies across a joint (the waist strap, the glove's cuff and zipper, the boot's lacing at
+  the ankle) bends with it. Checked in a stride and at a run; a thigh raised to the horizontal
+  was not.
 - No mass properties.
 
 ## Sources

@@ -554,6 +554,80 @@ def check_clearance(min_gap: float = MIN_GAP) -> list[str]:
     return out
 
 
+# ---------------------------------------------------------------- figures that move
+
+# A figure the viewer can animate carries these joints, by these names, each hanging from the
+# one beside it: this is the whole contract, the same for every crew figure. In Blender a joint
+# is a bone of the figure's armature; in the GLB it is a node of the skin. Each has its origin
+# on the anatomical joint and, at rest, the model's own axes (in the file: +X the figure's left,
+# +Y up, +Z the way it faces; no rotation), so turning any of them about its local X swings what
+# hangs from it forward and back: a positive turn takes a hanging limb backward.
+FIGURE = {
+    "Hips": None,
+    "Spine": "Hips",
+    "Head": "Spine",
+    "UpperArm.L": "Spine",
+    "LowerArm.L": "UpperArm.L",
+    "Hand.L": "LowerArm.L",
+    "UpperArm.R": "Spine",
+    "LowerArm.R": "UpperArm.R",
+    "Hand.R": "LowerArm.R",
+    "UpperLeg.L": "Hips",
+    "LowerLeg.L": "UpperLeg.L",
+    "Foot.L": "LowerLeg.L",
+    "UpperLeg.R": "Hips",
+    "LowerLeg.R": "UpperLeg.R",
+    "Foot.R": "LowerLeg.R",
+}
+
+
+def skeleton(joints: dict[str, Sequence[float]], name: str = "Skeleton") -> bpy.types.Object:
+    """The armature of a figure: one bone for each joint of FIGURE, its head at `joints[name]`
+    (metres, the scene's axes). The figure must be modelled upright (+Z up), facing -Y, its left
+    toward +X. A bone is a stub standing straight up, rolled so that its own X is the scene's:
+    that is what leaves every joint in the GLB without a rotation of its own."""
+    missing = [j for j in FIGURE if j not in joints]
+    if missing:
+        raise KeyError(f"skeleton: no position for {', '.join(missing)}")
+    data = bpy.data.armatures.new(name)
+    obj = bpy.data.objects.new(name, data)
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    for joint, parent in FIGURE.items():
+        bone = data.edit_bones.new(joint)
+        bone.head = Vector(joints[joint])
+        bone.tail = bone.head + Vector((0.0, 0.0, 0.05))
+        bone.align_roll(Vector((0.0, -1.0, 0.0)))
+        if parent:
+            bone.parent = data.edit_bones[parent]
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return obj
+
+
+def bind(obj: bpy.types.Object, rig: bpy.types.Object, weights: Sequence[dict[str, float]]) -> None:
+    """Hang a mesh on a skeleton: `weights[i]` says how much of vertex i follows each joint
+    (they are scaled to add up to one; at most four joints a vertex, which is all a GLB carries).
+    The mesh stays where it is in the scene and under its own parent, so a part is still a part,
+    but once it is skinned the viewer places it by its joints, not by its node: a skinned part
+    cannot also be moved as a node (no exploded view of a figure)."""
+    if len(weights) != len(obj.data.vertices):
+        raise ValueError(f"bind: {obj.name} has {len(obj.data.vertices)} vertices and {len(weights)} weights")
+    groups: dict[str, bpy.types.VertexGroup] = {}
+    for i, w in enumerate(weights):
+        w = {j: x for j, x in w.items() if x > 1e-3}
+        total = sum(w.values())
+        if not w or len(w) > 4:
+            raise ValueError(f"bind: vertex {i} of {obj.name} follows {len(w)} joints")
+        for joint, x in w.items():
+            if joint not in FIGURE:
+                raise KeyError(f"bind: {joint} is not a joint of a figure")
+            if joint not in groups:
+                groups[joint] = obj.vertex_groups.new(name=joint)
+            groups[joint].add([i], x / total, "REPLACE")
+    obj.modifiers.new(rig.name, "ARMATURE").object = rig
+
+
 # -------------------------------------------------------------------------- export
 
 

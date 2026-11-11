@@ -10,7 +10,10 @@ photographed that day; there is no mission patch, because Mercury flights had no
 
 MR-3 configuration: gloves zipped to the sleeves, no wrist rings. MR-4 added the rings.
 
-Top-level nodes: Helmet  Torso  Arms  Gloves  Legs  Boots  Ventilator
+Top-level nodes: Helmet  Torso  Arms  Gloves  Legs  Boots  Ventilator  Skeleton
+
+The standing figure is skinned to Skeleton, the joints every crew figure has (srlib.FIGURE), so
+the viewer can walk him; the ventilator is not, and stays where it stands.
 
 build() is the standing figure. build_seated() is the same man on the couch, for a cabin: the
 figure is always modelled standing and carried to a pose by its joints (Rig, Bend).
