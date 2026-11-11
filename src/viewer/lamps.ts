@@ -15,7 +15,7 @@ const MOST = 12;
 /** The most room lights drawn at once (see `roomPool`). */
 const ROOMS = 3;
 /** Luminous intensity of one fitting, candela: a bank of 1,500 W incandescent floods is some hundred thousand; the scene's exposure at night is high, so far less is asked for. */
-const CANDELA = 380;
+const CANDELA = 110;
 /** A flood's beam: wide, soft-edged. */
 const SPREAD = THREE.MathUtils.degToRad(48);
 
@@ -31,9 +31,11 @@ interface Fitting {
  * A lamp the model describes for itself: a lens mesh (or its node) with `candela` and `spread`
  * (degrees, the whole beam), as a searchlight is. A real searchlight is thousands of times a
  * flood; the scene's night exposure is set for floods, so a described lamp is given at most this
- * many floods' worth, which keeps its beam the brightest thing there without burning out the frame.
+ * many floods' worth (spread over a cone a fraction of a flood's), which keeps its beam the brightest thing there without burning out the frame.
  */
-const STRONGEST = 40;
+const STRONGEST = 6;
+/** The narrowest beam drawn, degrees, whole beam. */
+const MIN_BEAM = 7;
 const FLOOD_CANDELA = 1e5;
 const described = (o: THREE.Object3D): { candela: number; spread: number } | null => {
   for (let at: THREE.Object3D | null = o; at; at = at.parent) {
@@ -104,13 +106,20 @@ export class Lamps {
       if (!mesh.isMesh || !material || Array.isArray(material) || !isLamp(material.name)) return;
       this.lenses.add(material);
       const own = described(mesh);
-      for (const fitting of fittings(mesh)) all.push({ mesh, fitting, own });
+      // The site builders draw a lens as the inside face of the lamp's bowl (lamp_head, searchlight:
+      // `flip=True`), so its normals face into the housing; the light goes the other way.
+      for (const fitting of fittings(mesh)) {
+        fitting.facing.negate();
+        all.push({ mesh, fitting, own });
+      }
     });
     // what describes itself comes first (a searchlight is one lens, not a bank), then the biggest banks
     all.sort((a, b) => Number(Boolean(b.own)) - Number(Boolean(a.own)) || b.fitting.lenses - a.fitting.lenses);
     for (const { mesh, fitting, own } of all.slice(0, Math.max(0, MOST - this.lights.length))) {
       const strength = own ? Math.min(STRONGEST, own.candela / FLOOD_CANDELA) : 1;
-      const cone = own ? THREE.MathUtils.degToRad(own.spread / 2) : SPREAD;
+      // (a searchlight's own beam is a degree or two; drawn that narrow its spot is a few pixels that
+      // sparkle as the view moves, so it is drawn no narrower than a crew would defocus it to flood a vehicle)
+      const cone = own ? THREE.MathUtils.degToRad(Math.max(own.spread, MIN_BEAM) / 2) : SPREAD;
       const light = new THREE.SpotLight(own ? 0xf4f6ff : 0xffe2b0, 0, own ? 600 : 140, cone, own ? 0.35 : 0.7, own ? 1.2 : 1.6);
       fitting.facing.normalize();
       light.visible = false;
