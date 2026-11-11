@@ -12,9 +12,12 @@ const UP = new THREE.Vector3(0, 1, 0);
 /** Radians of turn per pixel dragged. */
 const LOOK = 0.003;
 /** Metres per second near the ground, and how much faster per metre of height: far to go when high up, fine control when low. */
-const SPEED = 4;
-const SPEED_PER_METRE = 0.8;
-const FASTEST = 200;
+const SPEED = 14;
+const SPEED_PER_METRE = 1.2;
+const FASTEST = 400;
+/** A key held gathers speed: this many times faster after RAMP seconds, so a tap is a nudge and a hold covers ground. */
+const HELD = 3;
+const RAMP = 2.5;
 /** How much faster with Shift held. */
 export const BOOST = 5;
 
@@ -32,6 +35,8 @@ export class Flyer {
   private pitch = 0;
   /** A flight of the camera (to something clicked) was under way last frame: it has just landed. */
   private arrived = false;
+  /** How long a movement key has been held, seconds. */
+  private holding = 0;
 
   /** Take the heading the camera has now, on entering the mode or after it has been flown somewhere. */
   read(camera: THREE.Camera): void {
@@ -53,7 +58,10 @@ export class Flyer {
 
   /** Move by the keys held. `floor` is the lowest the camera may go. Returns whether anything moved. */
   drive(camera: THREE.Camera, held: ReadonlySet<string>, fast: boolean, dt: number, floor: number, ground: number): boolean {
-    if (!held.size) return false;
+    if (!held.size) {
+      this.holding = 0;
+      return false;
+    }
     const has = (...keys: string[]) => Number(keys.some((k) => held.has(k)));
     this.yaw += (has('arrowleft') - has('arrowright')) * 1.2 * dt;
     this.pitch = THREE.MathUtils.clamp(this.pitch + (has('arrowup') - has('arrowdown')) * 0.9 * dt, -1.5, 1.5);
@@ -64,7 +72,9 @@ export class Flyer {
       .addScaledVector(right, has('d') - has('a'))
       .addScaledVector(UP, has('e') - has('q'));
     if (step.lengthSq() > 1) step.normalize();
-    camera.position.addScaledVector(step, flySpeed(camera.position.y - ground, fast) * dt);
+    this.holding = step.lengthSq() ? this.holding + dt : 0;
+    const gathered = 1 + (HELD - 1) * Math.min(1, this.holding / RAMP) ** 2;
+    camera.position.addScaledVector(step, flySpeed(camera.position.y - ground, fast) * gathered * dt);
     camera.position.y = Math.max(floor, camera.position.y);
     return true;
   }
