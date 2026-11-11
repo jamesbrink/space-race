@@ -5,6 +5,10 @@ in three.js. Today it is a viewer with one flight (Freedom 7 on its Mercury-Reds
 USSR's and later programmes from the historical record to the present, so **the models and the
 numbers have to be right, and where they are not yet right the repo has to say so**.
 
+Accuracy is half of it. The other half is **being there**: you should feel the size of the vehicle
+and of the place it stands in. A person is 1.8 m tall and a Redstone is fourteen of them; the work
+is done when that is felt, not when it is stated. See "Being there" below.
+
 This file is `AGENTS.md`; `CLAUDE.md` is a symlink to it. Sibling project `../lunar-lift` is the
 earlier, single-mission take on the same idea (vanilla JS, toon-shaded, real orbital mechanics).
 
@@ -118,6 +122,26 @@ follows them as the slider takes the model apart.
 a window, looks in; on something in the place round the pad (`Flight.surroundings`: a blockhouse, a
 road), flies over and turns about it (`Stage.visit`). A figure that has been walked somewhere stays
 where it was left.
+
+## Being there
+
+Immersion is a requirement, weighed with accuracy and never traded against it. Judge a change by
+standing in it: on foot at eye height beside the thing, and from across the pad.
+
+- **Scale is felt from the ground.** Everything can be walked up to, round and, where the real
+  thing allowed, into and up: a structure has its stairs, ladders, doors and lift, and a route on
+  foot from the ground to its top. If something can be seen it can be gone to.
+- **A body, not a camera.** On foot the view moves as a person does (stride, weight, landing,
+  breath) and the figure is animated, carrying what he carried. Motion follows the gait, never a
+  timer, and can be reduced or switched off.
+- **The place is real.** What stands round the pad is what stood there that day, at its real
+  distance and bearing, lit by the Sun where it was. No stand-ins that are there only to fill space:
+  either the real thing, labelled with how sure we are, or nothing.
+- **Nothing breaks the spell.** No flicker, no clipping through walls or ground, no pops between
+  levels of detail or between poses, no object that is a flat box up close. A lower level of detail
+  is for distance only.
+- **The page gets out of the way.** Panels tuck, H clears them, and the world is the full window
+  when walking.
 
 ## Cutaway and what is inside
 
