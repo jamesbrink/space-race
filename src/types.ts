@@ -340,6 +340,43 @@ export interface SiteDef {
   bearingX: Measure;
   /** The civil time kept there on the day: what its clocks were called, and their hours ahead of UTC (negative west of Greenwich). */
   zone: { name: string; utcOffset: number };
+  /** The country round the site seen in its flights, which the globe draws from a finer map than its own (RegionDef). */
+  region?: RegionDef;
+}
+
+/**
+ * The country round a site, drawn on the globe from a finer coast than Natural Earth's:
+ * tools/globe-region.mjs bakes it from OpenStreetMap to public/globe/<name>.*, and viewer/globe.ts
+ * draws it where it covers and its own 1:10 million map elsewhere.
+ */
+export interface RegionDef {
+  /** The stem of its files. */
+  name: string;
+  /** Its bounds, degrees north and east (WGS 84). */
+  south: number;
+  north: number;
+  west: number;
+  east: number;
+  /** Why these bounds: what the flights from the site see. */
+  why: string;
+  /** The date the shore is drawn as (ISO): works in `later` built after it are undone. Today's map is the shore as it stands. */
+  asOf: string;
+  /** What has been built since that changed the shore: each undone in the bake if built after `asOf`. */
+  later: LaterWork[];
+}
+
+/** A causeway filled or a channel dug: the shore as it was before, along a line. */
+export interface LaterWork {
+  what: string;
+  /** The year it was finished. */
+  built: number;
+  /** What was there before it: water where a causeway now stands, land where a canal is now cut. */
+  was: 'water' | 'land';
+  /** The line it follows, [latitude, longitude] degrees, and the width put back along it, metres. */
+  path: [number, number][];
+  width: number;
+  /** For the date, and for the line (read off OpenStreetMap unless it says otherwise). */
+  source: string;
 }
 
 /** A curve read off a published figure or table: points in order of x, straight lines between, held flat beyond the ends. */

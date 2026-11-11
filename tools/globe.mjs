@@ -15,7 +15,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { crc32, deflateSync } from 'node:zlib';
+import { writeGreyPng } from './png.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -240,49 +240,6 @@ function distances(dist, size, polys) {
   }
 }
 
-function png(path, data, size) {
-  const raw = Buffer.alloc((size + 1) * size);
-  for (let j = 0; j < size; j++) {
-    const row = j * (size + 1);
-    // each row filtered by whichever of Sub or Up leaves it smaller (a distance field is smooth both ways)
-    let sub = 0,
-      up = 0;
-    for (let i = 0; i < size; i++) {
-      const v = data[j * size + i];
-      sub += Math.abs(((v - (i ? data[j * size + i - 1] : 0)) << 24) >> 24);
-      up += Math.abs(((v - (j ? data[(j - 1) * size + i] : 0)) << 24) >> 24);
-    }
-    raw[row] = sub <= up ? 1 : 2;
-    for (let i = 0; i < size; i++) {
-      const v = data[j * size + i];
-      const prior = sub <= up ? (i ? data[j * size + i - 1] : 0) : j ? data[(j - 1) * size + i] : 0;
-      raw[row + 1 + i] = (v - prior) & 255;
-    }
-  }
-  const chunk = (type, body) => {
-    const len = Buffer.alloc(4);
-    len.writeUInt32BE(body.length);
-    const tb = Buffer.concat([Buffer.from(type, 'ascii'), body]);
-    const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(tb));
-    return Buffer.concat([len, tb, crc]);
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bits
-  ihdr[9] = 0; // greyscale
-  writeFileSync(
-    path,
-    Buffer.concat([
-      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-      chunk('IHDR', ihdr),
-      chunk('IDAT', deflateSync(raw, { level: 9 })),
-      chunk('IEND', Buffer.alloc(0)),
-    ]),
-  );
-}
-
 /**
  * One map: the solid layers less the holes, as a distance field on each face. Each layer is filled
  * even-odd on its own (a ring inside a ring is a hole in it) and the layers are joined, so two
@@ -317,7 +274,7 @@ function bakeMap(name, solid, holes, size, out) {
         const d = Math.sqrt(dist[j * size + i]) * (inside ? 1 : -1);
         data[j * size + i] = Math.max(0, Math.min(255, Math.round(128 + (d * 127) / SPREAD)));
       }
-    png(join(out, `${name}.${face[0]}.png`), data, size);
+    writeGreyPng(join(out, `${name}.${face[0]}.png`), data, size, size);
     console.log(`${name}.${face[0]}.png`, `${Math.round(performance.now() - began)} ms`);
   }
 }

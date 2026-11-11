@@ -72,10 +72,14 @@ for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uHazeAbove = haze
 let installed: Air | null = null;
 let wind: [number, number] = [0, 0];
 
+/** How far the billows of a cumulus have risen through it, metres: they churn upward as the cloud drifts (clouds.ts). */
+export const cloudRise = { value: 0 };
+
 /** Move the clouds on by `dt` seconds of wind. */
 export function driftClouds(dt: number): void {
   DRIFT.x += wind[0] * dt;
   DRIFT.z += wind[1] * dt;
+  cloudRise.value = (cloudRise.value + 0.4 * dt) % 1024; // (the billows' noise repeats every 1,024 m: clouds.ts)
 }
 
 /** The noise the cloud field is cut from, before its threshold: in JavaScript; `cloudField` has it in GLSL. */
@@ -121,14 +125,25 @@ export function cloudAt(c: Clouds, x: number, z: number, driftX: number, driftZ:
   const t = Math.min(1, Math.max(0, (n - lo) / (hi - lo)));
   return t * t * (3 - 2 * t);
 }
+/**
+ * GLSL: `cloudNoise(vec2 at)`, the noise the field is cut from at a point of the field's own frame
+ * (metres, the drift taken off), with `noise2` from field.ts named `<prefix>noise2`; and the value
+ * at which it is cut, where the field is one half: a tenth of the sky lies above it for 1/10 cover.
+ */
+export const cloudNoiseGlsl = (c: Clouds, prefix: string): string => /* glsl */ `
+  float cloudNoise(vec2 at) {
+    vec2 q = at / ${c.size.toFixed(1)};
+    return ${prefix}noise2(q, 91) * 0.5 + ${prefix}noise2(q * 2.13 + 7.1, 92) * 0.27 + ${prefix}noise2(q * 4.37 + 3.3, 93) * 0.15 + 0.04;
+  }`;
+export const cloudMiddle = (c: Clouds): number => 0.5 * (edges(c)[0] + edges(c)[1]);
+
 const cloudField = (c: Clouds | undefined) =>
   c
     ? /* glsl */ `
   ${fieldAs('air_')}
+  ${cloudNoiseGlsl(c, 'air_')}
   float cloudAt(vec2 xz) {
-    vec2 q = (xz - uCloudDrift.xz) / ${c.size.toFixed(1)};
-    float n = air_noise2(q, 91) * 0.5 + air_noise2(q * 2.13 + 7.1, 92) * 0.27 + air_noise2(q * 4.37 + 3.3, 93) * 0.15 + 0.04;
-    return smoothstep(${edges(c)[0].toFixed(3)}, ${edges(c)[1].toFixed(3)}, n);
+    return smoothstep(${edges(c)[0].toFixed(3)}, ${edges(c)[1].toFixed(3)}, cloudNoise(xz - uCloudDrift.xz));
   }`
     : '';
 

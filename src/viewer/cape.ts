@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
-import { type Air, CloudLayer, type Clouds, driftClouds, installAir } from './air';
+import { type Air, type Clouds, driftClouds, installAir } from './air';
 import { buildCape1961, CLEARINGS, COAST, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
@@ -704,8 +704,7 @@ export function buildCape(
 } {
   // the haze lies in the lowest air, under the cumulus at 720 m, and thins upward (air.ts)
   const air: Air = { scale: HAZE_SCALE, base: groundY + SEA, clouds: CLOUDS };
-  installAir(air);
-  const clouds = new CloudLayer(CLOUDS, air);
+  installAir(air); // (the cumulus are drawn by the stage's cloud pass: clouds.ts)
   const land = new Land(renderer, landSpec(), groundY, COMPASS);
   const flora = new Flora(floraSpec(), land);
   flora.group.position.y = groundY;
@@ -723,22 +722,20 @@ export function buildCape(
   };
   return {
     floor: land.mesh,
-    scenery: [site, clouds.group],
+    scenery: [site],
     tick: (dt) => {
       driftClouds(dt);
       land.tick(dt);
       flora.tick(dt);
     },
     simplify: (on) => {
-      clouds.simplify(on);
       land.simplify(on);
       flora.simplify(on);
     },
     attend: (at) => {
-      const laid = clouds.follow(at);
       local(at);
       land.attend(eye);
-      return flora.attend(eye) || laid;
+      return flora.attend(eye);
     },
     groundAt: (x, z) => {
       // the world point on the compass: the inverse of the site's turn

@@ -20,6 +20,7 @@ import { type CameraMode, Flyer } from './fly';
 import { jointKey, pose, reach, seatFit } from './gait';
 import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
+import { CloudPass } from './clouds';
 import { InkPass, type Look, Looks } from './look';
 import { Origin } from './origin';
 import { Plume } from './plume';
@@ -238,6 +239,8 @@ export class Stage {
   private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.05, 9000);
   private readonly controls: OrbitControls;
   private readonly composer: EffectComposer;
+  /** The cumulus, marched through and laid over the frame (clouds.ts). */
+  private readonly clouds: CloudPass;
   /** Draws the scene from the eye (origin.ts): the GPU sees only eye-relative positions; everything the code reads stays where it is. */
   readonly origin: Origin;
   private readonly backdropPass: RenderPass;
@@ -390,8 +393,11 @@ export class Stage {
     main.clear = false;
     main.clearDepth = true;
     this.composer.addPass(main);
+    this.clouds = new CloudPass(this.scene, this.camera);
+    this.composer.addPass(this.clouds.mark); // the scene's depth, for the clouds laid over after the ink
     this.ink.enabled = false; // straight after the scene, while the frame's depth is still the scene's
     this.composer.addPass(this.ink);
+    this.composer.addPass(this.clouds);
     this.outline = new OutlinePass(new THREE.Vector2(1, 1), this.scene, this.camera);
     this.outline.edgeStrength = 3;
     this.outline.edgeThickness = 1;
@@ -1062,6 +1068,7 @@ export class Stage {
    */
   private light(): void {
     const cel = this.looks.current === 'cel';
+    this.clouds.cel = cel;
     this.fill.intensity = this.setting.fill[2] * (cel ? CEL_FILL : 1);
     this.setting.simplify?.(cel);
     this.renderer.toneMapping = cel ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
