@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
+import { type Sounds, silent } from '../audio.ts';
 import { Gait, type Stir, view } from './gait.ts';
 
 /**
@@ -837,6 +838,8 @@ export class Walker {
   outside = false;
   /** The figure's stride: the limbs seen from outside and the motion of the view from inside are both read off it (gait.ts). */
   readonly gait = new Gait();
+  /** What hears the walk (audio.ts): footfalls and breath, as events off the gait. Nothing plays until something that does is put here. */
+  sounds: Sounds = silent;
   /** What the last frame did to the stride (see Stir). */
   stir: Stir = 0;
   /** How far the body turned about its feet in the last frame, radians. */
@@ -1192,6 +1195,20 @@ export class Walker {
     this.moved = true;
   }
 
+  /** Tell the sound (audio.ts) what the last advance of the gait brought: feet landing, a fall's end, the breath. */
+  private listen(climbing: boolean): void {
+    const gait = this.gait;
+    if (gait.landed !== null) {
+      for (const foot of ['L', 'R'] as const) this.sounds.footfall({ foot, pace: this.pace, kind: 'landing', height: gait.landed });
+      gait.landed = null;
+    }
+    for (const foot of gait.footfalls)
+      this.sounds.footfall({ foot, pace: climbing ? CLIMB_SPEED : this.pace, kind: climbing ? 'rung' : 'step' });
+    const breath = gait.breathPhase;
+    if (breath !== this.breathed) this.sounds.breath((this.breathed = breath));
+  }
+  private breathed = -1;
+
   /** Hop (Space, or the page's button). */
   jump(): void {
     if (!this.active || this.modal || this.down) return;
@@ -1200,6 +1217,7 @@ export class Walker {
     else if (!this.winding) {
       this.winding = WIND_UP;
       this.gait.land(0.25);
+      this.gait.landed = null; // (the knees dipping to jump: not a landing to be heard)
     }
   }
 
@@ -1321,6 +1339,7 @@ export class Walker {
           )
         : 0;
     if (this.stir) this.moved = true;
+    this.listen(rungs !== null);
     const facing = this.heading;
     // through its eyes the body faces where they look; seen from behind it turns to face the way it is sent
     if (body.on)

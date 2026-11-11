@@ -100,6 +100,15 @@ for (const file of files) {
           assert.ok(allNodes(glb).has(node), `walker.carries: no node ${node} in ${model.url}`);
       if (model.walker?.forward)
         assert.ok(Math.abs(Math.hypot(...model.walker.forward) - 1) < 1e-6, 'walker.forward must be a unit (x, z)');
+      // a place to be taken: boarded from a node that is there, with its own node or a stand-in for it, and what it hides there too
+      for (const seat of model.seats ?? []) {
+        for (const node of [seat.from, ...(seat.hide ?? [])]) assert.ok(allNodes(glb).has(node), `seats: no node ${node} in ${model.url}`);
+        assert.ok(
+          allNodes(glb).has(seat.node) || allNodes(glb).has(seat.standIn?.mesh),
+          `seats: neither ${seat.node} nor a stand-in in ${model.url}`,
+        );
+        assert.ok(seat.open[0] < seat.open[1], `seats: ${seat.node} is open for no time`);
+      }
       const groups = new Set(flight.specs.map((s) => s.group));
       for (const g of model.specGroups ?? []) assert.ok(groups.has(g), `specGroups: no specs in group ${g}`);
     });

@@ -356,3 +356,26 @@ test('a hand is put where it is sent, with the elbow bent the way it was', async
   assert.ok(elbow.y < 1.4 && elbow.y < target.y, 'the elbow hangs below the line to the hand');
   assert.equal(reach(new THREE.Group(), 'L', target), false, 'no arm, nothing done');
 });
+
+test('a foot is heard as it lands: the left at a quarter of the stride and the right at three quarters, and nothing in the air', () => {
+  const g = new Gait();
+  const heard = [];
+  for (let i = 0; i < 240; i++) {
+    g.advance((1.4 * 1) / 60, 1.4, false, 1 / 60);
+    for (const foot of g.footfalls) heard.push([foot, +g.phase.toFixed(2)]);
+  }
+  assert.ok(heard.length >= 4, `steps heard: ${heard.length}`);
+  for (let i = 1; i < heard.length; i++) assert.notEqual(heard[i][0], heard[i - 1][0], 'left, right, left, right');
+  for (const [foot, phase] of heard)
+    assert.ok(foot === 'L' ? phase >= 0.25 && phase < 0.4 : phase >= 0.75 && phase < 0.9, `${foot} at ${phase}`);
+  g.advance(0.1, 1.4, true, 1 / 60);
+  assert.equal(g.footfalls.length, 0, 'in the air, no footfall');
+  // turning on the spot steps round, and is heard
+  const t = new Gait();
+  let steps = 0;
+  for (let i = 0; i < 60; i++) {
+    t.advance(0, 0, false, 1 / 60, false, 0, Math.PI / 60);
+    steps += t.footfalls.length;
+  }
+  assert.ok(steps >= 2, `half a turn on the spot is a few steps: ${steps}`);
+});

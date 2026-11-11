@@ -405,12 +405,23 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   run. The walk bar's Motion setting (full, reduced, off; remembered; off by default under
   prefers-reduced-motion) scales all of it and never touches where the mouse points. A standing
   figure breathes in steps of a twelfth of a second, the rate a still view is redrawn at anyway.
+  Seen from outside, a figure that turns where it stands steps round (`advance`'s `turn`).
+  Through the eyes the helmet's visor rim can frame the view (Visor on the walk bar, remembered).
+- **The walk is heard as events.** The gait says which foot landed (phase 0.25 left, 0.75 right,
+  by distance gone), a landing's height and the breath's phase; the walker hands them to
+  `Walker.sounds` (`src/audio.ts`: an interface, silent until something that plays is given).
 - **Falls.** More than a hop off the ground the figure falls (`Moment.fall`: arms out, legs
   trailing). Landings go by height: under 1.5 m the knees give; from 1.5 m a deep crouch and a
   moment in which the legs take no orders; from 3 m (`LIMP_FALL`) the figure goes limp. Limp is
   `viewer/ragdoll.ts`: eighteen points held the bones' lengths apart by sticks (bones, braces
   and limits), falling under gravity, kept out of the solids (`Solids.out`) and losing their
-  speed to them; the bones are laid along the points each frame. It stands behind `Tumbler`
+  speed to them; the bones are laid along the points each frame. Joints bend one way only
+  (`BENDS`: a knee forward of the hip-to-ankle line, an elbow behind the shoulder-to-wrist line,
+  a thigh at most 25 degrees behind the trunk), corrected without adding speed and never by
+  moving an end the ground holds. A point that went through a surface in a tick is put back the
+  way it came (`Collide`'s `from`), so nothing ends under a floor. What it carried leaves the
+  hand as it hits and tumbles on its own, a rigid box with its hose (`carry.ts`: `Tossed`), and
+  is in the hand again when he is on his feet. It stands behind `Tumbler`
   so an engine can replace it. When it lies still the figure's place is moved under its hips
   without moving a bone, and `rising()` in gait.ts gets it up (hands and knees or sitting up,
   one knee, a crouch, standing: about three seconds). Nobody is hurt. Down, the walker's body
@@ -473,8 +484,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   `moves` of one node of a part, or of several the flight puts together in `Part.functions`,
   which also names it, paces it and gives it interlocks (`needs`, with the reason said when it
   refuses). The slider is the script; `Exploder.hold` plays one node at a reading of its own.
-  On foot the wheel offers Operate: hold W or S to run it, eased, E to let go; in orbit the
-  selected part has a slider for each function. A function set by hand holds while the script is
+  On foot the wheel offers Operate: hold W or S to run it, eased, E to let go (on a touch screen
+  two buttons named by the ends of its travel, and Done); in orbit the selected part has a
+  slider for each function. A function's `at` puts it at its controls and its `lever` (a node
+  the model marks `lever` with `swing` and `axis`) is held over while it runs. A function set by hand holds while the script is
   still and goes back to it when the script next moves the hardware (`Stage.scripted`).
 - **Vehicles are driven.** Anything built to the vehicle contract (`tools/blender/vehicles.py`:
   a node marked `vehicle` with `wheelbase`, `wheel_radius` and `turning_circle`, its origin under
@@ -489,7 +502,18 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   The figure sits (`Moment.sit`): its hips on the seat's hip point, its hands on the wheel and
   going round with it; the steering wheel turns sixteen times as far as the road wheels. The
   vehicle's pieces are found by their extras (`steer`, `seat`, `stand`, `steering`, `door`)
-  before their names. The vehicle is left out of the solids while it is driven.
+  before their names. The vehicle is left out of the solids while it is driven. A part the
+  flight drives off (a `drive` move on its own node, to the same contract) is marked a vehicle
+  from that move (`markDriven`); driven by hand it is let loose from the slider (`Exploder.loosen`)
+  until the script next moves it, its other levels of detail follow it, and its driving
+  function's interlocks hold it still. The figure sits as the seat is turned, its hands on the
+  rim at ten to two (`reach`), and a tall one sinks and leans back to clear the roof (`seatFit`,
+  measured straight up from the hip point); the eyes are taken off the posed head and kept under
+  the roof. The chase view sits behind the whole vehicle and over its roof, looking at it.
+- **Places can be taken.** `ModelDef.seats` (a couch) is boarded from the wheel at its `from`
+  node while the clock is in its `open` window (the clock is not moved for it); `stage.seated`
+  says where, E gets out where he got in. A model without the node can name a `standIn` mesh
+  for a placeholder until it has one.
 - **There is always a way up.** Stairs (risers of 0.3 m or less), a ladder, or one of the two
   actions that open the way, both played by `viewer/works.ts` at every level of detail and solid
   as posed: `toggle` (a door: `Move`s played forward and back; the wheel says Open or Close by

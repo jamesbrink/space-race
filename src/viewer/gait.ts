@@ -454,6 +454,20 @@ export class Gait {
   land(height: number): void {
     this.hard = landing(height);
     this.since = 0;
+    this.landed = height;
+  }
+
+  /**
+   * What the last `advance` brought down: each foot that landed in it (the left at phase 0.25, the
+   * right at 0.75, by distance gone, so a footfall is heard when it is seen), and a landing's
+   * height. For the sound (audio.ts); emptied by every advance.
+   */
+  readonly footfalls: ('L' | 'R')[] = [];
+  /** A landing from a jump or a fall in the last advance, metres; null if none. */
+  landed: number | null = null;
+  /** Where in the breath it is, 0 to 1: continuous, where the pose's breathing moves in steps. */
+  get breathPhase(): number {
+    return this.breathing ? (this.clock / BREATH) % 1 : 0;
   }
 
   /** The joints under `root`, found by name the first time it is asked for; null if it has none. */
@@ -536,6 +550,18 @@ export class Gait {
     else if (climbing) this.phase = (this.phase + distance / RUNGS) % 1;
     else if (!airborne) this.phase = (this.phase + distance / cycleLength(this.speed, this.leg)) % 1;
     if (this.speed === 0 && this.air === 0 && this.climb === 0 && this.fall === 0) this.phase = 0; // standing: the next step starts from the same foot
+    // a foot lands as the phase passes a quarter (the left) and three quarters (the right): on the ground, or on a rung
+    this.footfalls.length = 0;
+    if (!airborne && !falling && this.phase !== was[0]) {
+      const from = was[0]!;
+      const to = this.phase < from ? this.phase + 1 : this.phase;
+      for (const [at, foot] of [
+        [0.25, 'L'],
+        [0.75, 'R'],
+        [1.25, 'L'],
+      ] as const)
+        if (from < at && to >= at) this.footfalls.push(foot);
+    }
     const now = [
       this.phase,
       this.speed,

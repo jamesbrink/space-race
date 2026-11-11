@@ -2184,8 +2184,9 @@ export class Stage {
     if (!seat || this.wheel || this.boarded || !this.walk.active) return 'there is nowhere to sit';
     const now = this.clock?.t ?? 0;
     if (now < seat.open[0] || now > seat.open[1]) {
+      // (as the count would say it: T− hours and minutes)
       const span = (t: number) =>
-        `T${t < 0 ? '−' : '+'}${Math.floor(Math.abs(t) / 3600)}:${String(Math.floor((Math.abs(t) % 3600) / 60)).padStart(2, '0')}`;
+        `T${t < 0 ? '−' : '+'}${Math.floor(Math.abs(t) / 3600)} h ${String(Math.floor((Math.abs(t) % 3600) / 60)).padStart(2, '0')} min`;
       return `${seat.label} could be boarded from ${span(seat.open[0])} to ${span(seat.open[1])}`;
     }
     const level = this.staged[at]!.full;

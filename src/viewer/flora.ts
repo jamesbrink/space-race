@@ -619,7 +619,7 @@ function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth' 
             : depth
               ? 'if (plantCover < 0.5 || plantDither() >= vFade) discard;'
               : // drawn: the outline's soft edge is coverage (smooth leaf edges); the fade is a screen door of unordered holes
-                'if (plantCover < 0.02 || plantDither() >= vFade) discard;\n diffuseColor.a = plantCover;\n diffuseColor.rgb *= plantTint;'
+                'if (plantCover < 0.02 || plantDither() >= vFade) discard;\n diffuseColor.a = plantCover;\n diffuseColor.rgb *= plantTint;\n #ifdef PLANT_CEL\n diffuseColor.rgb *= 1.4; if (plantCover < 0.5) discard;\n #endif'
         }`,
       );
     if (!depth)
@@ -748,7 +748,7 @@ export class Flora {
     this.shared.time.value += dt;
   }
 
-  /** The cel look: the same plants, drawn (the toon twin of each material flattens their light: see plantMaterial); fewer grass tufts. */
+  /** The cel look: the same shrubs and palms, drawn (the toon twin of each material flattens their light: see plantMaterial); no grass tufts. */
   simplify(on: boolean): void {
     this.drawnLook = on;
     this.arrange(this.sorted.x, this.sorted.y, this.sorted.z);
@@ -865,7 +865,7 @@ export class Flora {
             const list = lists[plant.species]!;
             const v = plant.variant;
             if (sp.form.kind === 'tuft') {
-              if (this.drawnLook && d > sp.near * 0.6) continue; // in a drawing only the nearest grass is drawn blade by blade
+              if (this.drawnLook) continue; // in a drawing the grass is the ground's own flat tone: inked blade by blade it goes to black
               if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near)
                 put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, -sp.near * 0.7, -sp.near]);
               continue;

@@ -611,9 +611,21 @@ export class Land {
             float wander = noise(vec3(landAt * 0.08, 50.0)) - 0.5;
             float grassed = step(0.42, coverA.g + 0.35 * wander);
             float under = step(0.45, coverA.r + 0.3 * wander);
-            vec3 flat_ = mix(${vec3(p.sand)} * 1.08, mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, 0.45) * 1.05, grassed);
+            vec3 flat_ = mix(${vec3(p.sand)} * 1.12, mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, 0.4) * 1.45, grassed);
             flat_ = mix(flat_, ${vec3(p.litter)} * 1.3, under);
             flat_ *= 1.0 - 0.1 * step(0.62, noise(vec3(landAt * 0.03, 51.0)));
+            // near the eye, the marks a pen makes for ground: short strokes in tufts where it is grassed, a stipple on sand
+            vec2 tc = landAt * 3.0, ti = floor(tc), tf = tc - ti;
+            float th = hash(vec3(ti, 52.0));
+            vec2 to = vec2(hash(vec3(ti, 53.0)), hash(vec3(ti, 54.0))) * 0.6 + 0.2;
+            float ta = 1.2 + 0.7 * (th - 0.5);
+            vec2 td = vec2(cos(ta), sin(ta));
+            vec2 tq = tf - to;
+            float clumped = noise(vec3(landAt * 0.7, 55.0));
+            float stroke = (1.0 - smoothstep(0.02, 0.05, abs(tq.x * td.y - tq.y * td.x))) * step(abs(dot(tq, td)), 0.12) * step(1.0 - clumped * 0.9, th);
+            float dot_ = (1.0 - smoothstep(0.025, 0.05, length(tq))) * step(0.8, th);
+            float mark = mix(dot_, stroke, grassed) * (1.0 - under) * seen(0.06);
+            flat_ = mix(flat_, flat_ * 0.7, mark);
             if (roofed > 0.0) {
               float crownCel = mix(0.6, crowns(landAt), seen(${spec.crown.toFixed(2)}));
               vec3 roof = mix(${vec3(p.leaf)} * 1.25, ${vec3(p.leafLit)} * 1.1, step(0.5, crownCel));
