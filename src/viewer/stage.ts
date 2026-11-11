@@ -14,13 +14,13 @@ import { sliderAt, timeAt } from '../world/sequence.ts';
 import { Ascent } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { Carry } from './carry';
+import { CloudPass } from './clouds';
 import { Vehicle } from './drive';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { type CameraMode, Flyer } from './fly';
 import { jointKey, pose, reach, seatFit } from './gait';
 import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
-import { CloudPass } from './clouds';
 import { InkPass, type Look, Looks } from './look';
 import { Origin } from './origin';
 import { Plume } from './plume';
@@ -267,6 +267,12 @@ export class Stage {
   private lamps = new Lamps();
   /** The flight off the pad (ascent.ts), and what has been done to the model that flies: the clock's instant it was put at, the nodes it has shed, how far it moved this frame. */
   private ascent: Ascent | null = null;
+  /**
+   * What is drawn without depth and may stand in front of cloud: the engine's fire, its trail and
+   * every pane of glass. The clouds pass draws them again on their own so cloud behind them shows
+   * through by as much as they let through (clouds.ts `veils`).
+   */
+  private readonly veils: THREE.Object3D[] = [];
   /** The flown vehicle's engine fire, hung at its nozzle's exit (plume.ts). */
   private plume: Plume | null = null;
   /** The trail it leaves in the air while the engine burns (trail.ts), in the scene's frame. */
@@ -394,6 +400,7 @@ export class Stage {
     main.clearDepth = true;
     this.composer.addPass(main);
     this.clouds = new CloudPass(this.scene, this.camera);
+    this.clouds.veils = this.veils; // (read live: panes arrive as each level of detail does)
     this.composer.addPass(this.clouds.mark); // the scene's depth, for the clouds laid over after the ink
     this.ink.enabled = false; // straight after the scene, while the frame's depth is still the scene's
     this.composer.addPass(this.ink);
@@ -601,6 +608,7 @@ export class Stage {
     this.ascent = Ascent.of(flight);
     this.lifted.t = Number.NaN;
     this.debris.length = 0; // (their holders were under the last flight's root)
+    this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => o.parent)); // (the last flight's are gone with its models)
     this.hangPlume(flight);
     this.lamps = new Lamps();
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
@@ -746,6 +754,7 @@ export class Stage {
         mesh.material = shell ? this.shellOf(pane, url) : pane;
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
+        this.veils.push(mesh); // a cloud behind it is seen through it, tinted as everything else is (clouds.ts)
         return;
       }
       if (!seen.has(mat)) {
@@ -1007,6 +1016,8 @@ export class Stage {
 
   /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
   private hangPlume(flight: FlightData): void {
+    const gone = [this.plume?.mesh, this.trail?.mesh];
+    this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => !gone.includes(o as THREE.Mesh)));
     this.plume?.mesh.removeFromParent();
     this.plume = null;
     this.trail?.mesh.removeFromParent();
@@ -1023,7 +1034,7 @@ export class Stage {
     s.group.add(this.plume.mesh);
     this.trail = new Trail();
     this.scene.add(this.trail.mesh);
-    this.clouds.veils = [this.plume.mesh, this.trail.mesh]; // (cloud behind them shows through them: clouds.ts)
+    this.veils.push(this.plume.mesh, this.trail.mesh); // (cloud behind them shows through them: clouds.ts)
   }
 
   /**

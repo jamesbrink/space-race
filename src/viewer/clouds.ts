@@ -5,6 +5,9 @@ import { type Clouds, cloudMiddle, cloudNoiseGlsl, cloudRise, cloudUniform, haze
 import { fieldAs, hash2 } from './field';
 import { uOrigin } from './origin';
 
+/** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
+const VEIL_LAYER = 7;
+
 /**
  * The cumulus as a volume: air.ts's cloud field, heaped into clouds and marched through.
  *
@@ -818,18 +821,22 @@ export class CloudPass extends Pass {
     renderer.setClearColor(0x000000, 0);
     renderer.clear(true, true, false);
     renderer.autoClear = false;
-    for (const o of shown) {
-      // (writing depth here, so the nearest of it is kept where it overlaps itself)
-      const materials: THREE.Material[] = [];
+    // All of them in one draw of the scene, seen on their own layer: a draw call each, not a render each (a frame
+    // has dozens of panes of glass). Writing depth here, so the nearest of them is kept where they overlap.
+    const materials = new Set<THREE.Material>();
+    for (const o of shown)
       o.traverse((m) => {
+        m.layers.enable(VEIL_LAYER);
         const material = (m as THREE.Mesh).material;
-        if (material) materials.push(...(Array.isArray(material) ? material : [material]));
+        if (material) for (const each of Array.isArray(material) ? material : [material]) materials.add(each);
       });
-      const wrote = materials.map((m) => m.depthWrite);
-      for (const m of materials) m.depthWrite = true;
-      renderer.render(o, this.camera);
-      materials.forEach((m, i) => (m.depthWrite = wrote[i]!));
-    }
+    const wrote = [...materials].map((m) => m.depthWrite);
+    for (const m of materials) m.depthWrite = true;
+    const mask = this.camera.layers.mask;
+    this.camera.layers.set(VEIL_LAYER);
+    renderer.render(this.scene, this.camera);
+    this.camera.layers.mask = mask;
+    [...materials].forEach((m, i) => (m.depthWrite = wrote[i]!));
     renderer.autoClear = autoClear;
     renderer.setClearColor(clear, alpha);
     return true;
