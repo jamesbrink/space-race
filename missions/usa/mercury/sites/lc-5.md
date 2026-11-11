@@ -135,9 +135,11 @@ Notes:
 
 ## The rest of the complex
 
-A second model, `surroundings.glb`, built by a flight's `model/surroundings.py` from
-`lc_5.build_surroundings()`: scenery in the pad's frame, which the viewer draws round the pad and
-does not let you pick. Nothing in it moves.
+The place's own model, not any flight's: `lc5/model/1961-05.py` builds
+`public/models/usa/mercury/sites/lc5/1961-05.glb` (`pnpm model:lc-5`) from `lc_5.build_place(date)`,
+and a flight names it as its `surroundings`. It is scenery in the pad's frame, which the viewer
+draws round the pad and does not let you pick. A later state of the place is another script beside
+that one, named for its date: see "What stood when".
 
 What it rests on. Published: the NHL nomination's description of the blockhouse and ready rooms;
 the museum's figures for Complex 26's blockhouse, which the nomination calls identical; the
@@ -161,7 +163,7 @@ gantry's place, the trailers) is July's, not May's.
 | `Yard` | grounds.py | two cable racks and the scaffold stair tower north of pad 5 |
 | `Poles` | grounds.py | the pole line along the road behind the blockhouse; a floodlight pole by the hut |
 | `Outbuildings` | outbuildings.py | the hut behind the blockhouse and its fenced transformers, the hut by the road, the generator building and its fuel tank, the shed by the track |
-| `Vehicles` | vehicles.py | eleven parked vehicles, `Car_01` to `Car_11`, each its own node with four wheel nodes on their hubs: eight cars, a station wagon, a carryall, a pickup with a utility body (see [The vehicles](#the-vehicles)) |
+| `Vehicles` | vehicles.py | eleven parked vehicles, `Car_01` to `Car_11`, each its own node built to be driven: wheels, steering knuckles, hinged doors, bonnet and boot, a steering wheel, places to sit (see [The vehicles](#the-vehicles)): eight cars, a station wagon, a carryall, a pickup with a utility body |
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
@@ -215,120 +217,59 @@ estimated, as are tracks, tyres and everything about the shape. In inches.
 In the photograph and not built: a small rounded import and a dark canvas-topped truck on the
 drive, a second long finned sedan there, and a fourth car at the ready rooms.
 
-Each vehicle is a node at the middle of its wheelbase, on the ground, turned to its heading;
-its wheels are `<node>_SteerWheel_1`, `_2` (front) and `<node>_Wheel_1`, `_2` (rear), origins on
-the hubs, axles along the node's Y. They are parked so that a walker can pass: 0.8 m and more
-between cars, 0.85 m between their noses and the ready rooms' wall, and nothing in front of its
-door.
+**Built to be driven and got into.** Every vehicle follows one contract, set out at the head of
+`tools/blender/vehicles.py`: a node with its origin on the ground under the middle of its rear
+axle, facing its own +X, and under it (each name prefixed with the vehicle's, `Car_05_Door_1`):
+
+| Node | Origin | Moves by |
+| --- | --- | --- |
+| `_Wheel_1`, `_2` | the rear hubs, left and right | rolling about its axle (the viewer's local Z) |
+| `_Knuckle_1`, `_2` | the front kingpins | turning about the vertical, to steer |
+| `_SteerWheel_1`, `_2` (under the knuckles) | the front hubs | rolling |
+| `_Door_1` to `_4` | the foot of each door's hinge line, at its front edge; 1 and 2 are the front doors, left and right | `door`, `swing` ∓70° about the vertical (`axis` "y") |
+| `_Bonnet`, `_Boot` | the hinge line: the bonnet's at the scuttle, the boot lid's under the back light | `hatch`, `swing` +50° and −55° about the node's Z in the viewer |
+| `_SteeringWheel` | its middle, on the column | turning about the column (the node's Y in the viewer) |
+| `_Seat_Driver`, `_Seat_Passenger_n` | the hips of someone sitting; a figure's axes, facing forward | `seat` |
+| `_Stand_Driver` | the ground outside the driver's door, facing it | `stand` |
+
+The vehicle's node carries `vehicle`, `wheelbase`, `track`, `wheel_radius`, `mass` and
+`turning_circle` as extras, in metres and kilograms. A door takes its skin, pane, lining, handle
+and (the driver's) mirror with it; behind a lid there is nothing (no engine, no boot floor). The
+wagon's and the carryall's tailgates, and the pickup's utility-body doors, are not separate. The
+inside is a floor, benches, a dashboard with a hooded pair of dials, three pedals, a steering
+wheel on its column, a mirror and a headliner: enough to look out from the driver's seat past the
+right pillars, not a likeness of any one car's cabin.
+
+They are parked so that a walker can pass: 0.8 m and more between cars, 0.85 m between their
+noses and the ready rooms' wall, and nothing in front of its door.
+
+| Type | Track* | Mass, empty* | Turning circle* |
+| --- | --- | --- | --- |
+| 1957 Ford Custom 300 (wagon) | 58 in | 3,350 lb (3,600) | 41 ft |
+| Volkswagen Type 1 | 51 in | 1,610 lb | 36 ft |
+| Rambler American | 55 in | 2,450 lb | 36 ft |
+| 1959 Chevrolet Biscayne | 60 in | 3,600 lb | 42 ft |
+| 1960 Chevrolet Corvair 700 | 54 in | 2,350 lb | 39.5 ft |
+| 1956 Ford Fairlane | 58 in | 3,250 lb | 41 ft |
+| 1960 Chevrolet Suburban | 61 in | 3,900 lb | 44 ft |
+| 1957-60 Ford F-100 (with the utility body) | 60.5 in | 3,200 lb (3,700) | 41 ft |
+
+\* **Estimated**: typical figures for the type set down from memory and checked against no
+source. The simulator must not depend on them until they are.
 
 | Level of detail | A vehicle | All eleven | Left out |
 | --- | --- | --- | --- |
-| 1.0 | 7,400 to 9,200 triangles | 94,900 | nothing |
-| 0.6 | 3,700 to 4,700 | 47,900 | the interior (panes become dark), shut lines, handles, plates, wipers, over-riders |
-| 0.3 | 1,240 to 1,470 | 14,300 | also the bright trim, whitewalls and lamp rims; wheels have eight sides |
+| 1.0 | 8,000 to 10,100 triangles | 105,100 | nothing |
+| 0.6 | 4,000 to 5,100 | 51,700 | the interior (panes become dark), shut lines, handles, plates, wipers, over-riders |
+| 0.3 | 1,420 to 1,610 | 16,300 | also the bright trim, whitewalls and lamp rims; wheels have eight sides |
 
-## Getting about on foot
+Every node is there at every level, with the same name.
 
-The viewer's walker is 0.26 m in radius and 1.89 m tall, steps up 0.3 m, climbs any mesh marked
-`climb`, opens any node marked `door` and rides any node marked `lift` (the three marks are set by
-`tools/blender/sitelib.py`, which documents them; they travel as glTF extras). So everything a
-person could go up has a continuous way from the ground to its top. Where the record shows how
-people went up, that is what is built; where it does not, the usual arrangement for that kind of
-structure is built and labelled estimated.
-
-| Structure | Way up, from the ground | Basis |
-| --- | --- | --- |
-| Service structure: the lift | **an open cage of mesh panels**, boarded from the pad by two steps on the hatch side, outboard of the base. It rides the outboard face of that side's leg (`ServiceStructure_Lift`, origin at its floor's middle, built at the pad). Stops: the pad, levels 1 to 4, and the landing under the crane, at 0, 13.19, 15.84, 18.98, 22.55 and 33.44 m above the pad stop, each 0.2 to 0.7 m further in than the last as the leg leans | **documented**: that there were lifts ("elevators on each side", Noble's plans; "Elevators traveled up and down the mast, with stops at various work-levels, to a 15-ton hammerhead crane", Corps of Engineers history, both in *A Noble Endeavor*); that Shepard used one (NASA caption 71P-0270: "makes his way from the elevator to the cleanroom"; *Results* p. 77: "0515 ascend gantry"); the car, its mesh, its canopy and that it was boarded from the pad (FHSU F19_051, MR-4's egress exercise; NASA 61-MR4-45). **Estimated**: that it rode the leg's face (no photograph shows its guides), its size (4 by 2.9 by 7.2 ft), where it stopped, which side Shepard rode |
-| …from the lift into each level | level 1: straight on to the open deck. Levels 2, 3 (the white room) and 4: a door in the level's back wall where the car stops (`…Platform2_Right_LiftDoor`, `…Platform3_Right_LiftDoor`, `…Platform4_Right_LiftDoor`), opening inward | GPN-2000-001012 shows Shepard stepping through a narrow doorway into the white room: documented that there was one; its place estimated |
-| …between the two halves of a level | a deck between the legs behind the vehicle, at every level | at level 1: documented (a catwalk with chain rails joins the halves; the 21 April egress-test photograph, 61-MR4-65). At the other levels: estimated |
-| …to the base's deck | stairs from the pad at the outboard end of the base on the hatch side, descending away from the vehicle: 17 risers of 7.1 in, going 11 in, 3 ft between the rails | documented (61-MR4-45; FHSU F19_004) |
-| …up without the lift | **ladders up the hatch side's leg in stages**, each run from one small railed landing behind the leg to the next: base deck to level 1 (36 ft), then to levels 2, 3, 4 and the landing under the crane at 112 ft | ladders in stages on the legs' outboard and rear faces with small landings: documented (F19_004, 61-MR4-45: an uncaged ladder from the deck to the lowest platform). Which face, the landings' sizes and that they stand at the levels: estimated. The real top run had safety hoops; none is built |
-| …to the crane's walkway | from the landing under the crane, a ladder beside the crane's girder, 20 ft | a hooped ladder up the head of the mast: documented (the egress-test photograph; F16_015). Its place: estimated |
-| …into level 2's cabins | a door in each cabin's inner wall (`…Platform2_Left_Door`, `…_Right_Door`) | estimated |
-| …into the office | its door (`ServiceStructure_OfficeDoor`), from the deck between the legs | estimated: see "What the model gets wrong" for where the office really was |
-| Camera towers | a ladder up the face toward the launcher, ground to the top deck | estimated |
-| Cherry picker | none: its cab was reached from the ground with the jib lowered, or from the capsule's hatch | its use: documented (TM X-53107 7.3.3) |
-| Trailer NASA SP-No 1, the pad's two huts | four steps and a door; a step and a door | estimated |
-| Blockhouse | the ramp to the blast doors in the back wall (`Blockhouse_BlastDoor1`, `_BlastDoor2`); the plate door on the pad 6 side (`Blockhouse_SideDoor`) with a step | doors: documented in kind (double blast doors); their places: the 2005 photograph and F16_016 |
-| …its roof | the ladder on the pad 5 side's wall, 16 ft, on to the roof's edge | estimated: F16_016 shows no ladder on the two faces it sees (the pad 6 side and the back), so it was on a face it does not; Complex 26's twin has an outside ladder today |
-| Ready rooms | a door to the drive and one under the breezeway (`ReadyRoom_Door1`, `_Door2`), a 10 in step up from the shell | estimated |
-| Pad 6's gantry | stairs from the pad on to the east truck (12 risers); a ladder up the east leg's south face to a landing level with the deck under the enclosure (39 ft up); a second ladder from that landing to the walkway across the top (98.6 ft) | hooped ladders on the outboard face of each leg with small landings, and a light stair to the deck: documented (*A Noble Endeavor* p. 10, 1959). Which face and where the landing is: estimated. It also had "elevators" (the same page): not built. The work enclosure is a closed box with nothing inside: it cannot be entered |
-| Scaffold stair tower | six flights of 10 risers, a boarded landing at each turn | F19_008 |
-| Outbuildings | each has its doors as nodes (`Outbuildings_<Hut1/Hut2/Gen/Shed>Door<n>`) and a floor inside, 6 in above the ground | estimated |
-
-Ladders (each its own object `<node>_Ladder<Name>`, marked `climb`, at all three levels of detail):
-
-| Object | From | To |
-| --- | --- | --- |
-| `ServiceStructure_LadderLeg1` | the base's deck (9.3 ft) | level 1's landing (45.1 ft) |
-| `ServiceStructure_LadderLeg2`, `Leg3`, `Leg4` | each level's landing | levels 2 (53.8), 3 (64.6), 4 (75.8 ft) |
-| `ServiceStructure_LadderLeg5` | level 4's landing | the landing under the crane (112 ft) |
-| `ServiceStructure_LadderCrane` | the landing under the crane | the crane's walkway (132.1 ft) |
-| `CameraTowers_LadderTower1`, `_LadderTower2` | the pad | the towers' top decks (62 and 50 ft) |
-| `Blockhouse_LadderRoof` | the shell paving | the roof's edge (15.6 ft) |
-| `Pad6Gantry_LadderLower` | the east truck's top (7 ft) | the landing (39 ft) |
-| `Pad6Gantry_LadderUpper` | the landing | the walkway across the top (98.6 ft) |
-
-Every ladder's stringers stand a metre proud of the floor it reaches. Doors are built shut, each
-leaf its own node with its origin on its hinge line and `swing` (degrees about the vertical,
-anticlockwise from above) saying how it opens. The lift's `stops` are (across, up) in metres from
-where it is built. The pad's doors and its lift are declared as `actions` on its parts in
-`flight.ts`; the scenery's doors are marked in the model and not yet declared anywhere.
-
-Stairs, measured (riser; going; from what to what):
-
-| Flight | Risers | Going | Foot | Head |
-| --- | --- | --- | --- | --- |
-| Pad to the structure's base deck | 17 of 0.180 m | 0.28 m, treads lapping 6 cm | 0.23 m under the pad's surface: on the slab the first tread showing is 0.13 m up; rolled back at T−55 and at launch (+110 ft, +173 ft) the foot is over the track, and the first riser from the ballast is 0.18 m, from a sleeper 0.09 m | the deck's edge |
-| Steps to the lift | 0.23, 0.23 and 0.23 m to the car's floor at 0.70 m | 0.30 m | the slab; off the slab two more steps go down to the ballast (0.21 m) and the ground beyond it (0.22 m) | the car |
-| Trailer SP-No 1 | 0.21, 0.22, 0.22, 0.22 m, then 0.23 m to the floor | 0.27 m | the slab | the door |
-| Pad 6's gantry, pad to truck | 12 of 0.178 m | 0.32 m | pad 6's slab | the truck's top |
-| Scaffold stair, each of six flights | 10 of 0.198 m | 0.24 m | the ground, then each landing | the next landing |
-
-The structure's stairs, steps and ladders roll with it. Between its three positions the stair's foot
-and the lift's steps hang over whatever is under them; at each of the three they meet the slab or
-the track bed as the table says.
-
-
-
-## Beyond the complex
-
-The other launch complexes, the lighthouse and the shore are drawn by the viewer
-(`src/viewer/cape1961.ts`), not modelled in Blender. **Each is at its published place**: the
-coordinates of its pad (OpenStreetMap's outline of the pad or its ruin, agreeing with Wikipedia's
-to a few metres), turned into metres east and north of pad 5 (28.439426° N, 80.573292° W). That
-much is documented. **Its shape is a stand-in for its type**, drawn so that the kinds can be told
-apart on the horizon and no more: estimated, except the few sizes given below.
-
-| Complex | From pad 5 | On 5 May 1961 | Drawn as | Sizes that are documented |
-| --- | --- | --- | --- | --- |
-| 26 A and B | 640 m and 481 m on 025° | Jupiter and Juno II; one gantry for both pads, twin of pad 5's | the A-frame gantry on pad B (Juno II flew from it on 27 April and 24 May; where the gantry stood on 5 May is not recorded); pad A bare | 111 ft 9 in to its top rail |
-| 30 A and B | 608 m on 273°, 686 m on 261° | Pershing: "two launch pads with service towers" | a small lattice tower on each | none: 13 m estimated |
-| 25 A and B, 29 A | 835 m, 942 m and 1,128 m on 198° to 200° | Polaris: an "access stand" at each | an open stand of three decks | none: 14 m estimated |
-| 17 A and B | 1,169 m on 042°, 1,019 m on 045° | Thor-Delta and Thor-Ablestar | a tall rolling gantry beside a launch stand and its mast | none: 35 m estimated |
-| 18 A and B | 1,663 m on 041°, 1,551 m on 047° | Blue Scout | the pad's concrete only: what stood on them is not established | |
-| 9 | 1,969 m on 044° | Navaho; inactive since 1958 | its concrete launch pedestal; the erector is not drawn (whether it still stood is not established) | pedestal 66 ft 8 in by 30 ft |
-| 31 A and 32 A | 2,166 m on 050°, 2,349 m on 047° | Minuteman flat pads | a roll-back service tower and an umbilical tower | 65 ft and 35 ft |
-| 21 | 3,995 m on 054° | Mace: a hardened launch building, finished February 1960 | a low concrete building with two cells | none |
-| 11, 13, 14 | 5,176 m on 040°, 5,883 m on 029°, 6,300 m on 024° | Atlas | ramp, launch stand, umbilical mast, and the service tower drawn back from the stand | Complex 14's, used for all three: ramp 92 ft rising 22 ft, stand 60 by 78 ft, mast 84 ft 6 in, tower 154 ft 8 in |
-| 12 | 5,521 m on 034° | Atlas; being rebuilt for Atlas-Agena | the same without a tower: its tower burned in September 1959 and what stood in May 1961 is not established | as above |
-| 15, 16, 19, 20 | 6,741 m on 020°, 7,234 m on 017°, 7,711 m on 014°, 8,250 m on 011° | Titan I (15 and 16 being converted for Titan II) | launch stand, umbilical tower, and the erector lying down | none: 33 m and 30 m estimated |
-| 34 | 9,240 m on 007° | Saturn; under construction, dedicated 5 June 1961 | the service structure at its parking place 185 m west of the pad, the launch pedestal, the umbilical tower's first 27 ft | all of those: 310 ft on a 70 by 130 ft base; 42 ft square and 27 ft high; 27 ft |
-| Cape Canaveral Light | 3,732 m on 051° | lit since 1894 on this site; automated 1960 | a tapering tower in six bands, black at the foot, black lantern; the brick oil house | 151 ft; three black and three white bands |
-
-Left out, because nothing above the ground can be shown for that day: Complexes 1 to 4 (flat pads
-by then, inactive), 10 (demolished in 1959), 22 (a revetted soft pad), the Minuteman silos 31 B
-and 32 B, 36 (finished in 1961; whether its tower stood by May is not established), and 37, 43 and
-25 C and D (not begun). Which way each pad is turned is not published: Complex 26 lies on pad 5's
-rail line and the rest are set square to their stretch of shore.
-
-The shore is today's, from OpenStreetMap, thinned to 23 points for the Atlantic and 7 for the
-Banana River: not 1961's exactly (the Cape's point has moved and the port has grown). Port
-Canaveral's basins are not drawn. The keepers' houses at the lighthouse probably still stood
-(they were demolished later in the 1960s) and are not drawn.
-
-These landmarks take less of the viewer's haze than the land does (`HAZE` in `cape1961.ts`), so
-that the Atlas pads and Complex 34 can be made out from pad 5 as they could on a clear morning.
+**The cherry picker's truck against this contract** (`lc5/cherry_picker.py`): it has the origin
+under the rear axle and its wheels as nodes on their hubs, the front pair steering and rolling
+as one node each, and a bench and a steering wheel in its cab. It lacks the kingpin nodes,
+hinged cab doors and bonnet, the steering wheel as a node of its own, seat and standing points,
+pedals and instruments, and any mass or turning figure.
 
 ## Sources
 
@@ -406,8 +347,17 @@ The rest of the complex:
 - Both window faces are built alike, from one photograph of each taken fifty years apart. Whether
   the shutters were open during a launch is not known; they are open.
 - The blast doors are built shut, as for a launch; the walker opens them.
-- Everything inside the blockhouse and the ready rooms is invented furniture in plausible places:
-  no drawing or interior photograph of 1961 has been read.
+- **Everything inside the blockhouse is of the period's kind, not this room's.** No drawing or
+  interior photograph of this firing room in 1961 has been read. Each firing room has three
+  sit-down consoles facing its windows, five racks along the wall between the rooms, a clock and a
+  count board over the windows, cable trays and fluorescent fittings; the equipment room has rows
+  of relay racks. The consoles' faces (meters, switches, lamps, a television monitor) and every
+  legend on them (PROPULSION, PNEUMATICS, LOX LOADING, FIRING, SEQUENCE, POWER, GUIDANCE, CAPSULE,
+  MEASURING, TELEMETRY, RANGE SAFETY, TIMING, INTERCOM, and the count board's "T - 00 : 55 : 00")
+  are invented from the systems TM X-53107 names, on hardware built by `tools/blender/interiors.py`
+  for any site. The floor's tile joints are a 2 ft grid, estimated. The viewer lights each room
+  from an empty the model carries: `Light_FiringRoom5`, `Light_FiringRoom6`, `Light_EquipmentRoom`
+  (properties `intensity`, and `reach` in metres). The ready rooms' furniture is still plain.
 - The shell paving goes all round the blockhouse. The 1961 photograph shows lawn in front of the
   pad 6 face, with only the walk and the trench crossing it.
 - Pad 6's gantry is a sketch of its type: the truss pattern, the trucks and the enclosure's

@@ -1102,5 +1102,5 @@ export const flight: Flight = {
     },
   ],
   models: [vehicle, pad, crew],
-  surroundings: 'models/usa/mercury/mr-3-freedom-7/surroundings.glb',
+  surroundings: 'models/usa/mercury/sites/lc5/1961-05.glb',
 };

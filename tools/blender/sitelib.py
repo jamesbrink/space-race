@@ -37,6 +37,7 @@ import srlib
 from srlib import MeshBuilder, group
 
 UNIT = 1.0  # metres in one of the site's units; set by use()
+TAU_ = math.tau
 
 
 def use(unit: float) -> None:
@@ -54,6 +55,49 @@ def units(unit: float):
         yield
     finally:
         UNIT = before
+
+
+# ------------------------------------------------------------------- what stood when
+
+# A place is built once and dated. A site's builders say of each thing when it stood there; a
+# state script (sites/<site>/model/<date>.py) or a flight's pad script names its date, and what
+# did not stand then is left out. Dates are ISO text, as exact as is known: "1955", "1961-02",
+# "1961-05-05". None is open-ended: not known to have begun, or to have ended.
+AS_OF: str | None = None
+STANDING: list[tuple] = []
+
+
+def as_of(date: str | None) -> None:
+    """Name the date the place is being built for. None builds everything."""
+    global AS_OF
+    AS_OF = date
+    STANDING.clear()
+
+
+def stood(thing: str, *, since: str | None = None, until: str | None = None, confidence: str, source: str) -> bool:
+    """Whether `thing` stood on the date being built, and a record that it was asked: when it
+    stood (`since`, `until`), how sure that is ("documented", "derived" or "estimated", as for any
+    number in this repo) and what says so. Use it round whatever was not always there:
+
+        if stood("White room", since="1961-02", confidence="documented", source="TM X-53107 7.5.1.2"):
+            ...
+
+    A date given to the month or the year covers all of it: something there "until 1961-06" is
+    there on 1961-06-27 and gone on 1961-07-01."""
+    if confidence not in ("documented", "derived", "estimated"):
+        raise ValueError(f"stood: {thing}: confidence is {confidence!r}")
+    there = AS_OF is None or ((since is None or since <= AS_OF) and (until is None or AS_OF[: len(until)] <= until))
+    STANDING.append((thing, since, until, confidence, source, there))
+    return there
+
+
+def standing() -> str:
+    """What was asked of stood() in this build, as lines for the build's report."""
+    rows = [
+        f"  {'built' if there else 'left out':8}  {thing}: {since or '?'} to {until or '?'} ({confidence}; {source})"
+        for thing, since, until, confidence, source, there in STANDING
+    ]
+    return "\n".join([f"as of {AS_OF or 'any date'}:", *rows])
 
 
 def foot() -> float:
@@ -190,6 +234,16 @@ def axes(origin, x_axis, z_axis) -> Matrix:
     x, z = Vector(x_axis).normalized(), Vector(z_axis).normalized()
     m = Matrix((x, z.cross(x), z)).transposed().to_4x4()
     m.translation = Vector(origin) * UNIT
+    return m
+
+
+def axes_local(origin, x_axis, y_axis, unit: float | None = None) -> Matrix:
+    """A frame inside another: at `origin` (site units) with its X and Y along the given
+    directions and Z their cross product. For composing after a piece's own frame: a panel's face
+    on a console, a dial on a panel."""
+    x, y = Vector(x_axis).normalized(), Vector(y_axis).normalized()
+    m = Matrix((x, y, x.cross(y))).transposed().to_4x4()
+    m.translation = Vector(origin) * (UNIT if unit is None else unit)
     return m
 
 
@@ -524,20 +578,79 @@ def timber_pole(
 
 
 def door(
-    parts: Parts, name: str, parent: str, hinge, along, width: float, height: float, *, swing: float, thick: float | None = None, mat: str = "blast"
+    parts: Parts,
+    name: str,
+    parent: str,
+    hinge,
+    along,
+    width: float,
+    height: float,
+    *,
+    swing: float,
+    thick: float | None = None,
+    mat: str = "blast",
+    fittings: str = "knob",
+    sign: str | None = None,
 ) -> None:
-    """A door leaf as its own node, built closed. `hinge` is the foot of the hinge line (site
-    units), `along` the horizontal direction the closed leaf runs from it. The node's origin is
-    on the hinge, so the viewer opens it by turning the node `swing` degrees about the vertical
-    (anticlockwise seen from above is positive); both are recorded on the node (`door`, `swing`)."""
+    """A door leaf as its own node, built closed, with what a door carries: three hinges, a
+    kickplate, and a knob (`fittings="knob"`), a lever handle and dogs for a plate door
+    (`"lever"`), or nothing (`"none"`); `sign` is lettered on a plate at eye height on the face
+    it opens toward. `hinge` is the foot of the hinge line (site units), `along` the horizontal
+    direction the closed leaf runs from it. The node's origin is on the hinge, so the viewer opens
+    it by turning the node `swing` degrees about the vertical (anticlockwise seen from above is
+    positive); both are recorded on the node (`door`, `swing`). The fittings are the leaf's own
+    meshes and turn with it; they are built at full detail only.
+    Materials: `mat`, and `chrome`, `galv`, `sign`, `black`."""
     f = foot()
     thick = 0.14 * f if thick is None else thick
     h = Vector(hinge)
     u = Vector((along[0], along[1], 0.0)).normalized()
+    n = Vector((-u.y, u.x, 0.0)) * (1.0 if swing > 0 else -1.0)  # the side it opens toward
     parts.node(name, parent, tuple(h), door=1, swing=float(swing))
     gap = 0.03 * f
     c = h + u * (width / 2) + Vector((0, 0, height / 2 + gap))
     obox(parts(name, mat), tuple(c), tuple(u), (0, 0, 1), (width - 2 * gap, thick, height - 2 * gap))
+    if srlib.DETAIL < 1.0 or fittings == "none":
+        return
+    bright, plate_ = parts(name, "chrome", True), parts(name, "galv/kick")
+    up = Vector((0, 0, 1))
+    for z in (0.7 * f, height / 2, height - 0.7 * f):  # hinges: a knuckle on the side it opens toward
+        k = h + n * (thick / 2 + 0.03 * f) + u * (0.04 * f) + up * z
+        bright.tube((k - up * (0.18 * f)) * UNIT, (k + up * (0.18 * f)) * UNIT, 0.035 * f * UNIT, 8)
+    obox(plate_, tuple(h + u * (width / 2) + up * (0.5 * f + gap)), tuple(u), (0, 0, 1), (width - 0.3 * f, thick + 0.02 * f, 0.8 * f))
+    grip = h + u * (width - 0.28 * f) + up * (3.0 * f)
+    for side in (-1, 1):
+        o = grip + n * (side * thick / 2)
+        d = n * side
+        if fittings == "lever":  # a bar handle standing off a plate door, and a dog above and below it
+            bright.tube((o + up * (0.5 * f) + d * (0.22 * f)) * UNIT, (o - up * (0.5 * f) + d * (0.22 * f)) * UNIT, 0.04 * f * UNIT, 8)
+            for dz in (-0.45, 0.45):
+                bright.tube((o + up * (dz * f)) * UNIT, (o + up * (dz * f) + d * (0.22 * f)) * UNIT, 0.03 * f * UNIT, 6)
+            for dz in (-2.0, 2.6):
+                obox(plate_, tuple(o + up * (dz * f) + d * (0.04 * f) - u * (0.15 * f)), tuple(u), (0, 0, 1), (0.7 * f, 0.08 * f, 0.18 * f))
+        else:
+            bright.tube((o + d * (0.006 * f)) * UNIT, (o + d * (0.16 * f)) * UNIT, 0.035 * f * UNIT, 8, caps=False)
+            bright.lathe(
+                profile([(0.0, 0.0), (0.09 * f, 0.02 * f), (0.11 * f, 0.08 * f), (0.07 * f, 0.14 * f), (0.0, 0.15 * f)]),
+                10,
+                matrix=axes(tuple(o + d * (0.14 * f)), tuple(u), tuple(d)),
+            )
+            bright.lathe(
+                profile([(0.0, 0.0), (0.13 * f, 0.0), (0.13 * f, 0.015 * f), (0.0, 0.015 * f)]), 10, matrix=axes(tuple(o), tuple(u), tuple(d))
+            )
+    if sign:
+        o = h + u * (width / 2) + up * (5.2 * f) + n * (thick / 2)
+        right = up.cross(n)  # reads left to right seen from the side it opens toward
+        obox(
+            parts(name, "sign/plate"),
+            tuple(o + n * (0.012 * f)),
+            tuple(right),
+            (0, 0, 1),
+            (min(width - 0.6 * f, 0.16 * f * len(sign) + 0.3 * f), 0.024 * f, 0.36 * f),
+        )
+        lettering(
+            parts(name, "black/lettering"), sign, 0.2 * f, tuple(o + n * (0.031 * f) - up * (0.07 * f)), tuple(right), (0, 0, 1), srlib.load_font()
+        )
 
 
 def wall_door(
@@ -553,16 +666,28 @@ def wall_door(
     hinge: str = "s0",
     opens: str = "out",
     depth: float | None = None,
+    frame: bool = True,
     **kw,
 ) -> None:
-    """A door leaf filling an opening of a wall (built round it by Wall.build): hinged at the
-    opening's `s0` or `s1` edge, opening outward or inward, set `depth` into the wall."""
+    """A door filling an opening of a wall (built round it by Wall.build): the leaf (door(), with
+    its fittings) hinged at the opening's `s0` or `s1` edge, opening outward or inward, set
+    `depth` into the wall, and a steel frame round the opening on both faces of the wall, which
+    is the parent's (material `frame`)."""
+    f = foot()
     d = w.thick / 2 if depth is None else depth
     at_s0 = hinge == "s0"
     h = w.p(s0 if at_s0 else s1, d, sill)
     along = (w.u.x, w.u.y) if at_s0 else (-w.u.x, -w.u.y)
-    sign = (-1.0 if opens == "out" else 1.0) * (1.0 if at_s0 else -1.0)
-    door(parts, name, parent, h, along, s1 - s0, head - sill, swing=sign * 100.0, **kw)
+    turn = (-1.0 if opens == "out" else 1.0) * (1.0 if at_s0 else -1.0)
+    door(parts, name, parent, h, along, s1 - s0, head - sill, swing=turn * 100.0, **kw)
+    if frame:
+        steel = parts(parent, "frame/doors")
+        b, proud = 0.22 * f, 0.04 * f
+        for d0, d1 in ((-proud, 0.06 * f), (w.thick - 0.06 * f, w.thick + proud)):
+            lap = 0.02 * f  # over the opening's edge, so no face of the frame lies in a face of the wall
+            w.box(steel, s0 - b, s0 + lap, d0, d1, sill, head + b)
+            w.box(steel, s1 - lap, s1 + b, d0, d1, sill, head + b)
+            w.box(steel, s0 + lap, s1 - lap, d0, d1, head - lap, head + b)
 
 
 def solid(mb: MeshBuilder, loops) -> None:
@@ -584,6 +709,83 @@ def solid(mb: MeshBuilder, loops) -> None:
     if vol < 0:
         faces = [f_[::-1] for f_ in faces]
     mb.add([tuple(v) for v in verts], faces)
+
+
+def box_girder(
+    mb: MeshBuilder,
+    x0: float,
+    x1: float,
+    y0: float,
+    y1: float,
+    z0: float,
+    z1: float,
+    *,
+    flange: float | None = None,
+    inset: float | None = None,
+    pitch: float | None = None,
+    splices=(),
+) -> None:
+    """A built-up steel box girder running along Y: two flange plates oversailing a box of web
+    plates, vertical stiffeners on both webs every `pitch`, and at each y in `splices` a bolted
+    splice plate on both webs. For a gantry's base, a crane's rail beam, a bridge. Stiffeners are
+    left out below detail 0.5 and bolts below 1."""
+    f = foot()
+    flange, inset, pitch = (0.25 * f if flange is None else flange), (0.3 * f if inset is None else inset), (4.0 * f if pitch is None else pitch)
+    box(mb, (x0, y0, z1 - flange), (x1, y1, z1))
+    box(mb, (x0, y0, z0), (x1, y1, z0 + flange))
+    box(mb, (x0 + inset, y0 + 0.02 * f, z0 + flange - 0.02 * f), (x1 - inset, y1 - 0.02 * f, z1 - flange + 0.02 * f))
+    if not fine():
+        return
+    n = max(1, round((y1 - y0) / pitch))
+    t = 0.04 * f
+    for k in range(n + 1):
+        y = y0 + 0.1 * f + (y1 - y0 - 0.2 * f) * k / n
+        if any(abs(y - sy) < 1.5 * f for sy in splices):
+            continue
+        for xa, xb in ((x0 + 0.03 * f, x0 + inset + 0.02 * f), (x1 - inset - 0.02 * f, x1 - 0.03 * f)):
+            box(mb, (xa, y - t, z0 + flange - 0.01 * f), (xb, y + t, z1 - flange + 0.01 * f))
+    for sy in splices:
+        za, zb = z0 + flange + 0.3 * f, z1 - flange - 0.3 * f
+        for face, xw in ((-1, x0 + inset), (1, x1 - inset)):
+            xa, xb = sorted((xw + face * 0.05 * f, xw - face * 0.02 * f))
+            box(mb, (xa, sy - 1.2 * f, za), (xb, sy + 1.2 * f, zb))
+            if srlib.DETAIL >= 1.0:
+                rows = max(2, round((zb - za) / (0.6 * f)))
+                for i in range(rows):
+                    for dy in (-0.9, -0.4, 0.4, 0.9):
+                        mb.disc(
+                            P(xw + face * 0.05 * f, sy + dy * f, za + (zb - za) * (i + 0.5) / rows), (face, 0, 0), 0.05 * f * UNIT, 0.03 * f * UNIT, 6
+                        )
+
+
+def axle_cap(mb: MeshBuilder, centre, normal, radius: float | None = None) -> None:
+    """The cover on the end of an axle box: a dished cap, a hub and three bolts, facing `normal`. Full detail only."""
+    if srlib.DETAIL < 1.0:
+        return
+    f = foot()
+    r = 0.32 * f if radius is None else radius
+    n = Vector(normal).normalized()
+    m = srlib.frame(Vector(centre) * UNIT, n)
+    mb.lathe(profile([(r, 0.0), (r, 0.05 * f), (r * 0.8, 0.09 * f), (r * 0.4, 0.09 * f), (r * 0.36, 0.16 * f), (0.0, 0.16 * f)]), 14, matrix=m)
+    for k in range(3):
+        a = TAU_ * k / 3
+        mb.disc(
+            m @ Vector((r * 0.62 * math.cos(a) * UNIT, r * 0.62 * math.sin(a) * UNIT, 0.09 * f * UNIT)),
+            tuple(n),
+            0.04 * f * UNIT,
+            0.035 * f * UNIT,
+            6,
+        )
+
+
+def rail_clamp(mb: MeshBuilder, x: float, y: float, rail_top: float) -> None:
+    """A rail clamp under the end of a rail truck: two jaws either side of the rail's head and the yoke over them. At detail 0.5 and up."""
+    if not fine():
+        return
+    f = foot()
+    for xa, xb in ((x - 0.48 * f, x - 0.17 * f), (x + 0.17 * f, x + 0.48 * f)):
+        box(mb, (xa, y - 0.28 * f, rail_top + 0.03 * f), (xb, y + 0.28 * f, rail_top + 0.75 * f))
+    box(mb, (x - 0.5 * f, y - 0.3 * f, rail_top + 0.7 * f), (x + 0.5 * f, y + 0.3 * f, rail_top + 1.0 * f))
 
 
 def lettering(mb: MeshBuilder, body: str, size: float, origin, right, up, font=None) -> None:
@@ -686,7 +888,6 @@ def building(
             elif kind == "door":
                 doors += 1
                 wall_door(parts, f"{node}_{key.capitalize()}Door{doors}", node, w, a, b, lo, hi, depth=wall * 0.4)
-                w.box(frame, a - 0.12 * f, b + 0.12 * f, -0.05 * f, 0.12 * f, hi, hi + 0.25 * f)
             else:
                 w.box(frame, a - 0.1 * f, a + 0.08 * f, 0.05 * f, wall - 0.05 * f, lo - 0.1 * f, hi + 0.1 * f)
                 w.box(frame, b - 0.08 * f, b + 0.1 * f, 0.05 * f, wall - 0.05 * f, lo - 0.1 * f, hi + 0.1 * f)

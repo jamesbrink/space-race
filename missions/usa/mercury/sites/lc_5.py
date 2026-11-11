@@ -18,39 +18,55 @@ hatch faces (WNW); +Y runs along the rails toward the structure's parking places
 
 from __future__ import annotations
 
+import sitelib
 from lc5 import blockhouse, cherry_picker, ground_equipment, grounds, hardstand, launcher, masts, outbuildings, pad6, service_structure, vehicles
-from lc5.site import HARDSTAND, LAUNCHER_TOP, STRUCTURE_LAUNCH, STRUCTURE_T55, STRUCTURE_TOP, TRUE_NORTH, Parts, materials
+from lc5.site import HARDSTAND, LAUNCHER_TOP, STRUCTURE_LAUNCH, STRUCTURE_T55, STRUCTURE_TOP, TRUE_NORTH, Parts, materials, stood
 
 PEDESTAL_TOP = LAUNCHER_TOP  # where the fins rest: what the viewer stands the vehicle on
 
-__all__ = ["HARDSTAND", "PEDESTAL_TOP", "STRUCTURE_LAUNCH", "STRUCTURE_T55", "STRUCTURE_TOP", "TRUE_NORTH", "build", "build_surroundings"]
+__all__ = ["HARDSTAND", "PEDESTAL_TOP", "STRUCTURE_LAUNCH", "STRUCTURE_T55", "STRUCTURE_TOP", "TRUE_NORTH", "build", "build_place"]
 
 
-def build() -> dict:
-    """Build the pad. Returns the cherry picker's pins and stow angles, for the record."""
+def build(date: str | None = None) -> dict:
+    """Build the pad as it stood on `date` ("1961-05-05"; None: everything). Returns the cherry
+    picker's pins and stow angles, for the record."""
+    sitelib.as_of(date)
     parts = Parts(materials())
     hardstand.build(parts)
     launcher.build(parts)
     masts.build(parts)
     service_structure.build(parts)
-    pose = cherry_picker.build(parts)
+    pose = {}
+    if stood("Mobile aerial tower (cherry picker)", since="1960-10-24", confidence="documented", source="SP-4001: at the Cape 24 October 1960"):
+        pose = cherry_picker.build(parts)
     ground_equipment.build(parts)
     parts.build()
+    print(sitelib.standing())
     return pose
 
 
-def build_surroundings() -> None:
-    """The rest of Complex 5/6, in the pad's frame, as scenery (a flight's model/surroundings.py):
+def build_place(date: str | None = None) -> None:
+    """The rest of Complex 5/6 as it stood on `date`, in the pad's frame: the site's own model
+    (lc5/model/<date>.py), which every flight from here in that state shows round its pad.
     Blockhouse, ReadyRoom           blockhouse.py     the arrow-shaped blockhouse, the ready rooms, their paving
     Pad6, Pad6Launcher, Pad6Gantry  pad6.py           the other pad, its launch ring and its square-topped gantry
     Track, Road, CableTrenches, Yard, Poles   grounds.py   what lies between
     Outbuildings                    outbuildings.py   two huts, the generator building, the shed
     Vehicles                        vehicles.py       the cars at the blockhouse
     """
+    sitelib.as_of(date)
     parts = Parts(materials())
-    blockhouse.build(parts)
-    pad6.build(parts)
+    if stood("Blockhouse and ready rooms", since="1955", confidence="documented", source="NHL nomination 84003872: built 1955; standing today"):
+        blockhouse.build(parts)
+    if stood("Pad 6", since="1955", confidence="documented", source="the museum: first launch from pad 6 on 20 April 1955; the slab is there today"):
+        pad6.build(parts)
     grounds.build(parts)
     outbuildings.build(parts)
-    vehicles.build(parts)
+    if stood(
+        "Cars at the blockhouse",
+        confidence="estimated",
+        source="FHSU F16_016, July 1961: July's cars, in July's places; no view of the parking in May has been found",
+    ):
+        vehicles.build(parts)
     parts.build()
+    print(sitelib.standing())

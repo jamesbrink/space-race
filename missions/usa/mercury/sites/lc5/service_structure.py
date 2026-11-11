@@ -36,16 +36,20 @@ from .site import (
     P,
     Parts,
     axes,
+    axle_cap,
     beam,
     box,
+    box_girder,
     door,
     ear_clip,
     fine,
     ftp,
     handrail,
+    rail_clamp,
     ring,
     stair_rails,
     stairs,
+    stood,
     wall_door,
     window,
 )
@@ -222,6 +226,8 @@ def platform(parts: Parts, n: int, s: int) -> None:
             sbox(fit, s, CABIN_IN + 3.0, X - 0.5, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
         sbox(fit, s, X - 2.4, X - 0.35, DECK_FRONT + 2.0, DECK_FRONT + 4.5, zf, zf + 5.5)  # a cabinet
     elif n == 3:  # the white room: blue-green panels in a white frame, round the capsule
+        if s < 0:  # recorded once; a flight before the white room would need level 3 as an open deck, which is not built
+            stood("White room on level 3", since="1961-02", confidence="documented", source="TM X-53107 7.5.1.2: built February to May 1961")
         h, sill, head = LEVELS[4] - LEVELS[3] - 0.85, 3.4, 8.2  # its roof stands just under level 4's deck
         skin = parts(name, "panel")
         side_w = [(-10.0, -7.0), (-6.0, -3.0), (-1.5, 1.5), (3.0, 6.0)]
@@ -399,7 +405,8 @@ def build(parts: Parts) -> None:
     # ---- the base: a girder over each pair of rails on two trucks, joined behind the vehicle
     k = 0
     for sx in (-1, 1):
-        sbox(red, sx, SIDE_X[0], SIDE_X[1], -16.0, 32.0, 3.4, 9.0)
+        xg0, xg1 = sorted((sx * SIDE_X[0], sx * SIDE_X[1]))
+        box_girder(red, xg0, xg1, -16.0 + Y0, 32.0 + Y0, 3.4, 9.0, splices=(8.0 + Y0,))
         for yt in TRUCK_Y:
             for xa, xb in ((SIDE_X[0] - 0.65, SIDE_X[0] - 0.25), (SIDE_X[1] + 0.45, SIDE_X[1] + 0.85)):  # side frames, outside the wheels
                 sbox(dark, sx, xa, xb, yt - 4.6, yt + 4.6, 0.9, 3.0)
@@ -408,12 +415,14 @@ def build(parts: Parts) -> None:
             for ya in (yt - AXLE, yt + AXLE):
                 k += 1
                 wheelset(parts, k, sx, ya)
-                for xa in (SIDE_X[0] - 0.45, SIDE_X[1] + 0.65):  # axle boxes, on the side frames
+                for xa, out in ((SIDE_X[0] - 0.45, -1), (SIDE_X[1] + 0.65, 1)):  # axle boxes, on the side frames, and their caps
                     sbox(dark, sx, xa - 0.18, xa + 0.18, ya - 0.5, ya + 0.5, 1.05, 2.0)
-        for y in (-12.0, 0.0, 12.0, 24.0):  # stiffeners on the girder's outer face
-            sbox(red, sx, SIDE_X[1] - 0.01, SIDE_X[1] + 0.12, y - 0.2, y + 0.2, 3.5, 8.9)
+                    axle_cap(grey, L(sx * (xa + out * 0.17), ya, RAIL_TOP + WHEEL_R), (sx * out, 0, 0))
+            for ye in (yt - 5.0, yt + 5.0):  # rail clamps at the truck's ends
+                for d in (-1, 1):
+                    rail_clamp(dark, sx * RAIL_PAIR_X + d * GAUGE / 2, ye + Y0, RAIL_TOP)
     for y0, y1 in ((20.0, 23.0), (29.0, 32.0)):  # cross girders, behind the vehicle
-        lbox(red, (-SIDE_X[0] - 0.01, y0, 3.6), (SIDE_X[0] + 0.01, y1, 8.8))
+        lbox(red, (-SIDE_X[0] - 0.4, y0, 3.7), (SIDE_X[0] + 0.4, y1, 8.7))
     # the office and utility room on the base, behind the vehicle (Noble's plans: "office at the base")
     # Its walls are built round a door and windows: the front's look at the vehicle (estimated; the
     # photographs show a lit room here at night, S61-03158).

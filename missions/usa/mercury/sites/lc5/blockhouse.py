@@ -23,6 +23,8 @@ import math
 
 from mathutils import Matrix, Vector
 
+import interiors
+import srlib
 from srlib import FT, TAU, interior
 
 from .site import (
@@ -41,7 +43,6 @@ from .site import (
     ftp,
     handrail,
     lamp_head,
-    obox,
     offset_poly,
     plate,
     ring,
@@ -196,7 +197,7 @@ def build(parts: Parts) -> None:
     mid = (DOOR[0] + DOOR[1]) / 2
     for k, (s0, s1, side) in enumerate(((DOOR[0], mid, "s0"), (mid, DOOR[1], "s1"))):  # each leaf its own node, shut
         leaf = f"{g}_BlastDoor{k + 1}"
-        wall_door(parts, leaf, g, back, s0, s1, FLOOR, DOOR_HEAD, hinge=side, depth=0.3, thick=0.35)
+        wall_door(parts, leaf, g, back, s0, s1, FLOOR, DOOR_HEAD, hinge=side, depth=0.3, thick=0.35, frame=False, fittings="lever")
         if fine():  # its strap hinges
             a0, a1 = (s0 - 0.3, s0 + 2.2) if side == "s0" else (s1 - 2.2, s1 + 0.3)
             for z in (FLOOR + 1.2, FLOOR + 3.7, FLOOR + 6.3):
@@ -216,7 +217,9 @@ def build(parts: Parts) -> None:
         q = Vector(w.p(s, -0.9, 13.4))
         beam(grey, w.p(s, 0.1, 13.2), tuple(q), 0.14)
         lamp_head(grey, lamps, q + Vector((0, 0, 0.3)), Vector((-w.n.x, -w.n.y, -0.75)), 0.8)
-    wall_door(parts, f"{g}_SideDoor", g, side6, *SIDE_DOOR, FLOOR, FLOOR + 7.0, depth=0.2, thick=0.25)  # the plate door on the pad 6 side
+    wall_door(
+        parts, f"{g}_SideDoor", g, side6, *SIDE_DOOR, FLOOR, FLOOR + 7.0, depth=0.2, thick=0.25, frame=False, fittings="lever"
+    )  # the plate door on the pad 6 side
     side6.box(parts(g, "blast/doorframe"), SIDE_DOOR[0] - 0.25, SIDE_DOOR[1] + 0.25, -0.15, 0.15, FLOOR + 7.0, FLOOR + 7.35)
     side6.box(parts(g, "concrete/step"), SIDE_DOOR[0] - 0.5, SIDE_DOOR[1] + 0.5, -3.0, 0.0, APRON - 0.5, FLOOR - 0.42)
     for s, zb, size in ((12.0, 3.4, (1.2, 1.8)), (15.5, 3.0, (1.6, 2.4)), (20.5, 3.6, (1.0, 1.2))):  # switch and junction boxes
@@ -306,32 +309,91 @@ def build(parts: Parts) -> None:
     for k in range(4):
         beam(white, tuple(octagon[k]), tuple(octagon[k + 4]), 0.08)
 
-    # ---- inside: each firing room's consoles facing its windows, racks behind (not documented)
     if interior():
-        con, dark, lit = parts(g, "console"), parts(g, "interior"), parts(g, "lamp/room")
-        for w in (face6, face5):
-            back_dir = Vector((w.n.x, w.n.y, 0))
-            for k in range(3):
-                s = 10.5 + k * 6.2
-                c = Vector(w.p(s + 2.6, WALL + 5.2, 0))
-                obox(con, (c.x, c.y, FLOOR + 1.45), (w.u.x, w.u.y, 0), (0, 0, 1), (5.2, 2.6, 2.9))  # the desk
-                top = c - back_dir * 0.35
-                slope = (back_dir + Vector((0, 0, 0.75))).normalized()  # its panel, sloping up and away from the operator
-                obox(dark, (top.x, top.y, FLOOR + 3.5), (w.u.x, w.u.y, 0), tuple(slope.cross(Vector((w.u.x, w.u.y, 0)))), (5.0, 1.6, 0.25))
-                seat = c + back_dir * 2.6
-                box(dark, (seat.x - 0.75, seat.y - 0.75, FLOOR), (seat.x + 0.75, seat.y + 0.75, FLOOR + 1.5))
-        for v in (-1, 1):  # recorder racks along the wall between the rooms
-            for k in range(5):
-                box(con, S(36.0 + k * 2.1, v * 0.34, FLOOR), S(38.0 + k * 2.1, v * 2.3, FLOOR + 6.4))
-                box(dark, S(36.2 + k * 2.1, v * 2.3, FLOOR + 3.4), S(37.8 + k * 2.1, v * 2.36, FLOOR + 6.0))
-        for u in (60.5, 70.0, 79.0):  # the equipment room: relay racks in rows
-            box(con, S(u, -16.0, FLOOR), S(u + 2.0, -4.0, FLOOR + 7.0))
-            box(con, S(u, 2.0, FLOOR), S(u + 2.0, 8.0, FLOOR + 7.0))
-        for u, v in ((16.0, -8.0), (16.0, 8.0), (30.0, -12.0), (30.0, 12.0), (46.0, -12.0), (46.0, 12.0), (72.0, -8.0), (72.0, 12.0)):
-            box(lit, S(u - 2.0, v - 0.5, CEILING - 0.3), S(u + 2.0, v + 0.5, CEILING + 0.1))
+        furnish(parts, face6, face5, offset_poly(OUTLINE, -WALL))
 
     annex(parts)
     paving(parts)
+
+
+# What each console and rack is lettered. None of this is from a photograph of this firing room: the
+# names are the Redstone's systems as TM X-53107 lists the blockhouse's panels and the countdown's
+# calls (propulsion, pneumatics, LOX and fuel loading, power, measuring, guidance, range safety,
+# capsule, firing), on consoles and racks of the period's ordinary kind.
+CONSOLES = (
+    (
+        ("PROPULSION", [("meters", 3), ("lamps", "ggar"), ("switches", 6), ("label", "LOX   FUEL   H2O2")]),
+        ("PNEUMATICS", [("meters", 2), ("lamps", "gga"), ("switches", 5), ("buttons", 3)]),
+        ("LOX LOADING", [("meters", 2), ("lamps", "gar"), ("switches", 4), ("label", "TOPPING")]),
+    ),
+    (
+        ("FIRING", [("lamps", "ggggaarr"), ("label", "READY  HOLD  CUTOFF"), ("buttons", 4), ("switches", 6)]),
+        ("TELEVISION", [("screen",), ("switches", 3)]),
+        ("SEQUENCE", [("lamps", "gggggaaa"), ("lamps", "gggaaarr"), ("meters", 2), ("switches", 6)]),
+    ),
+    (
+        ("POWER", [("meters", 4), ("lamps", "ggrr"), ("switches", 6), ("label", "28V DC   115V 400~")]),
+        ("GUIDANCE", [("meters", 3), ("lamps", "gga"), ("switches", 5)]),
+        ("CAPSULE", [("meters", 2), ("lamps", "ggar"), ("switches", 4), ("buttons", 2)]),
+    ),
+)
+RACKS = (
+    [("MEASURING", [("recorder",), ("switches", 4)], 3), ("", [("meters", 3)], 1.5), ("", [], 2)],
+    [("TELEMETRY", [("meters", 2), ("lamps", "ggaa")], 2), ("", [("recorder",)], 2.5), ("", [], 2)],
+    [("RANGE SAFETY", [("lamps", "ggrr"), ("switches", 4)], 2), ("", [("meters", 2)], 1.5), ("", [], 3)],
+    [("TIMING", [("lamps", "gggaaa"), ("meters", 1)], 2), ("", [("switches", 6)], 1), ("", [], 3.5)],
+    [("INTERCOM", [("switches", 6), ("lamps", "gggg")], 1.5), ("", [("recorder",)], 2.5), ("", [], 2.5)],
+)
+
+
+def furnish(parts: Parts, face6, face5, inner) -> None:
+    """Inside the blockhouse: each firing room's consoles facing its windows with their chairs,
+    racks along the wall between the rooms, relay racks in the equipment room, a clock and a count
+    board over each room's windows, cable trays, ceiling lights, tile joints. All estimated."""
+    g = "Blockhouse"
+    font = srlib.load_font()
+    for w in (face6, face5):
+        face = math.degrees(math.atan2(-w.n.y, -w.n.x))  # an operator looks out through the wall
+        for k, modules in enumerate(CONSOLES):
+            s = 13.1 + k * 6.2
+            interiors.console(parts, g, interiors.at(w.p(s, WALL + 6.6, FLOOR), face), 5.6, modules, font=font, seed=k + (7 if w is face5 else 1))
+            interiors.chair(parts, g, interiors.at(w.p(s, WALL + 7.9, FLOOR), face + (12, -20, 8)[k]))
+        up = Vector((0, 0, 1))
+        wall_x = up.cross(Vector((w.n.x, w.n.y, 0)))
+        interiors.clock(parts, g, axes(w.p(13.0, WALL, 12.2 - 2.4), tuple(wall_x), (w.n.x, w.n.y, 0)))
+        board = axes(w.p(22.9 if w is face6 else 17.9, WALL, 9.2), tuple(wall_x), (w.n.x, w.n.y, 0)) @ Matrix.Rotation(math.radians(90), 4, "X")
+        interiors.panel(
+            parts,
+            g,
+            board,
+            5.0,
+            1.3,
+            [("label", "T - 00 : 55 : 00"), ("lamps", "gar"), ("label", "COUNT   HOLD   CUTOFF")],
+            title="COUNTDOWN",
+            font=font,
+        )
+    for v in (-1, 1):  # racks along the wall between the rooms, facing each room
+        for k, panels in enumerate(RACKS):
+            interiors.rack(parts, g, interiors.at(S(37.0 + k * 2.1, v * 2.36, FLOOR), -90.0 * v), panels, depth=2.0, font=font, seed=k + 3 * (v + 2))
+        interiors.tray(parts, g, S(10.0, v * 6.0, CEILING - 1.3), S(57.5, v * 6.0, CEILING - 1.3))
+        interiors.ceiling_light(parts, g, "FiringRoom5" if v > 0 else "FiringRoom6", S(30.0, v * 11.0, CEILING), intensity=1.2, reach=10.0)
+        for u, vv in ((16.0, 7.0), (46.0, 12.0)):
+            interiors.ceiling_light(parts, g, None, S(u, v * vv, CEILING))
+    for u in (61.5, 70.0, 79.0):  # the equipment room: relay racks in rows, their faces toward the firing rooms
+        for k in range(6):
+            blank = [("", [("lamps", "gg")], 0.6), ("", [], 3), ("", [("switches", 4)], 0.8), ("", [], 3)]
+            interiors.rack(parts, g, interiors.at(S(u, -15.0 + k * 2.0, FLOOR), 0.0), blank, font=font, seed=k)
+        for k in range(3):
+            interiors.rack(parts, g, interiors.at(S(u, 9.0 + k * 2.0, FLOOR), 0.0), [("", [("meters", 2)], 1), ("", [], 5)], font=font, seed=k + 9)
+    interiors.ceiling_light(parts, g, "EquipmentRoom", S(73.0, 0.0, CEILING), along=(0, 1), intensity=1.0, reach=9.0)
+    interiors.ceiling_light(parts, g, None, S(66.0, -11.0, CEILING), along=(0, 1))
+    interiors.tray(parts, g, S(59.5, -18.0, CEILING - 1.3), S(59.5, 18.0, CEILING - 1.3))
+
+    def inside(x: float, y: float) -> bool:
+        return all((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) > 0.15 for a, b in zip(inner, inner[1:] + inner[:1]))
+
+    xs, ys = [p[0] for p in inner], [p[1] for p in inner]
+    interiors.floor_joints(parts, g, min(xs), min(ys), max(xs), max(ys), FLOOR, inside=inside)
 
 
 def annex(parts: Parts) -> None:
@@ -359,8 +421,8 @@ def annex(parts: Parts) -> None:
         z = 7.1 + k * 0.4
         plate(frame, [pads.p(4.05, 0.05, z + 0.3), pads.p(8.45, 0.05, z + 0.3), pads.p(8.45, 0.5, z), pads.p(4.05, 0.5, z)], 0.05)
     # doors: one to the drive, one under the breezeway; each leaf its own node, shut
-    wall_door(parts, f"{g}_Door1", g, far, 14.0, 17.2, FLOOR, FLOOR + 7.0, depth=0.28)
-    wall_door(parts, f"{g}_Door2", g, breeze, 18.0, 21.4, FLOOR, FLOOR + 7.0, depth=0.28)
+    wall_door(parts, f"{g}_Door1", g, far, 14.0, 17.2, FLOOR, FLOOR + 7.0, depth=0.28, mat="grey", sign="READY ROOM")
+    wall_door(parts, f"{g}_Door2", g, breeze, 18.0, 21.4, FLOOR, FLOOR + 7.0, depth=0.28, mat="grey")
     # pilasters, as the photograph shows them, and a plinth course
     for x, y in outline:  # a pier at each corner
         box(block, (x - 0.62, y - 0.62, -FOOTING + 0.5), (x + 0.62, y + 0.62, ANNEX_EAVE - 0.05))

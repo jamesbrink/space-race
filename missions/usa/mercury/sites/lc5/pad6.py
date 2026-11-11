@@ -26,13 +26,17 @@ from .site import (
     TRENCH_END,
     P,
     Parts,
+    axle_cap,
     beam,
     box,
+    box_girder,
     fine,
     handrail,
     lattice,
+    rail_clamp,
     stair_rails,
     stairs,
+    stood,
     timber_pole,
     truss,
 )
@@ -64,7 +68,13 @@ def build(parts: Parts) -> None:
     parts.shift("Pad6Launcher", (0.0, cy, 0.0))
     for x, y in ((-104.0, -70.0), (-104.0, 70.0), (104.0, -70.0), (104.0, 70.0)):
         timber_pole(parts, g, x, cy + y, 38.0, lamps=3, aim=(-x, -y, 0))
-    gantry(parts)
+    if stood(
+        "Pad 6's square-topped gantry, at the pad's south edge",
+        since="1959",
+        confidence="estimated",
+        source="A Noble Endeavor p. 10: on pad 6 in 1959; the museum: 8 March 1961; FHSU F19_008: July 1961. Where on the track is not recorded",
+    ):
+        gantry(parts)
 
 
 def gantry(parts: Parts) -> None:
@@ -83,13 +93,18 @@ def gantry(parts: Parts) -> None:
         lattice(red, corner, levels, 0.7, 0.36)
         # the truck under it: a girder along the rails on two bogies, with the drive's cabinets on top
         x0, x1 = sorted((sx * 6.5, sx * 19.5))
-        box(red, (x0, gy - 14.0, 3.0), (x1, gy + 14.0, 7.0))
+        box_girder(red, x0, x1, gy - 14.0, gy + 14.0, 3.0, 7.0, splices=(gy,))
         for y in (gy - 9.0, gy + 9.0):
             box(dark, (x0 + 0.4, y - 4.0, 0.9), (x1 - 0.4, y + 4.0, 3.02))
             for ya in (y - 2.4, y + 2.4):
                 for d in (-1, 1):
                     xr = sx * RAIL_PAIR_X + d * GAUGE / 2
                     dark.tube(P(xr - 0.2, ya, RAIL_TOP + 1.4), P(xr + 0.2, ya, RAIL_TOP + 1.4), 1.4 * FT, 20)
+                for xo, out in ((x0 + 0.4, -1), (x1 - 0.4, 1)):  # axle caps on the bogie's sides
+                    axle_cap(parts(g, "grey", True), (xo, ya, RAIL_TOP + 1.4), (out, 0, 0))
+            for ye in (y - 4.4, y + 4.4):
+                for d in (-1, 1):
+                    rail_clamp(dark, sx * RAIL_PAIR_X + d * GAUGE / 2, ye, RAIL_TOP)
         for y in (gy - 12.0, gy + 12.0):  # machinery cabinets fore and aft of the leg
             ya, yb = sorted((y - 2.0, y + 2.0))
             box(parts(g, "grey"), (x0 + 1.0, ya, 7.0), (x1 - 1.0, yb, 12.5))

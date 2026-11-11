@@ -39,8 +39,7 @@ def park(parent, name: str, car: cars.Car, at, z: float, heading: float, *, by_n
     """Stand a vehicle with its middle (or, `by_nose`, the front of its body) at `at` (site
     feet), on ground at height z, facing `heading` degrees anticlockwise from the site's +X."""
     a = math.radians(heading)
-    given = car.x1 if by_nose else (car.x0 + car.x1) / 2  # inches ahead of its rear axle
-    d = (car.wheelbase / 2 - given) * IN  # from there to the node's origin, along its heading
+    d = -(car.x1 if by_nose else (car.x0 + car.x1) / 2) * IN  # from there back to its rear axle, where the node's origin is
     return car.build(name, parent, (at[0] * FT + d * math.cos(a), at[1] * FT + d * math.sin(a), z * FT), heading)
 
 
@@ -70,3 +69,36 @@ def build(parts: Parts) -> None:
         total += built["triangles"]
         print(f"  Car_{k:02d}: {car.what}, {built['triangles']:,} triangles")
     print(f"  vehicles: {total:,} triangles")
+
+
+def check_standing(ground: float = GROUND, slack: float = 0.02) -> list[str]:
+    """Call once the whole site is built (after `parts.build()`): what each tyre stands on. A ray
+    is dropped from every wheel's hub to whatever of the site lies under it, or failing that to the
+    viewer's terrain at `ground` (site feet); a line comes back, and is printed, for each tyre
+    whose foot is more than `slack` metres above or below that. Nothing is moved."""
+    import bpy
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+
+    bpy.context.view_layer.update()
+    verts, faces = [], []
+    for obj in bpy.data.objects:
+        if obj.type == "MESH" and not obj.name.startswith("Car_"):
+            base = len(verts)
+            verts += [obj.matrix_world @ v.co for v in obj.data.vertices]
+            faces += [[base + i for i in p.vertices] for p in obj.data.polygons]
+    tree = BVHTree.FromPolygons(verts, faces)
+    out = []
+    for obj in bpy.data.objects:
+        if obj.type == "EMPTY" and obj.name.startswith("Car_") and "Wheel_" in obj.name:
+            car = obj.parent if "vehicle" in obj.parent else obj.parent.parent
+            hub = obj.matrix_world.translation
+            foot = hub.z - car["wheel_radius"]
+            hit = tree.ray_cast(Vector((hub.x, hub.y, foot + 0.5)), Vector((0, 0, -1)), 4.0)
+            under = max(hit[0].z if hit[0] is not None else -1e9, ground * FT)
+            if abs(foot - under) > slack:
+                what = "the site" if hit[0] is not None and hit[0].z > ground * FT else "the terrain"
+                out.append(f"{obj.name}: {foot - under:+.3f} m from {what} under it")
+    for line in out:
+        print(f"  STANDING {line}")
+    return out

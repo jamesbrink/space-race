@@ -17,7 +17,7 @@ from srlib import FT, run  # noqa: E402
 
 
 def build() -> str:
-    lc_5.build()
+    lc_5.build("1961-05-05")  # the pad as it stood on the day of the flight
     return (
         f"pedestal top {lc_5.PEDESTAL_TOP * FT:.3f} m, service structure {lc_5.STRUCTURE_TOP * FT:.1f} m, "
         f"hardstand {lc_5.HARDSTAND * FT:.1f} m square"

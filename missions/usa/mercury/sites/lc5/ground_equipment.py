@@ -22,7 +22,26 @@ from mathutils import Vector
 import srlib
 from srlib import FT
 
-from .site import P, Parts, axes, beam, box, ear_clip, fine, lattice, lettering, obox, offset_poly, plate, ring, slab, timber_pole, wall_door, window
+from .site import (
+    P,
+    Parts,
+    axes,
+    beam,
+    box,
+    ear_clip,
+    fine,
+    lattice,
+    lettering,
+    obox,
+    offset_poly,
+    plate,
+    ring,
+    slab,
+    stood,
+    timber_pole,
+    wall_door,
+    window,
+)
 
 FLOOD_POLES = ((-104.0, -62.0), (-104.0, 62.0), (-62.0, -104.0), (62.0, -104.0), (104.0, -70.0), (104.0, 66.0))  # in the grass at the pad's edge
 FLOOD_HEIGHT = 40.0
@@ -171,6 +190,18 @@ def furniture(parts: Parts) -> None:
     white, dark, red, ink = parts(g, "sign"), parts(g, "chassis", True), parts(g, "signred"), parts(g, "black/lettering")
 
     # ---- the emergency shower, at the pad's north edge: a frame of white tube on a cart
+    stood(
+        "Emergency shower on its cart",
+        since="1961-05-02",
+        confidence="documented",
+        source="KSC-61-4457 (2 May 1961); GPN-2000-001006. Not looked for in MR-4's photographs",
+    )
+    stood(
+        "Trailer NASA SP-No 1",
+        since="1961-05",
+        confidence="documented",
+        source="S61-03158 (MR-3 on the pad at night); a white NASA trailer is beside the structure in July too (F16_017)",
+    )
     sx, sy = -58.0, -91.0
     tube = parts(g, "white/shower", True)
     for dx in (-1.6, 1.6):
@@ -255,7 +286,7 @@ def furniture(parts: Parts) -> None:
     sides = ring([(tx0, ty0), (tx1, ty0), (tx1, ty1), (tx0, ty1)], 0.2)
     for i, w in enumerate(sides):
         w.build(van, 3.4, troof, [(9.0, 12.0, tz, tz + 6.7)] if i == 1 else [])
-    wall_door(parts, f"{g}_TrailerDoor", g, sides[1], 9.0, 12.0, tz, tz + 6.7, mat="grey")
+    wall_door(parts, f"{g}_TrailerDoor", g, sides[1], 9.0, 12.0, tz, tz + 6.7, mat="grey", sign="SP-1")
     box(parts(g, "plank/vanfloor"), (tx0 + 0.1, ty0 + 0.1, 3.4), (tx1 - 0.1, ty1 - 0.1, tz))
     box(parts(g, "trailer/vanroof"), (tx0 - 0.1, ty0 - 0.1, troof), (tx1 + 0.1, ty1 + 0.1, troof + 0.25))
     fit = parts(g, "console")
@@ -285,8 +316,11 @@ def furniture(parts: Parts) -> None:
         box(frame, (tx1 - 0.02, ty0 + 12.4, 3.5), (tx1 + 0.07, ty1 - 0.3, 3.75))
 
     # ---- two huts at the hatch side's edge (F16_017)
-    hut(parts, "hut1", (87.0, 24.0, 97.5, 35.0), 3, 0)
-    hut(parts, "hut2", (88.5, 40.0, 97.5, 49.0), 3, 2)
+    if stood(
+        "Two huts at the pad's hatch-side edge", confidence="estimated", source="FHSU F16_017, July 1961; whether they stood in May is not known"
+    ):
+        hut(parts, "hut1", (87.0, 24.0, 97.5, 35.0), 3, 0)
+        hut(parts, "hut2", (88.5, 40.0, 97.5, 49.0), 3, 2)
 
 
 FOOT_DEPTH = 2.5

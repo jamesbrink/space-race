@@ -46,6 +46,7 @@ from .site import (
     solid,
     stair_rails,
     stairs,
+    stood,
     timber_pole,
 )
 
@@ -248,5 +249,10 @@ def build(parts: Parts) -> None:
     parts.node("CableTrenches")
     causeway(parts, "CableTrenches", TRENCH_END, TRENCH_TO, 0.0)
     causeway(parts, "CableTrenches", TRENCH6_END, TRENCH6_TO, PAD6[1])
-    racks(parts)
+    if stood(
+        "Cable racks and the scaffold stair north of pad 5",
+        confidence="estimated",
+        source="FHSU F16_017 and F19_008, July 1961; whether they stood in May is not known",
+    ):
+        racks(parts)
     poles(parts)
