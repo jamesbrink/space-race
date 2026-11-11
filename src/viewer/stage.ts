@@ -15,7 +15,7 @@ import { type CameraMode, Flyer } from './fly';
 import { LOD_ABOVE, lodUrl, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { wearTexture } from './space';
-import { grain } from './surface';
+import { grain, mark } from './surface';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 import { Carry } from './carry';
@@ -591,6 +591,12 @@ export class Stage {
         grain(mat); // what a large plain surface looks like from a metre away
       }
       if (shell) mesh.material = this.shellOf(mat, url);
+      const marked = mark(mesh); // a scorch or a stain fades out at its rim
+      if (marked) {
+        mesh.material = marked;
+        mesh.castShadow = false;
+        mesh.renderOrder = 1;
+      }
     });
     this.looks.add(object);
   }

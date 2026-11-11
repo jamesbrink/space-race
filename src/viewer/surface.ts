@@ -53,6 +53,53 @@ const GRAINS: Grain[] = [
   },
 ];
 
+/** Materials that are marks left on a surface, not surfaces: a scorch, a stain. */
+const MARK = /^concrete-(scorch|stain)/;
+
+/**
+ * A mark on the ground has no edge. The model gives a scorch as a flat patch with an outline,
+ * which from across the pad is right and at three metres is cut paper. Here the patch is soot:
+ * thick in places, thin in others, gone in others, so its outline is broken up and what is left
+ * of it reads as where the deposit happens to stop. A model can do better still by fading the
+ * patch's own rim: vertex colours with alpha 0 on the outline are honoured.
+ * Returns the material to use, or null if this is no mark.
+ */
+const marks = new Map<THREE.Material, THREE.Material>();
+export function mark(mesh: THREE.Mesh): THREE.Material | null {
+  const from = mesh.material as THREE.Material;
+  if (Array.isArray(from) || !MARK.test(from.name)) return null;
+  const rimmed = mesh.geometry.getAttribute('color')?.itemSize === 4;
+  let material = rimmed ? undefined : marks.get(from);
+  if (material) return material;
+  material = from.clone();
+  material.name = from.name;
+  material.transparent = true;
+  material.depthWrite = false;
+  material.vertexColors = rimmed;
+  material.userData.plainWhenDrawn = true; // a drawing keeps the patch as a shape
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vMarkAt;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvMarkAt = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vMarkAt;\n${NOISE}`)
+      .replace(
+        '#include <color_fragment>',
+        /* glsl */ `#include <color_fragment>
+        {
+          float drift = fbm(vMarkAt * 0.9 + 2.0);                      // where the deposit lies, metres across
+          float thin = fbm(vMarkAt * 7.0 + 9.0);                       // and how patchy it is, hand-sized
+          float cover = smoothstep(0.34, 0.6, drift) * (0.5 + 0.5 * thin);
+          diffuseColor.a *= cover;
+          diffuseColor.rgb *= 0.8 + 0.4 * thin;
+        }`,
+      );
+  };
+  material.customProgramCacheKey = () => `mark:${rimmed}`;
+  if (!rimmed) marks.set(from, material);
+  return material;
+}
+
 /** Give a material its grain, if it is one of the plain ones. Safe to call on any material, once. */
 export function grain(material: THREE.Material): void {
   const kind = GRAINS.find((g) => g.match.test(material.name));
