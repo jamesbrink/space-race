@@ -38,3 +38,7 @@ honest, are in [AGENTS.md](AGENTS.md). What it all rests on is in [docs/sources.
 
 Where this is going: a simulator in which you run a space programme (USA, USSR, and those that
 came later) from the first flights to the present, on hardware modelled to its real specifications.
+
+---
+
+Copyright © 2026 James Brink

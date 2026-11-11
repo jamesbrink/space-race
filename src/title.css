@@ -1,5 +1,5 @@
 /* The front page: the mark over the scene, and the flights to go into. */
-#title { position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto; justify-items: center; align-items: center; gap: 28px;
+#title { position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto auto; justify-items: center; align-items: center; gap: 28px;
   padding: clamp(20px, 5vh, 56px) clamp(16px, 5vw, 56px); overflow-y: auto; color: var(--ink);
   background: radial-gradient(120% 90% at 50% 38%, rgba(6, 8, 12, 0.5), rgba(6, 8, 12, 0.9) 70%), linear-gradient(rgba(6, 8, 12, 0.55), rgba(6, 8, 12, 0.82));
   backdrop-filter: blur(5px) saturate(0.8); -webkit-backdrop-filter: blur(5px) saturate(0.8); transition: opacity 0.55s ease, backdrop-filter 0.55s ease; }
@@ -29,6 +29,7 @@ body.titled #ui { visibility: hidden; }
 .title-flights .when { font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: right; white-space: nowrap; }
 .title-flights .go { font: 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); padding: 9px 12px; border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
 .title-foot { max-width: 60ch; text-align: center; font-size: 12px; color: var(--faint); }
+.title-rights { font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 
 @media (max-width: 620px) {
   .title-flights button { grid-template-columns: auto 1fr auto; padding: 14px; gap: 8px 12px; }
