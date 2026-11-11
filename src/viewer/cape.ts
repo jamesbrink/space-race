@@ -181,13 +181,14 @@ const HAZE_SCALE = 1400;
 /**
  * The cumulus at launch: scattered, no ceiling, at 09:00 EST (NOAA ISD, the Skid Strip); bases at
  * 720 m, the median for May mornings 1959 to 1963 (the 07:00 deck was at 750 m). The wind aloft is
- * taken as the surface's, from 090, a little stronger. Their depth, size and cover (scattered: three
- * to four eighths) are estimated.
+ * taken as the surface's, from 090, a little stronger. Cover is the record's for liftoff: "1/10
+ * cumulus" (MR-3 Postlaunch Report, 10.3, p. 87; documented), which is the flight's own observation
+ * and so preferred to the station's "scattered" at 09:00. Their depth and size are estimated.
  */
 const CLOUDS: Clouds = {
   height: 720,
   depth: 650,
-  cover: 0.36,
+  cover: 0.1,
   size: 900,
   wind: [-7 * COS, 7 * SIN], // toward 270, in the pad's frame
 };

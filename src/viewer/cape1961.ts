@@ -154,18 +154,8 @@ class Kit {
   meshes(): THREE.Mesh[] {
     return [...this.boxes].map(([paint, list]) => {
       const material = new THREE.MeshStandardMaterial({ color: COLOURS[paint], roughness: paint === 'concrete' ? 0.95 : 0.6 });
-      // A tower stands up out of the haze that lies on the ground, so these fade with distance more slowly
-      // than the land does: without this the Atlas pads, 5 to 6 km off, and Complex 34 at 9 km could not be
-      // seen at all, and from pad 5 on a clear morning they could.
-      material.onBeforeCompile = (shader) => {
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <fog_fragment>',
-          /* glsl */ `#ifdef USE_FOG
-            float haze = fogDensity * ${HAZE.toFixed(2)} * vFogDepth;
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, 1.0 - exp(-haze * haze));
-          #endif`,
-        );
-      };
+      // These take the same haze as the land (air.ts: 25 km at sea level, thinning over 1.4 km of height),
+      // which leaves the Atlas pads at 5 to 6 km and Complex 34 at 9 km faint but there, as on a clear morning.
       const mesh = new THREE.Mesh(mergeGeometries(list), material);
       mesh.castShadow = mesh.receiveShadow = true;
       return mesh;
@@ -173,8 +163,6 @@ class Kit {
   }
 }
 
-/** How much of the setting's fog these landmarks take: see Kit.meshes. */
-const HAZE = 0.4;
 const FT = 0.3048;
 /** A pad's concrete: a slab whose top is `top` above the ground it is sunk in (never close above the terrain: see AGENTS.md, No flicker). */
 const slab = (k: Kit, w: number, d: number, top = 0.45, x = 0, z = 0) => k.box('concrete', w, top + 1, d, x, -1, z);

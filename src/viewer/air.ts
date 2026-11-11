@@ -64,8 +64,35 @@ export function driftClouds(dt: number): void {
   DRIFT.z += wind[1] * dt;
 }
 
-/** The cloud field's breadth of change: 0 at its threshold, 1 well inside a cloud. */
-const edges = (c: Clouds): [number, number] => [1 - c.cover - 0.06, 1 - c.cover + 0.14];
+/** The noise the cloud field is cut from, before its threshold: in JavaScript; `cloudField` has it in GLSL. */
+const cloudNoise = (qx: number, qz: number): number =>
+  noise2(qx, qz, 91) * 0.5 +
+  noise2(qx * 2.13 + 7.1, qz * 2.13 + 7.1, 92) * 0.27 +
+  noise2(qx * 4.37 + 3.3, qz * 4.37 + 3.3, 93) * 0.15 +
+  0.04;
+
+/** Half the breadth of a cloud's soft edge, in the noise's units. */
+const SOFT = 0.1;
+const cut = new WeakMap<Clouds, [number, number]>();
+
+/**
+ * The cloud field's edge: where it rises from 0 to 1. Noise is not spread evenly, so a threshold of
+ * `1 - cover` covers some other fraction of the sky; the threshold is instead found from the
+ * noise itself (the value that `cover` of a wide patch of it lies above), so that a record's
+ * "1/10 cumulus" is a tenth of the sky.
+ */
+function edges(c: Clouds): [number, number] {
+  let e = cut.get(c);
+  if (!e) {
+    const seen: number[] = [];
+    for (let i = 0; i < 240; i++) for (let j = 0; j < 240; j++) seen.push(cloudNoise(i * 0.29 + 0.13, j * 0.31 + 0.07));
+    seen.sort((a, b) => a - b);
+    const middle = seen[Math.min(seen.length - 1, Math.floor((1 - c.cover) * seen.length))]!;
+    e = [middle - SOFT, middle + SOFT];
+    cut.set(c, e);
+  }
+  return e;
+}
 
 /**
  * The cloud field, in JavaScript and GLSL alike (field.ts's integer noise, so the clouds drawn and
@@ -75,11 +102,7 @@ const edges = (c: Clouds): [number, number] => [1 - c.cover - 0.06, 1 - c.cover 
 export function cloudAt(c: Clouds, x: number, z: number, driftX: number, driftZ: number): number {
   const qx = (x - driftX) / c.size,
     qz = (z - driftZ) / c.size;
-  const n =
-    noise2(qx, qz, 91) * 0.5 +
-    noise2(qx * 2.13 + 7.1, qz * 2.13 + 7.1, 92) * 0.27 +
-    noise2(qx * 4.37 + 3.3, qz * 4.37 + 3.3, 93) * 0.15 +
-    0.04;
+  const n = cloudNoise(qx, qz);
   const [lo, hi] = edges(c);
   const t = Math.min(1, Math.max(0, (n - lo) / (hi - lo)));
   return t * t * (3 - 2 * t);

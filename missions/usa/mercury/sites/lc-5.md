@@ -521,8 +521,9 @@ Banana River: not 1961's exactly (the Cape's point has moved and the port has gr
 Canaveral's basins are not drawn. The keepers' houses at the lighthouse probably still stood
 (they were demolished later in the 1960s) and are not drawn.
 
-These landmarks take less of the viewer's haze than the land does (`HAZE` in `cape1961.ts`), so
-that the Atlas pads and Complex 34 can be made out from pad 5 as they could on a clear morning.
+These landmarks take the same haze as the land (`src/viewer/air.ts`: 25 km visibility at sea level,
+thinning with height), which leaves the Atlas pads and Complex 34 faint but there from pad 5, as
+on a clear morning.
 
 ## The land
 
@@ -547,7 +548,7 @@ dense and how tall, and every colour, are estimated** from photographs of 1958 t
 | Beach and sea | beach 40 to 50 m from the waterline to the dune, with a wrack line 17 m up; the bed falling 2.2 m in 100 m with a bar 75 m out; a swell of 55 m crests every 7.7 s, about 1 m crest to trough offshore, breaking on the bar and at the shore, so two lines of breakers | the swell's period and height documented as May medians (NOAA buoy 41009, 2010 to 2019); two lines of breakers read off KSC-61C-0873 and 63PC-0033; the bed's slope, the bar's place and the beach's width estimated | |
 | The Banana River's water | flat, grey-green, with a marsh edge | its shore documented (OpenStreetMap, today's); its colour and the marsh's width estimated | |
 | The air | haze thinning with height over 1.4 km above the sea (src/viewer/air.ts), so a distant tree line goes blue from the ground and the site is clear from above | that the morning was clear is documented (visibility at the Skid Strip's 16 km cap at 09:00 EST, NOAA ISD); the haze's profile and its density are estimated | NOAA ISD 74794012868 |
-| The cumulus | scattered, flat-based at 720 m, tops 650 m higher, about a third of the sky, drifting west with the 090 wind, their shadows on the ground; thin high cloud above | scattered cloud and no ceiling at 09:00 EST, and the 720 m base (May mornings' median, 1959 to 1963; 750 m at 07:00 that day) documented; cover, depth, size and the wind aloft estimated; where each cloud was is not known | NOAA ISD; Kraft, p. 8 |
+| The cumulus | flat-based at 720 m, tops 650 m higher, a tenth of the sky, drifting west with the 090 wind, their shadows on the ground; thin high cloud above | 1/10 cumulus at liftoff (preferred to the station's "scattered" at 09:00), no ceiling, and the 720 m base (May mornings' median, 1959 to 1963; 750 m at 07:00 that day) documented; depth, size and the wind aloft estimated; where each cloud was is not known | MR-3 Postlaunch Report 10.3, p. 87; NOAA ISD; Kraft, p. 8 |
 
 A thicket far from the eye is drawn as the ground itself lifted into a roof of crowns, not as
 plants (`land.ts`); within about 60 m of the eye the plants stand on the ground one by one.
