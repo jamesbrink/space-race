@@ -101,21 +101,21 @@ export class Cockpit {
     root.className = 'cockpit';
     root.hidden = true;
     root.setAttribute('aria-label', 'Flight instruments');
-    const cell = (id: string, label: string, unit: string) =>
-      `<div class="gauge"><span>${label}</span><b data-cell="${id}">0</b><i>${unit}</i></div>`;
+    const cell = (id: string, label: string, unit: string, about: string) =>
+      `<div class="gauge" title="${about}"><span>${label}</span><b data-cell="${id}">0</b><i>${unit}</i></div>`;
     root.innerHTML = `
       <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span></p>
       <div class="gauges">
-        ${cell('altitude', 'Height', 'km')}
-        ${cell('speed', 'Ground speed', 'm/s')}
-        ${cell('climb', 'Climb', 'm/s')}
-        ${cell('range', 'Range', 'km')}
-        ${cell('g', 'Load', 'g')}
-        ${cell('q', 'Pressure', 'kPa')}
-        ${cell('mach', 'Mach', '')}
-        ${cell('pitch', 'Nose above level', '°')}
-        ${cell('alpha', 'Off the wind', '°')}
-        ${cell('fuel', 'Propellant', '%')}
+        ${cell('altitude', 'Height', 'km', 'Height above the sea')}
+        ${cell('speed', 'Speed', 'm/s', 'Speed over the turning Earth (Earth-fixed)')}
+        ${cell('climb', 'Climb', 'm/s', 'How fast it is rising')}
+        ${cell('range', 'Range', 'km', 'Distance over the ground from the pad')}
+        ${cell('g', 'Load', 'g', 'What an accelerometer reads')}
+        ${cell('q', 'Pressure', 'kPa', 'Dynamic pressure: the push of the air')}
+        ${cell('mach', 'Mach', '', 'Speed through the air over the speed of sound there')}
+        ${cell('pitch', 'Pitch', '°', 'The nose above the level: 90 is straight up')}
+        ${cell('alpha', 'Off wind', '°', 'The angle between the nose and the motion through the air')}
+        ${cell('fuel', 'Fuel', '%', 'Propellant left of what the engine burns')}
       </div>
       <p class="cockpit-keys">
         <button data-do="next" class="cockpit-next"><kbd>Space</kbd> <span data-cell="next"></span></button>

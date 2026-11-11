@@ -3,7 +3,7 @@ import type { ModelDef } from '../types';
 // (with their extensions: the tests run this file under Node, which adds none)
 import { jointKey } from './gait.ts';
 import { Hose, type KeepOut } from './hose.ts';
-import type { Collide } from './ragdoll.ts';
+import { type Collide, MOST_TICKS, TICK } from './ragdoll.ts';
 
 /** What a figure carries, as its flight declares it (types.ts: ModelDef.walker.carries). */
 export type CarryDef = NonNullable<NonNullable<ModelDef['walker']>['carries']>[number];
@@ -196,12 +196,14 @@ export class Tossed {
   private readonly points: THREE.Vector3[] = [];
   private readonly before: THREE.Vector3[] = [];
   private readonly start: THREE.Vector3[] = [];
+  /** The corners as they are drawn: between the last tick's start and its end. */
+  private readonly shown: THREE.Vector3[] = [];
   private readonly sticks: [number, number, number][] = [];
   /** The middle of the box in the item's own frame: its origin is its handle, not its middle. */
   private readonly middle = new THREE.Vector3();
   private still = 0;
 
-  constructor(item: THREE.Object3D, velocity: THREE.Vector3, dt = 1 / 60) {
+  constructor(item: THREE.Object3D, velocity: THREE.Vector3, dt = TICK) {
     // the box round everything under the item, in its own frame
     const box = new THREE.Box3();
     const inverse = item.matrixWorld.clone().invert();
@@ -220,6 +222,7 @@ export class Tossed {
       this.points.push(p);
       this.before.push(p.clone().addScaledVector(velocity, -dt));
       this.start.push(p.clone());
+      this.shown.push(p.clone());
     }
     for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) this.sticks.push([i, j, this.corners[i]!.distanceTo(this.corners[j]!)]);
   }
@@ -227,10 +230,10 @@ export class Tossed {
   /** A frame. True while it is still moving. */
   step(dt: number, collide: Collide): boolean {
     if (this.still > 0.5) return false;
-    const ticks = Math.max(1, Math.min(4, Math.ceil(dt * 60)));
-    const h = dt / ticks;
-    let fastest = 0;
-    for (let t = 0; t < ticks; t++) {
+    // in ticks of one length, as the figure's own are and for the same reason (ragdoll.ts: TICK); drawn between the last two
+    const h = TICK;
+    this.ahead = Math.max(this.ahead - dt, -MOST_TICKS * h);
+    for (; this.ahead < 0; this.ahead += h) {
       const touching = this.points.map(() => false);
       this.points.forEach((p, i) => {
         const was = this.before[i]!;
@@ -259,17 +262,23 @@ export class Tossed {
         });
       }
       this.grounded = touching.some(Boolean);
-      fastest = Math.max(fastest, ...this.points.map((p, i) => p.distanceTo(this.before[i]!) / h));
+      const fastest = Math.max(...this.points.map((p, i) => p.distanceTo(this.before[i]!) / h));
+      this.still = fastest < 0.05 ? this.still + h : 0;
     }
-    this.still = fastest < 0.05 ? this.still + dt : 0;
+    const part = 1 - this.ahead / h;
+    this.points.forEach((p, i) => {
+      this.shown[i]!.lerpVectors(this.start[i]!, p, part);
+    });
     return true;
   }
 
+  /** How far the ticks have run ahead of the frames, seconds: under a tick. */
+  private ahead = 0;
   private grounded = false;
 
   /** Put the item where the corners say it is, in whatever frame its parent is in. */
   place(item: THREE.Object3D): void {
-    const p = this.points;
+    const p = this.shown;
     // its own axes, from the corners: x from the four on its -x face to the four on its +x face, and so on
     const axis = (bit: number, to: THREE.Vector3) => {
       to.set(0, 0, 0);

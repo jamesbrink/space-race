@@ -475,6 +475,15 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   without the dot), and the phase advances by distance gone over the length of a stride, so a
   planted foot stays put. A model with none of those joints still works: it glides rigid, and
   the diagnostics line says so.
+- **A planted foot is planted.** Each stance leg is solved from its foot's fixed spot on the ground
+  and the hip's actual place (`gait.ts`: `plant`, `legTo`, `Gait.tread`), with a heel rocker on
+  landing and a toe rocker on leaving; on a stop a foot out of place is lifted and stepped home,
+  not slid. Held to under a centimetre at a walk and a run (`tests/planted.test.mjs`); known
+  short: for the first sixth of a walking stance the foot is still coming down, up to 3.7 cm
+  high, because the stride, the thigh's swing and the hips' bob are pinned by older tests.
+- **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
+  1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the
+  same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.
 - **What it carries is in its hand.** `walker.carries` names a rigid node of the model and a
   hand; `viewer/carry.ts` puts it in that hand by the contract every crew figure is built to
   (`Grip.L`/`Grip.R` under the hands, `Fingers.L`/`.R` hooked 50 degrees, the item's origin on

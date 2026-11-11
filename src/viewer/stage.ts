@@ -18,7 +18,7 @@ import { CloudPass } from './clouds';
 import { Vehicle } from './drive';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { type CameraMode, Flyer } from './fly';
-import { jointKey, pose, reach, seatFit } from './gait';
+import { jointKey, pose, reach, seatFit, sitAt } from './gait';
 import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
@@ -2669,6 +2669,9 @@ export class Stage {
     if (names?.length) this.staged[at]!.group.traverse((o) => names.includes(o.name) && (o.visible = shown));
   }
 
+  /** The seat the figure is in, or was in and is still getting up out of. */
+  private satIn: Vehicle | null = null;
+
   /**
    * Seen over the shoulder, the figure being walked as is drawn: where the walker's body is,
    * facing the way it is going, its limbs in the stride of the moment if its model has joints
@@ -2699,27 +2702,43 @@ export class Stage {
     const unseen = !walk.outside;
     const was = this.placedAs.copy(group.quaternion);
     const from = this.below.copy(group.position);
-    if (this.wheel) {
+    // (on foot it is where the walker has it: a moment behind a body put on to a ladder or off one at once)
+    group.rotation.set(0, this.facing(at), 0);
+    group.position.copy(walk.stands);
+    // the seat it is in, or is still getting up out of
+    const sat = walk.gait.sitting;
+    if (this.wheel) this.satIn = this.wheel;
+    else if (!sat) this.satIn = null;
+    const seat = this.satIn;
+    if (seat) {
       // Seated, it is turned as the seat is (the seat has a figure's axes: a tilted seat tilts him)
       // and its hips are on the seat's hip point, sunk into the cushion as far as he must be to fit.
+      // It goes between there and where it stands beside the door as its pose goes between sitting
+      // and standing (sitAt): put in the seat at once, it stood upright in the cab for a moment.
       const [fx, fz] = this.defs[at]!.walker?.forward ?? [0, 1];
-      const turn = this.wheel.seatTurn(this.seatQ).multiply(spin.setFromAxisAngle(UP, -Math.atan2(fx, fz)));
+      const turn = seat.seatTurn(this.seatQ).multiply(spin.setFromAxisAngle(UP, -Math.atan2(fx, fz)));
       group.parent?.updateWorldMatrix(true, false);
       const parent = group.parent?.getWorldQuaternion(new THREE.Quaternion()) ?? new THREE.Quaternion();
-      group.quaternion.copy(parent.invert().multiply(turn));
-      const hips = this.wheel.hips(new THREE.Vector3()).addScaledVector(UP, -this.sunk);
+      const hips = seat.hips(new THREE.Vector3()).addScaledVector(UP, -this.sunk);
       hips.sub(new THREE.Vector3(0, walk.gait.hipHeight(figure.shown), 0).applyQuaternion(turn));
-      group.position.copy(group.parent ? group.parent.worldToLocal(hips) : hips);
-    } else {
-      group.rotation.set(0, this.facing(at), 0);
-      group.position.copy(walk.body.position);
+      const stand = { position: group.position.clone(), quaternion: group.quaternion.clone() };
+      // (at the wheel the walker's body is in the seat: he stands where he got in)
+      if (this.wheel) {
+        seat.standing(stand.position);
+        group.parent?.worldToLocal(stand.position);
+      }
+      sitAt(
+        group,
+        stand,
+        { position: group.parent ? group.parent.worldToLocal(hips) : hips, quaternion: parent.invert().multiply(turn) },
+        sat,
+      );
     }
     const placed = !group.visible || this.unseen !== unseen || !group.quaternion.equals(was) || !group.position.equals(from);
     group.visible = true;
     if (this.unseen !== unseen) this.shadowOnly(group, (this.unseen = unseen));
-    // getting up, it eases out of however it was lying and into the first of the get-up over the first half second
-    const rising = walk.gait.rising;
-    walk.gait.apply(figure.shown, rising !== null && rising < 0.5 ? 1 - Math.exp(-this.walkDt * 10) : 1);
+    // (getting up, the gait takes it from however it was lying to the first of the get-up: Gait.rise)
+    walk.gait.apply(figure.shown);
     if (this.wheel) this.atTheWheel(figure.shown, group);
     if (walk.down === 'rising' && walk.gait.rising === null) {
       walk.stand(group.position); // on its feet: the legs are the walker's again
@@ -2794,9 +2813,10 @@ export class Stage {
       let doll = this.dolls.get(root);
       if (doll === undefined) {
         // its bones are measured standing as built, once; then it is put back in the pose it was in
+        // (the joints only: the stride, the fall it is in, are the gait's still, or it would be thrown as it was built)
         group.position.copy(walk.body.position);
         group.rotation.y = this.facing(at);
-        walk.gait.rest(root);
+        walk.gait.asBuilt(root);
         group.updateMatrixWorld(true);
         doll = Ragdoll.of(root);
         this.dolls.set(root, doll);
@@ -2848,7 +2868,7 @@ export class Stage {
     }
     walk.pin(group.position);
     walk.down = 'rising';
-    walk.gait.rise(doll.faceDown);
+    walk.gait.rise(doll.faceDown, root);
     return false;
   }
 

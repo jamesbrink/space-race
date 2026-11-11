@@ -22,6 +22,9 @@ export interface KeepOut {
 /** How hard gravity pulls the chain, m/s², and how much of its motion it keeps from one tick to the next (a hose is not a pendulum: it settles). */
 const GRAVITY = 9.81;
 const KEEP = 0.9;
+/** How long a tick of the chain is, seconds, whatever the frames are, and the most ticks in one frame. */
+const TICK = 1 / 60;
+const MOST_TICKS = 4;
 
 /**
  * One tick of a hanging chain. `points` and `before` are x, y, z per point, this tick's and the
@@ -106,7 +109,11 @@ export class Hose {
   readonly mesh: THREE.Mesh;
   private readonly points = new Float32Array(POINTS * 3);
   private readonly before = new Float32Array(POINTS * 3);
+  /** The chain as the last tick began, and as it is drawn: between that and where the tick left it. */
   private readonly scratch = new Float32Array(POINTS * 3);
+  private readonly shown = new Float32Array(POINTS * 3);
+  /** How far the ticks have run ahead of the frames, seconds: under a tick. */
+  private ahead = 0;
   private readonly endA = new THREE.Vector3();
   private readonly endB = new THREE.Vector3();
   /** How long it has hung nearly still with its ends still, seconds. */
@@ -164,9 +171,10 @@ export class Hose {
       this.before.set(points);
       this.laid = true;
       for (let i = 0; i < 40; i++)
-        relax(points, this.before, a.toArray(), aOut.toArray(), b.toArray(), bOut.toArray(), this.link, 1 / 60, floor, keepOut);
+        relax(points, this.before, a.toArray(), aOut.toArray(), b.toArray(), bOut.toArray(), this.link, TICK, floor, keepOut);
+      this.scratch.set(points);
+      this.ahead = 0;
     }
-    // in steps no longer than a sixtieth of a second, or a slow frame would fling it
     // Hanging nearly still between ends that are not moving, it is let be: a chain like this
     // never quite stops trembling, and a hose that trembles is drawn again every frame.
     const shifted = Math.max(a.distanceTo(this.endA), b.distanceTo(this.endB));
@@ -175,30 +183,35 @@ export class Hose {
     if (shifted > 0.002) this.calm = 0;
     if (this.calm >= 0.6) {
       this.speed = 0;
+      this.ahead = 0;
       return;
     }
+    // In ticks of one length, kept up to a tick ahead of the frames: what the chain
+    // keeps of its motion it keeps per tick, so a tick cut to fit each frame (one or two by turns,
+    // on a display a hair either side of sixty a second) made it twitch. A slow frame falls behind.
     const was = this.scratch;
-    was.set(points);
-    const steps = Math.max(1, Math.min(4, Math.ceil(dt * 60)));
-    for (let i = 0; i < steps; i++)
-      relax(
-        points,
-        this.before,
-        a.toArray(),
-        aOut.toArray(),
-        b.toArray(),
-        bOut.toArray(),
-        this.link,
-        Math.min(dt, 1 / 15) / steps,
-        floor,
-        keepOut,
-      );
-    let far = 0;
-    for (let i = 0; i < points.length; i += 3)
-      far = Math.max(far, Math.hypot(points[i]! - was[i]!, points[i + 1]! - was[i + 1]!, points[i + 2]! - was[i + 2]!));
-    this.speed = dt > 0 ? far / dt : 0;
+    this.ahead = Math.max(this.ahead - dt, -MOST_TICKS * TICK);
+    for (; this.ahead < 0; this.ahead += TICK) {
+      was.set(points);
+      relax(points, this.before, a.toArray(), aOut.toArray(), b.toArray(), bOut.toArray(), this.link, TICK, floor, keepOut);
+      let far = 0;
+      for (let i = 0; i < points.length; i += 3)
+        far = Math.max(far, Math.hypot(points[i]! - was[i]!, points[i + 1]! - was[i + 1]!, points[i + 2]! - was[i + 2]!));
+      this.speed = far / TICK;
+    }
     // (still enough: where it is pressed against the body it goes on shivering by a few millimetres for ever)
     this.calm = this.speed < 0.5 && shifted <= 0.002 ? this.calm + dt : 0;
+    // drawn between the last tick's start and its end, with its ends where its anchors are this frame
+    const shown = this.shown;
+    const part = 1 - this.ahead / TICK;
+    for (let i = 0; i < points.length; i++) shown[i] = was[i]! + (points[i]! - was[i]!) * part;
+    const last = POINTS - 1;
+    for (let k = 0; k < 3; k++) {
+      shown[k] = a.getComponent(k);
+      shown[3 + k] = a.getComponent(k) + aOut.getComponent(k) * this.link;
+      shown[last * 3 + k] = b.getComponent(k);
+      shown[(last - 1) * 3 + k] = b.getComponent(k) + bOut.getComponent(k) * this.link;
+    }
     this.draw();
   }
 
@@ -212,7 +225,7 @@ export class Hose {
     const parent = this.mesh.parent;
     const inverse = parent ? parent.matrixWorld.clone().invert() : null;
     this.curve.points.forEach((p, i) => {
-      p.fromArray(this.points, i * 3);
+      p.fromArray(this.shown, i * 3);
       if (inverse) p.applyMatrix4(inverse);
     });
     const rings = (POINTS - 1) * BETWEEN + 1;

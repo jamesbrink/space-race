@@ -8,7 +8,8 @@ import * as THREE from 'three';
  * leave water, not soot: the trail is white, lit by the day.
  *
  * Points are added in the scene's frame as the flight goes (`reach`); the mesh holds them all,
- * so going back on the clock only draws fewer (`uNow`), and nothing is rebuilt.
+ * so going back on the clock only draws less of it (`uNow`: each pixel knows its age, and those
+ * ahead of the clock are not drawn), and nothing is rebuilt.
  */
 
 /** Seconds of flight between points. */
@@ -16,13 +17,26 @@ export const TRAIL_STEP = 0.5;
 /** The most points: the powered flight is 142 s. */
 const MOST = 400;
 
-const VERT = /* glsl */ `
+/**
+ * How much of the trail there is at a point laid `age` seconds ago in air thinned to `air` of sea
+ * level's: none ahead of the clock (a point laid on an earlier run through the flight, which the
+ * clock has gone back before), coming in over the first moments behind the nozzle, thinning over
+ * minutes. The shader works the same sum for every pixel (FRAG), so the ribbon ends at the clock's
+ * instant and not at the next point laid.
+ */
+export function trailFade(age: number, air: number): number {
+  if (age < 0) return 0;
+  const k = Math.min(1, Math.max(0, age / 0.4));
+  return k * k * (3 - 2 * k) * Math.exp(-age / 100) * air;
+}
+
+export const VERT = /* glsl */ `
   attribute vec3 aAlong;      // the path's direction there
   attribute float aSide;      // -1 or 1: which edge of the ribbon
   attribute float aBorn;      // seconds of flight it was laid at
   attribute float aAir;       // how much air there was: 1 at sea level
   uniform float uNow;
-  varying float vFade, vSide;
+  varying float vAge, vAir, vSide;
   void main() {
     float age = uNow - aBorn;
     vec4 centre = modelMatrix * vec4(position, 1.0);
@@ -32,19 +46,23 @@ const VERT = /* glsl */ `
     float width = 3.0 + 1.6 * max(age, 0.0);                    // metres, spreading with age
     width = min(width, 90.0);
     centre.xyz += across * aSide * width;
-    // none ahead of the clock; laid from the nozzle, thinning with age and with the air it was laid in
-    vFade = step(-0.001, age) * smoothstep(-0.05, 0.4, age) * exp(-age / 100.0) * aAir;
+    // its age goes to every pixel: between a point behind the clock and one ahead of it the ribbon ends where the clock is
+    vAge = age;
+    vAir = aAir;
     vSide = aSide;
     gl_Position = projectionMatrix * viewMatrix * centre;
   }`;
 
-const FRAG = /* glsl */ `
+export const FRAG = /* glsl */ `
   uniform vec3 uLight;
   uniform float uOpacity;
-  varying float vFade, vSide;
+  varying float vAge, vAir, vSide;
   void main() {
+    // none ahead of the clock; laid from the nozzle, thinning with age and with the air it was laid in (trailFade)
+    if (vAge < 0.0) discard;
+    float fade = smoothstep(0.0, 0.4, vAge) * exp(-vAge / 100.0) * vAir;
     float edge = 1.0 - vSide * vSide;                            // soft across: full on the line, nothing at the edges
-    float a = vFade * edge * uOpacity;
+    float a = fade * edge * uOpacity;
     if (a < 0.004) discard;
     gl_FragColor = vec4(uLight, a);
     #include <tonemapping_fragment>
@@ -99,6 +117,13 @@ export class Trail {
    */
   head(at: THREE.Vector3, along: THREE.Vector3, now: number, air: number): void {
     if (this.count < 1 || this.count >= MOST) return;
+    // The clock is behind what is laid (gone back, or a second run): the trail ends where the
+    // clock is, between two points already there, and a live end joined to the last of them
+    // would be a chord across the sky to wherever the engine last burned.
+    if (now < this.born[(this.count - 1) * 2]!) {
+      this.headless();
+      return;
+    }
     for (const s of [-1, 1]) {
       const i = this.count * 2 + (s > 0 ? 1 : 0);
       at.toArray(this.position, i * 3);

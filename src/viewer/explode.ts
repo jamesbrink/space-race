@@ -83,6 +83,22 @@ export class Route {
   }
 }
 
+/**
+ * How far the front wheels are turned, radians, `distance` along a route by a vehicle `wheelbase`
+ * long whose rear axle follows it: they point where the route is going, one wheelbase ahead of
+ * the rear axle, less the way the vehicle itself is pointing. (Not the route's curvature where
+ * the rear axle is: that is a difference between two samples, and steps as it passes each.) The
+ * route's heading is continuous, so this is; and the wheels are straight at both ends of the
+ * route, turning in over the first wheelbase and out over the last.
+ */
+export function steerAlong(route: Route, distance: number, wheelbase: number): number {
+  const s = Math.min(route.length, Math.max(0, distance));
+  const reach = Math.max(wheelbase, 1e-3);
+  const soft = (x: number) => ease(Math.min(1, Math.max(0, x)));
+  const turn = route.at(s + reach).heading - route.at(s).heading;
+  return Math.atan(turn) * soft(s / reach) * soft((route.length - s) / reach);
+}
+
 const UP = new THREE.Vector3(0, 1, 0);
 
 /** A part that leaves under its own power: it follows a route, turns with it, and its wheels roll and steer. */
@@ -130,13 +146,14 @@ class Driver {
     const roll = (this.spin * distance) / this.drive.wheelRadius;
     for (const w of this.rolling) w.rotation[this.axis] = roll;
     // the front wheels point where the route is going: one wheelbase ahead of the rear axle
-    const still = k <= 0 || k >= 1;
-    const steer = still ? 0 : Math.atan(this.drive.wheelbase * p.curvature) * (this.drive.reverse ? -1 : 1);
+    const steer = steerAlong(this.route, distance, this.drive.wheelbase) * (this.drive.reverse ? -1 : 1);
     for (const w of this.steering) w.rotation.y = steer;
   }
 }
 
-const ease = (x: number) => x * x * (3 - 2 * x);
+function ease(x: number): number {
+  return x * x * (3 - 2 * x);
+}
 
 /** One thing a part does (types.ts: Part.functions): its nodes, the stretch of the slider their moves span, and what the flight says of it. */
 export interface Fn {

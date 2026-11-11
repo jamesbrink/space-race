@@ -169,6 +169,7 @@ export class Limp {
     const hips = from[0]!;
     this.points.forEach((p, i) => {
       p.copy(from[i]!);
+      this.start[i]!.copy(p);
       const turn = new THREE.Vector3().crossVectors(spin, new THREE.Vector3().subVectors(p, hips));
       this.before[i]!.copy(p).addScaledVector(velocity, -dt).addScaledVector(turn, -dt);
     });
@@ -179,6 +180,7 @@ export class Limp {
     this.points.forEach((p, i) => {
       p.add(by);
       this.before[i]!.add(by);
+      this.start[i]!.add(by);
     });
   }
 
@@ -274,6 +276,13 @@ export class Limp {
     if (by) this.points[i]!.addScaledVector(way, by);
   }
 
+  /** Where each point is `part` of the way through the last tick (0: as the tick began, 1: as it ended), into `to`. */
+  between(part: number, to: THREE.Vector3[]): void {
+    this.points.forEach((p, i) => {
+      to[i]!.lerpVectors(this.start[i]!, p, part);
+    });
+  }
+
   /** How far each stick is from the length it should be, as a fraction of it: the worst of them. */
   strain(): number {
     return Math.max(
@@ -302,6 +311,16 @@ export interface Tumbler {
 const STILL = 0.4;
 const SETTLE = 0.5;
 const LONGEST = 7;
+/**
+ * How long a tick of the points is, seconds, whatever the frames are: the speed a point carries
+ * is how far it went in the last tick, and what it loses to the air and the ground it loses per
+ * tick, so a tick must always be the same length. (Cut to fit each frame, a display a third of
+ * a millisecond either side of a sixtieth of a second took one tick or two by turns, and what
+ * was carried over doubled and halved: the figure never lay still.) And the most ticks in one
+ * frame: a slow frame falls behind, it does not shoot the figure through a floor.
+ */
+export const TICK = 1 / 60;
+export const MOST_TICKS = 4;
 
 /** The joint each joint's bone points at, where it has one: turning the joint lays its bone along the line to that point. */
 const AIMS: readonly [Joint, Point][] = [
@@ -333,6 +352,10 @@ export class Ragdoll implements Tumbler {
   private readonly ends: [Point, Point, THREE.Vector3][] = [];
   private still = 0;
   private age = 0;
+  /** How far the ticks have run ahead of the frames, seconds: under a tick. */
+  private ahead = 0;
+  /** The points as they are drawn: between the last tick's start and its end, where the frame's own moment falls. */
+  private readonly shown: THREE.Vector3[] = POINTS.map(() => new THREE.Vector3());
 
   /** `root`, standing as built, with its world matrices up to date. Null if it has not all fifteen joints. */
   static of(root: THREE.Object3D): Ragdoll | null {
@@ -393,16 +416,21 @@ export class Ragdoll implements Tumbler {
     // it pitches the way it was going: about the level axis across its path, or about its own shoulders' line if it fell straight
     const across = new THREE.Vector3(velocity.z, 0, -velocity.x);
     if (across.lengthSq() < 0.04) across.subVectors(from[at('UpperArm.L')]!, from[at('UpperArm.R')]!).setY(0);
-    this.limp.throw(from, velocity, across.normalize().multiplyScalar(-1.6));
-    this.still = this.age = 0;
+    this.limp.throw(from, velocity, across.normalize().multiplyScalar(-1.6), TICK);
+    this.still = this.age = this.ahead = 0;
+    this.limp.between(0, this.shown);
   }
 
   step(dt: number, collide: Collide): void {
-    // in ticks no longer than a sixtieth of a second: a slow frame must not shoot it through a floor
-    const ticks = Math.max(1, Math.min(4, Math.ceil(dt * 60)));
-    for (let i = 0; i < ticks; i++) this.limp.step(dt / ticks, collide);
+    // in ticks of one length (TICK), kept up to a tick ahead of the frames, and drawn between the last two
+    this.ahead = Math.max(this.ahead - dt, -MOST_TICKS * TICK);
+    while (this.ahead < 0) {
+      this.limp.step(TICK, collide);
+      this.ahead += TICK;
+      this.still = this.limp.speed < STILL ? this.still + TICK : 0;
+    }
     this.age += dt;
-    this.still = this.limp.speed < STILL ? this.still + dt : 0;
+    this.limp.between(1 - this.ahead / TICK, this.shown);
     this.pose();
   }
 
@@ -411,7 +439,7 @@ export class Ragdoll implements Tumbler {
   }
 
   get hips(): THREE.Vector3 {
-    return this.limp.points[0]!;
+    return this.shown[0]!;
   }
 
   /** The way out of its chest: across its shoulders and up its spine say which way that is. */
@@ -436,7 +464,7 @@ export class Ragdoll implements Tumbler {
 
   /** Lay the bones along the points: the hips where theirs is and turned as the trunk is, and each bone after it pointed down its own line. */
   private pose(): void {
-    const p = this.limp.points;
+    const p = this.shown;
     const hips = this.joints.get('Hips')!;
     const parent = hips.parent!;
     parent.updateWorldMatrix(true, false);
@@ -463,7 +491,7 @@ export class Ragdoll implements Tumbler {
 
   /** The points, and the fastest of them, for whoever is watching (the tests; a camera). */
   get points(): THREE.Vector3[] {
-    return this.limp.points;
+    return this.shown;
   }
   get speed(): number {
     return this.limp.speed;
@@ -472,6 +500,7 @@ export class Ragdoll implements Tumbler {
   /** Lift or shift the whole figure, points and their motion alike. */
   shift(by: THREE.Vector3): void {
     this.limp.shift(by);
+    for (const p of this.shown) p.add(by);
   }
 
   /** How badly the points are being held from where the sticks want them (see Limp.strain), for the tests. */
