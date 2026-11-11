@@ -1,4 +1,4 @@
-import type { Action, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import type { Action, Flight, FlightCheck, Keyframe, Measure, ModelDef, Move, Part, Trajectory } from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
 
 const IN = 0.0254;
@@ -915,6 +915,230 @@ const crew: ModelDef = {
   with: [{ model: 'pad', at: ROLLED_BACK }],
 };
 
+const FT = 0.3048;
+const NMI = 1852;
+const PSF = 47.880259; // pascals in a pound per square foot
+const PLR = 'Postlaunch Report for Mercury-Redstone No. 3 (NASA STG, 16 June 1961)';
+const TMX_8_1 = 'NASA TM X-53107, Table 8-1, column MR-3';
+const TMX_491 = 'NASA TM X-491 (Brown and Moseley, 1961)';
+const doc = (value: number, source: string): Measure => ({ value, confidence: 'documented', source });
+const derived = (value: number, source: string): Measure => ({ value, confidence: 'derived', source });
+const guess = (value: number, source: string): Measure => ({ value, confidence: 'estimated', source });
+
+const THRUST = 78_860 * LBF;
+const ISP = 214.8;
+const CUTOFF = 141.8;
+const LIFTOFF_MASS = 66_098 * LB;
+/** What is left at cutoff: everything, less the propellant the engine has passed. */
+const CUTOFF_MASS = LIFTOFF_MASS - (THRUST / (9.80665 * ISP)) * CUTOFF;
+/** The capsule's greatest cross-section, 74.5 in across: what TM X-491's coefficients are referred to. */
+const CAPSULE_AREA = (Math.PI * (74.5 * IN) ** 2) / 4;
+/**
+ * The tilt programme as TM X-53107 draws it (Figure 4-9: degrees from the launch vertical against
+ * seconds), which is the programme of MR-1 to MR-2, beginning at 24.3 s. MR-3 flew the "flatter
+ * trajectory", whose programme began at 15.0 s and was arrested at the same 131.7 s (Table 3-1);
+ * its curve is not published, so the drawn one is stretched to begin at 15.0 s.
+ */
+const TILT_FIGURE: [number, number][] = [
+  [24.3, 0],
+  [30, 1.4],
+  [40, 3.3],
+  [50, 6.8],
+  [60, 10.6],
+  [70, 16.3],
+  [80, 21],
+  [90, 26.7],
+  [100, 31],
+  [110, 34.9],
+  [120, 37.9],
+  [130, 40.7],
+  [131.7, 41],
+];
+const TILT_BEGINS = 15.0;
+const TILT_ARREST = 131.7;
+
+/**
+ * What the simulator flies Freedom 7 from (src/sim/fly.ts). Every figure is an input from a
+ * report; none was adjusted against the results below. Where a report gives no figure the entry
+ * is `estimated` and says what it stands on: tests/sim.test.mjs prints how far each of those moves
+ * each result.
+ */
+const trajectory: Trajectory = {
+  azimuth: doc(
+    105,
+    'NASA TM X-53107, section 7.2: a 105-degree launch azimuth; the Postlaunch Report has the Earth-fixed heading at separation as 105.23',
+  ),
+  liftoffMass: doc(LIFTOFF_MASS, `${TMX_8_1}: weight at liftoff 66,098 lb`),
+  engine: {
+    thrust: doc(THRUST, `${TMX_8_1}: thrust, sea level, 78,860 lb`),
+    isp: doc(
+      ISP,
+      `${TMX_8_1}: engine specific impulse, sea level, 214.8 s (so 367.1 lb/s, taken as the whole flow, turbine exhaust included)`,
+    ),
+    exitArea: derived(
+      (11_000 * LBF) / 101_325,
+      'the A-7 is rated 78,000 lbf at sea level and 89,000 lbf in vacuum (Aircraft Engine Historical Society, "The Redstone Engine", secondary): the 11,000 lbf between them over one atmosphere is 749 sq in of nozzle exit',
+    ),
+    cutoff: doc(CUTOFF, `${PLR}, section 4.1: booster cut-off at 02:21.8, by the velocity integrator`),
+  },
+  tilt: {
+    points: TILT_FIGURE.map(([t, tilt]) => [TILT_BEGINS + ((t - 24.3) * (TILT_ARREST - TILT_BEGINS)) / (TILT_ARREST - 24.3), tilt]),
+    confidence: 'estimated',
+    source:
+      'documented: begins 15.0 s, arrested 131.7 s (NASA TM X-53107, Table 3-1), 41 degrees at the end (Figure 4-9; Table 8-1). ' +
+      'Estimated: the curve between, which is Figure 4-9 (read to about half a degree) stretched from its 24.3 s beginning to 15.0 s',
+  },
+  area: derived(CAPSULE_AREA, 'the capsule is 74.5 in across at its widest (CR-649): 30.27 sq ft'),
+  ascentDrag: {
+    points: [
+      [0, 0.52],
+      [0.5, 0.56],
+      [0.8, 0.66],
+      [1.0, 0.9],
+      [1.1, 0.92],
+      [1.5, 0.8],
+      [2, 0.7],
+      [2.5, 0.58],
+      [3, 0.48],
+      [4, 0.36],
+      [5, 0.31],
+      [6, 0.3],
+      [7, 0.3],
+    ],
+    confidence: 'estimated',
+    source:
+      `${TMX_491}, Figure 20: drag coefficient at no angle of attack of the capsule with its escape tower, alone in the tunnel, read to about 0.02. ` +
+      'On the booster the capsule has no wake of its own and the Redstone adds its skin, fins and base: the two are taken to cancel, which nobody measured for us. No drag figure for the whole vehicle was found',
+  },
+  separation: {
+    at: doc(152.3, `${PLR}, section 4.1: capsule separation at 02:32.3`),
+    mass: doc(2855.14 * LB, `${PLR}, section 3.1: capsule weight in the "orbit" configuration, 2855.14 lb`),
+    boosterMass: derived(
+      CUTOFF_MASS - 4040.28 * LB,
+      'the liftoff weight, less the flow for 141.8 s, less the capsule and tower at launch (4040.28 lb): about 10,000 lb of booster and residuals',
+    ),
+    speed: doc(30 * FT, `${PLR}, section 4.2: separation velocity approximately 30 plus or minus 3 ft/s, from AZUSA and radar`),
+  },
+  retro: {
+    fires: [314.1, 318.8, 323.6].map((t, i) => doc(t, `${PLR}, section 4.1: retro no. ${i + 1} fire`)),
+    thrust: doc(992 * LBF, 'McDonnell SEDR 104: 992 lbf (SP-45 has a nominal 1,000 lbf for 10 s, a quarter less impulse)'),
+    burn: doc(13.2, 'McDonnell SEDR 104: 13.2 s'),
+    pitch: derived(
+      20,
+      `${PLR}, section 4.2: "an average retro-attitude angle of 20 degrees above the local horizontal" (34 was planned). ` +
+        'That is the blunt end’s elevation, so the push on the capsule is taken as rearward and 20 degrees below the level',
+    ),
+  },
+  retropack: {
+    at: doc(373.6, `${PLR}, section 4.1: retro-package jettison at 06:13.6`),
+    mass: doc(2579.0 * LB, `${PLR}, section 3.1: capsule weight in the re-entry configuration, 2579.00 lb`),
+  },
+  entryDrag: {
+    points: [
+      [0, 1.0],
+      [0.5, 1.05],
+      [0.8, 1.2],
+      [1, 1.3],
+      [1.5, 1.42],
+      [2, 1.52],
+      [3, 1.57],
+      [4, 1.6],
+      [20, 1.6],
+    ],
+    confidence: 'documented',
+    source: `${TMX_491}, Figure 22: drag coefficient at no angle of attack of the re-entry configuration, Mach 0.5 to 20, read to about 0.03; "above Mach 4 it remains constant"`,
+  },
+  drogue: {
+    altitude: doc(21_000 * FT, 'Results of the First U.S. Manned Suborbital Space Flight, p. 7; Hammack p. 12: deployed at 21,000 ft'),
+    dragArea: guess(
+      0.5 * Math.PI * (3 * FT) ** 2,
+      'a 6 ft conical ribbon parachute (Hammack p. 12) at a drag coefficient of 0.5, the usual figure for the type: no measured figure found',
+    ),
+  },
+  main: {
+    altitude: doc(10_000 * FT, 'Results, p. 7; Hammack p. 12: main parachute at 10,000 ft'),
+    dragArea: derived(
+      (2 * 2579.0 * LB * 9.80665) / (1.225 * (29 * FT) ** 2) - 1.0 * CAPSULE_AREA,
+      'what brings the re-entry weight down at 29 ft/s at sea level ("descent velocities of 28 to 30 feet per second were always achieved", Hammack p. 28), less the capsule’s own drag: ' +
+        '0.82 on a 63 ft canopy',
+    ),
+  },
+};
+
+/**
+ * What the reports say happened, for the simulator to be held against. The tolerances were set
+ * before it was run: 2 per cent on heights and distances, 1 per cent on speeds, half a g, ten
+ * seconds, a degree. tests/sim.test.mjs.
+ */
+const check = (id: string, label: string, value: number, unit: string, tolerance: number, source: string): FlightCheck => ({
+  id,
+  label,
+  value,
+  unit,
+  tolerance,
+  confidence: 'documented',
+  source,
+});
+const checks: FlightCheck[] = [
+  check('apogee', 'Greatest height', 101.2 * NMI, 'm', 0.02 * 101.2 * NMI, `${PLR}, section 4.2: maximum altitude 101.2 n. mi.`),
+  check('range', 'Range', 263.1 * NMI, 'm', 0.02 * 263.1 * NMI, `${PLR}, section 4.2: range 263.1 n. mi.`),
+  check('duration', 'Liftoff to landing', 922.0, 's', 10, `${PLR}, section 4.1: main chute disconnect, at landing, 15:22.0`),
+  check(
+    'separationSpeed',
+    'Space-fixed speed at separation',
+    7388 * FT,
+    'm/s',
+    0.01 * 7388 * FT,
+    `${PLR}, section 4.2: inertial velocity 7388 ft/s at capsule separation`,
+  ),
+  check(
+    'separationGroundSpeed',
+    'Earth-fixed speed at separation',
+    6414 * FT,
+    'm/s',
+    0.01 * 6414 * FT,
+    `${PLR}, section 4.2: Earth-fixed velocity 6414 ft/s`,
+  ),
+  check(
+    'separationClimb',
+    'Space-fixed climb angle at separation',
+    39.01,
+    'deg',
+    1,
+    `${PLR}, section 4.2: inertial flight-path angle 39.01 degrees`,
+  ),
+  check(
+    'separationGroundClimb',
+    'Earth-fixed climb angle at separation',
+    46.47,
+    'deg',
+    1,
+    `${PLR}, section 4.2: Earth-fixed flight-path angle 46.47 degrees`,
+  ),
+  check('separationAltitude', 'Height at separation', 243_640 * FT, 'm', 0.02 * 243_640 * FT, `${PLR}, section 4.2: altitude 243,640 ft`),
+  check(
+    'exitQ',
+    'Greatest dynamic pressure, going up',
+    586 * PSF,
+    'Pa',
+    0.05 * 586 * PSF,
+    `${PLR}, section 4.2: maximum exit dynamic pressure 586 lb/sq ft`,
+  ),
+  check('exitG', 'Greatest load, going up', 6.3, 'g', 0.5, `${PLR}, section 4.2: maximum exit longitudinal load factor 6.3 g`),
+  check(
+    'entryQ',
+    'Greatest dynamic pressure, coming down',
+    605 * PSF,
+    'Pa',
+    0.05 * 605 * PSF,
+    `${PLR}, section 4.2: maximum re-entry dynamic pressure 605 lb/sq ft`,
+  ),
+  check('entryG', 'Greatest load, coming down', 11.0, 'g', 0.5, `${PLR}, section 4.2: maximum re-entry longitudinal load factor 11.0 g`),
+  check('entryAt', 'A twentieth of a g, coming down', 468.2, 's', 10, `${PLR}, section 4.1: .05 g relay at 07:48.2`),
+  check('drogueAt', 'Drogue parachute', 578.1, 's', 10, `${PLR}, section 4.1: drogue chute deploy at 09:38.1`),
+  check('mainAt', 'Main parachute', 614.8, 's', 10, `${PLR}, section 4.1: main chute deploy at 10:14.8`),
+];
+
 /** Mercury-Redstone 3. Prose versions of this file: ./README.md (flight), ./spacecraft.md (ship). */
 export const flight: Flight = {
   id: 'usa/mercury/mr-3-freedom-7',
@@ -1280,6 +1504,8 @@ export const flight: Flight = {
       note: 'automatic system, all axes',
     },
   ],
+  trajectory,
+  checks,
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-05.glb',
 };

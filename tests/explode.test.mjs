@@ -128,7 +128,7 @@ test('every node that moves is a function of its part; the flight names them and
   assert.ok(Math.abs(scriptedAt(roll, 0.6) - 0.5) < 1e-9);
   assert.equal(scriptedAt(roll, 1), 1);
   assert.ok(Math.abs(sliderFor(roll, 0.5) - 0.6) < 1e-9);
-  assert.equal(sliderFor(roll, 7), 0.9);
+  assert.ok(Math.abs(sliderFor(roll, 7) - 0.9) < 1e-9);
   // the roll waits for the platforms
   assert.equal(
     refusal(roll, () => 0.4),
