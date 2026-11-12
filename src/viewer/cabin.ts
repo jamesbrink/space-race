@@ -467,12 +467,14 @@ export class Cabin {
       const reading = n.reads ? r[n.reads as keyof Readings] : n.value;
       const value = reading === undefined ? n.rest : n.reads ? reading / n.per : reading;
       n.goal = n.drum ? drumAt(value, n.place, n.drum) : scaleAt(n.turn ?? n.slide ?? [], value, n.wrap);
-      if (Number.isNaN(n.now)) n.now = n.goal;
+      // (the first reading is stood on, not eased to: and the node is put there, or it stays where it was built)
+      const first = Number.isNaN(n.now);
+      if (first) n.now = n.goal;
       // (what goes round goes the short way: a heading through north, a wheel from nine to nought)
       const round = n.drum ?? (n.turn && n.wrap ? 2 * Math.PI : 0);
       let by = n.goal - n.now;
       if (round) by -= Math.round(by / round) * round;
-      if (Math.abs(by) < 1e-5) continue;
+      if (!first && Math.abs(by) < 1e-5) continue;
       n.now += n.drum ? by : by * k;
       moved = true;
       if (n.drum) n.node.quaternion.copy(n.home).multiply(q.setFromAxisAngle(AXIS_X, (n.now / n.drum) * 2 * Math.PI));
