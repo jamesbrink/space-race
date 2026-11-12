@@ -167,8 +167,7 @@ test('nothing jumps: from one twentieth of a degree of the cycle to the next no 
     for (let i = 0; i < n; i++) {
       const a = pose(i / n, speed, 0, { load, crouch });
       const b = pose((i + 1) / n, speed, 0, { load, crouch });
-      // (1.7 degrees: it was 1.2 until a foot was kept out of the ground, and is 1.63 at the most with that, at 3 m/s: a runner's leg is bent, quickly, to lift a foot coming in to land)
-      for (const j of JOINTS) assert.ok(Math.abs(a[j] - b[j]) < 1.7 * DEG, `${j} at ${i / n}, ${speed} m/s: ${(a[j] - b[j]) / DEG} deg`);
+      for (const j of JOINTS) assert.ok(Math.abs(a[j] - b[j]) < 1.2 * DEG, `${j} at ${i / n}, ${speed} m/s: ${(a[j] - b[j]) / DEG} deg`);
       assert.ok(Math.abs(a.rise - b.rise) < 0.002 && Math.abs(a.shift - b.shift) < 0.001 && Math.abs(a.sag - b.sag) < 0.002);
       const va = view({ phase: i / n, speed, load, crouch });
       const vb = view({ phase: (i + 1) / n, speed, load, crouch });
@@ -184,8 +183,11 @@ test('nothing jumps: from one twentieth of a degree of the cycle to the next no 
 
 test('nothing jumps as a figure speeds up, leaves the ground, or lands either', () => {
   for (const phase of [0, 0.2, 0.55, 0.8]) {
+    // (1.7 degrees: a foot's turn as it lands is the fastest thing in a stride, and between 1.9 and 2 m/s the landing itself
+    // passes through these phases as the stance shortens: 0.02 m/s there is one and a half of the steps the test above
+    // allows 1.2 degrees each. The most measured is 1.65.)
     for (let v = 0; v < 5; v += 0.02)
-      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, v)[j] - pose(phase, v + 0.02)[j]) < 1.8 * DEG, `${j} at ${v} m/s`);
+      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, v)[j] - pose(phase, v + 0.02)[j]) < 1.7 * DEG, `${j} at ${v} m/s`);
     for (let air = 0; air < 1; air += 0.02)
       for (const j of JOINTS) assert.ok(Math.abs(pose(phase, 3, air)[j] - pose(phase, 3, air + 0.02)[j]) < 2.5 * DEG, `${j} at air ${air}`);
   }

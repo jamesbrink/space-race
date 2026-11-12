@@ -200,7 +200,7 @@ function running(speed: number): number {
 }
 
 /** How far each side of the midline the feet land, metres: a walk's steps are a hand's width apart, a run's nearly on one line. Estimated. */
-const track = (speed: number): number => at(speed, 0.065, 0.04, 0.065);
+const track = (speed: number): number => at(speed, 0.065, 0.045, 0.065);
 /** How far the pelvis turns each way with the leg going forward, radians: 4 degrees at a walk, 6 at a run. Estimated (the textbooks give 4 to 5 at a walk). */
 const turning = (speed: number): number => at(speed, 0.07, 0.105);
 /** How far the pelvis tips up on the side that has the weight, radians: about 3 degrees. Estimated (given as 4 to 5 for a man in ordinary clothes). */
@@ -219,6 +219,9 @@ export interface Hip {
   dip: number;
   tilt: number;
   splay: number;
+  /** What the tilt was worked from: how far in from the hip joint the foot's line is, and how high the joint is over a flat foot's ankle, metres. */
+  inward?: number;
+  over?: number;
 }
 /**
  * The pelvis's own motion at a moment of a stride, and where it puts the hip joints (see Pose).
@@ -268,10 +271,12 @@ export function carriage(
   // Each leg's tilt, from where its hip joint is to where its foot belongs: the stride's line, as far as the stride is
   // a stride, and where the figure stands otherwise. The hip is `sway` to the left of the middle and this high over the ankle.
   const line = stand - Math.max(0, stand - track(speed)) * moving * ground;
-  const tilted = (aside: number, lift: number): { tilt: number; lean: number } => {
-    const tilt = Math.atan2(half + aside - line, leg * Math.cos(splay) - drop + lift);
+  // (a pelvis that has turned and tipped has its hip joints a hair nearer the middle)
+  const across = half * Math.cos(tip) * Math.cos(turn);
+  const tilted = (aside: number, lift: number): { tilt: number; lean: number; inward: number; over: number } => {
+    const tilt = tiltTo(across + aside - line, leg * Math.cos(splay) - drop + lift, leg, splay);
     const turned = tilt + splay;
-    return { tilt, lean: Math.abs(turned) < 1e-12 ? 0 : turned };
+    return { tilt, lean: Math.abs(turned) < 1e-12 ? 0 : turned, inward: across + aside - line, over: leg * Math.cos(splay) - drop + lift };
   };
   const left = tilted(sway, settle + up);
   const right = tilted(-sway, settle - up);
@@ -280,9 +285,38 @@ export function carriage(
     tip,
     sway,
     settle,
-    L: { ahead, up: settle + up, dip: down - up, tilt: left.tilt, splay, lean: left.lean },
-    R: { ahead: -ahead, up: settle - up, dip: down + up, tilt: right.tilt, splay, lean: right.lean },
+    L: { ahead, up: settle + up, dip: down - up, tilt: left.tilt, splay, lean: left.lean, inward: left.inward, over: left.over },
+    R: {
+      ahead: -ahead,
+      up: settle - up,
+      dip: down + up,
+      tilt: right.tilt,
+      splay,
+      lean: right.lean,
+      inward: right.inward,
+      over: right.over,
+    },
   };
+}
+
+/**
+ * A leg seen from in front. Its foot stands `splay` out from under its hip as built, and that offset stays what it is
+ * however the knee bends (a knee does not move a foot sideways); the leg is turned in about the hip so that the ankle
+ * comes `inward` of the hip joint with the joint `high` over it. `tiltTo` is that turn less the splay (so a leg as
+ * built has a tilt of minus its splay); `inPlane` is how long the leg then has to be in its own plane, as its bones
+ * measure it, for the joint to be `high` over the ankle, and `upright` the height a leg of that length stands.
+ */
+function tiltTo(inward: number, high: number, span: number, splay: number): number {
+  const out = span * Math.sin(splay);
+  return Math.atan2(inward, high) + Math.asin(Math.min(1, Math.max(-1, out / Math.hypot(inward, high)))) - splay;
+}
+function inPlane(span: number, hip: Hip, high: number): number {
+  const turned = hip.tilt + hip.splay;
+  return (high - span * Math.sin(hip.splay) * Math.sin(turned)) / (Math.cos(turned) * Math.cos(hip.splay));
+}
+function upright(span: number, hip: Hip, length: number): number {
+  const turned = hip.tilt + hip.splay;
+  return length * Math.cos(hip.splay) * Math.cos(turned) + span * Math.sin(hip.splay) * Math.sin(turned);
 }
 
 /**
@@ -300,7 +334,7 @@ export function planted(
 ): { thigh: number; knee: number; pitch: number } {
   const leg = limbs.thigh + limbs.shin;
   // (in the tilted leg's own plane the ground is further off than it is straight down)
-  return plant(limbs, x - hip.ahead, y, leg - y - (leg * Math.cos(hip.splay) - drop + hip.up - y) / Math.cos(hip.tilt), least, toes);
+  return plant(limbs, x - hip.ahead, y, leg - y - inPlane(leg, hip, leg * Math.cos(hip.splay) - drop + hip.up - y), least, toes);
 }
 
 /** `footOf` likewise: where a leg turned so has its ankle's sole, told from the middle of the pelvis standing square. */
@@ -309,7 +343,7 @@ export function footAt(limbs: Limbs, thigh: number, knee: number, drop: number, 
   const b = limbs.shin;
   return [
     hip.ahead - (a * Math.sin(thigh) + b * Math.sin(thigh + knee)),
-    (a + b) * Math.cos(hip.splay) - drop + hip.up - Math.cos(hip.tilt) * (a * Math.cos(thigh) + b * Math.cos(thigh + knee)),
+    (a + b) * Math.cos(hip.splay) - drop + hip.up - upright(a + b, hip, a * Math.cos(thigh) + b * Math.cos(thigh + knee)),
   ];
 }
 
@@ -385,13 +419,13 @@ function touchdown(limbs: Limbs, speed: number): number {
   // (the left foot's landing: its hip is where the pelvis has it then, turned forward with the leg, and the leg leans in)
   const pelvis = carriage(0.5 - st, speed, limbs, 1, sink(0.5 - st, speed, 0));
   const hip = pelvis.L;
-  const upright = Math.cos(hip.tilt);
   // (standing, the hip joints are this far over the ankles: a leg that stands out from its hip stands a hair lower)
   const stood = all - (limbs.thigh + limbs.shin) * (1 - Math.cos(hip.splay));
   // the heel of the foot's spot, ahead of the hip; and the ankle of the swinging leg, ahead of the hip and below it
   const heel = st * span(speed, all) - HEEL - hip.ahead;
   const ahead = -(limbs.thigh * Math.sin(thigh) + limbs.shin * Math.sin(thigh + knee));
-  const below = upright * (limbs.thigh * Math.cos(thigh) + limbs.shin * Math.cos(thigh + knee));
+  const bones = limbs.thigh + limbs.shin;
+  const below = upright(bones, hip, limbs.thigh * Math.cos(thigh) + limbs.shin * Math.cos(thigh + knee));
   // the ankle goes round its heel on a circle: where on it that leg's ankle is, as toes-up as an ankle goes at the most
   const radius = Math.hypot(HEEL, limbs.ankle);
   const level = Math.atan2(limbs.ankle, HEEL);
@@ -401,7 +435,8 @@ function touchdown(limbs: Limbs, speed: number): number {
   const least = straightest(speed);
   const leg = Math.sqrt(limbs.thigh ** 2 + limbs.shin ** 2 + 2 * limbs.thigh * limbs.shin * Math.cos(least));
   const reach = heel + radius * Math.cos(level + TOES_UP);
-  const most = stood + hip.up - (radius * Math.sin(level + TOES_UP) + upright * Math.sqrt(Math.max(0, leg * leg - reach * reach)));
+  const most =
+    stood + hip.up - (radius * Math.sin(level + TOES_UP) + upright(bones, hip, Math.sqrt(Math.max(0, leg * leg - reach * reach))));
   return Math.max(swung, most);
 }
 
@@ -569,8 +604,14 @@ export function footOf(limbs: Limbs, thigh: number, knee: number, drop: number):
   return [-(a * Math.sin(thigh) + b * Math.sin(thigh + knee)), a + b - drop - (a * Math.cos(thigh) + b * Math.cos(thigh + knee))];
 }
 
-/** How far under the ground a foot may be told to be before its leg is bent to lift it, metres. */
-const GRAZE = 0.003;
+/**
+ * A swinging foot keeps off the ground. The swing is drawn by angle, and the hips under it come down a long way into a
+ * runner's landing: where that would put the sole within CLEAR_BY of the ground, or under it, the leg is bent to hold
+ * it up, coming in over CLEAR_OVER so that the knee is asked for it gradually (a runner's knee does bend into its
+ * landing: it is the hips that are coming down). Metres.
+ */
+const CLEAR_BY = 0.004;
+const CLEAR_OVER = 0.014;
 /** How much of the drop of its hip a swinging leg takes up by bending: all of it and half as much again. */
 const CLEAR = 1.5;
 /** How much nearer the hip a planted foot may be than a straight leg reaches before the knee is asked to bend for all of it, metres. */
@@ -611,6 +652,7 @@ export function pose(m: Moment): Pose {
   const drop = bob + sag(m.phase, speed, crouch, limbs);
   // The pelvis's own motion, which the planted legs are solved from: it is the ground's while there is ground.
   const pelvis = carriage(m.phase, speed, limbs, g, drop);
+  const leans = { L: 0, R: 0 };
   for (const side of ['L', 'R'] as const) {
     const sign = side === 'L' ? 1 : -1;
     let hip = -sign * thigh * s;
@@ -634,18 +676,40 @@ export function pose(m: Moment): Pose {
       hip += dipped.thigh - level.thigh;
       shin += dipped.knee - level.knee;
     }
+    {
+      const joint = pelvis[side];
+      const [x, y] = footAt(limbs, hip, shin, drop, joint);
+      const span = limbs.thigh + limbs.shin;
+      const to = (h: number) =>
+        legTo(limbs, x - joint.ahead, h, span - h - inPlane(span, joint, span * Math.cos(joint.splay) - drop + joint.up - h));
+      // (its lowest point: the heel or the toes, as a swinging foot is pitched)
+      const pitch = 0.4 * (hip + shin);
+      const low = y + limbs.ankle * (1 - Math.cos(pitch)) + Math.min(HEEL * Math.sin(pitch), -TOES * Math.sin(pitch));
+      const over = (low - CLEAR_BY) / CLEAR_OVER;
+      // (as far as it is striding: a figure standing has its feet on the ground)
+      const held = low + (CLEAR_BY + CLEAR_OVER * (over > 30 ? over : Math.log1p(Math.exp(over))) - low) * Math.min(1, speed / WALK);
+      if (held - low > 1e-6) {
+        const was = to(y);
+        const now = to(y + held - low);
+        hip += now.thigh - was.thigh;
+        shin = Math.max(0, shin + now.knee - was.knee);
+      }
+    }
     if (foot.hold > 0) {
       const stride = asked(limbs, side, m.phase, speed, crouch);
       const striding = 1 - (foot.own ?? 0);
-      const leg = planted(
-        limbs,
-        foot.x,
-        foot.y,
-        drop,
-        pelvis[side],
-        straight + (stride.least - straight) * striding,
-        stride.toes * striding,
-      );
+      const least = straight + (stride.least - straight) * striding;
+      let leg = planted(limbs, foot.x, foot.y, drop, pelvis[side], least, stride.toes * striding);
+      // A foot rocking on its heel or its toes has its ankle higher than a flat foot's, and a leg that leans reaches less far
+      // in from a higher ankle: the lean is worked again from where the ankle is, and the leg from that, so the foot
+      // stays on its line through the whole of its stance.
+      const joint = pelvis[side];
+      const lifted = footAt(limbs, leg.thigh, leg.knee, drop, joint)[1];
+      if (joint.inward !== undefined && joint.over !== undefined && Math.abs(lifted) > 1e-5) {
+        const tilt = tiltTo(joint.inward, joint.over - lifted, limbs.thigh + limbs.shin, joint.splay);
+        leans[side] = (tilt - joint.tilt) * foot.hold;
+        leg = planted(limbs, foot.x, foot.y, drop, { ...joint, tilt }, least, stride.toes * striding);
+      }
       hip += (leg.thigh - hip) * foot.hold;
       shin += (leg.knee - shin) * foot.hold;
       toe = leg.pitch + (foot.tip ?? 0);
@@ -660,29 +724,6 @@ export function pose(m: Moment): Pose {
     const turned = out[`UpperLeg.${side}`] + out[`LowerLeg.${side}`];
     // (the toes of a leg reaching for its landing come up late: a heel held low is a heel in the ground)
     out[`Foot.${side}`] = -(0.6 + 0.4 * foot.hold * g) * turned + toe * (toe < 0 ? foot.hold ** 2 : foot.hold) * g;
-    // A foot does not go into the ground. Where the stride would put its heel or its toes under it (a
-    // runner's foot coming in to land, most of all) the leg bends by what lifts the foot clear, and the
-    // foot keeps the pitch it had. (Not for a graze: a leg all but straight bends a long way to lift its foot a millimetre.)
-    if (g > 0) {
-      const joint = pelvis[side];
-      const pitch = turned + out[`Foot.${side}`];
-      const [ax, ay] = footAt(limbs, out[`UpperLeg.${side}`], out[`LowerLeg.${side}`], drop, joint);
-      const low = ay + limbs.ankle * (1 - Math.cos(pitch)) + Math.min(HEEL * Math.sin(pitch), -TOES * Math.sin(pitch));
-      if (low < -GRAZE) {
-        const span = limbs.thigh + limbs.shin;
-        const to = (y: number) =>
-          legTo(limbs, ax - joint.ahead, y, span - y - (span * Math.cos(joint.splay) - drop + joint.up - y) / Math.cos(joint.tilt));
-        const was = to(ay);
-        // (coming in gently: nothing of it at the graze, all but the graze well under)
-        const under = -low - GRAZE;
-        const now = to(ay + ((under * under) / (under + 3 * GRAZE)) * g * g);
-        const thigh = now.thigh - was.thigh;
-        const knee = Math.max(-out[`LowerLeg.${side}`], now.knee - was.knee);
-        out[`UpperLeg.${side}`] += thigh;
-        out[`LowerLeg.${side}`] += knee;
-        out[`Foot.${side}`] -= thigh + knee;
-      }
-    }
   }
   // Each arm goes with the opposite leg. One that carries something hangs straighter and swings
   // a third as much, held a little out from the leg it would otherwise knock.
@@ -706,8 +747,8 @@ export function pose(m: Moment): Pose {
   // and the pelvis with the legs: turned toward the foot going forward, tipped up over the planted one, the legs leaning in to the stride's line
   out.twist.Hips = pelvis.turn;
   out.sideways.Hips = pelvis.tip;
-  out.sideways['UpperLeg.L'] = -pelvis.L.lean;
-  out.sideways['UpperLeg.R'] = pelvis.R.lean;
+  out.sideways['UpperLeg.L'] = -(pelvis.L.lean + leans.L);
+  out.sideways['UpperLeg.R'] = pelvis.R.lean + leans.R;
   out.settle = pelvis.settle;
   out.Hips = 0;
   out.Spine = lean * g + 0.18 * crouch * g + 0.008 * breath;

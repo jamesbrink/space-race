@@ -94,7 +94,7 @@ test('in three dimensions a planted foot is on the ground and on its spot, with 
           Math.abs(on + gone - spot[side].z) < slide,
           `${speed} m/s: a planted ${side} foot is ${on + gone - spot[side].z} m along from its spot`,
         );
-        assert.ok(Math.abs(x - spot[side].x) < 0.005, `${speed} m/s: and ${x - spot[side].x} m across from it`);
+        assert.ok(Math.abs(x - spot[side].x) < 0.0015, `${speed} m/s: and ${x - spot[side].x} m across from it`);
       }
     });
     assert.ok(held > 100, `${speed} m/s: feet were planted`);
@@ -187,7 +187,7 @@ test('a foot does not go into the ground on its way to its landing, at a walk, a
     walk(speed, 4, (f) => {
       for (const side of ['L', 'R']) {
         const low = Math.min(f.at(`heel${side}`).y, f.at(`toe${side}`).y);
-        assert.ok(low > -0.009, `${speed} m/s: the ${side} foot's lowest point is ${low} m`);
+        assert.ok(low > -0.005, `${speed} m/s: the ${side} foot's lowest point is ${low} m`);
       }
     });
   }
