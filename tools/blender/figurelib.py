@@ -140,6 +140,58 @@ class Body:
     def ankle_point(self, sx: int) -> Vector:
         return Vector((sx * self.stance, self.ankle_y, self.ankle_z))
 
+    def scaled(self, stature: float, heel: float, breadth: float, girth: float, bulk: tuple[float, float, float] = (0.0, 0.0, 0.0), **more) -> Body:
+        """Another man on the same plan: every height carried to the new stature (so the landmarks
+        fall where his proportions put them), every distance from the midline scaled by `breadth`,
+        every section's radii by `girth` and then let out by `bulk` centimetres (a looser garment:
+        trunk, arms, legs). `more` sets whatever else differs."""
+        k = stature / self.stature
+
+        def z(v: float) -> float:
+            return heel + (v - self.heel) * k
+
+        def limb(rows: list, out: float) -> list:
+            return [(x * breadth, y * breadth, z(h), a * girth + out, b * girth + out) for x, y, h, a, b in rows]
+
+        out = Body(
+            stature=stature,
+            heel=heel,
+            knee=self.knee,
+            crotch=self.crotch,
+            hip=self.hip,
+            shoulder=self.shoulder,
+            hip_x=self.hip_x * breadth,
+            stance=self.stance * breadth,
+            ankle_y=self.ankle_y,
+            ankle_z=z(self.ankle_z),
+            spine_z=z(self.spine_z),
+            neck_z=z(self.neck_z),
+            waist_z=z(self.waist_z),
+            crotch_drop=self.crotch_drop,
+            crotch_round=self.crotch_round,
+            hip_crease=self.hip_crease,
+            fillet=self.fillet,
+            trouser_hem=self.trouser_hem,
+            torso_z0=z(self.torso_z0),
+            torso=[(z(h), a * girth + bulk[0], b * girth + bulk[0]) for h, a, b in self.torso],
+            z_pit=z(self.z_pit),
+            z_yoke=z(self.z_yoke),
+            armhole=self.armhole,
+            pit_x=self.pit_x * breadth,
+            arm=limb(self.arm, bulk[1]),
+            elbow_at=self.elbow_at,
+            cuff_to_wrist=self.cuff_to_wrist * k,
+            sleeve_hem=self.sleeve_hem * k,
+            leg=limb(self.leg, bulk[2]),
+            knee_at=self.knee_at,
+            skull=self.skull,
+            head_y=self.head_y,
+            hand=self.hand * k,
+        )
+        for name, value in more.items():
+            setattr(out, name, value)
+        return out
+
 
 FRONT, UP = Vector((0, -1, 0)), Vector((0, 0, 1))
 
@@ -342,6 +394,56 @@ class Rig:
         if self.press and share > 0:
             v = v.lerp(self.press(v, "leg"), share)
         return v
+
+
+def man(stature: float = 180.3, heel: float = 2.8) -> Body:
+    """A man of 1.80 m in a close-fitting suit (about 2 cm over the body all round), standing with
+    his feet 27 cm apart: the sections every figure starts from. They were sized by eye for the
+    Mercury suit on Alan Shepard; another man is this one `scaled`."""
+    body = Body(stature=stature, heel=heel)
+    # (z, half-width, half-depth), from under the pelvis to the neck inside the ring. Below the crotch
+    # the trunk is rounded off into the thighs (figurelib.Trousers), so the first rows are only what that starts from.
+    body.torso = [
+        (82.0, 16.2, 11.2),
+        (84.5, 16.6, 11.5),
+        (89.0, 17.5, 12.0),
+        (95.0, 18.3, 12.6),
+        (103.0, 17.4, 12.0),
+        (111.0, 16.2, 11.5),
+        (120.0, 17.0, 12.1),
+        (130.0, 18.7, 13.1),
+        (140.0, 19.6, 13.2),
+        (146.0, 19.6, 12.6),
+        (150.0, 18.0, 11.6),
+        (153.0, 14.5, 10.6),
+        (155.3, 11.4, 9.9),
+        (157.0, 10.4, 9.6),
+        (159.0, 10.2, 9.4),
+    ]
+    # (x, y, z, radius across, radius fore-and-aft) for the left arm; the first point is inside the torso
+    body.arm = [
+        (11.5, 0.0, 146.0, 4.0, 4.2),
+        (19.3, 0.0, body.z_shoulder - 4.7, 6.4, 6.7),
+        (22.8, 0.0, 139.5, 6.6, 6.9),
+        (24.9, 0.3, 130.5, 6.3, 6.5),
+        (27.4, 0.8, 117.5, 5.6, 5.7),  # the elbow
+        (28.6, -0.9, 108.5, 5.4, 5.4),
+        (29.6, -2.9, 100.5, 4.7, 4.7),
+        (30.1, -3.9, 96.5, 4.3, 4.3),
+    ]
+    # likewise for the left leg, from the hip joint (inside the pelvis) to inside the boot
+    body.leg = [
+        (9.6, 0.0, body.z_hip + 0.5, 7.4, 8.6),
+        (9.9, 0.0, 92.0, 8.6, 9.9),
+        (10.5, 0.0, body.z_crotch - 3.5, 9.0, 10.2),
+        (10.9, -0.3, 75.0, 9.0, 9.7),
+        (11.6, -0.8, 65.0, 8.1, 8.5),
+        (12.3, -1.0, body.z_knee, 7.0, 7.3),  # the knee
+        (12.8, 0.2, 43.0, 6.8, 7.2),
+        (body.stance, 0.6, 32.0, 5.8, 6.1),
+        (body.stance, 0.5, 20.0, 4.7, 4.9),
+    ]
+    return body
 
 
 _rig = Rig()
@@ -1426,6 +1528,110 @@ def fitted(mb: MeshBuilder, first: int, hand: Hand) -> None:
         return
     for i in range(first, len(mb.verts)):
         mb.verts[i] = tuple(hand.o + (Vector(mb.verts[i]) - hand.o) * B.hand)
+
+
+# --------------------------------------------------------------------------- boots
+
+
+def laced_boots(
+    uppers: MeshBuilder,
+    soles: MeshBuilder,
+    laces: MeshBuilder,
+    eyelets: MeshBuilder,
+    tongue: MeshBuilder,
+    top: float,
+    length: float,
+    size: float = 1.0,
+    lace_lift: float = 0.0,
+) -> None:
+    """A pair of laced boots on the body's feet: shaft and foot, sole and heel block, a tongue,
+    laces on hooks. `top` is how high the shaft stands and `length` the sole from toe to heel,
+    both as on a man of 1.80 m; `size` scales the whole boot for another, and `lace_lift` stands
+    the laces that much further off the leather (a boot made smaller brings them nearer it)."""
+    y0 = B.ankle_y  # ankle centre
+    toe = y0 - 23.5
+    heel = toe + length
+    for sx in (1, -1):
+        x0 = sx * B.stance
+        first = [len(mb.verts) for mb in (uppers, soles, laces, eyelets, tongue)]
+        shaft = Tube(
+            [(x0, y0, z) for z in (top, top - 1.5, 21.0, 15.0, 10.0, 5.0)],
+            [(6.2, 6.5), (6.15, 6.45), (5.6, 5.9), (4.9, 5.3), (4.5, 5.1), (4.2, 4.8)],
+            resample=5,
+        )
+        shaft.add(uppers, 28)
+        # the foot: heel to toe, squared off underneath so the upper meets the sole at its edge
+        keys = [
+            (7.4, 4.9, 2.0, 2.6),
+            (6.8, 5.0, 3.4, 3.6),
+            (3.5, 5.5, 4.3, 4.6),
+            (-2.5, 6.4, 4.9, 5.3),
+            (-9.5, 5.4, 5.3, 4.2),
+            (-15.5, 4.4, 5.3, 3.2),
+            (-20.0, 3.9, 4.6, 2.6),
+            (-22.6, 3.5, 2.8, 2.0),
+        ]
+        foot = Tube(
+            # its squared underside lies inside the sole, 7 mm under the top face and 2 mm or more
+            # over the bottom one, so neither lands on it at a coarse level of detail
+            [(x0, y0 + y, z - 0.3) for y, z, _, _ in keys],
+            [(a, b - 0.15) for *_, a, b in keys],
+            ref=(0, 0, 1),
+            resample=5,
+            fold=lambda d, th: squareness(th, 4.0) * smooth(-math.sin(th), 0.0, 0.6),
+        )
+        foot.add(uppers, 28)
+
+        # sole: an outline of stations down the foot, raised at the heel
+        n, centre_y, half = 28, (toe + heel) / 2, (heel - toe) / 2
+        st = []
+        for i in range(n + 1):
+            a = math.pi * i / n
+            c, s = math.cos(a), math.sin(a)
+            y = centre_y - half * math.copysign(abs(c) ** 0.75, c)
+            # blunt at toe and heel, with a welt: the sole's wall stands clear of the upper's all
+            # round, at any level of detail (a pointed heel let the upper overhang it)
+            w = (5.9 + 0.3 * c) * s**0.55 + 0.4 * s**0.25
+            h = smooth(y, y0 - 9.0, y0 + 0.5)
+            st.append((y, w, 0.45 * h, 1.8 + 1.4 * h))
+        inside = Vector((x0, centre_y, 1.0))
+        skin(soles, [[Vector((x0 - w, y, zt)), Vector((x0 + w, y, zt))] for y, w, _, zt in st], inside + UP)
+        skin(soles, [[Vector((x0 - w, y, zb)), Vector((x0 + w, y, zb))] for y, w, zb, _ in st], inside + UP * 4)
+        for s in (-1, 1):
+            skin(soles, [[Vector((x0 + s * w, y, zb)), Vector((x0 + s * w, y, zt))] for y, w, zb, zt in st], inside)
+        # heel block, set in from the sole's edge
+        hy = y0 + 3.5
+        hs = [(hy + (y - hy) * 0.93, max(0.0, w * 0.93 - 0.15)) for y, w, _, _ in st if y > y0 - 1.0]
+        hs = [(hs[0][0], 0.0), *hs]
+        inside = Vector((x0, y0 + 3.5, 0.8))
+        skin(soles, [[Vector((x0 - w, y, 0.0)), Vector((x0 + w, y, 0.0))] for y, w in hs], inside + UP)
+        for s in (-1, 1):
+            skin(soles, [[Vector((x0 + s * w, y, 0.0)), Vector((x0 + s * w, y, 1.7))] for y, w in hs], inside)
+
+        # tongue and laces up the front of the shaft, and across the instep
+        th = shaft.toward(FRONT, 10.0)
+        shaft.patch(tongue, 1.0, 15.0, th - 0.28, th + 0.28, 0.18, nd=10, nt=4)
+        if srlib.DETAIL >= 0.5:
+            rows = [
+                [(shaft.at(d, th + s * 0.33, 0.65 + lace_lift), shaft.normal(d, th + s * 0.33)) for s in (-1, 1)]
+                for d in (1.8, 4.0, 6.2, 8.4, 10.6, 12.8, 15.0)
+            ]
+            th = foot.toward(UP, 10.0)
+            rows += [[(foot.at(d, th - s * 0.33, 0.65 + lace_lift), foot.normal(d, th - s * 0.33)) for s in (-1, 1)] for d in (9.4, 11.6, 13.8, 16.0)]
+            for (a0, a1), (b0, b1) in zip(rows, rows[1:]):
+                laces.tube(a0[0], b1[0], 0.13, 5)
+                laces.tube(a1[0] + a1[1] * 0.32, b0[0] + b0[1] * 0.32, 0.13, 5)
+            for a0, a1 in (rows[0], rows[-1]):
+                laces.tube(a0[0], a1[0], 0.13, 5)
+            for pair in rows:
+                for p, nm in pair:
+                    eyelets.disc(p - nm * 0.9, nm, 0.3, 1.35, 8)  # lacing hooks
+        # (made to a man's boot of 1.80 m; a smaller body's is the same boot, scaled about the point of the floor under its ankle)
+        if size != 1.0:
+            foot_at = Vector((x0, y0, 0.0))
+            for mb, i0 in zip((uppers, soles, laces, eyelets, tongue), first):
+                for i in range(i0, len(mb.verts)):
+                    mb.verts[i] = tuple(foot_at + (Vector(mb.verts[i]) - foot_at) * size)
 
 
 # ------------------------------------------------------------- standing, and posed
