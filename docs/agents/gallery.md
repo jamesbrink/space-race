@@ -77,6 +77,33 @@ Nothing new is asked of a flight. Everything comes from what a vehicle already d
 
 It is always drawn in full (`Stage.fullDetail`: the coarser levels are not even fetched).
 
+## On a phone
+
+Under 960 px wide or 520 px tall the gallery is the view with **one slim line across the top** and **one handle on
+the bottom edge**; everything else is in the sheet the handle opens (`fold.ts`, `sheet.ts`, the narrow block of
+`gallery.css`). It is the grammar the launch site, on foot and the flight deck are to follow; today only the gallery
+has it.
+
+- **The top line**: the heading is the way back to the front page (its chevron says so), the flight's designation
+  small beside it, and one button naming the place ("Gallery") that drops the three places as a menu. A place the
+  flight lacks is listed, dimmed, with why under its name.
+- **Standing alone** is a chip under the top line: the diagram, "Spacecraft alone", and an x that is the way back.
+- **The handle**: the part before, the chosen part's name and its one line (or what stands there and how many parts),
+  Apart (all the way apart or together again, at the show's pace), the next part. A tap on the name, or a pull,
+  opens the sheet; choosing a part only names it there and never opens anything.
+- **The sheet**: tucked (the handle), half, full, the same grip; upright it rises from the foot, on its side it is a
+  drawer down the right, shut until asked for. Its first tab, **View**, is the control block, docked piece by piece:
+  taking it apart first, what stands there and the views each on a line that scrolls sideways, then the switches
+  (cutaway, labels, scale, turntable, light, cel, lighter graphics) and the scale line. On View the half stop is as
+  tall as what it holds (at most 58 % of the height); Parts, Specs and Motors as on a wide page. Where it was left
+  is remembered (`sheetOpen`), and so is the hint said once on a first visit, in the gallery's notes stack
+  (`handleSeen`).
+- Opening or closing it moves no camera the hands have set: the canvas keeps the space above it and only a view
+  still being followed is framed again in it (`Stage.setInset`).
+- **Names on the parts** are smaller; where the column of names would lie on the thing (`covers` in `labels.ts`) each
+  part has a pin with its number in the parts list instead. The measure's figures are the figures alone, and keep
+  off the labels and each other.
+
 ## The studio
 
 `viewer/studio.ts` is the setting, and not a place: no Sun, no sky, no haze, no hour. A sweep

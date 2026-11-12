@@ -17,14 +17,16 @@ import {
 import { Callout } from './callout';
 import { CURTAIN, Curtain, follow } from './curtain';
 import { type Shot, tour } from './demo';
+import { dock, handle, hintOnce, narrow, viewHeight } from './fold';
 import { prefs } from './prefs';
-import { sheet } from './sheet';
+import { type Sheet, sheet } from './sheet';
 import './slider';
 import type { Flight, ModelDef, Part, Spec } from './types';
 import { dot, esc, legend, si } from './ui';
-import { type Anchor, cleared, type Frame, Labels, layOut } from './viewer/labels';
+import { type Anchor, cleared, covers, type Frame, Labels, layOut } from './viewer/labels';
 import { Stage } from './viewer/stage';
 import { asStudio, type Studio } from './viewer/studio';
+import { chooseTier, tier } from './viewer/tier';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
@@ -71,17 +73,30 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
     const why = lacks(flight, place);
     // ("site" alone where there is no room for more: beside "gallery" and "fly" it can be nothing else)
     const label = place === 'site' ? '<i>Launch </i>site' : PLACE_NAME[place];
+    // (on a phone's menu a line under each name says what it is, or why it is not there yet, without the name again: gallery.css)
+    const short = why ? why.replace(/^[^:]*:\s*/, '') : PLACE_SAYS[place].replace(/:.*/, '');
     const absent = why ? ` aria-disabled="true" data-why="${esc(why)}"` : '';
-    return `<button data-place="${place}" aria-pressed="${place === here}"${absent} title="${esc(why ?? PLACE_SAYS[place])}">${label}</button>`;
+    return `<button data-place="${place}" aria-pressed="${place === here}"${absent} data-short="${esc(short.charAt(0).toUpperCase() + short.slice(1))}" title="${esc(why ?? PLACE_SAYS[place])}">${label}</button>`;
   };
   // (and, for a page with no room for a title card or crumbs, the way out to the front page: gallery.css shows it there)
   const out = '<button class="places-home" data-home title="Front page">Flights</button>';
-  nav.innerHTML = `${out}${PLACES.map(button).join('')}<p role="status" hidden></p>`;
+  // (on a phone the switch is one control that says where you are, and opens to the three: fold.ts)
+  const now = `<button class="places-now" aria-haspopup="true" aria-expanded="false" title="The places of this flight: ${PLACES.map((p) => PLACE_NAME[p]).join(', ')}"><span>${PLACE_NAME[here]}</span><i class="chevron"></i></button>`;
+  nav.innerHTML = `${now}${out}${PLACES.map(button).join('')}<p role="status" hidden></p>`;
   const says = nav.querySelector('p')!;
+  const toggle = nav.querySelector<HTMLElement>('.places-now')!;
+  const unfold = (open: boolean): void => {
+    nav.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  toggle.addEventListener('click', () => unfold(!nav.classList.contains('open')));
+  // (open, it shuts on a press anywhere else: it is a menu)
+  window.addEventListener('pointerdown', (e) => nav.classList.contains('open') && !nav.contains(e.target as Node) && unfold(false), true);
   let away = 0;
   nav.addEventListener('click', (e) => {
     const to = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-place]');
     if (!to) return;
+    if (!to.dataset.why) unfold(false);
     // a place that is not built says so where it was asked for, for a few seconds
     says.hidden = !to.dataset.why;
     says.textContent = to.dataset.why ?? '';
@@ -96,6 +111,8 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
 export function markPlace(nav: Element | null, here: Place): void {
   for (const b of nav?.querySelectorAll<HTMLElement>('[data-place]') ?? [])
     b.setAttribute('aria-pressed', String(b.dataset.place === here));
+  const now = nav?.querySelector('.places-now span');
+  if (now) now.textContent = PLACE_NAME[here];
 }
 
 /** The way back, as the title card's crumbs say it: the front page, the flight (its gallery), the place. */
@@ -106,7 +123,8 @@ export const crumbs = (flight: Flight, here: Place): string =>
       : `<button data-flight-home title="${esc(flight.callsign)}: its gallery">${esc(flight.callsign)}</button>`
   } <b>/</b> <span>${PLACE_NAME[here]}</span>`;
 
-const TABS = ['Parts', 'Specs', 'Motors'] as const;
+/** (View is the control block, which on a phone lives in the sheet: fold.ts) */
+const TABS = ['View', 'Parts', 'Specs', 'Motors'] as const;
 /** The keys that are the camera's (viewer/camera/input.ts): they go on to it. Every other key is the gallery's, or nobody's while it is up. */
 const CAMERA_KEYS = new Set([
   'w',
@@ -270,7 +288,6 @@ export class Gallery {
     this.canvas.classList.remove('on');
     clearTimeout(this.settling);
     document.body.classList.remove('in-gallery', 'gallery-settled');
-    this.root.querySelector('.panel')!.classList.remove('open');
     this.tip(null);
     this.made?.stage.sleep(true);
     cancelAnimationFrame(this.frame);
@@ -334,7 +351,7 @@ export class Gallery {
         <button class="tuck chevron" aria-label="Show or hide the summary" aria-expanded="true" title="Tuck away"></button>
         <p class="crumbs">${crumbs(f, 'gallery')}</p>
         <h1 data-home title="Front page">${esc(f.callsign)}</h1>
-        <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
+        <p class="sub">${esc(f.designation)}<span> <b>·</b> ${date}</span></p>
         <p class="lede">${esc(f.summary)}</p>
         ${
           f.facts.length
@@ -347,13 +364,20 @@ export class Gallery {
       <nav class="models" aria-label="What stands in the gallery">
         ${this.choices.map((p) => `<button data-plinth="${p.id}" aria-pressed="false">${esc(p.label)}</button>`).join('')}
       </nav>
-      <button class="alone" hidden title="Show the whole of it again"><svg aria-hidden="true"></svg><b></b><span></span><i>${esc(this.choices[0]!.label)}</i></button>
+      <button class="alone" hidden title="Show the whole of it again"><svg aria-hidden="true"></svg><b></b><span></span><i>${esc(this.choices[0]!.label)}</i><em class="x" aria-hidden="true"></em></button>
 
       <aside class="panel">
         <nav class="tabs" role="tablist">
           ${tabs.map((t) => `<button role="tab" id="gallery-tab-${t}" data-tab="${t}" aria-controls="gallery-pane-${t}">${t}</button>`).join('')}
           <button class="close chevron" aria-label="Show or hide the panel" aria-expanded="true" title="Tuck away"></button>
         </nav>
+        <section ${pane('View')} hidden>
+          <div class="slot" data-slot="apart"></div>
+          <div class="slot row" data-slot="models"><h3 class="slot-name">Stands<br>there</h3></div>
+          <div class="slot row buttons" data-slot="views"><h3 class="slot-name">Views</h3></div>
+          <div class="slot buttons" data-slot="show"></div>
+          <div class="slot" data-slot="scale"></div>
+        </section>
         <section ${pane('Parts')}><ol class="parts"></ol></section>
         <section ${pane('Specs')} hidden>
           ${groups
@@ -387,10 +411,11 @@ export class Gallery {
         </section>`
             : ''
         }
-        <nav class="steps" aria-label="Part by part">
-          <button data-step="-1" title="The part before (B)"><i class="arrow back"></i>Previous</button>
-          <output aria-live="off"></output>
-          <button data-step="1" title="The next part (N)">Next part<i class="arrow"></i></button>
+        <nav class="steps handle" aria-label="Part by part">
+          <button data-step="-1" title="The part before (B)" aria-label="The part before"><i class="arrow back"></i><span>Previous</span></button>
+          <button class="handle-open" aria-expanded="false" title="Views, taking it apart, the parts and the figures: open or put away"><b></b><span></span><output aria-live="off"></output><i class="chevron"></i></button>
+          <button data-apart class="switch" aria-pressed="false" title="Take it apart, or put it together again">Apart</button>
+          <button data-step="1" title="The next part (N)" aria-label="The next part"><span>Next part</span><i class="arrow"></i></button>
         </nav>
       </aside>
 
@@ -400,13 +425,14 @@ export class Gallery {
           <span>${esc(m.slider?.[1] ?? 'Exploded')}</span></label>
         <div class="buttons">
           <span class="set views" role="group" aria-label="View"></span>
-          <span class="set" role="group" aria-label="Show">
+          <span class="set shows" role="group" aria-label="Show">
             ${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (X)">Cutaway</button>' : ''}
             <button data-names class="switch" aria-pressed="false" title="Name each part as it comes clear of the rest">Labels</button>
             <button data-measure class="switch" aria-pressed="false" title="A person and a range pole beside it, for scale (G)">Scale</button>
             <button data-rotate class="switch" aria-pressed="true" title="Turn slowly round what was last chosen">Turntable</button>
             <button data-light class="switch" aria-pressed="false" title="A light room instead of a dark one (L)">Light</button>
             <button data-cel class="switch" aria-pressed="false" title="Draw it as a cel-shaded drawing (T)">Cel shading</button>
+            <button data-lighter class="switch" aria-pressed="${tier().lighter}" title="For a phone or a machine short of memory: smaller shadow maps and pictures, and nothing held that is not on show. Chosen for you on a phone. Changing it reloads the page">Lighter graphics</button>
           </span>
         </div>
         <p class="scale">${esc(m.scale)}</p>
@@ -437,13 +463,14 @@ export class Gallery {
         </div>
       </aside>
       <div class="marks" aria-hidden="true"><p data-mark="pole"></p><p data-mark="head"></p></div>
+      <div class="notes"></div>
       <div class="tip" hidden><b></b><span></span></div>
       ${CURTAIN}`;
     this.q('.title .sub').after(placesNav(f, 'gallery', (to) => this.host.go(to)));
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-plinth]'))
       b.setAttribute('aria-pressed', String(b.dataset.plinth === this.plinth.id));
     this.fill();
-    this.tab('Parts');
+    this.tab(narrow() ? 'View' : 'Parts');
   }
 
   /** Everything that belongs to what stands there: its parts, its views. */
@@ -476,24 +503,35 @@ export class Gallery {
         ? `<button data-views aria-expanded="false" title="Every view of it">${this.model.views.length - 1} views<i class="chevron"></i></button>`
         : '');
     this.q('.explode').hidden = !this.vehicle.slider || !parts.some((p) => p.explode.some((v) => v !== 0));
+    this.q('[data-apart]').hidden = this.q('.explode').hidden;
+    this.sized();
+  }
+
+  /** How tall the sheet is with the View pane in it: as tall as what the pane holds, so the vehicle keeps the rest (gallery.css). */
+  private sized(): void {
+    const tall = viewHeight(this.q('.panel'));
+    if (tall) for (const el of [this.q('.panel'), this.canvas]) el.style.setProperty('--sheet-view', `${tall}px`);
   }
 
   private listen(): void {
     const root = this.root;
     const panel = this.q('.panel');
     // the panels tuck as the site's do, and the same choices are remembered for both
-    const tuckPanel = (on: boolean) => {
-      panel.classList.toggle('tucked', on);
+    const tuckPanel = (on: boolean, remember = true) => {
+      // (a wide page's choice: on a phone the sheet has its stops, and the handle works them)
+      panel.classList.toggle('tucked', on && !narrow());
       this.q('.close').setAttribute('aria-expanded', String(!on));
-      prefs.set('panelTucked', on);
+      if (remember && !narrow()) prefs.set('panelTucked', on);
     };
     tuckPanel(prefs.get('panelTucked'));
     root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
       b.addEventListener('click', () => {
         const same = b.getAttribute('aria-selected') === 'true';
-        panel.classList.toggle('open', !(same && panel.classList.contains('open')));
         tuckPanel(false);
         this.tab(b.dataset.tab!);
+        // (on a phone the open tab pressed again puts the sheet away, as its handle does)
+        if (narrow()) this.sheet?.set(same && panel.classList.contains('open') ? 0 : this.sheet.stop || 1);
+        else panel.classList.add('open');
       }),
     );
     this.q('.close').addEventListener('click', () => {
@@ -501,15 +539,46 @@ export class Gallery {
       panel.classList.toggle('open', tucked);
       tuckPanel(!tucked);
     });
+    // (on a phone choosing a part opens nothing: the handle names it, and the sheet stays where it was put)
     this.untuck = () => {
+      if (narrow()) return;
       panel.classList.add('open');
       tuckPanel(false);
       window.setTimeout(() => this.reveal(), 320); // (once the sheet has risen: before, the list has no height to scroll in)
     };
-    this.canvas.addEventListener('pointerdown', () => panel.classList.remove('open'));
-    // On a phone the panel is a sheet a finger moves between its stops (sheet.ts: the site's is the same one). At rest
-    // again, the part being read is in view in it.
-    sheet(panel, () => window.setTimeout(() => this.settle(), 320));
+    // On a phone the panel is a sheet a finger moves between its stops (sheet.ts: the site's is the same one), or its
+    // handle's button does. At rest again, the part being read is in view in it.
+    let grip: { shown(): void } | null = null;
+    this.sheet = sheet(panel, () => {
+      grip?.shown();
+      window.setTimeout(() => this.settle(), 320);
+    });
+    grip = handle(this.q('.handle-open'), panel, this.sheet);
+    // the control block is the sheet's View pane while the page is narrow, piece by piece and taking it apart first; on a
+    // wide page it is beside the view
+    const slot = (name: string) => this.q(`[data-slot=${name}]`);
+    dock(
+      [
+        [this.q('.explode'), slot('apart')],
+        [this.q('.models'), slot('models')],
+        [this.q('.views'), slot('views')],
+        [this.q('.shows'), slot('show')],
+        [this.q('.controls .scale'), slot('scale')],
+      ],
+      (on) => {
+        const at = root.querySelector<HTMLElement>('[data-tab][aria-selected=true]')?.dataset.tab;
+        this.tab(!on && at === 'View' ? 'Parts' : (at ?? (on ? 'View' : 'Parts')));
+        if (!on) panel.classList.remove('open', 'full');
+        tuckPanel(prefs.get('panelTucked'), false);
+        this.measure();
+      },
+    );
+    hintOnce(this.q('.notes'), 'The bar at the foot', 'Tap or pull it up: take it apart, the views, every part');
+    // taking it apart from the handle: all the way, or together again, at the pace the show does it
+    this.q('[data-apart]').addEventListener('click', () => {
+      if (!this.ready) return;
+      this.apartTo = this.apart > 0 ? 0 : 1;
+    });
     this.q('.tabs').addEventListener('keydown', (e) => {
       const key = (e as KeyboardEvent).key;
       if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
@@ -571,7 +640,10 @@ export class Gallery {
       this.host.address(this.at);
     });
     const slider = this.q<HTMLInputElement>('.explode input');
-    slider.addEventListener('input', () => this.setApart(Number(slider.value)));
+    slider.addEventListener('input', () => {
+      this.apartTo = null;
+      this.setApart(Number(slider.value));
+    });
     const parts = this.q('.parts');
     const node = (e: Event) => (e.target as HTMLElement).closest<HTMLElement>('[data-node]')?.dataset.node ?? null;
     parts.addEventListener('pointerover', (e) => this.hover(node(e), false));
@@ -580,8 +652,9 @@ export class Gallery {
       const n = node(e);
       if (n) this.select(this.selected === n ? null : n);
     });
-    this.q('.buttons').addEventListener('click', (e) => {
-      const b = (e.target as HTMLElement).closest<HTMLElement>('button');
+    // (the views and the switches are beside the view on a wide page and in the sheet on a narrow one: asked for wherever they are)
+    root.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>(':is(.views, .shows) button');
       if (!b || !this.ready) return;
       const on = b.getAttribute('aria-pressed') !== 'true';
       if (b.dataset.view) {
@@ -595,6 +668,11 @@ export class Gallery {
       else if (b.hasAttribute('data-rotate')) this.setTurntable(on);
       else if (b.hasAttribute('data-light')) this.setLight(on);
       else if (b.hasAttribute('data-cel')) this.setCel(on);
+      else if (b.hasAttribute('data-lighter')) {
+        // (what a tier allocates is allocated as the page opens: the choice is kept, and the page opened again in it, here)
+        chooseTier(on);
+        location.reload();
+      }
     });
     this.q('.steps').addEventListener('click', (e) => {
       const by = (e.target as HTMLElement).closest<HTMLElement>('[data-step]')?.dataset.step;
@@ -609,6 +687,7 @@ export class Gallery {
     const controls = this.q('.controls');
     const measure = new ResizeObserver(() => this.measure());
     for (const el of [controls, this.q('.models'), panel, title, this.canvas]) measure.observe(el);
+    new ResizeObserver(() => this.sized()).observe(this.q('[data-pane=View]'));
 
     // Any touch ends the show and puts off the next one (the mouse merely moving does not end one that is on). It is
     // listened for before the keys below, which let nothing go further: a key of the gallery's own is a touch too.
@@ -658,6 +737,9 @@ export class Gallery {
     );
   }
   private untuck: () => void = () => {};
+  private sheet: Sheet | null = null;
+  /** Where the handle's switch is taking the slider (null: nowhere). */
+  private apartTo: number | null = null;
   private showKeys: (open: boolean) => void = () => {};
 
   private async load(): Promise<void> {
@@ -751,7 +833,7 @@ export class Gallery {
     studio.fit(stage.extent());
     stage.reset();
     this.fill();
-    this.labels.name(this.parts.map((p) => ({ id: p.node, name: p.name })));
+    this.labels.name(this.parts.map((p) => ({ id: p.node, name: p.name, n: this.vehicle.parts.indexOf(p) + 1 })));
     // (nobody is to think the rest is missing: what has been left out is named)
     const note = this.q('.alone');
     note.hidden = !plinth.nodes;
@@ -760,7 +842,9 @@ export class Gallery {
     note.querySelector('span')!.textContent = others.length ? `${others.join(', ')} not shown` : '';
     this.map(note.querySelector('svg')!, plinth);
     this.measure(); // (the note lies across the top of the view: what is clear under it has changed)
-    this.tab('Parts');
+    if (!narrow()) this.tab('Parts');
+    else this.tally();
+    this.apartTo = null;
     stage.view(WHOLE_VIEW, snap);
     this.turn();
     this.mark();
@@ -775,6 +859,7 @@ export class Gallery {
   private setApart(to: number): void {
     this.apart = Math.min(1, Math.max(0, to));
     this.made?.stage.setExplode(this.reading);
+    this.root.querySelector('[data-apart]')?.setAttribute('aria-pressed', String(this.apart > 0));
   }
 
   private select(node: string | null, snap = false): void {
@@ -793,7 +878,7 @@ export class Gallery {
       this.autoCut = false;
     }
     if (node) {
-      this.tab('Parts');
+      if (!narrow()) this.tab('Parts');
       this.untuck();
       stage.focus(node, snap);
     } else stage.view(WHOLE_VIEW, snap);
@@ -816,13 +901,8 @@ export class Gallery {
   private settle(): void {
     this.reveal();
     if (!this.ready || this.touring) return;
+    // (told what is clear now, the stage frames again what it was still following, and leaves a view the hands have set)
     this.measure();
-    const stage = this.made!.stage;
-    // (from where it is being seen from, unless that is from overhead: then from a little above the level again)
-    const overhead = stage.cam.direction().y > 0.7;
-    if (this.selected) stage.focus(this.selected, false, overhead ? { turn: 0, rise: 0.3 } : undefined);
-    else stage.view(WHOLE_VIEW, false, !overhead);
-    this.turn();
   }
 
   /** Each part's place in the whole vehicle, put together: its height off the ground and how far out it reaches (Stage.outlines). */
@@ -865,7 +945,11 @@ export class Gallery {
   private tally(): void {
     const parts = this.parts;
     const at = parts.findIndex((p) => p.node === this.selected);
-    this.q('.steps output').textContent = at < 0 ? `${parts.length} parts` : `${at + 1} of ${parts.length}`;
+    this.q('.steps output').textContent =
+      at < 0 ? `${parts.length} parts` : narrow() ? `${at + 1}/${parts.length}` : `${at + 1} of ${parts.length}`;
+    // (the handle names the part and says what it is in a line; with none chosen, what stands there)
+    this.q('.handle-open b').textContent = at < 0 ? this.plinth.label : parts[at]!.name;
+    this.q('.handle-open span').textContent = at < 0 ? '' : parts[at]!.summary;
   }
 
   /** The part after the one chosen (or before it), in the order they are listed, and round again: a way through all of them. */
@@ -935,8 +1019,11 @@ export class Gallery {
       b.tabIndex = b.dataset.tab === name ? 0 : -1;
     }
     for (const p of this.root.querySelectorAll<HTMLElement>('[data-pane]')) p.hidden = p.dataset.pane !== name;
-    this.q('.steps').hidden = name !== 'Parts';
+    // (on a phone the steps are the sheet's handle, there whichever tab is open)
+    this.q('.steps').hidden = name !== 'Parts' && !narrow();
+    this.q('.panel').classList.toggle('on-view', name === 'View');
     this.tally();
+    this.sized();
   }
 
   /** A label beside the pointer, on whichever side has room; null puts it away. */
@@ -984,7 +1071,8 @@ export class Gallery {
     const middle = view.left + view.width / 2;
     const across = (r: DOMRect) => r.left < middle && r.right > middle;
     const column = shown(controls) && !across(controls.getBoundingClientRect()) ? controls.getBoundingClientRect() : null;
-    const rects = [controls, models]
+    // (on a phone the sheet's handle lies across the foot of the view; the control block is inside the sheet)
+    const rects = (narrow() ? [panel] : [controls, models])
       .filter(shown)
       .map((el) => el.getBoundingClientRect())
       .filter(across);
@@ -1027,6 +1115,13 @@ export class Gallery {
     const dt = Math.min(0.25, (now - this.last) / 1000);
     this.last = now;
     if (!this.ready) return;
+    if (this.apartTo !== null && !this.touring) {
+      const far = this.apartTo - this.apart;
+      const step = dt / (0.5 * APART);
+      this.setApart(Math.abs(far) <= step ? this.apartTo : this.apart + Math.sign(far) * step);
+      this.q<HTMLInputElement>('.explode input').value = String(this.apart);
+      if (this.apart === this.apartTo) this.apartTo = null;
+    }
     this.show(dt);
     this.name();
     this.figures();
@@ -1044,12 +1139,21 @@ export class Gallery {
     const parts = this.parts;
     const orders = Math.max(0, ...this.vehicle.parts.map((p) => p.order));
     const clear = cleared(parts, this.reading, orders);
-    const anchors: Anchor[] = [];
-    parts.forEach((p, i) => {
-      const at = clear[i] ? stage.frameOf(p.node) : null;
-      if (at) anchors.push({ id: p.node, ...at, width: this.labels.width(p.node) });
-    });
-    this.labels.place(layOut(anchors, this.clear));
+    // On a phone the names are often wider than the room beside the thing, and would lie on it: then each part has a pin
+    // with its number in the parts list instead, and the handle names the one chosen. (Once pins, it stays pins until
+    // the names fit with room to spare: a column on the edge of fitting does not flicker between the two.)
+    const lay = (pins: boolean) => {
+      this.labels.pins(pins);
+      const anchors: Anchor[] = [];
+      parts.forEach((p, i) => {
+        const at = clear[i] ? stage.frameOf(p.node) : null;
+        if (at) anchors.push({ id: p.node, ...at, width: this.labels.width(p.node) });
+      });
+      return { anchors, placed: layOut(anchors, this.clear) };
+    };
+    let laid = lay(false);
+    if (narrow() && covers(laid.anchors, laid.placed, this.labels.pinned ? 24 : 6)) laid = lay(true);
+    this.labels.place(laid.placed);
     this.mark();
   }
 
@@ -1064,11 +1168,29 @@ export class Gallery {
     const [pole, head] = [this.q('[data-mark=pole]'), this.q('[data-mark=head]')];
     // (a figure whose mark is off the top of the clear part of the page stays at its edge: the pole is as tall as the thing)
     const { top, bottom } = this.clear;
+    // Each figure stands just over its mark, to the right; where that would lie on a part's label or on the other
+    // figure it goes to the mark's other side, and failing that up clear of them: no two things written on the picture
+    // are ever on top of each other.
+    const taken = this.labels.boxes.map((b) => ({ ...b }));
     const put = (el: HTMLElement, at: { x: number; y: number } | null, html: string) => {
       el.classList.toggle('shown', Boolean(at));
       if (!at) return;
       if (el.dataset.says !== html) el.innerHTML = el.dataset.says = html;
-      el.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(Math.min(bottom, Math.max(top + 32, at.y)))}px)`;
+      const [w, h] = [el.offsetWidth, el.offsetHeight];
+      const y = Math.min(bottom, Math.max(top + 32, at.y));
+      const box = (dx: number, dy: number) => ({ left: at.x + dx, top: y + dy, right: at.x + dx + w, bottom: y + dy + h });
+      const hits = (b: ReturnType<typeof box>) =>
+        b.left < this.clear.left - 6 ||
+        b.right > this.clear.right + 6 ||
+        taken.some((t) => b.left < t.right + 4 && b.right > t.left - 4 && b.top < t.bottom + 3 && b.bottom > t.top - 3);
+      const tries: [number, number][] = [
+        [-14, -30],
+        [14 - w, -30],
+      ];
+      for (let up = 1; up <= 6; up++) tries.push([-14, -30 - up * (h + 4)], [14 - w, -30 - up * (h + 4)]);
+      const [dx, dy] = tries.find(([x, yy]) => !hits(box(x, yy))) ?? tries[0]!;
+      taken.push(box(dx, dy));
+      el.style.transform = `translate(${Math.round(at.x + dx)}px, ${Math.round(y + dy)}px)`;
     };
     if (!marks) return void [pole, head].forEach((el) => el.classList.remove('shown'));
     const spec = this.heightSpec(marks.height);

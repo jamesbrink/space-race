@@ -32,7 +32,9 @@ export type Pref =
   | 'galleryNamesOff'
   | 'resolutionAuto'
   | 'lighter'
-  | 'lighterOff';
+  | 'lighterOff'
+  | 'sheetOpen'
+  | 'handleSeen';
 
 const KEY = 'space-race.prefs';
 /** Amounts are kept apart from the switches, which are all true or false. */

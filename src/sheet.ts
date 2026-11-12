@@ -103,6 +103,7 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
         touch.dragging = !touch.pane || (dy > 0 && touch.pane.scrollTop <= 0);
         if (!touch.dragging) return void (touch = null);
         panel.style.transition = 'none';
+        panel.classList.add('moving'); // (what it holds is on show while it is pulled: sheet.css)
       }
       if (e.cancelable) e.preventDefault(); // the sheet has the finger: the page and the list stay where they are
       const dt = Math.max(1, e.timeStamp - touch.last.t);
@@ -117,6 +118,7 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
     const t = touch;
     touch = null;
     if (!t?.dragging) return;
+    panel.classList.remove('moving');
     const now = panel.getBoundingClientRect().height;
     // the stop it is nearest; thrown, the next one that way from where it started
     let to = t.stops.reduce((best, h, i) => (Math.abs(h - now) < Math.abs(t.stops[best]! - now) ? i : best), 0);
