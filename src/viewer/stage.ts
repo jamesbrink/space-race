@@ -2405,13 +2405,14 @@ export class Stage {
    * Before `fitDepth`, which asks whether the globe is shown.
    */
   private attend(): void {
+    // (the place first: the sky's plumb line at the eye is set there, and `at` bakes the reflections with it)
+    if (this.setting.attend?.(this.camera.position)) this.dirty = true;
     if (this.clock) {
       // (over the globe, the height is above the sea under the eye, which downrange is far below the site's level)
       const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - GROUND_Y;
-      const change = this.setting.at?.(this.clock.jdUT, height);
+      const change = this.setting.at?.(this.clock.jdUT, height, this.frozen);
       if (change) this.relight(change.shadows);
     }
-    if (this.setting.attend?.(this.camera.position)) this.dirty = true;
     if (this.lamps.near(this.camera.position, false, this.frozen)) this.dirty = true; // the rooms nearest the eye are the ones lit
   }
   private readonly depthBox = new THREE.Box3();

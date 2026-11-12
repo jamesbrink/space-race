@@ -288,7 +288,11 @@ build) narrow it; the header of the file lists the rest.
   flips); the clouds' blend with their last frames (clouds.ts `frozen`: 25 frames to come to rest after anything
   changed the depth under a cloud, and a cel cloud's edge is cut at one half); and the Sun's maps, kept from
   whenever something last asked (a plant's shadow in the form the eye was then near enough for), which a frozen
-  frame draws with itself. Anything new that eases over time takes its time from `dt` and is cut by `frozen`.
+  frame draws with itself; and the reflections' bake, faded in over up to six seconds of the wall's clock
+  (backdrops.ts `Reflections`): coming down from orbit to the pad one ran on under the frozen frames that followed,
+  and beside the gantry, where the vehicle fills the view, 13,000 to 25,000 of its pixels differed between two draws
+  of one frozen frame (`Setting.at`'s `atOnce`: a bake owed is made at once, a fade under way is finished). Anything
+  new that eases over time takes its time from `dt` and is cut by `frozen`.
   Nor may where something stands depend on how it got there: the box the chase camera and the Sun's map go by is
   taken in the vehicle's own frame through its nodes' own placings (taken in the scene's frame it was a different
   box for every attitude, and 1400 to 6200 pixels of the vehicle differed after a level went and came back), and

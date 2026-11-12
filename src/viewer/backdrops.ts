@@ -68,9 +68,10 @@ export interface Setting {
    * instant is the same, or the sky has turned by less than can be seen); otherwise what the stage
    * must take up again, with `shadows` set if the light has moved far enough to redraw them.
    * `height`: the eye's height over the setting's ground, metres; the sky darkens as the air
-   * above the eye thins (`airAbove`).
+   * above the eye thins (`airAbove`). `atOnce` (a frozen stage): nothing is faded in or put off by the wall's clock, so
+   * a frame drawn again is the same frame: a bake owed is made now and put in at once, and a fade under way is finished.
    */
-  at?: (jdUT: number, height?: number) => { shadows: boolean } | null;
+  at?: (jdUT: number, height?: number, atOnce?: boolean) => { shadows: boolean } | null;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
   /** The Earth beyond the place, to scale (globe.ts): drawn once the eye can see past the place's own ground. */
@@ -520,7 +521,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
 
   let shownAir = 1;
   let shownRung = 0;
-  setting.at = (jdUT, height = 0) => {
+  setting.at = (jdUT, height = 0, atOnce = false) => {
     const air = airAbove(height);
     globe.thin = 1 - air;
     setHazeAbove(globe.thin); // the haze seen from above, on the globe and the land round the site alike (air.ts)
@@ -529,8 +530,10 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     const jumped = Math.abs(jdUT - askedAt) * 86_400 > SKY_STEP + 4000 * Math.max(0.1, (now - askedMs) / 1000);
     askedAt = jdUT;
     askedMs = now;
-    const fading = reflections.step(now);
-    const due = (stale && now - bakedAt >= cadence.bakeEvery) || (shadowsOwed && now - shadowsAt >= cadence.shadowEvery);
+    // (frozen, a fade under way is finished: one went on for six seconds of the wall's clock under frozen frames, after
+    // the eye came down from orbit, and a frame beside the gantry drawn twice differed in 20,000 pixels of the vehicle)
+    const fading = reflections.step(atOnce ? Number.POSITIVE_INFINITY : now);
+    const due = (stale && (atOnce || now - bakedAt >= cadence.bakeEvery)) || (shadowsOwed && now - shadowsAt >= cadence.shadowEvery);
     // (the stars come out by the air left above the eye, which goes on thinning long after the sky has gone black:
     // followed in steps of half a kilometre up to where none is left)
     const rung = Math.round(Math.min(Math.max(height, 0), 120_000) / 500);
@@ -608,7 +611,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     ];
     stale ||= light.light.from !== source || h.sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG || apart(look, bakedLook) > LOOK_STEP;
     const first = !setting.environment;
-    if (first || jumped) bake(look, 0);
+    if (first || jumped || (stale && atOnce)) bake(look, 0);
     // faded in over as long as bakes are coming apart, so one fade runs into the next
     else if (stale && now - bakedAt >= cadence.bakeEvery) bake(look, Math.min(6000, Math.max(250, now - bakedAt)));
     source = light.light.from;
