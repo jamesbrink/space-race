@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import math
 
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 import interiors
 import sitelib
@@ -28,6 +28,7 @@ import vehicles as cars
 from srlib import FT, interior
 
 from .site import (
+    GROUND,
     P,
     Parts,
     axes,
@@ -166,8 +167,10 @@ def near_launcher(parts: Parts) -> None:
     for MR-4, S63-02651): a low white screen with an orange tank lying behind it; a taller white screen with a grey
     switch box on its face and three floodlights over it, and behind that a long white tank on a trailer; and a drum
     painted in orange and black chevrons nearer the launcher. That they stood there, their colours and their outlines
-    are the photographs'; every size is scaled off them against the booster's 70 in body, and the places are read
-    from oblique views: all estimated. What the orange tank held and what the drum was for are not recorded; the
+    are the photographs'; every size is scaled off them against the booster's 70 in body, allowing for their standing
+    further from the camera, and the places are read from oblique views: both screens stand at the slab's far edge
+    (S61-02407 has the edge, with a hose lying along it, in line with their feet), the lower some 10 ft and the taller
+    some 28 ft toward the structure's side of the launcher: all estimated. What the orange tank held and what the drum was for are not recorded; the
     long white tank is taken for the LOX topping trailer of TM X-53107's count."""
     g = "GroundEquipment"
     font = srlib.load_font()
@@ -179,7 +182,7 @@ def near_launcher(parts: Parts) -> None:
     )
 
     # ---- the low screen and the orange tank on its cart
-    xf, y0, y1, h = -52.0, 2.0, 13.0, 4.6
+    xf, y0, y1, h = -86.0, 4.0, 15.0, 4.6
     u = f"{g}_TankScreen"
     parts.node(u, g, (xf, (y0 + y1) / 2, 0.0), label="Blast screen")
     blast_screen(parts, u, xf, y0, y1, h, 7.0, 3)
@@ -228,7 +231,7 @@ def near_launcher(parts: Parts) -> None:
     beam(metal, (cx, cy - length / 2 - 0.3, cz + 0.42), (cx, cy - length / 2 - 1.55, cz + 0.42), 0.08)  # the hook it hangs on
 
     # ---- the taller screen: a switch box on its face, three floodlights over it
-    xf, y0, y1, h = -56.0, 20.0, 36.0, 7.5
+    xf, y0, y1, h = -84.0, 20.0, 36.0, 7.5
     u = f"{g}_LoxScreen"
     parts.node(u, g, (xf, (y0 + y1) / 2, 0.0), label="Blast screen")
     blast_screen(parts, u, xf, y0, y1, h, 6.0, 4)
@@ -312,6 +315,29 @@ def near_launcher(parts: Parts) -> None:
         coil = [(1.35, 0.0), (1.5, 0.15), (1.35, 0.3), (1.2, 0.15), (1.35, 0.0)]
         hose.lathe(ftp(coil), 20, matrix=axes((tx, tb - 2.3, deck + 0.01 + 0.3 * k), (1, 0, 0), (0, 0, 1)))
 
+    # ---- a wall of sandbags on the grass beyond the slab's edge (S61-02407: five or six courses, about 7 ft long;
+    # something under a white cover stands at each end of it, which is not built: what they were is not recorded)
+    u = f"{g}_Sandbags"
+    bx, by = -122.0, -18.0
+    parts.node(u, g, (bx, by, 0.0), label="Sandbags")
+    bag = parts(u, "canvas", True)
+    # a filled bag, flat on its bed and full to its edge (no waist between courses): 2.5 by 1.4 ft, bedded 6 in a course.
+    # Laid as a wall is: stretchers two deep, then headers across, the top two courses one bag thick; each bag turned
+    # and shifted a little, by a rule and not by chance, so the build is the same every time
+    shape = ftp([(0.0, 0.0), (0.86, 0.0), (0.98, 0.2), (0.92, 0.44), (0.62, 0.57), (0.0, 0.6)])
+    for course in range(6):
+        headers = course % 2 == 1 and course < 4
+        rows = 1 if headers or course >= 4 else 2
+        along = 5 if headers else 3
+        for row in range(rows):
+            for k in range(along):
+                wobble = math.sin(12.9898 * (course * 31 + row * 7 + k) + 4.1)  # -1 to 1, fixed for each bag
+                y = by + (k - (along - 1) / 2) * (1.4 if headers else 2.35) + 0.07 * wobble
+                x = bx + (row - (rows - 1) / 2) * 1.3 - 0.06 * wobble
+                turn = math.radians((0.0 if headers else 90.0) + 7.0 * wobble)
+                lay = Matrix.Translation(P(x, y, GROUND + 0.5 * course)) @ Matrix.Rotation(turn, 4, "Z") @ Matrix.Diagonal((1.3, 0.72, 1.0, 1.0))
+                bag.lathe(shape, 12, matrix=lay)
+
     # ---- the drum painted in chevrons, 15 to 20 ft from the launcher (S61-01927: about 9 ft across and 4 ft high)
     sx, sy, dr, dh = -20.5, 8.0, 4.6, 3.9  # clear of the service structure's base
     u = f"{g}_ChevronDrum"
@@ -369,7 +395,7 @@ def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
 # F19_001 (MR-4) two sources at the pad's far edge, and F19_008 a large drum on a four-wheeled
 # trailer that looks like a 60-inch Army unit. So: three of those, one toward the blockhouse and two
 # across the pad, each aimed at the vehicle's middle. All estimated.
-SEARCHLIGHTS = ((72.0, -82.0), (-86.0, -30.0), (-84.0, 45.0))
+SEARCHLIGHTS = ((72.0, -82.0), (-86.0, -30.0), (-78.0, 62.0))
 
 
 def lights(parts: Parts) -> None:

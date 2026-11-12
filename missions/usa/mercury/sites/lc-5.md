@@ -184,6 +184,7 @@ Notes:
 | Orange tank behind it | 3 ft across, 6.4 ft long, lying on a two-wheeled cart, its top just over the screen | that an orange tank with dished ends lay there: documented (photographs). Size estimated; what it held is not recorded; the cart and every fitting estimated | the same |
 | Taller blast screen | a face 16 ft long, returns of 6 ft, 7.5 ft high; a grey switch box 1.6 by 2 ft on its face with a conduit to the pad; three floodlights on a post over its top | the screen, the box and the three lamps: documented (photographs); sizes estimated as above | the same |
 | LOX topping trailer | a white tank 5 ft across and 21 ft long with dished heads, on a deck 4.6 ft up and 26 ft long, its top 10.2 ft up | that a long white tank on a trailer stood behind the taller screen, a placard on its side: documented (photographs). That it is the LOX topping trailer of the count is our reading (estimated); sizes estimated; the tandem, legs, vent, valves, gauge board and hose are the ordinary fittings of such a trailer, from no photograph | the same; TM X-53107's count (T−60 s "LOX topping Off"; the trailers secured after launch) |
+| Sandbags | a wall 7 ft long, 2.5 ft thick at the foot and 3 ft high, six courses of bags 2.5 by 1.4 ft | that it stood: documented (photograph); size estimated | S61-02407 |
 | Chevron drum | 9.2 ft across, 3.9 ft high, black with twelve orange chevrons | that it stood near the launcher and its colours: documented (photographs); that it is round is our reading of its curved edges in S63-02651; size estimated; what it was for is not known | S61-01927; S63-02651 |
 | Stairs to the base's deck | 3 ft wide, 14 risers of 7.5 in | estimated | GPN-2000-001006 shows a flight at the base; its place on the base is not established |
 
@@ -468,7 +469,8 @@ could be 20 to 40 ft from where it really stood, and nothing in the record would
 | Trailer NASA SP-No 1 | 89 ft on 228° | S61-03158 |
 | Cars at the ready rooms | 403 ft on 350° | F16_016 |
 | Pole line | 420 ft on 326° at its nearest, along the road behind the blockhouse | F16_016 |
-| The two blast screens with their tanks | 52 to 72 ft out on the side away from the hatch (model −X), 2 to 50 ft toward the structure's parking place (+Y) | estimated from S61-02407 and S61-01927 (oblique, from the hatch side: both stand behind the launcher and to its right, the pad's edge just beyond them) and from 6100884 and S61-01928 (along the rails: neither is within about 45 ft of the track) |
+| The two blast screens with their tanks | at the slab's edge on the side away from the hatch (model −X): their faces 84 and 86 ft out, the trailer behind the taller reaching the edge; 4 to 50 ft toward the structure's parking place (+Y) | estimated. S61-02407 (from the hatch side, across the rails) has the slab's far edge, a hose lying along it, in line with the screens' feet, and the slab is 99 ft from the launcher there (below); how far along the edge is scaled from the same frame, to perhaps 10 ft. 6100884 and S61-01928 (along the rails) agree: nothing stands within about 45 ft of the track |
+| Sandbags | on the grass 22 ft beyond that edge, 18 ft to the pad 6 side of the launcher's line | estimated from S61-02407 |
 | Chevron drum, tripods, camera towers, floodlight poles | on the hardstand, 20 to 110 ft out | the liftoff photographs; none of their positions is recorded |
 
 ## What stood when
@@ -490,6 +492,7 @@ known to have changed.
 | White room on level 3 | February 1961 | not known | documented | TM X-53107 7.5.1.2: built February to May 1961. Before it, level 3 was an open platform, which is not built |
 | Emergency shower on its cart | 2 May 1961 | not known | documented | KSC-61-4457; not looked for in MR-4's photographs |
 | Blast screens, the orange tank, the long white tank on its trailer, the chevron drum | May 1961 (seen 5 May) | not known; still there in July 1961 | documented | S61-02407, S61-01927, S61-02408; S63-02651 |
+| Sandbags beyond the slab's edge | May 1961 (seen 5 May) | not known | documented | S61-02407 |
 | Trailer NASA SP-No 1 | May 1961 | not known | documented | S61-03158; a white NASA trailer stands beside the structure in July too (F16_017) |
 | Two huts at the pad's hatch-side edge | not known | not known | estimated | seen July 1961 (F16_017): assumed for May |
 | Searchlights round pad 5 | May 1961 | not known | estimated | that searchlights worked the pad at night: TM X-53107 p. 7-21 (MR-4's count), 8.3.2; MR-3's night photograph S61-03158 shows the pad lit hard from the blockhouse side |
@@ -709,7 +712,7 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   and the drive-off are not documented: the liftoff photographs show the truck still on the pad
   with its cab lowered. The mast's rams separate from their barrels when the mast is lowered.
 - Ground equipment, camera towers and floodlights are placed where photographs suggest. None of
-  their positions is recorded. The blast screens and their tanks are placed from oblique photographs, to perhaps 15 ft. The huts, the
+  their positions is recorded. The blast screens and their tanks are placed from oblique photographs against the slab's edge. The huts, the
   barricade and the floodlights' form are from July 1961; that they were the same in May is assumed.
 - What takes the furniture away is partly invented: the M275 tractor for the trailer SP-No 1 is of
   the kind photographed coupled to it (see "What towed the trailers"); a half-ton pickup on a chain
@@ -746,10 +749,18 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   round drum. Of what is built now, the screens' posts and struts, the orange tank's cart and
   fittings, and the LOX trailer's running gear, valves, gauge board, placards' wording and hose are
   the ordinary kind, not read off a photograph; nobody can go up on the trailer's deck. The
-  photographs also show a small pile of sandbags at the pad's edge beyond the launcher, which is not
-  built, and (6100884, S61-01928) grass within about 40 ft of the launcher on the structure's side
-  of it, between the tracks' concrete and the pad's: the hardstand here is a full 200 ft square from
-  TM X-53107's Figure 7-6 and OpenStreetMap, and that difference is not resolved.
+  wall of sandbags on the grass beyond the slab (S61-02407: five or six courses, about 7 ft long) is
+  built; something under a white cover stands at each end of it, and is not: what they were is not
+  recorded. To make room, the third searchlight (its place was a guess) is moved 17 ft along the edge.
+- **The hardstand is a full 200 ft square, and the photographs agree.** Seen along the rails from
+  pad 6's side (6100884, S61-01928), grass begins beyond a straight edge on the structure's side of
+  the launcher, which at first sight is close behind it. It is not: the camera looks down at about
+  ten degrees, so a foot along the ground is about a sixth of a foot across the frame, and the edge
+  works out 80 to 95 ft beyond the launcher (the fins' 12.67 ft span sets the scale: derived, to
+  some 15 ft). That is the slab's own edge, 99 ft out. The museum's aerial of April 1965
+  (Complex_5-6_650400_0004) shows pad 5's slab as a square with the launcher at its middle and the
+  track running on over grass, as does today's outline (OpenStreetMap way 195709355: 198 by 199 ft
+  about the launcher). So nothing is changed in hardstand.py; no aerial of 1961 itself was found.
 - The tripod cameras are a type, not the cameras; the launcher's cables' routes, thickness and
   connectors are estimated.
 - The crane has no operator's cab: none shows in the photographs, and the hoist machinery is drawn

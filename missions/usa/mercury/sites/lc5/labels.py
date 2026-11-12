@@ -110,6 +110,11 @@ TABLE: list[tuple[str, str, str]] = [
         "fittings are estimated.",
     ),
     (
+        "GroundEquipment_Sandbags",
+        "Sandbags",
+        "A wall of sandbags on the grass beyond the slab, in a photograph of the ignition. What it sheltered is not recorded.",
+    ),
+    (
         "GroundEquipment_ChevronDrum",
         "Chevron drum",
         "A drum painted in orange and black chevrons near the launcher, seen in the liftoff photographs. What it was for is not known.",
