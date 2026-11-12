@@ -413,7 +413,10 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
   const card = outline(colours.figure);
   const person = new THREE.Group();
   person.add(card);
-  let staff = pole(1, flat(colours.amber), flat(colours.ink));
+  // (the pole's two colours, made once: a pole is made again each time something else stands there, and only its
+  // geometry is new and disposed of)
+  const bands = [flat(colours.amber), flat(colours.ink)] as const;
+  let staff = pole(1, ...bands);
   figure.add(person, staff);
   let stature = STATURE;
   let own: THREE.Object3D | null = null;
@@ -425,8 +428,15 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
     let made = environments.get(key);
     if (!made) {
       const gen = new THREE.PMREMGenerator(renderer);
-      made = gen.fromScene(room(p.wall, p.boxes), 0.02, 0.1, 200).texture;
+      const baked = room(p.wall, p.boxes);
+      made = gen.fromScene(baked, 0.02, 0.1, 200).texture;
       gen.dispose();
+      // (the room was drawn the once: what it put on the graphics card goes with it)
+      baked.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        mesh.geometry?.dispose();
+        for (const m of [mesh.material ?? []].flat()) m.dispose();
+      });
       environments.set(key, made);
     }
     return made;
@@ -508,7 +518,7 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
       person.position.set(centre.x - 0.86 * clear, 0, centre.z - 0.1 * clear);
       figure.remove(staff);
       staff.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
-      staff = pole(height, flat(colours.amber), flat(colours.ink));
+      staff = pole(height, ...bands);
       staff.position.set(centre.x - 0.86 * (clear + 0.55), 0, centre.z - 0.5 * (clear + 0.55));
       figure.add(staff);
     },

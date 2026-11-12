@@ -139,6 +139,32 @@ const cases = {
   'neighbouring complexes that arrive late have their shadows, from the camera': () => lateNeighbours(false),
   'neighbouring complexes that arrive late have their shadows, on foot': () => lateNeighbours(true),
   "the workers that decode the neighbours' model are let go when it has arrived": () => lateNeighbours(false, true),
+
+  /** What stands in the gallery is changed over and over with the measure up: each new pole is made of the same two materials. */
+  async "the gallery's measuring pole is replaced without leaving its materials behind"() {
+    const { page, close } = await open(`${FLIGHT}/gallery`);
+    await galleryReady(page);
+    await page.evaluate(() => window.sr.gallery.setMeasure(true));
+    // (how many materials the renderer holds a program for: one is counted for each material until it is disposed of)
+    const held = () => page.evaluate(() => window.sr.gallery.stage.renderer.info.programs.reduce((n, p) => n + p.usedTimes, 0));
+    const stand = async (times) => {
+      for (let i = 0; i < times; i++) {
+        await page.evaluate((n) => {
+          const g = window.sr.gallery;
+          g.stand(g.choices[n % g.choices.length], true);
+        }, i);
+        await page.waitForTimeout(250);
+      }
+    };
+    const choices = await page.evaluate(() => window.sr.gallery.choices.length);
+    await stand(2 * choices); // (everything that is made the first time something stands there has been made)
+    const before = await held();
+    await stand(4 * choices);
+    const after = await held();
+    await close();
+    if (choices < 2) return ['this flight has one thing to stand in its gallery: nothing was tested'];
+    return after > before ? [`${4 * choices} changes of what stands there left ${after - before} materials with the renderer`] : [];
+  },
 };
 
 let failed = 0;
