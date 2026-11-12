@@ -1172,6 +1172,7 @@ const pad: ModelDef = {
   slider: ['Pilot aboard · 05:20', 'Pad clear'],
   sequence: MORNING,
   specGroups: ['Launch pad'],
+  pieces: true,
   parts: padParts,
   views: [
     { id: 'pedestal', label: 'Launcher', nodes: ['LaunchPedestal'] },

@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, type Vector3 } from 'three';
+import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, Vector3 } from 'three';
 import type { Part } from '../types';
 import { markDriven } from './drive.ts';
 import { Exploder } from './explode.ts';
@@ -391,7 +391,36 @@ export class Scenery {
   }
 }
 
-/** One model on the stage: its levels of detail, of which one is drawn (two while one gives way to the other), all taken apart together. */
+/** How near the eye may be to a piece of a model before it is drawn in full whatever its thresholds say, metres. */
+const NEAR = 9;
+
+/**
+ * One piece of a model that is drawn piece by piece: a top-level node, or a child of one whose children stand apart
+ * (the pad's ground equipment is one node spread over the whole pad: taken as one piece it is always beside the walker).
+ */
+interface Bit extends Piece {
+  /** The top-level node it is a child of, if it is one. */
+  within: string | null;
+  /** Something else moves it (a truck driven by hand, moved at level 0 alone): drawn in full from then on. */
+  pinned: boolean;
+}
+
+/** The names of a node's children, as one string: two levels have the same pieces if these are the same. */
+const childNames = (node: THREE.Object3D): string =>
+  node.children
+    .map((c) => c.name)
+    .sort()
+    .join('\n');
+
+/**
+ * One model on the stage: its levels of detail, all taken apart together. A model is drawn at one level (two while
+ * one gives way to the other), or, if it is a place in itself (`pieces`: a pad a hundred and sixty metres across),
+ * piece by piece as the place round it is (`Scenery`): each top-level node at the level its own size on screen
+ * calls for, so what the walker stands beside is the finest there is and the far side of the pad is not. Then every
+ * level's root is shown and the pieces' nodes are shown and hidden under them; level 0 is the one picked, walked on,
+ * lit and worked, as it is for the place. Whoever hides or shows a node of such a model by hand must do it to
+ * something inside a piece, never to a piece's own node: that node's `visible` is the choice of level.
+ */
 export class Staged {
   readonly group = new Group();
   readonly sphere = new Sphere();
@@ -408,21 +437,71 @@ export class Staged {
   /** What is being worked by hand, so that a level arriving later is posed the same (hold, loosen). */
   private readonly held = new Map<string, number>();
   private readonly loose = new Set<string>();
-  /** For tests: draw this level whatever the model's size on screen (null: as it suits). */
-  forced: number | null = null;
+  /** Its pieces, if it is drawn piece by piece (null: at one level). */
+  private readonly pieces: Bit[] | null = null;
+  /** The top-level nodes whose children are the pieces, with those children's names (`childNames`). */
+  private readonly spread = new Map<string, string>();
+  /** Something has moved (the slider, a door, the model itself): the pieces' boxes are taken again before they are next asked. */
+  private stale = false;
+  /**
+   * For tests: draw this level whatever the model's size on screen (null: as it suits). For a model drawn piece by
+   * piece, a level for every piece, or one for each piece named (the rest as they suit).
+   */
+  forced: number | Record<string, number> | null = null;
 
   /** Its own thresholds (`thresholdsOf`). */
   above: readonly number[];
 
-  constructor(full: THREE.Object3D, parts: Part[]) {
+  constructor(full: THREE.Object3D, parts: Part[], pieces = false) {
     this.parts = parts;
     this.above = thresholdsOf(full.userData.lod_above);
+    if (pieces) this.pieces = this.split(full);
     this.add(0, full);
+  }
+
+  /**
+   * The pieces of a model: its top-level nodes, and in place of one whose children stand apart (none of them half
+   * as big as the node), those children. What has nothing to draw (an empty, a light) is no piece and is left alone.
+   */
+  private split(full: THREE.Object3D): Bit[] {
+    const bits: Bit[] = [];
+    full.updateMatrixWorld(true);
+    const bit = (node: THREE.Object3D, box: Box3, within: string | null): Bit => ({
+      name: node.name,
+      box,
+      nodes: [node],
+      wanted: 0,
+      shown: 0,
+      fade: new Crossfade(),
+      above: thresholdsOf(node.userData.lod_above),
+      within,
+      pinned: false,
+    });
+    const size = new Vector3();
+    for (const node of full.children) {
+      const box = new Box3().setFromObject(node);
+      if (box.isEmpty()) continue;
+      const across = box.getSize(size).length();
+      const inside = node.children.map((child) => ({ child, box: new Box3().setFromObject(child) })).filter((c) => !c.box.isEmpty());
+      const names = new Set(node.children.map((c) => c.name));
+      const apart =
+        !(node as THREE.Mesh).isMesh &&
+        inside.length >= 4 &&
+        names.size === node.children.length &&
+        inside.every((c) => c.box.getSize(size).length() < 0.5 * across);
+      if (!apart) bits.push(bit(node, box, null));
+      else {
+        this.spread.set(node.name, childNames(node));
+        for (const c of inside) bits.push(bit(c.child, c.box, node.name));
+      }
+    }
+    return bits;
   }
 
   /** Call once it is placed, and when it has moved: the box is what its distance from the eye is measured to. */
   measure(): void {
     this.box.setFromObject(this.levels[0]!).getBoundingSphere(this.sphere);
+    this.stale = true;
   }
 
   add(level: number, object: THREE.Object3D): void {
@@ -434,13 +513,38 @@ export class Staged {
     for (const node of this.loose) exploder.loosen(node, true);
     exploder.set(this.t);
     this.exploders.push(exploder);
-    object.visible = this.every;
-    this.show(this.wanted, false);
+    const pieces = this.pieces;
+    if (!pieces) {
+      object.visible = this.every;
+      this.show(this.wanted, false);
+      return;
+    }
+    // piece by piece: the root is always shown, and under it only the pieces drawn from this level
+    if (level > 0)
+      for (const node of object.children) {
+        const names = this.spread.get(node.name);
+        if (names === undefined) {
+          const piece = pieces.find((p) => p.within === null && p.name === node.name);
+          if (piece) piece.nodes[level] = node;
+          node.visible = false; // (what has no piece at level 0 is not drawn from here)
+          continue;
+        }
+        // (a level built with other children under this node has no pieces to give: they are drawn from a finer one)
+        const same = childNames(node) === names;
+        for (const child of node.children) {
+          const piece = same ? pieces.find((p) => p.within === node.name && p.name === child.name) : undefined;
+          if (piece) piece.nodes[level] = child;
+          child.visible = false;
+        }
+      }
+    for (const piece of pieces) this.showPiece(piece, false);
+    this.stale = true;
   }
 
   explode(t: number): void {
     this.t = t;
     for (const e of this.exploders) e.set(t);
+    this.stale = true;
   }
 
   /** Hold one node's motions at a slider reading of its own, at every level of detail (null: release it), and show it. */
@@ -451,6 +555,7 @@ export class Staged {
       e.hold(node, reading);
       e.set(this.t);
     }
+    this.stale = true;
   }
 
   /** Let something else move one node at every level of detail (a vehicle driven by hand), or give it back to the slider. */
@@ -461,11 +566,27 @@ export class Staged {
       e.loosen(node, on);
       e.set(this.t);
     }
+    // what is driven is moved at level 0 alone, and is left where it was driven to: its piece is drawn in full from now on
+    if (on && this.pieces)
+      for (const piece of this.pieces) {
+        const own = piece.nodes[0]!;
+        if (piece.name === node || piece.within === node || own.getObjectByName(node)) piece.pinned = true;
+      }
+    this.stale = true;
   }
 
   /** Draw every level at once (so that all of them are built and sent to the GPU), as they are while fading too if `fading`, or go back to the one that suits. */
   everyLevel(on: boolean, fading = false): void {
     this.every = on;
+    if (this.pieces) {
+      for (const piece of this.pieces) {
+        piece.fade.finish();
+        const nodes = piece.nodes.filter((n): n is THREE.Object3D => Boolean(n));
+        if (on && fading) for (let i = 1; i < nodes.length; i++) piece.fade.warm(nodes[i - 1]!, nodes[i]!);
+        this.showPiece(piece, false);
+      }
+      return;
+    }
     this.fade.finish();
     const levels = this.levels.filter((o): o is THREE.Object3D => Boolean(o));
     if (on && fading) for (let i = 1; i < levels.length; i++) this.fade.warm(levels[i - 1]!, levels[i]!);
@@ -478,19 +599,28 @@ export class Staged {
     return this.levels[0]!;
   }
 
-  /** The level being drawn (while one gives way to another, the one coming in). */
+  /** The level being drawn (while one gives way to another, the one coming in); of a model drawn piece by piece, the finest any piece is drawn at. */
   get shownLevel(): number {
     return this.level;
   }
 
-  /** The level being drawn. */
+  /**
+   * The level being drawn: the root that is picked, walked on and asked. For a model drawn piece by piece that is
+   * level 0 whatever is drawn (a ray and the walker's solids do not ask whether a node is shown).
+   */
   get shown(): THREE.Object3D {
-    return this.levels[this.level]!;
+    return this.levels[this.pieces ? 0 : this.level]!;
   }
 
-  /** A part's node in the level being drawn. */
+  /** A part's node in the level being drawn (for a model drawn piece by piece: at level 0; see `drawn`). */
   part(node: string): THREE.Object3D | undefined {
     return this.shown.getObjectByName(node);
+  }
+
+  /** A part's node wherever it is drawn from: the one in the level on show, or for a model drawn piece by piece the one in every level (what is not drawn of them is hidden). */
+  drawn(node: string): THREE.Object3D[] {
+    const roots = this.pieces ? this.levels : [this.shown];
+    return roots.flatMap((root) => root?.getObjectByName(node) ?? []);
   }
 
   /**
@@ -499,9 +629,35 @@ export class Staged {
    * its inside at once). True if what is drawn changed, or is changing.
    */
   choose(eye: Vector3, scale: number, full: boolean, dt = Number.POSITIVE_INFINITY): boolean {
-    const fading = this.fade.step(dt);
-    this.wanted = this.forced ?? (full ? 0 : chooseLevel(scale / distanceTo(this.box, eye), this.wanted, this.above));
-    return this.show(this.wanted, Number.isFinite(dt) && !full && this.forced === null) || fading;
+    const pieces = this.pieces;
+    if (!pieces) {
+      const fading = this.fade.step(dt);
+      const forced = typeof this.forced === 'number' ? this.forced : null;
+      this.wanted = forced ?? (full ? 0 : chooseLevel(scale / distanceTo(this.box, eye), this.wanted, this.above));
+      return this.show(this.wanted, Number.isFinite(dt) && !full && forced === null) || fading;
+    }
+    let changed = false;
+    if (this.stale) {
+      // (each piece's box as it stands now: the slider parts them, a door swings, the model was put somewhere)
+      this.stale = false;
+      this.levels[0]!.updateWorldMatrix(true, true);
+      for (const piece of pieces) piece.box.setFromObject(piece.nodes[0]!);
+    }
+    let finest = Number.POSITIVE_INFINITY;
+    for (const piece of pieces) {
+      if (piece.fade.step(dt)) changed = true;
+      if (full && piece.fade.running) piece.fade.finish();
+      const forced = typeof this.forced === 'number' ? this.forced : this.forced?.[piece.name];
+      const far = distanceTo(piece.box, eye);
+      const wanted = forced ?? (full || piece.pinned || far < NEAR ? 0 : chooseLevel(scale / far, piece.wanted, piece.above));
+      if (wanted !== piece.wanted) {
+        piece.wanted = wanted;
+        changed = this.showPiece(piece, Number.isFinite(dt) && !full && forced === undefined) || changed;
+      }
+      finest = Math.min(finest, piece.shown);
+    }
+    this.level = Number.isFinite(finest) ? finest : 0;
+    return changed;
   }
 
   /** Show the wanted level, or until it has arrived the nearest finer one that has; `fade`: over a moment. */
@@ -526,5 +682,29 @@ export class Staged {
       this.levels.forEach((o, i) => o && (o.visible = i === level));
     }
     return true;
+  }
+
+  /** Show a piece's wanted level, or until it has arrived the nearest finer one that has; `fade`: over a moment. */
+  private showPiece(piece: Bit, fade: boolean): boolean {
+    let level = piece.wanted;
+    while (level > 0 && !piece.nodes[level]) level--;
+    const from = piece.nodes[piece.shown],
+      to = piece.nodes[level];
+    const was = piece.shown;
+    piece.shown = level;
+    if (fade && !this.every && from && to && from !== to) {
+      piece.fade.start(from, to);
+      return true;
+    }
+    if (!this.every || was !== level) piece.fade.finish();
+    let changed = false;
+    piece.nodes.forEach((node, i) => {
+      const visible = this.every || i === level;
+      if (node && node.visible !== visible) {
+        node.visible = visible;
+        changed = true;
+      }
+    });
+    return changed;
   }
 }

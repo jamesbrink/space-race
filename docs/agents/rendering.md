@@ -78,7 +78,10 @@ different one per pixel per frame. Three things stop it, and all three must stay
   on a surface names its material by that rule** (or the list in laid.ts grows by a class, never by a flight).
   Measured with the near plane pinned at 16 m, straight down, eye moved 2 cm a frame, pixels a frame that change
   and change back: from 20 km 74 to 2, from 40 km 41 to 0.4, from 10 km 45 to 5 (cel: 46 to 3, 18 to 0.4, 54 to 7).
-  `sr.stage.layered = false` draws them where they are, for measuring.
+  `sr.stage.layered = false` draws them where they are, for measuring. The offset is the frame's alone: three draws
+  a shadow map with a depth material of its own, which takes nothing of the surface's offset (counted: of the 1000 to
+  1200 draws into each of the Sun's three maps none is under a polygon offset, layers on or off; the eight that are,
+  are the frame's), so a shadow is cast from where the surface is and the maps are the same either way.
 
 `pnpm test:flicker` checks the result in a real browser: every model, every view, six
 directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.
@@ -160,6 +163,15 @@ or a dense screen keeps the fine level further). A model that is cut open is alw
 is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
 the level its own size on screen calls for, so the building beside the walker is always the finest;
 level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it.
+A model that is a place in itself (`ModelDef.pieces`: the pad, 160 m across, which taken whole is always beside the
+walker and so always in full) is chosen the same way (`Staged` in lod.ts): each top-level node is a piece, and a
+node whose children stand apart (no child half its size: the ground equipment, the floodlights, the camera towers)
+is taken child by child. Every level's root is then shown and the pieces' nodes shown and hidden under them, so
+**a piece's own node is never hidden or shown by hand** (its `visible` is the choice of level); `Staged.shown` is
+level 0, and `Staged.drawn(node)` is the node wherever it is drawn from (the outline's). The slider, a door and a
+lift move every level alike, and a piece's box is taken again when they do; a piece that is driven by hand moves at
+level 0 alone and is drawn in full from then on; nothing within 9 m of the eye is below level 0; cut open, all of
+it is in full. A level built with other children under such a node gives no pieces: they are drawn from a finer one.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script and a threshold to `LOD_ABOVE` (the choosing takes any number); do not hand-edit geometry for them.
 
@@ -178,18 +190,20 @@ fading mesh wears its material's twin (`Fading.twin`: the material itself, by pr
 `LOD_FADE` defined and its own id), so nothing else carries the test and nothing has to be told
 about it; `Stage.warm` builds those shaders with the rest. A test (`stage.frozen`) gets the cut.
 To measure a change to any of this: `Staged.forced` and `Scenery.forced` draw a level whatever
-the distance, so the same view can be drawn at two levels and compared.
+the distance (a number, or for a place or a model in pieces a level for each piece named), so the same view
+can be drawn at two levels and compared.
 
 **Each thing has its own thresholds, measured.** 8 and 2 are what the worst things need (a gantry
 whose bracing goes, the pad). Most differ far less from level to level (a road and a cable trench
 not at all), and holding them fine until 8 px/m cost 8 ms a frame on the pad against 40 and 12.
-So `node tools/lod-thresholds.mjs --measure` (needs `pnpm dev`) draws every model, and every
-piece of the place, at each pair of levels from the same eye at a range of sizes and counts the
-pixels that differ; a thing's threshold is the largest size at and under which no more than 100
+So `node tools/lod-thresholds.mjs --measure` (needs `pnpm dev`; `--only <regex>` for some of them) draws every
+model, and every piece of the place and of a model in pieces, at each pair of levels from the same eye at a range
+of sizes, in both looks, and counts the pixels that differ in the worse of the two (the first level is drawn again
+after the second as a control: it must be the same picture, `pnpm test:frozen`); a thing's threshold is the largest size at and under which no more than 100
 (level 0 to 1) or 350 (1 to 2) pixels of 1280 x 800 differ, never under 8 and 2, the second kept a
 size under the first so that nothing goes from 0 straight to 2. The figures and what was measured
 are kept in `<name>.lod.json` beside the model's script and carried in the GLB's extras
-(`lod_above`: the scene's for a model, a top-level node's for a piece), which lod.ts reads
+(`lod_above`: the scene's for a model, a node's for a piece), which lod.ts reads
 (`thresholdsOf`); `build-model.mjs` puts them back after a rebuild and a test fails a GLB that has
 lost them. **After changing what a level leaves out, measure again.** A thing with no record
 has 8 and 2.
@@ -357,6 +371,11 @@ What has been found, so it is not found again:
   (tile-based) they charge a pass with the loading and storing of whatever target it leaves, and are no guide to
   what a pass's own drawing costs. `sr.stage.bloomOld = true` (and `?plain`) draws it three's way, for measuring.
   Anything new that wants to lay something over the whole frame does it in the output's pass too.
+- **The Cape's coarser levels are built and not drawn, and are not worth drawing.** The near complexes
+  (`cape1961.ts`, `1961-05.glb`) are 28,332 triangles in full, 26,972 and 26,540 at levels 1 and 2 (LC-17, 12,336 of
+  them, is the same at all three), and they are drawn as fourteen meshes, one a material, all five complexes joined.
+  To choose a level a complex they would have to be drawn a complex, a material and a level apart: some seventy
+  draws in place of fourteen, in a frame that is bound by its draws, to save 1,800 triangles of three million.
 - **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame at 1440x900 is
   bound by the CPU (three's work per draw call), so a batch per material per file was built, with the meshes left
   in the scene on a layer the camera did not see (so picking, outline, cutaway, moves, levels of detail and

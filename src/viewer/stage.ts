@@ -701,7 +701,7 @@ export class Stage {
     this.defs = flight.models;
     this.staged = flight.models.map((def, i) => {
       rest(scenes[i]!);
-      const staged = new Staged(scenes[i]!, def.parts);
+      const staged = new Staged(scenes[i]!, def.parts, def.pieces);
       staged.group.position.set(...(def.position ?? [0, 0, 0]));
       staged.group.rotation.y = def.rotationY ?? 0;
       const lamps = (def.lights ?? []).map((l) => {
@@ -1716,10 +1716,7 @@ export class Stage {
     this.selected = selected;
     this.dirty = true;
     // outlined in the level of detail that is on show
-    this.outline.selectedObjects = [...new Set([hovered, selected])].flatMap((n) => {
-      const o = n ? this.staged[this.current]?.part(n) : undefined;
-      return o ? [o] : [];
-    });
+    this.outline.selectedObjects = [...new Set([hovered, selected])].flatMap((n) => (n ? (this.staged[this.current]?.drawn(n) ?? []) : []));
   }
 
   /**

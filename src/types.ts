@@ -344,6 +344,12 @@ export interface ModelDef {
   /** The model has internals and flagged shells (srlib.mark_shells): offer a cutaway. */
   cutaway?: boolean;
   /**
+   * The model is a place in itself (a pad 160 m across): its level of detail is chosen piece by piece, each
+   * top-level node by its own size on screen, as the place round it is (viewer/lod.ts `Staged`). Left out: the
+   * model is drawn at one level.
+   */
+  pieces?: boolean;
+  /**
    * This model is a person the site can be walked as (viewer/walk.ts): the walk starts where the
    * figure stands, at its eye height, looking the way it faces. A flight may have several.
    */

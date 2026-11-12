@@ -2,15 +2,18 @@
 //
 //   node tools/lod-thresholds.mjs                 put every <name>.lod.json's thresholds into its GLB's extras
 //   node tools/lod-thresholds.mjs --check         say which GLBs do not carry what their .lod.json says (exit 1)
-//   node tools/lod-thresholds.mjs --measure [--url http://localhost:5180/] [--flight usa/mercury/mr-3-freedom-7]
+//   node tools/lod-thresholds.mjs --measure [--url http://localhost:5180/] [--flight usa/mercury/mr-3-freedom-7] [--only <regex>]
 //                                                 measure them again in a real browser (needs `pnpm dev`), write the
-//                                                 .lod.json files, then put them into the GLBs
+//                                                 .lod.json files, then put them into the GLBs. --only: the things
+//                                                 whose `<glb>:<name>` matches (the rest keep what they had)
 //
 // What is measured. The levels of a thing differ mostly in what is there, not in how round it is: a coarser level
 // leaves out a truss's lighter bracing, the room behind a window, wires. So no measure of shape says when the change
 // can be seen; the picture does. A thing is drawn at level n and at n+1 from the same eye, frozen, at 1280 x 800, and
-// the pixels that differ by more than 30 of 765 (red, green and blue summed) are counted, from two sides, at each of
-// `PPMS` pixels a metre. Its threshold for that boundary is the largest of those sizes at and under which never more
+// the pixels that differ by more than 30 of 765 (red, green and blue summed) are counted, from two sides, in both
+// looks (the worse of the two is kept: a drawn tone flips where a shaded one drifts), at each of `PPMS` pixels a
+// metre. Level n is drawn again after n+1 as a control: a frozen stage draws the same frame twice, so the two must
+// be the same picture, and all three are taken again if the page was still arriving. Its threshold for that boundary is the largest of those sizes at and under which never more
 // than `ALLOWED` pixels differ: there the change is that many pixels fading over 0.6 s (lod.ts `Crossfade`). It is
 // never put under the viewer's own (lod.ts `LOD_ABOVE`, which is what the worst things need), nor over the largest
 // size measured; and the second threshold is kept a size under the first, so that no thing goes from level 0 straight
@@ -125,6 +128,14 @@ export function carry(record, glb, check = false) {
     const node = model.json.nodes[i];
     named.add(node.name);
     put(node, node.name, above[node.name]);
+    // (a piece may be a child of a top-level node whose children stand apart: lod.ts `Staged.split`)
+    for (const c of node.children ?? []) {
+      const child = model.json.nodes[c];
+      if (!child.name || named.has(child.name)) continue;
+      if (above[child.name] === undefined && child.extras?.lod_above === undefined) continue;
+      named.add(child.name);
+      put(child, child.name, above[child.name]);
+    }
   }
   for (const name of Object.keys(above))
     if (name && !named.has(name)) wrong.push(`${relative(root, record)}: ${name} is not a node of the model`);
@@ -137,7 +148,7 @@ async function main(args) {
   if (args.includes('--measure')) {
     const { measure } = await import('./lod-measure.mjs');
     const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
-    await measure({ url: option('--url') ?? 'http://localhost:5180/', flight: option('--flight') });
+    await measure({ url: option('--url') ?? 'http://localhost:5180/', flight: option('--flight'), only: option('--only') });
   }
   const check = args.includes('--check');
   let wrong = 0;
