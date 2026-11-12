@@ -424,8 +424,10 @@ export class Stage {
     this.raycaster.layers.enable(PROXY_LAYER); // (a mesh a batch draws is still what a ray meets)
     // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
     const query = new URLSearchParams(location.search);
-    if (query.has('plain')) this.glazing.enabled = this.batches.enabled = false;
-    if (query.has('batch')) this.batches.least = Number(query.get('batch')); // (for measuring where the line should be)
+    if (query.has('plain')) this.glazing.enabled = false;
+    // (batches are off unless asked for with `?batch`, until they are shown to leave every pixel as it was: `?batch=<n>` also sets the fewest meshes worth one)
+    this.batches.enabled = query.has('batch') && !query.has('plain');
+    if (query.get('batch')) this.batches.least = Number(query.get('batch'));
 
     // models are Draco-compressed; the decoder is served from public/draco
     this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
