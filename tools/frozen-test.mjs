@@ -1,5 +1,5 @@
 // A frozen stage draws the same frame twice: checked in the running viewer, in both looks.
-//   node tools/frozen-test.mjs [url] [--shots <dir>]      (default url: http://localhost:5180/)
+//   node tools/frozen-test.mjs [url] [--shots <dir>] [--only <regex of pose names>]      (default url: http://localhost:5180/)
 // --shots writes a map per pose that moved: the frame dimmed, the pixels that differed magenta.
 //
 // Everything that compares pictures (test:flicker, tools/lod-measure.mjs, `pnpm bench --shots`) sets `stage.frozen`
@@ -36,6 +36,8 @@ const POSES = [
 const args = process.argv.slice(2);
 const shotsAt = args.indexOf('--shots');
 const shots = shotsAt >= 0 ? args.splice(shotsAt, 2)[1] : null;
+const onlyAt = args.indexOf('--only');
+const only = onlyAt >= 0 ? new RegExp(args.splice(onlyAt, 2)[1]) : null;
 const url = args[0] ?? 'http://localhost:5180/';
 if (shots) mkdirSync(shots, { recursive: true });
 
@@ -143,6 +145,27 @@ const at = (pose) =>
         });
         if (stage.scenery) stage.scenery.forced = Object.fromEntries(Object.entries(pieces).map(([name, level]) => [name, to(level)]));
       };
+      // the air's ball moved off the eye and made another size: what it draws is the eye's rays, so nothing may change
+      // (it is placed as a frame begins, before the rig moves the eye: in flight a frame's travel off, and the limb
+      // stood 4 px out and jumped with every long frame while it drew the way from its own middle)
+      const globe = stage.setting.globe;
+      let ball = null;
+      if (globe?.air?.visible) {
+        const attend = stage.setting.attend;
+        stage.setting.attend = (eye) => {
+          const changed = attend(eye);
+          globe.air.position.x += 40;
+          globe.air.position.y -= 25;
+          globe.air.scale.multiplyScalar(0.6);
+          return changed;
+        };
+        const moved = await window.grab(SETTLE);
+        stage.setting.attend = attend;
+        ball = window.differ(first, moved, true);
+        // (and back: the frame is the first again)
+        const back = window.differ(first, await window.grab(SETTLE));
+        if (back.n > ball.n) ball = back;
+      }
       force((level) => level);
       const before = await window.grab(SETTLE);
       force(other);
@@ -152,7 +175,7 @@ const at = (pose) =>
       for (const s of stage.staged) s.forced = null;
       if (stage.scenery) stage.scenery.forced = null;
       stage.timer.getDelta = delta;
-      return { rest, still, thrown: window.differ(before, after, true), changed: window.differ(before, coarse).n };
+      return { rest, still, ball, thrown: window.differ(before, after, true), changed: window.differ(before, coarse).n };
     },
     [pose, SETTLE, DRAWS],
   );
@@ -162,6 +185,7 @@ for (const look of ['real', 'cel']) {
   await page.evaluate((look) => window.sr.stage.setLook(look), look);
   if (!(await page.evaluate(() => window.quiet()))) console.log(`     (${look}: the page had not come to rest)`);
   for (const pose of POSES) {
+    if (only && !only.test(pose.name)) continue;
     const r = await at(pose);
     if (!r.rest) {
       failed++;
@@ -171,9 +195,12 @@ for (const look of ['real', 'cel']) {
     }
     for (const [what, d] of [
       ['still', r.still],
+      ['ball', r.ball],
       ['thrown', r.thrown],
     ]) {
-      const ok = d.n === 0;
+      if (!d) continue; // (no air drawn in this pose)
+      // (the ball moved draws the same rays through other triangles: a last bit of rounding, one level at most)
+      const ok = what === 'ball' ? d.worst <= 1 : d.n === 0;
       const open = !ok && pose.open?.includes(what);
       if (!ok && !open) failed++;
       console.log(

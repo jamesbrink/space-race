@@ -474,7 +474,12 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   the ball was cut away whole and the sea had no air over it (every straight-down picture before this was taken so).
   The ball's vertices are pushed out past the near plane's corners where that is further than the ball (globe.ts);
   it stays nearer than the sea because the near plane is kept inside nine tenths of the eye's height. A vehicle
-  further off than the ball has the whole air's light over it: a known flaw, small.
+  further off than the ball has the whole air's light over it: a known flaw, small. **What the ball draws is the
+  eye's ray, not the way from the ball's middle** (`vDir`): the ball is placed before the rig moves the eye, so in
+  flight it was a frame's travel off-centre (30 m in 8 km), and the limb stood 4 px out and jumped 4 more on every
+  long frame (the owner's "constantly changing, flickery" horizon; chase T+150 with uneven frames: the row profile's
+  frame-to-frame jerk 0.36 to 0.024, the same as with even frames). So nothing it draws may depend on where it sits,
+  how big it is or where the near plane is (`pnpm test:frozen`, "the air ball moved").
 - **The Sun's glint is Cox and Munk's.** From above the air the sea's highlight is not the material's lobe (GGX,
   whose tail put a pale glare over the whole sea) but a Gaussian spread of wave slopes for the record's wind
   (`globeGlint`): a bounded patch round the mirror point, at its heart a quarter as bright as a white surface in the same Sun. From
