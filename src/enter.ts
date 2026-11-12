@@ -14,5 +14,8 @@ import { entrances, flightFor } from './address';
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('fixture'))
   flights.push((await import('../tests/fixtures/vehicle-only/flight')).flight);
 
+// `?mem` counts what the page allocates on the GPU (mem.ts): wrapped before any context is made, and loaded only when asked for.
+if (new URLSearchParams(location.search).has('mem')) (await import('./mem')).install();
+
 const flight = flightFor(flights, location.hash);
 void (entrances(flight).site ? import('./main') : import('./only'));

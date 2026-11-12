@@ -50,6 +50,10 @@ src/
   viewer/shadows.ts                   the Sun's second shadow map: the whole place, coarsely, under the fine one
   viewer/shadowcache.ts               on foot, the fine shadow map kept between steps: only the walker drawn into it again while nothing else has changed
   viewer/quality.ts                   the net under the frame rate: for a weak machine, if chosen: resolution lowered a step only while frames stay under 30 a second, and put back
+  viewer/tier.ts                      what the device can hold: the full tier, and the lighter one a phone is given (sizes, what is made only when seen)
+  viewer/pictures.ts                  a model's pictures and index lists at the size the tier allows, before anything is sent to the GPU
+  viewer/lost.ts                      a WebGL context taken away, or an allocation refused: the loop stopped, a word, the way back in the lighter tier
+  mem.ts                              `?mem`: every GPU allocation the page makes, counted by bytes and by who asked (`srMem.report()`)
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
   viewer/laid.ts                      what lies on the ground kept apart in depth at any distance (polygon offset by material name)
   viewer/bloom.ts                     the glow round what is over-bright: sized in CSS pixels, added in the output's pass
@@ -132,6 +136,7 @@ tools/
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
+  mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces

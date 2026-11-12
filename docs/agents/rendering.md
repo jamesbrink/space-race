@@ -410,6 +410,72 @@ What has been found, so it is not found again:
   two shader variants of one material do not round alike. Do not build it again without a per-batch bound and a
   ruling on those pixels.
 
+## Memory: what a phone can hold
+
+A phone's browser kills a tab that holds too much and says nothing: the page reloads, then "a problem repeatedly
+occurred". It happened (an iPhone, the launch site: drawn, then gone), and the cause was not one thing: at a phone's
+size the page held 838 MiB of the GPU's with the curtain up, 1011 half a minute later when the globe's colours had
+arrived, and 1091 on foot, most of it for things not on show (the globe's maps, a fifth of a gigabyte blank; the
+cabin's panels; shadow maps sized for a desk's screen; three levels of detail of everything), beside 300 MB of
+JavaScript heap and 125 MB of decoded pictures.
+
+- **It is counted, not guessed.** `?mem` in the address (src/mem.ts) wraps every call that allocates on every WebGL
+  context before one exists, and `srMem.report()` is every live texture, renderbuffer and buffer by bytes and by who
+  asked (the page's own frames of the stack); `?mem=show` writes the totals in a corner, for a phone with no console.
+  `pnpm test:mem` (tools/mem-test.mjs, `--table` for the list) opens the launch site as a phone (390x844 at 3, touch)
+  and **fails over a budget** (MiB): 350 with the curtain up and half a minute later, 400 on foot, 450 in flight,
+  500 from the couch and at any moment between (measured: 309, 317, 388, 409, 473; the full tier at the same size
+  728, 902, 1091, 1095, 1172). The reasoning: the phone that was killed held between 838 and 1011 accounted, with
+  some 430 MB more on the page's side, so a tab on a 4 GB iPhone dies near 1.3 to 1.4 GB all told. 400 with the
+  340 the lighter tier holds on the page's side is a little over half of that: room for what the count does not see
+  (a driver's own copies, the compositor's), and for the next flight. A desktop browser will not reproduce the
+  kill: the account is the evidence. **Anything new that allocates is run through it**, and a figure is raised only
+  with a reason written here.
+- **Two tiers, decided once as the page opens** (`viewer/tier.ts`; `sr.stage.tier`). `full` is every size as it was
+  made, and a desktop's picture is not touched by any of this (main against the branch, frozen, 1440x900: the pixels
+  that differ are the clouds' and the sea's, which go by the time since the page opened, and as many differ between
+  two loads of main). `lighter` is for a device that says it is constrained (its first pointer is a finger, as on
+  every phone and tablet, whose Safari reports no memory; or it reports 4 GB or less; or its GPU takes no texture or
+  renderbuffer of 8192), never by the browser's name; "Lighter graphics" in the controls chooses or refuses it on any
+  machine (prefs `lighter`, `lighterOff`; it reloads, since what a tier allocates is allocated at the start), and
+  `?lighter` / `?lighter=0` do it for one visit.
+- **On every device:** the cabin's pictures (its panels, 155 MiB with their mip levels) are not sent as the page
+  opens but by the cabin, a picture a frame, as the eye comes within 60 m of the vehicle (cabin.ts, `send`); three
+  sends a picture whole, so the largest is one frame of some tens of milliseconds on a desk, once.
+- **What the lighter tier changes, and what of it can be seen:**
+  - *Nothing made that is not on show (no loss).* Only the levels of detail in view are sent to the GPU as the page
+    opens (every level's shaders are still built: `warm`); another level is sent when first drawn. The whole Earth's
+    cube is made from 150 m up, the relief and colours when the eye passes 1500 m and never by the timer (later.ts);
+    each picture is decoded, copied in and let go before the next is fetched, where six decoded faces at once were
+    100 MiB. A model's pictures are sent when first drawn, not all at the start; the cabin's only once the inside is
+    drawn, and let go again when it is not. The other look's shaders are built at the first T, which then takes a
+    moment. On foot there is no second fine shadow map (shadowcache.ts off: the same picture, more drawing), the
+    walk's map is let go two seconds after a walk and not thirty, and only one of the Sun's fine maps is held at a
+    time. Triangles are listed in two bytes a corner where a mesh has under 65,536 vertices (the same triangles).
+  - *Sizes (seen, if looked for).* The Sun's fine map 2048 for 4096: a texel on the ground is twice the full tier's
+    (2.4 cm for 1.2 round the vehicle, 12 cm for 6 across the pad), so a shadow's edge in a close view is softer. The
+    far map 2048 for 4096: 30 cm a texel for 15, the soft shadows of things past the fine map's edge are softer still.
+    The sky's map 1024 for 2048. On foot the fine map is 3072 over 36 m, 12 mm a texel, where a phone had 4096 and
+    9 mm (a desk has 8192 over 52 m, 6 mm). A model's picture of 2048 a side or more is sent at half size each way
+    (the cabin's main panel 2048 for 4096: 0.27 mm a texel, where a phone's pixel at the couch's distance is 0.6 mm;
+    with the lens zoomed in past twice it is the picture that gives out first). The periscope's cube 512 a face for
+    1024. The region's flat maps 2048 a layer for 4096 (the near map's coast 78 m a texel for 39, kept as a distance,
+    so it is a smooth line either way, and from the ground at the horizon). The whole Earth's cube 1024 a face for
+    2048 and its colours and relief at half size each way (globe.ts `small`, which was meant for this and never true
+    on a phone: it compared device pixels): past the region's own maps coasts are rounder and the land's tones
+    softer. Drawing pixels stay 1.5 a CSS pixel, as a finger's screen had already.
+  - *Not changed:* the frame's 4x multisampling and half floats, the clouds' field (4096, 32 MiB) and the ground's
+    cover maps (two of 2048, 43 MiB), anything's shape. Those are the next to weigh if the budget must come down;
+    each is somebody's picture. The shadow maps' colour attachments, which nothing reads, stay: three's
+    WebGLRenderer makes no target without one (a `count` of 0 is WebGPURenderer's only), and they are one byte a
+    texel (R8), a quarter of the depth's.
+- **A lost context is not a dead page** (`viewer/lost.ts`). `webglcontextlost` on a stage's canvas stops its loop for
+  good and puts up a word with "Reload with lighter graphics" (which chooses the lighter tier and remembers it) and
+  "Reload"; nothing reloads by itself, so there is no loop for the browser to give up on. An allocation the GPU
+  refused while the page opened (out of memory, or the frame's target incomplete: asked once, at the end of `warm`)
+  puts up the same word. A context given back (`webglcontextrestored`) is not taken up: what was drawn into targets
+  once (packed maps, baked ground, the clouds' field) went with the old one, and the word says so.
+
 ## The Earth from height
 
 What is seen from above the air is meant to stand beside photographs from orbit (the owner's word: clouds,
