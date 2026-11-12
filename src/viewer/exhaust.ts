@@ -938,10 +938,13 @@ export class ExhaustPass extends Pass {
 
     // over the frame as it stands, in place, inside the low pixels marched
     // (the depth is the scene's still: it need not be resolved out of the multisampled buffer again)
-    const fx0 = Math.ceil(((x0 + 0.5) / w) * frame.width),
-      fy0 = Math.ceil(((y0 + 0.5) / h) * frame.height),
-      fx1 = Math.floor(((x1 - 0.5) / w) * frame.width),
-      fy1 = Math.floor(((y1 - 0.5) / h) * frame.height);
+    // (...and out to the frame's own edge where the marched part reaches it: there is no low pixel beyond to blend with,
+    // and stopping at the middle of the last one left the fire off the frame's outermost CSS pixel, a dark line
+    // along the bottom of every frame the plume ran off)
+    const fx0 = x0 === 0 ? 0 : Math.ceil(((x0 + 0.5) / w) * frame.width),
+      fy0 = y0 === 0 ? 0 : Math.ceil(((y0 + 0.5) / h) * frame.height),
+      fx1 = x1 === w ? frame.width : Math.floor(((x1 - 0.5) / w) * frame.width),
+      fy1 = y1 === h ? frame.height : Math.floor(((y1 - 0.5) / h) * frame.height);
     u.uRect.value.set(fx0 / frame.width, fy0 / frame.height, fx1 / frame.width, fy1 / frame.height);
     const resolve = frame.resolveDepthBuffer,
       test = frame.scissorTest;
