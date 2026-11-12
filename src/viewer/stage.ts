@@ -92,6 +92,21 @@ const spin = new THREE.Quaternion();
 const WALK_SHADOW = 26;
 /** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
 const NEAR_LEAST = 0.03;
+/** How much the exposure opens up in a room by day (as a share added), and over how many seconds; how far the rays that ask whether the eye is in one go, metres. */
+const INDOORS_GAIN = 1.4;
+const INDOORS_SECONDS = 0.9;
+const INDOORS_REACH = 12;
+const ENCLOSING = [
+  [0, 1, 0],
+  [1, 0, 0],
+  [-1, 0, 0],
+  [0, 0, 1],
+  [0, 0, -1],
+  [1, 1, 0],
+  [-1, 1, 0],
+  [0, 1, 1],
+  [0, 1, -1],
+].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
 /** Texels along a side of the Sun's shadow map, as the orbiting views use it. */
 const SHADOW_MAP = 4096;
 /** Triangles a millisecond at which a geometry's hierarchy is taken to be made, when deciding whether one fits in the time to spare (`growTrees`): half what is measured. */
@@ -880,7 +895,7 @@ export class Stage {
     this.sun.color.set(s.sunColor);
     this.sun.intensity = s.sunIntensity;
     this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
-    this.renderer.toneMappingExposure = s.exposure;
+    this.expose();
     // the floodlights come on as the direct light fails (the Sun low, or only the Moon)
     this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6), s.exposure);
     if (shadows) {
@@ -906,7 +921,7 @@ export class Stage {
     this.fill.color.set(s.fill[0]);
     this.fill.groundColor.set(s.fill[1]);
     this.light();
-    this.renderer.toneMappingExposure = s.exposure;
+    this.expose();
     if (s.floor) this.scene.add(s.floor);
     for (const o of s.scenery) this.scene.add(o);
     for (const o of [s.floor, ...s.scenery]) if (o) this.looks.add(o);
@@ -1065,7 +1080,7 @@ export class Stage {
   }
 
   /** The view is from the seat: what is drawn over the scene without depth (the predicted path) would be drawn across the cabin's walls. */
-  indoors(): boolean {
+  aboard(): boolean {
     return this.cam.rig === 'onboard' && !this.walk.active;
   }
 
@@ -2045,6 +2060,48 @@ export class Stage {
     }
   }
 
+  /** How far indoors the eye is, 0 in the open to 1 in a room: eased, never stepped (`adapt`). */
+  private indoors = 0;
+  private readonly enclosed = { at: Number.NEGATIVE_INFINITY, share: 0 };
+
+  /**
+   * The exposure: the setting's, for the sky and the Sun there are, opened up indoors as an eye opens. A room by
+   * day is lit by what comes in at its door and windows, a few hundredths of the light outside; at the daylight
+   * exposure it was a dark slab with a bright hole in it. By night the setting's exposure is already an eye
+   * adapted to lamps, and nothing is added.
+   */
+  private expose(): void {
+    const s = this.setting;
+    const day = THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6);
+    this.renderer.toneMappingExposure = s.exposure * (1 + INDOORS_GAIN * day * this.indoors);
+  }
+
+  /**
+   * A frame's worth of the eye getting used to where it is. How enclosed it is is asked a few times a second: nine
+   * rays from the eye (straight up, four level, four half way up) and the share of them that meet something within
+   * `INDOORS_REACH`. A room with its door open still stops eight; a platform overhead with the pad open all round
+   * stops one or two, and is shade, not indoors. The exposure follows over a second or so, as an eye does, and
+   * `walking` false lets it go back.
+   */
+  private adapt(dt: number, walking: boolean): void {
+    const now = performance.now();
+    if (walking && now - this.enclosed.at > 200) {
+      this.enclosed.at = now;
+      const eye = this.camera.position;
+      const solids = this.walk.solids;
+      solids.gather(eye, INDOORS_REACH, INDOORS_REACH);
+      let met = 0;
+      for (const ray of ENCLOSING) if (solids.cast(eye, ray, INDOORS_REACH)) met++;
+      this.enclosed.share = met / ENCLOSING.length;
+    }
+    const want = walking ? THREE.MathUtils.smoothstep(this.enclosed.share, 0.6, 0.85) : 0;
+    if (want === this.indoors) return;
+    const next = this.frozen ? want : this.indoors + (want - this.indoors) * (1 - Math.exp(-dt / INDOORS_SECONDS));
+    this.indoors = Math.abs(want - next) < 1e-3 ? want : next;
+    this.expose();
+    this.dirty = true;
+  }
+
   /**
    * The near plane brought in, if it must be, so that it cuts nothing: `near` is where the view's subject and the
    * ground would let it be, which knows nothing of what stands between (orbiting the pad from 150 m it was 19 m out,
@@ -2344,6 +2401,7 @@ export class Stage {
       if (!this.cam.ownsLens && this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
       // the camera: the rig in charge moves, and says where the view is from (the near plane is fitted after, fitDepth)
       this.cam.update(dt);
+      if (this.indoors > 0) this.adapt(dt, false); // (off foot again: the eye goes back to the day)
       this.lookWatched();
       this.shadeCraft();
       this.fitDetail(dt);
@@ -3441,6 +3499,7 @@ export class Stage {
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
   private stepWalk(dt: number): void {
     if (this.walk.update(dt)) this.dirty = true;
+    this.adapt(dt, true);
     const through = !this.walk.outside;
     if (through !== this.throughEyes) this.onWalkEyes((this.throughEyes = through));
     const hit = this.walk.aimed;

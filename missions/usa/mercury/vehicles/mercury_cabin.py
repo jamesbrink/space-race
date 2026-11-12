@@ -663,8 +663,9 @@ def build(
         return {}
     M.update(materials())
     c = Cabin(parent, vessel, M)
-    # the panels' lettering is an eighth of an inch tall and read from two feet: 150 pixels to the inch on the main
-    # panel and 110 on the consoles, which is what it takes to read it through the lens at its narrowest
+    # the panels' lettering is three sixteenths of an inch tall at most (scaled off the flown capsule's) and read from
+    # two feet: 150 pixels to the inch on the main panel and 110 on the consoles, which is what it takes to read it
+    # through the lens at its narrowest
     main = Sheet("cabin-main-panel", 4096)
     side = Sheet("cabin-consoles", 3072)
     faces = Sheet("cabin-faces", 2048, BLACK)
@@ -1017,17 +1018,17 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     attitude(c, P, faces)
     clock(c, P, faces)
 
-    label = lambda body, px, py, cap=0.105, **kw: rg.text(body, *fig(px, py), cap, INK, **kw)  # noqa: E731
+    label = lambda body, px, py, cap=0.16, **kw: rg.text(body, *fig(px, py), cap, INK, **kw)  # noqa: E731
     for (px, py), name, (a, b), way in MAIN_SWITCHES:
         u, v = fig(px, py)
         toggle(c, P, u, v, way)
-        rg.text(name, u, v + 0.62 + (0.1 if "\n" in name else 0), 0.125, INK)
+        rg.text(name, u, v + 0.62 + (0.1 if "\n" in name else 0), 0.18, INK)
         if way == "h":
-            rg.text(a, u - 0.42, v, 0.1, INK, align="r")
-            rg.text(b, u + 0.42, v, 0.1, INK, align="l")
+            rg.text(a, u - 0.42, v, 0.14, INK, align="r")
+            rg.text(b, u + 0.42, v, 0.14, INK, align="l")
         else:
-            rg.text(a, u, v + 0.36, 0.1, INK)
-            rg.text(b, u, v - 0.42, 0.1, INK)
+            rg.text(a, u, v + 0.36, 0.14, INK)
+            rg.text(b, u, v - 0.42, 0.14, INK)
     for name, legend, at in OTHER_LIGHTS:
         telelight(c, P, faces, name, legend, *fig(*at), size=(1.75, 0.95) if "\n" not in legend else (1.75, 1.05))
 
@@ -1036,7 +1037,7 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     rg.rect(u - 0.85, v - 0.5, u + 0.85, v + 2.9, (0.57, 0.58, 0.57), r=0.1)
     c.turned("CrewCabin_PanelFittings", P, u, v, [(0.3, 0.0), (0.3, 0.12), (0.22, 0.12)], 16)
     c.node("Tele_O2EmergFlow", "amber", P, u, v, 0.0, lambda mb: mb.lathe([(0.22, 0.1), (0.2, 0.3), (0.0, 0.36)], 14))
-    rg.text("O2\nEMERG\nFLOW", u - 0.75, v + 0.1, 0.1, INK, align="r")
+    rg.text("O2\nEMERG\nFLOW", u - 0.75, v + 0.1, 0.14, INK, align="r")
 
     # TIME ZERO: a guarded push button under a white cap
     u, v = fig(1275, 890)
@@ -1049,7 +1050,7 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     rg.rect(u - 1.75, v - 1.25, u + 1.75, v + 1.25, BLACK, r=0.08)
     for i, name in enumerate(("RETRO\nJETT", "SUIT\nFAN", "ENVR\nCONTL")):
         fuse(c, P, u + (i - 1) * 1.1, v - 0.35)
-        rg.text(name, u + (i - 1) * 1.1, v + 0.78, 0.085, WHITE)
+        rg.text(name, u + (i - 1) * 1.1, v + 0.78, 0.12, WHITE)
 
     # the pilot-observer camera's lens, looking back at him from beside the periscope
     u, v = fig(1035, 1185)
@@ -1063,21 +1064,21 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     label("D.C. VOLTS", 1650, 1048)
     for i, mark in enumerate(("1", "2", "3", "4", "M", "S")):
         x, y = clock_xy(-100 + 40 * i, 1.0)
-        rg.text(mark, u + x, v + y, 0.092, INK)
+        rg.text(mark, u + x, v + y, 0.125, INK)
 
     # communications: the audio box, three thumbwheels and a key
     u0, v0 = fig(1580, 1335)
     u1, v1 = fig(1805, 1258)
     rg.rect(u0, v0, u1, v1, (0.52, 0.53, 0.52), r=0.1)
-    rg.text("COMM AUDIO", (u0 + u1) / 2, v0 + 0.16, 0.1, INK)
+    rg.text("COMM AUDIO", (u0 + u1) / 2, v0 + 0.16, 0.14, INK)
     for i, name in enumerate(("HF", "UHF", "CMD")):
         uu = u0 + 1.6 + i * 1.0
         c.box("CrewCabin_Knobs", P, uu, (v0 + v1) / 2 + 0.1, 0.6, 1.0, 0.0, 0.16)
-        rg.text(name, uu, v1 - 0.16, 0.092, INK)
+        rg.text(name, uu, v1 - 0.16, 0.125, INK)
     c.turned("CrewCabin_Knobs", P, u0 + 0.55, (v0 + v1) / 2 + 0.1, [(0.3, 0.0), (0.3, 0.2), (0.0, 0.2)], 12)
-    rg.text("KEY", u0 + 0.55, v1 - 0.16, 0.092, INK)
+    rg.text("KEY", u0 + 0.55, v1 - 0.16, 0.125, INK)
     toggle(c, P, u1 - 0.75, (v0 + v1) / 2 + 0.1, "h")
-    rg.text("UHF DF", u1 - 0.75, v1 - 0.16, 0.092, INK)
+    rg.text("UHF DF", u1 - 0.75, v1 - 0.16, 0.125, INK)
 
 
 def fuse(c: Cabin, F: Matrix, u: float, v: float) -> None:
@@ -1243,7 +1244,7 @@ def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict) -> None:
         c.turned("CrewCabin_Knobs", P, ku, kv, [(r, 0.0), (r, 0.45), (r * 0.8, 0.6), (0.0, 0.6)], 14, -d)
         rg.text(name, ku + (1.0 if ku < 0 else -1.0) * (0.0 if name == "DRIFT" else 0.2), kv + r + 0.22, 0.09, WHITE if abs(ku) < 2 else INK)
     rg.rect(u0 + 0.35, v1 - 0.85, u0 + 1.55, v1 - 0.45, BLACK, r=0.05)
-    rg.text("RETRACT", u0 + 0.95, v1 - 0.65, 0.085, WHITE)
+    rg.text("RETRACT", u0 + 0.95, v1 - 0.65, 0.12, WHITE)
     c.turned("CrewCabin_PanelFittings", P, u0 + 0.95, v1 - 1.35, [(0.26, 0.0), (0.26, 0.2), (0.0, 0.26)], 12, -d)
     # the upper housing behind the display, and the tube
     body = c.into("CrewCabin_Periscope")
@@ -1297,23 +1298,23 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
             c.node(f"Ctl_{name}", "red", Sx, ou, v, 0.0, lambda mb: mb.lathe([(0.25, 0.2), (0.25, 0.42), (0.0, 0.46)], 12), press=0.12 * IN)
         else:
             toggle(c, Sx, ou, v, "v")
-            rg.text("RETRO ATT\nBY-PASS", ou - 1.2, v + 0.3, 0.092, INK)
-            rg.text("AUTO RET\nATTITUDE", ou - 1.2, v - 0.35, 0.092, INK)
+            rg.text("RETRO ATT\nBY-PASS", ou - 1.2, v + 0.3, 0.125, INK)
+            rg.text("AUTO RET\nATTITUDE", ou - 1.2, v - 0.35, 0.125, INK)
     for label_, py in (("PULL TO\nPRESSURIZE\nPUSH TO RESET", 1140), ("PULL OPEN\nDE-COMPRESS\nPUSH CLOSED", 1192)):
         v = sfig(0, py)[1]
-        rg.text(label_, lu, v, 0.1, INK)
+        rg.text(label_, lu, v, 0.14, INK)
         c.turned("CrewCabin_WhiteCaps", Sx, ou, v, [(0.12, 0.0), (0.12, 0.5), (0.4, 0.55), (0.42, 0.85), (0.0, 0.9)], 14)
     v = sfig(0, 1240)[1]
     toggle(c, Sx, ou - 0.6, v, "h")
-    rg.text("RESCUE AIDS", lu, v, 0.1, INK)
+    rg.text("RESCUE AIDS", lu, v, 0.14, INK)
     u, v = sfig(733, 540)
     toggle(c, Sx, u, v, "v")
-    rg.text("SIGNAL\nLIGHTS\nTEST", u, v + 0.75, 0.092, INK)
+    rg.text("SIGNAL\nLIGHTS\nTEST", u, v + 0.75, 0.125, INK)
     u, v = sfig(795, 522)
     c.turned("CrewCabin_PanelFittings", Sx, u, v, [(0.22, 0.0), (0.22, 0.1), (0.15, 0.1)], 12)
     c.node("Tele_GroundComm", "red_lamp", Sx, u, v, 0.0, lambda mb: mb.lathe([(0.15, 0.08), (0.13, 0.24), (0.0, 0.28)], 12))
-    rg.text("GROUND\nCOMM", u, v + 0.55, 0.092, INK)
-    rg.text("RETRO\nRESET", u, v - 0.6, 0.092, INK)
+    rg.text("GROUND\nCOMM", u, v + 0.55, 0.125, INK)
+    rg.text("RETRO\nRESET", u, v - 0.6, 0.125, INK)
     for i in range(3):  # where the 1960 panel had LAUNCH OXY: three blanked holes
         rg.ring(sfig(740 + 28 * i, 0)[0], sfig(0, 603)[1], 0, 0.3, (0.55, 0.56, 0.55))
 
@@ -1331,9 +1332,9 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     for (px, py), name, (p0, p1), way in CONSOLE_SWITCHES:
         u, v = cfig(px, py)
         toggle(c, Cx, u, v, way)
-        rg2.text(name, u, v + 0.68 + (0.1 if "\n" in name else 0), 0.1, INK)
-        rg2.text(p0, u, v + 0.36, 0.092, INK)
-        rg2.text(p1, u, v - 0.42, 0.092, INK)
+        rg2.text(name, u, v + 0.68 + (0.1 if "\n" in name else 0), 0.14, INK)
+        rg2.text(p0, u, v + 0.36, 0.125, INK)
+        rg2.text(p1, u, v - 0.42, 0.125, INK)
     for name, text, (px, py), mat in (
         ("HeatersOn", "HTR'S ON", (338, 945), "amber"),
         ("RetroCold", "RETRO\nROCKETS\nCOLD", (352, 1058), "red_lamp"),
@@ -1343,7 +1344,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         c.turned("CrewCabin_PanelFittings", Cx, u, v, [(0.22, 0.0), (0.22, 0.1), (0.15, 0.1)], 12)
         c.node(f"Tele_{name}", mat, Cx, u, v, 0.0, lambda mb: mb.lathe([(0.15, 0.08), (0.13, 0.24), (0.0, 0.28)], 12))
         if text:
-            rg2.text(text, u + 0.3, v, 0.092, INK, align="l")
+            rg2.text(text, u + 0.3, v, 0.125, INK, align="l")
     # control fuel: one gauge, two needles, the automatic system's on the left and the manual's on the right
     u, v = cfig(455, 968)
     r = 78 * S / 2
@@ -1369,14 +1370,14 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     u, v = cfig(440, 1070)
     c.into("CrewCabin_WhiteCaps").tube(Cx @ Vector((u - 0.9, v, 0.5)), Cx @ Vector((u + 0.9, v, 0.5)), 0.2 * IN, 10)
     c.into("CrewCabin_PanelFittings").tube(Cx @ Vector((u, v, 0.0)), Cx @ Vector((u, v, 0.5)), 0.08 * IN, 8)
-    rg2.text("WARNING\nPULL OPEN SNORKEL\nONLY BELOW 20,000 FT", u + 0.2, v - 0.75, 0.092, INK)
+    rg2.text("WARNING\nPULL OPEN SNORKEL\nONLY BELOW 20,000 FT", u + 0.2, v - 0.75, 0.125, INK)
     for name, py in (("MANUAL", 950), ("ROLL", 1065), ("YAW", 1165), ("PITCH", 1270)):
         u, v = cfig(552, py)
         c.into("CrewCabin_Knobs" if name == "MANUAL" else "CrewCabin_PanelFittings").box(
             (0.5 * IN, 2.0 * IN, 0.5 * IN), Cx @ Matrix.Translation((u, v, 0.75)) @ Matrix.Scale(1 / IN, 4)
         )
         c.into("CrewCabin_PanelFittings").tube(Cx @ Vector((u, v, 0.0)), Cx @ Vector((u, v, 0.55)), 0.09 * IN, 8)
-        rg2.text(name, u - 0.55, v, 0.1, INK, turn=1)
+        rg2.text(name, u - 0.55, v, 0.14, INK, turn=1)
     # the fuse panel, on the wall beyond the console
     hinge2 = Vector(Cx @ Vector((part[5][0], 0, 0))) / IN
     f_ = FUSE_CANT
@@ -1391,12 +1392,12 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     for row, names in enumerate(FUSES):
         v = fh / 2 - 1.9 - row * 2.75
         rg3.rect(-fw + 0.25, v - 0.75, -fw + 0.25 + len(names) * 1.14 + 0.2, v + 0.75, BLACK, r=0.06)
-        rg3.text("1 UP", -0.5, v + 0.5, 0.085, (0.6, 0.5, 0.1))
-        rg3.text("2 DN", -0.5, v - 0.5, 0.085, (0.6, 0.5, 0.1))
+        rg3.text("1 UP", -0.5, v + 0.5, 0.11, (0.6, 0.5, 0.1))
+        rg3.text("2 DN", -0.5, v - 0.5, 0.11, (0.6, 0.5, 0.1))
         for i, name in enumerate(names):
             u = -fw + 0.92 + i * 1.14
             fuse(c, Fx, u, v)
-            rg3.text(name, u, v + 1.22, 0.092, INK)
+            rg3.text(name, u, v + 1.22, 0.125, INK)
     # the right console, under the hatch: the emergency oxygen lever and the suit and cabin temperature selectors
     R = plane(Vector((24.6, 3.5, 15.5)), Vector((0.26, -0.966, 0)), Vector((-0.33, -0.09, 0.94)))
     rw, rh = 6.6, 8.2
@@ -1404,13 +1405,13 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     rg4 = sheet.take(rw, rh, 74, -rw / 2, -rh / 2, at=(502, 1368))
     c.flat("CrewCabin_Consoles", R, rect, rg4)
     c.skirt("CrewCabin_PanelStructure", R, rect, 0.0, -2.2)
-    rg4.text("EMER O2", 0, 3.5, 0.1, INK)
-    rg4.text("EMER", -1.2, 3.05, 0.092, INK)
-    rg4.text("NORM", 1.2, 3.05, 0.092, INK)
+    rg4.text("EMER O2", 0, 3.5, 0.14, INK)
+    rg4.text("EMER", -1.2, 3.05, 0.125, INK)
+    rg4.text("NORM", 1.2, 3.05, 0.125, INK)
     c.into("CrewCabin_RedCaps").tube(R @ Vector((-2.2, 3.0, 0.3)), R @ Vector((-2.9, 3.4, 0.9)), 0.28 * IN, 10)
     for name, v in (("SUIT TEMP", 1.2), ("CABIN TEMP", -1.8)):
         rg4.text(name, 0.9, v + 1.0, 0.09, INK)
-        rg4.text("COOLER", -2.0, v + 0.6, 0.092, INK)
+        rg4.text("COOLER", -2.0, v + 0.6, 0.125, INK)
         c.turned("CrewCabin_Knobs", R, -0.3, v, [(0.55, 0.0), (0.55, 0.4), (0.0, 0.45)], 14)
         c.into("CrewCabin_Knobs").box(
             (2.0 * IN, 0.5 * IN, 0.35 * IN), R @ Matrix.Translation((0.5, v + 0.25, 0.33)) @ Matrix.Rotation(0.45, 4, "Z") @ Matrix.Scale(1 / IN, 4)

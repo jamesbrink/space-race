@@ -120,7 +120,7 @@ export interface PathHost {
   overlay(object: THREE.Object3D): void;
   screenOf(point: THREE.Vector3): { x: number; y: number } | null;
   /** The view is from inside the vehicle, at its panel: a line drawn over the scene would be drawn across the cabin. */
-  indoors?(): boolean;
+  aboard?(): boolean;
 }
 
 /** A sample of the flight as the flight deck shows it (sim/vehicle.ts: LiveSample), and the live state it came from, or null when looking back. */
@@ -436,7 +436,7 @@ export class FlightPath {
   /** Each frame: the line cut off at the vehicle, turned with the Earth if it is the orbit's, and the labels on their points. */
   private place(now: number): void {
     const shown = this.shown;
-    const seen = shown !== null && shown.result.outcome !== 'none' && shown.result.points.length > 1 && !this.host.indoors?.();
+    const seen = shown !== null && shown.result.outcome !== 'none' && shown.result.points.length > 1 && !this.host.aboard?.();
     if (this.mesh.visible !== seen) {
       this.mesh.visible = seen;
       this.host.overlay(this.mesh);

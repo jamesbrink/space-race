@@ -23,6 +23,21 @@ const CANDELA = 110;
 /** A flood's beam: wide, soft-edged. */
 const SPREAD = THREE.MathUtils.degToRad(48);
 
+// In the cel look a lamp in a room lights every wall round it the same. The toon shader steps a light by the angle
+// it falls at, which for the Sun is a shape's shading; for a bulb a few metres from a flat wall it is rings on the
+// wall, each tone's edge a circle round the point under the lamp. So a point light there is taken as falling
+// square on whatever it reaches: its colour and its fading with distance, and no angle.
+{
+  const info = 'getPointLightInfo( pointLight, geometryPosition, directLight );';
+  const chunk = THREE.ShaderChunk.lights_fragment_begin;
+  if (chunk.includes(info))
+    THREE.ShaderChunk.lights_fragment_begin = chunk.replace(
+      info,
+      `${info}\n\t\t#ifdef TOON\n\t\tdirectLight.direction = geometryNormal;\n\t\t#endif`,
+    );
+  else console.warn('lamps.ts: three’s point light loop is not as it was: room lights will ring in the cel look');
+}
+
 const isLamp = (name: string) => name === 'lamp' || name.startsWith('lamp-flood');
 
 interface Fitting {

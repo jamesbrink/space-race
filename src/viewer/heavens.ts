@@ -56,9 +56,9 @@ export type MoonUniforms = Record<'uMoon' | 'uMoonSun' | 'uMoonSize' | 'uMoonLig
 /** A star's colour from its B-V index: blue-white through white to orange. Linear, about unit brightness. */
 function tint(bv: number): [number, number, number] {
   const t = THREE.MathUtils.clamp((bv + 0.3) / 1.9, 0, 1);
-  const hot = [0.72, 0.82, 1.0];
+  const hot = [0.66, 0.78, 1.0];
   const white = [1.0, 0.98, 0.95];
-  const cool = [1.0, 0.72, 0.45];
+  const cool = [1.0, 0.66, 0.36];
   const [a, b, k] = t < 0.45 ? [hot, white, t / 0.45] : [white, cool, (t - 0.45) / 0.55];
   return [a[0]! + (b[0]! - a[0]!) * k, a[1]! + (b[1]! - a[1]!) * k, a[2]! + (b[2]! - a[2]!) * k];
 }
@@ -76,8 +76,9 @@ const PLANET_BV: Record<string, number> = { mercury: 0.9, venus: 0.8, mars: 1.4,
  * magnitude is a factor of 2.512 in light. What is for the look: a screen cannot show the hundreds
  * to one between Sirius and a sixth-magnitude star, so light is drawn as its 0.4 power (five
  * magnitudes are six times, not a hundred) and the brightest are a little larger, as they are to
- * an eye or a lens; estimated. A point is never under 1.6 pixels across with a soft edge, so it
- * moves smoothly over the pixels as the view turns and neither twinkles nor pops.
+ * an eye or a lens, with a faint halo round the brightest dozen; estimated. A point's core is a
+ * soft blur a pixel and a half across at the least, so it moves smoothly over the pixels as the
+ * view turns and neither twinkles nor pops.
  */
 function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain: number): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
@@ -94,7 +95,7 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
     vertexShader: /* glsl */ `
       attribute float mag; attribute vec3 tint; attribute vec3 motion;
       uniform float uLimit, uGround, uPixel, uGain, uYears;
-      varying vec3 vColor;
+      varying vec3 vColor; varying float vSize;
       void main() {
         vec3 dir = normalize(mat3(modelMatrix) * (position + motion * uYears));
         gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * dir * 90.0, 1.0);
@@ -104,15 +105,24 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
           float air = 1.0 / (max(dir.y, 0.0) + 0.025);                 // thicknesses of atmosphere, near enough
           seen *= smoothstep(0.0, 0.02, dir.y) * pow(10.0, -0.08 * (air - 1.0));
         }
-        gl_PointSize = uPixel * min(1.6 + 2.4 * pow(flux, 0.3), 7.0);
+        // its size: 2 pixels for the faintest, 3.7 at second magnitude, 6 at zero, 9 for Sirius (for the look: a
+        // brighter star is a bigger blur to an eye or a lens, never a bigger disc in the sky)
+        float size = min(1.5 + 4.5 * pow(flux, 0.4), 10.0);
+        gl_PointSize = uPixel * size;
+        vSize = size;
         vColor = tint * min(2.1 * pow(flux, 0.4), 3.0) * seen * uGain;
         if (seen <= 0.0) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);   // (not drawn at all: most of the catalogue, by day)
       }`,
     fragmentShader: /* glsl */ `
-      varying vec3 vColor;
+      varying vec3 vColor; varying float vSize;
       void main() {
-        float a = smoothstep(1.0, 0.25, length(gl_PointCoord - 0.5) * 2.0);
-        if (a <= 0.0 || dot(vColor, vec3(1.0)) <= 0.0) discard;
+        // a core about a pixel and a half across whatever the star, and round the brightest dozen or so (a point over
+        // four pixels: first magnitude and up) a faint soft halo out to the point's edge, in the star's own colour
+        float r = length(gl_PointCoord - 0.5) * vSize;   // pixels from the middle, before the screen's density
+        float core = exp(-r * r / (0.5 + 0.05 * vSize * vSize));
+        float halo = 0.16 * smoothstep(4.0, 8.0, vSize) * pow(max(1.0 - 2.0 * r / vSize, 0.0), 2.0);
+        float a = (core + halo) * smoothstep(0.5 * vSize, 0.5 * vSize - 0.8, r);
+        if (a <= 0.003 || dot(vColor, vec3(1.0)) <= 0.0) discard;
         gl_FragColor = vec4(vColor * a, 1.0);
       }`,
   });
@@ -205,7 +215,13 @@ function milkyWay(ground: boolean): THREE.Mesh {
           vec2 uv = vec2(0.5 - ra / 6.2831853, 0.5 + asin(clamp(d.z, -1.0, 1.0)) / 3.14159265);
           // (looked up with the gradient of a place that has no seam, or the wrap at 12 hours would draw a line)
           vec2 flat_ = vec2(fract(uv.x + 0.5) - 0.5, uv.y);
-          gl_FragColor = vec4(textureGrad(tMap, uv, dFdx(flat_), dFdy(flat_)).rgb * (0.09 * seen), 1.0);
+          // The map is a long exposure's: brown and orange, and far more contrast than an eye has for so faint a light.
+          // To the eye the band is a soft grey-white with dark rifts and next to no colour (too dim for the eye's
+          // colour), so it is taken nine tenths of the way to grey, and kept under a third-magnitude star (for the look).
+          vec3 c = textureGrad(tMap, uv, dFdx(flat_), dFdy(flat_)).rgb;
+          float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+          c = mix(c, vec3(l) * vec3(0.96, 0.98, 1.06), 0.9);
+          gl_FragColor = vec4(c * (0.6 * seen) / (1.0 + 9.0 * l), 1.0);
         }`,
     }),
   );
