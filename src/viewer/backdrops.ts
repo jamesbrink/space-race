@@ -292,6 +292,8 @@ const SKY_STEP = 4;
  * Shepard saw it. The horizon keeps its glow longer: the eye looks along through more air there.
  * In steps of half a percent, so a climbing camera redraws the sky only when it visibly changes.
  */
+/** The faintest stars that show from above the air by day, magnitude: see where it is used. */
+const SPACE_STARS = 5.2;
 export function airAbove(height: number): number {
   return Math.round(Math.exp(-Math.max(0, height) / 8000) * 200) / 200;
 }
@@ -447,7 +449,11 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
       h.at(skyFrom(site, jdUT));
     }
     const light = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
-    h.show(light.limitingMagnitude, 1 / light.adaptation);
+    // Above the air there is no bright sky for the stars to be lost in: as it thins they come out, to SPACE_STARS
+    // at none, and brighter, though the Sun is up. (A pilot's eye, set by the sunlit Earth, saw fewer: Shepard saw
+    // none through his periscope. This is the sky as it is, not as his eye had it: estimated, for the look.)
+    const out = (1 - air) ** 1.5;
+    h.show(light.limitingMagnitude + Math.max(0, SPACE_STARS - light.limitingMagnitude) * out, (1 + 1.6 * out) / light.adaptation);
     uniforms.uSunSize.value = Math.sin(h.sunRadius);
     const along = Math.sqrt(air); // (toward the horizon the eye looks through more of what air there is)
     const thin = ([r, g, b]: readonly number[], k: number) => [r! * k, g! * k, b! * k] as const;

@@ -1094,6 +1094,21 @@ export class Stage {
     if (!left.isEmpty()) this.frameBox(left, false);
   }
 
+  /** Bring the view back to what the camera is about: under the chase camera, what is left of the vehicle, wherever it has got to. */
+  refind(): void {
+    const g = this.flier?.group;
+    if (this.mode !== 'chase' || !g) return;
+    const left = new THREE.Box3();
+    g.traverseVisible((o) => {
+      if ((o as THREE.Mesh).isMesh) left.expandByObject(o);
+    });
+    if (left.isEmpty()) return;
+    // from far off it is cut to, not flown to: a flight of seconds toward something doing a kilometre a second never arrives
+    const size = left.getSize(new THREE.Vector3()).length();
+    this.frameBox(left, this.controls.target.distanceTo(left.getCenter(new THREE.Vector3())) > 4 * size);
+    this.dirty = true;
+  }
+
   get cameraMode(): CameraMode {
     return this.mode;
   }

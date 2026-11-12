@@ -12,6 +12,8 @@ export interface UiHandlers {
   cutaway(on: boolean): void;
   /** How the view is moved: turning about a subject, or flying free. */
   camera(mode: CameraMode): void;
+  /** Bring the view back to what the camera is about (C, with one view to choose from). */
+  refind(): void;
   /** Draw the scene as a cel-shaded drawing, or as it would look. */
   cel(on: boolean): void;
   /** Get down and walk the site as the figure whose section this is, or stop. */
@@ -39,6 +41,12 @@ export interface UiHandlers {
 }
 
 const CAMERA_LABEL: Record<CameraMode, string> = { orbit: 'Camera · orbit', fly: 'Camera · free fly', chase: 'Camera · chase' };
+/** What is said on the view as the camera changes: the view's name, and what it does. */
+const CAMERA_SAYS: Record<CameraMode, [string, string]> = {
+  orbit: ['Orbit view', 'Turns about what you choose · drag to turn · C for the next view'],
+  fly: ['Free camera', 'W A S D fly it, drag looks round · C for the next view'],
+  chase: ['Chase view', 'Follows the vehicle · drag to look round it · C for the next view'],
+};
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -544,8 +552,33 @@ export class Ui {
     this.on.camera(mode);
   }
 
+  /** The views C steps through: all of them, or the ones that make sense just now (at the controls of the flight, the chase alone). */
+  cameras: readonly CameraMode[] = CAMERA_MODES;
+
   private nextCamera(): void {
-    this.setCamera(CAMERA_MODES[(CAMERA_MODES.indexOf(this.cameraMode) + 1) % CAMERA_MODES.length]!);
+    const next = this.cameras[(this.cameras.indexOf(this.cameraMode) + 1) % this.cameras.length]!;
+    // with one view to choose from, the key brings it back to what it is about (the vehicle, lost off the screen)
+    if (next === this.cameraMode) this.on.refind();
+    else this.setCamera(next);
+    this.say(...CAMERA_SAYS[next], next === this.cameraMode && this.cameras.length === 1 ? 'Centred again' : undefined);
+  }
+
+  /**
+   * Say something across the top of the view for a moment: which view the camera has just been put in, and what it does.
+   * It goes by itself; saying something else replaces it.
+   */
+  say(title: string, line: string, note?: string): void {
+    let el = this.root.querySelector<HTMLElement>('.say');
+    if (!el) {
+      el = document.createElement('p');
+      el.className = 'say';
+      el.setAttribute('role', 'status');
+      this.root.append(el);
+    }
+    el.innerHTML = `<b>${esc(title)}</b><span>${esc(note ?? line)}</span>`;
+    el.classList.remove('going');
+    void el.offsetWidth; // (so the fade starts again from the top)
+    el.classList.add('going');
   }
 
   /** Cel shading on or off: for every section, and remembered. */

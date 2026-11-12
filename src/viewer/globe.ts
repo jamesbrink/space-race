@@ -65,6 +65,12 @@ const FACES = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 
 /** Linear colours, chosen by eye against photographs from orbit (estimated): the sea's is the Cape's offshore water (cape.ts). */
 const SEA = new THREE.Color().setRGB(0.018, 0.07, 0.12);
+/**
+ * The sea seen from above the air: the blue the water itself sends back up, which from the ground is lost under the sky's
+ * reflection on it. As the eye rises the sea goes over to this and loses its sheen (the reflections are the site's sky,
+ * grey from up there). Estimated, for the look: a clear deep blue, as lunar-lift's ocean is.
+ */
+const SEA_ABOVE = new THREE.Color().setRGB(0.012, 0.085, 0.27);
 const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: cape.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
@@ -84,6 +90,7 @@ const COLOUR = /* glsl */ `
   uniform sampler2D uGlobeNear, uGlobeWide;
   uniform mat3 uGlobeNearPlane, uGlobeWidePlane;   // rows: the plane's east, north and middle (world/region.ts)
   uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
+  uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
   uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
   float globeField(samplerCube map, vec3 d) { return (texture(map, d).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)}; }
   // a region's map: the distance to the shore in metres, and how much it is to be believed here (w)
@@ -119,9 +126,9 @@ const COLOUR = /* glsl */ `
     float i = globeField(uGlobeIce, d);
     float ice = smoothstep(-0.5, 0.5, i / (fwidth(i) * 0.8 + 0.03));
     // (lakes are cut out of the land map, so they are the sea's colour)
-    vec3 c = mix(${vec3(SEA)}, ${vec3(LAND)}, land);
+    vec3 c = mix(mix(${vec3(SEA)}, ${vec3(SEA_ABOVE)}, uGlobeAbove), ${vec3(LAND)}, land);
     c = mix(c, ${vec3(ICE)}, ice);
-    rough = mix(0.32, 0.95, max(land, ice));
+    rough = mix(mix(0.32, 0.9, uGlobeAbove), 0.95, max(land, ice));
     return c;
   }`;
 
@@ -199,7 +206,11 @@ const AIR = /* glsl */ `
     if (discA <= 0.0) discard;
     float t0 = max(0.0, b - sqrt(discA)), t1 = b + sqrt(discA);
     float discG = b * b - uAlt * (2.0 * uRadius + uAlt);
-    if (discG > 0.0 && b - sqrt(discG) > 0.0) t1 = b - sqrt(discG);
+    float down = 0.0;   // how steeply the ray meets the sea: 0 along the limb or past it, 1 straight down
+    if (discG > 0.0 && b - sqrt(discG) > 0.0) {
+      t1 = b - sqrt(discG);
+      down = -dot(d, normalize(d * t1 - uCentre));
+    }
     if (t1 <= t0) discard;
     float len = (t1 - t0) / 12.0;
     float tau = 0.0;   // optical depth from the eye, as metres of sea-level air
@@ -220,6 +231,10 @@ const AIR = /* glsl */ `
     }
     float cosv = dot(d, uSun);
     vec3 light = BETA * glow * (0.0597 * (1.0 + cosv * cosv)) * uSunLight;   // Rayleigh's phase function, 3 / 16 pi (1 + cos^2)
+    // Looking down, the air is laid over the Earth at well under its worth, coming up to the whole of it along the limb:
+    // at its worth it is a milky sheet over the sea and the land, and the look wants them in their own colours with the
+    // glow kept where it is the air that is being looked at (estimated, by eye)
+    light *= mix(1.0, 0.35, smoothstep(0.02, 0.3, down));
     vec3 through = exp(-BETA * tau);
     gl_FragColor = vec4(light * uWeight, mix(1.0, dot(through, vec3(0.3, 0.4, 0.3)), uWeight));
   }`;
@@ -666,7 +681,7 @@ export class Globe {
           uniform vec3 uGlobeSun, uGlobeOrigin;
           uniform mat3 uGlobeAxes;
           uniform mat4 uGlobeHole;
-          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze, uGlobeSunLight, uGlobeAerosol, uGlobeAbove;
+          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze, uGlobeSunLight, uGlobeAerosol;
           ${CHAPMAN}
           float globeRough;
           ${COLOUR}

@@ -9,6 +9,7 @@ import { prefs } from './prefs';
 import { TimeBar } from './timebar';
 import { Title } from './title';
 import { Ui } from './ui';
+import { CAMERA_MODES } from './viewer/fly';
 import { Stage, type Thing } from './viewer/stage';
 import { Clock, localTime, missionTime } from './world/clock.ts';
 
@@ -76,6 +77,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   },
   cel: (on) => stage.setLook(on ? 'cel' : 'real'),
   camera: (mode) => stage.setCamera(mode), // back in orbit the view holds still until something is chosen
+  refind: () => stage.refind(),
 
   walk: (on) => (on ? void stage.enterWalk(current.id) : stage.exitWalk()),
   walkStick: (x, y) => stage.walk.stick(x, y),
@@ -105,7 +107,9 @@ const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight,
     const flier = flight.flies?.model;
     if (on && flier && current.id !== flier) show(flier);
     if (on && selected) select(null);
+    ui.cameras = on ? ['chase'] : CAMERA_MODES; // at the controls the view stays with the vehicle: C brings it back to it
     ui.setCamera(on ? 'chase' : 'orbit');
+    if (on) ui.say('Chase view', 'Follows the vehicle · drag to look round it · C centres it again');
     if (!on) show(current.id);
   },
 });
