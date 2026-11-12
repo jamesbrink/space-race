@@ -38,6 +38,25 @@ const galleryReady = (page) => page.waitForFunction(() => window.sr.gallery.read
 const siteReady = (page) => page.waitForFunction(() => document.body.classList.contains('scene-ready'), null, { timeout: 180000 });
 
 const cases = {
+  /** The gallery is asked for one part while its vehicle is still on the way, then for another: the second is the one shown. */
+  async 'an address changed while the gallery loads is the one it opens on'() {
+    const { page, close } = await open(`${FLIGHT}/gallery`, { slow: 2500 });
+    const parts = await page.evaluate((id) => window.sr.flight.models.find((m) => m.id === 'vehicle').parts.map((p) => p.node), FLIGHT);
+    const [first, second] = [parts[1], parts[2]];
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/gallery/${first}`);
+    await page.waitForTimeout(200);
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/gallery/${second}`);
+    await galleryReady(page);
+    await page.waitForTimeout(300);
+    const got = await page.evaluate(() => ({ at: window.sr.gallery.at, hash: decodeURIComponent(location.hash) }));
+    await close();
+    const fails = [];
+    if (got.at !== second) fails.push(`asked for ${first} and then ${second} while it loaded: it shows "${got.at}"`);
+    if (!got.hash.endsWith(`/gallery/${got.at}`) && !(got.at === '' && got.hash.endsWith('/gallery')))
+      fails.push(`the address is ${got.hash} and what is on show is "${got.at}"`);
+    return fails;
+  },
+
   /** The gallery's own keys are touches like any other: each ends the tour, and one pressed puts the next tour off. */
   async "the gallery's own keys end its tour, and put the next one off"() {
     const { page, close } = await open(`${FLIGHT}/gallery`, { search: '?demo' });

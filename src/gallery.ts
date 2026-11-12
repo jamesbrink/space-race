@@ -156,6 +156,8 @@ export class Gallery {
   private loading: Promise<void> | null = null;
   private ready = false;
   private open = false;
+  /** What was last asked to be shown while the vehicle was still on its way: gone to when it has arrived. */
+  private wanted: string | null = null;
   private selected: string | null = null;
   private hovered: string | null = null;
   /** True while the cutaway is open only because an inside part was chosen. */
@@ -238,11 +240,17 @@ export class Gallery {
     this.idle = 0;
     this.made?.stage.sleep(false);
     if (!this.frame) this.frame = requestAnimationFrame(() => this.tick());
-    try {
-      await (this.loading ??= this.load());
-    } catch {
-      this.loading = null; // (it has said so on the page, with a button to try again)
-      return;
+    if (!this.ready) {
+      // (asked for while it loads, by this or by `go`: the last asked for is the one gone to, and trying again keeps it)
+      if (what !== undefined) this.wanted = what;
+      try {
+        await (this.loading ??= this.load());
+      } catch {
+        this.loading = null; // (it has said so on the page, with a button to try again)
+        return;
+      }
+      what = this.wanted ?? undefined;
+      this.wanted = null;
     }
     if (this.open && what !== undefined) this.go(what, true);
   }
@@ -271,7 +279,7 @@ export class Gallery {
 
   /** Show what an address names: a part (chosen, in the whole vehicle) or what stands there. */
   go(what: string, snap = false): void {
-    if (!this.ready) return;
+    if (!this.ready) return void (this.wanted = what); // (kept: `enter` goes there when the vehicle has arrived)
     const to = galleryAt(this.vehicle, what);
     const plinth = this.choices.find((p) => p.id === to.plinth.id)!;
     // (a part that is not on show now is shown in the whole vehicle; one that is, where it stands)
