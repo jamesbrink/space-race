@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, swing, view } from '../src/viewer/gait.ts';
+import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, RUNG, rungs, swing, view } from '../src/viewer/gait.ts';
 
 /** The pose at a phase and speed, with whatever else the moment has. */
 const pose = (phase, speed, air = 0, more = {}) => poseOf({ phase, speed, air, ...more });
@@ -453,4 +453,30 @@ test("the view through the figure's eyes is what it was before the figure's pelv
   sums.forEach((sum, k) =>
     assert.ok(Math.abs(sum - PINNED[k]) <= 1e-9 * Math.max(1, Math.abs(PINNED[k])), `sum ${k}: ${sum} against ${PINNED[k]}`),
   );
+});
+
+test('on a ladder each hand and foot is on a rung, or on its way to the next but one, and they go by height alone', () => {
+  const on = (h) => Math.abs(h / RUNG - Math.round(h / RUNG)) < 1e-9;
+  let last = rungs(0);
+  const held = { 'Foot.L': 0, 'Foot.R': 0, 'Hand.L': 0, 'Hand.R': 0 };
+  const n = 6000;
+  for (let i = 1; i <= n; i++) {
+    const y = (i / n) * 6;
+    const now = rungs(y);
+    for (const limb of Object.keys(held)) {
+      // (a millimetre of climb moves nothing more than a centimetre, and nothing ever goes down as he goes up)
+      assert.ok(now[limb] >= last[limb] - 1e-12 && now[limb] - last[limb] < 0.01, `${limb} at ${y} m`);
+      if (on(now[limb])) held[limb]++;
+    }
+    // somebody is always holding on: at least a hand and a foot, and never both feet or both hands in the air
+    assert.ok(on(now['Foot.L']) || on(now['Foot.R']), `a foot is on a rung at ${y} m`);
+    assert.ok(on(now['Hand.L']) || on(now['Hand.R']), `a hand is on a rung at ${y} m`);
+    // a foot is at his level or up to a rung above it (a centimetre out either way as it leaves a rung and comes to the next), and the hands are within his reach
+    for (const foot of ['Foot.L', 'Foot.R']) assert.ok(now[foot] - y > -0.015 && now[foot] - y < RUNG + 0.015, `${foot} at ${y} m`);
+    for (const hand of ['Hand.L', 'Hand.R']) assert.ok(now[hand] - y > 1.4 && now[hand] - y < 1.9, `${hand} at ${y} m: ${now[hand] - y}`);
+    last = now;
+  }
+  for (const limb of Object.keys(held)) assert.ok(held[limb] > 0.45 * n, `${limb} holds its rung half the time`);
+  // and the same rungs coming down as going up
+  assert.deepEqual(rungs(2.345), rungs(2.345));
 });

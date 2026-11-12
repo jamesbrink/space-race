@@ -144,7 +144,12 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   sidestep or a jump lets go. Going up, the body steps onto any floor its feet come level with,
   beyond the ladder or to either side of it (stiles stand a metre above the deck they serve, and
   a run in a well has its floor beside it), and at the top onto the floor beyond if there is one. From the deck above, walk to its top looking down and keep walking: forward goes on
-  meaning down until the legs stop. The wheel offers Climb on a ladder too.
+  meaning down until the legs stop. The wheel offers Climb on a ladder too. Seen from outside, the
+  hands and feet are on the rungs: each on the rung its height up the ladder gives it (`gait.ts`:
+  `rungs`, by height alone, never by time: the left foot and the right hand go up two rungs while
+  the others hold), put there by `Stage.onTheLadder` (`reach` for a hand, `step` for a foot). The
+  ladder is known only by its box, so the rungs are taken to be where `srlib.ladder` puts them: a
+  foot apart from a foot above its foot.
 - **Stairs are walked, not hopped.** The floor is sensed under the middle of the body and four
   points round it, so open treads with daylight between them carry it; the feet follow a flight
   as fast as the legs go (`settle`'s `rate`), a step down is as deep as a step up is tall, and

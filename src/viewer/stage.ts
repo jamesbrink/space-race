@@ -23,7 +23,7 @@ import { Vehicle } from './drive';
 import type { Effects } from './effects';
 import { ExhaustPass } from './exhaust';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
-import { jointKey, pose, reach, seatFit, sitAt } from './gait';
+import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait';
 import { Jets } from './jets';
 import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
@@ -3404,6 +3404,7 @@ export class Stage {
     // (getting up, the gait takes it from however it was lying to the first of the get-up: Gait.rise)
     walk.gait.apply(figure.shown);
     if (this.wheel) this.atTheWheel(figure.shown, group);
+    if (walk.body.on && walk.gait.climbing > 0) this.onTheLadder(figure.shown, group);
     if (walk.down === 'rising' && walk.gait.rising === null) {
       walk.stand(group.position); // on its feet: the legs are the walker's again
       for (const level of group.children) for (const carry of this.carriesOf(level, at)) carry.pickUp(); // and what it dropped is in its hand again
@@ -3434,6 +3435,40 @@ export class Stage {
     // (and always under its roof: a cab too low for him puts his helmet through it, not the view)
     this.seatEyes = wheel.toSeat(head.localToWorld(this.headEye!.clone()));
     this.seatEyes.y = Math.min(this.seatEyes.y, this.headroom - 0.12);
+  }
+
+  /**
+   * On a ladder and posed: the feet are put on its rungs and the hands on the rungs above, each on the one its height
+   * up the ladder gives it (gait.ts: `rungs`), as far as the pose is the climb's. The ladder is known by its box: the
+   * rungs run across the middle of it, a foot apart from a foot above its foot.
+   */
+  private onTheLadder(root: THREE.Object3D, group: THREE.Object3D): void {
+    const walk = this.walk;
+    const on = walk.body.on!;
+    const k = walk.gait.climbing;
+    group.updateMatrixWorld(true);
+    const at = rungs(walk.body.position.y - on.bottom);
+    // (he faces the rungs: his left is across them)
+    const left = new THREE.Vector3(-on.nz, 0, on.nx);
+    const ankle = this.jointOf(root, 'Foot.L');
+    // (the ankle over the sole, as the figure stands: its joint's height in the figure's own frame, as built)
+    const sole = ankle ? Math.max(0.05, Math.min(0.15, walk.gait.ankleHeight(root))) : 0.1;
+    const to = new THREE.Vector3();
+    const now = new THREE.Vector3();
+    for (const side of ['L', 'R'] as const) {
+      const s = side === 'L' ? 1 : -1;
+      // the ball of the foot on the rung: the ankle a little out from it and over it; a hand round the rung
+      const foot = this.jointOf(root, `Foot.${side}`);
+      if (foot) {
+        to.set(on.x + on.nx * 0.06, on.bottom + at[`Foot.${side}`] + sole, on.z + on.nz * 0.06).addScaledVector(left, s * 0.1);
+        step(root, side, foot.getWorldPosition(now).lerp(to, k));
+      }
+      const hand = this.jointOf(root, `Grip.${side}`) ?? this.jointOf(root, `Hand.${side}`);
+      if (hand) {
+        to.set(on.x + on.nx * 0.02, on.bottom + at[`Hand.${side}`], on.z + on.nz * 0.02).addScaledVector(left, s * 0.15);
+        reach(root, side, hand.getWorldPosition(now).lerp(to, k));
+      }
+    }
   }
 
   /** What is in the figure's hands hangs plumb and swings a little behind the stride; a hose hangs from it. */

@@ -1039,8 +1039,27 @@ const BENT_OUT = 12;
 /** How long getting up takes to go from however the figure lay to its own keys, seconds. */
 export const RISE_IN = 0.5;
 
-/** How far up a ladder one cycle of the limbs goes, metres: a rung with each foot, at a foot apart. */
-const RUNGS = 0.61;
+/** How far apart a ladder's rungs are, metres (srlib.ladder: the first is this far above its foot), and how far up one cycle of the limbs goes: a rung with each foot. */
+export const RUNG = 0.3;
+const RUNGS = 2 * RUNG;
+
+/**
+ * On a ladder, which rung each hand and foot is on: its height above the ladder's foot, metres, when the climber's own
+ * level (where the walker has his feet) is `y` above it. Each holds its rung for half a cycle while he rises a rung
+ * past it, then goes up two in the other half: the left foot and the right hand together, then the others. A foot's
+ * rung is the one at his level or the next above; a hand's is `reach` rungs above its foot's. By height alone: stop
+ * on the ladder and they stop, come down and they come down the same rungs.
+ */
+export function rungs(y: number, reach = 5): { 'Foot.L': number; 'Foot.R': number; 'Hand.L': number; 'Hand.R': number } {
+  const u = y / RUNGS;
+  const on = (o: number, up: number): number => {
+    const v = u - o;
+    const f = v - Math.floor(v);
+    const k = Math.max(0, (f - 0.5) / 0.5);
+    return RUNGS * (o + Math.floor(v) + k * k * (3 - 2 * k)) + RUNG * (1 + up);
+  };
+  return { 'Foot.L': on(0, 0), 'Foot.R': on(0.5, 0), 'Hand.R': on(0, reach), 'Hand.L': on(0.5, reach) };
+}
 /** How many times a second a standing figure's breathing is moved on: the rate a still view is redrawn at anyway. */
 const BREATH_RATE = 12;
 /** Seconds a breath takes: twelve a minute. */
@@ -1474,6 +1493,12 @@ export class Gait {
     return this.rig(root)?.joints.find((j) => j.joint === 'Hips')?.y ?? 0.98;
   }
 
+  /** How high the ankles' joints stand over the model's own ground as built, metres (0.1 if it has none). */
+  ankleHeight(root: THREE.Object3D): number {
+    const limbs = this.rig(root)?.limbs;
+    return limbs ? limbs.ankle : 0.1;
+  }
+
   /** Has this model joints to move? */
   jointed(root: THREE.Object3D): boolean {
     return this.rig(root) !== null;
@@ -1701,6 +1726,11 @@ export class Gait {
     halfHips(root);
   }
 
+  /** How far the pose is the climb's, 0 to 1: it eases on and off a ladder, and what puts the hands and feet on the rungs eases with it. */
+  get climbing(): number {
+    return this.climb;
+  }
+
   /** How far it is sat down, 0 (standing) to 1: what the pose is eased by, for whoever puts the figure in its seat (`sitAt`). */
   get sitting(): number {
     return this.sat;
@@ -1780,13 +1810,29 @@ function aim(node: THREE.Object3D, from: THREE.Vector3, at: THREE.Vector3, to: T
  * points at it as far as it goes. False if the figure has not the joints.
  */
 export function reach(root: THREE.Object3D, side: 'L' | 'R', target: THREE.Vector3): boolean {
+  return limbTo(root, `UpperArm.${side}`, `LowerArm.${side}`, [`Grip.${side}`, `Hand.${side}`], target);
+}
+
+/**
+ * And a foot: the leg's two bones are turned so that the ankle (`Foot.L`/`.R`) is at `target`, in the world, the knee
+ * bending the way the pose already had it; then the half-turn at the hip is put right for where the thigh now is.
+ * (A rung under a climber's foot; the gait's own planted feet are solved in the pose.)
+ */
+export function step(root: THREE.Object3D, side: 'L' | 'R', target: THREE.Vector3): boolean {
+  if (!limbTo(root, `UpperLeg.${side}`, `LowerLeg.${side}`, [`Foot.${side}`], target)) return false;
+  halfHips(root);
+  return true;
+}
+
+/** A limb of two bones, `from` and `mid`, turned so that its end (the first of `ends` the figure has) is at `target`. */
+function limbTo(root: THREE.Object3D, from: string, mid: string, ends: string[], target: THREE.Vector3): boolean {
   const named = new Map<string, THREE.Object3D>();
   root.traverse((o) => {
-    if (o.name) named.set(jointKey(o.name), o);
+    if (o.name && !named.has(jointKey(o.name))) named.set(jointKey(o.name), o);
   });
-  const upper = named.get(jointKey(`UpperArm.${side}`));
-  const lower = named.get(jointKey(`LowerArm.${side}`));
-  const hand = named.get(jointKey(`Grip.${side}`)) ?? named.get(jointKey(`Hand.${side}`));
+  const upper = named.get(jointKey(from));
+  const lower = named.get(jointKey(mid));
+  const hand = ends.map((e) => named.get(jointKey(e))).find((o) => o);
   if (!upper?.parent || !lower?.parent || !hand) return false;
   root.updateWorldMatrix(true, true);
   const s = upper.getWorldPosition(new THREE.Vector3());
