@@ -523,7 +523,7 @@ const gallery = new Gallery(document.body, flight, {
   },
   covered: fronted,
 });
-document.querySelector('#ui .title .sub')!.after(placesNav(flight, 'site', () => toGallery()));
+document.querySelector('#ui .title .sub')?.after(placesNav(flight, 'site', () => toGallery()));
 /** `what`: the part or the choice of what stands there that an address names ('' for the whole vehicle); left out, the gallery is as it was left. */
 function toGallery(what?: string): void {
   if (gallery.active) return void (what === undefined || gallery.go(what));

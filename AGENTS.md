@@ -162,6 +162,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 3. Give each part a `summary`, a `detail` and a few `facts`. Write for someone choosing what to
    look at: what it is, why it is the way it is, one thing they would not have guessed.
 4. Append the flight to `missions/index.ts` and add a `model:<flight>` script to `package.json`.
+   A flight can begin as only its vehicle (one model, `backdrop: 'studio'`, no `site`, no
+   `trajectory`): it is then shown in the gallery alone and says its site is not built yet
+   ([gallery.md](docs/agents/gallery.md)).
 5. Add what you read to `docs/sources.md`.
 
 ## Conventions
