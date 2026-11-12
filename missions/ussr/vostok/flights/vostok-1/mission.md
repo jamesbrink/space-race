@@ -1,0 +1,384 @@
+# Vostok 1: the mission, and the plan to fly it
+
+The flight's record as the simulator will need it, what the simulator lacks, and the order to build
+it in. The numbers themselves live in [orbital.ts](orbital.ts) (`Flight.orbital`); the hardware in
+[vostok-3ka.md](../../vehicles/vostok-3ka.md) and [vostok-8k72k.md](../../vehicles/vostok-8k72k.md);
+the story in [README.md](README.md). Sources in full: [docs/sources.md](../../../../../docs/sources.md), "Vostok".
+
+**Confidence** as everywhere: *documented* (a published figure, with where), *derived* (computed from
+documented ones, with how), *estimated* (reckoned or chosen, and it says so). Times are Moscow time
+(UTC+3) as every report gives them, and seconds from liftoff, T+.
+
+Sources, by weight. **R**: OKB-1's preliminary report of 3 May 1961 (read in full, in translation).
+**G**: Gagarin's report to the State Commission of 13 April and the questions put to him (read in
+full, in translation). **S**: Siddiqi, *Challenge to Apollo* (2000). **S15**: Siddiqi in The Space
+Review, 2015. **Z**: Zak, RussianSpaceWeb (its launch, orbit and landing pages, read in full), which
+carries **L**: Lissov's reckonings from *Novosti Kosmonavtiki*, not read at first hand. **N**: NASA
+NSSDC, 1961-012A. **T**: the TASS announcement of the day, as Z tabulates it.
+
+## 1. The record
+
+### Timeline
+
+| Moscow time | T+ s | Event | Confidence | Source, and who disagrees |
+| --- | --- | --- | --- | --- |
+| 07:50 or so | | Sealed in; hatch No. 1 taken off and refitted for a contact (30 screws) | documented | S; G |
+| 09:06:59.7 | 0 | Liftoff. Engines through preliminary, intermediate and main stages first | documented | S launch log. R: 09:06:59 |
+| | about 70 | Vibration changes: lower, larger | documented, loose | G |
+| | 119 | Strap-ons separate. "Approximately five G" before it, by feel | documented | S p. 277; Z. The load: G |
+| | 150 | Fairing off | documented, loose | G: "at second 150". **Z: 154. S's figure: 156** |
+| | 156 | Radio guidance's power fails; the autonomous system flies on | documented, secondary | Z, from the 2011 documents. One account of two |
+| | 211 | Load "began to grow again" | documented | G |
+| | 300 | Core cut off; Block E alight | documented | S. **Z: 299**, and 0.5 s late |
+| | 300 to 315 | "Weightlessness about 10-15 seconds until the third stage ignited" | documented | G. **Contradicts hot staging** (Minakov; RKK Energia), where Block E lights first. Not reconciled |
+| | 676 | Block E cut off, sharply: orbit | documented | S p. 277 |
+| 09:18:28 | 688.3 | Spacecraft separates; clock, Globus and Granit-5V cycle 1 start | documented | R. G: "after about 10 seconds". **Z notes 09:18:07 (L)** |
+| 09:25 to 09:29 | | Asks Zarya-3 (Yelizovo) for his orbit four times; is not told | documented | Z, transcript |
+| | | VHF lost at "about 30 degrees north latitude on the globus" | documented | G |
+| before 09:50 | | Into the Earth's shadow, "very sharp" | documented, untimed | G. No source read gives the minute |
+| about 09:50 | 2,580 | Solar orientation on; turning slows from 2 to 3 deg/s to "almost imperceptible" | documented, to the minute | Z (planned 09:50); G |
+| 09:54 | | Vesna (Khabarovsk, HF): "the orbit is as calculated". It was not | documented | Z, transcript |
+| | | Apogee "about when I was passing Cape Horn" | documented, loose | G |
+| | | Out of the shadow; the sensor finds the Sun; attitude steady, TDU to the Sun | documented, untimed | G |
+| "minute 56" | | First command of the descent cycle; second and third follow | documented | G. Minute of what clock is not said |
+| 10:25:04.2 | 4,684.5 | Braking engine commanded ("pressurize") | documented | R |
+| 10:25:06.4 | 4,686.7 | "Launch" | documented | R: 2.2 s after |
+| 10:25:07.9 | 4,688.2 | Engine at its working mode | derived | R: 1.5 s after that |
+| 10:25:46.4 | 4,726.7 | Fuel pressure falls: thrust ends | derived | R: 42.2 s after the command. G: "exactly 40 seconds" |
+| 10:25:48.2 | 4,728.5 | Shut down by the timer, not the integrator; separation cancelled; pitch throttle seized, gas escaping | documented | R: 44.0 s |
+| 10:25:48 on | | Tumbling. **R: up to 6 deg/s in pitch. G: "about 30 degrees per second, no less"** | documented, in dispute | not reconciled: one is telemetry on one axis, one a man's eye |
+| 10:36 | 5,340 | Modules separate, "evidently from the emergency system, from temperature-sensitive elements" | documented | R. **G: 10:35.** L doubts thermal sensors could fire at 150 to 160 km; open |
+| | | Rotation continues, then slows on all axes; swinging ±90 deg, ±15 deg by peak load | documented | G |
+| | | Peak load. **G: "beyond 10g". S15: 10 to 12. "About 8" is in print unsourced** | documented, by feel | 2 to 3 s of greying vision (G; R) |
+| 10:42 | 5,700 | Hatch No. 1 off at about 7,000 m; the seat a moment after | documented, to the minute | Z; height G. Planned 10:44:12 (Z) |
+| | | Seat's stabilising parachute, then main canopy; reserve falls out and later fills: two canopies. Survival pack lost | documented | G; R |
+| 10:48 | 6,060 | Descent module lands, on its own parachute (opened at 4 km: tertiary) | documented | R |
+| 10:53 | 6,360 | Gagarin lands: 106 minutes | documented | R. **TASS and the marker: 10:55 (108 min).** Pekarsky's watch: 10:52 (Z) |
+
+### The orbit
+
+| | R (3 May 1961) | T (12 April) | N | US radar, of Block E (Z, after L) | Planned (Z) |
+| --- | --- | --- | --- | --- | --- |
+| Perigee | 181 km | 175 km | 169 km | 190.6 km | 180 km |
+| Apogee | 327 km | 302 km | 315 km | 326.2 km | 230 km |
+| Inclination | 64°57′ | 65°4′ | 64.95° | | |
+| Period | 89.44 min | 89.1 min | 89.34 min | | |
+
+- **The three sets are not three orbits.** By Kepler's law R's heights give R's period only over a
+  ball of 6,371 km, T's the same, and N's over 6,378 km (*derived* here; `tests/orbit.test.mjs`
+  holds all three). R and N then differ by 5 km in semi-major axis, 6 s in period. R is taken; N's
+  origin has not been traced. Z's own table misprints R as 372 km and "64.57".
+- **What kind of elements R's are is not stated** (osculating at injection, or a mean from
+  tracking). Under the Earth's oblateness the difference is some kilometres in height. Taken as
+  osculating at cutoff, and said so.
+- **Not published anywhere read:** the node, the argument of perigee, the place or time of
+  injection, the launch azimuth. So the orbit's plane and the spacecraft's place on it are not
+  documented: see "Inputs".
+- **Why the apogee was 97 km high: two accounts, neither taken.** Z: the radio guidance failed at
+  156 s (or its cutoff signal came late) and the core ran about half a second long; L reckons 0.6
+  to 0.7 s is worth about 100 km. S15, from the documents published in 2011: a wrongly assembled
+  valve let Block E's engine burn long. R gives the orbit and no cause.
+- **What it cost.** The fallback for a failed braking engine was decay within the supplies' ten
+  days (planned: two to seven days; Ustinov's memorandum of 30 March). S15: from 327 km, about
+  thirty days.
+
+### The braking burn and the entry
+
+- **Aim: by the Sun.** One sensor; "the TDU was directed to the Sun and quite steadily" (G); "oriented
+  toward the Sun before the braking engine unit was turned on" (R). *Documented.* The launch hour set
+  where the Sun would be: so the direction of the push is computed from the ephemeris, not chosen.
+- **Size: 132 m/s** of 136 programmed (Z, after L: *documented, secondary*). R: the impulse "was
+  close to the estimated one" and the causes "have not been identified". 1,614 kgf for 38.5 s on
+  4.7 t is 131 m/s (*derived*), which agrees.
+- **Why short.** A valve did not close fully at the start, fuel leaked past the chamber, the engine
+  starved a second early (Z, L). Because the integrator had not reached its count, the timer shut
+  it down, the sequencer cancelled separation, and gas went on escaping through the main nozzle and
+  the steering nozzles.
+- **The separation.** S (2000) has the lock opening on time and cables holding the modules; that is
+  superseded. R and S15: no separation was commanded at all until the backup at 10:36. A harness
+  did hold them some seconds after that (S15).
+- **Landing short.** Planned: near Pestravka, 52.40° N 49.96° E (Z). Flown: 51°16′ N 45°59′ E (R),
+  about 300 km short along the track. S15 puts it to the second of lost burn. A weaker burn carries
+  further, not shorter; the high orbit, slower round to a timer that fired at a fixed time, falls
+  short by itself. That reasoning is ours and is for `flyOrbit` to show or refute (section 5).
+- **Place.** R: 51°16′ N, 45°59′ E for the pilot; the module about 1.5 km off (G thought 4), "south
+  of the city of Engels", the module 10 m from a ravine and the pilot some 9 km from the Volga (Z).
+  About 50 m above the sea, 7.5 °C (Z). Wind at 7 km westerly and strong (Z); at the ground 5 to
+  7 m/s (G). The monument: 51.2707° N 45.9973° E (maps: tertiary). Z's table prints the minutes as
+  decimals ("51.16, 45.58").
+
+### Ground track, communications, what he reported
+
+- **Track** (from G, R, Z; none gives coordinates): north-east over Siberia (he saw "the Ob' or the
+  Irtysh"), Kolpashevo, past Kamchatka (Yelizovo), south-east down the Pacific in darkness, round
+  below Cape Horn, north-east up the South Atlantic into sunrise, the braking burn "over Africa",
+  the north coast of Africa and the Mediterranean before separation, Turkey, the Black Sea, the
+  Volga. The simulator's track is a result to compare with this, not an input.
+- **Stations.** VHF ("Zarya", line of sight): Zarya-1 Tyuratam, Zarya-2 Kolpashevo, Zarya-3
+  Yelizovo. HF ("Vesna"): Khabarovsk, then Moscow. Telemetry: IP-1, IP-4, IP-7 and others, and
+  ships in the Atlantic (R). R: HF channel 1 never worked; channel 2 "satisfactory", fading as the
+  ship turned; VHF normal, words lost under load. Signal (telegraph beacon) normal. The tape ran
+  out before the shadow (G).
+- **What was automatic: everything.** Ascent, separation, orientation, the burn, separation of the
+  modules, ejection, the parachutes. The Granit-5V timer started at separation from Block E and
+  fired the TDU 67 minutes on (S15). Z records a ground station's claim to have commanded it; R says
+  the command link "was not used".
+- **What he could do.** Talk, key Morse, take food and water, write, work the tape recorder, close
+  the shades, read the board. The hand controller was locked by a three-digit code (1-2-5: S), kept
+  in an envelope aboard; with it, manual orientation by the Vzor and a manual command to the TDU.
+  Asked afterwards, he said he could have done it (G, questions: by the Vzor, over sea or land, and
+  with the Globus could pick a landing "within a 300-kilometer deviation").
+- **The instruments named in the record.** The Vzor (a ring of mirrors showing the whole horizon
+  when the ship is level, and a centre in which the ground runs along index marks; field of the
+  centre 7°: G); the Globus (a globe turned by clockwork to show the place below, and where a
+  descent begun now would land); the PKRS descent-mode windows ("Spusk", "prepare for ejection");
+  the clock and stopwatch; pressures of the orientation gas (150 atm falling to 110 by the burn)
+  and the TDU's bottle (320 atm); humidity 65 to 71 %, 19 to 22 °C, 1.1 to 1.25 atm in the
+  instrument module (G).
+
+## 2. What the simulator needs, and the order to build it
+
+Each step lands by itself with tests against published values. **Done** marks what is in this
+branch.
+
+| # | Step | Tested against | For |
+| --- | --- | --- | --- |
+| 1 | **Done.** `src/world/orbit.ts`: elements to and from state; Kepler's equation; J2 gravity and steady rates; RK4 coast; sub-satellite point; site to inertial and back; the plane of an inclination through a place; the Earth's shadow (umbra and penumbra) | Vallado examples 2-2, 2-5, 2-6; geostationary radius; Sun-synchronous 800 km at 98.6°; critical inclination; Vostok's own heights against its period | physics |
+| 2 | **Done.** `Flight.orbital` (`src/sim/orbital.ts`: `OrbitalFlight`) and this flight's record in it | `tests/orbital.test.mjs`: every figure has a source; times in order | research |
+| 3 | **Done.** `flyOrbit`: the coast from the published orbit, the burn aimed by the Sun, a ballistic sphere down to 7 km, checks and `MISSES` | the record (section 5) | physics |
+| 4 | Parachutes and two bodies down: the module's canopy, the seat with its drogue, the pilot under one canopy (the reserve as data), wind from a profile. Reuse `shed.ts` for the seat and hatch | landing times 10:48 and 10:53; 1.5 km apart; descent rates | physics; research for canopy figures |
+| 5 | Sphere drag from a source that is opened; free-molecule drag for decay over days; heating of the ball (below) | Bailey and Hiatt; the planned 2 to 7 day decay and S15's 30 days as checks | research, then physics |
+| 6 | **Staging types.** `OrbitalFlight.stages` flown: several engines at once, each with its own tanks, thrust by pressure between its sea-level and vacuum figures, a stage dropped when its time comes. A batch `flyAscent` on a prescribed pitch programme, as `fly.ts` is | propellant used against load by each cutoff; liftoff acceleration; Gagarin's loads | physics |
+| 7 | The pitch programme, derived (section 3), and the ascent's checks and misses | cutoff height, level flight, speed; apogee; the drop zones if found | physics; research for drop zones |
+| 8 | Hand-over to the live vehicle: `vehicle.ts` in the inertial frame of date (it has the frame; it needs the sidereal time of launch, which the coast already uses), N engines, N sheds at once | `flyAscent` to 0.05 % as today | physics, with **sim** |
+| 9 | **Coasting fast.** Section "Time" below | drift bounds already measured | physics, with **sim** |
+| 10 | Attitude in orbit: free tumble, the gas jets (two sets of eight, 1.5 kgf), the solar sensor's law, the TDU's steering nozzles, the stuck throttle and the tumble as the record has it | gas used: 150 to 110 atm; rates 2 to 3 deg/s, 6 or 30 | physics |
+| 11 | The flight deck for an orbit (below) | | interface, with **sim** and **phoneui** |
+| 12 | The Earth along the track (below) | | renderer: **orbit4**, **perf3** |
+| 13 | The cabin as a flight deck: Globus, Vzor, clock, PKRS windows, read from the run (`CabinDef`) | the Vzor's 7° field | modelling, interface |
+
+### Frames and the hand-over
+
+`fly.ts` and `vehicle.ts` already integrate in a frame that does not turn, with the Greenwich
+meridian on +X at liftoff. `flyOrbit` uses frames.ts's inertial frame of date itself (the same
+frame turned by the sidereal time at liftoff), because the Sun is needed in it. The hand-over is
+one rotation about the pole and the velocity the turning adds: `siteToInertial`,
+`inertialToSite`, tested. Nothing else is needed for one orbit; the frame's own drift (precession,
+half a degree in forty years) is nothing in two hours.
+
+### Gravity, and what is left out over one orbit
+
+Point mass and J2. J2 moves this orbit's node 0.23° west in a revolution (25 km at the equator) and
+the height by kilometres: required. Left out, with what each is worth over 108 minutes: higher
+harmonics (hundreds of metres), Moon and Sun (metres), sunlight's pressure (less), the air above
+180 km on a 4.7 t ship (0.02 m/s: it is in the code anyway, at the standard atmosphere's density,
+which at these heights is good to a factor of two with the Sun's activity). Polar motion and UT1
+less UTC are below the record's precision by orders.
+
+### Time: coasting fast, and still integer ticks
+
+- The live simulator's tick stays 0.01 s and a flight is still a count of ticks.
+- A coast (no thrust, no jets firing, dynamic pressure under a stated threshold) may be stepped
+  in **whole multiples of the tick on a fixed grid**: 1 s steps on ticks divisible by 100, 10 s
+  steps on ticks divisible by 1,000. The state is kept at the last grid point and the instant on
+  show is reached from it by finer steps that are thrown away, so the sequence of steps to any
+  tick depends on the tick alone, not on the frame rate: the same flight to the last bit, as now.
+- Integrator: the RK4 already in use. Measured (`tests/orbit.test.mjs`), on this orbit over 108
+  minutes: energy drifts 1e-14 of itself at 1 s, 5e-11 at 10 s, 1.2e-8 at 30 s, 3.7e-7 at 60 s;
+  a Kepler orbit closes on itself to 2 cm at 10 s, 1.7 m at 30 s, 31 m at 60 s. **10 s is the
+  cap.** A flight of days (the ten-day decay) would want a symplectic or an embedded high-order
+  method; not for this flight.
+- Attitude on a coast: torque-free tumbling integrated at the same coarse step is wrong for a body
+  turning 30 deg/s. Either the attitude stays at the fine tick (cheap: no forces) or it is
+  solved in closed form for an axisymmetric body. Decide with **sim**.
+- Any event (a timer, a command, the shadow, 0.05 g) cuts the step to end on its tick, as `fly.ts`
+  cuts on marks. Warp drops to 1 at thrust and in the air.
+- The clock today runs the flight at up to five seconds a frame. An orbit wants 100 and 1,000
+  times life; light must still never step (world.md), which the terminator will test.
+
+### Sun and shadow
+
+`sunlit(r, sun)` gives the fraction of the Sun's disc seen past the Earth (ball of the equatorial
+radius, no air: refraction makes real sunset some seconds later). `flyOrbit` reports the crossings.
+The viewer needs the same number for the light on the vehicle (and through its portholes), fading
+through the penumbra in the seconds it takes; and the solar sensor needs it as its input.
+
+### Attitude and the solar orientation
+
+Free tumble from separation (2 to 3 deg/s: G). At about 09:50 the system damps rates on the gas
+jets; out of the shadow it turns the sensor's axis to the Sun and holds it; roll about that axis is
+free ("it turned by about 30 degrees" between sunrise and the burn: G). A single-axis pointing law
+on the existing `steer`, with `body.capsule.rcs` as the jets and the gas as a supply. Inputs wanted
+and not found: the jets' places (16 on the frame: estimated), the bottles' gas mass (12, 14 or 16
+bottles: in dispute), the sensor's field and the law's gains.
+
+### Staging
+
+- Four strap-ons and the core burn together from the ground; each is a `StageRecord` with its own
+  propellant. `Body` today has one engine and one `mixture`; this is the largest change to `src/sim`
+  and is why the ascent comes after the coast.
+- The strap-ons leave as four `ShedBody`s at once, swinging out on their tips: `part` already
+  conserves momentum for two bodies; four at one instant is four calls. Their residual thrust and
+  the oxygen vented from the nose (Minakov) are the push; neither has a figure.
+- Block E lights through the lattice while the core burns: for some tenths of a second two engines
+  push on one stack and the upper's jet pushes back on the core's top. No figure for the overlap;
+  flown as an instantaneous hand-over, and said so, with Gagarin's "10 to 15 seconds of
+  weightlessness" recorded against it.
+- The fairing: two halves as shed bodies at 150 s (154, 156); 0.8 t (0.64).
+
+### The burn, the tumble, the entry
+
+- The burn is flown as an even acceleration along the line from the Sun, fixed in the frame that
+  does not turn, between the derived instants of thrust. The live simulator will want the TDU as an
+  engine (thrust 15.83 kN, 266 s: neither yet in `orbital.ts` because the coast does not need
+  them), its four steering nozzles, and the seized pitch throttle as an event.
+- The tumble as documented is two figures that differ five-fold. Fly it from the cause (a stated
+  torque from escaping gas for a stated time) only when a figure for either is found; until then it
+  is a prescribed rate, labelled, with both figures shown.
+- The sphere: no lift, drag on its disc, centre of mass off-centre so it rights itself. The coast
+  flies it as a point. Live, it is a `Body` with a `Broadside`-free shape and a static margin;
+  oscillation ±90° damping to ±15° by peak load (G) is the check.
+- **Heating.** `heating.ts` is Sutton and Graves at the stagnation point feeding lumps. At orbital
+  speed it needs: an ablator (the lump model lets a wall heat without limit; the ball's shield
+  chars and gives off mass), the stagnation point wandering on a body that rolls, and radiative
+  flux stated as left out (small under 8 km/s on a 1.15 m radius). It takes `fly.ts`'s `Sample`;
+  an adapter from the coast's samples is a few lines. Nothing measured to hold it to has been
+  found: the shield's thickness is 30 to 180 mm (tertiary).
+
+### Ejection and two descents
+
+The hatch, the seat on its two rockets, the stabilising parachute, the seat falling away at 4 km,
+the main canopy, the reserve, the survival pack on its line; the module's own parachute at 4 km (or
+2.5: tertiary sources differ). Each is a shed body or a canopy as `shed.ts` and `chute.ts` have
+them. `Trajectory` has exactly two parachutes on one body; here there are two bodies with their own.
+Wanted and not read: canopy areas (574 m² for the module, 83.5 m² for the pilot's: one tertiary
+source), the seat's rockets, sink rates.
+
+### The verdict and the misses
+
+`verdict.ts` holds a landing to `capsule.limits`. For this flight the pilot's landing is his own
+(parachute sink rate against a man's legs), the module's is not survivable aboard by design (some
+10 m/s: tertiary), and the verdict must know that the pilot left. A new kind of end: still in
+orbit, with supplies for ten days against the decay time. `MISSES` for the coast are in
+`tests/orbital.test.mjs` and in section 5.
+
+### The flight deck for an orbit
+
+- Readouts: apogee, perigee, period, inclination (osculating, over a stated radius: R's 6,371 km,
+  so they can be read against the record), time to apogee and perigee, to shadow and sunrise, to
+  the timer's burn.
+- The path: the orbit in the frame that does not turn (predict.ts already draws one and gives
+  elements) and the ground track over the turning Earth, two revolutions ahead, with the stations'
+  circles of sight and the landing the Globus would show.
+- The navball's frames: Surface and Orbit exist. Add the Sun's direction as a marker (it is what
+  the ship aims by) and the Vzor's own picture as the cabin's instrument.
+- **What the pilot can do. Two modes, never mixed.**
+  1. **As flown.** The hand controller is locked. The player rides: reports (the record's own
+     exchanges on the clock), the board, the Vzor, the Globus, the shades, time acceleration. The
+     sequencer does what the Granit did, faults and all. This is the record.
+  2. **Manual, by the emergency procedure.** The envelope, the code 1-2-5 on the six-key panel, the
+     hand controller live, orientation by the Vzor (the horizon even in the ring, the ground
+     running along the marks), the TDU by hand. It is what the ship allowed and what Gagarin said
+     he could have done; it is not what happened, and the deck says so on its face and in the
+     verdict ("manual descent: not the flight of 12 April"). The Flown panel keeps the record's
+     run beside it.
+  The ascent has no manual mode: the vehicle had none. A player may watch it or abort by the
+  ejection seat (to about 40 s) as the hardware allowed; an abort is a later step.
+
+### The viewer
+
+- The globe exists with coast, relief, colour and a fine region round the Cape. This flight needs a
+  `RegionDef` round Tyuratam (site1's) and one round the landing (Saratov, Engels, the Volga:
+  about 50° to 52.5° N, 44° to 48° E, dated 1961: the Volgograd reservoir was filled by then, the
+  Saratov bridge of 1965 was not built). Nothing finer anywhere else: the track is seen from 180 to
+  327 km.
+- The night side and the terminator are lit by the true Sun already (`chapman`). To be checked
+  from orbit at 1,000 times life: no stepping of light, stars by `starLimit` in shadow, the
+  horizon's bands at sunrise as G describes them (orange, through the rainbow, to blue, to black).
+  City lights: none in 1961 worth drawing over the Pacific; none is proposed.
+- The ground track and the orbit as `Stage.overlay` lines; the vehicle found again from any
+  distance (the chase rig's range grows from tens of kilometres to the whole Earth).
+- The entry's glow (`entry.ts`) is scaled by heat flux over 250 kW/m²: an orbital entry is some
+  1 MW/m², so this is the flight it was written for. The crimson light at the shutters' edges (G).
+
+## 3. Inputs
+
+### Found
+
+Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's in
+[vostok-8k72k.md](../../vehicles/vostok-8k72k.md), "Masses" and "Engines".
+
+| Input | Value | Confidence | Source |
+| --- | --- | --- | --- |
+| Liftoff | 06:06:59.7 UTC | documented | S launch log; R |
+| Site | 45.92025° N, 63.34225° E, 78 m | documented (place), estimated (height) | site-1.ts; **site1 is settling it** |
+| Liftoff mass | 287 t | documented | RKK Energia. 281.4 to 291.2 t in print |
+| Strap-on, each | 43.3 t; 3.75 t dry; 39.16 t propellant | documented, three sources that do not sum | Astronautix; Minakov; Brügge |
+| RD-107 | 815.9 kN and 256 s at the ground; 997.7 kN and 313 s in vacuum | documented, secondary | Energomash's table by way of Brügge |
+| Core | 100.4 t; 6.8 t dry; 90.1 t propellant | documented, do not sum | as above |
+| RD-108 | 744.3 kN, 248 s; 945.4 kN, 315 s | documented, secondary | as above |
+| Block E | 7,984 kg; 1,472 kg burnt out | documented | Minakov |
+| RD-0109 | 54.5 kN, 323.5 s, vacuum | documented, secondary | Brügge |
+| Fairing | 0.8 t (0.64) | documented, secondary | Z (Brügge) |
+| Spacecraft | 4,725 kg | documented | RKK Energia; FAI |
+| Event times | 119, 150, 300, 676, 688.3 s | documented | S; G; R |
+| Orbit | 181 by 327 km, 64°57′, 89.44 min | documented | R |
+| Orbit's reference ball | 6,371 km | derived | heights against period |
+| TDU command, thrust on, thrust off | 4,684.5; 4,688.2; 4,726.7 s | documented; derived; derived | R |
+| Braking impulse | 132 m/s | documented, secondary | Z, after L |
+| Aim of the burn | nozzle to the Sun | documented | G; R |
+| TDU | 1,614 kgf, 266 s, 275 to 280 kg | documented | S p. 197; Astronautix |
+| Module separation | 5,340 s | documented | R (G: a minute earlier) |
+| Descent module | 2,460 kg, 2.3 m | documented | S p. 195 |
+| Ejection height | 7,000 m | documented, "approximately" | G |
+| Landing | 51°16′ N, 45°59′ E; 10:48 and 10:53 | documented | R |
+
+### Not found, and what is honestly possible
+
+| Input | State | Proposal |
+| --- | --- | --- |
+| **Launch azimuth as flown** | not found | **Derived**: the plane of the documented inclination through the pad at liftoff (`planeThrough`), which gives the inertial bearing; the bearing over the ground follows. site1 may find better |
+| **Where on the orbit at cutoff** (`injection.arc`) | not found | **Estimated** today: 27.5° by hand, ±3°. Replaced by the flown ascent (step 7), when it becomes *derived*. Not to be solved from the landing point |
+| **Argument of perigee** (`injection.anomaly`) | not found | **Estimated**: perigee at cutoff. The ascent gives it. G's "apogee at Cape Horn" is a loose check, not an input |
+| **Pitch programme** | not found | **Derived**, from a stated family with the fewest constants: vertical for a stated time, a gravity turn (no angle of attack) while there is air, then the linear-tangent law in vacuum. Its constants are solved so that at the documented cutoff (676 s) the documented height (perigee, 181 km) is reached in level flight. **Speed at cutoff is then a result**, checked against the orbit's 7,842 m/s; so are the load history (G: about 5 g at 119 s, rising again from 211 s), the speed at core cutoff (Z: about 5.5 km/s), the horizon in the Vzor at 150 and 300 s (G), and the drop zones if a source gives them. It says "derived: this family, these two constraints" wherever shown. It is not the stored programme, which also had radio corrections until 156 s |
+| **Throttle** | not found; "throttled at the end of the first stage's flight" | **Derived** mean only: each stage's documented propellant over its documented burn. At rated flow the strap-ons use 38.7 t of 39.16 t in 119 s (so near rated to the end); the core's rated flow would use 91.8 t of 90.1 t in 300 s, so it ran below rated on average by at least 2 %. Flown at that constant mean, and said so; no profile is invented |
+| **Cutoff logic** | found in kind: a velocity integrator, and radio until it failed | Fly the record's time (676 s) and let apogee be a result. 0.6 s is worth 100 km of apogee (L), so **expect apogee in `MISSES`**, blamed on thrust and mass figures good to 1 to 4 %; do not tune. A second run cut on the planned orbit's speed shows what the integrator would have done |
+| **Nozzle exit areas** | not found | **Derived**: (vacuum thrust less sea-level thrust) over one atmosphere, from the documented pair: 1.79 m² for an RD-107, 1.98 m² for the RD-108 |
+| **Drag of the stack against Mach** | not found | **Estimated**, and labelled: a curve of the usual form on the base area, from a cited analogue if research finds one (a clustered-booster vehicle's published curve). The test prints what ±30 % of it moves. The simulator may refuse it: then the ascent stays a labelled estimate until a source is found |
+| **Drag of the sphere** | not read | **Estimated** from memory of the standard curve; becomes *documented* when Bailey and Hiatt or Hoerner is opened (step 5). 0.92 hypersonic |
+| **Mass at each event** | not found | **Derived** from the stage figures and flows; the stage figures' own spread (1 to 4 %) is carried as the uncertainty |
+| **Propellant burned before liftoff** | not found | left out, and said so |
+| **Separation's push, TDU's after-thrust, the tumble's torque** | not found | left out; listed with the simplifications |
+| **Parachute areas, sink rates, wind aloft** | tertiary or not found | step 4's research |
+| **Jets' places, gas mass, sensor law** | not found | estimated, labelled, step 10's research |
+
+## 4. Risks, and who does what
+
+| Risk | What follows |
+| --- | --- |
+| The ascent cannot hit the apogee: half a second of burn is 100 km | Planned for: apogee is a result and a recorded miss. The coast is flown from the published orbit, as the Mercury capsule's half is flown from the report's separation, so the orbit, burn and entry do not wait on it |
+| The injection point is an estimate, so the landing along the track is too | Reported apart from the cross-track miss, which does not depend on it |
+| `Body` and `vehicle.ts` assume one engine and one burn | The largest change; owned with **sim**; staged after its abort and wind work lands |
+| The record disagrees with itself (6 or 30 deg/s; 10:35 or 10:36; 150, 154 or 156 s) | Both kept as data (`EventRecord.also`); the simulator takes the one named and says which |
+| Soviet primary sources are in translation or at second hand | *Pervyi pilotiruemyi polet* (2011) and *Novosti Kosmonavtiki* (Lissov) are the next things to read: the node, the injection point and the drop zones may be in them |
+| Time acceleration breaks "the same flight at any frame rate" | The grid rule above; tested before it is used |
+| Light stepping at 1,000 times life across the terminator | Checked as world.md says, before orbit is offered at that rate |
+
+Order: steps 4 and 5 (physics, small) can go now. Research in parallel: the 2011 volumes and
+Lissov for the azimuth, injection and drop zones; a sphere-drag source; parachutes. Steps 6 to 8
+after **sim**'s current work lands. 9 and 10 after 8. 11 to 13 need 9 and each other's owners.
+
+| Worker | Takes |
+| --- | --- |
+| Research | the 2011 documents, Lissov, the FAI file; drop zones; sphere drag; parachutes; jets and gas; a drag analogue for the stack |
+| Physics | steps 4 to 10 |
+| Modelling | the cabin's instruments as nodes with scales (Globus, Vzor, clock, PKRS, gauges); the seat, hatch and canopies as nodes; the landing region |
+| Interface | the orbit deck, the two modes, the ground-track map, time acceleration's control |
+| Renderer | the terminator at speed, the two regions, the path overlays, finding the vehicle from afar |
+
+## 5. What the coast gives today
+
+`flyOrbit` (src/sim/orbital.ts), from the inputs above, with nothing adjusted. Filled in by
+`tests/orbital.test.mjs`, which prints these and fails if a miss is not recorded there.
+
+Not yet run: the checks and their tolerances in orbital.ts were written first.
