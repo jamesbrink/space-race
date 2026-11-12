@@ -1072,25 +1072,38 @@ export class FlightPath {
       !this.on
         ? 'off'
         : stale
-          ? 'working it out'
+          ? 'working…'
           : this.waiting()
             ? this.source.steering.guidance
-              ? 'as guidance will fly it'
-              : 'guidance is off: no plan'
+              ? 'as planned'
+              : 'no plan'
             : choosing
               ? ''
               : this.burning()
-                ? 'if the engine were cut now'
+                ? 'if cut now'
                 : !this.live
-                  ? 'as it coasted from here'
+                  ? 'looking back'
                   : sequencer
-                    ? 'as the sequencer flies it'
-                    : 'hands off: nothing by itself',
+                    ? 'as sequenced'
+                    : 'hands off',
     );
+    // (said in full where the pointer rests: the line has room for a word or two)
     const as = this.readout.querySelector<HTMLElement>('[data-path-cell=as]')!;
-    as.title = sequencer
-      ? 'What happens from here if the pilot does nothing more: the sequencer sets off each event at the record’s time, and the parachutes come out at their heights'
-      : 'The sequencer is off (B): nothing happens by itself, no retrofire and no parachute, so the path falls as it is';
+    as.title = !this.on
+      ? ''
+      : stale
+        ? 'The path on show is more than a second and a half old: a newer one is being worked out'
+        : this.waiting()
+          ? this.source.steering.guidance
+            ? 'On the pad: the path guidance will fly, the record’s programme to the record’s cutoff, then the sequencer’s events'
+            : 'Guidance is off (G): there is no plan to show until the engine is lit'
+          : this.burning() && !choosing
+            ? 'The path if the engine were cut now (guidance is off, so there is no plan to show)'
+            : !this.live
+              ? 'Looking back at what was flown: the path from that instant with nothing done by the pilot or the sequencer, the parachutes coming out at their heights'
+              : sequencer
+                ? 'What happens from here if the pilot does nothing more: the sequencer sets off each event at the record’s time, and the parachutes come out at their heights'
+                : 'The sequencer is off (B): nothing happens by itself, no retrofire and no parachute, so the path falls as it is';
     row('apogee', this.on);
     row('end', this.on);
     if (!result || result.outcome === 'none') {
