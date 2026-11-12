@@ -16,11 +16,12 @@ Top-level nodes:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 import bpy
 from mathutils import Matrix, Vector
 
-from srlib import TAU, MeshBuilder, arc_profile, bore, deg, frame, group, interior, lathe_obj, load_font, mark_shells, material, prof, text_mesh
+from srlib import TAU, MeshBuilder, arc_profile, bore, deg, frame, group, interior, lathe_obj, mark_shells, material, prof
 
 MM = 0.001
 
@@ -187,14 +188,15 @@ INNER = Ball(R_IN)
 
 
 def seat_frame() -> Matrix:
-    """The seat's own frame, millimetres: origin midway between the pilot's hip joints, +Y up the
-    rails toward his head and the entry hatch, +Z out of his chest, +X to his left."""
+    """The seat's own frame, millimetres: +Y up the rails toward the pilot's head and the entry
+    hatch, +Z out of his chest, +X to his left. Its origin is PILOT_FORWARD behind the middle of
+    his hip joints, level with them."""
     h = Vector((math.cos(HATCH_AZ), math.sin(HATCH_AZ), 0.0))
     up = Vector((0.0, 0.0, 1.0))
     s = h * math.cos(SEAT_TILT) + up * math.sin(SEAT_TILT)
     n = -h * math.sin(SEAT_TILT) + up * math.cos(SEAT_TILT)
     m = Matrix((s.cross(n), s, n)).transposed().to_4x4()
-    # the rails' line through the middle of the hatch passes 65 mm in front of his hips
+    # the rails' line through the middle of the hatch passes 65 mm in front of the frame's origin: 22 mm behind his hip joints
     m.translation = Vector((0, 0, Z_C)) + n * -65.0 + s * -100.0
     return m
 
@@ -506,13 +508,21 @@ def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:
 # ------------------------------------------------------------- the seat and its pilot
 
 
-def build_seat(M, stature: float, lettering: str | None, font) -> None:
+# How far in front of the seat frame's origin the pilot's hip joints are. The seat's back and the
+# parachute pack on it were laid out round a stand-in whose back lay 56 mm behind its hips; a man's
+# is 140 mm behind his (crew/sk_1.py, the shared figure), so he lies that much further forward, his
+# back on the pack. Neither the pack's place nor his in the seat has been read anywhere. Moving
+# the seat back instead takes its guide shoes outside the hatch's opening, which is the one
+# thing here with a published size.
+PILOT_FORWARD = 87.0
+
+
+def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) -> None:
     g = group("EjectionSeat")
     if not interior():
         return
     S = seat_frame()
     P = lambda x, y, z: Vector((x, y, z))  # noqa: E731
-    k = stature / 1570.0  # the figure's proportions are laid out for 1.57 m and scaled
     seat, steel, pack, bottles = (MeshBuilder() for _ in range(4))
     seat.box((500, 820, 44), Matrix.Translation(P(0, 330, -160)))  # back
     seat.box((300, 190, 70), Matrix.Translation(P(0, 720, -105)))  # headrest
@@ -538,7 +548,10 @@ def build_seat(M, stature: float, lettering: str | None, font) -> None:
         (bottles, "Seat_Oxygen", "bottle"),
     ):
         placed(mb, S).build(name, M[mat], g, sharp_angle=35)
-    build_pilot(M, g, S, k, lettering, font)
+    if pilot:
+        # The pilot is the flight's own (its suit, its man): he is handed the seat's node and where his hips are, in
+        # the figure library's seat frame (metres; head toward -Y, chest toward +Z, his right toward +X).
+        pilot(g, Matrix.Scale(MM, 4) @ S @ Matrix.Translation((0, 0, PILOT_FORWARD)) @ Matrix.Scale(1 / MM, 4) @ Matrix.Diagonal((-1, -1, 1, 1)))
     # everything that rides out must clear the entry hatch's opening on its way
     s = S.to_3x3() @ Vector((0, 1, 0))
     c = V(0, 0, Z_C)
@@ -546,76 +559,6 @@ def build_seat(M, stature: float, lettering: str | None, font) -> None:
         inside_cabin(obj, 6.0)
         off = max(((v.co - c) - s * (v.co - c).dot(s)).length for v in obj.data.vertices) / MM
         assert off < HATCH_R - 12, f"{obj.name} is {off:.0f} mm off the rails' line: the hatch is {HATCH_R:.0f} mm in radius"
-
-
-def build_pilot(M, g, S: Matrix, k: float, lettering: str | None, font) -> None:
-    """The pilot in the SK-1 suit, seated. A plain figure: lofted limbs and a helmet, in the pose
-    the seat holds him in, not the jointed figure a crew model is (srlib.FIGURE)."""
-    P = lambda x, y, z: Vector((x, y, z)) * k  # noqa: E731
-    suit, boots, gloves, helmet, visor, ring, red = (MeshBuilder() for _ in range(7))
-    fwd, up = (0.0, 0.0, 1.0), (0.0, 1.0, 0.0)
-    suit.loft(
-        [P(0, -70, 5), P(0, 60, 0), P(0, 240, 5), P(0, 400, 12), P(0, 480, 15), P(0, 525, 20)],
-        [(165 * k, 105 * k), (165 * k, 112 * k), (172 * k, 118 * k), (188 * k, 114 * k), (150 * k, 100 * k), (80 * k, 75 * k)],
-        28,
-        ref=fwd,
-    )
-    for sx in (-1, 1):
-        hip, knee, ankle = P(sx * 95, 0, 10), P(sx * 135, -192, 333), P(sx * 150, -555, 210)
-        suit.loft([hip, (hip + knee) / 2, knee], [(88 * k, 88 * k), (80 * k, 80 * k), (69 * k, 69 * k)], 18, ref=up)
-        suit.loft([knee, (knee + ankle) / 2, ankle + P(0, -20, 0)], [(61 * k, 61 * k), (56 * k, 56 * k), (45 * k, 45 * k)], 18, ref=fwd)
-        # boots: laced leather, toes up
-        boots.loft(
-            [ankle + P(0, 70, 26), ankle + P(0, 10, 4), ankle + P(0, -40, -14)], [(57 * k, 57 * k), (58 * k, 58 * k), (60 * k, 60 * k)], 14, ref=fwd
-        )
-        boots.loft(
-            [ankle + P(0, -42, -52), ankle + P(0, -46, 40), ankle + P(0, -50, 140), ankle + P(0, -50, 210)],
-            [(52 * k, 50 * k), (50 * k, 54 * k), (47 * k, 42 * k), (38 * k, 30 * k)],
-            14,
-            ref=(1.0, 0.0, 0.0),
-        )
-        shoulder, elbow, wrist = P(sx * 200, 440, 25), P(sx * 262, 190, 70), P(sx * 190, 10, 262)
-        suit.loft([shoulder, (shoulder + elbow) / 2, elbow], [(62 * k, 62 * k), (57 * k, 57 * k), (53 * k, 53 * k)], 16, ref=fwd)
-        suit.loft([elbow, (elbow + wrist) / 2, wrist], [(47 * k, 47 * k), (43 * k, 43 * k), (38 * k, 38 * k)], 16, ref=up)
-        gloves.loft(
-            [wrist + P(0, 20, -15), wrist + P(0, -40, 20), wrist + P(-sx * 10, -95, 40), wrist + P(-sx * 15, -130, 40)],
-            [(46 * k, 46 * k), (48 * k, 32 * k), (44 * k, 24 * k), (34 * k, 18 * k)],
-            12,
-            ref=fwd,
-        )
-    # the helmet: a white shell with a visor, on a neck ring
-    head = P(0, 655, 40)
-    hr = 152.0 * k
-    hm = Matrix.Translation(head)
-    helmet.lathe(arc_profile(0, 0, hr, -90, 90, 20), 36, matrix=hm)
-    ring.lathe([(96 * k, -8 * k), (112 * k, 0), (112 * k, 26 * k), (96 * k, 34 * k)], 32, matrix=frame(P(0, 525, 22), (0, 1, 0.1)))
-    # the visor: a cap of the same ball, facing forward and a little down
-    vm = hm @ frame((0, 0, 0), (0, -0.25, 1))
-    r1 = hr + 3.0
-    visor.lathe([(r1 * math.sin(deg(a)), r1 * math.cos(deg(a))) for a in (52, 42, 32, 22, 11, 0)], 28, matrix=vm)
-    if lettering:
-        verts, faces = text_mesh(lettering, 1.0, font, cuts=2)
-        xs, ys = [v[0] for v in verts], [v[1] for v in verts]
-        scale = 150.0 * k / (max(xs) - min(xs))
-        cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
-        lm = hm @ frame((0, 0, 0), (0, 0.72, 0.69))  # on the brow, above the visor
-        rl = hr + 1.6
-        out = []
-        for x, y, _ in verts:
-            a, b = (x - cx) * scale / rl, (y - cy) * scale / rl
-            out.append(tuple(lm @ Vector((rl * math.sin(a) * math.cos(b), rl * math.sin(b), rl * math.cos(a) * math.cos(b)))))
-        red.add(out, faces)
-    for mb, name, mat, smooth in (
-        (suit, "Pilot_Suit", "suit", True),
-        (boots, "Pilot_Boots", "leather", True),
-        (gloves, "Pilot_Gloves", "leather", True),
-        (helmet, "Pilot_Helmet", "helmet", True),
-        (visor, "Pilot_Visor", "visor", True),
-        (ring, "Pilot_NeckRing", "frame", True),
-        (red, "Pilot_Lettering", "red", False),
-    ):
-        if mb.verts:
-            placed(mb, S).build(name, M[mat], g, smooth=smooth, sharp_angle=None if smooth else 30)
 
 
 # ------------------------------------------------ what joins the two modules together
@@ -905,16 +848,15 @@ def build_retro_engine(M) -> None:
 # ---------------------------------------------------------------------------- main
 
 
-def build(stature: float = 1570.0, lettering: str | None = None, stowed: bool = False) -> str:
-    """Build the spacecraft. `stature` is the pilot's height, mm; `lettering` what is painted on his helmet;
+def build(pilot: Callable[[bpy.types.Object, Matrix], object] | None = None, stowed: bool = False) -> str:
+    """Build the spacecraft. `pilot(parent, place)` builds the man in the seat (a suit's `build_seated`); left out, the seat is empty.
     `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs."""
     M = materials()
-    font = load_font()
     build_descent_module(M)
     build_hatches(M)
     build_cabin(M)
     cut_openings()
-    build_seat(M, stature, lettering, font)
+    build_seat(M, pilot)
     build_straps(M)
     build_cable_mast(M)
     build_instrument_module(M, stowed)

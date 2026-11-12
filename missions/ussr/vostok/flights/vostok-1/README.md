@@ -12,7 +12,7 @@ the pilot ejecting from the descent module and landing by parachute near the Vol
 | Spacecraft (3KA No. 3, as in orbit) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py) |
 | Launch vehicle (8K72K: core, four strap-ons, lattice, Block E, fairing) | **built**, every station estimated: [vostok-8k72k.md](../../vehicles/vostok-8k72k.md) |
 | Launch site (Site 1) | not built; its position only: [site-1.md](../../sites/site-1.md) |
-| Crew (Gagarin in the SK-1, to be walked as) | not built; a plain seated figure rides in the spacecraft |
+| Crew (Gagarin in the SK-1, to be walked as) | built ([sk-1.md](../../crew/sk-1.md)): he stands beside the spacecraft in the gallery and rides in its seat; there is no site to walk him on yet |
 | Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies. What was found toward one is in [vostok-8k72k.md](../../vehicles/vostok-8k72k.md), "What a staged trajectory will need" |
 
 So the viewer shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in

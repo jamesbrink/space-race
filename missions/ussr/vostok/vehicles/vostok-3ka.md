@@ -60,7 +60,8 @@ Keys used below; full entries are in [docs/sources.md](../../../../docs/sources.
 | Sun sensor | one, on the forward cone | documented (one); estimated (where, its shape) | Gagarin: "the central sensor" |
 | Braking engine | nozzle exit 280 mm across; four steering nozzles | estimated (sizes); documented (one chamber and four) | Encyclopedia Astronautica: "Chambers: 1 + 4"; the installation 1.13 m tall and 0.95 m across |
 | Propellant tank | a torus 950 mm across round the chamber | estimated | drawn to the installation's stated diameter; its real form has not been read |
-| Pilot | 1,570 mm | estimated | the flight's script |
+| Pilot | the flight's own: its script hands the spacecraft a seated figure (Vostok 1: Gagarin, 1,650 mm, documented; `crew/sk-1.md`) | | |
+| Pilot's hip joints | 87 mm in front of the seat frame's origin | estimated | so that his back lies on the parachute pack; neither's place has been read anywhere. See `PILOT_FORWARD` |
 
 ## Parts in the model
 
@@ -102,9 +103,15 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   inside the hull or the adapter under it, and a flight slides them out. The two whips and the rod
   on the forward pole, and the hairpins on the straps, fit under the fairing as they are and are
   left out.
-- **The pilot is a plain figure**: lofted limbs, a ball of a helmet with a dark visor and no face,
-  no harness, hoses or communications cap. He is not built to the jointed-figure contract
-  (`srlib.FIGURE`), so he cannot be walked as. The SK-1's own record (`crew/`) is not written.
+- **The pilot is the flight's crew figure, carried to the seat's pose** (`crew/sk_1.py`,
+  `build_seated`): the same man and suit as the standing crew model, visor down, with no
+  skeleton. His pose is read off the seat as it is laid out here, not from a drawing of the
+  seat; he wears no harness, and his hoses end in a stub. What that figure gets wrong is in
+  [sk-1.md](../crew/sk-1.md).
+- **The seat was laid out before the man.** Its back and the pack on it stood 56 mm behind the
+  hips of the stand-in that used to ride here; a man's back is 140 mm behind his hip joints, so
+  he lies 87 mm further forward than the seat frame's origin, on the pack. Moving the seat back
+  instead takes its guide shoes outside the hatch's opening. Which is right is not known.
 - **The seat is a few slabs and tubes.** Its real structure, its two solid rockets, the stabilising
   parachute and the survival pack are stood in for by boxes in about the right places.
 - **Cabin equipment is boxes.** The board has a globe and five dials; the left panel, the hand

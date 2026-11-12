@@ -27,17 +27,21 @@ while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "vehicles"))
+sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "crew"))
+import sk_1  # noqa: E402
 import vostok_3ka  # noqa: E402
 import vostok_8k72k  # noqa: E402
 from srlib import mark_shells, run  # noqa: E402
 
-PILOT_STATURE = 1570.0  # mm: Gagarin, as widely given (no primary record read)
-HELMET_LETTERING = "СССР"  # painted on the helmet in red on the morning of the flight
+
+def pilot(parent, place) -> None:
+    """Gagarin in the seat: the SK-1 (../../../crew/sk_1.py) at his recorded 1.65 m, visor down, "СССР" on the helmet."""
+    sk_1.build_seated(parent, place, "Pilot")
 
 
 def build() -> str:
     # under the fairing the instrument module's antennas were folded: they are built stowed, and the flight's data lets them out
-    vostok_3ka.build(stature=PILOT_STATURE, lettering=HELMET_LETTERING, stowed=True)
+    vostok_3ka.build(pilot=pilot, stowed=True)
     az, lat = vostok_3ka.ENTRY
     # the fairing's opening is over hatch No. 1, where the line from the sphere's middle through the hatch meets the fairing
     summary = vostok_8k72k.build(hatch_az=az, hatch_z=vostok_3ka.Z_C + vostok_8k72k.common.FAIRING_R * math.tan(lat))

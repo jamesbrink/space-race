@@ -42,7 +42,7 @@ is recorded with each flight as it is built.
 | Vostok 3KA spacecraft | [vostok-3ka.md](vehicles/vostok-3ka.md): built |
 | Vostok-K launch vehicle (8K72K), with Block E | [vostok-8k72k.md](vehicles/vostok-8k72k.md): not built; figures read so far |
 | Site 1, Tyuratam | [site-1.md](sites/site-1.md): not built; its place on the Earth only |
-| The SK-1 suit | [sk-1.md](crew/sk-1.md): built, standing (the flight's crew model) and for the seat (`sk_1.build_seated`); the seated pilot in the spacecraft is still a plain figure |
+| The SK-1 suit | [sk-1.md](crew/sk-1.md): built, standing (the flight's crew model) and in the spacecraft's seat (`sk_1.build_seated`) |
 
 ## Sources
 

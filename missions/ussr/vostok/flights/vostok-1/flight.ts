@@ -752,10 +752,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Pilot height',
-      value: 1.57,
+      value: 1.65,
       unit: 'm',
-      confidence: 'estimated',
-      note: 'Gagarin is widely given as 157 cm; no primary record read',
+      confidence: 'documented',
+      note: '165 cm in his service record of 1960, published by the Russian Ministry of Defence (Komsomolskaya Pravda, 12 April 2024). 157 cm is often printed, without a document behind it',
     },
     {
       group: 'Launch vehicle',
@@ -891,7 +891,7 @@ export const flight: Flight = {
       value: 1.65,
       unit: 'm',
       confidence: 'documented',
-      note: '165 cm in his service record of 1960, published by the Russian Ministry of Defence in 2024. 157 cm is often printed, without a document behind it; the seated figure in the spacecraft is still built to that',
+      note: '165 cm in his service record of 1960, published by the Russian Ministry of Defence in 2024. 157 cm is often printed, without a document behind it',
     },
     {
       group: 'Pressure suit',

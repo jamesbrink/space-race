@@ -35,7 +35,7 @@ Energia museum is the same sphere after entry, with the insulation and most of t
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
-| Pilot's height | 1.57 m | estimated | Gagarin is widely given as 157 cm; no primary record read |
+| Pilot's height | 1.65 m | documented | 165 cm in his service record of 1960, published by the Russian Ministry of Defence (Komsomolskaya Pravda, 12 April 2024). 157 cm is widely printed, with no document behind it that was found |
 | Helmet lettering | СССР, red, on the brow of a white helmet | documented (that it was there, and painted on that morning); estimated (size, place) | Siddiqi, The Space Review 2015, photograph caption |
 | Suit | orange cover over the pressure suit | documented | Gagarin's report: "the orange and gray outer layer"; the pressure garment under it was light blue |
 | Television | two cameras | documented (two); estimated (where) | Siddiqi p. 196. The report calls the system "Tral-T with Seliger cameras", Siddiqi "Topaz" |

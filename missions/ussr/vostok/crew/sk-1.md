@@ -95,9 +95,11 @@ toward his head and +X to his left, in millimetres, so `place` is that frame in 
 | Elbow | 46°, hinge turned 24° in, forearm turned 30° | estimated | hands resting on the thighs; where his hands were is not known |
 | Seat of the suit | rolled 24° under | estimated | |
 
-**It is not in the spacecraft yet.** The cabin still holds a plain lofted figure built to 1.57 m;
-this one is 1.65 m, and the seat and the hatch's opening have to be checked against it when it is
-put in.
+**He rides in Vostok 1's seat** (`flights/vostok-1/model/vehicle.py`). The spacecraft's own
+checks pass with him in it: nothing of him reaches the cabin's lining, and all of him is inside
+the entry hatch's opening on the line of the rails (his soles by 7 mm). His hip joints are 87 mm
+in front of the seat frame's origin, so that his back lies on the parachute pack
+(`vostok_3ka.PILOT_FORWARD`; estimated).
 
 ## What the model gets wrong or leaves out
 
