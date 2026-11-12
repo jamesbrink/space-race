@@ -99,6 +99,8 @@ const TILE = 1024;
  * 0.1). Thick enough that a lump 30 m across is a solid thing with a lit side and a shaded one, not a mist.
  */
 const SIGMA = 0.05;
+/** A step of the march through more optical depth than this has its opacity worked out in parts (marchShader). */
+const THICK = 0.55;
 /** The baked field stores the noise's excess over its cut, from BELOW under it to RANGE - BELOW over it. */
 const BELOW = 0.1;
 const RANGE = 0.4;
@@ -505,9 +507,32 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         deep = 0;
       }
       float step = st * min(0.25 + 0.35 * float(deep), 1.6);
-      v = dir * (t + 0.5 * step);
       float ramp = clamp(t * 0.004, 3.0, 60.0); // the skin: a few pixels deep at any distance
       float sd;
+      // Far off a step is thicker than the cloud lets light through (at 20 km the second is 48 m, and 20 m of cloud
+      // dims by e): lit at its middle, a pixel's light was what reached 44 m into the cloud, which is next to none and
+      // changes with every lump toward the Sun, so a far cloud's face was speckled dark and the specks changed as the
+      // eye climbed (190 pixels a frame at 20 km). So where a step is thick its opacity is worked out in parts (the
+      // density alone, which is cheap) and it is lit once, where the light it sends back comes from on the whole: the
+      // middle of what the parts hide, each weighed by how much of it is seen. Near the eye a step is thin and is as
+      // it was: at its middle (\`parts\` fades in, so nothing changes at a distance in a ring).
+      float centre = 0.5 * step, through = -1.0;
+      float parts = smoothstep(0.3, 0.7, SIGMA * step);
+      if (parts > 0.0) {
+        float count = clamp(ceil(SIGMA * step / ${THICK.toFixed(2)}), 3.0, 8.0);
+        float left = 1.0, seen = 0.0, where = 0.0, part = min(step, t1 - t) / count;
+        for (int j = 0; j < 8; j++) {
+          if (float(j) >= count) break;
+          float sj = (float(j) + 0.5) * step / count, sdj;
+          float aj = 1.0 - exp(-density(dir * (t + sj), ramp, lod, y, sdj, true, true) * part);
+          seen += left * aj;
+          where += left * aj * sj;
+          left *= 1.0 - aj;
+        }
+        if (seen > 1e-5) centre = mix(centre, where / seen, parts);
+        through = 1.0 - left;
+      }
+      v = dir * (t + centre);
       float d = density(v, ramp, lod, y, sd, true, true);
       if (sd <= 0.0 && gWorn <= 0.0) {
         // out of it again, between billows or past the cloud: back to looking for cloud, from here
@@ -543,6 +568,7 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         float plain = (exp(-tau) + 0.5 * exp(-0.35 * tau) + 0.2 * exp(-0.15 * tau)) / 1.7;
         float hz = hazeLost(y * (uLayer.y - uLayer.x) + uLayer.x, t);
         float a = 1.0 - exp(-d * min(step, t1 - t));
+        if (through >= 0.0) a = mix(a, through, parts);
         float w = T * a;
         colour += w * mix(light, uHaze, hz);
         lit += w * plain;
