@@ -64,6 +64,7 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
     y: number;
     from: number;
     stops: [number, number, number];
+    x: number;
     pane: HTMLElement | null;
     dragging: boolean | null;
     last: { y: number; t: number };
@@ -81,6 +82,7 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
       const y = e.touches[0]!.clientY;
       touch = {
         y,
+        x: e.touches[0]!.clientX,
         from: panel.getBoundingClientRect().height,
         stops: heights(),
         pane: target.closest<HTMLElement>('[data-pane]'),
@@ -98,7 +100,12 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
       const y = e.touches[0]!.clientY;
       const dy = y - touch.y;
       if (touch.dragging === null) {
-        if (Math.abs(dy) < SLOP) return;
+        const dx = e.touches[0]!.clientX - touch.x;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < SLOP) return;
+        // a finger going more sideways than up or down is a row's that scrolls sideways (the View pane's), never the
+        // sheet's: decided on the vertical alone, a thumb's sideways swipe that drifted 6 px down at the pane's top was
+        // taken for a pull on the sheet and the row could not be moved
+        if (Math.abs(dx) > Math.abs(dy)) return void (touch = null);
         // in the list a finger scrolls the list, unless it is pulling down a list that is already at its top
         touch.dragging = !touch.pane || (dy > 0 && touch.pane.scrollTop <= 0);
         if (!touch.dragging) return void (touch = null);
