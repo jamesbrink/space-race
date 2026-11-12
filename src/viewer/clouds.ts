@@ -816,6 +816,7 @@ const OVER = /* glsl */ `
     float wd = ${(FAR_SOFT / 2).toFixed(4)} + 0.6 * fpAcross / uCumulus.x * (1.0 + 1.5 * (under ? 0.0 : cellsShare(fpAcross)));
     // seen aslant a field of heaps hides the gaps between them: each covers its own breadth and its height's shadow
     float overHere = -1.0;   // the field over its cut here, where the slices are drawn
+    float small = 0.0;       // how much of the pixel the cells too small to draw cover (cumulusCells: gHaze)
     float aslant = min(sqrt(max(1.0 - cosv * cosv, 0.0)) / cosv, 12.0);
     if (along < 1.0) {
       float lod = max(log2(fpAcross / ${(TILE / NOISE).toFixed(1)}), 0.0);
@@ -834,6 +835,7 @@ const OVER = /* glsl */ `
       vec2 toSun = sunward * span / uCumulus.x;
       float h0 = heapTop(q0, bias, soft, cells);
       overHere = gOver;
+      small = cells > 0.0 ? cells * gHaze : 0.0;
       // (how many pixels across the cell here is: one of a few pixels has no lit side and shaded side to show, and
       // drawn with them was a white pixel beside a dark one: a hard speck with a dark rim, where from orbit a small
       // cumulus is a soft pale dot)
@@ -886,9 +888,16 @@ const OVER = /* glsl */ `
     // nearly saturated, and what is there is scraps and haze under a pixel, seen as a faint veil that thickens toward
     // each heap. So a field runs from clear air through haze to bright cores, and no heap ends at a line. (Estimated.)
     if (along < 1.0 && !under) {
-      float veiled = 0.3 * cellsShare(fpAcross) * smoothstep(-0.075, 0.005, overHere) * (1.0 - along);
+      // (its edge as soft as the pixel is broad: at a fixed breadth it was a hard rim round every cell from 100 km up.
+      // 0.38, and the 0.9 of the cells too small to draw, keep a frame's mean level from 100 to 187 km within 2 %
+      // of what it was with every cell drawn hard: measured)
+      float veiled = 0.38 * cellsShare(fpAcross) * smoothstep(-0.075, 0.005 + 1.5 * wd, overHere) * (1.0 - along);
       acc += (1.0 - acc.a) * veiled * vec4(sunTop * 0.62 + uSkyLight * 0.6, 1.0);
       lit += (1.0 - acc.a) * veiled * 0.5;
+      // and the cells too small to draw, as much of the pixel as they cover: lit evenly, as a small one is
+      float grain = min(0.9 * small, 1.0) * (1.0 - along);
+      acc += (1.0 - acc.a) * grain * vec4(sunTop * 0.8 + uSkyLight * 0.6, 1.0);
+      lit += (1.0 - acc.a) * grain * 0.8;
     }
     if (along > 0.0 && even < 1.0) {
       // The field over the pixel's length. Looked along, a pixel takes in kilometres of the field one way and metres

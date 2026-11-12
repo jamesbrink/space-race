@@ -975,6 +975,7 @@ export class Globe {
             if (cells > 0.0) shapes = mix(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}, fp / ${c.size.toFixed(1)}), cells) + cellsMorph(cells);
             // (a cell's shadow by how thick it is: a puff's is faint; and none from the skirt outside it)
             float dark = smoothstep(mix(-0.02, 0.0, cells) - soft, mix(0.03, 0.06, cells) + soft, shapes);
+            if (cells > 0.0) dark += (1.0 - dark) * min(0.9 * cells * gHaze, 1.0);   // (and the cells too small to draw: cumulusCells)
             float fine = 1.0 - smoothstep(${(2 * c.size).toFixed(1)}, ${(8 * c.size).toFixed(1)}, fp);
             float gather = air_noise2((p - uCloudDrift.xz) / ${c.size.toFixed(1)} * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
             float even = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);

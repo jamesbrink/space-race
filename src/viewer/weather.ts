@@ -383,9 +383,11 @@ export const CELLS: readonly [number, number] = [45, 90];
  * cells of the field) of the cell found there.
  *
  * Whether a cell stands is by the field at its own middle, so no cell is cut by the field's edge. The field there
- * is its two coarse octaves, taken from their value and slope at `q` (one reading for all eighteen points, where
- * reading the noise at each cost a millisecond a frame), and for its two fine octaves, which are finer than the
- * cells are apart, a chance of the cell's own with their spread. The weather's bias and the streets are the pixel's:
+ * is its two coarse octaves, worked out at the middle itself from their corners round `q` (`cellsCorners`: twenty-five
+ * readings for all eighteen points; taken instead from the value and slope at `q`, the same cell stood for one
+ * pixel and not for its neighbour, and specks came and went as the eye rose), and for its two fine octaves, which
+ * are finer than the cells are apart, a chance of the cell's own with their spread. A cell comes up from nothing as
+ * the field passes its cut, and one too small for the pixel is not drawn as itself but spread (`gHaze`). The weather's bias and the streets are the pixel's:
  * across a cell 300 m broad they hardly change. The cover is the field's: a cell's own chance is spread
  * wider than the fine octaves (SCATTER), and the level moved to make up for it (SCATTER_SHIFT), so the cells cover
  * what was asked from 0.005 to 0.85 (measured in a frame from 150 km: 0.107 of a patch of sea where the noise's own
@@ -401,24 +403,38 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
   // (smooth union: where two domes meet they run together into one mass with a crease, not two balls)
   float gJoin;   // how broadly two cells run together: more as a pixel takes in more of them, so the crease between two is never finer than a pixel
   float cellsJoin(float a, float b) { float h = max(gJoin - abs(a - b), 0.0) / gJoin; return max(a, b) + h * h * 0.25 * gJoin; }
-  // noise2 (field.ts) with its slope: the value, and how it changes along x and y
-  vec3 cellsNoise(vec2 x, int seed) {
-    vec2 i = floor(x), f = x - i;
-    vec2 u = f * f * (3.0 - 2.0 * f), du = 6.0 * f * (1.0 - f);
-    ivec2 n = ivec2(i);
-    float a = ${prefix}hash2(n, seed), b = ${prefix}hash2(n + ivec2(1, 0), seed), c = ${prefix}hash2(n + ivec2(0, 1), seed), d = ${prefix}hash2(n + ivec2(1, 1), seed);
-    float k = a - b - c + d;
-    return vec3(a + (b - a) * u.x + (c - a) * u.y + k * u.x * u.y, du.x * (b - a + k * u.y), du.y * (c - a + k * u.x));
+  // The field's two coarse sizes at any place near \`q\`, exactly, for the price of reading their corners once: the
+  // noise is its corners' chances blended (field.ts), so with the corners round \`q\` kept (three by three of the
+  // broad size, four by four of the other) it can be worked out at each cell's own middle with no more reading.
+  ivec2 gN0, gN1;
+  float gH0[9], gH1[16];
+  void cellsCorners(vec2 q) {
+    gN0 = ivec2(floor(q * 0.23 + vec2(1.7, 5.3) - 0.5));
+    gN1 = ivec2(floor(q)) - 1;
+    for (int k = 0; k < 9; k++) gH0[k] = ${prefix}hash2(gN0 + ivec2(k % 3, k / 3), 94);
+    for (int k = 0; k < 16; k++) gH1[k] = ${prefix}hash2(gN1 + ivec2(k & 3, k >> 2), 91);
+  }
+  float cellsCoarse(vec2 at) {
+    vec2 x0 = at * 0.23 + vec2(1.7, 5.3) - vec2(gN0), x1 = at - vec2(gN1);
+    ivec2 i0 = clamp(ivec2(floor(x0)), ivec2(0), ivec2(1)), i1 = clamp(ivec2(floor(x1)), ivec2(0), ivec2(2));
+    vec2 f0 = clamp(x0 - vec2(i0), 0.0, 1.0), f1 = clamp(x1 - vec2(i1), 0.0, 1.0);
+    vec2 u0 = f0 * f0 * (3.0 - 2.0 * f0), u1 = f1 * f1 * (3.0 - 2.0 * f1);
+    int k0 = i0.y * 3 + i0.x, k1 = i1.y * 4 + i1.x;
+    return 0.3 * mix(mix(gH0[k0], gH0[k0 + 1], u0.x), mix(gH0[k0 + 3], gH0[k0 + 4], u0.x), u0.y)
+      + 0.33 * mix(mix(gH1[k1], gH1[k1 + 1], u1.x), mix(gH1[k1 + 4], gH1[k1 + 5], u1.x), u1.y);
   }
   float gCell;   // the breadth (radius, in cells of the field) of the cell cumulusCells last found
+  float gHaze;   // how much of the pixel the cells too small to draw cover there, as cumulusCells last found it (0 to 1 or so)
   float cumulusCells(vec2 q, float bias, float cut, float fpq) {
     const float G = 0.2, GB = 0.5;
     // (the place pushed about, so no cell is a ruled circle: a cumulus is lobed; the finer push only where it is seen)
     vec2 p = q + 0.05 * (vec2(${prefix}noise2(q * 4.3 + 4.7, 603), ${prefix}noise2(q * 4.3 + 9.2, 604)) - 0.5);
     if (fpq < 0.05) p += 0.02 * (1.0 - smoothstep(0.025, 0.05, fpq)) * (vec2(${prefix}noise2(q * 11.0 + 1.3, 605), ${prefix}noise2(q * 11.0 + 6.6, 606)) - 0.5);
     // the field's coarse part here (cloudNoise's first two octaves) over its cut, and its slope
-    vec3 c0 = cellsNoise(q * 0.23 + vec2(1.7, 5.3), 94), c1 = cellsNoise(q, 91);
-    float base = 0.3 * c0.x + 0.33 * c1.x + 0.04 + bias - cut;
+    float base, lift;
+    cellsCorners(q);
+    base = cellsCoarse(q) + 0.04 + bias - cut;
+    lift = 0.04 + bias - cut;
     // (the cells' own chance is spread wider than the field's fine octaves, so that small cells stand between the
     // clumps as well as in them; cut at the same level that would cover too much, so the level is moved by what makes
     // the cells cover what was asked: SCATTER_SHIFT, measured)
@@ -431,9 +447,10 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
         )
         .join('\n      ')}
       base += shift;
+      lift += shift;
     }
-    vec2 slope = 0.069 * c0.yz + 0.33 * c1.yz;
     float best = -0.1;
+    gHaze = 0.0;
     gJoin = 0.03 + 1.2 * fpq;
     // (the breadth of the cell here, as a mean of those that reach here weighed steeply by how high each stands: the
     // breadth of the highest alone stepped where two cells met, and what was lit by it flickered there as the eye rose)
@@ -442,8 +459,12 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
       ivec2 c = i + ivec2(dx, dy);
       vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 601), ${prefix}hash2(c, 602)) - 0.5)) * G;
-      float e = base + dot(slope, pc - q) + 0.165 + ${(0.21 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 621) - 0.5) + ${(0.12 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 622) - 0.5);
-      if (e <= 0.0) continue;
+      float e = (cellsCoarse(pc) + lift) + 0.165 + ${(0.21 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 621) - 0.5) + ${(0.12 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 622) - 0.5);
+      if (e <= -0.04) continue;
+      // (a cell comes up from nothing as the field passes its cut there, over a little of it either way: the bias is
+      // the pixel's own, so at a cut made sharp a cell stood for one pixel and not for the next, and was sliced)
+      float born = smoothstep(-0.04, 0.04, e);
+      e = max(e, 0.0);
       // (most cells small, a few broad: the cube of a chance; and broader the further the field is over its cut. The
       // 1.12 is what makes them cover what the field does: measured, see above)
       float u = ${prefix}hash2(c, 607);
@@ -451,6 +472,17 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
       vec2 d = p - pc;
       // (a cell as high as it is broad, to the power the dome has: a puff is low)
       float v = 0.16 * rr * sqrt(rr) * (1.0 - dot(d, d) / (rr * rr * G * G));
+      // A cell under a pixel and a half across is not drawn as itself: read at a pixel's middle it was there or not
+      // by where the middle fell, a white pixel that came and went as the eye moved (47 a frame from 187 km, where
+      // most cells are under a pixel). It sinks away as it gets that small, and what it covered is spread over the
+      // pixels round it instead, as much in all (gHaze): a field of them is a soft grain, and its cover is kept.
+      float seen = smoothstep(1.0, 3.0, rr * G / max(fpq, 1e-5));
+      seen *= born;
+      if (seen < 1.0) {
+        float wide = max(rr * G, min(2.0 * fpq, G));
+        gHaze += (born - seen) * 2.0 * (rr * rr * G * G) / (wide * wide) * max(1.0 - dot(d, d) / (wide * wide), 0.0);
+        if (v > -0.1) v = mix(-0.1, v, seen);   // (down to where no cell stands; what is outside it is as it was)
+      }
       float wt = max(v + 0.1, 0.0); wt *= wt; wt *= wt;
       breadth += wt * rr * G;
       weight += wt;
@@ -462,11 +494,14 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         ivec2 c = j + ivec2(dx, dy);
         vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 631), ${prefix}hash2(c, 632)) - 0.5)) * GB;
-        float e = base + dot(slope, pc - q) + 0.115 + ${(0.21 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 641) - 0.5) + ${(0.12 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 642) - 0.5);
-        if (e <= 0.0) continue;
+        float e = (cellsCoarse(pc) + lift) + 0.115 + ${(0.21 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 641) - 0.5) + ${(0.12 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 642) - 0.5);
+        if (e <= -0.04) continue;
+        float born = smoothstep(-0.04, 0.04, e);
+        e = max(e, 0.0);
         float rr = min((0.3 + 0.5 * ${prefix}hash2(c, 637)) * min(0.5 + 8.0 * e, 1.0), 1.0);
         vec2 d = p - pc;
         float v = 0.2 * rr * (1.0 - dot(d, d) / (rr * rr * GB * GB));
+        if (v > -0.1) v = mix(-0.1, v, born);
         float wt = max(v + 0.1, 0.0); wt *= wt; wt *= wt;
         breadth += wt * rr * GB;
         weight += wt;

@@ -428,9 +428,14 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   apart, 150 to 700 m across, most of them small and low, so grey and half seen through) with a few broad heaps;
   a cell under a few pixels is lit evenly. What they cover is measured against the cover asked for (the figures
   are in weather.ts: `SCATTER` spreads the cells between the clumps and `SCATTER_SHIFT` keeps their cover; `MORPH` keeps
-  the cover half way through the morph): change a cell's breadth or how many stand and measure again. Whether a cell stands is read
-  from the field's coarse octaves once a pixel, by value and slope: do not read the noise at each cell's middle
-  (nine cells, up to five times a pixel: it cost 1 to 2 ms a frame in flight).
+  the cover half way through the morph): change a cell's breadth or how many stand and measure again. Whether a cell stands is worked out at
+  the cell's own middle from the coarse octaves' corners, read once a pixel (`cellsCorners`): not from the value and
+  slope at the pixel (the same cell then stood for one pixel and not the next, and specks came and went), and not by
+  reading the noise at each middle (nine cells, up to five times a pixel: 1 to 2 ms a frame in flight). A cell comes
+  up from nothing as the field passes its cut, and one under three pixels across is spread over the pixels round it
+  (`gHaze`) instead of being drawn as a dot that is there or not by where a pixel's middle falls; the veil between
+  cells has an edge as soft as the pixel. Flips a frame on the climb, straight down: 47 to 13 from 187 km, 21 to 12
+  from 150.
 - **The field is organised by where it is.** The weather map's alpha is land (`pnpm globe:weather` bakes it):
   over land the streets are straight and strong; over the sea they are weak and bend, and clusters and arcs
   (`cumulusArcs`) are most of the pattern. All of it is in `cumulusBias`, which the bake, the far cover and the
