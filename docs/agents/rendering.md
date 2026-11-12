@@ -354,6 +354,20 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   (`atmSunAt`) all use it. From the ground the sky is still daysky.ts's and the haze the scene's fog; both
   go out, and the air comes in, with `airAbove`, so nothing steps on the way up. The Sun's light above the
   air is derived from the scene's own at 50 degrees, so sunlit ground, cloud and sky keep their true ratios.
+- **The air is drawn whatever the near plane.** The ball is a mesh round the eye, and `fitDepth` moves the near
+  plane out to whatever is nearest: looking straight down from 150 km with nothing near, the plane stood at 100 km,
+  the ball was cut away whole and the sea had no air over it (every straight-down picture before this was taken so).
+  The ball's vertices are pushed out past the near plane's corners where that is further than the ball (globe.ts);
+  it stays nearer than the sea because the near plane is kept inside nine tenths of the eye's height. A vehicle
+  further off than the ball has the whole air's light over it: a known flaw, small.
+- **The Sun's glint is Cox and Munk's.** From above the air the sea's highlight is not the material's lobe (GGX,
+  whose tail put a pale glare over the whole sea) but a Gaussian spread of wave slopes for the record's wind
+  (`globeGlint`): a bounded patch round the mirror point, at its heart a quarter as bright as a white surface in the same Sun. From
+  the ground the Cape's water keeps the look it was tuned to; the two are mixed by `uGlobeAbove`.
+- **MODIS's true colour is not what an eye sees.** Its corrected reflectance has Rayleigh's scattering taken out,
+  so its sea is navy and its land dark green; a photograph from orbit, and ours, has the air's blue over both (the
+  sea straight down sends back about 3, 7 and 16 per cent of red, green and blue, most of it the air's). Compare
+  cloud shapes and sizes with MODIS; compare colours with astronauts' photographs.
 - **Nothing costs on the ground that is not seen there.** The ball and the globe are not drawn until the eye
   can see past the site; the sheets and far cumulus are worked out only for pixels that meet their shells.
 

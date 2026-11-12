@@ -83,11 +83,16 @@ const DEEP = new THREE.Color().setRGB(0.003, 0.016, 0.045);
 /** In the cel look the sea is a drawing's blue, not the water's own near black. */
 const SEA_ABOVE = new THREE.Color().setRGB(0.012, 0.085, 0.27);
 /**
- * The sea's roughness to the Sun's glint, seen from above: waves' slopes have a mean square of 0.003 + 0.00512 U
- * for a wind of U m/s (Cox and Munk 1954), 0.039 at the record's 7 m/s, so their spread is 0.2; three's roughness
- * is the square root of that. From the ground it is 0.32, the look the Cape's water was tuned to.
+ * The sea's waves, for the Sun's glint seen from above: their slopes have a mean square of 0.003 + 0.00512 U for a
+ * wind of U m/s (Cox and Munk 1954), 0.039 at the record's 7 m/s (derived). The glint itself is `globeGlint`.
  */
-const SEA_ROUGH = Math.sqrt(Math.sqrt(0.003 + 0.00512 * 7));
+const SEA_SLOPES = 0.003 + 0.00512 * 7;
+/**
+ * The same as three's roughness, for what else reads it (the sky's reflection in the sea): the slopes' spread is
+ * 0.2, and three's roughness is the square root of that. From the ground it is 0.32, the look the Cape's water was
+ * tuned to.
+ */
+const SEA_ROUGH = Math.sqrt(Math.sqrt(SEA_SLOPES));
 const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: cape.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
@@ -540,7 +545,17 @@ export class Globe {
           varying vec3 vDir;
           void main() {
             vDir = position;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            // Never inside the near plane, which is moved out toward whatever is nearest in view (Stage.fitDepth):
+            // looking straight down from 150 km with nothing near, it stood at 100 km, the ball was cut away whole
+            // and the sea had no air over it. So the ball is pushed out to just past the near plane's corners where
+            // that is further than its own size; the near plane is kept inside nine tenths of the eye's height over
+            // what is under it, so the ball is still nearer than the sea. (The near plane and the frame's breadth,
+            // from the projection.)
+            vec4 seen = modelViewMatrix * vec4(position, 1.0);
+            float near = projectionMatrix[3][2] / (projectionMatrix[2][2] - 1.0);
+            float corner = sqrt(1.0 + 1.0 / (projectionMatrix[0][0] * projectionMatrix[0][0]) + 1.0 / (projectionMatrix[1][1] * projectionMatrix[1][1]));
+            seen.xyz *= max(1.0, 1.03 * corner * near / max(length(seen.xyz), 1.0));
+            gl_Position = projectionMatrix * seen;
           }`,
         fragmentShader: AIR,
         side: THREE.BackSide,
@@ -856,6 +871,25 @@ export class Globe {
           ${ATMOSPHERE_GLSL}
           float globeRough;
           ${COLOUR}
+          // The Sun's glint on the sea, seen from above the air: the light a sea of waves sends from the Sun to the
+          // eye, for each unit of the Sun's light falling squarely. Cox and Munk's law (1954): the waves' slopes are
+          // spread as a bell (a Gaussian) whose mean square is SEA_SLOPES, and a facet tilted to mirror the Sun into the
+          // eye sends back Fresnel's share (2 % squarely, all of it at a graze). So the glint is a bounded patch
+          // round the mirror point, 40 degrees from straight down with the Sun 50 up, and a sixth of the way across
+          // it is all but gone. (Three's own lobe for a rough surface, GGX, has a far longer tail: with the same
+          // spread it put ten times the light 50 degrees from the mirror point, a pale glare over the whole sea.)
+          // l, n, v: toward the light, the sea's normal, toward the eye. Facets hiding one another: Cook and Torrance's term.
+          float globeGlint(vec3 l, vec3 n, vec3 v) {
+            vec3 h = normalize(l + v);
+            float nh = dot(n, h), nl = dot(n, l), nv = max(dot(n, v), 1e-3), vh = clamp(dot(v, h), 1e-3, 1.0);
+            if (nl <= 0.0 || nh <= 1e-3) return 0.0;
+            float nh2 = nh * nh;
+            float spread = exp(-(1.0 - nh2) / (nh2 * ${SEA_SLOPES.toFixed(5)})) / (${(Math.PI * SEA_SLOPES).toFixed(5)} * nh2 * nh2);
+            float away = 1.0 - vh;
+            float fresnel = 0.02 + 0.98 * away * away * away * away * away;
+            float seen = min(1.0, 2.0 * nh * min(nv, nl) / vh);
+            return fresnel * spread * seen / (4.0 * nv);
+          }
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
           float globeHeight(vec3 p) {
             vec3 q = uGlobeOrigin + uGlobeAxes * p;
@@ -952,19 +986,28 @@ export class Globe {
             #endif`
                 : ''
             }
-            if (away > 0.0) {
+            // (and from above the air the sea's glint is Cox and Munk's, not the material's own lobe: globeGlint)
+            float glint = 0.0;
+            #ifndef TOON
+              glint = globeSea * uGlobeAbove;
+            #endif
+            if (away > 0.0 || glint > 0.0) {
               ReflectedLight scene = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
               IncidentLight light;
               getDirectionalLightInfo(directionalLights[0], light);
               RE_Direct(light, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, scene);
+              vec3 sceneGlint = light.color * globeGlint(light.direction, geometryNormal, geometryViewDir);
               ReflectedLight sun = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
               float mu = dot(normalize(vGlobeNormal), uGlobeSun);
               light.direction = normalize((viewMatrix * vec4(uGlobeSun, 0.0)).xyz);
               light.color = uAtmSunLight * atmSunAt(0.0, mu);
               light.visible = true;
               RE_Direct(light, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, sun);
+              vec3 sunGlint = light.color * globeGlint(light.direction, geometryNormal, geometryViewDir);
               reflectedLight.directDiffuse += away * (sun.directDiffuse * sunShade - scene.directDiffuse * sceneShade);
               reflectedLight.directSpecular += away * (sun.directSpecular * sunShade - scene.directSpecular * sceneShade);
+              // (what the two lights' own lobes came to, taken out, and the glint put in: by how much of this is sea, and how far up the eye is)
+              reflectedLight.directSpecular += glint * (mix(sceneGlint * sceneShade, sunGlint * sunShade, away) - mix(scene.directSpecular * sceneShade, sun.directSpecular * sunShade, away));
             }
           }
           #endif`,
