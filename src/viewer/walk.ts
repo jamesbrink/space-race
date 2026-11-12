@@ -929,8 +929,12 @@ export function boomOutside(was: boolean, reach: number): boolean {
 }
 /** How long the camera takes to pull back over the shoulder and to come in again, seconds. */
 const VIEW_SECONDS = 0.3;
-/** How fast the figure turns to face the way it is going, radians a second. */
-const FACE = 11;
+/**
+ * How fast the figure turns to face the way it is going, radians a second: from standing (a quarter turn in 0.4 s,
+ * which its feet can step round) and at a walk or faster. On a ladder it is the faster. Estimated.
+ */
+const FACE_STILL = 4;
+const FACE = 7;
 /** How long a finger must rest on the view, without sliding, to mean "act on this": milliseconds, and pixels of slack. */
 const HOLD_MS = 450;
 const HOLD_SLACK = 10;
@@ -1527,7 +1531,8 @@ export class Walker {
       const to = Math.atan2(sin * forward - cos * right, cos * forward + sin * right);
       const off = Math.atan2(Math.sin(to - this.heading), Math.cos(to - this.heading));
       if (off) {
-        this.heading += Math.abs(off) <= FACE * dt ? off : Math.sign(off) * FACE * dt;
+        const rate = (FACE_STILL + (FACE - FACE_STILL) * Math.min(1, this.pace / 1.4)) * dt;
+        this.heading += Math.abs(off) <= rate ? off : Math.sign(off) * rate;
         this.moved = true;
       }
     }

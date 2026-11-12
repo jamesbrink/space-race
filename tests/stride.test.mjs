@@ -246,3 +246,85 @@ test("the half-turn at each hip is half the thigh's turn from rest, by the short
     assert.ok(most > 70 * DEG, `sitting, the thighs were turned ${most / DEG} degrees`);
   }
 });
+
+test('a figure that turns where it stands leaves its feet where they are and steps them round; one that sets off keeps the foot it stands on where it stood', () => {
+  // (heel and toe hang under the stick figure's ankles; the figure faces +Z, and a turn to its left is about +Y)
+  const run = (seconds, drive, seen) => {
+    const f = figure();
+    const gait = new Gait();
+    gait.breathing = false;
+    gait.apply(f.root);
+    const dt = 1 / 60;
+    let heading = 0;
+    let speed = 0;
+    let steps = 0;
+    for (let i = 0; i < seconds * 60; i++) {
+      const { turn, want } = drive(i * dt, heading);
+      speed += (want - speed) * (1 - Math.exp(-dt / 0.09));
+      heading += turn;
+      f.root.position.x += Math.sin(heading) * speed * dt;
+      f.root.position.z += Math.cos(heading) * speed * dt;
+      gait.advance(speed * dt, speed, false, dt, false, 0, turn);
+      steps += gait.footfalls.length;
+      f.root.rotation.y = heading;
+      gait.apply(f.root);
+      f.root.updateMatrixWorld(true);
+      seen(i * dt, f, heading);
+    }
+    return steps;
+  };
+  // A quarter turn on the spot in 0.4 s, as the walker turns a standing figure. Until a foot is lifted its spot has not
+  // moved, and until it has been turned as far as it goes on its leg (35 degrees) nor have its toes: past that it
+  // pivots where it is. Both are stepped round, and he ends standing as he was built, facing the new way.
+  const start = {};
+  let turnedTo = 0;
+  const steps = run(
+    3,
+    (t, heading) => ({ turn: t >= 0.5 && heading < Math.PI / 2 ? Math.min(4 / 60, Math.PI / 2 - heading) : 0, want: 0 }),
+    (t, f, heading) => {
+      turnedTo = heading;
+      for (const [s, x] of [
+        ['L', 1],
+        ['R', -1],
+      ]) {
+        const [heel, toe, sole] = [f.at(`heel${s}`), f.at(`toe${s}`), f.at(`sole${s}`)];
+        start[s] ??= { toe, sole, lifted: false };
+        if (heel.y > 0.003 || toe.y > 0.003) start[s].lifted = true;
+        if (!start[s].lifted) {
+          assert.ok(
+            sole.distanceTo(start[s].sole) < 0.003,
+            `${s} foot at ${t.toFixed(2)} s: its spot has moved ${sole.distanceTo(start[s].sole)} m`,
+          );
+          if (heading < 30 * DEG)
+            assert.ok(toe.distanceTo(start[s].toe) < 0.003, `${s} toes at ${t.toFixed(2)} s, turned ${heading / DEG}`);
+        }
+        if (t < 2.9) continue;
+        const home = new THREE.Vector3(0.135 * x, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), heading);
+        assert.ok(sole.distanceTo(home) < 0.021, `${s} foot is home: ${sole.distanceTo(home)} m off`);
+      }
+    },
+  );
+  assert.ok(
+    Math.abs(turnedTo - Math.PI / 2) < 1e-6 && start.L.lifted && start.R.lifted && steps >= 2,
+    `both feet were stepped round: ${steps} steps`,
+  );
+  // Setting off straight ahead from standing: the feet stand 13.5 cm either side and a stride's land 6.5 cm either side.
+  // The right foot, which he stands on while the left swings out, stays where it stood until it leaves.
+  let stood = null;
+  let left = false;
+  run(
+    1.5,
+    (t) => ({ turn: 0, want: t >= 0.5 ? 1.4 : 0 }),
+    (t, f) => {
+      const [heel, toe] = [f.at('heelR'), f.at('toeR')];
+      stood ??= { heel, toe };
+      if (heel.y > 0.006 || Math.abs(heel.z - stood.heel.z) > 0.01) left = true; // (leaving: its heel comes up and it goes)
+      if (!left)
+        assert.ok(
+          Math.abs(heel.x - stood.heel.x) < 0.002 && Math.abs(toe.x - stood.toe.x) < 0.002,
+          `at ${t.toFixed(2)} s it has gone ${heel.x - stood.heel.x} m sideways`,
+        );
+    },
+  );
+  assert.ok(left, 'and then it left');
+});

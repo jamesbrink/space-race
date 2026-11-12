@@ -81,7 +81,14 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   run. The walk bar's Motion setting (full, reduced, off; remembered; off by default under
   prefers-reduced-motion) scales all of it and never touches where the mouse points. A standing
   figure breathes in steps of a twelfth of a second, the rate a still view is redrawn at anyway.
-  Seen from outside, a figure that turns where it stands steps round (`advance`'s `turn`).
+  Seen from outside, a figure that turns leaves its planted feet where they are: each stays on its
+  spot, pointing the way it pointed, while the figure turns over it (`Gait.tread`: `veer`, and
+  `stood`'s `z` and `yaw`; the leg is turned at the hip, up to 35 degrees, past which the foot
+  pivots on its spot), and standing, the feet are then stepped round one at a time (`close`). It
+  turns to the way it is sent at 4 radians a second from standing and 7 at a walk (`FACE`), which
+  feet can follow. Setting off, the foot stood on stays where it stood while the stride's line
+  comes in under the figure (`tests/stride.test.mjs`). Not yet right: the first foot to swing as
+  a figure sets off skims the ground for its first 15 cm.
   Through the eyes the helmet's visor rim can frame the view (Visor on the walk bar, remembered).
 - **The walk is heard as events.** The gait says which foot landed (phase 0.25 left, 0.75 right,
   by distance gone), a landing's height and the breath's phase; the walker hands them to
