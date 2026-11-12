@@ -54,6 +54,10 @@ const KEPT: [number, number, number][] = [
   [50, -262, 24], // the shed by the track
   [-92, -148, 38], // the cable racks
   [-148, -140, 14], // the scaffold stair
+  // Complex 26 (cape1961.ts; sites/cape.md), up the track in the same frame: each pad's apron with what stands round it, and the blockhouse
+  [-6, -1575, 152],
+  [-6, -2093, 152],
+  [340, -1834, 78],
 ];
 /** Strips kept clear the same way: the two cable trenches and the turnout's curve, as [x0, y0, x1, y1, half-width] in feet. */
 const STRIPS: [number, number, number, number, number][] = [
@@ -738,7 +742,7 @@ export function buildCape(
   const built = buildCape1961((x, z) => groundY + land.heightAt(x, z)); // the other complexes and the lighthouse, where they stood, each on its own ground
   // laid out on the compass, then turned as one to lie round the pad model
   const site = new THREE.Group();
-  site.add(flora.group, ...built);
+  site.add(flora.group, ...built.scenery);
   site.rotation.y = COMPASS;
   site.updateMatrixWorld(true);
   const eye = new THREE.Vector3();
@@ -762,7 +766,8 @@ export function buildCape(
     attend: (at) => {
       local(at);
       land.attend(eye);
-      return flora.attend(eye);
+      const grew = flora.attend(eye);
+      return built.changed() || grew; // (the neighbouring complexes, arrived since the last frame)
     },
     view: (camera) => land.view(camera),
     plantsClear: (at, within) => flora.clear(local(at), within),

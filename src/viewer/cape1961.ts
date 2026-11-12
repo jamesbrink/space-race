@@ -1,6 +1,9 @@
 import * as THREE from 'three';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
+import { grain } from './surface';
 
 /**
  * Cape Canaveral beyond Complex 5/6 on 5 May 1961: the other launch complexes that stood that
@@ -10,10 +13,15 @@ import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
  * the pad or its ruin, checked against Wikipedia's), turned into metres east and north of pad 5.
  * What stood there is documented in kind (the Cape Canaveral Space Force Museum's page for each
  * complex, Moonport for Complex 34, the GCAT launch log for what was in use), and in a few sizes,
- * which are given below where they are. The shapes are not: each is a stand-in for its type,
- * drawn so that an Atlas pad, a Titan pad, a Thor gantry and a Polaris stand can be told apart
- * on the horizon, and no more. A complex whose structure could not be verified for that day is
- * drawn as its pad alone, or left out and listed in missions/usa/mercury/sites/lc-5.md.
+ * which are given below where they are.
+ *
+ * The complexes a walker can reach (26, 30, 25, 29 and 17, all within 1.1 km) are not drawn here: each is
+ * modelled in Blender from its own record, as the pad is (missions/usa/mercury/sites/cape/, one module a complex;
+ * sites/cape.md says what is documented and what is not), built into one file and placed here (`NEIGHBOURS`).
+ * The rest, 1.2 to 9 km off, are shapes made here, each a stand-in for its type, drawn so that an Atlas pad, a
+ * Titan pad and a Minuteman tower can be told apart on the horizon, and no more. A complex whose structure
+ * could not be verified for that day is drawn as its pad alone, or left out and listed in
+ * missions/usa/mercury/sites/lc-5.md.
  *
  * Everything is on the compass, metres from pad 5: +X east, -Z north. See docs/sources.md, "The Cape".
  */
@@ -301,38 +309,6 @@ const SUNK = 5;
  * origin on the pad's centre, on the ground.
  */
 const KINDS = {
-  /** Redstone and Jupiter, Complex 26: the Noble A-frame gantry, twin of pad 5's. 111 ft 9 in to its top rail (documented, the museum). */
-  redstone(k: Kit) {
-    slab(k, 60, 60);
-    const h = 111.75 * FT;
-    for (const s of [-1, 1]) {
-      k.bar('red', [s * 3.2, 3, 4], [s * 0.9, h - 3, 4], 0.9);
-      k.box('red', 2.2, 2.6, 15, s * 3.2, 0.45, 2);
-    }
-    for (let y = 9; y < h - 6; y += 7) k.bar('red', [-3.2 + (2.3 * y) / h, y, 4], [3.2 - (2.3 * y) / h, y, 4], 0.4);
-    k.box('red', 1.7, 1.7, 13, 0, h - 3, 0.5); // the hammerhead
-    k.box('red', 8.4, 2.6, 6.5, 0, 16, -0.5).box('white', 8.2, 3, 6.5, 0, 19.5, -0.5).box('red', 8.4, 2.6, 6.5, 0, 23.2, -0.5); // its platforms, closed
-  },
-  /** Thor-Delta and Thor-Ablestar, Complex 17: a tall rolling gantry beside a launch stand. Height not found: 35 m, for a 28 m vehicle (estimated). */
-  thor(k: Kit) {
-    slab(k, 70, 50);
-    k.lattice('red', 9, 9, 33, 0, 0.45, -12, 5.5, 0.6);
-    k.box('white', 9.4, 9, 9.4, 0, 14, -12).box('red', 10, 2.2, 15, 0, 33.4, -9.5); // enclosed work levels, and the bridge crane's overhang
-    k.box('concrete', 7, 3, 7, 0, 0.45, 0).lattice('steel', 1.6, 1.6, 22, 5.5, 0.45, 0, 4.4, 0.3); // the stand and its umbilical mast
-  },
-  /** Polaris, Complexes 25 and 29: an "access stand" (the museum's words). Height not found: 14 m, for a 9.4 m missile (estimated). */
-  polaris(k: Kit) {
-    slab(k, 36, 36);
-    k.lattice('steel', 6.5, 6.5, 13, 0, 0.45, -5, 4.3, 0.4);
-    for (const y of [4.8, 9.1, 13.4]) k.box('steel', 8.5, 0.3, 8.5, 0, y, -5);
-    k.drum('dark', 1.4, 1.4, 2.2, 0, 0.45, 2.5); // the launch tube's collar
-  },
-  /** Pershing, Complex 30: "two launch pads with service towers" (the museum); a mobile gantry. Height not found: 13 m (estimated). */
-  pershing(k: Kit) {
-    slab(k, 30, 30);
-    k.lattice('steel', 4.5, 4.5, 12.5, 0, 0.45, -4, 4.2, 0.35);
-    k.box('white', 5, 3, 5, 0, 8.6, -4);
-  },
   /** Minuteman flat pads, Complexes 31 and 32: a 65 ft roll-back service tower on rails and a 35 ft umbilical tower (both documented, the museum). */
   minuteman(k: Kit) {
     slab(k, 44, 44);
@@ -436,7 +412,12 @@ interface Complex {
   lon: number;
   /** Which way the pad is turned, degrees clockwise from north. Not published for any of them: Complex 26 lies on pad 5's rail line; the rest are set square to their stretch of shore (estimated). */
   heading: number;
-  draw: (k: Kit) => void;
+  /** A far one: the stand-in drawn here. */
+  draw?: (k: Kit) => void;
+  /** A near one: the name of its node in the neighbours' model, built in its own frame (its +Y along `heading`). */
+  node?: string;
+  /** How much ground is kept clear and level round it, metres: a pad's own 45 m unless said. */
+  clear?: number;
 }
 
 /**
@@ -446,15 +427,19 @@ interface Complex {
  * stood by May is not established), 37, 43 and the Polaris pads 25C/D (not begun).
  */
 const COMPLEXES: Complex[] = [
-  { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, draw: KINDS.redstone }, // Juno II flew from here on 27 April and 24 May: the one gantry is put on this pad
-  { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, draw: KINDS.bare },
-  { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 115, draw: KINDS.pershing },
-  { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 115, draw: KINDS.pershing },
-  { name: 'LC-25A', lat: 28.432267, lon: -80.575857, heading: 115, draw: KINDS.polaris },
-  { name: 'LC-25B', lat: 28.431423, lon: -80.576437, heading: 115, draw: KINDS.polaris },
-  { name: 'LC-17B', lat: 28.44589, lon: -80.565898, heading: 115, draw: KINDS.thor },
-  { name: 'LC-29A', lat: 28.429859, lon: -80.577142, heading: 115, draw: KINDS.polaris },
-  { name: 'LC-17A', lat: 28.447223, lon: -80.565274, heading: 115, draw: KINDS.thor },
+  // Complex 26 is one model in a frame of its own: pad 26B's centre, its +Y along the track to 26A (025 degrees: the two pads'
+  // coordinates). Its other pad and its blockhouse (OpenStreetMap way 195709357) are listed for the ground kept clear round them.
+  { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72 },
+  { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, clear: 72 },
+  { name: 'LC-26 blockhouse', lat: 28.444422, lon: -80.571863, heading: 25, clear: 34 },
+  // not yet built from their records (sites/cape.md): their places only, so that the ground is as it was
+  { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 115 },
+  { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 115 },
+  { name: 'LC-25A', lat: 28.432267, lon: -80.575857, heading: 115 },
+  { name: 'LC-25B', lat: 28.431423, lon: -80.576437, heading: 115 },
+  { name: 'LC-17B', lat: 28.44589, lon: -80.565898, heading: 115 },
+  { name: 'LC-29A', lat: 28.429859, lon: -80.577142, heading: 115 },
+  { name: 'LC-17A', lat: 28.447223, lon: -80.565274, heading: 115 },
   { name: 'LC-18B', lat: 28.449016, lon: -80.561774, heading: 115, draw: KINDS.bare },
   { name: 'LC-18A', lat: 28.450785, lon: -80.562232, heading: 115, draw: KINDS.bare },
   { name: 'LC-9', lat: 28.452227, lon: -80.559383, heading: 115, draw: KINDS.navaho },
@@ -477,21 +462,127 @@ const LIGHTHOUSE = { lat: 28.46036, lon: -80.543454 };
 
 /** Where each complex and the lighthouse stand, for keeping the ground round the near ones clear: [x, z, radius]. */
 export const CLEARINGS: [number, number, number][] = [
-  ...COMPLEXES.map((c): [number, number, number] => [...fromPad5(c.lat, c.lon), c.draw === KINDS.saturn ? 110 : 45]),
+  ...COMPLEXES.map((c): [number, number, number] => [...fromPad5(c.lat, c.lon), c.clear ?? (c.draw === KINDS.saturn ? 110 : 45)]),
   [...fromPad5(LIGHTHOUSE.lat, LIGHTHOUSE.lon), 30],
 ];
 
 /**
- * The complexes and the lighthouse, as a handful of meshes on the compass. `groundAt` is the terrain's height at a
- * place (compass metres from pad 5). Each stands on the highest ground within its pad's reach, its concrete sunk
- * well below that: the land is not level, and set at one height for all of them a pad half a kilometre off stood
- * half a metre in the air on its own underside.
+ * The complexes a walker can reach, as built by missions/usa/mercury/sites/cape/model/1961-05.py: one node a complex,
+ * each in its own frame. It is small (sites/cape.md gives its size), so it is fetched with the scene.
  */
-export function buildCape1961(groundAt: (x: number, z: number) => number): THREE.Object3D[] {
+export const NEIGHBOURS = 'models/usa/mercury/sites/cape/1961-05.glb';
+/**
+ * The materials that model may wear, by the names its script gives them (the pad's own: sites/lc5/site.py). Each is
+ * one mesh here from the start, empty until the model arrives, so that the look in force (look.ts) and the walker
+ * (walk.ts: what is solid) have them before there is anything to see; an unknown name is reported and not drawn.
+ */
+const WORN_BY_NEIGHBOURS = [
+  'concrete',
+  'concrete-painted',
+  'concrete-block-painted',
+  'paint-structure-red',
+  'paint-structure-white',
+  'paint-structure-grey',
+  'paint-launcher-black',
+  'galvanised-steel',
+  'galvanised-deck',
+  'steel-rail',
+  'steel-blast-door',
+  'roof-tar',
+  'shell-gravel',
+  'window-void',
+];
+/** How far above the terrain a model's zero stands: the pad's surface over the ground round it (backdrops.ts: GROUND_Y; sites/lc5/site.py: GROUND). */
+const PAD_OVER_GROUND = 0.12;
+
+/** The near complexes: a mesh for each material, filled when the model has arrived. `arrived()` is true once, when it has. */
+function neighbours(groundAt: (x: number, z: number) => number): { meshes: THREE.Mesh[]; arrived: () => boolean } {
+  const meshes = new Map<string, THREE.Mesh>();
+  for (const name of WORN_BY_NEIGHBOURS) {
+    const material = new THREE.MeshStandardMaterial({ name, color: 0x808080, roughness: 0.8 });
+    material.shadowSide = THREE.DoubleSide; // as every model's surfaces cast (stage.ts: dress)
+    grain(material);
+    // nothing yet: one point underground, so that it is a mesh with a place to whoever lists the scene's meshes
+    const nothing = new THREE.BufferGeometry().setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute([0, -1e3, 0, 0, -1e3, 0, 0, -1e3, 0], 3),
+    );
+    const mesh = new THREE.Mesh(nothing, material);
+    mesh.name = `Neighbours_${name}`;
+    mesh.castShadow = mesh.receiveShadow = true;
+    meshes.set(name, mesh);
+  }
+  let news = false;
+  // (no page: a test builds the Cape without its neighbours)
+  if (typeof document !== 'undefined') {
+    const loader = new GLTFLoader().setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
+    loader
+      .loadAsync(import.meta.env.BASE_URL + NEIGHBOURS)
+      .then((gltf) => {
+        const lists = new Map<string, THREE.BufferGeometry[]>();
+        for (const c of COMPLEXES) {
+          const node = c.node && gltf.scene.getObjectByName(c.node);
+          if (!node) continue;
+          const [x, z] = fromPad5(c.lat, c.lon);
+          node.rotation.y = -THREE.MathUtils.degToRad(c.heading);
+          node.position.set(x, groundAt(x, z) + PAD_OVER_GROUND, z);
+          node.updateWorldMatrix(false, true);
+          node.traverse((o) => {
+            const part = o as THREE.Mesh;
+            if (!part.isMesh) return;
+            const from = part.material as THREE.MeshStandardMaterial;
+            const to = meshes.get(from.name);
+            if (!to) {
+              console.warn(`cape1961.ts: the neighbours' model wears "${from.name}", which is not in WORN_BY_NEIGHBOURS: not drawn`);
+              return;
+            }
+            // the material is the model's: its colour and finish are taken from it, here and on the twin a look may have made
+            const real = (to.userData.real ?? to.material) as THREE.MeshStandardMaterial;
+            real.color.copy(from.color);
+            real.roughness = from.roughness;
+            real.metalness = from.metalness;
+            if (to.material !== real) (to.material as THREE.MeshToonMaterial).color.copy(from.color);
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', part.geometry.getAttribute('position').clone());
+            g.setAttribute('normal', part.geometry.getAttribute('normal').clone());
+            g.setIndex(part.geometry.getIndex()!.clone());
+            g.applyMatrix4(part.matrixWorld);
+            lists.set(from.name, [...(lists.get(from.name) ?? []), g]);
+          });
+        }
+        for (const [name, list] of lists) {
+          const mesh = meshes.get(name)!;
+          mesh.geometry.dispose();
+          mesh.geometry = mergeGeometries(list);
+          mesh.geometry.computeBoundingBox();
+          mesh.geometry.computeBoundingSphere();
+        }
+        news = true;
+      })
+      .catch((e) => console.warn('the neighbouring complexes did not arrive, and are done without:', e));
+  }
+  return {
+    meshes: [...meshes.values()],
+    arrived: () => {
+      const was = news;
+      news = false;
+      return was;
+    },
+  };
+}
+
+/**
+ * The complexes and the lighthouse, as a handful of meshes on the compass. `groundAt` is the terrain's height at a
+ * place (compass metres from pad 5). Each far one stands on the highest ground within its pad's reach, its concrete
+ * sunk well below that; a near one stands as the pad does, its zero 12 cm over the ground, which is level round it
+ * (cape.ts: the clearings). `changed()` is true once when something of it has arrived late.
+ */
+export function buildCape1961(groundAt: (x: number, z: number) => number): { scenery: THREE.Object3D[]; changed: () => boolean } {
   const k = new Kit();
   const stands = (x: number, z: number, reach: number) =>
     Math.max(...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => groundAt(x + ((i % 3) - 1) * reach, z + (Math.floor(i / 3) - 1) * reach)));
   for (const c of COMPLEXES) {
+    if (!c.draw) continue;
     const [x, z] = fromPad5(c.lat, c.lon);
     c.draw(k.at(x, stands(x, z, 30), z, c.heading));
   }
@@ -508,5 +599,6 @@ export function buildCape1961(groundAt: (x: number, z: number) => number): THREE
     .drum('dark', 1.6, 1.6, 3.2, 0, tower + 0.4, 0, 12)
     .drum('black', 1.9, 0.2, 2.2, 0, tower + 3.6, 0, 12);
   k.box('red', 4, 3, 6, 9, 0, 0).box('dark', 4.4, 0.5, 6.4, 9, 3, 0); // the oil house
-  return k.meshes();
+  const near = neighbours(groundAt);
+  return { scenery: [...k.meshes(), ...near.meshes], changed: near.arrived };
 }

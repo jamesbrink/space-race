@@ -32,6 +32,7 @@ pnpm typecheck        # tsc --noEmit, strict
 pnpm build            # typecheck, then a production bundle in dist/
 pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their Blender scripts
 pnpm model:lc-5       # rebuild the place round the pad (the site's own model)
+pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)
 pnpm models           # rebuild every flight's GLBs
 pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region
 pnpm preview          # serve the production bundle
