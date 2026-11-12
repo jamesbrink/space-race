@@ -42,16 +42,17 @@ The legend at the bottom left of the page lists every key and gesture.
 | Flight | Nation | Date | Record | Models |
 | --- | --- | --- | --- | --- |
 | Mercury-Redstone 3, *Freedom 7* | USA | 5 May 1961 | [flight](missions/usa/mercury/flights/mr-3-freedom-7/README.md) · [spacecraft](missions/usa/mercury/flights/mr-3-freedom-7/spacecraft.md) · [launch vehicle](missions/usa/mercury/vehicles/redstone-mrlv.md) · [pad](missions/usa/mercury/sites/lc-5.md) · [suit](missions/usa/mercury/crew/mark-iv-suit.md) | [capsule](missions/usa/mercury/flights/mr-3-freedom-7/model/vehicle.py) · [booster](missions/usa/mercury/vehicles/redstone_mrlv.py) · [pad](missions/usa/mercury/sites/lc5/) · [suit](missions/usa/mercury/crew/mark_iv_suit.py) |
+| Vostok 1 (spacecraft only, so far) | USSR | 12 April 1961 | [flight](missions/ussr/vostok/flights/vostok-1/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-1/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle: not built](missions/ussr/vostok/vehicles/vostok-8k72k.md) · [site: not built](missions/ussr/vostok/sites/site-1.md) | [flight's fit](missions/ussr/vostok/flights/vostok-1/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) |
 
 ## Timeline
 
-What there is to build, in the order it flew. One flight is built; the rest is the plan.
+What there is to build, in the order it flew. One flight is built whole and one has its spacecraft; the rest is the plan.
 
 The first ten crewed flights:
 
 | # | Date | Flight | Nation | Crew | What it was | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 12 Apr 1961 | Vostok 1 | USSR | Yuri Gagarin | First person in space; one orbit | planned |
+| 1 | 12 Apr 1961 | Vostok 1 | USSR | Yuri Gagarin | First person in space; one orbit | **spacecraft built** ([record](missions/ussr/vostok/flights/vostok-1/README.md)); launch vehicle, site and trajectory to come |
 | 2 | 5 May 1961 | Mercury-Redstone 3, *Freedom 7* | USA | Alan Shepard | Suborbital; first American in space | **built** |
 | 3 | 21 Jul 1961 | Mercury-Redstone 4, *Liberty Bell 7* | USA | Gus Grissom | Suborbital; same pad as Freedom 7 | planned (next) |
 | 4 | 6 Aug 1961 | Vostok 2 | USSR | Gherman Titov | A full day in orbit | planned |
@@ -66,7 +67,7 @@ And the programmes after them:
 
 | Programme | Nation | Crewed flights | What it adds | Status |
 | --- | --- | --- | --- | --- |
-| Vostok | USSR | 1961 to 1963 | The first spacecraft; Baikonur | planned |
+| Vostok | USSR | 1961 to 1963 | The first spacecraft; Baikonur | one spacecraft built |
 | Mercury | USA | 1961 to 1963 | Redstone and Atlas; Cape Canaveral | one flight built |
 | Voskhod | USSR | 1964 to 1965 | Three aboard; the first spacewalk | planned |
 | Gemini | USA | 1965 to 1966 | Two aboard, Titan II, rendezvous and docking | planned |
