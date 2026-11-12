@@ -406,6 +406,13 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   water (land.ts) takes the same glint by the same height through `Beyond` (`beyondGlint`, `beyondGlinting`), and its
   waves and polish give way to the globe's sea at that rate, so the highlight is one patch across the edge of the
   site's ground at every height: change the glint in `GLINT` (globe.ts) and both follow.
+- **One coast from every height.** The globe's region map (tools/globe-region.mjs, with the works built since the
+  site's day undone: `region.later`) is the coast seen from above; the site's own ground has its own, finer, from the
+  ground. Where the ground is handed over to the globe (by height, globe.ts `LIFT`, 3 to 40 km, which `uGlobeLift`
+  follows; and across the last of its square) the shore is one line moved from the one to the other: the land gives
+  its own distance to its shore (`LandSpec.shore`) and the globe colours with the two mixed (`beyondShore`,
+  `globeShoreOther`), within 300 m. Never two shores seen through each other: a site's water must be given as that
+  distance, and what the site draws and the globe has must be the same things (the port's harbour is in both).
 - **MODIS's true colour is not what an eye sees.** Its corrected reflectance has Rayleigh's scattering taken out,
   so its sea is navy and its land dark green; a photograph from orbit, and ours, has the air's blue over both (the
   sea straight down sends back about 3, 7 and 16 per cent of red, green and blue, most of it the air's). Compare

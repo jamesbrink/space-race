@@ -77,6 +77,11 @@ export interface LandSpec {
    * ground once it is painted (roads, water). Its uniforms are `uniforms`.
    */
   paint: string;
+  /**
+   * GLSL `float shoreMetres(vec2 p)`: how far p is from the nearest shore of any open water the paint draws, metres,
+   * positive on land. Given, the shore is one line where the ground hands over to what lies beyond (`Beyond`).
+   */
+  shore?: string;
   uniforms?: Record<string, THREE.IUniform>;
   palette: Palette;
 }
@@ -87,12 +92,21 @@ export interface LandSpec {
  * one surface. `vertex` is GLSL defining `float beyondHeight(vec3 p)`, the height in the scene's
  * frame of that surface under a point p of the scene; `fragment` defines `vec3 beyondAlbedo(vec3 p,
  * out float rough, out float sea)`, its colour and roughness there and how much of it is open water.
+ * And its shore: `void beyondShore(float own, float handed)`, called before `beyondAlbedo`, tells it
+ * the land's own distance to its shore there (metres, land positive: `LandSpec.shore`) and how far
+ * the hand-over has gone; what it then colours has the one shore moved onto the other by that much.
  * And its water's highlight, so that the Sun's glint is one patch across the two: `float
  * beyondGlinting(float sea)`, how much of a light's own lobe that surface replaces on water (none
  * from the ground), and `float beyondGlint(vec3 l, vec3 n, vec3 v)`, what it puts there for each
  * unit of the light (toward the light, the normal, toward the eye).
  */
 export interface Beyond {
+  /**
+   * Heights of the eye over the ground, metres, between which the whole of the land takes that surface's colours, all
+   * but its made ground: from high up its own paint would show as a square of another tone, and the detail it
+   * carries is under a pixel.
+   */
+  lift: [number, number];
   vertex: string;
   fragment: string;
   uniforms: Record<string, THREE.IUniform>;
@@ -111,12 +125,6 @@ const RANGES = Array.from({ length: LEVELS }, (_, k) => RANGE0 * 2 ** k);
 const MORPH = 0.72;
 /** The canopy rises from nothing to its full height between these distances from the eye, metres. */
 const SHELL: [number, number] = [18, 55];
-/**
- * Heights of the eye over the ground, metres, between which the whole of the land takes the colours
- * of what lies beyond it (`Beyond`), all but its made ground: from high up its own paint would
- * show as a square of another tone set in the globe, and the detail it carries is under a pixel.
- */
-const LIFT: [number, number] = [3000, 20000];
 /** The lowest and highest the land's mesh ever is, metres from its base level, with room to spare: the box a patch is culled by. */
 const DEEPEST = -120;
 const TALLEST = 30;
@@ -559,7 +567,7 @@ export class Land {
             vHanded = smoothstep(uBeyond.x, uBeyond.y, max(abs(at.x), abs(at.y)));
             landPoint.y = mix(landPoint.y, beyondHeight(vBeyond) - vBeyond.y, vHanded);
             // from high up the ground is lit as what lies beyond is: flat (its colours follow, in the fragment)
-            float lifted = smoothstep(${LIFT[0].toFixed(1)}, ${LIFT[1].toFixed(1)}, uEye.y);
+            float lifted = smoothstep(${beyond?.lift[0].toFixed(1)}, ${beyond?.lift[1].toFixed(1)}, uEye.y);
             objectNormal = normalize(mix(objectNormal, vec3(0.0, 1.0, 0.0), max(vHanded, lifted)));
           }
           #endif
@@ -594,6 +602,7 @@ export class Land {
           float landGlint;   // how much of the Sun's own lobe gives way to what lies beyond's glint (Beyond)
           vec3 landSun;      // the Sun's light here, its shadows taken
           ${spec.paint}
+          ${spec.shore ? `#define LAND_SHORE\n${spec.shore}` : ''}
           // Bare sand, grass and what falls under shrubs, from the maps, with the grain each has close to.
           Ground ground(vec2 p, vec4 A, vec4 B) {
             float woody = A.r, herb = A.g, worked = B.r, wet = B.g, loose = B.b;
@@ -714,19 +723,30 @@ export class Land {
           paint(landAt, coverA, coverB, g);
           #ifdef LAND_BEYOND
           // across the last stretch, and everywhere from high up but where the ground is made (worked: roads, aprons, clearings)
-          float handed = max(vHanded, smoothstep(${LIFT[0].toFixed(1)}, ${LIFT[1].toFixed(1)}, uEye.y) * (1.0 - smoothstep(0.1, 0.35, coverB.r)));
+          float handed = max(vHanded, smoothstep(${beyond?.lift[0].toFixed(1)}, ${beyond?.lift[1].toFixed(1)}, uEye.y) * (1.0 - smoothstep(0.1, 0.35, coverB.r)));
           // The water's highlight is what lies beyond's, by the eye's height as it is there, and its own waves and
           // polish give way to that surface's at the same rate: so the Sun's glint is one patch across the two, at
           // any height. (From the ground nothing is handed and the water is its own.)
           float open = g.water, glinting = beyondGlinting(open);
           if (max(handed, glinting) > 0.0) {
-            float rough, sea;
-            vec3 albedo = beyondAlbedo(vBeyond, rough, sea);
-            g.albedo = mix(g.albedo, albedo, handed);
-            g.rough = mix(g.rough, rough, max(handed, glinting));
-            g.bump *= 1.0 - max(handed, glinting);
-            g.water *= 1.0 - handed;
-            open = mix(open, sea, handed);
+            float rough, sea, take = handed;
+            #ifdef LAND_SHORE
+              // One shore: the land's own moved onto what lies beyond's as far as it is handed over, and that
+              // surface coloured with it. Where the land's own paint is then on the wrong side of the line (water
+              // where the line has land, or the other way), it is what lies beyond's colour that is seen.
+              float own = shoreMetres(landAt);
+              beyondShore(own, handed);
+              vec3 albedo = beyondAlbedo(vBeyond, rough, sea);
+              float mine = smoothstep(-0.5, 0.5, own / landPixel);
+              take = max(handed, abs(1.0 - sea - mine) * smoothstep(0.0, 0.05, handed));
+            #else
+              vec3 albedo = beyondAlbedo(vBeyond, rough, sea);
+            #endif
+            g.albedo = mix(g.albedo, albedo, take);
+            g.rough = mix(g.rough, rough, max(take, glinting));
+            g.bump *= 1.0 - max(take, glinting);
+            g.water *= 1.0 - take;
+            open = mix(open, sea, take);
           }
           landGlint = beyondGlinting(open);
           #endif

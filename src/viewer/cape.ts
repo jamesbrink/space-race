@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
 import { type Air, type Clouds, driftClouds, installAir } from './air';
-import { buildCape1961, CLEARINGS, PAVED, COAST, HARBOR_EAST, HARBOR_WEST, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
+import { buildCape1961, CLEARINGS, PAVED, COAST, HARBOR_EAST, HARBOR_WEST, HARBOUR, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
@@ -175,7 +175,10 @@ const SHARED = /* glsl */ `
   float riverward(vec2 p) {
     float n = -p.y;
     float d = min(min(max(p.x - riverAt(n), riverWestAt(n) - p.x), p.x - indianAt(n)), max(harborWestAt(n) - p.x, p.x - harborEastAt(n)));
-    return d - 30.0 * (fbm2(p * 0.0035, 6, 3) - 0.45);
+    d -= 30.0 * (fbm2(p * 0.0035, 6, 3) - 0.45);
+    // Port Canaveral's harbour: dredged, so its banks are straight (cape1961.ts: HARBOUR)
+    ${HARBOUR.map(([x0, z0, x1, z1, half]) => `d = min(d, segment(p, vec4(${x0.toFixed(1)}, ${z0.toFixed(1)}, ${x1.toFixed(1)}, ${z1.toFixed(1)})) - ${half.toFixed(1)});`).join('\n    ')}
+    return d;
   }
   // the nearest made way: how far from its edge (negative inside), and its kind
   float way(vec2 p, out float kind) {
@@ -273,7 +276,14 @@ const riverwardAt = (x: number, z: number) => {
     Math.min(Math.max(x - shoreAt(RIVER, n), shoreAt(RIVER_WEST, n) - x), x - shoreAt(INDIAN, n)),
     Math.max(shoreAt(HARBOR_WEST, n) - x, x - shoreAt(HARBOR_EAST, n)),
   );
-  return d - 30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45);
+  let r = d - 30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45);
+  for (const [x0, z0, x1, z1, half] of HARBOUR) {
+    const dx = x1 - x0,
+      dz = z1 - z0;
+    const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
+    r = Math.min(r, Math.hypot(x - x0 - dx * t, z - z0 - dz * t) - half);
+  }
+  return r;
 };
 const lc56At = (x: number, z: number) => {
   const px = x * COS + z * SIN,
@@ -576,6 +586,7 @@ function landSpec(): LandSpec {
     canopy: CANOPY,
     crown: 2.6,
     paint: PAINT,
+    shore: 'float shoreMetres(vec2 p) { return min(inland(p), riverward(p)); }',
     uniforms: {
       uCoast: { value: COAST.map(([n, x]) => new THREE.Vector2(n, x)) },
       uRiver: { value: RIVER.map(([n, x]) => new THREE.Vector2(n, x)) },

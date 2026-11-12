@@ -76,7 +76,8 @@ const ATLANTIC: [number, number][] = [
 /**
  * The Banana River's east shore, the same way and rougher. South of 28.42 it is read from
  * OpenStreetMap's Indian River Lagoon (relation 1204544) every 1.2 to 1.8 km: the main channel's
- * edge, past today's port and causeways (not there in 1961, and not drawn). North of 28.52 it is
+ * edge, past today's causeways (not there in 1961, and not drawn); from 28.40 to 28.4225, round the
+ * made land west of the port's harbour (HARBOUR, below), it is the globe's shore every 0.0025 degrees. North of 28.52 it is
  * the globe's shore every 0.0025 to 0.01 degrees, as the Atlantic's south of the port.
  */
 const BANANA_RIVER: [number, number][] = [
@@ -87,8 +88,16 @@ const BANANA_RIVER: [number, number][] = [
   [28.37446, -80.60877],
   [28.38529, -80.60877],
   [28.39612, -80.61948],
-  [28.41236, -80.61846],
-  [28.4204, -80.60361],
+  [28.4025, -80.62287],
+  [28.405, -80.62372],
+  [28.4075, -80.63851],
+  [28.41, -80.64095],
+  [28.4125, -80.6375],
+  [28.415, -80.63324],
+  [28.4175, -80.63288],
+  [28.4195, -80.63],
+  [28.4208, -80.6045],
+  [28.4225, -80.6037],
   [28.45573, -80.59621],
   [28.47555, -80.59086],
   [28.50282, -80.58444],
@@ -196,6 +205,24 @@ const NEWFOUND_EAST: [number, number][] = [
   [28.37, -80.67268],
   [28.3715, -80.678],
 ];
+/**
+ * Port Canaveral's harbour as it was in 1961, 3.3 km south of pad 5: the entrance channel cut through the
+ * barrier island from the sea to the dike that then closed it from the Banana River (the lock is 1965's), and
+ * the one turning basin on its north side. Each a line, [latitude, longitude] at its ends, and half its
+ * breadth, metres. Read off the globe's own coast (tools/globe-region.mjs, OpenStreetMap's, with the later
+ * Trident and west basins undone: sites/lc-5.ts), so the two agree to a few tens of metres; that this is
+ * the harbour's extent in 1961 is estimated (the port was dredged 1951 to 1955 and dedicated in 1953).
+ */
+const PORT: [[number, number], [number, number], number][] = [
+  [[28.4093, -80.58703], [28.41014, -80.62452], 150],
+  [[28.41353, -80.61002], [28.41353, -80.60818], 200],
+];
+/** The harbour as the terrain wants it: each line's ends on the compass (x east, z south of pad 5) and half its breadth. */
+export const HARBOUR: [number, number, number, number, number][] = PORT.map(([a, b, half]) => [
+  ...fromPad5(a[0], a[1]),
+  ...fromPad5(b[0], b[1]),
+  half,
+]);
 /** A shore as the terrain's shader wants it: [metres north, metres east] of pad 5, northward. */
 const northing = (shore: [number, number][]): [number, number][] =>
   shore.map(([lat, lon]) => {

@@ -98,6 +98,14 @@ const ICE = new THREE.Color(0xe4eaee);
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
+/**
+ * Heights of the eye, metres, between which the site's own ground goes over to the globe's colours (land.ts takes
+ * them through `beyond`; `uGlobeLift` follows). A long way, so the land's tone changes slowly: a climbing rocket
+ * takes half a minute through it. (To 20 km it was the site's greens at 10 km and the map's grey olive at 20.)
+ */
+const LIFT: [number, number] = [3000, 40000];
+/** How far from a shore the near map keeps a distance, metres (SPREAD texels of 39 m): two shores are moved onto one another within it (`globeShoreOther`). */
+const SHORE_REACH = 300;
 /** The relief and the land's colours come in over this long once they have arrived, milliseconds: no pop. */
 const SURFACING = 1500;
 /** How many banks of pale sand a region may name (tools/globe-surface.mjs: REGIONS). */
@@ -173,6 +181,11 @@ const COLOUR = /* glsl */ `
     return (globeFlat(layer, uv) * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)} * scale.x;
   }
   float globeSea;   // how much of what globeAlbedo last coloured is water
+  // Another surface's shore, for one that is handed over to this (land.ts: the site's own ground): its distance
+  // to the shore here in metres (land positive), and how far the hand-over has gone, 0 to 1. The shore drawn is
+  // then the one moved onto the other by that much, so a coast the two have a little differently is one line that
+  // shifts, never two lines seen through each other. (Both held to SHORE_REACH metres, as far as the maps keep a distance.)
+  float globeShoreOther = 0.0, globeShoreMix = 1.0;
   vec3 globeAlbedo(vec3 d, out float rough) {
     // the land's distance taken as the mean of five lookups half a texel or so apart: a filtered distance's
     // zero bends at every texel, and from orbit those bends were kinks in the shore
@@ -194,6 +207,7 @@ const COLOUR = /* glsl */ `
     float ln = regionField(0, uGlobeNearPlane, uGlobeNearBox, uGlobeNearScale, d, w);
     l = mix(l, ln, w);
     texel = mix(texel, uGlobeNearScale.x, w);
+    if (globeShoreMix < 1.0) l = mix(clamp(globeShoreOther, -${SHORE_REACH.toFixed(1)}, ${SHORE_REACH.toFixed(1)}), clamp(l, -${SHORE_REACH.toFixed(1)}, ${SHORE_REACH.toFixed(1)}), globeShoreMix);
     float land = smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel));   // the shore: a clean line, one pixel soft
     float i = globeField(here.g);
     float ice = smoothstep(-0.5, 0.5, i / (fwidth(i) * 0.8 + 0.03));
@@ -229,8 +243,8 @@ const COLOUR = /* glsl */ `
       ground *= mix(1.0, tilted, smoothstep(-0.02, 0.08, level));
     #endif
     // Round the site, until the eye is well up, the land and the sea keep the site's own tones (its canopy's green, its
-    // offshore water: cape.ts), as the site's ground does (land.ts: LIFT, which uGlobeLift follows): so from a few
-    // kilometres up the site's square is not a patch of another colour in the map's. Gone by 60 km out and by 20 km up.
+    // offshore water: cape.ts), as the site's ground does (LIFT, which uGlobeLift follows): so from a few
+    // kilometres up the site's square is not a patch of another colour in the map's. Gone by 60 km out and by 40 km up.
     ground = mix(${vec3(LAND)}, ground, uGlobeSurfaced);
     water = mix(deep, water, uGlobeSurfaced);
     land = mix(smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel)), land, uGlobeSurfaced);
@@ -702,6 +716,7 @@ export class Globe {
     const y0 = this.seaLevel - this.site.height; // the sea under the site's origin, in its frame
     const R = this.radius.toFixed(1);
     return {
+      lift: LIFT,
       uniforms: this.uniforms,
       // the sea's height under a point of the scene (its x and z), on the sphere that fits it round the site
       vertex: /* glsl */ `
@@ -718,6 +733,10 @@ export class Globe {
           vec3 c = globeAlbedo(normalize(uGlobeOrigin + uGlobeAxes * p), rough);
           sea = globeSea;
           return c;
+        }
+        void beyondShore(float own, float handed) {
+          globeShoreOther = own;
+          globeShoreMix = handed;
         }
         float beyondGlinting(float sea) { return globeGlinting(sea); }
         float beyondGlint(vec3 l, vec3 n, vec3 v) { return globeGlint(l, n, v); }`,
@@ -799,8 +818,8 @@ export class Globe {
         changed = true;
       }
     }
-    // (land.ts: LIFT, the heights between which the site's ground takes the globe's colours: change both)
-    const lift = Math.round(THREE.MathUtils.smoothstep(eye.y, 3000, 20000) * 200) / 200;
+    // (the heights between which the site's ground takes the globe's colours)
+    const lift = Math.round(THREE.MathUtils.smoothstep(eye.y, LIFT[0], LIFT[1]) * 200) / 200;
     if (this.uniforms.uGlobeLift!.value !== lift) {
       this.uniforms.uGlobeLift!.value = lift;
       changed = true;

@@ -125,8 +125,32 @@ export const LC5: SiteDef = {
           [28.40918, -80.6398],
           [28.4092, -80.6265],
         ],
-        width: 140,
+        width: 260,
         source: 'as the barge canal: until the lock the port opened only to the sea (Wikipedia, Port Canaveral)',
+      },
+      {
+        what: "Port Canaveral's Trident basin, north of the entrance channel",
+        built: 1978,
+        was: 'land',
+        path: [
+          [28.41228, -80.59195],
+          [28.41846, -80.59573],
+        ],
+        width: 640,
+        source:
+          'dug by the Navy for its Trident submarines in the late 1970s, its sand put on the beach south of the port (Space Coast Daily, Brevard History: A Growing Port Canaveral, the third decade); the year is approximate, the outline read off the baked map',
+      },
+      {
+        what: "Port Canaveral's west turning basin, north of the channel's west end",
+        built: 1980,
+        was: 'land',
+        path: [
+          [28.4151, -80.62912],
+          [28.4151, -80.62394],
+        ],
+        width: 780,
+        source:
+          'the state let the port dredge its west turning basin in 1979 after two years of delay (the same history): that none of it was open water in 1961 is estimated, and the year it was finished is approximate',
       },
       {
         what: "Complex 39's turning basin by the Vehicle Assembly Building, and its canal to the Banana River",

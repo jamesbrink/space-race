@@ -615,8 +615,19 @@ Banana River's east shore, 42 for its west, 12 for the Indian River's east and 1
 Newfound Harbor's two: not 1961's exactly (the Cape's point has moved and the port has grown).
 Toward the edge of the ground drawn round the pad, where it hands over to the globe (south of the
 port, the Banana River north of 28.5, Newfound Harbor), the lines are read off the globe's own
-coast (below) so the two agree to tens of metres. Port Canaveral's basins are not drawn, though the
-port had been open since 1953.
+coast (below) so the two agree to tens of metres. Port Canaveral's harbour, 3.3 km south of the pad
+and open since 1953, is drawn as two straight-banked reaches of still water (`HARBOUR` in
+cape1961.ts): the entrance channel from the sea to the dike that closed it from the Banana River,
+and the one turning basin north of it. Their lines are read off the globe's coast; that this was
+the harbour's extent in May 1961 is estimated. No jetties, wharves or sheds are drawn, and the
+beach's sand and surf stop at the channel's banks without the works that held them.
+
+**One coast from every height.** The globe's map (below) is the coast seen from above, and the
+ground drawn round the pad is its own from the ground. Between 3 and 20 km up, and across the last
+1.5 km of the ground's square, the one is handed over to the other, and the shore is a single line
+moved from the ground's to the map's (`beyondShore`, land.ts and globe.ts), never the two seen
+through each other. What the ground does not draw at all (the spoil islands in the rivers, finger
+canals, ponds) comes in late in that hand-over, each growing from nothing.
 
 ### The region round it, and when its shore was made
 
@@ -631,8 +642,10 @@ except for these, which were built after 5 May 1961 and are undone along their l
 | NASA Causeway (SR 405), Indian River, and NASA Causeway East, Banana River | 1964 | water | the Indian River bridge's year documented (FDOT); the East crossing's taken as the same |
 | Canaveral Barge Canal across Merritt Island, and the lock's cut from the Banana River to the port | 1965 | land | documented (Corps of Engineers, via Wikipedia) |
 | Complex 39's turning basin and barge canal by the Vehicle Assembly Building | after NASA bought Merritt Island, from 1962 | land | that it is later than 1961 is documented; the year is not |
+| Port Canaveral's Trident basin | late 1970s (the Navy's, for Trident submarines) | land | that it is later is documented (Space Coast Daily, *Brevard History: A Growing Port Canaveral*); the year and the outline filled are approximate |
+| Port Canaveral's west turning basin | dredging allowed by the state in 1979 | land | the 1979 permit is documented (the same history); that none of it was open water in 1961 is estimated |
 
-Kept, because they stood in 1961: the SR 520 causeways (1941), Port Canaveral's harbour (1953),
+Kept, because they stood in 1961: the SR 520 causeways (1941), Port Canaveral's entrance channel and middle basin (1953; today's outlines),
 the Haulover Canal. Not undone, though some may be later: the spoil islands along the dredged
 channels in the Banana and Indian Rivers, the Max Brewer and Eau Gallie causeways, Cocoa Beach's
 and Merritt Island's finger canals, the fill at the Bennett Causeway's landings. Known to be later and not yet undone: the
