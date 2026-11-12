@@ -211,7 +211,7 @@ never adjusted to bring a check in.
   Orbit (space-fixed, with radial and normal). `ballOf(r, v, attitude, t, target)` is all of its
   mathematics and is tested; the canvas is redrawn only when the attitude has moved a twentieth
   of a degree, and not at all while tucked. The path (`src/sim/predict.ts`, drawn by
-  `viewer/path.ts`, M) is where the centre of mass goes from the instant on show if nothing more
+  `viewer/path.ts`, J: M is kept for a map) is where the centre of mass goes from the instant on show if nothing more
   is done: fly.ts's gravity and drag curves (`dragArea`, `chuteArea`, `thrustIn`), no thrust, the
   spacecraft's parachutes at their heights, until it meets the sea, has gone once round (then it
   is an orbit, with its osculating elements) or six hours have passed. While the engine burns K

@@ -76,7 +76,7 @@ const VERT = /* glsl */ `
     vec4 ship = projectionMatrix * viewMatrix * shipWorld;
     float px = ship.w > 0.0 && here.w > 0.0 ? length((here.xy / here.w - ship.xy / ship.w) * uView * 0.5) : 1e6;
     float off = distance(world.xyz, shipWorld.xyz) / max(distance(shipWorld.xyz, cameraPosition), 1.0);
-    vClear = max(smoothstep(3.5, 9.0, px / uHalf), smoothstep(0.5, 1.2, off));
+    vClear = max(smoothstep(14.0, 34.0, px / uHalf), smoothstep(1.0, 2.2, off));
     // Which way the path runs on the screen, from a point a short way along it. Worked in clip space without dividing:
     // for a straight line this vector is the same at every point of it, in front of the eye or behind, so a stretch
     // that passes the eye (the path often leaves toward a chase camera) is clipped by the GPU and keeps its width.
@@ -176,7 +176,11 @@ export class FlightPath {
   private raf = 0;
   /** The first point of the path on show, in the scene's frame (surface: where the Earth has it then; orbit: at the prediction's start). */
   private readonly anchor = new THREE.Vector3();
-  private readonly pins: { el: HTMLElement; point: THREE.Vector3 | null }[] = [];
+  private readonly pins: { el: HTMLElement; point: THREE.Vector3 | null; wide: number }[] = [];
+  /** Where the page's panels are, in the window: a label is not drawn over one. Given by the page, which knows its panels. */
+  obstacles: () => DOMRect[] = () => [];
+  private panels: DOMRect[] = [];
+  private panelsRead = 0;
   /** What the last prediction cost, for whoever asks (`sr.path.cost`): milliseconds in all, the longest slice, and how many frames it was spread over. */
   cost = { ms: 0, slice: 0, frames: 0, steps: 0 };
   private spent = { slice: 0, frames: 0 };
@@ -250,26 +254,27 @@ export class FlightPath {
     this.labels.className = 'path-labels';
     this.labels.hidden = true;
     this.labels.innerHTML = '<p class="path-label" data-pin="apogee"></p><p class="path-label" data-pin="end"></p>';
-    parent.append(this.labels);
-    for (const el of this.labels.querySelectorAll<HTMLElement>('[data-pin]')) this.pins.push({ el, point: null });
+    parent.prepend(this.labels); // first, so under every panel
+    for (const el of this.labels.querySelectorAll<HTMLElement>('[data-pin]')) this.pins.push({ el, point: null, wide: 220 });
 
     this.readout = document.createElement('div');
     this.readout.className = 'path-read';
     this.readout.innerHTML = `
-      <button data-path="kind" title="Which future the path shows while the engine burns: if it stopped now, or if guidance flies the rest of the programme to the record's cutoff"><kbd>K</kbd> <b data-path-cell="kind"></b></button>
+      <button data-path="kind" title="Which future the path shows while the engine burns: if it stopped now, or if guidance flies the rest of the programme to the record's cutoff (K)"><kbd>K</kbd> <b data-path-cell="kind"></b></button>
       <p title="The greatest height ahead, above the sea, and how long until it"><span>Ap</span><b data-path-cell="apogee">–</b></p>
       <p data-path-row="end"><span data-path-cell="endName">Impact</span><b data-path-cell="end">–</b></p>
       <p class="path-frame" data-path-cell="frame"></p>`;
     readout.append(this.readout);
     this.readout.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('[data-path=kind]')) this.setGuided(!this.guided);
+      (document.activeElement as HTMLElement | null)?.blur?.(); // or Space, the next event's key, would press it again
     });
     this.button?.addEventListener('click', () => this.show(!this.on));
     window.addEventListener('keydown', (e) => {
       const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
       if (!source.active || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing) return;
       const key = e.key.toLowerCase();
-      if (key === 'm') this.show(!this.on);
+      if (key === 'j') this.show(!this.on); // (J: M is kept for the map)
       if (key === 'k') this.setGuided(!this.guided);
     });
     source.listen((sample, live) => {
@@ -319,6 +324,11 @@ export class FlightPath {
     if (!this.raf) this.raf = requestAnimationFrame(() => this.tick());
   }
 
+  /** On the pad, waiting to be lit. (Not: gone from it unlit on the escape rocket, whose engine is shut down and has no programme left to fly.) */
+  private waiting(): boolean {
+    return this.live !== null && !this.live.ignited && !this.live.cutoff;
+  }
+
   /** Which future is to be shown from the sample on show: null for none (off, not flying, down). */
   private want(): { key: string; burn: Burn | null } | null {
     const s = this.sample;
@@ -327,7 +337,7 @@ export class FlightPath {
     const craft = this.source.craft;
     const { trim } = this.source.steering;
     const until = tr.engine.cutoff.value;
-    const waiting = this.live !== null && !this.live.ignited;
+    const waiting = this.waiting();
     const burning = this.live?.ignited === true && !this.live.cutoff;
     // on the pad there is only the plan to show; in the air, whichever was asked for while there is an engine to burn
     const plan = craft !== null && s.t < until && (waiting || (burning && this.guided));
@@ -458,15 +468,32 @@ export class FlightPath {
           ? `<b>Impact</b> ${km(result.impact.range)} km downrange <i>in ${clock(result.impact.t - now)}</i>`
           : '',
     ];
+    // (where the panels are is asked a few times a second, not every frame)
+    if (performance.now() - this.panelsRead > 200) {
+      this.panels = this.obstacles();
+      this.panelsRead = performance.now();
+    }
     this.pins.forEach((pin, i) => {
       const where = pin.point && texts[i] ? this.host.screenOf(carried(pin.point)) : null;
-      const inside = where !== null && where.x > 0 && where.x < window.innerWidth && where.y > 0 && where.y < window.innerHeight;
+      // near the right edge the words go to the left of the mark
+      const left = where !== null && where.x > window.innerWidth - pin.wide - 30;
+      // the label's own box, mark and words: one that would lie on a panel is not shown
+      const box = where && {
+        x0: left ? where.x - pin.wide - 20 : where.x - 8,
+        x1: left ? where.x + 8 : where.x + pin.wide + 20,
+        y0: where.y - 13,
+        y1: where.y + 13,
+      };
+      const clear =
+        box !== null &&
+        !this.panels.some((p) => box.x1 > p.left - 4 && box.x0 < p.right + 4 && box.y1 > p.top - 4 && box.y0 < p.bottom + 4);
+      const inside = where !== null && where.x > 0 && where.x < window.innerWidth && where.y > 0 && where.y < window.innerHeight && clear;
       pin.el.hidden = !inside;
       if (!inside || !where) return;
       if (pin.el.innerHTML !== texts[i]) pin.el.innerHTML = texts[i]!;
       pin.el.style.transform = `translate(${Math.round(where.x)}px, ${Math.round(where.y)}px)`;
-      // near the right edge the words go to the left of the mark
-      pin.el.classList.toggle('left', where.x > window.innerWidth - 230);
+      pin.el.classList.toggle('left', left);
+      pin.wide = pin.el.offsetWidth || pin.wide;
     });
   }
 
@@ -477,7 +504,7 @@ export class FlightPath {
       if (el.textContent !== text) el.textContent = text;
     };
     const burning = this.live?.ignited === true && !this.live.cutoff;
-    const waiting = this.live !== null && !this.live.ignited;
+    const waiting = this.waiting();
     const kind = this.readout.querySelector<HTMLButtonElement>('[data-path=kind]')!;
     kind.disabled = !burning;
     set(
