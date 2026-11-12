@@ -3290,12 +3290,13 @@ export class Stage {
    * again), standing on the floor at y = 0: a spacecraft without its booster stands where the
    * booster stood, not in the air above it. The rest is taken out of the model, not hidden, so
    * that everything measured, framed, picked and shadowed is what is there. For a stage drawn in
-   * full (`fullDetail`): the coarser levels know nothing of it.
+   * full (`fullDetail`): the coarser levels know nothing of it. Returns how far up the model's own
+   * origin now is, put together: what a height measured in the model's frame is to be raised by.
    */
-  only(nodes: readonly string[] | null): void {
+  only(nodes: readonly string[] | null): number {
     const own = this.staged[this.current];
     const def = this.def;
-    if (!own || !def) return;
+    if (!own || !def) return 0;
     for (const { node, parent } of this.away.splice(0)) parent.add(node);
     for (const part of nodes ? def.parts : []) {
       const node = nodes!.includes(part.node) ? null : own.full.getObjectByName(part.node);
@@ -3313,6 +3314,7 @@ export class Stage {
     own.explode(apart);
     this.ground();
     this.section(def.id);
+    return this.stood.lift;
   }
 
   /** Keep the section's model on the floor as it comes apart: a part that leaves downward lifts the rest, it does not go through the floor. */

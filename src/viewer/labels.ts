@@ -16,7 +16,7 @@ const CLEAR = 0.3;
 
 /**
  * Which parts have come clear of their neighbours with the slider at `t`. A part's neighbours are
- * the ones listed before and after it; it is clear of one when the gap between them is `CLEAR`
+ * the nearest listed before and after it that do not travel with it; it is clear of one when the gap between them is `CLEAR`
  * of what it will be fully apart. Two that leave together and stay together (the same `explode`)
  * do not hold each other back; a part that does not move is clear when its neighbours have left it.
  * Parts with motions of their own (`moves`) are not judged: they are not part of an exploded view.
@@ -35,11 +35,13 @@ export function cleared(
   return parts.map((p, i) => {
     if (p.moves?.length) return false;
     let judged = false;
-    for (const j of [i - 1, i + 1]) {
+    for (const step of [-1, 1]) {
+      // (the nearest part each way that it parts from: ones that travel with it are passed over)
+      let j = i + step;
+      while (parts[j] && (parts[j]!.moves?.length || far(p.explode, parts[j]!.explode) < 1e-6)) j += step;
       const q = parts[j];
-      if (!q || q.moves?.length) continue;
+      if (!q) continue;
       const final = far(p.explode, q.explode);
-      if (final < 1e-6) continue;
       judged = true;
       if (far(gone[i]!, gone[j]!) < CLEAR * final) return false;
     }

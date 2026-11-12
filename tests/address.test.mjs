@@ -114,6 +114,7 @@ test('what can stand in the gallery comes from the headings of the parts list', 
     all.map((p) => p.id),
     ['whole', 'spacecraft', 'launch-vehicle'],
   );
+  assert.equal(all[0].label, 'Whole vehicle');
   assert.equal(all[0].nodes, null);
   // every part stands in exactly one of the choices that are not the whole
   const listed = all.slice(1).flatMap((p) => p.nodes);
@@ -147,9 +148,18 @@ test('the views of what stands there are the vehicle`s own, of parts that are th
   // the spacecraft alone: its capsule, but not the engine, and not itself a second time
   assert.deepEqual(ids(spacecraft), [WHOLE_VIEW, 'capsule']);
   assert.deepEqual(ids(booster), [WHOLE_VIEW, 'engine']);
-  // a view is of parts wherever they are: none carries a height or a span measured on the pad
+  // a view is of parts wherever they are: none of these carries a height or a span measured on the pad
   for (const p of [whole, spacecraft, booster])
-    for (const v of plinthViews(vehicle, p)) assert.ok(v.centreY === undefined && v.span === undefined && v.from === undefined);
+    for (const v of plinthViews(vehicle, p)) assert.ok(v.centreY === undefined && v.span === undefined);
+  // a view that is a height and a span is of the whole vehicle where its flight stood it: kept with the whole of it on
+  // show, raised by as much as the vehicle stands higher here, from the direction it gives; and not with a part of it
+  const measured = { views: [{ id: 'engine', label: 'Engine', centreY: 2.5, span: 2.6, from: [0, -0.5, 1] }, ...vehicle.views] };
+  const engine = plinthViews(measured, whole, -0.5).find((v) => v.id === 'engine');
+  assert.deepEqual(engine, { id: 'engine', label: 'Engine', centreY: 2, span: 2.6, from: [0, -0.5, 1] });
+  assert.ok(!plinthViews(measured, spacecraft, -0.5).some((v) => v.id === 'engine'));
+  // and a view of parts keeps the direction it is to be seen from
+  const sided = { views: [{ id: 'hatch', label: 'Hatch', nodes: ['Hatch'], from: [1, 0, 0] }] };
+  assert.deepEqual(plinthViews(sided, whole)[1].from, [1, 0, 0]);
 });
 
 test('the gallery`s stage is given the vehicle alone, in the studio, with nothing of the site', () => {

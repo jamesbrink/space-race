@@ -39,7 +39,10 @@ test('two parts that leave together and stay together do not hold each other bac
   assert.ok(half[0] && half[1]);
   // and two with the very same travel are judged by their other neighbours only
   const same = [part([0, 5, 0], 0), part([0, 5, 0], 0), part([0, 0, 0], 1)];
-  assert.deepEqual(cleared(same, 1), [false, true, true], 'a part with no neighbour it parts from is not named');
+  assert.deepEqual(cleared(same, 1), [true, true, true], 'each is judged by the nearest part it parts from');
+  assert.deepEqual(cleared(same, 0), [false, false, false]);
+  // and parts none of which moves are never named: nothing has come apart
+  assert.deepEqual(cleared([part([0, 0, 0], 0), part([0, 0, 0], 1)], 1), [false, false]);
 });
 
 test('a part with motions of its own is no part of an exploded view', () => {

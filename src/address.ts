@@ -99,9 +99,9 @@ const slug = (s: string) =>
  * it has more than one. Nothing new is asked of a flight: `Part.group` is the heading the parts
  * are already listed under.
  */
-export function plinths(model: Pick<ModelDef, 'parts'>): Plinth[] {
+export function plinths(model: Pick<ModelDef, 'parts' | 'name'>): Plinth[] {
   const groups = [...new Set(model.parts.flatMap((p) => (p.group ? [p.group] : [])))];
-  const whole: Plinth = { id: 'whole', label: groups.length > 1 ? 'Whole stack' : 'Whole', nodes: null };
+  const whole: Plinth = { id: 'whole', label: `Whole ${model.name.toLowerCase()}`, nodes: null };
   if (groups.length < 2) return [whole];
   return [whole, ...groups.map((g) => ({ id: slug(g), label: g, nodes: model.parts.filter((p) => p.group === g).map((p) => p.node) }))];
 }
@@ -110,21 +110,32 @@ export function plinths(model: Pick<ModelDef, 'parts'>): Plinth[] {
  * What the gallery's address names: a part of the vehicle (shown whole, with that part chosen),
  * or one of the choices of what stands there. Anything else is the whole of it.
  */
-export function galleryAt(model: Pick<ModelDef, 'parts'>, what: string): { plinth: Plinth; part: string | null } {
+export function galleryAt(model: Pick<ModelDef, 'parts' | 'name'>, what: string): { plinth: Plinth; part: string | null } {
   const all = plinths(model);
   const part = model.parts.find((p) => p.node === what);
   if (part) return { plinth: all[0]!, part: part.node };
   return { plinth: all.find((p) => p.id === what) ?? all[0]!, part: null };
 }
 
-/** The views there are of what stands on the plinth: the vehicle's own named views whose parts are all there, after one of the whole of it. */
-export function plinthViews(model: Pick<ModelDef, 'views'>, plinth: Plinth): ViewDef[] {
+/**
+ * The views there are of what stands on the plinth, after one of the whole of it: the vehicle's
+ * own views of parts that are all there, from the direction each gives. A view given as a height
+ * and a span (no parts) is of the whole vehicle where its flight stands it: it is kept only with
+ * the whole of it on show, moved by `lift`, how much higher the vehicle stands here than there.
+ */
+export function plinthViews(model: Pick<ModelDef, 'views'>, plinth: Plinth, lift = 0): ViewDef[] {
   const there = (v: ViewDef) => Boolean(v.nodes?.length) && (!plinth.nodes || v.nodes!.every((n) => plinth.nodes!.includes(n)));
   // (a view that covers exactly what stands there is the whole of it again)
   const same = (v: ViewDef) => Boolean(plinth.nodes) && v.nodes!.length === plinth.nodes!.length;
+  const measured = (v: ViewDef) => !v.nodes?.length && v.centreY !== undefined && v.span !== undefined && !plinth.nodes;
+  const from = (v: ViewDef) => (v.from ? { from: v.from } : {});
   return [
     { id: WHOLE_VIEW, label: 'Whole' },
-    ...model.views.filter((v) => there(v) && !same(v)).map((v) => ({ id: v.id, label: v.label, nodes: v.nodes! })),
+    ...model.views.flatMap((v): ViewDef[] => {
+      if (there(v) && !same(v)) return [{ id: v.id, label: v.label, nodes: v.nodes!, ...from(v) }];
+      if (measured(v)) return [{ id: v.id, label: v.label, centreY: v.centreY! + lift, span: v.span!, ...from(v) }];
+      return [];
+    }),
   ];
 }
 

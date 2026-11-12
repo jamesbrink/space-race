@@ -36,6 +36,26 @@ body.in-gallery :is(#stage, #ui) { visibility: hidden; }
 .arrow.back { margin: 0 1px 0 3px; transform: rotate(225deg); }
 #gallery .lede { color: var(--dim); font-size: 13px; }
 
+/* part by part: under the list, where the part is being read */
+#gallery .panel section { flex: 1; min-height: 0; }
+.steps { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--line); }
+.steps button { display: flex; align-items: center; padding: 8px 12px; font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line); border-radius: 2px; white-space: nowrap; }
+.steps button:hover { color: var(--ink); border-color: var(--faint); }
+.steps .arrow.back { margin: 0 9px 0 2px; }
+.steps output { font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.panel.tucked .steps { display: none; }
+/* what stands there: as many as four choices across the top, in the room between the title and the panel */
+#gallery .models { max-width: calc(100vw - 2 * (min(360px, 30vw) + var(--edge) + 14px)); overflow-x: auto; scrollbar-width: none; }
+#gallery .models button { padding: 11px 15px; letter-spacing: 0.1em; }
+/* the label of the part being read: set as a museum's is, to be read standing back */
+#gallery .parts button { padding: 12px 20px 12px 18px; }
+#gallery .parts button[aria-expanded='true'] { padding-top: 16px; padding-bottom: 16px; }
+#gallery .parts button[aria-expanded='true'] .name { font-size: 17px; letter-spacing: 0.005em; }
+#gallery .parts button[aria-expanded='true'] .what { color: var(--ink); font-size: 14px; margin-top: 2px; }
+#gallery .parts .more { font-size: 13.5px; line-height: 1.6; margin-top: 12px; }
+#gallery .parts .pf { margin-top: 14px; }
+#gallery .parts .pf > span { padding: 7px 0; }
+
 /* --- names on the parts as they come apart (viewer/labels.ts) ------------------------ */
 .part-labels { position: absolute; inset: 0; pointer-events: none !important; overflow: hidden; }
 .part-labels svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -84,8 +104,11 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   .places p { display: none; }
   /* with the sheet up, the vehicle keeps the space above it */
   body:has(#gallery .panel.open) #gallery-stage { height: calc(100dvh - min(60dvh, 520px)); }
+  #gallery .panel:not(.open) .steps { display: none; }
+  #gallery .models { max-width: none; }
   /* three choices of what stands there fit across a phone only without their air */
-  #gallery .models button { flex: 1 1 auto; min-width: 0; padding-left: 8px; padding-right: 8px; letter-spacing: 0.08em; }
+  #gallery .models { overflow-x: auto; }
+  #gallery .models button { flex: 1 0 auto; padding-left: 8px; padding-right: 8px; letter-spacing: 0.08em; }
   /* the buttons run on as one wrapping line, not a line for each kind */
   #gallery .buttons { gap: 6px; }
   #gallery .set { display: contents; }

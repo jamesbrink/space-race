@@ -320,6 +320,11 @@ export class Gallery {
         </section>`
             : ''
         }
+        <nav class="steps" aria-label="Part by part">
+          <button data-step="-1" title="The part before (B)"><i class="arrow back"></i>Previous</button>
+          <output aria-live="off"></output>
+          <button data-step="1" title="The next part (N)">Next part<i class="arrow"></i></button>
+        </nav>
       </aside>
 
       <footer class="controls">
@@ -328,10 +333,6 @@ export class Gallery {
           <span>${esc(m.slider?.[1] ?? 'Exploded')}</span></label>
         <div class="buttons">
           <span class="set views" role="group" aria-label="View"></span>
-          <span class="set" role="group" aria-label="Part by part">
-            <button data-step="-1" title="The part before (B)" aria-label="Previous part"><i class="arrow back"></i></button>
-            <button data-step="1" title="The next part (N)">Next part<i class="arrow"></i></button>
-          </span>
           <span class="set" role="group" aria-label="Show">
             ${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (X)">Cutaway</button>' : ''}
             <button data-names class="switch" aria-pressed="false" title="Name each part as it comes clear of the rest">Labels</button>
@@ -522,13 +523,16 @@ export class Gallery {
       if (b.dataset.view) {
         this.made!.stage.view(b.dataset.view);
         this.turn();
-      } else if (b.dataset.step) this.step(Number(b.dataset.step));
-      else if (b.hasAttribute('data-cut')) this.setCutaway(on, true);
+      } else if (b.hasAttribute('data-cut')) this.setCutaway(on, true);
       else if (b.hasAttribute('data-names')) this.setNames(on);
       else if (b.hasAttribute('data-measure')) this.setMeasure(on);
       else if (b.hasAttribute('data-rotate')) this.setTurntable(on);
       else if (b.hasAttribute('data-light')) this.setLight(on);
       else if (b.hasAttribute('data-cel')) this.setCel(on);
+    });
+    this.q('.steps').addEventListener('click', (e) => {
+      const by = (e.target as HTMLElement).closest<HTMLElement>('[data-step]')?.dataset.step;
+      if (by && this.ready) this.step(Number(by));
     });
     this.q('.loading button').addEventListener('click', () => void this.enter());
     window.addEventListener('pointermove', (e) => {
@@ -666,12 +670,13 @@ export class Gallery {
     this.setCutaway(false);
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-plinth]'))
       b.setAttribute('aria-pressed', String(b.dataset.plinth === plinth.id));
-    // the stage reads the model's views where it stands: these are the ones of what is there now
-    this.model.views = plinthViews(this.vehicle, plinth);
     this.apart = 0;
     this.q<HTMLInputElement>('.explode input').value = '0';
     stage.setExplode(0);
-    stage.only(plinth.nodes);
+    const lift = stage.only(plinth.nodes);
+    // the stage reads the model's views where it stands: these are the ones of what is there now, a height its flight
+    // measured where it stood the vehicle raised to where it stands here
+    this.model.views = plinthViews(this.vehicle, plinth, lift - (this.vehicle.position?.[1] ?? 0));
     studio.fit(stage.extent());
     stage.reset();
     this.fill();
@@ -718,9 +723,17 @@ export class Gallery {
       b.setAttribute('aria-expanded', String(on));
       if (on) b.scrollIntoView({ block: 'nearest', behavior: snap ? 'auto' : 'smooth' });
     }
+    this.tally();
     this.turn();
     this.tip(null);
     if (!this.touring) this.host.address(this.at);
+  }
+
+  /** Where among the parts the one chosen is, said between the two buttons that step through them. */
+  private tally(): void {
+    const parts = this.parts;
+    const at = parts.findIndex((p) => p.node === this.selected);
+    this.q('.steps output').textContent = at < 0 ? `${parts.length} parts` : `${at + 1} of ${parts.length}`;
   }
 
   /** The part after the one chosen (or before it), in the order they are listed, and round again: a way through all of them. */
@@ -789,6 +802,8 @@ export class Gallery {
       b.tabIndex = b.dataset.tab === name ? 0 : -1;
     }
     for (const p of this.root.querySelectorAll<HTMLElement>('[data-pane]')) p.hidden = p.dataset.pane !== name;
+    this.q('.steps').hidden = name !== 'Parts';
+    this.tally();
   }
 
   /** A label beside the pointer, on whichever side has room; null puts it away. */
