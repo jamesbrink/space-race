@@ -35,8 +35,12 @@ test('the pose repeats every cycle', () => {
 
 test('a quarter of the way round the left foot is furthest forward and the left arm furthest back', () => {
   const p = pose(0.25, 1.4);
-  assert.ok(near(p['UpperLeg.L'], -swing(1.4)), 'forward is a negative turn of a thigh');
-  assert.ok(near(p['UpperLeg.R'], swing(1.4)));
+  // (to a hundredth of a degree: the left leg is its planted foot's by now, reached from a hip the pelvis has turned forward)
+  assert.ok(near(p['UpperLeg.L'], -swing(1.4), 2e-4), 'forward is a negative turn of a thigh');
+  assert.ok(
+    near(p['UpperLeg.R'], swing(1.4), 1e-3),
+    'and the right as far back, to a twentieth of a degree: its hip has gone back with the pelvis',
+  );
   assert.ok(p['UpperArm.L'] > 0.2 && p['UpperArm.R'] < -0.2, 'each arm goes with the opposite leg');
   assert.ok(near(swing(1.4), (25 * Math.PI) / 180, 0.01), 'a walking stride is 25 degrees a side');
 });
@@ -130,7 +134,8 @@ test('a gait moves the joints a model has, by distance gone, and leaves a model 
     assert.ok(Math.abs(((gait.phase - from + 1) % 1) - 0.5) < 1e-3);
     gait.phase = 0.25;
     gait.apply(f.root);
-    assert.ok(Math.abs(f.thigh.rotation.x + f.thighR.rotation.x) < 1e-6 && Math.abs(f.thigh.rotation.x) > 0.05, 'the thighs are opposite');
+    // (to a degree: each also leans in to the stride's line, and against the hips' ride to one side)
+    assert.ok(Math.abs(f.thigh.rotation.x + f.thighR.rotation.x) < 0.02 && Math.abs(f.thigh.rotation.x) > 0.05, 'the thighs are opposite');
     // (as a heel lands the figure's hips are down by the eyes' bob and by the pelvis's own sag: what a leg needs to reach a stride ahead)
     assert.ok(f.hips.position.y < 0.95 - 0.035 && f.hips.position.y > 0.87, `the hips are at ${f.hips.position.y} m as a foot lands`);
     // standing again, the pose eases back to as built, and then nothing changes
@@ -179,7 +184,7 @@ test('nothing jumps: from one twentieth of a degree of the cycle to the next no 
 test('nothing jumps as a figure speeds up, leaves the ground, or lands either', () => {
   for (const phase of [0, 0.2, 0.55, 0.8]) {
     for (let v = 0; v < 5; v += 0.02)
-      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, v)[j] - pose(phase, v + 0.02)[j]) < 1.5 * DEG, `${j} at ${v} m/s`);
+      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, v)[j] - pose(phase, v + 0.02)[j]) < 1.8 * DEG, `${j} at ${v} m/s`);
     for (let air = 0; air < 1; air += 0.02)
       for (const j of JOINTS) assert.ok(Math.abs(pose(phase, 3, air)[j] - pose(phase, 3, air + 0.02)[j]) < 2.5 * DEG, `${j} at air ${air}`);
   }

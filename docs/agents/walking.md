@@ -34,6 +34,17 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   pelvis does it, not the eyes: `Pose.sag` lowers the hips to the landing by up to 3 cm more than
   `rise`, which is all `view()` knows of and is pinned to the bit (`tests/gait.test.mjs`). Known
   short: at a run the foot swinging in dips up to 2.5 cm under the ground before it lands.
+- **The pelvis moves, and the feet do not know.** Walking, the pelvis turns about the upright
+  with the leg going forward (4 degrees each way at a walk, 6 at a run), tips up over the planted
+  foot (3 degrees, about the hip that carries it, level as each foot lands), and each leg leans in
+  from its hip so that the feet land 6.5 cm either side of one line however wide the figure stands
+  (`gait.ts`: `carriage`; the figures are estimates beside the textbooks' 4 to 5 degrees). The
+  shoulders turn against the hips. A pose still tells each thigh's swing as seen from the side:
+  `Gait.apply` takes the pelvis's turn out of the thighs and the spine and keeps the soles level
+  and the toes forward. The planted leg is solved from where the pelvis has its hip joint
+  (`planted`), so the foot stays on its spot in three dimensions: to a centimetre along, 8 mm
+  across and half a centimetre of the ground (`tests/stride.test.mjs`, measured on a jointed
+  figure). `Pose.settle` is what that costs in height; the eyes know nothing of it either.
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
   1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the
   same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.

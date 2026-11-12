@@ -12,6 +12,8 @@ const DEG = Math.PI / 180;
 /** The test figure's legs (a 0.43 m thigh, a 0.42 m shin, the ankle 0.08 m over the sole), and its foot: the ball 0.15 m ahead of the ankle, the heel 0.06 m behind. */
 const LIMBS = { thigh: 0.43, shin: 0.42, ankle: 0.08 };
 const LEG = 0.93;
+/** Its hip joints, each this far from the midline: what the gait takes for a figure that does not say (a tenth of the leg). */
+const HIP = 0.093;
 const TOES = 0.15;
 const HEEL = 0.06;
 
@@ -24,10 +26,19 @@ const HEEL = 0.06;
 function footing(p, side) {
   const thigh = p[`UpperLeg.${side}`];
   const knee = p[`LowerLeg.${side}`];
-  // (the figure's hips: what the eyes ride on, and the pelvis's own sag below that)
-  const hips = LEG + p.rise + p.sag;
-  const ax = -(LIMBS.thigh * Math.sin(thigh) + LIMBS.shin * Math.sin(thigh + knee));
-  const ay = hips - (LIMBS.thigh * Math.cos(thigh) + LIMBS.shin * Math.cos(thigh + knee));
+  // The figure's hip joint, in three dimensions as `Gait.apply` puts it: the hips the eyes ride on,
+  // the pelvis's own sag and settle below that, and the joint itself carried by the pelvis's turn
+  // (about the upright: a negative turn takes the left hip forward) and tip (positive lifts the
+  // left hip), a tenth of the leg off the midline. The leg leans in from there, so it is shorter
+  // from top to bottom; the sole is kept level.
+  const sign = side === 'L' ? 1 : -1;
+  const turn = p.twist.Hips ?? 0;
+  const tip = p.sideways.Hips ?? 0;
+  const lean = Math.abs(p.sideways[`UpperLeg.${side}`] ?? 0);
+  const hips = LEG + p.rise + p.sag + p.settle + sign * HIP * Math.sin(tip);
+  const ahead = -sign * HIP * Math.cos(tip) * Math.sin(turn);
+  const ax = ahead - (LIMBS.thigh * Math.sin(thigh) + LIMBS.shin * Math.sin(thigh + knee));
+  const ay = hips - Math.cos(lean) * (LIMBS.thigh * Math.cos(thigh) + LIMBS.shin * Math.cos(thigh + knee));
   // how the foot is pitched in the world (toes down is positive): the turns above it, and its own
   const pitch = thigh + knee + p[`Foot.${side}`];
   const point = (fx, fy) => [ax + fx * Math.cos(pitch) + fy * Math.sin(pitch), ay - fx * Math.sin(pitch) + fy * Math.cos(pitch)];
