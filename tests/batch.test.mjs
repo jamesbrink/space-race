@@ -207,12 +207,62 @@ test('a mesh moved between frames is drawn where it is; one out of view, hidden 
   const mesh = batch.instances.find((i) => i.live).mesh;
   const modelView = new THREE.Matrix4().multiplyMatrices(light.matrixWorldInverse, mesh.matrixWorld);
   const at = batch._indirectTexture.image.data[0] * 48;
-  assert.deepEqual(Array.from(data.subarray(at, at + 16)), Array.from(new Float32Array(modelView.elements)));
-  draw(camera); // (and back to the eye's for the scene)
+  const lit = batch._matricesTexture;
+  assert.deepEqual(Array.from(lit.image.data.subarray(at, at + 16)), Array.from(new Float32Array(modelView.elements)));
+  draw(camera); // (and back to the eye's for the scene: its own matrices, in its own texture)
+  assert.notEqual(batch._matricesTexture, lit);
   assert.deepEqual(
-    Array.from(data.subarray(at, at + 16)),
+    Array.from(batch._matricesTexture.image.data.subarray(at, at + 16)),
     Array.from(new Float32Array(new THREE.Matrix4().multiplyMatrices(camera.matrixWorldInverse, mesh.matrixWorld).elements)),
   );
+});
+
+test('matrices are worked out again only when something has changed, and never sent to the texture last drawn from', () => {
+  const { root, scene, batches, batch, draw, camera } = staged();
+  const frame = () => {
+    scene.updateMatrixWorld(true);
+    batches.prepare();
+    draw();
+  };
+  frame();
+  assert.deepEqual(batches.tally, { worked: 1, kept: 0 });
+  const first = batch._matricesTexture;
+  const sent = first.version;
+  frame();
+  frame();
+  assert.deepEqual(batches.tally, { worked: 1, kept: 2 }, 'a still view of a still scene: nothing to work out');
+  assert.equal(batch._matricesTexture, first);
+  assert.equal(first.version, sent, 'and nothing sent');
+  assert.equal(batch._multiDrawCount, 3);
+  // the camera moves
+  camera.position.x += 0.5;
+  camera.updateMatrixWorld(true);
+  frame();
+  assert.equal(batches.tally.worked, 2);
+  assert.notEqual(batch._matricesTexture, first, 'the texture the last frame was drawn from is left to the GPU');
+  // a mesh moves
+  root.children[2].rotation.z = 0.2;
+  frame();
+  assert.equal(batches.tally.worked, 3);
+  // a mesh is hidden
+  root.children[1].visible = false;
+  frame();
+  assert.equal(batches.tally.worked, 4);
+  assert.equal(batch._multiDrawCount, 2);
+  frame();
+  assert.equal(batches.tally.worked, 4);
+  // a second draw in one frame through the same camera finds it done
+  draw();
+  assert.deepEqual(batches.tally, { worked: 4, kept: 1 + 2 });
+  // the textures go round, so one is written again only after three others
+  const seen = new Set();
+  for (let i = 0; i < 8; i++) {
+    camera.position.y += 0.1;
+    camera.updateMatrixWorld(true);
+    frame();
+    seen.add(batch._matricesTexture);
+  }
+  assert.equal(seen.size, 4);
 });
 
 test('a mesh that stops matching its batch is drawn alone again, and comes back when it matches', () => {

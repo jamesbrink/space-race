@@ -2,7 +2,7 @@
 // the stars are turned to the place and hour. The positions themselves are tests/world.test.mjs's.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { airmass, dayLight, limitingMagnitude } from '../src/viewer/daysky.ts';
+import { airmass, DAY_ADAPTED, dayLight, limitingMagnitude, starLimit } from '../src/viewer/daysky.ts';
 import { Heavens } from '../src/viewer/heavens.ts';
 import { skyFrom } from '../src/world/ephemeris.ts';
 import { DEG } from '../src/world/frames.ts';
@@ -172,4 +172,19 @@ test('moved to another instant, the same sky object follows: the vectors shaders
   assert.equal(h.stars.children.length, 2);
   near(sun.angleTo(before) / DEG, 14.4, 0.2, 'an hour later the Sun has gone 14.4 degrees (15 times the cosine of its declination)');
   near(h.sunElevation, 63.0, 0.2, 'and climbed');
+});
+
+test('the stars come out as the air above the eye thins, a magnitude for each 2.512 times less of it, and no further than the eye allows', () => {
+  const noon = limitingMagnitude(50);
+  assert.equal(starLimit(noon, 1), noon, 'at the sea: the ground’s own limit');
+  assert.ok(Math.abs(starLimit(noon, 1 / 2.512) - (noon + 1)) < 1e-3);
+  let last = noon;
+  for (let h = 0; h <= 200_000; h += 500) {
+    const limit = starLimit(noon, Math.exp(-h / 8000));
+    assert.ok(limit >= last && limit - last < 0.2, `no step at ${h} m`);
+    last = limit;
+  }
+  assert.equal(last, DAY_ADAPTED, 'by day above the air: the sunlit eye’s limit');
+  assert.equal(starLimit(limitingMagnitude(-30), 0), 6.5, 'by night: every star the eye sees');
+  assert.equal(starLimit(limitingMagnitude(-30), 1), 6.5);
 });

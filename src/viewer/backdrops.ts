@@ -6,7 +6,7 @@ import { julianDate } from '../world/time.ts';
 import { densityFor, installedAir, setHazeAbove } from './air';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere';
 import { buildCape } from './cape';
-import { dayLight, type RGB } from './daysky.ts';
+import { dayLight, type RGB, starLimit } from './daysky.ts';
 import { chapman, Globe } from './globe';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
 import type { Land } from './land';
@@ -333,8 +333,6 @@ const SKY_STEP = 4;
  * Shepard saw it. The horizon keeps its glow longer: the eye looks along through more air there.
  * In steps of half a percent, so a climbing camera redraws the sky only when it visibly changes.
  */
-/** The faintest stars that show from above the air by day, magnitude: see where it is used. */
-const SPACE_STARS = 5.2;
 export function airAbove(height: number): number {
   return Math.round(Math.exp(-Math.max(0, height) / 8000) * 200) / 200;
 }
@@ -463,7 +461,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   let bakedLook: number[] = [];
 
   const setting: Setting = {
-    backdrop: new DomeBackdrop(skyMaterial(uniforms, h, true), h.stars),
+    backdrop: new DomeBackdrop(skyMaterial(uniforms, h, true), h.sky),
     environment: null as unknown as THREE.Texture, // baked below, before anyone sees it
     environmentIntensity: ENVIRONMENT,
     sunDir: new THREE.Vector3(0, 1, 0),
@@ -503,6 +501,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   };
 
   let shownAir = 1;
+  let shownRung = 0;
   setting.at = (jdUT, height = 0) => {
     const air = airAbove(height);
     globe.thin = 1 - air;
@@ -514,18 +513,24 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     askedMs = now;
     const fading = reflections.step(now);
     const due = (stale && now - bakedAt >= cadence.bakeEvery) || (shadowsOwed && now - shadowsAt >= cadence.shadowEvery);
-    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped && air === shownAir) return fading ? { shadows: false } : null;
+    // (the stars come out by the air left above the eye, which goes on thinning long after the sky has gone black:
+    // followed in steps of half a kilometre up to where none is left)
+    const rung = Math.round(Math.min(Math.max(height, 0), 120_000) / 500);
+    const arrived = h.arrived;
+    h.arrived = false;
+    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped && air === shownAir && rung === shownRung)
+      return fading || arrived ? { shadows: false } : null;
     shownAir = air;
+    shownRung = rung;
     if (jdUT !== shownAt) {
       shownAt = jdUT;
       h.at(skyFrom(site, jdUT));
     }
     const light = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
-    // Above the air there is no bright sky for the stars to be lost in: as it thins they come out, to SPACE_STARS
-    // at none, and brighter, though the Sun is up. (A pilot's eye, set by the sunlit Earth, saw fewer: Shepard saw
-    // none through his periscope. This is the sky as it is, not as his eye had it: estimated, for the look.)
+    // The stars come out as the air above the eye thins (daysky.ts: starLimit says what of that is physical), and are
+    // drawn brighter above it, though the Sun is up: the exposure there is still the sunlit ground's (for the look).
     const out = (1 - air) ** 1.5;
-    h.show(light.limitingMagnitude + Math.max(0, SPACE_STARS - light.limitingMagnitude) * out, (1 + 1.6 * out) / light.adaptation);
+    h.show(starLimit(light.limitingMagnitude, Math.exp(-(rung * 500) / 8000)), (1 + 1.6 * out) / light.adaptation);
     uniforms.uSunSize.value = Math.sin(h.sunRadius);
     const along = Math.sqrt(air); // (toward the horizon the eye looks through more of what air there is)
     const thin = ([r, g, b]: readonly number[], k: number) => [r! * k, g! * k, b! * k] as const;

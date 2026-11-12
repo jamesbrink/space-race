@@ -211,6 +211,7 @@ export class Cabin {
       m.aoMapIntensity = 1;
       m.needsUpdate = true;
     }
+    this.inside = [...inside];
 
     const p = this.def.periscope;
     const screen = p && (find(p.screen) as THREE.Mesh | null);
@@ -296,6 +297,13 @@ export class Cabin {
     this.host.redraw();
     return s.power;
   }
+
+  /** The model has been cut open, or closed again: daylight comes in at the cut, so the inside is shaded less. */
+  opened(on: boolean): void {
+    for (const m of this.inside) m.aoMapIntensity = on ? OPENED : 1;
+    this.host.redraw();
+  }
+  private inside: THREE.MeshStandardMaterial[] = [];
 
   /** The periscope's screen is being looked into, filling the view (it is then drawn in full every frame), or only glanced at. */
   watched = false;
@@ -593,6 +601,8 @@ const AROUND = [0, 1, 2, 3];
 
 /** How much of the sky's light and reflection is left on what is indoors: a little comes in at the windows. */
 const INDOORS = 0.1;
+/** How much of that shading is kept while the model is cut open to the day. */
+const OPENED = 0.45;
 /** A lit lamp's own brightness (emissive, against the scene's exposure). */
 const LAMP_LIT = 1.6;
 /** The exposure the cabin's lights are set for: a day's. Past it (dusk, night) they are turned down by as much, so the cabin reads the same. */

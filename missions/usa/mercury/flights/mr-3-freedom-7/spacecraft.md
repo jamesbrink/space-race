@@ -106,7 +106,7 @@ is documented (the periscope's 8 in screen) and the rest follow from it or are e
 | Cabin lights | two fittings above and either side of the pilot's head | estimated | No. 7 had one CABIN LITES switch and flew with them "on full white light" (Postlaunch Report, p. 76); the arrangement is the orbital capsule's (SEDR 104, 10-19) |
 | Chest parachute, survival kit, map case | by the right shoulder; left of the couch; hanging under the periscope's display | estimated | NASM2021-00153 (the olive pack); SEDR 104 Figure 1-6 and 12-27 (the orbital capsule) |
 | Colours | wall, panels and consoles light grey; instrument faces black; couch grey with a cream liner; chest parachute olive | estimated | NASM2021-00147 and -00153, and NASA S61-03257. No document read states a colour |
-| Head's turn from the seat | 100 degrees to either side, 54 up, 66 down | estimated | a head in a helmet fixed to the suit, and the eyes' own turn |
+| Head's turn from the seat | 100 degrees to either side, 54 up, 57 down | estimated | a head in a helmet fixed to the suit, and the eyes' own turn |
 
 On board (`flight.ts`: `vehicle.cabin`) the needles read the flight at the clock's instant, flown by hand or from the
 record: height, rate of descent, load, the three attitude angles and their rates, the clock and the seconds counter,

@@ -189,6 +189,14 @@ How the air, the sea and the clouds seen from height are worked out (`src/viewer
 | Serdyuchenko and others, "High spectral resolution ozone absorption cross-sections", *Atmos. Meas. Tech.* 7, 2014 | The Chappuis band's shape, from which ozone's absorption is taken as a mean over each screen primary | From memory, not read again: the three figures are estimated |
 | Cox and Munk, "Measurement of the roughness of the sea surface from photographs of the Sun's glitter", *J. Opt. Soc. Am.* 44(11), 1954 | The sea's mean square slope for a wind, 0.003 + 0.00512 U: the breadth of the Sun's glint | From memory |
 | Jerlov, *Marine Optics*, 1976 (water types); Morel and Prieur, "Analysis of variations in ocean color", *Limnol. Oceanogr.* 22(4), 1977 | The sea's colour by depth: attenuation of clear ocean water in red, green and blue, and the deep water's own reflectance | From memory, rounded: estimated |
+
+The sky's fixed lights (`src/world/stars.ts`, `public/sky/`, baked by tools/stars.mjs; fetched 2026-11-11).
+
+| Source | Where | Used for | Licence and limits |
+| --- | --- | --- | --- |
+| Hoffleit and Warren, *The Bright Star Catalogue*, 5th revised edition (preliminary), 1991: CDS catalogue V/50 | [the same file at the SAO Telescope Data Center](http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz) (CDS's ftp did not answer) | Every star's place (J2000), magnitude, B-V and proper motion: 9,096 stars | Public domain. Places to a thousandth of a degree as kept here; proper motions FK5 |
+| NASA/Goddard Space Flight Center Scientific Visualization Studio, *Deep Star Maps 2020* (SVS 4851), `milkyway_2020_4k.exr` | [svs.gsfc.nasa.gov/4851](https://svs.gsfc.nasa.gov/4851) | The Milky Way and the sky's other unresolved light, in celestial coordinates (made from Gaia DR2, Hipparcos-2 and Tycho-2) | NASA's, not copyrighted; credit NASA/GSFC SVS. Kept at half size as a JPEG; how bright it is drawn is estimated |
+| ERFA 2.0 (the IAU's SOFA routines, BSD) with Hipparcos places | run once through pyerfa: `atci13`, `era00`, `hd2ae` | The seven stars' azimuths and elevations at liftoff that tests/world.test.mjs holds the sky to | An independent check, not an input |
 ||||||| parent of eff566c (docs(vostok): the programme, Site 1's place on the Earth, the launcher's figures so far, and what was read)
 
 ## Vostok

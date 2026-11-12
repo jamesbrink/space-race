@@ -401,7 +401,9 @@ export class Stage {
     // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
     this.batches = new Batches(this.scene, (batch) => this.looks.add(batch));
     this.raycaster.layers.enable(PROXY_LAYER); // (a mesh a batch draws is still what a ray meets)
-    if (new URLSearchParams(location.search).has('plain')) this.glazing.enabled = this.batches.enabled = false;
+    const query = new URLSearchParams(location.search);
+    if (query.has('plain')) this.glazing.enabled = this.batches.enabled = false;
+    if (query.has('batch')) this.batches.most = Number(query.get('batch')); // (for measuring where the line should be)
 
     // models are Draco-compressed; the decoder is served from public/draco
     this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
@@ -837,6 +839,7 @@ export class Stage {
   /** Open or close the cutaway. With it open, shells show their inner faces too. */
   setCutaway(on: boolean): void {
     this.cut = on;
+    this.cabin?.opened(on);
     this.dirty = true;
     const at = this.main?.position ?? new THREE.Vector3();
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);

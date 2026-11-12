@@ -193,3 +193,21 @@ export function dayLight(sunElevation: number, moon: { elevation: number; lit: n
     limitingMagnitude: limitingMagnitude(sunElevation),
   };
 }
+
+/** The faintest star an eye set by a sunlit Earth and a sunlit vehicle picks out of a black sky. Estimated. */
+export const DAY_ADAPTED = 5.2;
+
+/**
+ * The faintest star that shows from a height, given the faintest that shows from the ground under the same Sun
+ * (`ground`: limitingMagnitude) and how much of the air is still above the eye (`air`: 1 at the sea, 0 above it all).
+ *
+ * Physical: by day stars are lost in the sky's own light, which is sunlight scattered by the air above the eye, so
+ * it dims as that air thins; against a bright ground a point is seen when it is a set fraction of the ground under
+ * it (Weber's law), so each 2.512 times less sky shows stars a magnitude fainter. For the look: where that ends.
+ * With no sky left the limit is the eye's own, set by what else it is looking at: by day `DAY_ADAPTED` (the sky as
+ * it is, not as a pilot's sunlit eye had it: Shepard saw no stars through his periscope); by night the ground's
+ * own limit, 6.5.
+ */
+export function starLimit(ground: number, air: number): number {
+  return Math.min(Math.max(ground, DAY_ADAPTED), ground - 2.5 * Math.log10(Math.max(air, 1e-6)));
+}

@@ -2,7 +2,7 @@
 // and JPL Horizons (ssd.jpl.nasa.gov/horizons, DE441, queried November 2026) for what the whole
 // chain gives from a place on the ground: airless apparent azimuth and elevation, observer range.
 import assert from 'node:assert/strict';
-import { globSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -28,11 +28,11 @@ import {
   j2000ToSite,
   length,
   rotate,
-  siteToEcef,
   siteFrame,
+  siteToEcef,
   siteToEnu,
 } from '../src/world/frames.ts';
-import { STAR_STRIDE, STARS } from '../src/world/stars.ts';
+import { STAR_STRIDE, STARS, starDirection, yearsFrom2000 } from '../src/world/stars.ts';
 import {
   deltaT,
   greenwichMeanSiderealTime,
@@ -321,12 +321,74 @@ test('a planet’s magnitude follows Mueller’s formulae', () => {
   near(planetMagnitude(venus, [0, AU, 0], [AU, 0, 0]), -4.0 + 0.7526 + 0.5949 + 0.0387, 1e-3, 'Venus');
 });
 
+/**
+ * Where seven bright stars stood over Launch Complex 5 at Freedom 7's liftoff (azimuth from north through east and
+ * elevation, degrees, no refraction), by the IAU's own routines (ERFA 2.0, the open SOFA: `atci13` for proper
+ * motion, parallax, light deflection, aberration and precession-nutation from Hipparcos places, then the Earth
+ * Rotation Angle), with UT taken as UT1 and TT 33.6 s ahead of it. An independent chain from another catalogue.
+ */
+const STARS_AT_LIFTOFF = [
+  ['Sirius', 101.28715533, -16.71611586, 100.5385, -16.1302],
+  ['Arcturus', 213.91530029, 19.18240916, 323.1339, -32.9068],
+  ['Alpha Centauri A', 219.90205833, -60.83399269, 207.3782, -48.969],
+  ['Vega', 279.23473479, 38.78368896, 302.9266, 22.9555],
+  ['Polaris', 37.95456067, 89.26410897, 0.4903, 29.2522],
+  ['Canopus', 95.98795783, -52.69566138, 138.2171, -24.9064],
+  ['Capella', 79.17232794, 45.99799147, 50.4955, 28.5096],
+];
+
+test('the stars at liftoff are where the IAU’s routines put them, to 0.012 degrees', () => {
+  const sky = skyFrom(LC5, LIFTOFF);
+  const m = j2000ToSite(LC5, sky.siderealTime, sky.jdTT);
+  const years = yearsFrom2000(sky.jdTT);
+  near(years, -38.66, 0.01, 'years from 2000.0 to 5 May 1961');
+  for (const [name, ra, dec, azimuth, elevation] of STARS_AT_LIFTOFF) {
+    // the star in our own table: the nearest to that place
+    let at = -1,
+      least = Infinity;
+    for (let i = 0; i < STARS.length; i += STAR_STRIDE) {
+      const off = angleBetween(fromEquatorial(STARS[i] * DEG, STARS[i + 1] * DEG), fromEquatorial(ra * DEG, dec * DEG));
+      if (off < least) [at, least] = [i, off];
+    }
+    assert.ok(least / DEG < 0.01, `${name} is in the table`);
+    const ours = rotate(m, starDirection(STARS[at], STARS[at + 1], STARS[at + 4], STARS[at + 5], years));
+    const theirs = enuToSite(LC5.bearingX, fromHorizontal(azimuth * DEG, elevation * DEG));
+    // what is left out: aberration (0.006 at most), the table's thousandth of a degree, parallax
+    near(angleBetween(ours, theirs) / DEG, 0, 0.012, name);
+  }
+});
+
+test('a star is carried along its proper motion: Alpha Centauri stood 0.04 degrees from its place in 2000', () => {
+  const i = STARS.findIndex((v, k) => k % STAR_STRIDE === 0 && Math.abs(v - 219.9) < 1e-6 && STARS[k + 2] === -0.01);
+  assert.ok(i >= 0);
+  const then = starDirection(STARS[i], STARS[i + 1], STARS[i + 4], STARS[i + 5], -38.66);
+  const now = starDirection(STARS[i], STARS[i + 1], STARS[i + 4], STARS[i + 5], 0);
+  near(angleBetween(then, now) / DEG, (3.709 * 38.66) / 3600, 2e-4, '3.709 arcseconds a year for 38.66 years');
+  near(angleBetween(now, fromEquatorial(STARS[i] * DEG, STARS[i + 1] * DEG)), 0, 1e-12, 'and at 2000.0 it is the catalogue’s place');
+  // without it the star would be out by all of that: more than three times what the test above allows
+  assert.ok(angleBetween(then, now) / DEG > 0.036);
+});
+
+test('the whole catalogue is baked: every star the eye sees, brightest first, the bright table at its head', () => {
+  const file = readFileSync(new URL('../public/sky/stars.bin', import.meta.url));
+  const all = new Float32Array(file.buffer, file.byteOffset, file.byteLength / 4);
+  assert.equal(all.length / STAR_STRIDE, 9096);
+  let to65 = 0;
+  for (let i = 0; i < all.length; i += STAR_STRIDE) {
+    assert.ok(all[i] >= 0 && all[i] < 360 && Math.abs(all[i + 1]) <= 90 && all[i + 2] < 8.1 && all[i + 3] > -0.5 && all[i + 3] < 6);
+    if (i) assert.ok(all[i + 2] >= all[i + 2 - STAR_STRIDE], 'brightest first');
+    if (all[i + 2] <= 6.5) to65++;
+  }
+  assert.ok(to65 > 8300 && to65 < 8500, `${to65} stars to magnitude 6.5`);
+  for (let i = 0; i < STARS.length; i++) near(all[i], STARS[i], 2e-3, `number ${i} of the bright table`);
+});
+
 test('the stars: a catalogue star lands where it should in a site’s sky', () => {
   assert.equal(STARS.length % STAR_STRIDE, 0);
   assert.equal(STARS.length / STAR_STRIDE, 518);
   // brightest first: Sirius, Canopus, Arcturus
-  assert.deepEqual(STARS.slice(0, 4), [101.287, -16.716, -1.46, 0.0]);
-  assert.ok(STARS[2] <= STARS[6] && STARS[6] <= STARS[10]);
+  assert.deepEqual(STARS.slice(0, 6), [101.287, -16.716, -1.46, 0.0, -0.553, -1.205]);
+  assert.ok(STARS[2] <= STARS[2 + STAR_STRIDE] && STARS[2 + STAR_STRIDE] <= STARS[2 + 2 * STAR_STRIDE]);
   for (let i = 0; i < STARS.length; i += STAR_STRIDE) {
     assert.ok(STARS[i] >= 0 && STARS[i] < 360 && Math.abs(STARS[i + 1]) <= 90 && STARS[i + 2] <= 4.0, `star ${i / STAR_STRIDE}`);
   }

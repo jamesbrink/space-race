@@ -16,6 +16,17 @@ from the Sun's height. Positions, sizes and phase are computed; brightnesses are
 eye and say so. Stated accuracy: Sun 0.006 degrees, Moon 0.008, planets 0.01 to 0.13; do not
 quote better.
 
+The stars are the whole Bright Star Catalogue (9,096, to magnitude 6.5 and a little past: `pnpm stars`
+bakes `public/sky/stars.bin` and the 518 brightest into `stars.ts`, which are in the bundle for the
+first frame). Each is carried along its proper motion to the clock's date (`starDirection`), then
+turned by precession, nutation and the Earth's rotation (`j2000ToSite`): to 0.012 degrees against
+the IAU's own routines at liftoff (tests/world.test.mjs; aberration is what is left out). From
+orbit nothing more is done to them: the scene's frame turns with the Earth and the stars do not.
+The Milky Way is NASA's map (`public/sky/milkyway.jpg`), in the same frame. Which stars show is
+one rule (`daysky.ts`: `starLimit`): the ground's limit for the Sun's height, a magnitude fainter
+for each 2.512 times less air above the eye, no further than the eye's own limit. How bright a
+star is drawn against another is compressed for a screen and says so (heavens.ts).
+
 The simulation clock (`world/clock.ts`, `sr.clock`, the time bar under the section switcher)
 counts seconds from the flight's launch and is stopped at launch until run. A setting follows it
 through `Setting.at(jdUT)`, which returns null unless something on screen changed, so a stopped

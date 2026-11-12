@@ -108,7 +108,7 @@ export class OrbitBackdrop {
     this.scene.add(air);
 
     // the stars and planets are points at infinity; the Earth, nearer, hides those behind it
-    this.scene.add(sky instanceof Heavens ? sky.stars : sky);
+    this.scene.add(sky instanceof Heavens ? sky.sky : sky);
     if (sky instanceof Heavens) this.scene.add((this.moon = moonCard(sky)));
 
     this.sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(60, 56, 48) }));
