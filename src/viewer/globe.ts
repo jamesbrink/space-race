@@ -244,6 +244,41 @@ const COLOUR = /* glsl */ `
     return c;
   }`;
 
+/**
+ * GLSL: the Sun's glint on the sea (`globeGlint`) and how much of a light's own lobe it stands in for
+ * (`globeGlinting`). The globe's sea and the site's own water (land.ts, through `beyond`) both use it, so the
+ * highlight is one patch across where they meet. Needs uGlobeAbove (COLOUR declares it).
+ */
+const GLINT = /* glsl */ `
+  // The Sun's glint on the sea, seen from above the air: the light a sea of waves sends from the Sun to the
+  // eye, for each unit of the Sun's light falling squarely. Cox and Munk's law (1954): the waves' slopes are
+  // spread as a bell (a Gaussian) whose mean square is SEA_SLOPES, and a facet tilted to mirror the Sun into the
+  // eye sends back Fresnel's share (2 % squarely, all of it at a graze). So the glint is a bounded patch
+  // round the mirror point, 40 degrees from straight down with the Sun 50 up, and a sixth of the way across
+  // it is all but gone. (Three's own lobe for a rough surface, GGX, has a far longer tail: with the same
+  // spread it put ten times the light 50 degrees from the mirror point, a pale glare over the whole sea.)
+  // l, n, v: toward the light, the sea's normal, toward the eye. Facets hiding one another: Cook and Torrance's term.
+  float globeGlint(vec3 l, vec3 n, vec3 v) {
+    vec3 h = normalize(l + v);
+    float nh = dot(n, h), nl = dot(n, l), nv = max(dot(n, v), 1e-3), vh = clamp(dot(v, h), 1e-3, 1.0);
+    if (nl <= 0.0 || nh <= 1e-3) return 0.0;
+    float nh2 = nh * nh;
+    float spread = exp(-(1.0 - nh2) / (nh2 * ${SEA_SLOPES.toFixed(5)})) / (${(Math.PI * SEA_SLOPES).toFixed(5)} * nh2 * nh2);
+    float away = 1.0 - vh;
+    float fresnel = 0.02 + 0.98 * away * away * away * away * away;
+    float seen = min(1.0, 2.0 * nh * min(nv, nl) / vh);
+    return fresnel * spread * seen / (4.0 * nv);
+  }
+  // How much of a light's own lobe the glint stands in for, on a surface of which \`sea\` is open water: none on
+  // the ground, where the water keeps the look it was tuned to, all of it from above the air. (Not in the drawn look.)
+  float globeGlinting(float sea) {
+    #ifdef TOON
+      return 0.0;
+    #else
+      return sea * uGlobeAbove;
+    #endif
+  }`;
+
 /** How far the air's density falls by e, metres: for `chapman` and `transmission`. */
 const SCALE = 8_000;
 /**
@@ -678,7 +713,14 @@ export class Globe {
         uniform vec3 uGlobeOrigin, uGlobeSun;
         uniform mat3 uGlobeAxes;
         ${COLOUR}
-        vec3 beyondAlbedo(vec3 p, out float rough) { return globeAlbedo(normalize(uGlobeOrigin + uGlobeAxes * p), rough); }`,
+        ${GLINT}
+        vec3 beyondAlbedo(vec3 p, out float rough, out float sea) {
+          vec3 c = globeAlbedo(normalize(uGlobeOrigin + uGlobeAxes * p), rough);
+          sea = globeSea;
+          return c;
+        }
+        float beyondGlinting(float sea) { return globeGlinting(sea); }
+        float beyondGlint(vec3 l, vec3 n, vec3 v) { return globeGlint(l, n, v); }`,
     };
   }
 
@@ -871,25 +913,7 @@ export class Globe {
           ${ATMOSPHERE_GLSL}
           float globeRough;
           ${COLOUR}
-          // The Sun's glint on the sea, seen from above the air: the light a sea of waves sends from the Sun to the
-          // eye, for each unit of the Sun's light falling squarely. Cox and Munk's law (1954): the waves' slopes are
-          // spread as a bell (a Gaussian) whose mean square is SEA_SLOPES, and a facet tilted to mirror the Sun into the
-          // eye sends back Fresnel's share (2 % squarely, all of it at a graze). So the glint is a bounded patch
-          // round the mirror point, 40 degrees from straight down with the Sun 50 up, and a sixth of the way across
-          // it is all but gone. (Three's own lobe for a rough surface, GGX, has a far longer tail: with the same
-          // spread it put ten times the light 50 degrees from the mirror point, a pale glare over the whole sea.)
-          // l, n, v: toward the light, the sea's normal, toward the eye. Facets hiding one another: Cook and Torrance's term.
-          float globeGlint(vec3 l, vec3 n, vec3 v) {
-            vec3 h = normalize(l + v);
-            float nh = dot(n, h), nl = dot(n, l), nv = max(dot(n, v), 1e-3), vh = clamp(dot(v, h), 1e-3, 1.0);
-            if (nl <= 0.0 || nh <= 1e-3) return 0.0;
-            float nh2 = nh * nh;
-            float spread = exp(-(1.0 - nh2) / (nh2 * ${SEA_SLOPES.toFixed(5)})) / (${(Math.PI * SEA_SLOPES).toFixed(5)} * nh2 * nh2);
-            float away = 1.0 - vh;
-            float fresnel = 0.02 + 0.98 * away * away * away * away * away;
-            float seen = min(1.0, 2.0 * nh * min(nv, nl) / vh);
-            return fresnel * spread * seen / (4.0 * nv);
-          }
+          ${GLINT}
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
           float globeHeight(vec3 p) {
             vec3 q = uGlobeOrigin + uGlobeAxes * p;
@@ -982,16 +1006,13 @@ export class Globe {
               this.clouds
                 ? `#ifdef USE_FOG
             float footprint = length(fwidth(vFogWorld.xz));
-            sceneShade = cloudShade(vFogWorld, transpose(mat3(viewMatrix)) * directionalLights[0].direction, footprint);
+            sceneShade = airShade;   // (the shared chunk's own, just worked out)
             sunShade = globeShade(vFogWorld, uGlobeSun, dot(normalize(vGlobeNormal), uGlobeSun), footprint);
             #endif`
                 : ''
             }
             // (and from above the air the sea's glint is Cox and Munk's, not the material's own lobe: globeGlint)
-            float glint = 0.0;
-            #ifndef TOON
-              glint = globeSea * uGlobeAbove;
-            #endif
+            float glint = globeGlinting(globeSea);
             if (away > 0.0 || glint > 0.0) {
               ReflectedLight scene = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
               IncidentLight light;

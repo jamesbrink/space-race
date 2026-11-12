@@ -384,7 +384,10 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 - **The Sun's glint is Cox and Munk's.** From above the air the sea's highlight is not the material's lobe (GGX,
   whose tail put a pale glare over the whole sea) but a Gaussian spread of wave slopes for the record's wind
   (`globeGlint`): a bounded patch round the mirror point, at its heart a quarter as bright as a white surface in the same Sun. From
-  the ground the Cape's water keeps the look it was tuned to; the two are mixed by `uGlobeAbove`.
+  the ground the Cape's water keeps the look it was tuned to; the two are mixed by `uGlobeAbove`. The site's own
+  water (land.ts) takes the same glint by the same height through `Beyond` (`beyondGlint`, `beyondGlinting`), and its
+  waves and polish give way to the globe's sea at that rate, so the highlight is one patch across the edge of the
+  site's ground at every height: change the glint in `GLINT` (globe.ts) and both follow.
 - **MODIS's true colour is not what an eye sees.** Its corrected reflectance has Rayleigh's scattering taken out,
   so its sea is navy and its land dark green; a photograph from orbit, and ours, has the air's blue over both (the
   sea straight down sends back about 3, 7 and 16 per cent of red, green and blue, most of it the air's). Compare

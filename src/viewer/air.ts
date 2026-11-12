@@ -221,6 +221,7 @@ export function installAir(air: Air): void {
       vFogWorld = cameraPosition + uOrigin + transpose(mat3(viewMatrix)) * mvPosition.xyz;
     #endif`;
   chunks.fog_pars_fragment = /* glsl */ `
+    float airShade = 1.0;   // how much of the scene's direct light the clouds let through here, once the lights are done (lights_fragment_end)
     #ifdef USE_FOG
       uniform vec3 fogColor;
       varying float vFogDepth;
@@ -252,9 +253,9 @@ export function installAir(air: Air): void {
     #if defined( USE_FOG ) && NUM_DIR_LIGHTS > 0
       {
         vec3 toLight = transpose(mat3(viewMatrix)) * directionalLights[0].direction;
-        float shade = cloudShade(vFogWorld, toLight, length(fwidth(vFogWorld.xz)));
-        reflectedLight.directDiffuse *= shade;
-        reflectedLight.directSpecular *= shade;
+        airShade = cloudShade(vFogWorld, toLight, length(fwidth(vFogWorld.xz)));
+        reflectedLight.directDiffuse *= airShade;
+        reflectedLight.directSpecular *= airShade;
       }
     #endif`;
   chunks.fog_fragment = /* glsl */ `

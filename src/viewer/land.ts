@@ -86,7 +86,11 @@ export interface LandSpec {
  * it bends down onto that surface and takes its colours, so that where the two overlap they are
  * one surface. `vertex` is GLSL defining `float beyondHeight(vec3 p)`, the height in the scene's
  * frame of that surface under a point p of the scene; `fragment` defines `vec3 beyondAlbedo(vec3 p,
- * out float rough)`, its colour and roughness there.
+ * out float rough, out float sea)`, its colour and roughness there and how much of it is open water.
+ * And its water's highlight, so that the Sun's glint is one patch across the two: `float
+ * beyondGlinting(float sea)`, how much of a light's own lobe that surface replaces on water (none
+ * from the ground), and `float beyondGlint(vec3 l, vec3 n, vec3 v)`, what it puts there for each
+ * unit of the light (toward the light, the normal, toward the eye).
  */
 export interface Beyond {
   vertex: string;
@@ -116,6 +120,21 @@ const LIFT: [number, number] = [3000, 20000];
 /** The lowest and highest the land's mesh ever is, metres from its base level, with room to spare: the box a patch is culled by. */
 const DEEPEST = -120;
 const TALLEST = 30;
+
+/**
+ * three's loop over the lights (as shadows.ts has left it), keeping the first directional light's colour once its
+ * shadows are taken (`landSun`): the Sun's, for the water's glint.
+ */
+function sunKept(): string {
+  const chunk = THREE.ShaderChunk.lights_fragment_begin;
+  const from = chunk.indexOf('getDirectionalLightInfo( directionalLight, directLight );');
+  const to = chunk.indexOf('#pragma unroll_loop_end', from);
+  if (from < 0 || to < 0) throw new Error("land.ts: three's loop over the directional lights is not as expected");
+  const loop = chunk
+    .slice(from, to)
+    .replaceAll('RE_Direct( directLight,', 'if ( UNROLLED_LOOP_INDEX == 0 ) landSun = directLight.color;\n\t\tRE_Direct( directLight,');
+  return chunk.slice(0, from) + loop + chunk.slice(to);
+}
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
@@ -572,6 +591,8 @@ export class Land {
           float landBump;
           float landWater;
           float landRough;
+          float landGlint;   // how much of the Sun's own lobe gives way to what lies beyond's glint (Beyond)
+          vec3 landSun;      // the Sun's light here, its shadows taken
           ${spec.paint}
           // Bare sand, grass and what falls under shrubs, from the maps, with the grain each has close to.
           Ground ground(vec2 p, vec4 A, vec4 B) {
@@ -694,14 +715,20 @@ export class Land {
           #ifdef LAND_BEYOND
           // across the last stretch, and everywhere from high up but where the ground is made (worked: roads, aprons, clearings)
           float handed = max(vHanded, smoothstep(${LIFT[0].toFixed(1)}, ${LIFT[1].toFixed(1)}, uEye.y) * (1.0 - smoothstep(0.1, 0.35, coverB.r)));
-          if (handed > 0.0) {
-            float rough;
-            vec3 albedo = beyondAlbedo(vBeyond, rough);
+          // The water's highlight is what lies beyond's, by the eye's height as it is there, and its own waves and
+          // polish give way to that surface's at the same rate: so the Sun's glint is one patch across the two, at
+          // any height. (From the ground nothing is handed and the water is its own.)
+          float open = g.water, glinting = beyondGlinting(open);
+          if (max(handed, glinting) > 0.0) {
+            float rough, sea;
+            vec3 albedo = beyondAlbedo(vBeyond, rough, sea);
             g.albedo = mix(g.albedo, albedo, handed);
-            g.rough = mix(g.rough, rough, handed);
-            g.bump *= 1.0 - handed;
+            g.rough = mix(g.rough, rough, max(handed, glinting));
+            g.bump *= 1.0 - max(handed, glinting);
             g.water *= 1.0 - handed;
+            open = mix(open, sea, handed);
           }
+          landGlint = beyondGlinting(open);
           #endif
           landBump = g.bump;
           landWater = g.water;
@@ -712,6 +739,31 @@ export class Land {
           '#include <roughnessmap_fragment>',
           /* glsl */ `#include <roughnessmap_fragment>
           roughnessFactor = landRough;`,
+        )
+        .replace(
+          '#include <lights_physical_fragment>',
+          /* glsl */ `#include <lights_physical_fragment>
+          #if defined( LAND_BEYOND ) && ! defined( TOON )
+            // (water sends back 2 % of what meets it squarely: as what lies beyond has it)
+            material.specularColor = mix(material.specularColor, vec3(0.02), landGlint);
+          #endif`,
+        )
+        .replace('#include <lights_fragment_begin>', `landSun = vec3(0.0);\n${sunKept()}`)
+        .replace(
+          '#include <lights_fragment_end>',
+          /* glsl */ `#include <lights_fragment_end>
+          #if defined( LAND_BEYOND ) && ! defined( TOON ) && NUM_DIR_LIGHTS > 0
+          if (landGlint > 0.0) {
+            // the Sun's own lobe on the water taken out and the glint put in, under the same shadows
+            IncidentLight sun;
+            sun.color = landSun * airShade;
+            sun.direction = directionalLights[0].direction;
+            sun.visible = true;
+            ReflectedLight own = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
+            RE_Direct(sun, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, own);
+            reflectedLight.directSpecular += landGlint * (sun.color * beyondGlint(sun.direction, geometryNormal, geometryViewDir) - own.directSpecular);
+          }
+          #endif`,
         )
         .replace(
           '#include <normal_fragment_maps>',
