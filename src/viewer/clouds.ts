@@ -654,7 +654,7 @@ const OVER = /* glsl */ `
   float gFpq;   // a pixel's breadth on the field, in cells: set by whoever reads the field
   float fieldOver(vec2 q, float bias, float cells) {
     float x = cells < 1.0 ? cloudNoise(q) + bias - uCumulus.y : 0.0;
-    return cells > 0.0 ? mix(x, cumulusCells(q, bias, uCumulus.y, gFpq), cells) : x;
+    return cells > 0.0 ? mix(x, cumulusCells(q, bias, uCumulus.y, gFpq), cells) + cellsMorph(cells) : x;
   }
   ${ATMOSPHERE_COARSE_GLSL}
   const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -1118,6 +1118,8 @@ export class CloudPass extends Pass {
   readonly mark = new DepthMark();
   /** The cel look: cut at half opacity, two flat tones. */
   cel = false;
+  /** The stage is frozen for a test (Stage.frozen): nothing of an earlier frame is kept, so a frame drawn again is the same frame. */
+  frozen = false;
   /**
    * What is drawn with the scene but writes no depth and can stand in front of a cloud: the engine's fire and its
    * trail. Cloud behind them is laid over them only as far as they let it through.
@@ -1440,6 +1442,7 @@ export class CloudPass extends Pass {
   private settle(renderer: THREE.WebGLRenderer, eye: THREE.Vector3): boolean {
     const camera = this.camera;
     const still =
+      !this.frozen &&
       this.settled &&
       eye.distanceToSquared(this.lastEye) < 1e-8 &&
       camera.quaternion.angleTo(this.lastTurn) < 1e-7 &&

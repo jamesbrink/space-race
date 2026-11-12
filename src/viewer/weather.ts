@@ -325,6 +325,29 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     return 0.5 * amount * smoothstep(0.36, 0.7, t + 0.25 * (amount - 0.5));
   }`;
 
+/**
+ * How much wider than the field's two fine octaves a cell's own chance of standing is spread. At 1 the cells stand
+ * where the noise is over its cut and nowhere else, in clumps with empty sea between; MODIS has small cells between
+ * the clumps too (Aqua, 9 May 2018, off Florida). Estimated.
+ */
+const SCATTER = 1.6;
+/**
+ * What is added to the field for the cells at each level it is cut at (the cut less the bias), so that with SCATTER
+ * they cover what was asked: found by bisection over a wide patch (cover 0.85, 0.6, 0.45, 0.2, 0.05 and 0.005 from
+ * the lowest level up: a JS copy of cumulusCells, 250,000 points each). Measure again after changing SCATTER, a
+ * cell's breadth or how many stand.
+ */
+const SCATTER_SHIFT: readonly (readonly [number, number])[] = [
+  [0.4001, 0.0765],
+  [0.4899, 0.0098],
+  [0.5334, -0.0086],
+  [0.6125, -0.035],
+  [0.699, -0.0539],
+  [0.7825, -0.0715],
+];
+
+/** What keeps a field's cover through the morph from the noise's shape to the cells (cellsMorph), in the noise's units. */
+const MORPH = 0.02;
 /** Far cumulus are drawn as cells where a pixel of the field is between these many metres across and more: nearer, as the field itself, which the volume is heaped on. */
 export const CELLS: readonly [number, number] = [45, 90];
 
@@ -348,12 +371,18 @@ export const CELLS: readonly [number, number] = [45, 90];
  * is its two coarse octaves, taken from their value and slope at `q` (one reading for all eighteen points, where
  * reading the noise at each cost a millisecond a frame), and for its two fine octaves, which are finer than the
  * cells are apart, a chance of the cell's own with their spread. The weather's bias and the streets are the pixel's:
- * across a cell 300 m broad they hardly change. The cover is the field's: measured over a wide patch, cells for a
- * cover of 0.02, 0.1, 0.3 and 0.6 cover 0.020, 0.095, 0.28 and 0.54 (a dense field keeps its gaps). Their shape and
- * sizes are estimated.
+ * across a cell 300 m broad they hardly change. The cover is the field's: a cell's own chance is spread
+ * wider than the fine octaves (SCATTER), and the level moved to make up for it (SCATTER_SHIFT), so the cells cover
+ * what was asked from 0.005 to 0.85 (measured in a frame from 150 km: 0.107 of a patch of sea where the noise's own
+ * shapes covered 0.105, 0.185 for 0.187 over land). Their shape and sizes are estimated.
  */
 export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
   float cellsShare(float fp) { return smoothstep(${CELLS[0].toFixed(1)}, ${CELLS[1].toFixed(1)}, fp); }
+  // Half way between the noise's shape and the cells the two do not stand in the same places, and a mean of the two
+  // is over the cut less often than either: a field lost a third of its cover between 80 and 110 km up (0.087 of a
+  // patch at 60 km, 0.060 at 95, 0.096 at 130). What is added to the mean to keep it: most half way, nothing at
+  // either end (measured: the same patch through the climb, both looks).
+  float cellsMorph(float cells) { return ${MORPH.toFixed(3)} * 4.0 * cells * (1.0 - cells); }
   // (smooth union: where two domes meet they run together into one mass with a crease, not two balls)
   float gJoin;   // how broadly two cells run together: more as a pixel takes in more of them, so the crease between two is never finer than a pixel
   float cellsJoin(float a, float b) { float h = max(gJoin - abs(a - b), 0.0) / gJoin; return max(a, b) + h * h * 0.25 * gJoin; }
@@ -375,6 +404,19 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
     // the field's coarse part here (cloudNoise's first two octaves) over its cut, and its slope
     vec3 c0 = cellsNoise(q * 0.23 + vec2(1.7, 5.3), 94), c1 = cellsNoise(q, 91);
     float base = 0.3 * c0.x + 0.33 * c1.x + 0.04 + bias - cut;
+    // (the cells' own chance is spread wider than the field's fine octaves, so that small cells stand between the
+    // clumps as well as in them; cut at the same level that would cover too much, so the level is moved by what makes
+    // the cells cover what was asked: SCATTER_SHIFT, measured)
+    {
+      float level = cut - bias, shift = ${SCATTER_SHIFT[0]![1].toFixed(4)};
+      ${SCATTER_SHIFT.slice(1)
+        .map(
+          ([c, s], i) =>
+            `shift = mix(shift, ${s.toFixed(4)}, clamp((level - ${SCATTER_SHIFT[i]![0].toFixed(4)}) / ${(c - SCATTER_SHIFT[i]![0]).toFixed(4)}, 0.0, 1.0));`,
+        )
+        .join('\n      ')}
+      base += shift;
+    }
     vec2 slope = 0.069 * c0.yz + 0.33 * c1.yz;
     float best = -0.1;
     gJoin = 0.03 + 1.2 * fpq;
@@ -385,7 +427,7 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
       ivec2 c = i + ivec2(dx, dy);
       vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 601), ${prefix}hash2(c, 602)) - 0.5)) * G;
-      float e = base + dot(slope, pc - q) + 0.165 + 0.21 * (${prefix}hash2(c, 621) - 0.5) + 0.12 * (${prefix}hash2(c, 622) - 0.5);
+      float e = base + dot(slope, pc - q) + 0.165 + ${(0.21 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 621) - 0.5) + ${(0.12 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 622) - 0.5);
       if (e <= 0.0) continue;
       // (most cells small, a few broad: the cube of a chance; and broader the further the field is over its cut. The
       // 1.12 is what makes them cover what the field does: measured, see above)
@@ -405,7 +447,7 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         ivec2 c = j + ivec2(dx, dy);
         vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 631), ${prefix}hash2(c, 632)) - 0.5)) * GB;
-        float e = base + dot(slope, pc - q) + 0.115 + 0.21 * (${prefix}hash2(c, 641) - 0.5) + 0.12 * (${prefix}hash2(c, 642) - 0.5);
+        float e = base + dot(slope, pc - q) + 0.115 + ${(0.21 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 641) - 0.5) + ${(0.12 * SCATTER).toFixed(3)} * (${prefix}hash2(c, 642) - 0.5);
         if (e <= 0.0) continue;
         float rr = min((0.3 + 0.5 * ${prefix}hash2(c, 637)) * min(0.5 + 8.0 * e, 1.0), 1.0);
         vec2 d = p - pc;

@@ -360,7 +360,8 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   volume is heaped on: a cloud between the two morphs slowly, 66 to 130 km off. The cells are many and small (300 m
   apart, 150 to 700 m across, most of them small and low, so grey and half seen through) with a few broad heaps;
   a cell under a few pixels is lit evenly. What they cover is measured against the cover asked for (the figures
-  are in weather.ts): change a cell's breadth or how many stand and measure again. Whether a cell stands is read
+  are in weather.ts: `SCATTER` spreads the cells between the clumps and `SCATTER_SHIFT` keeps their cover; `MORPH` keeps
+  the cover half way through the morph): change a cell's breadth or how many stand and measure again. Whether a cell stands is read
   from the field's coarse octaves once a pixel, by value and slope: do not read the noise at each cell's middle
   (nine cells, up to five times a pixel: it cost 1 to 2 ms a frame in flight).
 - **The field is organised by where it is.** The weather map's alpha is land (`pnpm globe:weather` bakes it):
