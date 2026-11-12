@@ -1,12 +1,12 @@
 {
-  "about": "Levels of detail: the size on screen (pixels a metre) above which each finer level is drawn, and the pixels of 1280 x 800 that differed between two levels as [size, pixels] pairs, smallest size first, up to the first at which too many did (first from level 0 to 1, then 1 to 2). Allowed: 100 and 350. Written by tools/lod-thresholds.mjs --measure; \"\" is the model as a whole.",
+  "about": "Levels of detail: the size on screen (pixels a metre) above which each finer level is drawn, and the pixels of 1280 x 800 that differed between two levels as [size, pixels] pairs, smallest size first, up to the first at which too many did (first from level 0 to 1, then 1 to 2), in whichever of the two looks more differed. Allowed: 100 and 350. Written by tools/lod-thresholds.mjs --measure; \"\" is the model as a whole, any other name a piece of it.",
   "above": {
-    "": [20, 14]
+    "": [14, 10]
   },
   "measured": {
     "": [
-      [[2.5, 3], [3.5, 2], [5.0, 9], [7.0, 13], [10.0, 45], [14.0, 73], [20.0, 99], [28.0, 181]],
-      [[2.5, 3], [3.5, 13], [5.0, 12], [7.0, 19], [10.0, 65], [14.0, 90], [20.0, 213], [28.0, 329], [40.0, 644]]
+      [[2.5, 3], [3.5, 2], [5, 8], [7, 13], [10, 44], [14, 71], [20, 123]],
+      [[2.5, 3], [3.5, 13], [5, 13], [7, 25], [10, 84], [14, 122], [20, 271], [28, 507]]
     ]
   }
 }

@@ -16,7 +16,8 @@
 // be the same picture, and all three are taken again if the page was still arriving. Its threshold for that boundary is the largest of those sizes at and under which never more
 // than `ALLOWED` pixels differ: there the change is that many pixels fading over 0.6 s (lod.ts `Crossfade`). It is
 // never put under the viewer's own (lod.ts `LOD_ABOVE`, which is what the worst things need), nor over the largest
-// size measured; and the second threshold is kept a size under the first, so that no thing goes from level 0 straight
+// size measured, which is no larger than the one at which the whole thing is still in the window (lod-measure.mjs
+// `whole`: nearer than that the picture is of a part of it, and says nothing of the rest); and the second threshold is kept a size under the first, so that no thing goes from level 0 straight
 // to level 2, which is a change that was not measured.
 //
 // The numbers are kept beside the model's script (`missions/.../model/<name>.lod.json`, with what was measured, so

@@ -91,6 +91,14 @@ async function inLook(look) {
   return st.looks.current;
 }
 
+/**
+ * The largest size at which a thing is measured, pixels a metre: the one at which the ball round it is as tall as
+ * the window. Larger than that only a part of it is in the picture, and the pixels that differ are those of
+ * whichever part the eye happened to be turned to: a gantry's two levels came out the same from 16 m, with its
+ * bracing out of the frame. So nothing as big as that is held coarser than from where all of it is seen.
+ */
+const whole = (thing) => H / (2 * thing.radius);
+
 /** The looks a thing is measured in: its threshold is from whichever shows more of the change. */
 const LOOKS = ['real', 'cel'];
 
@@ -177,7 +185,7 @@ export async function measure({ url, flight, only }) {
           const boundary = found.get(thing)[n];
           // (smallest first, and no further than the first size at which too much differs in either look: nothing larger can raise the threshold)
           for (const ppm of [...PPMS].reverse()) {
-            if (ppm > boundary.over) break;
+            if (ppm > boundary.over || ppm > whole(thing)) break;
             let differ = 0;
             for (const azimuth of [30, 270]) {
               const r = await page.evaluate(differing, [thing, n, n + 1, ppm, azimuth, APART]);
@@ -197,6 +205,13 @@ export async function measure({ url, flight, only }) {
             }
           }
         }
+        // (as it goes: a whole flight in both looks is the better part of an hour)
+        console.log(
+          `  ${look} ${thing.glb} ${thing.name || '(the model)'}: ${found
+            .get(thing)
+            .map((f) => [...f.rows].map((r) => r.join(':')).join(' '))
+            .join(' | ')}`,
+        );
       }
     }
     console.log(

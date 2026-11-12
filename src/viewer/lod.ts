@@ -542,20 +542,20 @@ export class Staged {
   }
 
   explode(t: number): void {
+    if (t !== this.t) this.stale = true; // (asked every frame by a model on the clock: the boxes are taken again only when it has moved)
     this.t = t;
     for (const e of this.exploders) e.set(t);
-    this.stale = true;
   }
 
   /** Hold one node's motions at a slider reading of its own, at every level of detail (null: release it), and show it. */
   hold(node: string, reading: number | null): void {
+    if ((this.held.get(node) ?? null) !== reading) this.stale = true;
     if (reading === null) this.held.delete(node);
     else this.held.set(node, reading);
     for (const e of this.exploders) {
       e.hold(node, reading);
       e.set(this.t);
     }
-    this.stale = true;
   }
 
   /** Let something else move one node at every level of detail (a vehicle driven by hand), or give it back to the slider. */

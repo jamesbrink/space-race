@@ -163,8 +163,8 @@ or a dense screen keeps the fine level further). A model that is cut open is alw
 is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
 the level its own size on screen calls for, so the building beside the walker is always the finest;
 level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it.
-A model that is a place in itself (`ModelDef.pieces`: the pad, 160 m across, which taken whole is always beside the
-walker and so always in full) is chosen the same way (`Staged` in lod.ts): each top-level node is a piece, and a
+A model that is a place in itself (`ModelDef.pieces`: a pad 160 m across, which taken whole is always beside the
+walker and so always in full) can be chosen the same way (`Staged` in lod.ts): each top-level node is a piece, and a
 node whose children stand apart (no child half its size: the ground equipment, the floodlights, the camera towers)
 is taken child by child. Every level's root is then shown and the pieces' nodes shown and hidden under them, so
 **a piece's own node is never hidden or shown by hand** (its `visible` is the choice of level); `Staged.shown` is
@@ -172,6 +172,13 @@ level 0, and `Staged.drawn(node)` is the node wherever it is drawn from (the out
 lift move every level alike, and a piece's box is taken again when they do; a piece that is driven by hand moves at
 level 0 alone and is drawn in full from then on; nothing within 9 m of the eye is below level 0; cut open, all of
 it is in full. A level built with other children under such a node gives no pieces: they are drawn from a finer one.
+**Freedom 7's pad has it switched off, and its pieces' thresholds measured and waiting.** Thrown in one page
+(`pnpm bench --toggle`, the fade cut at each throw, three repeats, both looks, 1440x900 at 1 and 2): on foot 16 of
+the 41 pieces go coarser and they are the cheap ones (huts, screens, cameras: 10 draws of 3,900 and half a per cent
+of the triangles), since what is dear is what the walker stands beside; in the pad's own view 3.6 % of the draws and
+5.4 % of the triangles go and the frame does not move (every pair of repeats within 0.3 ms at 1440x900, either way),
+for 1,900 pixels of 1.3 million drawn otherwise where the whole pad in full drew none. A picture is not changed for
+nothing: turn it on (`pieces: true` in the pad's `ModelDef`) when a pad is dear enough for it to show.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script and a threshold to `LOD_ABOVE` (the choosing takes any number); do not hand-edit geometry for them.
 
@@ -201,7 +208,9 @@ model, and every piece of the place and of a model in pieces, at each pair of le
 of sizes, in both looks, and counts the pixels that differ in the worse of the two (the first level is drawn again
 after the second as a control: it must be the same picture, `pnpm test:frozen`); a thing's threshold is the largest size at and under which no more than 100
 (level 0 to 1) or 350 (1 to 2) pixels of 1280 x 800 differ, never under 8 and 2, the second kept a
-size under the first so that nothing goes from 0 straight to 2. The figures and what was measured
+size under the first so that nothing goes from 0 straight to 2, and never over the size at which the whole thing
+is still in the window (nearer than that the picture is of a part of it: a gantry's two levels came out alike from
+16 m with its bracing out of the frame). The figures and what was measured
 are kept in `<name>.lod.json` beside the model's script and carried in the GLB's extras
 (`lod_above`: the scene's for a model, a node's for a piece), which lod.ts reads
 (`thresholdsOf`); `build-model.mjs` puts them back after a rebuild and a test fails a GLB that has

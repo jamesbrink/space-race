@@ -1172,7 +1172,10 @@ const pad: ModelDef = {
   slider: ['Pilot aboard · 05:20', 'Pad clear'],
   sequence: MORNING,
   specGroups: ['Launch pad'],
-  pieces: true,
+  // (`pieces: true` would choose its level of detail piece by piece, and its pieces' thresholds are measured and in
+  // the GLB. Left off: measured on foot and from 150 m, with the switch thrown in one page, it takes 3.6 % off the
+  // draws and 5.4 % off the triangles of the pad's own view and nothing that can be told from noise off the frame
+  // (within 0.3 ms either way), for 1,900 pixels of 1.3 million drawn otherwise. See docs/agents/rendering.md.)
   parts: padParts,
   views: [
     { id: 'pedestal', label: 'Launcher', nodes: ['LaunchPedestal'] },
