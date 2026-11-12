@@ -84,9 +84,11 @@ the bottom edge**; everything else is in the sheet the handle opens (`fold.ts`, 
 `fold.css`). The launch site has the same top line, handle and sheet (its handle: the sections, Walk, More; its View tab:
 the slider, the views, the switches, the scale and the diagnostics line; the clock is a small line under the top line,
 the time of day said when it is opened), and the flight deck folds in its own terms (`cockpit.css`: the clock is the top
-line with the place control at its right; on show are the navball and the path, the phase, the five figures, the one
-action and the abort, with More beside them; Guidance, the Sequencer, every key and the systems are behind More, but a
-warning of load or heat stays out).
+line with the place control at its right; held upright, on show are one compact line of height, speed and climb over
+the one action, the abort and More, with the stick and roll in the corners above it; on its side the five figures in the
+line. Everything else (the phase, the navball and the path, Guidance, the Sequencer, every key, the systems) is a swipe
+up on the deck or More away, and a swipe down puts it away; a warning of load or heat, or an event that is due, stays
+out).
 
 - **The top line**: the heading is the way back to the front page (its chevron says so), the flight's designation
   small beside it, and one button naming the place ("Gallery") that drops the three places as a menu. A place the

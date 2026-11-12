@@ -224,7 +224,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .cockpit-stick i { inset: 32px; }
   .cockpit-roll button { width: 60px; height: 60px; }
   /* (with the whole list open there is no room to steer: the stick comes back when it is shut) */
-  .cockpit.keys-open :is(.cockpit-stick, .cockpit-roll, .navball) { display: none; }
+  .cockpit.keys-open :is(.cockpit-stick, .cockpit-roll) { display: none; }
   /* (and the card that ends a flight has the screen above the middle panel to itself) */
   .cockpit:has(.cockpit-card:not([hidden])) :is(.navball, .deck-sys) { display: none; }
 }
@@ -256,6 +256,73 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .cockpit-keys { padding: 6px 6px 7px 10px; gap: 4px; }
   .cockpit-keys button { padding: 6px 9px; }
 }
+/*
+ * The deck on a phone and a small tablet folds as the places do (fold.css): what flies it is on show, the rest is behind
+ * More. On show: the navball and the path, the phase, the five figures, the one action and the abort, with More beside
+ * them on the same line (its keys fold to that one line); the stick and roll above, under the thumbs. Behind More:
+ * Guidance and the Sequencer, every key and control, and the systems (a warning of load or heat stays out). The clock is
+ * the top line, the place control at its right.
+ */
+@media (max-width: 960px), (max-height: 520px) {
+  .cockpit:not(.keys-open) .deck-modes { display: none; }
+  .cockpit-phase { min-height: 0; padding: 4px 6px 4px 10px; }
+  .deck-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .deck-main > * { grid-column: 1 / -1; }
+  .deck-main > .deck-act { grid-column: 1; }
+  .deck-main > .deck-foot { grid-column: 2; align-self: stretch; padding: 0 6px 0 0; border-top: 1px solid var(--line); }
+  .deck-foot > :not([data-do='keys']) { display: none !important; }
+  .deck-foot > [data-do='keys'] { min-height: 44px; margin: 0; padding: 0 10px; border: 1px solid var(--line); }
+  .cockpit-next, .cockpit-abort { min-height: 44px; }
+}
+/*
+ * A phone held upright, in flight: the world with the vehicle in it. At a glance, one compact line of the figures (height,
+ * speed, climb) over the one action, the abort and More; the stick and roll in the corners above it, where the thumbs
+ * rest, clear of the middle where the vehicle is framed. Everything else (the phase, the navball and the path, Load and
+ * Mach, Guidance and the Sequencer, every key, the systems) is one swipe up on the deck away, or More; a swipe down puts
+ * it away. A warning of load or heat, or an event that is due, stays out.
+ */
+@media (max-width: 620px) and (min-height: 521px), (max-height: 520px) {
+  .cockpit:not(.keys-open) :is(.navball, .cockpit-phase) { display: none; }
+  /* (shut, a finger's pull on it is the swipe that opens it, never the page's) */
+  .cockpit:not(.keys-open) .deck-main { touch-action: none; }
+  .cockpit:not(.keys-open) .deck-sys:not(:has(> em.hot:not([hidden]))) { display: none; }
+  .cockpit:not(.keys-open) .deck-sys > :not(em) { display: none; }
+  .cockpit:not(.keys-open) .deck-sys > em:not(.hot) { display: none; }
+  @media (min-height: 521px) {
+    .cockpit:not(.keys-open) .gauges { grid-template-columns: repeat(3, 1fr); }
+    .cockpit:not(.keys-open) .gauge:nth-child(n + 4) { display: none; }
+  }
+  .cockpit:not(.keys-open) .gauge { display: flex; align-items: baseline; gap: 5px; padding: 6px 8px 4px; }
+  .cockpit:not(.keys-open) .gauge span { font-size: 9.5px; }
+  .cockpit:not(.keys-open) .gauge b { order: 2; font-size: 17px; line-height: 1.2; }
+  .cockpit:not(.keys-open) .gauge i { display: inline; order: 3; }
+  .cockpit:not(.keys-open) .cockpit-prompt:not(.due) { display: none !important; }
+  .cockpit:not(.keys-open) .deck-act { padding: 5px 6px 6px; }
+  /* (the deck rises: More points the way it opens) */
+  .deck-foot > [data-do='keys'] .chevron::before { transform: rotate(45deg); margin-top: 4px; }
+  .deck-foot > [data-do='keys'][aria-expanded='true'] .chevron::before { transform: rotate(225deg); margin-top: -4px; }
+  /* opened, it may be taller than the window: it scrolls, under the top line */
+  #ui > .cockpit.keys-open { max-height: calc(100dvh - var(--top) - 62px - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+}
+@media (max-width: 620px) and (min-height: 521px) {
+  .cockpit-stick { width: 104px; height: 104px; }
+  .cockpit-stick i { inset: 31px; }
+  .cockpit-roll button { width: 56px; height: 56px; }
+}
+/* (on its side the deck, with the navball away, stands in the middle of the foot) */
+@media (max-height: 520px) {
+  #ui > .cockpit:not(.keys-open) .deck-main { grid-column: 1 / -1; justify-self: center; width: min(560px, 100%); }
+  #ui > .cockpit.keys-open { max-height: calc(100dvh - var(--top) - 56px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+}
+/* the place control at the right of the clock's line */
+@media (max-width: 960px), (max-height: 520px) {
+  #ui.piloting > .title:has(.places) { top: var(--top); left: auto; right: var(--right); height: 46px; display: flex; padding: 0; background: var(--glass); border: 1px solid var(--line); z-index: 5; }
+  #ui.piloting > .title .places { border: 0; margin: 0; height: 44px; }
+  #ui.piloting > .title .places-now { height: 44px; }
+  #ui.piloting .time-row { min-height: 44px; }
+  #ui.piloting .timebar { top: var(--top); left: var(--left); right: auto; max-width: calc(100vw - var(--left) - var(--right) - 96px); }
+}
+
 /* the diagnostics line keeps clear of the deck: up in the corner, as far as the clock; on a small screen there is no room for it */
 #ui.piloting .stats { bottom: auto; top: var(--edge); max-width: calc(50vw - 250px - var(--edge)); overflow: hidden; text-overflow: ellipsis; }
 .cockpit.keys-open .deck-foot > [data-do='leave'] { display: none; }

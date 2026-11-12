@@ -238,6 +238,23 @@ export class Cockpit {
       for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const)
         b.addEventListener(end, () => (this.finger.roll = 0));
     }
+    // On a phone the deck shows the least, and a swipe up on it brings up the rest (as More does); a swipe down puts it away
+    const main = root.querySelector<HTMLElement>('.deck-main')!;
+    let swipe: { y: number; t: number } | null = null;
+    main.addEventListener('touchstart', (e) => (swipe = e.touches.length === 1 ? { y: e.touches[0]!.clientY, t: e.timeStamp } : null), {
+      passive: true,
+    });
+    const ended = (e: TouchEvent): void => {
+      const from = swipe;
+      swipe = null;
+      const y = e.changedTouches[0]?.clientY;
+      if (!from || y === undefined || e.timeStamp - from.t > 1000 || !matchMedia('(max-width: 960px), (max-height: 520px)').matches) return;
+      const open = root.classList.contains('keys-open');
+      if (y - from.y < -36 && !open) this.showKeys(true);
+      else if (y - from.y > 36 && open && root.scrollTop <= 0) this.showKeys(false);
+    };
+    main.addEventListener('touchend', ended);
+    main.addEventListener('touchcancel', ended);
     const lever = root.querySelector<HTMLInputElement>('[data-lever]')!;
     lever.addEventListener('input', () => this.setLever(Number(lever.value)));
     for (const el of root.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(el.dataset.cell!, el);
