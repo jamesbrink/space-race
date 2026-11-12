@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { cloudCutAt } from '../src/viewer/air.ts';
-import { believed, coverNear, deckCutAt, deckTex, MOST, NEAR, toScene, weatherAt } from '../src/viewer/weather.ts';
+import { believed, coverNear, deckCutAt, deckTex, landShare, MOST, NEAR, toScene, weatherAt } from '../src/viewer/weather.ts';
 
 const sea = { shore: -40, height: -3000 };
 const land = { shore: 40, height: 20 };
@@ -75,4 +75,16 @@ test('east and north of the site in the scene’s frame: +X on the site’s bear
   assert.ok(Math.abs(x - 1) < 1e-12 && Math.abs(z) < 1e-12);
   const [x2, z2] = toScene(Math.sin(b + Math.PI / 2), Math.cos(b + Math.PI / 2), b);
   assert.ok(Math.abs(x2) < 1e-12 && Math.abs(z2 - 1) < 1e-12);
+});
+
+test('the map’s land is all of the land a few kilometres in from a shore, none of the water, and runs one way between', () => {
+  assert.equal(landShare({ shore: 40, height: 20 }), 1);
+  assert.equal(landShare({ shore: -40, height: -3000 }), 0);
+  assert.equal(landShare({ shore: -3, height: 0 }), 0);
+  let last = 0;
+  for (let shore = -5; shore <= 10; shore += 0.25) {
+    const share = landShare({ shore, height: 0 });
+    assert.ok(share >= last && share >= 0 && share <= 1);
+    last = share;
+  }
 });

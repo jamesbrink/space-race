@@ -283,7 +283,7 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     float cut = mix(DECK_CUTS[i], DECK_CUTS[i + 1], u - float(i));
     // (far off, where its texture is under a pixel, it is its cover, evenly)
     float even = smoothstep(2700.0, 7000.0, fp);
-    float soft = 0.06 + 0.07 * smoothstep(60.0, 300.0, fp) + 0.06 * smoothstep(300.0, 2700.0, fp);   // (a patch thins to nothing over a few hundred metres: no hard rim)
+    float soft = 0.06 + 0.1 * smoothstep(60.0, 300.0, fp) + 0.03 * smoothstep(300.0, 2700.0, fp);   // (a patch thins to nothing over a few hundred metres: no hard rim)
     float a = mix(smoothstep(cut - soft, cut + soft, deckTex(xz, fp)), cover, even);
     // Altocumulus is cloudlets two or three hundred metres across with clear air between, closing up toward a patch's
     // middle; a front's deck is solid. (So an eighth of the sky has altocumulus over it, and less than that is hidden.)
@@ -306,7 +306,10 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
       }
       lets = smoothstep(0.0, 0.75, lets + 0.5 * (deckTex(xz, fp) - cut));
     }
-    float clumps = mix(0.4 + 0.3 * smoothstep(0.3, 0.7, ${prefix}noise2(r2 / 1100.0 + 8.3, 506)), 0.55, smoothstep(400.0, 1100.0, fp));
+    // (from far above a patch of altocumulus is dappled, thick clumps a kilometre across and thin air between them
+    // through which the ground shows, mottled again at 400 m while that is two pixels or more: not one flat tone)
+    float mottle = mix(${prefix}noise2(r1 / 420.0 + 3.1, 510), 0.5, smoothstep(170.0, 420.0, fp));
+    float clumps = mix(0.1 + 0.84 * smoothstep(0.28, 0.72, 0.6 * ${prefix}noise2(r2 / 1100.0 + 8.3, 506) + 0.4 * mottle), 0.55, smoothstep(400.0, 1100.0, fp));
     lets = mix(lets, clumps, smoothstep(50.0, 125.0, fp));
     return a * mix(0.06 + 0.88 * lets, 0.98, smoothstep(0.35, 0.85, cover));
   }

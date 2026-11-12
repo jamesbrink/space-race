@@ -346,7 +346,16 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 - **From far above, cumulus are cells.** Where a pixel takes in 45 to 90 m of the field and more, the far cover and
   the globe's shadows read the field through `cumulusCells` (weather.ts: rounded, lobed domes where the noise is
   over its cut) instead of the noise cut at a level, which is a torn shape. Nearer, it is the noise, which the
-  volume is heaped on: a cloud between the two morphs slowly, 66 to 130 km off.
+  volume is heaped on: a cloud between the two morphs slowly, 66 to 130 km off. The cells are many and small (300 m
+  apart, 150 to 700 m across, most of them small and low, so grey and half seen through) with a few broad heaps;
+  a cell under a few pixels is lit evenly. What they cover is measured against the cover asked for (the figures
+  are in weather.ts): change a cell's breadth or how many stand and measure again. Whether a cell stands is read
+  from the field's coarse octaves once a pixel, by value and slope: do not read the noise at each cell's middle
+  (nine cells, up to five times a pixel: it cost 1 to 2 ms a frame in flight).
+- **The field is organised by where it is.** The weather map's alpha is land (`pnpm globe:weather` bakes it):
+  over land the streets are straight and strong; over the sea they are weak and bend, and clusters and arcs
+  (`cumulusArcs`) are most of the pattern. All of it is in `cumulusBias`, which the bake, the far cover and the
+  globe's shadows all read.
 - **Far cloud is not hidden by the depth buffer's steps.** Hundreds of kilometres off one step is
   kilometres: far cloud is hidden only by what is nearer by a quarter of the way (`hidden`).
 - **The air is one model.** `atmosphere.ts` makes two tables once (transmittance, multiple scattering) and
