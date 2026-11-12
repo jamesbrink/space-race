@@ -509,6 +509,7 @@ test('which of the body’s inputs are not documented', (t) => {
     ),
     'body.capsule.base (estimated)',
     'body.capsule.chuteArm (estimated)',
+    'body.capsule.earthward (estimated)',
     'body.capsule.side.dragArea (estimated)',
     'body.capsule.side.from (estimated)',
     'body.capsule.side.to (estimated)',

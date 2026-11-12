@@ -67,3 +67,32 @@ test('what is gone for good is let go: its real material back on it, its twin di
   assert.ok(again.children[0].material.isMeshToonMaterial);
   assert.notEqual(again.children[0].material, twin);
 });
+
+test('twins share a shader unless their materials are patched differently', () => {
+  const key = (twin) => twin.customProgramCacheKey();
+  const mesh = (material) => new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const plain = [new THREE.MeshStandardMaterial({ name: 'steel' }), new THREE.MeshStandardMaterial({ name: 'paint-red' })];
+  // patched alike (the same key says so), and patched otherwise
+  const patched = ['a', 'a', 'b'].map((kind) => {
+    const material = new THREE.MeshStandardMaterial({ name: `land-${kind}` });
+    material.onBeforeCompile = (shader) => void (shader.fragmentShader += `// ${kind}`);
+    material.customProgramCacheKey = () => `patch:${kind}`;
+    return material;
+  });
+  // patched for the real look only (grain): its twin is drawn plain
+  const grained = new THREE.MeshStandardMaterial({ name: 'concrete' });
+  grained.onBeforeCompile = () => {};
+  grained.customProgramCacheKey = () => 'grain:0';
+  grained.userData.plainWhenDrawn = true;
+  const meshes = [...plain, ...patched, grained].map(mesh);
+  const looks = new Looks();
+  looks.add(new THREE.Group().add(...meshes));
+  looks.set('cel');
+  const [steel, red, a1, a2, b, concrete] = meshes.map((m) => m.material);
+  assert.equal(key(steel), key(red), 'two plain materials: one shader for their twins');
+  assert.equal(key(concrete), key(steel));
+  assert.equal(key(a1), key(a2));
+  assert.notEqual(key(a1), key(b));
+  assert.notEqual(key(a1), key(steel));
+  assert.equal(a1.onBeforeCompile, patched[0].onBeforeCompile, 'and the patch is the material`s');
+});

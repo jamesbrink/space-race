@@ -707,6 +707,12 @@ export interface Body {
     base?: Measure;
     /** How far from its centre of mass, toward the small end, a parachute pulls, m. */
     chuteArm: Measure;
+    /**
+     * The side its automatic control keeps toward the Earth once it has turned round, blunt end first (the side its
+     * periscope looks out of, so its pilot is head up): degrees about the long axis, right-handed, from the body's +Z
+     * (sim/vehicle.ts: on the pad +Z points against the launch azimuth). Without it the roll is left where it was.
+     */
+    earthward?: Measure;
     /** What a pilot aboard is taken to live through: the speed it may meet the surface at, m/s, and the greatest load, g. Said on the card that ends a flight flown by hand (sim/verdict.ts). */
     limits?: { landingSpeed: Measure; load: Measure };
     /** The spacecraft side on to the air: without it, its drag at an angle is its end-on drag and its surfaces' only. */

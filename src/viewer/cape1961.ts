@@ -292,7 +292,9 @@ class Kit {
 
 const FT = 0.3048;
 /** A pad's concrete: a slab whose top is `top` above the ground it is sunk in (never close above the terrain: see AGENTS.md, No flicker). */
-const slab = (k: Kit, w: number, d: number, top = 0.45, x = 0, z = 0) => k.box('concrete', w, top + 1, d, x, -1, z);
+const slab = (k: Kit, w: number, d: number, top = 0.45, x = 0, z = 0) => k.box('concrete', w, top + SUNK, d, x, -SUNK, z);
+/** How far a pad's concrete goes down into the ground, metres: further than the land falls away across the widest pad, so no slab's foot shows. */
+const SUNK = 5;
 
 /**
  * The kinds of thing that stood on a pad. Each draws itself in the frame its complex was given:
@@ -479,13 +481,21 @@ export const CLEARINGS: [number, number, number][] = [
   [...fromPad5(LIGHTHOUSE.lat, LIGHTHOUSE.lon), 30],
 ];
 
-/** The complexes and the lighthouse, as a handful of meshes on the compass. `groundY` is the terrain's height. */
-export function buildCape1961(groundY: number): THREE.Object3D[] {
+/**
+ * The complexes and the lighthouse, as a handful of meshes on the compass. `groundAt` is the terrain's height at a
+ * place (compass metres from pad 5). Each stands on the highest ground within its pad's reach, its concrete sunk
+ * well below that: the land is not level, and set at one height for all of them a pad half a kilometre off stood
+ * half a metre in the air on its own underside.
+ */
+export function buildCape1961(groundAt: (x: number, z: number) => number): THREE.Object3D[] {
   const k = new Kit();
+  const stands = (x: number, z: number, reach: number) =>
+    Math.max(...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => groundAt(x + ((i % 3) - 1) * reach, z + (Math.floor(i / 3) - 1) * reach)));
   for (const c of COMPLEXES) {
     const [x, z] = fromPad5(c.lat, c.lon);
-    c.draw(k.at(x, groundY, z, c.heading));
+    c.draw(k.at(x, stands(x, z, 30), z, c.heading));
   }
+  const groundY = stands(...fromPad5(LIGHTHOUSE.lat, LIGHTHOUSE.lon), 5);
   // The lighthouse: a cast-iron tower 151 ft tall, three black and three white bands from the foot, a black lantern
   // (documented); its taper and the brick oil house beside it are drawn by eye.
   const [lx, lz] = fromPad5(LIGHTHOUSE.lat, LIGHTHOUSE.lon);

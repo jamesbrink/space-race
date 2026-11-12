@@ -53,6 +53,8 @@ export interface Setting {
   groundAt?: (x: number, z: number) => number;
   /** How far a point is from the nearest plant, if under `within` metres (plants are not solid: the near plane asks). */
   plantsClear?: (at: THREE.Vector3, within: number) => number;
+  /** Move a point at someone's feet out of the plants it is in (sideways), and say how far in it still is, metres: plants are walked round. */
+  plantsOut?: (at: THREE.Vector3, margin: number) => number;
   /**
    * Move the setting to an instant: a Julian date in UT, the simulation clock's. The Sun, the
    * Moon and the stars go where they were then, and the light, the sky and the reflections follow;
@@ -492,6 +494,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     },
     groundAt: cape.groundAt,
     plantsClear: cape.plantsClear,
+    plantsOut: cape.plantsOut,
     view: cape.view,
   };
 
@@ -535,7 +538,12 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     // The stars come out as the air above the eye thins (daysky.ts: starLimit says what of that is physical), and are
     // drawn brighter above it, though the Sun is up: the exposure there is still the sunlit ground's (for the look).
     const out = (1 - air) ** 1.5;
-    h.show(starLimit(light.limitingMagnitude, Math.exp(-(rung * 500) / 8000)), (1 + 1.6 * out) / light.adaptation);
+    h.show(
+      starLimit(light.limitingMagnitude, Math.exp(-(rung * 500) / 8000)),
+      (1 + 1.6 * out) / light.adaptation,
+      Math.exp(-(rung * 500) / 8000),
+      rung * 500,
+    );
     uniforms.uSunSize.value = Math.sin(h.sunRadius);
     const along = Math.sqrt(air); // (toward the horizon the eye looks through more of what air there is)
     const thin = ([r, g, b]: readonly number[], k: number) => [r! * k, g! * k, b! * k] as const;

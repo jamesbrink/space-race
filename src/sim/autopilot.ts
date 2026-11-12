@@ -122,6 +122,15 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
             ? scale(unit(wind), -1)
             : sub(scale(unit(level), -Math.cos(pitch)), scale(up, Math.sin(pitch)));
         error = turnTo(unturn(s.q, wanted));
+        // ...and rolled so that the side that is to face the Earth does (its periscope's: the pilot is then head up).
+        // Not while the long axis is within a few degrees of the plumb line: there is then no such roll.
+        const keel = body.capsule.earthward;
+        const down = unturn(s.q, scale(up, -1));
+        if (keel && Math.hypot(down[1], down[2]) > 0.1) {
+          const a = keel.value * DEG;
+          const side: Vec3 = [0, -Math.sin(a), Math.cos(a)];
+          error = [Math.atan2(side[1] * down[2] - side[2] * down[1], side[1] * down[1] + side[2] * down[2]), error[1], error[2]];
+        }
       }
       // once the air has it, the jets only damp
     }

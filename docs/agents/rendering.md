@@ -42,7 +42,10 @@ different one per pixel per frame. Three things stop it, and all three must stay
   are single-sided faces back to back; double-sided materials are held to the stricter rule, so
   use `double_sided=True` only where both sides are really seen.
 - **`Stage.fitDepth` moves the near plane out every frame** so depth resolution stays under a
-  third of a millimetre at any distance. Do not give the camera a fixed near plane.
+  third of a millimetre at any distance. Do not give the camera a fixed near plane. It is never
+  put beyond anything: `Stage.uncut` asks for the nearest solid surface (the walker's `Solids`)
+  and the nearest plant (`Setting.plantsClear`) and keeps the plane's corner short of both, so
+  what the camera passes is not sliced (`pnpm test:camera`, "the near plane cuts nothing").
 - **Nothing lies close above the terrain.** Depth interpolated across a triangle kilometres long
   is coarse: concrete 6 cm above such terrain flickered. So the terrain is finely divided (`land.ts`:
   half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (`GROUND_Y`, and `GROUND` in
@@ -167,6 +170,20 @@ that gives no light; it is drawn only when something it would show asked for the
 would keep his shadow where he had been. Two directional lights with shadows mean exactly this
 pair to the shader: a third would need the patch widened.
 
+**A shadow's depth bias is a length** (`depthBias` in shadows.ts: 2.5 texels of its map, at least
+2 cm), never a share of the shadow camera's depth: as a share it came to 29 cm on foot and 60 cm
+orbiting, and sunlight came through every roof slab along the tops of the walls inside. And
+**model surfaces cast from both faces** (`shadowSide` in `Stage.dress`): three's default casts
+from the faces turned from the light, a wall's inside, so its shadow began at the very surface a
+room's walls meet and light crept in along each joint. A grazing surface is `normalBias`'s work.
+
+**Indoors the eye adapts.** On foot `Stage.adapt` asks how enclosed the eye is (nine rays) and
+opens the exposure over a second by day (`expose`: the one place the exposure is set); by night
+the setting's exposure is already an eye among lamps. In the cel look a point light falls square
+on what it reaches (lamps.ts), or a room's lamp draws rings on its walls. A building whose inside
+is not recorded is not offered empty: its door is built shut and its windows dark (sitelib
+`door(works=False)`, building kinds "shut" and "blind").
+
 A mesh is a draw call, and another in every shadow-map redraw, so each build joins meshes nobody
 can tell apart before it exports (`srlib.merge_static`, at every level, after the clearance
 check). The node tree is never changed: every empty keeps its name, transform and extras. Only
@@ -212,8 +229,8 @@ build) narrow it; the header of the file lists the rest.
   again, and the pixels that differ counted. Off against off again is the floor: most views are
   identical to the last bit, a few (cloud from above) wander by a level or two.
 - So **anything that changes how the scene is drawn keeps a switch** for as long as it is being
-  judged: `?plain` in the address draws the old way, and each has its own flag on the stage
-  (`sr.stage.glazing.enabled`).
+  judged: `?plain` in the address does everything the old way (the load as well), and each has its
+  own flag on the stage (`sr.stage.glazing.enabled`, `sr.stage.batches.enabled`).
 
 What has been found, so it is not found again:
 
@@ -225,7 +242,31 @@ What has been found, so it is not found again:
   that never change: the same two draws, the same shaders, the same pixels. Anything new that is
   clear and two-sided and stands in numbers goes through `Panes.add`; a material that will be
   changed after it is made (a shell's, which the cutaway opens) is left to three.
-- The pad's frame at 1440x900 is bound by the CPU, not the GPU: three's work per draw call.
+- **A shader is built for the buffer it draws into.** `renderer.compileAsync` builds what it is asked for off the
+  main thread, but for whatever render target is set when it is called: with none set it built every shader for
+  the canvas (tone-mapped, in the screen's colours), and the scene is drawn into the composer's buffer, so the
+  first frame built them all again, one at a time, with the page stopped (`onFirstUse`: 3.7 s of a 10 s load).
+  `Stage.warm` sets the frame's own target for the call. And nothing is drawn while the page opens (`Stage.held`)
+  until `warm` has had them built: a draw that needs a shader not yet built waits for it there and then. Opening
+  went from 8.8 s to 6.2 s on the same machine in the same run, the main thread blocked for 3.5 s instead of 6.4,
+  and 183 programs are made where 321 were. Anything new that draws a scene into the frame's buffer is covered by
+  `warm`; a pass with a shader of its own (a full-screen quad) is still built at its first draw.
+- **One shader for every twin that can share one.** A cel twin (`look.ts`) had a program key of its own, so two
+  hundred toon shaders were built, one after another, the first time T was pressed: the page stopped for four to
+  seven seconds. Twins now share a shader unless their materials are patched differently (the material's own
+  `customProgramCacheKey` says so), which is nineteen programs, and `Stage.prebuild` asks for the other look's
+  at the end of `warm`, to be built behind what is on show: the first change of look is one frame.
+- The pad's frame at 1440x900 is bound by the CPU, not the GPU: three's work per draw call. `viewer/batch.ts`
+  draws every mesh of a material in one multi-draw (753 calls fewer on the pad, a sixth of the frame's CPU time)
+  with the meshes themselves left in the scene for everything that asks about them. It is **off** (`?batch` turns
+  it on): each instance is given the very matrices three would give its mesh, the order of drawing is three's,
+  and still 1 to 34 pixels in 1.3 million differ in a frozen frame, because the GPU's compiler rounds the batched
+  shader's vertices one bit apart from the unbatched one's. The file's header has the whole of it, and what
+  `invariant gl_Position` does about it. What it taught, whether or not it is switched on: a texture written every
+  frame must not be the one the last frame drew from (the driver waits for the GPU: 3 ms; `RING`); a batch that
+  three is left to walk past costs ten microseconds in every pass, so what is out of view must be `visible =
+  false` before the draw begins (`scene.onBeforeRender`); and where two faces are at one depth the later draw is
+  the one seen, so the order of draws within a material is part of the picture.
 
 ## The Earth from height
 
@@ -246,6 +287,10 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   all. The far cover is slices of the same heap the volume marches, then the field averaged along a pixel's
   length, then cover alone: each fades into the next by the pixel's footprint, so nothing ends in a circle
   and nothing under a pixel is drawn.
+- **From far above, cumulus are cells.** Where a pixel takes in 45 to 90 m of the field and more, the far cover and
+  the globe's shadows read the field through `cumulusCells` (weather.ts: rounded, lobed domes where the noise is
+  over its cut) instead of the noise cut at a level, which is a torn shape. Nearer, it is the noise, which the
+  volume is heaped on: a cloud between the two morphs slowly, 66 to 130 km off.
 - **Far cloud is not hidden by the depth buffer's steps.** Hundreds of kilometres off one step is
   kilometres: far cloud is hidden only by what is nearer by a quarter of the way (`hidden`).
 - **The air is one model.** `atmosphere.ts` makes two tables once (transmittance, multiple scattering) and

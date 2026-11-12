@@ -88,6 +88,7 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
       uPixel: { value: pixelRatio },
       uGain: { value: gain },
       uYears: { value: 0 },
+      uAir: { value: new THREE.Vector2(1, 0) },
     },
     transparent: true,
     depthWrite: false,
@@ -95,6 +96,7 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
     vertexShader: /* glsl */ `
       attribute float mag; attribute vec3 tint; attribute vec3 motion;
       uniform float uLimit, uGround, uPixel, uGain, uYears;
+      uniform vec2 uAir;
       varying vec3 vColor; varying float vSize;
       void main() {
         vec3 dir = normalize(mat3(modelMatrix) * (position + motion * uYears));
@@ -102,8 +104,10 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
         float flux = pow(10.0, -0.4 * mag);
         float seen = clamp((uLimit - mag) / 1.5, 0.0, 1.0);
         if (uGround > 0.5) {
+          // under the horizon it is not there (the horizon dips as the eye rises: uAir.y, a sine); near it the air dims
+          // it, by as much of the air as is still above the eye (uAir.x): none above the air
           float air = 1.0 / (max(dir.y, 0.0) + 0.025);                 // thicknesses of atmosphere, near enough
-          seen *= smoothstep(0.0, 0.02, dir.y) * pow(10.0, -0.08 * (air - 1.0));
+          seen *= smoothstep(uAir.y, uAir.y + 0.02, dir.y) * pow(10.0, -0.08 * (air - 1.0) * uAir.x);
         }
         // its size: 2 pixels for the faintest, 3.7 at second magnitude, 6 at zero, 9 for Sirius (for the look: a
         // brighter star is a bigger blur to an eye or a lens, never a bigger disc in the sky)
@@ -184,6 +188,7 @@ function milkyWay(ground: boolean): THREE.Mesh {
     uLimit: { value: 6.5 },
     uGain: { value: 1 },
     uGround: { value: ground ? 1 : 0 },
+    uAir: { value: new THREE.Vector2(1, 0) },
   };
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(80, 48, 24),
@@ -204,11 +209,12 @@ function milkyWay(ground: boolean): THREE.Mesh {
       fragmentShader: /* glsl */ `
         uniform sampler2D tMap;
         uniform float uLimit, uGain, uGround;
+        uniform vec2 uAir;
         varying vec3 vSky, vDir;
         void main() {
           float seen = smoothstep(5.5, 6.3, uLimit) * uGain;
           vec3 d = normalize(vSky), dir = normalize(vDir);
-          if (uGround > 0.5) seen *= smoothstep(0.0, 0.04, dir.y) * pow(10.0, -0.08 * (1.0 / (max(dir.y, 0.0) + 0.025) - 1.0));
+          if (uGround > 0.5) seen *= smoothstep(uAir.y, uAir.y + 0.04, dir.y) * pow(10.0, -0.08 * (1.0 / (max(dir.y, 0.0) + 0.025) - 1.0) * uAir.x);
           if (seen <= 0.0) discard;
           // the map: right ascension 0 in the middle, increasing to the left; north up
           float ra = atan(d.y, d.x);
@@ -221,7 +227,7 @@ function milkyWay(ground: boolean): THREE.Mesh {
           vec3 c = textureGrad(tMap, uv, dFdx(flat_), dFdy(flat_)).rgb;
           float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
           c = mix(c, vec3(l) * vec3(0.96, 0.98, 1.06), 0.9);
-          gl_FragColor = vec4(c * (0.6 * seen) / (1.0 + 9.0 * l), 1.0);
+          gl_FragColor = vec4(c * (0.3 * seen) / (1.0 + 9.0 * l), 1.0);
         }`,
     }),
   );
@@ -352,14 +358,19 @@ export class Heavens {
   /**
    * How the stars are shown: the faintest magnitude the sky lets through, and a scale on their
    * brightness (the reciprocal of whatever the setting's exposure has been raised by, so that they
-   * are drawn as bright as the eye sees them).
+   * are drawn as bright as the eye sees them). `air`: how much of the air is still above the eye (1 on the ground:
+   * what is low is dimmed by it); `height`: the eye's, metres: the horizon dips with it.
    */
-  show(limit: number, gain: number): void {
+  show(limit: number, gain: number, air = 1, height = 0): void {
     this.material.uniforms.uLimit!.value = limit;
     this.material.uniforms.uGain!.value = gain;
     const band = (this.band.material as THREE.ShaderMaterial).uniforms;
     band.uLimit!.value = limit;
     band.uGain!.value = gain;
+    // how much of the air is above the eye, and the sine of the horizon's dip from `height` metres up
+    const dip = -Math.sqrt(Math.max(height, 0) * (2 * 6_371_000 + Math.max(height, 0))) / (6_371_000 + Math.max(height, 0));
+    (this.material.uniforms.uAir!.value as THREE.Vector2).set(air, dip);
+    (band.uAir!.value as THREE.Vector2).set(air, dip);
   }
 }
 

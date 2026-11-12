@@ -24,6 +24,14 @@ import * as THREE from 'three';
  * drawn in the order three drew it (nearest first within a material): where two faces are at one depth the later
  * draw is the one seen, so the order is part of the picture.
  *
+ * To the last bit but one thing. The numbers given to the GPU are three's own (checked instance by instance), but
+ * the shader that reads them from a texture is not the shader that reads them from uniforms, and the GPU's
+ * compiler optimises each its own way: a vertex can land one bit of a float away. In a frozen frame of 1.3 million
+ * pixels that moves between 1 and 34 of them, each a single pixel on an edge taking the surface beside it.
+ * `invariant gl_Position` in every model's vertex shader makes the two agree exactly (0 pixels, 0 depths), but it
+ * changes how every vertex of every model is rounded against how it is drawn today: 300,000 depths and some 2,000
+ * pixels by a level. So it is not used, and batches are off until that handful of pixels is accepted (`?batch`).
+ *
  * For that a material is batched whole or not at all: every mesh of it in the file, so that none drawn alone could
  * have come between two of the batch's. What a batch cannot stand for is left as it was: anything blended or
  * without depth (glass, scorch marks), lamps (their material is changed when they are lit), anything with a draw

@@ -105,6 +105,11 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   a model's stairs need risers of 0.3 m or less. Space (a
   button on a touch screen) is a standing jump: 0.4 m under gravity, from the ground only, and
   the head stops at whatever is over it (`jump`, `bump`).
+- **Plants are walked round.** They are instances the `Solids` never see, so the body asks the setting
+  (`WalkHost.plantsOut`, `Setting.plantsOut`, `Flora.out`): after each stride it is moved out of any
+  leaf mass taller than 0.9 m (a column as wide as the plant's leaves reach, plus `LEAF_CLEAR`), and a
+  stride that would leave it deeper in than it was is not taken. A lone shrub is gone round, a thicket
+  is a wall, low clumps are waded through, and the eye is never in the leaves.
 - **The terrain is a height, not a mesh.** It lies at `Setting.groundAt(x, z)` (dunes, the beach,
   the land falling to the river; the setting's floor where it has none), and cannot be fallen
   through: the walker, the ragdoll and a driven vehicle's `Road` all stand on it. Where that is below the models' surface (`GROUND_Y`)

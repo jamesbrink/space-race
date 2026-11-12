@@ -727,6 +727,7 @@ export function buildCape(
   /** The ground's height at a point in the world (the pad's frame): flat at `groundY` wherever anything is built. */
   groundAt: (x: number, z: number) => number;
   plantsClear: (at: THREE.Vector3, within: number) => number;
+  plantsOut: (at: THREE.Vector3, margin: number) => number;
 } {
   // the haze lies in the lowest air, under the cumulus at 720 m, and thins upward (air.ts)
   const air: Air = { scale: HAZE_SCALE, base: groundY + SEA, clouds: CLOUDS };
@@ -734,7 +735,7 @@ export function buildCape(
   const land = new Land(renderer, landSpec(), groundY, COMPASS);
   const flora = new Flora(floraSpec(), land);
   flora.group.position.y = groundY;
-  const built = buildCape1961(groundY); // the other complexes and the lighthouse, where they stood
+  const built = buildCape1961((x, z) => groundY + land.heightAt(x, z)); // the other complexes and the lighthouse, where they stood, each on its own ground
   // laid out on the compass, then turned as one to lie round the pad model
   const site = new THREE.Group();
   site.add(flora.group, ...built);
@@ -765,6 +766,14 @@ export function buildCape(
     },
     view: (camera) => land.view(camera),
     plantsClear: (at, within) => flora.clear(local(at), within),
+    plantsOut: (at, margin) => {
+      const still = flora.out(local(at), margin);
+      eye.y += groundY;
+      site.localToWorld(eye);
+      at.x = eye.x;
+      at.z = eye.z;
+      return still;
+    },
     groundAt: (x, z) => {
       // the world point on the compass: the inverse of the site's turn
       const cx = x * COS - z * SIN,

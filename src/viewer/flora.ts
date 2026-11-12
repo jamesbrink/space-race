@@ -367,6 +367,16 @@ const PLANT_FRAGMENT = /* glsl */ `
   }
 `;
 
+/** A plant under this tall, metres, is waded through; a taller one is walked round (`Flora.out`). */
+const WADE = 0.9;
+/** A palm is its trunk to someone on foot: the crown is overhead. Metres. */
+const TRUNK = 0.3;
+/** How far a form's leaves reach from its root, for a plant one unit wide: the shrub's outermost mass (buildShrub), the palmetto's fans. */
+function leafReach(form: Form): number {
+  if (form.kind === 'shrub') return 0.5 * form.spread + 0.36 * Math.max(0.8, 0.75 * form.spread);
+  return form.kind === 'fan' ? 0.8 : 0;
+}
+
 /** A species' material: `drawn` for the view, `depth` for its shadow (faded as drawn). */
 function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth'): THREE.Material {
   const depth = use === 'depth';
@@ -557,6 +567,52 @@ export class Flora {
           }
         }
     return best;
+  }
+
+  /**
+   * Move a point (in this group's frame: someone's feet) out of the leaf masses it is in, sideways, and say how far
+   * in it still is after that, metres (0: clear). A plant taller than `WADE` is a column as wide as its leaves reach
+   * (`leafReach`, by its own size) plus `margin`; lower ones are waded through, and a point above a plant's top is
+   * over it. Three passes: where masses overlap, as they do in a thicket, there is no way through and the answer
+   * is not 0. Only tiles already made are asked.
+   */
+  out(point: THREE.Vector3, margin: number): number {
+    let worst = 0;
+    for (let pass = 0; pass < 3; pass++) {
+      worst = 0;
+      for (const layer of LAYERS)
+        for (const tile of this.tiles[layer].values())
+          for (const batch of tile) {
+            const species = this.spec.species[batch.species]!;
+            const tall = species.height[1];
+            if (tall < WADE) continue;
+            const reach = leafReach(species.form);
+            const b = batch.box;
+            const most = 1.4 * reach * tall + margin;
+            if (point.x < b[0]! - most || point.x > b[3]! + most || point.z < b[2]! - most || point.z > b[5]! + most) continue;
+            if (point.y > b[4]! + 1.3 * tall) continue;
+            const at = batch.places,
+              m = batch.matrices;
+            for (let k = 0; k < batch.count; k++) {
+              const dx = point.x - at[k * 3]!,
+                dz = point.z - at[k * 3 + 2]!;
+              if (Math.abs(dx) > most || Math.abs(dz) > most) continue;
+              const height = Math.hypot(m[k * 16 + 4]!, m[k * 16 + 5]!, m[k * 16 + 6]!);
+              if (height < WADE || point.y > at[k * 3 + 1]! + height) continue;
+              const wide = Math.hypot(m[k * 16]!, m[k * 16 + 1]!, m[k * 16 + 2]!);
+              const r = (species.form.kind === 'palm' ? TRUNK : reach * wide) + margin;
+              const d = Math.hypot(dx, dz);
+              if (d >= r) continue;
+              const push = r - d;
+              // (standing on its very root: any way out is as good)
+              point.x += d > 1e-6 ? (dx / d) * push : push;
+              point.z += d > 1e-6 ? (dz / d) * push : 0;
+              worst = Math.max(worst, push);
+            }
+          }
+      if (worst < 1e-4) return 0;
+    }
+    return worst;
   }
 
   /** The plants of one layer on one tile, made the first time they are wanted. */

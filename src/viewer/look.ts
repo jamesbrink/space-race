@@ -127,8 +127,13 @@ export class Looks {
     }
     // a material that paints itself in its shader (the Cape's terrain) paints its twin the same
     // way; what it says about roughness finds nothing to change in a toon shader and is dropped
-    if (!real.userData.plainWhenDrawn) toon.onBeforeCompile = real.onBeforeCompile;
-    toon.customProgramCacheKey = () => `cel:${real.uuid}`;
+    // (Twins patched the same way share a shader, as their materials do: the material's own key says which patch it
+    // is. A key of its own for every twin was a shader of its own for every material: two hundred of them, built one
+    // after another the first time the look was switched, with the page stopped for seconds.)
+    if (!real.userData.plainWhenDrawn && real.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) {
+      toon.onBeforeCompile = real.onBeforeCompile;
+      toon.customProgramCacheKey = () => `cel:${real.customProgramCacheKey()}`;
+    }
     follow(toon, real);
     this.twins.set(real, toon);
     return toon;

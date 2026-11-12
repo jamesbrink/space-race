@@ -247,13 +247,24 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     // (each size of them left at its mean where it is under a pixel or two: nothing to shimmer)
     // (each size of them left at its mean before it is as small as two pixels: at one, a cloudlet was a white pixel
     // beside a clear one, and the deck a stipple that would crawl. Past that the deck is its patches, half seen through.)
-    // (the noise's own grid turned two ways, or the cloudlets line up in rows and columns)
+    // Cloudlets: round, soft, 250 m apart in rows that wander (cells of a grid turned from the noise's own, each a
+    // soft dome: 1 at its heart), not a noise cut at a level, whose shapes are angular. Left at their mean before one
+    // is two pixels across; past that, clumps of them a kilometre across, and at last only the patch, half seen through.
     vec2 r1 = mat2(0.7986, 0.6018, -0.6018, 0.7986) * xz, r2 = mat2(0.9205, -0.3907, 0.3907, 0.9205) * xz;
-    float lets = 0.65 * mix(${prefix}noise2(r1 / 150.0 + 2.9, 504), 0.5, smoothstep(30.0, 75.0, fp))
-      + 0.35 * mix(${prefix}noise2(r2 / 55.0 + 6.1, 505), 0.5, smoothstep(11.0, 27.0, fp));
-    // (past that, clumps of them a kilometre across, thicker and thinner; and at last only the patch, half seen through)
+    vec2 lg = r1 / 250.0 + 0.35 * vec2(${prefix}noise2(r2 / 900.0 + 2.9, 504), ${prefix}noise2(r2 / 900.0 + 7.4, 505));
+    ivec2 li = ivec2(floor(lg));
+    float lets = 0.0;
+    if (fp < 125.0) {
+      for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        ivec2 c = li + ivec2(dx, dy);
+        vec2 pc = vec2(c) + 0.5 + 0.7 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5);
+        float size = 0.34 + 0.3 * ${prefix}hash2(c, 509);
+        lets = max(lets, 1.0 - length(lg - pc) / size);
+      }
+      lets = smoothstep(0.0, 0.75, lets + 0.5 * (deckTex(xz, fp) - cut));
+    }
     float clumps = mix(0.4 + 0.3 * smoothstep(0.3, 0.7, ${prefix}noise2(r2 / 1100.0 + 8.3, 506)), 0.55, smoothstep(400.0, 1100.0, fp));
-    lets = mix(smoothstep(0.44, 0.58, lets + 0.4 * (deckTex(xz, fp) - cut)), clumps, smoothstep(30.0, 75.0, fp));
+    lets = mix(lets, clumps, smoothstep(50.0, 125.0, fp));
     return a * mix(0.06 + 0.88 * lets, 0.98, smoothstep(0.35, 0.85, cover));
   }
   float cirrusAt(vec2 xz, float fp, float amount) {
@@ -266,4 +277,41 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     float c = mix(${prefix}noise2(p / vec2(9000.0, 1100.0) + 4.6, 513), 0.5, smoothstep(350.0, 900.0, fp));
     float t = 0.46 * a + 0.36 * b + 0.18 * c;
     return 0.5 * amount * smoothstep(0.36, 0.7, t + 0.25 * (amount - 0.5));
+  }`;
+
+/** Far cumulus are drawn as cells where a pixel of the field is between these many metres across and more: nearer, as the field itself, which the volume is heaped on. */
+export const CELLS: readonly [number, number] = [45, 90];
+
+/**
+ * GLSL: the cumulus field as cells, for clouds seen from far above. Cut at a level, the field's noise is a torn
+ * shape; a fair-weather cumulus seen from orbit is a rounded cell, and a field of them popcorn. So where a cloud
+ * is a few pixels across (`cellsShare`, by the pixel's breadth on the field) the field is read through its cells
+ * instead: a grid of points 0.45 of a cloud apart, each pushed about; where the noise at a point is over its cut
+ * there is a cell, broader and higher the further over it is, a dome; cells that overlap run together into a
+ * cluster. `cumulusCells(q, bias, cut)`: how far the field stands over its cut at `q` (in cells of the field; `bias`
+ * as cumulusBias gives it), in the noise's own units, as the noise would say it: so whoever heaps a cloud on the
+ * noise heaps the same cloud on this. The cover is the field's, near enough (a cell where the noise is over its cut,
+ * about as broad as its spacing). Their shape is estimated, from photographs of trade cumulus from orbit.
+ * `scale`: what `cloudNoise` wants a place in cells multiplied by ('1.0' where it was made for cells one unit across).
+ */
+export const cumulusCellsGlsl = (prefix: string, scale: string): string => /* glsl */ `
+  float cellsShare(float fp) { return smoothstep(${CELLS[0].toFixed(1)}, ${CELLS[1].toFixed(1)}, fp); }
+  float cumulusCells(vec2 q, float bias, float cut) {
+    const float G = 0.45;
+    // (the place pushed about a little, two sizes of push, so no cell is a ruled circle: a cumulus is lobed)
+    q += 0.2 * G * (vec2(${prefix}noise2(q * 3.1 + 4.7, 603), ${prefix}noise2(q * 3.1 + 9.2, 604)) - 0.5)
+      + 0.09 * G * (vec2(${prefix}noise2(q * 8.3 + 1.3, 605), ${prefix}noise2(q * 8.3 + 6.6, 606)) - 0.5);
+    vec2 g = q / G;
+    ivec2 i = ivec2(floor(g));
+    float best = -0.1;
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+      ivec2 c = i + ivec2(dx, dy);
+      vec2 pc = (vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 601), ${prefix}hash2(c, 602)) - 0.5)) * G;
+      float e = cloudNoise(pc * ${scale}) + bias - cut;
+      if (e <= 0.0) continue;
+      float r = G * min(0.45 + 5.0 * e, 1.3);
+      vec2 d = q - pc;
+      best = max(best, min(0.035 + 1.1 * e, 0.2) * (1.0 - dot(d, d) / (r * r)));
+    }
+    return best;
   }`;

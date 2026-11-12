@@ -25,6 +25,8 @@ export const WALK_SPEED = 1.4;
 export const RUN_SPEED = 4;
 /** The tallest riser taken in stride, and the furthest drop that is a step down and not a fall. Metres. */
 export const STEP = 0.3;
+/** How far the middle of the body keeps from where a plant's leaves reach, metres: the near plane on foot is up to 0.3 m out, and must not be in them. */
+const LEAF_CLEAR = 0.35;
 /** How fast the feet follow a floor that has stepped up or down under them, m/s: a stair is climbed, not teleported. */
 export const STEP_RATE = 3;
 export const GRAVITY = 9.81;
@@ -556,6 +558,14 @@ export class Body {
    * open ground there, in place of the one level. Left out, the ground is `ground` everywhere.
    */
   groundAt: ((x: number, z: number) => number | null) | null = null;
+  /**
+   * What grows where it walks, if anything does: moves a point at its feet out of the leaf masses it is in and says
+   * how far in it still is (WalkHost.plantsOut). Plants are not meshes to ask (`Solids` has none of them), and a
+   * walker went through every shrub with the leaves sliding past the eye.
+   */
+  plantsOut: ((at: THREE.Vector3, margin: number) => number) | null = null;
+  /** How far into the leaves it was left by the last stride: a stride that leaves it no deeper is taken, so one put down in a thicket can walk out. */
+  private leafy = 0;
   /** The open ground under a point: the land's height there, or the one level. */
   level(x: number, z: number): number | null {
     return this.groundAt?.(x, z) ?? this.ground;
@@ -802,6 +812,14 @@ export class Body {
       }
       // still inside something after that: the stride is not taken
       if (depth > 0.02 && distance) p.copy(this.before);
+      // then out of the leaves, the same way: round a shrub, and not into a thicket
+      if (this.plantsOut && distance) {
+        const leafy = this.plantsOut(p, LEAF_CLEAR);
+        if (leafy > 0.02 && leafy > this.leafy + 1e-3) p.copy(this.before);
+        else this.leafy = leafy;
+        // (what the leaves pushed it into is a wall all the same)
+        if (leafy > 0 && this.solids.push(p, riser, this.height, this.radius, this.heading) > 0.02) p.copy(this.before);
+      }
       const floor = this.floor(riser);
       if (floor === null) {
         // nothing at all underneath (no ground in this setting): back to where there last was
@@ -849,6 +867,8 @@ export interface WalkHost {
   ground(): number | null;
   /** The land's height under a point, where it has relief (Setting.groundAt). */
   groundAt?(x: number, z: number): number | null;
+  /** Move a point at the feet out of the plants it is in, and say how far in it still is, metres (Setting.plantsOut). */
+  plantsOut?(at: THREE.Vector3, margin: number): number;
   /** How far from the middle of the site there is anything to walk to, metres. */
   reach(): number;
   /** The walker wants out (Escape). */
@@ -1133,6 +1153,7 @@ export class Walker {
     this.body.radius = radius;
     this.body.ground = this.host.ground();
     this.body.groundAt = this.host.groundAt ? (x, z) => this.host.groundAt!(x, z) : null;
+    this.body.plantsOut = this.host.plantsOut ? (at, margin) => this.host.plantsOut!(at, margin) : null;
     this.body.place(at.x, at.y, at.z);
     this.yaw = this.heading = Math.atan2(-(toward.x - at.x), -(toward.z - at.z));
     this.pitch = 0;

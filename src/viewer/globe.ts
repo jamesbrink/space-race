@@ -18,7 +18,7 @@ import { type Clouds, cloudCutGlsl, cloudMiddle } from './air.ts';
 import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
-import { CIRRUS_HEIGHT, cumulusBiasGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
+import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
 import { onWeather, weatherUniforms } from './weathermap.ts';
 
 /**
@@ -108,6 +108,7 @@ const COLOUR = /* glsl */ `
   uniform mat3 uGlobeNearPlane, uGlobeWidePlane;   // rows: the plane's east, north and middle (world/region.ts)
   uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
   uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
+  uniform float uGlobeLift;   // how far the site's ground has gone over to the globe's colours with the eye's height, 0 to 1
   uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
   uniform samplerCube uGlobeRelief, uGlobeColour;
   uniform sampler2D uGlobeSurfRelief, uGlobeSurfColour;
@@ -210,6 +211,12 @@ const COLOUR = /* glsl */ `
       float tilted = clamp(dot(n, sun) / max(level, 0.1), 0.2, 2.0);
       ground *= mix(1.0, tilted, smoothstep(-0.02, 0.08, level));
     #endif
+    // Round the site, until the eye is well up, the land and the sea keep the site's own tones (its canopy's green, its
+    // offshore water: cape.ts), as the site's ground does (land.ts: LIFT, which uGlobeLift follows): so from a few
+    // kilometres up the site's square is not a patch of another colour in the map's. Gone by 60 km out and by 20 km up.
+    float own = (1.0 - uGlobeLift) * (1.0 - smoothstep(0.0025, 0.0095, distance(d, normalize(uGlobeOrigin))));
+    ground = mix(ground, ${vec3(LAND)}, own);
+    water = mix(water, ${vec3(SEA)}, own);
     vec3 c = mix(water, ground, land);
     c = mix(c, ${vec3(ICE)}, ice);
     globeSea = 1.0 - max(land, ice);
@@ -507,6 +514,8 @@ export class Globe {
       uGlobeHalf: { value: hole ? hole.half : -1 },
       uGlobeHaze: { value: haze?.scale ?? 1400 },
       uGlobeAbove: { value: 0 },
+      uGlobeLift: { value: 0 },
+      uGlobePixel: { value: 0.0007 },
       ...regionUniforms('Near'),
       ...regionUniforms('Wide'),
       ...weatherUniforms,
@@ -530,6 +539,14 @@ export class Globe {
     this.mesh.raycast = () => {}; // nothing to pick: what is clicked is the place, not the planet
     this.mesh.visible = false;
     this.mesh.renderOrder = 2; // after the site's ground (land.ts: 1), so what that covers is not shaded
+    // how much of the field a pixel of the frame takes in, for the clouds' shadows (globeShade): radians a pixel
+    const drawn = new THREE.Vector2();
+    this.mesh.onBeforeRender = (renderer, _scene, camera) => {
+      if (!(camera as THREE.PerspectiveCamera).isPerspectiveCamera) return;
+      const fov = (camera as THREE.PerspectiveCamera).fov;
+      this.uniforms.uGlobePixel!.value =
+        (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2))) / Math.max(renderer.getDrawingBufferSize(drawn).y, 1);
+    };
     this.group.add(this.mesh);
 
     this.airUniforms = {
@@ -712,6 +729,12 @@ export class Globe {
       this.mesh.visible = shown;
       changed = true;
     }
+    // (land.ts: LIFT, the heights between which the site's ground takes the globe's colours: change both)
+    const lift = Math.round(THREE.MathUtils.smoothstep(eye.y, 3000, 20000) * 200) / 200;
+    if (this.uniforms.uGlobeLift!.value !== lift) {
+      this.uniforms.uGlobeLift!.value = lift;
+      changed = true;
+    }
     if (this.uniforms.uGlobeAbove!.value !== this.thin) {
       this.uniforms.uGlobeAbove!.value = this.thin;
       changed = true;
@@ -816,6 +839,7 @@ export class Globe {
           uniform mat3 uGlobeAxes;
           uniform mat4 uGlobeHole;
           uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze;
+          uniform float uGlobePixel;   // radians a pixel of the frame
           ${ATMOSPHERE_GLSL}
           float globeRough;
           ${COLOUR}
@@ -836,6 +860,7 @@ export class Globe {
           ${cloudCutGlsl()}
           ${cumulusBiasGlsl('air_')}
           ${sheetsGlsl('air_')}
+          ${cumulusCellsGlsl('air_', `${c.size.toFixed(1)}`)}
           // How much of the Sun's light reaches a point of the globe through the clouds over it: the cumulus as the
           // weather has them there (clouds.ts draws the same field: farCumulus), the middle deck and the cirrus, each
           // read where the ray toward the Sun crosses its height. \`mu\`: the Sun's height there, as a cosine from
@@ -848,7 +873,11 @@ export class Globe {
             float streets;
             float bias = cumulusBias((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, p, w, streets);
             float soft = 0.25 * fp / ${c.size.toFixed(1)};
-            float dark = smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - soft, ${(cloudMiddle(c) + 0.03).toFixed(3)} + soft, cloudNoise(p - uCloudDrift.xz) + bias);
+            // (the same shapes the clouds are drawn in from here: the field's own near the eye, its cells from far above)
+            float cells = cellsShare(distance(world, cameraPosition + uOrigin) * uGlobePixel);
+            float shapes = cells < 1.0 ? cloudNoise(p - uCloudDrift.xz) + bias - ${cloudMiddle(c).toFixed(3)} : 0.0;
+            if (cells > 0.0) shapes = mix(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}), cells);
+            float dark = smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - soft, ${(cloudMiddle(c) + 0.03).toFixed(3)} + soft, ${cloudMiddle(c).toFixed(3)} + shapes);
             float fine = 1.0 - smoothstep(${(2 * c.size).toFixed(1)}, ${(8 * c.size).toFixed(1)}, fp);
             float gather = air_noise2((p - uCloudDrift.xz) / ${c.size.toFixed(1)} * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
             float even = clamp(w.r * exp(fine * (5.0 * gather + 20.0 * streets)), 0.0, 1.0);

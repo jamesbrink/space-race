@@ -113,7 +113,6 @@ export class Cabin {
   private readonly last = { q: new THREE.Quaternion(), t: Number.NaN };
   private readonly rates = new THREE.Vector3();
   private aboard = false;
-  private roll0 = 0;
 
   private scope: {
     screen: THREE.Mesh;
@@ -279,6 +278,7 @@ export class Cabin {
     const s = this.scope;
     if (!s) return null;
     const u = s.material.uniforms;
+    s.screen.updateWorldMatrix(true, false); // (in flight the vehicle has moved since it was last drawn)
     const point = (u.uMiddle!.value as THREE.Vector3).clone().applyMatrix4(s.screen.matrixWorld);
     const normal = new THREE.Vector3()
       .crossVectors(u.uAcross!.value as THREE.Vector3, u.uTop!.value as THREE.Vector3)
@@ -466,9 +466,6 @@ export class Cabin {
     // level along the bearing flown: the site's +X is its stated bearing, +Z a quarter turn clockwise of it
     const bearing = THREE.MathUtils.degToRad((this.flight.trajectory?.azimuth.value ?? 0) - this.flight.site.bearingX.value);
     const a = attitudeOf(nose, head, up.toArray(), [Math.cos(bearing), 0, Math.sin(bearing)]);
-    // the gyros were set where the capsule stood: roll is from how it lay on the pad
-    if (!(t > 0)) this.roll0 = a.roll;
-    a.roll = ((((a.roll - this.roll0 + 180) % 360) + 360) % 360) - 180;
     Object.assign(r, a);
     const dt = t - this.last.t;
     if (dt > 1e-4 && dt < 1) {

@@ -5,6 +5,10 @@ Their plans and places are OpenStreetMap's (buildings that stand there today, ea
 building in the July 1961 photographs: FHSU F16_016 for the huts, F16_015 for the generator
 building, F16_017 for the shed). Derived: plan sizes and positions. Estimated: heights, roofs,
 doors, windows, what each was for, and which way each faces.
+
+Only the generator building can be gone into: its louvred walls say what it held. What the two
+huts and the shed held is not recorded, so their doors are built shut and their windows dark
+(sitelib.building: "shut", "blind") rather than opening on an empty room.
 """
 
 from __future__ import annotations
@@ -43,10 +47,9 @@ def build(parts: Parts) -> None:
         "hut1",
         r,
         e,
-        {0: [(2.5, 5.7, FLOOR, FLOOR + 6.8, "door"), (10.5, 15.5, FLOOR, FLOOR + 6.8, "door")], 2: [(6.0, 11.0, FLOOR + 3.4, FLOOR + 6.4, "window")]},
+        {0: [(2.5, 5.7, FLOOR, FLOOR + 6.8, "shut"), (10.5, 15.5, FLOOR, FLOOR + 6.8, "shut")], 2: [(6.0, 11.0, FLOOR + 3.4, FLOOR + 6.4, "blind")]},
     )
     flat_roof(parts, g, "hut1", r, e)
-    interiors.ceiling_light(parts, g, "Hut1", ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, e - 0.02), length=3.0, intensity=0.6, reach=5.0)
     # the fenced yard beside it: two transformers behind chain link
     yx0, yy0, yx1, yy1 = 231.0, -190.5, 251.0, -179.8
     fence(parts, g, [(yx0, yy0), (yx1, yy0), (yx1, yy1), (yx0, yy1)], ground=GROUND)
@@ -74,15 +77,14 @@ def build(parts: Parts) -> None:
         e,
         {
             0: [
-                (3.0, 6.2, FLOOR, FLOOR + 6.8, "door"),
-                (9.5, 13.5, FLOOR + 3.2, FLOOR + 6.2, "window"),
-                (16.0, 20.0, FLOOR + 3.2, FLOOR + 6.2, "window"),
+                (3.0, 6.2, FLOOR, FLOOR + 6.8, "shut"),
+                (9.5, 13.5, FLOOR + 3.2, FLOOR + 6.2, "blind"),
+                (16.0, 20.0, FLOOR + 3.2, FLOOR + 6.2, "blind"),
             ],
             1: [(3.5, 6.7, FLOOR + 4.5, FLOOR + 6.5, "louvre")],
         },
     )
     flat_roof(parts, g, "hut2", r, e)
-    interiors.ceiling_light(parts, g, "Hut2", ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, e - 0.02), length=3.0, intensity=0.6, reach=5.0)
     box(grey, (297.0, -165.5, e + 0.8), (301.5, -160.0, e + 2.6))
     box(grey, (305.0, -164.5, e + 0.8), (312.0, -160.5, e + 1.9))
     roof_vent(grey, 303.2, -159.6, e + 0.7, 0.7)
@@ -159,7 +161,7 @@ def build(parts: Parts) -> None:
         "shed",
         r,
         lo,
-        {2: [(4.0, 7.2, FLOOR, FLOOR + 6.8, "door"), (12.0, 20.0, FLOOR, FLOOR + 7.4, "door")], 0: [(8.0, 12.0, FLOOR + 3.2, FLOOR + 6.2, "window")]},
+        {2: [(4.0, 7.2, FLOOR, FLOOR + 6.8, "shut"), (12.0, 20.0, FLOOR, FLOOR + 7.4, "shut")], 0: [(8.0, 12.0, FLOOR + 3.2, FLOOR + 6.2, "blind")]},
         mat="corrugated",
         wall=0.35,
     )

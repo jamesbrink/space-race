@@ -260,7 +260,9 @@ def sorted_box(a, b) -> tuple:
 
 
 def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
-    """A small timber-framed hut on skids, a door in one wall and a window in another."""
+    """A small timber-framed hut on skids, a door in one wall and a window in another. What the
+    huts in the July photographs held is not recorded: the door is built shut and the window dark
+    (sitelib.door `works=False`, a `void` pane), rather than opening on an empty box."""
     x0, y0, x1, y1 = rect
     g = f"GroundEquipment_{key.capitalize()}"  # its own node: it is one thing, and can be taken away
     parts.node(g, "GroundEquipment", ((x0 + x1) / 2, (y0 + y1) / 2, 0.0), label="Hut")
@@ -275,9 +277,11 @@ def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:
             holes.append((w.length / 2 - 2.0, w.length / 2 + 2.0, 3.8, 6.6))
         w.build(skin, 0.5, 8.6, holes)
         if i == window_wall:
-            window(parts, g, w, w.length / 2 - 2.0, w.length / 2 + 2.0, 3.8, 6.6, mullions=[w.length / 2])
+            window(parts, g, w, w.length / 2 - 2.0, w.length / 2 + 2.0, 3.8, 6.6, mullions=[w.length / 2], pane="void")
         if i == door_wall:
-            wall_door(parts, f"GroundEquipment_{key.capitalize()}Door", g, w, w.length / 2 - 1.5, w.length / 2 + 1.5, 0.75, 7.4, mat="grey")
+            wall_door(
+                parts, f"GroundEquipment_{key.capitalize()}Door", g, w, w.length / 2 - 1.5, w.length / 2 + 1.5, 0.75, 7.4, mat="grey", works=False
+            )
             w.box(parts(g, "chassis"), w.length / 2 - 1.8, w.length / 2 + 1.8, -2.2, 0.0, 0.3, 0.72)  # the step
     inner = offset_poly(outline, -0.3)
     parts(g, "plank").add([tuple(P(x, y, 0.75)) for x, y in inner], ear_clip(inner))

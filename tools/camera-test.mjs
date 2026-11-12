@@ -334,6 +334,43 @@ const sequences = {
     check(len(sub(orbit.p, free.p)) < 1e-6, 'back in orbit the eye is where the free camera left it');
     check(far(orbit) > 10, `and turns about what it was looking at, ${far(orbit).toFixed(1)} m off, not a point just in front of the lens`);
   },
+
+  // The near plane was put by the pivot's distance and the ground: orbiting the pad from 150 m it stood 19.5 m out and
+  // cut pad 6's gantry, 15 m in front of the eye, clean away. It must stop short of whatever is nearest (Stage.uncut).
+  async 'the near plane cuts nothing the camera passes'(h) {
+    await h.page.evaluate(() => window.sr.show('pad', true));
+    await h.wait(800);
+    const poses = {
+      'past pad 6’s gantry': [91, 4.2, 152, 14],
+      'low over the scrub': [200, 2, 40, 2.2, -180, -130],
+      'beside the service structure': [100, 20, 30, 20],
+      'across the pad': [215, 9, 150, 14],
+    };
+    for (const [name, pose] of Object.entries(poses)) {
+      const r = await h.page.evaluate(async (pose) => {
+        const st = window.sr.stage;
+        st.pose(...pose);
+        for (let i = 0; i < 5; i++) await new Promise((done) => requestAnimationFrame(done));
+        const eye = st.camera.position;
+        const corner = Math.hypot(1, Math.tan((st.camera.fov * Math.PI) / 360) * Math.hypot(1, st.camera.aspect));
+        const solids = st.walk.solids;
+        solids.set(st.solidRoots());
+        solids.gather(eye, 300, 300);
+        return {
+          reach: st.camera.near * corner,
+          solid: solids.nearest(eye, 300),
+          plant: st.setting.plantsClear?.(eye, 300) ?? 300,
+          near: st.camera.near,
+        };
+      }, pose);
+      const clear = Math.min(r.solid, r.plant);
+      check(
+        r.reach <= clear + 1e-6,
+        `${name}: the plane's corner is ${r.reach.toFixed(2)} m out and the nearest thing ${clear.toFixed(2)} m`,
+      );
+      check(r.near >= Math.min(0.03, clear), `${name}: and it is no nearer than it need be (${r.near.toFixed(3)} m)`);
+    }
+  },
 };
 
 /** Thousands of frames of mixed input, and the promises checked on every one. */

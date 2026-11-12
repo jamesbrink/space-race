@@ -57,7 +57,7 @@ EYE_FROM_HELMET = (1.0, 3.3)  # the eyes from the middle of the helmet, toward t
 SCREEN_R = 4.0  # the periscope's 8 in display: documented (Hammack and Heberlig, p. 5)
 SCOPE_RECESS = 1.2  # how far its display sits behind the panel: estimated (NASM2021-00147)
 
-PAINT = (0.61, 0.62, 0.61)  # the panels' and the wall's light grey, as the flown capsule's is (sRGB): estimated
+PAINT = (0.52, 0.53, 0.52)  # the panels' and the wall's light grey, as the flown capsule's is (sRGB): estimated
 INK = (0.07, 0.07, 0.07)
 WHITE = (0.93, 0.93, 0.90)
 BLACK = (0.035, 0.035, 0.04)
@@ -244,6 +244,20 @@ class Region:
             a = mask[sy0:sy1, sx0:sx1, None]
             sub = self.sheet.px[iy + sy0 : iy + sy1, ix + sx0 : ix + sx1]
             sub[:] = sub * (1 - a) + np.array(colour, np.float32) * a
+
+    def edge_screws(self, pts, pitch: float = 2.4, inset: float = 0.32) -> None:
+        """A row of screws along every edge of a panel's outline (anticlockwise), `inset` in from it."""
+        n = len(pts)
+        for i in range(n):
+            (u0, v0), (u1, v1) = pts[i], pts[(i + 1) % n]
+            length = math.hypot(u1 - u0, v1 - v0)
+            if length < 1.5:
+                continue
+            nu, nv = -(v1 - v0) / length, (u1 - u0) / length  # inward, for an outline that runs anticlockwise
+            count = max(1, round((length - 1.0) / pitch))
+            for k in range(count + 1):
+                t = (0.5 + k * (length - 1.0) / count) / length
+                self.screw(u0 + (u1 - u0) * t + nu * inset, v0 + (v1 - v0) * t + nv * inset, 0.09)
 
     def screw(self, u: float, v: float, r: float = 0.11) -> None:
         self.ring(u, v, 0, r, (0.50, 0.51, 0.50))
@@ -712,6 +726,7 @@ def build(
             "CrewCabin_Pack": "olive",
             "CrewCabin_Hoses": "hose",
             "CrewCabin_Looms": "loom",
+            "CrewCabin_Bottles": "bottle",
             "CrewCabin_Lamps": "equipment",
             "CrewCabin_LampLenses": "cabin_lamp",
         },
@@ -822,6 +837,17 @@ def lining(c: Cabin, hatch, portholes, ceiling: float) -> None:
                 0.09 * IN,
                 0.04 * IN,
             )
+    # the hatch's sill: a row of studs round the opening, as the flown capsule's has (NASM2021-00153); their number is not counted
+    for t in (t0 - 0.035, t1 + 0.035):
+        for z in np.arange(hz0, hz1 + 0.1, 1.6):
+            fr.disc(
+                Vector((math.cos(t), math.sin(t), 0)) * (rl(z) * IN) + Vector((0, 0, z * IN)), (-math.cos(t), -math.sin(t), 0), 0.16 * IN, 0.12 * IN
+            )
+    for z in (hz0 - 0.8, hz1 + 0.8):
+        for t in np.arange(t0, t1 + 0.01, 1.6 / rl(z)):
+            fr.disc(
+                Vector((math.cos(t), math.sin(t), 0)) * (rl(z) * IN) + Vector((0, 0, z * IN)), (-math.cos(t), -math.sin(t), 0), 0.16 * IN, 0.12 * IN
+            )
     # The skin is riveted to the hat stringers outside it (SEDR 104, 2-3): a line of rivet heads down each, as the
     # flown capsule's wall shows. The Postlaunch Report names stringers by number into the twenties; that there are
     # 24, and which way round the first lies, are the model's.
@@ -854,7 +880,12 @@ def lining(c: Cabin, hatch, portholes, ceiling: float) -> None:
         )
         # its bore goes on out through the wall to the outer pane, straight: from the couch the port is seen along the
         # wall, and nothing of the wall's own cut edge may show round it
-        ports.lathe(prof([(4.7, 1.6), (4.7, -0.45)]), 40, matrix=wall.frame(t, z))
+        # (it stands a little inside the ring and a little proud of it: no gap between the two for the wall's edge to show at)
+        ports.lathe(prof([(4.55, 1.6), (4.55, -0.62), (4.75, -0.62)]), 40, matrix=wall.frame(t, z))
+        for i in range(4):  # the clamps that hold the inner panes' frame, as the flown capsule's ring has them (NASM2021-00147): four is ours
+            a = TAU * (i + 0.5) / 4
+            at = on_wall(t, z, 5.75, a, -0.6)
+            ports.box((1.3 * IN, 0.8 * IN, 0.8 * IN), frame(at, -wall.n(t + 5.75 * math.cos(a) / wall.r(z))) @ Matrix.Rotation(a, 4, "Z"))
         for i in range(20):
             a = TAU * (i + 0.5) / 20
             at = on_wall(t, z, 5.75, a, -0.5)
@@ -934,10 +965,11 @@ def toggle(c: Cabin, F: Matrix, u: float, v: float, way: str, up: bool = True) -
 def telelight(c: Cabin, F: Matrix, faces: Sheet, name: str, legend: str, u: float, v: float, w: float = 0.0, size=(2.5, 0.95)) -> None:
     """A telelight: a black housing and a lens with its legend, which the viewer lights. The lens is its own mesh."""
     su, sv = size
-    c.box("CrewCabin_Bezels", F, u, v, su + 0.16, sv + 0.16, w, w + 0.34)
+    c.box("CrewCabin_Bezels", F, u, v, su + 0.3, sv + 0.3, w, w + 0.4)
     rg = faces.take(su, sv, 110, -su / 2, -sv / 2)
-    rg.rect(-su / 2, -sv / 2, su / 2, sv / 2, (0.80, 0.80, 0.76))
-    rg.rect(-su / 2 + 0.05, -sv / 2 + 0.05, su / 2 - 0.05, sv / 2 - 0.05, (0.86, 0.86, 0.82), r=0.06)
+    # a smoked lens in a black housing, its legend engraved dark, as the flown capsule's are (NASM2021-00147)
+    rg.rect(-su / 2, -sv / 2, su / 2, sv / 2, (0.34, 0.35, 0.34))
+    rg.rect(-su / 2 + 0.06, -sv / 2 + 0.06, su / 2 - 0.06, sv / 2 - 0.06, (0.56, 0.57, 0.55), r=0.06)
     rg.text(legend, 0, 0, 0.2 if "\n" not in legend else 0.17, INK)
     lens = Cabin(c.g, c.vessel, c.M)
     lens.box("lens", F, u, v, su, sv, w + 0.2, w + 0.46, rg, 0.0, 0.0)
@@ -1002,6 +1034,11 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         (1330, 920),
     ):
         rg.screw(*fig(px, py))
+    # riveted sheet in sections: a row of screws round the edge and down each side of the seam
+    rg.edge_screws(outline)
+    for side in (-0.35, 0.35):
+        for k in range(7):
+            rg.screw(seam + side, fig(0, 520)[1] - k * 1.85, 0.09)
     c.flat("CrewCabin_InstrumentPanel", P, outline, rg)
     c.skirt("CrewCabin_PanelStructure", P, outline, 0.0, -0.9)
     c.flat("CrewCabin_PanelStructure", P, outline, None, -0.9, flip=True)
@@ -1240,9 +1277,16 @@ def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict) -> None:
     screen.disc("s", P, 0, 0, SCREEN_R - 0.02, -d + 0.06, None, 64)
     obj = screen.mb["s"].build("Periscope_Screen", c.M["scope_screen"], c.g)
     obj["screen_radius"] = (SCREEN_R - 0.02) * IN
-    for name, (ku, kv), r in (("ALTITUDE", (-4.9, -4.9), 0.55), ("DRIFT", (1.6, -5.6), 0.42), ("RETICLE", (5.1, -4.9), 0.5)):
+    # its knobs: altitude, drift and reticle brightness on the display (SEDR 104, Figure 12-2), and the filter selector,
+    # which the manual has on the left side of the housing (12-14) and is put here at the display's left edge
+    for name, (ku, kv), r in (
+        ("ALTITUDE", (-4.9, -4.9), 0.55),
+        ("DRIFT", (1.6, -5.6), 0.42),
+        ("RETICLE", (5.1, -4.9), 0.5),
+        ("FILTER", (-5.55, 1.2), 0.5),
+    ):
         c.turned("CrewCabin_Knobs", P, ku, kv, [(r, 0.0), (r, 0.45), (r * 0.8, 0.6), (0.0, 0.6)], 14, -d)
-        rg.text(name, ku + (1.0 if ku < 0 else -1.0) * (0.0 if name == "DRIFT" else 0.2), kv + r + 0.22, 0.09, WHITE if abs(ku) < 2 else INK)
+        rg.text(name, ku + (1.0 if ku < 0 else -1.0) * (0.0 if name == "DRIFT" else 0.2), kv + r + 0.26, 0.13, WHITE if abs(ku) < 2 else INK)
     rg.rect(u0 + 0.35, v1 - 0.85, u0 + 1.55, v1 - 0.45, BLACK, r=0.05)
     rg.text("RETRACT", u0 + 0.95, v1 - 0.65, 0.12, WHITE)
     c.turned("CrewCabin_PanelFittings", P, u0 + 0.95, v1 - 1.35, [(0.26, 0.0), (0.26, 0.2), (0.0, 0.26)], 12, -d)
@@ -1277,6 +1321,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     sfig = lambda px, py: ((px - 830) * S, (FIG_C[1] - py) * S)  # noqa: E731
     strip = [sfig(585, 1350), sfig(830, 1345), sfig(830, 415), sfig(585, 620)]
     rg = sheet.take(strip[1][0] - strip[0][0], strip[2][1] - strip[0][1], 74, strip[0][0], strip[0][1], at=(0, 0))
+    rg.edge_screws(strip)
     c.flat("CrewCabin_Consoles", Sx, strip, rg)
     c.skirt("CrewCabin_PanelStructure", Sx, strip, 0.0, -0.7)
     c.flat("CrewCabin_PanelStructure", Sx, strip, None, -0.7, flip=True)
@@ -1295,6 +1340,8 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
             c.node(f"Ctl_{name}", "lever", Sx, ou, v, 0.08, ring, pull=1.2 * IN)
         elif kind == "button":  # a push button in a black collar; RETRO FIRE and JETT RETRO are guarded
             c.turned("CrewCabin_Knobs", Sx, ou, v, [(0.36, 0.0), (0.36, 0.3), (0.26, 0.3)], 14)
+            if name in ("RetroFire", "JettRetro"):  # guarded (Figure 3.1-2): a collar standing round the button
+                c.turned("CrewCabin_PanelFittings", Sx, ou, v, [(0.52, 0.0), (0.52, 0.62), (0.44, 0.62), (0.44, 0.0)], 16)
             c.node(f"Ctl_{name}", "red", Sx, ou, v, 0.0, lambda mb: mb.lathe([(0.25, 0.2), (0.25, 0.42), (0.0, 0.46)], 12), press=0.12 * IN)
         else:
             toggle(c, Sx, ou, v, "v")
@@ -1326,6 +1373,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     cfig = lambda px, py: ((px - 585) * S, (FIG_C[1] - py) * S)  # noqa: E731
     part = [cfig(355, 1362), cfig(585, 1352), cfig(585, 690), cfig(520, 705), cfig(460, 790), cfig(235, 822)]
     rg2 = sheet.take(part[1][0] - part[5][0], part[2][1] - part[0][1], 74, part[5][0], part[0][1], at=(502, 0))
+    rg2.edge_screws(part)
     c.flat("CrewCabin_Consoles", Cx, part, rg2)
     c.skirt("CrewCabin_PanelStructure", Cx, part, 0.0, -0.7)
     c.flat("CrewCabin_PanelStructure", Cx, part, None, -0.7, flip=True)
@@ -1386,6 +1434,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     fw, fh = 8.6, 15.0
     rect = [(-fw, -fh / 2), (0, -fh / 2), (0, fh / 2), (-fw, fh / 2)]
     rg3 = sheet.take(fw, fh, 74, -fw, -fh / 2, at=(1216, 0))
+    rg3.edge_screws(rect)
     c.flat("CrewCabin_Consoles", Fx, rect, rg3)
     c.skirt("CrewCabin_PanelStructure", Fx, rect, 0.0, -0.6)
     c.flat("CrewCabin_PanelStructure", Fx, rect, None, -0.6, flip=True)
@@ -1403,6 +1452,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     rw, rh = 6.6, 8.2
     rect = [(-rw / 2, -rh / 2), (rw / 2, -rh / 2), (rw / 2, rh / 2), (-rw / 2, rh / 2)]
     rg4 = sheet.take(rw, rh, 74, -rw / 2, -rh / 2, at=(502, 1368))
+    rg4.edge_screws(rect)
     c.flat("CrewCabin_Consoles", R, rect, rg4)
     c.skirt("CrewCabin_PanelStructure", R, rect, 0.0, -2.2)
     rg4.text("EMER O2", 0, 3.5, 0.14, INK)
@@ -1475,8 +1525,22 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
     soft(c.into("CrewCabin_Pack"), pack, (5.0, 10.0, 7.0), 1.6)
     for dy in (-2.6, 0.0, 2.6):  # its straps
         soft(c.into("CrewCabin_Stowage"), pack @ Matrix.Translation((0, dy * IN, 0)), (5.25, 0.9, 7.25), 0.4, 12, 7)
-    # the survival kit, at the left of the couch (SEDR 104 Figure 1-6, the orbital capsule: not checked for No. 7)
-    soft(c.into("CrewCabin_Stowage"), Matrix.Translation(Vector((-17.0, -14.5, 8.5)) * IN) @ Matrix.Rotation(-0.3, 4, "Z"), (4.5, 11.0, 5.0), 1.2)
+    # The survival kit: the tall zippered fabric container on the left wall beside the pilot's shoulder, as the flown
+    # capsule has one there (NASM2021-00147, the far left). That it is the kit is SEDR 104 Figure 1-6's word for what
+    # hangs at the left of the couch in the orbital capsule: not checked for No. 7.
+    kit = Matrix.Translation(Vector((-21.3, -13.0, 14.0)) * IN) @ Matrix.Rotation(math.atan2(-13.0, -21.3) + math.pi, 4, "Z")
+    soft(c.into("CrewCabin_Stowage"), kit, (3.4, 9.5, 12.0), 1.2)
+    c.into("CrewCabin_Looms").box((0.2 * IN, 0.35 * IN, 10.6 * IN), kit @ Matrix.Translation((1.75 * IN, 0, 0)))  # its zip
+    # the visor seal's oxygen bottle, green, low at the pilot's left (SEDR 109-7 lists it for No. 7; its place is the flown capsule's)
+    c.into("CrewCabin_Bottles").tube(Vector((-15.5, 2.0, 5.6)) * IN, Vector((-15.5, 10.0, 6.6)) * IN, 1.3 * IN, 16)
+    c.into("CrewCabin_PanelFittings").tube(Vector((-15.5, 10.0, 6.6)) * IN, Vector((-15.5, 11.2, 6.75)) * IN, 0.45 * IN, 10)
+    # a small mirror on a bracket under the upper port (NASM2021-00147): what it was for is not in anything read
+    t, z = portholes[1]
+    at = c.vessel.p(t + 0.42, z - 5.5, -1.6)
+    aim = (Vector((0.0, -24.0, 13.0)) * IN - at).normalized()
+    c.into("CrewCabin_Lamps").box((2.6 * IN, 1.9 * IN, 0.5 * IN), frame(at, aim))
+    c.into("CrewCabin_PanelFittings").box((2.2 * IN, 1.5 * IN, 0.1 * IN), frame(at + aim * (0.31 * IN), aim))
+    c.into("CrewCabin_Lamps").tube(at, c.vessel.p(t + 0.42, z - 5.5, 0.3), 0.25 * IN, 8)
     # two cabin floodlights above and either side of the pilot's head (SEDR 104, 10-19, the orbital capsule: No. 7's are not in anything read)
     lamps = []
     for sx in (-1, 1):
@@ -1497,6 +1561,30 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
     for k in range(3):
         run_ = [(-22.6 - 0.1 * k, 4.0 + 0.9 * k, 13.0), (-24.2, 6.0 + 0.9 * k, 9.0), (-25.4, 9.0 + 0.9 * k, 5.0), (-24.0, 13.0 + 0.6 * k, 1.6)]
         loom.loft([Vector(p) * IN for p in run_], [(0.32 * IN, 0.32 * IN)] * len(run_), 8)
+    # the white coiled cord that hangs down the left wall in the flown capsule (NASM2021-00147): what it served is not in anything read
+    a0, a1 = Vector((-21.8, -14.5, 21.0)), Vector((-23.4, -7.5, 8.0))
+    along = (a1 - a0).normalized()
+    side1 = along.cross(Vector((1, 0, 0))).normalized()
+    side2 = along.cross(side1)
+    turns = int((a1 - a0).length / 0.3)
+    coil = [a0 + (a1 - a0) * (i / (turns * 8)) + (side1 * math.cos(TAU * i / 8) + side2 * math.sin(TAU * i / 8)) * 0.24 for i in range(turns * 8 + 1)]
+    c.into("CrewCabin_Hoses").loft([p * IN for p in coil], [(0.07 * IN, 0.07 * IN)] * len(coil), 5, resample=1)
+    c.into("CrewCabin_Lamps").tube(a0 * IN, Vector((a0.x * 1.12, a0.y * 1.12, a0.z)) * IN, 0.45 * IN, 8)  # the clip it hangs from
+    # The harnesses from the back of the panel down each side to the equipment on the floor, with their connectors
+    # in red caps where they leave the instruments (NASM2021-00153 shows them from the hatch): the runs are estimated.
+    for path in (
+        [(-9.0, 3.0, 35.0), (-15.0, 8.0, 31.0), (-21.5, 11.5, 22.0), (-24.0, 13.0, 10.0), (-22.0, 14.0, 6.8)],
+        [(12.0, -2.0, 35.5), (18.0, -8.0, 31.0), (21.8, -10.0, 22.0), (22.0, -10.0, 9.0), (21.0, -9.5, 5.8)],
+    ):
+        for k in (-1, 1):
+            run_ = [Vector((x, y + 0.45 * k, z + 0.1 * k)) * IN for x, y, z in path]
+            # (laced: a tie every few inches, drawn as a swelling of the run itself)
+            loom.loft(run_, [(0.4 * IN, 0.4 * IN)] * len(run_), 8, resample=12, ripple=lambda s, th: 0.2 if (s * 10) % 1.0 < 0.14 else 0.0)
+        x, y, z = path[0]
+        for k in range(3):
+            c.into("CrewCabin_RedCaps").tube(
+                Vector((x + 1.3 * (k - 1), y - 2.0, z - 0.2)) * IN, Vector((x + 1.3 * (k - 1), y - 2.0, z + 1.1)) * IN, 0.4 * IN, 10
+            )
 
 
 def hatch_inside(parent, vessel: Surf, M: dict, hatch) -> None:

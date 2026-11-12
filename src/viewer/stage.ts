@@ -42,7 +42,8 @@ import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
-const WORN = /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|concrete|suit|galvanised)/;
+const WORN =
+  /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|paint-cabin|couch|concrete|suit|galvanised)/;
 /** Materials that also take it as a bump map: cloth and poured concrete are never flat. */
 const ROUGH_SURFACE = /^(suit|concrete)/;
 
@@ -93,7 +94,7 @@ const WALK_SHADOW = 26;
 /** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
 const NEAR_LEAST = 0.03;
 /** How much the exposure opens up in a room by day (as a share added), and over how many seconds; how far the rays that ask whether the eye is in one go, metres. */
-const INDOORS_GAIN = 1.4;
+const INDOORS_GAIN = 1.1;
 const INDOORS_SECONDS = 0.9;
 const INDOORS_REACH = 12;
 const ENCLOSING = [
@@ -400,6 +401,14 @@ export class Stage {
   private readonly bounds = new THREE.Sphere();
   /** Something on show has changed and the next frame must be drawn. */
   private dirty = true;
+  /**
+   * Nothing is drawn yet: the page is opening, under its curtain. A draw that needs a shader which is not built
+   * waits for it there and then, on the main thread, one shader at a time; with models arriving that was most of
+   * the time the page stood blocked. Held until `warm` has had them all built at once, off the main thread.
+   */
+  private held = true;
+  /** `?plain` in the address: everything the old way, for measuring the new against it (tools/bench.mjs). */
+  private readonly plain: boolean;
   private sinceDrawn = 0;
   private frames = 0;
   private drawn = 0;
@@ -424,13 +433,15 @@ export class Stage {
     this.raycaster.layers.enable(PROXY_LAYER); // (a mesh a batch draws is still what a ray meets)
     // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
     const query = new URLSearchParams(location.search);
-    if (query.has('plain')) this.glazing.enabled = false;
+    this.plain = query.has('plain');
+    if (this.plain) this.glazing.enabled = this.held = false;
     // (batches are off unless asked for with `?batch`, until they are shown to leave every pixel as it was: `?batch=<n>` also sets the fewest meshes worth one)
     this.batches.enabled = query.has('batch') && !query.has('plain');
     if (query.get('batch')) this.batches.least = Number(query.get('batch'));
 
-    // models are Draco-compressed; the decoder is served from public/draco
-    this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
+    // models are Draco-compressed; the decoder is served from public/draco (the WebAssembly build, run in up to four
+    // workers), and is fetched now, beside the first model, not after it has arrived
+    this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`).preload());
     this.settings = new Settings(this.renderer);
     this.setting = this.settings.get('orbit');
 
@@ -589,6 +600,7 @@ export class Stage {
       // a setting's floor is one level plane: its height is asked for, not its triangles
       ground: () => this.setting.floor?.position.y ?? null,
       groundAt: (x, z) => this.groundAt(x, z),
+      plantsOut: (at, margin) => this.setting.plantsOut?.(at, margin) ?? 0,
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
       leave: () => this.exitWalk(),
       act: () => this.onWalkAct(),
@@ -1057,7 +1069,9 @@ export class Stage {
       this.lookingAt = 'screen';
       if (this.cabin) this.cabin.watched = true;
       // the screen fills four fifths of the view's height
-      const away = screen.point.distanceTo(this.camera.position);
+      // (from the seat's own eye, as the vehicle stands this instant: the camera is where it was a frame ago, kilometres a second behind)
+      const seat = this.craft()?.seat;
+      const away = screen.point.distanceTo(seat ? new THREE.Vector3().setFromMatrixPosition(seat) : this.camera.position);
       rig.lookAt(screen.point, THREE.MathUtils.radToDeg(2 * Math.atan(screen.radius / away / 0.8)));
       this.dirty = true;
       return fields.length > 1 ? `${power ? 'High' : 'Low'} power · ${fields[power]}\u00b0 · click again to change` : null;
@@ -1721,7 +1735,16 @@ export class Stage {
       for (const s of this.staged) s.everyLevel(true, fading);
       this.scenery?.everyLevel(true, fading);
       this.lamps.set(night, 1);
-      await this.renderer.compileAsync(this.scene, this.camera).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
+      // Built for the buffer the scene is drawn into: a shader for the canvas (tone-mapped, in the screen's colours) is
+      // another shader, and built for that every one of them was built again, one at a time, as the first frame was drawn.
+      const target = this.renderer.getRenderTarget();
+      if (!this.plain) this.renderer.setRenderTarget(this.frameTarget);
+      const built = [this.renderer.compileAsync(this.scene, this.camera)];
+      // (and the sky's, which is a scene of its own drawn into the same buffer)
+      if (!this.plain) built.push(this.renderer.compileAsync(this.setting.backdrop.scene, this.setting.backdrop.camera));
+      this.renderer.setRenderTarget(target);
+      await Promise.all(built).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
+      this.held = false; // (the first frame is drawn now, with its shaders ready)
       this.renderer.shadowMap.needsUpdate = true;
       await frames(2);
       onStep?.('shaders', (i + 1) / passes.length);
@@ -1736,6 +1759,23 @@ export class Stage {
     this.relight(true);
     await frames(3);
     onStep?.('settle', 1);
+    if (!this.plain) this.prebuild(this.looks.current === 'cel' ? 'real' : 'cel');
+  }
+
+  /**
+   * Ask for the other look's shaders now, to be built behind what is on show: the first change of look (T) then has
+   * them, where it used to stop the page for seconds building them one after another. The meshes wear the other
+   * look's materials only for the length of this call, in which nothing is drawn.
+   */
+  private prebuild(look: Look): void {
+    const now = this.looks.current;
+    if (look === now) return;
+    this.looks.set(look);
+    const target = this.renderer.getRenderTarget();
+    this.renderer.setRenderTarget(this.frameTarget);
+    void this.renderer.compileAsync(this.scene, this.camera).catch(() => {});
+    this.renderer.setRenderTarget(target);
+    this.looks.set(now);
   }
 
   /** The view is not being steered (the idle show): the light may be followed less closely, for even frames. */
@@ -2444,6 +2484,7 @@ export class Stage {
     this.sinceDrawn += dt;
     const ambient = this.frozen ? 0.5 : 1 / 12;
     if (!(this.dirty || moved || this.renderer.shadowMap.needsUpdate || this.sinceDrawn >= ambient)) return;
+    if (this.held) return;
     this.lastView.copy(this.camera.matrixWorld);
     this.lastProjection.copy(this.camera.projectionMatrix);
     this.dirty = false;

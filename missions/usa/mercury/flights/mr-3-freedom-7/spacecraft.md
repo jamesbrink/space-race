@@ -87,6 +87,7 @@ is documented (the periscope's 8 in screen) and the rest follow from it or are e
 | Instrument sizes | accelerometer, descent, and the small round gauges 2.3 in; altimeter 3.5 in; attitude indicator 7.8 by 4.5 in; clock 5.8 by 6.2 in | derived | the same figure and scale |
 | What the panel carried | no Earth-path indicator; one O2 emergency flow light, not the three lights the figure draws; a cabin humidity gauge | documented | Figure 3.1-2 draws no Earth-path indicator and Figure 10.1-1 lists none; 10.1-1 lists the one light and the humidity gauge, and the flown capsule has the one light. Its place (second row, left) is from Results, Figure 7 |
 | Faces: scales, numerals, legends | as the flown capsule reads today | estimated | NASM2021-00147. Altimeter 0 to 100 thousand ft with MAIN at 10 and SNORKEL at 20; descent 0 to 140 ft/s; accelerometer -9 to +12 g; attitude dials as three pointers. The humidity gauge is gone from the artifact: its face is ours |
+| Lettering | panel legends 0.18 in tall, switch positions 0.14, small notes 0.125; dial numerals a sixth of the dial's radius | estimated | scaled off NASM2021-00147 against the instruments beside them (SQUIB is about 1.1 in long beside a 2.4 in dial) |
 | Rate needles' full travel | 6 degrees a second | estimated | nothing read gives the indicator's range |
 | Sequence lamps, top to bottom, and what overrides each | TOWER JETT (ring), CAPSULE SEP (ring), START RETRO SEQ (button), IN RETRO ATT (switch), RETRO FIRE, JETT RETRO, .05 G SWITCH, DROGUE (buttons), MAIN DEPLOY, RESERVE DEPLOY (rings) | documented | Figure 3.1-2. Green when done, red for a failure (Results, p. 23): the model lights green only |
 | Panel station, and how far from the eyes | face at station 33 in; the screen 31.6 in from the model pilot's eyes | estimated | fitted between the model pilot's knees (30.6 in) and the cone, which is what cuts the panel's top corners. "Two feet in front of him" (*This New Ocean*, p. 355) is all that is in print; the model's pilot lies flatter than the real one, so his eyes are further from it |
@@ -104,7 +105,11 @@ is documented (the periscope's 8 in screen) and the rest follow from it or are e
 | Hand controller and abort handle | under the right and left hands | documented (which hand, what each does), estimated (place, size) | Results, p. 22: three axes in the right hand; "twisting of the left controller will initiate the abort sequence" |
 | Cameras | one beside the pilot's head on his left looking at the panel; one at the lower right window; a lens in the panel beside the periscope | documented (where), estimated (size) | Results, p. 24 |
 | Cabin lights | two fittings above and either side of the pilot's head | estimated | No. 7 had one CABIN LITES switch and flew with them "on full white light" (Postlaunch Report, p. 76); the arrangement is the orbital capsule's (SEDR 104, 10-19) |
-| Chest parachute, survival kit, map case | by the right shoulder; left of the couch; hanging under the periscope's display | estimated | NASM2021-00153 (the olive pack); SEDR 104 Figure 1-6 and 12-27 (the orbital capsule) |
+| Chest parachute, survival kit, map case | by the right shoulder; a tall zippered container on the left wall; hanging under the periscope's display | estimated | NASM2021-00153 (the olive pack) and -00147 (the container); that it is the survival kit is SEDR 104 Figure 1-6's word for the orbital capsule; 12-27 for the map case |
+| Visor seal bottle | a green bottle low at the pilot's left | documented (aboard), estimated (place, size) | SEDR 109-7 lists it for No. 7; NASM2021-00147 |
+| Wiring | three runs down from the fuse panel; a harness from the back of the panel down each side, with red-capped connectors | estimated | NASM2021-00147 and -00153: the runs are ours |
+| Coiled cord, lacing, port clamps | a white coiled cord hanging down the left wall; ties every few inches on the panel harnesses; four clamps on each port's ring | estimated | NASM2021-00147. What the cord served is not in anything read; the clamps are not counted |
+| Hatch sill studs, a mirror under the upper port | studs every 1.6 in round the opening; a 2.2 by 1.5 in mirror on a bracket | estimated | NASM2021-00153; -00147. The studs are not counted, and what the mirror was for is not in anything read |
 | Colours | wall, panels and consoles light grey; instrument faces black; couch grey with a cream liner; chest parachute olive | estimated | NASM2021-00147 and -00153, and NASA S61-03257. No document read states a colour |
 | Head's turn from the seat | 100 degrees to either side, 54 up, 34 down from a gaze that rests on the panel | estimated | a head in a helmet fixed to the suit, and the eyes' own turn |
 
@@ -114,7 +119,7 @@ the control fuel left. **Not simulated, and saying so when pointed at:** cabin p
 coolant, oxygen, volts and amps stand where their faces were drawn; "in retro attitude", "reserve deploy" and the
 warning lamps stay dark. The attitude angles are read off the model as the scene has it, by a convention that is the
 viewer's (`src/viewer/gauges.ts`): pitch is the small end's height above the horizon, yaw its heading from trailing,
-and roll is from how the capsule lay as it left the pad.
+and roll is how far the pilot's head is from uppermost: nought in the attitude held for retrofire, and about 100 degrees going up, because the model's stance on the pad (hatch at 295 degrees, estimated) has him on his side to the 105 degree azimuth.
 
 ## Parts in the model
 
@@ -156,6 +161,9 @@ The same GLB also holds the launch vehicle's five nodes: see
   is by judgement.
 - **The periscope's objective is a lens over three inches of barrel**, with a stop and a mirror at the bottom, not the
   instrument's optics: the barrel does not run on to the screen in the cabin.
+- **After the turnaround the simulator rolls the capsule periscope side down** (`trajectory.body.capsule.earthward`,
+  estimated: 80 degrees, from the model's own periscope and hatch bearings). The record has the yaw through 180 degrees
+  and the 34 degrees; that the periscope faced the Earth is why it was there; the roll's own figure is not in anything read.
 - **The periscope does not retract**, has no filters, map or Sun and Moon index that turns, and its reticle is a few
   lines of the real one's. What it shows is the scene's geometry and sky, without the clouds' volume.
 - **The hatch's latch mechanism is not modelled**: the inner face is plain with one release handle. No drawing of it

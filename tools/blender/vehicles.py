@@ -41,8 +41,10 @@ tub with seats, a dashboard and a steering wheel. Separate wings (a Beetle's, a 
 pickup's) are the same loft, one-sided, sunk into the body's side (`Pod`).
 
 Levels of detail follow srlib.DETAIL. At 1.0 everything is built. Below 0.75 (`srlib.interior()`)
-there is no interior and the panes are dark `window-void`; shut lines, handles, plates and wipers
-go too. Below 0.5 the bright trim goes and every curve is thinned. The outline does not change.
+there is no interior: a car keeps its glass over the dark under the belt and its seat backs
+(`build_shade`), so it is the same car from further off; shut lines, handles, plates and wipers
+go. Below 0.5 the panes are dark `window-void`, the bright trim goes and every curve is thinned.
+The outline does not change. (A truck's cab has `window-void` below 0.75.)
 
 Trim never lies flat on a panel: two parallel faces a few centimetres apart flicker when seen from
 across a site. A strip is a ridge whose faces slope away from the panel, a lamp is a dome, a plate
@@ -167,6 +169,11 @@ def grain() -> float:
 
 def trimmed() -> bool:
     """Whether bright trim is built."""
+    return srlib.DETAIL >= 0.5
+
+
+def glazed() -> bool:
+    """Whether a car's panes are glass with something behind them, or dark: glass down to detail 0.5."""
     return srlib.DETAIL >= 0.5
 
 
@@ -615,7 +622,7 @@ class Car:
         foot, head, rear, back = self.cabin
         key = self.roof or self.paint
         top = kit(key)
-        glass = kit("glass" if srlib.interior() else "void")
+        glass = kit("glass" if glazed() else "void")
         thick = 1.6
         a, b = rear - self.roof_reach[1], head + self.roof_reach[0]
         nx, ny = max(3, round(8 / grain())), max(2, round(4 / grain()))
@@ -651,7 +658,7 @@ class Car:
         posts = [(foot - wrap, head - 0.25 * wrap, self.post, self.post), *((x, x, self.post, self.post) for x in self.pillars)]
         posts = sorted([*posts, (back, rear, self.post + self.sail, self.post)], reverse=True)  # the last is broad at its foot
         up = Vector((0, 0, 1.2))
-        pane = "glass" if srlib.interior() else "void"
+        pane = "glass" if glazed() else "void"
         for s in (1, -1):
             edges = []
             for k, (xb, xr, wide, narrow) in enumerate(posts):
@@ -785,6 +792,23 @@ class Car:
             a, b = self.door_spans()[0]
             out["Stand_Driver"] = (Vector(((a + b) / 2, side * (self.width / 2 + 22.0), 0.0)), 0.0 if side > 0 else 180.0)
         return out
+
+    def build_shade(self, kit: Kit) -> None:
+        """What is seen of the inside through the glass from across a site, where the inside is not
+        built: the dark under the belt (a deck across the cabin just below the glass) and the seat
+        backs standing out of it. A black pane there was a different car from the glazed one it
+        gives way to; this is the same car with less in it."""
+        x0, x1, wy, _ = self.tub()
+        dark = kit("trim-dark")
+
+        def z(x: float) -> float:
+            return self.belt(x) - 0.8
+
+        poly(dark, [(x0, -wy, z(x0)), (x1, -wy, z(x1)), (x1, wy, z(x1)), (x0, wy, z(x0))], (0, 0, 1))
+        backs = [x1 - 36.0] if x1 - x0 < 76.0 else [x1 - 36.0, x0 + 5.0]
+        seat = kit(self.upholstery)
+        for x in backs:  # a bench's back, a hand above the belt
+            box(seat, (x - 3.5, -wy + 1.5, z(x) - 3.0), (x, wy - 1.5, z(x) + 5.0))
 
     def build_interior(self, kit: Kit) -> None:
         """A tub inside the cabin and what a driver sees from the seat: benches, the dashboard and
@@ -1372,6 +1396,8 @@ class Car:
             self.build_greenhouse(kit)
             if srlib.interior():
                 self.build_interior(kit)
+            elif glazed():
+                self.build_shade(kit)
         if srlib.interior():
             self.build_bays(kit)
         for pod in self.pods:

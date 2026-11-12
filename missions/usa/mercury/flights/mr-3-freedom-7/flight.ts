@@ -1132,11 +1132,8 @@ const padParts: Part[] = [
         },
       ]),
     ],
-    actions: [
-      doorAction('trailer-door', 'GroundEquipment_TrailerDoor', -100),
-      doorAction('hut-1-door', 'GroundEquipment_Hut1Door', -100),
-      doorAction('hut-2-door', 'GroundEquipment_Hut2Door', -100),
-    ],
+    // (the two huts' doors stay shut: what they held is not recorded, so no inside is offered: ground_equipment.py)
+    actions: [doorAction('trailer-door', 'GroundEquipment_TrailerDoor', -100)],
     explode: [0, 0, 0],
     order: 0,
   },
@@ -1615,6 +1612,13 @@ const body: Body = {
     rcs: { supplies: RCS_SUPPLIES, thrusters: RCS_THRUSTERS },
     base: guess(CAPSULE_CG * IN, 'the tip of the heat shield, 25 in below the centre of mass assumed above'),
     chuteArm: guess(1.8, 'the parachutes pull at the top of the recovery compartment, about 1.8 m from the centre of mass assumed above'),
+    earthward: guess(
+      80,
+      'the periscope’s side. The record has the spacecraft yawed 180 degrees to go heat shield first and held at 34 degrees ' +
+        '(Results of the First U.S. Manned Suborbital Space Flight, the flight plan, page 13 of the NTRS file) with the pilot watching the Earth in the periscope; which side that is ' +
+        'on the pad is the model’s: the periscope under the pilot’s feet, bearing 205 degrees true with the hatch at 295 (LC-5’s bearing, itself ' +
+        'estimated), and the body’s +Z bearing 285, against the 105 degree azimuth: 80 degrees between them',
+    ),
     side: {
       dragArea: guess(
         3.6,

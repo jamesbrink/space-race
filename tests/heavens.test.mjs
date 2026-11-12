@@ -188,3 +188,14 @@ test('the stars come out as the air above the eye thins, a magnitude for each 2.
   assert.equal(starLimit(limitingMagnitude(-30), 0), 6.5, 'by night: every star the eye sees');
   assert.equal(starLimit(limitingMagnitude(-30), 1), 6.5);
 });
+
+test('above the air nothing dims a low star, and the horizon it sets behind has dipped', () => {
+  const h = new Heavens(LC5, true, 1);
+  const [stars] = h.stars.children;
+  assert.deepEqual(stars.material.uniforms.uAir.value.toArray(), [1, 0], 'on the ground: all the air, a level horizon');
+  h.show(6.5, 1, 0, 150_000);
+  const [air, dip] = stars.material.uniforms.uAir.value.toArray();
+  assert.equal(air, 0);
+  assert.ok(Math.abs(Math.asin(-dip) / DEG - 12.3) < 0.1, 'from 150 km the horizon is 12.3 degrees under the level');
+  assert.deepEqual(h.band.material.uniforms.uAir.value.toArray(), [air, dip], 'and the Milky Way goes by the same');
+});

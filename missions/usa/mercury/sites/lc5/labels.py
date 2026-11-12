@@ -12,6 +12,7 @@ import re
 from .site import Parts
 
 DOOR = ("Door", "It opens and shuts on foot. Where the doors were, and their fittings, are estimated.")
+SHUT = ("Door, kept shut", "What this building was for and what stood in it are not recorded, so its inside is not drawn and its door stays shut.")
 
 TABLE: list[tuple[str, str, str]] = [
     # ---- the pad
@@ -234,4 +235,4 @@ def apply(parts: Parts) -> None:
             break
         else:
             if re.search(r"Door\d*$", name) and "label" not in obj:
-                obj["label"], obj["about"] = DOOR
+                obj["label"], obj["about"] = SHUT if "shut" in obj else DOOR

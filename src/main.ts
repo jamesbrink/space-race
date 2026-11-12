@@ -4,9 +4,9 @@ import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from
 import { flightFor, formatAddress, opensIn, type Place, parseAddress } from './address';
 import { Callout } from './callout';
 import { Cockpit } from './cockpit';
+import { follow } from './curtain';
 import { Demo, IDLE_TITLE } from './demo';
 import { Flown } from './flown';
-import { follow } from './curtain';
 import { crumbs, Gallery, markPlace, placesNav } from './gallery';
 import './navball.css';
 import { Navball } from './navball';
@@ -342,7 +342,8 @@ function panelOnly(): void {
   const root = document.querySelector('#ui')!;
   const aboard = stage.cameraMode === 'onboard';
   const was = root.classList.contains('panel-only');
-  root.classList.toggle('panel-only', aboard && !prefs.get('deckAboard'));
+  // (not on a touch screen: there the deck's buttons and stick are the only keys there are, and there is no P)
+  root.classList.toggle('panel-only', aboard && !prefs.get('deckAboard') && !matchMedia('(pointer: coarse)').matches);
   root.classList.toggle('aboard', aboard);
   if (aboard && !was && root.classList.contains('panel-only') && ready && !demo.active)
     ui.say('From the couch', 'Click a control to work it, a window or the periscope to look out', 'P brings the flight deck back');

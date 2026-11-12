@@ -5,7 +5,7 @@ import { type Clouds, cloudCutGlsl, cloudMiddle, cloudNoiseGlsl, cloudRise, clou
 import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere';
 import { fieldAs, hash2 } from './field';
 import { uOrigin } from './origin';
-import { CIRRUS_HEIGHT, cumulusBiasGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
+import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
 import { onWeather, weatherUniforms } from './weathermap';
 
 /** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
@@ -158,6 +158,11 @@ const FRAY_THIN = 0.25;
 const SUN_GAIN = 1.65;
 /** The Earth's mean radius: the layer is a shell this far plus its height from the centre under the site. */
 const EARTH = 6_371_000;
+
+/** A cloud's outline, to be marched again finer (`CloudPass.fine`): where the march's neighbouring pixels differ by this much opacity. */
+const EDGE = 0.1;
+/** And its creases: where they differ by this much of their light. */
+const CONTRAST = 0.1;
 
 const VERTEX = /* glsl */ `
   in vec3 position;
@@ -369,7 +374,7 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
     if (sd < cut * (1.0 + gone) + skin + gone * ${(FRAY + FRAY_SKIN).toFixed(1)}) {
       vec3 at = vec3(f.x, h - 1.5 * uRise, f.y) + (b - 0.5) * ${WARP.toFixed(1)};
       // (no finer than a pixel and a half: a lump two pixels across is there in one frame and gone in the next as it drifts)
-      float fine = max(log2(gPixel / ${(DETAIL_TILE / DETAIL_SIDE).toFixed(1)}) + 0.6, 0.0);
+      float fine = max(log2(gPixel / ${(DETAIL_TILE / DETAIL_SIDE).toFixed(1)}) + 1.2, 0.0);
       float worn = 1.0 - textureLod(tDetail, at / ${DETAIL_TILE.toFixed(1)}, fine).r;
       gWorn = worn;
       sd -= cut * (1.0 + gone) * worn;
@@ -467,7 +472,9 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
       vec3 v = dir * t;
       float st = clamp(t * 0.004, 6.0, 120.0);
       gPixel = max(t * uGrain, 1.0);
-      float lod = max(log2(gPixel / ${(TILE / NOISE).toFixed(1)}), 0.0);
+      // (the billows no finer than two of this target's pixels: at one, a lump lit on one side was there in one frame and
+      // gone in the next as the eye climbed, and a cloud's face crawled; only far off: nearer than 6 km nothing changes)
+      float lod = max(log2(gPixel / ${(TILE / NOISE).toFixed(1)}) + 1.0, 0.0);
       float y;
       if (deep < 0) {
         vec2 cell = (uEye + v.xz) / EXTENT;
@@ -617,6 +624,12 @@ const OVER = /* glsl */ `
   ${cloudCutGlsl()}
   ${cumulusBiasGlsl('over_')}
   ${sheetsGlsl('over_')}
+  ${cumulusCellsGlsl('over_', '1.0')}
+  // the field over its cut at a place (in cells): the noise's own, and by cells (0 to 1) its cells instead
+  float fieldOver(vec2 q, float bias, float cells) {
+    float x = cells < 1.0 ? cloudNoise(q) + bias - uCumulus.y : 0.0;
+    return cells > 0.0 ? mix(x, cumulusCells(q, bias, uCumulus.y), cells) : x;
+  }
   ${ATMOSPHERE_COARSE_GLSL}
   const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
   uniform float uAbove;      // how far the eye is out of the air, 0 to 1
@@ -694,8 +707,8 @@ const OVER = /* glsl */ `
   // \`d\`: how far off the scene's surface is; \`dv\`, \`veil\`: the nearest fire or smoke, and how much it covers.
   // How high a heap's top stands over a place of the field (in cells), metres above the base: the dome the volume
   // has there (clouds.ts: inside()), with the billows on it as far as \`lod\` shows them.
-  float heapTop(vec2 q, float bias, float lod) {
-    float x = cloudNoise(q) + bias - uCumulus.y;
+  float heapTop(vec2 q, float bias, float lod, float cells) {
+    float x = fieldOver(q, bias, cells);
     if (x <= 0.0) return 0.0;
     float h = min(uDome * pow(x * ${SIDE_PER_SIZE.toFixed(4)} * uCumulus.x, ${DOME.toFixed(4)}), uLayer.y - uLayer.x);
     vec3 b = textureLod(tBillows, vec3(q.x * uCumulus.x, 0.6 * (uLayer.y - uLayer.x) - uRise, q.y * uCumulus.x) / ${TILE.toFixed(1)}, lod).rgb;
@@ -734,11 +747,15 @@ const OVER = /* glsl */ `
     float lit = 0.0;   // (cel) how well lit, by opacity
     // (the edge is as soft as a pixel is broad; the cut is moved up with it, or the soft edge, lying where there is
     // more of the noise under the cut than over it, would add to the cover)
-    float wd = ${(FAR_SOFT / 2).toFixed(4)} + 0.25 * fpAcross / uCumulus.x;
+    // (the edge is the pixel's own share of cloud: across a pixel and a half of the field the noise climbs by about
+    // 0.36 a cell times that, so the outline is coverage, soft over that breadth, and never a threshold's stair)
+    float wd = ${(FAR_SOFT / 2).toFixed(4)} + 0.42 * fpAcross / uCumulus.x;
     // seen aslant a field of heaps hides the gaps between them: each covers its own breadth and its height's shadow
     float aslant = min(sqrt(max(1.0 - cosv * cosv, 0.0)) / cosv, 12.0);
     if (along < 1.0) {
       float lod = max(log2(fpAcross / ${(TILE / NOISE).toFixed(1)}), 0.0);
+      // (seen from far above, as cells: weather.ts)
+      float cells = under ? 0.0 : cellsShare(fpAcross);
       // (for the light, the billows no finer than two pixels: lit lump by lump at one, a cloud was a stipple of white
       // pixels and grey that would crawl as it drifted)
       float soft = lod + 1.0;
@@ -750,23 +767,25 @@ const OVER = /* glsl */ `
       // through. So from straight over them the cumulus have a lit side, a shaded side and a soft rim.
       float span = max(2.5 * fpAcross, 120.0);
       vec2 toSun = sunward * span / uCumulus.x;
-      float h0 = heapTop(q0, bias, soft), h1 = heapTop(q0 + toSun, bias, soft), h2 = heapTop(q0 + 3.0 * toSun, bias, soft);
+      float h0 = heapTop(q0, bias, soft, cells), h1 = heapTop(q0 + toSun, bias, soft, cells), h2 = heapTop(q0 + 3.0 * toSun, bias, soft, cells);
       float sunLow = sqrt(max(1.0 - sunUp * sunUp, 0.0));
       float rise = (h1 - h0) / span;
       float facing = (sunUp - rise * sunLow) / (sqrt(1.0 + rise * rise) * max(sunUp, 0.12));
       float shadow = max(smoothstep(0.0, 60.0, h1 - h0 - span * sunUp / max(sunLow, 0.05)), smoothstep(0.0, 90.0, h2 - h0 - 3.0 * span * sunUp / max(sunLow, 0.05)));
       float thick = smoothstep(0.0, 220.0, h0);
       float shape = mix(0.36, 1.15, smoothstep(0.15, 1.5, facing)) * (1.0 - 0.5 * shadow) * (0.74 + 0.26 * thick);
-      float rim = under ? 1.0 : mix(0.5, 1.0, smoothstep(0.0, 110.0, h0));
+      float rim = under ? 1.0 : mix(0.3, 1.0, smoothstep(0.0, 160.0, h0));
       for (int k = 0; k < (under ? 1 : 5); k++) {
         float y = under ? 0.06 : 0.9 - 0.21 * float(k);
         float lk, tk = shellHit(dir, uLayer.x + y * depth, lk);
         if (tk < 0.0) continue;
         vec2 f = uField + dir.xz * tk;
-        float smooth_ = cloudNoise(f / uCumulus.x) + bias;
+        float smooth_ = uCumulus.y + fieldOver(f / uCumulus.x, bias, cells);
         // with the billows the volume has at that height, as far as a pixel can show them: so a far cloud's outline is
         // scalloped in round lumps as a near one's is, not the noise's own ragged line, and one becomes the other unseen
-        vec3 b = textureLod(tBillows, vec3(f.x, y * depth - uRise, f.y) / ${TILE.toFixed(1)}, lod).rgb;
+        // (and no lump under three pixels across: smaller, they tore a far cloud's rim into confetti, where from orbit a
+        // cumulus is a rounded cell)
+        vec3 b = textureLod(tBillows, vec3(f.x, y * depth - uRise, f.y) / ${TILE.toFixed(1)}, lod + 1.6).rgb;
         float lumps = dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)};
         float n = smooth_ + lumps * 2.0 * mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, sqrt(y)) / (${SIDE_PER_SIZE.toFixed(4)} * uCumulus.x);
         // (the dome at this height is in from the field's edge by what the volume has it: clouds.ts, inside())
@@ -870,10 +889,16 @@ const OVER = /* glsl */ `
     ivec2 at[4], fat[4];
     vec4 c[4], fi[4];
     float any = 0.0, sharp = 0.0;
+    float least = 1.0, most = 0.0, dim = 1e9, bright = 0.0;
     for (int k = 0; k < 4; k++) {
       at[k] = clamp(ivec2(i0) + ivec2(k & 1, k >> 1), ivec2(0), size - 1);
       c[k] = texelFetch(tCloud, at[k], 0);
       any += c[k].a;
+      float l = dot(c[k].rgb, vec3(0.2126, 0.7152, 0.0722));
+      least = min(least, c[k].a);
+      most = max(most, c[k].a);
+      dim = min(dim, l);
+      bright = max(bright, l);
       // (on a plain screen the outline's pixels are the frame's: one of the four has all the weight)
       fi[k] = vec4(0.0);
       float w = w4(k, fq);
@@ -882,6 +907,11 @@ const OVER = /* glsl */ `
       fi[k] = texelFetch(tFineInfo, fat[k], 0);
       if (fi[k].x > 0.0) sharp += w;
     }
+    // How much the finer march is believed here: nothing where the first march's pixels only just differ enough for
+    // it to have been marched at all (marchShader's test, made again), all of it where they differ by twice that. So
+    // a crease that hovers about the least worth marching fades between the two as the eye moves, and does not blink.
+    float finer = smoothstep(1.0, 2.0, max((most - least) / ${EDGE.toFixed(3)}, (bright - dim) / (${CONTRAST.toFixed(3)} * max(bright, 1e-5))));
+    sharp *= finer;
     vec3 ray = viewRay(uv), dir = normalize(uTurn * ray);
     float d = sceneDistance(texture(tDepth, uv).x, ray);
     // fire and smoke, which write no depth and were drawn with the scene: what of them is in front of the scene here,
@@ -894,7 +924,7 @@ const OVER = /* glsl */ `
     vec4 cloud = vec4(0.0);
     vec2 tone = vec2(0.0);   // its light (cel) and haze, by opacity
     for (int k = 0; k < 4; k++) {
-      if (fi[k].x > 0.0) lay(texelFetch(tFine, fat[k], 0), fi[k], w4(k, fq), d, dv, veil, cloud, tone);
+      if (fi[k].x > 0.0 && finer > 0.0) lay(texelFetch(tFine, fat[k], 0), fi[k], finer * w4(k, fq), d, dv, veil, cloud, tone);
       if (sharp < 0.999 && c[k].a > 0.0) lay(c[k], texelFetch(tInfo, at[k], 0), (1.0 - sharp) * w4(k, fr), d, dv, veil, cloud, tone);
     }
     if (uCel > 0.5) {
@@ -1055,10 +1085,6 @@ const lowTarget = () =>
 
 /** How much of the last blend each still frame keeps (`CloudPass.history`): about three frames' worth. */
 const KEEP = 0.65;
-/** A cloud's outline, to be marched again finer (`CloudPass.fine`): where the march's neighbouring pixels differ by this much opacity. */
-const EDGE = 0.1;
-/** And its creases: where they differ by this much of their light. */
-const CONTRAST = 0.1;
 
 /** The blend: light mixed; where the cloud is, from whichever frame has any (an empty one says 6e4). */
 const SETTLE = /* glsl */ `

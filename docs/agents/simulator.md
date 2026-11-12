@@ -217,6 +217,11 @@ never adjusted to bring a check in.
   live runs only). The Flown panel draws the run in amber over the record's as it grows
   (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `trajectory.body` and
   `flies` can be flown without being told how.
+- **Turned round, the spacecraft is rolled periscope side down.** `trajectory.body.capsule.earthward` names the side the
+  automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
+  the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is estimated, from the
+  model's own bearings, and is listed with the other undocumented inputs (tests/vehicle.test.mjs); tests/turnaround.test.mjs
+  holds it to three degrees through the top of the flight. A flight that names no side keeps the roll it had.
 - **The cabin is the flight deck too** (`ModelDef.cabin`, types.ts: `CabinDef`; `viewer/cabin.ts`; `viewer/gauges.ts`
   for the arithmetic, tested). The model's own needles, counter wheels and lamps read the run on show at the clock's
   instant: the flight being flown (the cockpit hands every sample over, `cockpit.listen`) or the record's

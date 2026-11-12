@@ -475,13 +475,15 @@ def window(
     mullions=(),
     bar: float | None = None,
     glass_at: float | None = None,
+    pane: str = "glass",
 ) -> None:
     """Glass in an opening of a wall, in a steel frame that overlaps the opening's edges. The
     wall must have been built round the opening (Wall.build). `mullions` are distances along the
-    wall for uprights, or ("h", height) for a transom. Meshes: `glass` and `frame` of `node`."""
+    wall for uprights, or ("h", height) for a transom. `pane="void"` is a dark pane for a room
+    whose inside is not modelled. Meshes: `glass` (or `void`) and `frame` of `node`."""
     f = foot()
     bar = 0.16 * f if bar is None else bar
-    glass, frame = parts(node, "glass"), parts(node, "frame")
+    glass, frame = parts(node, pane), parts(node, "frame")
     d = w.thick / 2 if glass_at is None else glass_at
     e = 0.04 * f
     w.box(glass, s0 + 0.01 * f, s1 - 0.01 * f, d - 0.03 * f, d + 0.03 * f, sill + 0.01 * f, head - 0.01 * f)
@@ -636,6 +638,7 @@ def door(
     mat: str = "blast",
     fittings: str = "knob",
     sign: str | None = None,
+    works: bool = True,
 ) -> None:
     """A door leaf as its own node, built closed, with what a door carries: three hinges, a
     kickplate, and a knob (`fittings="knob"`), a lever handle and dogs for a plate door
@@ -644,14 +647,19 @@ def door(
     direction the closed leaf runs from it. The node's origin is on the hinge, so the viewer opens
     it by turning the node `swing` degrees about the vertical (anticlockwise seen from above is
     positive); both are recorded on the node (`door`, `swing`). The fittings are the leaf's own
-    meshes and turn with it; they are built at full detail only.
+    meshes and turn with it; they are built at full detail only. With `works` false the leaf is
+    the same and is not marked: it stays shut (`shut`, and why, is recorded on the node instead),
+    for a building whose inside is not known and so is not offered.
     Materials: `mat`, and `chrome`, `galv`, `sign`, `black`."""
     f = foot()
     thick = 0.14 * f if thick is None else thick
     h = Vector(hinge)
     u = Vector((along[0], along[1], 0.0)).normalized()
     n = Vector((-u.y, u.x, 0.0)) * (1.0 if swing > 0 else -1.0)  # the side it opens toward
-    parts.node(name, parent, tuple(h), door=1, swing=float(swing))
+    if works:
+        parts.node(name, parent, tuple(h), door=1, swing=float(swing))
+    else:
+        parts.node(name, parent, tuple(h), shut=1)
     gap = 0.03 * f
     # The kickplate is the leaf's foot, not a sheet laid on it, and a sign stands off on studs: seen
     # from across a site, a plate a few millimetres proud of the face behind it would flicker.
@@ -1050,6 +1058,8 @@ def building(
     anticlockwise seen from above) to its openings, each (s0, s1, sill, head, kind):
       "window"  glass in a steel frame with one mullion
       "door"    a leaf on its own node `<node>_<Key>Door<n>`, hinged at s0, opening outward
+      "shut"    the same leaf, which does not open (door(works=False)): the inside is not known
+      "blind"   a window whose pane is dark (`void`): nothing is modelled behind it
       "louvre"  fixed blades in a frame
     Returns the walls (Wall), for hanging more on them."""
     f = foot()
@@ -1063,11 +1073,11 @@ def building(
         holes = sorted(openings.get(i, []))
         w.build(skin, footing, eave, [(a, b, lo, hi) for a, b, lo, hi, _ in holes])
         for a, b, lo, hi, kind in holes:
-            if kind == "window":
-                window(parts, node, w, a, b, lo, hi, mullions=[(a + b) / 2])
-            elif kind == "door":
+            if kind in ("window", "blind"):
+                window(parts, node, w, a, b, lo, hi, mullions=[(a + b) / 2], pane="glass" if kind == "window" else "void")
+            elif kind in ("door", "shut"):
                 doors += 1
-                wall_door(parts, f"{node}_{key.capitalize()}Door{doors}", node, w, a, b, lo, hi, depth=wall * 0.4)
+                wall_door(parts, f"{node}_{key.capitalize()}Door{doors}", node, w, a, b, lo, hi, depth=wall * 0.4, works=kind == "door")
             else:
                 w.box(frame, a - 0.1 * f, a + 0.08 * f, 0.05 * f, wall - 0.05 * f, lo - 0.1 * f, hi + 0.1 * f)
                 w.box(frame, b - 0.08 * f, b + 0.1 * f, 0.05 * f, wall - 0.05 * f, lo - 0.1 * f, hi + 0.1 * f)

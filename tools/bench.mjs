@@ -1,7 +1,7 @@
 // The performance benchmark: what a frame costs, what the page weighs and how long it takes to open.
 //   node tools/bench.mjs [--out <dir>] [--label <name>] [--reps 3] [--frames 90] [--only <regex>]
 //                        [--sizes 1440x900@1,1440x900@2,390x800@3] [--looks real,cel]
-//                        [--no-build] [--profile] [--shots <dir>] [--no-load] [--no-soak] [--soak 60]
+//                        [--no-build] [--config <vite config>] [--profile] [--shots <dir>] [--no-load] [--no-soak] [--soak 60]
 //                        [--dist <dir>] [--query <search>] [--name a]            what is measured (default: this tree, built now)
 //                        [--b-dist <dir>] [--b-query <search>] [--b-name b]      and what it is measured against, turn about
 //   node tools/bench.mjs --compare old.json new.json      what moved by more than the noise (file.json#b: that variant of a run of two)
@@ -264,6 +264,7 @@ const shots = opt('--shots', null);
 const noBuild = flag('--no-build');
 const noLoad = flag('--no-load');
 const noSoak = flag('--no-soak');
+const config = opt('--config', null); // another Vite config to build with
 const SOAK = Number(opt('--soak', 60));
 // a switch thrown in the page for the pictures: `--toggle "sr.stage.batches.enabled = true" --toggle-off "sr.stage.batches.enabled = false"`
 const toggle = opt('--toggle', null);
@@ -301,7 +302,14 @@ const freePort = () =>
 
 if (!noBuild && variants.some((v) => v.dist === BUILT)) {
   process.stderr.write('building…\n');
-  await run(vite, ['build', '--outDir', BUILT, '--emptyOutDir', ...(profile ? ['--minify', 'false'] : [])]);
+  await run(vite, [
+    'build',
+    ...(config ? ['--config', resolve(config)] : []),
+    '--outDir',
+    BUILT,
+    '--emptyOutDir',
+    ...(profile ? ['--minify', 'false'] : []),
+  ]);
 }
 
 /** What the files of a build weigh, as they are and as GitHub Pages serves them (it gzips text, scripts, JSON and wasm; not models or images). */
@@ -849,6 +857,7 @@ function inPage(DT) {
 function watchLoad() {
   const marks = (window.__load = { compile: 0, compiles: 0, heapPeak: 0 });
   const t0 = performance.now();
+  marks.t0 = t0;
   const seen = (name) => {
     if (!(name in marks)) marks[name] = performance.now() - t0;
   };
@@ -934,7 +943,7 @@ async function ready(page) {
 // load
 // ---------------------------------------------------------------------------------------------------------------
 
-async function measureLoad(browser, v, net) {
+async function measureLoad(browser, v, net, profiled = false) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
@@ -952,10 +961,17 @@ async function measureLoad(browser, v, net) {
   cdp.on('Network.responseReceived', (e) => urls.set(e.requestId, e.response.url));
   cdp.on('Network.loadingFinished', (e) => got.set(e.requestId, e.encodedDataLength));
   await page.addInitScript(watchLoad);
+  if (profiled) {
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.start');
+  }
   await page.goto(v.address);
   await ready(page);
+  const profile = profiled ? top((await cdp.send('Profiler.stop')).profile, 40) : null;
   const marks = await page.evaluate(() => {
     const st = window.sr.stage;
+    // (the watcher looks every few milliseconds: if this has got in first, the page is ready now)
+    window.__load.ready ??= performance.now() - window.__load.t0;
     return {
       ...window.__load,
       programs: st.renderer.info.programs.length,
@@ -977,6 +993,7 @@ async function measureLoad(browser, v, net) {
     pagesBytes += w?.pages ?? n;
   }
   await context.close();
+  if (profile) return { profile };
   return {
     script: marks.script,
     firstFrame: marks.firstFrame,
@@ -1073,6 +1090,9 @@ if (!noLoad && only.test('load')) {
         runs.get(v).push(await measureLoad(browser, v, net));
         process.stderr.write(`${v.name}: load ${name} ${i + 1}/${REPS}: ready ${runs.get(v).at(-1).ready.toFixed(0)} ms\n`);
       }
+    // (with --profile: where the main thread's time went while the page opened, once, apart from the timed loads)
+    if (profile && !net)
+      for (const v of variants) of(v, modes.at(-1).name).profiles.load = (await measureLoad(browser, v, net, true)).profile;
     for (const v of variants)
       of(v, modes.at(-1).name).load[name] = Object.fromEntries(
         Object.keys(runs.get(v)[0]).map((k) => [k, summary(runs.get(v).map((r) => r[k] ?? Number.NaN))]),
@@ -1172,6 +1192,8 @@ for (const size of sizes) {
         }
       }
     }
+    // (kept as it goes: a run is an hour, and a run that is stopped has still measured what it measured)
+    writeFileSync(join(out, `${label}.partial.json`), JSON.stringify(result));
     if (shots)
       for (const o of open) {
         await o.page.bringToFront();

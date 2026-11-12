@@ -200,7 +200,7 @@ room, the three nearest the eye at a time. Fittings of `lamp-room` (a room's own
 | Work lamps under level 1 | seven deep dome reflectors hung 1.7 ft under level 1, three under each half (they part with it) and one between the legs behind the vehicle, shining down on the booster | that lamps hung there: documented in the night photographs; number and places estimated | S61-03158, KSC-61-4457; FHSU F20_010 to F20_014 (MR-4) |
 | The structure's rooms | `Light_Office` (0.6, 4 m); `Light_Level2Left`, `…Right` (the cabins), `Light_Level3Left`, `…Right` (the white room), `Light_Level4Left`, `…Right` (0.7, 5 m); each under a `lamp-room` fitting | lit windows: documented (S61-03158); fitting and place estimated | TM X-53107 7.5.1.8: "Additional lights were provided in the shelter house and on the structure level" |
 | Blockhouse | `Light_FiringRoom5`, `Light_FiringRoom6` (1.2, 10 m), `Light_EquipmentRoom` (1.0, 9 m) among fluorescent fittings; five floodlights on its walls, three on the ready rooms' | estimated: no night view of either building is known | |
-| Ready rooms, outbuildings | `Light_ReadyRoom`, `Light_Kitchen` (0.9, 7 m); `Light_Hut1`, `Light_Hut2`, `Light_Generators` (0.6, 5 m) | estimated | |
+| Ready rooms, outbuildings | `Light_ReadyRoom`, `Light_Kitchen` (0.9, 7 m); `Light_Generators` (0.6, 5 m); the two huts and the shed are not gone into and have no light | estimated | |
 | Obstruction lamps | four red at the corners of the crane's walkway, 135 ft up; two at the ends of pad 6's gantry top | estimated: the usual practice for a structure that tall; no photograph shows them or their colour | |
 
 The lights are on whenever the Sun is down, whatever the hour: nothing switches the searchlights
@@ -235,7 +235,7 @@ gantry's place, the trailers) is July's, not May's.
 | `CableTrenches` | grounds.py | the covered trench and its walk from each pad to its firing room |
 | `Yard` | grounds.py | two cable racks and the scaffold stair tower north of pad 5 |
 | `Poles` | grounds.py | the pole line along the road behind the blockhouse; a floodlight pole by the hut |
-| `Outbuildings` | outbuildings.py | the hut behind the blockhouse and its fenced transformers, the hut by the road, the generator building with two diesel sets and a transfer panel inside, its fuel tank (dished heads, saddles on piers, straps, fill, vent, gauge, the line to the building), the shed by the track |
+| `Outbuildings` | outbuildings.py | the hut behind the blockhouse and its fenced transformers, the hut by the road (both with their doors built shut and their windows dark, as the shed's are: what they held is not recorded, so no inside is offered), the generator building with two diesel sets and a transfer panel inside, its fuel tank (dished heads, saddles on piers, straps, fill, vent, gauge, the line to the building), the shed by the track |
 | `Vehicles` | vehicles.py | eleven parked vehicles, `Car_01` to `Car_11`, each its own node built to be driven: wheels, steering knuckles, hinged doors, bonnet and boot, a steering wheel, places to sit (see [The vehicles](#the-vehicles)): eight cars, a station wagon, a carryall, a pickup with a utility body |
 
 | Item | Value | Confidence | Basis |
@@ -525,7 +525,7 @@ structure is built and labelled estimated.
 | Ready rooms | a door to the drive and one under the breezeway (`ReadyRoom_Door1`, `_Door2`), a 10 in step up from the shell | estimated |
 | Pad 6's gantry | stairs from the pad on to the east truck (12 risers); a ladder up the east leg's south face to a landing level with the deck under the enclosure (39 ft up); a second ladder from that landing to the walkway across the top (98.6 ft) | hooped ladders on the outboard face of each leg with small landings, and a light stair to the deck: documented (*A Noble Endeavor* p. 10, 1959). Which face and where the landing is: estimated. It also had "elevators" (the same page): not built. The work enclosure is a closed box with nothing inside: it cannot be entered |
 | Scaffold stair tower | six flights of 10 risers, a boarded landing at each turn | F19_008 |
-| Outbuildings | each has its doors as nodes (`Outbuildings_<Hut1/Hut2/Gen/Shed>Door<n>`) and a floor inside, 6 in above the ground | estimated |
+| Outbuildings | each has its doors as nodes (`Outbuildings_<Hut1/Hut2/Gen/Shed>Door<n>`) and a floor inside, 6 in above the ground. Only the generator building's doors open (`door`); the huts' and the shed's are marked `shut` and their windows are `window-void`, as the two skid huts' on the pad are: what they held is not recorded | estimated |
 
 Ladders (each its own object `<node>_Ladder<Name>`, marked `climb`, at all three levels of detail):
 
