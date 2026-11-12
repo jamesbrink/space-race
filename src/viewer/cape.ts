@@ -744,6 +744,8 @@ export function buildCape(
   simplify: (on: boolean) => void;
   /** Where the eye is (world): what is near it is drawn in full. True if that changed what is drawn. */
   attend: (eye: THREE.Vector3) => boolean;
+  /** Something that stands there and casts a shadow has arrived since this was last asked: true once. */
+  arrived: () => boolean;
   /** The camera as it is about to draw: the ground out of its sight is not drawn. */
   view: (camera: THREE.Camera) => void;
   /** The ground's height at a point in the world (the pad's frame): flat at `groundY` wherever anything is built. */
@@ -784,9 +786,9 @@ export function buildCape(
     attend: (at) => {
       local(at);
       land.attend(eye);
-      const grew = flora.attend(eye);
-      return built.changed() || grew; // (the neighbouring complexes, arrived since the last frame)
+      return flora.attend(eye);
     },
+    arrived: built.changed, // (the neighbouring complexes: buildings where there was nothing, so the shadows are owed too)
     view: (camera) => land.view(camera),
     plantsClear: (at, within) => flora.clear(local(at), within),
     plantsOut: (at, margin) => {

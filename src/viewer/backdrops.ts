@@ -51,6 +51,8 @@ export interface Setting {
   horizon?: number;
   /** Where the eye is: a place may draw what is near it in more detail. True if that changed what is drawn. */
   attend?: (eye: THREE.Vector3) => boolean;
+  /** Something of the place that casts a shadow has arrived since this was last asked (true once): the shadow maps are owed again. */
+  arrived?: () => boolean;
   /** The camera as it is about to draw, for a place that leaves out what it cannot see. */
   view?: (camera: THREE.Camera) => void;
   /** The ground's height at (x, z) in the world, where the setting's floor is not level: the walker stands on it. */
@@ -499,6 +501,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
       const moved = globe.attend(eye) || leans;
       return cape!.attend(eye) || moved;
     },
+    arrived: cape.arrived,
     groundAt: cape.groundAt,
     plantsClear: cape.plantsClear,
     plantsOut: cape.plantsOut,

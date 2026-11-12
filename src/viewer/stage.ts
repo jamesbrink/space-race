@@ -2605,6 +2605,12 @@ export class Stage {
   private frame(): void {
     const began = performance.now();
     if (this.setting.attend?.(this.camera.position)) this.dirty = true;
+    if (this.setting.arrived?.()) {
+      // (buildings where there were none: both of the Sun's maps and the sky's are of the place without them; asking
+      // here is heard by the far map and, through it, by the fine one kept on foot: shadows.ts, shadowcache.ts)
+      this.renderer.shadowMap.needsUpdate = true;
+      this.dirty = true;
+    }
     if (this.lamps.near(this.camera.position, false, this.frozen)) this.dirty = true; // the rooms nearest the eye are the ones lit
     // Hardware that has moved wants its shadows drawn again, in the same frame: a shadow drawn
     // a moment late lags behind what casts it and then jumps after it.

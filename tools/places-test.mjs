@@ -34,6 +34,50 @@ async function open(hash, { slow = 0, search = '', prefs = null } = {}) {
   await page.waitForFunction(() => window.sr, null, { timeout: 60000 });
   return { page, errors, close: () => context.close() };
 }
+/**
+ * The site with its neighbouring complexes kept back until everything else has arrived and the shadows have been
+ * drawn; then they are let through. Was the map that covers the place drawn again for them? `walk`: on foot, where
+ * the fine map is kept between steps (shadowcache.ts: it reads its casters each time the shadows are asked for, so it
+ * is told by the same request; what is out of its reach it rightly does not draw again).
+ */
+async function lateNeighbours(walk) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  await page.routeWebSocket(/.*/, () => {});
+  let release;
+  const held = new Promise((done) => (release = done));
+  await page.route(/sites\/cape\/[^/]*\.glb(\?|$)/, async (route) => {
+    await held;
+    await route.continue().catch(() => {});
+  });
+  await page.goto(`${url}#pad`);
+  await siteReady(page);
+  await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving));
+  if (walk) await page.evaluate(() => window.sr.stage.enterWalk());
+  const there = () => window.sr.stage.scene.getObjectByName('Neighbours_concrete').geometry.getAttribute('position').count > 3;
+  // (still: nothing has asked for a shadow for a second)
+  const read = () => {
+    const st = window.sr.stage;
+    return { far: st.far.drawnAt, waiting: st.far.waiting || st.renderer.shadowMap.needsUpdate };
+  };
+  let before = await page.evaluate(read);
+  for (let quiet = 0, tries = 0; quiet < 4 && tries < 80; tries++) {
+    await page.waitForTimeout(250);
+    const now = await page.evaluate(read);
+    quiet = !now.waiting && now.far === before.far ? quiet + 1 : 0;
+    before = now;
+  }
+  const fails = [];
+  if (await page.evaluate(there)) fails.push('the neighbours were there before they were let through: nothing was tested');
+  release();
+  await page.waitForFunction(there, null, { timeout: 60000 });
+  await page.waitForTimeout(1500);
+  const after = await page.evaluate(read);
+  await context.close();
+  if (after.far === before.far)
+    fails.push('the neighbouring complexes arrived and the far shadow map was not drawn again: it is of the place without them');
+  return fails;
+}
 const galleryReady = (page) => page.waitForFunction(() => window.sr.gallery.ready, null, { timeout: 120000 });
 const siteReady = (page) => page.waitForFunction(() => document.body.classList.contains('scene-ready'), null, { timeout: 180000 });
 
@@ -41,7 +85,7 @@ const cases = {
   /** The gallery is asked for one part while its vehicle is still on the way, then for another: the second is the one shown. */
   async 'an address changed while the gallery loads is the one it opens on'() {
     const { page, close } = await open(`${FLIGHT}/gallery`, { slow: 2500 });
-    const parts = await page.evaluate((id) => window.sr.flight.models.find((m) => m.id === 'vehicle').parts.map((p) => p.node), FLIGHT);
+    const parts = await page.evaluate(() => window.sr.flight.models.find((m) => m.id === 'vehicle').parts.map((p) => p.node));
     const [first, second] = [parts[1], parts[2]];
     await page.evaluate((to) => (location.hash = to), `${FLIGHT}/gallery/${first}`);
     await page.waitForTimeout(200);
@@ -82,6 +126,10 @@ const cases = {
     await close();
     return fails;
   },
+
+  /** Buildings that arrive after the shadows were drawn are in the shadow maps: with the clock stopped nothing else would ask. */
+  'neighbouring complexes that arrive late have their shadows, from the camera': () => lateNeighbours(false),
+  'neighbouring complexes that arrive late have their shadows, on foot': () => lateNeighbours(true),
 };
 
 let failed = 0;
