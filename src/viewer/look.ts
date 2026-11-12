@@ -206,6 +206,12 @@ export class InkPass extends ShaderPass {
           float turn = min(dot(n, facing(vUv - vec2(uTexel.x, 0.0), uTexel)), dot(n, facing(vUv - vec2(0.0, uTexel.y), uTexel)));
           // only close to: far off, depth is too coarse to say which way anything faces
           ink = max(ink, (1.0 - smoothstep(0.55, 0.8, turn)) * (1.0 - smoothstep(40.0, 160.0, d)) * step(d, 0.5 * uFar));
+          // The frame's outermost ring of pixels takes no ink. A neighbour past the edge is the edge's own depth given
+          // back, so any slope there reads as a bend: the bottom row was inked from end to end over sloping ground.
+          // (Done here, on the answer, and not in the lookups: a shader whose sums are written another way rounds another
+          // way, and lines a threshold apart moved all over the picture.)
+          vec2 inward = min(vUv, 1.0 - vUv);
+          ink *= step(uTexel.x, inward.x) * step(uTexel.y, inward.y);
           gl_FragColor = vec4(mix(colour.rgb, uInk, ink * 0.92), colour.a);
         }`,
     });
