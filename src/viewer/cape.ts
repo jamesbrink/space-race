@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
 import { type Air, type Clouds, driftClouds, installAir } from './air';
-import { buildCape1961, CLEARINGS, COAST, HARBOR_EAST, HARBOR_WEST, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
+import { buildCape1961, CLEARINGS, PAVED, COAST, HARBOR_EAST, HARBOR_WEST, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
@@ -54,10 +54,6 @@ const KEPT: [number, number, number][] = [
   [50, -262, 24], // the shed by the track
   [-92, -148, 38], // the cable racks
   [-148, -140, 14], // the scaffold stair
-  // Complex 26 (cape1961.ts; sites/cape.md), up the track in the same frame: each pad's apron with what stands round it, and the blockhouse
-  [-6, -1575, 152],
-  [-6, -2093, 152],
-  [340, -1834, 78],
 ];
 /** Strips kept clear the same way: the two cable trenches and the turnout's curve, as [x0, y0, x1, y1, half-width] in feet. */
 const STRIPS: [number, number, number, number, number][] = [
@@ -86,6 +82,14 @@ const TRACKS: [number, number, number, number, number, number][] = [
   [...site(293, -215), ...site(293, -349), 3.4, 1], // past its back door,
   [...site(293, -349), ...site(404, -349), 3.2, 1], // and out again
   [...site(276, -147), ...site(404, -147), 4.4, 1], // the hut's parking
+  // Ways to the neighbouring complexes (cape1961.ts), so that each can be walked to. That each had its road is plain in the
+  // aerials of 1959 to 1965; their lines here are straight from one known place to the next and are estimated, not traced
+  [...site(404, 0), -576, -35, 3.6, 1], // from the gate on the hatch side, west to Complex 30's pad A
+  [...site(404, 394), -240, 765, 3.6, 1], // from the perimeter's south-west corner to Complex 25's pad A,
+  [-262, 818, -300, 870, 3.4, 1], // on to the ship motion simulator at pad B,
+  [-262, 818, -366, 1037, 3.4, 1], // and to Complex 29
+  [238, -444, 668, -690, 3.6, 1], // from Complex 26's pad B east-north-east to Complex 17's pad B,
+  [716, -745, 776, -838, 3.4, 1], // and on to pad A
 ];
 
 /** A colour as an sRGB hex (three converts it to its linear working space). */
@@ -119,7 +123,7 @@ const SHARED = /* glsl */ `
   uniform vec2 uTrackKind[${TRACKS.length}];   // half-width, kind
   uniform vec3 uClear[${NEAR.length}];    // the neighbouring pads: (x, z, radius of the pad itself)
   uniform vec3 uSites[${CLEARINGS.length}];   // every complex placed, and the lighthouse: the ground is flat round each
-  uniform vec3 uKept[${KEPT.length}];     // ground the complex's models stand on: (x, z, radius), metres
+  uniform vec3 uKept[${KEPT.length + PAVED.length}];     // ground the complex's models stand on: (x, z, radius), metres
   uniform vec4 uStrips[${STRIPS.length}];
   uniform float uStripWidth[${STRIPS.length}];
   float coastAt(float north) {
@@ -216,7 +220,7 @@ const SHARED = /* glsl */ `
     vec2 pad = toPad(p);
     float d = max(abs(pad.x), abs(pad.y)) - 44.0;
     d = min(d, max(abs(pad.x), abs(pad.y - 158.5)) - 40.0);
-    for (int i = 0; i < ${KEPT.length}; i++) d = min(d, length(p - uKept[i].xy) - uKept[i].z);
+    for (int i = 0; i < ${KEPT.length + PAVED.length}; i++) d = min(d, length(p - uKept[i].xy) - uKept[i].z);
     for (int i = 0; i < ${STRIPS.length}; i++) d = min(d, segment(p, uStrips[i]) - uStripWidth[i]);
     return d;
   }`;
@@ -583,7 +587,10 @@ function landSpec(): LandSpec {
       uTrackKind: { value: TRACKS.map((t) => new THREE.Vector2(t[4], t[5])) },
       uClear: { value: NEAR.map(([x, z, r]) => new THREE.Vector3(x, z, r)) },
       uSites: { value: CLEARINGS.map(([x, z, r]) => new THREE.Vector3(x, z, r)) },
-      uKept: { value: KEPT.map(([x, y, r]) => new THREE.Vector3(...site(x, y), r * FT)) },
+      // (and the neighbouring complexes' concrete: cape1961.ts)
+      uKept: {
+        value: [...KEPT.map(([x, y, r]) => new THREE.Vector3(...site(x, y), r * FT)), ...PAVED.map((k) => new THREE.Vector3(...k))],
+      },
       uStrips: { value: STRIPS.map(([x0, y0, x1, y1]) => new THREE.Vector4(...site(x0, y0), ...site(x1, y1))) },
       uStripWidth: { value: STRIPS.map((s) => s[4] * FT) },
     },

@@ -24,7 +24,7 @@ import math
 import sitelib
 from lc5.site import FOOTING, GAUGE, GROUND, RAIL_PAIR_X, RAIL_TOP
 from lc5.site import materials as _lc5_materials
-from sitelib import P, Parts, axes, beam, box, fine, handrail, obox, offset_poly, plate, prism, profile, slab, solid, stood
+from sitelib import P, Parts, axes, beam, box, fine, handrail, lattice, obox, offset_poly, plate, prism, profile, slab, solid, stood
 from srlib import FT
 
 sitelib.use(FT)
@@ -39,6 +39,7 @@ __all__ = [
     "RAIL_TOP",
     "P",
     "Parts",
+    "apron",
     "at",
     "axes",
     "beam",
@@ -46,12 +47,15 @@ __all__ = [
     "fine",
     "ftp",
     "handrail",
+    "lattice",
     "materials",
     "obox",
     "offset_poly",
     "plate",
     "prism",
+    "park",
     "rails",
+    "ring_stand",
     "slab",
     "solid",
     "stood",
@@ -71,6 +75,44 @@ def at(distance: float, bearing: float, heading: float, origin=(0.0, 0.0)) -> tu
     """A place given as feet along a true bearing from `origin`, in a frame whose +Y lies along `heading`."""
     a = math.radians(bearing - heading)
     return origin[0] + distance * math.sin(a), origin[1] + distance * math.cos(a)
+
+
+def park(parts: Parts, node: str, slot: int) -> None:
+    """Call when a complex is built: its node is set down `slot` places along the model's X, 4,000 ft apart, with all
+    that was drawn for it, so that two complexes built about their own origins do not lie through each other in the
+    file (the clearance check would call that a clash). The viewer puts each node where it stood; nothing reads this."""
+    d = (4000.0 * slot, 0.0, 0.0)
+    obj, origin = parts.nodes[node]
+    obj.location = tuple(v * FT for v in d)
+    parts.nodes[node] = (obj, origin.__class__(d))
+    parts.shift(node, d)
+
+
+def apron(parts: Parts, node: str, centre, size, turn: float = 0.0) -> None:
+    """A pad's concrete: a rectangle `size` (across, along; or one figure for a square) about `centre`, turned `turn`
+    degrees anticlockwise, its top at the pad's level and its foot well into the ground."""
+    w, d = (size, size) if isinstance(size, (int, float)) else size
+    c, s = math.cos(math.radians(turn)), math.sin(math.radians(turn))
+    corners = [(-w / 2, -d / 2), (w / 2, -d / 2), (w / 2, d / 2), (-w / 2, d / 2)]
+    slab(parts(node, "concrete"), [(centre[0] + x * c - y * s, centre[1] + x * s + y * c) for x, y in corners], GROUND - FOOTING, 0.0)
+
+
+def ring_stand(parts: Parts, node: str, centre, across: float, height: float, legs: int = 4) -> None:
+    """A launch stand for a missile that stands on its tail: a ring table on legs. Mesh `black/stands` of `node`."""
+    cx, cy = centre
+    steel = parts(node, "black/stands", True)
+    r = across / 2
+    m = axes((cx, cy, 0.0), (1, 0, 0), (0, 0, 1))
+    steel.lathe(ftp([(r * 0.72, height - 0.8), (r, height - 0.8), (r, height), (r * 0.72, height), (r * 0.72, height - 0.8)]), 24, matrix=m)
+    steel.lathe(ftp([(r * 1.15, 0.0), (r * 1.3, 0.0), (r * 1.3, 0.3), (r * 1.15, 0.3), (r * 1.15, 0.0)]), 24, matrix=m)
+    for k in range(legs):
+        q = math.tau * (k + 0.5) / legs
+        beam(
+            steel,
+            (cx + r * 0.86 * math.cos(q), cy + r * 0.86 * math.sin(q), height - 0.7),
+            (cx + r * 1.22 * math.cos(q), cy + r * 1.22 * math.sin(q), 0.2),
+            0.5,
+        )
 
 
 def rails(parts: Parts, node: str, y0: float, y1: float, pairs=(-RAIL_PAIR_X, RAIL_PAIR_X)) -> None:

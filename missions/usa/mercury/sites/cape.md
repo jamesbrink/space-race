@@ -5,7 +5,7 @@ record as clean forms with the silhouette that record gives, at one level of det
 neighbours, not the flight's pad: no interiors (doors shut, windows dark), nothing that moves,
 nothing to climb. `cape/<complex>.py` builds each in a frame of its own (feet; the origin on a named
 pad; +Y along a stated bearing), `cape_1961.py` puts them in one model
-(`public/models/usa/mercury/sites/cape/1961-05.glb`, 92 kB, so it is fetched with the scene), and
+(`public/models/usa/mercury/sites/cape/1961-05.glb`, 265 kB and 28,000 triangles, so it is fetched with the scene), and
 `src/viewer/cape1961.ts` stands each where its pad's published coordinates put it. The complexes
 further off (1.2 to 9 km) are still stand-ins drawn in cape1961.ts.
 
@@ -14,8 +14,8 @@ from documented ones, and how), **estimated** (scaled off a named photograph, or
 taken from OpenStreetMap are of what survives today, good to a few metres, and are called derived.
 `docs/sources.md`, "The Cape", is the bibliography.
 
-Built so far: Complex 26. Not yet built, and for now only cleared ground at their places (their
-former stand-ins, a slab and a box tower each, are gone): Complexes 30, 25, 29 and 17.
+Built: Complexes 26, 30, 25, 29 and 17. The rule for each: the permanent structure is built, the vehicle
+that came and went is left out, and where a movable tower stood on 5 May 1961 is an estimate and says so.
 
 ## Complex 26 (`cape/lc26.py`, node `LC26`)
 
@@ -81,6 +81,78 @@ either pad in the first week of May 1961, or AM-19G's processing log, would sett
 - The file is drawn at its full level only: the two coarser levels the build writes beside it are not
   used, and the far shadow map (`viewer/shadows.ts`) does not cover it, so from across the site it
   casts no shadow; on foot beside it, it does.
+
+## Complex 30 (`cape/lc30.py`, node `LC30`)
+
+Frame: origin on pad 30A's centre; +Y to pad 30B, 202° true.
+
+| Thing | Figure | Confidence | Source |
+|---|---|---|---|
+| The complex | "a two-story blockhouse with an 8′ thick roof, two launch pads with service towers"; accepted by the Army 10 February 1960 | documented | the museum, *Launch Complex 30* |
+| Pads | 30B 511 ft from 30A on 202°; each apron about 200 ft square, a paved strip between | derived (OpenStreetMap); the strip's 40 ft width estimated | |
+| Which pad was used | 30A only: first launch 25 February 1960, nineteen in 1961 | documented | Spaceline; Wikipedia's launch chart |
+| Mobile service tower | one for both pads, on rubber tyres, taken down 14 February 1968 | documented | Spaceline; the museum's storyboard: "mobile service tower built to serve both launch pads" |
+| its size and form | 63 ft tall, 26 ft square; four tiers, the first and third closed in white panels with windows, the second dark, a dark hoist house on top with a short beam | estimated | scaled from a man at its foot (taken as 1.75 m) in the museum's photographs of 25 February and 30 June 1960. Its frame's colour is not established (black and white): drawn grey |
+| where it stood on the day | at pad 30A | estimated | nothing records it |
+| Pedestal and mast at 30A | a ring 5 ft across and 3 ft high; a pole 36 ft | estimated | the photograph of 25 February 1960 |
+| Blockhouse | 384 ft from 30A on 256°; drawn 46 ft across and 60 ft long with a 30 ft annexe, walls 22 ft, crown 27 ft | place derived (OpenStreetMap, whose outline, 83 by 116 ft, includes later additions); plan and height estimated ("two-story": 25 to 30 ft) | |
+
+Left out: the ready building and the checkout building east of the pads (in the aerial of April 1965;
+not established for 1961), the helicopter apron, and any Pershing or erector-launcher.
+
+## Complexes 25 and 29 (`cape/lc25.py`, nodes `LC25`, `LC29`)
+
+Frames: LC25's origin is pad 25A's centre, +Y to pad 25B, 213° true. LC29's is pad 29A's centre, +Y 203°.
+
+| Thing | Figure | Confidence | Source |
+|---|---|---|---|
+| Pad 25A | a flat pad, complete December 1957 "with an access stand"; Polaris A1 and A2 through 1961 | documented | the museum, *Launch Complex 25* |
+| its apron and stand | 150 ft square; a ring stand 8 ft across and 6 ft high | estimated | no figure for 1961 |
+| its closed tower | that one stood by May 1961 | derived | a tall panel-clad tower is behind the missile in the photograph of 9 March 1960 (Wikimedia Commons, A1X-14) |
+| the tower's form | white, slab-sided, 58 ft tall and 20 ft square, stepped at the top, cut away at the foot | estimated | Spaceline's colour photograph of about 1963, scaled against a truck. Its posts, girts and door are drawn by eye |
+| Pad 25B | the ship motion simulator: a pit 33 ft square and 55 ft deep; first used 14 August 1959, last fired from 2 August 1960, mothballed October 1961 | documented | Spaceline |
+| its pit head | a kerb 33 ft square, covered over, under a steel frame 21 ft high | the 33 ft: documented; the cover, the frame and its height: estimated from Spaceline's photograph of about 1959 | |
+| Complex 25's blockhouse | 395 ft from 25A on 259°; drawn of the Cape's pattern, 46 by 60 ft, crown 18 ft 10 in | place derived (OpenStreetMap, its outline in a later, reinforced state); the rest estimated | |
+| Pad 29A | built 1958-59; one pad with "an access stand"; Polaris A2 from 10 January 1961 | documented | the museum, *Launch Complex 29* |
+| its launcher | a ring stand; a white umbilical boom leaning from its foot, 25 ft long | estimated | Wikimedia Commons, Polaris A2X on LC-29A, 1961: the boom is about 0.8 of the missile's length |
+| the building behind it | low, white, flat-roofed, drawn 30 by 20 ft and 10 ft high, 70 ft from the pad | that it stood: the same photographs; size and place estimated | |
+| Complex 29's blockhouse | 371 ft from 29A on 253°; OpenStreetMap's outline is 93 by 46 ft with a point | place derived; height estimated | |
+
+Left out, and why: Complex 29's own closed tower (first seen about 1963: not established for May 1961);
+pad 25A's lattice umbilical tower of 1958 (not seen after the closed tower came); pads 25C and 25D
+(1967-68); any Polaris. A lightning mast is drawn beside 29A's pad by eye.
+
+## Complex 17 (`cape/lc17.py`, node `LC17`)
+
+Frame: origin on pad 17B (its launch deck's seaward edge); +Y to pad 17A, 024° true. Each pad faces east.
+
+| Thing | Figure | Confidence | Source |
+|---|---|---|---|
+| Pads | 17B accepted September 1956, 17A April 1957; in spring 1961 17A flew Thor-Delta and 17B Thor-Able-Star | documented | the museum, *Launch Complex 17* |
+| their places | 17A 524 ft from 17B on 024° | derived | OpenStreetMap (HAER: "550 ft") |
+| Launcher building, each pad | 50 by 59 ft, 28 ft high, reinforced concrete | documented | HAER FL-8-5 pp. 48-51 (which dates it 1959, though photographs of 1957-58 already show a deck) |
+| Launch deck | steel, level with the roof, 50 ft wide, carried 38 ft beyond the east side | documented | the same |
+| Flame deflector | steel, 33 ft wide, a parabola in section, throwing the jet east | documented; drawn as three flats | the same |
+| Flume | concrete, 230 ft long, to a pond 60 by 130 ft | documented; its 40 ft width and 4 ft walls are estimated, and the pond is not built | the same |
+| Service tower, each pad | on rails 58 ft apart, four trucks, rolling 400 ft west over the launcher building; by United States Steel | documented | HAER FL-8-5 pp. 27, 53 |
+| **its height in 1961** | **118 ft 10 in** | **derived, and disputed** | HAER gives 133 ft 4 5/16 in from the 1969 handbook, after 14 ft 6 in was added in 1968: 118 ft 10 in before. The museum says 112 ft before the later raise. HAER's is taken, as the one from an engineering record; the difference, 7 ft, is not reconciled |
+| its length along the rails | 80 ft | estimated, weakly | the height to width of one face in Spaceline's photograph of 17B, about 1961 |
+| its form | an open frame of eight levels, a deck at each; the top deck 1.3 times as wide on raking brackets; a bridge crane on top | estimated | the museum's photographs of 19 January 1961; Spaceline, about 1961 |
+| its colour | red | estimated | red in the earliest colour view found (17 May 1963); uniformly dark in January 1961. 17A's top two levels were clad in green fibreglass by 1959 (HAER p. 56), which is not built |
+| where each stood on the day | at its pad, over the launcher building | estimated | both stood so on 19 January 1961; nothing dated May was found |
+| Umbilical mast | "a simple retractable steel structure" at the deck's south-east corner | documented; its 78 ft above the deck is estimated (Spaceline's photograph of 1959) | HAER |
+| Blockhouse | 88 ft 9 in by 43 ft 6 in, 18 ft 10 in to the top of its roof; an annexe 43 by 18 ft and 9 ft 2 in high behind; walls 2 ft | documented | HAER FL-8-5 pp. 45-46 |
+| its place and ports | 567 ft from 17B on 323°, its point to the south-east; a port 8 ft 6 in and one 4 ft 6 in long to each firing room | place derived (OpenStreetMap's ruin); ports documented in length, drawn dark and 3.6 ft high | HAER. The earth bank and periscopes are of 1964 and the north wing of 1968: neither is built |
+
+Left out: the pond, the small camera towers and the tank trailers seen in January 1961, and any Thor.
+
+## Ways on foot
+
+The track runs from pad 5 through pad 6 to Complex 26 (documented: *A Noble Endeavor*). To the others a
+shell road is drawn (`cape.ts`, TRACKS): from Complex 5/6's gate west to Complex 30; from its
+south-west corner to Complex 25 and on to 29; from Complex 26 east-north-east to Complex 17. That each
+complex had its road is plain in the aerials of 1959 to 1965. **Their lines here are estimated**: each is
+straight from one known place to the next, not traced from a map of 1961.
 
 ## Sources known and not read
 

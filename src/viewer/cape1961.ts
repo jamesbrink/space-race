@@ -418,6 +418,8 @@ interface Complex {
   node?: string;
   /** How much ground is kept clear and level round it, metres: a pad's own 45 m unless said. */
   clear?: number;
+  /** How far from its middle its concrete and buildings reach, metres: nothing grows there (a near one's). */
+  paved?: number;
 }
 
 /**
@@ -427,19 +429,23 @@ interface Complex {
  * stood by May is not established), 37, 43 and the Polaris pads 25C/D (not begun).
  */
 const COMPLEXES: Complex[] = [
-  // Complex 26 is one model in a frame of its own: pad 26B's centre, its +Y along the track to 26A (025 degrees: the two pads'
-  // coordinates). Its other pad and its blockhouse (OpenStreetMap way 195709357) are listed for the ground kept clear round them.
-  { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72 },
-  { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, clear: 72 },
-  { name: 'LC-26 blockhouse', lat: 28.444422, lon: -80.571863, heading: 25, clear: 34 },
-  // not yet built from their records (sites/cape.md): their places only, so that the ground is as it was
-  { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 115 },
-  { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 115 },
-  { name: 'LC-25A', lat: 28.432267, lon: -80.575857, heading: 115 },
-  { name: 'LC-25B', lat: 28.431423, lon: -80.576437, heading: 115 },
-  { name: 'LC-17B', lat: 28.44589, lon: -80.565898, heading: 115 },
-  { name: 'LC-29A', lat: 28.429859, lon: -80.577142, heading: 115 },
-  { name: 'LC-17A', lat: 28.447223, lon: -80.565274, heading: 115 },
+  // The near ones: each a model in a frame of its own (sites/cape/<complex>.py says where its origin is and which way its +Y runs).
+  // A complex's other pad and its blockhouse are listed for the ground kept clear round them; the blockhouses' places are
+  // OpenStreetMap's outlines of what survives.
+  { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72, paved: 46 },
+  { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, clear: 72, paved: 46 },
+  { name: 'LC-26 blockhouse', lat: 28.444422, lon: -80.571863, heading: 25, clear: 34, paved: 24 },
+  { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 202, node: 'LC30', clear: 60, paved: 44 },
+  { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 202, clear: 60, paved: 44 },
+  { name: 'LC-30 blockhouse', lat: 28.439487, lon: -80.58086, heading: 202, clear: 34, paved: 24 },
+  { name: 'LC-25A', lat: 28.432267, lon: -80.575857, heading: 213, node: 'LC25', clear: 50, paved: 34 },
+  { name: 'LC-25B', lat: 28.431423, lon: -80.576437, heading: 213, clear: 45, paved: 28 },
+  { name: 'LC-25 blockhouse', lat: 28.432062, lon: -80.576976, heading: 213, clear: 34, paved: 24 },
+  { name: 'LC-17B', lat: 28.44589, lon: -80.565898, heading: 24, node: 'LC17', clear: 80, paved: 62 },
+  { name: 'LC-29A', lat: 28.429859, lon: -80.577142, heading: 203, node: 'LC29', clear: 50, paved: 34 },
+  { name: 'LC-29 blockhouse', lat: 28.429512, lon: -80.578231, heading: 203, clear: 34, paved: 24 },
+  { name: 'LC-17A', lat: 28.447223, lon: -80.565274, heading: 24, clear: 80, paved: 62 },
+  { name: 'LC-17 blockhouse', lat: 28.447197, lon: -80.566933, heading: 24, clear: 34, paved: 24 },
   { name: 'LC-18B', lat: 28.449016, lon: -80.561774, heading: 115, draw: KINDS.bare },
   { name: 'LC-18A', lat: 28.450785, lon: -80.562232, heading: 115, draw: KINDS.bare },
   { name: 'LC-9', lat: 28.452227, lon: -80.559383, heading: 115, draw: KINDS.navaho },
@@ -456,6 +462,9 @@ const COMPLEXES: Complex[] = [
   { name: 'LC-20', lat: 28.512176, lon: -80.556704, heading: 60, draw: KINDS.titan },
   { name: 'LC-34', lat: 28.521839, lon: -80.561182, heading: 0, draw: KINDS.saturn },
 ];
+
+/** Ground the near complexes' models stand on, where nothing grows: [x, z, radius], compass metres from pad 5. */
+export const PAVED: [number, number, number][] = COMPLEXES.filter((c) => c.paved).map((c) => [...fromPad5(c.lat, c.lon), c.paved!]);
 
 /** Cape Canaveral Light: OpenStreetMap way 1219644136; 3.73 km from pad 5 on 051 degrees. */
 const LIGHTHOUSE = { lat: 28.46036, lon: -80.543454 };
