@@ -47,6 +47,17 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   (`planted`), and each leg's lean from its hip's real height, so the foot stays on its spot in
   three dimensions: to a centimetre along, 1.5 mm across and half a centimetre of the ground (`tests/stride.test.mjs`, measured on a jointed
   figure). `Pose.settle` is what that costs in height; the eyes know nothing of it either.
+- **How fast the joints turn.** Measured on the pose at a steady pace, for a man's legs (0.44 m
+  thigh and shin), the fastest any joint turns: at a walk (1.4 m/s, 0.83 strides a second) thigh
+  236, knee 486, ankle 547 degrees a second; at 3 m/s thigh 766, knee 732, ankle 413; at a run
+  (4 m/s) thigh 894, knee 878, ankle 525. No published table was read to set these against. The
+  one study found (Mentiplay and others, "Lower limb angular velocity during walking at various
+  speeds", *Gait & Posture*, 2018) says only, in its abstract, that the knee is fastest extending
+  at the end of its swing and that every joint is faster at a faster walk; figures of 350 to 450
+  degrees a second for a walker's knee and 800 to 1,100 for a runner's are the usual ones, from
+  memory and unchecked. `tests/gait.test.mjs` holds every joint to 1.2 degrees in half a degree of
+  the cycle, and to 1.7 for a step of 0.02 m/s in pace (it is 1.65 where a jog's landing passes
+  through the phase; 1.5 was the limit before the pelvis moved, and has not been got back).
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
   1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the
   same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.
