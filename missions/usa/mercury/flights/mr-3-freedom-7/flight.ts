@@ -315,12 +315,14 @@ const vehicle: ModelDef = {
   position: [0, VEHICLE_Y, 0],
   // The two cabin floodlights: "on full white light" in flight (Postlaunch Report, p. 76). How many No. 7 had and where is
   // not in anything read: the model has two fittings above and either side of the pilot's head (the orbital capsule's
-  // arrangement, SEDR 104, 10-19). Each light is put toward the middle of the cabin, not at its fitting: a bare point of
-  // light at the wall burns the wall beside it, where a floodlight's reflector spreads it (for the same reason the
-  // viewer lets a cabin's light fall off with distance, not its square: cabin.ts). Strength chosen by eye.
+  // arrangement, SEDR 104, 10-19), at 100 and 82 degrees round from his right toward his head, clear of the hatch and the
+  // upper port. Each light is put toward the middle of the cabin, not at its fitting, 0.32 m out from the axis on its
+  // fitting's bearing: a bare point of light at the wall burns the wall beside it, where a floodlight's reflector spreads it
+  // (for the same reason the viewer lets a cabin's light fall off with distance, not its square: cabin.ts). Strength chosen
+  // by eye. The model's frame is the pilot's turned 45 degrees about the long axis (the hatch on +X: model/vehicle.py).
   lights: [
-    { position: [0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
-    { position: [-0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
+    { position: [0.182, 0.55, 0.26], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
+    { position: [0.254, 0.55, 0.192], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
   ],
   home: 'stack',
   views: [
@@ -413,6 +415,8 @@ const sequenceLamp = (node: string, name: string, shows: Signal | undefined, abo
 });
 vehicle.cabin = {
   within: ['CrewCabin'],
+  // the top of the pilot's head: 45 degrees round from the hatch, which is on +X (model/vehicle.py)
+  overhead: [Math.SQRT1_2, 0, Math.SQRT1_2],
   // a head in a helmet fixed to the suit, and the eyes' own turn: estimated, nothing read gives it. Down is from a gaze
   // that already rests 40 degrees toward his feet: further, and he is looking into his own collar
   head: { side: 1.75, up: 0.95, down: 0.6 },
@@ -574,10 +578,12 @@ vehicle.cabin = {
       about: 'Three axes in one hand: fore and aft for pitch, side to side for roll, a twist for yaw. It moves as the keys do.',
     },
   ],
-  // the two portholes as light: where the model has them (model/vehicle.py PORTHOLES), 9.2 in of glass each
+  // the two portholes as light: where the model has them (model/vehicle.py PORTHOLES, which the build prints in this
+  // frame), 6.6 in of glass each. The lower first: 15 degrees round from the pilot's right toward his feet, station 28.5,
+  // 60 degrees from +X as the capsule stands; the upper at 232.5 degrees, station 34.5, 277.5 as it stands
   windows: [
-    { at: [0.715, 0.33, -0.413], out: [0.814, 0.342, -0.47], across: 0.234 },
-    { at: [-0.33, 1.016, 0.472], out: [-0.539, 0.342, 0.77], across: 0.234 },
+    { at: [0.32, 0.721, -0.554], out: [0.47, 0.342, -0.814], across: 0.168 },
+    { at: [0.076, 0.874, 0.58], out: [0.123, 0.342, 0.932], across: 0.168 },
   ],
   // how far it tips at full command is estimated; the axes are the node's own (X to his right, Y along the grip, Z toward his head)
   stick: { node: 'Ctl_HandController', throw: 0.23, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
@@ -586,13 +592,19 @@ vehicle.cabin = {
     name: 'Periscope',
     about:
       'An 8 in screen of the Earth under the capsule: with no window ahead, Shepard’s main view outside. Click to look into it, and again for high power.',
-    // the objective's cartridge stands out of the cone at the pilot's feet (station 13, estimated from the flown capsule)
-    at: [0, 0.382, -0.969],
+    // the objective's cartridge stands out of the cone under the pilot's feet, level with the upper line of UNITED STATES
+    // (station 37, estimated from the flown capsule), 135 degrees from +X as the capsule stands
+    at: [-0.494, 0.974, -0.494],
     // toward the Earth with the small end 14.5 degrees below the horizon (SEDR 104 Figure 12-3; NASA SP-45 p. 282, "-14 degrees": both the orbital capsule's)
-    axis: [0, Math.sin((14.5 * Math.PI) / 180), -Math.cos((14.5 * Math.PI) / 180)],
-    // the top of the picture is toward the small end: estimated, nothing read says which way up the display was
+    axis: [
+      -Math.SQRT1_2 * Math.cos((14.5 * Math.PI) / 180),
+      Math.sin((14.5 * Math.PI) / 180),
+      -Math.SQRT1_2 * Math.cos((14.5 * Math.PI) / 180),
+    ],
+    // the top of the picture is toward the small end: estimated, nothing read says which way up the display was. On the
+    // screen that is toward the pilot's head
     up: [0, 1, 0],
-    top: [0, 0, 1],
+    top: [Math.SQRT1_2, 0, Math.SQRT1_2],
     // low power: SP-45 p. 282, "172 degrees". High power: Hammack and Heberlig p. 5, 80 nautical miles of ground from 100 up, which is 43.6 degrees: derived
     fields: [172, 43.6],
   },
@@ -1733,11 +1745,12 @@ const body: Body = {
     base: guess(CAPSULE_CG * IN, 'the tip of the heat shield, 25 in below the centre of mass assumed above'),
     chuteArm: guess(1.8, 'the parachutes pull at the top of the recovery compartment, about 1.8 m from the centre of mass assumed above'),
     earthward: guess(
-      80,
+      125,
       'the periscope’s side. The record has the spacecraft yawed 180 degrees to go heat shield first and held at 34 degrees ' +
         '(Results of the First U.S. Manned Suborbital Space Flight, the flight plan, page 13 of the NTRS file) with the pilot watching the Earth in the periscope; which side that is ' +
-        'on the pad is the model’s: the periscope under the pilot’s feet, bearing 205 degrees true with the hatch at 295 (LC-5’s bearing, itself ' +
-        'estimated), and the body’s +Z bearing 285, against the 105 degree azimuth: 80 degrees between them',
+        'on the pad is the model’s: the hatch’s middle bearing 295 degrees true (LC-5’s bearing, itself estimated) and 315 degrees round from the pilot’s right, ' +
+        'the periscope under his feet at 90, 135 degrees from the hatch, and the model’s angles fall on the compass as they grow, so it bears 295 - 135 = 160 true; the body’s +Z bears 285, against the ' +
+        '105 degree azimuth: 285 - 160 = 125 degrees between them. (80 until November 2026, when the hatch was at the pilot’s right hand: photographs of the flown capsule put it 45 degrees nearer his head)',
     ),
     side: {
       dragArea: guess(

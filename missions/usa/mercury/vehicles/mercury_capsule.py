@@ -368,9 +368,12 @@ class Skin:
         at = lambda t, b: ((t - theta0) * (r0 - b * sin), b)  # noqa: E731
         return [at(t1, b0), at(t1, b1), at(t0, b1), at(t0, b0)]
 
-    def panel(self, mb: MeshBuilder, t0: float, t1: float, z0: float, z1: float, hole=None, about=None, off: float = 0.0) -> None:
+    def panel(
+        self, mb: MeshBuilder, t0: float, t1: float, z0: float, z1: float, hole=None, about=None, off: float = 0.0, rings=(0.0, 0.34, 0.67, 1.0)
+    ) -> None:
         """A plain plate between two meridians and two stations. `hole` is a polygon cut out of it, on the cone unrolled
-        about `about` (angle, station), which it must enclose."""
+        about `about` (angle, station), which it must enclose; `rings` is how the plate is cut between the hole and its
+        edge (a small hole in a wide plate wants more, or its outer facets turn too far round the cone)."""
         rmid = self.surf.r((z0 + z1) / 2)
         g = GAP / rmid
         ta, tb, za, zb = t0 + g, t1 - g, z0 + GAP * self.cos, z1 - GAP * self.cos
@@ -383,8 +386,8 @@ class Skin:
         to = self.flat(theta0, zc)
         edge = self.bounds(theta0, zc, ta, tb, za, zb)
         angles = sorted({*(TAU * i / 96 for i in range(96)), *(math.atan2(y, x) % TAU for x, y in (*edge, *hole))})
-        rings = []
-        for k in (0.0, 0.34, 0.67, 1.0):  # from the hole out to the edge, in rings: the plate lies on the cone, not across it
+        cuts, rings = rings, []
+        for k in cuts:  # from the hole out to the edge, in rings: the plate lies on the cone, not across it
             ring = []
             for a in angles:
                 (x0, y0), (x1, y1) = _reach(hole, a), _reach(edge, a)
@@ -468,6 +471,25 @@ class Skin:
         sx, sy = length / (max(xs) - min(xs)), tall / (max(ys) - min(ys))
         cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
         self.paint(mb, [((x - cx) * sx, (y - cy) * sy) for x, y, _ in verts], faces, theta0, z0)
+
+
+def fasten_round(skin: Skin, bolts: MeshBuilder, rect, inset: float = 0.5, pitch: float = 2.6, sides: str = "tblr") -> None:
+    """A row of screws just inside each edge of a plain plate: (angle from, angle to, station from, to)."""
+    t0, t1, z0, z1 = rect
+    cos = math.cos(CONE.a)
+    for edge, z in (("b", z0 + inset * cos), ("t", z1 - inset * cos)):
+        if edge in sides:
+            width = (t1 - t0) * CONE.r(z) - 2 * inset
+            n = max(2, round(width / pitch))
+            for i in range(n + 1):
+                skin.fastener(bolts, t0 + (inset + width * i / n) / CONE.r(z), z)
+    run_ = (z1 - z0) / cos - 2 * inset
+    n = max(2, round(run_ / pitch))
+    for edge, sign, t in (("l", 1, t0), ("r", -1, t1)):
+        if edge in sides:
+            for i in range(1, n):
+                z = z0 + (inset + run_ * i / n) * cos
+                skin.fastener(bolts, t + sign * inset / CONE.r(z), z)
 
 
 # --------------------------------------------------------------------------- parts
@@ -607,6 +629,92 @@ def umbilical_receptacle(M, g, at: tuple[float, float], about: str) -> None:
     f = CONE.frame(*at)
     detail.lathe(prof([(2.6, -0.3), (2.6, 0.45), (2.1, 0.45), (2.0, 0.25), (0.0, 0.25)]), 32, matrix=f)
     thing(detail, "Umbilical_Receptacle", M["steel"], g, "Umbilical receptacle", about)
+
+
+def periscope_door(M, g, skin: Skin, door, scope_z: float, umbilical_z: float, about: str, umbilical_about: str) -> None:
+    """The periscope's door open and its objective put out, with the umbilical's receptacle under the lens in the
+    same opening, as the photographs have them (capsule 11: NASA S61-03705, on the pad, and as raised in 1999;
+    capsule 7 as kept: NASM2021-00165). `door` is the opening: (angle from, angle to, station from, to)."""
+    t0, t1, z0, z1 = door
+    well, flap, liner = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    deep = 1.1  # inches: the opening's floor under the skin
+    mid = ((t0 + t1) / 2, (z0 + z1) / 2)
+    edge = skin.bounds(*mid, t0, t1, z0, z1)
+    to = skin.flat(*mid)
+    ring = [
+        (edge[i][0] + (edge[(i + 1) % 4][0] - edge[i][0]) * k / 6, edge[i][1] + (edge[(i + 1) % 4][1] - edge[i][1]) * k / 6)
+        for i in range(4)
+        for k in range(6)
+    ]
+    well.grid(lambda i, j: to(*ring[i], -deep * j), range(len(ring)), (0, 1), closed_u=True)
+    well.grid(lambda t, z: CONE.p(t, z, -deep), [t0 + (t1 - t0) * i / 6 for i in range(7)], (z0, z1))
+    well.build("Periscope_Well", M["underlay"], g, sharp_angle=40)
+    periscope(M, g, scope_z, about, door=None)
+    umbilical_receptacle(M, g, (deg(90), umbilical_z), umbilical_about)
+    # the door, hinged on the side toward the hatch and standing open (how far is ours); pale inside
+    across = (t1 - t0) * CONE.r(mid[1]) - 0.3
+    tall = (z1 - z0) / math.cos(CONE.a) - 0.3
+    hinge = CONE.p(t0, mid[1], 0.15)
+    out, round_ = CONE.n(t0), Vector((-math.sin(t0), math.cos(t0), 0.0))
+    swing = deg(105)
+    leaf = (round_ * math.cos(swing) + out * math.sin(swing)).normalized()
+    up = Vector((-math.sin(CONE.a) * math.cos(t0), -math.sin(CONE.a) * math.sin(t0), math.cos(CONE.a)))
+    face = leaf.cross(up).normalized()  # the side that faced outward when it was shut
+    m = Matrix((leaf, up, face)).transposed().to_4x4()
+    m.translation = hinge + leaf * (across / 2 * IN)
+    flap.box((across * IN, tall * IN, 0.22 * IN), m)
+    liner.box(((across - 0.8) * IN, (tall - 0.8) * IN, 0.1 * IN), m @ Matrix.Translation((0, 0, -0.22 * IN)))
+    says = ("Periscope door", "The door the periscope's objective was put out through, open. It shut over the lens for the climb and for the entry.")
+    thing(flap, "Periscope_DoorLeaf", M["shingle"], g, *says, shell=False, smooth=False)
+    thing(liner, "Periscope_DoorLiner", M["paint_white"], g, *says, shell=False, smooth=False)
+
+
+def roll_fittings(M, g, places, about: str) -> None:
+    """The roll jets as the flown capsule No. 7 has them (NASM2021-00160, -00161, A19620021000_DSH01): a round plate
+    let into the top row of shingles, with two nozzles in it, a large and a small. `places` are (angle, station)."""
+    for side, (t, z) in zip("AB", places):
+        plate, pale, dark = MeshBuilder(), MeshBuilder(), MeshBuilder()
+        f = CONE.frame(t, z)
+        # the plate stands a little proud of the beads round it, sunk well through the skin
+        plate.lathe(prof([(2.35, -0.6), (2.35, 0.2), (2.15, 0.26), (0.0, 0.26)]), 28, matrix=f)
+        for i in range(6):
+            a = TAU * (i + 0.5) / 6
+            plate.disc(f @ Vector((1.95 * math.cos(a) * IN, 1.95 * math.sin(a) * IN, 0.26 * IN)), CONE.n(t), 0.1 * IN, 0.05 * IN)
+        for dx, rad in ((-0.75, 0.78), (1.05, 0.42)):  # the 6 lbf chamber's nozzle and the 1 lbf chamber's
+            m = f @ Matrix.Translation((dx * IN, 0, 0))
+            pale.lathe(prof([(rad + 0.22, 0.26), (rad + 0.22, 0.42), (rad, 0.42)]), 18, matrix=m)
+            dark.lathe(prof([(rad, 0.42), (rad * 0.45, -0.35), (0.0, -0.35)]), 18, matrix=m)
+        says = ("Roll thrusters", about)
+        thing(plate, f"RollThrusters_{side}_Plate", M["steel"], g, *says)
+        thing(pale, f"RollThrusters_{side}_Ports", M["dielectric"], g, *says)
+        thing(dark, f"RollThrusters_{side}_Throats", M["nozzle"], g, *says)
+
+
+def stand(hatch_mid: float, nodes) -> Matrix:
+    """Turn the spacecraft about its long axis so that the middle of its hatch is on +X, the side every launch site's
+    frame gives the hatch (sites/lc-5.ts). A flight's script builds its capsule in the pilot's frame (his right hand
+    at 0 degrees, his feet at 90, his head at 270) and calls this last. The turn is put into the meshes themselves and
+    into the placing of whatever has a placing of its own (a needle on its pivot, the seat), so every top-level node
+    stays where it was, unturned. Returns the turn, for whatever the script reports in the model's frame."""
+    turn = Matrix.Rotation(-hatch_mid, 4, "Z")
+    if abs(hatch_mid % TAU) < 1e-9:
+        return turn
+    bpy.context.view_layer.update()  # (an object's matrix_local is read from the last evaluation: those placed since read as nothing)
+    for name in nodes:
+        top = bpy.data.objects.get(name)
+        if top is None:
+            continue
+        for child in top.children:
+            # a mesh of its own at the node's origin with nothing hung on it is turned in its vertices; anything else in its placing
+            plain = child.type == "MESH" and child.matrix_local == Matrix.Identity(4) and not child.children and child.data.users == 1
+            if plain and child.find_armature() is None:
+                child.data.transform(turn)
+            else:
+                child.matrix_local = turn @ child.matrix_local
+    return turn
+
+
+SPACECRAFT = ("HeatShield", "Retropack", "Afterbody", "Hatch", "Window", "CrewCabin", "RecoveryCompartment", "AntennaCanister", "EscapeTower")
 
 
 def roll_thrusters(M, g) -> None:
