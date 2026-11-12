@@ -308,7 +308,6 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
   uniform vec3 uSun, uSunLight, uSkyLight, uGroundLight, uHaze;
   uniform sampler2D tLow, tOld0, tOld1;   // (sharpen) the first march's light and opacity; this one's last results
   uniform float uKeep;
-  uniform float uOld;        // (for measuring: CloudPass.old)
   in vec2 vUv;
   layout(location = 0) out vec4 oColour;   // light sent toward the eye (premultiplied), and opacity
   layout(location = 1) out vec4 oInfo;     // where the cloud began, where it was half opaque; its light (cel) and haze, per opacity
@@ -560,7 +559,7 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         // every pixel changed as the eye climbed (of 24 pixels a frame that flipped at 20 km, 15 were this). Within a
         // kilometre or two of the eye it is the same sample as before.
         float span = 4.5;
-        if (uOld < 0.5 && ${FACING.toFixed(1)} * gPixel > span) {
+        if (${FACING.toFixed(1)} * gPixel > span) {
           span = ${FACING.toFixed(1)} * gPixel;
           float ys;
           density(v + uSun * span, ramp, lod, ys, toward, true, true);
@@ -605,10 +604,8 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
     // lies past its own far side. (Left at the empty pixel's 60 km, cloud under half opaque was laid over nothing
     // nearer than that: seen from above, with the sea a kilometre under it, every cloud was cut off at half opacity,
     // a hard stair with no thin edge, and that line jumped a pixel to and fro as the eye climbed: half the flicker.)
-    if (uOld < 0.5) {
-      if (front > 5e4) front = first;
-      if (mid > 5e4) mid = last;
-    }
+    if (front > 5e4) front = first;
+    if (mid > 5e4) mid = last;
     // (the two are kept in sixteen bits, which hold three figures: the second is past the first by more than that)
     oInfo = vec4(front, max(mid, front * 1.004 + 1.0), lit / opacity, haze / opacity);
   }
@@ -681,6 +678,15 @@ const OVER = /* glsl */ `
   float fieldOver(vec2 q, float bias, float cells) {
     float x = cells < 1.0 ? cloudNoise(q) + bias - uCumulus.y : 0.0;
     return cells > 0.0 ? mix(x, cumulusCells(q, bias, uCumulus.y, gFpq), cells) + cellsMorph(cells) : x;
+  }
+  // the field's noise at a place (in cells) with each of its four sizes kept by so much (1: as it is; 0: at its mean)
+  float cloudNoiseKept(vec2 q, vec4 keep) {
+    float n = 0.52;
+    if (keep.x > 0.0) n += 0.3 * keep.x * (over_noise2(q * 0.23 + vec2(1.7, 5.3), 94) - 0.5);
+    if (keep.y > 0.0) n += 0.33 * keep.y * (over_noise2(q, 91) - 0.5);
+    if (keep.z > 0.0) n += 0.21 * keep.z * (over_noise2(q * 2.13 + 7.1, 92) - 0.5);
+    if (keep.w > 0.0) n += 0.12 * keep.w * (over_noise2(q * 4.37 + 3.3, 93) - 0.5);
+    return n;
   }
   ${ATMOSPHERE_COARSE_GLSL}
   const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -782,7 +788,8 @@ const OVER = /* glsl */ `
     vec3 up = normalize(uRe * uUp + v);
     float cosv = max(abs(dot(up, dir)), 0.05);
     // metres of the shell a pixel: across the line of sight, and along it (far more, looked along)
-    float fpAcross = tm * uFine, fp = fpAcross / cosv;
+    // (along it by what it is: held to twenty times the breadth, a row far aslant was read as a twentieth of what it took in)
+    float fpAcross = tm * uFine, fp = fpAcross / max(abs(dot(up, dir)), 1e-3);
     vec2 q0 = (uField + v.xz) / uCumulus.x;
     vec3 w;
     float streets;
@@ -884,21 +891,27 @@ const OVER = /* glsl */ `
       lit += (1.0 - acc.a) * veiled * 0.5;
     }
     if (along > 0.0 && even < 1.0) {
-      // the field along the pixel's length, four places: a cloud looked along is a sliver, and a row of them a line
-      vec2 run = normalize(dir.xz + 1e-6) * min(fp, 6.0 * uCumulus.x) / uCumulus.x;
-      float a = 0.0;
-      for (int k = 0; k < 4; k++) {
-        float n = cloudNoise(q0 + run * (float(k) - 1.5) / 4.0) + bias;
-        a += smoothstep(uCumulus.y + 0.3 * wd - wd, uCumulus.y + 0.3 * wd + wd, n);
-      }
-      a = 1.0 - pow(1.0 - 0.25 * a, 1.0 + ${(0.7 * 0.45).toFixed(3)} * aslant);
+      // The field over the pixel's length. Looked along, a pixel takes in kilometres of the field one way and metres
+      // the other (from the pad, 40 km off, 2 km by 40 m; from just over the layer, 20 km): read at a point, or at
+      // four, each row of the screen was another place altogether, a row of dashes that changed with every metre the
+      // eye rose (1,700 pixels a frame flipped in the chase view at T+20). So each size of the noise is left at its
+      // mean as the pixel's length passes it, and what is left out is not forgotten: the noise is as good as
+      // normal, so how much of the pixel is over the cut is the normal's share above it with the spread of what was
+      // left out (measured: 0.046 the variance of each size, the logistic within 0.01 of the cover from 0.02 to 0.85).
+      // A cloud looked along is then a sliver, a field of them a soft band, and far aslant the cover itself.
+      float len = fp / uCumulus.x;
+      vec4 keep = 1.0 - vec4(smoothstep(1.0, 4.3, len), smoothstep(0.25, 1.0, len), smoothstep(0.12, 0.47, len), smoothstep(0.06, 0.23, len));
+      float n = cloudNoiseKept(q0, keep) + bias - streets * smoothstep(1.0, 4.0, len);
+      float spread = sqrt(0.046 * dot(vec4(0.09, 0.1089, 0.0441, 0.0144), 1.0 - keep * keep) + 0.35 * wd * wd);
+      float a = 1.0 / (1.0 + exp(clamp(-1.7 * (n - uCumulus.y) / spread, -30.0, 30.0)));
+      a = 1.0 - pow(1.0 - a, 1.0 + ${(0.7 * 0.45).toFixed(3)} * aslant);
       // (what is seen of them from here is their sides as much as their tops: toward the Sun or away from it)
       vec3 light = under ? bases : sunTop * mix(0.62, 0.95, 0.5 + 0.5 * dot(normalize(dir.xz + 1e-6), -uSun.xz / max(length(uSun.xz), 1e-3)) * sqrt(max(1.0 - sunUp * sunUp, 0.0))) + uSkyLight * 0.8;
       acc = mix(acc, vec4(light, 1.0) * a, along);
       lit = mix(lit, a * 0.8, along);
     }
     if (even > 0.0) {
-      float fine = 1.0 - smoothstep(2.0 * uCumulus.x, 8.0 * uCumulus.x, fpAcross);
+      float fine = 1.0 - smoothstep(2.0 * uCumulus.x, 8.0 * uCumulus.x, max(fpAcross, fp));
       float gather = over_noise2(q0 * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
       float c = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);
       float a = 1.0 - pow(1.0 - c, 1.0 + ${(0.7 * 0.45).toFixed(3)} * aslant);
@@ -927,7 +940,8 @@ const OVER = /* glsl */ `
     vec3 v = dir * tm;
     vec3 up = normalize(uRe * uUp + v);
     float cosv = max(abs(dot(up, dir)), 0.05);
-    float fp = tm * uFine / sqrt(cosv);
+    // (a pixel's length on it, looked along: its breadth would leave each row of the screen a point of the sheet)
+    float fp = tm * uFine / max(abs(dot(up, dir)), 0.02);
     vec2 xz = uEyeXZ + v.xz;
     vec3 w = weatherAt(xz);
     float a = kind == 0 ? deckAt(xz, fp, deckCoverAt(w, xz)) : cirrusAt(xz, fp, w.g);
@@ -1146,8 +1160,6 @@ export class CloudPass extends Pass {
   cel = false;
   /** The stage is frozen for a test (Stage.frozen): nothing of an earlier frame is kept, so a frame drawn again is the same frame. */
   frozen = false;
-  /** Draw as before the last changes to the march, for measuring the new against the old in one page (`sr.stage.clouds.old = true`). */
-  old = false;
   /**
    * What is drawn with the scene but writes no depth and can stand in front of a cloud: the engine's fire and its
    * trail. Cloud behind them is laid over them only as far as they let it through.
@@ -1251,7 +1263,6 @@ export class CloudPass extends Pass {
     uClouds: { value: 0 },
     uEyeXZ: { value: new THREE.Vector2() },
     uAbove: { value: 0 },
-    uOld: { value: 0 },
     ...weatherUniforms,
     ...atmosphereUniforms,
   };
@@ -1410,7 +1421,6 @@ export class CloudPass extends Pass {
     this.finer.uGrain.value = tall / this.finer.uLow.value.y;
     u.tDepth.value = this.mark.texture;
     u.uCel.value = Number(this.cel);
-    u.uOld.value = Number(this.old);
     this.light(fog);
 
     this.march ??= raw(marchShader(clouds, false), u);

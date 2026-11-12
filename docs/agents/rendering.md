@@ -440,8 +440,13 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   4.5 m from 20 km, where a pixel is 14 m, a far cloud's face was lit as by chance and 15 pixels a frame flipped on
   the climb. And every marched pixel says where its cloud is (its near side, and its far side if it never hides half
   of what is behind): thin cloud left at the empty pixel's 60 km was laid over nothing nearer than that, so from
-  above every cloud was cut at half opacity in a hard stair that jumped as the eye moved (another 15). To measure a
-  change to the march: `sr.stage.clouds.old = true` draws it the way it was, in the same page.
+  above every cloud was cut at half opacity in a hard stair that jumped as the eye moved (another 15).
+- **Far cloud is its mean over the pixel's whole footprint.** Looked along, a pixel takes in kilometres of a layer
+  one way and metres the other. The far cumulus and the sheets are read with the footprint's true length (never a
+  clamped cosine): each size of their noise is left at its mean as that length passes it, and the spread of what was
+  left out softens the cut (`cloudNoiseKept`, deckAt's `left`), so the cover is kept and a row far aslant is a soft
+  band. Point-sampled, each row was another place: dashes along the horizon from the pad, and 1,700 pixels a frame
+  flipping in the chase view at T+20 (now 6 over the scene's own). Measure the chase view with the clouds on.
 - **Far cloud is not hidden by the depth buffer's steps.** Hundreds of kilometres off one step is
   kilometres: far cloud is hidden only by what is nearer by a quarter of the way (`hidden`).
 - **The air is one model.** `atmosphere.ts` makes two tables once (transmittance, multiple scattering) and

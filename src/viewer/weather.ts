@@ -284,6 +284,10 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     // (far off, where its texture is under a pixel, it is its cover, evenly)
     float even = smoothstep(2700.0, 7000.0, fp);
     float soft = 0.06 + 0.1 * smoothstep(60.0, 300.0, fp) + 0.03 * smoothstep(300.0, 2700.0, fp);   // (a patch thins to nothing over a few hundred metres: no hard rim)
+    // (what of its texture is under a pixel and left at its mean is not forgotten: the edge is as much softer as that
+    // part's spread, 2.2 of its standard deviations, so a patch seen aslant thins to its cover and does not shrink)
+    vec3 left = vec3(smoothstep(2700.0, 7000.0, fp), smoothstep(700.0, 1800.0, fp), smoothstep(200.0, 500.0, fp));
+    soft += 2.2 * sqrt(0.046 * dot(vec3(0.2025, 0.09, 0.0625), left * (2.0 - left)));
     float a = mix(smoothstep(cut - soft, cut + soft, deckTex(xz, fp)), cover, even);
     // Altocumulus is cloudlets two or three hundred metres across with clear air between, closing up toward a patch's
     // middle; a front's deck is solid. (So an eighth of the sky has altocumulus over it, and less than that is hidden.)
