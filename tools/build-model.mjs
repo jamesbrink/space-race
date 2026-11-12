@@ -7,9 +7,10 @@
 //   node tools/build-model.mjs --all --detail 0.3 --out-dir <dir>    a lower level of detail, written elsewhere
 // Blender is found at $BLENDER, on PATH, or in /Applications (macOS).
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, globSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 /** The coarser levels built beside each model: `<name>.lod1.glb`, `<name>.lod2.glb`. Keep in step with LOD_ABOVE in src/viewer/lod.ts. */
@@ -59,6 +60,31 @@ if (!args.length) {
 
 const targets = args.includes('--all') ? allFlights() : args;
 
+/**
+ * Every string in every flight's data. A build joins static meshes that share a material
+ * (srlib.merge_static), but never one the viewer finds by name, and the names it looks for are
+ * the ones the flights give it (a move's node, a function's, a seat's, a walker's eyes, a hose).
+ * The data is evaluated, not searched, so a name put together in code is there too; a site's
+ * models get every flight's names, since any flight may stand on it.
+ */
+async function namedByFlights() {
+  const strings = new Set();
+  const seen = new Set();
+  const walk = (value) => {
+    if (typeof value === 'string') strings.add(value);
+    else if (value && typeof value === 'object' && !seen.has(value)) {
+      seen.add(value);
+      for (const inner of Object.values(value)) walk(inner);
+    }
+  };
+  for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) walk(await import(pathToFileURL(join(root, file)).href));
+  return [...strings].sort();
+}
+const scratch = mkdtempSync(join(tmpdir(), 'space-race-models-'));
+const named = join(scratch, 'named.json');
+writeFileSync(named, JSON.stringify(await namedByFlights()));
+process.on('exit', () => rmSync(scratch, { recursive: true, force: true }));
+
 for (const id of targets) {
   // A flight is <nation>/<programme>/<flight>; a place is <nation>/<programme>/sites/<site>. Either
   // has a model/ directory of scripts, and its GLBs go to the same path under public/models/.
@@ -88,12 +114,12 @@ for (const id of targets) {
       // --factory-startup: no user preferences or add-ons, so the same script gives the same model anywhere
       const r = spawnSync(
         blender,
-        ['-b', '--factory-startup', '--python-exit-code', '1', '-P', join(dir, file), '--', '--out', out, ...extra],
+        ['-b', '--factory-startup', '--python-exit-code', '1', '-P', join(dir, file), '--', '--out', out, '--named', named, ...extra],
         { encoding: 'utf8' },
       );
       const lines = (r.stdout + r.stderr).split('\n');
       if (r.status !== 0) {
-        const at = lines.findIndex((l) => l.includes('CLEARANCE FAILED'));
+        const at = lines.findIndex((l) => l.includes('CLEARANCE FAILED') || l.includes('MERGE FAILED'));
         if (level.detail) console.error(`at --detail ${level.detail}:`);
         console.error((at >= 0 ? lines.slice(at, at + 60) : lines.slice(-30)).join('\n'));
         process.exit(r.status ?? 1);

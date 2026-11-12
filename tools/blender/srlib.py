@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
+import json
 import math
 import os
+import re
 import sys
 from collections.abc import Callable, Sequence
 
@@ -736,6 +739,181 @@ def bind(obj: bpy.types.Object, rig: bpy.types.Object, weights: Sequence[dict[st
 
 # -------------------------------------------------------------------------- export
 
+# Joining static meshes for the export: one mesh is one draw call in the viewer, and one more in
+# every shadow-map redraw, so meshes nobody can tell apart are exported as one.
+#
+# The rule. The tree of nodes is never touched: every empty stays, with its name, transform and
+# extras, because every empty is something the viewer may ask for (a part, a `label` it names
+# under the pointer, a place in the surroundings, a pivot that a move, a door, a lift or a wheel
+# turns on). Only meshes are joined, and only with their siblings: two meshes are joined when
+# they hang on the same parent, have the same material, and each of them is static and anonymous,
+# which is all of:
+#   - its origin is its parent's (no transform of its own: a mesh given an origin was given a pivot);
+#   - it has no children, no armature, vertex groups or shape keys, is not hung on a bone, and its
+#     mesh data is not shared with another object (a figure's skin and an instance are left alone);
+#   - it has one material, and that is not one the viewer treats mesh by mesh: `glass...` (each
+#     pane is a mesh: stage.ts `panes` takes one window from each), `lamp...` (lamps.ts finds
+#     fittings from the vertices of each lens mesh), `concrete-scorch/stain...` (surface.ts gives
+#     each mark its own blended material) and anything blended (drawn in order, mesh by mesh);
+#   - it has no custom property (they are glTF extras, and each is a mark the viewer reads off
+#     that mesh: `climb`, `label`, `about`, `lens_out`, `candela`, `door`, `lift`, `lever`...).
+#     The one exception is `shell`, which only says "the cutaway clips me": shells are joined
+#     with shells that carry the same value, and the joined mesh carries it;
+#   - its name is not one the viewer looks for: no string anywhere in any flight's data (`moves`,
+#     `functions`, `actions`, `views`, `walker`, `seats`, `flies`, `hide`, a hose's mesh and
+#     anchors: build-model.mjs evaluates every flight.ts and hands over every string in it), with
+#     or without a number after it (explode.ts finds wheels as a prefix and a number); none of
+#     the vehicle contract's names (drive.ts); none of a figure's joints.
+# A joined mesh keeps the name and node of its first member, so whatever is found afterwards is
+# what was built. Meshes are joined only while the result spans no more than MERGE_SPAN: Draco
+# quantises each mesh's positions over its own box (export_glb), so a join must not make that
+# box, and with it the step, larger than the 0.05 mm the export is set up for; it also keeps what
+# is culled and what the walker's solids search local.
+#
+# It runs after the clearance check, which therefore still names the meshes as the scripts built
+# them, and it cannot hide a clash: a join moves nothing (every member is in its parent's frame
+# already), and run() compares every triangle in the scene before and after (place, corner
+# normals, UVs, vertex colours, material) and fails the build if one differs. So the triangles
+# exported are exactly those the check passed. The rule is the same at every level of detail.
+MERGE_SPAN = 12.0  # metres: 12 m over 18 bits is a step of 0.046 mm
+_PER_MESH_MATERIAL = re.compile(r"^(glass|lamp|concrete-(scorch|stain))")
+_CONTRACT_NAME = re.compile(r"_(Steer)?Wheel_\d+$|_Knuckle_\d+$|_SteeringWheel$|_Door_\d+$|_(Seat|Stand)_|^Light_|^Grip|^Fingers")
+_JOINABLE_PROPS = {"shell"}
+_IDENTITY = Matrix.Identity(4)
+
+
+def _key(name: str) -> str:
+    """A name as the viewer compares names: without dots, underscores, spaces or case."""
+    return re.sub(r"[._\s]", "", name).lower()
+
+
+def _is_identity(m: Matrix) -> bool:
+    return all(abs(m[r][c] - _IDENTITY[r][c]) < 1e-9 for r in range(4) for c in range(4))
+
+
+def _joinable(obj: bpy.types.Object, named: set[str]) -> tuple | None:
+    """What a mesh may be joined on (parent, material, extras, layers), or None if it keeps its own node."""
+    mesh = obj.data
+    if obj.type != "MESH" or obj.parent is None or obj.parent_type != "OBJECT" or obj.children:
+        return None
+    if obj.modifiers or obj.vertex_groups or mesh.shape_keys or mesh.users != 1 or mesh.keys() or not mesh.polygons:
+        return None
+    if not (_is_identity(obj.matrix_basis) and _is_identity(obj.matrix_parent_inverse)):
+        return None
+    if len(mesh.materials) != 1 or mesh.materials[0] is None:
+        return None
+    mat = mesh.materials[0]
+    if _PER_MESH_MATERIAL.match(mat.name) or mat.surface_render_method == "BLENDED":
+        return None
+    props = {k: obj[k] for k in obj.keys()}  # noqa: SIM118 (an ID block's keys, not a dict's)
+    if not set(props) <= _JOINABLE_PROPS or not all(isinstance(v, (int, float, str, bool)) for v in props.values()):
+        return None
+    key = _key(obj.name)
+    if key in named or re.sub(r"\d+$", "", key) in named or _CONTRACT_NAME.search(obj.name):
+        return None
+    layers = (
+        tuple(uv.name for uv in mesh.uv_layers),
+        tuple((c.name, c.domain, c.data_type) for c in mesh.color_attributes),
+    )
+    return (obj.parent.name, mat.name, tuple(sorted(props.items())), layers)
+
+
+def merge_static(named: Sequence[str]) -> int:
+    """Join the scene's static, anonymous meshes (the rule is above). `named` is every name the
+    flights' data asks the viewer to find. Returns how many meshes went into others."""
+    names = {_key(n) for n in named} | {_key(j) for j in FIGURE}
+    groups: dict[tuple, list[bpy.types.Object]] = {}
+    for obj in sorted(bpy.data.objects, key=lambda o: o.name):
+        on = _joinable(obj, names)
+        if on is not None:
+            groups.setdefault(on, []).append(obj)
+    gone = 0
+    for members in groups.values():
+        # Its members are all in their parent's frame, so their boxes can be compared as they are.
+        clusters: list[tuple[Vector, Vector, list[bpy.types.Object]]] = []
+        for obj in members:
+            corners = [Vector(c) for c in obj.bound_box]
+            lo = Vector(min(c[i] for c in corners) for i in range(3))
+            hi = Vector(max(c[i] for c in corners) for i in range(3))
+            for at, (clo, chi, held) in enumerate(clusters):
+                nlo = Vector(min(a, b) for a, b in zip(lo, clo, strict=True))
+                nhi = Vector(max(a, b) for a, b in zip(hi, chi, strict=True))
+                if max(nhi - nlo) <= MERGE_SPAN:
+                    clusters[at] = (nlo, nhi, [*held, obj])
+                    break
+            else:
+                clusters.append((lo, hi, [obj]))
+        for _lo, _hi, held in clusters:
+            if len(held) < 2:
+                continue
+            with bpy.context.temp_override(active_object=held[0], selected_objects=held, selected_editable_objects=held):
+                bpy.ops.object.join()
+            gone += len(held) - 1
+    return gone
+
+
+def fingerprint() -> tuple[str, object]:
+    """Every triangle in the scene, whichever mesh holds it, in an order that does not depend on
+    the meshes: a digest of each one's corners (place in the scene, UV, colour) and material, and
+    beside it the corners' normals in that order. `same_scene` compares two of them."""
+    import numpy as np
+
+    keys, normals = [], []
+    for obj in bpy.data.objects:
+        if obj.type != "MESH" or not obj.data.polygons:
+            continue
+        mesh = obj.data
+        mesh.calc_loop_triangles()
+        nt, nl, nv = len(mesh.loop_triangles), len(mesh.loops), len(mesh.vertices)
+        world = np.array(obj.matrix_world, dtype=np.float64)
+        co = np.empty(nv * 3, dtype=np.float32)
+        mesh.vertices.foreach_get("co", co)
+        of = np.empty(nl, dtype=np.int32)
+        mesh.loops.foreach_get("vertex_index", of)
+        normal = np.empty(nl * 3, dtype=np.float32)
+        mesh.corner_normals.foreach_get("vector", normal)
+        corner = [co.reshape(nv, 3)[of].astype(np.float64) @ world[:3, :3].T + world[:3, 3]]
+        for uv in mesh.uv_layers:
+            data = np.empty(nl * 2, dtype=np.float32)
+            uv.uv.foreach_get("vector", data)
+            corner.append(data.reshape(nl, 2).astype(np.float64))
+        for colour in mesh.color_attributes:
+            n = nl if colour.domain == "CORNER" else nv
+            data = np.empty(n * 4, dtype=np.float32)
+            colour.data.foreach_get("color", data)
+            data = data.reshape(n, 4).astype(np.float64)
+            corner.append(data if colour.domain == "CORNER" else data[of])
+        corners = np.hstack(corner) + 0.0  # (no minus zero)
+        tri = np.empty(nt * 3, dtype=np.int32)
+        mesh.loop_triangles.foreach_get("loops", tri)
+        slot = np.empty(nt, dtype=np.int32)
+        mesh.loop_triangles.foreach_get("material_index", slot)
+        # a material as a number that is the same whichever mesh it is on
+        ids = np.array([int(hashlib.sha256(m.name.encode()).hexdigest()[:12], 16) for m in mesh.materials], dtype=np.float64)
+        keys.append(np.hstack([corners[tri].reshape(nt, -1), ids[slot].reshape(nt, 1)]))
+        normals.append((normal.reshape(nl, 3).astype(np.float64) @ world[:3, :3].T)[tri].reshape(nt, 9))
+    digest = hashlib.sha256()
+    ordered = []
+    for width in sorted({k.shape[1] for k in keys}):
+        rows = np.ascontiguousarray(np.vstack([k for k in keys if k.shape[1] == width]))
+        facing = np.vstack([n for k, n in zip(keys, normals, strict=True) if k.shape[1] == width])
+        order = np.argsort(rows.view(np.dtype((np.void, rows.dtype.itemsize * width))).ravel(), kind="stable")
+        digest.update(rows[order].tobytes())
+        ordered.append(facing[order])
+    return digest.hexdigest(), (np.vstack(ordered) if ordered else np.zeros((0, 9)))
+
+
+# Normals are worked out again by Blender when meshes are joined, and come out the same but for
+# the last bits of a float: they are held to this, a fifth of the step the export quantises them to.
+NORMAL_NOISE = 5e-5
+
+
+def same_scene(a: tuple[str, object], b: tuple[str, object]) -> bool:
+    """Whether two fingerprints are of the same triangles: places, UVs, colours and materials to the bit, normals to NORMAL_NOISE."""
+    import numpy as np
+
+    return a[0] == b[0] and a[1].shape == b[1].shape and bool(np.all(np.abs(a[1] - b[1]) <= NORMAL_NOISE))
+
 
 def export_glb(path: str) -> None:
     bpy.ops.export_scene.gltf(
@@ -812,6 +990,7 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
     ap.add_argument("--preview", help="directory for EEVEE preview stills")
     ap.add_argument("--detail", type=float, default=1.0, help="level of detail: 1 is full, 0.25 is a distant LOD")
     ap.add_argument("--allow-clashes", action="store_true", help="export even if the clearance check fails")
+    ap.add_argument("--named", help="a JSON list of the names the flights' data asks the viewer to find: meshes so named are not joined")
     args = ap.parse_args(argv)
     global DETAIL
     DETAIL = args.detail
@@ -825,11 +1004,25 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
             print(f"  {line}")
         if not args.allow_clashes:
             sys.exit(1)
+    # Static meshes are joined for the export, after the check and under its eye (see merge_static).
+    built = stats()[0]
+    if args.named:
+        with open(args.named, encoding="utf8") as f:
+            named = json.load(f)
+        before = fingerprint()
+        merge_static(named)
+        bpy.context.view_layer.update()
+        after = fingerprint()
+        if not same_scene(before, after):
+            print(f"{name}: MERGE FAILED: the joined scene is not the scene that was built ({len(before[1]):,} triangles, then {len(after[1]):,})")
+            sys.exit(1)
+    else:
+        print(f"{name}: meshes not joined: no --named list (tools/build-model.mjs gives one)")
     out = os.path.abspath(args.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     export_glb(out)
     n, tris = stats()
-    print(f"{name}: {n} meshes, {tris:,} triangles, {summary}, {os.path.getsize(out) / 1e6:.2f} MB -> {out}")
+    print(f"{name}: {n} meshes (built as {built}), {tris:,} triangles, {summary}, {os.path.getsize(out) / 1e6:.2f} MB -> {out}")
     if args.preview:
         os.makedirs(args.preview, exist_ok=True)
         for filename, target, distance, kw in previews:

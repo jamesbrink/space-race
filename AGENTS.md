@@ -653,6 +653,19 @@ level 0 is the one picked, walked on, lit and worked, and anything driven is alw
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script; do not hand-edit geometry for them.
 
+A mesh is a draw call, and another in every shadow-map redraw, so each build joins meshes nobody
+can tell apart before it exports (`srlib.merge_static`, at every level, after the clearance
+check). The node tree is never changed: every empty keeps its name, transform and extras. Only
+sibling meshes are joined, when they share a parent and a material and each is static and
+anonymous: no transform of its own (an origin is a pivot), no children, skin or shared mesh data,
+no custom property (but `shell`, joined with like), a name no flight's data and no viewer
+contract asks for (`build-model.mjs` evaluates every `flight.ts` and passes its strings as
+`--named`; without that list nothing is joined), and a material the viewer does not treat mesh by
+mesh (`glass...`, `lamp...`, `concrete-scorch/stain...`, anything blended). A join spans at most
+12 m, so Draco's step stays under 0.05 mm. The build compares every triangle before and after and
+fails if one differs. So a mesh the viewer must find gets a name in `flight.ts`, a custom
+property, or its own origin, and a new per-mesh material goes in `_PER_MESH_MATERIAL`.
+
 ## Rules that keep the numbers honest
 
 - **Every number carries a confidence** (`src/types.ts`): `documented` (a published figure),
