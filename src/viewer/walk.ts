@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
 import { type Sounds, silent } from '../audio.ts';
-import { Gait, type Stir, view } from './gait.ts';
+import { Gait, type Stir, type Terrain, view } from './gait.ts';
 
 /**
  * Walking a flight's site on foot, in first person or over the shoulder: you are one of its figures (a model with a
@@ -29,6 +29,24 @@ export const STEP = 0.3;
 const LEAF_CLEAR = 0.35;
 /** How fast the feet follow a floor that has stepped up or down under them, m/s: a stair is climbed, not teleported. */
 export const STEP_RATE = 3;
+/**
+ * How fast a flight of stairs is taken, m/s over the ground, at a walk and at a run: a tread to a step, about 118 and
+ * 129 steps a minute on a going of 0.28 m. And how steep the ground is, metres up or down for a metre along, where
+ * that begins to tell and where it is all there is (a ramp of 1 in 5 is walked as the flat is; a flight is 2 in 3).
+ * Estimated: a man goes up a flight at 90 to 120 steps a minute.
+ */
+export const STAIR_WALK = 0.55;
+export const STAIR_RUN = 0.6;
+const GRADE = [0.2, 0.4] as const;
+/** How far ahead and behind the ground is asked for to tell how steep it is, metres. */
+const GRADE_REACH = 0.35;
+
+/** The pace a figure sent at `speed` keeps on ground as steep as `grade`: its own on the flat, a flight's on a flight. */
+export function gradePace(speed: number, grade: number): number {
+  const k = Math.min(1, Math.max(0, (Math.abs(grade) - GRADE[0]) / (GRADE[1] - GRADE[0])));
+  const most = STAIR_WALK + (STAIR_RUN - STAIR_WALK) * Math.min(1, Math.max(0, (speed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED)));
+  return speed + (Math.min(speed, most) - speed) * k * k * (3 - 2 * k);
+}
 export const GRAVITY = 9.81;
 /** How high a standing jump lifts the feet, metres: an ordinary hop, not an athlete's. */
 export const JUMP_HEIGHT = 0.4;
@@ -649,6 +667,18 @@ export class Body {
       if (h !== null) this.heights.push(h);
     }
     return pickFloor(this.heights, p.y, riser);
+  }
+
+  /**
+   * The ground a foot could be put on at a place near the body: the first surface down from two steps over where it
+   * stands (a foot goes on to the tread after the next while the body is still on this one), or null where there is
+   * none within two steps below either. For the figure's feet (`Terrain`), not for the body, which `floor` carries.
+   * What the body could touch has to have been gathered (`Solids.gather`).
+   */
+  under(x: number, z: number): number | null {
+    const y = this.position.y;
+    const h = this.solids.below(x, y + 2 * STEP + 0.05, z, this.level(x, z));
+    return h === null || h < y - 2 * STEP - 0.1 - this.sunk ? null : h;
   }
 
   /** What is over the head, as the floor is under the feet: the lowest surface above the body's middle, or null. */
@@ -1455,10 +1485,19 @@ export class Walker {
     }
     const length = Math.hypot(forward, right);
     if (length || !this.body.grounded) this.peekAt = null; // a step, or a hop, and the eyes come back from the window
-    const pace = length ? speed / length : 0;
     const sin = Math.sin(this.yaw),
       cos = Math.cos(this.yaw);
     const p = this.body.position;
+    // a flight of stairs is taken a tread to a step, which is slower than the flat: by how steep the ground is the way it is sent
+    if (length && body.grounded && !body.on && !this.seat && !this.down) {
+      const ax = ((-sin * forward + cos * right) / length) * GRADE_REACH;
+      const az = ((-cos * forward - sin * right) / length) * GRADE_REACH;
+      this.solids.gather(p, 2, 2 * STEP + 1, 2 * STEP + 1);
+      const ahead = body.under(p.x + ax, p.z + az);
+      const behind = body.under(p.x - ax, p.z - az);
+      if (ahead !== null && behind !== null) speed = gradePace(speed / length, (ahead - behind) / (2 * GRADE_REACH)) * length;
+    }
+    const pace = length ? speed / length : 0;
     const was = this.eyes.copy(p);
     const flying = !this.body.grounded;
     // forward is (-sin, -cos) over the ground, right is (cos, -sin); the body gathers and loses its speed (quicken)
@@ -1517,6 +1556,14 @@ export class Walker {
     this.pace = dt > 0 ? this.stepped / dt : 0;
     this.gait.breathing = this.motion > 0;
     const rungs = body.on ? Math.abs(p.y - was.y) : null;
+    // the ground under each foot, for a figure on its feet: asked of the solids as the figure faces
+    let terrain: Terrain | null = null;
+    if (body.grounded && !body.on && !this.seat && !this.down) {
+      const fx = -Math.sin(this.heading);
+      const fz = -Math.cos(this.heading);
+      this.solids.gather(p, 4, 2 * STEP + 1, 2 * STEP + 1);
+      terrain = { level: p.y, at: (ahead, left) => body.under(p.x + fx * ahead + fz * left, p.z + fz * ahead - fx * left) };
+    }
     this.stir =
       dt > 0
         ? this.gait.advance(
@@ -1528,6 +1575,7 @@ export class Walker {
             this.body.grounded ? 0 : this.apex - p.y,
             // (seen from outside, a figure turning where it stands steps round: the turn it made last frame)
             this.third && this.body.grounded && !body.on && !this.seat && !this.down ? this.spun : 0,
+            terrain,
           )
         : 0;
     if (this.stir) this.moved = true;
@@ -1575,8 +1623,11 @@ export class Walker {
     if (Math.abs(this.low - lower) > 1e-3) this.moved = true;
     const lagging = this.body.grounded && this.motion > 0;
     // (long enough to turn a flight of stairs' risers into a slope under the eyes)
+    // (and what they follow is not the body's own height, which goes up a flight a riser at a time, but the feet's:
+    // midway between the tread each foot is on or is being carried to, which up an even flight is a slope: gait.ts)
+    const carried = p.y + this.gait.carried;
     this.feltY = lagging
-      ? THREE.MathUtils.clamp(this.feltY + (p.y - this.feltY) * (1 - Math.exp(-dt / 0.11)), p.y - 0.25, p.y + 0.25)
+      ? THREE.MathUtils.clamp(this.feltY + (carried - this.feltY) * (1 - Math.exp(-dt / 0.11)), p.y - 0.4, p.y + 0.25)
       : p.y;
     if (Math.abs(this.feltY - p.y) < 1e-4) this.feltY = p.y;
     else this.moved = true;

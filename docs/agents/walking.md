@@ -151,10 +151,34 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   ladder is known only by its box, so the rungs are taken to be where `srlib.ladder` puts them: a
   foot apart from a foot above its foot.
 - **Stairs are walked, not hopped.** The floor is sensed under the middle of the body and four
-  points round it, so open treads with daylight between them carry it; the feet follow a flight
-  as fast as the legs go (`settle`'s `rate`), a step down is as deep as a step up is tall, and
-  the eyes lag the risers into a slope. Unit-tested on open-tread flights of 0.2 and 0.25 m
-  risers at a walk and a run, both ways, with no frame in the air.
+  points round it, so open treads with daylight between them carry it; the body follows a flight
+  as fast as the legs go (`settle`'s `rate`) and a step down is as deep as a step up is tall.
+  Unit-tested on open-tread flights of 0.2 and 0.25 m risers at a walk and a run, both ways, with
+  no frame in the air.
+- **Each foot has its own ground.** The walker tells the gait what is under the figure (`Terrain`:
+  the height of its place, and of the ground a way ahead and to the side, asked of the solids as it
+  faces: `Body.under`), and the gait keeps a height for each foot (`Gait.footing`, `trod`): a planted
+  foot stands on the highest of what is under its heel, ankle and toes, asked for every frame, so a
+  floor that moves carries it. A foot leaving the ground chooses where it will land (`settleOn`:
+  whole on one tread, 5 cm clear of a riser that stands over it and at most 5 cm over an edge that
+  falls away, on ground within a step of the foot that stands), and the cycle's phase is made up
+  for what that moved it (`owed`), so the steps come to the length the flight asks: a tread to a
+  step. In the air it is carried from the tread it left to the one it is going to, up first going up
+  and along first going down, and over whatever is under it (`Moment.over`). The figure's own
+  ground is the lower of the two feet's, eased (`base`, `Gait.lift`): going up the pelvis rises over
+  the leading foot, whose knee has bent to reach its tread, while the other swings past; going down
+  it is let down on the standing leg. The eyes follow neither that nor the body's risers but the
+  mean of the two feet's (`Gait.carried`), which on an even flight is a slope. A flight is taken at
+  its own pace (`gradePace`: 0.55 m/s at a walk and 0.6 at a run where the ground is steeper than
+  2 in 5, which is 118 steps a minute on a going of 0.28 m; estimated). Measured on the stick
+  figure (`tests/stairs.test.mjs`: risers of 0.18, 0.198 and 0.23 m, both ways): a planted foot
+  within 6 mm of its tread and a centimetre of its spot, a tread to every step, no foot more than
+  7 mm under a tread going up or 30 mm, for a moment, going down (a heel past a nosing). Not yet
+  right: a knee turns up to 20 degrees in a 120th of a second as a foot leaves a tread close under
+  a riser, four times what the flat asks; a standing figure's feet are not moved clear of an edge
+  (they rest on the higher side of it); a foot comes down a flight heel first, where a man lands on
+  the ball of it; faster than the flight's pace the stride does not keep to the treads, which is
+  why nothing is run up; and the hands do not take the rail.
 - **What is in front of you can be acted on.** Each frame a ray from the eyes finds what is
   within `REACH` (2.5 m); `Stage.targetOf` says what it is in the flight's terms (a `Target`:
   model and part, a window pane, a place in the surroundings) and the reticle names it. E (a

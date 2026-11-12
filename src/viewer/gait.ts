@@ -108,6 +108,23 @@ export interface Moment {
    * when it stops). Left out: where a steady stride at this phase and speed has them (`stride`).
    */
   feet?: Feet;
+  /**
+   * What a foot in the air has over the ground to clear, when the ground is not flat: how high the ground (or the
+   * line the foot is carried along from the tread it left to the one it is going to) is above the figure's own, metres,
+   * under a foot whose ankle is `x` ahead of the middle of the pelvis. Left out: the ground is flat.
+   */
+  over?: (side: 'L' | 'R', x: number) => number;
+}
+
+/**
+ * The ground a figure walks on, as its gait is told of it: stairs, a kerb, a slope. `level` is the height of the
+ * figure's own place (where the walker has it standing), and `at` the height of the ground a way `ahead` of the middle
+ * of the figure and to its `left`, metres in the same measure; null where there is none within a step of `level` (a
+ * wall, a drop). Left out, the ground is flat.
+ */
+export interface Terrain {
+  level: number;
+  at(ahead: number, left: number): number | null;
 }
 
 /** A leg's bones: hip to knee, knee to ankle, and the ankle above the sole, metres. */
@@ -711,9 +728,12 @@ export function pose(m: Moment): Pose {
       // (its lowest point: the heel or the toes, as a swinging foot is pitched)
       const pitch = 0.4 * (hip + shin);
       const low = y + limbs.ankle * (1 - Math.cos(pitch)) + Math.min(HEEL * Math.sin(pitch), -TOES * Math.sin(pitch));
-      const over = (low - CLEAR_BY) / CLEAR_OVER;
-      // (as far as it is striding: a figure standing has its feet on the ground)
-      const held = low + (CLEAR_BY + CLEAR_OVER * (over > 30 ? over : Math.log1p(Math.exp(over))) - low) * Math.min(1, speed / WALK);
+      // (over the ground under it, where that is not the figure's own: the next tread of a flight, a kerb)
+      const floor = m.over ? Math.max(0, m.over(side, x)) : 0;
+      const over = (low - floor - CLEAR_BY) / CLEAR_OVER;
+      // (as far as it is striding: a figure standing has its feet on the ground; but a tread in the way is cleared at any pace)
+      const striding = Math.max(Math.min(1, speed / WALK), Math.min(1, floor / 0.02));
+      const held = low + (floor + CLEAR_BY + CLEAR_OVER * (over > 30 ? over : Math.log1p(Math.exp(over))) - low) * striding;
       if (held - low > 1e-6) {
         const was = to(y);
         const now = to(y + held - low);
@@ -752,12 +772,37 @@ export function pose(m: Moment): Pose {
       hip += foot.bent.thigh;
       shin = Math.max(0, shin + foot.bent.knee);
     }
+    // a foot is turned back toward level: all the way while it is planted, most of the way as it swings (toe down as it leaves)
+    // (the toes of a leg reaching for its landing come up late: a heel held low is a heel in the ground)
+    const ankle = (thigh: number, knee: number) =>
+      -(0.6 + 0.4 * foot.hold * g) * (thigh * g - 0.5 * air + knee * g + 0.9 * air) + toe * (toe < 0 ? foot.hold ** 2 : foot.hold) * g;
+    // Where the ground is not flat, a foot that is partly its spot's and partly the swing's (leaving, or coming to its
+    // landing) is over what is under it as well: between a foot on its tread and a foot over the riser ahead is a foot
+    // in the riser. It is lifted where it is, the more the less it is planted: a foot goes up off a tread before it goes on.
+    if (m.over && foot.hold > 0 && foot.hold < 1) {
+      const joint = pelvis[side];
+      const [x, y] = footAt(limbs, hip, shin, drop, joint);
+      const span = limbs.thigh + limbs.shin;
+      const to = (h: number) =>
+        legTo(limbs, x - joint.ahead, h, span - h - inPlane(span, joint, span * Math.cos(joint.splay) - drop + joint.up - h));
+      const pitch = hip + shin + ankle(hip, shin);
+      const low = y + limbs.ankle * (1 - Math.cos(pitch)) + Math.min(HEEL * Math.sin(pitch), -TOES * Math.sin(pitch));
+      const floor = Math.max(0, m.over(side, x));
+      const over = (low - floor - CLEAR_BY) / CLEAR_OVER;
+      // (a foot coming to its landing is held over the ground until it is all but down; one leaving is let up gently)
+      const free = Math.min(1, (1 - foot.hold) / (foot.x > 0 ? 0.5 : 0.6));
+      const held =
+        low + (floor + CLEAR_BY + CLEAR_OVER * (over > 30 ? over : Math.log1p(Math.exp(over))) - low) * free * free * (3 - 2 * free);
+      if (held - low > 1e-6) {
+        const was = to(y);
+        const now = to(y + held - low);
+        hip += now.thigh - was.thigh;
+        shin = Math.max(0, shin + now.knee - was.knee);
+      }
+    }
     out[`UpperLeg.${side}`] = hip * g - 0.5 * air;
     out[`LowerLeg.${side}`] = shin * g + 0.9 * air;
-    // a foot is turned back toward level: all the way while it is planted, most of the way as it swings (toe down as it leaves)
-    const turned = out[`UpperLeg.${side}`] + out[`LowerLeg.${side}`];
-    // (the toes of a leg reaching for its landing come up late: a heel held low is a heel in the ground)
-    out[`Foot.${side}`] = -(0.6 + 0.4 * foot.hold * g) * turned + toe * (toe < 0 ? foot.hold ** 2 : foot.hold) * g;
+    out[`Foot.${side}`] = ankle(hip, shin);
   }
   // Each arm goes with the opposite leg. One that carries something hangs straighter and swings
   // a third as much, held a little out from the leg it would otherwise knock.
@@ -1027,6 +1072,35 @@ const place = new THREE.Vector3();
 const FOOT_TURN = 0.61;
 const TURNED_OUT = 0.17;
 
+/**
+ * A foot in the air over ground that is not flat (`Gait.over`): how steeply it rises to a riser ahead of it and comes
+ * down behind a nosing, metres up for a metre along; the tallest step that is one, metres; and how finely the ground
+ * along its way is asked for, metres (at fixed places along the way gone, so that what is under a place stays what it was).
+ */
+const STEEP = 3;
+/** How much of its swing a foot takes to come up to the height of a tread above it (from the start of it), and to come down to one below (to the end of it). */
+const PATH_UP = 0.75;
+const PATH_DOWN = 0.5;
+const STEP_MOST = 0.32;
+const GRAIN = 0.02;
+/**
+ * Where a foot lands on ground that has steps in it (`Gait.settleOn`): the ground is asked for every EDGE_GRAIN along
+ * the foot's line, a change of more than EDGE between two of those is an edge (a slope would have to stand at 67
+ * degrees), and the foot keeps RISER_CLEAR from one that stands over it and goes at most OVERHANG over one that falls
+ * away. A landing planned more than REPLAN from where the stride now has it is planned again. OWED_MOST is the most
+ * of the cycle's phase that is ever owed for that, cycles, and OWED_RATE how much of a stride's own advance is paid.
+ * All estimated.
+ */
+const EDGE_GRAIN = 0.015;
+const EDGE = 0.035;
+const RISER_CLEAR = 0.05;
+const OVERHANG = 0.05;
+const REPLAN = 0.3;
+const OWED_MOST = 0.3;
+const OWED_RATE = 0.6;
+/** How far apart the two feet's claims on the figure's height are when the lower has it all but outright, metres. */
+const CROSS = 0.04;
+
 /** Slower than this over the ground, m/s, the figure is standing: its feet are stepped home. And how near home is home, metres. */
 const STILL_PACE = 0.05;
 const HOME = 0.02;
@@ -1140,13 +1214,57 @@ export class Gait {
     high: number;
     t: number;
     takes: number;
+    /** The ground where it was lifted and where it will be put down (`footing`), once they have been asked for. */
+    from?: number;
+    aim?: number;
   } | null = null;
+  /**
+   * The ground, where it is not flat (`Terrain`: what the last `advance` was given, or null). Each foot has its own
+   * (`trod`, heights in the terrain's measure): `spot` is the ground under the place its leg is solved to; `from` the
+   * tread it last stood on and `aim` the one it is going to, and `rides` its claim on the figure's height: its tread
+   * while it is planted, and carried from the one to the other over its swing (`u`: how far through that it is). The
+   * figure's own ground (`base`) is the lower of the two claims, eased where they cross: going up, the pelvis rises
+   * over the leading foot while the other swings past and is carried level while it reaches for the next tread;
+   * going down it is let down on the standing leg to the tread the other is coming to. `to` is where the foot means
+   * to land, metres along the way gone (`gone`), chosen as it leaves so that it lands whole on a tread and not across
+   * a riser (`settleOn`); `owed` is the cycle's phase still to be made up for landings moved so, taken a little with
+   * every stride so that the steps come to the length the flight asks. `held` is how planted the stride had it last.
+   */
+  private terrain: Terrain | null = null;
+  private gone = 0;
+  private readonly trod = {
+    L: { spot: 0, from: 0, aim: 0, rides: 0, u: 0, to: null as number | null, held: 1 },
+    R: { spot: 0, from: 0, aim: 0, rides: 0, u: 0, to: null as number | null, held: 1 },
+  };
+  private base = 0;
+  private owed = 0;
+  private readonly profile = { L: new Map<number, number>(), R: new Map<number, number>() };
+  /** The ground's heights, as far as the figure is on its feet on it: not in the air, on a ladder, in a seat or getting up. */
+  private get footed(): number {
+    return this.terrain && !this.up ? (1 - this.air) * (1 - this.climb) * (1 - this.sat) * (1 - this.fall) : 0;
+  }
+  /** How far the ground a foot's leg is solved to is above the figure's own, metres. */
+  private above(side: 'L' | 'R'): number {
+    return (this.trod[side].spot - this.base) * this.footed;
+  }
+  /** How far the figure's own ground is above where the walker has it standing, metres: what its hips are lifted by (`apply`). */
+  get lift(): number {
+    return this.terrain ? (this.base - this.terrain.level) * this.footed : 0;
+  }
+  /**
+   * And the eyes': midway between the two feet's claims, which up or down an even flight is a straight slope, metres
+   * above where the walker has the figure standing. (The pelvis goes up a flight in pulls; a head does not.)
+   */
+  get carried(): number {
+    return this.terrain ? ((this.trod.L.rides + this.trod.R.rides) / 2 - this.terrain.level) * this.footed : 0;
+  }
 
   /** The moment as it stands: what `pose` and `view` are asked. */
   get moment(): Moment {
     return {
       limbs: this.limbs,
       feet: this.feet(),
+      over: this.footed ? this.over : undefined,
       phase: this.phase,
       speed: this.speed,
       air: this.air,
@@ -1162,17 +1280,26 @@ export class Gait {
   }
 
   /** Where the feet are now: the stride's, each planted spot kept where it was put, and the standing feet as far as they count. */
-  private feet(): Feet {
+  private feet(grounded = true): Feet {
     const cycle = stride(this.phase, this.speed, this.leg);
-    const own = this.own;
     for (const side of ['L', 'R'] as const) {
-      const foot = cycle[side];
+      this.footOf(cycle[side], side);
+      // (each on its own ground: the tread it stands on or is coming to, over the figure's)
+      if (grounded && cycle[side].hold > 0 && this.footed) cycle[side].y += this.above(side);
+    }
+    return cycle;
+  }
+
+  /** One foot of `feet`, on flat ground. */
+  private footOf(foot: Footing, side: 'L' | 'R'): void {
+    const own = this.own;
+    {
       if (foot.hold > 0) foot.x += this.slip[side];
       if (foot.hold > 0 && (this.veer[side].z || this.veer[side].yaw)) {
         foot.aside = this.veer[side].z;
         foot.turn = this.veer[side].yaw;
       }
-      if (!own) continue;
+      if (!own) return;
       const hold = own + (1 - own) * foot.hold;
       foot.x = (own * this.stood[side].x + (1 - own) * foot.hold * foot.x) / hold;
       if (this.stood[side].z || this.stood[side].yaw || foot.aside || foot.turn) {
@@ -1186,7 +1313,198 @@ export class Gait {
         foot.bent = { thigh: own * this.stood[side].thigh, knee: own * this.stood[side].knee };
       foot.hold = hold;
     }
-    return cycle;
+  }
+
+  /** `Moment.over`: what a foot in the air is over, above the figure's own ground. */
+  private readonly over = (side: 'L' | 'R', x: number): number => {
+    const t = this.terrain;
+    if (!t) return 0;
+    const foot = this.trod[side];
+    // The ground under the whole foot, and what is coming: a riser ahead of the toes is risen for before they reach
+    // it, and a nosing behind the heel is come down from after it, at STEEP; less and less of that as the foot comes
+    // to its landing, which is whole on its tread with nothing more to cross.
+    const steep = STEEP / Math.max(0.4, Math.min(1, (1 - foot.u) / 0.3));
+    const stand = this.limbs.stand ?? this.limbs.hip ?? 0.1 * this.leg;
+    const left = (side === 'L' ? 1 : -1) * (this.lined ?? stand);
+    const lo = x - HEEL - GRAIN;
+    const hi = x + TOES + GRAIN;
+    const reach = STEP_MOST / steep;
+    // (and the line it is carried along from the tread it left to the one it is going to: up first and then along
+    // going up, along first and then down going down, as a foot is taken over a nosing)
+    const rising = foot.aim >= foot.from;
+    const v = rising ? Math.min(1, foot.u / PATH_UP) : Math.max(0, (foot.u - (1 - PATH_DOWN)) / PATH_DOWN);
+    let most = foot.from + (foot.aim - foot.from) * v * v * (3 - 2 * v);
+    const seen = this.profile[side];
+    for (let i = Math.ceil((lo - reach + this.gone) / GRAIN); i * GRAIN - this.gone <= hi + reach; i++) {
+      const at = i * GRAIN - this.gone;
+      let h = seen.get(i);
+      if (h === undefined) seen.set(i, (h = t.at(at, left) ?? t.level));
+      most = Math.max(most, h - steep * Math.max(0, at - hi, lo - at));
+    }
+    return (most - this.base) * this.footed;
+  };
+
+  /**
+   * Where a foot coming down with its ankle `x` ahead is put instead, so that it lands whole on one tread: clear of
+   * a riser that stands over it (ahead of the toes going up, behind the heel going down) and no more than a little
+   * over an edge that falls away. `ground` is the ground's height along the foot's line. On a tread shorter than the
+   * foot it is put in the middle; on open ground it is put where it was going, and so it is where there is no ground
+   * within a step of `level` to put it on.
+   */
+  private settleOn(x: number, ground: (x: number) => number, level: number): { x: number; floor: number } {
+    // (a stride that would come down two treads on, or past the edge of a drop, comes down on the nearest ground there is: short of it first)
+    if (Math.abs(ground(x) - level) > STEP_MOST) {
+      let near: number | null = null;
+      for (let i = 1; near === null && i * EDGE_GRAIN <= REPLAN; i++)
+        for (const way of [-1, 1]) {
+          if (Math.abs(ground(x + way * i * EDGE_GRAIN) - level) > STEP_MOST) continue;
+          near = x + way * (i + 1) * EDGE_GRAIN;
+          break;
+        }
+      if (near === null) return { x, floor: level };
+      x = near;
+    }
+    const edge = (way: 1 | -1, far: number): { at: number; higher: boolean } | null => {
+      let last = ground(x);
+      for (let i = 1; i * EDGE_GRAIN <= far; i++) {
+        const h = ground(x + way * i * EDGE_GRAIN);
+        if (Math.abs(h - last) > EDGE) {
+          let a = x + way * (i - 1) * EDGE_GRAIN;
+          let b = x + way * i * EDGE_GRAIN;
+          for (let k = 0; k < 3; k++) {
+            const mid = (a + b) / 2;
+            if (Math.abs(ground(mid) - last) > EDGE) b = mid;
+            else a = mid;
+          }
+          return { at: (a + b) / 2, higher: h > last };
+        }
+        last = h;
+      }
+      return null;
+    };
+    const back = edge(-1, HEEL + 0.22);
+    const fore = edge(1, TOES + 0.22);
+    const lo = back ? back.at + HEEL + (back.higher ? RISER_CLEAR : -OVERHANG) : Number.NEGATIVE_INFINITY;
+    const hi = fore ? fore.at - TOES - (fore.higher ? RISER_CLEAR : -OVERHANG) : Number.POSITIVE_INFINITY;
+    const to = lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, x));
+    const floor = ground(to);
+    return Math.abs(floor - level) > STEP_MOST ? { x, floor: level } : { x: to, floor };
+  }
+
+  /**
+   * The ground under each foot, a frame on in which the figure went `distance` (see `terrain`): a planted foot's is
+   * asked for where it stands, every frame, so a floor that moves carries it; a foot that leaves the ground chooses
+   * where it will land, and one that starts to reach for its landing is given the spot.
+   */
+  private footing(distance: number, still: boolean, airborne: boolean): void {
+    this.profile.L.clear();
+    this.profile.R.clear();
+    const t = this.terrain;
+    if (!t) {
+      this.owed = this.base = 0;
+      for (const foot of [this.trod.L, this.trod.R]) {
+        foot.spot = foot.from = foot.aim = foot.rides = foot.u = 0;
+        foot.to = null;
+        foot.held = 1;
+      }
+      return;
+    }
+    // (off the ground there is none to ask: the feet's are faded out as they were, and asked for again on landing)
+    if (airborne || !this.footed) return;
+    const stand = this.limbs.stand ?? this.limbs.hip ?? 0.1 * this.leg;
+    const line = this.lined ?? stand;
+    const cycle = stride(this.phase, this.speed, this.leg);
+    const st = stance(this.speed);
+    const standing = still || this.own >= 1;
+    const since = (side: 'L' | 'R'): number => {
+      const from = this.phase - (side === 'L' ? 0.5 : 0);
+      return from - Math.round(from);
+    };
+    // a foot leaving the ground chooses its landing; one starting to reach for it is given the spot
+    if (!standing)
+      for (const side of ['L', 'R'] as const) {
+        const foot = this.trod[side];
+        const left = (side === 'L' ? 1 : -1) * line;
+        // (ground more than a step above or below the foot that stands is not ground to step on: a wall to keep the
+        // toes out of, a drop to keep the foot from; and a landing that finds none is made where the other foot stands)
+        const stands = this.trod[side === 'L' ? 'R' : 'L'].spot;
+        const ground = (x: number) => {
+          const h = t.at(x, left);
+          return h === null || h < stands - STEP_MOST ? stands - 1 : h > stands + STEP_MOST ? stands + 1 : h;
+        };
+        const h = cycle[side].hold;
+        const d = since(side);
+        const reach = span(this.speed, this.leg);
+        if (h < 1 && foot.held >= 1 && (d > 0 || h <= 0)) {
+          // (it lands as far ahead of the hips as the stride has it, when the figure has gone what is left of its swing)
+          const ahead = st * reach + (1 - st - (d > 0 ? d : d + 1)) * cycleLength(this.speed, this.leg);
+          const landing = this.settleOn(ahead, ground, stands);
+          foot.to = this.gone + landing.x;
+          foot.aim = landing.floor;
+        } else if (h > 0 && h < 1 && d < 0 && foot.held <= 0) {
+          const stride = cycle[side].x;
+          let want = foot.to === null ? stride : foot.to - this.gone;
+          if (Math.abs(want - stride) > REPLAN) want = stride;
+          const landing = this.settleOn(want, ground, stands);
+          this.slip[side] = landing.x - stride;
+          if (reach > 0.05) this.owed = Math.max(-OWED_MOST, Math.min(OWED_MOST, this.owed - this.slip[side] / reach));
+          foot.to = this.gone + landing.x;
+        }
+        foot.held = h;
+      }
+    const feet = this.feet(false);
+    // What a foot stands on is the highest of what is under its heel, its ankle and its toes (a foot across a
+    // sleeper rests on the sleeper, it is not in it), unless that is a step above the rest: then it is a wall.
+    const under = (x: number, l: number, was: number): number => {
+      const mid = t.at(x, l);
+      if (mid === null) return was;
+      let most = mid;
+      for (const o of [-HEEL, TOES]) {
+        const h = t.at(x + o, l);
+        if (h !== null && h > most && h - mid <= STEP_MOST) most = h;
+      }
+      return most;
+    };
+    for (const side of ['L', 'R'] as const) {
+      const foot = this.trod[side];
+      const at = feet[side];
+      const left = (side === 'L' ? 1 : -1) * line;
+      if (standing) {
+        const step = this.closing?.side === side ? this.closing : null;
+        if (step) {
+          // a foot stepped home is carried from the ground it left to the ground it is put on
+          step.from ??= foot.spot;
+          step.aim ??= under(step.to, left + (step.to && step.to === step.x ? step.z : 0), foot.spot);
+          const u = Math.min(1, step.t / step.takes);
+          foot.spot = step.from + (step.aim - step.from) * u * u * (3 - 2 * u);
+        } else if (this.stood[side].y <= 0.002) foot.spot = under(at.x, left + (at.aside ?? 0), foot.spot);
+        foot.from = foot.aim = foot.rides = foot.spot;
+        foot.to = null;
+        foot.held = 1;
+        foot.u = 0;
+        continue;
+      }
+      const h = cycle[side].hold;
+      const d = since(side);
+      if (h >= 1) {
+        foot.spot = under(at.x, left + (at.aside ?? 0), foot.spot);
+        foot.from = foot.aim = foot.rides = foot.spot;
+        foot.u = 0;
+        continue;
+      }
+      foot.u = Math.min(1, Math.max(0, ((d > 0 ? d : d + 1) - st) / Math.max(1e-6, 1 - 2 * st)));
+      if (d > 0 || h <= 0) foot.spot = foot.from;
+      else {
+        // reaching: the ground at the spot it is given; what it was aimed at comes to that, if it was not that already
+        foot.spot = under(at.x, left + (at.aside ?? 0), foot.spot);
+        foot.aim += (foot.spot - foot.aim) * (1 - Math.exp(-distance / 0.03));
+      }
+      foot.rides = foot.from + (foot.aim - foot.from) * foot.u;
+    }
+    // the figure's own ground: the lower of the two feet's, eased where they cross, and exactly theirs where they agree
+    const a = this.trod.L.rides;
+    const b = this.trod.R.rides;
+    this.base = (a + b - Math.sqrt((a - b) ** 2 + CROSS * CROSS) + CROSS) / 2;
   }
 
   /**
@@ -1233,6 +1551,8 @@ export class Gait {
           if (turn && this.stood[side].y <= 0.002) round(this.stood[side], home);
         }
         if (foot.hold <= 0) this.slip[side] = this.veer[side].z = this.veer[side].yaw = 0;
+        // (a foot reaching for a spot it was given keeps that spot too: `footing`)
+        else if (this.terrain && foot.hold < 1 && foot.x > 0 && !airborne) this.slip[side] -= distance + (foot.x - this.last[side]);
         else if (foot.hold >= 1 && !airborne) {
           this.slip[side] -= distance + (foot.x - this.last[side]);
           this.veer[side].z += (side === 'L' ? 1 : -1) * (was - line);
@@ -1273,6 +1593,10 @@ export class Gait {
       if (this.closing?.side === side) this.closing.y = Math.max(0, this.closing.y + risen);
     }
     if (!airborne) this.close(distance, dt);
+  }
+
+  /** Standing, after the feet have been moved (`tread`) and the ground under them asked for (`footing`). */
+  private follow(dt: number): void {
     // The legs come to where their feet put them, and do not jump there: a leg caught in mid-swing
     // is not yet its foot's, and a knee all but straight turns ten degrees for three millimetres of
     // the hips' height, which the stride's bob going out of a figure that stops gives it in a frame.
@@ -1374,7 +1698,7 @@ export class Gait {
     const drop = lowered(this.phase, this.speed, this.hard * give(this.since), this.limbs);
     const hip = carriage(this.phase, this.speed, this.limbs, 1 - this.air, drop)[side];
     const { ahead, joint } = turnedOver(this.limbs, hip, side === 'L' ? 1 : -1, foot.x, foot.z, foot.yaw);
-    return planted(this.limbs, ahead, foot.y, drop, joint, straightest(this.speed));
+    return planted(this.limbs, ahead, foot.y + this.above(side), drop, joint, straightest(this.speed));
   }
 
   /** The figure has stopped: a planted foot is taken where it is planted, and a swinging one where the pose has it, over the ground. */
@@ -1384,11 +1708,13 @@ export class Gait {
     const drop = lowered(m.phase, m.speed, m.crouch ?? 0, this.limbs);
     // (as the pose just taken had the pelvis: on the ground)
     const pelvis = carriage(m.phase, m.speed, this.limbs, 1, drop);
+    const flat = this.feet(false);
     for (const side of ['L', 'R'] as const) {
       const [x, y] = footAt(this.limbs, p[`UpperLeg.${side}`], p[`LowerLeg.${side}`], drop, pelvis[side]);
-      const foot = m.feet![side];
+      // (the foot as it is on flat ground: what its own ground is over the figure's is the ground's, and is added again)
+      const foot = flat[side];
       this.stood[side].x = x + (foot.x - x) * foot.hold;
-      this.stood[side].y = Math.max(0, y) * (1 - foot.hold) + foot.y * foot.hold;
+      this.stood[side].y = Math.max(0, y - this.above(side)) * (1 - foot.hold) + foot.y * foot.hold;
       // and pitched as it was, over what a foot planted there would be: that goes out as it comes down
       const lean = p[`UpperLeg.${side}`] + p[`LowerLeg.${side}`] + p[`Foot.${side}`];
       this.stood[side].z = (foot.aside ?? 0) * foot.hold;
@@ -1402,7 +1728,7 @@ export class Gait {
         this.stood[side].z,
         this.stood[side].yaw,
       );
-      const put = planted(this.limbs, over.ahead, this.stood[side].y, drop, over.joint, straightest(m.speed));
+      const put = planted(this.limbs, over.ahead, this.stood[side].y + this.above(side), drop, over.joint, straightest(m.speed));
       this.stood[side].tip = lean - put.pitch;
       // and the leg turned as it was, over what that foot makes it: a leg part of the way through its swing is not yet its foot's
       this.stood[side].thigh = p[`UpperLeg.${side}`] - put.thigh;
@@ -1511,7 +1837,17 @@ export class Gait {
    * it did while the figure turns over it (`tread`), and standing, the feet are then stepped round to where they
    * belong, one at a time (`close`). Nothing is slid, and nothing walks on the spot.
    */
-  advance(distance: number, speed: number, airborne: boolean, dt: number, climbing = false, dropped = 0, turn = 0): Stir {
+  advance(
+    distance: number,
+    speed: number,
+    airborne: boolean,
+    dt: number,
+    climbing = false,
+    dropped = 0,
+    turn = 0,
+    terrain: Terrain | null = null,
+  ): Stir {
+    this.terrain = terrain;
     const was = [
       this.phase,
       this.speed,
@@ -1546,9 +1882,18 @@ export class Gait {
     if (falling)
       this.phase = (this.phase + dt * 1.6) % 1; // the legs pedal on time: there is no ground to measure by
     else if (climbing) this.phase = (this.phase + distance / RUNGS) % 1;
-    else if (!airborne) this.phase = (this.phase + distance / cycleLength(this.speed, this.leg)) % 1;
+    else if (!airborne) {
+      // (and what is owed for landings moved on to their treads is made up a little with each stride: `footing`)
+      const stride = distance / cycleLength(this.speed, this.leg);
+      const paid = Math.sign(this.owed) * Math.min(Math.abs(this.owed), OWED_RATE * stride);
+      this.owed -= paid;
+      this.phase = (((this.phase + stride + paid) % 1) + 1) % 1;
+      this.gone += distance;
+    }
     if (this.speed === 0 && this.air === 0 && this.climb === 0 && this.fall === 0) this.phase = 0; // standing: the next step starts from the same foot
     this.tread(distance, still, airborne, dt, climbing || this.seated || this.sat || this.up || this.fall ? 0 : turn);
+    this.footing(distance, still, airborne);
+    if (still) this.follow(dt);
     // A foot lands as the phase passes a quarter (the left) and three quarters (the right): on the
     // ground, or on a rung. At a run it lands later than that, having been in the air (`stance`).
     this.footfalls.length = 0;
@@ -1611,6 +1956,12 @@ export class Gait {
       v.L.yaw,
       v.R.z,
       v.R.yaw,
+      this.base,
+      this.trod.L.spot,
+      this.trod.R.spot,
+      this.trod.L.rides,
+      this.trod.R.rides,
+      this.terrain?.level ?? 0,
     ];
   }
 
@@ -1705,7 +2056,8 @@ export class Gait {
       else if (toward >= 1) node.quaternion.copy(q);
       else node.quaternion.slerp(q, toward);
       if (joint !== 'Hips') return;
-      place.set(x + p.shift, y + p.rise + p.sag + p.settle, z);
+      // (and by what its own ground is over where it stands: the tread its lower foot is on, on a flight)
+      place.set(x + p.shift, y + p.rise + p.sag + p.settle + (this.up ? 0 : this.lift), z);
       if (lain?.hips) node.position.copy(lain.hips).lerp(place, keyed);
       else if (toward >= 1) node.position.copy(place);
       else node.position.lerp(place, toward);
