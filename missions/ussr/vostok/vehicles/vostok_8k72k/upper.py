@@ -59,6 +59,7 @@ E_BELL = [
 E_HEAD = [(122, E_EXIT + 1050), (150, E_EXIT + 1110), (150, E_EXIT + 1330), (110, E_EXIT + 1390), (0, E_EXIT + 1410)]
 FAIRING_WALL = 22.0
 OPENING_R = 575.0  # the round opening over hatch No. 1
+OGIVE = 14  # straight pieces in the nose's arc
 
 
 def build_interstage(X: Matrix, M: dict) -> None:
@@ -160,16 +161,19 @@ def build_block_e(X: Matrix, M: dict) -> None:
 
 
 def fairing_profile() -> list:
-    """(radius, station) up the fairing's outside: a cylinder, a cone, a rounded tip."""
+    """(radius, station) up the fairing's outside: a cylinder, then an ogive, which leaves the cylinder without a
+    corner and runs into a rounded tip. Points 1 to 1 + OGIVE are the ogive's."""
     foot, tip = BLOCK_E_TOP, LENGTH
     centre = tip - FAIRING_TIP_R
     shoulder = foot + FAIRING_CYL
-    # solve for the cone's half angle a: the line from (R, shoulder) touches the sphere about (0, centre)
-    a = 0.3
-    for _ in range(40):
-        a = math.atan2(FAIRING_R - FAIRING_TIP_R * math.cos(a), centre + FAIRING_TIP_R * math.sin(a) - shoulder)
-    pts = [(FAIRING_R, foot), (FAIRING_R, shoulder)]
-    pts += [(FAIRING_TIP_R * math.cos(t), centre + FAIRING_TIP_R * math.sin(t)) for t in (a + (math.pi / 2 - a) * k / 8 for k in range(9))]
+    rise = centre - shoulder
+    # the arc's centre is level with the shoulder, and its radius is the one that touches the tip's sphere from inside
+    rho = (FAIRING_R**2 + rise**2 - FAIRING_TIP_R**2) / (2 * (FAIRING_R - FAIRING_TIP_R))
+    end = math.atan2(rise, rho - FAIRING_R)  # where arc and sphere meet, as an angle at either's centre
+    pts = [(FAIRING_R, foot)]
+    pts += [(FAIRING_R - rho + rho * math.cos(t), shoulder + rho * math.sin(t)) for t in (end * k / OGIVE for k in range(OGIVE + 1))]
+    pts += [(FAIRING_TIP_R * math.cos(t), centre + FAIRING_TIP_R * math.sin(t)) for t in (end + (math.pi / 2 - end) * k / 6 for k in range(1, 7))]
+    pts[-1] = (0.0, tip)
     return pts
 
 
@@ -200,16 +204,17 @@ def build_fairing(X: Matrix, M: dict, hatch_az: float, hatch_h: float) -> None:
                 list(range(n + 1)),
                 flip=sign > 0,
             )
-            (r0, z0), (r1, z1), (r2, z2) = prof_out[0], prof_out[1], prof_out[2]
+            (r0, z0), z1 = prof_out[0], prof_out[1][1]
             aside = Matrix.Translation(V(-s * 45 * sign, c * 45 * sign, 0))  # each half's flange lies on its own side of the cut
             fit.box(
                 (70, z1 - z0 - 80, 46), aside @ frame(V((r0 + 11) * c, (r0 + 11) * s, (z0 + z1) / 2), (c, s, 0))
             )  # (sunk 12 mm: short of the inner wall)
-            lean = math.atan2(r1 - r2, z2 - z1)
-            for k in (0.25, 0.75):
-                r, z = r1 + (r2 - r1) * k + 11 * math.cos(lean), z1 + (z2 - z1) * k + 11 * math.sin(lean)
+            for k in (2, 5, 8, 11):  # and up the nose in short lengths, each along a chord of the arc
+                (ra, za), (rb, zb) = prof_out[k], prof_out[k + 2]
+                lean = math.atan2(ra - rb, zb - za)
+                r, z = (ra + rb) / 2 + 11 * math.cos(lean), (za + zb) / 2 + 11 * math.sin(lean)
                 fit.box(
-                    (70, (z2 - z1) / math.cos(lean) * 0.42, 46),
+                    (70, math.hypot(rb - ra, zb - za) * 0.8, 46),
                     aside @ frame(V(r * c, r * s, z), (math.cos(lean) * c, math.cos(lean) * s, math.sin(lean))),
                 )
         for z in (foot + 60, foot + FAIRING_CYL - 40):  # frames at the foot and the shoulder

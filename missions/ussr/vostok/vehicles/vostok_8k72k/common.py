@@ -54,7 +54,7 @@ BLOCK_E_TOP = TRUSS_TOP + 2980.0  # 31,730: the spacecraft's frame rests here
 BLOCK_E_R = 1290.0  # 2.58 m
 FAIRING_R = 1350.0  # 2.7 m
 FAIRING_CYL = 3090.0  # the cylinder, from the fairing's foot
-FAIRING_TIP_R = 260.0  # the rounded tip
+FAIRING_TIP_R = 300.0  # the rounded tip; between it and the cylinder the nose is an ogive
 SPACECRAFT_SEAT = 1200.0  # the station of the 3KA that rests on Block E: the aft face of its frame
 BASE_Z = SPACECRAFT_SEAT - BLOCK_E_TOP  # the nozzle exits, in the spacecraft's stations: -30,530
 

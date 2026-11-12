@@ -73,7 +73,7 @@ launch vehicle".
 | Block E diameter | 2,580 mm | documented | M. B has 2.47; A 2.56 |
 | Block E's tanks | two rings, one above the other, joined by a cylinder, the engine in the hole | documented (the arrangement); estimated (their sizes, and which holds what) | M: «с тороидальными баками, соединенными между собой цилиндрической вставкой. Двигатель РО-7 размещался внутри "баранки"». Sizes off L |
 | Fairing | 6,630 mm long, 2,700 mm across | documented | M: «диаметром 2,7 и длиной 6,6 м»; 9.61 less 2.98 is 6.63. B has 6.74 m by 2.58; Z has 2.7 across and 0.8 t |
-| Fairing's nose | a cone of 20° half angle with a rounded tip, over a cylinder 3,090 mm tall | estimated | N scales to a cone 3.6 m long. K's nose is a blunter, curved one: K's fairing may not be the 1961 one |
+| Fairing's nose | an ogive 3,540 mm long over a cylinder 3,090 mm tall: an arc of 5.82 m radius that leaves the cylinder without a corner and ends in a rounded tip of 300 mm radius | estimated | the cylinder's height is N's (a nose 3.6 m long); the curve is K's and V's, whose noses are ogives with a blunt cap, where N draws a straight cone. The arc's radius is derived from the other three. Whether K's fairing is the 1961 one is not known |
 | Fairing's opening | round, 1,150 mm across, over hatch No. 1 | documented (that it is there, and why); estimated (size) | M; Z: for boarding and for ejection on the pad. Size off N and K |
 | Spacecraft's place | its frame (station 1,200 of the 3KA) on the adapter's top | documented (what rests on what); derived (the height) | M: «На ступень опирался шпангоут приборного отсека». N puts the opening's centre 34.07 m up, which is the same to 0.04 m |
 | Main nozzle exit | 720 mm | estimated | V scales to about 740. No published figure was read |
@@ -222,8 +222,10 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   lengths, the three diameters and the lattice's length are the only documented dimensions in it.
 - **The core's shape below the boosters' tips has not been seen.** It is drawn as a straight taper
   to a short cylinder, parallel to the boosters.
-- **The fairing is the outline in NASA's drawing**, a plain cone on a cylinder. The Kaluga article
-  has a curved nose. Its split line is put square to the hatch opening, and its fittings are ours.
+- **The fairing's lengths are from NASA's drawing and its curve from the museum vehicles**: an
+  ogive on a cylinder, as at Kaluga and VDNKh, where the drawing has a plain cone. No dimensioned
+  drawing of it has been read. Its split line is put square to the hatch opening, and its
+  fittings are ours.
 - **Block E is the Luna stage's layout with a longer adapter.** Which ring holds the oxygen is not
   known to us: the upper is drawn as the oxygen's, being the larger. Its steering nozzles are four
   in pairs at the foot, as in the drawings; M describes two fixed pairs for pitch and yaw and four
@@ -262,9 +264,10 @@ Recorded as the model was compared, view by view, with K, V, F and N.
 - **Core against N.** N draws the core 3.09 m across at the boosters' tips; the model has the
   documented 2.95 m. N's lattice is 1.1 m and sits lower; the model has the documented 1.26 m
   ending 28.75 m up.
-- **Fairing against K.** K's nose is a curved ogive with a blunt cap and its opening sits higher
-  on the cylinder; the model's is N's straight cone. Film stills (F) of 1961 are too coarse to say
-  which the flown one was.
+- **Fairing against K.** K's nose is a curved ogive with a blunt cap, and the model's now is too,
+  where N draws a straight cone. K's opening sits higher, reaching the foot of the nose; the
+  model's is where the spacecraft's hatch puts it, wholly on the cylinder. Film stills (F) of
+  1961 are too coarse to say which the flown one was.
 - **The base against V.** V's core carries its four steering chambers in square housings at the
   corners, about 1,330 mm from the axis; the model's housings are of that kind, 60 mm nearer in,
   and their form above the rim, which no photograph read shows, is ours. V's boosters carry their

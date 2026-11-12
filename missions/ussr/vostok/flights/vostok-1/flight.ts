@@ -316,8 +316,8 @@ const launcherParts: Part[] = [
       'It covers the ship through the thick air and is dropped in two halves about two and a half minutes up: Gagarin ' +
       'reported it gone at second 150 and saw the Earth in his porthole. The round opening is over hatch No. 1. He went aboard ' +
       'through it, and had the rocket failed on the pad or low in the climb his seat would have been fired out through ' +
-      'it: the ejection seat was the launch escape system. Its outline here is from a NASA drawing; no dimensioned drawing ' +
-      'of it has been read, and the vehicle kept at Kaluga has a rounder nose.',
+      'it: the ejection seat was the launch escape system. Its lengths here are from a NASA drawing and the curve of its ' +
+      'nose from the vehicles kept at Kaluga and in Moscow; no dimensioned drawing of it has been read.',
     facts: [
       ['Length', '6.6 m'],
       ['Diameter', '2.7 m'],
