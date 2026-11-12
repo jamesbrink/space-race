@@ -778,7 +778,9 @@ const OVER = /* glsl */ `
     // more of the noise under the cut than over it, would add to the cover)
     // (the edge is the pixel's own share of cloud: across a pixel and a half of the field the noise climbs by about
     // 0.36 a cell times that, so the outline is coverage, soft over that breadth, and never a threshold's stair)
-    float wd = ${(FAR_SOFT / 2).toFixed(4)} + 0.6 * fpAcross / uCumulus.x;
+    // (a cell's side is two or three times as steep as the noise's, 0.9 to 1.6 a cell against 0.36: so as cells the
+    // edge is taken that much broader, or it was a third of a pixel and flickered as the eye climbed)
+    float wd = ${(FAR_SOFT / 2).toFixed(4)} + 0.6 * fpAcross / uCumulus.x * (1.0 + 1.5 * (under ? 0.0 : cellsShare(fpAcross)));
     // seen aslant a field of heaps hides the gaps between them: each covers its own breadth and its height's shadow
     float overHere = -1.0;   // the field over its cut here, where the slices are drawn
     float aslant = min(sqrt(max(1.0 - cosv * cosv, 0.0)) / cosv, 12.0);
