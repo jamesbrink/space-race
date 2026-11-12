@@ -32,7 +32,7 @@ the model is too.
 | Shingle layout | 24 around, three rows, 8/6/4 beads | estimated | photographs; the real layout is irregular |
 | Shingle gauges | cone: René 41, 0.016 in. Cylinder: beryllium, 0.22 in | documented | Hammack and Heberlig; CR-649 |
 | Corrugation height | 0.14 in | estimated | |
-| Portholes | two, 10 in | documented | *This New Ocean*, p. 366; positions estimated |
+| Portholes | two, 10 in | documented | *This New Ocean*, p. 367 ("the two 10-inch side ports"); it does not say whether that is the glass or the frame, and the model's bezel is 10 in with 9.2 in of glass clear. Where they are is estimated: see Cabin |
 | Hatch | 45° of arc, stations 20 to 44 | estimated | sized to three shingles |
 | Pressure vessel | two skins of 0.010 in titanium | documented | Hammack and Heberlig |
 | Heat shield | beryllium heat sink, about 1 in | documented | Hammack and Heberlig ("approximately 1-inch-thick") |
@@ -66,6 +66,56 @@ section 5). 52,000 is the nominal axial figure.
 
 It did carry a landing bag, which worked.
 
+## Cabin
+
+Built by [vehicles/mercury_cabin.py](../../vehicles/mercury_cabin.py), which the flight's `model/vehicle.py` calls with
+No. 7's fit. In the cabin the pilot's head is toward -Y in the script (the viewer's +Z), his feet toward +Y, his right
+hand and the hatch toward +X, and he faces the nose.
+
+Three sources are of capsule 7 itself and are what the panel is built from: the Postlaunch Report's Figure 3.1-2 (the
+panel), 3.1-1 (what differed from later capsules) and 10.1-1 (every switch as found after the flight); Figure 7 of
+*Results of the First U.S. Manned Suborbital Space Flight*; and the flown capsule as it is kept (National Air and
+Space Museum, photographs NASM2021-00147 and -00153). The familiarization manual (SEDR 104, 1962) is the orbital
+capsule's and is used only where it says so below. **No drawing read is dimensioned inside the cabin**, so one length
+is documented (the periscope's 8 in screen) and the rest follow from it or are estimated.
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| Periscope screen | 8 in across | documented | Hammack and Heberlig, p. 5: "an 8-inch circular display of the earth" |
+| Main panel width | 27 in | derived | the screen's glass is 0.28 to 0.31 of the panel's width in Figure 3.1-2, which makes the panel 26 to 28.6 in |
+| Where each instrument, lamp and switch is on the panel | as Figure 3.1-2 | derived | measured off the figure in its own pixels and scaled by that width (`FIG` in the script). The figure is a flattened layout, not a dimensioned drawing |
+| Instrument sizes | accelerometer, descent, and the small round gauges 2.3 in; altimeter 3.5 in; attitude indicator 7.8 by 4.5 in; clock 5.8 by 6.2 in | derived | the same figure and scale |
+| What the panel carried | no Earth-path indicator; one O2 emergency flow light, not the three lights the figure draws; a cabin humidity gauge | documented | Figure 3.1-2 draws no Earth-path indicator and Figure 10.1-1 lists none; 10.1-1 lists the one light and the humidity gauge, and the flown capsule has the one light. Its place (second row, left) is from Results, Figure 7 |
+| Faces: scales, numerals, legends | as the flown capsule reads today | estimated | NASM2021-00147. Altimeter 0 to 100 thousand ft with MAIN at 10 and SNORKEL at 20; descent 0 to 140 ft/s; accelerometer -9 to +12 g; attitude dials as three pointers. The humidity gauge is gone from the artifact: its face is ours |
+| Rate needles' full travel | 6 degrees a second | estimated | nothing read gives the indicator's range |
+| Sequence lamps, top to bottom, and what overrides each | TOWER JETT (ring), CAPSULE SEP (ring), START RETRO SEQ (button), IN RETRO ATT (switch), RETRO FIRE, JETT RETRO, .05 G SWITCH, DROGUE (buttons), MAIN DEPLOY, RESERVE DEPLOY (rings) | documented | Figure 3.1-2. Green when done, red for a failure (Results, p. 23): the model lights green only |
+| Panel station, and how far from the eyes | face at station 33 in; the screen 31.6 in from the model pilot's eyes | estimated | fitted between the model pilot's knees (30.6 in) and the cone, which is what cuts the panel's top corners. "Two feet in front of him" (*This New Ocean*, p. 355) is all that is in print; the model's pilot lies flatter than the real one, so his eyes are further from it |
+| Left console's cant | telelight strip 34 degrees toward the pilot, console 62, fuse panel 86 | estimated | NASM2021-00147 |
+| Fuse panel | 23 switch-fuses in five rows | documented (which), estimated (where) | the list and order are Figure 10.1-1's; the rows' places are from NASM2021-00147 |
+| Right console | emergency oxygen lever, suit and cabin temperature selectors | documented (what), estimated (where and how big) | Figure 3.1-2; "below the capsule entrance hatch" is SEDR 104, p. 1-17 |
+| Periscope objective | leaves the cone under the pilot's feet at station 13 | estimated | the flown capsule, NASM2021-00160 and -00165. Until November 2026 the model had it on the pilot's left |
+| Periscope field | 172 degrees at low power; 43.6 at high | documented; derived | NASA SP-45, p. 282 (the orbital capsule's); 80 n mi of ground from 100 n mi up (Hammack and Heberlig, p. 5) is 2 atan(40/100) |
+| Periscope axis | toward the Earth with the small end 14.5 degrees below the horizon | documented, for the orbital capsule | SEDR 104 Figure 12-3; SP-45, p. 282 ("-14 degrees"). Not checked for No. 7, which held 34 degrees for retrofire |
+| Which way up the periscope's picture is | the small end at the top | estimated | nothing read says |
+| Portholes' places | lower: 30 degrees round from the hatch's middle toward the feet, station 13. Upper: 125 degrees round the other way, station 40 | estimated | Figure 3.1-1 ("upper window", "lower window", capsules 5 and 7; a perspective, not dimensioned), NASM2021-00147 and -00160; "the lower right-hand window" and "the left window" in the reports |
+| Frames inside the wall | six, at stations 7, 24.5, 29.5, 34.5, 48.5, 53.5 (one is left out where it would cross a port) | estimated | the wall is "lined with channeled frames" (SEDR 104, 2-3); how many and where is not in anything read |
+| Rivet lines | 24, one down each stringer | estimated | the cone's skin is "reinforced with longitudinal hat stringers" outside (SEDR 104, 2-3) and the Postlaunch Report (section 10) names them by number into the twenties; 24, and which way round the first lies, are the model's (it has 24 shingles round) |
+| Couch | a pan under head, back and seat, rests behind the thighs and under the calves and heels | estimated | laid under the model's own seated figure. Fibreglass shell, crushable honeycomb, a liner, moulded to the pilot: SEDR 104, 1-6 |
+| Hand controller and abort handle | under the right and left hands | documented (which hand, what each does), estimated (place, size) | Results, p. 22: three axes in the right hand; "twisting of the left controller will initiate the abort sequence" |
+| Cameras | one beside the pilot's head on his left looking at the panel; one at the lower right window; a lens in the panel beside the periscope | documented (where), estimated (size) | Results, p. 24 |
+| Cabin lights | two fittings above and either side of the pilot's head | estimated | No. 7 had one CABIN LITES switch and flew with them "on full white light" (Postlaunch Report, p. 76); the arrangement is the orbital capsule's (SEDR 104, 10-19) |
+| Chest parachute, survival kit, map case | by the right shoulder; left of the couch; hanging under the periscope's display | estimated | NASM2021-00153 (the olive pack); SEDR 104 Figure 1-6 and 12-27 (the orbital capsule) |
+| Colours | wall, panels and consoles light grey; instrument faces black; couch grey with a cream liner; chest parachute olive | estimated | NASM2021-00147 and -00153, and NASA S61-03257. No document read states a colour |
+| Head's turn from the seat | 100 degrees to either side, 54 up, 66 down | estimated | a head in a helmet fixed to the suit, and the eyes' own turn |
+
+On board (`flight.ts`: `vehicle.cabin`) the needles read the flight at the clock's instant, flown by hand or from the
+record: height, rate of descent, load, the three attitude angles and their rates, the clock and the seconds counter,
+the control fuel left. **Not simulated, and saying so when pointed at:** cabin pressure, air temperature, humidity,
+coolant, oxygen, volts and amps stand where their faces were drawn; "in retro attitude", "reserve deploy" and the
+warning lamps stay dark. The attitude angles are read off the model as the scene has it, by a convention that is the
+viewer's (`src/viewer/gauges.ts`): pitch is the small end's height above the horizon, yaw its heading from trailing,
+and roll is from how the capsule lay as it left the pad.
+
 ## Parts in the model
 
 Top-level nodes in the GLB, bottom to top. These names are the `node` fields in `flight.ts`.
@@ -74,9 +124,9 @@ Top-level nodes in the GLB, bottom to top. These names are the `node` fields in 
 | --- | --- |
 | `Retropack` | housing, three retrograde motors, three posigrade motors, three straps and fittings |
 | `HeatShield` | beryllium heat sink, edge fasteners |
-| `CrewCabin` | titanium pressure vessel with hatch opening, aft bulkhead stiffeners, couch, instrument panel; and for the cutaway the pilot, hand controller and abort handle, equipment boxes, two oxygen bottles, the folded landing bag |
+| `CrewCabin` | titanium pressure vessel with hatch opening, aft bulkhead stiffeners; and at full detail everything inside it: the painted lining, frames and port frames, the couch and the pilot, the main panel with its instruments (each needle a node of its own, `Gauge_...`), the left console in three parts and the right console, lamps (`Tele_...`) and controls (`Ctl_...`), the periscope with its screen (`Periscope_Screen`), cameras, stowage, two cabin lights, two oxygen bottles, the folded landing bag, and `Seat_Pilot` at his eyes |
 | `Afterbody` | René 41 shingles and fasteners, structure, attach ring, portholes, periscope, umbilical, roll thrusters, lettering, flags |
-| `Hatch` | three shingles, latch housings, external release handle, inner and outer skins |
+| `Hatch` | three shingles, latch housings, external release handle, inner and outer skins; its painted inner face and internal release handle |
 | `RecoveryCompartment` | beryllium shingles, pitch and yaw thrusters, parachute canisters; the packed main and reserve parachutes |
 | `AntennaCanister` | housing, dielectric window, horizon scanners, drogue mortar, destabilising flap; the bicone antenna inside |
 | `EscapeTower` | clamp ring, pylon, escape motor and its propellant grain, three canted nozzles, jettison motor nozzle, spike |
@@ -91,13 +141,27 @@ The same GLB also holds the launch vehicle's five nodes: see
   the ports, hatch and periscope.
 - **The hatch is the wrong shape** (it follows shingle edges), and its latches are placeholders.
 - **The landing bag** is a flat ring standing in for the folded bag; it does not deploy.
-- **The cabin's contents are representative**: a seated figure of Shepard's size, and equipment of
-  the right kinds in roughly the right places. It is not a survey of No. 7's installation.
+- **The pilot lies flatter than he did.** The seated figure's back is on the bulkhead and his eyes are 21 in from the
+  panel's top and 32 from the periscope; "two feet" is the figure in print. Everything in the cabin is placed round
+  that figure, so the panel is seen more from above its top edge than it was.
+- **The cabin is what the pilot sees, not a survey of the installation.** Behind the panel there are instrument cases
+  and no wiring; under the couch, boxes of the right kind for the environmental system. No harness, toe caps or knee
+  straps, no window shutters or filters and no "window pole", no flashlight, knife, food or waste containers, no
+  tape recorder, batteries or inverters.
+- **Switches are set one way and do not move.** Only the sequence overrides, the abort handle and the hand controller
+  are worked; the fuel handles, the snorkel pull, the decompression and repressurisation handles are there to be seen.
+- **The periscope does not retract**, has no filters, map or Sun and Moon index that turns, and its reticle is a few
+  lines of the real one's. What it shows is the scene's geometry and sky, without the clouds' volume.
+- **The hatch's latch mechanism is not modelled**: the inner face is plain with one release handle. No drawing of it
+  has been read, and the flown capsule's hatch was lost at recovery.
+- **The portholes are single panes.** No. 7's were multi-pane and heat resistant (Results, p. 19); their make-up is
+  not in anything read. From the couch the upper one is seen nearly edge on.
+- **Cabin light is two lights hung in the middle of the cabin**, not at the fittings, falling off with distance and not
+  its square, so that the wall beside a fitting does not burn. What comes in at the windows is the scene's own Sun and
+  shadow; the sky's light is cut to a tenth indoors by rule, not by tracing it through the glass.
 - **The retropack's straps** run from its sides. They should meet under its centre at one
   explosive bolt. The motors are not canted toward the centre of mass as the real ones are.
 - **The jettison motor has one nozzle** in the model; it had three.
-- **The couch, panel and gauges are placeholders.** No periscope optics, no wiring, no window
-  shades, no survival kit.
 - **The tower's bracing** (one diagonal per bay) is a simplification.
 - **Lettering is Arial Bold**, not the stencil McDonnell used; "FREEDOM 7" was hand-painted.
 - **The tower leaves on both its rockets, simply.** Hammack and Heberlig (p. 15): at booster cutoff "the
@@ -118,7 +182,7 @@ The same GLB also holds the launch vehicle's five nodes: see
   and moments of inertia; they have not been read. The simulator flies on estimates of them
   (`trajectory.body.capsule` in `flight.ts`, labelled `estimated`): replace them from the report.
 - The parachutes are not in the model: the viewer draws them in flight from `flies.chutes` in `flight.ts`
-  (gores, lines and colours estimated). The recovery aids and the periscope's retracted state are not modelled.
+  (gores, lines and colours estimated). The recovery aids are not modelled.
 - The attitude jets' nozzles are not placed from a drawing: the simulator's chambers stand where
   `flight.ts` (`RCS_THRUSTERS`) puts them by judgement, and the viewer draws their jets there.
 

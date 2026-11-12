@@ -95,6 +95,8 @@ src/
   flown.ts                            the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
   sim/verdict.ts                      how a flight flown by hand ended, said plainly, and whether it was survivable by the flight's stated limits
   cockpit.ts  cockpit.css             flying the flight by hand: the live simulator stepped by the clock, the keys, the instruments
+  viewer/cabin.ts                     a model's inside as somewhere to fly from: its needles and lamps read the flight, its controls work, its periscope shows outside
+  viewer/gauges.ts                    what an instrument reads and where that puts its needle: scales, counter wheels, attitude from axes (pure, tested)
   navball.ts  navball.css             the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
   sim/predict.ts                      looking ahead from a state: the path if nothing more is done, its apogee, its impact or its orbit (pure, in slices)
   viewer/path.ts                      the predicted path, drawn: a ribbon of constant width over the Earth, with its apogee and its end labelled

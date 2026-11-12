@@ -7,7 +7,7 @@ Postlaunch Report's Figure 3.1-2, two portholes, a periscope, no Earth-path indi
 capsule gives its own fit; nothing here is the orbital capsule's.
 
 Dimensions are inches. The panel's layout is measured off the report's figure in the figure's own
-pixels (FIG, below) and scaled once; mercury-cabin.md says what each number rests on. Faces and
+pixels (FIG, below) and scaled once; the flight's spacecraft.md ("Cabin") says what each number rests on. Faces and
 lettering are drawn here, into three images, by the same script that builds the metal.
 
 A panel is laid out in its own frame: u to the pilot's right, v toward his head, w toward him.
@@ -808,8 +808,9 @@ def lining(c: Cabin, hatch, portholes, ceiling: float) -> None:
                 0.09 * IN,
                 0.04 * IN,
             )
-    # The skin is riveted to the 24 stringers outside it (the Postlaunch Report names stringers 1 to 24): a line of
-    # rivet heads down each, as the flown capsule's wall shows. Which way round the first one lies is not in anything read.
+    # The skin is riveted to the hat stringers outside it (SEDR 104, 2-3): a line of rivet heads down each, as the
+    # flown capsule's wall shows. The Postlaunch Report names stringers by number into the twenties; that there are
+    # 24, and which way round the first lies, are the model's.
     for k in range(24):
         t = TAU * (k + 0.5) / 24
         in_hatch = abs((t - (t0 + t1) / 2 + math.pi) % TAU - math.pi) < (t1 - t0) / 2 + 0.03

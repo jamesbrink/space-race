@@ -121,15 +121,23 @@ const vehicleParts: Part[] = [
     group: 'Spacecraft',
     inside: true,
     name: 'Crew cabin',
-    summary: 'Where the pilot lies: couch, controls, instruments.',
+    summary: 'Where the pilot lies: couch, panel, periscope, and no window ahead.',
     detail:
       'A cone of two thin titanium skins holding pure oxygen at 5.1 psi. The pilot lies on a fibreglass couch ' +
       'moulded to his body, back to the heat shield, so that launch and entry loads both push him into it. ' +
+      'In front of him is No. 7’s own panel: three attitude needles where a later craft has a ball, a clock that ' +
+      'counts seconds from launch, a column of sequence lights each with a ring or a button to do the thing by hand, ' +
+      'and in the middle the periscope’s 8-inch screen, his main view outside. Two portholes, high at his left and ' +
+      'low at his right, are all the windows there are. Fly the flight and sit in it (C, on board): the needles read ' +
+      'the flight, the rings work, and a click on the periscope or a porthole looks out. ' +
       'Behind the heat shield a fabric landing bag drops four feet before splashdown to cushion the impact.',
     facts: [
       ['Structure', 'two skins of 0.010 in titanium'],
       ['Atmosphere', 'pure oxygen, 5.1 psi nominal'],
       ['Couch', 'fibreglass, moulded to the pilot'],
+      ['Panel', 'as the Postlaunch Report’s Figure 3.1-2; 27 in wide (derived)'],
+      ['Periscope', '8 in screen; 172° field at low power'],
+      ['Windows', 'two 10 in portholes'],
     ],
     explode: [0, 8.9, 0],
     order: 4,

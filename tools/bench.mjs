@@ -11,8 +11,8 @@
 // reflections go by the time since the page opened), so a picture proves nothing across builds. What proves a change
 // leaves the picture alone is a switch thrown in one page with nothing else touched: `--toggle "<script>"`
 // [`--toggle-off "<script>"`] takes each view with the switch off, on, and off again, and counts the pixels that differ.
-// With a switch the frames are timed both ways too, in blocks turn about within each scenario: the closest comparison
-// there is, since both are the same page, the same view and the same minute.
+// With a switch every scenario is also set up and timed both ways in the one page, turn about: the same instants of the
+// same view in the same minute, which is the closest comparison there is.
 //
 // Other work on the machine moves every figure by tens of per cent from one minute to the next, so two runs made at
 // different times say little. To compare two builds, or one build with a switch thrown (`--b-query plain`), give
@@ -674,112 +674,105 @@ function inPage(DT) {
       }
     },
     /** One scenario, once: `frames` timed frames, then one with the shadow map drawn again, then a few with each pass timed. */
-    async run(name, frames, modes) {
+    /**
+     * One scenario, once: `frames` timed frames, then some with the shadow map drawn again, some with each pass timed,
+     * and a moment of the page's own loop. With a switch to throw (`modes`: off, on) it is set up and measured once
+     * each way, so both are the same instants of the same view; `backwards` takes the second way first.
+     */
+    async run(name, frames, modes, backwards) {
       const s = scenarios[name];
-      if (!(s.keep && kept)) await reset();
-      kept = Boolean(s.keep);
-      const began = now();
-      await s.setup();
-      const setupMs = now() - began;
-      // With a switch to throw (`modes`: off, on) the frames are taken in blocks, one way and then the other and
-      // back again, so that whatever else the machine is doing falls on both alike.
-      const list = modes?.length ? modes : [{ name: '', js: '' }];
-      const rounds = list.length > 1 ? 4 : 1;
-      const [shadowN, passN, loopN] = rounds > 1 ? [4, 3, 24] : [6, 8, 40];
-      const acc = list.map(() => ({
-        times: [],
-        drew: 0,
-        plain: [],
-        shadowed: [],
-        sums: {},
-        gaps: [],
-        calls: 0,
-        triangles: 0,
-        plainCalls: 0,
-        shadowCalls: 0,
-      }));
-      let k = 0;
-      const heap = performance.memory?.usedJSHeapSize ?? 0;
-      for (let round = 0; round < rounds; round++) {
-        const turnAbout = list.map((_, j) => j);
-        if (round % 2) turnAbout.reverse();
-        for (const j of turnAbout) {
-          const a = acc[j];
-          if (list[j].js) new Function('sr', list[j].js)(sr);
-          for (let i = 0; i < 12; i++) {
-            s.each?.(k++);
-            frame(s.force);
-            await turn();
-          }
-          for (let i = 0; i < frames / rounds; i++) {
-            s.each?.(k++);
-            const f = frame(s.force);
-            a.times.push(f.ms);
-            if (f.drew) a.drew++;
-            await turn();
-          }
-          a.calls = r.info.render.calls;
-          a.triangles = r.info.render.triangles;
-          // a frame in which the shadow map is drawn again, against one in which it is not
-          for (let i = 0; i < shadowN; i++) {
-            s.each?.(k++);
-            if (i % 2) r.shadowMap.needsUpdate = true;
-            const f = frame(true);
-            (i % 2 ? a.shadowed : a.plain).push(f.ms);
-            if (i % 2) a.shadowCalls = r.info.render.calls;
-            else a.plainCalls = r.info.render.calls;
-            await turn();
-          }
-          // where the time goes, pass by pass
-          for (let i = 0; i < passN; i++) {
-            s.each?.(k++);
-            timing = {};
-            frame(true);
-            for (const key in timing) a.sums[key] = (a.sums[key] ?? 0) + timing[key] / (passN * rounds);
-            timing = null;
-            await turn();
-          }
-          // and the page's own loop, for a moment: the interval between its frames as the browser runs them
-          loose();
-          await new Promise((done) => {
-            let last = 0;
-            let n = 0;
-            const each = (t) => {
-              s.each?.(k++);
-              if (s.force) st.dirty = true;
-              if (last && n > 8) a.gaps.push(t - last);
-              last = t;
-              if (++n < loopN) requestAnimationFrame(each);
-              else done();
-            };
-            requestAnimationFrame(each);
-          });
-          own();
+      const list = modes?.length ? [...modes] : [{ name: '', js: '' }];
+      if (backwards) list.reverse();
+      const out = [];
+      let setupMs = 0;
+      for (const mode of list) {
+        if (!(s.keep && kept)) await reset();
+        kept = Boolean(s.keep);
+        if (mode.js) new Function('sr', mode.js)(sr);
+        const began = now();
+        await s.setup();
+        setupMs += now() - began;
+        let k = 0;
+        for (let i = 0; i < 12; i++) {
+          s.each?.(k++);
+          frame(s.force);
+          await turn();
         }
-      }
-      const grew = (performance.memory?.usedJSHeapSize ?? 0) - heap;
-      s.done?.();
-      const mean = (x) => x.reduce((p, q) => p + q, 0) / x.length;
-      return {
-        setupMs,
-        modes: acc.map((a, j) => ({
-          mode: list[j].name,
-          times: a.times,
-          drew: a.drew,
-          calls: a.calls,
-          triangles: a.triangles,
-          shadowMs: mean(a.shadowed),
-          plainMs: mean(a.plain),
-          shadowCalls: Math.max(0, a.shadowCalls - a.plainCalls),
+        const times = [];
+        let drew = 0;
+        const heap = performance.memory?.usedJSHeapSize ?? 0;
+        for (let i = 0; i < frames; i++) {
+          s.each?.(k++);
+          const f = frame(s.force);
+          times.push(f.ms);
+          if (f.drew) drew++;
+          await turn();
+        }
+        const grew = (performance.memory?.usedJSHeapSize ?? 0) - heap;
+        const calls = r.info.render.calls;
+        const triangles = r.info.render.triangles;
+        // a frame in which the shadow map is drawn again, against one in which it is not
+        const plain = [];
+        const shadowed = [];
+        let plainCalls = 0;
+        let shadowCalls = 0;
+        for (let i = 0; i < 6; i++) {
+          s.each?.(k++);
+          if (i % 2) r.shadowMap.needsUpdate = true;
+          const f = frame(true);
+          (i % 2 ? shadowed : plain).push(f.ms);
+          if (i % 2) shadowCalls = r.info.render.calls;
+          else plainCalls = r.info.render.calls;
+          await turn();
+        }
+        // where the time goes, pass by pass
+        const sums = {};
+        const N = 8;
+        for (let i = 0; i < N; i++) {
+          s.each?.(k++);
+          timing = {};
+          frame(true);
+          for (const key in timing) sums[key] = (sums[key] ?? 0) + timing[key] / N;
+          timing = null;
+          await turn();
+        }
+        // and the page's own loop, for a moment: the interval between its frames as the browser runs them
+        const gaps = [];
+        loose();
+        await new Promise((done) => {
+          let last = 0;
+          const each = (t) => {
+            s.each?.(k++);
+            if (s.force) st.dirty = true;
+            if (last) gaps.push(t - last);
+            last = t;
+            if (gaps.length < 40) requestAnimationFrame(each);
+            else done();
+          };
+          requestAnimationFrame(each);
+        });
+        own();
+        s.done?.();
+        const mean = (x) => x.reduce((p, q) => p + q, 0) / x.length;
+        out.push({
+          mode: mode.name,
+          times,
+          drew,
+          calls,
+          triangles,
+          shadowMs: mean(shadowed),
+          plainMs: mean(plain),
+          shadowCalls: Math.max(0, shadowCalls - plainCalls),
           programs: r.info.programs?.length ?? 0,
           textures: r.info.memory.textures,
           geometries: r.info.memory.geometries,
           heapGrew: grew,
-          passes: a.sums,
-          raf: mean(a.gaps),
+          passes: sums,
+          raf: mean(gaps.slice(8)),
           levels: st.staged.map((x) => x.shownLevel),
-        })),
-      };
+        });
+      }
+      return { setupMs, modes: out };
     },
     /** A still picture of a scenario: the scene frozen, drawn the same number of times every time. */
     async still(name) {
@@ -1154,7 +1147,7 @@ for (const size of sizes) {
           if (o.cdp && rep === 0) await o.cdp.send('Profiler.start');
           let one;
           try {
-            one = await o.page.evaluate(([n, f, m]) => window.__bench.run(n, f, m), [name, FRAMES, modes]);
+            one = await o.page.evaluate(([n, f, m, back]) => window.__bench.run(n, f, m, back), [name, FRAMES, modes, rep % 2 === 1]);
           } catch (e) {
             errors.push(`${key}: ${String(e).slice(0, 300)}`);
             process.stderr.write(`${o.v.name}: ${key}: failed: ${String(e).slice(0, 200)}\n`);

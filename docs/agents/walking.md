@@ -162,7 +162,13 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
 - **Places can be taken.** `ModelDef.seats` (a couch) is boarded from the wheel at its `from`
   node while the clock is in its `open` window (the clock is not moved for it); `stage.seated`
   says where, E gets out where he got in. A model without the node can name a `standIn` mesh
-  for a placeholder until it has one.
+  for a placeholder until it has one. A seat's `figure` names the flight's model of whoever sits
+  there as he stands outside: there is one of him, so while the flight deck is taken that figure
+  is not drawn on the pad (`Stage.crewAboard`), and comes back when the deck is left. A seat's
+  `egress` says where it can be left for the outside: 'pad' (through the hatch while `open`: the
+  default), 'orbit' (an EVA) or 'sea'. Freedom 7 declares the pad only, as it was (the hatch
+  could not be opened from inside in flight). Nothing offers 'orbit' or 'sea' yet: a spacecraft
+  that allowed them says so in its data, and the offer is to follow the data, never a name.
 - **There is always a way up.** Stairs (risers of 0.3 m or less), a ladder, or one of the two
   actions that open the way, both played by `viewer/works.ts` at every level of detail and solid
   as posed: `toggle` (a door: `Move`s played forward and back; the wheel says Open or Close by

@@ -217,6 +217,20 @@ never adjusted to bring a check in.
   live runs only). The Flown panel draws the run in amber over the record's as it grows
   (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `trajectory.body` and
   `flies` can be flown without being told how.
+- **The cabin is the flight deck too** (`ModelDef.cabin`, types.ts: `CabinDef`; `viewer/cabin.ts`; `viewer/gauges.ts`
+  for the arithmetic, tested). The model's own needles, counter wheels and lamps read the run on show at the clock's
+  instant: the flight being flown (the cockpit hands every sample over, `cockpit.listen`) or the record's
+  (`flownOnce`). A needle's scale is written into its node's extras by the script that drew its face, so the face and
+  the reading cannot disagree; the flight's data says only which quantity it shows. Attitude is read off the model
+  as the scene has it, by a convention stated in gauges.ts. What is not simulated has no `reads`, stands where its
+  face was drawn, and says "not simulated" when pointed at (the test insists). A control with `does` calls
+  `Cockpit.ask`: a pull ring sets off its own event, whatever is next in order; 'abort' is the key's, asked twice.
+  From the couch the deck's strip is put away (`#ui.panel-only`), P brings it back, and that is remembered
+  (`deckAboard`). The periscope's screen shows what its objective sees: a cube map drawn from where the objective
+  is, laid along its axis, a face or two a frame and only while someone is aboard, shown through a fisheye of the
+  documented field. Indoors (`CabinDef.within`) the sky's light and reflection are cut to a tenth by an occlusion
+  map of one shade, the model's lights fall off with distance, not its square, and are held against the exposure;
+  the Sun through a window is the scene's own. Nothing in cabin.ts or gauges.ts names a spacecraft.
 - **The flight deck has a navball and a predicted path.** Both read what the cockpit shows
   (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
   clock has been put back) and nothing else of it. The navball (`src/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is

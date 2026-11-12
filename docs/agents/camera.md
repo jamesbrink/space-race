@@ -33,8 +33,15 @@ to where the whole vehicle is seen, from the side the last view saw its subject 
 board or the pad camera it is as it was last left (`Rig.enter`'s `resume`). The pad camera stands
 where the orbiting or free view was, set down on the ground at tripod height, if that was within
 reach of the place; otherwise where it last stood, or to one side of the place (`Cameras.tripod`).
-The seat the camera sits in is the flight's data: Freedom 7's is a stand-in (`standIn`, with `look`
-and `up`) until the model has a `Seat_Pilot` node, and says so.
+The seat the camera sits in is the flight's data: Freedom 7's is the model's own `Seat_Pilot` node, at the seated
+figure's eyes, looking at the panel (a model without one may name a `standIn`, and says so). On board the head turns
+within the seat's own limits (`CabinDef.head`, set on `OnboardRig.limits`), and can be told to look at something in
+the cabin: `OnboardRig.lookAt(point, lens)` turns to it and holds it, in the seat's frame, until it is let go
+(`lookAt(null)` goes back to where the head was) or the hands turn the head. `Stage.lookOut` uses it for a window's
+pane (seen from the eye: the scene itself beyond the glass) and for the periscope's screen (brought to fill the view;
+asked again, its power changes). A click on board selects nothing and flies nowhere: it works a control, looks out,
+or lets go (`Stage.onCabin`); Escape lets go of a look before it is the flight deck's. Hover names only what is in the
+cabin, and what is not drawn (the pilot's own helmet) is not picked.
 
 What is promised, in every rig (`tests/camera.test.mjs` for the arithmetic and the rigs; the
 browser's check below for the page):

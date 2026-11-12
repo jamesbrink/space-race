@@ -19,6 +19,17 @@ a lathe with bulkheads as a solid). Frame the hole with a bezel or sleeve that o
 Name the pane's material `glass...` and the viewer makes it a clear pane. Only where nothing is
 modelled behind (a lower level of detail, a distant building) does a dark `window-void` stand in.
 
+## An inside to sit in
+
+A model whose inside is somewhere to be (`ModelDef.cabin`) keeps to a few names so the viewer can work it without
+knowing it: a `Seat_...` empty at the eyes, `Gauge_...` needles with their origins on their pivots and their scales
+in their extras, `Tele_...` lamps each with a material of its own, `Ctl_...` controls, a screen for a periscope
+(the table is in `missions/usa/mercury/vehicles/mercury-cabin.md`). A face is drawn by the script that builds the
+dial, from the same scale the needle is given. Things stacked on a panel (face, needle, hub, glass, bezel lip) are
+each 0.05 in or more apart: the clearance rule is 1 mm, and a needle's material is single-sided so only its front
+is held to it. An instrument's cover is the blended material `crystal`, not `glass...`: a `glass` pane is a window,
+and is offered to be looked through. What is under a `within` node is lit as indoors (simulator.md).
+
 ## No flicker
 
 Two faces in the same place flicker: the depth buffer cannot tell them apart and picks a
