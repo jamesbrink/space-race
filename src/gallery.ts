@@ -337,7 +337,7 @@ export class Gallery {
       <nav class="models" aria-label="What stands in the gallery">
         ${this.choices.map((p) => `<button data-plinth="${p.id}" aria-pressed="false">${esc(p.label)}</button>`).join('')}
       </nav>
-      <button class="alone" hidden title="Show the whole of it again"><b></b><span></span><i>${esc(this.choices[0]!.label)}</i></button>
+      <button class="alone" hidden title="Show the whole of it again"><svg aria-hidden="true"></svg><b></b><span></span><i>${esc(this.choices[0]!.label)}</i></button>
 
       <aside class="panel">
         <nav class="tabs" role="tablist">
@@ -658,6 +658,7 @@ export class Gallery {
       this.made = { stage, studio };
       this.wire(stage);
       studio.setTone(prefs.get('galleryLight') ? 'light' : 'dark');
+      this.outlines = stage.outlines();
       this.stand(this.plinth, true);
       this.setMeasure(prefs.get('galleryMeasure'));
       this.setNames(!prefs.get('galleryNamesOff'));
@@ -736,6 +737,8 @@ export class Gallery {
     const others = this.choices.filter((p) => p.nodes && p !== plinth).map((p) => p.label.toLowerCase());
     note.querySelector('b')!.textContent = `${plinth.label} alone`;
     note.querySelector('span')!.textContent = others.length ? `${others.join(', ')} not shown` : '';
+    this.map(note.querySelector('svg')!, plinth);
+    this.measure(); // (the note lies across the top of the view: what is clear under it has changed)
     this.tab('Parts');
     stage.view(WHOLE_VIEW, snap);
     this.turn();
@@ -799,6 +802,37 @@ export class Gallery {
     if (this.selected) stage.focus(this.selected, false, overhead ? { turn: 0, rise: 0.3 } : undefined);
     else stage.view(WHOLE_VIEW, false, !overhead);
     this.turn();
+  }
+
+  /** Each part's place in the whole vehicle, put together: its height off the ground and how far out it reaches (Stage.outlines). */
+  private outlines: { node: string; low: number; high: number; reach: number }[] = [];
+
+  /**
+   * The whole vehicle as a small diagram, with what stands there now marked in it: so that a part
+   * of it standing alone is seen for a part of the whole. (The rest is not drawn faintly in the
+   * room itself: what stands alone stands on the floor, at its own size beside the person, and the
+   * rest of the vehicle would mostly be under that floor.)
+   */
+  private map(svg: SVGElement, plinth: Plinth): void {
+    const all = this.outlines;
+    if (!all.length || !plinth.nodes) return void svg.replaceChildren();
+    const top = Math.max(...all.map((o) => o.high));
+    const foot = Math.min(...all.map((o) => o.low));
+    const wide = 2 * Math.max(...all.map((o) => o.reach));
+    const H = 34;
+    const k = H / Math.max(1e-6, top - foot);
+    const W = Math.max(8, wide * k);
+    svg.setAttribute('viewBox', `0 0 ${W.toFixed(1)} ${H}`);
+    svg.setAttribute('width', W.toFixed(1));
+    svg.setAttribute('height', String(H));
+    svg.innerHTML = all
+      .map((o) => {
+        const w = Math.max(1, 2 * o.reach * k);
+        const h = Math.max(1, (o.high - o.low) * k);
+        const on = plinth.nodes!.includes(o.node);
+        return `<rect x="${((W - w) / 2).toFixed(1)}" y="${((top - o.high) * k).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" class="${on ? 'on' : ''}"/>`;
+      })
+      .join('');
   }
 
   /** Bring the part being read into view in the list (which may only now have room to show it). */
@@ -929,7 +963,9 @@ export class Gallery {
     const high = rects.map((r) => r.bottom).filter((b) => b < view.top + view.height / 2);
     // on a narrow page the title card and the switch beside it lie across the top of the view, as the bar does on a wide one
     const head = shown(title) && matchMedia('(max-width: 960px)').matches ? title.getBoundingClientRect().bottom : view.top;
-    const top = Math.max(view.top, head, ...high);
+    const note = this.q('.alone');
+    const said = shown(note) ? note.getBoundingClientRect().bottom : view.top;
+    const top = Math.max(view.top, head, said < view.top + view.height / 2 ? said : view.top, ...high);
     // a view is framed in what is left clear between what lies across the top and the controls
     // (with a little kept clear at the foot and the head: a thing seen from above its middle reaches further down the
     // picture than the box round it says, and nothing is to touch the bar or be cut by the edge)
@@ -938,8 +974,8 @@ export class Gallery {
     const left = column && column.right < middle ? column.right : view.left;
     // (what is clear is taken to be about the middle: the narrower side of it, doubled)
     const clear = 2 * Math.min(middle - left, right - middle);
-    const foot = Math.max(0, view.bottom - bottom) + 0.06 * view.height;
-    const over = top - view.top + 0.02 * view.height;
+    const foot = Math.max(0, view.bottom - bottom) + 0.035 * view.height;
+    const over = top - view.top + 0.01 * view.height;
     // (the stage fits a width as if the whole height were clear: told the clear width over the clear height's share, it
     // fits the clear part itself, which on a phone is short and wide)
     const tall = Math.max(0.2, 1 - (foot + over) / view.height);

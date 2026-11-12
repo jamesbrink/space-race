@@ -184,6 +184,11 @@ export class OrbitRig implements Rig {
   /** Keep what must be kept of where the pivot is on its subject. */
   protected stow(): void {}
 
+  /** The highest the eye may go round the pivot, radians from straight up: overhead, unless the place says less. */
+  protected highest(): number {
+    return Math.max(MIN_POLAR, this.world.minPolar?.() ?? 0);
+  }
+
   /** The lowest the eye may go round the pivot, radians from straight up. */
   protected lowest(): number {
     return this.world.maxPolar();
@@ -319,7 +324,8 @@ export class OrbitRig implements Rig {
    * by moving in, which would be a zoom nobody asked for).
    */
   protected limit(): void {
-    this.phi = THREE.MathUtils.clamp(this.phi, MIN_POLAR, Math.max(MIN_POLAR, this.lowest()));
+    const highest = this.highest();
+    this.phi = THREE.MathUtils.clamp(this.phi, highest, Math.max(highest, this.lowest()));
     this.keepPivot();
     if (this.world.clearance(this.eye(eye)) >= EYE) return;
     let clear = MIN_POLAR;
@@ -524,6 +530,11 @@ export class ChaseRig extends OrbitRig {
 
   protected override lowest(): number {
     return this.flying || this.id === 'locked' ? Math.PI - 0.05 : this.world.maxPolar();
+  }
+
+  // (a vehicle in flight is seen from anywhere round it)
+  protected override highest(): number {
+    return this.flying || this.id === 'locked' ? MIN_POLAR : super.highest();
   }
 
   /** Look at a place on the vehicle (`centre`, in the scene) from `distance`, keeping the direction: a part chosen while it flies. */

@@ -36,6 +36,8 @@ export interface Setting {
   floor: THREE.Mesh | null;
   /** How far below the horizon the camera may orbit, radians from straight up. */
   maxPolar: number;
+  /** How near overhead it may orbit, radians from straight up (default: overhead). */
+  minPolar?: number;
   exposure: number;
   /** Haze that fades distant ground into the horizon, or null. */
   fog: THREE.FogExp2 | null;

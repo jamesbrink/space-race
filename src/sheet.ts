@@ -7,7 +7,7 @@ import './sheet.css';
  * It rests at one of three stops: **tucked** (its row of tabs), **half** (`open`: the lower part of
  * the page, the model keeping the rest) and **full** (`open full`: up to under the title). Taken
  * by its tabs or its grip it follows the finger and, let go, settles at the stop it was nearest or
- * was being thrown toward: never between two. Inside its list a finger scrolls the list; only a
+ * was being thrown toward (the next one that way from where it had got to): never between two. Inside its list a finger scrolls the list; only a
  * pull down on a list already at its top takes the sheet, as a pull on its tabs does. While the
  * sheet has the finger the page does not move under it (no pull-to-refresh, no bounce): the tabs
  * take no browser gesture at all (sheet.css), and the one handler that must refuse a gesture in
@@ -62,7 +62,6 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
 
   let touch: {
     y: number;
-    at: number;
     from: number;
     stops: [number, number, number];
     pane: HTMLElement | null;
@@ -82,7 +81,6 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
       const y = e.touches[0]!.clientY;
       touch = {
         y,
-        at: stopNow(),
         from: panel.getBoundingClientRect().height,
         stops: heights(),
         pane: target.closest<HTMLElement>('[data-pane]'),
@@ -122,7 +120,12 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
     const now = panel.getBoundingClientRect().height;
     // the stop it is nearest; thrown, the next one that way from where it started
     let to = t.stops.reduce((best, h, i) => (Math.abs(h - now) < Math.abs(t.stops[best]! - now) ? i : best), 0);
-    if (Math.abs(t.speed) > THROW) to = Math.min(2, Math.max(0, t.at + (t.speed < 0 ? 1 : -1)));
+    if (Math.abs(t.speed) > THROW) {
+      // (the next one that way from where it has got to: a long pull from full goes past half to tucked)
+      const up = t.speed < 0;
+      const beyond = t.stops.map((h, i) => ({ h, i })).filter(({ h }) => (up ? h > now + 1 : h < now - 1));
+      to = beyond.length ? (up ? beyond[0]!.i : beyond.at(-1)!.i) : up ? 2 : 0;
+    }
     // from where the finger left it to the stop: the height is the stylesheet's again, and the change is eased
     panel.style.height = `${now}px`;
     void panel.offsetHeight;

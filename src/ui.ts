@@ -43,6 +43,8 @@ export interface UiHandlers {
   setFn(node: string, id: string, v: number): number;
   /** How many pixels at the bottom of the 3D view the controls cover, and how many at the top along its centre line. */
   inset(pixels: number, top: number): void;
+  /** A phone's sheet has come to rest at another height: what is being looked at is to be framed in what is now clear. */
+  settled?(): void;
 }
 
 const CAMERA_LABEL: Record<RigId, string> = {
@@ -421,7 +423,10 @@ export class Ui {
     // On a phone the panel is a sheet a finger moves between its stops (sheet.ts: the gallery's is the same one). At
     // rest again, the part being read is in view in it.
     sheet(panel, () =>
-      window.setTimeout(() => this.root.querySelector('[data-node][aria-expanded=true]')?.scrollIntoView({ block: 'nearest' }), 320),
+      window.setTimeout(() => {
+        this.root.querySelector('[data-node][aria-expanded=true]')?.scrollIntoView({ block: 'nearest' });
+        on.settled?.();
+      }, 320),
     );
     root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
     this.wheel = new Wheel(root);

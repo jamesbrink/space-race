@@ -54,6 +54,12 @@ export interface World {
   far(): number;
   /** The lowest the eye goes round a pivot on the ground: radians from straight up. */
   maxPolar(): number;
+  /**
+   * The highest the eye goes round a pivot: radians from straight up. Left out, it may go overhead. A thing shown
+   * standing (the studio) is not seen from straight above: a tall thing framed from the side is a speck from there,
+   * and one swipe down the picture is all it takes to get there.
+   */
+  minPolar?(): number;
   /** The flown vehicle, or null if the flight has none. */
   craft(): Craft | null;
 }

@@ -67,6 +67,9 @@ body.gallery-settled #stage { visibility: hidden; }
 /* a part of the vehicle standing alone says so in the view, and the note is the way back to the whole of it */
 .alone { position: absolute; top: calc(var(--edge) + 52px); left: 50%; transform: translateX(-50%); display: flex; align-items: baseline; gap: 10px; max-width: calc(100vw - 2 * var(--edge)); padding: 7px 12px 7px 10px; white-space: nowrap;
   background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; }
+.alone svg { flex: none; align-self: center; overflow: visible; }
+.alone rect { fill: none; stroke: var(--faint); stroke-width: 0.75; }
+.alone rect.on { fill: var(--amber); stroke: var(--amber); }
 .alone b { font: 500 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
 .alone span { font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
 .alone span:empty { display: none; }

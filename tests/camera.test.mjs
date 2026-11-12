@@ -210,6 +210,26 @@ test('angles round a pivot and the offset they stand for are each other inverse,
   }
 });
 
+test('a place may say how near overhead the eye goes: a swipe down the picture then stops there', () => {
+  // what a phone showed: one swipe down a tall picture took the gallery's view to straight overhead, from where a
+  // spacecraft framed from the side is a speck on its own shadow
+  const elevation = (rig) => {
+    const p = posed(rig);
+    return Math.asin(p.position.clone().sub(rig.pivot).normalize().y) * (180 / Math.PI);
+  };
+  const swiped = (place) => {
+    const rig = new OrbitRig(place, 35);
+    rig.goTo(V(0, 2, 0), V(-20, 6, 26), true);
+    rig.update(0, NONE, false);
+    for (let i = 0; i < 12; i++) rig.drag(0, 20, 700, false); // 240 px down a 700 px picture
+    rig.update(0.016, NONE, false);
+    return elevation(rig);
+  };
+  assert.ok(swiped(world()) > 85, 'left to itself the eye goes overhead');
+  const studio = { ...world(), minPolar: () => (32 * Math.PI) / 180 };
+  assert.ok(near(swiped(studio), 58, 0.5), `the studio holds it at 58 degrees, got ${swiped(studio)}`);
+});
+
 test('a subject is framed in the clear part of the frame by tipping the camera, not by moving the pivot', () => {
   assert.ok(near(fitDistance(25, 35, 0.5), 25 / 2 / Math.tan((17.5 * Math.PI) / 180) / 0.5, 1e-9));
   assert.equal(aimBelow(0, 35), 0);

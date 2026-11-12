@@ -468,6 +468,8 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
     fill: [0x3a3f48, 0x17171a, 0.42],
     floor,
     maxPolar: Math.PI / 2 - 0.012,
+    // no higher than 58 degrees above the level: a piece standing on a floor is looked at, not looked down on from the ceiling
+    minPolar: THREE.MathUtils.degToRad(32),
     exposure: 0.95,
     fog: null,
     scenery: [mirror, pool, contact, rim, rim.target, kicker, kicker.target, lamp, lamp.target, fill, fill.target, figure],

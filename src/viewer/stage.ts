@@ -1010,6 +1010,7 @@ export class Stage {
       reach: () => ({ centre: this.bounds.center, radius: Math.max(this.bounds.radius, this.setting.reach ?? 0) }),
       far: () => Math.max(30, 4 * this.bounds.radius, this.setting.horizon ?? this.setting.reach ?? 0),
       maxPolar: () => this.setting.maxPolar,
+      minPolar: () => this.setting.minPolar ?? 0,
       craft: () => this.craft(),
       solidAt: (x, y) => {
         this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
@@ -3686,6 +3687,32 @@ export class Stage {
     own.group.updateMatrixWorld(true);
     own.measure();
     this.lamps.place();
+  }
+
+  /**
+   * Each part of the section's model in its place in the whole, put together: how high it stands (metres from the
+   * model's own origin) and how far out from the axis it reaches. For a diagram of the whole; ask before `only`.
+   */
+  outlines(): { node: string; low: number; high: number; reach: number }[] {
+    const own = this.staged[this.current];
+    if (!own) return [];
+    const apart = this.apart[this.current] ?? 0;
+    own.explode(0);
+    own.group.updateMatrixWorld(true);
+    const at = own.group.position;
+    const out = [...this.parts].flatMap(([node, object]) => {
+      const box = new THREE.Box3().setFromObject(object);
+      if (box.isEmpty()) return [];
+      const reach = Math.max(
+        Math.abs(box.min.x - at.x),
+        Math.abs(box.max.x - at.x),
+        Math.abs(box.min.z - at.z),
+        Math.abs(box.max.z - at.z),
+      );
+      return [{ node, low: box.min.y - at.y, high: box.max.y - at.y, reach }];
+    });
+    own.explode(apart);
+    return out;
   }
 
   /** The box round the section's model as it would stand put together, without taking it apart or putting it together to find out. */
