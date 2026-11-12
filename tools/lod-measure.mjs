@@ -1,6 +1,7 @@
 // The measuring behind tools/lod-thresholds.mjs (read that first): each model of each flight, and each piece of the
 // place it flew from, drawn at two levels from the same eye in a real browser, and the pixels that differ counted.
 // Needs the viewer running (`pnpm dev`). Writes missions/.../model/<name>.lod.json.
+import { spawnSync } from 'node:child_process';
 import { globSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,7 +65,14 @@ export async function measure({ url, flight }) {
       )
       .filter((n) => !n.includes('.lod'));
     await page.goto(`${url}#${id}/${sections.includes('pad') ? 'pad' : sections[0]}`);
-    await page.waitForFunction(() => window.sr && document.body.classList.contains('scene-ready'), null, { timeout: 180_000 });
+    await page.waitForFunction(() => window.sr && /scene-ready|gallery-settled/.test(document.body.className), null, { timeout: 180_000 });
+    if (await page.evaluate(() => document.body.classList.contains('in-gallery'))) {
+      // (a flight with no site is shown in the gallery, on a stage of its own that has no way to hold a level: its
+      // models keep the viewer's own thresholds until it has a site)
+      console.log(`${id}: no site to stand it on: not measured`);
+      await page.close();
+      continue;
+    }
     await page.addStyleTag({ content: '#ui { display: none !important }' });
     const things = await page.evaluate(async () => {
       const { stage, flight } = window.sr;
@@ -110,12 +118,12 @@ export async function measure({ url, flight }) {
             if (differ > ALLOWED[n]) break;
           }
         above.push(rows.length ? thresholdFrom(rows, n) : LOD_ABOVE[n]);
-        measured.push(Object.fromEntries(rows.map((r) => [`${r.ppm}`, r.differ])));
+        measured.push(rows.map((r) => [r.ppm, r.differ]));
       }
       record.above[thing.name] = apart(above);
       record.measured[thing.name] = measured;
       console.log(
-        `${thing.glb} ${thing.name || '(the model)'}: ${above.join(', ')}   ${measured.map((m) => Object.values(m).join(' ')).join(' | ')}`,
+        `${thing.glb} ${thing.name || '(the model)'}: ${above.join(', ')}   ${measured.map((m) => m.map((r) => r.join(':')).join(' ')).join(' | ')}`,
       );
     }
     for (const [glb, record] of byModel) {
@@ -124,7 +132,7 @@ export async function measure({ url, flight }) {
         recordOf(glb),
         `${JSON.stringify(
           {
-            about: `Levels of detail: the size on screen (pixels a metre) above which each finer level is drawn, and the pixels of ${W} x ${H} that differed between two levels at each size measured (smallest first, up to the first at which too many did; first from level 0 to 1, then 1 to 2). Allowed: ${ALLOWED.join(' and ')}. Written by tools/lod-thresholds.mjs --measure; "" is the model as a whole.`,
+            about: `Levels of detail: the size on screen (pixels a metre) above which each finer level is drawn, and the pixels of ${W} x ${H} that differed between two levels as [size, pixels] pairs, smallest size first, up to the first at which too many did (first from level 0 to 1, then 1 to 2). Allowed: ${ALLOWED.join(' and ')}. Written by tools/lod-thresholds.mjs --measure; "" is the model as a whole.`,
             ...record,
           },
           null,
@@ -132,6 +140,8 @@ export async function measure({ url, flight }) {
         )}\n`,
       );
     }
+    // (formatting is the tools' job: the records as Biome writes JSON)
+    spawnSync('pnpm', ['exec', 'biome', 'format', '--write', ...[...byModel.keys()].map(recordOf)], { cwd: root, stdio: 'inherit' });
     await page.close();
   }
   await browser.close();

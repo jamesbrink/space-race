@@ -206,6 +206,13 @@ The sky's fixed lights (`src/world/stars.ts`, `public/sky/`, baked by tools/star
 | NASA/Goddard Space Flight Center Scientific Visualization Studio, *Deep Star Maps 2020* (SVS 4851), `milkyway_2020_4k.exr` | [svs.gsfc.nasa.gov/4851](https://svs.gsfc.nasa.gov/4851) | The Milky Way and the sky's other unresolved light, in celestial coordinates (made from Gaia DR2, Hipparcos-2 and Tycho-2) | NASA's, not copyrighted; credit NASA/GSFC SVS. Kept at half size as a JPEG; how bright it is drawn is estimated |
 | ERFA 2.0 (the IAU's SOFA routines, BSD) with Hipparcos places | run once through pyerfa: `atci13`, `era00`, `hd2ae` | The seven stars' azimuths and elevations at liftoff that tests/world.test.mjs holds the sky to | An independent check, not an input |
 
+What the clouds seen from height are judged against (nothing from it is in the repository: it is looked at, not used).
+
+| Source | Where | Used for | Licence and limits |
+| --- | --- | --- | --- |
+| NASA MODIS (Aqua), Corrected Reflectance (True Colour), 9 May 2018, over Florida and the Bahamas, at 250 m | NASA Worldview Snapshots: `https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME=2018-05-09&BBOX=<south,west,north,east>&CRS=EPSG:4326&LAYERS=MODIS_Aqua_CorrectedReflectance_TrueColor&FORMAT=image/jpeg&WIDTH=..&HEIGHT=..` (fetched 2026-11-12) | The reference a fair-weather cumulus field is compared with from 100, 150 and 187 km straight down: streets over land, arcs and clear lanes over the sea, cell sizes, the sea's tone. Crops centred 28.6 N 78.6 W (sea), 27.6 N 81.2 W (land), 28.45 N 80.4 W (the Cape) | NASA's, not copyrighted; acknowledge NASA EOSDIS Worldview. A satellite's picture with the air's scattering taken out ("corrected reflectance"), so its sea is darker than an eye or a camera in orbit sees; a day in 2018, not 1961 |
+| NASA astronaut photographs ISS041-E-003579 (Florida, 13 September 2014) and S125-E-007951 (the Bahamas, 16 May 2009) | [images.nasa.gov](https://images.nasa.gov) | The oblique look of cloud, banks and limb from orbit | NASA's, not copyrighted |
+
 ## Vostok
 
 How each was read matters here, because much of what is online about Vostok is tertiary. **Read in
