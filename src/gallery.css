@@ -2,14 +2,16 @@
    what is here is what the gallery has that the site has not, and the switch between a flight's places, which every place carries. */
 
 /* --- the gallery's own canvas and page, over the site's while it is up --------------- */
-#gallery-stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; opacity: 0; transition: opacity 0.9s ease; }
-#gallery-stage.ready { opacity: 1; }
+/* it fades in over the site's canvas and out again (gallery.ts FADE): going between the places is not a cut */
+#gallery-stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; opacity: 0; visibility: hidden; transition: opacity 0.45s ease, visibility 0s 0.45s; }
+#gallery-stage.ready.on { opacity: 1; visibility: visible; transition: opacity 0.45s ease; }
 #gallery-stage:active { cursor: grabbing; }
 body.instant #gallery-stage { transition: none; }
 #gallery { position: fixed; inset: 0; pointer-events: none; }
 #gallery > * { pointer-events: auto; transition: opacity 0.25s ease; }
 /* the site is asleep behind it: not drawn, not laid out again (its panels keep their sizes, so nothing there is measured afresh) */
-body.in-gallery :is(#stage, #ui) { visibility: hidden; }
+body.in-gallery #ui { visibility: hidden; }
+body.gallery-settled #stage { visibility: hidden; }
 /* H: nothing between the viewer and the thing */
 #gallery.bare > :not(.loading) { opacity: 0; pointer-events: none !important; }
 #gallery.bare::after { content: 'H  shows the panels'; position: absolute; right: var(--edge); bottom: var(--edge); font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 0.6; text-shadow: 0 0 4px #000, 0 0 2px #000; }
@@ -21,6 +23,7 @@ body.in-gallery :is(#stage, #ui) { visibility: hidden; }
 .places button { padding: 7px 12px 6px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); white-space: nowrap; border-bottom: 1px solid transparent; }
 .places button + button { border-left: 1px solid var(--line); }
 .places i { font-style: normal; }
+.places-home { display: none; }
 .places button:hover:not(:disabled) { color: var(--ink); }
 /* where you are: as the open tab of the panel is, amber and underlined */
 .places button[aria-pressed='true'] { color: var(--amber); border-bottom-color: var(--amber); background: rgba(255, 196, 107, 0.08); }
@@ -29,6 +32,8 @@ body.in-gallery :is(#stage, #ui) { visibility: hidden; }
 .places { position: relative; }
 .places p { position: absolute; left: -1px; top: calc(100% + 6px); z-index: 3; width: max-content; max-width: 260px; padding: 6px 10px 7px; font-size: 12px; color: var(--ink); background: rgba(10, 11, 14, 0.94); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 2px; }
 .crumbs span { color: var(--amber); }
+/* (three steps on one line of the card: set a little closer than two were) */
+.crumbs:has(span) { font-size: 10px; letter-spacing: 0.08em; }
 
 /* on the flight deck the title card makes way, and the switch stays: alone, in the corner the card had */
 #ui.piloting > .title:has(.places) { display: block; left: auto; right: var(--edge); width: auto; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -65,9 +70,10 @@ body.in-gallery :is(#stage, #ui) { visibility: hidden; }
 .steps output { font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
 .panel.tucked .steps { display: none; }
 /* what stands there: as many as four choices across the top, in the room between the title and the panel */
-#gallery .models { max-width: calc(100vw - 2 * (min(360px, 30vw) + var(--edge) + 14px)); overflow-x: auto; scrollbar-width: none; }
-#gallery .models button { padding: 11px 15px; letter-spacing: 0.1em; }
-@media (max-width: 1360px) { #gallery .models button { padding: 11px 10px; letter-spacing: 0.06em; } }
+/* (never run off its side: more than fit across go on to a second row) */
+#gallery .models { max-width: calc(100vw - 2 * (min(360px, 30vw) + var(--edge) + 14px)); flex-wrap: wrap; }
+#gallery .models button { flex: 1 0 auto; padding: 11px 15px; letter-spacing: 0.1em; box-shadow: 1px 0 var(--line), 0 1px var(--line); }
+#gallery .models button + button { border-left: 0; }
 /* the label of the part being read: set as a museum's is, to be read standing back */
 #gallery .parts button { padding: 12px 20px 12px 18px; }
 #gallery .parts button[aria-expanded='true'] { padding-top: 16px; padding-bottom: 16px; }
@@ -129,8 +135,7 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   #gallery .panel:not(.open) .steps { display: none; }
   #gallery .models { max-width: none; }
   /* three choices of what stands there fit across a phone only without their air */
-  #gallery .models { overflow-x: auto; }
-  #gallery .models button { flex: 1 0 auto; padding-left: 8px; padding-right: 8px; letter-spacing: 0.08em; }
+  #gallery .models button { padding-left: 8px; padding-right: 8px; letter-spacing: 0.08em; }
   /* the buttons run on as one wrapping line, not a line for each kind */
   #gallery .buttons { gap: 6px; }
   #gallery .set { display: contents; }
@@ -139,7 +144,10 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   /* a phone on its side has no title card: the switch alone stands in its corner, and the choice of what stands there beside it */
   .title:has(.places) { display: contents; }
   .title:has(.places) > :not(.places) { display: none; }
-  .title .places { left: 10px; top: 10px; bottom: auto; height: 78px; }
+  .title .places { left: 10px; top: 10px; bottom: auto; height: 100px; }
+  /* and with no card there is no heading to go out by: the way to the front page is the switch's first row */
+  .places .places-home { display: block; color: var(--ink); }
+  .places .places-home::before { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 6px 1px 1px; border: solid var(--amber); border-width: 0 0 1.5px 1.5px; transform: rotate(45deg); }
   .title .places p { left: -1px; right: auto; }
   :is(#ui, #gallery):has(.places) .models { left: 108px; }
   #gallery-stage, body:has(#gallery .panel.open) #gallery-stage { width: 56vw; height: 100dvh; }

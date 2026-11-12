@@ -1452,21 +1452,28 @@ export class Stage {
 
   /**
    * Tell the stage how many pixels at the bottom of the canvas the controls cover, and (`top`) how many at the top
-   * something else does: views are framed in what is left between them.
+   * something else does: views are framed in what is left between them. `across`: the width a view is fitted to, as a
+   * share of the canvas's width, about its middle. Left at 1 a view is fitted to the whole width as if nothing covered
+   * any of the height, which leaves room to spare; whoever knows what is clear (panels down the sides, a short wide
+   * strip between a title and a control block) gives the clear width over the clear height's share.
    */
-  setInset(pixels: number, top = 0): void {
+  setInset(pixels: number, top = 0, across = 1): void {
     const tall = Math.max(1, this.canvas.clientHeight);
     const inset = THREE.MathUtils.clamp(pixels / tall, 0, 0.5);
     const head = THREE.MathUtils.clamp(top / tall, 0, 0.3);
-    if (Math.abs(inset - this.inset) < 0.01 && Math.abs(head - this.head) < 0.01) return;
+    const sides = THREE.MathUtils.clamp(across, 0.25, 4);
+    if (Math.abs(inset - this.inset) < 0.01 && Math.abs(head - this.head) < 0.01 && Math.abs(sides - this.sides) < 0.01) return;
     this.inset = inset;
     this.head = head;
+    this.sides = sides;
     this.cam.inset = inset - head; // (the pivot is seen in the middle of what is left clear, whatever the distance)
     this.refollow();
   }
 
   /** How much of the top of the canvas is covered, 0 to 0.3 (setInset). */
   private head = 0;
+  /** The width a view is fitted to, as a share of the canvas's (setInset). */
+  private sides = 1;
 
   /** Frame again whatever the camera was last sent to: the canvas or the model has changed shape. */
   private refollow(): void {
@@ -1824,7 +1831,7 @@ export class Stage {
     const size = box.getSize(new THREE.Vector3());
     const target = box.getCenter(new THREE.Vector3());
     // never closer than a 1.6 m subject would be: a small part is seen with its surroundings
-    const span = Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect, 1.6);
+    const span = Math.max(size.y, Math.hypot(size.x, size.z) / (this.camera.aspect * this.sides), 1.6);
     const dir = this.cam.direction();
     if (from) {
       // seen from somewhere else: round from where the camera is, and at a height of its own
@@ -1871,7 +1878,8 @@ export class Stage {
     const size = box.getSize(new THREE.Vector3());
     const centreY = named?.centreY ?? (box.min.y + box.max.y) / 2;
     // a wide, low subject (a launch pad) must fit by width as well as by height
-    const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect) * (subjects.length ? 1.12 : 1);
+    const span =
+      named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / (this.camera.aspect * this.sides)) * (subjects.length ? 1.12 : 1);
     // the subject fills most of the frame above the controls, which sit over the bottom of it
     const fill = (1 - this.inset - this.head) * 0.9;
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / fill;

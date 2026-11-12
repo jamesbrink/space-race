@@ -15,6 +15,7 @@ import {
   WHOLE_VIEW,
 } from './address';
 import { Callout } from './callout';
+import { CURTAIN, Curtain, follow } from './curtain';
 import { type Shot, tour } from './demo';
 import { prefs } from './prefs';
 import type { Flight, ModelDef, Part, Spec } from './types';
@@ -71,7 +72,9 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
     const absent = why ? ` aria-disabled="true" data-why="${esc(why)}"` : '';
     return `<button data-place="${place}" aria-pressed="${place === here}"${absent} title="${esc(why ?? PLACE_SAYS[place])}">${label}</button>`;
   };
-  nav.innerHTML = `${PLACES.map(button).join('')}<p role="status" hidden></p>`;
+  // (and, for a page with no room for a title card or crumbs, the way out to the front page: gallery.css shows it there)
+  const out = '<button class="places-home" data-home title="Front page">Flights</button>';
+  nav.innerHTML = `${out}${PLACES.map(button).join('')}<p role="status" hidden></p>`;
   const says = nav.querySelector('p')!;
   let away = 0;
   nav.addEventListener('click', (e) => {
@@ -127,6 +130,8 @@ const IDLE_AGAIN = 150;
 /** Seconds on each thing in the show, and to take the vehicle apart or put it together. */
 const DWELL: Record<Shot['kind'], number> = { whole: 8, apart: 8, part: 8.5, window: 8 };
 const APART = 5;
+/** Milliseconds its canvas takes to fade in over the site's, or out (gallery.css has the same). */
+const FADE = 450;
 const TURN = 0.5;
 const ease = (x: number): number => x * x * (3 - 2 * x);
 
@@ -170,6 +175,7 @@ export class Gallery {
   private wait = IDLE_FIRST;
   private count = 0;
   private apartGoal = 0;
+  private settling = 0;
 
   constructor(parent: HTMLElement, flight: Flight, host: GalleryHost) {
     this.flight = flight;
@@ -181,7 +187,6 @@ export class Gallery {
     this.plinth = this.choices[0]!;
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'gallery-stage';
-    this.canvas.hidden = true;
     this.root = document.createElement('div');
     this.root.id = 'gallery';
     this.root.hidden = true;
@@ -218,8 +223,12 @@ export class Gallery {
   async enter(what?: string): Promise<void> {
     this.endShow(); // (coming in is taking over, if it was showing itself behind the front page)
     this.open = true;
-    this.root.hidden = this.canvas.hidden = false;
+    // its canvas fades in over the site's last frame, which is put away once it is covered
+    this.root.hidden = false;
+    this.canvas.classList.add('on');
     document.body.classList.add('in-gallery');
+    clearTimeout(this.settling);
+    this.settling = window.setTimeout(() => document.body.classList.add('gallery-settled'), FADE);
     this.setCel(prefs.get('cel'), false); // (it may have been changed at the site)
     this.stopped = prefs.get('orbitOff');
     this.idle = 0;
@@ -244,8 +253,11 @@ export class Gallery {
     if (!this.open) return;
     this.endShow();
     this.open = false;
-    this.root.hidden = this.canvas.hidden = true;
-    document.body.classList.remove('in-gallery');
+    // (and fades out over the site, which is awake and drawn under it by then)
+    this.root.hidden = true;
+    this.canvas.classList.remove('on');
+    clearTimeout(this.settling);
+    document.body.classList.remove('in-gallery', 'gallery-settled');
     this.root.querySelector('.panel')!.classList.remove('open');
     this.tip(null);
     this.made?.stage.sleep(true);
@@ -413,7 +425,7 @@ export class Gallery {
       </aside>
       <div class="marks" aria-hidden="true"><p data-mark="pole"></p><p data-mark="head"></p></div>
       <div class="tip" hidden><b></b><span></span></div>
-      <div class="loading"><span>Loading</span><i></i><button hidden>Try again</button></div>`;
+      ${CURTAIN}`;
     this.q('.title .sub').after(placesNav(f, 'gallery', (to) => this.host.go(to)));
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-plinth]'))
       b.setAttribute('aria-pressed', String(b.dataset.plinth === this.plinth.id));
@@ -643,17 +655,19 @@ export class Gallery {
   private showKeys: (open: boolean) => void = () => {};
 
   private async load(): Promise<void> {
-    const bar = this.q('.loading');
-    bar.classList.remove('done', 'failed');
-    bar.querySelector('button')!.hidden = true;
-    bar.querySelector('span')!.textContent = `Loading ${this.flight.callsign.toLowerCase()}`;
-    const progress = (f: number) => bar.querySelector<HTMLElement>('i')!.style.setProperty('--p', String(f));
-    progress(0);
+    // the same curtain as the site's, saying what the gallery fetches: the vehicle, and its shaders built
+    const curtain = new Curtain(this.q('.loading'));
+    curtain.begin(this.flight.callsign);
+    const said = follow(curtain, [this.vehicle.name], {
+      shaders: { label: 'Compiling shaders', share: 0.5 },
+      settle: { label: 'Warming up', share: 0.15 },
+    });
     try {
       const stage = (this.own ??= new Stage(this.canvas));
       stage.fullDetail = true;
       stage.setLook(prefs.get('cel') ? 'cel' : 'real');
-      await stage.load(this.staged, progress);
+      await stage.load(this.staged, (f, parts) => said.arrive(f, parts));
+      said.arrive(1);
       const studio = asStudio(stage.place);
       if (!studio) throw new Error('the gallery is shown in the studio');
       this.made = { stage, studio };
@@ -674,18 +688,18 @@ export class Gallery {
             stage.reset();
           })
           .catch((e) => console.warn('the figure for scale did not arrive: an outline stands in', e));
-      await stage.warm(4000);
+      await stage.warm(4000, (step, f) => said.step(step, f));
+      said.end();
       this.ready = true;
       this.measure();
       if (navigator.webdriver) document.body.classList.add('instant'); // (a script taking pictures does not wait for a fade)
       this.canvas.classList.add('ready');
-      bar.classList.add('done');
+      curtain.done();
       if (!this.open) stage.sleep(true);
     } catch (e) {
       console.error(e);
-      bar.classList.add('failed');
-      bar.querySelector('button')!.hidden = false;
-      bar.querySelector('span')!.textContent = `Could not load: ${e instanceof Error ? e.message : String(e)}`;
+      said.end(false);
+      curtain.failed(e instanceof Error ? e.message : String(e));
       throw e;
     }
   }
@@ -904,7 +918,19 @@ export class Gallery {
     const head = shown(title) && matchMedia('(max-width: 960px)').matches ? title.getBoundingClientRect().bottom : view.top;
     const top = Math.max(view.top, head, ...high);
     // a view is framed in what is left clear between what lies across the top and the controls
-    this.made?.stage.setInset(Math.max(0, view.bottom - bottom), top - view.top);
+    // (with a little kept clear at the foot and the head: a thing seen from above its middle reaches further down the
+    // picture than the box round it says, and nothing is to touch the bar or be cut by the edge)
+    const sideways = shown(panel) ? panel.getBoundingClientRect() : null;
+    const right = sideways && sideways.left > middle && sideways.height > view.height / 2 ? sideways.left : view.right;
+    const left = column && column.right < middle ? column.right : view.left;
+    // (what is clear is taken to be about the middle: the narrower side of it, doubled)
+    const clear = 2 * Math.min(middle - left, right - middle);
+    const foot = Math.max(0, view.bottom - bottom) + 0.06 * view.height;
+    const over = top - view.top + 0.02 * view.height;
+    // (the stage fits a width as if the whole height were clear: told the clear width over the clear height's share, it
+    // fits the clear part itself, which on a phone is short and wide)
+    const tall = Math.max(0.2, 1 - (foot + over) / view.height);
+    this.made?.stage.setInset(foot, over, clear / view.width / tall);
     // a panel down one side takes that side; one across the foot is already under the canvas
     const side = shown(panel) ? panel.getBoundingClientRect() : null;
     this.clear = {

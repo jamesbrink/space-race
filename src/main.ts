@@ -6,6 +6,7 @@ import { Callout } from './callout';
 import { Cockpit } from './cockpit';
 import { Demo, IDLE_TITLE } from './demo';
 import { Flown } from './flown';
+import { follow } from './curtain';
 import { crumbs, Gallery, markPlace, placesNav } from './gallery';
 import './navball.css';
 import { Navball } from './navball';
@@ -15,7 +16,7 @@ import { Sound } from './sound';
 import { TimeBar } from './timebar';
 import { Title } from './title';
 import type { SitedFlight } from './types';
-import { type LoadStep, Ui } from './ui';
+import { Ui } from './ui';
 import { Effects } from './viewer/effects';
 import { uOrigin } from './viewer/origin';
 import { FlightPath } from './viewer/path';
@@ -227,50 +228,26 @@ async function start(id: string): Promise<void> {
   started = true;
   ui.loading(flight.callsign);
   stage.veiled = true; // nothing is picked or hovered behind the curtain
-  // What the curtain says, as it happens: each model by its bytes, then what the stage does before the scene can be shown.
-  // The bar's shares are fixed beforehand (`SHARE` for the models, the rest for the warming, by how long each takes), so it never waits at the end.
-  const models: LoadStep[] = flight.models.map((m) => ({ label: m.name, done: 0 }));
-  const warming: Record<WarmStep, LoadStep & { share: number }> = {
-    place: { label: flight.surroundings ? 'The place round the pad' : 'Distant levels of detail', done: 0, share: 0.15 },
-    clouds: { label: 'Clouds', done: 0, share: 0.2 },
-    shaders: { label: 'Compiling shaders', done: 0, share: 0.25 },
-    settle: { label: 'Warming up', done: 0, share: 0.05 },
+  // What the curtain says, as it happens (curtain.ts): each model by its bytes, then what the stage does before the scene can be shown.
+  const steps: Record<WarmStep, { label: string; share: number }> = {
+    place: { label: flight.surroundings ? 'The place round the pad' : 'Distant levels of detail', share: 0.15 },
+    clouds: { label: 'Clouds', share: 0.2 },
+    shaders: { label: 'Compiling shaders', share: 0.25 },
+    settle: { label: 'Warming up', share: 0.05 },
   };
-  const steps = [...models, ...Object.values(warming)];
-  const SHARE = 0.35;
-  const megabytes = (bytes: number) => `${(bytes / 1e6).toFixed(1)} MB`;
-  let arrived = 0;
-  // A step that says nothing while it works (the clouds made, the shaders built: seconds each, with an event only at the
-  // end) is drawn creeping toward nine tenths of its share by the clock, so the bar is never still; the event sets it right.
-  let current: { step: LoadStep; since: number } | null = null;
-  const say = () => {
-    const doing = arrived < 1 ? null : (Object.values(warming).find((w) => w.done < 1) ?? null);
-    if (doing !== (current?.step ?? null)) current = doing && { step: doing, since: performance.now() };
-    const crept = (w: LoadStep) =>
-      w === current?.step ? Math.max(w.done, 0.9 * (1 - Math.exp(-(performance.now() - current.since) / 8000))) : w.done;
-    ui.setProgress(SHARE * arrived + Object.values(warming).reduce((sum, w) => sum + w.share * crept(w), 0), steps);
-  };
-  const creeping = window.setInterval(say, 200);
+  const said = follow(
+    ui.curtain,
+    flight.models.map((m) => m.name),
+    steps,
+  );
   try {
-    await stage.load(flight, (f, parts) => {
-      arrived = f;
-      parts?.forEach((part, i) => Object.assign(models[i]!, { done: part.fraction, note: part.total ? megabytes(part.total) : undefined }));
-      say();
-    });
-    arrived = 1;
+    await stage.load(flight, (f, parts) => said.arrive(f, parts));
+    said.arrive(1);
     show(id, true);
     // The scene is kept dark until it can move smoothly (stage.warm): shown sooner, it would
     // stutter as the rest arrived and then jump. The front page waits over it meanwhile.
-    let warm = true;
-    await stage.warm(undefined, (step, f) => {
-      if (!warm) return; // (what is still arriving once the stage has stopped waiting for it is not the curtain's business)
-      warming[step].done = f;
-      say();
-    });
-    warm = false;
-    for (const w of Object.values(warming)) w.done = 1;
-    clearInterval(creeping);
-    say();
+    await stage.warm(undefined, (step, f) => said.step(step, f));
+    said.end();
     ready = true;
     // whatever is going to be playing when the curtain lifts is already playing
     if (prefs.get('demo') || (title.showing && !unattended)) demo.start();
@@ -291,7 +268,7 @@ async function start(id: string): Promise<void> {
     console.error(e);
     ui.failed(e instanceof Error ? e.message : String(e));
   } finally {
-    clearInterval(creeping);
+    said.end(false);
   }
 }
 

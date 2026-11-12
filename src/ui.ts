@@ -1,3 +1,4 @@
+import { CURTAIN, Curtain } from './curtain';
 import { prefs } from './prefs';
 import type { Confidence, Flight, ModelDef, Part } from './types';
 import { RIGS, type RigId } from './viewer/camera/rig.ts';
@@ -62,13 +63,6 @@ const CAMERA_CLASS: Partial<Record<RigId, string>> = {
   onboard: 'aboard',
   pad: 'tracking',
 };
-
-/** A step of the loading, as the curtain lists it: what it is, how far along (0 to 1), and a few words beside it (its size). */
-export interface LoadStep {
-  label: string;
-  done: number;
-  note?: string;
-}
 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -344,16 +338,8 @@ export class Ui {
       </aside>
       <output class="stats" aria-label="Diagnostics"></output>
       <div class="tip" hidden><b></b><span></span></div>
-      <div class="loading" role="status">
-        <div class="loading-card">
-          <p class="loading-kicker">Loading</p>
-          <strong class="loading-name"></strong>
-          <div class="loading-bar" aria-hidden="true"></div>
-          <p class="loading-line"><span class="loading-now"></span><output class="loading-pct"></output></p>
-          <ol class="loading-steps" aria-hidden="true"></ol>
-          <button hidden title="Fetch it again">Try again</button>
-        </div>
-      </div>`;
+      ${CURTAIN}`;
+    this.curtain = new Curtain(root.querySelector<HTMLElement>('.loading')!);
 
     // On a phone the panel is a sheet: tapping a tab opens it, tapping the open tab closes it.
     const panel = root.querySelector<HTMLElement>('.panel')!;
@@ -937,59 +923,21 @@ export class Ui {
    * beside the pointer is put away; the stage is told not to pick, main.ts), and the curtain says what is arriving.
    */
   loading(what: string): void {
-    const el = this.root.querySelector<HTMLElement>('.loading')!;
-    el.classList.remove('done', 'failed', 'began');
-    void el.offsetWidth; // (so the list's late entrance starts again on a retry)
-    el.classList.add('began');
-    el.querySelector('button')!.hidden = true;
-    el.querySelector('.loading-kicker')!.textContent = 'Loading';
-    el.querySelector('.loading-name')!.textContent = what;
+    this.curtain.begin(what);
     const tip = this.root.querySelector<HTMLElement>('.tip')!;
     tip.hidden = true;
     delete tip.dataset.model;
-    this.progress = 0;
-    this.setProgress(0, []);
   }
-  private progress = 0;
-
-  /**
-   * How far along the loading is, 0 to 1, and its steps as they stand. The bar never goes back: a step that turns out
-   * bigger than it looked (a size that arrives late) holds the bar where it was until the rest catches up.
-   */
-  setProgress(fraction: number, steps?: LoadStep[]): void {
-    const el = this.root.querySelector<HTMLElement>('.loading')!;
-    this.progress = Math.max(this.progress, Math.min(1, fraction));
-    el.style.setProperty('--p', this.progress.toFixed(4));
-    const set = (target: Element, text: string) => {
-      if (target.textContent !== text) target.textContent = text;
-    };
-    set(el.querySelector('.loading-pct')!, `${Math.floor(this.progress * 100)} %`);
-    if (!steps) return;
-    // what is being done now: the first step under way (or, between steps, the next one)
-    const now = steps.find((x) => x.done > 0 && x.done < 1) ?? steps.find((x) => x.done < 1);
-    set(el.querySelector('.loading-now')!, now ? `${now.label}${now.note ? ` · ${now.note}` : ''}` : steps.length ? 'Ready' : 'Starting');
-    const list = el.querySelector<HTMLElement>('.loading-steps')!;
-    if (list.children.length !== steps.length)
-      list.innerHTML = steps.map((x) => `<li data-state="todo"><i></i><span>${esc(x.label)}</span><em></em></li>`).join('');
-    steps.forEach((x, i) => {
-      const row = list.children[i] as HTMLElement;
-      const state = x.done >= 1 ? 'done' : x.done > 0 || x === now ? 'doing' : 'todo';
-      if (row.dataset.state !== state) row.dataset.state = state;
-      set(row.querySelector('em')!, x.note ?? '');
-    });
-  }
+  /** The curtain itself (curtain.ts): the same one the gallery has. */
+  readonly curtain: Curtain;
 
   loaded(): void {
-    this.root.querySelector('.loading')!.classList.add('done');
+    this.curtain.done();
   }
 
   /** It did not arrive: said in the curtain's place as a notice (the panels stay usable), with the way to try again. */
   failed(message: string): void {
-    const el = this.root.querySelector<HTMLElement>('.loading')!;
-    el.classList.add('failed');
-    el.querySelector('button')!.hidden = false;
-    el.querySelector('.loading-kicker')!.textContent = 'Could not load';
-    el.querySelector('.loading-now')!.textContent = message;
+    this.curtain.failed(message);
   }
 
   /** A part under the pointer in the 3D view. */
