@@ -420,6 +420,8 @@ export class ChaseRig extends OrbitRig {
   private radius = 1;
   private flying = false;
   private settling: { from: THREE.Vector3; t: number } | null = null;
+  /** Where `carry` last put the pivot: `stow` reads it back onto the vehicle only if something has moved it since. */
+  private readonly carried = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN);
 
   override readonly id: 'chase' | 'locked';
 
@@ -516,11 +518,15 @@ export class ChaseRig extends OrbitRig {
     const to = v.copy(this.rel).applyQuaternion(this.own).add(this.middle);
     const moved = to.clone().sub(this.pivot);
     this.pivot.copy(to);
+    this.carried.copy(to);
     return moved;
   }
 
   protected override stow(): void {
     if (this.settling) return;
+    // (a pivot nothing has moved since it was carried is where `rel` put it: `rel` read back from it would come back
+    // a last bit out every frame, and a vehicle that moved away and back would not find the eye where it had been)
+    if (this.pivot.equals(this.carried)) return;
     this.rel.copy(this.pivot).sub(this.middle).applyQuaternion(w4.copy(this.own).invert());
     if (this.rel.length() > 1.2 * this.radius) {
       this.rel.setLength(1.2 * this.radius);

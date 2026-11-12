@@ -178,7 +178,11 @@ export class Bloom extends Pass {
     const lookup = material.fragmentShader.includes('texture2D(') ? 'texture2D' : 'texture';
     material.fragmentShader = material.fragmentShader
       .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform sampler2D tBloom;\nuniform float uBloom;')
-      .replace(read, `$1\nif (uBloom > 0.5) ${target}.rgb += ${lookup}(tBloom, vUv).rgb;`);
+      // (and the frame leaves here opaque. The canvas is asked for without alpha, but its buffer has the channel all the
+      // same on some systems, and what is blended into the frame leaves less than one in it (the air seen from above:
+      // globe.ts). Nothing on the page shows that; a copy of the canvas does (drawImage lays it over what the copy
+      // held, so a little of the last picture came through at the edges of things: every tool that compares pictures).)
+      .replace(read, `$1\n${target}.a = 1.0;\nif (uBloom > 0.5) ${target}.rgb += ${lookup}(tBloom, vUv).rgb;`);
     material.uniforms.tBloom = { value: this.sum.texture };
     material.uniforms.uBloom = this.on;
     material.needsUpdate = true;

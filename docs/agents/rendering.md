@@ -277,6 +277,13 @@ build) narrow it; the header of the file lists the rest.
   changed the depth under a cloud, and a cel cloud's edge is cut at one half); and the Sun's maps, kept from
   whenever something last asked (a plant's shadow in the form the eye was then near enough for), which a frozen
   frame draws with itself. Anything new that eases over time takes its time from `dt` and is cut by `frozen`.
+  Nor may where something stands depend on how it got there: the box the chase camera and the Sun's map go by is
+  taken in the vehicle's own frame through its nodes' own placings (taken in the scene's frame it was a different
+  box for every attitude, and 1400 to 6200 pixels of the vehicle differed after a level went and came back), and
+  a pivot or a light that follows is put where its subject is, not moved by how far it went (a sum of moves comes
+  back a last bit out). And the frame leaves for the canvas opaque (`Bloom.adopt`): where something is blended into
+  it (the air from above) its alpha is under one, and a copy of the canvas (`drawImage`, which every such tool
+  uses) laid that over the copy before: a little of the last picture, at the edges of things.
   The page goes on arriving for seconds after the curtain lifts (coarser levels, trees, maps): a tool waits for
   a frame drawn again to be the same frame before its first picture.
 - So **anything that changes how the scene is drawn keeps a switch** for as long as it is being

@@ -1209,12 +1209,24 @@ export class Stage {
       c.shed = this.lifted.shed;
       c.level = s.shown;
       c.matrix = s.group.matrixWorld;
+      // (in the vehicle's own frame, so it is the same box however the vehicle lay when it was taken: a box in the
+      // scene's frame round a pitched rocket is a different box, and the camera and the Sun's map then stood a little
+      // differently according to when a level or a stage had last changed)
+      // (and from each node's own placing up to the vehicle's, never through where the vehicle is in the world: twelve
+      // kilometres up that is the last bits of every number, and the same box must come back to the bit)
       const left = new THREE.Box3();
+      const within = new THREE.Matrix4();
+      const each = new THREE.Box3();
       s.shown.traverseVisible((o) => {
-        if ((o as THREE.Mesh).isMesh) left.expandByObject(o);
+        const geometry = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).geometry : null;
+        if (!geometry) return;
+        if (!geometry.boundingBox) geometry.computeBoundingBox();
+        within.copy(o.matrix);
+        for (let up = o.parent; up && up !== s.group; up = up.parent) within.premultiply(up.matrix);
+        left.union(each.copy(geometry.boundingBox!).applyMatrix4(within));
       });
       if (!left.isEmpty()) {
-        const centre = s.group.worldToLocal(left.getCenter(new THREE.Vector3()));
+        const centre = left.getCenter(new THREE.Vector3());
         const radius = left.getSize(new THREE.Vector3()).length() / 2;
         // (a coarser level of the same thing is the same shape: only a real change counts as one)
         if (centre.distanceTo(c.centre) > 0.05 * radius || Math.abs(radius - c.radius) > 0.05 * radius) c.shape++;
@@ -1235,14 +1247,22 @@ export class Stage {
   }
   private crafted: (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null }) | null = null;
 
+  /** How far up its line the Sun's light stands from what it is aimed at, as last fitted (shadeCraft keeps it to the bit). */
+  private readonly sunBack = new THREE.Vector3();
+
   /** While a rig that is about the vehicle is in charge, the Sun's shadow map goes with the vehicle, so it shades itself all the way up. */
   private shadeCraft(): void {
     const c = this.cam.rig === 'orbit' || this.cam.rig === 'free' ? null : this.crafted;
     if (!c) return;
-    const by = c.centre.clone().applyMatrix4(c.matrix).sub(this.sun.target.position);
-    if (by.lengthSq() < 1e-6) return;
-    this.sun.position.add(by);
-    this.sun.target.position.add(by);
+    // (put where the vehicle is, not moved by how far it went: a sum of moves is a last bit out, and the map of a
+    // vehicle that went and came back would not be the map it had)
+    const to = c.centre.clone().applyMatrix4(c.matrix);
+    const target = this.sun.target.position;
+    if (to.equals(target)) return;
+    const back = this.sun.position.sub(target);
+    if (this.sunBack.distanceToSquared(back) > 1e-12 * back.lengthSq()) this.sunBack.copy(back);
+    target.copy(to);
+    this.sun.position.copy(to).add(this.sunBack);
     this.shadowsOwed = true;
   }
 
