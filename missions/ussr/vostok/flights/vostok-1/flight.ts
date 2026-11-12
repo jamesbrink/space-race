@@ -483,6 +483,116 @@ const vehicle: ModelDef = {
   ],
 };
 
+// The cosmonaut, standing beside the spacecraft: there is no pad to stand him on yet.
+const COSMONAUT_FACING = Math.PI / 4;
+/** A direction to look at him from: in front of him, turned `aside` radians, `lift` up. */
+const facingCosmonaut = (lift: number, aside = 0.2): [number, number, number] => [
+  Math.sin(COSMONAUT_FACING + aside),
+  lift,
+  Math.cos(COSMONAUT_FACING + aside),
+];
+
+const crewParts: Part[] = [
+  {
+    node: 'Helmet',
+    name: 'Helmet',
+    summary: 'White, part of the suit, and lettered that morning.',
+    detail:
+      'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings ' +
+      'up out of sight inside the shell, which is how it is here, as he wore it to the pad; if the cabin lost ' +
+      'pressure it would have come down by itself. The red "СССР" on the brow was painted by hand on the morning ' +
+      'of the flight, the story goes, so that whoever found him after landing would know whose pilot had come down ' +
+      'by parachute. Photographs taken that morning exist both with the letters and without.',
+    facts: [
+      ['Shell', 'fixed to the suit'],
+      ['Visor', 'double, closes by itself on loss of pressure'],
+      ['Lettering', '"СССР", red, by hand, 12 April 1961'],
+      ['Under it', 'a white headset cap with two microphones'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Torso',
+    name: 'Torso',
+    summary: 'An orange cover over the suit that holds pressure.',
+    detail:
+      'What is seen is not the pressure suit. The SK-1 is two layers, a rubber bladder inside a restraint layer of ' +
+      'lavsan (polyester) cloth, and over them this orange cover, the colour chosen to be found by: Vostok’s pilot ' +
+      'left the cabin on his ejection seat and came down under his own parachute, anywhere along the track. The ' +
+      'grey at the neck is the suit itself. The hoses leave at his right side; on the way to the pad the suit was ' +
+      'ventilated from the bus.',
+    facts: [
+      ['Suit', 'SK-1, Zvezda (Tomilino)'],
+      ['Mass', '20 kg'],
+      ['Pressure if the cabin fails', '270 to 300 hPa'],
+      ['Markings', 'none but the helmet’s'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Arms',
+    name: 'Arms',
+    summary: 'A mirror is sewn to the right sleeve.',
+    detail:
+      'Strapped into the seat in a helmet that does not turn far, he could not see everything in the cabin. The ' +
+      'mirror on the sleeve is for looking at what is out of sight: a switch, a gauge, the suit’s own fittings.',
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Gloves',
+    name: 'Gloves',
+    summary: 'On metal rings, and off until he was in the cabin.',
+    detail:
+      'The gloves lock to metal rings at the wrists. Their palms are leather; the backs are the cover’s orange. ' +
+      'They are modelled on, as flown.',
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Legs',
+    name: 'Legs',
+    summary: 'One garment from the collar down, with a pocket on each thigh.',
+    detail:
+      'The cover is a loose overall. Its legs are drawn in over the tops of the boots. What the thigh pockets held ' +
+      'has not been read in a source; survival gear rode in the seat.',
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Boots',
+    name: 'Boots',
+    summary: 'Black laced leather, worn over the suit’s feet.',
+    detail: 'Ordinary-looking high boots, laced on hooks, pulled on over the feet of the pressure suit.',
+    explode: [0, 0, 0],
+    order: 0,
+  },
+];
+
+const crew: ModelDef = {
+  id: 'crew',
+  name: 'Crew',
+  url: 'models/ussr/vostok/vostok-1/crew.glb',
+  scale: 'Yuri A. Gagarin · 1.65 m, 1.71 m suited · to scale',
+  // no pad yet: he stands in the gallery, beside the spacecraft
+  backdrop: 'studio',
+  parts: crewParts,
+  position: [3.1, 0, 2.1],
+  rotationY: COSMONAUT_FACING,
+  walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
+  wide: false,
+  specGroups: ['Pressure suit'],
+  home: 'figure',
+  views: [
+    { id: 'figure', label: 'Cosmonaut', centreY: 0.9, span: 2.4, from: facingCosmonaut(0.05) },
+    { id: 'helmet', label: 'Helmet', centreY: 1.57, span: 0.62, from: facingCosmonaut(0.05) },
+    { id: 'hands', label: 'Gloves', centreY: 0.86, span: 0.62, from: facingCosmonaut(0.05) },
+    { id: 'boots', label: 'Boots', centreY: 0.18, span: 0.62, from: facingCosmonaut(0.2) },
+  ],
+};
+
 const MSK = (h: number, m: number, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s - 59.7);
 
 export const flight: Flight = {
@@ -775,6 +885,46 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'east of north, for an orbit inclined 64.95° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
+    {
+      group: 'Pressure suit',
+      label: 'Pilot height',
+      value: 1.65,
+      unit: 'm',
+      confidence: 'documented',
+      note: '165 cm in his service record of 1960, published by the Russian Ministry of Defence in 2024. 157 cm is often printed, without a document behind it; the seated figure in the spacecraft is still built to that',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Pilot mass',
+      value: 68,
+      unit: 'kg',
+      confidence: 'documented',
+      note: 'the same service record',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Suit mass',
+      value: 20,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '20 kg (K. Thomas, NASA JSC, 2016, after Abramov and Skoog); 23 kg is also printed, perhaps with helmet, gloves and boots',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Operating pressure',
+      value: 28.5,
+      unit: 'kPa',
+      confidence: 'documented',
+      note: '270 to 300 hPa, held only if the cabin loses pressure (the same synopsis); the middle is shown',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Standing height, helmet and boots',
+      value: 1.713,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'his height, a 2.6 cm heel and 3.7 cm of helmet over the crown; the last two are read off photographs',
+    },
   ],
   motors: [
     {
@@ -826,5 +976,5 @@ export const flight: Flight = {
       note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N)',
     },
   ],
-  models: [vehicle],
+  models: [vehicle, crew],
 };
