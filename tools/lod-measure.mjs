@@ -32,7 +32,7 @@ async function differing([target, a, b, ppm, azimuth, apart]) {
   const frame = () => new Promise((done) => requestAnimationFrame(done));
   const grab = async (level) => {
     if (target.model === undefined) st.scenery.forced = level === null ? null : { [target.name]: level };
-    else st.staged[target.model].forced = level === null ? null : target.piece ? { [target.name]: level } : level;
+    else st.staged[target.model].forced = level;
     for (let i = 0; i < 3; i++) await frame();
     st.dirty = true;
     await frame();
@@ -142,27 +142,13 @@ export async function measure({ url, flight, only }) {
         radius: box.min.distanceTo(box.max) / 2,
       });
       return [
-        // (a model drawn piece by piece has a threshold for each piece and none of its own)
-        ...flight.models.flatMap((m, i) =>
-          stage.staged[i].pieces
-            ? stage.staged[i].pieces.map((p) => ({
-                glb: file(m.url),
-                name: p.name,
-                model: i,
-                piece: true,
-                levels: p.nodes.filter(Boolean).length,
-                ...round(p.box),
-              }))
-            : [
-                {
-                  glb: file(m.url),
-                  name: '',
-                  model: i,
-                  levels: stage.staged[i].levels.filter(Boolean).length,
-                  ...round(stage.staged[i].box),
-                },
-              ],
-        ),
+        ...flight.models.map((m, i) => ({
+          glb: file(m.url),
+          name: '',
+          model: i,
+          levels: stage.staged[i].levels.filter(Boolean).length,
+          ...round(stage.staged[i].box),
+        })),
         ...(stage.scenery?.pieces ?? []).map((p) => ({
           glb: file(flight.surroundings),
           name: p.name,
@@ -224,10 +210,6 @@ export async function measure({ url, flight, only }) {
         // (what is not measured this time keeps what it had)
         const kept = existsSync(recordOf(thing.glb)) ? JSON.parse(readFileSync(recordOf(thing.glb), 'utf8')) : {};
         record = { above: { ...kept.above }, measured: { ...kept.measured } };
-        if (thing.piece) {
-          delete record.above[''];
-          delete record.measured[''];
-        }
         byModel.set(thing.glb, record);
       }
       const above = [];
@@ -250,7 +232,7 @@ export async function measure({ url, flight, only }) {
         recordOf(glb),
         `${JSON.stringify(
           {
-            about: `Levels of detail: the size on screen (pixels a metre) above which each finer level is drawn, and the pixels of ${W} x ${H} that differed between two levels as [size, pixels] pairs, smallest size first, up to the first at which too many did (first from level 0 to 1, then 1 to 2), in whichever of the two looks more differed. Allowed: ${ALLOWED.join(' and ')}. Written by tools/lod-thresholds.mjs --measure; "" is the model as a whole, any other name a piece of it.`,
+            about: `Levels of detail: the size on screen (pixels a metre) above which each finer level is drawn, and the pixels of ${W} x ${H} that differed between two levels as [size, pixels] pairs, smallest size first, up to the first at which too many did (first from level 0 to 1, then 1 to 2), in whichever of the two looks more differed. Allowed: ${ALLOWED.join(' and ')}. Written by tools/lod-thresholds.mjs --measure; "" is the model as a whole.`,
             ...record,
           },
           null,

@@ -163,22 +163,6 @@ or a dense screen keeps the fine level further). A model that is cut open is alw
 is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
 the level its own size on screen calls for, so the building beside the walker is always the finest;
 level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it.
-A model that is a place in itself (`ModelDef.pieces`: a pad 160 m across, which taken whole is always beside the
-walker and so always in full) can be chosen the same way (`Staged` in lod.ts): each top-level node is a piece, and a
-node whose children stand apart (no child half its size: the ground equipment, the floodlights, the camera towers)
-is taken child by child. Every level's root is then shown and the pieces' nodes shown and hidden under them, so
-**a piece's own node is never hidden or shown by hand** (its `visible` is the choice of level); `Staged.shown` is
-level 0, and `Staged.drawn(node)` is the node wherever it is drawn from (the outline's). The slider, a door and a
-lift move every level alike, and a piece's box is taken again when they do; a piece that is driven by hand moves at
-level 0 alone and is drawn in full from then on; nothing within 9 m of the eye is below level 0; cut open, all of
-it is in full. A level built with other children under such a node gives no pieces: they are drawn from a finer one.
-**Freedom 7's pad has it switched off, and its pieces' thresholds measured and waiting.** Thrown in one page
-(`pnpm bench --toggle`, the fade cut at each throw, three repeats, both looks, 1440x900 at 1 and 2): on foot 16 of
-the 41 pieces go coarser and they are the cheap ones (huts, screens, cameras: 10 draws of 3,900 and half a per cent
-of the triangles), since what is dear is what the walker stands beside; in the pad's own view 3.6 % of the draws and
-5.4 % of the triangles go and the frame does not move (every pair of repeats within 0.3 ms at 1440x900, either way),
-for 1,900 pixels of 1.3 million drawn otherwise where the whole pad in full drew none. A picture is not changed for
-nothing: turn it on (`pieces: true` in the pad's `ModelDef`) when a pad is dear enough for it to show.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script and a threshold to `LOD_ABOVE` (the choosing takes any number); do not hand-edit geometry for them.
 
@@ -197,14 +181,14 @@ fading mesh wears its material's twin (`Fading.twin`: the material itself, by pr
 `LOD_FADE` defined and its own id), so nothing else carries the test and nothing has to be told
 about it; `Stage.warm` builds those shaders with the rest. A test (`stage.frozen`) gets the cut.
 To measure a change to any of this: `Staged.forced` and `Scenery.forced` draw a level whatever
-the distance (a number, or for a place or a model in pieces a level for each piece named), so the same view
-can be drawn at two levels and compared.
+the distance (for the place, a level for each piece named), so the same view can be drawn at two levels and
+compared.
 
 **Each thing has its own thresholds, measured.** 8 and 2 are what the worst things need (a gantry
 whose bracing goes, the pad). Most differ far less from level to level (a road and a cable trench
 not at all), and holding them fine until 8 px/m cost 8 ms a frame on the pad against 40 and 12.
 So `node tools/lod-thresholds.mjs --measure` (needs `pnpm dev`; `--only <regex>` for some of them) draws every
-model, and every piece of the place and of a model in pieces, at each pair of levels from the same eye at a range
+model, and every piece of the place, at each pair of levels from the same eye at a range
 of sizes, in both looks, and counts the pixels that differ in the worse of the two (the first level is drawn again
 after the second as a control: it must be the same picture, `pnpm test:frozen`); a thing's threshold is the largest size at and under which no more than 100
 (level 0 to 1) or 350 (1 to 2) pixels of 1280 x 800 differ, never under 8 and 2, the second kept a
@@ -212,7 +196,7 @@ size under the first so that nothing goes from 0 straight to 2, and never over t
 is still in the window (nearer than that the picture is of a part of it: a gantry's two levels came out alike from
 16 m with its bracing out of the frame). The figures and what was measured
 are kept in `<name>.lod.json` beside the model's script and carried in the GLB's extras
-(`lod_above`: the scene's for a model, a node's for a piece), which lod.ts reads
+(`lod_above`: the scene's for a model, a top-level node's for a piece), which lod.ts reads
 (`thresholdsOf`); `build-model.mjs` puts them back after a rebuild and a test fails a GLB that has
 lost them. **After changing what a level leaves out, measure again.** A thing with no record
 has 8 and 2.
@@ -385,6 +369,21 @@ What has been found, so it is not found again:
   them, is the same at all three), and they are drawn as fourteen meshes, one a material, all five complexes joined.
   To choose a level a complex they would have to be drawn a complex, a material and a level apart: some seventy
   draws in place of fourteen, in a frame that is bound by its draws, to save 1,800 triangles of three million.
+- **Tried and taken out: the pad choosing its level of detail piece by piece.** The pad is 160 m across and one
+  model, so on foot it is always beside the walker and always in full. It was split as the place is (`Scenery`): each
+  top-level node a piece, and a node whose children stand apart (the ground equipment, one node spread over the whole
+  pad; the floodlights; the camera towers) taken child by child, 41 pieces, each with thresholds measured in both
+  looks, a cross-fade of its own, its box taken again when the slider or a door moved, in full within 9 m and when
+  cut open or driven. Thrown in one page (`pnpm bench --toggle`, the fades cut at each throw, three repeats, both
+  looks, 1440x900 at 1 and 2) it took 3.6 % off the draws and 5.4 % off the triangles of the pad's own view and
+  nothing off the frame: every pair of repeats within 0.3 ms either way at 1440x900 (12.88 to 12.68, 11.77 to 11.77
+  ms), no scenario outside its spread. On foot 16 of the 41 went coarser and nothing changed, because **what is dear
+  is what the walker stands beside** (the gantry, the cherry picker, the trucks) and the pieces that can go coarse
+  are the cheap ones, most of them the same geometry at every level (huts, screens, barricades). And the picture
+  paid: each piece kept inside its own 100 and 350 pixels, but 37 pieces each inside their own allowance came to
+  1,900 pixels of 1.3 million in the pad's view where the pad in full drew none. A first timing had it 2 to 4 ms
+  slower: every throw of the switch started 37 cross-fades, which the timed frames then drew (cut the fade before
+  timing a change of level). Do not build it again for a pad; a model would have to be dear in its far parts.
 - **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame at 1440x900 is
   bound by the CPU (three's work per draw call), so a batch per material per file was built, with the meshes left
   in the scene on a layer the camera did not see (so picking, outline, cutaway, moves, levels of detail and

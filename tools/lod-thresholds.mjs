@@ -129,14 +129,6 @@ export function carry(record, glb, check = false) {
     const node = model.json.nodes[i];
     named.add(node.name);
     put(node, node.name, above[node.name]);
-    // (a piece may be a child of a top-level node whose children stand apart: lod.ts `Staged.split`)
-    for (const c of node.children ?? []) {
-      const child = model.json.nodes[c];
-      if (!child.name || named.has(child.name)) continue;
-      if (above[child.name] === undefined && child.extras?.lod_above === undefined) continue;
-      named.add(child.name);
-      put(child, child.name, above[child.name]);
-    }
   }
   for (const name of Object.keys(above))
     if (name && !named.has(name)) wrong.push(`${relative(root, record)}: ${name} is not a node of the model`);
