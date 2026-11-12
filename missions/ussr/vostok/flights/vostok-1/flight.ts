@@ -1,0 +1,468 @@
+import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
+import { SITE1 } from '../../sites/site-1.ts';
+
+const DEG = Math.PI / 180;
+const KGF = 9.80665;
+
+// Where things are on the model, as vehicles/vostok_3ka.py has them: azimuths about the long axis from the model's +X,
+// latitudes on the sphere above the plane square to that axis. The numbers live there; these are quoted for the motions.
+const ENTRY = { az: 135, lat: 24 }; // hatch No. 1, and the line of the seat's rails
+const PARACHUTE = { az: 45, lat: 30 }; // hatch No. 2
+const STRAPS = [0, 90, 180, 270];
+const MAST_AZ = 202.5;
+/** A direction on the model in the viewer's axes (+Y is the model's long axis; the model's +Y is the viewer's -Z). */
+const along = (az: number, lat: number, by: number): [number, number, number] => [
+  by * Math.cos(lat * DEG) * Math.cos(az * DEG),
+  by * Math.sin(lat * DEG),
+  -by * Math.cos(lat * DEG) * Math.sin(az * DEG),
+];
+/** A swing outward about a hinge at the foot of something standing on the model at this azimuth. */
+const outward = (node: string, az: number, degrees: number, from: number, to: number): Move => ({
+  kind: 'swing',
+  node,
+  axis: [-Math.sin(az * DEG), 0, -Math.cos(az * DEG)],
+  angle: degrees * DEG,
+  from,
+  to,
+});
+
+/** How far the descent module is lifted off the instrument module at full explode, m. */
+const LIFT = 1.5;
+
+const parts: Part[] = [
+  {
+    node: 'DescentModule',
+    group: 'Descent module',
+    name: 'Descent module',
+    summary: 'A ball 2.3 m across: the only part that came back.',
+    detail:
+      'A sphere needs no steering to survive entry. Whichever way it meets the air, the flow round it is the same, so the ' +
+      'whole of it is covered in heat shield and its weight is put low and behind the pilot: it turns itself heavy side first ' +
+      'and stays there, with no thrusters at all. The price is a steep ballistic fall, more than ten g by Gagarin’s account, and a landing too hard ' +
+      'to sit through, which is why the pilot left before it reached the ground. In orbit the shield is under a blanket of ' +
+      'insulation faced with foil, as modelled; the charred brown ball in the museum is what the air left of it.',
+    facts: [
+      ['Diameter', '2.3 m over the heat shield; pressure hull 2.2 m'],
+      ['Mass', '2,460 kg'],
+      ['Hatches', '3, each 1 m in the clear'],
+      ['Portholes', '3, two of them in hatch covers'],
+      ['Free volume', '1.6 m³ of 5.2'],
+      ['Landed', '10:48 Moscow time, without its pilot'],
+    ],
+    explode: [0, LIFT, 0],
+    order: 1,
+  },
+  {
+    node: 'EntryHatch',
+    group: 'Descent module',
+    name: 'Hatch No. 1',
+    summary: 'The way in, bolted shut behind him, and the way out at 7 km.',
+    detail:
+      'Over the pilot’s head, on the line of his seat’s rails. On the pad it was closed with thirty screws at 07:50; a ' +
+      'contact showed it was not seated, and all thirty were taken out and put back, which took most of an hour. Coming ' +
+      'down, at about seven kilometres, it was thrown clear and the seat followed two seconds later. One of the three ' +
+      'portholes is in it.',
+    facts: [
+      ['Clear diameter', '1 m'],
+      ['Screws', '30'],
+      ['Released', 'at about 7 km, 10:42 Moscow time'],
+      ['Seat follows', '2 s later'],
+    ],
+    explode: [0, LIFT, 0],
+    // (thrown well clear: the seat comes out along the same line)
+    moves: [{ kind: 'slide', by: along(ENTRY.az, ENTRY.lat, 3.6), from: 0.5, to: 0.74 }],
+    order: 1,
+  },
+  {
+    node: 'ParachuteHatch',
+    group: 'Descent module',
+    name: 'Hatch No. 2',
+    summary: 'Covers the capsule’s own parachute.',
+    detail:
+      'At the pilot’s left. Behind it is the container of the descent module’s parachute, which opened at about four ' +
+      'kilometres, after the pilot had gone, and set the empty ball down at ten metres a second.',
+    facts: [
+      ['Clear diameter', '1 m'],
+      ['Parachute', '574 m², from a 330 litre container'],
+      ['Landing speed', '10 m/s'],
+    ],
+    explode: [0, LIFT, 0],
+    moves: [{ kind: 'slide', by: along(PARACHUTE.az, PARACHUTE.lat, 1.0), from: 0.6, to: 0.78 }],
+    order: 1,
+  },
+  {
+    node: 'Cabin',
+    group: 'Descent module',
+    inside: true,
+    name: 'Cabin',
+    summary: 'Ordinary air, a globe that turned with the Earth, and controls locked by a code.',
+    detail:
+      'Air at sea-level pressure, kept breathable by superoxide that gives up oxygen as it takes in carbon dioxide and ' +
+      'water, with ten days of food and water in case the braking engine failed and the orbit had to decay by itself. On the ' +
+      'board over his knees a small globe, the Globus, turned to show the point on the Earth below him. Beyond his feet ' +
+      'the Vzor, an optical sight on a porthole, by which the ship could be levelled against the horizon and pointed ' +
+      'along its track by eye. The flight was automatic. To fly it by hand he would ' +
+      'first have had to key 1-2-5 into a lock, the number sealed in an envelope on board.',
+    facts: [
+      ['Atmosphere', 'air, 755 to 775 mm Hg'],
+      ['Regeneration', 'alkali metal superoxide'],
+      ['Supplies', '10 days'],
+      ['Vzor field of view', '7°'],
+      ['Manual control code', '1-2-5'],
+    ],
+    explode: [0, LIFT, 0],
+    order: 1,
+  },
+  {
+    node: 'EjectionSeat',
+    group: 'Descent module',
+    inside: true,
+    name: 'Ejection seat and pilot',
+    summary: 'Gagarin did not land in his spacecraft.',
+    detail:
+      'The seat lies across the ball, tilted so that the rails run out through hatch No. 1. It was the escape system on ' +
+      'the pad and in the first part of the climb, and it was the landing system: at about seven kilometres the hatch went, ' +
+      'the seat was fired out on two rockets, and at four the pilot left the seat and came down under his own parachute at ' +
+      'five metres a second. For years the Soviet record claim said he had landed inside. The figure here wears the SK-1: a ' +
+      'pressure suit under an orange cover, and a white helmet on which СССР was painted on the morning of the flight.',
+    facts: [
+      ['Ejection', 'about 7 km up'],
+      ['Leaves the seat', '4 km'],
+      ['Pilot’s parachute', '83.5 m²; reserve 56 m²'],
+      ['Landing speed', '5 m/s'],
+      ['Gagarin landed', '10:53 Moscow time, 106 min after liftoff'],
+    ],
+    explode: [0, LIFT, 0],
+    moves: [{ kind: 'slide', by: along(ENTRY.az, ENTRY.lat, 2.3), from: 0.72, to: 1 }],
+    order: 1,
+  },
+  {
+    node: 'RetainingStraps',
+    group: 'Between the modules',
+    name: 'Retaining straps',
+    summary: 'Four steel bands and one lock held the ball on.',
+    detail:
+      'Four bands run from the instrument module’s ring over the sphere and meet in a single lock at its top. Opening ' +
+      'that one lock frees the ball. Each strap carries a hairpin antenna of the command link. They are modelled as they ' +
+      'were in orbit and swing back as they would when released; how far they sprang is not recorded.',
+    facts: [
+      ['Straps', '4, joined by one pyrotechnic lock'],
+      ['Planned release', '10 to 12 s after the engine stops'],
+      ['Released', 'about 10 minutes late'],
+    ],
+    explode: [0, 0, 0],
+    moves: STRAPS.map((az, i) => outward(`Strap_${i + 1}`, az, 58, 0.02 + 0.02 * i, 0.2 + 0.02 * i)),
+    order: 0,
+  },
+  {
+    node: 'CableMast',
+    group: 'Between the modules',
+    name: 'Cable mast',
+    summary: 'The umbilical between the modules, and the flight’s worst ten minutes.',
+    detail:
+      'Power, commands and telemetry cross from the instrument module to the cabin through one mast of cables, plugged ' +
+      'into a plate on the side of the ball. After the braking burn the modules should have parted within twelve seconds. ' +
+      'They did not: the engine had been stopped by its timer, the sequencer cancelled the separation, and the pair went into ' +
+      'the atmosphere joined, turning at thirty degrees a second by Gagarin’s count. They came apart ten minutes late, at ' +
+      '10:35 or 10:36, on what OKB-1’s report took to be the backup system’s heat sensors. The old story that the cables ' +
+      'alone held them and burned through is not what the report says.',
+    facts: [
+      ['Separation planned', '10 to 12 s after the burn'],
+      ['Separation flown', '10:35 to 10:36 Moscow time'],
+      ['Tumble', 'about 30°/s (Gagarin); 6°/s in pitch (report)'],
+    ],
+    explode: [0, 0, 0],
+    moves: [outward('CableMast_Arm', MAST_AZ, 40, 0.06, 0.24)],
+    order: 0,
+  },
+  {
+    node: 'GasBottles',
+    group: 'Instrument module',
+    name: 'Gas bottles',
+    summary: 'Nitrogen to turn the ship, oxygen for the cabin.',
+    detail:
+      'A necklace of pressure spheres round the joint, outside both hulls. Most hold nitrogen at about 150 atmospheres ' +
+      'for the attitude jets; the rest are the cabin’s oxygen reserve. Sources give fourteen, sixteen and twelve of them; ' +
+      'fourteen are modelled, in sixteen places, with a gap where the cable mast passes.',
+    facts: [
+      ['Bottles', '14 modelled (sources: 12, 14, 16)'],
+      ['Nitrogen pressure in flight', '150 atm, 110 at retrofire'],
+      ['Diameter', 'about 0.34 m (off drawings)'],
+    ],
+    explode: [0, 0.5, 0],
+    order: 2,
+  },
+  {
+    node: 'InstrumentModule',
+    group: 'Instrument module',
+    inside: true,
+    name: 'Instrument module',
+    summary: 'Two cones base to base: everything that did not need to come home.',
+    detail:
+      'A sealed hull of two cones filled with dry nitrogen, carrying the batteries, radios, the orientation system and ' +
+      'the braking engine. The aft cone is the radiator: shutters over it open and close to hold the temperature. Sixteen ' +
+      'small jets of cold nitrogen, in two independent sets of eight, turn the ship; a sensor finds the Sun and the ship is ' +
+      'pointed by it for the braking burn. Eleven antennas stand out from the module. It burned up.',
+    facts: [
+      ['Greatest diameter', '2.43 m'],
+      ['Length', '2.25 m'],
+      ['Mass', '2,270 kg'],
+      ['Attitude jets', '2 sets of 8, 1.5 kgf each, nitrogen'],
+      ['Antennas', '11: 3 Signal, 4 Zarya, 2 telemetry, 2 command'],
+    ],
+    explode: [0, 0, 0],
+    order: 2,
+  },
+  {
+    node: 'RetroEngine',
+    group: 'Instrument module',
+    inside: true,
+    name: 'TDU-1 braking engine',
+    summary: 'One engine, one chance: it had no spare.',
+    detail:
+      'Isaev’s S5.4: 1.6 tonnes of thrust for up to 45 seconds on self-igniting propellants, with four small steering ' +
+      'nozzles round the chamber. There was one. The answer to its failing was the orbit itself, planned low enough to ' +
+      'decay within the ten days the supplies would last. On 12 April it lit at 10:25:04 and was shut down by its timer 44 ' +
+      'seconds later, about a second short of its full impulse; and the third stage had left the ship in a higher orbit ' +
+      'than planned, 327 km at the top instead of 230, from which that decay would have been slower.',
+    facts: [
+      ['Thrust', '1,614 kgf (15.8 kN)'],
+      ['Propellant', '280 kg: amine fuel and nitric acid'],
+      ['Burn', '45 s at most; about 40 s flown'],
+      ['Steering nozzles', '4'],
+      ['Installation', '396 kg; 1.13 m tall, 0.95 m across'],
+    ],
+    explode: [0, -0.9, 0],
+    order: 2,
+  },
+];
+
+const vehicle: ModelDef = {
+  id: 'vehicle',
+  name: 'Spacecraft',
+  url: 'models/ussr/vostok/vostok-1/vehicle.glb',
+  scale: '4.40 m long · 2.43 m across · to scale',
+  // nothing of Site 1 or the launch vehicle is built yet: the spacecraft is shown by itself, as in orbit
+  backdrop: 'studio',
+  slider: ['As in orbit', 'Taken apart'],
+  cutaway: true,
+  specGroups: ['Spacecraft'],
+  parts,
+  // clear of the floor by the two whips that trail from beside the engine
+  position: [0, 2.05, 0],
+  // the cabin's lamp, over the instrument board
+  lights: [{ position: [0.14, 3.6, 0.14], colour: 0xffe4c0, intensity: 0.2, reach: 1.7 }],
+  home: 'spacecraft',
+  views: [
+    { id: 'spacecraft', label: 'Spacecraft', nodes: ['DescentModule', 'InstrumentModule', 'RetroEngine'] },
+    { id: 'descent', label: 'Descent module', nodes: ['DescentModule'] },
+    { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: along(ENTRY.az, 12, 1) },
+    { id: 'pilot', label: 'Pilot', nodes: ['EjectionSeat'], from: along(225, 10, 1) },
+    { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles'] },
+    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -35, 1) },
+  ],
+};
+
+const MSK = (h: number, m: number, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s - 59.7);
+
+export const flight: Flight = {
+  id: 'ussr/vostok/vostok-1',
+  nation: 'USSR',
+  agency: 'OKB-1',
+  program: 'Vostok',
+  designation: 'Vostok 1',
+  callsign: 'Kedr (Кедр)',
+  spacecraft: 'Vostok 3KA No. 3',
+  launchVehicle: 'Vostok-K 8K72K, No. E103-16',
+  // 09:06:59.7 Moscow time (Siddiqi, Challenge to Apollo, launch log; OKB-1's report gives 09:06:59)
+  launch: '1961-04-12T06:06:59.7Z',
+  launchSite: SITE1.name,
+  site: SITE1,
+  crew: ['Yuri A. Gagarin'],
+  summary:
+    'The first human spaceflight. One orbit of the Earth in 106 minutes from Tyuratam, flown automatically, ' +
+    'ending with the pilot ejecting from his capsule and landing by parachute near the Volga.',
+  facts: [
+    { label: 'Liftoff', value: '12 April 1961, 06:06:59.7 UTC' },
+    { label: 'Pilot', value: 'Yuri A. Gagarin' },
+    { label: 'Duration', value: '106 min (long given as 108)' },
+    { label: 'Orbit', value: '181 × 327 km, 64°57′' },
+    { label: 'Period', value: '89.44 min' },
+    { label: 'Mass in orbit', value: '4,725 kg' },
+    { label: 'Landing', value: '51°16′N 45°59′E, near Smelovka' },
+  ],
+  // Moscow times from OKB-1's report of 3 May 1961 and Gagarin's own of 13 April; ascent seconds from Siddiqi (docs/sources.md)
+  timeline: [
+    { t: 0, event: 'Liftoff, 09:06:59.7 Moscow time' },
+    { t: 119, event: 'The four strap-on boosters separate' },
+    { t: 150, event: 'Fairing jettisoned (Gagarin: "at second 150"; other accounts 154 to 156)' },
+    { t: 300, event: 'Core stage cutoff; the third stage lights' },
+    { t: 676, event: 'Third stage cutoff: in orbit, 181 × 327 km' },
+    { t: MSK(9, 18, 28), event: 'Spacecraft separates from the third stage' },
+    { t: MSK(10, 25, 4.2), event: 'Braking engine on' },
+    { t: MSK(10, 25, 48.2), event: 'Braking engine off, by its timer; the modules do not separate' },
+    { t: MSK(10, 35, 30), event: 'Modules separate, ten minutes late (10:35 by Gagarin, 10:36 in the report)' },
+    { t: MSK(10, 42, 0), event: 'Hatch No. 1 away at about 7 km; the seat follows' },
+    { t: MSK(10, 48, 0), event: 'Descent module lands' },
+    { t: MSK(10, 53, 0), event: 'Gagarin lands, 51°16′N 45°59′E' },
+  ],
+  specs: [
+    {
+      group: 'Spacecraft',
+      label: 'Length, without antennas',
+      value: 4.4,
+      unit: 'm',
+      confidence: 'documented',
+      note: '4.4 m (Siddiqi, Challenge to Apollo, p. 195; the Soviet encyclopedia text: «длина (без антенн) 4,4 м»)',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Greatest diameter',
+      value: 2.43,
+      unit: 'm',
+      confidence: 'documented',
+      note: '2.43 m, the instrument module where its two cones meet (Siddiqi p. 195)',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Descent module diameter',
+      value: 2.3,
+      unit: 'm',
+      confidence: 'documented',
+      note: '2.3 m over the heat shield; the pressure hull is 2.2 m (Siddiqi p. 195; the encyclopedia text)',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Instrument module length',
+      value: 2.25,
+      unit: 'm',
+      confidence: 'documented',
+      note: '2.25 m (the encyclopedia text; Siddiqi). The model’s hull is 2.24 m from the nozzle to its forward rim',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Hatch clear diameter',
+      value: 1.0,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'three hatches of 1 m (Siddiqi p. 195; «три люка диаметром "в свету" 1 м»)',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Seat rails above the cross plane',
+      value: 24,
+      unit: 'deg',
+      confidence: 'estimated',
+      note: 'read off the NASA and RKK Energia cutaway drawings: the seat’s back lies some 65° from the long axis',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Gas bottle diameter',
+      value: 0.34,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'off the RKK Energia drawing and photographs of the Kaluga article',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Mass in orbit',
+      value: 4725,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '4,725 kg for this flight (Encyclopedia Astronautica; the type is given as 4.73 t by Siddiqi). Its primary origin has not been read',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Descent module mass',
+      value: 2460,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '2.46 t for the type (Siddiqi p. 195). No. 3’s own figure has not been found',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Instrument module mass',
+      value: 2270,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '2.27 t for the type (Siddiqi p. 195)',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Perigee',
+      value: 181,
+      unit: 'km',
+      confidence: 'documented',
+      note: 'OKB-1 report of 3 May 1961. TASS announced 175 km on the day',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Apogee',
+      value: 327,
+      unit: 'km',
+      confidence: 'documented',
+      note: 'OKB-1 report of 3 May 1961; 230 km was planned. TASS announced 302 km on the day',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Inclination',
+      value: 64.95,
+      unit: 'deg',
+      confidence: 'documented',
+      note: '64°57′ (OKB-1 report of 3 May 1961)',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Period',
+      value: 89.44,
+      unit: 'min',
+      confidence: 'documented',
+      note: '89.44 min (OKB-1 report of 3 May 1961). 89.34 is often printed; TASS announced 89.1',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Pilot height',
+      value: 1.57,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Gagarin is widely given as 157 cm; no primary record read',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Length (not modelled yet)',
+      value: 38.36,
+      unit: 'm',
+      confidence: 'documented',
+      note: '38.36 m (Siddiqi, Challenge to Apollo, table of launch vehicles); RussianSpaceWeb also quotes 41 m',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Liftoff mass (not modelled yet)',
+      value: 287000,
+      unit: 'kg',
+      confidence: 'documented',
+      note: '287 t (Siddiqi, table of launch vehicles); other figures in print: 281.4 t, 290.5 t',
+    },
+  ],
+  motors: [
+    {
+      name: 'TDU-1 (Isaev S5.4) braking engine',
+      count: 1,
+      thrustN: 1614 * KGF,
+      burnS: 45,
+      propellant: 'amine fuel (TG-02) / nitric acid (AK-20F)',
+      kind: 'liquid',
+      confidence: 'documented',
+      note: '1.614 tf, 45 s at most (Siddiqi p. 197); 280 kg of propellant. Flown: on at 10:25:04.2, off by the timer at 10:25:48.2 (OKB-1 report)',
+    },
+    {
+      name: 'Attitude jet',
+      count: 16,
+      thrustN: 1.5 * KGF,
+      propellant: 'compressed nitrogen',
+      confidence: 'documented',
+      note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N)',
+    },
+  ],
+  models: [vehicle],
+};

@@ -392,4 +392,12 @@ test('every flight has a site with sourced numbers, and its sky is the one its r
   near(sky.moon.azimuth / DEG, 245.2, 0.05, 'Moon azimuth');
   near(sky.moon.elevation / DEG, 4.6, 0.05, 'Moon elevation');
   near(sky.moon.illuminated, 0.74, 0.005, 'Moon lit');
+  // Vostok 1: the figures quoted in its README ("The sky at liftoff")
+  const vostok1 = flights.find((f) => f.id === 'ussr/vostok/vostok-1');
+  const over = skyFrom(siteFrame(vostok1.site), julianDate(vostok1.launch));
+  near(over.sun.azimuth / DEG, 142.1, 0.05, 'Sun azimuth over Site 1');
+  near(over.sun.elevation / DEG, 46.9, 0.05, 'Sun elevation over Site 1');
+  near(over.moon.azimuth / DEG, 193.3, 0.05, 'Moon azimuth over Site 1');
+  near(over.moon.elevation / DEG, 35.0, 0.06, 'Moon elevation over Site 1');
+  near(over.moon.illuminated, 0.12, 0.005, 'Moon lit over Site 1');
 });

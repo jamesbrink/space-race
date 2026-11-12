@@ -24,7 +24,8 @@ export class Title {
         <p class="title-line">Every crewed spacecraft <i>·</i> to scale <i>·</i> as it flew</p>
       </div>
       <nav class="title-flights" aria-label="Flights">
-        ${flights
+        ${[...flights]
+          .sort((a, b) => Date.parse(a.launch) - Date.parse(b.launch))
           .map(
             (f, i) => `
           <button data-flight="${esc(f.id)}"${i === 0 ? ' autofocus' : ''}>

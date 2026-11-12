@@ -22,6 +22,7 @@
     "globe:region": "node tools/globe-region.mjs missions/usa/mercury/sites/lc-5.ts",
     "globe:surface": "node tools/globe-surface.mjs",
     "model:mr-3": "node tools/build-model.mjs usa/mercury/mr-3-freedom-7",
+    "model:vostok-1": "node tools/build-model.mjs ussr/vostok/vostok-1",
     "model:lc-5": "node tools/build-model.mjs usa/mercury/sites/lc5"
   },
   "engines": {
