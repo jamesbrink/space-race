@@ -212,6 +212,80 @@ const cases = {
     if (got.cut.length) return [`changed level in one frame as its coarser level arrived: ${got.cut.join(', ')}`];
     return got.faded ? [] : ['nothing changed level as the coarser levels arrived: nothing was tested'];
   },
+
+  /** Fly is asked for on a cold page, and while the site is on its way the visitor thinks again: the last place asked for is where they are. */
+  async 'the launch site asked for after Fly, while the site loads, is where the page lands'() {
+    const { page, close } = await open(`${FLIGHT}/fly`, { slow: 1500 });
+    await page.waitForTimeout(600);
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/site/pad`);
+    await siteReady(page);
+    await page.waitForTimeout(1200);
+    const got = await page.evaluate(() => ({
+      deck: window.sr.cockpit.active,
+      hash: location.hash,
+    }));
+    await close();
+    const fails = [];
+    if (got.deck) fails.push('Fly, then Launch site while it loaded: the page is on the flight deck');
+    if (!got.hash.endsWith('/site/pad')) fails.push(`the address is ${got.hash}, and the launch pad was the last asked for`);
+    return fails;
+  },
+  async 'the gallery gone back to after Fly, while the site loads, is left alone when the site arrives'() {
+    const { page, close } = await open(`${FLIGHT}/fly`, { slow: 1500 });
+    await page.waitForTimeout(600);
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/gallery`);
+    await galleryReady(page);
+    // (the site goes on arriving behind the gallery, if it can)
+    await siteReady(page).catch(() => {});
+    await page.waitForTimeout(1200);
+    const got = await page.evaluate(() => ({
+      arrived: document.body.classList.contains('scene-ready'),
+      deck: window.sr.cockpit.active,
+      gallery: window.sr.gallery.active,
+      running: window.sr.clock.running,
+      hash: location.hash,
+    }));
+    await close();
+    const fails = [];
+    if (got.deck) fails.push('the flight deck was entered behind the gallery');
+    if (got.running) fails.push('the clock is running behind the gallery');
+    if (!got.gallery) fails.push('the gallery is not the place on show');
+    if (!got.hash.endsWith('/gallery')) fails.push(`the address is ${got.hash}, and the gallery is on show`);
+    if (!got.arrived) fails.push('(the site had not arrived behind the gallery when this was read)');
+    return fails;
+  },
+
+  /** The turntable is one setting for both places: switched off in the gallery, the site is not turning when gone back to. */
+  async 'Auto-orbit switched off in the gallery is off at the site at once'() {
+    const { page, close } = await open(`${FLIGHT}/site/vehicle`);
+    await siteReady(page);
+    await page.waitForTimeout(600);
+    const site = () =>
+      page.evaluate(() => ({
+        drift: window.sr.stage.cam.drift,
+        lamp: document.querySelector('#ui [data-rotate]').getAttribute('aria-pressed') === 'true',
+      }));
+    const before = await site();
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/gallery`);
+    await galleryReady(page);
+    await page.evaluate(() => window.sr.gallery.setTurntable(false));
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/site/vehicle`);
+    await page.waitForTimeout(400);
+    const off = await site();
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/gallery`);
+    await page.waitForTimeout(300);
+    await page.evaluate(() => window.sr.gallery.setTurntable(true));
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/site/vehicle`);
+    await page.waitForTimeout(400);
+    const on = await site();
+    await close();
+    const fails = [];
+    if (!before.drift || !before.lamp) fails.push('the site was not turning to begin with: nothing was tested');
+    if (off.drift) fails.push('switched off in the gallery, and the site goes on turning');
+    if (off.lamp) fails.push("switched off in the gallery, and the site's Auto-orbit lamp is lit");
+    if (!on.drift || !on.lamp) fails.push('switched on again in the gallery, and the site is not turning or its lamp is out');
+    return fails;
+  },
 };
 
 let failed = 0;

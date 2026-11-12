@@ -230,7 +230,8 @@ function show(id: string, snap = false, asItStands = false): void {
   stage.section(model.id, snap, asItStands);
   orbit();
   const hash = formatAddress(flight.id, cockpit.active ? 'fly' : 'site', model.id);
-  if (!title.showing && !demo.active && location.hash !== hash) history.replaceState(null, '', hash); // the front page has no address of its own
+  // (the front page has no address of its own, and the gallery's is its own: the site may have arrived behind it)
+  if (!title.showing && !demo.active && !gallery.active && location.hash !== hash) history.replaceState(null, '', hash);
 }
 
 /** Fetch the flight's models and open on a section. */
@@ -588,6 +589,11 @@ if (location.hash.length <= 1) title.show();
  * the flight deck is left.
  */
 let started = false;
+/**
+ * Where the site was last asked to open, while it is on its way: the last asked for is the one landed on, and going
+ * back to the gallery meanwhile is asking for nowhere at the site (null).
+ */
+let bound: (() => void) | null = null;
 /** What going to the gallery stopped, to be started again on the way back. */
 const held = { clock: false, sheet: false, cel: false };
 const sheet = document.querySelector<HTMLElement>('#ui .panel')!;
@@ -630,6 +636,7 @@ function toGallery(what?: string): void {
     if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
     return;
   }
+  bound = null;
   if (cockpit.active) cockpit.leave();
   demo.stop();
   if (stage.walk.active) stage.exitWalk();
@@ -662,9 +669,17 @@ function toSite(model = '', fly = false): void {
     else if (!fly && cockpit.active) cockpit.leave();
     else placed(cockpit.active ? 'fly' : 'site');
   };
-  if (started) return void land();
+  if (ready) return void land();
+  // still on its way: this is where it opens, whatever was asked before (the switch says so now; the address when it lands)
+  bound = land;
+  placed(fly ? 'fly' : 'site', false);
+  if (started) return;
   prefs.set('demo', false); // (it was gone to by hand: it does not open showing itself, whatever it was doing when last left)
-  void start(model).then(land);
+  void start(model).then(() => {
+    const to = bound;
+    bound = null;
+    to?.();
+  });
 }
 document.addEventListener('click', (e) => {
   // the crumbs: back to the flight (its gallery), or out to the front page
