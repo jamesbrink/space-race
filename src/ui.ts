@@ -543,7 +543,7 @@ export class Ui {
         .filter(shown)
         .map(top)
         .filter((y) => y > view.top + view.height / 2);
-      // What was named as covering the view (the flight deck) counts however tall it is (the stage takes at most half the
+      // What was named as covering the view (the flight deck) counts however tall it is (the stage takes at most two thirds of the
       // view), but only those of its panels that lie under the middle of the view, where the subject is: the corners are not in its way.
       const middle = (el: Element) => {
         const r = el.getBoundingClientRect();

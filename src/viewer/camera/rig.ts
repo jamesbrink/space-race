@@ -73,7 +73,7 @@ export interface Rig {
    * Take over from a view as it stands, so that nothing jumps. `resume`: the view being left is not one to carry on
    * from (it was inside the vehicle, or a long lens far away), so come back as this rig was last left.
    */
-  enter(from: Pose, pivot: THREE.Vector3, resume?: boolean): void;
+  enter(from: Pose, pivot: THREE.Vector3, resume?: boolean, unset?: boolean): void;
   /** `dt` seconds on. `keys` are held (lower case), `fast` is Shift. */
   update(dt: number, keys: ReadonlySet<string>, fast: boolean): void;
   /** Where the camera is now. */

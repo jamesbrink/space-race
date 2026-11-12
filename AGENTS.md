@@ -215,6 +215,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   touch ends it; a reload comes back to it. It reads only the flight's data, so a new flight is
   shown without being told how. Before any of it is seen the scene is warmed (`Stage.warm`): every
   level of detail and both day and lamp-lit shaders are built unseen, then the canvas fades up.
+- No key acts under the curtain. While something is loading and its curtain can be seen, `curtain.ts` takes every
+  key at the window before any listener hears it (keys with Command, Control or Alt, and releases, pass): a new
+  shortcut needs no guard of its own, and must not be given a way round this one.
 - Shortcuts use only keys every keyboard has: letters, digits, arrows. No Home, End, Page Up or
   function keys (a Mac laptop has none).
 - The legend (bottom left, `legendMarkup` in `ui.ts`: one small table per rig) lists every key and gesture: keep it in step with the handlers

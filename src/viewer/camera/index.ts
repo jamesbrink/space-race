@@ -176,7 +176,13 @@ export class Cameras {
     const from: Pose = { position: this.now.position.clone(), quaternion: this.now.quaternion.clone(), fov: this.now.fov };
     const next = this.rigOf(id);
     if (id === 'pad') this.pad.stand(this.tripod(last, from));
-    next.enter(from, id === 'orbit' ? this.pivotFor(last, from) : last.pivot.clone(), last === this.onboard || last === this.pad);
+    next.enter(
+      from,
+      id === 'orbit' ? this.pivotFor(last, from) : last.pivot.clone(),
+      last === this.onboard || last === this.pad,
+      // (the place's view at a distance nobody chose: a rig about the vehicle frames the vehicle, it does not inherit it)
+      last === this.orbit && !this.orbit.handSet,
+    );
     this.active = next;
     if (next === this.orbit) this.orbit.centred = false;
     this.under = undefined;
@@ -314,6 +320,11 @@ export class Cameras {
 
   get inset(): number {
     return this.orbit.inset;
+  }
+
+  /** The fraction of the frame's height nothing covers, top or bottom: the chase views frame the whole vehicle inside it. */
+  set clear(fraction: number) {
+    this.chase.clear = this.locked.clear = fraction;
   }
 
   /** The hands are on the orbiting view, or what they did is still playing out. */

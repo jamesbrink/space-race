@@ -214,7 +214,7 @@ never adjusted to bring a check in.
   clock back and it shows what was flown; the record's own run is untouched and comes back on
   leaving. An abort is X twice within two seconds (the first press arms it and says so). Under the
   gauges a strip made from the flight's data shows the engine's kind and state ("fixed thrust: no
-  throttle"; a lever, arrow keys and Z only for an engine with a range), each tank and each jet
+  throttle"; a lever, arrow keys and Z only for an engine with a range: `sim/lever.ts`, which `tests/lever.test.mjs` drives against a fixture that throttles, Freedom 7's not being one), each tank and each jet
   supply in per cent and kilograms (amber under a fifth, "Empty" when it is), which jets are
   firing and every motor burning; a prompt line gives the cues (0.05 g, the next parachute's
   height) and, sequencer off, what is due in amber. On a touch screen a stick (pitch, yaw: as far

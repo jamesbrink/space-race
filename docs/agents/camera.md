@@ -28,8 +28,12 @@ flight in the air and the camera elsewhere, "Find the vehicle" (and C) goes to i
 the section's first view in orbit and free, the vehicle centred in the others. While the vehicle is
 flown by hand W A S D Q E are its keys and the camera has the arrows, R, F, 0 and C.
 
-Coming to the chase from near the vehicle, the view is taken up as it stands; from far off it goes
-to where the whole vehicle is seen, from the side the last view saw its subject from; back from on
+Coming to the chase from near the vehicle, the view is taken up as it stands if its distance had
+been set by hand; from the place's own view at a distance nobody chose (`Rig.enter`'s `unset`), or
+from far off, it goes to where the whole vehicle is seen, from the side the last view saw its
+subject from. "The whole vehicle" is half the frame's height and never more than 85 per cent of
+what the controls leave clear, top and bottom (`Camera.clear`, from `Stage.setInset`), and a chase
+view nobody has set is framed again when that changes (the flight deck opening, a phone turned); back from on
 board or the pad camera it is as it was last left (`Rig.enter`'s `resume`). The pad camera stands
 where the orbiting or free view was, set down on the ground at tripod height, if that was within
 reach of the place; otherwise where it last stood, or to one side of the place (`Cameras.tripod`).

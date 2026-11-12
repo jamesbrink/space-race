@@ -30,8 +30,9 @@ const FLING = 5;
 const INSET_TAU = 0.25;
 /** The furthest the chase view backs off from the vehicle, metres: the Earth's curve and the path flown are seen from there. */
 export const CHASE_FAR = 400_000;
-/** How much of the frame's height the vehicle fills when the chase view frames it. */
+/** How much of the frame's height the vehicle fills when the chase view frames it, and no more than this much of what the controls leave clear. */
 const CHASE_FILL = 0.5;
+const CHASE_CLEAR = 0.85;
 /** Seconds to come back onto a vehicle that has just changed shape. */
 const SETTLE = 1.2;
 
@@ -436,9 +437,14 @@ export class ChaseRig extends OrbitRig {
     return super.busy || Boolean(this.settling);
   }
 
+  /** How much of the frame's height is clear of the controls, top and bottom: the whole vehicle is framed inside it. */
+  clear = 1;
+  /** The distance it was last framed from: when what is clear changes, a view nobody has set is framed again. */
+  private fitted = Number.NaN;
+
   /** How far off the whole of what is left is framed from. */
   private get fit(): number {
-    return fitDistance(2 * this.radius, this.fov, CHASE_FILL);
+    return fitDistance(2 * this.radius, this.fov, Math.min(CHASE_FILL, CHASE_CLEAR * this.clear));
   }
 
   private read(craft: Craft): void {
@@ -450,19 +456,21 @@ export class ChaseRig extends OrbitRig {
     this.min = Math.max(0.35, 0.75 * craft.radius);
   }
 
-  override enter(from: Pose, pivot: THREE.Vector3, resume = false): void {
+  override enter(from: Pose, pivot: THREE.Vector3, resume = false, unset = false): void {
     const craft = this.world.craft();
     if (!craft) {
       super.enter(from, pivot);
       return;
     }
+    this.fitted = Number.NaN;
     this.read(craft);
     this.local.copy(craft.centre);
     this.shape = craft.shape;
     this.rel.set(0, 0, 0);
     this.goal = null;
     this.settling = null;
-    // From near it, the view is taken up as it stands. From far off (the vehicle lost to sight) or from inside it, it
+    // From near it, the view is taken up as it stands, if someone had set it (`unset`: nobody had set its distance, so it
+    // is framed from the same side, the whole vehicle in what the controls leave clear). From far off (the vehicle lost to sight) or from inside it, it
     // is seen from the side the last view saw its subject from, and from where the whole of it is seen: the handover
     // carries the eye there, on top of however fast the vehicle is going.
     // Coming back from on board or from the pad camera, it is as it was last left: the same side, the same distance.
@@ -478,7 +486,7 @@ export class ChaseRig extends OrbitRig {
     }
     this.been = true;
     const far = from.position.distanceTo(this.middle);
-    const near = !resume && far <= 6 * this.fit && far >= this.min;
+    const near = !resume && !unset && far <= 6 * this.fit && far >= this.min;
     const seen = v.copy(from.position).sub(pivot);
     if (!near)
       from = {
@@ -563,6 +571,10 @@ export class ChaseRig extends OrbitRig {
       this.rel.lerpVectors(g.from, g.to, ease(g.t));
       if (g.t >= 1) this.goal = null;
     }
+    // what the controls leave clear has changed (a panel opened, the window turned): a view nobody has set is framed again
+    const fit = this.fit;
+    if (!this.handSet && Number.isFinite(this.fitted) && Math.abs(fit - this.fitted) > 1e-6 * fit) this.zoomer.goal = Math.log(fit);
+    this.fitted = fit;
     super.update(dt, keys, fast);
   }
 

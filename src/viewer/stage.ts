@@ -1570,7 +1570,7 @@ export class Stage {
    */
   setInset(pixels: number, top = 0, across = 1): void {
     const tall = Math.max(1, this.canvas.clientHeight);
-    const inset = THREE.MathUtils.clamp(pixels / tall, 0, 0.5);
+    const inset = THREE.MathUtils.clamp(pixels / tall, 0, 0.65);
     const head = THREE.MathUtils.clamp(top / tall, 0, 0.3);
     const sides = THREE.MathUtils.clamp(across, 0.25, 4);
     if (Math.abs(inset - this.inset) < 0.01 && Math.abs(head - this.head) < 0.01 && Math.abs(sides - this.sides) < 0.01) return;
@@ -1578,6 +1578,7 @@ export class Stage {
     this.head = head;
     this.sides = sides;
     this.cam.inset = inset - head; // (the pivot is seen in the middle of what is left clear, whatever the distance)
+    this.cam.clear = 1 - inset - head;
     this.refollow();
   }
 

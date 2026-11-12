@@ -3,6 +3,7 @@ import { prefs } from './prefs.ts';
 import { autopilot, blend, Tally } from './sim/autopilot.ts';
 import { G0, type Results } from './sim/fly.ts';
 import { standing } from './sim/loads.ts';
+import { Lever, NOTCH } from './sim/lever.ts';
 import { Sheds } from './sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
 import { verdict } from './sim/verdict.ts';
@@ -64,8 +65,6 @@ const TRIM_MOST = 30 * DEG;
 const ABORT_ARMED = 2;
 /** A supply under this much of what it held is shown amber. */
 const LOW = 0.2;
-/** A step of the throttle lever, of rated thrust. */
-const NOTCH = 0.05;
 const FT = 0.3048;
 
 export interface CockpitHost {
@@ -327,17 +326,16 @@ export class Cockpit {
 
   /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */
   private readonly finger = { pitch: 0, yaw: 0, roll: 0 };
-  /** The throttle lever, 0 to 1 of rated thrust, for an engine that throttles. */
-  private lever = 1;
+  /** The throttle lever of an engine that throttles (sim/lever.ts): none where it does not. */
+  private lever: Lever | null = null;
   private abortArmed = Number.NEGATIVE_INFINITY;
 
-  /** Move the throttle lever: only an engine whose nature has a range answers it. */
+  /** Move the throttle lever, by the slider, the arrow keys or Z: only an engine whose nature has a range has one. */
   private setLever(to: number): void {
-    const range = this.flight.trajectory?.body?.engine?.throttle;
-    if (!range) return;
-    this.lever = Math.max(0, Math.min(range[1], to));
-    const s = this.state;
-    if (s?.ignited && !s.cutoff) this.hand.throttle = this.lever;
+    if (!this.lever) return;
+    this.lever.move(to);
+    const slider = this.root.querySelector<HTMLInputElement>('[data-lever]')!;
+    if (Number(slider.value) !== this.lever.at) slider.value = String(this.lever.at);
   }
 
   /** The strip of what the pilot has to fly with, built from the flight's data: the engine and its tanks, each jet supply, the jets, the motors. */
@@ -398,6 +396,9 @@ export class Cockpit {
     this.state = v.start();
     this.tally = new Tally();
     this.hand = {};
+    const range = this.flight.trajectory?.body?.engine?.throttle;
+    this.lever = range ? new Lever(range) : null;
+    if (this.lever) this.setLever(this.lever.at);
     this.trim = { pitch: 0, yaw: 0 };
     this.abortArmed = Number.NEGATIVE_INFINITY;
     this.kept = 0;
@@ -446,8 +447,11 @@ export class Cockpit {
         this.trim = { pitch: lean(this.trim.pitch, pitch), yaw: lean(this.trim.yaw, yaw) };
       }
       const own = (v: number): number | undefined => (v !== 0 ? v : this.guidance ? undefined : 0);
+      // an engine with a lever runs where the lever stands, from the moment it is lit; the sequencer's cutoff at the record's time is not undone by it
+      const cut = this.sequence && s.abortAt === null && s.t >= this.flight.trajectory!.engine.cutoff.value - 1e-9;
       return blend(auto(s), {
         ...this.hand,
+        ...(this.lever && s.abortAt === null ? { throttle: this.lever.asks(cut) } : {}),
         pitch: trimmed ? undefined : own(pitch),
         yaw: trimmed ? undefined : own(yaw),
         roll: own(roll),
@@ -534,7 +538,7 @@ export class Cockpit {
     run.dropped = this.flight.flies!.drops.map((d) => (d.on ? when[d.on] : Infinity));
     // an event asked for has happened: the hand lets go of it
     if (state.abortAt !== null) delete this.hand.abort;
-    if (state.ignited && !this.flight.trajectory!.body?.engine?.throttle) delete this.hand.throttle;
+    if (state.ignited) delete this.hand.throttle;
     if (state.cutoff && this.hand.throttle === 0) delete this.hand.throttle;
   }
 
@@ -615,12 +619,15 @@ export class Cockpit {
       if (!step || now - this.eventAt < GUARD) return;
       this.eventAt = now;
       if (step === 'ignite') {
-        this.hand.throttle = this.flight.trajectory!.body?.engine?.throttle ? this.lever : 1;
+        if (this.lever) this.lever.lit = true;
+        else this.hand.throttle = 1;
         this.state = this.tick(this.state!, this.pilot()); // lit at this instant, so the clock has a flight to run
         this.clock.setRate(1);
         this.clock.play(true);
-      } else if (step === 'cutoff') this.hand.throttle = 0;
-      else this.hand[step] = true;
+      } else if (step === 'cutoff') {
+        if (this.lever) this.setLever(0);
+        else this.hand.throttle = 0;
+      } else this.hand[step] = true;
       if (!this.clock.running && step !== 'ignite') this.clock.play(true);
     }
     if (this.state) this.show(this.at(Math.min(this.clock.t, this.state.t)));
@@ -642,8 +649,8 @@ export class Cockpit {
       return;
     }
     if (!down || e.repeat) return;
-    if (this.flight.trajectory?.body?.engine?.throttle && ['arrowup', 'arrowdown', 'z'].includes(key)) {
-      this.setLever(key === 'z' ? 1 : this.lever + (key === 'arrowup' ? NOTCH : -NOTCH));
+    if (this.lever && ['arrowup', 'arrowdown', 'z'].includes(key)) {
+      this.setLever(key === 'z' ? this.lever.most : this.lever.at + (key === 'arrowup' ? NOTCH : -NOTCH));
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -752,11 +759,12 @@ export class Cockpit {
     );
     const before = !state.ignited && state.abortAt === null;
     const spent = this.vehicle!.tanks && s.tanks ? Math.min(s.tanks.oxidizer, s.tanks.fuel) < 1 : false;
-    const lever = range ? `, lever ${(this.lever * 100).toFixed(0)} %` : '';
+    const at = this.lever?.at ?? 1;
+    const lever = range ? `, lever ${(at * 100).toFixed(0)} %` : '';
     set(
       'engine',
       main
-        ? `${(main.thrust / 1000).toFixed(0)} kN${range ? ` (${((state.throttle || this.lever) * 100).toFixed(0)} %${lever})` : ''}`
+        ? `${(main.thrust / 1000).toFixed(0)} kN${range ? ` (${((state.throttle || at) * 100).toFixed(0)} %${lever})` : ''}`
         : before
           ? 'Not lit'
           : s.tanks === null

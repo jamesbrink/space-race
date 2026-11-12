@@ -27,9 +27,35 @@ export const CURTAIN = `
         </div>
       </div>`;
 
+/** Every curtain that is up: begun, and neither lifted nor failed. */
+const up = new Set<Curtain>();
+
+/**
+ * While a curtain is up and can be seen, no key reaches the page: whatever is on its way in is not there to be worked
+ * yet, and a key that acted on it would act on half a scene. One listener, taken at the window before any other hears
+ * the key, so nothing that listens for keys has to know about loading. Keys held with Command, Control or Alt are the
+ * browser's; a key's release is let through, so nothing held when the curtain came down is left held; and what a key
+ * does of itself (Tab, a focused "Try again") is untouched, since only the page's listeners are kept from it.
+ */
+function gate(e: KeyboardEvent): void {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  for (const curtain of up) {
+    if (curtain.showing) {
+      e.stopImmediatePropagation();
+      return;
+    }
+  }
+}
+if (typeof window !== 'undefined') window.addEventListener('keydown', gate, true);
+
 export class Curtain {
   private readonly el: HTMLElement;
   private progress = 0;
+
+  /** It is up and on the page to be seen (one covering something that is itself put away is in nobody's way). */
+  get showing(): boolean {
+    return up.has(this) && this.el.getClientRects().length > 0;
+  }
 
   constructor(el: HTMLElement) {
     this.el = el;
@@ -41,6 +67,7 @@ export class Curtain {
     el.classList.remove('done', 'failed', 'began');
     void el.offsetWidth; // (so the list's late entrance starts again on a retry)
     el.classList.add('began');
+    up.add(this);
     el.querySelector('button')!.hidden = true;
     el.querySelector('.loading-kicker')!.textContent = 'Loading';
     el.querySelector('.loading-name')!.textContent = what;
@@ -77,12 +104,14 @@ export class Curtain {
 
   /** It is in: the curtain lifts. */
   done(): void {
+    up.delete(this);
     this.el.classList.add('done');
   }
 
   /** It did not arrive: said in the curtain's place as a notice, with the way to try again. */
   failed(message: string): void {
     const el = this.el;
+    up.delete(this);
     el.classList.add('failed');
     el.querySelector('button')!.hidden = false;
     el.querySelector('.loading-kicker')!.textContent = 'Could not load';
