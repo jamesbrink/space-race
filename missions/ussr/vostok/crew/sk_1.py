@@ -13,7 +13,7 @@ Top-level nodes: Helmet  Torso  Arms  Gloves  Legs  Boots  Skeleton
 
 The standing figure is skinned to Skeleton, the joints every crew figure has (srlib.FIGURE), so
 the viewer can walk him, with the visor up (out of sight inside the shell) as it was on the way
-to the pad.
+to the pad. build_seated() is the same man in the ejection seat's pose, visor down, for a cabin.
 """
 
 from __future__ import annotations
@@ -27,7 +27,9 @@ import figurelib as fl
 import srlib
 from figurelib import (
     FRONT,
+    UP,
     Folds,
+    Rig,
     Trousers,
     Tube,
     azimuth,
@@ -452,3 +454,71 @@ def build() -> float:
     build_figure()
     fl.rig_standing()
     return max(v.co.z for o in bpy.data.objects if o.type == "MESH" for v in o.data.vertices)
+
+
+# ------------------------------------------------------------- in the ejection seat
+
+# The pose the Vostok seat holds him in, as joint angles in degrees: taken from the seat as
+# vehicles/vostok_3ka.py lays it out (thighs raised 60 degrees from the line of the back, shins
+# hanging to the foot board), not from a drawing of the seat.
+SEATED = {
+    "hip": 60.0,
+    "knee": 79.0,
+    "ankle": 12.0,
+    "knees_in": 0.0,
+    "pelvis": 24.0,
+    "elbow": 46.0,
+    "elbow_toe_in": 24.0,
+    "pronate": 30.0,
+    "grip": 0.0,
+}
+LAP = (-3.0, 12.0, 1.2)  # where a thigh pressed against the belly stops: figurelib.seated_rig
+
+
+def seated_rig() -> Rig:
+    fl.use(B)
+    return fl.seated_rig(SEATED, LAP)
+
+
+_seated_points: dict[float, dict[str, list[Vector]]] = {}
+
+
+def seated_points() -> dict[str, list[Vector]]:
+    """Every vertex of the seated figure by mesh, in seat-frame centimetres, without building anything."""
+    return fl.posed_points(_seated_points, seated_rig, build_figure)
+
+
+def seated_key_points() -> dict:
+    """Where the seat has to be: key points of the seated figure in seat-frame centimetres."""
+    rig, pts = seated_rig(), seated_points()
+    helmet = [p for name, ps in pts.items() if name.startswith("Helmet_Shell") for p in ps]
+    centre = rig.carry(HELMET_AT)
+    sides_ = (("left", 1), ("right", -1))
+    return {
+        **fl.body_key_points(rig, pts),
+        "head_top": tuple(rig.carry(HELMET_AT + UP * HELMET_R)),
+        "helmet_centre": tuple(centre),
+        "helmet_radius": max((p - centre).length for p in helmet),
+        "helmet_back_z": min(p.z for p in helmet),
+        "collar": tuple(rig.carry((0, HELMET_AT.y, HELMET_RIM))),
+        "heels": {side: tuple(rig.carry((sx * B.stance, 8.2 * BOOT_SIZE, 0.0), "leg")) for side, sx in sides_},
+        "toes": {side: tuple(rig.carry((sx * B.stance, -23.0 * BOOT_SIZE, 1.8 * BOOT_SIZE), "leg")) for side, sx in sides_},
+        "sole_y": max(p.y for p in pts["Boots_Soles"]),
+    }
+
+
+def build_seated(parent: bpy.types.Object, place: Matrix, prefix: str = "Pilot") -> dict:
+    """The same figure in the ejection seat's pose, visor down, for a cabin: every mesh a child of
+    `parent`, named `<prefix>_<Node>_<Mesh>`, with no skeleton.
+
+    The seat frame is figurelib's, centimetres: origin midway between the hip joints, the torso
+    along -Y (head toward -Y), the chest facing +Z, his right hand toward +X. `place` maps that
+    frame, once it is in metres, into the caller's space; it is baked into the vertices. (The
+    Vostok seat's own frame, vehicles/vostok_3ka.py `seat_frame`, has +Y toward his head and +X
+    to his left and is in millimetres: `place = S @ Matrix.Diagonal((-1, -1, 1, 1))` with S its
+    frame in metres.) Returns seated_key_points(). Nothing is built below the detail at which
+    interiors are shown."""
+    keys = seated_key_points()
+    if srlib.interior():
+        fl.build_posed(parent, place, prefix, seated_rig, build_figure)
+    return keys

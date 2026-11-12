@@ -2,7 +2,9 @@
 
 The suit the Vostok pilots wore: Zvezda's SK-1 (СК-1), the first spacesuit flown. Model:
 [sk_1.py](sk_1.py), imported by each flight's `model/crew.py`. It is built as Yuri Gagarin wore
-it on 12 April 1961, standing, visor up, as on the way to the pad.
+it on 12 April 1961, standing, visor up, as on the way to the pad. The same script builds him in
+the ejection seat's pose (`build_seated`), visor down, for the spacecraft's cabin; see
+[In the seat](#in-the-seat).
 
 **It is a rescue suit.** The cabin held ordinary air at ordinary pressure; the suit would have
 inflated only if the cabin had failed. It was also what he landed in: Vostok's pilot left the
@@ -49,7 +51,7 @@ every fitting are sized by eye from photographs.
 
 | Node | What it is |
 | --- | --- |
-| `Helmet` | white shell with the opening's lip and metal frame, pivots at the temples, "СССР" on the brow, the collar ring and the grey neck band under it, a hose fitting at the right front of the collar; inside it the padding, the head, the white headset cap and two microphones. |
+| `Helmet` | white shell with the opening's lip and metal frame, pivots at the temples, "СССР" on the brow, the collar ring and the grey neck band under it, a hose fitting at the right front of the collar; inside it the padding, the head, the white headset cap and two microphones. The seated figure also has the visor's pane, down |
 | `Torso` | the cover from the waist up with both shoulders (one skin, down to a hem on each upper arm), the front closure's flap, a band of the same cloth at the waist, the hose fitting at the right abdomen with a stub of hose and its connector |
 | `Arms` | sleeves from the hem down; the mirror, its rim and its patch on the right forearm |
 | `Gloves` | each hand's skin (cuff, palm, fingers, thumb) and its wrist ring |
@@ -75,6 +77,27 @@ walks anyone with. He carries nothing.
 | `Foot` | ±13.1, 0.5, 9.2 | estimated |
 
 The arms' joints are the shared figure's, carried to his size in the same way.
+
+## In the seat
+
+`build_seated(parent, place, prefix)` builds the same figure in the pose the Vostok seat holds him
+in: every mesh under the caller's node, named `<prefix>_<Node>_<Mesh>`, no skeleton, the visor
+down. The seat frame is the shared one (centimetres: origin midway between the hip joints, head
+toward −Y, chest toward +Z, his right toward +X); `vehicles/vostok_3ka.py`'s own seat frame has +Y
+toward his head and +X to his left, in millimetres, so `place` is that frame in metres times
+`diag(−1, −1, 1)`. `seated_key_points()` gives where his joints, helmet, heels and toes are.
+
+| Joint | Angle | Confidence | Basis |
+| --- | --- | --- | --- |
+| Thigh from the line of the back | 60° | estimated | read off the seat as `vostok_3ka.py` lays it out for its own plain figure, not from a drawing of the seat |
+| Knee | 79° | estimated | the same: shins hanging to the foot board |
+| Ankle | toes drawn 12° up | estimated | |
+| Elbow | 46°, hinge turned 24° in, forearm turned 30° | estimated | hands resting on the thighs; where his hands were is not known |
+| Seat of the suit | rolled 24° under | estimated | |
+
+**It is not in the spacecraft yet.** The cabin still holds a plain lofted figure built to 1.57 m;
+this one is 1.65 m, and the seat and the hatch's opening have to be checked against it when it is
+put in.
 
 ## What the model gets wrong or leaves out
 

@@ -9,7 +9,7 @@ parachute.
 
 | Flight | Spacecraft | Pilot | Launch | In this repo |
 | --- | --- | --- | --- | --- |
-| Vostok 1 | 3KA No. 3 | Yuri Gagarin | 12 April 1961 | [flight](flights/vostok-1/README.md): spacecraft and launch vehicle built |
+| Vostok 1 | 3KA No. 3 | Yuri Gagarin | 12 April 1961 | [flight](flights/vostok-1/README.md): spacecraft built |
 | Vostok 2 | 3KA | Gherman Titov | 6 August 1961 | |
 | Vostok 3 | 3KA | Andriyan Nikolayev | 11 August 1962 | |
 | Vostok 4 | 3KA | Pavel Popovich | 12 August 1962 | |
@@ -40,9 +40,9 @@ is recorded with each flight as it is built.
 | | In this repo |
 | --- | --- |
 | Vostok 3KA spacecraft | [vostok-3ka.md](vehicles/vostok-3ka.md): built |
-| Vostok-K launch vehicle (8K72K), with Block E | [vostok-8k72k.md](vehicles/vostok-8k72k.md): built, from published overall sizes and estimated stations |
+| Vostok-K launch vehicle (8K72K), with Block E | [vostok-8k72k.md](vehicles/vostok-8k72k.md): not built; figures read so far |
 | Site 1, Tyuratam | [site-1.md](sites/site-1.md): not built; its place on the Earth only |
-| The SK-1 suit | [sk-1.md](crew/sk-1.md): built, standing (the flight's crew model); the seated pilot in the spacecraft is still a plain figure |
+| The SK-1 suit | [sk-1.md](crew/sk-1.md): built, standing (the flight's crew model) and for the seat (`sk_1.build_seated`); the seated pilot in the spacecraft is still a plain figure |
 
 ## Sources
 
