@@ -76,6 +76,12 @@ export class Looks {
     for (const root of this.roots) this.dress(root);
   }
 
+  /** Give a mesh already taken charge of another real material: it is drawn with it, or with its twin, as the look in force has it. */
+  give(mesh: THREE.Mesh, real: THREE.Material): void {
+    mesh.userData.real = real;
+    mesh.material = this.look === 'cel' ? this.twin(real) : real;
+  }
+
   /** A real material was changed in a way its twin must copy (the cutaway's clipping planes). */
   sync(real: THREE.Material): void {
     const twin = this.twins.get(real);

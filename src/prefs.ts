@@ -25,6 +25,7 @@ export type Pref =
   | 'orbitFrame'
   | 'pathOff'
   | 'pathGuided'
+  | 'deckAboard'
   | 'soundOff'
   | 'galleryLight'
   | 'galleryMeasure'

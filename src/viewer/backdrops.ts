@@ -4,13 +4,15 @@ import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
 import { densityFor, installedAir, setHazeAbove } from './air';
+import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere';
 import { buildCape } from './cape';
 import { dayLight, type RGB } from './daysky.ts';
-import { Globe } from './globe';
+import { chapman, Globe } from './globe';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
 import type { Land } from './land';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 import { studio } from './studio';
+import { placeWeather } from './weathermap';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
 export interface Backdrop {
@@ -84,7 +86,7 @@ export const GROUND_Y = -0.12;
  * and night. A cloud takes its light from uCloudLight and the haze from uHorizon.
  */
 const SKY = /* glsl */ `
-  uniform vec3 uSun, uZenith, uHorizon, uGlow, uCloudLight, uSunLight, uUp; uniform float uWisps; varying vec3 vDir;
+  uniform vec3 uSun, uZenith, uHorizon, uGlow, uCloudLight, uSunLight, uUp; uniform float uWisps, uGlare; varying vec3 vDir;
   ${NOISE}
   ${MOON_GLSL}
   vec3 sky(vec3 d, bool discs) {
@@ -106,12 +108,13 @@ const SKY = /* glsl */ `
     float s = max(dot(d, uSun), 0.0);
     col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.45 * uWisps);   // (none once the eye is up among them)
     col = mix(low * 0.96, col, smoothstep(-0.004, 0.012, up));   // below the horizon: haze
-    col += vec3(1.0, 0.9, 0.75) * uSunLight * (pow(s, 10.0) * 0.18 + pow(s, 300.0) * 1.6);
+    // the glare round the Sun is the air's (it goes as the air thins: uGlare); above the air what is left is the eye's or the lens's own, white and close round a hard disc (estimated)
+    col += mix(vec3(1.0), vec3(1.0, 0.9, 0.75), uGlare) * uSunLight * (pow(s, 10.0) * 0.18 * uGlare + pow(s, 300.0) * 1.6 * uGlare + pow(s, 4000.0) * 5.0 * (1.0 - uGlare));
     return col;
   }`;
 
 type SkyUniforms = Record<
-  'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow' | 'uCloudLight' | 'uSunLight' | 'uWisps' | 'uUp',
+  'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow' | 'uCloudLight' | 'uSunLight' | 'uWisps' | 'uUp' | 'uGlare',
   THREE.IUniform
 >;
 
@@ -385,6 +388,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     uSunLight: { value: new THREE.Color() },
     uWisps: { value: 1 },
     uUp: { value: new THREE.Vector3(0, 1, 0) },
+    uGlare: { value: 1 },
   };
   const envScene = new THREE.Scene();
   const envGain = { value: 1 };
@@ -406,11 +410,41 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     installedAir(),
     when.site.region?.name ?? null,
   );
+  // the weather the clouds and their shadows are laid out by (weather.ts): the record's cover at the site, the map's beyond
+  const cumulus = installedAir()?.clouds;
+  if (cumulus) placeWeather(site.bearingX, cumulus.cover, cumulus.wind, when.site.region?.name ?? null);
   // (by the edge of its cover maps, past which their last texels are smeared outward: Complex 34, the furthest built, is inside 9.5 km)
   const covered = land.uniforms.uFarSize!.value as number;
   land.meet(globe.beyond, covered - 1500, covered);
   // the haze at sea level, thinning upward (air.ts): visibility was at the Skid Strip's 16 km cap at 09:00 (NOAA ISD), so how far past it is not recorded; 80 km taken, clear air: estimated
   const fog = new THREE.FogExp2(0, densityFor(80_000));
+  // The air seen from above it (atmosphere.ts), with this haze. The Sun's light above the air is white (the scene's
+  // white is the Sun's) and as strong as makes its light on the ground, through the air, as bright as the scene's own
+  // at the hour that was tuned for (daysky.ts: a Sun 50 degrees up): so sunlit ground, cloud and sky stand in the
+  // scene as they do in the world. Derived, and the same at every hour.
+  const haze = hazeFor(fog.density, installedAir()?.scale ?? 1400);
+  makeAtmosphere(renderer, haze);
+  {
+    const noon = dayLight(50, null).light;
+    const through = transmittanceAt(0, Math.sin(50 * DEG), haze);
+    const luma = (c: readonly number[]) => 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+    atmosphereUniforms.uAtmSunLight.value.setScalar((noon.intensity * luma(noon.colour)) / luma(through));
+  }
+  /**
+   * The Sun's disc as the eye sees it from a height, against the scene's reference (as DayLight.sun is): through
+   * the air above the eye along the line to it, and gone behind the Earth's edge (over its own breadth). The air's
+   * column along a slanting line by Chapman's function for the gas; the haze and the ozone are taken with it.
+   */
+  const reference = transmittanceAt(0, Math.sin(50 * DEG), haze);
+  const sunFrom = (height: number, elevation: number): RGB => {
+    const mu = Math.sin(elevation * DEG);
+    const dip = -Math.acos(6_371_000 / (6_371_000 + Math.max(height, 0))) / DEG; // the horizon's, degrees
+    const showing = THREE.MathUtils.smoothstep(elevation, dip - 0.27, dip + 0.27);
+    if (showing <= 0) return [0, 0, 0];
+    const k = extinctionAt(Math.min(height, 99_000), haze);
+    const column = RAYLEIGH_SCALE * chapman(height, Math.max(mu, Math.sin(dip * DEG)), 6_371_000, RAYLEIGH_SCALE);
+    return [0, 1, 2].map((c) => (showing * Math.exp(-k[c]! * column)) / reference[c]!) as unknown as RGB;
+  };
   const gen = new THREE.PMREMGenerator(renderer);
   const reflections = new Reflections(renderer);
 
@@ -499,14 +533,18 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     colour(uniforms.uHorizon.value, thin(light.horizon, along));
     colour(uniforms.uGlow.value, thin(light.glow, along));
     colour(uniforms.uCloudLight.value, light.cloud);
-    // the high cloud is painted on the sky, at 3,600 m: from up there it would be below, so it goes as the eye nears it
-    uniforms.uWisps.value = 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
-    colour(uniforms.uSunLight.value, light.sun);
+    // (the high cloud is no longer painted on the sky: it is a sheet at its own height, drawn with the clouds: clouds.ts)
+    uniforms.uWisps.value = cumulus ? 0 : 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
+    // the Sun's disc: from the ground as the day has it; from above the air, as it is there (white, and still up
+    // when it has set on the ground below)
+    const above = sunFrom(height, h.sunElevation);
+    colour(uniforms.uSunLight.value, [0, 1, 2].map((c) => light.sun[c]! + (above[c]! - light.sun[c]!) * (1 - air)) as unknown as RGB);
+    uniforms.uGlare.value = along;
     colour(fog.color, light.haze);
 
     // the one direct light: with neither Sun nor Moon it keeps its last direction, at no strength
     globe.sun.copy(h.sunDir);
-    globe.light(light.light.from === 'sun' ? light.light.intensity : null, fog.density * (installedAir()?.scale ?? 0));
+    atmosphereUniforms.uTrueSun.value.copy(h.sunDir);
     if (light.light.from === 'sun') setting.sunDir.copy(h.sunDir);
     else if (light.light.from === 'moon') setting.sunDir.copy(h.moonDir);
     colour(setting.sunColor as THREE.Color, light.light.colour);

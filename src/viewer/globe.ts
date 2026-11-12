@@ -11,10 +11,15 @@ import {
   sub,
   type Vec3,
 } from '../world/frames.ts';
-import { planeAt } from '../world/region.ts';
+import { planeAt, surfaceDirection } from '../world/region.ts';
+import { RELIEF, RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
+import { type Clouds, cloudCutGlsl, cloudMiddle } from './air.ts';
+import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
+import { CIRRUS_HEIGHT, cumulusBiasGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
+import { onWeather, weatherUniforms } from './weathermap.ts';
 
 /**
  * The Earth as a globe, to scale, under a site: the sea and the land seen from height, and
@@ -34,7 +39,10 @@ import type { Beyond } from './land';
  * **The map** is land, inland water and ice from Natural Earth (public domain; tools/globe.mjs
  * bakes it): a distance to the shore on the six faces of a cube, looked up by the direction from
  * the Earth's centre, so the coastline is a clean line at any magnification and there is no seam
- * or pole. Flat tones: one for the sea, one for land, one for ice. No imagery, no relief.
+ * or pole. Over it, the land's own colours (NASA's Blue Marble for May) and the height of the ground and the
+ * sea's bed (NOAA's ETOPO 2022), both baked by tools/globe-surface.mjs on the same cube and, finer, on a plane
+ * over the site's region: the land is shaded by its relief under the true Sun and the sea is coloured by its
+ * depth, so a bank is turquoise and the deep blue. (`RELIEF` is how a height is kept in a byte: relief.ts.)
  *
  * **The site's region** (types.ts: RegionDef) is drawn from a finer map where it covers:
  * OpenStreetMap's coast and larger lakes as they stood on the region's date (tools/globe-region.mjs
@@ -63,16 +71,28 @@ const FACES = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 /** Linear colours, chosen by eye against photographs from orbit (estimated): the sea's is the Cape's offshore water (cape.ts). */
 const SEA = new THREE.Color().setRGB(0.018, 0.07, 0.12);
 /**
- * The sea seen from above the air: the blue the water itself sends back up, which from the ground is lost under the sky's
- * reflection on it. As the eye rises the sea goes over to this and loses its sheen (the reflections are the site's sky,
- * grey from up there). Estimated, for the look: a clear deep blue, as lunar-lift's ocean is.
+ * The deep sea seen from above the air: what clear ocean water sends back up from within, about 0.3, 1.6 and 4.5
+ * per cent of red, green and blue (the reflectance of the clearest waters, Morel and Prieur's Case 1 at low
+ * chlorophyll: rounded, estimated). Near black: the blue of the sea from orbit is mostly the air over it and the
+ * sky in it, which are drawn as themselves (atmosphere.ts, the reflections). From the ground the sea is `SEA`,
+ * the Cape's own, and goes over to this as the eye rises.
  */
+const DEEP = new THREE.Color().setRGB(0.003, 0.016, 0.045);
+/** In the cel look the sea is a drawing's blue, not the water's own near black. */
 const SEA_ABOVE = new THREE.Color().setRGB(0.012, 0.085, 0.27);
+/**
+ * The sea's roughness to the Sun's glint, seen from above: waves' slopes have a mean square of 0.003 + 0.00512 U
+ * for a wind of U m/s (Cox and Munk 1954), 0.039 at the record's 7 m/s, so their spread is 0.2; three's roughness
+ * is the square root of that. From the ground it is 0.32, the look the Cape's water was tuned to.
+ */
+const SEA_ROUGH = Math.sqrt(Math.sqrt(0.003 + 0.00512 * 7));
 const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: cape.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
+/** How many banks of pale sand a region may name (tools/globe-surface.mjs: REGIONS). */
+const BANKS = 6;
 /** The land's cube faces, texels a side (tools/globe.mjs: --size). */
 const FACE = 2048;
 /** The Earth's mean radius, metres: for turning the cube's texels into distances on the ground, near enough for mixing them. */
@@ -89,7 +109,45 @@ const COLOUR = /* glsl */ `
   uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
   uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
   uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
+  uniform samplerCube uGlobeRelief, uGlobeColour;
+  uniform sampler2D uGlobeSurfRelief, uGlobeSurfColour;
+  uniform mat3 uGlobeSurfPlane;   // the surface region's plane, as the others'
+  uniform vec4 uGlobeSurfBox;
+  uniform float uGlobeSurfFade;   // how far in from its edge it is faded in (plane units; 0: none)
+  ${RELIEF_GLSL}
   float globeField(samplerCube map, vec3 d) { return (texture(map, d).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)}; }
+  // where a direction falls on the surface region's maps, and how much they are to be believed there (w)
+  vec2 globeSurf(vec3 d, out float w) {
+    vec3 q = uGlobeSurfPlane * d;
+    vec2 p = q.xy / max(q.z, 1e-3);
+    vec4 box = uGlobeSurfBox;
+    float edge = min(min(p.x - box.x, box.z - p.x), min(p.y - box.y, box.w - p.y));
+    w = q.z > 0.5 && uGlobeSurfFade > 0.0 ? smoothstep(0.0, uGlobeSurfFade, edge) : 0.0;
+    return clamp(vec2((p.x - box.x) / (box.z - box.x), (box.w - p.y) / (box.w - box.y)), 0.0, 1.0);
+  }
+  // the height of the solid surface toward a direction, metres above the sea (its bed is negative): ETOPO 2022
+  float globeRelief(vec3 d) {
+    float w;
+    vec2 uv = globeSurf(d, w);
+    return mix(reliefMetres(texture(uGlobeRelief, d).r * 255.0), reliefMetres(texture(uGlobeSurfRelief, uv).r * 255.0), w);
+  }
+  // What the sea sends back up from within, by its depth in metres: the deep water's own colour, and over a
+  // shallow bed the light that reaches the bed and comes back, which loses its red in a few metres and its green in
+  // tens, so a bank of pale sand under 3 m of water is turquoise and under 20 m blue. Twice the water's diffuse
+  // attenuation for red, green and blue (clear ocean water, Jerlov type IB: about 0.35, 0.07 and 0.035 a metre) and
+  // a bed of carbonate sand (it sends back two fifths of what reaches it) on the banks the region names (\`bank\`,
+  // 0 to 1); elsewhere a darker bed under water half as clear (a continental shore's). Estimated from those, not
+  // measured here.
+  uniform vec4 uGlobeBanks[${BANKS}];   // each a direction from the Earth's centre and the cosine of its radius
+  float globeBank(vec3 d) {
+    float bank = 0.0;
+    for (int i = 0; i < ${BANKS}; i++) bank = max(bank, smoothstep(uGlobeBanks[i].w - 0.0001, uGlobeBanks[i].w + 0.00005, dot(d, uGlobeBanks[i].xyz)));
+    return bank;
+  }
+  vec3 globeWater(float bank, float depth, vec3 deep) {
+    vec3 bed = mix(vec3(0.05, 0.06, 0.045), vec3(0.40, 0.42, 0.37), bank);
+    return deep + (bed - deep) * exp(-vec3(0.70, 0.14, 0.07) * mix(2.2, 1.0, bank) * max(depth, 2.0));
+  }
   // a region's map: the distance to the shore in metres, and how much it is to be believed here (w)
   float regionField(sampler2D map, mat3 plane, vec4 box, vec2 scale, vec3 d, out float w) {
     vec3 q = plane * d;
@@ -99,6 +157,7 @@ const COLOUR = /* glsl */ `
     vec2 uv = vec2((p.x - box.x) / (box.z - box.x), (box.w - p.y) / (box.w - box.y));   // its rows run north to south
     return (texture(map, uv).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)} * scale.x;
   }
+  float globeSea;   // how much of what globeAlbedo last coloured is water
   vec3 globeAlbedo(vec3 d, out float rough) {
     // the land's distance taken as the mean of five lookups half a texel or so apart: a filtered distance's
     // zero bends at every texel, and from orbit those bends were kinks in the shore
@@ -122,32 +181,49 @@ const COLOUR = /* glsl */ `
     float land = smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel));   // the shore: a clean line, one pixel soft
     float i = globeField(uGlobeIce, d);
     float ice = smoothstep(-0.5, 0.5, i / (fwidth(i) * 0.8 + 0.03));
-    // (lakes are cut out of the land map, so they are the sea's colour)
-    vec3 c = mix(mix(${vec3(SEA)}, ${vec3(SEA_ABOVE)}, uGlobeAbove), ${vec3(LAND)}, land);
+    // the land in its own colours (Blue Marble, May), the sea by its depth (lakes are cut out of the land map, so
+    // they are water: a lake's bed is not in the relief, so it is the deep's colour)
+    float ws;
+    vec2 suv = globeSurf(d, ws);
+    float h = mix(reliefMetres(texture(uGlobeRelief, d).r * 255.0), reliefMetres(texture(uGlobeSurfRelief, suv).r * 255.0), ws);
+    vec3 ground = mix(texture(uGlobeColour, d).rgb, texture(uGlobeSurfColour, suv).rgb, ws);
+    vec3 deep = mix(${vec3(SEA)}, ${vec3(DEEP)}, uGlobeAbove);
+    // (water over ground that is above the sea is a lake: its bed is not known, and it is taken as deep)
+    float bank = globeBank(d);
+    vec3 water = globeWater(bank, h > 0.5 ? 1e4 : -h, deep);
+    // (on a bank, ground the relief has above the sea that no coastline draws is a cay or a shoal awash: land, in its own colour)
+    land = max(land, bank * smoothstep(0.3, 0.9, h));
+    #ifdef TOON
+      // drawn: the land in two greens, the sea in three blues (the deep, the shelf, the banks)
+      ground = mix(${vec3(LAND)} * 0.8, ${vec3(LAND)} * 1.15, step(0.07, dot(ground, vec3(0.2126, 0.7152, 0.0722))));
+      water = mix(mix(${vec3(SEA_ABOVE)}, ${vec3(SEA_ABOVE)} * vec3(1.5, 1.35, 1.2), step(h, 0.0) * step(-180.0, h)), vec3(0.09, 0.42, 0.50), bank * step(-11.0, h) * step(h, 0.5));
+    #else
+      // The land's relief, lit by the true Sun: a slope toward it is brighter than level ground and one away from
+      // it darker, by as much as its tilt changes the light falling on it. (In the colour, so the site's ground,
+      // where it takes these colours, is the same.) The slope from the height a texel away, two ways.
+      float eps = mix(${(Math.PI / 2 / FACE).toExponential(4)}, ${(450 / EARTH).toExponential(4)}, ws);
+      float hx = globeRelief(normalize(d + t1 * eps)), hy = globeRelief(normalize(d + t2 * eps));
+      vec3 sun = uGlobeAxes * uGlobeSun;
+      vec3 n = normalize(d - (t1 * (max(hx, 0.0) - max(h, 0.0)) + t2 * (max(hy, 0.0) - max(h, 0.0))) / (eps * ${EARTH.toFixed(1)}));
+      float level = dot(d, sun);
+      float tilted = clamp(dot(n, sun) / max(level, 0.1), 0.2, 2.0);
+      ground *= mix(1.0, tilted, smoothstep(-0.02, 0.08, level));
+    #endif
+    vec3 c = mix(water, ground, land);
     c = mix(c, ${vec3(ICE)}, ice);
-    rough = mix(mix(0.32, 0.9, uGlobeAbove), 0.95, max(land, ice));
+    globeSea = 1.0 - max(land, ice);
+    rough = mix(mix(0.32, ${SEA_ROUGH.toFixed(3)}, uGlobeAbove), 0.95, max(land, ice));
     return c;
   }`;
 
-/** The air's top, and how far its density falls by e: the Rayleigh scattering of the 1976 standard atmosphere, fitted. */
-const TOP = 80_000;
+/** How far the air's density falls by e, metres: for `chapman` and `transmission`. */
 const SCALE = 8_000;
 /**
- * The air seen from above: a glowing rim at the limb, blue over the globe, red where the Sun is
- * setting under it. Drawn on a ball round the eye (so nothing nearer than it is hazed: the
- * vehicle the eye is following) and worked out along each ray through a spherical shell of air
- * whose density falls off exponentially: single Rayleigh scattering, in twelve pieces along the
- * ray, the sunlight reaching each dimmed by the air it has come through (`chapman`), with no
- * light scattered twice. The scattering coefficients are Rayleigh's at sea level
- * for 680, 550 and 440 nm (Bucholtz 1995, rounded).
+ * The air seen from above: the limb's layered glow, the blue over the globe, the pale haze toward the horizon,
+ * the red where the Sun is setting under it. Drawn on a ball round the eye (so nothing nearer than it is hazed:
+ * the vehicle the eye is following) and worked out along each ray through the air by atmosphere.ts: Rayleigh's
+ * scattering, the haze's, ozone's absorption, and light scattered more than once.
  */
-/**
- * The Sun's light as the air scatters it back up, in the scene's units (a directional light's intensity). Estimated,
- * and set by eye for the look (AGENTS.md, Designed, not photographic): at the light's own strength at noon (about 4.5)
- * the air lay over the whole Earth as a pale veil from 40 km up; at this the limb still glows and the land, the
- * coast and the sea under it keep their own colours.
- */
-const SUNLIGHT = 2.4;
 /** Rayleigh's optical depth straight up from the sea, for 680, 550 and 440 nm: BETA times SCALE. */
 const RAYLEIGH = [5.8e-6 * SCALE, 13.5e-6 * SCALE, 33.1e-6 * SCALE] as const;
 
@@ -173,66 +249,25 @@ export function chapman(height: number, mu: number, radius: number, scale: numbe
 /** How much of the Sun's green light reaches the sea through the air with it `mu` from the zenith, and `aerosol` of haze straight up. */
 export const transmission = (mu: number, aerosol: number, radius: number): number =>
   Math.exp(-(RAYLEIGH[1] + aerosol) * chapman(0, mu, radius, SCALE));
-/** GLSL: chapman() as in TypeScript. */
-const CHAPMAN = /* glsl */ `
-  float chapman(float height, float mu, float radius) {
-    float X = radius / ${SCALE.toFixed(1)}, h = max(height, 0.0) / ${SCALE.toFixed(1)};
-    float c = sqrt(1.5707963 * (X + h));
-    if (mu >= 0.0) return c / ((c - 1.0) * mu + 1.0);
-    float x0 = sqrt(1.0 - mu * mu) * (X + h);
-    return 2.0 * sqrt(1.5707963 * x0) * exp(min(X + h - x0, 80.0)) - c / (1.0 - (c - 1.0) * mu);
-  }`;
 const AIR = /* glsl */ `
   uniform vec3 uCentre, uSun;
-  uniform float uAlt, uRadius, uWeight, uSunLight;
+  uniform float uAlt, uRadius, uWeight;
   varying vec3 vDir;
-  const float TOP = ${TOP.toFixed(1)}, H = ${SCALE.toFixed(1)};
-  const vec3 BETA = vec3(5.8e-6, 13.5e-6, 33.1e-6);
-  // Along the eye's own line of sight the light scattered toward it is dimmed less selectively than single
-  // scattering says: light scattered more than once fills the blue back in. Taken as most of the way to grey,
-  // or a grazing line through the low air came out brown where the real limb is white (estimated).
-  const vec3 SEEN = mix(BETA, vec3(BETA.x + BETA.y + BETA.z) / 3.0, 0.75);
-  float heightAt(vec3 p) { return length(p - uCentre) - uRadius; }
-  ${CHAPMAN}
+  ${ATMOSPHERE_GLSL}
   void main() {
     vec3 d = normalize(vDir);
     float b = dot(d, uCentre);
     // where the ray meets the top of the air and the sea: (eye to centre)^2 - R^2 kept in its small form
-    float outside = (uAlt - TOP) * (2.0 * uRadius + uAlt + TOP);
+    float outside = (uAlt - ATM_TOP) * (2.0 * uRadius + uAlt + ATM_TOP);
     float discA = b * b - outside;
     if (discA <= 0.0) discard;
     float t0 = max(0.0, b - sqrt(discA)), t1 = b + sqrt(discA);
     float discG = b * b - uAlt * (2.0 * uRadius + uAlt);
-    float down = 0.0;   // how steeply the ray meets the sea: 0 along the limb or past it, 1 straight down
-    if (discG > 0.0 && b - sqrt(discG) > 0.0) {
-      t1 = b - sqrt(discG);
-      down = -dot(d, normalize(d * t1 - uCentre));
-    }
+    if (discG > 0.0 && b - sqrt(discG) > 0.0) t1 = b - sqrt(discG);
     if (t1 <= t0) discard;
-    float len = (t1 - t0) / 12.0;
-    float tau = 0.0;   // optical depth from the eye, as metres of sea-level air
-    vec3 glow = vec3(0.0);
-    float ha = heightAt(d * t0) / H;
-    for (int k = 0; k < 12; k++) {
-      float tb = t0 + len * float(k + 1);
-      float hb = heightAt(d * tb) / H;
-      float mean = abs(ha - hb) < 1e-3 ? exp(-0.5 * (ha + hb)) : (exp(-min(ha, hb)) - exp(-max(ha, hb))) / abs(hb - ha);
-      float od = len * mean;
-      vec3 mid = d * (tb - 0.5 * len);
-      float hm = max(heightAt(mid), 0.0);
-      float mu = dot(normalize(mid - uCentre), uSun);
-      float toSun = H * exp(-hm / H) * chapman(hm, mu, uRadius);
-      glow += od * exp(-SEEN * (tau + 0.5 * od) - BETA * toSun);
-      tau += od;
-      ha = hb;
-    }
-    float cosv = dot(d, uSun);
-    vec3 light = BETA * glow * (0.0597 * (1.0 + cosv * cosv)) * uSunLight;   // Rayleigh's phase function, 3 / 16 pi (1 + cos^2)
-    // Looking down, the air is laid over the Earth at well under its worth, coming up to the whole of it along the limb:
-    // at its worth it is a milky sheet over the sea and the land, and the look wants them in their own colours with the
-    // glow kept where it is the air that is being looked at (estimated, by eye)
-    light *= mix(1.0, 0.35, smoothstep(0.02, 0.3, down));
-    vec3 through = exp(-BETA * tau);
+    vec3 through;
+    vec3 light = atmScatter(uCentre, uRadius, d, t0, t1, uSun, through);
+    // (what is behind keeps one share for all three colours: the blend has one number for it)
     gl_FragColor = vec4(light * uWeight, mix(1.0, dot(through, vec3(0.3, 0.4, 0.3)), uWeight));
   }`;
 
@@ -275,8 +310,64 @@ function cube(faces: THREE.DataTexture[]): THREE.CubeTexture {
   return texture;
 }
 
-/** A cube that is sea everywhere, until the maps arrive. */
-const empty = () => cube(FACES.map(() => new THREE.DataTexture(new Uint8Array([0]), 1, 1, THREE.RedFormat)));
+/** A cube of one value everywhere (by default 0, which the land's map reads as sea), or of one colour, until the maps arrive. */
+function empty(value: number | THREE.Color = 0, colorSpace: THREE.ColorSpace = THREE.NoColorSpace): THREE.CubeTexture {
+  if (typeof value === 'number') return cube(FACES.map(() => new THREE.DataTexture(new Uint8Array([value]), 1, 1, THREE.RedFormat)));
+  const rgba = new Uint8Array([Math.round(value.r * 255), Math.round(value.g * 255), Math.round(value.b * 255), 255]);
+  const texture = cube(FACES.map(() => new THREE.DataTexture(rgba, 1, 1, THREE.RGBAFormat)));
+  texture.format = THREE.RGBAFormat;
+  texture.colorSpace = colorSpace;
+  return texture;
+}
+const blank2D = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, THREE.RGBAFormat);
+blank2D.needsUpdate = true;
+
+/** Whether this is a small screen: the globe's colours and relief are then loaded at half their size (a quarter of the memory). */
+const small = (): boolean =>
+  typeof screen !== 'undefined' && Math.max(screen.width, screen.height) * (globalThis.devicePixelRatio ?? 1) < 1300;
+
+/** A picture from public/globe/ as the browser decodes it, untouched; at half size on a small screen. */
+async function picture(file: string): Promise<ImageBitmap> {
+  const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${file}`)).blob();
+  const options: ImageBitmapOptions = { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' };
+  const whole = await createImageBitmap(blob, options);
+  if (!small()) return whole;
+  const half = await createImageBitmap(whole, {
+    ...options,
+    resizeWidth: whole.width >> 1,
+    resizeHeight: whole.height >> 1,
+    resizeQuality: 'high',
+  });
+  whole.close();
+  return half;
+}
+
+/** A cube map of colours from the six faces tools/globe-surface.mjs writes (sRGB). */
+async function loadColourCube(name: string): Promise<THREE.CubeTexture> {
+  const faces = await Promise.all(FACES.map((f) => picture(`${name}.${f}.jpg`)));
+  const texture = new THREE.CubeTexture(faces as unknown as HTMLImageElement[]);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.flipY = false;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** One of a surface region's maps as a texture: its relief (one channel, as it is) or its colours (sRGB). */
+async function loadSurface(file: string, colour: boolean): Promise<THREE.Texture> {
+  const texture = new THREE.Texture((await picture(file)) as unknown as HTMLImageElement);
+  texture.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.flipY = false;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
 
 /** One of a region's maps as tools/globe-region.mjs describes it (public/globe/<region>.json). */
 interface RegionLevel {
@@ -363,7 +454,7 @@ export class Globe {
   private arrived = false;
   private readonly hole: Hole | null;
   /** Whether the site's air has cumulus (air.ts), whose shadows fall on the globe too. */
-  private readonly clouds: boolean;
+  private readonly clouds: Clouds | null;
 
   /**
    * `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `hole`: the site's own ground;
@@ -379,7 +470,10 @@ export class Globe {
     this.site = site;
     this.seaLevel = seaLevel;
     this.hole = hole;
-    this.clouds = Boolean(haze?.clouds);
+    this.clouds = (haze?.clouds as Clouds | undefined) ?? null;
+    onWeather(() => {
+      this.arrived = true;
+    });
     this.origin = geodeticToEcef(site);
     this.axes = [siteToEcefDirection(site, [1, 0, 0]), siteToEcefDirection(site, [0, 1, 0]), siteToEcefDirection(site, [0, 0, 1])];
     this.radius = gaussianRadius(site.latitude);
@@ -411,11 +505,20 @@ export class Globe {
       uGlobeHole: { value: hole ? hole.frame : new THREE.Matrix4() },
       uGlobeHalf: { value: hole ? hole.half : -1 },
       uGlobeHaze: { value: haze?.scale ?? 1400 },
-      uGlobeSunLight: { value: SUNLIGHT },
-      uGlobeAerosol: { value: 0 },
       uGlobeAbove: { value: 0 },
       ...regionUniforms('Near'),
       ...regionUniforms('Wide'),
+      ...weatherUniforms,
+      ...atmosphereUniforms,
+      // the relief and the land's colours (tools/globe-surface.mjs): until they arrive, a deep sea and the one green
+      uGlobeRelief: { value: empty(RELIEF.sea - 50) },
+      uGlobeColour: { value: empty(LAND.clone().convertLinearToSRGB(), THREE.SRGBColorSpace) },
+      uGlobeSurfRelief: { value: blank2D },
+      uGlobeSurfColour: { value: blank2D },
+      uGlobeSurfPlane: { value: new THREE.Matrix3() },
+      uGlobeSurfBox: { value: new THREE.Vector4(0, 0, 1, 1) },
+      uGlobeSurfFade: { value: 0 },
+      uGlobeBanks: { value: Array.from({ length: BANKS }, () => new THREE.Vector4(0, 0, 1, 2)) },
     };
 
     const material = new THREE.MeshStandardMaterial({ name: 'globe', roughness: 1, metalness: 0 });
@@ -434,7 +537,7 @@ export class Globe {
       uAlt: { value: 0 },
       uRadius: { value: this.radius },
       uWeight: { value: 0 },
-      uSunLight: { value: SUNLIGHT },
+      ...atmosphereUniforms,
     };
     this.air = new THREE.Mesh(
       new THREE.SphereGeometry(1, 64, 32),
@@ -469,7 +572,41 @@ export class Globe {
       this.uniforms.uGlobeIce!.value = ice;
       this.arrived = true;
     });
+    void Promise.all([loadCube('relief'), loadColourCube('colour')]).then(([relief, colour]) => {
+      this.uniforms.uGlobeRelief!.value = relief;
+      this.uniforms.uGlobeColour!.value = colour;
+      this.arrived = true;
+    });
     if (region) void this.loadRegion(region);
+    if (region) void this.loadSurface(region);
+  }
+
+  /** The site's region's relief and colours (tools/globe-surface.mjs), finer than the globe's: drawn once they have arrived. */
+  private async loadSurface(name: string): Promise<void> {
+    const res = await fetch(`${import.meta.env.BASE_URL}globe/${name}.surface.json`);
+    if (!res.ok) return;
+    const meta = (await res.json()) as {
+      centre: [number, number];
+      box: [number, number, number, number];
+      relief: { file: string };
+      colour: { file: string };
+      fade: number;
+      banks?: [number, number, number][];
+    };
+    const [relief, colour] = await Promise.all([loadSurface(meta.relief.file, false), loadSurface(meta.colour.file, true)]);
+    const { east: e, north: n, centre: c } = planeAt(meta.centre[0], meta.centre[1]);
+    const u = this.uniforms;
+    u.uGlobeSurfRelief!.value = relief;
+    u.uGlobeSurfColour!.value = colour;
+    (u.uGlobeSurfPlane!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);
+    const [x0, x1, y0, y1] = meta.box;
+    (u.uGlobeSurfBox!.value as THREE.Vector4).set(x0, y0, x1, y1);
+    u.uGlobeSurfFade!.value = meta.fade;
+    (meta.banks ?? []).slice(0, BANKS).forEach(([latitude, longitude, km], i) => {
+      const dir = surfaceDirection(latitude, longitude);
+      (u.uGlobeBanks!.value as THREE.Vector4[])[i]!.set(dir[0], dir[1], dir[2], Math.cos((km * 1000) / EARTH));
+    });
+    this.arrived = true;
   }
 
   /** The site's region's maps: each drawn once it has arrived. */
@@ -505,25 +642,11 @@ export class Globe {
           return ${y0.toFixed(3)} - r * r / (${R} + sqrt(${R} * ${R} - r * r));
         }`,
       fragment: /* glsl */ `
-        uniform vec3 uGlobeOrigin;
+        uniform vec3 uGlobeOrigin, uGlobeSun;
         uniform mat3 uGlobeAxes;
         ${COLOUR}
         vec3 beyondAlbedo(vec3 p, out float rough) { return globeAlbedo(normalize(uGlobeOrigin + uGlobeAxes * p), rough); }`,
     };
-  }
-
-  /**
-   * The Sun's light on the globe: the true Sun's, dimmed by the air it comes through to each
-   * place (so the terminator reddens) and by `aerosol` of haze straight up. Near the site the
-   * scene's own light is kept, so the globe and the site's ground agree where they meet; and the
-   * Sun's strength is set so that at the site the two are the same (`sunlight`: the scene's light
-   * when it is the Sun, null when it is not).
-   */
-  light(sunlight: number | null, aerosol: number): void {
-    const t = transmission(this.sun.y, aerosol, this.radius); // the site's own up is +Y
-    this.uniforms.uGlobeSunLight!.value =
-      sunlight !== null && t > 0.05 ? THREE.MathUtils.clamp(sunlight / t, 0.5 * SUNLIGHT, 2 * SUNLIGHT) : SUNLIGHT;
-    this.uniforms.uGlobeAerosol!.value = aerosol;
   }
 
   /** Where the hole for the site's ground ends, as a distance from its middle in its frame: the ground has handed over by then. */
@@ -662,6 +785,7 @@ export class Globe {
 
   private shade(material: THREE.MeshStandardMaterial): void {
     const uniforms = this.uniforms;
+    const c = this.clouds;
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = shader.vertexShader
@@ -690,8 +814,8 @@ export class Globe {
           uniform vec3 uGlobeSun, uGlobeOrigin;
           uniform mat3 uGlobeAxes;
           uniform mat4 uGlobeHole;
-          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze, uGlobeSunLight, uGlobeAerosol;
-          ${CHAPMAN}
+          uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze;
+          ${ATMOSPHERE_GLSL}
           float globeRough;
           ${COLOUR}
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
@@ -699,6 +823,42 @@ export class Globe {
             vec3 q = uGlobeOrigin + uGlobeAxes * p;
             float s = sqrt(dot(q.xy, q.xy) / ${(6378137 ** 2).toExponential(10)} + q.z * q.z / ${(6356752.314245 ** 2).toExponential(10)});
             return length(q) * (1.0 - 1.0 / s) - uGlobeSeaLevel;
+          }`,
+        )
+        .replace(
+          '#include <fog_pars_fragment>',
+          /* glsl */ `#include <fog_pars_fragment>
+          ${
+            c
+              ? /* glsl */ `#ifdef USE_FOG
+          ${WEATHER_GLSL}
+          ${cloudCutGlsl()}
+          ${cumulusBiasGlsl('air_')}
+          ${sheetsGlsl('air_')}
+          // How much of the Sun's light reaches a point of the globe through the clouds over it: the cumulus as the
+          // weather has them there (clouds.ts draws the same field: farCumulus), the middle deck and the cirrus, each
+          // read where the ray toward the Sun crosses its height. \`mu\`: the Sun's height there, as a cosine from
+          // straight up; \`fp\`: metres a pixel. Where a cloud's shadow is under a pixel the cover dims it evenly.
+          float globeShade(vec3 world, vec3 sun, float mu, float fp) {
+            if (mu <= 0.02) return 1.0;
+            vec2 lean = sun.xz / max(mu, 0.08);
+            vec2 p = world.xz + lean * ${(c.height + 0.5 * c.depth).toFixed(1)};
+            vec3 w;
+            float streets;
+            float bias = cumulusBias((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, p, w, streets);
+            float soft = 0.25 * fp / ${c.size.toFixed(1)};
+            float dark = smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - soft, ${(cloudMiddle(c) + 0.03).toFixed(3)} + soft, cloudNoise(p - uCloudDrift.xz) + bias);
+            float fine = 1.0 - smoothstep(${(2 * c.size).toFixed(1)}, ${(8 * c.size).toFixed(1)}, fp);
+            float gather = air_noise2((p - uCloudDrift.xz) / ${c.size.toFixed(1)} * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
+            float even = clamp(w.r * exp(fine * (5.0 * gather + 20.0 * streets)), 0.0, 1.0);
+            float shade = 1.0 - 0.8 * mix(dark, even, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
+            vec2 pd = world.xz + lean * ${DECK_HEIGHT.toFixed(1)};
+            shade *= 1.0 - 0.7 * deckAt(pd, fp, deckCoverAt(weatherAt(pd), pd));
+            vec2 pc = world.xz + lean * ${CIRRUS_HEIGHT.toFixed(1)};
+            return shade * (1.0 - 0.5 * cirrusAt(pc, fp, weatherAt(pc).g));
+          }
+          #endif`
+              : ''
           }`,
         )
         .replace(
@@ -715,6 +875,14 @@ export class Globe {
           '#include <roughnessmap_fragment>',
           /* glsl */ `#include <roughnessmap_fragment>
           roughnessFactor = globeRough;`,
+        )
+        .replace(
+          '#include <lights_physical_fragment>',
+          /* glsl */ `#include <lights_physical_fragment>
+          #ifndef TOON
+            // water sends back 2 % of what meets it squarely, not a painted surface's 4
+            material.specularColor = mix(material.specularColor, vec3(0.02), globeSea * uGlobeAbove);
+          #endif`,
         )
         .replace(
           '#include <lights_fragment_end>',
@@ -737,7 +905,7 @@ export class Globe {
                 ? `#ifdef USE_FOG
             float footprint = length(fwidth(vFogWorld.xz));
             sceneShade = cloudShade(vFogWorld, transpose(mat3(viewMatrix)) * directionalLights[0].direction, footprint);
-            sunShade = cloudShade(vFogWorld, uGlobeSun, footprint);
+            sunShade = globeShade(vFogWorld, uGlobeSun, dot(normalize(vGlobeNormal), uGlobeSun), footprint);
             #endif`
                 : ''
             }
@@ -749,7 +917,7 @@ export class Globe {
               ReflectedLight sun = ReflectedLight(vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
               float mu = dot(normalize(vGlobeNormal), uGlobeSun);
               light.direction = normalize((viewMatrix * vec4(uGlobeSun, 0.0)).xyz);
-              light.color = uGlobeSunLight * exp(-(vec3(${RAYLEIGH.map((v) => v.toFixed(4)).join(', ')}) + uGlobeAerosol) * chapman(0.0, mu, ${this.radius.toFixed(1)}));
+              light.color = uAtmSunLight * atmSunAt(0.0, mu);
               light.visible = true;
               RE_Direct(light, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, sun);
               reflectedLight.directDiffuse += away * (sun.directDiffuse * sunShade - scene.directDiffuse * sceneShade);
@@ -783,7 +951,8 @@ export class Globe {
             // phase functions; estimated), so the sea from orbit is the dark blue it is under a veil, not a pale grey.
             vec3 haze = hazeSeen();   // (air.ts: hazeAboveUniform, which is uGlobeAbove)
             haze *= mix(1.0, smoothstep(-0.15, 0.1, dot(normalize(vGlobeNormal), uGlobeSun)), uGlobeAbove);
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, haze, 1.0 - exp(-fogDensity * tau));
+            // (and less of it the further the eye is out of the air: from above, the haze is the air's own, drawn by the ball)
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, haze, (1.0 - exp(-fogDensity * tau)) * (1.0 - uGlobeAbove));
           }
           #endif`,
         );

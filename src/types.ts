@@ -238,6 +238,81 @@ export interface ViewDef {
   from?: [number, number, number];
 }
 
+/**
+ * What an instrument can read (viewer/gauges.ts makes them from the flight at the clock's instant, flown or from the
+ * record): `altitude` m above the sea; `descent` m/s downward; `g` what an accelerometer along the long axis reads;
+ * `elapsed` s from liftoff (nought before it); `timeOfDay` s since midnight by the site's clocks; `pitch`, `yaw`,
+ * `roll` degrees as the spacecraft's own gyros had them (gauges.ts states the convention) and `pitchRate`, `yawRate`,
+ * `rollRate` degrees a second; `supply0`, `supply1`... the fraction left in each reaction-control supply
+ * (`trajectory.body.capsule.rcs.supplies`, in order). Anything else an instrument shows is not simulated: it is
+ * given a `value` and says so.
+ */
+export type Quantity =
+  | 'altitude'
+  | 'descent'
+  | 'g'
+  | 'elapsed'
+  | 'timeOfDay'
+  | 'pitch'
+  | 'yaw'
+  | 'roll'
+  | 'pitchRate'
+  | 'yawRate'
+  | 'rollRate'
+  | `supply${number}`;
+
+/** What a lamp can tell: an event of the flight that has happened (`tower` gone, `separated` from the booster, `retro` fired, `retropack` dropped, `entry` felt at a twentieth of a g, `drogue` and `main` out, `abort`), or `ready`: on the pad before ignition. */
+export type Signal = 'ready' | 'tower' | 'separated' | 'retro' | 'retropack' | 'entry' | 'drogue' | 'main' | 'abort';
+
+/**
+ * A model's inside, as somewhere to sit and fly from (viewer/cabin.ts). Every node named is a node of the model at its
+ * full level of detail. What each is called and what is said about it is read when the pointer is on it, on board or
+ * in the cutaway. Nothing in the viewer knows any one spacecraft: a new one is described here.
+ */
+export interface CabinDef {
+  /** Nodes whose meshes are indoors: lit by the model's own `lights` and what comes in at the windows, not by the open sky. */
+  within: string[];
+  /** How far the head turns from where the seat looks, radians: to either side, up, and down. Default: a free neck. */
+  head?: { side: number; up: number; down: number };
+  /** Which way the top of the pilot's head points, in the model's frame (default +Z): what the roll needle calls up. */
+  overhead?: [number, number, number];
+  /**
+   * Needles, bars and counter wheels. `node` is the moving piece, its origin on its pivot; how it reads is in its own
+   * extras, written by the script that drew its face (`turn`: value, radians pairs about the face's normal; `slide`:
+   * value, metres pairs; `drum`: digits on a wheel, with `place` the power of ten it shows), so the scale has one home.
+   * `reads` is the quantity and `per` what one unit of the face is in that quantity's units (a face in thousands of
+   * feet reads metres with `per: 304.8`). An instrument of something not simulated has `value` instead, in the face's
+   * units, and stands there.
+   */
+  instruments: { node: string; name: string; about: string; reads?: Quantity; per?: number; value?: number }[];
+  /** Lamps: lit, in `colour`, while the signal holds. One with no signal shows something not simulated: it stays dark and says so. */
+  lamps?: { node: string; name: string; about: string; shows?: Signal; colour?: number }[];
+  /**
+   * Controls that are the controls: a click on one does what the flight deck's key does (`does`: a command of
+   * src/cockpit.ts: 'tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort'). One with no `does` is
+   * there to be read about. How it moves when worked is in the node's extras (`pull` or `press`, metres along its axis).
+   */
+  controls?: { node: string; name: string; about: string; does?: string }[];
+  /** The hand controller: the node tips about these axes of its own (unit vectors) by `throw` radians at full command, and twists for yaw. */
+  stick?: { node: string; throw: number; pitch: [number, number, number]; roll: [number, number, number]; yaw: [number, number, number] };
+  /**
+   * A periscope: what its objective sees is drawn on `screen` (a mesh of the model). `at` is the objective and `axis`
+   * the way it looks, `up` what of the outside is at the top of the picture and `top` which way on the screen that
+   * is (default: the same), all in the model's frame (viewer's axes, metres); `fields` the whole angle seen at each
+   * power, degrees, widest first.
+   */
+  periscope?: {
+    screen: string;
+    name: string;
+    about: string;
+    at: [number, number, number];
+    axis: [number, number, number];
+    up: [number, number, number];
+    top?: [number, number, number];
+    fields: number[];
+  };
+}
+
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
 export interface ModelDef {
   id: string;
@@ -298,6 +373,8 @@ export interface ModelDef {
    * near `up` as that allows (both in the model's frame; without `up`, whichever way the shortest
    * turn leaves it). Say so where it is used: it is a placeholder, not the model.
    * The same place is where the camera sits on board (viewer/camera/onboard.ts): the first seat is the one it uses.
+   * `figure` is the flight's model of whoever sits here as he stands outside (a model with a `walker`): there is one
+   * of him, so while the flight deck is taken that figure is not also drawn standing on the pad.
    */
   seats?: {
     node: string;
@@ -306,8 +383,17 @@ export interface ModelDef {
     open: [number, number];
     eye?: [number, number, number];
     hide?: string[];
+    /**
+     * Where the seat can be left for the outside, and so whether a walk outside is offered: 'pad' through the hatch
+     * while `open`, 'orbit' in flight (an EVA), 'sea' after landing. Left out: on the pad only. Nothing in the viewer
+     * offers 'orbit' or 'sea' yet; a spacecraft that allowed them says so here and the offer follows the data.
+     */
+    egress?: ('pad' | 'orbit' | 'sea')[];
     standIn?: { mesh: string; look: [number, number, number]; up?: [number, number, number] };
+    figure?: string;
   }[];
+  /** The inside of it as a place to be: instruments that read, lamps that light, controls that work, windows to look out of (CabinDef). */
+  cabin?: CabinDef;
   /** Where the model stands in the flight's one scene, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */

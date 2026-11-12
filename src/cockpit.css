@@ -198,7 +198,16 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .tank.jets { grid-template-columns: 74px 1fr; }
   .readings { padding: 0 10px; }
   .deck-sys > em { margin: 3px 10px 0; }
-  .cockpit-phase { min-height: 0; padding: 4px 4px 4px 10px; gap: 8px; letter-spacing: 0.08em; }
+  .cockpit-phase { min-height: 0; padding: 4px 4px 4px 10px; gap: 4px 8px; letter-spacing: 0.08em; flex-wrap: wrap; }
+  .cockpit-phase > [data-cell='mode'] { order: 3; flex: none; width: 100%; }
+  .cockpit-phase > [data-cell='mode']:empty { display: none; }
+  .deck-modes button { padding: 6px 8px; letter-spacing: 0.06em; }
+  .deck-foot { flex-wrap: wrap; gap: 4px 8px; white-space: normal; }
+  .deck-steer { flex: 1 1 auto; }
+  .deck-steer em { margin: 0 8px 0 4px; }
+  .deck-foot > button { margin-left: auto; }
+  .deck-foot > [data-do='leave'] { display: none; }
+  #ui.piloting .cockpit-enter kbd { display: none; }
   .gauge { padding: 6px 8px 5px; }
   .gauge span { font-size: 10px; letter-spacing: 0.04em; }
   .gauge i { display: none; }
@@ -221,12 +230,36 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 }
 /* a finger has no keys: the hints that are only keys go, the buttons stay */
 @media (hover: none), (pointer: coarse) {
-  .cockpit kbd, .cockpit .for-keys, .cockpit .deck-turn { display: none; }
+  .cockpit kbd, .cockpit .for-keys, .cockpit .deck-turn, .cockpit .deck-steer { display: none; }
   .deck-foot .for-touch { display: inline; }
   .cockpit-next { justify-content: center; text-align: center; }
 }
-@media (max-height: 520px) { .cockpit-phase > [data-cell='mode'], .deck-foot > span { visibility: hidden; } .gauge b { font-size: 19px; } .deck-sys { display: none; } }
+/* a phone on its side: the navball beside the middle panel, both low; the systems wait for a taller window */
+@media (max-height: 520px) {
+  #ui > .cockpit { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'nav main'; gap: 8px; }
+  .deck-sys { display: none; }
+  .deck-main { width: 100%; }
+  .cockpit-phase { min-height: 0; padding: 3px 4px 3px 10px; }
+  .deck-modes button { padding: 5px 8px; }
+  .gauge { padding: 4px 10px 3px; }
+  .gauge b { font-size: 19px; }
+  .deck-act { padding: 5px; }
+  .cockpit-next { padding: 8px 14px; }
+  .cockpit-abort { padding: 7px 10px; }
+  .deck-foot { padding: 0 4px 0 10px; }
+  .deck-foot > button { padding: 5px 8px; }
+  .cockpit-stick { width: 96px; height: 96px; bottom: calc(100% + 8px); }
+  .cockpit-stick i { inset: 28px; }
+  .cockpit-roll { bottom: calc(100% + 8px); }
+  .cockpit-roll button { width: 56px; height: 56px; }
+  .cockpit.keys-open :is(.cockpit-stick, .cockpit-roll) { display: none; }
+  .cockpit-keys { padding: 6px 6px 7px 10px; gap: 4px; }
+  .cockpit-keys button { padding: 6px 9px; }
+}
 /* the diagnostics line keeps clear of the deck: up in the corner, as far as the clock; on a small screen there is no room for it */
 #ui.piloting .stats { bottom: auto; top: var(--edge); max-width: calc(50vw - 250px - var(--edge)); overflow: hidden; text-overflow: ellipsis; }
 .cockpit.keys-open .deck-foot > [data-do='leave'] { display: none; }
 @media (max-width: 960px), (max-height: 520px) { #ui.piloting .stats { display: none; } }
+/* From the couch the model's own panel is in front of the pilot: the deck is put away unless it is asked for (P; main.ts panelOnly), and with it the navball and the path's labels */
+#ui.panel-only :is(.cockpit, .navball, .path-labels) { display: none; }
+#ui.piloting.aboard > .tip:not([hidden]) { display: block; }

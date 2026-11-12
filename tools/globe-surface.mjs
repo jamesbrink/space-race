@@ -62,7 +62,31 @@ const SAMPLES = 4;
 /** JPEG quality. */
 const QUALITY = 88;
 /** The regions: bounds in degrees, and the middle its plane touches the sphere at. */
-const REGIONS = [{ name: 'cape-canaveral', south: 20.5, north: 31.5, west: -84.5, east: -72.5, centre: [26.0, -78.5], metres: 450 }];
+/**
+ * `banks`: where the sea's bed is pale carbonate sand under clear water, so that shallow water there is turquoise
+ * (viewer/globe.ts: globeWater): each a circle, [latitude, longitude, radius in km], drawn generously round a bank
+ * (the bank's own edge is in the relief: it is only the shallows inside a circle that are bright). Read off charts
+ * and photographs from orbit: estimated. Elsewhere a shallow bed is taken as dark and the water as less clear.
+ */
+const REGIONS = [
+  {
+    name: 'cape-canaveral',
+    south: 20.5,
+    north: 31.5,
+    west: -84.5,
+    east: -72.5,
+    centre: [26.0, -78.5],
+    metres: 450,
+    banks: [
+      [26.9, -78.2, 130], // Little Bahama Bank
+      [24.9, -78.6, 190], // Great Bahama Bank: Bimini, the Berry Islands, Andros
+      [23.0, -76.6, 260], // Great Bahama Bank: the Exumas to the Ragged Islands
+      [23.9, -80.3, 60], // Cay Sal Bank
+      [24.9, -81.0, 110], // the Florida Keys, Florida Bay and the reef tract
+      [22.2, -73.5, 180], // Crooked Island, Acklins and the Caicos Bank's edge
+    ],
+  },
+];
 /** Blue Marble's 500 m tile over each region: its file and its north-west corner, degrees. Tiles are 90 degrees square, 240 pixels a degree. */
 const TILE = { file: 'world.200405.3x21600x21600.B1.jpg', west: -90, north: 90 };
 
@@ -490,6 +514,7 @@ function bakeRegion(region) {
     relief: map(files.relief),
     colour: map(files.colour),
     fade: 0.05 * Math.min(x1 - x0, y1 - y0),
+    banks: region.banks ?? [],
   };
   writeFileSync(join(out, files.json), `${JSON.stringify(json, null, 2)}\n`);
   console.log(

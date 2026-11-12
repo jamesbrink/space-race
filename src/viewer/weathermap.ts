@@ -1,0 +1,67 @@
+import * as THREE from 'three';
+import { DEG } from '../world/frames.ts';
+import { EXTENT } from './weather.ts';
+
+/**
+ * The weather map (weather.ts) as the shaders read it: one texture and its placing, shared by
+ * reference by the clouds (clouds.ts) and the globe under them (globe.ts), so both see the same
+ * weather. Until a site's map has arrived it is one texel that says the site's cover everywhere
+ * and no high cloud: the field as it was before there was any weather.
+ */
+const pixel = new Uint8Array([26, 0, 0, 255]);
+const blank = new THREE.DataTexture(pixel, 1, 1, THREE.RGBAFormat);
+blank.needsUpdate = true;
+
+export const weatherUniforms = {
+  tWeather: { value: blank as THREE.Texture },
+  /** The bearing of the scene's +X as its sine and cosine, one over the map's breadth, the record's cumulus cover at the site. */
+  uWeather: { value: new THREE.Vector4(0, 1, 1 / EXTENT, 0.1) },
+  /** The low wind's way and the high wind's, unit vectors in the scene's x and z. */
+  uWeatherWind: { value: new THREE.Vector2(1, 0) },
+  uWeatherHigh: { value: new THREE.Vector2(1, 0) },
+};
+
+/** Called when the map arrives: whoever draws by it draws again. */
+const arrived: (() => void)[] = [];
+export const onWeather = (then: () => void): void => {
+  arrived.push(then);
+};
+
+/**
+ * The high wind's way, as a bearing it blows toward, degrees: from the west-south-west, as the upper westerlies
+ * over Florida are in May on the whole. Estimated: no sounding for the day has been read.
+ */
+const HIGH_WIND = 70;
+
+/**
+ * Place the weather for a site: its frame's bearing (degrees), the record's cumulus cover there and the low
+ * wind's way (the scene's x and z); and fetch the region's map, if it has one.
+ */
+export function placeWeather(bearingX: number, cover: number, wind: readonly [number, number], region: string | null): void {
+  const b = bearingX * DEG;
+  weatherUniforms.uWeather.value.set(Math.sin(b), Math.cos(b), 1 / EXTENT, cover);
+  const speed = Math.hypot(wind[0], wind[1]) || 1;
+  weatherUniforms.uWeatherWind.value.set(wind[0] / speed, wind[1] / speed);
+  // (east, north) to the scene's (x, z): frames.ts, enuToSite
+  const h = HIGH_WIND * DEG;
+  weatherUniforms.uWeatherHigh.value.set(
+    Math.sin(h) * Math.sin(b) + Math.cos(h) * Math.cos(b),
+    Math.sin(h) * Math.cos(b) - Math.cos(h) * Math.sin(b),
+  );
+  pixel[0] = Math.round(cover * 255);
+  blank.needsUpdate = true;
+  if (!region) return;
+  void (async () => {
+    const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${region}.weather.png`)).blob();
+    const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
+    const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.flipY = false;
+    texture.generateMipmaps = false; // (its texels are 4 km: it is only ever magnified)
+    texture.minFilter = texture.magFilter = THREE.LinearFilter;
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.needsUpdate = true;
+    weatherUniforms.tWeather.value = texture;
+    for (const then of arrived) then();
+  })();
+}

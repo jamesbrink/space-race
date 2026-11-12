@@ -568,6 +568,19 @@ export class Cockpit {
     return null;
   }
 
+  /**
+   * A control in the cabin worked by hand (viewer/cabin.ts): 'abort' and 'next' are the keys' own, guarded as they
+   * are; any other names the one thing to set off now (a pull ring does its own thing, whatever is next in order).
+   */
+  ask(what: string): void {
+    if (what === 'abort' || what === 'next') return void this.command(what);
+    const s = this.state;
+    if (!this.on || !s || s.landing || this.clock.t < s.t - TICK) return;
+    if (!['tower', 'separate', 'retro', 'retropack', 'drogue', 'main'].includes(what)) return;
+    this.hand[what as 'tower'] = true;
+    if (!this.clock.running && s.ignited) this.clock.play(true);
+  }
+
   private command(what: string): void {
     if (!this.on) return;
     if (what === 'leave') this.leave();

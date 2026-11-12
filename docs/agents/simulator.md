@@ -66,9 +66,16 @@ never adjusted to bring a check in.
   mesh made in doubles round the point under the eye and remade as the eye moves (rings spaced
   so each triangle looks the same size, out past the horizon); land, lakes and ice are signed
   distances to the shore on a cube map (tools/globe.mjs, Natural Earth), so the shore is a clean
-  line at any height; the haze is the scene's, worked along the ray over the curve; the air seen
-  from above (`Globe.air`, a ball round the eye, single Rayleigh scattering) makes the limb and
-  the blue over it, and comes in as the sky (backdrops.ts) goes out. The site's ground (land.ts)
+  line at any height; over it the land has its own colours (NASA's Blue Marble for May) and is
+  shaded by its relief under the true Sun, and the sea is coloured by its depth (NOAA's ETOPO
+  2022: a bank of pale sand is turquoise, the deep near black), with the Sun's glint on it
+  (tools/globe-surface.mjs bakes both; "The Earth from height" in rendering.md). The air seen
+  from above (`Globe.air`, a ball round the eye; `viewer/atmosphere.ts`: Rayleigh, haze, ozone
+  and light scattered many times) makes the limb, the blue over the Earth and the pale band
+  along the horizon, and comes in as the sky (backdrops.ts) and the scene's own haze go out.
+  Cloud goes on to the limb at every height: the cumulus as the weather has them (a map,
+  `viewer/weather.ts`: estimated, with the record's cover kept at the site), a middle deck and
+  cirrus on their own shells, all casting shadows on the globe. The site's ground (land.ts)
   keeps the middle: the globe leaves a hole for it, and across its last kilometre and a
   half, inside its cover maps, the ground bends onto the curve and takes the globe's colours
   (`Land.meet`); from 3 km up all of it takes them, but for its made ground, wholly by 20 km

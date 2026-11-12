@@ -1,27 +1,240 @@
 import type * as THREE from 'three';
-import { Box3, Group, Sphere } from 'three';
+import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, type Vector3 } from 'three';
 import type { Part } from '../types';
-import { markDriven } from './drive';
-import { Exploder } from './explode';
+import { markDriven } from './drive.ts';
+import { Exploder } from './explode.ts';
 
 /**
  * Pixels per metre above which each level of detail is worth drawing. Level 0 is the model as
  * built; 1 and 2 are the same scripts run at `--detail 0.6` and `0.3` (tools/build-model.mjs).
- * The thresholds are set where what the coarser level leaves out is smaller than a pixel: a
- * rivet is 15 mm across and is dropped at level 2, so level 2 is only shown under 12 px/m.
- * That is what makes the change invisible; there is no cross-fade to hide a difference.
+ *
+ * A coarser level is not only the same shape with fewer sides. Below 1.0 the scripts leave out
+ * what stands behind a window, rail spikes and door furniture; below 0.5, fasteners, a truss's
+ * lighter bracing, panel lines. Measured (the same view drawn at both levels, pixel by pixel, at
+ * 1280 x 800), the two levels of a building never agree at any size at which the building can be
+ * seen: the pixels that differ fall off with its area on screen, and no faster. So the thresholds
+ * are set where what changes is small (some tens of pixels in a million for 0 to 1 at 8 px/m,
+ * a few hundred for 1 to 2 at 2 px/m, most of them a pixel wide), and the change itself is never
+ * a cut: the two levels are drawn together for `FADE` seconds, one giving way to the other pixel
+ * by pixel (`Crossfade`). At the old thresholds (40 and 12) a gantry's bracing and the table
+ * behind a window came and went in one frame, sixty metres off.
  */
-export const LOD_ABOVE = [40, 12] as const;
+export const LOD_ABOVE = [8, 2] as const;
+
+/** Seconds one level takes to give way to another. */
+export const FADE = 0.6;
 
 /** Where level `n` of a model lives, given the model's own URL. */
 export const lodUrl = (url: string, level: number) => (level ? url.replace(/\.glb$/, `.lod${level}.glb`) : url);
 
-/** Which level to show at `ppm` pixels per metre, given the one on show: a change needs a clear margin, so it does not flutter. */
-export function chooseLevel(ppm: number, current: number): number {
-  let level = current;
-  while (level > 0 && ppm > LOD_ABOVE[level - 1]! * 1.12) level--;
-  while (level < LOD_ABOVE.length && ppm < LOD_ABOVE[level]! * 0.9) level++;
+/**
+ * Which level to show at `ppm` pixels per metre, given the one on show: a change needs a clear margin, so a camera
+ * resting on a boundary does not flutter between two (going finer at 12 % over the threshold, coarser at 10 % under).
+ */
+export function chooseLevel(ppm: number, current: number, above: readonly number[] = LOD_ABOVE): number {
+  let level = Math.min(current, above.length);
+  while (level > 0 && ppm > above[level - 1]! * 1.12) level--;
+  while (level < above.length && ppm < above[level]! * 0.9) level++;
   return level;
+}
+
+/**
+ * How far the eye is from a thing, for choosing its level: to the nearest point of the box round it, and never less
+ * than a metre. Not to its middle: a row of poles 260 m long, or the pad with its apron, has parts a hundred metres
+ * from its middle, and someone standing beside one of those is standing beside the thing. Inside the box the answer
+ * is the least there is, so what the eye is among is always drawn in full.
+ */
+export function distanceTo(box: Box3, eye: Vector3): number {
+  return Math.max(1, box.distanceToPoint(eye));
+}
+
+/**
+ * The shader's side of a cross-fade. A material that is fading is compiled with `LOD_FADE` and discards the pixels
+ * the other level is to have: each pixel of the screen has a threshold of its own (interleaved gradient noise: no
+ * pattern the eye picks out, and the same every frame, so nothing shimmers), the level coming in is drawn where the
+ * fade has passed the threshold and the one going out where it has not. Where the two levels are the same surface
+ * every pixel is drawn by one of them and nothing shows; where they differ the difference comes in pixel by pixel.
+ * The same test runs in the shadow map's texels, so a shadow is handed over as its caster is. Only materials that
+ * are fading carry the test: a shader that may discard gives up the GPU's early depth test, which the rest keep.
+ */
+ShaderChunk.clipping_planes_pars_fragment = /* glsl */ `
+#ifdef LOD_FADE
+  uniform vec2 uLodFade; // how far through, and which side: 1 coming in, -1 going out
+#endif
+${ShaderChunk.clipping_planes_pars_fragment}`;
+ShaderChunk.clipping_planes_fragment = /* glsl */ `
+#ifdef LOD_FADE
+  {
+    float lodNoise = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715))));
+    if (uLodFade.y > 0.0 ? lodNoise >= uLodFade.x : lodNoise < uLodFade.x) discard;
+  }
+#endif
+${ShaderChunk.clipping_planes_fragment}`;
+
+let proxies = 0;
+
+/** One side of a cross-fade: the materials of the level coming in, or of the one going out, while it lasts. */
+class Fading {
+  readonly fade = { value: new Vector2(0, 1) };
+  private readonly twins = new Map<THREE.Material, THREE.Material>();
+  private readonly was = new Map<THREE.Mesh, { material: THREE.Material; fading: THREE.Material; depth: THREE.Material | undefined }>();
+  private depthMaterial: THREE.Material | null = null;
+
+  constructor(side: 1 | -1) {
+    this.fade.value.y = side;
+  }
+
+  /**
+   * A material's fading twin: the material itself (an object whose prototype it is, so whatever is done to the
+   * material is done to the twin: the cutaway's planes, its colour, its maps) with the fade's test compiled in and
+   * this side's uniform. It has an id of its own, so three sends its uniforms when the draw goes from the material
+   * to its twin, and each side of each fade has its own twin, so two pieces fading at once do not share a value.
+   */
+  private twin(real: THREE.Material): THREE.Material {
+    const made = this.twins.get(real);
+    if (made) return made;
+    const twin = Object.create(real) as THREE.Material & { _listeners?: unknown };
+    Object.defineProperty(twin, 'id', { value: -++proxies });
+    twin._listeners = undefined; // (its own: three listens for each material's disposal)
+    twin.defines = { ...real.defines, LOD_FADE: '' };
+    twin.onBeforeCompile = (shader, renderer) => {
+      real.onBeforeCompile.call(twin, shader, renderer);
+      shader.uniforms.uLodFade = this.fade;
+    };
+    real.addEventListener('dispose', () => {
+      twin.dispose();
+      this.twins.delete(real);
+    });
+    this.twins.set(real, twin);
+    return twin;
+  }
+
+  private get depth(): THREE.Material {
+    if (this.depthMaterial) return this.depthMaterial;
+    const depth = new MeshDepthMaterial();
+    depth.defines = { LOD_FADE: '' };
+    depth.onBeforeCompile = (shader) => {
+      shader.uniforms.uLodFade = this.fade;
+    };
+    depth.customProgramCacheKey = () => 'lod-fade';
+    return (this.depthMaterial = depth);
+  }
+
+  /** Every mesh under `root` is drawn fading from now on, in the view and in the shadow map. */
+  put(root: THREE.Object3D): void {
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh || Array.isArray(mesh.material) || this.was.has(mesh)) return;
+      const material = mesh.material;
+      // (a material that is all its own shader has no place for the test: it changes over at the end)
+      if ((material as THREE.ShaderMaterial).isShaderMaterial) return;
+      const fading = this.twin(material);
+      this.was.set(mesh, { material, fading, depth: mesh.customDepthMaterial });
+      mesh.material = fading;
+      if (!mesh.customDepthMaterial) mesh.customDepthMaterial = this.depth;
+    });
+  }
+
+  /** Give every mesh back what it had, unless something else has changed it since (a change of look). */
+  lift(): void {
+    for (const [mesh, { material, fading, depth }] of this.was) {
+      if (mesh.material === fading) mesh.material = material;
+      if (mesh.customDepthMaterial === this.depthMaterial) mesh.customDepthMaterial = depth;
+    }
+    this.was.clear();
+  }
+}
+
+/**
+ * One thing changing from one of its levels to another: both are drawn for `FADE` seconds, the first going out as
+ * the second comes in. A change asked for while one is under way finishes the one under way at once (the margins in
+ * `chooseLevel` keep that for a camera that is travelling, when it is not seen).
+ */
+export class Crossfade {
+  private readonly coming = new Fading(1);
+  private readonly going = new Fading(-1);
+  private from: THREE.Object3D | null = null;
+  private to: THREE.Object3D | null = null;
+  private f = 1;
+  private warming = false;
+
+  get running(): boolean {
+    return this.to !== null;
+  }
+
+  /** `to` takes over from `from`, which is on show. */
+  start(from: THREE.Object3D, to: THREE.Object3D): void {
+    this.finish();
+    this.from = from;
+    this.to = to;
+    this.f = 0;
+    from.visible = to.visible = true;
+    this.going.put(from);
+    this.coming.put(to);
+    this.set();
+  }
+
+  /** `dt` seconds on. True while there is a fade to draw. */
+  step(dt: number): boolean {
+    if (!this.to) return false;
+    this.f += dt / FADE;
+    if (this.f >= 1) this.finish();
+    else this.set();
+    return true;
+  }
+
+  /** Have done with it now: the level coming in is the one on show. */
+  finish(): void {
+    if (this.warming) {
+      this.going.lift();
+      this.coming.lift();
+      this.warming = false;
+    }
+    if (!this.from || !this.to) return;
+    this.going.lift();
+    this.coming.lift();
+    this.from.visible = false;
+    this.to.visible = true;
+    this.from = this.to = null;
+    this.f = 1;
+  }
+
+  /** Draw both as they are drawn half way through a fade, so that their fading shaders are built (`finish` undoes it; neither is hidden by it if `from` is null). */
+  warm(from: THREE.Object3D, to: THREE.Object3D): void {
+    this.going.put(from);
+    this.coming.put(to);
+    this.warming = true;
+    this.coming.fade.value.x = this.going.fade.value.x = 0.5;
+  }
+
+  private set(): void {
+    // eased at both ends: the first and last pixels to change are the ones most noticed
+    const f = this.f * this.f * (3 - 2 * this.f);
+    this.coming.fade.value.x = this.going.fade.value.x = f;
+  }
+}
+
+/** One piece of the place round the pad: a top-level node, at each of its levels. */
+interface Piece {
+  name: string;
+  box: Box3;
+  nodes: (THREE.Object3D | undefined)[];
+  /** The level its size on screen calls for, and the one drawn (the nearest finer one that has arrived). */
+  wanted: number;
+  shown: number;
+  fade: Crossfade;
+  /** The box round each of its meshes at the full level, made when first asked for (`Scenery.clearance`). */
+  parts?: Box3[];
+}
+
+/** The box round each mesh under `node`, in the scene's frame. */
+function partsOf(node: THREE.Object3D): Box3[] {
+  const boxes: Box3[] = [];
+  node.updateWorldMatrix(true, true);
+  node.traverse((o) => {
+    if ((o as THREE.Mesh).isMesh) boxes.push(new Box3().setFromObject(o));
+  });
+  return boxes;
 }
 
 /**
@@ -29,13 +242,13 @@ export function chooseLevel(ppm: number, current: number): number {
  * it spreads over half a kilometre, so one level for all of it would be the finest whenever any
  * of it is near, or a coarse one for the building in front of the walker. Each top-level node (a
  * building, the track, the poles) is a piece and is drawn at the level its own size on screen
- * calls for. Level 0 is the one the stage knows (picked, walked on, lit, worked: a hidden node
- * still answers a ray); the coarser levels are only drawn. A piece that is driven (it carries a
- * `vehicle`) is always drawn from level 0, which is the one that moves.
+ * calls for, measured to the nearest point of its box. Level 0 is the one the stage knows (picked,
+ * walked on, lit, worked: a hidden node still answers a ray); the coarser levels are only drawn. A
+ * piece that is driven (it carries a `vehicle`) is always drawn from level 0, which is the one that moves.
  */
 export class Scenery {
   private readonly levels: (THREE.Object3D | undefined)[] = [];
-  private readonly pieces: { name: string; sphere: Sphere; nodes: (THREE.Object3D | undefined)[]; wanted: number }[] = [];
+  private readonly pieces: Piece[] = [];
   private every = false;
   /** For tests: draw every piece (or the pieces named) at this level whatever its size on screen (null: as it suits). */
   forced: number | Record<string, number> | null = null;
@@ -49,8 +262,8 @@ export class Scenery {
         if (o.userData.vehicle) driven = true;
       });
       if (driven) continue;
-      const sphere = new Box3().setFromObject(node).getBoundingSphere(new Sphere());
-      if (sphere.radius > 0) this.pieces.push({ name: node.name, sphere, nodes: [node], wanted: 0 });
+      const box = new Box3().setFromObject(node);
+      if (!box.isEmpty()) this.pieces.push({ name: node.name, box, nodes: [node], wanted: 0, shown: 0, fade: new Crossfade() });
     }
   }
 
@@ -60,9 +273,9 @@ export class Scenery {
     for (const node of object.children) {
       const piece = this.pieces.find((p) => p.name === node.name);
       if (piece) piece.nodes[level] = node;
-      else node.visible = false;
+      node.visible = false;
     }
-    for (const piece of this.pieces) this.show(piece);
+    for (const piece of this.pieces) this.show(piece, false);
   }
 
   /** Every level, level 0 first: what a working door or lift moves at once. */
@@ -75,31 +288,66 @@ export class Scenery {
     return this.all.slice(1);
   }
 
-  /** Pick each piece's level for an eye at `eye`, `scale` pixels per radian. True if what is drawn changed. */
-  choose(eye: THREE.Vector3, scale: number): boolean {
+  /**
+   * How far the eye is from the nearest thing of the place, metres: to the box round each mesh of the full level, as
+   * it stood when it arrived (0 inside one). For whoever sets the near plane: it must not be put beyond a building
+   * the camera is passing, which the distance to what is being looked at knows nothing of.
+   */
+  clearance(eye: Vector3): number {
+    let least = Number.POSITIVE_INFINITY;
+    for (const piece of this.pieces) {
+      if (piece.box.distanceToPoint(eye) >= least) continue;
+      for (const box of (piece.parts ??= partsOf(piece.nodes[0]!))) least = Math.min(least, box.distanceToPoint(eye));
+    }
+    return least;
+  }
+
+  /** Each piece's level as drawn, for the diagnostics. */
+  get shown(): { name: string; level: number }[] {
+    return this.pieces.map((p) => ({ name: p.name, level: p.shown }));
+  }
+
+  /**
+   * Pick each piece's level for an eye at `eye`, `scale` pixels per radian, `dt` seconds after the last time (a
+   * change of level is a fade of that long; `dt` infinite, a cut). True if what is drawn changed, or is changing.
+   */
+  choose(eye: Vector3, scale: number, dt = Number.POSITIVE_INFINITY): boolean {
     let changed = false;
     for (const piece of this.pieces) {
-      const { center, radius } = piece.sphere;
-      const distance = Math.max(eye.distanceTo(center) - radius * 0.6, radius * 0.1);
+      if (piece.fade.step(dt)) changed = true;
       const forced = typeof this.forced === 'number' ? this.forced : this.forced?.[piece.name];
-      const wanted = forced ?? chooseLevel(scale / distance, piece.wanted);
+      const wanted = forced ?? chooseLevel(scale / distanceTo(piece.box, eye), piece.wanted);
       if (wanted === piece.wanted) continue;
       piece.wanted = wanted;
-      changed = this.show(piece) || changed;
+      changed = this.show(piece, Number.isFinite(dt) && forced === undefined) || changed;
     }
     return changed;
   }
 
-  /** Draw every level at once (so all are built and sent to the GPU), or go back to the ones that suit. */
-  everyLevel(on: boolean): void {
+  /** Draw every level at once (so all are built and sent to the GPU), as they are while fading too if `fading`, or go back to the ones that suit. */
+  everyLevel(on: boolean, fading = false): void {
     this.every = on;
-    for (const piece of this.pieces) this.show(piece);
+    for (const piece of this.pieces) {
+      piece.fade.finish();
+      const nodes = piece.nodes.filter((n): n is THREE.Object3D => Boolean(n));
+      if (on && fading && nodes.length > 1) for (let i = 1; i < nodes.length; i++) piece.fade.warm(nodes[i - 1]!, nodes[i]!);
+      this.show(piece, false);
+    }
   }
 
-  /** Show the piece's wanted level, or until it has arrived the nearest finer one that has. */
-  private show(piece: Scenery['pieces'][number]): boolean {
+  /** Show the piece's wanted level, or until it has arrived the nearest finer one that has; `fade`: over a moment. */
+  private show(piece: Piece, fade: boolean): boolean {
     let level = piece.wanted;
     while (level > 0 && !piece.nodes[level]) level--;
+    const from = piece.nodes[piece.shown],
+      to = piece.nodes[level];
+    const was = piece.shown;
+    piece.shown = level;
+    if (fade && !this.every && from && to && from !== to) {
+      piece.fade.start(from, to);
+      return true;
+    }
+    if (!this.every || was !== level) piece.fade.finish();
     let changed = false;
     piece.nodes.forEach((node, i) => {
       const visible = this.every || i === level;
@@ -112,16 +360,20 @@ export class Scenery {
   }
 }
 
-/** One model on the stage: its levels of detail, of which one is drawn, all taken apart together. */
+/** One model on the stage: its levels of detail, of which one is drawn (two while one gives way to the other), all taken apart together. */
 export class Staged {
   readonly group = new Group();
   readonly sphere = new Sphere();
+  /** The box round it as placed: what its distance from the eye is measured to. */
+  readonly box = new Box3();
   private readonly levels: (THREE.Object3D | undefined)[] = [];
   private readonly exploders: Exploder[] = [];
   private level = 0;
   private wanted = 0;
   private t = 0;
   private readonly parts: Part[];
+  private readonly fade = new Crossfade();
+  private every = false;
   /** What is being worked by hand, so that a level arriving later is posed the same (hold, loosen). */
   private readonly held = new Map<string, number>();
   private readonly loose = new Set<string>();
@@ -133,9 +385,9 @@ export class Staged {
     this.add(0, full);
   }
 
-  /** Call once it is placed: the sphere is what its distance from the camera is measured to. */
+  /** Call once it is placed, and when it has moved: the box is what its distance from the eye is measured to. */
   measure(): void {
-    new Box3().setFromObject(this.levels[0]!).getBoundingSphere(this.sphere);
+    this.box.setFromObject(this.levels[0]!).getBoundingSphere(this.sphere);
   }
 
   add(level: number, object: THREE.Object3D): void {
@@ -147,8 +399,8 @@ export class Staged {
     for (const node of this.loose) exploder.loosen(node, true);
     exploder.set(this.t);
     this.exploders.push(exploder);
-    object.visible = false;
-    this.show(this.wanted);
+    object.visible = this.every;
+    this.show(this.wanted, false);
   }
 
   explode(t: number): void {
@@ -176,10 +428,14 @@ export class Staged {
     }
   }
 
-  /** Draw every level at once (so that all of them are built and sent to the GPU), or go back to the one that suits. */
-  everyLevel(on: boolean): void {
-    if (on) for (const o of this.levels) if (o) o.visible = true;
-    if (!on) this.show(this.wanted);
+  /** Draw every level at once (so that all of them are built and sent to the GPU), as they are while fading too if `fading`, or go back to the one that suits. */
+  everyLevel(on: boolean, fading = false): void {
+    this.every = on;
+    this.fade.finish();
+    const levels = this.levels.filter((o): o is THREE.Object3D => Boolean(o));
+    if (on && fading) for (let i = 1; i < levels.length; i++) this.fade.warm(levels[i - 1]!, levels[i]!);
+    for (const o of levels) o.visible = on || o === this.shown;
+    if (!on) this.show(this.wanted, false);
   }
 
   /** The model as built: level 0, whether or not it is the one being drawn. */
@@ -187,6 +443,7 @@ export class Staged {
     return this.levels[0]!;
   }
 
+  /** The level being drawn (while one gives way to another, the one coming in). */
   get shownLevel(): number {
     return this.level;
   }
@@ -201,19 +458,38 @@ export class Staged {
     return this.shown.getObjectByName(node);
   }
 
-  /** Pick the level for this many pixels per metre (or the full one). True if what is drawn changed. */
-  choose(ppm: number, full: boolean): boolean {
-    this.wanted = this.forced ?? (full ? 0 : chooseLevel(ppm, this.wanted));
-    return this.show(this.wanted);
+  /**
+   * Pick the level for an eye at `eye`, `scale` pixels per radian (or the full one), `dt` seconds after the last
+   * time: a change of level is a fade of that long (`dt` infinite, or `full`, a cut: a model being cut open has
+   * its inside at once). True if what is drawn changed, or is changing.
+   */
+  choose(eye: Vector3, scale: number, full: boolean, dt = Number.POSITIVE_INFINITY): boolean {
+    const fading = this.fade.step(dt);
+    this.wanted = this.forced ?? (full ? 0 : chooseLevel(scale / distanceTo(this.box, eye), this.wanted));
+    return this.show(this.wanted, Number.isFinite(dt) && !full && this.forced === null) || fading;
   }
 
-  /** Show the wanted level, or until it has arrived the nearest finer one that has. */
-  private show(wanted: number): boolean {
+  /** Show the wanted level, or until it has arrived the nearest finer one that has; `fade`: over a moment. */
+  private show(wanted: number, fade: boolean): boolean {
     let level = wanted;
     while (level > 0 && !this.levels[level]) level--;
-    const changed = level !== this.level || !this.shown.visible;
-    this.levels.forEach((o, i) => o && (o.visible = i === level));
+    if (this.every) {
+      this.level = level;
+      return false;
+    }
+    const from = this.levels[this.level]!,
+      to = this.levels[level]!;
+    if (level === this.level) {
+      if (this.fade.running || to.visible) return false;
+      to.visible = true; // (the first there is, as it arrives)
+      return true;
+    }
     this.level = level;
-    return changed;
+    if (fade && from.visible) this.fade.start(from, to);
+    else {
+      this.fade.finish();
+      this.levels.forEach((o, i) => o && (o.visible = i === level));
+    }
+    return true;
   }
 }

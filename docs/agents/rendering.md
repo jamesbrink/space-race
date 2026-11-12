@@ -115,14 +115,46 @@ The clearance check runs at every level, and coarser curves sit differently agai
 so a fitting that clears at 1.0 can land on its neighbour at 0.3.
 
 Every model build writes three files: `<name>.glb`, and `<name>.lod1.glb` and `.lod2.glb` at detail
-0.6 and 0.3. The viewer draws whichever suits the model's size on screen (`viewer/lod.ts`): the
-thresholds sit where what the coarser level leaves out is under a pixel, so the change cannot be
-seen and nothing is cross-faded. A model that is cut open is always drawn in full. The place round the pad (`Flight.surroundings`)
+0.6 and 0.3. The viewer draws whichever suits the thing's size on screen (`viewer/lod.ts`), in
+pixels per metre at the nearest point of the box round it (`distanceTo`: never its middle, or the
+far end of a long thing is coarse with the eye beside it), through the lens and on the screen
+there is (`fitDetail`: the canvas's real height and the camera's field of view, so a narrow lens
+or a dense screen keeps the fine level further). A model that is cut open is always drawn in full. The place round the pad (`Flight.surroundings`)
 is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
 the level its own size on screen calls for, so the building beside the walker is always the finest;
 level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
-script; do not hand-edit geometry for them.
+script and a threshold to `LOD_ABOVE` (the choosing takes any number); do not hand-edit geometry for them.
+
+**A change of level is never a cut.** The levels are not the same shape with fewer sides: below
+1.0 the scripts leave out what stands behind a window, rail spikes, door furniture; below 0.5,
+fasteners, a truss's lighter bracing, panel lines. Measured (the same view drawn at each level and
+compared pixel by pixel), two levels of a building differ at any size at which it can be seen, by
+a number of pixels that falls with its area on screen and no faster: no distance hides the change.
+So (1) the thresholds (`LOD_ABOVE`: 8 and 2 px/m) are where what changes is tens of pixels in a
+million, a few hundred at worst; (2) `chooseLevel` has a margin each way, so an eye resting on a
+boundary does not flutter; and (3) the two levels are drawn together for `FADE` seconds
+(`Crossfade`): each pixel of the screen has a fixed threshold (no pattern, the same every frame),
+the level coming in is drawn where the fade has passed it and the level going out where it has
+not, in the view and in the shadow map alike, so a shadow is handed over as its caster is. A
+fading mesh wears its material's twin (`Fading.twin`: the material itself, by prototype, with
+`LOD_FADE` defined and its own id), so nothing else carries the test and nothing has to be told
+about it; `Stage.warm` builds those shaders with the rest. A test (`stage.frozen`) gets the cut.
+To measure a change to any of this: `Staged.forced` and `Scenery.forced` draw a level whatever
+the distance, so the same view can be drawn at two levels and compared.
+
+**Shadows reach as far as the place does.** The Sun has two maps. Its own (`fitShadows`,
+`fitWalkShadows`) is fine and spent where it is looked at: the section's model, or 52 m of ground
+round the walker. The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
+the place, coarsely, and is fitted once, so it never shifts under a walker; the shader's
+directional light reads the fine map and, over its outer part and beyond, the far one, mixed
+across the band. (Before, nothing past the fine map's edge had a shadow, and on foot that edge
+was 26 m away and jumped every 9 m walked.) The far map belongs to a second directional light
+that gives no light; it is drawn only when something it would show asked for the shadows again
+(every `shadowMap.needsUpdate = true` is heard), not for the walked figure's own motion
+(`FarShadow.nearOnly`), and on foot in a frame of its own with that figure's shadow off, or it
+would keep his shadow where he had been. Two directional lights with shadows mean exactly this
+pair to the shader: a third would need the patch widened.
 
 A mesh is a draw call, and another in every shadow-map redraw, so each build joins meshes nobody
 can tell apart before it exports (`srlib.merge_static`, at every level, after the clearance
@@ -136,3 +168,79 @@ mesh (`glass...`, `lamp...`, `concrete-scorch/stain...`, anything blended). A jo
 12 m, so Draco's step stays under 0.05 mm. The build compares every triangle before and after and
 fails if one differs. So a mesh the viewer must find gets a name in `flight.ts`, a custom
 property, or its own origin, and a new per-mesh material goes in `_PER_MESH_MATERIAL`.
+
+## Performance: measured, and never bought with quality
+
+Nothing visible is made coarser, blurrier, later or different for speed. Time is won from wasted
+work, and a saving is only a saving once `pnpm bench` (`tools/bench.mjs`) has shown it.
+
+The benchmark builds the production bundle into `node_modules/.bench/dist`, serves it on a free
+port of its own (never the dev server) and drives it in Chrome with vsync off. The page knows
+nothing of it: the script stops the page's loop through `window.sr` and turns it over by hand with
+a fixed step of 1/60 s, so the clock, the camera and the walk are the same on every run. A frame's
+cost is from calling `Stage.frame()` to the GPU having finished (a pixel read back; `gl.finish()`
+does not wait in Chrome). Scenarios: the pad still, drawn and orbiting; each section with a part
+selected and cut open; on foot standing, on the apron and on the gantry; the record's flight in
+the chase view and the flight deck with navball and path at T+1 to T+700; a cold load (local and
+at 20 Mbit/s: first frame, models on stage, ready, bytes by kind as GitHub Pages serves them,
+programs, compile time, heap); a 60 s soak on the page's own loop (hitches, collections). Each at
+1440x900@1, 1440x900@2 and 390x800@3 in both looks, `--reps` times: the table gives medians and
+spread, draw calls, triangles, programs, textures, the cost of a shadow redraw and of each pass.
+`--only <regex>`, `--sizes`, `--looks`, `--profile` (top self-time functions, from an unminified
+build) narrow it; the header of the file lists the rest.
+
+- **Two runs made at different times say little**: other work on the machine moves every figure by
+  tens of per cent. Compare within one run. `--b-dist <dir>` or `--b-query <search>` measures a
+  second build, or the same build with a switch in its address, turn about with the first, and
+  ends with what moved by more than the noise. `--toggle "<script>" --toggle-off "<script>"`
+  throws a switch inside one page and times blocks of frames each way, turn about, which is the
+  closest comparison there is. `--compare old.json new.json` does the same for two kept results.
+- **Pictures prove nothing across page loads** (cloud, surf and reflections go by the time since
+  the page opened). What proves a change leaves the picture alone is `--shots <dir>` with
+  `--toggle`: each scenario frozen (no time passes at all), drawn with the switch off, on, and off
+  again, and the pixels that differ counted. Off against off again is the floor: most views are
+  identical to the last bit, a few (cloud from above) wander by a level or two.
+- So **anything that changes how the scene is drawn keeps a switch** for as long as it is being
+  judged: `?plain` in the address draws the old way, and each has its own flag on the stage
+  (`sr.stage.glazing.enabled`).
+
+What has been found, so it is not found again:
+
+- **A clear two-sided material costs a shader lookup twice a draw.** Three draws a transparent
+  `DoubleSide` mesh as back faces then front faces by changing the one material's `side` and
+  marking it changed, and a changed material has its whole description rebuilt to find its
+  program: with 120 panes on show, a tenth to a sixth of the pad's frame. `viewer/panes.ts` gives
+  each pane a twin instead (back faces, drawn straight before it by `paneOrder`), with materials
+  that never change: the same two draws, the same shaders, the same pixels. Anything new that is
+  clear and two-sided and stands in numbers goes through `Panes.add`; a material that will be
+  changed after it is made (a shell's, which the cutaway opens) is left to three.
+- The pad's frame at 1440x900 is bound by the CPU, not the GPU: three's work per draw call.
+
+## The Earth from height
+
+What is seen from above the air is meant to stand beside photographs from orbit (the owner's word: clouds,
+air and flight effects real, the ground near the eye designed). What keeps it so:
+
+- **Data is baked, cited and dated.** Relief and the sea's bed are ETOPO 2022, the land's colours Blue Marble
+  (May 2004), on the globe's cube and, finer, on a plane over the site's region (`pnpm globe:surface`; needs
+  GDAL; downloads stay outside the repo). The colours are 2004's land, not 1961's: say so where it matters.
+  A region names its `banks` (pale sand under clear water) in tools/globe-surface.mjs: the sea's colour is
+  worked from depth (`globeWater`), bright only there.
+- **The weather is estimated and says so.** `viewer/weather.ts` is a plausible fair morning built from the
+  land map, the relief and the wind, baked by `pnpm globe:weather`; nothing in it is the day's analysed
+  weather. The record's cover replaces it within 12 km of the site (`coverNear`), so the documented clouds
+  are untouched. Bake it again after changing weather.ts, the land map or the relief.
+- **One field, three readers.** The cumulus's noise, cut where the weather says (`cumulusBias`), is read by
+  the march's bake, the far cover (`farCumulus`) and the globe's shadows (`globeShade`): change one, change
+  all. The far cover is slices of the same heap the volume marches, then the field averaged along a pixel's
+  length, then cover alone: each fades into the next by the pixel's footprint, so nothing ends in a circle
+  and nothing under a pixel is drawn.
+- **Far cloud is not hidden by the depth buffer's steps.** Hundreds of kilometres off one step is
+  kilometres: far cloud is hidden only by what is nearer by a quarter of the way (`hidden`).
+- **The air is one model.** `atmosphere.ts` makes two tables once (transmittance, multiple scattering) and
+  `atmScatter` walks a ray with them: the ball, the far clouds (`throughAir`) and the globe's sunlight
+  (`atmSunAt`) all use it. From the ground the sky is still daysky.ts's and the haze the scene's fog; both
+  go out, and the air comes in, with `airAbove`, so nothing steps on the way up. The Sun's light above the
+  air is derived from the scene's own at 50 degrees, so sunlit ground, cloud and sky keep their true ratios.
+- **Nothing costs on the ground that is not seen there.** The ball and the globe are not drawn until the eye
+  can see past the site; the sheets and far cumulus are worked out only for pixels that meet their shells.

@@ -107,15 +107,43 @@ const cut = new WeakMap<Clouds, [number, number]>();
 function edges(c: Clouds): [number, number] {
   let e = cut.get(c);
   if (!e) {
-    const seen: number[] = [];
-    for (let i = 0; i < 240; i++) for (let j = 0; j < 240; j++) seen.push(cloudNoise(i * 0.29 + 0.13, j * 0.31 + 0.07));
-    seen.sort((a, b) => a - b);
-    const middle = seen[Math.min(seen.length - 1, Math.floor((1 - c.cover) * seen.length))]!;
+    const middle = cloudCutAt(c.cover);
     e = [middle - SOFT, middle + SOFT];
     cut.set(c, e);
   }
   return e;
 }
+
+/** A wide patch of the noise, sorted: what fraction of the sky lies above any value of it. */
+let sorted: Float64Array | null = null;
+function seen(): Float64Array {
+  if (!sorted) {
+    sorted = new Float64Array(240 * 240);
+    for (let i = 0; i < 240; i++) for (let j = 0; j < 240; j++) sorted[i * 240 + j] = cloudNoise(i * 0.29 + 0.13, j * 0.31 + 0.07);
+    sorted.sort();
+  }
+  return sorted;
+}
+
+/** The value of the noise that `cover` of the sky lies above: cut there, the field covers that much. */
+export function cloudCutAt(cover: number): number {
+  const s = seen();
+  return s[Math.min(s.length - 1, Math.max(0, Math.floor((1 - cover) * s.length)))]!;
+}
+
+/** How many covers `cloudCutGlsl` knows the cut for: evenly spaced in the cover's square root, so thin covers are told apart. */
+const CUTS = 17;
+/**
+ * GLSL: `cloudCutAt(float cover)`, as above, for a cover that varies from place to place (weather.ts): between the
+ * cuts for CUTS covers. The noise is the same whatever the clouds' size, so this is too.
+ */
+export const cloudCutGlsl = (): string => /* glsl */ `
+  const float CLOUD_CUTS[${CUTS}] = float[${CUTS}](${Array.from({ length: CUTS }, (_, i) => cloudCutAt((i / (CUTS - 1)) ** 2).toFixed(4)).join(', ')});
+  float cloudCutAt(float cover) {
+    float u = sqrt(clamp(cover, 0.0, 1.0)) * ${(CUTS - 1).toFixed(1)};
+    int i = int(min(floor(u), ${(CUTS - 2).toFixed(1)}));
+    return mix(CLOUD_CUTS[i], CLOUD_CUTS[i + 1], u - float(i));
+  }`;
 
 /**
  * The cloud field, in JavaScript and GLSL alike (field.ts's integer noise, so the clouds drawn and
@@ -232,7 +260,8 @@ export function installAir(air: Air): void {
   chunks.fog_fragment = /* glsl */ `
     #ifdef USE_FOG
       #ifdef FOG_EXP2
-        float fogFactor = airFog(vFogWorld);
+        // (less of it the further the eye is out of the air: from above, the haze is the air's own: atmosphere.ts)
+        float fogFactor = airFog(vFogWorld) * (1.0 - uHazeAbove.x);
       #else
         float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
       #endif

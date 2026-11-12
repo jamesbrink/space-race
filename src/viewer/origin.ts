@@ -62,6 +62,8 @@ export class Origin {
   private readonly shadows = new WeakMap<THREE.LightShadow, THREE.Matrix4>();
   /** Of the lights it was given, the ones lighting this draw. */
   private readonly lights: Shadowed[] = [];
+  /** Of those, the ones whose maps this draw draws again. */
+  private readonly fresh: Shadowed[] = [];
   private readonly skies: THREE.HemisphereLight[] = [];
   private readonly was: THREE.Vector3[] = [];
   private readonly m = new THREE.Matrix4();
@@ -126,7 +128,11 @@ export class Origin {
         this.skies.push(o as THREE.HemisphereLight);
       }
     }
-    const redrawn = this.renderer.shadowMap.needsUpdate || this.renderer.shadowMap.autoUpdate;
+    // (a light may sit a redraw out: one whose own map is drawn only when it asks, shadows.ts)
+    const redrawing = this.renderer.shadowMap.needsUpdate || this.renderer.shadowMap.autoUpdate;
+    const redrawn = (light: Shadowed) => redrawing && (light.shadow.autoUpdate || light.shadow.needsUpdate);
+    this.fresh.length = 0;
+    for (const light of this.lights) if (redrawn(light)) this.fresh.push(light);
     scene.position.sub(eye);
     camera.position.sub(eye);
     camera.updateMatrixWorld();
@@ -136,7 +142,7 @@ export class Origin {
       p.constant += p.normal.dot(eye);
     });
     // a shadow map not drawn this frame was drawn from another eye: its lookup is moved to this one
-    if (!redrawn) for (const light of this.lights) this.lookup(light.shadow);
+    for (const light of this.lights) if (!this.fresh.includes(light)) this.lookup(light.shadow);
     drawing = true;
     try {
       render();
@@ -149,11 +155,10 @@ export class Origin {
       this.skies.forEach((light, i) => light.position.copy(this.was[i]!));
       scene.updateMatrixWorld();
       // a shadow map drawn just now: remember its lookup in the scene's frame
-      if (redrawn)
-        for (const light of this.lights) {
-          const kept = this.shadows.get(light.shadow) ?? new THREE.Matrix4();
-          this.shadows.set(light.shadow, kept.copy(light.shadow.matrix).multiply(this.m.makeTranslation(-eye.x, -eye.y, -eye.z)));
-        }
+      for (const light of this.fresh) {
+        const kept = this.shadows.get(light.shadow) ?? new THREE.Matrix4();
+        this.shadows.set(light.shadow, kept.copy(light.shadow.matrix).multiply(this.m.makeTranslation(-eye.x, -eye.y, -eye.z)));
+      }
     }
   }
 

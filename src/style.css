@@ -32,7 +32,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   /* a hair of light on the top edge and a soft shadow lift the panels off a bright sky */
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.28); }
 
-.crumbs, .sub, dt, .tabs button, .n, time, .scale, .explode span, .buttons button, .models button, .loading span, h2 {
+.crumbs, .sub, dt, .tabs button, .n, time, .scale, .explode span, .buttons button, .models button, h2 {
   font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase;
 }
 
@@ -306,14 +306,39 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 .buttons :is([data-cut], [data-rotate], [data-cel])[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
 .scale { color: var(--faint); text-align: center; text-transform: none; letter-spacing: 0.08em; text-wrap: balance; }
 
-.loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; background: #000; transition: opacity 0.7s ease 0.1s; pointer-events: none !important; }
-.loading.done { opacity: 0; }
+/* --- the curtain: up while a flight arrives and the scene warms (ui.ts loading). It says what is arriving, how far along, and what is being done now --- */
+.loading { position: absolute; inset: 0; z-index: 8; display: grid; place-content: center; background: #000; cursor: default; transition: opacity 0.7s ease 0.1s; }
+.loading.done { opacity: 0; pointer-events: none !important; }
+.loading-card { display: grid; width: min(380px, calc(100vw - 48px)); }
+.loading-kicker { font: 10px/1.4 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--amber); }
+.loading-name { margin: 6px 0 22px -2px; font: 600 clamp(34px, 9vw, 46px)/1 var(--sans); letter-spacing: -0.03em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a hairline, and the part of it that is done in amber: it only ever grows */
+.loading-bar { position: relative; height: 1px; background: rgba(243, 239, 230, 0.22); }
+.loading-bar::after { content: ''; position: absolute; left: 0; top: -1px; width: 100%; height: 3px; background: var(--amber); box-shadow: 0 0 10px rgba(255, 196, 107, 0.55); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform 0.25s linear; }
+.loading-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; min-height: 18px; margin-top: 12px; font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.loading-now { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
+.loading-pct { flex: none; min-width: 5ch; text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* the steps, each with a lamp: to do, under way, done. Not shown at all when the whole thing is over in a moment */
+.loading-steps { list-style: none; display: grid; gap: 5px; margin-top: 22px; padding: 14px 0 0; border-top: 1px solid var(--line); opacity: 0; }
+.loading.began .loading-steps { animation: loading-steps 0.4s ease 0.45s forwards; }
+@keyframes loading-steps { to { opacity: 1; } }
+.loading-steps li { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.loading-steps i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--faint); }
+.loading-steps em { font-style: normal; letter-spacing: 0.04em; text-transform: none; font-variant-numeric: tabular-nums; }
+.loading-steps [data-state='doing'] { color: var(--ink); }
+.loading-steps [data-state='doing'] i { border-color: var(--amber); animation: loading-doing 1.1s ease-in-out infinite; }
+.loading-steps [data-state='done'] { color: var(--dim); }
+.loading-steps [data-state='done'] i { background: var(--amber); border-color: var(--amber); }
+@keyframes loading-doing { 50% { background: var(--amber); box-shadow: 0 0 8px rgba(255, 196, 107, 0.7); } }
+.loading button { justify-self: start; margin-top: 18px; font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; padding: 9px 14px; color: var(--amber); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
+.loading button:is(:hover, :focus-visible) { color: #0b0a07; background: var(--amber); }
 /* a failure is a notice over the page, not the end of it: the panels stay usable */
-.loading.failed { inset: auto auto 50% 50%; transform: translate(-50%, 50%); padding: 22px 28px; background: var(--glass); border: 1px solid var(--line); border-radius: 3px; pointer-events: auto !important; z-index: 4; }
-.loading.failed span { color: #e8806c; max-width: 60vw; text-align: center; }
-.loading.failed i { display: none; }
-.loading button { font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; padding: 9px 14px; border: 1px solid var(--dim); border-radius: 2px; }
-.loading i { width: 180px; height: 1px; background: linear-gradient(90deg, var(--amber) calc(var(--p, 0) * 100%), var(--faint) 0); }
+.loading.failed { inset: auto auto 50% 50%; transform: translate(-50%, 50%); padding: 24px 28px 26px; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-left: 2px solid #e8806c; border-radius: 3px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.loading.failed .loading-kicker { color: #f0937f; }
+.loading.failed :is(.loading-bar, .loading-pct, .loading-steps) { display: none; }
+.loading.failed .loading-name { margin-bottom: 4px; }
+.loading.failed .loading-now { white-space: normal; letter-spacing: 0.04em; text-transform: none; font: 13px/1.45 var(--sans); color: var(--dim); }
+@media (prefers-reduced-motion: reduce) { .loading-bar::after { transition: none; } .loading.began .loading-steps { animation-duration: 0.01s; } .loading-steps [data-state='doing'] i { animation: none; background: rgba(255, 196, 107, 0.5); } }
 
 /* --- narrow desktop: drop the long text before anything overlaps ------------------- */
 @media (max-width: 1180px) {

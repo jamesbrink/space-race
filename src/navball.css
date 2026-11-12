@@ -80,5 +80,14 @@
   .path-label { font-size: 10px; }
   .navball-tuck { top: 2px; right: 0; }
 }
-@media (max-height: 520px) { .navball { --ball: 92px; } .navball-att { display: none; } }
+@media (max-height: 520px) {
+  .navball { --ball: 84px; width: 262px; grid-template-columns: var(--ball) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'ball read' 'ball aside'; column-gap: 10px; padding: 7px 10px; }
+  .navball-att { display: none; }
+  .navball-read { display: flex; align-items: center; gap: 10px; }
+  .navball-speed { margin: 0 !important; }
+  .navball-speed b { font-size: 19px; }
+  .navball-aside { align-self: end; margin: 4px 0 0; padding: 4px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .navball-side button { padding: 3px 6px 3px 5px; }
+  .navball-tuck { top: 2px; right: 2px; width: 28px; height: 28px; }
+}
 @media (hover: none), (pointer: coarse) { .navball kbd { display: none; } }

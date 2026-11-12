@@ -286,7 +286,13 @@ export class Solids {
       root.traverse((o) => {
         const mesh = o as THREE.Mesh;
         // one instanced mesh is thousands of plants: scrub is walked through, not into
-        if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && mesh.geometry.getAttribute('position')) {
+        // (nor is a `ghost` solid: it is another mesh's second draw, panes.ts, and that mesh is here already)
+        if (
+          mesh.isMesh &&
+          !(mesh as THREE.InstancedMesh).isInstancedMesh &&
+          !mesh.userData.ghost &&
+          mesh.geometry.getAttribute('position')
+        ) {
           const world = new WorldBox();
           list!.push({ mesh, bvh: null as unknown as MeshBVH, box: world.box, world, inverse: new THREE.Matrix4(), scale: 1, stale: true });
         }

@@ -7,6 +7,13 @@
 //   node tools/bench.mjs --compare old.json new.json      what moved by more than the noise (file.json#b: that variant of a run of two)
 //   node tools/bench.mjs --diff-shots <dir a> <dir b>     pixels that differ between two --shots runs
 //
+// --shots <dir> keeps a picture of every scenario, frozen. Two page loads do not draw the same pixels (cloud, surf and
+// reflections go by the time since the page opened), so a picture proves nothing across builds. What proves a change
+// leaves the picture alone is a switch thrown in one page with nothing else touched: `--toggle "<script>"`
+// [`--toggle-off "<script>"`] takes each view with the switch off, on, and off again, and counts the pixels that differ.
+// With a switch the frames are timed both ways too, in blocks turn about within each scenario: the closest comparison
+// there is, since both are the same page, the same view and the same minute.
+//
 // Other work on the machine moves every figure by tens of per cent from one minute to the next, so two runs made at
 // different times say little. To compare two builds, or one build with a switch thrown (`--b-query plain`), give
 // both to one run: each scenario is run on one and then the other, repeat by repeat, and the run ends with the
@@ -258,6 +265,9 @@ const noBuild = flag('--no-build');
 const noLoad = flag('--no-load');
 const noSoak = flag('--no-soak');
 const SOAK = Number(opt('--soak', 60));
+// a switch thrown in the page for the pictures: `--toggle "sr.stage.batches.enabled = true" --toggle-off "sr.stage.batches.enabled = false"`
+const toggle = opt('--toggle', null);
+const toggleOff = opt('--toggle-off', '');
 const vite = join(ROOT, 'node_modules/.bin/vite');
 const BUILT = join(ROOT, 'node_modules/.bench', profile ? 'dist-profile' : 'dist');
 // what is measured, and what it is measured against: a build (this tree's unless another is given) and a switch in the address
@@ -664,87 +674,111 @@ function inPage(DT) {
       }
     },
     /** One scenario, once: `frames` timed frames, then one with the shadow map drawn again, then a few with each pass timed. */
-    async run(name, frames) {
+    async run(name, frames, modes) {
       const s = scenarios[name];
       if (!(s.keep && kept)) await reset();
       kept = Boolean(s.keep);
       const began = now();
       await s.setup();
       const setupMs = now() - began;
-      for (let i = 0; i < 12; i++) {
-        s.each?.(i);
-        frame(s.force);
-        await turn();
-      }
-      const times = [];
-      let drew = 0;
+      // With a switch to throw (`modes`: off, on) the frames are taken in blocks, one way and then the other and
+      // back again, so that whatever else the machine is doing falls on both alike.
+      const list = modes?.length ? modes : [{ name: '', js: '' }];
+      const rounds = list.length > 1 ? 4 : 1;
+      const [shadowN, passN, loopN] = rounds > 1 ? [4, 3, 24] : [6, 8, 40];
+      const acc = list.map(() => ({
+        times: [],
+        drew: 0,
+        plain: [],
+        shadowed: [],
+        sums: {},
+        gaps: [],
+        calls: 0,
+        triangles: 0,
+        plainCalls: 0,
+        shadowCalls: 0,
+      }));
+      let k = 0;
       const heap = performance.memory?.usedJSHeapSize ?? 0;
-      for (let i = 0; i < frames; i++) {
-        s.each?.(i + 12);
-        const f = frame(s.force);
-        times.push(f.ms);
-        if (f.drew) drew++;
-        await turn();
+      for (let round = 0; round < rounds; round++) {
+        const turnAbout = list.map((_, j) => j);
+        if (round % 2) turnAbout.reverse();
+        for (const j of turnAbout) {
+          const a = acc[j];
+          if (list[j].js) new Function('sr', list[j].js)(sr);
+          for (let i = 0; i < 12; i++) {
+            s.each?.(k++);
+            frame(s.force);
+            await turn();
+          }
+          for (let i = 0; i < frames / rounds; i++) {
+            s.each?.(k++);
+            const f = frame(s.force);
+            a.times.push(f.ms);
+            if (f.drew) a.drew++;
+            await turn();
+          }
+          a.calls = r.info.render.calls;
+          a.triangles = r.info.render.triangles;
+          // a frame in which the shadow map is drawn again, against one in which it is not
+          for (let i = 0; i < shadowN; i++) {
+            s.each?.(k++);
+            if (i % 2) r.shadowMap.needsUpdate = true;
+            const f = frame(true);
+            (i % 2 ? a.shadowed : a.plain).push(f.ms);
+            if (i % 2) a.shadowCalls = r.info.render.calls;
+            else a.plainCalls = r.info.render.calls;
+            await turn();
+          }
+          // where the time goes, pass by pass
+          for (let i = 0; i < passN; i++) {
+            s.each?.(k++);
+            timing = {};
+            frame(true);
+            for (const key in timing) a.sums[key] = (a.sums[key] ?? 0) + timing[key] / (passN * rounds);
+            timing = null;
+            await turn();
+          }
+          // and the page's own loop, for a moment: the interval between its frames as the browser runs them
+          loose();
+          await new Promise((done) => {
+            let last = 0;
+            let n = 0;
+            const each = (t) => {
+              s.each?.(k++);
+              if (s.force) st.dirty = true;
+              if (last && n > 8) a.gaps.push(t - last);
+              last = t;
+              if (++n < loopN) requestAnimationFrame(each);
+              else done();
+            };
+            requestAnimationFrame(each);
+          });
+          own();
+        }
       }
       const grew = (performance.memory?.usedJSHeapSize ?? 0) - heap;
-      const info = { calls: r.info.render.calls, triangles: r.info.render.triangles };
-      // a frame in which the shadow map is drawn again, against one in which it is not
-      const plain = [];
-      const shadowed = [];
-      let shadowCalls = 0;
-      for (let i = 0; i < 6; i++) {
-        s.each?.(i + 12 + frames);
-        if (i % 2) r.shadowMap.needsUpdate = true;
-        const f = frame(true);
-        (i % 2 ? shadowed : plain).push(f.ms);
-        if (i % 2) shadowCalls = r.info.render.calls;
-        else info.plainCalls = r.info.render.calls;
-        await turn();
-      }
-      // where the time goes, pass by pass
-      const sums = {};
-      const N = 8;
-      for (let i = 0; i < N; i++) {
-        s.each?.(i);
-        timing = {};
-        frame(true);
-        for (const k in timing) sums[k] = (sums[k] ?? 0) + timing[k] / N;
-        timing = null;
-        await turn();
-      }
-      // and the page's own loop, for a moment: the interval between its frames as the browser runs them
-      const gaps = [];
-      loose();
-      await new Promise((done) => {
-        let last = 0;
-        let i = 0;
-        const each = (t) => {
-          s.each?.(i++);
-          if (s.force) st.dirty = true;
-          if (last) gaps.push(t - last);
-          last = t;
-          if (gaps.length < 40) requestAnimationFrame(each);
-          else done();
-        };
-        requestAnimationFrame(each);
-      });
-      own();
       s.done?.();
+      const mean = (x) => x.reduce((p, q) => p + q, 0) / x.length;
       return {
         setupMs,
-        times,
-        drew,
-        ...info,
-        shadowMs: shadowed.reduce((a, b) => a + b, 0) / shadowed.length,
-        plainMs: plain.reduce((a, b) => a + b, 0) / plain.length,
-        shadowCalls: Math.max(0, shadowCalls - (info.plainCalls ?? info.calls)),
-        programs: r.info.programs?.length ?? 0,
-        textures: r.info.memory.textures,
-        geometries: r.info.memory.geometries,
-        heapGrew: grew,
-        passes: sums,
-        raf: gaps.slice(8).reduce((a, b) => a + b, 0) / (gaps.length - 8),
-        levels: st.staged.map((x) => x.shownLevel),
+        modes: acc.map((a, j) => ({
+          mode: list[j].name,
+          times: a.times,
+          drew: a.drew,
+          calls: a.calls,
+          triangles: a.triangles,
+          shadowMs: mean(a.shadowed),
+          plainMs: mean(a.plain),
+          shadowCalls: Math.max(0, a.shadowCalls - a.plainCalls),
+          programs: r.info.programs?.length ?? 0,
+          textures: r.info.memory.textures,
+          geometries: r.info.memory.geometries,
+          heapGrew: grew,
+          passes: a.sums,
+          raf: mean(a.gaps),
+          levels: st.staged.map((x) => x.shownLevel),
+        })),
       };
     },
     /** A still picture of a scenario: the scene frozen, drawn the same number of times every time. */
@@ -755,14 +789,33 @@ function inPage(DT) {
       await s.setup();
       s.done?.();
       sr.clock.pause();
+      st.setAutoRotate(false);
+      st.walk.stick(0, 0);
       st.frozen = true;
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 60; i++) {
+        frame(true);
+        await turn();
+      }
+      // and now no time passes at all: nobody breathes, no camera eases, and a frame drawn again is the same frame
+      // (what fades by the wall's clock, a new bake of the reflections, is given time to finish first)
+      st.timer.getDelta = () => 0;
+      for (const until = now() + 3000; now() < until; ) {
         frame(true);
         await turn();
       }
     },
     unfreeze: () => {
       st.frozen = false;
+      st.timer.getDelta = () => DT;
+    },
+    /** Throw a switch (a line of script, `sr` in scope) and draw the frozen view again until it has taken. */
+    async throw(js, frames) {
+      new Function('sr', js)(sr);
+      for (let i = 0; i < frames; i++) {
+        r.shadowMap.needsUpdate = true;
+        frame(true);
+        await turn();
+      }
     },
     /** The page's own loop for `seconds`: every interval between frames, by the browser's clock. */
     async soak(seconds) {
@@ -978,29 +1031,43 @@ function top(prof, n = 30) {
 const browser = await chromium.launch({ channel: 'chrome', args: CHROME });
 const summary = (values) => ({ median: median(values), spread: spreadOf(values), values });
 const result = { label, when: new Date().toISOString(), reps: REPS, frames: FRAMES, chrome: browser.version(), variants: {} };
-for (const v of variants) {
-  const w = Object.entries(v.weights);
-  result.variants[v.name] = {
-    dist: v.dist,
-    query: v.query,
-    scenarios: {},
-    load: {},
-    soak: null,
-    profiles: {},
-    errors: [],
-    build: {
-      files: w.length,
-      raw: w.reduce((a, [, x]) => a + x.raw, 0),
-      pages: w.reduce((a, [, x]) => a + x.pages, 0),
-      byKind: w.reduce((a, [path, x]) => {
-        const kind = KIND[extname(path)] ?? 'other';
-        a[kind] = (a[kind] ?? 0) + x.raw;
-        return a;
-      }, {}),
-    },
-  };
+// with a switch to throw in the page, each build is measured with it off and with it on, in the same page, turn about
+const modes = toggle
+  ? [
+      { name: 'off', js: toggleOff },
+      { name: 'on', js: toggle },
+    ]
+  : [{ name: '', js: '' }];
+const keyOf = (v, mode) => (mode ? `${v.name}:${mode}` : v.name);
+/** What is found out about one of the things compared: a build, or a build with the switch one way. */
+function of(v, mode = '') {
+  const key = keyOf(v, mode);
+  if (!result.variants[key]) {
+    const w = Object.entries(v.weights);
+    result.variants[key] = {
+      dist: v.dist,
+      query: v.query,
+      mode,
+      scenarios: {},
+      load: {},
+      soak: null,
+      profiles: {},
+      errors: [],
+      build: {
+        files: w.length,
+        raw: w.reduce((a, [, x]) => a + x.raw, 0),
+        pages: w.reduce((a, [, x]) => a + x.pages, 0),
+        byKind: w.reduce((a, [path, x]) => {
+          const kind = KIND[extname(path)] ?? 'other';
+          a[kind] = (a[kind] ?? 0) + x.raw;
+          return a;
+        }, {}),
+      },
+    };
+  }
+  return result.variants[key];
 }
-const of = (v) => result.variants[v.name];
+for (const v of variants) of(v, modes[0].name);
 
 if (!noLoad && only.test('load')) {
   for (const [name, net] of [
@@ -1014,7 +1081,7 @@ if (!noLoad && only.test('load')) {
         process.stderr.write(`${v.name}: load ${name} ${i + 1}/${REPS}: ready ${runs.get(v).at(-1).ready.toFixed(0)} ms\n`);
       }
     for (const v of variants)
-      of(v).load[name] = Object.fromEntries(
+      of(v, modes.at(-1).name).load[name] = Object.fromEntries(
         Object.keys(runs.get(v)[0]).map((k) => [k, summary(runs.get(v).map((r) => r[k] ?? Number.NaN))]),
       );
   }
@@ -1062,13 +1129,13 @@ for (const size of sizes) {
   for (const v of variants) {
     const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, deviceScaleFactor: size.ratio });
     const page = await context.newPage();
-    page.on('pageerror', (e) => of(v).errors.push(String(e)));
-    page.on('console', (m) => m.type() === 'error' && of(v).errors.push(m.text()));
+    page.on('pageerror', (e) => of(v, modes[0].name).errors.push(String(e)));
+    page.on('console', (m) => m.type() === 'error' && of(v, modes[0].name).errors.push(m.text()));
     await page.goto(v.address);
     await ready(page);
     await page.addStyleTag({ content: '.title, .callout { display: none !important }' });
     const { names, passes } = await page.evaluate(inPage, 1 / 60);
-    of(v).passes = passes;
+    for (const m of modes) of(v, m.name).passes = passes;
     const cdp = profile ? await context.newCDPSession(page) : null;
     if (cdp) await cdp.send('Profiler.enable');
     open.push({ v, context, page, names, cdp });
@@ -1083,59 +1150,67 @@ for (const size of sizes) {
         // turn about, and the one that goes first changes with each repeat
         for (const o of rep % 2 ? [...open].reverse() : open) {
           await o.page.bringToFront();
+          const errors = of(o.v, modes[0].name).errors;
           if (o.cdp && rep === 0) await o.cdp.send('Profiler.start');
           let one;
           try {
-            one = await o.page.evaluate(([n, f]) => window.__bench.run(n, f), [name, FRAMES]);
+            one = await o.page.evaluate(([n, f, m]) => window.__bench.run(n, f, m), [name, FRAMES, modes]);
           } catch (e) {
-            of(o.v).errors.push(`${key}: ${String(e).slice(0, 300)}`);
+            errors.push(`${key}: ${String(e).slice(0, 300)}`);
             process.stderr.write(`${o.v.name}: ${key}: failed: ${String(e).slice(0, 200)}\n`);
             if (o.cdp && rep === 0) await o.cdp.send('Profiler.stop');
             continue;
           }
-          if (o.cdp && rep === 0) of(o.v).profiles[key] = top((await o.cdp.send('Profiler.stop')).profile);
-          const sorted = [...one.times].sort((a, b) => a - b);
-          const mean = one.times.reduce((a, b) => a + b, 0) / one.times.length;
-          (of(o.v).scenarios[key] ??= { runs: [] }).runs.push({
-            ...one,
-            times: undefined,
-            ms: mean,
-            p99: sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.99) - 1)],
-            worst: sorted.at(-1),
-          });
-          process.stderr.write(
-            `${o.v.name}: ${key} [${rep + 1}/${REPS}]: ${mean.toFixed(2)} ms, ${one.calls} calls (set up in ${(one.setupMs / 1000).toFixed(1)} s)\n`,
-          );
+          if (o.cdp && rep === 0) of(o.v, modes[0].name).profiles[key] = top((await o.cdp.send('Profiler.stop')).profile);
+          for (const m of one.modes) {
+            const sorted = [...m.times].sort((a, b) => a - b);
+            const mean = m.times.reduce((a, b) => a + b, 0) / m.times.length;
+            (of(o.v, m.mode).scenarios[key] ??= { runs: [] }).runs.push({
+              ...m,
+              times: undefined,
+              ms: mean,
+              p99: sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.99) - 1)],
+              worst: sorted.at(-1),
+            });
+            process.stderr.write(
+              `${keyOf(o.v, m.mode)}: ${key} [${rep + 1}/${REPS}]: ${mean.toFixed(2)} ms, ${m.calls} calls (set up in ${(one.setupMs / 1000).toFixed(1)} s)\n`,
+            );
+          }
         }
       }
     }
     if (shots)
       for (const o of open) {
-        const dir = join(shots, o.v.name);
-        mkdirSync(dir, { recursive: true });
         await o.page.bringToFront();
+        const hide = await o.page.addStyleTag({ content: '#ui { visibility: hidden !important }' });
+        // with a switch to throw in the page (--toggle): the same frozen view drawn with it off, on, and off again
+        const takes = toggle ? [`${o.v.name}-off`, `${o.v.name}-on`, `${o.v.name}-off-again`] : [o.v.name];
+        for (const dir of takes) mkdirSync(join(shots, dir), { recursive: true });
         for (const name of wanted) {
           try {
             await o.page.evaluate((n) => window.__bench.still(n), name);
+            for (const [i, dir] of takes.entries()) {
+              if (toggle) await o.page.evaluate(([js, n]) => window.__bench.throw(js, n), [i === 1 ? toggle : toggleOff, 30]);
+              await o.page.screenshot({ path: join(shots, dir, shotName(size, look, name)) });
+            }
           } catch (e) {
-            of(o.v).errors.push(`shot ${name}: ${String(e).slice(0, 300)}`);
-            continue;
+            of(o.v, modes[0].name).errors.push(`shot ${name}: ${String(e).slice(0, 300)}`);
           }
-          const hide = await o.page.addStyleTag({ content: '#ui { visibility: hidden !important }' });
-          await o.page.screenshot({ path: join(dir, shotName(size, look, name)) });
-          await hide.evaluate((el) => el.remove());
           await o.page.evaluate(() => window.__bench.unfreeze());
         }
+        await hide.evaluate((el) => el.remove());
       }
   }
   // the soak: once, at the first size, in the real look
   if (!noSoak && size === sizes[0] && only.test('soak'))
-    for (const o of open) {
-      await o.page.bringToFront();
-      await o.page.evaluate(() => window.__bench.setLook('real'));
-      const k = (of(o.v).soak = await soak(o.context, o.page));
-      process.stderr.write(`${o.v.name}: soak: ${k.frames} frames, ${k.hitches} hitches, worst ${k.worst.toFixed(1)} ms\n`);
-    }
+    for (const o of open)
+      for (const m of modes) {
+        await o.page.bringToFront();
+        await o.page.evaluate(() => window.__bench.setLook('real'));
+        if (m.js) await o.page.evaluate(([js]) => window.__bench.throw(js, 10), [m.js]);
+        const k = (of(o.v, m.name).soak = await soak(o.context, o.page));
+        process.stderr.write(`${keyOf(o.v, m.name)}: soak: ${k.frames} frames, ${k.hitches} hitches, worst ${k.worst.toFixed(1)} ms\n`);
+      }
   for (const o of open) await o.context.close();
 }
 await browser.close();
@@ -1258,13 +1333,21 @@ writeFileSync(join(out, `${label}.json`), JSON.stringify(result));
 writeFileSync(join(out, `${label}.md`), lines.join('\n'));
 console.log(lines.join('\n'));
 console.log(`\n${join(out, `${label}.json`)}\n${join(out, `${label}.md`)}`);
-if (variants.length > 1) {
-  const [a, b] = variants.map((v) => ({ ...of(v), label: v.name, when: result.when }));
-  console.log(`\n# ${variants[1].name} against ${variants[0].name}, turn about in this run\n`);
-  compare(a, b);
-  if (shots) {
-    console.log('');
-    await diffShots(join(shots, variants[0].name), join(shots, variants[1].name));
-  }
+const versus = (x, y) => {
+  console.log(`\n# ${y} against ${x}, turn about in this run\n`);
+  compare({ ...result.variants[x], label: x, when: result.when }, { ...result.variants[y], label: y, when: result.when });
+};
+if (toggle) for (const v of variants) versus(keyOf(v, 'off'), keyOf(v, 'on'));
+if (variants.length > 1) versus(keyOf(variants[0], modes.at(-1).name), keyOf(variants[1], modes.at(-1).name));
+if (shots && !toggle && variants.length > 1) {
+  console.log('');
+  await diffShots(join(shots, variants[0].name), join(shots, variants[1].name));
 }
+if (shots && toggle)
+  for (const v of variants) {
+    console.log(`\n# ${v.name}: the same frozen views with the switch off and on (${toggle})\n`);
+    await diffShots(join(shots, `${v.name}-off`), join(shots, `${v.name}-on`));
+    console.log(`\n# ${v.name}: and off against off again, which is what the pictures differ by when nothing has changed\n`);
+    await diffShots(join(shots, `${v.name}-off`), join(shots, `${v.name}-off-again`));
+  }
 process.exit(0);

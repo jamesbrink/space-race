@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "crew"))
 import mark_iv_suit  # noqa: E402
+import mercury_cabin  # noqa: E402
 import redstone_mrlv  # noqa: E402
 from srlib import (  # noqa: E402
     IN,
@@ -103,6 +104,10 @@ SHELLS = (
     "Hatch_Latches",
     "Hatch_Structure",
     "CrewCabin_PressureVessel",
+    "CrewCabin_Lining",
+    "CrewCabin_Frames",
+    "CrewCabin_PortFrames",
+    "Hatch_Lining",
     "Recovery_Shingles",
     "Recovery_Fasteners",
     "Recovery_Structure",
@@ -117,7 +122,10 @@ SHELLS = (
 )
 
 PILOT_HIP = (5.0, 9.4)  # the seated pilot's hip joints, (y, z) in the capsule: the only place he fits (mark_iv_suit.seated_fits)
-PORTHOLES = ((math.radians(52), 37.0), (math.radians(-128), 31.0))  # angle round the cone, station: two 10 in ports
+# The two 10 in ports, (angle round the cone, station): the lower window first, under the hatch at the pilot's right,
+# then the upper one, high at his left (Postlaunch Report, Figure 3.1-1, which is not dimensioned: both places are
+# estimated from it and from the flown capsule, NASM2021-00147 and -00160).
+PORTHOLES = ((math.radians(30), 13.0), (math.radians(-125), 40.0))
 PANELS = 24  # shingles around the cone
 PANEL_ARC = TAU / PANELS
 PANEL_PHASE = -1.5 * PANEL_ARC  # puts three panels symmetric about +X: the hatch
@@ -186,9 +194,7 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "void": m("window-void", (0.004, 0.004, 0.005), 0.0, 0.95),
         "paint_white": m("paint-white", (0.9, 0.9, 0.88), 0.0, 0.6, double_sided=True),
         "flag": m("flag", (1, 1, 1), 0.0, 0.6, double_sided=True, image=flag_image()),
-        "couch": m("couch-fibreglass", (0.55, 0.50, 0.38), 0.0, 0.7, double_sided=True),
-        "panel": m("panel-grey", (0.20, 0.22, 0.23), 0.2, 0.6, double_sided=True),
-        "gauge": m("gauge-face", (0.02, 0.02, 0.02), 0.0, 0.25, emission=(0.55, 1.0, 0.65), emission_strength=0.35),
+        "couch": m("couch-fibreglass", (0.27, 0.28, 0.29), 0.0, 0.6),
         "lens": m("lens", (0.01, 0.01, 0.015), 0.0, 0.03),
         # what a cutaway shows
         "suit": m("suit-aluminized-nylon", (0.66, 0.67, 0.69), 0.6, 0.6),
@@ -357,17 +363,17 @@ def build_afterbody(M, font) -> None:
         f = CONE.frame(t, z)
         # a bezel standing proud of the shingles, a pane set into it, and the dark cabin behind
         detail.lathe(prof([(6.0, -1.0), (6.0, 0.7), (5.0, 0.7), (4.9, 0.22)]), 48, matrix=f)
-        if interior():  # a real opening into the cabin (bored below), lined with a sleeve through the wall
-            detail.lathe(prof([(4.88, 0.22), (4.88, -2.4), (6.4, -2.4), (6.4, -2.0)]), 48, matrix=f, flip=True)  # and a frame inside
-        else:  # with no cabin modelled behind it, a dark disc stands in for one
+        # with a cabin behind it this is a real opening (bored below), lined through the wall by the frame inside
+        # (mercury_cabin); with none, a dark disc stands in for one
+        if not interior():
             void.lathe(prof([(4.9, 0.22), (0.0, 0.22)]), 48, matrix=f)
         glass.lathe(prof([(4.95, 0.52), (0.0, 0.52)]), 48, matrix=f)
         for i in range(16):
             a = TAU * i / 16
             detail.disc(f @ Vector((5.5 * math.cos(a) * IN, 5.5 * math.sin(a) * IN, 0.7 * IN)), CONE.n(t), 0.17 * IN, 0.06 * IN)
-    # periscope: door frame and the extended objective, on the Earth-facing side
-    f = CONE.frame(deg(180), 11.0)
-    detail.box((6.0 * IN, 10.0 * IN, 1.3 * IN), CONE.frame(deg(180), 11.0, -0.4))
+    # periscope: door frame and the extended objective, under the pilot's feet: the side that faces the Earth with him head up
+    f = CONE.frame(deg(90), mercury_cabin.SCOPE_STATION)
+    detail.box((6.0 * IN, 10.0 * IN, 1.3 * IN), CONE.frame(deg(90), mercury_cabin.SCOPE_STATION, -0.4))
     detail.lathe(prof([(2.4, 0.0), (2.4, 3.6), (2.0, 4.0), (1.9, 3.2)]), 32, matrix=f)
     void.lathe(prof([(1.9, 3.2), (0.0, 3.2)]), 32, matrix=f)
     glass.lathe(prof([(1.93, 3.75), (0.0, 3.85)]), 32, matrix=f)  # the objective, slightly domed
@@ -422,79 +428,30 @@ def build_crew_cabin(M) -> None:
     ribs.lathe(prof([(7.5, 0.5), (7.5, -0.4), (6.5, -0.4), (6.5, 0.5)]), 48)
     ribs.build("CrewCabin_BulkheadStiffeners", M["titanium"], g, smooth=False)
 
-    # Form-fitted couch, shaped to the seated figure (mark_iv_suit.build_seated): head toward -Y,
-    # hatch at his right hand, back to the heat shield, thighs straight up, shins sloping down
-    # to a foot rest. That tuck is not a choice: a man 71 in tall lies across a cabin 63 in wide.
-    couch = MeshBuilder()
-    for (y0, z0), (y1, z1), thick, width in (
-        ((-31.0, 2.2), (-20.6, 2.2), 1.2, 15.0),  # head rest, a step below the back
-        ((-20.0, 2.9), (7.4, 2.9), 1.6, 21.0),  # back
-        ((7.4, 3.3), (13.6, 5.2), 1.4, 21.0),  # seat, rising behind the hips
-        ((13.6, 5.2), (13.9, 13.5), 1.2, 21.0),  # and up the back of the thighs
-        ((10.2, 21.6), (21.4, 17.1), 1.2, 16.0),  # under the calves
-        ((25.3, 16.2), (25.5, 21.8), 0.6, 13.0),  # foot rest, under the heels
-    ):
-        a, b = Vector((0, y0, z0)), Vector((0, y1, z1))
-        d = b - a
-        rot = Matrix.Rotation(math.atan2(d.z, d.y), 4, "X")
-        couch.box((width * IN, d.length * IN, thick * IN), Matrix.Translation((a + b) / 2 * IN) @ rot)
-    for y, z0, z1 in ((16.5, 5.5, 18.6), (25.4, 2.0, 16.4)):  # struts carrying the leg rest down to the floor
-        for x in (-8.3, 8.3):
-            couch.tube((x * IN, y * IN, z0 * IN), (x * IN, y * IN, z1 * IN), 0.5 * IN, 10)
-    couch.build("CrewCabin_Couch", M["couch"], g, smooth=False)
-
-    # main instrument panel above the pilot's chest, periscope display in the middle
-    panel, gauges = MeshBuilder(), MeshBuilder()
-    pz = 33.0
-    pm = Matrix.Translation((0, -3 * IN, pz * IN))
-    panel.box((30 * IN, 19 * IN, 1.5 * IN), pm)
-    panel.box((8 * IN, 14 * IN, 1.5 * IN), Matrix.Translation((-19 * IN, -3 * IN, (pz - 2) * IN)) @ Matrix.Rotation(deg(-25), 4, "Y"))
-    panel.box((8 * IN, 14 * IN, 1.5 * IN), Matrix.Translation((19 * IN, -3 * IN, (pz - 2) * IN)) @ Matrix.Rotation(deg(25), 4, "Y"))
-    panel.tube((0, -3 * IN, pz * IN), (0, 14 * IN, (pz - 9) * IN), 2.6 * IN, 20)  # periscope tube
-    down = (0, 0, -1)
-    gauges.disc((0, -3 * IN, (pz - 0.76) * IN), down, 4.2 * IN, 0.1 * IN, 40)
-    for gx in (-12.0, -8.0, 8.0, 12.0):
-        for gy in (-9.0, -5.0, -1.0, 3.0):
-            gauges.disc((gx * IN, gy * IN, (pz - 0.76) * IN), down, 1.45 * IN, 0.1 * IN, 20)
-    panel.build("CrewCabin_InstrumentPanel", M["panel"], g, smooth=False)
-    gauges.build("CrewCabin_Instruments", M["gauge"], g)
-    if interior():
-        build_cabin_contents(M, g)
-
-
-def build_cabin_contents(M, g) -> None:
-    """What a cutaway of the cabin shows. The pilot's pose follows the couch; his size is Shepard's.
-    The equipment is representative: the right kinds of thing in roughly the right places, not
-    a survey of spacecraft No. 7's installation."""
-    P = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
-    gear, bottles, bag = (MeshBuilder() for _ in range(3))
+    if not interior():
+        return
     # The pilot: the same suit model as the one standing on the pad (crew/mark_iv_suit.py), posed
-    # on the couch. Its seat frame has the hips at the origin; this puts them where the couch is.
-    mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot")
-    for sx in (-1, 1):  # attitude stick under the right hand, abort handle under the left
-        gear.tube(P(sx * 10.7, 8.6, 2.0), P(sx * 10.7, 8.6, 15.2), 0.5 * IN, 10)
-        gear.lathe(prof(arc_profile(0, 0, 0.9, -90, 90, 6)), 12, matrix=Matrix.Translation(P(sx * 10.7, 8.6, 15.2)))
-    # environmental control, electrics and recording: boxes and bottles along the cabin floor
-    for x, y, z, sx_, sy_, sz_ in (
-        (-17.0, -6.0, 3.2, 9, 12, 5),
-        (17.0, -6.0, 3.2, 9, 12, 5),
-        (0.0, 19.5, 4.2, 14, 9, 7),
-        (-19.0, 9.0, 4.0, 7, 9, 6),
-        (19.5, 9.5, 5.0, 6, 8, 8),
-        (0.0, -27.5, 1.2, 12, 5, 2.4),
-    ):
-        gear.box((sx_ * IN, sy_ * IN, sz_ * IN), Matrix.Translation(P(x, y, z + sz_ / 2)))
+    # on the couch: head toward -Y, the hatch at his right hand, back to the heat shield, thighs
+    # straight up, shins sloping down to a foot rest. That tuck is not a choice: a man 71 in tall
+    # lies across a cabin 63 in wide. Its seat frame has the hips at the origin.
+    P = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
+    pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot")
+    hatch = (t_h0, t_h1, hz0, hz1)
+    # the cabin round him, as spacecraft No. 7 was fitted (vehicles/mercury_cabin.py)
+    where = mercury_cabin.build(g, VESSEL, M, load_font(), pilot, PILOT_HIP, PORTHOLES, hatch, CONE_H - 0.3)
+    mercury_cabin.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, hatch)
+    print(f"mr-3 cabin: {where}")
+    bottles, bag = MeshBuilder(), MeshBuilder()
     for x, y in ((-10.5, 21.0), (10.5, 21.0)):  # oxygen: two spherical bottles, primary and reserve
         bottles.lathe(prof(arc_profile(0, 0, 3.7, -90, 90, 12)), 24, matrix=Matrix.Translation(P(x, y, 6.2)))
     # the landing bag, folded flat between the heat shield and the bulkhead
     bag.lathe(prof([(21.5, -0.55), (22.0, -0.7), (33.0, -0.7), (33.5, -0.55), (33.0, -0.42), (22.0, -0.42), (21.5, -0.55)]), 96)
-    gear.build("CrewCabin_Equipment", M["equipment"], g, sharp_angle=35)
     bottles.build("CrewCabin_OxygenBottles", M["bottle"], g)
     bag.build("CrewCabin_LandingBag", M["fabric"], g)
     # nothing in the cabin may reach the pressure vessel: the clearance check cannot see a boot
     # through the hull, because the two surfaces cross instead of lying together
     inside = [o.name for o in bpy.data.objects if o.type == "MESH" and o.name.startswith("CrewCabin_Pilot")]
-    for name in (*inside, "CrewCabin_Equipment", "CrewCabin_OxygenBottles", "CrewCabin_Couch"):
+    for name in (*inside, "CrewCabin_OxygenBottles"):
         for v in bpy.data.objects[name].data.vertices:
             x, y, z = (c / IN for c in v.co)
             room = VESSEL.r(z) - math.hypot(x, y)
@@ -676,7 +633,7 @@ def build() -> str:
     build_crew_cabin(M)
     if interior():  # the two portholes go right through shingle, structure and pressure vessel
         for t, z in PORTHOLES:
-            bore(("Afterbody_Shingles", "Afterbody_Structure", "CrewCabin_PressureVessel"), CONE.frame(t, z), 4.96 * IN, 3.0 * IN)
+            bore(("Afterbody_Shingles", "Afterbody_Structure", "CrewCabin_PressureVessel", "CrewCabin_Lining"), CONE.frame(t, z), 4.96 * IN, 3.0 * IN)
             bore(("Afterbody_Fasteners",), CONE.frame(t, z), 5.5 * IN, 3.0 * IN)  # no bolt heads left hanging in the opening
     build_recovery_compartment(M)
     build_antenna_canister(M)

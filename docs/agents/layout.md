@@ -16,8 +16,10 @@ missions/                             the record: one folder per nation, program
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)
-public/globe/                         the globe's land and ice maps, six cube faces each (committed; tools/globe.mjs), and each
-                                      site's region: <region>.near.png, .wide.png, .json (tools/globe-region.mjs)
+public/globe/                         the globe's land and ice maps, six cube faces each (committed; tools/globe.mjs); its relief and its
+                                      land's colours, six faces each (tools/globe-surface.mjs); and each site's region: <region>.near.png,
+                                      .wide.png, .json (tools/globe-region.mjs), .relief.png, .colour.jpg, .surface.json (globe-surface.mjs),
+                                      .weather.png (tools/globe-weather.mjs)
 docs/sources.md                       every source used or wanted, and what each is good for
 src/
   types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
@@ -41,9 +43,11 @@ src/
   viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, their skin worn by finer lumps, lit as cloud is (the Sun's light
                                       marched through them and scattered, the sky above, the ground below), ray-marched at a quarter of the pixels, laid over the frame
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
-  viewer/lod.ts                       levels of detail: which one each model is drawn at
+  viewer/lod.ts                       levels of detail: which one each model and each piece of the place is drawn at, and the fade from one to the next
+  viewer/shadows.ts                   the Sun's second shadow map: the whole place, coarsely, under the fine one
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
+  viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
   viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
   viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/ragdoll.ts                   a figure gone limp after a long fall: points, sticks, and the bones laid along them
@@ -59,7 +63,13 @@ src/
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
   world/surface.ts                    the sea as a shape: the ellipsoid at a site's sea level, radii of curvature, the horizon
   world/region.ts                     a piece of the Earth laid flat: the gnomonic plane a region's map is baked on and read from
-  viewer/globe.ts                     the Earth to scale under the site: land and ice from Natural Earth, the haze over it, the air's limb
+  viewer/globe.ts                     the Earth to scale under the site: coasts from Natural Earth, the land's colours (Blue Marble) and relief and the
+                                      sea by its depth (ETOPO), the weather's shadows, the Sun's glint; the air seen from above, drawn on a ball
+  viewer/atmosphere.ts                the air as it scatters light, ground to orbit: Rayleigh, haze, ozone, light scattered many times; two tables
+                                      made once on the GPU, and the GLSL that walks a ray through it
+  viewer/weather.ts  weathermap.ts    the weather round a site as a map (estimated): cumulus cover, middle deck, cirrus; the sheets' textures; the
+                                      map as shared uniforms
+  world/relief.ts                     how a height is kept in a byte, for the relief maps and the shaders that read them
   world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run
   world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
@@ -106,8 +116,11 @@ tools/
   flicker-test.mjs                    browser check for z-fighting
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   shot.mjs                            one screenshot of the viewer, for looking at a change
+  bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces
   globe-region.mjs                    bakes a site's region (SiteDef.region) from OpenStreetMap's coast and lakes, as it stood on its date
+  globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and a region's, finer; needs GDAL
+  globe-weather.mjs                   bakes a site's weather map from weather.ts, the land map and the relief
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
   logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()

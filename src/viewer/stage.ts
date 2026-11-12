@@ -12,25 +12,29 @@ import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
+import { Batches, PROXY_LAYER } from './batch';
+import { Cabin, type CabinThing } from './cabin';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
 import { Carry } from './carry';
 import { Chute } from './chute';
-import { Jets } from './jets';
 import { CloudPass } from './clouds';
-import { ExhaustPass } from './exhaust';
 import { Vehicle } from './drive';
 import type { Effects } from './effects';
+import { ExhaustPass } from './exhaust';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { jointKey, pose, reach, seatFit, sitAt } from './gait';
+import { Jets } from './jets';
 import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { Origin } from './origin';
 import { Outline } from './outline';
+import { Panes } from './panes';
 import { through, triangles } from './pick';
 import { Plume } from './plume';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
+import { FarShadow } from './shadows';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { TRAIL_STEP, Trail } from './trail';
@@ -107,11 +111,24 @@ interface Picked {
 const NOTHING: Picked = { node: null, model: null };
 
 /** An object a model names for people: what it is, a sentence about it, and the node itself. */
+/** One model on its way in (Stage.load): how much of it has arrived, in bytes where the fetch says how big it is (total 0 until it does). */
+export interface LoadPart {
+  label: string;
+  fraction: number;
+  loaded: number;
+  total: number;
+}
+/** What Stage.warm is doing: the place round the pad and the coarser levels arriving, the clouds made, the shaders built, a few frames to settle. */
+export type WarmStep = 'place' | 'clouds' | 'shaders' | 'settle';
+
 export interface Thing {
   label: string;
   about: string | null;
   object: THREE.Object3D;
 }
+
+/** A click on board that was on nothing. */
+const NO_THING: CabinThing = { label: '', about: null, object: new THREE.Object3D() };
 
 /** The nearest object at or above `o` that the model names (a `label`, or a vehicle's `vehicle`). */
 export function thingOf(o: THREE.Object3D): Thing | undefined {
@@ -267,6 +284,12 @@ export class Stage {
   private readonly wear = wearTexture();
   /** Which way everything is drawn, real or cel (look.ts), and the cel look's ink line. */
   private readonly looks = new Looks();
+  /** Every pane of glass, each drawn as two meshes so that three need not look its material up again twice a frame (panes.ts). */
+  readonly glazing: Panes;
+  /** The meshes of each material drawn in one call (batch.ts): the meshes themselves stay, and are only not drawn. */
+  readonly batches: Batches;
+  /** Models that are not batched: a figure that is walked as is posed bone by bone, and drawn into the shadow map alone. */
+  private readonly unbatched = new Set<string>();
   private shadowsOwed = false;
   /** What is still on its way after `load` returns: coarser levels of detail, the place round the pad. */
   private arriving: Promise<unknown>[] = [];
@@ -277,6 +300,10 @@ export class Stage {
   private flightData: FlightData | null = null;
   /** The flight is being flown by hand: the keys that steer it are not the camera's. */
   piloted = false;
+  /** The inside of the model that has one (`ModelDef.cabin`): its instruments, lamps, controls and periscope (cabin.ts). */
+  cabin: Cabin | null = null;
+  /** On board, a control in the cabin was worked (`does`: a flight deck command), or something to look out through was chosen. */
+  onCabin: (thing: CabinThing) => void = () => {};
   /**
    * What is drawn without depth and may stand in front of cloud: the engine's fire, its trail and
    * every pane of glass. The clouds pass draws them again on their own so cloud behind them shows
@@ -317,6 +344,8 @@ export class Stage {
   private surroundings: THREE.Object3D | null = null;
   /** Its levels of detail, chosen building by building (lod.ts): `surroundings` is its level 0. */
   private scenery: Scenery | null = null;
+  /** The Sun's second shadow map: everything that stands at the place, coarsely (shadows.ts). */
+  private readonly far: FarShadow;
   /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
   private defs: ModelDef[] = [];
@@ -368,6 +397,11 @@ export class Stage {
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.localClippingEnabled = true;
     this.renderer.info.autoReset = false; // counted per frame drawn, across every pass (stats())
+    this.glazing = new Panes(this.renderer, (mesh, real) => this.looks.give(mesh, real));
+    // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
+    this.batches = new Batches(this.scene, (batch) => this.looks.add(batch));
+    this.raycaster.layers.enable(PROXY_LAYER); // (a mesh a batch draws is still what a ray meets)
+    if (new URLSearchParams(location.search).has('plain')) this.glazing.enabled = this.batches.enabled = false;
 
     // models are Draco-compressed; the decoder is served from public/draco
     this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
@@ -379,6 +413,9 @@ export class Stage {
     this.sun.shadow.bias = -0.0002;
     this.sun.shadow.normalBias = 0.012;
     this.scene.add(this.sun, this.sun.target, this.fill);
+    // the whole place has shadows, under the fine map (shadows.ts): its light comes after the Sun and gives none
+    this.far = new FarShadow(this.renderer, this.sun, () => this.shadowed());
+    this.scene.add(this.far.light, this.far.light.target);
 
     // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
     // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
@@ -451,7 +488,7 @@ export class Stage {
     const output = new OutputPass();
     this.clouds.adopt(output); // (the clouds are laid over the frame as it goes to the screen)
     this.composer.addPass(output);
-    this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes, [this.sun, this.fill]); // (the only light with a shadow, the only sky light)
+    this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes, [this.sun, this.far.light, this.fill]); // (the only light with a shadow, the only sky light)
     this.applySetting();
 
     // A tap sends no pointermove first, so every handler that picks reads the pointer itself.
@@ -497,6 +534,13 @@ export class Stage {
       const on = down.model ? this.defs.find((m) => m.id === down.model) : down.node !== null ? this.def : null;
       this.tap = { t: e.timeStamp, x: e.clientX, y: e.clientY, walker: on?.walker ? on.id : null };
       if (again) return void this.enterWalk(last.walker!);
+      // on board nothing is selected or flown to: a click works what is clicked, or looks out through it, or lets go of that
+      if (this.cam.rig === 'onboard')
+        return void this.onCabin(
+          down.pane
+            ? { label: '', about: null, object: this.scene, lookout: 'pane', ...down.pane }
+            : ((down.thing as CabinThing) ?? NO_THING),
+        );
       if (down.pane) this.lookIn(down.pane.point, down.pane.normal);
       else if (down.place) this.visit(down.place.box);
       else if (down.model && !down.node) this.onModel(down.model);
@@ -540,13 +584,19 @@ export class Stage {
   }
 
   /** Put all of a flight's models on the stage, each where it stands. Rejects if any cannot be fetched. */
-  async load(flight: FlightData, onProgress?: (fraction: number) => void): Promise<void> {
-    const fractions = new Array<number>(flight.models.length).fill(0);
+  async load(flight: FlightData, onProgress?: (fraction: number, parts?: LoadPart[]) => void): Promise<void> {
+    // The bar is weighted by bytes once every model's size is known (the fetch's Content-Length); until then it is their average.
+    const parts: LoadPart[] = flight.models.map((m) => ({ label: m.name, fraction: 0, loaded: 0, total: 0 }));
+    for (const m of flight.models)
+      if (m.walker) for (let level = 0; level <= LOD_ABOVE.length; level++) this.unbatched.add(lodUrl(m.url, level));
     const scenes = await Promise.all(
       flight.models.map((m, i) =>
-        this.fetch(m.url, (f) => {
-          fractions[i] = f;
-          onProgress?.(fractions.reduce((a, b) => a + b, 0) / fractions.length); // the bar is the average of them all
+        this.fetch(m.url, (f, loaded = 0, total = 0) => {
+          const part = parts[i]!;
+          Object.assign(part, { fraction: f, loaded: f === 1 && total === 0 ? part.total : loaded, total: total || part.total });
+          const sized = parts.every((p) => p.total > 0);
+          const all = sized ? parts.reduce((a, p) => a + p.total, 0) : parts.length;
+          onProgress?.(parts.reduce((a, p) => a + (sized ? p.fraction * p.total : p.fraction), 0) / all, parts);
         }),
       ),
     );
@@ -560,10 +610,16 @@ export class Stage {
       const staged = new Staged(scenes[i]!, def.parts);
       staged.group.position.set(...(def.position ?? [0, 0, 0]));
       staged.group.rotation.y = def.rotationY ?? 0;
-      for (const l of def.lights ?? []) {
+      const lamps = (def.lights ?? []).map((l) => {
         const lamp = new THREE.PointLight(l.colour, l.intensity, l.reach, 2);
         lamp.position.set(...l.position);
         staged.group.add(lamp);
+        return lamp;
+      });
+      if (def.cabin && flight.site) {
+        if (def.cabin.head) this.cam.onboard.limits = { ...def.cabin.head };
+        this.cabin?.dispose();
+        this.cabin = new Cabin(this.cabinHost(), { ...flight, site: flight.site }, def, staged.group, staged.full, lamps);
       }
       return staged;
     });
@@ -575,6 +631,7 @@ export class Stage {
     this.scene.add(this.root);
     this.root.updateMatrixWorld(true);
     for (const s of this.staged) s.measure();
+    this.far.refit();
     this.lamps.clear();
     this.ascent = Ascent.of(flight);
     this.lifted.t = Number.NaN;
@@ -612,6 +669,7 @@ export class Stage {
         this.fetch(place).then((object) => {
           if (staged !== this.staged) return;
           this.surroundings = object;
+          this.far.refit();
           this.scene.add(object);
           const scenery = (this.scenery = new Scenery(object));
           this.lamps.add(object, this.scene); // its floods, and a light in each room where the model hangs one (Light_<room>)
@@ -694,12 +752,12 @@ export class Stage {
     this.shadowsOwed = true; // drawn again in frame(): at once, or a few times a second in a view nobody is steering
   }
 
-  private fetch(url: string, onProgress?: (fraction: number) => void): Promise<THREE.Object3D> {
+  private fetch(url: string, onProgress?: (fraction: number, loaded?: number, total?: number) => void): Promise<THREE.Object3D> {
     let promise = this.loaded.get(url);
     if (!promise) {
       promise = this.loader
         .loadAsync(import.meta.env.BASE_URL + url, (e) => {
-          if (e.total) onProgress?.(e.loaded / e.total);
+          if (e.total) onProgress?.(e.loaded / e.total, e.loaded, e.total);
         })
         .then((gltf) => {
           this.dress(gltf.scene, url);
@@ -716,6 +774,7 @@ export class Stage {
   private dress(object: THREE.Object3D, url: string): void {
     const anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const seen = new Set<THREE.Material>();
+    const clear: THREE.Mesh[] = [];
     object.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -728,6 +787,7 @@ export class Stage {
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
         this.veils.push(mesh); // a cloud behind it is seen through it, tinted as everything else is (clouds.ts)
+        if (!shell) clear.push(mesh); // (a shell's material is changed when the cutaway opens: three draws that one its own way)
         return;
       }
       if (!seen.has(mat)) {
@@ -751,7 +811,9 @@ export class Stage {
         mesh.renderOrder = 1;
       }
     });
+    for (const pane of clear) this.glazing.add(pane);
     this.looks.add(object);
+    if (!this.unbatched.has(url)) this.batches.add(object);
   }
 
   /**
@@ -862,6 +924,7 @@ export class Stage {
     // on board, what would be in front of the eyes is not drawn (the seat's `hide`)
     const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
     this.showSeatHidden(at, this.defs[at]?.seats?.[0]?.hide, id !== 'onboard');
+    this.cabin?.board(id === 'onboard');
     // leaving the vehicle, the shadows go back to the section: fitted to it where the clock has it now (it may just have
     // been put back on its pad, and not yet been moved there by a frame)
     if (id === 'orbit' || id === 'free') {
@@ -930,6 +993,82 @@ export class Stage {
       piloted: () => this.piloted,
       watching: () => !this.inert && !this.frozen && this.defs[this.current]?.id === this.ascent?.model,
     };
+  }
+
+  private cabinHost() {
+    return {
+      renderer: this.renderer,
+      scene: this.scene,
+      camera: this.camera,
+      draw: (render: () => void) => this.origin.draw(render),
+      sky: () => this.setting.backdrop,
+      upAt: (p: THREE.Vector3, out: THREE.Vector3) => this.setting.globe?.up(p, out) ?? out.copy(UP),
+      redraw: () => {
+        this.dirty = true;
+      },
+    };
+  }
+
+  /**
+   * From the seat, look out through something (a pane: `point` on it; the periscope's screen), or with null stop and
+   * look where the head was. A pane is looked through from the eye, so what is seen is the scene itself beyond the
+   * glass; the periscope's screen is brought to fill the view, and asked for again while it does, changes its power.
+   */
+  lookOut(thing: CabinThing | null): string | null {
+    const rig = this.cam.onboard;
+    if (this.cam.rig !== 'onboard') return null;
+    const screen = thing?.lookout === 'screen' ? this.cabin?.screen : null;
+    if (screen) {
+      const fields = this.defs.find((m) => m.cabin?.periscope)?.cabin?.periscope?.fields ?? [];
+      const again = this.lookingAt === 'screen' && rig.looking;
+      const power = again ? (this.cabin?.power() ?? 0) : (this.cabin?.power(0) ?? 0);
+      this.lookingAt = 'screen';
+      if (this.cabin) this.cabin.watched = true;
+      // the screen fills four fifths of the view's height
+      const away = screen.point.distanceTo(this.camera.position);
+      rig.lookAt(screen.point, THREE.MathUtils.radToDeg(2 * Math.atan(screen.radius / away / 0.8)));
+      this.dirty = true;
+      return fields.length > 1 ? `${power ? 'High' : 'Low'} power · ${fields[power]}\u00b0 · click again to change` : null;
+    }
+    if (thing?.lookout === 'pane' && thing.point) {
+      this.lookingAt = 'pane';
+      if (this.cabin) this.cabin.watched = false;
+      rig.lookAt(thing.point, 38);
+      this.dirty = true;
+      return null;
+    }
+    if (rig.looking) rig.lookAt(null);
+    if (this.cabin) this.cabin.watched = false;
+    this.lookingAt = null;
+    this.dirty = true;
+    return null;
+  }
+  private lookingAt: 'pane' | 'screen' | null = null;
+  /** From the seat, something is being looked out through (`lookOut`). */
+  get lookingOut(): boolean {
+    return this.lookingAt !== null && this.cam.rig === 'onboard' && this.cam.onboard.looking;
+  }
+
+  /** The view is from the seat: what is drawn over the scene without depth (the predicted path) would be drawn across the cabin's walls. */
+  indoors(): boolean {
+    return this.cam.rig === 'onboard' && !this.walk.active;
+  }
+
+  /**
+   * Whoever sits in the flown model's seat is aboard it, or back outside: the flight's figure of him standing on the
+   * pad (`seats[].figure`) is not drawn while he is in the couch. There is one of him.
+   */
+  crewAboard(on: boolean): void {
+    const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
+    for (const seat of this.defs[at]?.seats ?? []) {
+      const figure = this.staged[this.defs.findIndex((m) => m.id === seat.figure)];
+      if (figure && figure.group.visible === on) {
+        figure.group.visible = !on;
+        this.renderer.shadowMap.needsUpdate = true;
+        this.dirty = true;
+      }
+    }
+    this.cabin?.piloted(on);
   }
 
   /** The flown vehicle as the camera needs it (camera/rig.ts: Craft): its frame, the middle and size of what is left of it, a place to see from inside it. */
@@ -1481,11 +1620,31 @@ export class Stage {
    * milliseconds), builds every shader without holding the page, and lets a few frames go by,
    * so that whoever lifts the curtain afterwards sees motion that is already steady.
    */
-  async warm(patience = 9000): Promise<void> {
+  async warm(patience = 9000, onStep?: (step: WarmStep, fraction: number) => void): Promise<void> {
     // (made a little at a time while the rest arrives; a setting with no air has no clouds to make)
     const clouds = this.setting.fog ? this.clouds.warm() : Promise.resolve();
     const settled = Promise.allSettled(this.arriving);
+    // (said as it happens, for whoever is showing how far along it is: the list grows as the place brings its own levels)
+    let arrived = 0;
+    const counted = new Set<Promise<unknown>>();
+    const count = () => {
+      for (const p of this.arriving) {
+        if (counted.has(p)) continue;
+        counted.add(p);
+        void p
+          .catch(() => {})
+          .then(() => {
+            arrived++;
+            count();
+            onStep?.('place', arrived / Math.max(1, this.arriving.length));
+          });
+      }
+    };
+    count();
+    onStep?.('place', 0);
     await Promise.race([settled, new Promise((done) => setTimeout(done, patience))]);
+    onStep?.('place', 1);
+    onStep?.('clouds', 0);
     const frames = async (n: number) => {
       for (let i = 0; i < n; i++) {
         this.dirty = true;
@@ -1493,6 +1652,8 @@ export class Stage {
       }
     };
     await clouds;
+    onStep?.('clouds', 1);
+    onStep?.('shaders', 0);
     // Everything that will ever be drawn is drawn now, unseen: every level of detail, whether
     // or not it is in view, by day and with the lamps lit (a scene with lamps on is a different
     // set of shaders). What is built and sent to the GPU here is not built in front of anyone.
@@ -1510,12 +1671,23 @@ export class Stage {
     const globe = this.setting.globe;
     const shown = globe && [globe.mesh.visible, globe.air.visible];
     if (globe) globe.mesh.visible = globe.air.visible = true; // the Earth and its air, first seen on the way up
-    for (const night of [1, 0]) {
+    // (and each of those twice: a level of detail giving way to another is drawn by shaders of its own, lod.ts)
+    const passes = [
+      [1, true],
+      [0, true],
+      [1, false],
+      [0, false],
+    ] as const;
+    for (const [i, [night, fading]] of passes.entries()) {
+      for (const s of this.staged) s.everyLevel(true, fading);
+      this.scenery?.everyLevel(true, fading);
       this.lamps.set(night, 1);
       await this.renderer.compileAsync(this.scene, this.camera).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
       this.renderer.shadowMap.needsUpdate = true;
       await frames(2);
+      onStep?.('shaders', (i + 1) / passes.length);
     }
+    onStep?.('settle', 0);
     for (const o of culled) o.frustumCulled = true;
     for (const s of this.staged) s.everyLevel(false);
     this.scenery?.everyLevel(false);
@@ -1524,6 +1696,7 @@ export class Stage {
     if (globe && shown) [globe.mesh.visible, globe.air.visible] = shown;
     this.relight(true);
     await frames(3);
+    onStep?.('settle', 1);
   }
 
   /** The view is not being steered (the idle show): the light may be followed less closely, for even frames. */
@@ -1538,6 +1711,8 @@ export class Stage {
 
   /** Nothing is picked out under the pointer: the scene is being shown, not used. */
   inert = false;
+  /** The curtain is up (the flight is still arriving and warming): nothing is picked, hovered or chosen behind it. */
+  veiled = false;
 
   /** Where on the page a part's middle, or a point in the world, is now; null if it is behind the camera. */
   screenOf(what: string | THREE.Vector3): { x: number; y: number } | null {
@@ -1583,7 +1758,8 @@ export class Stage {
         !material ||
         Array.isArray(material) ||
         !material.name.startsWith('glass') ||
-        material.name.startsWith('glass-visor')
+        material.name.startsWith('glass-visor') ||
+        mesh.userData.ghost // (a pane's twin, panes.ts: the pane itself has been counted)
       )
         return;
       const first = mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(at, 0));
@@ -1728,6 +1904,14 @@ export class Stage {
     this.centreY = this.bounds.center.y;
   }
 
+  /** What stands at the place, for the far shadow map: every model where it stands (not one in flight) and the place round them. */
+  private shadowed(): THREE.Box3 | null {
+    if (!this.root) return null;
+    const box = this.modelsBox(this.lifted.flying ? (this.flier?.group ?? null) : null);
+    if (this.surroundings) box.expandByObject(this.surroundings);
+    return box;
+  }
+
   /**
    * Aim the shadow map, once per section. It is spent on the model being studied and its
    * surroundings, since one map stretched over a whole launch pad gives the rocket sawtooth
@@ -1849,14 +2033,16 @@ export class Stage {
    * Draw each model at the level of detail its size on screen calls for. The model being
    * studied is always complete while it is cut open: only the full level has an inside.
    */
-  private fitDetail(): void {
+  private fitDetail(dt: number): void {
     const scale = this.renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)));
+    const eye = this.camera.position;
+    // one level gives way to another over a moment (lod.ts: Crossfade); a test wants the scene as it will be, at once
+    const fade = this.frozen ? Number.POSITIVE_INFINITY : dt;
     let changed = false;
     this.staged.forEach((s, i) => {
-      const distance = Math.max(this.camera.position.distanceTo(s.sphere.center) - s.sphere.radius * 0.6, s.sphere.radius * 0.1);
-      changed = s.choose(scale / distance, this.fullDetail || (i === this.current && this.cut)) || changed;
+      changed = s.choose(eye, scale, this.fullDetail || (i === this.current && this.cut), fade) || changed;
     });
-    if (this.scenery?.choose(this.camera.position, scale)) changed = true;
+    if (this.scenery?.choose(eye, scale, fade)) changed = true;
     if (!changed) return;
     this.dirty = true;
     this.renderer.shadowMap.needsUpdate = true;
@@ -1941,7 +2127,9 @@ export class Stage {
     // (what three's own intersectObjects gives, found through the hierarchies the walker keeps: pick.ts. With
     // nothing cut away the first thing met is the answer, and each mesh need only say where the ray first meets it.)
     const roots = [...this.staged.map((s) => s.shown), ...(this.surroundings ? [this.surroundings] : [])];
-    const hit = through(this.raycaster, roots, this.pickTree, !this.cut).find((h) => !gone(h));
+    // nor about what is not being drawn: from the seat, the pilot's own visor is in front of the eye
+    const hidden = (o: THREE.Object3D | null): boolean => (o ? !o.visible || hidden(o.parent) : false);
+    const hit = through(this.raycaster, roots, this.pickTree, !this.cut).find((h) => !gone(h) && !hidden(h.object));
     // something in the place round the pad: a click goes over to it
     const place = hit ? this.placeOf(hit.object, hit.point) : null;
     if (place) return { node: null, model: null, place };
@@ -1957,7 +2145,7 @@ export class Stage {
       if (normal.dot(this.raycaster.ray.direction) > 0) normal.negate(); // toward the viewer, whichever side was hit
       return { node: null, model: null, pane: { point: this.paneCentre(mesh, hit.point), normal } };
     }
-    const thing = hit ? thingOf(hit.object) : undefined;
+    const thing = hit ? (thingOf(hit.object) ?? this.cabin?.thingAt(hit.point) ?? undefined) : undefined;
     for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent)
       if (this.parts.has(o.name)) return { node: o.name, model: null, ...(thing ? { thing } : {}) };
     return { node: null, model: null };
@@ -2098,6 +2286,7 @@ export class Stage {
     }
     this.follow(dt);
     this.lift();
+    if (this.clock) this.cabin?.step(dt, this.clock.t, this.clock.jdUT, this.renderer.toneMappingExposure);
     this.settle(dt);
     this.runWorks(dt);
     this.runFunctions(dt);
@@ -2108,10 +2297,12 @@ export class Stage {
       this.cam.update(dt);
       this.lookWatched();
       this.shadeCraft();
-      this.fitDetail();
+      this.fitDetail(dt);
       if (this.pointerDirty && !this.down) {
         this.pointerDirty = false;
-        this.setHover(this.inert ? NOTHING : this.pick());
+        const under = this.inert || this.veiled ? NOTHING : this.pick();
+        // (from the seat a part is not something to choose: only what is in reach is, and a window to look out of)
+        this.setHover(this.cam.rig === 'onboard' ? { ...under, node: null, model: null } : under);
       }
       this.fitDepth();
     }
@@ -2141,9 +2332,14 @@ export class Stage {
     this.ink.range(this.camera);
     this.renderer.info.reset();
     this.drawn++;
+    this.batches.prepare(); // (what each batch draws this frame: what is shown, as it stands now)
     this.setting.view?.(this.camera);
     const unshake = this.shaker?.(this.camera, backdrop.camera);
+    this.far.before(this.walk.active ? (this.staged[this.walked]?.group ?? null) : null, this.frozen);
+    if (this.lookingAt && !this.cam.onboard.looking) this.lookOut(null); // (the hands took the head back)
+    this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)
     this.origin.draw(() => this.composer.render(this.sinceDrawn));
+    this.far.after();
     unshake?.();
     if (this.composer.readBuffer !== this.frameTarget) this.composer.swapBuffers(); // (the ink pass changed them over: see the constructor)
     this.sinceDrawn = 0;
@@ -2966,7 +3162,7 @@ export class Stage {
     this.carryOn(figure, at);
     // Breathing alone moves him by millimetres: seen from outside it is worth drawing, but
     // nobody's shadow is redrawn for it.
-    if (placed || walk.stir === 2) this.renderer.shadowMap.needsUpdate = true; // its shadow walks with it
+    if (placed || walk.stir === 2) this.far.nearOnly(); // its shadow walks with it (in the fine map: the far one leaves it out)
     if (placed || walk.stir === 2 || (walk.stir === 1 && !unseen)) this.dirty = true;
   }
 
@@ -3156,7 +3352,9 @@ export class Stage {
     const p = this.walk.body.position;
     const shadow = this.sun.shadow;
     const { half, size, radius } = this.walkShadow();
-    if (!force && this.sun.target.position.distanceTo(p) < half * 0.35) return;
+    // It goes with the walker a metre at a time (in whole texels, below), not in leaps: it is drawn again every frame
+    // he moves anyway, for his own shadow, and where it hands over to the far map (shadows.ts) must not jump.
+    if (!force && this.sun.target.position.distanceTo(p) < 1) return;
     this.shadowGrain(size, radius);
     const dir = this.setting.sunDir;
     const right = new THREE.Vector3().crossVectors(UP, dir).normalize();
@@ -3181,7 +3379,7 @@ export class Stage {
     shadow.camera.updateProjectionMatrix();
     shadow.normalBias = Math.max(0.012, half / 900);
     shadow.bias = -Math.max(0.0002, half / 40000);
-    this.renderer.shadowMap.needsUpdate = true;
+    this.far.nearOnly(); // (the fine map is moved: the far one stays where it is)
   }
 
   /** For the diagnostics: the figure is being shown from outside but its model has no joints, so it glides. */
@@ -3217,7 +3415,7 @@ export class Stage {
           ? { target: { vehicle: vehicle.name, vehicleName: called }, hit, vehicle }
           : null;
     this.setAim(this.wheel || this.boarded ? null : aim); // (at the wheel, or in a couch, there is nothing to point at)
-    this.fitDetail();
+    this.fitDetail(dt);
     this.walkDt = dt;
     this.board(dt);
     this.poseFigure();

@@ -69,4 +69,4 @@
 .time-volume span:last-child { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 960px), (max-height: 520px) { .time-sound { width: 36px; height: 36px; } }
 /* a phone: the row holds the clock, the speaker, the chevron and the way into the flight deck, so the readout closes up */
-@media (max-width: 480px) { .time-row { gap: 2px; } .time-read { gap: 6px; padding: 0 2px; letter-spacing: 0.02em; } .time-row .time-play { min-width: 0; padding: 10px 8px; letter-spacing: 0.08em; } .time-sound { width: 26px; } .time-row .time-toggle { width: 28px; } }
+@media (max-width: 480px) { .time-row { gap: 2px; } #ui.piloting .time-row { flex-wrap: wrap; } #ui.piloting .time-row .time-play { flex: none; } #ui.piloting .time-row .cockpit-enter { margin-left: auto; } .time-read { gap: 6px; padding: 0 2px; letter-spacing: 0.02em; } .time-row .time-play { min-width: 0; padding: 10px 8px; letter-spacing: 0.08em; } .time-sound { width: 26px; } .time-row .time-toggle { width: 28px; } }

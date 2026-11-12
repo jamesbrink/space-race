@@ -1,4 +1,4 @@
-// A one-channel 8-bit PNG, written without a library: each row filtered by whichever of Sub or Up
+// A one-channel 8-bit PNG (and a three-channel one, writeRgbPng), written without a library: each row filtered by whichever of Sub or Up
 // leaves it smaller (a distance field is smooth both ways), then deflated.
 import { writeFileSync } from 'node:fs';
 import { crc32, deflateSync, inflateSync } from 'node:zlib';
@@ -36,6 +36,50 @@ export function writeGreyPng(path, data, width, height) {
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8; // bits
   ihdr[9] = 0; // greyscale
+  writeFileSync(
+    path,
+    Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk('IHDR', ihdr),
+      chunk('IDAT', deflateSync(raw, { level: 9 })),
+      chunk('IEND', Buffer.alloc(0)),
+    ]),
+  );
+}
+
+/** Write `data` (width * height * 3 bytes: red, green, blue; rows top first) to `path` as an 8-bit colour PNG, filtered as writeGreyPng's is. */
+export function writeRgbPng(path, data, width, height) {
+  const stride = width * 3;
+  const raw = Buffer.alloc((stride + 1) * height);
+  for (let j = 0; j < height; j++) {
+    const row = j * (stride + 1);
+    const at = j * stride;
+    let sub = 0,
+      up = 0;
+    for (let i = 0; i < stride; i++) {
+      const v = data[at + i];
+      sub += Math.abs(((v - (i >= 3 ? data[at + i - 3] : 0)) << 24) >> 24);
+      up += Math.abs(((v - (j ? data[at - stride + i] : 0)) << 24) >> 24);
+    }
+    raw[row] = sub <= up ? 1 : 2;
+    for (let i = 0; i < stride; i++) {
+      const prior = sub <= up ? (i >= 3 ? data[at + i - 3] : 0) : j ? data[at - stride + i] : 0;
+      raw[row + 1 + i] = (data[at + i] - prior) & 255;
+    }
+  }
+  const chunk = (type, body) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(body.length);
+    const tb = Buffer.concat([Buffer.from(type, 'ascii'), body]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(tb));
+    return Buffer.concat([len, tb, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bits
+  ihdr[9] = 2; // colour
   writeFileSync(
     path,
     Buffer.concat([
