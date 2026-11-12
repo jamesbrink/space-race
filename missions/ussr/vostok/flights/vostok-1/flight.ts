@@ -1,5 +1,6 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
+import { orbital } from './orbital.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -978,5 +979,7 @@ export const flight: Flight = {
       note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N)',
     },
   ],
+  // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
+  orbital,
   models: [vehicle, crew],
 };

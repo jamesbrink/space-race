@@ -3,6 +3,7 @@
  * fly from the same numbers, so each one says how far it can be trusted.
  */
 import type { Results } from './sim/fly.ts';
+import type { OrbitalFlight } from './sim/orbital.ts';
 
 /**
  * documented — a published figure (NASA report, manufacturer manual, museum record).
@@ -923,6 +924,12 @@ export interface Flight {
   checks?: FlightCheck[];
   /** What the Flown panel says under the checks: how the simulator's run stands against the reports today, and why. This flight's own verdict, in a sentence or three. */
   flownNote?: string;
+  /**
+   * A flight into orbit, as the record has it (src/sim/orbital.ts: stages, events, the orbit, the braking burn, the entry, with
+   * its own checks). Beside `trajectory`, not in it: a flight has whichever its kind of flight is, and one with only this is
+   * not offered to be flown by hand yet.
+   */
+  orbital?: OrbitalFlight;
   /**
    * The flight in the scene: which model the trajectory carries off the pad (after liftoff it is
    * where the simulator has it), and the parts of it that leave it on the way, at seconds from
