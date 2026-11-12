@@ -107,7 +107,7 @@ def build(parts: Parts) -> None:
         },
     )
     flat_roof(parts, g, "gen", r, e)
-    interiors.ceiling_light(parts, g, "Generators", ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, e - 0.02), length=3.0, intensity=0.8, reach=6.0)
+    interiors.ceiling_light(parts, g, "Generators", ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, e - 0.02), length=3.0, intensity=1.0, reach=7.0)
     for x in (129.0, 135.3, 141.6):
         roof_vent(grey, x, -106.6, e + 0.7, 1.1)
     grey.tube(P(144.0, -100.5, e + 0.5), P(144.0, -100.5, e + 6.5), 0.35 * 0.3048, 10)

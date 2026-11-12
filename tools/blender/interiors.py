@@ -255,19 +255,26 @@ def tray(parts: Parts, node: str, a, b, *, width: float | None = None) -> None:
         cable.tube((a + side * off + up) * sitelib.UNIT, (b + side * off + up) * sitelib.UNIT, (0.05 + 0.012 * k) * f * sitelib.UNIT, 6)
 
 
+# What the viewer's room light is given for one two-tube 40 W fluorescent fitting (see ceiling_light): chosen, not measured.
+FITTING = 1.65
+
+
 def ceiling_light(
     parts: Parts, node: str, name: str | None, centre, *, along=(1.0, 0.0), length: float | None = None, intensity: float = 1.0, reach: float = 8.0
 ) -> None:
     """A fluorescent fitting under a ceiling at `centre` (site units, the ceiling's height), and
     the mark the viewer puts a light at: an empty `Light_<name>` under `node`, carrying `intensity`
     and `reach` (metres). One fitting in a room is named for the room and its light stands for all
-    of them; the others are given no name and are fittings only. The tubes' material is `lamp`.
+    of them; the others are given no name and are fittings only. The tubes' material is `lamp-room`,
+    which glows and lights nothing: as `lamp` each pair of tubes was taken for a floodlight
+    (lamps.ts), and a trailer's two fittings burned its inside white while a firing room's got none.
 
     `intensity` is in fittings: 1.0 is one two-tube 40 W fluorescent of the period, about 5,000 lm
     (estimated: a round figure for the type, from no catalogue), and a room is given the number of
-    fittings that light it. What that is on the screen is the viewer's business: its exposure
-    indoors is one value at every hour (stage.ts: INDOORS_EXPOSURE), set so that a room with one
-    fitting to every 150 square feet or so reads as lit by them. The mark hangs 2 ft 6 in under
+    fittings that light it. The mark carries that times `FITTING`, the viewer's light for one such
+    fitting at its indoor exposure, which is one value at every hour (stage.ts: INDOORS_EXPOSURE);
+    `FITTING` was set by eye so that a firing room under its three fittings reads as lit by them,
+    and every other room follows from its own count. The mark hangs 2 ft 6 in under
     the ceiling, not at it: from the fitting's own height the one light that stands for the
     room's fittings meets the ceiling at a glancing angle, and the ceiling was black."""
     f = foot()
@@ -277,11 +284,10 @@ def ceiling_light(
     s = Vector((-d.y, d.x, 0.0))
     sitelib.obox(parts(node, "sign/fittings"), tuple(c - Vector((0, 0, 0.12 * f))), tuple(d), (0, 0, 1), (length, 1.0 * f, 0.24 * f))
     for off in (-0.25, 0.25):
-        sitelib.obox(
-            parts(node, "lamp/tubes"), tuple(c + s * (off * f) - Vector((0, 0, 0.3 * f))), tuple(d), (0, 0, 1), (length - 0.3 * f, 0.12 * f, 0.12 * f)
-        )
+        at = tuple(c + s * (off * f) - Vector((0, 0, 0.3 * f)))
+        sitelib.obox(parts(node, "lamp-room/tubes"), at, tuple(d), (0, 0, 1), (length - 0.3 * f, 0.12 * f, 0.12 * f))
     if name:
-        parts.node(f"Light_{name}", node, tuple(c - Vector((0, 0, 2.5 * f))), intensity=float(intensity), reach=float(reach))
+        parts.node(f"Light_{name}", node, tuple(c - Vector((0, 0, 2.5 * f))), intensity=float(intensity) * FITTING, reach=float(reach))
 
 
 def floor_joints(parts: Parts, node: str, x0: float, y0: float, x1: float, y1: float, z: float, *, pitch: float | None = None, inside=None) -> None:

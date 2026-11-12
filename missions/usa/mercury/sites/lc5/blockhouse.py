@@ -391,7 +391,7 @@ def furnish(parts: Parts, face6, face5, inner) -> None:
             interiors.rack(parts, g, interiors.at(S(u, -15.0 + k * 2.0, FLOOR), 0.0), blank, font=font, seed=k)
         for k in range(3):
             interiors.rack(parts, g, interiors.at(S(u, 9.0 + k * 2.0, FLOOR), 0.0), [("", [("meters", 2)], 1), ("", [], 5)], font=font, seed=k + 9)
-    interiors.ceiling_light(parts, g, "EquipmentRoom", S(73.0, 0.0, CEILING), along=(0, 1), intensity=2.0, reach=11.0)
+    interiors.ceiling_light(parts, g, "EquipmentRoom", S(73.0, 0.0, CEILING), along=(0, 1), intensity=2.0, reach=12.0)
     interiors.ceiling_light(parts, g, None, S(66.0, -11.0, CEILING), along=(0, 1))
     interiors.tray(parts, g, S(59.5, -18.0, CEILING - 1.3), S(59.5, 18.0, CEILING - 1.3))
 
@@ -474,7 +474,8 @@ def annex(parts: Parts) -> None:
         lamp_head(grey, lamps, q + Vector((0, 0, 0.3)), Vector((-w.n.x, -w.n.y, -0.8)), 0.7)
     # a lamp in each room, for the lit windows the place had before dawn (estimated: no night view of it is known)
     for room, u, v in (("ReadyRoom", u0 + 8.0, (v0 + v1) / 2), ("Kitchen", u1 - 8.0, (v0 + v1) / 2)):
-        interiors.ceiling_light(parts, g, room, S(u, v, ANNEX_EAVE - 0.05), intensity=1.2, reach=8.0)
+        interiors.ceiling_light(parts, g, room, S(u, v - 5.0, ANNEX_EAVE - 0.05), intensity=2.0, reach=9.0)  # two fittings a room
+        interiors.ceiling_light(parts, g, None, S(u, v + 7.0, ANNEX_EAVE - 0.05))
     if interior():  # a wall across; a table and benches, lockers, a desk; a kitchen. Of the period's kind, from no photograph
         um = (u0 + u1) / 2
         for a, b in ((v0 + ANNEX_WALL - 0.1, v0 + 12.0), (v0 + 15.5, v1 - ANNEX_WALL + 0.1)):

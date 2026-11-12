@@ -140,7 +140,10 @@ export class Lamps {
         // in the scene, not under the empty: the empty may be in a level of detail not being drawn
         this.rooms.push({ at: o, intensity: Number(o.userData.intensity) || 6, reach: Number(o.userData.reach) || 8 });
         while (this.roomPool.length < Math.min(ROOMS, this.rooms.length)) {
-          const light = new THREE.PointLight(0xfff1d6, 0, 8, 2);
+          // It falls off with distance, not its square: the one light stands for every fitting in its room and for what
+          // the walls and ceiling throw back, which no single point does. By the square, a trailer's walls a metre from
+          // it burned out at the strength that left the far end of a firing room dark.
+          const light = new THREE.PointLight(0xfff1d6, 0, 8, 1);
           scene.add(light);
           this.roomPool.push(light);
           this.given.push({ room: -1, want: -1, level: 0 });
@@ -248,6 +251,14 @@ export class Lamps {
     const edge = far[nearest[nearest.length - 1]!]! * KEEP;
     // the rooms to light: those already lit that are still near enough, then the nearest others
     const keep = this.given.map((g) => (g.want >= 0 && far[g.want]! <= edge ? g.want : -1));
+    // ...but the room nearest the eye always has one. Three rooms of one building, all "still near enough" from a
+    // building forty metres off, kept all three lights, and the room walked into stayed dark.
+    const here = nearest[0]!;
+    if (!keep.includes(here)) {
+      let give = keep.indexOf(-1);
+      if (give < 0) give = keep.reduce((worst, room, i) => (far[room]! > far[keep[worst]!]! ? i : worst), 0);
+      keep[give] = here;
+    }
     const others = nearest.filter((r) => !keep.includes(r));
     for (const [i, g] of this.given.entries()) g.want = keep[i]! >= 0 ? keep[i]! : (others.shift() ?? -1);
     let changed = false;

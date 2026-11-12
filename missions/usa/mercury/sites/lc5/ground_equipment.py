@@ -567,7 +567,9 @@ def furniture(parts: Parts) -> None:
             interiors.stool(parts, tr, interiors.at((x, y, z), 0.0))
         interiors.clock(parts, tr, axes(((tx0 + tx1) / 2, ty1 - 0.22, tz + 7.2), (1, 0, 0), (0, -1, 0)))
         interiors.tray(parts, tr, (tx0 + 1.2, 80.5, troof - 0.9), (tx0 + 1.2, ty1 - 0.6, troof - 0.9))
-    interiors.ceiling_light(parts, tr, "Trailer", ((tx0 + tx1) / 2, 87.0, troof - 0.02), along=(0, 1), intensity=1.6, reach=7.0)
+    interiors.ceiling_light(
+        parts, tr, "Trailer", ((tx0 + tx1) / 2, 87.0, troof - 0.02), along=(0, 1), intensity=0.6, reach=7.0
+    )  # its two short fittings, in a room eight feet wide: 0.6 by eye
     interiors.ceiling_light(parts, tr, None, ((tx0 + tx1) / 2, 75.0, troof - 0.02), along=(0, 1))
     frame = parts(tr, "chassis")
     box(frame, (tx0 + 1.2, ty0 + 8.0, 2.6), (tx1 - 1.2, ty1 - 0.5, 3.42))
