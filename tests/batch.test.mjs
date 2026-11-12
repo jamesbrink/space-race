@@ -114,6 +114,24 @@ test('a batch takes its meshes off the camera`s layer and leaves them otherwise 
   for (const mesh of root.children) assert.equal(mesh.layers.mask, 1 << PROXY_LAYER);
 });
 
+test('switched off before anything is handed over, nothing is made until it is switched on', () => {
+  const material = steel();
+  const root = new THREE.Group();
+  for (let i = 0; i < 4; i++) root.add(box(material, i * 3));
+  const scene = new THREE.Scene().add(root);
+  const batches = new Batches(scene, () => {});
+  batches.least = 2;
+  batches.enabled = false;
+  batches.add(root);
+  batches.prepare();
+  assert.deepEqual(batches.count, { meshes: 0, batches: 0 });
+  assert.equal(batches.group.children.length, 0);
+  for (const mesh of root.children) assert.equal(mesh.layers.mask, 1);
+  batches.enabled = true;
+  assert.deepEqual(batches.count, { meshes: 4, batches: 1 });
+  for (const mesh of root.children) assert.equal(mesh.layers.mask, 1 << PROXY_LAYER);
+});
+
 test('a few meshes of a material are not worth a batch; and a material is batched whole or not at all', () => {
   assert.deepEqual(staged(7, 8).batches.count, { meshes: 0, batches: 0 });
   assert.deepEqual(staged(8, 8).batches.count, { meshes: 8, batches: 1 });

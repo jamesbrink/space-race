@@ -45,14 +45,17 @@ def fig(px: float, py: float) -> tuple[float, float]:
     return ((px - FIG_C[0]) * S, (FIG_C[1] - py) * S)
 
 
-# Where the panel stands in the capsule: the middle of the periscope's display, (x, y, station).
-# Estimated: fitted to the model's pilot (clear of his knees, 30.6 in) and to the cone, which is
-# what cuts the panel's top corners. "Two feet in front of him" (This New Ocean, p. 355) is all
-# that is in print; the model has it 32 in from his eyes, because its pilot lies flat.
-PANEL_AT = (0.0, 0.5, 33.0)
-STRIP_CANT = math.radians(34.0)  # the telelight strip, turned toward the pilot from the main panel: estimated
-CONSOLE_CANT = math.radians(62.0)  # the left console beyond it: estimated
-FUSE_CANT = math.radians(86.0)  # and the fuse panel on the wall: estimated
+# Where the panel stands in the capsule: the middle of the periscope's display, (x, y, station), and how far the
+# panel leans, its top toward the nose and its face toward the pilot's eyes. Estimated: nothing read dimensions it.
+# It is put square to the line from the model pilot's eyes and 23 in along it ("two feet in front of him", This New
+# Ocean, p. 355), which with him on his back means over his lap, leaning 55 degrees: the cone cuts its top corners
+# and its foot comes down between his chest and his knees, as the periscope's does in the flown capsule.
+PANEL_AT = (0.0, -5.1, 26.6)
+PANEL_TILT = math.radians(55.0)
+STRIP_CANT = math.radians(30.0)  # the telelight strip, turned toward the pilot from the main panel: estimated
+CONSOLE_CANT = math.radians(58.0)  # the left console beyond it: estimated
+FUSE_AT = (-22.0, 3.0, 21.0)  # the fuse panel's upper edge on the left wall, (x, y, station): estimated
+STRIP_DROP, CONSOLE_DROP = 3.5, 8.0  # how far down the panel the strip and the console hang, inches: estimated
 EYE_FROM_HELMET = (1.0, 3.3)  # the eyes from the middle of the helmet, toward the feet and toward the face, inches: the suit model's own
 SCREEN_R = 4.0  # the periscope's 8 in display: documented (Hammack and Heberlig, p. 5)
 SCOPE_RECESS = 1.2  # how far its display sits behind the panel: estimated (NASM2021-00147)
@@ -325,6 +328,7 @@ class Cabin:
         self.g, self.vessel, self.M = parent, vessel, M
         self.mb: dict[str, MeshBuilder] = {}
         self.worst = math.inf  # the least room anything has from the wall, inches
+        self.tightest = ""
         self.lenses: list[bpy.types.Object] = []  # the telelights, each to be given a material of its own
 
     def into(self, name: str) -> MeshBuilder:
@@ -409,9 +413,11 @@ class Cabin:
                 continue
             if name not in WALL:
                 for p in mb.verts:
-                    self.worst = min(self.worst, self.room(Vector(p)))
+                    room = self.room(Vector(p))
+                    if room < self.worst:
+                        self.worst, self.tightest = room, f"{name} at ({p[0] / IN:.1f}, {p[1] / IN:.1f}, {p[2] / IN:.1f}) in"
             mb.build(name, self.M[materials[name]], self.g, smooth=name in smooth, sharp_angle=35)
-        assert self.worst > 0.25, f"the cabin's fittings come within {self.worst:.2f} in of the wall"
+        assert self.worst > 0.25, f"the cabin's fittings come within {self.worst:.2f} in of the wall: {self.tightest}"
 
 
 OWN_MATERIAL = ("amber", "red_lamp", "green_lamp")
@@ -697,7 +703,7 @@ def build(
     c.into("CrewCabin_Hoses").lathe(
         prof([(4.7, 0.0), (3.0, 0.5), (0.0, 0.7)]), 24, matrix=frame(Vector((neck.x, neck.y + 0.6, neck.z)) * IN, (0, -1, 0))
     )
-    P = plane(Vector(PANEL_AT), Vector((1, 0, 0)), Vector((0, -1, 0)))
+    P = plane(Vector(PANEL_AT), Vector((1, 0, 0)), Vector((0, -math.cos(PANEL_TILT), math.sin(PANEL_TILT))))
     main_panel(c, P, main, faces)
     periscope(c, P, side, out)
     consoles(c, P, side, faces)
@@ -924,8 +930,8 @@ def couch(c: Cabin, pilot: dict, seat) -> None:
 
     pan((-31.0, 2.2), (-20.6, 2.2), 1.2, 15.0, 3.2, 2.0)  # head rest, a step below the back, with wings beside the helmet
     pan((-20.0, 2.9), (7.4, 2.9), 1.6, 27.0, 1.5)  # back, wide enough for the arms to lie on
-    pan((7.4, 3.3), (13.6, 5.2), 1.4, 24.0, 1.5)  # seat, rising behind the hips
-    pan((13.6, 5.2), (13.9, 13.5), 1.2, 22.0, 1.2)  # and up the back of the thighs
+    pan((7.4, 3.3), (11.0, 4.7), 1.4, 24.0, 1.5)  # seat, rising behind the hips
+    pan((11.2, 4.9), (11.5, 13.5), 1.2, 22.0, 1.2)  # and up the back of the thighs
     pan((10.2, 21.6), (21.4, 17.1), 1.2, 17.0, 1.4)  # under the calves
     pan((25.3, 16.2), (25.5, 21.8), 0.6, 14.0, 0.6, 1.0)  # foot rest, under the heels
     for y, z0, z1 in ((16.5, 5.5, 18.6), (25.4, 2.0, 16.4)):  # struts carrying the leg rest down to the floor
@@ -956,7 +962,7 @@ MAIN_OUTLINE_PX = [
 def toggle(c: Cabin, F: Matrix, u: float, v: float, way: str, up: bool = True) -> None:
     """A toggle switch: a hexagonal nut, a red seal, and the lever thrown one way."""
     c.turned("CrewCabin_PanelFittings", F, u, v, [(0.2, 0.0), (0.2, 0.09), (0.13, 0.09), (0.13, 0.16), (0.0, 0.16)], 6)
-    c.turned("CrewCabin_RedCaps", F, u, v, [(0.115, 0.14), (0.085, 0.24), (0.0, 0.24)], 10)
+    c.turned("CrewCabin_RedCaps", F, u, v, [(0.17, 0.165), (0.07, 0.21)], 10)
     lean = 0.42 * (1 if up else -1)
     tip = Vector((lean, 0, 0.62)) if way == "h" else Vector((0, lean, 0.62))
     c.into("CrewCabin_PanelFittings").tube(F @ Vector((u, v, 0.18)), F @ (Vector((u, v, 0.18)) + tip), 0.055 * IN, 8)
@@ -1292,14 +1298,22 @@ def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict) -> None:
     c.turned("CrewCabin_PanelFittings", P, u0 + 0.95, v1 - 1.35, [(0.26, 0.0), (0.26, 0.2), (0.0, 0.26)], 12, -d)
     # the upper housing behind the display, and the tube
     body = c.into("CrewCabin_Periscope")
+    # (shallow: the pilot's thighs stand just behind its foot)
     body.box(
-        ((u1 - u0 - 0.6) * IN, (v1 - v0 - 0.6) * IN, 4.6 * IN),
-        P @ Matrix.Translation(((u0 + u1) / 2, (v0 + v1) / 2, -d - 2.45)) @ Matrix.Scale(1 / IN, 4),
+        ((u1 - u0 - 0.6) * IN, (v1 - v0 - 0.6) * IN, 2.3 * IN),
+        P @ Matrix.Translation(((u0 + u1) / 2, (v0 + v1) / 2, -d - 1.3)) @ Matrix.Scale(1 / IN, 4),
     )
-    top = Vector((0.0, PANEL_AT[1] + 4.6, PANEL_AT[2] + d + 3.0))
+    # from the back of the housing up over his knees, then down between his shins and feet to the objective
+    top = Vector(P @ Vector((0.0, 2.5, -d - 2.0))) / IN
     foot = c.vessel.p(math.pi / 2, SCOPE_STATION, -0.6) / IN
-    body.tube(top * IN, foot * IN, 1.9 * IN, 20)
-    body.tube((foot - (foot - top).normalized() * 6.5) * IN, foot * IN, 2.5 * IN, 20)  # the objective's cartridge
+    run_ = [
+        top,
+        Vector((0.0, 8.0, 33.6)),
+        Vector((0.0, 24.0, 22.5)),
+        foot + (Vector((0.0, 24.0, 22.5)) - foot).normalized() * 1.2,
+    ]
+    body.loft([p * IN for p in run_], [(1.9 * IN, 1.9 * IN)] * len(run_), 16, ref=(1, 0, 0))
+    body.tube((foot - (foot - run_[-2]).normalized() * 6.5) * IN, foot * IN, 2.5 * IN, 20)  # the objective's cartridge
     out["periscope"] = {"screen": tuple(P @ Vector((0, 0, -d + 0.06))), "radius": (SCREEN_R - 0.02) * IN}
     # the map case hangs below the display (SEDR 104, 12-27): a fabric pouch
     soft(c.into("CrewCabin_Stowage"), P @ Matrix.Translation((0.0, v0 - 3.0, -0.9)) @ Matrix.Scale(1 / IN, 4), (8.5, 5.6, 1.5), 0.6)
@@ -1314,7 +1328,9 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     """The left console in its two parts and the fuse panel beyond, each turned further toward
     the pilot; the right console under the hatch."""
     ex, ey, ez = (Vector(P.col[i][:3]).normalized() for i in range(3))
-    edge = Vector(P @ Vector((fig(905, 0)[0], 0, 0))) / IN  # the main panel's left edge, at the periscope's height
+    # the main panel's left edge. (The strip and the console hang lower on it than the figure, which is a flat layout,
+    # draws them: by STRIP_DROP and CONSOLE_DROP, so that they clear the cone where the panel leans up into it.)
+    edge = Vector(P @ Vector((fig(905, 0)[0], -STRIP_DROP, 0))) / IN
     a = STRIP_CANT
     sx = ex * math.cos(a) - ez * math.sin(a)
     Sx = plane(edge, sx, ey)  # u runs back from the hinge: the strip is u from -6.7 to 0
@@ -1366,7 +1382,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         rg.ring(sfig(740 + 28 * i, 0)[0], sfig(0, 603)[1], 0, 0.3, (0.55, 0.56, 0.55))
 
     # the console's outer part, hinged on the strip's far edge and turned further
-    hinge = Vector(Sx @ Vector((strip[0][0], 0, 0))) / IN
+    hinge = Vector(Sx @ Vector((strip[0][0], STRIP_DROP - CONSOLE_DROP, 0))) / IN
     b = CONSOLE_CANT
     cx = ex * math.cos(b) - ez * math.sin(b)
     Cx = plane(hinge, cx, ey)
@@ -1427,10 +1443,8 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         c.into("CrewCabin_PanelFittings").tube(Cx @ Vector((u, v, 0.0)), Cx @ Vector((u, v, 0.55)), 0.09 * IN, 8)
         rg2.text(name, u - 0.55, v, 0.14, INK, turn=1)
     # the fuse panel, on the wall beyond the console
-    hinge2 = Vector(Cx @ Vector((part[5][0], 0, 0))) / IN
-    f_ = FUSE_CANT
-    fx = ex * math.cos(f_) - ez * math.sin(f_)
-    Fx = plane(hinge2 + ey * -2.5, fx, ey)
+    # (on the wall at the pilot's left elbow, facing across the cabin: its own place, not hung from the console)
+    Fx = plane(Vector(FUSE_AT), Vector((0.07, 0.0, 1.0)), Vector((0.0, -1.0, 0.0)))
     fw, fh = 8.6, 15.0
     rect = [(-fw, -fh / 2), (0, -fh / 2), (0, fh / 2), (-fw, fh / 2)]
     rg3 = sheet.take(fw, fh, 74, -fw, -fh / 2, at=(1216, 0))
@@ -1562,14 +1576,16 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
         run_ = [(-22.6 - 0.1 * k, 4.0 + 0.9 * k, 13.0), (-24.2, 6.0 + 0.9 * k, 9.0), (-25.4, 9.0 + 0.9 * k, 5.0), (-24.0, 13.0 + 0.6 * k, 1.6)]
         loom.loft([Vector(p) * IN for p in run_], [(0.32 * IN, 0.32 * IN)] * len(run_), 8)
     # the white coiled cord that hangs down the left wall in the flown capsule (NASM2021-00147): what it served is not in anything read
-    a0, a1 = Vector((-21.8, -14.5, 21.0)), Vector((-23.4, -7.5, 8.0))
+    a0, a1 = Vector((-20.5, -20.5, 15.0)), Vector((-21.5, -19.0, 5.0))
     along = (a1 - a0).normalized()
     side1 = along.cross(Vector((1, 0, 0))).normalized()
     side2 = along.cross(side1)
     turns = int((a1 - a0).length / 0.3)
     coil = [a0 + (a1 - a0) * (i / (turns * 8)) + (side1 * math.cos(TAU * i / 8) + side2 * math.sin(TAU * i / 8)) * 0.24 for i in range(turns * 8 + 1)]
     c.into("CrewCabin_Hoses").loft([p * IN for p in coil], [(0.07 * IN, 0.07 * IN)] * len(coil), 5, resample=1)
-    c.into("CrewCabin_Lamps").tube(a0 * IN, Vector((a0.x * 1.12, a0.y * 1.12, a0.z)) * IN, 0.45 * IN, 8)  # the clip it hangs from
+    c.into("CrewCabin_Lamps").tube(
+        Vector((a0.x * 1.02, a0.y * 1.02, a0.z)) * IN, Vector((a0.x * 1.12, a0.y * 1.12, a0.z)) * IN, 0.45 * IN, 8
+    )  # the clip it hangs from
     # The harnesses from the back of the panel down each side to the equipment on the floor, with their connectors
     # in red caps where they leave the instruments (NASM2021-00153 shows them from the hatch): the runs are estimated.
     for path in (

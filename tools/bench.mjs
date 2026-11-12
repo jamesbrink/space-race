@@ -11,8 +11,9 @@
 // reflections go by the time since the page opened), so a picture proves nothing across builds. What proves a change
 // leaves the picture alone is a switch thrown in one page with nothing else touched: `--toggle "<script>"`
 // [`--toggle-off "<script>"`] takes each view with the switch off, on, and off again, and counts the pixels that differ.
-// With a switch every scenario is also set up and timed both ways in the one page, turn about: the same instants of the
-// same view in the same minute, which is the closest comparison there is.
+// With a switch every scenario is also timed both ways in the one page, in short blocks turn about within one
+// setting-up of it: the closest comparison there is. (What is drawn is counted with each way set up on its own, so the
+// counts are of the same instants.)
 //
 // Other work on the machine moves every figure by tens of per cent from one minute to the next, so two runs made at
 // different times say little. To compare two builds, or one build with a switch thrown (`--b-query plain`), give
@@ -709,7 +710,8 @@ function inPage(DT) {
         const times = [];
         let drew = 0;
         const heap = performance.memory?.usedJSHeapSize ?? 0;
-        for (let i = 0; i < frames; i++) {
+        // (with a switch, the times that count are taken turn about, below: here only enough to count what is drawn)
+        for (let i = 0; i < (list.length > 1 ? 12 : frames); i++) {
           s.each?.(k++);
           const f = frame(s.force);
           times.push(f.ms);
@@ -779,6 +781,39 @@ function inPage(DT) {
           raf: mean(gaps.slice(8)),
           levels: st.staged.map((x) => x.shownLevel),
         });
+      }
+      // With a switch: the times, in short blocks one way and then the other and back again, in one setting-up of the
+      // scenario, so that whatever else the machine is doing falls on both alike (set up apart, the two differed by
+      // tens of per cent from that alone).
+      if (list.length > 1) {
+        if (!(s.keep && kept)) await reset();
+        kept = Boolean(s.keep);
+        await s.setup();
+        const rounds = 8;
+        const each = Math.max(4, Math.ceil(frames / rounds));
+        const taken = out.map(() => ({ times: [], drew: 0 }));
+        let k = 0;
+        for (let round = 0; round < rounds; round++) {
+          const turnAbout = list.map((_, j) => j);
+          if (round % 2) turnAbout.reverse();
+          for (const j of turnAbout) {
+            if (list[j].js) new Function('sr', list[j].js)(sr);
+            for (let i = 0; i < 4; i++) {
+              s.each?.(k++);
+              frame(s.force);
+              await turn();
+            }
+            for (let i = 0; i < each; i++) {
+              s.each?.(k++);
+              const f = frame(s.force);
+              taken[j].times.push(f.ms);
+              if (f.drew) taken[j].drew++;
+              await turn();
+            }
+          }
+        }
+        s.done?.();
+        out.forEach((o, j) => Object.assign(o, taken[j]));
       }
       return { setupMs, modes: out };
     },

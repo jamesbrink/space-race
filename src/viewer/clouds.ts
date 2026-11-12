@@ -767,7 +767,7 @@ const OVER = /* glsl */ `
       // through. So from straight over them the cumulus have a lit side, a shaded side and a soft rim.
       float span = max(2.5 * fpAcross, 120.0);
       vec2 toSun = sunward * span / uCumulus.x;
-      float h0 = heapTop(q0, bias, soft, cells), h1 = heapTop(q0 + toSun, bias, soft, cells), h2 = heapTop(q0 + 3.0 * toSun, bias, soft, cells);
+      float h0 = heapTop(q0, bias, soft, cells), h1 = heapTop(q0 + toSun, bias, soft, cells), h2 = h0 > 0.0 ? heapTop(q0 + 3.0 * toSun, bias, soft, cells) : 0.0;
       float sunLow = sqrt(max(1.0 - sunUp * sunUp, 0.0));
       float rise = (h1 - h0) / span;
       float facing = (sunUp - rise * sunLow) / (sqrt(1.0 + rise * rise) * max(sunUp, 0.12));
@@ -775,12 +775,20 @@ const OVER = /* glsl */ `
       float thick = smoothstep(0.0, 220.0, h0);
       float shape = mix(0.36, 1.15, smoothstep(0.15, 1.5, facing)) * (1.0 - 0.5 * shadow) * (0.74 + 0.26 * thick);
       float rim = under ? 1.0 : mix(0.3, 1.0, smoothstep(0.0, 160.0, h0));
+      // (as cells, the field is read for the highest slice and the lowest and taken as running evenly between: the
+      // slices are a few hundred metres apart on it at most, and reading the cells five times cost as many milliseconds)
+      float overTop = 0.0, overBase = 0.0;
+      if (cells >= 1.0) {
+        float l0, l4, t0 = shellHit(dir, uLayer.x + 0.9 * depth, l0), t4 = shellHit(dir, uLayer.x + 0.06 * depth, l4);
+        overTop = fieldOver((uField + dir.xz * max(t0, 0.0)) / uCumulus.x, bias, 1.0);
+        overBase = fieldOver((uField + dir.xz * max(t4, 0.0)) / uCumulus.x, bias, 1.0);
+      }
       for (int k = 0; k < (under ? 1 : 5); k++) {
         float y = under ? 0.06 : 0.9 - 0.21 * float(k);
         float lk, tk = shellHit(dir, uLayer.x + y * depth, lk);
         if (tk < 0.0) continue;
         vec2 f = uField + dir.xz * tk;
-        float smooth_ = uCumulus.y + fieldOver(f / uCumulus.x, bias, cells);
+        float smooth_ = uCumulus.y + (cells >= 1.0 ? mix(overTop, overBase, float(k) / 4.0) : fieldOver(f / uCumulus.x, bias, cells));
         // with the billows the volume has at that height, as far as a pixel can show them: so a far cloud's outline is
         // scalloped in round lumps as a near one's is, not the noise's own ragged line, and one becomes the other unseen
         // (and no lump under three pixels across: smaller, they tore a far cloud's rim into confetti, where from orbit a

@@ -254,7 +254,7 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     vec2 lg = r1 / 250.0 + 0.35 * vec2(${prefix}noise2(r2 / 900.0 + 2.9, 504), ${prefix}noise2(r2 / 900.0 + 7.4, 505));
     ivec2 li = ivec2(floor(lg));
     float lets = 0.0;
-    if (fp < 125.0) {
+    if (fp < 125.0 && a > 0.0) {   // (only where there is deck: most of the sky has none)
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         ivec2 c = li + ivec2(dx, dy);
         vec2 pc = vec2(c) + 0.5 + 0.7 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5);

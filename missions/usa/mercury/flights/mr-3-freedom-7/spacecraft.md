@@ -90,8 +90,8 @@ is documented (the periscope's 8 in screen) and the rest follow from it or are e
 | Lettering | panel legends 0.18 in tall, switch positions 0.14, small notes 0.125; dial numerals a sixth of the dial's radius | estimated | scaled off NASM2021-00147 against the instruments beside them (SQUIB is about 1.1 in long beside a 2.4 in dial) |
 | Rate needles' full travel | 6 degrees a second | estimated | nothing read gives the indicator's range |
 | Sequence lamps, top to bottom, and what overrides each | TOWER JETT (ring), CAPSULE SEP (ring), START RETRO SEQ (button), IN RETRO ATT (switch), RETRO FIRE, JETT RETRO, .05 G SWITCH, DROGUE (buttons), MAIN DEPLOY, RESERVE DEPLOY (rings) | documented | Figure 3.1-2. Green when done, red for a failure (Results, p. 23): the model lights green only |
-| Panel station, and how far from the eyes | face at station 33 in; the screen 31.6 in from the model pilot's eyes | estimated | fitted between the model pilot's knees (30.6 in) and the cone, which is what cuts the panel's top corners. "Two feet in front of him" (*This New Ocean*, p. 355) is all that is in print; the model's pilot lies flatter than the real one, so his eyes are further from it |
-| Left console's cant | telelight strip 34 degrees toward the pilot, console 62, fuse panel 86 | estimated | NASM2021-00147 |
+| Where the panel stands | the periscope's display 23 in from the model pilot's eyes and square to them: over his lap, at station 26.6, leaning 55 degrees with its top toward the nose | estimated | "two feet in front of him" (*This New Ocean*, p. 355) is all that is in print. With the model's pilot on his back that puts the panel where the cone cuts its top corners and its foot comes down between his chest and his knees; the strip and the console hang 3.5 and 8 in lower on it than Figure 3.1-2's flat layout draws them, to clear the cone |
+| Left console's cant | telelight strip 30 degrees toward the pilot, console 58; the fuse panel on the wall at his left elbow | estimated | NASM2021-00147 |
 | Fuse panel | 23 switch-fuses in five rows | documented (which), estimated (where) | the list and order are Figure 10.1-1's; the rows' places are from NASM2021-00147 |
 | Right console | emergency oxygen lever, suit and cabin temperature selectors | documented (what), estimated (where and how big) | Figure 3.1-2; "below the capsule entrance hatch" is SEDR 104, p. 1-17 |
 | Periscope objective | leaves the cone under the pilot's feet at station 13 | estimated | the flown capsule, NASM2021-00160 and -00165. Until November 2026 the model had it on the pilot's left |
@@ -146,9 +146,9 @@ The same GLB also holds the launch vehicle's five nodes: see
   the ports, hatch and periscope.
 - **The hatch is the wrong shape** (it follows shingle edges), and its latches are placeholders.
 - **The landing bag** is a flat ring standing in for the folded bag; it does not deploy.
-- **The pilot lies flatter than he did.** The seated figure's back is on the bulkhead and his eyes are 21 in from the
-  panel's top and 32 from the periscope; "two feet" is the figure in print. Everything in the cabin is placed round
-  that figure, so the panel is seen more from above its top edge than it was.
+- **The pilot lies flat on his back and looks down his body at the panel.** The seated figure's torso and head do not
+  bend: his eyes rest 55 degrees toward his feet from straight ahead, which a man does with his head, not his eyes.
+  The panel is placed square to that line at 23 in, so what he sees is right and how he holds his head is not.
 - **The cabin is what the pilot sees, not a survey of the installation.** Behind the panel there are instrument cases
   and no wiring; under the couch, boxes of the right kind for the environmental system. No harness, toe caps or knee
   straps, no window shutters or filters and no "window pole", no flashlight, knife, food or waste containers, no

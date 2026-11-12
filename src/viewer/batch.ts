@@ -423,6 +423,9 @@ export class Batches {
   private readonly scene: THREE.Object3D;
   private readonly dress: (batch: THREE.Mesh) => void;
   private on = true;
+  /** Files handed over while batches were off, and whether there is nothing to do each frame (off, and everything handed back). */
+  private readonly waiting: THREE.Object3D[] = [];
+  private idle = false;
   /** Frames gone (`prepare`), and whether each node was shown all the way up at the frame it was last asked about, by its id. */
   private stamp = 0;
   private asked = new Uint32Array(1024);
@@ -482,9 +485,15 @@ export class Batches {
     return this.on;
   }
 
-  /** For comparing the two: off, every mesh is drawn alone again, as three draws it. They must look the same. */
+  /**
+   * For comparing the two: off, every mesh is drawn alone again, as three draws it. They must look the same.
+   * Off costs nothing: files taken while it is off are only remembered, and made into batches if it is switched on.
+   */
   set enabled(on: boolean) {
+    if (on === this.on) return;
     this.on = on;
+    if (on) for (const root of this.waiting.splice(0)) this.add(root);
+    this.idle = false;
     this.prepare();
   }
 
@@ -493,6 +502,10 @@ export class Batches {
    * draw what can be of it in batches. Its meshes stay as they are but for their layer.
    */
   add(root: THREE.Object3D): void {
+    if (!this.on) {
+      this.waiting.push(root);
+      return;
+    }
     root.updateMatrixWorld(true);
     // every mesh of each material: a material is batched only if all of them can be, in one buffer
     const byMaterial = new Map<THREE.Material, THREE.Mesh[]>();
@@ -578,6 +591,7 @@ export class Batches {
    * comes back to the batch if it matches again.
    */
   prepare(): void {
+    if (this.idle) return;
     this.stamp++;
     let changed = false;
     this.live = false;
@@ -618,6 +632,7 @@ export class Batches {
       }
     }
     if (changed) this.shows++;
+    this.idle = !this.on; // (switched off, and every mesh has just been handed back to three: nothing more to do until it is on again)
   }
 
   /**
