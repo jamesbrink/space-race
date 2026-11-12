@@ -2,10 +2,11 @@ import type * as THREE from 'three';
 
 /**
  * The texture units a lit material must leave free: each shadow-casting light it is under takes one more, and a
- * fragment shader has sixteen (WebGL 2's promise; `MAX_TEXTURE_IMAGE_UNITS`). See docs/agents/rendering.md,
+ * fragment shader has sixteen (WebGL 2's promise; `MAX_TEXTURE_IMAGE_UNITS`). Three, with the Sun's three maps
+ * (near, far and the sky's: shadows.ts) already counted. See docs/agents/rendering.md,
  * "Texture units".
  */
-export const UNITS_FREE = 4;
+export const UNITS_FREE = 3;
 
 /** Every program the renderer has made and how many texture units its samplers take, most first. */
 export function samplerCounts(renderer: THREE.WebGLRenderer): { name: string; units: number; samplers: string[] }[] {

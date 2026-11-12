@@ -34,14 +34,14 @@ const PATIENCE = 12;
 const RATE = 10;
 /** The sky map: texels a side, and how much of the sky's light is left under a roof (what comes in at doors and windows and off the walls, as a share). */
 /**
- * Whether the sky map is drawn and read. Off: the land's and the globe's shaders already use every texture unit a
- * fragment shader is promised (16), and a shadowed light adds a sampler to every lit material whether it reads it
- * or not, so with a third map they do not link. Until one of their maps is given up or packed, the sky's light is
- * not held back under roofs.
+ * Whether the sky map is drawn and read: a third shadow map, so one more texture unit in every lit material. The
+ * land's and the globe's shaders were at the sixteen a fragment shader is promised until their maps were packed
+ * (pack.ts; docs/agents/rendering.md, "Texture units"): they now leave four.
  */
 const SKY_ON = false;
 const SKY_SIZE = 2048;
-const UNDER = 0.22;
+/** How much of the sky's light is left under a roof: what comes in at doors and windows and off the walls. Estimated, by eye in the firing rooms by day: at 0.22 a console's dials were lost. */
+const UNDER = 0.28;
 /** Where across the fine map (0 its middle, 1 its edge) the far one comes in, from and to. */
 const BAND = [0.78, 0.96] as const;
 

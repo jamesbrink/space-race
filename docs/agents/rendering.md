@@ -357,10 +357,10 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 ## Texture units
 
 A fragment shader reads sixteen textures at once and no more (all WebGL 2 promises: `MAX_TEXTURE_IMAGE_UNITS`), and
-one over fails to compile, on some machines only. The budget: **a lit material keeps four units free for lights**
-(`UNITS_FREE` in `viewer/units.ts`), counted with the Sun's two shadow maps, the reflections and three's own table
-already in. Each shadow-casting point or spot light a material is under takes one. Today the site's ground reads
-12 and the globe 10; a model's materials far fewer.
+one over fails to compile, on some machines only. The budget: **a lit material keeps three units free for lights**
+(`UNITS_FREE` in `viewer/units.ts`), counted with the Sun's three shadow maps (near, far, and the sky's:
+shadows.ts), the reflections and three's own table already in. Each shadow-casting point or spot light a material
+is under takes one. Today the site's ground reads 13 and the globe 11; a model's materials far fewer.
 
 - A development build warns in the console, a few seconds after the scene is up, of any program over the budget
   (`checkUnits`); `samplerCounts(renderer)` lists every program's samplers.
