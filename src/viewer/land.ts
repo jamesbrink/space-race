@@ -658,7 +658,9 @@ export class Land {
             g.albedo = mix(g.albedo, straw, grass);
             g.bump += 0.01 * grass * (clump - 0.5) * seen(0.2);
             // under shrubs: fallen leaves and shade
-            float under = smoothstep(0.12, 0.55, woody + 0.3 * (noise(vec3(p * 0.8, 14.0)) - 0.5));
+            // (its edge wanders by a noise 1.25 m across, which goes to its mean once that is under two pixels: left in, it
+            // was a stipple of single dark pixels round every clearing from half a kilometre to six up, crawling as the eye moved)
+            float under = smoothstep(0.12, 0.55, woody + 0.3 * (noise(vec3(p * 0.8, 14.0)) - 0.5) * seen(2.5));
             vec3 litter = ${vec3(p.litter)} * (0.75 + 0.5 * noise(vec3(p * 3.0, 15.0)) * mix(1.0, 0.6 + 0.8 * noise(vec3(p * 11.0, 16.0)), seen(0.05)));
             g.albedo = mix(g.albedo, litter, under);
             g.bump = mix(g.bump, 0.01 * (noise(vec3(p * 3.0, 15.0)) - 0.5), under);
