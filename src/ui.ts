@@ -38,8 +38,8 @@ export interface UiHandlers {
   fnValues(node: string): { id: string; value: number; refused: string | null }[];
   /** Put a function of a part somewhere along its travel; returns where it now is. */
   setFn(node: string, id: string, v: number): number;
-  /** How many pixels at the bottom of the 3D view the controls cover. */
-  inset(pixels: number): void;
+  /** How many pixels at the bottom of the 3D view the controls cover, and how many at the top along its centre line. */
+  inset(pixels: number, top: number): void;
 }
 
 const CAMERA_LABEL: Record<RigId, string> = {
@@ -148,8 +148,8 @@ function legendMarkup(f: Flight): string {
         [
           'Mouse',
           [
-            ['right-drag · shift-drag', 'move'],
-            ['two fingers', 'move · twist'],
+            ['right · middle · shift-drag', 'move'],
+            ['two fingers', 'zoom · move · twist'],
             ['double-click', 'turn about it'],
             ['right-click', 'walk from there'],
             ...(walker ? [[`double-click ${walker.name.toLowerCase()}`, 'walk'] as LegendRow] : []),
@@ -569,7 +569,19 @@ export class Ui {
         return r.height > 0 && r.left < view.left + view.width * 0.62 && r.right > view.left + view.width * 0.38;
       };
       for (const el of this.covering.filter(shown)) tops.push(...([...el.children] as HTMLElement[]).filter(middle).map(top));
-      on.inset(Math.max(0, view.bottom - Math.min(view.bottom, ...tops)));
+      // and what lies over the top of the view along its centre line (the switcher and the clock; on a phone the title too)
+      const clock = root.querySelector<HTMLElement>('.timebar');
+      if (clock && !this.clockWatched) {
+        this.clockWatched = true;
+        this.measure.observe(clock);
+      }
+      const centre = view.left + view.width / 2;
+      const heads = [title, switcher, ...(clock ? [clock] : [])]
+        .filter(shown)
+        .map((el) => el.getBoundingClientRect())
+        .filter((r) => r.left < centre && r.right > centre && r.bottom < view.top + view.height / 2)
+        .map((r) => r.bottom);
+      on.inset(Math.max(0, view.bottom - Math.min(view.bottom, ...tops)), Math.max(0, ...heads) - view.top);
     });
     for (const el of [controls, switcher, stage, panel]) this.measure.observe(el);
     this.setModel(this.model.id);
@@ -577,6 +589,7 @@ export class Ui {
 
   private readonly measure: ResizeObserver;
   private readonly covering: HTMLElement[] = [];
+  private clockWatched = false;
 
   /** Something else that lies over the bottom of the 3D view while it is on show (the flight deck): views are framed above it too. */
   covers(el: HTMLElement): void {
@@ -610,7 +623,7 @@ export class Ui {
   }
 
   private get slider(): HTMLInputElement {
-    return this.root.querySelector<HTMLInputElement>('input[type=range]')!;
+    return this.root.querySelector<HTMLInputElement>('.explode input[type=range]')!; // (its own, by name: the first slider on the page is no longer this one)
   }
 
   /** Rebuild everything that belongs to one model: its parts, its views, its scale line. */

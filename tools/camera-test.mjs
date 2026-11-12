@@ -272,6 +272,50 @@ const sequences = {
     });
     await h.wait(800);
   },
+  // At the controls of the flight the mouse is still the camera's, in every rig offered, before ignition and after.
+  async 'the mouse while flying'(h) {
+    await h.page.evaluate(() => {
+      window.sr.show('vehicle', true);
+      window.sr.cockpit.enter();
+    });
+    await h.wait(2500);
+    const under = await h.page.evaluate(() => document.elementFromPoint(720, 300)?.id);
+    check(under === 'stage', `what is under the pointer over the view is the canvas (${under})`);
+    const tried = async (when) => {
+      for (const rig of await h.page.evaluate(() => window.sr.stage.cameras)) {
+        await h.page.evaluate((r) => window.sr.stage.setCamera(r), rig);
+        await h.wait(1800);
+        const about = rig === 'chase' || rig === 'locked';
+        const a = await h.probe();
+        await h.drag(720, 300, 840, 260);
+        await h.wait(600);
+        const b = await h.probe();
+        // (beside the vehicle: it is moving, and the pad camera turns to follow it by itself)
+        const turned =
+          rig === 'pad'
+            ? Math.hypot(b.craftNdc[0] - a.craftNdc[0], b.craftNdc[1] - a.craftNdc[1]) > 0.05
+            : ang(a.dir, b.dir) > 0.02 || ang(side(a), side(b)) > 0.02;
+        for (let i = 0; i < 5; i++) {
+          await h.wheel(720, 300, about ? 120 : -120); // (out round the vehicle; a longer lens on board and at the pad camera)
+          await h.wait(30);
+        }
+        await h.wait(900);
+        const c = await h.probe();
+        const zoomed = about ? far(c) > 1.3 * far(b) : c.fov < 0.87 * b.fov;
+        check(
+          turned && zoomed,
+          `${when}, ${rig}: a drag ${turned ? 'turned' : 'DID NOT turn'} the view, the wheel ${zoomed ? 'zoomed' : 'DID NOT zoom'} it`,
+        );
+        await h.page.keyboard.press('0');
+      }
+    };
+    await tried('on the pad');
+    await h.page.keyboard.press('Space');
+    await h.wait(4000);
+    await tried('after ignition');
+    await h.page.keyboard.press('Escape');
+    await h.wait(2500);
+  },
   // Flying free used to leave the orbit's pivot two metres in front of the lens.
   async 'free, and back to orbit'(h) {
     await h.page.evaluate(() => {

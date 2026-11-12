@@ -1,9 +1,16 @@
 // The performance benchmark: what a frame costs, what the page weighs and how long it takes to open.
 //   node tools/bench.mjs [--out <dir>] [--label <name>] [--reps 3] [--frames 90] [--only <regex>]
 //                        [--sizes 1440x900@1,1440x900@2,390x800@3] [--looks real,cel]
-//                        [--no-build] [--profile] [--shots <dir>] [--no-load] [--no-soak] [--query <search>]
-//   node tools/bench.mjs --compare old.json new.json      what moved by more than the noise
+//                        [--no-build] [--profile] [--shots <dir>] [--no-load] [--no-soak] [--soak 60]
+//                        [--dist <dir>] [--query <search>] [--name a]            what is measured (default: this tree, built now)
+//                        [--b-dist <dir>] [--b-query <search>] [--b-name b]      and what it is measured against, turn about
+//   node tools/bench.mjs --compare old.json new.json      what moved by more than the noise (file.json#b: that variant of a run of two)
 //   node tools/bench.mjs --diff-shots <dir a> <dir b>     pixels that differ between two --shots runs
+//
+// Other work on the machine moves every figure by tens of per cent from one minute to the next, so two runs made at
+// different times say little. To compare two builds, or one build with a switch thrown (`--b-query plain`), give
+// both to one run: each scenario is run on one and then the other, repeat by repeat, and the run ends with the
+// comparison and, with --shots, the pixels that differ.
 //
 // It builds the production bundle into node_modules/.bench/dist and serves it with `vite preview` on a free port of
 // its own (never the dev server), in Chrome with vsync and the frame-rate limit off. Nothing in the page knows it is
@@ -68,9 +75,17 @@ const FIGURES = [
   ['geometries', 'geometries', true],
 ];
 
-function compare(oldFile, newFile) {
-  const a = JSON.parse(readFileSync(oldFile, 'utf8'));
-  const b = JSON.parse(readFileSync(newFile, 'utf8'));
+/** A result file, or one variant of a run that had two (`file.json#b`). */
+function read(file) {
+  const [path, variant] = file.split('#');
+  const whole = JSON.parse(readFileSync(path, 'utf8'));
+  const names = Object.keys(whole.variants);
+  const name = variant ?? names[0];
+  if (!whole.variants[name]) throw new Error(`${path} has no variant ${name}: it has ${names.join(', ')}`);
+  return { ...whole.variants[name], label: `${whole.label}${names.length > 1 ? `#${name}` : ''}`, when: whole.when };
+}
+
+function compare(a, b) {
   const rows = [['scenario', 'figure', 'old', '±', 'new', '±', 'change', '']];
   let worse = 0;
   let better = 0;
@@ -144,7 +159,7 @@ function compare(oldFile, newFile) {
 }
 
 if (args[0] === '--compare') {
-  process.exit(compare(args[1], args[2]) ? 1 : 0);
+  process.exit(compare(read(args[1]), read(args[2])) ? 1 : 0);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -168,6 +183,7 @@ async function diffShots(dirA, dirB) {
   const page = await browser.newPage();
   const rows = [['shot', 'pixels', 'differ', 'by 1 level', 'most', 'verdict']];
   let failed = 0;
+  let same = 0;
   for (const name of readdirSync(dirA)
     .filter((f) => f.endsWith('.png'))
     .sort()) {
@@ -210,15 +226,17 @@ async function diffShots(dirA, dirB) {
     );
     const verdict = d.differ === 0 ? 'identical' : d.differ < 0 ? 'SIZES DIFFER' : d.most <= 1 ? 'rounding' : 'DIFFERENT';
     if (verdict === verdict.toUpperCase()) failed++;
+    if (verdict === 'identical') same++;
     rows.push([name, d.pixels, d.differ, d.one, d.most, verdict]);
   }
   await browser.close();
-  console.log(table(rows));
-  return failed;
+  const text = `${table(rows)}\n\n${rows.length - 1} pictures: ${same} identical to the last bit, ${rows.length - 1 - same - failed} differing by one level at most, ${failed} different`;
+  console.log(text);
+  return { failed, text };
 }
 
 if (args[0] === '--diff-shots') {
-  process.exit((await diffShots(args[1], args[2])) ? 1 : 0);
+  process.exit((await diffShots(args[1], args[2])).failed ? 1 : 0);
 }
 
 const out = resolve(opt('--out', join(ROOT, 'node_modules/.bench/results')));
@@ -240,12 +258,17 @@ const noBuild = flag('--no-build');
 const noLoad = flag('--no-load');
 const noSoak = flag('--no-soak');
 const SOAK = Number(opt('--soak', 60));
-const query = opt('--query', ''); // added to the page's address: a switch the page reads (`?plain`), for an A/B within one build
-mkdirSync(out, { recursive: true });
-if (shots) mkdirSync(shots, { recursive: true });
-
-const DIST = join(ROOT, 'node_modules/.bench', profile ? 'dist-profile' : 'dist');
 const vite = join(ROOT, 'node_modules/.bin/vite');
+const BUILT = join(ROOT, 'node_modules/.bench', profile ? 'dist-profile' : 'dist');
+// what is measured, and what it is measured against: a build (this tree's unless another is given) and a switch in the address
+const variants = [{ name: opt('--name', 'a'), dist: resolve(opt('--dist', BUILT)), query: opt('--query', '') }];
+{
+  const dist = opt('--b-dist', null);
+  const query = opt('--b-query', null);
+  const name = opt('--b-name', 'b');
+  if (dist !== null || query !== null) variants.push({ name, dist: resolve(dist ?? variants[0].dist), query: query ?? '' });
+}
+mkdirSync(out, { recursive: true });
 
 function run(cmd, argv) {
   return new Promise((done, fail) => {
@@ -266,28 +289,12 @@ const freePort = () =>
     });
   });
 
-if (!noBuild) {
+if (!noBuild && variants.some((v) => v.dist === BUILT)) {
   process.stderr.write('building…\n');
-  await run(vite, ['build', '--outDir', DIST, '--emptyOutDir', ...(profile ? ['--minify', 'false'] : [])]);
-}
-const port = await freePort();
-const server = spawn(vite, ['preview', '--outDir', DIST, '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
-  cwd: ROOT,
-  stdio: ['ignore', 'pipe', 'pipe'],
-});
-const stop = () => server.kill();
-process.on('exit', stop);
-process.on('SIGINT', () => process.exit(130));
-const URL_ = `http://127.0.0.1:${port}/`;
-for (let i = 0; ; i++) {
-  try {
-    if ((await fetch(URL_)).ok) break;
-  } catch {}
-  if (i > 100) throw new Error('vite preview did not start');
-  await new Promise((r) => setTimeout(r, 100));
+  await run(vite, ['build', '--outDir', BUILT, '--emptyOutDir', ...(profile ? ['--minify', 'false'] : [])]);
 }
 
-/** What the files of the build weigh, as they are and as GitHub Pages serves them (it gzips text, scripts, JSON and wasm; not models or images). */
+/** What the files of a build weigh, as they are and as GitHub Pages serves them (it gzips text, scripts, JSON and wasm; not models or images). */
 function weigh(dir, base = dir, found = {}) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
@@ -300,18 +307,48 @@ function weigh(dir, base = dir, found = {}) {
   }
   return found;
 }
-const weights = weigh(DIST);
 const KIND = {
   '.js': 'script',
   '.css': 'style',
   '.html': 'page',
   '.glb': 'model',
   '.png': 'map',
+  '.jpg': 'map',
+  '.ktx2': 'map',
   '.json': 'data',
   '.wasm': 'wasm',
   '.svg': 'image',
-  '.ktx2': 'map',
 };
+
+// each build is served by a `vite preview` of its own, on a free port: never the dev server
+const servers = new Map();
+for (const v of variants) {
+  if (!servers.has(v.dist)) {
+    const port = await freePort();
+    const child = spawn(vite, ['preview', '--outDir', v.dist, '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    servers.set(v.dist, { child, url: `http://127.0.0.1:${port}/`, weights: weigh(v.dist) });
+  }
+  const s = servers.get(v.dist);
+  v.url = s.url;
+  v.weights = s.weights;
+  v.address = `${s.url}${v.query ? `?${v.query}` : ''}#pad`;
+}
+const stop = () => {
+  for (const s of servers.values()) s.child.kill();
+};
+process.on('exit', stop);
+process.on('SIGINT', () => process.exit(130));
+for (const s of servers.values())
+  for (let i = 0; ; i++) {
+    try {
+      if ((await fetch(s.url)).ok) break;
+    } catch {}
+    if (i > 100) throw new Error('vite preview did not start');
+    await new Promise((r) => setTimeout(r, 100));
+  }
 
 // ---------------------------------------------------------------------------------------------------------------
 // in the page
@@ -631,7 +668,9 @@ function inPage(DT) {
       const s = scenarios[name];
       if (!(s.keep && kept)) await reset();
       kept = Boolean(s.keep);
+      const began = now();
       await s.setup();
+      const setupMs = now() - began;
       for (let i = 0; i < 12; i++) {
         s.each?.(i);
         frame(s.force);
@@ -692,6 +731,7 @@ function inPage(DT) {
       own();
       s.done?.();
       return {
+        setupMs,
         times,
         drew,
         ...info,
@@ -782,6 +822,12 @@ function watchLoad() {
       sr = v;
       const st = v.stage;
       seen('script');
+      // (`load` was called before the page set `sr`; when the coarser levels and the place had all arrived is noted instead)
+      const warm0 = st.warm;
+      st.warm = function (...a) {
+        void Promise.allSettled(this.arriving).then(() => seen('arrived'));
+        return warm0.apply(this, a);
+      };
       for (const name of ['warm']) {
         const was = st[name];
         st[name] = async function (...a) {
@@ -842,7 +888,7 @@ async function ready(page) {
 // load
 // ---------------------------------------------------------------------------------------------------------------
 
-async function measureLoad(browser, net) {
+async function measureLoad(browser, v, net) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
@@ -860,7 +906,7 @@ async function measureLoad(browser, net) {
   cdp.on('Network.responseReceived', (e) => urls.set(e.requestId, e.response.url));
   cdp.on('Network.loadingFinished', (e) => got.set(e.requestId, e.encodedDataLength));
   await page.addInitScript(watchLoad);
-  await page.goto(`${URL_}${query ? `?${query}` : ''}#pad`);
+  await page.goto(v.address);
   await ready(page);
   const marks = await page.evaluate(() => {
     const st = window.sr.stage;
@@ -877,9 +923,9 @@ async function measureLoad(browser, net) {
   let bytes = 0;
   let pagesBytes = 0;
   for (const [id, n] of got) {
-    const path = new URL(urls.get(id) ?? URL_).pathname;
+    const path = new URL(urls.get(id) ?? v.url).pathname;
     const kind = KIND[extname(path)] ?? 'other';
-    const w = weights[path === '/' ? '/index.html' : path];
+    const w = v.weights[path === '/' ? '/index.html' : path];
     kinds[kind] = (kinds[kind] ?? 0) + (w?.raw ?? n);
     bytes += w?.raw ?? n;
     pagesBytes += w?.pages ?? n;
@@ -888,9 +934,9 @@ async function measureLoad(browser, net) {
   return {
     script: marks.script,
     firstFrame: marks.firstFrame,
-    done: marks.done,
-    ready: marks.ready,
     models: marks.models,
+    arrived: marks.arrived,
+    ready: marks.ready,
     warmMs: marks.warmMs,
     compileMs: marks.compile,
     longest: marks.longest,
@@ -903,7 +949,7 @@ async function measureLoad(browser, net) {
     requests: got.size,
     bytes,
     pagesBytes,
-    ...Object.fromEntries(Object.entries(kinds).map(([k, v]) => [`bytes.${k}`, v])),
+    ...Object.fromEntries(Object.entries(kinds).map(([k, n]) => [`bytes.${k}`, n])),
   };
 }
 
@@ -911,163 +957,14 @@ async function measureLoad(browser, net) {
 // the run
 // ---------------------------------------------------------------------------------------------------------------
 
-const browser = await chromium.launch({ channel: 'chrome', args: CHROME });
-const result = {
-  label,
-  when: new Date().toISOString(),
-  reps: REPS,
-  frames: FRAMES,
-  chrome: browser.version(),
-  scenarios: {},
-  load: {},
-  soak: null,
-  profiles: {},
-  build: {
-    files: Object.keys(weights).length,
-    raw: Object.values(weights).reduce((a, w) => a + w.raw, 0),
-    pages: Object.values(weights).reduce((a, w) => a + w.pages, 0),
-    byKind: Object.entries(weights).reduce((a, [path, w]) => {
-      const kind = KIND[extname(path)] ?? 'other';
-      a[kind] = (a[kind] ?? 0) + w.raw;
-      return a;
-    }, {}),
-  },
-};
-const summary = (values) => ({ median: median(values), spread: spreadOf(values), values });
-
-if (!noLoad && only.test('load')) {
-  for (const [name, net] of [
-    ['local', null],
-    ['20 Mbit', { mbps: 20, latency: 20 }],
-  ]) {
-    const runs = [];
-    for (let i = 0; i < REPS; i++) {
-      runs.push(await measureLoad(browser, net));
-      process.stderr.write(`load ${name} ${i + 1}/${REPS}: ready ${runs.at(-1).ready.toFixed(0)} ms\n`);
-    }
-    result.load[name] = Object.fromEntries(Object.keys(runs[0]).map((k) => [k, summary(runs.map((r) => r[k] ?? Number.NaN))]));
-  }
-}
-
-const errors = [];
-for (const size of sizes) {
-  const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, deviceScaleFactor: size.ratio });
-  const page = await context.newPage();
-  page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  await page.goto(`${URL_}${query ? `?${query}` : ''}#pad`);
-  await ready(page);
-  await page.addStyleTag({ content: '.title, .callout { display: none !important }' });
-  const { names, passes } = await page.evaluate(inPage, 1 / 60);
-  result.passes = passes;
-  const wanted = names.filter((n) => only.test(n));
-  const cdp = profile ? await context.newCDPSession(page) : null;
-  if (cdp) await cdp.send('Profiler.enable');
-  for (const look of looks) {
-    if (!wanted.length) break;
-    await page.evaluate((l) => window.__bench.setLook(l), look);
-    for (let rep = 0; rep < REPS; rep++) {
-      for (const name of wanted) {
-        const key = `${size.name} ${look} · ${name}`;
-        if (cdp && rep === 0) await cdp.send('Profiler.start');
-        let one;
-        try {
-          one = await page.evaluate(([n, f]) => window.__bench.run(n, f), [name, FRAMES]);
-        } catch (e) {
-          errors.push(`${key}: ${String(e).slice(0, 300)}`);
-          process.stderr.write(`${key}: failed: ${String(e).slice(0, 200)}\n`);
-          continue;
-        }
-        if (cdp && rep === 0) result.profiles[key] = top((await cdp.send('Profiler.stop')).profile);
-        const sorted = [...one.times].sort((a, b) => a - b);
-        const mean = one.times.reduce((a, b) => a + b, 0) / one.times.length;
-        const into = (result.scenarios[key] ??= { runs: [] });
-        into.runs.push({
-          ms: mean,
-          p99: sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.99) - 1)],
-          worst: sorted.at(-1),
-          drew: one.drew,
-          calls: one.calls,
-          triangles: one.triangles,
-          shadowMs: one.shadowMs,
-          plainMs: one.plainMs,
-          shadowCalls: one.shadowCalls,
-          programs: one.programs,
-          textures: one.textures,
-          geometries: one.geometries,
-          heapGrew: one.heapGrew,
-          passes: one.passes,
-          raf: one.raf,
-          levels: one.levels,
-        });
-        process.stderr.write(`${key} [${rep + 1}/${REPS}]: ${mean.toFixed(2)} ms, ${one.calls} calls\n`);
-      }
-    }
-    if (shots)
-      for (const name of wanted) {
-        await page.evaluate((n) => window.__bench.still(n), name);
-        await page.addStyleTag({ content: '#ui { visibility: hidden !important }' }).then(async (tag) => {
-          await page.screenshot({ path: join(shots, `${size.name} ${look} ${name}.png`.replace(/[ +·]+/g, '-')) });
-          await tag.evaluate((el) => el.remove());
-        });
-        await page.evaluate(() => window.__bench.unfreeze());
-      }
-  }
-  // the soak: once, at the first size, in the real look
-  if (!noSoak && size === sizes[0] && only.test('soak')) {
-    await page.evaluate(() => window.__bench.setLook('real'));
-    const trace = await context.newCDPSession(page);
-    const gcs = [];
-    trace.on('Tracing.dataCollected', (e) => {
-      for (const ev of e.value)
-        if (/^(MinorGC|MajorGC|V8\.GC_|V8\.GCScavenger|V8\.GCFinalizeMC)/.test(ev.name) && ev.ph === 'X')
-          gcs.push({ name: ev.name, ms: ev.dur / 1000 });
-    });
-    await trace.send('Tracing.start', {
-      transferMode: 'ReportEvents',
-      traceConfig: { includedCategories: ['v8', 'devtools.timeline', 'disabled-by-default-v8.gc'] },
-    });
-    const { gaps, heap } = await page.evaluate((s) => window.__bench.soak(s), SOAK);
-    const ended = new Promise((done) => trace.once('Tracing.tracingComplete', done));
-    await trace.send('Tracing.end');
-    await ended;
-    const sorted = [...gaps].sort((a, b) => a - b);
-    const mid = median(gaps);
-    const main = gcs.filter((g) => g.name === 'MinorGC' || g.name === 'MajorGC');
-    result.soak = {
-      seconds: SOAK,
-      frames: gaps.length,
-      ms: gaps.reduce((a, b) => a + b, 0) / gaps.length,
-      median: mid,
-      p99: sorted[Math.ceil(sorted.length * 0.99) - 1],
-      p999: sorted[Math.ceil(sorted.length * 0.999) - 1],
-      worst: sorted.at(-1),
-      // a hitch is a frame that took three times the usual and at least 8 ms more
-      hitches: gaps.filter((g) => g > 3 * mid && g > mid + 8).length,
-      over33: gaps.filter((g) => g > 33.4).length,
-      minorGC: main.filter((g) => g.name === 'MinorGC').length,
-      majorGC: main.filter((g) => g.name === 'MajorGC').length,
-      gcMs: main.reduce((a, g) => a + g.ms, 0),
-      gcWorst: Math.max(0, ...main.map((g) => g.ms)),
-      heapMin: Math.min(...heap) / 1e6,
-      heapMax: Math.max(...heap) / 1e6,
-    };
-    process.stderr.write(`soak: ${result.soak.frames} frames, ${result.soak.hitches} hitches, worst ${result.soak.worst.toFixed(1)} ms\n`);
-  }
-  await context.close();
-}
-await browser.close();
-stop();
-
 /** The functions a CPU profile spent the most of its own time in. */
-function top(prof, n = 25) {
+function top(prof, n = 30) {
   const self = new Map();
   const dt = prof.timeDeltas ?? [];
   const byId = new Map(prof.nodes.map((node) => [node.id, node]));
   let total = 0;
   prof.samples.forEach((id, i) => {
-    const node = byId.get(id);
-    const f = node.callFrame;
+    const f = byId.get(id).callFrame;
     const where = `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.lineNumber + 1}`;
     self.set(where, (self.get(where) ?? 0) + (dt[i] ?? 0));
     total += dt[i] ?? 0;
@@ -1078,15 +975,183 @@ function top(prof, n = 25) {
     .map(([where, us]) => ({ where, ms: us / 1000, share: us / total }));
 }
 
-for (const s of Object.values(result.scenarios)) {
-  for (const [id] of FIGURES) s[id] = summary(s.runs.map((r) => r[id]));
-  s.drew = median(s.runs.map((r) => r.drew));
-  s.heapGrew = median(s.runs.map((r) => r.heapGrew));
-  s.levels = s.runs[0].levels;
-  s.passes = {};
-  for (const k of Object.keys(s.runs[0].passes)) s.passes[k] = median(s.runs.map((r) => r.passes[k] ?? 0));
+const browser = await chromium.launch({ channel: 'chrome', args: CHROME });
+const summary = (values) => ({ median: median(values), spread: spreadOf(values), values });
+const result = { label, when: new Date().toISOString(), reps: REPS, frames: FRAMES, chrome: browser.version(), variants: {} };
+for (const v of variants) {
+  const w = Object.entries(v.weights);
+  result.variants[v.name] = {
+    dist: v.dist,
+    query: v.query,
+    scenarios: {},
+    load: {},
+    soak: null,
+    profiles: {},
+    errors: [],
+    build: {
+      files: w.length,
+      raw: w.reduce((a, [, x]) => a + x.raw, 0),
+      pages: w.reduce((a, [, x]) => a + x.pages, 0),
+      byKind: w.reduce((a, [path, x]) => {
+        const kind = KIND[extname(path)] ?? 'other';
+        a[kind] = (a[kind] ?? 0) + x.raw;
+        return a;
+      }, {}),
+    },
+  };
 }
-result.errors = [...new Set(errors)];
+const of = (v) => result.variants[v.name];
+
+if (!noLoad && only.test('load')) {
+  for (const [name, net] of [
+    ['local', null],
+    ['20 Mbit', { mbps: 20, latency: 20 }],
+  ]) {
+    const runs = new Map(variants.map((v) => [v, []]));
+    for (let i = 0; i < REPS; i++)
+      for (const v of variants) {
+        runs.get(v).push(await measureLoad(browser, v, net));
+        process.stderr.write(`${v.name}: load ${name} ${i + 1}/${REPS}: ready ${runs.get(v).at(-1).ready.toFixed(0)} ms\n`);
+      }
+    for (const v of variants)
+      of(v).load[name] = Object.fromEntries(
+        Object.keys(runs.get(v)[0]).map((k) => [k, summary(runs.get(v).map((r) => r[k] ?? Number.NaN))]),
+      );
+  }
+}
+
+async function soak(context, page) {
+  const trace = await context.newCDPSession(page);
+  const gcs = [];
+  trace.on('Tracing.dataCollected', (e) => {
+    for (const ev of e.value)
+      if ((ev.name === 'MinorGC' || ev.name === 'MajorGC') && ev.ph === 'X') gcs.push({ name: ev.name, ms: ev.dur / 1000 });
+  });
+  await trace.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig: { includedCategories: ['v8', 'devtools.timeline'] } });
+  const { gaps, heap } = await page.evaluate((s) => window.__bench.soak(s), SOAK);
+  const ended = new Promise((done) => trace.once('Tracing.tracingComplete', done));
+  await trace.send('Tracing.end');
+  await ended;
+  await trace.detach();
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const mid = median(gaps);
+  return {
+    seconds: SOAK,
+    frames: gaps.length,
+    ms: gaps.reduce((a, b) => a + b, 0) / gaps.length,
+    median: mid,
+    p99: sorted[Math.ceil(sorted.length * 0.99) - 1],
+    p999: sorted[Math.ceil(sorted.length * 0.999) - 1],
+    worst: sorted.at(-1),
+    // a hitch is a frame that took three times the usual and at least 8 ms more
+    hitches: gaps.filter((g) => g > 3 * mid && g > mid + 8).length,
+    over33: gaps.filter((g) => g > 33.4).length,
+    minorGC: gcs.filter((g) => g.name === 'MinorGC').length,
+    majorGC: gcs.filter((g) => g.name === 'MajorGC').length,
+    gcMs: gcs.reduce((a, g) => a + g.ms, 0),
+    gcWorst: Math.max(0, ...gcs.map((g) => g.ms)),
+    heapMin: Math.min(...heap) / 1e6,
+    heapMax: Math.max(...heap) / 1e6,
+  };
+}
+
+const shotName = (size, look, name) => `${size.name} ${look} ${name}.png`.replace(/[ +·]+/g, '-');
+for (const size of sizes) {
+  // a page for each of what is compared, in one browser: only the one being measured is doing anything
+  const open = [];
+  for (const v of variants) {
+    const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, deviceScaleFactor: size.ratio });
+    const page = await context.newPage();
+    page.on('pageerror', (e) => of(v).errors.push(String(e)));
+    page.on('console', (m) => m.type() === 'error' && of(v).errors.push(m.text()));
+    await page.goto(v.address);
+    await ready(page);
+    await page.addStyleTag({ content: '.title, .callout { display: none !important }' });
+    const { names, passes } = await page.evaluate(inPage, 1 / 60);
+    of(v).passes = passes;
+    const cdp = profile ? await context.newCDPSession(page) : null;
+    if (cdp) await cdp.send('Profiler.enable');
+    open.push({ v, context, page, names, cdp });
+  }
+  const wanted = open[0].names.filter((n) => only.test(n));
+  for (const look of looks) {
+    if (!wanted.length) break;
+    for (const o of open) await o.page.evaluate((l) => window.__bench.setLook(l), look);
+    for (let rep = 0; rep < REPS; rep++) {
+      for (const name of wanted) {
+        const key = `${size.name} ${look} · ${name}`;
+        // turn about, and the one that goes first changes with each repeat
+        for (const o of rep % 2 ? [...open].reverse() : open) {
+          await o.page.bringToFront();
+          if (o.cdp && rep === 0) await o.cdp.send('Profiler.start');
+          let one;
+          try {
+            one = await o.page.evaluate(([n, f]) => window.__bench.run(n, f), [name, FRAMES]);
+          } catch (e) {
+            of(o.v).errors.push(`${key}: ${String(e).slice(0, 300)}`);
+            process.stderr.write(`${o.v.name}: ${key}: failed: ${String(e).slice(0, 200)}\n`);
+            if (o.cdp && rep === 0) await o.cdp.send('Profiler.stop');
+            continue;
+          }
+          if (o.cdp && rep === 0) of(o.v).profiles[key] = top((await o.cdp.send('Profiler.stop')).profile);
+          const sorted = [...one.times].sort((a, b) => a - b);
+          const mean = one.times.reduce((a, b) => a + b, 0) / one.times.length;
+          (of(o.v).scenarios[key] ??= { runs: [] }).runs.push({
+            ...one,
+            times: undefined,
+            ms: mean,
+            p99: sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.99) - 1)],
+            worst: sorted.at(-1),
+          });
+          process.stderr.write(
+            `${o.v.name}: ${key} [${rep + 1}/${REPS}]: ${mean.toFixed(2)} ms, ${one.calls} calls (set up in ${(one.setupMs / 1000).toFixed(1)} s)\n`,
+          );
+        }
+      }
+    }
+    if (shots)
+      for (const o of open) {
+        const dir = join(shots, o.v.name);
+        mkdirSync(dir, { recursive: true });
+        await o.page.bringToFront();
+        for (const name of wanted) {
+          try {
+            await o.page.evaluate((n) => window.__bench.still(n), name);
+          } catch (e) {
+            of(o.v).errors.push(`shot ${name}: ${String(e).slice(0, 300)}`);
+            continue;
+          }
+          const hide = await o.page.addStyleTag({ content: '#ui { visibility: hidden !important }' });
+          await o.page.screenshot({ path: join(dir, shotName(size, look, name)) });
+          await hide.evaluate((el) => el.remove());
+          await o.page.evaluate(() => window.__bench.unfreeze());
+        }
+      }
+  }
+  // the soak: once, at the first size, in the real look
+  if (!noSoak && size === sizes[0] && only.test('soak'))
+    for (const o of open) {
+      await o.page.bringToFront();
+      await o.page.evaluate(() => window.__bench.setLook('real'));
+      const k = (of(o.v).soak = await soak(o.context, o.page));
+      process.stderr.write(`${o.v.name}: soak: ${k.frames} frames, ${k.hitches} hitches, worst ${k.worst.toFixed(1)} ms\n`);
+    }
+  for (const o of open) await o.context.close();
+}
+await browser.close();
+stop();
+
+for (const r of Object.values(result.variants)) {
+  for (const s of Object.values(r.scenarios)) {
+    for (const [id] of FIGURES) s[id] = summary(s.runs.map((x) => x[id]));
+    s.drew = median(s.runs.map((x) => x.drew));
+    s.heapGrew = median(s.runs.map((x) => x.heapGrew));
+    s.levels = s.runs[0].levels;
+    s.passes = {};
+    for (const k of Object.keys(s.runs[0].passes)) s.passes[k] = median(s.runs.map((x) => x.passes[k] ?? 0));
+  }
+  r.errors = [...new Set(r.errors)];
+}
 
 const lines = [];
 lines.push(
@@ -1095,105 +1160,111 @@ lines.push(
   `${result.when} · Chrome ${result.chrome} · ${REPS} repeats of ${FRAMES} frames · times in ms, GPU finished`,
   '',
 );
-if (Object.keys(result.load).length) {
-  lines.push('## load (cold cache, 1440x900@1, #pad)', '');
-  const keys = Object.keys(Object.values(result.load)[0]);
+for (const [name, r] of Object.entries(result.variants)) {
+  lines.push(`# ${name}: ${r.dist.replace(`${ROOT}/`, '')}${r.query ? ` ?${r.query}` : ''}`, '');
+  if (Object.keys(r.load).length) {
+    lines.push('## load (cold cache, 1440x900@1, #pad; ms, bytes, MB of heap)', '');
+    const keys = Object.keys(Object.values(r.load)[0]);
+    const n = (k) => (k.startsWith('heap') ? 1 : 0);
+    lines.push(
+      '```',
+      table([
+        ['', ...Object.keys(r.load).flatMap((net) => [net, '±'])],
+        ...keys.map((k) => [k, ...Object.values(r.load).flatMap((l) => [fix(l[k].median, n(k)), fix(l[k].spread, n(k))])]),
+      ]),
+      '```',
+      '',
+    );
+  }
   lines.push(
-    '```',
-    table([
-      ['', ...Object.keys(result.load).flatMap((n) => [n, '±'])],
-      ...keys.map((k) => [
-        k,
-        ...Object.values(result.load).flatMap((l) => [
-          fix(l[k].median, k.startsWith('heap') ? 1 : 0),
-          fix(l[k].spread, k.startsWith('heap') ? 1 : 0),
+    `build: ${r.build.files} files, ${(r.build.raw / 1e6).toFixed(2)} MB (${(r.build.pages / 1e6).toFixed(2)} MB as Pages serves it): ${Object.entries(
+      r.build.byKind,
+    )
+      .map(([k, n]) => `${k} ${(n / 1e6).toFixed(2)}`)
+      .join(', ')}`,
+    '',
+  );
+  if (Object.keys(r.scenarios).length) {
+    lines.push('## frames', '');
+    const passNames = [...new Set(Object.values(r.scenarios).flatMap((s) => Object.keys(s.passes)))];
+    lines.push(
+      '```',
+      table([
+        [
+          'scenario',
+          'ms',
+          '±',
+          '1% low',
+          'worst',
+          'drawn',
+          'calls',
+          'tris',
+          'own loop',
+          'shadow ms',
+          'shadow calls',
+          'progs',
+          'tex',
+          'geo',
+          'lod',
+          '|',
+          ...passNames,
+        ],
+        ...Object.entries(r.scenarios).map(([key, s]) => [
+          key,
+          fix(s.ms.median),
+          fix(s.ms.spread),
+          fix(s.p99.median),
+          fix(s.worst.median),
+          `${s.drew}/${FRAMES}`,
+          fix(s.calls.median, 0),
+          fix(s.triangles.median, 0),
+          fix(s.raf.median),
+          fix(s.shadowMs.median),
+          fix(s.shadowCalls.median, 0),
+          fix(s.programs.median, 0),
+          fix(s.textures.median, 0),
+          fix(s.geometries.median, 0),
+          s.levels.join('/'),
+          '|',
+          ...passNames.map((p) => fix(s.passes[p])),
         ]),
       ]),
-    ]),
-    '```',
-    '',
-  );
+      '```',
+      '',
+    );
+  }
+  if (r.soak) {
+    const k = r.soak;
+    lines.push(
+      '## soak',
+      '',
+      `${k.seconds} s of the record's flight from T-3 in the chase view, on the page's own loop: ${k.frames} frames, mean ${fix(k.ms)} ms, median ${fix(k.median)}, 99 % ${fix(k.p99)}, 99.9 % ${fix(k.p999)}, worst ${fix(k.worst)}; ${k.hitches} hitches (three times the median and 8 ms over it), ${k.over33} frames over 33 ms; ${k.minorGC} minor and ${k.majorGC} major collections, ${fix(k.gcMs, 1)} ms in all, the longest ${fix(k.gcWorst, 1)} ms; heap ${fix(k.heapMin, 0)} to ${fix(k.heapMax, 0)} MB`,
+      '',
+    );
+  }
+  for (const [key, rows] of Object.entries(r.profiles))
+    lines.push(
+      `### profile: ${key}`,
+      '',
+      '```',
+      table([['self ms', 'share', 'function'], ...rows.map((x) => [fix(x.ms, 1), `${(x.share * 100).toFixed(1)} %`, x.where])]),
+      '```',
+      '',
+    );
+  if (r.errors.length) lines.push('## errors', '', ...r.errors.map((e) => `- ${e}`), '');
 }
-lines.push(
-  `build: ${result.build.files} files, ${(result.build.raw / 1e6).toFixed(2)} MB (${(result.build.pages / 1e6).toFixed(2)} MB as Pages serves it): ${Object.entries(
-    result.build.byKind,
-  )
-    .map(([k, v]) => `${k} ${(v / 1e6).toFixed(2)}`)
-    .join(', ')}`,
-  '',
-);
-if (Object.keys(result.scenarios).length) {
-  lines.push('## frames', '');
-  const passNames = [...new Set(Object.values(result.scenarios).flatMap((s) => Object.keys(s.passes)))];
-  lines.push(
-    '```',
-    table([
-      [
-        'scenario',
-        'ms',
-        '±',
-        '1% low',
-        'worst',
-        'drawn',
-        'calls',
-        'tris',
-        'own loop',
-        'shadow ms',
-        'shadow calls',
-        'progs',
-        'tex',
-        'geo',
-        'lod',
-        '|',
-        ...passNames,
-      ],
-      ...Object.entries(result.scenarios).map(([key, s]) => [
-        key,
-        fix(s.ms.median),
-        fix(s.ms.spread),
-        fix(s.p99.median),
-        fix(s.worst.median),
-        `${s.drew}/${FRAMES}`,
-        fix(s.calls.median, 0),
-        fix(s.triangles.median, 0),
-        fix(s.raf.median),
-        fix(s.shadowMs.median),
-        fix(s.shadowCalls.median, 0),
-        fix(s.programs.median, 0),
-        fix(s.textures.median, 0),
-        fix(s.geometries.median, 0),
-        s.levels.join('/'),
-        '|',
-        ...passNames.map((p) => fix(s.passes[p])),
-      ]),
-    ]),
-    '```',
-    '',
-  );
-}
-if (result.soak) {
-  const k = result.soak;
-  lines.push(
-    '## soak',
-    '',
-    `${k.seconds} s of the record's flight from T-3 in the chase view, on the page's own loop: ${k.frames} frames, mean ${fix(k.ms)} ms, median ${fix(k.median)}, 99 % ${fix(k.p99)}, 99.9 % ${fix(k.p999)}, worst ${fix(k.worst)}; ${k.hitches} hitches (three times the median and 8 ms over it), ${k.over33} frames over 33 ms; ${k.minorGC} minor and ${k.majorGC} major collections, ${fix(k.gcMs, 1)} ms in all, the longest ${fix(k.gcWorst, 1)} ms; heap ${fix(k.heapMin, 0)} to ${fix(k.heapMax, 0)} MB`,
-    '',
-  );
-}
-for (const [key, rows] of Object.entries(result.profiles)) {
-  lines.push(
-    `### profile: ${key}`,
-    '',
-    '```',
-    table([['self ms', 'share', 'function'], ...rows.map((r) => [fix(r.ms, 1), `${(r.share * 100).toFixed(1)} %`, r.where])]),
-    '```',
-    '',
-  );
-}
-if (result.errors.length) lines.push('## errors', '', ...result.errors.map((e) => `- ${e}`), '');
 
 writeFileSync(join(out, `${label}.json`), JSON.stringify(result));
 writeFileSync(join(out, `${label}.md`), lines.join('\n'));
 console.log(lines.join('\n'));
 console.log(`\n${join(out, `${label}.json`)}\n${join(out, `${label}.md`)}`);
+if (variants.length > 1) {
+  const [a, b] = variants.map((v) => ({ ...of(v), label: v.name, when: result.when }));
+  console.log(`\n# ${variants[1].name} against ${variants[0].name}, turn about in this run\n`);
+  compare(a, b);
+  if (shots) {
+    console.log('');
+    await diffShots(join(shots, variants[0].name), join(shots, variants[1].name));
+  }
+}
 process.exit(0);

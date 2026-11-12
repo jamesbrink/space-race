@@ -1315,9 +1315,8 @@ export class Stage {
   /** The box round one model, or (null) round everything on show: but for a vehicle in flight, which is not part of the place while it is away. */
   private wholeOf(model: THREE.Object3D | null, box: THREE.Box3): THREE.Box3 {
     if (model) return box.setFromObject(model);
-    const away = this.lifted.flying ? this.flier?.group : null;
-    for (const o of this.root?.children ?? []) if (o !== away) box.expandByObject(o);
-    return box;
+    // (the models only: what a flight leaves under the root, shed parts and effects, is not part of the place)
+    return box.copy(this.modelsBox(this.lifted.flying ? this.flier?.group : null));
   }
 
   /** The middle of what `of` names: a part, or a view's subject as `view` frames it. */

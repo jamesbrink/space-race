@@ -438,7 +438,8 @@ export class ChaseRig extends OrbitRig {
     this.middle.copy(craft.centre).applyMatrix4(craft.matrix);
     this.radius = craft.radius;
     this.flying = craft.flying;
-    this.min = Math.max(0.35, 0.25 * craft.radius);
+    // (no nearer by the wheel or the keys than outside its skin; a zoom toward a place on it goes closer, to NEAREST)
+    this.min = Math.max(0.35, 0.75 * craft.radius);
   }
 
   override enter(from: Pose, pivot: THREE.Vector3, resume = false): void {

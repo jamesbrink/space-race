@@ -101,7 +101,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   selectPart: select,
   fnValues: (node) => stage.functions(current.id, node).map((f) => ({ id: f.fn.id, value: f.value, refused: f.refused })),
   setFn: (node, id, v) => stage.setFunction(current.id, node, id, v),
-  inset: (px) => stage.setInset(px),
+  inset: (px, top) => stage.setInset(px, top),
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
 // the flight as the simulator flies it, beside the reports' figures: in the Flight tab

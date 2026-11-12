@@ -30,8 +30,8 @@
 .navball-speed b { font: 500 24px/1.15 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .navball-speed i { margin-left: 5px; font-style: normal; }
 /* three figures that hold their columns as they turn over */
-.navball-att { display: flex; gap: 6px; font-variant-numeric: tabular-nums; }
-.navball-att b { display: inline-block; min-width: 3.4ch; }
+.navball-att { display: flex; gap: 5px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.navball-att b { display: inline-block; min-width: 3ch; }
 .path-read p { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .path-read p span { flex: none; width: 4.6em; text-transform: uppercase; letter-spacing: 0.12em; }
 .path-read.off p { display: none; }
