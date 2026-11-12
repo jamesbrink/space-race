@@ -703,6 +703,15 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 
 ## What the model gets wrong or leaves out
 
+- **Port Canaveral's harbour is two straight reaches of still water** (the entrance channel and one basin,
+  `HARBOUR` in cape1961.ts), round-ended, with no jetties, wharves, sheds or ships, and the beach's sand and
+  surf stop at its banks. Near 15 km up its banks show faint second lines, where the ground's marsh tint
+  follows its own bank a few tens of metres from the shore the globe's map has. Its extent in 1961 is estimated.
+- **What the ground round the pad does not draw comes in from nothing on the way up**: the spoil islands in
+  the Banana and Indian Rivers, the finger canals, the ponds on Merritt Island. Each grows in late in the
+  hand-over to the globe's map (3 to 20 km up) instead of being there from the ground.
+- **From 20 to 70 km the land's colour is soft blotches**: the region's colour map is 450 m a texel (Blue
+  Marble, May 2004), and nothing finer is baked.
 - **Only the structure's height and the cherry picker's reach are published.** Everything else is
   scaled off photographs or the site plan:
   - platform levels, widths and depths;

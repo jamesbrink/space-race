@@ -99,11 +99,17 @@ const ICE = new THREE.Color(0xe4eaee);
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /**
- * Heights of the eye, metres, between which the site's own ground goes over to the globe's colours (land.ts takes
- * them through `beyond`; `uGlobeLift` follows). A long way, so the land's tone changes slowly: a climbing rocket
- * takes half a minute through it. (To 20 km it was the site's greens at 10 km and the map's grey olive at 20.)
+ * Heights of the eye, metres, between which the site's own ground goes over to the globe's surface (land.ts takes
+ * them through `beyond`): by the upper one its own paint is under a pixel and would only shimmer (held to 40 km,
+ * it flipped 210 pixels a frame on the climb at 20 km against 100).
  */
-const LIFT: [number, number] = [3000, 40000];
+const LIFT: [number, number] = [3000, 20000];
+/**
+ * And between which the globe's ground round the site goes from the site's own tones to the map's
+ * (`uGlobeLift`): further, so the land's tone changes slowly, the site's paint giving way first to its one green
+ * and that to the map's grey olive over half a minute of climb. (To 20 km it was green at 10 km and olive at 20.)
+ */
+const LIFT_TONE: [number, number] = [3000, 40000];
 /** How far from a shore the near map keeps a distance, metres (SPREAD texels of 39 m): two shores are moved onto one another within it (`globeShoreOther`). */
 const SHORE_REACH = 300;
 /** The relief and the land's colours come in over this long once they have arrived, milliseconds: no pop. */
@@ -128,7 +134,7 @@ const COLOUR = /* glsl */ `
   uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
   uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
   uniform float uGlobeSurfaced;   // how far the relief and the land's colours have come in since they arrived, 0 to 1
-  uniform float uGlobeLift;   // how far the site's ground has gone over to the globe's colours with the eye's height, 0 to 1
+  uniform float uGlobeLift;   // how far the ground round the site has gone from the site's tones to the map's with the eye's height, 0 to 1
   uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
   uniform samplerCube uGlobeColour;
   uniform sampler2D uGlobeSurfColour;
@@ -243,7 +249,7 @@ const COLOUR = /* glsl */ `
       ground *= mix(1.0, tilted, smoothstep(-0.02, 0.08, level));
     #endif
     // Round the site, until the eye is well up, the land and the sea keep the site's own tones (its canopy's green, its
-    // offshore water: cape.ts), as the site's ground does (LIFT, which uGlobeLift follows): so from a few
+    // offshore water: cape.ts), as the site's ground does (LIFT_TONE, which uGlobeLift follows): so from a few
     // kilometres up the site's square is not a patch of another colour in the map's. Gone by 60 km out and by 40 km up.
     ground = mix(${vec3(LAND)}, ground, uGlobeSurfaced);
     water = mix(deep, water, uGlobeSurfaced);
@@ -819,7 +825,7 @@ export class Globe {
       }
     }
     // (the heights between which the site's ground takes the globe's colours)
-    const lift = Math.round(THREE.MathUtils.smoothstep(eye.y, LIFT[0], LIFT[1]) * 200) / 200;
+    const lift = Math.round(THREE.MathUtils.smoothstep(eye.y, LIFT_TONE[0], LIFT_TONE[1]) * 200) / 200;
     if (this.uniforms.uGlobeLift!.value !== lift) {
       this.uniforms.uGlobeLift!.value = lift;
       changed = true;

@@ -420,8 +420,8 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   site's ground at every height: change the glint in `GLINT` (globe.ts) and both follow.
 - **One coast from every height.** The globe's region map (tools/globe-region.mjs, with the works built since the
   site's day undone: `region.later`) is the coast seen from above; the site's own ground has its own, finer, from the
-  ground. Where the ground is handed over to the globe (by height, globe.ts `LIFT`, 3 to 40 km, which `uGlobeLift`
-  follows; and across the last of its square) the shore is one line moved from the one to the other: the land gives
+  ground. Where the ground is handed over to the globe (by height, globe.ts `LIFT`, 3 to 20 km, its tones
+  going on to the map's by 40 km, `LIFT_TONE`; and across the last of its square) the shore is one line moved from the one to the other: the land gives
   its own distance to its shore (`LandSpec.shore`) and the globe colours with the two mixed (`beyondShore`,
   `globeShoreOther`), within 300 m. Never two shores seen through each other: a site's water must be given as that
   distance, and what the site draws and the globe has must be the same things (the port's harbour is in both).
