@@ -25,6 +25,7 @@ from .common import (
     BOOSTER_R,
     CHAMBER_AT,
     CORE_R_TAIL,
+    FROST_EDGE,
     MM,
     NOZZLES,
     RUDDER_SPAN,
@@ -35,6 +36,8 @@ from .common import (
     booster_r,
     core_frame,
     fin,
+    frost_edge,
+    frost_foot,
     hang,
     pivot,
     scalloped,
@@ -119,7 +122,9 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     cross = deg(35) + deg(90) * math.acos(2 * (BOOSTER_BAY - SHIELD_RIM) / (TAIL_SHIELD - 60 - SHIELD_RIM) - 1) / math.pi
     out, inn = (-math.pi + cross, math.pi - cross), (math.pi - cross, math.pi + cross)
     skin.lathe([(BOOSTER_R, TAIL_SHIELD), (BOOSTER_R, lox0)], 96)
-    frost.lathe([(booster_r(lox0), lox0), (booster_r(lox1), lox1)], 96)
+    turn = deg(az_deg) + 0.9  # the frost's edge is uneven, and each block shows a different stretch of it
+    frost_foot(skin, frost, booster_r, lox0, turn)
+    frost.lathe([(booster_r(lox0 + FROST_EDGE), lox0 + FROST_EDGE), (booster_r(lox1), lox1)], 96)
     skin.lathe([(booster_r(lox1), lox1), (booster_r(NOSE), NOSE)], 96)
     wall.lathe([(BOOSTER_R - 18, 0), (BOOSTER_R - 18, BOOSTER_CYL), (booster_r(lox1 + 300) - 18, lox1 + 300)], 96, flip=True)
     shield.lathe([(BOOSTER_R - 20, 0), (BOOSTER_R, 0)], 96)  # the tail's rim
@@ -152,10 +157,11 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     for i in range(6):
         a = deg(30 + 60 * i)
         welds(skin, a, TAIL_SHIELD + 80, lox0 - 90, frames)
-        welds(frost, a, lox0 + 40, lox1 - 60, frames)
+        welds(frost, a, lox0 + FROST_EDGE + 20, lox1 - 60, frames)
     for a in (deg(120), deg(-120)):
         strip(fit, a, TAIL_SHIELD + 80, lox0 - 80, 150, 70)
-        strip(frost, a, lox0 + 60, 15600, 150, 70)
+        strip(fit, a, lox0 + 60, lox0 + frost_edge(a, turn) - 30, 150, 70)
+        strip(frost, a, lox0 + frost_edge(a, turn) + 30, 15600, 150, 70)
     for a in (deg(90), deg(-90)):
         c, sn = math.cos(a), math.sin(a)
         pod(

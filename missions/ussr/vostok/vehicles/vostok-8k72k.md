@@ -196,7 +196,7 @@ nothing read says the vehicle of April 1961 carried any lettering, and none is m
 | Item | In the model | Confidence | Basis |
 | --- | --- | --- | --- |
 | Skin | a grey-green lacquer | estimated | F: where the film shows the vehicle climbing, the boosters' lower halves are dark grey-green and their upper halves white |
-| Frost | white over each oxygen tank: the boosters' cones above their fuel tanks, the core from its intertank up | estimated | F. The oxygen tanks were bare metal walls at −183 °C. How far the frost reached and how even it was are ours |
+| Frost | white over each oxygen tank: the boosters' cones above their fuel tanks, the core from its intertank up | estimated | F. The oxygen tanks were bare metal walls at −183 °C. Its lower edge is drawn uneven, 130 to 470 mm above each tank's foot, as F has it a little above the boosters' shoulders; the line's shape is ours, and so is the straight upper edge |
 | Fairing and Block E | pale grey | estimated | F: lighter than the bare lacquer, darker than the frost |
 | Tail shields | polished steel | documented (that they were) | M: «из листов полированной стали, под которыми положили слой асбеста», on the side toward the core and across the end |
 
@@ -246,7 +246,9 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   nose cone and the separation switches are not drawn.
 - **Nothing holds it up.** On the pad the vehicle hangs by the boosters' load-bearing fittings in
   the four arms of the launch system; the pad is not built, so in the viewer it stands on nothing.
-- **Frost is a clean white band** with a straight edge.
+- **Frost is one clean white**, with a lower edge that wanders by a hand's breadth or two and a
+  straight upper one. The edge is a drawn line, the same on every block and turned so that each
+  shows a different stretch of it; it is not the frost of any photograph.
 - **Cable ducts, hatches, the scalloped doubler round each booster's tail and the small fairings
   and ports under its engine bay's frame are placed from the Kaluga photographs**, which are of a
   vehicle said to be this flight's spare; which of its fittings the flown one shared has not been
@@ -284,7 +286,8 @@ Recorded as the model was compared, view by view, with K, V, F and N.
   round ports under the engine bay's frame are modelled, on the half of each booster that K
   shows; it has more hatches and pipe fairings than are modelled, and what the core's tail
   carries behind the boosters is not seen in it.
-- **Colour against F.** F's bare skin is darker and greyer than the model's in bright light; the
-  frost's lower edge in F is ragged and lies a little above the boosters' shoulders.
+- **Colour against F.** F's bare skin is darker and greyer than the model's in bright light. The
+  frost's lower edge in F is ragged and lies a little above the boosters' shoulders; the model's
+  now lies there and is uneven, but smoothly so, where F's is torn.
 - **Triangles**: 403,788 at full detail, 204,741 and 98,744 at the two coarser levels, the
   spacecraft's 129 thousand included: less than the Mercury-Redstone stack at each level.

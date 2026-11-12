@@ -23,6 +23,7 @@ from .common import (
     CORE_R_TAIL,
     CORE_TAPER,
     CORE_TOP,
+    FROST_EDGE,
     MM,
     NOZZLES,
     Local,
@@ -31,6 +32,8 @@ from .common import (
     core_frame,
     core_r,
     fin,
+    frost_edge,
+    frost_foot,
 )
 
 SHELLS = ("Core_Skin", "Core_Frost", "Core_TailShield", "Core_InnerWall", "Core_Fittings", "Core_Fasteners", "CoreEngine_Fairings")
@@ -119,12 +122,21 @@ def build(base_z: float, M: dict) -> None:
     shield_top = 1500.0  # the tail's lower part is under polished steel over asbestos
     skin.lathe([(core_r(h), h) for h in (shield_top, CORE_TAPER, lox0)], 96)
     skin.lathe([(core_r(h), h) for h in (lox1, CORE_NECK, CORE_TOP)], 96)
-    frost.lathe([(core_r(h), h) for h in (lox0, BOOSTER_TIP_H, lox1)], 96)
+    frost_foot(skin, frost, core_r, lox0, 0.0)  # the frost's edge is uneven
+    frost.lathe([(core_r(h), h) for h in (lox0 + FROST_EDGE, BOOSTER_TIP_H, lox1)], 96)
     shield.lathe([(CORE_R_TAIL, NOZZLES), (CORE_R_TAIL, shield_top)], 96)
     wall.lathe([(core_r(h) - 20, h) for h in (NOZZLES, CORE_TAPER, BOOSTER_TIP_H, CORE_NECK, CORE_TOP)], 96, flip=True)
     # frames where the tanks' ends and the bays meet the skin, and the heavy one the boosters push on
-    on_lacquer = ((CORE_BAY, 26, 7), (CORE_FUEL[0], 22, 6), (9800, 14, 6), (CORE_FUEL[1], 22, 6), (CORE_NECK, 22, 6), (CORE_TOP - 40, 36, 10))
-    on_frost = ((lox0 + 40, 22, 6), (17500, 14, 6), (BOOSTER_TIP_H, 60, 16), (22000, 14, 6), (24000, 14, 6), (lox1 - 40, 22, 6))
+    on_lacquer = (
+        (CORE_BAY, 26, 7),
+        (CORE_FUEL[0], 22, 6),
+        (9800, 14, 6),
+        (CORE_FUEL[1], 22, 6),
+        (lox0 + 40, 22, 6),
+        (CORE_NECK, 22, 6),
+        (CORE_TOP - 40, 36, 10),
+    )
+    on_frost = ((17500, 14, 6), (BOOSTER_TIP_H, 60, 16), (22000, 14, 6), (24000, 14, 6), (lox1 - 40, 22, 6))
     for h, half, proud in on_lacquer:
         band(skin, h, half, proud)
     for h, half, proud in on_frost:
@@ -136,12 +148,13 @@ def build(base_z: float, M: dict) -> None:
     for i in range(6):
         az = deg(15 + 60 * i)
         welds(skin, az, shield_top + 40, lox0 - 30, frames)
-        welds(frost, az, lox0 + 110, lox1 - 110, frames)
+        welds(frost, az, lox0 + FROST_EDGE + 20, lox1 - 110, frames)
         welds(skin, az, lox1 + 30, CORE_TOP - 120, frames)
     for az in (deg(45), deg(135)):
         strip(fit, az, 1700, lox0 - 60, 170, 85)
         strip(fit, az, lox1 + 60, CORE_TOP - 120, 170, 85)
-        strip(frost, az, lox0 + 80, lox1 - 80, 170, 85)
+        strip(fit, az, lox0 + 80, lox0 + frost_edge(az, 0.0) - 30, 170, 85)
+        strip(frost, az, lox0 + frost_edge(az, 0.0) + 30, lox1 - 80, 170, 85)
     # hatches into the engine bay and the instrument bay
     for az in (deg(225), deg(315)):
         fit.box((560, 640, 20), on_skin(az, 2550, -2))

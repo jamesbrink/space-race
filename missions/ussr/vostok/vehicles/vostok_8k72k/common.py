@@ -182,6 +182,26 @@ class Local:
         return self.mb.build(name, mat, parent, **kw)
 
 
+FROST_EDGE = 520.0  # the frost's lower edge wanders within this much above an oxygen tank's foot
+
+
+def frost_edge(az: float, turn: float) -> float:
+    """How far above the foot of an oxygen tank the frost begins at an azimuth: an uneven line, the same shape on
+    every block but turned by `turn` radians, so that no two show the same side. 130 to 470 mm."""
+    a = az + turn
+    return 300.0 + 170.0 * (0.5 * math.sin(3 * a + 0.6) + 0.3 * math.sin(7 * a + 2.1) + 0.2 * math.sin(13 * a + 4.4))
+
+
+def frost_foot(skin: Local, frost: Local, radius, foot: float, turn: float) -> None:
+    """The skin's own colour from an oxygen tank's foot up to the frost's edge, and frost from there to FROST_EDGE
+    above the foot. `radius` gives the block's radius at a station."""
+    n = segs(96)
+    us = [TAU * i / n for i in range(n)]
+    at_ = lambda az, z: (radius(z) * math.cos(az), radius(z) * math.sin(az), z)  # noqa: E731
+    skin.grid(lambda u, v: at_(u, foot + v * frost_edge(u, turn)), us, [0.0, 1.0], closed_u=True)
+    frost.grid(lambda u, v: at_(u, foot + frost_edge(u, turn) + v * (FROST_EDGE - frost_edge(u, turn))), us, [0.0, 1.0], closed_u=True)
+
+
 def scalloped(mb: Local, r: float, s0: float, s1: float, lobes: int, depth: float, proud: float) -> None:
     """A doubler round a cylinder of radius `r`: a strap from the station `s1` down to `s0`, whose lower edge hangs
     in `lobes` round scallops `depth` deep. It stands `proud` of the skin and its edges are sunk into it."""
