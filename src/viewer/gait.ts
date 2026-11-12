@@ -331,10 +331,11 @@ export function planted(
   hip: Hip,
   least = 0,
   toes = 0,
+  most = TOES_UP,
 ): { thigh: number; knee: number; pitch: number } {
   const leg = limbs.thigh + limbs.shin;
   // (in the tilted leg's own plane the ground is further off than it is straight down)
-  return plant(limbs, x - hip.ahead, y, leg - y - inPlane(leg, hip, leg * Math.cos(hip.splay) - drop + hip.up - y), least, toes);
+  return plant(limbs, x - hip.ahead, y, leg - y - inPlane(leg, hip, leg * Math.cos(hip.splay) - drop + hip.up - y), least, toes, most);
 }
 
 /** `footOf` likewise: where a leg turned so has its ankle's sole, told from the middle of the pelvis standing square. */
@@ -501,9 +502,9 @@ const SLAP = 0.14;
  * moments after, the knee giving a little as it takes the weight; a foot let down as fast as the
  * hips come over it slaps).
  */
-function asked(limbs: Limbs, side: 'L' | 'R', phase: number, speed: number, crouch: number): { least: number; toes: number } {
+function asked(limbs: Limbs, side: 'L' | 'R', phase: number, speed: number, crouch: number): { least: number; toes: number; most: number } {
   const straight = straightest(speed);
-  if (speed <= 0) return { least: straight, toes: 0 };
+  if (speed <= 0) return { least: straight, toes: 0, most: TOES_UP };
   const st = stance(speed);
   // cycles since the foot was under the hip, -0.5 to 0.5
   const from = phase - (side === 'L' ? 0.5 : 0);
@@ -512,12 +513,13 @@ function asked(limbs: Limbs, side: 'L' | 'R', phase: number, speed: number, crou
   const late = smooth(Math.min(1, Math.max(0, (d - (st - UNLOCK)) / UNLOCK)));
   const least = late > 0 ? straight + (leaving(limbs, speed, crouch) - straight) * late : straight;
   const landed = Math.min(1, Math.max(0, (d + st) / Math.min(SLAP, st)));
-  if (landed >= 1) return { least, toes: 0 };
+  if (landed >= 1) return { least, toes: 0, most: TOES_UP };
   // how far up the toes are as the heel lands: what the landing leg at its straightest has them at
   const all = limbs.thigh + limbs.shin + limbs.ankle;
   const pelvis = carriage(0.5 - st, speed, limbs, 1, lowered(0.5 - st, speed, crouch, limbs));
   const up = -planted(limbs, st * span(speed, all), 0, lowered(0.5 - st, speed, crouch, limbs), pelvis.L, straight).pitch;
-  return { least, toes: up * (1 - landed) ** 2 };
+  // (and until it lands they are no further up than that: a foot comes to its landing as it will land, and does not rock on a heel that is not down yet)
+  return { least, toes: up * (1 - landed) ** 2, most: d < -st ? up : TOES_UP };
 }
 
 /**
@@ -547,8 +549,8 @@ export function legTo(limbs: Limbs, x: number, y: number, drop: number, least = 
  * from level, radians (positive: toes down). The knee is never straighter than `least`. While
  * the hips are near enough the foot is flat. Further off than the leg reaches it rocks, as a foot does: behind the hips the heel comes up
  * and the toes stay where they are; ahead of them the toes come up and the heel stays, as far as
- * an ankle bends (TOES_UP), and past that the foot is not down yet: the leg points at where it
- * will be. A foot ahead that is on its heel keeps its toes up by `toes` at the least, however
+ * an ankle bends (`most`: TOES_UP, or less for a foot that has not landed, which comes down as it
+ * will land), and past that the foot is not down yet: the leg points at where it will be. A foot ahead that is on its heel keeps its toes up by `toes` at the least, however
  * near the hips have come: the knee bends for it.
  */
 export function plant(
@@ -558,6 +560,7 @@ export function plant(
   drop: number,
   least = 0,
   toes = 0,
+  most = TOES_UP,
 ): { thigh: number; knee: number; pitch: number } {
   // (as long as the leg gets: with the knee as straight as it goes)
   const leg = Math.sqrt(limbs.thigh ** 2 + limbs.shin ** 2 + 2 * limbs.thigh * limbs.shin * Math.cos(least));
@@ -585,10 +588,10 @@ export function plant(
     const ax = ux * along + side * uy * off;
     const ay = hips + uy * along - side * ux * off;
     lifted = Math.atan2(ay, behind ? px - ax : ax - px) - level;
-    reached = lifted >= 0 && (behind || lifted <= TOES_UP);
+    reached = lifted >= 0 && (behind || lifted <= most);
   }
-  if (!reached) lifted = behind ? Math.PI / 2 - level : TOES_UP;
-  else if (!behind) lifted = Math.max(lifted, Math.min(toes, TOES_UP));
+  if (!reached) lifted = behind ? Math.PI / 2 - level : most;
+  else if (!behind) lifted = Math.max(lifted, Math.min(toes, most));
   // the ankle, on its circle
   const angle = level + lifted;
   const ax = behind ? px - radius * Math.cos(angle) : px + radius * Math.cos(angle);
@@ -699,7 +702,8 @@ export function pose(m: Moment): Pose {
       const stride = asked(limbs, side, m.phase, speed, crouch);
       const striding = 1 - (foot.own ?? 0);
       const least = straight + (stride.least - straight) * striding;
-      let leg = planted(limbs, foot.x, foot.y, drop, pelvis[side], least, stride.toes * striding);
+      const most = TOES_UP + (stride.most - TOES_UP) * striding;
+      let leg = planted(limbs, foot.x, foot.y, drop, pelvis[side], least, stride.toes * striding, most);
       // A foot rocking on its heel or its toes has its ankle higher than a flat foot's, and a leg that leans reaches less far
       // in from a higher ankle: the lean is worked again from where the ankle is, and the leg from that, so the foot
       // stays on its line through the whole of its stance.
@@ -708,7 +712,7 @@ export function pose(m: Moment): Pose {
       if (joint.inward !== undefined && joint.over !== undefined && Math.abs(lifted) > 1e-5) {
         const tilt = tiltTo(joint.inward, joint.over - lifted, limbs.thigh + limbs.shin, joint.splay);
         leans[side] = (tilt - joint.tilt) * foot.hold;
-        leg = planted(limbs, foot.x, foot.y, drop, { ...joint, tilt }, least, stride.toes * striding);
+        leg = planted(limbs, foot.x, foot.y, drop, { ...joint, tilt }, least, stride.toes * striding, most);
       }
       hip += (leg.thigh - hip) * foot.hold;
       shin += (leg.knee - shin) * foot.hold;

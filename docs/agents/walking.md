@@ -59,8 +59,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   at the end of its swing and that every joint is faster at a faster walk; figures of 350 to 450
   degrees a second for a walker's knee and 800 to 1,100 for a runner's are the usual ones, from
   memory and unchecked. `tests/gait.test.mjs` holds every joint to 1.2 degrees in half a degree of
-  the cycle, and to 1.7 for a step of 0.02 m/s in pace (it is 1.65 where a jog's landing passes
-  through the phase; 1.5 was the limit before the pelvis moved, and has not been got back).
+  the cycle, and to 1.5 for a step of 0.02 m/s in pace (1.48 measured, the knee at a crawl; a
+  foot coming to its landing holds its toes as they will be when the heel lands, `asked`'s `most`:
+  rocked on a heel not yet down it turned 5 degrees in the last hundredth of a cycle, which was 1.65).
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
   1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the
   same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.

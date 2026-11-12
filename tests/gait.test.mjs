@@ -183,11 +183,11 @@ test('nothing jumps: from one twentieth of a degree of the cycle to the next no 
 
 test('nothing jumps as a figure speeds up, leaves the ground, or lands either', () => {
   for (const phase of [0, 0.2, 0.55, 0.8]) {
-    // (1.7 degrees: a foot's turn as it lands is the fastest thing in a stride, and between 1.9 and 2 m/s the landing itself
-    // passes through these phases as the stance shortens: 0.02 m/s there is one and a half of the steps the test above
-    // allows 1.2 degrees each. The most measured is 1.65.)
+    // (Between 1.9 and 2 m/s a landing passes through these phases as the stance shortens. A foot reaching for its landing
+    // holds its toes as they will be when the heel lands (`asked`: `most`); rocked on a heel that was not down yet, it turned
+    // 5 degrees in the last hundredth of a cycle and this was 1.65. The most measured now is 1.48, a slow walk's knee.)
     for (let v = 0; v < 5; v += 0.02)
-      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, v)[j] - pose(phase, v + 0.02)[j]) < 1.7 * DEG, `${j} at ${v} m/s`);
+      for (const j of JOINTS) assert.ok(Math.abs(pose(phase, v)[j] - pose(phase, v + 0.02)[j]) < 1.5 * DEG, `${j} at ${v} m/s`);
     for (let air = 0; air < 1; air += 0.02)
       for (const j of JOINTS) assert.ok(Math.abs(pose(phase, 3, air)[j] - pose(phase, 3, air + 0.02)[j]) < 2.5 * DEG, `${j} at air ${air}`);
   }
