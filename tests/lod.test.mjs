@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
+import { Looks } from '../src/viewer/look.ts';
 import { Crossfade, chooseLevel, distanceTo, FADE, LOD_ABOVE, Scenery, Staged, thresholdsOf } from '../src/viewer/lod.ts';
 
 test('a level is chosen by size on screen, finest when large', () => {
@@ -112,6 +113,65 @@ test('a change of look in the middle of a fade is left as it was made', () => {
   fade.finish();
   assert.equal(a.mesh.material, toon);
   assert.equal(b.mesh.material, b.material);
+});
+
+test('a change of look in the middle of a fade: the fade goes on, in the materials the look gave', () => {
+  const l0 = level('Thing'),
+    l1 = level('Thing');
+  const s = new Staged(l0.root, []);
+  s.group.updateMatrixWorld(true);
+  s.measure();
+  s.add(1, l1.root);
+  const looks = new Looks();
+  looks.add(l0.root);
+  looks.add(l1.root);
+  const scale = 1000;
+  const far = new THREE.Vector3(1 + scale / (LOD_ABOVE[0] * 0.5), 0, 0);
+  s.choose(far, scale, false, 0.016);
+  s.choose(far, scale, false, FADE / 4);
+  assert.ok(l0.root.visible && l1.root.visible, 'both levels are drawn: one is giving way to the other');
+  const sideOf = (l) => {
+    const shader = { uniforms: {} };
+    l.mesh.material.onBeforeCompile(shader, null);
+    return shader.uniforms.uLodFade?.value;
+  };
+  const through = sideOf(l0).x;
+  assert.ok(through > 0 && through < 1);
+  looks.set('cel'); // (T, pressed just then)
+  s.relook();
+  for (const l of [l0, l1]) {
+    assert.ok(Object.hasOwn(l.mesh.material.defines ?? {}, 'LOD_FADE'), 'each pixel is still drawn by one of the two');
+    assert.ok(l.mesh.material.isMeshToonMaterial, 'and as the drawing it now is');
+    assert.ok(l.mesh.customDepthMaterial, 'in the shadow map too');
+  }
+  assert.deepEqual([sideOf(l0).y, sideOf(l1).y], [-1, 1], 'the one going out and the one coming in');
+  assert.equal(sideOf(l0).x, through, 'from where it had got to');
+  assert.equal(sideOf(l1).x, through);
+  // and it ends as any other: the level come in is alone, in the look's own material, and the look can be changed back
+  let frames = 0;
+  while (s.choose(far, scale, false, 0.016)) assert.ok(++frames < 200);
+  assert.ok(!l0.root.visible && l1.root.visible);
+  for (const l of [l0, l1]) {
+    assert.ok(l.mesh.material.isMeshToonMaterial && !Object.hasOwn(l.mesh.material.defines ?? {}, 'LOD_FADE'));
+    assert.equal(l.mesh.customDepthMaterial, undefined);
+  }
+  looks.set('real');
+  s.relook();
+  for (const l of [l0, l1]) assert.equal(l.mesh.material, l.material);
+  // a piece of the place, the same
+  const place = [0, 1].map(() => {
+    const root = new THREE.Group();
+    const made = level('Far');
+    root.add(made.node);
+    return { root, made };
+  });
+  const scenery = new Scenery(place[0].root);
+  scenery.add(1, place[1].root);
+  for (const p of place) looks.add(p.root);
+  scenery.choose(far, scale, 0.016);
+  looks.set('cel');
+  scenery.relook();
+  for (const p of place) assert.ok(p.made.node.visible && Object.hasOwn(p.made.mesh.material.defines ?? {}, 'LOD_FADE'));
 });
 
 test('a model: nearest is finest, a change fades, a cut is a cut', () => {

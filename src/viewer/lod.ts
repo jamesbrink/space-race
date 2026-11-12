@@ -219,6 +219,19 @@ export class Crossfade {
     this.f = 1;
   }
 
+  /**
+   * Something else has given the meshes of both other materials (a change of look: look.ts). The fade goes on in
+   * fading twins of the ones they wear now: left in the plain ones, both levels would be drawn whole, one through the
+   * other, until the fade's time was up.
+   */
+  redress(): void {
+    if (!this.from || !this.to) return;
+    this.going.lift();
+    this.coming.lift();
+    this.going.put(this.from);
+    this.coming.put(this.to);
+  }
+
   /** Draw both as they are drawn half way through a fade, so that their fading shaders are built (`finish` undoes it; neither is hidden by it if `from` is null). */
   warm(from: THREE.Object3D, to: THREE.Object3D): void {
     this.going.put(from);
@@ -307,6 +320,11 @@ export class Scenery {
       node.visible = false;
     }
     for (const piece of this.pieces) this.show(piece, false);
+  }
+
+  /** The look has changed: a piece that is changing level goes on changing, in the look's materials (`Crossfade.redress`). */
+  relook(): void {
+    for (const piece of this.pieces) piece.fade.redress();
   }
 
   /** Every level, level 0 first: what a working door or lift moves at once. */
@@ -436,6 +454,11 @@ export class Staged {
     this.exploders.push(exploder);
     object.visible = this.every;
     this.show(this.wanted, false);
+  }
+
+  /** The look has changed: a change of level under way goes on, in the look's materials (`Crossfade.redress`). */
+  relook(): void {
+    this.fade.redress();
   }
 
   explode(t: number): void {

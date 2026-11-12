@@ -1535,6 +1535,9 @@ export class Stage {
   /** Draw everything as it would look (`real`) or as a cel-shaded drawing with ink lines (`cel`). */
   setLook(look: Look): void {
     this.looks.set(look);
+    // (a level of detail giving way to another goes on doing so, in the materials of this look: lod.ts)
+    for (const s of this.staged) s.relook();
+    this.scenery?.relook();
     this.ink.enabled = look === 'cel';
     this.light();
     this.dirty = true;
