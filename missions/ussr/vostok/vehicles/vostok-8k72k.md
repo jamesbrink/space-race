@@ -242,8 +242,10 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   photographs from below and are the right kind of thing, not the real structure.
 - **The ties at the boosters' feet are plain struts.** The real ones are tubes in pneumatic locks,
   with a sliding dovetail joint beside them (M).
-- **The tip joint is a ball in a cup.** The bracket's real form, the oxygen vent nozzles in the
-  nose cone and the separation switches are not drawn.
+- **The tip joint is a ball in a cup.** The bracket's real form and the separation switches are
+  not drawn. The oxygen tank's vent, which M puts on the inner side of the load-bearing cone
+  («сопла, расположенные на внутренней стороне силового конуса»), is a single round port flush
+  with the skin; how many there were, their size and their station are not known to us.
 - **Nothing holds it up.** On the pad the vehicle hangs by the boosters' load-bearing fittings in
   the four arms of the launch system; the pad is not built, so in the viewer it stands on nothing.
 - **Frost is one clean white**, with a lower edge that wanders by a hand's breadth or two and a
@@ -289,5 +291,6 @@ Recorded as the model was compared, view by view, with K, V, F and N.
 - **Colour against F.** F's bare skin is darker and greyer than the model's in bright light. The
   frost's lower edge in F is ragged and lies a little above the boosters' shoulders; the model's
   now lies there and is uneven, but smoothly so, where F's is torn.
-- **Triangles**: 403,788 at full detail, 204,741 and 98,744 at the two coarser levels, the
-  spacecraft's 129 thousand included: less than the Mercury-Redstone stack at each level.
+- **Triangles**: 520,952 at full detail, 214,925 and 106,252 at the two coarser levels, the
+  spacecraft and its cabin included. The pass against the photographs (the base, the ogive, the
+  doublers, Block E's nozzles, the frost's edge) added 17 thousand at full detail.

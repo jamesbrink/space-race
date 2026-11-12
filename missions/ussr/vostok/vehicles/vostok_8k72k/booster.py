@@ -96,9 +96,16 @@ def shield_top(az: float) -> float:
     return SHIELD_RIM + (TAIL_SHIELD - 60 - SHIELD_RIM) * (0.5 + 0.5 * math.cos(math.pi * t))
 
 
-def band(mb: Local, s: float, half: float, proud: float, segs: int = 96, arc=(0.0, TAU)) -> None:
+def band(mb: Local, s: float, half: float, proud: float, steps: tuple[int, int] | None = None) -> None:
+    """A frame showing through the skin. `steps` keeps it to part of the way round: from one of the skin's own
+    sides to another, counted from the block's +X, so that at any level of detail it lies on the skin as built."""
     r = booster_r(s)
-    mb.lathe([(r - 3, s - half - proud), (r + proud, s - half), (r + proud, s + half), (r - 3, s + half + proud)], segs, arc=arc)
+    profile = [(r - 3, s - half - proud), (r + proud, s - half), (r + proud, s + half), (r - 3, s + half + proud)]
+    if steps is None:
+        mb.lathe(profile, 96)
+        return
+    us = [TAU * i / segs(96) for i in range(steps[0], steps[1] + 1)]
+    mb.grid(lambda u, j: (profile[j][0] * math.cos(u), profile[j][0] * math.sin(u), profile[j][1]), us, range(4))
 
 
 def dome(mb: Local, s: float, r: float, depth: float, up: bool, segs: int = 48, n: int = 8) -> None:
@@ -114,13 +121,15 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     skin, frost, shield, wall, fit, bolts, steel, rudder, fair = (Local(X) for _ in range(9))
     lox0, lox1 = BOOSTER_LOX
     # the tail: lacquer outside, polished steel over asbestos on the side that faces the core's fire
-    us = [TAU * i / segs(96) for i in range(segs(96))]
+    n = segs(96)
+    us = [TAU * i / n for i in range(n)]
     ring = lambda az, s: (BOOSTER_R * math.cos(az), BOOSTER_R * math.sin(az), s)  # noqa: E731
     shield.grid(lambda u, v: ring(u, v * shield_top(u)), us, [0.0, 1.0], closed_u=True)
     skin.grid(lambda u, v: ring(u, shield_top(u) + v * (TAIL_SHIELD - shield_top(u))), us, [0.0, 1.0], closed_u=True)
     # (the frame at the top of the engine bay shows through both: where the steel's edge crosses it)
     cross = deg(35) + deg(90) * math.acos(2 * (BOOSTER_BAY - SHIELD_RIM) / (TAIL_SHIELD - 60 - SHIELD_RIM) - 1) / math.pi
-    out, inn = (-math.pi + cross, math.pi - cross), (math.pi - cross, math.pi + cross)
+    k = round(cross * n / TAU)
+    out, inn = (n // 2 + k - n, n // 2 - k), (n // 2 - k, n // 2 + k)
     skin.lathe([(BOOSTER_R, TAIL_SHIELD), (BOOSTER_R, lox0)], 96)
     turn = deg(az_deg) + 0.9  # the frost's edge is uneven, and each block shows a different stretch of it
     frost_foot(skin, frost, booster_r, lox0, turn)
@@ -129,8 +138,8 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     wall.lathe([(BOOSTER_R - 18, 0), (BOOSTER_R - 18, BOOSTER_CYL), (booster_r(lox1 + 300) - 18, lox1 + 300)], 96, flip=True)
     shield.lathe([(BOOSTER_R - 20, 0), (BOOSTER_R, 0)], 96)  # the tail's rim
     band(shield, 40, 30, 8)
-    band(skin, BOOSTER_BAY, 22, 6, 58, out)
-    band(shield, BOOSTER_BAY, 22, 6, 38, inn)
+    band(skin, BOOSTER_BAY, 22, 6, out)
+    band(shield, BOOSTER_BAY, 22, 6, inn)
     # where the tail joins the tank section a doubler goes round, its lower edge cut in scallops (the Kaluga vehicle)
     scalloped(skin, BOOSTER_R, TAIL_SHIELD - 40, TAIL_SHIELD + 52, 48, 105, 6)
     on_lacquer = ((BOOSTER_FUEL[1], 22, 6), (lox0 - 40, 30, 8), (lox1 + 30, 20, 5))
@@ -143,6 +152,10 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     # the nose: a neck and the ball that carries the block's thrust into the core
     steel.lathe([(booster_r(NOSE) + 4, NOSE - 60), (52, NOSE + 30), (40, NOSE + 60), (40, BOOSTER_LENGTH - 60)], 24)
     steel.ball((0, 0, BOOSTER_LENGTH), 84, 24, 12)
+    # when the block leaves, the oxygen tank's pressure is let out through a nozzle on the inner side of this cone
+    # to push the tip clear (Minakov). It is drawn as a port flush with the skin, which lies 48 mm from the core's
+    r = booster_r(lox1 + 900)
+    steel.disc((-(r - 4), 0, lox1 + 900), (-math.cos(CONE), 0, math.sin(CONE)), 60, 14, 16)
     # On the pad the whole vehicle hangs from the launch system's four arms by a fitting on each block's nose cone
     # (RKK Energia's history: by the blocks' «силовые головки»). Where on the cone, and its form, are estimated.
     for k in (-1, 1):
