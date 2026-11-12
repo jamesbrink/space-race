@@ -2,9 +2,9 @@ import type { SiteDef } from '../../../../src/types';
 
 /**
  * Site 1 at Tyuratam (NIIP-5, later the Baikonur Cosmodrome): the R-7's first pad, "Gagarin's Start".
- * Nothing of the place is modelled yet (site-1.md): this is where it is on the Earth, so that the sky
- * and the clock of a flight from it are right. When the pad is built, its model's origin is the point
- * given here and `bearingX` becomes a property of that model instead of a convenience.
+ * The origin of the pad model's frame is the rocket's axis at the platform's deck (the "zero mark"), and
+ * `bearingX` is the way the fixed structure lies: due east, along the centre track and out over the flame pit.
+ * It is not the launch azimuth: the launch ring was turned to that (site-1.md, "The site's frame").
  */
 export const SITE1: SiteDef = {
   name: 'Tyuratam (Baikonur), Site 1',
@@ -33,12 +33,12 @@ export const SITE1: SiteDef = {
     source: 'the EGM96 geoid at the point, -33.73 m (GeographicLib GeoidEval), to the nearest metre',
   },
   bearingX: {
-    value: 37.5,
+    value: 90,
     confidence: 'derived',
     source:
-      'no site model yet, so the frame is laid along the way the flight left: the bearing that gives an orbit inclined 64°57′ (OKB-1’s report of ' +
-      '3 May 1961) from latitude 45.92°, sin Az = cos i / cos φ, before allowing for the Earth’s turning (which makes the bearing flown over the ground ' +
-      'some 3° less). The pad’s own lie (its flame pit, its service towers) is not recorded here',
+      'the centre track runs onto the platform on 090.1 degrees true (OpenStreetMap way 37547653, its last 60 m), and the flame pit lies ' +
+      'east of it; CIA HTA/JR-4/58 (U-2 photography of August 1957): pad and pit "oriented along a west-east axis". The rocket was aimed by ' +
+      'turning the launch ring, so the launch azimuth (about 37.5 degrees, derived from the orbit: the flight README) is not this figure',
   },
   // The range and every report of the flight kept Moscow time, three hours ahead of UTC in 1961 (liftoff 09:06:59.7 is 06:06:59.7 UTC).
   // Clocks in the Kyzylorda region round it stood later; the flight's record does not use them.
