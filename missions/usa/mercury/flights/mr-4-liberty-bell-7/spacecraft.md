@@ -4,7 +4,10 @@ What the capsule in [model/vehicle.py](model/vehicle.py) is built from, and how 
 number. Station 0 is the heat shield's maximum-diameter plane and positive is toward the nose
 (McDonnell's Z104.50). Angles are round the cone from the pilot's right as he lies: the periscope
 is at 90°, under his feet, and the window at 270°, over his head. The drawings are in inches, so
-the model is too.
+the model is too. The script builds the capsule in that frame and then turns it 45° about its long
+axis (`mercury_capsule.stand`, as Freedom 7's is), so that in the GLB the hatch is on +X, the side a
+launch site's frame gives the hatch; `flight.ts` quotes its azimuths in the pilot's frame and adds
+the turn (`STAND`). Until November 2026 No. 11 stood unturned, its hatch at 315° in the file.
 
 **Confidence**: *documented* is a published figure; *derived* is computed from documented ones;
 *estimated* was read off photographs or chosen to look right. The same labels are in
@@ -64,10 +67,9 @@ pressure vessel, every station and motor. This file is what was No. 11's own.
 | Bolts | 69 round the sill, one place empty | documented (the number); estimated (which was left out) | above |
 | Knife | on the hatch's inner face | documented (that it rode on the door); estimated (where) | MR-4 Results, p. 55: "I removed the knife from the door" |
 
-**This is not where Freedom 7's model has its hatch.** The MR-4 Results say the two hatches were in
-the same place; the photographs of No. 11 put that place close beside the window, 45° round from
-it. Freedom 7's model has its hatch 90° from the pilot's head, at his right hand. One of the two is
-wrong, and the photographs say it is Freedom 7's: see "Open questions".
+**Freedom 7's hatch is in the same place**, as the MR-4 Results say: its photographs, read in November
+2026, put its middle at 315° too ([Freedom 7's spacecraft.md](../mr-3-freedom-7/spacecraft.md), "Round
+the cone"), where its model had had it at the pilot's right hand.
 
 ## Shingles
 
@@ -102,8 +104,8 @@ STATES twice. No photograph read shows that side of No. 11, and the model has no
 | Door | 20° wide, stations 28.6 to 46.0, hinged on the side toward the hatch, pale inside | estimated | the same; how far it stood open is ours (105°) |
 | Umbilical receptacle | inside the same door, under the lens, at station 32.5 | estimated | S61-03705 shows the ground's hose plugged in there; SEDR 104 puts the receptacle under the periscope's door |
 
-Freedom 7's model has its objective at station 13. The instrument was the same; one of the two
-stations is wrong (see "Open questions").
+Freedom 7's objective is at station 37 by its own photographs (it was at 13 in its model until November 2026);
+the two capsules' doors need not have been at the same station, and the photographs of each are followed.
 
 ## Cabin
 
@@ -140,18 +142,13 @@ The same GLB holds the launch vehicle's five nodes: [redstone-mrlv.md](../../veh
 
 ## Open questions
 
-- **Where the hatch was, on both capsules.** No. 11's photographs put the hatch's edge beside the
-  window. If the two hatches were in the same place, as the report says, Freedom 7's model has its
-  hatch 45° too far from the pilot's head, and with it the hatch's bearing on the pad
-  (`lc-5.ts`) and the roll the simulator gives the capsule after turnaround. Freedom 7's model is
-  not changed here.
-- **Which way the shingles' beads run on Freedom 7.** Its model has them along the meridian, 24
-  shingles round. Every photograph of No. 11 has them round the cone, and the two capsules' skins
-  were of one design. `mercury_capsule.Skin` builds them this way; Freedom 7's model is not
-  changed here.
-- **The periscope's station.** 41.5 here from three photographs of No. 11; 13 in Freedom 7's model
-  from the flown capsule.
 - **The far side's paint**, above.
+- **The two round plates in the top row** (left out here): on Freedom 7 the like plates, at 45° and 135°, carry a large and a small nozzle each and are taken for the roll jets. This model still has its roll jets low on the cone (`mercury_capsule.roll_thrusters`); whether No. 11's plates are the same jets has not been checked against its photographs.
+
+Settled in November 2026 from photographs of Freedom 7 as it is kept (its spacecraft.md, "Round the cone"): where the
+hatch was on both capsules (315°, as here: Freedom 7's model moved to it, and both capsules now stand with the hatch
+on +X), which way Freedom 7's beads run (round the cone, as here), and Freedom 7's periscope station (37, not 13; this
+capsule's stays 41.5 from its own photographs).
 
 ## What the model gets wrong or leaves out
 

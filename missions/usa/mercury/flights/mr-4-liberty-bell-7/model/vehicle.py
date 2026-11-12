@@ -10,8 +10,10 @@ centreline window, the explosive hatch, its paint, its panel (../../../vehicles/
 and its shingles as the photographs of this capsule show them.
 
 Every dimension is in inches and converted once, at the point of use, with IN. Station 0 is the heat
-shield's maximum-diameter plane; +Z is toward the nose. Angles are round the cone from +X, the
-pilot's right as he lies: the periscope is at 90 degrees (his feet), the window at 270 (his head).
+shield's maximum-diameter plane; +Z is toward the nose. Angles are round the cone in the pilot's frame,
+from his right as he lies: the periscope is at 90 degrees (his feet), the window at 270 (his head), the
+hatch's middle at 315. The capsule is built so and then turned 45 degrees (mercury_capsule.stand), so that in
+the file its hatch is on +X, the side a launch site's frame gives the hatch.
 See ../spacecraft.md for what each number rests on.
 
 Top-level nodes (the viewer's part list keys on these names):
@@ -137,25 +139,6 @@ SHELLS = (
 )
 
 
-def fasten_round(skin: Skin, bolts: MeshBuilder, rect, inset: float = 0.5, pitch: float = 2.6, sides: str = "tblr") -> None:
-    """A row of screws just inside each edge of a plain plate: (angle from, angle to, station from, to)."""
-    t0, t1, z0, z1 = rect
-    cos = math.cos(CONE.a)
-    for edge, z in (("b", z0 + inset * cos), ("t", z1 - inset * cos)):
-        if edge in sides:
-            width = (t1 - t0) * CONE.r(z) - 2 * inset
-            n = max(2, round(width / pitch))
-            for i in range(n + 1):
-                skin.fastener(bolts, t0 + (inset + width * i / n) / CONE.r(z), z)
-    run_ = (z1 - z0) / cos - 2 * inset
-    n = max(2, round(run_ / pitch))
-    for edge, sign, t in (("l", 1, t0), ("r", -1, t1)):
-        if edge in sides:
-            for i in range(1, n):
-                z = z0 + (inset + run_ * i / n) * cos
-                skin.fastener(bolts, t + sign * inset / CONE.r(z), z)
-
-
 # --------------------------------------------------------------------------- parts
 
 
@@ -190,7 +173,7 @@ def build_afterbody(M, font) -> Skin:
     # the window's plate, with the pane's opening in it
     about = (WINDOW_T, WINDOW_Z)
     skin.panel(plates, *WINDOW_PANEL, hole=outline(trapezoid(*OUTER_PANE, PANE_CORNER, grow=-0.4)), about=about)
-    fasten_round(skin, skin.bolts, WINDOW_PANEL, inset=0.45, pitch=2.4)
+    mercury_capsule.fasten_round(skin, skin.bolts, WINDOW_PANEL, inset=0.45, pitch=2.4)
     # the hatch's border, and the periscope door's
     mid = ((HATCH[0] + HATCH[1]) / 2, (HATCH[2] + HATCH[3]) / 2)
     skin.panel(plates, *JAMB, hole=skin.bounds(*mid, *HATCH), about=mid)
@@ -203,7 +186,7 @@ def build_afterbody(M, font) -> Skin:
     door_mid = ((SCOPE_DOOR[0] + SCOPE_DOOR[1]) / 2, (SCOPE_DOOR[2] + SCOPE_DOOR[3]) / 2)
     door_plate = (deg(75), deg(105), SEAM_LOW, SEAM_HIGH)
     skin.panel(plates, *door_plate, hole=skin.bounds(*door_mid, *SCOPE_DOOR), about=door_mid)
-    fasten_round(skin, skin.bolts, door_plate, inset=0.5, pitch=3.0, sides="blr")
+    mercury_capsule.fasten_round(skin, skin.bolts, door_plate, inset=0.5, pitch=3.0, sides="blr")
 
     # the hatch: two shingles of its own, "in no manner ... attached to capsule shingles" (SEDR 104, 2-4), and the small
     # cover over the outside lanyard in the corner by the window
@@ -257,51 +240,18 @@ def build_afterbody(M, font) -> Skin:
 
 
 def build_periscope(M, g, skin: Skin) -> None:
-    """The periscope's door open and its objective put out, with the umbilical's receptacle under the lens in the
-    same opening, as the photographs have them (NASA S61-03705, on the pad; the capsule as raised in 1999)."""
-    t0, t1, z0, z1 = SCOPE_DOOR
-    well, flap, liner = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    deep = 1.1  # inches: the opening's floor under the skin
-    mid = ((t0 + t1) / 2, (z0 + z1) / 2)
-    edge = skin.bounds(*mid, t0, t1, z0, z1)
-    to = skin.flat(*mid)
-    ring = [
-        (edge[i][0] + (edge[(i + 1) % 4][0] - edge[i][0]) * k / 6, edge[i][1] + (edge[(i + 1) % 4][1] - edge[i][1]) * k / 6)
-        for i in range(4)
-        for k in range(6)
-    ]
-    well.grid(lambda i, j: to(*ring[i], -deep * j), range(len(ring)), (0, 1), closed_u=True)
-    well.grid(lambda t, z: CONE.p(t, z, -deep), [t0 + (t1 - t0) * i / 6 for i in range(7)], (z0, z1))
-    well.build("Periscope_Well", M["underlay"], g, sharp_angle=40)
+    """The periscope's door, its objective and the umbilical's receptacle under the lens (mercury_capsule.periscope_door),
+    placed from this capsule's photographs."""
     about = (
         "The periscope's objective, put out through its door: an 8 in screen in the middle of the panel showed what it saw. "
         "Grissom had the new window and used that; a quick look through the periscope after it extended gave him only cloud and ocean. "
         "Under the lens, in the same opening, is where the ground's umbilical plugged in. Placed from photographs of this capsule."
     )
-    mercury_capsule.periscope(M, g, SCOPE_Z, about, door=None)
-    mercury_capsule.umbilical_receptacle(
-        M,
-        g,
-        (deg(90), UMBILICAL_Z),
+    umbilical = (
         "Where the ground's umbilical was plugged in until it was pulled 35 seconds before liftoff: under the periscope's lens, "
-        "inside its door, as a photograph of the capsule being serviced shows it (NASA S61-03705).",
+        "inside its door, as a photograph of the capsule being serviced shows it (NASA S61-03705)."
     )
-    # the door, hinged on the side toward the hatch and standing open (how far is ours); pale inside
-    across = (t1 - t0) * CONE.r(mid[1]) - 0.3
-    tall = (z1 - z0) / math.cos(CONE.a) - 0.3
-    hinge = CONE.p(t0, mid[1], 0.15)
-    out, round_ = CONE.n(t0), Vector((-math.sin(t0), math.cos(t0), 0.0))
-    swing = deg(105)
-    leaf = (round_ * math.cos(swing) + out * math.sin(swing)).normalized()
-    up = Vector((-math.sin(CONE.a) * math.cos(t0), -math.sin(CONE.a) * math.sin(t0), math.cos(CONE.a)))
-    face = leaf.cross(up).normalized()  # the side that faced outward when it was shut
-    m = Matrix((leaf, up, face)).transposed().to_4x4()
-    m.translation = hinge + leaf * (across / 2 * IN)
-    flap.box((across * IN, tall * IN, 0.22 * IN), m)
-    liner.box(((across - 0.8) * IN, (tall - 0.8) * IN, 0.1 * IN), m @ Matrix.Translation((0, 0, -0.22 * IN)))
-    says = ("Periscope door", "The door the periscope's objective was put out through, open. It shut over the lens for the climb and for the entry.")
-    thing(flap, "Periscope_DoorLeaf", M["shingle"], g, *says, shell=False, smooth=False)
-    thing(liner, "Periscope_DoorLiner", M["paint_white"], g, *says, shell=False, smooth=False)
+    mercury_capsule.periscope_door(M, g, skin, SCOPE_DOOR, SCOPE_Z, UMBILICAL_Z, about, umbilical)
 
 
 def build_paint(M, g, skin: Skin, font) -> None:
@@ -470,6 +420,8 @@ def build() -> str:
     mercury_capsule.build_recovery_compartment(M)
     mercury_capsule.build_antenna_canister(M)
     mercury_capsule.build_escape_tower(M)
+    # the capsule is built in the pilot's frame; it stands on the booster with its hatch on +X, as every site's frame has it
+    mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
     redstone_mrlv.build(Z_BOOSTER_BASE, font, clamp_covers="streamlined")
     mark_shells(SHELLS + tuple(THING_SHELLS) + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"

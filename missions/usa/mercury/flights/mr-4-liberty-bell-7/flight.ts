@@ -8,10 +8,12 @@ const NMI = 1852;
 const DEG = Math.PI / 180;
 
 // Where things are round the capsule, as model/vehicle.py has them: degrees about the long axis from the pilot's
-// right. The numbers live there; these are quoted for the views and for how the parts come away.
-const WINDOW_AZ = 270;
-const HATCH_AZ = 315;
-const PERISCOPE_AZ = 90;
+// right. The numbers live there; these are quoted for the views and for how the parts come away. The capsule stands
+// turned so that its hatch is on +X, as a launch site's frame has it (mercury_capsule.stand): STAND is that turn.
+const STAND = -315;
+const WINDOW_AZ = 270 + STAND;
+const HATCH_AZ = 315 + STAND;
+const PERISCOPE_AZ = 90 + STAND;
 /** A direction on the model in the viewer's axes (+Y is the model's long axis; the model's +Y is the viewer's -Z). */
 const along = (az: number, lift: number, by = 1): [number, number, number] => [
   by * Math.cos(az * DEG),
@@ -333,10 +335,11 @@ const vehicle: ModelDef = {
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts,
   position: [0, BASE, 0],
-  // the two cabin lights (the panel's switch reads BOTH, OFF, L.H. ONLY): put toward the middle of the cabin, as Freedom 7's are
+  // the two cabin lights (the panel's switch reads BOTH, OFF, L.H. ONLY): put toward the middle of the cabin, as Freedom 7's
+  // are, either side of the pilot's head, in the frame the capsule stands in (turned by STAND)
   lights: [
-    { position: [0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
-    { position: [-0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
+    { position: [0.304, 0.55, 0.092], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
+    { position: [0.092, 0.55, 0.304], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
   ],
   home: 'stack',
   views: [

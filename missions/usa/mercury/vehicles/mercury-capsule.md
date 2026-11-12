@@ -12,7 +12,9 @@ on capsule No. 7 (Freedom 7, MR-3) and capsule No. 11 (Liberty Bell 7, MR-4). A 
 | Recovery compartment (`build_recovery_compartment`) | Paint |
 | Antenna canister (`build_antenna_canister`) | Where the periscope's door and the umbilical are |
 | Escape tower (`build_escape_tower`) | The cabin's fit: [mercury_cabin.py](mercury_cabin.py) (No. 7), [mercury_cabin_11.py](mercury_cabin_11.py) (No. 11) |
-| The periscope's objective (`periscope`), the umbilical receptacle, the roll thrusters, the attach ring | |
+| The periscope's objective (`periscope`), its door, well and the umbilical receptacle under it (`periscope_door`), the roll jets in the top row (`roll_fittings`, No. 7) or at the base (`roll_thrusters`, No. 11, as built before No. 7's were read), the attach ring | |
+| Screws round a plain plate (`fasten_round`) | |
+| Standing the capsule on its booster (`stand`) | |
 | The pressure vessel round a hatch opening, the bulkhead stiffeners, oxygen bottles, landing bag | |
 
 Every dimension, its confidence and its source are in the flights' records:
@@ -24,14 +26,22 @@ nothing read saying otherwise.
 
 ## Two ways of building shingles
 
-- `shingle_row`: a ring of shingles with their beads along the meridian. Freedom 7's model uses it.
+- `shingle_row`: a ring of shingles with their beads along the meridian. Only the recovery
+  compartment's cylinder uses it now.
 - `Skin`: shingles with their beads running round the cone, in stacks, as every photograph of
-  capsule No. 11 shows them, kept as a height field as well as a mesh so that paint can be laid on
-  it and follow the beads (`Skin.paint`, `Skin.lettering`). Liberty Bell 7's model uses it.
+  both capsules shows them, kept as a height field as well as a mesh so that paint can be laid on
+  it and follow the beads (`Skin.paint`, `Skin.lettering`). Both flights' cones are built with it
+  (Freedom 7's since November 2026).
 
-The two capsules' skins were of one design, so one of these is wrong for Freedom 7; the
-photographs say it is the first. Freedom 7's model is left as it was built until that is decided:
-see "Open questions" in Liberty Bell 7's spacecraft.md.
+## Which way round
+
+A flight's script builds its capsule in the pilot's frame: angles round the cone from his right as
+he lies, his feet (the periscope) at 90 degrees and his head at 270. Both capsules' hatches have
+their middle at 315. `stand` then turns the spacecraft's nodes 45 degrees about the long axis, in
+their meshes' vertices or in their placing, so that in the GLB the hatch is on +X, the side every
+launch site's frame gives the hatch, and every top-level node keeps an identity transform. Anything
+a flight's `flight.ts` quotes of the cabin (windows, periscope, lights, `overhead`) is in the
+turned frame; Freedom 7's script prints it.
 
 `wall` builds a wall of revolution with openings left in it (a hatch, a window, a door), their
 angles whole multiples of 2.5° so that the facets of one band meet those of the next.
