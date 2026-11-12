@@ -453,13 +453,17 @@ def insignia_image() -> bpy.types.Image:
     return art.image()
 
 
+# Whose suit it is: the name stamped on the tag. A flight's script sets it before building (MR-4: Grissom's).
+NAME = "A. B. SHEPARD"
+
+
 def name_tag_image() -> bpy.types.Image:
     """Dark blue leather with the pilot's name stamped on it in silver. Units are half the tag's width."""
     w, h = NAME_TAG
-    art = Art("name-tag-shepard", 512, round(512 * h / w), 1.0, (0.045, 0.06, 0.13))
+    art = Art(f"name-tag-{NAME.split()[-1].lower()}", 512, round(512 * h / w), 1.0, (0.045, 0.06, 0.13))
     x, y = art.xx, art.yy
     art.where((np.abs(np.abs(x) - 0.965) < 0.006) | (np.abs(np.abs(y) - (h / w - 0.035)) < 0.006), (0.16, 0.18, 0.26))  # a line of stitching
-    art.text("A. B. SHEPARD", 1.36, (0.02, 0.0), (0.74, 0.75, 0.76), srlib.load_font())
+    art.text(NAME, 1.36, (0.02, 0.0), (0.74, 0.75, 0.76), srlib.load_font())
     return art.image()
 
 

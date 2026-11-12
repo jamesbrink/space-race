@@ -245,7 +245,10 @@ hand; keeping it hanging plumb is the viewer's to do.
   plain dark shell. The lip microphone and its boom are a guess at their shape. The visor frame
   is drawn as aluminium; its real finish was not checked.
 - No hose on the helmet outlet, and no seal bottle or its hose on the left-jaw connector.
-- No chest mirror (that came after MR-3), no wrist mirrors.
+- No chest mirror on the standing figure (that came after MR-3), no wrist mirrors. Liberty Bell 7's cabin lays one on its
+  seated pilot (`mercury_cabin_11.chest_mirror`) and changes the name on the tag (`mark_iv_suit.NAME`): the rest of
+  Grissom's suit (wrist bearing rings, the new parachute harness, the new microphones) is not modelled, and there is
+  no standing figure of him.
 - **The insignia is drawn from the 1959 design, not traced from the patch**: a blue disc with a
   rim of thread, twelve stars placed by eye, the orbit as a plain tilted ellipse, the red vector
   as two straight wings whose points overhang the disc, and "NASA" in a bold serif from the build

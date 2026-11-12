@@ -219,8 +219,11 @@ def _fin(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: 
                 rivets.disc(at, normal, 0.2 * IN, 0.09 * IN)  # their heads stand 2 mm proud: closer, and the face would fight them
 
 
-def build(base_z: float, font=None) -> None:
-    """Build the booster with its base at station `base_z` (inches) of the flight's frame."""
+def build(base_z: float, font=None, clamp_covers: str = "boxes") -> None:
+    """Build the booster with its base at station `base_z` (inches) of the flight's frame.
+    `clamp_covers`: the fairings over the clamp ring's three explosive bolts. "boxes": the rectangular ones flown
+    through MR-3; "streamlined": the rounded ones MR-4 carried (Results of the Second U.S. Manned Suborbital Space
+    Flight, p. 4 and Figure 2-2: "a more streamlined shape ... to reduce buffeting"; their size is read off the figure)."""
     M = _reuse(materials())
     up = lambda s: base_z + s  # noqa: E731
     body = Surf(BODY_R, 0.0, 0.0)
@@ -258,6 +261,25 @@ def build(base_z: float, font=None) -> None:
     for i in range(3):
         t = TAU * (i + 0.5) / 3 + deg(30)
         a = (math.cos(t), math.sin(t), 0)
+        if clamp_covers == "streamlined":
+            # half an egg lying on the skin, taller than wide, its upper part reaching over the capsule's rim
+            at = frame(Vector(a) * (ADAPTER_TOP_R + 0.2) * IN + Vector((0, 0, up(LENGTH + 0.4) * IN)), a)
+            us = [math.pi * i / 10 for i in range(11)]
+            vs = [math.pi * j / 12 for j in range(13)]
+            ring.grid(
+                lambda u, v: Vector(
+                    (
+                        2.4 * IN * math.sin(v) * math.cos(u),
+                        -(4.6 if v > math.pi / 2 else 3.4) * IN * math.cos(v),
+                        1.7 * IN * math.sin(v) * math.sin(u),
+                    )
+                ),
+                us,
+                vs,
+                matrix=at,
+                flip=True,
+            )
+            continue
         ring.box(
             (2.6 * IN, 4.5 * IN, 2.2 * IN),
             frame(Vector(a) * (ADAPTER_TOP_R + 1.3) * IN + Vector((0, 0, up(LENGTH - 0.7) * IN)), a) @ Matrix.Rotation(math.pi / 2, 4, "Y"),

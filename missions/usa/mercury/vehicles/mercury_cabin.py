@@ -26,6 +26,7 @@ import numpy as np
 from mathutils import Matrix, Vector
 from mathutils.geometry import tessellate_polygon
 
+import mercury_capsule
 from srlib import IN, TAU, MeshBuilder, Surf, frame, interior, material, prof
 
 # ------------------------------------------------------------------ the fit of capsule 7
@@ -424,7 +425,15 @@ class Cabin:
 
 OWN_MATERIAL = ("amber", "red_lamp", "green_lamp")
 # what is part of the wall, or goes through it: not held to the rule that nothing in the cabin reaches it
-WALL = ("CrewCabin_Lining", "CrewCabin_Frames", "CrewCabin_PortFrames", "CrewCabin_Periscope", "CrewCabin_Lamps", "CrewCabin_LampLenses")
+WALL = (
+    "CrewCabin_Lining",
+    "CrewCabin_Frames",
+    "CrewCabin_PortFrames",
+    "CrewCabin_Periscope",
+    "CrewCabin_Lamps",
+    "CrewCabin_LampLenses",
+    "CrewCabin_WindowShroud",
+)
 
 
 def soft(mb: MeshBuilder, m: Matrix, size, r: float, nu: int = 16, nv: int = 9) -> None:
@@ -708,12 +717,7 @@ def build(
 
     lining(c, hatch, portholes, ceiling)
     couch(c, pilot, seat)
-    # The suit's neck, closed: from his own eyes, with his helmet and head not drawn, the pilot looks down into his
-    # collar, and what is there is the neck dam of the suit, not the hollow of the model's torso.
-    neck = seat(pilot["neck_ring"])
-    c.into("CrewCabin_Hoses").lathe(
-        prof([(4.7, 0.0), (3.0, 0.5), (0.0, 0.7)]), 24, matrix=frame(Vector((neck.x, neck.y + 0.6, neck.z)) * IN, (0, -1, 0))
-    )
+    neck_dam(c, seat, pilot)
     P = plane(Vector(PANEL_AT), Vector((1, 0, 0)), Vector((0, -math.cos(PANEL_TILT), math.sin(PANEL_TILT))))
     main_panel(c, P, main, faces)
     periscope(c, P, side, out)
@@ -722,6 +726,13 @@ def build(
     if suit:
         restraints(c, suit, pilot, seat)
     stowage(c, portholes, out)
+    dress(c, M, parent, P, pilot, seat, main, side, faces, out)
+    return out
+
+
+def dress(c: Cabin, M: dict, parent, P: Matrix, pilot: dict, seat, main: Sheet, side: Sheet, faces: Sheet, out: dict, more=None) -> None:
+    """What every fit ends with: each mesh built in its material (`more`: a fit's own meshes and theirs), the three
+    sheets put on the materials that show them, and the seat's node at the pilot's eyes."""
     c.finish(
         {
             "CrewCabin_Lining": "cabin_paint",
@@ -749,6 +760,7 @@ def build(
             "CrewCabin_Bottles": "bottle",
             "CrewCabin_Lamps": "equipment",
             "CrewCabin_LampLenses": "cabin_lamp",
+            **(more or {}),
         },
         smooth=(
             "CrewCabin_Lining",
@@ -767,6 +779,7 @@ def build(
             "CrewCabin_InstrumentGlass",
             "CrewCabin_Couch",
             "CrewCabin_CouchLiner",
+            *(more or {}),
         ),
     )
     for sheet, name in ((main, "panel_main"), (side, "panel_side"), (faces, "faces")):
@@ -798,7 +811,15 @@ def build(
         f"cabin: the pilot's eyes at ({eye.x:.2f}, {eye.y:.2f}, {eye.z:.2f}) in, "
         f"{out['eye_to_screen']:.1f} in from the middle of the panel and {out['eye_off_square']:.1f} degrees off square to it"
     )
-    return out
+
+
+def neck_dam(c: Cabin, seat, pilot: dict) -> None:
+    """The suit's neck, closed: from his own eyes, with his helmet and head not drawn, the pilot looks down into his
+    collar, and what is there is the neck dam of the suit, not the hollow of the model's torso."""
+    neck = seat(pilot["neck_ring"])
+    c.into("CrewCabin_Hoses").lathe(
+        prof([(4.7, 0.0), (3.0, 0.5), (0.0, 0.7)]), 24, matrix=frame(Vector((neck.x, neck.y + 0.6, neck.z)) * IN, (0, -1, 0))
+    )
 
 
 def materials() -> dict:
@@ -835,10 +856,15 @@ def materials() -> dict:
 # --------------------------------------------------------------------------- the wall
 
 
-def lining(c: Cabin, hatch, portholes, ceiling: float) -> None:
+# The channelled frames round the wall: (station, whether it runs all the way round). Estimated, as lining() says.
+FRAMES = ((7.0, True), (24.5, False), (29.5, False), (34.5, False), (48.5, True), (53.5, True))
+
+
+def lining(c: Cabin, hatch, portholes, ceiling: float, openings=(), frames=FRAMES) -> None:
     """The wall as the pilot sees it: the inner skin painted grey, the channelled frames that
     line it (SEDR 104, 2-3: how many and where is not in anything read), a frame round the hatch
-    opening and a bolted ring round each porthole."""
+    opening and a bolted ring round each porthole. `openings`: what else is cut through the wall, each
+    (angle from, angle to, station from, to) with its angles whole multiples of 2.5 degrees."""
     t0, t1, hz0, hz1 = hatch
     v = c.vessel
     rl = lambda z: v.r(z) - 0.12  # noqa: E731
@@ -847,19 +873,38 @@ def lining(c: Cabin, hatch, portholes, ceiling: float) -> None:
     # (in rings a couple of inches apart, and the bulkheads in rings too: the cabin's shading is kept at its vertices, shade())
     up = lambda z0, z1: [(rl(z), z) for z in np.linspace(z0, z1, max(2, round((z1 - z0) / 2.2) + 1))]  # noqa: E731
     across = lambda z, out: [(r, z) for r in (np.linspace(0.0, rl(z), 12) if out else np.linspace(rl(z), 0.0, 12))]  # noqa: E731
-    mb.lathe(prof(up(0.62, hz0)), 96, flip=True)
-    mb.lathe(prof(up(hz0, hz1)), 84, arc=(t1, t0 + TAU), flip=True)
-    mb.lathe(prof(up(hz1, top) + across(top, False)[1:]), 96, flip=True)
+    if openings:
+        mercury_capsule.wall(mb, rl, 0.62, top, (hatch, *openings), flip=True, step=2.2)
+        mb.lathe(prof(across(top, False)), 144, flip=True)
+    else:
+        mb.lathe(prof(up(0.62, hz0)), 96, flip=True)
+        mb.lathe(prof(up(hz0, hz1)), 84, arc=(t1, t0 + TAU), flip=True)
+        mb.lathe(prof(up(hz1, top) + across(top, False)[1:]), 96, flip=True)
     mb.lathe(prof(across(0.62, True)), 96, flip=True)
+
+    def clear(t: float, z: float, margin: float = 0.9) -> bool:
+        """Whether a point of the wall is clear of every further opening, by `margin` inches."""
+        return not any(o[2] - margin < z < o[3] + margin and (t - o[0] + margin / rl(z)) % TAU < o[1] - o[0] + 2 * margin / rl(z) for o in openings)
+
     fr = c.into("CrewCabin_Frames")
-    for z, whole in ((7.0, True), (24.5, False), (29.5, False), (34.5, False), (48.5, True), (53.5, True)):
+    for z, whole in frames:
         if any(abs(z - pz) < 7.4 for _, pz in portholes):
             continue  # (a frame does not cross a window)
         profile = prof([(rl(z + 0.3) + 0.1, z + 0.3), (rl(z + 0.3) - 0.75, z + 0.3), (rl(z - 0.3) - 0.75, z - 0.3), (rl(z - 0.3) + 0.1, z - 0.3)])
         arc = (0.0, TAU) if whole else (t1 + 0.05, t0 + TAU - 0.05)
-        fr.lathe(profile, 96, arc=arc)
+        cut = [o for o in openings if o[2] - 0.9 < z < o[3] + 0.9]
+        if cut:  # (a frame stops either side of a window)
+            o0, o1 = cut[0][0] - 0.04, cut[0][1] + 0.04
+            pieces = [(o1, o0 + TAU)] if whole else [(arc[0], o0 + (TAU if o0 < arc[0] else 0.0)), (o1 + (TAU if o1 < arc[0] else 0.0), arc[1])]
+            for a, b in pieces:
+                if b - a > 0.05:
+                    fr.lathe(profile, max(4, round(96 * (b - a) / TAU)), arc=(a, b))
+        else:
+            fr.lathe(profile, 96, arc=arc)
         for i in range(64):  # riveted to the skin through its flange
             t = arc[0] + (arc[1] - arc[0]) * (i + 0.5) / 64
+            if not clear(t, z):
+                continue
             fr.disc(
                 Vector((math.cos(t), math.sin(t), 0)) * ((rl(z) - 0.75) * IN) + Vector((0, 0, z * IN)),
                 (-math.cos(t), -math.sin(t), 0),
@@ -887,7 +932,7 @@ def lining(c: Cabin, hatch, portholes, ceiling: float) -> None:
             if in_hatch and hz0 - 0.8 < z < hz1 + 0.8:
                 continue
             p = Vector((math.cos(t), math.sin(t), 0)) * rl(z) + Vector((0, 0, z))
-            if any((p * IN - v.p(pt, pz)).length < 7.2 * IN for pt, pz in portholes):
+            if any((p * IN - v.p(pt, pz)).length < 7.2 * IN for pt, pz in portholes) or not clear(t, z):
                 continue
             fr.disc(p * IN, (-math.cos(t), -math.sin(t), 0), 0.08 * IN, 0.035 * IN)
     # a bolted ring round each porthole, lying on the wall's own curve
@@ -1161,10 +1206,12 @@ def fuse(c: Cabin, F: Matrix, u: float, v: float) -> None:
     )
 
 
-def attitude(c: Cabin, P: Matrix, faces: Sheet) -> None:
+def attitude(c: Cabin, P: Matrix, faces: Sheet, box=None, k: float = 1.0) -> None:
     """The attitude and rate indicator: roll, pitch and yaw each on a dial of its own round a
-    square rate indicator whose three needles slide. No ball: Mercury's was three pointers."""
-    (u0, v1), (u1, v0) = fig(1175, 497), fig(1460, 663)
+    square rate indicator whose three needles slide. No ball: Mercury's was three pointers.
+    `box`: its corners on the panel, (left, top) and (right, bottom), where they are not capsule 7's; `k`: its
+    dials' size beside capsule 7's."""
+    (u0, v1), (u1, v0) = box or (fig(1175, 497), fig(1460, 663))
     cu, cv, hw, hh = (u0 + u1) / 2, (v0 + v1) / 2, (u1 - u0) / 2, (v1 - v0) / 2
     rg = faces.take(2 * hw, 2 * hh, 125, -hw, -hh)
     rg.rect(-hw, -hh, hw, hh, BLACK)
@@ -1174,8 +1221,8 @@ def attitude(c: Cabin, P: Matrix, faces: Sheet) -> None:
     c.flat("CrewCabin_InstrumentGlass", P, rect, None, 0.29)
     c.into("CrewCabin_Equipment").box((2 * hw * IN, 2 * hh * IN, 5.0 * IN), P @ Matrix.Translation((cu, cv, -3.5)) @ Matrix.Scale(1 / IN, 4))
     for name, d in ATTITUDE.items():
-        x, y = d["at"]
-        r = d["r"]
+        x, y = d["at"][0] * k, d["at"][1] * k
+        r = d["r"] * k
         # drawn in place: the dial's own coordinates are the indicator's, moved to its middle
         sub = Region(rg.sheet, rg.ox, rg.oy, rg.ppi, rg.u0 - x, rg.v0 - y)
         for value in range(-180, 180, 10):
@@ -1205,24 +1252,24 @@ def attitude(c: Cabin, P: Matrix, faces: Sheet) -> None:
         )
     # the rate indicator: a square of dots, a bar that rises with pitch rate and two that go aside with roll and yaw rate
     for i in range(13):
-        k = (i - 6) / 6 * 0.78
-        for x, y in ((k, 0.78), (k, -0.78), (-0.78, k), (0.78, k)):
-            rg.ring(x, 0.55 + y, 0, 0.018, WHITE)
-    slide = [-RATE_FULL, -RATE_TRAVEL * IN, RATE_FULL, RATE_TRAVEL * IN]
+        q = (i - 6) / 6 * 0.78 * k
+        for x, y in ((q, 0.78 * k), (q, -0.78 * k), (-0.78 * k, q), (0.78 * k, q)):
+            rg.ring(x, 0.55 * k + y, 0, 0.018, WHITE)
+    slide = [-RATE_FULL, -RATE_TRAVEL * k * IN, RATE_FULL, RATE_TRAVEL * k * IN]
 
     def bar(length: float, width: float):
         corners = [(-width / 2, -length / 2, 0), (width / 2, -length / 2, 0), (width / 2, length / 2, 0), (-width / 2, length / 2, 0)]
         return lambda mb: mb.add(corners, [(0, 1, 2, 3)])
 
-    c.node("Gauge_RollRate", "needle_blue", P, cu, cv + 0.55 + 0.4, 0.15, bar(0.72, 0.05), slide=slide, rest=0.0)
-    c.node("Gauge_YawRate", "needle_yellow", P, cu, cv + 0.55 - 0.4, 0.15, bar(0.72, 0.07), slide=slide, rest=0.0)
-    c.node("Gauge_PitchRate", "needle_white", P, cu, cv + 0.55, 0.21, bar(1.5, 0.05), spin=math.pi / 2, slide=slide, rest=0.0)
+    c.node("Gauge_RollRate", "needle_blue", P, cu, cv + (0.55 + 0.4) * k, 0.15, bar(0.72 * k, 0.05), slide=slide, rest=0.0)
+    c.node("Gauge_YawRate", "needle_yellow", P, cu, cv + (0.55 - 0.4) * k, 0.15, bar(0.72 * k, 0.07), slide=slide, rest=0.0)
+    c.node("Gauge_PitchRate", "needle_white", P, cu, cv + 0.55 * k, 0.21, bar(1.5 * k, 0.05), spin=math.pi / 2, slide=slide, rest=0.0)
 
 
-def clock(c: Cabin, P: Matrix, faces: Sheet) -> None:
+def clock(c: Cabin, P: Matrix, faces: Sheet, box=None) -> None:
     """The Redstone flights' clock: a twelve-hour watch and a counter of seconds from launch
-    (the orbital clock, with its time to retrograde, came later)."""
-    (u0, v1), (u1, v0) = fig(1332, 688), fig(1545, 915)
+    (the orbital clock, with its time to retrograde, came later). `box`: its corners where they are not capsule 7's."""
+    (u0, v1), (u1, v0) = box or (fig(1332, 688), fig(1545, 915))
     cu, cv, hw, hh = (u0 + u1) / 2, (v0 + v1) / 2, (u1 - u0) / 2, (v1 - v0) / 2
     k = 0.75  # the corners cut off: an octagon
     octagon = [(-hw + k, -hh), (hw - k, -hh), (hw, -hh + k), (hw, hh - k), (hw - k, hh), (-hw + k, hh), (-hw, hh - k), (-hw, -hh + k)]
@@ -1284,11 +1331,13 @@ def clock(c: Cabin, P: Matrix, faces: Sheet) -> None:
 # --------------------------------------------------------------------------- the periscope
 
 
-def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict) -> None:
+def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict, box=None, station: float | None = None, run=None) -> None:
     """The periscope's display in the middle of the panel, set back in its opening, with its
     housing behind and the tube down between the pilot's legs to the objective in the capsule's
-    floor side. The 8 in screen is documented; every other size is off the figure or the photograph."""
-    (u0, v1), (u1, v0) = fig(1088, 935), fig(1553, 1380)
+    floor side. The 8 in screen is documented; every other size is off the figure or the photograph.
+    `box`: the opening's corners; `station`: where the objective leaves the cone; `run`: the points the tube passes
+    between the housing and the objective: each where it is not capsule 7's."""
+    (u0, v1), (u1, v0) = box or (fig(1088, 935), fig(1553, 1380))
     rg = sheet.take(u1 - u0, v1 - v0, 64, u0, v0, at=(1216, 1124))
     d = SCOPE_RECESS
     rect = [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
@@ -1330,13 +1379,9 @@ def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict) -> None:
     )
     # from the back of the housing up over his knees, then down between his shins and feet to the objective
     top = Vector(P @ Vector((0.0, 2.5, -d - 2.0))) / IN
-    foot = c.vessel.p(math.pi / 2, SCOPE_STATION, -0.6) / IN
-    run_ = [
-        top,
-        Vector((0.0, 8.0, 33.6)),
-        Vector((0.0, 24.0, 22.5)),
-        foot + (Vector((0.0, 24.0, 22.5)) - foot).normalized() * 1.2,
-    ]
+    foot = c.vessel.p(math.pi / 2, SCOPE_STATION if station is None else station, -0.6) / IN
+    between = [Vector(p) for p in (run or ((0.0, 8.0, 33.6), (0.0, 24.0, 22.5)))]
+    run_ = [top, *between, foot + (between[-1] - foot).normalized() * 1.2]
     body.loft([p * IN for p in run_], [(1.9 * IN, 1.9 * IN)] * len(run_), 16, ref=(1, 0, 0))
     body.tube((foot - (foot - run_[-2]).normalized() * 6.5) * IN, foot * IN, 2.5 * IN, 20)  # the objective's cartridge
     out["periscope"] = {"screen": tuple(P @ Vector((0, 0, -d + 0.06))), "radius": (SCREEN_R - 0.02) * IN}
@@ -1347,6 +1392,28 @@ def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict) -> None:
 SCOPE_STATION = 13.0  # where the objective leaves the cone: estimated from the flown capsule (NASM2021-00160, -00165)
 
 # --------------------------------------------------------------------------- the consoles
+
+
+def fuel_gauge(c: Cabin, F: Matrix, faces: Sheet, u: float, v: float, r: float) -> None:
+    """Control fuel: one gauge, two needles, the automatic system's on the left and the manual's on the right."""
+    fr = faces.take(2 * r, 2 * r, 125, -r, -r)
+    left, right = [(0, 215), (100, 325)], [(0, 145), (100, 35)]
+    draw_dial(
+        fr,
+        r * 0.92,
+        left,
+        [(0, "0"), (50, ""), (100, "")],
+        10,
+        [("CONTROL\nFUEL", 0, 0.5, 0.05), ("AUTO", -0.3, -0.05, 0.045), ("MAN", 0.32, -0.05, 0.045), ("PERCENT", 0, -0.6, 0.045)],
+    )
+    for value in range(0, 101, 10):
+        a = scale_at(right, value)
+        fr.line(clock_xy(a, r * 0.86), clock_xy(a, r * (0.7 if value % 50 == 0 else 0.78)), 0.02, WHITE)
+    c.turned("CrewCabin_Bezels", F, u, v, [(r + 0.14, 0.0), (r + 0.14, 0.3), (r * 0.94, 0.3), (r * 0.92, 0.06)], 28)
+    c.disc("CrewCabin_Instruments", F, u, v, r * 0.93, 0.06, fr)
+    c.disc("CrewCabin_InstrumentGlass", F, u, v, r * 0.93, 0.25, None, 20)
+    c.node("Gauge_FuelAuto", "needle_white", F, u, v, 0.12, pointer(r * 0.8, 0.07), spin=-math.radians(325), turn=turn_scale(left), rest=100.0)
+    c.node("Gauge_FuelManual", "needle_white", F, u, v, 0.18, pointer(r * 0.8, 0.07), spin=-math.radians(35), turn=turn_scale(right), rest=100.0)
 
 
 def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
@@ -1434,27 +1501,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         c.node(f"Tele_{name}", mat, Cx, u, v, 0.0, lambda mb: mb.lathe([(0.15, 0.08), (0.13, 0.24), (0.0, 0.28)], 12))
         if text:
             rg2.text(text, u + 0.3, v, 0.125, INK, align="l")
-    # control fuel: one gauge, two needles, the automatic system's on the left and the manual's on the right
-    u, v = cfig(455, 968)
-    r = 78 * S / 2
-    fr = faces.take(2 * r, 2 * r, 125, -r, -r)
-    left, right = [(0, 215), (100, 325)], [(0, 145), (100, 35)]
-    draw_dial(
-        fr,
-        r * 0.92,
-        left,
-        [(0, "0"), (50, ""), (100, "")],
-        10,
-        [("CONTROL\nFUEL", 0, 0.5, 0.05), ("AUTO", -0.3, -0.05, 0.045), ("MAN", 0.32, -0.05, 0.045), ("PERCENT", 0, -0.6, 0.045)],
-    )
-    for value in range(0, 101, 10):
-        a = scale_at(right, value)
-        fr.line(clock_xy(a, r * 0.86), clock_xy(a, r * (0.7 if value % 50 == 0 else 0.78)), 0.02, WHITE)
-    c.turned("CrewCabin_Bezels", Cx, u, v, [(r + 0.14, 0.0), (r + 0.14, 0.3), (r * 0.94, 0.3), (r * 0.92, 0.06)], 28)
-    c.disc("CrewCabin_Instruments", Cx, u, v, r * 0.93, 0.06, fr)
-    c.disc("CrewCabin_InstrumentGlass", Cx, u, v, r * 0.93, 0.25, None, 20)
-    c.node("Gauge_FuelAuto", "needle_white", Cx, u, v, 0.12, pointer(r * 0.8, 0.07), spin=-math.radians(325), turn=turn_scale(left), rest=100.0)
-    c.node("Gauge_FuelManual", "needle_white", Cx, u, v, 0.18, pointer(r * 0.8, 0.07), spin=-math.radians(35), turn=turn_scale(right), rest=100.0)
+    fuel_gauge(c, Cx, faces, *cfig(455, 968), 78 * S / 2)
     # the snorkel's pull handle, the landing bag's switch, and the four fuel shut-off handles down the inner edge
     u, v = cfig(440, 1070)
     c.into("CrewCabin_WhiteCaps").tube(Cx @ Vector((u - 0.9, v, 0.5)), Cx @ Vector((u + 0.9, v, 0.5)), 0.2 * IN, 10)
@@ -1535,7 +1582,7 @@ def controls(c: Cabin, seat, pilot: dict, out: dict) -> None:
 # --------------------------------------------------------------------------- stowage
 
 
-def stowage(c: Cabin, portholes, out: dict) -> None:
+def stowage(c: Cabin, portholes, out: dict, lamps_at=(-128.0, -52.0), fuse_wiring: bool = True, panel_camera: bool = True, cord: bool = True) -> None:
     """What else the record puts in the cabin, each where it says or, where it does not say, where the
     flown capsule has it today: cameras, the chest parachute, the survival kit, two cabin lights,
     the environmental system's boxes under the couch, the oxygen hose to the suit."""
@@ -1551,14 +1598,16 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
     ):
         box(*spec)
     # the instrument-panel camera, "just to the left of the astronaut's head" (Results, p. 24)
-    box(-9.5, -27.0, 6.0, 3.2, 5.5, 3.6)
-    gear.tube(Vector((-9.5, -24.2, 7.8)) * IN, Vector((-9.5, -22.8, 8.4)) * IN, 0.9 * IN, 12)
+    if panel_camera:
+        box(-9.5, -27.0, 6.0, 3.2, 5.5, 3.6)
+        gear.tube(Vector((-9.5, -24.2, 7.8)) * IN, Vector((-9.5, -22.8, 8.4)) * IN, 0.9 * IN, 12)
     # the earth-sky camera at the lower right window (Results, p. 24)
-    t, z = portholes[0]
-    at = c.vessel.p(t, z, -7.5) / IN
-    aim = (c.vessel.p(t, z, 0.0) / IN - at).normalized()
-    gear.box((3.4 * IN, 3.4 * IN, 5.0 * IN), frame(at * IN, aim))
-    gear.tube((at + aim * 2.5) * IN, (at + aim * 4.6) * IN, 1.2 * IN, 14)
+    if portholes:
+        t, z = portholes[0]
+        at = c.vessel.p(t, z, -7.5) / IN
+        aim = (c.vessel.p(t, z, 0.0) / IN - at).normalized()
+        gear.box((3.4 * IN, 3.4 * IN, 5.0 * IN), frame(at * IN, aim))
+        gear.tube((at + aim * 2.5) * IN, (at + aim * 4.6) * IN, 1.2 * IN, 14)
     # the chest parachute, stowed by the pilot's right shoulder (olive, as in NASM2021-00153): estimated
     pack = Matrix.Translation(Vector((16.5, -17.0, 9.0)) * IN) @ Matrix.Rotation(0.35, 4, "Z") @ Matrix.Rotation(-0.3, 4, "Y")
     soft(c.into("CrewCabin_Pack"), pack, (5.0, 10.0, 7.0), 1.6)
@@ -1574,16 +1623,16 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
     c.into("CrewCabin_Bottles").tube(Vector((-15.5, 2.0, 5.6)) * IN, Vector((-15.5, 10.0, 6.6)) * IN, 1.3 * IN, 16)
     c.into("CrewCabin_PanelFittings").tube(Vector((-15.5, 10.0, 6.6)) * IN, Vector((-15.5, 11.2, 6.75)) * IN, 0.45 * IN, 10)
     # a small mirror on a bracket under the upper port (NASM2021-00147): what it was for is not in anything read
-    t, z = portholes[1]
-    at = c.vessel.p(t + 0.42, z - 5.5, -1.6)
-    aim = (Vector((0.0, -24.0, 13.0)) * IN - at).normalized()
-    c.into("CrewCabin_Lamps").box((2.6 * IN, 1.9 * IN, 0.5 * IN), frame(at, aim))
-    c.into("CrewCabin_PanelFittings").box((2.2 * IN, 1.5 * IN, 0.1 * IN), frame(at + aim * (0.31 * IN), aim))
-    c.into("CrewCabin_Lamps").tube(at, c.vessel.p(t + 0.42, z - 5.5, 0.3), 0.25 * IN, 8)
+    if len(portholes) > 1:
+        t, z = portholes[1]
+        at = c.vessel.p(t + 0.42, z - 5.5, -1.6)
+        aim = (Vector((0.0, -24.0, 13.0)) * IN - at).normalized()
+        c.into("CrewCabin_Lamps").box((2.6 * IN, 1.9 * IN, 0.5 * IN), frame(at, aim))
+        c.into("CrewCabin_PanelFittings").box((2.2 * IN, 1.5 * IN, 0.1 * IN), frame(at + aim * (0.31 * IN), aim))
+        c.into("CrewCabin_Lamps").tube(at, c.vessel.p(t + 0.42, z - 5.5, 0.3), 0.25 * IN, 8)
     # two cabin floodlights above and either side of the pilot's head (SEDR 104, 10-19, the orbital capsule: No. 7's are not in anything read)
     lamps = []
-    for sx in (-1, 1):
-        th = math.radians(-90 + sx * 38)
+    for th in (math.radians(a) for a in lamps_at):
         zl = 24.0
         f = Surf(c.vessel.r0 - 0.12, c.vessel.z0, c.vessel.a).frame(th, zl)
         c.into("CrewCabin_Lamps").box((4.2 * IN, 1.6 * IN, 1.6 * IN), f @ Matrix.Translation((0, 0, -0.3 * IN)))
@@ -1597,20 +1646,23 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
     )
     # the wiring that comes down from the fuse panel to the floor, as the flown capsule has it (NASM2021-00147): three runs, estimated
     loom = c.into("CrewCabin_Looms")
-    for k in range(3):
+    for k in range(3 if fuse_wiring else 0):
         run_ = [(-22.6 - 0.1 * k, 4.0 + 0.9 * k, 13.0), (-24.2, 6.0 + 0.9 * k, 9.0), (-25.4, 9.0 + 0.9 * k, 5.0), (-24.0, 13.0 + 0.6 * k, 1.6)]
         loom.loft([Vector(p) * IN for p in run_], [(0.32 * IN, 0.32 * IN)] * len(run_), 8)
     # the white coiled cord that hangs down the left wall in the flown capsule (NASM2021-00147): what it served is not in anything read
-    a0, a1 = Vector((-20.5, -20.5, 15.0)), Vector((-21.5, -19.0, 5.0))
-    along = (a1 - a0).normalized()
-    side1 = along.cross(Vector((1, 0, 0))).normalized()
-    side2 = along.cross(side1)
-    turns = int((a1 - a0).length / 0.3)
-    coil = [a0 + (a1 - a0) * (i / (turns * 8)) + (side1 * math.cos(TAU * i / 8) + side2 * math.sin(TAU * i / 8)) * 0.24 for i in range(turns * 8 + 1)]
-    c.into("CrewCabin_Hoses").loft([p * IN for p in coil], [(0.07 * IN, 0.07 * IN)] * len(coil), 5, resample=1)
-    c.into("CrewCabin_Lamps").tube(
-        Vector((a0.x * 1.02, a0.y * 1.02, a0.z)) * IN, Vector((a0.x * 1.12, a0.y * 1.12, a0.z)) * IN, 0.45 * IN, 8
-    )  # the clip it hangs from
+    if cord:
+        a0, a1 = Vector((-20.5, -20.5, 15.0)), Vector((-21.5, -19.0, 5.0))
+        along = (a1 - a0).normalized()
+        side1 = along.cross(Vector((1, 0, 0))).normalized()
+        side2 = along.cross(side1)
+        turns = int((a1 - a0).length / 0.3)
+        coil = [
+            a0 + (a1 - a0) * (i / (turns * 8)) + (side1 * math.cos(TAU * i / 8) + side2 * math.sin(TAU * i / 8)) * 0.24 for i in range(turns * 8 + 1)
+        ]
+        c.into("CrewCabin_Hoses").loft([p * IN for p in coil], [(0.07 * IN, 0.07 * IN)] * len(coil), 5, resample=1)
+        c.into("CrewCabin_Lamps").tube(
+            Vector((a0.x * 1.02, a0.y * 1.02, a0.z)) * IN, Vector((a0.x * 1.12, a0.y * 1.12, a0.z)) * IN, 0.45 * IN, 8
+        )  # the clip it hangs from
     # The pilot's knee strap, one of the couch's restraints (shoulder, chest, lap and knee straps and toe caps: Postlaunch
     # Report, p. 38). Only this one is modelled: a band over both knees down to the couch either side; its run is estimated.
     band = [(-9.2, 5.0, 21.5), (-8.0, 5.0, 27.5), (-4.8, 5.0, 31.25), (0.0, 5.0, 30.7), (4.8, 5.0, 31.25), (8.0, 5.0, 27.5), (9.2, 5.0, 21.5)]

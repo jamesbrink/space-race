@@ -64,7 +64,7 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 
 | Node | What it is |
 | --- | --- |
-| `RedstoneAdapter` | flared ring carrying the capsule on a Marman clamp; the retropack sits inside it |
+| `RedstoneAdapter` | flared ring carrying the capsule on a Marman clamp; the retropack sits inside it. The fairings over the clamp's three explosive bolts are the flight's to choose (`build(clamp_covers=...)`): rectangular boxes as flown through MR-3, or the streamlined ones MR-4 carried (*Results of the Second U.S. Manned Suborbital Space Flight*, p. 4 and Figure 2-2: documented that they changed and to what shape; their size, about 8 by 4.8 by 1.7 in, is read off the figure: estimated) |
 | `RedstoneAftUnit` | from the top: ballast section (steel ballast ring), pressurised instrument compartment (a drum holding the autopilot, abort sensing and telemetry), aft unit (nitrogen spheres, antennas, receivers). On the missile it separated with the warhead; here it is fixed |
 | `RedstoneCenterUnit` | alcohol tank over liquid-oxygen tank, sharing a bulkhead; the alcohol's feed line runs down through the oxygen tank (4.2.2); the walls are the airframe |
 | `RedstoneTailUnit` | engine bay, four fins, four air rudders |

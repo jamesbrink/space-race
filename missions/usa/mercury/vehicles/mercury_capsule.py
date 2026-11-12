@@ -15,12 +15,16 @@ flight's spacecraft.md says what each number rests on.
 
 from __future__ import annotations
 
+import bisect
+import contextlib
 import math
 
+import bmesh
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
 
+import srlib
 from srlib import (
     IN,
     TAU,
@@ -34,6 +38,7 @@ from srlib import (
     lathe_obj,
     material,
     prof,
+    text_mesh,
 )
 
 # ------------------------------------------------------------------ dimensions (in)
@@ -204,6 +209,267 @@ def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, 
                 bolts.disc(surf.p(theta(s, z), z), surf.n(theta(s, z)), 0.2 * IN, 0.07 * IN)
 
 
+# ------------------------------------------------------- shingles beaded round the cone
+
+GAP = 0.045  # inches between neighbouring shingles
+PITCH = 1.3  # from one bead to the next along the cone, inches: estimated from photographs of capsule 11
+PAINT_LIFT = 0.1  # how far paint stands off the skin it follows: clear of the screw heads under it by more than a millimetre
+WASHER = (0.36, 0.19, 0.05)  # a fastener: a dimpled washer rising to the screw's head; radii and height in inches: estimated
+SCREW = (0.14, 0.045)  # a plain screw's head, radius and height
+
+
+def trapezoid(length: float, low: float, high: float, radius: float, grow: float = 0.0):
+    """Half the width of a round-cornered trapezoid at height y, as a function: `length` along y about 0, `low` wide at
+    the bottom and `high` at the top, corners of `radius`; `grow` moves its whole edge outward. Returns (half_width, y0, y1)."""
+    y0, y1 = -length / 2 - grow, length / 2 + grow
+    r = radius + grow
+
+    def half(y: float) -> float:
+        k = (y - y0) / (y1 - y0)
+        w = (low + (high - low) * k) / 2 + grow
+        d = min(y - y0, y1 - y)  # into the nearer end's corners
+        return w if d >= r else w - r + math.sqrt(max(0.0, r * r - (r - d) ** 2))
+
+    return half, y0, y1
+
+
+def outline(shape, n: int = 14, ends: int = 6) -> list[tuple[float, float]]:
+    """A trapezoid's edge as a closed polygon, anticlockwise from its bottom right: `n` points to a side, and its two
+    ends cut in `ends` (an end lies round the cone, and a straight edge that long would sink under the skin)."""
+    half, y0, y1 = shape
+    # (closer together in the corners, where the edge turns)
+    ys = [y0 + (y1 - y0) * (0.5 - 0.5 * math.cos(math.pi * i / n)) for i in range(n + 1)]
+    top = [(half(y1) * (1 - 2 * i / ends), y1) for i in range(1, ends)]
+    foot = [(-half(y0) * (1 - 2 * i / ends), y0) for i in range(1, ends)]
+    return [(half(y), y) for y in ys] + top + [(-half(y), y) for y in reversed(ys)] + foot
+
+
+def _reach(poly, a: float) -> tuple[float, float]:
+    """Where the ray from the origin at angle `a` leaves a polygon that is star-shaped about the origin."""
+    dx, dy = math.cos(a), math.sin(a)
+    best = None
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        ex, ey = x1 - x0, y1 - y0
+        den = dx * ey - dy * ex
+        if abs(den) < 1e-12:
+            continue
+        t = (x0 * ey - y0 * ex) / den
+        u = (x0 * dy - y0 * dx) / den
+        if t > 0 and -1e-9 <= u <= 1 + 1e-9 and (best is None or t < best):
+            best = t
+    assert best is not None, "the polygon does not enclose the origin"
+    return best * dx, best * dy
+
+
+class Skin:
+    """An afterbody's shingles with their beads running round the cone, and what is painted on them.
+
+    Capsule 11's photographs (NASA 61-MR4-53, S61-03705, S61-03740; the capsule as raised in 1999) show each shingle
+    as a column's width of stiffening beads lying across it, one above the next, most shingles carrying two stacks side
+    by side. The skin is kept as a height field (`height`) as well as a mesh, so that paint can be laid on it and follow
+    it: a letter painted across the beads rises and falls with them, as the real ones do.
+
+    Angles are radians round the cone, stations inches. Meshes go to `panels` and `bolts`, or to builders given."""
+
+    def __init__(self, surf: Surf, bead: float = BEAD) -> None:
+        self.surf, self.bead = surf, bead
+        self.cos = math.cos(surf.a)
+        self.tiles: list[tuple[list[float], list[float], list[list[float]]]] = []
+        self.panels, self.bolts = MeshBuilder(), MeshBuilder()
+
+    # -- a shingle ---------------------------------------------------------------
+
+    def shingle(
+        self, t0: float, t1: float, z0: float, z1: float, stacks: int = 2, *, panels=None, bolts=None, fasten: str = "tbl", gap: float = GAP
+    ) -> None:
+        """One shingle between two meridians and two stations: a flat fastened margin round `stacks` stacks of beads
+        (0: a plain plate). `fasten`: which edges carry a row of screws, of top, bottom, left (the lower angle), right.
+        `gap`: how far it stands in from the lines given, inches: a hatch's shingles stand further from what is round them."""
+        surf = self.surf
+        panels, bolts = panels or self.panels, bolts or self.bolts
+        rmid = surf.r((z0 + z1) / 2)
+        g = gap / rmid
+        ta, tb, za, zb = t0 + g, t1 - g, z0 + gap * self.cos, z1 - gap * self.cos
+        width, run_ = (tb - ta) * rmid, (zb - za) / self.cos  # inches across at its middle, and along the cone
+        detail = srlib.DETAIL
+        margin, ramp, strip, end = 1.0, 0.4, 0.55, 1.25
+        count = int((run_ - 2 * end) / PITCH)
+        if detail < 0.5 or count < 1 or width < 2 * (margin + ramp) + 1.0:
+            stacks = 0
+
+        def spread(a: float, b: float, level: float) -> list[tuple[float, float]]:
+            """A stretch of one height, cut so no facet turns more than four degrees round the cone."""
+            # (at every level of detail: a wider facet sinks into the structure under it)
+            n = max(1, math.ceil(math.degrees((b - a) * (tb - ta)) / 4.0 - 1e-6))
+            return [(a + (b - a) * i / n, level) for i in range(1, n + 1)]
+
+        m, e, d = margin / width, ramp / width, strip / width
+        across: list[tuple[float, float]] = [(0.0, 0.0)]  # (fraction across, how much of a bead's height)
+        if stacks == 0:
+            across += spread(0.0, 1.0, 0.0)
+        else:
+            edges = [(m, 1.0 - m)] if stacks == 1 else [(m, 0.5 - d), (0.5 + d, 1.0 - m)]
+            at = 0.0
+            for a, b in edges:
+                across += spread(at, a, 0.0) + [(a + e, 1.0)] + spread(a + e, b - e, 1.0) + [(b, 0.0)]
+                at = b
+            across += spread(at, 1.0, 0.0)
+        along: list[tuple[float, float]] = [(0.0, 0.0)]  # (inches along the cone, how much of a bead's height)
+        if stacks:
+            pitch = (run_ - 2 * end) / count
+            humps = ((-0.34, 0.0), (-0.17, 0.75), (0.0, 1.0), (0.17, 0.75), (0.34, 0.0)) if detail >= 1.0 else ((-0.34, 0.0), (0.0, 1.0), (0.34, 0.0))
+            for k in range(count):
+                along += [(end + (k + 0.5 + f) * pitch, h) for f, h in humps]
+        along.append((run_, 0.0))
+        ts = [ta + (tb - ta) * s for s, _ in across]
+        zs = [za + s * self.cos for s, _ in along]
+        H = [[self.bead * hz * ht for _, ht in across] for _, hz in along]
+        self.tiles.append((ts, zs, H))
+        panels.grid(
+            lambda i, j: surf.p(ts[i], zs[j], H[j][i]),
+            range(len(ts)),
+            range(len(zs)),
+            uv=lambda i, j: (ts[i] * rmid * IN, zs[j] * IN),
+        )
+        # fasteners: a row across each end, and one up the seam (its neighbour supplies the other side's)
+        spots = []
+        for edge, s in (("b", 0.6), ("t", run_ - 0.6)):
+            if edge in fasten:
+                n = max(2, round(width / 2.6))
+                spots += [(ta + (tb - ta) * (i + 0.5) / n, za + s * self.cos) for i in range(n)]
+        for edge, t in (("l", ta + 0.5 / rmid), ("r", tb - 0.5 / rmid)):
+            if edge in fasten and run_ > 5.0:
+                n = max(1, round((run_ - 3.8) / 3.4))
+                spots += [(t, za + (1.9 + (run_ - 3.8) * (i + 0.5) / n) * self.cos) for i in range(n)]
+        for t, z in spots:
+            self.fastener(bolts, t, z)
+
+    def fastener(self, bolts: MeshBuilder, t: float, z: float, off: float = 0.0) -> None:
+        """A screw in its dimpled washer, as the shingles are held: through an oversized hole, so the skin can grow when hot."""
+        if srlib.DETAIL < 0.5:
+            return
+        wide, head, tall = WASHER
+        bolts.lathe([(wide * IN, 0.0), (head * IN, tall * IN), (0.0, tall * IN)], 10, matrix=frame(self.surf.p(t, z, off), self.surf.n(t)))
+
+    def screw(self, bolts: MeshBuilder, t: float, z: float) -> None:
+        """A plain screw's head."""
+        bolts.disc(self.surf.p(t, z), self.surf.n(t), SCREW[0] * IN, SCREW[1] * IN)
+
+    # -- a plain panel, with or without an opening ------------------------------------
+
+    def flat(self, theta0: float, z0: float):
+        """The cone unrolled about a point: (inches to the right, inches up the slant) to a place on it, as srlib.decal lays a drawing."""
+        return lambda a, b, off=0.0: self.surf.wrap(theta0, z0, a, b, off)
+
+    def bounds(self, theta0: float, z0: float, t0: float, t1: float, za: float, zb: float) -> list[tuple[float, float]]:
+        """A patch between two meridians and two stations as a polygon on the cone unrolled about (theta0, z0)."""
+        r0, sin = self.surf.r(z0), math.sin(self.surf.a)
+        b0, b1 = (za - z0) / self.cos, (zb - z0) / self.cos
+        at = lambda t, b: ((t - theta0) * (r0 - b * sin), b)  # noqa: E731
+        return [at(t1, b0), at(t1, b1), at(t0, b1), at(t0, b0)]
+
+    def panel(self, mb: MeshBuilder, t0: float, t1: float, z0: float, z1: float, hole=None, about=None, off: float = 0.0) -> None:
+        """A plain plate between two meridians and two stations. `hole` is a polygon cut out of it, on the cone unrolled
+        about `about` (angle, station), which it must enclose."""
+        rmid = self.surf.r((z0 + z1) / 2)
+        g = GAP / rmid
+        ta, tb, za, zb = t0 + g, t1 - g, z0 + GAP * self.cos, z1 - GAP * self.cos
+        if hole is None:
+            n = max(1, math.ceil(math.degrees(tb - ta) / 4.0 - 1e-6))
+            ts = [ta + (tb - ta) * i / n for i in range(n + 1)]
+            mb.grid(lambda t, z: self.surf.p(t, z, off), ts, (za, zb), uv=lambda t, z: (t * rmid * IN, z * IN))
+            return
+        theta0, zc = about
+        to = self.flat(theta0, zc)
+        edge = self.bounds(theta0, zc, ta, tb, za, zb)
+        angles = sorted({*(TAU * i / 96 for i in range(96)), *(math.atan2(y, x) % TAU for x, y in (*edge, *hole))})
+        rings = []
+        for k in (0.0, 0.34, 0.67, 1.0):  # from the hole out to the edge, in rings: the plate lies on the cone, not across it
+            ring = []
+            for a in angles:
+                (x0, y0), (x1, y1) = _reach(hole, a), _reach(edge, a)
+                ring.append((x0 + (x1 - x0) * k, y0 + (y1 - y0) * k))
+            rings.append(ring)
+        mb.grid(
+            lambda i, j: to(*rings[j][i], off),
+            range(len(angles)),
+            range(len(rings)),
+            closed_u=True,
+            uv=lambda i, j: (rings[j][i][0] * IN, rings[j][i][1] * IN),
+            flip=True,
+        )
+
+    # -- the skin as a height, and paint on it ------------------------------------------
+
+    def height(self, t: float, z: float) -> float:
+        """How far the skin stands off the cone at a point, inches: on a bead or between them."""
+        for ts, zs, H in self.tiles:
+            if not zs[0] <= z <= zs[-1]:
+                continue
+            u = ts[0] + (t - ts[0]) % TAU
+            if u > ts[-1]:
+                continue
+            i = max(1, min(len(ts) - 1, bisect.bisect_left(ts, u)))
+            j = max(1, min(len(zs) - 1, bisect.bisect_left(zs, z)))
+            fu = (u - ts[i - 1]) / (ts[i] - ts[i - 1])
+            fz = (z - zs[j - 1]) / (zs[j] - zs[j - 1])
+            low = H[j - 1][i - 1] + (H[j - 1][i] - H[j - 1][i - 1]) * fu
+            high = H[j][i - 1] + (H[j][i] - H[j][i - 1]) * fu
+            return low + (high - low) * fz
+        return 0.0
+
+    def paint(self, mb: MeshBuilder, verts, faces, theta0: float, z0: float, *, lift: float = PAINT_LIFT, uv=None) -> None:
+        """Lay a flat drawing on the skin as paint: `verts` in inches on the cone unrolled about (theta0, z0), x to the
+        right and y up the slant. It is cut along every row and meridian of the shingles under it, so that each piece
+        of it lies on one facet of the skin, and stands `lift` off that. `uv`: a point of the drawing to its texture coordinates."""
+        surf, sin = self.surf, math.sin(self.surf.a)
+        r0 = surf.r(z0)
+        bm = bmesh.new()
+        made = [bm.verts.new((v[0], v[1], 0.0)) for v in verts]
+        for f in faces:
+            with contextlib.suppress(ValueError):
+                bm.faces.new([made[i] for i in f])
+        xs, ys = [v[0] for v in verts], [v[1] for v in verts]
+        zlo, zhi = z0 + min(ys) * self.cos, z0 + max(ys) * self.cos
+        tlo = theta0 + min(min(xs) / surf.r(zlo), min(xs) / surf.r(zhi))
+        thi = theta0 + max(max(xs) / surf.r(zlo), max(xs) / surf.r(zhi))
+        rows, meridians = set(), set()
+        for ts, zs, _ in self.tiles:
+            if zs[-1] < zlo or zs[0] > zhi:
+                continue
+            lo = ts[0] + math.floor((thi - ts[0]) / TAU) * TAU  # the tile's own angles, brought round to the drawing's
+            if lo + (ts[-1] - ts[0]) < tlo:
+                continue
+            rows.update(round(z, 6) for z in zs if zlo < z < zhi)
+            meridians.update(round(lo + (t - ts[0]), 7) for t in ts if tlo < lo + (t - ts[0]) < thi)
+
+        def cut(co, no) -> None:
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-7, plane_co=co, plane_no=Vector(no).normalized())
+
+        for z in sorted(rows):
+            cut(((0.0, (z - z0) / self.cos, 0.0)), (0.0, 1.0, 0.0))
+        for t in sorted(meridians):
+            cut(((t - theta0) * r0, 0.0, 0.0), (1.0, (t - theta0) * sin, 0.0))
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
+        bm.verts.index_update()
+        out, uvs = [], []
+        for v in bm.verts:
+            z = z0 + v.co.y * self.cos
+            t = theta0 + v.co.x / surf.r(z)
+            out.append(tuple(surf.p(t, z, self.height(t, z) + lift)))
+            uvs.append(uv(v.co.x, v.co.y) if uv else (0.0, 0.0))
+        mb.add(out, [tuple(v.index for v in f.verts) for f in bm.faces], uvs)
+        bm.free()
+
+    def lettering(self, mb: MeshBuilder, body: str, length: float, tall: float, theta0: float, z0: float, font) -> None:
+        """A line of capitals painted on the skin, `length` inches long and `tall` high, its middle at (theta0, z0)."""
+        verts, faces = text_mesh(body, 1.0, font, cuts=0)
+        xs, ys = [v[0] for v in verts], [v[1] for v in verts]
+        sx, sy = length / (max(xs) - min(xs)), tall / (max(ys) - min(ys))
+        cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+        self.paint(mb, [((x - cx) * sx, (y - cy) * sy) for x, y, _ in verts], faces, theta0, z0)
+
+
 # --------------------------------------------------------------------------- parts
 
 
@@ -306,14 +572,16 @@ def attach_ring(M, g) -> None:
     lathe_obj("Afterbody_AttachRing", prof([(SHIELD_R, 0.02), (SHIELD_R + 0.05, 0.3), (CONE.r(2.0) + 0.12, 2.0)]), M["steel"], g, segs=160)
 
 
-def periscope(M, g, station: float, about: str) -> None:
+def periscope(M, g, station: float, about: str, door: tuple[float, float] | None = (6.0, 10.0)) -> None:
     """The periscope: its door's frame and the objective put out through it, under the pilot's feet (the side that faces
     the Earth with him head up). The same instrument as the screen on the panel (mercury_cabin): the lens here, a
     barrel behind it with its stop and a mirror at the bottom, where the light turns up the tube toward the screen.
-    `station` is where the objective leaves the cone; `about` is what the flight says of it."""
+    `station` is where the objective leaves the cone; `about` is what the flight says of it; `door` is the plain frame
+    drawn round it, (across, along) in inches, or None where the flight builds the door's opening itself."""
     detail, glass, void, bore, mirror = (MeshBuilder() for _ in range(5))
     f = CONE.frame(deg(90), station)
-    detail.box((6.0 * IN, 10.0 * IN, 1.3 * IN), CONE.frame(deg(90), station, -0.4))
+    if door:
+        detail.box((door[0] * IN, door[1] * IN, 1.3 * IN), CONE.frame(deg(90), station, -0.4))
     detail.lathe(
         prof([(2.4, 0.0), (2.4, 3.6), (2.05, 3.95), (1.9, 3.95), (1.9, 3.55)]), 32, matrix=f
     )  # the cartridge, and the ring that holds the lens
@@ -367,12 +635,40 @@ def pressure_vessel(M, g, hatch) -> None:
     v.lathe(prof([(0.0, 0.5), (rv(0.5), 0.5), (rv(hz0), hz0)]), 144)  # aft pressure bulkhead + wall
     v.lathe(prof([(rv(hz0), hz0), (rv(hz1), hz1)]), 144 - wide, arc=(t_h1, t_h0 + TAU))
     v.lathe(prof([(rv(hz1), hz1), (rv(CONE_H - 0.3), CONE_H - 0.3), (0.0, CONE_H - 0.3)]), 144)  # small bulkhead
-    # hatch sill: closes the gap between pressure vessel and outer structure
-    for t in (t_h0, t_h1):
-        v.grid(lambda u, z: CONE.p(t, z, -0.1) * (1 - u) + VESSEL.p(t, z) * u, (0.0, 1.0), (hz0, hz1))
-    for z in (hz0, hz1):
-        v.grid(lambda t, u: CONE.p(t, z, -0.1) * (1 - u) + VESSEL.p(t, z) * u, [t_h0 + (t_h1 - t_h0) * i / wide for i in range(wide + 1)], (0.0, 1.0))
+    sill(v, hatch)
     v.build("CrewCabin_PressureVessel", M["titanium"], g, sharp_angle=30)
+
+
+def sill(v: MeshBuilder, opening) -> None:
+    """An opening's sill: closes the gap between pressure vessel and outer structure round its four sides."""
+    t0, t1, z0, z1 = opening
+    wide = round(math.degrees(t1 - t0) / 2.5)
+    for t in (t0, t1):
+        v.grid(lambda u, z: CONE.p(t, z, -0.1) * (1 - u) + VESSEL.p(t, z) * u, (0.0, 1.0), (z0, z1))
+    for z in (z0, z1):
+        v.grid(lambda t, u: CONE.p(t, z, -0.1) * (1 - u) + VESSEL.p(t, z) * u, [t0 + (t1 - t0) * i / wide for i in range(wide + 1)], (0.0, 1.0))
+
+
+def wall(mb: MeshBuilder, r, z0: float, z1: float, openings=(), *, flip: bool = False, step: float | None = None) -> None:
+    """A wall of revolution, radius r(z) inches, from station z0 to z1, left open where `openings` say: each is
+    (angle from, angle to, station from, station to), its angles whole multiples of 2.5 degrees so that the facets of
+    one band meet those of the next. `step` cuts it into rings that tall (a cabin's shade is kept at its vertices)."""
+    cuts = sorted({z0, z1, *(z for o in openings for z in o[2:] if z0 < z < z1)})
+    for za, zb in zip(cuts, cuts[1:]):
+        n = max(1, round((zb - za) / step)) if step else 1
+        profile = prof([(r(za + (zb - za) * i / n), za + (zb - za) * i / n) for i in range(n + 1)])
+        gaps = []
+        for o in openings:
+            if o[2] <= za and o[3] >= zb:
+                a, b = o[0] % TAU, o[1] % TAU or TAU
+                gaps.append((a, b if b > a else b + TAU))  # (an opening may lie across the angle nought)
+        gaps.sort()
+        if not gaps:
+            mb.lathe(profile, 144, flip=flip)
+            continue
+        for (_, a), (b, _) in zip(gaps, gaps[1:] + [(gaps[0][0] + TAU, 0.0)]):
+            if b - a > 1e-6:
+                mb.lathe(profile, round(math.degrees(b - a) / 2.5), arc=(a, b), flip=flip)
 
 
 def bulkhead_stiffeners(M, g) -> None:
