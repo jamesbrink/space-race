@@ -12,6 +12,7 @@ import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
+import { Bloom } from './bloom';
 import { bulkOf } from './bulk';
 import { Cabin, type CabinThing } from './cabin';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
@@ -25,12 +26,11 @@ import { ExhaustPass } from './exhaust';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait';
 import { Jets } from './jets';
-import { Bloom } from './bloom';
 import { ground, lay, layering } from './laid';
 import { Lamps } from './lamps';
-import { refused, sayRefused, watchContext } from './lost';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
+import { refused, sayRefused, watchContext } from './lost';
 import { Origin } from './origin';
 import { Outline } from './outline';
 import { Panes } from './panes';
@@ -2421,8 +2421,10 @@ export class Stage {
     const solids = this.walk.solids;
     solids.set(this.solidRoots());
     // (what has no hierarchy yet is taken as its box and its hierarchy is owed, made in time to spare: `growTrees`. Made
-    // here, the capsule's were made in the frame it left its booster, as the chase view came in on it: 26 ms)
-    solids.gather(eye, clear, clear, clear, false);
+    // here, the capsule's were made in the frame it left its booster, as the chase view came in on it: 26 ms. A frozen
+    // stage makes them at once: a frame of it owes nothing to when it is drawn, and a box given way to its hierarchy some
+    // frames later moved the near plane and with it 149 pixels along the pad's lines, test:frozen's "thrown")
+    solids.gather(eye, clear, clear, clear, this.frozen);
     for (const geometry of solids.wanted) this.treesOwed.add(geometry);
     solids.wanted.clear();
     clear = solids.clear(eye, clear);
