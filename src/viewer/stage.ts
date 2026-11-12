@@ -12,6 +12,7 @@ import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
+import { bulkOf } from './bulk';
 import { Cabin, type CabinThing } from './cabin';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
@@ -33,6 +34,7 @@ import { Panes } from './panes';
 import { through, triangles } from './pick';
 import { Plume } from './plume';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
+import { ShadowCache } from './shadowcache';
 import { depthBias, FarShadow } from './shadows';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
@@ -364,6 +366,10 @@ export class Stage {
   private scenery: Scenery | null = null;
   /** The Sun's second shadow map: everything that stands at the place, coarsely (shadows.ts). */
   private readonly far: FarShadow;
+  /** On foot, the fine map's still casters kept from one frame to the next, and only the figure drawn again (shadowcache.ts). */
+  readonly shadowCache: ShadowCache;
+  /** When the last walk ended (`performance.now()`), until the maps it used have been let go; 0: nothing is owed. */
+  private walkEnded = 0;
   /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
   private defs: ModelDef[] = [];
@@ -443,6 +449,20 @@ export class Stage {
     // the whole place has shadows, under the fine map (shadows.ts): its light comes after the Sun and gives none
     this.far = new FarShadow(this.renderer, this.sun, () => this.shadowed());
     this.scene.add(this.far.light, this.far.light.target, this.far.sky, this.far.sky.target);
+    // (not while he is limp, driving or getting in: what moves then is more than the figure where it stands)
+    this.shadowCache = new ShadowCache(
+      this.renderer,
+      this.sun,
+      () =>
+        this.far.waiting ||
+        this.far.light.shadow.needsUpdate ||
+        this.far.sky.shadow.needsUpdate ||
+        this.tumble !== null ||
+        this.wheel !== null ||
+        this.boarding !== null,
+      () => this.far.nearOnly(),
+    );
+    if (this.plain) this.shadowCache.enabled = false;
 
     // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
     // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
@@ -1037,6 +1057,10 @@ export class Stage {
       sky: () => this.setting.backdrop,
       upAt: (p: THREE.Vector3, out: THREE.Vector3) => this.setting.globe?.up(p, out) ?? out.copy(UP),
       redraw: () => {
+        this.dirty = true;
+      },
+      reshade: () => {
+        this.renderer.shadowMap.needsUpdate = true;
         this.dirty = true;
       },
     };
@@ -1807,20 +1831,8 @@ export class Stage {
     if (typeof what === 'string') {
       const object = this.parts.get(what);
       if (!object) return null;
-      // Where its bulk is, not the middle of the box round it: a truck with a boom is pointed
-      // at on the truck. Each mesh counts for as much as it has vertices, which goes with size.
-      let weight = 0;
-      const middle = new THREE.Vector3();
-      object.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        const count = mesh.isMesh ? (mesh.geometry.getAttribute('position')?.count ?? 0) : 0;
-        if (!count || !mesh.visible) return;
-        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
-        point.addScaledVector(mesh.localToWorld(mesh.geometry.boundingBox!.getCenter(middle)), count);
-        weight += count;
-      });
-      if (!weight) return null;
-      point.divideScalar(weight);
+      // where its bulk is (bulk.ts): the middle of its surface, however it is cut into meshes
+      if (!bulkOf(object, point)) return null;
     } else point.copy(what);
     point.project(this.camera);
     if (point.z > 1) return null;
@@ -2060,6 +2072,21 @@ export class Stage {
       this.shadowMaps.set(size, map);
     }
     shadow.map = map;
+  }
+
+  /**
+   * Half a minute after a walk: the maps only a walk uses are let go, the fine one (8192 a side is a quarter of a
+   * gigabyte) and the still casters' copy of it. The next walk makes them again in its first frame.
+   */
+  private freeWalkShadows(): void {
+    this.walkEnded = 0;
+    this.shadowCache.release();
+    for (const [size, map] of this.shadowMaps) {
+      if (size <= SHADOW_MAP || this.sun.shadow.map === map) continue;
+      map.depthTexture?.dispose();
+      map.dispose();
+      this.shadowMaps.delete(size);
+    }
   }
 
   /**
@@ -2501,7 +2528,11 @@ export class Stage {
     this.drawn++;
     this.setting.view?.(this.camera);
     const unshake = this.shaker?.(this.camera, backdrop.camera);
-    this.far.before(this.walk.active ? (this.staged[this.walked]?.group ?? null) : null, this.frozen);
+    const walking = this.walk.active ? (this.staged[this.walked]?.group ?? null) : null;
+    this.shadowCache.figure = walking;
+    if (walking) this.walkEnded = 0;
+    else if (this.walkEnded && performance.now() - this.walkEnded > 30_000) this.freeWalkShadows();
+    this.far.before(walking, this.frozen);
     if (this.lookingAt && !this.cam.onboard.looking) this.lookOut(null); // (the hands took the head back)
     this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)
     this.origin.draw(() => this.composer.render(this.sinceDrawn));
@@ -2641,6 +2672,7 @@ export class Stage {
     this.setAim(null);
     this.walk.stop();
     this.walked = -1;
+    this.walkEnded = performance.now();
     // the camera takes the view up from this very place, turning about a point a few steps ahead, so the flight back starts from here
     this.cam.adopt(this.camera.position.clone().add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3)));
     this.renderer.shadowMap.needsUpdate = true;
@@ -3372,7 +3404,10 @@ export class Stage {
       if (!carry.update(this.walkDt, now[`Hand.${carry.hand}`], walk.body.grounded ? p.y + 0.02 : null, body, collide ?? this.solid))
         continue;
       this.dirty = true;
-      this.renderer.shadowMap.needsUpdate = true;
+      // (what he carries is part of him: on foot its shadow is the fine map's alone, as his is, and asking for all the
+      // shadows had the far map drawn again ten times a second for a hose it leaves out)
+      if (this.walk.active) this.far.nearOnly();
+      else this.renderer.shadowMap.needsUpdate = true;
     }
   }
 

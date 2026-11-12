@@ -200,6 +200,11 @@ export class FarShadow {
     });
   }
 
+  /** Something other than the figure walked as has asked for the shadows since this map was last drawn (shadowcache.ts asks). */
+  get waiting(): boolean {
+    return this.pending;
+  }
+
   /** Ask for the fine map alone to be drawn again: what moved is the figure walked as, which this map leaves out. */
   nearOnly(): void {
     this.quiet = true;

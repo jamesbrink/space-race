@@ -267,6 +267,21 @@ What has been found, so it is not found again:
   seven seconds. Twins now share a shader unless their materials are patched differently (the material's own
   `customProgramCacheKey` says so), which is nineteen programs, and `Stage.prebuild` asks for the other look's
   at the end of `warm`, to be built behind what is on show: the first change of look is one frame.
+- **On foot the fine shadow map is kept between steps** (`shadowcache.ts`). The walker's own shadow is in the 8192
+  map, so every frame he moved three drew every caster in reach again: 270 draws and 470 000 triangles for one
+  figure's shadow. A second depth map holds everything but the figure; a frame in which nothing else changed copies
+  its texels back over where the figure's shadow was and draws the figure on top. Walking the apron at 1440x900:
+  7.7 to 6.3 ms a frame (real), 6.0 to 4.6 (cel). The condition was that the map be the same to the last texel, and
+  it is checked that way: at 114 stopped instants of seven walks (standing, walking, running a curve, first person,
+  low Sun, the gantry rolling, the clock fast) the map was drawn both ways and compared, 67 million depths each
+  time, none different. What that took is the lesson: nothing may be assumed to have told you it changed. Levels of
+  detail change with the eye and ask nobody, so the cache reads every caster the light can see, every frame (which,
+  where, what shape); the figure is skinned, so its bounds as built say nothing about where its shadow fell, and the
+  texels to put back are found from spheres round its bones; and during the draw every matrix is relative to the
+  eye (origin.ts), so a place is read with the scene's own shift taken off. Where a caster's shadow moves with the
+  time alone (plants in the wind, a level of detail fading) nothing is kept and the map is drawn whole as before: so
+  among plants, and on the gantry above them, it buys nothing. It costs 256 MiB while someone is on foot, freed with
+  the 8192 map half a minute after.
 - **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame at 1440x900 is
   bound by the CPU (three's work per draw call), so a batch per material per file was built, with the meshes left
   in the scene on a layer the camera did not see (so picking, outline, cutaway, moves, levels of detail and

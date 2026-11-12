@@ -235,7 +235,7 @@ never adjusted to bring a check in.
   is, laid along its axis, a face or two a frame and only while someone is aboard, shown through a fisheye of the
   documented field. Indoors (`CabinDef.within`) the sky's light and reflection are cut to a tenth by an occlusion
   map of one shade, the model's lights fall off with distance, not its square, and are held against the exposure;
-  the Sun through a window is the scene's own. Nothing in cabin.ts or gauges.ts names a spacecraft.
+  the Sun through a window is the scene's own. What is inside and not shell is drawn only when it can be seen (on board, cut open, or within 30 m) and casts a shadow only on board or cut open (`Cabin.seen`): from the chase view it was half the vehicle's triangles behind a closed hull, twice a frame. Nothing in cabin.ts or gauges.ts names a spacecraft.
 - **The flight deck has a navball and a predicted path.** Both read what the cockpit shows
   (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
   clock has been put back) and nothing else of it. The navball (`src/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is

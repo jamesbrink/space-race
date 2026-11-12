@@ -45,8 +45,10 @@ src/
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model and each piece of the place is drawn at, and the fade from one to the next
   viewer/shadows.ts                   the Sun's second shadow map: the whole place, coarsely, under the fine one
+  viewer/shadowcache.ts               on foot, the fine shadow map kept between steps: only the walker drawn into it again while nothing else has changed
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
+  viewer/bulk.ts                      where a part's bulk is: the middle of its surface, the same however it is cut into meshes (a callout's point)
   viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
   viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
   viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed

@@ -41,6 +41,8 @@ export interface CabinHost {
   upAt(p: THREE.Vector3, out: THREE.Vector3): THREE.Vector3;
   /** Something on screen has changed. */
   redraw(): void;
+  /** What casts a shadow has changed: the shadow maps are to be drawn again. */
+  reshade(): void;
 }
 
 /** Something in the cabin the pointer can be on: what it is called, what is said of it, and the node. */
@@ -211,6 +213,14 @@ export class Cabin {
       m.needsUpdate = true;
     }
     this.inside = [...inside];
+    // What is inside and not part of the shell: drawn only when it can be seen (`seen`). What the seat itself hides
+    // from the eyes (the pilot's own helmet) is the stage's to show and hide, and is left to it.
+    const kept = new Set((model.seats ?? []).flatMap((seat) => seat.hide ?? []));
+    for (const n of this.def.within)
+      find(n)?.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh && !mesh.userData.shell && !kept.has(mesh.name)) this.interior.push({ mesh, casts: mesh.castShadow });
+      });
 
     const p = this.def.periscope;
     const screen = p && (find(p.screen) as THREE.Mesh | null);
@@ -301,6 +311,32 @@ export class Cabin {
   /** The model has been cut open, or closed again: daylight comes in at the cut, so the inside is shaded less. */
   opened(on: boolean): void {
     for (const m of this.inside) m.aoMapIntensity = shaded(m, on);
+    this.open = on;
+    this.host.redraw();
+  }
+  private open = false;
+  private readonly interior: { mesh: THREE.Mesh; casts: boolean }[] = [];
+  private shown = true;
+  private casting = true;
+
+  /**
+   * The inside is drawn only when it can be seen: from on board, with the model cut open, or from near enough
+   * that a window is more than a few pixels across (`NEAR`). From further off it is half the vehicle's triangles
+   * behind a closed shell. It throws a shadow only for someone inside it: its light comes in at two ports, and its
+   * own shade is the build's.
+   */
+  private seen(): void {
+    const near = this.host.camera.position.distanceToSquared(this.group.getWorldPosition(v)) < NEAR * NEAR;
+    const shown = this.aboard || this.open || near;
+    const casting = this.aboard || this.open;
+    if (shown === this.shown && casting === this.casting) return;
+    for (const { mesh, casts } of this.interior) {
+      mesh.visible = shown;
+      mesh.castShadow = casts && casting;
+    }
+    if (casting !== this.casting || (shown !== this.shown && casting)) this.host.reshade();
+    this.shown = shown;
+    this.casting = casting;
     this.host.redraw();
   }
   private inside: THREE.MeshStandardMaterial[] = [];
@@ -451,6 +487,7 @@ export class Cabin {
       moved = true;
     }
     for (const { light, base } of this.lights) light.intensity = base / Math.max(1, exposure / DAY_EXPOSURE);
+    this.seen();
     if (moved) this.host.redraw();
   }
 
@@ -607,6 +644,8 @@ const OPENED = 0.45;
 function shaded(m: THREE.MeshStandardMaterial, opened: boolean): number {
   return (opened ? OPENED : 1) * (m.metalness > 0.3 ? 0.55 : 1);
 }
+/** How near the eye must be for the inside to be drawn through a closed shell, metres: a 25 cm port is then a dozen pixels and more. */
+const NEAR = 30;
 /** A lit lamp's own brightness (emissive, against the scene's exposure). */
 const LAMP_LIT = 1.6;
 /** The exposure the cabin's lights are set for: a day's. Past it (dusk, night) they are turned down by as much, so the cabin reads the same. */
