@@ -223,3 +223,90 @@ test('it can be worked out in slices, to the same answer', (t) => {
   assert.deepEqual(job.result.points, whole.points);
   assert.ok(whole.points.length <= 480, `${whole.points.length} points`);
 });
+
+/** The sequencer's plan from a state of the live flight, as viewer/path.ts asks for it. */
+const planOf = (s) => {
+  const late = (at) => Math.max(at, s.t);
+  const offsets = TR.retro.fires.map((f) => f.value - TR.retro.fires[0].value);
+  return {
+    tower: s.shed.tower ? undefined : late(TR.body.tower.at.value),
+    separation: s.shed.booster ? undefined : late(TR.separation.at.value),
+    retro: s.shed.retropack ? [] : offsets.map((o) => (s.retroAt ?? late(TR.retro.fires[0].value)) + o),
+    retropack: s.shed.retropack ? undefined : late(TR.retropack.at.value),
+    chutes: true,
+  };
+};
+
+test('Freedom 7 with its sequencer: predicted before separation, the landing the live simulator then flies', () => {
+  // the record's flight, sequencer and guidance on; the prediction from each instant is told what the sequencer will do
+  const live = [];
+  const pilot = autopilot(V);
+  let state = V.start();
+  while (!state.landing && state.t < 1200) {
+    const next = V.tick(state, pilot);
+    if (next.ticks === state.ticks) break;
+    state = next;
+    if (live.length === 0 || state.t - live[live.length - 1].t >= 1) live.push(state);
+  }
+  assert.ok(state.landing, 'it came down');
+  const flown = { range: V.sample(state).range, t: state.landing.t, drogue: state.drogueAt, main: state.mainAt, entry: state.enteredAt };
+  for (const t of [145, 200, 300]) {
+    const s = live.find((x) => x.t >= t);
+    const sample = V.sample(s);
+    const p = predict(TR, SITE, SEA, { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase }, { sequence: planOf(s) });
+    assert.equal(p.outcome, 'impact');
+    // (the range from the pad to the landing, the live sample's way: within half a per cent, 2.5 km)
+    near(
+      p.impact.range / flown.range,
+      1,
+      0.006,
+      `range predicted at T+${t}: ${(p.impact.range / 1000).toFixed(1)} km against ${(flown.range / 1000).toFixed(1)}`,
+    );
+    near(p.impact.t, flown.t, 15, `time down predicted at T+${t}`);
+    assert.ok(p.chute, 'under its parachute at the end');
+    const at = (kind) => p.events.find((e) => e.kind === kind);
+    near(at('drogue').t, flown.drogue, 6, `drogue predicted at T+${t}`);
+    near(at('main').t, flown.main, 8, `main predicted at T+${t}`);
+    near(at('entry').t, flown.entry, 6, `0.05 g predicted at T+${t}`);
+    assert.ok(at('peak').value > 5 && at('peak').value < 15, `peak load ${at('peak').value}`);
+    if (t < TR.retro.fires[0].value) near(at('retro').t, TR.retro.fires[0].value, 1e-6, 'retrofire at the record time');
+  }
+  // without the sequence (the pilot does nothing and the sequencer is off), no retrofire: it goes further
+  const s = live.find((x) => x.t >= 200);
+  const sample = V.sample(s);
+  const bare = predict(
+    TR,
+    SITE,
+    SEA,
+    { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
+    { sequence: { chutes: false } },
+  );
+  assert.ok(bare.impact.range > flown.range + 10_000, 'with no retrofire it lands further on');
+  assert.ok(!bare.chute && !bare.events.some((e) => e.kind === 'drogue'), 'and no parachute comes out by itself');
+});
+
+test('the path is given at instants of its own: two predictions a moment apart lie on the same points', () => {
+  const run = flyLive(V, autopilot(V), 0.5, 260);
+  const a = run.samples.find((s) => s.t >= 200);
+  const b = run.samples.find((s) => s.t >= 200.5);
+  const p = predict(TR, SITE, SEA, { t: a.t, r: a.centre, v: a.v, mass: a.mass, phase: a.phase });
+  const q = predict(TR, SITE, SEA, { t: b.t, r: b.centre, v: b.v, mass: b.mass, phase: b.phase });
+  const byTime = new Map(p.points.map((x) => [x.t, x]));
+  let shared = 0;
+  let worst = 0;
+  for (const x of q.points.slice(1, -1)) {
+    const y = byTime.get(x.t);
+    if (!y) continue;
+    shared++;
+    worst = Math.max(worst, length(sub(x.r, y.r)));
+  }
+  assert.ok(shared > 0.9 * (q.points.length - 2), `${shared} of ${q.points.length - 2} instants are shared`);
+  // (the same flight integrated from half a second later: metres apart at most, hundreds of kilometres on)
+  assert.ok(worst < 5, `the same instant is ${worst.toFixed(2)} m apart`);
+  // and no piece of it bends more than the grid allows
+  for (let i = 1; i + 1 < q.points.length; i++) {
+    const [u, w] = [sub(q.points[i].r, q.points[i - 1].r), sub(q.points[i + 1].r, q.points[i].r)];
+    if (length(u) < 1 || length(w) < 1) continue;
+    assert.ok(angleBetween(u, w) / DEG < 1.3, `a corner of ${(angleBetween(u, w) / DEG).toFixed(2)} degrees at ${q.points[i].t} s`);
+  }
+});

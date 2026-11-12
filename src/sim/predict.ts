@@ -9,12 +9,30 @@
  *   coast    "if the engine stopped now": no thrust. What is flying keeps its drag (the stack's
  *            going up; the spacecraft's, heat shield first, once it is alone) and a spacecraft
  *            alone lets its parachutes out at their heights coming down, as the live simulator
- *            does without being asked. Nothing else happens: no separation, no retrofire.
+ *            does without being asked.
  *   guided   `burn` given: the engine burns on to `burn.until` with the thrust along `burn.axis`
  *            (the tilt programme, with a pilot's trim: `programmeAxis`), then coasts as above.
  *            The attitude is prescribed, as fly.ts's is: the rigid body and its autopilot are not
  *            stepped (a tick of vehicle.ts costs 0.13 ms and there are 14,000 to cutoff), so the
  *            platform's lag behind its programme, under a degree, is left out.
+ *
+ * "Nothing more is done" is by the pilot. What the vehicle's sequencer will do by itself at the
+ * record's times is given as `sequence` (the caller knows whether it is switched on and what is
+ * already done): the spacecraft let go of its booster, with separation's push along its motion;
+ * the retrorockets, each against the motion over the ground and pitched below the level as fly.ts
+ * has them; the pack's going; and whether the parachutes come out by themselves at all. Without it
+ * nothing of the kind happens, and a spacecraft alone still lets its parachutes out.
+ *
+ * Besides the path it names what happens on it (`events`): each event of the sequence, the engine's
+ * cutoff on a guided one, the parachutes, and two things of the air worked out on the way: the
+ * first 0.05 g of the descent once the retrorockets are done (fly.ts's mark of entry) and the
+ * greatest load felt coming down before a parachute is out.
+ *
+ * The path is returned at instants that do not depend on where the prediction began: multiples of
+ * a step that is a power of two seconds, as long as the bend there allows (`gridStep`), each point
+ * put on the integrator's own path by the cubic through the states either side of it. Two
+ * predictions of the same flight made a moment apart then give the same points, which a line drawn
+ * through them shows as stillness, not as a curve whose corners slide along it.
  *
  * A point mass under gravity and drag along its motion through air that turns with the Earth:
  * no lift, no wind. Fourth-order Runge-Kutta with a step that follows what is happening: ten
@@ -46,6 +64,7 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, G0, gravity, MEAN_RADIUS, type Phase, thrustIn } from './fly.ts';
+import { upAt } from './forces.ts';
 import { aboutAxis, turn } from './rigid.ts';
 
 /** Above this height, m, the air is left out. */
@@ -66,20 +85,76 @@ export interface Burn {
   until: number;
 }
 
+/**
+ * What the vehicle's own sequencer will do from here without the pilot: instants in seconds from
+ * liftoff, each left out if it is done already or will not happen.
+ */
+export interface Sequence {
+  /** The escape tower let go: marked on the path only (a point mass in space feels neither its mass nor its shape). */
+  tower?: number;
+  /** The spacecraft let go of its booster. */
+  separation?: number;
+  /** When each retrorocket lights (those not yet burnt out). */
+  retro?: number[];
+  /** The retrorockets' pack let go. */
+  retropack?: number;
+  /** Whether the spacecraft lets its parachutes out by itself at their heights. True if not given. */
+  chutes?: boolean;
+}
+
 export interface PredictOptions {
   burn?: Burn;
+  /** What the sequencer does from here (above): without it, nothing but the parachutes of a spacecraft alone. */
+  sequence?: Sequence;
   /** The longest it looks ahead, s: six hours unless given. */
   limit?: number;
   /** The most points the path is returned as. */
   points?: number;
 }
 
-/** A point on the predicted path: when, and where in the frame that does not turn. */
+/** A point on the predicted path: when, where and how fast in the frame that does not turn. */
 export interface PathPoint {
   t: number;
   r: Vec3;
+  v: Vec3;
   /** Height above the sea, m. */
   altitude: number;
+}
+
+/** Something that happens on the path: `value` is the load in g for `entry` and `peak`. */
+export interface PathEvent extends PathPoint {
+  kind: 'cutoff' | 'tower' | 'separation' | 'retro' | 'retropack' | 'entry' | 'peak' | 'drogue' | 'main';
+  value?: number;
+}
+
+/** The bend a straight piece of the returned path may take, radians, and the shortest piece, m (`gridStep`). */
+const BEND = 0.6 * (Math.PI / 180);
+const SHORTEST = 30;
+
+/**
+ * The step of the returned path at a place where it goes at `speed` and turns at `turning` rad/s: the
+ * longest power of two seconds, from a sixteenth to sixteen, over which it turns no more than
+ * `bend` (but never a piece shorter than `SHORTEST`), and no longer than `longest`. Powers of two, so a step's multiples are also
+ * its half's: where the step changes, the instants of one prediction are still the next one's.
+ */
+export function gridStep(speed: number, turning: number, bend = BEND, longest = 16): number {
+  const want = Math.max(bend / Math.max(turning, 1e-9), SHORTEST / Math.max(speed, 1e-3));
+  return 2 ** Math.max(-4, Math.min(Math.log2(longest), Math.floor(Math.log2(want))));
+}
+
+/** Where a cubic through two states puts the path at `t` between them (Hermite: each end's place and speed). */
+export function between(t0: number, r0: Vec3, v0: Vec3, t1: number, r1: Vec3, v1: Vec3, t: number): { r: Vec3; v: Vec3 } {
+  const h = t1 - t0;
+  if (!(h > 0)) return { r: r0, v: v0 };
+  const s = (t - t0) / h;
+  const s2 = s * s;
+  const s3 = s2 * s;
+  const [a, b, c, d] = [2 * s3 - 3 * s2 + 1, (s3 - 2 * s2 + s) * h, -2 * s3 + 3 * s2, (s3 - s2) * h];
+  // and its slope: the speed there
+  const [da, db, dc, dd] = [(6 * s2 - 6 * s) / h, 3 * s2 - 4 * s + 1, (-6 * s2 + 6 * s) / h, 3 * s2 - 2 * s];
+  const at = (i: 0 | 1 | 2): number => a * r0[i] + b * v0[i] + c * r1[i] + d * v1[i];
+  const slope = (i: 0 | 1 | 2): number => da * r0[i] + db * v0[i] + dc * r1[i] + dd * v1[i];
+  return { r: [at(0), at(1), at(2)], v: [slope(0), slope(1), slope(2)] };
 }
 
 /** A place on the path worth naming. */
@@ -125,6 +200,10 @@ export interface Prediction {
   impact: (PathPlace & { range: number; speed: number }) | null;
   /** The orbit, when it is one: the elements at the start, which J2 and the air then change a little. */
   orbit: Elements | null;
+  /** What happens on the way, in order of time (`PathEvent`). */
+  events: PathEvent[];
+  /** Whether a parachute is out where it ends. */
+  chute: boolean;
   /** What working it out took: steps of the integrator, and milliseconds. */
   steps: number;
   cost: number;
@@ -188,6 +267,33 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
   const burn = options.burn && start.t < options.burn.until ? options.burn : null;
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
 
+  // what the sequencer does from here: each instant at or after the start (one that is late happens at once)
+  const seq = options.sequence ?? null;
+  const chutes = seq?.chutes ?? true;
+  const ahead = (x: number | undefined): number | null => (x !== undefined && Number.isFinite(x) ? Math.max(x, start.t) : null);
+  const towerAt = ahead(seq?.tower);
+  const separationAt = ahead(seq?.separation);
+  const packAt = ahead(seq?.retropack);
+  const retroBurn = tr.retro.burn.value;
+  const fires = (seq?.retro ?? []).filter((f) => f + retroBurn > start.t && (packAt === null || f < packAt));
+  const retroEnd = fires.length ? Math.max(...fires.map((f) => f + retroBurn)) : Number.NEGATIVE_INFINITY;
+  /** The instants a step must end on, in order: something changes there. */
+  const marks = [
+    ...new Set(
+      [burn?.until, towerAt, separationAt, packAt, ...fires, ...fires.map((f) => f + retroBurn)].filter(
+        (x): x is number => x !== undefined && x !== null && x > start.t,
+      ),
+    ),
+  ].sort((a, b) => a - b);
+  let markAt = 0;
+  /** How many retrorockets burn at `at` (none once the pack has gone). */
+  const lit = (at: number): number => {
+    if (packAt !== null && at >= packAt) return 0;
+    let n = 0;
+    for (const f of fires) if (at >= f && at < f + retroBurn) n++;
+    return n;
+  };
+
   let t = start.t;
   let r = start.r;
   let v = start.v;
@@ -195,7 +301,7 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
   let burning = burn !== null;
   // what the air sees: the stack (or the spacecraft with its tower on), nose first; or the spacecraft alone, with whatever parachute is out
   let riding = start.phase === 'powered' || start.phase === 'coast' || start.phase === 'escape';
-  const alone = start.phase !== 'powered' && start.phase !== 'coast';
+  let alone = start.phase !== 'powered' && start.phase !== 'coast';
   let chute = { full: 0, was: 0, at: 0, fills: 1 };
   let drogue = start.phase === 'drogue' || start.phase === 'main';
   let main = start.phase === 'main';
@@ -210,10 +316,12 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
       ? padHeight
       : 0;
 
-  /** The acceleration at a state, and how quickly drag is changing the speed there (1/s). */
+  /** The acceleration at a state; how quickly drag is changing the speed there (1/s); and what is felt there, m/s² (all but gravity). */
   let stiff = 0;
+  let felt = 0;
   const rate = (p: Vec3, u: Vec3, at: number, altitude: number, m: number): Vec3 => {
-    let a = gravity(p);
+    const g = gravity(p);
+    let a = g;
     stiff = 0;
     const air = altitude < AIR_TOP || burning ? atmosphere(altitude) : null;
     if (air && altitude < AIR_TOP) {
@@ -227,6 +335,20 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
       }
     }
     if (burning && burn) a = add(a, scale(burn.axis(at), thrustIn(tr, air ? air.pressure : 0) / m));
+    const n = fires.length ? lit(at) : 0;
+    if (n > 0) {
+      // each retrorocket against the motion over the ground, pitched below the level (fly.ts)
+      const up = upAt(p, at);
+      const wind = sub(u, cross(SPIN, p));
+      const level = sub(wind, scale(up, dot(wind, up)));
+      const across = length(level);
+      if (across > 0) {
+        const pitch = tr.retro.pitch.value * (Math.PI / 180);
+        const push = sub(scale(level, -Math.cos(pitch) / across), scale(up, Math.sin(pitch)));
+        a = add(a, scale(push, (n * tr.retro.thrust.value) / m));
+      }
+    }
+    felt = length(sub(a, g));
     return a;
   };
   const massAt = (at: number): number => (burning ? mass - flow * (at - t) : mass);
@@ -253,10 +375,17 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
   const first = place(r, t);
   let here = first;
   let altitude = first.height - seaLevel;
-  const points: PathPoint[] = [{ t, r, altitude }];
+  /** The path as the integrator steps it: every step's state. */
+  const points: PathPoint[] = [{ t, r, v, altitude }];
   /** The turning points of the height ahead, each fitted through the three points round it. */
   const tops: PathPlace[] = [];
   const bottoms: PathPlace[] = [];
+  const events: PathEvent[] = [];
+  const note = (kind: PathEvent['kind'], value?: number, at: PathPoint = { t, r, v, altitude }): void => {
+    events.push({ kind, t: at.t, r: at.r, v: at.v, altitude: at.altitude, ...(value !== undefined ? { value } : {}) });
+  };
+  let entry = false;
+  let peak: (PathPoint & { load: number }) | null = null;
   let swept = 0;
   let steps = 0;
   let cost = 0;
@@ -274,16 +403,17 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
     const slope = (y2 * x1 * x1 - y1 * x2 * x2) / (x1 * x2 * (x1 - x2));
     const x = Math.max(x1, Math.min(x2, -slope / (2 * bend)));
     // the place then: the same three points, each coordinate along its own parabola
-    const through = (i: 0 | 1 | 2): number => {
-      const [p1, p2] = [a.r[i] - b.r[i], c.r[i] - b.r[i]];
+    const through = (i: 0 | 1 | 2, of: (p: PathPoint) => Vec3): number => {
+      const [p1, p2] = [of(a)[i] - of(b)[i], of(c)[i] - of(b)[i]];
       const k2 = (p1 * x2 - p2 * x1) / (x1 * x2 * (x1 - x2));
       const k1 = (p2 * x1 * x1 - p1 * x2 * x2) / (x1 * x2 * (x1 - x2));
-      return b.r[i] + k1 * x + k2 * x * x;
+      return of(b)[i] + k1 * x + k2 * x * x;
     };
     const at = b.t + x;
-    const where: Vec3 = [through(0), through(1), through(2)];
+    const where: Vec3 = [through(0, (p) => p.r), through(1, (p) => p.r), through(2, (p) => p.r)];
+    const speed: Vec3 = [through(0, (p) => p.v), through(1, (p) => p.v), through(2, (p) => p.v)];
     const g = place(where, at);
-    return { t: at, r: where, altitude: g.height - seaLevel, latitude: g.latitude, longitude: g.longitude };
+    return { t: at, r: where, v: speed, altitude: g.height - seaLevel, latitude: g.latitude, longitude: g.longitude };
   };
 
   // Standing on the ground, engine off: there is nothing to say. (`r` is a centre of mass, which on a stack is metres
@@ -294,39 +424,77 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
   }
 
   const advance = (): void => {
-    // the step: what the air allows, what the height allows, and never across the cutoff
+    // the step: what the air allows, what the height allows, never across the cutoff or anything else the sequence does
     const up = unit(r);
     const climb = dot(sub(v, cross(SPIN, r)), up);
     let h = altitude > 150_000 ? 10 : altitude > 90_000 ? 4 : 1;
     rate(r, v, t, altitude, mass);
+    const load = felt / G0;
     if (stiff > 0) h = Math.min(h, 0.5 / stiff);
     if (altitude < 120_000) h = Math.min(h, 2000 / Math.max(1, Math.abs(climb)));
-    if (burning && burn) h = Math.min(h, 0.5, burn.until - t);
-    h = Math.max(h, burning ? 1e-6 : 0.05);
+    if ((burning && burn) || lit(t) > 0) h = Math.min(h, 0.5);
+    h = Math.max(h, 0.05);
+    while (markAt < marks.length && marks[markAt]! <= t + 1e-9) markAt++;
+    const mark = marks[markAt];
+    const reaches = mark !== undefined && mark - t <= h + 1e-9;
+    if (reaches) h = mark - t;
 
     const next = rk4(h, altitude);
-    const before = { t, r, v, altitude };
+    const before: PathPoint = { t, r, v, altitude };
     const turned = angleBetween(r, next.r);
     if (burning) mass -= flow * h;
-    t += h;
+    t = reaches ? mark : t + h;
     r = next.r;
     v = next.v;
-    if (burning && burn && t >= burn.until - 1e-9) burning = false;
     here = place(r, t);
     altitude = here.height - seaLevel;
     steps++;
     const falling = altitude < before.altitude;
 
+    // the air's load coming down, once the retrorockets are done and before a parachute is out: the first 0.05 g, and the most
+    if (falling && !drogue && !main && before.t >= retroEnd && lit(before.t) === 0) {
+      if (!entry && load >= 0.05) {
+        entry = true;
+        note('entry', load, before);
+      }
+      if (entry && (!peak || load > peak.load)) peak = { ...before, load };
+    }
+
+    // what the sequence does at this instant
+    if (reaches) {
+      if (burning && burn && t >= burn.until - 1e-9) {
+        burning = false;
+        note('cutoff');
+      }
+      if (t === towerAt) note('tower');
+      if (t === separationAt && !alone) {
+        // the two are pushed apart along the motion; the spacecraft's share is the booster's part of the whole (fly.ts)
+        const share = tr.separation.boosterMass.value / (tr.separation.boosterMass.value + tr.separation.mass.value);
+        const wind = sub(v, cross(SPIN, r));
+        if (length(wind) > 0) v = add(v, scale(unit(wind), tr.separation.speed.value * share));
+        mass = tr.separation.mass.value;
+        alone = true;
+        note('separation');
+      }
+      if (fires.length && t === fires[0]) note('retro');
+      if (t === packAt) {
+        mass = tr.retropack.mass.value;
+        note('retropack');
+      }
+    }
+
     // what a spacecraft alone does by itself, coming down (vehicle.ts): the tower's shape gives way to the heat shield, the parachutes come out
     if (alone && falling) {
       riding = false;
-      if (!drogue && !main && altitude <= tr.drogue.altitude.value) {
+      if (chutes && !drogue && !main && altitude <= tr.drogue.altitude.value) {
         drogue = true;
         chute = { full: tr.drogue.dragArea.value, was: 0, at: t, fills: tr.drogue.fills.value };
+        note('drogue');
       }
-      if (drogue && !main && altitude <= tr.main.altitude.value) {
+      if (chutes && drogue && !main && altitude <= tr.main.altitude.value) {
         main = true;
         chute = { full: tr.main.dragArea.value, was: tr.drogue.dragArea.value, at: t, fills: tr.main.fills.value };
+        note('main');
       }
     }
 
@@ -335,20 +503,21 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
       // back to the instant it touched, along the last step
       const part = Math.max(0, Math.min(1, (before.altitude - ground) / (before.altitude - altitude || 1)));
       const mix = (a: Vec3, b: Vec3): Vec3 => add(a, scale(sub(b, a), part));
-      const at = before.t + h * part;
+      const at = before.t + (t - before.t) * part;
       const where = mix(before.r, r);
+      const speed = mix(before.v, v);
       const g = place(where, at);
-      const speed = length(sub(mix(before.v, v), cross(SPIN, where)));
       impact = {
         t: at,
         r: where,
+        v: speed,
         altitude: g.height - seaLevel,
         latitude: g.latitude,
         longitude: g.longitude,
         range: angleBetween(fixed(where, at), pad) * MEAN_RADIUS,
-        speed,
+        speed: length(sub(speed, cross(SPIN, where))),
       };
-      points.push({ t: at, r: where, altitude: impact.altitude });
+      points.push({ t: at, r: where, v: speed, altitude: impact.altitude });
       outcome = 'impact';
       done = true;
       return;
@@ -357,16 +526,16 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
     if (swept + turned >= 2 * Math.PI) {
       // once round: the path ends where it began to repeat
       const part = turned > 0 ? (2 * Math.PI - swept) / turned : 1;
-      const where = add(before.r, scale(sub(r, before.r), part));
-      const at = before.t + h * part;
-      points.push({ t: at, r: where, altitude: before.altitude + (altitude - before.altitude) * part });
+      const at = before.t + (t - before.t) * part;
+      const end = between(before.t, before.r, before.v, t, r, v, at);
+      points.push({ t: at, r: end.r, v: end.v, altitude: before.altitude + (altitude - before.altitude) * part });
       outcome = 'orbit';
       done = true;
       return;
     }
     swept += turned;
 
-    points.push({ t, r, altitude });
+    points.push({ t, r, v, altitude });
     if (points.length >= 3) {
       const [a, b, c] = points.slice(-3) as [PathPoint, PathPoint, PathPoint];
       if (b.altitude >= a.altitude && b.altitude > c.altitude) {
@@ -380,23 +549,41 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
     if (t - start.t >= limit || steps >= 60_000) done = true;
   };
 
-  /** The path thinned to `most` points, evenly along its length: the integrator's steps crowd where the air is thick. */
-  const thinned = (): PathPoint[] => {
-    if (points.length <= most) return points;
-    let whole = 0;
-    for (let i = 1; i < points.length; i++) whole += length(sub(points[i]!.r, points[i - 1]!.r));
-    const gap = whole / (most - 1);
-    const out: PathPoint[] = [points[0]!];
-    let gone = 0;
-    for (let i = 1; i < points.length - 1; i++) {
-      gone += length(sub(points[i]!.r, points[i - 1]!.r));
-      if (gone >= gap) {
-        out.push(points[i]!);
-        gone = 0;
+  /**
+   * The path at instants of its own (`gridStep`): its first and last points as the integrator has them, and between
+   * them every multiple of the step that the bend there allows, at most `most` in all (the bend allowed is doubled until
+   * they fit, and past a tenth of a radian the longest step too).
+   */
+  const sampled = (): PathPoint[] => {
+    const at = (bend: number, longest: number): PathPoint[] | null => {
+      const out: PathPoint[] = [points[0]!];
+      let last = points[0]!.t;
+      for (let i = 0; i + 1 < points.length; i++) {
+        const a = points[i]!;
+        const b = points[i + 1]!;
+        const h = b.t - a.t;
+        if (!(h > 0)) continue;
+        const speed = length(a.v);
+        const ahead = speed > 0 ? scale(a.v, 1 / speed) : null;
+        const pull = scale(sub(b.v, a.v), 1 / h);
+        const across = ahead ? sub(pull, scale(ahead, dot(pull, ahead))) : pull;
+        const step = gridStep(speed, length(across) / Math.max(speed, 1e-3), bend, longest);
+        for (let g = (Math.floor(last / step + 1e-9) + 1) * step; g < b.t - 1e-6; g += step) {
+          if (g < a.t - 1e-9) continue;
+          const p = between(a.t, a.r, a.v, b.t, b.r, b.v, g);
+          out.push({ t: g, r: p.r, v: p.v, altitude: a.altitude + ((b.altitude - a.altitude) * (g - a.t)) / h });
+          last = g;
+          if (out.length >= most) return null;
+        }
       }
+      if (points.length > 1) out.push(points[points.length - 1]!);
+      return out;
+    };
+    // (a long path that will not fit at the longest step is given longer ones: an orbit of hours in 480 points)
+    for (let bend = BEND, longest = 16; ; bend *= 2, longest *= bend > 0.2 ? 2 : 1) {
+      const out = at(bend, longest);
+      if (out) return out;
     }
-    out.push(points[points.length - 1]!);
-    return out;
   };
 
   let answer: Prediction | null = null;
@@ -409,11 +596,16 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
     };
     const best = (list: PathPlace[], sign: number): PathPlace | null =>
       list.reduce<PathPlace | null>((b, p) => (!b || sign * (p.altitude - b.altitude) > 0 ? p : b), null);
+    if (peak) {
+      const { load, ...at } = peak;
+      note('peak', load, at);
+    }
+    events.sort((a, b) => a.t - b.t);
     return {
       kind: burn ? 'guided' : 'coast',
       from: start.t,
       cutoff: burn ? burn.until : null,
-      points: thinned(),
+      points: outcome === 'none' ? points : sampled(),
       outcome,
       // going round, the highest and lowest of the whole turn; otherwise the top of the climb ahead, if there is one
       // (a turn begun at one end of the orbit comes back to that end as its last point, which is then no turning point of the path)
@@ -421,6 +613,8 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
       perigee: orbit ? best([...bottoms, end()], -1) : null,
       impact,
       orbit: orbit ? elements(start.r, start.v) : null,
+      events,
+      chute: drogue || main,
       steps,
       cost,
     };
