@@ -30,6 +30,8 @@ body.in-gallery :is(#stage, #ui) { visibility: hidden; }
 
 /* --- what stands there, part by part ------------------------------------------------- */
 #gallery .buttons .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+/* in a drawing the room is paper, whichever tone it has: there is nothing for the switch to change */
+#gallery.cel [data-light] { display: none; }
 .arrow { display: inline-block; width: 6px; height: 6px; margin-left: 9px; border: solid currentColor; border-width: 1.5px 1.5px 0 0; transform: rotate(45deg); }
 .arrow.back { margin: 0 1px 0 3px; transform: rotate(225deg); }
 #gallery .lede { color: var(--dim); font-size: 13px; }

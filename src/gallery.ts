@@ -826,15 +826,17 @@ export class Gallery {
     const low = rects.map((r) => r.top).filter((top) => top > view.top + view.height / 2);
     const bottom = Math.min(view.bottom, ...low);
     const high = rects.map((r) => r.bottom).filter((b) => b < view.top + view.height / 2);
-    // a view is framed in what is left clear between the bar across the top and the controls
-    this.made?.stage.setInset(Math.max(0, view.bottom - bottom), Math.max(view.top, ...high) - view.top);
+    // on a narrow page the title card and the switch beside it lie across the top of the view, as the bar does on a wide one
+    const head = shown(title) && matchMedia('(max-width: 960px)').matches ? title.getBoundingClientRect().bottom : view.top;
+    const top = Math.max(view.top, head, ...high);
+    // a view is framed in what is left clear between what lies across the top and the controls
+    this.made?.stage.setInset(Math.max(0, view.bottom - bottom), top - view.top);
     // a panel down one side takes that side; one across the foot is already under the canvas
     const side = shown(panel) ? panel.getBoundingClientRect() : null;
-    const head = shown(title) ? title.getBoundingClientRect() : null;
     this.clear = {
       left: view.left + 10,
       right: (side && side.left > view.left + view.width / 2 && side.height > view.height / 2 ? side.left : view.right) - 10,
-      top: Math.max(view.top + 10, ...high.map((b) => b + 8), head && head.width > view.width * 0.6 ? head.bottom + 8 : 0),
+      top: top + 8,
       bottom: bottom - 10,
     };
   }
