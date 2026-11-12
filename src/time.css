@@ -27,16 +27,15 @@
 /* a flight with one section has no switcher above it */
 #ui:has(.models button:only-child) .timebar { top: var(--edge); }
 
-/* phone and small tablet: the switcher has gone to the bottom, so the clock sits under the title */
+/* phone and small tablet: the clock is a small line directly under the top line, at its left (fold.css) */
 @media (max-width: 960px), (max-height: 520px) {
-  .timebar { top: 82px; left: 10px; transform: none; max-width: calc(100vw - 20px); }
+  .timebar { top: calc(var(--top) + var(--line-h) + 6px); left: var(--left); transform: none; max-width: calc(100vw - var(--left) - var(--right)); }
   #ui.walking .timebar { top: 58px; }
   .time-play { padding: 10px 12px; }
   .time-toggle { width: 36px; height: 36px; }
   .time-rates button { padding: 10px 8px; }
   .time-scrub input { min-width: 0; }
 }
-@media (max-height: 520px) { .timebar { top: 10px; left: auto; right: 10px; } }
 
 /* --- the flight as flown (the Flight tab): traces against time, and the reports' figures --- */
 .flown h2 { padding: 16px 18px 0; color: var(--faint); }
@@ -69,4 +68,5 @@
 .time-volume span:last-child { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 960px), (max-height: 520px) { .time-sound { width: 36px; height: 36px; } }
 /* a phone: the row holds the clock, the speaker, the chevron and the way into the flight deck, so the readout closes up */
-@media (max-width: 480px) { .time-row { gap: 2px; } #ui.piloting .time-row { flex-wrap: wrap; } #ui.piloting .time-row .time-play { flex: none; } #ui.piloting .time-row .cockpit-enter { margin-left: auto; } .time-read { gap: 6px; padding: 0 2px; letter-spacing: 0.02em; } .time-row .time-play { min-width: 0; padding: 10px 8px; letter-spacing: 0.08em; } .time-sound { width: 26px; } .time-row .time-toggle { width: 28px; } }
+/* (and the time of day at the site is said with the clock opened, beside its scrub: folded, the count alone) */
+@media (max-width: 480px) { .timebar.folded .time-local { display: none; } .time-row { gap: 2px; } #ui.piloting .time-row { flex-wrap: wrap; } #ui.piloting .time-row .time-play { flex: none; } #ui.piloting .time-row .cockpit-enter { margin-left: auto; } .time-read { gap: 6px; padding: 0 2px; letter-spacing: 0.02em; } .time-row .time-play { min-width: 0; padding: 10px 8px; letter-spacing: 0.08em; } .time-sound { width: 26px; } .time-row .time-toggle { width: 28px; } }

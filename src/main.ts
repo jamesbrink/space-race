@@ -104,12 +104,6 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   fnValues: (node) => stage.functions(current.id, node).map((f) => ({ id: f.fn.id, value: f.value, refused: f.refused })),
   setFn: (node, id, v) => stage.setFunction(current.id, node, id, v),
   inset: (px, top) => stage.setInset(px, top),
-  // (as the gallery does: moving the sheet is asking for the view to be made good, from where it is being seen from)
-  settled: () => {
-    if (!ready || stage.walk.active || cockpit.active || demo.active || stage.cameraMode !== 'orbit') return;
-    if (selected) stage.focus(selected);
-    else stage.view(current.home ?? 'all', false, true);
-  },
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
 // the flight as the simulator flies it, beside the reports' figures: in the Flight tab

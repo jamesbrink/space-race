@@ -1,4 +1,4 @@
-/* The data panel as a sheet a finger moves (sheet.ts): its third stop, and what the browser is told to leave alone. */
+/* The data panel as a sheet a finger moves (sheet.ts): what the browser is told to leave alone (its stops are fold.css's). */
 @media (max-width: 960px) and (min-height: 521px) {
   /* its tabs and its grip take no gesture of the browser's: a finger on them moves the sheet, never the page (no pull-to-refresh, no bounce) */
   .panel { touch-action: none; overscroll-behavior: contain; }
@@ -6,8 +6,4 @@
      too: a pane holds rows that scroll sideways, and Safari takes a row's own touch-action together with its pane's, so
      a pane that allowed only pan-y left the View pane's rows unmovable on an iPhone; the pane itself never scrolls sideways) */
   .panel [data-pane] { touch-action: pan-x pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-  /* full: up to under the title card; dvh follows the browser's own bars as they come and go */
-  .panel.open.full { height: calc(100dvh - 96px - env(safe-area-inset-top)); }
-  /* the grip is there at every stop: it is what says the sheet can be taken */
-  .panel:not(.open)::before { content: ''; position: absolute; top: 5px; left: 50%; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--faint); opacity: 0.7; pointer-events: none; }
 }

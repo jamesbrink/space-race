@@ -1,6 +1,6 @@
+import './fold.css';
 import { prefs } from './prefs';
 import type { Sheet } from './sheet';
-import { sayIn } from './ui';
 
 /**
  * How a place folds on a phone (under 960 px wide or 520 px tall). The gallery is the first place built this way; the
@@ -85,4 +85,29 @@ export function viewHeight(panel: HTMLElement): number {
   if (!moving) panel.classList.remove('moving');
   const cs = getComputedStyle(panel);
   return Math.ceil(tall + Number.parseFloat(cs.paddingBottom) + Number.parseFloat(cs.borderTopWidth));
+}
+
+/**
+ * Say something in a stack of passing notes (a place's `.notes`) for a moment; it goes by itself, and saying something
+ * else replaces it. `long`: for a line that is read once and not again (a first visit's hint), it stays a while longer.
+ */
+export function sayIn(stack: HTMLElement, title: string, line: string, long = false): void {
+  const had = stack.querySelector<HTMLElement>('.say');
+  const el = had ?? document.createElement('p');
+  if (!had) {
+    el.className = 'say';
+    el.setAttribute('role', 'status');
+    stack.append(el);
+    // (gone, it takes no room in the stack)
+    el.addEventListener('animationend', () => (el.hidden = true));
+  }
+  el.hidden = false;
+  const [b, span] = [document.createElement('b'), document.createElement('span')];
+  b.textContent = title;
+  span.textContent = line;
+  el.replaceChildren(b, span);
+  el.classList.remove('going');
+  el.classList.toggle('long', long);
+  void el.offsetWidth; // (so the fade starts again from the top)
+  el.classList.add('going');
 }

@@ -28,7 +28,7 @@ src/
   main.ts  ui.ts  style.css           the page
   address.ts                          the address bar, the two places a flight is seen in, and what the gallery is given to show
   gallery.ts  gallery.css  only.ts    the gallery: the vehicle alone on a stage of its own; the switch between the places; its page for a flight with no site
-  fold.ts  sheet.ts                    a place on a phone: the control block docked in the sheet's View pane, the handle's button, the hint said once; the sheet a finger moves
+  fold.ts  fold.css  sheet.ts          a place on a phone (the gallery and the launch site alike): the control block docked in the sheet's View pane, the handle's button, the hint said once; the sheet a finger moves
   actions.ts                          on foot: what can be done with the thing being looked at (from flight data)
   wheel.ts                            a radial menu: a few choices round a centre
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range

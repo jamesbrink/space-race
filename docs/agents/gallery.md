@@ -79,10 +79,14 @@ It is always drawn in full (`Stage.fullDetail`: the coarser levels are not even 
 
 ## On a phone
 
-Under 960 px wide or 520 px tall the gallery is the view with **one slim line across the top** and **one handle on
+Under 960 px wide or 520 px tall each place is the view with **one slim line across the top** and **one handle on
 the bottom edge**; everything else is in the sheet the handle opens (`fold.ts`, `sheet.ts`, the narrow block of
-`gallery.css`). It is the grammar the launch site, on foot and the flight deck are to follow; today only the gallery
-has it.
+`fold.css`). The launch site has the same top line, handle and sheet (its handle: the sections, Walk, More; its View tab:
+the slider, the views, the switches, the scale and the diagnostics line; the clock is a small line under the top line,
+the time of day said when it is opened), and the flight deck folds in its own terms (`cockpit.css`: the clock is the top
+line with the place control at its right; on show are the navball and the path, the phase, the five figures, the one
+action and the abort, with More beside them; Guidance, the Sequencer, every key and the systems are behind More, but a
+warning of load or heat stays out).
 
 - **The top line**: the heading is the way back to the front page (its chevron says so), the flight's designation
   small beside it, and one button naming the place ("Gallery") that drops the three places as a menu. A place the

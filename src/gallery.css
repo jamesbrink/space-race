@@ -41,7 +41,6 @@ body.gallery-settled #stage { visibility: hidden; }
 #ui.piloting > .title .places { position: static; flex-direction: row; width: auto; height: auto; margin: 0; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
 #ui.piloting > .title .places button { flex: none; padding: 7px 12px 6px; border-top: 0; text-align: center; }
 #ui.piloting > .title .places button + button { border-left: 1px solid var(--line); border-top: 0; }
-@media (max-width: 960px), (max-height: 520px) { #ui.piloting > .title:has(.places) { top: 62px; left: 10px; right: auto; } }
 
 /* --- what stands there, part by part ------------------------------------------------- */
 #gallery .buttons .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
@@ -164,70 +163,8 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
 
 /* --- narrower: the long line goes before anything overlaps ---------------------------- */
 
-/* --- phone and small tablet: the launch site's card and switch (the gallery's are its own, below) -------------------- */
+/* --- the gallery on a phone (fold.ts, fold.css): what only the gallery has --------------------------------------------- */
 @media (max-width: 960px), (max-height: 520px) {
-  /* the title card is a heading in the corner: the switch stands beside it, two rows as tall as it is */
-  .title:has(.places) { max-width: calc(100vw - 20px - 98px); }
-  /* ("site" alone, where there is no room for more: the two words are side by side with "gallery" and can be nothing else) */
-  .places i { display: none; }
-  /* no room for crumbs: the heading is the way back out to the front page, and a mark before it says so */
-  .title:has(.places) h1 { overflow: hidden; text-overflow: ellipsis; pointer-events: auto; cursor: pointer; }
-  .title:has(.places) h1::before { content: ''; display: inline-block; width: 0.3em; height: 0.3em; margin: 0 0.3em 0.12em 0.08em; border: solid var(--amber); border-width: 0 0 2px 2px; transform: rotate(45deg); }
-  .title:has(.places) .sub { overflow: hidden; text-overflow: ellipsis; }
-  .title .places { position: absolute; left: calc(100% + 8px); top: -1px; bottom: -1px; width: 90px; margin: 0; flex-direction: column; flex-wrap: nowrap;
-    background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border-radius: 3px; }
-  .title .places button { flex: 1; padding: 0 10px; border-bottom: 0; text-align: left; line-height: 1.2; }
-  .title .places p { left: auto; right: -1px; }
-  .title .places button + button { border-left: 0; border-top: 1px solid var(--line); }
-  .title .places button[aria-pressed='true'] { box-shadow: inset 2px 0 var(--amber); }
-}
-@media (max-height: 520px) {
-  /* a phone on its side has no title card: the switch alone stands in its corner, and the choice of what stands there beside it */
-  .title:has(.places) { display: contents; }
-  .title:has(.places) > :not(.places) { display: none; }
-  .title .places { left: 10px; top: 10px; bottom: auto; height: 100px; }
-  /* and with no card there is no heading to go out by: the way to the front page is the switch's first row */
-  .places .places-home { display: block; color: var(--ink); }
-  .places .places-home::before { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 6px 1px 1px; border: solid var(--amber); border-width: 0 0 1.5px 1.5px; transform: rotate(45deg); }
-  .title .places p { left: -1px; right: auto; }
-  #ui:has(.places) .models { left: 108px; }
-}
-
-/* --- the gallery on a phone and a small tablet (fold.ts): the view, one slim line across the top, one handle at the foot,
-   and everything else in the sheet the handle opens. Only `#gallery` here: the launch site keeps its own layout for now. --- */
-@media (max-width: 960px), (max-height: 520px) {
-  #gallery { --top: calc(8px + env(safe-area-inset-top)); --left: calc(10px + env(safe-area-inset-left)); --right: calc(10px + env(safe-area-inset-right)); --handle-h: 60px; --line-h: 46px; }
-
-  /* the top line: the way back (the heading), the flight's name small, and the one control for the place */
-  #gallery .title, #gallery .title.tucked { top: var(--top); left: var(--left); right: var(--right); width: auto; max-width: none; height: var(--line-h); min-height: 0; max-height: none;
-    display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 0 0 0 4px; overflow: visible; pointer-events: auto !important; }
-  #gallery .title > :is(.crumbs, .lede, .facts, .facts-toggle, .tuck) { display: none; }
-  #gallery .title > h1 { display: block; flex: 0 1 auto; min-width: 0; height: 44px; margin: 0; padding: 0 2px 0 8px; font-size: 17px; line-height: 44px; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis;
-    pointer-events: auto; cursor: pointer; }
-  #gallery .title > h1::before { content: ''; display: inline-block; width: 0.42em; height: 0.42em; margin: 0 0.55em 0.1em 0.1em; border: solid var(--amber); border-width: 0 0 2px 2px; transform: rotate(45deg); }
-  #gallery .title > .sub { display: block; flex: 0 1 auto; min-width: 0; font-size: 9.5px; letter-spacing: 0.1em; overflow: hidden; text-overflow: ellipsis; }
-  /* the place: one button that says where you are, and opens to the three */
-  #gallery .title .places { position: relative; inset: auto; flex: none; display: flex; flex-direction: row; align-self: stretch; width: auto; height: auto; margin: 0 0 0 auto; padding: 0;
-    background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-left: 1px solid var(--line); border-radius: 0; }
-  #gallery .places-home, #gallery .places > [data-place] { display: none; }
-  #gallery .places-now { display: flex; align-items: center; gap: 9px; min-width: 44px; padding: 0 14px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); white-space: nowrap; }
-  #gallery .places-now .chevron { display: block; width: 10px; }
-  /* (a menu drops: its chevron points down until it is open) */
-  #gallery .places-now[aria-expanded='false'] > .chevron::before { transform: rotate(225deg); margin-top: -4px; }
-  #gallery .places-now[aria-expanded='true'] > .chevron::before { transform: rotate(45deg); margin-top: 4px; }
-  #gallery .places.open > [data-place] { display: block; position: absolute; right: -1px; z-index: 6; width: 230px; height: 54px; padding: 11px 16px 0; flex: none; white-space: nowrap; text-align: left; line-height: 1.3;
-    font-size: 11px; color: var(--ink); background: rgba(10, 11, 14, 0.96); border: 1px solid var(--line); border-top-width: 0; border-radius: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
-  #gallery .places.open > [data-place='gallery'] { top: calc(100% + 6px); border-top-width: 1px; border-radius: 3px 3px 0 0; }
-  #gallery .places.open > [data-place='site'] { top: calc(100% + 61px); }
-  #gallery .places.open > [data-place='fly'] { top: calc(100% + 115px); border-radius: 0 0 3px 3px; }
-  #gallery .places.open > [data-place][aria-pressed='true'] { color: var(--amber); background: rgba(34, 28, 16, 0.97); box-shadow: inset 3px 0 var(--amber), 0 10px 30px rgba(0, 0, 0, 0.35); }
-  #gallery .places.open > [data-place]::after { content: attr(data-short); display: block; margin-top: 2px; font: 12px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--faint); overflow: hidden; text-overflow: ellipsis; }
-  #gallery .places.open > [data-place][aria-pressed='true']::after { content: 'You are here'; }
-  /* one the flight does not have yet is listed, dimmed, and says why under its name */
-  #gallery .places.open > [data-place][aria-disabled='true'] { opacity: 1; color: var(--faint); }
-  #gallery .places i { display: inline; }
-  #gallery .title .places p { display: none; }
-
   /* a part of it standing alone: a chip under the top line, its diagram, what stands there, and an x that is the way back */
   #gallery .alone { top: calc(var(--top) + var(--line-h) + 8px); left: var(--left); transform: none; align-items: center; gap: 8px; height: 36px; max-width: calc(100vw - var(--left) - var(--right)); padding: 0 0 0 8px; }
   #gallery .alone::after { content: ''; position: absolute; inset: -4px 0; } /* (44 px to a finger, whatever it measures) */
@@ -241,51 +178,6 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   #gallery > .notes { top: calc(var(--top) + var(--line-h) + 8px); left: var(--left); max-width: calc(100vw - var(--left) - var(--right)); pointer-events: none; }
   #gallery:has(> .alone:not([hidden])) > .notes { top: calc(var(--top) + var(--line-h) + 52px); }
 
-  /* nothing else stands on the view: the control block is in the sheet (its View pane) */
-  #gallery > .controls { display: none; }
-
-  /* the sheet: tucked it is its handle; open, the tabs and what they hold are under the handle (sheet.ts moves it, fold.ts opens it) */
-  #gallery .panel, #gallery .panel.tucked { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: calc(var(--handle-h) + env(safe-area-inset-bottom));
-    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); border-width: 1px 0 0; border-radius: 12px 12px 0 0; transition: height 0.28s ease; z-index: 2; }
-  #gallery .panel.open { height: min(62dvh, 560px); }
-  /* (on View it is only as tall as what it holds: the thing being changed keeps the rest of the window) */
-  #gallery .panel.open.on-view:not(.full) { height: min(var(--sheet-view, 58dvh), 58dvh); }
-  #gallery .panel.open.full { height: calc(100dvh - var(--top) - var(--line-h) - 6px); }
-  #gallery .panel:not(.open, .moving) > :is(.tabs, section) { display: none; }
-  #gallery .panel:is(.open, .moving) > section:not([hidden]) { display: block; }
-  /* the grip, at every stop: it is what says the sheet can be taken */
-  #gallery .panel::before { content: ''; position: absolute; top: 5px; left: 50%; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--faint); opacity: 0.7; pointer-events: none; }
-  #gallery .tabs .close { display: none; }
-  #gallery .tabs button { min-height: 44px; padding: 0; letter-spacing: 0.1em; }
-
-  /* the handle: the part before, what is chosen (or how many there are) and the way to the rest, taking it apart, the next part */
-  #gallery .panel .handle { order: -1; flex: none; display: flex; align-items: center; justify-content: flex-start; gap: 6px; height: var(--handle-h); padding: 12px 8px 4px; border-top: 0; }
-  #gallery .handle > button { flex: none; min-width: 44px; height: 44px; justify-content: center; padding: 0 10px; font-size: 10px; letter-spacing: 0.1em; }
-  #gallery .handle > button:active { background: rgba(243, 239, 230, 0.12); }
-  #gallery .handle [data-step] span { display: none; }
-  #gallery .handle .arrow, #gallery .handle .arrow.back { margin: 0; }
-  #gallery .handle > .handle-open { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) 16px; column-gap: 8px; align-content: center; justify-content: stretch;
-    padding: 0 6px 0 8px; border-color: transparent; text-align: left; text-transform: none; letter-spacing: 0; }
-  #gallery .handle-open b { grid-column: 1 / span 2; font: 600 14px/1.25 var(--sans); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #gallery .handle-open span { grid-column: 2; grid-row: 2; font: 12px/1.3 var(--sans); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #gallery .handle-open span:empty { display: none; }
-  #gallery .handle-open output { grid-column: 1; grid-row: 2; font: 10px/1.5 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
-  #gallery .handle-open .chevron { grid-column: 3; grid-row: 1 / span 2; align-self: center; display: block; color: var(--amber); }
-  /* (a sheet rises: its chevron points the way it would go) */
-  #gallery .handle-open[aria-expanded='false'] > .chevron::before { transform: rotate(45deg); margin-top: 4px; }
-  #gallery .handle-open[aria-expanded='true'] > .chevron::before { transform: rotate(225deg); margin-top: -4px; }
-  #gallery .handle .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
-
-  /* the View pane: taking it apart first, then what stands there and the views (a line each, which scrolls sideways), then the switches */
-  #gallery .panel:is(.open, .moving) > [data-pane='View']:not([hidden]) { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 14px; }
-  #gallery [data-pane='View'] > * { flex: none; } /* (the pane scrolls: no line of it is squeezed) */
-  /* (each line says what it is at its start, and scrolls with it) */
-  #gallery .slot-name { display: block; flex: none; width: 4.6em; margin: 0; font: 9.5px/1.3 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
-  #gallery .row:has(> :is(.models:has(> button:only-child), .views:empty)) { display: none !important; }
-  #gallery .slot .explode { width: 100%; max-width: none; }
-  #gallery .row { display: flex !important; flex-wrap: nowrap !important; align-items: center; gap: 8px; margin: 0 -12px; padding: 0 12px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x pan-y; overscroll-behavior-x: contain;
-    mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 28px), transparent); }
-  #gallery .row::-webkit-scrollbar { display: none; }
   #gallery .slot .models { position: static; transform: none; display: flex; flex-wrap: nowrap; gap: 6px; width: max-content; max-width: none; padding: 0; overflow: visible;
     background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: 0; box-shadow: none; }
   #gallery .slot .models button { flex: none; min-height: 44px; padding: 0 14px; letter-spacing: 0.1em; border: 1px solid var(--line); border-radius: 2px; box-shadow: none; }
@@ -294,32 +186,19 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   #gallery .slot .views [data-views] { display: none; }
   #gallery .slot.buttons:not(.row) { display: block; width: auto; }
   #gallery .slot .shows { justify-content: flex-start; gap: 6px; }
-  #gallery .slot.buttons button { min-height: 44px; padding: 0 13px; }
   #gallery .slot .scale { display: block; margin: 4px 0 0; text-align: left; }
 
   /* with the sheet up, the vehicle keeps the space above it */
   body:has(#gallery .panel.open) #gallery-stage { height: calc(100dvh - min(62dvh, 560px)); }
   body:has(#gallery .panel.open.on-view:not(.full)) #gallery-stage { height: calc(100dvh - min(var(--sheet-view, 58dvh), 58dvh)); }
 }
-/* on its side: the handle is a short bar in the lower right corner, under the thumb, and the sheet opens over it as a drawer down that side */
 @media (max-height: 520px) {
-  #gallery .panel, #gallery .panel.tucked { top: auto; left: auto; right: var(--right); bottom: calc(8px + env(safe-area-inset-bottom)); width: min(330px, 39vw); height: var(--handle-h); margin: 0; padding: 0;
-    border: 1px solid var(--line); border-radius: 3px; transition: none; }
-  #gallery .panel.open, #gallery .panel.open.full, #gallery .panel.open.on-view:not(.full) { top: calc(var(--top) + var(--line-h) + 8px); height: auto; width: calc(44vw - var(--right)); }
-  #gallery .panel::before { display: none; }
-  #gallery .panel .handle { order: 9; height: calc(var(--handle-h) - 2px); padding: 7px 6px; }
-  #gallery .panel.open .handle { border-top: 1px solid var(--line); }
-  #gallery .panel.open > section:not([hidden]) { flex: 1 1 0; }
   body:has(#gallery .panel.open) #gallery-stage, body:has(#gallery .panel.open.on-view:not(.full)) #gallery-stage { width: 56vw; height: 100dvh; }
 }
-/* a phone held upright with no room beside its name for the date: the name and what it was, the date in the Specs */
-@media (max-width: 520px) and (min-height: 521px) { #gallery .title > .sub span { display: none; } }
-/* a wide page has the control block beside the view and the steps under the parts: the handle's own pieces are a phone's */
 @media (min-width: 961px) and (min-height: 521px) {
-  #gallery :is([data-tab='View'], .steps [data-apart]) { display: none; }
+  #gallery .steps [data-apart] { display: none; }
   #gallery .steps .handle-open { padding: 0; border: 0; pointer-events: none; }
   #gallery .steps .handle-open :is(b, span, .chevron) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { #gallery-stage { transition: none; } }
 #gallery > .notes { pointer-events: none; }
-#gallery .say.long.going { animation-duration: 7s; }

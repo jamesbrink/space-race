@@ -81,7 +81,7 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
   // (and, for a page with no room for a title card or crumbs, the way out to the front page: gallery.css shows it there)
   const out = '<button class="places-home" data-home title="Front page">Flights</button>';
   // (on a phone the switch is one control that says where you are, and opens to the three: fold.ts)
-  const now = `<button class="places-now" aria-haspopup="true" aria-expanded="false" title="The places of this flight: ${PLACES.map((p) => PLACE_NAME[p]).join(', ')}"><span>${PLACE_NAME[here]}</span><i class="chevron"></i></button>`;
+  const now = `<button class="places-now" aria-haspopup="true" aria-expanded="false" title="The places of this flight: ${PLACES.map((p) => PLACE_NAME[p]).join(', ')}"><span>${shortName(here)}</span><i class="chevron"></i></button>`;
   nav.innerHTML = `${now}${out}${PLACES.map(button).join('')}<p role="status" hidden></p>`;
   const says = nav.querySelector('p')!;
   const toggle = nav.querySelector<HTMLElement>('.places-now')!;
@@ -107,12 +107,15 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
   return nav;
 }
 
+/** A place's name, with what may go where there is no room for it ("Launch site" is "site" beside "gallery" and "fly"). */
+const shortName = (place: Place): string => (place === 'site' ? '<i>Launch </i>site' : PLACE_NAME[place]);
+
 /** Mark which place a switch is in (the site's shows the launch site or the flight deck). */
 export function markPlace(nav: Element | null, here: Place): void {
   for (const b of nav?.querySelectorAll<HTMLElement>('[data-place]') ?? [])
     b.setAttribute('aria-pressed', String(b.dataset.place === here));
   const now = nav?.querySelector('.places-now span');
-  if (now) now.textContent = PLACE_NAME[here];
+  if (now) now.innerHTML = shortName(here);
 }
 
 /** The way back, as the title card's crumbs say it: the front page, the flight (its gallery), the place. */

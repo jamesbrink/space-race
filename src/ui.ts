@@ -1,4 +1,5 @@
-import { sheet } from './sheet';
+import { dock, handle, hintOnce, narrow, sayIn, viewHeight } from './fold';
+import { type Sheet, sheet } from './sheet';
 import './slider';
 import { CURTAIN, Curtain } from './curtain';
 import { prefs } from './prefs';
@@ -45,8 +46,6 @@ export interface UiHandlers {
   setFn(node: string, id: string, v: number): number;
   /** How many pixels at the bottom of the 3D view the controls cover, and how many at the top along its centre line. */
   inset(pixels: number, top: number): void;
-  /** A phone's sheet has come to rest at another height: what is being looked at is to be framed in what is now clear. */
-  settled?(): void;
 }
 
 const CAMERA_LABEL: Record<RigId, string> = {
@@ -240,29 +239,8 @@ function legendMarkup(f: Flight): string {
       </aside>`;
 }
 
-/**
- * Say something in a stack of passing notes (a place's `.notes`) for a moment; it goes by itself, and saying something
- * else replaces it. `long`: for a line that is read once and not again (a first visit's hint), it stays a while longer.
- */
-export function sayIn(stack: HTMLElement, title: string, line: string, long = false): void {
-  const had = stack.querySelector<HTMLElement>('.say');
-  const el = had ?? document.createElement('p');
-  if (!had) {
-    el.className = 'say';
-    el.setAttribute('role', 'status');
-    stack.append(el);
-    // (gone, it takes no room in the stack)
-    el.addEventListener('animationend', () => (el.hidden = true));
-  }
-  el.hidden = false;
-  el.innerHTML = `<b>${esc(title)}</b><span>${esc(line)}</span>`;
-  el.classList.remove('going');
-  el.classList.toggle('long', long);
-  void el.offsetWidth; // (so the fade starts again from the top)
-  el.classList.add('going');
-}
-
-const TABS = ['Parts', 'Specs', 'Motors', 'Flight'] as const;
+/** (View is the control block, which on a phone lives in the sheet: fold.ts) */
+const TABS = ['View', 'Parts', 'Specs', 'Motors', 'Flight'] as const;
 const pane = (name: (typeof TABS)[number]) => `data-pane="${name}" id="pane-${name}" role="tabpanel" aria-labelledby="tab-${name}"`;
 
 /** The DOM half of the app. Everything it shows comes from the flight's data file. */
@@ -294,7 +272,7 @@ export class Ui {
         <button class="tuck chevron" aria-label="Show or hide the flight summary" aria-expanded="true" title="Tuck the summary away, or bring it back"></button>
         <p class="crumbs"><button data-home title="Front page">Space Race</button> <b>/</b> ${esc(f.nation)} <b>/</b> ${esc(f.program)}</p>
         <h1>${esc(f.callsign)}</h1>
-        <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
+        <p class="sub">${esc(f.designation)}<span> <b>·</b> ${date}</span></p>
         <p class="lede">${esc(f.summary)}</p>
         <button class="facts-toggle" aria-expanded="false" aria-controls="flight-facts" title="The flight in figures: show or hide"><span>The flight in figures</span><i class="chevron"></i></button>
         <dl class="facts" id="flight-facts">${f.facts.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>
@@ -309,6 +287,12 @@ export class Ui {
           ${TABS.map((t) => `<button role="tab" id="tab-${t}" data-tab="${t}" aria-controls="pane-${t}">${t}</button>`).join('')}
           <button class="close chevron" aria-label="Show or hide the panel" aria-expanded="true" title="Tuck the panel away, or bring it back"></button>
         </nav>
+        <section ${pane('View')} hidden>
+          <div class="slot" data-slot="apart"></div>
+          <div class="slot" data-slot="buttons"></div>
+          <div class="slot" data-slot="scale"></div>
+          <div class="slot" data-slot="stats"></div>
+        </section>
         <section ${pane('Parts')}><ol class="parts"></ol></section>
         <section ${pane('Specs')} hidden>
           ${groups
@@ -345,6 +329,11 @@ export class Ui {
           <ol class="timeline">${f.timeline.map((e) => `<li><time>${clock(e.t)}</time><span>${esc(e.event)}</span></li>`).join('')}</ol>
           <p class="fine">${esc(f.spacecraft)}<br>${esc(f.launchVehicle)}<br>${esc(f.launchSite)}</p>
         </section>
+        <nav class="handle" aria-label="What to look at, and the rest">
+          <span class="handle-slot"></span>
+          ${f.models.some((m) => m.walker) ? '<button class="handle-walk" data-press="v" title="Get down and walk the site as the crew (V)">Walk</button>' : ''}
+          <button class="handle-open" aria-expanded="false" title="Views, taking it apart, the parts, the figures and the flight: open or put away"><b>More</b><i class="chevron"></i></button>
+        </nav>
       </aside>
 
       <footer class="controls">
@@ -374,13 +363,16 @@ export class Ui {
     root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
       b.addEventListener('click', () => {
         const same = b.getAttribute('aria-selected') === 'true';
-        panel.classList.toggle('open', !(same && panel.classList.contains('open')));
         this.tuckPanel(false);
         this.tab(b.dataset.tab!);
+        // (on a phone the open tab pressed again puts the sheet away, as its handle does)
+        if (narrow()) this.sheet?.set(same && panel.classList.contains('open') ? 0 : this.sheet.stop || 1);
+        else panel.classList.toggle('open', !(same && panel.classList.contains('open')));
       }),
     );
     const stage = document.querySelector<HTMLElement>('#stage')!;
-    stage.addEventListener('pointerdown', () => panel.classList.remove('open'));
+    // (on a phone the sheet stays where it was put: a finger on the view is turning the view)
+    stage.addEventListener('pointerdown', () => !narrow() && panel.classList.remove('open'));
     // Panels tuck away. The data panel shuts to its row of tabs (on a phone it is a sheet that
     // does the same) and any tab opens it again; the title card folds to its heading; H clears
     // the lot for an unobstructed view.
@@ -446,12 +438,19 @@ export class Ui {
     });
     // On a phone the panel is a sheet a finger moves between its stops (sheet.ts: the gallery's is the same one). At
     // rest again, the part being read is in view in it.
-    sheet(panel, () =>
-      window.setTimeout(() => {
-        this.root.querySelector('[data-node][aria-expanded=true]')?.scrollIntoView({ block: 'nearest' });
-        on.settled?.();
-      }, 320),
-    );
+    // Its handle's button opens it to half and puts it away. Opening or closing it moves no camera the hands have set: the
+    // measurement below tells the stage what is clear, and the stage frames again only a view still being followed.
+    let grip: { shown(): void } | null = null;
+    this.sheet = sheet(panel, () => {
+      grip?.shown();
+      window.setTimeout(() => this.root.querySelector('[data-node][aria-expanded=true]')?.scrollIntoView({ block: 'nearest' }), 320);
+    });
+    grip = handle(root.querySelector<HTMLElement>('.handle-open')!, panel, this.sheet);
+    // a key that is also a button (the handle's Walk): pressed, it is the key itself
+    root.querySelector('.handle')!.addEventListener('click', (e) => {
+      const key = (e.target as HTMLElement).closest<HTMLElement>('[data-press]')?.dataset.press;
+      if (key) window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+    });
     root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
     this.wheel = new Wheel(root);
     root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());
@@ -567,7 +566,8 @@ export class Ui {
       const view = stage.getBoundingClientRect();
       const top = (el: HTMLElement) => el.getBoundingClientRect().top;
       const shown = (el: HTMLElement) => el.offsetParent !== null;
-      const tops = [controls, switcher]
+      // (on a phone what lies across the foot of the view is the sheet: the control block is inside it)
+      const tops = (narrow() ? [panel] : [controls, switcher])
         .filter(shown)
         .map(top)
         .filter((y) => y > view.top + view.height / 2);
@@ -593,7 +593,35 @@ export class Ui {
       on.inset(Math.max(0, view.bottom - Math.min(view.bottom, ...tops)), Math.max(0, ...heads) - view.top);
     });
     for (const el of [controls, switcher, stage, panel]) this.measure.observe(el);
+    // On a phone the control block is the sheet's View pane and the sections are the handle's (fold.ts); on a wide page
+    // they are where they were made
+    const slot = (name: string) => root.querySelector<HTMLElement>(`[data-slot=${name}]`)!;
+    dock(
+      [
+        [root.querySelector<HTMLElement>('.explode')!, slot('apart')],
+        [root.querySelector<HTMLElement>('.buttons')!, slot('buttons')],
+        [root.querySelector<HTMLElement>('.controls .scale')!, slot('scale')],
+        [root.querySelector<HTMLElement>('.stats')!, slot('stats')],
+        [switcher, root.querySelector<HTMLElement>('.handle-slot')!],
+      ],
+      (on) => {
+        const at = root.querySelector<HTMLElement>('[data-tab][aria-selected=true]')?.dataset.tab;
+        this.tab(!on && at === 'View' ? 'Parts' : (at ?? (on ? 'View' : 'Parts')));
+        if (!on) panel.classList.remove('full');
+        this.tuckPanel(prefs.get('panelTucked'), false);
+      },
+    );
+    new ResizeObserver(() => this.sized()).observe(slot('buttons'));
     this.setModel(this.model.id);
+  }
+
+  private sheet: Sheet | null = null;
+
+  /** How tall the sheet is with the View pane in it: as tall as what the pane holds, so the place keeps the rest (fold.css). */
+  private sized(): void {
+    const panel = this.root.querySelector<HTMLElement>('.panel')!;
+    const tall = viewHeight(panel);
+    if (tall) for (const el of [panel, document.querySelector<HTMLElement>('#stage')!]) el.style.setProperty('--sheet-view', `${tall}px`);
   }
 
   private readonly measure: ResizeObserver;
@@ -689,7 +717,9 @@ export class Ui {
     r.querySelector('[data-slider="1"]')!.textContent = m.slider?.[1] ?? '';
     this.slider.value = String(apart);
     this.selected = null;
-    this.tab('Parts');
+    // (on a phone the sheet stays on the tab it was put on: the section is chosen from its handle)
+    if (!narrow()) this.tab('Parts');
+    else this.sized();
   }
 
   /** Which view button is current; null once the camera has been moved by hand. */
@@ -811,17 +841,18 @@ export class Ui {
   }
 
   /** Shut the data panel to its row of tabs, or open it again. */
-  private tuckPanel(on: boolean): void {
-    this.root.querySelector('.panel')!.classList.toggle('tucked', on);
+  private tuckPanel(on: boolean, remember = true): void {
+    // (a wide page's choice: on a phone the sheet has its stops, and the handle works them)
+    this.root.querySelector('.panel')!.classList.toggle('tucked', on && !narrow());
     this.root.querySelector('.close')!.setAttribute('aria-expanded', String(!on));
-    prefs.set('panelTucked', on);
+    if (remember && !narrow()) prefs.set('panelTucked', on);
   }
 
   /** Walking on foot has begun or ended: the panels make way for the view, and one bar says how to stop. */
   setWalking(on: boolean): void {
     this.root.classList.toggle('walking', on);
     this.root.querySelector<HTMLElement>('.walkbar')!.hidden = !on;
-    this.root.querySelector('.panel')!.classList.remove('open'); // a phone's sheet would keep its share of the screen
+    this.root.querySelector('.panel')!.classList.remove('open', 'full'); // a phone's sheet would keep its share of the screen
     if (on) {
       (document.activeElement as HTMLElement | null)?.blur?.(); // or Space would press the button just used
       this.setWalkLook(false);
@@ -936,6 +967,8 @@ export class Ui {
 
   loaded(): void {
     this.curtain.done();
+    // (said once, on a first visit, under the clock: what the bar at the foot holds)
+    hintOnce(this.notes(), 'The bar at the foot', 'What to look at, walking, and More: the views, the parts, the flight');
   }
 
   /** It did not arrive: said in the curtain's place as a notice (the panels stay usable), with the way to try again. */
@@ -1043,10 +1076,14 @@ export class Ui {
   select(node: string | null): void {
     this.selected = node;
     if (node) this.showFns(node);
-    if (node) {
+    if (node && !narrow()) {
       this.tab('Parts');
       this.root.querySelector('.panel')!.classList.add('open');
       this.tuckPanel(false);
+    } else if (node && !this.root.querySelector('.panel.open')) {
+      // (on a phone choosing a part opens nothing: it is named in passing, and the sheet stays where it was put)
+      const part = this.model.parts.find((p) => p.node === node);
+      if (part) this.say(part.name, part.summary);
     }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => {
       const on = b.dataset.node === node;
@@ -1061,5 +1098,7 @@ export class Ui {
       b.tabIndex = b.dataset.tab === name ? 0 : -1; // one stop in the tab order; the arrow keys move within
     });
     this.root.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => (p.hidden = p.dataset.pane !== name));
+    this.root.querySelector('.panel')!.classList.toggle('on-view', name === 'View');
+    this.sized();
   }
 }
