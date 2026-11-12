@@ -128,6 +128,7 @@ tools/
   flicker-test.mjs                    browser check for z-fighting
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
+  places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces

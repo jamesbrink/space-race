@@ -18,6 +18,7 @@
     "test:flicker": "node tools/flicker-test.mjs",
     "test:frozen": "node tools/frozen-test.mjs",
     "test:camera": "node tools/camera-test.mjs",
+    "test:places": "node tools/places-test.mjs",
     "bench": "node tools/bench.mjs",
     "globe": "node tools/globe.mjs",
     "globe:region": "node tools/globe-region.mjs missions/usa/mercury/sites/lc-5.ts",

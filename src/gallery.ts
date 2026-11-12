@@ -602,6 +602,21 @@ export class Gallery {
     const measure = new ResizeObserver(() => this.measure());
     for (const el of [controls, this.q('.models'), panel, title, this.canvas]) measure.observe(el);
 
+    // Any touch ends the show and puts off the next one (the mouse merely moving does not end one that is on). It is
+    // listened for before the keys below, which let nothing go further: a key of the gallery's own is a touch too.
+    for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermove'] as const)
+      window.addEventListener(
+        touch,
+        (e) => {
+          if (!this.open) return;
+          if (e.type === 'pointermove' && this.touring) return;
+          if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+          this.idle = 0;
+          if (this.touring && !this.host.covered()) this.endShow();
+        },
+        { capture: true, passive: true },
+      );
+
     /*
      * The keys. While the gallery is up every key comes here first: the camera's go on to the
      * camera (this stage's: the site's is asleep and hears nothing), the gallery's own are acted
@@ -633,19 +648,6 @@ export class Gallery {
       },
       true,
     );
-    // any touch ends the show and puts off the next one (the mouse merely moving does not end one that is on)
-    for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermove'] as const)
-      window.addEventListener(
-        touch,
-        (e) => {
-          if (!this.open) return;
-          if (e.type === 'pointermove' && this.touring) return;
-          if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
-          this.idle = 0;
-          if (this.touring && !this.host.covered()) this.endShow();
-        },
-        { capture: true, passive: true },
-      );
   }
   private untuck: () => void = () => {};
   private showKeys: (open: boolean) => void = () => {};
