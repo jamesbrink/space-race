@@ -104,6 +104,7 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
         radius: craft?.radius ?? 0,
         walking: st.walk.active,
         clock: window.sr.clock.t,
+        turning: Boolean(window.__turning), // (the self-check's fault is being applied: soak's `fault`)
       };
     };
     // (a frame's instant is when it began, as the page's own loop has it: taken after the frame's work instead, a frame
@@ -495,15 +496,24 @@ async function soak(name, { touch = false, at = -4, fault = false } = {}) {
   const spot = () => [area.x0 + random() * (area.x1 - area.x0), area.y0 + random() * (area.y1 - area.y0)];
   const KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'w', 'a', 's', 'd', 'q', 'e', 'r', 'f'];
   // The proof that the check below still catches what it is there for: with no hands on the view at all, the page is
-  // made to turn the orbiting view 0.3 radians a frame (some 18 radians a second) for a second. It must be flagged.
+  // made to turn the orbiting view 18 radians a second for 60 frames. Nearly every frame drawn while it turns the orbiting
+  // view must be flagged: a share, and a turn by the second, so that it holds at any frame rate (0.3 radians a frame and
+  // more than 20 frames counted, it caught 12 at 34 frames a second and none at 10).
   if (fault) {
     await h.wait(2200);
     await page.evaluate(() => {
       let n = 60;
+      window.__turning = true;
+      const st = window.sr.stage;
+      let last = st.camStepped;
       const turn = () => {
-        window.sr.stage.cam.orbit.theta += 0.3;
-        window.sr.stage.dirty = true;
+        // (18 radians a second of the time the rig is stepped through, which is what the check measures by: a turn of
+        // so much a frame was only 3 radians a second at ten frames a second, and under the check's 9)
+        st.cam.orbit.theta += 18 * (st.camStepped - last);
+        last = st.camStepped;
+        st.dirty = true;
         if (--n > 0) requestAnimationFrame(turn);
+        else window.__turning = false;
       };
       requestAnimationFrame(turn);
     });
@@ -638,8 +648,15 @@ async function soak(name, { touch = false, at = -4, fault = false } = {}) {
     `\n${name}: ${EVENTS} events, ${frames.length} frames in ${seconds.toFixed(0)} s, T${frames[0].clock.toFixed(0)} to T+${frames.at(-1).clock.toFixed(0)}, by rig ${JSON.stringify(rigs)}`,
   );
   if (fault) {
-    const caught = fails['faster than the hands asked'].length;
-    check(caught > 20, `a view turned 18 radians a second with no hand on it is caught: ${caught} frames flagged`);
+    // (a frame and the one before it both drawn while the orbiting view was being turned: the frame's move is the fault's)
+    const turned = new Set();
+    for (let i = 1; i < frames.length; i++) if (frames[i].turning && frames[i - 1].turning && frames[i].rig === 'orbit') turned.add(i);
+    const caught = fails['faster than the hands asked'].filter(([i]) => turned.has(i)).length;
+    const share = turned.size ? caught / turned.size : 0;
+    check(
+      turned.size >= 10 && share >= 0.9,
+      `a view turned 18 radians a second with no hand on it is caught: ${caught} of the ${turned.size} frames it turned the orbiting view flagged (${(100 * share).toFixed(0)} %, at least 90 % of at least 10)`,
+    );
     return;
   }
   for (const [what, list] of Object.entries(fails))
