@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as mr3 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { exhibit } from '../src/address.ts';
-import { cleared, LABEL_H, layOut, spread } from '../src/viewer/labels.ts';
+import { cleared, covers, LABEL_H, layOut, PIN_W, spread } from '../src/viewer/labels.ts';
 
 const part = (explode, order, moves) => ({ explode, order, ...(moves ? { moves } : {}) });
 const frame = { left: 0, right: 1000, top: 0, bottom: 600 };
@@ -134,4 +134,15 @@ test('spreading keeps each as near where it wanted to be as the rest allow', () 
   assert.deepEqual(foot, [260, 280, 300]);
   const head = spread([1, 2, 3], 0, 300, 20);
   assert.deepEqual(head, [0, 20, 40]);
+});
+
+test('names that fit beside the thing do not cover it; a column pushed in by the edge of a narrow page does, and pins fit where names did not', () => {
+  const stack = [0, 1, 2, 3].map((i) => ({ id: `p${i}`, x: 195, y: 200 + 80 * i, r: 70, width: 160 }));
+  const wide = { left: 10, right: 990, top: 60, bottom: 780 };
+  const phone = { left: 10, right: 380, top: 60, bottom: 780 };
+  assert.equal(covers(stack, layOut(stack, wide)), false);
+  assert.equal(covers(stack, layOut(stack, phone)), true, 'a 160 px name has 115 px beside a thing 140 px across in a 390 px page');
+  const pins = stack.map((a) => ({ ...a, width: PIN_W }));
+  assert.equal(covers(pins, layOut(pins, phone)), false);
+  assert.equal(covers([], []), false);
 });

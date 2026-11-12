@@ -157,6 +157,20 @@ export interface LabelHost {
   hover(id: string | null): void;
 }
 
+/** How wide a pin is: a part's number in place of its name, where the names would lie on the thing itself. */
+export const PIN_W = 26;
+
+/**
+ * Whether a column of labels lies on the thing it names: its near edge is inside the reach of the parts (with `air`
+ * pixels to spare). The names are then too wide for the room beside it, and numbers stand in for them (`Labels.pins`).
+ */
+export function covers(anchors: readonly Anchor[], placed: readonly Placed[], air = 6): boolean {
+  if (!anchors.length) return false;
+  const right = Math.max(...anchors.map((a) => a.x + a.r));
+  const left = Math.min(...anchors.map((a) => a.x - a.r));
+  return placed.some((p) => (p.side === 'right' ? p.x < right + air : p.x > left - air));
+}
+
 /** How wide a name will be drawn, pixels: ten-pixel capitals a tenth apart, and the label's padding. Measured, not guessed, once the page has drawn one. */
 const widthOf = (name: string): number => Math.min(190, name.length * 7.25 + 22);
 
@@ -167,6 +181,9 @@ export class Labels {
   private readonly made = new Map<string, { button: HTMLButtonElement; line: SVGPolylineElement; dot: SVGCircleElement; width: number }>();
   private selected: string | null = null;
   private hot: string | null = null;
+  private numbered = false;
+  /** Where the labels last put on show are, in the page: for what else is written on the picture and must keep off them. */
+  boxes: { left: number; top: number; right: number; bottom: number }[] = [];
 
   constructor(parent: HTMLElement, host: LabelHost) {
     this.root = document.createElement('div');
@@ -185,17 +202,21 @@ export class Labels {
   }
 
   /** The names there are to show, by id. Buttons are made once and kept. */
-  name(names: readonly { id: string; name: string }[]): void {
+  name(names: readonly { id: string; name: string; n?: number }[]): void {
     for (const { button, line, dot } of this.made.values()) {
       button.remove();
       line.remove();
       dot.remove();
     }
     this.made.clear();
-    for (const { id, name } of names) {
+    for (const { id, name, n } of names) {
       const button = document.createElement('button');
       button.dataset.label = id;
-      button.textContent = name;
+      button.title = name;
+      // (its name, and its number in the parts list for when there is only room for a pin)
+      button.innerHTML = '<i></i><span></span>';
+      button.querySelector('i')!.textContent = n === undefined ? '' : String(n).padStart(2, '0');
+      button.querySelector('span')!.textContent = name;
       button.tabIndex = -1; // (the parts list is the way to them by key: these are the same choices, on the picture)
       const ns = 'http://www.w3.org/2000/svg';
       const line = document.createElementNS(ns, 'polyline');
@@ -211,10 +232,20 @@ export class Labels {
   width(id: string): number {
     const made = this.made.get(id);
     if (!made) return 0;
+    if (this.numbered) return PIN_W;
     // (the real width once it has been drawn; before that, an estimate from its length)
     const drawn = made.button.offsetWidth;
-    if (drawn) made.width = drawn;
+    if (drawn && !this.root.classList.contains('pins')) made.width = drawn;
     return made.width;
+  }
+
+  /** Numbers in place of names (pins), or names again: for the widths asked for next and the labels placed next. */
+  pins(on: boolean): void {
+    this.numbered = on;
+  }
+
+  get pinned(): boolean {
+    return this.numbered;
   }
 
   /** Which one is marked as chosen, and which as under the pointer. */
@@ -232,6 +263,8 @@ export class Labels {
   /** Show these where they have been laid out; every other label goes. */
   place(placed: readonly Placed[]): void {
     const shown = new Set(placed.map((p) => p.id));
+    this.root.classList.toggle('pins', this.numbered);
+    this.boxes = [];
     for (const [id, { button, line, dot }] of this.made) {
       const on = shown.has(id);
       button.classList.toggle('shown', on);
@@ -242,8 +275,11 @@ export class Labels {
       const made = this.made.get(p.id);
       if (!made) continue;
       const right = p.side === 'right';
+      const width = this.numbered ? PIN_W : made.width;
       made.button.classList.toggle('left', !right);
-      made.button.style.transform = `translate(${Math.round(right ? p.x : p.x - made.width)}px, ${Math.round(p.y - LABEL_H / 2)}px)`;
+      made.button.style.transform = `translate(${Math.round(right ? p.x : p.x - width)}px, ${Math.round(p.y - LABEL_H / 2)}px)`;
+      const left = right ? p.x : p.x - width;
+      this.boxes.push({ left, top: p.y - LABEL_H / 2, right: left + width, bottom: p.y + LABEL_H / 2 });
       // the leader leaves the part for a point just short of the label, then runs level into it
       const elbow = p.x - (right ? 12 : -12);
       made.line.setAttribute('points', `${r(p.from.x)},${r(p.from.y)} ${r(elbow)},${r(p.y)} ${r(p.x)},${r(p.y)}`);
