@@ -288,7 +288,8 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     // part's spread, 2.2 of its standard deviations, so a patch seen aslant thins to its cover and does not shrink)
     vec3 left = vec3(smoothstep(2700.0, 7000.0, fp), smoothstep(700.0, 1800.0, fp), smoothstep(200.0, 500.0, fp));
     soft += 2.2 * sqrt(0.046 * dot(vec3(0.2025, 0.09, 0.0625), left * (2.0 - left)));
-    float a = mix(smoothstep(cut - soft, cut + soft, deckTex(xz, fp)), cover, even);
+    float tex = deckTex(xz, fp);
+    float a = mix(smoothstep(cut - soft, cut + soft, tex), cover, even);
     // Altocumulus is cloudlets two or three hundred metres across with clear air between, closing up toward a patch's
     // middle; a front's deck is solid. (So an eighth of the sky has altocumulus over it, and less than that is hidden.)
     // (each size of them left at its mean where it is under a pixel or two: nothing to shimmer)
@@ -323,7 +324,7 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
       }
       float edge = d2 - d1;   // nothing on the line between two cloudlets, a half or so at a heart
       float dense = ${prefix}noise2(r2 / 1100.0 + 8.3, 506);
-      float lane = mix(0.42, 0.1, smoothstep(0.3, 0.8, dense + 1.5 * (deckTex(xz, fp) - cut)));
+      float lane = mix(0.42, 0.1, smoothstep(0.3, 0.8, dense + 1.5 * (tex - cut)));
       float blur = 0.05 + 0.8 * fp / 250.0;
       float closed = smoothstep(lane - blur, lane + blur, edge) * (1.0 - smoothstep(0.42 - blur, 0.62 + blur, d1)) * (0.62 + 0.38 * heart) * (0.7 + 0.3 * smoothstep(0.0, 0.5, edge));
       float open = (1.0 - smoothstep(0.1 - blur, 0.16 + blur, edge)) * (0.75 + 0.25 * heart);
