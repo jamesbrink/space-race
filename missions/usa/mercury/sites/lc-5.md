@@ -195,7 +195,12 @@ viewer lights the scene after dark from what the models carry (`src/viewer/lamps
 material `lamp` (or `lamp-flood…`) becomes a light, the lenses of one fitting one spotlight; a lens
 whose node carries `candela` and `spread` (degrees, the whole beam) is a searchlight, a narrow
 strong cone; and an empty named `Light_<room>`, carrying `intensity` and `reach` (metres), lights a
-room, the three nearest the eye at a time. Fittings of `lamp-room` (a room's own fitting, under its
+room, the three nearest the eye at a time, **at every hour**: a room's lamps are on whenever the
+place is manned, and the viewer has no switch for them. A room's `intensity` is in fittings: 1.0 is
+one two-tube 40 W fluorescent of the period, about 5,000 lm (estimated: a round figure for the type,
+from no catalogue), and the one light stands for all the fittings that light the room, hung 2 ft 6 in
+under the ceiling so that the ceiling is lit too. What that is on the screen is the viewer's: indoors
+its exposure is one value at every hour (rendering.md, "Indoors the eye adapts"). Fittings of `lamp-room` (a room's own fitting, under its
 `Light_`) and `lamp-red` (obstruction lamps) glow and light nothing themselves.
 
 | What | Where, and what the model carries | Confidence | Source |
@@ -203,9 +208,9 @@ room, the three nearest the eye at a time. Fittings of `lamp-room` (a room's own
 | Floodlight poles | six round the pad (`Floodlights`), three `lamp` heads on each crossarm aimed at the vehicle; four at pad 6 and a two-headed pole by the hut (the pole line along the road carries wires, not lamps) | form estimated, from July | FHSU F16_015, F16_017 |
 | Searchlights | `GroundEquipment_Searchlight1` at (72, −82) ft, on the blockhouse side; `_Searchlight2` and `_3` at (−86, −30) and (−84, 45) ft, across the pad; each aimed at the vehicle's middle 45 ft up; lens `lamp-flood-search` with `candela` 8×10⁸ and `spread` 1.25 | that crewed searchlights lit the pad at night: documented. Kind, number, places, aim and beam: estimated | TM X-53107 p. 7-21 ("photo and searchlight crews to clear area") and 8.3.2 (MR-4: the searchlights secured at T−30 "because of interference with telemetry"); S61-03158, FHSU F19_001 and F19_008 |
 | Work lamps under level 1 | seven deep dome reflectors hung 1.7 ft under level 1, three under each half (they part with it) and one between the legs behind the vehicle, shining down on the booster | that lamps hung there: documented in the night photographs; number and places estimated | S61-03158, KSC-61-4457; FHSU F20_010 to F20_014 (MR-4) |
-| The structure's rooms | `Light_Office` (0.6, 4 m); `Light_Level2Left`, `…Right` (the cabins), `Light_Level3Left`, `…Right` (the white room), `Light_Level4Left`, `…Right` (0.7, 5 m); each under a `lamp-room` fitting | lit windows: documented (S61-03158); fitting and place estimated | TM X-53107 7.5.1.8: "Additional lights were provided in the shelter house and on the structure level" |
-| Blockhouse | `Light_FiringRoom5`, `Light_FiringRoom6` (1.2, 10 m), `Light_EquipmentRoom` (1.0, 9 m) among fluorescent fittings; five floodlights on its walls, three on the ready rooms' | estimated: no night view of either building is known | |
-| Ready rooms, outbuildings | `Light_ReadyRoom`, `Light_Kitchen` (0.9, 7 m); `Light_Generators` (0.6, 5 m); the two huts and the shed are not gone into and have no light | estimated | |
+| The structure's rooms | `Light_Office` (0.8 of a fitting, 5 m); `Light_Level2Left`, `…Right` (the cabins), `Light_Level3Left`, `…Right` (the white room), `Light_Level4Left`, `…Right` (0.9, 6 m); each under a `lamp-room` fitting | lit windows at night: documented (S61-03158); that the rooms had lamps: documented (TM X-53107); fitting, strength and place estimated. That they burned on the morning itself, with the structure rolled back and nobody in it, is assumed | TM X-53107 7.5.1.8: "Additional lights were provided in the shelter house and on the structure level" |
+| Blockhouse | `Light_FiringRoom5`, `Light_FiringRoom6` (3 fittings each, 13 m), `Light_EquipmentRoom` (2, 11 m) among fluorescent fittings; five floodlights on its walls, three on the ready rooms' | that a firing room was lit while it was manned: the museum's photograph of 3 March 1959 shows one at work in daylight with a ceiling fitting alight in the frame; that the count was run from here is the blockhouse's purpose. The fittings' kind (fluorescent strips; the one in the photograph looks like a round fitting), number and places: estimated | the museum, PIONEER_IV_590303_0010 |
+| Ready rooms, outbuildings | `Light_ReadyRoom`, `Light_Kitchen` (1.2, 8 m); `Light_Generators` (0.8, 6 m); `Light_Trailer` (1.6, 7 m: its two fittings); the two huts and the shed are not gone into and have no light | estimated throughout: that each had a light is the ordinary case, and that it burned on the morning is assumed (the generators ran: someone tended them) | |
 | Obstruction lamps | four red at the corners of the crane's walkway, 135 ft up; two at the ends of pad 6's gantry top | estimated: the usual practice for a structure that tall; no photograph shows them or their colour | |
 
 The lights are on whenever the Sun is down, whatever the hour: nothing switches the searchlights

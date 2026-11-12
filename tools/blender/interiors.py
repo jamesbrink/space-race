@@ -259,9 +259,17 @@ def ceiling_light(
     parts: Parts, node: str, name: str | None, centre, *, along=(1.0, 0.0), length: float | None = None, intensity: float = 1.0, reach: float = 8.0
 ) -> None:
     """A fluorescent fitting under a ceiling at `centre` (site units, the ceiling's height), and
-    the mark the viewer puts a light at: an empty `Light_<name>` under `node`, a little below the
-    fitting, carrying `intensity` and `reach` (metres). One fitting in a room is named for the
-    room; the others are given no name and are fittings only. The tubes' material is `lamp`."""
+    the mark the viewer puts a light at: an empty `Light_<name>` under `node`, carrying `intensity`
+    and `reach` (metres). One fitting in a room is named for the room and its light stands for all
+    of them; the others are given no name and are fittings only. The tubes' material is `lamp`.
+
+    `intensity` is in fittings: 1.0 is one two-tube 40 W fluorescent of the period, about 5,000 lm
+    (estimated: a round figure for the type, from no catalogue), and a room is given the number of
+    fittings that light it. What that is on the screen is the viewer's business: its exposure
+    indoors is one value at every hour (stage.ts: INDOORS_EXPOSURE), set so that a room with one
+    fitting to every 150 square feet or so reads as lit by them. The mark hangs 2 ft 6 in under
+    the ceiling, not at it: from the fitting's own height the one light that stands for the
+    room's fittings meets the ceiling at a glancing angle, and the ceiling was black."""
     f = foot()
     length = 4.0 * f if length is None else length
     c = Vector(centre)
@@ -273,7 +281,7 @@ def ceiling_light(
             parts(node, "lamp/tubes"), tuple(c + s * (off * f) - Vector((0, 0, 0.3 * f))), tuple(d), (0, 0, 1), (length - 0.3 * f, 0.12 * f, 0.12 * f)
         )
     if name:
-        parts.node(f"Light_{name}", node, tuple(c - Vector((0, 0, 1.0 * f))), intensity=float(intensity), reach=float(reach))
+        parts.node(f"Light_{name}", node, tuple(c - Vector((0, 0, 2.5 * f))), intensity=float(intensity), reach=float(reach))
 
 
 def floor_joints(parts: Parts, node: str, x0: float, y0: float, x1: float, y1: float, z: float, *, pitch: float | None = None, inside=None) -> None:

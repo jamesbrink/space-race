@@ -278,6 +278,11 @@ export class Lamps {
     for (const light of this.roomPool) light.removeFromParent();
   }
 
+  /** The frame is being drawn at another exposure with the hour unchanged (the eye has gone indoors, or come out): the lenses' glow follows. */
+  exposed(exposure: number): void {
+    if (this.level >= 0) this.set(this.level, exposure);
+  }
+
   /** How dark it is, 0 by day to 1 at night. True if what is lit changed. */
   set(night: number, exposure = 1): boolean {
     // followed closely: a lamp that came on in steps would be seen stepping as dusk falls quickly

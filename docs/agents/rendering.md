@@ -197,8 +197,11 @@ from the faces turned from the light, a wall's inside, so its shadow began at th
 room's walls meet and light crept in along each joint. A grazing surface is `normalBias`'s work.
 
 **Indoors the eye adapts.** On foot `Stage.adapt` asks how enclosed the eye is (nine rays) and
-opens the exposure over a second by day (`expose`: the one place the exposure is set); by night
-the setting's exposure is already an eye among lamps. In the cel look a point light falls square
+takes the exposure over a second to the one a room has (`expose`: the one place the exposure is set;
+`INDOORS_EXPOSURE`), up from the sunlit ground's by day and down from the night's, which is an eye
+among floodlights: so a room's lamps (`Light_<room>`, on at every hour, their strength in fittings:
+`interiors.ceiling_light`) look the same at noon, dusk and midnight, and the fittings' own glow is
+told the exposure it is seen at (`Lamps.exposed`). In the cel look a point light falls square
 on what it reaches (lamps.ts), or a room's lamp draws rings on its walls. A building whose inside
 is not recorded is not offered empty: its door is built shut and its windows dark (sitelib
 `door(works=False)`, building kinds "shut" and "blind").

@@ -342,14 +342,15 @@ def work_lights(parts: Parts) -> None:
         c = Matrix.Translation(P(*L(x, y, LEVELS[1] - 1.7)))
         parts(node, "grey/shades", True).lathe(dome, 12, matrix=c)
         parts(node, "lamp", True).lathe(lens, 12, matrix=c)
-    rooms = [("Office", "ServiceStructure", (0.0, 25.0, 17.2), 0.6, 4.0)]
+    # (strengths in fittings, as interiors.ceiling_light: each of these rooms had a lamp or two; estimated)
+    rooms = [("Office", "ServiceStructure", (0.0, 25.0, 17.2), 0.8, 5.0)]
     for n, zr in ((2, 7.4), (3, 9.6), (4, 8.4)):
         for s in (-1, 1):
             side = "Left" if s < 0 else "Right"
-            rooms.append((f"Level{n}{side}", f"ServiceStructure_Platform{n}_{side}", (s * (10.5 if n == 2 else 7.0), -1.0, LEVELS[n] + zr), 0.7, 5.0))
+            rooms.append((f"Level{n}{side}", f"ServiceStructure_Platform{n}_{side}", (s * (10.5 if n == 2 else 7.0), -1.0, LEVELS[n] + zr), 0.9, 6.0))
     for room, node, at, intensity, reach in rooms:
         lbox(parts(node, "lamp-room"), (at[0] - 1.5, at[1] - 0.25, at[2] - 0.12), (at[0] + 1.5, at[1] + 0.25, at[2]))
-        parts.node(f"Light_{room}", node, L(at[0], at[1], at[2] - 1.0), intensity=intensity, reach=reach)
+        parts.node(f"Light_{room}", node, L(at[0], at[1], at[2] - 2.0), intensity=intensity, reach=reach)
 
 
 def access(parts: Parts) -> None:

@@ -96,7 +96,8 @@ const WALK_SHADOW = 26;
 /** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
 const NEAR_LEAST = 0.03;
 /** How much the exposure opens up in a room by day (as a share added), and over how many seconds; how far the rays that ask whether the eye is in one go, metres. */
-const INDOORS_GAIN = 1.1;
+/** The exposure the eye settles on in a room: 2.1 times the sunlit ground's 0.8 (daysky.ts: DAY_EXPOSURE). */
+const INDOORS_EXPOSURE = 1.68;
 const INDOORS_SECONDS = 0.9;
 const INDOORS_REACH = 12;
 const ENCLOSING = [
@@ -928,7 +929,7 @@ export class Stage {
     this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
     this.expose();
     // the floodlights come on as the direct light fails (the Sun low, or only the Moon)
-    this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6), s.exposure);
+    this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6), this.renderer.toneMappingExposure);
     if (shadows) {
       if (this.walk.active) this.fitWalkShadows(true);
       else {
@@ -2162,13 +2163,17 @@ export class Stage {
   /**
    * The exposure: the setting's, for the sky and the Sun there are, opened up indoors as an eye opens. A room by
    * day is lit by what comes in at its door and windows, a few hundredths of the light outside; at the daylight
-   * exposure it was a dark slab with a bright hole in it. By night the setting's exposure is already an eye
-   * adapted to lamps, and nothing is added.
+   * exposure it was a dark slab with a bright hole in it. Indoors the eye settles on the room, whatever the hour:
+   * the exposure goes to the one a room by day has (`INDOORS_EXPOSURE`), up from the sunlit ground's and down from the
+   * night's, which is an eye among floodlights and showed a lamp-lit room four times over or, at dusk, a third as
+   * bright as the same room an hour later. So a room's lamps (the models' `Light_` marks) need one strength, not one
+   * for each hour; and the fittings' own glow is told what it is being seen at (`Lamps.exposed`).
    */
   private expose(): void {
     const s = this.setting;
-    const day = THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6);
-    this.renderer.toneMappingExposure = s.exposure * (1 + INDOORS_GAIN * day * this.indoors);
+    const exposure = s.exposure + (INDOORS_EXPOSURE - s.exposure) * this.indoors;
+    this.renderer.toneMappingExposure = exposure;
+    this.lamps.exposed(exposure);
   }
 
   /**
