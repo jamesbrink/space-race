@@ -50,6 +50,7 @@ src/
   viewer/shadowcache.ts               on foot, the fine shadow map kept between steps: only the walker drawn into it again while nothing else has changed
   viewer/quality.ts                   the net under the frame rate: for a weak machine, if chosen: resolution lowered a step only while frames stay under 30 a second, and put back
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
+  viewer/laid.ts                      what lies on the ground kept apart in depth at any distance (polygon offset by material name)
   viewer/bloom.ts                     the glow round what is over-bright: sized in CSS pixels, added in the output's pass
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/bulk.ts                      where a part's bulk is: the middle of its surface, the same however it is cut into meshes (a callout's point)

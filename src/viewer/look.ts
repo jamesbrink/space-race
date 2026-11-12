@@ -30,6 +30,10 @@ function follow(twin: THREE.Material, real: THREE.Material): void {
   twin.clipShadows = real.clipShadows;
   twin.side = real.side;
   twin.shadowSide = real.shadowSide;
+  // (and which layer of the ground it is: laid.ts)
+  twin.polygonOffset = real.polygonOffset;
+  twin.polygonOffsetFactor = real.polygonOffsetFactor;
+  twin.polygonOffsetUnits = real.polygonOffsetUnits;
   if (real.defines?.SKY_OVERHEAD !== undefined) twin.defines = { ...twin.defines, SKY_OVERHEAD: '' };
   twin.needsUpdate = true;
 }

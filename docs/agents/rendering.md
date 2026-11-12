@@ -68,6 +68,18 @@ different one per pixel per frame. Three things stop it, and all three must stay
   from across the site (another pad's slab and its joints, a far track's rails) keeps that much
   between parallel faces, or sinks one through the other.
 
+- **Laid on the ground: layers are told apart by name, at any distance** (`viewer/laid.ts`). Where the near plane
+  cannot go out (a vehicle followed 30 m off, the site kilometres below) one step of depth is more than the 12 cm
+  between a slab and the ground, and far more than the millimetres between a slab and what is marked or painted on
+  it. So those are drawn a fixed number of depth steps apart by the GPU's polygon offset: the setting's floor 4
+  steps further, and 2, 4 and 6 steps nearer a material named `concrete-stain…`, `concrete-scorch…` (surface.ts's
+  marks), and `…-joint` or `paint-line-…` (what is laid or painted over slab and marks alike). No vertex moves, so
+  nothing shifts or gaps; close to, the allowance is a fraction of a millimetre. **A model that lays something flat
+  on a surface names its material by that rule** (or the list in laid.ts grows by a class, never by a flight).
+  Measured with the near plane pinned at 16 m, straight down, eye moved 2 cm a frame, pixels a frame that change
+  and change back: from 20 km 74 to 2, from 40 km 41 to 0.4, from 10 km 45 to 5 (cel: 46 to 3, 18 to 0.4, 54 to 7).
+  `sr.stage.layered = false` draws them where they are, for measuring.
+
 `pnpm test:flicker` checks the result in a real browser: every model, every view, six
 directions, looking for patches of pixels that swap when the camera turns 0.005 degrees.
 `--shots <dir>` writes a map of any it finds. Run it after changing a model or the renderer.

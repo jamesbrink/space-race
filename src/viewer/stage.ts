@@ -26,6 +26,7 @@ import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode'
 import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait';
 import { Jets } from './jets';
 import { Bloom } from './bloom';
+import { ground, lay, layering } from './laid';
 import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
@@ -369,6 +370,12 @@ export class Stage {
   /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
   readonly bloom = new Bloom(0.14, 0.6, 2.4);
   private bloomWas: UnrealBloomPass | null = null;
+
+  /** For measuring: the ground's layers drawn apart in depth (laid.ts), or where they are. */
+  set layered(on: boolean) {
+    for (const material of layering(on)) this.looks.sync(material);
+    this.dirty = true;
+  }
 
   /**
    * The glow the old way, for measuring the new against it (`?plain` sets it): three's own pass, at the drawing
@@ -889,6 +896,7 @@ export class Stage {
           mat.bumpScale = 0.6;
         }
         grain(mat); // what a large plain surface looks like from a metre away
+        lay(mat); // what lies on the ground is kept apart from what it lies on, at any distance (laid.ts)
         // Both faces cast. Three's default is the faces turned from the light, which for a wall or a roof is its inside:
         // the shadow then begins at the very surface a room's walls meet, and light crept in along every joint (a
         // lit line round each ceiling and down each corner). From both, a wall's shadow begins at its outside.
@@ -899,6 +907,7 @@ export class Stage {
       if (shell) mesh.material = this.shellOf(mat, url);
       const marked = mark(mesh); // a scorch or a stain fades out at its rim
       if (marked) {
+        lay(marked); // (its own material, made from the one just laid)
         mesh.material = marked;
         mesh.castShadow = false;
         mesh.renderOrder = 1;
@@ -986,6 +995,10 @@ export class Stage {
     this.light();
     this.expose();
     if (s.floor) this.scene.add(s.floor);
+    s.floor?.traverse((o) => {
+      const material = (o as THREE.Mesh).material;
+      if (material && !Array.isArray(material)) ground(material); // (under everything laid on it: laid.ts)
+    });
     for (const o of s.scenery) this.scene.add(o);
     for (const o of [s.floor, ...s.scenery]) if (o) this.looks.add(o);
     if (s.globe) {
