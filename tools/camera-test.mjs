@@ -97,6 +97,8 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
         craftAt: craft ? [craft.matrix.elements[12], craft.matrix.elements[13], craft.matrix.elements[14]] : null,
         craftNdc: middle ? ndc(middle) : null,
         pivotNdc: ndc(cam.pivot),
+        // what the vehicle has shed and is drawn: where each holder puts its node, by the drop it left with
+        shed: (st.debris ?? []).filter((d) => d.holder.visible).map((d) => [d.drop, ...d.holder.matrix.elements.slice(12, 15)]),
         flying: Boolean(craft?.flying),
         shape: craft?.shape ?? 0,
         radius: craft?.radius ?? 0,
@@ -274,6 +276,73 @@ const sequences = {
       window.sr.stage.setCamera('orbit');
     });
     await h.wait(800);
+  },
+  // Separation flown on the flight deck, at life's pace, in the chase view nobody has set. The booster was drawn at the
+  // clock's instant and the capsule at its last tick, up to 5 ms apart: 10 m of jitter between them every frame. And the
+  // view came onto the capsule by zooming in faster than its pivot came over, so the capsule swung to the frame's edge
+  // and back. What the camera does at an event moves the view no faster than the event itself.
+  async 'the chase view through separation, flown'(h) {
+    await h.page.evaluate(() => {
+      const sr = window.sr;
+      sr.show('vehicle', true);
+      sr.cockpit.enter();
+    });
+    await h.wait(2500);
+    await h.page.evaluate(() => {
+      const sr = window.sr;
+      sr.cockpit.eventAt = -1e9;
+      sr.cockpit.command('next'); // ignition: the sequencer and the autopilot fly the rest
+      sr.stage.setCamera('chase');
+      sr.clock.setRate(25);
+      sr.clock.play(true);
+    });
+    await h.page.waitForFunction(() => window.sr.clock.t >= 149, null, { timeout: 120000, polling: 'raf' });
+    await h.page.evaluate(() => {
+      window.sr.clock.setRate(1);
+      window.sr.stage.cam.chase.home?.(); // (a view nobody has set: the one that frames what is left again)
+      window.__frames = [];
+      window.__recording = true;
+    });
+    await h.wait(10000);
+    const frames = await h.page.evaluate(() => {
+      window.__recording = false;
+      return window.__frames;
+    });
+    const sep = frames.findIndex((f) => f.shed.some((s) => s[0] === 1));
+    check(sep > 0, `the booster left at T+${frames[Math.max(0, sep)]?.clock.toFixed(2)} and is drawn`);
+    if (sep <= 0) return;
+    // the booster as seen from the capsule: it drifts off at a few metres a second, and never jumps
+    let jump = 0;
+    let fastest = 0;
+    for (let i = sep + 1; i < frames.length; i++) {
+      const [a, b] = [frames[i - 1], frames[i]];
+      const ba = a.shed.find((s) => s[0] === 1);
+      const bb = b.shed.find((s) => s[0] === 1);
+      if (!ba || !bb || b.clock <= a.clock) continue;
+      const step = len(sub(sub(bb.slice(1), ba.slice(1)), sub(b.craftAt, a.craftAt)));
+      jump = Math.max(jump, step);
+      fastest = Math.max(fastest, step / (b.clock - a.clock));
+    }
+    check(
+      fastest < 25,
+      `the booster from the capsule: never faster than ${fastest.toFixed(1)} m/s, ${jump.toFixed(2)} m in a frame at most`,
+    );
+    // the capsule comes to the middle of the frame and is never further from it than it was as the booster left
+    const off = (f) => Math.hypot(f.craftNdc[0] - f.pivotNdc[0], (f.craftNdc[1] - f.pivotNdc[1]) * 0.625);
+    const start = off(frames[sep]);
+    const most = Math.max(...frames.slice(sep).map(off));
+    const out = frames.slice(sep).some((f) => Math.abs(f.craftNdc[0]) > 1 || Math.abs(f.craftNdc[1]) > 1);
+    check(
+      !out && most <= start * 1.02 + 0.01,
+      `the capsule stays in frame: ${start.toFixed(3)} from the middle as it left, ${most.toFixed(3)} at most after`,
+    );
+    check(off(frames.at(-1)) < 0.02, `and is at the middle when the view has settled (${off(frames.at(-1)).toFixed(3)})`);
+    await h.page.evaluate(() => {
+      window.sr.cockpit.leave();
+      window.sr.clock.reset();
+      window.sr.stage.setCamera('orbit');
+    });
+    await h.wait(1500);
   },
   // At the controls of the flight the mouse is still the camera's, in every rig offered, before ignition and after.
   async 'the mouse while flying'(h) {

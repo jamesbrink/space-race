@@ -479,6 +479,40 @@ test('the chase rig: the pivot slides onto what is left, never steps; and a dist
   assert.ok(near(rig.distance, fitDistance(4, 35, 0.5), 1e-3), 'and the view has closed on the capsule');
 });
 
+test('the chase rig: what is left never goes further from the middle of the frame than it was as the stage left', () => {
+  // The zoom to fit used to be asked for at once: it was done in half a second, the pivot in 1.2, and the capsule, off
+  // the stack's middle, was carried out to the frame's edge and back as the view closed on it.
+  const craft = craftAt(V(0, 60_000, 0));
+  const rig = new ChaseRig(world(craft), 35, 'chase');
+  rig.enter({ position: V(4000, 60_500, 3000), quaternion: new THREE.Quaternion(), fov: 35 }, V(0, 60_000, 0));
+  run(rig, 3, 60);
+  craft.centre.set(0, 21, 0);
+  craft.radius = 2;
+  craft.shape++;
+  // how far off the line of sight what is left is, over the distance: its angle from the middle of the frame
+  const capsule = () => V(0, craft.matrix.elements[13] + 21, 0);
+  const off = () => {
+    const p = posed(rig);
+    const to = capsule().sub(p.position);
+    const ahead = V(0, 0, -1).applyQuaternion(p.quaternion);
+    return to.angleTo(ahead);
+  };
+  rig.update(0, NONE, false);
+  const start = off();
+  let most = 0;
+  run(rig, 4, 60, (_t, dt) => {
+    most = Math.max(most, off());
+    craft.matrix.elements[13] += 2000 * dt;
+  });
+  assert.ok(start > 0.05, `what is left starts off the middle (${THREE.MathUtils.radToDeg(start).toFixed(1)} degrees)`);
+  assert.ok(
+    most <= start * 1.01 + 1e-4,
+    `it was ${THREE.MathUtils.radToDeg(start).toFixed(1)} degrees off the middle and went to ${THREE.MathUtils.radToDeg(most).toFixed(1)}`,
+  );
+  assert.ok(off() < 1e-3, 'and is in the middle once the view has settled');
+  assert.ok(near(rig.distance, fitDistance(4, 35, 0.5), 1e-3), 'seen whole');
+});
+
 test('the locked chase turns with the vehicle: it holds still in the frame while the world goes round', () => {
   const craft = craftAt(V(0, 1000, 0));
   const rig = new ChaseRig(world(craft), 35, 'locked');

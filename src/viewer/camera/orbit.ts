@@ -420,7 +420,8 @@ export class ChaseRig extends OrbitRig {
   private been = false;
   private radius = 1;
   private flying = false;
-  private settling: { from: THREE.Vector3; t: number } | null = null;
+  /** The pivot coming onto the middle of what is left, from `from` (in the vehicle's frame), and a distance nobody has set from `zoom` (its logarithm) with it. */
+  private settling: { from: THREE.Vector3; t: number; zoom: number | null } | null = null;
   /** Where `carry` last put the pivot: `stow` reads it back onto the vehicle only if something has moved it since. */
   private readonly carried = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN);
 
@@ -514,13 +515,24 @@ export class ChaseRig extends OrbitRig {
       this.rel.add(this.local).sub(craft.centre);
       this.local.copy(craft.centre);
       this.goal = null;
-      this.settling = { from: this.rel.clone(), t: 0 };
-      if (!this.handSet) this.zoomer.goal = Math.log(this.fit);
+      this.comeOnto();
     }
     if (this.settling) {
       const s = this.settling;
       s.t = this.calm ? 1 : Math.min(1, s.t + dt / SETTLE);
-      this.rel.copy(s.from).multiplyScalar(1 - ease(s.t));
+      const k = ease(s.t);
+      this.rel.copy(s.from).multiplyScalar(1 - k);
+      // The distance comes in with the pivot and never ahead of it, so what is left is never further from the middle of
+      // the frame than it was as it changed shape. (Asked for at once, the zoom took half a second and the pivot more than
+      // a second: the capsule, a few metres off the stack's middle, was carried to the frame's edge and back as it parted.)
+      // What is left lies `1 - k` of its first offset from the pivot, which seen from a distance is that over the distance
+      // across the frame: so the distance is kept to no less than `1 - k` of the one it was first seen from.
+      if (s.zoom !== null && !this.handSet) {
+        const from = s.zoom;
+        const to = Math.log(this.fit);
+        const z = to < from && k < 1 ? Math.min(k, Math.log(1 - k) / (to - from)) : k;
+        this.zoomer.goal = from + (to - from) * z;
+      }
       if (s.t >= 1) this.settling = null;
     }
     const to = v.copy(this.rel).applyQuaternion(this.own).add(this.middle);
@@ -585,9 +597,13 @@ export class ChaseRig extends OrbitRig {
   /** Back onto the middle of the vehicle, from where the whole of it is seen. */
   override home(): void {
     this.goal = null;
-    this.settling = { from: this.rel.clone(), t: 0 };
     this.anchor = null;
     this.handSet = false;
-    this.zoomer.goal = Math.log(this.fit);
+    this.comeOnto();
+  }
+
+  /** Ease the pivot from where it is onto the middle of what there is, and a distance nobody has set to where all of it is seen. */
+  private comeOnto(): void {
+    this.settling = { from: this.rel.clone(), t: 0, zoom: this.handSet ? null : this.zoomer.now };
   }
 }

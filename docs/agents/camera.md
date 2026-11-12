@@ -66,7 +66,9 @@ browser's check below for the page):
   view the hands have set, the subject it was taken from is still watched (`Stage.watched`): if it
   was in the frame and would leave it, the view moves sideways by the least that keeps it in
   (`nudgeIntoFrame`), with the distance and direction untouched. A stage
-  leaving the vehicle eases the chase pivot onto what is left and keeps a distance set by hand.
+  leaving the vehicle eases the chase pivot onto what is left and keeps a distance set by hand; a distance nobody set
+  comes in with the pivot and never ahead of it, so what is left never goes further from the middle of the frame than
+  it was as the stage left.
 - **Zoom is by proportion** (nepers): a notch of the wheel is a sixth, at 5 cm from a rivet (the
   eye stops `NEAREST` short of a surface) and at 400 km. One wheel event counts for at most 150
   pixels and the zoom runs at a set pace with a short lead (`Zoom`), so a trackpad's flick, which
