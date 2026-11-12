@@ -91,6 +91,7 @@ torso, shoulders and upper arms do not move.
 | Elbow | 21.5° of flexion, hinge turned 20.5° in | estimated | puts the middle of each palm on a hand controller's knob: 27.2 cm off the centre line, 9.3 cm toward the feet from the hips, 14.7 cm above them |
 | Forearm | turned 62° palm down, wound into the elbow's folds | estimated | so the palm lies on the knob. On MR-3 the glove could not turn at the wrist; the turn is in the sleeve |
 | Grip | fingers flexed about 46°, 56° and 32° at their three joints, thumb brought round | estimated | a hand closed on a knob of about 2.3 cm radius |
+| Head | bowed 30° forward inside the helmet, about the top of the neck | estimated | he is looking down his body at the panel, as the on-board view does; the helmet (shell, liner, visor, neck ring) is fixed to the suit and does not move, only the head, the cap and the microphone. `seated_key_points()["eyes"]` is midway between his eyes as bowed, and the cabin puts `Seat_Pilot` on it |
 | Seat of the suit | rolled 40° under | estimated | so the seat of the trousers does not stand out behind the raised thighs. From 2 cm under the waist strap down to the crotch the cloth goes over from the pelvis's roll to the thigh's bend, by height |
 
 `seated_fits(y_hip_in, z_hip_in)` gives the smallest gap to a pressure wall of radius

@@ -56,7 +56,6 @@ STRIP_CANT = math.radians(30.0)  # the telelight strip, turned toward the pilot 
 CONSOLE_CANT = math.radians(58.0)  # the left console beyond it: estimated
 FUSE_AT = (-22.0, 3.0, 21.0)  # the fuse panel's upper edge on the left wall, (x, y, station): estimated
 STRIP_DROP, CONSOLE_DROP = 3.5, 8.0  # how far down the panel the strip and the console hang, inches: estimated
-EYE_FROM_HELMET = (1.0, 3.3)  # the eyes from the middle of the helmet, toward the feet and toward the face, inches: the suit model's own
 SCREEN_R = 4.0  # the periscope's 8 in display: documented (Hammack and Heberlig, p. 5)
 SCOPE_RECESS = 1.2  # how far its display sits behind the panel: estimated (NASM2021-00147)
 
@@ -783,8 +782,10 @@ def build(
     out["room"] = c.worst
     # Where the pilot's eyes are and where they rest: on the panel between the clock and the periscope. A node of its
     # own, for the viewer's seat (ModelDef.seats): in the file its +Z looks that way and its +Y is the top of his head.
-    helmet = seat(pilot["helmet_centre"])
-    eye = Vector((0.0, helmet.y + EYE_FROM_HELMET[0], helmet.z + EYE_FROM_HELMET[1]))
+    # (the seated figure's own: midway between its eyes, with the head bowed in the helmet as he has it)
+    eyes = seat(pilot["eyes"])
+    eye = Vector((0.0, eyes.y, eyes.z))
+    out["eye_off_square"] = math.degrees((Vector(P @ Vector((0, 0, 0))) / IN - eye).angle(-Vector(P.col[2][:3])))
     look = (Vector(P @ Vector((1.0, 7.5, 0.0))) / IN - eye).normalized()
     over = (Vector((0, -1, 0)) - look * look.dot(Vector((0, -1, 0)))).normalized()
     node = bpy.data.objects.new("Seat_Pilot", None)
@@ -793,6 +794,10 @@ def build(
     node.matrix_local = Matrix.Translation(eye * IN) @ Matrix(((-look).cross(over), -look, over)).transposed().to_4x4()
     out["eye"] = tuple(eye)
     out["eye_to_screen"] = (Vector(P @ Vector((0, 0, 0))) / IN - eye).length
+    print(
+        f"cabin: the pilot's eyes at ({eye.x:.2f}, {eye.y:.2f}, {eye.z:.2f}) in, "
+        f"{out['eye_to_screen']:.1f} in from the middle of the panel and {out['eye_off_square']:.1f} degrees off square to it"
+    )
     return out
 
 

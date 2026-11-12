@@ -138,6 +138,11 @@ def helmet_at(phi: float, z: float, off: float = 0.0) -> Vector:
     return helmet_point(phi, z) + helmet_normal(phi, z) * off
 
 
+def NOD_AT(head: Vector) -> Vector:  # noqa: N802
+    """What a bowed head turns about: the top of the neck, under the middle of the skull (rest pose, centimetres)."""
+    return Vector((0.0, head.y + 1.5, head.z - 6.0))
+
+
 def build_helmet(M: dict) -> None:
     g = group("Helmet")
     shell, visor, ringm, fit, port = (MeshBuilder() for _ in range(5))
@@ -176,6 +181,7 @@ def build_helmet(M: dict) -> None:
     head, cap, dark, eyes, hair, lips = (MeshBuilder() for _ in range(6))
     hc = B.head
     build_head(head, eyes, dark, hair, lips)
+    skull = len(head.verts)
     head.tube((0, 1.0, 150.0), (0, 0.4, hc.z - 6.0), 5.6, 24)  # neck
     # the white communications cap: a bowl over the crown and the back of the head, standing
     # off the scalp all round so that the two never meet at any level of detail
@@ -184,6 +190,14 @@ def build_helmet(M: dict) -> None:
     # lip microphone on its boom from the left ear
     dark.tube((7.4, hc.y - 2.0, hc.z - 4.0), (2.2, hc.y - 10.6, hc.z - 6.0), 0.3, 8)
     dark.box((1.8, 1.0, 1.2), Matrix.Translation((1.4, hc.y - 10.8, hc.z - 6.0)))
+    # Posed, the head can be bowed inside the helmet (`head`, degrees: chin toward the chest), about the top of the
+    # neck. The helmet is fixed to the suit and does not move: only the head, its cap and microphone do.
+    nod = math.radians(fl.rig().angles.get("head", 0.0))
+    if nod:
+        turn = Matrix.Translation(NOD_AT(hc)) @ Matrix.Rotation(nod, 4, "X") @ Matrix.Translation(-NOD_AT(hc))
+        head.verts[:skull] = [tuple(turn @ Vector(v)) for v in head.verts[:skull]]
+        for mb in (cap, dark, eyes, hair, lips):
+            mb.verts = [tuple(turn @ Vector(v)) for v in mb.verts]
 
     def edge(psi: float, rho: float = 1.0) -> tuple[float, float]:
         f = rho * (1 + squareness(psi, 3.2))
@@ -768,6 +782,7 @@ SEATED = {
     "elbow_toe_in": 20.5,  # the hinge turned so the palms come in over the controllers, 27.2 cm off the centre line
     "pronate": 62.0,  # forearms turned palm down onto the controllers' knobs
     "grip": 1.0,  # hands closed round them
+    "head": 30.0,  # the head bowed in the helmet: he is looking down his body at the panel (the eyes do the rest)
 }
 # where a thigh pressed against the belly stops, in seat-frame centimetres: the crease starts this
 # far toward the head from the hip joints, at the height of the belly's skin, and opens at this slope
@@ -801,6 +816,13 @@ def seated_fits(y_hip_in: float, z_hip_in: float = 9.4) -> float:
     return worst
 
 
+def eyes_at(nod: float) -> Vector:
+    """Midway between the eyes' irises with the head bowed by `nod` radians: rest pose, centimetres."""
+    fl.use(B)
+    mid = (fl.head_point(3.15, 0.5) + fl.head_point(-3.15, 0.5)) / 2 + Vector((0, -0.2, 0.02))
+    return NOD_AT(B.head) + Matrix.Rotation(nod, 3, "X") @ (mid - NOD_AT(B.head))
+
+
 def seated_key_points() -> dict:
     """Where the couch has to be: key points of the seated figure in seat-frame centimetres."""
     rig, pts = seated_rig(), seated_points()
@@ -810,6 +832,8 @@ def seated_key_points() -> dict:
     return {
         **fl.body_key_points(rig, pts),
         "head_top": tuple(rig.carry((0, -1.4, HELMET_TOP))),
+        # midway between the eyes, as the bowed head has them (figurelib.build_head puts each 3.15 cm off the middle)
+        "eyes": tuple(rig.carry(eyes_at(math.radians(SEATED["head"])))),
         "helmet_centre": tuple(centre),
         "helmet_radius": max((p - centre).length for p in helmet),
         "helmet_back_z": min(p.z for p in helmet),

@@ -15,7 +15,7 @@ it does not edit No. 7's.
 
 | Node | What it is | Extras |
 | --- | --- | --- |
-| `Seat_Pilot` | an empty at the seated figure's eyes: in the file its +Z looks at the panel and its +Y is the top of his head | |
+| `Seat_Pilot` | an empty at the seated figure's eyes (the suit's own `eyes` key point, head bowed 30°: 21.1 in from the middle of the panel, 1.9° off square to it; the build prints both): in the file its +Z looks at the panel and its +Y is the top of his head | |
 | `Gauge_<Name>` | a needle, bar or counter wheel, its origin on its pivot | `turn` (value, radians pairs about the face's normal, anticlockwise positive), or `slide` (value, metres pairs along its own X), or `drum` (figures on the wheel) with `place`; `rest` the value its face was built pointing at; `wrap` where the value goes round; `reach` |
 | `Tele_<Name>` | a lamp's lens, with a material of its own so it is lit by itself | `reach` |
 | `Ctl_<Name>` | a control: a pull ring, a push button, a grip | `pull` or `press`, metres along its own axis; `reach` |
