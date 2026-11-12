@@ -5,6 +5,7 @@ import { prefs } from './prefs';
 import type { Confidence, Flight, ModelDef, Part } from './types';
 import { RIGS, type RigId } from './viewer/camera/rig.ts';
 import { functionsOf } from './viewer/explode';
+import { chooseTier, tier } from './viewer/tier';
 import { Wheel } from './wheel';
 
 export interface UiHandlers {
@@ -524,6 +525,11 @@ export class Ui {
       else if (b?.hasAttribute('data-camera')) this.nextCamera();
       else if (b?.hasAttribute('data-cel')) this.setCel(b.getAttribute('aria-pressed') !== 'true');
       else if (b?.hasAttribute('data-pace')) this.setHoldPace(b.getAttribute('aria-pressed') !== 'true');
+      else if (b?.hasAttribute('data-lighter')) {
+        // (what a tier allocates is allocated as the page opens: the choice is kept, and the page opened again in it)
+        chooseTier(b.getAttribute('aria-pressed') !== 'true');
+        location.reload();
+      }
     });
     // the label that follows the pointer over the model
     window.addEventListener('pointermove', (e) => {
@@ -646,7 +652,8 @@ export class Ui {
       `<button data-camera title="${CAMERA_LABEL[this.cameraMode]}: the next camera (C)">${CAMERA_ICON}<span>${cameraName(this.cameraMode)}</span></button>` +
       `<button data-rotate class="switch" aria-pressed="${rotating}" title="The view drifts round what was last chosen">Auto-orbit</button>` +
       `<button data-cel class="switch" aria-pressed="${prefs.get('cel')}" title="Draw the scene as a cel-shaded drawing (T)">Cel shading</button>` +
-      `<button data-pace class="switch" aria-pressed="${prefs.get('resolutionAuto')}" title="For a slow machine: lower the drawing's resolution a little while frames fall under 30 a second, and put it back. Off, always the screen's full resolution">Hold frame rate</button></span>`;
+      `<button data-pace class="switch" aria-pressed="${prefs.get('resolutionAuto')}" title="For a slow machine: lower the drawing's resolution a little while frames fall under 30 a second, and put it back. Off, always the screen's full resolution">Hold frame rate</button>` +
+      `<button data-lighter class="switch" aria-pressed="${tier().lighter}" title="For a phone or a machine short of memory: smaller shadow maps and pictures, and nothing held that is not on show. Chosen for you on a phone. Changing it reloads the page">Lighter graphics</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
     // this model's own figures first
     const specs = r.querySelector('[data-pane="Specs"]')!;

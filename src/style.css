@@ -303,10 +303,15 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 .buttons button:hover { color: var(--ink); border-color: var(--faint); }
 /* current view: filled, like the section switcher (where am I). Toggles: outlined (what is on). */
 .buttons [data-view][aria-pressed='true'] { color: var(--ink); background: rgba(243, 239, 230, 0.12); border-color: var(--dim); }
-.buttons :is([data-cut], [data-rotate], [data-cel], [data-pace])[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+.buttons :is([data-cut], [data-rotate], [data-cel], [data-pace], [data-lighter])[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
 .scale { color: var(--faint); text-align: center; text-transform: none; letter-spacing: 0.08em; text-wrap: balance; }
 
 /* --- the curtain: up while a flight arrives and the scene warms (ui.ts loading). It says what is arriving, how far along, and what is being done now --- */
+/* --- the graphics stopped (viewer/lost.ts): over everything, with the way back --- */
+.lost { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 24px; background: rgba(6, 7, 9, 0.84); color: var(--ink); font: 15px/1.5 var(--sans); text-align: center; }
+.lost > div { max-width: 30em; }
+.lost p { margin: 0 0 14px; }
+.lost button { margin: 6px; padding: 10px 16px; border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; background: rgba(255, 196, 107, 0.12); color: var(--amber); font: inherit; letter-spacing: 0.06em; cursor: pointer; }
 .loading { position: absolute; inset: 0; z-index: 8; display: grid; place-content: center; background: #000; cursor: default; transition: opacity 0.7s ease 0.1s; }
 .loading.done { opacity: 0; pointer-events: none !important; }
 .loading-card { display: grid; width: min(380px, calc(100vw - 48px)); }

@@ -28,6 +28,7 @@ import { Jets } from './jets';
 import { Bloom } from './bloom';
 import { ground, lay, layering } from './laid';
 import { Lamps } from './lamps';
+import { refused, sayRefused, watchContext } from './lost';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { Origin } from './origin';
@@ -483,6 +484,11 @@ export class Stage {
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.localClippingEnabled = true;
     this.renderer.info.autoReset = false; // counted per frame drawn, across every pass (stats())
+    // a context the browser takes away (a phone short of memory) stops the loop and says so: never a dead page, never a reload by itself (lost.ts)
+    watchContext(canvas, () => {
+      this.lost = true;
+      this.renderer.setAnimationLoop(null);
+    });
     this.glazing = new Panes(this.renderer, (mesh, real) => this.looks.give(mesh, real));
     // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
     const query = new URLSearchParams(location.search);
@@ -1915,6 +1921,8 @@ export class Stage {
     this.relight(true);
     await frames(3);
     onStep?.('settle', 1);
+    // (an allocation the GPU refused while all that was made: said, with the way back in the lighter tier; lost.ts)
+    if (refused(this.renderer, [this.frameTarget])) sayRefused();
     if (!this.plain && tier().prebuildLook) this.prebuild(this.looks.current === 'cel' ? 'real' : 'cel');
   }
 
@@ -3940,6 +3948,8 @@ export class Stage {
   fullDetail = false;
 
   private asleep = false;
+  /** Its WebGL context was taken away (lost.ts): the loop is stopped for good. */
+  private lost = false;
   /**
    * Stop (another stage has the page) or start again. Asleep it draws nothing, hears no key and
    * advances no clock: everything on it is, when it wakes, exactly as it was left.
@@ -3948,6 +3958,7 @@ export class Stage {
     if (on === this.asleep) return;
     this.asleep = on;
     this.cam.keys.clear();
+    if (this.lost) return; // (its context has gone: nothing is drawn on it again, lost.ts)
     this.renderer.setAnimationLoop(on ? null : () => this.frame());
     if (on) return;
     this.timer.update(); // (the time it slept is not time that passed)
