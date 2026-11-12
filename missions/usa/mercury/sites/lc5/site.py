@@ -113,10 +113,18 @@ TRUE_NORTH = (math.sin(math.radians(25.0)), -math.cos(math.radians(25.0)), 0.0)
 # (MR-4 at ignition, ground level): the booster's 70 in body gives 23.5 px/ft at the tail.
 LAUNCHER_TOP = 5.5
 # The capsule: the vehicle's origin (the heat shield's plane of maximum diameter) is 716.0 in above
-# the fins; the hatch centre 32.8 in above that, the umbilical receptacle 8 in up the cone.
+# the fins; the hatch centre 32.8 in above that. The umbilical's receptacle is under the periscope's lens, inside
+# its door: 135 degrees round from the hatch's middle (the hatch on +X), 31.2 in up the cone, on the skin (estimated,
+# from photographs of the flown capsule and of No. 11: mr-3-freedom-7/spacecraft.md, "Round the cone"). It was
+# taken until November 2026 to be on -Y, 8 in up the cone.
 SHIELD_Z = LAUNCHER_TOP + 716.0 / 12
 HATCH_Z = LAUNCHER_TOP + (716.0 + 32.8) / 12
-UMBILICAL = (0.0, -(37.25 - 8.0 * math.tan(math.radians(20.0))) / 12, LAUNCHER_TOP + (716.0 + 8.0) / 12)
+UMBILICAL_AT = (math.radians(135.0), 31.2)  # (round from +X, station in inches)
+UMBILICAL = (
+    (37.25 - UMBILICAL_AT[1] * math.tan(math.radians(20.0))) / 12 * math.cos(UMBILICAL_AT[0]),
+    (37.25 - UMBILICAL_AT[1] * math.tan(math.radians(20.0))) / 12 * math.sin(UMBILICAL_AT[0]),
+    LAUNCHER_TOP + (716.0 + UMBILICAL_AT[1]) / 12,
+)
 VEHICLE_TIP = LAUNCHER_TOP + 83.38  # escape tower's tip (Hammack & Heberlig, Figure 18)
 
 HARDSTAND = 200.0  # side of the square: OSM outline 195 to 202 ft; TM X-53107 Figure 7-6, 157 px at 1.274 ft/px
@@ -156,7 +164,9 @@ STRUCTURE_LAUNCH = 173.0  # T-8:45: Figure 7-6's marker at 181 ft, less the 8 ft
 LEVELS = {1: SHIELD_Z - 19.6, 2: SHIELD_Z - 10.9, 3: SHIELD_Z - 0.6, 4: SHIELD_Z + 11.1}
 STRUCTURE_TOP = 135.0  # to the crane deck's top rail: LC-26 twin 111 ft 9 in + 23 ft (Noble), COE "140 feet"
 PLATFORM_PART = 4.5  # how far each half of a platform slides out, either way, to open (estimated)
-MAST_NOTCH = (-8.0, 0.7)  # where the capsule's cable mast stands in the platforms' split, and the cut round it
+# Where the capsule's cable mast stands in the platforms' split, and the cut round it: behind the vehicle on the
+# receptacle's side (+Y, 45 degrees round from it), the one place on that side the parted platforms leave clear.
+MAST_NOTCH = (8.0, 0.7)
 
 
 def materials() -> dict:

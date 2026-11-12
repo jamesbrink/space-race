@@ -13,16 +13,20 @@ Each mast is its own top-level node with its origin on its foot's hinge pin, so 
 
 from __future__ import annotations
 
+import math
+
 from mathutils import Matrix
 
 from srlib import FT
 
-from .site import MAST_NOTCH, UMBILICAL, P, Parts, box, fine, obox
+from .site import LAUNCHER_TOP, MAST_NOTCH, SHIELD_Z, UMBILICAL, P, Parts, box, fine, obox
 
 HINGE_Z = 1.0  # the pin, above the hardstand
 # No. 2 stands on the umbilical's side of the vehicle, between two fins, in the split of the
-# service structure's platforms, which close round it (site.MAST_NOTCH). Its head stays under
-# level 3; the umbilical rises past the white room's floor beside the capsule to the receptacle.
+# service structure's platforms, which close round it (site.MAST_NOTCH): behind the vehicle, 45
+# degrees round from the receptacle, which is under the periscope's lens. Its head stays under
+# level 3; the umbilical rises past the white room's floor beside the capsule, below the heat
+# shield's rim, and goes up round the cone, under the periscope's open door, to the receptacle.
 CAPSULE_FOOT = (0.0, MAST_NOTCH[0])
 CAPSULE_TOP = 62.3  # the pole's top, above level 2's roof
 # No. 1 stands just in front of the platforms, its boom between levels 1 and 2 (estimated).
@@ -55,8 +59,17 @@ def build(parts: Parts) -> None:
     tube(m, x, y, top)
     box(head, (x - 0.5, y - 0.5, top), (x + 0.5, y + 0.5, top + 1.3))  # the release head
     ux, uy, uz = UMBILICAL
-    path = [(x, y + 0.45, top + 0.9), (x, -5.6, top + 1.0), (x, -3.45, top + 1.3), (x, -3.42, uz - 0.9), (x, -3.15, uz - 0.3), (ux, uy - 0.2, uz)]
-    cable.loft([P(*p) for p in path], [(0.15 * FT, 0.15 * FT)] * len(path), 10, ref=(1, 0, 0))
+
+    def round_cone(a: float, station: float, off: float) -> tuple[float, float, float]:
+        "A point `off` ft out from the capsule's skin, `a` degrees round from +X, at a station in inches."
+        r = (37.25 - station * math.tan(math.radians(20.0))) / 12 + off
+        return (r * math.cos(math.radians(a)), r * math.sin(math.radians(a)), LAUNCHER_TOP + (716.0 + station) / 12)
+
+    out = math.hypot(ux, uy)
+    path = [(x, y - 0.45, top + 0.9), (x, 5.6, top + 1.0), (x, 3.45, top + 1.3), (x, 3.42, SHIELD_Z + 0.3)]
+    path += [round_cone(100.0, 12.0, 0.3), round_cone(122.0, 20.0, 0.27), round_cone(135.0, 26.0, 0.2)]
+    path += [(ux * (out + 0.2) / out, uy * (out + 0.2) / out, uz)]
+    cable.loft([P(*p) for p in path], [(0.15 * FT, 0.15 * FT)] * len(path), 10, ref=(0.3, 0.3, 0.9))
     lanyard(cable, x, y, top)
 
     # ---- No. 1, the booster's: its boom reaches the booster's skin, cooling package on top

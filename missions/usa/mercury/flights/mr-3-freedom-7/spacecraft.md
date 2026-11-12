@@ -181,11 +181,11 @@ What would settle it, looked for once in November 2026 and not found: a document
 the booster or to the trajectory (the Postlaunch Report's roll trace through the turnaround, SEDR 104's axis figure),
 or a pad photograph that shows the hatch against the fins or the gantry with the azimuth known.
 
-**A contradiction this leaves on the pad.** The site's capsule umbilical (`sites/lc5/site.py` `UMBILICAL`, mast No. 2
-in `masts.py`) plugs in at 270 degrees in the pilot's frame and station 8, where the old model had the receptacle.
-The photographs put the receptacle under the periscope's lens, at 90 degrees and station 31.2: on the pad, 135 degrees
-round from the end of the site's cable. One of the two is wrong, and the photographs say it is the site's; it is not
-changed here.
+**The umbilical on the pad followed the receptacle** (November 2026). The site's cable plugged in at 270 degrees in
+the pilot's frame and station 8, where the old model had the receptacle; it now reaches the receptacle under the
+periscope's lens (`sites/lc5/site.py` `UMBILICAL`). Its mast (`masts.py`), whose place is estimated, stands in the split
+the platforms part along on that side, behind the vehicle (+Y, 45 degrees round from the receptacle), where it stood on
+-Y; it falls toward +Y. `sites/lc-5.md` gives the derivation.
 
 ## Parts in the model
 

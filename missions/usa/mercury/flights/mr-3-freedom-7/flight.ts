@@ -1010,7 +1010,7 @@ const padParts: Part[] = [
     ],
     explode: [0, 0, 0],
     order: 0,
-    moves: [swing('UmbilicalMast', X, 88, T.umbilical, T.umbilical + 0.035)],
+    moves: [swing('UmbilicalMast', X, -88, T.umbilical, T.umbilical + 0.035)], // (over away from the vehicle, toward +Y: it stands behind it)
   },
   {
     node: 'BoosterMast',
