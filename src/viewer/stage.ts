@@ -2512,7 +2512,7 @@ export class Stage {
   private frame(): void {
     const began = performance.now();
     if (this.setting.attend?.(this.camera.position)) this.dirty = true;
-    if (this.lamps.near(this.camera.position)) this.dirty = true; // the rooms nearest the eye are the ones lit
+    if (this.lamps.near(this.camera.position, false, this.frozen)) this.dirty = true; // the rooms nearest the eye are the ones lit
     // Hardware that has moved wants its shadows drawn again, in the same frame: a shadow drawn
     // a moment late lags behind what casts it and then jumps after it.
     if (this.shadowsOwed) {
@@ -2600,6 +2600,9 @@ export class Stage {
     const ambient = this.frozen ? 0.5 : 1 / 12;
     if (!(this.dirty || moved || this.renderer.shadowMap.needsUpdate || this.sinceDrawn >= ambient)) return;
     if (this.held) return;
+    // A frozen frame owes nothing to an earlier one: its shadow maps are drawn with it. (Kept, a map is of the scene
+    // as it stood when something last asked: plants in the forms the eye was then near enough for, for one.)
+    if (this.frozen) this.renderer.shadowMap.needsUpdate = true;
     this.lastView.copy(this.camera.matrixWorld);
     this.lastProjection.copy(this.camera.projectionMatrix);
     this.dirty = false;
@@ -2616,6 +2619,8 @@ export class Stage {
     this.far.before(walking, this.frozen);
     if (this.lookingAt && !this.cam.onboard.looking) this.lookOut(null); // (the hands took the head back)
     this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)
+    // (a frozen stage keeps nothing of an earlier frame: the clouds' blend with their last frames is the one thing that would)
+    (this.clouds as { frozen?: boolean }).frozen = this.frozen;
     this.origin.draw(() => this.composer.render(this.sinceDrawn));
     this.far.after();
     unshake?.();

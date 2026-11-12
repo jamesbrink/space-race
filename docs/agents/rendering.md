@@ -250,6 +250,17 @@ build) narrow it; the header of the file lists the rest.
   `--toggle`: each scenario frozen (no time passes at all), drawn with the switch off, on, and off
   again, and the pixels that differ counted. Off against off again is the floor: most views are
   identical to the last bit, a few (cloud from above) wander by a level or two.
+- **A frozen stage draws the same frame twice** (`stage.frozen`; `pnpm test:frozen` checks it in both looks, still
+  and with every level of detail thrown to another and back). Every tool that compares pictures stands on it, so
+  nothing may reach a frozen frame from the wall's clock or from an earlier frame. What did, and is now cut while
+  frozen: a room's lamp handed from one room to the next over 0.6 s of `performance.now()` (lamps.ts `atOnce`: 72
+  frames of a lit room changing after every move of the eye, thousands of pixels in the cel look, where a tone
+  flips); the clouds' blend with their last frames (clouds.ts `frozen`: 25 frames to come to rest after anything
+  changed the depth under a cloud, and a cel cloud's edge is cut at one half); and the Sun's maps, kept from
+  whenever something last asked (a plant's shadow in the form the eye was then near enough for), which a frozen
+  frame draws with itself. Anything new that eases over time takes its time from `dt` and is cut by `frozen`.
+  The page goes on arriving for seconds after the curtain lifts (coarser levels, trees, maps): a tool waits for
+  a frame drawn again to be the same frame before its first picture.
 - So **anything that changes how the scene is drawn keeps a switch** for as long as it is being
   judged: `?plain` in the address does everything the old way (the load as well), and each has its
   own flag on the stage (`sr.stage.glazing.enabled`).

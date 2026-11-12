@@ -39,6 +39,7 @@ pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
 pnpm bench            # what a frame costs, what the page weighs, how long it takes to open (docs/agents/rendering.md)
 pnpm test:camera      # needs `pnpm dev` running: the camera driven with real input, its promises checked every frame
+pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same frame twice, in both looks
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB

@@ -220,18 +220,22 @@ export class Lamps {
   /** Where each room was when the lights were last handed round, and whether that left nothing still to do (`near`). */
   private readonly where: THREE.Vector3[] = [];
   private settled = false;
+  private cut = false;
 
   /**
    * Give the room lights to the rooms nearest `eye`. A light handed to another room goes out over
    * a moment and comes on there, and a room keeps its light until another is clearly nearer, so
-   * nothing is seen to switch. True if that changed what is lit.
+   * nothing is seen to switch (`atOnce`: no moment is taken, for a stage that is frozen: the lights are where they
+   * will be, fully on, in this frame, whatever the wall's clock says). True if that changed what is lit.
    */
-  near(eye: THREE.Vector3, moved = false): boolean {
+  near(eye: THREE.Vector3, moved = false, atOnce = false): boolean {
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.handedAt) / 1000);
     this.handedAt = now;
     let still = this.settled && !moved && this.eye.equals(eye);
     this.eye.copy(eye);
+    if (atOnce !== this.cut) still = false; // (frozen or let go since: the handover under way is finished, or timed again)
+    this.cut = atOnce;
     if (!this.rooms.length) return false;
     // where each room is now (kept, not made each frame), and whether any has moved
     const where = this.where;
@@ -265,12 +269,16 @@ export class Lamps {
     this.roomPool.forEach((light, i) => {
       const g = this.given[i]!;
       const step = dt / HANDOVER;
-      const level = g.room === g.want ? Math.min(1, g.level + step) : Math.max(0, g.level - step);
-      if (g.room !== g.want && level === 0) g.room = g.want; // out: it may move
+      let level = g.room === g.want ? Math.min(1, g.level + step) : Math.max(0, g.level - step);
+      if (atOnce) level = g.want >= 0 ? 1 : 0;
+      if (g.room !== g.want && (level === 0 || atOnce)) g.room = g.want; // out: it may move
       if (level !== g.level) changed = true;
       g.level = level;
       const room = this.rooms[g.room];
-      if (!room) return;
+      if (!room) {
+        light.intensity = 0; // (no room wants it: out, not left at the last step of its going out)
+        return;
+      }
       if (light.position.distanceToSquared(where[g.room]!) > 1e-6) changed = true;
       light.position.copy(where[g.room]!);
       light.distance = room.reach;

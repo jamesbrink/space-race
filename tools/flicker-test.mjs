@@ -46,6 +46,27 @@ await page.evaluate((g) => {
   window.srCanvas = () => document.querySelector(g ? '#gallery-stage' : '#stage');
 }, inGallery);
 await page.addStyleTag({ content: '#ui, #gallery { display: none !important }' });
+// The page goes on arriving after the curtain lifts (coarser levels, trees, maps), and a picture that changes because
+// the scene does reads as a flip at the first pose: wait until a frozen frame drawn again is the same frame, a second long.
+await page.evaluate(async () => {
+  const stage = window.srStage();
+  stage.frozen = true;
+  await Promise.allSettled(stage.arriving ?? []);
+  const src = window.srCanvas();
+  const c = document.createElement('canvas');
+  c.width = src.width;
+  c.height = src.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  let last = null;
+  for (let i = 0, same = 0; i < 1800 && same < 60; i++) {
+    stage.dirty = true;
+    await new Promise((r) => requestAnimationFrame(r));
+    g.drawImage(src, 0, 0);
+    const next = g.getImageData(0, 0, c.width, c.height).data;
+    same = last?.every((v, j) => v === next[j]) ? same + 1 : 0;
+    last = next;
+  }
+});
 
 /** Take A, B (nudged), A again inside the page and count the pixels that jump and come back. */
 const flipsAt = (view, az) =>

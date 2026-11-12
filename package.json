@@ -16,6 +16,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "models": "node tools/build-model.mjs --all",
     "test:flicker": "node tools/flicker-test.mjs",
+    "test:frozen": "node tools/frozen-test.mjs",
     "test:camera": "node tools/camera-test.mjs",
     "bench": "node tools/bench.mjs",
     "globe": "node tools/globe.mjs",
