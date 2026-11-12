@@ -176,9 +176,10 @@ export class Gallery {
 
   /**
    * Come in: the gallery takes the page, with `what` on show (a part's node, or one of the choices
-   * of what stands there; '' for the whole of it). The first time, the vehicle is fetched.
+   * of what stands there; '' for the whole of it), or left out, as it was left. The first time,
+   * the vehicle is fetched.
    */
-  async enter(what = ''): Promise<void> {
+  async enter(what?: string): Promise<void> {
     this.endShow(); // (coming in is taking over, if it was showing itself behind the front page)
     this.open = true;
     this.root.hidden = this.canvas.hidden = false;
@@ -194,7 +195,12 @@ export class Gallery {
       this.loading = null; // (it has said so on the page, with a button to try again)
       return;
     }
-    if (this.open) this.go(what, true);
+    if (this.open && what !== undefined) this.go(what, true);
+  }
+
+  /** What is on show, as an address names it: the part chosen, else what stands there, '' for the whole vehicle. */
+  get at(): string {
+    return this.selected ?? (this.plinth.nodes ? this.plinth.id : '');
   }
 
   /** Go out: it sleeps as it stands, and is as it was left when next come into. */
@@ -215,9 +221,10 @@ export class Gallery {
   go(what: string, snap = false): void {
     if (!this.ready) return;
     const to = galleryAt(this.vehicle, what);
+    const plinth = this.choices.find((p) => p.id === to.plinth.id)!;
     // (a part that is not on show now is shown in the whole vehicle; one that is, where it stands)
     const there = to.part && (!this.plinth.nodes || this.plinth.nodes.includes(to.part));
-    if (!there && to.plinth !== this.plinth) this.stand(to.plinth, snap);
+    if (!there && plinth !== this.plinth) this.stand(plinth, snap);
     if (to.part !== this.selected) this.select(to.part, snap);
   }
 
@@ -390,7 +397,7 @@ export class Gallery {
         <span class="n">${String(all.indexOf(p) + 1).padStart(2, '0')}</span>
         <span class="name">${esc(p.name)}${p.inside ? '<em>inside</em>' : ''}</span>
         <span class="what">${esc(p.summary)}</span>
-        <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}</span>
+        <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}<span class="back"><kbd>Esc</kbd> back to the whole of it</span></span>
       </button></li>`,
       )
       .join('');
@@ -428,6 +435,40 @@ export class Gallery {
       tuckPanel(false);
     };
     this.canvas.addEventListener('pointerdown', () => panel.classList.remove('open'));
+    // On a phone the panel is a sheet, put away as the site's is: swiped down from its tabs, or from its content once
+    // that is scrolled to the top (otherwise the swipe is a scroll). It follows the finger.
+    let swipe: { y: number; pulling: boolean } | null = null;
+    panel.addEventListener(
+      'touchstart',
+      (e) => {
+        const pane = (e.target as HTMLElement).closest<HTMLElement>('[data-pane]');
+        const sheet = panel.classList.contains('open') && matchMedia('(max-width: 960px) and (min-height: 521px)').matches;
+        swipe = sheet && e.touches.length === 1 && (!pane || pane.scrollTop <= 0) ? { y: e.touches[0]!.clientY, pulling: false } : null;
+      },
+      { passive: true },
+    );
+    panel.addEventListener(
+      'touchmove',
+      (e) => {
+        if (!swipe) return;
+        const dy = e.touches[0]!.clientY - swipe.y;
+        if (dy < 0 && !swipe.pulling) return void (swipe = null); // upward first: a scroll, not a dismissal
+        swipe.pulling = dy > 6;
+        if (e.cancelable) e.preventDefault();
+        panel.style.transition = 'none';
+        panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
+      },
+      { passive: false },
+    );
+    const release = (e: TouchEvent) => {
+      if (!swipe) return;
+      const dy = (e.changedTouches[0]?.clientY ?? swipe.y) - swipe.y;
+      swipe = null;
+      panel.style.transition = panel.style.transform = '';
+      if (dy > 70) panel.classList.remove('open');
+    };
+    panel.addEventListener('touchend', release);
+    panel.addEventListener('touchcancel', release);
     this.q('.tabs').addEventListener('keydown', (e) => {
       const key = (e as KeyboardEvent).key;
       if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
@@ -461,7 +502,7 @@ export class Gallery {
       const to = this.choices.find((p) => p.id === id);
       if (to && to !== this.plinth && this.ready) {
         this.stand(to);
-        this.host.address(to.nodes ? to.id : '');
+        this.host.address(this.at);
       }
     });
     const slider = this.q<HTMLInputElement>('.explode input');
@@ -679,7 +720,7 @@ export class Gallery {
     }
     this.turn();
     this.tip(null);
-    if (!this.touring) this.host.address(node ?? (this.plinth.nodes ? this.plinth.id : ''));
+    if (!this.touring) this.host.address(this.at);
   }
 
   /** The part after the one chosen (or before it), in the order they are listed, and round again: a way through all of them. */

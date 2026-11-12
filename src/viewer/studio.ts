@@ -50,10 +50,10 @@ interface Palette {
 
 const PALETTE: Record<Tone | 'paper', Palette> = {
   dark: {
-    floor: [0.013, 0.014, 0.017],
-    band: [0.055, 0.055, 0.06],
-    top: [0.004, 0.004, 0.006],
-    pool: [0.085, 0.082, 0.078],
+    floor: [0.028, 0.029, 0.034],
+    band: [0.06, 0.06, 0.065],
+    top: [0.011, 0.011, 0.014],
+    pool: [0.075, 0.072, 0.068],
     shadow: 0.5,
     contact: 0.75,
     exposure: 0.95,

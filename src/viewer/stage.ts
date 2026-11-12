@@ -3253,7 +3253,6 @@ export class Stage {
     this.renderer.setAnimationLoop(on ? null : () => this.frame());
     if (on) return;
     this.timer.update(); // (the time it slept is not time that passed)
-    this.resize();
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
   }

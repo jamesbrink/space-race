@@ -31,6 +31,8 @@ can be flown.
   with the simulator's run laid against the reports' figures in the **Flight** tab.
 - **Take it apart.** The slider explodes the vehicle; on the pad it runs the morning of the launch,
   from the gantry round the rocket to the pad cleared. **Cutaway** opens the capsule and booster.
+- **The gallery.** **Gallery** shows the vehicle alone in a studio (the stack, the spacecraft or the
+  booster): taken apart with every part named, cut open, a person beside it for scale.
 - **Walk.** `V`, the **Walk** button in the Crew section, or a double-click on the pilot puts you
   on the pad on foot; Space jumps.
 - **Cel shading** (or `T`) redraws the whole scene as an inked drawing.

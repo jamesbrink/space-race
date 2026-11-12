@@ -21,11 +21,16 @@ public/globe/                         the globe's land and ice maps, six cube fa
 docs/sources.md                       every source used or wanted, and what each is good for
 src/
   types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
+  enter.ts                            the way in: main.ts for a flight with a site, only.ts for one that is only its vehicle
   main.ts  ui.ts  style.css           the page
+  address.ts                          the address bar, the two places a flight is seen in, and what the gallery is given to show
+  gallery.ts  gallery.css  only.ts    the gallery: the vehicle alone on a stage of its own; the switch between the places; its page for a flight with no site
   actions.ts                          on foot: what can be done with the thing being looked at (from flight data)
   wheel.ts                            a radial menu: a few choices round a centre
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
   viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
+  viewer/studio.ts                    the studio: a sweep under three designed lights, dark, light or paper; a person and a pole for scale
+  viewer/labels.ts                    names on the parts of a thing taken apart: which have come clear, where the labels go
   viewer/cape.ts                      Cape Canaveral's land as parameters: its plant communities, clearings, roads, palette, sea
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
   viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind

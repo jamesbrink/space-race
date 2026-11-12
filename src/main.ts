@@ -524,8 +524,9 @@ const gallery = new Gallery(document.body, flight, {
   covered: fronted,
 });
 document.querySelector('#ui .title .sub')!.after(placesNav(flight, 'site', () => toGallery()));
-function toGallery(what = ''): void {
-  if (gallery.active) return void gallery.go(what);
+/** `what`: the part or the choice of what stands there that an address names ('' for the whole vehicle); left out, the gallery is as it was left. */
+function toGallery(what?: string): void {
+  if (gallery.active) return void (what === undefined || gallery.go(what));
   if (cockpit.active) {
     // the flight is the pilot's until it is left: the address goes back to where it is
     history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
@@ -541,7 +542,7 @@ function toGallery(what = ''): void {
   sheet.classList.remove('open'); // (a phone's sheet, open, would keep its share of the gallery's screen)
   sound.hush(true);
   stage.sleep(true);
-  if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what));
+  if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
   void gallery.enter(what);
 }
 function toSite(model = ''): void {
@@ -554,7 +555,10 @@ function toSite(model = ''): void {
   // what is remembered for both places may have been changed there
   if (prefs.get('cel') !== held.cel) ui.setCel(prefs.get('cel'));
   orbitOff = prefs.get('orbitOff');
-  if (!started) return void start(model);
+  if (!started) {
+    prefs.set('demo', false); // (it was gone to by hand: it does not open showing itself, whatever it was doing when last left)
+    return void start(model);
+  }
   if (ready && model && model !== current.id) show(model);
   else if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
 }

@@ -40,7 +40,7 @@ body.in-gallery :is(#stage, #ui) { visibility: hidden; }
 .part-labels polyline { fill: none; stroke: var(--amber); stroke-width: 1; opacity: 0; transition: opacity 0.3s ease; }
 .part-labels circle { fill: var(--amber); opacity: 0; transition: opacity 0.3s ease; }
 .part-labels :is(polyline, circle).shown { opacity: 0.6; }
-.part-labels polyline.on { opacity: 1; }
+.part-labels polyline.shown.on { opacity: 1; }
 .part-labels button { position: absolute; left: 0; top: 0; height: 22px; max-width: 190px; padding: 0 9px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font: 10px/20px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 2px;
   opacity: 0; pointer-events: none; transition: opacity 0.3s ease, color 0.15s, background 0.15s; }
