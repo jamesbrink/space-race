@@ -6,9 +6,11 @@ of 2 May 1961, show it at the pad's edge: a tubular frame on a cart, its sign a 
 saltire) and the white trailer lettered "NASA SP-No 1" beside the structure's base (S61-03158). The
 huts at the hatch side's edge and the striped barricade are FHSU F16_017 and F16_015, of July 1961,
 and so are the floodlights' timber poles with two or three lamps on a crossarm. TM X-53107's countdown says the LOX topping trailer and the
-LN2 trailers stayed through liftoff (T-60 s "LOX topping Off"; secured after the launch); MR-3
-photographs (S61-01927, S61-02407/08) and MR-4's (S63-02651) show two white enclosures near the
-launcher, one with a horizontal tank on top, a low box painted in orange and black chevrons, tripod
+LN2 trailers stayed through liftoff (T-60 s "LOX topping Off"; secured after the launch). MR-3's
+liftoff photographs (S61-02407 at ignition, S61-01927, S61-02408) and MR-4's (S63-02651) show, behind
+the launcher on the side away from the hatch: two open-topped screens of white panels, the lower with
+an orange tank lying behind it, the taller with a grey switch box on its face, three floodlights over
+it and a long white tank on a trailer behind; a drum painted in orange and black chevrons; tripod
 cameras, lattice camera towers, and floodlight poles with a crossarm carrying two lamps. All are
 placed off the rails' corridor and off the hatch side, where the cherry picker stood; all estimated.
 """
@@ -34,6 +36,7 @@ from .site import (
     ear_clip,
     fine,
     ftp,
+    lamp_head,
     lattice,
     lettering,
     offset_poly,
@@ -55,78 +58,7 @@ TRIPODS = ((-40.0, -30.0), (-45.0, 25.0), (30.0, -45.0), (-25.0, -55.0))
 
 def build(parts: Parts) -> None:
     parts.node("GroundEquipment")
-    white, dark, tank, stripe, black = (
-        parts("GroundEquipment", "trailer"),
-        parts("GroundEquipment", "chassis", True),
-        parts("GroundEquipment", "trailer/tank", True),
-        parts("GroundEquipment", "orange"),
-        parts("GroundEquipment", "black"),
-    )
-    # the LOX topping unit: a horizontal insulated tank on a white enclosure, on a trailer's wheels
-    x0, y0 = -30.0, -26.0
-    u = "GroundEquipment_LoxTrailer"
-    parts.node(u, "GroundEquipment", (x0, y0, 0.0), label="LOX topping trailer")
-    white, dark, tank, black = parts(u, "trailer"), parts(u, "chassis", True), parts(u, "trailer/tank", True), parts(u, "black")
-    box(white, (x0 - 4.0, y0 - 11.0, 1.6), (x0 + 4.0, y0 + 11.0, 8.0))
-    box(dark, (x0 - 3.2, y0 - 10.0, 1.0), (x0 + 3.2, y0 + 10.0, 1.62))
-    head = [(2.75 * math.sin(math.radians(t)), 2.5 * (1.0 - math.cos(math.radians(t)))) for t in range(0, 91, 9)]  # a 2:1 dished head
-    tank.lathe(
-        ftp(head + [(r_, 19.0 - z) for r_, z in reversed(head)]),
-        48,
-        matrix=axes((x0, y0 - 9.5, 10.85), (1, 0, 0), (0, 1, 0)),
-    )
-    for dy in (-6.0, 6.0):  # saddles, and a strap over the tank at each
-        box(white, (x0 - 2.2, y0 + dy - 0.4, 8.0), (x0 + 2.2, y0 + dy + 0.4, 8.85))
-        strap = ftp([(2.78, -0.2), (2.84, -0.2), (2.84, 0.2), (2.78, 0.2), (2.78, -0.2)])
-        tank.lathe(strap, 48, matrix=axes((x0, y0 + dy, 10.85), (1, 0, 0), (0, 1, 0)))
-    for side in (-1, 1):
-        for dy in (-6.5, -3.5):
-            trailer_wheel(parts, u, (x0 + side * 3.625, y0 + dy, 1.4), side)
-    box(dark, (x0 - 0.5, y0 + 11.0, 0.9), (x0 + 0.5, y0 + 15.0, 1.3))  # drawbar
-    if fine():
-        for k in range(3):  # louvres and a door on the enclosure
-            box(black, (x0 - 4.05, y0 - 8.0 + k * 3.0, 4.0), (x0 - 3.9, y0 - 6.0 + k * 3.0, 6.5))
-        box(black, (x0 + 3.9, y0 + 2.0, 1.8), (x0 + 4.05, y0 + 5.0, 7.0))
-    # the tank's fittings: a vent stack with its cap, relief valves, a manway; the control end and the hose end
-    metal = parts(u, "grey/fittings", True)
-    metal.tube(P(x0, y0 - 7.5, 13.4), P(x0, y0 - 7.5, 17.5), 0.12 * FT, 10)
-    metal.lathe(ftp([(0.0, 0.0), (0.4, 0.0), (0.4, 0.25), (0.0, 0.4)]), 12, matrix=axes((x0, y0 - 7.5, 17.6), (1, 0, 0), (0, 0, 1)))
-    for dy in (-3.0, -2.2):
-        metal.tube(P(x0 + 0.6, y0 + dy, 13.3), P(x0 + 0.6, y0 + dy, 14.3), 0.1 * FT, 8)
-    metal.lathe(ftp([(0.0, 0.0), (0.9, 0.0), (0.9, 0.25), (0.0, 0.25)]), 20, matrix=axes((x0, y0 + 2.0, 13.5), (1, 0, 0), (0, 0, 1)))
-    end_fittings(parts, u, (x0, y0 - 11.0), -1, 8.0, "LOX TOPPING", seed=21)
-    hose_end(parts, u, (x0, y0 + 11.0), 1, ("OXYGEN", "NO SMOKING"))
-
-    # a second, smaller enclosure: LN2 or the peroxide unit (estimated)
-    x1, y1 = -24.0, 22.0
-    u = "GroundEquipment_NitrogenTrailer"
-    parts.node(u, "GroundEquipment", (x1, y1, 0.0), label="Nitrogen trailer")
-    white, dark, tank = parts(u, "trailer"), parts(u, "chassis", True), parts(u, "trailer/tank", True)
-    box(white, (x1 - 4.0, y1 - 5.5, 1.6), (x1 + 4.0, y1 + 5.5, 7.5))
-    box(dark, (x1 - 3.2, y1 - 4.5, 1.0), (x1 + 3.2, y1 + 4.5, 1.62))
-    for side in (-1, 1):
-        trailer_wheel(parts, u, (x1 + side * 3.625, y1 - 2.0, 1.4), side)
-    tank.lathe(
-        ftp([(0, 0), (1.3, 0), (1.3, 4.0), (1.15, 4.45), (0.8, 4.7), (0, 4.8)]),
-        40,
-        matrix=axes((x1 + 1.5, y1 + 2.0, 7.5), (1, 0, 0), (0, 0, 1)),
-    )
-    end_fittings(parts, u, (x1, y1 + 5.5), 1, 7.5, "LIQUID NITROGEN", seed=33)
-    hose_end(parts, u, (x1, y1 - 5.5), -1, ("NITROGEN",))
-
-    # the low box painted in chevrons, 15 to 20 ft from the launcher
-    sx, sy = -20.0, 8.0  # clear of the service structure's base
-    parts.node("GroundEquipment_ChevronBox", "GroundEquipment", (sx, sy, 0.0))
-    black, stripe = parts("GroundEquipment_ChevronBox", "black"), parts("GroundEquipment_ChevronBox", "orange")
-    box(black, (sx - 4.5, sy - 2.0, 0.0), (sx + 4.5, sy + 2.0, 3.0))
-    n = 6
-    for k in range(n):  # orange chevrons on the long faces, a few millimetres proud of the black
-        for face in (-1, 1):
-            yy = sy + face * 2.02
-            xa = sx - 4.5 + k * 9.0 / n
-            pts = [(xa, 0.05), (xa + 0.7, 0.05), (xa + 0.7 + 0.75, 1.5), (xa + 0.7, 2.95), (xa, 2.95), (xa + 0.75, 1.5)]
-            verts = [tuple(P(px, yy, pz)) for px, pz in pts]
-            stripe.add(verts, [(0, 1, 2, 5), (5, 2, 3, 4)] if face < 0 else [(0, 5, 2, 1), (5, 4, 3, 2)])
+    near_launcher(parts)
 
     # tripod cameras round the pad (TM X-53107 7.5.5.3: twenty fixed cameras near the pad)
     for k, (tx, ty) in enumerate(TRIPODS, 1):  # each a 35 mm camera on a wooden tripod, aimed at the booster's tail
@@ -186,77 +118,217 @@ def trailer_wheel(parts: Parts, node: str, centre, side: int) -> None:
     parts(node, "grey/wheels", True).lathe(ftp(rim), 28, matrix=m)
 
 
-def _wall(cx: float, yw: float, d: int):
-    """A point on an end wall at y = yw whose outside faces d (+1: +Y): `a` across it (to the right of someone facing it), `out` from it."""
-    return lambda a, out, z: (cx - d * a, yw + d * out, z)
+def vessel(radius: float, length: float, crown: float) -> list:
+    """The profile of a pressure vessel along its axis: `length` over its two dished heads, each `crown` deep."""
+    head = [(radius * math.sin(math.radians(t)), crown * (1.0 - math.cos(math.radians(t)))) for t in range(0, 91, 9)]
+    return head + [(r, length - z) for r, z in reversed(head)]
 
 
-def end_fittings(parts: Parts, g: str, at, d: int, top: float, title: str, *, seed: int = 1) -> None:
-    """The working end of a cryogenic trailer's enclosure (estimated: the kind, not this one): a cabinet with its
-    gauges and switches, two lines down the end with a valve and handwheel each, a gauge, and the hose coupling
-    at the foot, on node `g`. `at` is (x, y) of the end wall's middle, `d` the way it faces (+1: +Y), `top` the enclosure's top."""
-    W = _wall(at[0], at[1], d)
-    right = (-d, 0, 0)
-    case, metal = parts(g, "trailer/cabinets"), parts(g, "grey/fittings", True)
-    box(case, *sorted_box(W(-3.4, -0.05, 3.0), W(-0.7, 0.55, 6.7)))
-    interiors.panel(
-        parts,
-        g,
-        sitelib.axes_local(W(-3.3, 0.55, 3.1), right, (0, 0, 1)),
-        2.5,
-        3.45,
-        [("meters", 3), ("lamps", "gar"), ("switches", 4), ("label", "PRESS  LEVEL  FLOW")],
-        title=title,
-        font=srlib.load_font(),
-        seed=seed,
-    )
-    for a in (1.0, 2.4):
-        metal.tube(P(*W(a, 0.45, top - 0.4)), P(*W(a, 0.45, 2.2)), 0.12 * FT, 10)
-        metal.tube(P(*W(a, -0.05, top - 0.4)), P(*W(a, 0.57, top - 0.4)), 0.12 * FT, 10)
-        box(metal, *sorted_box(W(a - 0.25, 0.2, 4.3), W(a + 0.25, 0.7, 4.9)))  # the valve
-        if fine():
-            metal.tube(P(*W(a, 0.7, 4.6)), P(*W(a, 1.0, 4.6)), 0.04 * FT, 6)
-            wheel = axes(W(a, 1.0, 4.6), (1, 0, 0), (0, d, 0))
-            metal.lathe(ftp([(0.36, -0.04), (0.45, -0.04), (0.45, 0.04), (0.36, 0.04), (0.36, -0.04)]), 16, matrix=wheel)
-            for k in range(3):
-                q = math.tau * k / 3
-                beam(metal, W(a, 1.0, 4.6), W(a + 0.38 * math.cos(q), 1.0, 4.6 + 0.38 * math.sin(q)), 0.05)
-            gauge = axes(W(a, 0.55, 6.2), (1, 0, 0), (0, d, 0))  # a pressure gauge on the line
-            metal.lathe(ftp([(0.0, 0.0), (0.22, 0.0), (0.22, 0.17), (0.0, 0.17)]), 14, matrix=gauge)
-            parts(g, "sign/dials", True).lathe(ftp([(0.0, 0.17), (0.18, 0.17), (0.18, 0.185), (0.0, 0.185)]), 14, matrix=gauge)
-        for z in (3.0, 6.9):  # brackets to the wall
-            box(metal, *sorted_box(W(a - 0.06, -0.05, z - 0.1), W(a + 0.06, 0.45, z + 0.1)))
-    metal.tube(P(*W(1.7, 0.45, 2.2)), P(*W(1.7, 1.1, 2.2)), 0.15 * FT, 10)  # the coupling at the foot, capped
-    box(metal, *sorted_box(W(0.9, 0.3, 2.05), W(2.5, 0.6, 2.35)))
-    cap = axes(W(1.7, 1.1, 2.2), (1, 0, 0), (0, d, 0))
-    parts(g, "black/caps", True).lathe(ftp([(0.0, 0.0), (0.2, 0.0), (0.2, 0.25), (0.0, 0.25)]), 12, matrix=cap)
+def blast_screen(parts: Parts, node: str, xf: float, y0: float, y1: float, height: float, back: float, bays: int) -> None:
+    """A screen of white panels standing on the pad between the launcher and what it shelters, open to the sky and
+    at the back: a face along Y at x = `xf` toward the launcher (+X), and a return `back` feet long at each end.
+    The photographs give its outline, its colour and its panel joints; its posts, feet and raking struts are how
+    such a screen is made to stand, and estimated. Meshes on `node`: `trailer/screen`, `grey/screenframe`."""
+    white, steel = parts(node, "trailer/screen"), parts(node, "grey/screenframe")
+    post, sheet = 0.16, 0.06
+    stands = [(xf, y0 + k * (y1 - y0) / bays) for k in range(bays + 1)]
+    box(white, (xf - sheet, y0, 0.3), (xf + sheet, y1, height))
+    box(white, (xf - 0.24, y0 - 0.24, height), (xf + 0.24, y1 + 0.24, height + 0.14))  # the capping rail
+    for y in (y0, y1):
+        box(white, (xf - back, y - sheet, 0.3), (xf, y + sheet, height))
+        box(white, (xf - back - 0.24, y - 0.24, height), (xf - 0.24, y + 0.24, height + 0.14))
+        stands += [(xf - back, y), (xf - back / 2, y)]
+    for x, y in stands:
+        box(white, (x - post, y - post, 0.0), (x + post, y + post, height))
+        box(steel, (x - 0.55, y - 0.55, 0.0), (x + 0.55, y + 0.55, 0.07))  # its foot plate
+    for _, y in stands[: bays + 1]:  # a raking strut behind each post of the face
+        beam(steel, (xf - post, y, height * 0.72), (xf - post - height * 0.42, y, 0.1), 0.2)
+        box(steel, (xf - height * 0.42 - 0.75, y - 0.4, 0.0), (xf - height * 0.42 + 0.15, y + 0.4, 0.09))
+    if fine():  # the rails the sheets are fixed to, seen from behind
+        for z in (0.42, height * 0.5):
+            box(steel, (xf - 0.19, y0 + post, z), (xf - sheet - 0.02, y1 - post, z + 0.25))
 
 
-def hose_end(parts: Parts, g: str, at, d: int, words) -> None:
-    """The other end of a trailer's enclosure, on node `g`: the transfer hose wound on its reel, and the placards over it (estimated)."""
-    W = _wall(at[0], at[1], d)
-    metal, hose = parts(g, "grey/fittings", True), parts(g, "cable/hose", True)
-    reel = axes(W(-1.25, 1.0, 4.4), (0, d, 0), (-d, 0, 0))  # its axle across the end
-    metal.lathe(ftp([(0.0, 0.1), (0.5, 0.1), (0.5, 2.4), (0.0, 2.4)]), 20, matrix=reel)
-    hose.lathe(ftp([(0.5, 0.15), (0.82, 0.15), (0.82, 2.35), (0.5, 2.35)]), 24, matrix=reel)
-    for z in (0.05, 2.45):  # its flanges
-        metal.lathe(ftp([(0.0, z - 0.05), (1.0, z - 0.05), (1.0, z + 0.05), (0.0, z + 0.05)]), 24, matrix=reel)
-    for a in (-1.4, 1.4):  # the reel's brackets
-        box(metal, *sorted_box(W(a - 0.06, -0.05, 3.2), W(a + 0.06, 1.05, 4.5)))
+def handwheel(metal, at, out, radius: float = 0.42) -> None:
+    """A valve's handwheel: `at` its middle (feet), `out` the way its stem points (a horizontal direction)."""
+    o = Vector(out).normalized()
+    side = Vector((0, 0, 1)).cross(o)
+    rim = [(radius - 0.07, -0.04), (radius, -0.04), (radius, 0.04), (radius - 0.07, 0.04), (radius - 0.07, -0.04)]
+    metal.lathe(ftp(rim), 16, matrix=axes(at, tuple(side), tuple(o)))
+    for k in range(3):
+        q = math.tau * k / 3
+        tip = Vector(at) + (side * math.cos(q) + Vector((0, 0, 1)) * math.sin(q)) * (radius - 0.05)
+        beam(metal, tuple(at), tuple(tip), 0.05)
+
+
+def near_launcher(parts: Parts) -> None:
+    """What stood behind the launcher at liftoff, on the side away from the hatch (S61-02407, S61-01927, S61-02408 and,
+    for MR-4, S63-02651): a low white screen with an orange tank lying behind it; a taller white screen with a grey
+    switch box on its face and three floodlights over it, and behind that a long white tank on a trailer; and a drum
+    painted in orange and black chevrons nearer the launcher. That they stood there, their colours and their outlines
+    are the photographs'; every size is scaled off them against the booster's 70 in body, and the places are read
+    from oblique views: all estimated. What the orange tank held and what the drum was for are not recorded; the
+    long white tank is taken for the LOX topping trailer of TM X-53107's count."""
+    g = "GroundEquipment"
     font = srlib.load_font()
-    sign, ink = parts(g, "sign/placards"), parts(g, "black/lettering")
-    for k, word in enumerate(words):
-        z = 6.3 + k * 0.75
-        box(sign, *sorted_box(W(-1.6, -0.03, z), W(1.6, 0.05, z + 0.6)))
-        lettering(ink, word, 0.4, W(0.0, 0.065, z + 0.1), right_of(d), (0, 0, 1), font)
+    stood(
+        "Blast screens, the tank behind each, and the chevron drum behind the launcher",
+        since="1961-05",
+        confidence="documented",
+        source="S61-02407, S61-01927, S61-02408 (5 May 1961); S63-02651 shows the same in July. Sizes and places estimated",
+    )
 
+    # ---- the low screen and the orange tank on its cart
+    xf, y0, y1, h = -52.0, 2.0, 13.0, 4.6
+    u = f"{g}_TankScreen"
+    parts.node(u, g, (xf, (y0 + y1) / 2, 0.0), label="Blast screen")
+    blast_screen(parts, u, xf, y0, y1, h, 7.0, 3)
+    u = f"{g}_TankCart"
+    cx, cy, cz, r, length = xf - 4.4, (y0 + y1) / 2, 3.5, 1.5, 6.4
+    parts.node(u, g, (cx, cy, 0.0), label="Tank on its cart")
+    tank, frame, metal = parts(u, "orange/tank", True), parts(u, "chassis"), parts(u, "grey/fittings", True)
+    tank.lathe(ftp(vessel(r, length, 0.7)), 40, matrix=axes((cx, cy - length / 2, cz), (1, 0, 0), (0, 1, 0)))
+    for dy in (-1.9, 1.9):  # a saddle and a strap at each
+        box(frame, (cx - 1.25, cy + dy - 0.2, 1.75), (cx + 1.25, cy + dy + 0.2, cz - 0.9))
+        strap = ftp([(r + 0.02, -0.14), (r + 0.07, -0.14), (r + 0.07, 0.14), (r + 0.02, 0.14), (r + 0.02, -0.14)])
+        metal.lathe(strap, 40, matrix=axes((cx, cy + dy, cz), (1, 0, 0), (0, 1, 0)))
+    for dx in (-1.25, 1.25):  # the cart: two rails and two ends, an axle under the middle, a prop and a drawbar at one end
+        box(frame, (cx + dx - 0.12, cy - 3.3, 1.5), (cx + dx + 0.12, cy + 3.3, 1.76))
+        box(frame, (cx + dx - 0.1, cy - 0.75, 1.0), (cx + dx + 0.1, cy - 0.45, 1.5))
+    for ya in (-3.3, 3.05):
+        box(frame, (cx - 1.3, cy + ya, 1.52), (cx + 1.3, cy + ya + 0.25, 1.74))
+    metal.tube(P(cx - 1.75, cy - 0.6, 1.0), P(cx + 1.75, cy - 0.6, 1.0), 0.11 * FT, 10)
+    for side in (-1, 1):
+        m = axes((cx + side * 1.95, cy - 0.6, 1.0), (0, 1, 0), (side, 0, 0))
+        tyre = [(0.6, -0.2), (0.86, -0.22), (0.97, -0.17), (1.0, -0.08), (1.0, 0.08), (0.97, 0.17), (0.86, 0.22), (0.6, 0.2)]
+        parts(u, "tyre", True).lathe(ftp(tyre), 24, matrix=m)
+        parts(u, "grey/wheels", True).lathe(ftp([(0.0, -0.18), (0.61, -0.18), (0.61, 0.12), (0.2, 0.16), (0.0, 0.16)]), 20, matrix=m)
+    beam(frame, (cx, cy + 3.2, 1.6), (cx, cy + 3.2, 0.12), 0.16)  # the prop it stands on
+    box(frame, (cx - 0.35, cy + 2.85, 0.0), (cx + 0.35, cy + 3.55, 0.12))
+    beam(frame, (cx, cy + 3.3, 1.63), (cx, cy + 5.4, 1.63), 0.14)  # the drawbar and its eye
+    eye = [(0.12, -0.05), (0.26, -0.05), (0.26, 0.05), (0.12, 0.05), (0.12, -0.05)]
+    metal.lathe(ftp(eye), 12, matrix=axes((cx, cy + 5.6, 1.63), (1, 0, 0), (0, 0, 1)))
+    # on top: the filler with its cap, a relief valve, the outlet's valve and its gauge; a hose coiled on the end
+    top = cz + r
+    metal.tube(P(cx, cy - 1.0, top - 0.05), P(cx, cy - 1.0, top + 0.45), 0.2 * FT, 12)
+    parts(u, "black/caps", True).tube(P(cx, cy - 1.0, top + 0.45), P(cx, cy - 1.0, top + 0.6), 0.26 * FT, 12)
+    metal.tube(P(cx, cy + 0.2, top - 0.05), P(cx, cy + 0.2, top + 0.7), 0.07 * FT, 8)
+    metal.tube(P(cx, cy + 1.2, top - 0.05), P(cx, cy + 1.2, top + 0.5), 0.09 * FT, 8)
+    box(metal, (cx - 0.2, cy + 1.0, top + 0.5), (cx + 0.2, cy + 1.4, top + 0.85))
+    if fine():
+        handwheel(metal, (cx + 0.5, cy + 1.2, top + 0.68), (1, 0, 0), 0.3)
+        metal.tube(P(cx + 0.2, cy + 1.2, top + 0.68), P(cx + 0.5, cy + 1.2, top + 0.68), 0.04 * FT, 6)
+        dial = axes((cx - 0.2, cy + 1.2, top + 0.68), (0, 1, 0), (-1, 0, 0))
+        metal.lathe(ftp([(0.0, 0.0), (0.2, 0.0), (0.2, 0.15), (0.0, 0.15)]), 14, matrix=dial)
+        parts(u, "sign/dials", True).lathe(ftp([(0.0, 0.15), (0.16, 0.15), (0.16, 0.165), (0.0, 0.165)]), 14, matrix=dial)
+    hose = parts(u, "cable/hose", True)
+    for k in range(4):
+        coil = [(0.62, 0.0), (0.7, 0.08), (0.62, 0.16), (0.54, 0.08), (0.62, 0.0)]
+        hose.lathe(ftp(coil), 16, matrix=axes((cx, cy - length / 2 - 0.75 - 0.17 * k, cz - 0.2), (1, 0, 0), (0, -1, 0)))
+    beam(metal, (cx, cy - length / 2 - 0.3, cz + 0.42), (cx, cy - length / 2 - 1.55, cz + 0.42), 0.08)  # the hook it hangs on
 
-def right_of(d: int) -> tuple:
-    return (-d, 0, 0)
+    # ---- the taller screen: a switch box on its face, three floodlights over it
+    xf, y0, y1, h = -56.0, 20.0, 36.0, 7.5
+    u = f"{g}_LoxScreen"
+    parts.node(u, g, (xf, (y0 + y1) / 2, 0.0), label="Blast screen")
+    blast_screen(parts, u, xf, y0, y1, h, 6.0, 4)
+    metal = parts(u, "grey/fittings", True)
+    by = y0 + 5.2
+    box(parts(u, "grey/switchbox"), (xf + 0.16, by - 0.8, 3.3), (xf + 0.8, by + 0.8, 5.3))
+    metal.tube(P(xf + 0.45, by + 0.4, 3.3), P(xf + 0.45, by + 0.4, 0.0), 0.06 * FT, 8)  # its conduit to the pad
+    py = y0 + 9.0  # the lamps' post, clamped to the screen
+    metal.tube(P(xf + 0.4, py, h - 2.0), P(xf + 0.4, py, h + 1.5), 0.09 * FT, 8)
+    beam(metal, (xf + 0.4, py - 1.9, h + 1.5), (xf + 0.4, py + 1.9, h + 1.5), 0.14)
+    for z in (h - 1.9, h - 0.5):
+        box(metal, (xf + 0.1, py - 0.2, z), (xf + 0.5, py + 0.2, z + 0.12))
+    glow = parts(u, "lamp/floods", True)
+    parts.mark(u, "lamp/floods", lens_out=1)
+    for dy in (-1.6, 0.0, 1.6):
+        q = Vector((xf + 0.4, py + dy, h + 1.57))
+        beam(metal, tuple(q), tuple(q + Vector((0, 0, 0.45))), 0.1)
+        lamp_head(metal, glow, q + Vector((0.2, 0, 0.95)), (-q.x, -q.y, 9.0 - q.z), 0.5)
 
+    # ---- behind it, the long white tank on its trailer: the LOX topping trailer
+    u = f"{g}_LoxTrailer"
+    tx, ta, tb = xf - 11.5, 24.0, 50.0  # its middle line, its rear and its front
+    deck, r, length = 4.6, 2.5, 21.0
+    cz = deck + 0.55 + r
+    parts.node(u, g, (tx, ta + 6.0, 0.0), label="LOX topping trailer")
+    white, dark, tank, metal = parts(u, "trailer"), parts(u, "chassis"), parts(u, "trailer/tank", True), parts(u, "grey/fittings", True)
+    box(parts(u, "plank/deck"), (tx - 4.0, ta, deck - 0.25), (tx + 4.0, tb, deck))
+    for dx in (-1.6, 1.6):  # the frame's two beams, and the cross members that show under the deck's edge
+        box(dark, (tx + dx - 0.2, ta + 0.2, deck - 1.25), (tx + dx + 0.2, tb - 0.2, deck - 0.25))
+    for k in range(9):
+        y = ta + 0.6 + k * (tb - ta - 1.2) / 8
+        box(dark, (tx - 3.9, y - 0.12, deck - 0.6), (tx + 3.9, y + 0.12, deck - 0.27))
+    tank.lathe(ftp(vessel(r, length, 1.25)), 48, matrix=axes((tx, ta + 3.0, cz), (1, 0, 0), (0, 1, 0)))
+    for dy in (5.5, 13.5, 21.5):  # saddles, and a strap over the tank at each
+        box(white, (tx - 2.1, ta + dy - 0.35, deck), (tx + 2.1, ta + dy + 0.35, cz - 1.4))
+        strap = ftp([(r + 0.03, -0.2), (r + 0.09, -0.2), (r + 0.09, 0.2), (r + 0.03, 0.2), (r + 0.03, -0.2)])
+        tank.lathe(strap, 48, matrix=axes((tx, ta + dy, cz), (1, 0, 0), (0, 1, 0)))
+    for side in (-1, 1):  # the tandem at the rear, the landing legs at the front
+        for dy in (3.6, 7.4):
+            trailer_wheel(parts, u, (tx + side * 3.3, ta + dy, 1.4), side)
+        beam(dark, (tx + side * 2.6, tb - 6.0, deck - 1.2), (tx + side * 2.6, tb - 6.0, 0.1), 0.3)
+        box(dark, (tx + side * 2.6 - 0.5, tb - 6.5, 0.0), (tx + side * 2.6 + 0.5, tb - 5.5, 0.1))
+    for dy in (3.6, 7.4):
+        box(dark, (tx - 2.9, ta + dy - 0.18, 1.22), (tx + 2.9, ta + dy + 0.18, 1.58))
+        for dx in (-1.6, 1.6):
+            box(dark, (tx + dx - 0.15, ta + dy - 0.5, 1.58), (tx + dx + 0.15, ta + dy + 0.5, deck - 1.25))  # the spring hangers
+    box(dark, (tx - 1.5, tb - 3.5, deck - 0.75), (tx + 1.5, tb - 0.5, deck - 0.6))  # the kingpin's plate
+    beam(dark, (tx - 2.6, tb - 6.0, deck - 2.4), (tx + 2.6, tb - 6.0, deck - 2.4), 0.16)
+    # the tank's fittings: a vent stack with its cap, relief valves, a manway, and the placard on each side
+    top = cz + r
+    metal.tube(P(tx, ta + 5.0, top - 0.05), P(tx, ta + 5.0, top + 3.6), 0.12 * FT, 10)
+    metal.lathe(ftp([(0.0, 0.0), (0.4, 0.0), (0.4, 0.25), (0.0, 0.4)]), 12, matrix=axes((tx, ta + 5.0, top + 3.6), (1, 0, 0), (0, 0, 1)))
+    for dy in (9.0, 9.8):
+        metal.tube(P(tx + 0.5, ta + dy, top - 0.1), P(tx + 0.5, ta + dy, top + 0.9), 0.1 * FT, 8)
+    metal.lathe(ftp([(0.0, 0.0), (0.9, 0.0), (0.9, 0.25), (0.0, 0.25)]), 20, matrix=axes((tx, ta + 15.0, top - 0.08), (1, 0, 0), (0, 0, 1)))
+    sign, ink = parts(u, "sign/placards"), parts(u, "black/lettering")
+    for side in (-1, 1):
+        box(sign, (tx + side * (r + 0.12) - 0.04, ta + 10.0, cz - 0.55), (tx + side * (r + 0.12) + 0.04, ta + 17.0, cz + 0.55))
+        lettering(ink, "LIQUID OXYGEN", 0.5, (tx + side * (r + 0.19), ta + 13.5, cz + 0.05), (0, side, 0), (0, 0, 1), font)
+        lettering(ink, "NO SMOKING", 0.3, (tx + side * (r + 0.19), ta + 13.5, cz - 0.42), (0, side, 0), (0, 0, 1), font)
+    # the working end, at the rear, reached from the pad: the fill and topping lines down from the tank's head, a
+    # valve and handwheel on each, the capped coupling at the foot, and a board of three gauges (the kind, not this one)
+    for a in (-1.0, 1.0):
+        metal.tube(P(tx + a, ta + 3.6, cz - 1.6), P(tx + a, ta - 0.5, cz - 1.6), 0.12 * FT, 10)
+        metal.tube(P(tx + a, ta - 0.5, cz - 1.5), P(tx + a, ta - 0.5, 2.7), 0.12 * FT, 10)
+        box(metal, (tx + a - 0.28, ta - 0.8, 3.5), (tx + a + 0.28, ta - 0.2, 4.1))
+        if fine():
+            metal.tube(P(tx + a, ta - 0.8, 3.8), P(tx + a, ta - 1.15, 3.8), 0.04 * FT, 6)
+            handwheel(metal, (tx + a, ta - 1.15, 3.8), (0, -1, 0))
+    metal.tube(P(tx - 1.0, ta - 0.5, 2.7), P(tx + 1.0, ta - 0.5, 2.7), 0.12 * FT, 10)
+    metal.tube(P(tx, ta - 0.5, 2.7), P(tx, ta - 1.3, 2.7), 0.15 * FT, 10)
+    parts(u, "black/caps", True).tube(P(tx, ta - 1.3, 2.7), P(tx, ta - 1.55, 2.7), 0.2 * FT, 12)
+    box(parts(u, "trailer/cabinets"), (tx + 2.0, ta - 0.4, deck + 0.02), (tx + 3.9, ta + 0.2, deck + 1.9))
+    for k in range(3):
+        dial = axes((tx + 2.35 + 0.6 * k, ta - 0.4, deck + 1.3), (1, 0, 0), (0, -1, 0))
+        metal.lathe(ftp([(0.0, 0.0), (0.24, 0.0), (0.24, 0.1), (0.0, 0.1)]), 14, matrix=dial)
+        parts(u, "sign/dials", True).lathe(ftp([(0.0, 0.1), (0.2, 0.1), (0.2, 0.115), (0.0, 0.115)]), 14, matrix=dial)
+    lettering(ink, "PRESS  LEVEL  FLOW", 0.16, (tx + 2.95, ta - 0.43, deck + 0.45), (1, 0, 0), (0, 0, 1), font)
+    hose = parts(u, "cable/hose", True)
+    for k in range(5):  # the transfer hose, coiled flat on the deck's front
+        coil = [(1.35, 0.0), (1.5, 0.15), (1.35, 0.3), (1.2, 0.15), (1.35, 0.0)]
+        hose.lathe(ftp(coil), 20, matrix=axes((tx, tb - 2.3, deck + 0.01 + 0.3 * k), (1, 0, 0), (0, 0, 1)))
 
-def sorted_box(a, b) -> tuple:
-    return tuple(min(p, q) for p, q in zip(a, b)), tuple(max(p, q) for p, q in zip(a, b))
+    # ---- the drum painted in chevrons, 15 to 20 ft from the launcher (S61-01927: about 9 ft across and 4 ft high)
+    sx, sy, dr, dh = -20.5, 8.0, 4.6, 3.9  # clear of the service structure's base
+    u = f"{g}_ChevronDrum"
+    parts.node(u, g, (sx, sy, 0.0))
+    black, stripe = parts(u, "black/drum", True), parts(u, "orange", True)
+    black.lathe(ftp([(0.0, 0.0), (dr, 0.0), (dr, dh), (0.0, dh)]), 48, matrix=axes((sx, sy, 0.0), (1, 0, 0), (0, 0, 1)))
+    # twelve chevrons round it, each a band bent at mid-height and laid on the curve, 9 mm off the black
+    n, across, up, lean, off = 12, 3, 3, 0.4, 0.03
+    for k in range(n):
+        for z0, z1, a0, a1 in ((0.06, dh / 2, 0.0, lean), (dh / 2, dh - 0.06, lean, 0.0)):
+            verts = []
+            for j in range(up + 1):
+                for i in range(across + 1):
+                    q = math.tau * (k + 0.5 * i / across + a0 + (a1 - a0) * j / up) / n
+                    verts.append(tuple(P(sx + (dr + off) * math.cos(q), sy + (dr + off) * math.sin(q), z0 + (z1 - z0) * j / up)))
+            w = across + 1
+            stripe.add(verts, [(j * w + i, j * w + i + 1, (j + 1) * w + i + 1, (j + 1) * w + i) for j in range(up) for i in range(across)])
 
 
 def hut(parts: Parts, key: str, rect, door_wall: int, window_wall: int) -> None:

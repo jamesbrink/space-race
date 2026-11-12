@@ -94,18 +94,25 @@ TABLE: list[tuple[str, str, str]] = [
     (
         "GroundEquipment_LoxTrailer",
         "LOX topping trailer",
-        "Kept the booster's liquid-oxygen tank topped up until a minute before launch (documented). Its form is read "
-        "off photographs; its fittings are estimated.",
+        "Kept the booster's liquid-oxygen tank topped up until a minute before launch (documented). The long white tank on a "
+        "trailer in the liftoff photographs is taken for it; its size is scaled off them and its fittings are estimated.",
     ),
     (
-        "GroundEquipment_NitrogenTrailer",
-        "Nitrogen trailer",
-        "A second white enclosure near the launcher, taken for the liquid-nitrogen supply. What it was is estimated.",
+        r"GroundEquipment_(Lox|Tank)Screen",
+        "Blast screen",
+        "A screen of white panels between the launcher and the tank behind it, open to the sky: in every liftoff photograph. "
+        "Its size is scaled off them; its posts and struts are estimated.",
     ),
     (
-        "GroundEquipment_ChevronBox",
-        "Chevron box",
-        "A low box painted in orange and black chevrons near the launcher, seen in the MR-3 photographs. What it was for is not known.",
+        "GroundEquipment_TankCart",
+        "Tank on its cart",
+        "An orange tank lying behind the lower screen, in the liftoff photographs. What it held is not recorded; its cart and "
+        "fittings are estimated.",
+    ),
+    (
+        "GroundEquipment_ChevronDrum",
+        "Chevron drum",
+        "A drum painted in orange and black chevrons near the launcher, seen in the liftoff photographs. What it was for is not known.",
     ),
     (
         r"GroundEquipment_Danger(\d)",

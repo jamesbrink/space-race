@@ -97,7 +97,7 @@ cherry picker came in from the same side once the structure had gone.
 | `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
 | `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, the lift and its shaft, a railed way from the lift to every level with a ladder well in it, hammerhead crane with red obstruction lamps at its ends; work lamps under level 1 and a room lamp in each enclosed level (see "Lights at night"); child nodes below |
 | `CherryPicker` | cherry_picker.py | International Harvester R-series truck: glazed cab with a bench, pedals, handbrake, gear lever, dash and dials, the driver's door and steering wheel as nodes of their own; on the bed the hydraulic tank, gas bottles and the valve bank; at the tail the control station with its four levers (`CherryPicker_Controls`); child nodes below |
-| `GroundEquipment` | ground_equipment.py | the LOX topping trailer (`GroundEquipment_LoxTrailer`) and the nitrogen trailer (`…_NitrogenTrailer`), each with dished-head tank, wheels, a control end (cabinet, gauges, two lines with valves and handwheels, the hose coupling) and a hose end (reel, placards); chevron box; four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the M275 tractor coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
+| `GroundEquipment` | ground_equipment.py | behind the launcher, two open-topped blast screens of white panels (`GroundEquipment_TankScreen`, `…_LoxScreen`: posts, capping rail, foot plates, raking struts behind; the taller with a grey switch box and three floodlights on a post), the orange tank on its two-wheeled cart behind the lower (`…_TankCart`: saddles, straps, filler, relief valve, outlet valve and gauge, hose, drawbar), the LOX topping trailer behind the taller (`…_LoxTrailer`: a white tank with dished heads on a flatbed semi-trailer, tandem, landing legs, vent stack, manway, placards, the fill and topping lines with their valves and coupling at the rear, a gauge board, the hose coiled on the deck), and the chevron drum (`…_ChevronDrum`); four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the M275 tractor coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
 | `CameraTowers` | ground_equipment.py | two lattice camera towers, a ladder up each |
 | `Floodlights` | ground_equipment.py | six timber poles in the grass at the pad's edge, a crossarm bolted through and three lamps each; close to, the ground wire stapled down to its rod, a number tag at eye height, the conduit and switch box |
 
@@ -180,7 +180,11 @@ Notes:
 | Office on the structure's base | 14.8 by 13.5 ft, 8.6 ft tall; windows 3.2 ft square and 6 by 3.2 ft; a desk with chair and telephone, three lockers, a filing cabinet, an intercom panel by the door, a clock | estimated | S61-03158 shows a lit room between the legs; its windows are placed by eye; its furniture is of the period's kind (tools/blender/interiors.py) |
 | Ground cables | 3.6 in across, two, from plugs under the ring to junction boxes 37 and 59 ft out | estimated | S61-02408 shows heavy cables lying slack on the slab; their routes and connectors are not recorded |
 | Engineering cameras on tripods | four, a 35 mm body with twin drum magazine, turret lens, motor and finder on a geared head, 4.4 ft up on a wooden tripod with a spreader | estimated: of the kind (Mitchell, Photo-Sonics), not any one camera | TM X-53107 7.5.5.3: twenty fixed cameras near the pad; S61-01927 shows tripod cameras |
-| LOX topping and nitrogen trailers | tanks with 2:1 dished heads; each enclosure's working end (gauges, lines, valves, coupling) and hose end (reel, OXYGEN / NITROGEN placards) | estimated, all but that the trailers stayed through liftoff (TM X-53107's count) | S61-01927, S61-02407/08, S63-02651 show the enclosures and tanks, not their ends |
+| Lower blast screen | a face 11 ft long toward the launcher and a return of 7 ft at each end, 4.6 ft high, white, open above and behind | that it stood, its colour, its outline and its panel joints: documented (photographs). Sizes estimated: scaled against the booster's 70 in body, allowing for its standing further from the camera; posts, feet and struts estimated | S61-02407 (ignition), S61-01927, S61-02408; S63-02651 (July) |
+| Orange tank behind it | 3 ft across, 6.4 ft long, lying on a two-wheeled cart, its top just over the screen | that an orange tank with dished ends lay there: documented (photographs). Size estimated; what it held is not recorded; the cart and every fitting estimated | the same |
+| Taller blast screen | a face 16 ft long, returns of 6 ft, 7.5 ft high; a grey switch box 1.6 by 2 ft on its face with a conduit to the pad; three floodlights on a post over its top | the screen, the box and the three lamps: documented (photographs); sizes estimated as above | the same |
+| LOX topping trailer | a white tank 5 ft across and 21 ft long with dished heads, on a deck 4.6 ft up and 26 ft long, its top 10.2 ft up | that a long white tank on a trailer stood behind the taller screen, a placard on its side: documented (photographs). That it is the LOX topping trailer of the count is our reading (estimated); sizes estimated; the tandem, legs, vent, valves, gauge board and hose are the ordinary fittings of such a trailer, from no photograph | the same; TM X-53107's count (T−60 s "LOX topping Off"; the trailers secured after launch) |
+| Chevron drum | 9.2 ft across, 3.9 ft high, black with twelve orange chevrons | that it stood near the launcher and its colours: documented (photographs); that it is round is our reading of its curved edges in S63-02651; size estimated; what it was for is not known | S61-01927; S63-02651 |
 | Stairs to the base's deck | 3 ft wide, 14 risers of 7.5 in | estimated | GPN-2000-001006 shows a flight at the base; its place on the base is not established |
 
 ## Lights at night
@@ -464,7 +468,8 @@ could be 20 to 40 ft from where it really stood, and nothing in the record would
 | Trailer NASA SP-No 1 | 89 ft on 228° | S61-03158 |
 | Cars at the ready rooms | 403 ft on 350° | F16_016 |
 | Pole line | 420 ft on 326° at its nearest, along the road behind the blockhouse | F16_016 |
-| LOX unit, second enclosure, chevron box, tripods, camera towers, floodlight poles | on the hardstand, 20 to 110 ft out | the liftoff photographs; none of their positions is recorded |
+| The two blast screens with their tanks | 52 to 72 ft out on the side away from the hatch (model −X), 2 to 50 ft toward the structure's parking place (+Y) | estimated from S61-02407 and S61-01927 (oblique, from the hatch side: both stand behind the launcher and to its right, the pad's edge just beyond them) and from 6100884 and S61-01928 (along the rails: neither is within about 45 ft of the track) |
+| Chevron drum, tripods, camera towers, floodlight poles | on the hardstand, 20 to 110 ft out | the liftoff photographs; none of their positions is recorded |
 
 ## What stood when
 
@@ -484,6 +489,7 @@ known to have changed.
 | Mobile aerial tower (cherry picker) | 24 October 1960 | not known | documented | SP-4001 |
 | White room on level 3 | February 1961 | not known | documented | TM X-53107 7.5.1.2: built February to May 1961. Before it, level 3 was an open platform, which is not built |
 | Emergency shower on its cart | 2 May 1961 | not known | documented | KSC-61-4457; not looked for in MR-4's photographs |
+| Blast screens, the orange tank, the long white tank on its trailer, the chevron drum | May 1961 (seen 5 May) | not known; still there in July 1961 | documented | S61-02407, S61-01927, S61-02408; S63-02651 |
 | Trailer NASA SP-No 1 | May 1961 | not known | documented | S61-03158; a white NASA trailer stands beside the structure in July too (F16_017) |
 | Two huts at the pad's hatch-side edge | not known | not known | estimated | seen July 1961 (F16_017): assumed for May |
 | Searchlights round pad 5 | May 1961 | not known | estimated | that searchlights worked the pad at night: TM X-53107 p. 7-21 (MR-4's count), 8.3.2; MR-3's night photograph S61-03158 shows the pad lit hard from the blockhouse side |
@@ -703,7 +709,7 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   and the drive-off are not documented: the liftoff photographs show the truck still on the pad
   with its cab lowered. The mast's rams separate from their barrels when the mast is lowered.
 - Ground equipment, camera towers and floodlights are placed where photographs suggest. None of
-  their positions is recorded. The LOX topping trailer's position is unknown. The huts, the
+  their positions is recorded. The blast screens and their tanks are placed from oblique photographs, to perhaps 15 ft. The huts, the
   barricade and the floodlights' form are from July 1961; that they were the same in May is assumed.
 - What takes the furniture away is partly invented: the M275 tractor for the trailer SP-No 1 is of
   the kind photographed coupled to it (see "What towed the trailers"); a half-ton pickup on a chain
@@ -722,7 +728,7 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 - Every node of both models carries a `label` and an `about` (lc5/labels.py: one table, the
   confidences of this record restated); where several things shared a node each now has its own
   (`Floodlights_Pole1..6`, `CameraTowers_Tower1..2`, `GroundEquipment_Danger1..2`,
-  `…_ChevronBox`, `…_Camera1..4`).
+  `…_ChevronDrum`, `…_Camera1..4`).
 - The searchlights are three of one kind (a 60-inch Army drum on a four-wheeled trailer) in places
   chosen to match two photographs' lighting; their beam is a figure for the type from no source.
   They stay through liftoff and burn whenever the Sun is down; MR-3's were not switched off at any
@@ -733,8 +739,17 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   The furniture (desk, lockers, cabinet, intercom panel and its legends) is the period's kind,
   not this room's; so is everything in the trailer SP-No 1 (racks, test sets, desk), whose
   legends (TELEMETRY, CAPSULE POWER, COMMUNICATIONS, RECORDERS, TIMING) are invented.
-- The LOX and nitrogen trailers' ends (cabinet, gauges, lines and valves, coupling, hose reel,
-  placards) and their wheels are the ordinary fittings of such trailers, not read off a photograph.
+- What stood behind the launcher was built, until this was corrected from the liftoff photographs,
+  as two closed white trailers (a "nitrogen trailer" with a tank standing on a plain box, and a LOX
+  unit with its tank on top of an enclosure) and a rectangular chevron box, 20 to 30 ft from the
+  launcher. The photographs show open-topped screens with a tank behind each, further out, and a
+  round drum. Of what is built now, the screens' posts and struts, the orange tank's cart and
+  fittings, and the LOX trailer's running gear, valves, gauge board, placards' wording and hose are
+  the ordinary kind, not read off a photograph; nobody can go up on the trailer's deck. The
+  photographs also show a small pile of sandbags at the pad's edge beyond the launcher, which is not
+  built, and (6100884, S61-01928) grass within about 40 ft of the launcher on the structure's side
+  of it, between the tracks' concrete and the pad's: the hardstand here is a full 200 ft square from
+  TM X-53107's Figure 7-6 and OpenStreetMap, and that difference is not resolved.
 - The tripod cameras are a type, not the cameras; the launcher's cables' routes, thickness and
   connectors are estimated.
 - The crane has no operator's cab: none shows in the photographs, and the hoist machinery is drawn
@@ -753,7 +768,7 @@ The rest of the complex:
   winder) are each the ordinary kind, from no photograph of these. The shell paving's batter is a
   smooth curve, rounded at the top and easing out at the foot; its real edge is not known.
 - Things the viewer names when pointed at (`label`): the shower, the packing case, the barricade,
-  the trailer SP-No 1, the huts, the LOX and nitrogen trailers, the cameras, the camera towers,
+  the trailer SP-No 1, the huts, the blast screens, the tank cart, the LOX trailer, the cameras, the camera towers,
   the searchlights; in the place, the cable racks, the scaffold stair, the huts, the generator
   building and its tank, the shed. The tractor and pickups are named by `vehicle`.
 - **The weather beyond the Cape is invented.** The cumulus are the record's at liftoff within 12 km of the pad
