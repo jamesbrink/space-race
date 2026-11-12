@@ -33,8 +33,9 @@ test('it turns about its rear axle the way its front wheels point, and the same 
   assert.ok(left.z < 0 && left.heading > 0, 'left is toward -Z, as the viewer has a vehicle facing +X');
   assert.ok(Math.abs(left.z + right.z) < 1e-9 && Math.abs(left.heading + right.heading) < 1e-9 && Math.abs(left.x - right.x) < 1e-9);
   // the turning circle it was built with: at a crawl, full lock goes round a circle of that width
-  const radius = chassis.wheelbase / Math.tan(lockFor(3, 12));
-  assert.ok(Math.abs(radius - 6) < 1e-9);
+  // (the circle between kerbs is the front wheel's: the rear axle, a wheelbase behind it, runs inside)
+  const rear = chassis.wheelbase / Math.tan(lockFor(3, 12));
+  assert.ok(Math.abs(Math.hypot(rear, 3) - 6) < 1e-9, `the front wheel goes round 12 m: ${2 * Math.hypot(rear, 3)}`);
 });
 
 test('there is less lock to be had the faster it goes, and the wheel takes time to turn', () => {

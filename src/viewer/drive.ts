@@ -38,7 +38,11 @@ export interface Chassis {
 }
 
 /** What a turning circle (between kerbs, metres) means for the front wheels of a wheelbase: how far they turn at full lock. */
-export const lockFor = (wheelbase: number, turningCircle: number): number => Math.atan(wheelbase / Math.max(wheelbase, turningCircle / 2));
+export const lockFor = (wheelbase: number, turningCircle: number): number => {
+  // the circle between kerbs is the outer front wheel's; the rear axle, which the bicycle model turns about, runs inside it
+  const front = Math.max(turningCircle / 2, wheelbase * Math.SQRT2);
+  return Math.atan(wheelbase / Math.sqrt(front * front - wheelbase * wheelbase));
+};
 
 /** How hard it gathers speed, brakes, and slows with the pedals let go, m/s²; how fast the wheel is turned, radians a second; and the speed at which only half the lock is to be had. */
 const POWER = 2.4;

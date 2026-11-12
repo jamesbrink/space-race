@@ -425,7 +425,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
   // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
   const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
-  if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
     // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
     const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);
     const next = walkers[walkers.indexOf(stage.walkingAs ?? '') + 1];

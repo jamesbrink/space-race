@@ -410,12 +410,35 @@ export function axisOf(trajectory: Trajectory, site: Geodetic): (t: number) => V
   };
 }
 
-const runs = new WeakMap<Trajectory, Flown>();
+const runs = new WeakMap<Trajectory, Map<string, Flown>>();
 /** The flight flown once, whoever asks first: the readout and the scene show the same run. */
 export function flownOnce(trajectory: Trajectory, site: Geodetic, seaLevel = 0): Flown {
-  let run = runs.get(trajectory);
-  if (!run) runs.set(trajectory, (run = fly(trajectory, site, seaLevel)));
+  // (the same hardware flown from another place, or over another sea, is another flight)
+  const where = `${site.latitude},${site.longitude},${site.height},${seaLevel}`;
+  let from = runs.get(trajectory);
+  if (!from) runs.set(trajectory, (from = new Map()));
+  let run = from.get(where);
+  if (!run) from.set(where, (run = fly(trajectory, site, seaLevel)));
   return run;
+}
+
+/**
+ * The drag area (coefficient times reference area), m^2, of what is flying at a Mach number: the
+ * stack going up nose first (`riding`), or the spacecraft alone, heat shield first. Parachutes are
+ * `chuteArea`'s. For what looks ahead from a state (predict.ts): the same curves the flight is flown from.
+ */
+export function dragArea(trajectory: Trajectory, riding: boolean, mach: number): number {
+  return trajectory.area.value * along(riding ? trajectory.ascentDrag : trajectory.entryDrag, mach);
+}
+
+/** A parachute's drag area at `at`, m^2: growing evenly from the one before it (`was`) to its own (`full`) over the time it takes to fill. */
+export function chuteArea(chute: { full: number; was: number; at: number; fills: number }, at: number): number {
+  return chute.was + (chute.full - chute.was) * Math.min(1, Math.max(0, (at - chute.at) / chute.fills));
+}
+
+/** The engine's thrust in air of a pressure, N: the sea-level thrust plus the nozzle's exit area times the fall in pressure. */
+export function thrustIn(trajectory: Trajectory, pressure: number): number {
+  return trajectory.engine.thrust.value + (P0 - pressure) * trajectory.engine.exitArea.value;
 }
 
 /** The flight at an instant between samples: the nearest kept sample at or before `t`. */
