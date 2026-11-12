@@ -698,11 +698,26 @@ export interface Body {
     thrust: Measure;
     burn: Measure;
     impulse: Measure;
+    /** Its thrust against time from firing, N against s, where a firing of the motor has been read: then this is what it burns by, in place of the three figures above. Its last point is where it is out. */
+    curve?: Curve;
+    /** What it burns, kg: the tower is lighter by it when the rocket is out. Without it nothing is taken off. */
+    propellant?: Measure;
     /**
-     * How far its line of thrust leans from the axis, degrees, toward the body's -Z (downrange, as it stands on the pad):
-     * what carries an aborted spacecraft clear of the booster it left. Taken through the centre of mass, so it turns nothing.
+     * How its nozzles are turned out from the motor's centreline, degrees: so that the blast clears what is under it.
+     * `thrust` is the resultant along the axis, so this takes nothing more off it; it is here for the record and for whoever draws the fire.
      */
-    lean?: Measure;
+    cant?: Measure;
+    /**
+     * How far to one side of the centre of mass its line of thrust passes, m: thrust times this is a torque that tips
+     * the spacecraft over as it is pulled, which is what carries it clear of the booster it left. And the side it is
+     * carried toward: degrees about the long axis, right-handed, from the body's -Z (downrange, as it stands on the pad).
+     */
+    offset?: Measure;
+    toward?: Measure;
+    /** What the spacecraft's own sequence does after an abort (`Controls.automatic`). Without it: the parachutes at their heights, as on any descent. */
+    sequence?: AbortSequence;
+    /** What a pad abort of this system did when it was tried, to hold the simulator's against (`of` names what: m, m/s, s). Never fitted to. */
+    record?: AbortRecord[];
   };
   /** The spacecraft alone, after separation. */
   capsule: {
@@ -736,6 +751,31 @@ export interface Body {
   sheds?: ShedBody[];
   /** What the structure and the parachutes can take (src/sim/loads.ts). Left out: nothing ever breaks. */
   limits?: Limits;
+}
+
+/** What follows an abort without anyone's hand. */
+export interface AbortSequence {
+  /** The retropack is dropped as the spacecraft leaves the booster. */
+  retropack: boolean;
+  /** An abort begun under this height, m above the sea, has its parachutes by the clock; one begun above it, at their heights as on any descent. */
+  ceiling: Measure;
+  /** The drogue comes out this long after the tower has gone, s; and the main this long after the drogue, s, once under its own height. */
+  drogue: Measure;
+  main: Measure;
+}
+
+/** A figure from a pad abort that was flown, and how near the simulator's own must come: the tolerance set before it was run. */
+export interface AbortRecord {
+  /** Which trial it is from. */
+  test: string;
+  of: 'apogee' | 'range' | 'duration' | 'speed' | 'landingSpeed';
+  label: string;
+  /** SI. */
+  value: number;
+  unit: string;
+  tolerance: number;
+  confidence: Confidence;
+  source: string;
 }
 
 /**

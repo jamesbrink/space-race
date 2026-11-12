@@ -109,8 +109,10 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
       rate = sub(s.w, unturn(s.q, turning));
     } else {
       gains = capsuleGains;
-      if (s.drogueAt !== null || s.mainAt !== null) return c; // it hangs
-      // (with its tower on it is not turned round: the jets only damp)
+      // Pulled off on its escape rocket, nothing steers it until the tower has gone: it is the tower's going that switches the
+      // rate damping on, and that lasts until the main parachute is out. On any other descent it hangs from the drogue on.
+      if (s.abortAt !== null && !s.shed.tower) return c;
+      if (s.mainAt !== null || (s.drogueAt !== null && s.abortAt === null)) return c;
       const up = upAt(s.r, s.t);
       const wind = sub(s.v, cross(earth, s.r));
       if (s.enteredAt === null && s.shed.tower && length(wind) > 1) {

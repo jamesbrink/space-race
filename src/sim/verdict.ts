@@ -38,12 +38,17 @@ export function verdict(state: VehicleState, results: Results, trajectory: Traje
     why.push(state.shed.tower ? 'No parachute was deployed.' : 'The escape tower was still on: no parachute can come out past it.');
   }
   // (an abort off the pad with the engine never lit came after no ignition)
-  if (state.abortAt !== null)
+  if (state.abortAt !== null) {
+    // where the rocket's line, set off the centre of mass, carried it: said for an abort from low down, where clear of the booster is the point
+    const low = (state.abortHeight ?? 0) < 1000;
+    if (low && state.shed.booster && Number.isFinite(results.range))
+      why.unshift(`It came down ${results.range.toFixed(0)} m from the pad, ${results.apogee.toFixed(0)} m at its highest.`);
     why.unshift(
       state.ignited
         ? `Aborted on the escape rocket ${state.abortAt.toFixed(1)} s after ignition.`
         : 'Aborted off the pad on the escape rocket: the engine was never lit.',
     );
+  }
   const limits = trajectory.body?.capsule.limits;
   if (!limits) return { how, why: why.filter(Boolean), survivable: null, against: '' };
   const hard = speed > limits.landingSpeed.value;

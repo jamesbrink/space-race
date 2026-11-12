@@ -441,7 +441,11 @@ test('let go standing on the pad, the booster stays where it stands', () => {
   // an abort before the engine is lit
   const v = vehicle(TR, SITE, SEA);
   const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
-  assert.equal(s.released.length, 1);
+  // (the booster, and the retropack the abort's own sequence drops with it)
+  assert.deepEqual(
+    s.released.map((r) => r.on),
+    ['separation', 'retropack'],
+  );
   const body = new ShedRun(shedder(TR, SITE, SEA, def('separation'), s.released[0]));
   assert.ok(body.now.landing, 'it is down from the first');
   const later = body.at(600);
@@ -518,8 +522,10 @@ test('a programme leaned 15 degrees through the greatest pressure breaks the sta
   assert.ok(after.broke.load > 1, 'over the limit');
   assert.ok(after.cutoff && after.shed.booster, 'the engine is out and the booster gone its own way');
   assert.ok(after.abortAt !== null && !after.shed.tower, 'the spacecraft is pulled clear on its escape rocket, the tower still aboard');
-  const booster = after.released.at(-1);
-  assert.equal(booster.on, 'separation');
+  // (the abort's own sequence drops the retropack as the spacecraft leaves: three pieces, not two)
+  const booster = after.released.find((r) => r.on === 'separation');
+  const pack = after.released.at(-1);
+  assert.equal(pack.on, 'retropack');
   // The break is found at the end of a tick and made of the stack as that tick left it: the same tick flown by a stack
   // that cannot break is the whole the two pieces must add up to.
   const unbreakable = vehicle(
@@ -531,9 +537,9 @@ test('a programme leaned 15 degrees through the greatest pressure breaks the sta
   );
   const stack = unbreakable.tick(before, after.controls);
   const mk = after.mass;
-  near(mk + booster.mass, stack.mass, 1e-9 * stack.mass, 'the two weigh what the stack did');
-  const p = add(scale(after.v, mk), scale(booster.v, booster.mass));
-  const centre = scale(add(scale(after.r, mk), scale(booster.r, booster.mass)), 1 / stack.mass);
+  near(mk + booster.mass + pack.mass, stack.mass, 1e-9 * stack.mass, 'the three weigh what the stack did');
+  const p = add(add(scale(after.v, mk), scale(booster.v, booster.mass)), scale(pack.v, pack.mass));
+  const centre = scale(add(add(scale(after.r, mk), scale(booster.r, booster.mass)), scale(pack.r, pack.mass)), 1 / stack.mass);
   near(length(sub(centre, stack.r)), 0, 1e-7, 'the pieces’ centre of mass is where the unbroken stack’s is');
   const scaleOf = stack.mass * length(stack.v);
   for (const i of [0, 1, 2]) near(p[i], stack.mass * stack.v[i], 1e-12 * scaleOf, `linear momentum, axis ${i}`);

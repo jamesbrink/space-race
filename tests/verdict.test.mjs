@@ -42,7 +42,8 @@ test('nothing commanded with the sequence off: it says what was not done, and th
 test('an abort off the pad says so, and is survivable by the limits taken', () => {
   const end = ended((s) => ({ ...record(s), abort: true }));
   assert.match(end.why[0], /^Aborted on the escape rocket 0\.0 s after ignition\.$/);
-  assert.ok(end.why.some((w) => /retropack was still on/.test(w)));
+  assert.match(end.why[1], /^It came down \d+ m from the pad, \d+ m at its highest\.$/);
+  assert.ok(!end.why.some((w) => /retropack/.test(w)), 'the abort’s own sequence dropped the retropack');
   assert.equal(end.survivable, true);
 });
 

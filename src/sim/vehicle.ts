@@ -40,8 +40,10 @@
  *             feeds nothing, so its axes cannot be steered. Which chambers are open is settled once a
  *             tick. Where a flight gives no hardware, `capsule.jets` is a pure torque about each axis.
  *   rocket    the escape rocket, on an abort: `body.escape`'s thrust for its burn, then falling
- *             evenly to nothing over as long as its total impulse says, along a line that leans
- *             from the axis by `escape.lean` (through the centre of mass), which carries it aside.
+ *             evenly to nothing over as long as its total impulse says, along a line parallel to
+ *             the axis that passes `escape.offset` to one side of the centre of mass: thrust times
+ *             that is a torque, which tips the nose toward `escape.toward` and so carries the
+ *             spacecraft aside. Its propellant (`escape.propellant`) leaves as it burns.
  * Mass, centre of mass and inertia follow the propellant down the tanks (rigid.ts: massOf). The
  * terms that come of mass leaving a turning body (jet damping) and of the centre of mass moving
  * along it are left out, and so are slosh, bending, wind, thrust misalignment and the air rudders.
@@ -60,11 +62,14 @@
  * shuts the engine down for good and fires the escape rocket: the spacecraft leaves the booster
  * with its tower on, a body of the two (the spacecraft's own figures and the tower's part of the
  * stack) flying tower first through `ascentDrag`, which is that shape's. When the rocket is out
- * and the climb is over the tower is let go, and from there it is the usual descent: the
- * parachutes at their heights. Until the tower has gone no parachute comes out. The rocket's
- * push is taken as straight along the axis through the centre of mass (the real one was set a
- * little off it, to carry the spacecraft aside), its propellant's weight stays aboard until the
- * tower goes, and the booster is left to itself.
+ * and the climb is over the tower is let go. What follows is the flight's own (`escape.sequence`):
+ * the retropack dropped as the spacecraft leaves, and after an abort begun under `ceiling` the
+ * drogue a set time after the tower and the main a set time after that, once under its height;
+ * without one, the usual descent, the parachutes at their heights. Until the tower has gone no
+ * parachute comes out. The rocket's line is taken as parallel to the axis (the real motor was
+ * tilted a fraction of a degree to set it off the centre of mass: the sideways part of its thrust,
+ * a few parts in a thousand, is left out), the tower's centre of mass and inertia are scaled with
+ * its weight as the propellant goes, not moved, and the booster is left to itself.
  */
 import type { MassPart, Trajectory } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
@@ -183,8 +188,11 @@ export interface VehicleState {
   broke: null | { t: number; load: number; q: number; alpha: number; joint: string };
   /** A parachute let out in more dynamic pressure than it can take, and torn. */
   torn: { drogue: boolean; main: boolean };
-  /** When the escape rocket was fired, if it has been. */
+  /** When the escape rocket was fired, if it has been, and how high the vehicle was then, m above the sea. */
   abortAt: number | null;
+  abortHeight: number | null;
+  /** When the tower was let go. */
+  towerAt: number | null;
   /** When the first retrorocket lit. */
   retroAt: number | null;
   /** The parachute now out, as fly.ts has it, and when each came out. */
@@ -272,6 +280,8 @@ interface Dyn {
 export interface VehicleOptions {
   /** The ground's height above the sea under a place, m. By default the pad's own level within a kilometre of it and the sea beyond. */
   floor?: (latitude: number, longitude: number) => number;
+  /** A launcher that is not upright: the long axis's elevation as it stands, degrees, leaning along the azimuth. 90 unless given. */
+  elevation?: number;
 }
 
 /** A flight's vehicle, ready to be flown. `seaLevel` as in fly.ts. */
@@ -289,7 +299,13 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const [east, north] = fromHorizontal(tr.azimuth.value * DEG, 0);
   const downrange0 = unit(add(scale(enuAxes(site).east, east), scale(enuAxes(site).north, north)));
   const left0 = cross(up0, downrange0);
-  const q0 = fromAxes(up0, left0, scale(downrange0, -1));
+  // (as it stands: upright, unless the launcher leans it along the azimuth)
+  const lean = (90 - (options.elevation ?? 90)) * DEG;
+  const q0 = fromAxes(
+    add(scale(up0, Math.cos(lean)), scale(downrange0, Math.sin(lean))),
+    left0,
+    sub(scale(up0, Math.sin(lean)), scale(downrange0, Math.cos(lean))),
+  );
 
   const radius = body.radius.value;
   const capsule = body.capsule;
@@ -302,11 +318,18 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const rocket = body.escape && towerAlone ? body.escape : null;
   /** How long the escape rocket takes to die away after its burn, s: what is left of its impulse at a thrust falling evenly to nothing. */
   const escapeTail = rocket ? Math.max(0, (2 * (rocket.impulse.value - rocket.thrust.value * rocket.burn.value)) / rocket.thrust.value) : 0;
+  // where the flight has the motor's own curve of thrust against time, that is what it burns by
+  const escapeCurve = rocket?.curve ?? null;
   const escapeThrust = (since: number): number => {
     if (!rocket || since < 0) return 0;
+    if (escapeCurve) return since >= escapeCurve.points.at(-1)![0] ? 0 : along(escapeCurve, since);
     if (since <= rocket.burn.value) return rocket.thrust.value;
     return escapeTail > 0 ? rocket.thrust.value * Math.max(0, 1 - (since - rocket.burn.value) / escapeTail) : 0;
   };
+  /** Its whole impulse, N s: under the curve, or the figure given. */
+  const escapeImpulse = escapeCurve
+    ? escapeCurve.points.reduce((sum, p, i, all) => (i ? sum + ((p[1] + all[i - 1]![1]) / 2) * (p[0] - all[i - 1]![0]) : 0), 0)
+    : (rocket?.impulse.value ?? 0);
   // the booster's two propellants, where the flight says how the engine draws them
   const tanks = ((): { oxidizer: number; fuel: number; mix: number; burnable: number } | null => {
     const mix = body.mixture?.value;
@@ -335,8 +358,16 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const QUIET: readonly number[] = jets.map(() => 0);
   const rcsUsed = (s: VehicleState): number => rcsFull.reduce((sum, full, i) => sum + (full - s.rcs.left[i]!), 0);
   const rcsFlow = (s: VehicleState): number => (s.rcs.firing === QUIET ? 0 : s.rcs.firing.reduce((sum, f, i) => sum + f * burnOf[i]!, 0));
-  const escapeOver = rocket ? rocket.burn.value + escapeTail : 0;
-  const escapeLean = (rocket?.lean?.value ?? 0) * DEG;
+  const escapeOver = escapeCurve ? escapeCurve.points.at(-1)![0] : rocket ? rocket.burn.value + escapeTail : 0;
+  // its line passes to one side of the centre of mass: the torque of a newton of it, N m in the body's axes (X cross the way it tips)
+  const escapeArm = ((): Vec3 => {
+    const offset = rocket?.offset?.value ?? 0;
+    const a = (rocket?.toward?.value ?? 0) * DEG;
+    return [0, offset * Math.cos(a), offset * Math.sin(a)];
+  })();
+  /** What the escape rocket burns for a newton-second, kg. */
+  const escapeBurn = rocket?.propellant && escapeImpulse > 0 ? rocket.propellant.value / escapeImpulse : 0;
+  const afterAbort = rocket?.sequence ?? null;
   const dryOut = tanks
     ? tr.liftoffMass.value - tanks.burnable
     : tr.engine.depletion
@@ -362,6 +393,15 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const capsuleSide = capsule.side
     ? { dragArea: capsule.side.dragArea.value, from: capsule.side.from.value, to: capsule.side.to.value }
     : null;
+  // the tower's own side, for the spacecraft pulled off with it on: stations from the spacecraft's centre of mass, as its own side's are
+  const towerShed = sheds.find((d) => d.on === 'tower') ?? null;
+  const towerSide = towerShed
+    ? {
+        dragArea: towerShed.side.dragArea.value,
+        from: towerShed.side.from.value - capsule.centre.value,
+        to: towerShed.side.to.value - capsule.centre.value,
+      }
+    : null;
   // the retropack, where the flight gives it as a body: what it weighs, and how far below the spacecraft's centre of mass its own is
   const pack = sheds.find((d) => d.on === 'retropack' && d.mass && d.centre) ?? null;
   const packMoment = pack ? pack.mass!.value * (capsule.centre.value - pack.centre!.value) : 0;
@@ -372,6 +412,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const left = tanksLeft(dry + fluid - mass);
     return (p) => (p.propellant === 'oxidizer' ? left.oxidizer / tanks.oxidizer : p.propellant === 'fuel' ? left.fuel / tanks.fuel : 1);
   };
+  /** What the spacecraft itself weighs once it has left the booster, tower or no tower: the record's weights, less what the jets have burned. */
+  const capsuleMass = (s: VehicleState): number => (s.shed.retropack ? tr.retropack.mass.value : tr.separation.mass.value) - rcsUsed(s);
   const massNow = (s: VehicleState, mass: number): MassProperties => {
     if (s.shed.booster) {
       if (s.shed.tower || !towerAlone) {
@@ -379,15 +421,20 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
         const centre = s.shed.retropack ? packMoment / mass : 0;
         return { mass, centre, roll: mass * capsule.gyration.roll.value ** 2, across: mass * capsule.gyration.across.value ** 2 };
       }
-      // pulled off by the escape rocket, the tower still on: the two as one body, its centre measured up the axis from the spacecraft's own
-      const alone = mass - towerAlone.mass;
+      // pulled off by the escape rocket, the tower still on: the two as one body, its centre measured up the axis from the spacecraft's own.
+      // The tower is whatever is aboard beyond the spacecraft: lighter than it stood by what its rocket has burned.
+      const alone = Math.min(mass, capsuleMass(s));
+      const tower = mass - alone;
+      const share = tower / towerAlone.mass;
+      const own = s.shed.retropack ? packMoment / alone : 0;
       const reach = towerAlone.centre - capsule.centre.value;
-      const centre = (towerAlone.mass * reach) / mass;
+      const centre = (alone * own + tower * reach) / mass;
       return {
         mass,
         centre,
-        roll: alone * capsule.gyration.roll.value ** 2 + towerAlone.roll,
-        across: alone * (capsule.gyration.across.value ** 2 + centre ** 2) + towerAlone.across + towerAlone.mass * (reach - centre) ** 2,
+        roll: alone * capsule.gyration.roll.value ** 2 + towerAlone.roll * share,
+        across:
+          alone * (capsule.gyration.across.value ** 2 + (own - centre) ** 2) + towerAlone.across * share + tower * (reach - centre) ** 2,
       };
     }
     return massOf(body.parts, radius, filling(s, mass), s.shed.tower ? TOWER : NONE);
@@ -434,6 +481,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
           astern: end,
           surfaces: riding ? body.surfaces : capsule.surfaces,
           side: riding ? stackSide : capsuleSide,
+          more: escaping ? towerSide : null,
         },
         props.centre,
         through,
@@ -478,8 +526,11 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     }
     if (escaping) {
       const pull = escapeThrust(at - s.abortAt!);
-      // its line leans off the axis, toward -Z, so the spacecraft is carried aside and does not come down where it left
-      if (pull > 0) push([pull * Math.cos(escapeLean), 0, -pull * Math.sin(escapeLean)], 0);
+      // its line passes beside the centre of mass, so it turns the spacecraft as it pulls: that carries it aside, and it does not come down where it left
+      if (pull > 0) {
+        push([pull, 0, 0], 0);
+        torque = add(torque, scale(escapeArm, pull));
+      }
     }
     return { force, torque, q, mach, altitude, wind, airspeed, props };
   };
@@ -491,7 +542,10 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       v: add(gravity(d.r), scale(f.force, 1 / d.mass)),
       q: spin(d.q, d.w),
       w: euler(d.w, f.torque, f.props.roll, f.props.across),
-      mass: (burning(s) ? -flow * s.throttle : 0) - rcsFlow(s),
+      mass:
+        (burning(s) ? -flow * s.throttle : 0) -
+        rcsFlow(s) -
+        (escapeBurn > 0 && s.abortAt !== null && !s.shed.tower ? escapeBurn * escapeThrust(at - s.abortAt) : 0),
     };
   };
   const nudge = (d: Dyn, k: Dyn, h: number): Dyn => ({
@@ -551,6 +605,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       broke: null,
       torn: { drogue: false, main: false },
       abortAt: null,
+      abortHeight: null,
+      towerAt: null,
       rcs: { left: rcsFull, firing: QUIET },
       retroAt: null,
       chute: { full: 0, was: 0, at: 0, fills: 1 },
@@ -602,34 +658,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     if (c.separate && !s.shed.booster) s = leave(s, tr.separation.speed.value);
     if (s.shed.booster) {
       if (c.retro && s.retroAt === null && !s.shed.retropack) s.retroAt = s.t;
-      if (c.retropack && !s.shed.retropack) {
-        if (pack && s.shed.tower) {
-          // it leaves from under the spacecraft with the velocity that place had; what is left is lighter by it, about a centre of mass further up
-          const two = part(
-            { r: s.r, v: s.v, q: s.q, w: s.w, mass: s.mass, centre: 0 },
-            { mass: pack.mass!.value, centre: pack.centre!.value - capsule.centre.value },
-            pack.push?.value ?? 0,
-          );
-          s.released = [
-            ...s.released,
-            {
-              on: pack.on,
-              t: s.t,
-              ...two.gone,
-              q: s.q,
-              w: s.w,
-              centre: pack.centre!.value,
-              roll: pack.mass!.value * pack.gyration!.roll.value ** 2,
-              across: pack.mass!.value * pack.gyration!.across.value ** 2,
-              rest: two.kept,
-            },
-          ];
-          s.r = two.kept.r;
-          s.v = two.kept.v;
-        }
-        s.shed.retropack = true;
-        s.mass = tr.retropack.mass.value - rcsUsed(s); // (the record's weight after it, less what the jets have burned)
-      }
+      if (c.retropack && !s.shed.retropack) dropPack(s);
       // (no parachute comes out past a tower)
       if (c.drogue && s.shed.tower && s.drogueAt === null && s.mainAt === null) s = drogue(s);
       if (c.main && s.shed.tower && s.mainAt === null) s = main(s);
@@ -637,6 +666,37 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const firing = valves(s, c);
     if (firing !== s.rcs.firing) s.rcs = { left: s.rcs.left, firing };
     return s;
+  };
+  /** The retropack goes, from a spacecraft that has left its booster (`s` is changed): with its tower still on, in an abort, as without. */
+  const dropPack = (s: VehicleState): void => {
+    // what the spacecraft is lighter by: the record's weights either side of it
+    const lighter = tr.separation.mass.value - tr.retropack.mass.value;
+    if (pack) {
+      // it leaves from under the spacecraft with the velocity that place had; what is left is lighter by it, about a centre of mass further up
+      const two = part(
+        { r: s.r, v: s.v, q: s.q, w: s.w, mass: s.mass, centre: massNow(s, s.mass).centre },
+        { mass: pack.mass!.value, centre: pack.centre!.value - capsule.centre.value },
+        pack.push?.value ?? 0,
+      );
+      s.released = [
+        ...s.released,
+        {
+          on: pack.on,
+          t: s.t,
+          ...two.gone,
+          q: s.q,
+          w: s.w,
+          centre: pack.centre!.value,
+          roll: pack.mass!.value * pack.gyration!.roll.value ** 2,
+          across: pack.mass!.value * pack.gyration!.across.value ** 2,
+          rest: two.kept,
+        },
+      ];
+      s.r = two.kept.r;
+      s.v = two.kept.v;
+    }
+    s.shed.retropack = true;
+    s.mass -= lighter;
   };
   /** Which chambers are open for this tick, and how hard each pushes, N: the commands through each system's own logic, and no more than its supply can feed. */
   const valves = (s: VehicleState, c: Controls): readonly number[] => {
@@ -698,18 +758,20 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   };
   /** The tower goes. What is left has its centre of mass further down the axis: `r` goes to it. */
   const dropTower = (state: VehicleState): VehicleState => {
-    const s: VehicleState = { ...state, shed: { ...state.shed, tower: true } };
+    const s: VehicleState = { ...state, shed: { ...state.shed, tower: true }, towerAt: state.t };
     if (!towerAlone) return s;
-    // (off the booster the centres are measured from the spacecraft's own)
+    // (off the booster the centres are measured from the spacecraft's own, and the tower is what is aboard beyond the spacecraft: its rocket may have burned)
     const datum = state.shed.booster ? capsule.centre.value : 0;
+    const gone = state.shed.booster ? Math.max(0, state.mass - capsuleMass(state)) : towerMass;
+    const share = gone / towerMass;
     const def = sheds.find((d) => d.on === 'tower');
     letGo(
       s,
       'tower',
       massNow(state, state.mass).centre,
-      { mass: towerMass, centre: towerAlone.centre - datum },
+      { mass: gone, centre: towerAlone.centre - datum },
       towerAlone.centre,
-      towerAlone,
+      { roll: towerAlone.roll * share, across: towerAlone.across * share },
       def?.push?.value ?? 0,
     );
     // after an abort the escape rocket is burned out: shed.ts lights only what the tower still has
@@ -754,6 +816,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const takenCentre = (tr.separation.mass.value * capsule.centre.value + towerMass * towerAlone!.centre) / taken;
     const { gone, inertia } = boosterOf(s, taken, takenCentre);
     s.abortAt = s.t;
+    s.abortHeight = heightOf(s.r, s.t).height;
     s.cutoff = true;
     s.throttle = 0;
     s.held = false;
@@ -763,6 +826,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     s.separation.booster = { r: booster.r, v: booster.v };
     s.mass = taken;
     s.shed.booster = true;
+    // the abort's own sequence drops the retropack as the spacecraft leaves
+    if (afterAbort?.retropack && s.controls.automatic !== false) dropPack(s);
     return s;
   };
   /** A parachute let out in more dynamic pressure than it can take tears: `limits.torn` of its drag area is left. */
@@ -869,10 +934,22 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     // an abort's own sequence: the rocket out and the climb over, the tower goes
     const automatic = s.controls.automatic !== false;
     if (automatic && s.abortAt !== null && !s.shed.tower && falling && t >= s.abortAt + escapeOver) s = dropTower(s);
+    // ...and, begun low enough, its parachutes by the clock: the drogue so long after the tower, the main so long after that, once under its height
+    const timed = afterAbort !== null && s.abortHeight !== null && s.abortHeight < afterAbort.ceiling.value;
+    if (automatic && timed && s.shed.tower && s.towerAt !== null) {
+      if (s.drogueAt === null && s.mainAt === null && t >= s.towerAt + afterAbort.drogue.value - 1e-9) s = drogue(s);
+      if (
+        s.drogueAt !== null &&
+        s.mainAt === null &&
+        t >= s.drogueAt + afterAbort.main.value - 1e-9 &&
+        now.height <= tr.main.altitude.value
+      )
+        s = main(s);
+    }
     if (s.shed.booster && s.shed.tower && falling) {
       // what happens at a height, coming down (fly.ts), where the spacecraft's own sequence is left to do it
-      if (automatic && s.drogueAt === null && s.mainAt === null && now.height <= tr.drogue.altitude.value) s = drogue(s);
-      if (automatic && s.drogueAt !== null && s.mainAt === null && now.height <= tr.main.altitude.value) s = main(s);
+      if (automatic && !timed && s.drogueAt === null && s.mainAt === null && now.height <= tr.drogue.altitude.value) s = drogue(s);
+      if (automatic && !timed && s.drogueAt !== null && s.mainAt === null && now.height <= tr.main.altitude.value) s = main(s);
       if (s.enteredAt === null && retros(s, t) === 0 && (s.retroAt === null || t > s.retroAt + retroEnd)) {
         if (length(forces(after, t, s).force) / after.mass / G0 >= 0.05) s.enteredAt = t;
       }

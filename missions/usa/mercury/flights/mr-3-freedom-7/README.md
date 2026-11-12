@@ -145,7 +145,12 @@ above do not give (`trajectory.body` in [flight.ts](flight.ts)):
 | Valve logic of the automatic chambers | a command under 0.05 opens nothing; under 0.3 the 1 lbf chamber; above, the big one | estimated | chosen (`RCS_DEAD`, `RCS_HIGH`): the ASCS's own switching levels were not found |
 | Engine's nature | liquid, one start, no throttle | estimated | what is generally said of the A-7; no page read states it |
 | Mixture ratio, oxygen to alcohol | 1.219 | estimated | not in anything read: the ratio of the two tanks' own loads, so both empty together at 147.0 s. That, not the 143.5 s above, now ends a burn nobody cuts |
-| Escape rocket | 52,000 lbf for 0.78 s, 56,500 lb-s in all | documented | McDonnell SEDR 104, as [spacecraft.md](spacecraft.md) has it. The decay after 0.78 s is taken as even (0.61 s more), and the thrust as along the axis through the centre of mass: both ours |
+| Escape rocket | 52,000 lbf for 0.78 s, 56,500 lb-s nominal; burned by its curve: 68,500 lbf at most, out at 1.9 s | documented | McDonnell SEDR 104 (the rating); NASA TM X-422, Figure 9 (a static firing's thrust against time, read to 1,000 lbf: 56,900 lb-s between its 10 % points against the figure's own 56,795) |
+| Its propellant | 290.5 lb | documented | TM X-422, Figure 9 |
+| Its nozzles' cant | 19° | documented | SEDR 104, section 6. Takes nothing more off the thrust, which is the resultant |
+| Its line of thrust | 1 in to one side of the centre of mass | documented | NASA TM X-629, p. 7, of production components ("about 1 inch"); TM X-422 has 0.78 in on the first motor; capsule 7's own alignment not read |
+| Which side | downrange | estimated | not in anything read |
+| After an abort | retropack dropped; tower at the top; drogue 2 s after it; main 2 s after that; under 42,000 ft | documented | SEDR 109-7 (capsule 7's operations manual), p. 2-2 |
 | What a pilot lives through | a landing at 12 m/s; 20 g | estimated | ours, from the 30 ft/s design landing (Hammack p. 25) and the 11 g the flight itself gave. The couch was tested to 25 g on a re-entry profile "with no injury to the occupant" (Hammack p. 6): a level come through, not a limit, so 20 g stays. Said on the card that ends a flight flown by hand |
 | Where the parachutes pull | 1.8 m from the centre of mass | estimated | |
 | The autopilot's gains | 20 per radian and 14 s per radian (booster); 2.2 and 3.9 (spacecraft) | estimated | chosen from the control authority; the LEV-3's were not found |
@@ -160,14 +165,40 @@ the air lifts it. With that push switched off the two runs agree to 0.05 %
 (`tests/vehicle.test.mjs`).
 
 **An abort** (X twice on the flight deck, while the tower is aboard) shuts the engine down and fires
-the escape rocket: the spacecraft leaves the booster with its tower on, the tower is let go when the
-rocket is out and the climb is over, and the parachutes come out at their heights. By the figures
-above, off the pad it is 12.9 g for 0.78 s, a top of 670 m at 11.5 s, the main parachute out there
-and the sea (the simulator's floor: there is no land in it but the pad) at 79 s and 9.3 m/s, the
-retropack still on. At the greatest dynamic pressure (76 s, 27 kPa) it is 9.2 g, a top of 15.6 km
-and down at 501 s. Not flown: the rocket's line being set off the centre of mass to carry the
-spacecraft aside, the pad-abort sequence's own timers, and the landing
-bag. No report of a Mercury abort has been read against these numbers.
+the escape rocket: the spacecraft leaves the booster with its tower on and its retropack dropped, the
+tower is let go at the top of the climb, the drogue comes out two seconds after it and the main two
+seconds after that (capsule 7's own sequence for an abort begun under 42,000 ft: SEDR 109-7, p. 2-2;
+above that, the parachutes at their heights). The rocket burns by a static firing's curve (NASA TM
+X-422, Figure 9: 68,500 lbf at its greatest, out at 1.9 s, 290.5 lb of propellant), and its line of
+thrust passes 1 in to one side of the centre of mass (TM X-629), which tips the spacecraft over as it
+is pulled and so carries it aside; which side is not recorded, and is taken as downrange. Off the
+pad that is 18.5 g, about two turns end over end, a top of 564 m (1,850 ft) at 9.8 s, and the surface
+at 59 s and 8.8 m/s, 231 m from the pad along the azimuth; with the line through the centre of mass it
+reaches 2,565 ft and comes back down on its own booster. At the greatest dynamic pressure (76 s,
+27 kPa) it is 14.3 g, a top of 14.1 km and down at 517 s.
+
+Against the aborts that were flown (`tests/abort.test.mjs`; tolerances set first, nothing fitted):
+
+| Record | Its figure | The simulator | |
+|---|---|---|---|
+| Langley's trial of the Grand Central motor, 1959 (TM X-422), flown from its own weights, inertias, 0.78 in and 71° launcher: greatest height | 1,950 ft | 1,763 ft (-9.6 %) | within 10 % |
+| distance covered | about 1,600 ft | 1,918 ft (+20 %) | within 25 % |
+| time of flight | 63.1 s | 61.9 s (-1.9 %) | within 10 % |
+| greatest speed | about 595 ft/s | 539 ft/s (-9.5 %) | **miss** (5 %): the typical curve's impulse, or the drag end on while it burns |
+| speed onto the water | about 28 ft/s | 26.6 ft/s (-5.1 %) | **miss** (5 %): Freedom 7's parachute, not the model's |
+| greatest load | about 22 g | 22.5 g | not a check: seen before any tolerance was set |
+| turns in pitch before the tower went | about 1 1/4 | 2.0 | not a check; it tumbles more than the trial did |
+| SEDR 104: "For off the pad escapes ... a maximum capsule altitude of approximately 2500 feet", against Freedom 7's abort, upright | 2,500 ft | 1,850 ft (-26 %) | **miss** (15 %): met to 3 % with no offset; tumbling, the air takes a quarter of the climb, and that air is our estimates |
+| Beach Abort, 9 May 1960 (This New Ocean, p. 262), against Freedom 7's spacecraft off a 71° launcher: greatest height | 2,465 ft | 1,514 ft (-39 %) | **miss** (15 %): No. 1's weight and its launcher's lean are not known to us; it was stripped, so lighter |
+| distance covered | "half a mile" | 1,934 ft (-27 %) | within 30 % |
+| time of flight | 76 s | 47.5 s (-38 %) | **miss** (15 %): follows from the height |
+
+Not flown: the sideways part of the tilted motor's thrust (a few parts in a thousand), the antenna
+fairing and the landing bag, the abort's rate damping beyond the jets' own, and anything of one shed
+body on another (the retropack, dropped on the pad, falls inside the booster it sat on). The air on
+the spacecraft with its tower on is the weakest part: one drag curve at no angle of attack and side
+areas that are ours. TM X-491 has that configuration's stability in the tunnel and has not been read
+for it.
 
 **The jets.** Under the autopilot the whole flight uses 0.68 kg of the automatic system's 14.5 kg
 of peroxide (4.7 %): 0.32 kg turning round after separation, 0.15 kg holding attitude to retrofire,

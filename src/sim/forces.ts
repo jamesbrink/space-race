@@ -44,6 +44,8 @@ export interface Shape {
   astern: number;
   surfaces: readonly AeroSurface[];
   side?: { dragArea: number; from: number; to: number } | null;
+  /** A second stretch of side, where the body is two things end to end (a spacecraft with its tower on). */
+  more?: { dragArea: number; from: number; to: number } | null;
 }
 
 /**
@@ -70,8 +72,8 @@ export function airForces(shape: Shape, centre: number, through: Vec3, w: Vec3, 
     ty -= arm * k * uz;
     tz += arm * k * uy;
   }
-  const side = shape.side;
-  if (side && side.dragArea > 0) {
+  for (const side of [shape.side, shape.more]) {
+    if (!side || !(side.dragArea > 0)) continue;
     const each = side.dragArea / PIECES;
     for (let i = 0; i < PIECES; i++) {
       const arm = side.from + ((i + 0.5) / PIECES) * (side.to - side.from) - centre;

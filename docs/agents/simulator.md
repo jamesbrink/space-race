@@ -174,9 +174,16 @@ never adjusted to bring a check in.
   the vehicle allows what the engine does (below a throttle's least it is off; a solid hears
   nothing; no lag, there being no figure for one). Solids (escape, retro) burn out once lit.
 - **An abort is flown.** `Controls.abort`, while the tower is aboard: the engine is shut down, the
-  spacecraft leaves on `body.escape` (thrust, burn, total impulse) with its tower on as one body
-  through `ascentDrag`, the tower goes when the rocket is out and the climb is over, and the
-  descent is the usual one. Phase `escape`; `Tally.abort` has the greatest load.
+  spacecraft leaves on `body.escape` (its curve of thrust against time where one has been read, else
+  thrust, burn and total impulse; its propellant leaving as it burns) with its tower on as one body
+  through `ascentDrag`, the tower goes when the rocket is out and the climb is over. The rocket's
+  line passes `escape.offset` from the centre of mass, toward `escape.toward`: a torque, which is
+  what carries the spacecraft clear of its booster (it tumbles; nothing steers it until the tower
+  has gone). What follows is the flight's `escape.sequence` (retropack dropped at once, parachutes
+  by the clock after the tower for an abort begun under its `ceiling`) or, without one, the usual
+  descent. Phase `escape`; `Tally.abort` has the greatest load. `escape.record` and
+  `tests/fixtures/pad-abort` (a trial flown from its own weights off its own leaning launcher:
+  `VehicleOptions.elevation`) are what `tests/abort.test.mjs` holds it to, with its own `MISSES`.
 - **Manual means manual.** `Controls.automatic: false` switches off the spacecraft's own sequence
   (parachutes by height, the tower after an abort); the cockpit sends it with the sequencer off,
   so then nothing happens that is not commanded, and what follows is the physics: no parachute,

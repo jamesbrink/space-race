@@ -493,7 +493,7 @@ test('which of the body’s inputs are not documented', (t) => {
     'body.control.rollArm (estimated)',
     'body.engine (estimated)',
     'body.mixture (estimated)',
-    'body.escape.lean (estimated)',
+    'body.escape.toward (estimated)',
     'body.capsule.centre (estimated)',
     'body.capsule.gyration.roll (estimated)',
     'body.capsule.gyration.across (estimated)',
@@ -558,11 +558,11 @@ test('which of the body’s inputs are not documented', (t) => {
 });
 
 // --- an abort on the escape rocket ---------------------------------------------------------------
-// Set before any of it was run, from the inputs: the rocket's 52,000 lbf on the 4,040 lb of spacecraft and tower is
-// 12.9 g, so the greatest load of an abort off the pad is that to a tenth (the air there adds nothing), and of one at
-// the greatest pressure less than that, by the drag (more than 5 g, under 12.9). Under the full main parachute the
-// spacecraft comes down with its retropack still on (2,855 lb, not the 2,579 lb the record's 29 ft/s is for), so at
-// 29 ft/s times the root of the weights' ratio: 9.3 m/s, to 5 per cent. Survivable is the parachute's own speed.
+// Set from the inputs: the rocket's greatest thrust (its curve's, 68,500 lbf) on the spacecraft and tower with the
+// retropack dropped (3,764 lb) is 18.2 g, so the greatest load of an abort off the pad is that to half a g (the air there
+// adds nothing, and some propellant has gone), and of one at the greatest pressure less than that, by the drag (more than
+// 5 g). Under the full main parachute the spacecraft comes down at the record's 29 ft/s, the retropack having gone with
+// the abort (SEDR 109-7). What an abort off the pad is held to against the aborts that were flown is tests/abort.test.mjs.
 const aborting = (v, at, options = {}) => {
   const auto = autopilot(v, options);
   const tally = new Tally();
@@ -579,8 +579,8 @@ const aborting = (v, at, options = {}) => {
   }
   return { state, tally, phases };
 };
-const DOWN = 29 * 0.3048 * Math.sqrt(TR.separation.mass.value / TR.retropack.mass.value);
-const RATED = TR.body.escape.thrust.value / ((TR.separation.mass.value + (4040.28 - 2855.14) * LB) * G0);
+const DOWN = 29 * 0.3048;
+const RATED = Math.max(...TR.body.escape.curve.points.map((p) => p[1])) / ((TR.retropack.mass.value + (4040.28 - 2855.14) * LB) * G0);
 
 test('an abort on the pad: off on the escape rocket, the tower away at the top, and down under the main parachute', (t) => {
   for (const [what, options, at] of [
@@ -591,12 +591,12 @@ test('an abort on the pad: off on the escape rocket, the tower away at the top, 
     assert.ok(s.landing, `${what}: it came down`);
     near(s.abortAt, at, TICK, 'aborted when asked');
     assert.ok(s.cutoff, 'the engine is shut down, and stays so');
-    assert.deepEqual(s.shed, { tower: true, booster: true, retropack: false });
-    assert.deepEqual(phases.slice(-3), ['escape', 'main', 'landed'], `${what}: ${phases.join(', ')}`);
-    near(tally.abort.peakG, RATED, 0.1, 'the greatest load is the rocket’s on the spacecraft and tower');
+    assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
+    assert.deepEqual(phases.slice(-3), ['drogue', 'main', 'landed'], `${what}: ${phases.join(', ')}`);
+    near(tally.abort.peakG, RATED, 0.5, 'the greatest load is the rocket’s on the spacecraft and tower');
     assert.ok(tally.results.apogee > 400 && tally.results.apogee < 1200, `carried to ${tally.results.apogee.toFixed(0)} m`);
-    assert.ok(s.mainAt !== null && s.mainAt >= s.abortAt + 1.39, 'the main parachute is out, after the rocket has burned out');
-    near(s.landing.vertical / DOWN, 1, 0.05, 'down at the main parachute’s speed with the retropack on');
+    assert.ok(s.mainAt !== null && s.mainAt >= s.abortAt + 1.9, 'the main parachute is out, after the rocket has burned out');
+    near(s.landing.vertical / DOWN, 1, 0.05, 'down at the main parachute’s speed');
     assert.ok(s.landing.lean < 5, 'hanging upright');
     t.diagnostic(
       `${what}: ${tally.abort.peakG.toFixed(2)} g, top ${tally.results.apogee.toFixed(0)} m at ${tally.results.apogeeAt.toFixed(1)} s, down at ${s.landing.t.toFixed(1)} s, ${s.landing.vertical.toFixed(2)} m/s`,
@@ -612,7 +612,7 @@ test('an abort at the greatest pressure: the same, through the air', (t) => {
   assert.ok(phases.includes('escape') && phases.at(-2) === 'main', phases.join(', '));
   assert.ok(tally.abort.peakG > 5 && tally.abort.peakG < RATED, `the rocket’s load less the drag: ${tally.abort.peakG.toFixed(2)} g`);
   assert.ok(tally.results.apogee > worst.altitude, 'it went on up');
-  assert.deepEqual(s.shed, { tower: true, booster: true, retropack: false });
+  assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
   assert.ok(s.drogueAt < s.mainAt, 'drogue, then main, at their heights');
   near(s.landing.vertical / DOWN, 1, 0.05, 'down at the main parachute’s speed');
   // what the scene needs of it: the booster left at the abort, the tower later, at the top
@@ -636,7 +636,12 @@ test('an abort is for a tower: without one aboard it is not there to be had, and
   assert.ok(s.shed.tower, 'the tower can be let go by hand once the rocket is out');
   const burn = TR.body.escape.burn.value;
   const tail = (2 * (TR.body.escape.impulse.value - TR.body.escape.thrust.value * burn)) / TR.body.escape.thrust.value;
-  near(burn + tail, 1.393, 0.001, 'the rocket is out 1.39 s after it is fired: its impulse at a thrust that falls evenly');
+  near(
+    burn + tail,
+    1.393,
+    0.001,
+    'by its nominal figures the rocket would be out 1.39 s after it is fired; by its curve, which is what it burns by, at 1.9 s',
+  );
   // asked for the tower while the rocket still burns, it is kept
   let early = whole.tick(until(whole, whole.start(), autopilot(whole), 20), cut);
   early = until(whole, early, cut, early.abortAt + 1);
@@ -847,7 +852,8 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
     pull += (whole.sample(a).burning.find((m) => m.name === 'escape')?.thrust ?? 0) * TICK;
     a = whole.tick(a, HANDS_OFF);
   }
-  near(pull / TR.body.escape.impulse.value, 1, 0.005, 'the escape rocket’s 56,500 lb-s');
+  // (by the motor's own curve, which encloses 3 per cent more than the nominal figure: tests/abort.test.mjs holds it to its figure's legend)
+  near(pull / TR.body.escape.impulse.value, 1.03, 0.005, 'the escape rocket’s impulse: its curve’s, against the nominal 56,500 lb-s');
 });
 
 // --- manual means manual --------------------------------------------------------------------------

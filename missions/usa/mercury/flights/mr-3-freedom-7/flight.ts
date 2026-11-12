@@ -1,6 +1,8 @@
 import type {
+  AbortRecord,
   Action,
   Body,
+  Curve,
   Flight,
   FlightCheck,
   Heating,
@@ -1452,6 +1454,10 @@ const RCS_THRUSTERS: Thruster[] = (['pitch', 'yaw', 'roll'] as const).flatMap((a
   }),
 );
 
+const TMX_422 = 'Blanchard and Raper, NASA TM X-422 (1960)';
+const TMX_629 = 'Baber, Carter and English, NASA TM X-629';
+const SEDR_109 = 'McDonnell SEDR 109-7, the Capsule Flight Operations Manual for capsule 7 (1960)';
+
 /** How fast the spacecraft and the booster parted: the trajectory's figure, and the booster's own push as a body let go. */
 const trajectoryPush = doc(30 * FT, `${PLR}, section 4.2: separation velocity approximately 30 plus or minus 3 ft/s, from AZUSA and radar`);
 
@@ -1468,11 +1474,120 @@ const ESCAPE = {
     'McDonnell SEDR 104 (spacecraft.md, Propulsion): 56,500 lb-s in all. Taken as along the axis, as the thrust is: if it is the motor’s own, the cant makes it 5 per cent less. ' +
       'How the thrust decays is not given: it is taken to fall evenly to nothing, which spends the rest of the impulse in 0.61 s',
   ),
-  lean: guess(
-    3,
-    'the real rocket’s line of thrust was set off the centre of mass so that an aborted spacecraft was carried aside, clear of its booster; by how much is not in anything read. ' +
-      'Three degrees, through the centre of mass and downrange, is ours: it puts a pad abort down some tens of metres from the pad',
+  curve: {
+    points: (
+      [
+        [0, 0],
+        [0.03, 30],
+        [0.06, 53],
+        [0.08, 54.5],
+        [0.28, 56],
+        [0.3, 62],
+        [0.32, 67.5],
+        [0.35, 68.5],
+        [0.4, 68],
+        [0.5, 65.5],
+        [0.6, 62.5],
+        [0.63, 61],
+        [0.7, 54],
+        [0.8, 44],
+        [0.9, 36],
+        [0.97, 31.5],
+        [1, 29],
+        [1.05, 23],
+        [1.1, 17],
+        [1.2, 9],
+        [1.3, 4.5],
+        [1.36, 3],
+        [1.5, 1.8],
+        [1.8, 0.8],
+        [1.9, 0],
+      ] as [number, number][]
+    ).map(([t, klbf]) => [t, klbf * 1000 * LBF]),
+    confidence: 'documented',
+    source:
+      `${TMX_422}, Figure 9: "Typical variation of thrust with time for capsule motor with three nozzles", a static firing of the Grand Central motor, read to about 1,000 lbf and 0.01 s. ` +
+      'The figure’s own legend: burning time 0.601 s, action time 1.248 s, total impulse (10 % to 10 %) 56,795 lb-s, average thrust for action time 45,508 lbf, propellant weight 290.5 lb. ' +
+      'The points as read enclose 58,100 lb-s in all, and 56,900 between the 10 per cent points against the legend’s 56,795. One motor on a stand, not capsule 7’s own; the 52,000 lbf for 0.78 s above is the nominal rating of the same motor',
+  } as Curve,
+  propellant: doc(
+    290.5 * LB,
+    `${TMX_422}, Figure 9: "Propellent weight, 290.5 lb"; its Table I has the test vehicle 290 lb lighter at burnout (3,109 to 2,819 lb)`,
   ),
+  cant: doc(
+    19,
+    `McDonnell SEDR 104, section 6: "The exit cones are canted at 19 degrees from centerline of rocket case to centerline of exit cones so as to direct the rocket blast outward and away from the tower and capsule"; ${TMX_422}, p. 5, has the same 19 degrees. ` +
+      'The thrust figures are taken as the resultant along the motor’s axis (the curve is a stand’s reading), so the cant takes nothing more off them',
+  ),
+  offset: doc(
+    1 * IN,
+    `${TMX_629}, p. 7, of a Little Joe flight whose escape system "was composed of current production Mercury components": "The thrust axis of the escape rocket was misalined about 1 inch to the side of the spacecraft-escape-system center of gravity ` +
+      `to make certain that this part of the configuration would be pulled out of the flight path of the launch vehicle". ${TMX_422}, p. 5, of the first full-scale firing of the Grand Central motor: "canted in order to obtain a misalinement of the thrust vector of 0.78 inch, to give the capsule a lateral displacement". ` +
+      'This New Ocean, p. 141: "about one inch". The system’s figure, to the nearest inch: capsule 7’s own alignment, sighted with the motor’s thrust alignment mirror (SEDR 104, section 6), is not in anything read',
+  ),
+  toward: guess(
+    0,
+    'which side of the vehicle the line was set toward is not in anything read. Taken as downrange, away from the blockhouse and toward the sea, which is where one would choose to be carried. Ours',
+  ),
+  sequence: {
+    retropack: true,
+    ceiling: doc(
+      42_000 * FT,
+      `${SEDR_109}, p. 2-2: "For aborts below 10,000 feet, the drogue chute is deployed 2 seconds after tower jettison. Two seconds later, the antenna fairing is jettisoned and the main chute is deployed. On aborts between 10,000 feet and 42,000 feet, ` +
+        'the drogue chute is deployed 2 seconds after tower jettison and the main chute is deployed at 10,000 feet. If the abort is initiated above 42,000 feet, the normal recovery sequence is initiated". ' +
+        'The same page: an abort signal will "fire the escape rocket and jettison the retrograde package. At maximum altitude, the escape tower is jettisoned"',
+    ),
+    drogue: doc(2, `${SEDR_109}, p. 2-2: "the drogue chute is deployed 2 seconds after tower jettison"`),
+    main: doc(
+      2,
+      `${SEDR_109}, p. 2-2: "Two seconds later, the antenna fairing is jettisoned and the main chute is deployed", for an abort below 10,000 ft; above that the main waits for 10,000 ft, which is how both are flown: two seconds after the drogue, once under the main’s own height`,
+    ),
+  },
+  record: [
+    {
+      test: 'Beach Abort, 9 May 1960',
+      of: 'apogee',
+      label: 'Greatest height',
+      value: 2465 * FT,
+      unit: 'm',
+      tolerance: 0.15 * 2465 * FT,
+      confidence: 'documented',
+      source:
+        'This New Ocean, p. 262: spacecraft No. 1, from a launcher on the beach at Wallops Island with "its pylon toward the sea", flew "one minute and 16 seconds but covering half a mile in an arc 2465 feet high". ' +
+        'How far the launcher leaned and what the spacecraft weighed are not in anything read: the comparison is with this flight’s spacecraft off a launcher leaning as the 1959 trial’s did (71 degrees: NASA TM X-422), which is an assumption',
+    },
+    {
+      test: 'Beach Abort, 9 May 1960',
+      of: 'range',
+      label: 'Distance covered',
+      value: 2640 * FT,
+      unit: 'm',
+      tolerance: 0.3 * 2640 * FT,
+      confidence: 'documented',
+      source: 'This New Ocean, p. 262: "half a mile", taken as a statute half mile; a round figure in a history, so held to 30 per cent',
+    },
+    {
+      test: 'Beach Abort, 9 May 1960',
+      of: 'duration',
+      label: 'Time of flight',
+      value: 76,
+      unit: 's',
+      tolerance: 0.15 * 76,
+      confidence: 'documented',
+      source: 'This New Ocean, p. 262: "one minute and 16 seconds"; NASA SP-45, the table of flights: 00:01:16',
+    },
+    {
+      test: 'off the pad, upright',
+      of: 'apogee',
+      label: 'Greatest height',
+      value: 2500 * FT,
+      unit: 'm',
+      tolerance: 0.15 * 2500 * FT,
+      confidence: 'documented',
+      source:
+        'McDonnell SEDR 104, section 6: "For off the pad escapes the rocket will obtain a maximum capsule altitude of approximately 2500 feet". The maker’s expectation for the orbital spacecraft, not a flight',
+    },
+  ] as AbortRecord[],
 };
 /** Hammack and Heberlig on how the tower left a good flight. */
 const TOWER_FIRED =

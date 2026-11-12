@@ -560,7 +560,7 @@ export class Cockpit {
     if (!s.cutoff) return 'cutoff';
     if (tr.body?.tower && !s.shed.tower) return 'tower';
     if (!s.shed.booster) return 'separate';
-    // (after an abort the retrorockets are not part of what is left to do: the pack stays on, and the parachutes are next)
+    // (after an abort the retrorockets are not part of what is left to do: the parachutes are next)
     if (s.abortAt === null && s.retroAt === null) return 'retro';
     if (s.abortAt === null && !s.shed.retropack) return 'retropack';
     if (s.drogueAt === null) return 'drogue';
