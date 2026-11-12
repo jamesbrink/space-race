@@ -230,7 +230,7 @@ gantry's place, the trailers) is July's, not May's.
 
 | Top-level node | Module | Contains |
 | --- | --- | --- |
-| `Blockhouse` | blockhouse.py | the arrow-shaped bunker: 2 ft walls round six panes of foot-thick glass with steel shutters, the blast door (one leaf open) and its ramp, two firing rooms with consoles and an equipment room, the domed roof and what stood on it (railed antenna stand, whip, wind vane, the telemetry helix and its mesh reflector on a sandbagged tripod), wall floodlights, the roof ladder; round it the shell paving, the concrete walk, a tracking dish (a smooth paraboloid of mesh with its rolled rim, ribs, the feed on three struts, on a turntable and yoke), the drive's banded posts |
+| `Blockhouse` | blockhouse.py | the arrow-shaped bunker: 2 ft walls round four viewing ports (in each firing room's face one a single bay and one two bays wide; each bay a lower upright light of foot-thick glass and an upper light tilted back from a steel band), the blast door (one leaf open) and its ramp, two firing rooms with consoles and an equipment room, the domed roof and what stood on it (railed antenna stand, whip, wind vane, the telemetry helix and its mesh reflector on a sandbagged tripod), wall floodlights, the roof ladder; round it the shell paving, the concrete walk, a tracking dish (a smooth paraboloid of mesh with its rolled rim, ribs, the feed on three struts, on a turntable and yoke), the drive's banded posts |
 | `ReadyRoom` | blockhouse.py | the concrete-block ready-room building: pilasters, windows, two doors, a louvred vent, tar roof, the breezeway roof across to the blockhouse, the air handler between them; a table, benches, lockers and a kitchen counter inside |
 | `Pad6` | pad6.py | pad 6's 200 ft of slabs, scale plate, burn marks, trench covers, four floodlight poles |
 | `Pad6Launcher` | launcher.py | a second launch ring, the same as pad 5's |
@@ -250,8 +250,9 @@ gantry's place, the trailers) is July's, not May's.
 | Walls | 2 ft thick | documented, of Complex 26's twin | the museum's *Launch Complex 26 Blockhouse* page; NHL nomination: the two are "identical" |
 | Roof | domed, 3 ft higher at the crown than at the edge | derived | the same page: "approximately five-feet thick along the edges to nearly eight-feet directly overhead". Modelled as a parabola over the whole plan; the 2005 photograph shows the arch from behind |
 | Wall height | 15 ft | estimated | F16_016, against the pickup beside it: 14 to 17 ft |
-| Windows | three panes to each firing room, one of 5 ft and a pair of 8.75 ft together, 4.5 ft high, sill 4.4 ft up; glass 1 ft thick | glass documented (Complex 26: "three segments of glass, each ... 15 layers of one-quarter inch glass"); sizes and places estimated | F16_016 (the pad 6 face in 1961); the 2010 photograph (the pad 5 face); the pad 5 face is taken as its mirror |
-| Shutters | steel, top-hung, propped open | estimated | the 2010 photograph; F16_016 shows banded shutters in 1961 |
+| Viewing ports | two to each firing room, in its face of the point: one a single bay 5 ft long, one two bays and 8.75 ft long; 4.5 ft high, sill 4.4 ft up. Each bay is two lights: the lower upright, 2.4 ft high; a steel band; the upper tilted back from the band to the head, so that a man at a console looks up through it | the arrangement: documented by the building itself (the 2010 photograph of the pad 5 face) and by HAER's account of Complex 17's ports, of the same pattern (one 8 ft 6 in and one 4 ft 6 in to a firing room, each two lights 1 ft 8 in high, the upper 30° from the horizontal). Sizes and places here: estimated off the photographs; the upper light's slope (about 40°) follows from the 2 ft wall | F16_016 (the pad 6 face in 1961); the 2010 photograph; HAER FL-8-5 p. 46; the museum's photograph of 3 March 1959 (men looking up and out through the upper lights) |
+| Their glass | a foot thick in the lower lights | documented for Complex 26's ("three segments of glass, each ... 15 layers of one-quarter inch glass"), which the NHL nomination calls identical; not found for 5/6. The upper lights are drawn 6 in thick (Complex 17's were 4 in of armour glass) | the museum, *Launch Complex 26 Blockhouse* |
+| Shutters, periscopes | none | no photograph of 1959, 1961, 2005 or 2010 shows either, and no source mentions them for 5/6 (Complex 17 got periscopes in 1964; the older Complex 3/4 blockhouse had mirrored ports). The model had top-hung steel shutters propped open until this was corrected: that was a misreading of the tilted upper lights | the photographs above; HAER FL-8-5; the museum, *Launch Complexes 3/4* |
 | Blast door | 7 ft wide, 7.5 ft high, two leaves, in the back wall 11 ft off the axis toward pad 5 | double plate doors documented (Complex 26); size and place estimated | the 2005 photograph |
 | Firing rooms | two, one to each pad, with an equipment room behind | two rooms documented (NHL nomination); the partition's line, the consoles and racks estimated | not from any drawing |
 | Roof equipment | railed stand 18 by 12 ft, tripod mast, whip, wind vane, helix 7.4 ft long on a 6.6 ft reflector | estimated | F16_016; F16_015 (the helix and its sandbags, close to) |
@@ -809,8 +810,8 @@ The rest of the complex:
 - The blockhouse's roof is a parabola over the whole plan. The real profile, how far the slab is
   set in from the walls, and whether the walls are the same height all round are not known. The
   2005 photograph shows a lower wall across the back that is not understood and not modelled.
-- Both window faces are built alike, from one photograph of each taken fifty years apart. Whether
-  the shutters were open during a launch is not known; they are open.
+- Both faces of the point are built alike, from one photograph of each taken fifty years apart. The
+  recess in the wall between each port's head and the hood (the 2010 photograph) is not built.
 - The blast doors are built shut, as for a launch; the walker opens them.
 - **Everything inside the blockhouse is of the period's kind, not this room's.** No drawing or
   interior photograph of this firing room in 1961 has been read. Each firing room has three

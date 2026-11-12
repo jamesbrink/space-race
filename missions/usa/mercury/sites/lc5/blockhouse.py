@@ -59,7 +59,7 @@ FLOOR = 0.25
 CEILING = EAVE - 5.0  # five feet of roof at the edge
 APRON = -0.6  # the shell paving round the buildings: a step below the concrete
 NOSE = BLOCKHOUSE_HALF  # the point is a right angle, so it is as long as the building is half wide
-# the windows in each diagonal face, feet from the point: one pane, then a pair (F16_016; the 2010 photograph)
+# the viewing ports in each diagonal face, feet from the point: one a single bay, one two bays wide (F16_016; the 2010 photograph)
 WINDOWS = ((5.0, 10.0), (16.5, 25.25))
 SILL, HEAD = 4.4, 8.9
 DOOR = (29.5, 36.5)  # the blast door in the back wall, feet from its pad 6 corner (2005 photograph)
@@ -116,7 +116,7 @@ def build(parts: Parts) -> None:
     walls = ring(OUTLINE, WALL)
     face6, side6, back, side5, face5 = walls
 
-    # ---- the walls, round the six panes and the door
+    # ---- the walls, round the four ports and the door
     n = face6.length
     win6 = [(s0, s1, SILL, HEAD) for s0, s1 in WINDOWS]
     win5 = [(n - s1, n - s0, SILL, HEAD) for s0, s1 in reversed(WINDOWS)]
@@ -127,25 +127,29 @@ def build(parts: Parts) -> None:
     back.build(conc, -FOOTING, EAVE, [(DOOR[0], DOOR[1], FLOOR, DOOR_HEAD)])
     for w, wins in ((face6, win6), (face5, win5)):
         for s0, s1, sill, head in wins:
-            # a foot of laminated glass in the middle of the wall, in a steel frame at its outer face
-            w.box(glass, s0 + 0.01, s1 - 0.01, 0.5, 1.5, sill + 0.01, head - 0.01)
-            w.box(frame, s0 - 0.05, s0 + 0.22, 0.12, 0.5, sill - 0.05, head + 0.05)
-            w.box(frame, s1 - 0.22, s1 + 0.05, 0.12, 0.5, sill - 0.05, head + 0.05)
-            w.box(frame, s0 + 0.22, s1 - 0.22, 0.12, 0.5, sill - 0.05, sill + 0.22)
-            w.box(frame, s0 + 0.22, s1 - 0.22, 0.12, 0.5, head - 0.22, head + 0.05)
-            panes = 2 if s1 - s0 > 7 else 1
-            if panes == 2:
+            # A viewing port as the Cape's blockhouses of the 1950s had them, and this one still has (the 2010 photograph;
+            # HAER FL-8-5 p. 46 for Complex 17's, of the same pattern): each bay two lights, the lower upright, the upper
+            # tilted back from a steel band to the head, so that a man at the console looks up through it at the vehicle.
+            # No shutters and no periscopes: what was taken for shutters propped open is the upper lights.
+            low, band = sill + 2.4, sill + 3.0
+            w.box(glass, s0 + 0.01, s1 - 0.01, 0.15, 1.15, sill + 0.01, low)  # a foot of laminated glass
+            w.box(steel, s0 + 0.01, s1 - 0.01, 0.0, 1.3, low, band)  # the band between the lights
+            lean = [
+                w.p(s0 + 0.02, 0.2, band - 0.1),
+                w.p(s1 - 0.02, 0.2, band - 0.1),
+                w.p(s1 - 0.02, WALL - 0.15, head - 0.03),
+                w.p(s0 + 0.02, WALL - 0.15, head - 0.03),
+            ]
+            plate(glass, lean, 0.5)
+            w.box(frame, s0 - 0.05, s0 + 0.22, 0.02, 0.5, sill - 0.05, band + 0.05)
+            w.box(frame, s1 - 0.22, s1 + 0.05, 0.02, 0.5, sill - 0.05, band + 0.05)
+            w.box(frame, s0 + 0.22, s1 - 0.22, 0.02, 0.5, sill - 0.05, sill + 0.22)
+            edges = [s0 + 0.1, s1 - 0.1] + ([(s0 + s1) / 2] if s1 - s0 > 7 else [])
+            for a in edges:  # the upper light's side bars, and the mullion of a port two bays wide
+                beam(frame, w.p(a, 0.12, band), w.p(a, WALL - 0.3, head - 0.12), 0.24)
+            if s1 - s0 > 7:
                 m = (s0 + s1) / 2
-                w.box(frame, m - 0.16, m + 0.16, 0.14, 0.48, sill + 0.22, head - 0.22)
-            # the steel shutters, hinged over each pane and propped open
-            for k in range(panes):
-                a0 = s0 + (s1 - s0) * k / panes + 0.12
-                a1 = s0 + (s1 - s0) * (k + 1) / panes - 0.12
-                hinge, out, drop = head + 0.3, 1.9, 1.5
-                plate(steel, [w.p(a0, -0.06, hinge), w.p(a1, -0.06, hinge), w.p(a1, -out, hinge - drop), w.p(a0, -out, hinge - drop)], 0.09)
-                if fine():
-                    for a in (a0 + 0.25, a1 - 0.25):
-                        beam(steel, w.p(a, -out + 0.15, hinge - drop + 0.1), w.p(a, 0.05, sill + 0.5), 0.07)
+                w.box(frame, m - 0.16, m + 0.16, 0.04, 0.48, sill + 0.22, band + 0.03)
         # the hood over the windows: a ledge cast across the face
         w.box(conc, 3.0, 28.0, -0.55, 0.2, 11.2, 11.55)
         if fine():
