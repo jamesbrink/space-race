@@ -574,6 +574,24 @@ function inPage(DT) {
     force: true,
     done: () => sr.clock.pause(),
   });
+  /** Liftoff seen from beside the pad, 60 m off and 13 m up, the clock running from `t`: the cloud over the pad at its thickest. */
+  const liftoff = (t) => ({
+    setup: async () => {
+      sr.show(sr.flight.flies?.model ?? 'vehicle', true);
+      sr.clock.seek(t);
+      st.setCamera('orbit');
+      st.pose(215, 12, 60, 6);
+      for (let i = 0; i < 400 && st.lifted.t !== sr.clock.t; i++) {
+        frame(true);
+        await turn();
+      }
+      await settle();
+      sr.clock.setRate(1);
+      sr.clock.play(true);
+    },
+    force: true,
+    done: () => sr.clock.pause(),
+  });
   /** The flight deck: the flight flown by its own guidance from the pad to `t`, the navball and the path on. */
   const deck = (t) => ({
     setup: async () => {
@@ -664,6 +682,7 @@ function inPage(DT) {
       () => floorOn('ServiceStructure', 8),
       (i) => st.walk.stick(0, i % 60 < 30 ? 0.6 : -0.6),
     ),
+    'pad T+1': liftoff(1),
     ...Object.fromEntries(T.map((t) => [`chase T+${t}`, chase(t)])),
     ...Object.fromEntries(T.map((t) => [`deck T+${t}`, deck(t)])),
   };

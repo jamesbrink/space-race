@@ -68,19 +68,28 @@ test('how much trail there is: none ahead of the clock, coming in behind the fir
   assert.ok(trailFade(10, at(20_000)) < 1e-3 && trailFade(10, at(60_000)) < 1e-6, 'and above the cold there is nothing to hold one');
 });
 
-test('the blast over the pad: nothing before liftoff, out fast and slowing, fed for five seconds and gone inside a minute', async () => {
+test('the cloud over the pad: nothing before liftoff, the sizes the photographs show, no step, carried by the wind, and gone inside half a minute', async () => {
   const { blast } = await import('../src/viewer/trail.ts');
   assert.equal(blast(0).amount, 0);
   assert.equal(blast(-3).amount, 0);
-  let last = blast(0.01);
-  for (let t = 0.1; t <= 60; t += 0.1) {
-    const b = blast(t);
-    assert.ok(b.radius >= last.radius && b.radius < 49 && b.height >= last.height, `it only spreads (${t} s)`);
-    assert.ok(Math.abs(b.amount - last.amount) < 0.09, `no step in how much there is (${t} s)`);
+  const wind = [-4, 0];
+  let last = blast(0.01, wind);
+  const parts = ['puff', 'ring', 'dust'];
+  for (let t = 0.05; t <= 40; t += 0.05) {
+    const b = blast(t, wind);
+    assert.ok(b.ringRadius >= last.ringRadius && b.ringRadius < 45 && b.head >= last.head, `the ring only runs out (${t} s)`);
+    for (const k of parts) assert.ok(Math.abs(b[k] - last[k]) < 0.12, `no step in the ${k} (${t} s)`);
+    assert.ok(Math.abs(b.drift[0] - last.drift[0]) < 0.25 && b.drift[0] <= 0, `carried downwind, smoothly (${t} s)`);
     last = b;
   }
-  assert.ok(blast(2).radius > 15 && blast(5).radius > 35 && blast(5).amount > 0.95);
-  assert.equal(blast(60).amount, 0);
+  // a mound round the stand about 20 m across and 5 m high at T+1.5 (MR-3's photographs); 20 to 50 m out by T+3
+  const early = blast(1.5);
+  assert.ok(early.puffRadius > 8 && early.puffRadius < 12 && early.puffHeight > 4 && early.puffHeight < 6.5);
+  assert.ok(blast(3).ringRadius > 20 && blast(3).ringRadius < 50 && blast(3).head > 4 && blast(3).head < 10);
+  // gone from round the stand once the vehicle is a few metres up; the apron clear but for wisps by T+6
+  assert.ok(blast(3).puff < 0.1 * blast(1).puff);
+  assert.ok(blast(6).ring < 0.2 * blast(2).ring);
+  assert.equal(blast(30).amount, 0);
 });
 
 /** A lift in a shed: one platform node under a part, two stops four metres apart. */

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { installedAir } from './air.ts';
 import { NODES, type Smoke, shadeBy, tend, veilMesh } from './exhaust.ts';
 
 /**
@@ -18,9 +19,9 @@ import { NODES, type Smoke, shadeBy, tend, veilMesh } from './exhaust.ts';
  *   as a thin white trail that is gone in half a minute (`trailFade`: the first term).
  * - Between about 7 and 13 km, where the air is cold enough for the water to freeze, there is a
  *   contrail that lasts minutes; above it the air holds nothing and there is no trail (the second).
- * - At liftoff the fire meets the pad and its deflector and is thrown outward over the concrete:
- *   a low ring of steam and dust that reaches some 40 m in the first five seconds, while the
- *   nozzle is within a fire's length of the ground, and then thins where it lies (`blast`).
+ * - At liftoff the fire meets the deflector under the stand and is thrown outward over the concrete: a
+ *   puff of steam round the stand, a ring of steam and dust that runs out some 40 m and is mostly
+ *   gone by T+6, wisps drifting downwind after it (`blast`).
  */
 
 /** Seconds of flight between points. */
@@ -58,20 +59,89 @@ export function trailFade(age: number, air: number): number {
 }
 
 /**
- * The blast over the pad `t` seconds after liftoff: how far out its front is and how high it
- * stands (metres), how much of it there is (0 to 1), and how far its billows have risen. Estimated:
- * the front runs out fast and slows (21 m at 2 s, 39 m at 5 s, 48 m at the last); it is fed while the fire reaches
- * the ground, about the first five seconds (the nozzle is 25 m up by then, at the 1.9 m/s² the
- * vehicle leaves with), then thins, to a twentieth in half a minute.
+ * The cloud over the pad at liftoff, in three parts, each a volume (exhaust.ts `blastForm` gives
+ * their shapes, cut into billows):
+ *
+ * - the puff: the steam the engine's start throws round the stand (the "LOX and water lead start",
+ *   TM X-53107 table 5-1), a squat dome on the concrete; dense and white, and blown away as the
+ *   vehicle climbs;
+ * - the ring: the jet thrown outward by the deflector under the stand, rolled up where it runs out
+ *   over the concrete into a head of steam that billows, slows, is thicker in some ways than others,
+ *   lifts off the ground as it warms, drifts with the wind and breaks up into wisps;
+ * - the dust: a low tan haze in the lowest two metres, the jet's thin wash behind the head and a
+ *   little past it.
+ *
+ * All of it is estimated, from photographs of MR-2, MR-3 and MR-4 leaving LC-5 (named in
+ * docs/sources.md, "Launch photographs"): a knobbly white cloud hugging the stand at ignition, about
+ * 8 m across and 3 m high, then 20 m across and 5 m high (35 m and 6 m for MR-4); gone from round the
+ * stand once the vehicle is a few metres up; a translucent veil of steam and dust 20 to 50 m out and
+ * 5 to 10 m high while it is low; the apron clear but for wisps by the time it is two or three of its
+ * own heights up (about T+6). No deluge, so no great white wall. The wind that carries it is the
+ * day's surface wind, which is not in the record: the clouds' (cape.ts, from 090) taken at six tenths
+ * near the ground, about 4 m/s.
+ *
+ * What it leaves out: the billows do not roll, they grow with the ring, drift and churn upward; the
+ * tongues round the ring are fixed lobes, not the deflector's true shape (which is not settled:
+ * docs/sources.md); the cloud goes through what stands on the pad instead of round it; and nothing
+ * is drawn before liftoff, though the engine burned for a moment on the stand.
  */
-export function blast(t: number): { radius: number; height: number; amount: number; rise: number } {
-  if (!(t > 0)) return { radius: 4, height: 2.5, amount: 0, rise: 0 };
-  const amount = (1 - Math.exp(-t / 1.2)) * Math.exp(-Math.max(t - 5, 0) / 9);
+export interface Blast {
+  /** The puff's radius and height, metres, and its extinction a metre. */
+  puffRadius: number;
+  puffHeight: number;
+  puff: number;
+  /** The ring's front, metres from the stand; how tall its head is; its extinction a metre; how far its head has lifted off the ground. */
+  ringRadius: number;
+  head: number;
+  ring: number;
+  lift: number;
+  /** The dust's extinction a metre. */
+  dust: number;
+  /** How far the wind has carried the ring (metres, the scene's x and z; the puff a third of that). */
+  drift: [number, number];
+  /** How far its billows have churned upward, metres, and how far it has broken up into wisps (0 to 1). */
+  rise: number;
+  thin: number;
+  /** Whether there is any of it to draw. */
+  amount: number;
+}
+
+/** Of the clouds' wind (cape.ts), what blows over the concrete: the ground slows it (estimated). */
+export const SURFACE_WIND = 0.6;
+
+/** The cloud over the pad `t` seconds after liftoff, in a surface wind of `wind` m/s (toward, the scene's x and z). Estimated: see `Blast`. */
+export function blast(at: number, wind: readonly [number, number] = [0, 0]): Blast {
+  const t = Math.max(at, 0) || 0;
+  // the puff: up at once, about 20 m across and 5 m high by T+1.5, blown off the stand by T+3
+  const grow = 1 - Math.exp(-t / 0.6);
+  const puff = 1.2 * smooth(t, 0, 0.8) * Math.exp(-Math.max(t - 1, 0) / 0.8);
+  // the ring: out fast and slowing, 14 m at T+1 (a mound round the stand still), 24 at T+2, 29 at T+3, 38 at T+6; its
+  // head 3 m tall at first, 6 m at T+3, 8 m at T+6
+  const ringRadius = 2 + 42 * (1 - Math.exp(-t / 3));
+  const head = 1.5 + 0.12 * ringRadius + 0.3 * Math.max(t - 2, 0);
+  // fed while the fire reaches the concrete, then thinning: mostly in a few seconds, the last wisps over a quarter of a minute
+  const fed = smooth(t, 0.1, 1.0);
+  const after = Math.max(t - 2, 0);
+  const ring = 1.0 * fed * (0.85 * Math.exp(-after / 1.4) + 0.15 * Math.exp(-after / 8));
+  const dust = 0.015 * smooth(t, 0.2, 1.2) * Math.exp(-after / 3);
+  // the wind takes it once the jet no longer pushes it out (from about T+1.5)
+  const blown = Math.max(t - 1.5, 0);
+  const amount = Math.max(puff / 1.2, ring, dust / 0.015);
+  // (the last of it goes out over a few seconds, not at once)
+  const left = smooth(amount, 0.02, 0.06);
   return {
-    radius: 4 + 44 * (1 - Math.exp(-t / 3.2)),
-    height: 3 + 1.3 * Math.min(t, 5) + 0.4 * Math.min(Math.max(t - 5, 0), 30),
-    amount: amount < 0.01 ? 0 : amount,
-    rise: 0.5 * t,
+    puffRadius: 3 + 8 * grow,
+    puffHeight: 2 + 3.5 * grow,
+    puff: puff * left,
+    ringRadius,
+    head,
+    ring: ring * left,
+    lift: 0.4 * Math.max(t - 3, 0),
+    dust: dust * left,
+    drift: [wind[0] * blown, wind[1] * blown],
+    rise: 0.6 * t,
+    thin: smooth(t, 2.5, 10),
+    amount: left > 0 ? amount : 0,
   };
 }
 
@@ -140,9 +210,10 @@ export class Trail implements Smoke {
     shadeBy(this); // (its shadow, for the frame about to be drawn)
   }
 
-  /** The blast over the pad at the instant shown. */
-  blast(): ReturnType<typeof blast> {
-    return blast(this.now ?? 0);
+  /** The cloud over the pad at the instant shown, in the day's wind. */
+  blast(): Blast {
+    const wind = installedAir()?.clouds?.wind ?? [0, 0];
+    return blast(this.now ?? 0, [SURFACE_WIND * wind[0], SURFACE_WIND * wind[1]]);
   }
 
   /** Where the blast is: on the ground (the models' y = 0) under where the nozzle was when it lit. Null before anything is known. */

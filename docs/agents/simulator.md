@@ -58,9 +58,12 @@ never adjusted to bring a check in.
   when no flight shows any). `viewer/plume.ts` says what the fire is (an alcohol and oxygen flame:
   pale, seen through, shock diamonds while there is air to stand them up, opening into a wide faint
   balloon as the air thins) and carries its light, a point light kept in the scene at no strength
-  while the engine is out; `viewer/trail.ts` says what smoke there is: the blast over the pad at
-  liftoff and the trail along the path flown (steam low down, soon gone; a contrail from 7 to 13
-  km; nothing above), ending where the clock is. The smoke is lit by the Sun through itself, and
+  while the engine is out; `viewer/trail.ts` says what smoke there is: the cloud over the pad at
+  liftoff (a puff of steam round the stand, a ring rolled up at the front of the jet thrown out over
+  the concrete, a low tan haze of dust: the sizes and how long it hung are read off MR-2, MR-3 and
+  MR-4's photographs, and by T+6 the apron is clear but for wisps drifting downwind) and the trail
+  along the path flown (steam low down, soon gone; a contrail from 7 to 13 km; nothing above),
+  ending where the clock is. The smoke is lit by the Sun through itself, and
   shades what three's lights light (`smokeShade`, worked out in the lights chunk as the clouds'
   shadow is, so it has no texels to crawl). All of it moves by the clock's seconds only, and all
   of its sizes and amounts are estimated, from film. In the cel look the same volumes are cut

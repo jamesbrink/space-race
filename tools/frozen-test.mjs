@@ -29,6 +29,9 @@ const POSES = [
   { name: 'the place from 400 m', show: 'pad', t: 0, pose: [30, 10, 400, 10] },
   { name: 'beside the gantry', show: 'pad', t: 0, pose: [120, 4, 40, 6] },
   { name: 'pad by night', show: 'pad', t: -6 * 3600, pose: [215, 9, 150, 14] },
+  // the cloud over the pad two seconds after liftoff (trail.ts `blast`, marched in exhaust.ts), from the edge of it:
+  // the steam, its billows and its shadow drawn the same twice and from the same place the same, whatever the near plane
+  { name: 'liftoff T+2, 60 m', show: 'vehicle', t: 2, pose: [215, 12, 60, 6] },
   // following the vehicle from height: the site far below, cloud from above, the globe, the air drawn over all of it.
   // (What this pose has caught: the box round the vehicle taken in the scene's frame, so the camera and the Sun's map
   // stood by how it lay when a level last changed; a pivot and a light moved by sums, a last bit out on the way back;
