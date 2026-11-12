@@ -18,6 +18,8 @@ export const weatherUniforms = {
   tWeather: { value: blank as THREE.Texture },
   /** The bearing of the scene's +X as its sine and cosine, one over the map's breadth, the record's cumulus cover at the site. */
   uWeather: { value: new THREE.Vector4(0, 1, 1 / EXTENT, 0.1) },
+  /** How far the map has come in since it arrived, 0 to 1. */
+  uWeatherIn: { value: 0 },
   /** The low wind's way and the high wind's, unit vectors in the scene's x and z. */
   uWeatherWind: { value: new THREE.Vector2(1, 0) },
   uWeatherHigh: { value: new THREE.Vector2(1, 0) },
@@ -71,7 +73,18 @@ export function placeWeather(bearingX: number, cover: number, wind: readonly [nu
     await queued(() => {
       weatherUniforms.tWeather.value = texture;
     });
-    for (const then of arrived) then();
+    // It comes in over a second and a half, in a dozen steps (each has the clouds' field baked again: clouds.ts), so
+    // the far cloud and its shadows change shape under the eye instead of jumping. At once where there are no frames.
+    const began = performance.now();
+    const step = (): void => {
+      const k = typeof requestAnimationFrame === 'undefined' ? 1 : Math.min(1, Math.ceil(((performance.now() - began) / 1500) * 12) / 12);
+      if (k !== weatherUniforms.uWeatherIn.value) {
+        weatherUniforms.uWeatherIn.value = k;
+        for (const then of arrived) then();
+      }
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step();
   };
   wantWeather = later(() => void load());
 }

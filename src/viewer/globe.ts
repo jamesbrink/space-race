@@ -202,7 +202,9 @@ const COLOUR = /* glsl */ `
     float bank = globeBank(d);
     // (water over ground the relief has at or above the sea is a lagoon or a lake, whose bed is not in the relief: taken
     // as the shallowest water there is, one tone, so a lagoon is not mottled by where the relief happens to dip)
-    vec3 water = globeWater(bank, -h, deep);
+    // (a lake, water over ground well above the sea, is dark: its bed is not in the relief and its water is not the
+    // sea's; a lagoon at the sea's level is the shallowest sea)
+    vec3 water = globeWater(bank, h > 1.5 ? 12.0 : -h, deep);
     // (on a bank, ground the relief has above the sea that no coastline draws is a cay or a shoal awash: land, in its own colour)
     land = max(land, bank * smoothstep(0.3, 0.9, h));
     #ifdef TOON
@@ -891,7 +893,7 @@ export class Globe {
             float dark = smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - soft, ${(cloudMiddle(c) + 0.03).toFixed(3)} + soft, ${cloudMiddle(c).toFixed(3)} + shapes);
             float fine = 1.0 - smoothstep(${(2 * c.size).toFixed(1)}, ${(8 * c.size).toFixed(1)}, fp);
             float gather = air_noise2((p - uCloudDrift.xz) / ${c.size.toFixed(1)} * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
-            float even = clamp(w.r * exp(fine * (5.0 * gather + 20.0 * streets)), 0.0, 1.0);
+            float even = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);
             float shade = 1.0 - 0.8 * mix(dark, even, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
             vec2 pd = world.xz + lean * ${DECK_HEIGHT.toFixed(1)};
             shade *= 1.0 - 0.7 * deckAt(pd, fp, deckCoverAt(weatherAt(pd), pd));

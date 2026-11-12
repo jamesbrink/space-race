@@ -707,8 +707,10 @@ const OVER = /* glsl */ `
   // \`d\`: how far off the scene's surface is; \`dv\`, \`veil\`: the nearest fire or smoke, and how much it covers.
   // How high a heap's top stands over a place of the field (in cells), metres above the base: the dome the volume
   // has there (clouds.ts: inside()), with the billows on it as far as \`lod\` shows them.
+  float gOver;   // the field over its cut where heapTop last read it
   float heapTop(vec2 q, float bias, float lod, float cells) {
     float x = fieldOver(q, bias, cells);
+    gOver = x;
     if (x <= 0.0) return 0.0;
     float h = min(uDome * pow(x * ${SIDE_PER_SIZE.toFixed(4)} * uCumulus.x, ${DOME.toFixed(4)}), uLayer.y - uLayer.x);
     vec3 b = textureLod(tBillows, vec3(q.x * uCumulus.x, 0.6 * (uLayer.y - uLayer.x) - uRise, q.y * uCumulus.x) / ${TILE.toFixed(1)}, lod).rgb;
@@ -750,8 +752,9 @@ const OVER = /* glsl */ `
     // more of the noise under the cut than over it, would add to the cover)
     // (the edge is the pixel's own share of cloud: across a pixel and a half of the field the noise climbs by about
     // 0.36 a cell times that, so the outline is coverage, soft over that breadth, and never a threshold's stair)
-    float wd = ${(FAR_SOFT / 2).toFixed(4)} + 0.42 * fpAcross / uCumulus.x;
+    float wd = ${(FAR_SOFT / 2).toFixed(4)} + 0.6 * fpAcross / uCumulus.x;
     // seen aslant a field of heaps hides the gaps between them: each covers its own breadth and its height's shadow
+    float overHere = -1.0;   // the field over its cut here, where the slices are drawn
     float aslant = min(sqrt(max(1.0 - cosv * cosv, 0.0)) / cosv, 12.0);
     if (along < 1.0) {
       float lod = max(log2(fpAcross / ${(TILE / NOISE).toFixed(1)}), 0.0);
@@ -768,13 +771,16 @@ const OVER = /* glsl */ `
       // through. So from straight over them the cumulus have a lit side, a shaded side and a soft rim.
       float span = max(2.5 * fpAcross, 120.0);
       vec2 toSun = sunward * span / uCumulus.x;
-      float h0 = heapTop(q0, bias, soft, cells), h1 = heapTop(q0 + toSun, bias, soft, cells), h2 = h0 > 0.0 ? heapTop(q0 + 3.0 * toSun, bias, soft, cells) : 0.0;
+      float h0 = heapTop(q0, bias, soft, cells);
+      overHere = gOver;
+      float h1 = heapTop(q0 + toSun, bias, soft, cells), h2 = h0 > 0.0 ? heapTop(q0 + 3.0 * toSun, bias, soft, cells) : 0.0;
       float sunLow = sqrt(max(1.0 - sunUp * sunUp, 0.0));
       float rise = (h1 - h0) / span;
       float facing = (sunUp - rise * sunLow) / (sqrt(1.0 + rise * rise) * max(sunUp, 0.12));
       float shadow = max(smoothstep(0.0, 60.0, h1 - h0 - span * sunUp / max(sunLow, 0.05)), smoothstep(0.0, 90.0, h2 - h0 - 3.0 * span * sunUp / max(sunLow, 0.05)));
       float thick = smoothstep(0.0, 220.0, h0);
-      float shape = mix(0.36, 1.15, smoothstep(0.15, 1.5, facing)) * (1.0 - 0.5 * shadow) * (0.74 + 0.26 * thick);
+      // (a small heap is thin, and thin cloud is grey beside a thick one's white: so a field has every brightness in it)
+      float shape = mix(0.36, 1.15, smoothstep(0.15, 1.5, facing)) * (1.0 - 0.5 * shadow) * (0.58 + 0.42 * thick);
       float rim = under ? 1.0 : mix(0.3, 1.0, smoothstep(0.0, 160.0, h0));
       // (as cells, the field is read for the highest slice and the lowest and taken as running evenly between: the
       // slices are a few hundred metres apart on it at most, and reading the cells five times cost as many milliseconds)
@@ -809,6 +815,14 @@ const OVER = /* glsl */ `
         lit += t * (under ? 0.3 : sun);
       }
     }
+    // Thin cloud between and round the heaps, from far above: where the field is a little under its cut the air is
+    // nearly saturated, and what is there is scraps and haze under a pixel, seen as a faint veil that thickens toward
+    // each heap. So a field runs from clear air through haze to bright cores, and no heap ends at a line. (Estimated.)
+    if (along < 1.0 && !under) {
+      float veiled = 0.3 * cellsShare(fpAcross) * smoothstep(-0.075, 0.005, overHere) * (1.0 - along);
+      acc += (1.0 - acc.a) * veiled * vec4(sunTop * 0.62 + uSkyLight * 0.6, 1.0);
+      lit += (1.0 - acc.a) * veiled * 0.5;
+    }
     if (along > 0.0 && even < 1.0) {
       // the field along the pixel's length, four places: a cloud looked along is a sliver, and a row of them a line
       vec2 run = normalize(dir.xz + 1e-6) * min(fp, 6.0 * uCumulus.x) / uCumulus.x;
@@ -826,7 +840,7 @@ const OVER = /* glsl */ `
     if (even > 0.0) {
       float fine = 1.0 - smoothstep(2.0 * uCumulus.x, 8.0 * uCumulus.x, fpAcross);
       float gather = over_noise2(q0 * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
-      float c = clamp(w.r * exp(fine * (5.0 * gather + 20.0 * streets)), 0.0, 1.0);
+      float c = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);
       float a = 1.0 - pow(1.0 - c, 1.0 + ${(0.7 * 0.45).toFixed(3)} * aslant);
       vec3 light = under ? bases : sunTop * 0.9 + uSkyLight * 0.8;
       acc = mix(acc, vec4(light, 1.0) * a, even);
