@@ -1,10 +1,12 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { flights } from '../missions';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
+import { formatAddress, opensIn, parseAddress } from './address';
 import { Callout } from './callout';
 import { Cockpit } from './cockpit';
 import { Demo, IDLE_TITLE } from './demo';
 import { Flown } from './flown';
+import { Gallery, placesNav } from './gallery';
 import './navball.css';
 import { Navball } from './navball';
 import { prefs } from './prefs';
@@ -12,6 +14,7 @@ import { programmeAxis } from './sim/predict';
 import { Sound } from './sound';
 import { TimeBar } from './timebar';
 import { Title } from './title';
+import type { SitedFlight } from './types';
 import { Ui } from './ui';
 import { Effects } from './viewer/effects';
 import { uOrigin } from './viewer/origin';
@@ -19,17 +22,11 @@ import { FlightPath } from './viewer/path';
 import { Stage, type Thing } from './viewer/stage';
 import { Clock, localTime, missionTime } from './world/clock.ts';
 
-/**
- * The address bar's fragment says what is on show: `#<nation>/<programme>/<flight>/<model>`.
- * A bare `#<model>` is the first flight's, so links made when there was one flight still work.
- */
-function address(): { flightId: string; model: string } {
-  const parts = location.hash.slice(1).split('/').filter(Boolean);
-  const model = parts.length === 1 || parts.length === 4 ? parts.pop()! : '';
-  return { flightId: parts.join('/'), model };
-}
+/** What the address bar's fragment says is on show: the flight, which of its two places, and what there (address.ts). */
+const address = () => parseAddress(location.hash);
 
-const flight = flights.find((f) => f.id === address().flightId) ?? flights[0]!;
+// (enter.ts brings this page up only for a flight that has a site: one with only its vehicle built is the gallery's alone)
+const flight = (flights.find((f) => f.id === address().flightId) ?? flights[0]!) as SitedFlight;
 document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
@@ -210,6 +207,7 @@ function show(id: string, snap = false, asItStands = false): void {
 
 /** Fetch the flight's models and open on a section. */
 async function start(id: string): Promise<void> {
+  started = true;
   ui.loading(flight.callsign);
   try {
     await stage.load(flight, (f) => ui.setProgress(f));
@@ -488,17 +486,78 @@ window.addEventListener('keydown', (e) => {
  * The front page is what an address that names nothing shows. Going in names the place, so from
  * then on a refresh or a link comes straight back to it.
  */
-const title = new Title(document.body, flights, (id) => {
+const title = new Title(document.body, flights, (id, place) => {
   if (id !== flight.id) {
-    location.hash = `#${id}`;
+    location.hash = formatAddress(id, place);
     return location.reload(); // another flight is another page's worth of state
   }
   demo.stop(); // going in is taking over
   title.hide();
-  history.replaceState(null, '', `#${flight.id}/${current.id}`);
+  if (place === 'gallery') return toGallery();
+  if (gallery.active) toSite();
+  history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
   orbit();
 });
 if (location.hash.length <= 1) title.show();
+
+/**
+ * The gallery (gallery.ts) is the flight's other place: its vehicle alone, on a stage of its own.
+ * Going there puts the site to sleep as it stands, and coming back wakes it as it was left: the
+ * section, the selection, the camera, a figure walked somewhere, the clock's instant. A walk is
+ * ended first (the figure stays where it stood) and a clock that was running is stopped and
+ * started again on the way back; a flight being flown by hand is not left for it.
+ */
+let started = false;
+/** What going to the gallery stopped, to be started again on the way back. */
+const held = { clock: false, sheet: false, cel: false };
+const sheet = document.querySelector<HTMLElement>('#ui .panel')!;
+const fronted = () => document.body.classList.contains('titled');
+const gallery = new Gallery(document.body, flight, {
+  toSite: () => toSite(),
+  home: () => {
+    history.replaceState(null, '', location.pathname + location.search);
+    title.show();
+  },
+  address: (what) => {
+    if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what));
+  },
+  covered: fronted,
+});
+document.querySelector('#ui .title .sub')!.after(placesNav(flight, 'site', () => toGallery()));
+function toGallery(what = ''): void {
+  if (gallery.active) return void gallery.go(what);
+  if (cockpit.active) {
+    // the flight is the pilot's until it is left: the address goes back to where it is
+    history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
+    return void ui.say('Gallery', 'Leave the flight deck first');
+  }
+  demo.stop();
+  if (stage.walk.active) stage.exitWalk();
+  if (told) stage.onThing(null);
+  held.clock = clock.running;
+  clock.pause();
+  held.sheet = sheet.classList.contains('open');
+  held.cel = prefs.get('cel');
+  sheet.classList.remove('open'); // (a phone's sheet, open, would keep its share of the gallery's screen)
+  sound.hush(true);
+  stage.sleep(true);
+  if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what));
+  void gallery.enter(what);
+}
+function toSite(model = ''): void {
+  if (!gallery.active) return;
+  gallery.leave();
+  stage.sleep(false);
+  sound.hush(false);
+  sheet.classList.toggle('open', held.sheet);
+  if (held.clock) clock.play();
+  // what is remembered for both places may have been changed there
+  if (prefs.get('cel') !== held.cel) ui.setCel(prefs.get('cel'));
+  orbitOff = prefs.get('orbitOff');
+  if (!started) return void start(model);
+  if (ready && model && model !== current.id) show(model);
+  else if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
+}
 document.addEventListener('click', (e) => {
   if (!(e.target as HTMLElement).closest?.('[data-home]')) return;
   history.replaceState(null, '', location.pathname + location.search);
@@ -547,6 +606,7 @@ const demo = new Demo(flight, clock, {
   // (not while someone is on foot, nor while a flight is being watched or flown: the show does not take a view that is being used)
   busy: () =>
     !ready ||
+    gallery.active ||
     stage.walk.active ||
     stage.frozen ||
     document.hidden ||
@@ -617,14 +677,19 @@ const showFrame = (): void => {
 };
 requestAnimationFrame(showFrame);
 
-void start(address().model);
+// An address that names the gallery opens in it, and the site is fetched when it is first gone to; any other opens at the site.
+const first = address();
+if (location.hash.length > 1 && opensIn(flight, first.place) === 'gallery') toGallery(first.what);
+else void start(first.what);
 window.addEventListener('hashchange', () => {
   if (location.hash.length <= 1) return title.show();
   if (title.showing) title.hide();
   const to = address();
   // another flight is another page's worth of state: start clean rather than rebuild in place
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
-  else if (ready && to.model !== current.id) show(to.model);
+  else if (opensIn(flight, to.place) === 'gallery') toGallery(to.what);
+  else if (gallery.active) toSite(to.what);
+  else if (ready && to.what !== current.id) show(to.what);
 });
 
 // diagnostics, twice a second
@@ -641,4 +706,4 @@ setInterval(() => {
 }, 500);
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
-Object.assign(window, { sr: { stage, ui, flight, show, clock, demo, cockpit, navball, path, sound, effects } });
+Object.assign(window, { sr: { stage, ui, flight, show, clock, demo, cockpit, navball, path, sound, effects, gallery } });

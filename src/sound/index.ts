@@ -20,7 +20,7 @@ import type { Footfall, Sounds } from '../audio';
 import { prefs } from '../prefs';
 import { flownOnce } from '../sim/fly.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
-import type { Flight } from '../types';
+import type { SitedFlight } from '../types';
 import { Ascent, type Run } from '../viewer/ascent';
 import type { Clock } from '../world/clock.ts';
 import { siteFrame } from '../world/frames.ts';
@@ -60,7 +60,7 @@ const VOLUME = 0.6;
 export class Sound {
   /** The walk's sounds (audio.ts): give this to the walker. */
   readonly walk: Sounds;
-  private readonly flight: Flight;
+  private readonly flight: SitedFlight;
   private readonly clock: Clock;
   private readonly host: SoundHost;
   private readonly ascent: Ascent | null;
@@ -86,7 +86,7 @@ export class Sound {
   private setAt = 0;
   private breathAt = 0;
 
-  constructor(parent: HTMLElement, flight: Flight, clock: Clock, host: SoundHost) {
+  constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: SoundHost) {
     this.flight = flight;
     this.clock = clock;
     this.host = host;
@@ -180,6 +180,20 @@ export class Sound {
     setTimeout(() => !this.enabled && void ctx.suspend(), FADE * 2000);
   }
 
+  /**
+   * Say nothing for now, or go on again: the page is somewhere that is no place (the gallery), where the site is not
+   * to be heard. The choice of on or off is not touched.
+   */
+  hush(on: boolean): void {
+    if (on === this.hushed) return;
+    this.hushed = on;
+    const { ctx, engine } = this;
+    if (!ctx || !engine || !this.enabled) return;
+    engine.out.gain.cancelScheduledValues(ctx.currentTime);
+    engine.out.gain.setTargetAtTime(on ? 0 : 1, ctx.currentTime, FADE / 3);
+  }
+  private hushed = false;
+
   /** A flight being flown by hand is on show (viewer/ascent.ts `Run`), or the record's again (null). */
   fly(run: Run | null): void {
     this.live = run;
@@ -271,7 +285,7 @@ export class Sound {
     }
     const { ctx, engine } = this;
     void ctx.resume().then(() => {
-      if (!this.enabled) return;
+      if (!this.enabled || this.hushed) return;
       engine!.out.gain.cancelScheduledValues(ctx.currentTime);
       engine!.out.gain.setTargetAtTime(1, ctx.currentTime, FADE);
     });

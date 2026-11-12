@@ -1,0 +1,102 @@
+/* The gallery (gallery.ts): the vehicle alone in the studio. Its panels are the site's own classes (style.css), so they are the same glass;
+   what is here is what the gallery has that the site has not, and the switch between the two places, which both carry. */
+
+/* --- the gallery's own canvas and page, over the site's while it is up --------------- */
+#gallery-stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; opacity: 0; transition: opacity 0.9s ease; }
+#gallery-stage.ready { opacity: 1; }
+#gallery-stage:active { cursor: grabbing; }
+body.instant #gallery-stage { transition: none; }
+#gallery { position: fixed; inset: 0; pointer-events: none; }
+#gallery > * { pointer-events: auto; transition: opacity 0.25s ease; }
+/* the site is asleep behind it: not drawn, not laid out again (its panels keep their sizes, so nothing there is measured afresh) */
+body.in-gallery :is(#stage, #ui) { visibility: hidden; }
+/* H: nothing between the viewer and the thing */
+#gallery.bare > :not(.loading) { opacity: 0; pointer-events: none !important; }
+#gallery.bare::after { content: 'H  shows the panels'; position: absolute; right: var(--edge); bottom: var(--edge); font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 0.6; text-shadow: 0 0 4px #000, 0 0 2px #000; }
+#gallery .legend-keys:not(.folded) .legend-body { display: block; }
+#gallery .legend-keys { bottom: var(--edge); }
+
+/* --- the switch between the two places: in the title card, in both ------------------- */
+.places { pointer-events: auto; display: inline-flex; flex-wrap: wrap; margin-top: 14px; border: 1px solid var(--line); border-radius: 2px; }
+.places button { padding: 7px 12px 6px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); white-space: nowrap; border-bottom: 1px solid transparent; }
+.places button + button { border-left: 1px solid var(--line); }
+.places i { font-style: normal; }
+.places button:hover:not(:disabled) { color: var(--ink); }
+/* where you are: as the open tab of the panel is, amber and underlined */
+.places button[aria-pressed='true'] { color: var(--amber); border-bottom-color: var(--amber); background: rgba(255, 196, 107, 0.08); }
+.places button:disabled { color: var(--faint); opacity: 0.6; cursor: default; text-decoration: line-through; }
+.places p { flex: 0 0 100%; padding: 6px 12px 7px; border-top: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+.title.tucked .places p { display: none; }
+
+/* --- what stands there, part by part ------------------------------------------------- */
+#gallery .buttons .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+.arrow { display: inline-block; width: 6px; height: 6px; margin-left: 9px; border: solid currentColor; border-width: 1.5px 1.5px 0 0; transform: rotate(45deg); }
+.arrow.back { margin: 0 1px 0 3px; transform: rotate(225deg); }
+#gallery .lede { color: var(--dim); font-size: 13px; }
+
+/* --- names on the parts as they come apart (viewer/labels.ts) ------------------------ */
+.part-labels { position: absolute; inset: 0; pointer-events: none !important; overflow: hidden; }
+.part-labels svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.part-labels polyline { fill: none; stroke: var(--amber); stroke-width: 1; opacity: 0; transition: opacity 0.3s ease; }
+.part-labels circle { fill: var(--amber); opacity: 0; transition: opacity 0.3s ease; }
+.part-labels :is(polyline, circle).shown { opacity: 0.6; }
+.part-labels polyline.on { opacity: 1; }
+.part-labels button { position: absolute; left: 0; top: 0; height: 22px; max-width: 190px; padding: 0 9px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 10px/20px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 2px;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s ease, color 0.15s, background 0.15s; }
+.part-labels button.left { border-left: 1px solid var(--line); border-right: 2px solid var(--amber); padding: 0 8px 0 9px; }
+.part-labels button.shown { opacity: 1; pointer-events: auto; }
+.part-labels button:is(.hot, :hover) { background: rgba(28, 24, 16, 0.92); border-color: rgba(255, 196, 107, 0.6); }
+.part-labels button.on { color: #0b0a07; background: var(--amber); border-color: var(--amber); }
+
+/* --- the measure's two figures: how tall it is, how tall a person is ------------------ */
+.marks { position: absolute; inset: 0; pointer-events: none !important; overflow: hidden; }
+.marks p { position: absolute; left: 0; top: 0; margin: -30px 0 0 -14px; display: flex; align-items: baseline; gap: 8px; padding: 3px 9px 2px; white-space: nowrap; opacity: 0; transition: opacity 0.3s ease;
+  font: 11px/1.5 var(--mono); letter-spacing: 0.08em; background: var(--glass); border: 1px solid var(--line); border-bottom: 2px solid var(--amber); border-radius: 2px; }
+.marks p.shown { opacity: 1; }
+.marks b { color: var(--ink); font-weight: 400; font-variant-numeric: tabular-nums; }
+.marks span { font: 11px/1.5 var(--sans); letter-spacing: 0; color: var(--dim); }
+.marks .conf { margin-right: -2px; align-self: center; }
+
+/* --- the show: the picture and a card, nothing else ----------------------------------- */
+body.gallery-show #gallery > :not(.loading) { visibility: hidden; }
+body.gallery-show #gallery-stage { cursor: none; }
+body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84px, 16vh, 150px); top: auto; right: auto; width: min(340px, calc(100vw - 32px)); transform: none; }
+
+/* --- narrower: the long line goes before anything overlaps ---------------------------- */
+@media (max-width: 1180px) { #gallery .title .lede { display: none; } }
+
+/* --- phone and small tablet ---------------------------------------------------------- */
+@media (max-width: 960px), (max-height: 520px) {
+  /* the title card is a heading in the corner: the switch stands beside it, two rows as tall as it is */
+  .title:has(.places) { max-width: calc(100vw - 20px - 98px); }
+  /* ("site" alone, where there is no room for more: the two words are side by side with "gallery" and can be nothing else) */
+  .places i { display: none; }
+  .title:has(.places) h1 { overflow: hidden; text-overflow: ellipsis; }
+  .title:has(.places) .sub { overflow: hidden; text-overflow: ellipsis; }
+  .title .places { position: absolute; left: calc(100% + 8px); top: -1px; bottom: -1px; width: 90px; margin: 0; flex-direction: column; flex-wrap: nowrap;
+    background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border-radius: 3px; }
+  .title .places button { flex: 1; padding: 0 10px; border-bottom: 0; text-align: left; }
+  .title .places button + button { border-left: 0; border-top: 1px solid var(--line); }
+  .title .places button[aria-pressed='true'] { box-shadow: inset 2px 0 var(--amber); }
+  .places p { display: none; }
+  /* with the sheet up, the vehicle keeps the space above it */
+  body:has(#gallery .panel.open) #gallery-stage { height: calc(100dvh - min(60dvh, 520px)); }
+  /* three choices of what stands there fit across a phone only without their air */
+  #gallery .models button { flex: 1 1 auto; min-width: 0; padding-left: 8px; padding-right: 8px; letter-spacing: 0.08em; }
+  /* the buttons run on as one wrapping line, not a line for each kind */
+  #gallery .buttons { gap: 6px; }
+  #gallery .set { display: contents; }
+}
+@media (max-height: 520px) {
+  /* a phone on its side has no title card: the switch alone stands in its corner, and the choice of what stands there beside it */
+  .title:has(.places) { display: contents; }
+  .title:has(.places) > :not(.places) { display: none; }
+  .title .places { left: 10px; top: 10px; bottom: auto; height: 76px; }
+  :is(#ui, #gallery):has(.places) .models { left: 108px; }
+  #gallery-stage, body:has(#gallery .panel.open) #gallery-stage { width: 56vw; height: 100dvh; }
+  /* there is a hand's height of picture: the buttons that only repeat what a pinch and the parts list do make way for it */
+  #gallery :is(.views, [data-names]) { display: none; }
+  #gallery .buttons button { padding: 9px 10px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { #gallery-stage { transition: none; } }

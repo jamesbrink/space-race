@@ -63,14 +63,14 @@ const CAMERA_CLASS: Partial<Record<RigId, string>> = {
   pad: 'tracking',
 };
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 const clock = (t: number) => {
   const s = Math.round(t);
   return `T+${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
 
-function si(value: number, unit: string): string {
+export function si(value: number, unit: string): string {
   if (unit === 'N') return value >= 1000 ? `${(value / 1000).toFixed(value >= 1e5 ? 0 : 2)} kN` : `${value.toFixed(1)} N`;
   if (unit === 'kg') return `${value >= 100 ? Math.round(value).toLocaleString('en-US') : value.toFixed(1)} kg`;
   if (unit === 'deg') return `${value}°`;
@@ -80,9 +80,9 @@ function si(value: number, unit: string): string {
   return `${value.toFixed(value >= 10 ? 2 : 3)} ${unit}`;
 }
 
-const dot = (c: Confidence) => `<i class="conf ${c}" title="${c}"></i>`;
+export const dot = (c: Confidence) => `<i class="conf ${c}" title="${c}"></i>`;
 
-const legend = `<p class="fine legend"><span>${dot('documented')}documented</span><span>${dot('derived')}derived from documented</span><span>${dot('estimated')}estimated</span></p>`;
+export const legend = `<p class="fine legend"><span>${dot('documented')}documented</span><span>${dot('derived')}derived from documented</span><span>${dot('estimated')}estimated</span></p>`;
 
 /** A row of the legend: a gesture in words, or keys (each its own cap), and what it does. */
 type LegendRow = [on: string | string[], does: string];
