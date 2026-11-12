@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
+import { NODES } from '../src/viewer/exhaust.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { Gait } from '../src/viewer/gait.ts';
 import { TRAIL_STEP, Trail } from '../src/viewer/trail.ts';
@@ -11,40 +12,75 @@ import { Works } from '../src/viewer/works.ts';
 
 const DEG = Math.PI / 180;
 
-/** A trail laid along a climb for `seconds` of flight, a point every TRAIL_STEP. */
+/** A trail laid along a climb for `seconds` of flight, a point every TRAIL_STEP, in the humid air near the ground. */
 function laid(seconds) {
   const trail = new Trail();
   const up = new THREE.Vector3(0, 1, 0);
-  for (let t = TRAIL_STEP; t <= seconds; t += TRAIL_STEP) trail.reach(new THREE.Vector3(0, 40 * t * t, 0), up, t, 1);
+  for (let t = TRAIL_STEP; t <= seconds; t += TRAIL_STEP) trail.reach(new THREE.Vector3(0, 40 * t * t, 0), up, t, 0.98);
   return trail;
 }
-const triangles = (trail) => trail.mesh.geometry.drawRange.count / 3;
+/** The trail as drawn at `now`: its nodes, oldest first (trail.ts `nodes`). */
+function drawn(trail, now) {
+  const out = new Float64Array(NODES * 6);
+  const n = trail.nodes(now, out);
+  return Array.from({ length: n }, (_, i) => ({ y: out[i * 6 + 1], radius: out[i * 6 + 3], thick: out[i * 6 + 4] }));
+}
 
 test('a trail on a second run through the flight ends at the clock, with no live end joined to where the engine last burned', () => {
   const trail = laid(20);
-  const stretches = trail.laid - 1;
+  const y = (t) => 40 * t * t;
   // the first time through: a live end from the last point laid to the nozzle
-  trail.head(new THREE.Vector3(0, 40 * 20.2 * 20.2, 0), new THREE.Vector3(0, 1, 0), 20.2, 1);
-  assert.equal(triangles(trail), (stretches + 1) * 2, 'a live end, while the clock is ahead of what is laid');
-  // the clock put back to 5 s: the nozzle is far below the last point laid, and nothing joins the two
-  trail.head(new THREE.Vector3(0, 40 * 25, 0), new THREE.Vector3(0, 1, 0), 5, 1);
-  assert.equal(triangles(trail), stretches * 2, 'no live end while the clock is behind what is laid');
-  trail.show(5, 1);
-  // and what is ahead of the clock is cut off where the clock is, pixel by pixel, not at the next point laid
-  const { vertexShader, fragmentShader } = trail.mesh.material;
-  assert.match(vertexShader, /varying float vAge/, 'each pixel is told its age');
-  assert.match(vertexShader, /vAge\s*=\s*uNow\s*-\s*aBorn|vAge\s*=\s*age/);
-  assert.match(fragmentShader, /if\s*\(\s*vAge\s*<\s*0\.0\s*\)\s*discard/, 'and one that is not laid yet at this instant is not drawn');
-  assert.doesNotMatch(vertexShader, /vFade/, 'not faded by the vertex: half a second of flight is hundreds of metres');
+  trail.head(new THREE.Vector3(0, y(21.5), 0), new THREE.Vector3(0, 1, 0), 21.5, 0.98);
+  assert.equal(drawn(trail, 21.5).at(-1).y, y(21.5), 'a live end, while the clock is ahead of what is laid');
+  // the clock put back to 5.2 s: the nozzle is far below the last point laid, and nothing joins the two
+  trail.head(new THREE.Vector3(0, y(5.2), 0), new THREE.Vector3(0, 1, 0), 5.2, 0.98);
+  const back = drawn(trail, 5.2);
+  // it ends at the clock or short of it (where the smoke comes in from nothing behind the fire), and nothing ahead of the clock is drawn
+  assert.ok(back.length > 3 && back.at(-1).y <= y(5.2) && back.at(-1).y >= y(4.5), `the end is at ${back.at(-1).y}`);
+  assert.ok(
+    back.every((node) => node.y <= back.at(-1).y),
+    'nothing past the clock',
+  );
+  assert.ok(back.at(-1).thick < 1e-9, 'and the smoke comes in from nothing at its end');
+  // the same instant is the same trail, whatever was laid after it
+  assert.deepEqual(drawn(laid(5.5), 5.2), back);
+  assert.equal(drawn(trail, 0.2).length, 0, 'before the first point there is none');
 });
 
-test('the same sum in JavaScript: nothing ahead of the clock, coming in behind the nozzle, thinning with age and with the air', async () => {
+test('the trail thins from the nozzle: older smoke is wider, never more than the shader has room for, and nothing is drawn of a flight not flown', () => {
+  const trail = laid(142);
+  const nodes = drawn(trail, 142);
+  assert.ok(nodes.length > 8 && nodes.length <= NODES, `${nodes.length} nodes`);
+  for (let i = 1; i < nodes.length; i++) assert.ok(nodes[i].radius <= nodes[i - 1].radius, 'wider with age');
+  assert.equal(drawn(new Trail(), 10).length, 0);
+});
+
+test('how much trail there is: none ahead of the clock, coming in behind the fire, steam low down that is soon gone, a contrail in the cold, nothing above', async () => {
   const { trailFade } = await import('../src/viewer/trail.ts');
+  const at = (height) => Math.exp(-height / 8000);
   assert.equal(trailFade(-0.01, 1), 0);
   assert.equal(trailFade(0, 1), 0);
-  assert.ok(trailFade(0.2, 1) > 0.4 && trailFade(0.2, 1) < 0.6);
-  assert.ok(Math.abs(trailFade(1, 1) - Math.exp(-0.01)) < 1e-9);
-  assert.ok(trailFade(100, 1) < trailFade(10, 1) && Math.abs(trailFade(10, 0.5) - trailFade(10, 1) / 2) < 1e-12);
+  assert.equal(trailFade(5, 1), 0, 'at the pad the wash is the blast, not a trail');
+  assert.ok(trailFade(1, at(300)) > trailFade(0.5, at(300)) && trailFade(0.5, at(300)) > 0, 'it comes in behind the fire');
+  assert.ok(trailFade(5, at(300)) > 0.15, 'steam in the humid air');
+  assert.ok(trailFade(60, at(300)) < 0.1 * trailFade(5, at(300)), 'gone in a minute');
+  assert.ok(trailFade(60, at(10_000)) > 3 * trailFade(60, at(4000)), 'the contrail outlasts it');
+  assert.ok(trailFade(10, at(20_000)) < 1e-3 && trailFade(10, at(60_000)) < 1e-6, 'and above the cold there is nothing to hold one');
+});
+
+test('the blast over the pad: nothing before liftoff, out fast and slowing, fed for five seconds and gone inside a minute', async () => {
+  const { blast } = await import('../src/viewer/trail.ts');
+  assert.equal(blast(0).amount, 0);
+  assert.equal(blast(-3).amount, 0);
+  let last = blast(0.01);
+  for (let t = 0.1; t <= 60; t += 0.1) {
+    const b = blast(t);
+    assert.ok(b.radius >= last.radius && b.radius < 49 && b.height >= last.height, `it only spreads (${t} s)`);
+    assert.ok(Math.abs(b.amount - last.amount) < 0.09, `no step in how much there is (${t} s)`);
+    last = b;
+  }
+  assert.ok(blast(2).radius > 15 && blast(5).radius > 35 && blast(5).amount > 0.95);
+  assert.equal(blast(60).amount, 0);
 });
 
 /** A lift in a shed: one platform node under a part, two stops four metres apart. */

@@ -1,7 +1,10 @@
 import './cockpit.css';
 import { autopilot, blend, Tally } from './sim/autopilot.ts';
 import { G0, type Results } from './sim/fly.ts';
+import { standing } from './sim/loads.ts';
+import { Sheds } from './sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
+import { verdict } from './sim/verdict.ts';
 import type { Flight } from './types';
 import type { Run } from './viewer/ascent';
 import type { Clock } from './world/clock.ts';
@@ -39,6 +42,7 @@ const STEPS: Record<Step, string> = {
 const PHASES: Record<LiveSample['phase'], string> = {
   powered: 'Powered flight',
   coast: 'Coasting on the booster',
+  escape: 'Abort: on the escape rocket',
   capsule: 'Spacecraft alone',
   entry: 'Re-entry',
   drogue: 'Under the drogue',
@@ -53,12 +57,21 @@ const GUARD = 1.5;
 /** How fast a held key leans the programme guidance flies, radians a second, and the most it may lean. */
 const TRIM = 3 * DEG;
 const TRIM_MOST = 30 * DEG;
+/** An abort is asked for twice: the second press within this many seconds of the first. */
+const ABORT_ARMED = 2;
+/** A supply under this much of what it held is shown amber. */
+const LOW = 0.2;
+/** A step of the throttle lever, of rated thrust. */
+const NOTCH = 0.05;
+const FT = 0.3048;
 
 export interface CockpitHost {
   /** The run to show in the scene (viewer/ascent.ts), or null for the record's again. */
   fly(run: Run | null): void;
   /** The flight deck has been taken, or left: the page makes way and gives the view to the vehicle. */
   piloting(on: boolean): void;
+  /** The heat shield at `t` (viewer/effects.ts `reading`): its temperature and limit, K, and the stagnation-point heat flux, W/m2. */
+  heat?(t: number): { name: string; temperature: number; limit: number; flux: number; warm: boolean; hot: boolean } | null;
 }
 
 export class Cockpit {
@@ -68,13 +81,22 @@ export class Cockpit {
   private readonly root: HTMLElement;
   private readonly button: HTMLButtonElement;
   private readonly cells = new Map<string, HTMLElement>();
+  /** The greatest dynamic pressure flown through on the booster so far, Pa: for calling it. */
+  private maxQ = 0;
   private readonly vehicle: Vehicle | null;
   /** Kilograms a second through the engine, and what there is to burn. */
   private readonly flow: number;
 
   private on = false;
   private state: VehicleState | null = null;
-  private run: Run & { samples: LiveSample[] } = { samples: [], duration: Infinity, cutoff: Infinity, dropped: [], live: true };
+  private run: Run & { samples: LiveSample[] } = {
+    samples: [],
+    duration: Infinity,
+    cutoff: Infinity,
+    dropped: [],
+    live: true,
+    out: { drogue: Infinity, main: Infinity },
+  };
   private tally = new Tally();
   /** How many of the run's samples are kept: one past them is the head, replaced each frame. */
   private kept = 0;
@@ -104,7 +126,7 @@ export class Cockpit {
     const cell = (id: string, label: string, unit: string, about: string) =>
       `<div class="gauge" title="${about}"><span>${label}</span><b data-cell="${id}">0</b><i>${unit}</i></div>`;
     root.innerHTML = `
-      <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span></p>
+      <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span><em data-cell="heat" hidden title="The heat shield's temperature against its limit, and the heat flux at its stagnation point: amber past four fifths of the limit"></em><em data-cell="load" class="cockpit-load" hidden title="The bending load on the stack (dynamic pressure times the angle off the wind) against what it can take: amber past four fifths, red over. Half a second over, or half as much again at once, breaks it"></em></p>
       <div class="gauges">
         ${cell('altitude', 'Height', 'km', 'Height above the sea')}
         ${cell('speed', 'Speed', 'm/s', 'Speed over the turning Earth (Earth-fixed)')}
@@ -117,16 +139,60 @@ export class Cockpit {
         ${cell('alpha', 'Off wind', '°', 'The angle between the nose and the motion through the air')}
         ${cell('fuel', 'Fuel', '%', 'Propellant left of what the engine burns')}
       </div>
+      <div class="systems" data-cell="systems"></div>
+      <p class="cockpit-prompt" data-cell="prompt" hidden></p>
       <p class="cockpit-keys">
         <button data-do="next" class="cockpit-next"><kbd>Space</kbd> <span data-cell="next"></span></button>
         <span class="cockpit-steer"><kbd>W</kbd><kbd>S</kbd> pitch · <kbd>A</kbd><kbd>D</kbd> yaw · <kbd>Q</kbd><kbd>E</kbd> roll</span>
         <button data-do="guidance" aria-pressed="true" title="The autopilot flies the record's tilt programme; a key held takes its axis"><kbd>G</kbd> Guidance</button>
         <button data-do="sequence" aria-pressed="true" title="Events happen at the record's times; Space sets the next off now"><kbd>B</kbd> Sequencer</button>
+        <button data-do="path" aria-pressed="true" title="The predicted path: where it goes from here, with its apogee and where it comes down (viewer/path.ts)"><kbd>M</kbd> Path</button>
+        <button data-do="navball" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (navball.ts)"><kbd>I</kbd> Navball</button>
+        <button data-do="abort" class="cockpit-abort" title="Abort on the escape rocket: press twice. While the tower is aboard"><kbd>X</kbd><kbd>X</kbd> <span data-cell="abort">Abort</span></button>
         <button data-do="again" title="Back to the pad"><kbd>N</kbd> New flight</button>
         <button data-do="leave"><kbd>Esc</kbd> Leave</button>
       </p>
-      <div class="cockpit-card" hidden></div>`;
+      <div class="cockpit-card" hidden></div>
+      <div class="cockpit-stick" aria-hidden="true"><i></i></div>
+      <div class="cockpit-roll"><button data-roll="-1" aria-label="Roll left">⟲</button><button data-roll="1" aria-label="Roll right">⟳</button></div>
+      <label class="cockpit-lever" hidden>Throttle <input type="range" min="0" max="1" step="0.01" value="1" data-lever /></label>`;
     parent.append(root);
+    this.systems();
+    // a finger's stick, as the walk's (ui.ts): pushed up tips the nose downrange (W), left swings it left (A); the further, the harder
+    const pad = root.querySelector<HTMLElement>('.cockpit-stick')!;
+    const knob = pad.querySelector<HTMLElement>('i')!;
+    const push = (e: PointerEvent | null) => {
+      const r = pad.getBoundingClientRect();
+      const reach = r.width / 2;
+      let x = e ? (e.clientX - r.left - reach) / reach : 0;
+      let y = e ? (e.clientY - r.top - reach) / reach : 0;
+      const far = Math.hypot(x, y);
+      if (far > 1) {
+        x /= far;
+        y /= far;
+      }
+      knob.style.transform = `translate(${x * reach * 0.6}px, ${y * reach * 0.6}px)`;
+      this.finger.pitch = -y;
+      this.finger.yaw = -x;
+    };
+    pad.addEventListener('pointerdown', (e) => {
+      pad.setPointerCapture(e.pointerId);
+      push(e);
+    });
+    pad.addEventListener('pointermove', (e) => {
+      if (pad.hasPointerCapture(e.pointerId)) push(e);
+    });
+    for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) pad.addEventListener(end, () => push(null));
+    for (const b of root.querySelectorAll<HTMLButtonElement>('[data-roll]')) {
+      b.addEventListener('pointerdown', (e) => {
+        b.setPointerCapture(e.pointerId);
+        this.finger.roll = Number(b.dataset.roll);
+      });
+      for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const)
+        b.addEventListener(end, () => (this.finger.roll = 0));
+    }
+    const lever = root.querySelector<HTMLInputElement>('[data-lever]')!;
+    lever.addEventListener('input', () => this.setLever(Number(lever.value)));
     for (const el of root.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(el.dataset.cell!, el);
     root.addEventListener('click', (e) => {
       const what = (e.target as HTMLElement).closest<HTMLElement>('[data-do]')?.dataset.do;
@@ -158,6 +224,60 @@ export class Cockpit {
     return this.vehicle !== null;
   }
 
+  /** For the instruments that are not this one's (navball.ts, viewer/path.ts): told every sample put on show, with the live state when it is the flight's own instant (null when looking back). */
+  listen(fn: (sample: LiveSample, live: VehicleState | null) => void): void {
+    this.watchers.push(fn);
+  }
+  private readonly watchers: ((sample: LiveSample, live: VehicleState | null) => void)[] = [];
+
+  /** The vehicle being flown, and how guidance is set: on or off, and the pilot's trim on the programme, radians. */
+  get craft(): Vehicle | null {
+    return this.vehicle;
+  }
+  get steering(): { guidance: boolean; trim: { pitch: number; yaw: number } } {
+    return { guidance: this.guidance, trim: this.trim };
+  }
+
+  /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */
+  private readonly finger = { pitch: 0, yaw: 0, roll: 0 };
+  /** The throttle lever, 0 to 1 of rated thrust, for an engine that throttles. */
+  private lever = 1;
+  private abortArmed = Number.NEGATIVE_INFINITY;
+
+  /** Move the throttle lever: only an engine whose nature has a range answers it. */
+  private setLever(to: number): void {
+    const range = this.flight.trajectory?.body?.engine?.throttle;
+    if (!range) return;
+    this.lever = Math.max(0, Math.min(range[1], to));
+    const s = this.state;
+    if (s?.ignited && !s.cutoff) this.hand.throttle = this.lever;
+  }
+
+  /** The strip of what the pilot has to fly with, built from the flight's data: the engine and its tanks, each jet supply, the jets, the motors. */
+  private systems(): void {
+    const tr = this.flight.trajectory;
+    const el = this.cells.get('systems') ?? this.root.querySelector<HTMLElement>('[data-cell=systems]')!;
+    if (!tr?.body) return;
+    const tank = (id: string, label: string, about: string) =>
+      `<div class="tank" title="${about}"><span>${label}</span><b data-cell="${id}"></b><i data-cell="${id}-kg"></i></div>`;
+    const supplies = tr.body.capsule.rcs?.supplies ?? [];
+    const axes = tr.body.capsule.rcs ? ['pitch', 'yaw', 'roll'] : [];
+    el.innerHTML = `
+      <div class="tank engine" title="The engine: what kind it is, and what it is doing"><span>Engine</span><b data-cell="engine"></b><i data-cell="engine-kind"></i></div>
+      ${this.vehicle?.tanks ? tank('oxidizer', 'Oxidizer', 'Liquid oxygen left in its tank') + tank('fuel-tank', 'Fuel', 'Fuel left in its tank') : ''}
+      ${supplies.map((u, i) => tank(`rcs-${i}`, `Jets, ${u.name}`, `Attitude-jet propellant left in the ${u.name} system’s tank`)).join('')}
+      ${
+        axes.length
+          ? `<div class="tank jets" title="Which attitude jets are firing"><span>Jets firing</span><b>${axes
+              .map((a) => `<u data-jet="${a}+">${a[0]!.toUpperCase()}+</u><u data-jet="${a}-">${a[0]!.toUpperCase()}−</u>`)
+              .join('')}</b></div>`
+          : ''
+      }
+      <div class="tank motors" title="Every motor burning now, with its thrust"><span>Burning</span><b data-cell="motors"></b></div>`;
+    for (const cell of el.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(cell.dataset.cell!, cell);
+    this.root.querySelector<HTMLElement>('.cockpit-lever')!.hidden = !tr.body?.engine?.throttle;
+  }
+
   /** Take the flight deck: the vehicle stands on its pad, the clock stopped at liftoff, waiting for ignition. */
   enter(): void {
     if (!this.vehicle || this.on) return;
@@ -174,6 +294,7 @@ export class Cockpit {
     this.root.hidden = true;
     this.button.textContent = 'Fly it';
     this.held.clear();
+    this.finger.pitch = this.finger.yaw = this.finger.roll = 0;
     this.host.fly(null);
     this.clock.reset();
     this.host.piloting(false);
@@ -187,6 +308,7 @@ export class Cockpit {
     this.tally = new Tally();
     this.hand = {};
     this.trim = { pitch: 0, yaw: 0 };
+    this.abortArmed = Number.NEGATIVE_INFINITY;
     this.kept = 0;
     this.eventAt = Number.NEGATIVE_INFINITY;
     this.towerAt = this.retropackAt = Infinity;
@@ -196,7 +318,10 @@ export class Cockpit {
       cutoff: Infinity,
       dropped: this.flight.flies!.drops.map(() => Infinity),
       live: true,
+      out: { drogue: Infinity, main: Infinity },
+      sheds: new Sheds(this.flight.trajectory!, siteFrame(this.flight.site), this.flight.site.seaLevel.value),
     };
+    this.maxQ = 0;
     this.kept = 1;
     this.card(null);
     this.host.fly(this.run);
@@ -213,12 +338,14 @@ export class Cockpit {
       roll: this.guidance,
       trim: () => this.trim,
     });
-    const stick = (plus: string, minus: string): number => Number(this.held.has(plus)) - Number(this.held.has(minus));
+    // (a key is all or nothing; a finger's stick is as far as it is pushed)
+    const stick = (plus: string, minus: string, finger: number): number =>
+      Math.max(-1, Math.min(1, Number(this.held.has(plus)) - Number(this.held.has(minus)) + finger));
     return (s) => {
       // W tips the nose down the range and S back; A swings it left of the azimuth; E rolls right
-      const pitch = stick('w', 's');
-      const yaw = stick('a', 'd');
-      const roll = stick('e', 'q');
+      const pitch = stick('w', 's', this.finger.pitch);
+      const yaw = stick('a', 'd', this.finger.yaw);
+      const roll = stick('e', 'q', this.finger.roll);
       // On the booster with guidance on, the stick leans the programme the platform holds (TRIM a second) and the
       // platform does the steering: the vanes at full throw would turn the stack end over end in four seconds.
       // Otherwise (guidance off, or the spacecraft alone on its gentle jets) the stick is the control itself.
@@ -233,6 +360,12 @@ export class Cockpit {
         pitch: trimmed ? undefined : own(pitch),
         yaw: trimmed ? undefined : own(yaw),
         roll: own(roll),
+        // On the spacecraft an axis the hand has is worked through the manual system's own chambers and tank; what the
+        // autopilot steers goes through the automatic system's. (Mercury's fly-by-wire, a hand on the automatic
+        // system's chambers, is not offered.) With the sequencer off the spacecraft's own sequence is off too: no
+        // parachute comes out by itself.
+        manual: { pitch: own(pitch) !== undefined, yaw: own(yaw) !== undefined, roll: own(roll) !== undefined },
+        automatic: this.sequence,
       });
     };
   }
@@ -245,9 +378,10 @@ export class Cockpit {
     const t = this.clock.t;
     if (t < 0) this.clock.seek(0); // there is no countdown to fly
     const ahead = t - state.t;
-    if (ahead <= 0 || !state.ignited || state.landing) {
+    const begun = state.ignited || state.abortAt !== null;
+    if (ahead <= 0 || !begun || state.landing) {
       // put back, or waiting on the pad, or down: show the moment the clock is at, as it was flown
-      if (!state.ignited && t > 0) this.clock.seek(0);
+      if (!begun && t > 0) this.clock.seek(0);
       if (state.landing && t > state.landing.t) this.clock.pause();
       this.show(this.at(Math.min(t, state.t)));
       return;
@@ -263,6 +397,7 @@ export class Cockpit {
       this.note(before, state, s);
     }
     this.state = state;
+    this.run.sheds?.follow(state); // what it has let go is flown on beside it (sim/shed.ts)
     if (ahead > MOST) this.clock.seek(state.t); // (the clock was run faster than the flight can be flown: it waits)
     // a frame's fraction of a tick is left for the next frame: the scene is shown at the flight's own instant
     this.show(this.run.samples[this.run.samples.length - 1]!);
@@ -278,17 +413,24 @@ export class Cockpit {
   private note(before: VehicleState, state: VehicleState, s: LiveSample): void {
     const run = this.run;
     const last = run.samples[this.kept - 1]!;
-    const event = state.cutoff !== before.cutoff || state.shed !== before.shed || s.phase !== last.phase || Boolean(state.landing);
+    const event =
+      state.cutoff !== before.cutoff ||
+      (Object.keys(state.shed) as (keyof typeof state.shed)[]).some((k) => state.shed[k] !== before.shed[k]) ||
+      s.phase !== last.phase ||
+      Boolean(state.landing);
     run.samples.length = this.kept;
     run.samples.push(s);
     if (event || s.t - last.t >= KEEP - TICK / 2) this.kept = run.samples.length;
+    if (!state.shed.booster) this.maxQ = Math.max(this.maxQ, s.q);
     if (state.cutoff && !before.cutoff) run.cutoff = state.t;
     if (state.shed.tower && !before.shed.tower) this.towerAt = state.t;
     if (state.shed.retropack && !before.shed.retropack) this.retropackAt = state.t;
-    const when = { tower: this.towerAt, separation: state.separation?.t ?? Infinity, retropack: this.retropackAt };
+    run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
+    const when = { tower: this.towerAt, separation: state.separation?.t ?? Infinity, retropack: this.retropackAt, ...run.out };
     run.dropped = this.flight.flies!.drops.map((d) => (d.on ? when[d.on] : Infinity));
     // an event asked for has happened: the hand lets go of it
-    if (state.ignited) delete this.hand.throttle;
+    if (state.abortAt !== null) delete this.hand.abort;
+    if (state.ignited && !this.flight.trajectory!.body?.engine?.throttle) delete this.hand.throttle;
     if (state.cutoff && this.hand.throttle === 0) delete this.hand.throttle;
   }
 
@@ -310,12 +452,13 @@ export class Cockpit {
     const s = this.state;
     const tr = this.flight.trajectory!;
     if (!s || s.landing) return null;
-    if (!s.ignited) return 'ignite';
+    if (!s.ignited && s.abortAt === null) return 'ignite';
     if (!s.cutoff) return 'cutoff';
     if (tr.body?.tower && !s.shed.tower) return 'tower';
     if (!s.shed.booster) return 'separate';
-    if (s.retroAt === null) return 'retro';
-    if (!s.shed.retropack) return 'retropack';
+    // (after an abort the retrorockets are not part of what is left to do: the pack stays on, and the parachutes are next)
+    if (s.abortAt === null && s.retroAt === null) return 'retro';
+    if (s.abortAt === null && !s.shed.retropack) return 'retropack';
     if (s.drogueAt === null) return 'drogue';
     if (s.mainAt === null) return 'main';
     return null;
@@ -327,7 +470,24 @@ export class Cockpit {
     else if (what === 'again') this.fresh();
     else if (what === 'guidance') this.guidance = !this.guidance;
     else if (what === 'sequence') this.sequence = !this.sequence;
-    else if (what === 'next') {
+    else if (what === 'abort') {
+      // guarded: the first press arms it and says so, the second within two seconds fires the rocket
+      const s = this.state;
+      const now = performance.now() / 1000;
+      if (!s || s.landing || s.shed.tower || s.abortAt !== null || !this.flight.trajectory?.body?.escape) return;
+      if (this.clock.t < s.t - TICK) return; // (looking back at what was flown)
+      if (now - this.abortArmed > ABORT_ARMED) this.abortArmed = now;
+      else {
+        this.abortArmed = Number.NEGATIVE_INFINITY;
+        this.hand.abort = true;
+        delete this.hand.throttle;
+        if (!s.ignited) {
+          this.state = this.vehicle!.tick(s, this.pilot()); // off the pad unlit: the clock has a flight to run from this instant
+          this.clock.setRate(1);
+        }
+        this.clock.play(true);
+      }
+    } else if (what === 'next') {
       const step = this.next();
       const now = performance.now() / 1000;
       // (put back to look at what was flown, Space runs the clock on again rather than setting anything off)
@@ -338,7 +498,7 @@ export class Cockpit {
       if (!step || now - this.eventAt < GUARD) return;
       this.eventAt = now;
       if (step === 'ignite') {
-        this.hand.throttle = 1;
+        this.hand.throttle = this.flight.trajectory!.body?.engine?.throttle ? this.lever : 1;
         this.state = this.vehicle!.tick(this.state!, this.pilot()); // lit at this instant, so the clock has a flight to run
         this.clock.setRate(1);
         this.clock.play(true);
@@ -364,7 +524,15 @@ export class Cockpit {
       return;
     }
     if (!down || e.repeat) return;
-    const what = ({ ' ': 'next', g: 'guidance', b: 'sequence', n: 'again', escape: 'leave', l: 'leave' } as Record<string, string>)[key];
+    if (this.flight.trajectory?.body?.engine?.throttle && ['arrowup', 'arrowdown', 'z'].includes(key)) {
+      this.setLever(key === 'z' ? 1 : this.lever + (key === 'arrowup' ? NOTCH : -NOTCH));
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const what = (
+      { ' ': 'next', g: 'guidance', b: 'sequence', n: 'again', escape: 'leave', l: 'leave', x: 'abort' } as Record<string, string>
+    )[key];
     if (!what) return;
     e.preventDefault();
     e.stopPropagation();
@@ -381,7 +549,24 @@ export class Cockpit {
     const up = s.r;
     const burnable = this.flow * tr.engine.cutoff.value;
     const state = this.state!;
-    set('phase', state.landing && s.t >= state.landing.t ? 'Down' : !state.ignited ? 'On the pad' : PHASES[s.phase]);
+    // (the greatest dynamic pressure is called as it comes and goes: within 3 per cent of the most so far, and no longer rising by a per cent of it a second)
+    const riding = s.phase === 'powered' || s.phase === 'coast';
+    const maxQ = riding && s.mach > 0.5 && s.q >= 0.97 * this.maxQ && s.q - this.at(s.t - 1).q < 0.01 * this.maxQ;
+    set(
+      'phase',
+      state.landing && s.t >= state.landing.t
+        ? 'Down'
+        : !state.ignited && state.abortAt === null
+          ? 'On the pad'
+          : `${PHASES[s.phase]}${maxQ ? ' · MAX Q' : ''}`,
+    );
+    const load = this.cells.get('load')!;
+    load.hidden = !riding || !(s.strain > 0.02);
+    if (!load.hidden) {
+      set('load', `Bending ${(100 * s.strain).toFixed(0)} %`);
+      load.dataset.standing = standing(s.strain);
+      load.style.setProperty('--load', `${Math.min(100, 100 * s.strain).toFixed(0)}%`);
+    }
     set('altitude', (s.altitude / 1000).toFixed(s.altitude < 99_950 ? 2 : 1));
     set('speed', s.groundSpeed.toFixed(0));
     set('climb', (s.groundSpeed * Math.sin(s.groundClimb * DEG)).toFixed(0));
@@ -391,7 +576,12 @@ export class Cockpit {
     set('mach', s.mach.toFixed(2));
     set('pitch', (90 - angleBetween(s.axis, up) / DEG).toFixed(0));
     set('alpha', s.groundSpeed > 5 && s.q > 1 ? s.alpha.toFixed(1) : '–');
-    set('fuel', Math.max(0, Math.min(100, (100 * (s.mass - (tr.liftoffMass.value - burnable))) / burnable)).toFixed(0));
+    set(
+      'fuel',
+      s.phase !== 'powered' && s.phase !== 'coast'
+        ? '–'
+        : Math.max(0, Math.min(100, (100 * (s.mass - (tr.liftoffMass.value - burnable))) / burnable)).toFixed(0),
+    );
     const replay = this.clock.t < state.t - TICK;
     const leant = (v: number, plus: string, minus: string) =>
       Math.abs(v) < 0.05 * DEG ? '' : ` ${(Math.abs(v) / DEG).toFixed(1)}° ${v > 0 ? plus : minus}`;
@@ -408,9 +598,123 @@ export class Cockpit {
     this.root.querySelector('[data-do=guidance]')!.setAttribute('aria-pressed', String(this.guidance));
     this.root.querySelector('[data-do=sequence]')!.setAttribute('aria-pressed', String(this.sequence));
     this.root.classList.toggle('thrusting', state.ignited && !state.cutoff && !replay);
+    const heat = this.host.heat?.(s.t);
+    this.cells.get('heat')!.hidden = !heat?.warm; // (it reads once the air has begun to heat it)
+    this.cells.get('heat')!.classList.toggle('hot', Boolean(heat?.hot));
+    if (heat?.warm)
+      set('heat', `${heat.name} ${heat.temperature.toFixed(0)} K of ${heat.limit.toFixed(0)} · ${(heat.flux / 1000).toFixed(0)} kW/m²`);
+    this.gauges(s, state, replay);
+    for (const fn of this.watchers) fn(s, replay ? null : state);
   }
 
-  /** How it ended, beside what the reports give for the flight itself. */
+  /** The systems strip and the prompt: what there is left to fly with, what is firing, and what is due. */
+  private gauges(s: LiveSample, state: VehicleState, replay: boolean): void {
+    const tr = this.flight.trajectory!;
+    const body = tr.body!;
+    const set = (id: string, text: string, low = false) => {
+      const el = this.cells.get(id);
+      if (!el) return;
+      if (el.textContent !== text) el.textContent = text;
+      el.parentElement!.classList.toggle('low', low);
+    };
+    const left = (id: string, now: number, full: number) => {
+      const part = full > 0 ? now / full : 0;
+      const empty = part < 0.002;
+      set(id, empty ? 'Empty' : `${(part * 100).toFixed(0)} %`, part < LOW);
+      set(`${id}-kg`, empty ? '' : `${now.toFixed(now < 100 ? 1 : 0)} kg`, part < LOW);
+    };
+    // the engine: its kind, and what it is doing
+    const nature = tr.body?.engine;
+    const main = s.burning.find((m) => m.name === 'main');
+    const range = nature?.throttle;
+    set(
+      'engine-kind',
+      nature?.kind === 'solid'
+        ? 'solid: burns to its end'
+        : range
+          ? `throttle ${(range[0] * 100).toFixed(0)} to ${(range[1] * 100).toFixed(0)} %`
+          : 'fixed thrust: no throttle',
+    );
+    const before = !state.ignited && state.abortAt === null;
+    const spent = this.vehicle!.tanks && s.tanks ? Math.min(s.tanks.oxidizer, s.tanks.fuel) < 1 : false;
+    const lever = range ? `, lever ${(this.lever * 100).toFixed(0)} %` : '';
+    set(
+      'engine',
+      main
+        ? `${(main.thrust / 1000).toFixed(0)} kN${range ? ` (${((state.throttle || this.lever) * 100).toFixed(0)} %${lever})` : ''}`
+        : before
+          ? 'Not lit'
+          : s.tanks === null
+            ? 'Gone'
+            : spent
+              ? nature?.kind === 'solid'
+                ? 'Burnt out'
+                : 'Out of propellant'
+              : 'Cut off',
+    );
+    const full = this.vehicle!.tanks;
+    if (full && s.tanks) {
+      left('oxidizer', s.tanks.oxidizer, full.oxidizer);
+      left('fuel-tank', s.tanks.fuel, full.fuel);
+    } else if (full) {
+      // (the tanks went with the booster)
+      for (const id of ['oxidizer', 'fuel-tank']) {
+        set(id, '–');
+        set(`${id}-kg`, '');
+      }
+    }
+    const rcs = body.capsule.rcs;
+    if (rcs) {
+      rcs.supplies.forEach((u, i) => left(`rcs-${i}`, s.rcs.left[i] ?? u.propellant.value, u.propellant.value));
+      const open = new Set<string>();
+      s.rcs.firing.forEach((f, i) => {
+        if (f > 0) open.add(`${rcs.thrusters[i]!.axis}${rcs.thrusters[i]!.sense > 0 ? '+' : '-'}`);
+      });
+      for (const lamp of this.root.querySelectorAll<HTMLElement>('[data-jet]')) lamp.classList.toggle('on', open.has(lamp.dataset.jet!));
+    }
+    set(
+      'motors',
+      s.burning.length ? s.burning.map((m) => `${m.name} ${(m.thrust / 1000).toFixed(m.thrust < 20_000 ? 1 : 0)} kN`).join(' · ') : '–',
+    );
+
+    // the abort: there while the tower is, and armed between its two presses
+    const abort = this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!;
+    const can = Boolean(body.escape) && !state.shed.tower && state.abortAt === null && !state.landing && !replay;
+    abort.disabled = !can;
+    const armed = can && performance.now() / 1000 - this.abortArmed <= ABORT_ARMED;
+    abort.classList.toggle('armed', armed);
+    set('abort', armed ? 'Press again to abort' : 'Abort');
+
+    // what the sequence depends on, and what is due and not done when it is the pilot's to do
+    const cues: string[] = [];
+    const due: string[] = [];
+    const coming = s.groundClimb < 0 && state.shed.booster;
+    if (state.enteredAt !== null && s.t >= state.enteredAt && state.drogueAt === null) cues.push('0.05 g');
+    const feet = (m: number) => `${Math.round(m / FT / 100) * 100} ft`.replace(/(\d)(\d{3}) /, '$1,$2 ');
+    if (coming && state.shed.tower && state.mainAt === null) {
+      const which = state.drogueAt === null ? ('drogue' as const) : ('main' as const);
+      const at = tr[which].altitude.value;
+      cues.push(`${which === 'drogue' ? 'Drogue' : 'Main'}: ${feet(at)} (${(at / 1000).toFixed(1)} km)`);
+      if (!this.sequence && s.altitude <= at) due.push(`${which === 'drogue' ? 'Drogue' : 'Main'} parachute is due: Space`);
+    }
+    if (!this.sequence && !replay && !state.landing && state.ignited && state.abortAt === null) {
+      const late = (at: number) => s.t >= at;
+      if (!state.cutoff && late(tr.engine.cutoff.value)) due.push('Cutoff is due');
+      else if (state.cutoff && body.tower && !state.shed.tower && late(body.tower.at.value)) due.push('Tower jettison is due');
+      else if (state.shed.tower && !state.shed.booster && late(tr.separation.at.value)) due.push('Separation is due');
+      else if (state.shed.booster && state.retroAt === null && late(tr.retro.fires[0]!.value)) due.push('Retrofire is due');
+      else if (state.retroAt !== null && !state.shed.retropack && late(tr.retropack.at.value)) due.push('Retropack jettison is due');
+    }
+    if (state.abortAt !== null && !state.shed.tower && !this.sequence && coming)
+      due.push('Tower jettison is due: no parachute comes out past it');
+    const prompt = this.cells.get('prompt')!;
+    const text = [...due, ...cues].join(' · ');
+    if (prompt.textContent !== text) prompt.textContent = text;
+    prompt.hidden = !text || replay;
+    prompt.classList.toggle('due', due.length > 0);
+  }
+
+  /** How it ended, said plainly, beside what the reports give for the flight itself. */
   private card(results: Results | null): void {
     const el = this.root.querySelector<HTMLElement>('.cockpit-card')!;
     el.hidden = !results;
@@ -421,14 +725,30 @@ export class Cockpit {
       const record = said(id);
       return `<tr><th>${label}</th><td>${(flown / per).toFixed(digits)} ${unit}</td><td>${record === undefined ? '' : `${(record / per).toFixed(digits)} ${unit}`}</td></tr>`;
     };
-    const how =
-      this.state!.mainAt !== null
-        ? `Down under the main parachute at ${landing.vertical.toFixed(1)} m/s`
-        : this.state!.shed.booster
-          ? `Down without the main parachute at ${landing.vertical.toFixed(0)} m/s`
-          : `Down with the booster at ${Math.hypot(landing.vertical, landing.horizontal).toFixed(0)} m/s`;
+    const end = verdict(this.state!, results, this.flight.trajectory!, this.tally.peakG);
+    const lived =
+      end.survivable === null
+        ? ''
+        : `<p class="cockpit-verdict${end.survivable ? '' : ' lost'}">${end.survivable ? 'Survivable.' : 'Not survivable.'} ${end.against}</p>`;
+    // what the structure and the parachutes did not take (sim/loads.ts), and where what was let go came down (sim/shed.ts)
+    const { broke, torn } = this.state!;
+    const lost = [
+      broke
+        ? `Broke up at T+${broke.t.toFixed(0)} s: bending load ${(100 * broke.load).toFixed(0)} per cent of the limit at ${(broke.q / 1000).toFixed(0)} kPa, ${broke.alpha.toFixed(0)} degrees off the wind.`
+        : '',
+      torn.drogue || torn.main
+        ? `The ${torn.drogue && torn.main ? 'parachutes' : torn.drogue ? 'drogue' : 'main parachute'} tore: let out in more dynamic pressure than ${torn.drogue && torn.main ? 'they' : 'it'} can take.`
+        : '',
+    ].filter(Boolean);
+    const fell = (this.run.sheds?.all ?? []).map((body) => {
+      const down = body.finish();
+      return `${body.shedder.def.name}: ${down.t <= body.from ? 'stayed where it stood' : `down ${(down.range / 1000).toFixed(0)} km from the pad at ${down.speed.toFixed(0)} m/s, T+${down.t.toFixed(0)} s`}.`;
+    });
     el.innerHTML = `
-      <h3>${how}</h3>
+      <h3>${end.how}</h3>
+      ${[...lost, ...end.why].map((w) => `<p class="cockpit-why">${w}</p>`).join('')}
+      ${fell.length ? `<p class="cockpit-fell">${fell.join(' ')}</p>` : ''}
+      ${lived}
       <table>
         <thead><tr><td></td><td>You</td><td>${this.flight.callsign}</td></tr></thead>
         ${row('Greatest height', results.apogee, 'apogee', 1000, 'km')}

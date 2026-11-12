@@ -270,7 +270,8 @@ test('which inputs are not documented, and how far each moves the results', (t) 
     if (o && typeof o === 'object') {
       if (o.confidence && o.confidence !== 'documented') estimated.push(`${path} (${o.confidence})`);
       // `body` is the live simulator's (sim/vehicle.ts): fly() does not read it, and tests/vehicle.test.mjs lists what in it is not documented
-      for (const [k, v] of Object.entries(o)) if (k !== 'points' && k !== 'body') walk(v, path ? `${path}.${k}` : k);
+      // `heating` is sim/heating.ts's: fly() does not read it either, and tests/heating.test.mjs holds every figure in it to a confidence and weighs the judgements
+      for (const [k, v] of Object.entries(o)) if (k !== 'points' && k !== 'body' && k !== 'heating') walk(v, path ? `${path}.${k}` : k);
     }
   };
   walk(tr0, '');

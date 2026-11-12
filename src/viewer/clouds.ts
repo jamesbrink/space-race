@@ -15,9 +15,15 @@ const VEIL_LAYER = 7;
  * cover), on a flat base at the layer's height, and rises the higher the further the noise is over
  * it, to the layer's full depth in the heart of the biggest: a fair-weather heap, wider than it is
  * tall. Billows, round lumps of three sizes (a tiling 3D noise of cells, `billows`), stand out from
- * it and cut into it, small at the foot and quickly bigger above, so a cumulus is cauliflower on top;
- * the base is left flat, and lit a lighter grey by the ground. The billows churn slowly upward
- * (`cloudRise`) as the field drifts.
+ * it and cut into it, small at the foot and quickly bigger above, so a cumulus is cauliflower on top.
+ * Its skin is then worn by finer lumps still (`detailMade`: 64, 32 and 16 m, crowded round the
+ * billows), which only take cloud away, so the outline is crisp and knobbled; a cloud that is going
+ * (the baked field's second channel) is cut far deeper and thinned, into shreds. None of this
+ * reaches the base, which is the condensation level: dead flat, at one height for every cloud. The
+ * billows churn slowly upward (`cloudRise`) as the field drifts.
+ *
+ * In the real look they are to look as cumulus photographed, not designed (the owner's word; the
+ * cel look is the drawing). The light is the scene's own, every frame: nothing is baked to an hour.
  *
  * Each frame drawn, a ray from the eye through each pixel of a target half the window's size each
  * way (in CSS pixels, so a sixteenth of a dense screen's) is marched through the layer, as far as
@@ -26,9 +32,12 @@ const VEIL_LAYER = 7;
  * hold cloud, and nearer cloud it steps by how far outside the heap it is. Where it crosses into a
  * cloud the surface is found by bisection and the march goes on from there in steps laid from the
  * surface, short at first, so neighbouring pixels sample the cloud's skin alike: no rings, and no
- * noise to hide them with. At each step inside, the light is marched toward the Sun (Beer and
- * Lambert, with octaves of multiple scattering and a powder term where the cloud is thin), and the
- * sky and the ground light it from above and below, less in the creases. Each step is seen through
+ * noise to hide them with. At each step inside, the light is marched toward the Sun (`shadowed`:
+ * six samples in a cone, Beer and Lambert), and scattered in three octaves with a two-lobed phase
+ * (white toward the Sun however thick the cloud, a twentieth of that on the far side, a glowing
+ * edge against the Sun), duller where the cloud is thin (powder), brighter where the skin faces
+ * the Sun, darker in the creases; the sky lights it from above by how much cloud is overhead, and
+ * the horizon's sky and the ground light the base, grey-blue. Each step is seen through
  * the haze between it and the eye, as anything else is (air.ts). The layer lies on the Earth's
  * curve, so downrange the clouds stay at their height over the sea.
  *
@@ -45,8 +54,9 @@ const VEIL_LAYER = 7;
  * along its ray the cloud began and where it became half opaque; a pixel of the frame takes cloud
  * from its low neighbours only as far as its own surface lies past those, so the rocket and the
  * gantry cut the clouds on their own edges, not on a coarse pixel's. A cloud's own outline is
- * marched a second time at the frame's pixels (`CloudPass.fine`), only there, so it is not in the
- * first march's steps. How far off the scene's surface is, is read with the depth buffer's own
+ * marched a second time at the frame's pixels (`CloudPass.fine`), and so are its creases (where
+ * the first march's neighbours differ in light), only there, so neither is in the first march's
+ * steps or its blur. How far off the scene's surface is, is read with the depth buffer's own
  * coarseness allowed for (`sceneDistance`): from orbit one step of it is kilometres. The fire and
  * its trail write no depth (`veils`): they are drawn again on their own, and cloud behind them is
  * seen through them only as much as they let through. In the cel look the cloud is a drawing: its
@@ -73,32 +83,41 @@ const REBAKE = 16000;
 const FADE: [number, number] = [32000, 48000];
 /** Clouds fade from the volume to the flat far layer as a low pixel grows from the first to the second, in metres. */
 const SMALL: [number, number] = [50, 110];
-/** Half the breadth of the field's soft edge, in the noise's units (air.ts). */
-const SOFT = 0.1;
+/**
+ * Half the breadth of a far cloud's edge, in the noise's units: 90 m. (It was the breadth of the shadows' edge, 0.1:
+ * a far cloud was then a pale blot three times a near one's size.)
+ */
+const FAR_SOFT = 0.025;
 /** The billows' noise: texels a side, and metres before it repeats. */
 const NOISE = 64;
 const TILE = 1024;
-/** Extinction in the heart of a cloud, per metre: 100 m of cloud dims what is behind it to 5 %. */
-const SIGMA = 0.03;
+/**
+ * Extinction in the heart of a cloud, per metre: 60 m of cloud dims what is behind it to 5 % (a cumulus's is 0.05 to
+ * 0.1). Thick enough that a lump 30 m across is a solid thing with a lit side and a shaded one, not a mist.
+ */
+const SIGMA = 0.05;
 /** The baked field stores the noise's excess over its cut, from BELOW under it to RANGE - BELOW over it. */
 const BELOW = 0.1;
 const RANGE = 0.4;
-/** Excess at which a cloud's top reaches the layer's full depth: the noise's greatest, 0.22 over the cut (its 99th percentile is 0.11). */
-const TOWER = 0.2;
-/** A cloud's top rises as this power of the distance in from its edge: under 1, so its sides are steep and its top rounded. */
-const DOME = 0.8;
+/**
+ * Excess at which a cloud's top reaches the layer's full depth: a little under the noise's greatest, 0.22 over the
+ * cut (one cloud in ten peaks over 0.12, half under 0.04: so towers of 500 m among heaps of 250 and scraps).
+ */
+const TOWER = 0.16;
+/** A cloud's top rises as this power of the distance in from its edge: well under 1, so its sides are steep and its top rounded. */
+const DOME = 0.65;
 /**
  * Metres from a cloud's edge per unit of excess, for every metre of the field's cells (Clouds.size):
- * the reciprocal of the noise's mean slope, 5.3e-4 a metre at 900 m cells.
+ * the reciprocal of the noise's mean slope at its cut, 0.36 a cell.
  */
-const SIDE_PER_SIZE = 2000 / 900;
+const SIDE_PER_SIZE = 1 / 0.36;
 /** How far the billows stand out from a cloud's dome at its top, metres (and as far again cut into it). */
 const BILLOW = 140;
 /** The billows' mean (billows()), about which they stand out and cut in; and how far out they stand at most, as a multiple of their size. */
 const LUMPS = 0.54;
 const STANDS = 2 * (1 - LUMPS);
 /** How far the lumps over a cloud's base dent it up or hang it down, metres: its flatness is the condensation level's, give or take. */
-const BASE_DENT = 60;
+const BASE_DENT = 8;
 /** Billows at a cloud's foot, metres: over half the top's, so the rim of a flat base is ragged, not the clean edge of a saucer seen from under it. */
 const FOOT = 80;
 /**
@@ -114,6 +133,26 @@ const reaches = (side: number): number =>
       return (TOWER * side * y ** (1 / DOME) - STANDS * (FOOT + (BILLOW - FOOT) * Math.sqrt(y))) / side;
     }),
   );
+/**
+ * The detail that wears a cloud's skin: finer lumps (64, 32 and 16 m: `detailMade`) than the billows, in a noise of
+ * DETAIL_SIDE texels that repeats every DETAIL_TILE metres (which divides the billows' tile, so both rise seamlessly).
+ * The creases between them are cut this many metres into the skin at a cloud's top, and less at its foot; looked up
+ * where the billows push it aside (WARP, metres), so the fine lumps crowd round the big ones instead of lying on a grid.
+ */
+const DETAIL_SIDE = 64;
+const DETAIL_TILE = 256;
+const DETAIL = 30;
+const DETAIL_FOOT = 10;
+const WARP = 36;
+/**
+ * A fraying cloud (the field's second channel) is cut into this much further, metres, by lumps twice as broad; its
+ * skin is this much deeper, and it is this much thinner all through: shreds one can see the sky through.
+ */
+const FRAY = 90;
+const FRAY_SKIN = 14;
+const FRAY_THIN = 0.25;
+/** How much brighter than a white wall facing it the Sun's light leaves a thick cloud, with the phase and the octaves below (fitted by eye). */
+const SUN_GAIN = 1.65;
 /** The Earth's mean radius: the layer is a shell this far plus its height from the centre under the site. */
 const EARTH = 6_371_000;
 
@@ -123,7 +162,12 @@ const VERTEX = /* glsl */ `
   out vec2 vUv;
   void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 
-/** The cloud noise baked round the eye: its excess over the cut, from -BELOW to RANGE - BELOW, as 0 to 1. */
+/**
+ * The cloud noise baked round the eye: its excess over the cut, from -BELOW to RANGE - BELOW, as 0 to 1 (red); and
+ * how far gone each cloud is (green): 0 one that is growing, hard-edged, to 1 one that is evaporating, frayed. A
+ * slow noise in the field's own frame, broader than a cloud, so a cloud is mostly one or the other and keeps it
+ * as it drifts: which cloud was which is not known.
+ */
 const bakeShader = (c: Clouds) => /* glsl */ `
   precision highp float; precision highp int;
   uniform vec2 uCorner;
@@ -132,7 +176,9 @@ const bakeShader = (c: Clouds) => /* glsl */ `
   ${cloudNoiseGlsl(c, 'bake_')}
   void main() {
     float n = cloudNoise(uCorner + gl_FragCoord.xy * ${TEXEL.toFixed(1)});
-    oValue = vec4(clamp((n - ${cloudMiddle(c).toFixed(4)} + ${BELOW.toFixed(3)}) / ${RANGE.toFixed(3)}, 0.0, 1.0), 0.0, 0.0, 1.0);
+    vec2 at = uCorner + gl_FragCoord.xy * ${TEXEL.toFixed(1)};
+    float gone = smoothstep(0.52, 0.8, bake_noise2(at / ${(1.9 * c.size).toFixed(1)} + vec2(13.7, 4.1), 97));
+    oValue = vec4(clamp((n - ${cloudMiddle(c).toFixed(4)} + ${BELOW.toFixed(3)}) / ${RANGE.toFixed(3)}, 0.0, 1.0), gone, 0.0, 1.0);
   }`;
 
 /**
@@ -229,7 +275,8 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
   ${DEPTH}
   ${LAYER}
   uniform sampler2D tField, tClear;
-  uniform sampler3D tBillows;
+  uniform sampler3D tBillows, tDetail;
+  uniform float uCel;
   uniform mat3 uTurn;        // the camera's turn: its frame to the world's
   uniform vec2 uLow;         // this target's size, pixels
   uniform float uGrain;      // radians a pixel of it
@@ -262,38 +309,94 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
   // how big the billows are at a height in the layer: quickly bigger above the foot, so a low cloud has turrets too
   float billow(float y) { return mix(${FOOT.toFixed(1)}, ${BILLOW.toFixed(1)}, sqrt(max(y, 0.0))); }
 
+  // What inside() found on its way, for the light: the billows there, about their mean (under 0 a crease, over it a
+  // lump's heart); how worn the skin is by the detail (0 on a fine lump, 1 in a crease between); how far gone the
+  // cloud is (0 growing, 1 fraying); how much of the dome is overhead, metres; how far in from the dome's side.
+  float gLumps, gWorn, gGone, gAbove, gHeap;
+  float gPixel;   // metres a pixel of this target where the march has got to: the detail is no finer than that
+
   // how far inside a cloud the point v from the eye is, metres, roughly (negative outside); f: the same point in the
-  // baked field's frame; y: its height in the layer, 0 at the base to 1 at the greatest top
-  float inside(vec3 v, vec2 f, float lod, out float y, bool billowed) {
+  // baked field's frame; y: its height in the layer, 0 at the base to 1 at the greatest top. \`skin\`: how deep the
+  // skin is taken to be there, or under 0 for the cloud without its fine detail (finding it, and far along the light).
+  float inside(vec3 v, vec2 f, float lod, out float y, bool billowed, float skin) {
     float depth = uLayer.y - uLayer.x;
     float h = heightAt(v) - uLayer.x;
     y = h / depth;
+    gLumps = gWorn = gGone = gAbove = gHeap = 0.0;
     if (h < 0.0) return h;
     if (y > 1.0) return (1.0 - y) * depth;
-    float x = texture(tField, f / EXTENT).r * ${RANGE.toFixed(3)} - ${BELOW.toFixed(3)};
+    vec2 field = texture(tField, f / EXTENT).rg;
+    float x = field.r * ${RANGE.toFixed(3)} - ${BELOW.toFixed(3)};
     // the heap: a dome on the field, rising from its edge as the DOME power of the distance in from it, so steeply at
     // first and then rounding over; the biggest (the noise furthest over its cut) reaching the layer's full depth.
     // Measured across (metres in from its side at this height), so the sides are as sharp as the top.
-    float heap = x * ${(SIDE_PER_SIZE * clouds.size).toFixed(1)} - pow(h / uDome, ${(1 / DOME).toFixed(4)});
+    float in_ = x * ${(SIDE_PER_SIZE * clouds.size).toFixed(1)};
+    float heap = in_ - pow(h / uDome, ${(1 / DOME).toFixed(4)});
+    gHeap = heap;
+    gAbove = uDome * pow(max(in_, 0.0), ${DOME.toFixed(4)}) - h;
     if (!billowed || heap <= -${STANDS.toFixed(3)} * billow(y)) return heap; // (no billow reaches out so far)
     // and billows heaped on it and cut into it, bigger the higher up: lumps of 200, 95 and 45 m, so a cumulus is
     // cauliflower at the top and only scalloped at the foot
     vec3 b = textureLod(tBillows, vec3(f.x, h - uRise, f.y) / TILE, lod).rgb;
     float lumps = dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)};
-    float sd = heap + billow(y) * 2.0 * lumps;
+    gLumps = lumps;
+    // (within 70 m of the base the billows only stand out, never cut in: the foot is as broad as the field has it)
+    float foot = smoothstep(0.0, 70.0, h);
+    float sd = heap + billow(y) * 2.0 * (lumps < 0.0 ? lumps * foot : lumps);
     // the base is flat, give or take the lumps over it: a plane exactly level met by an even wall drew, from under
     // it, the same clean ring round every cloud, stacked like saucers; dented a little, its rim wanders as a real one does
-    return min(sd, h + ${BASE_DENT.toFixed(1)} * lumps);
+    sd = min(sd, h + ${BASE_DENT.toFixed(1)} * lumps);
+    if (skin < 0.0 || sd <= 0.0 || uCel > 0.5) return sd;   // (a drawing has no fine detail: its line is the billows')
+    // The skin is worn by finer lumps still (64, 32 and 16 m), which only ever take cloud away: the creases between
+    // them are cut into it, so its outline is crisp and knobbled where the cloud is growing. One that is going is cut
+    // far deeper by broader ones and has a deep, thin skin: shreds and wisps. Only within reach of the skin: deeper
+    // in, the cloud is as thick either way.
+    float gone = field.g;
+    // (and none of it at the base itself, which is the condensation level: dead flat, whatever becomes of the cloud above)
+    float cut = mix(${DETAIL_FOOT.toFixed(1)}, ${DETAIL.toFixed(1)}, sqrt(y)) * (0.25 + 0.75 * foot);
+    gone *= foot;
+    gGone = gone;
+    if (sd < cut * (1.0 + gone) + skin + gone * ${(FRAY + FRAY_SKIN).toFixed(1)}) {
+      vec3 at = vec3(f.x, h - 1.5 * uRise, f.y) + (b - 0.5) * ${WARP.toFixed(1)};
+      // (no finer than a pixel and a half: a lump two pixels across is there in one frame and gone in the next as it drifts)
+      float fine = max(log2(gPixel / ${(DETAIL_TILE / DETAIL_SIDE).toFixed(1)}) + 0.6, 0.0);
+      float worn = 1.0 - textureLod(tDetail, at / ${DETAIL_TILE.toFixed(1)}, fine).r;
+      gWorn = worn;
+      sd -= cut * (1.0 + gone) * worn;
+      if (gone > 0.01) sd -= gone * ${FRAY.toFixed(1)} * (1.0 - textureLod(tDetail, vec3(f.y, h - uRise, f.x) / ${(2 * DETAIL_TILE).toFixed(1)} + b * 0.12, max(fine - 1.0, 0.0)).r);
+    }
+    return sd;
   }
-  // the cloud's extinction there, per metre: rising over \`ramp\` metres from its surface, and fading out far from the eye
-  float density(vec3 v, float ramp, float lod, out float y, out float sd, bool billowed) {
-    sd = inside(v, uEye + v.xz, lod, y, billowed);
-    return SIGMA * smoothstep(0.0, ramp, sd) * near(v);
+  // the cloud's extinction there, per metre: rising over \`ramp\` metres from its surface (a fraying cloud's over
+  // more), and fading out far from the eye. \`detailed\`: with the skin's fine detail.
+  float density(vec3 v, float ramp, float lod, out float y, out float sd, bool billowed, bool detailed) {
+    sd = inside(v, uEye + v.xz, lod, y, billowed, detailed ? ramp : -1.0);
+    return SIGMA * (1.0 - ${FRAY_THIN.toFixed(2)} * gGone) * smoothstep(0.0, ramp + gGone * ${FRAY_SKIN.toFixed(1)}, sd) * near(v);
   }
 
   float hg(float c, float g) { float g2 = g * g; return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * c, 1.5); }
-  // forward scattering with a little back: so the side toward the Sun is bright and a thin edge against it glows
-  float phase(float c, float g) { return mix(hg(c, g), hg(c, -0.2), 0.3); }
+  // Two lobes (Henyey and Greenstein's, as 1 for scattering evenly): most of the light goes on forward, so a thin edge
+  // against the Sun glows (the silver lining; held to 9 times, or the edge burns out), and some comes back, so the
+  // side toward the Sun is the brightest seen with the Sun behind
+  float phase(float c, float g) { return mix(min(hg(c, g), 9.0), hg(c, -0.2), 0.45); }
+
+  // How much cloud the Sun's light has come through to reach v, as optical depth: six samples toward it, each twice
+  // as far as the last (to 570 m, most of the layer's depth), spread in a cone so one lump's shadow has a soft edge.
+  // The nearest has the skin's detail, the next two the billows, the rest only the heap. The same places for every
+  // pixel and every frame: nothing here is random.
+  const vec3 CONE[6] = vec3[6](vec3(0.0), vec3(0.11, -0.05, 0.08), vec3(-0.1, 0.07, -0.09), vec3(0.04, 0.12, 0.1), vec3(-0.12, -0.08, 0.03), vec3(0.08, 0.02, -0.13));
+  // \`toward\`: how far inside the cloud the nearest of them is: against the same at v, which way the skin there faces.
+  float shadowed(vec3 v, float ramp, float lod, out float toward) {
+    float tau = 0.0, s = 0.0, yy, ss;
+    for (int k = 0; k < 6; k++) {
+      float ds = 9.0 * exp2(float(k));
+      s += ds * 0.5;
+      tau += density(v + (uSun + CONE[k]) * s, max(ramp, 0.5 * ds), lod + float(k) * 0.5, yy, ss, k < 3, k < 1) * ds;
+      if (k == 0) toward = ss;
+      s += ds * 0.5;
+    }
+    return tau;
+  }
 
   // the fraction of the light lost to the haze between the eye and a point at height h above the sea and d away (air.ts: airFog)
   float hazeLost(float h, float d) {
@@ -334,9 +437,11 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
     t1 = min(min(t1, seen), min(across > 1e-4 ? ${FADE[1].toFixed(1)} / across : 1e9, ${SMALL[1].toFixed(1)} / uPixel));
 
     float cosT = dot(dir, uSun);
-    vec3 phases = vec3(phase(cosT, 0.6), phase(cosT, 0.3), phase(cosT, 0.15));
+    vec3 phases = vec3(phase(cosT, 0.75), phase(cosT, 0.4), phase(cosT, 0.2));
     float powderMix = 0.5 - 0.5 * cosT;   // thin cloud is darker seen with the Sun behind
-    float sunGain = 1.25;
+    // A cloud is the whitest thing in sight, and a photograph is balanced to it: so the Sun's light on it is taken a
+    // third of the way to white (estimated). At a low Sun it is still the Sun's colour, only less so.
+    vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, vec3(0.2126, 0.7152, 0.0722))), 0.33);
     vec3 white = uSunLight + uSkyLight;
     float whiteLum = max(dot(white, vec3(0.2126, 0.7152, 0.0722)), 1e-5);
 
@@ -351,7 +456,8 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
       if (t >= t1 || T < 0.01) break;
       vec3 v = dir * t;
       float st = clamp(t * 0.004, 6.0, 120.0);
-      float lod = max(log2(max(t * uGrain, 1.0) / ${(TILE / NOISE).toFixed(1)}), 0.0);
+      gPixel = max(t * uGrain, 1.0);
+      float lod = max(log2(gPixel / ${(TILE / NOISE).toFixed(1)}), 0.0);
       float y;
       if (deep < 0) {
         vec2 cell = (uEye + v.xz) / EXTENT;
@@ -362,7 +468,7 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
           was = t;
           continue;
         }
-        float sd = inside(v, uEye + v.xz, lod, y, true);
+        float sd = inside(v, uEye + v.xz, lod, y, true, -1.0);
         if (sd <= 0.0) {
           // Clear air: stride as far as the heap could rise to where its billows might reach out, at its steepest;
           // among billows, which change faster, a third of the way to the nearest; close to a surface, short
@@ -376,7 +482,7 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         for (int k = 0; k < 6; k++) {
           float m = 0.5 * (a + b);
           vec3 w = dir * m;
-          if (inside(w, uEye + w.xz, lod, y, true) > 0.0) b = m;
+          if (inside(w, uEye + w.xz, lod, y, true, -1.0) > 0.0) b = m;
           else a = m;
         }
         t = a;
@@ -384,10 +490,10 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
       }
       float step = st * min(0.25 + 0.35 * float(deep), 1.6);
       v = dir * (t + 0.5 * step);
-      float ramp = clamp(t * 0.005, 3.0, 60.0); // the skin: a few pixels deep at any distance
+      float ramp = clamp(t * 0.004, 3.0, 60.0); // the skin: a few pixels deep at any distance
       float sd;
-      float d = density(v, ramp, lod, y, sd, true);
-      if (sd <= 0.0) {
+      float d = density(v, ramp, lod, y, sd, true, true);
+      if (sd <= 0.0 && gWorn <= 0.0) {
         // out of it again, between billows or past the cloud: back to looking for cloud, from here
         t += 0.5 * step;
         was = t;
@@ -395,29 +501,35 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         continue;
       }
       if (d > 0.0) {
-        // toward the Sun: how much cloud the light has come through
-        float tau = 0.0, s = 0.0, yy, ss;
-        for (int k = 0; k < 5; k++) {
-          float ds = 12.0 * exp2(float(k));
-          s += ds * 0.5;
-          tau += density(v + uSun * s, max(ramp, 0.5 * ds), lod + float(k) * 0.5, yy, ss, k < 2) * ds; // (further off, the heap without its billows)
-          s += ds * 0.5;
-        }
-        // octaves of scattering: each deeper one less dimmed and less forward
-        float sun = phases.x * exp(-tau) + 0.4 * phases.y * exp(-tau * 0.3) + 0.22 * phases.z * exp(-tau * 0.07);
-        sun *= mix(1.0, 1.0 - exp(-d * 100.0), powderMix) * sunGain;
-        // the sky's light is shut out of the creases between billows and from under more cloud
-        vec3 up = v + uUp * 80.0;
-        float open = 1.0 - 0.4 * smoothstep(-20.0, 150.0, inside(up, uEye + up.xz, lod + 1.0, yy, true));
-        // and the base, flat and facing down, is lit by the sunlit ground and the light the cloud's sides scatter
-        // into it: a lighter grey than its shade, not a dark cave
-        vec3 light = uSunLight * (sun + 0.08 * (1.0 - y) * max(uSun.y, 0.0))
-          + (uSkyLight * (0.4 + 0.55 * y) + uGroundLight * 0.35 * (1.0 - y)) * open;
+        float lumps = gLumps, worn = gWorn, above = gAbove, heap = gHeap;
+        float toward, tau = shadowed(v, ramp, lod, toward);
+        // The Sun's light, scattered once and again and again (octaves: each less of it, less dimmed by the cloud it
+        // came through and less forward). So the side toward the Sun is white however thick the cloud, its far side
+        // and its base are left a twentieth of that, and a thin edge against the Sun glows.
+        // What has been scattered least still knows where the Sun is: a lump's side toward it is brighter than its
+        // top or its flank, as any lit surface's is (the way the skin faces: it is shallower 4.5 m toward the Sun).
+        float facing = 0.5 + 0.5 * clamp((sd - toward) / 9.0, -1.0, 1.0);
+        float sun = (phases.x * exp(-tau) + 0.5 * phases.y * exp(-0.35 * tau)) * facing + 0.2 * phases.z * exp(-0.15 * tau) * (0.6 + 0.4 * facing);
+        // thin cloud has too little in it to scatter the light back (the powder of sugar): duller, seen with the Sun behind
+        float thin = exp(-sd / 20.0);
+        sun *= 1.0 - 0.5 * powderMix * thin;
+        // The creases between lumps see less of the Sun's scattered light and of the sky than the lumps do: at the
+        // skin, the billows' own value says which this is, and the detail's.
+        float crease = mix(0.4, 1.0, smoothstep(-0.34, 0.1, lumps)) * (1.0 - 0.35 * worn);
+        // the sky lights the top and, half as well, the sides: less with every metre of cloud overhead or outside
+        float sky = max(exp(-max(above, 0.0) / 110.0), 0.5 * exp(-max(heap, 0.0) / 70.0));
+        // and the base is lit from below: by the horizon's sky under the layer and by what the ground sends up, which
+        // is little, so a base is grey-blue, darkest under the thickest cloud
+        float low = exp(-max(y, 0.0) * (uLayer.y - uLayer.x) / 70.0);
+        vec3 light = sunWhite * (sun * ${SUN_GAIN.toFixed(2)} * crease) + uSkyLight * (0.8 * sky * crease + 0.35 * low) + uGroundLight * low;
+        // (a drawing's two tones are cut by how much cloud the Sun's light came through, 1 at the lit skin: not by the
+        // phase, the creases or the way the skin faces, which would speckle a flat tone)
+        float plain = (exp(-tau) + 0.5 * exp(-0.35 * tau) + 0.2 * exp(-0.15 * tau)) / 1.7;
         float hz = hazeLost(y * (uLayer.y - uLayer.x) + uLayer.x, t);
         float a = 1.0 - exp(-d * min(step, t1 - t));
         float w = T * a;
         colour += w * mix(light, uHaze, hz);
-        lit += w * dot(light, vec3(0.2126, 0.7152, 0.0722)) / whiteLum;
+        lit += w * plain;
         haze += w * hz;
         T *= 1.0 - a;
         if (front > 5e4 && T < 0.98) front = t;
@@ -437,20 +549,28 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
     ${
       sharpen
         ? /* glsl */ `
-    // only where the first march's four pixels round this one disagree: on a cloud's outline, which it has in steps
+    // only where the first march's four pixels round this one disagree: on a cloud's outline, which it has in steps,
+    // and where its light changes from one to the next (a crease, the line between a lump's lit side and its shaded
+    // one), which brought up to the frame's size it has as a blur
     ivec2 size = textureSize(tLow, 0);
     ivec2 i0 = ivec2(floor(vUv * vec2(size) - 0.5));
-    float least = 1.0, most = 0.0;
+    float least = 1.0, most = 0.0, dim = 1e9, bright = 0.0;
     for (int k = 0; k < 4; k++) {
-      float a = texelFetch(tLow, clamp(i0 + ivec2(k & 1, k >> 1), ivec2(0), size - 1), 0).a;
-      least = min(least, a);
-      most = max(most, a);
+      vec4 c = texelFetch(tLow, clamp(i0 + ivec2(k & 1, k >> 1), ivec2(0), size - 1), 0);
+      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      least = min(least, c.a);
+      most = max(most, c.a);
+      dim = min(dim, l);
+      bright = max(bright, l);
     }
-    if (most - least < ${EDGE.toFixed(3)}) discard;
-    marched();
-    // blended with what was here while the eye is still, as the first march is (SETTLE); nothing here last time says 0
+    // (while the eye is still, a pixel that was marched last time is kept on at half the difference: a crease that
+    // hovers about the least worth marching would otherwise be sharp in one frame and soft in the next)
     ivec2 at = ivec2(gl_FragCoord.xy);
     vec4 oc = texelFetch(tOld0, at, 0), oi = texelFetch(tOld1, at, 0);
+    float need = uKeep > 0.0 && oi.x > 0.0 ? 0.5 : 1.0;
+    if (most - least < ${EDGE.toFixed(3)} * need && bright - dim < ${CONTRAST.toFixed(3)} * need * bright) discard;
+    marched();
+    // blended with what was here while the eye is still, as the first march is (SETTLE); nothing here last time says 0
     if (uKeep > 0.0 && oi.x > 0.0) {
       bool here = oColour.a > 1e-3, was = oc.a > 1e-3;
       oInfo = here ? (was ? mix(oInfo, oi, uKeep) : oInfo) : (was ? oi : oInfo);
@@ -477,6 +597,8 @@ const OVER = /* glsl */ `
   uniform float uFine;       // radians a pixel of the frame
   uniform vec2 uFarSpan;     // between which heights (the ray's part along uUp) the far cover can be
   uniform float uCel, uVeils;
+  uniform highp sampler3D tBillows;
+  uniform float uRise;
   ${fieldAs('over_')}
   ${cloudNoiseGlsl(UNIT, 'over_')}
   const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -513,17 +635,29 @@ const OVER = /* glsl */ `
     vec3 v = dir * tm;
     vec3 up = normalize(uRe * uUp + v);
     float fp = tm * uFine / max(abs(dot(up, dir)), 0.1);   // metres of the shell a pixel
-    float n = cloudNoise((uField + v.xz) / uCumulus.x);
-    float w = ${SOFT.toFixed(3)} + 0.25 * fp / uCumulus.x;
+    float smooth_ = cloudNoise((uField + v.xz) / uCumulus.x);
+    // with the billows the volume has at that height, as far as a pixel can show them: so a far cloud's outline is
+    // scalloped in round lumps as a near one's is, not the noise's own ragged line, and one becomes the other unseen
+    vec3 b = textureLod(tBillows, vec3(uField.x + v.x, 0.3 * (uLayer.y - uLayer.x) - uRise, uField.y + v.z) / ${TILE.toFixed(1)}, max(log2(fp / ${(TILE / NOISE).toFixed(1)}), 0.0)).rgb;
+    float lumps = dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)};
+    float n = smooth_ + lumps * ${((2 * (FOOT + (BILLOW - FOOT) * Math.sqrt(0.3))) / SIDE_PER_SIZE).toFixed(1)} / uCumulus.x;
+    float w = ${FAR_SOFT.toFixed(3)} + 0.25 * fp / uCumulus.x;
     float even = smoothstep(0.08 * uCumulus.x, 0.5 * uCumulus.x, fp);
     // (spread evenly, the cover is laid on at a third of its worth: white cloud is so much brighter than the sea that the
     // record's tenth, laid on whole, veiled the Earth pale from orbit, and the look wants the sea and the coast seen: estimated)
     float a = 0.95 * mix(smoothstep(uCumulus.y - w, uCumulus.y + w, n), uCumulus.z * 0.33, even) * far * limb;
     if (a <= 0.0) return vec4(0.0);
-    // its top in the Sun and the sky, or its base, lit by what the ground sends up: as the volume's are, on the whole
+    // its top in the Sun and the sky, or its base, lit by what the ground sends up: as the volume's are, on the whole.
+    // A heap has a side toward the Sun and one away from it: the field read again a little way toward the Sun says
+    // which this is (it falls that way on the near side), until the clouds are too small for it to show.
     float sunUp = dot(up, uSun);
-    vec3 tops = uSunLight * 1.1 * smoothstep(-0.05, 0.25, sunUp) + uSkyLight * 0.9;
-    vec3 bases = uSunLight * 0.15 * max(sunUp, 0.0) + uSkyLight * 0.5 + uGroundLight * 0.35;
+    vec2 sunward = uSun.xz / max(length(uSun.xz), 1e-3);
+    float faces = clamp((smooth_ - cloudNoise((uField + v.xz) / uCumulus.x + sunward * 0.1)) * 24.0, -1.0, 1.0) * sqrt(max(1.0 - sunUp * sunUp, 0.0));
+    // (and a lump's heart is brighter than the crease beside it, as the march has it)
+    float relief = (0.5 * faces + 1.1 * lumps) * (1.0 - even);
+    vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33);   // (as the march has it)
+    vec3 tops = sunWhite * (1.0 + relief) * smoothstep(-0.05, 0.25, sunUp) + uSkyLight * 0.9;
+    vec3 bases = sunWhite * 0.1 * max(sunUp, 0.0) + uSkyLight * 0.6 + uGroundLight * 0.5;
     vec3 light = mix(bases, tops, smoothstep(uLayer.x, uLayer.y, uEyeH));
     // the haze between, over the Earth's curve: the ray in six pieces, each with its height taken as changing evenly
     // along it (as globe.ts hazes the sea under these clouds: toward the limb a ray stays low in the air ten times
@@ -671,6 +805,67 @@ function* billowsMade(): Generator<void, THREE.Data3DTexture> {
   return texture;
 }
 
+/**
+ * The detail that wears a cloud's skin: the same round lumps, finer (4, 8 and 16 to a tile of DETAIL_TILE metres:
+ * 64, 32 and 16 m), added into one value, 1 at a lump's heart and 0 in a crease; its mean is about 0.54 too. It
+ * repeats every DETAIL_SIDE texels. Made a few slices at a time, as the billows are.
+ */
+function* detailMade(): Generator<void, THREE.Data3DTexture> {
+  const n = DETAIL_SIDE;
+  const sum = new Float32Array(n * n * n);
+  for (const [octave, [cells, weight]] of (
+    [
+      [4, 0.42],
+      [8, 0.33],
+      [16, 0.25],
+    ] as const
+  ).entries()) {
+    const points = new Float32Array(cells * cells * cells * 3);
+    for (let i = 0; i < cells; i++)
+      for (let j = 0; j < cells; j++)
+        for (let k = 0; k < cells; k++) {
+          const at = ((i * cells + j) * cells + k) * 3;
+          for (let a = 0; a < 3; a++) points[at + a] = hash2(i * cells + j, k, 900 + octave * 3 + a);
+        }
+    const per = n / cells; // texels a cell
+    const wrap = (c: number) => ((c % cells) + cells) % cells;
+    for (let z = 0; z < n; z++) {
+      for (let y = 0; y < n; y++)
+        for (let x = 0; x < n; x++) {
+          const px = (x + 0.5) / per,
+            py = (y + 0.5) / per,
+            pz = (z + 0.5) / per;
+          const cx = Math.floor(px),
+            cy = Math.floor(py),
+            cz = Math.floor(pz);
+          let best = 9;
+          for (let dz = -1; dz <= 1; dz++)
+            for (let dy = -1; dy <= 1; dy++)
+              for (let dx = -1; dx <= 1; dx++) {
+                const at = ((wrap(cx + dx) * cells + wrap(cy + dy)) * cells + wrap(cz + dz)) * 3;
+                const ex = cx + dx + points[at]! - px,
+                  ey = cy + dy + points[at + 1]! - py,
+                  ez = cz + dz + points[at + 2]! - pz;
+                best = Math.min(best, ex * ex + ey * ey + ez * ez);
+              }
+          sum[(z * n + y) * n + x]! += weight * Math.sqrt(Math.max(0, 1 - best * 2.2));
+        }
+      if (z % 8 === 7) yield;
+    }
+  }
+  const data = new Uint8Array(n * n * n);
+  for (let i = 0; i < data.length; i++) data[i] = Math.round(255 * sum[i]!);
+  const texture = new THREE.Data3DTexture(data, n, n, n);
+  texture.format = THREE.RedFormat;
+  texture.wrapS = texture.wrapT = texture.wrapR = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 /** The march's two results at its own size: light and opacity, and where the cloud is. */
 const lowTarget = () =>
   new THREE.WebGLRenderTarget(1, 1, {
@@ -686,6 +881,8 @@ const lowTarget = () =>
 const KEEP = 0.65;
 /** A cloud's outline, to be marched again finer (`CloudPass.fine`): where the march's neighbouring pixels differ by this much opacity. */
 const EDGE = 0.1;
+/** And its creases: where they differ by this much of their light. */
+const CONTRAST = 0.1;
 
 /** The blend: light mixed; where the cloud is, from whichever frame has any (an empty one says 6e4). */
 const SETTLE = /* glsl */ `
@@ -703,9 +900,9 @@ const SETTLE = /* glsl */ `
     oInfo = here ? (was ? mix(i, oi, uKeep) : i) : (was && uKeep > 0.0 ? oi : i);
   }`;
 
-const target = (size: number, linear: boolean) =>
+const target = (size: number, linear: boolean, format: THREE.PixelFormat = THREE.RedFormat) =>
   new THREE.WebGLRenderTarget(size, size, {
-    format: THREE.RedFormat,
+    format,
     type: THREE.UnsignedByteType,
     minFilter: linear ? THREE.LinearFilter : THREE.NearestFilter,
     magFilter: linear ? THREE.LinearFilter : THREE.NearestFilter,
@@ -790,7 +987,10 @@ export class CloudPass extends Pass {
   private sharpen: THREE.RawShaderMaterial | null = null;
   /** Fire and smoke in front of the scene (`veils`), drawn again on their own: how much they cover, and how far off the nearest is. */
   private readonly veil = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType) });
-  private readonly field = target(SIDE, true);
+  /** The veils' materials that do not write depth, made to for the veils' own draw (`drawVeils`). */
+  private readonly lent: THREE.Material[] = [];
+  private readonly cleared = new THREE.Color();
+  private readonly field = target(SIDE, true, THREE.RGFormat);
   private readonly cells = target(SIDE / (CELL / TEXEL), false);
   private readonly row = target(SIDE / (CELL / TEXEL), false);
   private readonly clearAir = target(SIDE / (CELL / TEXEL), false);
@@ -810,6 +1010,7 @@ export class CloudPass extends Pass {
     tField: { value: this.field.texture },
     tClear: { value: this.clearAir.texture },
     tBillows: { value: null as THREE.Data3DTexture | null },
+    tDetail: { value: null as THREE.Data3DTexture | null },
     uTurn: { value: new THREE.Matrix3() },
     uLow: { value: new THREE.Vector2(1, 1) },
     uGrain: { value: 0.001 },
@@ -892,14 +1093,16 @@ export class CloudPass extends Pass {
 
   /** Make what the clouds are drawn with before anyone is looking, a little at a time (Stage.warm). */
   async warm(): Promise<void> {
-    if (this.uniforms.tBillows.value) return;
-    const made = billowsMade();
-    for (let r = made.next(); ; r = made.next()) {
-      if (r.done) {
-        this.uniforms.tBillows.value ??= r.value;
-        return;
-      }
-      await new Promise((done) => setTimeout(done, 0));
+    const u = this.uniforms;
+    for (const [made, into] of [
+      [billowsMade, u.tBillows],
+      [detailMade, u.tDetail],
+    ] as const) {
+      if (into.value) continue;
+      const making = made();
+      let r = making.next();
+      for (; !r.done; r = making.next()) await new Promise((done) => setTimeout(done, 0));
+      into.value ??= r.value;
     }
   }
 
@@ -972,12 +1175,16 @@ export class CloudPass extends Pass {
 
     this.march ??= raw(marchShader(clouds, false), u);
     this.sharpen ??= raw(marchShader(clouds, true), { ...u, ...this.finer });
-    if (!u.tBillows.value) {
-      // (not warmed: made now, all at once)
-      const made = billowsMade();
-      for (let r = made.next(); ; r = made.next())
+    // (not warmed: made now, all at once)
+    for (const [made, into] of [
+      [billowsMade, u.tBillows],
+      [detailMade, u.tDetail],
+    ] as const) {
+      if (into.value) continue;
+      const making = made();
+      for (let r = making.next(); ; r = making.next())
         if (r.done) {
-          u.tBillows.value = r.value;
+          into.value = r.value;
           break;
         }
     }
@@ -1053,16 +1260,44 @@ export class CloudPass extends Pass {
     return still;
   }
 
+  /**
+   * Put something under a veil on the veils' layer, and have its materials write depth for the veils' own draw
+   * (`drawVeils`), which puts back the ones that did not (`lent`). Materials are read each time: the look swaps them.
+   */
+  private readonly lend = (m: THREE.Object3D): void => {
+    m.layers.enable(VEIL_LAYER);
+    const material = (m as THREE.Mesh).material;
+    if (!material) return;
+    if (Array.isArray(material)) {
+      for (const each of material) {
+        if (each.depthWrite) continue;
+        each.depthWrite = true;
+        this.lent.push(each);
+      }
+    } else if (!material.depthWrite) {
+      material.depthWrite = true;
+      this.lent.push(material);
+    }
+  };
+
   /** Draw the veils on show on their own, with their depth: false if none is. */
   private drawVeils(renderer: THREE.WebGLRenderer, frame: THREE.WebGLRenderTarget): boolean {
-    const shown = this.veils.filter((o) => {
+    // their materials write depth for this one draw, so the nearest of them is kept where they overlap
+    const lent = this.lent;
+    lent.length = 0;
+    let any = false;
+    for (const o of this.veils) {
       let p: THREE.Object3D = o;
-      for (; p.parent; p = p.parent) if (!p.visible) return false;
-      return p === this.scene; // (in the scene, and shown all the way up)
-    });
-    if (!shown.length) return false;
+      for (; p.parent; p = p.parent) if (!p.visible) break;
+      if (p !== this.scene) continue; // (in the scene, and shown all the way up)
+      any = true;
+      // (nearly every veil is one mesh, a pane of glass: nothing to walk)
+      if (o.children.length) o.traverse(this.lend);
+      else this.lend(o);
+    }
+    if (!any) return false;
     if (this.veil.width !== frame.width || this.veil.height !== frame.height) this.veil.setSize(frame.width, frame.height);
-    const clear = renderer.getClearColor(new THREE.Color()),
+    const clear = renderer.getClearColor(this.cleared),
       alpha = renderer.getClearAlpha(),
       autoClear = renderer.autoClear;
     renderer.setRenderTarget(this.veil);
@@ -1070,21 +1305,20 @@ export class CloudPass extends Pass {
     renderer.clear(true, true, false);
     renderer.autoClear = false;
     // All of them in one draw of the scene, seen on their own layer: a draw call each, not a render each (a frame
-    // has dozens of panes of glass). Writing depth here, so the nearest of them is kept where they overlap.
-    const materials = new Set<THREE.Material>();
-    for (const o of shown)
-      o.traverse((m) => {
-        m.layers.enable(VEIL_LAYER);
-        const material = (m as THREE.Mesh).material;
-        if (material) for (const each of Array.isArray(material) ? material : [material]) materials.add(each);
-      });
-    const wrote = [...materials].map((m) => m.depthWrite);
-    for (const m of materials) m.depthWrite = true;
-    const mask = this.camera.layers.mask;
+    // has dozens of panes of glass). The scene has just been drawn and nothing has moved since, so its world
+    // matrices are not worked out again.
+    const mask = this.camera.layers.mask,
+      update = this.scene.matrixWorldAutoUpdate;
     this.camera.layers.set(VEIL_LAYER);
-    renderer.render(this.scene, this.camera);
-    this.camera.layers.mask = mask;
-    [...materials].forEach((m, i) => (m.depthWrite = wrote[i]!));
+    this.scene.matrixWorldAutoUpdate = false;
+    try {
+      renderer.render(this.scene, this.camera);
+    } finally {
+      this.scene.matrixWorldAutoUpdate = update;
+      this.camera.layers.mask = mask;
+      for (const m of lent) m.depthWrite = false;
+      lent.length = 0;
+    }
     renderer.autoClear = autoClear;
     renderer.setClearColor(clear, alpha);
     return true;
@@ -1153,6 +1387,7 @@ export class CloudPass extends Pass {
   dispose(): void {
     for (const t of [this.low, ...this.history, ...this.fine, this.veil, this.field, this.cells, this.row, this.clearAir]) t.dispose();
     this.uniforms.tBillows.value?.dispose();
+    this.uniforms.tDetail.value?.dispose();
     this.quad.dispose();
   }
 }

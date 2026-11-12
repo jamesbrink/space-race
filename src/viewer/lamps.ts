@@ -129,6 +129,7 @@ export class Lamps {
           scene.add(light);
           this.roomPool.push(light);
           this.given.push({ room: -1, want: -1, level: 0 });
+          this.settled = false;
         }
         return;
       }
@@ -194,27 +195,39 @@ export class Lamps {
       light.position.copy(fitting.at).applyMatrix4(mesh.matrixWorld);
       light.target.position.copy(fitting.at).addScaledVector(fitting.facing, 10).applyMatrix4(mesh.matrixWorld);
     });
-    this.near(this.eye);
+    this.near(this.eye, true);
   }
 
   private readonly eye = new THREE.Vector3(1e9, 0, 0);
+  /** Where each room was when the lights were last handed round, and whether that left nothing still to do (`near`). */
+  private readonly where: THREE.Vector3[] = [];
+  private settled = false;
 
   /**
    * Give the room lights to the rooms nearest `eye`. A light handed to another room goes out over
    * a moment and comes on there, and a room keeps its light until another is clearly nearer, so
    * nothing is seen to switch. True if that changed what is lit.
    */
-  near(eye: THREE.Vector3): boolean {
-    this.eye.copy(eye);
+  near(eye: THREE.Vector3, moved = false): boolean {
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.handedAt) / 1000);
     this.handedAt = now;
+    let still = this.settled && !moved && this.eye.equals(eye);
+    this.eye.copy(eye);
     if (!this.rooms.length) return false;
-    const where = this.rooms.map((r) => {
+    // where each room is now (kept, not made each frame), and whether any has moved
+    const where = this.where;
+    this.rooms.forEach((r, i) => {
       r.at.updateWorldMatrix(true, false);
-      return new THREE.Vector3().setFromMatrixPosition(r.at.matrixWorld);
+      const e = r.at.matrixWorld.elements;
+      const p = (where[i] ??= new THREE.Vector3(Number.NaN));
+      if (p.x !== e[12] || p.y !== e[13] || p.z !== e[14]) still = false;
+      p.set(e[12]!, e[13]!, e[14]!);
     });
-    const far = where.map((p) => p.distanceTo(eye));
+    // Nothing more to do where the last call left every light with its room, fully on or out, and neither the eye
+    // nor a room has moved since: the same question has the same answer.
+    if (still) return false;
+    const far = this.rooms.map((_, i) => where[i]!.distanceTo(eye));
     const order = far.map((_, i) => i).sort((a, b) => far[a]! - far[b]!);
     const nearest = order.slice(0, this.roomPool.length);
     const edge = far[nearest[nearest.length - 1]!]! * KEEP;
@@ -237,6 +250,7 @@ export class Lamps {
       light.distance = room.reach;
       light.intensity = room.intensity * g.level;
     });
+    this.settled = !changed && this.given.every((g) => g.room === g.want);
     return changed;
   }
 

@@ -5,11 +5,17 @@ import { Callout } from './callout';
 import { Cockpit } from './cockpit';
 import { Demo, IDLE_TITLE } from './demo';
 import { Flown } from './flown';
+import './navball.css';
+import { Navball } from './navball';
 import { prefs } from './prefs';
+import { programmeAxis } from './sim/predict';
+import { Sound } from './sound';
 import { TimeBar } from './timebar';
 import { Title } from './title';
 import { Ui } from './ui';
-import { CAMERA_MODES } from './viewer/fly';
+import { Effects } from './viewer/effects';
+import { uOrigin } from './viewer/origin';
+import { FlightPath } from './viewer/path';
 import { Stage, type Thing } from './viewer/stage';
 import { Clock, localTime, missionTime } from './world/clock.ts';
 
@@ -56,6 +62,8 @@ function setMotion(level: Motion): void {
   prefs.set('motionReduced', level === 'reduced');
   prefs.set('motionOff', level === 'off');
   stage.walk.motion = MOTION[level];
+  stage.cam.calm = level === 'off'; // (the camera eases and coasts as much as the walk moves: not at all when asked for none)
+  effects.motion = MOTION[level];
   ui.setWalkMotion(level);
 }
 
@@ -77,6 +85,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   },
   cel: (on) => stage.setLook(on ? 'cel' : 'real'),
   camera: (mode) => stage.setCamera(mode), // back in orbit the view holds still until something is chosen
+  nextCamera: () => stage.nextCamera,
   refind: () => stage.refind(),
 
   walk: (on) => (on ? void stage.enterWalk(current.id) : stage.exitWalk()),
@@ -96,10 +105,27 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
 // the flight as the simulator flies it, beside the reports' figures: in the Flight tab
-new Flown(document.querySelector<HTMLElement>('#ui .flown')!, clock, flight);
+const flown = new Flown(document.querySelector<HTMLElement>('#ui .flown')!, clock, flight);
+// what it all sounds like from where the camera is (sound/): the flight by the clock, the place, the walk
+const sound = new Sound(document.querySelector<HTMLElement>('#ui .timebar')!, flight, clock, {
+  ears: () => uOrigin.value, // the eye the scene was last drawn from (viewer/origin.ts)
+  riding: () => stage.cameraMode === 'chase',
+});
+stage.walk.sounds = sound.walk;
 // the flight flown by hand: the live simulator at the keys, shown in the scene in place of the record's run
+// what the air does to the flight, seen and felt (viewer/effects.ts): the camera is shaken for the draw only, as far as Motion allows,
+// and an eye that goes with the vehicle (the chase camera) feels what the vehicle does
+const effects = new Effects(flight);
+effects.motion = MOTION[motion()];
+stage.effects = effects;
+stage.shaker = (camera, sky) => effects.shaker(camera, sky, stage.cameraMode === 'chase' && !stage.walk.active ? 1 : 0);
 const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
-  fly: (run) => stage.flyRun(run),
+  heat: (t) => effects.reading(t),
+  fly: (run) => {
+    stage.flyRun(run);
+    flown.fly(run); // its traces over the record's, as it grows
+    sound.fly(run);
+  },
   piloting: (on) => {
     if (on && stage.walk.active) stage.exitWalk();
     stage.piloted = on;
@@ -107,12 +133,27 @@ const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight,
     const flier = flight.flies?.model;
     if (on && flier && current.id !== flier) show(flier);
     if (on && selected) select(null);
-    ui.cameras = on ? ['chase'] : CAMERA_MODES; // at the controls the view stays with the vehicle: C brings it back to it
+    // at the controls the view is one of the vehicle's (the stage offers only those while it is flown); back on the ground, the place's
     ui.setCamera(on ? 'chase' : 'orbit');
-    if (on) ui.say('Chase view', 'Follows the vehicle · drag to look round it · C centres it again');
     if (!on) show(current.id);
   },
 });
+cockpit.listen((sample, state) => sound.follow(sample, state));
+// its other instruments: the navball on the flight deck's top edge, and the predicted path drawn in the scene
+const deck = document.querySelector<HTMLElement>('#ui .cockpit')!;
+const navball = new Navball(deck, cockpit, deck.querySelector<HTMLElement>('[data-do=navball]'));
+// (guidance's own aim is shown while it has something to steer with: the booster, burning)
+navball.target = (s) =>
+  cockpit.craft && cockpit.steering.guidance && s.phase === 'powered' ? programmeAxis(cockpit.craft, s.t, cockpit.steering.trim) : null;
+const path = new FlightPath(
+  document.querySelector<HTMLElement>('#ui')!,
+  navball.aside,
+  cockpit,
+  flight,
+  stage,
+  deck.querySelector<HTMLElement>('[data-do=path]'),
+);
+navball.onFrame((frame) => path.setFrame(frame));
 // a section whose slider is a sequence of events reads the clock: as the clock moves, so does its slider
 clock.listen(() => {
   if (current.sequence) ui.setSlider(stage.exploded(current.id));
@@ -181,7 +222,7 @@ async function start(id: string): Promise<void> {
     if (navigator.webdriver && !location.search.includes('demo')) document.body.classList.add('instant');
     document.body.classList.add('scene-ready');
     ui.loaded();
-    if (prefs.get('fly')) ui.setCamera('fly');
+    if (prefs.get('fly')) ui.setCamera('free');
     if (prefs.get('demo')) {
       // it was showing itself when the page was left: it goes on doing so
       if (title.showing) title.hide();
@@ -250,6 +291,8 @@ stage.onInteract = () => {
   ui.showRotate(false);
 };
 stage.onView = (id) => ui.setView(id);
+// the rig in charge of the camera has changed, by the page's asking or the stage's own doing (the vehicle left the pad while it was looked at)
+stage.onRig = (id) => ui.showCamera(id, !ready || demo.active);
 // Walking as a figure is done from that figure's section, wherever it was asked for; stopping returns to that section's view.
 stage.onWalk = (on, model) => {
   if (on && current.id !== model) show(model, false, true); // the hardware stays where it is while someone is walking on it
@@ -259,6 +302,7 @@ stage.onWalk = (on, model) => {
   if (on) ui.setWalkView(stage.walk.third);
   if (on) {
     stage.walk.motion = MOTION[motion()];
+    stage.cam.calm = motion() === 'off';
     ui.setWalkMotion(motion());
   }
   if (!on) show(model, false, true);
@@ -497,7 +541,14 @@ const demo = new Demo(flight, clock, {
   },
   say: (text, at) => callout.show(text, at === null ? null : () => (at === 'window' ? pane && stage.screenOf(pane) : stage.screenOf(at))),
   dark: () => stage.dark,
-  busy: () => !ready || stage.walk.active || stage.frozen || document.hidden,
+  // (not while someone is on foot, nor while a flight is being watched or flown: the show does not take a view that is being used)
+  busy: () =>
+    !ready ||
+    stage.walk.active ||
+    stage.frozen ||
+    document.hidden ||
+    stage.piloted ||
+    (!demo.active && (clock.running || stage.cameraMode !== 'orbit')),
   running: (on) => {
     document.body.classList.toggle('demo', on);
     stage.inert = on; // shown, not used: nothing lights up under the pointer
@@ -529,10 +580,12 @@ clock.listen(() => {
 const unattended = (navigator.webdriver && !location.search.includes('demo')) || matchMedia('(prefers-reduced-motion: reduce)').matches;
 /** Seconds the front page has been left alone. */
 let titleIdle = 0;
-for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart'] as const)
+for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermove'] as const)
   window.addEventListener(
     touch,
     (e) => {
+      // the mouse moving is someone there: the show does not start under them (it does not end a show that is on: a press does)
+      if (e.type === 'pointermove' && (title.showing || demo.active)) return;
       if (title.showing) {
         titleIdle = 0; // the front page is being read: the show stays behind it (going in ends it, below)
         return;
@@ -578,10 +631,11 @@ setInterval(() => {
     ui.showWalkCard(null);
   const s = stage.stats();
   const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
+  ui.showFind(stage.vehicleAway);
   ui.setStats(
     `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}${stage.walkRigid ? ' · figure rigid (no joints)' : ''}`,
   );
 }, 500);
 
 // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
-Object.assign(window, { sr: { stage, ui, flight, show, clock, demo, cockpit } });
+Object.assign(window, { sr: { stage, ui, flight, show, clock, demo, cockpit, navball, path, sound, effects } });

@@ -60,18 +60,48 @@ type Shadowed = THREE.Light & { shadow: THREE.LightShadow };
 export class Origin {
   /** Each shadow's lookup in the scene's frame, as of the last time its map was drawn. */
   private readonly shadows = new WeakMap<THREE.LightShadow, THREE.Matrix4>();
+  /** Of the lights it was given, the ones lighting this draw. */
   private readonly lights: Shadowed[] = [];
-  private readonly skies: { light: THREE.HemisphereLight; was: THREE.Vector3 }[] = [];
+  private readonly skies: THREE.HemisphereLight[] = [];
+  private readonly was: THREE.Vector3[] = [];
   private readonly m = new THREE.Matrix4();
   private readonly constants: number[] = [];
+  private readonly renderer: Pick<THREE.WebGLRenderer, 'shadowMap'>;
+  private readonly scene: THREE.Scene;
+  private readonly camera: THREE.Camera;
+  private readonly planes: readonly THREE.Plane[];
+  private readonly lit: THREE.Light[];
 
-  /** `camera` must have no parent: its position is the eye. `planes` are clipping planes in the scene's frame. */
+  /**
+   * `camera` must have no parent: its position is the eye. `planes` are clipping planes in the scene's frame.
+   * `lit` is every light in the scene that casts a shadow and every hemisphere light, handed over when they are
+   * made (the scene is not searched for them each draw): one added later is given to `light`.
+   */
   constructor(
-    private readonly renderer: THREE.WebGLRenderer,
-    private readonly scene: THREE.Scene,
-    private readonly camera: THREE.Camera,
-    private readonly planes: readonly THREE.Plane[],
-  ) {}
+    renderer: Pick<THREE.WebGLRenderer, 'shadowMap'>,
+    scene: THREE.Scene,
+    camera: THREE.Camera,
+    planes: readonly THREE.Plane[],
+    lit: THREE.Light[] = [],
+  ) {
+    this.renderer = renderer;
+    this.scene = scene;
+    this.camera = camera;
+    this.planes = planes;
+    this.lit = lit;
+  }
+
+  /** A light added to the scene after this was made: one that casts a shadow, or a hemisphere light. */
+  light(light: THREE.Light): void {
+    if (!this.lit.includes(light)) this.lit.push(light);
+  }
+
+  /** Whether a light is lighting the scene now: in it, and shown all the way up. */
+  private lighting(light: THREE.Object3D): boolean {
+    let o: THREE.Object3D | null = light;
+    for (; o && o !== this.scene; o = o.parent) if (!o.visible) return false;
+    return o === this.scene;
+  }
 
   /** Off: draw where things are, as three does by default (for comparing the two: they must look the same). */
   enabled = true;
@@ -88,15 +118,19 @@ export class Origin {
     Object.assign(EYE, { x: eye.x, y: eye.y, z: eye.z });
     this.lights.length = 0;
     this.skies.length = 0;
-    scene.traverseVisible((o) => {
-      if ((o as Shadowed).castShadow && (o as Shadowed).shadow) this.lights.push(o as Shadowed);
-      if ((o as THREE.HemisphereLight).isHemisphereLight) this.skies.push({ light: o as THREE.HemisphereLight, was: o.position.clone() });
-    });
+    for (const o of this.lit) {
+      if (!this.lighting(o)) continue;
+      if (o.castShadow && (o as Shadowed).shadow) this.lights.push(o as Shadowed);
+      if ((o as THREE.HemisphereLight).isHemisphereLight) {
+        (this.was[this.skies.length] ??= new THREE.Vector3()).copy(o.position);
+        this.skies.push(o as THREE.HemisphereLight);
+      }
+    }
     const redrawn = this.renderer.shadowMap.needsUpdate || this.renderer.shadowMap.autoUpdate;
     scene.position.sub(eye);
     camera.position.sub(eye);
     camera.updateMatrixWorld();
-    for (const { light } of this.skies) light.position.add(eye); // a direction, not a place: it must not move
+    for (const light of this.skies) light.position.add(eye); // a direction, not a place: it must not move
     this.planes.forEach((p, i) => {
       this.constants[i] = p.constant;
       p.constant += p.normal.dot(eye);
@@ -112,7 +146,7 @@ export class Origin {
       camera.position.add(eye);
       camera.updateMatrixWorld();
       this.planes.forEach((p, i) => (p.constant = this.constants[i]!)); // as they were to the last bit, not shifted back
-      for (const { light, was } of this.skies) light.position.copy(was);
+      this.skies.forEach((light, i) => light.position.copy(this.was[i]!));
       scene.updateMatrixWorld();
       // a shadow map drawn just now: remember its lookup in the scene's frame
       if (redrawn)

@@ -1,5 +1,5 @@
 // One screenshot of the running viewer, from its own headless browser.
-//   node tools/shot.mjs <out.png> <model> "<js run in the page>" [width height] [--ui] [--hover x,y]
+//   node tools/shot.mjs <out.png> <model> "<js run in the page>" [width height] [--ui] [--hover x,y] [--click x,y]
 //   node tools/shot.mjs /tmp/pad.png pad "sr.stage.pose(215, 9, 150, 14)"
 // The page's UI is hidden unless --ui is given. `sr` is the viewer's debug handle (see AGENTS.md).
 import { chromium } from 'playwright-core';
@@ -8,6 +8,8 @@ const args = process.argv.slice(2);
 const ui = args.includes('--ui');
 const hoverAt = args.indexOf('--hover'); // --hover x,y moves the mouse there before the shot
 const hover = hoverAt >= 0 ? args.splice(hoverAt, 2)[1].split(',').map(Number) : null;
+const clickAt = args.indexOf('--click'); // --click x,y clicks there before the script runs: a real gesture, which sound waits for
+const click = clickAt >= 0 ? args.splice(clickAt, 2)[1].split(',').map(Number) : null;
 const [out, model = 'vehicle', js = '', w = '1600', h = '1000'] = args.filter((a) => a !== '--ui');
 if (!out) {
   console.error('usage: shot.mjs <out.png> <model> "<js>" [width height] [--ui]');
@@ -21,6 +23,7 @@ page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(`${process.env.SR_URL ?? 'http://localhost:5180/'}#${model}`);
 await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 60000 });
 if (!ui) await page.addStyleTag({ content: '#ui { display: none !important }' });
+if (click) await page.mouse.click(click[0], click[1]);
 await page.evaluate(`(async () => { const sr = window.sr; sr.stage.setAutoRotate(false); ${js}; })()`);
 await page.waitForTimeout(1200);
 if (hover) {

@@ -11,6 +11,7 @@
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { angleBetween, cross, DEG, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import type { Flown, Results } from './fly.ts';
+import { upAt } from './forces.ts';
 import { aboutAxis, turn, unturn } from './rigid.ts';
 import { type Controls, HANDS_OFF, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState } from './vehicle.ts';
 
@@ -79,7 +80,8 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
   return (s: VehicleState): Controls => {
     const c: Controls = { ...HANDS_OFF, throttle: s.ignited && !s.cutoff ? 1 : 0 };
     if (want.launch && !s.ignited) c.throttle = 1;
-    if (want.sequence) {
+    // (after an abort the record's times are for a flight that is no longer being flown: the spacecraft's own sequence has it)
+    if (want.sequence && s.abortAt === null) {
       if (late(tr.engine.cutoff.value, s.t)) c.throttle = 0;
       c.tower = body.tower ? late(body.tower.at.value, s.t) : false;
       c.separate = late(tr.separation.at.value, s.t);
@@ -108,9 +110,10 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
     } else {
       gains = capsuleGains;
       if (s.drogueAt !== null || s.mainAt !== null) return c; // it hangs
-      const up = unit(s.r);
+      // (with its tower on it is not turned round: the jets only damp)
+      const up = upAt(s.r, s.t);
       const wind = sub(s.v, cross(earth, s.r));
-      if (s.enteredAt === null && length(wind) > 1) {
+      if (s.enteredAt === null && s.shed.tower && length(wind) > 1) {
         // blunt end first: for retrofire, pitched as the record has it; after the pack has gone, straight into the air
         const level = sub(wind, scale(up, dot(wind, up)));
         const pitch = tr.retro.pitch.value * DEG;
@@ -162,6 +165,10 @@ const blank = (): Results => ({
  */
 export class Tally {
   readonly results: Results = blank();
+  /** An abort, if there was one: when, and the greatest load from then until the tower went, g. */
+  abort: { at: number; peakG: number } | null = null;
+  /** The greatest load of the whole flight, g, whatever made it. */
+  peakG = 0;
 
   note(s: LiveSample, state: VehicleState, vehicle: Vehicle): void {
     const r = this.results;
@@ -173,7 +180,7 @@ export class Tally {
     if (state.separation && r.separationSpeed === 0) {
       // the stack as it was at the instant they parted, before the push
       const { r: at, v } = state.separation;
-      const up = unit(at);
+      const up = upAt(at, state.separation.t);
       const wind = sub(v, cross([0, 0, EARTH_ROTATION_RATE], at));
       r.separationSpeed = length(v);
       r.separationGroundSpeed = length(wind);
@@ -182,6 +189,11 @@ export class Tally {
       r.separationAltitude = this.last?.altitude ?? s.altitude;
     }
     this.last = s;
+    if (!state.landing) this.peakG = Math.max(this.peakG, s.g);
+    if (state.abortAt !== null) {
+      this.abort ??= { at: state.abortAt, peakG: 0 };
+      if (s.phase === 'escape') this.abort.peakG = Math.max(this.abort.peakG, s.g);
+    }
     if (s.t <= r.apogeeAt) {
       r.exitQ = Math.max(r.exitQ, s.q);
       r.exitG = Math.max(r.exitG, s.g);

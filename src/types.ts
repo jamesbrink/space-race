@@ -31,8 +31,25 @@ export interface Motor {
   /** Seconds. Left out for a thruster that fires in pulses. */
   burnS?: number;
   propellant: string;
+  /** What kind of motor it is: a solid, once lit, burns to its own end and answers no command. */
+  kind?: 'liquid' | 'solid';
   confidence: Confidence;
   note?: string;
+}
+
+/**
+ * How an engine can be worked (sim/vehicle.ts). Left out, an engine is a liquid one at fixed thrust that is started
+ * once and can be shut down.
+ */
+export interface EngineNature {
+  /** A solid cannot be throttled or shut down: lit, it burns until it is spent. */
+  kind: 'liquid' | 'solid';
+  /** The least and the most it can be throttled to, as fractions of rated thrust. Left out: it does not throttle. Asked for less than the least, it is off. */
+  throttle?: [least: number, most: number];
+  /** How many times it can be started. */
+  starts: number;
+  confidence: Confidence;
+  source: string;
 }
 
 export interface TimelineEvent {
@@ -277,8 +294,10 @@ export interface ModelDef {
    * launch; boarding does not move the clock). Seated, the eyes are at `eye` in `node`'s frame
    * (metres; default its origin), looking along its +Z, and the nodes in `hide` are not drawn
    * (the helmet's visor that would be in front of the eyes). `standIn` is for a model that has no
-   * such node yet: the node is made at the middle of this mesh, its +Z along `look` (in the model's
-   * frame). Say so where it is used: it is a placeholder, not the model.
+   * such node yet: the node is made at the middle of this mesh, its +Z along `look` and its +Y as
+   * near `up` as that allows (both in the model's frame; without `up`, whichever way the shortest
+   * turn leaves it). Say so where it is used: it is a placeholder, not the model.
+   * The same place is where the camera sits on board (viewer/camera/onboard.ts): the first seat is the one it uses.
    */
   seats?: {
     node: string;
@@ -287,7 +306,7 @@ export interface ModelDef {
     open: [number, number];
     eye?: [number, number, number];
     hide?: string[];
-    standIn?: { mesh: string; look: [number, number, number] };
+    standIn?: { mesh: string; look: [number, number, number]; up?: [number, number, number] };
   }[];
   /** Where the model stands in the flight's one scene, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
@@ -406,7 +425,7 @@ export interface Trajectory {
     exitArea: Measure;
     /** Seconds from liftoff at which it is shut down. */
     cutoff: Measure;
-    /** How long it can burn before a propellant runs out, s: the live simulator (sim/vehicle.ts) stops it then if nobody has. */
+    /** How long it can burn before a propellant runs out, s: the live simulator (sim/vehicle.ts) stops it then if nobody has, unless the body gives the engine's `mixture`. */
     depletion?: Measure;
   };
   /** The tilt programme: degrees from the vertical at launch against seconds, held in inertial space by the gyros, in the plane of the azimuth. */
@@ -442,6 +461,41 @@ export interface Trajectory {
   main: { altitude: Measure; dragArea: Measure; fills: Measure };
   /** The vehicle as a body that turns: what the live simulator (src/sim/vehicle.ts) needs beyond the above. `fly` does not read it. */
   body?: Body;
+  /** What the air's heat does to it (src/sim/heating.ts): neither simulator's flight depends on it. */
+  heating?: Heating;
+}
+
+/**
+ * One surface the air heats, as a lump: so much of it per square metre to warm, taking a share of
+ * the heat flux at the stagnation point and radiating what its emissivity lets it (sim/heating.ts).
+ */
+export interface HeatedSurface {
+  name: string;
+  /** The names of the materials (as the model's GLBs have them) that are this surface: the viewer makes them glow by its temperature. */
+  materials: string[];
+  /**
+   * The fraction of the reference stagnation-point heat flux it takes, averaged over it: `up` while
+   * the vehicle flies nose first, `down` blunt end first. Left out, it is out of the air then (a heat
+   * shield under its booster).
+   */
+  share: { up?: Measure; down?: Measure };
+  /** What there is to warm, kg per square metre of surface. */
+  arealMass: Measure;
+  /** J/(kg K), taken as constant. */
+  specificHeat: Measure;
+  /** Of the heated face, 0 to 1. */
+  emissivity: Measure;
+  /** What it must not reach, K, and what that limit is (it melts, it loses its strength). */
+  limit: Measure;
+}
+
+export interface Heating {
+  /** The radius the reference stagnation-point heat flux is worked on, m: the blunt end's radius of curvature. */
+  noseRadius: Measure;
+  /** Every surface's temperature at liftoff, K. */
+  starts: Measure;
+  /** The first is the one the instruments read (the heat shield). */
+  surfaces: HeatedSurface[];
 }
 
 /**
@@ -458,6 +512,8 @@ export interface MassPart {
   radius?: number;
   /** A liquid in a tank: it drains, with every other, as the engine burns, and lies against the tank's lower end. */
   fluid?: boolean;
+  /** Which of the engine's two propellants a liquid is: with the body's `mixture`, each kind drains at its own rate. */
+  propellant?: 'oxidizer' | 'fuel';
   /** What takes it away: 'tower' for the escape tower's jettison. */
   sheds?: string;
   confidence: Confidence;
@@ -479,6 +535,38 @@ export interface AeroSurface {
   source: string;
 }
 
+/** A tank of attitude-control propellant and the system it feeds. */
+export interface RcsSupply {
+  name: string;
+  /** Who works its chambers: the automatic system (an autopilot's commands) or the manual one (a hand's: `Controls.manual`). */
+  mode: 'automatic' | 'manual';
+  /** What can be used of what it holds, kg, and the propellant's specific impulse, s: a chamber burns its thrust over g0 times this, kg/s. */
+  propellant: Measure;
+  isp: Measure;
+}
+
+/**
+ * One chamber of a reaction control system. The spacecraft's axes are the body's (sim/vehicle.ts): +X to the small end,
+ * and a positive command turns it right-handed about its axis.
+ */
+export interface Thruster {
+  name: string;
+  /** The `RcsSupply` that feeds it, by name. */
+  supply: string;
+  /** The command that opens it: the axis, and the sense of the turn it gives (1 or -1). */
+  axis: 'pitch' | 'yaw' | 'roll';
+  sense: 1 | -1;
+  /** Where its nozzle is, m from the spacecraft's centre of mass in the body's axes. */
+  at: [x: number, y: number, z: number];
+  /** The way it pushes the spacecraft, a unit vector in the body's axes: its jet leaves the other way. */
+  push: [x: number, y: number, z: number];
+  /** N. On or off, unless `least` is given: then the chamber is throttled by the command between `least` and this. */
+  thrust: number;
+  least?: number;
+  confidence: Confidence;
+  source: string;
+}
+
 /** A vehicle as a rigid body: mass along its length, where the air and the engine push, and what steers it. */
 export interface Body {
   /** The body's radius, m: what a part's own inertia is worked from. */
@@ -494,8 +582,21 @@ export interface Body {
     /** The arm the same deflection has about the long axis, m: roll torque is thrust times the sine of the deflection times this. */
     rollArm: Measure;
   };
+  /** How the engine can be worked: its kind, whether and how far it throttles, how often it starts. */
+  engine?: EngineNature;
+  /**
+   * Oxidizer to fuel, by mass, as the engine draws them. With it, and the liquids among `parts` marked `propellant`, the
+   * two tanks are drawn down separately and the engine stops when either is empty (instead of at `engine.depletion`).
+   */
+  mixture?: Measure;
   /** When the escape tower is let go on a flight without an abort, seconds from liftoff. */
   tower?: { at: Measure };
+  /**
+   * The escape rocket, for an abort (sim/vehicle.ts): its thrust along the vehicle's axis, N, how long it holds it, s, and
+   * its whole impulse, N s; what the impulse has over thrust times burn is spent as the thrust falls evenly to nothing.
+   * It pulls the spacecraft off with every part that `sheds: 'tower'` still on.
+   */
+  escape?: { thrust: Measure; burn: Measure; impulse: Measure };
   /** The spacecraft alone, after separation. */
   capsule: {
     /** Its centre of mass on the stack, m from the base. */
@@ -503,11 +604,120 @@ export interface Body {
     /** Radii of gyration about its long axis and across it, m. */
     gyration: { roll: Measure; across: Measure };
     surfaces: AeroSurface[];
-    /** The torque its attitude jets give about each axis at full command, N m. */
-    jets: { roll: Measure; pitch: Measure; yaw: Measure };
+    /** The torque its attitude jets give about each axis at full command, N m: used only where the jets are not given as hardware (`rcs`). */
+    jets?: { roll: Measure; pitch: Measure; yaw: Measure };
+    /** The reaction control system as hardware: what feeds it and every chamber. */
+    rcs?: { supplies: RcsSupply[]; thrusters: Thruster[] };
     /** How far from its centre of mass, toward the small end, a parachute pulls, m. */
     chuteArm: Measure;
+    /** What a pilot aboard is taken to live through: the speed it may meet the surface at, m/s, and the greatest load, g. Said on the card that ends a flight flown by hand (sim/verdict.ts). */
+    limits?: { landingSpeed: Measure; load: Measure };
+    /** The spacecraft side on to the air: without it, its drag at an angle is its end-on drag and its surfaces' only. */
+    side?: Broadside;
   };
+  /** The stack side on to the air, likewise: stations in metres from the base. */
+  side?: Broadside;
+  /** What the vehicle lets go, each flown on as a body of its own (src/sim/shed.ts). */
+  sheds?: ShedBody[];
+  /** What the structure and the parachutes can take (src/sim/loads.ts). Left out: nothing ever breaks. */
+  limits?: Limits;
+}
+
+/**
+ * A body side on to the air: the drag coefficient times the side's area, m^2, spread evenly along a stretch of the long
+ * axis (stations as the body's surfaces are measured). The air's push on each piece of the stretch goes as the square of
+ * that piece's own sideways speed through it, so it is nothing to speak of at a small angle, the whole of the drag
+ * broadside, and what slows a tumble.
+ */
+export interface Broadside {
+  dragArea: Measure;
+  from: Measure;
+  to: Measure;
+}
+
+/**
+ * Something a vehicle lets go that then flies on as a rigid body of its own (src/sim/shed.ts). Its mass is what the
+ * vehicle loses at that event and its centre of mass is where that mass was, so the two together keep the momentum
+ * they had. Its long axis is the vehicle's, +X toward the nose.
+ */
+export interface ShedBody {
+  /** The event that lets it go, as `Flight.flies.drops[].on` names it: 'tower', 'separation', 'retropack'. */
+  on: string;
+  name: string;
+  /** The stretch of the stack it is, m from the base, and its radius, m: its ends, for what touches the ground first. */
+  from: Measure;
+  to: Measure;
+  radius: Measure;
+  /**
+   * What it weighs, kg, its centre of mass, m from the base, and its radii of gyration about its long axis and across
+   * it, m: needed only where none of the stack's `parts` lies within its stretch (those give all of them, as `massOf`
+   * has them, with what is left in their tanks). With them, the vehicle is lighter by `mass` when it goes.
+   */
+  mass?: Measure;
+  centre?: Measure;
+  gyration?: { roll: Measure; across: Measure };
+  /** Its drag coefficient times area, m^2, moving nose end first and tail end first; `side` is the same, broadside. */
+  ahead: Measure;
+  astern: Measure;
+  side: Broadside;
+  /** What the air pushes sideways on in proportion to its angle (fins): stations from the base, slopes on the trajectory's `area`. */
+  surfaces?: AeroSurface[];
+  /** How fast it and the vehicle are pushed apart along the axis, m/s, shared between them by their masses. The 'separation' event's is `separation.speed`. */
+  push?: Measure;
+  /**
+   * A rocket of its own that lights as it leaves: its thrust, N, for `burn` seconds, along its +X turned `cant` degrees
+   * toward its +Z (through the centre of mass: it does not turn it). What is left of `impulse` (N s) after that is
+   * spent falling evenly to nothing, as `Body.escape`'s is.
+   */
+  motor?: { thrust: Measure; burn: Measure; impulse?: Measure; cant?: Measure };
+}
+
+/** What a vehicle can take before something gives (src/sim/loads.ts). Each is a figure with its confidence like any other. */
+export interface Limits {
+  /**
+   * The stack going up: dynamic pressure times the angle between the long axis and the motion through the air, Pa rad,
+   * which is what bends a slender vehicle. Past it the stack breaks at `joint`: the event (as `ShedBody.on`) whose
+   * two sides part.
+   */
+  qAlpha: Measure;
+  joint: string;
+  /** The greatest dynamic pressure each parachute can be let out in, Pa. Let out in more, it tears: `torn` of its drag area is left. */
+  drogue: Measure;
+  main: Measure;
+  torn: Measure;
+}
+
+/**
+ * A parachute as it is drawn (viewer/chute.ts): a canopy of gores on suspension lines that meet on a riser. What it does
+ * to the flight is the trajectory's (`drogue`, `main`: drag area and filling time); these are its looks, each with its
+ * confidence all the same.
+ */
+export interface ChuteDef {
+  /** Which of the simulator's parachutes it is. */
+  on: 'drogue' | 'main';
+  /** The node of the flown model it is made fast to: at the middle of the top of that node's bounds (+Y in its own frame). */
+  at: string;
+  /** How the cloth is cut: a ringsail's rings and sails with slots between, or a ribbon parachute's ribbons, more gap than cloth. */
+  cut: 'ringsail' | 'ribbon';
+  /** The canopy's diameter as made (laid flat), m. Filled, it is about two thirds of that across. */
+  diameter: Measure;
+  /** How many gores, and so how many suspension lines. */
+  gores: Measure;
+  /** The length of a suspension line, skirt to where they meet, m; and of the riser from there down to the vehicle, m. */
+  lines: Measure;
+  riser: Measure;
+  /** The gores' colours in turn round the canopy, as CSS hex. */
+  colours: { value: string[]; confidence: Confidence; source: string };
+  /**
+   * A reefed stage: the mouth held to `mouth` of its full width until `until` seconds after coming out, then let open,
+   * full at the trajectory's `fills`. Left out, the mouth opens evenly from out to full.
+   */
+  reefed?: { mouth: Measure; until: Measure };
+  /**
+   * Seconds from being thrown out to line stretch: until then it is paying out, a streamer on lines not yet their
+   * length, and it fills over what is left of `fills`. Drawn only: the simulator's drag grows from the moment it is out.
+   */
+  stretch?: Measure;
 }
 
 /** A result the reports give, for the simulator to be held against: tests/sim.test.mjs integrates the trajectory and compares. */
@@ -553,16 +763,36 @@ export interface Flight {
   /**
    * The flight in the scene: which model the trajectory carries off the pad (after liftoff it is
    * where the simulator has it), and the parts of it that leave it on the way, at seconds from
-   * liftoff (and are no longer drawn: what happens to them is not flown yet).
+   * liftoff: each then flies on as a body of its own where `trajectory.body.sheds` gives one for its `on` (sim/shed.ts).
    */
   flies?: {
     model: string;
     /** `on`: which of the simulator's events lets them go, for a flight flown by hand (sim/vehicle.ts), where it happens when the pilot says. */
-    drops: { at: number; nodes: string[]; on?: 'tower' | 'separation' | 'retropack' }[];
+    drops: {
+      at: number;
+      nodes: string[];
+      /** A parachute's coming out can let something go too: for those, `at` is the record's time and the run on show gives its own. */
+      on?: 'tower' | 'separation' | 'retropack' | 'drogue' | 'main';
+      /** It leaves hanging under that parachute, which goes with it, instead of falling free. */
+      under?: 'drogue' | 'main';
+    }[];
     /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
     turned?: number;
+    /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */
+    datum?: number;
     /** The node whose lowest point is the nozzle's exit: the engine's fire is drawn from there while it burns. */
     engine?: string;
+    /** The parachutes, drawn (viewer/chute.ts) when the simulator lets each out. */
+    chutes?: ChuteDef[];
+    /** What the air does to it that is drawn (viewer/effects.ts), by the nodes and materials it happens to. */
+    air?: {
+      /** The node whose lower end (-Y in the model's frame) is the blunt face that meets the air coming down: the shock layer's glow stands off it. */
+      shield?: string;
+      /** The node at whose top the body stops widening: the collar of cloud at Mach 1 forms there and trails back. */
+      collar?: string;
+      /** The names of the materials that are frost on a cold tank: ice falls from there at liftoff. */
+      frost?: string[];
+    };
   };
   models: ModelDef[];
   /** The place round the pad, built like a model (the site's own: sites/<site>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */

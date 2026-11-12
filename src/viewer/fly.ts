@@ -1,21 +1,13 @@
 import * as THREE from 'three';
 
-/**
- * How the view is moved when nobody is being walked as. `orbit` turns about a subject; `fly` is a
- * camera on its own, looking where it is pointed and going where it is sent; `chase` turns about
- * the vehicle the flight carries off the pad and goes with it (stage.ts: chase). The C key steps
- * through them (ui.ts).
- */
-export type CameraMode = 'orbit' | 'fly' | 'chase';
-export const CAMERA_MODES: CameraMode[] = ['orbit', 'fly', 'chase'];
-
 const UP = new THREE.Vector3(0, 1, 0);
 /** Radians of turn per pixel dragged. */
 const LOOK = 0.003;
 /** Metres per second near the ground, and how much faster per metre of height: far to go when high up, fine control when low. */
 const SPEED = 14;
 const SPEED_PER_METRE = 1.2;
-const FASTEST = 400;
+/** The fastest it goes: its own height in under a second, until that is faster than anything needs to be. */
+const FASTEST = 60_000;
 /** A key held gathers speed: this many times faster after RAMP seconds, so a tap is a nudge and a hold covers ground. */
 const HELD = 3;
 const RAMP = 2.5;
@@ -44,6 +36,12 @@ export class Flyer {
     const d = camera.getWorldDirection(new THREE.Vector3());
     this.yaw = Math.atan2(-d.x, -d.z);
     this.pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
+  }
+
+  /** Take a heading: the way `d` points (a unit vector). */
+  face(d: THREE.Vector3): void {
+    this.yaw = Math.atan2(-d.x, -d.z);
+    this.pitch = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)), -1.5, 1.5);
   }
 
   /**
@@ -103,7 +101,7 @@ export class Flyer {
     this.arrived = journey;
   }
 
-  private direction(): THREE.Vector3 {
+  direction(): THREE.Vector3 {
     const c = Math.cos(this.pitch);
     return new THREE.Vector3(-Math.sin(this.yaw) * c, Math.sin(this.pitch), -Math.cos(this.yaw) * c);
   }

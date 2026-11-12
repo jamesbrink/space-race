@@ -189,14 +189,49 @@ export interface Hit {
   distance: number;
 }
 
-/** A mesh near enough to matter this tick, with what is needed to ask it questions in its own coordinates. */
+/**
+ * A mesh's bounds in the world, as it is posed now: worked out again only when its world matrix or its
+ * geometry's own bounds are not what they were the last time (most of a site never moves, and it is asked
+ * several times a frame).
+ */
+export class WorldBox {
+  readonly box = new THREE.Box3();
+  /** The world matrix (16) and the geometry's bounds (6) the box was worked out from. */
+  private readonly from = new Float64Array(22).fill(Number.NaN);
+
+  /** Bring `box` up to date with the mesh. True if it had to be worked out again. */
+  fit(mesh: THREE.Mesh): boolean {
+    const geometry = mesh.geometry;
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const { min, max } = geometry.boundingBox!;
+    const e = mesh.matrixWorld.elements,
+      f = this.from;
+    let same = f[16] === min.x && f[17] === min.y && f[18] === min.z && f[19] === max.x && f[20] === max.y && f[21] === max.z;
+    for (let i = 0; same && i < 16; i++) same = f[i] === e[i];
+    if (same) return false;
+    f.set(e);
+    f[16] = min.x;
+    f[17] = min.y;
+    f[18] = min.z;
+    f[19] = max.x;
+    f[20] = max.y;
+    f[21] = max.z;
+    this.box.copy(geometry.boundingBox!).applyMatrix4(mesh.matrixWorld);
+    return true;
+  }
+}
+
+/** A mesh that may be near enough to matter this tick, with what is needed to ask it questions in its own coordinates. */
 interface Near {
   mesh: THREE.Mesh;
   bvh: MeshBVH;
-  /** Its bounds in the world, as it is posed now. */
+  /** Its bounds in the world, as it is posed now (`world`'s). */
   box: THREE.Box3;
+  world: WorldBox;
+  /** The inverse of its world matrix and its scale, and whether it has moved since they were worked out. */
   inverse: THREE.Matrix4;
   scale: number;
+  stale: boolean;
 }
 
 const DOWN = new THREE.Vector3(0, -1, 0);
@@ -205,6 +240,9 @@ const under = (o: THREE.Object3D, root: THREE.Object3D): boolean => {
   return false;
 };
 const UP = new THREE.Vector3(0, 1, 0);
+/** How many times a geometry's vertices have been given again since it was made. */
+const versionOf = (geometry: THREE.BufferGeometry): number =>
+  (geometry.getAttribute('position') as THREE.BufferAttribute | undefined)?.version ?? -1;
 
 /**
  * Everything solid: the meshes under a set of roots. Each geometry gets a bounding volume
@@ -215,9 +253,11 @@ const UP = new THREE.Vector3(0, 1, 0);
  */
 export class Solids {
   private roots: THREE.Object3D[] = [];
-  private readonly lists = new WeakMap<THREE.Object3D, THREE.Mesh[]>();
+  /** The meshes under each root, found once, each with its record. */
+  private readonly lists = new WeakMap<THREE.Object3D, Near[]>();
   private readonly trees = new WeakMap<THREE.BufferGeometry, MeshBVH>();
-  private readonly records = new WeakMap<THREE.Mesh, Near>();
+  /** The version of each geometry's vertices its hierarchy was made from (`fresh`). */
+  private readonly madeAt = new WeakMap<MeshBVH, number>();
   private near: Near[] = [];
   /** The ladders among them (`userData.climb`): not walls and not floors, but something to climb. */
   private rungs: Near[] = [];
@@ -239,18 +279,48 @@ export class Solids {
     this.roots = roots;
   }
 
-  private meshes(root: THREE.Object3D): THREE.Mesh[] {
+  private meshes(root: THREE.Object3D): Near[] {
     let list = this.lists.get(root);
     if (!list) {
       list = [];
       root.traverse((o) => {
         const mesh = o as THREE.Mesh;
         // one instanced mesh is thousands of plants: scrub is walked through, not into
-        if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && mesh.geometry.getAttribute('position')) list!.push(mesh);
+        if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && mesh.geometry.getAttribute('position')) {
+          const world = new WorldBox();
+          list!.push({ mesh, bvh: null as unknown as MeshBVH, box: world.box, world, inverse: new THREE.Matrix4(), scale: 1, stale: true });
+        }
       });
       this.lists.set(root, list);
     }
     return list;
+  }
+
+  /** Whether a geometry has a hierarchy yet. */
+  has(geometry: THREE.BufferGeometry): boolean {
+    return this.trees.has(geometry);
+  }
+
+  /**
+   * A geometry's hierarchy if it has one that is still true of it: its vertices are as they were when it was made.
+   * (One whose vertices are moved afterwards, a hose, keeps the hierarchy it had; a pick must not trust that.)
+   */
+  fresh(geometry: THREE.BufferGeometry): MeshBVH | null {
+    const tree = this.trees.get(geometry);
+    return tree && this.madeAt.get(tree) === versionOf(geometry) ? tree : null;
+  }
+
+  /** A geometry's hierarchy, built the first time it is asked for. */
+  tree(geometry: THREE.BufferGeometry): MeshBVH {
+    let tree = this.trees.get(geometry);
+    if (!tree) {
+      // indirect: the hierarchy keeps its own ordering and leaves the geometry's index as the renderer has it
+      tree = new MeshBVH(geometry, { indirect: true });
+      this.trees.set(geometry, tree);
+      this.madeAt.set(tree, versionOf(geometry));
+      this.built++;
+    }
+    return tree;
   }
 
   /**
@@ -263,28 +333,19 @@ export class Solids {
     this.region.min.set(centre.x - reach, centre.y - below, centre.z - reach);
     this.region.max.set(centre.x + reach, centre.y + above, centre.z + reach);
     for (const root of this.roots)
-      for (const mesh of this.meshes(root)) {
+      for (const record of this.meshes(root)) {
+        const mesh = record.mesh;
         if (!mesh.visible) continue;
         if (this.without && under(mesh, this.without)) continue;
-        const geometry = mesh.geometry;
-        if (!geometry.boundingBox) geometry.computeBoundingBox();
-        let record = this.records.get(mesh);
-        if (!record) {
-          record = { mesh, bvh: null as unknown as MeshBVH, box: new THREE.Box3(), inverse: new THREE.Matrix4(), scale: 1 };
-          this.records.set(mesh, record);
-        }
-        record.box.copy(geometry.boundingBox!).applyMatrix4(mesh.matrixWorld);
+        // (its bounds and what follows from its world matrix are worked out again only if it has moved)
+        if (record.world.fit(mesh)) record.stale = true;
         if (!record.box.intersectsBox(this.region)) continue;
-        let tree = this.trees.get(geometry);
-        if (!tree) {
-          // indirect: the hierarchy keeps its own ordering and leaves the geometry's index as the renderer has it
-          tree = new MeshBVH(geometry, { indirect: true });
-          this.trees.set(geometry, tree);
-          this.built++;
+        record.bvh = this.tree(mesh.geometry);
+        if (record.stale) {
+          record.inverse.copy(mesh.matrixWorld).invert();
+          record.scale = mesh.matrixWorld.getMaxScaleOnAxis();
+          record.stale = false;
         }
-        record.bvh = tree;
-        record.inverse.copy(mesh.matrixWorld).invert();
-        record.scale = mesh.matrixWorld.getMaxScaleOnAxis();
         (mesh.userData.climb || mesh.parent?.userData.climb ? this.rungs : this.near).push(record);
       }
   }

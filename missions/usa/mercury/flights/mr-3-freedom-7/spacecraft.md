@@ -60,7 +60,9 @@ section 5). 52,000 is the nominal axial figure.
   necessarily the whole hatch), with release handles inside and out. The first design
   bolted the hatch on with 70 bolts; the explosive hatch (23 lb, 70 bolts and a detonating fuse)
   arrived with No. 11.
-- A beryllium heat-sink shield, not the ablative shield of the orbital flights.
+- A beryllium heat-sink shield, not the ablative shield of the orbital flights. As the simulator flies it the shield
+  warms by 13 K (`trajectory.heating` in `flight.ts`; the flight's README, "Heating"): it is one lump at
+  one temperature there, 46.9 kg behind each square metre, and nothing measured is held against it.
 
 It did carry a landing bag, which worked.
 
@@ -98,10 +100,22 @@ The same GLB also holds the launch vehicle's five nodes: see
   shades, no survival kit.
 - **The tower's bracing** (one diagonal per bay) is a simplification.
 - **Lettering is Arial Bold**, not the stencil McDonnell used; "FREEDOM 7" was hand-painted.
+- **Which motor fired the tower clear is not in anything read.** The simulator flies the jettisoned
+  tower on the jettison motor's 800 lbf for 1.5 s, along the axis; if the escape motor fired (as is
+  remembered), it left far harder. The tower's and the retropack's drag areas, the retropack's centre of
+  mass and inertia, and the metre a second its spring is given are estimates (`trajectory.body.sheds`).
+  The retropack is flown at the whole 276 lb the record's weights step by, burned propellant included.
+- **The spacecraft's drag off its axis is a model, not a measurement**: the zero-angle curves (TM X-491)
+  along the axis by whichever end leads, falling as the cosine, and a cross-flow on its side of 3.6 sq m
+  (`trajectory.body.capsule.side`, estimated). Small end first it is given the curve of the capsule with
+  its tower, the only nose-first curve read.
 - **No mass properties in the model.** The postlaunch report has the capsule's centre of gravity
   and moments of inertia; they have not been read. The simulator flies on estimates of them
   (`trajectory.body.capsule` in `flight.ts`, labelled `estimated`): replace them from the report.
-- Parachutes, the recovery aids and the periscope's retracted state are not modelled.
+- The parachutes are not in the model: the viewer draws them in flight from `flies.chutes` in `flight.ts`
+  (gores, lines and colours estimated). The recovery aids and the periscope's retracted state are not modelled.
+- The attitude jets' nozzles are not placed from a drawing: the simulator's chambers stand where
+  `flight.ts` (`RCS_THRUSTERS`) puts them by judgement, and the viewer draws their jets there.
 
 ## Sources
 

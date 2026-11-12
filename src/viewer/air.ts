@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { fieldAs, noise2 } from './field';
+import { fieldAs, noise2 } from './field.ts';
 
 /**
  * The air between the eye and what it sees, for every material that takes the scene's fog.
@@ -82,11 +82,16 @@ export function driftClouds(dt: number): void {
   cloudRise.value = (cloudRise.value + 0.4 * dt) % 1024; // (the billows' noise repeats every 1,024 m: clouds.ts)
 }
 
-/** The noise the cloud field is cut from, before its threshold: in JavaScript; `cloudField` has it in GLSL. */
+/**
+ * The noise the cloud field is cut from, before its threshold: in JavaScript; `cloudField` has it in GLSL.
+ * Three octaves make the clouds; a fourth, four times as broad as a cloud, gathers them: cumulus stand in
+ * groups with clear air between, the big ones together, scraps at the groups' edges (its weight estimated).
+ */
 const cloudNoise = (qx: number, qz: number): number =>
-  noise2(qx, qz, 91) * 0.5 +
-  noise2(qx * 2.13 + 7.1, qz * 2.13 + 7.1, 92) * 0.27 +
-  noise2(qx * 4.37 + 3.3, qz * 4.37 + 3.3, 93) * 0.15 +
+  noise2(qx * 0.23 + 1.7, qz * 0.23 + 5.3, 94) * 0.3 +
+  noise2(qx, qz, 91) * 0.33 +
+  noise2(qx * 2.13 + 7.1, qz * 2.13 + 7.1, 92) * 0.21 +
+  noise2(qx * 4.37 + 3.3, qz * 4.37 + 3.3, 93) * 0.12 +
   0.04;
 
 /** Half the breadth of a cloud's soft edge, in the noise's units. */
@@ -133,7 +138,8 @@ export function cloudAt(c: Clouds, x: number, z: number, driftX: number, driftZ:
 export const cloudNoiseGlsl = (c: Clouds, prefix: string): string => /* glsl */ `
   float cloudNoise(vec2 at) {
     vec2 q = at / ${c.size.toFixed(1)};
-    return ${prefix}noise2(q, 91) * 0.5 + ${prefix}noise2(q * 2.13 + 7.1, 92) * 0.27 + ${prefix}noise2(q * 4.37 + 3.3, 93) * 0.15 + 0.04;
+    return ${prefix}noise2(q * 0.23 + vec2(1.7, 5.3), 94) * 0.3 + ${prefix}noise2(q, 91) * 0.33 + ${prefix}noise2(q * 2.13 + 7.1, 92) * 0.21
+      + ${prefix}noise2(q * 4.37 + 3.3, 93) * 0.12 + 0.04;
   }`;
 export const cloudMiddle = (c: Clouds): number => 0.5 * (edges(c)[0] + edges(c)[1]);
 
@@ -154,7 +160,9 @@ const cloudField = (c: Clouds | undefined) =>
     float layer = 0.5 * (uCloudDrift.y + uCloudDrift.w) - dot(world.xz, world.xz) / ${(2 * 6_371_000).toFixed(1)};
     vec2 under = world.xz + toLight.xz / toLight.y * (layer - world.y);
     float w = 0.25 * fp / ${c.size.toFixed(1)};
-    float dark = 0.8 * smoothstep(0.1, 0.6, smoothstep(${edges(c)[0].toFixed(3)} - w, ${edges(c)[1].toFixed(3)} + w, cloudNoise(under - uCloudDrift.xz)));
+    // (a cloud stands where the noise is over its cut (clouds.ts), and the Sun's disc blurs the shadow of one 720 m up
+    // by ten metres: so the shadow is the cloud's own size and darkens over 180 m in from its edge, as the cloud thickens)
+    float dark = 0.8 * smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - w, ${(cloudMiddle(c) + 0.03).toFixed(3)} + w, cloudNoise(under - uCloudDrift.xz));
     return 1.0 - mix(dark, ${(0.8 * c.cover).toFixed(3)}, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
   }`
     : '';

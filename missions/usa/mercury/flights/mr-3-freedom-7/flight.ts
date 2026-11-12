@@ -3,12 +3,15 @@ import type {
   Body,
   Flight,
   FlightCheck,
+  Heating,
   Keyframe,
   MassPart,
   Measure,
   ModelDef,
   Move,
   Part,
+  RcsSupply,
+  Thruster,
   Trajectory,
 } from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
@@ -345,8 +348,11 @@ const ROLLED_BACK = GANTRY_REMOVED + 5 * MIN;
  * (05:20 EST, documented, as in the pad's sequence) until the structure and its white room rolled
  * back (06:37, documented). When the hatch was closed within that is not recorded here, so the
  * window ends at the last moment there was a way to the hatch at all. The model has no seat node
- * yet: the place is a stand-in at the middle of the pilot's visor, looking up the capsule's axis
- * at the instrument panel (vehicle.md should give the couch a `Seat_Pilot` empty at the eyes).
+ * yet: the place is a stand-in at the middle of the pilot's visor, looking at the middle of the
+ * instrument panel as the model has the two (the panel is 0.36 m up the capsule's axis from the
+ * visor and 0.65 m across it, toward his knees), the top of his head toward the nose side of
+ * that: estimated, from the model's own nodes (vehicle.md should give the couch a `Seat_Pilot`
+ * empty at the eyes). It is also where the camera sits on board.
  */
 vehicle.seats = [
   {
@@ -355,7 +361,7 @@ vehicle.seats = [
     from: 'Hatch',
     open: [est(5, 20), GANTRY_REMOVED],
     hide: ['CrewCabin_Pilot_Helmet_Visor', 'CrewCabin_Pilot_Helmet_VisorFrame', 'CrewCabin_Pilot_Helmet_VisorSeal'],
-    standIn: { mesh: 'CrewCabin_Pilot_Helmet_Visor', look: [0, 1, 0] },
+    standIn: { mesh: 'CrewCabin_Pilot_Helmet_Visor', look: [0, 0.479, -0.878], up: [0, 0.878, 0.479] },
   },
 ];
 const TMX = 'NASA TM X-53107, section 7.5, countdown pp. 7-25 to 7-33';
@@ -1151,6 +1157,78 @@ const part = (
 ): MassPart => ({ name, from: from * IN, to: to * IN, mass: pounds * LB, confidence, source, ...more });
 
 /**
+ * The spacecraft's reaction control system as hardware (src/sim/vehicle.ts). The chambers' ratings are Hammack and
+ * Heberlig's, as spacecraft.md has them; where each stands, what the tanks held and the peroxide's specific impulse are
+ * not in anything read, and say so. Places are metres from the spacecraft's centre of mass in the body's axes (+X to the
+ * small end); each chamber pushes the spacecraft away from the side its nozzle is on.
+ */
+const PEROXIDE_ISP = guess(
+  150,
+  'not in anything read: 90 per cent hydrogen peroxide decomposed over a catalyst gives about 150 s in a small chamber in vacuum, the usual figure for the propellant',
+);
+const RCS_SUPPLIES: RcsSupply[] = [
+  {
+    name: 'automatic',
+    mode: 'automatic',
+    propellant: guess(
+      32 * LB,
+      'not in anything read: about 32 lb of peroxide for the automatic system is the figure commonly quoted for the capsule',
+    ),
+    isp: PEROXIDE_ISP,
+  },
+  {
+    name: 'manual',
+    mode: 'manual',
+    propellant: guess(
+      23 * LB,
+      'not in anything read: about 23 lb of peroxide for the manual system is the figure commonly quoted for the capsule',
+    ),
+    isp: PEROXIDE_ISP,
+  },
+];
+/** How far up the axis from the centre of mass the pitch and yaw chambers stand, and how far from the axis; the roll chambers' distance from the axis: all ours. */
+const JET_ARM = 1.8;
+const JET_OUT = 16 * IN;
+const ROLL_OUT = 0.8;
+const RATED =
+  'Hammack and Heberlig (spacecraft.md, Propulsion): the automatic system has two 24 lbf and two 1 lbf chambers each in pitch and yaw, and two 6 lbf and two 1 lbf in roll';
+const PLACED_PY = `on the recovery compartment, taken as ${JET_ARM} m up the axis from the centre of mass assumed above and on its 32 in skin: the place is ours`;
+const PLACED_ROLL = `taken as ${ROLL_OUT} m from the axis at the centre of mass’s own station, so that by these figures roll does not pitch: where the roll chambers stood along the cone has not been read`;
+const VARIABLE =
+  'not in anything read: spacecraft.md has the manual system as six chambers of variable thrust, range not found; 4 to 24 lbf in pitch and yaw and 1 to 6 lbf in roll are the figures commonly quoted';
+const jet = (name: string, supply: string, axis: Thruster['axis'], sense: 1 | -1, pounds: number, least?: number): Thruster => {
+  // pitch turns about +Y and yaw about +Z, so their chambers push along Z and Y from the small end; one roll chamber pushes across an arm out on +Y
+  const at: Thruster['at'] =
+    axis === 'pitch' ? [JET_ARM, 0, sense * JET_OUT] : axis === 'yaw' ? [JET_ARM, -sense * JET_OUT, 0] : [0, ROLL_OUT, 0];
+  const push: Thruster['push'] = axis === 'pitch' ? [0, 0, -sense] : axis === 'yaw' ? [0, sense, 0] : [0, 0, sense];
+  return {
+    name,
+    supply,
+    axis,
+    sense,
+    at,
+    push,
+    thrust: pounds * LBF,
+    ...(least === undefined ? {} : { least: least * LBF }),
+    confidence: 'estimated',
+    source: `${supply === 'manual' ? VARIABLE : RATED}. ${axis === 'roll' ? PLACED_ROLL : PLACED_PY}`,
+  };
+};
+const RCS_THRUSTERS: Thruster[] = (['pitch', 'yaw', 'roll'] as const).flatMap((axis) =>
+  ([1, -1] as const).flatMap((sense) => {
+    const way = `${axis} ${sense > 0 ? '+' : '−'}`;
+    return [
+      jet(`${way}, automatic high`, 'automatic', axis, sense, axis === 'roll' ? 6 : 24),
+      jet(`${way}, automatic low`, 'automatic', axis, sense, 1),
+      jet(`${way}, manual`, 'manual', axis, sense, axis === 'roll' ? 6 : 24, axis === 'roll' ? 1 : 4),
+    ];
+  }),
+);
+
+/** How fast the spacecraft and the booster parted: the trajectory's figure, and the booster's own push as a body let go. */
+const trajectoryPush = doc(30 * FT, `${PLR}, section 4.2: separation velocity approximately 30 plus or minus 3 ft/s, from AZUSA and radar`);
+
+/**
  * The stack as a body that turns (src/sim/vehicle.ts). The lengths and most of the weights are
  * the reports'; how the weight lies along each section, where the air pushes and how hard the
  * vanes steer are not in anything read, and say so.
@@ -1186,7 +1264,7 @@ const body: Body = {
       'derived',
       'everything liquid at liftoff (the liftoff weight less the dry booster and the capsule: 53,965 lb, peroxide and nitrogen with it), shared between the tanks as their volumes at assumed densities ' +
         '(29,250 to 24,000 lb: vehicles/redstone-mrlv.md); the oxygen tank is the lower (Figure 4-1), 16.83 ft long',
-      { fluid: true },
+      { fluid: true, propellant: 'oxidizer' },
     ),
     part(
       'alcohol',
@@ -1195,9 +1273,7 @@ const body: Body = {
       (FLUIDS * 24_000) / 53_250,
       'derived',
       'the rest of the same; the alcohol tank is 18.8 ft long, over the oxygen',
-      {
-        fluid: true,
-      },
+      { fluid: true, propellant: 'fuel' },
     ),
     part(
       'spacecraft',
@@ -1246,7 +1322,33 @@ const body: Body = {
     station: guess(0, 'the vanes stand in the exhaust at the nozzle’s exit, taken as the base'),
     rollArm: guess(0.3, 'the vanes’ distance from the axis, from the 33 in nozzle exit (itself estimated)'),
   },
+  engine: {
+    kind: 'liquid',
+    starts: 1,
+    confidence: 'estimated',
+    source:
+      'the A-7 burned alcohol and liquid oxygen at one thrust, was started once on the pad and was shut down by the velocity integrator’s signal (the cutoff above) or by running dry. ' +
+      'That it had no throttle and no means of relighting is what is generally said of it and what the reports’ single thrust figure implies: no page read states it',
+  },
+  mixture: guess(
+    29_250 / 24_000,
+    'the engine’s mixture ratio is not in anything read. Taken as the ratio the two tanks’ loads stand in (29,250 to 24,000 lb: vehicles/redstone-mrlv.md, themselves the tanks’ volumes at assumed densities), ' +
+      'so by these figures both run dry together, 147.0 s into the burn, with the peroxide and nitrogen counted in them. That, and not `engine.depletion`’s 143.5 s, now ends a burn nobody cuts',
+  ),
   tower: { at: doc(TOWER_OFF, `${PLR}, section 4.1: the escape tower released at 02:22.2`) },
+  escape: {
+    thrust: doc(
+      52_000 * LBF,
+      'McDonnell SEDR 104 (spacecraft.md, Propulsion): 52,000 lbf, the nominal figure along the axis, its three nozzles being canted 19 degrees. ' +
+        'Also in print: 58,500 lbf (Hammack and Heberlig) and 56,000 lbf (SEDR 104, section 5)',
+    ),
+    burn: doc(0.78, 'McDonnell SEDR 104 (spacecraft.md, Propulsion): 52,000 lbf for 0.78 s, then decaying'),
+    impulse: doc(
+      56_500 * LBF,
+      'McDonnell SEDR 104 (spacecraft.md, Propulsion): 56,500 lb-s in all. Taken as along the axis, as the thrust is: if it is the motor’s own, the cant makes it 5 per cent less. ' +
+        'How the thrust decays is not given: it is taken to fall evenly to nothing, which spends the rest of the impulse in 0.61 s',
+    ),
+  },
   capsule: {
     centre: guess(
       (SHIELD_TIP + CAPSULE_CG) * IN,
@@ -1270,16 +1372,241 @@ const body: Body = {
           `The slope, 0.5 per radian, is a guess at ${TMX_491}’s curves, not a reading of them`,
       },
     ],
-    jets: {
-      roll: guess(6 * LBF * 0.8, 'a 6 lbf roll chamber (Hammack and Heberlig) at about 0.8 m from the axis: the arm is ours'),
-      pitch: guess(
-        24 * LBF * 1.8,
-        'a 24 lbf pitch chamber (Hammack and Heberlig) on the small end, about 1.8 m from the centre of mass: the arm is ours',
-      ),
-      yaw: guess(24 * LBF * 1.8, 'as pitch'),
-    },
+    rcs: { supplies: RCS_SUPPLIES, thrusters: RCS_THRUSTERS },
     chuteArm: guess(1.8, 'the parachutes pull at the top of the recovery compartment, about 1.8 m from the centre of mass assumed above'),
+    side: {
+      dragArea: guess(
+        3.6,
+        'the spacecraft seen from the side is a cone from 74.5 in to 32 in across over 60 in and a 32 in cylinder above it, about 4,600 sq in (3.0 sq m), at 1.2, ' +
+          'the drag coefficient of a round body across the flow (the textbook figure for a cylinder below its critical Reynolds number; held at every Mach number). Not from a tunnel',
+      ),
+      from: guess(
+        -0.41,
+        'the side’s area lies about a point 27 in toward the small end from the centre of mass assumed above; it is spread evenly 1.1 m either way of that',
+      ),
+      to: guess(1.79, 'as the other end'),
+    },
+    limits: {
+      landingSpeed: guess(
+        12,
+        'not in anything read. The design landing was 28 to 30 ft/s (8.5 to 9.1 m/s: Hammack p. 28) onto the landing bag; 12 m/s, a third more, is taken as the most a pilot on the couch walks away from. Ours',
+      ),
+      load: guess(
+        20,
+        'not in anything read. The flight itself put 11.0 g on the pilot at entry (Postlaunch Report 4.2) and an abort off the pad is some 13 g by the escape rocket’s figures; 20 g for a few seconds, chest to back on a contour couch, is the figure usually given for what the couch was built to. Ours',
+      ),
+    },
   },
+  side: {
+    dragArea: guess(
+      42,
+      'the stack seen from the side: a 70 in body 708 in long and the spacecraft above it, about 54,000 sq in (35 sq m), at 1.2, the drag coefficient of a round body across the flow ' +
+        '(the textbook figure for a cylinder below its critical Reynolds number; held at every Mach number). The fins are `surfaces`; the tower is left out. Not from a tunnel',
+    ),
+    from: doc(0, 'the fins’ trailing edges, the stations’ zero'),
+    to: derived(
+      777 * IN,
+      'the side’s area lies about station 388.5 in (the body’s 49,560 sq in about 354 in and the spacecraft’s 4,600 about 760 in); spread evenly from the base, that is a stretch 777 in long. ' +
+        'The stack itself is 820.6 in to the canister’s top',
+    ),
+  },
+  sheds: [
+    {
+      on: 'tower',
+      name: 'Escape tower',
+      from: doc(CANISTER_TOP * IN, 'SEDR 104, Figure 1-3: the tower stands on the canister’s top'),
+      to: doc(SPIKE_TIP * IN, 'SEDR 104, Figure 1-3: spike tip at 284.55 in above the capsule’s widest plane'),
+      radius: guess(0.2, 'the escape motor’s case is 15 in across (SEDR 104, Figure 1-3); the pylon under it is wider and open'),
+      ahead: guess(0.35, 'spike first: the 15 in motor case (0.11 sq m) and the open pylon’s tubes behind it, by judgement. Not measured'),
+      astern: guess(0.5, 'clamp ring first: the open pylon, the nozzles and the case’s flat end, by judgement. Not measured'),
+      side: {
+        dragArea: guess(1.2, 'side on: a 15 in case 4 ft long, the spike and the pylon’s tubes, about 1 sq m at 1.2. By judgement'),
+        from: doc(CANISTER_TOP * IN, 'the tower’s foot'),
+        to: doc(SPIKE_TIP * IN, 'the spike’s tip'),
+      },
+      motor: {
+        thrust: doc(
+          800 * LBF,
+          'NASA SP-45 (spacecraft.md, Propulsion): the tower jettison motor, 800 lbf nominal (SEDR 104 has 785 lbf, through three nozzles canted 30 degrees). ' +
+            'Taken as along the axis, through the centre of mass. Which motor fired the tower clear of a good flight is not in anything read: the Postlaunch Report says only "released and fired clear". ' +
+            'If it was the escape motor (as is remembered of Mercury) the tower left sixty times harder than this',
+        ),
+        burn: doc(1.5, 'NASA SP-45 (spacecraft.md, Propulsion): 1.5 s'),
+      },
+    },
+    {
+      on: 'separation',
+      name: 'Redstone booster',
+      from: doc(0, 'the fins’ trailing edges'),
+      to: doc(BOOSTER_TOP * IN, `${TMX_4}, Figure 4-1: the booster’s top, 708 in`),
+      radius: doc(35 * IN, `${TMX_4}, Figure 4-11: body diameter 70 in`),
+      ahead: guess(
+        3.0,
+        'adapter first: the open, flat end of a 70 in cylinder (2.48 sq m) at 1.2, between the 0.8 of a flat-faced cylinder below the speed of sound and the 1.6 or so above it. One figure at every Mach number. Not measured',
+      ),
+      astern: guess(2.7, 'tail first: the same flat end with the nozzle in it and four fins edge on, taken a little less. By judgement'),
+      side: {
+        dragArea: guess(
+          38.4,
+          '70 in by 708 in is 49,560 sq in (32.0 sq m), at 1.2, the drag coefficient of a round body across the flow. The fins are `surfaces`. Not from a tunnel',
+        ),
+        from: doc(0, 'the fins’ trailing edges'),
+        to: doc(BOOSTER_TOP * IN, 'the booster’s top'),
+      },
+      surfaces: [
+        {
+          name: 'fins',
+          station: 55.2 * IN,
+          slope: 3.15,
+          confidence: 'estimated',
+          source: 'the stack’s own fins (`body.surfaces`): Barrowman’s method, subsonic, held at every Mach number and at every angle',
+        },
+      ],
+      push: trajectoryPush,
+    },
+    {
+      on: 'retropack',
+      name: 'Retropack',
+      from: doc(
+        (CAPSULE_PLANE - 27) * IN,
+        'SEDR 104, Figure 1-3: the retro nozzles’ exits, 27.0 in below the capsule’s widest plane (model/vehicle.py: Z_RETRO_BOTTOM)',
+      ),
+      to: doc(SHIELD_TIP * IN, 'the tip of the heat shield, which it is strapped under'),
+      radius: guess(0.38, 'about 30 in across, off the model; no drawing of the housing has been read for it'),
+      mass: derived(
+        (CAPSULE_ORBIT - 2579.0) * LB,
+        `${PLR}, section 3.1: the "orbit" weight less the re-entry weight, 276.14 lb. That is everything that went between the two, the retrorockets’ and posigrades’ burned propellant with it, ` +
+          'so the pack as it fell away was lighter than this (by some 170 lb, if the motors’ 13,000 lb-s each came at a specific impulse of 230 s, which is not recorded): it is flown at the whole figure',
+      ),
+      centre: guess(
+        (CAPSULE_PLANE - 17) * IN,
+        'the middle of the housing and its motors, 17 in below the capsule’s widest plane, by eye from the model',
+      ),
+      gyration: {
+        roll: guess(0.27, 'a solid disc of its radius has 0.27 m'),
+        across: guess(0.2, 'a disc 0.45 m deep and 0.38 m in radius has 0.23 m; the motors are near the middle'),
+      },
+      ahead: guess(0.45, 'either face on: a disc of its radius (0.45 sq m) at 1.0, by judgement'),
+      astern: guess(0.45, 'as the other face'),
+      side: {
+        dragArea: guess(0.35, 'edge on: 0.76 m by 0.45 m at 1.0, by judgement. Its three straps are left out'),
+        from: doc((CAPSULE_PLANE - 27) * IN, 'its lower end'),
+        to: doc(SHIELD_TIP * IN, 'its upper end'),
+      },
+      push: guess(
+        1,
+        'not in anything read. Its straps cut, the pack was thrown off the heat shield by a spring, as is remembered of Mercury; a metre a second is ours, to be replaced by the figure when one is read. ' +
+          'Shared with the spacecraft by their masses (which gets a tenth of it); fly.ts gives the spacecraft none',
+      ),
+    },
+  ],
+  limits: {
+    qAlpha: guess(
+      4000 * 47.880259 * (Math.PI / 180),
+      'not in anything read: no bending strength, design angle of attack or load factor of the Mercury-Redstone is in the reports here. 4,000 lb/sq ft degrees (3,340 Pa rad) is of the order ' +
+        'launch vehicles of the time are credited with, and at this flight’s own greatest dynamic pressure (586 lb/sq ft: Postlaunch Report 4.2) it is 6.8 degrees off the wind. Ours',
+    ),
+    joint: 'separation',
+    drogue: guess(
+      7000,
+      'not in anything read. Opened at Mach 1.5 at 70,000 ft, the most remembered of the Mercury drogue’s qualification, it would meet 7.0 kPa (0.7 times 4.44 kPa times 1.5 squared); ' +
+        'this flight’s own opens it falling at its terminal speed, in about 4 kPa. Ours',
+    ),
+    main: guess(
+      5000,
+      'not in anything read. The main had to open with the drogue failed, the spacecraft falling alone at its terminal speed: its weight over its own drag area, 4.0 kPa at any height. A quarter over that. Ours',
+    ),
+    torn: guess(0.05, 'a canopy torn or streaming is taken to keep a twentieth of its drag area: chosen, not recorded'),
+  },
+};
+
+const HANDBOOK =
+  'CRC Handbook of Chemistry and Physics (properties of the elements; thermal properties of metals): a standard figure, quoted without the page';
+/**
+ * What the air's heat is worked on (src/sim/heating.ts). The shield's size, shape and thickness are the record's; how the
+ * heat is shared out over each surface, and how well each radiates, are not in anything read, and say so. Nothing is fitted:
+ * no temperature measured on the flight is in the sources read, so there is nothing here to hold the result against.
+ */
+const heating: Heating = {
+  noseRadius: doc(80 * IN, 'NASA CR-649: the heat shield is a spherical cap of 80 in radius'),
+  starts: guess(300, 'a May morning at the Cape, about 27 C: what the shield and skin stood at on the pad is not in anything read'),
+  surfaces: [
+    {
+      name: 'Heat shield',
+      materials: ['heatsink-beryllium'],
+      share: {
+        down: guess(
+          0.9,
+          'the laminar heat flux over a sphere falls off from its stagnation point about as the cosine of the angle to the power 1.5, and the cap reaches only 27.7 degrees ' +
+            '(74.5 in across on an 80 in radius): 0.83 at the rim, some 0.9 over the face. The rise at the corner is left out. No measured distribution read',
+        ),
+      },
+      arealMass: derived(
+        1848 * 1.0 * IN,
+        `Hammack and Heberlig: a beryllium heat sink "approximately 1-inch-thick"; beryllium is 1,848 kg/m3 (${HANDBOOK}): 46.9 kg behind each square metre, 140 kg over the cap's 2.98 m2`,
+      ),
+      specificHeat: doc(
+        1825,
+        `${HANDBOOK}: beryllium at 25 C. It rises with temperature (about half as much again by 600 K), so held constant it overstates the rise`,
+      ),
+      emissivity: guess(
+        0.5,
+        'between bare polished beryllium (about 0.2) and an oxidised face (about 0.6): the shield’s finish is not in anything read',
+      ),
+      limit: doc(1560, `${HANDBOOK}: beryllium melts at 1,287 C`),
+    },
+    {
+      name: 'Afterbody shingles',
+      materials: ['shingle-rene41'],
+      share: {
+        up: guess(
+          0.3,
+          'a 20-degree cone flank in attached flow, against the stagnation point of a 2 m sphere: a judgement. CR-649 has the measurements; not read for them',
+        ),
+        down: guess(
+          0.05,
+          'in the wake behind the shield: a few per cent of the stagnation flux is the usual figure for a blunt body’s afterbody. CR-649 not read for it',
+        ),
+      },
+      arealMass: derived(
+        8250 * 0.016 * IN,
+        'Hammack and Heberlig; CR-649: Rene 41 shingles 0.016 in thick, at the alloy’s 8.25 g/cm3 (maker’s data sheet, quoted without the page): 3.35 kg/m2. The insulation behind is left out',
+      ),
+      specificHeat: guess(452, 'Rene 41 at room temperature, 0.108 Btu/lb F, as its maker’s data sheet is remembered: not looked up'),
+      emissivity: guess(0.85, 'the shingles were given a dark oxidised finish so as to radiate: no figure read'),
+      limit: guess(1255, 'Rene 41 is used to about 1,800 F: the shingles’ own limit is not in anything read'),
+    },
+    {
+      name: 'Recovery compartment shingles',
+      materials: ['shingle-beryllium'],
+      share: {
+        up: guess(0.15, 'a cylinder lying along the flow behind the canister: half the cone’s share, by judgement'),
+        down: guess(0.03, 'furthest back in the wake: by judgement'),
+      },
+      arealMass: derived(
+        1848 * 0.22 * IN,
+        `Hammack and Heberlig; CR-649: beryllium shingles 0.22 in thick, at 1,848 kg/m3 (${HANDBOOK}): 10.3 kg/m2`,
+      ),
+      specificHeat: doc(1825, `${HANDBOOK}: beryllium at 25 C`),
+      emissivity: guess(0.5, 'as the heat shield: between polished and oxidised beryllium, the finish not read'),
+      limit: doc(1560, `${HANDBOOK}: beryllium melts at 1,287 C`),
+    },
+    {
+      name: 'Booster skin, aft section',
+      materials: [],
+      share: { up: guess(0.1, 'a cylinder’s side at no angle to the flow, far behind the nose: by judgement. No measurement read') },
+      arealMass: derived(
+        2680 * 0.09 * IN,
+        `${TMX_4}.2.1 (vehicles/redstone-mrlv.md): aft section skin 0.090 in of 5052 aluminium, at the alloy’s 2.68 g/cm3 (a standard figure, quoted without the page): 6.1 kg/m2`,
+      ),
+      specificHeat: guess(880, '5052 aluminium at room temperature, as remembered: not looked up'),
+      emissivity: guess(0.85, 'white paint: by judgement'),
+      limit: guess(
+        475,
+        'aluminium alloys of this kind lose their strength from about 200 C: the booster’s own limit is not in anything read',
+      ),
+    },
+  ],
 };
 
 /**
@@ -1347,7 +1674,7 @@ const trajectory: Trajectory = {
       CUTOFF_MASS - 4040.28 * LB,
       'the liftoff weight, less the flow for 141.8 s, less the capsule and tower at launch (4040.28 lb): about 10,000 lb of booster and residuals',
     ),
-    speed: doc(30 * FT, `${PLR}, section 4.2: separation velocity approximately 30 plus or minus 3 ft/s, from AZUSA and radar`),
+    speed: trajectoryPush,
   },
   retro: {
     fires: [314.1, 318.8, 323.6].map((t, i) => doc(t, `${PLR}, section 4.1: retro no. ${i + 1} fire`)),
@@ -1399,6 +1726,7 @@ const trajectory: Trajectory = {
     ),
   },
   body,
+  heating,
 };
 
 /**
@@ -1855,9 +2183,68 @@ export const flight: Flight = {
         nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
       },
       { at: trajectory.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
+      // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it (the part's own text: "at main parachute deploy")
+      { at: 614.8, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
     ],
     turned: TURNED,
+    datum: CAPSULE_PLANE * IN,
     engine: 'RedstoneEngine',
+    // drawn (viewer/effects.ts): the glow of entry off the heat shield, the collar of cloud at Mach 1 where the capsule's cone ends, ice off the oxygen tank
+    air: { shield: 'HeatShield', collar: 'HeatShield', frost: ['frost-lox'] },
+    chutes: [
+      {
+        on: 'drogue',
+        at: 'AntennaCanister',
+        cut: 'ribbon',
+        diameter: doc(6 * FT, 'Hammack and Heberlig, p. 12: a 6 ft conical ribbon drogue parachute'),
+        gores: guess(8, 'not in anything read: a ribbon parachute this small is drawn with eight'),
+        lines: guess(12 * FT, 'not recorded: twice the canopy’s diameter, a usual proportion for a drogue'),
+        riser: guess(
+          7,
+          'not recorded: long enough to carry the canopy clear of the wake of a 74.5 in heat shield, some four of its diameters',
+        ),
+        colours: {
+          value: ['#e9e4d6'],
+          confidence: 'estimated',
+          source: 'undyed nylon, by judgement: no record of its colour has been read',
+        },
+        stretch: guess(
+          0.35,
+          'not recorded: a mortar throws the pack to the end of 10.7 m of riser and lines at some thirty metres a second, by judgement',
+        ),
+      },
+      {
+        on: 'main',
+        at: 'RecoveryCompartment',
+        cut: 'ringsail',
+        diameter: doc(63 * FT, 'Hammack and Heberlig: a 63 ft ring-sail main parachute (as the trajectory’s `main` has it)'),
+        gores: guess(
+          48,
+          'not in anything read. Forty-eight is the number remembered for the Mercury ringsail and it is drawn so: unverified',
+        ),
+        lines: guess(63 * FT, 'not recorded: a line as long as the canopy is wide, the usual proportion for the type'),
+        riser: guess(3, 'not recorded: a short riser from the top of the recovery compartment, by judgement'),
+        colours: {
+          value: ['#ee7a30', '#efeadc'],
+          confidence: 'estimated',
+          source:
+            'orange and white in turn, as photographs of Mercury recoveries are remembered to show: none was examined for this, ' +
+            'and whether the colours ran by gore or by ring was not checked',
+        },
+        reefed: {
+          mouth: guess(0.25, 'drawn: a reefed ringsail is a narrow bulb. The reefing line’s length is not recorded'),
+          until: derived(
+            7,
+            'Postlaunch Report, air-ground transcript: "main on green" at 10:15, "main chute is reefed" at 10:18, "coming unreefed" at 10:22: about seven seconds after it came out. ' +
+              'Drawn only: the simulator’s drag grows evenly over the nine seconds (`trajectory.main.fills`)',
+          ),
+        },
+        stretch: guess(
+          0.8,
+          'not recorded: the antenna canister, leaving on the drogue, draws 22 m of riser and lines out of the recovery compartment at the 25 to 30 m/s it falls behind by: by judgement',
+        ),
+      },
+    ],
   },
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-05.glb',

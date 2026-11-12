@@ -1,6 +1,7 @@
 import './time.css';
 import { flownOnce, type Sample, sampleAt } from './sim/fly.ts';
 import type { Flight, FlightCheck } from './types';
+import type { Run } from './viewer/ascent';
 import { type Clock, missionTime } from './world/clock.ts';
 import { siteFrame } from './world/frames.ts';
 
@@ -11,6 +12,10 @@ import { siteFrame } from './world/frames.ts';
  * shows the same run (viewer/ascent.ts): from liftoff to landing the vehicle is where this has it.
  *
  * Dragging along a trace moves the clock, as the time bar's scrub does.
+ *
+ * A flight flown by hand (`fly`, given the cockpit's run) is drawn over the record's in amber as it
+ * grows: one more polyline a trace, its points rewritten a few times a second and only when the
+ * run has more samples, on the record's own axes (what goes past them is not drawn past them).
  */
 interface Trace {
   label: string;
@@ -38,6 +43,25 @@ const TRACES: Trace[] = [
 ];
 const W = 300;
 const H = 56;
+/** The live run's traces are redrawn no more often than this, ms, and with no more points than this. */
+const REDRAW = 250;
+const POINTS = 400;
+
+/**
+ * A run's samples as an SVG polyline's points on a trace `W` by `H`: time across `duration`, the value up to `top`,
+ * thinned to `most` points (the last always kept) and held inside the box.
+ */
+export function points(samples: readonly Sample[], of: (s: Sample) => number, duration: number, top: number, most = POINTS): string {
+  const step = Math.max(1, Math.ceil(samples.length / most));
+  const out: string[] = [];
+  for (let i = 0; i < samples.length; i += step) {
+    const s = i + step >= samples.length ? samples[samples.length - 1]! : samples[i]!;
+    const x = Math.max(0, Math.min(W, (s.t / duration) * W));
+    const y = Math.max(0, Math.min(H, H - (of(s) / top) * H));
+    out.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  return out.join(' ');
+}
 
 /** How a check's value reads: in the units people use for it, whatever SI unit it is recorded in. */
 function shown(c: FlightCheck, value: number): string {
@@ -58,6 +82,40 @@ export class Flown {
   private cursors: SVGLineElement[] = [];
   private values: HTMLElement[] = [];
   private phase: HTMLElement | null = null;
+  /** A flight being flown by hand, drawn over the record's: its run, its polylines, each trace's top, and what of it is drawn. */
+  private live: Run | null = null;
+  private lines: SVGPolylineElement[] = [];
+  private tops: number[] = [];
+  private drawn = { count: -1, at: 0, t: -1 };
+
+  /**
+   * Draw a flight being flown by hand over the record's (the cockpit's run: it grows). Null says the flight deck has
+   * been left: the last flight flown stays drawn, until another is begun.
+   */
+  fly(run: Run | null): void {
+    if (run) this.live = run;
+    this.drawn = { count: -1, at: 0, t: -1 };
+    this.root.classList.toggle('flying', run !== null);
+    this.root.classList.toggle('flew', this.live !== null && this.live.samples.length > 1);
+    this.trace();
+  }
+
+  /** The live run's polylines, brought up to its samples: a few times a second at most, and only when there is more to draw. */
+  private trace(): void {
+    if (!this.lines.length) return;
+    const run = this.live;
+    if (!run) {
+      for (const line of this.lines) line.setAttribute('points', '');
+      return;
+    }
+    const last = run.samples[run.samples.length - 1];
+    const now = performance.now();
+    if (!last || (run.samples.length === this.drawn.count && last.t === this.drawn.t)) return;
+    if (now - this.drawn.at < REDRAW && !Number.isFinite(run.duration) && this.drawn.count >= 0) return;
+    this.root.classList.add('flew');
+    this.drawn = { count: run.samples.length, at: now, t: last.t };
+    TRACES.forEach((trace, i) => this.lines[i]?.setAttribute('points', points(run.samples, trace.of, this.duration, this.tops[i]!)));
+  }
 
   constructor(root: HTMLElement, clock: Clock, flight: Flight) {
     this.root = root;
@@ -84,6 +142,7 @@ export class Flown {
     const traces = TRACES.map((trace) => {
       const top =
         Math.max(...samples.map(trace.of), ...trace.marks.map((m) => (checks.find((c) => c.id === m.id)?.value ?? 0) * m.scale)) * 1.08;
+      this.tops.push(top);
       const y = (v: number) => H - (v / top) * H;
       const line = samples.map((s) => `${x(s.t).toFixed(1)},${y(trace.of(s)).toFixed(1)}`).join(' ');
       const marks = trace.marks
@@ -95,7 +154,7 @@ export class Flown {
         )
         .join('');
       return `<figure class="trace"><figcaption><span>${trace.label}</span><b></b></figcaption>
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${trace.label} against time">${marks}<polyline points="${line}" /><line class="now" y1="0" y2="${H}" /></svg></figure>`;
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${trace.label} against time">${marks}<polyline points="${line}" /><polyline class="yours" points="" /><line class="now" y1="0" y2="${H}" /></svg></figure>`;
     }).join('');
     const rows = checks
       .map((c) => {
@@ -113,11 +172,13 @@ export class Flown {
     root.innerHTML = `
       <h2>Flown</h2>
       <p class="fine">The flight as the simulator integrates it from the figures in the record: thrust, flow, drag, gravity, the tilt programme. Nothing is fitted to the result.
-        Dashed lines are what the reports give. <span class="flown-phase"></span></p>
+        Dashed lines are what the reports give. <span class="flown-yours">The amber trace is the flight you flew by hand.</span> <span class="flown-phase"></span></p>
       <div class="traces" title="Drag to move the clock">${traces}</div>
       <table class="flown-checks"><thead><tr><th></th><td>Report</td><td>Flown</td><td></td></tr></thead>${rows}</table>
       <p class="fine">Amber rows are outside the tolerance set for them. ${flight.flownNote ?? ''} In the view the vehicle flies this run from liftoff to landing; C to the chase camera follows it.</p>`;
     this.cursors = [...root.querySelectorAll<SVGLineElement>('line.now')];
+    this.lines = [...root.querySelectorAll<SVGPolylineElement>('polyline.yours')];
+    root.classList.toggle('flew', this.live !== null && this.live.samples.length > 1);
     this.values = [...root.querySelectorAll<HTMLElement>('.trace b')];
     this.phase = root.querySelector('.flown-phase');
     // dragging along the traces is a scrub over the flight: it takes hold of the clock
@@ -141,6 +202,7 @@ export class Flown {
 
   private render(): void {
     if (!this.samples.length) return;
+    this.trace();
     const t = this.clock.t;
     const inFlight = t >= 0 && t <= this.duration;
     const s = sampleAt(this.samples, Math.max(0, Math.min(this.duration, t)));
@@ -163,6 +225,7 @@ export class Flown {
 const PHASES: Record<Sample['phase'], string> = {
   powered: 'under power',
   coast: 'coasting on the booster',
+  escape: 'on the escape rocket',
   capsule: 'capsule in free flight',
   entry: 'entry',
   drogue: 'on the drogue',

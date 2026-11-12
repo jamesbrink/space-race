@@ -23,6 +23,7 @@ const live = () => {
     cutoff: TR.engine.cutoff.value,
     dropped: flight.flies.drops.map((d) => d.at),
     live: true,
+    out: { drogue: flown.results.drogueAt, main: flown.results.mainAt },
   };
 };
 const at = (ascent, t) => {
@@ -86,4 +87,26 @@ test('after it lands, a live flight stays where it came down; the record’s goe
   assert.ok(at(flown, run.duration + 60).p.distanceTo(at(flown, run.duration).p) < 1e-6);
   const record = Ascent.of(flight);
   assert.equal(record.flying(run.duration + 60), false);
+});
+
+test('the live model does not jump as the reference changes at separation', () => {
+  const run = live();
+  const ascent = Ascent.of(flight);
+  ascent.use(run);
+  const first = run.samples.find((s) => s.phase !== 'powered' && s.phase !== 'coast').t;
+  // a microsecond either side of every sample round the parting: the origin moves no further than its speed allows
+  for (const s of run.samples.filter((x) => Math.abs(x.t - first) < 1)) {
+    const moved = at(ascent, s.t - 1e-6).p.distanceTo(at(ascent, s.t + 1e-6).p);
+    assert.ok(moved < 0.02, `at ${s.t.toFixed(2)} s the model moved ${moved.toFixed(3)} m in two microseconds`);
+  }
+});
+
+test('the batch run is cached by where it flew from, not by the hardware alone', async () => {
+  const { flownOnce } = await import('../src/sim/fly.ts');
+  const site = siteFrame(flight.site);
+  const here = flownOnce(TR, site, flight.site.seaLevel.value);
+  assert.equal(flownOnce(TR, site, flight.site.seaLevel.value), here);
+  const there = flownOnce(TR, { ...site, latitude: site.latitude + 0.1 }, flight.site.seaLevel.value);
+  assert.notEqual(there, here);
+  assert.notEqual(there.samples[0].latitude, here.samples[0].latitude);
 });

@@ -95,12 +95,22 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .legend-body dt { font: 10px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
 .legend-body dd { font-size: 12px; color: var(--dim); white-space: nowrap; }
 /* on foot the legend lists the walker's keys instead */
-.legend-body:is(.on-foot, .in-flight, .chasing) { display: none; grid-template-columns: repeat(4, auto); }
+.legend-body:is(.on-foot, .in-flight, .chasing, .aboard, .tracking) { display: none; grid-template-columns: repeat(4, auto); }
 #ui.flying:not(.walking) .legend-body:not(.in-flight) { display: none; }
 #ui.flying:not(.walking) .legend-keys:not(.folded) .legend-body.in-flight { display: grid; }
 #ui.flying [data-rotate] { display: none; }
 #ui.chasing:not(.walking) .legend-body:not(.chasing) { display: none; }
 #ui.chasing:not(.walking) .legend-keys:not(.folded) .legend-body.chasing { display: grid; }
+#ui:is(.chasing, .aboard, .tracking) [data-rotate] { display: none; }
+#ui.aboard:not(.walking) .legend-body:not(.aboard) { display: none; }
+#ui.aboard:not(.walking) .legend-keys:not(.folded) .legend-body.aboard { display: grid; }
+#ui.tracking:not(.walking) .legend-body:not(.tracking) { display: none; }
+#ui.tracking:not(.walking) .legend-keys:not(.folded) .legend-body.tracking { display: grid; }
+/* the vehicle is in the air and the camera is elsewhere: one press goes to it */
+.find-vehicle { position: absolute; top: calc(var(--edge) + 150px); left: 50%; transform: translateX(-50%); padding: 8px 14px; pointer-events: auto; font: 500 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: var(--amber); background: var(--glass); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
+.find-vehicle:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--ink); }
+.find-vehicle[hidden] { display: none; }
+@media (max-width: 960px), (max-height: 520px) { .find-vehicle { top: 180px; } }
 #ui.walking .legend-body:not(.on-foot) { display: none !important; }
 #ui.walking .legend-keys:not(.folded) .legend-body.on-foot { display: grid; }
 /* keys are no use to a finger, and a small window has no room */

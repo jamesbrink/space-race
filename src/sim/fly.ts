@@ -47,6 +47,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
+import { upAt, upOver } from './forces.ts';
 
 /** Standard gravity, m/s^2: what a "g" is, and what turns specific impulse into flow. */
 export const G0 = 9.80665;
@@ -97,7 +98,8 @@ export function along(curve: Curve, x: number): number {
   return p[p.length - 1]![1];
 }
 
-export type Phase = 'powered' | 'coast' | 'capsule' | 'entry' | 'drogue' | 'main' | 'landed';
+/** `escape` is the live simulator's only (sim/vehicle.ts): the spacecraft pulled off by its escape rocket, the tower still on. */
+export type Phase = 'powered' | 'coast' | 'escape' | 'capsule' | 'entry' | 'drogue' | 'main' | 'landed';
 
 /** The flight at one instant. */
 export interface Sample {
@@ -220,7 +222,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     // each retrorocket pushes against the motion over the ground, pitched below the level
     const burning = fires.filter((f) => at >= f && at < f + retroBurn).length;
     if (burning > 0 && !riding) {
-      const up = unit(s.r);
+      const up = upAt(s.r, at);
       const level = unit(sub(wind, scale(up, dot(wind, up))));
       const pitch = tr.retro.pitch.value * DEG;
       const push = sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)));
@@ -247,7 +249,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     const m = massAt(t);
     const f = forces(state, t);
     const here = ecefToGeodetic(fixed(state.r, t));
-    const up = unit(state.r);
+    const up = upOver(here, t);
     const wind = sub(state.v, cross(spin, state.r));
     const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(Math.max(-1, Math.min(1, dot(v, up) / length(v)))) / DEG : 90);
     return {
@@ -376,7 +378,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
       state = nudge(before, { r: scale(sub(state.r, before.r), 1 / h), v: scale(sub(state.v, before.v), 1 / h) }, h * part);
       t = t - h + h * part;
       const last = sample();
-      results.landingSpeed = -dot(sub(state.v, cross(spin, state.r)), unit(state.r));
+      results.landingSpeed = -dot(sub(state.v, cross(spin, state.r)), upAt(state.r, t));
       results.range = last.range;
       results.duration = t;
       phase = 'landed';

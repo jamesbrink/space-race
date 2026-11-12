@@ -92,6 +92,12 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 - **Inside the aft unit** the equipment is representative boxes; the nitrogen spheres' number and
   size, and the ballast's shape, are guesses at documented items.
 - No baffles or level sensors in the tanks; no launch-pad fittings under fin II.
+- **As a body that falls** (the spent booster after separation, `trajectory.body.sheds` in the flight's
+  `flight.ts`) its drag areas are estimates: 3.0 sq m adapter first, 2.7 tail first, 38.4 side on, the fins
+  as on the stack, one figure each at every Mach number. Its mass, centre of mass and inertia are the
+  parts' below, residual propellant rigid in its tanks. It does not break up, burn or bend.
+- **No structural limits are documented here.** The simulator's bending limit (4,000 lb/sq ft degrees)
+  is an estimate of the kind, not a Redstone figure; what the abort sensing system watched has not been read.
 - **No mass properties** in the model. The simulator's are in the flight's `flight.ts` (`trajectory.body`): the
   documented section weights as uniform cylinders, the rest of the dry weight split by estimate.
 

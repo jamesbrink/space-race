@@ -1,0 +1,78 @@
+/* --- the navball (navball.ts) on the flight deck's top edge, and the predicted path's labels and figures (viewer/path.ts) --- */
+.navball { --ball: 148px; position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); display: grid; grid-template-columns: 1fr var(--ball) 1fr; align-items: end; gap: 0 10px;
+  width: min(520px, calc(100vw - 2 * var(--edge))); pointer-events: none; }
+.navball > * { pointer-events: auto; }
+.navball-ball { position: relative; width: var(--ball); height: var(--ball); border-radius: 50%; box-shadow: 0 0 0 5px rgba(10, 11, 14, 0.78), 0 0 0 6px var(--line), 0 10px 30px rgba(0, 0, 0, 0.4); }
+.navball-ball canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.nav-mark { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.9)); }
+.nav-mark[hidden] { display: none; }
+.nav-mark svg, .nav-nose svg { display: block; width: 100%; height: 100%; }
+.nav-prograde, .nav-retrograde { color: #dcee4a; }
+.nav-radialOut, .nav-radialIn { color: #58dcec; }
+.nav-normal, .nav-antinormal { color: #cf8cff; }
+.nav-target { color: #7ab6ff; }
+.nav-nose { position: absolute; left: 50%; top: 50%; width: 50px; height: 30px; margin: -15px 0 0 -25px; color: var(--amber); filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.95)); }
+.nav-nose svg { stroke-width: 2.2; }
+
+.navball-side { min-width: 0; padding: 8px 10px 9px; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-radius: 3px;
+  font: 10px/1.5 var(--mono); letter-spacing: 0.08em; color: var(--faint); }
+.navball-read { justify-self: end; text-align: right; }
+.navball-aside { justify-self: start; }
+.navball-aside:empty { visibility: hidden; }
+.navball-side p { margin: 0; white-space: nowrap; }
+.navball-side b { color: var(--ink); font-weight: 500; }
+.navball-side button { padding: 3px 7px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); font: inherit; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.navball-side button b { color: var(--amber); }
+.navball-side button:hover:not(:disabled) { border-color: var(--faint); }
+.navball-side button:disabled { border-color: transparent; padding-left: 0; padding-right: 0; cursor: default; }
+.navball-side button:disabled b { color: var(--dim); }
+.navball-side button:disabled kbd { display: none; }
+.navball-speed { margin: 3px 0 1px !important; }
+.navball-speed b { font: 500 22px/1.2 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.navball-speed i { margin-left: 4px; font-style: normal; }
+.navball-att { display: flex; justify-content: flex-end; gap: 8px; font-variant-numeric: tabular-nums; }
+.path-read p { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.path-read p span { min-width: 3.6em; text-transform: uppercase; letter-spacing: 0.12em; }
+.path-read.off p { display: none; }
+.path-read .path-frame { color: var(--faint); letter-spacing: 0.04em; }
+
+/* tucked away: only its chevron is left, on the deck's edge */
+.navball-tuck { position: absolute; left: calc(50% + var(--ball) / 2 - 4px); top: -6px; width: 24px; height: 20px; color: var(--faint); background: var(--glass); border: 1px solid var(--line); border-radius: 2px; }
+.navball-tuck:hover { color: var(--ink); }
+.navball.tucked { grid-template-columns: 1fr; width: 0; }
+.navball.tucked > :not(.navball-tuck) { display: none; }
+.navball.tucked .navball-tuck { left: -12px; top: auto; bottom: 0; }
+
+/* how the flight ended goes above the ball */
+.cockpit:has(.navball:not(.tucked)) .cockpit-card { bottom: calc(100% + 178px); }
+
+/* the path's labels: a ring on the point and a few words beside it */
+.path-labels { position: fixed; inset: 0; pointer-events: none; }
+.path-labels[hidden], .path-label[hidden] { display: none; }
+.path-label { position: absolute; left: 0; top: 0; margin: -11px 0 0 13px; padding: 3px 8px; background: rgba(10, 11, 14, 0.66); border-radius: 2px; font: 11px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--ink); white-space: nowrap; }
+.path-label::before { content: ''; position: absolute; left: -18px; top: 50%; width: 8px; height: 8px; margin-top: -5.5px; border: 1.5px solid var(--amber); border-radius: 50%; background: rgba(10, 11, 14, 0.5); }
+.path-label b { color: var(--amber); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.path-label i { font-style: normal; color: var(--dim); }
+.path-label.left { translate: calc(-100% - 26px) 0; }
+.path-label.left::before { left: auto; right: -18px; }
+
+@media (max-width: 960px), (max-height: 520px) {
+  .navball { --ball: 118px; gap: 0 8px; width: calc(100vw - 20px); }
+  .navball-side { padding: 6px 7px 7px; font-size: 9px; letter-spacing: 0.04em; }
+  .navball-speed b { font-size: 18px; }
+  .navball-att { gap: 5px; }
+  .navball-side button { padding: 6px 7px; }
+  .path-read .path-frame { display: none; }
+  .cockpit:has(.navball:not(.tucked)) .cockpit-card { bottom: calc(100% + 146px); }
+}
+@media (max-width: 520px) {
+  .navball { --ball: 96px; gap: 0 5px; }
+  .navball-side { padding: 5px 6px 6px; font-size: 8.5px; letter-spacing: 0; max-width: 100%; overflow: hidden; }
+  .path-read p span { letter-spacing: 0.04em; }
+  .navball-att { flex-direction: column; gap: 0; }
+  .path-read p { gap: 5px; }
+  .path-read p span { min-width: 0; }
+  .path-label { font-size: 10px; }
+}
+@media (max-height: 520px) { .navball { --ball: 92px; } .navball-att, .path-read .path-frame { display: none; } }
+@media (hover: none), (pointer: coarse) { .navball kbd { display: none; } }

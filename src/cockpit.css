@@ -18,6 +18,10 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .cockpit-phase b { color: var(--ink); font-weight: 500; }
 .cockpit.thrusting .cockpit-phase b { color: var(--amber); }
 .cockpit-phase span { color: var(--faint); letter-spacing: 0.08em; text-transform: none; }
+.cockpit-phase em { margin-left: auto; font-style: normal; color: var(--ink); letter-spacing: 0.08em; text-transform: none; white-space: nowrap; }
+.cockpit-phase em[hidden] { display: none; }
+.cockpit-phase em.hot { color: var(--amber); }
+@media (max-width: 700px) { .cockpit-phase { flex-wrap: wrap; row-gap: 2px; } .cockpit-phase em { margin-left: 0; flex-basis: 100%; } }
 .gauges { display: grid; grid-template-columns: repeat(10, minmax(74px, auto)); }
 .gauge { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 4px; padding: 8px 14px 9px; border-right: 1px solid rgba(243, 239, 230, 0.07); }
 .gauge:last-child { border-right: 0; }
@@ -34,6 +38,38 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .cockpit-steer { color: var(--faint); white-space: nowrap; }
 .cockpit kbd { display: inline-block; min-width: 1.5em; padding: 0 4px; margin-right: 2px; border: 1px solid var(--line); border-radius: 2px; font: inherit; text-align: center; color: var(--ink); }
 
+/* what there is to fly with: the engine, its tanks, the jets' supplies, what is firing */
+.systems { display: flex; flex-wrap: wrap; border-top: 1px solid var(--line); }
+.tank { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 6px; padding: 6px 14px 7px; border-right: 1px solid rgba(243, 239, 230, 0.07); }
+.tank span { grid-column: 1 / -1; font: 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.tank b { font: 500 14px/1.3 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tank i { font: 11px/1.4 var(--mono); font-style: normal; color: var(--faint); white-space: nowrap; }
+.tank.low b, .tank.low i { color: var(--amber); }
+.tank.jets b { display: flex; gap: 3px; }
+.tank.jets u { min-width: 2.1em; padding: 0 3px; border: 1px solid var(--line); border-radius: 2px; font: 10px/1.6 var(--mono); text-decoration: none; text-align: center; color: var(--faint); }
+.tank.jets u.on { color: #0b0a07; background: var(--amber); border-color: var(--amber); }
+.tank.motors { flex: 1; border-right: 0; }
+.cockpit-prompt { margin: 0; padding: 6px 14px; border-top: 1px solid var(--line); font: 11px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--dim); }
+.cockpit-prompt[hidden] { display: none; }
+.cockpit-prompt.due { color: var(--amber); }
+.cockpit-keys .cockpit-abort { color: #ff8f6b; border-color: rgba(255, 143, 107, 0.5); }
+.cockpit-keys .cockpit-abort.armed { color: #0b0a07; background: #ff8f6b; border-color: #ff8f6b; }
+.cockpit-keys .cockpit-abort.armed kbd { color: #0b0a07; border-color: rgba(11, 10, 7, 0.4); }
+.cockpit-keys .cockpit-abort:disabled { display: none; }
+.cockpit-lever { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-top: 1px solid var(--line); font: 11px/1.4 var(--mono); color: var(--dim); }
+.cockpit-lever[hidden] { display: none; }
+.cockpit-lever input { flex: 1; }
+
+/* a finger's stick and roll buttons, at either side above the instruments and clear of the navball that stands on their top edge (the walk's stick, ui.ts) */
+.cockpit-stick { display: none; position: absolute; left: 4px; bottom: calc(100% + 150px); width: 124px; height: 124px; border-radius: 50%; background: var(--glass); border: 1px solid var(--faint); touch-action: none; }
+.cockpit-stick i { position: absolute; inset: 37px; border-radius: 50%; background: rgba(243, 239, 230, 0.3); border: 1px solid var(--ink); pointer-events: none; }
+.cockpit-roll { display: none; position: absolute; right: 4px; bottom: calc(100% + 150px); gap: 12px; }
+.cockpit-roll button { width: 68px; height: 68px; border-radius: 50%; background: var(--glass); border: 1px solid var(--faint); color: var(--ink); font: 24px/1 var(--sans); touch-action: none; }
+.cockpit-roll button:active { background: rgba(243, 239, 230, 0.3); }
+@media (hover: none), (pointer: coarse) { .cockpit-stick { display: block; } .cockpit-roll { display: flex; } }
+/* (the card that ends a flight takes their place) */
+.cockpit:has(.cockpit-card:not([hidden])) :is(.cockpit-stick, .cockpit-roll) { display: none; }
+
 /* how it ended, over the instruments */
 .cockpit-card { position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); width: min(430px, calc(100vw - 2 * var(--edge))); padding: 14px 18px 14px;
   background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28); }
@@ -44,6 +80,9 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .cockpit-card th { text-align: left; font-weight: 400; color: var(--dim); }
 .cockpit-card thead td { font: 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
 .cockpit-card td:last-child { color: var(--dim); padding-left: 14px; }
+.cockpit-card .cockpit-why { display: block; margin: 0 0 6px; font-size: 12px; line-height: 1.45; color: var(--dim); }
+.cockpit-card .cockpit-verdict { display: block; margin: 0 0 10px; font-size: 12px; line-height: 1.45; color: var(--ink); }
+.cockpit-card .cockpit-verdict.lost { color: var(--amber); }
 .cockpit-card p { display: flex; gap: 8px; margin: 12px 0 0; }
 .cockpit-card button { padding: 6px 10px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); font: 11px/1.4 var(--mono); letter-spacing: 0.06em; }
 .cockpit-card button:first-child { color: var(--amber); border-color: var(--amber); }
@@ -58,7 +97,15 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .gauge b { font-size: 16px; }
   .gauge span { font-size: 9px; letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis; }
   .cockpit-keys button { padding: 9px 10px; }
+  .tank { padding: 5px 8px; }
+  .tank b { font-size: 13px; }
   #ui.piloting .timebar { top: 10px; }
 }
 @media (hover: none), (pointer: coarse) { .cockpit-steer, .cockpit kbd { display: none; } }
 @media (max-height: 520px) { .gauges { grid-template-columns: repeat(10, 1fr); } .cockpit-phase span { display: none; } }
+
+/* The bending load against its limit (sim/loads.ts): a bar under the words, amber from four fifths, red over. */
+.cockpit-load { margin-left: 0.8em; padding: 0 0.4em 2px; font-style: normal; background: linear-gradient(currentColor, currentColor) left bottom / var(--load, 0%) 2px no-repeat; }
+.cockpit-load[data-standing="caution"] { color: #ffb84d; }
+.cockpit-load[data-standing="over"] { color: #ff5a4d; }
+.cockpit-fell { color: var(--faint); }

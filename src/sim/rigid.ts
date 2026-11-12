@@ -97,16 +97,21 @@ export interface MassProperties {
  * is a liquid in a tank: `filled` (0 to 1) of what it held is left, lying against the tank's
  * lower end as it does under thrust, so its column shortens from the top. Liquids are taken as
  * rigid across the axis (no slosh) and as not turning with the tank about it (no roll inertia).
- * Parts whose `sheds` is in `gone` are left out.
+ * Parts whose `sheds` is in `gone` are left out. `filled` is one figure for every liquid, or each part's own.
  */
-export function massOf(parts: readonly MassPart[], radius: number, filled: number, gone: ReadonlySet<string>): MassProperties {
+export function massOf(
+  parts: readonly MassPart[],
+  radius: number,
+  filled: number | ((part: MassPart) => number),
+  gone: ReadonlySet<string>,
+): MassProperties {
   let mass = 0;
   let moment = 0;
   const each: [m: number, c: number, own: number][] = [];
   let roll = 0;
   for (const p of parts) {
     if (p.sheds && gone.has(p.sheds)) continue;
-    const share = p.fluid ? Math.max(0, Math.min(1, filled)) : 1;
+    const share = p.fluid ? Math.max(0, Math.min(1, typeof filled === 'number' ? filled : filled(p))) : 1;
     const m = p.mass * share;
     if (m <= 0) continue;
     const span = (p.to - p.from) * share;

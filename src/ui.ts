@@ -1,7 +1,7 @@
 import { prefs } from './prefs';
 import type { Confidence, Flight, ModelDef, Part } from './types';
+import { RIGS, type RigId } from './viewer/camera/rig.ts';
 import { functionsOf } from './viewer/explode';
-import { CAMERA_MODES, type CameraMode } from './viewer/fly';
 import { Wheel } from './wheel';
 
 export interface UiHandlers {
@@ -10,9 +10,11 @@ export interface UiHandlers {
   view(id: string): void;
   autoRotate(on: boolean): void;
   cutaway(on: boolean): void;
-  /** How the view is moved: turning about a subject, or flying free. */
-  camera(mode: CameraMode): void;
-  /** Bring the view back to what the camera is about (C, with one view to choose from). */
+  /** Put a rig in charge of the camera (viewer/camera). */
+  camera(mode: RigId): void;
+  /** The rig C goes to next, as things stand: about the place on the pad, about the vehicle with a flight in the air. */
+  nextCamera(): RigId;
+  /** Bring the view back to what the camera is about; with a flight in the air and the view elsewhere, to the vehicle. */
   refind(): void;
   /** Draw the scene as a cel-shaded drawing, or as it would look. */
   cel(on: boolean): void;
@@ -40,12 +42,21 @@ export interface UiHandlers {
   inset(pixels: number): void;
 }
 
-const CAMERA_LABEL: Record<CameraMode, string> = { orbit: 'Camera · orbit', fly: 'Camera · free fly', chase: 'Camera · chase' };
-/** What is said on the view as the camera changes: the view's name, and what it does. */
-const CAMERA_SAYS: Record<CameraMode, [string, string]> = {
-  orbit: ['Orbit view', 'Turns about what you choose · drag to turn · C for the next view'],
-  fly: ['Free camera', 'W A S D fly it, drag looks round · C for the next view'],
-  chase: ['Chase view', 'Follows the vehicle · drag to look round it · C for the next view'],
+const CAMERA_LABEL: Record<RigId, string> = {
+  orbit: 'Camera · orbit',
+  free: 'Camera · free fly',
+  chase: 'Camera · chase',
+  locked: 'Camera · chase, locked',
+  onboard: 'Camera · on board',
+  pad: 'Camera · pad',
+};
+/** The class the page takes in each rig: which block of the legend is on show. */
+const CAMERA_CLASS: Partial<Record<RigId, string>> = {
+  free: 'flying',
+  chase: 'chasing',
+  locked: 'chasing',
+  onboard: 'aboard',
+  pad: 'tracking',
 };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -79,7 +90,7 @@ export class Ui {
   /** The radial menu of things to do with what a walker is looking at (wheel.ts). */
   readonly wheel: Wheel;
   private selected: string | null = null;
-  private cameraMode: CameraMode = 'orbit';
+  private cameraMode: RigId = 'orbit';
 
   get cutaway(): boolean {
     return this.root.querySelector('[data-cut]')?.getAttribute('aria-pressed') === 'true';
@@ -170,15 +181,19 @@ export class Ui {
           <dl>
             <div><dt>drag</dt><dd>orbit</dd></div>
             <div><dt>right-drag</dt><dd>move</dd></div>
-            <div><dt>right-click</dt><dd>walk from there</dd></div>
-            <div><dt>scroll</dt><dd>zoom to pointer</dd></div>
+            <div><dt>shift-drag</dt><dd>move</dd></div>
+            <div><dt>scroll · pinch</dt><dd>zoom to pointer</dd></div>
+            <div><dt>two fingers</dt><dd>move · twist</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
+            <div><dt>double-click</dt><dd>turn about it</dd></div>
+            <div><dt>right-click</dt><dd>walk from there</dd></div>
             ${f.models.some((m) => m.walker) ? `<div><dt>double-click ${esc(f.models.find((m) => m.walker)!.name.toLowerCase())}</dt><dd>walk</dd></div>` : ''}
-            <div><dt><kbd>C</kbd></dt><dd>camera: free fly</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
             ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
             <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
             ${f.trajectory?.body && f.flies ? '<div><dt><kbd>L</kbd></dt><dd>fly it yourself</dd></div>' : ''}
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
@@ -191,13 +206,15 @@ export class Ui {
           <div class="cluster"><kbd>Shift</kbd><em>faster</em></div>
           <dl>
             <div><dt>drag</dt><dd>look round</dd></div>
-            <div><dt>scroll</dt><dd>forward · back</dd></div>
+            <div><dt>right-drag</dt><dd>slide</dd></div>
+            <div><dt>scroll · pinch</dt><dd>to pointer · back</dd></div>
             <div><dt>click</dt><dd>go to it</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>camera: chase</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
             ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
             <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
             <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
@@ -207,11 +224,40 @@ export class Ui {
           <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
           <dl>
             <div><dt>drag</dt><dd>turn round it</dd></div>
-            <div><dt>scroll</dt><dd>closer · further</dd></div>
+            <div><dt>scroll · pinch</dt><dd>closer · further</dd></div>
+            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
+            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
+            <div><dt><kbd>0</kbd></dt><dd>centre the vehicle</dd></div>
+            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+          </dl>
+        </div>
+        <div class="legend-body aboard">
+          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>look</em></div>
+          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
+          <dl>
+            <div><dt>drag</dt><dd>look round</dd></div>
+            <div><dt>scroll · pinch</dt><dd>zoom</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
+            <div><dt><kbd>0</kbd></dt><dd>look ahead</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
             <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>camera: orbit</dd></div>
-            <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
+            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
+            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+          </dl>
+        </div>
+        <div class="legend-body tracking">
+          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>frame it</em></div>
+          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
+          <dl>
+            <div><dt>drag</dt><dd>move it in the frame</dd></div>
+            <div><dt>scroll · pinch</dt><dd>tighter · wider</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
+            <div><dt><kbd>0</kbd></dt><dd>centre the vehicle</dd></div>
+            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
@@ -229,6 +275,7 @@ export class Ui {
             <div><dt><kbd>V</kbd> <kbd>Esc</kbd></dt><dd>back to the camera</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
             <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
+            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
             <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
             <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
           </dl>
@@ -541,26 +588,47 @@ export class Ui {
     this.on.cutaway(on);
   }
 
-  /** How the view is moved, for every section, and remembered. */
-  setCamera(mode: CameraMode): void {
-    this.cameraMode = mode;
-    prefs.set('fly', mode === 'fly');
-    this.root.classList.toggle('flying', mode === 'fly');
-    this.root.classList.toggle('chasing', mode === 'chase');
-    const b = this.root.querySelector('[data-camera]');
-    if (b) b.textContent = CAMERA_LABEL[mode];
+  /** Put a rig in charge of the camera. The stage says when it has (showCamera), and the page follows. */
+  setCamera(mode: RigId): void {
     this.on.camera(mode);
   }
 
-  /** The views C steps through: all of them, or the ones that make sense just now (at the controls of the flight, the chase alone). */
-  cameras: readonly CameraMode[] = CAMERA_MODES;
+  /**
+   * A rig has been put in charge of the camera, by the page or by the stage itself (the vehicle left the pad while it
+   * was being looked at): the button, the legend and a line across the view say which. Flying free is remembered.
+   */
+  showCamera(mode: RigId, quiet = false): void {
+    this.cameraMode = mode;
+    if (mode === 'orbit' || mode === 'free') prefs.set('fly', mode === 'free');
+    for (const c of new Set(Object.values(CAMERA_CLASS))) this.root.classList.toggle(c, CAMERA_CLASS[mode] === c);
+    const b = this.root.querySelector('[data-camera]');
+    if (b) b.textContent = CAMERA_LABEL[mode];
+    if (!quiet) this.say(RIGS[mode].name, `${RIGS[mode].says} · C for the next view`);
+  }
 
+  /** The vehicle is in the air and the camera is not with it: a button that goes to it is on show. */
+  showFind(on: boolean): void {
+    let b = this.root.querySelector<HTMLElement>('.find-vehicle');
+    if (!b && on) {
+      b = document.createElement('button');
+      b.className = 'find-vehicle';
+      b.title = 'Go to the vehicle (C)';
+      b.textContent = 'Find the vehicle';
+      b.addEventListener('click', () => this.on.refind());
+      this.root.append(b);
+    }
+    if (b) b.hidden = !on;
+  }
+
+  /** C: the next rig there is as things stand; with only this one to choose from, back to what it is about (the vehicle, lost off the screen). */
   private nextCamera(): void {
-    const next = this.cameras[(this.cameras.indexOf(this.cameraMode) + 1) % this.cameras.length]!;
-    // with one view to choose from, the key brings it back to what it is about (the vehicle, lost off the screen)
-    if (next === this.cameraMode) this.on.refind();
-    else this.setCamera(next);
-    this.say(...CAMERA_SAYS[next], next === this.cameraMode && this.cameras.length === 1 ? 'Centred again' : undefined);
+    const next = this.on.nextCamera();
+    if (next !== this.cameraMode) {
+      this.setCamera(next);
+      return;
+    }
+    this.on.refind();
+    this.say(RIGS[next].name, 'Centred again');
   }
 
   /**
