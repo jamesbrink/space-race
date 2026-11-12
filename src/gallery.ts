@@ -132,6 +132,8 @@ const IDLE_AGAIN = 150;
 /** Seconds on each thing in the show, and to take the vehicle apart or put it together. */
 const DWELL: Record<Shot['kind'], number> = { whole: 8, apart: 8, part: 8.5, window: 8 };
 const APART = 5;
+/** More views than this are folded behind one button. */
+const MANY_VIEWS = 5;
 /** Milliseconds its canvas takes to fade in over the site's, or out (gallery.css has the same). */
 const FADE = 450;
 const TURN = 0.5;
@@ -455,9 +457,16 @@ export class Gallery {
       </button></li>`,
       )
       .join('');
-    this.q('.views').innerHTML = this.model.views
-      .map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`)
-      .join('');
+    // more views than a row or two holds are behind one button that opens them (the whole of it and the one on show stay out)
+    const views = this.q('.views');
+    const many = this.model.views.length > MANY_VIEWS;
+    views.classList.toggle('many', many);
+    views.classList.remove('open');
+    views.innerHTML =
+      this.model.views.map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`).join('') +
+      (many
+        ? `<button data-views aria-expanded="false" title="Every view of it">${this.model.views.length - 1} views<i class="chevron"></i></button>`
+        : '');
     this.q('.explode').hidden = !this.vehicle.slider || !parts.some((p) => p.explode.some((v) => v !== 0));
   }
 
@@ -570,6 +579,8 @@ export class Gallery {
       if (b.dataset.view) {
         this.made!.stage.view(b.dataset.view);
         this.turn();
+      } else if (b.hasAttribute('data-views')) {
+        b.setAttribute('aria-expanded', String(this.q('.views').classList.toggle('open')));
       } else if (b.hasAttribute('data-cut')) this.setCutaway(on, true);
       else if (b.hasAttribute('data-names')) this.setNames(on);
       else if (b.hasAttribute('data-measure')) this.setMeasure(on);
@@ -949,6 +960,15 @@ export class Gallery {
       HTMLElement,
     ];
     this.root.style.setProperty('--controls-h', `${controls.offsetHeight}px`);
+    // the least the title card can be: everything in it but what it says of the flight, which scrolls (gallery.css)
+    const cs = getComputedStyle(title);
+    let least = Number.parseFloat(cs.paddingTop) + Number.parseFloat(cs.paddingBottom) + 2;
+    for (const el of title.children as HTMLCollectionOf<HTMLElement>) {
+      if (el.matches('.lede, .facts, .tuck') || el.offsetParent === null) continue;
+      const m = getComputedStyle(el);
+      least += el.offsetHeight + Number.parseFloat(m.marginTop) + Number.parseFloat(m.marginBottom);
+    }
+    this.root.style.setProperty('--card-least', `${Math.ceil(least)}px`);
     // (what lies across the middle of the view covers it: on a wide page the controls stand in the column under the
     // title card, beside the view and not over it)
     const middle = view.left + view.width / 2;
