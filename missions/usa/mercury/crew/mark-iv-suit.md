@@ -165,6 +165,17 @@ stays midway between them as they part. One function of place gives the weights 
 the trousers and whatever is laid on them (`lower_weights`). All of these are chosen to look
 right in a stride, at a run, sitting and on a ladder.
 
+**The half-turn.** The cloth of that band does not go straight from the pelvis to the thigh:
+shared between two joints a right angle apart, a point lands on the chord between where each
+would put it, nearer the hip than either, and with a thigh raised level the groin sank. So each
+hip has one more joint, `HipHalf.L`/`HipHalf.R`: a child of `Hips` on the hip joint, beside
+`UpperLeg` (nothing hangs from it), with no rotation at rest. The band's weights go pelvis, half,
+thigh (all the half's in the middle of the band), and **whoever poses a thigh turns its half-turn
+half as far from rest, by the short way** (`gait.ts`: `halfHips`, which the gait and the ragdoll
+call). It is part of every figure `figurelib.rig_standing` rigs; a figure without it is simply
+not driven. The seated figure needs none: it is carried to its pose by arcs (`Bend`), not by
+weights, and its lap is pressed against the belly (`seated_rig`'s `press`).
+
 ### Carrying
 
 A contract for anything carried by any figure; `srlib.grip` and `srlib.anchor` make the pieces.

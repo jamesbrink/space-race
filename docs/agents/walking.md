@@ -24,7 +24,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   with (srlib.FIGURE: `Hips`, `Spine`, `Head`, `UpperArm.L` ... `Foot.R`, found by name with or
   without the dot), and the phase advances by distance gone over the length of a stride, so a
   planted foot stays put. A model with none of those joints still works: it glides rigid, and
-  the diagnostics line says so.
+  the diagnostics line says so. One helper beside the fifteen: `HipHalf.L`/`.R` (a child of `Hips`
+  on each hip joint, carrying the cloth of the groin's crease) is turned half as far as its thigh
+  by `halfHips`, which anything that poses a thigh calls (`Gait.apply`, `asBuilt`, the ragdoll);
+  a model built without it is not driven and still works.
 - **A planted foot is planted.** Each stance leg is solved from its foot's fixed spot on the ground
   and the hip's actual place (`gait.ts`: `plant`, `legTo`, `Gait.tread`), with a heel rocker on
   landing and a toe rocker on leaving; on a stop a foot out of place is lifted and stepped home,

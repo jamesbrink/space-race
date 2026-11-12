@@ -536,16 +536,28 @@ def leg_share(p: Vector) -> tuple[float, float]:
 
 def lower_weights(p: Vector) -> dict[str, float]:
     """The joints a rest-pose point from the waist down follows: pelvis and spine above the hip's
-    crease, then thigh, shin and foot, the cloth shared across each joint over a few centimetres."""
+    crease, then thigh, shin and foot, the cloth shared across each joint over a few centimetres.
+
+    Across the hip's crease the cloth does not go straight from the pelvis to the thigh. Shared
+    between two joints a right angle apart, a point is carried to the middle of the chord between
+    where each would put it: nearer the hip than either, so with a thigh raised level the groin
+    sank. Between them is a joint that turns half as far as the thigh does (`HipHalf.L`/`.R`, on
+    the hip joint: the viewer drives it, `gait.ts`: `halfHips`), and the band goes pelvis, half,
+    thigh: each step is half the angle, and the middle of the band keeps its distance from the hip."""
     left, right = leg_share(p)
     side = "L" if p.x >= 0 else "R"
     lower = smooth(B.z_knee - p.z, -6.0, 6.0)
     foot = 1 - smooth(p.z, B.ankle_z - 2.0, B.ankle_z + 7.0)
     spine = smooth(p.z, B.spine_z - 7.0, B.spine_z + 7.0)
-    rest = 1 - left - right
+    legs = left + right
+    rest = max(0.0, 1 - 2 * legs)
+    half = 1 - abs(2 * legs - 1)  # all of it the half-turn's in the middle of the band
+    thigh = max(0.0, 2 * legs - 1)
     out = {"Hips": rest * (1 - spine), "Spine": rest * spine, f"LowerLeg.{side}": lower * (1 - foot), f"Foot.{side}": lower * foot}
-    out["UpperLeg.L"] = left * (1 - lower)
-    out["UpperLeg.R"] = right * (1 - lower)
+    for leg, w in (("L", left), ("R", right)):
+        if legs > 0:
+            out[f"HipHalf.{leg}"] = half * w / legs
+            out[f"UpperLeg.{leg}"] = thigh * w / legs * (1 - lower)
     return out
 
 
@@ -1641,7 +1653,9 @@ def rig_standing() -> bpy.types.Object:
     """The standing figure just built, given its skeleton: every mesh emitted under a jointed node
     is hung on the joints it follows, and each hand gets the grip the viewer carries things by."""
     hinges = {name: (parent, at * CM, axis) for name, (parent, at, axis) in finger_hinges().items()}
-    skeleton = srlib.skeleton({name: p * CM for name, p in joints().items()}, hinges=hinges)
+    # (the half-turn at each hip, which the crease's cloth follows: lower_weights)
+    helpers = {f"HipHalf.{side}": ("Hips", B.hip_point(sx) * CM) for side, sx in (("L", 1), ("R", -1))}
+    skeleton = srlib.skeleton({name: p * CM for name, p in joints().items()}, hinges=hinges, helpers=helpers)
     for obj, follows in _rig.skins:
         srlib.bind(obj, skeleton, follows)
     for side, sx in (("L", 1), ("R", -1)):

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 // (with its extension: the tests run this file under Node, which adds none)
-import { type Joint, jointKey } from './gait.ts';
+import { halfHips, type Joint, jointKey } from './gait.ts';
 
 /**
  * A figure gone limp: what a long fall does to it. No physics engine yet: a handful of points
@@ -363,7 +363,10 @@ export class Ragdoll implements Tumbler {
     return doll.joints.size >= 15 ? doll : null;
   }
 
+  private readonly root: THREE.Object3D;
+
   private constructor(root: THREE.Object3D) {
+    this.root = root;
     const wanted = new Map(POINTS.slice(0, 15).map((p) => [jointKey(p), p]));
     root.traverse((o) => {
       const point = wanted.get(jointKey(o.name));
@@ -486,6 +489,7 @@ export class Ragdoll implements Tumbler {
       node.quaternion.setFromUnitVectors(this.lie.get(joint)!, want);
       turned.set(node, above.clone().multiply(node.quaternion));
     }
+    halfHips(this.root);
     hips.updateMatrixWorld(true);
   }
 

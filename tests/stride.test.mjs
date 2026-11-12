@@ -204,3 +204,45 @@ test('a leg that swings is bent for the hip that has come down over it: its foot
   }
   assert.ok(cycleLength(1.4, 0.985) > 1.5, 'and the stride is as long as it was');
 });
+
+test("the half-turn at each hip is half the thigh's turn from rest, by the short way, at every moment of a walk, a run and sitting; a figure without one is posed as before", () => {
+  const quat = (o) => o.quaternion.toArray();
+  for (const speed of [1.4, 4]) {
+    const plain = figure();
+    const f = figure();
+    for (const [s, x] of [
+      ['L', 1],
+      ['R', -1],
+    ]) {
+      const half = new THREE.Object3D();
+      half.name = `HipHalf${s}`; // as three.js has the name, the dot dropped
+      half.position.set(0.096 * x, 0, 0);
+      f.node('Hips').add(half);
+    }
+    const [a, b] = [new Gait(), new Gait()];
+    a.breathing = b.breathing = false;
+    a.apply(f.root);
+    b.apply(plain.root);
+    let most = 0;
+    for (let i = 0; i < 400; i++) {
+      for (const [gait, fig] of [
+        [a, f],
+        [b, plain],
+      ]) {
+        gait.seated = i > 300; // and sat down: thighs level
+        gait.advance(i > 300 ? 0 : speed / 120, i > 300 ? 0 : speed, false, 1 / 120);
+        gait.apply(fig.root);
+      }
+      for (const s of ['L', 'R']) {
+        const thigh = f.node(`UpperLeg.${s}`).quaternion;
+        const half = f.node('Hips').children.find((o) => o.name === `HipHalf${s}`).quaternion;
+        const angle = 2 * Math.acos(Math.min(1, Math.abs(thigh.w)));
+        most = Math.max(most, angle);
+        assert.ok(Math.abs(2 * Math.acos(Math.min(1, Math.abs(half.w))) - angle / 2) < 1e-6, 'half the angle');
+        assert.ok(half.clone().multiply(half).angleTo(thigh) < 1e-6, "about the same line: twice the half-turn is the thigh's");
+        assert.deepEqual(quat(f.node(`UpperLeg.${s}`)), quat(plain.node(`UpperLeg.${s}`)), 'and the thigh is where it was without one');
+      }
+    }
+    assert.ok(most > 70 * DEG, `sitting, the thighs were turned ${most / DEG} degrees`);
+  }
+});

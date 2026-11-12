@@ -1540,6 +1540,7 @@ export class Gait {
       else if (toward >= 1) node.position.copy(place);
       else node.position.lerp(place, toward);
     });
+    halfHips(root);
     return true;
   }
 
@@ -1552,6 +1553,7 @@ export class Gait {
       node.quaternion.copy(rest);
       if (joint === 'Hips') node.position.set(x, y, z);
     }
+    halfHips(root);
   }
 
   /** How far it is sat down, 0 (standing) to 1: what the pose is eased by, for whoever puts the figure in its seat (`sitAt`). */
@@ -1567,6 +1569,43 @@ export class Gait {
     this.lain = null;
     this.home();
     this.asBuilt(root);
+  }
+}
+
+/** A figure's half-turn joints, each with the thigh it follows and how both sat when they were found. */
+type Halves = { half: THREE.Object3D; thigh: THREE.Object3D; halfRest: THREE.Quaternion; thighRest: THREE.Quaternion }[];
+const halves = new WeakMap<THREE.Object3D, Halves>();
+const NO_TURN = new THREE.Quaternion();
+const turned = new THREE.Quaternion();
+
+/**
+ * The cloth across each hip's crease follows a joint of its own, `HipHalf.L`/`.R` (a child of the
+ * hips on the hip joint, beside the thigh, with nothing hanging from it): it is turned half as far
+ * from rest as its thigh is, by the short way, so a thigh raised level folds the groin in two
+ * steps of 45 degrees and the cloth there bunches instead of sinking. Called by whatever has just
+ * posed the thighs under `root` (the gait, the ragdoll). A model built without the joint has
+ * nothing to turn and is left as it is.
+ */
+export function halfHips(root: THREE.Object3D): void {
+  let found = halves.get(root);
+  if (!found) {
+    const named = new Map<string, THREE.Object3D>();
+    root.traverse((o) => {
+      const key = jointKey(o.name);
+      if (o.name && !named.has(key)) named.set(key, o);
+    });
+    found = [];
+    for (const side of ['L', 'R']) {
+      const half = named.get(jointKey(`HipHalf.${side}`));
+      const thigh = named.get(jointKey(`UpperLeg.${side}`));
+      if (half && thigh) found.push({ half, thigh, halfRest: half.quaternion.clone(), thighRest: thigh.quaternion.clone() });
+    }
+    halves.set(root, found);
+  }
+  for (const { half, thigh, halfRest, thighRest } of found) {
+    // the thigh's turn from rest, in the frame both hang in (the pelvis's)
+    turned.copy(thighRest).invert().premultiply(thigh.quaternion);
+    half.quaternion.copy(NO_TURN).slerp(turned, 0.5).multiply(halfRest);
   }
 }
 

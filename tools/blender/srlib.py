@@ -636,7 +636,10 @@ FIGURE = {
 
 
 def skeleton(
-    joints: dict[str, Sequence[float]], name: str = "Skeleton", hinges: dict[str, tuple[str, Sequence[float], Sequence[float]]] | None = None
+    joints: dict[str, Sequence[float]],
+    name: str = "Skeleton",
+    hinges: dict[str, tuple[str, Sequence[float], Sequence[float]]] | None = None,
+    helpers: dict[str, tuple[str, Sequence[float]]] | None = None,
 ) -> bpy.types.Object:
     """The armature of a figure: one bone for each joint of FIGURE, its head at `joints[name]`
     (metres, the scene's axes). The figure must be modelled upright (+Z up), facing -Y, its left
@@ -645,7 +648,11 @@ def skeleton(
 
     `hinges` adds joints a figure has beyond those: {name: (parent, where, axis)}. Such a joint
     turns about one line, `axis`, which is made its own X; so unlike the others it has a rotation
-    at rest, and is turned from there about its own X (a hand's `Fingers.L`: positive closes)."""
+    at rest, and is turned from there about its own X (a hand's `Fingers.L`: positive closes).
+
+    `helpers` adds joints that carry cloth and nothing else: {name: (parent, where)}, built as the
+    FIGURE's are (no rotation at rest). Nothing hangs from one, and the viewer turns it from the
+    joints beside it (`HipHalf.L`: half the thigh's turn), so a figure without it is still whole."""
     missing = [j for j in FIGURE if j not in joints]
     if missing:
         raise KeyError(f"skeleton: no position for {', '.join(missing)}")
@@ -661,6 +668,12 @@ def skeleton(
         bone.align_roll(Vector((0.0, -1.0, 0.0)))
         if parent:
             bone.parent = data.edit_bones[parent]
+    for joint, (parent, where) in (helpers or {}).items():
+        bone = data.edit_bones.new(joint)
+        bone.head = Vector(where)
+        bone.tail = bone.head + Vector((0.0, 0.0, 0.05))
+        bone.align_roll(Vector((0.0, -1.0, 0.0)))
+        bone.parent = data.edit_bones[parent]
     for joint, (parent, where, axis) in (hinges or {}).items():
         x = Vector(axis).normalized()
         down = Vector((0.0, 0.0, -1.0))
