@@ -19,7 +19,7 @@ import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
 import { later } from './later.ts';
-import { cubeOf, layersOf, packCube, packLayer, queued } from './pack.ts';
+import { colourCube, colourMap, cubeOf, layersOf, packCube, packLayer } from './pack.ts';
 import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
 import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
 
@@ -357,33 +357,6 @@ async function picture(file: string): Promise<ImageBitmap> {
   return half;
 }
 
-/** A cube map of colours from the six faces tools/globe-surface.mjs writes (sRGB). */
-async function loadColourCube(name: string): Promise<THREE.CubeTexture> {
-  const faces = await Promise.all(FACES.map((f) => picture(`${name}.${f}.jpg`)));
-  const texture = new THREE.CubeTexture(faces as unknown as HTMLImageElement[]);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.generateMipmaps = true;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.flipY = false;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-/** A surface region's colours as a texture (sRGB). */
-async function loadSurface(file: string): Promise<THREE.Texture> {
-  const texture = new THREE.Texture((await picture(file)) as unknown as HTMLImageElement);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.flipY = false;
-  texture.generateMipmaps = true;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.anisotropy = 8;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 /** One of a region's maps as tools/globe-region.mjs describes it (public/globe/<region>.json). */
 interface RegionLevel {
   name: 'near' | 'wide';
@@ -596,12 +569,13 @@ export class Globe {
     // uGlobeLift): fetched once the scene is up, or when the eye first rises, and faded in (`surfaced`).
     this.want = later(() => {
       const maps: Promise<unknown>[] = [
-        Promise.all([cubeFaces('relief', true), loadColourCube('colour')]).then(async ([relief, colour]) => {
-          await packCube(renderer, this.maps, relief, 2);
-          // (uploaded in a frame of its own, before anything is drawn with it)
-          await queued(() => renderer.initTexture(colour));
-          this.uniforms.uGlobeColour!.value = colour;
-        }),
+        Promise.all([cubeFaces('relief', true), Promise.all(FACES.map((f) => picture(`colour.${f}.jpg`)))]).then(
+          async ([relief, colour]) => {
+            await packCube(renderer, this.maps, relief, 2);
+            // (the land's colours, six faces tools/globe-surface.mjs writes: copied in a piece a frame, and shown when all are in)
+            this.uniforms.uGlobeColour!.value = await colourCube(renderer, colour);
+          },
+        ),
       ];
       if (region) maps.push(this.loadSurface(region));
       void Promise.all(maps).then(() => {
@@ -631,11 +605,11 @@ export class Globe {
       fade: number;
       banks?: [number, number, number][];
     };
-    const [relief, colour] = await Promise.all([regionBitmap(meta.relief.file), loadSurface(meta.colour.file)]);
+    const [relief, picture_] = await Promise.all([regionBitmap(meta.relief.file), picture(meta.colour.file)]);
     const { east: e, north: n, centre: c } = planeAt(meta.centre[0], meta.centre[1]);
     const u = this.uniforms;
     const share = await packLayer(this.renderer, this.flat, 2, relief);
-    await queued(() => this.renderer.initTexture(colour));
+    const colour = await colourMap(this.renderer, picture_);
     (u.uGlobeFlatShare!.value as THREE.Vector2[])[2]!.set(share[0], share[1]);
     u.uGlobeSurfColour!.value = colour;
     (u.uGlobeSurfPlane!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);

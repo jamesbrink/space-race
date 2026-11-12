@@ -9,7 +9,9 @@ import * as THREE from 'three';
  * cube map (`packCube`) and one-channel flat maps as the layers of one array texture
  * (`packLayer`), each copied in on the GPU as it arrives: the decoded picture is uploaded once as
  * a plain texture, drawn into its channel or layer texel for texel (nearest, so what is kept is the
- * file's own bytes), and let go. Nothing is read back, and a map that has not arrived reads 0.
+ * file's own bytes), and let go. Nothing is read back, and a map that has not arrived reads 0. Maps of
+ * colours that arrive late are copied in the same way (`colourCube`, `colourMap`), so that no upload
+ * holds a frame: a piece of a map a frame.
  */
 const VERTEX = /* glsl */ `
   in vec3 position;
@@ -17,10 +19,17 @@ const VERTEX = /* glsl */ `
 const FRAGMENT = /* glsl */ `
   precision highp float;
   uniform sampler2D tFrom;
-  uniform vec2 uSize;    // the size of what is drawn into, texels
-  uniform vec4 uInto;    // which channel takes it
+  uniform vec2 uSize;    // the size of the piece drawn, texels
+  uniform vec2 uCorner;  // where in what is drawn into its first texel goes
+  uniform vec4 uInto;    // which channel takes it; all nothing: its colours are taken as they are
   out vec4 oValue;
-  void main() { oValue = uInto * texture(tFrom, gl_FragCoord.xy / uSize).r; }`;
+  void main() {
+    vec4 from = texture(tFrom, (gl_FragCoord.xy - uCorner) / uSize);
+    oValue = uInto == vec4(0.0) ? vec4(from.rgb, 1.0) : uInto * from.r;
+  }`;
+
+/** A map is copied in in pieces this many texels square, one a frame: a piece's upload is a few milliseconds, a whole map's a tenth of a second. */
+const PIECE = 1024;
 
 /**
  * One piece of GPU work a frame. A map arriving is megabytes to upload and a mip chain to make; several landing in
@@ -63,7 +72,12 @@ function paneOf(): NonNullable<typeof pane> {
     glslVersion: THREE.GLSL3,
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    uniforms: { tFrom: { value: null }, uSize: { value: new THREE.Vector2(1, 1) }, uInto: { value: new THREE.Vector4(1, 0, 0, 0) } },
+    uniforms: {
+      tFrom: { value: null },
+      uSize: { value: new THREE.Vector2(1, 1) },
+      uCorner: { value: new THREE.Vector2(0, 0) },
+      uInto: { value: new THREE.Vector4(1, 0, 0, 0) },
+    },
     depthTest: false,
     depthWrite: false,
     blending: THREE.CustomBlending,
@@ -81,41 +95,47 @@ function paneOf(): NonNullable<typeof pane> {
 }
 
 /** A decoded picture as a plain texture for one copy: its first channel, texel for texel when it is `width` across, filtered when it is not (a map halved for a small screen). */
-function source(bitmap: ImageBitmap, width: number): THREE.Texture {
+function source(bitmap: ImageBitmap, exact: boolean, colour: boolean): THREE.Texture {
   const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
-  texture.format = THREE.RedFormat;
+  texture.format = colour ? THREE.RGBAFormat : THREE.RedFormat;
   texture.type = THREE.UnsignedByteType;
-  texture.colorSpace = THREE.NoColorSpace;
+  texture.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
   texture.flipY = false;
   texture.generateMipmaps = false;
-  texture.minFilter = texture.magFilter = bitmap.width === width ? THREE.NearestFilter : THREE.LinearFilter;
+  texture.minFilter = texture.magFilter = exact ? THREE.NearestFilter : THREE.LinearFilter;
   texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.needsUpdate = true;
   return texture;
 }
 
+/**
+ * Draw a picture into a rectangle (x, y, width, height: texels) of one part of a target: into one channel (0 red to
+ * 3 alpha), added to what is there, or with `channel` null its colours as they are (an sRGB picture into an sRGB target).
+ */
 function draw(
   renderer: THREE.WebGLRenderer,
   target: THREE.WebGLRenderTarget,
   part: number,
   bitmap: ImageBitmap,
-  width: number,
-  height: number,
-  channel: number,
-  mips = true,
+  rect: [number, number, number, number],
+  channel: number | null,
+  mips: boolean,
 ): void {
   const { scene, camera, material } = paneOf();
-  // (the mip levels are made after this draw only if asked: a cube's are made once, after its last face)
+  const [x, y, width, height] = rect;
+  // (the mip levels are made after this draw only if asked: a map's are made once, after its last piece)
   target.texture.generateMipmaps = mips;
-  const from = source(bitmap, width);
+  const from = source(bitmap, bitmap.width === width && bitmap.height === height, channel === null);
   material.uniforms.tFrom!.value = from;
   (material.uniforms.uSize!.value as THREE.Vector2).set(width, height);
+  (material.uniforms.uCorner!.value as THREE.Vector2).set(x, y);
   (material.uniforms.uInto!.value as THREE.Vector4).set(
     Number(channel === 0),
     Number(channel === 1),
     Number(channel === 2),
     Number(channel === 3),
   );
+  material.blending = channel === null ? THREE.NoBlending : THREE.CustomBlending;
   const was = renderer.getRenderTarget(),
     face = renderer.getActiveCubeFace(),
     level = renderer.getActiveMipmapLevel(),
@@ -123,18 +143,51 @@ function draw(
     xr = renderer.xr.enabled;
   renderer.xr.enabled = false;
   renderer.autoClear = false;
-  target.viewport.set(0, 0, width, height);
-  target.scissor.set(0, 0, width, height);
+  target.viewport.set(x, y, width, height);
+  target.scissor.set(x, y, width, height);
+  target.scissorTest = true;
   renderer.setRenderTarget(target, part);
   renderer.render(scene, camera);
   target.viewport.set(0, 0, target.width, target.height);
   target.scissor.set(0, 0, target.width, target.height);
+  target.scissorTest = false;
   renderer.setRenderTarget(was, face, level);
   target.texture.generateMipmaps = true;
   renderer.autoClear = auto;
   renderer.xr.enabled = xr;
   from.dispose();
   bitmap.close();
+}
+
+/**
+ * A picture into the corner of one part of a target, a piece a frame (`queued`): cut into pieces of PIECE texels by
+ * the browser, off the page's thread, each uploaded and drawn in a frame of its own; the mip levels made after the
+ * last, if asked. A picture of another size than `width` by `height` (a map halved for a small screen) goes in whole,
+ * filtered.
+ */
+async function copyIn(
+  renderer: THREE.WebGLRenderer,
+  target: THREE.WebGLRenderTarget,
+  part: number,
+  bitmap: ImageBitmap,
+  width: number,
+  height: number,
+  channel: number | null,
+  mips: boolean,
+): Promise<void> {
+  if (bitmap.width !== width || bitmap.height !== height || typeof createImageBitmap === 'undefined')
+    return queued(() => draw(renderer, target, part, bitmap, [0, 0, width, height], channel, mips));
+  const pieces: [number, number, number, number][] = [];
+  for (let y = 0; y < height; y += PIECE)
+    for (let x = 0; x < width; x += PIECE) pieces.push([x, y, Math.min(PIECE, width - x), Math.min(PIECE, height - y)]);
+  const cut = await Promise.all(
+    pieces.map(([x, y, w, h]) =>
+      createImageBitmap(bitmap, x, y, w, h, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' }),
+    ),
+  );
+  bitmap.close();
+  for (const [i, piece] of cut.entries())
+    await queued(() => draw(renderer, target, part, piece, pieces[i]!, channel, mips && i === cut.length - 1));
 }
 
 /** Clear every part of a new target to nothing. */
@@ -176,7 +229,7 @@ export async function packCube(
   channel: number,
 ): Promise<void> {
   for (const [i, face] of faces.entries())
-    await queued(() => draw(renderer, target, i, face, target.width, target.height, channel, i === faces.length - 1));
+    await copyIn(renderer, target, i, face, target.width, target.height, channel, i === faces.length - 1);
 }
 
 /** An array of one-channel maps, each layer `size` texels square, all nothing, with its mip levels: for `packLayer`. */
@@ -208,6 +261,43 @@ export async function packLayer(
 ): Promise<[number, number]> {
   const width = Math.min(bitmap.width, target.width),
     height = Math.min(bitmap.height, target.height);
-  await queued(() => draw(renderer, target, layer, bitmap, width, height, 0));
+  await copyIn(renderer, target, layer, bitmap, width, height, 0, true);
   return [width / target.width, height / target.height];
+}
+
+/**
+ * A cube map of colours from six pictures (sRGB, in a cube map's order), with its mip levels, copied in a piece a
+ * frame: for the globe's land, which arrives after the first view. Resolves when all of it is in.
+ */
+export async function colourCube(renderer: THREE.WebGLRenderer, faces: ImageBitmap[]): Promise<THREE.CubeTexture> {
+  const size = faces[0]!.width;
+  const target = new THREE.WebGLCubeRenderTarget(size, {
+    format: THREE.RGBAFormat,
+    type: THREE.UnsignedByteType,
+    colorSpace: THREE.SRGBColorSpace,
+    generateMipmaps: true,
+    minFilter: THREE.LinearMipmapLinearFilter,
+    magFilter: THREE.LinearFilter,
+    depthBuffer: false,
+  });
+  for (const [i, face] of faces.entries()) await copyIn(renderer, target, i, face, size, size, null, i === faces.length - 1);
+  return target.texture;
+}
+
+/** A flat map of colours from a picture (sRGB), with its mip levels, copied in a piece a frame. */
+export async function colourMap(renderer: THREE.WebGLRenderer, bitmap: ImageBitmap): Promise<THREE.Texture> {
+  const { width, height } = bitmap;
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    format: THREE.RGBAFormat,
+    type: THREE.UnsignedByteType,
+    colorSpace: THREE.SRGBColorSpace,
+    generateMipmaps: true,
+    minFilter: THREE.LinearMipmapLinearFilter,
+    magFilter: THREE.LinearFilter,
+    depthBuffer: false,
+  });
+  target.texture.wrapS = target.texture.wrapT = THREE.ClampToEdgeWrapping;
+  target.texture.anisotropy = 8;
+  await copyIn(renderer, target, 0, bitmap, width, height, null, true);
+  return target.texture;
 }
