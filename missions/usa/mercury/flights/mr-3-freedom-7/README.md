@@ -193,9 +193,15 @@ Against the aborts that were flown (`tests/abort.test.mjs`; tolerances set first
 | distance covered | "half a mile" | 1,934 ft (-27 %) | within 30 % |
 | time of flight | 76 s | 47.5 s (-38 %) | **miss** (15 %): follows from the height |
 
+How the table was come by: the first run left the tower's own side out of the air on the
+spacecraft-with-tower. It was added (the tower's existing estimate, unchanged) after that run had been
+seen, as an omission put right: the trial's figures went from +10.8 %, +62 % and +25 % (height,
+distance, time) to the -9.6 %, +20 % and -1.9 % above, and Freedom 7's own abort from 2,223 ft and
+288 m from the pad to 1,850 ft and 231 m (`tests/abort.test.mjs` says the same beside its misses).
+
 Not flown: the sideways part of the tilted motor's thrust (a few parts in a thousand), the antenna
 fairing and the landing bag, the abort's rate damping beyond the jets' own, and anything of one shed
-body on another (the retropack, dropped on the pad, falls inside the booster it sat on). The air on
+body on another beyond this: the retropack an abort drops on the pad stays on the booster's top. The air on
 the spacecraft with its tower on is the weakest part: one drag curve at no angle of attack and side
 areas that are ours. TM X-491 has that configuration's stability in the tunnel and has not been read
 for it.

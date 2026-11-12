@@ -826,8 +826,11 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     s.separation.booster = { r: booster.r, v: booster.v };
     s.mass = taken;
     s.shed.booster = true;
-    // the abort's own sequence drops the retropack as the spacecraft leaves
-    if (afterAbort?.retropack && s.controls.automatic !== false) dropPack(s);
+    // the abort's own sequence drops the retropack as the spacecraft leaves; off a stack still standing on its pad, onto the booster's top, where it stays
+    if (afterAbort?.retropack && s.controls.automatic !== false) {
+      dropPack(s);
+      if (state.held && pack) s.released = [...s.released.slice(0, -1), { ...s.released.at(-1)!, stands: true }];
+    }
     return s;
   };
   /** A parachute let out in more dynamic pressure than it can take tears: `limits.torn` of its drag area is left. */

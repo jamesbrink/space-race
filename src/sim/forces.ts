@@ -131,6 +131,8 @@ export interface Release {
   rest?: { r: Vec3; v: Vec3; mass: number };
   /** The vehicle had already aborted on its escape rocket when this left: a motor of the body's marked `unless: 'abort'` is spent. */
   aborted?: boolean;
+  /** It was let go onto something standing still under it (the booster on its pad, under a retropack an abort drops): it stays where it is. */
+  stands?: boolean;
 }
 
 /**

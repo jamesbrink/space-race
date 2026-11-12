@@ -211,7 +211,10 @@ The same GLB also holds the launch vehicle's five nodes: see
   rocket takes it off alone. On an abort the rocket's line passes 1 in to one side of the centre of mass
   (`body.escape.offset`: NASA TM X-629; toward which side is estimated), which tips the spacecraft over and puts a
   pad abort down about 230 m from the pad rather than back on it; the tilt of the motor that set the line there, a
-  third of a degree, is left out, and the tower's centre of mass is not moved as its rocket burns. The tower's and the retropack's drag areas, the retropack's centre of
+  third of a degree, is left out, and the tower's centre of mass is not moved as its rocket burns. Which side
+  the line was set toward would be settled by the Mercury-Redstone abort analysis or the capsule's alignment
+  record (McDonnell's weight and balance or thrust-alignment sheet for capsule 7; the Redstone range-safety
+  study of where an aborted capsule falls): none has been found. The tower's and the retropack's drag areas, the retropack's centre of
   mass and inertia, and the metre a second its spring is given are estimates (`trajectory.body.sheds`).
   The retropack is flown at the whole 276 lb the record's weights step by, burned propellant included.
 - **The spacecraft's drag off its axis is a model, not a measurement**: the zero-angle curves (TM X-491)

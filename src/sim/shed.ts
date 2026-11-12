@@ -18,7 +18,8 @@
  * turning freely, and it is stepped COARSE ticks at a time, which is the step fly.ts itself uses.
  *
  * It ends where either of its ends meets the sea (or `floor`), and says where and how fast.
- * Something let go standing on the ground stays there. A body that has come down is not
+ * Something let go standing on the ground stays there, and so does something let go onto what
+ * stands under it (`Release.stands`): nothing else of one shed body on another is flown. A body that has come down is not
  * integrated again. Its mass does not change: a motor's propellant is not taken off it.
  */
 import type { ShedBody, Trajectory } from '../types';
@@ -231,8 +232,9 @@ export function shedder(
     const d: Dyn = { r: release.r, v: release.v, q: release.q, w: release.w };
     const air = windAt(d.r, d.v, release.t, seaLevel);
     const state: ShedState = { t: release.t, ticks: 0, ...d, apogee: air.altitude, peakQ: air.q, landing: null };
-    // let go standing on the ground: it stays where it stands
-    if (air.airspeed < 0.5 && length(thrust(0)) <= mass * G0 && clear(d, release.t).by < 0.05) state.landing = landed(d, release.t);
+    // let go standing on the ground, or onto something that stands under it: it stays where it stands
+    if (release.stands || (air.airspeed < 0.5 && length(thrust(0)) <= mass * G0 && clear(d, release.t).by < 0.05))
+      state.landing = landed(d, release.t);
     return state;
   };
 

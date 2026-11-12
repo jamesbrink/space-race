@@ -62,6 +62,13 @@ const SAME_SHAPE =
 const UNKNOWN_BEACH =
   'what spacecraft No. 1 weighed that day and how far its launcher leaned are not in anything read: it is flown here as Freedom 7’s spacecraft (3,764 lb with its tower, the retropack dropped) off the 1959 trial’s 71 degrees. ' +
   'No. 1 was stripped of most of its systems (This New Ocean, p. 261), so it was lighter and went higher and stayed up longer';
+// How these runs were come by, so that it is on record. The first run of the Langley trial left the tower's own side
+// out of the air on the spacecraft-with-tower (only the spacecraft's side was pushed on): 2,160 ft up (+10.8 %), 2,587 ft
+// out (+62 %), 78.6 s (+25 %), half a turn before the tower went. The tower's side (`body.sheds`' estimate for the tower
+// flying alone, 1.2 sq m, unchanged) was then added to that configuration, as an omission put right, and that was done
+// after the first run had been seen: 1,763 ft (-9.6 %), 1,918 ft (+20 %), 61.9 s (-1.9 %), two turns. Freedom 7's own
+// abort went from 2,223 ft and 288 m from the pad to 1,850 ft and 231 m. No figure was chosen to bring a result in, but
+// the reader should know the order things happened in.
 /** Every figure outside its tolerance: by how much (a fraction of the record), give or take `slack`, and why. */
 const MISSES = {
   'TM X-422': {
@@ -184,6 +191,7 @@ test('the sequence is the capsule’s own: retropack off as it leaves, tower at 
     ['separation', 'retropack', 'tower'],
   );
   near(s.released[1].t, 0, TICK, 'the retropack goes as the spacecraft leaves');
+  assert.ok(s.released[1].stands, 'onto the top of the booster it sat on, which stands: it stays there');
   assert.ok(s.towerAt >= 1.9, 'the tower is kept while its rocket burns');
   near(s.towerAt, tally.results.apogeeAt, 2 * TICK, 'and goes at the top of the climb');
   near(s.drogueAt - s.towerAt, seq.drogue.value, TICK, 'the drogue two seconds after the tower');
