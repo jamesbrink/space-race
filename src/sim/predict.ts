@@ -626,7 +626,7 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
       const began = now();
       while (!done) {
         advance();
-        if (budget !== undefined && steps % 8 === 0 && now() - began >= budget) break;
+        if (budget !== undefined && steps % 2 === 0 && now() - began >= budget) break;
       }
       cost += now() - began;
       if (done) answer = finish();

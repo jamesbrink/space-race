@@ -26,12 +26,12 @@ import { type Box, type Clear, layMarks, type MarkIn, type MarkOut } from './pat
  * The model for how it behaves is lunar-lift's (../lunar-lift, js/predictor.js): the prediction is
  * worked out a few times a second and kept as data, and drawn every frame from where the vehicle is.
  *
- * - **Clear of the vehicle.** Nothing of the line within a gap of the vehicle (its radius and a half,
- *   or a tenth of the camera's distance, whichever is more), then it comes in from nothing over the
- *   next three gaps (lunar-lift's stops: at 1.4, 2 and 2.8 gaps a seventh, two fifths and four fifths
- *   of it), measured along the line in the scene; and on the screen nothing inside a ring round the
- *   vehicle's silhouette. The flown line keeps the same distance behind. From inside the vehicle (on
- *   board) the ring is off and the cabin's own walls hide the line: it is seen through the windows.
+ * - **Clear of the vehicle.** Nothing of the line within a gap of the vehicle's middle (a little more than half its
+ *   length, or a fifth of the view's half height at the vehicle, whichever is more), then it comes in from nothing
+ *   over the next two gaps on lunar-lift's curve (pathline.ts: `fadeIn`), measured in the scene; and on the screen
+ *   nothing within the vehicle's outline, taken as a capsule along its long axis as broad as it is, and a margin.
+ *   The flown line keeps the same distance behind. From inside the vehicle (on board) the outline is off and the
+ *   cabin's own walls hide the line: it is seen through the windows, and no marker is laid over the cabin.
  * - **Hidden by what is in front of it**: it is drawn after the solid scene, tested against its depth
  *   and writing none, a hundredth of the way nearer than it is (so the sea it comes down to does not
  *   hide its end); beyond the far plane it is at the far plane, behind everything; and the Earth's
@@ -39,8 +39,9 @@ import { type Box, type Clear, layMarks, type MarkIn, type MarkOut } from './pat
  * - **A width on the screen, not in the world**: a ribbon pushed out across its own direction in the
  *   vertex shader, a core of `CORE` CSS pixels each side with a pixel's soft edge and a glow to `HALF`,
  *   thinning to two thirds of that far off; in the cel look a flat core with an ink edge.
- * - **Never at the eye**: a point nearer than `uNear` is moved along the line to half of it and not
- *   drawn, so nothing reaches the near plane and nothing behind the eye is drawn across the screen.
+ * - **Never at the eye**: nothing nearer than just past the near plane is drawn (it fades out before it), and a
+ *   point nearer than half that is moved along the line to there, so no vertex is behind the eye, where a ribbon
+ *   turns inside out across the screen.
  * - **Still when nothing changes, eased when it does**: predict.ts gives the path at instants of its
  *   own, so a prediction made again of the same flight gives the same points; a new one is eased in
  *   from where the last one had it over `EASE` seconds.
@@ -868,10 +869,10 @@ export class FlightPath {
       this.now = now;
       this.turnAt(shown, now, this.turn);
       this.mesh.quaternion.copy(this.turn);
-      this.mesh.position.copy(this.carried(shown.anchor, new THREE.Vector3()));
+      this.carried(shown.anchor, this.mesh.position);
       // the flown line and the ring are children of the mesh: placed in its frame
       this.buildFlown(shown.frame, shown.result.from);
-      const inverse = this.turn.clone().invert();
+      const inverse = this.unturn.copy(this.turn).invert();
       const local = (p: THREE.Vector3, into: THREE.Object3D) =>
         into.position.copy(p).sub(this.centre).applyQuaternion(this.turn).add(this.centre).sub(this.mesh.position).applyQuaternion(inverse);
       local(this.flownAnchor, this.flownMesh);
@@ -902,6 +903,9 @@ export class FlightPath {
   private readonly w = new THREE.Vector3();
   private readonly size = new THREE.Vector2();
   private readonly inverse = new THREE.Quaternion();
+  private readonly unturn = new THREE.Quaternion();
+  private readonly p = new THREE.Vector3();
+  private readonly q = new THREE.Vector3();
 
   /**
    * In the draw, once a frame, with the camera and the vehicle as this frame has them: how wide the line is on this
@@ -998,15 +1002,15 @@ export class FlightPath {
     let x1 = Number.NEGATIVE_INFINITY;
     let y0 = Number.POSITIVE_INFINITY;
     let y1 = Number.NEGATIVE_INFINITY;
-    const p = new THREE.Vector3();
+    const p = this.p;
     const centre = this.v.copy(this.centre);
     const radius = this.uniforms.uRadius!.value as number;
     for (const m of this.marks) {
       const scene = this.carried(m.at, p);
       // not past, not behind the eye, not behind the Earth
       const from = this.w.copy(scene).sub(eye);
-      const k = Math.min(1, Math.max(0, centre.clone().sub(eye).dot(from) / Math.max(from.lengthSq(), 1e-6)));
-      const hidden = centre.distanceTo(eye.clone().addScaledVector(from, k)) < radius - 8000;
+      const k = Math.min(1, Math.max(0, this.q.copy(centre).sub(eye).dot(from) / Math.max(from.lengthSq(), 1e-6)));
+      const hidden = centre.distanceTo(this.q.copy(eye).addScaledVector(from, k)) < radius - 8000;
       const at = m.t > now && !hidden ? project(scene, from) : null;
       if (!at || Math.abs(at.x) > 1.5 || Math.abs(at.y) > 1.5) continue;
       const x = ((at.x + 1) / 2) * rect.width;

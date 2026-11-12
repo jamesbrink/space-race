@@ -261,19 +261,31 @@ never adjusted to bring a check in.
   Orbit (space-fixed, with radial and normal). `ballOf(r, v, attitude, t, target)` is all of its
   mathematics and is tested; the canvas is redrawn only when the attitude has moved a twentieth
   of a degree, and not at all while tucked. The path (`src/sim/predict.ts`, drawn by
-  `viewer/path.ts`, J: M is kept for a map) is where the centre of mass goes from the instant on show if nothing more
-  is done: fly.ts's gravity and drag curves (`dragArea`, `chuteArea`, `thrustIn`), no thrust, the
-  spacecraft's parachutes at their heights, until it meets the sea, has gone once round (then it
-  is an orbit, with its osculating elements) or six hours have passed. While the engine burns K
-  changes it to "if guidance flies the rest of the programme to the record's cutoff" (thrust
-  along `programmeAxis`, the tilt programme with the pilot's trim: attitude prescribed, as
-  fly.ts's is, not the rigid body stepped), drawn dashed up to the cutoff; on the pad that is
-  the only path there is. It leaves out what the pilot has yet to do (separation's push,
-  retrofire), so before retrofire its impact is the coast's, not the landing's: say which when
-  quoting it. A prediction is begun at most five times a second and worked in slices of 1.5 ms a
-  frame (`Predictor.run(budget)`; `sr.path.cost` says what the last one took); nothing is
-  predicted while the path is off. In Surface the line is each point where it will be over the
-  ground at its own instant; in Orbit, the path as it lies in the frame that does not turn, the
-  mesh turned back about the Earth's axis as the clock goes on. It is an instrument's line: a
-  constant width in pixels, not lit or fogged, hidden only by the Earth's bulk, and given to the
-  stage through `Stage.overlay`.
+  `viewer/path.ts`, J: M is kept for a map) is where the centre of mass goes from the instant on show if the pilot
+  does nothing more: fly.ts's gravity and drag curves (`dragArea`, `chuteArea`, `thrustIn`), and what the sequencer
+  will do by itself (`Sequence`, from the live state: separation and its push, the retrorockets as fly.ts fires them,
+  the pack, the parachutes at their heights; with the sequencer off, nothing, not even the parachutes, as the live
+  simulator has it), until it meets the sea, has gone once round (then it is an orbit, with its osculating elements) or
+  six hours have passed. Predicted from before separation it is the landing the live simulator then flies, within half
+  a per cent (tests/predict.test.mjs). While the engine burns under guidance K chooses between "to cutoff" (thrust
+  along `programmeAxis`, the tilt programme with the pilot's trim: attitude prescribed, as fly.ts's is, not the rigid
+  body stepped), drawn dashed up to the cutoff, and "cut now"; the choice is a two-way control beside the figures,
+  shown only then (K does nothing otherwise, and says nothing it cannot do). On the pad the plan is the only path.
+  Besides the path it names what happens on it (`events`: cutoff, tower, separation, retrofire, the pack, the first
+  0.05 g after retrofire, the greatest load before a parachute, drogue, main) and returns the path at instants of its
+  own, multiples of a power-of-two step its bend allows (`gridStep`), so two predictions of the same flight share their
+  points. A prediction is begun at most five times a second and worked in slices of 1.5 ms a frame
+  (`Predictor.run(budget)`; `sr.path.cost` says what the last one took); nothing is predicted while the path is off. A
+  path that comes down is drawn over the ground (each point where it will be over the ground at its own instant); one
+  that goes round is drawn in the navball's frame (O), in Orbit as it lies in the frame that does not turn, the mesh
+  turned back about the Earth's axis as the clock goes on. It is an instrument's line, and lunar-lift's
+  (../lunar-lift, js/predictor.js) is its model: a ribbon of constant width in pixels with a soft core (in the cel look a
+  flat line with an ink edge), drawn after the solid scene against its depth and writing none, so the vehicle, the
+  ground and the cabin's walls hide it and the Earth's bulk hides it beyond the far plane; it starts a gap ahead of the
+  vehicle and comes in over three more (lunar-lift's stops), and never within the vehicle's outline on the screen;
+  nothing of it nearer the eye than the near plane. Each frame only uniforms change: a new prediction is eased in over
+  0.3 s from where the line was, instant by instant (`viewer/pathline.ts`), so a prediction made again of the same flight
+  moves nothing. The line flown is drawn behind it, paler. Its markers are glyphs on the line with a name, a figure
+  and the time to it (apogee, the events, where it comes down, with a ring on the surface there), laid out together by
+  rank, off the panels, the vehicle and each other, keeping their places (`viewer/pathmarks.ts`); not drawn from the
+  seat. It is given to the stage through `Stage.overlay`, which builds its shaders in `Stage.warm`.
