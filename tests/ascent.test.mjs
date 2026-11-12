@@ -101,6 +101,39 @@ test('the live model does not jump as the reference changes at separation', () =
   }
 });
 
+test('a flight being flown is drawn at the clock’s instant, not held at its last tick, as what it has shed is', () => {
+  // The cockpit flies whole ticks to the nearest one to the clock, so the clock is up to half a tick past the last sample.
+  // Held there, the vehicle was drawn up to 5 ms behind the clock in some frames and not in others while what it had shed
+  // was flown to the clock itself: at 2 km/s the booster stood 10 m nearer or further from the capsule frame to frame,
+  // and the turnaround went in steps of a quarter faster and slower.
+  const whole = live();
+  for (const T of [100, 151.6, 160, 400]) {
+    const k = whole.samples.findIndex((s) => s.t > T);
+    const flying = { ...whole, samples: whole.samples.slice(0, k), duration: Infinity };
+    const head = flying.samples.at(-1);
+    const now = Ascent.of(flight);
+    now.use(flying);
+    const truth = Ascent.of(flight);
+    truth.use(whole);
+    for (const ahead of [0.001, 0.004, 0.0099]) {
+      const t = head.t + ahead;
+      const drawn = at(now, t);
+      const was = at(truth, t);
+      const held = at(now, head.t);
+      assert.ok(
+        held.p.distanceTo(was.p) > 0.5 * ahead * head.speed,
+        `T+${T}: the test can tell a held vehicle from one drawn at the clock`,
+      );
+      assert.ok(
+        drawn.p.distanceTo(was.p) < 0.02,
+        `T+${T}, ${ahead * 1000} ms past the last tick: drawn ${drawn.p.distanceTo(was.p).toFixed(3)} m from where it was`,
+      );
+      const off = THREE.MathUtils.radToDeg(drawn.q.angleTo(was.q));
+      assert.ok(off < 0.005, `T+${T}, ${ahead * 1000} ms past the last tick: turned ${off.toFixed(4)} degrees from how it lay`);
+    }
+  }
+});
+
 test('the batch run is cached by where it flew from, not by the hardware alone', async () => {
   const { flownOnce } = await import('../src/sim/fly.ts');
   const site = siteFrame(flight.site);

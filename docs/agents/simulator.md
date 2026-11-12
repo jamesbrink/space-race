@@ -205,7 +205,8 @@ never adjusted to bring a check in.
   second (the vanes at full throw turn the stack end over end in four seconds); with it off, and
   on the spacecraft alone, the keys are the controls themselves; Q E roll. The sequencer (B)
   sets events off at the record's times. The scene shows it through the same `Ascent`, given the
-  live run (`Stage.flyRun`, ascent.ts `Run`): placed by each sample's own attitude, the spacecraft
+  live run (`Stage.flyRun`, ascent.ts `Run`), at the clock's instant (the last tick carried on by its own motion for the
+  part of a tick the clock is past it, as what it has shed is flown to that instant): placed by each sample's own attitude, the spacecraft
   turning about its centre of mass (on the record's run too: the model's origin is `flies.datum` up
   the stack and the centre of mass `capsule.centre`, and `tests/ascent.test.mjs` holds the model's
   own landmark to the simulator's), what it sheds leaving when it is let go

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
-import { normalize, type Quat, turn, unturn } from '../sim/rigid.ts';
+import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
-import type { LiveSample } from '../sim/vehicle.ts';
+import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
@@ -486,8 +486,20 @@ export class Ascent {
     position: THREE.Vector3,
     quaternion: THREE.Quaternion,
   ): boolean {
-    t = Math.min(t, samples[samples.length - 1]!.t); // (past its last sample it is where that left it, on an Earth that has not turned under it)
-    const [a, b, k] = either(samples, t);
+    const last = samples[samples.length - 1]!;
+    // The cockpit flies whole ticks, to the one nearest the clock, so the clock is up to half a tick past the last of them.
+    // The model is drawn at the clock's instant all the same, carried on from that tick by its own motion, as what it has
+    // shed is flown to that instant (sim/shed.ts): held at the tick, it was drawn a few milliseconds behind the clock in
+    // some frames and not in others, and at 2 km/s the booster stood 10 m nearer the capsule or further frame by frame.
+    // (Landed, it is where it came down: past its last sample it is where that left it, on an Earth that has not turned under it.)
+    const beyond = Number.isFinite(this.live?.duration ?? Infinity) ? 0 : THREE.MathUtils.clamp(t - last.t, 0, TICK);
+    t = Math.min(t, last.t);
+    let [a, b, k] = either(samples, t);
+    if (beyond > 0) {
+      a = b = onward(last, beyond);
+      k = 0;
+      t = a.t;
+    }
     const first = samples[0]!;
     const stood = this.basis(first, new THREE.Matrix4()).transpose(); // (a rotation's inverse)
     const qa = new THREE.Quaternion().setFromRotationMatrix(this.basis(a, new THREE.Matrix4()).multiply(stood));
@@ -500,7 +512,7 @@ export class Ascent {
     // (by the earlier of the two: up to the first sample of the spacecraft alone the point flown is the stack's, which that
     // sample's `r` carries on, so the model does not jump as the reference changes)
     if (riding(a)) {
-      const { r } = between(samples, t);
+      const { r } = beyond > 0 ? a : between(samples, t);
       position.copy(toThree(ecefToSite(this.site, inertialToEcef(r, spin)))).add(offset);
       return true;
     }
@@ -511,7 +523,7 @@ export class Ascent {
     }
     const parted = this.parted;
     const arm = unturn(parted.attitude, sub(parted.r, parted.centre));
-    const centre = between(samples, t, (s) => (s as LiveSample).centre).r;
+    const centre = beyond > 0 ? a.centre : between(samples, t, (s) => (s as LiveSample).centre).r;
     const now = turn(nlerp(a.attitude, b.attitude, k), arm);
     position
       .copy(toThree(ecefToSite(this.site, inertialToEcef(centre, spin))))
@@ -534,6 +546,23 @@ function either<S extends Sample>(samples: readonly S[], t: number): [S, S, numb
   const b = samples[hi]!;
   if (t >= b.t) return [b, b, 0];
   return [a, b, b.t > a.t ? Math.min(1, Math.max(0, (t - a.t) / (b.t - a.t))) : 0];
+}
+
+/**
+ * A live sample carried on `dt` seconds (under a tick) by its own motion: its points at the centre of mass's velocity, its
+ * attitude at its body rates. (Over a tick what that leaves out, a push or a turn of the rates, is under a millimetre.)
+ */
+function onward(s: LiveSample, dt: number): LiveSample {
+  const ahead = (p: Vec3): Vec3 => [p[0] + s.v[0] * dt, p[1] + s.v[1] * dt, p[2] + s.v[2] * dt];
+  const d = spin(s.attitude, s.rates);
+  const q = s.attitude;
+  return {
+    ...s,
+    t: s.t + dt,
+    r: ahead(s.r),
+    centre: ahead(s.centre),
+    attitude: normalize([q[0] + d[0] * dt, q[1] + d[1] * dt, q[2] + d[2] * dt, q[3] + d[3] * dt]),
+  };
 }
 
 /** An attitude between two close ones: the straight blend, made a rotation again (they are a tenth of a second apart at most). */
