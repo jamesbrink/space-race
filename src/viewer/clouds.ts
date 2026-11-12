@@ -623,7 +623,7 @@ const OVER = /* glsl */ `
   ${cloudCutGlsl()}
   ${cumulusBiasGlsl('over_')}
   ${sheetsGlsl('over_')}
-  ${cumulusCellsGlsl('over_', '1.0')}
+  ${cumulusCellsGlsl('over_')}
   // the field over its cut at a place (in cells): the noise's own, and by cells (0 to 1) its cells instead
   float gFpq;   // a pixel's breadth on the field, in cells: set by whoever reads the field
   float fieldOver(vec2 q, float bias, float cells) {
@@ -773,15 +773,21 @@ const OVER = /* glsl */ `
       vec2 toSun = sunward * span / uCumulus.x;
       float h0 = heapTop(q0, bias, soft, cells);
       overHere = gOver;
+      // (how many pixels across the cell here is: one of a few pixels has no lit side and shaded side to show, and
+      // drawn with them was a white pixel beside a dark one: a hard speck with a dark rim, where from orbit a small
+      // cumulus is a soft pale dot)
+      float across = cells > 0.0 ? mix(8.0, 2.0 * gCell * uCumulus.x / fpAcross, cells) : 8.0;
+      float shaped = smoothstep(2.0, 7.0, across);
       float h1 = heapTop(q0 + toSun, bias, soft, cells), h2 = h0 > 0.0 ? heapTop(q0 + 3.0 * toSun, bias, soft, cells) : 0.0;
       float sunLow = sqrt(max(1.0 - sunUp * sunUp, 0.0));
       float rise = (h1 - h0) / span;
       float facing = (sunUp - rise * sunLow) / (sqrt(1.0 + rise * rise) * max(sunUp, 0.12));
       float shadow = max(smoothstep(0.0, 60.0, h1 - h0 - span * sunUp / max(sunLow, 0.05)), smoothstep(0.0, 90.0, h2 - h0 - 3.0 * span * sunUp / max(sunLow, 0.05)));
-      float thick = smoothstep(0.0, 220.0, h0);
+      float thick = smoothstep(0.0, 260.0, h0);
       // (a small heap is thin, and thin cloud is grey beside a thick one's white: so a field has every brightness in it)
-      float shape = mix(0.36, 1.15, smoothstep(0.15, 1.5, facing)) * (1.0 - 0.5 * shadow) * (0.58 + 0.42 * thick);
-      float rim = under ? 1.0 : mix(0.3, 1.0, smoothstep(0.0, 160.0, h0));
+      float shape = mix(0.85, mix(0.36, 1.15, smoothstep(0.15, 1.5, facing)) * (1.0 - 0.5 * shadow), shaped) * (0.45 + 0.55 * thick);
+      // (and thin cloud is seen through: a puff 100 m deep hides two thirds of the sea under it)
+      float rim = under ? 1.0 : mix(0.18, 1.0, smoothstep(0.0, 180.0, h0));
       // (as cells, the field is read for the highest slice and the lowest and taken as running evenly between: the
       // slices are a few hundred metres apart on it at most, and reading the cells five times cost as many milliseconds)
       float overTop = 0.0, overBase = 0.0;

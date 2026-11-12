@@ -907,7 +907,7 @@ export class Globe {
           ${cloudCutGlsl()}
           ${cumulusBiasGlsl('air_')}
           ${sheetsGlsl('air_')}
-          ${cumulusCellsGlsl('air_', `${c.size.toFixed(1)}`)}
+          ${cumulusCellsGlsl('air_')}
           // How much of the Sun's light reaches a point of the globe through the clouds over it: the cumulus as the
           // weather has them there (clouds.ts draws the same field: farCumulus), the middle deck and the cirrus, each
           // read where the ray toward the Sun crosses its height. \`mu\`: the Sun's height there, as a cosine from
@@ -924,7 +924,8 @@ export class Globe {
             float cells = cellsShare(distance(world, cameraPosition + uOrigin) * uGlobePixel);
             float shapes = cells < 1.0 ? cloudNoise(p - uCloudDrift.xz) + bias - ${cloudMiddle(c).toFixed(3)} : 0.0;
             if (cells > 0.0) shapes = mix(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}, fp / ${c.size.toFixed(1)}), cells);
-            float dark = smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - soft, ${(cloudMiddle(c) + 0.03).toFixed(3)} + soft, ${cloudMiddle(c).toFixed(3)} + shapes);
+            // (a cell's shadow by how thick it is: a puff's is faint; and none from the skirt outside it)
+            float dark = smoothstep(mix(-0.02, 0.0, cells) - soft, mix(0.03, 0.06, cells) + soft, shapes);
             float fine = 1.0 - smoothstep(${(2 * c.size).toFixed(1)}, ${(8 * c.size).toFixed(1)}, fp);
             float gather = air_noise2((p - uCloudDrift.xz) / ${c.size.toFixed(1)} * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
             float even = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);

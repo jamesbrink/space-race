@@ -47,9 +47,9 @@ export function writeGreyPng(path, data, width, height) {
   );
 }
 
-/** Write `data` (width * height * 3 bytes: red, green, blue; rows top first) to `path` as an 8-bit colour PNG, filtered as writeGreyPng's is. */
-export function writeRgbPng(path, data, width, height) {
-  const stride = width * 3;
+/** Write `data` (width * height * 3 bytes: red, green, blue; or 4 with `channels`, alpha last; rows top first) to `path` as an 8-bit colour PNG, filtered as writeGreyPng's is. */
+export function writeRgbPng(path, data, width, height, channels = 3) {
+  const stride = width * channels;
   const raw = Buffer.alloc((stride + 1) * height);
   for (let j = 0; j < height; j++) {
     const row = j * (stride + 1);
@@ -58,12 +58,12 @@ export function writeRgbPng(path, data, width, height) {
       up = 0;
     for (let i = 0; i < stride; i++) {
       const v = data[at + i];
-      sub += Math.abs(((v - (i >= 3 ? data[at + i - 3] : 0)) << 24) >> 24);
+      sub += Math.abs(((v - (i >= channels ? data[at + i - channels] : 0)) << 24) >> 24);
       up += Math.abs(((v - (j ? data[at - stride + i] : 0)) << 24) >> 24);
     }
     raw[row] = sub <= up ? 1 : 2;
     for (let i = 0; i < stride; i++) {
-      const prior = sub <= up ? (i >= 3 ? data[at + i - 3] : 0) : j ? data[at - stride + i] : 0;
+      const prior = sub <= up ? (i >= channels ? data[at + i - channels] : 0) : j ? data[at - stride + i] : 0;
       raw[row + 1 + i] = (data[at + i] - prior) & 255;
     }
   }
@@ -79,7 +79,7 @@ export function writeRgbPng(path, data, width, height) {
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8; // bits
-  ihdr[9] = 2; // colour
+  ihdr[9] = channels === 4 ? 6 : 2; // colour, or colour with alpha
   writeFileSync(
     path,
     Buffer.concat([

@@ -21,7 +21,8 @@
  *
  * tools/globe-weather.mjs bakes `weatherAt` into `public/globe/<region>.weather.png`: red the
  * cumulus cover, green the high cloud (cirrus), blue the middle deck (altocumulus near the site,
- * layered cloud in the front), each 0 to 1 as 0 to 255, on the site's own horizontal plane (metres
+ * layered cloud in the front), alpha how much of the place is land (so the field can be organised as it is over
+ * land and over the sea: `landShare`), each 0 to 1 as 0 to 255, on the site's own horizontal plane (metres
  * east and north of the site, a point of the globe being put straight down onto it), `SIDE` texels
  * across `EXTENT` metres, rows north to south. No three.js here: the tool and the tests run it.
  */
@@ -142,6 +143,9 @@ export function weatherAt(e: number, n: number, place: Place, wind: readonly [nu
   return { cumulus: Math.min(MOST, Math.max(0, cumulus)), cirrus, deck };
 }
 
+/** How much of a place is land, for the map's fourth channel: all of it a few kilometres in from a shore, none on the water. */
+export const landShare = (place: Place): number => smooth(-1.5, 3, place.shore);
+
 /** How much the map is believed `distance` metres from the site: none at the site, where the record is, all of it past NEAR[1]. */
 export const believed = (distance: number): number => smooth(NEAR[0], NEAR[1], distance);
 
@@ -157,11 +161,13 @@ export const WEATHER_GLSL = /* glsl */ `
   uniform sampler2D tWeather;
   uniform vec4 uWeather;
   uniform float uWeatherIn;   // how far the map has come in since it arrived, 0 to 1: before, the site's cover everywhere
+  float gLand;   // how much of the place weatherAt last read is land, 0 to 1 (the map's fourth channel)
   vec3 weatherAt(vec2 xz) {
     vec2 en = vec2(xz.x * uWeather.x + xz.y * uWeather.y, xz.x * uWeather.y - xz.y * uWeather.x);
     vec2 uv = en * uWeather.z + 0.5;
-    vec3 w = texture(tWeather, vec2(uv.x, 1.0 - uv.y)).rgb;
-    w = mix(vec3(uWeather.w, 0.0, 0.0), w, uWeatherIn);
+    vec4 map = texture(tWeather, vec2(uv.x, 1.0 - uv.y));
+    gLand = map.a;
+    vec3 w = mix(vec3(uWeather.w, 0.0, 0.0), map.rgb, uWeatherIn);
     w.r = mix(uWeather.w, w.r, smoothstep(${NEAR[0].toFixed(1)}, ${NEAR[1].toFixed(1)}, length(xz)));
     return w;
   }`;
@@ -186,24 +192,41 @@ export const cumulusBiasGlsl = (prefix: string): string => /* glsl */ `
   // Streets 4 km apart and tens of kilometres long, wandering a little: as cumulus stand over Florida and the sea off
   // it on a May afternoon in MODIS's pictures (Aqua, 9 May 2018). What is added to the noise for them at a place of
   // the field (in cells), before how far from the site it is; their strength estimated.
-  float cumulusLanes(vec2 q) {
+  // Over land (\`land\`, 0 to 1) they are straight and strong, as over Florida; over the sea they are weaker and bend
+  // through tens of degrees over a hundred kilometres, as the trades' rows do.
+  float cumulusLanes(vec2 q, float land) {
     vec2 lane = vec2(dot(q, uWeatherWind), dot(q, vec2(-uWeatherWind.y, uWeatherWind.x)));
+    lane.y += (22.0 - 16.0 * land) * (${prefix}noise2(lane * vec2(0.011, 0.009) + 3.9, 102) - 0.5);
     lane.y += 3.2 * (${prefix}noise2(lane * vec2(0.035, 0.03) + 7.3, 99) - 0.5) + 0.9 * (${prefix}noise2(lane * vec2(0.16, 0.12) + 2.6, 100) - 0.5);
     // (a street is cloud or clear air, with little between: the noise sharpened about its middle)
     // (and in some country more than other: streets come and go over tens of kilometres, none ruled from edge to edge)
     float some = smoothstep(0.3, 0.75, ${prefix}noise2(q * 0.022 + 41.3, 101));
-    return (0.08 + 0.2 * some) * (smoothstep(0.3, 0.7, ${prefix}noise2(lane * vec2(0.03, 0.38) + 31.7, 95)) - 0.5);
+    return mix(0.03 + 0.1 * some, 0.08 + 0.2 * some, land) * (smoothstep(0.3, 0.7, ${prefix}noise2(lane * vec2(0.03, 0.38) + 31.7, 95)) - 0.5);
   }
-  float gAway, gLanes;   // what cumulusBias last found: how far the map is believed there, and the streets' part before that
+  // Arcs over the sea: cumulus stand along the edges of old showers' outflows, in curved lines tens of kilometres
+  // long round clear air (the walls between cells 40 km across, pushed about so none is a ruled polygon, and only
+  // parts of any). 0 to 1: on an arc.
+  float cumulusArcs(vec2 q) {
+    vec2 g = q / 27.0 + 0.9 * (vec2(${prefix}noise2(q / 21.0 + 6.1, 103), ${prefix}noise2(q / 21.0 + 1.7, 104)) - 0.5);
+    ivec2 i = ivec2(floor(g));
+    float d1 = 9.0, d2 = 9.0;
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+      ivec2 c = i + ivec2(dx, dy);
+      float d = distance(g, vec2(c) + vec2(${prefix}hash2(c, 106), ${prefix}hash2(c, 107)));
+      if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+    }
+    return (1.0 - smoothstep(0.02, 0.14, d2 - d1)) * smoothstep(0.35, 0.65, ${prefix}noise2(q / 60.0 + 9.1, 105));
+  }
   float cumulusBias(vec2 q, vec2 xz, out vec3 w, out float streets) {
     w = weatherAt(xz);
+    float land = gLand;
     float away = smoothstep(${NEAR[0].toFixed(1)}, ${NEAR[1].toFixed(1)}, length(xz));
-    gAway = away;
-    gLanes = cumulusLanes(q);
-    streets = away * gLanes;
+    streets = away * cumulusLanes(q, land);
     // and clusters of them, 19 and 50 km across, with clearer air between: so the field has every size from a puff
-    // to a cluster of cells, and from far off its large shapes stand out more than its small ones (estimated)
-    streets += away * (0.05 * (${prefix}noise2(q * 0.08 + 11.3, 96) - 0.5) + 0.06 * (${prefix}noise2(q * 0.03 + 23.9, 98) - 0.5));
+    // to a cluster of cells, and from far off its large shapes stand out more than its small ones (estimated); over
+    // the sea, where no warm ground lines them up, the clusters are most of what there is
+    streets += away * mix(1.7, 1.0, land) * (0.05 * (${prefix}noise2(q * 0.08 + 11.3, 96) - 0.5) + 0.06 * (${prefix}noise2(q * 0.03 + 23.9, 98) - 0.5));
+    if (land < 0.99 && away > 0.0) streets += away * (1.0 - land) * 0.13 * (cumulusArcs(q) - 0.12);
     return cloudCutAt(uWeather.w) - cloudCutAt(w.r) + streets;
   }`;
 
@@ -304,60 +327,90 @@ export const CELLS: readonly [number, number] = [45, 90];
 
 /**
  * GLSL: the cumulus field as cells, for clouds seen from far above. Cut at a level, the field's noise is a torn
- * shape; a fair-weather cumulus seen from orbit is a rounded cell, and a field of them popcorn. So where a cloud
- * is a few pixels across (`cellsShare`, by the pixel's breadth on the field) the field is read through its cells
- * instead: a grid of points 0.45 of a cloud apart, each pushed about; where the noise at a point is over its cut
- * there is a cell, broader and higher the further over it is, a dome; cells that overlap run together into a
- * cluster. `cumulusCells(q, bias, cut, fpq)` (`fpq`: a pixel's breadth, in cells): how far the field stands over its cut at `q` (in cells of the field; `bias`
- * as cumulusBias gives it), in the noise's own units, as the noise would say it: so whoever heaps a cloud on the
- * noise heaps the same cloud on this. The cover is the field's, near enough (a cell where the noise is over its cut,
- * about as broad as its spacing). Their shape is estimated, from photographs of trade cumulus from orbit.
- * `scale`: what `cloudNoise` wants a place in cells multiplied by ('1.0' where it was made for cells one unit across).
+ * shape; a fair-weather cumulus seen from orbit is a rounded cell, and a field of them popcorn: very many, most of
+ * them a few hundred metres across and low, a few broad and high (MODIS, Aqua, 9 May 2018, off Florida; astronauts'
+ * photographs). So where a cloud is a few pixels across (`cellsShare`, by the pixel's breadth on the field) the
+ * field is read through its cells instead: two grids of points, 0.2 of a cloud apart (300 m) and 0.5, each point
+ * pushed about. At a point where the field is over its cut there is a cell: a dome, most of them small (150 to 700 m
+ * across, by chance, the small ones many), broader the further over the cut; on the coarser grid, only well inside
+ * a cloud, the broad heaps. A small cell is low, so it is thin and grey and half seen through (clouds.ts); cells
+ * that overlap run together.
+ *
+ * `cumulusCells(q, bias, cut, fpq)` (`fpq`: a pixel's breadth, in cells): how far the field stands over its cut at
+ * `q` (in cells of the field; `bias` as cumulusBias gives it), in the noise's own units, as the noise would say it:
+ * so whoever heaps a cloud on the noise heaps the same cloud on this. `gCell` is left as the breadth (radius, in
+ * cells of the field) of the cell found there.
+ *
+ * Whether a cell stands is by the field at its own middle, so no cell is cut by the field's edge. The field there
+ * is its two coarse octaves, taken from their value and slope at `q` (one reading for all eighteen points, where
+ * reading the noise at each cost a millisecond a frame), and for its two fine octaves, which are finer than the
+ * cells are apart, a chance of the cell's own with their spread. The weather's bias and the streets are the pixel's:
+ * across a cell 300 m broad they hardly change. The cover is the field's: measured over a wide patch, cells for a
+ * cover of 0.02, 0.1, 0.3 and 0.6 cover 0.020, 0.095, 0.28 and 0.54 (a dense field keeps its gaps). Their shape and
+ * sizes are estimated.
  */
-export const cumulusCellsGlsl = (prefix: string, scale: string): string => /* glsl */ `
+export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
   float cellsShare(float fp) { return smoothstep(${CELLS[0].toFixed(1)}, ${CELLS[1].toFixed(1)}, fp); }
   // (smooth union: where two domes meet they run together into one mass with a crease, not two balls)
   float cellsJoin(float a, float b) { float h = max(0.03 - abs(a - b), 0.0) / 0.03; return max(a, b) + h * h * 0.0075; }
+  // noise2 (field.ts) with its slope: the value, and how it changes along x and y
+  vec3 cellsNoise(vec2 x, int seed) {
+    vec2 i = floor(x), f = x - i;
+    vec2 u = f * f * (3.0 - 2.0 * f), du = 6.0 * f * (1.0 - f);
+    ivec2 n = ivec2(i);
+    float a = ${prefix}hash2(n, seed), b = ${prefix}hash2(n + ivec2(1, 0), seed), c = ${prefix}hash2(n + ivec2(0, 1), seed), d = ${prefix}hash2(n + ivec2(1, 1), seed);
+    float k = a - b - c + d;
+    return vec3(a + (b - a) * u.x + (c - a) * u.y + k * u.x * u.y, du.x * (b - a + k * u.y), du.y * (c - a + k * u.x));
+  }
+  float gCell;   // the breadth (radius, in cells of the field) of the cell cumulusCells last found
   float cumulusCells(vec2 q, float bias, float cut, float fpq) {
-    const float G = 0.45;
-    // (the place pushed about, two sizes of push, so no cell is a ruled circle: a cumulus is lobed)
-    vec2 p = q + 0.24 * G * (vec2(${prefix}noise2(q * 3.1 + 4.7, 603), ${prefix}noise2(q * 3.1 + 9.2, 604)) - 0.5)
-      + 0.11 * G * (vec2(${prefix}noise2(q * 8.3 + 1.3, 605), ${prefix}noise2(q * 8.3 + 6.6, 606)) - 0.5);
-    vec2 g = p / G;
-    ivec2 i = ivec2(floor(g));
+    const float G = 0.2, GB = 0.5;
+    // (the place pushed about, so no cell is a ruled circle: a cumulus is lobed; the finer push only where it is seen)
+    vec2 p = q + 0.05 * (vec2(${prefix}noise2(q * 4.3 + 4.7, 603), ${prefix}noise2(q * 4.3 + 9.2, 604)) - 0.5);
+    if (fpq < 0.05) p += 0.02 * (1.0 - smoothstep(0.025, 0.05, fpq)) * (vec2(${prefix}noise2(q * 11.0 + 1.3, 605), ${prefix}noise2(q * 11.0 + 6.6, 606)) - 0.5);
+    // the field's coarse part here (cloudNoise's first two octaves) over its cut, and its slope
+    vec3 c0 = cellsNoise(q * 0.23 + vec2(1.7, 5.3), 94), c1 = cellsNoise(q, 91);
+    float base = 0.3 * c0.x + 0.33 * c1.x + 0.04 + bias - cut;
+    vec2 slope = 0.069 * c0.yz + 0.33 * c1.yz;
     float best = -0.1;
+    gCell = 0.0;
+    ivec2 i = ivec2(floor(p / G));
     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
       ivec2 c = i + ivec2(dx, dy);
       vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 601), ${prefix}hash2(c, 602)) - 0.5)) * G;
-      // (whether a cell stands is by the street it is in at its own middle, not at the pixel's: or a street's edge
-      // would cut cells in two instead of lining them up)
-      float e = cloudNoise(pc * ${scale}) + bias + gAway * (cumulusLanes(pc) - gLanes) - cut;
+      float e = base + dot(slope, pc - q) + 0.165 + 0.21 * (${prefix}hash2(c, 621) - 0.5) + 0.12 * (${prefix}hash2(c, 622) - 0.5);
       if (e <= 0.0) continue;
-      // (a cell's breadth by how far the noise is over its cut and by chance, three to one: from a puff to a heap)
-      // (and never so broad that a crowd of them closes into one sheet: from above a dense field is still cells with gaps)
-      float r = G * min(0.3 + 4.0 * e, 0.8) * (0.55 + 1.0 * ${prefix}hash2(c, 607));
+      // (most cells small, a few broad: the cube of a chance; and broader the further the field is over its cut. The
+      // 1.12 is what makes them cover what the field does: measured, see above)
+      float u = ${prefix}hash2(c, 607);
+      float rr = min(1.12 * (0.25 + 0.9 * u * u * u) * min(0.55 + 6.0 * e, 1.0), 1.0);
       vec2 d = p - pc;
-      best = cellsJoin(best, min(0.03 + 1.1 * e, 0.2) * (1.0 - dot(d, d) / (r * r)));
+      // (a cell as high as it is broad, to the power the dome has: a puff is low)
+      float v = 0.16 * rr * sqrt(rr) * (1.0 - dot(d, d) / (rr * rr * G * G));
+      if (v > best) gCell = rr * G;
+      best = cellsJoin(best, v);
     }
-    // and small puffs round the cells, a third as far apart, low: scraps at a cluster's edge, down to nothing
-    if (best > -0.06 && fpq < 0.12) {
-      const float S = 0.15;
-      vec2 gs = p / S;
-      ivec2 j = ivec2(floor(gs));
+    // the broad heaps, well inside a cloud
+    if (base > -0.2) {
+      ivec2 j = ivec2(floor(p / GB));
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         ivec2 c = j + ivec2(dx, dy);
-        float chance = ${prefix}hash2(c, 611);
-        if (chance > 0.42) continue;
-        vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 612), ${prefix}hash2(c, 613)) - 0.5)) * S;
-        float r = S * (0.35 + 1.2 * chance);
+        vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 631), ${prefix}hash2(c, 632)) - 0.5)) * GB;
+        float e = base + dot(slope, pc - q) + 0.115 + 0.21 * (${prefix}hash2(c, 641) - 0.5) + 0.12 * (${prefix}hash2(c, 642) - 0.5);
+        if (e <= 0.0) continue;
+        float rr = min((0.3 + 0.5 * ${prefix}hash2(c, 637)) * min(0.5 + 8.0 * e, 1.0), 1.0);
         vec2 d = p - pc;
-        best = cellsJoin(best, (0.012 + 0.05 * chance) * (1.0 - dot(d, d) / (r * r)) * (1.0 - smoothstep(0.06, 0.12, fpq)));
+        float v = 0.2 * rr * (1.0 - dot(d, d) / (rr * rr * GB * GB));
+        if (v > best) gCell = rr * GB;
+        best = cellsJoin(best, v);
       }
     }
     // The rim worn by finer lumps, 100 and 40 m, each left out before it is under two pixels: a cumulus's edge is
     // ragged and thins to haze, and none of its lobes is a clean ball. Only near the rim: a heap's heart is whole.
-    float rim = 1.0 - smoothstep(0.0, 0.05, best);
-    best -= rim * (0.022 * (1.0 - smoothstep(0.025, 0.06, fpq)) * (${prefix}noise2(q * 15.0 + 2.2, 608) - 0.35)
-      + 0.014 * (1.0 - smoothstep(0.01, 0.024, fpq)) * (${prefix}noise2(q * 37.0 + 7.1, 609) - 0.35));
+    if (fpq < 0.06 && best > -0.05) {
+      float rim = 1.0 - smoothstep(0.0, 0.05, best);
+      best -= rim * (0.022 * (1.0 - smoothstep(0.025, 0.06, fpq)) * (${prefix}noise2(q * 15.0 + 2.2, 608) - 0.35)
+        + 0.014 * (1.0 - smoothstep(0.01, 0.024, fpq)) * (${prefix}noise2(q * 37.0 + 7.1, 609) - 0.35));
+    }
     return best;
   }`;

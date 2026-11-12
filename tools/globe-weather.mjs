@@ -4,14 +4,14 @@
 //   node tools/globe-weather.mjs <site module>
 //
 // <site module> is a sites/<site>.ts exporting a SiteDef with a `region`; the map is written to
-// public/globe/<region>.weather.png (red: cumulus cover; green: cirrus; blue: the middle deck).
+// public/globe/<region>.weather.png (red: cumulus cover; green: cirrus; blue: the middle deck; alpha: land).
 // It reads the globe's own baked maps for where the land is and how high (public/globe/land.*.png
 // from tools/globe.mjs, relief.*.png from tools/globe-surface.mjs): bake those first. Everything
 // in the map is estimated: see weather.ts.
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { EXTENT, SIDE, weatherAt } from '../src/viewer/weather.ts';
+import { EXTENT, landShare, SIDE, weatherAt } from '../src/viewer/weather.ts';
 import { DEG, siteFrame, siteToEcef } from '../src/world/frames.ts';
 import { decodeRelief } from '../src/world/relief.ts';
 import { gaussianRadius } from '../src/world/surface.ts';
@@ -66,7 +66,7 @@ const R = gaussianRadius(site.latitude);
 // the wind at the site blows toward 270 (viewer/cape.ts: CLOUDS, from the record's surface wind): east, north
 const WIND = [-1, 0];
 
-const out = new Uint8Array(SIDE * SIDE * 3);
+const out = new Uint8Array(SIDE * SIDE * 4);
 const byte = (v) => Math.max(0, Math.min(255, Math.round(v * 255)));
 for (let j = 0; j < SIDE; j++) {
   const n = (0.5 - (j + 0.5) / SIDE) * EXTENT;
@@ -81,12 +81,13 @@ for (let j = 0; j < SIDE; j++) {
     const shore = (((l.v - 128) * SPREAD) / 127) * ((2 / l.size) * EARTH * l.m * Math.sqrt(l.m)) * 1e-3;
     const height = decodeRelief(sample(relief, p).v);
     const w = weatherAt(e, n, { shore, height }, WIND);
-    const at = (j * SIDE + i) * 3;
+    const at = (j * SIDE + i) * 4;
     out[at] = byte(w.cumulus);
     out[at + 1] = byte(w.cirrus);
     out[at + 2] = byte(w.deck);
+    out[at + 3] = byte(landShare({ shore, height }));
   }
 }
 const file = join(root, 'public/globe', `${def.region.name}.weather.png`);
-writeRgbPng(file, out, SIDE, SIDE);
+writeRgbPng(file, out, SIDE, SIDE, 4);
 console.log(file, `${SIDE} x ${SIDE}, ${(EXTENT / SIDE / 1000).toFixed(1)} km a texel`);
