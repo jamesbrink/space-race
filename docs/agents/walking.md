@@ -87,8 +87,12 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   pivots on its spot), and standing, the feet are then stepped round one at a time (`close`). It
   turns to the way it is sent at 4 radians a second from standing and 7 at a walk (`FACE`), which
   feet can follow. Setting off, the foot stood on stays where it stood while the stride's line
-  comes in under the figure (`tests/stride.test.mjs`). Not yet right: the first foot to swing as
-  a figure sets off skims the ground for its first 15 cm.
+  comes in under the figure (`tests/stride.test.mjs`), and the foot that swings first is lifted before
+  it goes forward (`Gait.first`, FIRST_LIFT: 4 cm, by how far through what is left of its swing it
+  is; it used to go the whole of its first step, 41 cm on the stick figure, within 5 mm of the
+  ground). It is 2 cm up before it has gone 3 cm (`tests/stairs.test.mjs`); the knee turns up to 11
+  degrees in a 120th of a second for it at a walk and 17 at a run, because the body is at its pace
+  in a quarter of a second (`quicken`) and the step with it.
   Through the eyes the helmet's visor rim can frame the view (Visor on the walk bar, remembered).
 - **The walk is heard as events.** The gait says which foot landed (phase 0.25 left, 0.75 right,
   by distance gone), a landing's height and the breath's phase; the walker hands them to
@@ -172,8 +176,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   its own pace (`gradePace`: 0.55 m/s at a walk and 0.6 at a run where the ground is steeper than
   2 in 5, which is 118 steps a minute on a going of 0.28 m; estimated). Measured on the stick
   figure (`tests/stairs.test.mjs`: risers of 0.18, 0.198 and 0.23 m, both ways): a planted foot
-  within 6 mm of its tread and a centimetre of its spot, a tread to every step, no foot more than
-  7 mm under a tread going up or 30 mm, for a moment, going down (a heel past a nosing). Not yet
+  within 12 mm of its tread and a centimetre of its spot, a tread to every step, no foot more than
+  7 mm under a tread going up or 20 mm, for a moment, going down (a heel past a nosing); a kerb is
+  stepped on to and off at a walk with no foot more than 2 cm in it (run off one, a heel is 6 cm in
+  it for a moment). Not yet
   right: a knee turns up to 20 degrees in a 120th of a second as a foot leaves a tread close under
   a riser, four times what the flat asks; a standing figure's feet are not moved clear of an edge
   (they rest on the higher side of it); a foot comes down a flight heel first, where a man lands on

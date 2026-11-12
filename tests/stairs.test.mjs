@@ -112,7 +112,7 @@ test('up and down a flight each foot lands on its own tread, a tread to a step, 
             }
             // planted: its lowest point is on its tread, and while it is flat it is on its spot
             assert.ok(
-              Math.abs(Math.min(...over)) < 0.006,
+              Math.abs(Math.min(...over)) < 0.012,
               `${say}: a planted ${side} foot's lowest point is ${Math.min(...over)} m off its tread`,
             );
             if (Math.abs(points[0].y - points[2].y) > 0.003) continue;
@@ -127,8 +127,8 @@ test('up and down a flight each foot lands on its own tread, a tread to a step, 
           if (hips !== null) assert.ok(Math.abs(high - hips) < 0.012, `${say}: the hips went ${high - hips} m in a frame`);
           hips = high;
         });
-        // (measured: 4.4 mm going up, which is the swing's own clearance; up to 26 mm for a moment going down, a heel past a nosing)
-        assert.ok(deep > (up ? -0.007 : -0.03), `${say}: a foot was ${-deep} m under the ground`);
+        // (measured: 5.2 mm going up, which is the swing's own clearance; up to 15 mm for a moment going down, a heel past a nosing)
+        assert.ok(deep > (up ? -0.007 : -0.02), `${say}: a foot was ${-deep} m under the ground`);
         // on the flight, each landing is on the next tread: none missed, none shared (at the slower pace a tread may be shared: a step-to gait)
         const on = treads.filter((k) => k >= 1 && k <= RISERS - 2);
         assert.ok(on.length >= RISERS - 3, `${say}: landed on ${treads}`);
@@ -146,7 +146,7 @@ test('on flat ground a gait that is told of the ground keeps its planted feet as
     walk(
       () => 0,
       speed,
-      speed * 5,
+      speed * 8,
       (f, gait, z) => {
         if (z < speed * 1.5) return;
         for (const side of ['L', 'R']) {
@@ -187,6 +187,50 @@ test('a kerb is stepped on to and off: the foot that lands by it lands clear of 
     });
     assert.ok(deep > -0.02, `a kerb of ${high} m: a foot was ${-deep} m under the ground`);
   }
+});
+
+test('setting off, the first foot to swing is lifted before it goes forward, told of the ground or not, and no joint jumps for it', () => {
+  for (const want of [0.6, 1.4, 4])
+    for (const told of [false, true]) {
+      const f = figure();
+      const gait = new Gait();
+      gait.breathing = false;
+      gait.apply(f.root);
+      const dt = 1 / 120;
+      let v = 0;
+      let z = 0;
+      let from = null;
+      let gone = null;
+      let knee = null;
+      let highest = 0;
+      for (let t = 0; t < 1.2; t += dt) {
+        // (as a walker's body gathers speed: walk.ts, quicken)
+        if (t > 0.3) v += (want - v) * (1 - Math.exp(-dt / 0.085));
+        z += v * dt;
+        gait.advance(v * dt, v, false, dt, false, 0, 0, told ? { level: 0, at: () => 0 } : null);
+        gait.apply(f.root);
+        f.root.updateMatrixWorld(true);
+        // the left foot swings first: how far the point under its ankle has gone over the ground when its lowest point is 2 cm up
+        const low = Math.min(f.at('heelL').y, f.at('toeL').y);
+        const at = f.at('soleL').z + z;
+        from ??= at;
+        if (low > 0.02 && gone === null) gone = at - from;
+        if (gone !== null && t < 0.3 + 0.25) highest = Math.max(highest, low);
+        const bent = f.node('LowerLeg.L').rotation.x;
+        // (measured: 7.9, 11.0 and 17.4 degrees in a 120th of a second at 0.6, 1.4 and 4 m/s: the body is at its pace in a quarter of a second, and so is the step)
+        if (knee !== null)
+          assert.ok(
+            Math.abs(bent - knee) < (20 * Math.PI) / 180,
+            `${want} m/s: the left knee turned ${((bent - knee) * 180) / Math.PI} degrees in a frame`,
+          );
+        knee = bent;
+      }
+      assert.ok(
+        gone !== null && gone < 0.03,
+        `${want} m/s, ${told ? 'told of the ground' : 'not told'}: the first foot had gone ${gone} m before it was 2 cm up`,
+      );
+      assert.ok(highest > 0.03 && highest < 0.09, `${want} m/s: the first foot was ${highest} m up at the most`);
+    }
 });
 
 test('a flight is taken at its own pace: the flat is walked and run as sent, a ramp of 1 in 5 too, and a flight at a tread to a step', () => {

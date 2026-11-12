@@ -790,7 +790,7 @@ export function pose(m: Moment): Pose {
       const floor = Math.max(0, m.over(side, x));
       const over = (low - floor - CLEAR_BY) / CLEAR_OVER;
       // (a foot coming to its landing is held over the ground until it is all but down; one leaving is let up gently)
-      const free = Math.min(1, (1 - foot.hold) / (foot.x > 0 ? 0.5 : 0.6));
+      const free = Math.min(1, (1 - foot.hold) / (foot.x > 0 ? 0.15 : 0.6));
       const held =
         low + (floor + CLEAR_BY + CLEAR_OVER * (over > 30 ? over : Math.log1p(Math.exp(over))) - low) * free * free * (3 - 2 * free);
       if (held - low > 1e-6) {
@@ -1087,7 +1087,7 @@ const GRAIN = 0.02;
  * Where a foot lands on ground that has steps in it (`Gait.settleOn`): the ground is asked for every EDGE_GRAIN along
  * the foot's line, a change of more than EDGE between two of those is an edge (a slope would have to stand at 67
  * degrees), and the foot keeps RISER_CLEAR from one that stands over it and goes at most OVERHANG over one that falls
- * away. A landing planned more than REPLAN from where the stride now has it is planned again. OWED_MOST is the most
+ * away; ground to land on is looked for as far as REPLAN from where the stride has the foot. OWED_MOST is the most
  * of the cycle's phase that is ever owed for that, cycles, and OWED_RATE how much of a stride's own advance is paid.
  * All estimated.
  */
@@ -1098,6 +1098,8 @@ const OVERHANG = 0.05;
 const REPLAN = 0.3;
 const OWED_MOST = 0.3;
 const OWED_RATE = 0.6;
+/** How high the first foot to swing is lifted as a figure sets off, metres: a man picks his foot up to take a step. Estimated. */
+const FIRST_LIFT = 0.04;
 /** How far apart the two feet's claims on the figure's height are when the lower has it all but outright, metres. */
 const CROSS = 0.04;
 
@@ -1225,19 +1227,32 @@ export class Gait {
    * while it is planted, and carried from the one to the other over its swing (`u`: how far through that it is). The
    * figure's own ground (`base`) is the lower of the two claims, eased where they cross: going up, the pelvis rises
    * over the leading foot while the other swings past and is carried level while it reaches for the next tread;
-   * going down it is let down on the standing leg to the tread the other is coming to. `to` is where the foot means
-   * to land, metres along the way gone (`gone`), chosen as it leaves so that it lands whole on a tread and not across
-   * a riser (`settleOn`); `owed` is the cycle's phase still to be made up for landings moved so, taken a little with
-   * every stride so that the steps come to the length the flight asks. `held` is how planted the stride had it last.
+   * going down it is let down on the standing leg to the tread the other is coming to. A foot starting to reach for
+   * its landing is given a spot whole on a tread and not across a riser (`settleOn`); `owed` is the cycle's phase
+   * still to be made up for landings moved so, taken a little with every stride (`paid`) so that the steps come to
+   * the length the flight asks. `held` is how planted the stride had it last; `gone` is how far the figure has walked.
    */
   private terrain: Terrain | null = null;
   private gone = 0;
   private readonly trod = {
-    L: { spot: 0, from: 0, aim: 0, rides: 0, u: 0, to: null as number | null, held: 1 },
-    R: { spot: 0, from: 0, aim: 0, rides: 0, u: 0, to: null as number | null, held: 1 },
+    L: { spot: 0, from: 0, aim: 0, rides: 0, u: 0, held: 1 },
+    R: { spot: 0, from: 0, aim: 0, rides: 0, u: 0, held: 1 },
   };
   private base = 0;
   private owed = 0;
+  private paid = 0;
+  /**
+   * Setting off from standing, the foot that swings first, and where in its swing the stride took it up (cycles since
+   * it was under the hip, `since`): it is on the ground at a moment the stride has a foot in mid-air, and is lifted
+   * off it before it goes forward (`over`: FIRST_LIFT), by how far through what is left of that swing it is. Null
+   * once it has landed.
+   */
+  private first: { side: 'L' | 'R'; from: number } | null = null;
+  /** Cycles since a foot was under the hip, -0.5 to 0.5: its stance is the `stance` either side of 0. */
+  private passed(side: 'L' | 'R'): number {
+    const from = this.phase - (side === 'L' ? 0.5 : 0);
+    return from - Math.round(from);
+  }
   private readonly profile = { L: new Map<number, number>(), R: new Map<number, number>() };
   /** The ground's heights, as far as the figure is on its feet on it: not in the air, on a ladder, in a seat or getting up. */
   private get footed(): number {
@@ -1264,7 +1279,7 @@ export class Gait {
     return {
       limbs: this.limbs,
       feet: this.feet(),
-      over: this.footed ? this.over : undefined,
+      over: this.footed || this.first ? this.over : undefined,
       phase: this.phase,
       speed: this.speed,
       air: this.air,
@@ -1317,8 +1332,16 @@ export class Gait {
 
   /** `Moment.over`: what a foot in the air is over, above the figure's own ground. */
   private readonly over = (side: 'L' | 'R', x: number): number => {
+    // the first foot to swing as the figure sets off is lifted before it goes forward: most a third of the way through what is left of its swing
+    let lifted = 0;
+    if (this.first?.side === side) {
+      const d = this.passed(side);
+      const to = -stance(this.speed);
+      const k = Math.min(1, Math.max(0, (d - this.first.from) / Math.max(1e-6, to - this.first.from)));
+      lifted = FIRST_LIFT * Math.sin(Math.PI * k ** 0.85) ** 2 * (1 - this.air);
+    }
     const t = this.terrain;
-    if (!t) return 0;
+    if (!t || !this.footed) return lifted;
     const foot = this.trod[side];
     // The ground under the whole foot, and what is coming: a riser ahead of the toes is risen for before they reach
     // it, and a nosing behind the heel is come down from after it, at STEEP; less and less of that as the foot comes
@@ -1341,7 +1364,7 @@ export class Gait {
       if (h === undefined) seen.set(i, (h = t.at(at, left) ?? t.level));
       most = Math.max(most, h - steep * Math.max(0, at - hi, lo - at));
     }
-    return (most - this.base) * this.footed;
+    return (most - this.base) * this.footed + lifted;
   };
 
   /**
@@ -1404,7 +1427,6 @@ export class Gait {
       this.owed = this.base = 0;
       for (const foot of [this.trod.L, this.trod.R]) {
         foot.spot = foot.from = foot.aim = foot.rides = foot.u = 0;
-        foot.to = null;
         foot.held = 1;
       }
       return;
@@ -1416,10 +1438,7 @@ export class Gait {
     const cycle = stride(this.phase, this.speed, this.leg);
     const st = stance(this.speed);
     const standing = still || this.own >= 1;
-    const since = (side: 'L' | 'R'): number => {
-      const from = this.phase - (side === 'L' ? 0.5 : 0);
-      return from - Math.round(from);
-    };
+    const since = (side: 'L' | 'R'): number => this.passed(side);
     // a foot leaving the ground chooses its landing; one starting to reach for it is given the spot
     if (!standing)
       for (const side of ['L', 'R'] as const) {
@@ -1438,17 +1457,14 @@ export class Gait {
         if (h < 1 && foot.held >= 1 && (d > 0 || h <= 0)) {
           // (it lands as far ahead of the hips as the stride has it, when the figure has gone what is left of its swing)
           const ahead = st * reach + (1 - st - (d > 0 ? d : d + 1)) * cycleLength(this.speed, this.leg);
-          const landing = this.settleOn(ahead, ground, stands);
-          foot.to = this.gone + landing.x;
-          foot.aim = landing.floor;
+          foot.aim = this.settleOn(ahead, ground, stands).floor;
         } else if (h > 0 && h < 1 && d < 0 && foot.held <= 0) {
+          // (where the stride now has it, which is not where it was going when it left if the pace has changed since:
+          // moved only as far as the ground asks, and on flat ground not at all)
           const stride = cycle[side].x;
-          let want = foot.to === null ? stride : foot.to - this.gone;
-          if (Math.abs(want - stride) > REPLAN) want = stride;
-          const landing = this.settleOn(want, ground, stands);
+          const landing = this.settleOn(stride, ground, stands);
           this.slip[side] = landing.x - stride;
           if (reach > 0.05) this.owed = Math.max(-OWED_MOST, Math.min(OWED_MOST, this.owed - this.slip[side] / reach));
-          foot.to = this.gone + landing.x;
         }
         foot.held = h;
       }
@@ -1479,7 +1495,6 @@ export class Gait {
           foot.spot = step.from + (step.aim - step.from) * u * u * (3 - 2 * u);
         } else if (this.stood[side].y <= 0.002) foot.spot = under(at.x, left + (at.aside ?? 0), foot.spot);
         foot.from = foot.aim = foot.rides = foot.spot;
-        foot.to = null;
         foot.held = 1;
         foot.u = 0;
         continue;
@@ -1531,11 +1546,16 @@ export class Gait {
     this.lined = line;
     if (!still) {
       // setting off: a foot the stride keeps planted is planted where it stood, turned as it stood
-      if (this.halted)
+      if (this.halted) {
         for (const side of ['L', 'R'] as const) {
           this.veer[side].z = this.stood[side].z;
           this.veer[side].yaw = this.stood[side].yaw;
         }
+        // (and the foot the stride has in the air is the one that swings first: `first`)
+        const now = stride(this.phase, this.speed, this.leg);
+        const side = now.L.hold < 1 && this.passed('L') < 0 ? 'L' : now.R.hold < 1 && this.passed('R') < 0 ? 'R' : null;
+        this.first = side && !airborne ? { side, from: this.passed(side) } : null;
+      }
       this.halted = false;
       this.closing = null;
       this.own *= Math.exp(-dt * 18);
@@ -1544,6 +1564,7 @@ export class Gait {
       for (const side of ['L', 'R'] as const) {
         const foot = cycle[side];
         const home = side === 'L' ? line : -line;
+        if (this.first?.side === side && (foot.hold >= 1 || this.passed(side) > 0)) this.first = null;
         // (a foot the standing figure left planted goes back with the ground while it still counts)
         if (this.own && !airborne) {
           this.stood[side].x -= distance;
@@ -1551,8 +1572,8 @@ export class Gait {
           if (turn && this.stood[side].y <= 0.002) round(this.stood[side], home);
         }
         if (foot.hold <= 0) this.slip[side] = this.veer[side].z = this.veer[side].yaw = 0;
-        // (a foot reaching for a spot it was given keeps that spot too: `footing`)
-        else if (this.terrain && foot.hold < 1 && foot.x > 0 && !airborne) this.slip[side] -= distance + (foot.x - this.last[side]);
+        // (a foot reaching for a spot it was given keeps that spot while the phase is made up for it: `footing`)
+        else if (this.paid && foot.hold < 1 && foot.x > 0 && !airborne) this.slip[side] += this.paid * span(this.speed, this.leg);
         else if (foot.hold >= 1 && !airborne) {
           this.slip[side] -= distance + (foot.x - this.last[side]);
           this.veer[side].z += (side === 'L' ? 1 : -1) * (was - line);
@@ -1737,6 +1758,7 @@ export class Gait {
       this.slip[side] = 0;
     }
     this.rode = drop;
+    this.first = null;
     this.halted = true;
     this.closing = null;
     this.own = 1;
@@ -1878,6 +1900,7 @@ export class Gait {
     this.air += ((airborne ? 1 : 0) - this.air) * (1 - Math.exp(-dt * 14));
     if (!airborne && this.air < 0.01) this.air = 0;
     this.since += dt;
+    this.paid = 0;
     // by distance, not by time: the feet go as far as the figure does
     if (falling)
       this.phase = (this.phase + dt * 1.6) % 1; // the legs pedal on time: there is no ground to measure by
@@ -1885,9 +1908,9 @@ export class Gait {
     else if (!airborne) {
       // (and what is owed for landings moved on to their treads is made up a little with each stride: `footing`)
       const stride = distance / cycleLength(this.speed, this.leg);
-      const paid = Math.sign(this.owed) * Math.min(Math.abs(this.owed), OWED_RATE * stride);
-      this.owed -= paid;
-      this.phase = (((this.phase + stride + paid) % 1) + 1) % 1;
+      this.paid = Math.sign(this.owed) * Math.min(Math.abs(this.owed), OWED_RATE * stride);
+      this.owed -= this.paid;
+      this.phase = (((this.phase + stride + this.paid) % 1) + 1) % 1;
       this.gone += distance;
     }
     if (this.speed === 0 && this.air === 0 && this.climb === 0 && this.fall === 0) this.phase = 0; // standing: the next step starts from the same foot
