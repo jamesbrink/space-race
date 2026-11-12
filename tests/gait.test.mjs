@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, swing, view } from '../src/viewer/gait.ts';
@@ -386,7 +385,7 @@ test('a foot is heard as it lands: the left at a quarter of the stride and the r
   assert.ok(steps >= 2, `half a turn on the spot is a few steps: ${steps}`);
 });
 
-test("the view through the figure's eyes is what it was before the figure's pelvis was let go its own way: to the last bit", () => {
+test("the view through the figure's eyes is what it was before the figure's pelvis was let go its own way: to a part in a million million", () => {
   // Captured from the gait as it stood before the planted foot was made to reach the ground at heel
   // strike (which the figure does with its pelvis, `Pose.sag`, and its legs). The eyes' rise, sway,
   // tip and nod are not to move for that: change these only on purpose.
@@ -402,10 +401,16 @@ test("the view through the figure's eyes is what it was before the figure's pelv
   // and everywhere else: every bit of 67,248 views, over the cycle at eleven speeds, in the air, crouched,
   // breathing, climbing, falling, sitting, loaded, on other legs, and as a gait has them through a
   // start, a walk, a run, a jog, a stop and a landing
-  const hash = createHash('sha256');
+  // (summed, with each view weighted by where it comes in the run, and held to a part in a million million: the last
+  // bit of a sine is not the same on every processor, so a hash of the bits passed on one machine and failed on another)
+  const sums = [0, 0, 0, 0, 0, 0, 0, 0];
   let views = 0;
   const put = (v) => {
-    hash.update(new Uint8Array(new Float64Array([v.x, v.y, v.roll, v.pitch]).buffer));
+    const w = 1 + (views % 97) / 97;
+    [v.x, v.y, v.roll, v.pitch].forEach((value, k) => {
+      sums[k] += value * w;
+      sums[k + 4] += value * value * w;
+    });
     views++;
   };
   const others = [
@@ -433,5 +438,11 @@ test("the view through the figure's eyes is what it was before the figure's pelv
     put(view(gait.moment));
   }
   assert.equal(views, 67248);
-  assert.equal(hash.digest('hex'), '6254a739f52384d067977545aaf5e56e2543d6b7f305d8cea5ee1117523f98d1');
+  const PINNED = [
+    -4.108710045648602, -2834.391704001749, 0.6387931476883314, -1163.0684619548526, 2.589579732498495, 314.79158830640705,
+    2.968561220955971, 40.114399042153394,
+  ];
+  sums.forEach((sum, k) =>
+    assert.ok(Math.abs(sum - PINNED[k]) <= 1e-9 * Math.max(1, Math.abs(PINNED[k])), `sum ${k}: ${sum} against ${PINNED[k]}`),
+  );
 });
