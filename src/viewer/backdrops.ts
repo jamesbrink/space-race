@@ -155,6 +155,9 @@ function skyMaterial(uniforms: SkyUniforms, h: Heavens, discs: boolean, gain: TH
  * by its own level) and scaled back down as it is shown. What the sky looks like (its colours,
  * where the Sun is in it) changes only with a bake, and each new one is faded in from what was
  * shown, over about as long as bakes are coming apart, so the light never steps.
+ *
+ * A step of the fade is thirty-six small draws (six faces of six levels), a tenth of a millisecond
+ * in all; it is carried on only from `Setting.at`, once a frame, and every such frame is drawn.
  */
 class Reflections {
   private readonly renderer: THREE.WebGLRenderer;
@@ -166,13 +169,21 @@ class Reflections {
   private fading = false;
   // A PMREM is a cube map whose mip levels are the sky blurred for rougher and rougher surfaces.
   // Two of them are mixed level by level and face by face, texel onto texel, so the mix is one too.
+  // Each face of each level is one triangle over the whole of it, drawn straight into that face:
+  // `uFace` turns a point of the face (x and y from -1 to 1, one unit in front) to its direction.
   private readonly mix = new THREE.ShaderMaterial({
-    uniforms: { uFrom: { value: null }, uTo: { value: null }, uK: { value: 0 }, uLod: { value: 0 } },
-    side: THREE.BackSide,
+    uniforms: { uFrom: { value: null }, uTo: { value: null }, uK: { value: 0 }, uLod: { value: 0 }, uFace: { value: new THREE.Matrix3() } },
+    side: THREE.DoubleSide,
     blending: THREE.NoBlending,
     depthTest: false,
     depthWrite: false,
-    vertexShader: THREE.ShaderChunk.cube_vert,
+    vertexShader: /* glsl */ `
+      varying vec3 vWorldDirection;
+      uniform mat3 uFace;
+      void main() {
+        vWorldDirection = uFace * vec3(position.xy, -1.0);
+        gl_Position = vec4(position.xy, 1.0, 1.0);
+      }`,
     fragmentShader: /* glsl */ `
       varying vec3 vWorldDirection;
       uniform samplerCube uFrom, uTo; uniform float uK, uLod;
@@ -181,11 +192,21 @@ class Reflections {
         gl_FragColor = mix(textureLod(uFrom, d, uLod), textureLod(uTo, d, uLod), uK);
       }`,
   });
-  private readonly box = new THREE.Mesh(new THREE.BoxGeometry(), this.mix);
-  private readonly lens = new THREE.CubeCamera(0.1, 10, new THREE.WebGLCubeRenderTarget(1));
+  private readonly pane = new THREE.Scene();
+  private readonly eye = new THREE.Camera();
+  /** Which way each face of a cube map looks, as three's cube camera has them (the order and the turn of each are the renderer's). */
+  private faces: THREE.Matrix3[] | null = null;
 
   constructor(renderer: THREE.WebGLRenderer) {
     this.renderer = renderer;
+    const triangle = new THREE.BufferGeometry();
+    triangle.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
+    const mesh = new THREE.Mesh(triangle, this.mix);
+    mesh.frustumCulled = false;
+    mesh.matrixAutoUpdate = false;
+    this.pane.add(mesh);
+    this.pane.matrixAutoUpdate = false;
+    this.pane.matrixWorldAutoUpdate = false;
   }
 
   /** What the scene reflects: always the same texture, so materials never notice a bake. */
@@ -195,6 +216,7 @@ class Reflections {
 
   /** A new bake, faded in from what is shown over `ms` milliseconds (0: at once). Takes ownership of it. */
   take(bake: THREE.WebGLCubeRenderTarget, ms: number): void {
+    const first = !this.shown;
     if (!this.shown) {
       this.shown = like(bake);
       this.from = like(bake);
@@ -204,7 +226,8 @@ class Reflections {
     this.began = performance.now();
     this.over = ms;
     this.fading = true;
-    this.step(this.began);
+    // (a fade begins at what is shown, which is there already: only a first bake, or one put in at once, is drawn now)
+    if (first || ms <= 0) this.step(this.began);
   }
 
   /** Carry the fade on to `now`. True if what is reflected changed. */
@@ -217,21 +240,41 @@ class Reflections {
   }
 
   private draw(into: THREE.WebGLCubeRenderTarget, a: THREE.WebGLCubeRenderTarget, b: THREE.WebGLCubeRenderTarget, k: number): void {
+    const renderer = this.renderer;
+    if (!this.faces) {
+      const lens = new THREE.CubeCamera(0.1, 10, into);
+      lens.coordinateSystem = renderer.coordinateSystem;
+      lens.updateCoordinateSystem();
+      // (a point of the picture to its direction: back through the face camera's lens, whose field of view three makes negative, then its turn)
+      this.faces = (lens.children as THREE.PerspectiveCamera[]).map((face) => {
+        const p = face.projectionMatrix.elements;
+        return new THREE.Matrix3()
+          .setFromMatrix4(face.matrixWorld)
+          .multiply(new THREE.Matrix3().set(1 / p[0]!, 0, 0, 0, 1 / p[5]!, 0, 0, 0, 1));
+      });
+    }
     const u = this.mix.uniforms;
     u.uFrom!.value = a.texture;
     u.uTo!.value = b.texture;
     u.uK!.value = k;
-    const was = this.renderer.getRenderTarget();
-    this.lens.renderTarget = into;
-    into.texture.mipmaps.forEach((_, lod) => {
+    const was = renderer.getRenderTarget();
+    const face = renderer.getActiveCubeFace();
+    const level = renderer.getActiveMipmapLevel();
+    const xr = renderer.xr.enabled;
+    renderer.xr.enabled = false;
+    for (let lod = 0; lod < into.texture.mipmaps.length; lod++) {
       // (the renderer takes the target's viewport as it is, not scaled to the level: as PMREMGenerator does)
       into.viewport.set(0, 0, into.width >> lod, into.width >> lod);
       u.uLod!.value = lod;
-      this.lens.activeMipmapLevel = lod;
-      this.lens.update(this.renderer, this.box);
-    });
+      for (let f = 0; f < 6; f++) {
+        u.uFace!.value = this.faces[f]!;
+        renderer.setRenderTarget(into, f, lod);
+        renderer.render(this.pane, this.eye);
+      }
+    }
     into.viewport.set(0, 0, into.width, into.height);
-    this.renderer.setRenderTarget(was);
+    renderer.xr.enabled = xr;
+    renderer.setRenderTarget(was, face, level);
   }
 }
 

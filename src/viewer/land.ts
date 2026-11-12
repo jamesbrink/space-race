@@ -241,6 +241,8 @@ export class Land {
   private readonly box = new THREE.Box3();
   private readonly time = { value: 0 };
   private readonly cel = { value: 0 };
+  /** The eye as `attend` last had it. */
+  private readonly attended = new THREE.Vector3(Number.NaN, 0, 0);
   private roots: [number, number][] = [];
   private rootLevel = LEVELS - 1;
   /** Half the side of the square the land covers, metres: its patches tile out to here, a little past `LandSpec.far`. */
@@ -329,6 +331,9 @@ export class Land {
 
   /** The eye, in the land's frame: the patches are chosen round it. */
   attend(eye: THREE.Vector3): void {
+    const was = this.attended;
+    if (eye.x === was.x && eye.y === was.y && eye.z === was.z) return; // a still eye: the ground under it is not asked for again
+    was.set(eye.x, eye.y, eye.z);
     this.select(eye.x, eye.y - this.spec.relief(eye.x, eye.z), eye.z);
   }
 
@@ -372,25 +377,21 @@ export class Land {
     const visit = (px: number, pz: number, level: number) => {
       const quarter = CELL * GRID * 2 ** level;
       if (level === 0 || near(px, pz, 2 * quarter) > RANGES[level - 1]! ** 2) {
-        for (const [qx, qz] of [
-          [0, 0],
-          [quarter, 0],
-          [0, quarter],
-          [quarter, quarter],
-        ] as const)
-          add(px + qx, pz + qz, level);
+        add(px, pz, level);
+        add(px + quarter, pz, level);
+        add(px, pz + quarter, level);
+        add(px + quarter, pz + quarter, level);
         return;
       }
-      for (const [qx, qz] of [
-        [0, 0],
-        [quarter, 0],
-        [0, quarter],
-        [quarter, quarter],
-      ] as const) {
-        // a quarter near enough for the next level down is that level's node; the rest stays at this one
-        if (near(px + qx, pz + qz, quarter) <= RANGES[level - 1]! ** 2) visit(px + qx, pz + qz, level - 1);
-        else add(px + qx, pz + qz, level);
-      }
+      part(px, pz, quarter, level);
+      part(px + quarter, pz, quarter, level);
+      part(px, pz + quarter, quarter, level);
+      part(px + quarter, pz + quarter, quarter, level);
+    };
+    // a quarter near enough for the next level down is that level's node; the rest stays at this one
+    const part = (qx: number, qz: number, quarter: number, level: number) => {
+      if (near(qx, qz, quarter) <= RANGES[level - 1]! ** 2) visit(qx, qz, level - 1);
+      else add(qx, qz, level);
     };
     for (const [rx, rz] of this.roots) visit(rx, rz, this.rootLevel);
     this.chosenCount = count;

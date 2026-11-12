@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { hash2, noise2, sequence } from './field';
+import { due, type Kind, type Lists, type Placed, pack, sort, type Tile } from './plantsort';
 import { NOISE } from './space';
 
 /**
@@ -71,12 +72,17 @@ export interface Ground {
   heightAt(x: number, z: number): number;
 }
 
-/** Plants are sorted into their forms again once the eye has moved this far, metres. */
-const RESORT = 5;
+/**
+ * A layer's plants are sorted into their forms again once the eye has gone this share of the
+ * layer's shortest near band from where they were last sorted (and never less than RESORT_LEAST
+ * metres): 12 m for shrubs and grass whose near forms end at 30 m, 36 m for trees whose near form
+ * ends at 90 m. The lists carry every plant within that margin of a band (plantsort.ts), so what
+ * is drawn does not depend on it; only how often the sorting is done.
+ */
+const RESORT_SHARE = 0.4;
+const RESORT_LEAST = 5;
 /** A plant in a thicket closer than this (woody cover) gives way to the land's canopy. */
 const THICKET = 0.55;
-/** Where a plant in a thicket is gone, metres from the eye: under the land's canopy by then. */
-const UNDER: [number, number] = [52, 60];
 /** Variants built of each species. */
 const VARIANTS = 3;
 
@@ -340,7 +346,8 @@ const PLANT_SWAY = /* glsl */ `
   float plantIn = smoothstep(aBand.x, aBand.y, plantFar);
   float plantOut = 1.0 - smoothstep(abs(aBand.z), abs(aBand.w), plantFar);
   vFade = aBand.w < 0.0 ? plantIn : plantIn * plantOut;
-  float plantSize = aBand.w < 0.0 ? plantOut : 1.0;
+  // (a plant outside its band has no pixel drawn, vFade being 0: it is shrunk to its root too, so none is rasterised either)
+  float plantSize = vFade <= 0.0 ? 0.0 : aBand.w < 0.0 ? plantOut : 1.0;
   // the breeze: a slow lean and a quicker flutter, out of step plant to plant; none at the root
   float phase = dot(plantRoot.xz, vec2(0.37, 0.23));
   float gust = 0.6 + 0.4 * sin(uTime * 0.7 + phase * 0.3);
@@ -417,19 +424,6 @@ type Layer = Species['layer'];
 /** Each layer's tiles: so many of its places along a side. Trees are few and seen from far, grass many and only near. */
 const TILE_PLACES: Record<Layer, number> = { herb: 20, woody: 14, tree: 8 };
 
-interface Plant {
-  /** Species index, variant. */
-  species: number;
-  variant: number;
-  x: number;
-  y: number;
-  z: number;
-  matrix: Float32Array;
-  colour: [number, number, number];
-  /** Standing in a thicket: it gives way to the land's canopy. */
-  thicket: boolean;
-}
-
 /** Each species' meshes, near and far, per variant. */
 interface Drawn {
   species: Species;
@@ -445,10 +439,21 @@ export class Flora {
   private readonly ground: Ground;
   private readonly shared: Shared;
   private readonly drawn: Drawn[] = [];
-  private readonly tiles = new Map<string, Plant[]>();
-  private readonly sorted = new THREE.Vector3(1e9, 0, 1e9);
+  /** Each layer's tiles, packed (plantsort.ts), by `tileKey`. */
+  private readonly tiles: Record<Layer, Map<number, Tile>> = { herb: new Map(), woody: new Map(), tree: new Map() };
+  /** Where the eye was when each layer was last sorted. */
+  private readonly sorted: Record<Layer, THREE.Vector3> = {
+    herb: new THREE.Vector3(1e9, 0, 1e9),
+    woody: new THREE.Vector3(1e9, 0, 1e9),
+    tree: new THREE.Vector3(1e9, 0, 1e9),
+  };
   /** How far each layer's plants are drawn, metres. */
   private readonly reach: Record<Layer, number> = { herb: 0, woody: 0, tree: 0 };
+  /** How far the eye goes before each layer is sorted again, metres: the margin its lists are made with. */
+  private readonly margin: Record<Layer, number> = { herb: RESORT_LEAST, woody: RESORT_LEAST, tree: RESORT_LEAST };
+  /** What the sorting needs of each species, and the arrays its meshes draw from. */
+  private readonly kinds: Kind[];
+  private readonly lists: Lists[] = [];
 
   constructor(spec: FloraSpec, ground: Ground) {
     this.spec = spec;
@@ -461,6 +466,11 @@ export class Flora {
     };
     this.group.userData.flora = this; // for the debug handle
     for (const s of spec.species) this.reach[s.layer] = Math.max(this.reach[s.layer], s.reach);
+    for (const layer of LAYERS) {
+      const nearest = Math.min(...spec.species.filter((s) => s.layer === layer).map((s) => s.near));
+      if (Number.isFinite(nearest)) this.margin[layer] = Math.max(RESORT_LEAST, RESORT_SHARE * nearest);
+    }
+    this.kinds = spec.species.map((s) => ({ near: s.near, reach: s.reach }));
     spec.species.forEach((species, index) => {
       const material = plantMaterial(species, this.shared, 'drawn');
       const depth = plantMaterial(species, this.shared, 'depth');
@@ -489,6 +499,14 @@ export class Flora {
         far.push(mesh(build(species, seed, 'far'), CAPACITY.far, false));
       }
       this.drawn.push({ species, near, far });
+      const list = (m: THREE.InstancedMesh, capacity: number) => ({
+        matrices: m.instanceMatrix.array as Float32Array,
+        colours: m.instanceColor!.array as Float32Array,
+        bands: (m.geometry.getAttribute('aBand') as THREE.InstancedBufferAttribute).array as Float32Array,
+        count: 0,
+        capacity,
+      });
+      this.lists.push({ near: near.map((m) => list(m, CAPACITY.near)), far: far.map((m) => list(m, CAPACITY.far)) });
     });
   }
 
@@ -502,17 +520,22 @@ export class Flora {
   /** The eye, in the plants' frame. True if what is drawn changed. */
   attend(eye: THREE.Vector3): boolean {
     this.shared.eye.value.copy(eye);
-    if (Math.hypot(eye.x - this.sorted.x, eye.z - this.sorted.z) < RESORT && Math.abs(eye.y - this.sorted.y) < RESORT) return false;
-    this.arrange(eye.x, eye.y, eye.z);
-    return true;
+    let changed = false;
+    for (const layer of LAYERS) {
+      const at = this.sorted[layer];
+      if (this.reach[layer] <= 0 || !due(eye.x, eye.y, eye.z, at.x, at.y, at.z, this.margin[layer])) continue;
+      this.arrange(layer, eye.x, eye.y, eye.z);
+      changed = true;
+    }
+    return changed;
   }
 
   /** The plants of one layer on one tile, made the first time they are wanted. */
-  private tile(layer: Layer, i: number, j: number): Plant[] {
-    const key = `${layer} ${i} ${j}`;
-    let plants = this.tiles.get(key);
-    if (plants) return plants;
-    plants = [];
+  private tile(layer: Layer, i: number, j: number): Tile {
+    const key = tileKey(i, j);
+    const made = this.tiles[layer].get(key);
+    if (made) return made;
+    const plants: Placed[] = [];
     const cover = new Float32Array(4);
     const spec = this.spec;
     const m = new THREE.Matrix4(),
@@ -567,88 +590,80 @@ export class Flora {
           x,
           y,
           z,
-          matrix: new Float32Array(m.elements),
+          matrix: m.elements.slice(),
           colour: [c.r, c.g, c.b],
           thicket: layer === 'woody' && woody >= THICKET,
         });
       }
-    this.tiles.set(key, plants);
-    return plants;
+    const tile = pack(plants);
+    this.tiles[layer].set(key, tile);
+    return tile;
   }
 
   /**
-   * Sort the plants round an eye into near and far forms. Each goes into every list whose band
-   * it could enter before the next sort (the eye moves RESORT metres first), and the shader
-   * fades it in and out within those bands by its distance as it is drawn.
+   * Sort one layer's plants round an eye into near and far forms. Each goes into every list whose
+   * band it could enter before the layer is next sorted (the eye goes the layer's margin first),
+   * and the shader fades it in and out within those bands by its distance as it is drawn.
    */
-  private arrange(ex: number, ey: number, ez: number): void {
-    this.sorted.set(ex, ey, ez);
-    const lists = this.drawn.map((d) => ({ near: d.near.map(() => 0), far: d.far.map(() => 0) }));
-    const put = (mesh: THREE.InstancedMesh, at: number, plant: Plant, band: [number, number, number, number]) => {
-      (mesh.instanceMatrix.array as Float32Array).set(plant.matrix, at * 16);
-      (mesh.instanceColor!.array as Float32Array).set(plant.colour, at * 3);
-      ((mesh.geometry.getAttribute('aBand') as THREE.InstancedBufferAttribute).array as Float32Array).set(band, at * 4);
-    };
-    for (const layer of ['woody', 'herb', 'tree'] as const) {
-      const reach = this.reach[layer] + RESORT;
-      if (reach <= RESORT) continue;
-      const side = TILE_PLACES[layer] * this.spec.spacing[layer];
-      const i0 = Math.floor((ex - reach) / side),
-        i1 = Math.floor((ex + reach) / side),
-        j0 = Math.floor((ez - reach) / side),
-        j1 = Math.floor((ez + reach) / side);
-      for (let i = i0; i <= i1; i++)
-        for (let j = j0; j <= j1; j++) {
-          // a tile wholly out of reach is not even made
-          const dx = Math.max(i * side - ex, 0, ex - (i + 1) * side),
-            dz = Math.max(j * side - ez, 0, ez - (j + 1) * side);
-          if (Math.hypot(dx, dz) > reach) continue;
-          for (const plant of this.tile(layer, i, j)) {
-            const d = Math.hypot(plant.x - ex, plant.y - ey, plant.z - ez);
-            const drawn = this.drawn[plant.species]!;
-            const sp = drawn.species;
-            const list = lists[plant.species]!;
-            const v = plant.variant;
-            const hand = sp.near - 3; // where the near form starts to give way to the far: a short crossing, so few plants are half drawn at once
-            const end: [number, number] = plant.thicket ? UNDER : [sp.reach * 0.9, sp.reach];
-            if (d < sp.near + RESORT && list.near[v]! < CAPACITY.near) put(drawn.near[v]!, list.near[v]!++, plant, [-1, 0, hand, sp.near]);
-            if (d > hand - RESORT && d < end[1] + RESORT && list.far[v]! < CAPACITY.far)
-              put(drawn.far[v]!, list.far[v]!++, plant, [hand, sp.near, -end[0], -end[1]]);
-          }
-        }
-    }
-    this.drawn.forEach((d, k) => {
-      for (const [meshes, counts] of [
-        [d.near, lists[k]!.near],
-        [d.far, lists[k]!.far],
-      ] as const)
-        meshes.forEach((mesh, v) => {
-          const n = counts[v]!;
+  private arrange(layer: Layer, ex: number, ey: number, ez: number): void {
+    this.sorted[layer].set(ex, ey, ez);
+    const margin = this.margin[layer];
+    const mine = this.drawn.map((d, k) => (d.species.layer === layer ? k : -1)).filter((k) => k >= 0);
+    for (const k of mine) for (const list of [...this.lists[k]!.near, ...this.lists[k]!.far]) list.count = 0;
+    const reach = this.reach[layer] + margin;
+    const side = TILE_PLACES[layer] * this.spec.spacing[layer];
+    const i0 = Math.floor((ex - reach) / side),
+      i1 = Math.floor((ex + reach) / side),
+      j0 = Math.floor((ez - reach) / side),
+      j1 = Math.floor((ez + reach) / side);
+    for (let i = i0; i <= i1; i++)
+      for (let j = j0; j <= j1; j++) {
+        // a tile wholly out of reach is not even made
+        const dx = Math.max(i * side - ex, 0, ex - (i + 1) * side),
+          dz = Math.max(j * side - ez, 0, ez - (j + 1) * side);
+        if (dx * dx + dz * dz > reach * reach) continue;
+        sort(this.tile(layer, i, j), ex, ey, ez, margin, this.kinds, this.lists);
+      }
+    for (const k of mine) {
+      const d = this.drawn[k]!;
+      for (const form of ['near', 'far'] as const)
+        d[form].forEach((mesh, v) => {
+          const n = this.lists[k]![form][v]!.count;
           if (n === 0 && mesh.count === 0) return;
           mesh.count = n;
           mesh.visible = n > 0;
           // send only what is used: a whole buffer is a megabyte, and there are dozens
-          for (const [attribute, size] of [
-            [mesh.instanceMatrix, 16],
-            [mesh.instanceColor!, 3],
-            [mesh.geometry.getAttribute('aBand') as THREE.InstancedBufferAttribute, 4],
-          ] as const) {
-            attribute.clearUpdateRanges();
-            attribute.addUpdateRange(0, Math.max(1, n) * size);
-            attribute.needsUpdate = true;
-          }
+          this.send(mesh.instanceMatrix, n * 16);
+          this.send(mesh.instanceColor!, n * 3);
+          this.send(mesh.geometry.getAttribute('aBand') as THREE.InstancedBufferAttribute, n * 4);
         });
-    });
+    }
     // forget tiles far behind, so a long walk does not keep the whole site in memory
-    if (this.tiles.size > 6000)
-      for (const key of this.tiles.keys()) {
-        const [layer, i, j] = key.split(' ') as [Layer, string, string];
-        const side = TILE_PLACES[layer] * this.spec.spacing[layer];
-        if (Math.hypot((Number(i) + 0.5) * side - ex, (Number(j) + 0.5) * side - ez) > 2 * (this.reach[layer] + side))
-          this.tiles.delete(key);
+    if (this.tiles.herb.size + this.tiles.woody.size + this.tiles.tree.size > 6000)
+      for (const each of LAYERS) {
+        const width = TILE_PLACES[each] * this.spec.spacing[each];
+        const keep = 2 * (this.reach[each] + this.margin[each] + width);
+        for (const key of this.tiles[each].keys()) {
+          const i = Math.floor(key / TILE_SPAN) - TILE_SPAN / 2,
+            j = (key % TILE_SPAN) - TILE_SPAN / 2;
+          if (Math.hypot((i + 0.5) * width - ex, (j + 0.5) * width - ez) > keep) this.tiles[each].delete(key);
+        }
       }
   }
+
+  /** Have the first `length` numbers of an instance attribute sent to the GPU. */
+  private send(attribute: THREE.InstancedBufferAttribute, length: number): void {
+    attribute.clearUpdateRanges();
+    attribute.addUpdateRange(0, Math.max(1, length));
+    attribute.needsUpdate = true;
+  }
 }
+
+/** The layers, in the order they are sorted. */
+const LAYERS = ['woody', 'herb', 'tree'] as const;
+/** A tile's key from its two indices, each within half of this of zero. */
+const TILE_SPAN = 1 << 20;
+const tileKey = (i: number, j: number): number => (i + TILE_SPAN / 2) * TILE_SPAN + (j + TILE_SPAN / 2);
 
 /**
  * A mesh placed by its own shader is drawn only with its own material (or its look's twin of it):

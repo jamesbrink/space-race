@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import {
   add,
-  cross,
   dot,
   ecefToGeodetic,
   geodeticToEcef,
@@ -10,11 +9,11 @@ import {
   scale,
   siteToEcefDirection,
   sub,
-  unit,
   type Vec3,
 } from '../world/frames.ts';
 import { planeAt } from '../world/region.ts';
-import { ellipsoidNormal, gaussianRadius, horizonAngle, horizonDistance, seaPoint } from '../world/surface.ts';
+import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
+import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
 
 /**
@@ -28,8 +27,9 @@ import type { Beyond } from './land';
  * h sinh(k i) over the surface (h the eye's height), so each triangle looks about the same size
  * from the eye, near or far, out past the horizon; 192 round. Its vertices are relative to the
  * point under the eye (the mesh's own position), so the GPU only ever sees small numbers. It is
- * made again when the eye has moved a tenth of its height or changed height by a quarter: a few
- * milliseconds, and nothing at all while the eye is still.
+ * made again when the eye has moved a tenth of its height or changed height by a quarter (over the
+ * site's own ground, a tenth of the way to that ground's edge if that is more: globemesh.ts): a
+ * few milliseconds, and nothing at all while the eye is still.
  *
  * **The map** is land, inland water and ice from Natural Earth (public domain; tools/globe.mjs
  * bakes it): a distance to the shore on the six faces of a cube, looked up by the direction from
@@ -55,9 +55,6 @@ import type { Beyond } from './land';
  * (air.ts), worked out along the ray with true heights over the curved sea.
  */
 
-/** Rings and spokes of the mesh. */
-const SPOKES = 192;
-const RINGS = 150;
 /** Distances to the shore are stored to this many texels (tools/globe.mjs: SPREAD). */
 const SPREAD = 8;
 /** The maps' faces, in the order a cube map takes them. */
@@ -352,6 +349,17 @@ export class Globe {
   /** What the mesh was made for: the eye's point under it and its height. */
   private madeAt: Vec3 | null = null;
   private madeHeight = 0;
+  /** What follows from where the eye is, kept while it stays there: it is asked for several times a frame (`eyed`). */
+  private readonly eye = {
+    x: Number.NaN,
+    y: Number.NaN,
+    z: Number.NaN,
+    ecef: [0, 0, 0] as Vec3,
+    height: 0,
+    latitude: 0,
+    normal: [0, 0, 1] as Vec3,
+    under: [0, 0, 0] as Vec3,
+  };
   private arrived = false;
   private readonly hole: Hole | null;
   /** Whether the site's air has cumulus (air.ts), whose shadows fall on the globe too. */
@@ -525,12 +533,38 @@ export class Globe {
 
   /** The eye's height above the sea, metres (geodetic, as the simulator measures it). */
   altitude(eye: THREE.Vector3): number {
-    return ecefToGeodetic(this.toEcef(eye)).height - this.seaLevel;
+    return this.eyed(eye).height - this.seaLevel;
+  }
+
+  /** The eye in ECEF, its height and latitude, the ellipsoid's normal there and the point of the sea under it: worked out once for each place it is. */
+  private eyed(eye: THREE.Vector3): Globe['eye'] {
+    const c = this.eye;
+    if (eye.x !== c.x || eye.y !== c.y || eye.z !== c.z) {
+      c.x = eye.x;
+      c.y = eye.y;
+      c.z = eye.z;
+      c.ecef = this.toEcef(eye);
+      const g = ecefToGeodetic(c.ecef);
+      c.height = g.height;
+      c.latitude = g.latitude;
+      c.normal = ellipsoidNormal(c.ecef);
+      c.under = seaPoint(c.ecef, this.seaLevel);
+    }
+    return c;
+  }
+
+  /** How far the eye is inside the hole the site's ground fills (to its nearest edge), metres; 0 outside it. Nothing of the globe nearer than this is drawn. */
+  private inside(eye: THREE.Vector3): number {
+    if (!this.hole) return 0;
+    const m = this.hole.frame.elements;
+    const x = m[0]! * eye.x + m[4]! * eye.y + m[8]! * eye.z + m[12]!,
+      z = m[2]! * eye.x + m[6]! * eye.y + m[10]! * eye.z + m[14]!;
+    return Math.max(0, this.hole.half - Math.max(Math.abs(x), Math.abs(z)));
   }
 
   /** Straight up from the sea under the eye, in the scene's frame. */
   up(eye: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
-    const n = ellipsoidNormal(this.toEcef(eye));
+    const n = this.eyed(eye).normal;
     const [ex, ey, ez] = this.axes;
     return out.set(dot(ex, n), dot(ey, n), dot(ez, n));
   }
@@ -567,9 +601,8 @@ export class Globe {
     if (thin) {
       const u = this.airUniforms;
       // the sphere that fits the sea under the eye: its centre, from the eye
-      const e = this.toEcef(eye);
-      const sphere = gaussianRadius(ecefToGeodetic(e).latitude);
-      const under = seaPoint(e, this.seaLevel);
+      const sphere = gaussianRadius(this.eyed(eye).latitude);
+      const under = this.eyed(eye).under;
       const centre = this.toSite(sub(under, scale(ellipsoidNormal(under), sphere)));
       u.uCentre!.value.set(centre[0] - eye.x, centre[1] - eye.y, centre[2] - eye.z);
       u.uRadius!.value = sphere;
@@ -580,11 +613,17 @@ export class Globe {
       this.air.scale.setScalar(THREE.MathUtils.clamp(0.1 * height, 300, 30_000));
     }
     if (!shown) return changed;
-    const e = this.toEcef(eye);
-    const under = seaPoint(e, this.seaLevel);
+    const under = this.eyed(eye).under;
     const made = this.madeAt;
     const h = Math.max(height, 30);
-    if (made && length(sub(under, made)) < 0.1 * this.madeHeight && h > 0.8 * this.madeHeight && h < 1.25 * this.madeHeight) return changed;
+    // (over the site's own ground the eye may go further before the mesh is made again: what would change is under that ground)
+    if (
+      made &&
+      length(sub(under, made)) < remakeAfter(this.madeHeight, this.inside(eye), this.radius) &&
+      h > 0.8 * this.madeHeight &&
+      h < 1.25 * this.madeHeight
+    )
+      return changed;
     this.make(under, h);
     return true;
   }
@@ -603,48 +642,18 @@ export class Globe {
   private make(under: Vec3, height: number): void {
     this.madeAt = under;
     this.madeHeight = height;
-    const u0 = unit(under);
-    // out past the horizon of an eye a third higher, so a climb does not show the edge before the next making
-    const reach = Math.min(1.5, horizonAngle(1.35 * height, this.radius) * 1.05 + 1e-4);
-    const span = reach * this.radius;
-    const k = Math.asinh(span / height) / RINGS;
-    // two directions along the surface at the point under the eye
-    const east = length(cross([0, 0, 1], u0)) > 1e-6 ? unit(cross([0, 0, 1], u0)) : ([1, 0, 0] as Vec3);
-    const north = cross(u0, east);
-    const anchor = this.toSite(under);
+    const anchor = fillGlobe(
+      under,
+      height,
+      this.radius,
+      this.seaLevel,
+      this.origin,
+      this.axes,
+      this.positions.array as Float32Array,
+      this.normals.array as Float32Array,
+      this.earth.array as Float32Array,
+    );
     this.mesh.position.set(anchor[0], anchor[1], anchor[2]);
-    const pos = this.positions.array as Float32Array;
-    const nor = this.normals.array as Float32Array;
-    const dir = this.earth.array as Float32Array;
-    const [ex, ey, ez] = this.axes;
-    const cos = Array.from({ length: SPOKES + 1 }, (_, j) => Math.cos((2 * Math.PI * j) / SPOKES));
-    const sin = Array.from({ length: SPOKES + 1 }, (_, j) => Math.sin((2 * Math.PI * j) / SPOKES));
-    let v = 0;
-    for (let i = 0; i <= RINGS; i++) {
-      const theta = (height * Math.sinh(k * i)) / this.radius;
-      const [ct, st] = [Math.cos(theta), Math.sin(theta)];
-      for (let j = 0; j <= SPOKES; j++, v += 3) {
-        const a = cos[j]! * st,
-          b = sin[j]! * st;
-        const u: Vec3 = [
-          u0[0] * ct + east[0] * a + north[0] * b,
-          u0[1] * ct + east[1] * a + north[1] * b,
-          u0[2] * ct + east[2] * a + north[2] * b,
-        ];
-        const p = seaPoint(u, this.seaLevel);
-        const s = this.toSite(p);
-        pos[v] = s[0] - anchor[0];
-        pos[v + 1] = s[1] - anchor[1];
-        pos[v + 2] = s[2] - anchor[2];
-        const n = ellipsoidNormal(p);
-        nor[v] = dot(ex, n);
-        nor[v + 1] = dot(ey, n);
-        nor[v + 2] = dot(ez, n);
-        dir[v] = u[0];
-        dir[v + 1] = u[1];
-        dir[v + 2] = u[2];
-      }
-    }
     this.positions.needsUpdate = true;
     this.normals.needsUpdate = true;
     this.earth.needsUpdate = true;

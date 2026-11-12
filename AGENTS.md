@@ -101,9 +101,12 @@ src/
   viewer/cape.ts                      Cape Canaveral's land as parameters: its plant communities, clearings, roads, palette, sea
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
   viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind
+  viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
+  viewer/globemesh.ts                 the globe's mesh, written without allocating, and when it is owed again
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
   viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground
-  viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, ray-marched at a quarter of the pixels, laid over the frame
+  viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, their skin worn by finer lumps, lit as cloud is (the Sun's light
+                                      marched through them and scattered, the sky above, the ground below), ray-marched at a quarter of the pixels, laid over the frame
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model is drawn at
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
