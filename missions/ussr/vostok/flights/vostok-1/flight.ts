@@ -499,7 +499,7 @@ const crewParts: Part[] = [
     summary: 'White, part of the suit, and lettered that morning.',
     detail:
       'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings ' +
-      'up out of sight inside the shell, which is how it is here, as he wore it to the pad; if the cabin lost ' +
+      'up over the crown, which is how it is here, as he wore it to the pad; if the cabin lost ' +
       'pressure it would have come down by itself. The red "СССР" on the brow was painted by hand on the morning ' +
       'of the flight, the story goes, so that whoever found him after landing would know whose pilot had come down ' +
       'by parachute. Photographs taken that morning exist both with the letters and without.',
@@ -546,7 +546,7 @@ const crewParts: Part[] = [
     name: 'Gloves',
     summary: 'On metal rings, and off until he was in the cabin.',
     detail:
-      'The gloves lock to metal rings at the wrists. Their palms are leather; the backs are the cover’s orange. ' +
+      'The gloves lock to metal rings at the wrists. Their palms are faced with leather; the backs are the cover’s orange. ' +
       'They are modelled on, as flown.',
     explode: [0, 0, 0],
     order: 0,
@@ -554,9 +554,9 @@ const crewParts: Part[] = [
   {
     node: 'Legs',
     name: 'Legs',
-    summary: 'One garment from the collar down, with a pocket on each thigh.',
+    summary: 'One garment from the collar down, zipped to the crotch, a pocket on each thigh.',
     detail:
-      'The cover is a loose overall. Its legs are drawn in over the tops of the boots. What the thigh pockets held ' +
+      'The cover is a loose overall. Its legs hang over the tops of the boots. What the thigh pockets held ' +
       'has not been read in a source; survival gear rode in the seat.',
     explode: [0, 0, 0],
     order: 0,
@@ -575,7 +575,7 @@ const crew: ModelDef = {
   id: 'crew',
   name: 'Crew',
   url: 'models/ussr/vostok/vostok-1/crew.glb',
-  scale: 'Yuri A. Gagarin · 1.65 m, 1.71 m suited · to scale',
+  scale: 'Yuri A. Gagarin · 1.65 m, 1.72 m suited · to scale',
   // no pad yet: he stands in the gallery, beside the spacecraft
   backdrop: 'studio',
   parts: crewParts,
@@ -920,10 +920,10 @@ export const flight: Flight = {
     {
       group: 'Pressure suit',
       label: 'Standing height, helmet and boots',
-      value: 1.713,
+      value: 1.725,
       unit: 'm',
       confidence: 'estimated',
-      note: 'his height, a 2.6 cm heel and 3.7 cm of helmet over the crown; the last two are read off photographs',
+      note: 'his height, a 2.6 cm heel, 3.7 cm of helmet over the crown and 1.2 cm of raised visor over that; all but the first are read off photographs',
     },
   ],
   motors: [

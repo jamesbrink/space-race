@@ -34,14 +34,15 @@ every fitting are sized by eye from photographs.
 | Gloves | leather palms, on metal wrist rings | documented | the Smithsonian's label; the rings are read off its photographs |
 | Boots | black laced leather, about to mid-calf | documented | the Smithsonian ("leather laced boots with clips"); colour and height from its photographs |
 | Suit ventilated from the bus on the way to the pad | | documented | Gagarin's own account (*Дорога в космос*): "Вентиляционное устройство было подключено к источникам питания, установленным в автобусе". Nothing read says he carried a ventilator, and the model gives him none |
-| Standing height, helmet and boots | 1.713 m | estimated | stature + 2.6 cm heel + 3.7 cm from crown to shell top |
+| Standing height, helmet and boots | 1.725 m | estimated | stature + 2.6 cm heel + 3.7 cm from crown to shell top + 1.2 cm of raised visor (1.713 m to the shell) |
 | Knee, crotch, hip, shoulder heights | 0.285, 0.47, 0.530, 0.818 of stature, plus the heel | derived | Drillis and Contini's segment proportions, as for the Mercury figure; the crotch ratio is a guess |
 | Girths | the shared figure's, times 0.96, let out 1.3 cm on the trunk, 1.1 on the arms, 0.6 on the legs | estimated | a stocky man of 68 kg in a loose cover |
 | Breadths (hips, shoulders, stance) | the shared figure's, times 0.97 | estimated | |
 | Crotch of the trousers | 4 cm under the body's own | estimated | a looser garment than the Mercury suit |
 | Helmet | a ball 30.4 cm across, its centre 2.5 cm ahead of the middle of the head | estimated | photographs |
-| Visor opening | 17.2 cm high, about 28 cm round the shell | estimated | photographs |
-| Lettering | 2.7 cm high, its foot 2.3 cm over the opening | estimated | photographs of 12 April; no source gives a size |
+| Visor opening | 17.2 cm high, about 33 cm round the shell | estimated | photographs: it takes in the whole face and the cap's sides |
+| Cover's colour | a strong red-orange (linear RGB 0.83, 0.16, 0.015) | estimated | by eye from the colour photograph in the bus and from the suits at Zvezda and the Smithsonian |
+| Lettering | 3.8 cm high, its foot 3.2 cm over the opening, on the crown | estimated | photographs of 12 April and of the suits kept since; no source gives a size |
 | Collar ring | 22.8 cm across | estimated | |
 | Boots | 26 cm tall, sole 29.0 cm | estimated | the shared boot at 0.93 |
 | Hands | the shared hand at 0.915 | estimated | scaled with his height |
@@ -51,11 +52,11 @@ every fitting are sized by eye from photographs.
 
 | Node | What it is |
 | --- | --- |
-| `Helmet` | white shell with the opening's lip and metal frame, pivots at the temples, "СССР" on the brow, the collar ring and the grey neck band under it, a hose fitting at the right front of the collar; inside it the padding, the head, the white headset cap and two microphones. The seated figure also has the visor's pane, down |
-| `Torso` | the cover from the waist up with both shoulders (one skin, down to a hem on each upper arm), the front closure's flap, a band of the same cloth at the waist, the hose fitting at the right abdomen with a stub of hose and its connector |
+| `Helmet` | white shell with the opening's lip and metal frame, the visor's pane in its rim (swung up over the crown; down on the seated figure), pivots at the temples, "СССР" on the crown, the collar ring and the grey neck band under it, the round fitting at the right front of the collar; inside it the padding, the head, the white headset cap and two red-brown microphones on their booms |
+| `Torso` | the cover from the waist up with both shoulders (one skin, down to a hem on each upper arm), the front zip between its two facings, a welted pocket on each side of the chest, the slanting zip on the left of the abdomen, a band of the same cloth at the waist, the hose fitting at the right abdomen with a stub of hose and its connector |
 | `Arms` | sleeves from the hem down; the mirror, its rim and its patch on the right forearm |
-| `Gloves` | each hand's skin (cuff, palm, fingers, thumb) and its wrist ring |
-| `Legs` | the trousers from the waist down as one skin; a flapped pocket with two snaps on each thigh |
+| `Gloves` | each hand's skin (cuff, palm, fingers, thumb), its leather palm and its wrist ring |
+| `Legs` | the trousers from the waist down as one skin, hanging over the boots' tops; the front zip carried on to the crotch; a bellows pocket under a flap with two snaps on each thigh |
 | `Boots` | uppers, tongues, soles and heels, laces on hooks |
 
 The cover is `suit-orange-cover`; the viewer adds its weave to any material named `suit*`.
@@ -110,31 +111,34 @@ in front of the seat frame's origin, so that his back lies on the parachute pack
 - **The pressure suit itself is not modelled**, only the cover over it and a grey band at the
   neck. No bladder, no restraint layer, no lacing under the cover.
 - **Fittings are read off photographs of museum suits**, which are not all alike and may not be
-  his: the front closure is a plain flap (photographs show a zip from neck to crotch and a second,
-  diagonal one on the left abdomen; neither is modelled below the waist or at all); the thigh
-  pockets' size and what they held are guesses; the small chest pockets and the snap-studded panel
-  on the back are left out.
+  his: the front zip, the chest pockets, the slanting zip on the left of the abdomen and the thigh
+  pockets are placed and sized by eye from the Zvezda and Smithsonian suits; what the pockets held
+  is not known; the gathered waist at the right, the snap-studded panel on the back and the
+  white patch on the right upper arm are left out.
+- **No lacing.** A white cord shows on the chest in the photograph in the bus; where it ran and
+  what it adjusted was not made out, and none is modelled.
 - **The waist band is the model's own device.** It lies over the line where the `Torso` node's
   skin ends and the `Legs` node's begins, as the Mercury suit's waist strap does. The cover is
   drawn in at the waist in photographs; a band there was not confirmed.
 - **The inflatable collar** for a landing on water (the Smithsonian's label) is left out: its
-  shape when stowed was not made out in any photograph read.
+  shape when stowed was not made out in any photograph read, the bus, Zvezda's suit and the
+  Smithsonian's among them.
 - **Hoses.** One fitting and a stub of the bundle at the right abdomen, ending in a plain block;
   the real bundle ran to a multi-way connector at the right hip. The hose on the collar's fitting
   is left out. Their colours are estimates.
-- **The gloves are one colour**, the cover's orange; the real palms were leather. No strings
-  from the sleeves (the gloves hung from them until he put them on in the cabin: on the walk to
-  the pad his hands were bare, and the model's are gloved).
+- **The gloves' leather is a facing on the palm only**; the insides of the fingers are the
+  cover's orange. No strings from the sleeves (the gloves hung from them until he put them on in
+  the cabin: on the walk to the pad his hands were bare, and the model's are gloved).
 - **The watch strap on the left forearm** seen on the Smithsonian's suit is left out. There was
   no pressure gauge on the wrist.
-- **The visor, up, is simply absent**: the real one swung up between the shell and its padding.
-  Its pivots are plain discs. The second pane, the latch and the automatic closing gear are not
-  modelled.
+- **The visor is one pane in a rim**, swung 92 degrees up over the crown when open, so that its
+  rim lies along the brow under the letters, as in the photograph in the bus. How far it really
+  went is read off that one picture. Its pivots are plain discs. The second pane, the latch and
+  the automatic closing gear are not modelled.
 - **The helmet is a plain ball** on a collar ring. The earphones' bulges, any hose or cable on
   it and the communications lead are left out; the microphones are a guess at their shape.
 - **Boots** are the shared laced boot in black with a tan sole edge; "with clips" was not seen
-  first hand. The trouser legs are drawn in above the boots' tops and go inside them; in the
-  photographs they blouse over the tops.
+  first hand.
 - **The body is a mannequin scaled to his height**, not his build. Folds are invented, as on the
   Mercury figure, and show a soft, unpressurised suit.
 - **Moved, he is a jointed doll in one skin**, as the Mercury figure is: cloth stretches and

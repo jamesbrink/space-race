@@ -12,8 +12,8 @@ wrist rings, black laced boots.
 Top-level nodes: Helmet  Torso  Arms  Gloves  Legs  Boots  Skeleton
 
 The standing figure is skinned to Skeleton, the joints every crew figure has (srlib.FIGURE), so
-the viewer can walk him, with the visor up (out of sight inside the shell) as it was on the way
-to the pad. build_seated() is the same man in the ejection seat's pose, visor down, for a cabin.
+the viewer can walk him, with the visor up over the crown as it was on the way to the pad.
+build_seated() is the same man in the ejection seat's pose, visor down, for a cabin.
 """
 
 from __future__ import annotations
@@ -58,10 +58,10 @@ def body() -> fl.Body:
     # where the cloth goes into something it is not let out: the neck into the helmet's collar, the cuffs into the gloves
     b.torso[-4:] = plain.torso[-4:]
     b.arm[-2:] = plain.arm[-2:]
-    # the trouser legs are bloused above the boots' tops, drawn in, and go down inside them
-    x, y, z, _, _ = b.leg[-1]
+    # the trouser legs hang over the boots' tops: full above them, and ending a little way down the outside of the shaft
+    x, y, _, _, _ = b.leg[-1]
     top = BOOT_TOP * BOOT_SIZE
-    b.leg[-2:] = [(x, y, top + 4.2, 6.5, 6.8), (x, y, top + 0.9, 4.7, 4.9), (x, y, z, 4.0, 4.2)]
+    b.leg[-2:] = [(x, y, top + 5.5, 7.0, 7.3), (x, y, top + 1.6, 7.3, 7.6), (x, y, top - 0.6, 7.0, 7.3)]
     return b
 
 
@@ -76,9 +76,10 @@ HELMET_AT = Vector((0, B.head_y - 1.3, B.head.z - 0.5))  # its centre: ahead of 
 HELMET_TOP = HELMET_AT.z + HELMET_R
 HELMET_RIM = B.neck_z + 1.6  # its lower edge, on the collar
 COLLAR_R = 11.4
-VISOR = (math.radians(54), 0.6, 8.6)  # the opening: half its width round the shell, its middle above the ball's, half its height
+VISOR = (math.radians(62), 1.6, 8.6)  # the opening: half its width round the shell, its middle above the ball's, half its height
+VISOR_UP = 92.0  # degrees the visor is swung up over the crown when it is open
 LETTERS = "СССР"
-LETTER_HEIGHT = 2.7  # estimated from the photographs of 12 April
+LETTER_HEIGHT = 3.8  # estimated from the photographs of 12 April and of the suits kept since
 PORT = (B.waist_z + 9.0, -38.0)  # where the hoses leave the suit: (height, azimuth in degrees): his right abdomen
 
 
@@ -90,7 +91,8 @@ def materials() -> dict:
 
     return {
         # (the viewer gives any material named suit... a weave)
-        "cover": m("suit-orange-cover", (0.80, 0.27, 0.04), 0.0, 0.85),
+        # (a strong red-orange, by eye from colour photographs of 12 April and of the suits in museums: estimated)
+        "cover": m("suit-orange-cover", (0.83, 0.16, 0.015), 0.0, 0.8),
         "liner": m("suit-grey-pressure-layer", (0.42, 0.45, 0.47), 0.0, 0.8),
         "shell": m("helmet-white", (0.86, 0.86, 0.83), 0.0, 0.3),
         "glass": m("glass-visor", (0.02, 0.03, 0.04), 0.0, 0.04),
@@ -109,6 +111,9 @@ def materials() -> dict:
         "sole": m("sole-leather-tan", (0.42, 0.30, 0.18), 0.0, 0.7),
         "lace": m("lace-cord-black", (0.03, 0.03, 0.03), 0.0, 0.85),
         "hose": m("hose-grey-green", (0.30, 0.34, 0.30), 0.0, 0.65),
+        "palm": m("glove-leather-tan", (0.50, 0.33, 0.17), 0.0, 0.6),
+        "tape": m("zipper-tape", (0.10, 0.10, 0.11), 0.0, 0.8),
+        "microphone": m("microphone-red-brown", (0.30, 0.07, 0.05), 0.0, 0.6),
     }
 
 
@@ -166,12 +171,16 @@ def build_helmet(M: dict) -> None:
     # the opening's metal frame
     line = [ball(*edge(psi), lip + 0.05) for psi in psis]
     Tube([*line, line[0]], [(0.55, 0.55)] * (n + 1), resample=2).add(rim, 10)
-    # The visor: a clear pane on the same ball, a little outside it, hung on the pivots at the
-    # temples. Open, it is swung up out of sight between the shell and its padding, which is how
-    # he wore it to the pad: the standing figure has none. In the seat it is down.
-    if fl.rig().posed():
-        pane = [[ball(*edge(psi, rho), 1.25 if rho < 1.1 else 1.15) for psi in psis] for rho in (0.0, 0.25, 0.5, 0.75, 0.95, 1.08, 1.12)]
-        skin(visor, pane, HELMET_AT, closed=True)
+    # The visor: a clear pane on the same ball, a little outside it, in a metal rim, hung on the
+    # pivots at the temples. Open, it is swung up over the crown, which is how he wore it to the
+    # pad; in the seat it is down.
+    up = 0.0 if fl.rig().posed() else math.radians(VISOR_UP)
+    swing = Matrix.Translation(HELMET_AT) @ Matrix.Rotation(-up, 4, "X") @ Matrix.Translation(-HELMET_AT)
+    pane = [[swing @ ball(*edge(psi, rho), 1.25 if rho < 1.1 else 1.15) for psi in psis] for rho in (0.0, 0.25, 0.5, 0.75, 0.95, 1.08, 1.12)]
+    skin(visor, pane, HELMET_AT, closed=True)
+    # the pane's own metal rim
+    line = [swing @ ball(*edge(psi, 1.12), 1.2) for psi in psis]
+    Tube([*line, line[0]], [(0.5, 0.42)] * (n + 1), resample=2).add(rim, 10)
     for sx in (1, -1):
         fit.lathe([(2.3, 0.0), (2.3, 0.9), (1.9, 1.2), (0.0, 1.2)], 24, matrix=frame(ball(sx * TAU / 4, 0.0, -0.3), (sx, 0, 0)))
 
@@ -181,9 +190,9 @@ def build_helmet(M: dict) -> None:
     xs, ys = [v[0] for v in verts], [v[1] for v in verts]
     k = LETTER_HEIGHT / (max(ys) - min(ys))
     cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
-    brow = math.asin((mid + tall) / HELMET_R) + (2.3 + LETTER_HEIGHT / 2) / HELMET_R
+    brow = math.asin((mid + tall) / HELMET_R) + (3.2 + LETTER_HEIGHT / 2) / HELMET_R
     red.add(
-        [tuple(ball((x - cx) * k * 1.12 / (HELMET_R * math.cos(brow)), brow + (y - cy) * k / HELMET_R, 0.16)) for x, y, _ in verts],
+        [tuple(ball((x - cx) * k * 1.3 / (HELMET_R * math.cos(brow)), brow + (y - cy) * k / HELMET_R, 0.16)) for x, y, _ in verts],
         faces,
     )
 
@@ -202,10 +211,10 @@ def build_helmet(M: dict) -> None:
     phi = math.radians(-58)
     at = Vector((COLLAR_R * math.sin(phi), HELMET_AT.y - COLLAR_R * math.cos(phi), HELMET_RIM - 0.4))
     out = Vector((math.sin(phi), -math.cos(phi), -0.35)).normalized()
-    fit.lathe([(1.5, -0.6), (1.5, 1.4), (1.15, 1.6), (1.15, 2.8), (0.0, 2.8)], 20, matrix=frame(at, out))
+    fit.lathe([(2.7, -0.6), (2.7, 1.0), (2.3, 1.3), (2.3, 1.9), (0.0, 1.9)], 28, matrix=frame(at, out))
 
     # the man inside: a head for the opening to have in it. Nobody's likeness (sk-1.md).
-    head, cap, dark, eyes, hair, lips = (MeshBuilder() for _ in range(6))
+    head, cap, dark, eyes, hair, lips, mics = (MeshBuilder() for _ in range(7))
     hc = B.head
     build_head(head, eyes, dark, hair, lips)
     head.tube((0, 1.0, B.neck_z - 7.0), (0, 0.4, hc.z - 6.0), 5.6, 24)  # neck
@@ -214,20 +223,20 @@ def build_helmet(M: dict) -> None:
     cap.lathe(arc_profile(0, 0, 1.0, -15, 90, 14), 40, matrix=Matrix.Translation(hc) @ bowl)
     for sx in (1, -1):  # a microphone at each corner of the mouth, on a short boom from the cap
         dark.tube((sx * 7.3, hc.y - 2.0, hc.z - 4.5), (sx * 3.6, hc.y - 9.6, hc.z - 6.3), 0.28, 8)
-        dark.box((1.5, 1.0, 1.1), Matrix.Translation((sx * 3.3, hc.y - 9.9, hc.z - 6.3)))
+        mics.disc((sx * 3.3, hc.y - 9.5, hc.z - 6.3), (sx * 0.35, -1, 0), 0.95, 0.9, 14)
 
     emit(shell, "Helmet_Shell", M["shell"], g)
     emit(padding, "Helmet_Liner", M["padding"], g)
     emit(head, "Helmet_Head", M["skin"], g)
     emit(cap, "Helmet_Cap", M["cap"], g)
-    emit(dark, "Helmet_Microphones", M["dark"], g, sharp_angle=30)
+    emit(dark, "Helmet_MicrophoneBooms", M["dark"], g, sharp_angle=30)
+    emit(mics, "Helmet_Microphones", M["microphone"], g, sharp_angle=30)
     if eyes.verts:
         emit(eyes, "Helmet_Eyes", M["eye"], g)
     if hair.verts:
         emit(hair, "Helmet_Brows", M["hair"], g)
         emit(lips, "Helmet_Lips", M["lip"], g)
-    if visor.verts:
-        emit(visor, "Helmet_Visor", M["glass"], g)
+    emit(visor, "Helmet_Visor", M["glass"], g)
     emit(rim, "Helmet_VisorFrame", M["aluminium"], g)
     emit(fit, "Helmet_Fittings", M["aluminium"], g, sharp_angle=30)
     emit(red, "Helmet_Lettering", M["red"], g, smooth=False)
@@ -270,7 +279,7 @@ def torso_tube() -> Tube:
 
 def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
     g = group("Torso")
-    shell, tape, fit, hose = (MeshBuilder() for _ in range(4))
+    shell, tape, fit, hose, zips, teeth = (MeshBuilder() for _ in range(6))
     t = torso_tube()
     arms = {sx: arm_tube(sx) for sx in (1, -1)}
     build_shell(shell, t, arms)
@@ -282,7 +291,17 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
         return z - B.torso_z0
 
     # the front closure, from the collar down to the waist, under a flap of the cover's own cloth
-    band(tape, t.trace(d(B.neck_z - 7.5), d(B.waist_z + 2.0), az(0), az(0), 60), 3.4, 0.3, sink=0.4)
+    for side in (-5.5, 5.5):
+        band(tape, t.trace(d(B.neck_z - 7.5), d(B.waist_z + 2.0), az(side), az(side), 60), 1.6, 0.3, sink=0.4)
+    line = t.trace(d(B.neck_z - 7.0), d(B.waist_z + 2.2), az(0), az(0), 60)
+    band(zips, line, 1.5, 0.5, sink=0.2)
+    band(teeth, line[1:-1], 0.45, 0.2, lift=0.5, sink=0.2, bevel=0.1)
+    # a welted pocket on each side of the chest, and the slanting zip on the left of the abdomen
+    for sx in (1, -1):
+        band(zips, t.trace(d(B.z_pit + 3.5), d(B.z_pit + 1.5), az(sx * 16), az(sx * 34), 12), 1.3, 0.3, sink=0.3)
+    slant = t.trace(d(B.waist_z + 12.0), d(B.waist_z + 5.0), az(14), az(40), 24)
+    band(zips, slant, 1.5, 0.3, sink=0.3)
+    band(teeth, slant[1:-1], 0.45, 0.2, lift=0.3, sink=0.2, bevel=0.1)
     # a band of the same cloth at the waist, where the cover is drawn in: it lies over the line where the shell ends and the trousers begin
     band(tape, ring(t, d(B.waist_z), 72), 2.8, 0.35, closed=True)
     # where the hoses leave: a fitting at his right abdomen, and the first of the bundle hanging from it
@@ -305,6 +324,8 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
 
     emit(shell, "Torso_Shell", M["cover"], g, sharp_angle=None)
     emit(tape, "Torso_Closure", M["cover"], g, smooth=False)
+    emit(zips, "Torso_ZipperTape", M["tape"], g, smooth=False)
+    emit(teeth, "Torso_ZipperTeeth", M["steel"], g, smooth=False)
     emit(fit, "Torso_HoseFitting", M["aluminium"], g, sharp_angle=30)
     emit(hose, "Torso_Hoses", M["hose"], g)
     return arms, t
@@ -356,10 +377,15 @@ def build_arms(M: dict, tubes: dict[int, Tube]) -> None:
 
 def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
     g = group("Gloves")
-    shell, rings = MeshBuilder(), MeshBuilder()
+    shell, rings, leather = MeshBuilder(), MeshBuilder(), MeshBuilder()
     fingers: list[float] = []
     for sx in (1, -1):
         hand, palm = fl.gloved_hand(shell, sx, arms[sx].path[-1] - arms[sx].path[-2], fingers)
+        # the palm is faced with leather
+        first = len(leather.verts)
+        th = palm.toward(-hand.B, 13.0)
+        palm.patch(leather, 10.0, palm.length - 1.8, th - 1.1, th + 1.1, 0.4, nd=8, nt=10, sink=0.3)
+        fl.fitted(leather, first, hand)
         # the metal ring each glove locks to the sleeve by
         first = len(rings.verts)
         band(rings, ring(palm, 0.6, 32), 2.3, 0.55, sink=0.5, bevel=0.3, closed=True)
@@ -367,6 +393,7 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
     shell.share = fingers
     emit(shell, "Gloves_Shell", M["cover"], g)
     emit(rings, "Gloves_WristRings", M["aluminium"], g, sharp_angle=30)
+    emit(leather, "Gloves_Palms", M["palm"], g)
 
 
 # ---------------------------------------------------------------------------- legs
@@ -393,29 +420,40 @@ def leg_tube(sx: int) -> Tube:
             spread=1.7,
         ),
         Folds(t.key_d(2) - 2.0, t.key_d(2) + 3.5, 4, 0.35, 2.6 * sx, t.toward((-sx, -0.6, 0), t.key_d(2)), spread=1.0),  # the groin
-        Folds(t.key_d(7) - 3.5, t.key_d(7) + 1.5, 4, 0.45, 0.3 * sx, spread=3.0),  # bloused over the boot
+        Folds(t.key_d(7) - 5.0, t.key_d(7) + 2.0, 5, 0.5, 0.3 * sx, spread=3.0),  # bloused over the boot
     ]
     return t
 
 
 def build_legs(M: dict, torso: Tube) -> None:
     g = group("Legs")
-    legs, pockets, snaps = (MeshBuilder() for _ in range(3))
+    legs, pockets, flaps, snaps = (MeshBuilder() for _ in range(4))
     tubes = {sx: leg_tube(sx) for sx in (1, -1)}
     Trousers(torso, tubes).build(legs)
+    zips, teeth = MeshBuilder(), MeshBuilder()
+    front = -TAU / 4
+    # (seated, that length of the zip is folded into the lap and is left out)
+    if not fl.rig().posed():
+        line = torso.trace(B.waist_z - 2.2 - B.torso_z0, B.pelvis_top + 2.0 - B.torso_z0, front, front, 30)
+        band(zips, line, 1.5, 0.5, sink=0.2)
+        band(teeth, line[1:-1], 0.45, 0.2, lift=0.5, sink=0.2, bevel=0.1)
     for sx in (1, -1):
         t = tubes[sx]
-        # a patch pocket on the front of each thigh, under a flap held by two snaps
+        # a bellows pocket on the front of each thigh, under a flap held by two snaps
         d0 = t.key_d(2) + 9.0
         th = t.toward((sx * 0.45, -1, 0), d0)
-        t.patch(pockets, d0 + 3.2, d0 + 15.0, th - 0.62, th + 0.62, 0.3, nd=10, nt=10)
-        t.patch(pockets, d0, d0 + 4.4, th - 0.66, th + 0.66, 0.55, nd=4, nt=10)
+        t.patch(pockets, d0 + 3.6, d0 + 17.0, th - 0.74, th + 0.74, 0.7, nd=10, nt=10)
+        t.patch(flaps, d0, d0 + 6.0, th - 0.8, th + 0.8, 1.05, nd=5, nt=10)
         if srlib.DETAIL >= 0.5:
-            for s in (-0.42, 0.42):
-                snaps.disc(t.at(d0 + 3.4, th + s, 0.45), t.normal(d0 + 3.4, th + s), 0.45, 0.3, 10)
+            for s in (-0.5, 0.5):
+                snaps.disc(t.at(d0 + 4.8, th + s, 0.95), t.normal(d0 + 4.8, th + s), 0.5, 0.3, 10)
 
     emit(legs, "Legs_Trousers", M["cover"], g, sharp_angle=None)
     emit(pockets, "Legs_Pockets", M["cover"], g)
+    emit(flaps, "Legs_PocketFlaps", M["cover"], g)
+    if zips.verts:
+        emit(zips, "Legs_ZipperTape", M["tape"], g, smooth=False)
+        emit(teeth, "Legs_ZipperTeeth", M["steel"], g, smooth=False)
     if snaps.verts:
         emit(snaps, "Legs_PocketSnaps", M["steel"], g)
 
