@@ -104,7 +104,9 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   .title:has(.places) { max-width: calc(100vw - 20px - 98px); }
   /* ("site" alone, where there is no room for more: the two words are side by side with "gallery" and can be nothing else) */
   .places i { display: none; }
-  .title:has(.places) h1 { overflow: hidden; text-overflow: ellipsis; }
+  /* no room for crumbs: the heading is the way back out to the front page, and a mark before it says so */
+  .title:has(.places) h1 { overflow: hidden; text-overflow: ellipsis; pointer-events: auto; cursor: pointer; }
+  .title:has(.places) h1::before { content: ''; display: inline-block; width: 0.3em; height: 0.3em; margin: 0 0.3em 0.12em 0.08em; border: solid var(--amber); border-width: 0 0 2px 2px; transform: rotate(45deg); }
   .title:has(.places) .sub { overflow: hidden; text-overflow: ellipsis; }
   .title .places { position: absolute; left: calc(100% + 8px); top: -1px; bottom: -1px; width: 90px; margin: 0; flex-direction: column; flex-wrap: nowrap;
     background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border-radius: 3px; }

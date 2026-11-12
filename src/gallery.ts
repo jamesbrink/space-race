@@ -309,7 +309,7 @@ export class Gallery {
       <header class="title">
         <button class="tuck chevron" aria-label="Show or hide the summary" aria-expanded="true" title="Tuck away"></button>
         <p class="crumbs">${crumbs(f, 'gallery')}</p>
-        <h1>${esc(f.callsign)}</h1>
+        <h1 data-home title="Front page">${esc(f.callsign)}</h1>
         <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
         <p class="lede">${esc(f.spacecraft)}${f.launchVehicle ? `<br>${esc(f.launchVehicle)}` : ''}</p>
       </header>
@@ -519,7 +519,10 @@ export class Gallery {
     };
     tuckTitle(prefs.get('titleTucked'));
     this.q('.tuck').addEventListener('click', () => tuckTitle(!title.classList.contains('tucked')));
-    this.q('[data-home]').addEventListener('click', () => this.host.home());
+    // the way out to the front page: the first crumb, and on a narrow page (which has no room for crumbs) the heading
+    title.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('[data-home]')) this.host.home();
+    });
     root.classList.toggle('bare', prefs.get('bare'));
     const keys = this.q('.legend-keys');
     this.showKeys = (open: boolean) => {
@@ -791,6 +794,7 @@ export class Gallery {
     if (byHand) this.autoCut = false; // asked for by hand: it stays until asked otherwise
     this.cut = on;
     this.root.querySelector('[data-cut]')?.setAttribute('aria-pressed', String(on));
+    this.made?.studio.inside(on); // (opened, what is inside is lit)
     this.made?.stage.setCutaway(on);
   }
 

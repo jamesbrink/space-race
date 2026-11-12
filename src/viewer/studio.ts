@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Backdrop, Setting } from './backdrops';
 
@@ -12,9 +13,14 @@ import type { Backdrop, Setting } from './backdrops';
  *   silhouette. The floor itself is nothing but what falls on it: the key's shadow, a soft dark
  *   under the thing where it stands, and a pool of light round it that gives the floor its
  *   perspective.
- * - **Three lights.** A key from the front right and above (the stage's one shadow-casting light),
- *   a cool rim from behind left that draws the edge of a dark vehicle against a dark wall, and a
- *   low fill from the front left. They do not move: the view goes round the thing, the light stays.
+ * - **A key, a fill, and two kickers.** A key from the front right and above (the stage's one
+ *   shadow-casting light) and a low fill from the front left do not move: the view goes round the
+ *   thing, the light stays. Two kickers stand behind the thing wherever it is seen from, a cool one
+ *   to the left and a weaker warm one to the right, so that an edge, an antenna, a strap or a
+ *   lattice is drawn in light against the wall from every side. Cut open, a lamp beside the
+ *   viewer's shoulder lights what is inside.
+ * - **A polished floor, faintly.** The thing is seen again in the floor under it, a tenth as bright:
+ *   enough to say there is a floor and that the thing stands on it.
  * - **Something to reflect.** Polished metal shows its surroundings, so there is a room for it to
  *   show: softboxes where the lights are, in a plain box, baked to an environment map. No picture
  *   of anywhere is downloaded.
@@ -105,6 +111,7 @@ const PALETTE: Record<Tone | 'paper', Palette> = {
 const KEY = new THREE.Vector3(0.4, 1.3, 0.8).normalize();
 const RIM = new THREE.Vector3(-0.78, 0.5, -0.62).normalize();
 const FILL = new THREE.Vector3(-0.92, 0.22, 0.4).normalize();
+const UP = new THREE.Vector3(0, 1, 0);
 
 /** Unlit, one colour, the same in both looks (a material that is all its own shader has no cel twin: look.ts). */
 function flat(colour: THREE.IUniform<THREE.Color>, opacity = 1): THREE.ShaderMaterial {
@@ -173,6 +180,7 @@ class Sweep implements Backdrop {
     uFloor: { value: new THREE.Color() },
     uBand: { value: new THREE.Color() },
     uTop: { value: new THREE.Color() },
+    uSpot: { value: 1 },
   };
 
   constructor() {
@@ -184,15 +192,23 @@ class Sweep implements Backdrop {
           depthWrite: false,
           uniforms: this.uniforms,
           vertexShader: /* glsl */ `
-            varying vec3 vDir;
-            void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            varying vec3 vDir; varying vec2 vAt;
+            void main() {
+              vDir = position;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              vAt = gl_Position.xy / gl_Position.w;
+            }`,
           fragmentShader: /* glsl */ `
-            uniform vec3 uFloor, uBand, uTop; varying vec3 vDir;
+            uniform vec3 uFloor, uBand, uTop; uniform float uSpot; varying vec3 vDir; varying vec2 vAt;
             void main() {
               float y = normalize(vDir).y;
               // the floor rises into the cove over a quarter of the sky, and the cove fades up the wall: nowhere a line
               vec3 col = mix(uFloor, uBand, smoothstep(-0.42, 0.04, y));
               col = mix(col, uTop, smoothstep(0.02, 0.9, y));
+              // the wall is lit behind the thing and falls away to the corners of the frame: the thing is always in the
+              // middle of the picture, so this is by where on the picture, not where in the room
+              float off = length(vAt * vec2(0.85, 1.0));
+              col *= mix(1.0 + 0.55 * uSpot, 1.0 - 0.5 * uSpot, smoothstep(0.0, 1.25, off));
               // (a quarter of a level of noise: a gradient this slow would otherwise show its steps)
               col += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
               gl_FragColor = vec4(col, 1.0);
@@ -226,6 +242,10 @@ function room(wall: number, boxes: number): THREE.Scene {
   panel(RIM, 22, 5, 22, 7, [0.9, 0.95, 1]); // the rim: a tall strip, which is a line of light down a cylinder's edge
   panel(FILL, 22, 14, 8, 1.6, [1, 0.96, 0.9]);
   panel(new THREE.Vector3(0, 1, 0), 24, 18, 18, 1.2); // overhead: the top of a sphere is not a black hole
+  // strips: on polished metal each is a bright line that runs with the form, which is what says "polished"
+  panel(new THREE.Vector3(0.95, 0.25, -0.2).normalize(), 22, 2.2, 26, 6, [1, 0.96, 0.9]);
+  panel(new THREE.Vector3(-0.35, 0.3, 0.9).normalize(), 22, 1.6, 20, 4.5, [0.92, 0.96, 1]);
+  panel(new THREE.Vector3(0.1, 0.06, -1).normalize(), 24, 30, 2.5, 3, [0.9, 0.95, 1]); // low behind: a line along the underside
   return scene;
 }
 
@@ -293,6 +313,8 @@ export interface Studio extends Setting {
    * light and shadow are sized to it, and the measure is stood beside it and made as tall.
    */
   fit(box: THREE.Box3): void;
+  /** The thing is cut open, or closed again: open, a lamp at the viewer's shoulder lights what is inside. */
+  inside(open: boolean): void;
   /** Stand the measure beside the thing (a person and a pole), or take it away. */
   measure(on: boolean): void;
   readonly measured: boolean;
@@ -326,10 +348,64 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
   floor.position.y = 0;
   contact.position.y = 0.001;
 
-  const rim = new THREE.DirectionalLight(0xdfeaff, 1.5);
-  const fill = new THREE.DirectionalLight(0xfff1df, 0.5);
+  const rim = new THREE.DirectionalLight(0xd6e6ff, 2.2);
+  const kicker = new THREE.DirectionalLight(0xffe9cf, 1.1);
+  const lamp = new THREE.DirectionalLight(0xfff6ea, 0);
+  const fill = new THREE.DirectionalLight(0xdfe8ff, 0.45);
   rim.position.copy(RIM).multiplyScalar(60);
   fill.position.copy(FILL).multiplyScalar(60);
+  /** The middle of what stands there: what the lights that follow the view are aimed at. */
+  const subject = new THREE.Vector3(0, 1, 0);
+  let open = false;
+
+  // The floor as a mirror, faint: three's own, with a shader that adds what it sees and fades it out from under the
+  // thing. Not on a phone (it is the scene drawn a second time), and not in a drawing.
+  const fine = !matchMedia('(pointer: coarse)').matches;
+  const reach = { value: 10 };
+  const sheen = { value: 0.1 };
+  const mirror = new Reflector(new THREE.CircleGeometry(1, 48), {
+    textureWidth: 1024,
+    textureHeight: 1024,
+    clipBias: 0.002,
+    multisample: 0,
+    shader: {
+      name: 'StudioFloor',
+      uniforms: { color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null }, uSheen: sheen },
+      vertexShader: /* glsl */ `
+        uniform mat4 textureMatrix; varying vec4 vUv; varying vec2 vAt;
+        void main() {
+          vUv = textureMatrix * vec4(position, 1.0);
+          vAt = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform sampler2D tDiffuse; uniform float uSheen; varying vec4 vUv; varying vec2 vAt;
+        void main() {
+          vec3 seen = texture2DProj(tDiffuse, vUv).rgb;
+          float k = 1.0 - smoothstep(0.35, 1.0, length(vAt));
+          gl_FragColor = vec4(min(seen, vec3(4.0)) * uSheen * k, 1.0);
+        }`,
+    },
+  });
+  mirror.rotation.x = -Math.PI / 2;
+  mirror.position.y = 0.0002;
+  mirror.renderOrder = -4;
+  const material = mirror.material as THREE.ShaderMaterial;
+  material.transparent = true;
+  material.depthWrite = false;
+  material.blending = THREE.AdditiveBlending;
+  // Drawn once for each frame the stage draws (`view`), not once for each pass that draws the scene; and what it sees
+  // is the thing, not the floor's own light and shadow.
+  let due = false;
+  const reflect = mirror.onBeforeRender;
+  mirror.onBeforeRender = (...args) => {
+    if (!due) return;
+    due = false;
+    const hidden = [pool, contact, floor, figure].filter((o) => o.visible);
+    for (const o of hidden) o.visible = false;
+    reflect.apply(mirror, args);
+    for (const o of hidden) o.visible = true;
+  };
 
   const figure = new THREE.Group();
   figure.name = 'ScaleMeasure';
@@ -372,8 +448,13 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
     setting.environmentIntensity = p.environment;
     setting.fill = [p.sky, p.ground, 0.42];
     // a drawing is lit flat from the front: the rim and the fill would each add a band of tone of their own
-    rim.intensity = cel ? 0 : 1.5;
-    fill.intensity = cel ? 0 : 0.5;
+    rim.intensity = cel ? 0 : setting.tone === 'light' ? 1.3 : 2.2;
+    kicker.intensity = cel ? 0 : setting.tone === 'light' ? 0.6 : 1.1;
+    fill.intensity = cel ? 0 : 0.45;
+    lamp.intensity = open && !cel ? 1.5 : 0;
+    sweep.uniforms.uSpot.value = cel ? 0 : setting.tone === 'light' ? 0.35 : 1;
+    mirror.visible = fine && !cel;
+    sheen.value = setting.tone === 'light' ? 0.05 : 0.11;
   };
 
   const setting: Studio = {
@@ -389,7 +470,7 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
     maxPolar: Math.PI / 2 - 0.012,
     exposure: 0.95,
     fog: null,
-    scenery: [pool, contact, rim, rim.target, fill, fill.target, figure],
+    scenery: [mirror, pool, contact, rim, rim.target, kicker, kicker.target, lamp, lamp.target, fill, fill.target, figure],
     horizon: 60,
     shadowRadius: 5,
     tone: 'dark',
@@ -410,6 +491,12 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
       // the floor has to take the key's whole shadow, taken apart as well as together
       floor.scale.setScalar(Math.max(60, 8 * span));
       pool.scale.setScalar(Math.max(4, 2.2 * span));
+      subject.set(centre.x, box.max.y / 2, centre.z);
+      reach.value = Math.max(3, 1.6 * span);
+      mirror.scale.setScalar(reach.value);
+      mirror.position.set(centre.x, mirror.position.y, centre.z);
+      fill.target.position.copy(subject);
+      fill.position.copy(subject).addScaledVector(FILL, 60);
       pool.position.set(centre.x, pool.position.y, centre.z);
       contact.scale.setScalar(1.5 * footprint + 0.25);
       contact.position.set(centre.x, contact.position.y, centre.z);
@@ -422,6 +509,10 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
       staff = pole(height, flat(colours.amber), flat(colours.ink));
       staff.position.set(centre.x - 0.86 * (clear + 0.55), 0, centre.z - 0.5 * (clear + 0.55));
       figure.add(staff);
+    },
+    inside(on) {
+      open = on;
+      apply();
     },
     measure(on) {
       figure.visible = on;
@@ -451,8 +542,22 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
         stature,
       };
     },
-    // the outline is a card: it turns about its feet to face whoever is looking
     view(camera) {
+      due = true;
+      // The kickers stand behind the thing as it is seen: round from the line of sight by 125 degrees either way, and
+      // above it. The lamp is at the viewer's shoulder, up and to the left, looking where the viewer looks.
+      const sight = new THREE.Vector3().subVectors(subject, camera.position).setY(0);
+      if (sight.lengthSq() < 1e-6) sight.set(0, 0, -1);
+      sight.normalize();
+      const round = (light: THREE.DirectionalLight, turn: number, rise: number): void => {
+        const toward = sight.clone().applyAxisAngle(UP, turn).multiplyScalar(-1).setY(rise).normalize();
+        light.target.position.copy(subject);
+        light.position.copy(subject).addScaledVector(toward, 60);
+      };
+      round(rim, THREE.MathUtils.degToRad(125), 0.45);
+      round(kicker, THREE.MathUtils.degToRad(-130), 0.3);
+      round(lamp, THREE.MathUtils.degToRad(-14), 0.35);
+      // the outline is a card: it turns about its feet to face whoever is looking
       if (!figure.visible || own) return;
       const at = person.getWorldPosition(new THREE.Vector3());
       card.rotation.y = Math.atan2(camera.position.x - at.x, camera.position.z - at.z);
