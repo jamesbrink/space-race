@@ -298,13 +298,24 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     ivec2 li = ivec2(floor(lg));
     float lets = 0.0;
     if (fp < 125.0 && a > 0.0) {   // (only where there is deck: most of the sky has none)
+      // (Seen from above each was a flat white disc, and a patch of them a sheet of counters. A cloudlet is lobed (the
+      // place pushed about by a noise 90 m across, while that is three pixels), of every size from a scrap to a roll
+      // (the small ones many), runs into its neighbours where they touch (their domes added, not the highest taken),
+      // and is thick at its heart and thin at its rim, so white there and grey here: clouds.ts whitens by opacity.)
+      vec2 lp = lg;
+      if (fp < 30.0) lp += 0.2 * (1.0 - smoothstep(15.0, 30.0, fp)) * (vec2(${prefix}noise2(xz / 90.0 + 4.4, 515), ${prefix}noise2(xz / 90.0 + 9.7, 516)) - 0.5);
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         ivec2 c = li + ivec2(dx, dy);
-        vec2 pc = vec2(c) + 0.5 + 0.7 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5);
-        float size = 0.34 + 0.3 * ${prefix}hash2(c, 509);
-        lets = max(lets, 1.0 - length(lg - pc) / size);
+        vec2 pc = vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5);
+        float u = ${prefix}hash2(c, 509);
+        float size = 0.3 + 0.5 * u * u;
+        vec2 d = (lp - pc) / size;
+        float dome = max(1.0 - dot(d, d), 0.0);
+        lets += dome * dome * (0.55 + 0.45 * u);
       }
-      lets = smoothstep(0.0, 0.75, lets + 0.5 * (deckTex(xz, fp) - cut));
+      // (thick and close in a patch's clumps, scraps with gaps between them out of them)
+      float dense = ${prefix}noise2(r2 / 1100.0 + 8.3, 506);
+      lets = smoothstep(0.08, 0.95, lets * (0.75 + 0.9 * dense) + 0.5 * (deckTex(xz, fp) - cut));
     }
     // (from far above a patch of altocumulus is dappled, thick clumps a kilometre across and thin air between them
     // through which the ground shows, mottled again at 400 m while that is two pixels or more: not one flat tone)
