@@ -1,29 +1,42 @@
-# The gallery
+# The gallery, and a flight's places
 
 Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 
-A flight is seen in two places. The **site** is where it flew from: the pad, the crew, the day's
-sky, the clock, the flight itself. The **gallery** is nowhere: the vehicle alone on a plain floor
-under designed light, to be turned, taken apart, cut open and read. A flight whose site is not
-built yet has only the gallery, and says so: that is how a new programme's first spacecraft is
-first seen.
+## The navigation, the same for every flight
 
-## Where it is in the page
+Every flight has the same three places, in the same order, and opens in the first:
 
-- **The front page** gives each flight its ways in: *Launch site* and *Gallery* where it has both,
-  *Gallery* alone (with "its launch site is not built yet") where it has only its vehicle.
-- **Inside a flight** one switch, in the title card, is the same control in the same spot in both
-  places (`placesNav` in `gallery.ts`). Beside a heading on a phone it stands to the right of it.
+| place | what it is | a flight has it when |
+| --- | --- | --- |
+| **Gallery** | the vehicle alone on a plain floor under designed light: turned, taken apart, cut open, read | it has a vehicle (`exhibit`) |
+| **Launch site** | where it flew from: the pad, the place, the crew, the day's sky, the clock, walking. Its sections are the flight's models there (Vehicle, Launch pad, Crew) | it has `site` and a model whose `backdrop` is a place, not `'studio'` |
+| **Fly** | the flight deck, at the site: the vehicle under your hands, and the recorded flight | it has the site, a `trajectory` with a `body`, and `flies` |
+
+- **The front page** has one entrance per flight, by date. It always opens that flight's gallery.
+- **Inside a flight** one switch, in the title card, shows the three places, the same control in
+  the same spot in every place (`placesNav` in `gallery.ts`; on the flight deck, where the card
+  makes way, the switch alone stays in its corner). A place the flight does not have yet is
+  **shown, dimmed, and says why** when pointed at or pressed (`lacks` in `address.ts`: "Launch
+  site: not built yet", "Fly: no trajectory yet"). It is never hidden: the visitor is told what
+  is coming, and the control is the same for every flight.
+- **The way back is always the same**: front page > flight > place, and the title card's crumbs
+  say it (`crumbs`): "Space Race" is the front page, the flight's name its gallery.
 - **The address** carries it (`src/address.ts`, the only place that reads or writes one):
-  `#<flight>/gallery`, `#<flight>/gallery/<part node>`, `#<flight>/gallery/<what stands there>`;
-  `#<flight>/<model>` is the site, as it always was. No model may be called `gallery`.
-- **Which page comes up** is decided in `enter.ts` by the flight the address names: `main.ts` for a
-  flight with a site (it has the gallery beside it), `only.ts` for one without (the gallery and
-  the front page, and none of the code that needs a site).
+  `#<flight>` and `#<flight>/gallery[/<part or what stands there>]` the gallery;
+  `#<flight>/site[/<vehicle|pad|crew>]` the launch site; `#<flight>/fly` the flight deck.
+  Addresses older than the places mean what they meant: `#<flight>/<model>` and a bare `#pad`,
+  `#vehicle`, `#crew` (the first *listed* flight's: every tool and script uses them) are sections
+  of the site. So no model may be called `gallery`, `site` or `fly`. The front page names nothing:
+  the first flight *by date* turns behind it, in its gallery.
+- **Loading follows the place.** Going into a flight fetches only what the gallery needs: the
+  vehicle, in full. The site's models, scenery, globe and clouds are fetched when Launch site or
+  Fly is first chosen, and kept.
+- **Which page comes up** is decided in `enter.ts` by the flight the address is about (`flightFor`):
+  `main.ts` for a flight with a site (the gallery beside it), `only.ts` for one without (the
+  gallery and the front page, and none of the code that needs a site).
 
-`entrances(flight)` says which ways in there are: a site when the flight has `site` and a model
-whose `backdrop` is a place and not `'studio'`; a gallery when it has a vehicle (`exhibit`: the
-model `flies` names, else the first that is neither a `walker` nor on the clock).
+A flight with only a vehicle is complete enough to ship: it is in the gallery, and its site and
+Fly light up as they are built.
 
 ## One rule: nothing leaks
 
@@ -33,14 +46,14 @@ site's stage is asleep (`Stage.sleep`): it draws nothing, hears no key and advan
 the vehicle on the pad, the selection, the camera, a figure walked somewhere and the clock's
 instant are, when it wakes, exactly as they were left; and the gallery, come back to, is as it
 was left too. Going to the gallery ends a walk (the figure stays where it stood), stops a running
-clock (started again on the way back) and hushes the sound; it is refused from the flight deck.
+clock (started again on the way back), hushes the sound and leaves the flight deck.
 
 Every key comes to the gallery first while it is up (a capturing listener in `gallery.ts`): the
 camera's keys go on to its own stage's camera, its own keys are acted on, and nothing goes
 further, so no key of the site's (the clock, the flight deck, going on foot) reaches a site that
 is not on show. A new key for the gallery is added there and to its legend.
 
-What the two places share is only what is remembered between visits (`prefs.ts`): the look, the
+What the gallery and the site share is only what is remembered between visits (`prefs.ts`): the look, the
 turntable, which panels are tucked.
 
 ## What it shows
@@ -74,7 +87,7 @@ is paper whichever was chosen. Brightnesses are a design fitted by eye.
 
 ## To look at it
 
-`/#usa/mercury/mr-3-freedom-7/gallery`. While developing, `/?fixture#test/fixture/vehicle-only`
+`/#usa/mercury/mr-3-freedom-7` or `/#ussr/vostok/vostok-1`. While developing, `/?fixture#test/fixture/vehicle-only`
 shows the flight that is only a vehicle (`tests/fixtures/vehicle-only`), through `only.ts`.
 `sr.gallery` is the handle; `sr.gallery.stage` its stage. `tools/shot.mjs out.png
 usa/mercury/mr-3-freedom-7/gallery "" 1440 900 --ui` takes its picture.

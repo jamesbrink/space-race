@@ -1,5 +1,5 @@
 import { flights } from '../missions';
-import { entrances, parseAddress } from './address';
+import { entrances, flightFor } from './address';
 
 /**
  * The way in. A flight is shown at its site (main.ts: the pad, the crew, the day, the clock, the
@@ -14,5 +14,5 @@ import { entrances, parseAddress } from './address';
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('fixture'))
   flights.push((await import('../tests/fixtures/vehicle-only/flight')).flight);
 
-const flight = flights.find((f) => f.id === parseAddress(location.hash).flightId) ?? flights[0]!;
+const flight = flightFor(flights, location.hash);
 void (entrances(flight).site ? import('./main') : import('./only'));

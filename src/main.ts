@@ -1,12 +1,12 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { flights } from '../missions';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
-import { formatAddress, opensIn, parseAddress } from './address';
+import { flightFor, formatAddress, opensIn, type Place, parseAddress } from './address';
 import { Callout } from './callout';
 import { Cockpit } from './cockpit';
 import { Demo, IDLE_TITLE } from './demo';
 import { Flown } from './flown';
-import { Gallery, placesNav } from './gallery';
+import { crumbs, Gallery, markPlace, placesNav } from './gallery';
 import './navball.css';
 import { Navball } from './navball';
 import { prefs } from './prefs';
@@ -26,7 +26,7 @@ import { Clock, localTime, missionTime } from './world/clock.ts';
 const address = () => parseAddress(location.hash);
 
 // (enter.ts brings this page up only for a flight that has a site: one with only its vehicle built is the gallery's alone)
-const flight = (flights.find((f) => f.id === address().flightId) ?? flights[0]!) as SitedFlight;
+const flight = flightFor(flights, location.hash) as SitedFlight;
 document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
@@ -133,6 +133,7 @@ const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight,
     // at the controls the view is one of the vehicle's (the stage offers only those while it is flown); back on the ground, the place's
     ui.setCamera(on ? 'chase' : 'orbit');
     if (!on) show(current.id);
+    placed(on ? 'fly' : 'site');
   },
 });
 cockpit.listen((sample, state) => sound.follow(sample, state));
@@ -201,7 +202,7 @@ function show(id: string, snap = false, asItStands = false): void {
   ui.setModel(model.id, stage.exploded(model.id));
   stage.section(model.id, snap, asItStands);
   orbit();
-  const hash = `#${flight.id}/${model.id}`;
+  const hash = formatAddress(flight.id, cockpit.active ? 'fly' : 'site', model.id);
   if (!title.showing && !demo.active && location.hash !== hash) history.replaceState(null, '', hash); // the front page has no address of its own
 }
 
@@ -486,26 +487,25 @@ window.addEventListener('keydown', (e) => {
  * The front page is what an address that names nothing shows. Going in names the place, so from
  * then on a refresh or a link comes straight back to it.
  */
-const title = new Title(document.body, flights, (id, place) => {
+const title = new Title(document.body, flights, (id) => {
   if (id !== flight.id) {
-    location.hash = formatAddress(id, place);
+    location.hash = formatAddress(id, 'gallery');
     return location.reload(); // another flight is another page's worth of state
   }
   demo.stop(); // going in is taking over
   title.hide();
-  if (place === 'gallery') return toGallery();
-  if (gallery.active) toSite();
-  history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
-  orbit();
+  toGallery(); // a flight is gone into by its gallery: the launch site and the flight deck are gone on to from there
 });
 if (location.hash.length <= 1) title.show();
 
 /**
- * The gallery (gallery.ts) is the flight's other place: its vehicle alone, on a stage of its own.
- * Going there puts the site to sleep as it stands, and coming back wakes it as it was left: the
- * section, the selection, the camera, a figure walked somewhere, the clock's instant. A walk is
- * ended first (the figure stays where it stood) and a clock that was running is stopped and
- * started again on the way back; a flight being flown by hand is not left for it.
+ * A flight's three places (address.ts): the gallery, which it opens in; its launch site; and the
+ * flight deck, which is at the site. The gallery (gallery.ts) is the vehicle alone on a stage of
+ * its own, and all that is fetched until the site is first gone to. Going there puts the site to
+ * sleep as it stands, and coming back wakes it as it was left: the section, the selection, the
+ * camera, a figure walked somewhere, the clock's instant. A walk is ended first (the figure stays
+ * where it stood), a clock that was running is stopped and started again on the way back, and
+ * the flight deck is left.
  */
 let started = false;
 /** What going to the gallery stopped, to be started again on the way back. */
@@ -513,7 +513,7 @@ const held = { clock: false, sheet: false, cel: false };
 const sheet = document.querySelector<HTMLElement>('#ui .panel')!;
 const fronted = () => document.body.classList.contains('titled');
 const gallery = new Gallery(document.body, flight, {
-  toSite: () => toSite(),
+  go: (place) => go(place),
   home: () => {
     history.replaceState(null, '', location.pathname + location.search);
     title.show();
@@ -523,15 +523,32 @@ const gallery = new Gallery(document.body, flight, {
   },
   covered: fronted,
 });
-document.querySelector('#ui .title .sub')?.after(placesNav(flight, 'site', () => toGallery()));
+// the same switch the gallery has, in the same spot, and the same way back in the crumbs
+const places = placesNav(flight, 'site', (to) => go(to));
+document.querySelector('#ui .title .sub')?.after(places);
+/** The site is being seen as the launch site or from the flight deck: the switch, the crumbs and the address say which. */
+function placed(place: 'site' | 'fly', write = true): void {
+  markPlace(places, place);
+  const trail = document.querySelector('#ui .crumbs');
+  if (trail) trail.innerHTML = crumbs(flight, place);
+  if (write && !fronted() && !gallery.active && !demo.active)
+    history.replaceState(null, '', formatAddress(flight.id, place, place === 'fly' ? '' : current.id));
+}
+/** Go to one of the flight's places. `what`: what an address names there; left out, the place is as it was left. */
+function go(place: Place, what?: string): void {
+  if (place === 'gallery') toGallery(what);
+  else toSite(what ?? '', place === 'fly');
+}
 /** `what`: the part or the choice of what stands there that an address names ('' for the whole vehicle); left out, the gallery is as it was left. */
 function toGallery(what?: string): void {
-  if (gallery.active) return void (what === undefined || gallery.go(what));
-  if (cockpit.active) {
-    // the flight is the pilot's until it is left: the address goes back to where it is
-    history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
-    return void ui.say('Gallery', 'Leave the flight deck first');
+  if (gallery.active) {
+    // (already there: an address that names something goes to it; coming in from the front page takes it over)
+    if (what === undefined) void gallery.enter();
+    else gallery.go(what);
+    if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
+    return;
   }
+  if (cockpit.active) cockpit.leave();
   demo.stop();
   if (stage.walk.active) stage.exitWalk();
   if (told) stage.onThing(null);
@@ -545,24 +562,31 @@ function toGallery(what?: string): void {
   if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
   void gallery.enter(what);
 }
-function toSite(model = ''): void {
-  if (!gallery.active) return;
-  gallery.leave();
-  stage.sleep(false);
-  sound.hush(false);
-  sheet.classList.toggle('open', held.sheet);
-  if (held.clock) clock.play();
-  // what is remembered for both places may have been changed there
-  if (prefs.get('cel') !== held.cel) ui.setCel(prefs.get('cel'));
-  orbitOff = prefs.get('orbitOff');
-  if (!started) {
-    prefs.set('demo', false); // (it was gone to by hand: it does not open showing itself, whatever it was doing when last left)
-    return void start(model);
+/** To the launch site (on `model`'s section, if one is named), or with `fly` to its flight deck. The first time, the site is fetched. */
+function toSite(model = '', fly = false): void {
+  if (gallery.active) {
+    gallery.leave();
+    stage.sleep(false);
+    sound.hush(false);
+    sheet.classList.toggle('open', held.sheet);
+    if (held.clock) clock.play();
+    // what is remembered for both places may have been changed there
+    if (prefs.get('cel') !== held.cel) ui.setCel(prefs.get('cel'));
+    orbitOff = prefs.get('orbitOff');
   }
-  if (ready && model && model !== current.id) show(model);
-  else if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'site', current.id));
+  const land = (): void => {
+    if (ready && model && model !== current.id && !fly) show(model);
+    if (ready && fly && !cockpit.active) cockpit.enter();
+    else if (!fly && cockpit.active) cockpit.leave();
+    else placed(cockpit.active ? 'fly' : 'site');
+  };
+  if (started) return void land();
+  prefs.set('demo', false); // (it was gone to by hand: it does not open showing itself, whatever it was doing when last left)
+  void start(model).then(land);
 }
 document.addEventListener('click', (e) => {
+  // the crumbs: back to the flight (its gallery), or out to the front page
+  if ((e.target as HTMLElement).closest?.('#ui [data-flight-home]')) return toGallery();
   if (!(e.target as HTMLElement).closest?.('[data-home]')) return;
   history.replaceState(null, '', location.pathname + location.search);
   title.show();
@@ -634,7 +658,7 @@ const demo = new Demo(flight, clock, {
     if (!current.sequence) stage.setExplode(0);
     ui.setCutaway(false);
     show(current.id);
-    if (!title.showing) history.replaceState(null, '', `#${flight.id}/${current.id}`); // where the show left off is now the place
+    if (!title.showing) history.replaceState(null, '', formatAddress(flight.id, 'site', current.id)); // where the show left off is now the place
   },
 });
 clock.listen(() => {
@@ -681,19 +705,18 @@ const showFrame = (): void => {
 };
 requestAnimationFrame(showFrame);
 
-// An address that names the gallery opens in it, and the site is fetched when it is first gone to; any other opens at the site.
+// A flight opens in its gallery, and its site is fetched when it is first gone to; an address that names the site or
+// the flight deck (or, as addresses once did, only a section of the site) opens there.
 const first = address();
-if (location.hash.length > 1 && opensIn(flight, first.place) === 'gallery') toGallery(first.what);
-else void start(first.what);
+placed('site', false);
+go(opensIn(flight, first.place), first.place ? first.what : undefined);
 window.addEventListener('hashchange', () => {
   if (location.hash.length <= 1) return title.show();
   if (title.showing) title.hide();
   const to = address();
   // another flight is another page's worth of state: start clean rather than rebuild in place
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
-  else if (opensIn(flight, to.place) === 'gallery') toGallery(to.what);
-  else if (gallery.active) toSite(to.what);
-  else if (ready && to.what !== current.id) show(to.what);
+  else go(opensIn(flight, to.place), to.place ? to.what : undefined);
 });
 
 // diagnostics, twice a second

@@ -1,18 +1,21 @@
-// The address bar and the two places a flight can be seen in (src/address.ts): what an address
-// names, which ways in a flight has, and what the gallery is given to show.
+// The address bar and the places a flight is seen in (src/address.ts): what an address names,
+// which places a flight has, which it opens in, and what the gallery is given to show.
 import assert from 'node:assert/strict';
 import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  byDate,
   entrances,
   exhibit,
+  flightFor,
   formatAddress,
-  GALLERY,
   galleryAt,
   galleryFlight,
+  lacks,
   opensIn,
+  PLACES,
   parseAddress,
   plinths,
   plinthViews,
@@ -27,76 +30,107 @@ const flights = [];
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root }))
   flights.push((await import(pathToFileURL(join(root, file)).href)).flight);
 const mr3 = flights.find((f) => f.id === 'usa/mercury/mr-3-freedom-7');
+const vostok = flights.find((f) => f.id === 'ussr/vostok/vostok-1');
+const MR3 = 'usa/mercury/mr-3-freedom-7';
 
 test('an address names a flight, a place and what is on show there', () => {
   assert.deepEqual(parseAddress(''), { flightId: '', place: null, what: '' });
   assert.deepEqual(parseAddress('#'), { flightId: '', place: null, what: '' });
-  assert.deepEqual(parseAddress('#usa/mercury/mr-3-freedom-7'), { flightId: 'usa/mercury/mr-3-freedom-7', place: null, what: '' });
-  assert.deepEqual(parseAddress('#usa/mercury/mr-3-freedom-7/pad'), { flightId: 'usa/mercury/mr-3-freedom-7', place: 'site', what: 'pad' });
-  assert.deepEqual(parseAddress('#usa/mercury/mr-3-freedom-7/gallery'), {
-    flightId: 'usa/mercury/mr-3-freedom-7',
-    place: 'gallery',
-    what: '',
-  });
-  assert.deepEqual(parseAddress('#usa/mercury/mr-3-freedom-7/gallery/CrewCabin'), {
-    flightId: 'usa/mercury/mr-3-freedom-7',
-    place: 'gallery',
-    what: 'CrewCabin',
-  });
+  assert.deepEqual(parseAddress(`#${MR3}`), { flightId: MR3, place: null, what: '' });
+  assert.deepEqual(parseAddress(`#${MR3}/gallery`), { flightId: MR3, place: 'gallery', what: '' });
+  assert.deepEqual(parseAddress(`#${MR3}/gallery/CrewCabin`), { flightId: MR3, place: 'gallery', what: 'CrewCabin' });
+  assert.deepEqual(parseAddress(`#${MR3}/site`), { flightId: MR3, place: 'site', what: '' });
+  assert.deepEqual(parseAddress(`#${MR3}/site/pad`), { flightId: MR3, place: 'site', what: 'pad' });
+  assert.deepEqual(parseAddress(`#${MR3}/fly`), { flightId: MR3, place: 'fly', what: '' });
 });
 
-test('addresses made when there was one flight still work', () => {
-  assert.deepEqual(parseAddress('#vehicle'), { flightId: '', place: 'site', what: 'vehicle' });
-  assert.deepEqual(parseAddress('#crew'), { flightId: '', place: 'site', what: 'crew' });
-  // and the gallery has the same short form
+test('addresses older than the places still land where they did', () => {
+  // a section of the site, with the flight named and without: what every tool and script uses (#pad)
+  for (const model of ['vehicle', 'pad', 'crew']) {
+    assert.deepEqual(parseAddress(`#${MR3}/${model}`), { flightId: MR3, place: 'site', what: model });
+    assert.deepEqual(parseAddress(`#${model}`), { flightId: '', place: 'site', what: model });
+  }
+  // the places have the same short form
   assert.deepEqual(parseAddress('#gallery'), { flightId: '', place: 'gallery', what: '' });
   assert.deepEqual(parseAddress('#gallery/Hatch'), { flightId: '', place: 'gallery', what: 'Hatch' });
+  assert.deepEqual(parseAddress('#site/pad'), { flightId: '', place: 'site', what: 'pad' });
+  assert.deepEqual(parseAddress('#fly'), { flightId: '', place: 'fly', what: '' });
 });
 
 test('an address written is the address read', () => {
   for (const [id, place, what] of [
-    ['usa/mercury/mr-3-freedom-7', 'site', 'pad'],
-    ['usa/mercury/mr-3-freedom-7', 'site', ''],
+    [MR3, 'site', 'pad'],
+    [MR3, 'site', ''],
+    [MR3, 'fly', ''],
     ['ussr/vostok/vostok-1', 'gallery', ''],
     ['ussr/vostok/vostok-1', 'gallery', 'DescentModule'],
-    ['ussr/vostok/vostok-1', 'gallery', 'launch-vehicle'],
-  ]) {
-    const hash = formatAddress(id, place, what);
-    assert.ok(hash.startsWith(`#${id}`), hash);
-    const read = parseAddress(hash);
-    assert.equal(read.flightId, id);
-    // (an address that names only the flight does not say where: it opens where the flight opens)
-    assert.equal(read.place, place === 'site' && !what ? null : place);
-    assert.equal(read.what, what);
+    ['ussr/vostok/vostok-1', 'gallery', 'instrument-module'],
+  ])
+    assert.deepEqual(parseAddress(formatAddress(id, place, what)), { flightId: id, place, what });
+  assert.equal(formatAddress(MR3, 'site', 'pad'), `#${MR3}/site/pad`);
+  assert.equal(formatAddress(MR3, 'gallery'), `#${MR3}/gallery`);
+  // the flight deck has nothing further to name
+  assert.equal(formatAddress(MR3, 'fly', 'vehicle'), `#${MR3}/fly`);
+});
+
+test('no model is called by a place`s word, which an address reads as the place', () => {
+  for (const f of [...flights, fixture]) for (const m of f.models) assert.ok(!PLACES.includes(m.id), `${f.id}: a model called ${m.id}`);
+});
+
+test('the flight an address is about', () => {
+  // the first listed is the one an address that names no flight means (#pad): the page's own list is in this order
+  const listed = [mr3, vostok];
+  assert.equal(flightFor(listed, `#${vostok.id}/gallery`), vostok);
+  assert.equal(flightFor(listed, `#${MR3}/pad`), mr3);
+  for (const old of ['#pad', '#vehicle', '#crew', '#gallery', '#fly']) assert.equal(flightFor(listed, old), mr3, old);
+  // the front page names nothing: the first that flew turns behind it
+  assert.equal(flightFor(listed, ''), vostok);
+  assert.equal(flightFor(listed, '#'), vostok);
+  assert.deepEqual(
+    byDate(listed).map((f) => f.id),
+    [vostok.id, MR3],
+  );
+  assert.deepEqual(listed, [mr3, vostok], 'the list itself is left in its order');
+  // a flight nobody has heard of is the front page's
+  assert.equal(flightFor(listed, '#no/such/flight'), vostok);
+});
+
+test('every flight has the same three places, and opens in its gallery', () => {
+  assert.deepEqual(PLACES, ['gallery', 'site', 'fly']);
+  for (const f of [...flights, fixture]) {
+    assert.deepEqual(Object.keys(entrances(f)), PLACES);
+    assert.equal(opensIn(f), 'gallery', f.id);
+    for (const place of PLACES) assert.equal(entrances(f)[place], lacks(f, place) === null);
   }
 });
 
-test('no model is called by the gallery`s word, which an address reads as the place', () => {
-  for (const f of [...flights, fixture]) for (const m of f.models) assert.notEqual(m.id, GALLERY, `${f.id}: a model called ${GALLERY}`);
+test('Freedom 7 has all three places', () => {
+  assert.deepEqual(entrances(mr3), { gallery: true, site: true, fly: true });
+  for (const place of PLACES) assert.equal(opensIn(mr3, place), place);
 });
 
-test('a flight with a site has both ways in, and opens at its site', () => {
-  assert.deepEqual(entrances(mr3), { site: true, gallery: true });
-  assert.equal(opensIn(mr3), 'site');
-  assert.equal(opensIn(mr3, 'gallery'), 'gallery');
-  assert.equal(opensIn(mr3, 'site'), 'site');
-});
-
-test('a flight that is only its vehicle has the gallery only, whatever is asked for', () => {
+test('a flight that is only its vehicle has the gallery, and says why it has no more', () => {
   assert.equal(fixture.site, undefined);
   assert.equal(fixture.trajectory, undefined);
   assert.equal(fixture.models.length, 1);
-  assert.deepEqual(entrances(fixture), { site: false, gallery: true });
-  assert.equal(opensIn(fixture), 'gallery');
-  assert.equal(opensIn(fixture, 'site'), 'gallery');
-  // one that says where it flew from but has built nothing to stand there is no different
-  const located = { ...fixture, site: mr3.site };
-  assert.deepEqual(entrances(located), { site: false, gallery: true });
-  // and one with nothing to exhibit has no gallery
-  assert.deepEqual(entrances({ ...mr3, models: mr3.models.filter((m) => m.walker || m.sequence), flies: undefined }), {
-    site: true,
-    gallery: false,
-  });
+  for (const f of [fixture, vostok]) {
+    assert.deepEqual(entrances(f), { gallery: true, site: false, fly: false }, f.id);
+    assert.equal(lacks(f, 'gallery'), null);
+    assert.equal(lacks(f, 'site'), 'Launch site: not built yet');
+    assert.equal(lacks(f, 'fly'), 'Fly: no trajectory yet');
+    // whatever is asked for, it opens where it can be seen
+    for (const place of PLACES) assert.equal(opensIn(f, place), 'gallery');
+  }
+  // Vostok 1 says where it flew from, and has built nothing to stand there: that is no site to go to
+  assert.ok(vostok.site);
+  // a trajectory with no site to fly from is not to be flown either, and says which it lacks
+  assert.equal(lacks({ ...mr3, site: undefined }, 'fly'), 'Fly: its launch site is not built yet');
+  assert.equal(lacks({ ...mr3, trajectory: undefined }, 'fly'), 'Fly: no trajectory yet');
+  assert.equal(lacks({ ...mr3, trajectory: undefined }, 'site'), null);
+  // and a flight with nothing to exhibit has no gallery: it opens at its site
+  const bare = { ...mr3, models: mr3.models.filter((m) => m.walker || m.sequence), flies: undefined };
+  assert.equal(lacks(bare, 'gallery'), 'Gallery: no vehicle built yet');
+  assert.equal(opensIn(bare), 'site');
 });
 
 test('the gallery shows the vehicle: what the flight flies, or its first hardware that is neither a person nor a place at work', () => {
@@ -176,7 +210,7 @@ test('the gallery`s stage is given the vehicle alone, in the studio, with nothin
     assert.deepEqual(model.parts, exhibit(f).parts);
     assert.deepEqual(model.slider, exhibit(f).slider);
     assert.equal(model.cutaway, exhibit(f).cutaway);
-    assert.equal(entrances(staged).site, false);
+    assert.deepEqual(entrances(staged), { gallery: true, site: false, fly: false });
   }
   // the flight it was made from is not changed by it
   assert.ok(mr3.site && mr3.trajectory && exhibit(mr3).position);

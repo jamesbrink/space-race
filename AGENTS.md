@@ -85,7 +85,7 @@ Detail lives in `docs/agents/`. Read the one for what you are about to change; e
 | `src/sim/`, the flight deck, flight effects | [simulator.md](docs/agents/simulator.md) | inputs are `Measure`s with confidence; nothing is fitted; a miss against the record is recorded in `MISSES`; the live simulator is the same physics, steered; the scene shows what was flown |
 | The camera | [camera.md](docs/agents/camera.md) | one camera, a set of rigs; zoom never surprises; once the user takes the camera only an explicit act moves it |
 | On foot: walk, gait, ragdoll, driving, actions | [walking.md](docs/agents/walking.md) | nothing there knows a flight; motion follows the gait and never a timer; a planted foot is planted; loose things tick at a fixed rate; a mission adds a verb as data |
-| The gallery, the address bar, a flight with no site | [gallery.md](docs/agents/gallery.md) | a flight is seen at its site or in the gallery; the gallery is a second stage that shares nothing with the site's, which sleeps as it stands; only `address.ts` reads or writes an address; nothing new is asked of a flight |
+| The gallery, a flight's places, the address bar | [gallery.md](docs/agents/gallery.md) | every flight has the same three places (Gallery, Launch site, Fly) and opens in its gallery; one it lacks is shown and says why, never hidden; the gallery is a second stage that shares nothing with the site's, which sleeps as it stands; only `address.ts` reads or writes an address; old `#pad` links still land on the site |
 | Sound | [sound.md](docs/agents/sound.md) | synthesised, no files; follows the clock; levels and timbres are estimated and say so |
 
 ## Being there
@@ -162,8 +162,8 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 3. Give each part a `summary`, a `detail` and a few `facts`. Write for someone choosing what to
    look at: what it is, why it is the way it is, one thing they would not have guessed.
 4. Append the flight to `missions/index.ts` and add a `model:<flight>` script to `package.json`.
-   A flight can begin as only its vehicle (one model, `backdrop: 'studio'`, no `site`, no
-   `trajectory`): it is then shown in the gallery alone and says its site is not built yet
+   A flight with only a vehicle (one model, `backdrop: 'studio'`) is complete enough to ship: it
+   is in the Gallery, and its Launch site and Fly light up as they are built
    ([gallery.md](docs/agents/gallery.md)).
 5. Add what you read to `docs/sources.md`.
 
@@ -201,9 +201,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
   between first and third person. Each has its own block in the legend. T is the look.
 - The front page (`title.ts`, the mark in `logo.ts`) is what an address that names nothing shows; it
-  lies over the scene as it loads. Going in writes `#<flight id>/<model>` (or `#<flight id>/gallery`:
-  each flight has a way in to its site and one to the gallery), so a refresh or a link
-  comes straight back to that section; the Space Race crumb goes back out. V goes on foot as the
+  lies over the scene as it loads. Going in opens the flight's gallery and writes `#<flight id>/gallery` (its launch site is
+  `#<flight id>/site/<model>`, its flight deck `#<flight id>/fly`), so a refresh or a link
+  comes straight back to that place; the Space Race crumb goes back out. V goes on foot as the
   crew from anywhere and back (the key that will board and leave a crew member in the simulator).
 - Left alone, the page shows itself (`demo.ts`, the idle show): the clock runs the day round and
   the camera goes from one thing to the next with the panels away and a callout on each

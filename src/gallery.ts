@@ -1,10 +1,12 @@
 import './gallery.css';
 import type { Vector3 } from 'three';
 import {
-  entrances,
   exhibit,
   galleryAt,
   galleryFlight,
+  lacks,
+  PLACE_NAME,
+  PLACES,
   type Place,
   type Plinth,
   plinths,
@@ -23,8 +25,9 @@ import { asStudio, type Studio } from './viewer/studio';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
- * (viewer/studio.ts), to be turned, taken apart, cut open and read. It is the other place a flight
- * can be seen in (src/address.ts), and the only one a flight has until its site is built.
+ * (viewer/studio.ts), to be turned, taken apart, cut open and read. It is the first of a flight's
+ * places (src/address.ts): the one every flight opens in, and the only one it has until its
+ * launch site is built.
  *
  * It is a second stage, on a canvas of its own, given the flight with everything but its vehicle
  * left out (`galleryFlight`). So nothing it does can reach the site: the vehicle on the pad, the
@@ -36,8 +39,8 @@ import { asStudio, type Studio } from './viewer/studio';
  * (what can stand there alone), its views, its slider, its cutaway, the flight's specs and motors.
  */
 export interface GalleryHost {
-  /** The switch was put to the site (it is only offered where the flight has one). */
-  toSite(): void;
+  /** The switch was put to another place (one the flight has). */
+  go(place: Place): void;
   /** The crumb back to the front page. */
   home(): void;
   /** What is on show has changed: the part or the choice of what stands there, '' for neither. The host writes the address. */
@@ -46,24 +49,57 @@ export interface GalleryHost {
   covered(): boolean;
 }
 
-/** The two places as a switch: the same control, in the same spot, in both of them. `go` is told the place that is not this one. */
+const PLACE_SAYS: Record<Place, string> = {
+  gallery: 'The vehicle alone: turn it, take it apart, read it',
+  site: 'Where it flew from: the pad, the place, the crew',
+  fly: 'The flight deck: fly it yourself, or watch the flight as it was flown',
+};
+
+/**
+ * The places as a switch: the same three, in the same order, in the same spot, for every flight
+ * and in every place. One the flight does not have yet is there all the same, dimmed, and says why
+ * when it is pointed at or pressed. `go` is told a place the flight has that is not this one.
+ */
 export function placesNav(flight: Flight, here: Place, go: (to: Place) => void): HTMLElement {
-  const has = entrances(flight);
   const nav = document.createElement('nav');
   nav.className = 'places';
-  nav.setAttribute('aria-label', 'Where to see it');
-  const button = (place: Place, label: string, title: string) =>
-    `<button data-place="${place}" aria-pressed="${place === here}"${has[place] ? '' : ' disabled'} title="${esc(title)}">${label}</button>`;
-  nav.innerHTML =
-    button('site', '<i>Launch </i>site', has.site ? `Where it flew from: ${flight.launchSite}` : 'Its launch site is not built yet') +
-    button('gallery', 'Gallery', 'The vehicle alone: turn it, take it apart, read it') +
-    (has.site ? '' : '<p>Its launch site is not built yet</p>');
+  nav.setAttribute('aria-label', 'Places');
+  const button = (place: Place): string => {
+    const why = lacks(flight, place);
+    // ("site" alone where there is no room for more: beside "gallery" and "fly" it can be nothing else)
+    const label = place === 'site' ? '<i>Launch </i>site' : PLACE_NAME[place];
+    const absent = why ? ` aria-disabled="true" data-why="${esc(why)}"` : '';
+    return `<button data-place="${place}" aria-pressed="${place === here}"${absent} title="${esc(why ?? PLACE_SAYS[place])}">${label}</button>`;
+  };
+  nav.innerHTML = `${PLACES.map(button).join('')}<p role="status" hidden></p>`;
+  const says = nav.querySelector('p')!;
+  let away = 0;
   nav.addEventListener('click', (e) => {
     const to = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-place]');
-    if (to && !to.disabled && to.dataset.place !== here) go(to.dataset.place as Place);
+    if (!to) return;
+    // a place that is not built says so where it was asked for, for a few seconds
+    says.hidden = !to.dataset.why;
+    says.textContent = to.dataset.why ?? '';
+    clearTimeout(away);
+    if (to.dataset.why) away = window.setTimeout(() => (says.hidden = true), 4000);
+    else if (to.getAttribute('aria-pressed') !== 'true') go(to.dataset.place as Place);
   });
   return nav;
 }
+
+/** Mark which place a switch is in (the site's shows the launch site or the flight deck). */
+export function markPlace(nav: Element | null, here: Place): void {
+  for (const b of nav?.querySelectorAll<HTMLElement>('[data-place]') ?? [])
+    b.setAttribute('aria-pressed', String(b.dataset.place === here));
+}
+
+/** The way back, as the title card's crumbs say it: the front page, the flight (its gallery), the place. */
+export const crumbs = (flight: Flight, here: Place): string =>
+  `<button data-home title="Front page">Space Race</button> <b>/</b> ${
+    here === 'gallery'
+      ? esc(flight.callsign)
+      : `<button data-flight-home title="${esc(flight.callsign)}: its gallery">${esc(flight.callsign)}</button>`
+  } <b>/</b> <span>${PLACE_NAME[here]}</span>`;
 
 const TABS = ['Parts', 'Specs', 'Motors'] as const;
 /** The keys that are the camera's (viewer/camera/input.ts): they go on to it. Every other key is the gallery's, or nobody's while it is up. */
@@ -272,7 +308,7 @@ export class Gallery {
     this.root.innerHTML = `
       <header class="title">
         <button class="tuck chevron" aria-label="Show or hide the summary" aria-expanded="true" title="Tuck away"></button>
-        <p class="crumbs"><button data-home title="Front page">Space Race</button> <b>/</b> ${esc(f.nation)} <b>/</b> ${esc(f.program)}</p>
+        <p class="crumbs">${crumbs(f, 'gallery')}</p>
         <h1>${esc(f.callsign)}</h1>
         <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
         <p class="lede">${esc(f.spacecraft)}${f.launchVehicle ? `<br>${esc(f.launchVehicle)}` : ''}</p>
@@ -372,11 +408,7 @@ export class Gallery {
       <div class="marks" aria-hidden="true"><p data-mark="pole"></p><p data-mark="head"></p></div>
       <div class="tip" hidden><b></b><span></span></div>
       <div class="loading"><span>Loading</span><i></i><button hidden>Try again</button></div>`;
-    this.q('.title .sub').after(
-      placesNav(f, 'gallery', (to) => {
-        if (to === 'site') this.host.toSite();
-      }),
-    );
+    this.q('.title .sub').after(placesNav(f, 'gallery', (to) => this.host.go(to)));
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-plinth]'))
       b.setAttribute('aria-pressed', String(b.dataset.plinth === this.plinth.id));
     this.fill();

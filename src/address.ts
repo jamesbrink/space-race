@@ -1,32 +1,41 @@
 import type { Flight, ModelDef, ViewDef } from './types';
 
 /**
- * Where the page is: the address bar's fragment, and the two places a flight can be seen in.
+ * Where the page is: the address bar's fragment, and the places a flight is seen in.
  *
- * A flight is shown in one of two places. The **site** is where it flew from: the pad, the crew,
- * the day's sky, the clock, the flight itself. The **gallery** is nowhere: the vehicle alone on a
- * plain floor under designed light, to be taken apart and read. A flight whose site is not built
- * yet has only the gallery.
+ * Every flight has the same three places, in the same order, and opens in the first:
  *
- *   #                                        the front page
- *   #<nation>/<programme>/<flight>           the flight, in the place it opens in
- *   #<nation>/<programme>/<flight>/<model>   at its site, on one of its sections
- *   #<nation>/<programme>/<flight>/gallery   in the gallery
- *   #<nation>/<programme>/<flight>/gallery/<what>
- *                                            in the gallery, on a part (its node) or with one of
- *                                            the choices of what stands there (its id)
+ * - the **gallery**: the vehicle alone on a plain floor under designed light, to be turned, taken
+ *   apart and read. Every flight has it from the day its vehicle is built.
+ * - the **launch site**: where it flew from. The pad, the crew, the day's sky, the clock; its
+ *   sections are the flight's models there (vehicle, pad, crew).
+ * - **fly**: the flight deck, at the site: the vehicle under your hands, and the recorded flight.
  *
- * A bare `#<model>`, `#gallery` or `#gallery/<what>` is the first flight's, so links made when
- * there was one flight still work. So no model may be called `gallery`.
+ * A place a flight does not have yet is still named, and says why it cannot be gone to (`lacks`).
+ * The way back is always the same: front page, flight, place.
+ *
+ *   #                                    the front page
+ *   #<flight id>                         the flight: its gallery
+ *   #<flight id>/gallery[/<what>]        the gallery, on a part (its node) or with one of the
+ *                                        choices of what stands there (its id)
+ *   #<flight id>/site[/<model>]          the launch site, on one of its sections
+ *   #<flight id>/fly                     the flight deck
+ *
+ * Addresses older than the places still mean what they meant: `#<flight id>/<model>` is that
+ * section of the site, and a bare `#<model>` (or `#gallery`, `#site/<model>`, `#fly`) is the first
+ * listed flight's. So no model may be called `gallery`, `site` or `fly`.
  *
  * Nothing here touches the page: it is all arithmetic on the flight's data (tests/address.test.mjs).
  */
-export type Place = 'site' | 'gallery';
+export type Place = 'gallery' | 'site' | 'fly';
 
-export const GALLERY = 'gallery';
+/** The places, in the order they are always offered, and what each is called. */
+export const PLACES: readonly Place[] = ['gallery', 'site', 'fly'];
+export const PLACE_NAME: Record<Place, string> = { gallery: 'Gallery', site: 'Launch site', fly: 'Fly' };
+const isPlace = (s: string | undefined): s is Place => PLACES.includes(s as Place);
 
 export interface Address {
-  /** '' for the first flight (an address that names none). */
+  /** '' where the address names no flight. */
   flightId: string;
   /** Null: the address does not say, and the flight opens where it opens (`opensIn`). */
   place: Place | null;
@@ -37,17 +46,35 @@ export interface Address {
 /** Read an address bar's fragment (with or without its `#`). */
 export function parseAddress(hash: string): Address {
   const parts = hash.replace(/^#/, '').split('/').filter(Boolean).map(decodeURIComponent);
-  const at = parts.indexOf(GALLERY);
-  // the gallery's word is only ever in the second or fourth place: after nothing, or after a flight's three
-  if (at === 0 || at === 3) return { flightId: parts.slice(0, at).join('/'), place: 'gallery', what: parts[at + 1] ?? '' };
-  if (parts.length === 1 || parts.length === 4) return { flightId: parts.slice(0, -1).join('/'), place: 'site', what: parts.at(-1)! };
-  return { flightId: parts.join('/'), place: null, what: '' };
+  // a flight's id is three words; what follows, or stands alone, is a place and what is on show there
+  const flight = parts.length >= 3 ? parts.slice(0, 3) : [];
+  const [place, what = ''] = parts.slice(flight.length);
+  const flightId = flight.join('/');
+  if (place === undefined) return { flightId, place: null, what: '' };
+  if (isPlace(place)) return { flightId, place, what: place === 'fly' ? '' : what };
+  return { flightId, place: 'site', what: place }; // (an address older than the places: a section of the site)
 }
 
 /** Write one: the fragment, with its `#`. */
 export function formatAddress(flightId: string, place: Place, what = ''): string {
-  const tail = place === 'gallery' ? [GALLERY, ...(what ? [what] : [])] : what ? [what] : [];
-  return `#${[flightId, ...tail].map((s) => s.split('/').map(encodeURIComponent).join('/')).join('/')}`;
+  const words = [flightId, place, ...(what && place !== 'fly' ? [what] : [])];
+  return `#${words.map((s) => s.split('/').map(encodeURIComponent).join('/')).join('/')}`;
+}
+
+type Dated = Pick<Flight, 'id' | 'launch'>;
+
+/** The flights in the order they flew: the front page's, whatever order they are listed in. */
+export const byDate = <F extends Dated>(flights: readonly F[]): F[] =>
+  [...flights].sort((a, b) => Date.parse(a.launch) - Date.parse(b.launch));
+
+/**
+ * The flight an address is about: the one it names; for one that names a place and no flight
+ * (`#pad`, from when there was one flight), the first listed; for the front page, which names
+ * nothing, the first that flew, whose gallery turns behind it.
+ */
+export function flightFor<F extends Dated>(flights: readonly F[], hash: string): F {
+  const to = parseAddress(hash);
+  return flights.find((f) => f.id === to.flightId) ?? (to.place ? flights[0]! : byDate(flights)[0]!);
 }
 
 /**
@@ -60,23 +87,32 @@ export function exhibit(flight: Pick<Flight, 'models' | 'flies'>): ModelDef | nu
   return hardware.find((m) => m.id === flight.flies?.model) ?? hardware[0] ?? null;
 }
 
+type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'trajectory'>;
+
 /**
- * The ways into a flight. It has a site to go to when it says where that is (`site`) and has
- * something that stands in a place: a model whose backdrop is somewhere, not the studio. It has a
- * gallery when it has a vehicle. A flight with only its vehicle built has only the gallery.
+ * Why a flight cannot be gone to at a place, or null if it can. It has a gallery when it has a
+ * vehicle; a launch site when it says where that is (`site`) and has something that stands
+ * there (a model whose backdrop is a place, not the studio); and it can be flown when it has that
+ * site, a trajectory with a body to fly, and says which model flies (`flies`).
  */
-export function entrances(flight: Pick<Flight, 'models' | 'flies' | 'site'>): Record<Place, boolean> {
-  return {
-    site: Boolean(flight.site) && flight.models.some((m) => m.backdrop !== 'studio'),
-    gallery: exhibit(flight) !== null,
-  };
+export function lacks(flight: Placed, place: Place): string | null {
+  if (place === 'gallery') return exhibit(flight) ? null : 'Gallery: no vehicle built yet';
+  const sited = Boolean(flight.site) && flight.models.some((m) => m.backdrop !== 'studio');
+  if (place === 'site') return sited ? null : 'Launch site: not built yet';
+  if (!flight.trajectory?.body || !flight.flies) return 'Fly: no trajectory yet';
+  return sited ? null : 'Fly: its launch site is not built yet';
 }
 
-/** The place a flight opens in when the address asks for one it does not have, or for none: its site if it has one. */
-export function opensIn(flight: Pick<Flight, 'models' | 'flies' | 'site'>, asked: Place | null = null): Place {
+/** Which places a flight has. */
+export function entrances(flight: Placed): Record<Place, boolean> {
+  return { gallery: !lacks(flight, 'gallery'), site: !lacks(flight, 'site'), fly: !lacks(flight, 'fly') };
+}
+
+/** The place a flight opens in: the one asked for if it has it, otherwise its gallery (its site, for a flight with no vehicle to show). */
+export function opensIn(flight: Placed, asked: Place | null = null): Place {
   const has = entrances(flight);
   if (asked && has[asked]) return asked;
-  return has.site ? 'site' : 'gallery';
+  return has.gallery ? 'gallery' : 'site';
 }
 
 /** One choice of what stands in the gallery: all of the vehicle, or the parts under one heading of its parts list. */
