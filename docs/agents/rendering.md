@@ -53,7 +53,9 @@ different one per pixel per frame. Three things stop it, and all three must stay
   guess it from what the camera turns about. What is asked: the ground or the sea under the eye; the flown vehicle,
   what it has shed and its parachutes; and, in `Stage.uncut`, the nearest solid surface (the walker's `Solids`) and
   the nearest plant (`Setting.plantsClear`), with the plane's corner kept short of them, so what the camera passes
-  is not sliced (`pnpm test:camera`, "the near plane cuts nothing"). It comes in at once and goes out over a quarter
+  is not sliced (`pnpm test:camera`, "the near plane cuts nothing"); a mesh with no hierarchy yet is taken as its box
+  and its hierarchy is made in time to spare (`growTrees`), never in the frame that first comes near it (the capsule's
+  were made as the chase view came in on it at separation, 26 ms). It comes in at once and goes out over a quarter
   of a second. Anything new that is drawn in the scene's depth and is in none of those (not a model, not the
   place, not a plant) must be asked there too. Following a vehicle the plane cannot go out (the vehicle is 30 m
   off), and the site far below is drawn in steps of centimetres to decimetres.

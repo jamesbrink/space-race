@@ -279,6 +279,9 @@ export class Solids {
   /** The version of each geometry's vertices its hierarchy was made from (`fresh`). */
   private readonly madeAt = new WeakMap<MeshBVH, number>();
   private near: Near[] = [];
+  /** Of those a gather that builds nothing found, the ones with no hierarchy yet (`gather`'s `build`), and their geometries. */
+  private readonly boxed: Near[] = [];
+  readonly wanted = new Set<THREE.BufferGeometry>();
   /** The ladders among them (`userData.climb`): not walls and not floors, but something to climb. */
   private rungs: Near[] = [];
   /** Something that is not solid for now: whatever is under this object is left out (the vehicle being driven: it cannot be in its own way). */
@@ -351,11 +354,14 @@ export class Solids {
 
   /**
    * Choose the meshes near a point, within `reach` metres sideways, `below` under it and `above`
-   * over it: the only ones the questions that follow are put to.
+   * over it: the only ones the questions that follow are put to. `build` false: a mesh with no
+   * hierarchy yet is not given one now, but taken as its box by `clear` (and by nothing else), and
+   * its geometry is put in `wanted` for whoever has time to make one.
    */
-  gather(centre: THREE.Vector3, reach: number, below: number, above = reach): void {
+  gather(centre: THREE.Vector3, reach: number, below: number, above = reach, build = true): void {
     this.near.length = 0;
     this.rungs.length = 0;
+    this.boxed.length = 0;
     this.region.min.set(centre.x - reach, centre.y - below, centre.z - reach);
     this.region.max.set(centre.x + reach, centre.y + above, centre.z + reach);
     for (const root of this.roots)
@@ -366,7 +372,13 @@ export class Solids {
         // (its bounds and what follows from its world matrix are worked out again only if it has moved)
         if (record.world.fit(mesh)) record.stale = true;
         if (!record.box.intersectsBox(this.region)) continue;
-        record.bvh = this.tree(mesh.geometry);
+        const tree = build ? this.tree(mesh.geometry) : this.trees.get(mesh.geometry);
+        if (!tree) {
+          this.boxed.push(record);
+          this.wanted.add(mesh.geometry);
+          continue;
+        }
+        record.bvh = tree;
         if (record.stale) {
           record.inverse.copy(mesh.matrixWorld).invert();
           record.scale = mesh.matrixWorld.getMaxScaleOnAxis();
@@ -550,10 +562,12 @@ export class Solids {
   /**
    * `nearest`, for a question asked from anywhere (the near plane's, from kilometres up as from beside a wall): the
    * same answer near to, and from far off never more than the truth. Seen from many times its own size a mesh is as
-   * far away as its box, near enough (the box is never further than the surface), and is not gone into.
+   * far away as its box, near enough (the box is never further than the surface), and is not gone into. So is one
+   * with no hierarchy yet, from anywhere (`gather`'s `build`).
    */
   clear(point: THREE.Vector3, within: number): number {
     let best = within;
+    for (const n of this.boxed) best = Math.min(best, n.box.distanceToPoint(point));
     for (const n of this.near) {
       const d = n.box.distanceToPoint(point);
       if (d >= best) continue;

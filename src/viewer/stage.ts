@@ -2381,7 +2381,11 @@ export class Stage {
     if (plants) clear = this.setting.plantsClear?.(eye, clear) ?? clear;
     const solids = this.walk.solids;
     solids.set(this.solidRoots());
-    solids.gather(eye, clear, clear);
+    // (what has no hierarchy yet is taken as its box and its hierarchy is owed, made in time to spare: `growTrees`. Made
+    // here, the capsule's were made in the frame it left its booster, as the chase view came in on it: 26 ms)
+    solids.gather(eye, clear, clear, clear, false);
+    for (const geometry of solids.wanted) this.treesOwed.add(geometry);
+    solids.wanted.clear();
     clear = solids.clear(eye, clear);
     const fitted = clear >= reach ? near : Math.max(NEAR_LEAST, (0.5 * clear) / corner);
     kept.eye.copy(eye);
