@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { tier } from './tier.ts';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, ModelDef, Signal, SitedFlight } from '../types.ts';
 import { siteFrame } from '../world/frames.ts';
 import { attitudeOf, drumAt, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
+import { tier } from './tier.ts';
 
 /**
  * A model's inside as somewhere to be (`ModelDef.cabin`): its instruments read the flight at the clock's instant,
@@ -380,6 +380,15 @@ export class Cabin {
       mesh.visible = on || this.shown;
       mesh.castShadow = casts && (on || this.casting);
     }
+    // (drawn for that, the inside's pictures went to the GPU with it: on the lighter tier they are let go again, as when
+    // the inside goes out of sight, or a phone would hold them from the moment the page opened; tier.ts)
+    if (!on && LIGHTER && !this.shown) this.release();
+  }
+
+  /** Let the inside's pictures go from the GPU (the pictures themselves are kept: sent again when next drawn). */
+  private release(): void {
+    for (const t of this.pictures) t.dispose();
+    this.unsent = [...this.pictures];
   }
 
   /**
@@ -400,10 +409,7 @@ export class Cabin {
       mesh.visible = shown || this.all;
       mesh.castShadow = casts && (casting || this.all);
     }
-    if (LIGHTER && !shown && this.shown) {
-      for (const t of this.pictures) t.dispose(); // (the picture itself is kept: sent again when next drawn)
-      this.unsent = [...this.pictures];
-    }
+    if (LIGHTER && !shown && this.shown) this.release();
     if (casting !== this.casting || (shown !== this.shown && casting)) this.host.reshade();
     this.shown = shown;
     this.casting = casting;
