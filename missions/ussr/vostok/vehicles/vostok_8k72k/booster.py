@@ -37,6 +37,7 @@ from .common import (
     fin,
     hang,
     pivot,
+    scalloped,
     segs,
 )
 
@@ -125,7 +126,9 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     band(shield, 40, 30, 8)
     band(skin, BOOSTER_BAY, 22, 6, 58, out)
     band(shield, BOOSTER_BAY, 22, 6, 38, inn)
-    on_lacquer = ((TAIL_SHIELD + 30, 22, 6), (BOOSTER_FUEL[1], 22, 6), (lox0 - 40, 30, 8), (lox1 + 30, 20, 5))
+    # where the tail joins the tank section a doubler goes round, its lower edge cut in scallops (the Kaluga vehicle)
+    scalloped(skin, BOOSTER_R, TAIL_SHIELD - 40, TAIL_SHIELD + 52, 48, 105, 6)
+    on_lacquer = ((BOOSTER_FUEL[1], 22, 6), (lox0 - 40, 30, 8), (lox1 + 30, 20, 5))
     for s, half, proud in on_lacquer:
         band(skin, s, half, proud)
     rings = (7900, 10200, 12500, 14800)  # the oxygen tank's ring welds
@@ -163,6 +166,13 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
             420,
             12,
         )
+    for k in (-1, 1):  # under the engine bay's frame, small fairings nose up and a round port between them (the Kaluga vehicle)
+        for a in (deg(k * 62), deg(k * 95)):
+            c, sn = math.cos(a), math.sin(a)
+            top, foot = BOOSTER_BAY - 70, BOOSTER_BAY - 430
+            pod(fair, ((BOOSTER_R - 30) * c, (BOOSTER_R - 30) * sn, top), ((BOOSTER_R + 40) * c, (BOOSTER_R + 40) * sn, foot), 78, 250, 12)
+        a = deg(k * 78)
+        fit.disc(((BOOSTER_R - 4) * math.cos(a), (BOOSTER_R - 4) * math.sin(a), BOOSTER_BAY - 240), (math.cos(a), math.sin(a), 0), 80, 14, 20)
     for a in (deg(40), deg(-40)):  # hatches into the engine bay
         fit.box((520, 600, 20), on_skin(a, 1050, -2))
     fit.box((420, 280, 20), on_skin(deg(60), (BOOSTER_FUEL[1] + lox0) / 2 - 20, -2))  # and between the tanks

@@ -247,9 +247,11 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 - **Nothing holds it up.** On the pad the vehicle hangs by the boosters' load-bearing fittings in
   the four arms of the launch system; the pad is not built, so in the viewer it stands on nothing.
 - **Frost is a clean white band** with a straight edge.
-- **Cable ducts, hatches and the scalloped doublers at the tail are placed from the Kaluga
-  photographs**, which are of a vehicle said to be this flight's spare; which of its fittings the
-  flown one shared has not been checked.
+- **Cable ducts, hatches, the scalloped doubler round each booster's tail and the small fairings
+  and ports under its engine bay's frame are placed from the Kaluga photographs**, which are of a
+  vehicle said to be this flight's spare; which of its fittings the flown one shared has not been
+  checked. The doubler's 48 scallops are a count that looks right, not one made: the photograph
+  does not resolve them.
 - **Under the fairing the spacecraft's long antennas were folded.** They are not modelled folded:
   ten of them are drawn withdrawn into the instrument module and slide out as the vehicle is taken
   apart ([vostok-3ka.md](vostok-3ka.md)).
@@ -278,8 +280,10 @@ Recorded as the model was compared, view by view, with K, V, F and N.
   model has the outriggers (a yoke and two struts, representative) and a whole rim. V's shields
   are flat plates with stiffening beads; the model's are plain. V's main nozzles scale to about
   800 mm with their covers on; the model keeps 720.
-- **Tail sections against K.** K shows scalloped doublers round the tails and more hatches,
-  blisters and pipe fairings than are modelled; the model has plain bands.
+- **Tail sections against K.** K's scalloped doubler, 3 m up each booster, and the fairings and
+  round ports under the engine bay's frame are modelled, on the half of each booster that K
+  shows; it has more hatches and pipe fairings than are modelled, and what the core's tail
+  carries behind the boosters is not seen in it.
 - **Colour against F.** F's bare skin is darker and greyer than the model's in bright light; the
   frost's lower edge in F is ragged and lies a little above the boosters' shoulders.
 - **Triangles**: 403,788 at full detail, 204,741 and 98,744 at the two coarser levels, the

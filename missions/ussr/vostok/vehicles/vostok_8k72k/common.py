@@ -182,6 +182,23 @@ class Local:
         return self.mb.build(name, mat, parent, **kw)
 
 
+def scalloped(mb: Local, r: float, s0: float, s1: float, lobes: int, depth: float, proud: float) -> None:
+    """A doubler round a cylinder of radius `r`: a strap from the station `s1` down to `s0`, whose lower edge hangs
+    in `lobes` round scallops `depth` deep. It stands `proud` of the skin and its edges are sunk into it."""
+    n = max(2, segs(24) // 4)  # straight pieces to a scallop
+    us = [TAU * i / (lobes * n) for i in range(lobes * n)]
+
+    def edge(az: float) -> float:
+        x = 2 * ((az * lobes / TAU) % 1.0) - 1
+        return s0 - depth * math.sqrt(max(0.0, 1 - x * x))
+
+    def point(az: float, row: int):
+        radius, z = ((r - 3, edge(az) - proud), (r + proud, edge(az)), (r + proud, s1), (r - 3, s1 + proud))[row]
+        return (radius * math.cos(az), radius * math.sin(az), z)
+
+    mb.grid(point, us, [0, 1, 2, 3], closed_u=True)
+
+
 def pivot(name: str, parent, origin: Vector, **props) -> bpy.types.Object:
     """A node with its origin on a joint (metres): what a `swing` turns about. No rotation of its own."""
     obj = group(name, parent, **props)
