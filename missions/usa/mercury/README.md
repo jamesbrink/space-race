@@ -9,7 +9,7 @@ orbital on the Atlas D, all in the one-man capsule McDonnell Aircraft built in S
 | Flight | Spacecraft | Pilot | Launch | Duration | In this repo |
 | --- | --- | --- | --- | --- | --- |
 | Mercury-Redstone 3 | No. 7, *Freedom 7* | Alan Shepard | 5 May 1961 | 15 min 22 s | [flight](flights/mr-3-freedom-7/README.md) |
-| Mercury-Redstone 4 | No. 11, *Liberty Bell 7* | Gus Grissom | 21 July 1961 | 15 min 37 s | |
+| Mercury-Redstone 4 | No. 11, *Liberty Bell 7* | Gus Grissom | 21 July 1961 | 15 min 37 s | [flight](flights/mr-4-liberty-bell-7/README.md): the vehicle, in the gallery |
 | Mercury-Atlas 6 | No. 13, *Friendship 7* | John Glenn | 20 February 1962 | 4 h 55 min | |
 | Mercury-Atlas 7 | No. 18, *Aurora 7* | Scott Carpenter | 24 May 1962 | 4 h 56 min | |
 | Mercury-Atlas 8 | No. 16, *Sigma 7* | Wally Schirra | 3 October 1962 | 9 h 13 min | |
@@ -26,10 +26,12 @@ The capsule changed from flight to flight, which is why each flight here has its
 
 | | MR-3 (No. 7) | MR-4 (No. 11) | Orbital flights |
 | --- | --- | --- | --- |
-| View out | two 10 in portholes, periscope | trapezoidal overhead window | window (periscope deleted on MA-9) |
+| View out | two 10 in portholes, periscope | trapezoidal centreline window, periscope | window (periscope deleted on MA-9) |
 | Side hatch | mechanical latches (mechanism 69 lb) | explosive, 23 lb | explosive |
 | Heat shield | beryllium heat sink | beryllium heat sink | ablative fibreglass and resin |
 | Suit gloves | zipped to the sleeves | ring lock with wrist bearing | ring lock |
+| Panel | Postlaunch Report Figure 3.1-2 | rearranged; Earth-path indicator added (not working) | orbital panel |
+| Manual control | proportional | proportional, and rate command | the same |
 
 All of them carried a landing bag, and all had beryllium shingles on the recovery compartment.
 
@@ -38,6 +40,8 @@ All of them carried a landing bag, and all had beryllium shingles on the recover
 | Vehicle | Flights | In this repo |
 | --- | --- | --- |
 | Mercury-Redstone (one stage, A-7 engine) | MR-3, MR-4 | [redstone-mrlv.md](vehicles/redstone-mrlv.md) |
+
+What the two Redstone capsules shared is built once: [mercury-capsule.md](vehicles/mercury-capsule.md).
 | Mercury-Atlas (Atlas LV-3B, stage-and-a-half) | MA-6 to MA-9 | |
 
 ## Pads and crew

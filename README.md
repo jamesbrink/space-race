@@ -45,11 +45,12 @@ The legend at the bottom left of the page lists every key and gesture.
 | Flight | Nation | Date | Record | Models |
 | --- | --- | --- | --- | --- |
 | Mercury-Redstone 3, *Freedom 7* | USA | 5 May 1961 | [flight](missions/usa/mercury/flights/mr-3-freedom-7/README.md) · [spacecraft](missions/usa/mercury/flights/mr-3-freedom-7/spacecraft.md) · [launch vehicle](missions/usa/mercury/vehicles/redstone-mrlv.md) · [pad](missions/usa/mercury/sites/lc-5.md) · [suit](missions/usa/mercury/crew/mark-iv-suit.md) | [capsule](missions/usa/mercury/flights/mr-3-freedom-7/model/vehicle.py) · [booster](missions/usa/mercury/vehicles/redstone_mrlv.py) · [pad](missions/usa/mercury/sites/lc5/) · [suit](missions/usa/mercury/crew/mark_iv_suit.py) |
+| Mercury-Redstone 4, *Liberty Bell 7* (spacecraft and launch vehicle, so far) | USA | 21 July 1961 | [flight](missions/usa/mercury/flights/mr-4-liberty-bell-7/README.md) · [spacecraft](missions/usa/mercury/flights/mr-4-liberty-bell-7/spacecraft.md) · [what it shared with Freedom 7](missions/usa/mercury/vehicles/mercury-capsule.md) · [launch vehicle](missions/usa/mercury/vehicles/redstone-mrlv.md) · [site as it stood that day: not built](missions/usa/mercury/sites/lc-5.md) | [capsule No. 11](missions/usa/mercury/flights/mr-4-liberty-bell-7/model/vehicle.py) · [its cabin](missions/usa/mercury/vehicles/mercury_cabin_11.py) · [shared](missions/usa/mercury/vehicles/mercury_capsule.py) · [booster](missions/usa/mercury/vehicles/redstone_mrlv.py) |
 | Vostok 1 (spacecraft and launch vehicle, so far) | USSR | 12 April 1961 | [flight](missions/ussr/vostok/flights/vostok-1/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-1/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) · [site: not built](missions/ussr/vostok/sites/site-1.md) | [flight's fit](missions/ussr/vostok/flights/vostok-1/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
 
 ## Timeline
 
-What there is to build, in the order it flew. One flight is built whole and one has its spacecraft; the rest is the plan.
+What there is to build, in the order it flew. One flight is built whole and two have their vehicles; the rest is the plan.
 
 The first ten crewed flights:
 
@@ -57,7 +58,7 @@ The first ten crewed flights:
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 12 Apr 1961 | Vostok 1 | USSR | Yuri Gagarin | First person in space; one orbit | **spacecraft and launch vehicle built** ([record](missions/ussr/vostok/flights/vostok-1/README.md)); site and trajectory to come |
 | 2 | 5 May 1961 | Mercury-Redstone 3, *Freedom 7* | USA | Alan Shepard | Suborbital; first American in space | **built** |
-| 3 | 21 Jul 1961 | Mercury-Redstone 4, *Liberty Bell 7* | USA | Gus Grissom | Suborbital; same pad as Freedom 7 | planned (next) |
+| 3 | 21 Jul 1961 | Mercury-Redstone 4, *Liberty Bell 7* | USA | Gus Grissom | Suborbital; same pad as Freedom 7 | **spacecraft and launch vehicle built** ([record](missions/usa/mercury/flights/mr-4-liberty-bell-7/README.md)); site as it stood that day and trajectory to come |
 | 4 | 6 Aug 1961 | Vostok 2 | USSR | Gherman Titov | A full day in orbit | planned |
 | 5 | 20 Feb 1962 | Mercury-Atlas 6, *Friendship 7* | USA | John Glenn | First American in orbit | planned |
 | 6 | 24 May 1962 | Mercury-Atlas 7, *Aurora 7* | USA | Scott Carpenter | Three orbits | planned |
@@ -71,7 +72,7 @@ And the programmes after them:
 | Programme | Nation | Crewed flights | What it adds | Status |
 | --- | --- | --- | --- | --- |
 | Vostok | USSR | 1961 to 1963 | The first spacecraft; Baikonur | one spacecraft and its launch vehicle built |
-| Mercury | USA | 1961 to 1963 | Redstone and Atlas; Cape Canaveral | one flight built |
+| Mercury | USA | 1961 to 1963 | Redstone and Atlas; Cape Canaveral | one flight built, a second's vehicle |
 | Voskhod | USSR | 1964 to 1965 | Three aboard; the first spacewalk | planned |
 | Gemini | USA | 1965 to 1966 | Two aboard, Titan II, rendezvous and docking | planned |
 | Soyuz | USSR, Russia | 1967 onward | The longest-serving crewed spacecraft | planned |
