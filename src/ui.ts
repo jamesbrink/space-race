@@ -240,6 +240,28 @@ function legendMarkup(f: Flight): string {
       </aside>`;
 }
 
+/**
+ * Say something in a stack of passing notes (a place's `.notes`) for a moment; it goes by itself, and saying something
+ * else replaces it. `long`: for a line that is read once and not again (a first visit's hint), it stays a while longer.
+ */
+export function sayIn(stack: HTMLElement, title: string, line: string, long = false): void {
+  const had = stack.querySelector<HTMLElement>('.say');
+  const el = had ?? document.createElement('p');
+  if (!had) {
+    el.className = 'say';
+    el.setAttribute('role', 'status');
+    stack.append(el);
+    // (gone, it takes no room in the stack)
+    el.addEventListener('animationend', () => (el.hidden = true));
+  }
+  el.hidden = false;
+  el.innerHTML = `<b>${esc(title)}</b><span>${esc(line)}</span>`;
+  el.classList.remove('going');
+  el.classList.toggle('long', long);
+  void el.offsetWidth; // (so the fade starts again from the top)
+  el.classList.add('going');
+}
+
 const TABS = ['Parts', 'Specs', 'Motors', 'Flight'] as const;
 const pane = (name: (typeof TABS)[number]) => `data-pane="${name}" id="pane-${name}" role="tabpanel" aria-labelledby="tab-${name}"`;
 
@@ -760,20 +782,7 @@ export class Ui {
    * It goes by itself; saying something else replaces it.
    */
   say(title: string, line: string, note?: string): void {
-    const had = this.root.querySelector<HTMLElement>('.say');
-    const el = had ?? document.createElement('p');
-    if (!had) {
-      el.className = 'say';
-      el.setAttribute('role', 'status');
-      this.notes().append(el);
-      // (gone, it takes no room in the stack)
-      el.addEventListener('animationend', () => (el.hidden = true));
-    }
-    el.hidden = false;
-    el.innerHTML = `<b>${esc(title)}</b><span>${esc(note ?? line)}</span>`;
-    el.classList.remove('going');
-    void el.offsetWidth; // (so the fade starts again from the top)
-    el.classList.add('going');
+    sayIn(this.notes(), title, note ?? line);
   }
 
   /** Cel shading on or off: for every section, and remembered. */
