@@ -361,8 +361,11 @@ const SCATTER_SHIFT: readonly (readonly [number, number])[] = [
   [0.7825, -0.0715],
 ];
 
-/** What keeps a field's cover through the morph from the noise's shape to the cells (cellsMorph), in the noise's units. */
-const MORPH = 0.02;
+/**
+ * What keeps a field's cover through the morph from the noise's shape to the cells (cellsMorph, cellsBlend), in the
+ * noise's units: measured, a frame's mean level over one patch of sea from 60 to 110 km within 2.5 % of its level before.
+ */
+const MORPH = 0.053;
 /** Far cumulus are drawn as cells where a pixel of the field is between these many metres across and more: nearer, as the field itself, which the volume is heaped on. */
 export const CELLS: readonly [number, number] = [45, 90];
 
@@ -395,11 +398,19 @@ export const CELLS: readonly [number, number] = [45, 90];
  */
 export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
   float cellsShare(float fp) { return smoothstep(${CELLS[0].toFixed(1)}, ${CELLS[1].toFixed(1)}, fp); }
-  // Half way between the noise's shape and the cells the two do not stand in the same places, and a mean of the two
-  // is over the cut less often than either: a field lost a third of its cover between 80 and 110 km up (0.087 of a
-  // patch at 60 km, 0.060 at 95, 0.096 at 130). What is added to the mean to keep it: most half way, nothing at
-  // either end (measured: the same patch through the climb, both looks).
+  // Half way between the noise's shape and the cells the two do not stand in the same places, and what is over the
+  // cut in both is less than either: a field lost a third of its cover half way. What is added to keep it: most half
+  // way, nothing at either end (MORPH).
   float cellsMorph(float cells) { return ${MORPH.toFixed(3)} * 4.0 * cells * (1.0 - cells); }
+  // The field over its cut on the way from the noise's own shapes (\`x\`) to the cells (\`c\`), \`cells\` from 0 to 1. Not
+  // a mean of the two: half way, that was the noise's shapes gone soft with the cells standing on them, two pictures
+  // at once. A cloud is taken apart instead. First what of it is not a cell goes (the lower of the two: gaps open in
+  // it from its edge inward, and it is left as the cells that stand in it); then the cells that stand where it had
+  // no cloud come up, each from its heart. So at every height there is one field, and nothing fades through another.
+  float cellsBlend(float x, float c, float cells) {
+    float both = min(x, c);
+    return (cells < 0.5 ? mix(x, both, smoothstep(0.0, 0.5, cells)) : mix(both, c, smoothstep(0.5, 1.0, cells))) + cellsMorph(cells);
+  }
   // (smooth union: where two domes meet they run together into one mass with a crease, not two balls)
   float gJoin;   // how broadly two cells run together: more as a pixel takes in more of them, so the crease between two is never finer than a pixel
   float cellsJoin(float a, float b) { float h = max(gJoin - abs(a - b), 0.0) / gJoin; return max(a, b) + h * h * 0.25 * gJoin; }

@@ -424,7 +424,9 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 - **From far above, cumulus are cells.** Where a pixel takes in 45 to 90 m of the field and more, the far cover and
   the globe's shadows read the field through `cumulusCells` (weather.ts: rounded, lobed domes where the noise is
   over its cut) instead of the noise cut at a level, which is a torn shape. Nearer, it is the noise, which the
-  volume is heaped on: a cloud between the two morphs slowly, 66 to 130 km off. The cells are many and small (300 m
+  volume is heaped on: a cloud between the two is taken apart, 55 to 110 km off, never cross-faded
+  (`cellsBlend`: first what of it is not a cell goes, then the cells where it had none come up; a mean of the two was
+  both pictures at once). The cells are many and small (300 m
   apart, 150 to 700 m across, most of them small and low, so grey and half seen through) with a few broad heaps;
   a cell under a few pixels is lit evenly. What they cover is measured against the cover asked for (the figures
   are in weather.ts: `SCATTER` spreads the cells between the clumps and `SCATTER_SHIFT` keeps their cover; `MORPH` keeps

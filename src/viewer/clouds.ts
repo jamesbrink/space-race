@@ -677,7 +677,7 @@ const OVER = /* glsl */ `
   float gFpq;   // a pixel's breadth on the field, in cells: set by whoever reads the field
   float fieldOver(vec2 q, float bias, float cells) {
     float x = cells < 1.0 ? cloudNoise(q) + bias - uCumulus.y : 0.0;
-    return cells > 0.0 ? mix(x, cumulusCells(q, bias, uCumulus.y, gFpq), cells) + cellsMorph(cells) : x;
+    return cells > 0.0 ? cellsBlend(x, cumulusCells(q, bias, uCumulus.y, gFpq), cells) : x;
   }
   // the field's noise at a place (in cells) with each of its four sizes kept by so much (1: as it is; 0: at its mean)
   float cloudNoiseKept(vec2 q, vec4 keep) {

@@ -972,7 +972,7 @@ export class Globe {
             // (the same shapes the clouds are drawn in from here: the field's own near the eye, its cells from far above)
             float cells = cellsShare(distance(world, cameraPosition + uOrigin) * uGlobePixel);
             float shapes = cells < 1.0 ? cloudNoise(p - uCloudDrift.xz) + bias - ${cloudMiddle(c).toFixed(3)} : 0.0;
-            if (cells > 0.0) shapes = mix(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}, fp / ${c.size.toFixed(1)}), cells) + cellsMorph(cells);
+            if (cells > 0.0) shapes = cellsBlend(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}, fp / ${c.size.toFixed(1)}), cells);
             // (a cell's shadow by how thick it is: a puff's is faint; and none from the skirt outside it)
             float dark = smoothstep(mix(-0.02, 0.0, cells) - soft, mix(0.03, 0.06, cells) + soft, shapes);
             if (cells > 0.0) dark += (1.0 - dark) * min(0.9 * cells * gHaze, 1.0);   // (and the cells too small to draw: cumulusCells)
