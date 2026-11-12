@@ -528,6 +528,26 @@ export class Solids {
     }
     return best;
   }
+
+  /**
+   * `nearest`, for a question asked from anywhere (the near plane's, from kilometres up as from beside a wall): the
+   * same answer near to, and from far off never more than the truth. Seen from many times its own size a mesh is as
+   * far away as its box, near enough (the box is never further than the surface), and is not gone into.
+   */
+  clear(point: THREE.Vector3, within: number): number {
+    let best = within;
+    for (const n of this.near) {
+      const d = n.box.distanceToPoint(point);
+      if (d >= best) continue;
+      if (d > 8 * n.box.min.distanceTo(n.box.max)) {
+        best = d;
+        continue;
+      }
+      const hit = n.bvh.closestPointToPoint(this.point.copy(point).applyMatrix4(n.inverse), undefined, 0, best / n.scale);
+      if (hit) best = Math.min(best, hit.distance * n.scale);
+    }
+    return best;
+  }
 }
 
 /** Where the floor is probed under a figure: under its middle and four points round it, as fractions of its radius. */

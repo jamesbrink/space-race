@@ -88,7 +88,7 @@ exact for tests and screenshots (looking straight at the pivot, and still, with 
 What is framed is where the clock has it at that moment (`view` and `focus` call `lift` first), so a
 view asked for in the same breath as the clock is put back frames the vehicle on its pad, not where
 it was last drawn. The near plane is not
-the camera's: `Stage.fitDepth` fits it every frame to `cam.pivot`. A camera shake is applied for
+the camera's: `Stage.fitDepth` fits it every frame to the nearest thing there is (rendering.md). A camera shake is applied for
 the draw only (`Stage.shaker`), after the rig has said where the camera is.
 
 To check a change: `node --test tests/camera.test.mjs`, then `pnpm test:camera` (`tools/camera-test.mjs`):

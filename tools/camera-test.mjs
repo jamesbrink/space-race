@@ -373,6 +373,39 @@ const sequences = {
       );
       check(r.near >= Math.min(0.03, clear), `${name}: and it is no nearer than it need be (${r.near.toFixed(3)} m)`);
     }
+    // From height the plane must also go OUT: the pad's slab lies 12 cm over the ground under it, and with the plane
+    // 15 m from a free camera 20 km up (a quarter of the way to a pivot just in front of the lens) one step of the
+    // depth buffer down there was 1.6 m: the site flickered, a hundred pixels a frame.
+    for (const [name, height] of [
+      ['20 km over the site, looking down', 20_000],
+      ['2 km over the site, looking down', 2_000],
+    ]) {
+      const r = await h.page.evaluate(async (height) => {
+        const st = window.sr.stage;
+        st.setCamera('free');
+        const V = st.cam.orbit.pivot.clone();
+        st.cam.free.goTo(V.clone().set(0, height, 0), V.clone().set(35, height - 197, 0), true);
+        for (let i = 0; i < 120; i++) await new Promise((done) => requestAnimationFrame(done));
+        const eye = st.camera.position;
+        const corner = Math.hypot(1, Math.tan((st.camera.fov * Math.PI) / 360) * Math.hypot(1, st.camera.aspect));
+        const solids = st.walk.solids;
+        solids.set(st.solidRoots());
+        solids.gather(eye, 1e6, 1e6);
+        const out = { reach: st.camera.near * corner, solid: solids.nearest(eye, 1e6), ground: eye.y, near: st.camera.near };
+        st.setCamera('orbit');
+        return out;
+      }, height);
+      const clear = Math.min(r.solid, r.ground);
+      const step = clear ** 2 / (r.near * 2 ** 24);
+      check(
+        r.reach <= clear + 1e-6,
+        `${name}: the plane's corner is ${r.reach.toFixed(0)} m out and the nearest thing ${clear.toFixed(0)} m`,
+      );
+      check(
+        step < 0.03,
+        `${name}: one step of depth at the ground is ${(step * 100).toFixed(1)} cm, under the 12 cm between the pad and the ground`,
+      );
+    }
   },
 };
 

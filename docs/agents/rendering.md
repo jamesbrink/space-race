@@ -46,11 +46,17 @@ different one per pixel per frame. Three things stop it, and all three must stay
   than a millimetre. Do not pass `--allow-clashes`. Faces that cross at an angle are fine, and so
   are single-sided faces back to back; double-sided materials are held to the stricter rule, so
   use `double_sided=True` only where both sides are really seen.
-- **`Stage.fitDepth` moves the near plane out every frame** so depth resolution stays under a
-  third of a millimetre at any distance. Do not give the camera a fixed near plane. It is never
-  put beyond anything: `Stage.uncut` asks for the nearest solid surface (the walker's `Solids`)
-  and the nearest plant (`Setting.plantsClear`) and keeps the plane's corner short of both, so
-  what the camera passes is not sliced (`pnpm test:camera`, "the near plane cuts nothing").
+- **`Stage.fitDepth` fits the near plane to what is there, every frame, whatever the rig**: it stands at half the
+  way to the nearest thing drawn in the scene's depth, so depth resolution stays under a third of a millimetre across
+  the pad and is millimetres at the ground from 20 km up (with the plane 15 m from a free camera up there, one step
+  was 1.6 m and the pad's slab fought the ground under it). Do not give the camera a fixed near plane, and do not
+  guess it from what the camera turns about. What is asked: the ground or the sea under the eye; the flown vehicle,
+  what it has shed and its parachutes; and, in `Stage.uncut`, the nearest solid surface (the walker's `Solids`) and
+  the nearest plant (`Setting.plantsClear`), with the plane's corner kept short of them, so what the camera passes
+  is not sliced (`pnpm test:camera`, "the near plane cuts nothing"). It comes in at once and goes out over a quarter
+  of a second. Anything new that is drawn in the scene's depth and is in none of those (not a model, not the
+  place, not a plant) must be asked there too. Following a vehicle the plane cannot go out (the vehicle is 30 m
+  off), and the site far below is drawn in steps of centimetres to decimetres.
 - **Nothing lies close above the terrain.** Depth interpolated across a triangle kilometres long
   is coarse: concrete 6 cm above such terrain flickered. So the terrain is finely divided (`land.ts`:
   half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (`GROUND_Y`, and `GROUND` in

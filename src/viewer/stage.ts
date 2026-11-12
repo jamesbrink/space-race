@@ -95,6 +95,12 @@ const spin = new THREE.Quaternion();
 const WALK_SHADOW = 26;
 /** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
 const NEAR_LEAST = 0.03;
+/** Seconds the near plane takes to go most of the way out to where it may stand (`fitDepth`); it comes in at once. */
+const NEAR_EASE = 0.25;
+/** Metres: taller than anything that grows at a site (flora.ts: the tallest palm), for a near plane fitted from well above it. */
+const CANOPY = 30;
+/** Metres from where a parachute is made fast within which all of it is (the main's lines and canopy, with room). */
+const CHUTE_REACH = 60;
 /** How much the exposure opens up in a room by day (as a share added), and over how many seconds; how far the rays that ask whether the eye is in one go, metres. */
 /** The exposure the eye settles on in a room: 2.1 times the sunlit ground's 0.8 (daysky.ts: DAY_EXPOSURE). */
 const INDOORS_EXPOSURE = 1.68;
@@ -2137,48 +2143,75 @@ export class Stage {
   }
 
   /**
-   * Keep the near plane as far out as the view allows, every frame. Depth precision at
-   * distance d is about d² / (near × 2²⁴): with a fixed 5 cm near plane, faces 3 mm apart
-   * fight from across the pad. Pushed out like this the resolution stays under a third of a
-   * millimetre, which is what lets the models' 1 mm clearance rule (srlib.check_clearance) hold.
+   * Keep the near plane as far out as what is there allows, every frame, whatever the rig. Depth precision at
+   * distance d is about d² / (near × 2²⁴): with a fixed 5 cm near plane, faces 3 mm apart fight from across the pad,
+   * and with one 15 m out the pad's slab and the ground under it, 12 cm apart, fight from 20 km up. So the plane
+   * stands at half the way to the nearest thing drawn in the scene's depth, and that is asked of what is there, not
+   * guessed from what the camera turns about (it was a quarter of the pivot's distance, and a free camera's pivot is
+   * a point just in front of the lens): the ground or the sea under the eye; the flown vehicle, what it has shed and
+   * its parachutes; and every solid thing and plant (`uncut`). Twenty kilometres over the site with nothing nearer
+   * than the ground that is a plane kilometres out and depth steps of centimetres down there. It comes in at once
+   * (nothing is ever cut) and goes out over a moment (`NEAR_EASE`: it never steps); a frozen stage has it at once.
    */
-  private fitDepth(): void {
-    const toCentre = this.camera.position.distanceTo(this.bounds.center);
-    const toTarget = this.camera.position.distanceTo(this.cam.pivot);
-    let near = Math.max(0.03, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
+  private fitDepth(dt: number): void {
+    const eye = this.camera.position;
+    const toCentre = eye.distanceTo(this.bounds.center);
+    const toTarget = eye.distanceTo(this.cam.pivot);
+    const tan = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect);
+    const corner = Math.hypot(1, tan);
+    let near = Number.POSITIVE_INFINITY;
+    let plants = true;
     // (beyond the site there is no ground at the camera's feet to keep in view)
-    if (this.setting.floor && Math.hypot(this.camera.position.x, this.camera.position.z) <= (this.setting.reach ?? Infinity)) {
-      // ...but never past the ground at the camera's feet. The nearest ground in view is at the
-      // corner of the frame, no nearer along the view than the camera's height times the cosine
-      // of the frame's half-diagonal; a near plane beyond that slices the foreground away.
-      const tan = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect);
-      const height = this.camera.position.y - GROUND_Y;
-      // nor past scenery between the camera and what it is looking at
-      near = Math.min(near, Math.max(0.03, (0.9 * height) / Math.hypot(1, tan)), Math.max(0.03, 0.25 * toTarget));
+    if (this.setting.floor && Math.hypot(eye.x, eye.z) <= (this.setting.reach ?? Infinity)) {
+      // Never past the ground at the camera's feet. The nearest ground in view is at the corner of the frame, no
+      // nearer along the view than the camera's height times the cosine of the frame's half-diagonal; a near plane
+      // beyond that slices the foreground away. From well above, what grows on the ground is counted with it (the
+      // tallest palm is under `CANOPY`), and the plants are not asked one by one.
+      let height = eye.y - GROUND_Y;
+      if (height > 4 * CANOPY) {
+        height -= CANOPY;
+        plants = false;
+      }
+      near = Math.min(near, (0.9 * height) / corner);
     }
     // beyond the site's ground the globe's sea is under the camera instead, and it is seen out to its horizon
     const globe = this.setting.globe;
-    if (globe?.mesh.visible) {
-      const tan = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect);
-      near = Math.min(near, Math.max(0.03, (0.9 * globe.altitude(this.camera.position)) / Math.hypot(1, tan)));
-    }
-    let far = Math.max(toCentre + this.bounds.radius + (this.setting.horizon ?? 10), globe?.reach(this.camera.position) ?? 0);
+    if (globe?.mesh.visible) near = Math.min(near, (0.9 * globe.altitude(eye)) / corner);
+    let far = Math.max(toCentre + this.bounds.radius + (this.setting.horizon ?? 10), globe?.reach(eye) ?? 0);
     // a vehicle in flight is seen as far off as it is, and the near plane is never beyond it
     const flier = this.lifted.flying ? this.flier : null;
     if (flier) {
-      const to = this.camera.position.distanceTo(flier.sphere.center);
+      const to = eye.distanceTo(flier.sphere.center);
       // (with room to spare: the far plane is only moved when it is 2 % out, and a vehicle going away from a camera that
       // stands still, the pad camera's, would otherwise be beyond it between one move and the next)
       far = Math.max(far, 1.05 * (to + flier.sphere.radius));
-      near = Math.min(near, Math.max(0.03, 0.5 * (to - flier.sphere.radius), 0.01 * toTarget));
+      near = Math.min(near, Math.max(NEAR_LEAST, 0.5 * (to - flier.sphere.radius), 0.01 * toTarget));
+      // ...nor beyond what it has shed, which is no longer part of it, nor a parachute (reshaped as it fills: its
+      // bounds as made say nothing, so it is taken as everything within its lines' length of where it is made fast)
+      const box = this.depthBox;
+      const at = this.depthAt;
+      for (const d of this.debris) near = Math.min(near, (0.5 * box.setFromObject(d.holder).distanceToPoint(eye)) / corner);
+      for (const chute of this.chutes ?? [])
+        if (chute.group.visible)
+          near = Math.min(near, (0.5 * Math.max(0, chute.group.getWorldPosition(at).distanceTo(eye) - CHUTE_REACH)) / corner);
     }
-    near = this.uncut(near);
+    // (a setting with no ground and no sea, a studio: the models are all there is, and are asked below)
+    if (near === Number.POSITIVE_INFINITY) near = Math.max(NEAR_LEAST, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
+    near = this.uncut(Math.max(NEAR_LEAST, near), plants);
+    // in at once, out over a moment
+    const was = this.nearEased;
+    if (!(near > was) || this.frozen || !(dt > 0)) this.nearEased = near;
+    else this.nearEased = Math.min(near, was * (near / was) ** (1 - Math.exp(-dt / NEAR_EASE)));
+    near = this.nearEased;
     if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.near = near;
       this.camera.far = far;
       this.camera.updateProjectionMatrix();
     }
   }
+  private nearEased = NEAR_LEAST;
+  private readonly depthBox = new THREE.Box3();
+  private readonly depthAt = new THREE.Vector3();
 
   /** How far indoors the eye is, 0 in the open to 1 in a room: eased, never stepped (`adapt`). */
   private indoors = 0;
@@ -2234,7 +2267,7 @@ export class Stage {
    * and the plants, which are not solid, are asked for where they stand (`Setting.plantsClear`). The plane's corner, not its middle, is what must stay short of the thing. Depth resolution is spent only
    * where something really is that near, which is where it was being cut.
    */
-  private uncut(near: number): number {
+  private uncut(near: number, plants = true): number {
     if (near <= NEAR_LEAST) return near;
     const eye = this.camera.position;
     // (a still eye is asked again only a few times a second, for what may have moved toward it)
@@ -2242,14 +2275,15 @@ export class Stage {
     const now = performance.now();
     if (!this.frozen && kept.eye.equals(eye) && kept.asked >= near && now - kept.at < 250) return Math.min(near, kept.near);
     const corner = Math.hypot(1, Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect));
-    const reach = near * corner;
+    // (the plane at half the way to the nearest thing: so things are looked for twice as far as its corner reaches)
+    const reach = 2 * near * corner;
     let clear = reach;
-    clear = this.setting.plantsClear?.(eye, clear) ?? clear;
+    if (plants) clear = this.setting.plantsClear?.(eye, clear) ?? clear;
     const solids = this.walk.solids;
     solids.set(this.solidRoots());
     solids.gather(eye, clear, clear);
-    clear = solids.nearest(eye, clear);
-    const fitted = clear >= reach ? near : Math.max(NEAR_LEAST, (0.85 * clear) / corner);
+    clear = solids.clear(eye, clear);
+    const fitted = clear >= reach ? near : Math.max(NEAR_LEAST, (0.5 * clear) / corner);
     kept.eye.copy(eye);
     kept.asked = near;
     kept.near = clear >= reach ? Number.POSITIVE_INFINITY : fitted;
@@ -2577,7 +2611,7 @@ export class Stage {
         // (and nothing is named over a view being looked through: what it is has been said in the note line)
         this.setHover(this.cam.rig === 'onboard' ? (this.lookingOut ? NOTHING : { ...under, node: null, model: null }) : under);
       }
-      this.fitDepth();
+      this.fitDepth(dt);
     }
     const { backdrop } = this.setting;
     if (!this.frozen) {
