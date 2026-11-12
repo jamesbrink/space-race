@@ -128,6 +128,8 @@ tools/
   logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
+  blender/figurelib.py                what any crew figure is built from: a body's measures and joints, the trunk and trousers as skins, hands, a head,
+                                      the pose; a suit is a garment module on top (crew/mark_iv_suit.py, crew/sk_1.py)
   blender/interiors.py                rooms' insides: what is seen through a site's windows
   blender/vehicles.py                 period road vehicles from parameters, built to be driven
 ```

@@ -106,6 +106,12 @@ in the GLB, at all three levels of detail). The joints and their names are the s
 crew figure, so the viewer needs to know nothing about this suit: `srlib.FIGURE` is the list,
 `srlib.skeleton` builds it and `srlib.bind` hangs a mesh on it.
 
+**The suit is a garment on a shared body.** What any crew figure has (the body's measures and
+joints, the weights, the trunk-and-shoulders skin, the trousers, the hands, the head, the pose
+and the seated builder) is `tools/blender/figurelib.py`; this script is Shepard's measures
+(`B`, a `figurelib.Body`) and the Mark IV itself: materials, what the cloth does, helmet,
+fittings, insignia, boots, ventilator. Vostok's SK-1 is another garment on the same body code.
+
 ```
 Hips ─ Spine ─ Head
      │       ├ UpperArm.L ─ LowerArm.L ─ Hand.L      (and .R)
