@@ -37,7 +37,13 @@ export function verdict(state: VehicleState, results: Results, trajectory: Traje
     how = `Hit the sea at ${landing.vertical.toFixed(0)} m/s`;
     why.push(state.shed.tower ? 'No parachute was deployed.' : 'The escape tower was still on: no parachute can come out past it.');
   }
-  if (state.abortAt !== null) why.unshift(`Aborted on the escape rocket ${state.abortAt.toFixed(1)} s after ignition.`);
+  // (an abort off the pad with the engine never lit came after no ignition)
+  if (state.abortAt !== null)
+    why.unshift(
+      state.ignited
+        ? `Aborted on the escape rocket ${state.abortAt.toFixed(1)} s after ignition.`
+        : 'Aborted off the pad on the escape rocket: the engine was never lit.',
+    );
   const limits = trajectory.body?.capsule.limits;
   if (!limits) return { how, why: why.filter(Boolean), survivable: null, against: '' };
   const hard = speed > limits.landingSpeed.value;

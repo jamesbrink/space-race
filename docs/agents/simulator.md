@@ -115,8 +115,10 @@ never adjusted to bring a check in.
   something leaves, `part` makes two bodies of one: both centres of mass where they were on the
   stack, each with the velocity that place had (v + w x r), the push shared by the actual masses,
   so linear and angular momentum are kept to rounding, and the vehicle puts a `Release` in
-  `VehicleState.released`. `sim/shed.ts` flies each from there under the same gravity and air (a
-  motor of its own if the data gives one), to the sea, on the vehicle's tick (five ticks at a time
+  `VehicleState.released`. `sim/shed.ts` flies each from there under the same gravity and air (on
+  the rockets of its own the data gives it, `ShedBody.motors`, all lit as it leaves: the tower's escape and
+  jettison rockets both, as the record has a good flight, and the jettison rocket alone after an abort has
+  spent the other: `unless: 'abort'`, `Release.aborted`), to the sea, on the vehicle's tick (five ticks at a time
   above the air): about 10 microseconds a tick each. The cockpit steps them beside the vehicle
   (`Sheds.follow`); the record's are flown from fly.ts's run, lazily, as far as the clock asks. A
   new thing to shed is a `ShedBody` in the flight's data and an `on` in `flies.drops`: generic

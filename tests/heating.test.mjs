@@ -142,6 +142,8 @@ test('the same heating whether worked all at once or kept up sample by sample, a
   }
   const states = log.upTo(growing);
   assert.equal(states.length, 1200);
+  // and what it came to is the same, though the head was replaced at every step (it is not summed again from the start each time)
+  assert.deepEqual(log.results, heatRun(heating, run.samples.slice(0, 1200)).results);
   for (const i of [0, 300, 700, 1100, 1199]) {
     assert.deepEqual(states[i], whole.states[i], `state ${i}`);
   }

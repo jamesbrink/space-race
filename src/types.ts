@@ -664,12 +664,23 @@ export interface ShedBody {
   surfaces?: AeroSurface[];
   /** How fast it and the vehicle are pushed apart along the axis, m/s, shared between them by their masses. The 'separation' event's is `separation.speed`. */
   push?: Measure;
-  /**
-   * A rocket of its own that lights as it leaves: its thrust, N, for `burn` seconds, along its +X turned `cant` degrees
-   * toward its +Z (through the centre of mass: it does not turn it). What is left of `impulse` (N s) after that is
-   * spent falling evenly to nothing, as `Body.escape`'s is.
-   */
-  motor?: { thrust: Measure; burn: Measure; impulse?: Measure; cant?: Measure };
+  /** The rockets of its own that light as it leaves, all at once: their thrusts add. */
+  motors?: ShedMotor[];
+}
+
+/**
+ * A rocket a shed body carries and lights as it leaves: its thrust, N, for `burn` seconds, along the body's +X turned
+ * `cant` degrees toward its +Z (through the centre of mass: it does not turn it). What is left of `impulse` (N s) after
+ * that is spent falling evenly to nothing, as `Body.escape`'s is.
+ */
+export interface ShedMotor {
+  name: string;
+  thrust: Measure;
+  burn: Measure;
+  impulse?: Measure;
+  cant?: Measure;
+  /** 'abort': this is the rocket an abort burns (`Body.escape`), so a body let go after one (`Release.aborted`) does not light it again. */
+  unless?: 'abort';
 }
 
 /** What a vehicle can take before something gives (src/sim/loads.ts). Each is a figure with its confidence like any other. */

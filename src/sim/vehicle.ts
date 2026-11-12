@@ -708,6 +708,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       towerAlone,
       def?.push?.value ?? 0,
     );
+    // after an abort the escape rocket is burned out: shed.ts lights only what the tower still has
+    if (state.abortAt !== null) s.released = [...s.released.slice(0, -1), { ...s.released.at(-1)!, aborted: true }];
     return s;
   };
   /** What the booster is as the spacecraft leaves it: everything but the spacecraft and whatever tower it takes, so that the two are the whole. */

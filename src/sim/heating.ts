@@ -10,6 +10,8 @@
  *
  *     q = k sqrt(density / nose radius) speed^3,   k = 1.7415e-4 kg^0.5 / m   (W/m^2, SI)
  *
+ * The equation and the constant are quoted from memory, as they are commonly given from that report:
+ * the report was not opened and neither is verified against it (docs/sources.md lists it as not read).
  * It is a fit for hypersonic flight; under about Mach 3 it says only that there is next to nothing,
  * which is true. The flux to a wall that has warmed is less by the enthalpy the wall already has,
  * (h0 - hw) / h0, with h0 = cp T + speed^2 / 2 the air's total enthalpy and hw = cp Twall, cp that
@@ -36,11 +38,11 @@ import type { HeatedSurface, Heating } from '../types';
 import { atmosphere } from './atmosphere.ts';
 import type { Sample } from './fly.ts';
 
-/** Sutton and Graves's constant for air, kg^0.5 / m (NASA TR R-376, 1971). */
+/** Sutton and Graves's constant for air, kg^0.5 / m, as commonly quoted from NASA TR R-376 (1971): from memory, the report not opened, unverified. */
 export const SUTTON_GRAVES = 1.7415e-4;
 /** W/(m^2 K^4), CODATA 2018. */
 export const STEFAN_BOLTZMANN = 5.670374419e-8;
-/** Cold air's specific heat at constant pressure, J/(kg K). */
+/** Cold air's specific heat at constant pressure, J/(kg K): 7/2 of the gas constant of the 1976 standard air (287.053), a perfect diatomic gas. */
 const CP_AIR = 1004.7;
 /** The longest step a surface's temperature is integrated over, s. */
 const STEP = 0.25;
@@ -205,10 +207,14 @@ export class HeatLog {
   private readonly seen: Sample[] = [];
   private source: readonly Sample[] | null = null;
   results: HeatResults;
+  /** What it had come to before the last sample taken in, and how many samples that covers: the last is the one a flight being flown replaces every tick. */
+  private settled: HeatResults;
+  private settledTo = -1;
 
   constructor(heating: Heating) {
     this.heating = heating;
     this.results = blank(heating.surfaces.length);
+    this.settled = this.results;
   }
 
   upTo(samples: readonly Sample[]): readonly Thermal[] {
@@ -217,16 +223,23 @@ export class HeatLog {
       this.source = samples;
       states.length = seen.length = 0;
       this.results = blank(this.heating.surfaces.length);
+      this.settledTo = -1;
     }
     // what is no longer there (the head, replaced; a flight begun again) is dropped
     let keep = Math.min(seen.length, samples.length);
     while (keep > 0 && seen[keep - 1] !== samples[keep - 1]) keep--;
     if (keep < seen.length) {
       states.length = seen.length = keep;
-      this.results = summarise(this.heating, states, seen);
+      // (only the head gone, as on every tick of a flight being flown: what it had come to before it was kept, so the
+      // whole history is not gone through again every frame)
+      this.results = keep === this.settledTo ? copy(this.settled) : summarise(this.heating, states, seen);
     }
     for (let i = seen.length; i < samples.length; i++) {
       const sample = samples[i]!;
+      if (i === samples.length - 1) {
+        this.settled = copy(this.results);
+        this.settledTo = i;
+      }
       const state = i === 0 ? begin(this.heating, sample) : advance(this.heating, states[i - 1]!, sample);
       states.push(state);
       seen.push(sample);
@@ -235,6 +248,8 @@ export class HeatLog {
     return states;
   }
 }
+
+const copy = (r: HeatResults): HeatResults => ({ ...r, peaks: r.peaks.map((p) => ({ ...p })) });
 
 function blank(surfaces: number): HeatResults {
   return {

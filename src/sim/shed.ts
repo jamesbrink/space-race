@@ -5,7 +5,7 @@
  * (atmosphere.ts) and the same force model as the vehicle (forces.ts): axial drag by which end
  * leads, the push on its fins, the cross-flow on its side, so it flies end on, weathercocks or
  * tumbles as its shape and its centre of mass say, and a tumble is damped by the air it stirs.
- * A body with a rocket of its own (`motor`) burns it as it leaves. Nothing here knows any flight.
+ * A body with rockets of its own (`motors`) burns them as it leaves, together. Nothing here knows any flight.
  *
  * How it starts is a `Release` (forces.ts): where its centre of mass was on the turning stack,
  * with that point's own velocity, the stack's attitude and rates, and its share of any push. The
@@ -131,19 +131,31 @@ export function shedder(
     side: { dragArea: def.side.dragArea.value, from: def.side.from.value, to: def.side.to.value },
   };
   const ends = [def.from.value - centre, def.to.value - centre];
-  const motor = def.motor;
-  const burn = motor?.burn.value ?? 0;
-  const tail = motor?.impulse ? Math.max(0, (2 * (motor.impulse.value - motor.thrust.value * burn)) / motor.thrust.value) : 0;
-  const cant = ((motor?.cant?.value ?? 0) * Math.PI) / 180;
-  const line: Vec3 = [Math.cos(cant), 0, Math.sin(cant)];
-  const thrust = (since: number): number => {
-    if (!motor || since < 0) return 0;
-    if (since < burn) return motor.thrust.value;
-    return tail > 0 ? motor.thrust.value * Math.max(0, 1 - (since - burn) / tail) : 0;
+  // every rocket it still has (one an abort has burned is spent), each with its own burn, tail and line
+  const motors = (def.motors ?? [])
+    .filter((m) => !(m.unless === 'abort' && release.aborted))
+    .map((m) => {
+      const burn = m.burn.value;
+      const tail = m.impulse ? Math.max(0, (2 * (m.impulse.value - m.thrust.value * burn)) / m.thrust.value) : 0;
+      const cant = ((m.cant?.value ?? 0) * Math.PI) / 180;
+      return { thrust: m.thrust.value, burn, tail, line: [Math.cos(cant), 0, Math.sin(cant)] as Vec3 };
+    });
+  /** When the last of them is out, seconds from the release. */
+  const out = motors.reduce((a, m) => Math.max(a, m.burn + m.tail), 0);
+  const ZERO: Vec3 = [0, 0, 0];
+  /** What they push with together, N, in the body's axes. */
+  const thrust = (since: number): Vec3 => {
+    if (since < 0 || since >= out) return ZERO;
+    let sum = ZERO;
+    for (const m of motors) {
+      const f = since < m.burn ? m.thrust : m.tail > 0 ? m.thrust * Math.max(0, 1 - (since - m.burn) / m.tail) : 0;
+      if (f > 0) sum = add(sum, scale(m.line, f));
+    }
+    return sum;
   };
 
-  /** `push`: its rocket's thrust, N, held through a tick at what it is at the tick's middle (so a burn that ends on a tick ends there, not a stage early). */
-  const forces = (d: Dyn, at: number, still: boolean, push: number) => {
+  /** `push`: its rockets' thrust, N, in its own axes, held through a tick at what it is at the tick's middle (so a burn that ends on a tick ends there, not a stage early). */
+  const forces = (d: Dyn, at: number, still: boolean, push: Vec3) => {
     const air = windAt(d.r, d.v, at, seaLevel);
     let force: Vec3 = [0, 0, 0];
     let torque: Vec3 = [0, 0, 0];
@@ -152,10 +164,10 @@ export function shedder(
       force = turn(d.q, f.force);
       torque = f.torque;
     }
-    if (push > 0) force = add(force, turn(d.q, scale(line, push)));
+    if (push !== ZERO) force = add(force, turn(d.q, push));
     return { force, torque, air };
   };
-  const rate = (d: Dyn, at: number, still: boolean, push: number): Dyn => {
+  const rate = (d: Dyn, at: number, still: boolean, push: Vec3): Dyn => {
     const f = forces(d, at, still, push);
     return { r: d.v, v: add(gravity(d.r), scale(f.force, 1 / mass)), q: spin(d.q, d.w), w: euler(d.w, f.torque, roll, across) };
   };
@@ -220,7 +232,7 @@ export function shedder(
     const air = windAt(d.r, d.v, release.t, seaLevel);
     const state: ShedState = { t: release.t, ticks: 0, ...d, apogee: air.altitude, peakQ: air.q, landing: null };
     // let go standing on the ground: it stays where it stands
-    if (air.airspeed < 0.5 && thrust(0) <= mass * G0 && clear(d, release.t).by < 0.05) state.landing = landed(d, release.t);
+    if (air.airspeed < 0.5 && length(thrust(0)) <= mass * G0 && clear(d, release.t).by < 0.05) state.landing = landed(d, release.t);
     return state;
   };
 
@@ -229,7 +241,7 @@ export function shedder(
     const before: Dyn = { r: s.r, v: s.v, q: s.q, w: s.w };
     const air = windAt(s.r, s.v, s.t, seaLevel);
     // above the air, coasting, on the coarse grid: one long step
-    const still = air.q < LULL && air.altitude > 100_000 && s.t - release.t >= burn + tail && s.ticks % COARSE === 0;
+    const still = air.q < LULL && air.altitude > 100_000 && s.t - release.t >= out && s.ticks % COARSE === 0;
     const n = still ? COARSE : 1;
     const h = n * TICK;
     const ticks = s.ticks + n;

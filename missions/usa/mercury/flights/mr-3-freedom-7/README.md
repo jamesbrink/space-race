@@ -84,7 +84,7 @@ itself 4 % fast, so all of this is high and long with it):
 
 | Body | Leaves | Apogee | Greatest dynamic pressure | Down | Where | Speed at the sea |
 | --- | --- | --- | --- | --- | --- | --- |
-| Escape tower (537.6 kg) | 02:22.2, on its jettison rocket: 9.9 m/s ahead | 109.2 n. mi. | 65 kPa | 09:54 | 306.0 n. mi. downrange | 135 m/s |
+| Escape tower (537.6 kg) | 02:22.2, on its escape and jettison rockets together (Hammack and Heberlig, p. 15): 477 m/s ahead | 151.1 n. mi. | 75 kPa | 11:49 | 440.1 n. mi. downrange | 124 m/s |
 | Redstone booster (4,535 kg) | 02:32.3, 2.0 m/s back (its share of the 30 ft/s) | 108.4 n. mi. | 190 kPa | 09:27 | 309.2 n. mi. downrange | 170 m/s |
 | Retropack (125.3 kg) | 06:13.6, 0.9 m/s back | 100.7 n. mi. | 36 kPa | 11:06 | 289.7 n. mi. downrange | 74 m/s |
 
@@ -92,7 +92,10 @@ The booster, empty and heavy for its frontal area, weathercocks adapter first on
 outruns the spacecraft (289.4 n. mi. in the same run) by 20 n. mi.; the retropack tumbles at up
 to 110 degrees a second and comes down beside the spacecraft's track; the tower, whose centre
 of mass and centre of area are in the same place by our figures, neither weathercocks nor
-tumbles. Every drag area here is `estimated` and none of this is in any report read: where the
+tumbles. It goes 150 n. mi. beyond the spacecraft because the escape rocket fires on it: 56,500 lb-s on 1,185 lb,
+with the clamp ring already let go, so the stack feels nothing of it but the exhaust, which is not
+modelled; the tower's weight is not lightened as its rocket burns, so it is flown a little slow.
+Every drag area here is `estimated` and none of this is in any report read: where the
 booster struck is not in the Postlaunch Report's sections used here, so there is nothing to hold
 it against, and no check has been written. The real booster would also have broken up or burned
 at 190 kPa; that is not modelled.
@@ -126,7 +129,7 @@ above do not give (`trajectory.body` in [flight.ts](flight.ts)):
 | --- | --- | --- | --- |
 | Structure, ballast, damping compound along the booster | 902.6, 1,659, 1,254 lb in the tail, centre and aft sections | documented | TM X-53107, 4.2.1 and Figure 4-1 |
 | The rest of the dry booster (engine, pumps, instruments) | 4,277 lb, 55 % in the tail unit and 45 % in the aft section | estimated | the remainder of the 8,093 lb dry weight; the split is ours |
-| Liquids at liftoff | 53,965 lb, 29,250 : 24,000 between the oxygen tank (lower) and the alcohol tank | derived | liftoff weight less dry booster and capsule; the tanks' volumes at assumed densities |
+| Liquids at liftoff | 53,965 lb, 29,250 : 24,000 between the oxygen tank (lower) and the alcohol tank | derived, estimated | the total: liftoff weight less dry booster and capsule. The share between the tanks: their volumes at assumed densities, so estimated |
 | Spacecraft and tower on the stack | 2,855 lb and 1,185 lb | documented, derived | Postlaunch Report 3.1: the "orbit" weight, and the launch weight less it |
 | Tower jettison | 02:22.2 | documented | Postlaunch Report 4.1 |
 | Burning time before a propellant runs out | 143.5 s | derived | TM X-53107's nominal burn, taken as depletion |
@@ -137,13 +140,13 @@ above do not give (`trajectory.body` in [flight.ts](flight.ts)):
 | Spacecraft's normal-force slope and where it acts | 0.5 per radian, 55 in behind the centre of mass | estimated | the shield's centre of curvature (80 in, CR-649) less the centre of mass above |
 | Attitude jets: the chambers | automatic: 24 and 1 lbf each way in pitch and yaw, 6 and 1 lbf in roll, on or off. Manual: one each way an axis, throttled 4 to 24 lbf (pitch, yaw) and 1 to 6 lbf (roll) | estimated | The automatic ratings are Hammack and Heberlig's ([spacecraft.md](spacecraft.md)). The manual system's range is not in anything read: the commonly quoted figures. Every entry is `estimated` because where each chamber stands is ours |
 | Attitude jets: where they stand | pitch and yaw 1.8 m up the axis from the centre of mass, on the 32 in skin; roll 0.8 m from the axis at the centre of mass's station | estimated | ours. So by these figures a pitch or yaw chamber also pushes the spacecraft sideways (thrust over mass), and roll does not pitch |
-| Attitude jets: peroxide aboard | 32 lb automatic, 23 lb manual | estimated | not in anything read: the figures commonly quoted for the capsule |
-| Peroxide's specific impulse | 150 s | estimated | usual for 90 % peroxide over a catalyst in a small chamber; not in anything read |
+| Attitude jets: peroxide aboard | 32 lb automatic, 23 lb manual | documented | Hammack and Heberlig, pp. 7 and 8 |
+| Peroxide's specific impulse | 150 s | estimated | the delivered figure, which the flow is worked from, is not in anything read. Hammack and Heberlig (p. 7) give "a theoretical specific impulse of about 160"; 150 is taken under it for a small chamber's losses, and is ours |
 | Valve logic of the automatic chambers | a command under 0.05 opens nothing; under 0.3 the 1 lbf chamber; above, the big one | estimated | chosen (`RCS_DEAD`, `RCS_HIGH`): the ASCS's own switching levels were not found |
 | Engine's nature | liquid, one start, no throttle | estimated | what is generally said of the A-7; no page read states it |
 | Mixture ratio, oxygen to alcohol | 1.219 | estimated | not in anything read: the ratio of the two tanks' own loads, so both empty together at 147.0 s. That, not the 143.5 s above, now ends a burn nobody cuts |
 | Escape rocket | 52,000 lbf for 0.78 s, 56,500 lb-s in all | documented | McDonnell SEDR 104, as [spacecraft.md](spacecraft.md) has it. The decay after 0.78 s is taken as even (0.61 s more), and the thrust as along the axis through the centre of mass: both ours |
-| What a pilot lives through | a landing at 12 m/s; 20 g | estimated | ours, from the 30 ft/s design landing (Hammack p. 28) and the 11 g the flight itself gave; said on the card that ends a flight flown by hand |
+| What a pilot lives through | a landing at 12 m/s; 20 g | estimated | ours, from the 30 ft/s design landing (Hammack p. 25) and the 11 g the flight itself gave. The couch was tested to 25 g on a re-entry profile "with no injury to the occupant" (Hammack p. 6): a level come through, not a limit, so 20 g stays. Said on the card that ends a flight flown by hand |
 | Where the parachutes pull | 1.8 m from the centre of mass | estimated | |
 | The autopilot's gains | 20 per radian and 14 s per radian (booster); 2.2 and 3.9 (spacecraft) | estimated | chosen from the control authority; the LEV-3's were not found |
 
@@ -163,7 +166,7 @@ above, off the pad it is 12.9 g for 0.78 s, a top of 670 m at 11.5 s, the main p
 and the sea (the simulator's floor: there is no land in it but the pad) at 79 s and 9.3 m/s, the
 retropack still on. At the greatest dynamic pressure (76 s, 27 kPa) it is 9.2 g, a top of 15.6 km
 and down at 501 s. Not flown: the rocket's line being set off the centre of mass to carry the
-spacecraft aside, the tower's jettison rocket, the pad-abort sequence's own timers, and the landing
+spacecraft aside, the pad-abort sequence's own timers, and the landing
 bag. No report of a Mercury abort has been read against these numbers.
 
 **The jets.** Under the autopilot the whole flight uses 0.68 kg of the automatic system's 14.5 kg
@@ -187,20 +190,28 @@ it was survivable by the two limits in the table, which are ours.
 
 **The parachutes drawn** (`flies.chutes`, `src/viewer/chute.ts`) are the simulator's two, out when
 it lets them out. Their diameters are Hammack and Heberlig's (6 ft conical ribbon, 63 ft ringsail);
-the number of gores (8 and 48), the lengths of line and riser, the colours (orange and white by
-gore), the reefed mouth and the times to line stretch (0.35 s and 0.8 s) are `estimated` and say so in
+the main's "alternate international orange and white gores" are theirs too (p. 9; the shades drawn are ours);
+the number of gores (8 and 48), the lengths of line and riser, the drogue's colour, the reefed mouth and the times to line stretch (0.35 s and 0.8 s) are `estimated` and say so in
 [flight.ts](flight.ts). The drogue has a round canopy's profile, not a cone's; no mortar, bag or
 reserve is drawn. The main is drawn reefed for its first seven seconds, from the pilot's own
 calls in the transcript; the simulator's drag grows evenly over the nine and does not fly the
 reefed stage. The antenna canister leaves with the drogue when the main comes out.
 
 **Heating.** `src/sim/heating.ts` works the air's heat from the same run: the heat flux at the
-stagnation point of the 80 in heat shield by Sutton and Graves's equation (NASA TR R-376), and the
+stagnation point of the 80 in heat shield by Sutton and Graves's equation (NASA TR R-376: the
+equation and its constant are quoted from memory, the report not opened), and the
 temperature of each surface `trajectory.heating` names as a lump that takes its share and radiates.
-Nothing measured is held against it: no shield or shingle temperature from the flight is in the
-sources read (docs/sources.md lists where one would be), so there is no check and these are the
-model's figures alone, for the whole flight as flown above (which is 4 % fast; flux goes as the
-cube of speed).
+These are the model's figures, for the whole flight as flown above (which is 4 % fast; flux goes as
+the cube of speed, so an eighth of the peak is that alone). The record's own, for the Mercury-Redstone
+flights as a class, are Hammack and Heberlig's (p. 5), beside them here. They are not `checks`: the
+comparison was seen before any tolerance was set, so none is claimed, and no input was changed for it.
+
+| | Record (Hammack and Heberlig, p. 5) | Model | |
+| --- | --- | --- | --- |
+| Peak stagnation-point heating rate | "less than 5 Btu/ft²/sec" (57 kW/m²) | 6.9 Btu/ft² s (78.8 kW/m²) | high, by 38 % or more |
+| Total heat input to the shield | 150 Btu/ft² (1.70 MJ/m²) | 1.63 MJ/m² at the stagnation point coming down; 0.9 of that over the face | about right |
+| Heat shield's rise in temperature | "25° to 30°" (F: 14 to 17 K) | 13 K | a little low |
+| Afterbody temperatures during exit | 300 to 400 °F (422 to 478 K) | 394 K (250 °F) at its hottest | cool, by 28 to 84 K |
 
 | | Flown |
 | --- | --- |
@@ -219,12 +230,12 @@ flux over 250 kW/m² (`src/viewer/entry.ts`), so an orbital Mercury, at some 600
 | Input | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Nose radius | 80 in | documented | CR-649 |
-| Heat shield: mass behind each square metre | 46.9 kg | derived | "approximately 1-inch-thick" beryllium (Hammack and Heberlig) at 1,848 kg/m³ |
-| Beryllium's specific heat and melting point | 1,825 J/(kg K), 1,560 K | documented | handbook figures; the specific heat held constant |
+| Heat shield: mass behind each square metre | 46.9 kg | estimated | "approximately 1-inch-thick" beryllium (Hammack and Heberlig) at 1,848 kg/m³, a density quoted from memory |
+| Beryllium's specific heat and melting point | 1,825 J/(kg K), 1,560 K | estimated | handbook figures quoted from memory, the handbook not opened: to verify. The specific heat held constant |
 | Share of the stagnation flux over the shield | 0.9 | estimated | the laminar fall-off over a sphere to the rim at 27.7° |
 | Shares of the afterbody shingles, nose first and behind the shield | 0.3, 0.05 | estimated | by judgement; CR-649's measurements not read |
-| René 41 shingles: 3.35 kg/m², 452 J/(kg K), limit 1,255 K | | derived, estimated | 0.016 in (Hammack and Heberlig; CR-649); the alloy's properties as remembered |
-| Recovery compartment shingles and booster skin | 10.3 and 6.1 kg/m², shares 0.15 / 0.03 and 0.1 | derived, estimated | 0.22 in beryllium; 0.090 in 5052 aluminium (TM X-53107) |
+| René 41 shingles: 3.35 kg/m², 452 J/(kg K), limit 1,255 K | | estimated | 0.016 in (Hammack and Heberlig; CR-649); the alloy's density, specific heat and limit as remembered, none looked up |
+| Recovery compartment shingles and booster skin | 10.3 and 6.1 kg/m², shares 0.15 / 0.03 and 0.1 | estimated | 0.22 in beryllium; 0.090 in 5052 aluminium (TM X-53107); the densities and the aluminium's specific heat (880 J/(kg K)) and limit (475 K) from memory |
 | Emissivities | 0.5 beryllium, 0.85 René 41 and paint | estimated | finishes not read |
 | Temperature at liftoff | 300 K | estimated | a May morning at the Cape |
 

@@ -322,7 +322,7 @@ test('end on, the drag is the curve’s for the end that leads; the capsule at a
   near(drag([0, 0, 1000]), 0, 1e-9, 'and broadside the ends give none: that is the side’s');
 });
 
-test('the tower leaves on its rocket, ahead of the stack, and does not come back to it', (t) => {
+test('the tower leaves on both its rockets, ahead of the stack, and does not come back to it', (t) => {
   const { before, gone } = partings.find((p) => p.gone[0].on === 'tower');
   const body = shedder(TR, SITE, SEA, def('tower'), gone[0]);
   let s = body.start();
@@ -346,14 +346,53 @@ test('the tower leaves on its rocket, ahead of the stack, and does not come back
     last = gap;
   }
   const gained = length(sub(a.r, coast(rest.r, rest.v, a.t - gone[0].t, TICK).r)) - first;
-  const motor = def('tower').motor;
-  const dv = (motor.thrust.value * motor.burn.value) / gone[0].mass;
-  t.diagnostic(
-    `eight seconds on it is ${(last - first).toFixed(1)} m further ahead of the stack than it stood (${gained.toFixed(1)} m in no air); its rocket gave it ${dv.toFixed(2)} m/s`,
+  // The record's flight fires both: the escape rocket (thrust for its burn, then the rest of its impulse falling evenly
+  // to nothing) and the jettison rocket (a plain burn). Each gives its impulse over the tower's mass, and in no air the
+  // distance gained is each rocket's share as if given at the middle of its own impulse.
+  const motors = def('tower').motors;
+  assert.deepEqual(
+    motors.map((m) => m.name),
+    ['escape rocket', 'tower jettison rocket'],
   );
-  // with no air on it, it has gained what its rocket gave it for the rest of the eight seconds: a uniform burn's distance is as if all given at its middle
-  near(gained, dv * (8 - motor.burn.value / 2), 0.01, 'how far ahead in no air, by its rocket’s impulse over its mass');
+  let dv = 0;
+  let reach = 0;
+  for (const m of motors) {
+    const f = m.thrust.value;
+    const b = m.burn.value;
+    const tail = m.impulse ? (2 * (m.impulse.value - f * b)) / f : 0;
+    const impulse = f * b + (f * tail) / 2;
+    // the middle of the impulse: the flat part's at b / 2, the falling part's a third of the way along it
+    const middle = (f * b * (b / 2) + ((f * tail) / 2) * (b + tail / 3)) / impulse;
+    dv += impulse / gone[0].mass;
+    reach += (impulse / gone[0].mass) * (8 - middle);
+  }
+  t.diagnostic(
+    `eight seconds on it is ${(last - first).toFixed(1)} m further ahead of the stack than it stood (${gained.toFixed(1)} m in no air); its rockets gave it ${dv.toFixed(1)} m/s`,
+  );
+  near(gained, reach, 0.002 * reach, 'how far ahead in no air, by its rockets’ impulses over its mass');
+  assert.ok(dv > 400 && dv < 550, `several hundred metres a second: ${dv.toFixed(1)}`);
   assert.ok(last - first < gained && last - first > 0.9 * gained, 'and in the thin air there, a little less');
+});
+
+test('after an abort the escape rocket is spent: the tower goes on its jettison rocket alone', () => {
+  const { gone } = partings.find((p) => p.gone[0].on === 'tower');
+  const bare = structuredClone(def('tower'));
+  bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
+  const speedGained = (release) => {
+    const body = shedder(TR, SITE, SEA, bare, release);
+    let s = body.start();
+    for (let i = 1; i <= 800; i++) s = body.tick(s);
+    const stack = coast(release.rest.r, release.rest.v, s.t - release.t, TICK);
+    return length(sub(s.v, stack.v));
+  };
+  const jettison = bare.motors.find((m) => !m.unless);
+  near(
+    speedGained({ ...gone[0], aborted: true }),
+    (jettison.thrust.value * jettison.burn.value) / gone[0].mass,
+    0.05,
+    'the jettison rocket’s impulse over its mass',
+  );
+  assert.ok(speedGained(gone[0]) > 40 * speedGained({ ...gone[0], aborted: true }), 'and on a good flight the escape rocket fires with it');
 });
 
 test('the shed bodies of the record’s programme come down, and say where', (t) => {

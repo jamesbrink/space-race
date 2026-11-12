@@ -46,6 +46,13 @@ test('an abort off the pad says so, and is survivable by the limits taken', () =
   assert.equal(end.survivable, true);
 });
 
+test('an abort off the pad with the engine never lit does not speak of an ignition', () => {
+  // as the flight deck does it: X twice before Space (cockpit.ts)
+  const end = ended(() => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true }));
+  assert.equal(end.why[0], 'Aborted off the pad on the escape rocket: the engine was never lit.');
+  assert.match(end.how, /^Down under the main parachute/);
+});
+
 test('a flight with no limits given is not judged', () => {
   const tr = structuredClone(TR);
   delete tr.body.capsule.limits;

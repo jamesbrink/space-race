@@ -127,6 +127,8 @@ export interface Release {
   centre: number;
   /** What it left, the same instant: the two together are what there was. */
   rest?: { r: Vec3; v: Vec3; mass: number };
+  /** The vehicle had already aborted on its escape rocket when this left: a motor of the body's marked `unless: 'abort'` is spent. */
+  aborted?: boolean;
 }
 
 /**

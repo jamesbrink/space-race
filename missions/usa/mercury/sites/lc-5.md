@@ -68,7 +68,7 @@ section 10.2 (PLR below). Times are EST; "slider" is where the pad's slider read
 | 09:31:43 | | The cab is down | 0.70 | estimated | |
 | 09:31:13 to 09:32:13 | T−2 | One minute's hold: propulsion regulator pressure, relieved by cycling the vent valve | 0.64 to 0.705: the cab is still coming down | derived | PLR §10.2 |
 | 09:33:38 | T−35 s | Capsule umbilical dropped; its mast down two seconds later | 0.72 to 0.755 | derived: nothing was held after T−2 | TM X-53107 p. 7-33 |
-| 09:33:59 | ≈T−14 s | "Boom drop"; the booster's mast down two seconds later | 0.76 to 0.795 | derived | TM X-53107 p. 7-33; Hammack p. 22 |
+| 09:33:59 | ≈T−14 s | "Boom drop"; the booster's mast down two seconds later | 0.76 to 0.795 | derived | TM X-53107 p. 7-33; Hammack p. 21 |
 | 09:34:13 | T−0 | Liftoff. The tail plugs pull out of the launcher as the vehicle rises | 0.8 | documented | PLR; TM X-53107 4.2.4, Fig. 4-25 |
 | 09:44:13 | | The cherry picker folded down | 0.82 | estimated: when the pad was cleared afterwards is not recorded | |
 | 09:47:13 to 09:47:43 | | It drives off; the pad is clear | 0.91 to 1 | estimated | |
