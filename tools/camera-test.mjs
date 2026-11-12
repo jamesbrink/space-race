@@ -84,6 +84,7 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
       return {
         t: performance.now(),
         rig: cam.rig,
+        stepped: st.camStepped,
         p: v(c.position),
         dir: [-e[8], -e[9], -e[10]],
         pivot: v(cam.pivot),
@@ -103,10 +104,12 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
         clock: window.sr.clock.t,
       };
     };
-    const loop = () => {
+    // (a frame's instant is when it began, as the page's own loop has it: taken after the frame's work instead, a frame
+    // that ran long was followed by one that seemed short, and what the camera rightly made up in it read as a lurch)
+    const loop = (began) => {
       requestAnimationFrame(loop);
       if (!window.__recording) return;
-      window.__frames.push({ ...window.__probe(), did: { ...did } });
+      window.__frames.push({ ...window.__probe(), t: began, did: { ...did } });
       for (const k in did) did[k] = 0;
     };
     requestAnimationFrame(loop);
@@ -374,7 +377,7 @@ const sequences = {
 };
 
 /** Thousands of frames of mixed input, and the promises checked on every one. */
-async function soak(name, { touch = false, at = -4 } = {}) {
+async function soak(name, { touch = false, at = -4, fault = false } = {}) {
   const random = seeded(seed + (touch ? 1000 : 0) + Math.round(at));
   const pick = (list) => list[Math.floor(random() * list.length)];
   const h = await open(touch ? { touch, width: 390, height: 800 } : {});
@@ -389,7 +392,22 @@ async function soak(name, { touch = false, at = -4 } = {}) {
   const area = touch ? { x0: 30, x1: 360, y0: 60, y1: 740 } : { x0: 430, x1: 1030, y0: 140, y1: 690 };
   const spot = () => [area.x0 + random() * (area.x1 - area.x0), area.y0 + random() * (area.y1 - area.y0)];
   const KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'w', 'a', 's', 'd', 'q', 'e', 'r', 'f'];
-  for (let i = 0; i < EVENTS; i++) {
+  // The proof that the check below still catches what it is there for: with no hands on the view at all, the page is
+  // made to turn the orbiting view 0.3 radians a frame (some 18 radians a second) for a second. It must be flagged.
+  if (fault) {
+    await h.wait(2200);
+    await page.evaluate(() => {
+      let n = 60;
+      const turn = () => {
+        window.sr.stage.cam.orbit.theta += 0.3;
+        window.sr.stage.dirty = true;
+        if (--n > 0) requestAnimationFrame(turn);
+      };
+      requestAnimationFrame(turn);
+    });
+    await h.wait(1500);
+  }
+  for (let i = 0; i < (fault ? 0 : EVENTS); i++) {
     const r = random();
     const [x, y] = spot();
     if (touch && r < 0.35) await h.fingers([[x, y]], [spot()], 4 + Math.floor(random() * 6));
@@ -503,7 +521,13 @@ async function soak(name, { touch = false, at = -4 } = {}) {
       sinceAny > 0.05 &&
       (b.rig === 'orbit' || about)
     ) {
-      const rate = len(sub(sub(b.p, a.p), carried)) / dist / dt;
+      // The rate is the camera's movement over the time its rig was stepped through to make it (Stage.camStepped), not
+      // over the time between two frames as seen from here: a frame that runs long is made up for in the next, by the
+      // same law, and against the wall clock that read as a lurch. So this holds every frame's step to what the coast
+      // allows for the time it was stepped: 9 times its distance from the pivot a second (the fastest a flick is let coast).
+      const stepped = b.stepped - a.stepped;
+      const rate =
+        stepped > 0 ? len(sub(sub(b.p, a.p), carried)) / dist / stepped : len(sub(sub(b.p, a.p), carried)) > 1e-6 * dist ? Infinity : 0;
       if (rate > 9) fails['faster than the hands asked'].push([i, b.rig, rate.toFixed(1)]);
     }
   }
@@ -511,6 +535,11 @@ async function soak(name, { touch = false, at = -4 } = {}) {
   console.log(
     `\n${name}: ${EVENTS} events, ${frames.length} frames in ${seconds.toFixed(0)} s, T${frames[0].clock.toFixed(0)} to T+${frames.at(-1).clock.toFixed(0)}, by rig ${JSON.stringify(rigs)}`,
   );
+  if (fault) {
+    const caught = fails['faster than the hands asked'].length;
+    check(caught > 20, `a view turned 18 radians a second with no hand on it is caught: ${caught} frames flagged`);
+    return;
+  }
   for (const [what, list] of Object.entries(fails))
     check(!list.length, `${what}: ${list.length}${list.length ? ` e.g. ${JSON.stringify(list.slice(0, 3))}` : ''}`);
   check(!h.errors.length, `errors on the page's console: ${h.errors.length}${h.errors.length ? ` e.g. ${h.errors[0]}` : ''}`);
@@ -531,6 +560,7 @@ const soaks = {
   'soak, from the pad through liftoff': {},
   'soak, through staging': { at: 128 },
   'soak, fingers on a phone': { touch: true },
+  'proof, a turn nobody asked for': { fault: true },
 };
 for (const [name, how] of Object.entries(soaks)) if (!only || name.includes(only)) await soak(name, how);
 console.log(failed ? `\n${failed} failed` : '\nall held');

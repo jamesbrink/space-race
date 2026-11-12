@@ -1755,6 +1755,30 @@ export class Stage {
       [1, false],
       [0, false],
     ] as const;
+    // And every picture a material carries is sent to the GPU now, whether or not what wears it is shown: a hidden
+    // thing's (the cabin's panels, 4096 square) was sent when it was first drawn, in front of whoever had just zoomed
+    // in on the vehicle, and held that frame for a fifth of a second. A large one a frame, so none of this holds the page.
+    {
+      const sent = new Set<THREE.Texture>();
+      const pictures: THREE.Texture[] = [];
+      this.scene.traverse((o) => {
+        const worn = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+        for (const m of worn ? (Array.isArray(worn) ? worn : [worn]) : [])
+          for (const v of Object.values(m)) {
+            const t = v as THREE.Texture | null;
+            if (!t?.isTexture || sent.has(t) || !(t.image as { width?: number } | null)?.width) continue;
+            if ((t as THREE.CubeTexture).isCubeTexture || (t as unknown as { isRenderTargetTexture?: boolean }).isRenderTargetTexture)
+              continue;
+            sent.add(t);
+            if (!(this.renderer.properties.get(t) as { __webglTexture?: unknown }).__webglTexture) pictures.push(t);
+          }
+      });
+      for (const t of pictures) {
+        this.renderer.initTexture(t);
+        const { width, height } = t.image as { width: number; height: number };
+        if (width * height >= 1024 * 1024) await frames(1);
+      }
+    }
     for (const [i, [night, fading]] of passes.entries()) {
       for (const s of this.staged) s.everyLevel(true, fading);
       this.scenery?.everyLevel(true, fading);
@@ -2541,6 +2565,7 @@ export class Stage {
       if (!this.cam.ownsLens && this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
       // the camera: the rig in charge moves, and says where the view is from (the near plane is fitted after, fitDepth)
       this.cam.update(dt);
+      this.camStepped += dt;
       if (this.indoors > 0) this.adapt(dt, false); // (off foot again: the eye goes back to the day)
       this.lookWatched();
       this.shadeCraft();
@@ -3885,6 +3910,9 @@ export class Stage {
 
   /** For tests: nothing moves unless the camera is moved, and the sky (stars are single pixels) is hidden. */
   frozen = false;
+
+  /** For tests: the seconds the camera's rig has been stepped through in all (tools/camera-test.mjs sets a camera's movement against the time it was moved for, not against the clock's). */
+  camStepped = 0;
 
   /** For tests: a named view, turned `azimuthDeg` about the vertical and nudged `nudgeDeg` more. */
   shot(viewId: string, azimuthDeg: number, nudgeDeg = 0): void {
