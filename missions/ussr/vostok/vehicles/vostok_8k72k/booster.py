@@ -1,0 +1,207 @@
+"""Blocks B, V, G and D: the four strap-on boosters, the first stage. Each is a cone on a short
+cylinder, pushing up on the core through a ball at its tip and tied to it at the foot.
+
+Stations `s` are millimetres up the block's own axis from the middle of its tail's rim; +X is away
+from the core. The block is built in the scene's axes and hung on a node whose origin is the middle
+of its tip ball, which is what it swings about when it leaves.
+"""
+
+from __future__ import annotations
+
+import math
+
+import bpy
+from mathutils import Matrix, Vector
+
+from srlib import TAU, deg, frame, group, interior
+
+from . import engines
+from .common import (
+    BOOSTER_BAY,
+    BOOSTER_CYL,
+    BOOSTER_FUEL,
+    BOOSTER_LENGTH,
+    BOOSTER_LOX,
+    BOOSTER_R,
+    CHAMBER_AT,
+    CORE_R_TAIL,
+    MM,
+    NOZZLES,
+    RUDDER_SPAN,
+    Local,
+    V,
+    at,
+    booster_frame,
+    booster_r,
+    core_frame,
+    fin,
+    hang,
+    pivot,
+)
+
+SHELL_PARTS = ("Skin", "Frost", "Shield", "InnerWall", "Fittings", "Fasteners", "Rudder", "SteeringFairings")
+CONE = math.atan2(BOOSTER_R, BOOSTER_LENGTH - BOOSTER_CYL)  # the cone's half angle, 5.63 degrees
+NOSE = 19050.0  # where the cone ends in the neck that carries the ball
+STEER_AT = (1500.0, 24.0)  # each steering chamber: from the block's axis, and degrees either side of the rudder
+TAIL_SHIELD = 2700.0  # the polished steel on the side toward the core reaches this far up
+
+
+def shells(letter: str) -> tuple:
+    return tuple(f"Booster_{letter}_{p}" for p in SHELL_PARTS)
+
+
+def on_skin(az: float, s: float, off: float = 0.0) -> Matrix:
+    """A frame on the block's skin, in its own axes: +Z out along the normal, +Y up the slope."""
+    a = CONE if s > BOOSTER_CYL else 0.0
+    n = Vector((math.cos(a) * math.cos(az), math.cos(a) * math.sin(az), math.sin(a)))
+    r = booster_r(s)
+    return frame((Vector((r * math.cos(az), r * math.sin(az), s)) + n * off) * MM, n)
+
+
+def strip(mb: Local, az: float, s0: float, s1: float, width: float, proud: float, sunk: float = 10.0) -> None:
+    cuts = [s0, *([BOOSTER_CYL] if s0 < BOOSTER_CYL < s1 else []), s1]
+    for a, b in zip(cuts, cuts[1:]):
+        length = math.hypot(b - a, booster_r(b) - booster_r(a))
+        mb.box((width, length + 2 * sunk, proud + sunk), on_skin(az, (a + b) / 2, (proud - sunk) / 2))
+
+
+def welds(mb: Local, az: float, s0: float, s1: float, bands) -> None:
+    """A lengthwise weld from s0 to s1, broken at each frame (a station and its half width)."""
+    a = s0
+    for s, half in sorted(bands):
+        if s0 < s < s1:
+            strip(mb, az, a, s - half - 40, 22, 3, 4)
+            a = s + half + 40
+    strip(mb, az, a, s1, 22, 3, 4)
+
+
+def pod(mb: Local, p0, p1, radius: float, nose: float, segs: int = 20) -> None:
+    """A fairing: a bullet lying along the line p0 to p1, its nose buried in the skin at p0."""
+    length = (Vector(p1) - Vector(p0)).length
+    pts = [(0.0, 0.0), (radius * 0.45, nose * 0.3), (radius * 0.82, nose * 0.68), (radius, nose), (radius, length), (0.0, length)]
+    mb.lathe(pts, segs, frame(Vector(p0) * MM, Vector(p1) - Vector(p0)))
+
+
+def band(mb: Local, s: float, half: float, proud: float, segs: int = 96, arc=(0.0, TAU)) -> None:
+    r = booster_r(s)
+    mb.lathe([(r - 3, s - half - proud), (r + proud, s - half), (r + proud, s + half), (r - 3, s + half + proud)], segs, arc=arc)
+
+
+def dome(mb: Local, s: float, r: float, depth: float, up: bool, segs: int = 48, n: int = 8) -> None:
+    sign = 1 if up else -1
+    pts = [(r * math.cos(a), s + sign * depth * math.sin(a)) for a in (math.pi / 2 * k / n for k in range(n + 1))]
+    mb.lathe(pts if up else pts[::-1], segs)
+
+
+def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
+    X = booster_frame(base_z, az_deg)
+    name = f"Booster_{letter}"
+    node = pivot(name, None, X @ V(0, 0, BOOSTER_LENGTH))
+    skin, frost, shield, wall, fit, bolts, steel, rudder, fair = (Local(X) for _ in range(9))
+    lox0, lox1 = BOOSTER_LOX
+    out, inn = (-math.pi / 2, math.pi / 2), (math.pi / 2, 3 * math.pi / 2)  # the halves away from the core and toward it
+    # the tail: lacquer outside, polished steel over asbestos on the side that faces the core's fire
+    skin.lathe([(BOOSTER_R, 0), (BOOSTER_R, TAIL_SHIELD)], 48, arc=out)
+    shield.lathe([(BOOSTER_R, 0), (BOOSTER_R, TAIL_SHIELD)], 48, arc=inn)
+    skin.lathe([(BOOSTER_R, TAIL_SHIELD), (BOOSTER_R, lox0)], 96)
+    frost.lathe([(booster_r(lox0), lox0), (booster_r(lox1), lox1)], 96)
+    skin.lathe([(booster_r(lox1), lox1), (booster_r(NOSE), NOSE)], 96)
+    wall.lathe([(BOOSTER_R - 18, 0), (BOOSTER_R - 18, BOOSTER_CYL), (booster_r(lox1 + 300) - 18, lox1 + 300)], 96, flip=True)
+    shield.lathe([(BOOSTER_R - 20, 0), (BOOSTER_R, 0)], 96)  # the tail's rim
+    band(skin, 40, 30, 8, 48, out)
+    band(shield, 40, 30, 8, 48, inn)
+    band(skin, BOOSTER_BAY, 22, 6, 48, out)
+    band(shield, BOOSTER_BAY, 22, 6, 48, inn)
+    on_lacquer = ((TAIL_SHIELD + 30, 22, 6), (BOOSTER_FUEL[1], 22, 6), (lox0 - 40, 30, 8), (lox1 + 30, 20, 5))
+    for s, half, proud in on_lacquer:
+        band(skin, s, half, proud)
+    rings = (7900, 10200, 12500, 14800)  # the oxygen tank's ring welds
+    for s in rings:
+        band(frost, s, 12, 6)
+    frames = [(s, half + proud) for s, half, proud in on_lacquer] + [(s, 18) for s in rings]
+    # the nose: a neck and the ball that carries the block's thrust into the core
+    steel.lathe([(booster_r(NOSE) + 4, NOSE - 60), (52, NOSE + 30), (40, NOSE + 60), (40, BOOSTER_LENGTH - 60)], 24)
+    steel.ball((0, 0, BOOSTER_LENGTH), 84, 24, 12)
+    # lengthwise welds, a duct up the side, and two small fairings by the nose (the oxygen tank's vents)
+    for i in range(6):
+        a = deg(30 + 60 * i)
+        welds(skin, a, TAIL_SHIELD + 80, lox0 - 90, frames)
+        welds(frost, a, lox0 + 40, lox1 - 60, frames)
+    for a in (deg(120), deg(-120)):
+        strip(fit, a, TAIL_SHIELD + 80, lox0 - 80, 150, 70)
+        strip(frost, a, lox0 + 60, 15600, 150, 70)
+    for a in (deg(90), deg(-90)):
+        c, sn = math.cos(a), math.sin(a)
+        pod(
+            fair,
+            ((booster_r(17250) - 30) * c, (booster_r(17250) - 30) * sn, 17250),
+            ((booster_r(16300) + 30) * c, (booster_r(16300) + 30) * sn, 16300),
+            62,
+            420,
+            12,
+        )
+    for a in (deg(40), deg(-40)):  # hatches into the engine bay
+        fit.box((520, 600, 20), on_skin(a, 1050, -2))
+    fit.box((420, 280, 20), on_skin(deg(60), (BOOSTER_FUEL[1] + lox0) / 2 - 20, -2))  # and between the tanks
+    for s in (110, BOOSTER_BAY, TAIL_SHIELD + 30, lox0 - 40):
+        for i in range(84):
+            a = TAU * (i + 0.5) / 84
+            bolts.disc(((BOOSTER_R + 5) * math.cos(a), (BOOSTER_R + 5) * math.sin(a), s), (math.cos(a), math.sin(a), 0), 9, 5)
+    # the air rudder: one triangle on the outer side, which steers while the air is thick enough to bite
+    tip = BOOSTER_R + RUDDER_SPAN
+    fin(rudder, [(BOOSTER_R + 26, 130), (tip, 130), (tip, 330), (BOOSTER_R + 26, 1650)], 86, 26, BOOSTER_R, tip, Matrix.Identity(4))
+    fin(
+        fit,
+        [(BOOSTER_R - 60, 90), (BOOSTER_R + 150, 90), (BOOSTER_R + 150, 700), (BOOSTER_R - 60, 1150)],
+        130,
+        110,
+        BOOSTER_R,
+        BOOSTER_R + 150,
+        Matrix.Identity(4),
+    )
+    rudder.tube((BOOSTER_R + 100, 0, 420), (BOOSTER_R + 240, 0, 420), 30, 12)  # its shaft
+    # each steering chamber hangs under a fairing, either side of the rudder
+    reach, spread = STEER_AT
+    steer = []
+    for k in (-1, 1):
+        a = deg(k * spread)
+        c, sn = math.cos(a), math.sin(a)
+        steer.append((reach * c, reach * sn, a))
+        pod(fair, ((BOOSTER_R - 70) * c, (BOOSTER_R - 70) * sn, 1640), (reach * c, reach * sn, 340), 190, 620)
+    # the base: a shield with a hole for each chamber
+    shield.plate(BOOSTER_R - 12, 45, 292, [(sx * CHAMBER_AT, sy * CHAMBER_AT) for sx in (-1, 1) for sy in (-1, 1)])
+    # two ties at the foot, to locks on the core, which take the sideways loads and are let go to release the block
+    T = Local(core_frame(base_z) @ Matrix.Rotation(deg(az_deg), 4, "Z"))
+    T.mb = steel.mb
+    for k in (-1, 1):
+        T.tube((2780 - BOOSTER_R + 40, k * 520, NOZZLES + 900), (CORE_R_TAIL - 15, k * 150, NOZZLES + 900), 34, 12)
+        T.box((70, 150, 150), at(2780 - BOOSTER_R - 20, k * 520, NOZZLES + 900))
+    meshes = [
+        skin.build(f"{name}_Skin", M["lacquer"], None, sharp_angle=30),
+        frost.build(f"{name}_Frost", M["frost"], None, sharp_angle=30),
+        shield.build(f"{name}_Shield", M["shield"], None, sharp_angle=30),
+        wall.build(f"{name}_InnerWall", M["wall"], None, sharp_angle=None),
+        fit.build(f"{name}_Fittings", M["lacquer"], None, smooth=False),
+        bolts.build(f"{name}_Fasteners", M["bolt"], None),
+        steel.build(f"{name}_TipAndTies", M["steel"], None, sharp_angle=35),
+        rudder.build(f"{name}_Rudder", M["pale"], None, smooth=False),
+        fair.build(f"{name}_SteeringFairings", M["lacquer"], None, sharp_angle=None),
+    ]
+    if interior():
+        tanks, pipes = Local(X), Local(X)
+        inset = 30.0
+        for (s0, s1), deep in ((BOOSTER_FUEL, 0.25), (BOOSTER_LOX, 0.3)):
+            for s, up in ((s0, False), (s1, True)):
+                r = booster_r(s) - inset
+                dome(tanks, s, r, r * deep, up)
+                tanks.lathe([(r - 30, s), (r + inset - 19, s)], 48)
+        pipes.tube((0, 0, BOOSTER_FUEL[0] - 420), (0, 0, lox0 - 330), 150, 20)  # the oxygen's pipe, through the fuel tank
+        tanks.torus(860, 300, 200, 1985, 48)  # hydrogen peroxide
+        tanks.torus(900, 250, 95, 2300, 48)  # liquid nitrogen
+        meshes += [tanks.build(f"{name}_Tanks", M["tank"], None, sharp_angle=None), pipes.build(f"{name}_FeedPipe", M["pipe"], None, sharp_angle=40)]
+    e = group(f"{name}_Engine", None)  # the RD-107, built in the block's axes below its rim
+    engines.build(X @ at(0, 0, -NOZZLES), e, M, f"RD107_{letter}", steer, BOOSTER_FUEL[0] + NOZZLES)
+    meshes += list(e.children)
+    for obj in meshes:
+        hang(obj, node)
+    bpy.data.objects.remove(e)

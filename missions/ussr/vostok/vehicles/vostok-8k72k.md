@@ -63,7 +63,8 @@ launch vehicle".
 | Strap-on, with the nozzles | 19,800 mm | documented | Z; B; the Soviet encyclopedia text. A has 19.0 m |
 | Nozzles below the tail's rim | 600 mm | derived | the difference of the two. Used for the core as well, which is estimated |
 | Strap-on, greatest diameter | 2,680 mm | documented | M; Z; B. (A machine translation of another Russian text has "3 m") |
-| Strap-on, cylinder | 5,600 mm from the rim | estimated | K, seen side on while lying on its transporter, has about 38% of the block cylindrical; N draws 17%. Chosen between them so that the block holds its documented 39 t of propellant above a tail 2.5 m long, and clears the core |
+| Strap-on, cylinder | 5,600 mm from the rim | estimated | K, seen side on while lying on its transporter, has about 38% of the block cylindrical; N draws 17%. Chosen between them so that the block holds its documented 39 t of propellant above a tail 2.7 m long, and clears the core |
+| Strap-on tanks | fuel 2,700 to 5,150 from the rim, in the cylinder; oxygen 5,600 to 17,400: the whole cone | estimated | the layout is M's (a load-bearing cone above the tanks, oxygen over fuel, the two ring tanks and the tail below). Stations chosen to hold 13.6 m³ of kerosene and 24.4 m³ of oxygen |
 | Strap-on, cone | 13,600 mm to the tip: 5.63° half angle | derived | from the three lengths above |
 | Strap-on base, from the core's axis | 2,780 mm | estimated | V from below and N both scale to about 2,700; 2,780 is what lets a 5.6 m cylinder clear the core's tail |
 | Strap-on's lean | 3.76° | derived | tip 1,520 mm from the axis (on its bracket on the core's frame), base 2,780, over 19,200 |

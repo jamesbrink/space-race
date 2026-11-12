@@ -70,6 +70,32 @@ MAST_LAT = deg(40.0)
 RIGHT_PORT = (deg(247.0), deg(28.0))
 HAIRPIN_LAT = deg(60.0)
 
+# The instrument module's antennas: a fan of three whips by the frame, three long whips from beside the engine
+# (azimuth, spread from the axis), four ribbons standing aft.
+FAN_AZ = deg(67.5)
+FAN_RAKES = (-35.0, 0.0, 40.0)  # degrees forward of square to the axis
+FAN_LENGTH = 1400.0
+WHIPS = ((deg(22.5), 18.0), (deg(202.5), 18.0), (deg(112.5), 45.0))
+WHIP_LENGTH = 2100.0
+
+
+def _stowed() -> tuple:
+    """How far each antenna is drawn back into the hull when stowed, mm: a vector for each of `Antenna_1` to `_10`.
+    The fan and the long whips go back along their own lines, the ribbons straight forward. The distances are what
+    keeps each inside the hull or the adapter under it; they are not a record of how the antennas were folded."""
+    out = []
+    for rake in FAN_RAKES:
+        out.append(
+            (-1330.0 * math.cos(deg(rake)) * math.cos(FAN_AZ), -1330.0 * math.cos(deg(rake)) * math.sin(FAN_AZ), -1330.0 * math.sin(deg(rake)))
+        )
+    for (az, spread), back in zip(WHIPS, (1720.0, 1720.0, 1900.0)):
+        out.append((-back * math.sin(deg(spread)) * math.cos(az), -back * math.sin(deg(spread)) * math.sin(az), back * math.cos(deg(spread))))
+    out += [(0.0, 0.0, 700.0)] * 4
+    return tuple(out)
+
+
+STOWED = _stowed()
+
 SHELLS = (
     "DM_Insulation",
     "DM_Fittings",
@@ -686,7 +712,7 @@ def cone_frame(az: float, z: float, off: float = 0.0) -> Matrix:
     return frame(cone_p(az, z, off) * MM, cone_n(az, z))
 
 
-def build_instrument_module(M) -> None:
+def build_instrument_module(M, stowed: bool = False) -> None:
     g = group("InstrumentModule")
     fwd = [(MODULE_R, Z_BAND1), (SHELF_R, Z_SHELF), (DRUM_R, Z_SHELF), (DRUM_R, Z_DRUM)]
     # its forward end is a dish the sphere sits over
@@ -759,36 +785,49 @@ def build_instrument_module(M) -> None:
     dark.lathe(pm([(44, 100), (0, 100)]), 28, matrix=f)
 
     # antennas: eleven on the module
-    ant = MeshBuilder()
+    # Ten antennas, each its own node with its origin at its root (`Antenna_1` to `Antenna_10`), so that a flight
+    # can show them stowed. Under the fairing they were folded; that is not modelled: stowed, each is drawn withdrawn
+    # into the hull along `STOWED`'s vector, and a flight's data slides it out again.
+    def antenna(k: int, base: Vector, mb: MeshBuilder) -> None:
+        node = pivot(f"Antenna_{k}", g, base * MM)
+        obj = hang(mb.build(f"Antenna_{k}_Rod", M["antenna"], None, sharp_angle=None), node)
+        if stowed:
+            obj.data.transform(Matrix.Translation(Vector(STOWED[k - 1]) * MM))
+
     # three whips in a fan from one bracket on the forward cone by the frame: one square to the axis, one raked forward, one aft
-    az = deg(67.5)
+    az = FAN_AZ
     zf = Z_BAND1 + 200
     fit.box((110 * MM, 300 * MM, 110 * MM), cone_frame(az, zf, 40))
     rad = Vector((math.cos(az), math.sin(az), 0))
-    for k, rake in ((-1, -35.0), (0, 0.0), (1, 40.0)):
-        base = cone_p(az, zf + 100 * k, 90)
+    for k, rake in enumerate(FAN_RAKES):
+        ant = MeshBuilder()
+        base = cone_p(az, zf + 100 * (k - 1), 90)
         d = rad * math.cos(deg(rake)) + Vector((0, 0, 1)) * math.sin(deg(rake))
-        ant.tube(base * MM, (base + d * 1400) * MM, 6 * MM, 8)
+        ant.tube(base * MM, (base + d * FAN_LENGTH) * MM, 6 * MM, 8)
+        antenna(1 + k, base, ant)
     # three long whips trailing from beside the engine: a pair spread 18 degrees from the axis, and one at 45
-    for az, spread in ((deg(22.5), 18.0), (deg(202.5), 18.0), (deg(112.5), 45.0)):
+    for k, (az, spread) in enumerate(WHIPS):
+        ant = MeshBuilder()
         rad = Vector((math.cos(az), math.sin(az), 0))
         base = cone_p(az, Z_TAIL + 60, -6)
         d = (Vector((0, 0, -1)) * math.cos(deg(spread)) + rad * math.sin(deg(spread))).normalized()
-        ant.lathe(pm([(24, 0), (24, 40), (12, 64)]), 12, matrix=frame(base * MM, d))
-        ant.tube((base + d * 50) * MM, (base + d * 2100) * MM, 6 * MM, 8)
+        fit.lathe(pm([(24, 0), (24, 40), (12, 64)]), 12, matrix=frame(base * MM, d))
+        ant.tube((base + d * 50) * MM, (base + d * WHIP_LENGTH) * MM, 6 * MM, 8)
+        antenna(4 + k, base, ant)
     # four ribbon antennas rooted among the shutters, standing aft along the axis
     for i in range(4):
+        ant = MeshBuilder()
         az = deg(90 * i + 45)
         rad = Vector((math.cos(az), math.sin(az), 0))
         z = Z_TAIL + (620 - TAIL_R) / math.tan(AFT_SLOPE)
         fit.box((70 * MM, 70 * MM, 90 * MM), cone_frame(az, z, 20))
         hairpin(ant, cone_p(az, z, 50), Vector((0, 0, -1)), rad, 960, 400, 100, 8)
+        antenna(7 + i, cone_p(az, z, 50), ant)
     fit.build("IM_Fittings", M["frame"], g, sharp_angle=35)
     white.build("IM_Covers", M["white"], g, sharp_angle=35)
     dark.build("IM_Apertures", M["nozzle"], g)
     pipes.build("IM_Pipes", M["steel"], g, sharp_angle=None)
     bolts.build("IM_Bolts", M["bolt"], g)
-    ant.build("IM_Antennas", M["antenna"], g, sharp_angle=None)
 
     if interior():  # the sealed compartment's contents: frames of instruments and batteries
         gear = MeshBuilder()
@@ -864,8 +903,9 @@ def build_retro_engine(M) -> None:
 # ---------------------------------------------------------------------------- main
 
 
-def build(stature: float = 1570.0, lettering: str | None = None) -> str:
-    """Build the spacecraft. `stature` is the pilot's height, mm; `lettering` what is painted on his helmet."""
+def build(stature: float = 1570.0, lettering: str | None = None, stowed: bool = False) -> str:
+    """Build the spacecraft. `stature` is the pilot's height, mm; `lettering` what is painted on his helmet;
+    `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs."""
     M = materials()
     font = load_font()
     build_descent_module(M)
@@ -875,7 +915,7 @@ def build(stature: float = 1570.0, lettering: str | None = None) -> str:
     build_seat(M, stature, lettering, font)
     build_straps(M)
     build_cable_mast(M)
-    build_instrument_module(M)
+    build_instrument_module(M, stowed)
     build_gas_bottles(M)
     build_retro_engine(M)
     mark_shells(SHELLS)

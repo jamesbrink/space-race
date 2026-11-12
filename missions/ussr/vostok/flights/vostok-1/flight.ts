@@ -29,6 +29,35 @@ const outward = (node: string, az: number, degrees: number, from: number, to: nu
 /** How far the descent module is lifted off the instrument module at full explode, m. */
 const LIFT = 1.5;
 
+// The launch vehicle, as vehicles/vostok_8k72k/ has it (heights above the main nozzles' exits; the spacecraft's own
+// station 0 is 30.53 m up). Quoted here for the motions and the views; the numbers live there.
+/** The main nozzles' exits below the model's origin (the spacecraft's braking nozzle), m. */
+const BASE = 30.53;
+/** How far the vehicle hangs clear of the studio's floor, m: there is no pad under it yet. */
+const CLEAR = 2.0;
+/** Which way each strap-on stands, degrees about the long axis. Which block stood where is not known to us. */
+const BOOSTERS: [letter: string, block: string, az: number][] = [
+  ['B', 'Б', 0],
+  ['V', 'В', 90],
+  ['G', 'Г', 180],
+  ['D', 'Д', 270],
+];
+/**
+ * The instrument module's ten antennas are built stowed under the fairing (vostok_3ka.py: STOWED) and slide out as
+ * the vehicle is taken apart: each by this much, m, in the viewer's axes. They were really folded, which is not modelled.
+ */
+const ANTENNAS: [number, number, number][] = [
+  ...[-35, 0, 40].map((rake) => along(67.5, rake, 1.33)),
+  ...(
+    [
+      [22.5, 18, 1.72],
+      [202.5, 18, 1.72],
+      [112.5, 45, 1.9],
+    ] as const
+  ).map(([az, spread, by]) => along(az, spread - 90, by)),
+  ...[0, 1, 2, 3].map((): [number, number, number] => [0, -0.7, 0]),
+];
+
 const parts: Part[] = [
   {
     node: 'DescentModule',
@@ -211,6 +240,8 @@ const parts: Part[] = [
       ['Antennas', '11: 3 Signal, 4 Zarya, 2 telemetry, 2 command'],
     ],
     explode: [0, 0, 0],
+    // its antennas come out once the ship is clear of its fairing and its third stage (how they were folded is not modelled)
+    moves: ANTENNAS.map((by, i): Move => ({ kind: 'slide', node: `Antenna_${i + 1}`, by, from: 0.5, to: 0.72 })),
     order: 2,
   },
   {
@@ -237,29 +268,189 @@ const parts: Part[] = [
   },
 ];
 
+const BOOSTER_DETAIL =
+  'A cone 19.2 m long on a short cylinder, with its own RD-107: four fixed chambers and two small ones that swivel to ' +
+  'steer, all fed by one turbopump driven by steam from hydrogen peroxide. The whole cone is its oxygen tank, white with ' +
+  'frost on the morning; the kerosene is in the cylinder under it. It is not bolted on. Its tip is a steel ball in a cup ' +
+  'on the core, and its thrust holds it there; two ties at the foot keep it from swinging. At 119 seconds the engine is ' +
+  'throttled back, the ties are let go, and what thrust is left swings the foot outward until the ball drops out of its ' +
+  'cup. A vent in the nose then blows the oxygen tank’s pressure sideways to push the tip clear. Four doing this at ' +
+  'once draw a cross in the sky. The triangle at the foot is an air rudder, which steers while there is air to bite.';
+
+const launcherParts: Part[] = [
+  {
+    node: 'Fairing',
+    group: 'Third stage',
+    name: 'Fairing',
+    summary: 'Two halves, and a round hole to be thrown out through.',
+    detail:
+      'It covers the ship through the thick air and is dropped in two halves about two and a half minutes up: Gagarin ' +
+      'reported it gone at second 150 and saw the Earth in his porthole. The round opening is over hatch No. 1. He went aboard ' +
+      'through it, and had the rocket failed on the pad or low in the climb his seat would have been fired out through ' +
+      'it: the ejection seat was the launch escape system. Its outline here is from a NASA drawing; no dimensioned drawing ' +
+      'of it has been read, and the vehicle kept at Kaluga has a rounder nose.',
+    facts: [
+      ['Length', '6.6 m'],
+      ['Diameter', '2.7 m'],
+      ['Mass', 'about 0.8 t'],
+      ['Jettisoned', '150 to 156 s after liftoff'],
+      ['Opening', 'over hatch No. 1, for boarding and ejection'],
+    ],
+    explode: [0, 0, 0],
+    // the halves part square to the hatch (documented: two halves; how they hinge and how far is ours)
+    moves: [
+      outward('Fairing_Left', ENTRY.az, 26, 0.0, 0.16),
+      outward('Fairing_Right', ENTRY.az + 180, 26, 0.0, 0.16),
+      { kind: 'slide', node: 'Fairing_Left', by: along(ENTRY.az, -25, 7), from: 0.1, to: 0.36 },
+      { kind: 'slide', node: 'Fairing_Right', by: along(ENTRY.az + 180, -25, 7), from: 0.1, to: 0.36 },
+    ],
+    order: 0,
+  },
+  {
+    node: 'BlockE',
+    group: 'Third stage',
+    inside: true,
+    name: 'Block E, the third stage',
+    summary: 'One small engine that had to start in space, and did the last two kilometres a second.',
+    detail:
+      'Built in nine months of 1958 to throw a probe at the Moon, then given a longer adapter for the Vostok. To keep it ' +
+      'short its tanks are two rings, one above the other, with the engine in the hole. The RD-0109 does not swivel: the ' +
+      'stage is steered by the spent gas from its own turbine, piped to small nozzles round the foot. It burned from ' +
+      'about 300 to 676 seconds. On this flight the orbit came out 97 km higher at the top than planned, which the ' +
+      'accounts put down either to this engine burning long or to the core’s. The spacecraft’s frame rests on the ' +
+      'adapter’s rim, and the radio equipment that had ridden on the core was moved up here.',
+    facts: [
+      ['Length', '2.98 m with its adapter'],
+      ['Diameter', '2.58 m'],
+      ['Mass', '7,984 kg fuelled, 1,472 kg burnt out'],
+      ['Engine', 'RD-0109: 54.5 kN in vacuum, 121 kg'],
+      ['Burned', 'about 300 to 676 s after liftoff'],
+      ['Propellants', 'kerosene and liquid oxygen, 6.9 t'],
+    ],
+    explode: [0, -2.6, 0],
+    order: 1,
+  },
+  {
+    node: 'Interstage',
+    group: 'Third stage',
+    name: 'Lattice and deflector',
+    summary: 'Open on purpose: the third stage lights while the second is still pushing.',
+    detail:
+      'Nobody had started a liquid engine in weightlessness, where the propellant floats away from the tank outlets. So ' +
+      'Block E was lit while the core under it was still burning and holding everything down in the tanks, and only then ' +
+      'was the core cut loose. For a moment the upper engine fires straight at the top of the stage below. The fire has ' +
+      'to go somewhere: out between the struts of this lattice, turned aside by the cone on the core’s top.',
+    facts: [
+      ['Length', '1.26 m'],
+      ['Struts', '24 drawn, in 12 V’s (count from photographs)'],
+      ['Staging', 'hot: upper engine on before the lower is off'],
+    ],
+    explode: [0, -5.6, 0],
+    order: 0,
+  },
+  {
+    node: 'CoreStage',
+    group: 'Core, Block A',
+    inside: true,
+    name: 'Block A, the core',
+    summary: 'Second stage, though it lights first: it burns from the ground for five minutes.',
+    detail:
+      'Called the second stage, but its engine starts on the pad with the boosters’, because an engine that failed to ' +
+      'start on the ground could be shut down and tried again. It carries twice a booster’s propellant and burns two ' +
+      'and a half times as long. Its shape follows from the boosters round it: narrow at the foot where they crowd in, ' +
+      'widest 20 m up where their tips push on a heavy frame, so that the oxygen tank is two cones joined at their wide ' +
+      'ends. Kerosene is below, oxygen above, and the oxygen reaches the engine down a pipe through the kerosene. ' +
+      'Peroxide for the pump and liquid nitrogen to pressurise the tanks sit in rings round that pipe. Every station ' +
+      'between its ends is estimated: no drawing of it has been read.',
+    facts: [
+      ['Length', '27.5 m; 28.75 m with the lattice'],
+      ['Diameter', '2.05 m at the foot, 2.95 m at the frame'],
+      ['Mass', 'about 100 t at liftoff, 7 to 8 t empty'],
+      ['Propellant', '90 t'],
+      ['Burned', '300 s'],
+    ],
+    explode: [0, -9.5, 0],
+    order: 0,
+  },
+  {
+    node: 'CoreEngine',
+    group: 'Core, Block A',
+    inside: true,
+    name: 'RD-108',
+    summary: 'Four big chambers that cannot move and four small ones that steer.',
+    detail:
+      'Four chambers round a single turbopump: what looks like four engines is one. The pump is driven by steam made ' +
+      'from hydrogen peroxide. The four chambers are fixed. Steering is by four little chambers on trunnions at the ' +
+      'corners, fed through their own pivots, which Korolev’s own bureau designed when the engine’s builders would ' +
+      'not; they also give the last, fine push after the main chambers shut down. With the boosters’ engines that makes ' +
+      'twenty large nozzles and twelve small: thirty-two chambers lit on the ground, each by its own pyrotechnic igniter.',
+    facts: [
+      ['Thrust', '744 kN at the ground, 945 kN in vacuum'],
+      ['Specific impulse', '248 s at the ground, 315 s in vacuum'],
+      ['Chambers', '4 fixed, 4 steering of 2.5 tf'],
+      ['Chamber pressure', '5.1 MPa'],
+      ['Propellants', 'kerosene T-1 and liquid oxygen'],
+      ['Turbopump', 'one, driven by decomposed hydrogen peroxide'],
+    ],
+    explode: [0, -13.5, 0],
+    order: 0,
+  },
+  ...BOOSTERS.map(
+    ([letter, block, az], i): Part => ({
+      node: `Booster_${letter}`,
+      group: 'Strap-on boosters',
+      inside: true,
+      name: `Block ${letter} (${block})`,
+      summary: i === 0 ? 'First stage, one of four: held on by nothing but its own thrust.' : 'First stage, one of four, as Block B.',
+      detail: BOOSTER_DETAIL,
+      facts: [
+        ['Length', '19.2 m; 19.8 m with its nozzles'],
+        ['Diameter', '2.68 m'],
+        ['Mass', '43.3 t at liftoff, 3.75 t empty'],
+        ['Engine', 'RD-107: 816 kN at the ground, 998 kN in vacuum'],
+        ['Chambers', '4 fixed, 2 steering'],
+        ['Separated', '119 s after liftoff'],
+      ],
+      explode: [0, 0, 0],
+      // it swings out about its tip ball (documented; the angle is ours: far enough to show the joint), then falls behind
+      moves: [outward(`Booster_${letter}`, az, -14, 0.0, 0.2), { kind: 'slide', by: along(az, -52, 9), from: 0.14, to: 0.5 }],
+      order: 0,
+    }),
+  ),
+];
+
+const SPACECRAFT = ['DescentModule', 'InstrumentModule', 'RetroEngine'];
+
 const vehicle: ModelDef = {
   id: 'vehicle',
-  name: 'Spacecraft',
+  name: 'Vehicle',
   url: 'models/ussr/vostok/vostok-1/vehicle.glb',
-  scale: '4.40 m long · 2.43 m across · to scale',
-  // nothing of Site 1 or the launch vehicle is built yet: the spacecraft is shown by itself, as in orbit
+  scale: '38.36 m on the pad · 10.3 m across the rudders · to scale',
+  // Site 1 is not built: the vehicle is shown by itself in the studio, hanging clear of the floor as it hung in the
+  // launch system's arms, with nothing holding it
   backdrop: 'studio',
-  slider: ['As in orbit', 'Taken apart'],
+  slider: ['On the pad', 'Taken apart'],
   cutaway: true,
-  specGroups: ['Spacecraft'],
-  parts,
-  // clear of the floor by the two whips that trail from beside the engine
-  position: [0, 2.05, 0],
+  specGroups: ['Launch vehicle', 'Spacecraft'],
+  parts: [...launcherParts, ...parts],
+  position: [0, BASE + CLEAR, 0],
   // the cabin's lamp, over the instrument board
   lights: [{ position: [0.14, 3.6, 0.14], colour: 0xffe4c0, intensity: 0.2, reach: 1.7 }],
-  home: 'spacecraft',
+  home: 'stack',
   views: [
-    { id: 'spacecraft', label: 'Spacecraft', nodes: ['DescentModule', 'InstrumentModule', 'RetroEngine'] },
+    { id: 'stack', label: 'Full stack' },
+    // (heights are above the studio's floor: the nozzles' exits are CLEAR above it)
+    { id: 'base', label: 'Engines', centreY: CLEAR + 0.9, span: 9.5, from: along(35, -24, 1) },
+    { id: 'booster', label: 'Strap-on', nodes: ['Booster_B'], from: along(-55, 6, 1) },
+    { id: 'tips', label: 'Tip joints', centreY: CLEAR + 19.6, span: 4.6, from: along(-40, 14, 1) },
+    { id: 'third', label: 'Third stage', nodes: ['Interstage', 'BlockE'], from: along(60, 4, 1) },
+    { id: 'fairing', label: 'Fairing', nodes: ['Fairing'], from: along(ENTRY.az, 10, 1) },
+    // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
+    { id: 'spacecraft', label: 'Spacecraft', nodes: SPACECRAFT },
     { id: 'descent', label: 'Descent module', nodes: ['DescentModule'] },
     { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: along(ENTRY.az, 12, 1) },
     { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles'] },
-    // (framed wider than the engine itself, most of which is inside the aft cone, and from below)
-    { id: 'engine', label: 'Braking engine', centreY: 2.45, span: 2.6, from: along(250, -32, 1) },
+    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -32, 1) },
   ],
 };
 

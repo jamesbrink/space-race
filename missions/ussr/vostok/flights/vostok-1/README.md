@@ -10,13 +10,15 @@ the pilot ejecting from the descent module and landing by parachute near the Vol
 | | State |
 | --- | --- |
 | Spacecraft (3KA No. 3, as in orbit) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py) |
-| Launch vehicle (8K72K with Block E, the fairing) | not built: [vostok-8k72k.md](../../vehicles/vostok-8k72k.md) |
+| Launch vehicle (8K72K: core, four strap-ons, lattice, Block E, fairing) | **built**, every station estimated: [vostok-8k72k.md](../../vehicles/vostok-8k72k.md) |
 | Launch site (Site 1) | not built; its position only: [site-1.md](../../sites/site-1.md) |
 | Crew (Gagarin in the SK-1, to be walked as) | not built; a plain seated figure rides in the spacecraft |
 | Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies |
 
-So the viewer shows the spacecraft alone, in the studio setting, to be turned, cut open and taken
-apart. Everything below is the record that the rest will be built from.
+So the viewer shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in
+the studio setting with nothing holding it up: to be turned, cut open and taken apart the way it
+staged, down to the spacecraft as it was in orbit. Everything below is the record that the rest
+will be built from.
 
 ## What happened
 
