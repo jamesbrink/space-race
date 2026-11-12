@@ -355,7 +355,8 @@ export const CELLS: readonly [number, number] = [45, 90];
 export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
   float cellsShare(float fp) { return smoothstep(${CELLS[0].toFixed(1)}, ${CELLS[1].toFixed(1)}, fp); }
   // (smooth union: where two domes meet they run together into one mass with a crease, not two balls)
-  float cellsJoin(float a, float b) { float h = max(0.03 - abs(a - b), 0.0) / 0.03; return max(a, b) + h * h * 0.0075; }
+  float gJoin;   // how broadly two cells run together: more as a pixel takes in more of them, so the crease between two is never finer than a pixel
+  float cellsJoin(float a, float b) { float h = max(gJoin - abs(a - b), 0.0) / gJoin; return max(a, b) + h * h * 0.25 * gJoin; }
   // noise2 (field.ts) with its slope: the value, and how it changes along x and y
   vec3 cellsNoise(vec2 x, int seed) {
     vec2 i = floor(x), f = x - i;
@@ -376,7 +377,10 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
     float base = 0.3 * c0.x + 0.33 * c1.x + 0.04 + bias - cut;
     vec2 slope = 0.069 * c0.yz + 0.33 * c1.yz;
     float best = -0.1;
-    gCell = 0.0;
+    gJoin = 0.03 + 1.2 * fpq;
+    // (the breadth of the cell here, as a mean of those that reach here weighed steeply by how high each stands: the
+    // breadth of the highest alone stepped where two cells met, and what was lit by it flickered there as the eye rose)
+    float breadth = 0.0, weight = 1e-6;
     ivec2 i = ivec2(floor(p / G));
     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
       ivec2 c = i + ivec2(dx, dy);
@@ -390,7 +394,9 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
       vec2 d = p - pc;
       // (a cell as high as it is broad, to the power the dome has: a puff is low)
       float v = 0.16 * rr * sqrt(rr) * (1.0 - dot(d, d) / (rr * rr * G * G));
-      if (v > best) gCell = rr * G;
+      float wt = max(v + 0.1, 0.0); wt *= wt; wt *= wt;
+      breadth += wt * rr * G;
+      weight += wt;
       best = cellsJoin(best, v);
     }
     // the broad heaps, well inside a cloud
@@ -404,10 +410,13 @@ export const cumulusCellsGlsl = (prefix: string): string => /* glsl */ `
         float rr = min((0.3 + 0.5 * ${prefix}hash2(c, 637)) * min(0.5 + 8.0 * e, 1.0), 1.0);
         vec2 d = p - pc;
         float v = 0.2 * rr * (1.0 - dot(d, d) / (rr * rr * GB * GB));
-        if (v > best) gCell = rr * GB;
+        float wt = max(v + 0.1, 0.0); wt *= wt; wt *= wt;
+        breadth += wt * rr * GB;
+        weight += wt;
         best = cellsJoin(best, v);
       }
     }
+    gCell = breadth / weight;
     // The rim worn by finer lumps, 100 and 40 m, each left out before it is under two pixels: a cumulus's edge is
     // ragged and thins to haze, and none of its lobes is a clean ball. Only near the rim: a heap's heart is whole.
     if (fpq < 0.06 && best > -0.05) {
