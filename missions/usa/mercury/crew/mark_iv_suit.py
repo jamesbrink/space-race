@@ -279,15 +279,33 @@ class Rig:
         return self.to_frame is not None
 
     def carry(self, p: Sequence[float], limb: str | None = None) -> Vector:
-        """A rest-pose point, where the pose puts it (centimetres, the pose's frame)."""
+        """A rest-pose point, where the pose puts it (centimetres, the pose's frame). From the
+        waist down (`pelvis`, `leg`) the garment is one cloth: a point goes with the pelvis and
+        with its leg, more of it the leg's the further down it is."""
         v = Vector(p)
-        if limb:
-            for bend in self.bends.get((limb, 1 if v.x >= 0 else -1), ()):
+        sx = 1 if v.x >= 0 else -1
+        share = 0.0
+        if limb in ("pelvis", "leg"):
+            # (by height alone, from the waist down to the crotch: a hip bent double is no place for the stride's sharper line)
+            # (and nothing of it under the waist strap, which lies across the join and keeps its shape)
+            share = smooth(WAIST_Z - 2.0 - v.z, 0.0, WAIST_Z - 2.0 - PELVIS_BOTTOM)
+            ways = []
+            for part, w in (("pelvis", 1 - share), ("leg", share)):
+                if w > 1e-6:
+                    q = v
+                    for bend in self.bends.get((part, sx), ()):
+                        q = bend(q)
+                    ways.append((q, w))
+            v = sum((q * w for q, w in ways), Vector())
+        elif limb:
+            for bend in self.bends.get((limb, sx), ()):
                 v = bend(v)
         if self.to_frame is None:
             return v
         v = self.to_frame @ v
-        return self.press(v, limb) if self.press and limb else v
+        if self.press and share > 0:
+            v = v.lerp(self.press(v, "leg"), share)
+        return v
 
 
 _rig = Rig()
@@ -335,6 +353,49 @@ def finger_hinges() -> dict[str, tuple[str, Vector, Vector]]:
     return out
 
 
+PELVIS_BOTTOM = Z_CROTCH - 3.0  # the crotch of the trousers: the suit hangs this far under the body's own
+HIP_CREASE = 5.0  # either side of the line a thigh folds on, the cloth is shared between the pelvis and the thigh over this many centimetres
+
+
+def crease(x: float, y: float) -> float:
+    """The height of the line a thigh folds on, at a point `x` from the midline and `y` behind the
+    hip joints: in front it runs up and out from the crotch toward the point of the hip, as the
+    groin does; behind it lies level under the buttock, which stays with the pelvis."""
+    front = Z_CROTCH + (Z_HIP + 5.0 - Z_CROTCH) * smooth(abs(x), 2.0, 17.0)
+    back = Z_CROTCH + 1.0 + 5.0 * smooth(abs(x), 8.0, 18.0)
+    return back + (front - back) * smooth(-y, -4.0, 4.0)
+
+
+def leg_share(p: Vector) -> tuple[float, float]:
+    """How much of a rest-pose point from the waist down goes with the left leg and with the
+    right; the rest is the pelvis's. One function of place for the whole garment, so the seat of
+    the trousers, the thighs and anything laid on them move as one cloth. At the crotch's own
+    seam the two legs have half each: it stays midway between them as they part."""
+    line = crease(p.x, p.y)
+    thigh = 1 - smooth(p.z, line - HIP_CREASE, line + HIP_CREASE)
+    if thigh <= 0:
+        return 0.0, 0.0
+    # below the crotch a leg is its own; above it the two sides run into each other across the middle
+    half = 0.05 + 3.5 * smooth(p.z, PELVIS_BOTTOM - 1.0, PELVIS_BOTTOM + 6.0)
+    left = smooth(p.x, -half, half)
+    return thigh * left, thigh * (1 - left)
+
+
+def lower_weights(p: Vector) -> dict[str, float]:
+    """The joints a rest-pose point from the waist down follows: pelvis and spine above the hip's
+    crease, then thigh, shin and foot, the cloth shared across each joint over a few centimetres."""
+    left, right = leg_share(p)
+    side = "L" if p.x >= 0 else "R"
+    lower = smooth(Z_KNEE - p.z, -6.0, 6.0)
+    foot = 1 - smooth(p.z, ANKLE_Z - 2.0, ANKLE_Z + 7.0)
+    spine = smooth(p.z, SPINE_Z - 7.0, SPINE_Z + 7.0)
+    rest = 1 - left - right
+    out = {"Hips": rest * (1 - spine), "Spine": rest * spine, f"LowerLeg.{side}": lower * (1 - foot), f"Foot.{side}": lower * foot}
+    out["UpperLeg.L"] = left * (1 - lower)
+    out["UpperLeg.R"] = right * (1 - lower)
+    return out
+
+
 def joint_weights(node: str, p: Vector, share: float = 0.0) -> dict[str, float]:
     """How much of a rest-pose point of `node` follows each joint. Across a joint the cloth is
     shared between the two sides of it over a few centimetres, as a hose bends; a fitting well
@@ -347,11 +408,9 @@ def joint_weights(node: str, p: Vector, share: float = 0.0) -> dict[str, float]:
     if node == "Helmet":
         return {"Head": 1.0}
     if node == "Torso":
-        # the seat of the trousers goes a little way with each thigh, or it would stand out behind a leg swung forward
-        leg = 0.55 * (1 - smooth(p.z, Z_CROTCH, Z_HIP + 2.0)) * smooth(abs(p.x), 0.5, 6.0)
-        spine = smooth(p.z, SPINE_Z - 7.0, SPINE_Z + 7.0)
-        rest = 1 - arm
-        return {f"UpperArm.{side}": arm, f"UpperLeg.{side}": rest * leg, "Spine": rest * (1 - leg) * spine, "Hips": rest * (1 - leg) * (1 - spine)}
+        out = {joint: w * (1 - arm) for joint, w in lower_weights(p).items()}
+        out[f"UpperArm.{side}"] = arm
+        return out
     if node in ("Arms", "Gloves"):
         elbow, wrist = Vector((sx * ELBOW[0], *ELBOW[1:])), wrist_point(sx)
         along = (wrist - elbow).normalized()
@@ -364,16 +423,7 @@ def joint_weights(node: str, p: Vector, share: float = 0.0) -> dict[str, float]:
             f"Hand.{side}": lower * hand * (1 - fingers),
             f"Fingers.{side}": lower * hand * fingers,
         }
-    # legs and boots
-    thigh = smooth(Z_HIP + 4.0 - p.z, 0.0, 12.0)
-    lower = smooth(Z_KNEE - p.z, -6.0, 6.0)
-    foot = 1 - smooth(p.z, ANKLE_Z - 2.0, ANKLE_Z + 7.0)
-    return {
-        "Hips": 1 - thigh,
-        f"UpperLeg.{side}": thigh * (1 - lower),
-        f"LowerLeg.{side}": lower * (1 - foot),
-        f"Foot.{side}": lower * foot,
-    }
+    return lower_weights(p)  # legs and boots
 
 
 LIMB = {"Arms": "arm", "Gloves": "arm", "Legs": "leg", "Boots": "leg", "Torso": "pelvis"}  # which joints move a node's meshes
@@ -923,12 +973,13 @@ def build_helmet(M: dict) -> None:
 # --------------------------------------------------------------------------- torso
 
 TORSO_Z0 = 82.0
-# (z, half-width, half-depth), crotch to the neck inside the ring
+# (z, half-width, half-depth), from under the pelvis to the neck inside the ring. Below PELVIS_TOP
+# the trunk is rounded off into the thighs (Trousers), so the first rows are only what that starts from.
 TORSO = [
-    (82.0, 11.5, 8.5),
-    (84.5, 15.0, 10.6),
-    (89.0, 17.6, 12.1),
-    (95.0, 18.4, 12.6),
+    (82.0, 16.2, 11.2),
+    (84.5, 16.6, 11.5),
+    (89.0, 17.5, 12.0),
+    (95.0, 18.3, 12.6),
     (103.0, 17.4, 12.0),
     (111.0, 16.2, 11.5),
     (120.0, 17.0, 12.1),
@@ -941,6 +992,7 @@ TORSO = [
     (157.0, 10.4, 9.6),
     (159.0, 10.2, 9.4),
 ]
+WAIST_Z = 103.0  # the waist strap. Above it the garment is the Torso node's shell; from it down, the Legs node's trousers
 
 
 ZIP = ((150.0, 30.0), (107.5, -56.0))  # entry zipper: (height, azimuth in degrees), collar to waist
@@ -975,8 +1027,6 @@ def torso_tube() -> Tube:
         on_zip = abs(a - (a0 + (a1 - a0) * (z - z0) / (z1 - z0))) * 0.3 if z1 - 2 < z < z0 + 2 else 99.0  # about 0.3 cm a degree
         keep = smooth(on_zip, 2.4, 4.5)
         keep *= smooth(math.hypot(z - INLET[0], (a - INLET[1]) * 0.3), 4.0, 6.5)
-        if z < 103.5:
-            keep *= smooth(abs(a), 34.0, 48.0)  # crotch straps and their buckles
         return keep
 
     t.fold = fold
@@ -984,7 +1034,6 @@ def torso_tube() -> Tube:
     t.relief = [
         Folds(106.0 - TORSO_Z0, 118.5 - TORSO_Z0, 6, 0.46, 0.5, spread=3.0, mask=flat),
         Folds(121.5 - TORSO_Z0, 129.0 - TORSO_Z0, 4, 0.36, 3.1, -TAU / 4, spread=1.5, width=0.7, mask=flat),  # slack under the chest
-        Folds(87.5 - TORSO_Z0, 99.5 - TORSO_Z0, 4, 0.4, 1.9, spread=3.0, mask=flat),
     ]
     return t
 
@@ -1034,12 +1083,12 @@ def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]], frozen: set[int
 
 
 def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
-    """The torso and both shoulders as one skin. The torso is a grid with an armhole cut in each
+    """The torso from the waist up and both shoulders as one skin. The torso is a grid with an armhole cut in each
     side; from each hole's edge a sleeve is lofted over the shoulder and down to SLEEVE_HEM on the
     upper arm, where the Arms node's sleeve carries on from the same ring of points. Stitched to the hole
     and relaxed, the cloth runs from chest to arm without a crease."""
-    n = sides(72)
-    rows = t.rows(must=(Z_PIT - TORSO_Z0, Z_YOKE - TORSO_Z0))
+    n = trunk_sides()
+    rows = t.rows(WAIST_Z - TORSO_Z0, must=(Z_PIT - TORSO_Z0, Z_YOKE - TORSO_Z0))
     ra = min(range(len(rows)), key=lambda r: abs(rows[r] - (Z_PIT - TORSO_Z0)))
     rb = min(range(len(rows)), key=lambda r: abs(rows[r] - (Z_YOKE - TORSO_Z0)))
     jw = max(1, round(ARMHOLE / (TAU / n)))
@@ -1056,11 +1105,11 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
         for j in range(n):
             if (r, j) not in cut:
                 faces.append((r * n + j, r * n + (j + 1) % n, (r + 1) * n + (j + 1) % n, (r + 1) * n + j))
-    for r, d in ((0, rows[0]), (len(rows) - 1, rows[-1])):  # closed at the crotch and inside the neck ring
-        c = len(verts)
-        verts.append(t.centre(d))
-        uvs.append((0.0, d))
-        faces += [(c, r * n + (j + 1) % n, r * n + j) if r == 0 else (c, r * n + j, r * n + (j + 1) % n) for j in range(n)]
+    # open at the waist, where the trousers carry on from the same ring of points; closed inside the neck ring
+    r, c = len(rows) - 1, len(verts)
+    verts.append(t.centre(rows[-1]))
+    uvs.append((0.0, rows[-1]))
+    faces += [(c, r * n + j, r * n + (j + 1) % n) for j in range(n)]
 
     weight: dict[int, float] = {}
     frozen: set[int] = set()
@@ -1141,8 +1190,8 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
     mb.add([tuple(v) for v in verts], faces, uvs)
 
 
-def build_torso(M: dict) -> tuple[Vector, Vector, dict[int, Tube]]:
-    """Returns the waist inlet's mouth and axis, for the ventilator hose, and the arms' tubes."""
+def build_torso(M: dict) -> tuple[Vector, Vector, dict[int, Tube], Tube]:
+    """Returns the waist inlet's mouth and axis, for the ventilator hose, the arms' tubes and the torso's own."""
     g = group("Torso")
     shell, tape, teeth, web, steel, inlet, patch, tag = (MeshBuilder() for _ in range(8))
     t = torso_tube()
@@ -1168,14 +1217,10 @@ def build_torso(M: dict) -> tuple[Vector, Vector, dict[int, Tube]]:
     p, nm = t.at(d(146.5), az(0)), t.normal(d(146.5), az(0))
     buckle(steel, web, p, nm, (2.4, 3.6), spin=TAU / 4)
 
-    # waist strap, and two straps from it down through the crotch
-    band(web, ring(t, d(103.0), 72), 2.6, 0.4, closed=True)
-    p, nm = t.at(d(103.0), az(-14)), t.normal(d(103.0), az(-14))
+    # waist strap: it lies over the line where the shell ends and the trousers begin
+    band(web, ring(t, d(WAIST_Z), 72), 2.6, 0.4, closed=True)
+    p, nm = t.at(d(WAIST_Z), az(-14)), t.normal(d(WAIST_Z), az(-14))
     buckle(steel, web, p + nm * 0.3, nm, (3.4, 3.8))
-    for sx in (1, -1):
-        band(web, t.trace(d(101.5), d(84.6), az(sx * 25), az(sx * 9), 30), 2.2, 0.25)
-        p, nm = t.at(d(95.0), az(sx * 18.9)), t.normal(d(95.0), az(sx * 18.9))
-        buckle(steel, web, p, nm, (2.2, 3.4), spin=TAU / 4)
 
     # ventilation inlet at the left waist
     th = az(INLET[1])
@@ -1192,7 +1237,7 @@ def build_torso(M: dict) -> tuple[Vector, Vector, dict[int, Tube]]:
     emit(inlet, "Torso_InletFitting", M["aluminium"], g, sharp_angle=30)
     emit(patch, "Torso_Insignia", M["insignia"], g, sharp_angle=None)
     emit(tag, "Torso_NameTag", M["nametag"], g, sharp_angle=None)
-    return p + axis * 2.6, axis, arms
+    return p + axis * 2.6, axis, arms, t
 
 
 # ------------------------------------------------------------------------ insignia
@@ -1580,12 +1625,12 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
 
 # ---------------------------------------------------------------------------- legs
 
-# (x, y, z, radius across, radius fore-and-aft) for his left leg, from inside the hips to inside the boot
+# (x, y, z, radius across, radius fore-and-aft) for his left leg, from the hip joint (inside the pelvis) to inside the boot
 LEG = [
-    (9.5, 0.0, Z_HIP + 0.5, 6.0, 6.6),
-    (9.8, 0.0, 92.0, 7.0, 7.6),
-    (10.2, 0.0, Z_CROTCH - 3.5, 9.7, 10.2),
-    (10.8, -0.3, 75.0, 9.3, 9.8),
+    (9.6, 0.0, Z_HIP + 0.5, 7.4, 8.6),
+    (9.9, 0.0, 92.0, 8.6, 9.9),
+    (10.5, 0.0, Z_CROTCH - 3.5, 9.0, 10.2),
+    (10.9, -0.3, 75.0, 9.0, 9.7),
     (11.6, -0.8, 65.0, 8.1, 8.5),
     (12.3, -1.0, Z_KNEE, 7.0, 7.3),
     (12.8, 0.2, 43.0, 6.8, 7.2),
@@ -1615,12 +1660,231 @@ def leg_tube(sx: int) -> Tube:
     return t
 
 
-def build_legs(M: dict) -> None:
+def trunk_sides() -> int:
+    """Sides of the trunk's skin at this level of detail: the shell's and the trousers', which share the waist's ring. A multiple of four."""
+    return 4 * max(2, round(sides(72) / 4))
+
+
+def smin(a: float, b: float, k: float) -> float:
+    """The lesser of two distances, rounded off where they are within `k` of each other: two forms run into one."""
+    h = max(k - abs(a - b), 0.0) / k
+    return min(a, b) - h * h * k * 0.25
+
+
+PELVIS_TOP = Z_CROTCH + 3.0  # below this the trunk is rounded off underneath, like the bottom of an egg, down to PELVIS_BOTTOM
+FILLET = 2.0  # centimetres over which trunk and thighs run into each other
+TROUSER_HEM = 7.0  # below the crotch by this much a leg is its own tube again
+
+
+class Trousers:
+    """The garment from the waist down as one skin: the trunk, rounded off underneath, and the two
+    legs, run together where they meet, the way a pair of trousers is cut. There is a ring of
+    points at the waist (the shell's own lowest); under the crotch a seam from front to back; and
+    from the half of the trunk's lowest ring and that seam, each leg's first ring.
+
+    The surface is where a smoothed union of three forms ends: each is a stack of level sections
+    (an ellipse, squared up as the limb's own `fold` has it) and `reach` finds the edge along a
+    ray from inside. So the seat, the groin and the crotch are whatever trunk and thighs make
+    between them, with no part modelled as a block of its own."""
+
+    def __init__(self, torso: Tube, legs: dict[int, Tube]) -> None:
+        self.torso, self.legs = torso, legs
+        self.tables = {}
+        for sx, t in legs.items():
+            rows = sorted((c.z, c.x, c.y, r.x, r.y, d) for c, r, d in zip(t.centres, t.rads, t.dist))
+            self.tables[sx] = ([r[0] for r in rows], rows)
+        self.leg_top = max(zs[-1] for zs, _ in self.tables.values())
+
+    def cap(self, z: float) -> float:
+        """How much of its section the trunk has left at height z: all of it above PELVIS_TOP, none at PELVIS_BOTTOM."""
+        if z >= PELVIS_TOP:
+            return 1.0
+        return math.sqrt(max(0.0, 1 - ((PELVIS_TOP - z) / (PELVIS_TOP - PELVIS_BOTTOM)) ** 2))
+
+    def trunk(self, x: float, y: float, z: float) -> float:
+        """About how far a point is outside the trunk (negative: inside), centimetres."""
+        t = self.torso
+        cap = self.cap(z)
+        rho = math.hypot(x, y)
+        if cap < 1e-3:
+            return rho + (PELVIS_BOTTOM - z if z < PELVIS_BOTTOM else 0.0) + 0.01
+        i, f = t._row(z - TORSO_Z0)
+        rad = t.rads[i].lerp(t.rads[i + 1], f)
+        if rho < 1e-6:
+            return -min(rad.x, rad.y) * cap
+        th = math.atan2(y / rad.y, x / rad.x)
+        k = cap * (1 + (t.fold(z - TORSO_Z0, th) if t.fold else 0.0))
+        return rho * (1 - 1 / math.hypot(x / (rad.x * k), y / (rad.y * k)))
+
+    def section(self, sx: int, z: float) -> tuple[float, float, float, float, float]:
+        """A leg's level section at height z: centre x and y, radii across and fore-and-aft, and how far down its path that is."""
+        zs, rows = self.tables[sx]
+        i = min(max(bisect.bisect_right(zs, z) - 1, 0), len(zs) - 2)
+        f = min(1.0, max(0.0, (z - zs[i]) / (zs[i + 1] - zs[i])))
+        a, b = rows[i], rows[i + 1]
+        return tuple(a[k] + (b[k] - a[k]) * f for k in range(1, 6))
+
+    def leg(self, sx: int, x: float, y: float, z: float) -> float:
+        """About how far a point is outside a leg. A leg ends inside the pelvis: its top is let go of over a few centimetres."""
+        if z >= self.leg_top:
+            return 99.0
+        cx, cy, a, b, _ = self.section(sx, z)
+        qx, qy = x - cx, y - cy
+        rho = math.hypot(qx, qy)
+        lost = 4.0 * smooth(z, self.leg_top - 4.0, self.leg_top)
+        if rho < 1e-6:
+            return -min(a, b) + lost
+        return rho * (1 - 1 / math.hypot(qx / a, qy / b)) + lost
+
+    def outside(self, x: float, y: float, z: float) -> float:
+        return smin(self.trunk(x, y, z), smin(self.leg(1, x, y, z), self.leg(-1, x, y, z), FILLET), FILLET)
+
+    @staticmethod
+    def reach(f: Callable[[float], float], far: float) -> float:
+        """How far along a ray that starts inside the first edge is: f(r) is how far outside the point r along it lies. No further than `far`."""
+        step, lo = 0.6, 0.0
+        while lo < far and f(min(far, lo + step)) < 0:
+            lo += step
+        if lo >= far:
+            return far
+        hi = min(far, lo + step)
+        for _ in range(18):
+            mid = 0.5 * (lo + hi)
+            if f(mid) < 0:
+                lo = mid
+            else:
+                hi = mid
+        return 0.5 * (lo + hi)
+
+    def build(self, mb: MeshBuilder) -> None:
+        t = self.torso
+        n = trunk_sides()
+        k = max(2, round(n / 9))  # edges of the seam under the crotch
+        m = n // 2 + k  # sides of a leg
+        ths = [TAU * j / n for j in range(n)]
+        z_low = PELVIS_BOTTOM + 2.5
+        rows = t.rows(z_low - TORSO_Z0, WAIST_Z - TORSO_Z0)
+        verts: list[Vector] = []
+        uvs: list[tuple[float, float]] = []
+        faces: list[tuple[int, ...]] = []
+        # the trunk, from just over the crotch up to the waist
+        for d in rows:
+            z = TORSO_Z0 + d
+            cap = self.cap(z)
+            for th in ths:
+                own = t._skin(d, th)
+                edge = math.hypot(own.x, own.y)
+                ux, uy = own.x / edge, own.y / edge
+                r = edge * cap
+                if z < self.leg_top + 0.5:
+                    legs = lambda q, ux=ux, uy=uy, z=z: smin(self.leg(1, ux * q, uy * q, z), self.leg(-1, ux * q, uy * q, z), FILLET)  # noqa: E731
+                    r = self.reach(lambda q, r=r, legs=legs: smin(q - r, legs(q), FILLET), 40.0)
+                verts.append(Vector((ux * r, uy * r, z)))
+                uvs.append((th * 18.0, d))
+        for r in range(len(rows) - 1):
+            faces += [(r * n + j, r * n + (j + 1) % n, (r + 1) * n + (j + 1) % n, (r + 1) * n + j) for j in range(n)]
+        # a band under the shell's lowest edge backs the join, as the sleeve's does the shoulder's
+        top = (len(rows) - 1) * n
+        for lift in (0.6, 1.6):
+            base = len(verts)
+            verts += [t.at(rows[-1] + lift, th, -0.25) for th in ths]
+            uvs += [(th * 18.0, rows[-1] + lift) for th in ths]
+            faces += [(top + j, top + (j + 1) % n, base + (j + 1) % n, base + j) for j in range(n)]
+            top = base
+        # the seam under the crotch, front to back, in the plane between the legs
+        seam = []
+        for i in range(1, k):
+            a = math.pi * i / k
+            uy, uz = -math.cos(a), -math.sin(a)
+            r = self.reach(lambda q, uy=uy, uz=uz: self.outside(0.0, uy * q, z_low + uz * q), 30.0)
+            seam.append(len(verts))
+            verts.append(Vector((0.0, uy * r, z_low + uz * r)))
+            uvs.append((0.0, -r))
+        weight: dict[int, float] = {}
+        for sx in (1, -1):
+            leg = self.legs[sx]
+            loop = [(3 * n // 4 + sx * i) % n for i in range(n // 2 + 1)] + seam[::-1]
+            d_hem = self.section(sx, PELVIS_BOTTOM - TROUSER_HEM)[4]
+
+            def frame_at(d: float, leg=leg) -> tuple[Vector, Vector, Vector]:
+                side, across = leg.frames[leg._row(d)[0]]
+                return leg.centre(d), side, across
+
+            start, angle = [], []
+            for i in loop:
+                d = self.section(sx, verts[i].z)[4]
+                c, side, across = frame_at(d)
+                a = math.atan2((verts[i] - c).dot(across), (verts[i] - c).dot(side))
+                if angle:
+                    a += TAU * round((angle[-1] - a) / TAU)
+                start.append(d)
+                angle.append(a)
+            turn = 1 if (angle[-1] - angle[0]) > 0 else -1
+            off = sum(a - turn * TAU * j / m for j, a in enumerate(angle)) / m
+            even = [off + turn * TAU * j / m for j in range(m)]
+            steps = max(4, round(TROUSER_HEM / (0.9 * grain())))
+            rings = [loop]
+            for q in range(1, steps + 1):
+                u = q / steps
+                ring_ = []
+                for j in range(m):
+                    d = start[j] + (d_hem - start[j]) * u
+                    th = angle[j] + (even[j] - angle[j]) * smooth(u, 0.0, 0.8)
+                    c = leg.centre(d)
+                    own = leg._skin(d, th) - c
+                    r, way = own.length, own.normalized()
+                    if q < steps:
+                        # no further than the plane between the legs: beyond it is the other leg's
+                        far = min(40.0, (-c.x / way.x) if way.x * sx < -1e-6 else 40.0)
+
+                        def f(q_: float, c=c, way=way, r=r, sx=sx) -> float:
+                            p = c + way * q_
+                            return smin(q_ - r, smin(self.trunk(p.x, p.y, p.z), self.leg(-sx, p.x, p.y, p.z), FILLET), FILLET)
+
+                        r = self.reach(f, far)
+                    ring_.append(len(verts))
+                    verts.append(c + way * r)
+                    uvs.append((turn * TAU * j / m * 9.0, 30.0 + d))
+                    if u < 0.75:
+                        weight[ring_[-1]] = 0.5 * (1 - smooth(u, 0.2, 0.75))
+                rings.append(ring_)
+            for i in loop:
+                weight[i] = 0.5
+            # then the leg itself, down into the boot, closed at its end
+            down = leg.rows(d_hem)
+            for d in down[1:]:
+                rings.append(list(range(len(verts), len(verts) + m)))
+                verts += [leg._skin(d, th) for th in even]
+                uvs += [(turn * TAU * j / m * 9.0, 30.0 + d) for j in range(m)]
+            rings.append([len(verts)] * m)
+            verts.append(leg.centre(down[-1]))
+            uvs.append((0.0, 30.0 + down[-1]))
+            # wound to look outward, whichever way round the rings run: judged on the hem's ring, which is a plain tube there
+            a, b = rings[steps], rings[steps + 1]
+            nm = (verts[b[1]] - verts[a[0]]).cross(verts[a[1]] - verts[b[0]])
+            out = nm.dot(verts[a[0]] - leg.centre(d_hem)) > 0
+            for a, b in zip(rings, rings[1:]):
+                for j in range(m):
+                    j1 = (j + 1) % m
+                    quad = (a[j], b[j], b[j1], a[j1]) if out else (a[j], a[j1], b[j1], b[j])
+                    quad = tuple(dict.fromkeys(quad))
+                    if len(quad) >= 3:
+                        faces.append(quad)
+        # the trunk's rows nearest the crotch settle with the legs' first rings
+        for r in range(min(4, len(rows) - 2)):
+            for j in range(n):
+                weight[r * n + j] = max(weight.get(r * n + j, 0.0), 0.5 * (1 - r / 4))
+        relax(verts, faces, weight, max(2, round(6 / grain())))
+        mb.add([tuple(v) for v in verts], faces, uvs)
+
+
+def build_legs(M: dict, torso: Tube) -> None:
     g = group("Legs")
     legs, strips, cords, eyelets, flap, snaps = (MeshBuilder() for _ in range(6))
+    tubes = {sx: leg_tube(sx) for sx in (1, -1)}
+    Trousers(torso, tubes).build(legs)
     for sx in (1, -1):
-        t = leg_tube(sx)
-        t.mesh(legs, 40)
+        t = tubes[sx]
         d_knee = t.key_d(5)
         out = t.toward((sx, 0.15, 0), d_knee)
         lacing(t, t.key_d(2) + 5.0, d_knee - 8.5, out, 2.6, strips, cords, eyelets)
@@ -1634,7 +1898,7 @@ def build_legs(M: dict) -> None:
                 for s in (-0.4, 0.4):
                     snaps.disc(t.at(d, th + s, 0.25), t.normal(d, th + s), 0.4, 0.3, 10)
 
-    emit(legs, "Legs_Trousers", M["suit"], g)
+    emit(legs, "Legs_Trousers", M["suit"], g, sharp_angle=None)
     emit(strips, "Legs_LacingStrips", M["webbing"], g)
     emit(cords, "Legs_LacingCords", M["lace"], g)
     emit(eyelets, "Legs_Eyelets", M["steel"], g)
@@ -1846,11 +2110,11 @@ def build_ventilator(M: dict, inlet: Vector, axis: Vector) -> None:
 def build_figure(ventilator: bool) -> None:
     M = materials()
     build_helmet(M)
-    inlet, axis, arms = build_torso(M)
+    inlet, axis, arms, torso = build_torso(M)
     _rig.inlet = (inlet, axis)
     build_arms(M, arms)
     build_gloves(M, arms)
-    build_legs(M)
+    build_legs(M, torso)
     build_boots(M)
     if ventilator:
         build_ventilator(M, inlet, axis)
@@ -1930,7 +2194,8 @@ def seated_rig() -> Rig:
             return p
         wall = LAP_CREASE - LAP_SLOPE * max(0.0, p.z - LAP_SKIN)
         over = (p.y - wall) / 1.2
-        return Vector((p.x, wall + 1.2 * (math.log1p(math.exp(over)) if over < 30 else over), p.z))
+        # (what is pressed back keeps a little of its depth, so the cloth gathered there lies in layers and not all in one plane)
+        return Vector((p.x, wall + 1.2 * (math.log1p(math.exp(over)) if over < 30 else over) + 0.15 * min(0.0, p.y - wall), p.z))
 
     rig.press = press
     return rig
@@ -1994,9 +2259,9 @@ def seated_key_points() -> dict:
         "hands": both(lambda sx: rig.carry(palm_centre(sx), "arm")),
         "grips": both(lambda sx: rig.carry(palm_rest(sx), "arm")),
         "wrists": both(lambda sx: rig.carry(wrist_point(sx), "arm")),
-        "back_plane_z": lowest("Torso_Shell"),
-        "seat_y": max(p.y for p in pts["Torso_Shell"]),
-        "thigh_back_y": max(p.y for p in pts["Legs_Trousers"] if p.z < 15),
+        "back_plane_z": min(lowest("Torso_Shell"), lowest("Legs_Trousers")),
+        "seat_y": max(p.y for p in pts["Legs_Trousers"] if p.z < 2.0),  # under the pelvis: the seat of the trousers, behind the hip joints' line
+        "thigh_back_y": max(p.y for p in pts["Legs_Trousers"] if 6.0 < p.z < 15),  # the backs of the thighs, clear of the seat
         "sole_y": max(p.y for p in soles),
         "extent_min": tuple(min(p[i] for ps in pts.values() for p in ps) for i in range(3)),
         "extent_max": tuple(max(p[i] for ps in pts.values() for p in ps) for i in range(3)),

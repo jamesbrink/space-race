@@ -34,6 +34,8 @@ suit was found.
 | Boot heel | 2.8 cm | estimated | |
 | Helmet over the crown | 6.0 cm | estimated | liner, shell and clearance |
 | Knee, crotch, hip, shoulder heights | 0.285, 0.47, 0.530, 0.818 of stature, plus the heel | derived | Drillis and Contini's segment proportions, quoted from memory; crotch ratio is a guess |
+| Crotch of the trousers | 3 cm under the body's own (84.5 cm) | estimated | a soft suit hangs; chosen by eye against the walk-out photographs |
+| Hip joints | 19.2 cm apart | estimated | about 0.72 of the breadth between the points of the hips, as hip-joint-centre regressions have it (Bell and others, 1990), for a man 1.80 m tall; quoted from memory |
 | Arm and leg lengths, joint positions | | derived | same proportions |
 | Suit girths (chest 39 x 28 cm, thigh 19 cm, upper arm 13 cm across) | | estimated | a 1.80 m man plus about 2 cm of suit |
 | Head | 15.2 cm wide, 19.2 cm deep, 22 cm tall before the features | estimated | a textbook adult head |
@@ -60,10 +62,10 @@ suit was found.
 | Node | What it is |
 | --- | --- |
 | `Helmet` | white fibreglass shell with earphone bulges, visor and frame, visor pivots, aluminium neck ring, suit outlet low on the right, seal connector by the left jaw; inside it the head, communications cap and lip microphone |
-| `Torso` | shell with both shoulders (one skin, down to a hem on each upper arm), entry zipper, helmet tie-down strap, waist strap, two crotch straps, buckles, the waist inlet fitting, the NASA insignia and the name tag on the right chest |
+| `Torso` | shell from the waist up with both shoulders (one skin, down to a hem on each upper arm), entry zipper, helmet tie-down strap, waist strap and its buckle, the waist inlet fitting, the NASA insignia and the name tag on the right chest |
 | `Arms` | sleeves from the hem down, lacing strips on upper arm and forearm, the pressure gauge and its strap on the left forearm |
 | `Gloves` | cuff, palm, four knuckled fingers, thumb and its web each hand; wrist zipper; restraint strap |
-| `Legs` | trousers, lacing strips on thigh and calf, biomedical flap on the right thigh |
+| `Legs` | the trousers from the waist strap down: seat, crotch and both legs as one skin; lacing strips on thigh and calf, biomedical flap on the right thigh |
 | `Boots` | uppers, tongues, soles and heels, laces on hooks |
 | `Ventilator` | case, handle, latches, louvres, hose to the waist inlet |
 
@@ -89,7 +91,7 @@ torso, shoulders and upper arms do not move.
 | Elbow | 21.5° of flexion, hinge turned 20.5° in | estimated | puts the middle of each palm on a hand controller's knob: 27.2 cm off the centre line, 9.3 cm toward the feet from the hips, 14.7 cm above them |
 | Forearm | turned 62° palm down, wound into the elbow's folds | estimated | so the palm lies on the knob. On MR-3 the glove could not turn at the wrist; the turn is in the sleeve |
 | Grip | fingers flexed about 46°, 56° and 32° at their three joints, thumb brought round | estimated | a hand closed on a knob of about 2.3 cm radius |
-| Seat of the suit | rolled 40° under | estimated | so the torso's lower end does not stand out behind the raised thighs |
+| Seat of the suit | rolled 40° under | estimated | so the seat of the trousers does not stand out behind the raised thighs. From 2 cm under the waist strap down to the crotch the cloth goes over from the pelvis's roll to the thigh's bend, by height |
 
 `seated_fits(y_hip_in, z_hip_in)` gives the smallest gap to a pressure wall of radius
 35.97 − 0.364 z inches. **The pose is the cabin's, not the record's**: with the helmet an inch from
@@ -143,10 +145,19 @@ Hips ─ Spine ─ Head
 | `Foot` | ±13.5, 0.5, 10.0 | estimated | the ankle, in the boot |
 
 Across a joint the cloth is shared between its two sides over a few centimetres (12 at the knee,
-10 at the elbow, 5 at the wrist, 9 at the ankle, 12 below the hip, 14 at the waist). The shoulder is one
+10 at the elbow, 5 at the wrist, 9 at the ankle, 14 at the waist). The shoulder is one
 skin with the torso: its share of the arm runs from half at the armhole's edge to all of it a
-third of the way down to the hem, and the torso gives way for 7 cm round the hole. The seat of
-the suit goes up to 55% with each thigh. All of these are chosen to look right in a stride.
+third of the way down to the hem, and the torso gives way for 7 cm round the hole.
+
+**The hip.** From the waist down the garment is one skin (`Trousers`): the trunk, rounded off
+underneath, and the two legs run into each other over 2 cm, with a seam of points under the crotch
+from front to back, as trousers are cut. It is shared between the pelvis and each thigh across the
+line a thigh folds on (`crease`), 5 cm either side of it: in front that line runs up and out from
+the crotch toward the point of the hip, as the groin does; behind it lies level under the
+buttock, which stays with the pelvis. Under the crotch the two legs have half each, so the seam
+stays midway between them as they part. One function of place gives the weights for the shell,
+the trousers and whatever is laid on them (`lower_weights`). All of these are chosen to look
+right in a stride, at a run, sitting and on a ladder.
 
 ### Carrying
 
@@ -199,8 +210,17 @@ hand; keeping it hanging plumb is the viewer's to do.
 - **Both middle fingers are straight.** NASA's sheet says the left only (see the table).
 - **Strap layout is a guess.** NASA's procedure names underarm, shoulder-to-shoulder and
   shoulder-to-side straps, neck zippers, a waist zipper and ankle zippers; none of those is
-  modelled. The waist strap and the two crotch straps are there because photographs show
-  webbing in that area, not because their routing was traced.
+  modelled. The waist strap is there because photographs show webbing in that area, not because
+  its routing was traced. Two straps from it down through the crotch, which the model had until
+  the trousers were made one skin, are gone: GPN-2000-001012 shows plain cloth there, and with
+  the waist strap they drew a nappy.
+- **Where `Torso` ends and `Legs` begins** (the waist strap) is the model's division too. The
+  shell's lowest ring of points is the trousers' highest, the strap lies over it and a band of the
+  trousers 2.5 mm underneath backs the join. The suit itself was one garment; it did have a
+  zipper round the waist, which is not modelled.
+- **The seat and crotch are what trunk and thighs make between them**, not the suit's pattern:
+  no gusset, no fly, no seams. The trunk is an egg's lower end; where it and the two thighs come
+  within 2 cm they are run together.
 - **Lacing strips** sit on the outside of each limb. Their real number and placement were not checked.
 - **The wrist zipper reads as a ring** at a distance. There is no ring on this suit.
 - **The helmet is a smooth egg.** No visor latch, no communications lead, and the liner is a
@@ -236,8 +256,9 @@ hand; keeping it hanging plumb is the viewer's to do.
   helmet turns with `Head`, neck ring and all, though the real ring was fixed to the suit and the
   head turned inside it. No joints in the fingers, toes, collarbones or along the spine. A fitting
   that lies across a joint (the waist strap, the glove's cuff and zipper, the boot's lacing at
-  the ankle) bends with it. Checked in a stride and at a run; a thigh raised to the horizontal
-  was not.
+  the ankle) bends with it. Checked in a stride, at a run, sitting at a wheel, on a ladder and
+  getting up from the ground. With a thigh raised level the cloth in the groin sinks rather than
+  bunches.
 - No mass properties.
 
 ## Sources
