@@ -1,5 +1,4 @@
 import type * as THREE from 'three';
-import { WORLD_MATRIX } from './batch';
 import { NOISE } from './space';
 
 /**
@@ -93,10 +92,7 @@ export function mark(mesh: THREE.Mesh): THREE.Material | null {
     // where it is in the scene's frame: drawn from the eye, so the eye is added back (origin.ts: uOrigin)
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vMarkAt;')
-      .replace(
-        '#include <project_vertex>',
-        `#include <project_vertex>\n${WORLD_MATRIX}vMarkAt = (srWorldMatrix * vec4(transformed, 1.0)).xyz + uOrigin;`,
-      );
+      .replace('#include <project_vertex>', `#include <project_vertex>\nvMarkAt = (modelMatrix * vec4(transformed, 1.0)).xyz + uOrigin;`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vMarkAt;\n${NOISE}`)
       .replace(
@@ -127,10 +123,7 @@ export function grain(material: THREE.Material): void {
     // drawn from the eye: the eye is added back for a place in the scene's frame (origin.ts: uOrigin)
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vGrainAt;')
-      .replace(
-        '#include <project_vertex>',
-        `#include <project_vertex>\n${WORLD_MATRIX}vGrainAt = (srWorldMatrix * vec4(transformed, 1.0)).xyz + uOrigin;`,
-      );
+      .replace('#include <project_vertex>', `#include <project_vertex>\nvGrainAt = (modelMatrix * vec4(transformed, 1.0)).xyz + uOrigin;`);
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',

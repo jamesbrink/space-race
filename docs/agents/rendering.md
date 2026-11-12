@@ -235,7 +235,7 @@ build) narrow it; the header of the file lists the rest.
   identical to the last bit, a few (cloud from above) wander by a level or two.
 - So **anything that changes how the scene is drawn keeps a switch** for as long as it is being
   judged: `?plain` in the address does everything the old way (the load as well), and each has its
-  own flag on the stage (`sr.stage.glazing.enabled`, `sr.stage.batches.enabled`).
+  own flag on the stage (`sr.stage.glazing.enabled`).
 
 What has been found, so it is not found again:
 
@@ -267,21 +267,20 @@ What has been found, so it is not found again:
   seven seconds. Twins now share a shader unless their materials are patched differently (the material's own
   `customProgramCacheKey` says so), which is nineteen programs, and `Stage.prebuild` asks for the other look's
   at the end of `warm`, to be built behind what is on show: the first change of look is one frame.
-- The pad's frame at 1440x900 is bound by the CPU, not the GPU: three's work per draw call. `viewer/batch.ts`
-  draws every mesh of a material in one multi-draw (1422 calls to 676 on the pad, 978 to 339 in a shadow redraw:
-  12 to 15 % of the frame) with the meshes themselves left in the scene for everything that asks about them. It
-  is **off** (`?batch` turns it on), for two reasons the bench gives. Where little of what is batched is in view
-  (the flight from T+40 on, on foot) it costs 2 to 5 % instead: every instance is still looked at each frame. And
-  it is not the same picture to the last bit: each instance is given the very matrices three would give its mesh
-  and the order of drawing is three's, and still 1 to 37 pixels in 1.3 million differ in a frozen frame (331 in one
+- **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame at 1440x900 is
+  bound by the CPU (three's work per draw call), so a batch per material per file was built, with the meshes left
+  in the scene on a layer the camera did not see (so picking, outline, cutaway, moves, levels of detail and
+  collision asked the same objects) and each instance given the very matrices three gives a mesh, from a texture,
+  in three's own draw order. It took the pad from 1422 calls to 676 and 12 to 15 % off its frame, and it lost: 2
+  to 5 % slower in 15 of 50 scenario-looks (wherever little of what was batched was in view, every instance was
+  still looked at every frame), and never the same picture: 1 to 37 edge pixels in 1.3 million differed (331 in one
   cel view), because the GPU's compiler rounds the batched shader's vertices one bit apart from the unbatched
-  one's. The file's header has the whole of it, and what `invariant gl_Position` does about it. To be worth
-  switching on it wants a bound for each batch, so that one out of view is passed over in one test, and a decision
-  about those pixels. What it taught, whether or not it is switched on: a texture written every
-  frame must not be the one the last frame drew from (the driver waits for the GPU: 3 ms; `RING`); a batch that
-  three is left to walk past costs ten microseconds in every pass, so what is out of view must be `visible =
-  false` before the draw begins (`scene.onBeforeRender`); and where two faces are at one depth the later draw is
-  the one seen, so the order of draws within a material is part of the picture.
+  one's. `invariant gl_Position` made them agree exactly but moved 300,000 depths and 2,000 pixels against today's
+  picture. What it taught is worth keeping: a texture written every frame must not be the one the last frame drew
+  from (the driver waits for the GPU: 3 ms); an object three is left to walk past costs ten microseconds in every
+  pass; where two faces are at one depth the later draw is the one seen, so draw order is part of the picture; and
+  two shader variants of one material do not round alike. Do not build it again without a per-batch bound and a
+  ruling on those pixels.
 
 ## The Earth from height
 

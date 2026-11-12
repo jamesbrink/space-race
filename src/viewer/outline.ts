@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
-import { PROXY_LAYER } from './batch.ts';
 
 /**
  * The line round what is hovered or selected.
@@ -131,9 +130,6 @@ export class Outline extends OutlinePass {
     if (depth && this.selectedObjects.length) shownMeshes(this.selectedObjects, this.renderScene, this.meshes);
     if (!this.meshes.length || !depth) return;
 
-    // (the meshes a batch draws are on a layer of their own, batch.ts: here they are drawn one by one, as they always were)
-    const layers = this.renderCamera.layers.mask;
-    this.renderCamera.layers.enable(PROXY_LAYER);
     renderer.getClearColor(this.was);
     const alpha = renderer.getClearAlpha(),
       autoClear = renderer.autoClear;
@@ -161,7 +157,6 @@ export class Outline extends OutlinePass {
     renderer.clear();
     renderer.render(this.only, this.renderCamera);
     this.meshes.length = 0;
-    this.renderCamera.layers.mask = layers;
 
     // From here on it is three's pass, step for step.
     const quad = this.quad;

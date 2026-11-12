@@ -12,7 +12,6 @@ import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
-import { Batches, PROXY_LAYER } from './batch';
 import { Cabin, type CabinThing } from './cabin';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
@@ -309,10 +308,6 @@ export class Stage {
   private readonly looks = new Looks();
   /** Every pane of glass, each drawn as two meshes so that three need not look its material up again twice a frame (panes.ts). */
   readonly glazing: Panes;
-  /** The meshes of each material drawn in one call (batch.ts): the meshes themselves stay, and are only not drawn. */
-  readonly batches: Batches;
-  /** Models that are not batched: a figure that is walked as is posed bone by bone, and drawn into the shadow map alone. */
-  private readonly unbatched = new Set<string>();
   private shadowsOwed = false;
   /** What is still on its way after `load` returns: coarser levels of detail, the place round the pad. */
   private arriving: Promise<unknown>[] = [];
@@ -429,15 +424,10 @@ export class Stage {
     this.renderer.localClippingEnabled = true;
     this.renderer.info.autoReset = false; // counted per frame drawn, across every pass (stats())
     this.glazing = new Panes(this.renderer, (mesh, real) => this.looks.give(mesh, real));
-    this.batches = new Batches(this.scene, (batch) => this.looks.add(batch));
-    this.raycaster.layers.enable(PROXY_LAYER); // (a mesh a batch draws is still what a ray meets)
     // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
     const query = new URLSearchParams(location.search);
     this.plain = query.has('plain');
     if (this.plain) this.glazing.enabled = this.held = false;
-    // (batches are off unless asked for with `?batch`, until they are shown to leave every pixel as it was: `?batch=<n>` also sets the fewest meshes worth one)
-    this.batches.enabled = query.has('batch') && !query.has('plain');
-    if (query.get('batch')) this.batches.least = Number(query.get('batch'));
 
     // models are Draco-compressed; the decoder is served from public/draco (the WebAssembly build, run in up to four
     // workers), and is fetched now, beside the first model, not after it has arrived
@@ -453,7 +443,6 @@ export class Stage {
     // the whole place has shadows, under the fine map (shadows.ts): its light comes after the Sun and gives none
     this.far = new FarShadow(this.renderer, this.sun, () => this.shadowed());
     this.scene.add(this.far.light, this.far.light.target, this.far.sky, this.far.sky.target);
-    this.batches.lights.push(this.sun, this.far.light as typeof this.sun, this.far.sky as typeof this.sun); // (the lights whose maps the batches' meshes are drawn into)
 
     // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
     // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
@@ -626,8 +615,6 @@ export class Stage {
   async load(flight: FlightData, onProgress?: (fraction: number, parts?: LoadPart[]) => void): Promise<void> {
     // The bar is weighted by bytes once every model's size is known (the fetch's Content-Length); until then it is their average.
     const parts: LoadPart[] = flight.models.map((m) => ({ label: m.name, fraction: 0, loaded: 0, total: 0 }));
-    for (const m of flight.models)
-      if (m.walker) for (let level = 0; level <= LOD_ABOVE.length; level++) this.unbatched.add(lodUrl(m.url, level));
     const scenes = await Promise.all(
       flight.models.map((m, i) =>
         this.fetch(m.url, (f, loaded = 0, total = 0) => {
@@ -858,7 +845,6 @@ export class Stage {
     });
     for (const pane of clear) this.glazing.add(pane);
     this.looks.add(object);
-    if (!this.unbatched.has(url)) this.batches.add(object);
   }
 
   /**
@@ -2494,7 +2480,6 @@ export class Stage {
     this.ink.range(this.camera);
     this.renderer.info.reset();
     this.drawn++;
-    this.batches.prepare(); // (what each batch draws this frame: what is shown, as it stands now)
     this.setting.view?.(this.camera);
     const unshake = this.shaker?.(this.camera, backdrop.camera);
     this.far.before(this.walk.active ? (this.staged[this.walked]?.group ?? null) : null, this.frozen);

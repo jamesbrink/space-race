@@ -267,7 +267,7 @@ const noLoad = flag('--no-load');
 const noSoak = flag('--no-soak');
 const config = opt('--config', null); // another Vite config to build with
 const SOAK = Number(opt('--soak', 60));
-// a switch thrown in the page for the pictures: `--toggle "sr.stage.batches.enabled = true" --toggle-off "sr.stage.batches.enabled = false"`
+// a switch thrown in the page for the pictures: `--toggle "sr.stage.glazing.enabled = true" --toggle-off "sr.stage.glazing.enabled = false"`
 const toggle = opt('--toggle', null);
 const toggleOff = opt('--toggle-off', '');
 const vite = join(ROOT, 'node_modules/.bin/vite');

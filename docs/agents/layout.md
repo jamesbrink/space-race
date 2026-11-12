@@ -48,7 +48,6 @@ src/
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
-  viewer/batch.ts                     every mesh of a material in one draw call, each as it was drawn alone (off until its last pixels are settled: `?batch`)
   viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
   viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/ragdoll.ts                   a figure gone limp after a long fall: points, sticks, and the bones laid along them
