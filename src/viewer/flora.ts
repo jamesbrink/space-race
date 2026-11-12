@@ -530,6 +530,35 @@ export class Flora {
     return changed;
   }
 
+  /**
+   * How far a point (in this group's frame) is from the nearest plant, if that is under `within` metres: each plant
+   * taken as an upright capsule as tall as its species grows and as wide as its form spreads (a palm's crown, a
+   * shrub as wide as it is tall). Plants are not solid, so nothing else can say how near one is; whoever sets a
+   * near plane asks, or it cuts the shrub the camera is passing. Only tiles already made are asked: the ones round the eye.
+   */
+  clear(point: THREE.Vector3, within: number): number {
+    let best = within;
+    for (const layer of LAYERS)
+      for (const tile of this.tiles[layer].values())
+        for (const batch of tile) {
+          const species = this.spec.species[batch.species]!;
+          const tall = species.height[1];
+          const wide = species.form.kind === 'palm' ? 0.35 * tall : tall;
+          const b = batch.box;
+          const dx = Math.max(b[0]! - point.x, 0, point.x - b[3]!),
+            dy = Math.max(b[1]! - point.y, 0, point.y - b[4]! - tall),
+            dz = Math.max(b[2]! - point.z, 0, point.z - b[5]!);
+          if (Math.hypot(dx, dy, dz) - wide >= best) continue;
+          const at = batch.places;
+          for (let k = 0; k < batch.count; k++) {
+            const up = Math.min(Math.max(point.y - at[k * 3 + 1]!, 0), tall); // the nearest point of its axis
+            const d = Math.hypot(point.x - at[k * 3]!, point.y - at[k * 3 + 1]! - up, point.z - at[k * 3 + 2]!) - wide;
+            if (d < best) best = Math.max(0, d);
+          }
+        }
+    return best;
+  }
+
   /** The plants of one layer on one tile, made the first time they are wanted. */
   private tile(layer: Layer, i: number, j: number): Tile {
     const key = tileKey(i, j);

@@ -726,6 +726,7 @@ export function buildCape(
   view: (camera: THREE.Camera) => void;
   /** The ground's height at a point in the world (the pad's frame): flat at `groundY` wherever anything is built. */
   groundAt: (x: number, z: number) => number;
+  plantsClear: (at: THREE.Vector3, within: number) => number;
 } {
   // the haze lies in the lowest air, under the cumulus at 720 m, and thins upward (air.ts)
   const air: Air = { scale: HAZE_SCALE, base: groundY + SEA, clouds: CLOUDS };
@@ -763,6 +764,7 @@ export function buildCape(
       return flora.attend(eye);
     },
     view: (camera) => land.view(camera),
+    plantsClear: (at, within) => flora.clear(local(at), within),
     groundAt: (x, z) => {
       // the world point on the compass: the inverse of the site's turn
       const cx = x * COS - z * SIN,

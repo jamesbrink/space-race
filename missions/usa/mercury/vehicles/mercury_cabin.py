@@ -672,7 +672,7 @@ def build(
     # The suit's neck, closed: from his own eyes, with his helmet and head not drawn, the pilot looks down into his
     # collar, and what is there is the neck dam of the suit, not the hollow of the model's torso.
     neck = seat(pilot["neck_ring"])
-    c.into("CrewCabin_Looms").lathe(
+    c.into("CrewCabin_Hoses").lathe(
         prof([(4.7, 0.0), (3.0, 0.5), (0.0, 0.7)]), 24, matrix=frame(Vector((neck.x, neck.y + 0.6, neck.z)) * IN, (0, -1, 0))
     )
     P = plane(Vector(PANEL_AT), Vector((1, 0, 0)), Vector((0, -1, 0)))

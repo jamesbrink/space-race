@@ -85,6 +85,8 @@ const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const spin = new THREE.Quaternion();
 /** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
 const WALK_SHADOW = 26;
+/** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
+const NEAR_LEAST = 0.03;
 /** Texels along a side of the Sun's shadow map, as the orbiting views use it. */
 const SHADOW_MAP = 4096;
 /** Triangles a millisecond at which a geometry's hierarchy is taken to be made, when deciding whether one fits in the time to spare (`growTrees`): half what is measured. */
@@ -2025,12 +2027,45 @@ export class Stage {
       far = Math.max(far, 1.05 * (to + flier.sphere.radius));
       near = Math.min(near, Math.max(0.03, 0.5 * (to - flier.sphere.radius), 0.01 * toTarget));
     }
+    near = this.uncut(near);
     if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
       this.camera.near = near;
       this.camera.far = far;
       this.camera.updateProjectionMatrix();
     }
   }
+
+  /**
+   * The near plane brought in, if it must be, so that it cuts nothing: `near` is where the view's subject and the
+   * ground would let it be, which knows nothing of what stands between (orbiting the pad from 150 m it was 19 m out,
+   * and the other pad's gantry, 15 m in front of the eye, was sliced away). So the nearest surface of anything solid
+   * is asked for (the walker's `Solids`: every model as posed and the place round them, exactly, by their hierarchies),
+   * and the plants, which are not solid, are asked for where they stand (`Setting.plantsClear`). The plane's corner, not its middle, is what must stay short of the thing. Depth resolution is spent only
+   * where something really is that near, which is where it was being cut.
+   */
+  private uncut(near: number): number {
+    if (near <= NEAR_LEAST) return near;
+    const eye = this.camera.position;
+    // (a still eye is asked again only a few times a second, for what may have moved toward it)
+    const kept = this.uncutKept;
+    const now = performance.now();
+    if (!this.frozen && kept.eye.equals(eye) && kept.asked >= near && now - kept.at < 250) return Math.min(near, kept.near);
+    const corner = Math.hypot(1, Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect));
+    const reach = near * corner;
+    let clear = reach;
+    clear = this.setting.plantsClear?.(eye, clear) ?? clear;
+    const solids = this.walk.solids;
+    solids.set(this.solidRoots());
+    solids.gather(eye, clear, clear);
+    clear = solids.nearest(eye, clear);
+    const fitted = clear >= reach ? near : Math.max(NEAR_LEAST, (0.85 * clear) / corner);
+    kept.eye.copy(eye);
+    kept.asked = near;
+    kept.near = clear >= reach ? Number.POSITIVE_INFINITY : fitted;
+    kept.at = now;
+    return fitted;
+  }
+  private readonly uncutKept = { eye: new THREE.Vector3(Number.NaN), asked: 0, near: 0, at: 0 };
 
   /**
    * Draw each model at the level of detail its size on screen calls for. The model being

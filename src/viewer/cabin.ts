@@ -208,7 +208,7 @@ export class Cabin {
     shade.needsUpdate = true;
     for (const m of inside) {
       m.aoMap = shade;
-      m.aoMapIntensity = 1;
+      m.aoMapIntensity = shaded(m, false);
       m.needsUpdate = true;
     }
     this.inside = [...inside];
@@ -300,7 +300,7 @@ export class Cabin {
 
   /** The model has been cut open, or closed again: daylight comes in at the cut, so the inside is shaded less. */
   opened(on: boolean): void {
-    for (const m of this.inside) m.aoMapIntensity = on ? OPENED : 1;
+    for (const m of this.inside) m.aoMapIntensity = shaded(m, on);
     this.host.redraw();
   }
   private inside: THREE.MeshStandardMaterial[] = [];
@@ -603,6 +603,13 @@ const AROUND = [0, 1, 2, 3];
 const INDOORS = 0.1;
 /** How much of that shading is kept while the model is cut open to the day. */
 const OPENED = 0.45;
+/**
+ * How far a material indoors is shaded. Metal is shaded less: it is seen by what it mirrors, and with nothing left to
+ * mirror an aluminised suit is black. (What it mirrors is the sky, dimmed, standing in for a cabin it cannot see.)
+ */
+function shaded(m: THREE.MeshStandardMaterial, opened: boolean): number {
+  return (opened ? OPENED : 1) * (m.metalness > 0.3 ? 0.55 : 1);
+}
 /** A lit lamp's own brightness (emissive, against the scene's exposure). */
 const LAMP_LIT = 1.6;
 /** The exposure the cabin's lights are set for: a day's. Past it (dusk, night) they are turned down by as much, so the cabin reads the same. */

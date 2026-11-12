@@ -411,8 +411,9 @@ const sequenceLamp = (node: string, name: string, shows: Signal | undefined, abo
 });
 vehicle.cabin = {
   within: ['CrewCabin'],
-  // a head in a helmet fixed to the suit, and the eyes' own turn: estimated, nothing read gives it
-  head: { side: 1.75, up: 0.95, down: 1.0 },
+  // a head in a helmet fixed to the suit, and the eyes' own turn: estimated, nothing read gives it. Down is from a gaze
+  // that already rests 40 degrees toward his feet: further, and he is looking into his own collar
+  head: { side: 1.75, up: 0.95, down: 0.6 },
   instruments: [
     {
       node: 'Gauge_Altimeter',

@@ -51,6 +51,8 @@ export interface Setting {
   view?: (camera: THREE.Camera) => void;
   /** The ground's height at (x, z) in the world, where the setting's floor is not level: the walker stands on it. */
   groundAt?: (x: number, z: number) => number;
+  /** How far a point is from the nearest plant, if under `within` metres (plants are not solid: the near plane asks). */
+  plantsClear?: (at: THREE.Vector3, within: number) => number;
   /**
    * Move the setting to an instant: a Julian date in UT, the simulation clock's. The Sun, the
    * Moon and the stars go where they were then, and the light, the sky and the reflections follow;
@@ -487,6 +489,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
       return cape!.attend(eye) || moved;
     },
     groundAt: cape.groundAt,
+    plantsClear: cape.plantsClear,
     view: cape.view,
   };
 
