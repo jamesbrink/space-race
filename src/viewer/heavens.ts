@@ -3,6 +3,7 @@ import { refraction, type Seen, type Sky } from '../world/ephemeris.ts';
 import { DEG, enuToSite, fromEquatorial, fromHorizontal, j2000ToSite, type Site, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { STAR_STRIDE, STARS, starMotion, yearsFrom2000 } from '../world/stars.ts';
 import { airmass } from './daysky.ts';
+import { later } from './later.ts';
 
 /**
  * What is in the sky besides the Sun: the Moon, the stars and the planets, each where
@@ -89,13 +90,14 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
       uGain: { value: gain },
       uYears: { value: 0 },
       uAir: { value: new THREE.Vector2(1, 0) },
+      uFaint: { value: 1 },
     },
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     vertexShader: /* glsl */ `
       attribute float mag; attribute vec3 tint; attribute vec3 motion;
-      uniform float uLimit, uGround, uPixel, uGain, uYears;
+      uniform float uLimit, uGround, uPixel, uGain, uYears, uFaint;
       uniform vec2 uAir;
       varying vec3 vColor; varying float vSize;
       void main() {
@@ -103,6 +105,7 @@ function pointsMaterial(limit: number, ground: boolean, pixelRatio: number, gain
         gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * dir * 90.0, 1.0);
         float flux = pow(10.0, -0.4 * mag);
         float seen = clamp((uLimit - mag) / 1.5, 0.0, 1.0);
+        if (mag > 4.0) seen *= uFaint;   // (the stars the first view did without, coming in once they have arrived)
         if (uGround > 0.5) {
           // under the horizon it is not there (the horizon dips as the eye rises: uAir.y, a sine); near it the air dims
           // it, by as much of the air as is still above the eye (uAir.x): none above the air
@@ -166,10 +169,12 @@ function catalogue(table: ArrayLike<number> = STARS): THREE.BufferGeometry {
 let whole: Promise<Float32Array | null> | null = null;
 const wholeCatalogue = (): Promise<Float32Array | null> => {
   const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL;
+  // (after the scene is up: the first view has the bright stars in the bundle, and by day none of the rest shows)
   whole ??=
     base === undefined
       ? Promise.resolve(null)
-      : fetch(`${base}sky/stars.bin`)
+      : new Promise<void>((go) => later(go))
+          .then(() => fetch(`${base}sky/stars.bin`))
           .then((res) => (res.ok ? res.arrayBuffer() : null))
           .then((data) => (data ? new Float32Array(data) : null))
           .catch(() => null);
@@ -189,6 +194,7 @@ function milkyWay(ground: boolean): THREE.Mesh {
     uGain: { value: 1 },
     uGround: { value: ground ? 1 : 0 },
     uAir: { value: new THREE.Vector2(1, 0) },
+    uIn: { value: 0 },
   };
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(80, 48, 24),
@@ -208,11 +214,11 @@ function milkyWay(ground: boolean): THREE.Mesh {
         }`,
       fragmentShader: /* glsl */ `
         uniform sampler2D tMap;
-        uniform float uLimit, uGain, uGround;
+        uniform float uLimit, uGain, uGround, uIn;
         uniform vec2 uAir;
         varying vec3 vSky, vDir;
         void main() {
-          float seen = smoothstep(5.5, 6.3, uLimit) * uGain;
+          float seen = smoothstep(5.5, 6.3, uLimit) * uGain * uIn;
           vec3 d = normalize(vSky), dir = normalize(vDir);
           if (uGround > 0.5) seen *= smoothstep(uAir.y, uAir.y + 0.04, dir.y) * pow(10.0, -0.08 * (1.0 / (max(dir.y, 0.0) + 0.025) - 1.0) * uAir.x);
           if (seen <= 0.0) discard;
@@ -237,14 +243,17 @@ function milkyWay(ground: boolean): THREE.Mesh {
   mesh.renderOrder = -1; // under the stars
   const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL;
   if (base !== undefined)
-    new THREE.TextureLoader().load(`${base}sky/milkyway.jpg`, (map) => {
-      map.colorSpace = THREE.SRGBColorSpace;
-      map.wrapS = THREE.RepeatWrapping;
-      map.generateMipmaps = false; // (it is only ever magnified: a texel is a sixth of a degree)
-      map.minFilter = map.magFilter = THREE.LinearFilter;
-      uniforms.tMap.value = map;
-      mesh.visible = true;
-    });
+    later(() =>
+      new THREE.TextureLoader().load(`${base}sky/milkyway.jpg`, (map) => {
+        map.colorSpace = THREE.SRGBColorSpace;
+        map.wrapS = THREE.RepeatWrapping;
+        map.generateMipmaps = false; // (it is only ever magnified: a texel is a sixth of a degree)
+        map.minFilter = map.magFilter = THREE.LinearFilter;
+        uniforms.tMap.value = map;
+        mesh.visible = true;
+        mesh.userData.arrivedAt = performance.now();
+      }),
+    );
   return mesh;
 }
 
@@ -301,8 +310,33 @@ export class Heavens {
       if (!table) return;
       this.fixed.geometry.dispose();
       this.fixed.geometry = catalogue(table);
+      this.material.uniforms.uFaint!.value = 0;
       this.arrived = true;
+      this.fadeIn();
     });
+  }
+
+  /**
+   * What arrived after the first view (the faint stars, the Milky Way) comes in over a second and a half, so nothing
+   * pops into a night sky: stepped by the page's own frames, each of which says the sky is to be drawn again (`arrived`).
+   */
+  private fadeIn(): void {
+    if (typeof requestAnimationFrame === 'undefined') {
+      this.material.uniforms.uFaint!.value = 1;
+      return;
+    }
+    const began = performance.now();
+    const band = (this.band.material as THREE.ShaderMaterial).uniforms;
+    const step = (): void => {
+      const now = performance.now();
+      this.material.uniforms.uFaint!.value = Math.min(1, (now - began) / 1500);
+      const at = this.band.userData.arrivedAt as number | undefined;
+      band.uIn!.value = at === undefined ? 0 : Math.min(1, (now - at) / 1500);
+      this.arrived = true;
+      // (waiting for the Milky Way's map no longer than twenty seconds: without it there is nothing more to bring in)
+      if (now - began < 1500 || (at === undefined ? now - began < 20_000 : now - at < 1500)) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   /** Put everything where it is at an instant. */

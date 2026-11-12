@@ -923,6 +923,11 @@ def export_glb(path: str) -> None:
         export_apply=True,
         export_extras=True,
         export_tangents=False,
+        # a model may carry its own baked shading at its vertices, in a colour attribute named Shade (a cabin's: the
+        # viewer multiplies the surface by it); no other colour attribute is exported
+        export_vertex_color="NAME",
+        export_vertex_color_name="Shade",
+        export_all_vertex_colors=False,
         export_cameras=False,
         export_lights=False,
         # Draco: about a sixth of the size. Positions are quantised per mesh, so 18 bits keeps

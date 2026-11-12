@@ -228,9 +228,13 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
   // altocumulus at 3,600 m at Patrick at 10:00, NOAA ISD: documented for that hour, taken for the morning)
   float deckCoverAt(vec3 w, vec2 xz) { return mix(0.125, w.b, smoothstep(40000.0, 150000.0, length(xz))); }
   float deckTex(vec2 xz, float fp) {
-    float a = ${prefix}noise2(xz / 9000.0 + 3.7, 501);
-    float b = mix(${prefix}noise2(xz / 2300.0 + 9.1, 502), 0.5, smoothstep(700.0, 1800.0, fp));
-    float c = mix(${prefix}noise2(xz / 640.0 + 5.3, 503), 0.5, smoothstep(200.0, 500.0, fp));
+    // (each size of it on a grid turned its own way, and the place pushed about by a kilometre: on one grid, cut at a
+    // level, a patch's outline ran in straight runs and corners, a blocky mask beside the cumulus)
+    xz += 420.0 * (vec2(${prefix}noise2(xz / 1300.0 + 2.1, 523), ${prefix}noise2(xz / 1300.0 + 8.8, 524)) - 0.5);
+    xz += 1100.0 * (vec2(${prefix}noise2(xz / 3700.0 + 5.9, 521), ${prefix}noise2(xz / 3700.0 + 1.4, 522)) - 0.5);
+    float a = ${prefix}noise2(mat2(0.9063, 0.4226, -0.4226, 0.9063) * xz / 9000.0 + 3.7, 501);
+    float b = mix(${prefix}noise2(mat2(0.5446, 0.8387, -0.8387, 0.5446) * xz / 2300.0 + 9.1, 502), 0.5, smoothstep(700.0, 1800.0, fp));
+    float c = mix(${prefix}noise2(mat2(0.9703, -0.2419, 0.2419, 0.9703) * xz / 640.0 + 5.3, 503), 0.5, smoothstep(200.0, 500.0, fp));
     return 0.45 * mix(a, 0.5, smoothstep(2700.0, 7000.0, fp)) + 0.3 * b + 0.25 * c;
   }
   float deckAt(vec2 xz, float fp, float cover) {
@@ -240,7 +244,7 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     float cut = mix(DECK_CUTS[i], DECK_CUTS[i + 1], u - float(i));
     // (far off, where its texture is under a pixel, it is its cover, evenly)
     float even = smoothstep(2700.0, 7000.0, fp);
-    float soft = 0.035 + 0.1 * smoothstep(100.0, 2700.0, fp);
+    float soft = 0.06 + 0.07 * smoothstep(60.0, 300.0, fp) + 0.06 * smoothstep(300.0, 2700.0, fp);   // (a patch thins to nothing over a few hundred metres: no hard rim)
     float a = mix(smoothstep(cut - soft, cut + soft, deckTex(xz, fp)), cover, even);
     // Altocumulus is cloudlets two or three hundred metres across with clear air between, closing up toward a patch's
     // middle; a front's deck is solid. (So an eighth of the sky has altocumulus over it, and less than that is hidden.)
@@ -288,7 +292,7 @@ export const CELLS: readonly [number, number] = [45, 90];
  * is a few pixels across (`cellsShare`, by the pixel's breadth on the field) the field is read through its cells
  * instead: a grid of points 0.45 of a cloud apart, each pushed about; where the noise at a point is over its cut
  * there is a cell, broader and higher the further over it is, a dome; cells that overlap run together into a
- * cluster. `cumulusCells(q, bias, cut)`: how far the field stands over its cut at `q` (in cells of the field; `bias`
+ * cluster. `cumulusCells(q, bias, cut, fpq)` (`fpq`: a pixel's breadth, in cells): how far the field stands over its cut at `q` (in cells of the field; `bias`
  * as cumulusBias gives it), in the noise's own units, as the noise would say it: so whoever heaps a cloud on the
  * noise heaps the same cloud on this. The cover is the field's, near enough (a cell where the noise is over its cut,
  * about as broad as its spacing). Their shape is estimated, from photographs of trade cumulus from orbit.
@@ -296,22 +300,45 @@ export const CELLS: readonly [number, number] = [45, 90];
  */
 export const cumulusCellsGlsl = (prefix: string, scale: string): string => /* glsl */ `
   float cellsShare(float fp) { return smoothstep(${CELLS[0].toFixed(1)}, ${CELLS[1].toFixed(1)}, fp); }
-  float cumulusCells(vec2 q, float bias, float cut) {
+  // (smooth union: where two domes meet they run together into one mass with a crease, not two balls)
+  float cellsJoin(float a, float b) { float h = max(0.03 - abs(a - b), 0.0) / 0.03; return max(a, b) + h * h * 0.0075; }
+  float cumulusCells(vec2 q, float bias, float cut, float fpq) {
     const float G = 0.45;
-    // (the place pushed about a little, two sizes of push, so no cell is a ruled circle: a cumulus is lobed)
-    q += 0.2 * G * (vec2(${prefix}noise2(q * 3.1 + 4.7, 603), ${prefix}noise2(q * 3.1 + 9.2, 604)) - 0.5)
-      + 0.09 * G * (vec2(${prefix}noise2(q * 8.3 + 1.3, 605), ${prefix}noise2(q * 8.3 + 6.6, 606)) - 0.5);
-    vec2 g = q / G;
+    // (the place pushed about, two sizes of push, so no cell is a ruled circle: a cumulus is lobed)
+    vec2 p = q + 0.24 * G * (vec2(${prefix}noise2(q * 3.1 + 4.7, 603), ${prefix}noise2(q * 3.1 + 9.2, 604)) - 0.5)
+      + 0.11 * G * (vec2(${prefix}noise2(q * 8.3 + 1.3, 605), ${prefix}noise2(q * 8.3 + 6.6, 606)) - 0.5);
+    vec2 g = p / G;
     ivec2 i = ivec2(floor(g));
     float best = -0.1;
     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
       ivec2 c = i + ivec2(dx, dy);
-      vec2 pc = (vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 601), ${prefix}hash2(c, 602)) - 0.5)) * G;
+      vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 601), ${prefix}hash2(c, 602)) - 0.5)) * G;
       float e = cloudNoise(pc * ${scale}) + bias - cut;
       if (e <= 0.0) continue;
-      float r = G * min(0.45 + 5.0 * e, 1.3);
-      vec2 d = q - pc;
-      best = max(best, min(0.035 + 1.1 * e, 0.2) * (1.0 - dot(d, d) / (r * r)));
+      // (a cell's breadth by how far the noise is over its cut and by chance, three to one: from a puff to a heap)
+      float r = G * min(0.3 + 5.0 * e, 1.2) * (0.55 + 1.1 * ${prefix}hash2(c, 607));
+      vec2 d = p - pc;
+      best = cellsJoin(best, min(0.03 + 1.1 * e, 0.2) * (1.0 - dot(d, d) / (r * r)));
     }
+    // and small puffs round the cells, a third as far apart, low: scraps at a cluster's edge, down to nothing
+    if (best > -0.06 && fpq < 0.12) {
+      const float S = 0.15;
+      vec2 gs = p / S;
+      ivec2 j = ivec2(floor(gs));
+      for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        ivec2 c = j + ivec2(dx, dy);
+        float chance = ${prefix}hash2(c, 611);
+        if (chance > 0.42) continue;
+        vec2 pc = (vec2(c) + 0.5 + 0.9 * (vec2(${prefix}hash2(c, 612), ${prefix}hash2(c, 613)) - 0.5)) * S;
+        float r = S * (0.35 + 1.2 * chance);
+        vec2 d = p - pc;
+        best = cellsJoin(best, (0.012 + 0.05 * chance) * (1.0 - dot(d, d) / (r * r)) * (1.0 - smoothstep(0.06, 0.12, fpq)));
+      }
+    }
+    // The rim worn by finer lumps, 100 and 40 m, each left out before it is under two pixels: a cumulus's edge is
+    // ragged and thins to haze, and none of its lobes is a clean ball. Only near the rim: a heap's heart is whole.
+    float rim = 1.0 - smoothstep(0.0, 0.05, best);
+    best -= rim * (0.022 * (1.0 - smoothstep(0.025, 0.06, fpq)) * (${prefix}noise2(q * 15.0 + 2.2, 608) - 0.35)
+      + 0.014 * (1.0 - smoothstep(0.01, 0.024, fpq)) * (${prefix}noise2(q * 37.0 + 7.1, 609) - 0.35));
     return best;
   }`;

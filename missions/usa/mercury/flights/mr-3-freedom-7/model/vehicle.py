@@ -530,6 +530,8 @@ def build_crew_cabin(M) -> None:
     bag.lathe(prof([(21.5, -0.55), (22.0, -0.7), (33.0, -0.7), (33.5, -0.55), (33.0, -0.42), (22.0, -0.42), (21.5, -0.55)]), 96)
     bottles.build("CrewCabin_OxygenBottles", M["bottle"], g)
     bag.build("CrewCabin_LandingBag", M["fabric"], g)
+    # the cabin's own shadows, worked once everything in it stands where it will
+    mercury_cabin.shade(g, where["lamps"], (bpy.data.objects["Hatch_Lining"],))
     # nothing in the cabin may reach the pressure vessel: the clearance check cannot see a boot
     # through the hull, because the two surfaces cross instead of lying together
     inside = [o.name for o in bpy.data.objects if o.type == "MESH" and o.name.startswith("CrewCabin_Pilot")]

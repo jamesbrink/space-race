@@ -626,9 +626,10 @@ const OVER = /* glsl */ `
   ${sheetsGlsl('over_')}
   ${cumulusCellsGlsl('over_', '1.0')}
   // the field over its cut at a place (in cells): the noise's own, and by cells (0 to 1) its cells instead
+  float gFpq;   // a pixel's breadth on the field, in cells: set by whoever reads the field
   float fieldOver(vec2 q, float bias, float cells) {
     float x = cells < 1.0 ? cloudNoise(q) + bias - uCumulus.y : 0.0;
-    return cells > 0.0 ? mix(x, cumulusCells(q, bias, uCumulus.y), cells) : x;
+    return cells > 0.0 ? mix(x, cumulusCells(q, bias, uCumulus.y, gFpq), cells) : x;
   }
   ${ATMOSPHERE_COARSE_GLSL}
   const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -736,6 +737,7 @@ const OVER = /* glsl */ `
     // three ways, each fading into the next: slices, while a cloud is more than a pixel or so both ways; then, while it
     // still is across but not along (looked along, toward the limb), the field averaged along the pixel's length; then
     // only how much of the sky is covered
+    gFpq = fpAcross / uCumulus.x;
     float along = smoothstep(0.12 * uCumulus.x, 0.5 * uCumulus.x, fp);
     float even = smoothstep(0.12 * uCumulus.x, 0.6 * uCumulus.x, fpAcross);
     float sunUp = dot(up, uSun);
@@ -1500,6 +1502,9 @@ export class CloudPass extends Pass {
     }
   };
 
+  /** The scene as the veils' own draw sees it: its children, under a scene with a lighting state of its own (`drawVeils`). */
+  private readonly veiled = Object.assign(new THREE.Scene(), { matrixAutoUpdate: false, matrixWorldAutoUpdate: false });
+
   /** Draw the veils on show on their own, with their depth: false if none is. */
   private drawVeils(renderer: THREE.WebGLRenderer, frame: THREE.WebGLRenderTarget): boolean {
     // their materials write depth for this one draw, so the nearest of them is kept where they overlap
@@ -1527,14 +1532,27 @@ export class CloudPass extends Pass {
     // All of them in one draw of the scene, seen on their own layer: a draw call each, not a render each (a frame
     // has dozens of panes of glass). The scene has just been drawn and nothing has moved since, so its world
     // matrices are not worked out again.
-    const mask = this.camera.layers.mask,
-      update = this.scene.matrixWorldAutoUpdate;
+    //
+    // It is drawn as a scene of its own that holds the scene's own children (`veiled`), not as the scene: on this
+    // layer the camera sees no lights, and three keeps one lighting state for each scene it draws. Drawn as the
+    // scene itself, the state went from the frame's lights to none and back every frame, and each change sent every
+    // lit material in the frame to have its shader looked up again (its whole description rebuilt, 1.4 MB of
+    // garbage a frame, a fifth of the frame's time on the main thread). The picture is the same: the same objects,
+    // the same sky in the glass, the same fog, no lights as before.
+    const mask = this.camera.layers.mask;
+    const veiled = this.veiled;
+    veiled.children = this.scene.children;
+    veiled.environment = this.scene.environment;
+    veiled.environmentIntensity = this.scene.environmentIntensity;
+    veiled.environmentRotation.copy(this.scene.environmentRotation);
+    veiled.background = this.scene.background;
+    veiled.backgroundIntensity = this.scene.backgroundIntensity;
+    veiled.fog = this.scene.fog;
+    veiled.overrideMaterial = this.scene.overrideMaterial;
     this.camera.layers.set(VEIL_LAYER);
-    this.scene.matrixWorldAutoUpdate = false;
     try {
-      renderer.render(this.scene, this.camera);
+      renderer.render(veiled, this.camera);
     } finally {
-      this.scene.matrixWorldAutoUpdate = update;
       this.camera.layers.mask = mask;
       for (const m of lent) m.depthWrite = false;
       lent.length = 0;

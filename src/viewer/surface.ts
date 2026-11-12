@@ -21,6 +21,17 @@ interface Grain {
 
 const GRAINS: Grain[] = [
   {
+    // Painted blockwork and a blockhouse's cast walls, which are also the walls of the rooms inside: even. The paint's
+    // own tooth, and no more than a breath of unevenness at arm's length. The poured concrete's day-by-day pours and
+    // weathered drifts (below) on these read, indoors, as smoke stains a metre across on every wall and ceiling.
+    match: /^concrete-(block|painted)/,
+    glsl: /* glsl */ `
+      float coat = fbm(p * vec3(2.6, 2.6, 2.6) + 5.0);                       // the roller's passes, a hand or two across
+      float tooth = noise(p * 90.0) * 0.6 + noise(p * 230.0) * 0.4;         // the block's face through the paint
+      tone *= 1.0 + 0.05 * (coat - 0.5) * seen(0.3) + 0.2 * (tooth - 0.5) * seen(0.01);
+      rough += 0.08 * (tooth - 0.5) * seen(0.01);`,
+  },
+  {
     // Poured concrete: pours differ slab to slab, the surface is pitted and floated, and it weathers in drifts.
     match: /^concrete(?!-scorch|-stain|-joint)/,
     glsl: /* glsl */ `

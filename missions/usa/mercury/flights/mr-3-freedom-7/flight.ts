@@ -317,8 +317,8 @@ const vehicle: ModelDef = {
   // light at the wall burns the wall beside it, where a floodlight's reflector spreads it (for the same reason the
   // viewer lets a cabin's light fall off with distance, not its square: cabin.ts). Strength chosen by eye.
   lights: [
-    { position: [0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.55, reach: 3 },
-    { position: [-0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.55, reach: 3 },
+    { position: [0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
+    { position: [-0.15, 0.55, 0.28], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
   ],
   home: 'stack',
   views: [

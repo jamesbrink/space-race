@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DEG } from '../world/frames.ts';
+import { later } from './later.ts';
 import { EXTENT } from './weather.ts';
 
 /**
@@ -20,6 +21,9 @@ export const weatherUniforms = {
   uWeatherWind: { value: new THREE.Vector2(1, 0) },
   uWeatherHigh: { value: new THREE.Vector2(1, 0) },
 };
+
+/** Ask for the map now (the eye has risen to where the weather is seen). */
+export let wantWeather: () => void = () => {};
 
 /** Called when the map arrives: whoever draws by it draws again. */
 const arrived: (() => void)[] = [];
@@ -51,7 +55,8 @@ export function placeWeather(bearingX: number, cover: number, wind: readonly [nu
   pixel[0] = Math.round(cover * 255);
   blank.needsUpdate = true;
   if (!region) return;
-  void (async () => {
+  // (not seen from the site: within 12 km the cover is the record's, and the map's part lies along the horizon)
+  const load = async (): Promise<void> => {
     const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${region}.weather.png`)).blob();
     const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
     const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
@@ -63,5 +68,6 @@ export function placeWeather(bearingX: number, cover: number, wind: readonly [nu
     texture.needsUpdate = true;
     weatherUniforms.tWeather.value = texture;
     for (const then of arrived) then();
-  })();
+  };
+  wantWeather = later(() => void load());
 }

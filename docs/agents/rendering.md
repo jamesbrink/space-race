@@ -28,7 +28,12 @@ in their extras, `Tele_...` lamps each with a material of its own, `Ctl_...` con
 dial, from the same scale the needle is given. Things stacked on a panel (face, needle, hub, glass, bezel lip) are
 each 0.05 in or more apart: the clearance rule is 1 mm, and a needle's material is single-sided so only its front
 is held to it. An instrument's cover is the blended material `crystal`, not `glass...`: a `glass` pane is a window,
-and is offered to be looked through. What is under a `within` node is lit as indoors (simulator.md).
+and is offered to be looked through. What is under a `within` node is lit as indoors (simulator.md). The viewer's
+lights inside a model cast no shadows, and cannot: every shadow map is one more texture for every lit surface in the
+scene, and the ground and the globe are at the GPU's sixteen already (a shadow-casting cabin lamp stopped both from
+compiling). A cabin's shadow is therefore the build's: `mercury_cabin.shade` casts rays in Blender and keeps the
+result at the vertices in a colour attribute named `Shade`, the only one `srlib.export_glb` exports, which three
+multiplies the surface by.
 
 ## No flicker
 
@@ -242,6 +247,12 @@ What has been found, so it is not found again:
   that never change: the same two draws, the same shaders, the same pixels. Anything new that is
   clear and two-sided and stands in numbers goes through `Panes.add`; a material that will be
   changed after it is made (a shell's, which the cutaway opens) is left to three.
+- **Never draw the scene through a camera that cannot see its lights.** Three keeps one lighting state for each
+  scene object it draws. The clouds' veil pass drew the scene on a layer of its own, where there are no lights:
+  the state went from the frame's lights to none and back every frame, and each change sent every lit material of
+  the frame to have its shader looked up again: 3 ms of the main thread and 1.4 MB of garbage a frame, in every
+  view. Such a draw is given a scene of its own that holds the same children (`CloudPass.veiled`, as
+  `outline.ts`'s list scenes are): same objects, same picture, its own state.
 - **A shader is built for the buffer it draws into.** `renderer.compileAsync` builds what it is asked for off the
   main thread, but for whatever render target is set when it is called: with none set it built every shader for
   the canvas (tone-mapped, in the screen's colours), and the scene is drawn into the composer's buffer, so the
@@ -257,12 +268,16 @@ What has been found, so it is not found again:
   `customProgramCacheKey` says so), which is nineteen programs, and `Stage.prebuild` asks for the other look's
   at the end of `warm`, to be built behind what is on show: the first change of look is one frame.
 - The pad's frame at 1440x900 is bound by the CPU, not the GPU: three's work per draw call. `viewer/batch.ts`
-  draws every mesh of a material in one multi-draw (753 calls fewer on the pad, a sixth of the frame's CPU time)
-  with the meshes themselves left in the scene for everything that asks about them. It is **off** (`?batch` turns
-  it on): each instance is given the very matrices three would give its mesh, the order of drawing is three's,
-  and still 1 to 34 pixels in 1.3 million differ in a frozen frame, because the GPU's compiler rounds the batched
-  shader's vertices one bit apart from the unbatched one's. The file's header has the whole of it, and what
-  `invariant gl_Position` does about it. What it taught, whether or not it is switched on: a texture written every
+  draws every mesh of a material in one multi-draw (1422 calls to 676 on the pad, 978 to 339 in a shadow redraw:
+  12 to 15 % of the frame) with the meshes themselves left in the scene for everything that asks about them. It
+  is **off** (`?batch` turns it on), for two reasons the bench gives. Where little of what is batched is in view
+  (the flight from T+40 on, on foot) it costs 2 to 5 % instead: every instance is still looked at each frame. And
+  it is not the same picture to the last bit: each instance is given the very matrices three would give its mesh
+  and the order of drawing is three's, and still 1 to 37 pixels in 1.3 million differ in a frozen frame (331 in one
+  cel view), because the GPU's compiler rounds the batched shader's vertices one bit apart from the unbatched
+  one's. The file's header has the whole of it, and what `invariant gl_Position` does about it. To be worth
+  switching on it wants a bound for each batch, so that one out of view is passed over in one test, and a decision
+  about those pixels. What it taught, whether or not it is switched on: a texture written every
   frame must not be the one the last frame drew from (the driver waits for the GPU: 3 ms; `RING`); a batch that
   three is left to walk past costs ten microseconds in every pass, so what is out of view must be `visible =
   false` before the draw begins (`scene.onBeforeRender`); and where two faces are at one depth the later draw is

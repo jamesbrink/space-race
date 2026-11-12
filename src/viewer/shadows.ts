@@ -32,6 +32,16 @@ const REACH = 330;
 const PATIENCE = 12;
 /** How many times a second this map is drawn again for what is not the light moving. */
 const RATE = 10;
+/** The sky map: texels a side, and how much of the sky's light is left under a roof (what comes in at doors and windows and off the walls, as a share). */
+/**
+ * Whether the sky map is drawn and read. Off: the land's and the globe's shaders already use every texture unit a
+ * fragment shader is promised (16), and a shadowed light adds a sampler to every lit material whether it reads it
+ * or not, so with a third map they do not link. Until one of their maps is given up or packed, the sky's light is
+ * not held back under roofs.
+ */
+const SKY_ON = false;
+const SKY_SIZE = 2048;
+const UNDER = 0.22;
 /** Where across the fine map (0 its middle, 1 its edge) the far one comes in, from and to. */
 const BAND = [0.78, 0.96] as const;
 
@@ -41,8 +51,15 @@ const LOOP =
   /#if defined\( USE_SHADOWMAP \) && \( UNROLLED_LOOP_INDEX < NUM_DIR_LIGHT_SHADOWS \)\s+directionalLightShadow = directionalLightShadows\[ i \];\s+directLight\.color[^\n]+\n\s+#endif\s+RE_Direct\([^\n]+\n/;
 const found = LOOP.exec(THREE.ShaderChunk.lights_fragment_begin)?.[0];
 const CASCADED = /* glsl */ `
-		#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS == 2
+		#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS == 3
 			#if UNROLLED_LOOP_INDEX == 0
+			#ifdef SKY_OVERHEAD
+			if ( receiveShadow ) {
+				// how much of the sky is over this point: the third map looks straight down
+				directionalLightShadow = directionalLightShadows[ 2 ];
+				skyOpen = mix( ${UNDER.toFixed(2)}, 1.0, getShadow( directionalShadowMap[ 2 ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ 2 ] ) );
+			}
+			#endif
 			if ( receiveShadow ) {
 				directionalLightShadow = directionalLightShadows[ 0 ];
 				vec3 fineAt = vDirectionalShadowCoord[ 0 ].xyz / vDirectionalShadowCoord[ 0 ].w;
@@ -63,8 +80,26 @@ const CASCADED = /* glsl */ `
 		${found}
 		#endif
 `;
-if (found) THREE.ShaderChunk.lights_fragment_begin = THREE.ShaderChunk.lights_fragment_begin.replace(found, CASCADED);
-else console.warn('shadows.ts: three’s directional light loop is not as it was: the far shadow map will not be read');
+// The sky's light under a roof. The hemisphere light and the sky's reflection fall on every surface alike: a floor
+// indoors was lit blue by a sky it cannot see, a ceiling by the ground's colour, and a room looked like outdoors in
+// shade. `skyOpen` is how much of the sky is over a point (1 in the open, UNDER below anything), read from a third
+// map that looks straight down, and both of the sky's terms are scaled by it: a room is then lit by its lamps and
+// by the Sun through its windows, and what stands on a floor is darker underneath.
+// Only a material that asks reads it (`SKY_OVERHEAD` defined: the models' are, Stage.dress): the land and the globe
+// have no texture unit to spare for a third map, and nothing of theirs is under a roof.
+const HEMI = 'irradiance += getHemisphereLightIrradiance( hemisphereLights[ i ], geometryNormal );';
+const IBL = [
+  'iblIrradiance += getIBLIrradiance( geometryNormal );',
+  'vec3 iblRadiance = getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );',
+];
+const begin = THREE.ShaderChunk.lights_fragment_begin;
+const maps = THREE.ShaderChunk.lights_fragment_maps;
+if (found && begin.includes(HEMI) && IBL.every((line) => maps.includes(line))) {
+  THREE.ShaderChunk.lights_fragment_begin = `float skyOpen = 1.0;\n${begin.replace(found, CASCADED).replace(HEMI, HEMI.replace(';', ' * skyOpen;'))}`;
+  THREE.ShaderChunk.lights_fragment_maps = maps
+    .replace(IBL[0]!, IBL[0]!.replace(';', ' * skyOpen;'))
+    .replace(IBL[1]!, IBL[1]!.replace(';', ' * skyOpen;'));
+} else console.warn('shadows.ts: three’s light loops are not as they were: the far shadow map and the sky under roofs will not be read');
 
 type ShadowMap = THREE.WebGLRenderer['shadowMap'];
 
@@ -90,6 +125,8 @@ export class FarShadow {
   private readonly map: ShadowMap;
   private readonly sun: THREE.DirectionalLight;
   private readonly cover: () => THREE.Box3 | null;
+  /** The light whose map looks straight down on the place: what is under a roof (`skyOpen` in the shader). In the scene after `light`. */
+  readonly sky = new THREE.DirectionalLight(0x000000, 0);
   /** Something asked for the shadows again that this map would show. */
   private pending = true;
   /** The place has changed: the map is to be fitted to it again. */
@@ -132,6 +169,24 @@ export class FarShadow {
     depth.minFilter = depth.magFilter = THREE.LinearFilter;
     target.depthTexture = depth;
     light.shadow.map = target;
+    const sky = this.sky;
+    sky.castShadow = SKY_ON;
+    sky.shadow.autoUpdate = false;
+    sky.shadow.mapSize.set(SKY_SIZE, SKY_SIZE);
+    sky.shadow.radius = 5; // soft: the sky does not stop at a doorway's line
+    const over = new THREE.WebGLRenderTarget(SKY_SIZE, SKY_SIZE, {
+      format: THREE.RedFormat,
+      type: THREE.UnsignedByteType,
+      generateMipmaps: false,
+    });
+    over.texture.name = 'sky.overheadMapUnread';
+    const overDepth = new THREE.DepthTexture(SKY_SIZE, SKY_SIZE, THREE.UnsignedIntType);
+    overDepth.name = 'sky.overheadMap';
+    overDepth.format = THREE.DepthFormat;
+    overDepth.compareFunction = THREE.LessEqualCompare;
+    overDepth.minFilter = overDepth.magFilter = THREE.LinearFilter;
+    over.depthTexture = overDepth;
+    sky.shadow.map = over;
     // every request for the shadows to be drawn again is a request of this map too, unless it says otherwise
     const map = this.map;
     let wanted = map.needsUpdate;
@@ -164,7 +219,7 @@ export class FarShadow {
    */
   before(walking: THREE.Object3D | null, atOnce = false): void {
     const shadow = this.light.shadow;
-    shadow.needsUpdate = false;
+    shadow.needsUpdate = this.sky.shadow.needsUpdate = false;
     if (!this.pending) return;
     const fineWanted = this.map.needsUpdate;
     // on foot the fine map goes first, for as long as it is asked for and this one can wait
@@ -184,6 +239,7 @@ export class FarShadow {
     this.pending = false;
     this.waited = 0;
     shadow.needsUpdate = true;
+    this.sky.shadow.needsUpdate = true; // (what is overhead changes when hardware does: the same cadence)
     if (walking) {
       // a frame of its own: the figure casts nothing into it, and the fine map keeps what it has until the next
       const hidden: THREE.Object3D[] = [];
@@ -242,5 +298,18 @@ export class FarShadow {
     // a texel and a half off the surface, and a depth bias of the map's own grain
     light.shadow.normalBias = 1.5 * texel;
     depthBias(light.shadow);
+    // the sky map: straight down on the same ground (a hair off plumb, so the camera has a way up), from above the tallest thing
+    const sky = this.sky;
+    const down = new THREE.Vector3(0.012, 1, 0.007).normalize();
+    const top = box.max.y + 10,
+      deep = Math.max(20, top - box.min.y + 10);
+    sky.target.position.set(c.x, top - deep, c.z);
+    sky.position.copy(sky.target.position).addScaledVector(down, deep);
+    sky.updateMatrixWorld();
+    sky.target.updateMatrixWorld();
+    Object.assign(sky.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 0.5, far: deep + 5 });
+    sky.shadow.camera.updateProjectionMatrix();
+    sky.shadow.normalBias = (1.5 * 2 * radius) / SKY_SIZE;
+    depthBias(sky.shadow);
   }
 }

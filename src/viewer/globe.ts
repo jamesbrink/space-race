@@ -18,8 +18,9 @@ import { type Clouds, cloudCutGlsl, cloudMiddle } from './air.ts';
 import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
+import { later } from './later.ts';
 import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
-import { onWeather, weatherUniforms } from './weathermap.ts';
+import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
 
 /**
  * The Earth as a globe, to scale, under a site: the sea and the land seen from height, and
@@ -91,6 +92,8 @@ const ICE = new THREE.Color(0xe4eaee);
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
+/** The relief and the land's colours come in over this long once they have arrived, milliseconds: no pop. */
+const SURFACING = 1500;
 /** How many banks of pale sand a region may name (tools/globe-surface.mjs: REGIONS). */
 const BANKS = 6;
 /** The land's cube faces, texels a side (tools/globe.mjs: --size). */
@@ -108,6 +111,7 @@ const COLOUR = /* glsl */ `
   uniform mat3 uGlobeNearPlane, uGlobeWidePlane;   // rows: the plane's east, north and middle (world/region.ts)
   uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
   uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
+  uniform float uGlobeSurfaced;   // how far the relief and the land's colours have come in since they arrived, 0 to 1
   uniform float uGlobeLift;   // how far the site's ground has gone over to the globe's colours with the eye's height, 0 to 1
   uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
   uniform samplerCube uGlobeRelief, uGlobeColour;
@@ -214,6 +218,9 @@ const COLOUR = /* glsl */ `
     // Round the site, until the eye is well up, the land and the sea keep the site's own tones (its canopy's green, its
     // offshore water: cape.ts), as the site's ground does (land.ts: LIFT, which uGlobeLift follows): so from a few
     // kilometres up the site's square is not a patch of another colour in the map's. Gone by 60 km out and by 20 km up.
+    ground = mix(${vec3(LAND)}, ground, uGlobeSurfaced);
+    water = mix(deep, water, uGlobeSurfaced);
+    land = mix(smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel)), land, uGlobeSurfaced);
     float own = (1.0 - uGlobeLift) * (1.0 - smoothstep(0.0025, 0.0095, distance(d, normalize(uGlobeOrigin))));
     ground = mix(ground, ${vec3(LAND)}, own);
     water = mix(water, ${vec3(SEA)}, own);
@@ -289,23 +296,17 @@ export interface Hole {
 
 /** A cube map of one channel from the six faces tools/globe.mjs writes. */
 async function loadCube(name: string): Promise<THREE.CubeTexture> {
+  // (the browser's decoded picture handed to the GPU as it is, one channel kept: nothing is read back here)
   const faces = await Promise.all(
     FACES.map(async (f) => {
       const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${name}.${f}.png`)).blob();
-      const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
-      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-      const g = canvas.getContext('2d', { willReadFrequently: true })!;
-      g.drawImage(bitmap, 0, 0);
-      const rgba = g.getImageData(0, 0, bitmap.width, bitmap.height).data;
-      const red = new Uint8Array(bitmap.width * bitmap.height);
-      for (let i = 0; i < red.length; i++) red[i] = rgba[i * 4]!;
-      return new THREE.DataTexture(red, bitmap.width, bitmap.height, THREE.RedFormat);
+      return createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
     }),
   );
   return cube(faces);
 }
 
-function cube(faces: THREE.DataTexture[]): THREE.CubeTexture {
+function cube(faces: (THREE.DataTexture | ImageBitmap)[]): THREE.CubeTexture {
   const texture = new THREE.CubeTexture(faces as unknown as HTMLImageElement[]);
   texture.format = THREE.RedFormat;
   texture.type = THREE.UnsignedByteType;
@@ -515,6 +516,7 @@ export class Globe {
       uGlobeHaze: { value: haze?.scale ?? 1400 },
       uGlobeAbove: { value: 0 },
       uGlobeLift: { value: 0 },
+      uGlobeSurfaced: { value: 0 },
       uGlobePixel: { value: 0.0007 },
       ...regionUniforms('Near'),
       ...regionUniforms('Wide'),
@@ -590,14 +592,26 @@ export class Globe {
       this.uniforms.uGlobeIce!.value = ice;
       this.arrived = true;
     });
-    void Promise.all([loadCube('relief'), loadColourCube('colour')]).then(([relief, colour]) => {
-      this.uniforms.uGlobeRelief!.value = relief;
-      this.uniforms.uGlobeColour!.value = colour;
-      this.arrived = true;
-    });
     if (region) void this.loadRegion(region);
-    if (region) void this.loadSurface(region);
+    // The relief and the land's colours are not seen from the site (round it the globe keeps the site's own tones:
+    // uGlobeLift): fetched once the scene is up, or when the eye first rises, and faded in (`surfaced`).
+    this.want = later(() => {
+      const maps: Promise<unknown>[] = [
+        Promise.all([loadCube('relief'), loadColourCube('colour')]).then(([relief, colour]) => {
+          this.uniforms.uGlobeRelief!.value = relief;
+          this.uniforms.uGlobeColour!.value = colour;
+        }),
+      ];
+      if (region) maps.push(this.loadSurface(region));
+      void Promise.all(maps).then(() => {
+        this.surfacedAt = performance.now();
+      });
+    });
   }
+  /** Ask for the maps the first view did without, now. */
+  private readonly want: () => void;
+  /** When the relief and colours arrived (milliseconds; 0: not yet): they come in over SURFACING after it. */
+  private surfacedAt = 0;
 
   /** The site's region's relief and colours (tools/globe-surface.mjs), finer than the globe's: drawn once they have arrived. */
   private async loadSurface(name: string): Promise<void> {
@@ -728,6 +742,19 @@ export class Globe {
     if (shown !== this.mesh.visible) {
       this.mesh.visible = shown;
       changed = true;
+    }
+    // (wanted at once only when the eye is well off the ground: from the site the globe is drawn, along the horizon, in
+    // the site's own tones)
+    if (shown && height > 1500) {
+      this.want();
+      wantWeather();
+    }
+    if (this.surfacedAt) {
+      const k = Math.min(1, (performance.now() - this.surfacedAt) / SURFACING);
+      if (this.uniforms.uGlobeSurfaced!.value !== k) {
+        this.uniforms.uGlobeSurfaced!.value = k;
+        changed = true;
+      }
     }
     // (land.ts: LIFT, the heights between which the site's ground takes the globe's colours: change both)
     const lift = Math.round(THREE.MathUtils.smoothstep(eye.y, 3000, 20000) * 200) / 200;
@@ -876,7 +903,7 @@ export class Globe {
             // (the same shapes the clouds are drawn in from here: the field's own near the eye, its cells from far above)
             float cells = cellsShare(distance(world, cameraPosition + uOrigin) * uGlobePixel);
             float shapes = cells < 1.0 ? cloudNoise(p - uCloudDrift.xz) + bias - ${cloudMiddle(c).toFixed(3)} : 0.0;
-            if (cells > 0.0) shapes = mix(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}), cells);
+            if (cells > 0.0) shapes = mix(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}, fp / ${c.size.toFixed(1)}), cells);
             float dark = smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - soft, ${(cloudMiddle(c) + 0.03).toFixed(3)} + soft, ${cloudMiddle(c).toFixed(3)} + shapes);
             float fine = 1.0 - smoothstep(${(2 * c.size).toFixed(1)}, ${(8 * c.size).toFixed(1)}, fp);
             float gather = air_noise2((p - uCloudDrift.xz) / ${c.size.toFixed(1)} * 0.23 + vec2(1.7, 5.3), 94) - 0.5;

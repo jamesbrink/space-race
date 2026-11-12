@@ -30,6 +30,7 @@ function follow(twin: THREE.Material, real: THREE.Material): void {
   twin.clipShadows = real.clipShadows;
   twin.side = real.side;
   twin.shadowSide = real.shadowSide;
+  if (real.defines?.SKY_OVERHEAD !== undefined) twin.defines = { ...twin.defines, SKY_OVERHEAD: '' };
   twin.needsUpdate = true;
 }
 

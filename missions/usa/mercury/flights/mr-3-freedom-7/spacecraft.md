@@ -109,6 +109,8 @@ is documented (the periscope's 8 in screen) and the rest follow from it or are e
 | Visor seal bottle | a green bottle low at the pilot's left | documented (aboard), estimated (place, size) | SEDR 109-7 lists it for No. 7; NASM2021-00147 |
 | Wiring | three runs down from the fuse panel; a harness from the back of the panel down each side, with red-capped connectors | estimated | NASM2021-00147 and -00153: the runs are ours |
 | Coiled cord, lacing, port clamps | a white coiled cord hanging down the left wall; ties every few inches on the panel harnesses; four clamps on each port's ring | estimated | NASM2021-00147. What the cord served is not in anything read; the clamps are not counted |
+| Knee strap | a band over both knees down to the couch | documented (aboard), estimated (its run) | Postlaunch Report, p. 38: shoulder, chest, lap and knee straps and toe caps. Only the knee strap is modelled |
+| Suit circuit hoses, junction box | two corrugated hoses up the right wall from under the couch; a box above the panel with three leads into the tunnel | estimated | NASM2021-00147, lower right and top: placed by eye |
 | Hatch sill studs, a mirror under the upper port | studs every 1.6 in round the opening; a 2.2 by 1.5 in mirror on a bracket | estimated | NASM2021-00153; -00147. The studs are not counted, and what the mirror was for is not in anything read |
 | Colours | wall, panels and consoles light grey; instrument faces black; couch grey with a cream liner; chest parachute olive | estimated | NASM2021-00147 and -00153, and NASA S61-03257. No document read states a colour |
 | Head's turn from the seat | 100 degrees to either side, 54 up, 34 down from a gaze that rests on the panel | estimated | a head in a helmet fixed to the suit, and the eyes' own turn |
@@ -171,8 +173,12 @@ The same GLB also holds the launch vehicle's five nodes: see
 - **The portholes are single panes.** No. 7's were multi-pane and heat resistant (Results, p. 19); their make-up is
   not in anything read. From the couch the upper one is seen nearly edge on.
 - **Cabin light is two lights hung in the middle of the cabin**, not at the fittings, falling off with distance and not
-  its square, so that the wall beside a fitting does not burn. What comes in at the windows is the scene's own Sun and
-  shadow; the sky's light is cut to a tenth indoors by rule, not by tracing it through the glass.
+  its square, so that the wall beside a fitting does not burn; they cast no shadows. The shadow is worked once by the
+  build (`mercury_cabin.shade`): at every vertex, how much of the two fittings is seen past everything else in the
+  cabin and how open the point is to the room, kept as a colour the viewer multiplies the surface by. So the dark
+  behind the panel and in the corners is there, but nothing that moves casts a shadow, a large flat plate is shaded
+  only at its corners, and sunlight through a port is dimmed where the lamps' light is. What comes in at the windows
+  is the scene's own Sun and shadow; the sky's light is cut to a tenth indoors by rule, not by tracing it through the glass.
 - **The retropack's straps** run from its sides. They should meet under its centre at one
   explosive bolt. The motors are not canted toward the centre of mass as the real ones are.
 - **The jettison motor has one nozzle** in the model; it had three.

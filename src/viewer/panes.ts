@@ -114,6 +114,7 @@ export class Panes {
     twin.frustumCulled = pane.frustumCulled;
     twin.layers.mask = pane.layers.mask;
     twin.raycast = noRay;
+    twin.matrixAutoUpdate = false; // (it lies on its pane: its own matrix is never anything but the identity)
     twin.userData.ghost = true;
     // three sorts and culls a mesh by a bounding sphere of its own if it has been given one (a figure's pieces are): the twin's is its pane's
     for (const bounds of ['boundingSphere', 'boundingBox'] as const)

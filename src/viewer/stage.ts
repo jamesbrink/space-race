@@ -452,8 +452,8 @@ export class Stage {
     this.scene.add(this.sun, this.sun.target, this.fill);
     // the whole place has shadows, under the fine map (shadows.ts): its light comes after the Sun and gives none
     this.far = new FarShadow(this.renderer, this.sun, () => this.shadowed());
-    this.scene.add(this.far.light, this.far.light.target);
-    this.batches.lights.push(this.sun, this.far.light as typeof this.sun); // (the lights whose maps the batches' meshes are drawn into)
+    this.scene.add(this.far.light, this.far.light.target, this.far.sky, this.far.sky.target);
+    this.batches.lights.push(this.sun, this.far.light as typeof this.sun, this.far.sky as typeof this.sun); // (the lights whose maps the batches' meshes are drawn into)
 
     // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
     // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
@@ -526,7 +526,7 @@ export class Stage {
     const output = new OutputPass();
     this.clouds.adopt(output); // (the clouds are laid over the frame as it goes to the screen)
     this.composer.addPass(output);
-    this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes, [this.sun, this.far.light, this.fill]); // (the only light with a shadow, the only sky light)
+    this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes, [this.sun, this.far.light, this.far.sky, this.fill]); // (the only light with a shadow, the only sky light)
     this.applySetting();
 
     // A tap sends no pointermove first, so every handler that picks reads the pointer itself.
@@ -845,6 +845,8 @@ export class Stage {
         // the shadow then begins at the very surface a room's walls meet, and light crept in along every joint (a
         // lit line round each ceiling and down each corner). From both, a wall's shadow begins at its outside.
         mat.shadowSide = THREE.DoubleSide;
+        // and the sky's light reaches it only where the sky is overhead (shadows.ts: a room is lit by its lamps)
+        mat.defines = { ...mat.defines, SKY_OVERHEAD: '' };
       }
       if (shell) mesh.material = this.shellOf(mat, url);
       const marked = mark(mesh); // a scorch or a stain fades out at its rim

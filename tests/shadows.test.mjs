@@ -27,11 +27,20 @@ function rig() {
 
 test('the shader reads two maps for the Sun, and the second light gives no light', () => {
   const chunk = THREE.ShaderChunk.lights_fragment_begin;
-  assert.ok(chunk.includes('NUM_DIR_LIGHT_SHADOWS == 2'), 'the patch found three’s loop');
+  assert.ok(chunk.includes('NUM_DIR_LIGHT_SHADOWS == 3'), 'the patch found three’s loop');
+  assert.ok(
+    chunk.includes('getHemisphereLightIrradiance( hemisphereLights[ i ], geometryNormal ) * skyOpen'),
+    'the sky’s light is scaled by how much sky is overhead',
+  );
+  assert.ok(THREE.ShaderChunk.lights_fragment_maps.includes('getIBLIrradiance( geometryNormal ) * skyOpen'), 'and so is its reflection');
   assert.ok(chunk.includes('directionalShadowMap[ 1 ]'));
   const { far } = rig();
   assert.equal(far.light.intensity, 0);
   assert.ok(far.light.castShadow && !far.light.shadow.autoUpdate);
+  assert.ok(
+    !far.sky.shadow.autoUpdate && far.sky.intensity === 0,
+    'the map that looks down belongs to a third, which gives no light either',
+  );
 });
 
 test('it is fitted to the whole place along the Sun’s light, and drawn with the fine map when something asks', () => {

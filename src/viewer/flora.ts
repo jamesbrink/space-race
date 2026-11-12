@@ -367,6 +367,8 @@ const PLANT_FRAGMENT = /* glsl */ `
   }
 `;
 
+/** How far `Flora.clear` looks at the least, metres: further than it is asked, so that the eye can come some way before it must look again. */
+const CLEAR_AHEAD = 40;
 /** A plant under this tall, metres, is waded through; a taller one is walked round (`Flora.out`). */
 const WADE = 0.9;
 /** A palm is its trunk to someone on foot: the crown is overhead. Metres. */
@@ -547,7 +549,13 @@ export class Flora {
    * near plane asks, or it cuts the shrub the camera is passing. Only tiles already made are asked: the ones round the eye.
    */
   clear(point: THREE.Vector3, within: number): number {
-    let best = within;
+    // Asked on every frame the eye moves, and the eye moves a little at a time: what was found from a place nearby
+    // bounds the answer here (no plant is nearer than the last answer less how far the eye has come), and while
+    // that bound is beyond `within` there is nothing to look for.
+    const kept = this.cleared;
+    const moved = Math.hypot(point.x - kept.x, point.y - kept.y, point.z - kept.z);
+    if (kept.tiles === this.made && kept.least - moved >= within) return within;
+    let best = Math.max(within, CLEAR_AHEAD);
     for (const layer of LAYERS)
       for (const tile of this.tiles[layer].values())
         for (const batch of tile) {
@@ -566,7 +574,8 @@ export class Flora {
             if (d < best) best = Math.max(0, d);
           }
         }
-    return best;
+    Object.assign(kept, { x: point.x, y: point.y, z: point.z, least: best, tiles: this.made });
+    return Math.min(best, within);
   }
 
   /**
@@ -614,6 +623,11 @@ export class Flora {
     }
     return worst;
   }
+
+  /** Where `clear` last looked, the least it found there (or how far it looked, finding nothing), and how many tiles there were then. */
+  private readonly cleared = { x: 1e9, y: 0, z: 0, least: 0, tiles: -1 };
+  /** How many tiles have been made: a new one may hold a nearer plant. */
+  private made = 0;
 
   /** The plants of one layer on one tile, made the first time they are wanted. */
   private tile(layer: Layer, i: number, j: number): Tile {
@@ -682,6 +696,7 @@ export class Flora {
       }
     const tile = pack(plants);
     this.tiles[layer].set(key, tile);
+    this.made++;
     return tile;
   }
 

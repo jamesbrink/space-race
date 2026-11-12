@@ -732,6 +732,7 @@ def build(
             "CrewCabin_Pack": "olive",
             "CrewCabin_Hoses": "hose",
             "CrewCabin_Looms": "loom",
+            "CrewCabin_Straps": "couch_liner",
             "CrewCabin_Bottles": "bottle",
             "CrewCabin_Lamps": "equipment",
             "CrewCabin_LampLenses": "cabin_lamp",
@@ -824,10 +825,13 @@ def lining(c: Cabin, hatch, portholes, ceiling: float) -> None:
     rl = lambda z: v.r(z) - 0.12  # noqa: E731
     mb = c.into("CrewCabin_Lining")
     top = ceiling - 0.15  # under the small bulkhead
-    mb.lathe(prof([(rl(0.62), 0.62), (rl(hz0), hz0)]), 96, flip=True)
-    mb.lathe(prof([(rl(hz0), hz0), (rl(hz1), hz1)]), 84, arc=(t1, t0 + TAU), flip=True)
-    mb.lathe(prof([(rl(hz1), hz1), (rl(top), top), (0.0, top)]), 96, flip=True)
-    mb.lathe(prof([(0.0, 0.62), (rl(0.62), 0.62)]), 96, flip=True)
+    # (in rings a couple of inches apart, and the bulkheads in rings too: the cabin's shading is kept at its vertices, shade())
+    up = lambda z0, z1: [(rl(z), z) for z in np.linspace(z0, z1, max(2, round((z1 - z0) / 2.2) + 1))]  # noqa: E731
+    across = lambda z, out: [(r, z) for r in (np.linspace(0.0, rl(z), 12) if out else np.linspace(rl(z), 0.0, 12))]  # noqa: E731
+    mb.lathe(prof(up(0.62, hz0)), 96, flip=True)
+    mb.lathe(prof(up(hz0, hz1)), 84, arc=(t1, t0 + TAU), flip=True)
+    mb.lathe(prof(up(hz1, top) + across(top, False)[1:]), 96, flip=True)
+    mb.lathe(prof(across(0.62, True)), 96, flip=True)
     fr = c.into("CrewCabin_Frames")
     for z, whole in ((7.0, True), (24.5, False), (29.5, False), (34.5, False), (48.5, True), (53.5, True)):
         if any(abs(z - pz) < 7.4 for _, pz in portholes):
@@ -1586,6 +1590,23 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
     c.into("CrewCabin_Lamps").tube(
         Vector((a0.x * 1.02, a0.y * 1.02, a0.z)) * IN, Vector((a0.x * 1.12, a0.y * 1.12, a0.z)) * IN, 0.45 * IN, 8
     )  # the clip it hangs from
+    # The pilot's knee strap, one of the couch's restraints (shoulder, chest, lap and knee straps and toe caps: Postlaunch
+    # Report, p. 38). Only this one is modelled: a band over both knees down to the couch either side; its run is estimated.
+    band = [(-9.2, 5.0, 21.5), (-8.0, 5.0, 27.5), (-4.8, 5.0, 31.25), (0.0, 5.0, 30.7), (4.8, 5.0, 31.25), (8.0, 5.0, 27.5), (9.2, 5.0, 21.5)]
+    c.into("CrewCabin_Straps").loft([Vector(p) * IN for p in band], [(0.9 * IN, 0.07 * IN)] * len(band), 8, ref=(0, 1, 0))
+    # The suit circuit's two hoses on the right, from the environmental system under the couch up the wall toward the
+    # pilot's head, corrugated, and a junction box above the panel with its leads into the tunnel: as the flown capsule
+    # has them (NASM2021-00147, lower right and top), placed by eye.
+    for k in (0, 1):
+        run_ = [(21.0, -5.0 + 2.2 * k, 5.9), (24.0, -4.5 + 2.2 * k, 12.0), (24.0, -6.0 + 2.2 * k, 19.0), (20.0, -6.0 + 2.2 * k, 26.0)]
+        c.into("CrewCabin_Looms").loft(
+            [Vector(p) * IN for p in run_], [(0.8 * IN, 0.8 * IN)] * len(run_), 10, resample=14, ripple=lambda s, th: 0.07 * math.sin(s * 260)
+        )
+    box_at = Vector((2.5, -17.2, 44.0))
+    c.into("CrewCabin_Equipment").box((4.2 * IN, 1.6 * IN, 2.6 * IN), Matrix.Translation(box_at * IN) @ Matrix.Rotation(0.35, 4, "X"))
+    for k in (-1, 0, 1):
+        run_ = [box_at + Vector((1.2 * k, 0.6, 1.2)), Vector((2.5 + 1.6 * k, -13.0, 49.5)), Vector((2.0 + 1.2 * k, -9.0, 55.5))]
+        loom.loft([p * IN for p in run_], [(0.22 * IN, 0.22 * IN)] * len(run_), 6)
     # The harnesses from the back of the panel down each side to the equipment on the floor, with their connectors
     # in red caps where they leave the instruments (NASM2021-00153 shows them from the hatch): the runs are estimated.
     for path in (
@@ -1601,6 +1622,54 @@ def stowage(c: Cabin, portholes, out: dict) -> None:
             c.into("CrewCabin_RedCaps").tube(
                 Vector((x + 1.3 * (k - 1), y - 2.0, z - 0.2)) * IN, Vector((x + 1.3 * (k - 1), y - 2.0, z + 1.1)) * IN, 0.4 * IN, 10
             )
+
+
+def shade(parent, lamps, also=()) -> None:
+    """The cabin's own shadow, kept at its vertices (a colour attribute named Shade, which the viewer multiplies the
+    surface by): how much of the two floodlights each point sees past everything else in the cabin, and how open it
+    is to the room round it. The viewer's lamps cast no shadows (every shadow map is a texture every lit surface in
+    the scene must carry, and the ground has none to spare), so this is where the dark behind the panel, under the
+    consoles and in the corners comes from. It is worked once, here, by casting rays against everything in the cabin
+    as it stands: what moves afterwards (a needle, the hand controller) leaves no shadow."""
+    from mathutils.bvhtree import BVHTree
+
+    if not interior():
+        return
+    still = [o for o in bpy.data.objects if o.type == "MESH" and (o.parent == parent or o in also) and o.matrix_local == Matrix.Identity(4)]
+    verts, tris = [], []
+    for o in still:
+        o.data.calc_loop_triangles()
+        base = len(verts)
+        verts.extend(v.co.copy() for v in o.data.vertices)
+        tris.extend(tuple(base + i for i in t.vertices) for t in o.data.loop_triangles)
+    tree = BVHTree.FromPolygons(verts, tris)
+    # a few ways out from a surface, spread over the half of the sky it faces
+    ways = [Vector((math.sin(p) * math.cos(a), math.sin(p) * math.sin(a), math.cos(p))) for p in (0.45, 1.05) for a in np.arange(0.2, TAU, TAU / 6)]
+    ways.append(Vector((0, 0, 1)))
+    reach, skin = 9.0 * IN, 0.12 * IN
+    lamps = [Vector(p) for p in lamps]
+    for o in still:
+        if o.name.startswith(("CrewCabin_Pilot", "CrewCabin_PressureVessel", "CrewCabin_BulkheadStiffeners")):
+            continue
+        layer = o.data.color_attributes.new("Shade", "FLOAT_COLOR", "POINT")
+        for i, v in enumerate(o.data.vertices):
+            n = v.normal
+            at = v.co + n * skin
+            seen = 0.0
+            for lamp in lamps:
+                to = lamp - at
+                if to.dot(n) <= 0:
+                    seen += 0.3  # (turned away: lit by what the rest of the cabin gives back)
+                elif tree.ray_cast(at, to.normalized(), to.length)[0] is None:
+                    seen += 1.0
+                else:
+                    seen += 0.12
+            seen /= len(lamps)
+            t1, t2 = (Vector((0, 0, 1)) if abs(n.z) < 0.9 else Vector((1, 0, 0))).cross(n).normalized(), None
+            t2 = n.cross(t1)
+            clear = sum(tree.ray_cast(at, t1 * w.x + t2 * w.y + n * w.z, reach)[0] is None for w in ways) / len(ways)
+            k = 0.1 + 0.9 * (0.6 * seen + 0.4 * clear) ** 1.5
+            layer.data[i].color = (k, k, k, 1.0)
 
 
 def hatch_inside(parent, vessel: Surf, M: dict, hatch) -> None:
