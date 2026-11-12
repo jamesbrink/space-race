@@ -3,7 +3,7 @@
 // and nothing that jumps from frame to frame.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { boxToSegment, FIRST, GLYPH, labelBox, layMarks, MIDDLE, SECOND, SMALL } from '../src/viewer/pathmarks.ts';
+import { boxToSegment, clearArea, FIRST, GLYPH, labelBox, layChips, layMarks, MIDDLE, SECOND, SMALL } from '../src/viewer/pathmarks.ts';
 
 const W = 1440;
 const H = 900;
@@ -131,4 +131,148 @@ test('the distance from a box to a segment', () => {
   assert.equal(boxToSegment(box, 0, 0, 0, 30), 10);
   assert.equal(boxToSegment(box, 15, 0, 15, 30), 0);
   assert.ok(Math.abs(boxToSegment(box, 30, 30, 40, 40) - Math.hypot(10, 10)) < 1e-6);
+});
+
+// ---- chips: a marker that matters and is not in view, at the edge of the clear part of the view (`layChips`)
+
+/** The flight deck at 1440 by 900: the clock across the top, the deck's middle across the bottom, its two side panels in the corners. */
+const deck = [
+  { x0: 505, y0: 28, x1: 935, y1: 68 }, // the clock
+  { x0: 446, y0: 672, x1: 1007, y1: 872 }, // the deck's middle
+  { x0: 28, y0: 693, x1: 372, y1: 872 }, // the navball
+  { x0: 1083, y0: 640, x1: 1411, y1: 872 }, // the systems
+];
+const chip = (id, at, dx = 0, dy = 0, rank = 100, w = 130) => ({
+  id,
+  rank,
+  w,
+  h: 18,
+  at,
+  dx: at ? at.x - W / 2 : dx,
+  dy: at ? at.y - H / 2 : dy,
+});
+const lay = (chips, over = {}, taken = [], before) => layChips(chips, field({ panels: deck, ...over }), W / 2, H / 2, taken, before);
+const middle = (b) => ({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 });
+
+/** Every chip inside the clear part, off the panels, the clear zone, what was taken and each other. */
+function chipsSound(out, f, taken = []) {
+  const area = clearArea(f);
+  const boxes = out.filter((o) => o.box).map((o) => o.box);
+  for (const [i, b] of boxes.entries()) {
+    assert.ok(b.x0 >= area.x0 && b.y0 >= area.y0 && b.x1 <= area.x1 && b.y1 <= area.y1, `chip ${i} outside the clear part`);
+    for (const p of f.panels) assert.ok(!overlap(b, p), `chip ${i} lies on a panel`);
+    for (const t of taken) assert.ok(!overlap(b, t), `chip ${i} lies on a marker`);
+    for (const c of boxes.slice(i + 1)) assert.ok(!overlap(b, c), `chip ${i} on another`);
+    if (f.clear.r > 0) assert.ok(boxToSegment(b, f.clear.ax, f.clear.ay, f.clear.bx, f.clear.by) >= f.clear.r, `chip ${i} on the vehicle`);
+  }
+}
+
+test('the clear part is the window less the bands of panels across its top and bottom', () => {
+  assert.deepEqual(clearArea(field({ panels: deck })), { x0: 0, y0: 68, x1: W, y1: 672 });
+  // a panel in a corner is no band
+  assert.deepEqual(clearArea(field({ panels: [deck[2]] })), { x0: 0, y0: 0, x1: W, y1: H });
+});
+
+test('a marker in view has no chip; one above the view has one at the top edge, toward it', () => {
+  const [inView] = lay([chip('apogee', { x: 700, y: 300 })]);
+  assert.equal(inView.box, null);
+  const [above] = lay([chip('apogee', { x: 900, y: -400 })]);
+  assert.ok(above.box);
+  assert.ok(above.box.y0 < 68 + 20, `at the top: ${JSON.stringify(above.box)}`);
+  // on the bearing from the middle: the ray to (900, -400) crosses the top of the clear part right of the middle
+  const m = middle(above.box);
+  assert.ok(m.x > W / 2 && m.x < 900, `x ${m.x}`);
+  assert.ok(Math.sin(above.angle) < -0.9, 'the pointer points up');
+  assert.ok(Math.abs(above.py - above.box.y0) < 1e-6, 'from the chip’s top edge');
+  chipsSound([above], field({ panels: deck }));
+});
+
+test('a marker under a panel has a chip at the edge above the panel, pointing down at it', () => {
+  const [o] = lay([chip('down', { x: 700, y: 760 }, 0, 0, 95)]);
+  assert.ok(o.box, 'shown');
+  assert.ok(o.box.y1 <= 672 && o.box.y1 > 640, `just over the deck: ${JSON.stringify(o.box)}`);
+  assert.ok(Math.sin(o.angle) > 0.9, 'pointing down');
+});
+
+test('a marker behind the eye is at the edge on its own side, never mirrored through the middle', () => {
+  // behind and to the right and above: on the right, up
+  const [o] = lay([chip('apogee', null, 500, -200)]);
+  assert.ok(o.box);
+  const m = middle(o.box);
+  assert.ok(m.x > W / 2 && m.y < H / 2, `at ${m.x}, ${m.y}`);
+  assert.ok(Math.cos(o.angle) > 0 && Math.sin(o.angle) < 0, 'pointing right and up');
+  // crossing from in front of the eye to behind it, through the side: no leap
+  const front = lay([chip('apogee', { x: W / 2 + 5e6, y: H / 2 - 2e6 })])[0];
+  const behind = lay([chip('apogee', null, 5e6, -2e6)])[0];
+  assert.ok(Math.hypot(front.box.x0 - behind.box.x0, front.box.y0 - behind.box.y0) < 1, 'the same place either side of the eye');
+});
+
+test('a chip slides along the edge off a panel in the corner, the vehicle, the markers on the line and the chips before it', () => {
+  const clear = { ax: 720, ay: 200, bx: 720, by: 500, r: 60 };
+  const taken = [{ x0: 1300, y0: 300, x1: 1440, y1: 330 }];
+  const f = field({ panels: deck, clear });
+  const chips = [
+    chip('apogee', { x: 1700, y: 700 }, 0, 0, 100), // toward the systems panel
+    chip('separation', { x: 1700, y: 690 }, 0, 0, 71), // just beside it
+    chip('down', { x: 720, y: -900 }, 0, 0, 95), // straight up, over the vehicle
+    chip('retro', { x: 2400, y: 320 }, 0, 0, 58), // where a marker on the line has its label
+  ];
+  const out = layChips(chips, f, W / 2, H / 2, taken);
+  assert.ok(
+    out.every((o) => o.box),
+    'all shown',
+  );
+  chipsSound(out, f, taken);
+});
+
+test('a chip moves little as its bearing moves a little, all the way round, past the panels in the corners too', () => {
+  let before;
+  let last = null;
+  for (let k = 0; k <= 1440; k++) {
+    const a = (k * Math.PI) / 720;
+    const [o] = lay([chip('apogee', null, Math.cos(a) * 1000, Math.sin(a) * 1000)], {}, [], before);
+    assert.ok(o.box, `shown at ${k / 4}°`);
+    if (last) {
+      // (brought in off a corner's panel along its inner edges, not slid round it: a quarter of a degree is a few pixels)
+      const step = Math.hypot(o.box.x0 - last.x0, o.box.y0 - last.y0);
+      assert.ok(step < 20, `at ${k / 4}° it moved ${step.toFixed(1)} px`);
+      assert.equal(o.leap, false, `at ${k / 4}° it is said to have leapt`);
+    }
+    last = o.box;
+    before = new Map([[o.id, o]]);
+  }
+});
+
+test('a chip whose place leaps says so, to be faded out and in rather than glided across the page', () => {
+  // its marker goes from behind the eye on the right to behind it on the left, between one frame and the next
+  const [a] = lay([chip('apogee', null, 500, 0)]);
+  const [b] = lay([chip('apogee', null, -500, 0)], {}, [], new Map([[a.id, a]]));
+  assert.ok(a.box && b.box);
+  assert.equal(b.leap, true);
+  // and a chip slid round another that has come to stand where it was
+  const first = lay([chip('down', { x: 900, y: -400 }, 0, 0, 95)]);
+  const was = new Map(first.map((o) => [o.id, o]));
+  const [, crowded] = lay([chip('apogee', { x: 900, y: -400 }, 0, 0, 100, 400), chip('down', { x: 900, y: -400 }, 0, 0, 95)], {}, [], was);
+  assert.ok(crowded.box);
+  assert.equal(crowded.leap, true, `slid ${crowded.slide} px`);
+});
+
+test('on a phone the chips keep to the strip between the clock and the deck', () => {
+  const panels = [
+    { x0: 8, y0: 8, x1: 382, y1: 44 }, // the clock
+    { x0: 8, y0: 265, x1: 382, y1: 836 }, // the deck and its sheet
+  ];
+  const f = { width: 390, height: 844, panels, clear: none };
+  assert.deepEqual(clearArea(f), { x0: 0, y0: 44, x1: 390, y1: 265 });
+  const chips = [
+    chip('apogee', null, 0, -500, 100, 120),
+    chip('down', { x: 300, y: 600 }, 0, 0, 95, 120),
+    chip('retro', null, 900, 20, 58, 120),
+  ];
+  const out = layChips(chips, f, 195, 422, []);
+  assert.ok(
+    out.every((o) => o.box),
+    'all shown',
+  );
+  chipsSound(out, f);
 });

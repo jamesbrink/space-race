@@ -288,4 +288,13 @@ never adjusted to bring a check in.
   moves nothing. The line flown is drawn behind it, paler. Its markers are glyphs on the line with a name, a figure
   and the time to it (apogee, the events, where it comes down, with a ring on the surface there), laid out together by
   rank, off the panels, the vehicle and each other, keeping their places (`viewer/pathmarks.ts`); not drawn from the
-  seat. It is given to the stage through `Stage.overlay`, which builds its shaders in `Stage.warm`.
+  seat. The few that matter now (the apogee ahead, the next event, where it ends) have besides a chip at the edge of
+  the clear part of the view, on the bearing to them, with a pointer, for when their place is off the window, under a
+  panel or behind the eye (`layChips`: the bearing of one behind the eye is its place across the line of sight, never
+  mirrored through the middle, and it agrees with the one in front where the two meet). A chip keeps off the panels
+  (brought in along a corner panel's inner edges), the vehicle, the markers on the line and the other chips; it is
+  drawn where it is laid, fades in as the marker on the line fades out and the other way about, and where its place
+  leaps it fades out and in again rather than glide across the page. From the seat there are only the chips, with the
+  deck on show. In the real look the line has a thin dark casing under its core, which is what reads against a bright
+  sky, cloud and sea, and from inside the vehicle nothing of it within the vehicle's radius is drawn. It is given to
+  the stage through `Stage.overlay`, which builds its shaders in `Stage.warm`.

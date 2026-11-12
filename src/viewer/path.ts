@@ -16,7 +16,7 @@ import {
 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';
 import { atInstants, strip } from './pathline.ts';
-import { type Box, type Clear, layMarks, type MarkIn, type MarkOut } from './pathmarks.ts';
+import { type Box, type ChipIn, type ChipOut, type Clear, GLYPH, layChips, layMarks, type MarkIn, type MarkOut } from './pathmarks.ts';
 
 /**
  * The predicted path, drawn: where the vehicle goes from here if nothing more is done (sim/predict.ts),
@@ -37,8 +37,11 @@ import { type Box, type Clear, layMarks, type MarkIn, type MarkOut } from './pat
  *   hide its end); beyond the far plane it is at the far plane, behind everything; and the Earth's
  *   bulk hides it where the globe is not drawn (a sphere through the site's sea, tested along the ray).
  * - **A width on the screen, not in the world**: a ribbon pushed out across its own direction in the
- *   vertex shader, a core of `CORE` CSS pixels each side with a pixel's soft edge and a glow to `HALF`,
+ *   vertex shader, a core of `CORE` CSS pixels each side with a pixel's soft edge, a thin dark casing
+ *   (what reads against bright sky, cloud and sea) and a glow to `HALF` (what reads against black),
  *   thinning to two thirds of that far off; in the cel look a flat core with an ink edge.
+ * - **Never in the cabin**: from inside the vehicle nothing within its radius of the eye is drawn, so the line is
+ *   seen through the windows even while the vehicle drawn catches up with the flight after the clock has run fast.
  * - **Never at the eye**: nothing nearer than just past the near plane is drawn (it fades out before it), and a
  *   point nearer than half that is moved along the line to there, so no vertex is behind the eye, where a ribbon
  *   turns inside out across the screen.
@@ -59,7 +62,12 @@ import { type Box, type Clear, layMarks, type MarkIn, type MarkOut } from './pat
  * The markers (pathmarks.ts lays them out) are glyphs on the line, each with a label and a figure,
  * from the prediction itself: its apogee, its events (predict.ts: what the sequencer will do, the
  * parachutes, the first 0.05 g and the greatest load) and where it ends. On the surface where it
- * comes down there is a ring.
+ * comes down there is a ring. The few that matter now (the apogee ahead, the next event, where it ends)
+ * have besides a chip at the edge of the clear part of the view, on the bearing to them, for when their
+ * place is not in view (off the window, under a panel, behind the eye: pathmarks.ts `layChips`): it
+ * fades in as the marker on the line fades out and the other way about, and fades out and in again
+ * where its place leaps, never gliding over the page. From the seat only the chips (with the deck on
+ * show: from the couch alone the page has none of it).
  *
  * The work is kept off the frame: a prediction is begun at most five times a second and worked out in
  * slices of `SLICE` milliseconds, one a frame. Each frame only uniforms change; the line's vertices are
@@ -82,6 +90,8 @@ const STALE = 1.5;
 /** Points round the ring where it comes down, and its radius on the screen, CSS pixels. */
 const RING = 48;
 const RING_PX = 9;
+/** Seconds a chip at the edge fades in or out over. */
+const CHIP_FADE = 0.2;
 
 const VERT = /* glsl */ `
   #include <common>
@@ -163,9 +173,16 @@ const FRAG = /* glsl */ `
       a = 1.0 - smoothstep(edge - 0.6, edge + 0.6, px);
       colour = mix(uColour, uInk, smoothstep(c - 0.6, c + 0.6, px));
     } else {
+      // the core over a thin dark casing over a soft glow: the casing is what reads against a bright sky, cloud or sea,
+      // the glow against black (each laid over the one under it)
       float body = 1.0 - smoothstep(c - 0.6, c + 0.6, px);
+      float rim = 0.65 * (1.0 - smoothstep(c + 1.2 * uRatio - 0.6, c + 1.2 * uRatio + 0.6, px));
       float g = max(0.0, 1.0 - px / vHalf);
-      a = max(body, 0.3 * g * g);
+      float glow = 0.3 * g * g;
+      vec3 under = uInk * rim + uColour * glow * (1.0 - rim);
+      float behind = rim + glow * (1.0 - rim);
+      a = body + behind * (1.0 - body);
+      colour = (uColour * body + under * (1.0 - body)) / max(a, 1e-4);
     }
   #ifndef RING
     // clear of the vehicle: along the line in the scene, coming in from nothing over three gaps; and on the screen, outside its ring
@@ -266,6 +283,25 @@ interface Mark {
   t: number;
   figure: string;
   el: HTMLElement;
+  /** Its chip at the edge of the view, for when it matters now and its place is not in view (pathmarks.ts: `layChips`). */
+  chip: Chip;
+}
+
+/** A chip as it is drawn: where it is going (from `layChips`, in the draw) and where it is now (faded in `tick`). */
+interface Chip {
+  el: HTMLElement;
+  /** Shown, and where: the box's top left, the pointer and its way. */
+  want: boolean;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  angle: number;
+  /** Its place has leapt since it was last drawn where it was going: it fades out, and in again there. */
+  leap: boolean;
+  /** As it is drawn now; `op` its opacity. */
+  at: { x: number; y: number; px: number; py: number; angle: number; op: number };
+  written: string;
 }
 
 /** A prediction on show: its points in the scene's frame as they lie before the mesh is turned (doubles), and where it is eased from. */
@@ -764,9 +800,13 @@ export class FlightPath {
         figure: m.figure,
         at: this.point(m.r, m.t, r.from, shown.frame, was?.at ?? new THREE.Vector3()),
         el,
+        chip: was?.chip ?? this.chipOf(m.kind),
       });
     }
-    for (const gone of kept.values()) gone.el.remove();
+    for (const gone of kept.values()) {
+      gone.el.remove();
+      gone.chip.el.remove();
+    }
     this.marks = marks;
     // where it comes down, on the surface: a ring in the level there
     const ring = this.ringMesh;
@@ -785,6 +825,26 @@ export class FlightPath {
     el.innerHTML = '<i></i><span></span>';
     this.marksEl.append(el);
     return el;
+  }
+
+  private chipOf(kind: Kind): Chip {
+    const el = document.createElement('div');
+    el.className = `path-chip path-${kind}`;
+    el.innerHTML = '<i></i><span></span>';
+    el.style.opacity = '0';
+    this.marksEl.append(el);
+    return {
+      el,
+      want: false,
+      x: 0,
+      y: 0,
+      px: 0,
+      py: 0,
+      angle: 0,
+      at: { x: 0, y: 0, px: 0, py: 0, angle: 0, op: 0 },
+      leap: false,
+      written: '',
+    };
   }
 
   /** The line flown: a point for every second or so heard from the flight deck, kept in the frame that does not turn. */
@@ -853,7 +913,10 @@ export class FlightPath {
         probe.remove();
       }
     }
-    this.marksEl.hidden = !seen || this.host.aboard?.() === true;
+    this.marksEl.hidden = !seen;
+    // (from the seat only the chips: nothing is laid on the line over the cabin)
+    this.marksEl.classList.toggle('aboard', this.host.aboard?.() === true);
+    this.drawChips();
     if (!seen || !shown) {
       this.say(shown?.result ?? null);
       return;
@@ -906,6 +969,9 @@ export class FlightPath {
   private readonly unturn = new THREE.Quaternion();
   private readonly p = new THREE.Vector3();
   private readonly q = new THREE.Vector3();
+  private readonly clip = new THREE.Vector4();
+  private chipsLaid = new Map<string, ChipOut>();
+  private chipsAt = 0;
 
   /**
    * In the draw, once a frame, with the camera and the vehicle as this frame has them: how wide the line is on this
@@ -944,8 +1010,11 @@ export class FlightPath {
     const reach = Number.isFinite(toShip) ? toShip : eye.distanceTo(this.mesh.position);
     const tanHalf = Math.tan((camera.fov * Math.PI) / 360) / Math.max(camera.zoom, 1e-6);
     // (just past the near plane, which stands at half the way to the nearest thing: Stage.fitDepth; and, near a vehicle
-    // close by, a seventh of the way to it, so a line that comes at the eye has gone before it is a smear across the view)
-    u.uNear!.value = Math.max(1.02 * camera.near, 0.15 * Math.min(reach, 4000));
+    // close by, a seventh of the way to it, so a line that comes at the eye has gone before it is a smear across the view;
+    // and from inside it, nothing within its own radius: the line is seen through the windows and never in the cabin, even
+    // while the vehicle drawn is still catching up with the flight after the clock has run fast and the line starts
+    // where the flight is, metres off)
+    u.uNear!.value = Math.max(1.02 * camera.near, 0.15 * Math.min(reach, 4000), aboard && radius !== null ? radius : 0);
     // the gap: the vehicle's radius and a half, or a fifth of the half height of the view at the vehicle (a tenth of the
     // distance through an ordinary lens; through the pad camera's long one, so much less that the line is seen leave it)
     u.uGap!.value = vessel === null ? 1 : Math.max(1.1 * vessel.half, 0.2 * toShip * tanHalf);
@@ -986,16 +1055,22 @@ export class FlightPath {
     // the ring where it comes down: so many pixels across, wherever it is seen from
     const ringAt = this.ringMesh.userData.at as THREE.Vector3 | null;
     if (ringAt) u.uRing!.value = ((RING_PX * ratio) / (this.size.y / 2)) * tanHalf * ringAt.distanceTo(eye);
-    this.layout(eye, project, clear);
+    this.layout(eye, camera, clear);
   }
 
-  /** The markers on the page: each projected, its words written, and all of them laid out together (pathmarks.ts). */
-  private layout(eye: THREE.Vector3, project: (p: THREE.Vector3, into: THREE.Vector3) => THREE.Vector3 | null, clear: Clear): void {
+  /**
+   * The markers on the page: each projected, its words written, and all of them laid out together (pathmarks.ts); then
+   * the chips, for those that matter now and are not in view. From the seat only the chips: nothing is laid on the line
+   * over the cabin.
+   */
+  private layout(eye: THREE.Vector3, camera: THREE.PerspectiveCamera, clear: Clear): void {
     const shown = this.shown;
     if (!shown || this.marksEl.hidden) return;
+    const aboard = this.host.aboard?.() === true;
     const now = this.now;
     const rect = this.rect;
     const ins: MarkIn[] = [];
+    const chips: ChipIn[] = [];
     const where = new Map<string, { x: number; y: number }>();
     const next = this.marks.find((m) => m.t > now && m.kind !== 'apogee' && m.kind !== 'perigee')?.id;
     let x0 = Number.POSITIVE_INFINITY;
@@ -1005,28 +1080,47 @@ export class FlightPath {
     const p = this.p;
     const centre = this.v.copy(this.centre);
     const radius = this.uniforms.uRadius!.value as number;
+    const width = this.charWidth || 7;
     for (const m of this.marks) {
+      if (m.t <= now) continue;
       const scene = this.carried(m.at, p);
-      // not past, not behind the eye, not behind the Earth
+      // behind the Earth?
       const from = this.w.copy(scene).sub(eye);
       const k = Math.min(1, Math.max(0, this.q.copy(centre).sub(eye).dot(from) / Math.max(from.lengthSq(), 1e-6)));
       const hidden = centre.distanceTo(this.q.copy(eye).addScaledVector(from, k)) < radius - 8000;
-      const at = m.t > now && !hidden ? project(scene, from) : null;
-      if (!at || Math.abs(at.x) > 1.5 || Math.abs(at.y) > 1.5) continue;
-      const x = ((at.x + 1) / 2) * rect.width;
-      const y = ((1 - at.y) / 2) * rect.height;
-      x0 = Math.min(x0, x);
-      x1 = Math.max(x1, x);
-      y0 = Math.min(y0, y);
-      y1 = Math.max(y1, y);
+      // on the target, as it is before it is divided: its way from the middle of the view holds wherever it lies, behind the eye too
+      const view = this.q.copy(scene).sub(eye).add(camera.position).applyMatrix4(camera.matrixWorldInverse);
+      const clip = this.clip.set(view.x, view.y, view.z, 1).applyMatrix4(camera.projectionMatrix);
+      const front = view.z < -1e-3 && clip.w > 0;
+      const x = front ? ((clip.x / clip.w + 1) / 2) * rect.width : Number.NaN;
+      const y = front ? ((1 - clip.y / clip.w) / 2) * rect.height : Number.NaN;
       const words = this.words(m, now);
       if (m.el.dataset.words !== words) {
         m.el.dataset.words = words;
         m.el.lastElementChild!.innerHTML = words;
+        m.chip.el.lastElementChild!.innerHTML = words;
       }
-      const chars = m.el.lastElementChild!.textContent!.length;
-      where.set(m.id, { x, y });
-      ins.push({ id: m.id, x, y, rank: KINDS[m.kind][1] + (m.id === next ? NEXT : 0), w: chars * (this.charWidth || 7) + 14, h: 18 });
+      const w = m.el.lastElementChild!.textContent!.length * width + 14;
+      const rank = KINDS[m.kind][1] + (m.id === next ? NEXT : 0);
+      if (!aboard && front && !hidden && Math.abs(clip.x / clip.w) <= 1.5 && Math.abs(clip.y / clip.w) <= 1.5) {
+        x0 = Math.min(x0, x);
+        x1 = Math.max(x1, x);
+        y0 = Math.min(y0, y);
+        y1 = Math.max(y1, y);
+        where.set(m.id, { x, y });
+        ins.push({ id: m.id, x, y, rank, w, h: 18 });
+      }
+      // a chip for the few that matter now: the apogee ahead (the perigee, going round), the next event, where it ends
+      if (m.kind === 'apogee' || m.kind === 'perigee' || m.kind === 'down' || m.kind === 'impact' || m.id === next)
+        chips.push({
+          id: m.id,
+          rank,
+          w,
+          h: 18,
+          at: front ? { x, y } : null,
+          dx: (clip.x * rect.width) / 2,
+          dy: (-clip.y * rect.height) / 2,
+        });
     }
     const span = Number.isFinite(x0) ? Math.max(x1 - x0, y1 - y0) : 0;
     const field = {
@@ -1043,11 +1137,82 @@ export class FlightPath {
       const el = m.el;
       const glyph = Boolean(o?.glyph && at);
       el.classList.toggle('gone', !glyph);
-      if (!glyph || !at) continue;
+      // (one going is moved on as it fades, while it has a place)
+      if (!at) continue;
       el.style.transform = `translate(${(rect.left + at.x).toFixed(1)}px, ${(rect.top + at.y).toFixed(1)}px)`;
+      if (!glyph) continue;
       const label = el.lastElementChild as HTMLElement;
       label.classList.toggle('gone', !o?.box);
       if (o?.box) label.style.transform = `translate(${(o.box.x0 - at.x).toFixed(1)}px, ${(o.box.y0 - at.y).toFixed(1)}px)`;
+    }
+    // the chips: off what is on the line, for those not on it
+    const taken: Box[] = [];
+    for (const o of out) {
+      const at = where.get(o.id);
+      if (o.glyph && at) taken.push({ x0: at.x - GLYPH, y0: at.y - GLYPH, x1: at.x + GLYPH, y1: at.y + GLYPH });
+      if (o.box) taken.push(o.box);
+    }
+    const laid = layChips(
+      chips.filter((c) => !this.laid.get(c.id)?.glyph),
+      field,
+      rect.width / 2,
+      rect.height / 2,
+      taken,
+      this.chipsLaid,
+    );
+    this.chipsLaid = new Map(laid.map((c) => [c.id, c]));
+    for (const m of this.marks) {
+      const c = this.chipsLaid.get(m.id);
+      const chip = m.chip;
+      chip.want = Boolean(c?.box);
+      if (!c?.box) continue;
+      // (a place that has leapt, round another chip or a panel, is gone to by fading out and in again, not by gliding over the page)
+      if (c.leap) chip.leap = true;
+      chip.x = rect.left + c.box.x0;
+      chip.y = rect.top + c.box.y0;
+      chip.px = c.px - c.box.x0;
+      chip.py = c.py - c.box.y0;
+      chip.angle = c.angle;
+    }
+  }
+
+  /**
+   * Each frame (in `tick`, drawn or not): the chips where the layout last put them, faded in and out. A chip whose
+   * place has leapt fades out, and comes in again where it is going.
+   */
+  private drawChips(): void {
+    const t = performance.now();
+    const dt = Math.min(0.1, Math.max(0, (t - this.chipsAt) / 1000));
+    this.chipsAt = t;
+    for (const m of this.marks) {
+      const c = m.chip;
+      const a = c.at;
+      let to = c.want && !this.marksEl.hidden && m.t > this.now ? 1 : 0;
+      // where the layout puts it, as it puts it (its places from frame to frame are near one another: pathmarks.ts); but
+      // where that has leapt, it fades out where it was and in again where it is going, and it fades out where it is
+      // when it is no longer wanted (its marker has come into view on the line, or is past)
+      if (to && c.leap && a.op > 0) to = 0;
+      else if (to) {
+        c.leap = false;
+        a.x = c.x;
+        a.y = c.y;
+        a.px = c.px;
+        a.py = c.py;
+        a.angle = c.angle;
+      }
+      a.op = to > a.op ? Math.min(to, a.op + dt / CHIP_FADE) : Math.max(to, a.op - dt / CHIP_FADE);
+      if (a.op <= 0) {
+        // (one not shown is written once, and not every frame)
+        if (c.written !== '') c.el.setAttribute('style', 'opacity:0');
+        c.written = '';
+        continue;
+      }
+      const box = `opacity:${a.op.toFixed(3)};transform:translate(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px)`;
+      const pointer = `translate(${a.px.toFixed(1)}px,${a.py.toFixed(1)}px) rotate(${a.angle.toFixed(3)}rad) translateX(5px)`;
+      if (box + pointer === c.written) continue;
+      c.written = box + pointer;
+      c.el.setAttribute('style', box);
+      (c.el.firstElementChild as HTMLElement).style.transform = pointer;
     }
   }
 

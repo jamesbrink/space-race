@@ -63,7 +63,8 @@
 #ui > .path-marks { position: fixed; inset: 0; pointer-events: none !important; overflow: hidden; }
 .path-marks[hidden] { display: none; }
 .path-mark { position: absolute; left: 0; top: 0; transition: opacity 0.18s; }
-.path-mark.gone { opacity: 0; transition: none; }
+.path-mark.gone { opacity: 0; }
+.path-marks.aboard > .path-mark { display: none; }
 .path-mark > i { position: absolute; left: -4.5px; top: -4.5px; width: 9px; height: 9px; rotate: 45deg; background: var(--ink); border: 1.5px solid rgba(10, 11, 14, 0.9); box-sizing: border-box; }
 .path-apogee > i, .path-perigee > i { background: var(--amber); }
 .path-down > i, .path-impact > i { background: rgba(10, 11, 14, 0.7); border-color: var(--amber); }
@@ -72,6 +73,13 @@
 .path-mark b { font-weight: 600; letter-spacing: 0.1em; color: var(--ink); }
 .path-apogee b, .path-perigee b, .path-down b, .path-impact b { color: var(--amber); }
 .path-mark em { font-style: normal; color: var(--dim); }
+/* a marker that matters now and is not in view: a chip at the edge of the clear part of the view, its pointer toward where it lies (pathmarks.ts: layChips); faded and moved by path.ts */
+.path-chip { position: absolute; left: 0; top: 0; height: 18px; opacity: 0; }
+.path-chip > span { display: block; height: 18px; padding: 0 7px; border-radius: 2px; background: rgba(10, 11, 14, 0.72); box-shadow: inset 0 0 0 1px rgba(255, 196, 107, 0.35); font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.path-chip > i { position: absolute; left: -5px; top: -4.5px; width: 10px; height: 9px; transform-origin: 5px 4.5px; background: var(--amber); clip-path: polygon(0 0, 100% 50%, 0 100%, 30% 50%); }
+.path-chip b { font-weight: 600; letter-spacing: 0.1em; color: var(--ink); }
+.path-chip.path-apogee b, .path-chip.path-perigee b, .path-chip.path-down b, .path-chip.path-impact b { color: var(--amber); }
+.path-chip em { font-style: normal; color: var(--dim); }
 .path-mark-probe { position: absolute; visibility: hidden; font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 
 /* a window a little narrower than three panels abreast need: the ball and its panel close up */
