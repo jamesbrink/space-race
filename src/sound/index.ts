@@ -274,6 +274,11 @@ export class Sound {
   private start(): void {
     if (document.hidden) return;
     if (!this.ctx) {
+      // An iPhone treats a page's Web Audio as ambient sound unless told otherwise, and ambient sound is silenced by the
+      // ring/silent switch: with the switch on silent the speaker showed sound on and none was heard. Played as media
+      // plays (Safari 17's audio session), it is heard as a video's is.
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = 'playback';
       const ctx = (this.ctx = new AudioContext({ latencyHint: 'balanced' }));
       const engine = (this.engine = new Engine(ctx));
       this.analyser = ctx.createAnalyser();
