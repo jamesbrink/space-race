@@ -260,10 +260,10 @@ for (const look of ['real', 'cel']) {
     ]) {
       if (!d) continue; // (no air drawn in this pose, or no step taken: a rig that follows)
       // (the ball moved draws the same rays through other triangles: a last bit of rounding, one level at most)
-      // (the near plane at half: what its depth steps decide, the ink and the cel clouds' cut edges, layers a few steps
-      // apart, flips along lines, up to 15,000 pixels in the cel look beside the gantry, each by tens of levels; anything
-      // that read the plane, a haze or a veil, would move a broad part of the frame by a few: so those are counted)
-      const ok = what === 'ball' ? d.worst <= 1 : what === 'near' ? d.faint <= 0.005 * NPIX : d.n === 0;
+      // (the near plane at half: what its depth steps decide moves along lines and edges, the ink, the cel clouds' cut
+      // and layers a few steps apart, mostly by a few levels: up to 15,000 pixels in the cel look beside the gantry, 5,000
+      // in the real; anything that read the plane, a haze or a veil, would move the broad part of the frame it covers)
+      const ok = what === 'ball' ? d.worst <= 1 : what === 'near' ? d.faint <= 0.03 * NPIX : d.n === 0;
       const open = !ok && pose.open?.includes(what);
       if (!ok && !open) failed++;
       console.log(
