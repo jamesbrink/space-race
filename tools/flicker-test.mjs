@@ -1,5 +1,9 @@
 // Looks for z-fighting in the running viewer: surfaces that flicker when the camera moves.
 //   node tools/flicker-test.mjs [url] [--shots <dir>]      (default url: http://localhost:5180/)
+//   node tools/flicker-test.mjs "http://localhost:5180/#ussr/vostok/vostok-1"     a flight's gallery: its vehicle alone
+// An address that opens a gallery (any flight's own address; the only place a flight without a site has) tests the
+// gallery's stage: the vehicle, in the views the gallery offers of it, and cut open. One that opens a site
+// (`#<flight>/site`, or no address: the first flight's) tests every model there.
 // --shots writes a map per pose that has any flips: the frame dimmed, the flipping pixels magenta.
 //
 // Each model is framed in each of its views from six directions. At every pose three frames
@@ -33,20 +37,28 @@ page.on('console', (m) => ['error', 'warning'].includes(m.type()) && errors.push
 page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(`${url}#vehicle`); // (the launch site's page: an address that names nothing opens the gallery, which has one model and no `sr.show`)
 await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'));
-await page.addStyleTag({ content: '#ui { display: none !important }' });
+// which stage is up: the gallery's (its own canvas) or the site's
+await page.waitForTimeout(600);
+const inGallery = await page.evaluate(() => Boolean(window.sr.gallery?.active ?? !window.sr.show));
+if (inGallery) await page.waitForFunction(() => window.sr.gallery.stage?.def, null, { timeout: 60000 });
+await page.evaluate((g) => {
+  window.srStage = () => (g ? window.sr.gallery.stage : window.sr.stage);
+  window.srCanvas = () => document.querySelector(g ? '#gallery-stage' : '#stage');
+}, inGallery);
+await page.addStyleTag({ content: '#ui, #gallery { display: none !important }' });
 
 /** Take A, B (nudged), A again inside the page and count the pixels that jump and come back. */
 const flipsAt = (view, az) =>
   page.evaluate(
     async ([view, az, JUMP, BACK, NUDGE]) => {
-      window.sr.stage.frozen = true;
-      const src = document.querySelector('#stage');
+      window.srStage().frozen = true;
+      const src = window.srCanvas();
       const c = document.createElement('canvas');
       c.width = src.width;
       c.height = src.height;
       const g = c.getContext('2d', { willReadFrequently: true });
       const grab = async (nudge) => {
-        window.sr.stage.shot(view, az, nudge);
+        window.srStage().shot(view, az, nudge);
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))));
         g.drawImage(src, 0, 0); // the WebGL buffer is not preserved, so copy it in the same task as the frame
         return g.getImageData(0, 0, c.width, c.height).data;
@@ -84,17 +96,22 @@ const flipsAt = (view, az) =>
   );
 
 let failed = 0;
-const models = await page.evaluate(() =>
-  window.sr.flight.models.map((m) => ({ id: m.id, cutaway: Boolean(m.cutaway), views: ['all', ...m.views.map((v) => v.id)] })),
-);
+const models = await page.evaluate((g) => {
+  const of = (m) => ({ id: m.id, cutaway: Boolean(m.cutaway), views: ['all', ...m.views.map((v) => v.id)] });
+  // (the gallery's stage has the one model, with the views the gallery gives it of what stands there)
+  return g ? [of(window.sr.gallery.stage.def)] : window.sr.flight.models.map(of);
+}, inGallery);
+console.log(inGallery ? 'the gallery' : 'the site');
 for (const model of models) {
-  await page.evaluate((id) => window.sr.show(id), model.id);
-  await page.waitForFunction(() => document.querySelector('.loading.done'));
+  if (!inGallery) {
+    await page.evaluate((id) => window.sr.show(id), model.id);
+    await page.waitForFunction(() => document.querySelector('.loading.done'));
+  }
   await page.waitForTimeout(400);
   // every view from six directions; then, where there is a cutaway, every view again looking into it
   const passes = model.cutaway ? [false, true] : [false];
   for (const cut of passes) {
-    await page.evaluate((on) => window.sr.stage.setCutaway(on), cut);
+    await page.evaluate((on) => window.srStage().setCutaway(on), cut);
     // six directions, chosen so no pose puts the camera inside the pad's masts
     for (const view of model.views)
       for (const az of cut ? [20] : [20, 80, 140, 200, 260, 320]) {
