@@ -348,6 +348,21 @@ export class Cabin {
   private readonly interior: { mesh: THREE.Mesh; casts: boolean }[] = [];
   private shown = true;
   private casting = true;
+  private all = false;
+
+  /**
+   * All of the inside drawn and casting, wherever the eye is (`Stage.warm`, under the curtain), or (false) as `seen`
+   * has it. A mesh's buffers go to the GPU the first time it is drawn, and its shadow's shader is built the first time
+   * it casts one: the inside's 93 meshes (5.4 MB) went in the frame the chase view first came within `NEAR`, as the
+   * capsule left its booster.
+   */
+  everything(on: boolean): void {
+    this.all = on;
+    for (const { mesh, casts } of this.interior) {
+      mesh.visible = on || this.shown;
+      mesh.castShadow = casts && (on || this.casting);
+    }
+  }
 
   /**
    * The inside is drawn only when it can be seen: from on board, with the model cut open, or from near enough
@@ -361,8 +376,8 @@ export class Cabin {
     const casting = this.aboard || this.open;
     if (shown === this.shown && casting === this.casting) return;
     for (const { mesh, casts } of this.interior) {
-      mesh.visible = shown;
-      mesh.castShadow = casts && casting;
+      mesh.visible = shown || this.all;
+      mesh.castShadow = casts && (casting || this.all);
     }
     if (casting !== this.casting || (shown !== this.shown && casting)) this.host.reshade();
     this.shown = shown;

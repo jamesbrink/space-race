@@ -736,6 +736,7 @@ export class Stage {
     this.debris.length = 0; // (their holders were under the last flight's root)
     this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => o.parent)); // (the last flight's are gone with its models)
     this.flightData = flight;
+    this.unhang();
     this.hangPlume(flight);
     this.lamps = new Lamps();
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
@@ -1281,6 +1282,12 @@ export class Stage {
     this.effects?.use(run);
     this.stand();
     if (this.flightData) this.hangPlume(this.flightData);
+    // (the jets and the parachutes are the flight's, not the run's: kept, with the shaders `warm` built for them. Made
+    // again here, the deck's were made and their shaders built at their first use, in the middle of the flight. The jets
+    // stand in the body's axes as this run has them on its pad.)
+    const flier = this.defs.find((m) => m.id === this.ascent?.model);
+    const frame = this.jets && this.ascent.bodyFrame(new THREE.Quaternion().setFromAxisAngle(UP, flier?.rotationY ?? 0));
+    if (this.jets && frame) this.jets.group.matrix.copy(frame);
     this.lifted.t = Number.NaN;
     this.dirty = true;
   }
@@ -1486,9 +1493,8 @@ export class Stage {
     trail.show(flying ? t : null, this.setting.sunIntensity / 3 + 0.1);
   }
 
-  /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
-  private hangPlume(flight: FlightData): void {
-    const gone = [this.plume?.mesh, this.trail?.mesh];
+  /** Take the last flight's parachutes and attitude jets away: another flight has its own. */
+  private unhang(): void {
     for (const chute of this.chutes ?? []) {
       chute.group.removeFromParent();
       this.looks.remove(chute.group); // (or every flight's parachutes would be kept, and dressed again at each change of look)
@@ -1498,6 +1504,11 @@ export class Stage {
     this.jets?.group.removeFromParent();
     this.jets?.dispose();
     this.jets = null;
+  }
+
+  /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
+  private hangPlume(flight: FlightData): void {
+    const gone = [this.plume?.mesh, this.trail?.mesh];
     this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => !gone.includes(o as THREE.Mesh)));
     this.plume?.mesh.removeFromParent();
     this.plume?.light.removeFromParent();
@@ -1816,6 +1827,7 @@ export class Stage {
     for (const s of this.staged) s.everyLevel(true);
     this.scenery?.everyLevel(true);
     this.rehearse();
+    const covered = this.uncover(true);
     if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
     if (this.trail) this.trail.mesh.visible = true; // (and its trail: drawn empty, its shader is built)
     const globe = this.setting.globe;
@@ -1877,6 +1889,7 @@ export class Stage {
     this.scenery?.everyLevel(false);
     if (this.plume) this.plume.mesh.visible = false;
     if (this.trail) this.trail.mesh.visible = false;
+    this.uncover(false, covered);
     if (globe && shown) [globe.mesh.visible, globe.air.visible] = shown;
     this.relight(true);
     await frames(3);
@@ -1888,7 +1901,7 @@ export class Stage {
    * Have everything the flight will put in the scene made now, unseen: the frost that comes off at liftoff, the glow
    * of the entry, the attitude jets, the parachutes. Each was made the first time it was wanted, and its shader built
    * there and then, with the page stopped for it in the middle of the flight (141 ms at liftoff). Made here, hidden
-   * as they are until their moment, they are in the scene when `warm` has every shader built.
+   * as they are until their moment, they are in the scene when `warm` has every shader built, and shown to it (`uncover`).
    */
   private rehearse(): void {
     const ascent = this.ascent;
@@ -1903,6 +1916,24 @@ export class Stage {
   }
 
   /**
+   * Show (`on`) what the flight keeps out of sight until its moment, for shaders to be built for it and its buffers sent:
+   * the attitude jets and the parachutes `rehearse` made, and the inside of the cabin, drawn only from near it. Three
+   * builds only for what is shown: hidden, the jets' shader was built and the inside's 93 meshes sent in the frame the
+   * capsule left its booster (40 ms), and the parachutes' three shaders as the drogue came out (25 to 120 ms). Returns
+   * what it showed, to be given back (`on` false) and hidden again.
+   */
+  private uncover(on: boolean, shown: THREE.Object3D[] = []): THREE.Object3D[] {
+    this.cabin?.everything(on);
+    if (!on) {
+      for (const o of shown) o.visible = false;
+      return [];
+    }
+    const hidden = [...(this.jets?.group.children ?? []), ...(this.chutes ?? []).map((c) => c.group)].filter((o) => !o.visible);
+    for (const o of hidden) o.visible = true;
+    return hidden;
+  }
+
+  /**
    * Ask for the other look's shaders now, to be built behind what is on show: the first change of look (T) then has
    * them, where it used to stop the page for seconds building them one after another. The meshes wear the other
    * look's materials only for the length of this call, in which nothing is drawn.
@@ -1913,7 +1944,9 @@ export class Stage {
     this.looks.set(look);
     const target = this.renderer.getRenderTarget();
     this.renderer.setRenderTarget(this.frameTarget);
+    const covered = this.uncover(true); // (what is out of sight has the other look's shaders too)
     void this.renderer.compileAsync(this.scene, this.camera).catch(() => {});
+    this.uncover(false, covered);
     this.renderer.setRenderTarget(target);
     this.looks.set(now);
   }

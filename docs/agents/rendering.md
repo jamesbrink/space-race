@@ -325,6 +325,12 @@ What has been found, so it is not found again:
   went from 8.8 s to 6.2 s on the same machine in the same run, the main thread blocked for 3.5 s instead of 6.4,
   and 183 programs are made where 321 were. Anything new that draws a scene into the frame's buffer is covered by
   `warm`; a pass with a shader of its own (a full-screen quad) is still built at its first draw.
+- **Three builds only for what is shown.** `compileAsync` walks the visible scene, and a mesh's buffers go to the GPU
+  the first time it is drawn: what the flight keeps hidden until its moment was built in front of whoever was flying.
+  The attitude jets' shader and the cabin's 93 inside meshes (drawn only from within 30 m) went in the frame the capsule
+  left its booster, the parachutes' three shaders as the drogue came out (25 to 120 ms each). `Stage.uncover` shows
+  them for `warm`'s passes and `prebuild`'s; and the jets and parachutes are the flight's, kept when a run is flown
+  (`flyRun`), not made again with shaders nobody built. Anything new that is hidden until an event goes in `uncover`.
 - **One shader for every twin that can share one.** A cel twin (`look.ts`) had a program key of its own, so two
   hundred toon shaders were built, one after another, the first time T was pressed: the page stopped for four to
   seven seconds. Twins now share a shader unless their materials are patched differently (the material's own
