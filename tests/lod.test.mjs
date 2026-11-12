@@ -174,6 +174,130 @@ test('a change of look in the middle of a fade: the fade goes on, in the materia
   for (const p of place) assert.ok(p.made.node.visible && Object.hasOwn(p.made.mesh.material.defines ?? {}, 'LOD_FADE'));
 });
 
+test('a level that arrives when it is already wanted fades in, once the scene is on show', () => {
+  const scale = 1000;
+  const far = new THREE.Vector3(1 + scale / (LOD_ABOVE[1] * 0.5), 0, 0);
+  const fading = (l) => Object.hasOwn(l.mesh.material.defines ?? {}, 'LOD_FADE');
+  const model = () => {
+    const l = [level('Thing'), level('Thing'), level('Thing')];
+    const s = new Staged(l[0].root, []);
+    s.group.updateMatrixWorld(true);
+    s.measure();
+    s.choose(far, scale, false, 0.016); // (far off: the coarsest is wanted, and only the full one is there)
+    assert.equal(s.shownLevel, 0);
+    return { l, s };
+  };
+  // under the curtain (the default): a cut, as nothing is seen
+  {
+    const { l, s } = model();
+    s.add(2, l[2].root);
+    assert.ok(!l[0].root.visible && l[2].root.visible && !fading(l[2]));
+  }
+  // on show: the full model gives way to it over a moment
+  {
+    const { l, s } = model();
+    s.add(1, l[1].root, true);
+    assert.equal(s.shownLevel, 1, 'the nearest to what is wanted that has arrived');
+    assert.ok(l[0].root.visible && l[1].root.visible && fading(l[0]) && fading(l[1]), 'both drawn, each pixel by one of them');
+    let frames = 0;
+    while (s.choose(far, scale, false, 0.016)) assert.ok(++frames < 200);
+    assert.ok(!l[0].root.visible && l[1].root.visible && !fading(l[1]));
+    s.add(2, l[2].root, true);
+    assert.ok(l[1].root.visible && l[2].root.visible && fading(l[1]) && fading(l[2]));
+    while (s.choose(far, scale, false, 0.016)) assert.ok(++frames < 400);
+    assert.ok(!l[0].root.visible && !l[1].root.visible && l[2].root.visible);
+    for (const made of l) assert.equal(made.mesh.material, made.material);
+  }
+  // a level that is not the one to draw arrives unseen
+  {
+    const l = [level('Thing'), level('Thing')];
+    const s = new Staged(l[0].root, []);
+    s.add(1, l[1].root, true);
+    assert.ok(l[0].root.visible && !l[1].root.visible && !fading(l[0]));
+  }
+  // a level held by a test is a cut (tools/frozen-test.mjs, lod-measure.mjs)
+  {
+    const { l, s } = model();
+    s.forced = 2;
+    s.choose(far, scale, false, 0.016);
+    s.add(2, l[2].root, true);
+    assert.ok(!l[0].root.visible && l[2].root.visible && !fading(l[2]));
+  }
+  // the place: each piece the same
+  const place = () => {
+    const roots = [0, 1].map(() => {
+      const root = new THREE.Group();
+      const made = ['Near', 'Far'].map((name, i) => {
+        const one = level(name);
+        one.node.position.x = i * 400;
+        root.add(one.node);
+        return one;
+      });
+      return { root, made };
+    });
+    const scenery = new Scenery(roots[0].root);
+    const eye = new THREE.Vector3(0, 0, 10); // beside Near; Far is 400 m off
+    scenery.choose(eye, scale, 0.016);
+    return { roots, scenery, eye };
+  };
+  {
+    const { roots, scenery, eye } = place();
+    scenery.add(1, roots[1].root, true);
+    const [near, farPiece] = [0, 1].map((i) => roots.map((r) => r.made[i]));
+    assert.ok(near[0].node.visible && !near[1].node.visible && !fading(near[0]), 'what is near stays as it is');
+    assert.ok(farPiece[0].node.visible && farPiece[1].node.visible && fading(farPiece[0]) && fading(farPiece[1]));
+    let frames = 0;
+    while (scenery.choose(eye, scale, 0.016)) assert.ok(++frames < 200);
+    assert.ok(!farPiece[0].node.visible && farPiece[1].node.visible && !fading(farPiece[1]));
+  }
+  {
+    const { roots, scenery } = place();
+    scenery.add(1, roots[1].root);
+    assert.ok(!roots[0].made[1].node.visible && roots[1].made[1].node.visible && !fading(roots[1].made[1]), 'under the curtain: a cut');
+  }
+  {
+    const { roots, scenery, eye } = place();
+    scenery.forced = { Far: 1 };
+    scenery.choose(eye, scale, 0.016);
+    scenery.add(1, roots[1].root, true);
+    assert.ok(!roots[0].made[1].node.visible && roots[1].made[1].node.visible && !fading(roots[1].made[1]), 'held by a test: a cut');
+  }
+  // a model drawn piece by piece: each piece the same, and a change of look meanwhile leaves the fade going
+  {
+    const built = () => {
+      const root = new THREE.Group();
+      for (const [name, x] of [
+        ['Near', 0],
+        ['Far', 400],
+      ]) {
+        const one = level(name);
+        one.node.position.x = x;
+        root.add(one.node);
+      }
+      return root;
+    };
+    const l = [built(), built()];
+    const s = new Staged(l[0], [], true);
+    s.group.updateMatrixWorld(true);
+    s.measure();
+    const looks = new Looks();
+    for (const root of l) looks.add(root);
+    const eye = new THREE.Vector3(0, 0, 10);
+    s.choose(eye, scale, false, 0.016);
+    s.add(1, l[1], true);
+    const worn = (i, name) => l[i].getObjectByName(name).children[0].material;
+    const masked = (i, name) => Object.hasOwn(worn(i, name).defines ?? {}, 'LOD_FADE');
+    assert.ok(l[0].getObjectByName('Far').visible && l[1].getObjectByName('Far').visible && masked(0, 'Far') && masked(1, 'Far'));
+    assert.ok(l[0].getObjectByName('Near').visible && !l[1].getObjectByName('Near').visible && !masked(0, 'Near'));
+    looks.set('cel');
+    s.relook();
+    assert.ok(masked(0, 'Far') && masked(1, 'Far') && worn(0, 'Far').isMeshToonMaterial);
+    let frames = 0;
+    while (s.choose(eye, scale, false, 0.016)) assert.ok(++frames < 200);
+    assert.ok(!l[0].getObjectByName('Far').visible && l[1].getObjectByName('Far').visible && !masked(1, 'Far'));
+  }
+});
+
 test('a model: nearest is finest, a change fades, a cut is a cut', () => {
   const l0 = level('Thing'),
     l1 = level('Thing'),

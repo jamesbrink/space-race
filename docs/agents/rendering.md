@@ -180,6 +180,9 @@ not, in the view and in the shadow map alike, so a shadow is handed over as its 
 fading mesh wears its material's twin (`Fading.twin`: the material itself, by prototype, with
 `LOD_FADE` defined and its own id), so nothing else carries the test and nothing has to be told
 about it; `Stage.warm` builds those shaders with the rest. A test (`stage.frozen`) gets the cut.
+A level that arrives after the scene is shown, for a thing already wanted that coarse, comes in the
+same way (`add(level, object, true)`); under the curtain, asleep, frozen or forced it is a cut. A
+change of look in the middle of a fade leaves it going, in the look's materials (`relook`).
 To measure a change to any of this: `Staged.forced` and `Scenery.forced` draw a level whatever
 the distance (for the place, a level for each piece named), so the same view can be drawn at two levels and
 compared.

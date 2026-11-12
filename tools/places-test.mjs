@@ -165,6 +165,53 @@ const cases = {
     if (choices < 2) return ['this flight has one thing to stand in its gallery: nothing was tested'];
     return after > before ? [`${4 * choices} changes of what stands there left ${after - before} materials with the renderer`] : [];
   },
+
+  /** The coarser levels of detail are kept back until the scene is on show and far off: each comes in over a moment, never in one frame. */
+  async 'a level of detail that arrives after the scene is shown fades in'() {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    await page.routeWebSocket(/.*/, () => {});
+    let release;
+    const held = new Promise((done) => (release = done));
+    await page.route(/\.lod\d\.glb(\?|$)/, async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.goto(`${url}#pad`);
+    await siteReady(page);
+    // from far enough off that everything is wanted at a coarser level, which has not come
+    await page.evaluate(() => {
+      const st = window.sr.stage;
+      st.setAutoRotate(false);
+      st.pose(215, 9, 900, 14);
+    });
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => {
+      const st = window.sr.stage;
+      const things = () => [
+        ...st.staged.map((s, i) => ({ name: `model ${i}`, fine: s.levels[0], coarse: s.levels.slice(1), fade: s.fade })),
+        ...st.scenery.pieces.map((p) => ({ name: p.name, fine: p.nodes[0], coarse: p.nodes.slice(1), fade: p.fade })),
+      ];
+      const seen = (window.__arrivals = { cut: [], faded: new Set() });
+      const watch = () => {
+        for (const t of things()) {
+          if (t.fade.running) seen.faded.add(t.name);
+          // (a coarser level alone on show, and no fade was ever seen bringing it in)
+          else if (!t.fine.visible && t.coarse.some((o) => o?.visible) && !seen.faded.has(t.name) && !seen.cut.includes(t.name))
+            seen.cut.push(t.name);
+        }
+        requestAnimationFrame(watch);
+      };
+      watch();
+    });
+    release();
+    await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving));
+    await page.waitForTimeout(2500);
+    const got = await page.evaluate(() => ({ cut: window.__arrivals.cut, faded: window.__arrivals.faded.size }));
+    await context.close();
+    if (got.cut.length) return [`changed level in one frame as its coarser level arrived: ${got.cut.join(', ')}`];
+    return got.faded ? [] : ['nothing changed level as the coarser levels arrived: nothing was tested'];
+  },
 };
 
 let failed = 0;

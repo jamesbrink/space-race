@@ -311,15 +311,24 @@ export class Scenery {
     }
   }
 
-  /** A coarser level has arrived: its pieces take their places; what has no piece at level 0 is not drawn from it. */
-  add(level: number, object: THREE.Object3D): void {
+  /** The level a test holds a piece at, if it holds it. */
+  private held(piece: Piece): number | undefined {
+    return typeof this.forced === 'number' ? this.forced : this.forced?.[piece.name];
+  }
+
+  /**
+   * A coarser level has arrived: its pieces take their places; what has no piece at level 0 is not drawn from it.
+   * `fade`: the scene is on show, so a piece that was waiting for this level changes to it over a moment, as any
+   * change of level does (left out: at once, which is right while nothing is seen, and for a level a test holds).
+   */
+  add(level: number, object: THREE.Object3D, fade = false): void {
     this.levels[level] = object;
     for (const node of object.children) {
       const piece = this.pieces.find((p) => p.name === node.name);
       if (piece) piece.nodes[level] = node;
       node.visible = false;
     }
-    for (const piece of this.pieces) this.show(piece, false);
+    for (const piece of this.pieces) this.show(piece, fade && this.held(piece) === undefined);
   }
 
   /** The look has changed: a piece that is changing level goes on changing, in the look's materials (`Crossfade.redress`). */
@@ -364,7 +373,7 @@ export class Scenery {
     let changed = false;
     for (const piece of this.pieces) {
       if (piece.fade.step(dt)) changed = true;
-      const forced = typeof this.forced === 'number' ? this.forced : this.forced?.[piece.name];
+      const forced = this.held(piece);
       const wanted = forced ?? chooseLevel(scale / distanceTo(piece.box, eye), piece.wanted, piece.above);
       if (wanted === piece.wanted) continue;
       piece.wanted = wanted;
@@ -443,7 +452,12 @@ export class Staged {
     this.box.setFromObject(this.levels[0]!).getBoundingSphere(this.sphere);
   }
 
-  add(level: number, object: THREE.Object3D): void {
+  /**
+   * A level has arrived. `fade`: the scene is on show, so if this is the level that was being waited for, the one
+   * drawn gives way to it over a moment, as any change of level does (left out: at once, which is right while nothing
+   * is seen, and for a level a test holds).
+   */
+  add(level: number, object: THREE.Object3D, fade = false): void {
     this.levels[level] = object;
     this.group.add(object);
     markDriven(object, this.parts);
@@ -453,7 +467,7 @@ export class Staged {
     exploder.set(this.t);
     this.exploders.push(exploder);
     object.visible = this.every;
-    this.show(this.wanted, false);
+    this.show(this.wanted, fade && this.forced === null);
   }
 
   /** The look has changed: a change of level under way goes on, in the look's materials (`Crossfade.redress`). */

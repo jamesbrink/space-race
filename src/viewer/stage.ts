@@ -454,6 +454,10 @@ export class Stage {
    * the time the page stood blocked. Held until `warm` has had them all built at once, off the main thread.
    */
   private held = true;
+  /** The scene is being drawn for someone: a level of detail that arrives now comes in as a change of level does, over a moment (lod.ts). */
+  private get onShow(): boolean {
+    return !this.held && !this.frozen && !this.asleep;
+  }
   /** `?plain` in the address: everything the old way, for measuring the new against it (tools/bench.mjs). */
   private readonly plain: boolean;
   private sinceDrawn = 0;
@@ -744,8 +748,9 @@ export class Stage {
           this.fetch(lodUrl(def.url, level)).then((object) => {
             if (staged !== this.staged) return;
             rest(object);
-            staged[i]!.add(level, object);
+            staged[i]!.add(level, object, this.onShow);
             this.lamps.glow(object);
+            this.renderer.shadowMap.needsUpdate = true; // (if it is the level now drawn, its shadow is another shape)
             this.dirty = true;
           }),
         );
@@ -775,7 +780,7 @@ export class Stage {
               this.fetch(lodUrl(place, level)).then((coarse) => {
                 if (this.scenery !== scenery) return;
                 this.scene.add(coarse);
-                scenery.add(level, coarse);
+                scenery.add(level, coarse, this.onShow);
                 this.lamps.glow(coarse);
                 this.renderer.shadowMap.needsUpdate = true;
                 this.dirty = true;
