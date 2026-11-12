@@ -113,6 +113,7 @@ def materials() -> dict:
         "hose": m("hose-grey-green", (0.30, 0.34, 0.30), 0.0, 0.65),
         "palm": m("glove-leather-tan", (0.50, 0.33, 0.17), 0.0, 0.6),
         "tape": m("zipper-tape", (0.10, 0.10, 0.11), 0.0, 0.8),
+        "cord": m("cord-cream", (0.74, 0.68, 0.52), 0.0, 0.85),
         "microphone": m("microphone-red-brown", (0.30, 0.07, 0.05), 0.0, 0.6),
     }
 
@@ -328,6 +329,17 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
     emit(teeth, "Torso_ZipperTeeth", M["steel"], g, smooth=False)
     emit(fit, "Torso_HoseFitting", M["aluminium"], g, sharp_angle=30)
     emit(hose, "Torso_Hoses", M["hose"], g)
+    # The cord: one pale cord comes out at the collar's seam on his left and hangs loose down the left of the chest
+    # toward the closure (the film still in the bus on 12 April; museum suits have it looped to the left pocket).
+    # What it is was not found. A cord and not a lacing: there are no eyelets and nothing crosses.
+    top, low = B.neck_z - 7.4, B.neck_z - 21.0  # (it ends inboard of the pocket, 21 cm under the neck: read off the still, estimated)
+    # (of the way down, degrees to his left, centimetres off the cloth)
+    run = [(0.0, 15.0, 0.25), (0.22, 17.5, 0.5), (0.5, 15.0, 0.6), (0.78, 10.5, 0.5), (1.0, 7.5, 0.4)]
+    keys = [tuple(t.at(d(top + (low - top) * u), az(a)) + t.normal(d(top + (low - top) * u), az(a)) * off) for u, a, off in run]
+    cpts = fl.polyline(keys, 0.6)
+    cord = MeshBuilder()
+    Tube(cpts, [(0.2, 0.2)] * len(cpts), resample=1).add(cord, 6)
+    emit(cord, "Torso_Cord", M["cord"], g)
     return arms, t
 
 

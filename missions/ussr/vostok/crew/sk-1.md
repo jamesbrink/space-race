@@ -53,7 +53,7 @@ every fitting are sized by eye from photographs.
 | Node | What it is |
 | --- | --- |
 | `Helmet` | white shell with the opening's lip and metal frame, the visor's pane in its rim (swung up over the crown; down on the seated figure), pivots at the temples, "СССР" on the crown, the collar ring and the grey neck band under it, the round fitting at the right front of the collar; inside it the padding, the head, the white headset cap and two red-brown microphones on their booms |
-| `Torso` | the cover from the waist up with both shoulders (one skin, down to a hem on each upper arm), the front zip between its two facings, a welted pocket on each side of the chest, the slanting zip on the left of the abdomen, a band of the same cloth at the waist, the hose fitting at the right abdomen with a stub of hose and its connector |
+| `Torso` | the cover from the waist up with both shoulders (one skin, down to a hem on each upper arm), the front zip between its two facings, a welted pocket on each side of the chest, the loose cord from the collar's seam on his left, the slanting zip on the left of the abdomen, a band of the same cloth at the waist, the hose fitting at the right abdomen with a stub of hose and its connector |
 | `Arms` | sleeves from the hem down; the mirror, its rim and its patch on the right forearm |
 | `Gloves` | each hand's skin (cuff, palm, fingers, thumb), its leather palm and its wrist ring |
 | `Legs` | the trousers from the waist down as one skin, hanging over the boots' tops; the front zip carried on to the crotch; a bellows pocket under a flap with two snaps on each thigh |
@@ -115,14 +115,32 @@ in front of the seat frame's origin, so that his back lies on the parachute pack
   pockets are placed and sized by eye from the Zvezda and Smithsonian suits; what the pockets held
   is not known; the gathered waist at the right, the snap-studded panel on the back and the
   white patch on the right upper arm are left out.
-- **No lacing.** A white cord shows on the chest in the photograph in the bus; where it ran and
-  what it adjusted was not made out, and none is modelled.
+- **A cord, not a lacing.** One pale cord comes out at the collar's seam on his left and hangs
+  loose down the left of the chest toward the closure: the film still in the bus on 12 April
+  (Commons, `Юрий Гагарин (Первый рейс к звездам).jpg`), with no eyelets and nothing crossing.
+  Museum suits have a cream cord looped from the same seam to the left chest pocket
+  (`Russian space suit 2.jpg`), and one ends in a red cap (`Gateway to space 2016, Budapest,
+  SK-1 spacesuit 2.jpg`). It is modelled as the still has it (`Torso_Cord`): 21 cm, 4 mm thick,
+  cream; all three estimated. What it is (an inflation tube, a pull cord, a lanyard) was not
+  found. The cover closes with the central zip and the slanting one at the left hip and has no
+  lacing on it in any photograph read; none shows a draw-in band or lacing at the waist either.
 - **The waist band is the model's own device.** It lies over the line where the `Torso` node's
   skin ends and the `Legs` node's begins, as the Mercury suit's waist strap does. The cover is
   drawn in at the waist in photographs; a band there was not confirmed.
-- **The inflatable collar** for a landing on water (the Smithsonian's label) is left out: its
-  shape when stowed was not made out in any photograph read, the bus, Zvezda's suit and the
-  Smithsonian's among them.
+- **The inflatable collar** for a landing on water (the Smithsonian's label) is left out, and
+  not settled. On 12 April nothing lies over the cover at the neck: its plain stand collar closes
+  with one dark snap right under the helmet's ring (the still in the bus; the colour portrait
+  `Космонавт Юрий Гагарин.jpg`, whose date is not verified). Museum suits shown with the cover
+  open have a grey quilted yoke round the neck and upper chest under it, with a strap and buckle
+  across (`Replica of Gagarin's spacesuit.jpg`, a replica; `SK 1 space suit (MMA 2011) (3).JPG`,
+  which also has a yellowish tube with a red cap under the ring); the Memorial Museum's back view
+  shows none. That the yoke is the stowed collar is a guess no caption supports, so nothing is
+  built: whatever it is, it is under the cover and out of sight on the flown suit. Looked in and
+  found nothing more: the Commons categories for the SK-1, Vostok space suits, the SK-2 and Titov
+  in 1961 (empty or irrelevant); an auction lot for a replica (rrauction.com, "missing the
+  flotation bladder and hose"); spaceodysseyhub.com's SK-1 page; searches in English and Russian
+  for Abramov and Skoog's description. Not reached: zvezda-npp.ru, RussianSpaceWeb's suit pages,
+  the TASS and RIA archives, astronautix, the Science Museum's 2015 exhibition, Kaluga.
 - **Hoses.** One fitting and a stub of the bundle at the right abdomen, ending in a plain block;
   the real bundle ran to a multi-way connector at the right hip. The hose on the collar's fitting
   is left out. Their colours are estimates.
@@ -174,4 +192,8 @@ what is given as theirs is at second hand.
 - Photographs on Wikimedia Commons: `Юрий Гагарин (12-04-1961).jpg` (in the bus: the letters,
   the cap, the microphones, the collar's fitting), `Гагарин перед полётом.jpg` (at the pad, the
   helmet side on), `Gagarin-skafander.jpg` (a suit at Zvezda, captioned as the flown one),
-  `SK 1 space suit (MMA 2011)` (the Memorial Museum's, front and back).
+  `SK 1 space suit (MMA 2011)` (the Memorial Museum's, front and back);
+  `Юрий Гагарин (Первый рейс к звездам).jpg` (the film still in the bus: the cord, the collar's
+  snap), `Космонавт Юрий Гагарин.jpg`, `Russian space suit 2.jpg`, `Replica of Gagarin's
+  spacesuit.jpg`, `Gateway to space 2016, Budapest, SK-1 spacesuit 2.jpg` (the cord and the neck
+  on suits kept since).
