@@ -20,12 +20,16 @@ import * as THREE from 'three';
  * is given the same three, worked out the same way from its own mesh's world matrix for the camera in hand (the
  * eye's, or the light's when the shadow map is drawn), and the shader reads them from a texture instead of from
  * uniforms (the chunks below). Nothing is multiplied twice in floats, so a vertex lands where it landed, depth
- * for depth, and what is lit is lit as it was. What is in view is culled mesh by mesh as three culled it.
+ * for depth, and what is lit is lit as it was. What is in view is culled mesh by mesh as three culled it, and
+ * drawn in the order three drew it (nearest first within a material): where two faces are at one depth the later
+ * draw is the one seen, so the order is part of the picture.
  *
- * What a batch cannot stand for is left alone and drawn as before: anything blended or without depth (glass,
- * scorch marks), lamps (their material is changed when they are lit), anything with a draw order of its own, a
- * mirrored mesh, a figure that is walked as. And a mesh that stops matching its batch while the page is open (a
- * material swapped, a shadow switched off) is drawn alone again from that frame on (`prepare`).
+ * For that a material is batched whole or not at all: every mesh of it in the file, so that none drawn alone could
+ * have come between two of the batch's. What a batch cannot stand for is left as it was: anything blended or
+ * without depth (glass, scorch marks), lamps (their material is changed when they are lit), anything with a draw
+ * order of its own, a mirrored mesh, a figure that is walked as; and a material with only a few meshes, which a
+ * batch would cost more than it saved. A mesh that stops matching its batch while the page is open (a material
+ * swapped, a shadow switched off) is drawn alone again from that frame on (`prepare`).
  */
 
 /** The layer a mesh is on while a batch draws it: seen by rays (the stage's raycaster) and by the outline, not by the camera. */
@@ -287,6 +291,8 @@ interface Instance {
   live: boolean;
   /** Whether it was to be culled when last looked at (`mesh.frustumCulled`). */
   culled: boolean;
+  /** A bounding sphere the mesh has been given of its own, if it has (looked up as its bounds are asked for). */
+  own: THREE.Sphere | null;
 }
 
 /**
@@ -348,6 +354,12 @@ class Batch extends THREE.Mesh {
   readonly bytes: number;
   /** For the eye (0) and for the light (1). */
   readonly draws: [Draws, Draws];
+  /** Its instances by depth, as last sorted (they are nearly in order the next time), and each one's depth: three's key for the order it draws in. */
+  readonly order: Int32Array;
+  readonly depths: Float64Array;
+  /** Something of it is to be drawn this frame (`prepare`), and something of it is in a light's view in this draw. */
+  live = false;
+  casts = false;
 
   constructor(geometry: THREE.BufferGeometry, material: THREE.Material, instances: Instance[], base: number, texture: THREE.DataTexture) {
     super(geometry, material);
@@ -356,6 +368,8 @@ class Batch extends THREE.Mesh {
     this.bytes = geometry.index!.array.BYTES_PER_ELEMENT;
     const draws = (): Draws => ({ starts: new Int32Array(instances.length), counts: new Int32Array(instances.length), count: 0 });
     this.draws = [draws(), draws()];
+    this.order = Int32Array.from(instances, (_, i) => i);
+    this.depths = new Float64Array(instances.length);
     this._multiDrawStarts = this.draws[0].starts;
     this._multiDrawCounts = this.draws[0].counts;
     this._matricesTexture = texture;
@@ -377,6 +391,12 @@ const sphere = new THREE.Sphere();
 const viewProjection = new THREE.Matrix4();
 const modelView = new THREE.Matrix4();
 const normal = new THREE.Matrix3();
+const middle = new THREE.Vector4();
+
+/** A light whose shadow map three draws. */
+type Caster = THREE.Light & { shadow: THREE.LightShadow };
+/** What is read of the renderer: whether the shadow maps are to be drawn in this draw. */
+type Renderer = { shadowMap: Pick<THREE.WebGLShadowMap, 'enabled' | 'autoUpdate' | 'needsUpdate'> };
 
 /** What the matrices of one view were last worked out for. */
 interface Filled {
@@ -401,6 +421,8 @@ export class Batches {
   private shownAt = new Uint8Array(1024);
   /** Counts each change in which meshes are to be drawn. */
   private shows = 0;
+  /** Some batch has something to draw this frame. */
+  private live = false;
   /** For the eye (0) and for the light (1). */
   private readonly filled: [Filled, Filled] = [0, 1].map(() => ({
     stamp: -1,
@@ -415,12 +437,13 @@ export class Batches {
   readonly tally = { worked: 0, kept: 0 };
 
   /**
-   * The most vertices a mesh may have and be drawn by a batch. A batch saves three's work round a draw call, the
-   * same for a bolt as for a tank; what it costs is on the GPU, by the vertex (each reads its matrices from a
-   * texture). So it is for the many small meshes: nine in ten of them are under a thousand vertices, and together
-   * they are a quarter of the vertices.
+   * The fewest meshes of one material worth a batch. A batch is a draw call itself, with a texture to bind, in
+   * every pass it is in; it saves three's work round each of its meshes' calls. Under this it costs more than it
+   * saves. (Four in five of the meshes that can be batched are in batches of eight or more.)
    */
-  most = 1024;
+  least = 8;
+  /** The lights whose shadow maps the batches' meshes are drawn into: the stage's, handed over as they are made. */
+  readonly lights: Caster[] = [];
 
   /** `dress` takes charge of a new batch's look (look.ts `Looks.add`): its material is its meshes' real one. */
   constructor(scene: THREE.Object3D, dress: (batch: THREE.Mesh) => void) {
@@ -428,6 +451,12 @@ export class Batches {
     this.dress = dress;
     this.group.name = 'Batches';
     scene.add(this.group);
+    // three calls this as a draw of the scene begins, with every matrix up to date and nothing yet chosen to be drawn
+    const was = scene.onBeforeRender;
+    scene.onBeforeRender = (renderer, drawn, camera, ...rest) => {
+      was.call(scene, renderer, drawn, camera, ...rest);
+      this.view(renderer as unknown as Renderer, camera);
+    };
   }
 
   /** How many meshes are drawn by batches, and in how many batches: for the diagnostics. */
@@ -457,19 +486,22 @@ export class Batches {
    */
   add(root: THREE.Object3D): void {
     root.updateMatrixWorld(true);
-    const groups = new Map<string, THREE.Mesh[]>();
-    const materials = new Map<THREE.Material, number>();
+    // every mesh of each material: a material is batched only if all of them can be, in one buffer
+    const byMaterial = new Map<THREE.Material, THREE.Mesh[]>();
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh || unbatchable(mesh) || mesh.geometry.getAttribute('position').count > this.most) return;
-      const material = (mesh.userData.real ?? mesh.material) as THREE.Material;
-      if (!materials.has(material)) materials.set(material, materials.size);
-      const key = `${materials.get(material)}/${layoutOf(mesh.geometry)}`;
-      const list = groups.get(key);
-      if (list) list.push(mesh);
-      else groups.set(key, [mesh]);
+      if (!mesh.isMesh) return;
+      for (const material of [mesh.userData.real ?? mesh.material].flat() as THREE.Material[]) {
+        const list = byMaterial.get(material);
+        if (list) list.push(mesh);
+        else byMaterial.set(material, [mesh]);
+      }
     });
-    const worth = [...groups.values()].filter((meshes) => meshes.length > 1); // (one mesh is one call either way)
+    const worth = [...byMaterial.values()].filter((meshes) => {
+      if (meshes.length < this.least) return false;
+      const layout = layoutOf(meshes[0]!.geometry);
+      return meshes.every((mesh) => unbatchable(mesh) === null && layoutOf(mesh.geometry) === layout);
+    });
     const capacity = worth.reduce((n, meshes) => n + meshes.length, 0);
     if (!capacity) return;
     const height = Math.ceil((capacity * TEXELS) / ROW);
@@ -496,6 +528,7 @@ export class Batches {
           out: true,
           live: false,
           culled: true,
+          own: null,
         };
       });
       const real = (meshes[0]!.userData.real ?? meshes[0]!.material) as THREE.Material;
@@ -539,12 +572,16 @@ export class Batches {
   prepare(): void {
     this.stamp++;
     let changed = false;
+    this.live = false;
     for (const file of this.files) {
       file.live = false;
       for (const batch of file.batches) {
         const material = batch.material as THREE.Material;
         const fit = this.on && !material.transparent && material.depthWrite;
         let any = false;
+        // (meshes come in the order they are in the model: the next one's parent is very often the last one's)
+        let parent: THREE.Object3D | null = null;
+        let parentShown = false;
         for (const inst of batch.instances) {
           const mesh = inst.mesh;
           const out = !(fit && mesh.material === material && mesh.castShadow && mesh.receiveShadow && mesh.renderOrder === 0);
@@ -552,7 +589,14 @@ export class Batches {
             inst.out = out;
             mesh.layers.set(out ? 0 : PROXY_LAYER);
           }
-          const live = !out && this.shown(mesh);
+          let live = !out && mesh.visible;
+          if (live) {
+            if (mesh.parent !== parent) {
+              parent = mesh.parent;
+              parentShown = parent !== null && this.shown(parent);
+            }
+            live = parentShown;
+          }
           if (live !== inst.live || mesh.frustumCulled !== inst.culled) {
             inst.live = live;
             inst.culled = mesh.frustumCulled;
@@ -560,11 +604,49 @@ export class Batches {
           }
           if (live) any = true;
         }
-        batch.visible = any;
-        if (any) file.live = true;
+        // (until a draw says what of it is in view, it is drawn if any of it is shown)
+        batch.live = batch.visible = any;
+        if (any) file.live = this.live = true;
       }
     }
     if (changed) this.shows++;
+  }
+
+  /**
+   * A draw of the scene is beginning: have the batches ready for its camera, and let three pass over the ones with
+   * nothing to draw in it. A batch with nothing in the eye's view is still wanted if the shadow maps are to be drawn
+   * and something of it is in a light's.
+   */
+  private view(renderer: Renderer, camera: THREE.Camera): void {
+    if (!this.live || !camera.layers.test(this.group.layers)) return;
+    this.fill(camera, 0);
+    const maps = renderer.shadowMap;
+    let lit = false;
+    if (maps.enabled && (maps.autoUpdate || maps.needsUpdate))
+      for (const light of this.lights) {
+        const shadow = light.shadow;
+        if (!light.castShadow || !(shadow.autoUpdate || shadow.needsUpdate) || !this.shown(light)) continue;
+        shadow.updateMatrices(light); // (as three is about to: where its map looks from)
+        const seen = shadow.getFrustum();
+        for (const file of this.files) {
+          if (!file.live) continue;
+          for (const batch of file.batches) {
+            if (!batch.live || (lit && batch.casts)) continue;
+            batch.casts = false;
+            for (const inst of batch.instances) {
+              if (!inst.live) continue;
+              if (inst.culled && !seen.intersectsSphere(boundsOf(inst))) continue;
+              batch.casts = true;
+              break;
+            }
+          }
+        }
+        lit = true;
+      }
+    for (const file of this.files) {
+      if (!file.live) continue;
+      for (const batch of file.batches) if (batch.live) batch.visible = batch.draws[0].count > 0 || (lit && batch.casts);
+    }
   }
 
   /**
@@ -625,7 +707,7 @@ export class Batches {
     return true;
   }
 
-  /** Work out every instance's matrices for a camera, and what of each batch is in its view. */
+  /** Work out every instance's matrices for a camera, and what of each batch is in its view, in the order three would draw it. */
   private work(camera: THREE.Camera, which: 0 | 1): void {
     const view = camera.matrixWorldInverse;
     viewProjection.multiplyMatrices(camera.projectionMatrix, view);
@@ -635,30 +717,54 @@ export class Batches {
       if (!file.live) continue;
       const sheet = file.sheets[which];
       const { data, worlds } = sheet;
+      let drawn = 0;
       for (const batch of file.batches) {
         const draws = batch.draws[which];
         draws.count = 0;
-        if (!batch.visible) continue;
+        if (!batch.live) continue;
+        const { instances, order, depths } = batch;
+        // which are in view, and how deep each is: three's own key (WebGLRenderer.projectObject), the middle of its bounds through the camera
+        let k = batch.base * 16;
+        for (let i = 0; i < instances.length; i++, k += 16) {
+          const inst = instances[i]!;
+          depths[i] = Number.POSITIVE_INFINITY;
+          if (!inst.live) continue;
+          const world = inst.mesh.matrixWorld;
+          worlds.set(world.elements, k);
+          const bounds = boundsOf(inst);
+          if (inst.culled && !frustum.intersectsSphere(bounds)) continue;
+          if (which === 1) depths[i] = 0;
+          else {
+            const at = inst.own ? inst.own.center : inst.centre;
+            depths[i] = middle.set(at.x, at.y, at.z, 1).applyMatrix4(world).applyMatrix4(viewProjection).z;
+          }
+        }
+        // nearest first, the older mesh first where two are as deep: the order is nearly right from the last frame
+        if (which === 0)
+          for (let i = 1; i < order.length; i++) {
+            const moving = order[i]!;
+            const depth = depths[moving]!;
+            const id = instances[moving]!.mesh.id;
+            let j = i - 1;
+            for (; j >= 0; j--) {
+              const other = order[j]!;
+              const d = depths[other]!;
+              if (!(d > depth || (d === depth && instances[other]!.mesh.id > id))) break;
+              order[j + 1] = other;
+            }
+            order[j + 1] = moving;
+          }
         const { starts, counts } = draws;
         let n = 0;
         let at = batch.base * FLOATS;
-        let k = batch.base * 16 - 16;
-        for (const inst of batch.instances) {
-          k += 16;
-          if (!inst.live) continue;
-          const mesh = inst.mesh;
-          const world = mesh.matrixWorld;
-          worlds.set(world.elements, k);
-          if (mesh.frustumCulled) {
-            // (three culls a mesh by a sphere of its own if it has been given one, and by its geometry's if not)
-            const own = (mesh as { boundingSphere?: THREE.Sphere | null }).boundingSphere;
-            if (own) sphere.copy(own);
-            else {
-              sphere.center.copy(inst.centre);
-              sphere.radius = inst.radius;
-            }
-            if (!frustum.intersectsSphere(sphere.applyMatrix4(world))) continue;
+        for (let o = 0; o < order.length; o++) {
+          const i = which === 0 ? order[o]! : o;
+          if (depths[i] === Number.POSITIVE_INFINITY) {
+            if (which === 0) break; // (the rest are out of view too)
+            continue;
           }
+          const inst = instances[i]!;
+          const world = inst.mesh.matrixWorld;
           // the three matrices three would have given this mesh, worked out as three works them out
           modelView.multiplyMatrices(view, world);
           data.set(modelView.elements, at);
@@ -681,10 +787,24 @@ export class Batches {
           at += FLOATS;
         }
         draws.count = n;
+        drawn += n;
       }
+      if (!drawn) continue; // (nothing of this file is in view: nothing will read its texture)
       // to the texture used longest ago: the one last drawn from may still be in the GPU's hands
       sheet.at = (sheet.at + 1) % RING;
       sheet.ring[sheet.at]!.needsUpdate = true;
     }
   }
+}
+
+/** An instance's bounds where it stands: what three culls a mesh by (a sphere of its own if it has been given one, its geometry's if not). */
+function boundsOf(inst: Instance): THREE.Sphere {
+  const own = (inst.mesh as { boundingSphere?: THREE.Sphere | null }).boundingSphere;
+  inst.own = own ?? null;
+  if (own) sphere.copy(own);
+  else {
+    sphere.center.copy(inst.centre);
+    sphere.radius = inst.radius;
+  }
+  return sphere.applyMatrix4(inst.mesh.matrixWorld);
 }

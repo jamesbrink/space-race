@@ -150,6 +150,12 @@ The same GLB also holds the launch vehicle's five nodes: see
   tape recorder, batteries or inverters.
 - **Switches are set one way and do not move.** Only the sequence overrides, the abort handle and the hand controller
   are worked; the fuel handles, the snorkel pull, the decompression and repressurisation handles are there to be seen.
+- **What a visitor points at says what it is** (`label` and `about` on the mesh, read by the viewer): each porthole,
+  the periscope, the umbilical receptacle, the thrusters, the horizon scanners, the antenna's window, the hatch's
+  latches, the retrograde and posigrade rockets and their straps, the tower's nozzles. Their texts say where a place
+  is by judgement.
+- **The periscope's objective is a lens over three inches of barrel**, with a stop and a mirror at the bottom, not the
+  instrument's optics: the barrel does not run on to the screen in the cabin.
 - **The periscope does not retract**, has no filters, map or Sun and Moon index that turns, and its reticle is a few
   lines of the real one's. What it shows is the scene's geometry and sky, without the clouds' volume.
 - **The hatch's latch mechanism is not modelled**: the inner face is plain with one release handle. No drawing of it

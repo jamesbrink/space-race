@@ -34,7 +34,7 @@ import { Panes } from './panes';
 import { through, triangles } from './pick';
 import { Plume } from './plume';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
-import { FarShadow } from './shadows';
+import { depthBias, FarShadow } from './shadows';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { TRAIL_STEP, Trail } from './trail';
@@ -72,6 +72,11 @@ const GLASS = new THREE.MeshPhysicalMaterial({
 const VISOR = GLASS.clone();
 VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
+/** A lens (`glass-lens`): thick glass over a dark barrel. Less of it is seen through and more of the sky is on it, and it is not a window to go and look in at. */
+const LENS = GLASS.clone();
+LENS.name = 'glass-lens';
+LENS.opacity = 0.34;
+LENS.envMapIntensity = 2.4;
 
 const UP = new THREE.Vector3(0, 1, 0);
 const ONE = new THREE.Vector3(1, 1, 1);
@@ -400,12 +405,12 @@ export class Stage {
     this.renderer.localClippingEnabled = true;
     this.renderer.info.autoReset = false; // counted per frame drawn, across every pass (stats())
     this.glazing = new Panes(this.renderer, (mesh, real) => this.looks.give(mesh, real));
-    // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
     this.batches = new Batches(this.scene, (batch) => this.looks.add(batch));
     this.raycaster.layers.enable(PROXY_LAYER); // (a mesh a batch draws is still what a ray meets)
+    // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
     const query = new URLSearchParams(location.search);
     if (query.has('plain')) this.glazing.enabled = this.batches.enabled = false;
-    if (query.has('batch')) this.batches.most = Number(query.get('batch')); // (for measuring where the line should be)
+    if (query.has('batch')) this.batches.least = Number(query.get('batch')); // (for measuring where the line should be)
 
     // models are Draco-compressed; the decoder is served from public/draco
     this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
@@ -420,6 +425,7 @@ export class Stage {
     // the whole place has shadows, under the fine map (shadows.ts): its light comes after the Sun and gives none
     this.far = new FarShadow(this.renderer, this.sun, () => this.shadowed());
     this.scene.add(this.far.light, this.far.light.target);
+    this.batches.lights.push(this.sun, this.far.light as typeof this.sun); // (the lights whose maps the batches' meshes are drawn into)
 
     // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
     // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
@@ -786,7 +792,7 @@ export class Stage {
       const shell = Boolean(mesh.userData.shell);
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (mat.name.startsWith('glass')) {
-        const pane = mat.name.startsWith('glass-visor') ? VISOR : GLASS;
+        const pane = mat.name.startsWith('glass-visor') ? VISOR : mat.name.startsWith('glass-lens') ? LENS : GLASS;
         mesh.material = shell ? this.shellOf(pane, url) : pane;
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
@@ -806,6 +812,10 @@ export class Stage {
           mat.bumpScale = 0.6;
         }
         grain(mat); // what a large plain surface looks like from a metre away
+        // Both faces cast. Three's default is the faces turned from the light, which for a wall or a roof is its inside:
+        // the shadow then begins at the very surface a room's walls meet, and light crept in along every joint (a
+        // lit line round each ceiling and down each corner). From both, a wall's shadow begins at its outside.
+        mat.shadowSide = THREE.DoubleSide;
       }
       if (shell) mesh.material = this.shellOf(mat, url);
       const marked = mark(mesh); // a scorch or a stain fades out at its rim
@@ -1764,6 +1774,7 @@ export class Stage {
         Array.isArray(material) ||
         !material.name.startsWith('glass') ||
         material.name.startsWith('glass-visor') ||
+        material.name.startsWith('glass-lens') ||
         mesh.userData.ghost // (a pane's twin, panes.ts: the pane itself has been counted)
       )
         return;
@@ -1942,9 +1953,8 @@ export class Stage {
     Object.assign(this.sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 20 });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
-    // a texel of the map covers more ground the wider it is spread; a wall the Sun grazes needs the depth bias to match
-    this.sun.shadow.bias = -Math.max(0.0002, radius / 40000);
     this.shadowGrain(SHADOW_MAP, this.setting.shadowRadius ?? 1);
+    depthBias(this.sun.shadow); // (a length, a few texels of the map: not a share of the camera's depth, shadows.ts)
     this.renderer.shadowMap.needsUpdate = true;
   }
 
@@ -2178,7 +2188,8 @@ export class Stage {
     }
     // a window pane of this model: a click goes up to it and looks in
     const mesh = hit?.object as THREE.Mesh | undefined;
-    if (hit?.face && mesh && (mesh.material as THREE.Material).name.startsWith('glass')) {
+    const of = (mesh?.material as THREE.Material | undefined)?.name ?? '';
+    if (hit?.face && mesh && of.startsWith('glass') && !of.startsWith('glass-lens')) {
       const normal = hit.face.normal.clone().transformDirection(mesh.matrixWorld);
       if (normal.dot(this.raycaster.ray.direction) > 0) normal.negate(); // toward the viewer, whichever side was hit
       return { node: null, model: null, pane: { point: this.paneCentre(mesh, hit.point), normal } };
@@ -2340,7 +2351,8 @@ export class Stage {
         this.pointerDirty = false;
         const under = this.inert || this.veiled ? NOTHING : this.pick();
         // (from the seat a part is not something to choose: only what is in reach is, and a window to look out of)
-        this.setHover(this.cam.rig === 'onboard' ? { ...under, node: null, model: null } : under);
+        // (and nothing is named over a view being looked through: what it is has been said in the note line)
+        this.setHover(this.cam.rig === 'onboard' ? (this.lookingOut ? NOTHING : { ...under, node: null, model: null }) : under);
       }
       this.fitDepth();
     }
@@ -3416,7 +3428,7 @@ export class Stage {
     });
     shadow.camera.updateProjectionMatrix();
     shadow.normalBias = Math.max(0.012, half / 900);
-    shadow.bias = -Math.max(0.0002, half / 40000);
+    depthBias(shadow);
     this.far.nearOnly(); // (the fine map is moved: the far one stays where it is)
   }
 

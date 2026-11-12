@@ -94,10 +94,6 @@ SHELLS = (
     "Afterbody_Fasteners",
     "Afterbody_Structure",
     "Afterbody_AttachRing",
-    "Afterbody_Fittings",
-    "Afterbody_ThrusterThroats",
-    "Afterbody_Glass",
-    "Afterbody_WindowWells",
     "Afterbody_Lettering",
     "Afterbody_Flags",
     "Hatch_Shingles",
@@ -111,8 +107,6 @@ SHELLS = (
     "Recovery_Shingles",
     "Recovery_Fasteners",
     "Recovery_Structure",
-    "Recovery_ThrusterPorts",
-    "Recovery_ThrusterThroats",
     "Recovery_ParachuteCanisters",
     "Antenna_Housing",
     "Antenna_DielectricWindow",
@@ -120,6 +114,20 @@ SHELLS = (
     "Tower_EscapeMotor",
     "Tower_MotorBands",
 )
+
+# The things a visitor points at, each a mesh of its own that says what it is (the viewer reads `label` and `about`
+# off whatever is under the pointer: stage.ts thingOf). Those that are part of the skin are cut with it.
+THING_SHELLS: list[str] = []
+
+
+def thing(mb: MeshBuilder, name: str, mat, parent, label: str, about: str, shell: bool = True, **kw) -> None:
+    if not mb.verts:
+        return
+    obj = mb.build(name, mat, parent, **kw)
+    obj["label"], obj["about"] = label, about
+    if shell:
+        THING_SHELLS.append(name)
+
 
 PILOT_HIP = (5.0, 9.4)  # the seated pilot's hip joints, (y, z) in the capsule: the only place he fits (mark_iv_suit.seated_fits)
 # The two 10 in ports, (angle round the cone, station): the lower window first, under the hatch at the pilot's right,
@@ -191,6 +199,8 @@ def make_materials() -> dict[str, bpy.types.Material]:
         # the viewer swaps anything named glass for a transparent, reflective material; what is
         # seen through it is the unlit cabin, stood in for by window-void
         "glass": m("glass", (0.6, 0.75, 0.8), 0.0, 0.03),
+        # a lens: the viewer draws it darker and more of a mirror than a pane, and does not offer it to be looked in at
+        "lens_glass": m("glass-lens", (0.25, 0.32, 0.36), 0.0, 0.02),
         "void": m("window-void", (0.004, 0.004, 0.005), 0.0, 0.95),
         "paint_white": m("paint-white", (0.9, 0.9, 0.88), 0.0, 0.6, double_sided=True),
         "flag": m("flag", (1, 1, 1), 0.0, 0.6, double_sided=True, image=flag_image()),
@@ -286,14 +296,23 @@ def build_retropack(M) -> None:
         bell = [(1.1, -23.4), (1.9, -24.4), (2.7, -25.6), (3.2, -26.5), (3.45, Z_RETRO_BOTTOM)]
         nozzles.lathe(prof(bell), 32, matrix=Matrix.Translation(c * IN))
         nozzles.lathe(prof([(0.0, -23.6), (1.1, -23.4)]), 32, matrix=Matrix.Translation(c * IN))
+    retro = (
+        "Retrograde rockets",
+        "Three solid motors of about 1,000 lbf for ten seconds each, fired five seconds apart: what would bring the capsule down from orbit. "
+        "On this flight they were fired as a test.",
+    )
+    thing(motors, "Retropack_RetroMotors", M["aluminium"], g, *retro, shell=False)
+    thing(nozzles, "Retropack_RetroNozzles", M["nozzle"], g, *retro, shell=False)
+    motors, nozzles = MeshBuilder(), MeshBuilder()
     for i in range(3):  # three small posigrade motors push the capsule off the booster
         t = TAU * (i + 0.5) / 3
         c = Vector((9.6 * math.cos(t), 9.6 * math.sin(t), 0.0))
         m = Matrix.Translation(c * IN)
         motors.lathe(prof([(1.7, -19.5), (1.7, -23.6), (1.2, -24.2), (0.0, -24.2)]), 20, matrix=m)
         nozzles.lathe(prof([(0.5, -24.2), (1.0, -25.4)]), 16, matrix=m)
-    motors.build("Retropack_Motors", M["aluminium"], g)
-    nozzles.build("Retropack_Nozzles", M["nozzle"], g)
+    posi = ("Posigrade rockets", "Three small solid motors, 400 lbf for a second, that push the capsule clear of the booster.")
+    thing(motors, "Retropack_PosigradeMotors", M["aluminium"], g, *posi, shell=False)
+    thing(nozzles, "Retropack_PosigradeNozzles", M["nozzle"], g, *posi, shell=False)
 
     straps, clips = MeshBuilder(), MeshBuilder()
     rs = SHIELD_SPHERE_R + 0.22
@@ -311,7 +330,17 @@ def build_retropack(M) -> None:
         # umbilical conduit beside each strap, pack to shield edge
         o = Vector(side) * 1.9
         straps.tube((rad * 13.2 + o + Vector((0, 0, -14))) * IN, (rad * 14.5 + o + Vector((0, 0, -10.6))) * IN, 0.3 * IN, 8)
-    straps.build("Retropack_Straps", M["strap"], g, sharp_angle=25)
+    thing(
+        straps,
+        "Retropack_Straps",
+        M["strap"],
+        g,
+        "Retropack straps",
+        "Three straps hold the pack to the heat shield until explosive bolts let it go. "
+        "They should meet under its middle at one bolt; here they do not.",
+        shell=False,
+        sharp_angle=25,
+    )
     clips.build("Retropack_StrapFittings", M["steel"], g, smooth=False)
 
 
@@ -340,6 +369,11 @@ def build_afterbody(M, font) -> None:
     bolts.build("Afterbody_Fasteners", M["bolt"], g)
     hp.build("Hatch_Shingles", M["shingle"], hatch, sharp_angle=None)
     hb.build("Hatch_Latches", M["bolt"], hatch, smooth=False)
+    bpy.data.objects["Hatch_Latches"]["label"] = "Hatch latches and release handle"
+    bpy.data.objects["Hatch_Latches"]["about"] = (
+        "No. 7's hatch was held by a mechanical latch mechanism of 69 lb, worked by a handle inside or out; the explosive hatch came later. "
+        "These latches are placeholders: no drawing of the mechanism has been read."
+    )
 
     # structure under the shingles, with the hatch opening left out
     under = MeshBuilder()
@@ -357,11 +391,15 @@ def build_afterbody(M, font) -> None:
     # shield attach ring: the smooth band below the first row of shingles
     lathe_obj("Afterbody_AttachRing", prof([(SHIELD_R, 0.02), (SHIELD_R + 0.05, 0.3), (CONE.r(2.0) + 0.12, 2.0)]), M["steel"], g, segs=160)
 
-    detail, dark, glass, void = MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder()
     # two 10 in portholes: No. 7 predates the trapezoidal overhead window
-    for t, z in PORTHOLES:
+    ports = (
+        ("Lower", "low at the pilot's right, under the hatch: the earth-sky camera looked out of this one"),
+        ("Upper", "high at the pilot's left: the one Shepard looked for the horizon through"),
+    )
+    for (which, where), (t, z) in zip(ports, PORTHOLES):
+        detail, glass, void = MeshBuilder(), MeshBuilder(), MeshBuilder()
         f = CONE.frame(t, z)
-        # a bezel standing proud of the shingles, a pane set into it, and the dark cabin behind
+        # a bezel standing proud of the shingles, a pane set into it, and the cabin behind
         detail.lathe(prof([(6.0, -1.0), (6.0, 0.7), (5.0, 0.7), (4.9, 0.22)]), 48, matrix=f)
         # with a cabin behind it this is a real opening (bored below), lined through the wall by the frame inside
         # (mercury_cabin); with none, a dark disc stands in for one
@@ -371,25 +409,69 @@ def build_afterbody(M, font) -> None:
         for i in range(16):
             a = TAU * i / 16
             detail.disc(f @ Vector((5.5 * math.cos(a) * IN, 5.5 * math.sin(a) * IN, 0.7 * IN)), CONE.n(t), 0.17 * IN, 0.06 * IN)
-    # periscope: door frame and the extended objective, under the pilot's feet: the side that faces the Earth with him head up
+        says = (
+            "Porthole",
+            f"One of spacecraft No. 7's two 10 in ports, {where}. "
+            "The window ahead of the pilot came with a later spacecraft. Click the glass to look in.",
+        )
+        thing(detail, f"Porthole_{which}_Frame", M["steel"], g, *says)
+        thing(glass, f"Porthole_{which}_Glass", M["glass"], g, *says)
+        thing(void, f"Porthole_{which}_Well", M["void"], g, *says)
+
+    # The periscope: its door's frame and the objective put out through it, under the pilot's feet (the side that faces
+    # the Earth with him head up). The same instrument as the screen on the panel (mercury_cabin): the lens here, a
+    # barrel behind it with its stop and a mirror at the bottom, where the light turns up the tube toward the screen.
+    detail, glass, void, bore, mirror = (MeshBuilder() for _ in range(5))
     f = CONE.frame(deg(90), mercury_cabin.SCOPE_STATION)
     detail.box((6.0 * IN, 10.0 * IN, 1.3 * IN), CONE.frame(deg(90), mercury_cabin.SCOPE_STATION, -0.4))
-    detail.lathe(prof([(2.4, 0.0), (2.4, 3.6), (2.0, 4.0), (1.9, 3.2)]), 32, matrix=f)
-    void.lathe(prof([(1.9, 3.2), (0.0, 3.2)]), 32, matrix=f)
-    glass.lathe(prof([(1.93, 3.75), (0.0, 3.85)]), 32, matrix=f)  # the objective, slightly domed
+    detail.lathe(
+        prof([(2.4, 0.0), (2.4, 3.6), (2.05, 3.95), (1.9, 3.95), (1.9, 3.55)]), 32, matrix=f
+    )  # the cartridge, and the ring that holds the lens
+    glass.lathe(prof(arc_profile(0, 2.55, 2.25, 58, 90, 8)[::-1]), 32, matrix=f)  # the objective: a domed front element, 0.3 in proud at its middle
+    if interior():
+        glass.lathe(prof([(1.35, 2.3), (0.0, 2.42)]), 24, matrix=f)  # a second element down the barrel
+        bore.lathe(prof([(1.88, 3.5), (1.88, 2.25), (1.4, 2.25), (1.4, 0.5), (0.0, 0.5)]), 32, matrix=f)  # the barrel, stopped down, blacked inside
+        tilt = f @ Matrix.Translation((0, 0, 1.15 * IN)) @ Matrix.Rotation(deg(40), 4, "X")
+        mirror.lathe(prof([(1.15, 0.0), (0.0, 0.0)]), 24, matrix=tilt)  # the mirror that turns the light up the tube
+    else:
+        void.lathe(prof([(1.9, 3.2), (0.0, 3.2)]), 32, matrix=f)
+    says = (
+        "Periscope",
+        "The periscope's objective, put out through its door: Freedom 7's main view outside, shown on an 8 in screen in the middle of the panel. "
+        "It took in about 172 degrees (the orbital spacecraft's figure). It was drawn in for the climb and put out again above the air.",
+    )
+    thing(detail, "Periscope_Door", M["steel"], g, *says)
+    thing(glass, "Periscope_Objective", M["lens_glass"], g, *says)
+    thing(bore, "Periscope_Barrel", M["nozzle"], g, *says)
+    thing(mirror, "Periscope_Mirror", M["strap"], g, *says)
+    thing(void, "Periscope_Well", M["void"], g, *says)
+
     # umbilical receptacle
+    detail = MeshBuilder()
     f = CONE.frame(deg(-90), 8.0)
     detail.lathe(prof([(2.6, -0.3), (2.6, 0.45), (2.1, 0.45), (2.0, 0.25), (0.0, 0.25)]), 32, matrix=f)
+    thing(
+        detail,
+        "Umbilical_Receptacle",
+        M["steel"],
+        g,
+        "Umbilical receptacle",
+        "Where the ground's umbilical was plugged in until it was pulled 35 seconds before liftoff. Placed by judgement: "
+        "the manual has the receptacle under the periscope's door.",
+    )
     # roll thrusters: a high (6 lbf) and low (1 lbf) pair each way, low on the cone
-    for t0 in (deg(90), deg(270)):
+    for side, t0 in (("A", deg(90)), ("B", deg(270))):
+        detail, dark = MeshBuilder(), MeshBuilder()
         for dt, rad in ((-0.085, 0.55), (-0.045, 0.3), (0.045, 0.3), (0.085, 0.55)):
             f = CONE.frame(t0 + dt, 4.6, 0.0)
             detail.lathe(prof([(rad + 0.25, -0.2), (rad + 0.25, 0.3), (rad, 0.3)]), 16, matrix=f)
             dark.lathe(prof([(rad, 0.3), (rad * 0.4, -0.3), (0.0, -0.3)]), 16, matrix=f)
-    detail.build("Afterbody_Fittings", M["steel"], g)
-    dark.build("Afterbody_ThrusterThroats", M["nozzle"], g)
-    glass.build("Afterbody_Glass", M["glass"], g)
-    void.build("Afterbody_WindowWells", M["void"], g)
+        says = (
+            "Roll thrusters",
+            "Hydrogen peroxide jets that roll the capsule: a 6 lbf and a 1 lbf chamber each way. Placed by judgement, not from a drawing.",
+        )
+        thing(detail, f"RollThrusters_{side}_Ports", M["steel"], g, *says)
+        thing(dark, f"RollThrusters_{side}_Throats", M["nozzle"], g, *says)
 
     paint, flags = MeshBuilder(), MeshBuilder()
     for t in (deg(135), deg(-45)):
@@ -483,16 +565,21 @@ def build_recovery_compartment(M) -> None:
             )
         packs.build("Recovery_ParachutePacks", M["fabric"], g)
 
-    fit, dark = MeshBuilder(), MeshBuilder()
     for q in range(4):  # pitch and yaw thrusters: a 24 lbf and a 1 lbf nozzle at each quadrant
+        fit, dark = MeshBuilder(), MeshBuilder()
         t = deg(90 * q + 45)
         fit.box((5.0 * IN, 3.2 * IN, 0.9 * IN), CYL.frame(t, Z_CAN - 4.0, -0.2))  # sunk through the skin, proud by 0.25 in
         for dz, rad in ((0.75, 0.8), (-0.85, 0.35)):
             f = CYL.frame(t, Z_CAN - 4.0 + dz, 0.25)
             fit.lathe(prof([(rad + 0.2, 0.0), (rad + 0.2, 0.25), (rad, 0.25)]), 16, matrix=f)
             dark.lathe(prof([(rad, 0.25), (rad * 0.4, -0.2), (0.0, -0.2)]), 16, matrix=f)
-    fit.build("Recovery_ThrusterPorts", M["steel"], g)
-    dark.build("Recovery_ThrusterThroats", M["nozzle"], g)
+        says = (
+            "Pitch and yaw thrusters",
+            "Hydrogen peroxide jets that pitch and yaw the capsule: a 24 lbf and a 1 lbf chamber at each quadrant. "
+            "Placed by judgement, not from a drawing.",
+        )
+        thing(fit, f"Recovery_Thruster_{q}_Port", M["steel"], g, *says)
+        thing(dark, f"Recovery_Thruster_{q}_Throats", M["nozzle"], g, *says)
 
 
 def can_r(z: float) -> float:
@@ -507,7 +594,7 @@ def build_antenna_canister(M) -> None:
     mb = MeshBuilder()
     mb.lathe(prof(lower), 96)
     mb.lathe(prof(upper), 96)
-    fit, lens = MeshBuilder(), MeshBuilder()
+    fit = MeshBuilder()
     can = Surf(CAN_R0, Z_CAN, math.atan((CAN_R0 - CAN_R1) / CAN_H))
     for i in range(4):  # supports bridging the bicone antenna's dielectric window
         t = deg(45 + 90 * i)
@@ -516,10 +603,17 @@ def build_antenna_canister(M) -> None:
         for i in range(36):
             t = TAU * i / 36
             fit.disc(can.p(t, z), can.n(t), 0.17 * IN, 0.06 * IN)
-    for t in (deg(0), deg(90)):  # roll and pitch infrared horizon scanners
+    for which, t in (("Roll", deg(0)), ("Pitch", deg(90))):  # roll and pitch infrared horizon scanners
+        body, lens = MeshBuilder(), MeshBuilder()
         f = can.frame(t, Z_CAN + 18.5)
-        fit.lathe(prof([(2.0, -0.4), (2.0, 1.3), (1.5, 1.6), (1.4, 1.3)]), 28, matrix=f)
+        body.lathe(prof([(2.0, -0.4), (2.0, 1.3), (1.5, 1.6), (1.4, 1.3)]), 28, matrix=f)
         lens.lathe(prof([(1.4, 1.3), (0.0, 1.45)]), 28, matrix=f)
+        says = (
+            f"{which} horizon scanner",
+            "An infrared scanner that finds the Earth's edge, to keep the attitude gyros true. There are two: roll and pitch.",
+        )
+        thing(body, f"Antenna_Scanner_{which}", M["steel"], g, *says)
+        thing(lens, f"Antenna_Scanner_{which}_Lens", M["lens"], g, *says, shell=False)
     # top: drogue mortar, and the destabilising flap that keeps the capsule from entering nose-first
     fit.lathe(
         prof([(3.2, Z_CAN_TOP), (3.2, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 0.2), (0.0, Z_CAN_TOP + 0.2)]),
@@ -530,9 +624,12 @@ def build_antenna_canister(M) -> None:
     for x in (-4.0, 4.0):
         fit.tube((x * IN - 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), (x * IN + 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), 0.3 * IN, 10)
     mb.build("Antenna_Housing", M["beryllium_shingle"], g, sharp_angle=30)
-    lathe_obj("Antenna_DielectricWindow", prof([(can_r(w0), w0), (can_r(w1), w1)]), M["dielectric"], g)
+    window = lathe_obj("Antenna_DielectricWindow", prof([(can_r(w0), w0), (can_r(w1), w1)]), M["dielectric"], g)
+    window["label"] = "Antenna window"
+    window["about"] = (
+        "An 8 in band the radio passes through: behind it is the bicone antenna, two cones point to point, which the canister is named for."
+    )
     fit.build("Antenna_Fittings", M["steel"], g)
-    lens.build("Antenna_ScannerLenses", M["lens"], g)
     if interior():  # the bicone itself: two cones point to point behind the dielectric window
         wm = (w0 + w1) / 2
         cone = MeshBuilder()
@@ -608,7 +705,7 @@ def build_escape_tower(M) -> None:
             prof([(0.0, Z_MOTOR + 2.0), (6.9, Z_MOTOR + 2.0), (6.9, Z_MOTOR_TOP - 1.0), (5.0, Z_MOTOR_TOP + 2.0), (0.0, Z_MOTOR_TOP + 2.0)]), 40
         )
         grain.build("Tower_PropellantGrain", M["propellant"], g)
-    noz = MeshBuilder()
+    noz, jett = MeshBuilder(), MeshBuilder()
     cant = deg(19)
     for i in range(3):
         t = deg(90 + 120 * i)  # between the legs
@@ -617,8 +714,25 @@ def build_escape_tower(M) -> None:
         axis = rad * math.sin(cant) + Vector((0, 0, -math.cos(cant)))
         noz.lathe(prof([(1.5, 0.0), (1.7, 2.0), (2.7, 5.5), (3.6, 9.0), (4.1, 12.0)]), 32, matrix=frame(origin, axis))
     # tower-jettison motor fires straight down the middle
-    noz.lathe(prof([(2.3, Z_MOTOR - 0.2), (2.3, Z_MOTOR - 5.5), (1.2, Z_MOTOR - 6.5), (2.0, Z_MOTOR - 9.0)]), 28)
-    noz.build("Tower_Nozzles", M["nozzle"], g)
+    jett.lathe(prof([(2.3, Z_MOTOR - 0.2), (2.3, Z_MOTOR - 5.5), (1.2, Z_MOTOR - 6.5), (2.0, Z_MOTOR - 9.0)]), 28)
+    thing(
+        noz,
+        "Tower_EscapeNozzles",
+        M["nozzle"],
+        g,
+        "Escape rocket nozzles",
+        "Three nozzles canted 19 degrees outward, so that 52,000 lbf of fire goes past the capsule it is pulling away, not onto it.",
+        shell=False,
+    )
+    thing(
+        jett,
+        "Tower_JettisonNozzle",
+        M["nozzle"],
+        g,
+        "Tower jettison rocket",
+        "Takes the tower away once it is no longer wanted: about 800 lbf for a second and a half. It had three nozzles; the model has one.",
+        shell=False,
+    )
 
 
 # ---------------------------------------------------------------------------- main
@@ -639,7 +753,7 @@ def build() -> str:
     build_antenna_canister(M)
     build_escape_tower(M)
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
-    mark_shells(SHELLS + redstone_mrlv.SHELLS)
+    mark_shells(SHELLS + tuple(THING_SHELLS) + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"
 
 

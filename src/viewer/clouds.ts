@@ -692,6 +692,15 @@ const OVER = /* glsl */ `
   // lined up along the wind as the field is, and more seen aslant (a field of heaps looked along hides the gaps
   // between them). So cloud goes on to the limb, in the weather's own shapes, and nothing shimmers.
   // \`d\`: how far off the scene's surface is; \`dv\`, \`veil\`: the nearest fire or smoke, and how much it covers.
+  // How high a heap's top stands over a place of the field (in cells), metres above the base: the dome the volume
+  // has there (clouds.ts: inside()), with the billows on it as far as \`lod\` shows them.
+  float heapTop(vec2 q, float bias, float lod) {
+    float x = cloudNoise(q) + bias - uCumulus.y;
+    if (x <= 0.0) return 0.0;
+    float h = min(uDome * pow(x * ${SIDE_PER_SIZE.toFixed(4)} * uCumulus.x, ${DOME.toFixed(4)}), uLayer.y - uLayer.x);
+    vec3 b = textureLod(tBillows, vec3(q.x * uCumulus.x, 0.6 * (uLayer.y - uLayer.x) - uRise, q.y * uCumulus.x) / ${TILE.toFixed(1)}, lod).rgb;
+    return h + ${BILLOW.toFixed(1)} * (dot(b, vec3(0.45, 0.33, 0.22)) - ${LUMPS.toFixed(3)}) * smoothstep(0.0, 150.0, h);
+  }
   vec4 farCumulus(vec3 dir, float d, float dv, float veil) {
     float ud = dot(uUp, dir);
     // (most of the frame stops here: the rays that meet the shell, past the sea's horizon or the nearest the volume fades)
@@ -730,11 +739,25 @@ const OVER = /* glsl */ `
     float aslant = min(sqrt(max(1.0 - cosv * cosv, 0.0)) / cosv, 12.0);
     if (along < 1.0) {
       float lod = max(log2(fpAcross / ${(TILE / NOISE).toFixed(1)}), 0.0);
+      // (for the light, the billows no finer than two pixels: lit lump by lump at one, a cloud was a stipple of white
+      // pixels and grey that would crawl as it drifted)
+      float soft = lod + 1.0;
       vec2 sunward = uSun.xz / max(length(uSun.xz), 1e-3);
-      // A heap has a side toward the Sun and one away from it: the field read again a little way toward the Sun says
-      // which this is (it falls that way on the near side), until the clouds are too small for it to show.
-      float faces = clamp((cloudNoise(q0) - cloudNoise(q0 + sunward * 0.1)) * 24.0, -1.0, 1.0) * sqrt(max(1.0 - sunUp * sunUp, 0.0));
-      float side = 0.5 + 0.5 * faces;
+      // The light on a heap, from its shape: how high its top stands here, a little way toward the Sun and further
+      // that way (heapTop: the dome the volume has, with its billows). Where the top falls away toward the Sun it
+      // faces it and is the brightest; where it rises that way it is turned from it, and where what stands sunward
+      // is higher than the Sun's rays clear, it is in that shadow. Thin cloud at a heap's edge is dimmer, and seen
+      // through. So from straight over them the cumulus have a lit side, a shaded side and a soft rim.
+      float span = max(2.5 * fpAcross, 120.0);
+      vec2 toSun = sunward * span / uCumulus.x;
+      float h0 = heapTop(q0, bias, soft), h1 = heapTop(q0 + toSun, bias, soft), h2 = heapTop(q0 + 3.0 * toSun, bias, soft);
+      float sunLow = sqrt(max(1.0 - sunUp * sunUp, 0.0));
+      float rise = (h1 - h0) / span;
+      float facing = (sunUp - rise * sunLow) / (sqrt(1.0 + rise * rise) * max(sunUp, 0.12));
+      float shadow = max(smoothstep(0.0, 60.0, h1 - h0 - span * sunUp / max(sunLow, 0.05)), smoothstep(0.0, 90.0, h2 - h0 - 3.0 * span * sunUp / max(sunLow, 0.05)));
+      float thick = smoothstep(0.0, 220.0, h0);
+      float shape = mix(0.36, 1.15, smoothstep(0.15, 1.5, facing)) * (1.0 - 0.5 * shadow) * (0.74 + 0.26 * thick);
+      float rim = under ? 1.0 : mix(0.5, 1.0, smoothstep(0.0, 110.0, h0));
       for (int k = 0; k < (under ? 1 : 5); k++) {
         float y = under ? 0.06 : 0.9 - 0.21 * float(k);
         float lk, tk = shellHit(dir, uLayer.x + y * depth, lk);
@@ -750,13 +773,10 @@ const OVER = /* glsl */ `
         float need = uCumulus.y + 0.3 * wd + pow(y * depth / uDome, ${(1 / DOME).toFixed(4)}) / (${SIDE_PER_SIZE.toFixed(4)} * uCumulus.x);
         float a = smoothstep(need - wd, need + wd, n);
         if (a <= 0.0) continue;
-        // What shows of a slice is the heap's skin at that height: near its top, the top, in the Sun; lower, its side,
-        // lit or shaded by which way it faces; and a lump's heart is brighter than the crease beside it, as the
-        // march has it. The base is the darkest of it.
-        float top = smoothstep(need, need + 0.06, n);   // well inside the slice: the heap goes on up over it
-        float sun = mix(mix(0.22, 0.95, side), 1.0, top * y) * (0.72 + 0.28 * y) * (1.0 + 1.3 * lumps * (1.0 - along));
-        vec3 light = under ? bases : sunTop * sun + uSkyLight * (0.45 + 0.45 * y);
-        float t = (1.0 - acc.a) * a;
+        // (a slice lower in the heap is its side, a little darker than its top)
+        float sun = shape * (0.7 + 0.3 * y);
+        vec3 light = under ? bases : sunTop * sun + uSkyLight * (0.4 + 0.3 * y + 0.2 * thick);
+        float t = (1.0 - acc.a) * a * rim;
         acc += t * vec4(light, 1.0);
         lit += t * (under ? 0.3 : sun);
       }

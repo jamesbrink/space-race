@@ -68,6 +68,22 @@ else console.warn('shadows.ts: three’s directional light loop is not as it was
 
 type ShadowMap = THREE.WebGLRenderer['shadowMap'];
 
+/**
+ * Give a directional light's shadow its depth bias as a length: so many texels of its map, and never under 2 cm,
+ * whatever depth the map's camera spans. Call it after the camera and the map's size are set.
+ *
+ * Three's `bias` is a fraction of the camera's depth range, and it was set as one (a fraction of the map's width):
+ * on foot, with 400 m of range, that came to 29 cm, and in the orbiting view to 60 cm. A caster nearer than that to
+ * what it shades cast nothing: sunlight came through every flat roof (18 cm of concrete) along the tops of the walls
+ * inside, and under every platform. What a depth bias is for is the map's own grain, which is a texel or two; a
+ * surface the light grazes is `normalBias`'s work.
+ */
+export function depthBias(shadow: THREE.LightShadow, texels = 2.5): void {
+  const camera = shadow.camera as THREE.OrthographicCamera;
+  const texel = (camera.right - camera.left) / shadow.mapSize.x;
+  shadow.bias = -Math.max(0.02, texels * texel) / (camera.far - camera.near);
+}
+
 export class FarShadow {
   /** The light the map belongs to: in the scene after the Sun, giving no light. Its target is its own child of the scene too. */
   readonly light = new THREE.DirectionalLight(0x000000, 0);
@@ -223,8 +239,8 @@ export class FarShadow {
     light.target.updateMatrixWorld();
     Object.assign(light.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: 2 * radius + 40 });
     light.shadow.camera.updateProjectionMatrix();
-    // a texel and a half off the surface, and a depth bias to match (as the Sun's own map, stage.ts fitShadows)
+    // a texel and a half off the surface, and a depth bias of the map's own grain
     light.shadow.normalBias = 1.5 * texel;
-    light.shadow.bias = -Math.max(0.0002, radius / 40000);
+    depthBias(light.shadow);
   }
 }

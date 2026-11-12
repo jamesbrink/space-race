@@ -31,7 +31,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const errors = [];
 page.on('console', (m) => ['error', 'warning'].includes(m.type()) && errors.push(m.text()));
 page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(url);
+await page.goto(`${url}#vehicle`); // (the launch site's page: an address that names nothing opens the gallery, which has one model and no `sr.show`)
 await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'));
 await page.addStyleTag({ content: '#ui { display: none !important }' });
 

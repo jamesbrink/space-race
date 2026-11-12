@@ -143,7 +143,9 @@ function skyMaterial(uniforms: SkyUniforms, h: Heavens, discs: boolean, gain: TH
           discs
             ? /* glsl */ `// the Sun at its true size, half a degree across, reddened by the air it shines through:
         // the glow round it is the sky's and the bloom's
-        float off = length(cross(d, uSun)), edge = fwidth(off);
+        // (the edge no broader than a pixel can be: along a seam of the dome's own triangles the derivative is wild, and
+        // a row of pixels there took a share of the disc from across the sky: a dotted line up the sky)
+        float off = length(cross(d, uSun)), edge = min(fwidth(off), 0.004);
         if (dot(d, uSun) > 0.0) col += vec3(40.0, 36.0, 30.0) * uSunLight * (1.0 - smoothstep(uSunSize - edge, uSunSize + edge, off));`
             : ''
         }

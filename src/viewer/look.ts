@@ -29,6 +29,7 @@ function follow(twin: THREE.Material, real: THREE.Material): void {
   twin.clipIntersection = real.clipIntersection;
   twin.clipShadows = real.clipShadows;
   twin.side = real.side;
+  twin.shadowSide = real.shadowSide;
   twin.needsUpdate = true;
 }
 
@@ -105,15 +106,17 @@ export class Looks {
     if (made) return made;
     const from = real as THREE.MeshStandardMaterial;
     const glass = real.name.startsWith('glass');
+    const lens = real.name.startsWith('glass-lens');
     const toon = new THREE.MeshToonMaterial({
       name: real.name,
       gradientMap: this.tones,
       // a pane has no colour of its own to flatten: in a drawing it is a pale wash over what is behind
-      color: glass ? new THREE.Color(0x9fd0e0) : (from.color?.clone() ?? new THREE.Color(0xffffff)),
+      // (a lens is the other way about: dark glass, with the barrel behind it darker still)
+      color: lens ? new THREE.Color(0x16262e) : glass ? new THREE.Color(0x9fd0e0) : (from.color?.clone() ?? new THREE.Color(0xffffff)),
       map: from.map ?? null,
       vertexColors: real.vertexColors,
       transparent: real.transparent,
-      opacity: glass ? 0.22 : real.opacity,
+      opacity: lens ? 0.6 : glass ? 0.22 : real.opacity,
       depthWrite: real.depthWrite,
       alphaTest: real.alphaTest,
     });

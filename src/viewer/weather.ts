@@ -119,6 +119,9 @@ export function weatherAt(e: number, n: number, place: Place, wind: readonly [nu
   cumulus = cumulus + (closed - cumulus) * decks;
   // the weather's breadth over all of it: from a third to half as much again
   cumulus *= 0.3 + 1.3 * synoptic;
+  // and broad clear lanes between cloudier country, 150 to 300 km across: what is seen of the weather from 187 km
+  const lanes = smooth(0.36, 0.62, fbm2(e / (280 * KM) + 6.6, n / (230 * KM) + 3.9, 495, 3) / 0.875);
+  cumulus *= 0.12 + 1.2 * lanes;
 
   // a front to the north-west: a band 1,000 km off, lying west-south-west to east-north-east, waving
   const wave = 180 * KM * (fbm2(e / (600 * KM) + 2.2, n / (600 * KM) + 9.4, 451, 2) - 0.375);
@@ -182,6 +185,9 @@ export const cumulusBiasGlsl = (prefix: string): string => /* glsl */ `
     w = weatherAt(xz);
     float away = smoothstep(${NEAR[0].toFixed(1)}, ${NEAR[1].toFixed(1)}, length(xz));
     streets = 0.12 * away * (${prefix}noise2(vec2(dot(q, uWeatherWind) * 0.035, dot(q, vec2(-uWeatherWind.y, uWeatherWind.x)) * 0.19) + 31.7, 95) - 0.5);
+    // and clusters of them, 19 and 50 km across, with clearer air between: so the field has every size from a puff
+    // to a cluster of cells, and from far off its large shapes stand out more than its small ones (estimated)
+    streets += away * (0.075 * (${prefix}noise2(q * 0.08 + 11.3, 96) - 0.5) + 0.085 * (${prefix}noise2(q * 0.03 + 23.9, 98) - 0.5));
     return cloudCutAt(uWeather.w) - cloudCutAt(w.r) + streets;
   }`;
 
@@ -239,9 +245,15 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     // Altocumulus is cloudlets two or three hundred metres across with clear air between, closing up toward a patch's
     // middle; a front's deck is solid. (So an eighth of the sky has altocumulus over it, and less than that is hidden.)
     // (each size of them left at its mean where it is under a pixel or two: nothing to shimmer)
-    float lets = 0.65 * mix(${prefix}noise2(xz / 150.0 + 2.9, 504), 0.5, smoothstep(55.0, 150.0, fp))
-      + 0.35 * mix(${prefix}noise2(xz / 55.0 + 6.1, 505), 0.5, smoothstep(20.0, 55.0, fp));
-    lets = mix(smoothstep(0.44, 0.58, lets + 0.4 * (deckTex(xz, fp) - cut)), 0.5, smoothstep(55.0, 150.0, fp));
+    // (each size of them left at its mean before it is as small as two pixels: at one, a cloudlet was a white pixel
+    // beside a clear one, and the deck a stipple that would crawl. Past that the deck is its patches, half seen through.)
+    // (the noise's own grid turned two ways, or the cloudlets line up in rows and columns)
+    vec2 r1 = mat2(0.7986, 0.6018, -0.6018, 0.7986) * xz, r2 = mat2(0.9205, -0.3907, 0.3907, 0.9205) * xz;
+    float lets = 0.65 * mix(${prefix}noise2(r1 / 150.0 + 2.9, 504), 0.5, smoothstep(30.0, 75.0, fp))
+      + 0.35 * mix(${prefix}noise2(r2 / 55.0 + 6.1, 505), 0.5, smoothstep(11.0, 27.0, fp));
+    // (past that, clumps of them a kilometre across, thicker and thinner; and at last only the patch, half seen through)
+    float clumps = mix(0.4 + 0.3 * smoothstep(0.3, 0.7, ${prefix}noise2(r2 / 1100.0 + 8.3, 506)), 0.55, smoothstep(400.0, 1100.0, fp));
+    lets = mix(smoothstep(0.44, 0.58, lets + 0.4 * (deckTex(xz, fp) - cut)), clumps, smoothstep(30.0, 75.0, fp));
     return a * mix(0.06 + 0.88 * lets, 0.98, smoothstep(0.35, 0.85, cover));
   }
   float cirrusAt(vec2 xz, float fp, float amount) {

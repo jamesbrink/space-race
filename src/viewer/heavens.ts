@@ -41,7 +41,7 @@ export const MOON_GLSL = /* glsl */ `
     if (uMoonLight <= 0.0 || along <= 0.0) return vec3(0.0);
     vec3 off = (d - uMoon * along) / uMoonSize;   // across the disc: length 1 at the limb
     float r = length(off);
-    float edge = fwidth(r);
+    float edge = min(fwidth(r), 0.5);   // (never broader than half the disc: a wild derivative on a seam of the dome's triangles drew dots)
     float disc = 1.0 - smoothstep(1.0 - edge, 1.0 + edge, r);
     if (disc <= 0.0) return vec3(0.0);
     float rr = min(r, 1.0);

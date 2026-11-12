@@ -181,8 +181,7 @@ const COLOUR = /* glsl */ `
     float land = smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel));   // the shore: a clean line, one pixel soft
     float i = globeField(uGlobeIce, d);
     float ice = smoothstep(-0.5, 0.5, i / (fwidth(i) * 0.8 + 0.03));
-    // the land in its own colours (Blue Marble, May), the sea by its depth (lakes are cut out of the land map, so
-    // they are water: a lake's bed is not in the relief, so it is the deep's colour)
+    // the land in its own colours (Blue Marble, May), the sea by its depth (lakes are cut out of the land map, so they are water)
     float ws;
     vec2 suv = globeSurf(d, ws);
     float h = mix(reliefMetres(texture(uGlobeRelief, d).r * 255.0), reliefMetres(texture(uGlobeSurfRelief, suv).r * 255.0), ws);
@@ -190,7 +189,9 @@ const COLOUR = /* glsl */ `
     vec3 deep = mix(${vec3(SEA)}, ${vec3(DEEP)}, uGlobeAbove);
     // (water over ground that is above the sea is a lake: its bed is not known, and it is taken as deep)
     float bank = globeBank(d);
-    vec3 water = globeWater(bank, h > 0.5 ? 1e4 : -h, deep);
+    // (water over ground the relief has at or above the sea is a lagoon or a lake, whose bed is not in the relief: taken
+    // as the shallowest water there is, one tone, so a lagoon is not mottled by where the relief happens to dip)
+    vec3 water = globeWater(bank, -h, deep);
     // (on a bank, ground the relief has above the sea that no coastline draws is a cay or a shoal awash: land, in its own colour)
     land = max(land, bank * smoothstep(0.3, 0.9, h));
     #ifdef TOON

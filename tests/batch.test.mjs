@@ -13,13 +13,14 @@ const box = (material, x = 0, size = 1) => {
   return mesh;
 };
 /** A model file of `n` boxes of one material in a row, in a scene, taken up by a `Batches`. */
-function staged(n = 3) {
+function staged(n = 3, least = 2) {
   const material = steel();
   const root = new THREE.Group();
   for (let i = 0; i < n; i++) root.add(box(material, i * 3, 1 + i));
   const scene = new THREE.Scene();
   scene.add(root);
   const batches = new Batches(scene, () => {});
+  batches.least = least;
   batches.add(root);
   scene.updateMatrixWorld(true);
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
@@ -113,9 +114,25 @@ test('a batch takes its meshes off the camera`s layer and leaves them otherwise 
   for (const mesh of root.children) assert.equal(mesh.layers.mask, 1 << PROXY_LAYER);
 });
 
-test('one mesh of a material is not worth a batch', () => {
-  const { batches } = staged(1);
-  assert.deepEqual(batches.count, { meshes: 0, batches: 0 });
+test('a few meshes of a material are not worth a batch; and a material is batched whole or not at all', () => {
+  assert.deepEqual(staged(7, 8).batches.count, { meshes: 0, batches: 0 });
+  assert.deepEqual(staged(8, 8).batches.count, { meshes: 8, batches: 1 });
+  // one mesh of the material that a batch cannot draw (mirrored): were the rest batched, three would no longer draw
+  // it between two of them, and where two faces are at one depth the later draw is the one seen
+  const material = steel();
+  const root = new THREE.Group();
+  for (let i = 0; i < 4; i++) root.add(box(material, i * 3));
+  root.children[2].scale.x = -1;
+  const other = steel();
+  for (let i = 0; i < 3; i++) root.add(box(other, i * 3, 2));
+  const scene = new THREE.Scene().add(root);
+  const batches = new Batches(scene, () => {});
+  batches.least = 2;
+  batches.add(root);
+  assert.deepEqual(batches.count, { meshes: 3, batches: 1 });
+  batches.prepare();
+  assert.equal(root.children[0].layers.mask, 1, 'left to three');
+  assert.equal(root.children[5].layers.mask, 1 << PROXY_LAYER);
 });
 
 test('each instance is given the matrices three would give its mesh, to the last bit', () => {
@@ -131,7 +148,7 @@ test('each instance is given the matrices three would give its mesh, to the last
   assert.equal(batch._multiDrawCount, 3);
   const data = batch._matricesTexture.image.data;
   const base = batch._indirectTexture.image.data[0];
-  root.children.forEach((mesh, i) => {
+  Array.from(batch.order, (k) => root.children[k]).forEach((mesh, i) => {
     // as WebGLRenderer.renderObject has them, sent as WebGLUniforms sends them
     const modelView = new THREE.Matrix4().multiplyMatrices(camera.matrixWorldInverse, mesh.matrixWorld);
     const normal = new THREE.Matrix3().getNormalMatrix(modelView);
@@ -161,7 +178,7 @@ test('a mesh moved between frames is drawn where it is; one out of view, hidden 
   scene.updateMatrixWorld(true);
   batches.prepare();
   draw();
-  const world = new THREE.Matrix4().fromArray(data, 16);
+  const world = new THREE.Matrix4().fromArray(data, batch.order.indexOf(0) * 48 + 16);
   assert.equal(world.elements[13], 1.25);
   // behind the camera: culled, as three culls a mesh by its bounding sphere
   root.children[1].position.z = 60;
@@ -204,17 +221,117 @@ test('a mesh moved between frames is drawn where it is; one out of view, hidden 
   light.lookAt(0, 0, 0);
   light.updateMatrixWorld(true);
   draw(light, true);
-  const mesh = batch.instances.find((i) => i.live).mesh;
+  const mesh = batch.instances.find((i) => i.live).mesh; // (for a light they are in the model's order: depth alone is drawn)
   const modelView = new THREE.Matrix4().multiplyMatrices(light.matrixWorldInverse, mesh.matrixWorld);
   const at = batch._indirectTexture.image.data[0] * 48;
   const lit = batch._matricesTexture;
   assert.deepEqual(Array.from(lit.image.data.subarray(at, at + 16)), Array.from(new Float32Array(modelView.elements)));
   draw(camera); // (and back to the eye's for the scene: its own matrices, in its own texture)
   assert.notEqual(batch._matricesTexture, lit);
+  const first = batch.instances[batch.order[0]].mesh;
   assert.deepEqual(
     Array.from(batch._matricesTexture.image.data.subarray(at, at + 16)),
-    Array.from(new Float32Array(new THREE.Matrix4().multiplyMatrices(camera.matrixWorldInverse, mesh.matrixWorld).elements)),
+    Array.from(new Float32Array(new THREE.Matrix4().multiplyMatrices(camera.matrixWorldInverse, first.matrixWorld).elements)),
   );
+});
+
+test('a batch draws its meshes in the order three would: nearest first, the older first where two are as deep', () => {
+  const material = steel();
+  const root = new THREE.Group();
+  // set down in no order of depth, two of them at one depth
+  for (const z of [-6, 3, -1, 3, 8, -20]) {
+    const mesh = box(material, root.children.length * 0.5);
+    mesh.position.z = z;
+    root.add(mesh);
+  }
+  const scene = new THREE.Scene().add(root);
+  const batches = new Batches(scene, () => {});
+  batches.least = 2;
+  batches.add(root);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.set(0, 0, 20);
+  camera.updateMatrixWorld(true);
+  scene.updateMatrixWorld(true);
+  const batch = batches.group.children[0];
+  // three's own key and order for what is not blended (WebGLRenderer.projectObject, WebGLRenderLists.painterSortStable)
+  const projScreen = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const threes = () =>
+    root.children
+      .map((mesh) => ({
+        mesh,
+        z: new THREE.Vector4().copy(mesh.geometry.boundingSphere.center).applyMatrix4(mesh.matrixWorld).applyMatrix4(projScreen).z,
+      }))
+      .sort((a, b) => (a.z !== b.z ? a.z - b.z : a.mesh.id - b.mesh.id))
+      .map((item) => item.mesh);
+  const drawn = () => {
+    batches.prepare();
+    batch.onBeforeRender(null, scene, camera);
+    const data = batch._matricesTexture.image.data;
+    return Array.from({ length: batch._multiDrawCount }, (_, n) =>
+      root.children.find((mesh) => mesh.matrixWorld.elements[12] === data[n * 48 + 16 + 12]),
+    );
+  };
+  assert.deepEqual(
+    drawn().map((m) => m.position.z),
+    [8, 3, 3, -1, -6, -20],
+  );
+  assert.deepEqual(drawn(), threes());
+  // moved about: sorted again from where they were
+  root.children[5].position.z = 12;
+  root.children[0].position.z = 3;
+  scene.updateMatrixWorld(true);
+  assert.deepEqual(drawn(), threes());
+  assert.deepEqual(
+    drawn().map((m) => m.id),
+    threes().map((m) => m.id),
+  );
+});
+
+test('as a draw of the scene begins three is left to pass over a batch with nothing in view, unless a shadow map wants it', () => {
+  const { root, scene, batches, batch, camera } = staged();
+  const renderer = { shadowMap: { enabled: true, autoUpdate: false, needsUpdate: false } };
+  const begin = (cam = camera) => {
+    scene.updateMatrixWorld(true);
+    batches.prepare();
+    scene.onBeforeRender(renderer, scene, cam, null);
+  };
+  begin();
+  assert.ok(batch.visible);
+  assert.equal(batch._multiDrawCount, 3);
+  // every mesh behind the camera
+  root.position.z = 80;
+  begin();
+  assert.equal(batch._multiDrawCount, 0);
+  assert.equal(batch.visible, false, 'three does not look at it at all');
+  // a light whose map is to be drawn and has them in view: the batch is wanted for that
+  const light = new THREE.DirectionalLight();
+  light.castShadow = true;
+  light.position.set(0, 50, 80);
+  light.target.position.set(0, 0, 80);
+  scene.add(light, light.target);
+  Object.assign(light.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 100 });
+  light.shadow.camera.updateProjectionMatrix();
+  batches.lights.push(light);
+  begin();
+  assert.equal(batch.visible, false, 'no map is being drawn in this draw');
+  renderer.shadowMap.needsUpdate = true;
+  begin();
+  assert.ok(batch.visible);
+  batch.onBeforeShadow(null, batch, camera, light.shadow.camera);
+  assert.equal(batch._multiDrawCount, 3);
+  // looking the other way, the light too
+  light.target.position.set(0, 0, -500);
+  light.position.set(0, 50, -500);
+  begin();
+  assert.equal(batch.visible, false);
+  // a draw through a camera that does not see the batches' layer (the veils' own) leaves them be
+  root.position.z = 0;
+  begin();
+  assert.ok(batch.visible);
+  const veils = camera.clone();
+  veils.layers.set(7);
+  scene.onBeforeRender(renderer, scene, veils, null);
+  assert.ok(batch.visible);
 });
 
 test('matrices are worked out again only when something has changed, and never sent to the texture last drawn from', () => {
