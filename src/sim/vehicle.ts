@@ -39,8 +39,9 @@
  *             impulse; the spacecraft is lighter by it; and a supply with less left than a tick's burning
  *             feeds nothing, so its axes cannot be steered. Which chambers are open is settled once a
  *             tick. Where a flight gives no hardware, `capsule.jets` is a pure torque about each axis.
- *   rocket    the escape rocket, on an abort: `body.escape`'s thrust along the axis for its burn,
- *             then falling evenly to nothing over as long as its total impulse says.
+ *   rocket    the escape rocket, on an abort: `body.escape`'s thrust for its burn, then falling
+ *             evenly to nothing over as long as its total impulse says, along a line that leans
+ *             from the axis by `escape.lean` (through the centre of mass), which carries it aside.
  * Mass, centre of mass and inertia follow the propellant down the tanks (rigid.ts: massOf). The
  * terms that come of mass leaving a turning body (jet damping) and of the centre of mass moving
  * along it are left out, and so are slosh, bending, wind, thrust misalignment and the air rudders.
@@ -335,6 +336,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const rcsUsed = (s: VehicleState): number => rcsFull.reduce((sum, full, i) => sum + (full - s.rcs.left[i]!), 0);
   const rcsFlow = (s: VehicleState): number => (s.rcs.firing === QUIET ? 0 : s.rcs.firing.reduce((sum, f, i) => sum + f * burnOf[i]!, 0));
   const escapeOver = rocket ? rocket.burn.value + escapeTail : 0;
+  const escapeLean = (rocket?.lean?.value ?? 0) * DEG;
   const dryOut = tanks
     ? tr.liftoffMass.value - tanks.burnable
     : tr.engine.depletion
@@ -476,7 +478,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     }
     if (escaping) {
       const pull = escapeThrust(at - s.abortAt!);
-      if (pull > 0) push([pull, 0, 0], 0);
+      // its line leans off the axis, toward -Z, so the spacecraft is carried aside and does not come down where it left
+      if (pull > 0) push([pull * Math.cos(escapeLean), 0, -pull * Math.sin(escapeLean)], 0);
     }
     return { force, torque, q, mach, altitude, wind, airspeed, props };
   };
@@ -561,7 +564,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   };
 
   /** The point whose height says whether it has come down: the stack's base, the spacecraft's centre. */
-  const foot = (s: VehicleState, d: Dyn): Vec3 => (s.shed.booster ? d.r : sub(d.r, scale(turn(d.q, X), massNow(s, d.mass).centre)));
+  const foot = (s: VehicleState, d: Dyn): Vec3 =>
+    sub(d.r, scale(turn(d.q, X), s.shed.booster ? (capsule.base?.value ?? 0) : massNow(s, d.mass).centre));
   const heightOf = (r: Vec3, at: number): { height: number; ground: number; latitude: number; longitude: number } => {
     const here = ecefToGeodetic(fixed(r, at));
     return {

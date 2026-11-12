@@ -59,7 +59,7 @@ export interface Run {
   samples: readonly Sample[];
   /** When it came down, seconds from liftoff: Infinity until it has. */
   duration: number;
-  /** When the engine stopped: Infinity while it burns. */
+  /** When the engine stopped: Infinity while it burns, -Infinity for one that never did (an abort off the pad, unlit). */
   cutoff: number;
   /** When each of `Flight.flies.drops` left, in their order: Infinity for one still aboard. */
   dropped: number[];
@@ -95,8 +95,21 @@ export class Ascent {
   private record: Run | null = null;
   private live: Run | null = null;
   private axis: ((t: number) => Vec3) | null = null;
-  /** The offset of the model's origin from the point flown, in the model's frame on the pad, and as it stood at separation. */
+  /** Where the model's origin stands on the pad, in the site's frame (`ModelDef.position`). */
   private readonly home = new THREE.Vector3();
+  /**
+   * The model's origin from the stack's base, which is the point flown, in the model's own frame: `flies.datum` up its axis.
+   * It turns with the vehicle. (Without a datum the origin's whole height on the pad is taken for it, and nothing for `stand`.)
+   */
+  private readonly along = new THREE.Vector3();
+  /**
+   * What the site puts under the stack's base (the launcher's support), in the site's frame. The simulator starts the base
+   * on the site's origin, so on the pad the model is drawn this much above the point flown; it does not turn with the
+   * vehicle, and is eased out over the first seconds of flight (`stood`), so that what comes down meets the surface itself.
+   */
+  private readonly stand = new THREE.Vector3();
+  /** The spacecraft's own centre of mass from the model's origin, in the model's frame: what it turns about once alone. */
+  private readonly centre = new THREE.Vector3();
   private readonly arc = new THREE.Quaternion();
 
   private constructor(flight: Flight) {
@@ -105,6 +118,16 @@ export class Ascent {
     this.site = siteFrame(flight.site);
     const def = flight.models.find((m) => m.id === this.model);
     this.home.set(...(def?.position ?? [0, 0, 0]));
+    const datum = flight.flies!.datum ?? this.home.y;
+    this.along.set(0, datum, 0);
+    this.stand.copy(this.home).sub(this.along);
+    const body = flight.trajectory?.body;
+    if (body) this.centre.set(0, body.capsule.centre.value - datum, 0);
+  }
+
+  /** How much of `stand` the model is still drawn above the point flown by at `t`: all of it on the pad, none from `SETTLES` seconds up. */
+  private stood(t: number): THREE.Vector3 {
+    return this.stand.clone().multiplyScalar(1 - THREE.MathUtils.smoothstep(t, 0, SETTLES));
   }
 
   /** The flight's ascent, or null if it cannot be flown or names no model to fly. */
@@ -232,7 +255,7 @@ export class Ascent {
       moment.air.set(0, 0, 0);
       // (a flight flown by hand comes down where its centre of mass meets the surface: sim/vehicle.ts)
       moment.floor =
-        toThree(ecefToSite(this.site, inertialToEcef((end as LiveSample).centre, EARTH_ROTATION_RATE * end.t))).y + this.home.y;
+        toThree(ecefToSite(this.site, inertialToEcef((end as LiveSample).centre, EARTH_ROTATION_RATE * end.t))).y + this.stood(end.t).y;
     }
     return moment;
   }
@@ -271,7 +294,7 @@ export class Ascent {
       axes = [Y.clone(), Y.clone().cross(downrange), downrange.clone().negate()];
     }
     const [x, y, z] = axes.map((v) => v.applyQuaternion(into));
-    const centre = this.home.clone().negate().applyQuaternion(into).addScaledVector(x!, body.capsule.centre.value);
+    const centre = x!.clone().multiplyScalar(this.centre.y);
     return new THREE.Matrix4().makeBasis(x!, y!, z!).setPosition(centre);
   }
 
@@ -381,11 +404,15 @@ export class Ascent {
       const p = new THREE.Vector3();
       const q = new THREE.Quaternion();
       const p2 = new THREE.Vector3();
-      if (!this.place(drop.at, padTurn, p, q)) return undefined;
+      // (something let go at the instant of liftoff itself, as an abort off the pad leaves the booster, left from where the
+      // vehicle stood: the flight has begun by any instant after that one)
+      const at = Math.max(drop.at, 1e-9);
+      if (!this.place(at, padTurn, p, q)) return undefined;
       // (a part let go this instant has no later sample to be measured against yet: it is measured from just before)
       const back = this.flown().live;
-      this.place(drop.at + (back ? -0.05 : 0.05), padTurn, p2, new THREE.Quaternion());
-      from = this.released[i] = { at: drop.at, p, q, v: (back ? p.clone().sub(p2) : p2.sub(p)).divideScalar(0.05) };
+      const moving = this.place(at + (back ? -0.05 : 0.05), padTurn, p2, new THREE.Quaternion());
+      const v = moving ? (back ? p.clone().sub(p2) : p2.sub(p)).divideScalar(0.05) : new THREE.Vector3();
+      from = this.released[i] = { at: drop.at, p, q, v };
     }
     return from;
   }
@@ -419,12 +446,17 @@ export class Ascent {
       this.arc.slerp(new THREE.Quaternion().setFromUnitVectors(Y, back), k);
     }
     quaternion.copy(this.arc).multiply(padTurn);
-    // the point flown is where the vehicle stood on the pad; the model's origin is held off it as on the pad, turned with the
-    // vehicle up to separation and as it was then afterwards, so the spacecraft does not jump as the booster leaves
-    const offset = this.home.clone();
+    // The point flown is the stack's base. Up to separation the model's origin is held up the axis from it, turning with
+    // the vehicle. From then on the spacecraft's own centre of mass stays where it was from the point flown as they
+    // parted (so nothing jumps as the booster leaves), and the model turns about that centre: not about its origin,
+    // which is the plane the spacecraft sat on the booster by.
+    const offset = this.along.clone();
     if (t <= separation) offset.applyQuaternion(this.arc);
-    else offset.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(Y, up(separation)));
-    position.copy(toThree(at)).add(offset);
+    else {
+      const parted = new THREE.Quaternion().setFromUnitVectors(Y, up(separation));
+      offset.add(this.centre).applyQuaternion(parted).sub(this.centre.clone().applyQuaternion(this.arc));
+    }
+    position.copy(toThree(at)).add(this.stood(t)).add(offset);
     return true;
   }
 
@@ -439,8 +471,9 @@ export class Ascent {
    * mass, so the model's origin (far below it, where the booster's base was) is carried round that centre as it lay in
    * the body when they parted.
    */
-  /** The live run's first sample of the spacecraft alone, found once. */
+  /** The live run's first sample of the spacecraft alone, and where among the samples it is: found once, and again only if it is no longer there. */
   private parted: LiveSample | null = null;
+  private partedAt = -1;
 
   private placeLive(
     samples: readonly LiveSample[],
@@ -458,7 +491,8 @@ export class Ascent {
     this.arc.copy(qa).slerp(qb, k);
     quaternion.copy(this.arc).multiply(padTurn);
     const spin = EARTH_ROTATION_RATE * t;
-    const offset = this.home.clone().applyQuaternion(this.arc);
+    // (the model's origin from the stack's base, turned as the body is; and what the site stood the base on, while that lasts)
+    const offset = this.along.clone().applyQuaternion(this.arc).add(this.stood(t));
     // (by the earlier of the two: up to the first sample of the spacecraft alone the point flown is the stack's, which that
     // sample's `r` carries on, so the model does not jump as the reference changes)
     if (riding(a)) {
@@ -467,7 +501,10 @@ export class Ascent {
       return true;
     }
     // where the model's origin lay from the centre of mass, in the body's axes, when the spacecraft left
-    if (!this.parted || !samples.includes(this.parted)) this.parted = samples.find((s) => !riding(s))!;
+    if (!this.parted || samples[this.partedAt] !== this.parted) {
+      this.partedAt = samples.findIndex((s) => !riding(s));
+      this.parted = samples[this.partedAt]!;
+    }
     const parted = this.parted;
     const arm = unturn(parted.attitude, sub(parted.r, parted.centre));
     const centre = between(samples, t, (s) => (s as LiveSample).centre).r;
@@ -513,6 +550,8 @@ const riding = (s: Sample): boolean => s.phase === 'powered' || s.phase === 'coa
 const DRIFT = new THREE.Vector3(0, -25, 0);
 const EASES = 1;
 const LOST = 8;
+/** Seconds of flight over which the height of the launcher's support under the stack is eased out of where the model is drawn (`Ascent.stand`). */
+const SETTLES = 5;
 const toThree = (v: Vec3) => new THREE.Vector3(v[0], v[1], v[2]);
 
 /** Position and velocity at `t` between the run's samples: a cubic Hermite through the two either side. */

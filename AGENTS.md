@@ -36,6 +36,7 @@ pnpm models           # rebuild every flight's GLBs
 pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
+pnpm test:camera      # needs `pnpm dev` running: the camera driven with real input, its promises checked every frame
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB
@@ -185,6 +186,14 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
   them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
   A new panel gets the same control and a `Pref`.
+- A switch looks like one: `class="switch"` with `aria-pressed` puts a lamp before its name, lit while it is on. Passing
+  notes (`ui.say`, "Find the vehicle") go in the one stack under the clock (`Ui.notes`), never placed by hand; what is
+  drawn on the view (the path's labels) lies under the panels and keeps off them (`Ui.panels`).
+- The flight deck (`cockpit.ts`, `cockpit.css`) is three panels: the navball and path in the left corner, the primary
+  figures and the one action (Space) in the middle, the systems as bars and lamps on the right; its keys fold to one
+  line. Every key it shows is also a button that does what the key does (`data-do` a command, `data-hold` a key held
+  while pressed, `data-press` the key itself, dispatched); only its panels take the pointer. It tells the stage how
+  much of the view it covers (`Ui.covers`).
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
   between first and third person. Each has its own block in the legend. T is the look.
 - The front page (`title.ts`, the mark in `logo.ts`) is what an address that names nothing shows; it
@@ -199,8 +208,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   level of detail and both day and lamp-lit shaders are built unseen, then the canvas fades up.
 - Shortcuts use only keys every keyboard has: letters, digits, arrows. No Home, End, Page Up or
   function keys (a Mac laptop has none).
-- The camera legend (bottom left) lists every key and gesture: keep it in step with the handlers
-  in `viewer/camera/input.ts` and each rig's `keys`. The line under it is diagnostics: loop rate, frames drawn, triangles, draw calls,
+- The legend (bottom left, `legendMarkup` in `ui.ts`: one small table per rig) lists every key and gesture: keep it in step with the handlers
+  in `viewer/camera/input.ts` and each rig's `keys`. It is a "? Keys" tab until asked for, then the essentials, with the rest
+  behind "More" by purpose; a row wraps and is never cut short. The line under it is diagnostics: loop rate, frames drawn, triangles, draw calls,
   and each model's level of detail.
 - Selection has one rule: choosing a part flies to it; choosing an `inside` part also opens the
   cutaway, which closes again when the selection moves on unless the user opened it by hand;

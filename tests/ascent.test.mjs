@@ -110,3 +110,115 @@ test('the batch run is cached by where it flew from, not by the hardware alone',
   assert.notEqual(there, here);
   assert.notEqual(there.samples[0].latitude, here.samples[0].latitude);
 });
+
+// The spacecraft's centre of mass as the model has it: `capsule.centre` up the stack from its base, the model's origin
+// being `flies.datum` up it. A landmark of the model, to hold both placements to.
+const CENTRE = new THREE.Vector3(0, TR.body.capsule.centre.value - flight.flies.datum, 0);
+const landmark = ({ p, q }) => CENTRE.clone().applyQuaternion(q).add(p);
+
+test('on the record’s run the spacecraft turns about its own centre of mass, not about the plane it sat on the booster by', async () => {
+  const { flownOnce } = await import('../src/sim/fly.ts');
+  const { ecefToSite, inertialToEcef } = await import('../src/world/frames.ts');
+  const { EARTH_ROTATION_RATE } = await import('../src/world/bodies.ts');
+  const site = siteFrame(flight.site);
+  const record = Ascent.of(flight);
+  const { samples } = flownOnce(TR, site, flight.site.seaLevel.value);
+  const separation = TR.separation.at.value;
+  // from the point flown (the run's own samples, at their own instants) the centre of mass stays where it was at
+  // separation, all through the turnaround and after it; the model's origin, 0.4 m from it, is what goes round
+  const from = (s) => landmark(at(record, s.t)).sub(new THREE.Vector3(...ecefToSite(site, inertialToEcef(s.r, EARTH_ROTATION_RATE * s.t))));
+  const after = samples.filter((s) => s.t > separation + 0.5 && s.t < flight.flies.turned + 60);
+  const first = from(after[0]);
+  let swung = 0;
+  for (const s of after) {
+    const off = from(s).distanceTo(first);
+    assert.ok(off < 1e-3, `at ${s.t} s the centre of mass is ${off.toFixed(3)} m from where it was held at separation`);
+    swung = Math.max(swung, at(record, s.t).q.angleTo(at(record, after[0].t).q));
+  }
+  assert.ok(swung > 2, 'and it has turned nearly end for end meanwhile');
+  // and nothing jumps as the booster leaves
+  const moved = at(record, separation - 1e-4).p.distanceTo(at(record, separation + 1e-4).p);
+  assert.ok(moved < 1, `the model moved ${moved.toFixed(3)} m across separation`);
+});
+
+test('a flight flown by hand is drawn with its centre of mass where the simulator has it, however it has turned', async () => {
+  const { ecefToSite, inertialToEcef } = await import('../src/world/frames.ts');
+  const { EARTH_ROTATION_RATE } = await import('../src/world/bodies.ts');
+  const site = siteFrame(flight.site);
+  const run = live();
+  const ascent = Ascent.of(flight);
+  ascent.use(run);
+  const alone = run.samples.filter((s) => s.phase !== 'powered' && s.phase !== 'coast');
+  assert.ok(alone.length > 100);
+  for (const s of alone.filter((_, i) => i % 25 === 0)) {
+    const sim = new THREE.Vector3(...ecefToSite(site, inertialToEcef(s.centre, EARTH_ROTATION_RATE * s.t)));
+    const off = landmark(at(ascent, s.t)).distanceTo(sim);
+    assert.ok(off < 0.01, `at ${s.t.toFixed(1)} s (${s.phase}) the model’s centre of mass is ${off.toFixed(3)} m from the simulator’s`);
+  }
+  // so it comes down with that centre on the surface, and its parachute lies down on that surface: not on one as far
+  // above it as the model's origin stands above the pad
+  const end = run.samples.at(-1);
+  const surface = ecefToSite(site, inertialToEcef(end.centre, EARTH_ROTATION_RATE * end.t))[1];
+  const main = flight.flies.chutes.findIndex((c) => c.on === 'main');
+  const down = ascent.chute(main, run.duration + 30, PAD);
+  assert.ok(down && down.down > 0, 'the main parachute is down');
+  assert.ok(
+    Math.abs(down.floor - surface) < 0.01,
+    `it lies on a surface ${(down.floor - surface).toFixed(2)} m from the one the spacecraft came down on`,
+  );
+  // the jets are drawn in the body's axes at that same centre
+  const frame = ascent.bodyFrame(PAD);
+  const origin = new THREE.Vector3().setFromMatrixPosition(frame);
+  assert.ok(origin.distanceTo(CENTRE) < 1e-6, `the body's frame is hung ${origin.distanceTo(CENTRE).toFixed(3)} m from the centre of mass`);
+});
+
+test('on the pad the model stands where it was built, and the support it stands on is out of the reckoning a few seconds up', () => {
+  const record = Ascent.of(flight);
+  const home = new THREE.Vector3(...flight.models.find((m) => m.id === flight.flies.model).position);
+  assert.ok(at(record, 1e-6).p.distanceTo(home) < 1e-3, 'just lit, it is where it stands');
+  let before = at(record, 1e-6).p;
+  for (let t = 0.1; t < 8; t += 0.1) {
+    const now = at(record, t).p;
+    assert.ok(now.y >= before.y - 1e-9, `it does not sink at ${t.toFixed(1)} s`);
+    before = now;
+  }
+});
+
+test('what an abort off the pad leaves behind is still there: the booster, let go at the instant of liftoff, stands where it stood', async () => {
+  const { Sheds } = await import('../src/sim/shed.ts');
+  const site = siteFrame(flight.site);
+  const v = vehicle(TR, site, flight.site.seaLevel.value);
+  // unlit, the escape rocket fired: as the flight deck does it (cockpit.ts)
+  let state = v.start();
+  const samples = [v.sample(state)];
+  const sheds = new Sheds(TR, site, flight.site.seaLevel.value);
+  const pilot = () => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
+  for (let i = 0; i < 300; i++) {
+    state = v.tick(state, pilot);
+    if (i % 10 === 9) samples.push(v.sample(state));
+  }
+  sheds.follow(state);
+  assert.ok(state.shed.booster && state.separation, 'the spacecraft has left the booster');
+  const when = { separation: state.separation.t };
+  const run = {
+    samples,
+    duration: Infinity,
+    cutoff: Number.NEGATIVE_INFINITY,
+    dropped: flight.flies.drops.map((d) => when[d.on] ?? Infinity),
+    live: true,
+    out: { drogue: Infinity, main: Infinity },
+    sheds,
+  };
+  const ascent = Ascent.of(flight);
+  ascent.use(run);
+  const i = flight.flies.drops.findIndex((d) => d.on === 'separation');
+  const p = new THREE.Vector3();
+  const q = new THREE.Quaternion();
+  assert.ok(ascent.shed(i, 2.5, PAD, p, q), 'the booster is placed (it is not lost for having left at the very start)');
+  const home = new THREE.Vector3(...flight.models.find((m) => m.id === flight.flies.model).position);
+  assert.ok(p.distanceTo(home) < 0.05, `it stands where the model stood: ${p.distanceTo(home).toFixed(3)} m off`);
+  assert.ok(q.angleTo(PAD) < 0.002, 'upright');
+  // and the engine that was never lit shows no fire
+  assert.equal(ascent.burn(0.3).on, 0);
+  assert.equal(ascent.burn(2.5).on, 0);
+});

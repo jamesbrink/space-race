@@ -52,7 +52,8 @@ export class Wheel {
     this.el.className = 'wheel';
     this.el.hidden = true;
     this.el.setAttribute('role', 'menu');
-    this.el.innerHTML = '<p class="wheel-title"></p><div class="wheel-ring"></div>';
+    this.el.innerHTML =
+      '<p class="wheel-title"></p><div class="wheel-ring"></div><p class="wheel-hint"><span class="keys">Point and click, or press its number · <kbd>Esc</kbd> closes</span><span class="touch">Tap one · tap elsewhere to close</span></p>';
     this.title = this.el.querySelector('.wheel-title')!;
     this.ring = this.el.querySelector('.wheel-ring')!;
     parent.append(this.el);

@@ -154,6 +154,9 @@ const path = new FlightPath(
   deck.querySelector<HTMLElement>('[data-do=path]'),
 );
 navball.onFrame((frame) => path.setFrame(frame));
+// the deck lies over the bottom of the view (the vehicle is framed above it), and the path's labels keep off every panel
+ui.covers(deck);
+path.obstacles = () => ui.panels();
 // a section whose slider is a sequence of events reads the clock: as the clock moves, so does its slider
 clock.listen(() => {
   if (current.sequence) ui.setSlider(stage.exploded(current.id));

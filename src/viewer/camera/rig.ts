@@ -63,8 +63,11 @@ export interface Rig {
   readonly id: RigId;
   /** What the view is about: the point it turns round or looks at. The depth range is fitted to it. */
   readonly pivot: THREE.Vector3;
-  /** Take over from a view as it stands, so that nothing jumps. */
-  enter(from: Pose, pivot: THREE.Vector3): void;
+  /**
+   * Take over from a view as it stands, so that nothing jumps. `resume`: the view being left is not one to carry on
+   * from (it was inside the vehicle, or a long lens far away), so come back as this rig was last left.
+   */
+  enter(from: Pose, pivot: THREE.Vector3, resume?: boolean): void;
   /** `dt` seconds on. `keys` are held (lower case), `fast` is Shift. */
   update(dt: number, keys: ReadonlySet<string>, fast: boolean): void;
   /** Where the camera is now. */

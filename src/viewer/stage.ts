@@ -861,8 +861,12 @@ export class Stage {
     // on board, what would be in front of the eyes is not drawn (the seat's `hide`)
     const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
     this.showSeatHidden(at, this.defs[at]?.seats?.[0]?.hide, id !== 'onboard');
-    // leaving the vehicle, the shadows go back to the section
-    if (id === 'orbit' || id === 'free') this.fitShadows();
+    // leaving the vehicle, the shadows go back to the section: fitted to it where the clock has it now (it may just have
+    // been put back on its pad, and not yet been moved there by a frame)
+    if (id === 'orbit' || id === 'free') {
+      this.lift();
+      this.fitShadows();
+    }
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
     this.onRig(id);
@@ -941,7 +945,11 @@ export class Stage {
       of: null as Staged | null,
       shed: '',
       level: null as THREE.Object3D | null,
+      place: null as THREE.Object3D | null,
     });
+    const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
+    const seat = this.defs[at]?.seats?.[0];
+    if (c.of !== s) c.place = seat ? this.seatNode(at, seat) : null; // (found once: the first place its data gives to see from)
     if (c.of !== s || c.shed !== this.lifted.shed || c.level !== s.shown) {
       // measured when what is left of it changes, not every frame: the box round what is still drawn of it
       c.of = s;
@@ -962,10 +970,8 @@ export class Stage {
       }
     }
     c.flying = this.lifted.flying;
-    // the first place its data gives to see from: the eyes, in the seat's frame
-    const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
-    const seat = this.defs[at]?.seats?.[0];
-    const node = seat ? this.seatNode(at, seat) : null;
+    // the eyes, in the seat's frame
+    const node = c.place;
     if (node && seat) {
       node.updateWorldMatrix(true, false);
       c.seat = (c.seat ?? new THREE.Matrix4())
@@ -974,7 +980,7 @@ export class Stage {
     } else c.seat = null;
     return c;
   }
-  private crafted: (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null }) | null = null;
+  private crafted: (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null }) | null = null;
 
   /** While a rig that is about the vehicle is in charge, the Sun's shadow map goes with the vehicle, so it shades itself all the way up. */
   private shadeCraft(): void {
@@ -995,9 +1001,33 @@ export class Stage {
     if (!this.ascent) return;
     this.ascent.use(run);
     this.effects?.use(run);
+    this.stand();
     if (this.flightData) this.hangPlume(this.flightData);
     this.lifted.t = Number.NaN;
     this.dirty = true;
+  }
+
+  /**
+   * Stand the flown model on its pad, whole, wherever the run before had it: what it had shed is put back in it and
+   * shown. The fire is hung on it as it stands there (`hangPlume` measures the nozzle on the model upright, and finds
+   * the engine in the model, not carried off with a booster that has left); `lift` then puts it where the run on show
+   * has it at the clock's instant, and does what follows from its having moved.
+   */
+  private stand(): void {
+    const s = this.flier;
+    const def = this.defs.find((m) => m.id === this.ascent?.model);
+    if (!s || !def) return;
+    for (const d of this.debris.splice(0)) {
+      d.parent.add(d.node);
+      d.holder.removeFromParent();
+    }
+    for (const o of this.lifted.hidden) o.visible = true;
+    this.lifted.hidden = [];
+    this.lifted.shed = '';
+    s.group.position.set(...(def.position ?? [0, 0, 0]));
+    s.group.quaternion.setFromAxisAngle(UP, def.rotationY ?? 0);
+    s.group.updateMatrixWorld(true);
+    this.shadowsOwed = true;
   }
 
   /**
@@ -1183,6 +1213,7 @@ export class Stage {
     const gone = [this.plume?.mesh, this.trail?.mesh];
     for (const chute of this.chutes ?? []) {
       chute.group.removeFromParent();
+      this.looks.remove(chute.group); // (or every flight's parachutes would be kept, and dressed again at each change of look)
       chute.dispose();
     }
     this.chutes = null;
@@ -1192,6 +1223,9 @@ export class Stage {
     this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => !gone.includes(o as THREE.Mesh)));
     this.plume?.mesh.removeFromParent();
     this.plume?.light.removeFromParent();
+    // (its mesh draws nothing, but the clouds' pass has drawn it among the veils, so the renderer holds its geometry)
+    this.plume?.mesh.geometry.dispose();
+    (this.plume?.mesh.material as THREE.Material | undefined)?.dispose();
     this.plume = null;
     this.trail?.mesh.removeFromParent();
     this.trail?.dispose();
@@ -1246,19 +1280,28 @@ export class Stage {
     this.renderer.toneMapping = cel ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
   }
 
-  /** Tell the stage how many pixels at the bottom of the canvas the controls cover. */
-  setInset(pixels: number): void {
-    const inset = THREE.MathUtils.clamp(pixels / Math.max(1, this.canvas.clientHeight), 0, 0.5);
-    if (Math.abs(inset - this.inset) < 0.01) return;
+  /**
+   * Tell the stage how many pixels at the bottom of the canvas the controls cover, and (`top`) how many at the top
+   * something else does: views are framed in what is left between them.
+   */
+  setInset(pixels: number, top = 0): void {
+    const tall = Math.max(1, this.canvas.clientHeight);
+    const inset = THREE.MathUtils.clamp(pixels / tall, 0, 0.5);
+    const head = THREE.MathUtils.clamp(top / tall, 0, 0.3);
+    if (Math.abs(inset - this.inset) < 0.01 && Math.abs(head - this.head) < 0.01) return;
     this.inset = inset;
-    this.cam.inset = inset; // (the pivot is seen in the middle of what is left clear, whatever the distance)
+    this.head = head;
+    this.cam.inset = inset - head; // (the pivot is seen in the middle of what is left clear, whatever the distance)
     this.refollow();
   }
+
+  /** How much of the top of the canvas is covered, 0 to 0.3 (setInset). */
+  private head = 0;
 
   /** Frame again whatever the camera was last sent to: the canvas or the model has changed shape. */
   private refollow(): void {
     const snap = !this.cam.travelling; // a flight under way is sent to the new framing instead of cut short
-    if (this.following?.part) this.focus(this.following.part, snap);
+    if (this.following?.part) this.focus(this.following.part, snap, undefined, true);
     else if (this.following?.view) this.view(this.following.view, snap, true);
     else this.keepWatched();
   }
@@ -1269,6 +1312,14 @@ export class Stage {
    */
   private watched: { view?: string; part?: string; seen: boolean; stale: boolean } | null = null;
 
+  /** The box round one model, or (null) round everything on show: but for a vehicle in flight, which is not part of the place while it is away. */
+  private wholeOf(model: THREE.Object3D | null, box: THREE.Box3): THREE.Box3 {
+    if (model) return box.setFromObject(model);
+    const away = this.lifted.flying ? this.flier?.group : null;
+    for (const o of this.root?.children ?? []) if (o !== away) box.expandByObject(o);
+    return box;
+  }
+
   /** The middle of what `of` names: a part, or a view's subject as `view` frames it. */
   private middleOf(of: { view?: string; part?: string }): THREE.Vector3 | null {
     const box = new THREE.Box3();
@@ -1278,7 +1329,7 @@ export class Stage {
       const named = this.def?.views.find((v) => v.id === of.view);
       const subjects = (named?.nodes ?? []).flatMap((n) => this.parts.get(n) ?? []);
       if (subjects.length) for (const o of subjects) box.expandByObject(o);
-      else box.setFromObject(named && this.main ? this.main : this.root);
+      else this.wholeOf(named ? this.main : null, box);
     }
     return box.isEmpty() ? null : box.getCenter(new THREE.Vector3());
   }
@@ -1413,10 +1464,11 @@ export class Stage {
   };
 
   /** Fly to one part and frame it, keeping the direction the camera is already looking from. */
-  focus(node: string, snap = false, from?: { turn: number; rise: number }): void {
+  focus(node: string, snap = false, from?: { turn: number; rise: number }, again = false): void {
     const object = this.parts.get(node);
     if (!object) return;
-    this.frameBox(new THREE.Box3().setFromObject(object), snap, from, this.defs[this.current]?.id === this.ascent?.model);
+    this.lift(); // (what is framed is where the clock has it now, not where it was last drawn)
+    this.frameBox(new THREE.Box3().setFromObject(object), snap, from, this.defs[this.current]?.id === this.ascent?.model, again);
     this.following = { part: node };
   }
 
@@ -1559,7 +1611,7 @@ export class Stage {
   }
 
   /** Fly to whatever fills `box` and frame it, keeping the direction the camera is already looking from. */
-  private frameBox(box: THREE.Box3, snap: boolean, from?: { turn: number; rise: number }, onCraft = false): void {
+  private frameBox(box: THREE.Box3, snap: boolean, from?: { turn: number; rise: number }, onCraft = false, again = false): void {
     const size = box.getSize(new THREE.Vector3());
     const target = box.getCenter(new THREE.Vector3());
     // never closer than a 1.6 m subject would be: a small part is seen with its surroundings
@@ -1581,6 +1633,7 @@ export class Stage {
       min: Math.max(0.35, Math.min(size.x, size.z) * 0.62),
       snap,
       onCraft,
+      again,
     });
   }
 
@@ -1598,19 +1651,20 @@ export class Stage {
   /** Frame 'all' (everything on show) or one of the model's named views. */
   view(id: string, snap = false, keepDirection = false): void {
     if (!this.root || !this.def) return;
+    this.lift(); // (what is framed is where the clock has it now, not where it was last drawn: the clock may just have been put back)
     const named = this.def.views.find((v) => v.id === id);
     // 'all' is everything on show; a named view with no numbers is the model alone, as it stands;
     // one that names parts is those parts wherever they are now, so it follows them as they come apart
     const box = new THREE.Box3();
     const subjects = (named?.nodes ?? []).flatMap((n) => this.parts.get(n) ?? []);
     if (subjects.length) for (const o of subjects) box.expandByObject(o);
-    else box.setFromObject(named && this.main ? this.main : this.root);
+    else this.wholeOf(named ? this.main : null, box);
     const size = box.getSize(new THREE.Vector3());
     const centreY = named?.centreY ?? (box.min.y + box.max.y) / 2;
     // a wide, low subject (a launch pad) must fit by width as well as by height
     const span = named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / this.camera.aspect) * (subjects.length ? 1.12 : 1);
     // the subject fills most of the frame above the controls, which sit over the bottom of it
-    const fill = (1 - this.inset) * 0.9;
+    const fill = (1 - this.inset - this.head) * 0.9;
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / fill;
     // a named view looks at the model's own axis; 'all' looks at the middle of everything
     const mid = box.getCenter(new THREE.Vector3());
@@ -1633,7 +1687,7 @@ export class Stage {
     this.onView(id);
     // no further out than half as far again as it takes to see everything on show: beyond that
     // the subject is a speck in a field of scrub
-    const all = new THREE.Box3().setFromObject(this.root).getSize(new THREE.Vector3());
+    const all = this.modelsBox().getSize(new THREE.Vector3());
     const widest = Math.max(all.y, Math.hypot(all.x, all.z) / this.camera.aspect);
     const wide = (1.5 * widest) / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / fill;
     this.cam.frame({
@@ -1646,16 +1700,28 @@ export class Stage {
       snap,
       onCraft: this.def.id === this.ascent?.model,
       whole: !subjects.length,
+      again: keepDirection,
     });
   }
 
   /** Measure everything on show, for the camera's depth range and its limits. Called whenever something moves. */
+  /**
+   * The bounds of the flight's models, but for `without`. The models, not everything under the root: what a flight has
+   * shed is there too while it falls away, and the glow of entry and the ice stay where they were last drawn, hundreds
+   * of kilometres downrange. Measured with them, the place was that wide for ever after: the depth range with it (the
+   * near plane at a metre and a half from across the pad, the far one at the landing), and how far a view may pull back.
+   */
+  private modelsBox(without?: THREE.Object3D | null): THREE.Box3 {
+    const all = new THREE.Box3();
+    for (const s of this.staged) if (s.group !== without) all.expandByObject(s.group);
+    return all;
+  }
+
   private fitBounds(): void {
     if (!this.root) return;
     // a vehicle in flight is left out: the view's limits are the place's (fitDepth reaches out to it)
     const flying = this.lifted.flying ? this.flier?.group : null;
-    const all = new THREE.Box3();
-    for (const o of this.root.children) if (o !== flying) all.expandByObject(o);
+    const all = this.modelsBox(flying);
     this.bounds.set(all.getCenter(new THREE.Vector3()), all.getSize(new THREE.Vector3()).length() / 2 + 0.5);
     this.centreY = this.bounds.center.y;
   }
@@ -1765,7 +1831,9 @@ export class Stage {
     const flier = this.lifted.flying ? this.flier : null;
     if (flier) {
       const to = this.camera.position.distanceTo(flier.sphere.center);
-      far = Math.max(far, to + flier.sphere.radius);
+      // (with room to spare: the far plane is only moved when it is 2 % out, and a vehicle going away from a camera that
+      // stands still, the pad camera's, would otherwise be beyond it between one move and the next)
+      far = Math.max(far, 1.05 * (to + flier.sphere.radius));
       near = Math.min(near, Math.max(0.03, 0.5 * (to - flier.sphere.radius), 0.01 * toTarget));
     }
     if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {

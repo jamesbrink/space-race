@@ -99,6 +99,7 @@ src/
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   flicker-test.mjs                    browser check for z-fighting
+  camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   shot.mjs                            one screenshot of the viewer, for looking at a change
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces
   globe-region.mjs                    bakes a site's region (SiteDef.region) from OpenStreetMap's coast and lakes, as it stood on its date

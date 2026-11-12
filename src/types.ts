@@ -596,7 +596,16 @@ export interface Body {
    * its whole impulse, N s; what the impulse has over thrust times burn is spent as the thrust falls evenly to nothing.
    * It pulls the spacecraft off with every part that `sheds: 'tower'` still on.
    */
-  escape?: { thrust: Measure; burn: Measure; impulse: Measure };
+  escape?: {
+    thrust: Measure;
+    burn: Measure;
+    impulse: Measure;
+    /**
+     * How far its line of thrust leans from the axis, degrees, toward the body's -Z (downrange, as it stands on the pad):
+     * what carries an aborted spacecraft clear of the booster it left. Taken through the centre of mass, so it turns nothing.
+     */
+    lean?: Measure;
+  };
   /** The spacecraft alone, after separation. */
   capsule: {
     /** Its centre of mass on the stack, m from the base. */
@@ -608,6 +617,8 @@ export interface Body {
     jets?: { roll: Measure; pitch: Measure; yaw: Measure };
     /** The reaction control system as hardware: what feeds it and every chamber. */
     rcs?: { supplies: RcsSupply[]; thrusters: Thruster[] };
+    /** How far its blunt end is from its centre of mass, m: that end is what meets the ground or the sea. Without it, the centre of mass does. */
+    base?: Measure;
     /** How far from its centre of mass, toward the small end, a parachute pulls, m. */
     chuteArm: Measure;
     /** What a pilot aboard is taken to live through: the speed it may meet the surface at, m/s, and the greatest load, g. Said on the card that ends a flight flown by hand (sim/verdict.ts). */

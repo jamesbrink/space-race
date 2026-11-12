@@ -172,10 +172,11 @@ export class Cameras {
     const craft = this.scene.craft();
     if (id === this.active.id || (VEHICLE.includes(id) && !craft) || (id === 'onboard' && !craft?.seat)) return;
     const last = this.active;
+    this.refresh();
     const from: Pose = { position: this.now.position.clone(), quaternion: this.now.quaternion.clone(), fov: this.now.fov };
     const next = this.rigOf(id);
     if (id === 'pad') this.pad.stand(this.tripod(last, from));
-    next.enter(from, id === 'orbit' ? this.pivotFor(last, from) : last.pivot.clone());
+    next.enter(from, id === 'orbit' ? this.pivotFor(last, from) : last.pivot.clone(), last === this.onboard || last === this.pad);
     this.active = next;
     if (next === this.orbit) this.orbit.centred = false;
     this.under = undefined;
@@ -218,6 +219,7 @@ export class Cameras {
    * from where the view is now). An explicit act: it is the only thing, with the reset key, that
    * may move a view the hands have set. `onCraft`: the subject is part of the flown vehicle (`whole`:
    * all of it); in flight that is the chase view's to show, since nothing else can keep up with it.
+   * `again`: the subject framed last time, framed again because it moved or the frame changed shape.
    */
   frame(to: {
     centre: THREE.Vector3;
@@ -228,8 +230,9 @@ export class Cameras {
     snap?: boolean;
     onCraft?: boolean;
     whole?: boolean;
+    again?: boolean;
   }): void {
-    if (to.onCraft && this.scene.craft()?.flying) {
+    if (to.onCraft && this.scene.craft()?.flying && this.scene.watching()) {
       if (!(this.active instanceof ChaseRig)) this.set('chase', to.snap);
       const chase = this.active as ChaseRig;
       if (to.whole) chase.home();
@@ -237,7 +240,7 @@ export class Cameras {
       return;
     }
     if (VEHICLE.includes(this.active.id)) this.set('orbit', to.snap);
-    const from = to.direction?.clone().normalize() ?? v.copy(this.now.position).sub(this.pivot).normalize().clone();
+    const from = to.direction?.clone().normalize() ?? this.direction();
     const eye = to.centre.clone().addScaledVector(from, to.distance);
     if (this.active === this.free) {
       this.free.goTo(to.centre, eye, Boolean(to.snap));
@@ -247,7 +250,7 @@ export class Cameras {
     if (to.max !== undefined) this.orbit.max = to.max;
     this.orbit.centred = false;
     this.orbit.handSet = false;
-    this.orbit.goTo(to.centre, eye, Boolean(to.snap));
+    this.orbit.goTo(to.centre, eye, Boolean(to.snap), to.again);
     if (to.snap) this.blend = null;
   }
 
@@ -279,12 +282,15 @@ export class Cameras {
     this.orbit.drift = false;
     this.orbit.centred = true;
     this.orbit.goTo(pivot, eye, true);
+    this.orbit.settle();
     this.orbit.handSet = true;
   }
 
-  /** Turn the orbiting view about the vertical where it is, at once (a test's view from another side). */
+  /** Turn the orbiting view about the vertical where it is, at once and with nothing left easing (a test's view from another side). */
   turn(angle: number): void {
     this.orbit.theta += angle;
+    this.orbit.settle();
+    this.blend = null;
   }
 
   /** Drift slowly round the subject while nobody has hold of the view. */
@@ -333,7 +339,24 @@ export class Cameras {
 
   /** Where the view is from the pivot, as it stands: the direction a subject is framed from when the view's own is to be kept. */
   direction(out = new THREE.Vector3()): THREE.Vector3 {
+    this.refresh();
     return out.copy(this.now.position).sub(this.pivot).normalize();
+  }
+
+  /**
+   * Where the view is from at this instant, worked out again without time passing: the rig may have been put
+   * somewhere since the last frame (a view framed at once, then another rig asked for in the same breath).
+   */
+  private refresh(): void {
+    const fov = this.now.fov;
+    this.active.update(0, NO_KEYS, false);
+    this.active.pose(this.now);
+    const b = this.blend;
+    if (b) {
+      blendPose(this.now.position, this.now.quaternion, b.p, b.q, ease(b.t));
+      this.now.fov += b.fov * (1 - ease(b.t));
+    }
+    if (this.active.lens === null && !b?.fov) this.now.fov = fov;
   }
 
   /**
@@ -383,7 +406,17 @@ export class Cameras {
       // The vehicle has left the pad while it was being looked at: the view goes with it, or it is lost in a moment.
       // Back on the pad (the clock put back, the flight over), the place is the subject again.
       if (flying && this.active === this.orbit && !this.orbit.centred && this.scene.watching()) this.set('chase');
-      else if (!flying && VEHICLE.includes(this.active.id) && !this.scene.piloted()) this.set('orbit');
+      else if (!flying && VEHICLE.includes(this.active.id) && !this.scene.piloted()) {
+        // The vehicle is on its pad again, all at once. A view that was turning about it comes with it, as it
+        // was beside it; one from inside it or from the pad camera goes to where the section starts.
+        const about = this.active instanceof ChaseRig;
+        if (about) {
+          this.active.update(0, NO_KEYS, false);
+          this.active.pose(this.now);
+        }
+        this.set('orbit', true);
+        if (!about) this.told.home();
+      }
     }
     this.pad.aspect = this.camera.aspect;
     const keys = this.scene.piloted() ? this.unspoken() : this.keys;
@@ -396,10 +429,12 @@ export class Cameras {
       const k = ease(b.t);
       blendPose(now.position, now.quaternion, b.p, b.q, k);
       now.fov += b.fov * (1 - k);
-      // (between two views the straight line may pass under a rise in the ground)
+      if (b.t >= 1) this.blend = null;
+    }
+    if (b || this.travelling) {
+      // (between two views, or on the way to one, the line taken may pass under a rise in the ground)
       const under = 0.2 - this.scene.clearance(now.position);
       if (under > 0 && Number.isFinite(under)) now.position.addScaledVector(this.scene.upAt(now.position, v), under);
-      if (b.t >= 1) this.blend = null;
     }
     const camera = this.camera;
     camera.position.copy(now.position);

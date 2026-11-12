@@ -50,6 +50,10 @@ const CAMERA_LABEL: Record<RigId, string> = {
   onboard: 'Camera · on board',
   pad: 'Camera · pad',
 };
+/** On the button the word "camera" is a picture of one: the rig's own name is what changes. */
+const cameraName = (mode: RigId) => CAMERA_LABEL[mode].replace('Camera · ', '');
+const CAMERA_ICON =
+  '<svg viewBox="0 0 16 12" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><rect x="0.7" y="2.2" width="10" height="7.6" rx="1"/><path d="M10.7 5l4.6-2.6v7.2L10.7 7z"/></svg>';
 /** The class the page takes in each rig: which block of the legend is on show. */
 const CAMERA_CLASS: Partial<Record<RigId, string>> = {
   free: 'flying',
@@ -80,6 +84,155 @@ const dot = (c: Confidence) => `<i class="conf ${c}" title="${c}"></i>`;
 
 const legend = `<p class="fine legend"><span>${dot('documented')}documented</span><span>${dot('derived')}derived from documented</span><span>${dot('estimated')}estimated</span></p>`;
 
+/** A row of the legend: a gesture in words, or keys (each its own cap), and what it does. */
+type LegendRow = [on: string | string[], does: string];
+/** One rig's legend: the keys drawn as they lie on the keyboard, the few things to know, and the rest in groups behind "More". */
+interface LegendDef {
+  pads: [shape: 'wasd' | 'arrows' | 'pair' | 'key', keys: string[], does: string][];
+  main: LegendRow[];
+  more: [group: string, rows: LegendRow[]][];
+}
+const ARROWS = ['↑', '←', '↓', '→'];
+const WASD = ['W', 'A', 'S', 'D'];
+
+/**
+ * The legend (bottom left): every key and gesture, for whichever rig has the camera or for the walker. It is shut to a
+ * "? Keys" tab until asked for; open, it shows the keys and the few things to know, and "More" unfolds the rest by purpose.
+ * Keep it in step with the handlers: viewer/camera/input.ts and the rigs, timebar.ts (P [ ]), sound (U), cockpit.ts (L),
+ * main.ts (V, Escape), and the keys handled in this file (C H T ?).
+ */
+function legendMarkup(f: Flight): string {
+  const walker = f.models.find((m) => m.walker);
+  const flies = Boolean(f.trajectory?.body && f.flies);
+  // what is the same whoever has the camera
+  const go: LegendRow[] = [
+    ...(walker ? [[['V'], 'walk as crew'] as LegendRow] : []),
+    ...(flies ? [[['L'], 'fly it yourself'] as LegendRow] : []),
+  ];
+  const clock: LegendRow[] = [
+    [['P'], 'run · stop'],
+    [['[', ']'], 'slower · faster'],
+    [['U'], 'sound on · off'],
+  ];
+  const page: LegendRow[] = [
+    [['T'], 'cel shading'],
+    [['?'], 'this list'],
+  ];
+  const rest = (first: [string, LegendRow[]][]): LegendDef['more'] => [
+    ...first,
+    ...(go.length ? [['Go', go] as [string, LegendRow[]]] : []),
+    ['Clock', clock],
+    ['Page', page],
+  ];
+  const camera = (reset: string): LegendRow[] => [
+    [['C'], 'next camera'],
+    [['0'], reset],
+    [['H'], 'hide panels'],
+  ];
+  const defs: Record<string, LegendDef> = {
+    '': {
+      pads: [
+        ['wasd', WASD, 'move'],
+        ['arrows', ARROWS, 'orbit · tilt'],
+        ['pair', ['E', 'Q'], 'up · down'],
+        ['pair', ['R', 'F'], 'zoom'],
+      ],
+      main: [
+        ['drag', 'orbit'],
+        ['scroll · pinch', 'zoom to pointer'],
+        ['click', 'go to it'],
+        [['Esc'], 'back a step'],
+        ...camera('reset view'),
+      ],
+      more: rest([
+        [
+          'Mouse',
+          [
+            ['right-drag · shift-drag', 'move'],
+            ['two fingers', 'move · twist'],
+            ['double-click', 'turn about it'],
+            ['right-click', 'walk from there'],
+            ...(walker ? [[`double-click ${walker.name.toLowerCase()}`, 'walk'] as LegendRow] : []),
+          ],
+        ],
+      ]),
+    },
+    'in-flight': {
+      pads: [
+        ['wasd', WASD, 'fly'],
+        ['arrows', ARROWS, 'look'],
+        ['pair', ['E', 'Q'], 'up · down'],
+        ['key', ['Shift'], 'faster'],
+      ],
+      main: [['drag', 'look round'], ['scroll · pinch', 'to pointer · back'], ['click', 'go to it'], ...camera('reset view')],
+      more: rest([['Mouse', [['right-drag', 'slide']]]]),
+    },
+    chasing: {
+      pads: [
+        ['arrows', ARROWS, 'orbit · tilt'],
+        ['pair', ['R', 'F'], 'zoom'],
+      ],
+      main: [['drag', 'turn round it'], ['scroll · pinch', 'closer · further'], ...camera('centre the vehicle')],
+      more: rest([]),
+    },
+    aboard: {
+      pads: [
+        ['arrows', ARROWS, 'look'],
+        ['pair', ['R', 'F'], 'zoom'],
+      ],
+      main: [['drag', 'look round'], ['scroll · pinch', 'zoom'], ...camera('look ahead')],
+      more: rest([]),
+    },
+    tracking: {
+      pads: [
+        ['arrows', ARROWS, 'frame it'],
+        ['pair', ['R', 'F'], 'zoom'],
+      ],
+      main: [['drag', 'move it in the frame'], ['scroll · pinch', 'tighter · wider'], ...camera('centre the vehicle')],
+      more: rest([]),
+    },
+    'on-foot': {
+      pads: [
+        ['wasd', WASD, 'walk'],
+        ['arrows', ARROWS, 'walk · turn'],
+        ['key', ['Shift'], 'run'],
+        ['key', ['Space'], 'jump'],
+      ],
+      main: [
+        ['mouse', 'look round'],
+        [['E'], 'act on what you face'],
+        [['C'], 'eyes · over the shoulder'],
+        [['V', 'Esc'], 'back to the camera'],
+        [['H'], 'hide panels'],
+      ],
+      more: [
+        ['On a ladder', [['W · S', 'up · down']]],
+        ['Clock', clock],
+        ['Page', page],
+      ],
+    },
+  };
+  const caps = (keys: string[]) => keys.map((k) => `<kbd>${esc(k)}</kbd>`).join(' ');
+  const rows = (list: LegendRow[], cls = '') =>
+    `<dl${cls ? ` class="${cls}"` : ''}>${list.map(([on, does]) => `<div><dt>${typeof on === 'string' ? esc(on) : caps(on)}</dt><dd>${esc(does)}</dd></div>`).join('')}</dl>`;
+  const body = ([cls, d]: [string, LegendDef]) => `
+        <div class="legend-body${cls ? ` ${cls}` : ''}">
+          <div class="clusters">${d.pads
+            .map(
+              ([shape, keys, does]) =>
+                `<div class="cluster">${shape === 'key' ? caps(keys) : `<span class="pad ${shape}">${keys.map((k) => `<kbd>${k}</kbd>`).join('')}</span>`}<em>${esc(does)}</em></div>`,
+            )
+            .join('')}</div>
+          ${rows(d.main)}
+          <div class="legend-more">${d.more.map(([group, list]) => `<h4>${esc(group)}</h4>${rows(list, list.every(([on]) => typeof on !== 'string') ? 'keys' : '')}`).join('')}</div>
+        </div>`;
+  return `<aside class="legend-keys" aria-label="Keys and gestures">
+        <button class="legend-toggle" aria-expanded="false" title="Keys and gestures: show or hide (?)"><kbd>?</kbd><span>Keys</span><i class="chevron"></i></button>
+        ${Object.entries(defs).map(body).join('')}
+        <button class="legend-more-toggle" aria-expanded="false" title="Every other key and gesture"><span></span><i class="chevron"></i></button>
+      </aside>`;
+}
+
 const TABS = ['Parts', 'Specs', 'Motors', 'Flight'] as const;
 const pane = (name: (typeof TABS)[number]) => `data-pane="${name}" id="pane-${name}" role="tabpanel" aria-labelledby="tab-${name}"`;
 
@@ -109,22 +262,23 @@ export class Ui {
     const groups = [...new Set(f.specs.map((s) => s.group))];
     root.innerHTML = `
       <header class="title">
-        <button class="tuck chevron" aria-label="Show or hide the flight summary" aria-expanded="true" title="Tuck away"></button>
+        <button class="tuck chevron" aria-label="Show or hide the flight summary" aria-expanded="true" title="Tuck the summary away, or bring it back"></button>
         <p class="crumbs"><button data-home title="Front page">Space Race</button> <b>/</b> ${esc(f.nation)} <b>/</b> ${esc(f.program)}</p>
         <h1>${esc(f.callsign)}</h1>
         <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
         <p class="lede">${esc(f.summary)}</p>
-        <dl class="facts">${f.facts.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>
+        <button class="facts-toggle" aria-expanded="false" aria-controls="flight-facts" title="The flight in figures: show or hide"><span>The flight in figures</span><i class="chevron"></i></button>
+        <dl class="facts" id="flight-facts">${f.facts.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>
       </header>
 
       <nav class="models" aria-label="What to look at">
-        ${f.models.map((m) => `<button data-model="${m.id}">${esc(m.name)}</button>`).join('')}
+        ${f.models.map((m) => `<button data-model="${m.id}" title="${esc(m.name)}: go to it">${esc(m.name)}</button>`).join('')}
       </nav>
 
       <aside class="panel">
         <nav class="tabs" role="tablist">
           ${TABS.map((t) => `<button role="tab" id="tab-${t}" data-tab="${t}" aria-controls="pane-${t}">${t}</button>`).join('')}
-          <button class="close chevron" aria-label="Show or hide the panel" aria-expanded="true" title="Tuck away"></button>
+          <button class="close chevron" aria-label="Show or hide the panel" aria-expanded="true" title="Tuck the panel away, or bring it back"></button>
         </nav>
         <section ${pane('Parts')}><ol class="parts"></ol></section>
         <section ${pane('Specs')} hidden>
@@ -171,123 +325,14 @@ export class Ui {
         <div class="buttons"></div>
         <p class="scale"></p>
       </footer>
-      <aside class="legend-keys" aria-label="Camera controls">
-        <button class="legend-toggle" aria-expanded="true" title="Camera controls (?)">Controls<i class="chevron"></i></button>
-        <div class="legend-body">
-          <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>move</em></div>
-          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>orbit · tilt</em></div>
-          <div class="cluster"><span class="pad pair"><kbd>E</kbd><kbd>Q</kbd></span><em>up · down</em></div>
-          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
-          <dl>
-            <div><dt>drag</dt><dd>orbit</dd></div>
-            <div><dt>right-drag</dt><dd>move</dd></div>
-            <div><dt>shift-drag</dt><dd>move</dd></div>
-            <div><dt>scroll · pinch</dt><dd>zoom to pointer</dd></div>
-            <div><dt>two fingers</dt><dd>move · twist</dd></div>
-            <div><dt>click</dt><dd>go to it</dd></div>
-            <div><dt>double-click</dt><dd>turn about it</dd></div>
-            <div><dt>right-click</dt><dd>walk from there</dd></div>
-            ${f.models.some((m) => m.walker) ? `<div><dt>double-click ${esc(f.models.find((m) => m.walker)!.name.toLowerCase())}</dt><dd>walk</dd></div>` : ''}
-            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
-            ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
-            <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
-            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
-            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
-            ${f.trajectory?.body && f.flies ? '<div><dt><kbd>L</kbd></dt><dd>fly it yourself</dd></div>' : ''}
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
-          </dl>
-        </div>
-        <div class="legend-body in-flight">
-          <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>fly</em></div>
-          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>look</em></div>
-          <div class="cluster"><span class="pad pair"><kbd>E</kbd><kbd>Q</kbd></span><em>up · down</em></div>
-          <div class="cluster"><kbd>Shift</kbd><em>faster</em></div>
-          <dl>
-            <div><dt>drag</dt><dd>look round</dd></div>
-            <div><dt>right-drag</dt><dd>slide</dd></div>
-            <div><dt>scroll · pinch</dt><dd>to pointer · back</dd></div>
-            <div><dt>click</dt><dd>go to it</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
-            ${f.models.some((m) => m.walker) ? '<div><dt><kbd>V</kbd></dt><dd>walk as crew</dd></div>' : ''}
-            <div><dt><kbd>0</kbd></dt><dd>reset view</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
-            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
-            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
-          </dl>
-        </div>
-        <div class="legend-body chasing">
-          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>orbit · tilt</em></div>
-          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
-          <dl>
-            <div><dt>drag</dt><dd>turn round it</dd></div>
-            <div><dt>scroll · pinch</dt><dd>closer · further</dd></div>
-            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
-            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
-            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
-            <div><dt><kbd>0</kbd></dt><dd>centre the vehicle</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
-          </dl>
-        </div>
-        <div class="legend-body aboard">
-          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>look</em></div>
-          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
-          <dl>
-            <div><dt>drag</dt><dd>look round</dd></div>
-            <div><dt>scroll · pinch</dt><dd>zoom</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
-            <div><dt><kbd>0</kbd></dt><dd>look ahead</dd></div>
-            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
-            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
-          </dl>
-        </div>
-        <div class="legend-body tracking">
-          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>frame it</em></div>
-          <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
-          <dl>
-            <div><dt>drag</dt><dd>move it in the frame</dd></div>
-            <div><dt>scroll · pinch</dt><dd>tighter · wider</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>next camera</dd></div>
-            <div><dt><kbd>0</kbd></dt><dd>centre the vehicle</dd></div>
-            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
-            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
-          </dl>
-        </div>
-        <div class="legend-body on-foot">
-          <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>walk</em></div>
-          <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>walk · turn</em></div>
-          <div class="cluster"><kbd>Shift</kbd><em>run</em></div>
-          <div class="cluster"><kbd>Space</kbd><em>jump</em></div>
-          <dl>
-            <div><dt>mouse</dt><dd>look round</dd></div>
-            <div><dt><kbd>E</kbd></dt><dd>act on what you face</dd></div>
-            <div><dt>ladder</dt><dd>W up · S down</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>eyes · over the shoulder</dd></div>
-            <div><dt><kbd>V</kbd> <kbd>Esc</kbd></dt><dd>back to the camera</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>P</kbd></dt><dd>run · stop the clock</dd></div>
-            <div><dt><kbd>U</kbd></dt><dd>sound on · off</dd></div>
-            <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower · faster</dd></div>
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
-          </dl>
-        </div>
-      </aside>
-      <div class="walkbar" hidden><span></span><button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-exit>Exit walk</button></div>
+      ${legendMarkup(f)}
+      <div class="walkbar" hidden><span></span><button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-exit title="Back to the camera (V or Esc)">Exit walk</button></div>
       <div class="visor" aria-hidden="true"></div>
       <div class="stick" aria-hidden="true"><i></i></div>
-      <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump>Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-act hidden>Act</button></div>
+      <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump title="Jump">Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-act hidden title="What can be done with what you are looking at">Act</button></div>
       <div class="reticle" aria-hidden="true"><i></i><p><kbd>E</kbd><span></span></p></div>
       <aside class="walk-card" hidden aria-live="polite">
-        <button class="card-close" aria-label="Close">×</button>
+        <button class="card-close" aria-label="Close" title="Close">×</button>
         <h3></h3><p class="card-what"></p><p class="card-more"></p><div class="pf"></div>
       </aside>
       <output class="stats" aria-label="Diagnostics"></output>
@@ -330,16 +375,36 @@ export class Ui {
       prefs.set('bare', on);
     };
     bare(prefs.get('bare'));
-    // the camera legend folds to a word; whether it is open is remembered
+    // the legend is a "? Keys" tab until it is asked for; whether it is open, and how much of it, is remembered
     const legendKeys = root.querySelector<HTMLElement>('.legend-keys')!;
     const legendToggle = legendKeys.querySelector<HTMLElement>('.legend-toggle')!;
+    const moreToggle = legendKeys.querySelector<HTMLElement>('.legend-more-toggle')!;
     const showLegend = (open: boolean) => {
       legendKeys.classList.toggle('folded', !open);
       legendToggle.setAttribute('aria-expanded', String(open));
-      prefs.set('legendFolded', !open);
+      prefs.set('legendOpen', open);
     };
-    showLegend(!prefs.get('legendFolded'));
+    const showMore = (open: boolean) => {
+      legendKeys.classList.toggle('all', open);
+      moreToggle.setAttribute('aria-expanded', String(open));
+      moreToggle.querySelector('span')!.textContent = open ? 'Less' : 'More';
+      prefs.set('legendMore', open);
+    };
+    showLegend(prefs.get('legendOpen'));
+    showMore(prefs.get('legendMore'));
     legendToggle.addEventListener('click', () => showLegend(legendKeys.classList.contains('folded')));
+    moreToggle.addEventListener('click', () => showMore(!legendKeys.classList.contains('all')));
+    // the flight's facts fold under the summary: shut until asked for, and remembered
+    const factsToggle = title.querySelector<HTMLElement>('.facts-toggle')!;
+    const showFacts = (open: boolean) => {
+      title.classList.toggle('facts-open', open);
+      factsToggle.setAttribute('aria-expanded', String(open));
+      prefs.set('factsOpen', open);
+    };
+    showFacts(prefs.get('factsOpen'));
+    factsToggle.addEventListener('click', () => showFacts(!title.classList.contains('facts-open')));
+    // the legend is never taller than the room under the title card
+    new ResizeObserver(() => root.style.setProperty('--title-h', `${title.offsetHeight}px`)).observe(title);
     window.addEventListener('keydown', (e) => {
       const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
@@ -487,18 +552,45 @@ export class Ui {
     // the phone layout stacks the switcher on the control block, whose height depends on wrapping
     const controls = root.querySelector<HTMLElement>('.controls')!;
     const switcher = root.querySelector<HTMLElement>('.models')!;
-    const measure = new ResizeObserver(() => {
+    this.measure = new ResizeObserver(() => {
       root.style.setProperty('--controls-h', `${controls.offsetHeight}px`);
       // whatever sits over the lower half of the 3D view hides that much of it: views are framed above
       const view = stage.getBoundingClientRect();
+      const top = (el: HTMLElement) => el.getBoundingClientRect().top;
+      const shown = (el: HTMLElement) => el.offsetParent !== null;
       const tops = [controls, switcher]
-        .filter((el) => el.offsetParent !== null)
-        .map((el) => el.getBoundingClientRect().top)
-        .filter((top) => top > view.top + view.height / 2);
+        .filter(shown)
+        .map(top)
+        .filter((y) => y > view.top + view.height / 2);
+      // What was named as covering the view (the flight deck) counts however tall it is (the stage takes at most half the
+      // view), but only those of its panels that lie under the middle of the view, where the subject is: the corners are not in its way.
+      const middle = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        return r.height > 0 && r.left < view.left + view.width * 0.62 && r.right > view.left + view.width * 0.38;
+      };
+      for (const el of this.covering.filter(shown)) tops.push(...([...el.children] as HTMLElement[]).filter(middle).map(top));
       on.inset(Math.max(0, view.bottom - Math.min(view.bottom, ...tops)));
     });
-    for (const el of [controls, switcher, stage, panel]) measure.observe(el);
+    for (const el of [controls, switcher, stage, panel]) this.measure.observe(el);
     this.setModel(this.model.id);
+  }
+
+  private readonly measure: ResizeObserver;
+  private readonly covering: HTMLElement[] = [];
+
+  /** Something else that lies over the bottom of the 3D view while it is on show (the flight deck): views are framed above it too. */
+  covers(el: HTMLElement): void {
+    this.covering.push(el);
+    this.measure.observe(el);
+    for (const panel of el.children) this.measure.observe(panel);
+  }
+
+  /** Where every panel on show is, in the window: for what is drawn on the view and must not show through one (the path's labels). */
+  panels(): DOMRect[] {
+    const all = this.root.querySelectorAll<HTMLElement>(
+      ':scope > :is(.title, .models, .panel, .controls, .timebar, .legend-keys, .walkbar, .walk-card), .notes > *, .cockpit > *, .cockpit-card',
+    );
+    return [...all].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
   }
 
   /** Beside the pointer, on whichever side has room. */
@@ -537,7 +629,7 @@ export class Ui {
         <span class="n">${String(i + 1).padStart(2, '0')}</span>
         <span class="name">${esc(p.name)}${p.inside ? '<em>inside</em>' : ''}</span>
         <span class="what">${esc(p.summary)}</span>
-        <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}</span>
+        <span class="more">${esc(p.detail)}${p.facts ? `<span class="pf">${p.facts.map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('')}</span>` : ''}<span class="back"><kbd>Esc</kbd> back to the whole view</span></span>
       </button>${
         // what the part does, each function workable by hand: shown under the part while it is selected
         functionsOf(p).length
@@ -554,12 +646,12 @@ export class Ui {
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
     r.querySelector('.buttons')!.innerHTML =
       `<span class="set" role="group" aria-label="View">${[...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]), ...m.views]
-        .map((v) => `<button data-view="${v.id}" aria-pressed="false">${esc(v.label)}</button>`)
+        .map((v) => `<button data-view="${v.id}" aria-pressed="false" title="View: ${esc(v.label)}">${esc(v.label)}</button>`)
         .join('')}</span>` +
-      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut aria-pressed="false">Cutaway</button>' : ''}` +
-      `<button data-camera title="How the view moves (C)">${CAMERA_LABEL[this.cameraMode]}</button>` +
-      `<button data-rotate aria-pressed="${rotating}">Auto-orbit</button>` +
-      `<button data-cel aria-pressed="${prefs.get('cel')}" title="Cel shading (T)">Cel shading</button></span>`;
+      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside">Cutaway</button>' : ''}` +
+      `<button data-camera title="${CAMERA_LABEL[this.cameraMode]}: the next camera (C)">${CAMERA_ICON}<span>${cameraName(this.cameraMode)}</span></button>` +
+      `<button data-rotate class="switch" aria-pressed="${rotating}" title="The view drifts round what was last chosen">Auto-orbit</button>` +
+      `<button data-cel class="switch" aria-pressed="${prefs.get('cel')}" title="Draw the scene as a cel-shaded drawing (T)">Cel shading</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
     // this model's own figures first
     const specs = r.querySelector('[data-pane="Specs"]')!;
@@ -601,13 +693,43 @@ export class Ui {
     this.cameraMode = mode;
     if (mode === 'orbit' || mode === 'free') prefs.set('fly', mode === 'free');
     for (const c of new Set(Object.values(CAMERA_CLASS))) this.root.classList.toggle(c, CAMERA_CLASS[mode] === c);
-    const b = this.root.querySelector('[data-camera]');
-    if (b) b.textContent = CAMERA_LABEL[mode];
+    const b = this.root.querySelector<HTMLElement>('[data-camera]');
+    if (b) {
+      b.querySelector('span')!.textContent = cameraName(mode);
+      b.title = `${CAMERA_LABEL[mode]}: the next camera (C)`;
+    }
     if (!quiet) this.say(RIGS[mode].name, `${RIGS[mode].says} · C for the next view`);
+  }
+
+  /**
+   * Where passing notes go: one stack, hung under the clock wherever the clock is and however tall, so no two notes are
+   * ever on top of each other. How far down the stack ends is kept in `--under-clock`, for what sits below it (callout.css).
+   */
+  private notes(): HTMLElement {
+    const had = this.root.querySelector<HTMLElement>('.notes');
+    if (had) return had;
+    const el = document.createElement('div');
+    el.className = 'notes';
+    const clock = this.root.querySelector<HTMLElement>('.timebar');
+    (clock ?? this.root).append(el);
+    const under = () => {
+      const notes = el.getBoundingClientRect();
+      const bar = (clock ?? el).getBoundingClientRect();
+      document.documentElement.style.setProperty(
+        '--under-clock',
+        `${Math.round(Math.max(bar.bottom, notes.height ? notes.bottom : 0) + 10)}px`,
+      );
+    };
+    const watch = new ResizeObserver(under);
+    watch.observe(el);
+    if (clock) watch.observe(clock);
+    window.addEventListener('resize', under);
+    return el;
   }
 
   /** The vehicle is in the air and the camera is not with it: a button that goes to it is on show. */
   showFind(on: boolean): void {
+    this.notes(); // (asked every frame: so the stack is there, and measured, from the first)
     let b = this.root.querySelector<HTMLElement>('.find-vehicle');
     if (!b && on) {
       b = document.createElement('button');
@@ -615,9 +737,9 @@ export class Ui {
       b.title = 'Go to the vehicle (C)';
       b.textContent = 'Find the vehicle';
       b.addEventListener('click', () => this.on.refind());
-      this.root.append(b);
+      this.notes().prepend(b);
     }
-    if (b) b.hidden = !on;
+    if (b && b.hidden === on) b.hidden = !on;
   }
 
   /** C: the next rig there is as things stand; with only this one to choose from, back to what it is about (the vehicle, lost off the screen). */
@@ -636,13 +758,16 @@ export class Ui {
    * It goes by itself; saying something else replaces it.
    */
   say(title: string, line: string, note?: string): void {
-    let el = this.root.querySelector<HTMLElement>('.say');
-    if (!el) {
-      el = document.createElement('p');
+    const had = this.root.querySelector<HTMLElement>('.say');
+    const el = had ?? document.createElement('p');
+    if (!had) {
       el.className = 'say';
       el.setAttribute('role', 'status');
-      this.root.append(el);
+      this.notes().append(el);
+      // (gone, it takes no room in the stack)
+      el.addEventListener('animationend', () => (el.hidden = true));
     }
+    el.hidden = false;
     el.innerHTML = `<b>${esc(title)}</b><span>${esc(note ?? line)}</span>`;
     el.classList.remove('going');
     void el.offsetWidth; // (so the fade starts again from the top)

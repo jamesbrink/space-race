@@ -135,9 +135,24 @@ export class OrbitRig implements Rig {
     this.pivot.copy(pivot);
     this.frame();
     this.keepPivot(); // (before the view is measured from it: the eye stays where it is, and looks at where the pivot may be)
-    this.setOffset(v.copy(from.position).sub(pivot));
+    this.setOffset(v.copy(from.position).sub(this.pivot));
+    // A view that looked up from under its pivot, where the place does not allow the eye that low: the eye stays where
+    // it is, and the pivot comes down to where it can be turned about from there.
+    const lowest = Math.max(MIN_POLAR, this.lowest());
+    if (this.phi > lowest) {
+      this.phi = lowest;
+      this.pivot.copy(from.position).sub(offsetOf(this.theta, this.phi, this.distance, this.turn, v));
+      this.keepPivot();
+      this.setOffset(v.copy(from.position).sub(this.pivot));
+    }
     this.still();
     this.handSet = true; // (a view taken over is as it was left: nothing frames it again)
+  }
+
+  /** Be where everything that eases is going, at once: an exact view, for a test or a picture. */
+  settle(): void {
+    this.still();
+    this.insetNow = this.inset;
   }
 
   /** Stop everything that moves by itself. */
@@ -177,9 +192,16 @@ export class OrbitRig implements Rig {
   /**
    * Put the view somewhere: `pivot`, seen from `eyeAt`. At once (`snap`), or flown there along an
    * arc. A flight to somewhere very far off is cut to: nothing is learnt from seconds of blur.
+   * `again`: the same subject, framed again because it moved; a journey under way is pointed at where
+   * it is now and goes on, instead of starting over (started over every frame, it would never arrive).
    */
-  goTo(pivot: THREE.Vector3, eyeAt: THREE.Vector3, snap: boolean): void {
+  goTo(pivot: THREE.Vector3, eyeAt: THREE.Vector3, snap: boolean, again = false): void {
     const offset1 = eyeAt.clone().sub(pivot);
+    if (again && !snap && this.journey) {
+      this.journey.pivot1.copy(pivot);
+      this.journey.offset1.copy(offset1);
+      return;
+    }
     const offset0 = offsetOf(this.theta, this.phi, this.distance, this.turn);
     const far = this.pivot.distanceTo(pivot);
     this.still();
@@ -387,6 +409,8 @@ export class ChaseRig extends OrbitRig {
   /** A place on the vehicle the pivot is being taken to (aimAt). */
   private goal: { from: THREE.Vector3; to: THREE.Vector3; t: number } | null = null;
   private shape = Number.NaN;
+  /** It has been in charge before: there is a view of its own to come back to. */
+  private been = false;
   private radius = 1;
   private flying = false;
   private settling: { from: THREE.Vector3; t: number } | null = null;
@@ -417,7 +441,7 @@ export class ChaseRig extends OrbitRig {
     this.min = Math.max(0.35, 0.25 * craft.radius);
   }
 
-  override enter(from: Pose, pivot: THREE.Vector3): void {
+  override enter(from: Pose, pivot: THREE.Vector3, resume = false): void {
     const craft = this.world.craft();
     if (!craft) {
       super.enter(from, pivot);
@@ -432,8 +456,20 @@ export class ChaseRig extends OrbitRig {
     // From near it, the view is taken up as it stands. From far off (the vehicle lost to sight) or from inside it, it
     // is seen from the side the last view saw its subject from, and from where the whole of it is seen: the handover
     // carries the eye there, on top of however fast the vehicle is going.
+    // Coming back from on board or from the pad camera, it is as it was last left: the same side, the same distance.
+    if (resume && this.been) {
+      const set = this.handSet;
+      this.frame();
+      super.enter(
+        { ...from, position: offsetOf(this.theta, this.phi, set ? this.distance : this.fit, this.turn).add(this.middle) },
+        this.middle,
+      );
+      this.handSet = set;
+      return;
+    }
+    this.been = true;
     const far = from.position.distanceTo(this.middle);
-    const near = far <= 6 * this.fit && far >= this.min;
+    const near = !resume && far <= 6 * this.fit && far >= this.min;
     const seen = v.copy(from.position).sub(pivot);
     if (!near)
       from = {

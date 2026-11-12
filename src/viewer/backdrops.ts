@@ -536,7 +536,15 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     ground.color.setRGB((0.42 * lit + 0.0005) * day, (0.39 * lit + 0.0008) * day, (0.33 * lit + 0.0018) * day);
     colour(patch.material.color, [30 * light.sun[0] * day, 27 * light.sun[1] * day, 22 * light.sun[2] * day]);
     patch.position.copy(h.sunDir).multiplyScalar(46);
-    const look = [...light.zenith, ...light.horizon, ...light.glow, ...light.sun, lit].map((v) => v * day);
+    // (and how much air is over the eye: it thins the sky the reflections see, above. Left out, a bake made from high up,
+    // under a dark sky, was kept for good when the eye came back down to a clock that was not running: the pad lit
+    // without its sky's blue)
+    // (and which way is up in that sky, which is the plumb line at the eye: it leans 4.8 degrees at the landing)
+    const look = [
+      ...[...light.zenith, ...light.horizon, ...light.glow, ...light.sun, lit].map((v) => v * day),
+      air,
+      ...uniforms.uUp.value.toArray(),
+    ];
     stale ||= light.light.from !== source || h.sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG || apart(look, bakedLook) > LOOK_STEP;
     const first = !setting.environment;
     if (first || jumped) bake(look, 0);

@@ -74,6 +74,21 @@ a hemisphere light's direction). So:
 changes what is on screen must set `this.dirty = true`, or it will show up late. The shadow map is
 likewise drawn on demand (`shadowMap.needsUpdate`): set it when something that casts a shadow moves.
 
+## Nothing that is not a number
+
+The frame is half floats and the bloom reads every pixel of it, so one pixel that is not a number
+is a black frame: the bloom spreads it over the whole picture. A shader that writes to the frame
+must not be able to make one. The frame is multisampled, so a varying is extrapolated past the edge
+of its triangle at a pixel the triangle only partly covers: `1.0 - vT` is a hair under nothing
+there, and `pow` of a negative number is not a number (this was the attitude jets, jets.ts). So:
+clamp what goes into `pow`, `sqrt` and `log`; write a square as a product, not `pow(x, 2.0)`
+(undefined for a negative `x`, and on some GPUs not a number); never `normalize` what can be
+nothing, nor divide by what can be; and let a march that cannot say what it found `discard`. An
+object scaled to nothing draws no pixels and is safe. To check, read the frame before the bloom
+(`renderer.readRenderTargetPixels` on the composer's `readBuffer`, from a pass put in before it)
+and count half floats whose exponent is all ones (`& 0x7c00`): none, through a whole flight, an
+abort and a break-up, in both looks.
+
 ## Two looks
 
 The stage draws in one of two looks (`viewer/look.ts`), switched by the Cel shading button or T
@@ -83,7 +98,13 @@ the first time it is needed (same name, colour, map and shader patches) and swap
 the two; `InkPass` draws the line from the frame's depth buffer. So anything put in the scene must
 be handed to `Looks.add` (models are, in `dress`; a setting's floor and scenery are, in
 `applySetting`), and code that changes a real material after it is made (the cutaway) calls
-`Looks.sync`. Keep reading materials by name: the twin has the same one.
+`Looks.sync`. Keep reading materials by name: the twin has the same one. What is made again and
+again (a flight's parachutes) is given to `Looks.remove` before it is disposed of, or every one
+ever made is kept.
+
+`Stage.root` holds the flight's models, and with them what a flight leaves in the air (what it
+shed, in its holders; the glow of entry; the ice). Only the models are measured (`modelsBox`): the
+place's bounds, and so the depth range and how far a view pulls back, are theirs.
 
 ## Levels of detail
 

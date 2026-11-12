@@ -37,6 +37,8 @@ export class Scenery {
   private readonly levels: (THREE.Object3D | undefined)[] = [];
   private readonly pieces: { name: string; sphere: Sphere; nodes: (THREE.Object3D | undefined)[]; wanted: number }[] = [];
   private every = false;
+  /** For tests: draw every piece (or the pieces named) at this level whatever its size on screen (null: as it suits). */
+  forced: number | Record<string, number> | null = null;
 
   constructor(full: THREE.Object3D) {
     this.levels[0] = full;
@@ -79,7 +81,8 @@ export class Scenery {
     for (const piece of this.pieces) {
       const { center, radius } = piece.sphere;
       const distance = Math.max(eye.distanceTo(center) - radius * 0.6, radius * 0.1);
-      const wanted = chooseLevel(scale / distance, piece.wanted);
+      const forced = typeof this.forced === 'number' ? this.forced : this.forced?.[piece.name];
+      const wanted = forced ?? chooseLevel(scale / distance, piece.wanted);
       if (wanted === piece.wanted) continue;
       piece.wanted = wanted;
       changed = this.show(piece) || changed;
@@ -122,6 +125,8 @@ export class Staged {
   /** What is being worked by hand, so that a level arriving later is posed the same (hold, loosen). */
   private readonly held = new Map<string, number>();
   private readonly loose = new Set<string>();
+  /** For tests: draw this level whatever the model's size on screen (null: as it suits). */
+  forced: number | null = null;
 
   constructor(full: THREE.Object3D, parts: Part[]) {
     this.parts = parts;
@@ -198,7 +203,7 @@ export class Staged {
 
   /** Pick the level for this many pixels per metre (or the full one). True if what is drawn changed. */
   choose(ppm: number, full: boolean): boolean {
-    this.wanted = full ? 0 : chooseLevel(ppm, this.wanted);
+    this.wanted = this.forced ?? (full ? 0 : chooseLevel(ppm, this.wanted));
     return this.show(this.wanted);
   }
 

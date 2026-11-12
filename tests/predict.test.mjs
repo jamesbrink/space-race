@@ -210,7 +210,9 @@ test('it can be worked out in slices, to the same answer', (t) => {
   let longest = 0;
   for (let done = false; !done; slices++) {
     const began = performance.now();
-    done = job.run(1);
+    // (no budget at all: a slice is then the fewest steps there are between looks at the clock, however fast the machine.
+    // With a millisecond, a warm machine does the whole prediction in one slice some runs and not others)
+    done = job.run(0);
     longest = Math.max(longest, performance.now() - began);
   }
   assert.ok(slices > 1, `it took ${slices} slices`);

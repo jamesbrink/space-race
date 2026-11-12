@@ -1236,6 +1236,11 @@ const ESCAPE = {
     'McDonnell SEDR 104 (spacecraft.md, Propulsion): 56,500 lb-s in all. Taken as along the axis, as the thrust is: if it is the motor’s own, the cant makes it 5 per cent less. ' +
       'How the thrust decays is not given: it is taken to fall evenly to nothing, which spends the rest of the impulse in 0.61 s',
   ),
+  lean: guess(
+    3,
+    'the real rocket’s line of thrust was set off the centre of mass so that an aborted spacecraft was carried aside, clear of its booster; by how much is not in anything read. ' +
+      'Three degrees, through the centre of mass and downrange, is ours: it puts a pad abort down some tens of metres from the pad',
+  ),
 };
 /** Hammack and Heberlig on how the tower left a good flight. */
 const TOWER_FIRED =
@@ -1382,6 +1387,7 @@ const body: Body = {
       },
     ],
     rcs: { supplies: RCS_SUPPLIES, thrusters: RCS_THRUSTERS },
+    base: guess(CAPSULE_CG * IN, 'the tip of the heat shield, 25 in below the centre of mass assumed above'),
     chuteArm: guess(1.8, 'the parachutes pull at the top of the recovery compartment, about 1.8 m from the centre of mass assumed above'),
     side: {
       dragArea: guess(

@@ -60,26 +60,40 @@ dd { font-variant-numeric: tabular-nums; }
 [aria-expanded='false'].chevron::before, [aria-expanded='false'] > .chevron::before { transform: rotate(225deg); margin-top: -4px; }
 .tuck:hover { color: var(--ink); }
 .title.tucked { padding-bottom: 16px; }
-.title.tucked :is(.lede, .facts) { display: none; }
+.title.tucked :is(.lede, .facts, .facts-toggle) { display: none; }
+/* the flight in figures folds under the summary (they are also in the Flight tab): shut until asked for */
+.facts-toggle { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 18px; padding: 12px 0 0; border-top: 1px solid var(--line); font: 10px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
+.facts-toggle .chevron { display: block; width: 12px; }
+.facts-toggle:hover { color: var(--ink); }
+.title .facts { margin-top: 14px; border-top: 0; padding-top: 0; }
+.title:not(.facts-open) .facts { display: none; }
+.title { padding-bottom: 18px; }
 /* H: nothing between the viewer and the view */
 #ui.bare > :not(.loading, .stats, .walkbar, .stick, .walk-buttons, .wheel, .reticle, .visor) { opacity: 0; pointer-events: none !important; }
 /* ...but say how to get them back, faintly, so a reload into this state is not a dead end */
-#ui.bare::after { content: 'H  shows the panels'; position: absolute; right: var(--edge); bottom: var(--edge); font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 0.55; text-shadow: 0 0 4px #000; }
+#ui.bare::after { content: 'H  shows the panels'; position: absolute; right: var(--edge); bottom: var(--edge); padding: 5px 10px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); background: rgba(10, 11, 14, 0.6); border-radius: 2px; }
 #ui > * { transition: opacity 0.25s ease; }
 
 /* --- diagnostics ----------------------------------------------------------------- */
 .stats { position: absolute; left: var(--edge); bottom: var(--edge); font: 10px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--ink); opacity: 0.7;
   text-shadow: 0 0 4px #000, 0 0 2px #000; pointer-events: none !important; white-space: nowrap; }
 
-/* --- camera legend: which keys and gestures move the view ------------------------- */
-.legend-keys { position: absolute; left: var(--edge); bottom: calc(var(--edge) + 24px); padding: 10px 14px 12px; max-width: min(380px, 30vw);
-  background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-radius: 3px; }
-.legend-toggle { font: 10px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); padding: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; }
-.legend-toggle .chevron { display: block; width: 12px; }
-.legend-toggle:hover { color: var(--ink); }
-.legend-keys.folded { padding: 7px 12px; }
-.legend-keys.folded .legend-body { display: none; }
-.legend-body { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 12px 16px; margin-top: 12px; align-items: end; }
+/* --- the legend: which keys and gestures do what. A "? Keys" tab until asked for; then the keys, the few things to know, and the rest behind "More" --- */
+.legend-keys { position: absolute; left: var(--edge); bottom: calc(var(--edge) + 24px); width: min(340px, 28vw); padding: 10px 14px 8px; display: flex; flex-direction: column;
+  /* never taller than the room under the title card: past that it scrolls */
+  max-height: calc(100dvh - var(--title-h, 300px) - 2 * var(--edge) - 38px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--faint) transparent;
+  background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-radius: 3px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.28); }
+.legend-toggle { flex: none; font: 10px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); padding: 0; display: flex; align-items: center; gap: 9px; width: 100%; }
+.legend-toggle span { flex: 1; text-align: left; }
+.legend-toggle kbd { min-width: 18px; height: 18px; border-bottom-width: 1px; color: inherit; }
+.legend-toggle .chevron, .legend-more-toggle .chevron { display: block; width: 12px; }
+.legend-toggle:hover, .legend-more-toggle:hover { color: var(--ink); }
+.legend-keys.folded { width: auto; padding: 7px 10px 7px 8px; }
+.legend-keys.folded .legend-toggle { gap: 8px; }
+.legend-keys.folded :is(.legend-body, .legend-more-toggle) { display: none !important; }
+.legend-body { display: none; margin-top: 12px; }
+.clusters { display: flex; justify-content: space-between; align-items: end; gap: 10px; padding: 0 2px; }
 .cluster { display: grid; justify-items: center; gap: 6px; }
 .cluster em { font: 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; font-style: normal; color: var(--dim); white-space: nowrap; }
 kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; font: 10px/1 var(--mono); color: var(--ink);
@@ -90,29 +104,32 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .pad > :nth-child(2) { grid-column: 1; }
 .pad.pair { grid-template-columns: 20px; }
 .pad.pair > * { grid-column: 1; }
-.legend-body dl { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 18px; border-top: 1px solid var(--line); padding-top: 10px; margin: 0; }
-.legend-body dl div { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-.legend-body dt { font: 10px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
-.legend-body dd { font-size: 12px; color: var(--dim); white-space: nowrap; }
-/* on foot the legend lists the walker's keys instead */
-.legend-body:is(.on-foot, .in-flight, .chasing, .aboard, .tracking) { display: none; grid-template-columns: repeat(4, auto); }
-#ui.flying:not(.walking) .legend-body:not(.in-flight) { display: none; }
-#ui.flying:not(.walking) .legend-keys:not(.folded) .legend-body.in-flight { display: grid; }
+/* a row is what you do and what it does; nothing is cut short: what does not fit on its line goes to the next */
+.legend-body dl { display: grid; gap: 4px 18px; border-top: 1px solid var(--line); padding-top: 9px; margin: 10px 0 0; }
+.legend-body dl div { display: flex; justify-content: space-between; gap: 10px; align-items: center; min-height: 20px; min-width: 0; }
+.legend-body dt { flex: none; font: 10px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.legend-body dd { min-width: 0; font-size: 12px; line-height: 1.3; color: var(--dim); text-align: right; }
+/* the rest, by purpose; rows that are a key and a few words go two abreast */
+.legend-more { display: none; }
+/* (`all`, since `.more` is a part's long text) */
+.legend-keys.all .legend-more { display: block; }
+.legend-more h4 { margin: 12px 0 0; font: 10px/1.4 var(--mono); font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
+.legend-more dl { border-top: 0; padding-top: 0; margin-top: 5px; }
+.legend-more dl.keys { grid-template-columns: 1fr 1fr; }
+.legend-more-toggle { flex: none; display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 9px; padding: 7px 0 0; border-top: 1px solid var(--line); font: 10px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
+/* one body is on show: the walker's on foot, else the one for the rig that has the camera */
+#ui:not(.walking, .flying, .chasing, .aboard, .tracking) .legend-body:not(.on-foot, .in-flight, .chasing, .aboard, .tracking) { display: block; }
+#ui.flying:not(.walking) .legend-body.in-flight { display: block; }
+#ui.chasing:not(.walking) .legend-body.chasing { display: block; }
+#ui.aboard:not(.walking) .legend-body.aboard { display: block; }
+#ui.tracking:not(.walking) .legend-body.tracking { display: block; }
+#ui.walking .legend-body.on-foot { display: block; }
 #ui.flying [data-rotate] { display: none; }
-#ui.chasing:not(.walking) .legend-body:not(.chasing) { display: none; }
-#ui.chasing:not(.walking) .legend-keys:not(.folded) .legend-body.chasing { display: grid; }
 #ui:is(.chasing, .aboard, .tracking) [data-rotate] { display: none; }
-#ui.aboard:not(.walking) .legend-body:not(.aboard) { display: none; }
-#ui.aboard:not(.walking) .legend-keys:not(.folded) .legend-body.aboard { display: grid; }
-#ui.tracking:not(.walking) .legend-body:not(.tracking) { display: none; }
-#ui.tracking:not(.walking) .legend-keys:not(.folded) .legend-body.tracking { display: grid; }
 /* the vehicle is in the air and the camera is elsewhere: one press goes to it */
-.find-vehicle { position: absolute; top: calc(var(--edge) + 150px); left: 50%; transform: translateX(-50%); padding: 8px 14px; pointer-events: auto; font: 500 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: var(--amber); background: var(--glass); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
+.find-vehicle { flex: none; padding: 8px 14px; pointer-events: auto; font: 500 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: var(--amber); background: var(--glass); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
 .find-vehicle:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--ink); }
 .find-vehicle[hidden] { display: none; }
-@media (max-width: 960px), (max-height: 520px) { .find-vehicle { top: 180px; } }
-#ui.walking .legend-body:not(.on-foot) { display: none !important; }
-#ui.walking .legend-keys:not(.folded) .legend-body.on-foot { display: grid; }
 /* keys are no use to a finger, and a small window has no room */
 @media (hover: none), (max-width: 1180px) { .legend-keys { display: none; } }
 
@@ -166,6 +183,10 @@ body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }
 /* --- the wheel: a few things to do with one thing, set round a centre (wheel.ts) ---- */
 .wheel { position: absolute; inset: 0; z-index: 5; background: radial-gradient(circle at center, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.12) 46%, transparent 70%); }
 .wheel-title { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 118px; text-align: center; font: 600 13px/1.25 var(--sans); color: var(--ink); text-shadow: 0 0 6px #000; pointer-events: none; }
+.wheel-hint { position: absolute; left: 50%; top: calc(50% + 158px); transform: translateX(-50%); margin: 0; padding: 4px 10px; white-space: nowrap; font: 10px/1.6 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); background: rgba(10, 11, 14, 0.6); border-radius: 2px; pointer-events: none; }
+.wheel-hint kbd { min-width: 0; height: 16px; border-bottom-width: 1px; }
+.wheel-hint .touch { display: none; }
+@media (hover: none), (pointer: coarse) { .wheel-hint .keys { display: none; } .wheel-hint .touch { display: inline; } }
 .wheel-ring { position: absolute; left: 50%; top: 50%; width: 0; height: 0; --r: 124px; }
 .wheel-ring button { position: absolute; left: calc(var(--x) * var(--r)); top: calc(var(--y) * var(--r) * 0.82); transform: translate(-50%, -50%); display: flex; align-items: center; gap: 8px; width: max-content; max-width: 128px; min-height: 44px; padding: 8px 12px 8px 8px;
   background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--faint); border-radius: 3px;
@@ -214,6 +235,10 @@ body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }
 .what, .more { grid-column: 2; color: var(--dim); font-size: 13px; }
 .more { display: none; color: #d6d1c5; margin-top: 8px; }
 [aria-expanded='true'] .more { display: block; }
+/* Escape backs out a step, and the open part says so */
+.more .back { display: flex; align-items: center; gap: 8px; margin-top: 10px; font: 10px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.more .back kbd { min-width: 0; height: 17px; border-bottom-width: 1px; }
+@media (hover: none), (pointer: coarse) { .more .back { display: none; } }
 /* what a part does: a slider for each of its functions, under the part while it is selected */
 .fns { display: none; gap: 2px; padding: 4px 18px 12px 56px; border-left: 2px solid var(--amber); background: rgba(255, 196, 107, 0.08); }
 .parts button[aria-expanded='true'] + .fns { display: grid; }
@@ -270,7 +295,11 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 /* views in one set, toggles in the other; the row wraps rather than hide anything */
 .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; max-width: 100%; }
 .set { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.buttons button { flex: none; padding: 8px 13px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); white-space: nowrap; }
+.buttons button { flex: none; display: flex; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); letter-spacing: 0.1em; white-space: nowrap; }
+.buttons [data-camera] svg { margin-right: 8px; }
+/* a switch has a lamp before its name, lit while it is on: so what is a switch is told from what is a press, here and on the flight deck */
+.switch::before { content: ''; flex: none; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border: 1px solid currentColor; border-radius: 1px; opacity: 0.75; }
+.switch[aria-pressed='true']::before { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 6px rgba(255, 196, 107, 0.7); opacity: 1; }
 .buttons button:hover { color: var(--ink); border-color: var(--faint); }
 /* current view: filled, like the section switcher (where am I). Toggles: outlined (what is on). */
 .buttons [data-view][aria-pressed='true'] { color: var(--ink); background: rgba(243, 239, 230, 0.12); border-color: var(--dim); }
@@ -288,7 +317,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 
 /* --- narrow desktop: drop the long text before anything overlaps ------------------- */
 @media (max-width: 1180px) {
-  .title .lede, .title .facts { display: none; }
+  .title .lede, .title .facts, .title .facts-toggle { display: none; }
   .panel .small-only { display: block; }
   .panel dl.small-only { display: grid; margin: 14px 18px 4px; }
   .panel p.small-only { margin: 12px 18px 0; }
@@ -355,13 +384,13 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 
-/* --- said on the view for a moment: which view the camera is in (ui.ts say) --- */
-.say { position: absolute; top: calc(var(--edge) + 104px); left: 50%; transform: translateX(-50%); margin: 0; padding: 8px 14px 9px; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; max-width: calc(100vw - 2 * var(--edge));
-  pointer-events: none; opacity: 0; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; z-index: 4; }
+/* --- passing notes: one stack hung under the clock (ui.ts notes), so no two are ever on top of each other. In it: the way back to a vehicle that is out of view, and what was last said (which view the camera is in) --- */
+.notes { position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; width: max-content; max-width: calc(100vw - 2 * var(--edge)); pointer-events: none; z-index: 4; }
+.say { margin: 0; padding: 8px 14px 9px; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; max-width: 100%;
+  pointer-events: none; opacity: 0; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; }
 .say b { font: 500 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
 .say span { font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
 .say.going { animation: say 3.2s ease-out forwards; }
 @keyframes say { 0% { opacity: 0; } 6% { opacity: 1; } 78% { opacity: 1; } 100% { opacity: 0; } }
-#ui.piloting .say { top: calc(var(--edge) + 52px); }
-@media (max-width: 960px), (max-height: 520px) { .say { top: 132px; flex-direction: column; gap: 2px; white-space: normal; } #ui.piloting .say { top: 64px; } }
+@media (max-width: 960px), (max-height: 520px) { .notes { left: 0; transform: none; align-items: flex-start; max-width: calc(100vw - 20px); } .say { flex-direction: column; gap: 2px; white-space: normal; } }
 @media (prefers-reduced-motion: reduce) { .say.going { animation-duration: 3.2s; animation-timing-function: step-end; } }

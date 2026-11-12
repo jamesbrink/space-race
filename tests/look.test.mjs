@@ -46,3 +46,24 @@ test('a twin follows its material when the cutaway clips it', () => {
   assert.equal(mesh.material.clippingPlanes, real.clippingPlanes);
   assert.equal(mesh.material.side, THREE.DoubleSide);
 });
+
+test('what is gone for good is let go: its real material back on it, its twin disposed of, and no change of look reaches it again', () => {
+  const { real, mesh, root } = scene();
+  const looks = new Looks();
+  looks.add(root);
+  looks.set('cel');
+  const twin = mesh.material;
+  let disposed = 0;
+  twin.addEventListener('dispose', () => disposed++);
+  looks.remove(root);
+  assert.equal(mesh.material, real, 'whoever disposes of the mesh disposes of the material it was made with');
+  assert.equal(disposed, 1);
+  looks.set('real');
+  looks.set('cel');
+  assert.equal(mesh.material, real, 'it is no longer dressed');
+  // and a thing made again of the same material gets a twin of its own
+  const again = new THREE.Group().add(new THREE.Mesh(new THREE.BoxGeometry(), real));
+  looks.add(again);
+  assert.ok(again.children[0].material.isMeshToonMaterial);
+  assert.notEqual(again.children[0].material, twin);
+});

@@ -4,7 +4,7 @@
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.28); }
 .time-row { display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 4px; }
 .timebar button, .time-read, .time-scrub span { font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
-.time-play { min-width: 58px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); }
+.time-play { white-space: nowrap; min-width: 58px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); }
 .time-play:hover { color: var(--ink); border-color: var(--faint); }
 .time-play[aria-pressed='true'] { color: #0b0a07; background: var(--amber); border-color: var(--amber); }
 .time-read { display: flex; gap: 14px; padding: 0 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }

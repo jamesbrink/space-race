@@ -333,7 +333,7 @@ const MARCH = /* glsl */ `
   // comes through in octaves, as a cloud's does (each scattering deeper and less dimmed); then the sky's, the ground's, the fire's.
   vec3 smokeLit(vec3 p, float tau, float up, float toSun) {
     float sun = 0.6 * exp(-tau) + 0.28 * exp(-0.3 * tau) + 0.12 * exp(-0.07 * tau);
-    sun *= 0.85 + 0.6 * pow(0.5 + 0.5 * toSun, 6.0);   // a thin edge against the Sun glows
+    sun *= 0.85 + 0.6 * pow(clamp(0.5 + 0.5 * toSun, 0.0, 1.0), 6.0);   // a thin edge against the Sun glows
     vec3 g = p - uGlowAt;
     return 0.92 * (uSunLight * sun + uSkyLight * (0.35 + 0.45 * up) + uGroundLight * 0.3 * (1.0 - up) + uGlow / (dot(g, g) + 12.0));
   }
@@ -379,9 +379,10 @@ const MARCH = /* glsl */ `
     // shock diamonds: where the jet's own waves cross on the axis the gas is squeezed hot again, and between them it
     // is stretched cool; fainter each cell, and only while there is air to hold the jet in
     float cell = x / uShape.z;
-    float wave = 0.5 + 0.5 * cos(6.28318 * (cell - 0.62));
+    float wave = clamp(0.5 + 0.5 * cos(6.28318 * (cell - 0.62)), 0.0, 1.0);   // (kept in range: it is raised to a power below)
     float held = exp(-0.4 * cell) * step(0.1, cell) * air * air;
-    float lozenge = exp(-pow(r / (b * (0.2 + 0.4 * (1.0 - wave))), 2.0));
+    float loz = r / (b * (0.2 + 0.4 * (1.0 - wave)));
+    float lozenge = exp(-loz * loz);
     heat *= 1.0 - held * 0.45 * (1.0 - wave) * exp(-rr * rr * 3.0);
     float knot = held * pow(wave, 3.0) * lozenge;
     // the gas straight from the throat, white, for the first few radii whatever the air

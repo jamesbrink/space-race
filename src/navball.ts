@@ -235,9 +235,9 @@ export class Navball {
     root.className = 'navball';
     const mark = (id: Mark): string => `<i class="nav-mark nav-${id}" data-mark="${id}" title="${MARKS[id][0]}" hidden>${MARKS[id][1]}</i>`;
     root.innerHTML = `
-      <button class="navball-tuck chevron" data-nav="tuck" aria-label="Show or hide the navball" aria-expanded="true" title="Navball (I)"></button>
+      <button class="navball-tuck" data-nav="tuck" aria-label="Show or hide the navball" aria-expanded="true" title="Tuck the navball away, or bring it back (I)"><span>Navball</span><i class="chevron"></i></button>
       <div class="navball-side navball-read">
-        <button data-nav="mode" title="Which speed the markers show: over the turning Earth (Surface) or in the frame that does not turn (Orbit)"><kbd>O</kbd> <b data-cell="mode"></b></button>
+        <button data-nav="mode" title="Which speed the markers show: over the turning Earth (Surface) or in the frame that does not turn (Orbit) (O)"><kbd>O</kbd> <b data-cell="mode"></b></button>
         <p class="navball-speed" title="Speed in that frame"><b data-cell="speed">0</b><i>m/s</i></p>
         <p class="navball-att"><span title="Where the nose points, degrees from north">HDG <b data-cell="heading">–</b></span><span title="The nose above the level">PIT <b data-cell="pitch">–</b></span><span title="Roll: positive is right side down">ROL <b data-cell="roll">–</b></span></p>
       </div>
@@ -257,6 +257,7 @@ export class Navball {
       const what = (e.target as HTMLElement).closest<HTMLElement>('[data-nav]')?.dataset.nav;
       if (what === 'tuck') this.tuck(!this.tucked);
       if (what === 'mode') this.setFrame(this.mode === 'surface' ? 'orbit' : 'surface');
+      (document.activeElement as HTMLElement | null)?.blur?.(); // or Space, the next event's key, would press it again
     });
     button?.addEventListener('click', () => this.tuck(!this.tucked));
     this.button = button ?? null;

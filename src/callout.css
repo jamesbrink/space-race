@@ -17,8 +17,8 @@
 .callout-clock:empty { display: none; }
 @media (max-width: 700px) { .callout-card { left: 16px; right: 16px; width: auto; bottom: 64px; padding: 13px 15px 14px; } .callout-card h2 { font-size: 18px; } .callout-clock { font-size: 9px; letter-spacing: 0.08em; bottom: 16px; max-width: calc(100vw - 24px); padding: 6px 10px; white-space: normal; text-align: center; } }
 /* outside the show, a card about a clicked thing sits under the clock, clear of the panels */
-body:not(.demo) .callout-card { left: 50%; bottom: auto; top: 136px; transform: translateX(-50%); }
-@media (max-width: 960px) { body:not(.demo) .callout-card { top: 128px; left: 16px; right: 16px; width: auto; transform: none; } }
+body:not(.demo) .callout-card { left: 50%; bottom: auto; top: var(--under-clock, 136px); transform: translateX(-50%); }
+@media (max-width: 960px) { body:not(.demo) .callout-card { top: var(--under-clock, 128px); left: 16px; right: 16px; width: auto; transform: none; } }
 /* behind the front page the show says nothing */
 body.titled .callout { display: none; }
 /* while the show runs the page is only the picture */

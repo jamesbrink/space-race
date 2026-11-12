@@ -53,6 +53,23 @@ export class Looks {
     this.dress(root);
   }
 
+  /**
+   * Something taken charge of is gone for good (a parachute, made again for every flight): it is let go, its meshes
+   * given their real materials back for whoever disposes of them, and the twins made of those materials disposed of.
+   * For what is made of materials of its own: a twin shared with something still on show would go with it.
+   */
+  remove(root: THREE.Object3D): void {
+    this.roots.delete(root);
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      const real = mesh.userData.real as THREE.Material | undefined;
+      if (!mesh.isMesh || !real) return;
+      mesh.material = real;
+      this.twins.get(real)?.dispose();
+      this.twins.delete(real);
+    });
+  }
+
   set(look: Look): void {
     if (look === this.look) return;
     this.look = look;

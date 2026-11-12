@@ -30,7 +30,10 @@ const FRAG = /* glsl */ `
   varying float vF;
   void main() {
     // dense at the nozzle, gone by the end; soft at the silhouette
-    float a = pow(1.0 - vT, 1.6) * smoothstep(0.0, 0.7, vF) * 0.5;
+    // (a varying is extrapolated past its triangle's edge at a multisampled pixel the triangle only partly covers, so
+    // 1 - vT can be just under nothing there: a power of a negative number is not a number, and one such pixel in the
+    // frame is the whole frame once the bloom has spread it)
+    float a = pow(clamp(1.0 - vT, 0.0, 1.0), 1.6) * smoothstep(0.0, 0.7, vF) * 0.5;
     gl_FragColor = vec4(vec3(0.92, 0.96, 1.0) * uBright * a, a);
   }`;
 
@@ -64,6 +67,9 @@ export class Jets {
     // a unit cone from its tip at the origin, widening along +Y to a fifth of its length across
     const unit = new THREE.CylinderGeometry(0.22, 0.02, 1, 12, 4, true);
     unit.translate(0, 0.5, 0);
+    // (no part of the model's size: the stage fits its shadow map and its views to the model's bounds, and a jet that
+    // is not firing, a metre out from the skin, would make the vehicle that much bigger once it had flown)
+    unit.boundingBox = new THREE.Box3();
     for (const t of thrusters) {
       const cone = new THREE.Mesh(unit, this.material);
       cone.name = `Jet_${t.name}`;

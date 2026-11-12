@@ -185,9 +185,18 @@ never adjusted to bring a check in.
   on the spacecraft alone, the keys are the controls themselves; Q E roll. The sequencer (B)
   sets events off at the record's times. The scene shows it through the same `Ascent`, given the
   live run (`Stage.flyRun`, ascent.ts `Run`): placed by each sample's own attitude, the spacecraft
-  turning about its centre of mass, what it sheds leaving when it is let go
-  (`Flight.flies.drops[].on`), the plume out when the engine really stops, and after the landing
-  it stays where it came down beside a card of the flight against the reports' figures. Put the
+  turning about its centre of mass (on the record's run too: the model's origin is `flies.datum` up
+  the stack and the centre of mass `capsule.centre`, and `tests/ascent.test.mjs` holds the model's
+  own landmark to the simulator's), what it sheds leaving when it is let go
+  (`Flight.flies.drops[].on`), the plume out when the engine really stops (an engine never lit, in
+  an abort off the pad, never shows one: `Run.cutoff` is then -Infinity), and after the landing
+  it stays where it came down beside a card of the flight against the reports' figures; the clock
+  runs on twelve seconds at life's pace, for the parachute to lie down, and stops. Every tick goes
+  through `Cockpit.tick`, which notes it: none is flown unseen. The simulator starts the stack's
+  base on the site's origin and the model stands on the launcher's support above it: that height
+  is eased out of where the model is drawn over the first five seconds (`Ascent.stood`), so what
+  comes down meets the surface itself. `Stage.flyRun` stands the model whole on its pad before
+  anything is hung on it again. Put the
   clock back and it shows what was flown; the record's own run is untouched and comes back on
   leaving. An abort is X twice within two seconds (the first press arms it and says so). Under the
   gauges a strip made from the flight's data shows the engine's kind and state ("fixed thrust: no
@@ -203,7 +212,7 @@ never adjusted to bring a check in.
   `flies` can be flown without being told how.
 - **The flight deck has a navball and a predicted path.** Both read what the cockpit shows
   (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
-  clock has been put back) and nothing else of it. The navball (`src/navball.ts`, I tucks it) is
+  clock has been put back) and nothing else of it. The navball (`src/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is
   the sphere of directions fixed to north, east and down at the place under the vehicle, seen
   from inside along the nose (body +X forward, +Z up, -Y right: sim/vehicle.ts), so the launch
   azimuth is at the bottom of the ball on the pad and W takes the nose toward it. O changes its

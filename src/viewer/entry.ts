@@ -187,19 +187,27 @@ const VOLUME_FRAG = /* glsl */ `
   vec3 light(float y, float r) {
     // the cap: brightest just behind the shock, which stands 0.14 off the face and opens more slowly than it
     float behind = y - (-0.14 + 0.2 * r * r);
-    float cap = smoothstep(0.0, 0.035, behind) * exp(-6.0 * max(behind, 0.0)) * exp(-pow(r / 1.3, 4.0));
+    // (squares written out: a power of a negative number is not a number on every GPU, and r - neck is negative inside the neck)
+    float capR = r * r / 1.69;
+    float cap = smoothstep(0.0, 0.035, behind) * exp(-6.0 * max(behind, 0.0)) * exp(-capR * capR);
     // the wake: a sheet from the shoulder closing to a neck, then a core streaming back
     float aft = y - uCap;
     float end = uTop - uCap + 0.8;                       // the neck: a little behind the body's end
     float neck = mix(1.04, 0.45, smoothstep(0.0, end, aft)) + 0.035 * max(aft - end, 0.0);
     float width = 0.06 + 0.035 * max(aft, 0.0);
-    float sheet = step(0.0, aft) * exp(-pow((r - neck) / width, 2.0)) * exp(-aft / 2.2);
-    float core = smoothstep(end - 1.1, end + 1.0, aft) * exp(-pow(r / (0.34 + 0.045 * aft), 2.0)) * exp(-max(aft - end, 0.0) / uLong);
+    float sheetR = (r - neck) / width;
+    float sheet = step(0.0, aft) * exp(-sheetR * sheetR) * exp(-max(aft, 0.0) / 2.2);
+    float coreR = r / max(0.34 + 0.045 * aft, 0.05);
+    float core = smoothstep(end - 1.1, end + 1.0, aft) * exp(-coreR * coreR) * exp(-max(aft - end, 0.0) / max(uLong, 1e-3));
     float runs = 1.0 + 0.14 * sin(aft * 4.0 - uTime * 26.0) * smoothstep(1.0, 4.0, aft);   // it streams: the clock's time, not the wall's
     return uFront * (3.2 * cap) + uGas * ((0.2 * sheet + 1.5 * core) * runs);
   }
   void main() {
-    vec3 dir = normalize(vAt - vEye);
+    vec3 dir = vAt - vEye;
+    if (dot(dir, dir) < 1e-12) discard;       // (the eye on the wall itself: no direction to march along)
+    dir = normalize(dir);
+    // (a ray along a wall divides nothing by nothing where it starts on that wall: lean it off by a hair)
+    dir = mix(dir, vec3(1e-7), vec3(lessThan(abs(dir), vec3(1e-7))));
     // where the ray is inside the box
     vec3 lo = (uMid - uHalf - vEye) / dir, hi = (uMid + uHalf - vEye) / dir;
     vec3 a = min(lo, hi), b = max(lo, hi);
@@ -219,7 +227,7 @@ const VOLUME_FRAG = /* glsl */ `
     }
     sum *= uGlow;
     float most = max(sum.r, max(sum.g, sum.b));
-    if (most < 0.002) discard;
+    if (!(most >= 0.002) || most > 6.0e4) discard;   // (nothing to see, or not a number: never into the frame, where the bloom would spread it)
     // (for the clouds' own draw of what has no depth: where the light begins)
     vec4 clip = uToClip * vec4((vEye + dir * (first < 0.0 ? t0 : first) - uMid) / uHalf, 1.0);
     gl_FragDepth = clamp(clip.z / clip.w * 0.5 + 0.5, 0.0, 1.0);

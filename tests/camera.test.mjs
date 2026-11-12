@@ -367,6 +367,36 @@ test('the orbiting rig: a touch ends a journey where it is, without a jump', () 
   assert.ok(posed(rig).position.distanceTo(still.position) < 1e-9, 'and stays there');
 });
 
+test('the orbiting rig takes over a view as it stands: the eye does not move, even from a view that looked up', () => {
+  const rig = new OrbitRig(world(), 35);
+  // a free camera at head height, looking up at a pivot above it: lower than the place lets the eye go round a pivot
+  const from = { position: V(-30, 2, 10), quaternion: new THREE.Quaternion(), fov: 35 };
+  rig.enter(from, V(0, 40, 0));
+  run(rig, 1, 60);
+  assert.ok(posed(rig).position.distanceTo(from.position) < 1e-6, 'the eye is where it was');
+  assert.ok(rig.pivot.y < 2 && rig.pivot.y >= 0.1, 'and the pivot has come down to where it can be turned about from there');
+  // and an ordinary view is taken over exactly
+  const level = { position: V(-30, 12, 10), quaternion: new THREE.Quaternion(), fov: 35 };
+  rig.enter(level, V(0, 5, 0));
+  rig.update(0, NONE, false);
+  assert.ok(posed(rig).position.distanceTo(level.position) < 1e-9 && rig.pivot.distanceTo(V(0, 5, 0)) < 1e-9);
+});
+
+test('the chase rig comes back as it was left, after the view has been on board or at the pad camera', () => {
+  const craft = craftAt(V(0, 3000, 0));
+  const rig = new ChaseRig(world(craft), 35, 'chase');
+  rig.enter({ position: V(70, 3030, -20), quaternion: new THREE.Quaternion(), fov: 35 }, V(0, 0, 0));
+  rig.zoom(0.4, null);
+  run(rig, 2, 60);
+  const left = posed(rig).position.sub(rig.pivot);
+  craft.matrix.makeTranslation(500, 9000, 0);
+  // back from the pad camera, three kilometres off: not carried on from there, but as it was
+  rig.enter({ position: V(-90, 1.7, 110), quaternion: new THREE.Quaternion(), fov: 0.5 }, V(500, 9010, 0), true);
+  rig.update(0, NONE, false);
+  assert.ok(posed(rig).position.sub(rig.pivot).distanceTo(left) < 1e-6, 'the same side, the same distance');
+  assert.ok(rig.handSet, 'and the distance is still the one the hands set');
+});
+
 test('the chase rig is carried with the vehicle: the view moves only as the hands move it', () => {
   const craft = craftAt(V(0, 5000, 0));
   const rig = new ChaseRig(world(craft), 35, 'chase');
