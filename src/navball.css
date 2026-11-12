@@ -43,7 +43,7 @@
 /* while the engine burns under guidance, which future: two halves of one control, the one on show lit */
 .path-read .path-kind { align-items: center; gap: 0; margin-top: 5px; }
 .path-read .path-kind kbd { margin-right: 6px; }
-.path-read .path-kind button { margin: 0; padding: 2px 7px; border-radius: 0; color: var(--faint); }
+.path-read .path-kind button { margin: 0; padding: 2px 7px; border-radius: 0; color: var(--faint); white-space: nowrap; }
 .path-read .path-kind button + button { border-left: 0; }
 .path-read .path-kind button[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); background: rgba(255, 196, 107, 0.08); }
 /* (which frame the line is drawn in is what the Surface or Orbit switch above already says) */
@@ -94,6 +94,9 @@
   .path-read p { gap: 5px; }
   .path-read p span { width: auto; letter-spacing: 0.04em; }
   .path-read .path-head .path-as { display: none; }
+  /* (the two halves on one line: no K before them, a finger presses them, and closer letters) */
+  .path-read .path-kind kbd { display: none; }
+  .path-read .path-kind button { padding: 2px 5px; letter-spacing: 0.03em; }
   .navball-tuck { top: 2px; right: 0; }
 }
 @media (max-height: 520px) {
