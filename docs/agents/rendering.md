@@ -326,6 +326,18 @@ What has been found, so it is not found again:
   and left alone four minutes. The diagnostics line shows a lamp while it is acting. It is never a way to make a
   scene affordable on a capable machine: 24 ms a frame is that scene's fault and is to be fixed there. `pnpm bench`
   switches it off while it drives frames and its soak reports the least resolution drawn at.
+- **A pass over the multisampled frame is the dear thing, not what it draws.** The frame is 4x multisampled half
+  floats; a full-screen quad blended into it reads every sample back, writes every sample and has the whole frame
+  resolved again. The glow did that to add itself (three's UnrealBloomPass ends by blending over the frame), as the
+  clouds once did. It is now added in the output's own pass, under the clouds (`bloom.ts`: `Bloom.adopt`): 1.2 to 2.9
+  ms a frame at 1440x900 on a dense screen, in every view, with the same picture (no pixel by more than one level).
+  Its blurs are sized in CSS pixels, so the glow is as wide on any screen (it was half as wide on a dense one as on a
+  plain one; the dense screen's is the one kept). Halving the finest blur's size as well bought nothing that could
+  be measured and was up to 6 levels out, so it was not kept. GPU timer queries round each pass (scratch `gpu.mjs`)
+  put the glow at a fifth to two fifths of the frame and did not move when its work was quartered: on this GPU
+  (tile-based) they charge a pass with the loading and storing of whatever target it leaves, and are no guide to
+  what a pass's own drawing costs. `sr.stage.bloomOld = true` (and `?plain`) draws it three's way, for measuring.
+  Anything new that wants to lay something over the whole frame does it in the output's pass too.
 - **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame at 1440x900 is
   bound by the CPU (three's work per draw call), so a batch per material per file was built, with the meshes left
   in the scene on a layer the camera did not see (so picking, outline, cutaway, moves, levels of detail and
@@ -416,4 +428,4 @@ is under takes one. Today the site's ground reads 13 and the globe 11; a model's
   one array texture, each in its layer's corner (`packLayer`: the region's near, wide and relief maps are layers 0 to
   2 of `uGlobeFlat`). They are copied in on the GPU texel for texel as they arrive, so what is read is the file's own
   bytes; a map that has not arrived reads 0. A new one-channel map goes into a spare channel or layer, not a new sampler.
-- The clouds' composite (the output pass) reads 12 and is not lit: it is outside the budget, but is not to grow past 16.
+- The output pass reads 13 (the clouds' composite 12, the glow 1) and is not lit: it is outside the budget, but is not to grow past 16.

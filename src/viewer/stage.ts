@@ -25,6 +25,7 @@ import { ExhaustPass } from './exhaust';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
 import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait';
 import { Jets } from './jets';
+import { Bloom } from './bloom';
 import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
@@ -365,6 +366,28 @@ export class Stage {
    */
   private readonly debris: { node: THREE.Object3D; parent: THREE.Object3D; drop: number; holder: THREE.Group; rel: THREE.Matrix4 }[] = [];
   private readonly ink = new InkPass();
+  /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
+  readonly bloom = new Bloom(0.14, 0.6, 2.4);
+  private bloomWas: UnrealBloomPass | null = null;
+
+  /**
+   * The glow the old way, for measuring the new against it (`?plain` sets it): three's own pass, at the drawing
+   * buffer's size with its blurs in texels, blended over the multisampled frame. Made the first time it is asked for.
+   */
+  get bloomOld(): boolean {
+    return this.bloomWas?.enabled ?? false;
+  }
+  set bloomOld(on: boolean) {
+    if (on && !this.bloomWas) {
+      this.bloomWas = new UnrealBloomPass(new THREE.Vector2(1, 1), this.bloom.strength, this.bloom.radius, this.bloom.threshold);
+      this.composer.insertPass(this.bloomWas, this.composer.passes.indexOf(this.bloom));
+      const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+      this.bloomWas.setSize(size.x, size.y);
+    }
+    if (this.bloomWas) this.bloomWas.enabled = on;
+    this.bloom.enabled = !on;
+    this.dirty = true;
+  }
 
   private setting: Setting;
   private root: THREE.Group | null = null;
@@ -547,9 +570,11 @@ export class Stage {
     this.outline.visibleEdgeColor.set(0xffc46b);
     this.outline.hiddenEdgeColor.set(0x9a7434); // dimmer than the visible edge, but still an outline
     this.composer.addPass(this.outline);
-    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.14, 0.6, 2.4));
+    this.composer.addPass(this.bloom);
     const output = new OutputPass();
     this.clouds.adopt(output); // (the clouds are laid over the frame as it goes to the screen)
+    this.bloom.adopt(output); // (and the glow added under them, in the same pass)
+    if (this.plain) this.bloomOld = true;
     this.composer.addPass(output);
     this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes, [this.sun, this.far.light, this.far.sky, this.fill]); // (the only light with a shadow, the only sky light)
     this.applySetting();
@@ -2507,6 +2532,7 @@ export class Stage {
     this.renderer.setSize(w, h, false);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(w, h);
+    this.bloom.fit(w, h);
     this.dirty = true;
   }
 
@@ -2655,6 +2681,7 @@ export class Stage {
     this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)
     // (a frozen stage keeps nothing of an earlier frame: the clouds' blend with their last frames is the one thing that would)
     (this.clouds as { frozen?: boolean }).frozen = this.frozen;
+    this.bloom.before();
     this.origin.draw(() => this.composer.render(this.sinceDrawn));
     this.far.after();
     unshake?.();

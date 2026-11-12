@@ -50,6 +50,7 @@ src/
   viewer/shadowcache.ts               on foot, the fine shadow map kept between steps: only the walker drawn into it again while nothing else has changed
   viewer/quality.ts                   the net under the frame rate: for a weak machine, if chosen: resolution lowered a step only while frames stay under 30 a second, and put back
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
+  viewer/bloom.ts                     the glow round what is over-bright: sized in CSS pixels, added in the output's pass
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/bulk.ts                      where a part's bulk is: the middle of its surface, the same however it is cut into meshes (a callout's point)
   viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
@@ -124,6 +125,7 @@ tools/
   build-model.mjs                     runs a flight's model scripts through Blender
   lod-thresholds.mjs                  each model's and piece's own level-of-detail thresholds: measured in a browser (lod-measure.mjs), kept in model/<name>.lod.json, put into the GLB's extras
   flicker-test.mjs                    browser check for z-fighting
+  frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)

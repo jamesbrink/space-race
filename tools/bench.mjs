@@ -436,7 +436,7 @@ function inPage(DT) {
     else if (p === st.ink) name = 'ink';
     else if (p === st.outline) name = 'outline';
     else if (p.scene === st.scene && 'clearDepth' in p && 'overrideMaterial' in p) name = 'scene';
-    else if ('bloomTintColors' in p || 'nMips' in p) name = 'bloom';
+    else if (p === st.bloom || 'bloomTintColors' in p || 'nMips' in p) name = 'bloom';
     else if (i === st.composer.passes.length - 1) name = 'output';
     else if (p.scene === st.scene || 'veils' in p || i === 4) name = i === 4 ? 'exhaust' : `effect${i}`;
     return { p, name };
