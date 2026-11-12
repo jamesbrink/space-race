@@ -232,13 +232,17 @@ export interface Hip {
  * comes up a hair as its legs come upright). `sway` is how far the hips ride to the figure's
  * left, over whichever foot has the weight, metres: each leg is turned back by that much (`L.lean`,
  * `R.lean`: radians in from where it stands), so a planted foot is not carried sideways with
- * them. `ground` is 1 on the ground and 0 off it: in the air the pelvis is square.
+ * them. `ground` is 1 on the ground and 0 off it: in the air the pelvis is square. `drop` is how
+ * far the hips are below standing height (`rise + sag`, as a positive number): a leg that leans
+ * reaches less far in the lower its hip is, so its lean is worked from the hip's real height, and
+ * the foot stays on its line as the hips rise and fall over it.
  */
 export function carriage(
   phase: number,
   speed: number,
   limbs: Limbs,
   ground = 1,
+  drop = 0,
 ): { turn: number; tip: number; sway: number; settle: number; L: Hip & { lean: number }; R: Hip & { lean: number } } {
   const a = phase * Math.PI * 2;
   const s = Math.sin(a);
@@ -255,21 +259,29 @@ export function carriage(
   // the hips ride over whichever foot has the weight: the left's from its landing (phase 0.25) until the right's
   const most = at(speed, 0.018, 0.012);
   const sway = most * Math.sin(a - Math.PI / 4) * ground;
-  const back = Math.asin(Math.min(0.3, Math.max(-0.3, sway / leg)));
-  const tilt = { L: lean - splay + back, R: lean - splay - back };
   const down = half * Math.sin(Math.abs(tip));
   // (low enough for whichever leg is tilted furthest at any point of the stride: the planted one always reaches the ground)
   const furthest = Math.abs(lean - splay) + (most * ground) / leg;
   const settle = leg * (Math.cos(furthest) - Math.cos(splay)) - down;
   const ahead = -half * Math.cos(tip) * Math.sin(turn);
   const up = half * Math.sin(tip);
+  // Each leg's tilt, from where its hip joint is to where its foot belongs: the stride's line, as far as the stride is
+  // a stride, and where the figure stands otherwise. The hip is `sway` to the left of the middle and this high over the ankle.
+  const line = stand - Math.max(0, stand - track(speed)) * moving * ground;
+  const tilted = (aside: number, lift: number): { tilt: number; lean: number } => {
+    const tilt = Math.atan2(half + aside - line, leg * Math.cos(splay) - drop + lift);
+    const turned = tilt + splay;
+    return { tilt, lean: Math.abs(turned) < 1e-12 ? 0 : turned };
+  };
+  const left = tilted(sway, settle + up);
+  const right = tilted(-sway, settle - up);
   return {
     turn,
     tip,
     sway,
     settle,
-    L: { ahead, up: settle + up, dip: down - up, tilt: tilt.L, splay, lean: lean + back },
-    R: { ahead: -ahead, up: settle - up, dip: down + up, tilt: tilt.R, splay, lean: lean - back },
+    L: { ahead, up: settle + up, dip: down - up, tilt: left.tilt, splay, lean: left.lean },
+    R: { ahead: -ahead, up: settle - up, dip: down + up, tilt: right.tilt, splay, lean: right.lean },
   };
 }
 
@@ -371,7 +383,7 @@ function touchdown(limbs: Limbs, speed: number): number {
   const knee = bend(speed, Math.cos(a));
   const all = limbs.thigh + limbs.shin + limbs.ankle;
   // (the left foot's landing: its hip is where the pelvis has it then, turned forward with the leg, and the leg leans in)
-  const pelvis = carriage(0.5 - st, speed, limbs);
+  const pelvis = carriage(0.5 - st, speed, limbs, 1, sink(0.5 - st, speed, 0));
   const hip = pelvis.L;
   const upright = Math.cos(hip.tilt);
   // (standing, the hip joints are this far over the ankles: a leg that stands out from its hip stands a hair lower)
@@ -425,7 +437,7 @@ function leaving(limbs: Limbs, speed: number, crouch: number): number {
   const all = limbs.thigh + limbs.shin + limbs.ankle;
   // the knee, and the toes the foot rocks on: ahead of the hip, and above the ground
   // (from the left hip as the pelvis has it at that moment: turned back with the leg)
-  const hip = carriage(0.5 + st, speed, limbs).L;
+  const hip = carriage(0.5 + st, speed, limbs, 1, lowered(0.5 + st, speed, crouch, limbs)).L;
   const kx = hip.ahead - limbs.thigh * Math.sin(thigh);
   const ky = all - lowered(0.5 + st, speed, crouch, limbs) + hip.up - limbs.thigh * Math.cos(thigh);
   const px = -st * span(speed, all) + TOES;
@@ -468,7 +480,7 @@ function asked(limbs: Limbs, side: 'L' | 'R', phase: number, speed: number, crou
   if (landed >= 1) return { least, toes: 0 };
   // how far up the toes are as the heel lands: what the landing leg at its straightest has them at
   const all = limbs.thigh + limbs.shin + limbs.ankle;
-  const pelvis = carriage(0.5 - st, speed, limbs);
+  const pelvis = carriage(0.5 - st, speed, limbs, 1, lowered(0.5 - st, speed, crouch, limbs));
   const up = -planted(limbs, st * span(speed, all), 0, lowered(0.5 - st, speed, crouch, limbs), pelvis.L, straight).pitch;
   return { least, toes: up * (1 - landed) ** 2 };
 }
@@ -557,6 +569,8 @@ export function footOf(limbs: Limbs, thigh: number, knee: number, drop: number):
   return [-(a * Math.sin(thigh) + b * Math.sin(thigh + knee)), a + b - drop - (a * Math.cos(thigh) + b * Math.cos(thigh + knee))];
 }
 
+/** How far under the ground a foot may be told to be before its leg is bent to lift it, metres. */
+const GRAZE = 0.003;
 /** How much of the drop of its hip a swinging leg takes up by bending: all of it and half as much again. */
 const CLEAR = 1.5;
 /** How much nearer the hip a planted foot may be than a straight leg reaches before the knee is asked to bend for all of it, metres. */
@@ -596,7 +610,7 @@ export function pose(m: Moment): Pose {
   const bob = sink(m.phase, speed, crouch);
   const drop = bob + sag(m.phase, speed, crouch, limbs);
   // The pelvis's own motion, which the planted legs are solved from: it is the ground's while there is ground.
-  const pelvis = carriage(m.phase, speed, limbs, g);
+  const pelvis = carriage(m.phase, speed, limbs, g, drop);
   for (const side of ['L', 'R'] as const) {
     const sign = side === 'L' ? 1 : -1;
     let hip = -sign * thigh * s;
@@ -646,6 +660,29 @@ export function pose(m: Moment): Pose {
     const turned = out[`UpperLeg.${side}`] + out[`LowerLeg.${side}`];
     // (the toes of a leg reaching for its landing come up late: a heel held low is a heel in the ground)
     out[`Foot.${side}`] = -(0.6 + 0.4 * foot.hold * g) * turned + toe * (toe < 0 ? foot.hold ** 2 : foot.hold) * g;
+    // A foot does not go into the ground. Where the stride would put its heel or its toes under it (a
+    // runner's foot coming in to land, most of all) the leg bends by what lifts the foot clear, and the
+    // foot keeps the pitch it had. (Not for a graze: a leg all but straight bends a long way to lift its foot a millimetre.)
+    if (g > 0) {
+      const joint = pelvis[side];
+      const pitch = turned + out[`Foot.${side}`];
+      const [ax, ay] = footAt(limbs, out[`UpperLeg.${side}`], out[`LowerLeg.${side}`], drop, joint);
+      const low = ay + limbs.ankle * (1 - Math.cos(pitch)) + Math.min(HEEL * Math.sin(pitch), -TOES * Math.sin(pitch));
+      if (low < -GRAZE) {
+        const span = limbs.thigh + limbs.shin;
+        const to = (y: number) =>
+          legTo(limbs, ax - joint.ahead, y, span - y - (span * Math.cos(joint.splay) - drop + joint.up - y) / Math.cos(joint.tilt));
+        const was = to(ay);
+        // (coming in gently: nothing of it at the graze, all but the graze well under)
+        const under = -low - GRAZE;
+        const now = to(ay + ((under * under) / (under + 3 * GRAZE)) * g * g);
+        const thigh = now.thigh - was.thigh;
+        const knee = Math.max(-out[`LowerLeg.${side}`], now.knee - was.knee);
+        out[`UpperLeg.${side}`] += thigh;
+        out[`LowerLeg.${side}`] += knee;
+        out[`Foot.${side}`] -= thigh + knee;
+      }
+    }
   }
   // Each arm goes with the opposite leg. One that carries something hangs straighter and swings
   // a third as much, held a little out from the leg it would otherwise knock.
@@ -1161,7 +1198,9 @@ export class Gait {
       foot.x,
       foot.y,
       lowered(this.phase, this.speed, this.hard * give(this.since), this.limbs),
-      carriage(this.phase, this.speed, this.limbs, 1 - this.air)[side],
+      carriage(this.phase, this.speed, this.limbs, 1 - this.air, lowered(this.phase, this.speed, this.hard * give(this.since), this.limbs))[
+        side
+      ],
       straightest(this.speed),
     );
   }
@@ -1172,7 +1211,7 @@ export class Gait {
     const p = pose(m);
     const drop = lowered(m.phase, m.speed, m.crouch ?? 0, this.limbs);
     // (as the pose just taken had the pelvis: on the ground)
-    const pelvis = carriage(m.phase, m.speed, this.limbs);
+    const pelvis = carriage(m.phase, m.speed, this.limbs, 1, drop);
     for (const side of ['L', 'R'] as const) {
       const [x, y] = footAt(this.limbs, p[`UpperLeg.${side}`], p[`LowerLeg.${side}`], drop, pelvis[side]);
       const foot = m.feet![side];

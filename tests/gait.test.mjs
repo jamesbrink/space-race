@@ -167,7 +167,8 @@ test('nothing jumps: from one twentieth of a degree of the cycle to the next no 
     for (let i = 0; i < n; i++) {
       const a = pose(i / n, speed, 0, { load, crouch });
       const b = pose((i + 1) / n, speed, 0, { load, crouch });
-      for (const j of JOINTS) assert.ok(Math.abs(a[j] - b[j]) < 1.2 * DEG, `${j} at ${i / n}, ${speed} m/s: ${(a[j] - b[j]) / DEG} deg`);
+      // (1.7 degrees: it was 1.2 until a foot was kept out of the ground, and is 1.63 at the most with that, at 3 m/s: a runner's leg is bent, quickly, to lift a foot coming in to land)
+      for (const j of JOINTS) assert.ok(Math.abs(a[j] - b[j]) < 1.7 * DEG, `${j} at ${i / n}, ${speed} m/s: ${(a[j] - b[j]) / DEG} deg`);
       assert.ok(Math.abs(a.rise - b.rise) < 0.002 && Math.abs(a.shift - b.shift) < 0.001 && Math.abs(a.sag - b.sag) < 0.002);
       const va = view({ phase: i / n, speed, load, crouch });
       const vb = view({ phase: (i + 1) / n, speed, load, crouch });

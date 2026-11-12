@@ -32,8 +32,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   heel landing to the toes leaving, to half a centimetre of the ground and a centimetre of its
   spot at a walk and a jog and two millimetres at a run (`tests/planted.test.mjs`). The figure's
   pelvis does it, not the eyes: `Pose.sag` lowers the hips to the landing by up to 3 cm more than
-  `rise`, which is all `view()` knows of and is pinned to the bit (`tests/gait.test.mjs`). Known
-  short: at a run the foot swinging in dips up to 2.5 cm under the ground before it lands.
+  `rise`, which is all `view()` knows of and is pinned to the bit (`tests/gait.test.mjs`). A foot
+  the stride would put under the ground (a runner's, coming in to land, by 2.5 cm) has its leg bent
+  to lift it: no foot is told to be more than 9 mm under at any speed, and at a walk none is more than 4 (`GRAZE`,
+  `tests/stride.test.mjs`).
 - **The pelvis moves, and the feet do not know.** Walking, the pelvis turns about the upright
   with the leg going forward (4 degrees each way at a walk, 6 at a run), tips up over the planted
   foot (3 degrees, about the hip that carries it, level as each foot lands), and each leg leans in
@@ -42,8 +44,8 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   shoulders turn against the hips. A pose still tells each thigh's swing as seen from the side:
   `Gait.apply` takes the pelvis's turn out of the thighs and the spine and keeps the soles level
   and the toes forward. The planted leg is solved from where the pelvis has its hip joint
-  (`planted`), so the foot stays on its spot in three dimensions: to a centimetre along, 8 mm
-  across and half a centimetre of the ground (`tests/stride.test.mjs`, measured on a jointed
+  (`planted`), and each leg's lean from its hip's real height, so the foot stays on its spot in
+  three dimensions: to a centimetre along, 5 mm across and half a centimetre of the ground (`tests/stride.test.mjs`, measured on a jointed
   figure). `Pose.settle` is what that costs in height; the eyes know nothing of it either.
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
   1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the

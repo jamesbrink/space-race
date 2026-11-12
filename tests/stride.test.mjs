@@ -94,7 +94,7 @@ test('in three dimensions a planted foot is on the ground and on its spot, with 
           Math.abs(on + gone - spot[side].z) < slide,
           `${speed} m/s: a planted ${side} foot is ${on + gone - spot[side].z} m along from its spot`,
         );
-        assert.ok(Math.abs(x - spot[side].x) < 0.008, `${speed} m/s: and ${x - spot[side].x} m across from it`);
+        assert.ok(Math.abs(x - spot[side].x) < 0.005, `${speed} m/s: and ${x - spot[side].x} m across from it`);
       }
     });
     assert.ok(held > 100, `${speed} m/s: feet were planted`);
@@ -180,6 +180,17 @@ test('the pelvis turns with the leg going forward and the shoulders against it; 
   gait.apply(f.root);
   f.root.updateMatrixWorld(true);
   assert.ok(Math.abs(f.at('Head').x - f.at('Hips').x) < 0.012, `the head is ${f.at('Head').x - f.at('Hips').x} m off the hips`);
+});
+
+test('a foot does not go into the ground on its way to its landing, at a walk, a jog or a run', () => {
+  for (const speed of [0.8, 1.4, 2.2, 3, 4]) {
+    walk(speed, 4, (f) => {
+      for (const side of ['L', 'R']) {
+        const low = Math.min(f.at(`heel${side}`).y, f.at(`toe${side}`).y);
+        assert.ok(low > -0.009, `${speed} m/s: the ${side} foot's lowest point is ${low} m`);
+      }
+    });
+  }
 });
 
 test('a leg that swings is bent for the hip that has come down over it: its foot is no lower than the swing had it', () => {
