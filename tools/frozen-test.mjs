@@ -115,10 +115,16 @@ const at = (pose) =>
   page.evaluate(
     async ([pose, SETTLE, DRAWS]) => {
       const { stage, clock, show, cockpit, path } = window.sr;
+      // (off the flight deck, if the last pose was on it: what it left, the vehicle back on its pad, is given time to arrive)
+      const left = pose.fly === undefined && cockpit.active;
       if (pose.fly === undefined) {
         cockpit.leave();
         show(pose.show);
         clock.seek(pose.t);
+        if (left) {
+          clock.pause();
+          await window.quiet(60, 1200);
+        }
       } else {
         // on the flight deck with the path on: lit, and flown on as fast as it can be to the instant (or put back to it)
         cockpit.enter();
