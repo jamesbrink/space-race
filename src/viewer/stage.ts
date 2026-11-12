@@ -588,7 +588,7 @@ export class Stage {
     const staged = this.staged;
     this.arriving = [];
     flight.models.forEach((def, i) => {
-      for (let level = 1; level <= LOD_ABOVE.length; level++)
+      for (let level = 1; level <= (this.fullDetail ? 0 : LOD_ABOVE.length); level++)
         this.arriving.push(
           this.fetch(lodUrl(def.url, level)).then((object) => {
             if (staged !== this.staged) return;
@@ -599,7 +599,8 @@ export class Stage {
           }),
         );
     });
-    this.setting = this.settings.get(flight.models[0]!.backdrop, flight);
+    // (a flight with no site has no place and no hour: its models stand in a setting that needs neither)
+    this.setting = this.settings.get(flight.models[0]!.backdrop, flight.site ? { site: flight.site, launch: flight.launch } : undefined);
     this.applySetting();
     // the place round the pad arrives when it arrives: the flight can be studied without it
     for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) this.scene.remove(o);
@@ -925,7 +926,7 @@ export class Stage {
         if (hit && (!ground || hit.distance <= origin.distanceTo(ground))) return { point: hit.point.clone(), ground: false };
         return ground && { point: ground, ground: true };
       },
-      free: () => !this.walk.active,
+      free: () => !this.walk.active && !this.asleep,
       piloted: () => this.piloted,
       watching: () => !this.inert && !this.frozen && this.defs[this.current]?.id === this.ascent?.model,
     };
@@ -1366,6 +1367,7 @@ export class Stage {
     }
     this.apartGoal[this.current] = this.apartOwn[this.current] = t;
     this.setApart(this.current, t);
+    if (this.stood) this.ground();
     this.fitBounds();
     this.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
   }
@@ -1480,7 +1482,8 @@ export class Stage {
    * so that whoever lifts the curtain afterwards sees motion that is already steady.
    */
   async warm(patience = 9000): Promise<void> {
-    const clouds = this.clouds.warm(); // (made a little at a time while the rest arrives)
+    // (made a little at a time while the rest arrives; a setting with no air has no clouds to make)
+    const clouds = this.setting.fog ? this.clouds.warm() : Promise.resolve();
     const settled = Promise.allSettled(this.arriving);
     await Promise.race([settled, new Promise((done) => setTimeout(done, patience))]);
     const frames = async (n: number) => {
@@ -1752,7 +1755,7 @@ export class Stage {
     this.sun.shadow.normalBias = Math.max(0.012, radius / 900);
     // a texel of the map covers more ground the wider it is spread; a wall the Sun grazes needs the depth bias to match
     this.sun.shadow.bias = -Math.max(0.0002, radius / 40000);
-    this.shadowGrain(SHADOW_MAP, 1);
+    this.shadowGrain(SHADOW_MAP, this.setting.shadowRadius ?? 1);
     this.renderer.shadowMap.needsUpdate = true;
   }
 
@@ -1851,7 +1854,7 @@ export class Stage {
     let changed = false;
     this.staged.forEach((s, i) => {
       const distance = Math.max(this.camera.position.distanceTo(s.sphere.center) - s.sphere.radius * 0.6, s.sphere.radius * 0.1);
-      changed = s.choose(scale / distance, i === this.current && this.cut) || changed;
+      changed = s.choose(scale / distance, this.fullDetail || (i === this.current && this.cut)) || changed;
     });
     if (this.scenery?.choose(this.camera.position, scale)) changed = true;
     if (!changed) return;
@@ -3228,6 +3231,138 @@ export class Stage {
       this.camera.far = far;
       this.camera.updateProjectionMatrix();
     }
+  }
+
+  // --- a stage that is a room and not a place: what the gallery asks of its own (src/gallery.ts) ---
+
+  /**
+   * Every model is drawn in full, whatever its size on screen, and its coarser levels are not
+   * fetched: a thing shown to be studied is never the coarser one. Set before `load`.
+   */
+  fullDetail = false;
+
+  private asleep = false;
+  /**
+   * Stop (another stage has the page) or start again. Asleep it draws nothing, hears no key and
+   * advances no clock: everything on it is, when it wakes, exactly as it was left.
+   */
+  sleep(on: boolean): void {
+    if (on === this.asleep) return;
+    this.asleep = on;
+    this.cam.keys.clear();
+    this.renderer.setAnimationLoop(on ? null : () => this.frame());
+    if (on) return;
+    this.timer.update(); // (the time it slept is not time that passed)
+    this.resize();
+    this.renderer.shadowMap.needsUpdate = true;
+    this.dirty = true;
+  }
+
+  get sleeping(): boolean {
+    return this.asleep;
+  }
+
+  /** The setting on show, for whoever built it and has more to say to it than a stage knows (the studio's tone: studio.ts). */
+  get place(): Setting {
+    return this.setting;
+  }
+
+  /** The setting has been changed where it stands (its tone, what stands in it): take it up again. */
+  reset(): void {
+    this.applySetting();
+    this.fitShadows();
+  }
+
+  /** Fetch a model that is no part of the flight and dress it as the flight's are (the gallery's figure for scale). Whoever asks puts it somewhere. */
+  model(url: string): Promise<THREE.Object3D> {
+    return this.fetch(url).then((object) => {
+      rest(object);
+      return object;
+    });
+  }
+
+  /** What the section's model has had taken off the stage (`only`), and where each piece goes back. */
+  private readonly away: { node: THREE.Object3D; parent: THREE.Object3D }[] = [];
+  /** The section's model stands on the floor, whatever is left of it and however far apart it is: how far it was lifted to stand there put together. */
+  private stood: { lift: number; low: number } | null = null;
+
+  /**
+   * Leave on the stage only these parts of the section's model (their nodes; null: all of it
+   * again), standing on the floor at y = 0: a spacecraft without its booster stands where the
+   * booster stood, not in the air above it. The rest is taken out of the model, not hidden, so
+   * that everything measured, framed, picked and shadowed is what is there. For a stage drawn in
+   * full (`fullDetail`): the coarser levels know nothing of it.
+   */
+  only(nodes: readonly string[] | null): void {
+    const own = this.staged[this.current];
+    const def = this.def;
+    if (!own || !def) return;
+    for (const { node, parent } of this.away.splice(0)) parent.add(node);
+    for (const part of nodes ? def.parts : []) {
+      const node = nodes!.includes(part.node) ? null : own.full.getObjectByName(part.node);
+      if (!node?.parent) continue;
+      this.away.push({ node, parent: node.parent });
+      node.removeFromParent();
+    }
+    // put together and measured to the vertex (a box round boxes stands it a hair above the floor)
+    const apart = this.apart[this.current] ?? 0;
+    own.explode(0);
+    own.group.position.y = 0;
+    own.group.updateMatrixWorld(true);
+    const exact = new THREE.Box3().setFromObject(own.full, true);
+    this.stood = { lift: exact.isEmpty() ? 0 : -exact.min.y, low: new THREE.Box3().setFromObject(own.full).min.y };
+    own.explode(apart);
+    this.ground();
+    this.section(def.id);
+  }
+
+  /** Keep the section's model on the floor as it comes apart: a part that leaves downward lifts the rest, it does not go through the floor. */
+  private ground(): void {
+    const own = this.staged[this.current];
+    if (!own || !this.stood) return;
+    own.group.position.y = 0;
+    own.group.updateMatrixWorld(true);
+    const low = new THREE.Box3().setFromObject(own.full).min.y;
+    own.group.position.y = this.stood.lift + Math.max(0, this.stood.low - low);
+    own.group.updateMatrixWorld(true);
+    own.measure();
+    this.lamps.place();
+  }
+
+  /** The box round the section's model as it would stand put together, without taking it apart or putting it together to find out. */
+  extent(): THREE.Box3 {
+    const own = this.staged[this.current];
+    const box = new THREE.Box3();
+    if (!own) return box;
+    const apart = this.apart[this.current] ?? 0;
+    const y = own.group.position.y;
+    own.explode(0);
+    if (this.stood) own.group.position.y = this.stood.lift;
+    own.group.updateMatrixWorld(true);
+    box.setFromObject(own.full);
+    own.explode(apart);
+    own.group.position.y = y;
+    own.group.updateMatrixWorld(true);
+    return box;
+  }
+
+  /**
+   * Where on the page one of the section's parts is: the middle of the box round it, and how far
+   * to either side of that the box reaches, in pixels. Null: no such part, or it is behind the camera.
+   */
+  frameOf(node: string): { x: number; y: number; r: number } | null {
+    const object = this.parts.get(node);
+    if (!object?.parent) return null;
+    const box = new THREE.Box3().setFromObject(object);
+    if (box.isEmpty()) return null;
+    const size = box.getSize(new THREE.Vector3());
+    const middle = box.getCenter(new THREE.Vector3());
+    const away = middle.clone().sub(this.camera.position).dot(this.camera.getWorldDirection(new THREE.Vector3()));
+    if (away <= this.camera.near) return null;
+    const at = this.screenOf(middle);
+    const rect = this.canvas.getBoundingClientRect();
+    const scale = rect.height / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)));
+    return at && { ...at, r: ((Math.hypot(size.x, size.z) / 2) * scale) / away };
   }
 
   /** For tests: nothing moves unless the camera is moved, and the sky (stars are single pixels) is hidden. */

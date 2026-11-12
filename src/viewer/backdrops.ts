@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import type { BackdropKind, Flight } from '../types';
+import type { BackdropKind, SitedFlight } from '../types';
 import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
@@ -11,6 +10,7 @@ import { Globe } from './globe';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
 import type { Land } from './land';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
+import { studio } from './studio';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
 export interface Backdrop {
@@ -65,6 +65,8 @@ export interface Setting {
   globe?: Globe;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
   simplify?: (on: boolean) => void;
+  /** How soft the edge of the direct light's shadow is, in texels of its map (default 1: the Sun's, which is sharp). */
+  shadowRadius?: number;
 }
 
 /**
@@ -307,20 +309,13 @@ class DomeBackdrop implements Backdrop {
   update(): void {}
 }
 
-function pmrem(renderer: THREE.WebGLRenderer, scene: THREE.Scene): THREE.Texture {
-  const gen = new THREE.PMREMGenerator(renderer);
-  const texture = gen.fromScene(scene, 0, 0.1, 200).texture;
-  gen.dispose();
-  return texture;
-}
-
 /**
  * Where a setting is and the instant it is first shown at: a flight's site and launch. The Sun,
  * the Moon, the stars and the planets are put where they stood over that place (src/world/
  * ephemeris.ts), in the site's own frame, which is the models', and `Setting.at` moves them to
  * any other instant. Nothing in the sky is placed by hand.
  */
-export type Occasion = Pick<Flight, 'site' | 'launch'>;
+export type Occasion = Pick<SitedFlight, 'site' | 'launch'>;
 
 /** The Cape's ground is the same on any day: built once, whatever the instant. */
 let cape: ReturnType<typeof buildCape> | undefined;
@@ -555,50 +550,6 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   };
   setting.at(julianDate(when.launch));
   return setting;
-}
-
-function studio(renderer: THREE.WebGLRenderer): Setting {
-  const sunDir = new THREE.Vector3(0.5, 0.75, 0.6).normalize();
-  const backdrop = new DomeBackdrop(
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      vertexShader: /* glsl */ `
-        varying vec3 vDir;
-        void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: /* glsl */ `
-        varying vec3 vDir;
-        void main() {
-          vec3 d = normalize(vDir);
-          // a dark cove: floor colour rising to nothing, with a faint warm lift at eye level
-          vec3 col = mix(vec3(0.030, 0.032, 0.038), vec3(0.004, 0.004, 0.006), smoothstep(-0.25, 0.75, d.y));
-          col += vec3(0.05, 0.04, 0.03) * exp(-pow(d.y * 5.0, 2.0));
-          gl_FragColor = vec4(col, 1.0);
-        }`,
-    }),
-  );
-  const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(14, 96),
-    new THREE.MeshStandardMaterial({ color: 0x0d0e11, roughness: 0.5, metalness: 0.1 }),
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.002;
-  return {
-    backdrop,
-    environment: pmrem(renderer, new RoomEnvironment()),
-    // aluminised cloth mirrors whatever lights it: a dim room and one soft key, or it burns out
-    environmentIntensity: 0.32,
-    sunDir,
-    sunColor: 0xfff3e2,
-    sunIntensity: 1.5,
-    fill: [0x30343c, 0x101012, 0.35],
-    floor,
-    maxPolar: Math.PI / 2 - 0.01,
-    exposure: 0.9,
-    fog: null,
-    scenery: [],
-    horizon: 30, // the floor's edge
-  };
 }
 
 /**
