@@ -101,6 +101,11 @@ const TILE = 1024;
 const SIGMA = 0.05;
 /** A step of the march through more optical depth than this has its opacity worked out in parts (marchShader). */
 const THICK = 0.55;
+/**
+ * Which way a cloud's skin faces the Sun is read across this many of the march's pixels (and never less than 4.5 m):
+ * see where `facing` is worked out.
+ */
+const FACING = 2;
 /** The baked field stores the noise's excess over its cut, from BELOW under it to RANGE - BELOW over it. */
 const BELOW = 0.1;
 const RANGE = 0.4;
@@ -303,6 +308,7 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
   uniform vec3 uSun, uSunLight, uSkyLight, uGroundLight, uHaze;
   uniform sampler2D tLow, tOld0, tOld1;   // (sharpen) the first march's light and opacity; this one's last results
   uniform float uKeep;
+  uniform float uOld;        // (for measuring: CloudPass.old)
   in vec2 vUv;
   layout(location = 0) out vec4 oColour;   // light sent toward the eye (premultiplied), and opacity
   layout(location = 1) out vec4 oInfo;     // where the cloud began, where it was half opaque; its light (cel) and haze, per opacity
@@ -461,7 +467,7 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
     vec3 white = uSunLight + uSkyLight;
     float whiteLum = max(dot(white, vec3(0.2126, 0.7152, 0.0722)), 1e-5);
 
-    float T = 1.0, lit = 0.0, haze = 0.0, front = 6e4, mid = 6e4;
+    float T = 1.0, lit = 0.0, haze = 0.0, front = 6e4, mid = 6e4, first = 6e4, last = 6e4;
     vec3 colour = vec3(0.0);
     // Outside a cloud the ray strides over clear air; where it crosses into one the surface is found exactly
     // (bisection), and the march goes on from there in steps laid from the surface, short at first. So every pixel's
@@ -549,7 +555,17 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         // and its base are left a twentieth of that, and a thin edge against the Sun glows.
         // What has been scattered least still knows where the Sun is: a lump's side toward it is brighter than its
         // top or its flank, as any lit surface's is (the way the skin faces: it is shallower 4.5 m toward the Sun).
-        float facing = 0.5 + 0.5 * clamp((sd - toward) / 9.0, -1.0, 1.0);
+        // Far off that is read over two of this target's pixels instead: over 4.5 m it was the slope of lumps far
+        // smaller than a pixel, taken at one point of it, so a far cloud's face was lit pixel by pixel as by chance and
+        // every pixel changed as the eye climbed (of 24 pixels a frame that flipped at 20 km, 15 were this). Within a
+        // kilometre or two of the eye it is the same sample as before.
+        float span = 4.5;
+        if (uOld < 0.5 && ${FACING.toFixed(1)} * gPixel > span) {
+          span = ${FACING.toFixed(1)} * gPixel;
+          float ys;
+          density(v + uSun * span, ramp, lod, ys, toward, true, true);
+        }
+        float facing = 0.5 + 0.5 * clamp((sd - toward) / (2.0 * span), -1.0, 1.0);
         float sun = (phases.x * exp(-tau) + 0.5 * phases.y * exp(-0.35 * tau)) * facing + 0.2 * phases.z * exp(-0.15 * tau) * (0.6 + 0.4 * facing);
         // thin cloud has too little in it to scatter the light back (the powder of sugar): duller, seen with the Sun behind
         float thin = exp(-sd / 20.0);
@@ -574,6 +590,8 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         lit += w * plain;
         haze += w * hz;
         T *= 1.0 - a;
+        if (first > 5e4) first = t;
+        last = t + min(step, t1 - t);
         if (front > 5e4 && T < 0.98) front = t;
         if (mid > 5e4 && T < 0.5) mid = t;
       }
@@ -583,6 +601,14 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
     float opacity = 1.0 - T;
     if (opacity < 1e-4) return;
     oColour = vec4(colour, opacity);
+    // Thin cloud never hides half of what is behind it, and the thinnest not a fiftieth: it is in front of whatever
+    // lies past its own far side. (Left at the empty pixel's 60 km, cloud under half opaque was laid over nothing
+    // nearer than that: seen from above, with the sea a kilometre under it, every cloud was cut off at half opacity,
+    // a hard stair with no thin edge, and that line jumped a pixel to and fro as the eye climbed: half the flicker.)
+    if (uOld < 0.5) {
+      if (front > 5e4) front = first;
+      if (mid > 5e4) mid = last;
+    }
     // (the two are kept in sixteen bits, which hold three figures: the second is past the first by more than that)
     oInfo = vec4(front, max(mid, front * 1.004 + 1.0), lit / opacity, haze / opacity);
   }
@@ -1120,6 +1146,8 @@ export class CloudPass extends Pass {
   cel = false;
   /** The stage is frozen for a test (Stage.frozen): nothing of an earlier frame is kept, so a frame drawn again is the same frame. */
   frozen = false;
+  /** Draw as before the last changes to the march, for measuring the new against the old in one page (`sr.stage.clouds.old = true`). */
+  old = false;
   /**
    * What is drawn with the scene but writes no depth and can stand in front of a cloud: the engine's fire and its
    * trail. Cloud behind them is laid over them only as far as they let it through.
@@ -1223,6 +1251,7 @@ export class CloudPass extends Pass {
     uClouds: { value: 0 },
     uEyeXZ: { value: new THREE.Vector2() },
     uAbove: { value: 0 },
+    uOld: { value: 0 },
     ...weatherUniforms,
     ...atmosphereUniforms,
   };
@@ -1381,6 +1410,7 @@ export class CloudPass extends Pass {
     this.finer.uGrain.value = tall / this.finer.uLow.value.y;
     u.tDepth.value = this.mark.texture;
     u.uCel.value = Number(this.cel);
+    u.uOld.value = Number(this.old);
     this.light(fog);
 
     this.march ??= raw(marchShader(clouds, false), u);

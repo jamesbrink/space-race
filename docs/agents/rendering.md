@@ -405,6 +405,13 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   over land the streets are straight and strong; over the sea they are weak and bend, and clusters and arcs
   (`cumulusArcs`) are most of the pattern. All of it is in `cumulusBias`, which the bake, the far cover and the
   globe's shadows all read.
+- **A marched cloud's light is taken over a pixel, not at a point of it.** Whatever the march reads to light a
+  step (which way the skin faces, clouds.ts `FACING`) is read across the pixel's own breadth on the cloud: read over
+  4.5 m from 20 km, where a pixel is 14 m, a far cloud's face was lit as by chance and 15 pixels a frame flipped on
+  the climb. And every marched pixel says where its cloud is (its near side, and its far side if it never hides half
+  of what is behind): thin cloud left at the empty pixel's 60 km was laid over nothing nearer than that, so from
+  above every cloud was cut at half opacity in a hard stair that jumped as the eye moved (another 15). To measure a
+  change to the march: `sr.stage.clouds.old = true` draws it the way it was, in the same page.
 - **Far cloud is not hidden by the depth buffer's steps.** Hundreds of kilometres off one step is
   kilometres: far cloud is hidden only by what is nearer by a quarter of the way (`hidden`).
 - **The air is one model.** `atmosphere.ts` makes two tables once (transmittance, multiple scattering) and
