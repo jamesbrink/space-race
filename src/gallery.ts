@@ -18,6 +18,8 @@ import { Callout } from './callout';
 import { CURTAIN, Curtain, follow } from './curtain';
 import { type Shot, tour } from './demo';
 import { prefs } from './prefs';
+import { sheet } from './sheet';
+import './slider';
 import type { Flight, ModelDef, Part, Spec } from './types';
 import { dot, esc, legend, si } from './ui';
 import { type Anchor, cleared, type Frame, Labels, layOut } from './viewer/labels';
@@ -335,6 +337,7 @@ export class Gallery {
       <nav class="models" aria-label="What stands in the gallery">
         ${this.choices.map((p) => `<button data-plinth="${p.id}" aria-pressed="false">${esc(p.label)}</button>`).join('')}
       </nav>
+      <button class="alone" hidden title="Show the whole of it again"><b></b><span></span><i>${esc(this.choices[0]!.label)}</i></button>
 
       <aside class="panel">
         <nav class="tabs" role="tablist">
@@ -484,42 +487,12 @@ export class Gallery {
     this.untuck = () => {
       panel.classList.add('open');
       tuckPanel(false);
+      window.setTimeout(() => this.reveal(), 320); // (once the sheet has risen: before, the list has no height to scroll in)
     };
     this.canvas.addEventListener('pointerdown', () => panel.classList.remove('open'));
-    // On a phone the panel is a sheet, put away as the site's is: swiped down from its tabs, or from its content once
-    // that is scrolled to the top (otherwise the swipe is a scroll). It follows the finger.
-    let swipe: { y: number; pulling: boolean } | null = null;
-    panel.addEventListener(
-      'touchstart',
-      (e) => {
-        const pane = (e.target as HTMLElement).closest<HTMLElement>('[data-pane]');
-        const sheet = panel.classList.contains('open') && matchMedia('(max-width: 960px) and (min-height: 521px)').matches;
-        swipe = sheet && e.touches.length === 1 && (!pane || pane.scrollTop <= 0) ? { y: e.touches[0]!.clientY, pulling: false } : null;
-      },
-      { passive: true },
-    );
-    panel.addEventListener(
-      'touchmove',
-      (e) => {
-        if (!swipe) return;
-        const dy = e.touches[0]!.clientY - swipe.y;
-        if (dy < 0 && !swipe.pulling) return void (swipe = null); // upward first: a scroll, not a dismissal
-        swipe.pulling = dy > 6;
-        if (e.cancelable) e.preventDefault();
-        panel.style.transition = 'none';
-        panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
-      },
-      { passive: false },
-    );
-    const release = (e: TouchEvent) => {
-      if (!swipe) return;
-      const dy = (e.changedTouches[0]?.clientY ?? swipe.y) - swipe.y;
-      swipe = null;
-      panel.style.transition = panel.style.transform = '';
-      if (dy > 70) panel.classList.remove('open');
-    };
-    panel.addEventListener('touchend', release);
-    panel.addEventListener('touchcancel', release);
+    // On a phone the panel is a sheet a finger moves between its stops (sheet.ts: the site's is the same one). At rest
+    // again, the part being read is in view in it.
+    sheet(panel, () => window.setTimeout(() => this.settle(), 320));
     this.q('.tabs').addEventListener('keydown', (e) => {
       const key = (e as KeyboardEvent).key;
       if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
@@ -560,13 +533,25 @@ export class Gallery {
     this.showKeys(prefs.get('legendOpen'));
     this.q('.legend-toggle').addEventListener('click', () => this.showKeys(keys.classList.contains('folded')));
 
+    // What stands there is changed by a press on its name and by nothing else: not by a finger that came down on the
+    // bar on its way to the slider or the sheet under it and moved on (a press that travelled is not a choice).
+    let pressed: { x: number; y: number } | null = null;
+    this.q('.models').addEventListener('pointerdown', (e) => (pressed = { x: e.clientX, y: e.clientY }));
     this.q('.models').addEventListener('click', (e) => {
+      const travelled = pressed ? Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) : 0;
+      pressed = null;
       const id = (e.target as HTMLElement).closest<HTMLElement>('[data-plinth]')?.dataset.plinth;
       const to = this.choices.find((p) => p.id === id);
-      if (to && to !== this.plinth && this.ready) {
+      if (to && to !== this.plinth && this.ready && travelled < 10) {
         this.stand(to);
         this.host.address(this.at);
       }
+    });
+    // a part of it standing alone says so, and the note is the way back to the whole of it
+    this.q('.alone').addEventListener('click', () => {
+      if (!this.ready) return;
+      this.stand(this.choices[0]!);
+      this.host.address(this.at);
     });
     const slider = this.q<HTMLInputElement>('.explode input');
     slider.addEventListener('input', () => this.setApart(Number(slider.value)));
@@ -745,6 +730,12 @@ export class Gallery {
     stage.reset();
     this.fill();
     this.labels.name(this.parts.map((p) => ({ id: p.node, name: p.name })));
+    // (nobody is to think the rest is missing: what has been left out is named)
+    const note = this.q('.alone');
+    note.hidden = !plinth.nodes;
+    const others = this.choices.filter((p) => p.nodes && p !== plinth).map((p) => p.label.toLowerCase());
+    note.querySelector('b')!.textContent = `${plinth.label} alone`;
+    note.querySelector('span')!.textContent = others.length ? `${others.join(', ')} not shown` : '';
     this.tab('Parts');
     stage.view(WHOLE_VIEW, snap);
     this.turn();
@@ -791,6 +782,28 @@ export class Gallery {
     this.turn();
     this.tip(null);
     if (!this.touring) this.host.address(this.at);
+  }
+
+  /**
+   * The sheet has come to rest at another height: the part being read is in view in it, and what is being looked at
+   * is framed again in what is now clear above it (moving the sheet is asking for the view to be made good: a finger
+   * that slipped onto the picture on the way may have left it anywhere).
+   */
+  private settle(): void {
+    this.reveal();
+    if (!this.ready || this.touring) return;
+    this.measure();
+    const stage = this.made!.stage;
+    // (from where it is being seen from, unless that is from overhead: then from a little above the level again)
+    const overhead = stage.cam.direction().y > 0.7;
+    if (this.selected) stage.focus(this.selected, false, overhead ? { turn: 0, rise: 0.3 } : undefined);
+    else stage.view(WHOLE_VIEW, false, !overhead);
+    this.turn();
+  }
+
+  /** Bring the part being read into view in the list (which may only now have room to show it). */
+  private reveal(): void {
+    this.root.querySelector('[data-node][aria-expanded=true]')?.scrollIntoView({ block: 'nearest' });
   }
 
   /** Where among the parts the one chosen is, said between the two buttons that step through them. */

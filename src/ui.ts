@@ -1,3 +1,5 @@
+import { sheet } from './sheet';
+import './slider';
 import { CURTAIN, Curtain } from './curtain';
 import { prefs } from './prefs';
 import type { Confidence, Flight, ModelDef, Part } from './types';
@@ -416,41 +418,11 @@ export class Ui {
       if (e.key.toLowerCase() === 'c' && !root.classList.contains('walking')) this.nextCamera();
       if (e.key === '?') showLegend(legendKeys.classList.contains('folded'));
     });
-    // A sheet is put away by swiping it down: from its tabs at any time, or from its content
-    // once that is scrolled to the top (otherwise the swipe is a scroll). It follows the finger.
-    let swipe: { y: number; pulling: boolean } | null = null;
-    panel.addEventListener(
-      'touchstart',
-      (e) => {
-        const target = e.target as HTMLElement;
-        const pane = target.closest<HTMLElement>('[data-pane]');
-        const sheet = panel.classList.contains('open') && matchMedia('(max-width: 960px) and (min-height: 521px)').matches;
-        swipe = sheet && e.touches.length === 1 && (!pane || pane.scrollTop <= 0) ? { y: e.touches[0]!.clientY, pulling: false } : null;
-      },
-      { passive: true },
+    // On a phone the panel is a sheet a finger moves between its stops (sheet.ts: the gallery's is the same one). At
+    // rest again, the part being read is in view in it.
+    sheet(panel, () =>
+      window.setTimeout(() => this.root.querySelector('[data-node][aria-expanded=true]')?.scrollIntoView({ block: 'nearest' }), 320),
     );
-    panel.addEventListener(
-      'touchmove',
-      (e) => {
-        if (!swipe) return;
-        const dy = e.touches[0]!.clientY - swipe.y;
-        if (dy < 0 && !swipe.pulling) return void (swipe = null); // upward first: a scroll, not a dismissal
-        swipe.pulling = dy > 6;
-        if (e.cancelable) e.preventDefault(); // or the browser takes the gesture for a scroll and cancels the touch
-        panel.style.transition = 'none';
-        panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
-      },
-      { passive: false },
-    );
-    const release = (e: TouchEvent) => {
-      if (!swipe) return;
-      const dy = (e.changedTouches[0]?.clientY ?? swipe.y) - swipe.y;
-      swipe = null;
-      panel.style.transition = panel.style.transform = '';
-      if (dy > 70) panel.classList.remove('open');
-    };
-    panel.addEventListener('touchend', release);
-    panel.addEventListener('touchcancel', release);
     root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
     this.wheel = new Wheel(root);
     root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());

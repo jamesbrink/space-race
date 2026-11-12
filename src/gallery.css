@@ -53,13 +53,28 @@ body.gallery-settled #stage { visibility: hidden; }
    height of the view between the bar and the foot of the page is the vehicle's. */
 @media (min-width: 961px) and (min-height: 521px) {
   #gallery .controls { left: var(--edge); bottom: calc(var(--edge) + 46px); transform: none; width: min(340px, 28vw); min-width: 0; max-width: none; justify-items: stretch; gap: 12px; padding: 14px 16px 12px; }
-  #gallery .explode { max-width: none; gap: 10px; }
+  /* (the column is narrow: the slider's ends are named above it, as on a phone, and its track runs the whole width) */
+  #gallery .explode { max-width: none; display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 0 10px; }
+  #gallery .explode input[type='range'] { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+  #gallery .explode span:last-of-type { text-align: right; }
   #gallery .buttons { justify-content: flex-start; gap: 10px 6px; }
   #gallery .set { justify-content: flex-start; }
   #gallery .scale { text-align: left; }
   /* (the card over it gives it room: its figures, unfolded, would reach down into it) */
   #gallery .title { max-height: calc(100dvh - 2 * var(--edge) - 330px); overflow-y: auto; scrollbar-width: none; }
 }
+
+/* a part of the vehicle standing alone says so in the view, and the note is the way back to the whole of it */
+.alone { position: absolute; top: calc(var(--edge) + 52px); left: 50%; transform: translateX(-50%); display: flex; align-items: baseline; gap: 10px; max-width: calc(100vw - 2 * var(--edge)); padding: 7px 12px 7px 10px; white-space: nowrap;
+  background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; }
+.alone b { font: 500 11px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+.alone span { font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+.alone span:empty { display: none; }
+.alone i { font: 10px/1.4 var(--mono); font-style: normal; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); }
+.alone i::before { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 6px 1px 0; border: solid var(--amber); border-width: 0 0 1.5px 1.5px; transform: rotate(45deg); }
+.alone:is(:hover, :focus-visible) { border-color: rgba(255, 196, 107, 0.6); }
+@media (max-width: 960px) { .alone { top: 92px; left: 10px; transform: none; max-width: calc(100vw - 20px); flex-wrap: wrap; gap: 2px 10px; white-space: normal; text-align: left; } }
+@media (max-height: 520px) { .alone { top: auto; bottom: calc(var(--controls-h, 150px) + 18px); left: 10px; transform: none; max-width: calc(56vw - 20px); } .alone span { display: none; } }
 
 /* part by part: under the list, where the part is being read */
 #gallery .panel section { flex: 1; min-height: 0; }
@@ -133,6 +148,8 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   /* with the sheet up, the vehicle keeps the space above it */
   body:has(#gallery .panel.open) #gallery-stage { height: calc(100dvh - min(60dvh, 520px)); }
   #gallery .panel:not(.open) .steps { display: none; }
+  /* the picture is what a phone has least of: of the views only the whole of it keeps a button (a pinch and the parts list are the rest) */
+  #gallery .views button:not(:first-child) { display: none; }
   #gallery .models { max-width: none; }
   /* three choices of what stands there fit across a phone only without their air */
   #gallery .models button { padding-left: 8px; padding-right: 8px; letter-spacing: 0.08em; }

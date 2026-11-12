@@ -419,3 +419,21 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 @keyframes say { 0% { opacity: 0; } 6% { opacity: 1; } 78% { opacity: 1; } 100% { opacity: 0; } }
 @media (max-width: 960px), (max-height: 520px) { .notes { left: 0; transform: none; align-items: flex-start; max-width: calc(100vw - 20px); } .say { flex-direction: column; gap: 2px; white-space: normal; } }
 @media (prefers-reduced-motion: reduce) { .say.going { animation-duration: 3.2s; animation-timing-function: step-end; } }
+
+/* --- sliders under a finger (slider.ts): one style for every one of them --- */
+/* on a narrow page a slider's two ends are named above it, and its track runs the whole width */
+@media (max-width: 960px), (max-height: 520px) {
+  .explode { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 0 10px; }
+  .explode input[type='range'] { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+  .explode span:last-of-type { text-align: right; }
+}
+/* 44 px to the touch across the whole track; the thumb a 28 px mark in a 44 px one, larger and brighter while it is held; and the touch is the slider's own (it does not scroll the page or move the sheet) */
+@media (hover: none), (pointer: coarse) {
+  input[type='range'] { height: 44px; min-width: 88px; touch-action: none; cursor: default; }
+  input[type='range']::-webkit-slider-thumb { width: 44px; height: 44px; margin-top: -22px; box-shadow: none;
+    background: linear-gradient(var(--amber), var(--amber)) center / 4px 28px no-repeat, radial-gradient(circle, rgba(255, 196, 107, 0.2) 0 13px, rgba(255, 196, 107, 0.55) 13px 14px, transparent 14.5px); }
+  input[type='range'].held::-webkit-slider-thumb { background: linear-gradient(#fff3d6, #fff3d6) center / 5px 32px no-repeat, radial-gradient(circle, rgba(255, 196, 107, 0.42) 0 18px, var(--amber) 18px 19.5px, transparent 20px); }
+  input[type='range']::-moz-range-thumb { width: 44px; height: 44px; border: 0; border-radius: 0;
+    background: linear-gradient(var(--amber), var(--amber)) center / 4px 28px no-repeat, radial-gradient(circle, rgba(255, 196, 107, 0.2) 0 13px, rgba(255, 196, 107, 0.55) 13px 14px, transparent 14.5px); }
+  input[type='range'].held::-moz-range-thumb { background: linear-gradient(#fff3d6, #fff3d6) center / 5px 32px no-repeat, radial-gradient(circle, rgba(255, 196, 107, 0.42) 0 18px, var(--amber) 18px 19.5px, transparent 20px); }
+}
