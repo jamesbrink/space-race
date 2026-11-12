@@ -14,6 +14,7 @@ from .common import (
     BOOSTER_AZ,
     BOOSTER_LENGTH,
     BOOSTER_TIP_H,
+    BOOSTER_TIP_R,
     CHAMBER_AT,
     CORE_BAY,
     CORE_FUEL,
@@ -29,9 +30,10 @@ from .common import (
     booster_frame,
     core_frame,
     core_r,
+    fin,
 )
 
-SHELLS = ("Core_Skin", "Core_Frost", "Core_TailShield", "Core_InnerWall", "Core_Fittings", "Core_Fasteners", "Core_Brackets", "CoreEngine_Fairings")
+SHELLS = ("Core_Skin", "Core_Frost", "Core_TailShield", "Core_InnerWall", "Core_Fittings", "Core_Fasteners", "CoreEngine_Fairings")
 STEER_R = 1180.0  # the steering chambers from the axis, in line with the boosters
 TUNNEL_R = 160.0  # the oxygen's pipe down through the fuel tank, in its lagging
 KNEES = (NOZZLES, CORE_TAPER, BOOSTER_TIP_H, CORE_NECK, CORE_TOP)
@@ -96,7 +98,7 @@ def dome(mb: Local, h: float, r: float, depth: float, up: bool, segs: int = 64, 
 def build(base_z: float, M: dict) -> None:
     X = core_frame(base_z)
     g = group("CoreStage")
-    skin, frost, shield, wall, fit, bolts, steel = (Local(X) for _ in range(7))
+    skin, frost, shield, wall, fit, bolts, steel, bracket = (Local(X) for _ in range(8))
     lox0, lox1 = CORE_LOX
     shield_top = 1500.0  # the tail's lower part is under polished steel over asbestos
     skin.lathe([(core_r(h), h) for h in (shield_top, CORE_TAPER, lox0)], 96)
@@ -143,10 +145,20 @@ def build(base_z: float, M: dict) -> None:
         cup.lathe([(100, top - 40), (100, top + 40), (50, top + 96), (0, top + 100)], 24, flip=True)
         cup.lathe([(100, top - 40), (118, top - 40)], 24)
         arm = Local(X @ Matrix.Rotation(deg(az), 4, "Z"))
-        arm.mb = steel.mb
-        arm.box((330, 230, 150), at(core_r(BOOSTER_TIP_H) + 95, 0, BOOSTER_TIP_H + 165))
-        for k in (-1, 1):  # gussets down to the frame
-            arm.box((250, 30, 300), at(core_r(BOOSTER_TIP_H) + 60, k * 100, BOOSTER_TIP_H - 20))
+        arm.mb = bracket.mb
+        r, h, reach = core_r(BOOSTER_TIP_H), BOOSTER_TIP_H, BOOSTER_TIP_R + 150
+        arm.box((70, 460, 520), at(r + 20, 0, h + 10))  # its foot, on the frame
+        arm.box((reach - r + 20, 300, 44), at((reach + r) / 2 - 10, 0, h + 236))  # the plate over the cup
+        for k in (-1, 1):  # two webs carrying the plate's load down into the frame
+            fin(
+                arm,
+                [(r - 12, h - 250), (r + 60, h - 250), (reach, h + 120), (reach, h + 214), (r - 12, h + 214)],
+                30,
+                30,
+                r,
+                reach,
+                at(0, k * 118, 0),
+            )
     # the base: a shield with a hole for each chamber
     shield.plate(CORE_R_TAIL - 12, NOZZLES + 45, 292, [(sx * CHAMBER_AT, sy * CHAMBER_AT) for sx in (-1, 1) for sy in (-1, 1)])
     skin.build("Core_Skin", M["lacquer"], g, sharp_angle=30)
@@ -155,7 +167,8 @@ def build(base_z: float, M: dict) -> None:
     wall.build("Core_InnerWall", M["wall"], g, sharp_angle=None)
     fit.build("Core_Fittings", M["lacquer"], g, smooth=False)
     bolts.build("Core_Fasteners", M["bolt"], g)
-    steel.build("Core_Brackets", M["steel"], g, sharp_angle=35)
+    steel.build("Core_Cups", M["steel"], g, sharp_angle=35)
+    bracket.build("Core_Brackets", M["pale"], g, smooth=False)
     if interior():
         tanks, pipes, gear = Local(X), Local(X), Local(X)
         inset = 34.0

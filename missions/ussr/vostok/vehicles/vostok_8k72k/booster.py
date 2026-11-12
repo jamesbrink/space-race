@@ -122,6 +122,16 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     # the nose: a neck and the ball that carries the block's thrust into the core
     steel.lathe([(booster_r(NOSE) + 4, NOSE - 60), (52, NOSE + 30), (40, NOSE + 60), (40, BOOSTER_LENGTH - 60)], 24)
     steel.ball((0, 0, BOOSTER_LENGTH), 84, 24, 12)
+    # On the pad the whole vehicle hangs from the launch system's four arms by a fitting on each block's nose cone
+    # (RKK Energia's history: by the blocks' «силовые головки»). Where on the cone, and its form, are estimated.
+    for k in (-1, 1):
+        steel.box((50, 220, 150), on_skin(0.0, lox1 + 620, 20) @ Matrix.Translation(V(k * 105, 0, 0)))
+    steel.tube(
+        tuple(on_skin(0.0, lox1 + 620, 60).translation / MM + Vector((0, -150, 0))),
+        tuple(on_skin(0.0, lox1 + 620, 60).translation / MM + Vector((0, 150, 0))),
+        34,
+        12,
+    )
     # lengthwise welds, a duct up the side, and two small fairings by the nose (the oxygen tank's vents)
     for i in range(6):
         a = deg(30 + 60 * i)

@@ -75,7 +75,8 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | `EjectionSeat` | seat, firing mechanisms, parachute and survival packs, oxygen bottles, and the pilot (built at detail 0.75 and above) | slides out along the rails |
 | `RetainingStraps` | `Strap_1` to `Strap_4`, each a node hinged at its foot on the support ring, with its tensioner, lock fitting and antenna | each swings outward about its foot |
 | `CableMast` | `CableMast_Arm`, hinged on the forward cone: duct, cables, plug | swings outward about its foot |
-| `InstrumentModule` | both cones, the frame, support ring, shutters and their frames, jets, valves, covers, Sun sensor, antennas; the instrument frame inside | |
+| `InstrumentModule` | both cones, the frame, support ring, shutters and their frames, jets, valves, covers, Sun sensor; the instrument frame inside | |
+| `Antennas` | `Antenna_1` to `Antenna_10`, each a node with its origin at its root: the fan of three (1 to 3), the long whips (4 to 6), the ribbons (7 to 10) | built out, or with `stowed` each drawn back into the hull by `STOWED`'s vector, for a flight to slide out |
 | `GasBottles` | 14 bottles with their bands, cradles, valves and the main that joins them | |
 | `RetroEngine` | skirt, chamber, nozzle, four steering nozzles; the tank, its pressure bottle and the turbopump inside | |
 
@@ -95,7 +96,12 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 - **One antenna of the eleven is missing**, and those drawn are placed from one drawing and two
   sets of photographs that do not wholly agree: the hairpins are canes with a short return leg
   (Kaluga), where RKK Energia's drawing has closed loops.
-- **The antennas are drawn deployed and do not fold.** Under the fairing they were stowed.
+- **The antennas do not fold.** Under the fairing they were folded against the hull; how has not
+  been found. `build(stowed=True)` draws the instrument module's ten withdrawn into the hull along
+  their own lines (the ribbons straight forward), by distances chosen only so that each stays
+  inside the hull or the adapter under it, and a flight slides them out. The two whips and the rod
+  on the forward pole, and the hairpins on the straps, fit under the fairing as they are and are
+  left out.
 - **The pilot is a plain figure**: lofted limbs, a ball of a helmet with a dark visor and no face,
   no harness, hoses or communications cap. He is not built to the jointed-figure contract
   (`srlib.FIGURE`), so he cannot be walked as. The SK-1's own record (`crew/`) is not written.

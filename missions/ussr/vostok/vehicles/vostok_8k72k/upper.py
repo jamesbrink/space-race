@@ -145,7 +145,7 @@ def build_block_e(X: Matrix, M: dict) -> None:
         tanks, gear, pump = Local(X), Local(X), Local(X)
         tanks.torus(800, 460, 380, TRUSS_TOP + 560, 64, 28, power=3.0)  # the lower ring, drawn as the fuel's
         tanks.torus(800, 460, 480, TRUSS_TOP + 1440, 64, 28, power=3.0)  # the upper, drawn as the oxygen's
-        tanks.lathe([(1245, TRUSS_TOP + 700), (1245, TRUSS_TOP + 1300)], 64)  # the cylinder that joins them
+        tanks.lathe([(1150, TRUSS_TOP + 820), (1150, TRUSS_TOP + 1080)], 64)  # the cylinder that joins them
         # the turbopump and gas generator beside the chamber's head
         pump.lathe([(0, -170), (95, -170), (95, 170), (0, 170)], 16, frame(V(0, 215, E_EXIT + 1330), (1, 0, 0)))
         pump.ball((150, -160, E_EXIT + 1420), 85, 16, 8)

@@ -145,7 +145,7 @@ class Local:
         for k in range(n + 1):
             t = TAU * k / n
             c, s = math.cos(t), math.sin(t)
-            pts.append((big - a * math.copysign(abs(c) ** (2 / power), c), z + b * math.copysign(abs(s) ** (2 / power), s)))
+            pts.append((big + a * math.copysign(abs(c) ** (2 / power), c), z + b * math.copysign(abs(s) ** (2 / power), s)))
         self.lathe(pts, segs)
 
     def plate(self, radius: float, z: float, hole: float, centres, down: bool = True, n: int = 24) -> None:
@@ -214,7 +214,7 @@ def materials() -> dict:
     from srlib import material as m
 
     return {
-        "lacquer": m("paint-booster-greygreen", (0.21, 0.26, 0.22), 0.1, 0.55),
+        "lacquer": m("paint-booster-greygreen", (0.19, 0.235, 0.20), 0.1, 0.55),
         "frost": m("frost-lox", (0.90, 0.93, 0.96), 0.0, 0.95),
         "pale": m("paint-booster-palegrey", (0.56, 0.58, 0.56), 0.1, 0.5),
         "shield": m("steel-polished", (0.66, 0.66, 0.64), 1.0, 0.22),
@@ -228,9 +228,9 @@ def materials() -> dict:
         "liner": m("chamber-liner", (0.34, 0.24, 0.18), 1.0, 0.45),
         "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.62),
         "dark": m("heatshield-dark", (0.07, 0.065, 0.06), 0.4, 0.7),
-        "deflector": m("deflector-brown", (0.30, 0.20, 0.14), 0.2, 0.8),
+        "deflector": m("deflector-brown", (0.13, 0.085, 0.06), 0.2, 0.8),
         "equipment": m("equipment-grey", (0.13, 0.14, 0.15), 0.3, 0.55),
-        "pipe": m("aluminium-pipe", (0.56, 0.57, 0.57), 0.9, 0.6),
+        "pipe": m("steel-pipe", (0.40, 0.40, 0.41), 1.0, 0.5),
     }
 
 

@@ -12,7 +12,7 @@ for what each number rests on.
 
 Top-level nodes (the viewer's part list keys on these names):
     DescentModule  EntryHatch  ParachuteHatch  Cabin  EjectionSeat
-    RetainingStraps  CableMast  InstrumentModule  GasBottles  RetroEngine
+    RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
     Fairing  BlockE  Interstage  CoreStage  CoreEngine  Booster_B  Booster_V  Booster_G  Booster_D
 """
 

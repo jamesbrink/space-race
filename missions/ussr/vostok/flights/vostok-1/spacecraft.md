@@ -6,8 +6,10 @@ confidence and basis, is in the type's record: [vostok-3ka.md](../../vehicles/vo
 (one place per number). This file is what is particular to No. 3 and to this flight, how the model
 was checked, and where it still disagrees with what it was checked against.
 
-It is shown **as in orbit**: antennas out, the four straps and the cable mast holding the two
-modules together, the sphere under its foil-faced insulation. The charred brown ball in the RKK
+It is built as it rode under the fairing, on Block E's adapter, with the instrument module's ten
+antennas drawn in; as the vehicle is taken apart they come out, and with the launch vehicle gone
+and before anything of its own moves it is **as in orbit**: antennas out, the four straps and the
+cable mast holding the two modules together, the sphere under its foil-faced insulation. The charred brown ball in the RKK
 Energia museum is the same sphere after entry, with the insulation and most of the shield gone.
 
 **Confidence**: *documented* is a published figure; *derived* is computed from documented ones;
@@ -80,8 +82,9 @@ What the model simplifies or leaves out as a type is listed in
 [vostok-3ka.md](../../vehicles/vostok-3ka.md), "What the model gets wrong or leaves out". For this
 flight in particular:
 
-- **No launch configuration.** The fairing, Block E and its adapter are not built, and the
-  antennas do not stow.
+- **The launch configuration is approximate.** The fairing, Block E and its adapter are built
+  ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)), but the antennas are withdrawn, not folded,
+  and nothing joins the ship to the adapter but four pushers.
 - **Nothing after separation of the modules.** The descent module's look during and after entry
   (insulation gone, shield charred, hatches off, the antennas burned away) is not modelled.
 - **The seat does not leave as it flew.** On show it slides out along its rails; the flown

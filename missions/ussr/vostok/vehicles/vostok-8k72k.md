@@ -206,12 +206,12 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 
 | Node | Contains | Leaves as |
 | --- | --- | --- |
-| `Fairing_Left`, `Fairing_Right` | the two halves; the hatch opening is in the right-hand one's edge | slide apart and fall back |
+| `Fairing` | `Fairing_Left`, the half with the round opening, and `Fairing_Right`, each a node with its origin at its foot | each tips outward about its foot and falls away |
 | `BlockE` | the stage: tanks, adapter the spacecraft stands on, engine, steering nozzles | lifts off the lattice |
 | `Interstage` | the lattice and the deflector cone | stays on the core |
-| `CoreStage` | Block A's airframe and tanks | |
+| `CoreStage` | Block A's airframe and tanks, and the four cups the boosters' tips push into | |
 | `CoreEngine` | the RD-108: four chambers, four steering chambers in their fairings, turbopump | |
-| `Booster_B`, `_V`, `_G`, `_D` | each strap-on whole, with its RD-107 and air rudder; the node's origin is on its tip ball | swings out about its tip, then falls away |
+| `Booster_B`, `_V`, `_G`, `_D` | each strap-on whole, with its RD-107, air rudder, the two ties at its foot and the fitting on its nose it hangs by; the node's origin is the middle of its tip ball | swings out about its tip, then falls away |
 
 ## What the model gets wrong or leaves out
 
@@ -249,4 +249,24 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 
 ## Discrepancies seen against photographs
 
-Recorded as the model was compared with K, V, F and N; see the flight's README for the views.
+Recorded as the model was compared, view by view, with K, V, F and N.
+
+- **Boosters against N.** The model's boosters are fatter low down than NASA's outline draws them:
+  a 5.6 m cylinder where it has 3.3 m, and an outer edge 9.4° off vertical where it has 8.3°. K,
+  seen side on, is nearer the model. A drawing with stations would settle it.
+- **Core against N.** N draws the core 3.09 m across at the boosters' tips; the model has the
+  documented 2.95 m. N's lattice is 1.1 m and sits lower; the model has the documented 1.26 m
+  ending 28.75 m up.
+- **Fairing against K.** K's nose is a curved ogive with a blunt cap and its opening sits higher
+  on the cylinder; the model's is N's straight cone. Film stills (F) of 1961 are too coarse to say
+  which the flown one was.
+- **The base against V.** V's core tail is squarer, with the four steering chambers in recessed
+  corners; the model's tail is round with a fairing over each. V's boosters carry their steering
+  chambers on open outriggers beside the rudder; the model has closed fairings. V's shields are
+  flat plates with stiffening beads; the model's are plain.
+- **Tail sections against K.** K shows scalloped doublers round the tails and more hatches,
+  blisters and pipe fairings than are modelled; the model has plain bands.
+- **Colour against F.** F's bare skin is darker and greyer than the model's in bright light; the
+  frost's lower edge in F is ragged and lies a little above the boosters' shoulders.
+- **Triangles**: 403,788 at full detail, 204,741 and 98,744 at the two coarser levels, the
+  spacecraft's 129 thousand included: less than the Mercury-Redstone stack at each level.

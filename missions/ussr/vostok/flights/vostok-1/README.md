@@ -13,12 +13,37 @@ the pilot ejecting from the descent module and landing by parachute near the Vol
 | Launch vehicle (8K72K: core, four strap-ons, lattice, Block E, fairing) | **built**, every station estimated: [vostok-8k72k.md](../../vehicles/vostok-8k72k.md) |
 | Launch site (Site 1) | not built; its position only: [site-1.md](../../sites/site-1.md) |
 | Crew (Gagarin in the SK-1, to be walked as) | not built; a plain seated figure rides in the spacecraft |
-| Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies |
+| Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies. What was found toward one is in [vostok-8k72k.md](../../vehicles/vostok-8k72k.md), "What a staged trajectory will need" |
 
 So the viewer shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in
 the studio setting with nothing holding it up: to be turned, cut open and taken apart the way it
 staged, down to the spacecraft as it was in orbit. Everything below is the record that the rest
 will be built from.
+
+## The launch vehicle as flown
+
+8K72K No. E103-16: all five engines of the core and the four strap-ons lit on the pad, thirty-two
+chambers, at a liftoff mass of 287 t. What each stage did, and when, as far as the sources read
+give it ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md) has the stages' figures and what a
+simulated ascent will need):
+
+| T+ | Event | How | Source |
+| --- | --- | --- | --- |
+| 0 | Liftoff on about 4,000 kN | Four RD-107 and the RD-108, burning together | thrust: Energomash's table by way of Brügge; Siddiqi has 409.8 tf |
+| about 60 s | 3 to 4 g; pulse 150 | | RussianSpaceWeb, from Gagarin and the medical record |
+| 119 s | The four strap-ons separate | Throttled back, ties at the foot let go, each swings out on its tip ball and falls away | Siddiqi p. 277; the manner from Minakov |
+| 150 to 156 s | Fairing jettisoned | Two halves | Gagarin: 150; RussianSpaceWeb: 154; Siddiqi's figure: 156 |
+| about 300 s | Third stage lights, core cut off and left | Hot staging through the lattice. At about 5.5 km/s | Siddiqi: 300; RussianSpaceWeb: 299 and the speed |
+| 676 s | Third stage cutoff: orbit, 181 by 327 km | | Siddiqi p. 277; the orbit from the OKB-1 report |
+| 688 s | Spacecraft separates | Pushed off Block E's adapter | OKB-1 report: 09:18:28 |
+
+The orbit's top came out 97 km above the 230 km planned. Zak puts it to the core's engine running
+about half a second long; Siddiqi (2015), from the documents published in 2011, to a faulty valve
+on the third stage's engine. The OKB-1 report read here does not say.
+
+Not yet in this repo: the pitch programme, the launch azimuth as flown (37.5° east of north is
+derived from the orbit), any drag figure, and so any `trajectory`. The vehicle is shown standing;
+it does not fly.
 
 ## What happened
 

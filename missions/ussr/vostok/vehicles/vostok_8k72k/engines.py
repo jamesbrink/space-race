@@ -96,6 +96,11 @@ def build(E: Matrix, node, M: dict, prefix: str, steer: list[tuple[float, float,
             x, y = sx * CHAMBER_AT, sy * CHAMBER_AT
             steel.tube((x * 1.2, y * 1.2, HEAD - 110), (sx * 552, sy * 552, ring), 32, 10)
             steel.tube((x * 0.55, y * 0.55, 1500), (x * 1.0, y * 1.0, 1500), 22, 8)  # ties between the chambers
+    # steam from the turbine leaves through two ducts down the middle, between the chambers, and out below the shield
+    for k in (-1, 1):
+        steel.tube((0, k * 150, 470), (0, k * 150, 1900), 70, 14, caps=False)
+        steel.lathe([(56, 470), (56, 900), (0, 900)], 14, at(0, k * 150, 0), flip=True)
+        steel.lathe([(56, 470), (70, 470)], 14, at(0, k * 150, 0))
     if interior():
         # the turbopump lies across the top, between the heads: oxygen pump, turbine, fuel pump on one shaft
         z = PUMP_Z
@@ -110,8 +115,8 @@ def build(E: Matrix, node, M: dict, prefix: str, steer: list[tuple[float, float,
         # steam from the turbine leaves through two ducts down the middle, between the chambers
         for k in (-1, 1):
             pipes.loft(
-                [(0, k * 60, z - 60), (0, k * 150, z - 420), (0, k * 150, 1300), (0, k * 150, 700)],
-                [(70, 70)] * 4,
+                [(0, k * 60, z - 60), (0, k * 120, z - 300), (0, k * 150, z - 520), (0, k * 150, 1850)],
+                [(58, 58)] * 4,
                 14,
                 ref=(1, 0, 0),
                 caps=(False, True),

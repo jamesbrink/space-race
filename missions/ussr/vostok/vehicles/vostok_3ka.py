@@ -10,7 +10,7 @@ Azimuths are measured about +Z from +X.
 
 Top-level nodes:
     DescentModule  EntryHatch  ParachuteHatch  Cabin  EjectionSeat
-    RetainingStraps  CableMast  InstrumentModule  GasBottles  RetroEngine
+    RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
 """
 
 from __future__ import annotations
@@ -788,8 +788,10 @@ def build_instrument_module(M, stowed: bool = False) -> None:
     # Ten antennas, each its own node with its origin at its root (`Antenna_1` to `Antenna_10`), so that a flight
     # can show them stowed. Under the fairing they were folded; that is not modelled: stowed, each is drawn withdrawn
     # into the hull along `STOWED`'s vector, and a flight's data slides it out again.
+    aerials = group("Antennas")
+
     def antenna(k: int, base: Vector, mb: MeshBuilder) -> None:
-        node = pivot(f"Antenna_{k}", g, base * MM)
+        node = pivot(f"Antenna_{k}", aerials, base * MM)
         obj = hang(mb.build(f"Antenna_{k}_Rod", M["antenna"], None, sharp_angle=None), node)
         if stowed:
             obj.data.transform(Matrix.Translation(Vector(STOWED[k - 1]) * MM))
