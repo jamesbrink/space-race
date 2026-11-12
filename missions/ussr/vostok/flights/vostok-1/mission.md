@@ -198,6 +198,9 @@ less UTC are below the record's precision by orders.
   a Kepler orbit closes on itself to 2 cm at 10 s, 1.7 m at 30 s, 31 m at 60 s. **10 s is the
   cap.** A flight of days (the ten-day decay) would want a symplectic or an embedded high-order
   method; not for this flight.
+- This is `shed.ts`'s rule already (COARSE ticks at a time, only on ticks divisible by COARSE): grid points are fixed in
+  the absolute tick count, never relative to when the warp was switched on, and the threshold of dynamic pressure is a
+  constant with its reason beside it (**sim**).
 - Attitude on a coast: torque-free tumbling integrated at the same coarse step is wrong for a body
   turning 30 deg/s. Either the attitude stays at the fine tick (cheap: no forces) or it is
   solved in closed form for an axisymmetric body. Decide with **sim**.
@@ -227,6 +230,10 @@ bottles: in dispute), the sensor's field and the law's gains.
 - Four strap-ons and the core burn together from the ground; each is a `StageRecord` with its own
   propellant. `Body` today has one engine and one `mixture`; this is the largest change to `src/sim`
   and is why the ascent comes after the coast.
+- Agreed with **sim**: `Body.engine` and `Trajectory.engine` are not stretched. A `stages` list goes beside them (each
+  with its engines as a list: thrust, specific impulse, start, cutoff or depletion, station, steering; and its own shed
+  event), `vehicle.ts` sums thrust over the engines burning, and the Mercury flight is the one-stage case of it with
+  `tests/vehicle.test.mjs` unchanged as the proof.
 - The strap-ons leave as four `ShedBody`s at once, swinging out on their tips: `part` already
   conserves momentum for two bodies; four at one instant is four calls. Their residual thrust and
   the oxygen vented from the nose (Minakov) are the push; neither has a figure.
