@@ -478,9 +478,12 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
 - **A planted foot is planted.** Each stance leg is solved from its foot's fixed spot on the ground
   and the hip's actual place (`gait.ts`: `plant`, `legTo`, `Gait.tread`), with a heel rocker on
   landing and a toe rocker on leaving; on a stop a foot out of place is lifted and stepped home,
-  not slid. Held to under a centimetre at a walk and a run (`tests/planted.test.mjs`); known
-  short: for the first sixth of a walking stance the foot is still coming down, up to 3.7 cm
-  high, because the stride, the thigh's swing and the hips' bob are pinned by older tests.
+  not slid, its leg bending no faster than the stride's does. Held for the whole stance, from the
+  heel landing to the toes leaving, to half a centimetre of the ground and a centimetre of its
+  spot at a walk and a jog and two millimetres at a run (`tests/planted.test.mjs`). The figure's
+  pelvis does it, not the eyes: `Pose.sag` lowers the hips to the landing by up to 3 cm more than
+  `rise`, which is all `view()` knows of and is pinned to the bit (`tests/gait.test.mjs`). Known
+  short: at a run the foot swinging in dips up to 2.5 cm under the ground before it lands.
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
   1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the
   same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.

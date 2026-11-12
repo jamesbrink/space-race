@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, swing, view } from '../src/viewer/gait.ts';
@@ -52,6 +53,7 @@ test('knees only bend one way and elbows only the other, at any speed, anywhere 
           assert.ok(Math.abs(p[`UpperLeg.${side}`]) < 1.4 && p[`LowerLeg.${side}`] < 2.2, 'nothing folds further than a leg can');
         }
         assert.ok(p.rise <= 1e-12 && p.rise > -0.2, 'the hips only ever drop a little');
+        assert.ok(p.sag <= 0 && p.sag > -0.05, "and the figure's pelvis a little further");
       }
 });
 
@@ -130,7 +132,8 @@ test('a gait moves the joints a model has, by distance gone, and leaves a model 
     gait.phase = 0.25;
     gait.apply(f.root);
     assert.ok(Math.abs(f.thigh.rotation.x + f.thighR.rotation.x) < 1e-6 && Math.abs(f.thigh.rotation.x) > 0.05, 'the thighs are opposite');
-    assert.ok(f.hips.position.y <= 0.95 && f.hips.position.y > 0.9);
+    // (as a heel lands the figure's hips are down by the eyes' bob and by the pelvis's own sag: what a leg needs to reach a stride ahead)
+    assert.ok(f.hips.position.y < 0.95 - 0.035 && f.hips.position.y > 0.87, `the hips are at ${f.hips.position.y} m as a foot lands`);
     // standing again, the pose eases back to as built, and then nothing changes
     let changed = 2;
     gait.breathing = false;
@@ -156,19 +159,22 @@ const LOADS = [undefined, { L: 1, R: 0 }, { L: 0, R: 1 }, { L: 0.5, R: 0.5 }];
 
 test('nothing jumps: from one twentieth of a degree of the cycle to the next no joint moves more than a few degrees, at any speed, loaded or not', () => {
   const n = 720;
-  for (const speed of [0.3, 1.4, 2.6, 4])
-    for (const load of LOADS)
-      for (const crouch of [0, 0.8])
-        for (let i = 0; i < n; i++) {
-          const a = pose(i / n, speed, 0, { load, crouch });
-          const b = pose((i + 1) / n, speed, 0, { load, crouch });
-          for (const j of JOINTS)
-            assert.ok(Math.abs(a[j] - b[j]) < 1.2 * DEG, `${j} at ${i / n}, ${speed} m/s: ${(a[j] - b[j]) / DEG} deg`);
-          assert.ok(Math.abs(a.rise - b.rise) < 0.002 && Math.abs(a.shift - b.shift) < 0.001);
-          const va = view({ phase: i / n, speed, load, crouch });
-          const vb = view({ phase: (i + 1) / n, speed, load, crouch });
-          for (const k of ['x', 'y', 'roll', 'pitch']) assert.ok(Math.abs(va[k] - vb[k]) < 0.002, `view.${k} at ${i / n}`);
-        }
+  const steady = (speed, load, crouch) => {
+    for (let i = 0; i < n; i++) {
+      const a = pose(i / n, speed, 0, { load, crouch });
+      const b = pose((i + 1) / n, speed, 0, { load, crouch });
+      for (const j of JOINTS) assert.ok(Math.abs(a[j] - b[j]) < 1.2 * DEG, `${j} at ${i / n}, ${speed} m/s: ${(a[j] - b[j]) / DEG} deg`);
+      assert.ok(Math.abs(a.rise - b.rise) < 0.002 && Math.abs(a.shift - b.shift) < 0.001 && Math.abs(a.sag - b.sag) < 0.002);
+      const va = view({ phase: i / n, speed, load, crouch });
+      const vb = view({ phase: (i + 1) / n, speed, load, crouch });
+      for (const k of ['x', 'y', 'roll', 'pitch']) assert.ok(Math.abs(va[k] - vb[k]) < 0.002, `view.${k} at ${i / n}`);
+    }
+  };
+  // a slow walk, a walk, three jogs (where a walk's stance is turning into a run's) and two runs
+  for (const speed of [0.3, 1.4, 1.6, 2.0, 2.4, 2.6, 4])
+    for (const load of LOADS) for (const crouch of [0, 0.8]) steady(speed, load, crouch);
+  // and every speed between: a knee that straightens at one speed only is found here
+  for (let speed = 0.1; speed < 5.01; speed += 0.1) steady(speed, undefined, 0);
 });
 
 test('nothing jumps as a figure speeds up, leaves the ground, or lands either', () => {
@@ -378,4 +384,54 @@ test('a foot is heard as it lands: the left at a quarter of the stride and the r
     steps += t.footfalls.length;
   }
   assert.ok(steps >= 2, `half a turn on the spot is a few steps: ${steps}`);
+});
+
+test("the view through the figure's eyes is what it was before the figure's pelvis was let go its own way: to the last bit", () => {
+  // Captured from the gait as it stood before the planted foot was made to reach the ground at heel
+  // strike (which the figure does with its pelvis, `Pose.sag`, and its legs). The eyes' rise, sway,
+  // tip and nod are not to move for that: change these only on purpose.
+  const pinned = [
+    [0.1, 0.8, { x: 0.0016090402118423748, y: -0.006909830056250526, roll: -0.000817290266332635, pitch: -0 }],
+    [0.25, 1.4, { x: -0.012727922061357854, y: -0.035, roll: 0.01131370849898476, pitch: -0.005391058070538489 }],
+    [0.3, 1.4, { x: -0.01603811743539062, y: -0.031657797401561584, roll: 0.014256104387013887, pitch: -0.0068853717029582675 }],
+    [0.6, 2, { x: -0.002599218803745376, y: -0.028328134371966438, roll: 0.0023104167144403346, pitch: -0 }],
+    [0.25, 2.6, { x: -0.010769780205764337, y: -0.005468749999999993, roll: 0.009573137960679413, pitch: -0.007426842237035541 }],
+    [0.45, 4, { x: -0.010692078290260415, y: -0.07134345884812357, roll: 0.009504069591342592, pitch: -0 }],
+  ];
+  for (const [phase, speed, want] of pinned) assert.deepEqual(view({ phase, speed }), want, `the view at phase ${phase}, ${speed} m/s`);
+  // and everywhere else: every bit of 67,248 views, over the cycle at eleven speeds, in the air, crouched,
+  // breathing, climbing, falling, sitting, loaded, on other legs, and as a gait has them through a
+  // start, a walk, a run, a jog, a stop and a landing
+  const hash = createHash('sha256');
+  let views = 0;
+  const put = (v) => {
+    hash.update(new Uint8Array(new Float64Array([v.x, v.y, v.roll, v.pitch]).buffer));
+    views++;
+  };
+  const others = [
+    {},
+    { breath: 0.3 },
+    { climb: 1 },
+    { fall: 0.5 },
+    { sit: 1, wheel: 0.4 },
+    { load: { L: 1, R: 0 } },
+    { limbs: { thigh: 0.43, shin: 0.42, ankle: 0.08 } },
+  ];
+  for (const speed of [0, 0.3, 0.8, 1.4, 1.6, 2, 2.4, 2.6, 3, 4, 6])
+    for (let i = 0; i < 144; i++)
+      for (const air of [0, 0.4, 1])
+        for (const crouch of [0, 0.8]) for (const more of others) put(view({ phase: i / 144 + 0.001, speed, air, crouch, ...more }));
+  const gait = new Gait();
+  const dt = 1 / 60;
+  let speed = 0;
+  for (let t = 0; t < 12; t += dt) {
+    const want = t < 3 ? 1.4 : t < 5 ? 4 : t < 7 ? 2 : t < 9 ? 0 : 0.8;
+    speed += (want - speed) * (1 - Math.exp(-dt / 0.2));
+    if (want === 0 && speed < 0.03) speed = 0;
+    if (Math.abs(t - 10) < dt / 2) gait.land(1);
+    gait.advance(speed * dt, speed, false, dt);
+    put(view(gait.moment));
+  }
+  assert.equal(views, 67248);
+  assert.equal(hash.digest('hex'), '6254a739f52384d067977545aaf5e56e2543d6b7f305d8cea5ee1117523f98d1');
 });

@@ -42,9 +42,16 @@ export type Joint = (typeof JOINTS)[number];
  * swing forward or back: how far the hips are lifted (negative: lowered) and shifted to the
  * figure's left, metres, and turns of a few joints about their own Z (sideways: positive swings a
  * hanging limb to the figure's left, and leans the spine to its right) and Y (a twist).
+ *
+ * The hips' height is in two parts. `rise` is what the eyes are carried by (`view`): the bob of
+ * the stride, the knees' give, the breath. `sag` is how much further the figure's pelvis comes
+ * down than that (never up) so that a foot landing a stride ahead is on the ground when it
+ * lands: the figure's hips are `rise + sag` from where they were built, and the eyes know
+ * nothing of `sag`.
  */
 export type Pose = Record<Joint, number> & {
   rise: number;
+  sag: number;
   shift: number;
   sideways: Partial<Record<Joint, number>>;
   twist: Partial<Record<Joint, number>>;
@@ -115,6 +122,10 @@ export interface Footing {
   hold: number;
   /** How far the foot is pitched over what being planted there makes it, radians (positive: toes down): a foot caught in the air, coming level as it comes down. */
   tip?: number;
+  /** How far the thigh and the knee are turned over what being planted there makes them, radians: a leg caught in mid-swing, coming to its foot's over a few frames. */
+  bent?: { thigh: number; knee: number };
+  /** How much the foot is a standing figure's own, 0 to 1: a foot that is stood on is not part of the way through a stride (its knee is not unlocking to leave, its toes are not coming down from a landing). */
+  own?: number;
 }
 export interface Feet {
   L: Footing;
@@ -180,8 +191,17 @@ function running(speed: number): number {
  * one foot lands as the other leaves. At a run it is brief, and the figure is in the air between.
  */
 export const stance = (speed: number): number => 0.25 + (0.055 - 0.25) * running(speed);
-/** Where the leg is wholly the planted foot's (inside this much of the stance's middle, cycles) and wholly the swing's (outside this). */
-const held = (speed: number): [number, number] => [0.21 + (0.055 - 0.21) * running(speed), 0.25 + (0.12 - 0.25) * running(speed)];
+/**
+ * How long before its foot lands a swinging leg starts to reach for the foot's spot, and how long
+ * after the foot leaves it has let go, cycles. Between landing and leaving the leg is wholly the
+ * planted foot's; outside these, wholly the swing's. A walking leg reaches early: the hips are
+ * coming down to the landing (`sag`), and a leg that only swung would trail its foot in the ground.
+ */
+const reaching = (speed: number): number => REACH_WALK + (REACH_RUN - REACH_WALK) * running(speed);
+const letting = (speed: number): number => LET_WALK + (REACH_RUN - LET_WALK) * running(speed);
+const REACH_WALK = 0.17;
+const LET_WALK = 0.12;
+const REACH_RUN = 0.065;
 
 /**
  * Where a steady stride has the feet: each is planted from its landing until it leaves, a point
@@ -191,10 +211,12 @@ const held = (speed: number): [number, number] => [0.21 + (0.055 - 0.21) * runni
  */
 export function stride(phase: number, speed: number, leg = 0.9): Feet {
   const reach = span(speed, leg);
-  const [inner, outer] = held(speed);
+  const down = stance(speed);
+  const before = reaching(speed);
+  const after = letting(speed);
   const foot = (from: number): Footing => {
     const d = from - Math.round(from); // cycles since it was under the hip, -0.5 to 0.5
-    const k = Math.min(1, Math.max(0, (Math.abs(d) - inner) / (outer - inner)));
+    const k = Math.min(1, Math.max(0, d < 0 ? (-d - down) / before : (d - down) / after));
     return { x: -d * reach, y: 0, hold: 1 - k * k * (3 - 2 * k) };
   };
   return { L: foot(phase - 0.5), R: foot(phase) };
@@ -207,6 +229,123 @@ function sink(phase: number, speed: number, crouch: number): number {
   // way about: low while a foot is down and taking the weight, highest in the air between.
   const run = running(speed);
   return at(speed, 0.035, 0.035) * (1 - run) * s2 + 0.072 * run * (1 - s2 * s2) + CROUCH_DROP * crouch;
+}
+
+/** How straight a knee gets at this speed (at a walk, straight), the bend it has taking the weight, and the bend of the leg swinging through: radians. */
+const straightest = (speed: number): number => 0.3 * running(speed);
+const bend = (speed: number, swinging: number): number => {
+  const straight = straightest(speed);
+  return (
+    straight + (at(speed, 0.09, 0.3) - straight) * (1 - (1 - Math.abs(swinging)) ** 4) + at(speed, 0.95, 1.7) * Math.max(0, swinging) ** 2
+  );
+};
+
+/**
+ * How far below standing the hips have to be as a foot lands, metres: the height at which the
+ * leg swinging forward, as the stride has it at that moment (at a walk: straight, the thigh at
+ * the end of its swing), has its heel on the ground at the foot's spot, toes up. A leg does not
+ * reach a spot a stride ahead from hips that are only the bob of the eyes below standing: a
+ * walker's pelvis comes down to it. Never less than what the leg at its straightest needs with
+ * the toes as far up as they go.
+ */
+function touchdown(limbs: Limbs, speed: number): number {
+  const st = stance(speed);
+  const a = (0.5 - st) * Math.PI * 2;
+  const thigh = -swing(speed) * Math.sin(a);
+  const knee = bend(speed, Math.cos(a));
+  const all = limbs.thigh + limbs.shin + limbs.ankle;
+  // the heel of the foot's spot, ahead of the hip; and the ankle of the swinging leg, ahead of the hip and below it
+  const heel = st * span(speed, all) - HEEL;
+  const ahead = -(limbs.thigh * Math.sin(thigh) + limbs.shin * Math.sin(thigh + knee));
+  const below = limbs.thigh * Math.cos(thigh) + limbs.shin * Math.cos(thigh + knee);
+  // the ankle goes round its heel on a circle: where on it that leg's ankle is, as toes-up as an ankle goes at the most
+  const radius = Math.hypot(HEEL, limbs.ankle);
+  const level = Math.atan2(limbs.ankle, HEEL);
+  const up = Math.min(TOES_UP, Math.max(0, Math.acos(Math.min(1, Math.max(-1, (ahead - heel) / radius))) - level));
+  const swung = all - (below + radius * Math.sin(level + up));
+  // and what the straightest leg needs, toes right up
+  const least = straightest(speed);
+  const leg = Math.sqrt(limbs.thigh ** 2 + limbs.shin ** 2 + 2 * limbs.thigh * limbs.shin * Math.cos(least));
+  const reach = heel + radius * Math.cos(level + TOES_UP);
+  const most = all - (radius * Math.sin(level + TOES_UP) + Math.sqrt(Math.max(0, leg * leg - reach * reach)));
+  return Math.max(swung, most);
+}
+
+/**
+ * How much further the figure's pelvis comes down than the eyes' bob (`sink`), metres: all the
+ * way to what the landing leg needs (`touchdown`) at the moment each foot lands, and nothing as
+ * the hips pass over the planted foot. See `Pose.sag`.
+ */
+function sag(phase: number, speed: number, crouch: number, limbs: Limbs): number {
+  if (speed <= 0) return 0;
+  const st = stance(speed);
+  const more = touchdown(limbs, speed) - sink(0.5 - st, speed, crouch);
+  if (more <= 0) return 0;
+  // most as each foot lands (the left at 0.5 - stance, the right half a cycle on), none midway between
+  return more * (0.5 + 0.5 * Math.cos(4 * Math.PI * (phase - 0.5 + st))) ** SAG_SHAPE;
+}
+const SAG_SHAPE = 2;
+
+/** How far the hips of the figure are below standing height, metres: the eyes' part and the pelvis's own. */
+const lowered = (phase: number, speed: number, crouch: number, limbs: Limbs): number =>
+  sink(phase, speed, crouch) + sag(phase, speed, crouch, limbs);
+
+/**
+ * How far a knee has bent by the time its foot leaves the ground, radians: what puts the thigh
+ * where the stride's swing has it at that moment with the toes still on their spot and the heel
+ * up. (A leg leaves the ground bending, not straight.) No less than the knee's straightest.
+ */
+function leaving(limbs: Limbs, speed: number, crouch: number): number {
+  const st = stance(speed);
+  const least = straightest(speed);
+  const a = (0.5 + st) * Math.PI * 2;
+  const thigh = -swing(speed) * Math.sin(a);
+  const all = limbs.thigh + limbs.shin + limbs.ankle;
+  // the knee, and the toes the foot rocks on: ahead of the hip, and above the ground
+  const kx = -limbs.thigh * Math.sin(thigh);
+  const ky = all - lowered(0.5 + st, speed, crouch, limbs) - limbs.thigh * Math.cos(thigh);
+  const px = -st * span(speed, all) + TOES;
+  // the ankle is a shin from the knee and on its circle round the toes: of the two places, the one behind
+  const radius = Math.hypot(TOES, limbs.ankle);
+  const far = Math.hypot(px - kx, ky);
+  if (far >= limbs.shin + radius || far <= Math.abs(limbs.shin - radius)) return least;
+  const along = (limbs.shin ** 2 - radius ** 2 + far * far) / (2 * far);
+  const off = Math.sqrt(Math.max(0, limbs.shin ** 2 - along * along));
+  const ux = (px - kx) / far;
+  const uy = -ky / far;
+  const ax = kx + ux * along + uy * off;
+  const ay = ky + uy * along - ux * off;
+  const knee = Math.atan2(kx - ax, ky - ay) - thigh;
+  return Math.min(least + 0.7, Math.max(least, knee));
+}
+/** How long before its foot leaves the ground a knee starts to bend for it, cycles. */
+const UNLOCK = 0.1;
+/** How long after its heel lands a foot takes to come down flat, cycles (or all of a stance shorter than that). */
+const SLAP = 0.14;
+
+/**
+ * What a stance leg is asked for beside its foot's place, by where in its stance it is: how
+ * straight its knee may be (`least`: it unlocks as the foot comes to leave), and how far up its
+ * toes are kept (`toes`: as far as they were when the heel landed, coming down flat over the
+ * moments after, the knee giving a little as it takes the weight; a foot let down as fast as the
+ * hips come over it slaps).
+ */
+function asked(limbs: Limbs, side: 'L' | 'R', phase: number, speed: number, crouch: number): { least: number; toes: number } {
+  const straight = straightest(speed);
+  if (speed <= 0) return { least: straight, toes: 0 };
+  const st = stance(speed);
+  // cycles since the foot was under the hip, -0.5 to 0.5
+  const from = phase - (side === 'L' ? 0.5 : 0);
+  const d = from - Math.round(from);
+  const smooth = (v: number) => v * v * (3 - 2 * v);
+  const late = smooth(Math.min(1, Math.max(0, (d - (st - UNLOCK)) / UNLOCK)));
+  const least = late > 0 ? straight + (leaving(limbs, speed, crouch) - straight) * late : straight;
+  const landed = Math.min(1, Math.max(0, (d + st) / Math.min(SLAP, st)));
+  if (landed >= 1) return { least, toes: 0 };
+  // how far up the toes are as the heel lands: what the landing leg at its straightest has them at
+  const all = limbs.thigh + limbs.shin + limbs.ankle;
+  const up = -plant(limbs, st * span(speed, all), 0, lowered(0.5 - st, speed, crouch, limbs), straight).pitch;
+  return { least, toes: up * (1 - landed) ** 2 };
 }
 
 /**
@@ -237,26 +376,34 @@ export function legTo(limbs: Limbs, x: number, y: number, drop: number, least = 
  * the hips are near enough the foot is flat. Further off than the leg reaches it rocks, as a foot does: behind the hips the heel comes up
  * and the toes stay where they are; ahead of them the toes come up and the heel stays, as far as
  * an ankle bends (TOES_UP), and past that the foot is not down yet: the leg points at where it
- * will be.
+ * will be. A foot ahead that is on its heel keeps its toes up by `toes` at the least, however
+ * near the hips have come: the knee bends for it.
  */
-export function plant(limbs: Limbs, x: number, y: number, drop: number, least = 0): { thigh: number; knee: number; pitch: number } {
+export function plant(
+  limbs: Limbs,
+  x: number,
+  y: number,
+  drop: number,
+  least = 0,
+  toes = 0,
+): { thigh: number; knee: number; pitch: number } {
   // (as long as the leg gets: with the knee as straight as it goes)
   const leg = Math.sqrt(limbs.thigh ** 2 + limbs.shin ** 2 + 2 * limbs.thigh * limbs.shin * Math.cos(least));
   const up = limbs.ankle;
   // from the hip joint: ahead, and down
   const hips = limbs.thigh + limbs.shin + up - drop - y;
   const flat = legTo(limbs, x, y, drop, least);
-  if (!flat.short) return { thigh: flat.thigh, knee: flat.knee, pitch: 0 };
-  // the point it rocks on (the toes behind, the heel ahead), how far the ankle is from it, and the angle of that line from the ground with the foot flat
   const behind = x < 0;
+  if (!flat.short && (behind || toes <= 0)) return { thigh: flat.thigh, knee: flat.knee, pitch: 0 };
+  // the point it rocks on (the toes behind, the heel ahead), how far the ankle is from it, and the angle of that line from the ground with the foot flat
   const px = behind ? x + TOES : x - HEEL;
   const radius = Math.hypot(behind ? TOES : HEEL, up);
   const level = Math.atan2(up, behind ? TOES : HEEL);
   const far = Math.hypot(px, hips);
   // where a straight leg's ankle meets the circle the ankle goes round on: the lifted side of the line from the hip to the pivot
   let lifted = 0; // how far the foot has rocked, radians
-  let reached = false;
-  if (far < leg + radius && far > Math.abs(leg - radius)) {
+  let reached = !flat.short;
+  if (flat.short && far < leg + radius && far > Math.abs(leg - radius)) {
     const along = (leg * leg - radius * radius + far * far) / (2 * far);
     const off = Math.sqrt(Math.max(0, leg * leg - along * along));
     // (the line runs from the hip, at (0, hips) above the ground, to the pivot at (px, 0); its normal toward the heel's side)
@@ -269,6 +416,7 @@ export function plant(limbs: Limbs, x: number, y: number, drop: number, least = 
     reached = lifted >= 0 && (behind || lifted <= TOES_UP);
   }
   if (!reached) lifted = behind ? Math.PI / 2 - level : TOES_UP;
+  else if (!behind) lifted = Math.max(lifted, Math.min(toes, TOES_UP));
   // the ankle, on its circle
   const angle = level + lifted;
   const ax = behind ? px - radius * Math.cos(angle) : px + radius * Math.cos(angle);
@@ -303,11 +451,8 @@ export function pose(m: Moment): Pose {
   const c = Math.cos(a);
   const thigh = swing(speed);
   // a knee bends while its leg swings forward (to clear the ground) and a little as it takes the weight
-  const knee = at(speed, 0.95, 1.7);
-  const flex = at(speed, 0.09, 0.3);
-  // (at a walk the knee is straight as its foot lands and as it leaves: that is where the planted leg has it)
-  const straight = at(speed, 0, 0.3);
-  const bend = (swinging: number) => straight + (flex - straight) * (1 - (1 - Math.abs(swinging)) ** 4) + knee * Math.max(0, swinging) ** 2;
+  // (at a walk the knee is straight as its foot lands: that is where the planted leg has it)
+  const straight = straightest(speed);
   const arm = at(speed, 0.26, 0.75);
   const elbow = at(speed, 0.12, 1.35);
   const lean = at(speed, 0.02, 0.16);
@@ -320,32 +465,41 @@ export function pose(m: Moment): Pose {
   // going steadily forward.) The two are blended over the moments the foot lands and leaves.
   const limbs = m.limbs ?? limbsOf(0.9);
   const feet = m.feet ?? stride(m.phase, speed, limbs.thigh + limbs.shin + limbs.ankle);
-  const drop = sink(m.phase, speed, crouch);
+  // The eyes' hips and the figure's: the pelvis comes down further than the eyes' bob to put the landing foot on the ground (`sag`).
+  const bob = sink(m.phase, speed, crouch);
+  const drop = bob + sag(m.phase, speed, crouch, limbs);
   for (const side of ['L', 'R'] as const) {
     const sign = side === 'L' ? 1 : -1;
     let hip = -sign * thigh * s;
-    let shin = bend(sign * c);
+    let shin = bend(speed, sign * c);
     if (crouch) {
       // the knees give under a swinging leg too: its foot stays where the swing has it and the hips come down over it
-      const [x, y] = footOf(limbs, hip, shin, drop - CROUCH_DROP * crouch);
-      const stood = legTo(limbs, x, y, drop - CROUCH_DROP * crouch);
-      const given = legTo(limbs, x, y, drop);
+      const [x, y] = footOf(limbs, hip, shin, bob - CROUCH_DROP * crouch);
+      const stood = legTo(limbs, x, y, bob - CROUCH_DROP * crouch);
+      const given = legTo(limbs, x, y, bob);
       hip += given.thigh - stood.thigh;
       shin += given.knee - stood.knee;
     }
     const foot = feet[side];
     let toe = 0;
     if (foot.hold > 0) {
-      const leg = plant(limbs, foot.x, foot.y, drop, straight);
+      const stride = asked(limbs, side, m.phase, speed, crouch);
+      const striding = 1 - (foot.own ?? 0);
+      const leg = plant(limbs, foot.x, foot.y, drop, straight + (stride.least - straight) * striding, stride.toes * striding);
       hip += (leg.thigh - hip) * foot.hold;
       shin += (leg.knee - shin) * foot.hold;
       toe = leg.pitch + (foot.tip ?? 0);
+    }
+    if (foot.bent) {
+      hip += foot.bent.thigh;
+      shin = Math.max(0, shin + foot.bent.knee);
     }
     out[`UpperLeg.${side}`] = hip * g - 0.5 * air;
     out[`LowerLeg.${side}`] = shin * g + 0.9 * air;
     // a foot is turned back toward level: all the way while it is planted, most of the way as it swings (toe down as it leaves)
     const turned = out[`UpperLeg.${side}`] + out[`LowerLeg.${side}`];
-    out[`Foot.${side}`] = -(0.6 + 0.4 * foot.hold * g) * turned + toe * foot.hold * g;
+    // (the toes of a leg reaching for its landing come up late: a heel held low is a heel in the ground)
+    out[`Foot.${side}`] = -(0.6 + 0.4 * foot.hold * g) * turned + toe * (toe < 0 ? foot.hold ** 2 : foot.hold) * g;
   }
   // Each arm goes with the opposite leg. One that carries something hangs straighter and swings
   // a third as much, held a little out from the leg it would otherwise knock.
@@ -371,7 +525,8 @@ export function pose(m: Moment): Pose {
   // The hips are highest as one leg passes under them and lowest as a foot lands (at a run,
   // lowest over the planted foot: `sink`); they give with the knees; and the whole figure rises
   // a few millimetres with each breath.
-  out.rise = -drop * g + 0.003 * breath;
+  out.rise = -bob * g + 0.003 * breath;
+  out.sag = -(drop - bob) * g;
   // and they ride over whichever foot has the weight: the left's from its landing (phase 0.25) until the right's
   out.shift = at(speed, 0.018, 0.012) * Math.sin(a - Math.PI / 4) * g;
   // standing, the weight goes slowly from one foot to the other: a few millimetres, once in three breaths
@@ -401,6 +556,7 @@ export function pose(m: Moment): Pose {
     } satisfies Record<Joint, number>;
     for (const j of JOINTS) out[j] += (sat[j] - out[j]) * seated;
     out.rise *= 1 - seated;
+    out.sag *= 1 - seated;
     out.shift *= 1 - seated;
     for (const j of JOINTS) {
       if (out.sideways[j]) out.sideways[j] *= 1 - seated;
@@ -432,6 +588,7 @@ export function pose(m: Moment): Pose {
     out.sideways['UpperArm.L'] = (out.sideways['UpperArm.L'] ?? 0) + (1.15 * (1 - load.L) - (out.sideways['UpperArm.L'] ?? 0)) * f;
     out.sideways['UpperArm.R'] = (out.sideways['UpperArm.R'] ?? 0) + (-1.15 * (1 - load.R) - (out.sideways['UpperArm.R'] ?? 0)) * f;
     out.rise *= 1 - f;
+    out.sag *= 1 - f;
     out.shift *= 1 - f;
   }
   // On a ladder everything above is set aside for the climb: hands up at the rungs, one reaching
@@ -457,6 +614,7 @@ export function pose(m: Moment): Pose {
     } satisfies Record<Joint, number>;
     for (const j of JOINTS) out[j] += (up[j] - out[j]) * k;
     out.rise *= 1 - k;
+    out.sag *= 1 - k;
     out.shift *= 1 - k;
     for (const j of JOINTS) {
       if (out.sideways[j]) out.sideways[j] *= 1 - k;
@@ -511,7 +669,7 @@ export function rising(t: number, faceDown: boolean, hips = 0.98): Pose | null {
   const [t1, b] = keys[i + 1]!;
   const u = Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
   const k = u * u * (3 - 2 * u);
-  const out = { sideways: {}, twist: {}, shift: 0 } as Pose;
+  const out = { sideways: {}, twist: {}, shift: 0, sag: 0 } as Pose;
   for (const j of JOINTS) {
     const from = a[j] ?? a[SHARED[j] ?? j] ?? 0;
     const to = b[j] ?? b[SHARED[j] ?? j] ?? 0;
@@ -596,6 +754,11 @@ const TURN_PACE = 0.9;
 const STILL_PACE = 0.05;
 const HOME = 0.02;
 
+/** How fast a joint of a leg turns as a standing figure steps a foot home, at the most, radians a second: ten degrees in a sixtieth of a second. */
+const LIMB_RATE = (600 * Math.PI) / 180;
+/** How fast a leg caught in mid-swing by a stop comes to where its foot puts it: the share of what is left that goes in a second. */
+const BENT_OUT = 12;
+
 /** How long getting up takes to go from however the figure lay to its own keys, seconds. */
 export const RISE_IN = 0.5;
 
@@ -650,9 +813,14 @@ export class Gait {
    */
   private readonly slip = { L: 0, R: 0 };
   private readonly last = { L: 0, R: 0 };
-  private readonly stood = { L: { x: 0, y: 0, tip: 0 }, R: { x: 0, y: 0, tip: 0 } };
+  private readonly stood = {
+    L: { x: 0, y: 0, tip: 0, thigh: 0, knee: 0, was: { thigh: 0, knee: 0, pitch: 0 } },
+    R: { x: 0, y: 0, tip: 0, thigh: 0, knee: 0, was: { thigh: 0, knee: 0, pitch: 0 } },
+  };
   private halted = false;
   private own = 0;
+  /** Standing: how far the hips were below standing height when the feet in the air were last moved with them, metres. */
+  private rode = 0;
   private closing: { side: 'L' | 'R'; x: number; y: number; to: number; tip: number; high: number; t: number; takes: number } | null = null;
 
   /** The moment as it stands: what `pose` and `view` are asked. */
@@ -686,6 +854,9 @@ export class Gait {
       foot.x = (own * this.stood[side].x + (1 - own) * foot.hold * foot.x) / hold;
       foot.y = (own * this.stood[side].y) / hold;
       foot.tip = own * this.stood[side].tip;
+      foot.own = own;
+      if (this.stood[side].thigh || this.stood[side].knee)
+        foot.bent = { thigh: own * this.stood[side].thigh, knee: own * this.stood[side].knee };
       foot.hold = hold;
     }
     return cycle;
@@ -713,12 +884,39 @@ export class Gait {
       }
       return;
     }
-    if (airborne) return;
-    for (const side of ['L', 'R'] as const) this.stood[side].x -= distance;
+    // A foot in the air is the body's, not the ground's: it goes up and down with the hips as the
+    // stride's bob goes out of them. (Left where it was over the ground, hips rising a centimetre in
+    // a frame pulled a leg that was all but straight straight: twenty degrees of knee at once.)
+    const drop = lowered(this.phase, this.speed, this.hard * give(this.since), this.limbs);
+    const risen = this.rode - drop;
+    this.rode = drop;
+    for (const side of ['L', 'R'] as const) {
+      if (this.stood[side].y <= 0.002) continue;
+      this.stood[side].y = Math.max(0, this.stood[side].y + risen);
+      if (this.closing?.side === side) this.closing.y = Math.max(0, this.closing.y + risen);
+    }
+    if (!airborne) this.close(distance, dt);
+    // The legs come to where their feet put them, and do not jump there: a leg caught in mid-swing
+    // is not yet its foot's, and a knee all but straight turns ten degrees for three millimetres of
+    // the hips' height, which the stride's bob going out of a figure that stops gives it in a frame.
+    const ease = Math.exp(-dt * BENT_OUT);
+    const fine = (v: number) => (Math.abs(v) < 1e-3 ? 0 : v);
     for (const side of ['L', 'R'] as const) {
       const foot = this.stood[side];
-      if (side !== this.closing?.side) foot.tip = Math.abs(foot.tip) < 1e-3 ? 0 : foot.tip * Math.exp(-dt * 10);
+      const leg = this.legOf(side);
+      foot.thigh = fine((foot.was.thigh - leg.thigh) * ease);
+      foot.knee = fine((foot.was.knee - leg.knee) * ease);
+      // (the foot that is stepping levels by the step: `close`)
+      if (side !== this.closing?.side) foot.tip = fine((foot.was.pitch - leg.pitch) * Math.exp(-dt * 10));
+      foot.was.thigh = leg.thigh + foot.thigh;
+      foot.was.knee = Math.max(0, leg.knee + foot.knee);
+      foot.was.pitch = leg.pitch + foot.tip;
     }
+  }
+
+  /** Standing: the feet go back with the ground the figure went over, and one that is out of place is stepped home. */
+  private close(distance: number, dt: number): void {
+    for (const side of ['L', 'R'] as const) this.stood[side].x -= distance;
     let step = this.closing;
     if (!step) {
       // One that is in the air comes down first: home, or straight down where it is if the other
@@ -751,17 +949,40 @@ export class Gait {
         takes: Math.min(0.38, 0.14 + 0.5 * far),
       };
     }
-    step.t += dt;
     step.x -= distance;
     if (step.to) step.to -= distance;
-    const u = Math.min(1, step.t / step.takes);
     const smooth = (v: number) => v * v * (3 - 2 * v);
     const foot = this.stood[step.side];
-    // (it is over its place before it is down on it: a foot does not land going sideways)
-    foot.x = step.to + (step.x - step.to) * (1 - smooth(Math.min(1, u / 0.8)));
-    foot.y = step.y * (1 - smooth(u)) + step.high * Math.sin(Math.PI * u) ** 2;
-    // (and level well before it is down: toes that were pointing down do not reach the ground first)
-    foot.tip = step.tip * (1 - smooth(Math.min(1, u / 0.5)));
+    const at = (t: number): number => {
+      const u = Math.min(1, t / step.takes);
+      // (it is over its place before it is down on it: a foot does not land going sideways)
+      foot.x = step.to + (step.x - step.to) * (1 - smooth(Math.min(1, u / 0.8)));
+      foot.y = step.y * (1 - smooth(u)) + step.high * Math.sin(Math.PI * u) ** 2;
+      // (and level well before it is down: toes that were pointing down do not reach the ground first)
+      foot.tip = step.tip * (1 - smooth(Math.min(1, u / 0.5)));
+      return u;
+    };
+    // The step goes no faster than a leg bends: a straight leg lifted and brought in bends a long
+    // way for a little (twenty degrees of knee in a sixtieth of a second, taken at its own pace),
+    // so the frame's share of the step is cut until no joint of the leg turns faster than LIMB_RATE.
+    const turns = (): [number, number, number] => {
+      const leg = this.legOf(step.side);
+      return [leg.thigh, leg.knee, leg.pitch + foot.tip - leg.thigh - leg.knee];
+    };
+    const from = turns();
+    let take = dt;
+    let u = at(step.t + take);
+    for (let i = 0; i < 6; i++) {
+      const to = turns();
+      if (Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]), Math.abs(to[2] - from[2])) <= LIMB_RATE * dt) break;
+      take *= 0.5;
+      u = at(step.t + take);
+    }
+    step.t += take;
+    // (what the step itself turned the leg by is the leg's at once: it is only what moves the hips that the leg follows after)
+    const to = turns();
+    foot.was.thigh += to[0] - from[0];
+    foot.was.knee += to[1] - from[1];
     if (u >= 1) {
       foot.x = step.to;
       foot.y = 0;
@@ -769,11 +990,23 @@ export class Gait {
     }
   }
 
+  /** A standing leg as its foot stands now (`stood`) puts it: what the pose makes of it while the feet are the figure's own. */
+  private legOf(side: 'L' | 'R'): { thigh: number; knee: number; pitch: number } {
+    const foot = this.stood[side];
+    return plant(
+      this.limbs,
+      foot.x,
+      foot.y,
+      lowered(this.phase, this.speed, this.hard * give(this.since), this.limbs),
+      straightest(this.speed),
+    );
+  }
+
   /** The figure has stopped: a planted foot is taken where it is planted, and a swinging one where the pose has it, over the ground. */
   private halt(): void {
     const m = { ...this.moment, air: 0, fall: 0, climb: 0, sit: 0 };
     const p = pose(m);
-    const drop = sink(m.phase, m.speed, m.crouch ?? 0);
+    const drop = lowered(m.phase, m.speed, m.crouch ?? 0, this.limbs);
     for (const side of ['L', 'R'] as const) {
       const [x, y] = footOf(this.limbs, p[`UpperLeg.${side}`], p[`LowerLeg.${side}`], drop);
       const foot = m.feet![side];
@@ -781,9 +1014,15 @@ export class Gait {
       this.stood[side].y = Math.max(0, y) * (1 - foot.hold) + foot.y * foot.hold;
       // and pitched as it was, over what a foot planted there would be: that goes out as it comes down
       const lean = p[`UpperLeg.${side}`] + p[`LowerLeg.${side}`] + p[`Foot.${side}`];
-      this.stood[side].tip = lean - plant(this.limbs, this.stood[side].x, this.stood[side].y, drop, at(m.speed, 0, 0.3)).pitch;
+      const planted = plant(this.limbs, this.stood[side].x, this.stood[side].y, drop, straightest(m.speed));
+      this.stood[side].tip = lean - planted.pitch;
+      // and the leg turned as it was, over what that foot makes it: a leg part of the way through its swing is not yet its foot's
+      this.stood[side].thigh = p[`UpperLeg.${side}`] - planted.thigh;
+      this.stood[side].knee = p[`LowerLeg.${side}`] - planted.knee;
+      this.stood[side].was = { thigh: p[`UpperLeg.${side}`], knee: p[`LowerLeg.${side}`], pitch: lean };
       this.slip[side] = 0;
     }
+    this.rode = drop;
     this.halted = true;
     this.closing = null;
     this.own = 1;
@@ -952,13 +1191,16 @@ export class Gait {
   /** Everything about the feet that the pose depends on, to tell whether a frame changed it. */
   private treads(): number[] {
     const { L, R } = this.stood;
-    return [this.own, this.slip.L, this.slip.R, L.x, L.y, L.tip, R.x, R.y, R.tip];
+    return [this.own, this.slip.L, this.slip.R, L.x, L.y, L.tip, L.thigh, L.knee, R.x, R.y, R.tip, R.thigh, R.knee];
   }
 
   /** Stand the feet under the hips, with nothing left over from the last stride. */
   private home(): void {
     this.slip.L = this.slip.R = this.last.L = this.last.R = 0;
-    this.stood.L.x = this.stood.L.y = this.stood.L.tip = this.stood.R.x = this.stood.R.y = this.stood.R.tip = 0;
+    for (const foot of [this.stood.L, this.stood.R]) {
+      foot.x = foot.y = foot.tip = foot.thigh = foot.knee = 0;
+      foot.was = { thigh: 0, knee: 0, pitch: 0 };
+    }
     this.halted = false;
     this.own = 0;
     this.closing = null;
@@ -1022,7 +1264,7 @@ export class Gait {
       else if (toward >= 1) node.quaternion.copy(q);
       else node.quaternion.slerp(q, toward);
       if (joint !== 'Hips') return;
-      place.set(x + p.shift, y + p.rise, z);
+      place.set(x + p.shift, y + p.rise + p.sag, z);
       if (lain?.hips) node.position.copy(lain.hips).lerp(place, keyed);
       else if (toward >= 1) node.position.copy(place);
       else node.position.lerp(place, toward);

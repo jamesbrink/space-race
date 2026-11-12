@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { cycleLength, Gait, JOINTS, pose } from '../src/viewer/gait.ts';
+import { cycleLength, Gait, JOINTS, pose, stance } from '../src/viewer/gait.ts';
 
 // A planted foot stays where it was planted: the leg's angles follow from the foot's place and
-// the hips', the foot rocks from its heel to its toes as a foot does, and a figure that stops
-// steps its feet home instead of sliding them.
+// the hips', the foot rocks from its heel to its toes as a foot does, the figure's pelvis comes
+// down to the landing so that the heel is on the ground the moment it lands, and a figure that
+// stops steps its feet home instead of sliding them.
 
 const DEG = Math.PI / 180;
 /** The test figure's legs (a 0.43 m thigh, a 0.42 m shin, the ankle 0.08 m over the sole), and its foot: the ball 0.15 m ahead of the ankle, the heel 0.06 m behind. */
@@ -17,12 +18,14 @@ const HEEL = 0.06;
 /**
  * Where a posed foot meets the ground: `x` is where the point of its sole under the ankle would
  * be with the foot flat on what it is standing on (its heel, its toes, or all of it), metres
- * ahead of the hip; `y` is how far its lowest point is above the ground.
+ * ahead of the hip; `y` is how far its lowest point is above the ground; `pitch` is how the foot
+ * is turned from level, radians (toes down is positive).
  */
 function footing(p, side) {
   const thigh = p[`UpperLeg.${side}`];
   const knee = p[`LowerLeg.${side}`];
-  const hips = LEG + p.rise;
+  // (the figure's hips: what the eyes ride on, and the pelvis's own sag below that)
+  const hips = LEG + p.rise + p.sag;
   const ax = -(LIMBS.thigh * Math.sin(thigh) + LIMBS.shin * Math.sin(thigh + knee));
   const ay = hips - (LIMBS.thigh * Math.cos(thigh) + LIMBS.shin * Math.cos(thigh + knee));
   // how the foot is pitched in the world (toes down is positive): the turns above it, and its own
@@ -30,40 +33,59 @@ function footing(p, side) {
   const point = (fx, fy) => [ax + fx * Math.cos(pitch) + fy * Math.sin(pitch), ay - fx * Math.sin(pitch) + fy * Math.cos(pitch)];
   const heel = point(-HEEL, -LIMBS.ankle);
   const toe = point(TOES, -LIMBS.ankle);
-  if (Math.abs(heel[1] - toe[1]) < 0.003) return { x: ax, y: Math.min(heel[1], toe[1]) };
-  return heel[1] < toe[1] ? { x: heel[0] + HEEL, y: heel[1] } : { x: toe[0] - TOES, y: toe[1] };
+  if (Math.abs(heel[1] - toe[1]) < 0.003) return { x: ax, y: Math.min(heel[1], toe[1]), pitch };
+  return heel[1] < toe[1] ? { x: heel[0] + HEEL, y: heel[1], pitch } : { x: toe[0] - TOES, y: toe[1], pitch };
 }
 
-test('at a walk and at a run a foot is on the ground where it was planted while the hips go over it', () => {
-  for (const [speed, from, to, mostly, slide, lift] of [
-    // a walk: the whole half of the cycle; the foot comes down over its first moments (it reaches the ground a little after the leg is furthest forward)
-    [1.4, 0.25, 0.75, 0.85, 0.025, 0.04],
-    // a run: a tenth of the cycle, either side of the hips passing over
-    [4, 0.445, 0.555, 1, 0.01, 0.01],
+test('a foot is on the ground on its spot for the whole of its stance, from the moment its heel lands to the moment its toes leave, at any speed', () => {
+  for (const [speed, slide, lift] of [
+    // a slow walk, a walk and a jog: within a centimetre of its spot and half a centimetre of the ground
+    [0.8, 0.01, 0.005],
+    [1.4, 0.01, 0.005],
+    [2.0, 0.01, 0.005],
+    [2.6, 0.01, 0.005],
+    // a run: a tenth of the cycle, either side of the hips passing over, within two millimetres
+    [4, 0.002, 0.002],
   ]) {
     const cycle = cycleLength(speed, LEG);
     const spot = 0.5 * cycle + footing(pose({ phase: 0.5, speed, limbs: LIMBS }), 'L').x;
-    let frames = 0;
-    let planted = 0;
-    let furthest = 0;
-    let highest = 0;
-    let lowest = 0;
-    for (let phase = from; phase <= to + 1e-9; phase += 0.0025) {
+    // (the left foot lands a stance before it is under the hip at phase 0.5, and leaves a stance after: at a walk, 0.25 to 0.75)
+    const down = stance(speed);
+    const frames = 400;
+    for (let i = 0; i <= frames; i++) {
+      const phase = 0.5 - down + (2 * down * i) / frames;
       const foot = footing(pose({ phase, speed, limbs: LIMBS }), 'L');
       const off = Math.abs(phase * cycle + foot.x - spot);
-      furthest = Math.max(furthest, off);
-      highest = Math.max(highest, foot.y);
-      lowest = Math.min(lowest, foot.y);
-      frames++;
-      if (off < 0.01 && Math.abs(foot.y) < 0.01) planted++;
+      assert.ok(off < slide, `${speed} m/s at phase ${phase.toFixed(4)}: ${off} m from its spot`);
+      assert.ok(Math.abs(foot.y) < lift, `${speed} m/s at phase ${phase.toFixed(4)}: ${foot.y} m off the ground`);
     }
-    assert.ok(
-      planted / frames >= mostly,
-      `${speed} m/s: within a centimetre of the ground and of its spot for ${Math.round((100 * planted) / frames)}% of its stance`,
-    );
-    assert.ok(furthest < slide, `${speed} m/s: never more than ${slide} m from its spot: ${furthest}`);
-    assert.ok(highest < lift && lowest > -0.01, `${speed} m/s: between ${lowest} and ${highest} m off the ground`);
   }
+  // at a walk the heel lands first, toes up, the foot is flat by the time the hips are over it, and the heel is up as it leaves
+  const at = (phase) => footing(pose({ phase, speed: 1.4, limbs: LIMBS }), 'L').pitch;
+  assert.ok(at(0.25) < -15 * DEG && at(0.25) > -26 * DEG, `the heel lands with the toes up: ${at(0.25) / DEG} degrees`);
+  for (let phase = 0.26; phase < 0.4; phase += 0.01) assert.ok(at(phase) > at(phase - 0.01) - 1e-9, 'and the toes come down from there');
+  assert.ok(Math.abs(at(0.45)) < 0.5 * DEG && Math.abs(at(0.6)) < 0.5 * DEG, 'flat under the hips');
+  assert.ok(at(0.75) > 5 * DEG, `the heel is up as the toes leave: ${at(0.75) / DEG} degrees`);
+});
+
+test('a swinging foot does not go through the ground on its way to its landing, at a walk or a jog', () => {
+  for (const speed of [0.8, 1.1, 1.4, 1.6, 2.0, 2.4]) {
+    for (let i = 0; i < 720; i++) {
+      const foot = footing(pose({ phase: i / 720, speed, limbs: LIMBS }), 'L');
+      assert.ok(foot.y > -0.005, `${speed} m/s at phase ${(i / 720).toFixed(4)}: the foot's lowest point is ${foot.y} m`);
+    }
+  }
+});
+
+test("the figure's pelvis comes down to the landing by more than the eyes do, and by nothing as the hips pass over the foot or at a run", () => {
+  const strike = pose({ phase: 0.25, speed: 1.4, limbs: LIMBS });
+  assert.ok(strike.sag < -0.02 && strike.sag > -0.035, `at a walk the pelvis is ${-strike.sag} m below the eyes' hips as a heel lands`);
+  assert.ok(Math.abs(strike.rise + 0.035) < 1e-12, "and the eyes' hips are where they were: 35 mm down");
+  assert.ok(Math.abs(pose({ phase: 0.5, speed: 1.4, limbs: LIMBS }).sag) < 1e-12, 'none over the planted foot');
+  assert.equal(Math.abs(pose({ phase: 0.25, speed: 0, limbs: LIMBS }).sag), 0, 'none standing');
+  for (let i = 0; i < 40; i++) assert.equal(Math.abs(pose({ phase: i / 40, speed: 4, limbs: LIMBS }).sag), 0, 'none at a run');
+  for (let v = 0; v < 5; v += 0.05)
+    for (let i = 0; i < 40; i++) assert.ok(pose({ phase: i / 40, speed: v, limbs: LIMBS }).sag <= 0, 'and never up');
 });
 
 /** A gait on the test figure's legs, not breathing. */
@@ -134,7 +156,7 @@ test('walked by a gait, a planted foot does not move over the ground: at any fra
         down[side].most = Math.max(down[side].most, at);
         wander = Math.max(wander, down[side].most - down[side].least);
         held++;
-        assert.ok(Math.abs(foot.y) < 0.01, `${name}: a planted foot is ${foot.y} m off the ground at ${t.toFixed(2)} s`);
+        assert.ok(Math.abs(foot.y) < 0.005, `${name}: a planted foot is ${foot.y} m off the ground at ${t.toFixed(2)} s`);
       }
     }
     assert.ok(held > 80, `${name}: a leg is its planted foot's for ${held} frames`);
@@ -143,7 +165,7 @@ test('walked by a gait, a planted foot does not move over the ground: at any fra
 });
 
 test('stopping dead, the feet are not slid under the body: each that is out of place is lifted and stepped home', () => {
-  for (const at of [0.05, 0.25, 0.4, 0.6, 0.75, 0.9]) {
+  for (const at of [0.05, 0.15, 0.25, 0.3, 0.35, 0.4, 0.5, 0.6, 0.7, 0.75, 0.85, 0.9, 0.97]) {
     const gait = walker();
     const dt = 1 / 60;
     for (let i = 0; i < 200; i++) gait.advance(1.4 * dt, 1.4, false, dt);
@@ -175,8 +197,8 @@ test('stopping dead, the feet are not slid under the body: each that is out of p
         `stopped at phase ${at}: the ${side} foot ends under its hip`,
       );
     }
-    // (a knee bends fast as a straight leg is lifted: that much, and no more)
-    assert.ok(turned < 25 * DEG, `stopped at phase ${at}: no joint turns more than ${turned / DEG} degrees in a frame`);
+    // (what the stride is held to: a straight leg lifted to step home bends at its own pace, over frames)
+    assert.ok(turned < 12 * DEG, `stopped at phase ${at}: no joint turns more than ${turned / DEG} degrees in a frame`);
   }
 });
 
