@@ -311,7 +311,13 @@ export class Gallery {
         <p class="crumbs">${crumbs(f, 'gallery')}</p>
         <h1 data-home title="Front page">${esc(f.callsign)}</h1>
         <p class="sub">${esc(f.designation)} <b>·</b> ${date}</p>
-        <p class="lede">${esc(f.spacecraft)}${f.launchVehicle ? `<br>${esc(f.launchVehicle)}` : ''}</p>
+        <p class="lede">${esc(f.summary)}</p>
+        ${
+          f.facts.length
+            ? `<button class="facts-toggle" aria-expanded="false" aria-controls="gallery-facts" title="The flight in figures: show or hide"><span>The flight in figures</span><i class="chevron"></i></button>
+        <dl class="facts" id="gallery-facts">${f.facts.map((x) => `<div><dt>${esc(x.label)}</dt><dd>${esc(x.value)}</dd></div>`).join('')}</dl>`
+            : ''
+        }
       </header>
 
       <nav class="models" aria-label="What stands in the gallery">
@@ -519,6 +525,15 @@ export class Gallery {
     };
     tuckTitle(prefs.get('titleTucked'));
     this.q('.tuck').addEventListener('click', () => tuckTitle(!title.classList.contains('tucked')));
+    // the card says of the flight what it says in every place: its summary, and its figures folded under it (remembered)
+    const facts = title.querySelector<HTMLElement>('.facts-toggle');
+    const showFacts = (open: boolean) => {
+      title.classList.toggle('facts-open', open);
+      facts?.setAttribute('aria-expanded', String(open));
+      prefs.set('factsOpen', open);
+    };
+    if (facts) showFacts(prefs.get('factsOpen'));
+    facts?.addEventListener('click', () => showFacts(!title.classList.contains('facts-open')));
     // the way out to the front page: the first crumb, and on a narrow page (which has no room for crumbs) the heading
     title.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('[data-home]')) this.host.home();
@@ -873,7 +888,15 @@ export class Gallery {
       HTMLElement,
     ];
     this.root.style.setProperty('--controls-h', `${controls.offsetHeight}px`);
-    const rects = [controls, models].filter(shown).map((el) => el.getBoundingClientRect());
+    // (what lies across the middle of the view covers it: on a wide page the controls stand in the column under the
+    // title card, beside the view and not over it)
+    const middle = view.left + view.width / 2;
+    const across = (r: DOMRect) => r.left < middle && r.right > middle;
+    const column = shown(controls) && !across(controls.getBoundingClientRect()) ? controls.getBoundingClientRect() : null;
+    const rects = [controls, models]
+      .filter(shown)
+      .map((el) => el.getBoundingClientRect())
+      .filter(across);
     const low = rects.map((r) => r.top).filter((top) => top > view.top + view.height / 2);
     const bottom = Math.min(view.bottom, ...low);
     const high = rects.map((r) => r.bottom).filter((b) => b < view.top + view.height / 2);
@@ -885,7 +908,7 @@ export class Gallery {
     // a panel down one side takes that side; one across the foot is already under the canvas
     const side = shown(panel) ? panel.getBoundingClientRect() : null;
     this.clear = {
-      left: view.left + 10,
+      left: (column && column.right < middle ? column.right : view.left) + 10,
       right: (side && side.left > view.left + view.width / 2 && side.height > view.height / 2 ? side.left : view.right) - 10,
       top: top + 8,
       bottom: bottom - 10,
