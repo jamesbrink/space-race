@@ -819,8 +819,11 @@ The rest of the complex:
   streets along the wind, a front a thousand kilometres to the north-west with its cirrus): estimated, all of
   it. No chart, sounding or reanalysis for 5 May 1961 has been read; the day's real weather would replace the
   map. The middle deck is an eighth of altocumulus at 3,600 m round the site (Patrick, 10:00, NOAA ISD:
-  documented for that hour) and the map's elsewhere; the cirrus's height (10.5 km) and the high wind are
-  estimated. The decks cast no shadow on the site's own ground, only on the globe beyond it.
+  documented for that hour) and the map's elsewhere; how it looks (tufts of every size, from scraps to heaps half a
+  kilometre across, in patches some kilometres wide over 0.3 of the sky, so that the cloud itself is the eighth) is
+  estimated, matched to photographs of altocumulus from
+  airliners on other days (docs/sources.md), and it is a sheet with a lit, lumpy top, not a volume; the cirrus's
+  height (10.5 km) and the high wind are estimated. The decks cast no shadow on the site's own ground, only on the globe beyond it.
 - **Paving stands a hand's breadth proud.** The viewer's ground is 0.12 m under the pad's
   surface (it was 0.45 m until November 2026, and the pads stood like table tops), and nothing may
   lie closer above it than that: parallel faces 5 to 6 cm apart flicker from across the site. So the

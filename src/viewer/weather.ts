@@ -254,6 +254,32 @@ export function deckCutAt(cover: number): number {
 
 const DECK_CUTS = 17;
 /**
+ * How much of the sky the middle deck's patches cover round the site: 0.3, which with the cloudlets covering 0.41 of a
+ * patch there (deckFill at that cover) is 0.12 of the sky in cloud, the record's one okta (NOAA ISD, Patrick, 10:00 EST).
+ * Measured with a JS copy of deckFill over 200,000 points; the patches' layout and the cloudlets' share are estimated.
+ */
+const DECK_SITE = 0.3;
+/**
+ * How many of the middle deck's cloudlets stand (`stand`: a cloudlet whose chance is under it stands, rising out of the
+ * sheet as it passes 0.12 under) for them to cover each share of a patch (`fill`
+ * in deckAt), with their breadths as deckAt grows them and their puffs: found by bisection, a JS copy of deckAt's cloudlets
+ * (without the place's pushes) over 30,000 points of a square 60 km across, at a pixel of 10, 40 and 90 m (within 0.03 of
+ * each other, so the cover holds as the puffs and lumps go with distance; the 10 m figures kept). Where a patch is
+ * thickest they cover 0.83 of it, not 0.9: a thick patch is more cloudlets close together, not broader ones.
+ * Measure again after changing a cloudlet's breadth, how they grow or how their opacity is worked out.
+ */
+const DECK_PRESENCE: readonly (readonly [number, number])[] = [
+  [0.1, 0.4155],
+  [0.25, 0.6508],
+  [0.4, 0.7704],
+  [0.55, 0.8673],
+  [0.7, 0.9931],
+  [0.9, 1.15],
+];
+/** The deck's puffs: how far apart, in its cloudlets' 250 m (85 m), and the mean of their summed field (measured, 200,000 points), which is taken off. */
+const DECK_PUFF = 0.34;
+const DECK_PUFF_MEAN = 0.4737;
+/**
  * GLSL: the two sheets. `deckAt(xz, fp, cover)`: how opaque the middle deck is at a point of the scene's plane, cut
  * so that `cover` of the sky has any (deckCutAt), with whatever of its texture is finer than a pixel (`fp`, metres)
  * left at its mean, so it never shimmers; thin where there is little of it (altocumulus, seen through), solid in a
@@ -263,9 +289,13 @@ const DECK_CUTS = 17;
 export const sheetsGlsl = (prefix: string): string => /* glsl */ `
   uniform vec2 uWeatherHigh;
   const float DECK_CUTS[${DECK_CUTS}] = float[${DECK_CUTS}](${Array.from({ length: DECK_CUTS }, (_, i) => deckCutAt(i / (DECK_CUTS - 1)).toFixed(4)).join(', ')});
-  // how much of the sky the middle deck covers at a place: the map's, and round the site an eighth (one eighth of
-  // altocumulus at 3,600 m at Patrick at 10:00, NOAA ISD: documented for that hour, taken for the morning)
-  float deckCoverAt(vec3 w, vec2 xz) { return mix(0.125, w.b, smoothstep(40000.0, 150000.0, length(xz))); }
+  // how much of the sky the middle deck's patches cover at a place: the map's, and round the site 0.3, which is an
+  // eighth of the sky in cloud (one okta of altocumulus at 3,600 m at Patrick at 10:00, NOAA ISD: documented for
+  // that hour, taken for the morning), since its cloudlets cover some 0.41 of a patch there (DECK_SITE)
+  float deckCoverAt(vec3 w, vec2 xz) { return mix(${DECK_SITE.toFixed(2)}, w.b, smoothstep(40000.0, 150000.0, length(xz))); }
+  float gDeckThick;   // how thick the middle deck is where deckAt last looked: 0 at a cloudlet's rim, 1 at its heart
+  vec2 gDeckSlope;    // and how its top slopes there (rise over run, along the scene's x and z): 0 where it is too fine to light
+  bool gDeckShadow = false;   // deckAt is asked for a shadow on the ground (globe.ts), not for the deck seen
   float deckTex(vec2 xz, float fp) {
     // (each size of it on a grid turned its own way, and the place pushed about by a kilometre: on one grid, cut at a
     // level, a patch's outline ran in straight runs and corners, a blocky mask beside the cumulus)
@@ -275,6 +305,27 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     float b = mix(${prefix}noise2(mat2(0.5446, 0.8387, -0.8387, 0.5446) * xz / 2300.0 + 9.1, 502), 0.5, smoothstep(700.0, 1800.0, fp));
     float c = mix(${prefix}noise2(mat2(0.9703, -0.2419, 0.2419, 0.9703) * xz / 640.0 + 5.3, 503), 0.5, smoothstep(200.0, 500.0, fp));
     return 0.45 * mix(a, 0.5, smoothstep(2700.0, 7000.0, fp)) + 0.3 * b + 0.25 * c;
+  }
+  // How much of a patch of the deck its cloudlets cover at a place (\`tex\`: deckTex there): thick clumps a kilometre
+  // across and thinner air between them, mottled again at 400 m while that is two pixels or more, more toward a
+  // patch's middle and where the map's deck is thick (a front's). So from far off a patch is dappled, and near to it
+  // is the cloudlets that make that share.
+  float deckFill(vec2 xz, float fp, float tex, float cut, float cover) {
+    float mottle = mix(${prefix}noise2(mat2(0.7986, 0.6018, -0.6018, 0.7986) * xz / 420.0 + 3.1, 510), 0.5, smoothstep(170.0, 420.0, fp));
+    float dense = ${prefix}noise2(mat2(0.9205, -0.3907, 0.3907, 0.9205) * xz / 1100.0 + 8.3, 506);
+    float fill = 0.1 + 0.8 * smoothstep(0.28, 0.72, 0.6 * dense + 0.4 * mottle + 0.8 * (tex - cut) + 0.6 * smoothstep(0.3, 0.8, cover) - 0.09);
+    return mix(fill, 0.55, smoothstep(400.0, 1100.0, fp));
+  }
+  // the level a cloudlet's chance must be under for it to stand, for its cloudlets to cover \`fill\` (DECK_PRESENCE)
+  float deckStand(float fill) {
+    float stand = ${DECK_PRESENCE[0]![1].toFixed(4)};
+    ${DECK_PRESENCE.slice(1)
+      .map(
+        ([f, p], i) =>
+          `stand = mix(stand, ${p.toFixed(4)}, clamp((fill - ${DECK_PRESENCE[i]![0].toFixed(3)}) / ${(f - DECK_PRESENCE[i]![0]).toFixed(3)}, 0.0, 1.0));`,
+      )
+      .join('\n    ')}
+    return stand;
   }
   float deckAt(vec2 xz, float fp, float cover) {
     if (cover <= 0.004) return 0.0;
@@ -290,52 +341,100 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     soft += 2.2 * sqrt(0.046 * dot(vec3(0.2025, 0.09, 0.0625), left * (2.0 - left)));
     float tex = deckTex(xz, fp);
     float a = mix(smoothstep(cut - soft, cut + soft, tex), cover, even);
-    // Altocumulus is cloudlets two or three hundred metres across with clear air between, closing up toward a patch's
-    // middle; a front's deck is solid. (So an eighth of the sky has altocumulus over it, and less than that is hidden.)
-    // (each size of them left at its mean where it is under a pixel or two: nothing to shimmer)
-    // (each size of them left at its mean before it is as small as two pixels: at one, a cloudlet was a white pixel
-    // beside a clear one, and the deck a stipple that would crawl. Past that the deck is its patches, half seen through.)
-    // Cloudlets: round, soft, 250 m apart in rows that wander (cells of a grid turned from the noise's own, each a
-    // soft dome: 1 at its heart), not a noise cut at a level, whose shapes are angular. Left at their mean before one
-    // is two pixels across; past that, clumps of them a kilometre across, and at last only the patch, half seen through.
+    // Altocumulus is cloudlets a few hundred metres across with clear air between, closing up toward a patch's
+    // middle; a front's deck is solid. (So round the site its patches are over 0.3 of the sky, and an eighth is cloud.)
+    // The cloudlets are left at their mean (the share of the patch they cover) before one is two or three pixels
+    // across: at one, a cloudlet was a white pixel beside a clear one, and the deck a stipple that would crawl.
     vec2 r1 = mat2(0.7986, 0.6018, -0.6018, 0.7986) * xz, r2 = mat2(0.9205, -0.3907, 0.3907, 0.9205) * xz;
-    vec2 lg = r1 / 250.0 + 0.35 * vec2(${prefix}noise2(r2 / 900.0 + 2.9, 504), ${prefix}noise2(r2 / 900.0 + 7.4, 505));
-    ivec2 li = ivec2(floor(lg));
-    float lets = 0.0;
-    if (fp < 125.0 && a > 0.0) {   // (only where there is deck: most of the sky has none)
-      // Altocumulus is a sheet broken into cloudlets, not counters laid on the sea: the cloudlets fill it, each as
-      // broad as its ground (the cell of the nearest of a scatter of points), with clear lanes between where two
-      // meet. In a patch's clumps the lanes are cracks; out of them they widen until the cloudlets are scraps. Each
-      // is lobed (the place pushed about by a noise 90 m across, while that is three pixels), thick at its heart and
-      // thin at its rim, so white there and grey here (clouds.ts whitens by opacity). A lane is as soft as a pixel is
-      // broad: where a cloudlet is two pixels across the lanes are a grain in a sheet, and nothing is a dot. Where
-      // the map's deck is neither altocumulus in patches nor a front's solid sheet (between a third and two thirds of
-      // the sky), the cells are open: cloud along the walls, clear air in the middle of each. (Estimated.)
-      vec2 lp = lg;
-      if (fp < 30.0) lp += 0.2 * (1.0 - smoothstep(15.0, 30.0, fp)) * (vec2(${prefix}noise2(xz / 90.0 + 4.4, 515), ${prefix}noise2(xz / 90.0 + 9.7, 516)) - 0.5);
-      // (the lanes bent, and each cloudlet rounded where three meet: on straight lines they were a cracked pavement)
+    float fill = deckFill(xz, fp, tex, cut, cover);
+    float lets = fill;
+    gDeckThick = fill;
+    gDeckSlope = vec2(0.0);
+    float near = 1.0 - smoothstep(50.0, 125.0, fp);
+    if (near > 0.0 && a > 0.0) {   // (only where there is deck: most of the sky has none)
+      // Altocumulus from above is tufts and rounded heaps of every size, from scraps to heaps half a kilometre
+      // across, standing apart with the sea between them where the patch is thin, and run together into a lumpy
+      // field with dark creases where it is thick (photographs from airliners: altocumulus floccus over the Atlantic,
+      // and a field of altocumulus over Henry County, Illinois, Wikimedia Commons; docs/sources.md). Not a mosaic of
+      // plates with ruled lanes between, which is what cells that each fill their ground were.
+      // So: on a scatter of points 250 m apart, a dome at each that stands (how many stand is what makes them cover
+      // \`fill\`: DECK_PRESENCE, measured), of a breadth by chance (the small ones many) and broader where the patch is
+      // thicker, run together where they meet (a smooth union, its crease never finer than a pixel); lobed by the
+      // place pushed about at 310 m and, while it is three pixels, 90 m; heaped of puffs (below). Its slope is kept
+      // (gDeckSlope) so its light is the light on a lumpy top: bright toward the Sun, grey on the far side (clouds.ts).
+      // Their sizes and shape estimated.
+      vec2 lp = r1 / 250.0 + 0.35 * vec2(${prefix}noise2(r2 / 900.0 + 2.9, 504), ${prefix}noise2(r2 / 900.0 + 7.4, 505));
+      vec2 at = lp;   // (where the puffs are read: pushed only as broadly as they are apart, or they fold over into creases)
       lp += 0.3 * (vec2(${prefix}noise2(r1 / 310.0 + 1.9, 517), ${prefix}noise2(r1 / 310.0 + 6.2, 518)) - 0.5);
+      if (fp < 30.0) lp += 0.12 * (1.0 - smoothstep(15.0, 30.0, fp)) * (vec2(${prefix}noise2(xz / 90.0 + 4.4, 515), ${prefix}noise2(xz / 90.0 + 9.7, 516)) - 0.5);
+      // Whether a cloudlet stands, and how broad it is, is by the share at its own middle, not the pixel's: by the
+      // pixel's, a cloudlet over a place where the share changed quickly (toward a patch's edge) grew on one side and
+      // shrank on the other, and one whose chance the share passed there was a disc with a straight side. The share is
+      // smooth over a cloudlet, so it is taken as changing evenly: its slope here, from two more readings of its
+      // clumps and mottle (the patch's own texture is taken as it is here: reading it twice more cost a third of the
+      // deck's time, and toward a patch's edge, where it changes most, the patch thins the deck away anyway). Not for
+      // a shadow (gDeckShadow), which the Sun's disc blurs past telling.
+      vec2 slopeFill = vec2(0.0);
+      if (!gDeckShadow) {
+        slopeFill = vec2(deckFill(xz + vec2(60.0, 0.0), fp, tex, cut, cover), deckFill(xz + vec2(0.0, 60.0), fp, tex, cut, cover)) - fill;
+        slopeFill = mat2(0.7986, 0.6018, -0.6018, 0.7986) * slopeFill * (250.0 / 60.0);   // (for a step of one cloudlet's spacing on their grid)
+      }
+      float k = 0.2 + 1.2 * fp / 250.0;
+      float h = -1.0;
+      vec2 g = vec2(0.0);
       ivec2 lj = ivec2(floor(lp));
-      float d1 = 9.0, d2 = 9.0, heart = 0.5;
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         ivec2 c = lj + ivec2(dx, dy);
-        float d = distance(lp, vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5));
-        if (d < d1) { d2 = d1; d1 = d; heart = ${prefix}hash2(c, 509); } else if (d < d2) d2 = d;
+        vec2 d = lp - (vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5));
+        float there = clamp(fill - dot(slopeFill, d), 0.1, 0.9);
+        // (and it grows out of nothing as the share passes its chance, at its own steepness: flattened, a half-grown
+        // cloudlet was a blur)
+        float born = smoothstep(0.0, 0.12, deckStand(there) - ${prefix}hash2(c, 509));
+        if (born <= 0.0) continue;
+        float u = ${prefix}hash2(c, 519);
+        float r = min((0.22 + 0.5 * u * u * u) * (0.9 + 1.3 * there), 1.05) * (0.35 + 0.65 * born);
+        float hb = r - dot(d, d) / r - 1.05 * r * (1.0 - born);
+        float s = clamp(0.5 + 0.5 * (hb - h) / k, 0.0, 1.0);
+        h = mix(h, hb, s) + k * s * (1.0 - s);
+        g = mix(g, -2.0 * d / r, s);
       }
-      float edge = d2 - d1;   // nothing on the line between two cloudlets, a half or so at a heart
-      float dense = ${prefix}noise2(r2 / 1100.0 + 8.3, 506);
-      float lane = mix(0.42, 0.1, smoothstep(0.3, 0.8, dense + 1.5 * (tex - cut)));
-      float blur = 0.05 + 0.8 * fp / 250.0;
-      float closed = smoothstep(lane - blur, lane + blur, edge) * (1.0 - smoothstep(0.42 - blur, 0.62 + blur, d1)) * (0.62 + 0.38 * heart) * (0.7 + 0.3 * smoothstep(0.0, 0.5, edge));
-      float open = (1.0 - smoothstep(0.1 - blur, 0.16 + blur, edge)) * (0.75 + 0.25 * heart);
-      lets = mix(closed, open, smoothstep(0.3, 0.42, cover) * (1.0 - smoothstep(0.55, 0.7, cover)));
+      // Each heaped of puffs 85 m apart while they are four pixels across (a cauliflower's knobs, its rim scalloped
+      // where they stand out of it), the field's mean taken off so the cover is the same with and without them. The
+      // puffs are added, not the highest taken: where the highest was taken each met the next in a crease, and lit,
+      // the creases were cracks across every cloudlet.
+      float billow = 0.7 * (1.0 - smoothstep(18.0, 40.0, fp));
+      if (billow > 0.0) {
+        vec2 pp = at / ${DECK_PUFF.toFixed(2)};
+        ivec2 pj = ivec2(floor(pp));
+        float ph = 0.0;
+        vec2 pg = vec2(0.0);
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+          ivec2 c = pj + ivec2(dx, dy);
+          vec2 d = pp - (vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 526), ${prefix}hash2(c, 528)) - 0.5));
+          float r = 0.55 + 0.4 * ${prefix}hash2(c, 527);
+          float q = max(1.0 - dot(d, d) / (r * r), 0.0);
+          ph += r * q * q;
+          pg -= 4.0 * q * d / r;
+        }
+        h += billow * ${DECK_PUFF.toFixed(2)} * (ph - ${DECK_PUFF_MEAN.toFixed(4)});
+        g += billow * pg;
+      }
+      // (the slope in the scene's x and z: the cloudlets' grid is turned from it)
+      g = g * mat2(0.7986, 0.6018, -0.6018, 0.7986);
+      // and its rim frayed by lumps 45 m across while they are two pixels (not lit by their slope: a value noise's
+      // slope has creases along its lattice, and lit, the tops were crumpled paper)
+      float fine = 1.0 - smoothstep(12.0, 30.0, fp);
+      if (fine > 0.0) h += fine * 0.08 * (${prefix}noise2(xz / 45.0 + 2.7, 525) - 0.5);
+      // (its rim as soft as a pixel is broad: the dome falls by about two of its units a unit at its rim)
+      float blur = 0.03 + fp / 250.0;
+      float thick = smoothstep(0.02, 0.45, h);
+      // (thin and grey at its rim, thinning to nothing over a little of its height: it frays, it is not cut out)
+      lets = mix(fill, smoothstep(-blur, 0.15 + blur, h) * (0.55 + 0.45 * thick), near);
+      gDeckThick = mix(fill, thick, near);
+      // (lit by its slope only while a cloudlet is several pixels across: smaller, its light is its mean)
+      gDeckSlope = 1.3 * g * near * (1.0 - smoothstep(25.0, 60.0, fp));
     }
-    // (from far above a patch of altocumulus is dappled, thick clumps a kilometre across and thin air between them
-    // through which the ground shows, mottled again at 400 m while that is two pixels or more: not one flat tone)
-    float mottle = mix(${prefix}noise2(r1 / 420.0 + 3.1, 510), 0.5, smoothstep(170.0, 420.0, fp));
-    float clumps = mix(0.1 + 0.84 * smoothstep(0.28, 0.72, 0.6 * ${prefix}noise2(r2 / 1100.0 + 8.3, 506) + 0.4 * mottle), 0.55, smoothstep(400.0, 1100.0, fp));
-    lets = mix(lets, clumps, smoothstep(50.0, 125.0, fp));
-    return a * mix(0.06 + 0.88 * lets, 0.98, smoothstep(0.62, 0.9, cover));
+    return a * mix(0.94 * lets, 0.98, smoothstep(0.62, 0.9, cover));
   }
   float cirrusAt(vec2 xz, float fp, float amount) {
     if (amount <= 0.004) return 0.0;

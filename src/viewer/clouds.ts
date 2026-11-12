@@ -803,7 +803,9 @@ const OVER = /* glsl */ `
     float sunUp = dot(up, uSun);
     vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33);   // (as the march has it)
     // the sheets over them take some of the Sun (by how much of each there is thereabouts)
-    vec3 sunTop = sunOn(uLayer.y, up, v) * (1.0 - 0.7 * deckCoverAt(w, uEyeXZ + v.xz)) * (1.0 - 0.3 * w.g);
+    // (the deck's patches take 0.7 of it, and a patch is cloud over some 0.4 of it until the deck is a front's solid sheet)
+    float deck = deckCoverAt(w, uEyeXZ + v.xz);
+    vec3 sunTop = sunOn(uLayer.y, up, v) * (1.0 - 0.7 * deck * mix(0.42, 1.0, smoothstep(0.3, 0.9, deck))) * (1.0 - 0.3 * w.g);
     vec3 bases = sunWhite * 0.1 * max(sunUp, 0.0) + uSkyLight * 0.6 + uGroundLight * 0.5;
     vec4 acc = vec4(0.0);
     float lit = 0.0;   // (cel) how well lit, by opacity
@@ -955,7 +957,12 @@ const OVER = /* glsl */ `
     vec3 w = weatherAt(xz);
     float a = kind == 0 ? deckAt(xz, fp, deckCoverAt(w, xz)) : cirrusAt(xz, fp, w.g);
     if (a <= 0.0) return vec4(0.0);
-    float thick = smoothstep(0.15, 0.9, a);   // (where it is thickest it is whitest: a cloudlet's heart, a fibre's middle)
+    // (where it is thickest it is whitest: a cloudlet's heart, a fibre's middle)
+    float thick = kind == 0 ? gDeckThick : smoothstep(0.15, 0.9, a);
+    // A cloudlet's top is lumpy: lit by how it faces the Sun, as a level top is where it is level, brighter toward
+    // the Sun and grey on its far side, never black (the sky lights it and light comes through it); and greyer at its
+    // thin rim than at its heart. Its slope from deckAt (gDeckSlope); the cirrus has none.
+    vec2 slope = kind == 0 ? gDeckSlope : vec2(0.0);
     // looked along, a sheet is as many times thicker as the ray is longer in it
     a = 1.0 - pow(1.0 - a, min(1.0 / cosv, uEyeH < height ? 2.2 : kind == 0 ? 5.0 : 3.5));
     // (and the eye goes through it, not into a wall: nothing of it close by)
@@ -966,14 +973,22 @@ const OVER = /* glsl */ `
     // from above, its lit top (the cirrus's ice a little brighter toward the Sun); from under, the light that comes
     // through it, most where the Sun is behind it, and the sky's
     float toSun = max(dot(dir, uSun), 0.0);
+    vec3 normal = normalize(up - slope.x * vec3(1.0, 0.0, 0.0) - slope.y * vec3(0.0, 0.0, 1.0));
+    float facing = kind == 0 ? clamp((0.25 + 0.75 * max(dot(normal, uSun), 0.0)) / (0.25 + 0.75 * max(sunUp, 0.0)), 0.35, 1.4) : 1.0;
     vec3 light = under
-      ? sunWhite * (kind == 0 ? 0.6 : 0.75) * (0.8 + 0.9 * pow(toSun, 6.0)) + uSkyLight * (kind == 0 ? 0.8 : 0.9) + uGroundLight * 0.2
-      : sunWhite * (kind == 0 ? 0.98 : 0.92) * (0.7 + 0.3 * thick) + uSkyLight * 0.85;
+      ? (sunWhite * (kind == 0 ? 0.6 : 0.75) * (0.8 + 0.9 * pow(toSun, 6.0)) + uSkyLight * (kind == 0 ? 0.8 : 0.9) + uGroundLight * 0.2)
+        * (kind == 0 ? 1.1 - 0.3 * thick : 1.0)   // (from under, a cloudlet's heart lets less through than its rim)
+      : sunWhite * (kind == 0 ? 0.98 * (0.6 + 0.4 * thick) : 0.92 * (0.7 + 0.3 * thick)) * facing + uSkyLight * (0.85 - 0.15 * (1.0 - dot(normal, up)));
     float hz = hazeTo(v);
     float shown = mix(1.0 - veil, 1.0, step(tm, dv));
     if (uCel < 0.5) return throughAir(vec4(mix(light, uHaze, hz), 1.0) * a, dir, tm) * shown;
-    float cut = kind == 0 ? smoothstep(0.4, 0.5, a) : 0.0;   // (a drawing has no cirrus: a wash is not a shape)
-    return vec4(celTone(under ? 0.3 : 0.9, 1e-3, hz), 1.0) * (cut * shown);
+    // drawn: the deck cut at about half opacity (its opacity is already as soft as a pixel at its rim: deckAt) in two
+    // flat tones, its sides away from the Sun in the darker; a drawing has no cirrus: a wash is not a shape. (No
+    // fwidth here: a pixel beside one that returned early has no derivative, and each cloudlet had a hairline round it.)
+    if (kind != 0) return vec4(0.0);
+    float cut = smoothstep(0.4, 0.5, a);
+    float l = under ? 0.3 : 0.9 * facing * (0.85 + 0.15 * thick);
+    return vec4(celTone(l, 0.03, hz), 1.0) * (cut * shown);
   }
 
   float w4(int k, vec2 fr) { return ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y); }

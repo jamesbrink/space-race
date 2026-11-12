@@ -516,6 +516,16 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   (`gHaze`) instead of being drawn as a dot that is there or not by where a pixel's middle falls; the veil between
   cells has an edge as soft as the pixel. Flips a frame on the climb, straight down: 47 to 13 from 187 km, 21 to 12
   from 150.
+- **The middle deck is tufts, not tiles.** Round the site it is the record's eighth of altocumulus at 3,600 m (Patrick,
+  10:00 EST, NOAA ISD): patches over 0.3 of the sky, their cloudlets covering some 0.4 of a patch (`DECK_SITE`; the
+  patches had covered an eighth, and the cloud in them less than that). Near to, `deckAt` (weather.ts) draws it as domes on a scatter of points 250 m apart, of every
+  size, each heaped of puffs 85 m apart and frayed at its rim, standing apart where a patch is thin and run together
+  where it is thick; its slope is handed to clouds.ts (`gDeckSlope`), which lights its top by how it faces the Sun.
+  How many stand is what makes them cover the patch's share (`DECK_PRESENCE`, measured: change a dome's breadth or
+  its opacity and measure again), and each stands by the share at its own middle, so none is cut where the share
+  changes. It had been cells that each filled their ground with pixel-soft lanes between: a Voronoi mosaic, white
+  plates with ruled cracks, which the owner saw from the climb as ice floes: it was tuned by flips a frame and never
+  set beside a photograph. It is judged against photographs from airliners (docs/sources.md) as well as by its flicker.
 - **The field is organised by where it is.** The weather map's alpha is land (`pnpm globe:weather` bakes it):
   over land the streets are straight and strong; over the sea they are weak and bend, and clusters and arcs
   (`cumulusArcs`) are most of the pattern. All of it is in `cumulusBias`, which the bake, the far cover and the

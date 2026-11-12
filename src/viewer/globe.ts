@@ -1093,7 +1093,11 @@ export class Globe {
             float even = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);
             float shade = 1.0 - 0.8 * mix(dark, even, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
             vec2 pd = world.xz + lean * ${DECK_HEIGHT.toFixed(1)};
-            shade *= 1.0 - 0.7 * deckAt(pd, fp, deckCoverAt(weatherAt(pd), pd));
+            // (read as if a pixel were 40 m at the least: the Sun's half-degree disc blurs a shadow cast from 3.6 km
+            // by 33 m, so the deck's puffs and lumps, which it would not show, are not worked out for it)
+            gDeckShadow = true;
+            shade *= 1.0 - 0.7 * deckAt(pd, max(fp, 40.0), deckCoverAt(weatherAt(pd), pd));
+            gDeckShadow = false;
             vec2 pc = world.xz + lean * ${CIRRUS_HEIGHT.toFixed(1)};
             return shade * (1.0 - 0.5 * cirrusAt(pc, fp, weatherAt(pc).g));
           }
