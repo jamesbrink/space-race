@@ -92,7 +92,7 @@ flight in particular:
 
 | Level | Triangles | Meshes |
 | --- | --- | --- |
-| Full (1.0) | 128,280 | 68 |
+| Full (1.0) | 128,640 | 68 |
 | 0.6 | 67,901 | 49 |
 | 0.3 | 42,074 | 50 |
 

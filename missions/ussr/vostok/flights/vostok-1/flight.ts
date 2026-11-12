@@ -257,9 +257,9 @@ const vehicle: ModelDef = {
     { id: 'spacecraft', label: 'Spacecraft', nodes: ['DescentModule', 'InstrumentModule', 'RetroEngine'] },
     { id: 'descent', label: 'Descent module', nodes: ['DescentModule'] },
     { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: along(ENTRY.az, 12, 1) },
-    { id: 'pilot', label: 'Pilot', nodes: ['EjectionSeat'], from: along(225, 10, 1) },
     { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles'] },
-    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -35, 1) },
+    // (framed wider than the engine itself, most of which is inside the aft cone, and from below)
+    { id: 'engine', label: 'Braking engine', centreY: 2.45, span: 2.6, from: along(250, -32, 1) },
   ],
 };
 

@@ -435,6 +435,7 @@ def build_cabin(M) -> None:
         gear.lathe([(0, 0), (38, 0), (38, 150), (30, 160)], 16, matrix=cam)
         lens.lathe([(30, 160), (0, 160)], 16, matrix=cam)
     # equipment under and beside the seat: telemetry under it; air regeneration, the radio and the food locker at his right
+    lockers = MeshBuilder()
     for x, y, z, sx, sy, sz in (
         (0, 150, -560, 560, 700, 200),
         (0, -470, -420, 460, 300, 220),
@@ -442,7 +443,12 @@ def build_cabin(M) -> None:
         (-500, -330, 40, 220, 280, 300),
         (500, -330, -160, 220, 300, 320),
     ):
-        gear.box((sx, sy, sz), Matrix.Translation(P(x, y, z)))
+        lockers.box((sx, sy, sz), Matrix.Translation(P(x, y, z)))
+        for dy in (-0.28, 0.28):  # each case's lid straps
+            gear.box((sx + 8, 26, sz + 8), Matrix.Translation(P(x, y + sy * dy, z)))
+    # two canisters of the air regeneration unit, at his right beside the cases
+    for y in (-60, 110):
+        gear.tube(P(-560, y - 60, 120), P(-560, y + 60, 120), 62, 20)
     # the descent module's own parachute, in its container behind hatch No. 2
     pax = to_seat(OUTER.axis(*PARACHUTE))
     zin = INNER.z(HATCH_R)
@@ -455,6 +461,7 @@ def build_cabin(M) -> None:
         (gauges, "Cabin_Instruments", "gauge"),
         (globe, "Cabin_Globus", "globe"),
         (gear, "Cabin_Equipment", "equipment"),
+        (lockers, "Cabin_Cases", "panel"),
         (lens, "Cabin_Lenses", "lens"),
         (chute, "Cabin_ParachuteContainer", "fabric"),
     ):
