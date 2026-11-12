@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { Crossfade, chooseLevel, distanceTo, FADE, LOD_ABOVE, Scenery, Staged } from '../src/viewer/lod.ts';
+import { Crossfade, chooseLevel, distanceTo, FADE, LOD_ABOVE, Scenery, Staged, thresholdsOf } from '../src/viewer/lod.ts';
 
 test('a level is chosen by size on screen, finest when large', () => {
   assert.equal(chooseLevel(1000, 2), 0);
@@ -215,5 +215,51 @@ test('the place round the pad: each piece by its own box, every level drawn for 
   scenery.everyLevel(false);
   assert.ok(
     !p1.made[1].node.visible && p0.made[1].node.visible && p1.made[0].node.visible && !p0.made[0].node.visible && !p2.made[0].node.visible,
+  );
+});
+
+test('a thing with thresholds of its own goes coarser where they say, and never later than the rest', () => {
+  assert.deepEqual(thresholdsOf([40, 5]), [40, 5]);
+  assert.equal(thresholdsOf(undefined), LOD_ABOVE);
+  assert.equal(thresholdsOf([40]), LOD_ABOVE, 'one for each boundary, or none');
+  assert.equal(thresholdsOf([4, 1]), LOD_ABOVE, 'held finer for longer than the rule: not from here');
+  assert.equal(thresholdsOf([20, 30]), LOD_ABOVE, 'out of order');
+  assert.equal(thresholdsOf([Number.NaN, 2]), LOD_ABOVE);
+  assert.equal(thresholdsOf(['40', '5']), LOD_ABOVE);
+  // a model
+  const l0 = level('Thing'),
+    l1 = level('Thing');
+  l0.root.userData.lod_above = [40, 5];
+  const s = new Staged(l0.root, []);
+  s.group.updateMatrixWorld(true);
+  s.measure();
+  s.add(1, l1.root);
+  const scale = 1000;
+  const eye = (d) => new THREE.Vector3(1 + d, 0, 0); // the box is 1 m either side of the origin
+  s.choose(eye(scale / 20), scale, false);
+  assert.ok(l1.root.visible && !l0.root.visible, 'at 20 px/m it is under its own 40');
+  s.choose(eye(scale / 60), scale, false);
+  assert.ok(l0.root.visible && !l1.root.visible);
+  // a place: two pieces side by side at the same size on screen, one with thresholds of its own
+  const place = [0, 1].map(() => {
+    const root = new THREE.Group();
+    for (const name of ['Plain', 'Own']) {
+      const made = level(name);
+      root.add(made.node);
+    }
+    return root;
+  });
+  place[0].children[1].userData.lod_above = [40, 5];
+  const scenery = new Scenery(place[0]);
+  scenery.add(1, place[1]);
+  scenery.choose(eye(scale / 20), scale);
+  assert.deepEqual(
+    scenery.shown.map((p) => p.level),
+    [0, 1],
+  );
+  scenery.choose(eye(scale / (LOD_ABOVE[0] * 0.5)), scale);
+  assert.deepEqual(
+    scenery.shown.map((p) => p.level),
+    [1, 1],
   );
 });

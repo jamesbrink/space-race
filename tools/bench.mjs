@@ -414,8 +414,17 @@ function inPage(DT) {
     });
   // the page's time is the script's: every frame is a sixtieth of a second, however long it took
   st.timer.getDelta = () => DT;
-  const own = () => r.setAnimationLoop(null);
-  const loose = () => r.setAnimationLoop(() => st.frame());
+  // (driven a frame at a time the pace is the script's, not the machine's: the net under the frame rate, viewer/quality.ts,
+  // would take the resolution down under a slow scenario and the time measured would be of another picture. In the
+  // soak the page's own loop runs and the net is left as the page has it: `leastScale` says whether it ever acted.)
+  const own = () => {
+    r.setAnimationLoop(null);
+    if (st.quality) st.quality.auto = false;
+  };
+  const loose = () => {
+    if (st.quality) st.quality.auto = true;
+    r.setAnimationLoop(() => st.frame());
+  };
   own();
 
   // the composer's passes, by what they are (the build has no names left)
@@ -867,11 +876,13 @@ function inPage(DT) {
       let last = now();
       const began = last;
       const heap = [];
+      let least = 1;
       await new Promise((done) => {
         const each = () => {
           const t = now();
           gaps.push(t - last);
           last = t;
+          least = Math.min(least, st.quality?.scale ?? 1);
           st.dirty = true;
           if (gaps.length % 30 === 0) heap.push(performance.memory?.usedJSHeapSize ?? 0);
           if (t - began < seconds * 1000) requestAnimationFrame(each);
@@ -880,8 +891,12 @@ function inPage(DT) {
         requestAnimationFrame(each);
       });
       own();
+      if (st.quality && st.quality.scale < 1) {
+        st.quality.reset();
+        st.fitPixels(1);
+      }
       sr.clock.pause();
-      return { gaps, heap };
+      return { gaps, heap, least };
     },
   };
   window.__bench = api;
@@ -1143,7 +1158,7 @@ async function soak(context, page) {
       if ((ev.name === 'MinorGC' || ev.name === 'MajorGC') && ev.ph === 'X') gcs.push({ name: ev.name, ms: ev.dur / 1000 });
   });
   await trace.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig: { includedCategories: ['v8', 'devtools.timeline'] } });
-  const { gaps, heap } = await page.evaluate((s) => window.__bench.soak(s), SOAK);
+  const { gaps, heap, least } = await page.evaluate((s) => window.__bench.soak(s), SOAK);
   const ended = new Promise((done) => trace.once('Tracing.tracingComplete', done));
   await trace.send('Tracing.end');
   await ended;
@@ -1167,6 +1182,8 @@ async function soak(context, page) {
     gcWorst: Math.max(0, ...gcs.map((g) => g.ms)),
     heapMin: Math.min(...heap) / 1e6,
     heapMax: Math.max(...heap) / 1e6,
+    // the least share of full resolution the net under the frame rate drew at (viewer/quality.ts): 1, it never acted
+    leastScale: least,
   };
 }
 
@@ -1259,7 +1276,9 @@ for (const size of sizes) {
         await o.page.evaluate(() => window.__bench.setLook('real'));
         if (m.js) await o.page.evaluate(([js]) => window.__bench.throw(js, 10), [m.js]);
         const k = (of(o.v, m.name).soak = await soak(o.context, o.page));
-        process.stderr.write(`${keyOf(o.v, m.name)}: soak: ${k.frames} frames, ${k.hitches} hitches, worst ${k.worst.toFixed(1)} ms\n`);
+        process.stderr.write(
+          `${keyOf(o.v, m.name)}: soak: ${k.frames} frames, ${k.hitches} hitches, worst ${k.worst.toFixed(1)} ms, least resolution ${Math.round(k.leastScale * 100)} %\n`,
+        );
       }
   for (const o of open) await o.context.close();
 }

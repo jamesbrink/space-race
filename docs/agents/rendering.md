@@ -162,6 +162,20 @@ about it; `Stage.warm` builds those shaders with the rest. A test (`stage.frozen
 To measure a change to any of this: `Staged.forced` and `Scenery.forced` draw a level whatever
 the distance, so the same view can be drawn at two levels and compared.
 
+**Each thing has its own thresholds, measured.** 8 and 2 are what the worst things need (a gantry
+whose bracing goes, the pad). Most differ far less from level to level (a road and a cable trench
+not at all), and holding them fine until 8 px/m cost 8 ms a frame on the pad against 40 and 12.
+So `node tools/lod-thresholds.mjs --measure` (needs `pnpm dev`) draws every model, and every
+piece of the place, at each pair of levels from the same eye at a range of sizes and counts the
+pixels that differ; a thing's threshold is the largest size at and under which no more than 100
+(level 0 to 1) or 350 (1 to 2) pixels of 1280 x 800 differ, never under 8 and 2, the second kept a
+size under the first so that nothing goes from 0 straight to 2. The figures and what was measured
+are kept in `<name>.lod.json` beside the model's script and carried in the GLB's extras
+(`lod_above`: the scene's for a model, a top-level node's for a piece), which lod.ts reads
+(`thresholdsOf`); `build-model.mjs` puts them back after a rebuild and a test fails a GLB that has
+lost them. **After changing what a level leaves out, measure again.** A thing with no record
+has 8 and 2.
+
 **Shadows reach as far as the place does.** The Sun has two maps. Its own (`fitShadows`,
 `fitWalkShadows`) is fine and spent where it is looked at: the section's model, or 52 m of ground
 round the walker. The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
@@ -282,6 +296,16 @@ What has been found, so it is not found again:
   time alone (plants in the wind, a level of detail fading) nothing is kept and the map is drawn whole as before: so
   among plants, and on the gantry above them, it buys nothing. It costs 256 MiB while someone is on foot, freed with
   the 8192 map half a minute after.
+- **A net under the frame rate, for a weak machine only** (`quality.ts`, the "Hold frame rate" switch, pref
+  `resolutionAuto`, off unless chosen). Everything is drawn at the screen's own pixels. With the switch on, while
+  frames drawn one after another stay under 30 a second for four seconds the drawing's pixel ratio is taken down a
+  tenth, never under 0.6 of full nor one pixel a CSS pixel, and never the page's own panels; at 40 or better it is
+  tried a step up again, and a try that fails waits twice as long before the next. A view that is still is always
+  drawn at full. A hitch (a frame over a quarter of a second) and the seconds after a load, a resize or a change of
+  look are not counted. If two steps running buy no frames (the pace is the processor's) the pixels are given back
+  and left alone four minutes. The diagnostics line shows a lamp while it is acting. It is never a way to make a
+  scene affordable on a capable machine: 24 ms a frame is that scene's fault and is to be fixed there. `pnpm bench`
+  switches it off while it drives frames and its soak reports the least resolution drawn at.
 - **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame at 1440x900 is
   bound by the CPU (three's work per draw call), so a batch per material per file was built, with the meshes left
   in the scene on a layer the camera did not see (so picking, outline, cutaway, moves, levels of detail and
@@ -329,3 +353,20 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   air is derived from the scene's own at 50 degrees, so sunlit ground, cloud and sky keep their true ratios.
 - **Nothing costs on the ground that is not seen there.** The ball and the globe are not drawn until the eye
   can see past the site; the sheets and far cumulus are worked out only for pixels that meet their shells.
+
+## Texture units
+
+A fragment shader reads sixteen textures at once and no more (all WebGL 2 promises: `MAX_TEXTURE_IMAGE_UNITS`), and
+one over fails to compile, on some machines only. The budget: **a lit material keeps four units free for lights**
+(`UNITS_FREE` in `viewer/units.ts`), counted with the Sun's two shadow maps, the reflections and three's own table
+already in. Each shadow-casting point or spot light a material is under takes one. Today the site's ground reads
+12 and the globe 10; a model's materials far fewer.
+
+- A development build warns in the console, a few seconds after the scene is up, of any program over the budget
+  (`checkUnits`); `samplerCounts(renderer)` lists every program's samplers.
+- One-channel maps are packed, not given a unit each (`viewer/pack.ts`): maps of a size as the channels of one cube
+  (`packCube`: the globe's land, ice and relief are red, green and blue of `uGlobeMaps`), flat maps as the layers of
+  one array texture, each in its layer's corner (`packLayer`: the region's near, wide and relief maps are layers 0 to
+  2 of `uGlobeFlat`). They are copied in on the GPU texel for texel as they arrive, so what is read is the file's own
+  bytes; a map that has not arrived reads 0. A new one-channel map goes into a spare channel or layer, not a new sampler.
+- The clouds' composite (the output pass) reads 12 and is not lit: it is outside the budget, but is not to grow past 16.

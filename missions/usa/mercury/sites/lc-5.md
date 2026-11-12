@@ -888,3 +888,11 @@ The rest of the complex:
   today's survey's kind of ground, not 1961's. The swell's crests run straight along the shore and
   no wave is ever stood in: the walker meets the still sea. Plants are not solid: the walker goes
   through them.
+
+## Open: the hatch's bearing
+
+`bearingX` (295 degrees true, the side the capsule's hatch faced) is estimated, and more now leans on it than the
+site's own layout: with the periscope a quarter turn from the hatch it decides how the pilot lay to the 105 degree
+azimuth, and so the 80 degrees the simulator rolls the capsule after the turnaround (`earthward` in the flight's
+`flight.ts`; the flight's spacecraft.md, "An open question"). A pad photograph showing the hatch side against the
+gantry with the azimuth known, or the Postlaunch Report's roll trace through the turnaround, would settle both.

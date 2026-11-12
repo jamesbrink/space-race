@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-/** The coarser levels built beside each model: `<name>.lod1.glb`, `<name>.lod2.glb`. Keep in step with LOD_ABOVE in src/viewer/lod.ts. */
+/** The coarser levels built beside each model: `<name>.lod1.glb`, `<name>.lod2.glb`. Keep in step with LOD_ABOVE in src/viewer/lod.ts and tools/lod-thresholds.mjs. */
 const LODS = [0.6, 0.3];
 const blender = process.env.BLENDER ?? ['/Applications/Blender.app/Contents/MacOS/Blender'].find(existsSync) ?? 'blender';
 
@@ -127,4 +127,11 @@ for (const id of targets) {
       console.log(lines.filter((l) => l.includes(' triangles')).join('\n') || `built ${id}/${file}`);
     }
   }
+}
+
+// A model built again has lost the thresholds its levels of detail are chosen by: put back from its record
+// (tools/lod-thresholds.mjs). If what a level leaves out has changed, measure them again (`--measure` there).
+if (!outDir) {
+  const { carry, records } = await import('./lod-thresholds.mjs');
+  for (const { file, glb } of records()) for (const line of carry(file, glb)) console.log(`levels of detail: put right: ${line}`);
 }

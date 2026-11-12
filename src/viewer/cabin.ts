@@ -144,6 +144,20 @@ export class Cabin {
     // (a floodlight's reflector spreads its light: it falls off with distance, not its square, or what is near it burns)
     for (const light of lights) light.decay = 1;
     this.lights = lights.map((light) => ({ light, base: light.intensity }));
+    // What comes in at each window, and off the periscope's screen: a light apiece, there from the start (a light
+    // added later would have every shader in the scene built again) and dark until someone is aboard to see by it.
+    const glow = (from: THREE.Vector3, out: THREE.Vector3, across: number, lamp: THREE.Vector3): void => {
+      // (well inside the pane and falling off with distance, not its square, as the lamps do: the wall round a port is not to burn)
+      const light = new THREE.PointLight(0x000000, 1, 2.5, 1);
+      light.position.copy(lamp);
+      group.add(light);
+      this.glows.push({ light, from, out, area: (Math.PI * across * across) / 4, goal: new THREE.Color(0, 0, 0) });
+    };
+    for (const w of this.def.windows ?? []) {
+      const at = new THREE.Vector3(...w.at);
+      const out = new THREE.Vector3(...w.out).normalize();
+      glow(at.clone().addScaledVector(out, 0.15), out, w.across, at.clone().addScaledVector(out, -0.3));
+    }
     full.updateWorldMatrix(true, true);
     const toModel = new THREE.Matrix4().copy(group.matrixWorld).invert();
     const find = (name: string): THREE.Object3D | null => full.getObjectByName(name) ?? null;
@@ -279,6 +293,13 @@ export class Cabin {
       screen.material = material;
       screen.userData.real = material;
       this.scope = { screen, material, target, cube, at: new THREE.Vector3(...p.at), axis, up, next: 0, owed: 1, power: 0 };
+      // (the screen gives back into the cabin what its objective sees: lit from just in front of the glass)
+      const front = middle.clone().applyMatrix4(screen.matrixWorld).applyMatrix4(toModel);
+      const facing = new THREE.Vector3()
+        .crossVectors(material.uniforms.uAcross!.value, top)
+        .transformDirection(screen.matrixWorld)
+        .transformDirection(toModel);
+      glow(new THREE.Vector3(...p.at), axis, 2 * radius, front.addScaledVector(facing, 0.06));
       name(screen, p.name, p.about, { lookout: 'screen' });
     }
   }
@@ -315,6 +336,15 @@ export class Cabin {
     this.host.redraw();
   }
   private open = false;
+  private readonly glows: { light: THREE.PointLight; from: THREE.Vector3; out: THREE.Vector3; area: number; goal: THREE.Color }[] = [];
+  private readonly probe = {
+    target: new THREE.WebGLRenderTarget(PROBE, PROBE, { type: THREE.HalfFloatType }),
+    camera: new THREE.PerspectiveCamera(110, 1, 0.2, 1000),
+    pixels: new Uint16Array(PROBE * PROBE * 4),
+    turn: 0,
+    /** Windows still to be looked out of for the first time since boarding: one a frame, and frames are asked for until it is done. */
+    owed: 0,
+  };
   private readonly interior: { mesh: THREE.Mesh; casts: boolean }[] = [];
   private shown = true;
   private casting = true;
@@ -348,6 +378,7 @@ export class Cabin {
   board(on: boolean): void {
     if (on === this.aboard) return;
     this.aboard = on;
+    this.probe.owed = on ? this.glows.length : 0;
     if (this.scope) {
       this.scope.owed = 1;
       this.scope.material.uniforms.uOn!.value = on ? 1 : 0;
@@ -486,8 +517,21 @@ export class Cabin {
       if (w.t >= 1) this.worked.splice(i, 1);
       moved = true;
     }
-    for (const { light, base } of this.lights) light.intensity = base / Math.max(1, exposure / DAY_EXPOSURE);
+    // the cabin's own lamps read the same whatever the exposure outside has gone to: turned down as the eye opens at
+    // dusk, and up when it has closed against sunlit cloud or the Earth from space
+    const held = THREE.MathUtils.clamp(DAY_EXPOSURE / Math.max(exposure, 1e-3), 0.15, 8);
+    for (const { light, base } of this.lights) light.intensity = base * held;
     this.seen();
+    if (this.aboard && this.probe.owed > 0) moved = true; // (a frame, so the next window is looked out of)
+    // the windows' light and the screen's: toward what was last seen outside each, and out when nobody is aboard
+    const ease = dt > 0 ? 1 - Math.exp(-dt / 0.35) : 1;
+    for (const g of this.glows) {
+      if (!this.aboard) g.goal.setRGB(0, 0, 0);
+      if (Math.abs(g.light.color.r - g.goal.r) + Math.abs(g.light.color.g - g.goal.g) + Math.abs(g.light.color.b - g.goal.b) > 1e-4) {
+        g.light.color.lerp(g.goal, ease);
+        moved = true;
+      }
+    }
     if (moved) this.host.redraw();
   }
 
@@ -600,7 +644,49 @@ export class Cabin {
       f.updateProjectionMatrix();
     }
     s.screen.visible = false; // (it shows the cube it would be drawn into)
+    // every few frames one window (or the objective) is looked out of as well, very small, for the light it lets in
+    const pr = this.probe;
+    const due =
+      pr.owed > 0
+        ? this.glows[--pr.owed]!
+        : this.glows.length && ++pr.turn % PROBE_EVERY === 0
+          ? this.glows[(pr.turn / PROBE_EVERY) % this.glows.length]!
+          : null;
     this.host.draw(() => {
+      if (due) {
+        const from = due.from.clone().applyMatrix4(this.group.matrixWorld);
+        const out = due.out.clone().transformDirection(this.group.matrixWorld);
+        pr.camera.position.copy(from).sub(eye);
+        pr.camera.near = Math.max(0.2, camera.near);
+        pr.camera.far = Math.max(camera.far, 100);
+        pr.camera.updateProjectionMatrix();
+        pr.camera.lookAt(v.copy(pr.camera.position).add(out));
+        pr.camera.updateMatrixWorld();
+        const was = { fov: sky.camera.fov };
+        sky.camera.fov = pr.camera.fov;
+        sky.camera.updateProjectionMatrix();
+        sky.camera.quaternion.copy(pr.camera.quaternion);
+        sky.camera.updateMatrixWorld();
+        renderer.setRenderTarget(pr.target);
+        renderer.clear();
+        renderer.render(sky.scene, sky.camera);
+        renderer.clearDepth();
+        renderer.render(scene, pr.camera);
+        renderer.readRenderTargetPixels(pr.target, 0, 0, PROBE, PROBE, pr.pixels);
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        for (let i = 0; i < pr.pixels.length; i += 4) {
+          // (the Sun's own disc in a window would be a searchlight: what is this bright is taken for sky)
+          r += Math.min(BRIGHTEST, THREE.DataUtils.fromHalfFloat(pr.pixels[i]!));
+          g += Math.min(BRIGHTEST, THREE.DataUtils.fromHalfFloat(pr.pixels[i + 1]!));
+          b += Math.min(BRIGHTEST, THREE.DataUtils.fromHalfFloat(pr.pixels[i + 2]!));
+        }
+        const k = (WINDOW_GAIN * due.area) / (PROBE * PROBE);
+        due.goal.setRGB(r * k, g * k, b * k);
+        sky.camera.fov = was.fov;
+        sky.camera.updateProjectionMatrix();
+      }
       for (const i of todo) {
         const face = faces[i]!;
         renderer.setRenderTarget(s.target, i);
@@ -624,6 +710,7 @@ export class Cabin {
   }
 
   dispose(): void {
+    this.probe.target.dispose();
     this.scope?.target.dispose();
     this.scope?.material.dispose();
   }
@@ -646,9 +733,19 @@ function shaded(m: THREE.MeshStandardMaterial, opened: boolean): number {
 }
 /** How near the eye must be for the inside to be drawn through a closed shell, metres: a 25 cm port is then a dozen pixels and more. */
 const NEAR = 30;
+/**
+ * How much a window's light is made of: the radiance seen through it times its area would be its strength if the
+ * cabin's own lamps were as dim beside daylight as real ones are. They are not (they are set by eye to read at the
+ * day's exposure), so the windows are raised by as much: chosen by eye, like the lamps.
+ */
+const WINDOW_GAIN = 9;
+/** Pixels along the little picture taken out of each window for its light, how many drawn frames between one and the next, and the brightest a pixel of it counts for. */
+const PROBE = 8;
+const PROBE_EVERY = 8;
+const BRIGHTEST = 1;
 /** A lit lamp's own brightness (emissive, against the scene's exposure). */
 const LAMP_LIT = 1.6;
-/** The exposure the cabin's lights are set for: a day's. Past it (dusk, night) they are turned down by as much, so the cabin reads the same. */
+/** The exposure the cabin's lights are set for: a day's on the pad. Away from it they are turned down or up by as much, so the cabin reads the same. */
 const DAY_EXPOSURE = 1;
 /** How long a worked control takes to go out and come back, seconds. */
 const WORK_SECONDS = 0.45;

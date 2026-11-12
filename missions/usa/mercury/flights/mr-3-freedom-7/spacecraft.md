@@ -109,7 +109,7 @@ is documented (the periscope's 8 in screen) and the rest follow from it or are e
 | Visor seal bottle | a green bottle low at the pilot's left | documented (aboard), estimated (place, size) | SEDR 109-7 lists it for No. 7; NASM2021-00147 |
 | Wiring | three runs down from the fuse panel; a harness from the back of the panel down each side, with red-capped connectors | estimated | NASM2021-00147 and -00153: the runs are ours |
 | Coiled cord, lacing, port clamps | a white coiled cord hanging down the left wall; ties every few inches on the panel harnesses; four clamps on each port's ring | estimated | NASM2021-00147. What the cord served is not in anything read; the clamps are not counted |
-| Knee strap | a band over both knees down to the couch | documented (aboard), estimated (its run) | Postlaunch Report, p. 38: shoulder, chest, lap and knee straps and toe caps. Only the knee strap is modelled |
+| Restraints | two shoulder straps, a chest strap, a lap strap, a knee strap and a cap over each toe | documented (aboard), estimated (every run) | Postlaunch Report, p. 38: shoulder, chest, lap and knee straps and toe caps. Laid on the seated figure's own surface |
 | Suit circuit hoses, junction box | two corrugated hoses up the right wall from under the couch; a box above the panel with three leads into the tunnel | estimated | NASM2021-00147, lower right and top: placed by eye |
 | Hatch sill studs, a mirror under the upper port | studs every 1.6 in round the opening; a 2.2 by 1.5 in mirror on a bracket | estimated | NASM2021-00153; -00147. The studs are not counted, and what the mirror was for is not in anything read |
 | Colours | wall, panels and consoles light grey; instrument faces black; couch grey with a cream liner; chest parachute olive | estimated | NASM2021-00147 and -00153, and NASA S61-03257. No document read states a colour |
@@ -122,6 +122,18 @@ coolant, oxygen, volts and amps stand where their faces were drawn; "in retro at
 warning lamps stay dark. The attitude angles are read off the model as the scene has it, by a convention that is the
 viewer's (`src/viewer/gauges.ts`): pitch is the small end's height above the horizon, yaw its heading from trailing,
 and roll is how far the pilot's head is from uppermost: nought in the attitude held for retrofire, and about 100 degrees going up, because the model's stance on the pad (hatch at 295 degrees, estimated) has him on his side to the 105 degree azimuth.
+
+### An open question: which way round the capsule stood
+
+Two estimates lean on each other. The hatch's bearing on the pad is 295 degrees true (`lc-5.ts`, estimated: square to
+the rails, and which of the two sides is read off a figure and one photograph). The model puts the periscope under
+the pilot's feet, a quarter turn from the hatch, so on the pad it bears 205 degrees, 100 degrees round from the plane
+of the 105 degree azimuth. That is why the pilot is on his side to the trajectory going up, and why the simulator rolls
+the capsule 80 degrees after the turnaround to put the periscope toward the Earth (`trajectory.body.capsule.earthward`,
+estimated). If the stack in fact stood with the pilot's head against the azimuth, no roll is wanted and that figure is 0.
+Either of these would settle it: a pad photograph that shows the hatch side against the gantry and the flight azimuth
+together, or the Postlaunch Report's attitude traces through the turnaround (a roll of about 80 degrees there, or none).
+Until then both stay estimated.
 
 ## Parts in the model
 
@@ -166,6 +178,10 @@ The same GLB also holds the launch vehicle's five nodes: see
 - **After the turnaround the simulator rolls the capsule periscope side down** (`trajectory.body.capsule.earthward`,
   estimated: 80 degrees, from the model's own periscope and hatch bearings). The record has the yaw through 180 degrees
   and the 34 degrees; that the periscope faced the Earth is why it was there; the roll's own figure is not in anything read.
+- **Open: the paint is not worn in colour.** A paler ring round each screw head is all there is; edges are not
+  worn to the metal and recesses are dark only through the build's baked shade, not in the paint.
+- **Open: the porthole and screen lights have no direction.** Each lights the wall behind its pane as well as what
+  is before it.
 - **The periscope does not retract**, has no filters, map or Sun and Moon index that turns, and its reticle is a few
   lines of the real one's. What it shows is the scene's geometry and sky, without the clouds' volume.
 - **The hatch's latch mechanism is not modelled**: the inner face is plain with one release handle. No drawing of it
@@ -179,6 +195,9 @@ The same GLB also holds the launch vehicle's five nodes: see
   behind the panel and in the corners is there, but nothing that moves casts a shadow, a large flat plate is shaded
   only at its corners, and sunlight through a port is dimmed where the lamps' light is. What comes in at the windows
   is the scene's own Sun and shadow; the sky's light is cut to a tenth indoors by rule, not by tracing it through the glass.
+  Each porthole and the periscope's screen is also a light: what is outside it is looked at a couple of times a second
+  (a picture eight pixels across) and comes in as that colour, scaled by the pane's area and by a factor chosen by eye,
+  as the lamps' strength is. It has no shadow and no direction: it lights the wall behind the port as well as before it.
 - **The retropack's straps** run from its sides. They should meet under its centre at one
   explosive bolt. The motors are not canted toward the centre of mass as the real ones are.
 - **The jettison motor has one nozzle** in the model; it had three.

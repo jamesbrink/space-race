@@ -572,6 +572,11 @@ vehicle.cabin = {
       about: 'Three axes in one hand: fore and aft for pitch, side to side for roll, a twist for yaw. It moves as the keys do.',
     },
   ],
+  // the two portholes as light: where the model has them (model/vehicle.py PORTHOLES), 9.2 in of glass each
+  windows: [
+    { at: [0.715, 0.33, -0.413], out: [0.814, 0.342, -0.47], across: 0.234 },
+    { at: [-0.33, 1.016, 0.472], out: [-0.539, 0.342, 0.77], across: 0.234 },
+  ],
   // how far it tips at full command is estimated; the axes are the node's own (X to his right, Y along the grip, Z toward his head)
   stick: { node: 'Ctl_HandController', throw: 0.23, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
   periscope: {

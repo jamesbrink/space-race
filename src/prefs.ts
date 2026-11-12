@@ -29,7 +29,8 @@ export type Pref =
   | 'soundOff'
   | 'galleryLight'
   | 'galleryMeasure'
-  | 'galleryNamesOff';
+  | 'galleryNamesOff'
+  | 'resolutionAuto';
 
 const KEY = 'space-race.prefs';
 /** Amounts are kept apart from the switches, which are all true or false. */

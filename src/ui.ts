@@ -21,6 +21,7 @@ export interface UiHandlers {
   refind(): void;
   /** Draw the scene as a cel-shaded drawing, or as it would look. */
   cel(on: boolean): void;
+  holdPace(on: boolean): void;
   /** Get down and walk the site as the figure whose section this is, or stop. */
   walk(on: boolean): void;
   /** The on-screen stick while walking: x to the right, y forward, each -1 to 1. */
@@ -522,6 +523,7 @@ export class Ui {
       else if (b?.hasAttribute('data-walk')) on.walk(true);
       else if (b?.hasAttribute('data-camera')) this.nextCamera();
       else if (b?.hasAttribute('data-cel')) this.setCel(b.getAttribute('aria-pressed') !== 'true');
+      else if (b?.hasAttribute('data-pace')) this.setHoldPace(b.getAttribute('aria-pressed') !== 'true');
     });
     // the label that follows the pointer over the model
     window.addEventListener('pointermove', (e) => {
@@ -643,7 +645,8 @@ export class Ui {
       `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside">Cutaway</button>' : ''}` +
       `<button data-camera title="${CAMERA_LABEL[this.cameraMode]}: the next camera (C)">${CAMERA_ICON}<span>${cameraName(this.cameraMode)}</span></button>` +
       `<button data-rotate class="switch" aria-pressed="${rotating}" title="The view drifts round what was last chosen">Auto-orbit</button>` +
-      `<button data-cel class="switch" aria-pressed="${prefs.get('cel')}" title="Draw the scene as a cel-shaded drawing (T)">Cel shading</button></span>`;
+      `<button data-cel class="switch" aria-pressed="${prefs.get('cel')}" title="Draw the scene as a cel-shaded drawing (T)">Cel shading</button>` +
+      `<button data-pace class="switch" aria-pressed="${prefs.get('resolutionAuto')}" title="For a slow machine: lower the drawing's resolution a little while frames fall under 30 a second, and put it back. Off, always the screen's full resolution">Hold frame rate</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
     // this model's own figures first
     const specs = r.querySelector('[data-pane="Specs"]')!;
@@ -771,6 +774,13 @@ export class Ui {
     prefs.set('cel', on);
     this.root.querySelector('[data-cel]')?.setAttribute('aria-pressed', String(on));
     this.on.cel(on);
+  }
+
+  /** The resolution lowered while the frame rate cannot be kept, or (off, as it starts) always the screen's own: remembered. */
+  setHoldPace(on: boolean): void {
+    prefs.set('resolutionAuto', on);
+    this.root.querySelector('[data-pace]')?.setAttribute('aria-pressed', String(on));
+    this.on.holdPace(on);
   }
 
   /** The user's own switch: on or off until they say otherwise. */

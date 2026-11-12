@@ -303,7 +303,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 .buttons button:hover { color: var(--ink); border-color: var(--faint); }
 /* current view: filled, like the section switcher (where am I). Toggles: outlined (what is on). */
 .buttons [data-view][aria-pressed='true'] { color: var(--ink); background: rgba(243, 239, 230, 0.12); border-color: var(--dim); }
-.buttons :is([data-cut], [data-rotate], [data-cel])[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+.buttons :is([data-cut], [data-rotate], [data-cel], [data-pace])[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
 .scale { color: var(--faint); text-align: center; text-transform: none; letter-spacing: 0.08em; text-wrap: balance; }
 
 /* --- the curtain: up while a flight arrives and the scene warms (ui.ts loading). It says what is arriving, how far along, and what is being done now --- */

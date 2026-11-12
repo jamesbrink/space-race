@@ -31,6 +31,7 @@ const flight = flightFor(flights, location.hash) as SitedFlight;
 document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
+stage.quality.auto = prefs.get('resolutionAuto'); // ("Hold frame rate": off unless chosen, so the picture is the screen's own)
 /** The instant on show: stopped at liftoff until it is run or moved (the time bar, or `sr.clock`). */
 const clock = new Clock(flight.launch);
 stage.clock = clock;
@@ -82,6 +83,9 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
     stage.setCutaway(on);
   },
   cel: (on) => stage.setLook(on ? 'cel' : 'real'),
+  holdPace: (on) => {
+    stage.quality.auto = on;
+  },
   camera: (mode) => stage.setCamera(mode), // back in orbit the view holds still until something is chosen
   nextCamera: () => stage.nextCamera,
   refind: () => stage.refind(),
@@ -806,7 +810,7 @@ setInterval(() => {
   const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
   ui.showFind(stage.vehicleAway);
   ui.setStats(
-    `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}${stage.walkRigid ? ' · figure rigid (no joints)' : ''}`,
+    `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}${stage.walkRigid ? ' · figure rigid (no joints)' : ''}${stage.quality.scale < 1 ? ` · ◐ resolution ${Math.round(s.scale * 100)} % (holding the frame rate)` : ''}`,
   );
 }, 500);
 

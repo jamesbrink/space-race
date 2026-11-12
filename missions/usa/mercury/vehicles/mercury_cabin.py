@@ -263,6 +263,9 @@ class Region:
                 self.screw(u0 + (u1 - u0) * t + nu * inset, v0 + (v1 - v0) * t + nv * inset, 0.09)
 
     def screw(self, u: float, v: float, r: float = 0.11) -> None:
+        # (paint worn to the metal round the head, where a screwdriver has been: a paler ring, faint)
+        wear = tuple(0.5 * a + 0.5 * b for a, b in zip(PAINT, (0.66, 0.66, 0.64)))
+        self.ring(u, v, r, r * 1.7, wear)
         self.ring(u, v, 0, r, (0.50, 0.51, 0.50))
         self.ring(u, v, r * 0.82, r, (0.36, 0.37, 0.37))
         self.line((u - r * 0.5, v - r * 0.5), (u + r * 0.5, v + r * 0.5), 0.025, (0.2, 0.2, 0.2))
@@ -671,7 +674,16 @@ FUSES = (
 
 
 def build(
-    parent, vessel: Surf, M: dict, font, pilot: dict, hip: tuple[float, float], portholes, hatch: tuple[float, float, float, float], ceiling: float
+    parent,
+    vessel: Surf,
+    M: dict,
+    font,
+    pilot: dict,
+    hip: tuple[float, float],
+    portholes,
+    hatch: tuple[float, float, float, float],
+    ceiling: float,
+    suit=None,
 ) -> dict:
     """Everything inside the pressure vessel but the pilot. `pilot` is mark_iv_suit's key points
     (seat-frame centimetres) and `hip` where his hips are, (y, station) in inches; `portholes` are
@@ -708,6 +720,8 @@ def build(
     periscope(c, P, side, out)
     consoles(c, P, side, faces)
     controls(c, seat, pilot, out)
+    if suit:
+        restraints(c, suit, pilot, seat)
     stowage(c, portholes, out)
     c.finish(
         {
@@ -975,14 +989,16 @@ def toggle(c: Cabin, F: Matrix, u: float, v: float, way: str, up: bool = True) -
 def telelight(c: Cabin, F: Matrix, faces: Sheet, name: str, legend: str, u: float, v: float, w: float = 0.0, size=(2.5, 0.95)) -> None:
     """A telelight: a black housing and a lens with its legend, which the viewer lights. The lens is its own mesh."""
     su, sv = size
-    c.box("CrewCabin_Bezels", F, u, v, su + 0.3, sv + 0.3, w, w + 0.4)
+    # a housing standing proud of the plate, its rim round a lens set down inside it, and a gap to the next
+    c.box("CrewCabin_Bezels", F, u, v, su + 0.24, sv + 0.24, w, w + 0.3)
+    c.rim("CrewCabin_Bezels", F, u, v, su + 0.02, sv + 0.02, 0.11, w + 0.25, w + 0.62)
     rg = faces.take(su, sv, 110, -su / 2, -sv / 2)
     # a smoked lens in a black housing, its legend engraved dark, as the flown capsule's are (NASM2021-00147)
     rg.rect(-su / 2, -sv / 2, su / 2, sv / 2, (0.34, 0.35, 0.34))
     rg.rect(-su / 2 + 0.06, -sv / 2 + 0.06, su / 2 - 0.06, sv / 2 - 0.06, (0.56, 0.57, 0.55), r=0.06)
     rg.text(legend, 0, 0, 0.2 if "\n" not in legend else 0.17, INK)
     lens = Cabin(c.g, c.vessel, c.M)
-    lens.box("lens", F, u, v, su, sv, w + 0.2, w + 0.46, rg, 0.0, 0.0)
+    lens.box("lens", F, u, v, su, sv, w + 0.2, w + 0.44, rg, 0.0, 0.0)
     obj = lens.mb["lens"].build(f"Tele_{name}", c.M["telelight"], c.g, smooth=False)
     obj["reach"] = math.hypot(su, sv) / 2 * IN
     c.lenses.append(obj)
@@ -1352,8 +1368,8 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         if kind == "ring":  # a pull ring on its stem, hanging from the panel
 
             def ring(mb: MeshBuilder) -> None:
-                mb.lathe([(0.07, 0.0), (0.07, 0.45), (0.0, 0.45)], 8)
-                tube = [(0.34 + 0.055 * math.cos(TAU * k / 6), 0.055 * math.sin(TAU * k / 6)) for k in range(7)]
+                mb.lathe([(0.09, 0.0), (0.09, 0.5), (0.0, 0.5)], 8)
+                tube = [(0.4 + 0.08 * math.cos(TAU * k / 8), 0.08 * math.sin(TAU * k / 8)) for k in range(9)]
                 mb.lathe(tube, 16, matrix=Matrix.Translation((0, -0.2, 0.62)) @ Matrix.Rotation(math.pi / 2 - 0.5, 4, "X"))
 
             c.turned("CrewCabin_PanelFittings", Sx, ou, v, [(0.2, 0.0), (0.2, 0.1), (0.1, 0.1)], 10)
@@ -1670,6 +1686,39 @@ def shade(parent, lamps, also=()) -> None:
             clear = sum(tree.ray_cast(at, t1 * w.x + t2 * w.y + n * w.z, reach)[0] is None for w in ways) / len(ways)
             k = 0.1 + 0.9 * (0.6 * seen + 0.4 * clear) ** 1.5
             layer.data[i].color = (k, k, k, 1.0)
+
+
+def restraints(c: Cabin, suit: dict, pilot: dict, seat) -> None:
+    """The couch's harness over the pilot: two shoulder straps, a chest strap and a lap strap, and a cap over each toe
+    (Postlaunch Report, p. 38, which lists them with the knee strap). Each is laid on the seated figure's own surface
+    (`suit`: every vertex of it by mesh, seat-frame centimetres), an eighth of an inch clear; where each runs is estimated."""
+    body = np.array([tuple(p) for name, pts in suit.items() if name.startswith("Torso") for p in pts], dtype=np.float64)
+    web = c.into("CrewCabin_Straps")
+
+    def top(x: float, y: float, reach: float = 2.5) -> float | None:
+        """The suit's surface at (x, y), seat-frame cm: how far chest-ward the highest of it stands, or None off the body."""
+        near = body[(np.abs(body[:, 0] - x) < reach) & (np.abs(body[:, 1] - y) < reach)]
+        return float(near[:, 2].max()) if len(near) else None
+
+    def lay(points, ref) -> None:
+        run_ = []
+        for x, y in points:
+            z = top(x, y)
+            if z is not None:
+                # (an eighth of an inch and more off the cloth, and further out where the body's side falls away)
+                run_.append(seat((x + (1.2 if x > 15 else -1.2 if x < -15 else 0.0), y, z + 0.8)))
+        if len(run_) >= 3:
+            if ref == "x":  # (down to the couch at each end)
+                run_ = [Vector((run_[0].x - 4.5, run_[0].y, 4.4)), *run_, Vector((run_[-1].x + 4.5, run_[-1].y, 4.4))]
+            web.loft([p * IN for p in run_], [(0.85 * IN, 0.1 * IN)] * len(run_), 8, ref=(0, 0, 1))
+
+    across = [-18.0, -12.0, -6.0, 0.0, 6.0, 12.0, 18.0]
+    lay([(x, -40.0) for x in across], "x")  # chest
+    lay([(x, -11.0) for x in across], "x")  # lap: across the belly, headward of where the thighs rise
+    for sx in (-1, 1):  # shoulders: from the chest strap up over each shoulder
+        lay([(sx * 9.0, float(y)) for y in np.arange(-44.0, -64.1, -3.0)], "y")
+        toe = seat(pilot["toes"]["left" if sx > 0 else "right"])
+        soft(c.into("CrewCabin_Straps"), Matrix.Translation(Vector((toe.x, toe.y - 1.5, toe.z - 0.7)) * IN), (3.8, 2.6, 2.4), 0.9, 12, 7)
 
 
 def hatch_inside(parent, vessel: Surf, M: dict, hatch) -> None:

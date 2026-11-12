@@ -520,7 +520,7 @@ def build_crew_cabin(M) -> None:
     pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot")
     hatch = (t_h0, t_h1, hz0, hz1)
     # the cabin round him, as spacecraft No. 7 was fitted (vehicles/mercury_cabin.py)
-    where = mercury_cabin.build(g, VESSEL, M, load_font(), pilot, PILOT_HIP, PORTHOLES, hatch, CONE_H - 0.3)
+    where = mercury_cabin.build(g, VESSEL, M, load_font(), pilot, PILOT_HIP, PORTHOLES, hatch, CONE_H - 0.3, mark_iv_suit.seated_points())
     mercury_cabin.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, hatch)
     print(f"mr-3 cabin: {where}")
     bottles, bag = MeshBuilder(), MeshBuilder()

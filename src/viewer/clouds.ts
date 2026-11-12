@@ -3,7 +3,8 @@ import type { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 import { type Clouds, cloudCutGlsl, cloudMiddle, cloudNoiseGlsl, cloudRise, cloudUniform, hazeAboveUniform, installedAir } from './air';
 import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere';
-import { fieldAs, hash2 } from './field';
+import { billowsData, DETAIL_SIDE, detailData, NOISE } from './cloudnoise';
+import { fieldAs } from './field';
 import { uOrigin } from './origin';
 import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
 import { onWeather, weatherUniforms } from './weathermap';
@@ -92,7 +93,6 @@ const SMALL: [number, number] = [50, 110];
  */
 const FAR_SOFT = 0.025;
 /** The billows' noise: texels a side, and metres before it repeats. */
-const NOISE = 64;
 const TILE = 1024;
 /**
  * Extinction in the heart of a cloud, per metre: 60 m of cloud dims what is behind it to 5 % (a cumulus's is 0.05 to
@@ -142,7 +142,6 @@ const reaches = (side: number): number =>
  * The creases between them are cut this many metres into the skin at a cloud's top, and less at its foot; looked up
  * where the billows push it aside (WARP, metres), so the fine lumps crowd round the big ones instead of lying on a grid.
  */
-const DETAIL_SIDE = 64;
 const DETAIL_TILE = 256;
 const DETAIL = 30;
 const DETAIL_FOOT = 10;
@@ -967,50 +966,9 @@ const COMPOSITE = /* glsl */ `
     if (oColour.a <= 0.0) discard;
   }`;
 
-/**
- * The billows: three octaves of round lumps (cellular noise made into balls: 1 at a lump's heart,
- * falling to 0 in the creases between), 5, 11 and 23 to a tile, in red, green and blue; each has a
- * mean of 0.54 (LUMPS). It repeats every NOISE texels. Made a few slices at a time (about 170 ms in all):
- * `CloudPass.warm` makes it before anyone is looking.
- */
-function* billowsMade(): Generator<void, THREE.Data3DTexture> {
+/** The billows' tile (cloudnoise.ts) as the texture the march reads. */
+function billowsOf(data: Uint8Array<ArrayBuffer>): THREE.Data3DTexture {
   const n = NOISE;
-  const data = new Uint8Array(n * n * n * 4);
-  for (const [channel, cells] of [5, 11, 23].entries()) {
-    const points = new Float32Array(cells * cells * cells * 3);
-    for (let i = 0; i < cells; i++)
-      for (let j = 0; j < cells; j++)
-        for (let k = 0; k < cells; k++) {
-          const at = ((i * cells + j) * cells + k) * 3;
-          for (let a = 0; a < 3; a++) points[at + a] = hash2(i * cells + j, k, 700 + channel * 3 + a);
-        }
-    const per = n / cells; // texels a cell
-    const wrap = (c: number) => ((c % cells) + cells) % cells;
-    for (let z = 0; z < n; z++) {
-      for (let y = 0; y < n; y++)
-        for (let x = 0; x < n; x++) {
-          const px = (x + 0.5) / per,
-            py = (y + 0.5) / per,
-            pz = (z + 0.5) / per;
-          const cx = Math.floor(px),
-            cy = Math.floor(py),
-            cz = Math.floor(pz);
-          let best = 9;
-          for (let dz = -1; dz <= 1; dz++)
-            for (let dy = -1; dy <= 1; dy++)
-              for (let dx = -1; dx <= 1; dx++) {
-                const at = ((wrap(cx + dx) * cells + wrap(cy + dy)) * cells + wrap(cz + dz)) * 3;
-                const ex = cx + dx + points[at]! - px,
-                  ey = cy + dy + points[at + 1]! - py,
-                  ez = cz + dz + points[at + 2]! - pz;
-                best = Math.min(best, ex * ex + ey * ey + ez * ez);
-              }
-          data[((z * n + y) * n + x) * 4 + channel] = Math.round(255 * Math.sqrt(Math.max(0, 1 - best * 2.2))); // a ball, not a cone
-        }
-      if (z % 8 === 7) yield; // (a slice at a time, so whoever is waiting can let the page breathe)
-    }
-  }
-  for (let i = 3; i < data.length; i += 4) data[i] = 255;
   const texture = new THREE.Data3DTexture(data, n, n, n);
   texture.format = THREE.RGBAFormat;
   texture.wrapS = texture.wrapT = texture.wrapR = THREE.RepeatWrapping;
@@ -1021,56 +979,9 @@ function* billowsMade(): Generator<void, THREE.Data3DTexture> {
   return texture;
 }
 
-/**
- * The detail that wears a cloud's skin: the same round lumps, finer (4, 8 and 16 to a tile of DETAIL_TILE metres:
- * 64, 32 and 16 m), added into one value, 1 at a lump's heart and 0 in a crease; its mean is about 0.54 too. It
- * repeats every DETAIL_SIDE texels. Made a few slices at a time, as the billows are.
- */
-function* detailMade(): Generator<void, THREE.Data3DTexture> {
+/** The detail's tile (cloudnoise.ts) as the texture the march reads. */
+function detailOf(data: Uint8Array<ArrayBuffer>): THREE.Data3DTexture {
   const n = DETAIL_SIDE;
-  const sum = new Float32Array(n * n * n);
-  for (const [octave, [cells, weight]] of (
-    [
-      [4, 0.42],
-      [8, 0.33],
-      [16, 0.25],
-    ] as const
-  ).entries()) {
-    const points = new Float32Array(cells * cells * cells * 3);
-    for (let i = 0; i < cells; i++)
-      for (let j = 0; j < cells; j++)
-        for (let k = 0; k < cells; k++) {
-          const at = ((i * cells + j) * cells + k) * 3;
-          for (let a = 0; a < 3; a++) points[at + a] = hash2(i * cells + j, k, 900 + octave * 3 + a);
-        }
-    const per = n / cells; // texels a cell
-    const wrap = (c: number) => ((c % cells) + cells) % cells;
-    for (let z = 0; z < n; z++) {
-      for (let y = 0; y < n; y++)
-        for (let x = 0; x < n; x++) {
-          const px = (x + 0.5) / per,
-            py = (y + 0.5) / per,
-            pz = (z + 0.5) / per;
-          const cx = Math.floor(px),
-            cy = Math.floor(py),
-            cz = Math.floor(pz);
-          let best = 9;
-          for (let dz = -1; dz <= 1; dz++)
-            for (let dy = -1; dy <= 1; dy++)
-              for (let dx = -1; dx <= 1; dx++) {
-                const at = ((wrap(cx + dx) * cells + wrap(cy + dy)) * cells + wrap(cz + dz)) * 3;
-                const ex = cx + dx + points[at]! - px,
-                  ey = cy + dy + points[at + 1]! - py,
-                  ez = cz + dz + points[at + 2]! - pz;
-                best = Math.min(best, ex * ex + ey * ey + ez * ez);
-              }
-          sum[(z * n + y) * n + x]! += weight * Math.sqrt(Math.max(0, 1 - best * 2.2));
-        }
-      if (z % 8 === 7) yield;
-    }
-  }
-  const data = new Uint8Array(n * n * n);
-  for (let i = 0; i < data.length; i++) data[i] = Math.round(255 * sum[i]!);
   const texture = new THREE.Data3DTexture(data, n, n, n);
   texture.format = THREE.RedFormat;
   texture.wrapS = texture.wrapT = texture.wrapR = THREE.RepeatWrapping;
@@ -1081,6 +992,12 @@ function* detailMade(): Generator<void, THREE.Data3DTexture> {
   texture.needsUpdate = true;
   return texture;
 }
+
+/** The two tiles: how each is made (a few slices at a time) and made into a texture. */
+const TILES = [
+  { name: 'billows', made: billowsData, of: billowsOf },
+  { name: 'detail', made: detailData, of: detailOf },
+] as const;
 
 /** The march's two results at its own size: light and opacity, and where the cloud is. */
 const lowTarget = () =>
@@ -1312,18 +1229,39 @@ export class CloudPass extends Pass {
   }
   private adopted = false;
 
-  /** Make what the clouds are drawn with before anyone is looking, a little at a time (Stage.warm). */
+  /**
+   * Make what the clouds are drawn with before anyone is looking (Stage.warm): the two tiles of noise, by a worker
+   * while the page gets on with loading, or where there is none a few slices at a time here. Whichever comes first is
+   * kept: a frame that cannot wait makes them on the spot (`render`), and what arrives after that is dropped.
+   */
   async warm(): Promise<void> {
     const u = this.uniforms;
-    for (const [made, into] of [
-      [billowsMade, u.tBillows],
-      [detailMade, u.tDetail],
-    ] as const) {
-      if (into.value) continue;
-      const making = made();
+    const into = { billows: u.tBillows, detail: u.tDetail };
+    if (TILES.every((t) => into[t.name].value)) return;
+    const worked = await new Promise<Record<'billows' | 'detail', Uint8Array<ArrayBuffer>> | null>((done) => {
+      try {
+        const worker = new Worker(new URL('./cloudnoise.worker.ts', import.meta.url), { type: 'module' });
+        const end = (data: Record<'billows' | 'detail', Uint8Array<ArrayBuffer>> | null): void => {
+          worker.terminate();
+          done(data);
+        };
+        worker.onmessage = (e: MessageEvent<Record<'billows' | 'detail', Uint8Array<ArrayBuffer>>>) => end(e.data);
+        worker.onerror = () => end(null);
+      } catch {
+        done(null); // (no workers here, or none from this address)
+      }
+    });
+    for (const tile of TILES) {
+      const slot = into[tile.name];
+      if (slot.value) continue;
+      if (worked) {
+        slot.value = tile.of(worked[tile.name]);
+        continue;
+      }
+      const making = tile.made();
       let r = making.next();
       for (; !r.done; r = making.next()) await new Promise((done) => setTimeout(done, 0));
-      into.value ??= r.value;
+      slot.value ??= tile.of(r.value);
     }
   }
 
@@ -1397,18 +1335,14 @@ export class CloudPass extends Pass {
 
     this.march ??= raw(marchShader(clouds, false), u);
     this.sharpen ??= raw(marchShader(clouds, true), { ...u, ...this.finer });
-    // (not warmed: made now, all at once)
-    for (const [made, into] of [
-      [billowsMade, u.tBillows],
-      [detailMade, u.tDetail],
-    ] as const) {
-      if (into.value) continue;
-      const making = made();
-      for (let r = making.next(); ; r = making.next())
-        if (r.done) {
-          into.value = r.value;
-          break;
-        }
+    // (not warmed yet: made now, all at once)
+    for (const tile of TILES) {
+      const slot = tile.name === 'billows' ? u.tBillows : u.tDetail;
+      if (slot.value) continue;
+      const making = tile.made();
+      let r = making.next();
+      while (!r.done) r = making.next();
+      slot.value = tile.of(r.value);
     }
     renderer.setRenderTarget(this.low);
     this.quad.material = this.march;

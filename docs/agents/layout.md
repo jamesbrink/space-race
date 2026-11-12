@@ -41,11 +41,13 @@ src/
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
   viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground
   viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, their skin worn by finer lumps, lit as cloud is (the Sun's light
+  viewer/cloudnoise.ts                the clouds' two tiles of noise as bytes (pinned by digest in tests/); cloudnoise.worker.ts makes them off the page's thread
                                       marched through them and scattered, the sky above, the ground below), ray-marched at a quarter of the pixels, laid over the frame
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places
   viewer/lod.ts                       levels of detail: which one each model and each piece of the place is drawn at, and the fade from one to the next
   viewer/shadows.ts                   the Sun's second shadow map: the whole place, coarsely, under the fine one
   viewer/shadowcache.ts               on foot, the fine shadow map kept between steps: only the walker drawn into it again while nothing else has changed
+  viewer/quality.ts                   the net under the frame rate: for a weak machine, if chosen: resolution lowered a step only while frames stay under 30 a second, and put back
   viewer/look.ts                      the real and cel-shaded looks, and the ink line
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/bulk.ts                      where a part's bulk is: the middle of its surface, the same however it is cut into meshes (a callout's point)
@@ -72,6 +74,8 @@ src/
   viewer/weather.ts  weathermap.ts    the weather round a site as a map (estimated): cumulus cover, middle deck, cirrus; the sheets' textures; the
                                       map as shared uniforms
   world/relief.ts                     how a height is kept in a byte, for the relief maps and the shaders that read them
+  viewer/pack.ts  units.ts            one-channel maps packed into one cube and one array texture on the GPU; the texture-unit budget and its check
+  viewer/later.ts                     what the first view does not need, fetched once the scene is up
   world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run
   world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
@@ -117,6 +121,7 @@ src/
   viewer/fly.ts                       the free camera's flying: heading, pitch, speed by height (`Flyer`)
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
+  lod-thresholds.mjs                  each model's and piece's own level-of-detail thresholds: measured in a browser (lod-measure.mjs), kept in model/<name>.lod.json, put into the GLB's extras
   flicker-test.mjs                    browser check for z-fighting
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   shot.mjs                            one screenshot of the viewer, for looking at a change

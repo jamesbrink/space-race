@@ -382,7 +382,10 @@ function leafReach(form: Form): number {
 /** A species' material: `drawn` for the view, `depth` for its shadow (faded as drawn). */
 function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth'): THREE.Material {
   const depth = use === 'depth';
-  const uniforms = { uEye: shared.eye, uWind: shared.wind, uTime: shared.time, uSway: { value: species.sway } };
+  // (the shadow is of the plant at rest. The fine shadow map is drawn when something asks for it, and the wind asks for
+  // nothing: a shadow that swayed was one that stood frozen under a stirring plant and then jumped when the walker
+  // took a step. A plant stirs by centimetres; its shadow lying still under it is not seen.)
+  const uniforms = { uEye: shared.eye, uWind: shared.wind, uTime: shared.time, uSway: { value: depth ? 0 : species.sway } };
   const material = depth
     ? new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side: THREE.DoubleSide })
     : new THREE.MeshStandardMaterial({

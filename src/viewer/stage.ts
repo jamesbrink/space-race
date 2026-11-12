@@ -33,6 +33,7 @@ import { Outline } from './outline';
 import { Panes } from './panes';
 import { through, triangles } from './pick';
 import { Plume } from './plume';
+import { Quality } from './quality';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
 import { ShadowCache } from './shadowcache';
 import { depthBias, FarShadow } from './shadows';
@@ -367,6 +368,14 @@ export class Stage {
   /** The Sun's second shadow map: everything that stands at the place, coarsely (shadows.ts). */
   private readonly far: FarShadow;
   /** On foot, the fine map's still casters kept from one frame to the next, and only the figure drawn again (shadowcache.ts). */
+  /** The net under the frame rate: the drawing's resolution, lowered only while the machine cannot keep up (quality.ts). */
+  readonly quality = new Quality();
+  /** Frames drawn one after another, and the share of full resolution the canvas is at now. */
+  private run = 0;
+  private pixelScale = 1;
+  private frameAt = 0;
+  /** What the stars were last sized for: a pixel ratio, in a sky (their points are sized in the drawing's pixels). */
+  private starsFor: { ratio: number; sky: THREE.Scene | null } = { ratio: 0, sky: null };
   readonly shadowCache: ShadowCache;
   /** When the last walk ended (`performance.now()`), until the maps it used have been let go; 0: nothing is owed. */
   private walkEnded = 0;
@@ -1759,6 +1768,7 @@ export class Stage {
       this.renderer.setRenderTarget(target);
       await Promise.all(built).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
       this.held = false; // (the first frame is drawn now, with its shaders ready)
+      this.quality.rest(performance.now(), 8000); // (and the first seconds are slow for reasons that pass: maps arriving, the other look's shaders)
       this.renderer.shadowMap.needsUpdate = true;
       await frames(2);
       onStep?.('shaders', (i + 1) / passes.length);
@@ -2410,16 +2420,42 @@ export class Stage {
     const w = this.canvas.clientWidth,
       h = this.canvas.clientHeight;
     if (!w || !h) return;
+    this.fitPixels();
+    this.quality.rest(performance.now(), 3000); // (every target is made again: slow for a moment, and not the machine's pace)
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.refollow(); // a framing made for the old shape no longer fits
+  }
+
+  /**
+   * The drawing's pixels for the canvas as it is: the screen's own, up to two a CSS pixel, times what the net under the
+   * frame rate allows (quality.ts: 1 on a machine that keeps up). The canvas keeps its place and size on the page.
+   */
+  private fitPixels(scale = this.pixelScale): void {
+    const w = this.canvas.clientWidth,
+      h = this.canvas.clientHeight;
+    if (!w || !h) return;
     // a phone's GPU has four times the pixels to fill per inch and a fraction of the power
     const coarse = matchMedia('(pointer: coarse)').matches;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
+    const full = Math.min(window.devicePixelRatio, coarse ? 1.5 : 2);
+    this.quality.setFull(full);
+    this.pixelScale = scale;
+    this.renderer.setPixelRatio(full * scale);
     this.renderer.setSize(w, h, false);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(w, h);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
     this.dirty = true;
-    this.refollow(); // a framing made for the old shape no longer fits
+  }
+
+  /** The stars are points sized in the drawing's pixels: told when those change, or the sky does, so they keep their size on the screen. */
+  private sizeStars(sky: THREE.Scene): void {
+    const ratio = this.renderer.getPixelRatio();
+    if (this.starsFor.ratio === ratio && this.starsFor.sky === sky) return;
+    this.starsFor = { ratio, sky };
+    sky.traverse((o) => {
+      const uniform = ((o as THREE.Points).material as THREE.ShaderMaterial | undefined)?.uniforms?.uPixel;
+      if ((o as THREE.Points).isPoints && uniform) uniform.value = ratio;
+    });
   }
 
   /**
@@ -2427,7 +2463,7 @@ export class Stage {
    * `fps` is the loop (what motion would get); `drawn` is how many of those frames were actually
    * drawn, since a still view is not redrawn.
    */
-  stats(): { fps: number; drawn: number; ms: number; triangles: number; calls: number; levels: number[] } {
+  stats(): { fps: number; drawn: number; ms: number; triangles: number; calls: number; levels: number[]; scale: number } {
     const now = performance.now();
     const seconds = Math.max(1e-3, (now - this.statsAt) / 1000);
     const out = {
@@ -2437,6 +2473,7 @@ export class Stage {
       triangles: this.renderer.info.render.triangles,
       calls: this.renderer.info.render.calls,
       levels: this.staged.map((s) => s.shownLevel),
+      scale: this.pixelScale,
     };
     this.statsAt = now;
     this.frames = this.drawn = this.work = 0;
@@ -2457,6 +2494,19 @@ export class Stage {
     this.step();
     this.frames++;
     this.work += performance.now() - began;
+    // the pace of frames drawn one after another is what the net under the frame rate goes by (quality.ts)
+    // A view that is still is always drawn at full: the frame after the last one that moved is drawn again at the
+    // screen's own pixels, and the lowered resolution comes back only once it has been moving again for a few frames.
+    if (this.drawn === drawn) {
+      this.run = 0;
+      this.quality.idle();
+      if (this.pixelScale < 1) this.fitPixels(1);
+    } else {
+      if (this.run > 0 && this.quality.frame(began - this.frameAt, began)) this.run = Math.min(this.run, 3); // (taken up below)
+      this.run++;
+      if (this.run > 3 && this.pixelScale !== this.quality.scale) this.fitPixels(this.quality.scale);
+    }
+    this.frameAt = began;
     // (after the frame's own work is counted: a frame that drew nothing has time to spare, one that took under half its time has a little)
     if (this.treesOwed.size) {
       if (this.drawn === drawn) this.growTrees(6, true);
@@ -2527,6 +2577,7 @@ export class Stage {
     this.renderer.info.reset();
     this.drawn++;
     this.setting.view?.(this.camera);
+    this.sizeStars(backdrop.scene);
     const unshake = this.shaker?.(this.camera, backdrop.camera);
     const walking = this.walk.active ? (this.staged[this.walked]?.group ?? null) : null;
     this.shadowCache.figure = walking;

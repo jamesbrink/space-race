@@ -10,8 +10,10 @@ import { dayLight, type RGB, starLimit } from './daysky.ts';
 import { chapman, Globe } from './globe';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
 import type { Land } from './land';
+import { later } from './later';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 import { studio } from './studio';
+import { checkUnits } from './units';
 import { placeWeather } from './weathermap';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -410,12 +412,15 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   const land = cape.floor.userData.land as Land;
   cape.floor.updateMatrixWorld();
   const globe = new Globe(
+    renderer,
     site,
     when.site.seaLevel.value,
     { frame: cape.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
     installedAir(),
     when.site.region?.name ?? null,
   );
+  // (a development build says which lit materials have left too few texture units for lights: units.ts)
+  if (import.meta.env.DEV) later(() => setTimeout(() => checkUnits(renderer), 4000));
   // the weather the clouds and their shadows are laid out by (weather.ts): the record's cover at the site, the map's beyond
   const cumulus = installedAir()?.clouds;
   if (cumulus) placeWeather(site.bearingX, cumulus.cover, cumulus.wind, when.site.region?.name ?? null);

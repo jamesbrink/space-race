@@ -21,6 +21,26 @@ import { Exploder } from './explode.ts';
  */
 export const LOD_ABOVE = [8, 2] as const;
 
+/**
+ * A thing's own thresholds, where it has them. The two numbers above are for the worst of what was measured: a truss
+ * whose bracing goes, a room behind a window. Most things differ far less from one level to the next (a road and a
+ * cable trench not at all), and are as well drawn from the coarser level long before. So each model, and each piece
+ * of a place, carries the thresholds measured for it: `lod_above` in its GLB (the scene's extras for a model, a
+ * node's for a piece), put there from the `.lod.json` beside its script (tools/lod-thresholds.mjs), where the
+ * measurement is kept: the largest size on screen, in pixels a metre, at and under which the two levels drawn side by
+ * side differ by no more than the pixels allowed there. Never under the numbers above (a thing is never held finer
+ * for longer than before); what is not there, or not sound, is those numbers.
+ */
+export function thresholdsOf(extras: unknown): readonly number[] {
+  if (!Array.isArray(extras) || extras.length !== LOD_ABOVE.length) return LOD_ABOVE;
+  const above: number[] = [];
+  for (const [i, v] of extras.entries()) {
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < LOD_ABOVE[i]! || (i > 0 && v > above[i - 1]!)) return LOD_ABOVE;
+    above.push(v);
+  }
+  return above;
+}
+
 /** Seconds one level takes to give way to another. */
 export const FADE = 0.6;
 
@@ -225,6 +245,8 @@ interface Piece {
   fade: Crossfade;
   /** The box round each of its meshes at the full level, made when first asked for (`Scenery.clearance`). */
   parts?: Box3[];
+  /** Its own thresholds (`thresholdsOf`). */
+  above: readonly number[];
 }
 
 /** The box round each mesh under `node`, in the scene's frame. */
@@ -263,7 +285,16 @@ export class Scenery {
       });
       if (driven) continue;
       const box = new Box3().setFromObject(node);
-      if (!box.isEmpty()) this.pieces.push({ name: node.name, box, nodes: [node], wanted: 0, shown: 0, fade: new Crossfade() });
+      if (!box.isEmpty())
+        this.pieces.push({
+          name: node.name,
+          box,
+          nodes: [node],
+          wanted: 0,
+          shown: 0,
+          fade: new Crossfade(),
+          above: thresholdsOf(node.userData.lod_above),
+        });
     }
   }
 
@@ -316,7 +347,7 @@ export class Scenery {
     for (const piece of this.pieces) {
       if (piece.fade.step(dt)) changed = true;
       const forced = typeof this.forced === 'number' ? this.forced : this.forced?.[piece.name];
-      const wanted = forced ?? chooseLevel(scale / distanceTo(piece.box, eye), piece.wanted);
+      const wanted = forced ?? chooseLevel(scale / distanceTo(piece.box, eye), piece.wanted, piece.above);
       if (wanted === piece.wanted) continue;
       piece.wanted = wanted;
       changed = this.show(piece, Number.isFinite(dt) && forced === undefined) || changed;
@@ -380,8 +411,12 @@ export class Staged {
   /** For tests: draw this level whatever the model's size on screen (null: as it suits). */
   forced: number | null = null;
 
+  /** Its own thresholds (`thresholdsOf`). */
+  above: readonly number[];
+
   constructor(full: THREE.Object3D, parts: Part[]) {
     this.parts = parts;
+    this.above = thresholdsOf(full.userData.lod_above);
     this.add(0, full);
   }
 
@@ -465,7 +500,7 @@ export class Staged {
    */
   choose(eye: Vector3, scale: number, full: boolean, dt = Number.POSITIVE_INFINITY): boolean {
     const fading = this.fade.step(dt);
-    this.wanted = this.forced ?? (full ? 0 : chooseLevel(scale / distanceTo(this.box, eye), this.wanted));
+    this.wanted = this.forced ?? (full ? 0 : chooseLevel(scale / distanceTo(this.box, eye), this.wanted, this.above));
     return this.show(this.wanted, Number.isFinite(dt) && !full && this.forced === null) || fading;
   }
 

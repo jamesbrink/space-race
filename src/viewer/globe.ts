@@ -12,13 +12,14 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { planeAt, surfaceDirection } from '../world/region.ts';
-import { RELIEF, RELIEF_GLSL } from '../world/relief.ts';
+import { RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
 import { type Clouds, cloudCutGlsl, cloudMiddle } from './air.ts';
 import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
 import { later } from './later.ts';
+import { cubeOf, layersOf, packCube, packLayer } from './pack.ts';
 import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
 import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
 
@@ -43,7 +44,7 @@ import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
  * or pole. Over it, the land's own colours (NASA's Blue Marble for May) and the height of the ground and the
  * sea's bed (NOAA's ETOPO 2022), both baked by tools/globe-surface.mjs on the same cube and, finer, on a plane
  * over the site's region: the land is shaded by its relief under the true Sun and the sea is coloured by its
- * depth, so a bank is turquoise and the deep blue. (`RELIEF` is how a height is kept in a byte: relief.ts.)
+ * depth, so a bank is turquoise and the deep blue. (How a height is kept in a byte: relief.ts.)
  *
  * **The site's region** (types.ts: RegionDef) is drawn from a finer map where it covers:
  * OpenStreetMap's coast and larger lakes as they stood on the region's date (tools/globe-region.mjs
@@ -103,24 +104,28 @@ const EARTH = 6_371_000;
 
 /**
  * GLSL: the globe's colour toward a direction from the Earth's centre (ECEF), with its roughness.
- * Uniforms uGlobeLand, uGlobeIce, and the region's two maps (`regionUniforms`).
+ * Uniforms uGlobeMaps, uGlobeFlat (pack.ts), the colours, and the region's placings (`regionUniforms`).
  */
 const COLOUR = /* glsl */ `
-  uniform samplerCube uGlobeLand, uGlobeIce;
-  uniform sampler2D uGlobeNear, uGlobeWide;
+  // (packed, to leave texture units for lights: pack.ts)
+  uniform samplerCube uGlobeMaps;   // red: the land's distance to the shore; green: the ice's; blue: the relief
+  uniform highp sampler2DArray uGlobeFlat;   // the region's maps, each in its layer's corner: 0 near, 1 wide, 2 the surface's relief
+  uniform vec2 uGlobeFlatShare[3];   // the share of its layer each takes
   uniform mat3 uGlobeNearPlane, uGlobeWidePlane;   // rows: the plane's east, north and middle (world/region.ts)
   uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
   uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
   uniform float uGlobeSurfaced;   // how far the relief and the land's colours have come in since they arrived, 0 to 1
   uniform float uGlobeLift;   // how far the site's ground has gone over to the globe's colours with the eye's height, 0 to 1
   uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
-  uniform samplerCube uGlobeRelief, uGlobeColour;
-  uniform sampler2D uGlobeSurfRelief, uGlobeSurfColour;
+  uniform samplerCube uGlobeColour;
+  uniform sampler2D uGlobeSurfColour;
   uniform mat3 uGlobeSurfPlane;   // the surface region's plane, as the others'
   uniform vec4 uGlobeSurfBox;
   uniform float uGlobeSurfFade;   // how far in from its edge it is faded in (plane units; 0: none)
   ${RELIEF_GLSL}
-  float globeField(samplerCube map, vec3 d) { return (texture(map, d).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)}; }
+  float globeField(float v) { return (v * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)}; }
+  float globeCubeRelief(vec3 d) { return reliefMetres(texture(uGlobeMaps, d).b * 255.0); }
+  float globeFlat(int layer, vec2 uv) { return texture(uGlobeFlat, vec3(uv * uGlobeFlatShare[layer], float(layer))).r; }
   // where a direction falls on the surface region's maps, and how much they are to be believed there (w)
   vec2 globeSurf(vec3 d, out float w) {
     vec3 q = uGlobeSurfPlane * d;
@@ -134,7 +139,7 @@ const COLOUR = /* glsl */ `
   float globeRelief(vec3 d) {
     float w;
     vec2 uv = globeSurf(d, w);
-    return mix(reliefMetres(texture(uGlobeRelief, d).r * 255.0), reliefMetres(texture(uGlobeSurfRelief, uv).r * 255.0), w);
+    return mix(globeCubeRelief(d), reliefMetres(globeFlat(2, uv) * 255.0), w);
   }
   // What the sea sends back up from within, by its depth in metres: the deep water's own colour, and over a
   // shallow bed the light that reaches the bed and comes back, which loses its red in a few metres and its green in
@@ -154,13 +159,13 @@ const COLOUR = /* glsl */ `
     return deep + (bed - deep) * exp(-vec3(0.70, 0.14, 0.07) * mix(2.2, 1.0, bank) * max(depth, 2.0));
   }
   // a region's map: the distance to the shore in metres, and how much it is to be believed here (w)
-  float regionField(sampler2D map, mat3 plane, vec4 box, vec2 scale, vec3 d, out float w) {
+  float regionField(int layer, mat3 plane, vec4 box, vec2 scale, vec3 d, out float w) {
     vec3 q = plane * d;
     vec2 p = q.xy / max(q.z, 1e-3);
     float edge = min(min(p.x - box.x, box.z - p.x), min(p.y - box.y, box.w - p.y));
     w = q.z > 0.5 && scale.y > 0.0 ? smoothstep(0.0, scale.y, edge) : 0.0;
     vec2 uv = vec2((p.x - box.x) / (box.z - box.x), (box.w - p.y) / (box.w - box.y));   // its rows run north to south
-    return (texture(map, uv).r * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)} * scale.x;
+    return (globeFlat(layer, uv) * 255.0 - 128.0) * ${(SPREAD / 127).toFixed(6)} * scale.x;
   }
   float globeSea;   // how much of what globeAlbedo last coloured is water
   vec3 globeAlbedo(vec3 d, out float rough) {
@@ -168,8 +173,9 @@ const COLOUR = /* glsl */ `
     // zero bends at every texel, and from orbit those bends were kinks in the shore
     vec3 t1 = normalize(cross(d, abs(d.z) < 0.9 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0))), t2 = cross(d, t1);
     float r = ${((0.6 * (Math.PI / 2)) / FACE).toExponential(4)};   // radians: 0.6 of a texel of the land's faces, at their middles
-    float l = (globeField(uGlobeLand, d) + globeField(uGlobeLand, d + t1 * r) + globeField(uGlobeLand, d - t1 * r)
-      + globeField(uGlobeLand, d + t2 * r) + globeField(uGlobeLand, d - t2 * r)) / 5.0;
+    vec4 here = texture(uGlobeMaps, d);
+    float l = (globeField(here.r) + globeField(texture(uGlobeMaps, d + t1 * r).r) + globeField(texture(uGlobeMaps, d - t1 * r).r)
+      + globeField(texture(uGlobeMaps, d + t2 * r).r) + globeField(texture(uGlobeMaps, d - t2 * r).r)) / 5.0;
     // in metres: a face's texel spans 2 / FACE of its plane, which is that times m^2 of arc outward and m across, m the
     // cosine from the face's middle; m^1.5 between the two
     float m = max(max(abs(d.x), abs(d.y)), abs(d.z));
@@ -177,19 +183,19 @@ const COLOUR = /* glsl */ `
     l *= texel;
     // the region's maps over it, the wide then the near, each faded in from its edge
     float w;
-    float lw = regionField(uGlobeWide, uGlobeWidePlane, uGlobeWideBox, uGlobeWideScale, d, w);
+    float lw = regionField(1, uGlobeWidePlane, uGlobeWideBox, uGlobeWideScale, d, w);
     l = mix(l, lw, w);
     texel = mix(texel, uGlobeWideScale.x, w);
-    float ln = regionField(uGlobeNear, uGlobeNearPlane, uGlobeNearBox, uGlobeNearScale, d, w);
+    float ln = regionField(0, uGlobeNearPlane, uGlobeNearBox, uGlobeNearScale, d, w);
     l = mix(l, ln, w);
     texel = mix(texel, uGlobeNearScale.x, w);
     float land = smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel));   // the shore: a clean line, one pixel soft
-    float i = globeField(uGlobeIce, d);
+    float i = globeField(here.g);
     float ice = smoothstep(-0.5, 0.5, i / (fwidth(i) * 0.8 + 0.03));
     // the land in its own colours (Blue Marble, May), the sea by its depth (lakes are cut out of the land map, so they are water)
     float ws;
     vec2 suv = globeSurf(d, ws);
-    float h = mix(reliefMetres(texture(uGlobeRelief, d).r * 255.0), reliefMetres(texture(uGlobeSurfRelief, suv).r * 255.0), ws);
+    float h = mix(reliefMetres(here.b * 255.0), reliefMetres(globeFlat(2, suv) * 255.0), ws);
     vec3 ground = mix(texture(uGlobeColour, d).rgb, texture(uGlobeSurfColour, suv).rgb, ws);
     vec3 deep = mix(${vec3(SEA)}, ${vec3(DEEP)}, uGlobeAbove);
     // (water over ground that is above the sea is a lake: its bed is not known, and it is taken as deep)
@@ -295,15 +301,15 @@ export interface Hole {
 }
 
 /** A cube map of one channel from the six faces tools/globe.mjs writes. */
-async function loadCube(name: string): Promise<THREE.CubeTexture> {
-  // (the browser's decoded picture handed to the GPU as it is, one channel kept: nothing is read back here)
-  const faces = await Promise.all(
+/** The six faces of a one-channel cube map as the browser decodes them (tools/globe.mjs, tools/globe-surface.mjs), for `packCube`; at half size on a small screen if asked. */
+function cubeFaces(name: string, halved = false): Promise<ImageBitmap[]> {
+  return Promise.all(
     FACES.map(async (f) => {
+      if (halved) return picture(`${name}.${f}.png`);
       const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${name}.${f}.png`)).blob();
       return createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
     }),
   );
-  return cube(faces);
 }
 
 function cube(faces: (THREE.DataTexture | ImageBitmap)[]): THREE.CubeTexture {
@@ -364,10 +370,10 @@ async function loadColourCube(name: string): Promise<THREE.CubeTexture> {
   return texture;
 }
 
-/** One of a surface region's maps as a texture: its relief (one channel, as it is) or its colours (sRGB). */
-async function loadSurface(file: string, colour: boolean): Promise<THREE.Texture> {
+/** A surface region's colours as a texture (sRGB). */
+async function loadSurface(file: string): Promise<THREE.Texture> {
   const texture = new THREE.Texture((await picture(file)) as unknown as HTMLImageElement);
-  texture.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.colorSpace = THREE.SRGBColorSpace;
   texture.flipY = false;
   texture.generateMipmaps = true;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -396,33 +402,21 @@ interface RegionLevel {
 
 /** The uniforms a region's map is drawn by, empty (weighed at nothing) until it arrives. */
 function regionUniforms(prefix: 'Near' | 'Wide'): Record<string, THREE.IUniform> {
-  const blank = new THREE.DataTexture(new Uint8Array([0]), 1, 1, THREE.RedFormat);
-  blank.needsUpdate = true;
   return {
-    [`uGlobe${prefix}`]: { value: blank },
     [`uGlobe${prefix}Plane`]: { value: new THREE.Matrix3() },
     [`uGlobe${prefix}Box`]: { value: new THREE.Vector4(0, 0, 1, 1) },
     [`uGlobe${prefix}Scale`]: { value: new THREE.Vector2(1, 0) },
   };
 }
 
-/** A region's map as a texture of one channel: the PNG decoded by the browser and uploaded as it is. */
-async function loadRegion(level: RegionLevel): Promise<THREE.Texture> {
-  const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${level.file}`)).blob();
-  const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
-  const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
-  texture.format = THREE.RedFormat;
-  texture.type = THREE.UnsignedByteType;
-  texture.colorSpace = THREE.NoColorSpace;
-  texture.flipY = false;
-  texture.generateMipmaps = true;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.anisotropy = 8; // seen edge-on from low down; three keeps it to what the GPU allows
-  texture.needsUpdate = true;
-  return texture;
+/** A region's one-channel map as the browser decodes it, untouched: for `packLayer`. */
+async function regionBitmap(file: string): Promise<ImageBitmap> {
+  const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${file}`)).blob();
+  return createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
 }
+
+/** The side of a layer of the region's packed maps, texels: the largest of them (tools/globe-region.mjs: 4096). */
+const FLAT = 4096;
 
 export class Globe {
   /** Everything the globe draws: the surface, and the air seen from above (`air`). */
@@ -470,6 +464,7 @@ export class Globe {
    * `region`: the name of the site's region's maps (RegionDef.name), if it has them.
    */
   constructor(
+    renderer: THREE.WebGLRenderer,
     site: Site,
     seaLevel: number,
     hole: Hole | null,
@@ -477,6 +472,9 @@ export class Globe {
     region: string | null = null,
   ) {
     this.site = site;
+    this.renderer = renderer;
+    this.maps = cubeOf(renderer, FACE);
+    this.flat = layersOf(renderer, FLAT, 3);
     this.seaLevel = seaLevel;
     this.hole = hole;
     this.clouds = (haze?.clouds as Clouds | undefined) ?? null;
@@ -504,8 +502,9 @@ export class Globe {
     const o = this.origin;
     const m = this.axes;
     this.uniforms = {
-      uGlobeLand: { value: empty() },
-      uGlobeIce: { value: empty() },
+      uGlobeMaps: { value: this.maps.texture },
+      uGlobeFlat: { value: this.flat.texture },
+      uGlobeFlatShare: { value: [new THREE.Vector2(1, 1), new THREE.Vector2(1, 1), new THREE.Vector2(1, 1)] },
       uGlobeSun: { value: this.sun },
       // from the scene's frame to ECEF: the site's origin, and its axes as the columns of a matrix
       uGlobeOrigin: { value: new THREE.Vector3(o[0], o[1], o[2]) },
@@ -522,10 +521,8 @@ export class Globe {
       ...regionUniforms('Wide'),
       ...weatherUniforms,
       ...atmosphereUniforms,
-      // the relief and the land's colours (tools/globe-surface.mjs): until they arrive, a deep sea and the one green
-      uGlobeRelief: { value: empty(RELIEF.sea - 50) },
+      // the relief and the land's colours (tools/globe-surface.mjs): until they arrive, the deepest sea (the relief's channel reads nothing) and the one green
       uGlobeColour: { value: empty(LAND.clone().convertLinearToSRGB(), THREE.SRGBColorSpace) },
-      uGlobeSurfRelief: { value: blank2D },
       uGlobeSurfColour: { value: blank2D },
       uGlobeSurfPlane: { value: new THREE.Matrix3() },
       uGlobeSurfBox: { value: new THREE.Vector4(0, 0, 1, 1) },
@@ -587,9 +584,9 @@ export class Globe {
     this.air.visible = false;
     this.group.add(this.air);
 
-    void Promise.all([loadCube('land'), loadCube('ice')]).then(([land, ice]) => {
-      this.uniforms.uGlobeLand!.value = land;
-      this.uniforms.uGlobeIce!.value = ice;
+    void Promise.all([cubeFaces('land'), cubeFaces('ice')]).then(([land, ice]) => {
+      packCube(renderer, this.maps, land, 0);
+      packCube(renderer, this.maps, ice, 1);
       this.arrived = true;
     });
     if (region) void this.loadRegion(region);
@@ -597,8 +594,8 @@ export class Globe {
     // uGlobeLift): fetched once the scene is up, or when the eye first rises, and faded in (`surfaced`).
     this.want = later(() => {
       const maps: Promise<unknown>[] = [
-        Promise.all([loadCube('relief'), loadColourCube('colour')]).then(([relief, colour]) => {
-          this.uniforms.uGlobeRelief!.value = relief;
+        Promise.all([cubeFaces('relief', true), loadColourCube('colour')]).then(([relief, colour]) => {
+          packCube(renderer, this.maps, relief, 2);
           this.uniforms.uGlobeColour!.value = colour;
         }),
       ];
@@ -608,6 +605,11 @@ export class Globe {
       });
     });
   }
+  private readonly renderer: THREE.WebGLRenderer;
+  /** The one-channel cube maps, packed: land, ice, relief (pack.ts). */
+  private readonly maps: THREE.WebGLCubeRenderTarget;
+  /** The region's one-channel maps, packed in layers: near, wide, the surface's relief. */
+  private readonly flat: THREE.WebGLArrayRenderTarget;
   /** Ask for the maps the first view did without, now. */
   private readonly want: () => void;
   /** When the relief and colours arrived (milliseconds; 0: not yet): they come in over SURFACING after it. */
@@ -625,10 +627,11 @@ export class Globe {
       fade: number;
       banks?: [number, number, number][];
     };
-    const [relief, colour] = await Promise.all([loadSurface(meta.relief.file, false), loadSurface(meta.colour.file, true)]);
+    const [relief, colour] = await Promise.all([regionBitmap(meta.relief.file), loadSurface(meta.colour.file)]);
     const { east: e, north: n, centre: c } = planeAt(meta.centre[0], meta.centre[1]);
     const u = this.uniforms;
-    u.uGlobeSurfRelief!.value = relief;
+    const share = packLayer(this.renderer, this.flat, 2, relief);
+    (u.uGlobeFlatShare!.value as THREE.Vector2[])[2]!.set(share[0], share[1]);
     u.uGlobeSurfColour!.value = colour;
     (u.uGlobeSurfPlane!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);
     const [x0, x1, y0, y1] = meta.box;
@@ -647,11 +650,13 @@ export class Globe {
     if (meta.spread !== SPREAD) throw new Error(`globe/${name}.json: distances kept to ${meta.spread} texels, not ${SPREAD}`);
     await Promise.all(
       meta.levels.map(async (level) => {
-        const texture = await loadRegion(level);
+        const bitmap = await regionBitmap(level.file);
         const prefix = level.name === 'near' ? 'Near' : 'Wide';
+        const layer = level.name === 'near' ? 0 : 1;
+        const share = packLayer(this.renderer, this.flat, layer, bitmap);
         const { east: e, north: n, centre: c } = planeAt(level.centre[0], level.centre[1]);
         const u = this.uniforms;
-        u[`uGlobe${prefix}`]!.value = texture;
+        (u.uGlobeFlatShare!.value as THREE.Vector2[])[layer]!.set(share[0], share[1]);
         (u[`uGlobe${prefix}Plane`]!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);
         const [x0, x1, y0, y1] = level.box;
         (u[`uGlobe${prefix}Box`]!.value as THREE.Vector4).set(x0, y0, x1, y1);
