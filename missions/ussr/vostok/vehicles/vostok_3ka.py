@@ -320,9 +320,14 @@ def build_hatch(M, node, prefix: str, where: tuple[float, float], window: float 
     skin.lathe(pm(OUTER.cap(r)), 96, matrix=ax)
     skin.lathe(pm([(r, INNER.z(r)), (r, OUTER.z(r))]), 96, matrix=ax)  # the hatch's own edge
     shell.lathe(pm(INNER.cap(r)), 72, matrix=ax)
-    # the rim it is bolted down by: a band standing proud round its edge
+    # the rim it is bolted down by: a band standing proud round its edge. Its outer wall stands 1.5 mm outside the hatch's
+    # own edge, not in it: in it, the two were one surface, which flickered (seen once the stack stood turned on its pad)
     lift = 12.0
-    rim.lathe(pm([(r, OUTER.z(r) - 6), *OUTER.cap(r, r - 76, lift, 3), (r - 76, OUTER.z(r - 76) - 6)]), 96, matrix=ax)
+    rim.lathe(
+        pm([(r + 1.5, OUTER.z(r) - 6), (r + 1.5, OUTER.z(r + 1.5, lift)), *OUTER.cap(r, r - 76, lift, 3), (r - 76, OUTER.z(r - 76) - 6)]),
+        96,
+        matrix=ax,
+    )
     rot = ax.to_3x3()
     for i in range(30):  # thirty, by the count of those taken out and put back on the pad
         a = TAU * (i + 0.5) / 30
