@@ -290,6 +290,12 @@ export class Heavens {
   readonly stars = new THREE.Group();
   /** The Milky Way, under them. */
   readonly band: THREE.Mesh;
+  /**
+   * The Milky Way's place in the sky: not drawn at all while none of it can be seen. Its shader throws every pixel away
+   * then (`seen` is 0 when the limit is 5.5 or brighter, or the gain is 0), but only after being run for every pixel
+   * of the window, blended: by day that was a whole screen of work for nothing. The same test, made once here.
+   */
+  private readonly night = new THREE.Group();
   /** All of it: add to a backdrop's scene, after whatever it shines through. */
   readonly sky = new THREE.Group();
   /** Set when the whole catalogue has arrived and taken the bright stars' place: whoever draws the sky draws it again. */
@@ -309,7 +315,8 @@ export class Heavens {
     this.fixed.matrixAutoUpdate = false;
     this.stars.add(this.fixed);
     this.band = milkyWay(air);
-    this.sky.add(this.band, this.stars);
+    this.night.add(this.band);
+    this.sky.add(this.night, this.stars);
     void wholeCatalogue().then((table) => {
       if (!table) return;
       this.fixed.geometry.dispose();
@@ -405,6 +412,7 @@ export class Heavens {
     const band = (this.band.material as THREE.ShaderMaterial).uniforms;
     band.uLimit!.value = limit;
     band.uGain!.value = gain;
+    this.night.visible = limit > 5.5 && gain > 0;
     // how much of the air is above the eye, and the sine of the horizon's dip from `height` metres up
     const dip = -Math.sqrt(Math.max(height, 0) * (2 * 6_371_000 + Math.max(height, 0))) / (6_371_000 + Math.max(height, 0));
     (this.material.uniforms.uAir!.value as THREE.Vector2).set(air, dip);
