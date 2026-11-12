@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { flownOnce, G0, type Sample } from '../sim/fly.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
-import type { Flight } from '../types';
+import type { SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { ecefToSite, ecefToSiteDirection, inertialToEcef, inertialToEcefVelocity, type Site, siteFrame } from '../world/frames.ts';
 import type { Run } from './ascent';
@@ -41,7 +41,7 @@ const FALLS = 5;
 export class Effects {
   /** The page's Motion setting: 1 full, 0.4 reduced, 0 none. */
   motion = 1;
-  private readonly flight: Flight;
+  private readonly flight: SitedFlight;
   private readonly site: Site;
   private live: Run | null = null;
   private readonly log: HeatLog | null;
@@ -60,7 +60,7 @@ export class Effects {
   private rate = 1;
   private flying = false;
 
-  constructor(flight: Flight) {
+  constructor(flight: SitedFlight) {
     this.flight = flight;
     this.site = siteFrame(flight.site);
     const heating = flight.trajectory?.heating;

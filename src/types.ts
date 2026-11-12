@@ -769,8 +769,11 @@ export interface Flight {
   /** ISO 8601, UTC. */
   launch: string;
   launchSite: string;
-  /** Where that is, as numbers: the sky over the models is computed from this and `launch`. */
-  site: SiteDef;
+  /**
+   * Where that is, as numbers: the sky over the models is computed from this and `launch`. Left out: the flight has no
+   * place to be shown in yet, only its vehicle in the gallery (src/address.ts `entrances`).
+   */
+  site?: SiteDef;
   crew: string[];
   summary: string;
   facts: { label: string; value: string }[];
@@ -820,3 +823,6 @@ export interface Flight {
   /** The place round the pad, built like a model (the site's own: sites/<site>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */
   surroundings?: string;
 }
+
+/** A flight that says where it flew from: what the site, its sky, the clock's face and the simulator are given. */
+export type SitedFlight = Flight & { site: SiteDef };

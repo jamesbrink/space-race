@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { prefs } from '../prefs.ts';
 import type { Phase } from '../sim/fly.ts';
 import { type Burn, type PathPlace, type Prediction, type Predictor, predictor, programmeAxis } from '../sim/predict.ts';
-import type { Flight } from '../types';
+import type { SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   ecefToSite,
@@ -153,7 +153,7 @@ export class FlightPath {
   private readonly position = new Float32Array(MOST * 2 * 3);
   private readonly along = new Float32Array(MOST * 2 * 3);
   private readonly at = new Float32Array(MOST * 2);
-  private readonly flight: Flight;
+  private readonly flight: SitedFlight;
   private readonly site: Site;
   private readonly source: PathSource;
   private readonly host: PathHost;
@@ -189,7 +189,14 @@ export class FlightPath {
    * `parent` takes the labels; `readout` is where the figures go (beside the navball); `button` is the flight deck's
    * switch for the path, if it has one.
    */
-  constructor(parent: HTMLElement, readout: HTMLElement, source: PathSource, flight: Flight, host: PathHost, button?: HTMLElement | null) {
+  constructor(
+    parent: HTMLElement,
+    readout: HTMLElement,
+    source: PathSource,
+    flight: SitedFlight,
+    host: PathHost,
+    button?: HTMLElement | null,
+  ) {
     this.flight = flight;
     this.source = source;
     this.host = host;

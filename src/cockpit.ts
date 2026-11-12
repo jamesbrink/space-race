@@ -6,7 +6,7 @@ import { standing } from './sim/loads.ts';
 import { Sheds } from './sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
 import { verdict } from './sim/verdict.ts';
-import type { Flight } from './types';
+import type { SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
 import type { Clock } from './world/clock.ts';
 import { angleBetween, DEG, siteFrame } from './world/frames.ts';
@@ -78,7 +78,7 @@ export interface CockpitHost {
 }
 
 export class Cockpit {
-  private readonly flight: Flight;
+  private readonly flight: SitedFlight;
   private readonly clock: Clock;
   private readonly host: CockpitHost;
   private readonly root: HTMLElement;
@@ -114,7 +114,7 @@ export class Cockpit {
   private towerAt = Infinity;
   private retropackAt = Infinity;
 
-  constructor(parent: HTMLElement, flight: Flight, clock: Clock, host: CockpitHost) {
+  constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
     this.flight = flight;
     this.clock = clock;
     this.host = host;

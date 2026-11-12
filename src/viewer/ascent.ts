@@ -4,7 +4,7 @@ import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { normalize, type Quat, turn, unturn } from '../sim/rigid.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import type { LiveSample } from '../sim/vehicle.ts';
-import type { ChuteDef, Flight } from '../types';
+import type { ChuteDef, Flight, SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   cross,
@@ -90,7 +90,7 @@ export interface ChuteMoment {
 export class Ascent {
   /** The model that flies. */
   readonly model: string;
-  private readonly flight: Flight;
+  private readonly flight: SitedFlight;
   private readonly site: Site;
   private record: Run | null = null;
   private live: Run | null = null;
@@ -112,7 +112,7 @@ export class Ascent {
   private readonly centre = new THREE.Vector3();
   private readonly arc = new THREE.Quaternion();
 
-  private constructor(flight: Flight) {
+  private constructor(flight: SitedFlight) {
     this.flight = flight;
     this.model = flight.flies!.model;
     this.site = siteFrame(flight.site);
@@ -132,7 +132,8 @@ export class Ascent {
 
   /** The flight's ascent, or null if it cannot be flown or names no model to fly. */
   static of(flight: Flight): Ascent | null {
-    return flight.trajectory && flight.flies && flight.models.some((m) => m.id === flight.flies!.model) ? new Ascent(flight) : null;
+    const flown = flight.site && flight.trajectory && flight.flies && flight.models.some((m) => m.id === flight.flies!.model);
+    return flown ? new Ascent(flight as SitedFlight) : null;
   }
 
   /** Show a flight being flown by hand instead of the record's, or (null) the record's again. */

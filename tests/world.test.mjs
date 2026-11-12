@@ -369,19 +369,20 @@ test('the bodies: every number has a source, and the figures hang together', () 
   near((2 * Math.PI * Math.sqrt(EARTH.equatorialRadius.value ** 3 / EARTH.gm.value)) / 60, 84.49, 0.01, 'the lowest orbit');
 });
 
-test('every flight has a site with sourced numbers, and its sky is the one its record states', async () => {
+test('every flight that has a site gives it sourced numbers, and its sky is the one its record states', async () => {
   // missions/index.ts imports without extensions (it is bundled); each flight.ts loads as it stands
   const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: join(import.meta.dirname, '..') });
   const flights = await Promise.all(files.map(async (f) => (await import(pathToFileURL(join(import.meta.dirname, '..', f)).href)).flight));
   assert.ok(flights.length > 0);
   for (const flight of flights) {
+    assert.ok(Number.isFinite(julianDate(flight.launch)), `${flight.id}: launch instant`);
+    if (!flight.site) continue; // (only its vehicle is built: it has the gallery and no place yet, src/address.ts)
     for (const key of ['latitude', 'longitude', 'height', 'bearingX']) {
       const m = flight.site[key];
       assert.ok(Number.isFinite(m.value), `${flight.id}: site.${key}`);
       assert.ok(['documented', 'derived', 'estimated'].includes(m.confidence), `${flight.id}: site.${key} confidence`);
       assert.ok(m.source.length > 8, `${flight.id}: site.${key} source`);
     }
-    assert.ok(Number.isFinite(julianDate(flight.launch)), `${flight.id}: launch instant`);
     assert.ok(flight.site.zone.name.length > 1 && Math.abs(flight.site.zone.utcOffset) <= 14, `${flight.id}: the site's civil time`);
   }
   // Freedom 7: the figures quoted in its README ("The sky at liftoff") and in sites/lc-5.md

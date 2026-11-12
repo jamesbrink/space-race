@@ -1,6 +1,6 @@
 import './time.css';
 import { flownOnce, type Sample, sampleAt } from './sim/fly.ts';
-import type { Flight, FlightCheck } from './types';
+import type { FlightCheck, SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
 import { type Clock, missionTime } from './world/clock.ts';
 import { siteFrame } from './world/frames.ts';
@@ -76,7 +76,7 @@ function shown(c: FlightCheck, value: number): string {
 export class Flown {
   private readonly root: HTMLElement;
   private readonly clock: Clock;
-  private readonly flight: Flight;
+  private readonly flight: SitedFlight;
   private samples: Sample[] = [];
   private duration = 0;
   private cursors: SVGLineElement[] = [];
@@ -117,7 +117,7 @@ export class Flown {
     TRACES.forEach((trace, i) => this.lines[i]?.setAttribute('points', points(run.samples, trace.of, this.duration, this.tops[i]!)));
   }
 
-  constructor(root: HTMLElement, clock: Clock, flight: Flight) {
+  constructor(root: HTMLElement, clock: Clock, flight: SitedFlight) {
     this.root = root;
     this.clock = clock;
     this.flight = flight;

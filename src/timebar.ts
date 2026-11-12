@@ -1,6 +1,6 @@
 import './time.css';
 import { prefs } from './prefs';
-import type { Flight } from './types';
+import type { Flight, SitedFlight } from './types';
 import { type Clock, localTime, missionTime, RATES } from './world/clock.ts';
 
 /**
@@ -15,7 +15,7 @@ import { type Clock, localTime, missionTime, RATES } from './world/clock.ts';
 export class TimeBar {
   private readonly root: HTMLElement;
   private readonly clock: Clock;
-  private readonly zone: Flight['site']['zone'];
+  private readonly zone: SitedFlight['site']['zone'];
   /** Seconds from local midnight to the launch: where t = 0 falls on the scrub. */
   private readonly launchAt: number;
   private readonly local: HTMLElement;
@@ -27,7 +27,7 @@ export class TimeBar {
   private readonly rates: HTMLButtonElement[];
   private readonly home: HTMLButtonElement;
 
-  constructor(parent: HTMLElement, clock: Clock, flight: Flight) {
+  constructor(parent: HTMLElement, clock: Clock, flight: SitedFlight) {
     this.clock = clock;
     this.zone = flight.site.zone;
     this.launchAt = Math.round(localTime(clock.epoch, this.zone.utcOffset).dayFraction * 86_400);
