@@ -86,7 +86,14 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   `stood`'s `z` and `yaw`; the leg is turned at the hip, up to 35 degrees, past which the foot
   pivots on its spot), and standing, the feet are then stepped round one at a time (`close`). It
   turns to the way it is sent at 4 radians a second from standing and 7 at a walk (`FACE`), which
-  feet can follow. Setting off, the foot stood on stays where it stood while the stride's line
+  feet can follow. Turning as it walks, a foot coming to its landing is put where the bend will have
+  its line and turned as the way turns there (`Gait.bend`: the turn for the distance gone, eased
+  over 15 cm), so round a circle every planted foot is on its own side of the way, on its spot to a
+  centimetre and not turned on it at all; landed straight ahead, it was up to 37 mm across the way
+  on a circle of 0.9 m (`tests/stride.test.mjs`). The foot that is down when a turn begins was put
+  down for going straight: turned over by more than a leg turns it pivots on its spot, and in a
+  quarter turn at 7 radians a second it is 6 mm under the ground and 18 mm off it for a moment,
+  which is not right. Setting off, the foot stood on stays where it stood while the stride's line
   comes in under the figure (`tests/stride.test.mjs`), and the foot that swings first is lifted before
   it goes forward (`Gait.first`, FIRST_LIFT: 4 cm, by how far through what is left of its swing it
   is; it used to go the whole of its first step, 41 cm on the stick figure, within 5 mm of the

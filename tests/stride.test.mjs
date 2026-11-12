@@ -328,3 +328,103 @@ test('a figure that turns where it stands leaves its feet where they are and ste
   );
   assert.ok(left, 'and then it left');
 });
+
+test('a figure that turns as it walks keeps each planted foot on its spot and on the ground, and neither foot crosses the way it is going', () => {
+  // (the figure faces +Z and a turn to its left is about +Y, as above; `turn` is radians a second at time t)
+  const walked = (speed, seconds, turn) => {
+    const f = figure();
+    const gait = new Gait();
+    gait.breathing = false;
+    gait.apply(f.root);
+    const dt = 1 / 120;
+    let heading = 0;
+    const frames = [];
+    for (let t = 0; t < seconds; t += dt) {
+      const turned = turn(t) * dt;
+      heading += turned;
+      f.root.position.x += Math.sin(heading) * speed * dt;
+      f.root.position.z += Math.cos(heading) * speed * dt;
+      gait.advance(speed * dt, speed, false, dt, false, 0, turned);
+      f.root.rotation.y = heading;
+      gait.apply(f.root);
+      f.root.updateMatrixWorld(true);
+      const frame = { t, at: f.root.position.clone(), heading };
+      for (const side of ['L', 'R'])
+        frame[side] = { hold: gait.moment.feet[side].hold, heel: f.at(`heel${side}`), toe: f.at(`toe${side}`), sole: f.at(`sole${side}`) };
+      frames.push(frame);
+    }
+    return frames;
+  };
+  const measure = (frames, from) => {
+    const out = { drift: 0, low: 0, high: 0, turned: 0, near: 9, apart: 9 };
+    const spot = { L: null, R: null };
+    for (const [i, frame] of frames.entries()) {
+      if (frame.t < from) continue;
+      // as one foot passes the other (seen from the figure, neither ahead), the left is to the left of the right
+      const between = frame.L.sole.clone().sub(frame.R.sole);
+      const ahead = between.x * Math.sin(frame.heading) + between.z * Math.cos(frame.heading);
+      if (Math.abs(ahead) < 0.03)
+        out.apart = Math.min(out.apart, between.x * Math.cos(frame.heading) - between.z * Math.sin(frame.heading));
+      for (const [side, sign] of [
+        ['L', 1],
+        ['R', -1],
+      ]) {
+        const { hold, heel, toe, sole } = frame[side];
+        // how far to its own side of the way the figure goes the foot is: from the nearest place on that way, before or after
+        let nearest = null;
+        for (let j = Math.max(0, i - 150); j < Math.min(frames.length, i + 150); j++) {
+          const d = frames[j].at.distanceToSquared(new THREE.Vector3(sole.x, frames[j].at.y, sole.z));
+          if (!nearest || d < nearest.d) nearest = { d, j };
+        }
+        const on = frames[nearest.j];
+        const aside = (sole.x - on.at.x) * Math.cos(on.heading) - (sole.z - on.at.z) * Math.sin(on.heading);
+        if (hold < 1) {
+          spot[side] = null;
+          continue;
+        }
+        out.near = Math.min(out.near, sign * aside);
+        const low = Math.min(heel.y, toe.y);
+        out.low = Math.min(out.low, low);
+        out.high = Math.max(out.high, low);
+        if (Math.abs(heel.y - toe.y) > 0.003) continue;
+        const way = Math.atan2(toe.x - heel.x, toe.z - heel.z);
+        spot[side] ??= { sole, way };
+        out.drift = Math.max(out.drift, Math.hypot(sole.x - spot[side].sole.x, sole.z - spot[side].sole.z));
+        out.turned = Math.max(out.turned, Math.abs(Math.atan2(Math.sin(way - spot[side].way), Math.cos(way - spot[side].way))));
+      }
+    }
+    return out;
+  };
+  // Round a circle, at a stroll, a walk and a run: every foot lands on the bend and stays, pointing the way it landed.
+  for (const [speed, rate] of [
+    [0.8, 0.6],
+    [1.4, 0.5],
+    [1.4, 1],
+    [1.4, 1.5],
+    [4, 2],
+  ]) {
+    const m = measure(
+      walked(speed, 8, (t) => (t > 0.5 ? rate : 0)),
+      3,
+    );
+    const say = `${speed} m/s round a circle of ${(speed / rate).toFixed(1)} m: ${JSON.stringify(m)}`;
+    assert.ok(m.drift < 0.01 && m.low > -0.005 && m.high < 0.005, say);
+    assert.ok(m.turned < 0.5 * DEG, say);
+    // (landed straight ahead of a figure on a bend, a planted foot was up to 37 mm across the way on a circle of 0.9 m, and pivoted 5 degrees)
+    assert.ok(m.near > 0.01 && m.apart > 0.05, say);
+  }
+  // A quarter turn in the middle of a walk, gently and as sharply as a walker turns its figure (FACE: 7 radians a
+  // second): the foot that was down when it began was put down for going straight, and pivots on its spot if the
+  // figure turns further over it than a leg turns; its spot does not move, and the feet still do not cross.
+  for (const rate of [1.5, 3, 7]) {
+    const m = measure(
+      walked(1.4, 6, (t) => (t > 2 && t < 2 + Math.PI / 2 / rate ? rate : 0)),
+      1.5,
+    );
+    const say = `a quarter turn at ${rate} rad/s: ${JSON.stringify(m)}`;
+    // (at 7 rad/s the foot it turns over is 6.1 mm under the ground at the most and 18 mm off it for a moment, as it was
+    // before feet were landed on the bend: neither is right, and both are held here to what was measured)
+    assert.ok(m.drift < 0.01 && m.low > (rate > 3 ? -0.0065 : -0.005) && m.high < (rate > 3 ? 0.02 : 0.005), say);
+    assert.ok(m.near > 0.01 && m.apart > 0.05, say);
+  }
+});

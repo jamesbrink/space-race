@@ -1098,6 +1098,8 @@ const OVERHANG = 0.05;
 const REPLAN = 0.3;
 const OWED_MOST = 0.3;
 const OWED_RATE = 0.6;
+/** How far a figure walks while its gait comes to know how sharply it is turning, metres: about a fifth of a step. */
+const BEND_OVER = 0.15;
 /** How high the first foot to swing is lifted as a figure sets off, metres: a man picks his foot up to take a step. Estimated. */
 const FIRST_LIFT = 0.04;
 /** How far apart the two feet's claims on the figure's height are when the lower has it all but outright, metres. */
@@ -1193,6 +1195,14 @@ export class Gait {
    * that it pivots where it is.
    */
   private readonly veer = { L: { z: 0, yaw: 0 }, R: { z: 0, yaw: 0 } };
+  /**
+   * How sharply the figure is turning as it walks, radians a metre (positive: to its left), eased over BEND_OVER of
+   * the way gone. A foot coming to its landing is put where the way it is going will have its line, and turned as the
+   * way turns there: `x` ahead on a bend, that is `bend * x * x / 2` to the inside and `bend * x` round. (Landed
+   * straight ahead of a figure that is turning, a foot was across the middle of it before the hips came over it, and
+   * turned further on its leg than a leg turns.)
+   */
+  private bend = 0;
   /** How far to its own side each foot's line was when the feet were last moved, metres (`tread`). */
   private lined: number | null = null;
   private readonly stood = {
@@ -1561,6 +1571,8 @@ export class Gait {
       this.own *= Math.exp(-dt * 18);
       if (this.own < 0.01) this.own = 0;
       const cycle = stride(this.phase, this.speed, this.leg);
+      if (distance > 1e-6 && !airborne) this.bend += (turn / distance - this.bend) * (1 - Math.exp(-distance / BEND_OVER));
+      if (Math.abs(this.bend) < 1e-4 && !turn) this.bend = 0;
       for (const side of ['L', 'R'] as const) {
         const foot = cycle[side];
         const home = side === 'L' ? line : -line;
@@ -1572,9 +1584,14 @@ export class Gait {
           if (turn && this.stood[side].y <= 0.002) round(this.stood[side], home);
         }
         if (foot.hold <= 0) this.slip[side] = this.veer[side].z = this.veer[side].yaw = 0;
-        // (a foot reaching for a spot it was given keeps that spot while the phase is made up for it: `footing`)
-        else if (this.paid && foot.hold < 1 && foot.x > 0 && !airborne) this.slip[side] += this.paid * span(this.speed, this.leg);
-        else if (foot.hold >= 1 && !airborne) {
+        else if (foot.hold < 1 && foot.x > 0 && !airborne) {
+          // (a foot reaching for a spot it was given keeps that spot while the phase is made up for it: `footing`)
+          if (this.paid) this.slip[side] += this.paid * span(this.speed, this.leg);
+          // (and on a bend it comes down where the bend will have its line: `bend`)
+          const x = foot.x + this.slip[side];
+          this.veer[side].z = (this.bend * x * x) / 2;
+          this.veer[side].yaw = Math.max(-FOOT_TURN, Math.min(FOOT_TURN, this.bend * x));
+        } else if (foot.hold >= 1 && !airborne) {
           this.slip[side] -= distance + (foot.x - this.last[side]);
           this.veer[side].z += (side === 'L' ? 1 : -1) * (was - line);
           if (turn) {
@@ -1759,6 +1776,7 @@ export class Gait {
     }
     this.rode = drop;
     this.first = null;
+    this.bend = 0;
     this.halted = true;
     this.closing = null;
     this.own = 1;
