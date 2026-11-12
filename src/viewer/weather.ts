@@ -302,31 +302,39 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     ivec2 li = ivec2(floor(lg));
     float lets = 0.0;
     if (fp < 125.0 && a > 0.0) {   // (only where there is deck: most of the sky has none)
-      // (Seen from above each was a flat white disc, and a patch of them a sheet of counters. A cloudlet is lobed (the
-      // place pushed about by a noise 90 m across, while that is three pixels), of every size from a scrap to a roll
-      // (the small ones many), runs into its neighbours where they touch (their domes added, not the highest taken),
-      // and is thick at its heart and thin at its rim, so white there and grey here: clouds.ts whitens by opacity.)
+      // Altocumulus is a sheet broken into cloudlets, not counters laid on the sea: the cloudlets fill it, each as
+      // broad as its ground (the cell of the nearest of a scatter of points), with clear lanes between where two
+      // meet. In a patch's clumps the lanes are cracks; out of them they widen until the cloudlets are scraps. Each
+      // is lobed (the place pushed about by a noise 90 m across, while that is three pixels), thick at its heart and
+      // thin at its rim, so white there and grey here (clouds.ts whitens by opacity). A lane is as soft as a pixel is
+      // broad: where a cloudlet is two pixels across the lanes are a grain in a sheet, and nothing is a dot. Where
+      // the map's deck is neither altocumulus in patches nor a front's solid sheet (between a third and two thirds of
+      // the sky), the cells are open: cloud along the walls, clear air in the middle of each. (Estimated.)
       vec2 lp = lg;
       if (fp < 30.0) lp += 0.2 * (1.0 - smoothstep(15.0, 30.0, fp)) * (vec2(${prefix}noise2(xz / 90.0 + 4.4, 515), ${prefix}noise2(xz / 90.0 + 9.7, 516)) - 0.5);
+      // (the lanes bent, and each cloudlet rounded where three meet: on straight lines they were a cracked pavement)
+      lp += 0.3 * (vec2(${prefix}noise2(r1 / 310.0 + 1.9, 517), ${prefix}noise2(r1 / 310.0 + 6.2, 518)) - 0.5);
+      ivec2 lj = ivec2(floor(lp));
+      float d1 = 9.0, d2 = 9.0, heart = 0.5;
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
-        ivec2 c = li + ivec2(dx, dy);
-        vec2 pc = vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5);
-        float u = ${prefix}hash2(c, 509);
-        float size = 0.3 + 0.5 * u * u;
-        vec2 d = (lp - pc) / size;
-        float dome = max(1.0 - dot(d, d), 0.0);
-        lets += dome * dome * (0.55 + 0.45 * u);
+        ivec2 c = lj + ivec2(dx, dy);
+        float d = distance(lp, vec2(c) + 0.5 + 0.8 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5));
+        if (d < d1) { d2 = d1; d1 = d; heart = ${prefix}hash2(c, 509); } else if (d < d2) d2 = d;
       }
-      // (thick and close in a patch's clumps, scraps with gaps between them out of them)
+      float edge = d2 - d1;   // nothing on the line between two cloudlets, a half or so at a heart
       float dense = ${prefix}noise2(r2 / 1100.0 + 8.3, 506);
-      lets = smoothstep(0.08, 0.95, lets * (0.75 + 0.9 * dense) + 0.5 * (deckTex(xz, fp) - cut));
+      float lane = mix(0.42, 0.1, smoothstep(0.3, 0.8, dense + 1.5 * (deckTex(xz, fp) - cut)));
+      float blur = 0.05 + 0.8 * fp / 250.0;
+      float closed = smoothstep(lane - blur, lane + blur, edge) * (1.0 - smoothstep(0.42 - blur, 0.62 + blur, d1)) * (0.62 + 0.38 * heart) * (0.7 + 0.3 * smoothstep(0.0, 0.5, edge));
+      float open = (1.0 - smoothstep(0.1 - blur, 0.16 + blur, edge)) * (0.75 + 0.25 * heart);
+      lets = mix(closed, open, smoothstep(0.3, 0.42, cover) * (1.0 - smoothstep(0.55, 0.7, cover)));
     }
     // (from far above a patch of altocumulus is dappled, thick clumps a kilometre across and thin air between them
     // through which the ground shows, mottled again at 400 m while that is two pixels or more: not one flat tone)
     float mottle = mix(${prefix}noise2(r1 / 420.0 + 3.1, 510), 0.5, smoothstep(170.0, 420.0, fp));
     float clumps = mix(0.1 + 0.84 * smoothstep(0.28, 0.72, 0.6 * ${prefix}noise2(r2 / 1100.0 + 8.3, 506) + 0.4 * mottle), 0.55, smoothstep(400.0, 1100.0, fp));
     lets = mix(lets, clumps, smoothstep(50.0, 125.0, fp));
-    return a * mix(0.06 + 0.88 * lets, 0.98, smoothstep(0.35, 0.85, cover));
+    return a * mix(0.06 + 0.88 * lets, 0.98, smoothstep(0.62, 0.9, cover));
   }
   float cirrusAt(vec2 xz, float fp, float amount) {
     if (amount <= 0.004) return 0.0;
