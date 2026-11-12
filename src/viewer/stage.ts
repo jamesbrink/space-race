@@ -2394,6 +2394,26 @@ export class Stage {
     }
   }
   private nearEased = NEAR_LEAST;
+
+  /**
+   * Tell the setting the instant and where the eye is: the sky, the haze and the stars for the eye's height (`at`,
+   * which says when that is worth showing), what is made or chosen round the eye (the globe's mesh and the air's ball,
+   * the land's cells, which form each plant is drawn in and how far through its fade), and which rooms' lamps are
+   * lit. Asked once the rig or the walk has put the camera where this frame draws it from, never as the frame begins:
+   * from there it was the last frame's eye, a frame's travel behind (in flight 30 m; in a fast zoom tens of metres),
+   * and the plants' fading bands, the haze, the lit rooms and the air's ball were drawn for an eye no longer there.
+   * Before `fitDepth`, which asks whether the globe is shown.
+   */
+  private attend(): void {
+    if (this.clock) {
+      // (over the globe, the height is above the sea under the eye, which downrange is far below the site's level)
+      const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - GROUND_Y;
+      const change = this.setting.at?.(this.clock.jdUT, height);
+      if (change) this.relight(change.shadows);
+    }
+    if (this.setting.attend?.(this.camera.position)) this.dirty = true;
+    if (this.lamps.near(this.camera.position, false, this.frozen)) this.dirty = true; // the rooms nearest the eye are the ones lit
+  }
   private readonly depthBox = new THREE.Box3();
   private readonly depthAt = new THREE.Vector3();
 
@@ -2736,14 +2756,12 @@ export class Stage {
 
   private frame(): void {
     const began = performance.now();
-    if (this.setting.attend?.(this.camera.position)) this.dirty = true;
     if (this.setting.arrived?.()) {
       // (buildings where there were none: both of the Sun's maps and the sky's are of the place without them; asking
       // here is heard by the far map and, through it, by the fine one kept on foot: shadows.ts, shadowcache.ts)
       this.renderer.shadowMap.needsUpdate = true;
       this.dirty = true;
     }
-    if (this.lamps.near(this.camera.position, false, this.frozen)) this.dirty = true; // the rooms nearest the eye are the ones lit
     // Hardware that has moved wants its shadows drawn again, in the same frame: a shadow drawn
     // a moment late lags behind what casts it and then jumps after it.
     if (this.shadowsOwed) {
@@ -2777,22 +2795,18 @@ export class Stage {
   private step(): void {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
-    // the simulation's clock: the setting follows it, and says when that is worth showing
-    if (this.clock) {
-      this.clock.advance(dt);
-      // (over the globe, the height is above the sea under the eye, which downrange is far below the site's level)
-      const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - GROUND_Y;
-      const change = this.setting.at?.(this.clock.jdUT, height);
-      if (change) this.relight(change.shadows);
-    }
+    // the simulation's clock (the setting follows it once the eye is placed: `attend`)
+    this.clock?.advance(dt);
     this.follow(dt);
     this.lift();
     if (this.clock) this.cabin?.step(dt, this.clock.t, this.clock.jdUT, this.renderer.toneMappingExposure);
     this.settle(dt);
     this.runWorks(dt);
     this.runFunctions(dt);
-    if (this.walk.active) this.stepWalk(dt);
-    else {
+    if (this.walk.active) {
+      this.stepWalk(dt);
+      this.attend();
+    } else {
       if (!this.cam.ownsLens && this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
       // the camera: the rig in charge moves, and says where the view is from (the near plane is fitted after, fitDepth)
       this.cam.update(dt);
@@ -2808,6 +2822,7 @@ export class Stage {
         // (and nothing is named over a view being looked through: what it is has been said in the note line)
         this.setHover(this.cam.rig === 'onboard' ? (this.lookingOut ? NOTHING : { ...under, node: null, model: null }) : under);
       }
+      this.attend();
       this.fitDepth(dt);
     }
     const { backdrop } = this.setting;

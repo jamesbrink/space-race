@@ -541,11 +541,20 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   The ball's vertices are pushed out past the near plane's corners where that is further than the ball (globe.ts);
   it stays nearer than the sea because the near plane is kept inside nine tenths of the eye's height. A vehicle
   further off than the ball has the whole air's light over it: a known flaw, small. **What the ball draws is the
-  eye's ray, not the way from the ball's middle** (`vDir`): the ball is placed before the rig moves the eye, so in
-  flight it was a frame's travel off-centre (30 m in 8 km), and the limb stood 4 px out and jumped 4 more on every
-  long frame (the owner's "constantly changing, flickery" horizon; chase T+150 with uneven frames: the row profile's
-  frame-to-frame jerk 0.36 to 0.024, the same as with even frames). So nothing it draws may depend on where it sits,
-  how big it is or where the near plane is (`pnpm test:frozen`, "the air ball moved").
+  eye's ray, not the way from the ball's middle** (`vDir`): the ball was placed as the frame began, before the rig
+  moved the eye, so in flight it was a frame's travel off-centre (30 m in 8 km), and the limb stood 4 px out and
+  jumped 4 more on every long frame (the owner's "constantly changing, flickery" horizon; chase T+150 with uneven
+  frames: the row profile's frame-to-frame jerk 0.36 to 0.024, the same as with even frames). The camera's shake
+  still moves the eye after it is placed. So nothing it draws may depend on where it sits, how big it is or where
+  the near plane is (`pnpm test:frozen`: "ball", the ball moved and resized; "near", the near plane at half).
+- **The setting is told the instant and where the eye is after the camera has moved** (`Stage.attend`, just before
+  `fitDepth`), never as the frame begins: the sky, haze and stars for the eye's height (`Setting.at`), what is made or
+  chosen round the eye (the globe's mesh and the air's ball, the land's cells, each plant's form and how far through
+  its fade by `uEye`, flora.ts) and the rooms whose lamps are lit were otherwise a frame's travel behind it. A fast
+  wheel zoom from the pad at liftoff, each frame against the same pose drawn at rest: mean difference 0.29 levels
+  (worst frame 0.69, 0.7 % of 4x4 cells brighter by 8 levels or more, the plants' fading bands and the haze) to 0.14
+  (0.35, none). `pnpm test:frozen`, "step": a pose drawn from 8 % further and put back must be the picture on its
+  first frame (it was 117,000 pixels out, by up to 182 levels).
 - **The Sun's glint is Cox and Munk's.** From above the air the sea's highlight is not the material's lobe (GGX,
   whose tail put a pale glare over the whole sea) but a Gaussian spread of wave slopes for the record's wind
   (`globeGlint`): a bounded patch round the mirror point, at its heart a quarter as bright as a white surface in the same Sun. From

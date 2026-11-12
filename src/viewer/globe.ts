@@ -637,11 +637,11 @@ export class Globe {
             float corner = sqrt(1.0 + 1.0 / (projectionMatrix[0][0] * projectionMatrix[0][0]) + 1.0 / (projectionMatrix[1][1] * projectionMatrix[1][1]));
             seen.xyz *= max(1.0, 1.03 * corner * near / max(length(seen.xyz), 1.0));
             // The ray is the eye's, to the point of the ball drawn at this pixel (in the scene's axes): never the way
-            // from the ball's middle. The two are one only while the ball is centred on the eye, and it is placed
-            // where the eye was as the frame began, before the rig moved it (and the camera's shake moves it again
-            // for the draw): the way from its middle tilted every ray by the offset over the ball's size, in flight a
-            // frame's travel, 30 m against a ball of 8 km, and the limb stood 4 pixels out and jumped 4 more with each
-            // long frame. What is drawn is now the ray's alone, wherever the ball is.
+            // from the ball's middle. The two are one only while the ball is centred on the eye, and the camera's shake
+            // moves the eye after it is placed (and it was placed, until Stage.attend, at the last frame's eye): the way
+            // from its middle tilted every ray by the offset over the ball's size, in flight a frame's travel, 30 m
+            // against a ball of 8 km, and the limb stood 4 pixels out and jumped 4 more with each long frame. What is
+            // drawn is now the ray's alone, wherever the ball is.
             vDir = transpose(mat3(viewMatrix)) * seen.xyz;
             gl_Position = projectionMatrix * seen;
           }`,

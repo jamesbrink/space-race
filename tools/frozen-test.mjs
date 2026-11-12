@@ -7,6 +7,9 @@
 //   still:   after SETTLE frames the view is drawn DRAWS times more, and every one must be the first, to the last bit;
 //   thrown:  every level of detail is forced to another and back (as the measuring tools do), and after SETTLE frames
 //            the picture must be the one from before, to the last bit.
+//   ball:    (where the air is drawn) the air's ball moved off the eye and resized: the same picture, within a level.
+//   near:    the near plane at half of where fitDepth puts it: only lines may move (depth's steps), no broad faint change.
+//   step:    (orbit poses) drawn from elsewhere, put back and drawn once: the first frame is the picture, to the last bit.
 // What has moved a frozen picture before, so it is looked for first: a room's lamp handed from room to room by the
 // wall's clock (lamps.ts: `atOnce`), and the clouds' blend with their last frames (clouds.ts: `frozen`). The page
 // is given time to finish arriving first (levels of detail, trees, maps, the other look's shaders): until then the
@@ -15,6 +18,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 
+const NPIX = 1280 * 800;
 const SETTLE = 4; // frames drawn after a pose or a switch before the picture is trusted (what the other tools give it)
 const DRAWS = 4;
 /** Each pose: a model to show, the clock (seconds from liftoff), and the camera: a named view from an azimuth, `Stage.pose`'s arguments, or a rig that follows the vehicle. */
@@ -80,11 +84,13 @@ await page.evaluate(async () => {
   /** Pixels that differ at all, the most a channel differs by, and (asked for) a map of them. */
   window.differ = (a, b, map = false) => {
     let n = 0,
+      faint = 0,
       worst = 0;
     const out = map ? new Uint8ClampedArray(a.length) : null;
     for (let i = 0; i < a.length; i += 4) {
       const d = Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2]));
       if (d) n++;
+      if (d && d <= 4) faint++;
       if (d > worst) worst = d;
       if (out) {
         out[i] = d ? 255 : a[i] >> 2;
@@ -93,9 +99,9 @@ await page.evaluate(async () => {
         out[i + 3] = 255;
       }
     }
-    if (!out || !n) return { n, worst, map: null };
+    if (!out || !n) return { n, faint, worst, map: null };
     pen.putImageData(new ImageData(out, copy.width, copy.height), 0, 0);
-    return { n, worst, map: copy.toDataURL('image/png') };
+    return { n, faint, worst, map: copy.toDataURL('image/png') };
   };
   /** Wait until the picture has stopped changing by itself (the page still arriving): `run` identical frames one after another. */
   window.quiet = async (run = 120, most = 2400) => {
@@ -172,8 +178,9 @@ const at = (pose) =>
         if (stage.scenery) stage.scenery.forced = Object.fromEntries(Object.entries(pieces).map(([name, level]) => [name, to(level)]));
       };
       // the air's ball moved off the eye and made another size: what it draws is the eye's rays, so nothing may change
-      // (it is placed as a frame begins, before the rig moves the eye: in flight a frame's travel off, and the limb
-      // stood 4 px out and jumped with every long frame while it drew the way from its own middle)
+      // (the camera's shake moves the eye after it is placed, and it was once placed at the last frame's eye: in flight a
+      // frame's travel off, and the limb stood 4 px out and jumped with every long frame while it drew the way from its
+      // own middle)
       const globe = stage.setting.globe;
       let ball = null;
       if (globe?.air?.visible) {
@@ -192,6 +199,31 @@ const at = (pose) =>
         const back = window.differ(first, await window.grab(SETTLE));
         if (back.n > ball.n) ball = back;
       }
+      // the near plane brought in to a half of where fitDepth put it: the picture may not depend on it (it eases out over a
+      // quarter of a second after every zoom, so anything that read it would ripple while zooming)
+      const fit = stage.fitDepth;
+      stage.fitDepth = function (dt) {
+        fit.call(this, dt);
+        this.camera.near *= 0.5;
+        this.camera.updateProjectionMatrix();
+      };
+      const nearer = await window.grab(SETTLE);
+      stage.fitDepth = fit;
+      const near = window.differ(first, nearer, true);
+      // a step of the eye: drawn from elsewhere, then put back and drawn once. The first frame from a place must be the
+      // picture from that place (the setting was told where the eye is as a frame began, before the rig moved it: the
+      // plants' fading bands and the land's cells were the last frame's, a zoom's whole step behind)
+      let step = null;
+      if (pose.pose) {
+        const [az, el, dist, y] = pose.pose;
+        // (a fast zoom's frame: further than that, what is chosen with a margin each way, a level of detail or a room's
+        // lamp, may rightly come back otherwise)
+        stage.pose(az + 1, el + 0.5, dist * 1.08, y);
+        await window.grab(SETTLE);
+        stage.pose(az, el, dist, y);
+        step = window.differ(first, await window.grab(0), true);
+        await window.grab(SETTLE);
+      }
       force((level) => level);
       const before = await window.grab(SETTLE);
       force(other);
@@ -201,7 +233,7 @@ const at = (pose) =>
       for (const s of stage.staged) s.forced = null;
       if (stage.scenery) stage.scenery.forced = null;
       stage.timer.getDelta = delta;
-      return { rest, still, ball, thrown: window.differ(before, after, true), changed: window.differ(before, coarse).n };
+      return { rest, still, ball, near, step, thrown: window.differ(before, after, true), changed: window.differ(before, coarse).n };
     },
     [pose, SETTLE, DRAWS],
   );
@@ -222,15 +254,20 @@ for (const look of ['real', 'cel']) {
     for (const [what, d] of [
       ['still', r.still],
       ['ball', r.ball],
+      ['near', r.near],
+      ['step', r.step],
       ['thrown', r.thrown],
     ]) {
-      if (!d) continue; // (no air drawn in this pose)
+      if (!d) continue; // (no air drawn in this pose, or no step taken: a rig that follows)
       // (the ball moved draws the same rays through other triangles: a last bit of rounding, one level at most)
-      const ok = what === 'ball' ? d.worst <= 1 : d.n === 0;
+      // (the near plane at half: what its depth steps decide, the ink and the cel clouds' cut edges, layers a few steps
+      // apart, flips along lines, up to 15,000 pixels in the cel look beside the gantry, each by tens of levels; anything
+      // that read the plane, a haze or a veil, would move a broad part of the frame by a few: so those are counted)
+      const ok = what === 'ball' ? d.worst <= 1 : what === 'near' ? d.faint <= 0.005 * NPIX : d.n === 0;
       const open = !ok && pose.open?.includes(what);
       if (!ok && !open) failed++;
       console.log(
-        `${ok ? 'ok  ' : open ? 'open' : 'FAIL'} ${look.padEnd(4)} ${pose.name.padEnd(22)} ${what.padEnd(6)}  differing ${String(d.n).padStart(6)}${d.n ? `  (by up to ${d.worst} of 255)` : ''}${what === 'thrown' ? `   (at the other level: ${r.changed})` : ''}`,
+        `${ok ? 'ok  ' : open ? 'open' : 'FAIL'} ${look.padEnd(4)} ${pose.name.padEnd(22)} ${what.padEnd(6)}  differing ${String(d.n).padStart(6)}${d.n ? `  (by up to ${d.worst} of 255${what === 'near' ? `; ${d.faint} by 4 or less` : ''})` : ''}${what === 'thrown' ? `   (at the other level: ${r.changed})` : ''}`,
       );
       if (shots && d.map)
         writeFileSync(join(shots, `${look}-${pose.name.replace(/\W+/g, '-')}-${what}.png`), Buffer.from(d.map.split(',')[1], 'base64'));
