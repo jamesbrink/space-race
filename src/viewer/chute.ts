@@ -287,6 +287,10 @@ export class Chute {
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array((at.length / STRIDE) * 3), 3));
+      // (its normals are worked out when it is first shaped; having the attribute from the start, it is drawn by the
+      // shader `Stage.warm` built for it: a mesh with normals and one without are two shaders, and the second was
+      // built as the parachute opened, with the page stopped for it)
+      geometry.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array((at.length / STRIDE) * 3), 3));
       geometry.setIndex(index);
       const material = new THREE.MeshStandardMaterial({
         name: `chute-cloth-${c}`,

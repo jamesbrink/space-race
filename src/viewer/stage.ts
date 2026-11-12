@@ -1708,6 +1708,7 @@ export class Stage {
     });
     for (const s of this.staged) s.everyLevel(true);
     this.scenery?.everyLevel(true);
+    this.rehearse();
     if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
     if (this.trail) this.trail.mesh.visible = true; // (and its trail: drawn empty, its shader is built)
     const globe = this.setting.globe;
@@ -1749,6 +1750,24 @@ export class Stage {
     await frames(3);
     onStep?.('settle', 1);
     if (!this.plain) this.prebuild(this.looks.current === 'cel' ? 'real' : 'cel');
+  }
+
+  /**
+   * Have everything the flight will put in the scene made now, unseen: the frost that comes off at liftoff, the glow
+   * of the entry, the attitude jets, the parachutes. Each was made the first time it was wanted, and its shader built
+   * there and then, with the page stopped for it in the middle of the flight (141 ms at liftoff). Made here, hidden
+   * as they are until their moment, they are in the scene when `warm` has every shader built.
+   */
+  private rehearse(): void {
+    const ascent = this.ascent;
+    const s = this.flier;
+    if (!ascent || !s || !this.clock || this.plain) return;
+    const def = this.defs.find((m) => m.id === ascent.model)!;
+    const pad = new THREE.Quaternion().setFromAxisAngle(UP, def.rotationY ?? 0);
+    const t = this.clock.t;
+    s.group.updateMatrixWorld(true);
+    this.effects?.set(t, false, s.group, s.full, this.clock.rate, this.renderer.toneMappingExposure, this.setting.sunIntensity, this.veils);
+    this.hang(ascent, s, pad, t, false);
   }
 
   /**
