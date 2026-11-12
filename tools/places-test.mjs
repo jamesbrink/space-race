@@ -38,9 +38,10 @@ async function open(hash, { slow = 0, search = '', prefs = null } = {}) {
  * The site with its neighbouring complexes kept back until everything else has arrived and the shadows have been
  * drawn; then they are let through. Was the map that covers the place drawn again for them? `walk`: on foot, where
  * the fine map is kept between steps (shadowcache.ts: it reads its casters each time the shadows are asked for, so it
- * is told by the same request; what is out of its reach it rightly does not draw again).
+ * is told by the same request; what is out of its reach it rightly does not draw again). `workers`: asks instead
+ * whether the workers that decoded their model were let go.
  */
-async function lateNeighbours(walk) {
+async function lateNeighbours(walk, workers = false) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.routeWebSocket(/.*/, () => {});
@@ -69,11 +70,18 @@ async function lateNeighbours(walk) {
   }
   const fails = [];
   if (await page.evaluate(there)) fails.push('the neighbours were there before they were let through: nothing was tested');
+  const working = page.workers().length;
   release();
   await page.waitForFunction(there, null, { timeout: 60000 });
   await page.waitForTimeout(1500);
   const after = await page.evaluate(read);
+  const left = page.workers().length;
   await context.close();
+  if (workers) {
+    // (their model is decoded by workers of its own, which are done with once it has been)
+    if (left > working) fails.push(`${left - working} of the workers that decoded the neighbours' model were left running`);
+    return fails;
+  }
   if (after.far === before.far)
     fails.push('the neighbouring complexes arrived and the far shadow map was not drawn again: it is of the place without them');
   return fails;
@@ -130,6 +138,7 @@ const cases = {
   /** Buildings that arrive after the shadows were drawn are in the shadow maps: with the clock stopped nothing else would ask. */
   'neighbouring complexes that arrive late have their shadows, from the camera': () => lateNeighbours(false),
   'neighbouring complexes that arrive late have their shadows, on foot': () => lateNeighbours(true),
+  "the workers that decode the neighbours' model are let go when it has arrived": () => lateNeighbours(false, true),
 };
 
 let failed = 0;

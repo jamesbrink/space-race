@@ -551,7 +551,9 @@ function neighbours(groundAt: (x: number, z: number) => number): { meshes: THREE
   let news = false;
   // (no page: a test builds the Cape without its neighbours)
   if (typeof document !== 'undefined') {
-    const loader = new GLTFLoader().setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`));
+    // (a decoder of its own, for this one model: its workers are let go when the model has arrived, or has not)
+    const draco = new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
+    const loader = new GLTFLoader().setDRACOLoader(draco);
     loader
       .loadAsync(import.meta.env.BASE_URL + NEIGHBOURS)
       .then((gltf) => {
@@ -595,7 +597,8 @@ function neighbours(groundAt: (x: number, z: number) => number): { meshes: THREE
         }
         news = true;
       })
-      .catch((e) => console.warn('the neighbouring complexes did not arrive, and are done without:', e));
+      .catch((e) => console.warn('the neighbouring complexes did not arrive, and are done without:', e))
+      .finally(() => draco.dispose());
   }
   return {
     meshes: [...meshes.values()],
