@@ -12,7 +12,7 @@ import math
 import bpy
 from mathutils import Matrix, Vector
 
-from srlib import TAU, MeshBuilder, deg, frame, group, prof
+from srlib import TAU, MeshBuilder, _segs, deg, frame, group, prof
 
 MM = 0.001
 
@@ -61,7 +61,7 @@ BASE_Z = SPACECRAFT_SEAT - BLOCK_E_TOP  # the nozzle exits, in the spacecraft's 
 # engines
 EXIT_R = 360.0  # a main chamber's nozzle exit, 720 mm across
 CHAMBER_AT = 445.5  # each main chamber from the engine's axis along both of its axes: 630 mm away, on the diagonals
-STEER_EXIT_R = 105.0
+STEER_EXIT_R = 125.0  # a steering chamber's: 0.35 of a main one's, as 2.5 tf is to a main chamber's share of the thrust
 
 
 def core_r(h: float) -> float:
@@ -78,6 +78,11 @@ def core_r(h: float) -> float:
 def booster_r(s: float) -> float:
     """A booster's outer radius at a station up its own axis."""
     return BOOSTER_R if s <= BOOSTER_CYL else BOOSTER_R * (BOOSTER_LENGTH - s) / (BOOSTER_LENGTH - BOOSTER_CYL)
+
+
+def segs(n: int) -> int:
+    """Sides for a curve at the build's level of detail, as srlib's own shapes count them."""
+    return _segs(n)
 
 
 def V(x: float, y: float, z: float) -> Vector:

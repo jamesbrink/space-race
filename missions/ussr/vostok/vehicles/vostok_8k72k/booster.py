@@ -37,6 +37,7 @@ from .common import (
     fin,
     hang,
     pivot,
+    segs,
 )
 
 SHELL_PARTS = ("Skin", "Frost", "Shield", "InnerWall", "Fittings", "Fasteners", "Rudder", "SteeringFairings")
@@ -44,6 +45,7 @@ CONE = math.atan2(BOOSTER_R, BOOSTER_LENGTH - BOOSTER_CYL)  # the cone's half an
 NOSE = 19050.0  # where the cone ends in the neck that carries the ball
 STEER_AT = (1500.0, 24.0)  # each steering chamber: from the block's axis, and degrees either side of the rudder
 TAIL_SHIELD = 2700.0  # the polished steel on the side toward the core reaches this far up
+SHIELD_RIM = 160.0  # and this far all the way round, at the rim
 
 
 def shells(letter: str) -> tuple:
@@ -82,6 +84,14 @@ def pod(mb: Local, p0, p1, radius: float, nose: float, segs: int = 20) -> None:
     mb.lathe(pts, segs, frame(Vector(p0) * MM, Vector(p1) - Vector(p0)))
 
 
+def shield_top(az: float) -> float:
+    """How far up the tail the polished steel reaches at an azimuth of the block: to the top of the tail facing
+    the core, falling away in a curve to a strip at the rim on the far side."""
+    phi = abs(math.remainder(az - math.pi, TAU))
+    t = min(1.0, max(0.0, (phi - deg(35)) / deg(90)))
+    return SHIELD_RIM + (TAIL_SHIELD - 60 - SHIELD_RIM) * (0.5 + 0.5 * math.cos(math.pi * t))
+
+
 def band(mb: Local, s: float, half: float, proud: float, segs: int = 96, arc=(0.0, TAU)) -> None:
     r = booster_r(s)
     mb.lathe([(r - 3, s - half - proud), (r + proud, s - half), (r + proud, s + half), (r - 3, s + half + proud)], segs, arc=arc)
@@ -99,19 +109,22 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     node = pivot(name, None, X @ V(0, 0, BOOSTER_LENGTH))
     skin, frost, shield, wall, fit, bolts, steel, rudder, fair = (Local(X) for _ in range(9))
     lox0, lox1 = BOOSTER_LOX
-    out, inn = (-math.pi / 2, math.pi / 2), (math.pi / 2, 3 * math.pi / 2)  # the halves away from the core and toward it
     # the tail: lacquer outside, polished steel over asbestos on the side that faces the core's fire
-    skin.lathe([(BOOSTER_R, 0), (BOOSTER_R, TAIL_SHIELD)], 48, arc=out)
-    shield.lathe([(BOOSTER_R, 0), (BOOSTER_R, TAIL_SHIELD)], 48, arc=inn)
+    us = [TAU * i / segs(96) for i in range(segs(96))]
+    ring = lambda az, s: (BOOSTER_R * math.cos(az), BOOSTER_R * math.sin(az), s)  # noqa: E731
+    shield.grid(lambda u, v: ring(u, v * shield_top(u)), us, [0.0, 1.0], closed_u=True)
+    skin.grid(lambda u, v: ring(u, shield_top(u) + v * (TAIL_SHIELD - shield_top(u))), us, [0.0, 1.0], closed_u=True)
+    # (the frame at the top of the engine bay shows through both: where the steel's edge crosses it)
+    cross = deg(35) + deg(90) * math.acos(2 * (BOOSTER_BAY - SHIELD_RIM) / (TAIL_SHIELD - 60 - SHIELD_RIM) - 1) / math.pi
+    out, inn = (-math.pi + cross, math.pi - cross), (math.pi - cross, math.pi + cross)
     skin.lathe([(BOOSTER_R, TAIL_SHIELD), (BOOSTER_R, lox0)], 96)
     frost.lathe([(booster_r(lox0), lox0), (booster_r(lox1), lox1)], 96)
     skin.lathe([(booster_r(lox1), lox1), (booster_r(NOSE), NOSE)], 96)
     wall.lathe([(BOOSTER_R - 18, 0), (BOOSTER_R - 18, BOOSTER_CYL), (booster_r(lox1 + 300) - 18, lox1 + 300)], 96, flip=True)
     shield.lathe([(BOOSTER_R - 20, 0), (BOOSTER_R, 0)], 96)  # the tail's rim
-    band(skin, 40, 30, 8, 48, out)
-    band(shield, 40, 30, 8, 48, inn)
-    band(skin, BOOSTER_BAY, 22, 6, 48, out)
-    band(shield, BOOSTER_BAY, 22, 6, 48, inn)
+    band(shield, 40, 30, 8)
+    band(skin, BOOSTER_BAY, 22, 6, 58, out)
+    band(shield, BOOSTER_BAY, 22, 6, 38, inn)
     on_lacquer = ((TAIL_SHIELD + 30, 22, 6), (BOOSTER_FUEL[1], 22, 6), (lox0 - 40, 30, 8), (lox1 + 30, 20, 5))
     for s, half, proud in on_lacquer:
         band(skin, s, half, proud)
@@ -170,21 +183,26 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
         Matrix.Identity(4),
     )
     rudder.tube((BOOSTER_R + 100, 0, 420), (BOOSTER_R + 240, 0, 420), 30, 12)  # its shaft
-    # each steering chamber hangs under a fairing, either side of the rudder
+    # each steering chamber hangs in the open on an outrigger, either side of the rudder, under a small fairing on the skin
     reach, spread = STEER_AT
     steer = []
     for k in (-1, 1):
         a = deg(k * spread)
         c, sn = math.cos(a), math.sin(a)
         steer.append((reach * c, reach * sn, a))
-        pod(fair, ((BOOSTER_R - 70) * c, (BOOSTER_R - 70) * sn, 1640), (reach * c, reach * sn, 340), 190, 620)
+        pod(fair, ((BOOSTER_R - 45) * c, (BOOSTER_R - 45) * sn, 1280), ((BOOSTER_R + 80) * c, (BOOSTER_R + 80) * sn, 345), 112, 400, 14)
+        end = ((reach + 168) * c, (reach + 168) * sn, 310)  # the outer end of the yoke's bar (engines.py)
+        for j in (-1, 1):
+            b = a + j * deg(7)
+            steel.tube(end, ((BOOSTER_R - 12) * math.cos(b), (BOOSTER_R - 12) * math.sin(b), 880), 24, 8, caps=False)
+        steel.box((120, 300, 150), on_skin(a, 330, 30))  # the bracket the yoke hangs from
     # the base: a shield with a hole for each chamber
     shield.plate(BOOSTER_R - 12, 45, 292, [(sx * CHAMBER_AT, sy * CHAMBER_AT) for sx in (-1, 1) for sy in (-1, 1)])
     # two ties at the foot, to locks on the core, which take the sideways loads and are let go to release the block
     T = Local(core_frame(base_z) @ Matrix.Rotation(deg(az_deg), 4, "Z"))
     T.mb = steel.mb
     for k in (-1, 1):
-        T.tube((2780 - BOOSTER_R + 40, k * 520, NOZZLES + 900), (CORE_R_TAIL - 15, k * 150, NOZZLES + 900), 34, 12)
+        T.tube((2780 - BOOSTER_R + 40, k * 520, NOZZLES + 900), (CORE_R_TAIL - 65, k * 330, NOZZLES + 900), 34, 12)
         T.box((70, 150, 150), at(2780 - BOOSTER_R - 20, k * 520, NOZZLES + 900))
     meshes = [
         skin.build(f"{name}_Skin", M["lacquer"], None, sharp_angle=30),

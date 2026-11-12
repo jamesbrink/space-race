@@ -34,7 +34,10 @@ from .common import (
 )
 
 SHELLS = ("Core_Skin", "Core_Frost", "Core_TailShield", "Core_InnerWall", "Core_Fittings", "Core_Fasteners", "CoreEngine_Fairings")
-STEER_R = 1180.0  # the steering chambers from the axis, in line with the boosters
+STEER_R = 1270.0  # the steering chambers from the axis, in line with the boosters: as far out as the boosters' tails leave room
+# each one's fairing: its outer face from the axis at its foot and at its top (it leans with the booster's tail, 40 mm off),
+# half its width, and the stations of its top on the skin and on that face
+HOUSING = (1395.0, 1320.0, 200.0, 2300.0, 1750.0)
 TUNNEL_R = 160.0  # the oxygen's pipe down through the fuel tank, in its lagging
 KNEES = (NOZZLES, CORE_TAPER, BOOSTER_TIP_H, CORE_NECK, CORE_TOP)
 
@@ -75,11 +78,24 @@ def welds(mb: Local, az: float, h0: float, h1: float, bands) -> None:
     strip(mb, az, a, h1, 24, 3, 4)
 
 
-def pod(mb: Local, p0, p1, radius: float, nose: float, segs: int = 20) -> None:
-    """A fairing over a steering chamber: a bullet lying along the line p0 to p1, its nose buried in the skin at p0."""
-    length = (Vector(p1) - Vector(p0)).length
-    pts = [(0.0, 0.0), (radius * 0.45, nose * 0.3), (radius * 0.82, nose * 0.68), (radius, nose), (radius, length), (0.0, length)]
-    mb.lathe(pts, segs, frame(Vector(p0) * MM, Vector(p1) - Vector(p0)))
+def housing(mb: Local, r_in: float, r_foot: float, r_out: float, half: float, z0: float, z1: float, z_top: float, wall: float = 14.0) -> None:
+    """A fairing over a steering chamber, in axes whose +X is out from the core: a flat-sided box down the tail,
+    sloped in to the skin at its top and open below, where the chamber hangs. It has an inside, which is seen from under."""
+
+    def shell(rf: float, ro: float, w: float, top: float, peak: float, out: bool) -> None:
+        a = [(r_in, -w, z0), (rf, -w, z0), (ro, -w, top), (r_in, -w, peak)]  # the side at -Y, and the one at +Y
+        b = [(x, w, z) for x, _y, z in a]
+        faces = [a, b[::-1], [a[1], b[1], b[2], a[2]], [a[2], b[2], b[3], a[3]]]  # sides, outer face, sloped top
+        for face in faces:
+            mb.mb.add(face if out else face[::-1], [(0, 1, 2, 3)], None, mb.x @ Matrix.Scale(MM, 4))
+
+    shell(r_foot, r_out, half, z1, z_top, True)
+    shell(r_foot - wall, r_out - wall, half - wall, z1 - wall, z_top - 2 * wall, False)
+    lip = [(r_in, -half), (r_foot, -half), (r_foot, half), (r_in, half)]  # the open end's edge
+    inner = [(r_in, -half + wall), (r_foot - wall, -half + wall), (r_foot - wall, half - wall), (r_in, half - wall)]
+    for i in range(3):
+        quad = [(*lip[i], z0), (*inner[i], z0), (*inner[i + 1], z0), (*lip[i + 1], z0)]
+        mb.mb.add(quad, [(0, 1, 2, 3)], None, mb.x @ Matrix.Scale(MM, 4))
 
 
 def band(mb: Local, h: float, half: float, proud: float, segs: int = 96) -> None:
@@ -193,10 +209,13 @@ def build(base_z: float, M: dict) -> None:
 
     # ---------------------------------------------------------------- RD-108
     e = group("CoreEngine")
-    steer = [(STEER_R * math.cos(deg(az)), STEER_R * math.sin(deg(az)), deg(az)) for az in BOOSTER_AZ.values()]
+    # each steering chamber's trunnions lie across the line to its booster, whose tail is 36 mm from the fairing's face
+    steer = [(STEER_R * math.cos(deg(az)), STEER_R * math.sin(deg(az)), deg(az) + math.pi / 2) for az in BOOSTER_AZ.values()]
     engines.build(X, e, M, "RD108", steer, CORE_BAY)
     fair = Local(X)
-    for _x, _y, az in steer:  # each steering chamber hangs under a fairing on the tail
-        c, s = math.cos(az), math.sin(az)
-        pod(fair, ((CORE_R_TAIL - 70) * c, (CORE_R_TAIL - 70) * s, 2250), (STEER_R * c, STEER_R * s, 940), 190, 620)
-    fair.build("CoreEngine_Fairings", M["shield"], e, sharp_angle=None)
+    r_foot, r_out, half, z_top, z1 = HOUSING
+    for az in BOOSTER_AZ.values():  # each hangs under a square fairing on the tail, open below
+        box = Local(X @ Matrix.Rotation(deg(az), 4, "Z"))
+        box.mb = fair.mb
+        housing(box, CORE_R_TAIL - 65, r_foot, r_out, half, NOZZLES + 50, z1, z_top)
+    fair.build("CoreEngine_Fairings", M["shield"], e, smooth=False)

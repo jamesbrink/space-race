@@ -38,7 +38,7 @@ WALL = 14.0  # the double wall, with the coolant's passages in it
 THROAT = 7  # index of the throat in BELL
 HEAD = 2090.0
 # a steering chamber, the same way
-STEER = [(STEER_EXIT_R, 0), (99, 70), (82, 200), (58, 330), (40, 410), (46, 450), (76, 492), (76, 640), (56, 684), (0, 696)]
+STEER = [(STEER_EXIT_R, 0), (118, 70), (98, 200), (69, 330), (48, 410), (55, 450), (90, 492), (90, 640), (67, 684), (0, 696)]
 STEER_PIVOT = 560.0  # its trunnions, above its own exit
 STEER_DROP = 60.0  # how far its exit hangs above the main nozzles' plane
 PUMP_Z = 2500.0  # the turbopump's shaft

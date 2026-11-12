@@ -78,7 +78,10 @@ launch vehicle".
 | Spacecraft's place | its frame (station 1,200 of the 3KA) on the adapter's top | documented (what rests on what); derived (the height) | M: «На ступень опирался шпангоут приборного отсека». N puts the opening's centre 34.07 m up, which is the same to 0.04 m |
 | Main nozzle exit | 720 mm | estimated | V scales to about 740. No published figure was read |
 | Main chambers | four to an engine, on a 630 mm radius, in a square whose sides lie along and across the line to the core | estimated | V |
-| Steering chambers | two on each strap-on, either side of the rudder, 24° from it, 1,500 mm from the block's axis; four on the core, in line with the boosters, 1,250 mm from its axis | documented (the counts); estimated (the places) | counts: M; E. Places: V |
+| Steering chambers | two on each strap-on, either side of the rudder, 24° from it, 1,500 mm from the block's axis; four on the core, in line with the boosters, 1,270 mm from its axis | documented (the counts); estimated (the places) | counts: M; E. Places: V, which scales to 1,530 on a strap-on and about 1,330 on the core. The core's are drawn 60 mm further in than that, because as the boosters stand in the model their tails leave no more room |
+| Steering chamber's exit | 250 mm | derived, loosely | a steering chamber's 2.5 tf (E) is about an eighth of a main chamber's share of the thrust, so 0.35 of its 720 mm at a like expansion. V, where they wear covers, scales to about 330 |
+| Core's steering fairings | a flat-sided box down the tail at each booster's azimuth, 400 mm wide, 1.65 m tall, open below | documented (that there are fairings); estimated (their form and size) | M: «На хвостовом отсеке ... смонтировали обтекатели рулевых двигателей». Form: V from below, where each chamber hangs out of a square housing |
+| Polished steel on a strap-on's tail | to 2.64 m up facing the core, falling in a curve to a 160 mm strip at the rim on the far side | documented (that the side toward the core is shielded); estimated (the edge) | M; the edge's curve is V's and K's |
 
 ### How the stations were set
 
@@ -229,7 +232,9 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   turbopumps, gas generators, frames and pipes are the right kinds of thing in about the right
   places, built from photographs of museum engines, not from a drawing. Nozzle sizes are scaled
   off one photograph.
-- **Steering chambers do not turn**, and the air rudders do not move.
+- **Steering chambers do not turn**, and the air rudders do not move. The outriggers the boosters'
+  steering chambers hang on, and the square fairings over the core's, are drawn from two
+  photographs from below and are the right kind of thing, not the real structure.
 - **The ties at the boosters' feet are plain struts.** The real ones are tubes in pneumatic locks,
   with a sliding dovetail joint beside them (M).
 - **The tip joint is a ball in a cup.** The bracket's real form, the oxygen vent nozzles in the
@@ -260,10 +265,13 @@ Recorded as the model was compared, view by view, with K, V, F and N.
 - **Fairing against K.** K's nose is a curved ogive with a blunt cap and its opening sits higher
   on the cylinder; the model's is N's straight cone. Film stills (F) of 1961 are too coarse to say
   which the flown one was.
-- **The base against V.** V's core tail is squarer, with the four steering chambers in recessed
-  corners; the model's tail is round with a fairing over each. V's boosters carry their steering
-  chambers on open outriggers beside the rudder; the model has closed fairings. V's shields are
-  flat plates with stiffening beads; the model's are plain.
+- **The base against V.** V's core carries its four steering chambers in square housings at the
+  corners, about 1,330 mm from the axis; the model's housings are of that kind, 60 mm nearer in,
+  and their form above the rim, which no photograph read shows, is ours. V's boosters carry their
+  steering chambers on open outriggers beside the rudder, and the rim is cut away behind each; the
+  model has the outriggers (a yoke and two struts, representative) and a whole rim. V's shields
+  are flat plates with stiffening beads; the model's are plain. V's main nozzles scale to about
+  800 mm with their covers on; the model keeps 720.
 - **Tail sections against K.** K shows scalloped doublers round the tails and more hatches,
   blisters and pipe fairings than are modelled; the model has plain bands.
 - **Colour against F.** F's bare skin is darker and greyer than the model's in bright light; the
