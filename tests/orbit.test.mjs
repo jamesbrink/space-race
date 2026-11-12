@@ -1,5 +1,6 @@
 // src/world/orbit.ts against published values: Vallado's worked examples (Fundamentals of
-// Astrodynamics and Applications, 4th ed.: examples 2-2, 2-5, 2-6), orbits whose figures are in
+// Astrodynamics and Applications, 4th ed.: examples 2-2, 2-5, 2-6; their figures set down from memory of the book,
+// docs/sources.md), orbits whose figures are in
 // every textbook (the geostationary radius, the Sun-synchronous inclination at 800 km, the critical
 // inclination), and Vostok 1's own published heights against its own published period. Where no
 // published case was found (the shadow) the test says so and holds the code to geometry instead.
@@ -93,8 +94,8 @@ test('periods everyone prints: a sidereal day at the geostationary radius, and b
 test('Vostok 1’s published heights give its published period, each in its own convention', () => {
   // OKB-1's report of 3 May 1961: 181 by 327 km, 89.44 min. Heights over a ball of 6,371 km.
   near(period(6_371_000 + (181_000 + 327_000) / 2) / 60, 89.44, 0.01, 'OKB-1: period, min');
-  // NASA NSSDC, 1961-012A: 169 by 315 km, 89.34 min. Heights over the equatorial radius.
-  near(period(WGS84_A + (169_000 + 315_000) / 2) / 60, 89.34, 0.01, 'NSSDC: period, min');
+  // Also in print, not traced to a document (README): 169 by 315 km, 89.34 min. They fit heights over the equatorial radius.
+  near(period(WGS84_A + (169_000 + 315_000) / 2) / 60, 89.34, 0.01, 'the untraced set: period, min');
   // TASS on the day: 175 by 302 km, 89.1 min
   near(period(6_371_000 + (175_000 + 302_000) / 2) / 60, 89.1, 0.03, 'TASS: period, min');
 });

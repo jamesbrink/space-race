@@ -18,6 +18,13 @@ speeds and climb angles at separation, loads, event times), each with an `id` th
 `Results` and a `tolerance` **set before the simulator was run**. Nothing is fitted: an input is
 never adjusted to bring a check in.
 
+- **An orbital flight has its own record and its own coast.** `Flight.orbital` (`sim/orbital.ts`: `OrbitalFlight`) stands
+  beside `trajectory`: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
+  and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
+  says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in frames.ts's
+  inertial frame of date on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its `MISSES` by the same rule as
+  below and prints what each undocumented input is worth. The powered ascent is recorded and not flown; a flight with only
+  `orbital` is not offered to be flown by hand. The flight's `mission.md` is the plan.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
   is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails

@@ -14,6 +14,7 @@ missions/                             the record: one folder per nation, program
       README.md                       the flight: what happened, timeline, sources
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
+      orbital.ts  mission.md          an orbital flight's record as data (`Flight.orbital`), and the mission's record and plan in words
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)
 public/globe/                         the globe's land and ice maps, six cube faces each (committed; tools/globe.mjs); its relief and its
@@ -68,6 +69,7 @@ src/
   world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, rotation, mean orbits
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
+  world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow
   world/surface.ts                    the sea as a shape: the ellipsoid at a site's sea level, radii of curvature, the horizon
   world/region.ts                     a piece of the Earth laid flat: the gnomonic plane a region's map is baked on and read from
   viewer/globe.ts                     the Earth to scale under the site: coasts from Natural Earth, the land's colours (Blue Marble) and relief and the
@@ -99,6 +101,7 @@ src/
   sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air
   sim/vehicle.ts  sim/rigid.ts        the live simulator: the same flight stepped a frame at a time and steered, as a rigid body; quaternions and mass properties
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
+  sim/orbital.ts                      a flight into orbit: its record as data (`Flight.orbital`: stages, events, the orbit, the braking burn, the entry) and the coast flown from it (`flyOrbit`)
   sim/loads.ts                        what a structure is limited by (q alpha, load factors), and when it gives
   sim/autopilot.ts                    what flies it when a hand does not: the control law (`steer`), the sequencer, a whole flight flown live (`flyLive`)
   flown.ts                            the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it

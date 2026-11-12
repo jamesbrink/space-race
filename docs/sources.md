@@ -278,6 +278,26 @@ unless it says otherwise.
 | Cutaway of Block E in its Luna form (RIA Novosti, Mokletsov) | Commons: [*Block-E rocket stage*](https://commons.wikimedia.org/wiki/File:Block-E_rocket_stage.png) | The two ring tanks, the engine in the hole, steering nozzles at the foot, the lattice's V struts and the deflector on the core | The Luna stage, with a short adapter and no spacecraft frame |
 | «Восток (ракета-носитель)», Russian Wikipedia, carrying the Soviet encyclopedia's text | [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Восток_(ракета-носитель)) | 38.36 m, 10.3 m, 287 t; blocks 28.75 by 2.95 m and 19.8 by 2.68 m; the steering nozzles on turbine exhaust | Uncited in the article; reads as *Kosmonavtika: Entsiklopediya* (1985), not seen |
 
+### The mission as flown
+
+Read for [mission.md](../missions/ussr/vostok/flights/vostok-1/mission.md) and the flight's
+`orbital.ts`, 12 November 2026. Each download was given 60 seconds and two tries.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| The OKB-1 report, Gagarin's report and the questions (entries above), read again in full for the flight's instants | Wilson Center records 260547, 260544 and the questions | The braking engine's sequence to a tenth of a second (command, "launch" 2.2 s on, at its mode 1.5 s after, fuel pressure gone at 42.2 s, the timer at 44.0 s); 6 deg/s in pitch; the radio channels; the reserve canopy; "TDU directed to the Sun"; what the Vzor showed; the loads by feel | The archive's site now answers a plain download with 403; the copies read were fetched on 11 November. The translation's "IKN" gloss is doubtful |
+| Zak, RussianSpaceWeb: "Gagarin orbits the Earth aboard Vostok" and "Vostok lands successfully" | [vostok1_orbit.html](https://www.russianspaceweb.com/vostok1_orbit.html), [vostok1_landing.html](https://www.russianspaceweb.com/vostok1_landing.html) | The Zarya-3 and Vesna exchanges with their minutes; the planned and flown timeline; the table of orbits (planned 180 by 230 km; TASS; US radar of Block E, 190.6 by 326.2 km); 132 of 136 m/s; Lissov's 150 to 160 km at 10:36; the planned landing near Pestravka (52.40° N 49.96° E); the two accounts of the core's late cutoff; the wind and the Volga. Read in full | Its table of the report's orbit has slips (372 km, "64.57"), and its landing coordinates print minutes as decimals. Lissov's work is at second hand here |
+| Siddiqi, The Space Review, 2015 (entry above), read again | | The Granit-5V's 67 minutes; the valve on the RD-0109; ten days of supplies against thirty of decay; 10 to 12 g | Puts the short landing to the lost second of burn, which the coast shows to have the wrong sign |
+| Ustinov and others, 30 March 1961 (entry above) | | Decay "over two to seven days" as the fallback; landing between 65° north and south | |
+| Vallado, *Fundamentals of Astrodynamics and Applications*, 4th ed., examples 2-2, 2-5, 2-6 | the book; figures set down from it | What `src/world/orbit.ts` is held to: Kepler's equation, elements from a state and back | **Quoted from memory, not from the open book**: the three examples' figures agree with the code to their last printed digit, which a misremembered set would not, but an edition and page are not recorded |
+| Wikipedia, "Vostok 1" | [en.wikipedia.org/wiki/Vostok_1](https://en.wikipedia.org/wiki/Vostok_1) | The monument's coordinates (51.270682° N 45.99727° E, from a map link) | Tertiary. Prints "about 8 g" without a source, and the period as 89.1 min beside the report's heights |
+
+Could not be reached, or not tried in this pass: NASA NSSDC's record 1961-012A (an error page on
+both tries); Chertok, *Rockets and People*, vol. 3 (NASA SP-4110), RKK Energia's history for the
+flight, the FAI's record file and Encyclopedia Astronautica's Vostok 1 page (not tried: the time went
+to the primary reports); *Pervyi pilotiruemyi polet* (2011) and Lissov's articles in *Novosti
+Kosmonavtiki* (not online where looked for).
+
 ### Known, not yet read
 
 | Source | Why it matters |
@@ -299,3 +319,7 @@ unless it says otherwise.
 | Hall and Shayler, *The Rocket Men*, 2001; Pillet, "Le vaisseau Vostok" (kosmonavtika.com) | Hardware detail in English and French |
 | NSSDC record 1961-012A; the FAI's record file for the flight | Where 4,725 kg comes from |
 | A survey of Site 1 as it stood in April 1961, and the launch azimuth as flown | The pad model and the trajectory |
+| Lissov's articles on the flight in *Novosti Kosmonavtiki*; *Pervyi pilotiruemyi polet* (2011), the tracking and ballistics documents | The node, the argument of perigee, where and when the spacecraft was injected, the drop zones: none is in anything read, and the coast's landing along the track hangs on them |
+| Anything on the Vostok's solar orientation system that gives the sensor's axis against the braking engine's (Raushenbakh; Chertok vol. 3; Legostaev) | The record says the engine was pointed at the Sun; the Sun was 41° out of the orbit's plane, and the landing says the push was not |
+| Bailey and Hiatt, "Sphere drag coefficients for a broad range of Mach and Reynolds numbers", *AIAA Journal* 10 (1972); Hoerner, *Fluid-Dynamic Drag* | The sphere's drag curve in `orbital.ts` is set down from memory of them |
+| Kozai, "The motion of a close Earth satellite", *Astronomical Journal* 64 (1959), or Vallado's section on mean elements | A stated conversion from mean to osculating elements, for reading the published orbit |

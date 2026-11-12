@@ -13,8 +13,9 @@ Sources, by weight. **R**: OKB-1's preliminary report of 3 May 1961 (read in ful
 **G**: Gagarin's report to the State Commission of 13 April and the questions put to him (read in
 full, in translation). **S**: Siddiqi, *Challenge to Apollo* (2000). **S15**: Siddiqi in The Space
 Review, 2015. **Z**: Zak, RussianSpaceWeb (its launch, orbit and landing pages, read in full), which
-carries **L**: Lissov's reckonings from *Novosti Kosmonavtiki*, not read at first hand. **N**: NASA
-NSSDC, 1961-012A. **T**: the TASS announcement of the day, as Z tabulates it.
+carries **L**: Lissov's reckonings from *Novosti Kosmonavtiki*, not read at first hand. **N**: a set of figures in print
+that has not been traced to a document (thought to be NASA NSSDC's for 1961-012A, whose page answered
+with an error on both tries). **T**: the TASS announcement of the day, as Z tabulates it.
 
 ## 1. The record
 
@@ -57,11 +58,11 @@ NSSDC, 1961-012A. **T**: the TASS announcement of the day, as Z tabulates it.
 
 ### The orbit
 
-| | R (3 May 1961) | T (12 April) | N | US radar, of Block E (Z, after L) | Planned (Z) |
+| | R (3 May 1961) | T (12 April) | N (untraced) | US radar, of Block E (Z, after L) | Planned (Z) |
 | --- | --- | --- | --- | --- | --- |
 | Perigee | 181 km | 175 km | 169 km | 190.6 km | 180 km |
 | Apogee | 327 km | 302 km | 315 km | 326.2 km | 230 km |
-| Inclination | 64°57′ | 65°4′ | 64.95° | | |
+| Inclination | 64°57′ | 65°4′ | | | |
 | Period | 89.44 min | 89.1 min | 89.34 min | | |
 
 - **The three sets are not three orbits.** By Kepler's law R's heights give R's period only over a
@@ -87,6 +88,13 @@ NSSDC, 1961-012A. **T**: the TASS announcement of the day, as Z tabulates it.
 - **Aim: by the Sun.** One sensor; "the TDU was directed to the Sun and quite steadily" (G); "oriented
   toward the Sun before the braking engine unit was turned on" (R). *Documented.* The launch hour set
   where the Sun would be: so the direction of the push is computed from the ephemeris, not chosen.
+  **And that does not fit.** The Sun stood 41° out of the orbit's plane all morning (*derived* from
+  the site, the hour and the inclination: `tests/orbital.test.mjs` prints it), and 30° above level at
+  the burn. A push straight along the line from the Sun is then 54° off retrograde, 65 % of it
+  across the track. Gagarin has the ground running "strictly according to the pointers of the Vzor"
+  once oriented, and "at an angle of approximately 30 degrees" by the burn; and the landing lay
+  where an in-plane push puts it (section 5). How the sensor's axis lay to the engine's, and what
+  held the roll about the Sun's line, has not been read. **Open.**
 - **Size: 132 m/s** of 136 programmed (Z, after L: *documented, secondary*). R: the impulse "was
   close to the estimated one" and the causes "have not been identified". 1,614 kgf for 38.5 s on
   4.7 t is 131 m/s (*derived*), which agrees.
@@ -100,7 +108,9 @@ NSSDC, 1961-012A. **T**: the TASS announcement of the day, as Z tabulates it.
 - **Landing short.** Planned: near Pestravka, 52.40° N 49.96° E (Z). Flown: 51°16′ N 45°59′ E (R),
   about 300 km short along the track. S15 puts it to the second of lost burn. A weaker burn carries
   further, not shorter; the high orbit, slower round to a timer that fired at a fixed time, falls
-  short by itself. That reasoning is ours and is for `flyOrbit` to show or refute (section 5).
+  short by itself. That reasoning is ours; `flyOrbit` bears out its sign and not its size (4 m/s more
+  burn lands 157 km shorter, not longer; the planned orbit and burn on the same clock land 66 km
+  beyond the flown ones, not 300: section 5).
 - **Place.** R: 51°16′ N, 45°59′ E for the pilot; the module about 1.5 km off (G thought 4), "south
   of the city of Engels", the module 10 m from a ravine and the pilot some 9 km from the Volga (Z).
   About 50 m above the sea, 7.5 °C (Z). Wind at 7 km westerly and strong (Z); at the ground 5 to
@@ -337,7 +347,9 @@ Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's i
 
 | Input | State | Proposal |
 | --- | --- | --- |
-| **Launch azimuth as flown** | not found | **Derived**: the plane of the documented inclination through the pad at liftoff (`planeThrough`), which gives the inertial bearing; the bearing over the ground follows. site1 may find better |
+| **Launch azimuth as flown** | not found (site1 searched Chertok, Siddiqi, Kamanin, the transcript, Zak and three CIA photo-interpretation reports) | **Derived**: the plane of the documented inclination through the pad at liftoff (`planeThrough`): 37.5° in the frame that does not turn, about 35.6° over the ground. The CIA's reading of 1957 photography gives the pad's "probable primary direction of fire" as 40°, approximate. `SITE1.bearingX` is the structure's own lie (90°), not the heading flown |
+| **The solar sensor's axis against the engine's** | not found | The record's words are flown as written (push straight from the Sun) and the miss recorded. Research first; no angle is to be chosen to bring the landing in |
+| **What kind of elements the published orbit is** | not stated | Flown as osculating at cutoff, which the flown apogee shows to be wrong by 18 km. Next: read them as mean elements, through a stated first-order conversion (Kozai's, tested against a published case), and say so |
 | **Where on the orbit at cutoff** (`injection.arc`) | not found | **Estimated** today: 27.5° by hand, ±3°. Replaced by the flown ascent (step 7), when it becomes *derived*. Not to be solved from the landing point |
 | **Argument of perigee** (`injection.anomaly`) | not found | **Estimated**: perigee at cutoff. The ascent gives it. G's "apogee at Cape Horn" is a loose check, not an input |
 | **Pitch programme** | not found | **Derived**, from a stated family with the fewest constants: vertical for a stated time, a gravity turn (no angle of attack) while there is air, then the linear-tangent law in vacuum. Its constants are solved so that at the documented cutoff (676 s) the documented height (perigee, 181 km) is reached in level flight. **Speed at cutoff is then a result**, checked against the orbit's 7,842 m/s; so are the load history (G: about 5 g at 119 s, rising again from 211 s), the speed at core cutoff (Z: about 5.5 km/s), the horizon in the Vzor at 150 and 300 s (G), and the drop zones if a source gives them. It says "derived: this family, these two constraints" wherever shown. It is not the stored programme, which also had radio corrections until 156 s |
@@ -378,7 +390,47 @@ after **sim**'s current work lands. 9 and 10 after 8. 11 to 13 need 9 and each o
 
 ## 5. What the coast gives today
 
-`flyOrbit` (src/sim/orbital.ts), from the inputs above, with nothing adjusted. Filled in by
-`tests/orbital.test.mjs`, which prints these and fails if a miss is not recorded there.
+`flyOrbit` (src/sim/orbital.ts), from the inputs above with nothing adjusted; printed by
+`tests/orbital.test.mjs`, which fails on a miss that is not recorded in its `MISSES`. Tolerances were
+set in orbital.ts before the simulator was written.
 
-Not yet run: the checks and their tolerances in orbital.ts were written first.
+| | Coast | Record | Tolerance | |
+| --- | --- | --- | --- | --- |
+| Period, from the published heights | 89.44 min | 89.44 min (R) | 2 s | holds (it is how the 6,371 km ball was found: a check on the record, not on the flying) |
+| Apogee, flown round | 345.0 km | 327 km (R) | 5 km | **misses by +18 km** |
+| Into the Earth's shadow | 09:35:18 | "before" the orientation of about 09:50 (G, Z) | | not held: no time in the record |
+| Out of it | 10:09:30 | before the burn; orientation complete after it (G) | | not held |
+| Burn begins over | 12.0° S, 9.3° E (off Angola) | "over Africa" (G) | | not held; agrees |
+| Push off retrograde | 54° | | | see section 1 |
+| Perigee after the burn | -37 km | | | no figure in the record |
+| Height at 10:36 | 137 km | 150 to 160 (L); 150 to 170 (S15) | 15 km about 155 | **misses by -18 km** |
+| Through 100 km | 10:39:02, 7,683 m/s through the air, 1.48° below level | | | no figure in the record |
+| Greatest load | 8.55 g | "beyond 10" (G); 10 to 12 (S15) | 2 g about 10 | holds, at the low edge. A sphere with no lift from this orbit gives 8 to 9 g whatever else is changed |
+| Greatest dynamic pressure | 54 kPa | | | |
+| At 7 km | 10:45:45, falling 209 m/s | 10:42 (Z) | 60 s | **misses by +225 s** |
+| Place, across the track | 69 km left | 51°16′ N 45°59′ E (R) | 25 km | **misses** |
+| Place, along the track | 467 km beyond (54.82° N, 49.85° E) | the same | 100 km | **misses** |
+
+What the misses say, in order of what is learned:
+
+1. **Across the track is the burn's aim.** All 69 km is the sideways part of a push along the Sun's
+   line. With the same impulse straight against the motion the miss across is 9 km (and along, 14 km,
+   which the uncertain injection point makes no proof of anything). The plane derived from the
+   inclination and the pad is therefore good to about 10 km at the landing, and the record's "TDU
+   directed to the Sun" is not the whole of the geometry.
+2. **The apogee is how the orbit is read.** The published heights are not osculating at cutoff.
+3. **Along the track has three owners**, each worth hundreds of kilometres: the injection point
+   (129 km a degree, estimated to 3°), the aim, and the reading of the orbit (both heights 9 km lower:
+   302 km shorter). It is not to be tuned; the ascent flown replaces the first.
+4. **The time at 7 km** is late partly because the place is long (467 km is a minute) and partly
+   because the descent is slower than the flight's was, which is the aim again.
+5. **The load does not depend on any of this**: 8.4 to 9.1 g across every variation tried. Gagarin's
+   "beyond 10" is a sensation; "about 8", in print without a source, is what a ballistic sphere gives.
+
+What each input moves (from the same test): `retro.deltaV` +4 m/s (as programmed): 157 km shorter;
++5 %: 254 km shorter. `orbit.radius` at the equatorial 6,378 km: 241 km further. `injection.anomaly`
++30°: 310 km shorter. The sphere's drag or mass ±5 %: 14 km. The module separation a minute earlier
+(G's 10:35): nothing.
+
+Not verified: the shadow against any published case (geometry only); the Sun-aimed push against
+anything but the record's words; the sphere's drag curve against its source.

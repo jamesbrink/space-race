@@ -3,7 +3,8 @@
 Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 
 `src/world/` is pure TypeScript in doubles with no three.js, and everything in it is tested against
-published values (`tests/world.test.mjs`: Meeus's worked examples and JPL Horizons). Read the header
+published values (`tests/world.test.mjs`: Meeus's worked examples and JPL Horizons; `tests/orbit.test.mjs`: Vallado's
+examples and published orbits, for `orbit.ts`; the Earth's shadow there is held to geometry only, no published case having been found). Read the header
 of `frames.ts` before using a frame: it states every convention once. Lengths are metres and angles
 radians, except that a place is recorded in degrees as published. A site's frame is the viewer's
 and the model's: +Y up, +X on the site's stated bearing, +Z a quarter turn clockwise from it.

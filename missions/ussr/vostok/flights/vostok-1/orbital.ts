@@ -180,18 +180,18 @@ export const orbital: OrbitalFlight = {
   orbit: {
     radius: derived(
       6_371_000,
-      'not stated in the report. Its two heights and its period agree by Kepler’s law only if the heights are over a ball of 6,371 km (mean height 254 km on 6,371 gives 89.44 min; on the equatorial 6,378 it gives 89.58). TASS’s figures of the day fit the same ball, and NSSDC’s fit 6,378: tests/orbit.test.mjs',
+      'not stated in the report. Its two heights and its period agree by Kepler’s law only if the heights are over a ball of 6,371 km (mean height 254 km on 6,371 gives 89.44 min; on the equatorial 6,378 it gives 89.58). TASS’s figures of the day fit the same ball, and the untraced 169 by 315 km, 89.34 min fit 6,378: tests/orbit.test.mjs',
     ),
     perigee: doc(
       181_000,
-      `${OKB1}: perigee 181 km. TASS on the day: 175 km. NSSDC 1961-012A: 169 km (over 6,378 km). US radar, of Block E: 190.6 km (Zak, after Lissov)`,
+      `${OKB1}: perigee 181 km. TASS on the day: 175 km. Also in print, untraced (NASA’s NSSDC catalogue is where it is thought to be from; its page answered with an error twice): 169 km (over 6,378 km). US radar, of Block E: 190.6 km (Zak, after Lissov)`,
     ),
     apogee: doc(
       327_000,
-      `${OKB1}: apogee 327 km. TASS on the day: 302 km. NSSDC: 315 km. US radar, of Block E: 326.2 km. The FAI record: 327 km. Planned: 230 km`,
+      `${OKB1}: apogee 327 km. TASS on the day: 302 km. Untraced: 315 km. US radar, of Block E: 326.2 km. The FAI record: 327 km. Planned: 230 km`,
     ),
-    inclination: doc(64.95, `${OKB1}: 64°57′. TASS on the day: 65°4′. NSSDC: 64.95°`),
-    period: doc(89.44 * 60, `${OKB1}: 89.44 min. TASS on the day: 89.1 min. NSSDC: 89.34 min`),
+    inclination: doc(64.95, `${OKB1}: 64°57′. TASS on the day: 65°4′`),
+    period: doc(89.44 * 60, `${OKB1}: 89.44 min. TASS on the day: 89.1 min. Untraced: 89.34 min`),
   },
   injection: {
     at: doc(

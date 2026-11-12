@@ -14,6 +14,27 @@
  * a throttle history that have not been found (the flight's mission.md says what could stand in).
  */
 import type { Confidence, Curve, Measure } from '../types';
+import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { sunPosition } from '../world/ephemeris.ts';
+import {
+  add,
+  cross,
+  DEG,
+  dot,
+  ecefToInertial,
+  enuAxes,
+  type Geodetic,
+  geodeticToEcef,
+  length,
+  scale,
+  sub,
+  unit,
+  type Vec3,
+} from '../world/frames.ts';
+import { elementsOf, period, planeThrough, type State, stateOf, step, subpoint, sunlit } from '../world/orbit.ts';
+import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
+import { atmosphere } from './atmosphere.ts';
+import { along, G0 } from './fly.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -161,4 +182,252 @@ export interface OrbitResults {
   /** That place against the record's landing, m: along its own track over the ground (beyond is positive) and to the right of it. */
   alongTrack: number;
   crossTrack: number;
+}
+
+export type OrbitPhase = 'orbit' | 'braking' | 'descent' | 'entry' | 'down';
+
+/** The coast at one instant. */
+export interface OrbitSample {
+  /** Seconds from liftoff. */
+  t: number;
+  phase: OrbitPhase;
+  /** Height above the sea, m, and the place below: degrees north and east. */
+  altitude: number;
+  latitude: number;
+  longitude: number;
+  /** Speed in the frame that does not turn, and through air that turns with the Earth, m/s. */
+  speed: number;
+  groundSpeed: number;
+  /** What an accelerometer reads, in g; dynamic pressure, Pa; Mach number. */
+  g: number;
+  q: number;
+  mach: number;
+  /** How much of the Sun's disc it sees: 1 in sunlight, 0 in the Earth's shadow. */
+  sunlit: number;
+  /** Position and velocity in frames.ts's inertial frame of date, m and m/s. */
+  r: Vec3;
+  v: Vec3;
+}
+
+export interface OrbitFlown {
+  samples: OrbitSample[];
+  results: OrbitResults;
+}
+
+/** Where the air is taken to begin for the choice of step, and where it is thick: m above the sea. */
+const THIN = 150_000;
+const THICK = 100_000;
+/** The entry interface the results are quoted at, m above the sea: a convention, not a property of the air. */
+const INTERFACE = 100_000;
+
+/**
+ * The orbit the record gives, as a position and velocity at `injection.at`, in the inertial frame
+ * of date. The plane is the one of the published inclination through the launch site's place at
+ * liftoff; the place on it and the perigee are `injection`'s.
+ */
+export function injectionState(o: OrbitalFlight, site: Geodetic, launchJd: number): State {
+  const pad = ecefToInertial(geodeticToEcef(site), greenwichSiderealTime(launchJd));
+  const i = o.orbit.inclination.value * DEG;
+  const n = planeThrough(pad, i, o.injection.heading === 'north');
+  if (!n) throw new Error(`no orbit inclined ${o.orbit.inclination.value} degrees passes over latitude ${site.latitude}`);
+  const arc = o.injection.arc.value * DEG;
+  const from = unit(pad);
+  const at = add(scale(from, Math.cos(arc)), scale(cross(n, from), Math.sin(arc)));
+  const node = Math.atan2(n[0], -n[1]);
+  const toNode: Vec3 = [Math.cos(node), Math.sin(node), 0];
+  const latitudeArgument = Math.atan2(dot(at, cross(n, toNode)), dot(at, toNode));
+  const nu = o.injection.anomaly.value * DEG;
+  const a = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
+  const e = (o.orbit.apogee.value - o.orbit.perigee.value) / (2 * a);
+  return stateOf({ a, e, i, node, argp: latitudeArgument - nu, nu });
+}
+
+/**
+ * Fly the coast: from the published orbit round to the braking burn, and down through the air to
+ * the height the pilot left at. `site` is where it was launched from and `launchJd` when (a Julian
+ * date in UT), which between them fix the orbit's plane, the Earth's turning under it and the Sun.
+ * `seaLevel` is the sea's height above the ellipsoid, taken as the same everywhere. `every`: how
+ * often a sample is kept, s.
+ *
+ * Forces: gravity with J2 (world/orbit.ts); the air of atmosphere.ts turning with the Earth, on
+ * `entry`'s body throughout (before the modules part the whole ship is heavier and no rounder,
+ * and is above the air that matters); the braking burn as an even acceleration. No lift, no wind.
+ * Fixed steps of fourth-order Runge-Kutta: 10 s above 150 km, 1 s to 100 km and through the
+ * burn, 0.05 s below, each cut to end on the next event, so one input gives one flight.
+ */
+export function flyOrbit(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel = 0, every = 10): OrbitFlown {
+  const gast0 = greenwichSiderealTime(launchJd);
+  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const gastAt = (t: number): number => gast0 + EARTH_ROTATION_RATE * t;
+  const sunAt = (t: number): Vec3 => sunPosition(terrestrialTime(launchJd + t / 86_400));
+  const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
+  const braking = o.retro.deltaV.value / (off - on);
+
+  let t = o.injection.at.value;
+  let state = injectionState(o, site, launchJd);
+  let aim: Vec3 = [0, 0, 0];
+  /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
+  const aimAt = (s: State, at: number): Vec3 => scale(unit(o.retro.aim.along === 'sun' ? sub(sunAt(at), s.r) : s.v), o.retro.aim.sense);
+
+  const airAt = (s: State, at: number) => {
+    const altitude = subpoint(s.r, gastAt(at)).height - seaLevel;
+    const air = atmosphere(altitude);
+    const wind = sub(s.v, cross(spin, s.r));
+    const airspeed = length(wind);
+    const mach = airspeed / air.soundSpeed;
+    const q = 0.5 * air.density * airspeed * airspeed;
+    return { altitude, wind, airspeed, mach, q };
+  };
+  /** Everything but gravity, m/s^2. */
+  const push = (s: State, at: number): Vec3 => {
+    const air = airAt(s, at);
+    const mass = at >= parted ? o.entry.mass.value : o.mass.value;
+    const drag: Vec3 =
+      air.airspeed > 0 ? scale(air.wind, (-air.q * o.entry.area.value * along(o.entry.drag, air.mach)) / (air.airspeed * mass)) : [0, 0, 0];
+    return at >= on && at < off ? add(drag, scale(aim, braking)) : drag;
+  };
+  const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
+    at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= 0.05 ? 'entry' : 'descent';
+
+  let phase: OrbitPhase = 'orbit';
+  const sample = (): OrbitSample => {
+    const air = airAt(state, t);
+    const here = subpoint(state.r, gastAt(t));
+    return {
+      t,
+      phase,
+      altitude: air.altitude,
+      latitude: here.latitude,
+      longitude: here.longitude,
+      speed: length(state.v),
+      groundSpeed: air.airspeed,
+      g: length(push(state, t)) / G0,
+      q: air.q,
+      mach: air.mach,
+      sunlit: sunlit(state.r, sunAt(t)),
+      r: state.r,
+      v: state.v,
+    };
+  };
+
+  const a0 = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
+  const results: OrbitResults = {
+    period: period(a0),
+    apogee: 0,
+    shadowIn: Number.NaN,
+    shadowOut: Number.NaN,
+    retroLatitude: Number.NaN,
+    retroLongitude: Number.NaN,
+    retroOffRetrograde: Number.NaN,
+    retroPerigee: Number.NaN,
+    separationAltitude: Number.NaN,
+    interfaceAt: Number.NaN,
+    interfaceSpeed: Number.NaN,
+    interfaceAngle: Number.NaN,
+    entryAt: Number.NaN,
+    entryG: 0,
+    entryGAt: Number.NaN,
+    entryQ: 0,
+    ejectionAt: Number.NaN,
+    ejectionLatitude: Number.NaN,
+    ejectionLongitude: Number.NaN,
+    ejectionSpeed: Number.NaN,
+    alongTrack: Number.NaN,
+    crossTrack: Number.NaN,
+  };
+
+  /** What happens at the instant now reached. */
+  const arrive = (): void => {
+    if (t === on) {
+      aim = aimAt(state, t);
+      const here = subpoint(state.r, gastAt(t));
+      results.retroLatitude = here.latitude;
+      results.retroLongitude = here.longitude;
+      results.retroOffRetrograde = Math.acos(Math.max(-1, Math.min(1, -dot(aim, unit(state.v))))) / DEG;
+    }
+    if (t === off) {
+      const el = elementsOf(state.r, state.v);
+      results.retroPerigee = el.a * (1 - el.e) - o.orbit.radius.value;
+    }
+    if (t === parted) results.separationAltitude = airAt(state, t).altitude;
+  };
+  /** The plumb line at a sample's place, in the inertial frame. */
+  const upAt = (s: OrbitSample): Vec3 => ecefToInertial(enuAxes(s).up, gastAt(s.t));
+
+  const marks = [on, off, parted].sort((p, q) => p - q);
+  const samples: OrbitSample[] = [sample()];
+  let kept = t;
+  let before = samples[0]!;
+  /** Where it was over as it came through the interface: the landing's miss is measured along the line from there. */
+  let gate: Vec3 | null = null;
+  const LIMIT = t + 6 * 3600;
+  const target = geodeticToEcef({ latitude: o.landing.latitude.value, longitude: o.landing.longitude.value, height: 0 });
+
+  while (t < LIMIT) {
+    const mark = marks.find((m) => m > t + 1e-9);
+    const burning = t >= on && t < off;
+    const most = before.altitude > THIN ? (burning ? 1 : 10) : before.altitude > THICK ? 1 : 0.05;
+    const h = Math.min(most, mark === undefined ? most : mark - t);
+    const last = state;
+    state = step(state, t, h, push);
+    t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
+    arrive();
+    let now = sample();
+    phase = phaseAt(t, now.g, phase);
+    now = { ...now, phase };
+
+    if (t <= on) results.apogee = Math.max(results.apogee, length(state.r) - o.orbit.radius.value);
+    // the shadow's edge, where half the Sun is hidden: placed along the step
+    if (before.sunlit >= 0.5 !== now.sunlit >= 0.5) {
+      const at = before.t + ((0.5 - before.sunlit) / (now.sunlit - before.sunlit)) * (now.t - before.t);
+      if (now.sunlit < 0.5 && Number.isNaN(results.shadowIn)) results.shadowIn = at;
+      else if (now.sunlit >= 0.5 && Number.isNaN(results.shadowOut)) results.shadowOut = at;
+    }
+    if (t > off) {
+      if (Number.isNaN(results.interfaceAt) && before.altitude > INTERFACE && now.altitude <= INTERFACE) {
+        const part = (before.altitude - INTERFACE) / (before.altitude - now.altitude);
+        const air = airAt(state, t);
+        results.interfaceAt = before.t + part * (now.t - before.t);
+        results.interfaceSpeed = air.airspeed;
+        results.interfaceAngle = -Math.asin(dot(air.wind, upAt(now)) / air.airspeed) / DEG;
+        gate = geodeticToEcef({ latitude: now.latitude, longitude: now.longitude, height: 0 });
+      }
+      if (Number.isNaN(results.entryAt) && now.g >= 0.05) results.entryAt = t;
+      if (now.g > results.entryG) {
+        results.entryG = now.g;
+        results.entryGAt = t;
+      }
+      results.entryQ = Math.max(results.entryQ, now.q);
+      const floor = o.ejection.altitude.value;
+      if (now.altitude <= floor && now.altitude < before.altitude) {
+        // back along the last step to the instant it came through the height
+        const part = (before.altitude - floor) / (before.altitude - now.altitude);
+        state = { r: add(last.r, scale(sub(state.r, last.r), part)), v: add(last.v, scale(sub(state.v, last.v), part)) };
+        t = before.t + part * (now.t - before.t);
+        phase = 'down';
+        const end = sample();
+        results.ejectionAt = t;
+        results.ejectionLatitude = end.latitude;
+        results.ejectionLongitude = end.longitude;
+        results.ejectionSpeed = -dot(airAt(state, t).wind, upAt(end));
+        const under = geodeticToEcef({ latitude: end.latitude, longitude: end.longitude, height: 0 });
+        if (gate) {
+          const axes = enuAxes({ latitude: o.landing.latitude.value, longitude: o.landing.longitude.value });
+          const level = (d: Vec3): Vec3 => sub(d, scale(axes.up, dot(d, axes.up)));
+          const track = unit(level(sub(under, gate)));
+          const miss = level(sub(under, target));
+          results.alongTrack = dot(miss, track);
+          results.crossTrack = dot(miss, cross(track, axes.up));
+        }
+        samples.push(end);
+        break;
+      }
+    }
+    if (t - kept >= every - 1e-9 || marks.includes(t)) {
+      samples.push(now);
+      kept = t;
+    }
+    before = now;
+  }
+  return { samples, results };
 }

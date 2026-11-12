@@ -13,6 +13,7 @@ the pilot ejecting from the descent module and landing by parachute near the Vol
 | Launch vehicle (8K72K: core, four strap-ons, lattice, Block E, fairing) | **built**, every station estimated: [vostok-8k72k.md](../../vehicles/vostok-8k72k.md) |
 | Launch site (Site 1) | not built; its position only: [site-1.md](../../sites/site-1.md) |
 | Crew (Gagarin in the SK-1, to be walked as) | built ([sk-1.md](../../crew/sk-1.md)): he stands beside the spacecraft in the gallery and rides in its seat; there is no site to walk him on yet |
+| The mission as a record and a plan | [mission.md](mission.md); the numbers in [orbital.ts](orbital.ts) (`Flight.orbital`). The coast from the published orbit to 7 km is flown in tests (`flyOrbit`), with its misses recorded; the ascent is not |
 | Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies. What was found toward one is in [vostok-8k72k.md](../../vehicles/vostok-8k72k.md), "What a staged trajectory will need" |
 
 So the viewer shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in
