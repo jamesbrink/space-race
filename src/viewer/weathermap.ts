@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DEG } from '../world/frames.ts';
 import { later } from './later.ts';
+import { queued } from './pack.ts';
 import { EXTENT } from './weather.ts';
 
 /**
@@ -66,7 +67,10 @@ export function placeWeather(bearingX: number, cover: number, wind: readonly [nu
     texture.minFilter = texture.magFilter = THREE.LinearFilter;
     texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
     texture.needsUpdate = true;
-    weatherUniforms.tWeather.value = texture;
+    // (taken up in a frame of its own: its upload is not to land with another map's: pack.ts)
+    await queued(() => {
+      weatherUniforms.tWeather.value = texture;
+    });
     for (const then of arrived) then();
   };
   wantWeather = later(() => void load());

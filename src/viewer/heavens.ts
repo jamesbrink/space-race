@@ -4,6 +4,7 @@ import { DEG, enuToSite, fromEquatorial, fromHorizontal, j2000ToSite, type Site,
 import { STAR_STRIDE, STARS, starMotion, yearsFrom2000 } from '../world/stars.ts';
 import { airmass } from './daysky.ts';
 import { later } from './later.ts';
+import { queued } from './pack.ts';
 
 /**
  * What is in the sky besides the Sun: the Moon, the stars and the planets, each where
@@ -249,9 +250,12 @@ function milkyWay(ground: boolean): THREE.Mesh {
         map.wrapS = THREE.RepeatWrapping;
         map.generateMipmaps = false; // (it is only ever magnified: a texel is a sixth of a degree)
         map.minFilter = map.magFilter = THREE.LinearFilter;
-        uniforms.tMap.value = map;
-        mesh.visible = true;
-        mesh.userData.arrivedAt = performance.now();
+        // (shown from a frame of its own: its upload is not to land with another map's: pack.ts)
+        void queued(() => {
+          uniforms.tMap.value = map;
+          mesh.visible = true;
+          mesh.userData.arrivedAt = performance.now();
+        });
       }),
     );
   return mesh;

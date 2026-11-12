@@ -38,7 +38,7 @@ const RATE = 10;
  * land's and the globe's shaders were at the sixteen a fragment shader is promised until their maps were packed
  * (pack.ts; docs/agents/rendering.md, "Texture units"): they now leave four.
  */
-const SKY_ON = false;
+const SKY_ON = true;
 const SKY_SIZE = 2048;
 /** How much of the sky's light is left under a roof: what comes in at doors and windows and off the walls. Estimated, by eye in the firing rooms by day: at 0.22 a console's dials were lost. */
 const UNDER = 0.28;

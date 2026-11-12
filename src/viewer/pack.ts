@@ -22,6 +22,37 @@ const FRAGMENT = /* glsl */ `
   out vec4 oValue;
   void main() { oValue = uInto * texture(tFrom, gl_FragCoord.xy / uSize).r; }`;
 
+/**
+ * One piece of GPU work a frame. A map arriving is megabytes to upload and a mip chain to make; several landing in
+ * one frame held it for most of a second (seen as a lurch of the camera, and caught by the camera's test), so each
+ * upload or copy is `queued` and takes a frame of its own. Where there are no frames (a test) it is done at once.
+ */
+const jobs: (() => void)[] = [];
+let pumping = false;
+function pump(): void {
+  const job = jobs.shift();
+  if (!job) {
+    pumping = false;
+    return;
+  }
+  job();
+  requestAnimationFrame(pump);
+}
+export function queued(job: () => void): Promise<void> {
+  return new Promise((done) => {
+    const run = (): void => {
+      job();
+      done();
+    };
+    if (typeof requestAnimationFrame === 'undefined') return run();
+    jobs.push(run);
+    if (!pumping) {
+      pumping = true;
+      requestAnimationFrame(pump);
+    }
+  });
+}
+
 let pane: { scene: THREE.Scene; camera: THREE.Camera; material: THREE.RawShaderMaterial } | null = null;
 function paneOf(): NonNullable<typeof pane> {
   if (pane) return pane;
@@ -71,8 +102,11 @@ function draw(
   width: number,
   height: number,
   channel: number,
+  mips = true,
 ): void {
   const { scene, camera, material } = paneOf();
+  // (the mip levels are made after this draw only if asked: a cube's are made once, after its last face)
+  target.texture.generateMipmaps = mips;
   const from = source(bitmap, width);
   material.uniforms.tFrom!.value = from;
   (material.uniforms.uSize!.value as THREE.Vector2).set(width, height);
@@ -96,6 +130,7 @@ function draw(
   target.viewport.set(0, 0, target.width, target.height);
   target.scissor.set(0, 0, target.width, target.height);
   renderer.setRenderTarget(was, face, level);
+  target.texture.generateMipmaps = true;
   renderer.autoClear = auto;
   renderer.xr.enabled = xr;
   from.dispose();
@@ -133,11 +168,15 @@ export function cubeOf(renderer: THREE.WebGLRenderer, size: number): THREE.WebGL
   return target;
 }
 
-/** Six faces of a one-channel map (in a cube map's order), into one channel (0 red to 3 alpha) of a packed cube. */
-export function packCube(renderer: THREE.WebGLRenderer, target: THREE.WebGLCubeRenderTarget, faces: ImageBitmap[], channel: number): void {
-  faces.forEach((face, i) => {
-    draw(renderer, target, i, face, target.width, target.height, channel);
-  });
+/** Six faces of a one-channel map (in a cube map's order), into one channel (0 red to 3 alpha) of a packed cube: a face a frame. */
+export async function packCube(
+  renderer: THREE.WebGLRenderer,
+  target: THREE.WebGLCubeRenderTarget,
+  faces: ImageBitmap[],
+  channel: number,
+): Promise<void> {
+  for (const [i, face] of faces.entries())
+    await queued(() => draw(renderer, target, i, face, target.width, target.height, channel, i === faces.length - 1));
 }
 
 /** An array of one-channel maps, each layer `size` texels square, all nothing, with its mip levels: for `packLayer`. */
@@ -161,14 +200,14 @@ export function layersOf(renderer: THREE.WebGLRenderer, size: number, layers: nu
  * A one-channel map into a layer, at its own size in the layer's corner (the rest of the layer stays nothing).
  * Returns the share of the layer it takes each way: what its own texture coordinates are multiplied by.
  */
-export function packLayer(
+export async function packLayer(
   renderer: THREE.WebGLRenderer,
   target: THREE.WebGLArrayRenderTarget,
   layer: number,
   bitmap: ImageBitmap,
-): [number, number] {
+): Promise<[number, number]> {
   const width = Math.min(bitmap.width, target.width),
     height = Math.min(bitmap.height, target.height);
-  draw(renderer, target, layer, bitmap, width, height, 0);
+  await queued(() => draw(renderer, target, layer, bitmap, width, height, 0));
   return [width / target.width, height / target.height];
 }

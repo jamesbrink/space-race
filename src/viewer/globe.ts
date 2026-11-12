@@ -19,7 +19,7 @@ import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
 import { later } from './later.ts';
-import { cubeOf, layersOf, packCube, packLayer } from './pack.ts';
+import { cubeOf, layersOf, packCube, packLayer, queued } from './pack.ts';
 import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
 import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
 
@@ -585,17 +585,21 @@ export class Globe {
     this.group.add(this.air);
 
     void Promise.all([cubeFaces('land'), cubeFaces('ice')]).then(([land, ice]) => {
-      packCube(renderer, this.maps, land, 0);
-      packCube(renderer, this.maps, ice, 1);
-      this.arrived = true;
+      void packCube(renderer, this.maps, land, 0)
+        .then(() => packCube(renderer, this.maps, ice, 1))
+        .then(() => {
+          this.arrived = true;
+        });
     });
     if (region) void this.loadRegion(region);
     // The relief and the land's colours are not seen from the site (round it the globe keeps the site's own tones:
     // uGlobeLift): fetched once the scene is up, or when the eye first rises, and faded in (`surfaced`).
     this.want = later(() => {
       const maps: Promise<unknown>[] = [
-        Promise.all([cubeFaces('relief', true), loadColourCube('colour')]).then(([relief, colour]) => {
-          packCube(renderer, this.maps, relief, 2);
+        Promise.all([cubeFaces('relief', true), loadColourCube('colour')]).then(async ([relief, colour]) => {
+          await packCube(renderer, this.maps, relief, 2);
+          // (uploaded in a frame of its own, before anything is drawn with it)
+          await queued(() => renderer.initTexture(colour));
           this.uniforms.uGlobeColour!.value = colour;
         }),
       ];
@@ -630,7 +634,8 @@ export class Globe {
     const [relief, colour] = await Promise.all([regionBitmap(meta.relief.file), loadSurface(meta.colour.file)]);
     const { east: e, north: n, centre: c } = planeAt(meta.centre[0], meta.centre[1]);
     const u = this.uniforms;
-    const share = packLayer(this.renderer, this.flat, 2, relief);
+    const share = await packLayer(this.renderer, this.flat, 2, relief);
+    await queued(() => this.renderer.initTexture(colour));
     (u.uGlobeFlatShare!.value as THREE.Vector2[])[2]!.set(share[0], share[1]);
     u.uGlobeSurfColour!.value = colour;
     (u.uGlobeSurfPlane!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);
@@ -653,7 +658,7 @@ export class Globe {
         const bitmap = await regionBitmap(level.file);
         const prefix = level.name === 'near' ? 'Near' : 'Wide';
         const layer = level.name === 'near' ? 0 : 1;
-        const share = packLayer(this.renderer, this.flat, layer, bitmap);
+        const share = await packLayer(this.renderer, this.flat, layer, bitmap);
         const { east: e, north: n, centre: c } = planeAt(level.centre[0], level.centre[1]);
         const u = this.uniforms;
         (u.uGlobeFlatShare!.value as THREE.Vector2[])[layer]!.set(share[0], share[1]);
