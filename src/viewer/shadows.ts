@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { tier } from './tier.ts';
 
 /**
  * The Sun's second shadow map: the whole place, coarsely, under the fine one.
@@ -24,8 +25,11 @@ import * as THREE from 'three';
  * a frame of its own, with his shadow switched off, and the fine map in the frames either side.
  */
 
-/** Texels a side. At 300 m of half-width a texel is 15 cm: soft, and never seen from nearer than the fine map's edge. */
-const SIZE = 4096;
+/**
+ * Texels a side. At 300 m of half-width a texel is 15 cm: soft, and never seen from nearer than the fine map's edge.
+ * (The lighter tier's is 2048 and 30 cm: tier.ts.)
+ */
+const SIZE = tier().shadow.far;
 /** The most it covers, metres from the middle of the place: beyond, a texel is too coarse to be a shadow. */
 const REACH = 330;
 /** On foot, how many frames this map waits for one in which the fine map is not wanted, before it takes one anyway. */
@@ -39,7 +43,7 @@ const RATE = 10;
  * (pack.ts; docs/agents/rendering.md, "Texture units"): they now leave four.
  */
 const SKY_ON = true;
-const SKY_SIZE = 2048;
+const SKY_SIZE = tier().shadow.sky;
 /** How much of the sky's light is left under a roof: what comes in at doors and windows and off the walls. Estimated, by eye in the firing rooms by day: at 0.22 a console's dials were lost. */
 const UNDER = 0.28;
 /** Where across the fine map (0 its middle, 1 its edge) the far one comes in, from and to. */

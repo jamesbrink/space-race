@@ -250,7 +250,7 @@ export function layersOf(renderer: THREE.WebGLRenderer, size: number, layers: nu
 }
 
 /**
- * A one-channel map into a layer, at its own size in the layer's corner (the rest of the layer stays nothing).
+ * A one-channel map into a layer, at its own size (or smaller to fit, each way alike) in the layer's corner (the rest of the layer stays nothing).
  * Returns the share of the layer it takes each way: what its own texture coordinates are multiplied by.
  */
 export async function packLayer(
@@ -259,8 +259,10 @@ export async function packLayer(
   layer: number,
   bitmap: ImageBitmap,
 ): Promise<[number, number]> {
-  const width = Math.min(bitmap.width, target.width),
-    height = Math.min(bitmap.height, target.height);
+  // (one larger than the layer goes in filtered at the size that fits it, each way alike: a browser that would not resize it)
+  const fit = Math.min(1, target.width / bitmap.width, target.height / bitmap.height);
+  const width = Math.round(bitmap.width * fit),
+    height = Math.round(bitmap.height * fit);
   await copyIn(renderer, target, layer, bitmap, width, height, 0, true);
   return [width / target.width, height / target.height];
 }
@@ -271,7 +273,14 @@ export async function packLayer(
  */
 export async function colourCube(renderer: THREE.WebGLRenderer, faces: ImageBitmap[]): Promise<THREE.CubeTexture> {
   const size = faces[0]!.width;
-  const target = new THREE.WebGLCubeRenderTarget(size, {
+  const target = colourCubeOf(size);
+  for (const [i, face] of faces.entries()) await copyIn(renderer, target, i, face, size, size, null, i === faces.length - 1);
+  return target.texture;
+}
+
+/** A cube map of colours (sRGB), `size` texels a face, with its mip levels: for `colourCube`, or to be filled a face at a time by `packFace`. */
+export function colourCubeOf(size: number): THREE.WebGLCubeRenderTarget {
+  return new THREE.WebGLCubeRenderTarget(size, {
     format: THREE.RGBAFormat,
     type: THREE.UnsignedByteType,
     colorSpace: THREE.SRGBColorSpace,
@@ -280,8 +289,22 @@ export async function colourCube(renderer: THREE.WebGLRenderer, faces: ImageBitm
     magFilter: THREE.LinearFilter,
     depthBuffer: false,
   });
-  for (const [i, face] of faces.entries()) await copyIn(renderer, target, i, face, size, size, null, i === faces.length - 1);
-  return target.texture;
+}
+
+/**
+ * One face of a cube, by itself: a one-channel map into `channel` of a packed cube, or with `channel` null a picture's
+ * colours into a cube of colours; `last` makes the mip levels after it. For whoever cannot hold six decoded faces at
+ * once (the lighter tier, tier.ts): each is decoded, copied in and let go before the next is fetched.
+ */
+export function packFace(
+  renderer: THREE.WebGLRenderer,
+  target: THREE.WebGLCubeRenderTarget,
+  face: number,
+  bitmap: ImageBitmap,
+  channel: number | null,
+  last: boolean,
+): Promise<void> {
+  return copyIn(renderer, target, face, bitmap, target.width, target.height, channel, last);
 }
 
 /** A flat map of colours from a picture (sRGB), with its mip levels, copied in a piece a frame. */

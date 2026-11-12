@@ -34,6 +34,7 @@ import { Origin } from './origin';
 import { Outline } from './outline';
 import { Panes } from './panes';
 import { through, triangles } from './pick';
+import { fitIndices, fitPictures } from './pictures';
 import { Plume } from './plume';
 import { Quality } from './quality';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
@@ -41,6 +42,7 @@ import { ShadowCache } from './shadowcache';
 import { depthBias, FarShadow } from './shadows';
 import { wearTexture } from './space';
 import { grain, mark } from './surface';
+import { tier } from './tier';
 import { TRAIL_STEP, Trail } from './trail';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
@@ -120,7 +122,7 @@ const ENCLOSING = [
   [0, 1, -1],
 ].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
 /** Texels along a side of the Sun's shadow map, as the orbiting views use it. */
-const SHADOW_MAP = 4096;
+const SHADOW_MAP = tier().shadow.fine;
 /** Triangles a millisecond at which a geometry's hierarchy is taken to be made, when deciding whether one fits in the time to spare (`growTrees`): half what is measured. */
 const TREE_RATE = 1000;
 /** After the clock has been put somewhere, the hardware plays the last stretch before that instant (seconds of the sequence) at this many times life. */
@@ -458,6 +460,8 @@ export class Stage {
   private get onShow(): boolean {
     return !this.held && !this.frozen && !this.asleep;
   }
+  /** What the device is taken to be able to hold, and what follows from it (tier.ts): fixed as the page opens. */
+  readonly tier = tier();
   /** `?plain` in the address: everything the old way, for measuring the new against it (tools/bench.mjs). */
   private readonly plain: boolean;
   private sinceDrawn = 0;
@@ -512,7 +516,7 @@ export class Stage {
         this.boarding !== null,
       () => this.far.nearOnly(),
     );
-    if (this.plain) this.shadowCache.enabled = false;
+    if (this.plain || !tier().walkCache) this.shadowCache.enabled = false; // (the lighter tier holds no second fine map: tier.ts)
 
     // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
     // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
@@ -859,7 +863,9 @@ export class Stage {
         .loadAsync(import.meta.env.BASE_URL + url, (e) => {
           if (e.total) onProgress?.(e.loaded / e.total, e.loaded, e.total);
         })
-        .then((gltf) => {
+        .then(async (gltf) => {
+          await fitPictures(gltf.scene); // (the tier's sizes, before anything is sent to the GPU: pictures.ts)
+          fitIndices(gltf.scene);
           this.dress(gltf.scene, url);
           return gltf.scene;
         });
@@ -1841,9 +1847,11 @@ export class Stage {
       [0, false],
     ] as const;
     // And every picture a material carries is sent to the GPU now, whether or not what wears it is shown: a hidden
-    // thing's (the cabin's panels, 4096 square) was sent when it was first drawn, in front of whoever had just zoomed
-    // in on the vehicle, and held that frame for a fifth of a second. A large one a frame, so none of this holds the page.
-    {
+    // thing's was sent when it was first drawn, in front of whoever had just zoomed in, and held that frame. A large
+    // one a frame, so none of this holds the page. Not the cabin's (its panels, 155 MiB with their mip levels, for an
+    // inside nobody may go to): those are the cabin's to send, a picture a frame as the eye comes toward it
+    // (cabin.ts, `send`). And on the lighter tier (tier.ts) none: there a picture is sent when what wears it is first drawn.
+    if (tier().warmPictures) {
       const sent = new Set<THREE.Texture>();
       const pictures: THREE.Texture[] = [];
       this.scene.traverse((o) => {
@@ -1851,7 +1859,7 @@ export class Stage {
         for (const m of worn ? (Array.isArray(worn) ? worn : [worn]) : [])
           for (const v of Object.values(m)) {
             const t = v as THREE.Texture | null;
-            if (!t?.isTexture || sent.has(t) || !(t.image as { width?: number } | null)?.width) continue;
+            if (!t?.isTexture || sent.has(t) || this.cabin?.pictures.has(t) || !(t.image as { width?: number } | null)?.width) continue;
             if ((t as THREE.CubeTexture).isCubeTexture || (t as unknown as { isRenderTargetTexture?: boolean }).isRenderTargetTexture)
               continue;
             sent.add(t);
@@ -1864,7 +1872,19 @@ export class Stage {
         if (width * height >= 1024 * 1024) await frames(1);
       }
     }
+    // (on the lighter tier, tier.ts, every level is built but only what is in view is drawn, so only that is sent to
+    // the GPU: the rest of three levels of everything is sent when it is first drawn)
+    const drawAll = (on: boolean) => {
+      for (const o of culled) o.frustumCulled = !on;
+      if (!on) for (const s of this.staged) s.everyLevel(false);
+      if (!on) this.scenery?.everyLevel(false);
+    };
     for (const [i, [night, fading]] of passes.entries()) {
+      // (nothing drawn while every level is out to be built: drawn, all of it would be sent)
+      if (!tier().warmLevels) {
+        this.held = true;
+        drawAll(true);
+      }
       for (const s of this.staged) s.everyLevel(true, fading);
       this.scenery?.everyLevel(true, fading);
       this.lamps.set(night, 1);
@@ -1877,6 +1897,7 @@ export class Stage {
       if (!this.plain) built.push(this.renderer.compileAsync(this.setting.backdrop.scene, this.setting.backdrop.camera));
       this.renderer.setRenderTarget(target);
       await Promise.all(built).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
+      if (!tier().warmLevels) drawAll(false);
       this.held = false; // (the first frame is drawn now, with its shaders ready)
       this.quality.rest(performance.now(), 8000); // (and the first seconds are slow for reasons that pass: maps arriving, the other look's shaders)
       this.renderer.shadowMap.needsUpdate = true;
@@ -1894,7 +1915,7 @@ export class Stage {
     this.relight(true);
     await frames(3);
     onStep?.('settle', 1);
-    if (!this.plain) this.prebuild(this.looks.current === 'cel' ? 'real' : 'cel');
+    if (!this.plain && tier().prebuildLook) this.prebuild(this.looks.current === 'cel' ? 'real' : 'cel');
   }
 
   /**
@@ -2213,6 +2234,14 @@ export class Stage {
       this.shadowMaps.set(size, map);
     }
     shadow.map = map;
+    // (the lighter tier holds only the one in use, tier.ts: the other is made again when it is next wanted)
+    if (this.tier.oneFineMap)
+      for (const [other, unused] of this.shadowMaps) {
+        if (unused === map) continue;
+        unused.depthTexture?.dispose();
+        unused.dispose();
+        this.shadowMaps.delete(other);
+      }
   }
 
   /**
@@ -2235,11 +2264,13 @@ export class Stage {
    * grazes shows every texel of the map as a tooth along a shadow's edge, so the map is made as
    * fine as the machine allows: 8192 a side over 52 m of ground (6 mm a texel) where the GPU
    * takes a texture that size and is not a phone's, and otherwise the usual 4096 over a smaller
-   * 36 m (9 mm); and its edges are softened by a texel or two either way.
+   * 36 m (9 mm), or on the lighter tier 3072 over the same 36 m (12 mm: tier.ts); and its edges
+   * are softened by a texel or two either way.
    */
   private walkShadow(): { half: number; size: number; radius: number } {
-    const big = this.renderer.capabilities.maxTextureSize >= 8192 && !matchMedia('(pointer: coarse)').matches;
-    return big ? { half: WALK_SHADOW, size: 8192, radius: 1.5 } : { half: 18, size: SHADOW_MAP, radius: 2 };
+    const most = tier().shadow.walk; // (the lighter tier's is the smaller map: tier.ts)
+    const big = most >= 8192 && this.renderer.capabilities.maxTextureSize >= 8192 && !matchMedia('(pointer: coarse)').matches;
+    return big ? { half: WALK_SHADOW, size: 8192, radius: 1.5 } : { half: 18, size: Math.min(most, 4096), radius: 2 };
   }
 
   /**
@@ -2604,7 +2635,7 @@ export class Stage {
     if (!w || !h) return;
     // a phone's GPU has four times the pixels to fill per inch and a fraction of the power
     const coarse = matchMedia('(pointer: coarse)').matches;
-    const full = Math.min(window.devicePixelRatio, coarse ? 1.5 : 2);
+    const full = Math.min(window.devicePixelRatio, coarse ? 1.5 : 2, tier().pixelRatio);
     this.quality.setFull(full);
     this.pixelScale = scale;
     this.renderer.setPixelRatio(full * scale);
@@ -2760,7 +2791,7 @@ export class Stage {
     const walking = this.walk.active ? (this.staged[this.walked]?.group ?? null) : null;
     this.shadowCache.figure = walking;
     if (walking) this.walkEnded = 0;
-    else if (this.walkEnded && performance.now() - this.walkEnded > 30_000) this.freeWalkShadows();
+    else if (this.walkEnded && performance.now() - this.walkEnded > (this.tier.lighter ? 2_000 : 30_000)) this.freeWalkShadows();
     this.far.before(walking, this.frozen);
     if (this.lookingAt && !this.cam.onboard.looking) this.lookOut(null); // (the hands took the head back)
     this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)

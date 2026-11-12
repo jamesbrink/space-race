@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { tier } from './tier.ts';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, ModelDef, Signal, SitedFlight } from '../types.ts';
@@ -84,7 +85,8 @@ interface Lamp {
   lit: number;
 }
 
-const FACE = 1024; // pixels along a face of the periscope's cube
+const LIGHTER = tier().lighter;
+const FACE = tier().periscope; // pixels along a face of the periscope's cube (1024; half that on the lighter tier, tier.ts)
 const NEEDLE_TAU = 0.12; // seconds: how quickly a needle follows its reading
 const AXIS_Y = new THREE.Vector3(0, 1, 0);
 const AXIS_X = new THREE.Vector3(1, 0, 0);
@@ -235,6 +237,15 @@ export class Cabin {
         const mesh = o as THREE.Mesh;
         if (mesh.isMesh && !mesh.userData.shell && !kept.has(mesh.name)) this.interior.push({ mesh, casts: mesh.castShadow });
       });
+    // the pictures only the inside wears (`pictures`), and of them the ones still to be sent
+    const outside = new Set<THREE.Texture>();
+    const ins = new Set(this.interior.map(({ mesh }) => mesh));
+    group.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) for (const t of picturesOf(mesh)) (ins.has(mesh) ? this.pictures : outside).add(t);
+    });
+    for (const t of outside) this.pictures.delete(t);
+    this.unsent = [...this.pictures];
 
     const p = this.def.periscope;
     const screen = p && (find(p.screen) as THREE.Mesh | null);
@@ -347,6 +358,13 @@ export class Cabin {
   };
   private readonly interior: { mesh: THREE.Mesh; casts: boolean }[] = [];
   private shown = true;
+  /**
+   * The pictures only the inside wears: its panels, 155 MiB with their mip levels at full size. They are not sent to
+   * the GPU as the page opens (Stage.warm leaves them out) but as the eye comes toward the inside (`send`): nobody may
+   * go there, and on a phone that was memory the page did not have.
+   */
+  readonly pictures = new Set<THREE.Texture>();
+  private unsent: THREE.Texture[] = [];
   private casting = true;
   private all = false;
 
@@ -371,13 +389,20 @@ export class Cabin {
    * own shade is the build's.
    */
   private seen(): void {
-    const near = this.host.camera.position.distanceToSquared(this.group.getWorldPosition(v)) < NEAR * NEAR;
+    const far = this.host.camera.position.distanceToSquared(this.group.getWorldPosition(v));
+    const near = far < NEAR * NEAR;
     const shown = this.aboard || this.open || near;
+    // (sent ahead as the eye comes; on the lighter tier only once it is drawn, and let go again when it is not: tier.ts)
+    if (this.unsent.length && (shown || (!LIGHTER && far < COMING * COMING))) this.send();
     const casting = this.aboard || this.open;
     if (shown === this.shown && casting === this.casting) return;
     for (const { mesh, casts } of this.interior) {
       mesh.visible = shown || this.all;
       mesh.castShadow = casts && (casting || this.all);
+    }
+    if (LIGHTER && !shown && this.shown) {
+      for (const t of this.pictures) t.dispose(); // (the picture itself is kept: sent again when next drawn)
+      this.unsent = [...this.pictures];
     }
     if (casting !== this.casting || (shown !== this.shown && casting)) this.host.reshade();
     this.shown = shown;
@@ -385,6 +410,15 @@ export class Cabin {
     this.host.redraw();
   }
   private inside: THREE.MeshStandardMaterial[] = [];
+
+  /**
+   * Send the next of the inside's pictures to the GPU: one a frame, so the inside is ready by the time it is drawn and
+   * no frame takes them all. (Three sends a picture whole: on a desk the largest is some tens of milliseconds, once.)
+   */
+  private send(): void {
+    const t = this.unsent.shift();
+    if (t && !(this.host.renderer.properties.get(t) as { __webglTexture?: unknown }).__webglTexture) this.host.renderer.initTexture(t);
+  }
 
   /** The periscope's screen is being looked into, filling the view (it is then drawn in full every frame), or only glanced at. */
   watched = false;
@@ -750,6 +784,19 @@ function shaded(m: THREE.MeshStandardMaterial, opened: boolean): number {
 }
 /** How near the eye must be for the inside to be drawn through a closed shell, metres: a 25 cm port is then a dozen pixels and more. */
 const NEAR = 30;
+/** From how near the inside's pictures are sent to the GPU (`send`), metres: a second or two of flying in before NEAR. */
+const COMING = 60;
+
+/** The pictures a mesh's materials carry. */
+function picturesOf(mesh: THREE.Mesh): THREE.Texture[] {
+  const found: THREE.Texture[] = [];
+  for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material])
+    for (const value of Object.values(m)) {
+      const t = value as THREE.Texture | null;
+      if (t?.isTexture && (t.image as { width?: number } | null)?.width) found.push(t);
+    }
+  return found;
+}
 /**
  * How much a window's light is made of: the radiance seen through it times its area would be its strength if the
  * cabin's own lamps were as dim beside daylight as real ones are. They are not (they are set by eye to read at the

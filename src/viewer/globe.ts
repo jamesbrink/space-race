@@ -19,7 +19,8 @@ import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
 import { later } from './later.ts';
-import { colourCube, colourMap, cubeOf, layersOf, packCube, packLayer } from './pack.ts';
+import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
+import { tier } from './tier.ts';
 import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
 import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
 
@@ -398,10 +399,24 @@ function empty(value: number | THREE.Color = 0, colorSpace: THREE.ColorSpace = T
 }
 const blank2D = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, THREE.RGBAFormat);
 blank2D.needsUpdate = true;
+/** One layer of one texel of nothing: what the region's layers read until they are made. */
+const blankLayers = new THREE.DataArrayTexture(new Uint8Array([0]), 1, 1, 1);
+blankLayers.format = THREE.RedFormat;
+blankLayers.needsUpdate = true;
+/** Run `load` the first time the returned call is made, and never by itself (later.ts runs it a moment after the scene is up). */
+function once(load: () => void): () => void {
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    load();
+  };
+}
 
 /** Whether this is a small screen: the globe's colours and relief are then loaded at half their size (a quarter of the memory). */
 const small = (): boolean =>
-  typeof screen !== 'undefined' && Math.max(screen.width, screen.height) * (globalThis.devicePixelRatio ?? 1) < 1300;
+  tier().globeHalved ||
+  (typeof screen !== 'undefined' && Math.max(screen.width, screen.height) * (globalThis.devicePixelRatio ?? 1) < 1300);
 
 /** A picture from public/globe/ as the browser decodes it, untouched; at half size on a small screen. */
 async function picture(file: string): Promise<ImageBitmap> {
@@ -447,11 +462,24 @@ function regionUniforms(prefix: 'Near' | 'Wide'): Record<string, THREE.IUniform>
 /** A region's one-channel map as the browser decodes it, untouched: for `packLayer`. */
 async function regionBitmap(file: string): Promise<ImageBitmap> {
   const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${file}`)).blob();
-  return createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
+  const options: ImageBitmapOptions = { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' };
+  const whole = await createImageBitmap(blob, options);
+  // (larger than a layer, on the lighter tier: made smaller to fit, each way alike, before it is sent. A distance kept
+  // in the file's texels is still in them after, so its metres a texel are the file's: `regionField`)
+  const fit = Math.min(1, FLAT / whole.width, FLAT / whole.height);
+  if (fit === 1) return whole;
+  const smaller = await createImageBitmap(whole, {
+    ...options,
+    resizeWidth: Math.round(whole.width * fit),
+    resizeHeight: Math.round(whole.height * fit),
+    resizeQuality: 'medium',
+  });
+  whole.close();
+  return smaller;
 }
 
-/** The side of a layer of the region's packed maps, texels: the largest of them (tools/globe-region.mjs: 4096). */
-const FLAT = 4096;
+/** The side of a layer of the region's packed maps, texels: the largest of them (tools/globe-region.mjs: 4096), or the lighter tier's 2048 (tier.ts). */
+const FLAT = tier().regionLayer;
 
 export class Globe {
   /** Everything the globe draws: the surface, and the air seen from above (`air`). */
@@ -508,8 +536,6 @@ export class Globe {
   ) {
     this.site = site;
     this.renderer = renderer;
-    this.maps = cubeOf(renderer, FACE);
-    this.flat = layersOf(renderer, FLAT, 3);
     this.seaLevel = seaLevel;
     this.hole = hole;
     this.clouds = (haze?.clouds as Clouds | undefined) ?? null;
@@ -537,8 +563,9 @@ export class Globe {
     const o = this.origin;
     const m = this.axes;
     this.uniforms = {
-      uGlobeMaps: { value: this.maps.texture },
-      uGlobeFlat: { value: this.flat.texture },
+      // (nothing until `base` has made them: read as 0, which is what a map that has not arrived reads)
+      uGlobeMaps: { value: empty() },
+      uGlobeFlat: { value: blankLayers },
       uGlobeFlatShare: { value: [new THREE.Vector2(1, 1), new THREE.Vector2(1, 1), new THREE.Vector2(1, 1)] },
       uGlobeSun: { value: this.sun },
       // from the scene's frame to ECEF: the site's origin, and its axes as the columns of a matrix
@@ -635,21 +662,20 @@ export class Globe {
     this.air.visible = false;
     this.group.add(this.air);
 
-    void Promise.all([cubeFaces('land'), cubeFaces('ice')]).then(([land, ice]) => {
-      void packCube(renderer, this.maps, land, 0)
-        .then(() => packCube(renderer, this.maps, ice, 1))
-        .then(() => {
-          this.arrived = true;
-        });
-    });
-    if (region) void this.loadRegion(region);
+    this.region = region;
+    // (the lighter tier makes and fetches none of them until the eye rises toward where the globe is seen: tier.ts, `attend`)
+    if (tier().globeEager) this.base();
     // The relief and the land's colours are not seen from the site (round it the globe keeps the site's own tones:
     // uGlobeLift): fetched once the scene is up, or when the eye first rises, and faded in (`surfaced`).
+    if (!tier().globeEager) {
+      this.want = once(() => void this.surface());
+      return;
+    }
     this.want = later(() => {
       const maps: Promise<unknown>[] = [
         Promise.all([cubeFaces('relief', true), Promise.all(FACES.map((f) => picture(`colour.${f}.jpg`)))]).then(
           async ([relief, colour]) => {
-            await packCube(renderer, this.maps, relief, 2);
+            await packCube(renderer, this.maps!, relief, 2);
             // (the land's colours, six faces tools/globe-surface.mjs writes: copied in a piece a frame, and shown when all are in)
             this.uniforms.uGlobeColour!.value = await colourCube(renderer, colour);
           },
@@ -661,11 +687,84 @@ export class Globe {
       });
     });
   }
+
+  /**
+   * The relief and the land's colours on the lighter tier (tier.ts): what `want` fetches, one picture at a time, each
+   * decoded, copied in and let go before the next is asked for. Six faces decoded together are 100 MiB on the page's
+   * side for as long as the copying takes, and there are four such sets.
+   */
+  private async surface(): Promise<void> {
+    const renderer = this.renderer;
+    this.base();
+    const maps = await this.whole();
+    for (const [i, f] of FACES.entries()) await packFace(renderer, maps, i, await picture(`relief.${f}.png`), 2, i === FACES.length - 1);
+    let colour: THREE.WebGLCubeRenderTarget | null = null;
+    for (const [i, f] of FACES.entries()) {
+      const face = await picture(`colour.${f}.jpg`);
+      colour ??= colourCubeOf(face.width);
+      await packFace(renderer, colour, i, face, null, i === FACES.length - 1);
+    }
+    this.uniforms.uGlobeColour!.value = colour!.texture;
+    if (this.region) await this.loadSurface(this.region);
+    this.surfacedAt = performance.now();
+  }
   private readonly renderer: THREE.WebGLRenderer;
-  /** The one-channel cube maps, packed: land, ice, relief (pack.ts). */
-  private readonly maps: THREE.WebGLCubeRenderTarget;
-  /** The region's one-channel maps, packed in layers: near, wide, the surface's relief. */
-  private readonly flat: THREE.WebGLArrayRenderTarget;
+  /** The one-channel cube maps, packed: land, ice, relief (pack.ts). Null until `base`. */
+  private maps: THREE.WebGLCubeRenderTarget | null = null;
+  /** The region's one-channel maps, packed in layers: near, wide, the surface's relief. Null until `base`. */
+  private flat: THREE.WebGLArrayRenderTarget | null = null;
+  private readonly region: string | null;
+
+  /**
+   * The region's maps, made and fetched: read where the globe is seen (from the site, along the horizon, once the eye
+   * is some metres up) and where the site's ground is handed over to it. Every device but a constrained one (tier.ts)
+   * has them from the start, with the whole Earth's (`whole`); a constrained one when the globe first comes into view.
+   */
+  private base(): void {
+    if (this.flat) return;
+    this.flat = layersOf(this.renderer, FLAT, 3);
+    this.uniforms.uGlobeFlat!.value = this.flat.texture;
+    if (tier().globeEager) void this.whole();
+    if (this.region) void this.loadRegion(this.region);
+    this.arrived = true;
+  }
+
+  private wholed: Promise<THREE.WebGLCubeRenderTarget> | null = null;
+  /**
+   * The whole Earth's maps, made and fetched: the land's and the ice's faces, packed (the relief joins them later).
+   * Round the site the region's maps are what is read, so from the ground this cube is 128 MiB of what lies past
+   * them, over the horizon: the lighter tier makes it when the eye first leaves the ground (`attend`), at half the
+   * size each way, and fills it a face at a time. Resolves when the land and the ice are in.
+   */
+  private whole(): Promise<THREE.WebGLCubeRenderTarget> {
+    if (this.wholed) return this.wholed;
+    const renderer = this.renderer;
+    const maps = (this.maps = cubeOf(renderer, tier().globeHalved ? FACE / 2 : FACE));
+    this.uniforms.uGlobeMaps!.value = maps.texture;
+    this.arrived = true;
+    if (tier().globeEager)
+      this.wholed = Promise.all([cubeFaces('land'), cubeFaces('ice')])
+        .then(([land, ice]) => packCube(renderer, maps, land, 0).then(() => packCube(renderer, maps, ice, 1)))
+        .then(() => maps);
+    else
+      this.wholed = (async () => {
+        for (const [channel, name] of ['land', 'ice'].entries())
+          for (const [i, f] of FACES.entries()) {
+            const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${name}.${f}.png`)).blob();
+            const face = await createImageBitmap(blob, {
+              colorSpaceConversion: 'none',
+              premultiplyAlpha: 'none',
+              imageOrientation: 'none',
+            });
+            await packFace(renderer, maps, i, face, channel, i === FACES.length - 1);
+          }
+        return maps;
+      })();
+    void this.wholed.then(() => {
+      this.arrived = true;
+    });
+    return this.wholed;
+  }
   /** Ask for the maps the first view did without, now. */
   private readonly want: () => void;
   /** When the relief and colours arrived (milliseconds; 0: not yet): they come in over SURFACING after it. */
@@ -686,7 +785,7 @@ export class Globe {
     const [relief, picture_] = await Promise.all([regionBitmap(meta.relief.file), picture(meta.colour.file)]);
     const { east: e, north: n, centre: c } = planeAt(meta.centre[0], meta.centre[1]);
     const u = this.uniforms;
-    const share = await packLayer(this.renderer, this.flat, 2, relief);
+    const share = await packLayer(this.renderer, this.flat!, 2, relief);
     const colour = await colourMap(this.renderer, picture_);
     (u.uGlobeFlatShare!.value as THREE.Vector2[])[2]!.set(share[0], share[1]);
     u.uGlobeSurfColour!.value = colour;
@@ -705,22 +804,23 @@ export class Globe {
   private async loadRegion(name: string): Promise<void> {
     const meta = (await (await fetch(`${import.meta.env.BASE_URL}globe/${name}.json`)).json()) as { spread: number; levels: RegionLevel[] };
     if (meta.spread !== SPREAD) throw new Error(`globe/${name}.json: distances kept to ${meta.spread} texels, not ${SPREAD}`);
-    await Promise.all(
-      meta.levels.map(async (level) => {
-        const bitmap = await regionBitmap(level.file);
-        const prefix = level.name === 'near' ? 'Near' : 'Wide';
-        const layer = level.name === 'near' ? 0 : 1;
-        const share = await packLayer(this.renderer, this.flat, layer, bitmap);
-        const { east: e, north: n, centre: c } = planeAt(level.centre[0], level.centre[1]);
-        const u = this.uniforms;
-        (u.uGlobeFlatShare!.value as THREE.Vector2[])[layer]!.set(share[0], share[1]);
-        (u[`uGlobe${prefix}Plane`]!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);
-        const [x0, x1, y0, y1] = level.box;
-        (u[`uGlobe${prefix}Box`]!.value as THREE.Vector4).set(x0, y0, x1, y1);
-        (u[`uGlobe${prefix}Scale`]!.value as THREE.Vector2).set(level.metres, level.fade);
-        this.arrived = true;
-      }),
-    );
+    const each = async (level: RegionLevel): Promise<void> => {
+      const bitmap = await regionBitmap(level.file);
+      const prefix = level.name === 'near' ? 'Near' : 'Wide';
+      const layer = level.name === 'near' ? 0 : 1;
+      const share = await packLayer(this.renderer, this.flat!, layer, bitmap);
+      const { east: e, north: n, centre: c } = planeAt(level.centre[0], level.centre[1]);
+      const u = this.uniforms;
+      (u.uGlobeFlatShare!.value as THREE.Vector2[])[layer]!.set(share[0], share[1]);
+      (u[`uGlobe${prefix}Plane`]!.value as THREE.Matrix3).set(e[0], e[1], e[2], n[0], n[1], n[2], c[0], c[1], c[2]);
+      const [x0, x1, y0, y1] = level.box;
+      (u[`uGlobe${prefix}Box`]!.value as THREE.Vector4).set(x0, y0, x1, y1);
+      (u[`uGlobe${prefix}Scale`]!.value as THREE.Vector2).set(level.metres, level.fade);
+      this.arrived = true;
+    };
+    // (together; one at a time on the lighter tier, where a decoded map is 64 MiB on the page's side until it is copied in)
+    if (tier().globeEager) await Promise.all(meta.levels.map(each));
+    else for (const level of meta.levels) await each(level);
   }
 
   /** GLSL and uniforms for the site's ground to hand over to the globe across its last stretch (land.ts: Land.meet). */
@@ -816,6 +916,12 @@ export class Globe {
     if (shown !== this.mesh.visible) {
       this.mesh.visible = shown;
       changed = true;
+    }
+    // (its maps, where they were not made as the page opened: the region's when it is first seen, the whole Earth's from
+    // 150 m up, where the horizon is 44 km off and the region's own maps reach 80 km and more)
+    if (!tier().globeEager) {
+      if (shown) this.base();
+      if (height > 150) void this.whole();
     }
     // (wanted at once only when the eye is well off the ground: from the site the globe is drawn, along the horizon, in
     // the site's own tones)
