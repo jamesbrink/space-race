@@ -1,4 +1,4 @@
-/* --- the navball (navball.ts) in the flight deck's left corner, with the predicted path's figures beside it; the path's labels in the scene (viewer/path.ts) --- */
+/* --- the navball (navball.ts) in the flight deck's left corner, with the predicted path's switch and figures beside it; the path's markers in the scene (viewer/path.ts) --- */
 .navball { --ball: 144px; grid-area: nav; justify-self: start; position: relative; display: grid; grid-template-columns: var(--ball) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'ball read' 'ball aside';
   column-gap: 16px; width: 344px; padding: 12px 12px 12px 14px; }
 .navball-ball { grid-area: ball; align-self: center; position: relative; width: var(--ball); height: var(--ball); border-radius: 50%; box-shadow: 0 0 0 1px rgba(243, 239, 230, 0.3), 0 4px 14px rgba(0, 0, 0, 0.4); }
@@ -33,8 +33,19 @@
 .navball-att { display: flex; gap: 5px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 .navball-att b { display: inline-block; min-width: 3ch; }
 .path-read p { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.path-read p[hidden] { display: none; }
 .path-read p span { flex: none; width: 4.6em; text-transform: uppercase; letter-spacing: 0.12em; }
-.path-read.off p { display: none; }
+/* the switch, and whose future it is beside it; off, only the switch */
+.path-read .path-head { align-items: center; gap: 8px; margin: 0; }
+.path-read .path-head button { flex: none; margin-left: -4px; }
+.path-read .path-head .path-as { width: auto; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.06em; color: var(--faint); }
+.path-read.off p:not(.path-head) { display: none; }
+/* while the engine burns under guidance, which future: two halves of one control, the one on show lit */
+.path-read .path-kind { align-items: center; gap: 0; margin-top: 5px; }
+.path-read .path-kind kbd { margin-right: 6px; }
+.path-read .path-kind button { margin: 0; padding: 2px 7px; border-radius: 0; color: var(--faint); }
+.path-read .path-kind button + button { border-left: 0; }
+.path-read .path-kind button[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); background: rgba(255, 196, 107, 0.08); }
 /* (which frame the line is drawn in is what the Surface or Orbit switch above already says) */
 .path-read .path-frame { display: none; }
 
@@ -48,15 +59,20 @@
 .navball.tucked .navball-tuck { position: static; width: auto; height: auto; padding: 7px 12px; }
 .navball.tucked .navball-tuck span { display: inline; }
 
-/* the path's labels: a ring on the point and a few words beside it. They lie under every panel, and one that would show through a panel is not shown (path.ts) */
-#ui > .path-labels { position: fixed; inset: 0; pointer-events: none !important; }
-.path-labels[hidden], .path-label[hidden] { display: none; }
-.path-label { position: absolute; left: 0; top: 0; margin: -11px 0 0 13px; padding: 3px 8px; background: rgba(10, 11, 14, 0.66); border-radius: 2px; font: 11px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.path-label::before { content: ''; position: absolute; left: -18px; top: 50%; width: 8px; height: 8px; margin-top: -5.5px; border: 1.5px solid var(--amber); border-radius: 50%; background: rgba(10, 11, 14, 0.5); }
-.path-label b { color: var(--amber); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-.path-label i { font-style: normal; color: var(--dim); }
-.path-label.left { translate: calc(-100% - 26px) 0; }
-.path-label.left::before { left: auto; right: -18px; }
+/* the path's markers: a diamond on the line and a label beside it, laid out together (pathmarks.ts). They lie under every panel and keep off them */
+#ui > .path-marks { position: fixed; inset: 0; pointer-events: none !important; overflow: hidden; }
+.path-marks[hidden] { display: none; }
+.path-mark { position: absolute; left: 0; top: 0; transition: opacity 0.18s; }
+.path-mark.gone { opacity: 0; transition: none; }
+.path-mark > i { position: absolute; left: -4.5px; top: -4.5px; width: 9px; height: 9px; rotate: 45deg; background: var(--ink); border: 1.5px solid rgba(10, 11, 14, 0.9); box-sizing: border-box; }
+.path-apogee > i, .path-perigee > i { background: var(--amber); }
+.path-down > i, .path-impact > i { background: rgba(10, 11, 14, 0.7); border-color: var(--amber); }
+.path-mark > span { position: absolute; left: 0; top: 0; height: 18px; padding: 0 7px; border-radius: 2px; background: rgba(10, 11, 14, 0.55); font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; text-shadow: 0 0 2px rgba(10, 11, 14, 0.9); transition: opacity 0.18s; }
+.path-mark > span.gone { opacity: 0; transition: none; }
+.path-mark b { font-weight: 600; letter-spacing: 0.1em; color: var(--ink); }
+.path-apogee b, .path-perigee b, .path-down b, .path-impact b { color: var(--amber); }
+.path-mark em { font-style: normal; color: var(--dim); }
+.path-mark-probe { position: absolute; visibility: hidden; font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 
 /* a window a little narrower than three panels abreast need: the ball and its panel close up */
 @media (max-width: 1339px) { .navball { --ball: 132px; width: 330px; column-gap: 14px; } }
@@ -77,7 +93,7 @@
   .navball-att b { min-width: 0; }
   .path-read p { gap: 5px; }
   .path-read p span { width: auto; letter-spacing: 0.04em; }
-  .path-label { font-size: 10px; }
+  .path-read .path-head .path-as { display: none; }
   .navball-tuck { top: 2px; right: 0; }
 }
 @media (max-height: 520px) {

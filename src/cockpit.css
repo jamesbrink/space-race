@@ -261,5 +261,5 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .cockpit.keys-open .deck-foot > [data-do='leave'] { display: none; }
 @media (max-width: 960px), (max-height: 520px) { #ui.piloting .stats { display: none; } }
 /* From the couch the model's own panel is in front of the pilot: the deck is put away unless it is asked for (P; main.ts panelOnly), and with it the navball and the path's labels */
-#ui.panel-only :is(.cockpit, .navball, .path-labels) { display: none; }
+#ui.panel-only :is(.cockpit, .navball, .path-marks) { display: none; }
 #ui.piloting.aboard > .tip:not([hidden]) { display: block; }

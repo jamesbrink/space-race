@@ -162,10 +162,10 @@ export class Cockpit {
         </p>
         <div class="cockpit-keys" hidden>
           <div><h4>Show</h4><p>
-            <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here, with its apogee and where it comes down (J)"><kbd>J</kbd>Path</button>
+            <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (J)"><kbd>J</kbd>Path</button>
             <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (I)"><kbd>I</kbd>Navball</button>
-            <button data-press="o" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn (O)"><kbd>O</kbd>Surface · orbit</button>
-            <button data-press="k" title="While the engine burns, the path if it stopped now, or if guidance flies on (K)"><kbd>K</kbd>Path · coast · guided</button>
+            <button data-press="o" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (O)"><kbd>O</kbd>Surface · orbit</button>
+            <button data-press="k" title="While the engine burns under guidance: the path if guidance flies on to the record's cutoff, or if the engine were cut now (K)"><kbd>K</kbd>Path · to cutoff · cut now</button>
           </p></div>
           <div><h4>Camera</h4><p>
             <button data-press="c" title="The next camera (C)"><kbd>C</kbd>Next view</button>
@@ -316,12 +316,12 @@ export class Cockpit {
   }
   private readonly watchers: ((sample: LiveSample, live: VehicleState | null) => void)[] = [];
 
-  /** The vehicle being flown, and how guidance is set: on or off, and the pilot's trim on the programme, radians. */
+  /** The vehicle being flown, and how it is flown: guidance on or off, the sequencer on or off, and the pilot's trim on the programme, radians. */
   get craft(): Vehicle | null {
     return this.vehicle;
   }
-  get steering(): { guidance: boolean; trim: { pitch: number; yaw: number } } {
-    return { guidance: this.guidance, trim: this.trim };
+  get steering(): { guidance: boolean; sequence: boolean; trim: { pitch: number; yaw: number } } {
+    return { guidance: this.guidance, sequence: this.sequence, trim: this.trim };
   }
 
   /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */

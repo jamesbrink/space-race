@@ -31,7 +31,7 @@ import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { refused, sayRefused, watchContext } from './lost';
-import { Origin } from './origin';
+import { absolute, Origin } from './origin';
 import { Outline } from './outline';
 import { Panes } from './panes';
 import { through, triangles } from './pick';
@@ -1180,9 +1180,35 @@ export class Stage {
     return this.lookingAt !== null && this.cam.rig === 'onboard' && this.cam.onboard.looking;
   }
 
-  /** The view is from the seat: what is drawn over the scene without depth (the predicted path) would be drawn across the cabin's walls. */
+  /** The view is from the seat: nothing is labelled over the scene (the predicted path's markers would lie across the cabin). */
   aboard(): boolean {
     return this.cam.rig === 'onboard' && !this.walk.active;
+  }
+
+  /**
+   * The flown vehicle, in the scene's frame (also during the draw): its middle into `out`, its long axis into `axis`; the
+   * radius of a ball round what is left of it, and half its length and its breadth along and across that axis. Null if
+   * nothing flies.
+   */
+  vessel(out: THREE.Vector3, axis?: THREE.Vector3): { radius: number; half: number; across: number } | null {
+    const c = this.craft();
+    if (!c?.flying || !this.crafted) return null;
+    absolute(out.copy(c.centre).applyMatrix4(c.matrix));
+    const size = this.crafted.size;
+    const long = size.x >= size.y && size.x >= size.z ? 0 : size.y >= size.z ? 1 : 2;
+    axis?.setFromMatrixColumn(c.matrix, long).normalize();
+    const across = Math.max(...size.toArray().filter((_, i) => i !== long)) / 2;
+    return { radius: c.radius, half: size.getComponent(long) / 2, across };
+  }
+
+  /** Where the canvas is on the page. */
+  viewRect(): DOMRect {
+    return this.canvas.getBoundingClientRect();
+  }
+
+  /** Which look the scene is drawn in (look.ts). */
+  get look(): Look {
+    return this.looks.current;
   }
 
   /**
@@ -1217,6 +1243,7 @@ export class Stage {
       shed: '',
       level: null as THREE.Object3D | null,
       place: null as THREE.Object3D | null,
+      size: new THREE.Vector3(),
     });
     const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
     const seat = this.defs[at]?.seats?.[0];
@@ -1250,6 +1277,7 @@ export class Stage {
         if (centre.distanceTo(c.centre) > 0.05 * radius || Math.abs(radius - c.radius) > 0.05 * radius) c.shape++;
         c.centre.copy(centre);
         c.radius = radius;
+        left.getSize(c.size);
       }
     }
     c.flying = this.lifted.flying;
@@ -1263,7 +1291,9 @@ export class Stage {
     } else c.seat = null;
     return c;
   }
-  private crafted: (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null }) | null = null;
+  private crafted:
+    | (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null; size: THREE.Vector3 })
+    | null = null;
 
   /** How far up its line the Sun's light stands from what it is aimed at, as last fitted (shadeCraft keeps it to the bit). */
   private readonly sunBack = new THREE.Vector3();
@@ -1334,8 +1364,11 @@ export class Stage {
   overlay(object: THREE.Object3D): void {
     if (object.parent !== this.scene) this.scene.add(object);
     if (!this.veils.includes(object)) this.veils.push(object);
+    if (!this.overlays.includes(object)) this.overlays.push(object);
     this.dirty = true;
   }
+  /** What has been put over the flight (`overlay`): drawn unseen in `warm`, so its shaders are built with the rest. */
+  private readonly overlays: THREE.Object3D[] = [];
 
   /** The model the flight carries off the pad, if there is one. */
   private get flier(): Staged | null {
@@ -1842,6 +1875,14 @@ export class Stage {
     const covered = this.uncover(true);
     if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
     if (this.trail) this.trail.mesh.visible = true; // (and its trail: drawn empty, its shader is built)
+    // (and what is drawn over the flight, the predicted path: each of its meshes, empty, so its shaders are built. It
+    // wears no picture and its buffers are a few hundred kilobytes, so on either tier, tier.ts, this sends nothing to speak of)
+    const overlaid = new Map<THREE.Object3D, boolean>();
+    for (const o of this.overlays)
+      o.traverse((each) => {
+        overlaid.set(each, each.visible);
+        each.visible = true;
+      });
     const globe = this.setting.globe;
     const shown = globe && [globe.mesh.visible, globe.air.visible];
     if (globe) globe.mesh.visible = globe.air.visible = true; // the Earth and its air, first seen on the way up
@@ -1917,6 +1958,7 @@ export class Stage {
     if (this.plume) this.plume.mesh.visible = false;
     if (this.trail) this.trail.mesh.visible = false;
     this.uncover(false, covered);
+    for (const [o, visible] of overlaid) o.visible = visible;
     if (globe && shown) [globe.mesh.visible, globe.air.visible] = shown;
     this.relight(true);
     await frames(3);

@@ -31,6 +31,10 @@ const POSES = [
   // and a frame that left the canvas less than opaque where the air is, so a copy of it showed the copy before.)
   { name: 'chase, T+80', show: 'vehicle', t: 80, rig: 'chase' },
   { name: 'chase, T+300', show: 'vehicle', t: 300, rig: 'chase' },
+  // the flight deck's predicted path (viewer/path.ts), flown to the instant on its own guidance and stopped there: the line,
+  // its ring where it comes down and the line flown, drawn the same twice. (Its markers are on the page, not the canvas.)
+  { name: 'path, chase, T+150', fly: 150, rig: 'chase' },
+  { name: 'path, pad camera, T+100', fly: 100, rig: 'pad' },
 ];
 
 const args = process.argv.slice(2);
@@ -110,9 +114,25 @@ await page.evaluate(async () => {
 const at = (pose) =>
   page.evaluate(
     async ([pose, SETTLE, DRAWS]) => {
-      const { stage, clock, show } = window.sr;
-      show(pose.show);
-      clock.seek(pose.t);
+      const { stage, clock, show, cockpit, path } = window.sr;
+      if (pose.fly === undefined) {
+        cockpit.leave();
+        show(pose.show);
+        clock.seek(pose.t);
+      } else {
+        // on the flight deck with the path on: lit, and flown on as fast as it can be to the instant (or put back to it)
+        cockpit.enter();
+        path.show(true, false);
+        if (!cockpit.state?.ignited) {
+          cockpit.eventAt = Number.NEGATIVE_INFINITY;
+          cockpit.command('next');
+        }
+        if (clock.t > pose.fly) clock.seek(pose.fly);
+        clock.setRate(300);
+        clock.play(true);
+        for (let i = 0; i < 4000 && clock.t < pose.fly && !cockpit.state?.landing; i++) await window.grab();
+        clock.setRate(1);
+      }
       clock.pause();
       stage.setCamera(pose.rig ?? 'orbit');
       if (pose.shot) stage.shot(...pose.shot);
@@ -123,7 +143,7 @@ const at = (pose) =>
       // engine's fire goes on burning by the frame's own time, which `frozen` does not stop)
       const delta = stage.timer.getDelta;
       let rest = true;
-      if (pose.rig) {
+      if (pose.rig || pose.fly !== undefined) {
         stage.timer.getDelta = () => 0;
         // (what arrives up there, the globe's maps, comes in over seconds of the wall's clock: waited for)
         rest = await window.quiet(60, 1200);
