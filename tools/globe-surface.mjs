@@ -46,8 +46,11 @@ const DATA =
   'Relief: NOAA NCEI, ETOPO 2022 Global Relief Model (ice surface), doi:10.25921/fd45-gt74, CC0-1.0, not subject to copyright in the United States. ' +
   'Colour: NASA Earth Observatory, Blue Marble Next Generation, May 2004 (R. Stöckli), not copyrighted; credit NASA. Both fetched 2026-11-11';
 
-/** How near the sea a texel is "by the sea", texels. */
-const COAST = 2;
+/**
+ * How near the sea a texel is "by the sea", texels: two on the globe (10 km); eight in a region
+ * (3.6 km), where ETOPO has ground the picture has not (a flat on Cay Sal Bank 5 km across).
+ */
+const COAST = { globe: 2, region: 8 };
 /** Texels the land's colour is carried out over the sea. */
 const DILATE = 32;
 /** Passes of a 3 x 3 mean over what was carried out. */
@@ -173,7 +176,7 @@ const FACES = [
  * left; the map is `w` x `h` with `pad` more texels all round, which are worked (so that the
  * land's colour is carried in from beyond an edge) and then cut off. Returns the bytes to write.
  */
-function sample(src, w, h, pad, toward) {
+function sample(src, w, h, pad, coast, toward) {
   const W = w + 2 * pad,
     H = h + 2 * pad;
   const { relief: R, colour: C } = src;
@@ -240,24 +243,35 @@ function sample(src, w, h, pad, toward) {
       if (sum <= 0) sea[at] = 1;
       if (i >= pad && i < w + pad && j >= pad && j < h + pad) relief[(j - pad) * w + i - pad] = encodeRelief(sum / n);
     }
-  // By the sea (within COAST texels of a texel whose mean height is none) the two sources do not lie
+  // By the sea (within `coast` texels of a texel whose mean height is none) the two sources do not lie
   // exactly on one another, and water painted where ETOPO has ground would be carried out as the
   // land's colour: there, only what does not look like water counts. Inland, a lake keeps its colour.
-  for (let j = 0; j < H; j++)
-    for (let i = 0; i < W; i++) {
-      const at = j * W + i;
-      if (!land[at]) continue;
-      let coastal = false;
-      for (let dj = -COAST; dj <= COAST && !coastal; dj++)
-        for (let di = -COAST; di <= COAST; di++)
-          if (i + di >= 0 && i + di < W && j + dj >= 0 && j + dj < H && sea[at + dj * W + di]) {
-            coastal = true;
-            break;
-          }
-      if (!coastal) continue;
-      if (sureCount[at]) rgb.set(sure.subarray(at * 3, at * 3 + 3), at * 3);
-      else land[at] = 0;
-    }
+  let shore = sea;
+  for (let round = 0; round < coast; round++) {
+    const wider = shore.slice();
+    for (let j = 0; j < H; j++)
+      for (let i = 0; i < W; i++) {
+        const at = j * W + i;
+        if (shore[at]) continue;
+        const l = i > 0,
+          r = i < W - 1,
+          u = j > 0,
+          d = j < H - 1;
+        if (
+          (l && shore[at - 1]) ||
+          (r && shore[at + 1]) ||
+          (u && (shore[at - W] || (l && shore[at - W - 1]) || (r && shore[at - W + 1]))) ||
+          (d && (shore[at + W] || (l && shore[at + W - 1]) || (r && shore[at + W + 1])))
+        )
+          wider[at] = 1;
+      }
+    shore = wider;
+  }
+  for (let at = 0; at < W * H; at++) {
+    if (!land[at] || !shore[at]) continue;
+    if (sureCount[at]) rgb.set(sure.subarray(at * 3, at * 3 + 3), at * 3);
+    else land[at] = 0;
+  }
   spread(rgb, land, W, H);
   const colour = new Uint8Array(w * h * 3);
   for (let j = 0; j < h; j++)
@@ -268,20 +282,27 @@ function sample(src, w, h, pad, toward) {
 }
 
 /**
- * Whether a sample of Blue Marble shows water and not land. Its deep sea is one flat colour
- * (2, 5, 20), a little disturbed by the JPEG; its shallows (the Bahama Banks, reefs) are painted,
- * bluer than they are red, where ETOPO has the bed at or under sea level. Land under sea level
- * (the Caspian's shore, the polders) is land: it is not blue. Snow is as blue as it is red, and
- * stands above the sea.
+ * Whether a sample of Blue Marble shows water and not land. Its deep sea is flat and nearly black
+ * ((2, 5, 20) in the open, darker by the banks), a little disturbed by the JPEG. Its shallows (the
+ * Bahama Banks, reefs) are painted: bright and much bluer than red, which no land is, whatever
+ * ETOPO has under them; a duller blue is water only where ETOPO has the bed at or under sea level,
+ * so a lake keeps its colour and so does snow in shadow. Land under sea level (the Caspian's
+ * shore, the polders) is land: it is not blue.
  */
 function isWater(height, r, g, b) {
-  if (r < 16 && g < 20 && b > 8 && b < 40 && b > r + 6) return true;
+  if (r + g + b < 48 && b >= r) return true;
+  if (b - r > 0.35 * Math.max(g, b) && Math.max(g, b) > 70) return true;
   return height <= 0 && b > r;
 }
 
-/** Whether a sample of Blue Marble looks like water whatever ETOPO says is under it: clearly bluer than red (snow in shadow is a little; a painted shallow is a lot), or as dark as the deep sea. */
+/**
+ * Whether a sample of Blue Marble looks like water whatever ETOPO says is under it: as dark as the
+ * deep sea, or with as much blue in it as red. Soil, sand and leaves have clearly less; the
+ * painted shallows have more, and where they are green over sand, as much. (Snow has as much
+ * too, and by the sea takes its colour from the snow inland.)
+ */
 function looksWet(r, g, b) {
-  return b - r > 0.2 * Math.max(g, b) || r + g + b < 60;
+  return b > r - 6 || r + g + b < 60;
 }
 
 /** Carry the land's colour out over the texels that have none: each takes the mean of its neighbours that had a colour the round before, DILATE rounds; the rest take TONE. */
@@ -383,7 +404,7 @@ function bakeGlobe(size) {
   for (const [name, ma, sa, ta] of FACES) {
     const began = performance.now();
     // s = -1 is the left of texel 0 and t = -1 the top of row 0, as tools/globe.mjs projects them
-    const { relief, colour } = sample(src, size, size, DILATE + 2, (u, v) => {
+    const { relief, colour } = sample(src, size, size, DILATE + 2, COAST.globe, (u, v) => {
       const s = (u / size) * 2 - 1,
         t = (v / size) * 2 - 1;
       return [ma[0] + s * sa[0] + t * ta[0], ma[1] + s * sa[1] + t * ta[1], ma[2] + s * sa[2] + t * ta[2]];
@@ -456,7 +477,7 @@ function bakeRegion(region) {
     Math.floor(south - 0.01),
     Math.ceil(north + 0.01),
   );
-  const { relief, colour } = sample(src, width, height, 0, toward);
+  const { relief, colour } = sample(src, width, height, 0, COAST.region, toward);
   const files = { relief: `${region.name}.relief.png`, colour: `${region.name}.colour.jpg`, json: `${region.name}.surface.json` };
   writeGreyPng(join(out, files.relief), relief, width, height);
   writeJpeg(join(out, files.colour), colour, width, height);

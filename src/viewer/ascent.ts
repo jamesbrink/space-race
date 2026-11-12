@@ -254,8 +254,11 @@ export class Ascent {
     if (moment.down >= 0) {
       moment.air.set(0, 0, 0);
       // (a flight flown by hand comes down where its centre of mass meets the surface: sim/vehicle.ts)
+      // (it came down on its blunt end, which is `capsule.base` under its centre of mass: sim/vehicle.ts)
       moment.floor =
-        toThree(ecefToSite(this.site, inertialToEcef((end as LiveSample).centre, EARTH_ROTATION_RATE * end.t))).y + this.stood(end.t).y;
+        toThree(ecefToSite(this.site, inertialToEcef((end as LiveSample).centre, EARTH_ROTATION_RATE * end.t))).y -
+        (tr.body?.capsule.base?.value ?? 0) +
+        this.stood(end.t).y;
     }
     return moment;
   }

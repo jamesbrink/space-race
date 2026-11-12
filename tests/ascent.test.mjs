@@ -158,7 +158,8 @@ test('a flight flown by hand is drawn with its centre of mass where the simulato
   // so it comes down with that centre on the surface, and its parachute lies down on that surface: not on one as far
   // above it as the model's origin stands above the pad
   const end = run.samples.at(-1);
-  const surface = ecefToSite(site, inertialToEcef(end.centre, EARTH_ROTATION_RATE * end.t))[1];
+  // (the surface is under its blunt end, `capsule.base` below the centre of mass: sim/vehicle.ts)
+  const surface = ecefToSite(site, inertialToEcef(end.centre, EARTH_ROTATION_RATE * end.t))[1] - (TR.body.capsule.base?.value ?? 0);
   const main = flight.flies.chutes.findIndex((c) => c.on === 'main');
   const down = ascent.chute(main, run.duration + 30, PAD);
   assert.ok(down && down.down > 0, 'the main parachute is down');

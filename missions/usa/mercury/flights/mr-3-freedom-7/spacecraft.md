@@ -105,7 +105,9 @@ The same GLB also holds the launch vehicle's five nodes: see
   The simulator fires both on the tower as it leaves, along the axis through its centre of mass (so it is not
   carried aside, as the canted line was meant to carry it), without lightening it as they burn, and with
   nothing of their exhaust on the spacecraft. After an abort the escape rocket is spent and the jettison
-  rocket takes it off alone. The tower's and the retropack's drag areas, the retropack's centre of
+  rocket takes it off alone. On an abort the rocket's line leans 3° from the axis, downrange, through the
+  centre of mass (`body.escape.lean`, estimated: the real offset is not in anything read), which puts a pad
+  abort down about 77 m from the pad rather than back on it. The tower's and the retropack's drag areas, the retropack's centre of
   mass and inertia, and the metre a second its spring is given are estimates (`trajectory.body.sheds`).
   The retropack is flown at the whole 276 lb the record's weights step by, burned propellant included.
 - **The spacecraft's drag off its axis is a model, not a measurement**: the zero-angle curves (TM X-491)
