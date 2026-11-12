@@ -1191,13 +1191,16 @@ export class Stage {
    * nothing flies.
    */
   vessel(out: THREE.Vector3, axis?: THREE.Vector3): { radius: number; half: number; across: number } | null {
-    const c = this.craft();
-    if (!c?.flying || !this.crafted) return null;
-    absolute(out.copy(c.centre).applyMatrix4(c.matrix));
-    const size = this.crafted.size;
+    // (as the camera last measured it this frame, not measured again: in the draw every world matrix is the eye's, and
+    // what `craft` keeps, the seat's, must not be taken then)
+    const c = this.crafted;
+    const of = this.flier;
+    if (!c || !of || c.of !== of || !this.lifted.flying) return null;
+    absolute(out.copy(c.centre).applyMatrix4(of.group.matrixWorld));
+    const size = c.size;
     const long = size.x >= size.y && size.x >= size.z ? 0 : size.y >= size.z ? 1 : 2;
-    axis?.setFromMatrixColumn(c.matrix, long).normalize();
-    const across = Math.max(...size.toArray().filter((_, i) => i !== long)) / 2;
+    axis?.setFromMatrixColumn(of.group.matrixWorld, long).normalize();
+    const across = (long === 0 ? Math.max(size.y, size.z) : long === 1 ? Math.max(size.x, size.z) : Math.max(size.x, size.y)) / 2;
     return { radius: c.radius, half: size.getComponent(long) / 2, across };
   }
 
