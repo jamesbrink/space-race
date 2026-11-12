@@ -661,7 +661,11 @@ function toSite(model = '', fly = false): void {
     if (held.clock) clock.play();
     // what is remembered for both places may have been changed there
     if (prefs.get('cel') !== held.cel) ui.setCel(prefs.get('cel'));
-    orbitOff = prefs.get('orbitOff');
+    if (prefs.get('orbitOff') !== orbitOff) {
+      // (the turntable is one setting for both: switched there, the view here and its lamp follow now, not at the next choice)
+      orbitOff = prefs.get('orbitOff');
+      orbit();
+    }
   }
   const land = (): void => {
     if (ready && model && model !== current.id && !fly) show(model);
