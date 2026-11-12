@@ -1,0 +1,227 @@
+# The simulator
+
+Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
+
+`src/sim/` flies a flight from the record, in doubles, with no three.js. `Flight.trajectory`
+(types.ts: `Trajectory`) is the input: masses, the engine's thrust, specific impulse, exit area and
+cutoff, the tilt programme, drag against Mach number, separation, retrofire, the parachutes, each a
+`Measure` with its confidence and source, in SI with the source's own units in `source`.
+`fly(trajectory, site, seaLevel)` integrates it (RK4 at 0.05 s, every step cut to end on the next
+event, so one input gives one flight to the last bit) in an Earth-centred frame that does not turn,
+under J2 gravity, the 1976 standard atmosphere and drag through air that turns with the Earth, and
+returns samples and `Results`. Attitude is prescribed, not flown: the gyros' tilt going up, heat
+shield first coming down. `from` starts it at separation from a given state, so the capsule's half
+can be flown from what the report says separation was, whatever the booster did.
+
+`Flight.checks` (types.ts: `FlightCheck`) are the figures the reports give (apogee, range,
+speeds and climb angles at separation, loads, event times), each with an `id` that names a field of
+`Results` and a `tolerance` **set before the simulator was run**. Nothing is fitted: an input is
+never adjusted to bring a check in.
+
+- **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
+  half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
+  is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails
+  on a miss nobody recorded, on a recorded miss that has moved past its slack, and on one that has
+  come within tolerance (take it off). So the list is the truth either way, and improving an input
+  means updating it.
+- **The inputs that are not documented are listed and weighed.** The last test names every
+  `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
+  new input that is not documented must be added there. Keep the label honest: the simulator
+  may come to refuse `estimated` inputs.
+- **Space-fixed is not Earth-fixed.** Speeds and climb angles come in both (`speed`,
+  `groundSpeed`); the reports quote both, and the larger, space-fixed one includes the pad's own
+  eastward motion. Say which in any label.
+- **The Flown panel** (`src/flown.ts`) flies the flight once, after the page has opened, and draws
+  height, range, space-fixed speed and load against time with the reports' figures as dashed
+  lines, the clock's instant as a cursor (dragging a trace moves the clock), and the checks as a
+  table, amber where out of tolerance. It reads the clock; it keeps no time of its own.
+- **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
+  pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
+  `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
+  the run's samples, in the Earth's turning axes, in the site's frame) and points it as the run
+  does (the gyros' tilt going up, heat shield first after the turnaround). What it sheds is
+  flown (`sim/shed.ts`, `Ascent.shed`, `Stage.fall`): each thing in `trajectory.body.sheds` is a
+  rigid body of its own from the instant it leaves, and the full level's own node is carried by it,
+  turned about its own centre of mass, until the clock goes back. It is drawn while within 40 km
+  of the eye or the vehicle and flown on to the sea regardless. Before liftoff and after
+  the landing it stands on its pad, whole: the inventory, which the idle show tours. While the engine burns its fire stands
+  under the node `flies.engine` names, and it and its smoke are the one thing here meant to look
+  real, not designed: volumes, marched in one pass (`viewer/exhaust.ts`: after the ink, before the
+  clouds, at a quarter of the pixels and only in the part of the frame they can be in; nothing
+  when no flight shows any). `viewer/plume.ts` says what the fire is (an alcohol and oxygen flame:
+  pale, seen through, shock diamonds while there is air to stand them up, opening into a wide faint
+  balloon as the air thins) and carries its light, a point light kept in the scene at no strength
+  while the engine is out; `viewer/trail.ts` says what smoke there is: the blast over the pad at
+  liftoff and the trail along the path flown (steam low down, soon gone; a contrail from 7 to 13
+  km; nothing above), ending where the clock is. The smoke is lit by the Sun through itself, and
+  shades what three's lights light (`smokeShade`, worked out in the lights chunk as the clouds'
+  shadow is, so it has no texels to crawl). All of it moves by the clock's seconds only, and all
+  of its sizes and amounts are estimated, from film. In the cel look the same volumes are cut
+  into flat tones. The rigs that are about the vehicle (chase, locked, on board, pad: "The camera") go
+  with it or follow it, and the Sun's shadow map goes with it under them (`Stage.shadeCraft`). The sky darkens with the
+  eye's height as the air above it thins (`airAbove` in backdrops.ts: black by 50 km). Under it
+  all is the Earth (`viewer/globe.ts`): the WGS 84 ellipsoid at the site's `seaLevel`, drawn in
+  the site's frame, which is exact anywhere (frames.ts), so the vehicle, placed from the run
+  where it truly is, comes down on the globe's sea 18.6 km below the pad's level. The globe is a
+  mesh made in doubles round the point under the eye and remade as the eye moves (rings spaced
+  so each triangle looks the same size, out past the horizon); land, lakes and ice are signed
+  distances to the shore on a cube map (tools/globe.mjs, Natural Earth), so the shore is a clean
+  line at any height; the haze is the scene's, worked along the ray over the curve; the air seen
+  from above (`Globe.air`, a ball round the eye, single Rayleigh scattering) makes the limb and
+  the blue over it, and comes in as the sky (backdrops.ts) goes out. The site's ground (land.ts)
+  keeps the middle: the globe leaves a hole for it, and across its last kilometre and a
+  half, inside its cover maps, the ground bends onto the curve and takes the globe's colours
+  (`Land.meet`); from 3 km up all of it takes them, but for its made ground, wholly by 20 km
+  (`LIFT` in land.ts), so from height the site is not a square of another tone; so where they overlap
+  they are one surface and which one the depth buffer picks cannot be seen. Downrange, up is
+  the plumb line where it is, not the site's +Y: the sky's (at the eye) and the orbiting
+  camera's (at what it turns about, `World.upAt`), so the horizon there is level. Away from the
+  site the globe is lit by the true Sun through the air over each place (`chapman`), so the
+  terminator reddens and the night side is dark whatever the site's hour; near it, by the scene's
+  light, so the two agree where they meet. Round the site the coast is finer: a site's
+  `region` (types.ts: RegionDef) names the country its flights see, and tools/globe-region.mjs
+  bakes it from OpenStreetMap's coastline and larger lakes onto two gnomonic planes
+  (world/region.ts): `near`, 160 km square at 39 m a texel, and `wide`, the region (for the
+  Cape, Flagler Beach to Miami and out past Abaco to the landing) at 155 m. The globe
+  reads them where they cover, each faded in over the map under it by mixing distances, not
+  colours, so a shore that two maps put apart moves across the fade and is never doubled. The
+  region is dated (`asOf`): each work in `later` (a causeway, a canal) built after it is undone
+  along its line, so the Cape's lagoons are 1961's. Where the ground drawn round the pad hands
+  over, its shore lines (cape1961.ts) follow the same coastline, so the two agree to tens of
+  metres there; change one, change the other, and rebake (`pnpm globe:region`).
+- **The air is seen and felt.** `sim/heating.ts` works the heat flux at the stagnation point from a
+  sample's height and airspeed and carries each surface in `Trajectory.heating` (a `Measure` for
+  every figure) through the flight as a lump; nothing is held against it until a measured
+  temperature is read, and the flight's README says so. `viewer/effects.ts` shows it at the clock's
+  instant, from the run on show, record or live: surfaces glow by black-body colour on the real
+  material and its cel twin (nothing under about 800 K), the shock layer's glow is a marched volume
+  whose brightness is the heat flux over 250 kW/m2 (`entry.ts`: so a suborbital entry is a faint
+  wake), a collar of cloud forms at Mach 1 low down, ice falls from the frosted tank at liftoff;
+  which nodes and materials is the flight's (`flies.air`). How each looks is `estimated` and says how
+  it is scaled. The camera is shaken (`shake.ts`) by the engine's sound where the eye is (late by
+  the distance over the speed of sound, weaker as the air thins) and, for an eye that rides with the
+  vehicle, by buffet, load and the jolts of events: a function of the clock's time alone, never
+  more than 0.6 degrees and 4 cm, nothing with the clock above three times life, scaled by the
+  Motion setting to nothing. It is laid on the camera for the draw only (`Stage.shaker`), so
+  nothing else sees it. A new effect of the air goes in `effects.ts` and takes its numbers from
+  the sample; it does not keep time or name a flight.
+- **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
+  because of it; the capsule flown from the report's separation passes all but one. The flight's
+  README ("The flight as flown") states the numbers.
+- **Staging is physics, and so is what is shed.** One force model flies everything
+  (`sim/forces.ts`): drag along the body's axis by whichever end leads, falling off as the cosine
+  and nothing broadside; each `AeroSurface`'s normal force; and the cross-flow on the body's side
+  (`Broadside`), as the sine squared, which is the drag broadside and what damps a tumble. When
+  something leaves, `part` makes two bodies of one: both centres of mass where they were on the
+  stack, each with the velocity that place had (v + w x r), the push shared by the actual masses,
+  so linear and angular momentum are kept to rounding, and the vehicle puts a `Release` in
+  `VehicleState.released`. `sim/shed.ts` flies each from there under the same gravity and air (a
+  motor of its own if the data gives one), to the sea, on the vehicle's tick (five ticks at a time
+  above the air): about 10 microseconds a tick each. The cockpit steps them beside the vehicle
+  (`Sheds.follow`); the record's are flown from fly.ts's run, lazily, as far as the clock asks. A
+  new thing to shed is a `ShedBody` in the flight's data and an `on` in `flies.drops`: generic
+  code names no part. Every drag area in them today is `estimated`, and says so.
+- **The air can break it.** `sim/loads.ts`: the stack's bending load is dynamic pressure times
+  angle of attack against `body.limits.qAlpha`; caution from 80 per cent, and over the limit for
+  half a second (or at 150 per cent at once) it breaks at `limits.joint`: the engine stops, the
+  booster becomes a shed body, and a spacecraft with its escape rocket aboard is pulled clear on
+  it. A parachute let out in more dynamic pressure than `limits.drogue`/`main` tears to
+  `limits.torn` of its drag area. The limits are `estimated` (no structural figure has been
+  read); the constants of consequence are chosen and say so. On the record's programme the load
+  peaks at 10 per cent of the limit; hands off from 60 s the stack as estimated diverges and
+  breaks up at 80 s, so the greatest pressure has to be flown through.
+- **Level is the ellipsoid's.** Climb angles, the retro attitude and a landing's vertical speed
+  are measured from the geodetic normal (`upAt` in forces.ts), not from the line to the Earth's
+  centre, which leans a sixth of a degree from it at the Cape.
+- **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
+  (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
+  the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,
+  pitch, yaw and roll from -1 to 1, and the events (tower, separation, retrofire, retropack,
+  parachutes) as commands. To fly.ts's forces it adds the body's turning: thrust turned by the
+  vanes, the air's push on nose and fins (so it weathercocks, lifts and damps), the spacecraft's
+  jets, a parachute pulling at its attachment, with mass, centre of mass and inertia following the
+  propellant down the tanks (`sim/rigid.ts`). What it needs beyond fly.ts's inputs is
+  `Trajectory.body`, each figure with its confidence; most are `estimated`, and
+  `tests/vehicle.test.mjs` lists them. The body's +X is the nose; on the pad +Z points against
+  the azimuth, so positive pitch tips it downrange. `sim/autopilot.ts` is not physics: it returns
+  the same `Controls` a hand does (the tilt programme held by `steer`, the one control law; the
+  record's event times) and any axis of it can be switched off or overridden (`blend`), or its
+  programme leaned by a pilot's `trim`. It is held
+  to fly.ts, not fitted to it: with the air's sideways push off the two agree to 0.05 per cent, and
+  with it on the live flight is 0.5 per cent higher at apogee by its lift, which the test states.
+  A new force goes in `forces`, a new event in `command` and `Controls`.
+- **Controls are hardware, and run out.** The spacecraft's jets are `body.capsule.rcs`: supplies
+  (usable propellant, specific impulse, automatic or manual) and thrusters (place and line of push
+  in the body's axes, thrust, supply, the axis and sense that opens each). A chamber is open or
+  shut for a whole tick (`RCS_DEAD`, `RCS_HIGH`: under the first nothing opens, under the second the
+  axis's small chamber, above it the big one; a manual chamber with a `least` is throttled by the
+  hand), pushes at its own nozzle (so it shoves as well as turns), burns thrust over g0 Isp from
+  its supply, and a supply that cannot feed a tick's burning feeds nothing. `VehicleState.rcs` and
+  every `LiveSample` carry what is left and what is firing. The autopilot works the automatic
+  system; an axis a hand has (`Controls.manual`) goes through the manual one. The booster's two
+  propellants are separate where the body gives `mixture`: liquids marked `propellant` drain at the
+  ratio and the engine stops when either is empty. An engine is what its `body.engine` says
+  (liquid or solid, how many starts, a throttle range or none): `Controls.throttle` is 0 to 1 and
+  the vehicle allows what the engine does (below a throttle's least it is off; a solid hears
+  nothing; no lag, there being no figure for one). Solids (escape, retro) burn out once lit.
+- **An abort is flown.** `Controls.abort`, while the tower is aboard: the engine is shut down, the
+  spacecraft leaves on `body.escape` (thrust, burn, total impulse) with its tower on as one body
+  through `ascentDrag`, the tower goes when the rocket is out and the climb is over, and the
+  descent is the usual one. Phase `escape`; `Tally.abort` has the greatest load.
+- **Manual means manual.** `Controls.automatic: false` switches off the spacecraft's own sequence
+  (parachutes by height, the tower after an abort); the cockpit sends it with the sequencer off,
+  so then nothing happens that is not commanded, and what follows is the physics: no parachute,
+  82 m/s into the sea. `sim/verdict.ts` says how it ended and holds it to `capsule.limits`
+  (a landing speed and a load, with their confidence). Nothing rescues the pilot; nothing is scored.
+- **The flight can be flown by hand.** Fly it (the button by the clock, or L) takes the flight
+  deck (`src/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
+  camera's, the page out of the way. Space lights the engine and after that sets off the next
+  event; the clock runs the flight (stopped, so is the flight; faster, so is the flight, up to
+  five seconds of it a frame), and each time it moves the cockpit steps the vehicle up to it.
+  With guidance on (G) the autopilot flies the programme and W S A D lean it, three degrees a
+  second (the vanes at full throw turn the stack end over end in four seconds); with it off, and
+  on the spacecraft alone, the keys are the controls themselves; Q E roll. The sequencer (B)
+  sets events off at the record's times. The scene shows it through the same `Ascent`, given the
+  live run (`Stage.flyRun`, ascent.ts `Run`): placed by each sample's own attitude, the spacecraft
+  turning about its centre of mass, what it sheds leaving when it is let go
+  (`Flight.flies.drops[].on`), the plume out when the engine really stops, and after the landing
+  it stays where it came down beside a card of the flight against the reports' figures. Put the
+  clock back and it shows what was flown; the record's own run is untouched and comes back on
+  leaving. An abort is X twice within two seconds (the first press arms it and says so). Under the
+  gauges a strip made from the flight's data shows the engine's kind and state ("fixed thrust: no
+  throttle"; a lever, arrow keys and Z only for an engine with a range), each tank and each jet
+  supply in per cent and kilograms (amber under a fifth, "Empty" when it is), which jets are
+  firing and every motor burning; a prompt line gives the cues (0.05 g, the next parachute's
+  height) and, sequencer off, what is due in amber. On a touch screen a stick (pitch, yaw: as far
+  as it is pushed) and two roll buttons stand above the instruments. The parachutes are drawn
+  (`flies.chutes`, `viewer/chute.ts`, by way of `Ascent.chute` and `Run.out`), a drop can leave
+  `under` one (`drops[].on: 'main'`), and the jets are seen (`viewer/jets.ts`, `Ascent.jets`,
+  live runs only). The Flown panel draws the run in amber over the record's as it grows
+  (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `trajectory.body` and
+  `flies` can be flown without being told how.
+- **The flight deck has a navball and a predicted path.** Both read what the cockpit shows
+  (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
+  clock has been put back) and nothing else of it. The navball (`src/navball.ts`, I tucks it) is
+  the sphere of directions fixed to north, east and down at the place under the vehicle, seen
+  from inside along the nose (body +X forward, +Z up, -Y right: sim/vehicle.ts), so the launch
+  azimuth is at the bottom of the ball on the pad and W takes the nose toward it. O changes its
+  frame, and the path's with it: Surface (velocity through the air that turns with the Earth) or
+  Orbit (space-fixed, with radial and normal). `ballOf(r, v, attitude, t, target)` is all of its
+  mathematics and is tested; the canvas is redrawn only when the attitude has moved a twentieth
+  of a degree, and not at all while tucked. The path (`src/sim/predict.ts`, drawn by
+  `viewer/path.ts`, M) is where the centre of mass goes from the instant on show if nothing more
+  is done: fly.ts's gravity and drag curves (`dragArea`, `chuteArea`, `thrustIn`), no thrust, the
+  spacecraft's parachutes at their heights, until it meets the sea, has gone once round (then it
+  is an orbit, with its osculating elements) or six hours have passed. While the engine burns K
+  changes it to "if guidance flies the rest of the programme to the record's cutoff" (thrust
+  along `programmeAxis`, the tilt programme with the pilot's trim: attitude prescribed, as
+  fly.ts's is, not the rigid body stepped), drawn dashed up to the cutoff; on the pad that is
+  the only path there is. It leaves out what the pilot has yet to do (separation's push,
+  retrofire), so before retrofire its impact is the coast's, not the landing's: say which when
+  quoting it. A prediction is begun at most five times a second and worked in slices of 1.5 ms a
+  frame (`Predictor.run(budget)`; `sr.path.cost` says what the last one took); nothing is
+  predicted while the path is off. In Surface the line is each point where it will be over the
+  ground at its own instant; in Orbit, the path as it lies in the frame that does not turn, the
+  mesh turned back about the Earth's axis as the clock goes on. It is an instrument's line: a
+  constant width in pixels, not lit or fogged, hidden only by the Earth's bulk, and given to the
+  stage through `Stage.overlay`.
