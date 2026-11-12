@@ -344,7 +344,8 @@ const launcherParts: Part[] = [
     detail:
       'Built in nine months of 1958 to throw a probe at the Moon, then given a longer adapter for the Vostok. To keep it ' +
       'short its tanks are two rings, one above the other, with the engine in the hole. The RD-0109 does not swivel: the ' +
-      'stage is steered by the spent gas from its own turbine, piped to small nozzles round the foot. It burned from ' +
+      'stage is steered by the spent gas from its own turbine, piped to eight small nozzles round the foot: four fixed, ' +
+      'for pitch and yaw, and four that turn, for roll (which stood where is not recorded here). It burned from ' +
       'about 300 to 676 seconds. On this flight the orbit came out 97 km higher at the top than planned, which the ' +
       'accounts put down either to this engine burning long or to the core’s. The spacecraft’s frame rests on the ' +
       'adapter’s rim, and the radio equipment that had ridden on the core was moved up here.',
@@ -353,6 +354,7 @@ const launcherParts: Part[] = [
       ['Diameter', '2.58 m'],
       ['Mass', '7,984 kg fuelled, 1,472 kg burnt out'],
       ['Engine', 'RD-0109: 54.5 kN in vacuum, 121 kg'],
+      ['Steering', '8 nozzles on the turbine’s exhaust: 4 fixed, 4 turning'],
       ['Burned', 'about 300 to 676 s after liftoff'],
       ['Propellants', 'kerosene and liquid oxygen, 6.9 t'],
     ],

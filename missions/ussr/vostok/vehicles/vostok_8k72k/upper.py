@@ -89,7 +89,7 @@ def build_block_e(X: Matrix, M: dict) -> None:
     """The third stage: two ring tanks one above the other with the engine in the hole, and above
     them the adapter the spacecraft's frame rests on."""
     g = group("BlockE")
-    skin, wall, ribs, base, fit, bell, liner, steel = (Local(X) for _ in range(8))
+    skin, wall, ribs, base, fit, bell, liner, steel, pod = (Local(X) for _ in range(9))
     top = BLOCK_E_TOP
     skin.lathe([(BLOCK_E_R, E_SKIRT), (BLOCK_E_R, top - 6)], 96)
     skin.lathe([(BLOCK_E_R, top - 6), (BLOCK_E_R - 150, top - 6)], 96)  # the ledge the spacecraft's frame stands on
@@ -114,26 +114,38 @@ def build_block_e(X: Matrix, M: dict) -> None:
     for z in (E_EXIT + 20, E_EXIT + 300, E_EXIT + 560):
         r = next(r0 + (r1 - r0) * (z - z0) / (z1 - z0) for (r0, z0), (r1, z1) in zip(E_BELL, E_BELL[1:]) if z0 <= z <= z1)
         bell.lathe([(r - 2, z - 18), (r + 9, z - 8), (r + 9, z + 8), (r - 2, z + 18)], 48)
-    # It is steered by the turbine's spent gas, piped across the base to four small nozzles at the rim
-    for i in range(4):
-        a = TAU * i / 4 + deg(45)
+    # It is steered by the turbine's spent gas, piped across the base to eight small nozzles at the rim (Minakov):
+    # four fixed to the outside of the stage, for pitch and yaw, and four that turn, for roll. Which stood at which
+    # azimuth is not known to us: the fixed ones are drawn in line with the boosters and the turning ones between.
+    for i in range(8):
+        a = TAU * i / 8
         c, s = math.cos(a), math.sin(a)
+        fixed = i % 2 == 0
+        reach = 1372 if fixed else 1345
         steel.loft(
             [
                 (180 * c, 180 * s, TRUSS_TOP + 190),
                 (330 * c, 330 * s, TRUSS_TOP - 20),
                 (760 * c, 760 * s, TRUSS_TOP - 30),
                 (1200 * c, 1200 * s, TRUSS_TOP + 40),
-                (1335 * c, 1335 * s, TRUSS_TOP + 60),
+                ((reach - 10) * c, (reach - 10) * s, TRUSS_TOP + 60),
             ],
             [(34, 34)] * 5,
             12,
             ref=(0, 0, 1),
         )
-        m = at(1345 * c, 1345 * s, TRUSS_TOP - 60)
+        m = at(reach * c, reach * s, TRUSS_TOP - 60)
         steel.lathe([(52, 0), (46, 50), (26, 110), (30, 130), (48, 150), (48, 230), (0, 245)], 16, m)
         steel.lathe([(46, 0), (40, 50), (20, 110), (0, 110)], 16, m, flip=True)
-        steel.box((120, 90, 60), at(1300 * c, 1300 * s, TRUSS_TOP + 190) @ Matrix.Rotation(a, 4, "Z"))
+        turn = Matrix.Rotation(a, 4, "Z")
+        if fixed:  # under a square fairing on the skin, its top sloped to the air
+            pod.box((170, 190, 300), at(1365 * c, 1365 * s, TRUSS_TOP + 290) @ turn)
+            pod.box((170, 190, 150), at(1335 * c, 1335 * s, TRUSS_TOP + 440) @ turn @ Matrix.Rotation(deg(-32), 4, "Y"))
+        else:  # in a fork on a bracket at the rim, on trunnions that lie along the radius, so that it swings round the stage
+            steel.box((120, 90, 60), at(1300 * c, 1300 * s, TRUSS_TOP + 190) @ turn)
+            steel.tube(((reach - 85) * c, (reach - 85) * s, TRUSS_TOP + 130), ((reach + 85) * c, (reach + 85) * s, TRUSS_TOP + 130), 15, 8)
+            for k in (-1, 1):
+                steel.box((18, 46, 120), at((reach + k * 76) * c, (reach + k * 76) * s, TRUSS_TOP + 170) @ turn)
     skin.build("BlockE_Skin", M["pale"], g, sharp_angle=30)
     wall.build("BlockE_InnerWall", M["wall"], g, sharp_angle=30)
     ribs.build("BlockE_Stringers", M["pale"], g, smooth=False)
@@ -142,6 +154,7 @@ def build_block_e(X: Matrix, M: dict) -> None:
     bell.build("RD0109_Bell", M["bell"], g, sharp_angle=35)
     liner.build("RD0109_Liner", M["liner"], g, sharp_angle=35)
     steel.build("BlockE_Steering", M["steel"], g, sharp_angle=35)
+    pod.build("BlockE_SteeringFairings", M["pale"], g, smooth=False)
     if interior():
         tanks, gear, pump = Local(X), Local(X), Local(X)
         tanks.torus(800, 460, 380, TRUSS_TOP + 560, 64, 28, power=3.0)  # the lower ring, drawn as the fuel's

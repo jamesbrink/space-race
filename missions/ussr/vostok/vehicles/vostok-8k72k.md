@@ -131,7 +131,7 @@ trunnions through which their propellants arrive (E).
 | | RD-107 (8D74), each strap-on | RD-108 (8D75), core | RD-0109 (8D719), Block E |
 | --- | --- | --- | --- |
 | Main chambers | 4 | 4 | 1 |
-| Steering | 2 chambers | 4 chambers | 4 nozzles on the turbine's exhaust |
+| Steering | 2 chambers | 4 chambers | 8 nozzles on the turbine's exhaust: 4 fixed, 4 turning |
 | Thrust at sea level | 815.9 kN | 744.3 kN | |
 | Thrust in vacuum | 997.7 kN | 945.4 kN | 54.5 kN |
 | Specific impulse, sea level | 2,510 N·s/kg (256 s) | 2,432 (248 s) | |
@@ -227,9 +227,12 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   drawing of it has been read. Its split line is put square to the hatch opening, and its
   fittings are ours.
 - **Block E is the Luna stage's layout with a longer adapter.** Which ring holds the oxygen is not
-  known to us: the upper is drawn as the oxygen's, being the larger. Its steering nozzles are four
-  in pairs at the foot, as in the drawings; M describes two fixed pairs for pitch and yaw and four
-  turning ones for roll, eight in all, and the other four are not modelled.
+  known to us: the upper is drawn as the oxygen's, being the larger. Its steering nozzles are the
+  eight M describes: two fixed pairs on the outside of the stage for pitch and yaw
+  («двумя парами жестко закрепленных на внешней поверхности ступени сопел») and four turning ones
+  for roll. That there are eight is documented; where each stood is not. The fixed ones are drawn
+  at the rim in line with the boosters under square fairings like the one K shows there, the
+  turning ones between them in forks. The turning ones do not turn.
 - **Engines are representative.** Chambers are real bells with throats and can be looked up; the
   turbopumps, gas generators, frames and pipes are the right kinds of thing in about the right
   places, built from photographs of museum engines, not from a drawing. Nozzle sizes are scaled
