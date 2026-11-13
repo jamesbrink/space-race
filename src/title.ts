@@ -1,4 +1,5 @@
 import './title.css';
+import { listed } from './address';
 import { logo } from './logo';
 import type { Flight } from './types';
 
@@ -24,17 +25,26 @@ export class Title {
         <p class="title-line">Every crewed spacecraft <i>·</i> to scale <i>·</i> as it flew</p>
       </div>
       <nav class="title-flights" aria-label="Flights">
-        ${[...flights]
-          .sort((a, b) => Date.parse(a.launch) - Date.parse(b.launch))
-          .map(
-            (f, i) => `
-          <button data-flight="${esc(f.id)}"${i === 0 ? ' autofocus' : ''}>
-            <span class="n">${String(i + 1).padStart(2, '0')}</span>
+        ${listed(flights)
+          .map((f, i) => {
+            const n = `<span class="n">${String(i + 1).padStart(2, '0')}</span>`;
+            // (one that is to come is a line, not a way in: it says what will be here and when it flew)
+            if (!('callsign' in f))
+              return `
+          <p class="to-come">
+            ${n}
+            <span class="what"><b>${esc(f.name)}</b><em>${esc(f.line)}</em></span>
+            <span class="when">${esc(f.nation)} · ${date(f.launch)}</span>
+            <span class="go">To come</span>
+          </p>`;
+            return `
+          <button data-flight="${esc(f.id)}">
+            ${n}
             <span class="what"><b>${esc(f.callsign)}</b><em>${esc(f.designation)} · ${esc(f.crew.join(', '))}</em></span>
             <span class="when">${esc(f.nation)} · ${date(f.launch)}</span>
             <span class="go" aria-hidden="true">Enter</span>
-          </button>`,
-          )
+          </button>`;
+          })
           .join('')}
       </nav>
       <p class="title-foot">Vehicle, launch pad and crew of each flight, with every figure marked documented, derived or estimated.</p>
