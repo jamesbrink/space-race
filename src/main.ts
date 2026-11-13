@@ -206,8 +206,9 @@ clock.listen(() => {
 let autoCut = false;
 
 /** Drift round whatever was just chosen, unless the user has said not to. */
+/** Auto-orbit, unless it is switched off; and not while a part is chosen, which is flown to and held in view (the switch is as it was). */
 function orbit(): void {
-  stage.setAutoRotate(!orbitOff);
+  stage.setAutoRotate(!orbitOff && !selected);
   ui.showRotate(!orbitOff);
 }
 

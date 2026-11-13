@@ -844,9 +844,13 @@ export class Gallery {
     };
   }
 
-  /** Turn slowly round whatever was just chosen, unless the turntable has been switched off. */
+  /**
+   * Turn slowly round what is on show, unless the turntable has been switched off. A part chosen is flown to and held
+   * there, not turned away from: the turntable waits while it is chosen and goes on when it is let go (the switch, and
+   * what is remembered, are as they were).
+   */
   private turn(): void {
-    this.made?.stage.setAutoRotate(!this.stopped);
+    this.made?.stage.setAutoRotate(!this.stopped && !this.selected);
     this.q('[data-rotate]').setAttribute('aria-pressed', String(!this.stopped));
   }
 
