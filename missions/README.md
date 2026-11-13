@@ -16,5 +16,7 @@ The record, organised the way the history is: nation, programme, flight.
 | [USA](usa/) | [Project Mercury](usa/mercury/README.md) | [MR-3 *Freedom 7*](usa/mercury/flights/mr-3-freedom-7/README.md); [MR-4 *Liberty Bell 7*](usa/mercury/flights/mr-4-liberty-bell-7/README.md): the vehicle, its launch site and its pilot; not yet flown |
 | [USSR](ussr/) | [Vostok](ussr/vostok/README.md) | [Vostok 1](ussr/vostok/flights/vostok-1/README.md): the vehicle, its launch site as it stood that morning and its pilot; not yet flown; [Vostok 2](ussr/vostok/flights/vostok-2/README.md): the vehicle, in the Gallery |
 
-Next for Vostok 1: its launch vehicle (8K72K), Site 1 and the trajectory of the first orbit. Next
-in launch order after it and Freedom 7 is MR-4 *Liberty Bell 7*.
+Only Freedom 7 can be flown: Vostok 1 and Liberty Bell 7 have their launch sites and no trajectory
+yet. The flights to come, in launch order, are in [upcoming.ts](upcoming.ts), which the front page
+lists between the ones that are built; one drops out of it when its flight is added to
+[index.ts](index.ts).
