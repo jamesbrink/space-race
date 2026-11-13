@@ -33,6 +33,7 @@ from .site import (
     P,
     Parts,
     box,
+    fine,
     handrail,
 )
 
@@ -57,7 +58,8 @@ SLOT_END = HALF + 60.0 * FT
 CLIMB = 4.5  # the floor rises 1 m in this many east of SLOT_END
 WALL_END = SLOT_END + (PIT_DEPTH - LOWER) * CLIMB  # where the floor has come up to the lower terrace
 DEEPEST = PIT_DEPTH + 0.5
-CELL = 4.0  # the pit's ground mesh, m
+SKIRT, SKIRT_DOWN = 8.0, 0.25  # the skirt under the land outside the rim: its breadth and how far under the land, m
+CELL = 2.0  # the pit's ground mesh, m (twice as coarse at a lower level of detail)
 
 
 def _inside(x: float, y: float) -> bool:
@@ -94,21 +96,23 @@ def in_slot(x: float, y: float) -> bool:
 
 
 def pit_z(x: float, y: float) -> float:
-    """The pit's surface, metres from the deck. Outside the rim it goes on down into the ground, under the land, so that
-    its edge is a line and not a sheet lying on the steppe; at the rim it is the land's own height (GROUND)."""
+    """The pit's surface, metres from the deck. At the rim it is the land's own height (GROUND). Outside it a skirt runs
+    on under the land, a hand's breadth below it for SKIRT metres and then down into the ground: the land is cut away a
+    little inside the rim (viewer/tyuratam.ts: OVERLAP), and a line of sight that passes under the land's cut edge, out
+    of the pit, meets this and not the sky."""
     d = to_rim(x, y)
     if in_slot(x, y):
         return GROUND - floor_depth(x)
     if d < 0:
-        return GROUND + max(-1.5, 0.5 * d)
+        return GROUND - SKIRT_DOWN - min(1.25, max(0.0, -d - SKIRT))
     return GROUND - min(_terraced(d), floor_depth(x))
 
 
-def _lines(lo: float, hi: float, extra) -> list[float]:
-    """A grid's lines every CELL from lo to hi, with the given ones put in (the walls' faces, so that no cell's slope
+def _lines(lo: float, hi: float, extra, cell: float) -> list[float]:
+    """A grid's lines every `cell` metres from lo to hi, with the given ones put in (the walls' faces, so that no cell's slope
     shows outside a wall) and any line within 0.5 m of one of those taken out."""
     keep = sorted(e for e in extra if lo < e < hi)
-    base = [lo + CELL * i for i in range(int((hi - lo) / CELL) + 1)]
+    base = [lo + cell * i for i in range(int((hi - lo) / cell) + 1)]
     return sorted([v for v in base if all(abs(v - e) > 0.5 for e in keep)] + keep)
 
 
@@ -128,8 +132,9 @@ def build(parts: Parts) -> None:
     for k in range(n):
         j = (k + 1) % n
         a, b, c, d = ring[k], ring[j], square[j], square[k]
-        deck.add([P(*a, z1), P(*b, z1), P(*c, z1), P(*d, z1)], [(0, 1, 2, 3)])
-        deck.add([P(*a, z0), P(*b, z0), P(*c, z0), P(*d, z0)], [(3, 2, 1, 0)])
+        # (round the hole anticlockwise, then out to the edge: the top's corners in that order go round clockwise from above)
+        deck.add([P(*a, z1), P(*b, z1), P(*c, z1), P(*d, z1)], [(3, 2, 1, 0)])
+        deck.add([P(*a, z0), P(*b, z0), P(*c, z0), P(*d, z0)], [(0, 1, 2, 3)])
         deck.add([P(*a, z0), P(*b, z0), P(*b, z1), P(*a, z1)], [(3, 2, 1, 0)])  # the hole's wall
         deck.add([P(*d, z0), P(*c, z0), P(*c, z1), P(*d, z1)], [(0, 1, 2, 3)])  # the slab's edge
     # the lip at the north-east corner, butted to the slab's edge, that one of the two tall masts stands on
@@ -156,10 +161,12 @@ def build(parts: Parts) -> None:
     # the pit: its own ground, from just outside the rim to the floor
     parts.node("FlamePit")
     lining, scorch, earth = parts("FlamePit", "lining", True), parts("FlamePit", "scorch", True), parts("FlamePit", "earth", True)
-    xs = _lines(-40.0, 248.0, [-HALF - 0.3, -HALF, WALL_END])
-    ys = _lines(-104.0, 104.0, [-SLOT - WALL, -SLOT, SLOT, SLOT + WALL])
+    cell = CELL if fine() else 2 * CELL
+    xs = _lines(-40.0, 248.0, [-HALF - 0.3, -HALF, WALL_END], cell)
+    ys = _lines(-104.0, 104.0, [-SLOT - WALL, -SLOT, SLOT, SLOT + WALL], cell)
     z = [[pit_z(x, y) for y in ys] for x in xs]
-    out = [[to_rim(x, y) < 0 for y in ys] for x in xs]
+    # (a cell is left out only if it lies wholly outside the skirt: all its corners further out than its own breadth)
+    out = [[to_rim(x, y) < -SKIRT - 1.5 * cell for y in ys] for x in xs]
     for i in range(len(xs) - 1):
         for j in range(len(ys) - 1):
             if out[i][j] and out[i + 1][j] and out[i + 1][j + 1] and out[i][j + 1]:
@@ -174,9 +181,13 @@ def build(parts: Parts) -> None:
                 mb = lining
             else:
                 mb = earth
+            # each cell is cut along whichever diagonal lies nearer the ground at its middle, so that a terrace's edge
+            # crossing the grid aslant is followed and not drawn as a row of teeth
+            mid = pit_z(cx, cy)
+            along_02 = abs((zz[0] + zz[2]) / 2 - mid) <= abs((zz[1] + zz[3]) / 2 - mid)
             mb.add(
                 [P(xs[i], ys[j], zz[0]), P(xs[i + 1], ys[j], zz[1]), P(xs[i + 1], ys[j + 1], zz[2]), P(xs[i], ys[j + 1], zz[3])],
-                [(0, 1, 2, 3)],
+                [(0, 1, 2), (0, 2, 3)] if along_02 else [(0, 1, 3), (1, 2, 3)],
             )
 
 

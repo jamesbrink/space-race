@@ -35,6 +35,20 @@ const LIFT = 1.5;
 /** The main nozzles' exits below the model's origin (the spacecraft's braking nozzle), m. */
 const BASE = 30.53;
 
+// Where the vehicle hangs at Site 1, as sites/site1/site.py has it (the numbers live there; site-1.md): its nozzles' exits
+// 6.75 m under the platform's deck, level with the foot of the launch system's turning part, and the whole system turned
+// in the platform's opening to the launch azimuth, 37.5 degrees (derived), with booster B's plane along it (estimated).
+/** The nozzles' exits, m above the deck (site.TAIL_Z). */
+const TAIL = -6.75;
+/** The vehicle's own +X (booster B's plane) from the site's +X (due east), radians anticlockwise from above (site.TURN). */
+const TURN = (90 - 37.5) * DEG;
+/** A direction given in the vehicle's own frame, as it stands turned on the pad (a view's `from` is the scene's). */
+const turned = ([x, y, z]: [number, number, number]): [number, number, number] => [
+  x * Math.cos(TURN) + z * Math.sin(TURN),
+  y,
+  -x * Math.sin(TURN) + z * Math.cos(TURN),
+];
+
 /** Which way each strap-on stands, degrees about the long axis. Which block stood where is not known to us. */
 const BOOSTERS: [letter: string, block: string, az: number][] = [
   ['B', 'Б', 0],
@@ -458,36 +472,38 @@ const vehicle: ModelDef = {
   name: 'Vehicle',
   url: 'models/ussr/vostok/vostok-1/vehicle.glb',
   scale: '38.36 m on the pad · 10.3 m across the rudders · to scale',
-  // Site 1 is not built: the vehicle is shown by itself in the gallery, standing on its nozzles on the floor. On the
-  // pad it hung in the launch system's four arms, its tail below the pad's level
-  backdrop: 'studio',
+  // on the pad it hangs in the launch system's four supports, its tail below the deck; the gallery stands it on its nozzles
+  backdrop: 'tyuratam',
   slider: ['On the pad', 'Taken apart'],
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
   parts: [...launcherParts, ...parts],
-  position: [0, BASE, 0],
+  position: [0, BASE + TAIL, 0],
+  rotationY: TURN,
   // the cabin's lamp, over the instrument board
   lights: [{ position: [0.14, 3.6, 0.14], colour: 0xffe4c0, intensity: 0.2, reach: 1.7 }],
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
-    // (heights are above the nozzles' exits, which stand on the floor)
-    { id: 'base', label: 'Engines', centreY: 1.0, span: 9.5, from: along(35, 4, 1) },
-    { id: 'booster', label: 'Strap-on', nodes: ['Booster_B'], from: along(-55, 6, 1) },
-    { id: 'tips', label: 'Tip joints', centreY: 19.6, span: 4.6, from: along(-40, 14, 1) },
-    { id: 'third', label: 'Third stage', nodes: ['Interstage', 'BlockE'], from: along(60, 4, 1) },
-    { id: 'fairing', label: 'Fairing', nodes: ['Fairing'], from: along(ENTRY.az, 10, 1) },
+    // (heights are the scene's: the nozzles' exits are at TAIL; directions are the vehicle's own, turned as it stands)
+    { id: 'base', label: 'Engines', centreY: 1.0 + TAIL, span: 9.5, from: turned(along(35, 4, 1)) },
+    { id: 'booster', label: 'Strap-on', nodes: ['Booster_B'], from: turned(along(-55, 6, 1)) },
+    { id: 'tips', label: 'Tip joints', centreY: 19.6 + TAIL, span: 4.6, from: turned(along(-40, 14, 1)) },
+    { id: 'third', label: 'Third stage', nodes: ['Interstage', 'BlockE'], from: turned(along(60, 4, 1)) },
+    { id: 'fairing', label: 'Fairing', nodes: ['Fairing'], from: turned(along(ENTRY.az, 10, 1)) },
     // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
     { id: 'spacecraft', label: 'Spacecraft', nodes: SPACECRAFT },
     { id: 'descent', label: 'Descent module', nodes: ['DescentModule'] },
-    { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: along(ENTRY.az, 12, 1) },
+    { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: turned(along(ENTRY.az, 12, 1)) },
     { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles', 'Antennas'] },
-    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -32, 1) },
+    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: turned(along(250, -32, 1)) },
   ],
 };
 
-// The cosmonaut, standing beside the spacecraft: there is no pad to stand him on yet.
-const COSMONAUT_FACING = Math.PI / 4;
+// The cosmonaut on the platform's deck, on the hatch side, between where the bus stopped on the tracks and the launch
+// system, facing the rocket. Where he stood is not recorded to the metre: this place is ours (estimated).
+const COSMONAUT_AT: [number, number, number] = [-14, 0, 4];
+const COSMONAUT_FACING = Math.atan2(-COSMONAUT_AT[0], -COSMONAUT_AT[2]);
 /** A direction to look at him from: in front of him, turned `aside` radians, `lift` up. */
 const facingCosmonaut = (lift: number, aside = 0.2): [number, number, number] => [
   Math.sin(COSMONAUT_FACING + aside),
@@ -579,10 +595,9 @@ const crew: ModelDef = {
   name: 'Crew',
   url: 'models/ussr/vostok/vostok-1/crew.glb',
   scale: 'Yuri A. Gagarin · 1.65 m, 1.72 m suited · to scale',
-  // no pad yet: he stands in the gallery, beside the spacecraft
-  backdrop: 'studio',
+  backdrop: 'tyuratam',
   parts: crewParts,
-  position: [3.1, 0, 2.1],
+  position: COSMONAUT_AT,
   rotationY: COSMONAUT_FACING,
   walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
   wide: false,
@@ -593,6 +608,88 @@ const crew: ModelDef = {
     { id: 'helmet', label: 'Helmet', centreY: 1.57, span: 0.62, from: facingCosmonaut(0.05) },
     { id: 'hands', label: 'Gloves', centreY: 0.86, span: 0.62, from: facingCosmonaut(0.05) },
     { id: 'boots', label: 'Boots', centreY: 0.18, span: 0.62, from: facingCosmonaut(0.2) },
+  ],
+};
+
+const padParts: Part[] = [
+  {
+    node: 'Platform',
+    group: 'Site 1',
+    name: 'Launch platform',
+    summary: 'A concrete deck 41 m square, three sides of it standing out over a pit.',
+    detail:
+      'The rocket was brought onto it lying down, along the tracks from the west, where the deck rests on the ground; its ' +
+      'other three sides stand out over the flame pit on four pylons, and a low fence keeps people back from the drop. In ' +
+      'its middle is the round opening, 20 m across, that the launch system turns in and the rocket hangs through. ' +
+      'Nobody has published a drawing of it. Its size is what the CIA’s photographic interpreters measured off U-2 ' +
+      'pictures of 1957 to 1959, which agrees with the 40 by 40 m in Russian print; its thickness is read off their ' +
+      'elevation and is estimated. Sputnik left from it, and every crewed Vostok.',
+    facts: [
+      ['Deck', '135 ft (41.15 m) square'],
+      ['Opening', '65 ft (19.8 m) across'],
+      ['Pylons', '4, each 30 by 10 ft'],
+      ['Thickness', 'about 10 ft (estimated)'],
+      ['In use', '1957 to 2019'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'FlamePit',
+    group: 'Site 1',
+    name: 'Flame pit',
+    summary: 'No deflector: the pad stands on the edge of a quarry, and the flame falls into it.',
+    detail:
+      'The exhaust of twenty chambers went straight down past the rocket’s tail, into a slot between retaining walls under ' +
+      'the platform, and ran out east along the floor, which climbs back to the steppe at the pit’s point. Round the slot ' +
+      'the sides come down in two terraces. The outline is today’s map, which matches the 880 by 550 ft the CIA measured in ' +
+      '1957. The depth is in dispute: 43 m is modelled, the sum of two of the CIA’s figures, where Russian print gives 45 m ' +
+      'and "almost 50". The section is drawn from an interpreter’s elevation, not a survey, and is estimated.',
+    facts: [
+      ['Rim', '880 by 550 ft (268 by 168 m), as measured in 1957'],
+      ['Depth', 'about 43 m under the deck (in dispute)'],
+      ['Lining', 'concrete under the platform, gunite on the west'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'LaunchRing',
+    group: 'Site 1',
+    name: 'Launch system',
+    summary: 'Four arms that hold the rocket by its waist, and let it go.',
+    detail:
+      'Barmin’s launch system, the "tulip": a ring that turns in the platform’s opening to aim the rocket, and on it four ' +
+      'trusses that lean in to the core just under the strap-ons’ tips, where their thrust goes into it. The rocket is not ' +
+      'bolted down. It hangs on the four heads by its own weight, its tail 6.75 m down in the pit, steadied lower down by ' +
+      'four guides; as its thrust overcomes its weight the heads are unloaded and each truss falls back under its ' +
+      'counterweights, and the tulip opens. The ring and its heights are from a Soviet description of the later system ' +
+      'for Soyuz; the trusses’ members, platforms and counterweights are drawn from the film of the morning and are ' +
+      'estimated, and their falling back is not yet shown.',
+    facts: [
+      ['Ring', '14.92 m inside, 19.35 m over its corners'],
+      ['Turning part', '20.35 m above the deck, 6.75 m below'],
+      ['Supports', '4, at the strap-ons’ tips, 13 m above the deck'],
+      ['Turned to', '37.5° east of north (derived)'],
+      ['Let go', 'at liftoff, 09:06:59.7 Moscow time'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+];
+
+const pad: ModelDef = {
+  id: 'pad',
+  name: 'Launch pad',
+  url: 'models/ussr/vostok/vostok-1/pad.glb',
+  scale: 'Site 1 · platform 41.15 m square over a pit 43 m deep · to scale',
+  backdrop: 'tyuratam',
+  specGroups: ['Launch pad'],
+  parts: padParts,
+  views: [
+    { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
+    { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
+    { id: 'pit', label: 'Flame pit', nodes: ['FlamePit'], from: [-0.5, 0.55, 0.67] },
   ],
 };
 
@@ -889,6 +986,38 @@ export const flight: Flight = {
       note: 'east of north, for an orbit inclined 64.95° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
     {
+      group: 'Launch pad',
+      label: 'Platform',
+      value: 41.15,
+      unit: 'm',
+      confidence: 'documented',
+      note: '135 ft square, measured off U-2 photographs (CIA PIC/JR-2/60); "40 by 40 m" (RussianSpaceWeb). No drawing has been published: sites/site-1.md',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Opening in the platform',
+      value: 19.81,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'a dark circle 65 ft across (CIA PIC/JR-2/60); the launch system’s ring is 19.35 m over its corners (a Soviet description of the later system)',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Flame pit depth',
+      value: 43,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'under the deck: 80 ft and 60 ft, two CIA figures (PIC/JR-2/60), summed. Russian print gives 45 m and "almost 50"; the CIA’s own figure is redacted',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Nozzles below the deck',
+      value: 6.75,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'level with the foot of the launch system’s turning part, 6,750 mm below the zero mark (the later system’s description); "about 7 m below" in print',
+    },
+    {
       group: 'Pressure suit',
       label: 'Pilot height',
       value: 1.65,
@@ -981,5 +1110,5 @@ export const flight: Flight = {
   ],
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
-  models: [vehicle, crew],
+  models: [vehicle, pad, crew],
 };

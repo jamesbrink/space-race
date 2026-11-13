@@ -104,6 +104,14 @@ test('every flight has the same three places, and opens in its gallery', () => {
   }
 });
 
+test('Vostok 1 has its gallery and its launch site, and no flight deck yet', () => {
+  assert.deepEqual(entrances(vostok), { gallery: true, site: true, fly: false });
+  assert.equal(lacks(vostok, 'fly'), 'Fly: no trajectory yet');
+  assert.equal(opensIn(vostok), 'gallery');
+  assert.equal(opensIn(vostok, 'site'), 'site');
+  assert.equal(opensIn(vostok, 'fly'), 'gallery');
+});
+
 test('Freedom 7 has all three places', () => {
   assert.deepEqual(entrances(mr3), { gallery: true, site: true, fly: true });
   for (const place of PLACES) assert.equal(opensIn(mr3, place), place);
@@ -113,16 +121,17 @@ test('a flight that is only its vehicle has the gallery, and says why it has no 
   assert.equal(fixture.site, undefined);
   assert.equal(fixture.trajectory, undefined);
   assert.equal(fixture.models.length, 1);
-  for (const f of [fixture, vostok]) {
-    assert.deepEqual(entrances(f), { gallery: true, site: false, fly: false }, f.id);
-    assert.equal(lacks(f, 'gallery'), null);
-    assert.equal(lacks(f, 'site'), 'Launch site: not built yet');
-    assert.equal(lacks(f, 'fly'), 'Fly: no trajectory yet');
-    // whatever is asked for, it opens where it can be seen
-    for (const place of PLACES) assert.equal(opensIn(f, place), 'gallery');
-  }
-  // Vostok 1 says where it flew from, and has built nothing to stand there: that is no site to go to
-  assert.ok(vostok.site);
+  assert.deepEqual(entrances(fixture), { gallery: true, site: false, fly: false });
+  assert.equal(lacks(fixture, 'gallery'), null);
+  assert.equal(lacks(fixture, 'site'), 'Launch site: not built yet');
+  assert.equal(lacks(fixture, 'fly'), 'Fly: no trajectory yet');
+  // whatever is asked for, it opens where it can be seen
+  for (const place of PLACES) assert.equal(opensIn(fixture, place), 'gallery');
+  // a site said but nothing built to stand there is no site to go to
+  assert.equal(
+    lacks({ ...vostok, models: vostok.models.map((m) => ({ ...m, backdrop: 'studio' })) }, 'site'),
+    'Launch site: not built yet',
+  );
   // a trajectory with no site to fly from is not to be flown either, and says which it lacks
   assert.equal(lacks({ ...mr3, site: undefined }, 'fly'), 'Fly: its launch site is not built yet');
   assert.equal(lacks({ ...mr3, trajectory: undefined }, 'fly'), 'Fly: no trajectory yet');
@@ -194,6 +203,10 @@ test('the views of what stands there are the vehicle`s own, of parts that are th
   // and a view of parts keeps the direction it is to be seen from
   const sided = { views: [{ id: 'hatch', label: 'Hatch', nodes: ['Hatch'], from: [1, 0, 0] }] };
   assert.deepEqual(plinthViews(sided, whole)[1].from, [1, 0, 0]);
+  // given for a vehicle its flight turns on its pad (as the scene has it), and turned back for one standing as built
+  const turned = { ...sided, rotationY: Math.PI / 2 };
+  const back = plinthViews(turned, whole)[1].from;
+  for (const [i, v] of [0, 0, 1].entries()) assert.ok(Math.abs(back[i] - v) < 1e-12, `${back}`);
 });
 
 test('the gallery`s stage is given the vehicle alone, in the studio, with nothing of the site', () => {

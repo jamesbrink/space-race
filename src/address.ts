@@ -159,12 +159,16 @@ export function galleryAt(model: Pick<ModelDef, 'parts' | 'name'>, what: string)
  * and a span (no parts) is of the whole vehicle where its flight stands it: it is kept only with
  * the whole of it on show, moved by `lift`, how much higher the vehicle stands here than there.
  */
-export function plinthViews(model: Pick<ModelDef, 'views'>, plinth: Plinth, lift = 0): ViewDef[] {
+export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY'>, plinth: Plinth, lift = 0): ViewDef[] {
   const there = (v: ViewDef) => Boolean(v.nodes?.length) && (!plinth.nodes || v.nodes!.every((n) => plinth.nodes!.includes(n)));
   // (a view that covers exactly what stands there is the whole of it again)
   const same = (v: ViewDef) => Boolean(plinth.nodes) && v.nodes!.length === plinth.nodes!.length;
   const measured = (v: ViewDef) => !v.nodes?.length && v.centreY !== undefined && v.span !== undefined && !plinth.nodes;
-  const from = (v: ViewDef) => (v.from ? { from: v.from } : {});
+  // (a view's direction is the scene's, for the model as the flight turns it on its pad; here it stands as built)
+  const turn = -(model.rotationY ?? 0);
+  const unturned = ([x, y, z]: [number, number, number]): [number, number, number] =>
+    turn ? [x * Math.cos(turn) + z * Math.sin(turn), y, -x * Math.sin(turn) + z * Math.cos(turn)] : [x, y, z];
+  const from = (v: ViewDef) => (v.from ? { from: unturned(v.from) } : {});
   return [
     { id: WHOLE_VIEW, label: 'Whole' },
     ...model.views.flatMap((v): ViewDef[] => {

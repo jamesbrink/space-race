@@ -136,6 +136,7 @@ const COLOUR = /* glsl */ `
   uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
   uniform float uGlobeSurfaced;   // how far the relief and the land's colours have come in since they arrived, 0 to 1
   uniform float uGlobeLift;   // how far the ground round the site has gone from the site's tones to the map's with the eye's height, 0 to 1
+  uniform vec3 uGlobeOwn;   // the site's own ground seen whole (the Globe's tone)
   uniform vec2 uGlobeNearScale, uGlobeWideScale;   // metres a texel, and how far in from its edge it is faded in (plane units; 0: none)
   uniform samplerCube uGlobeColour;
   uniform sampler2D uGlobeSurfColour;
@@ -249,14 +250,14 @@ const COLOUR = /* glsl */ `
       float tilted = clamp(dot(n, sun) / max(level, 0.1), 0.2, 2.0);
       ground *= mix(1.0, tilted, smoothstep(-0.02, 0.08, level));
     #endif
-    // Round the site, until the eye is well up, the land and the sea keep the site's own tones (its canopy's green, its
+    // Round the site, until the eye is well up, the land and the sea keep the site's own tones (its ground's tone; its
     // offshore water: cape.ts), as the site's ground does (LIFT_TONE, which uGlobeLift follows): so from a few
     // kilometres up the site's square is not a patch of another colour in the map's. Gone by 60 km out and by 40 km up.
-    ground = mix(${vec3(LAND)}, ground, uGlobeSurfaced);
+    ground = mix(uGlobeOwn, ground, uGlobeSurfaced);
     water = mix(deep, water, uGlobeSurfaced);
     land = mix(smoothstep(-0.5, 0.5, l / (fwidth(l) * 0.8 + 0.03 * texel)), land, uGlobeSurfaced);
     float own = (1.0 - uGlobeLift) * (1.0 - smoothstep(0.0025, 0.0095, distance(d, normalize(uGlobeOrigin))));
-    ground = mix(ground, ${vec3(LAND)}, own);
+    ground = mix(ground, uGlobeOwn, own);
     water = mix(water, ${vec3(SEA)}, own);
     vec3 c = mix(water, ground, land);
     c = mix(c, ${vec3(ICE)}, ice);
@@ -533,6 +534,8 @@ export class Globe {
     hole: Hole | null,
     haze: { scale: number; clouds?: unknown } | null,
     region: string | null = null,
+    /** The tone of the site's own ground seen whole, kept round it until the eye is well up: the Cape's canopy's green unless said. */
+    tone: THREE.Color = LAND,
   ) {
     this.site = site;
     this.renderer = renderer;
@@ -577,6 +580,7 @@ export class Globe {
       uGlobeHaze: { value: haze?.scale ?? 1400 },
       uGlobeAbove: { value: 0 },
       uGlobeLift: { value: 0 },
+      uGlobeOwn: { value: tone.clone() },
       uGlobeSurfaced: { value: 0 },
       uGlobePixel: { value: 0.0007 },
       ...regionUniforms('Near'),

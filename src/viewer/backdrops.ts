@@ -13,6 +13,7 @@ import type { Land } from './land';
 import { later } from './later';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 import { studio } from './studio';
+import { buildTyuratam } from './tyuratam';
 import { checkUnits } from './units';
 import { placeWeather } from './weathermap';
 
@@ -333,8 +334,30 @@ class DomeBackdrop implements Backdrop {
  */
 export type Occasion = Pick<SitedFlight, 'site' | 'launch'>;
 
-/** The Cape's ground is the same on any day: built once, whatever the instant. */
-let cape: ReturnType<typeof buildCape> | undefined;
+/**
+ * The ground of a place on the Earth (cape.ts, tyuratam.ts): its land and what stands and grows on it, which a ground
+ * setting puts under its sky. The same on any day: built once, whatever the instant.
+ */
+interface Place {
+  floor: THREE.Mesh;
+  scenery: THREE.Object3D[];
+  tick: (dt: number) => void;
+  simplify: (on: boolean) => void;
+  attend: (eye: THREE.Vector3) => boolean;
+  arrived: () => boolean;
+  view: (camera: THREE.Camera) => void;
+  groundAt: (x: number, z: number) => number;
+  plantsClear: (at: THREE.Vector3, within: number) => number;
+  plantsOut: (at: THREE.Vector3, margin: number) => number;
+  /** How far the air there lets the eye see at the ground, metres (the haze's density: air.ts). */
+  visibility: number;
+  /** How far from the pad there is something to walk to, and how far away the furthest thing placed is, metres (Setting). */
+  reach: number;
+  horizon: number;
+  /** The tone of its ground seen whole, which the globe keeps round the site until the eye is well up (globe.ts). */
+  tone?: THREE.Color;
+}
+const places = new Map<string, Place>();
 
 /** The sky turns 15 arcseconds a second. Under this many seconds of it nothing has moved a pixel, and the view is left alone. */
 const SKY_STEP = 4;
@@ -376,16 +399,32 @@ const apart = (a: number[], b: number[]): number =>
   a.length === b.length ? a.reduce((most, v, i) => Math.max(most, Math.abs(v - b[i]!) / Math.max(1, Math.abs(v))), 0) : Infinity;
 
 /**
- * Cape Canaveral's Missile Row from Launch Complex 5, at any hour. For Freedom 7 (14:34:13 UTC,
+ * Cape Canaveral's Missile Row from Launch Complex 5, at any hour: see `ground`. Visibility was at the Skid Strip's
+ * 16 km cap at 09:00 (NOAA ISD), so how far past it is not recorded; 80 km taken, clear air: estimated.
+ */
+const capeCanaveral = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
+  ground(renderer, when, 'cape-canaveral', () => ({
+    ...buildCape(renderer, GROUND_Y),
+    visibility: 80_000,
+    reach: 2000, // the beach is 1.4 to 1.8 km east of pad 5: walkable
+    horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
+  }));
+
+/** Site 1 at Tyuratam, on the steppe by the Syr Darya, at any hour: see `ground` and tyuratam.ts. */
+const tyuratam = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
+  ground(renderer, when, 'tyuratam', () => buildTyuratam(renderer, GROUND_Y));
+
+/**
+ * A place on the ground, at any hour, under its own sky. For Freedom 7 at the Cape (14:34:13 UTC,
  * 5 May 1961) the Sun comes out on 098.8 degrees true, 50.2 degrees up: in the pad's frame that
  * is behind the hatch side, so the capsule's hatch was in shade. The Moon was up too: a waning
  * gibbous 4.8 degrees above the west-south-west horizon, where the haze all but hides it.
  *
  * Directions, sizes and the Moon's phase are computed (heavens.ts). The light's colour and
  * strength, the sky's colours and the exposure follow the Sun's height (daysky.ts): a model
- * fitted by eye, whose mid-morning is the look this place was first tuned to.
+ * fitted by eye, whose mid-morning is the look the Cape was first tuned to.
  */
-function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
+function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name: string, build: () => Place): Setting {
   if (!when) throw new Error('a place on the ground needs a site and an instant: Settings.get(kind, flight)');
   const site = siteFrame(when.site);
   const h = new Heavens(site, true, renderer.getPixelRatio());
@@ -406,21 +445,23 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(uniforms, h, false, envGain)));
   // Below the horizon there is sunlit sand and concrete, not more sky: without it bare metal
   // reflects blue from every side and reads as frosted glass.
-  const ground = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
+  const below = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
   // and the Sun itself: a small bright patch, so a polished edge has something to catch
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
-  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), ground), patch);
-  cape ??= buildCape(renderer, GROUND_Y);
-  // the Earth past the Cape's ground, which hands over to it across its last kilometre and a half
-  const land = cape.floor.userData.land as Land;
-  cape.floor.updateMatrixWorld();
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), below), patch);
+  let here = places.get(name);
+  if (!here) places.set(name, (here = build()));
+  // the Earth past the place's own ground, which hands over to it across its last kilometre and a half
+  const land = here.floor.userData.land as Land;
+  here.floor.updateMatrixWorld();
   const globe = new Globe(
     renderer,
     site,
     when.site.seaLevel.value,
-    { frame: cape.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
+    { frame: here.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
     installedAir(),
     when.site.region?.name ?? null,
+    here.tone,
   );
   // (a development build says which lit materials have left too few texture units for lights: units.ts)
   if (import.meta.env.DEV) later(() => setTimeout(() => checkUnits(renderer), 4000));
@@ -430,8 +471,8 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
   // (by the edge of its cover maps, past which their last texels are smeared outward: Complex 34, the furthest built, is inside 9.5 km)
   const covered = land.uniforms.uFarSize!.value as number;
   land.meet(globe.beyond, covered - 1500, covered);
-  // the haze at sea level, thinning upward (air.ts): visibility was at the Skid Strip's 16 km cap at 09:00 (NOAA ISD), so how far past it is not recorded; 80 km taken, clear air: estimated
-  const fog = new THREE.FogExp2(0, densityFor(80_000));
+  // the haze at sea level, thinning upward (air.ts), as the place has it
+  const fog = new THREE.FogExp2(0, densityFor(here.visibility));
   // The air seen from above it (atmosphere.ts), with this haze. The Sun's light above the air is white (the scene's
   // white is the Sun's) and as strong as makes its light on the ground, through the air, as bright as the scene's own
   // at the hour that was tuned for (daysky.ts: a Sun 50 degrees up): so sunlit ground, cloud and sky stand in the
@@ -485,28 +526,28 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     sunIntensity: 0,
     // sky fill kept low and close to neutral: shadows should read as shade, not as blue paint
     fill: [0xb9c6d6, 0x7a715c, 0.28],
-    floor: cape.floor,
+    floor: here.floor,
     maxPolar: Math.PI / 2 - 0.015,
     exposure: 0.8,
     fog,
-    scenery: cape.scenery,
-    reach: 2000, // the beach is 1.4 to 1.8 km east of pad 5: walkable
-    horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
-    tick: cape.tick,
-    simplify: cape.simplify,
+    scenery: here.scenery,
+    reach: here.reach,
+    horizon: here.horizon,
+    tick: here.tick,
+    simplify: here.simplify,
     globe,
     attend: (eye) => {
       // the sky's up is the plumb line at the eye
       const was = uniforms.uUp.value.clone();
       const leans = globe.up(eye, uniforms.uUp.value).angleTo(was) > 1e-5;
       const moved = globe.attend(eye) || leans;
-      return cape!.attend(eye) || moved;
+      return here.attend(eye) || moved;
     },
-    arrived: cape.arrived,
-    groundAt: cape.groundAt,
-    plantsClear: cape.plantsClear,
-    plantsOut: cape.plantsOut,
-    view: cape.view,
+    arrived: here.arrived,
+    groundAt: here.groundAt,
+    plantsClear: here.plantsClear,
+    plantsOut: here.plantsOut,
+    view: here.view,
   };
 
   /** `fade`: milliseconds to fade the bake in over; 0 puts it in at once. */
@@ -566,7 +607,8 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     colour(uniforms.uGlow.value, thin(light.glow, along));
     colour(uniforms.uCloudLight.value, light.cloud);
     // (the high cloud is no longer painted on the sky: it is a sheet at its own height, drawn with the clouds: clouds.ts)
-    uniforms.uWisps.value = cumulus ? 0 : 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
+    // (and a clear sky is clear: a place with no clouds in its air has none painted either)
+    uniforms.uWisps.value = cumulus || !installedAir()?.clouds ? 0 : 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
     // the Sun's disc: from the ground as the day has it; from above the air, as it is there (white, and still up
     // when it has set on the ground below)
     const above = sunFrom(height, h.sunElevation);
@@ -598,7 +640,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     envGain.value = day;
     // the ground the reflections see is lit by that Sun and that sky
     const lit = (0.75 * light.light.intensity * Math.max(setting.sunDir.y, 0)) / (3.9 * Math.sin(50 * DEG)) + 0.25 * light.ambient;
-    ground.color.setRGB((0.42 * lit + 0.0005) * day, (0.39 * lit + 0.0008) * day, (0.33 * lit + 0.0018) * day);
+    below.color.setRGB((0.42 * lit + 0.0005) * day, (0.39 * lit + 0.0008) * day, (0.33 * lit + 0.0018) * day);
     colour(patch.material.color, [30 * light.sun[0] * day, 27 * light.sun[1] * day, 22 * light.sun[2] * day]);
     patch.position.copy(h.sunDir).multiplyScalar(46);
     // (and how much air is over the eye: it thins the sky the reflections see, above. Left out, a bake made from high up,
@@ -677,6 +719,7 @@ const SETTINGS: Record<BackdropKind, (renderer: THREE.WebGLRenderer, when?: Occa
   orbit,
   studio: (renderer) => studio(renderer),
   'cape-canaveral': capeCanaveral,
+  tyuratam,
 };
 
 /**

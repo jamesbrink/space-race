@@ -227,7 +227,7 @@ export interface Part {
  * What is drawn behind a model: Earth from orbit, a dark studio, or a launch site on the ground.
  * A new site is a new name here and a new entry in `Settings` (viewer/backdrops.ts).
  */
-export type BackdropKind = 'orbit' | 'studio' | 'cape-canaveral';
+export type BackdropKind = 'orbit' | 'studio' | 'cape-canaveral' | 'tyuratam';
 
 /**
  * A camera framing: look at height `centreY` from far enough back to fit `span` metres.
