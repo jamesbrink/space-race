@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import math
 
+import sitelib
 import vehicles as cars
 from srlib import FT, IN
 
@@ -80,7 +81,9 @@ def build(parts: Parts) -> None:
         f"A 1959 Chevrolet Biscayne sedan standing for a white car at the hut {seen}.",
     ]
     for car, text in zip((c for c, *_ in fleet), about):
-        car.about = text + " These are July's cars: no photograph of 5 May shows the parking."
+        # (a state of the place from July on is the photograph's own month; before it, July's cars stand in)
+        july = sitelib.AS_OF is not None and sitelib.AS_OF >= "1961-07"
+        car.about = text if july else text + " These are July's cars: no photograph of 5 May shows the parking."
     total = 0
     for k, (car, at, z, heading, by_nose) in enumerate(fleet, 1):
         built = park(lot, f"Car_{k:02d}", car, at, z, heading, by_nose=by_nose)

@@ -1,7 +1,8 @@
-"""Launch Complex 5, Cape Canaveral, as it stood for Mercury-Redstone 3 at about T-55 minutes:
-service structure rolled back to the edge of the pad with its platforms open, the cherry picker's
-cab at the capsule hatch. Built by a flight's model/pad.py; see ./lc-5.md for every dimension, its
-confidence and source, and the moving parts' pivots.
+"""Launch Complex 5, Cape Canaveral, as it stood for a Mercury-Redstone on the date its flight's
+model/pad.py names (5 May 1961 for MR-3, 21 July 1961 for MR-4): built in the service position, the
+structure round the vehicle with its platforms closed and the cherry picker's cab at the capsule's
+hatch, every moving part its own node. See ./lc-5.md for every dimension, its confidence and source,
+the moving parts' pivots, and what differed between the two dates ("What stood when").
 
 The pieces are in ./lc5/, one module each; each is one or more top-level nodes in pad.glb:
   Hardstand        hardstand.py         slabs, painted circle, four rails, scale plate, trench, track
@@ -10,7 +11,7 @@ The pieces are in ./lc5/, one module each; each is one or more top-level nodes i
   BoosterMast      masts.py             cable mast No. 1, the booster's (origin on its foot's hinge)
   ServiceStructure service_structure.py the Noble A-frame structure, its platforms in halves, its wheels
   CherryPicker     cherry_picker.py     the mobile aerial tower: truck, outriggers, mast, jib, cab
-  GroundEquipment, CameraTowers, Floodlights   ground_equipment.py
+  GroundEquipment, CameraTowers, Floodlights   ground_equipment.py (from July 1961: the transfer van and its tractor)
 
 Frame: origin at the launcher's centre on the pad, feet in the sources' units. +X is the side the
 hatch faces (WNW); +Y runs along the rails toward the structure's parking places (SSW).

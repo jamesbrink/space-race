@@ -19,7 +19,7 @@ from mathutils import Matrix
 
 from srlib import FT
 
-from .site import LAUNCHER_TOP, MAST_NOTCH, SHIELD_Z, UMBILICAL, P, Parts, box, fine, obox
+from .site import LAUNCHER_TOP, MAST_NOTCH, SHIELD_Z, P, Parts, box, fine, obox, receptacle
 
 HINGE_Z = 1.0  # the pin, above the hardstand
 # No. 2 stands on the umbilical's side of the vehicle, between two fins, in the split of the
@@ -58,7 +58,7 @@ def build(parts: Parts) -> None:
     top = CAPSULE_TOP
     tube(m, x, y, top)
     box(head, (x - 0.5, y - 0.5, top), (x + 0.5, y + 0.5, top + 1.3))  # the release head
-    ux, uy, uz = UMBILICAL
+    ux, uy, uz = receptacle()  # of the capsule that stood there on the date being built
 
     def round_cone(a: float, station: float, off: float) -> tuple[float, float, float]:
         "A point `off` ft out from the capsule's skin, `a` degrees round from +X, at a station in inches."

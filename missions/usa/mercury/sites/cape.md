@@ -146,6 +146,27 @@ Frame: origin on pad 17B (its launch deck's seaward edge); +Y to pad 17A, 024° 
 
 Left out: the pond, the small camera towers and the tank trailers seen in January 1961, and any Thor.
 
+## The neighbours on 21 July 1961
+
+Mercury-Redstone 4 flew eleven weeks after the day this model is dated for. **It is shown the same
+model**, and this is why. The viewer has one Cape (`src/viewer/cape1961.ts`: `NEIGHBOURS`, and the far
+stand-ins), not one a flight; and nothing found says that anything permanent on these complexes
+was built or taken down between 5 May and 21 July. What could have differed is where each movable
+tower stood and what vehicle stood on each pad, and for 21 July, as for 5 May, no dated source read
+says. So May's places are kept, **assumed unchanged (estimated)**:
+
+| Complex | Round 21 July 1961 | What it would change | Confidence |
+|---|---|---|---|
+| 26 | 26B flew its last Juno II on 24 May; 26A flew a Jupiter on 5 August. A photograph of 7 July taken up the track from pad 5 (FHSU Project Mercury item 407, LOD 61-6218) shows, through the legs of pad 6's gantry, an A-frame gantry on Complex 26's track with a white vehicle in it | the gantry may have stood at 26A that month, round the Jupiter, and not at 26B. Which pad it is at in the photograph was not measured; where it stood on the 21st is not known | launches documented (Astronautix, *Cape Canaveral LC26A*, *LC26B*); the rest not established |
+| 17 | 17A flew Thor-Delta on 12 July (Tiros 3) and 16 August (Explorer 12); 17B flew Thor-Able-Star on 29 June | each tower at its pad, as modelled, is as likely for July as for May | launches documented (Astronautix, *LC17A*, *LC17B*); the towers' places estimated |
+| 30, 25, 29 | Pershing and Polaris firings went on through the summer; not looked up by date | nothing known | estimated |
+| 12 (a far stand-in) | drawn without a service tower; Ranger 1 left it on an Atlas-Agena on 23 August, so by late July it very probably had one again | a tower 5.5 km away | the launch documented (Astronautix, *LC12*); the tower not established, and not drawn |
+| 34 (a far stand-in) | dedicated 5 June; its first Saturn came in August | as drawn | estimated |
+
+A dated photograph of Complex 26 from the third week of July 1961 would settle the one that can be
+seen from pad 5. Until then a July state of this model would be May's under another name, and none
+is built.
+
 ## Ways on foot
 
 The track runs from pad 5 through pad 6 to Complex 26 (documented: *A Noble Endeavor*). To the others a

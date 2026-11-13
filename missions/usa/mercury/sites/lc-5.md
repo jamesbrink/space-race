@@ -1,7 +1,10 @@
 # Launch Complex 5, Cape Canaveral
 
 The pad every Mercury-Redstone flew from. Model: [lc_5.py](lc_5.py), which puts together one module
-per piece in [lc5/](lc5/); built for a flight by its `model/pad.py`. NASA's report calls the complex
+per piece in [lc5/](lc5/); built for a flight by its `model/pad.py`, which names the day: 5 May 1961 for
+Mercury-Redstone 3, 21 July 1961 for Mercury-Redstone 4. What differed between the two is dated in the
+modules and listed under "What stood when"; the flights' data for the pad's parts is one module,
+[lc-5.parts.ts](lc-5.parts.ts), which each flight gives its own morning. NASA's report calls the complex
 "VLF 56" (Vertical Launch Facility 5/6): pads 5 and 6 shared one blockhouse, and one track that
 also runs on to Complex 26.
 
@@ -87,6 +90,57 @@ behind the vehicle (+Y) and its platforms reach forward past it. The hatch faces
 the rails, so it opens into the white room's +X half (`ServiceStructure_Platform3_Right`). The
 cherry picker came in from the same side once the structure had gone.
 
+## Where things stood, and when (MR-4, 21 July 1961)
+
+The same slider, laid out on the same stops, for the second morning: `MORNING` in Liberty Bell 7's
+`flight.ts`. **Only two times of day are recorded**: the pilot in the spacecraft at 03:58 and the
+liftoff at 07:20:36 (*Results of the Second U.S. Manned Suborbital Space Flight*, MR-4 Results below,
+pp. 6, 31 and 50). The rest is the count (TM X-53107, 7.2.3.2, which is MR-4's own countdown) put on
+the clock by the day's three holds, which are documented: 30 minutes at T−45, 9 at T−30, 41 at T−15,
+and none after. So an event before T−45 was 80 minutes earlier than the count reads, one before T−30
+50 minutes, one before T−15 41 minutes: every such time below is `derived`. The count had been
+resumed from T−180 at 03:00, after the planned hour's hold for the weather, and liquid oxygen went
+aboard from then (T−180 to T−145), not from T−305 as on 5 May.
+
+| Time (EST) | Count | Event | Slider | Confidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| 06:00, 20 July | T−640 | The first half of the split count begins | before it | documented | MR-4 Results p. 6 |
+| about 23:45 | T−316 | The structure to the edge of the pad for the RF checks; back round the vehicle at T−265 (about 00:35) | before it: not shown | derived; a night photograph dated 21 July shows the vehicle standing clear of the parted structure | TM X-53107 pp. 7-21 to 7-23; FHSU item 499 (61-7112) |
+| about 01:40 | T−200 | Platform 1 opened; the LOX trailers brought in | before it: level 1 is parted from the start | derived | TM X-53107 p. 7-25 |
+| 02:00 to 03:00 | T−180 | The planned hour's hold for a last look at the weather | before it | documented (the hold, and 03:00) | MR-4 Results p. 6; TM X-53107 8.3.2 |
+| 03:00 to 03:35 | T−180 to T−145 | Liquid oxygen loaded; the cherry picker stands folded on its truck beside the pad | before it | derived; the tower's pose documented | TM X-53107 p. 7-25; FHSU items 443, 445 (LOD 61-6450, 61-6449, 21 July) |
+| 03:45 | T−135 | The LOX trailers removed | before it | derived | TM X-53107 p. 7-26 |
+| 03:55 | | Grissom arrives by the transfer van and goes up by the lift | before it | documented | MR-4 Results pp. 31 and 50; NASA 61-MR4-83 |
+| 03:58 | T−122 | In the spacecraft, from the white room | 0 | documented | MR-4 Results pp. 6 and 50 |
+| 04:30 | T−90 | Capsule hatch installed: seventy bolts | 0 | derived | TM X-53107 p. 7-27 |
+| 04:35 | T−85 | Platform 2 opens; the emergency shower is disconnected and stowed for launch | 0 to 0.03 (the shower goes on to 0.06) | derived (when); estimated (where the shower went) | TM X-53107 p. 7-27 |
+| 04:40 | T−80 | "Move spare parts trailer"; "Move transfer van to launch position"; platform 1 verified open | 0.03 to 0.125 | derived (when); estimated (how, and where to) | TM X-53107 p. 7-28 |
+| 04:55 | T−65 | Platform 4 opens | 0.07 to 0.10 | derived | the same |
+| 05:00 | T−60 | Platform 3, the white room, opens | 0.10 to 0.128 | derived | the same |
+| 05:05 | T−55 | The structure starts for the edge of the pad | 0.13 | derived. No report gives the time. A photograph taken about sunrise (05:38), the searchlights still burning, shows it gone and the cab at the capsule | TM X-53107 p. 7-29; FHSU item 333 (LOD 61-6452) |
+| 05:10 | | The structure stands at the edge of the pad | 0.32 | estimated | |
+| 05:11 to 05:14:30 | | The cherry picker is raised from its truck and its cab brought to the hatch | 0.33 to 0.42 | estimated (the minutes); the count has it positioned once the structure had gone | TM X-53107 p. 7-29 |
+| 05:15:36 to 05:45:36 | T−45 | Held 30 minutes: a hatch bolt is misaligned, and is left out | 0.43, where nothing moves | documented (the hold); derived (the time of day) | MR-4 Results p. 6; *This New Ocean* p. 370 |
+| 06:00:36 to 06:09:36 | T−30 | Held 9 minutes while the searchlights are put out | 0.45 | documented; derived | MR-4 Results pp. 6 and 50; TM X-53107 8.3.2 |
+| 06:24:36 to 07:05:36 | T−15 | Held 41 minutes for cloud | 0.47 | documented; derived | the same |
+| 07:11:51 | T−8:45 | The structure driven by remote control to its launch position | 0.48 | derived | TM X-53107 p. 7-32 |
+| 07:18:06 | T−2:30 | The cab lowered "away and down" | 0.58 | derived | TM X-53107 p. 7-33 |
+| 07:20:01 | T−35 s | The capsule umbilical pulled, the periscope drawn in; the mast down two seconds later | 0.72 to 0.755 | documented | MR-4 Results p. 6 |
+| 07:20:22 | ≈T−14 s | "Boom drop" | 0.76 to 0.795 | derived | TM X-53107 p. 7-33 |
+| 07:20:36 | T−0 | Liftoff | 0.8 | documented | MR-4 Results Table 5-II (p. 31) |
+| 07:30:36 to 07:34:06 | | The cherry picker folded down and driven off | 0.82 to 1 | estimated: not recorded | |
+
+*This New Ocean* has "a gantry technician" finding the bolt at T−45, which by the count is ten minutes
+after the structure left. Either the phrase is loose or the structure left late; nothing read settles
+it, and the model follows the count. The photograph at sunrise (FHSU item 333) agrees with the count
+and does not prove it: it shows the structure gone by then, which a rollback as late as 05:35 would
+also give.
+
+How the pilot got in is as on 5 May: the transfer van to the foot of the structure, the lift, the
+white room on level 3. NASA's photograph 61-MR4-83 has him walking from the van past the emergency
+shower toward the structure with his ventilator in his hand; `PILOT` in the flight's `flight.ts` is
+that place, for the figure that is not yet built.
+
 ## The pieces
 
 | Top-level node | Module | Contains |
@@ -97,7 +151,7 @@ cherry picker came in from the same side once the structure had gone.
 | `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
 | `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, the lift and its shaft, a railed way from the lift to every level with a ladder well in it, hammerhead crane with red obstruction lamps at its ends; work lamps under level 1 and a room lamp in each enclosed level (see "Lights at night"); child nodes below |
 | `CherryPicker` | cherry_picker.py | International Harvester R-series truck: glazed cab with a bench, pedals, handbrake, gear lever, dash and dials, the driver's door and steering wheel as nodes of their own; on the bed the hydraulic tank, gas bottles and the valve bank; at the tail the control station with its four levers (`CherryPicker_Controls`); child nodes below |
-| `GroundEquipment` | ground_equipment.py | behind the launcher, two open-topped blast screens of white panels (`GroundEquipment_TankScreen`, `…_LoxScreen`: posts, capping rail, foot plates, raking struts behind; the taller with a grey switch box and three floodlights on a post), the orange tank on its two-wheeled cart behind the lower (`…_TankCart`: saddles, straps, filler, relief valve, outlet valve and gauge, hose, drawbar), the LOX topping trailer behind the taller (`…_LoxTrailer`: a white tank with dished heads on a flatbed semi-trailer, tandem, landing legs, vent stack, manway, placards, the fill and topping lines with their valves and coupling at the rear, a gauge board, the hose coiled on the deck), and the chevron drum (`…_ChevronDrum`); four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the M275 tractor coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers |
+| `GroundEquipment` | ground_equipment.py | behind the launcher, two open-topped blast screens of white panels (`GroundEquipment_TankScreen`, `…_LoxScreen`: posts, capping rail, foot plates, raking struts behind; the taller with a grey switch box and three floodlights on a post), the orange tank on its two-wheeled cart behind the lower (`…_TankCart`: saddles, straps, filler, relief valve, outlet valve and gauge, hose, drawbar), the LOX topping trailer behind the taller (`…_LoxTrailer`: a white tank with dished heads on a flatbed semi-trailer, tandem, landing legs, vent stack, manway, placards, the fill and topping lines with their valves and coupling at the rear, a gauge board, the hose coiled on the deck), and the chevron drum (`…_ChevronDrum`); four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the M275 tractor coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers. From July: the transfer van (`GroundEquipment_TransferVan`: the white van trailer lettered NASA TV No 1, its door steps, its bogie) and its white M275 tractor (`GroundEquipment_VanTractor`, in `GroundEquipment_VanBay`); the shower beside the structure's base; no packing case |
 | `CameraTowers` | ground_equipment.py | two lattice camera towers, a ladder up each |
 | `Floodlights` | ground_equipment.py | six timber poles in the grass at the pad's edge, a crossarm bolted through and three lamps each; close to, the ground wire stapled down to its rod, a number tag at eye height, the conduit and switch box |
 
@@ -129,6 +183,12 @@ in the viewer is the Blender axis mapped the same way. Angles are right-handed a
 | `GroundEquipment_Trailer` (wheels `…_Trailer_Wheel_1..4` on their hubs, axle along X) | `GroundEquipment` | the middle of its bogie on the ground (34, 92.45, 0); kingpin 21.45 ft (6.538 m) ahead | drives behind the tractor: its bogie's route is the tractor's worked through as a trailer follows one (always heading for the kingpin: a tractrix), so the two stay coupled | the same | the same | the same. Coupling checked in the browser at 10 points along the slider: kingpin to fifth wheel 1.9 cm at worst, both ending square |
 | `GroundEquipment_Hut1`, `_Hut2` | `GroundEquipment` | their middles | slide out along +X (viewer +X) on their skids | 72 m | 0.03 to 0.11 and 0.06 to 0.14 (06:07 to 06:37: the second is still going as the structure starts) | estimated: nothing records how the huts were moved, or that they were |
 | `GroundEquipment_Tow1`, `_Tow2` (to the vehicle contract) | `GroundEquipment` | under the rear axle, (104.5, 29.5, 0) and (104.5, 44.5, 0), facing +X | drives straight ahead with its hut on a chain behind it | 72 m | with its hut | estimated: a half-ton pickup is the least that could drag a hut; its make is from no photograph |
+| `GroundEquipment_Shower` (21 July) | `GroundEquipment` | its middle, beside the structure's base at (18, −3.5) | slides along −Y to the pad's north edge, then along it (−X) to where May's photographs have it stowed, (−58, −91) | 26.67 m, then 23.17 m | 0 to 0.03 and 0.03 to 0.06 (T−85, 04:35) | that it was disconnected and stowed for launch at T−85: documented (TM X-53107 p. 7-27); where to: estimated |
+| `GroundEquipment_TransferVan` (wheels `…_TransferVan_Wheel_1..4`, axle along X), from July | `GroundEquipment` | the middle of its bogie on the ground, (24, 18.55, 0); kingpin 18.45 ft (5.624 m) ahead | drives straight ahead (+Y, the way it faces) along the track's hatch side | 82.6 m | 0.04 to 0.125 (T−80, 04:40) | that it was moved to its launch position at T−80: documented (TM X-53107 p. 7-28); where that was, and the route: estimated |
+| `GroundEquipment_VanTractor` (to the vehicle contract), in `GroundEquipment_VanBay` at (24, 36.67, 0) turned +90° about Z | `GroundEquipment_VanBay` | the ground under the middle of its tandem, 4 in behind the kingpin | drives straight ahead in step with the van | 82.6 m | the same | the same |
+| `GroundEquipment_TransferVanSteps` | `GroundEquipment_TransferVan` | the top of the steps at the rear door's sill, (24, 13.9, 4.35) | turns about Blender +X | −95°: folds up before the van moves | 0.03 to 0.038 | estimated |
+| `CherryPicker_Mast`, `_Jib`, `_Cab` (21 July) | as above | as above | held from before the slider in the stow's pose (mast +65.59°, jib −70.11°, cab +4.52°, Blender), then raised to the hatch | the stow's angles, back | 0.33 to 0.42 | that it waited folded on its truck with the cab at the tail: documented (FHSU items 443 and 445, 21 July; 544, undated); the angles are the model's stow |
+| `ServiceStructure_Platform1_Left`, `_Right` (21 July) | as above | as above | parted from before the slider | 4.5 ft | T−200 | documented (TM X-53107 pp. 7-25, 7-28) |
 | `GroundEquipment_Barricade`, `GroundEquipment_Searchlight1..3` | `GroundEquipment` | their middles; a searchlight's at its yoke's foot | none | — | — | their own nodes so that they can be taken away. The searchlights stay: see "Where things stood" and "Lights at night" |
 
 Notes:
@@ -177,6 +237,8 @@ Notes:
 | Pad huts | 10.5 by 11 ft and 9 by 9 ft, 9 ft tall | estimated | FHSU F16_017 (July 1961): two huts at the hatch side's edge |
 | Tractor | an Army 2-1/2-ton 6x6 truck tractor (M275, `vehicles.m275_tractor("olive")`): fifth wheel's plate 52 in up, kingpin 4 in ahead of the middle of the tandem; the trailer's front floor steps up over it to 4.55 ft | see "What towed the trailers: the record" for which figures are documented | FHSU 544: a dark one of the family coupled to SP No 1; that it towed SP-1 off that morning, and its colour, are estimated |
 | Pickups that drag the huts | 1957 to 1960 Ford F-100, white, no utility body: wheelbase 110 in (2.794 m), tyre radius 0.361 m; a chain to each hut's skids | wheelbase documented (see "The vehicles"); the rest estimated | no photograph shows how the huts were moved |
+| Transfer van, NASA TV No 1 (from July) | a van semi-trailer 26 by 8 ft, its floor 4.75 ft up and its roof 12.85 ft; on its right side a window 2 by 2.8 ft near the rear, NASA and TV No 1 forward of it, a louvred panel 3.2 by 3.6 ft forward of that; a door at the rear with six steps; coupled to a white M275 | that it was a white van trailer so lettered behind a white G742 tractor, the window, the lettering and the louvres, and that it parked beside the structure's base on the hatch side with its rear toward the launcher: documented (photographs). Every size estimated, scaled against the tractor (whose dimensions are documented: "What towed the trailers"); that it parked there on the 21st is estimated from the 6th and the 19th | FHSU items 263 (LOD 61-6234, 6 July 1961), 407 (LOD 61-6218, 7 July), 540 (LOD 61-6395, 19 July) |
+| Emergency shower's place through a count | beside the structure's base on the hatch side, by the booster's tail: (18, −3.5) ft | that it stood there, connected: documented; the place read off oblique photographs, to a few feet: estimated | FHSU items 263, 540, 449 (NASA 61-MR4-83, 21 July); TM X-53107 pp. 7-23 and 7-27: "Reconnect safety shower on west side" |
 | Searchlights | three 60-inch drums on yokes on four-wheeled trailers, 8 by 4.8 ft beds, drawn olive; lens 5 ft across; 800 million candela in a beam 1.25° wide (lens extras `candela`, `spread`) | that searchlights and their crews worked the pad at night: documented (TM X-53107 p. 7-21 and 8.3.2; *This New Ocean*); the kind, the number, the places and the beam: estimated. The candela and beam are a figure for the type set down from memory and checked against no source | S61-03158 (MR-3 lit hard from the blockhouse side); FHSU F19_001 (MR-4: two sources at the pad's far edge); F19_008 (a large drum on a four-wheeled trailer) |
 | Cherry picker's control station | a grey box at the tail, 2.2 ft wide, on the driver's side; four levers 0.5 ft long, 0.4 ft apart, with a legend plate under each | estimated (that the controls were at the rear: documented, TM X-53107 7.3.3.1) | not in any photograph read |
 | Office on the structure's base | 14.8 by 13.5 ft, 8.6 ft tall; windows 3.2 ft square and 6 by 3.2 ft; a desk with chair and telephone, three lockers, a filing cabinet, an intercom panel by the door, a clock | estimated | S61-03158 shows a lit room between the legs; its windows are placed by eye; its furniture is of the period's kind (tools/blender/interiors.py) |
@@ -218,7 +280,14 @@ its exposure is one value at every hour (rendering.md, "Indoors the eye adapts")
 | Obstruction lamps | four red at the corners of the crane's walkway, 135 ft up; two at the ends of pad 6's gantry top | estimated: the usual practice for a structure that tall; no photograph shows them or their colour | |
 
 The lights are on whenever the Sun is down, whatever the hour: nothing switches the searchlights
-off at a time in the count (for MR-3 it is not recorded; MR-4's were switched off at T−30).
+off at a time in the count. For MR-3 it is not recorded. MR-4's were put out in the hold at T−30,
+which began at 06:00:36 (derived), 22 minutes after sunrise with the Sun 3.8° up (`src/world`), when
+the viewer's lamps have gone out with the daylight anyway: "By this time, it was daylight; and the
+lights ... were no longer needed" (MR-4 Results p. 50). So the record and the viewer agree without a
+switch. July's photographs show the searchlights as pairs of lamps close together (FHSU items 333,
+451, 479, 499: two points of light across the pad from the hatch side, and two toward the blockhouse),
+which would be two units side by side at each place where the model has one; their number is not
+established and the model's three are kept.
 
 ## The rest of the complex
 
@@ -488,22 +557,27 @@ could be 20 to 40 ft from where it really stood, and nothing in the record would
 A builder asks `sitelib.stood(thing, since=, until=, confidence=, source=)` before building anything
 that was not always there; a state script (`lc5/model/<date>.py`) or a flight's pad script names
 its date, and what did not stand then is left out. Each build prints what it asked and what it
-built. Mercury-Redstone 4 (21 July 1961) needs a `1961-07.py` naming its date, and whatever is then
-known to have changed.
+built. There are two states: 5 May 1961 (`1961-05.py`, and MR-3's `pad.py`) and 21 July 1961
+(`1961-07.py`, and MR-4's `pad.py`).
 
 | Thing | From | Until | Confidence | Source |
 | --- | --- | --- | --- | --- |
 | Blockhouse and ready rooms | 1955 | standing today | documented | NHL nomination: built 1955 |
 | Pad 6 | 1955 | the slab is there today | documented | the museum: first launch 20 April 1955, last 27 June 1961 |
-| Pad 6's square-topped gantry | 1959 | not known | estimated | on pad 6 in 1959 (*A Noble Endeavor* p. 10), on 8 March 1961 (the museum) and in July 1961 (F19_008); where on the track it stood on a given day is not recorded |
+| Pad 6's square-topped gantry | 1959 | not known; there on 21 July 1961 | estimated for May; documented for 21 July (that it stood at pad 6), estimated (where on the pad) | on pad 6 in 1959 (*A Noble Endeavor* p. 10), on 8 March 1961 (the museum), on 7 July (F19_008) and behind MR-4 as it lifts off (FHSU item 331, LOD 61-6634, 21 July); where on the track it stood on a given day is not recorded |
 | Cable racks and scaffold stair north of pad 5 | not known | not known | estimated | seen July 1961 (F16_017, F19_008): assumed for May |
 | Cars at the blockhouse | not known | not known | estimated | July's cars in July's places (F16_016): assumed for May, which is certainly wrong car for car |
 | Mobile aerial tower (cherry picker) | 24 October 1960 | not known | documented | SP-4001 |
 | White room on level 3 | February 1961 | not known | documented | TM X-53107 7.5.1.2: built February to May 1961. Before it, level 3 was an open platform, which is not built |
-| Emergency shower on its cart | 2 May 1961 | not known | documented | KSC-61-4457; not looked for in MR-4's photographs |
+| Emergency shower on its cart | 2 May 1961 | not known; there on 21 July 1961 | documented | KSC-61-4457; FHSU items 263, 369, 540, 449 (6, 7, 19 and 21 July) |
+| …beside the structure's base through a count, until T−85 | July 1961 (seen 6, 19 and 21 July) | not known | documented | the same; TM X-53107 pp. 7-23, 7-27. For May only its stowed place at the pad's edge is photographed, so May's pad has it there from the start |
+| Packing case beside the shower | May 1961 | May 1961 | documented (that it stood there in May); estimated (that it had gone) | GPN-2000-001006; nothing stands beside the shower in FHSU items 369, 540 or 449 |
+| Transfer van NASA TV No 1 beside the structure's base | July 1961 (seen 6 and 19 July) | not known | documented | FHSU items 263, 540. A van brought Shepard too (04:35 on 5 May): where it parked then is not recorded, and May's pad has none |
+| Capsule No. 7 on the booster (umbilical receptacle at station 31.2) | not known | 5 May 1961 | documented | MR-3 Postlaunch Report |
+| Capsule No. 11 on the booster (umbilical receptacle at station 32.5) | 30 June 1961 | 21 July 1961 | documented | FHSU item 314 (LOD 61-6091, 30 June: "Capsule checkout on third level, Pad 5 (Caps #11)"); MR-4 Results p. 5: 21 days on the pad |
 | Blast screens, the orange tank, the long white tank on its trailer, the chevron drum | May 1961 (seen 5 May) | not known; still there in July 1961 | documented | S61-02407, S61-01927, S61-02408; S63-02651 |
 | Sandbags beyond the slab's edge | May 1961 (seen 5 May) | not known | documented | S61-02407 |
-| Trailer NASA SP-No 1 | May 1961 | not known | documented | S61-03158; a white NASA trailer stands beside the structure in July too (F16_017) |
+| Trailer NASA SP-No 1 | May 1961 | not known | documented | S61-03158; a white NASA trailer stands beside the structure in July too (F16_017; behind the transfer van's tractor in FHSU item 263, 6 July) |
 | Two huts at the pad's hatch-side edge | not known | not known | estimated | seen July 1961 (F16_017): assumed for May |
 | Searchlights round pad 5 | May 1961 | not known | estimated | that searchlights worked the pad at night: TM X-53107 p. 7-21 (MR-4's count), 8.3.2; MR-3's night photograph S61-03158 shows the pad lit hard from the blockhouse side |
 | The M275 tractor at the trailer, the pickups at the huts | not known | not known | estimated | the tractor's kind is photographed coupled to SP No 1 (FHSU 544, July 1961; see "What towed the trailers"); that it stood there in May, and the pickups, are not |
@@ -513,9 +587,51 @@ launcher, the masts, the service structure, the track, the road, the cable trenc
 outbuildings, the pole line. Also seen only in July and assumed for May, without their own entry:
 the roof's telemetry helix (F16_015), the striped barricade, the floodlights' timber poles.
 
-Known to differ for MR-4 and not yet built: pad 6 had flown its last Redstone (27 June), so its
-gantry need not be at the pad; the transfer van and a second white trailer stood on pad 5
-(F19_008, F16_017).
+### 5 May and 21 July 1961
+
+What the July state builds differently, and what it only says differently. Everything else in both
+models is built the same for both dates; where that rests on July's photographs it was assumed for
+May, and where it rests on May's it is **assumed unchanged for July** (estimated): the hardstand, the
+launcher, the two cable masts, the service structure, the blast screens and their tanks (seen again
+at MR-4's liftoff: S63-02651, FHSU items 331 and 339), the camera towers, the tripods, the trailer
+SP-No 1, the three searchlights' places, the track, road, trenches, blockhouse and outbuildings.
+
+| Thing | 5 May | 21 July | Confidence | Source |
+| --- | --- | --- | --- | --- |
+| Capsule's umbilical | ends at No. 7's receptacle, station 31.2 | ends at No. 11's, station 32.5: 33 mm further up the cone. Tested in Blender against MR-4's vehicle with the periscope's door shut and open: no mesh of the pad crosses one of the vehicle, and the umbilical's end is 26 mm from the receptacle | derived, from two estimated stations | the two capsules' spacecraft.md |
+| White room and the cab's place at the hatch | built for a hatch on +X | the same, unchanged: both capsules now stand with the hatch on +X (their spacecraft.md), so the 45° the flight's README once asked for is not there to build | derived | the vehicles' scripts (`mercury_capsule.stand`) |
+| Emergency shower | at the pad's north edge from the start | beside the structure's base until T−85, then to the north edge | documented (its place in July, and T−85); estimated (where it was stowed) | above |
+| Packing case | beside the shower | not built | estimated | above |
+| Transfer van and its tractor | not built: its place is not recorded | beside the structure's base; moved at T−80 | documented (6 and 19 July); estimated (the 21st) | above |
+| Cherry picker while the structure stands round the vehicle | mast up, the cab swung clear (estimated) | folded on its truck, the cab at its tail | documented | FHSU items 443, 445 (21 July), 544 (July, its date not on the print) |
+| Level 1's platform as the pilot goes aboard | closed; first to part on the slider | already parted (T−200) | documented for MR-4's count; the same count would have had it open on 5 May, which May's slider does not show | TM X-53107 pp. 7-25, 7-28 |
+| When the trailer SP-No 1 leaves | while the platforms open (estimated) | at T−80 with the transfer van: "Move spare parts trailer", which SP is taken to stand for | documented (that a spare parts trailer moved at T−80); estimated (that SP-No 1 is it) | TM X-53107 p. 7-28 |
+| Searchlights | on through the night; when put out not recorded | put out in the hold at T−30, 06:00, in daylight | documented | MR-4 Results pp. 6, 50 |
+| Pad 6's gantry, the cable racks, the scaffold stair, the cars | built from July's photographs, assumed for May | the same things, told as seen in July; the gantry documented at pad 6 on the day | as "What stood when" | F16_015 to F16_017, F19_008; FHSU item 331 |
+
+`1961-07.glb` therefore holds the same geometry as `1961-05.glb` (its levels of detail change at the
+thresholds measured for May's, copied to `1961-07.lod.json`); it differs in what its things say of
+themselves when pointed at. It is a state of its own so that the next thing learned of July has
+somewhere to go.
+
+Seen in July's photographs and not built, for either date: the tail heater and its duct at the
+booster's tail through the night (FHSU items 447, 451, 497; brought in at T−200, removed at T−45);
+the LOX trailers proper, a long white tank on a semi-trailer behind a dark tractor (item 475; removed
+at T−135, before the slider begins); the canvas weather cover round the booster's tail and the
+enclosure put round the escape tower on 20 July (items 499, 460); the M-113 rescue carrier (item 369,
+7 July: lettered FB-USAIS X1273); a 1961 Ford sedan and a NASA pickup on the pad (items 462, 468);
+a small caravan at the pad's west edge (item 333); netting hung on the cherry picker's cab (items
+333, 443, 445); a scaffold tower with floodlights at the pad's edge (items 466, 475, 544), which may
+be the scaffold stair of the place's `Yard` seen from the pad.
+
+**The two cable masts are not where July's photographs have them.** With the structure rolled back
+(FHSU items 468 and 466, 19 July; 333, 21 July) two slender poles stand close against the vehicle: one
+on the side toward pad 6 (model −Y), a little to the hatch side of the axis, about 8 ft out, its arm
+and a bundle of hoses at the foot of the booster's chequered band, 54 to 57 ft up; the other at the
+vehicle's limb on the side away from the hatch, reaching the capsule's heat shield. The model has the
+capsule's mast at (0, +8) and the booster's at (−3, −13.5) with its boom at 49.3 ft. That would put
+the booster's mast in the platforms' split on −Y and its plug 5 to 8 ft higher. Not changed here: it
+is not a difference between the two dates, and moving the masts would change May's pad.
 
 ## Getting about on foot
 
@@ -697,7 +813,9 @@ TM X-53107 sections 4.2.4, 4.8.9, 7.1 to 7.5, Figures 4-25 and 7-5 to 7-11; Hamm
 SP-45 Fig. 4-9; *This New Ocean* pp. 314 and 329; the NHL nomination 84003872 (quoting the
 Corps of Engineers history); the Space Force Museum's *Noble Endeavor* and LC-26 gantry pages;
 OpenStreetMap; NASA photographs S61-03158, 6100884, S61-01927, S61-02407 and S61-02408,
-S63-02651, S63-22731, GPN-2000-001006, KSC-61-4457. For the rest of the complex: the NHL
+S63-02651, S63-22731, GPN-2000-001006, KSC-61-4457. For 21 July: *Results of the Second U.S. Manned Suborbital Space
+Flight* pp. 6, 31 and 50; TM X-53107 7.2.3.2 (the countdown) and 8.3.2; the FHSU Project Mercury collection's prints of MR-4's
+preparation and launch, by item number as its catalogue has them. For the rest of the complex: the NHL
 nomination's item 7; the museum's *Launch Complex 26 Blockhouse*, *Launch Complex 5/6* and *Launch
 Pads* pages and its dated photographs; the FHSU Project Mercury collection's July 1961 prints
 F16_015, F16_016, F16_017 and F19_008; Wikimedia Commons photographs of the blockhouse (2005, 2010)
@@ -714,6 +832,12 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   hand-over to the globe's map (3 to 20 km up) instead of being there from the ground.
 - **From 20 to 70 km the land's colour is soft blotches**: the region's colour map is 450 m a texel (Blue
   Marble, May 2004), and nothing finer is baked.
+- **The transfer van is a white box with the photographs' lettering, window and louvres.** Its roof's rounded nose, the unit on its roof, its side
+  doors, marker lamps and the legend along its sill are not built; its tractor has no lettering or plate; its size is scaled off the tractor. It is not
+  gone into. That it left by driving straight ahead along the track, and stands 80 m down it at liftoff, is ours: its "launch position" is not recorded.
+- **The emergency shower is wheeled across the pad in two straight legs** at T−85, with no hose or water line to disconnect; where it was stowed is May's place.
+- **21 July's sky is not 21 July's.** The viewer has one sky for the Cape (`src/viewer/cape.ts`: `CLOUDS`, a tenth of cumulus at 720 m on a breeze from
+  090°), which is 5 May's record, and no place where a flight gives its own: see the flight's README, "The sky at liftoff", for what the record has.
 - **Only the structure's height and the cherry picker's reach are published.** Everything else is
   scaled off photographs or the site plan:
   - platform levels, widths and depths;
@@ -895,8 +1019,8 @@ The rest of the complex:
   photograph is black and white. The emblem on the pickup's door is a plain dark disc, since it
   cannot be read. Opened (the viewer can open doors), a door's lower corner at its hinge comes
   within a millimetre of the shut line's ridge on two or three cars; the check runs on the cars shut.
-- There are no people, no fire trucks, no M-113 and no transfer van: where those stood on 5 May
-  is not recorded in anything read. F19_008 shows a box-bodied truck on the road beside the
+- There are no people, no fire trucks and no M-113, and for 5 May no transfer van: where those stood on 5 May
+  is not recorded in anything read. July's pad has the transfer van where the photographs of 6 and 19 July have it. F19_008 shows a box-bodied truck on the road beside the
   track in July, which the collection's caption calls the transfer van arriving.
 - No fence is modelled: none shows in the 1961 photographs. No power or telephone wires are strung
   between the poles.
