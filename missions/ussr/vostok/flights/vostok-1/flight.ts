@@ -1113,4 +1113,6 @@ export const flight: Flight = {
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
   models: [vehicle, pad, crew],
+  // the place round the pad as it stood that April: the bunker, the buildings, the rim's positions, the fence (sites/site1/model/1961-04.py)
+  surroundings: 'models/ussr/vostok/sites/site1/1961-04.glb',
 };
