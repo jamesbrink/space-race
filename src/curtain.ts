@@ -29,6 +29,15 @@ export const CURTAIN = `
 
 /** Every curtain that is up: begun, and neither lifted nor failed. */
 const up = new Set<Curtain>();
+/** Who is to be told when a curtain next lifts and leaves none up. */
+const waiting: (() => void)[] = [];
+/**
+ * Be told, once, the next time a curtain lifts with none left up: what was on its way in is there to be seen. (The
+ * front page holds its own picture behind a flight's curtain until then: front.ts.)
+ */
+export function whenLifted(then: () => void): void {
+  waiting.push(then);
+}
 
 /**
  * While a curtain is up and can be seen, no key reaches the page: whatever is on its way in is not there to be worked
@@ -106,6 +115,7 @@ export class Curtain {
   done(): void {
     up.delete(this);
     this.el.classList.add('done');
+    if (!up.size) for (const then of waiting.splice(0)) then();
   }
 
   /** It did not arrive: said in the curtain's place as a notice, with the way to try again. */

@@ -23,10 +23,19 @@ public/globe/                         the globe's land and ice maps, six cube fa
                                       land's colours, six faces each (tools/globe-surface.mjs); and each site's region: <region>.near.png,
                                       .wide.png, .json (tools/globe-region.mjs), .relief.png, .colour.jpg, .surface.json (globe-surface.mjs),
                                       .weather.png (tools/globe-weather.mjs)
+public/front/                         the front page's picture (committed): the Earth as the Moon sees it, six cube faces side by side
+                                      (earth.surface.png, earth.colour.jpg from public/globe/; earth.day.jpg, the hour's cloud, sea ice and
+                                      snow from ERA5; earth.json: tools/front-earth.mjs), and the Moon (moon.colour.jpg, moon.whole.jpg,
+                                      moon.wide.jpg, moon.near.jpg, .height.png, .colour.jpg, moon.json: tools/front-moon.mjs)
 docs/sources.md                       every source used or wanted, and what each is good for
 src/
   types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
-  enter.ts                            the way in: main.ts for a flight with a site, only.ts for one that is only its vehicle
+  enter.ts                            the way in: front.ts for an address that names nothing, main.ts for a flight with a site, only.ts for one that is only its vehicle
+  front.ts  home.ts                   the front page: the list over its own picture, going into a flight under it, the words making way; and the way back out to it
+  front/view.ts                       the front page's view as numbers: the instant, the lens, the camera's path, the sky from the Moon (pure, tested)
+  front/scene.ts                      its scene: a renderer of its own, drawn from the eye, only when the picture changes, let go whole when a flight arrives
+  front/earth.ts  front/moon.ts       the Earth from the Moon (the globe's maps small, the day's cloud, the air) and the Moon under the camera (its relief at three sizes, its own light)
+  world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun
   main.ts  ui.ts  style.css           the page
   address.ts                          the address bar, the two places a flight is seen in, and what the gallery is given to show
   gallery.ts  gallery.css  only.ts    the gallery: the vehicle alone on a stage of its own; the switch between the places; its page for a flight with no site
@@ -123,7 +132,7 @@ src/
   viewer/path.ts                      the predicted path, drawn: a ribbon of constant width ahead of the vehicle and the line flown behind, its markers and the ring where it comes down; its switch and figures
   viewer/pathline.ts                  the path's line as numbers: its ribbon's vertices, a prediction eased from the last by instant, the rules that keep it off the vehicle (pure)
   viewer/pathmarks.ts                 where the path's markers go on the page: by rank, off the panels, the vehicle and each other, and staying put; and the chips at the view's edge for those not in view (pure)
-  title.ts  logo.ts  title.css        the front page and the mark
+  title.ts  logo.ts  title.css        the front page's words (the list of flights) and the mark
   callout.css                         the idle show's callouts
   audio.ts                            what the walk is heard as: an interface, silent until something that plays is given
   sound/model.ts                      what the flight sounds like, as numbers: levels, filter frequencies, delays and Doppler from the sample and where the ears are (pure, tested)
@@ -146,6 +155,9 @@ tools/
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
+  front-test.mjs                      browser check of the front page: what a bare address shows, going into a flight and back out, what it draws when, what it holds as a phone
+  front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
+  front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces

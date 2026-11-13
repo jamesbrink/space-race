@@ -1,0 +1,34 @@
+{
+  "faces": [
+    "px",
+    "nx",
+    "py",
+    "ny",
+    "pz",
+    "nz"
+  ],
+  "surface": {
+    "file": "earth.surface.png",
+    "face": 512,
+    "channels": [
+      "land",
+      "ice",
+      "relief"
+    ]
+  },
+  "colour": {
+    "file": "earth.colour.jpg",
+    "face": 1024
+  },
+  "day": {
+    "file": "earth.day.jpg",
+    "face": 512,
+    "channels": [
+      "cloud",
+      "sea ice",
+      "snow"
+    ],
+    "at": "1961-04-12T06:00:00.000Z"
+  },
+  "data": "Surface and colour: public/globe (Natural Earth, NOAA ETOPO 2022, NASA Blue Marble Next Generation May 2004; docs/sources.md). Day: ECMWF ERA5 hourly data on single levels (Hersbach et al. 2020, doi:10.24381/cds.adbb2d47), from the ARCO-ERA5 copy (Carver and Merose 2023); contains modified Copernicus Climate Change Service information. Fetched 2026-11-13"
+}

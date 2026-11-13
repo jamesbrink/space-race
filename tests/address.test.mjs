@@ -15,6 +15,7 @@ import {
   galleryFlight,
   lacks,
   listed,
+  namesNothing,
   opensIn,
   PLACES,
   parseAddress,
@@ -84,7 +85,10 @@ test('the flight an address is about', () => {
   assert.equal(flightFor(listed, `#${vostok.id}/gallery`), vostok);
   assert.equal(flightFor(listed, `#${MR3}/pad`), mr3);
   for (const old of ['#pad', '#vehicle', '#crew', '#gallery', '#fly']) assert.equal(flightFor(listed, old), mr3, old);
-  // the front page names nothing: the first listed, the one that is whole, shows itself behind it (not the first that flew)
+  // an address that names nothing is the front page's, which is no flight's (front.ts): asked all the same, the first listed
+  for (const nothing of ['', '#', '#/', '#//']) assert.ok(namesNothing(nothing), `"${nothing}" names nothing`);
+  for (const something of ['#pad', '#vehicle', '#gallery', '#fly', `#${MR3}`, `#${MR3}/site/pad`, '#no/such/flight'])
+    assert.ok(!namesNothing(something), `"${something}" names something`);
   assert.equal(flightFor(listed, ''), mr3);
   assert.equal(flightFor(listed, '#'), mr3);
   assert.deepEqual(

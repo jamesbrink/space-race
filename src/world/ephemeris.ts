@@ -138,14 +138,26 @@ const MOON_B: readonly (readonly [number, number, number, number, number])[] = [
   [4, 0, -1, 1, 833],
 ];
 
+/**
+ * The Moon's mean arguments at `T` Julian centuries of TT from J2000 (Meeus chapter 47), degrees: its mean longitude,
+ * its mean elongation from the Sun, the Sun's mean anomaly, the Moon's, its argument of latitude (the mean distance
+ * from its ascending node) and the longitude of that node.
+ */
+export function lunarArguments(T: number): { L: number; D: number; M: number; Mp: number; F: number; node: number } {
+  return {
+    L: 218.3164477 + 481267.88123421 * T - 0.0015786 * T ** 2 + T ** 3 / 538841 - T ** 4 / 65194000,
+    D: 297.8501921 + 445267.1114034 * T - 0.0018819 * T ** 2 + T ** 3 / 545868 - T ** 4 / 113065000,
+    M: 357.5291092 + 35999.0502909 * T - 0.0001536 * T ** 2 + T ** 3 / 24490000,
+    Mp: 134.9633964 + 477198.8675055 * T + 0.0087414 * T ** 2 + T ** 3 / 69699 - T ** 4 / 14712000,
+    F: 93.272095 + 483202.0175233 * T - 0.0036539 * T ** 2 - T ** 3 / 3526000 + T ** 4 / 863310000,
+    node: 125.0445479 - 1934.1362891 * T + 0.0020754 * T ** 2 + T ** 3 / 467441 - T ** 4 / 60616000,
+  };
+}
+
 /** The Moon's centre from the Earth's centre: metres, inertial frame of date. */
 export function moonPosition(jdTT: number): Vec3 {
   const T = centuries(jdTT);
-  const L = 218.3164477 + 481267.88123421 * T - 0.0015786 * T ** 2 + T ** 3 / 538841 - T ** 4 / 65194000; // mean longitude
-  const D = 297.8501921 + 445267.1114034 * T - 0.0018819 * T ** 2 + T ** 3 / 545868 - T ** 4 / 113065000; // mean elongation
-  const M = 357.5291092 + 35999.0502909 * T - 0.0001536 * T ** 2 + T ** 3 / 24490000; // the Sun's mean anomaly
-  const Mp = 134.9633964 + 477198.8675055 * T + 0.0087414 * T ** 2 + T ** 3 / 69699 - T ** 4 / 14712000; // the Moon's
-  const F = 93.272095 + 483202.0175233 * T - 0.0036539 * T ** 2 - T ** 3 / 3526000 + T ** 4 / 863310000; // argument of latitude
+  const { L, D, M, Mp, F } = lunarArguments(T);
   const A1 = 119.75 + 131.849 * T; // Venus
   const A2 = 53.09 + 479264.29 * T; // Jupiter
   const A3 = 313.45 + 481266.484 * T;

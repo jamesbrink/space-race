@@ -375,6 +375,8 @@ const MB = 1 << 20;
 function report(): Report {
   const list: Allocation[] = [];
   for (const k of kept.values()) {
+    // (a context that has been let go holds nothing: the front page's, once a flight has arrived)
+    if (contexts[k.context]?.isContextLost()) continue;
     let bytes = 0;
     for (const b of k.images.values()) bytes += b;
     // (a chain made by generateMipmap is a third more than its first level)

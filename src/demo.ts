@@ -56,7 +56,7 @@ const APART = 5;
 /** Seconds without a touch before the show starts by itself: the first time, and after it has been stopped. */
 export const IDLE_FIRST = 20;
 export const IDLE_AGAIN = 120;
-/** Seconds the front page waits, untouched, before it fades into the show. */
+/** Seconds the front page waits, untouched, before its words make way for its own picture (front.ts). */
 export const IDLE_TITLE = 30;
 const DAY = 86_400;
 

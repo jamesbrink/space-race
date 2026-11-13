@@ -15,7 +15,7 @@ import type { Flight, ModelDef, ViewDef } from './types';
  * A place a flight does not have yet is still named, and says why it cannot be gone to (`lacks`).
  * The way back is always the same: front page, flight, place.
  *
- *   #                                    the front page
+ *   #                                    the front page: no flight's (front.ts)
  *   #<flight id>                         the flight: its gallery
  *   #<flight id>/gallery[/<what>]        the gallery, on a part (its node) or with one of the
  *                                        choices of what stands there (its id)
@@ -77,12 +77,14 @@ export function listed<F extends Dated>(flights: readonly F[], coming: readonly 
   return byDate<F | Upcoming>([...flights, ...coming.filter((u) => !built.has(u.id))]);
 }
 
+/** Whether an address names nothing at all, neither a flight nor a place: the front page's (front.ts), which is no flight's. */
+export const namesNothing = (hash: string): boolean => hash.replace(/^#/, '').split('/').filter(Boolean).length === 0;
+
 /**
- * The flight an address is about: the one it names; for one that names a place and no flight
- * (`#pad`, from when there was one flight), the first listed; and for the front page, which names
- * nothing, the first listed too, which is the one that is whole (missions/index.ts): its idle show
- * plays behind the page. (For a while it was the first that flew, Vostok 1, whose place is not yet
- * built out; it is Freedom 7 again until that one is as whole.)
+ * The flight an address is about: the one it names; and for one that names a place and no flight
+ * (`#pad`, from when there was one flight), the first listed, which is the one that is whole
+ * (missions/index.ts). An address that names nothing is about no flight (`namesNothing`: the front
+ * page has a scene of its own); asked all the same, this gives the first listed.
  */
 export function flightFor<F extends Dated>(flights: readonly F[], hash: string): F {
   const to = parseAddress(hash);

@@ -39,6 +39,7 @@ pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
 pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)
 pnpm models           # rebuild every flight's GLBs
 pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region
+pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from public/globe/ and the hour's cloud; pnpm front:moon its Moon
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
 pnpm bench            # what a frame costs, what the page weighs, how long it takes to open (docs/agents/rendering.md)
@@ -46,6 +47,7 @@ pnpm test:camera      # needs `pnpm dev` running: the camera driven with real in
 pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same frame twice, in both looks
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
+pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB
@@ -94,7 +96,7 @@ Detail lives in `docs/agents/`. Read the one for what you are about to change; e
 | `src/sim/`, the flight deck, flight effects | [simulator.md](docs/agents/simulator.md) | inputs are `Measure`s with confidence; nothing is fitted; a miss against the record is recorded in `MISSES`; the live simulator is the same physics, steered; the scene shows what was flown |
 | The camera | [camera.md](docs/agents/camera.md) | one camera, a set of rigs; zoom never surprises; once the user takes the camera only an explicit act moves it |
 | On foot: walk, gait, ragdoll, driving, actions | [walking.md](docs/agents/walking.md) | nothing there knows a flight; motion follows the gait and never a timer; a planted foot is planted; loose things tick at a fixed rate; a mission adds a verb as data |
-| The gallery, a flight's places, the address bar | [gallery.md](docs/agents/gallery.md) | every flight has the same three places (Gallery, Launch site, Fly) and opens in its gallery; one it lacks is shown and says why, never hidden; the gallery is a second stage that shares nothing with the site's, which sleeps as it stands; only `address.ts` reads or writes an address; old `#pad` links still land on the site |
+| The gallery, a flight's places, the address bar, the front page | [gallery.md](docs/agents/gallery.md) | every flight has the same three places (Gallery, Launch site, Fly) and opens in its gallery; one it lacks is shown and says why, never hidden; the gallery is a second stage that shares nothing with the site's, which sleeps as it stands; only `address.ts` reads or writes an address; old `#pad` links still land on the site; the front page is no flight's, picks none for the visitor, and holds nothing of a flight nor a flight of it |
 | Sound | [sound.md](docs/agents/sound.md) | synthesised, no files; follows the clock; levels and timbres are estimated and say so |
 
 ## Being there
@@ -212,16 +214,20 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   much of the view it covers (`Ui.covers`).
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
   between first and third person. Each has its own block in the legend. T is the look.
-- The front page (`title.ts`, the mark in `logo.ts`) is what an address that names nothing shows; it
-  lies over the scene as it loads. Going in opens the flight's gallery and writes `#<flight id>/gallery` (its launch site is
-  `#<flight id>/site/<model>`, its flight deck `#<flight id>/fly`), so a refresh or a link
-  comes straight back to that place; the Space Race crumb goes back out. V goes on foot as the
-  crew from anywhere and back (the key that will board and leave a crew member in the simulator).
-- Left alone, the page shows itself (`demo.ts`, the idle show): the clock runs the day round and
-  the camera goes from one thing to the next with the panels away and a callout on each
-  (`callout.ts`). It plays behind the front page, which gives way to it after half a minute; any
-  touch ends it; a reload comes back to it. It reads only the flight's data, so a new flight is
-  shown without being told how. Before any of it is seen the scene is warmed (`Stage.warm`): every
+- The front page (`front.ts`; its words `title.ts`, the mark in `logo.ts`) is what an address that names
+  nothing shows, and is no flight's: the list of flights over a picture of its own, the Earth seen from out by
+  the Moon at the instant a person first left it, the camera going slowly out (`front/`; gallery.md, "The front
+  page"). Left alone, that is the show and nothing else starts; after half a minute its words make way for the
+  picture, and come back at a touch. Going in names the flight (`#<flight id>/gallery`; its launch site is
+  `#<flight id>/site/<model>`, its flight deck `#<flight id>/fly`), so a refresh or a link comes straight back
+  to that place, and brings the flight's page up under the picture, which is let go when the flight is there to
+  be seen. The Space Race crumb goes back out by opening the page again at the address that names nothing
+  (`home.ts`). V goes on foot as the crew from anywhere and back (the key that will board and leave a crew
+  member in the simulator).
+- Left alone inside a flight, the page shows that flight (`demo.ts`, the idle show): the clock runs the day
+  round and the camera goes from one thing to the next with the panels away and a callout on each
+  (`callout.ts`). Any touch ends it; a reload comes back to it. It reads only the flight's data, so a new flight is
+  shown without being told how. Before any of a site is seen the scene is warmed (`Stage.warm`): every
   level of detail and both day and lamp-lit shaders are built unseen, then the canvas fades up.
 - No key acts under the curtain. While something is loading and its curtain can be seen, `curtain.ts` takes every
   key at the window before any listener hears it (keys with Command, Control or Alt, and releases, pass): a new

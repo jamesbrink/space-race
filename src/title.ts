@@ -8,9 +8,10 @@ const date = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /**
- * The front page: the mark, and the flights there are to go into. It lies over the scene, which
- * is already loading and turning behind it, so going in is lifting a curtain and not a wait.
- * It is shown only when the address names nothing: a link or a refresh goes straight to its place.
+ * The front page's words: the mark, and the flights there are to go into, over the page's own
+ * picture (front.ts: the Earth from out by the Moon). It is shown only when the address names
+ * nothing: a link or a refresh goes straight to its place. Left alone it makes way for the
+ * picture (`tuck`) and comes back at a touch.
  */
 export class Title {
   private readonly root: HTMLElement;
@@ -67,7 +68,16 @@ export class Title {
     this.root.querySelector<HTMLElement>('[data-flight]')?.focus({ preventScroll: true });
   }
 
-  /** Lift the curtain: the page fades and the scene behind it is the one to use. */
+  /** Make way for the picture behind (the page has been left alone), or come back. */
+  tuck(on: boolean): void {
+    this.root.classList.toggle('tucked', on);
+  }
+
+  get tucked(): boolean {
+    return this.root.classList.contains('tucked');
+  }
+
+  /** A flight has been chosen: the words fade, and the picture stays until the flight is there. */
   hide(): void {
     if (this.root.hidden) return;
     document.body.classList.remove('titled');

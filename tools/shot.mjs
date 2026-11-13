@@ -2,6 +2,7 @@
 //   node tools/shot.mjs <out.png> <model> "<js run in the page>" [width height] [--ui] [--hover x,y] [--click x,y]
 //   node tools/shot.mjs /tmp/pad.png pad "sr.stage.pose(215, 9, 150, 14)"
 //   node tools/shot.mjs /tmp/gallery.png usa/mercury/mr-3-freedom-7/gallery "sr.gallery.stage.pose(215, 9, 60, 12)" --ui
+//   node tools/shot.mjs /tmp/front.png "" "sr.front.seek(80)" 1440 900 --ui      the front page (an address that names nothing), 80 s along its path
 // The page's UI is hidden unless --ui is given. `sr` is the viewer's debug handle (see AGENTS.md).
 import { chromium } from 'playwright-core';
 
@@ -22,12 +23,19 @@ const errors = [];
 page.on('console', (m) => ['error', 'warning'].includes(m.type()) && errors.push(m.text()));
 page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(`${process.env.SR_URL ?? 'http://localhost:5180/'}#${model}`);
-await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 60000 });
-if (!ui) await page.addStyleTag({ content: '#ui, #gallery { display: none !important }' });
+// (the front page has no curtain and no stage: its own picture, held still for a script until it is told where to be)
+const front = model === '';
+if (front) {
+  await page.waitForFunction(() => window.sr?.front, null, { timeout: 60000 });
+  await page.evaluate(() => window.sr.front.ready);
+} else await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 60000 });
+if (!ui) await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
 if (click) await page.mouse.click(click[0], click[1]);
 // (the stage that is on show: the gallery has its own)
 await page.evaluate(
-  `(async () => { const sr = window.sr; (sr.gallery?.active ? sr.gallery.stage : sr.stage).setAutoRotate(false); ${js}; })()`,
+  front
+    ? `(async () => { const sr = window.sr; ${js}; })()`
+    : `(async () => { const sr = window.sr; (sr.gallery?.active ? sr.gallery.stage : sr.stage).setAutoRotate(false); ${js}; })()`,
 );
 await page.waitForTimeout(1200);
 if (hover) {

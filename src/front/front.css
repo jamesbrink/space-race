@@ -1,0 +1,11 @@
+/* The front page's own picture (front/scene.ts): under everything, faded up when its first whole frame is drawn, and out again as a flight's canvas comes in over it. */
+#front { position: fixed; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 1.6s ease; pointer-events: none; }
+#front.on { opacity: 1; }
+#front.leaving { opacity: 0; transition: opacity 1.1s ease 0.2s; }
+body.instant #front { transition: none; }
+@media (prefers-reduced-motion: reduce) { #front { transition: none; } }
+
+/* While a flight chosen on the front page is on its way in, its curtain is a card over the picture and not a black page, and nothing else of its page shows yet. */
+body.fronted .loading { background: none; }
+body.fronted .loading-card { padding: 22px 26px 24px; background: rgba(8, 9, 12, 0.86); backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+body.fronted :is(#ui, #gallery) > :not(.loading) { opacity: 0 !important; pointer-events: none !important; }

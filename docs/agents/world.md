@@ -28,6 +28,23 @@ one rule (`daysky.ts`: `starLimit`): the ground's limit for the Sun's height, a 
 for each 2.512 times less air above the eye, no further than the eye's own limit. How bright a
 star is drawn against another is compressed for a screen and says so (heavens.ts).
 
+The Moon has a face (`world/moon.ts`): `moonAxes` is its own frame at an instant (+Z its north pole, +X the mean
+direction of the Earth, as its maps are drawn), from Cassini's laws and Meeus's librations (chapter 53), and
+`fromMoon` is where the Earth and the Sun stand over it, with the Earth's phase. Against Horizons at four dates from
+1961 to 2024 the points of the Moon under the Earth and under the Sun are within 0.03 degrees (900 m of ground): do
+not quote better. Heights on the Moon are above the sphere of 1,737,400 m.
+
+The front page's sky is the same sky, from the Moon (`front/view.ts`, pure and tested: tests/front.test.mjs). Its
+instant is data (`INSTANT`: Vostok 1's liftoff, as that flight records it) and everything follows from it: `skyAt`
+gives the Earth, how it is turned, the Sun and the stars in the Moon's frame, which is that scene's. At the instant
+the Earth is 88.7 % lit seen from the Moon and 1.985 degrees across; the point of the Earth under the Moon is 7.3 S
+52.5 E and under the Sun 8.6 N 88.5 E; the point of the Moon under the Earth is 1.50 E 0.95 N and under the Sun
+139.17 W 1.16 S. Its clock is its own, a minute of the world a second (`PACE`), running on from the instant for as
+long as the page is open, and stopped at the instant for anyone who has asked for less motion. The camera's path is
+a design and says so (`PATH`, every figure estimated): where the camera is follows from two numbers only, its height
+over the Moon and how far the Earth's centre stands over the Moon's limb (`cameraFor`), so nothing in it is placed
+by hand against a sky that moves.
+
 The simulation clock (`world/clock.ts`, `sr.clock`, the time bar under the section switcher)
 counts seconds from the flight's launch and is stopped at launch until run. A setting follows it
 through `Setting.at(jdUT)`, which returns null unless something on screen changed, so a stopped

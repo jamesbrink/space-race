@@ -1,20 +1,20 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { flights } from '../missions';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
-import { flightFor, formatAddress, opensIn, type Place, parseAddress } from './address';
+import { flightFor, formatAddress, namesNothing, opensIn, type Place, parseAddress } from './address';
 import { Callout } from './callout';
 import { Cockpit } from './cockpit';
 import { follow } from './curtain';
-import { Demo, IDLE_TITLE } from './demo';
+import { Demo } from './demo';
 import { Flown } from './flown';
 import { crumbs, Gallery, markPlace, placesNav } from './gallery';
+import { goHome } from './home';
 import './navball.css';
 import { Navball } from './navball';
 import { prefs } from './prefs';
 import { programmeAxis } from './sim/predict';
 import { Sound } from './sound';
 import { TimeBar } from './timebar';
-import { Title } from './title';
 import type { SitedFlight } from './types';
 import { Ui } from './ui';
 import { Effects } from './viewer/effects';
@@ -278,8 +278,8 @@ function show(id: string, snap = false, asItStands = false): void {
   stage.section(model.id, snap, asItStands);
   orbit();
   const hash = formatAddress(flight.id, cockpit.active ? 'fly' : 'site', model.id);
-  // (the front page has no address of its own, and the gallery's is its own: the site may have arrived behind it)
-  if (!title.showing && !demo.active && !gallery.active && location.hash !== hash) history.replaceState(null, '', hash);
+  // (the gallery's address is its own: the site may have arrived behind it)
+  if (!demo.active && !gallery.active && location.hash !== hash) history.replaceState(null, '', hash);
 }
 
 /** Fetch the flight's models and open on a section. */
@@ -304,12 +304,12 @@ async function start(id: string): Promise<void> {
     said.arrive(1);
     show(id, true);
     // The scene is kept dark until it can move smoothly (stage.warm): shown sooner, it would
-    // stutter as the rest arrived and then jump. The front page waits over it meanwhile.
+    // stutter as the rest arrived and then jump.
     await stage.warm(undefined, (step, f) => said.step(step, f));
     said.end();
     ready = true;
     // whatever is going to be playing when the curtain lifts is already playing
-    if (prefs.get('demo') || (title.showing && !unattended)) demo.start();
+    if (prefs.get('demo')) demo.start();
     await new Promise((done) => setTimeout(done, 500));
     // (a script taking pictures does not wait for a fade)
     if (navigator.webdriver && !location.search.includes('demo')) document.body.classList.add('instant');
@@ -319,7 +319,6 @@ async function start(id: string): Promise<void> {
     if (prefs.get('fly')) ui.setCamera('free');
     if (prefs.get('demo')) {
       // it was showing itself when the page was left: it goes on doing so
-      if (title.showing) title.hide();
       demo.start();
       prefs.set('demo', true);
     }
@@ -640,11 +639,11 @@ window.addEventListener('keydown', (e) => {
   const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
   // Y takes the skin off whatever is on show that can be opened (ModelDef.cutaway), and puts it back: cut open where it
   // stands, the whole skin off the vehicle in flight, from outside it or from its seat
-  if (e.key.toLowerCase() === 'y' && ready && !title.showing && !typing && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  if (e.key.toLowerCase() === 'y' && ready && !typing && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
     if (current.cutaway && !stage.walk.active && !gallery.active) cut(!stage.cutaway);
     return;
   }
-  if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  if (e.key.toLowerCase() === 'v' && ready && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
     // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
     const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);
     const next = walkers[walkers.indexOf(stage.walkingAs ?? '') + 1];
@@ -655,21 +654,6 @@ window.addEventListener('keydown', (e) => {
     } else stage.exitWalk();
   }
 });
-
-/**
- * The front page is what an address that names nothing shows. Going in names the place, so from
- * then on a refresh or a link comes straight back to it.
- */
-const title = new Title(document.body, flights, (id) => {
-  if (id !== flight.id) {
-    location.hash = formatAddress(id, 'gallery');
-    return location.reload(); // another flight is another page's worth of state
-  }
-  demo.stop(); // going in is taking over
-  title.hide();
-  toGallery(); // a flight is gone into by its gallery: the launch site and the flight deck are gone on to from there
-});
-if (location.hash.length <= 1) title.show();
 
 /**
  * A flight's three places (address.ts): the gallery, which it opens in; its launch site; and the
@@ -689,17 +673,11 @@ let bound: (() => void) | null = null;
 /** What going to the gallery stopped, to be started again on the way back. */
 const held = { clock: false, sheet: false, cel: false };
 const sheet = document.querySelector<HTMLElement>('#ui .panel')!;
-const fronted = () => document.body.classList.contains('titled');
 const gallery = new Gallery(document.body, flight, {
   go: (place) => go(place),
-  home: () => {
-    history.replaceState(null, '', location.pathname + location.search);
-    title.show();
-  },
-  address: (what) => {
-    if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what));
-  },
-  covered: fronted,
+  home: goHome, // (out to the front page, which is no flight's: home.ts)
+  address: (what) => history.replaceState(null, '', formatAddress(flight.id, 'gallery', what)),
+  covered: () => false,
 });
 // the same switch the gallery has, in the same spot, and the same way back in the crumbs
 const places = placesNav(flight, 'site', (to) => go(to));
@@ -711,7 +689,7 @@ function placed(place: 'site' | 'fly', write = true): void {
   markPlace(places, place);
   const trail = document.querySelector('#ui .crumbs');
   if (trail) trail.innerHTML = crumbs(flight, place);
-  if (write && !fronted() && !gallery.active && !demo.active)
+  if (write && !gallery.active && !demo.active)
     history.replaceState(null, '', formatAddress(flight.id, place, place === 'fly' ? '' : current.id));
 }
 /** Go to one of the flight's places. `what`: what an address names there; left out, the place is as it was left. */
@@ -722,10 +700,10 @@ function go(place: Place, what?: string): void {
 /** `what`: the part or the choice of what stands there that an address names ('' for the whole vehicle); left out, the gallery is as it was left. */
 function toGallery(what?: string): void {
   if (gallery.active) {
-    // (already there: an address that names something goes to it; coming in from the front page takes it over)
+    // (already there: an address that names something goes to it)
     if (what === undefined) void gallery.enter();
     else gallery.go(what);
-    if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
+    history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
     return;
   }
   bound = null;
@@ -740,7 +718,7 @@ function toGallery(what?: string): void {
   sheet.classList.remove('open'); // (a phone's sheet, open, would keep its share of the gallery's screen)
   sound.hush(true);
   stage.sleep(true);
-  if (!fronted()) history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
+  history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
   void gallery.enter(what);
 }
 /** To the launch site (on `model`'s section, if one is named), or with `fly` to its flight deck. The first time, the site is fetched. */
@@ -780,16 +758,13 @@ function toSite(model = '', fly = false): void {
 document.addEventListener('click', (e) => {
   // the crumbs: back to the flight (its gallery), or out to the front page
   if ((e.target as HTMLElement).closest?.('#ui [data-flight-home]')) return toGallery();
-  if (!(e.target as HTMLElement).closest?.('[data-home]')) return;
-  history.replaceState(null, '', location.pathname + location.search);
-  title.show();
+  if ((e.target as HTMLElement).closest?.('[data-home]')) goHome();
 });
 
 /**
- * The idle show (demo.ts): left alone, the day runs and the camera goes round the flight. It
- * plays behind the front page from the start, and anywhere else once the page has been left
- * alone a while; any touch ends it. Not for a browser being driven by a script, nor for anyone
- * who has asked their system for less motion.
+ * The idle show (demo.ts): left alone a while, the day runs and the camera goes round the flight;
+ * any touch ends it. Not for a browser being driven by a script, nor for anyone who has asked
+ * their system for less motion. (The front page has a show of its own, which is no flight's: front.ts.)
  */
 const callout = new Callout(document.body);
 const zone = flight.site.zone;
@@ -839,8 +814,7 @@ const demo = new Demo(flight, clock, {
     stage.setDrift(on ? 2.4 : 1);
     stage.setUnhurried(on);
     // the show is a state of the page like any other: a reload comes back to it
-    if (!on) prefs.set('demo', false);
-    else if (!title.showing) prefs.set('demo', true);
+    prefs.set('demo', on);
     if (on) {
       select(null);
       stage.highlight(null, null);
@@ -851,7 +825,7 @@ const demo = new Demo(flight, clock, {
     if (!current.sequence) stage.setExplode(0);
     ui.setCutaway(false);
     show(current.id);
-    if (!title.showing) history.replaceState(null, '', formatAddress(flight.id, 'site', current.id)); // where the show left off is now the place
+    history.replaceState(null, '', formatAddress(flight.id, 'site', current.id)); // where the show left off is now the place
   },
 });
 clock.listen(() => {
@@ -862,18 +836,12 @@ clock.listen(() => {
 });
 // (a script driving the browser asks for the show with ?demo in the address)
 const unattended = (navigator.webdriver && !location.search.includes('demo')) || matchMedia('(prefers-reduced-motion: reduce)').matches;
-/** Seconds the front page has been left alone. */
-let titleIdle = 0;
 for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermove'] as const)
   window.addEventListener(
     touch,
     (e) => {
       // the mouse moving is someone there: the show does not start under them (it does not end a show that is on: a press does)
-      if (e.type === 'pointermove' && (title.showing || demo.active)) return;
-      if (title.showing) {
-        titleIdle = 0; // the front page is being read: the show stays behind it (going in ends it, below)
-        return;
-      }
+      if (e.type === 'pointermove' && demo.active) return;
       if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
       demo.stop(Boolean((e.target as HTMLElement | null)?.closest?.('.timebar')));
     },
@@ -887,13 +855,6 @@ const showFrame = (): void => {
   const dt = Math.min(1, (now - demoAt) / 1000);
   demoAt = now;
   if (unattended && !demo.active) return;
-  if (title.showing && ready && !demo.active) demo.start(); // behind the front page it plays at once
-  // a front page nobody goes in from gives way to what is behind it
-  titleIdle = title.showing ? titleIdle + dt : 0;
-  if (title.showing && demo.active && titleIdle >= IDLE_TITLE) {
-    title.hide();
-    prefs.set('demo', true);
-  }
   demo.tick(dt);
 };
 requestAnimationFrame(showFrame);
@@ -904,8 +865,7 @@ const first = address();
 placed('site', false);
 go(opensIn(flight, first.place), first.place ? first.what : undefined);
 window.addEventListener('hashchange', () => {
-  if (location.hash.length <= 1) return title.show();
-  if (title.showing) title.hide();
+  if (namesNothing(location.hash)) return goHome();
   const to = address();
   // another flight is another page's worth of state: start clean rather than rebuild in place
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
