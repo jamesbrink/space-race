@@ -50,6 +50,8 @@ import { TRAIL_STEP, Trail } from './trail';
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 
+/** How far beyond a figure's bounds the camera must be, coming out of its eyes after a walk, before it is drawn again, metres. */
+const EMERGE_CLEAR = 0.12;
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN =
   /^(shingle|heatsink|aluminium|titanium|tower|steel|strap|paint-booster|paint-structure|paint-cabin|couch|concrete|suit|galvanised)/;
@@ -281,6 +283,9 @@ export class Stage {
   private readonly below = new THREE.Vector3();
   /** While walking: the figure is drawn into the shadow map only (the view is through its eyes). */
   private unseen = false;
+  /** A walk through the eyes has ended and the camera is still inside the figure: it is drawn when the camera is out (`emerge`). */
+  private emerging = -1;
+  private readonly emergeBox = new THREE.Box3();
   /** While walking: what is being looked at from within reach, and where the ray met it. */
   private aim: { target: Target; hit: Hit; box?: THREE.Box3; vehicle?: THREE.Object3D } | null = null;
   /** A figure knocked off its feet by a long fall, tumbling (ragdoll.ts) until it lies still; and each level of detail's ragdoll, made once. */
@@ -2993,6 +2998,7 @@ export class Stage {
       // the camera: the rig in charge moves, and says where the view is from (the near plane is fitted after, fitDepth)
       this.cam.update(dt);
       this.camStepped += dt;
+      this.emerge();
       if (this.indoors > 0) this.adapt(dt, false); // (off foot again: the eye goes back to the day)
       this.lookWatched();
       this.shadeCraft();
@@ -3176,6 +3182,26 @@ export class Stage {
     this.fitBounds();
   }
 
+  /**
+   * After a walk seen through the figure's eyes: the figure is drawn again once the camera has come out of it, and not
+   * before, so the way back from the eyes never passes through the inside of its head and suit. Out of it means beyond
+   * its bounds by more than the near plane's reach.
+   */
+  private emerge(): void {
+    const at = this.emerging;
+    if (at < 0) return;
+    const figure = this.staged[at];
+    if (!figure || this.walk.active) {
+      this.emerging = -1;
+      return;
+    }
+    const box = this.emergeBox.setFromObject(figure.full).expandByScalar(EMERGE_CLEAR);
+    if (box.containsPoint(this.camera.position)) return;
+    this.emerging = -1;
+    this.shadowOnly(figure.group, (this.unseen = false));
+    this.dirty = true;
+  }
+
   /** Stop walking: the figure is back where it stood, and the orbiting camera takes over from where the walker was looking. */
   exitWalk(): void {
     if (!this.walk.active) return;
@@ -3188,7 +3214,14 @@ export class Stage {
       this.boarding = null;
       this.walk.sit(null, vehicle.standing(new THREE.Vector3()));
     }
+    // (seen through its eyes, the camera is inside the figure's head as the walk ends: it stays as it was through the
+    // eyes, there for the light only, until the camera on its way back has come out of it: `emerge`)
+    const inside = !this.walk.outside;
     this.standFigure();
+    if (inside && this.staged[at]) {
+      this.shadowOnly(this.staged[at].group, (this.unseen = true));
+      this.emerging = at;
+    }
     this.setAim(null);
     this.walk.stop();
     this.walked = -1;
