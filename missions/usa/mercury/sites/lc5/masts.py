@@ -66,10 +66,15 @@ def build(parts: Parts) -> None:
         return (r * math.cos(math.radians(a)), r * math.sin(math.radians(a)), LAUNCHER_TOP + (716.0 + station) / 12)
 
     out = math.hypot(ux, uy)
-    path = [(x, y - 0.45, top + 0.9), (x, 5.6, top + 1.0), (x, 3.45, top + 1.3), (x, 3.42, SHIELD_Z + 0.3)]
+    # The umbilical is a node of its own (UmbilicalMast_Cable), hinged where it leaves the release head: when the plug is
+    # pulled and the mast goes over, it swings down with it and hangs from the fallen head to the pad, rather than
+    # standing up from it.
+    parts.node("UmbilicalMast_Cable", "UmbilicalMast", (x, y - 0.45, top + 0.9))
+    run = parts("UmbilicalMast_Cable", "cable", True)
+    path = [(x, y - 0.45, top + 0.9), (x, 6.2, top + 1.0), (x, 4.6, top + 1.05), (x, 3.45, top + 1.3), (x, 3.42, SHIELD_Z + 0.3)]
     path += [round_cone(100.0, 12.0, 0.3), round_cone(122.0, 20.0, 0.27), round_cone(135.0, 26.0, 0.2)]
     path += [(ux * (out + 0.2) / out, uy * (out + 0.2) / out, uz)]
-    cable.loft([P(*p) for p in path], [(0.15 * FT, 0.15 * FT)] * len(path), 10, ref=(0.3, 0.3, 0.9))
+    run.loft([P(*p) for p in path], [(0.15 * FT, 0.15 * FT)] * len(path), 10, ref=(0.3, 0.3, 0.9))
     lanyard(cable, x, y, top)
 
     # ---- No. 1, the booster's: its boom reaches the booster's skin, cooling package on top

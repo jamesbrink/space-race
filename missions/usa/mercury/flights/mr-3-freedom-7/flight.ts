@@ -1010,7 +1010,11 @@ const padParts: Part[] = [
     ],
     explode: [0, 0, 0],
     order: 0,
-    moves: [swing('UmbilicalMast', X, -88, T.umbilical, T.umbilical + 0.035)], // (over away from the vehicle, toward +Y: it stands behind it)
+    moves: [
+      swing('UmbilicalMast', X, -88, T.umbilical, T.umbilical + 0.035), // (over away from the vehicle, toward +Y: it stands behind it)
+      // the umbilical swings down from the release head as the mast goes over, and hangs from it to the pad (estimated: how it fell is not recorded)
+      swing('UmbilicalMast_Cable', X, 145, T.umbilical, T.umbilical + 0.035),
+    ],
   },
   {
     node: 'BoosterMast',
