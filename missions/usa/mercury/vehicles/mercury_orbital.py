@@ -61,10 +61,11 @@ def balloon_materials() -> dict:
     }
 
 
-def balloon_canister(M: dict, about: str, liners: str) -> None:
+def balloon_canister(M: dict, about: str, liners: str | None) -> None:
     """The balloon experiment's container, let into the top of the antenna canister under the destabilising flap: a
     can with a lid, and in a cutaway the two balsa liners the folded balloon rode between, one orange and one yellow.
-    `about` is what the flight says of the container, `liners` of what is in it. Build the antenna canister first."""
+    `about` is what the flight says of the container, `liners` of what is in it (None for a flight whose record has
+    no liners: the can alone). Build the antenna canister first."""
     g = bpy.data.objects["AntennaCanister"]
     top = mercury_capsule.Z_CAN_TOP
     (r, deep), (lr, ll) = BALLOON_CAN, BALLOON_LINER
@@ -76,7 +77,7 @@ def balloon_canister(M: dict, about: str, liners: str) -> None:
     can.lathe(prof([(r, top - deep), (0.0, top - deep)]), 32, matrix=at, flip=True)
     obj = can.build("Antenna_BalloonCanister", M["aluminium"], g, sharp_angle=35)
     obj["label"], obj["about"] = "Balloon container", about
-    if not interior():
+    if not interior() or liners is None:
         return
     for name, mat, a0 in (("Orange", "dayglo_orange", 0.0), ("Yellow", "dayglo_yellow", math.pi)):
         half = MeshBuilder()

@@ -149,13 +149,22 @@ def build(
     earth_path_indicator: bool = True,
     without: tuple[str, ...] = (),
     knee_and_chest_straps: bool = True,
+    periscope: bool = True,
+    centre=None,
+    sequence=None,
+    more: dict[str, str] | None = None,
 ) -> dict:
     """Everything inside capsule 11's pressure vessel but the pilot. As mercury_cabin.build, with `window` where the
     flight's script put the inner panes (their frame, as a matrix) and `scope_z` the station the periscope's objective
     leaves the cone at. With `mirror`, a chest mirror is laid on a pilot whose own suit has none (chest_mirror: a later
     capsule's pilot in an earlier flight's suit). What a later capsule flew without is left out by the last three: the
     Earth-path indicator, round instruments of the main panel by name (ROUND_AT), the couch's knee and chest straps;
-    each instrument's place on the panel is then a blank plate. Returns where things are, metres, in the capsule's frame."""
+    each instrument's place on the panel is then a blank plate (the control fuel gauge is "ControlFuel": a capsule
+    that carried it elsewhere leaves it out here). A capsule that flew without a periscope says `periscope` False:
+    no display, housing or tube is built, and `centre(c, P, side, faces, box)` builds what stood in the display's
+    place (`box`: its opening's corners on the panel). `sequence`: the left console's column of lights where it was
+    not No. 11's (SEQUENCE). `more`: a later capsule's own meshes and the material each is built in (mercury_cabin.dress).
+    Returns where things are, metres, in the capsule's frame."""
     mc._font = font
     if not interior():
         return {}
@@ -172,7 +181,7 @@ def build(
 
     # (the frames as in capsule 7's model, but the lowest a little lower: it has no port to give way to here, and at
     # station 7 it would lie on a row of the wall's rivets)
-    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]), scope=scope_z)
+    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]), scope=scope_z if periscope else None)
     window_inside(c, window)
     mc.couch(c, pilot, seat)
     mc.neck_dam(c, seat, pilot)
@@ -180,8 +189,12 @@ def build(
     P = plane(Vector(mc.PANEL_AT), Vector((1, 0, 0)), Vector((0, -math.cos(mc.PANEL_TILT), math.sin(mc.PANEL_TILT))))
     main_panel(c, P, main, faces, earth_path_indicator, without)
     # straight from the back of its housing over the pilot's knees to the door: the real instrument stood straight
-    mc.periscope(c, P, side, out, box=(fig(335, 750), fig(1035, 1420)), station=scope_z, run=((0.0, 9.0, 36.2), (0.0, 16.5, 39.6)))
-    consoles(c, P, side, faces)
+    box = (fig(335, 750), fig(1035, 1420))
+    if periscope:
+        mc.periscope(c, P, side, out, box=box, station=scope_z, run=((0.0, 9.0, 36.2), (0.0, 16.5, 39.6)))
+    elif centre:
+        centre(c, P, side, faces, box)
+    consoles(c, P, side, faces, sequence or SEQUENCE)
     mc.controls(c, seat, pilot, out)
     if suit:
         # (the convex mirror on Grissom's chest is the suit's own: crew/mark_iv_suit.py, MR_4)
@@ -190,7 +203,7 @@ def build(
             chest_mirror(c, suit, seat)
     # (what is known only from capsule 7 as it is kept is left out: the runs from its fuse panel, the camera by the head, the coiled cord)
     mc.stowage(c, (), out, lamps_at=LAMPS, fuse_wiring=False, panel_camera=False, cord=False, knee_strap=knee_and_chest_straps)
-    more = {"CrewCabin_WindowShroud": "cabin_paint", "CrewCabin_Mirror": "lever", "CrewCabin_PanelBlanks": "cabin_paint"}
+    more = {"CrewCabin_WindowShroud": "cabin_paint", "CrewCabin_Mirror": "lever", "CrewCabin_PanelBlanks": "cabin_paint", **(more or {})}
     mc.dress(c, M, parent, P, pilot, seat, main, side, faces, out, more=more)
     return out
 
@@ -274,8 +287,11 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, earth: bool = Tr
         c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)  # its case behind the panel
     # control fuel, which capsule 7 had on its left console
     (u, v), r = fig(170, 455), 118 * S / 2
-    mc.fuel_gauge(c, P, faces, u, v, r)
-    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)
+    if "ControlFuel" in without:
+        blank(c, P, [(u + (r + 0.14) * math.cos(TAU * k / 24), v + (r + 0.14) * math.sin(TAU * k / 24)) for k in range(24)])
+    else:
+        mc.fuel_gauge(c, P, faces, u, v, r)
+        c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)
     # An instrument with two needles under the oxygen flow switch, whose legend the figure does not let us read: its
     # case and a plain face, and no needles of ours.
     (u, v), r = fig(1310, 655), 122 * S / 2
@@ -411,9 +427,10 @@ def earth_path(c: Cabin, P: Matrix, faces: Sheet) -> None:
 # --------------------------------------------------------------------------- the consoles
 
 
-def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
+def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, sequence=SEQUENCE) -> None:
     """The left console in its two parts, each turned further toward the pilot, and the right console. The figure
-    draws them flat beside the main panel; how they were canted is taken as capsule 7's (mercury_cabin: estimated)."""
+    draws them flat beside the main panel; how they were canted is taken as capsule 7's (mercury_cabin: estimated).
+    `sequence`: the column of sequence lights, where a capsule's was not No. 11's."""
     ex, ey, ez = (Vector(P.col[i][:3]).normalized() for i in range(3))
     hinge = Vector(P @ Vector((fig(47, 0)[0], -mc.STRIP_DROP, 0))) / IN
     a = mc.STRIP_CANT
@@ -436,7 +453,7 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     rg.text("LAUNCH CONTL", u, v + 0.42, 0.1, INK)
     rg.text("READY", u - 0.42, v, 0.1, INK, align="r")
     rg.text("OFF", u + 0.42, v, 0.1, INK, align="l")
-    for name, legend, kind, py in SEQUENCE:
+    for name, legend, kind, py in sequence:
         v = sfig(0, py)[1]
         telelight(c, Sx, faces, name, legend, lu, v, size=(2.3, 0.86))
         if kind == "ring":  # a pull ring on its stem, hanging from the panel
