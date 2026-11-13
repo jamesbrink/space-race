@@ -206,7 +206,8 @@ for (const f of flown) {
     // every input the ascent reads that is not documented, by where it is in the record: a new one must be added here
     const read = [];
     const walk = (x, at) => {
-      if (!x || typeof x !== 'object' || at.endsWith('.checks')) return;
+      // (the checks are not inputs; `sheds` and `centre` are the scene's alone: staged.ts does not read them)
+      if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre')) return;
       if ('confidence' in x && x.confidence !== 'documented') read.push(at);
       if (!('confidence' in x)) for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);
     };

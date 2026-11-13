@@ -579,7 +579,7 @@ export class Cockpit {
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
     run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
     const when = { tower: this.towerAt, separation: state.separation?.t ?? Infinity, retropack: this.retropackAt, ...run.out };
-    run.dropped = this.flight.flies!.drops.map((d) => (d.on ? when[d.on] : Infinity));
+    run.dropped = this.flight.flies!.drops.map((d) => (d.on ? ((when as Record<string, number>)[d.on] ?? Infinity) : Infinity));
     // an event asked for has happened: the hand lets go of it
     if (state.abortAt !== null) delete this.hand.abort;
     if (state.ignited) delete this.hand.throttle;

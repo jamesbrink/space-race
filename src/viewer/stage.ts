@@ -10,6 +10,7 @@ import { sameTarget, type Target, type Workings } from '../actions';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
+import { exitAreaOf } from '../sim/staged.ts';
 import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { Bloom } from './bloom';
@@ -1910,7 +1911,10 @@ export class Stage {
     this.trail = null;
     const s = this.flier;
     const engine = flight.flies?.engine && s?.full.getObjectByName(flight.flies.engine);
-    const exitArea = flight.trajectory?.engine.exitArea.value;
+    // (an orbital flight's fire is its first stages', all lit together: their exits' area summed, sim/staged.ts)
+    const exitArea =
+      flight.trajectory?.engine.exitArea.value ??
+      flight.orbital?.stages.filter((st) => st.ignition.value <= 0).reduce((sum, st) => sum + st.count * exitAreaOf(st), 0);
     if (!s || !engine || !exitArea) return;
     const box = new THREE.Box3().setFromObject(engine);
     const exit = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);

@@ -13,7 +13,7 @@
  * the pilot left at. The powered ascent is flown by sim/staged.ts from `stages` and `ascent`, on a
  * stated steering law where the programme flown has not been found.
  */
-import type { Confidence, Curve, Measure } from '../types';
+import type { Confidence, Curve, Measure, ShedBody } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import {
@@ -98,6 +98,10 @@ export interface AscentRecord {
   drag: { until: Measure; area: Measure; curve: Curve }[];
   /** What leaves that is no stage (the fairing): when, and its mass, kg. */
   drops: { id: string; at: Measure; mass: Measure }[];
+  /** The spacecraft's centre of mass above the flown model's origin (`Flight.flies.datum`), m: what the scene turns it about once alone. */
+  centre?: Measure;
+  /** What leaves, each flown on as a body of its own in the scene (sim/shed.ts), by the `Flight.flies.drops[].on` that lets it go. Each gives its own mass, centre and gyration. */
+  sheds?: ShedBody[];
   /** The ascent's own checks: an event's id and a field of `EventState` ('boosters.altitude'), or a field of `AscentSummary`. Tolerances set before it was flown. */
   checks: AscentCheck[];
 }
