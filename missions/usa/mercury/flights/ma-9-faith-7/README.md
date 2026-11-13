@@ -108,7 +108,7 @@ launch instant, 13:04:13 UTC. All `derived`. Elevations are geometric.
 | Moon | 218.4° | 31.6° | In the south-west, going down; 62% lit, a day before last quarter |
 | Jupiter | 138.7° | 57.4° | Magnitude −1.7, high in the south-east |
 | Venus | 113.2° | 50.2° | Magnitude −3.3 |
-| Saturn | 209.5° | 41.6° | 10° from the Moon |
+| Saturn | 209.5° | 41.6° | 12° from the Moon |
 | Mercury | 81.9° | 28.3° | 4° from the Sun |
 
 The Moon was up in daylight, as high as the Sun and on the other side of the sky from the way the
@@ -131,8 +131,8 @@ model for a sky to stand over, and no record to write one from.
 - **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
   programme, an orbit and an entry as data, and for this flight above all a capsule that can be
   flown by hand through both with nothing but a window to steer by.
-- **Nothing is seen to leave.** The flashing beacon is in its canister and the balloon in its can,
-  as at liftoff. The umbilical's door is shut.
+- **Nothing is seen to leave.** The flashing beacon is in its canister, the balloon in its can and
+  the aerial's two tapes on their reels, as at liftoff. The umbilical's door is shut.
 - **No periscope**, because there was none: this is the one Mercury flight here with no periscope
   to play on a clock.
 

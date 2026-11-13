@@ -22,6 +22,7 @@ from mathutils import Matrix, Vector
 import mercury_cabin as mc
 import mercury_cabin_11
 import mercury_cabin_13
+import mercury_cabin_16
 from mercury_cabin import INK, Cabin, Sheet, toggle
 from srlib import IN, MeshBuilder, Surf, frame, interior, prof
 
@@ -128,6 +129,14 @@ CENTRE = (
     "experiment, the television camera, the tape recorder and the telemetry. It was these temperatures that Cooper read out, pass after "
     "pass. Laid out from one small drawing; legends that drawing does not let us read are left off.",
 )
+HASSELBLAD = (
+    "Hand-held camera",
+    'A Hasselblad with an 80 mm lens and magazines of 70 mm film, the make Schirra had been first to carry. "Man, all I do is take '
+    'pictures, pictures, pictures," Cooper told the Cape on the sixteenth orbit. With it he photographed Tibet and the Himalayas '
+    "from above, clouds and coastlines through infrared film and three filters for the Weather Bureau, and the horizon in four "
+    "directions for the men designing Apollo's navigation. He had a 35 mm camera for the zodiacal light and a 16 mm one besides. "
+    "That it was aboard is the record's; it stands in its kit where Sigma 7's did, which nothing read says of this capsule.",
+)
 TV = (
     "Television camera",
     "A slow-scan television camera, the first on an American manned spacecraft: one picture every two seconds, sent down over its own "
@@ -164,6 +173,10 @@ def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling:
     mercury_cabin_11.name_things(parent)
     if interior():
         television(parent, M, out)
+        # the hand-held camera in its kit at the pilot's right, as No. 16's: the place is that capsule's, estimated there
+        mercury_cabin_16.camera_kit(parent, M, vessel, hatch)
+        for name in ("Camera_Kit", "Camera_Body", "Camera_Lens"):
+            bpy.data.objects[name]["label"], bpy.data.objects[name]["about"] = HASSELBLAD
         plate = bpy.data.objects.get("CrewCabin_CentrePanel")
         if plate is not None:
             plate["label"], plate["about"] = CENTRE

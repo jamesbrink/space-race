@@ -102,21 +102,21 @@ Cutoffs on MA-8: boosters 00:02:08.6, sustainer 00:05:15.7 (NASA TN D-4807, Tabl
 clockwise 2.52° at most, at up to 7.83°/s, from a misalignment of the two booster engines of 0.14° to 0.23° and the
 gas generator's exhaust (pp. 105 and 106).
 
-**Atlas 130-D (MA-9)**, against those two:
+Atlas 130-D (MA-9), against those:
 
 | | Atlas 130-D | Confidence | Source | In the model |
 | --- | --- | --- | --- | --- |
 | Number on the fuel tank | 130 D, in the same place: 13 to one side of the fairing above a vernier, 0D to the other | documented by photograph | NASA 63C-1417 (GPN-2000-000998: on the pad, 14 May 1963) | yes: `serial="13 0D"` |
 | Insulation bulkhead | none: "A change in the production line stopped further installations of this material" | documented | NASA SP-45, p. 96 | yes: `insulation_bulkhead=False` |
 | Booster engines' alignment | offset, to cancel the roll at liftoff that had come near the abort limit on 113-D: "incorporated for MA-9 in Atlas 130D" | documented | NASA SP-45, pp. 96 and 97; *This New Ocean*, p. 491 | no: too small to draw; nothing read gives the angle |
-| Booster engines' injectors and ignition | baffled injectors; a hypergolic start; no hold-down beyond the two seconds between lock-in and release | documented | the MA-9 press kit, p. 46; NASA SP-45, pp. 13, 102 and 103 | no (see below) |
+| Booster engines' injectors and ignition | baffled injectors; a hypergolic start; no hold-down beyond the two seconds between lock-in and release | documented | the MA-9 press kit, p. 46; NASA SP-45, pp. 13, 102 and 103 | yes: `baffled_injectors`, `hypergolic_igniters`, as built for 113-D |
 | Propellant utilisation | "a slightly reshaped mandrel and improved calibration techniques" | documented | NASA SP-45, p. 103 | no |
 | Acceptance | rolled out on 30 January 1963, returned for rewiring, accepted on 15 March with no discrepancy recorded; at the Cape on 18 March, erected on the 22nd | documented | *This New Ocean*, pp. 490 and 491; the press kit, p. 44 | |
 | Markings elsewhere, pods, lines, fairings | taken as 109-D's | estimated | 63C-1417 shows UNITED STATES down the oxygen tank beside the vernier's line and the two pods, and nothing to the contrary | as 109-D |
 
 Cutoffs on MA-9: boosters 00:02:12.5, the booster section dropped at 00:02:15.4, sustainer 00:05:03.03 (NASA SP-45,
-p. 103). The baffled injectors and hypergolic igniters came in with Atlas 113-D (MA-8): 130-D's model does not show
-them until that vehicle's builder options are here to call.
+p. 103). At liftoff the roll was a "minor transient", corrected as the autopilot took hold (the same page), where
+113-D's had come to four fifths of the abort limit (p. 102).
 
 ## What was changed for Mercury
 

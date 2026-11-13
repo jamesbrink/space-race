@@ -23,8 +23,10 @@ No. 20 is built from the same places as No. 18, and from nothing copied:
   panel): Liberty Bell 7's own script and [mercury_cabin_11.py](../../vehicles/mercury_cabin_11.py),
   called from this flight's script with no periscope and with what No. 20 had otherwise
   ([Liberty Bell 7's spacecraft.md](../mr-4-liberty-bell-7/spacecraft.md));
-- what the orbital capsules had (the ablation shield; the balloon's container):
+- what the orbital capsules had (the ablation shield; the balloon's container; the high-frequency dipole
+  antenna on the retropack, which No. 16 was the first to carry):
   [mercury_orbital.py](../../vehicles/mercury_orbital.py);
+- the hand-held camera in its kit, as built for No. 16: [mercury_cabin_16.py](../../vehicles/mercury_cabin_16.py);
 - what was No. 20's own: this flight's script and [mercury_cabin_20.py](../../vehicles/mercury_cabin_20.py).
 
 ## What made No. 20 different
@@ -35,6 +37,9 @@ was found on NASA's report server. What follows is from the programme's own summ
 this flight's report (NASA SP-45), its press kit, NASA's illustrated account (*The Triumph of
 Astronaut L. Gordon Cooper, Jr. and the Faith 7*), *This New Ocean*, and photographs. *This New
 Ocean* counts 183 changes (p. 490); SP-45's Table 3-II (p. 52) lists twenty, all of them here.
+The capsule before it was No. 16, whose own report lists eighty-one changes from No. 18
+([Sigma 7's spacecraft.md](../ma-8-sigma-7/spacecraft.md)): what No. 20 kept of those is taken as
+kept where this table is silent.
 
 | What | Before | No. 20 (MA-9) | Confidence | Source | In the model |
 | --- | --- | --- | --- | --- | --- |
@@ -57,7 +62,10 @@ Ocean* counts 183 changes (p. 490); SP-45's Table 3-II (p. 52) lists twenty, all
 | Inverters | three | two replaced | documented | SP-45, Table 3-II | no |
 | **Flashing beacon** | none | a 5.75 in ball with two xenon lamps, in a canister on the retropack | documented; estimated (the canister, and where on the pack) | SP-45, pp. 218 to 220, Figures 12-2 and 12-5; the press kit, pp. 9 and 10 | yes: see "Retropack" |
 | **Geiger tubes** | (MA-8: emulsion packs) | two Geiger-Mueller tubes in a package on the retropack | documented; estimated (the package and its place) | SP-45, p. 226 and Figure 12-14; the press kit, p. 15 | yes |
-| HF dipole antenna | first on MA-8's retropack | "this special dipole antenna" tested again: 28 ft, by the two together | documented | SP-45, p. 57; *The Triumph*, p. 21 | **no**: see "What the model gets wrong" |
+| HF dipole antenna | first on MA-8's retropack | "this special dipole antenna" tested again: 28 ft, by the two together | documented; the units and their places estimated | SP-45, p. 57; *The Triumph*, p. 21; NASA TN D-4807, p. 61, for the antenna itself | yes, rolled up: `mercury_orbital.hf_dipole`, as built for No. 16 |
+| Hand-held camera | MA-8's Hasselblad 500C | "A Hasselblad camera with 70 mm film and 80 mm lens"; also a 35 mm camera for the zodiacal light and a 16 mm camera | documented; the kit's place estimated | the press kit, pp. 13 and 20; *The Triumph*, pp. 17 to 19; SP-45, p. 223 | the Hasselblad in its kit, where No. 16's is: nothing read places No. 20's |
+| Ablation panels on the cylinder | on MA-8, for that flight | none recorded | documented (that they were MA-8's experiment) | SP-45, p. 227 | none |
+| Retropack stripes | No. 16's pack striped dark on light | not established: no photograph of No. 20's retropack has been read | | | no |
 | **Balloon** | MA-7's, which tore | made again; in a 3 in container "in the antenna canister under the destabilizing flap"; orange | documented; estimated (its depth and place) | SP-45, p. 227 and Figure 12-16; the press kit, pp. 16 to 19 | yes: the can |
 | **White paint patches** | one 6 in patch on MA-7 and on MA-8 | three 6 in squares of three coatings on one shingle at the small end of the cone | documented; estimated (where) | *The Triumph*, p. 21; NASA S63-06259 | yes: see "Paint" |
 | **Instrument panel** | No. 11's, with deletions | a new centre section in the periscope's place; more instruments at the right; a different left console | documented as a small drawing | SP-45, Figure 17-7(b), p. 291 | in part: see "Cabin" |
@@ -74,7 +82,7 @@ Nothing read says these differed from the capsule named; nothing read says they 
 
 | Item | Taken from | Why |
 | --- | --- | --- |
-| Where the window stands, its plate and rim | No. 11 | NASA S63-06259 and S63-07521 show the window's cover standing between UNITED STATES and the hatch, with the emblem directly under it |
+| Where the window stands, its plate and rim | No. 11 | **against this capsule's photographs**: S63-06259 and S63-09676-E show the window's cover between UNITED STATES and the hatch with the emblem directly under it, as the model has them; but S63-07701 (on the carrier's deck, from the window's side) and S63-07521 show the window level with the first UNITED STATES, between about stations 20 and 40, where the model's is between 25 and 46. See "What the model gets wrong" |
 | Where the hatch is and its two shingles | No. 11 | the same photographs, and GPN-2000-001335: the seams at the hatch's head and foot run on under UNITED STATES beside it |
 | The shingle layout to the right of the hatch (columns of 30°, seams at stations 24.8 and 46.8) | No. 11 | GPN-2000-001335 agrees with it: the seams run on from the hatch's head and foot under UNITED STATES. From the pilot's feet round to the window it is this capsule's own: see "Shingles" |
 | Two stacks of beads on the shingle under the window | No. 18 | no photograph of No. 20's read shows it square on |
@@ -87,7 +95,7 @@ Nothing read says these differed from the capsule named; nothing read says they 
 
 | Item | As modelled | Confidence | Basis |
 | --- | --- | --- | --- |
-| Seams from 75° to 255° | at stations 20.8 and 38.5, where No. 11's are at 24.8 and 46.8: one tall row of shingles above the upper seam to the top of the cone | documented by photograph (that they are not No. 11's); estimated (the stations) | KSC-63-MA9-174, from above with the capsule in its collar: one seam round that side just above UNITED, and a single row above it carrying the three white squares on one shingle, as *The Triumph* says (p. 21). S63-07521: a row of fasteners at the foot of STATES |
+| Seams from 75° to 255° | at stations 20.8 and 38.5, where No. 11's are at 24.8 and 46.8: one tall row of shingles above the upper seam to the top of the cone | documented by photograph (that they are not No. 11's); estimated (the stations) | KSC-63-MA9-174, from above with the capsule in its collar: one seam round that side just above UNITED, and a single row above it carrying the three white squares on one shingle, as *The Triumph* says (p. 21). S63-09676-E: a row of fasteners at the foot of STATES |
 | The plate at the pilot's feet | plain, 75° to 105°, between those seams | estimated | KSC-63-MA9-174 shows a plain plate at the cone's limb there, under the upper seam; how wide it is and how far down it goes cannot be told |
 | Columns | twelve of 30°, two stacks of beads each | estimated | No. 11's; the same photograph shows columns of about that width with two stacks |
 
@@ -97,16 +105,17 @@ All of it is placed from photographs; none of the places is dimensioned.
 
 | Item | As modelled | Basis |
 | --- | --- | --- |
-| The emblem | a white five-pointed star, one point toward the nose, its points 7.6 in from its middle, at 270°, station 16.9: filling the shingle under the window | NASA S63-06259 and S63-07521 (the insertions of 14 and 15 May): a white field with straight edges, pointed toward the nose and toward the base, broad between, lying from the window's foot most of the way to the base. Both see it at the cone's limb, almost edge on. That it was a star is taken from the flight's later insignia (Commons: *Faith 7 insignia.jpg*); a shield or a diamond would look the same in them |
+| The emblem | a white five-pointed star, one point toward the nose, its points 7.6 in from its middle, at 270°, station 16.9: filling the shingle under the window | NASA S63-06259 and S63-09676-E (the insertions of 14 and 15 May): a white field with straight edges, pointed toward the nose and toward the base, broad between, lying from the window's foot most of the way to the base. Both see it at the cone's limb, almost edge on. That it was a star is taken from the flight's later insignia (Commons: *Faith 7 insignia.jpg*); a shield or a diamond would look the same in them |
 | its lettering | FAITH in dark capitals 8.6 in long and 1.75 in tall across the star above its middle, and a 7 of 3.9 in under it | the same two photographs, in which dark letters and a 7 with a long sloping stem can be made out; their arrangement is the insignia's. A typeface of ours. Whether the dark is black paint or the shingle left bare is not established: black |
-| UNITED STATES, first | two lines 27 in long, letters 6.9 in tall, centred on 208° at stations 33.85 and 24.55: low on the cone, under the white squares, ending 7 in from the window's plate | S63-06259, S63-07521; KSC-63-MA9-174 (in the water, from above) |
+| UNITED STATES, first | two lines 27 in long, letters 6.9 in tall, centred on 208° at stations 33.85 and 24.55: low on the cone, under the white squares, ending 7 in from the window's plate | S63-06259, S63-09676-E; S63-07521 (close and square on: the lettering ends one stack of beads from the window's cover); KSC-63-MA9-174 (in the water, from above) |
 | its flag | 12 by 6.3 in at 209°, station 16.8 | the same |
 | UNITED STATES, second | the same size, centred on 28° at stations 42.4 and 31.9: beside the hatch and level with it, beginning 4.5 in from its border | GPN-2000-001335 (the egress on the carrier's deck, square on and close); the capsule as it hangs at Space Center Houston |
 | its flag | at 30°, station 18.6: under the seam at the hatch's foot | the same |
-| White paint patches | three 6 in squares 0.7 in apart in a column at 185°, the top one's upper edge at station 57.4: on one shingle, over the U and N of the first UNITED | documented: their number, their size, that they were on one shingle at the small end of the cone (*The Triumph*, p. 21). Their places and the gaps are read off S63-06259 and S63-07521. Each has a dark spot at its middle in the photographs, taken as its thermocouple's fastening: not modelled |
+| White paint patches | three 6 in squares 0.7 in apart in a column at 185°, the top one's upper edge at station 57.4: on one shingle, over the U and N of the first UNITED | documented: their number, their size, that they were on one shingle at the small end of the cone (*The Triumph*, p. 21). Their places and the gaps are read off S63-06259 and S63-09676-E. Each has a dark spot at its middle in the photographs, taken as its thermocouple's fastening: not modelled |
 
-Not modelled: the stencils low on the cone (S63-07521: "AUTO ... R/V VENT" and others); a small
-louvred panel beside the S of the first STATES in the same photograph; a round fitting about four
+Not modelled: the stencils low on the cone (S63-09676-E: "AUTO ... R/V VENT" and others) and
+CAUTION THERMOCOUPLE at the seams beside the window (S63-07521); a small louvred panel beside the S
+of the first STATES (S63-09676-E); a round fitting about four
 inches across high on the cone at about 150° (KSC-63-MA9-174). Not established: what was painted
 between 60° and 170°. No photograph read shows that side before the flight; KSC-63-MA9-174 shows
 no paint from about 100° to 170° after it.
@@ -131,6 +140,7 @@ no paint from about 100° to 170° after it.
 | Its place | at the pack's outer corner at 90°, held by two straps | estimated | scaled off Figure 12-5's sketch, which draws a small circle there |
 | Geiger tubes | two, in one package: one looking along the roll axis through a collimator of about 0.8 steradian, one shielded and looking 40° off it | documented | SP-45, p. 226 |
 | The package | a box 4.2 by 3.0 by 2.2 in on the pack's lower end at 270°, 10.2 in out | estimated | Figure 12-14 draws a box near the middle of the pack's end; its size is ours |
+| HF dipole antenna | two units on the pack's wall, at 90° and 270°, each a tape 14 ft long rolled on its reel | documented (two, on the pack, the tape); estimated (the units, and where) | as [Sigma 7's](../ma-8-sigma-7/spacecraft.md), "Retropack". At 90° the unit stands just above the beacon's canister: both places are estimates, and one of them is wrong |
 
 ## Balloon
 
@@ -181,13 +191,13 @@ Top-level nodes in the GLB. These names are the `node` fields in `flight.ts`.
 | Node | Contains |
 | --- | --- |
 | `HeatShield` | the ablation shield (`HeatShield_Ablator`) and its ring of fasteners |
-| `Retropack` | as Freedom 7's, and the beacon's canister with its cover and straps (`Retropack_Beacon*`: the ball, its lamps, the piston and spring are inside it), and the Geiger tubes (`Retropack_GeigerTubes`) |
+| `Retropack` | as Freedom 7's, and the beacon's canister with its cover and straps (`Retropack_Beacon*`: the ball, its lamps, the piston and spring are inside it), the Geiger tubes (`Retropack_GeigerTubes`), and the dipole antenna's two units (`Retropack_Dipole_*`) |
 | `RecoveryCompartment`, `EscapeTower` | as Freedom 7's |
 | `AntennaCanister` | as Freedom 7's, and the balloon's container (`Antenna_BalloonCanister`) |
 | `Afterbody` | No. 11's shingles, plates, structure, attach ring and roll jets, with no periscope, this capsule's seams from 75° to 255° and two stacks of beads under the window; the umbilical's door, well and receptacle (`Umbilical_*`); this capsule's lettering, flags, white squares (`Afterbody_Patches`) and emblem (`Afterbody_Star`, `Afterbody_Name`) |
 | `Window` | as No. 11's |
 | `Hatch` | as No. 11's, with seventy bolts |
-| `CrewCabin` | as No. 11's with no periscope: the centre panel (`CrewCabin_CentrePanel`) and what stands on it, this capsule's sequence lights, the television camera (`TV_*`), Cooper's name on the suit |
+| `CrewCabin` | as No. 11's with no periscope: the centre panel (`CrewCabin_CentrePanel`) and what stands on it, this capsule's sequence lights, the television camera (`TV_*`), the hand-held camera in its kit (`Camera_*`), Cooper's name on the suit |
 
 The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md).
 
@@ -195,8 +205,16 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
 
 - **The outside is No. 11's with No. 20's paint and without its periscope.** Its window's and
   hatch's places and its roll jets are Liberty Bell 7's.
+- **The window stands about five inches too near the nose, and the emblem with it.** On the
+  carrier's deck (S63-07701) the window is level with the first UNITED STATES and no higher,
+  the hatch beside it reaches a little above it, and the emblem under it comes down nearly to
+  the base; in the model, which keeps Liberty Bell 7's place for the window as Friendship 7's,
+  Aurora 7's and Sigma 7's do, the window's top is level with the middle of the white squares.
+  Whether Liberty Bell 7's own window is placed right has not been looked at again. Moving it
+  means moving the window, its well, the opening in the pressure vessel and the cabin's shroud
+  together, for all five capsules or for this one: not done here.
 - **The shingles are laid out from three photographs.** From the pilot's feet round to the window
-  the seams are where KSC-63-MA9-174 and S63-07521 have them, to an inch or two; to the right of
+  the seams are where KSC-63-MA9-174 and S63-09676-E have them, to an inch or two; to the right of
   the hatch they are No. 11's, which GPN-2000-001335 bears out; between 345° and 75° on the far
   side of that, and under the window and the hatch, they are No. 11's untested.
 - **The emblem is a guess at a shape seen edge on.** That it was white, pointed and lettered FAITH
@@ -206,10 +224,10 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
   says so of No. 20. The plain plate round it is in one photograph, at the cone's limb.
 - **The beacon's canister and the Geiger tubes are placed off two sketches** and sized by what
   they held. How the canister was fixed to the pack is ours.
-- **The high-frequency dipole antenna is not on the retropack.** It was aboard and was used (SP-45,
-  p. 57). Sigma 7's model, which was being built as this one was, is to carry it; when it does,
-  this script should call the same builder. Nor are any stripes painted on the pack: no
-  photograph of No. 20's retropack has been read.
+- **The retropack is crowded by guesswork.** The dipole antenna's units are where Sigma 7's model
+  has them, which is an estimate, and the beacon's canister is where a sketch puts it: the two
+  nearly touch at the pilot's feet, and the real pack cannot have had them so. No stripes are
+  painted on the pack, as Sigma 7's has: no photograph of No. 20's retropack has been read.
 - **The third peroxide tank, the second oxygen bottle, the bigger batteries, the water and waste
   tanks** are not modelled: they are what the flight was about, and none shows from outside.
 - **The panel is No. 11's drawing with a new centre.** Figure 17-7(b) shows more than that: nine
@@ -221,9 +239,9 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
   not modelled, and its bracket is ours.
 - **The pilot's suit is the earlier one** in boots, shoulders and harness, on a figure of Cooper's
   height. There is no model of him standing.
-- **Nothing of the flight's hand-held equipment**: the Hasselblad and its film packs, the 35 mm
-  zodiacal-light camera, the 16 mm camera, the photometer, the dosimeters and emulsion packs, the
-  food.
+- **Little of the flight's hand-held equipment**: the Hasselblad is in its kit, where Sigma 7's
+  was; its film packs and filters, the 35 mm zodiacal-light camera, the 16 mm camera, the
+  photometer, the dosimeters and emulsion packs and the food are not modelled.
 - **The heat shield is the heat sink's shape in another material.**
 - **No mass properties are used**; none has been read for this capsule.
 - Everything listed in [Aurora 7's spacecraft.md](../ma-7-aurora-7/spacecraft.md),

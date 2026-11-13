@@ -89,9 +89,12 @@ def _flight_script(flight: str):
 
 # Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch. Its script builds them where
 # its own photographs put them, and the shingles round them; No. 20's are built by it, on the strength of this capsule's
-# own photographs (NASA S63-06259 and S63-07521: the window's cover and the emblem under it, UNITED STATES to its left;
+# own photographs (NASA S63-06259 and S63-09676-E: the window's cover and the emblem under it, UNITED STATES to its left;
 # GPN-2000-001335: the hatch, and UNITED STATES to its right), with what those photographs show otherwise. See spacecraft.md.
 no11 = _flight_script("mr-4-liberty-bell-7")
+# (One thing they show otherwise is not followed: S63-07701 and S63-07521 have No. 20's window level with the first
+# UNITED STATES, some five inches nearer the heat shield than this, and the emblem under it lower by as much. The
+# window's place is every orbital capsule's here and is left as it is: spacecraft.md, "What the model gets wrong".)
 WINDOW_T, WINDOW_Z, HATCH = no11.WINDOW_T, no11.WINDOW_Z, no11.HATCH
 
 Z_BOOSTER_BASE = -atlas_lv3b.LENGTH  # the booster engines' exit plane
@@ -116,7 +119,7 @@ NAME_STACKS = 2
 # The shingles from the pilot's feet round to the window part at other stations than No. 11's. KSC-63-MA9-174, taken
 # from above with the capsule in its collar, shows one seam running round that side just above the first UNITED, and
 # above it a single row of shingles to the top of the cone, the three white squares on one of them: "a single test
-# shingle located at the small end of the conical section" some twenty inches long. S63-07521 has a row of fasteners
+# shingle located at the small end of the conical section" some twenty inches long. S63-09676-E has a row of fasteners
 # at the foot of STATES, above the flag. So: seams at about stations 20.8 and 38.5 from 75 to 255 degrees (columns 2
 # to 7). Documented by photograph that they are not No. 11's; the stations are scaled off the two and are estimated.
 # To the right of the hatch GPN-2000-001335 shows No. 11's seams, at the hatch's head and foot.
@@ -124,7 +127,7 @@ ROWS = {k: (20.8, 38.5) for k in range(2, 8)}
 
 # The paint. All of it is placed from photographs of this capsule (spacecraft.md, "Paint"); none of it is dimensioned.
 # UNITED STATES stood on it twice, each with a flag under it: to the left of the window, low on the cone, under the
-# white squares (NASA S63-06259, S63-07521, KSC-63-MA9-174), and round to the right of the hatch, level with it
+# white squares (NASA S63-06259, S63-09676-E, S63-07521, KSC-63-MA9-174), and round to the right of the hatch, level with it
 # (GPN-2000-001335, taken on the carrier's deck). Each: the middle of its two lines round the cone, the stations of
 # the two lines, and where its flag's middle is (angle, station).
 UNITED_STATES = (
@@ -137,12 +140,12 @@ FLAG = 12.0  # the flags' width
 # end of the conical section" (The Triumph of Astronaut L. Gordon Cooper, Jr. and the Faith 7, p. 21), three kinds of
 # white coating, to see what the entry did to each. Their size and that they were at the cone's small end on one
 # shingle are documented; that they stood one above the next over the U of the first UNITED, and the gaps between
-# them, are read off S63-06259 and S63-07521. The middle of the column round the cone, the station of the top
+# them, are read off S63-06259 and S63-09676-E. The middle of the column round the cone, the station of the top
 # square's upper edge, a square's side, and the gap between two.
 PATCHES = (deg(185), 57.4, 6.0, 0.7)
 
 # The emblem, on the shingle under the window: a white field with straight edges and points, FAITH across it in dark
-# capitals and a 7 under that. The only photographs of it read (S63-06259, S63-07521) see it almost edge on, at the
+# capitals and a 7 under that. The only photographs of it read (S63-06259, S63-09676-E) see it almost edge on, at the
 # limb of the cone, where its outline is two points above and below a broad middle; it is drawn as the five-pointed
 # star the flight's later insignia has, with the insignia's lettering. The star's size is what fills the shingle as
 # those photographs have it filled. Estimated, all of it but that it was white, pointed, and said FAITH 7.
@@ -509,6 +512,7 @@ def build() -> str:
     font = load_font()
     M = mercury_capsule.make_materials()
     M.update(mercury_orbital.materials())
+    M.update(mercury_orbital.retropack_materials())
     # crinkled aluminium foil over the insulation round the window's well, as No. 11's photographs show it
     M["foil"] = material("insulation-foil", (0.74, 0.73, 0.69), 1.0, 0.36, double_sided=True)
     # the emblem's lettering: dark on the white star. Black paint, or the shingle left bare: the photographs do not say
@@ -520,6 +524,18 @@ def build() -> str:
         "air under the pilot's own hand, the autopilot having lost its power, and did what it was made to.",
     )
     mercury_capsule.build_retropack(M)
+    # (No. 16's pack was striped dark on light, and this one may have been: no photograph of No. 20's has been read, so it is not)
+    mercury_orbital.hf_dipole(
+        M,
+        "The aerial for the high-frequency voice radio that Sigma 7 had first carried: two halves on opposite sides of the "
+        "retropack, each a tape of beryllium copper that curls into a tube as it leaves its reel, fourteen feet each way. "
+        "On this flight it was tested on purpose. Thirty hours up Cooper called on it twice, once near Panama and once over "
+        "the empty South Atlantic, each time with the capsule turned so that the aerial lay level and then so that it "
+        "pointed at the Earth, while every station listened. It worked, and in the long gaps between stations Cooper "
+        "found it worth having. It went with the retropack. "
+        "The tape's size and that there were two on the pack are Sigma 7's report's; the units are drawn from a photograph "
+        "with no scale, and where round the pack they stood is estimated. They are shown rolled up, as launched.",
+    )
     build_retropack_experiments(M)
     build_afterbody(M, font)
     window = no11.build_window(M)
@@ -540,8 +556,10 @@ def build() -> str:
     say()
     # the capsule is built in the pilot's frame; it stands on the booster with its hatch on +X, as every site's frame has it
     mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
-    # Atlas 130-D: its number as the photographs of 14 May have it; no insulation bulkhead (taken out on the production line)
-    atlas_lv3b.build(Z_BOOSTER_BASE, font, serial="13 0D", insulation_bulkhead=False)
+    # Atlas 130-D: its number as the photograph of 14 May has it; no insulation bulkhead (taken out on the production
+    # line); the booster engines' baffled injectors and hypergolic igniters, which came in with 113-D ("The Atlas 130-D is
+    # equipped with baffle injection engines; it requires a hypergolic (self-igniting) start": the MA-9 press kit, p. 46)
+    atlas_lv3b.build(Z_BOOSTER_BASE, font, serial="13 0D", baffled_injectors=True, hypergolic_igniters=True)
     mark_shells(SHELLS + mercury_orbital.SHELLS + tuple(THING_SHELLS) + atlas_lv3b.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"
 

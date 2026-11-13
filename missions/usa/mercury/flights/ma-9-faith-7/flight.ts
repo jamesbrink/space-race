@@ -144,7 +144,7 @@ const parts: Part[] = [
       'nose down, while the rockets burned. Through it he photographed Tibet and the Himalayas and the glow of ' +
       'the night air, and said he could see roads, villages and the smoke of chimneys, which was more than those ' +
       'on the ground had thought possible. The panes’ sizes are the drawing’s; where the window stands along the ' +
-      'cone is as Liberty Bell 7’s.',
+      'cone is as Liberty Bell 7’s, which this capsule’s own photographs put some five inches too near the nose.',
     facts: [
       ['Outer pane', '21.0 in long, 11.25 in to 7.51 in wide, 0.35 in Vycor'],
       ['Inner panes', '12.95 in long, 9.49 in to 7.30 in wide; three'],
@@ -205,6 +205,7 @@ const parts: Part[] = [
       ['Taken out', 'periscope; rate control system; backup UHF and telemetry transmitters'],
       ['Put in', '4 lb of oxygen, 9 lb of cooling water, 4.5 lb of drinking water, 15 lb more fuel capacity'],
       ['Television', 'slow-scan: one frame in 2 s; camera 10 lb'],
+      ['Cameras', 'a 70 mm Hasselblad, a 35 mm and a 16 mm'],
       ['Changes for the flight', '183'],
     ],
     explode: [0, 3.9, 0],
@@ -246,14 +247,17 @@ const parts: Part[] = [
       'minutes up, Cooper pitched the capsule down and a spring threw the ball toward the Earth at ten feet a ' +
       'second; he found it flashing among the stars on the next night and the one after, the first satellite ' +
       'launched from a manned spacecraft. Beside the nozzles a package of two Geiger tubes counted what was left ' +
-      'of the electron belt a hydrogen bomb had made the summer before. Thirty-four hours up, with no autopilot, ' +
+      'of the electron belt a hydrogen bomb had made the summer before, and on its wall are the two reels of the ' +
+      'high-frequency aerial Sigma 7 had first carried, fourteen feet of tape each. Thirty-four hours up, with no autopilot, ' +
       'he fired the three rockets by hand on John Glenn’s count from a ship off Japan, and dropped the pack by ' +
-      'hand a minute later. The canister’s place is scaled off a sketch and the tubes’ box is ours.',
+      'hand a minute later. The canister’s place is scaled off a sketch, the tubes’ box is ours, and the aerial’s ' +
+      'reels stand where Sigma 7’s model has them.',
     facts: [
       ['Retro motors', '3 × 1,000 lbf, 10 s each'],
       ['Fired', '33:59:53, by hand'],
       ['Posigrade motors', '3 × 400 lbf, 1 s'],
       ['Flashing beacon', '5.75 in ball, 10 lb; out at 03:25, at 10 ft/s'],
+      ['HF aerial', 'two tapes of 14 ft, let out in orbit'],
       ['Jettisoned', '34:01:01, by hand'],
     ],
     explode: [0, 2.6, 0],
@@ -413,8 +417,9 @@ const parts: Part[] = [
       'mounted slightly out of line, to push the other way, and the twist it left its launcher with was small ' +
       'and soon corrected. They had injectors with baffles, against rough burning, and were lit by a fluid that ' +
       'ignites on meeting oxygen, so the vehicle was held down no longer than the two seconds it takes to see ' +
-      'that all five are burning. The chambers’ places are scaled off a small drawing; their form, and the ' +
-      'pumps’, are representative: the offset is too small to draw.',
+      'that all five are burning. The baffles and the igniters are in the model, as built for Atlas 113-D, which ' +
+      'had them first. The chambers’ places are scaled off a small drawing; their form, and the pumps’, are ' +
+      'representative: the offset is too small to draw.',
     facts: [
       ['Thrust', '154,000 lbf each (685 kN)'],
       ['Propellants', 'RP-1 kerosene and liquid oxygen'],
@@ -597,7 +602,7 @@ export const flight: Flight = {
       value: 35.8 * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: '35.8 in: as Liberty Bell 7’s, which was scaled off its own photographs; this capsule’s (NASA S63-06259: the window’s cover standing over the emblem) do not disagree',
+      note: '35.8 in: as Liberty Bell 7’s, which was scaled off its own photographs. This capsule’s do not agree: NASA S63-07701 and S63-07521 show its window level with the first UNITED STATES, its middle near 30 in. The model keeps 35.8, with every orbital capsule here',
     },
     {
       group: 'Spacecraft',
