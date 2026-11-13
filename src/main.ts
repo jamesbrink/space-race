@@ -1,7 +1,7 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { flights } from '../missions';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
-import { flightFor, formatAddress, namesNothing, opensIn, type Place, parseAddress } from './address';
+import { flightFor, formatAddress, namesNothing, onMoved, opensIn, type Place, parseAddress, settle, where, write } from './address';
 import { Callout } from './callout';
 import { Cockpit } from './cockpit';
 import { follow } from './curtain';
@@ -24,10 +24,10 @@ import { Stage, type Thing, type WarmStep } from './viewer/stage';
 import { Clock, localTime, missionTime } from './world/clock.ts';
 
 /** What the address bar's fragment says is on show: the flight, which of its two places, and what there (address.ts). */
-const address = () => parseAddress(location.hash);
+const address = () => parseAddress(where());
 
 // (enter.ts brings this page up only for a flight that has a site: one with only its vehicle built is the gallery's alone)
-const flight = flightFor(flights, location.hash) as SitedFlight;
+const flight = flightFor(flights, where()) as SitedFlight;
 document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
@@ -277,9 +277,7 @@ function show(id: string, snap = false, asItStands = false): void {
   ui.setModel(model.id, stage.exploded(model.id));
   stage.section(model.id, snap, asItStands);
   orbit();
-  const hash = formatAddress(flight.id, cockpit.active ? 'fly' : 'site', model.id);
-  // (the gallery's address is its own: the site may have arrived behind it)
-  if (!demo.active && !gallery.active && location.hash !== hash) history.replaceState(null, '', hash);
+  written(cockpit.active ? 'fly' : 'site');
 }
 
 /** Fetch the flight's models and open on a section. */
@@ -676,7 +674,7 @@ const sheet = document.querySelector<HTMLElement>('#ui .panel')!;
 const gallery = new Gallery(document.body, flight, {
   go: (place) => go(place),
   home: goHome, // (out to the front page, which is no flight's: home.ts)
-  address: (what) => history.replaceState(null, '', formatAddress(flight.id, 'gallery', what)),
+  address: (what) => gallery.active && settle(formatAddress(flight.id, 'gallery', what)), // (within the place: no step of its own)
   covered: () => false,
 });
 // the same switch the gallery has, in the same spot, and the same way back in the crumbs
@@ -685,12 +683,24 @@ const places = placesNav(flight, 'site', (to) => go(to));
 document.querySelector('#ui .title h1')?.setAttribute('data-home', '');
 document.querySelector('#ui .title .sub')?.after(places);
 /** The site is being seen as the launch site or from the flight deck: the switch, the crumbs and the address say which. */
-function placed(place: 'site' | 'fly', write = true): void {
+function placed(place: 'site' | 'fly', say = true): void {
   markPlace(places, place);
   const trail = document.querySelector('#ui .crumbs');
   if (trail) trail.innerHTML = crumbs(flight, place);
-  if (write && !gallery.active && !demo.active)
-    history.replaceState(null, '', formatAddress(flight.id, place, place === 'fly' ? '' : current.id));
+  if (say) written(place);
+}
+/**
+ * The page is following an address (a link, Back, Forward): what it writes as it lands there rewrites that entry and
+ * is never a step of its own, whatever it passes through on the way (the deck left, then a section shown).
+ */
+let following = false;
+/** Write the address: a step of the visitor's where the place has changed (address.ts), unless the page is following one. */
+const say = (hash: string): void => (following ? settle : write)(hash);
+/** The gallery is on its way: the site settling as it is left (the deck left, the show stopped) says nothing. */
+let leaving = false;
+/** Where it has a say, the site writes the address. It has none while it is still arriving, while the gallery is up or on its way, or while the show is running. */
+function written(place: 'site' | 'fly'): void {
+  if (ready && !leaving && !gallery.active && !demo.active) say(formatAddress(flight.id, place, place === 'fly' ? '' : current.id));
 }
 /** Go to one of the flight's places. `what`: what an address names there; left out, the place is as it was left. */
 function go(place: Place, what?: string): void {
@@ -703,10 +713,11 @@ function toGallery(what?: string): void {
     // (already there: an address that names something goes to it)
     if (what === undefined) void gallery.enter();
     else gallery.go(what);
-    history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
+    say(formatAddress(flight.id, 'gallery', what ?? gallery.at));
     return;
   }
   bound = null;
+  leaving = true;
   if (cockpit.active) cockpit.leave();
   demo.stop();
   if (stage.walk.active) stage.exitWalk();
@@ -718,7 +729,8 @@ function toGallery(what?: string): void {
   sheet.classList.remove('open'); // (a phone's sheet, open, would keep its share of the gallery's screen)
   sound.hush(true);
   stage.sleep(true);
-  history.replaceState(null, '', formatAddress(flight.id, 'gallery', what ?? gallery.at));
+  leaving = false;
+  say(formatAddress(flight.id, 'gallery', what ?? gallery.at)); // (a step, unless Back or Forward has come here)
   void gallery.enter(what);
 }
 /** To the launch site (on `model`'s section, if one is named), or with `fly` to its flight deck. The first time, the site is fetched. */
@@ -737,11 +749,19 @@ function toSite(model = '', fly = false): void {
       orbit();
     }
   }
+  // (landed later, once the site has arrived, it is still following the address it was asked for by, or not)
+  const followed = following;
   const land = (): void => {
-    if (ready && model && model !== current.id && !fly) show(model);
-    if (ready && fly && !cockpit.active) cockpit.enter();
-    else if (!fly && cockpit.active) cockpit.leave();
-    else placed(cockpit.active ? 'fly' : 'site');
+    const was = following;
+    following = followed;
+    try {
+      if (!fly && cockpit.active) cockpit.leave(); // (first: the section is then the site's, not the deck's)
+      if (ready && model && model !== current.id && !fly) show(model);
+      if (ready && fly && !cockpit.active) cockpit.enter();
+      else placed(cockpit.active ? 'fly' : 'site');
+    } finally {
+      following = was;
+    }
   };
   if (ready) return void land();
   // still on its way: this is where it opens, whatever was asked before (the switch says so now; the address when it lands)
@@ -824,8 +844,7 @@ const demo = new Demo(flight, clock, {
     callout.hide();
     if (!current.sequence) stage.setExplode(0);
     ui.setCutaway(false);
-    show(current.id);
-    history.replaceState(null, '', formatAddress(flight.id, 'site', current.id)); // where the show left off is now the place
+    show(current.id); // (where the show left off is now the address)
   },
 });
 clock.listen(() => {
@@ -861,15 +880,28 @@ requestAnimationFrame(showFrame);
 
 // A flight opens in its gallery, and its site is fetched when it is first gone to; an address that names the site or
 // the flight deck (or, as addresses once did, only a section of the site) opens there.
-const first = address();
+// The address is settled into its own form first (`#pad` is this flight's `#…/site/pad`, a flight with no place its
+// gallery), so that what the page writes as it lands rewrites that entry and adds none: a link or Back is followed,
+// never a step of its own.
+function followAddress(): void {
+  const to = address();
+  const place = opensIn(flight, to.place);
+  settle(formatAddress(flight.id, place, place === 'fly' || to.place !== place ? '' : to.what));
+  following = true;
+  try {
+    go(place, to.place ? to.what : undefined);
+  } finally {
+    following = false;
+  }
+}
 placed('site', false);
-go(opensIn(flight, first.place), first.place ? first.what : undefined);
-window.addEventListener('hashchange', () => {
-  if (namesNothing(location.hash)) return goHome();
+followAddress();
+onMoved(() => {
+  if (namesNothing(where())) return goHome();
   const to = address();
   // another flight is another page's worth of state: start clean rather than rebuild in place
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
-  else go(opensIn(flight, to.place), to.place ? to.what : undefined);
+  else followAddress();
 });
 
 // diagnostics, twice a second

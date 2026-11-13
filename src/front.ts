@@ -1,6 +1,6 @@
 import './front/front.css';
 import { flights } from '../missions';
-import { entrances, formatAddress, namesNothing } from './address';
+import { entrances, formatAddress, namesNothing, onMoved, where, write } from './address';
 import { whenLifted } from './curtain';
 import { IDLE_TITLE } from './demo';
 import { FrontScene } from './front/scene';
@@ -21,8 +21,9 @@ import { isoDate } from './world/time';
  *   this scene (main.ts or only.ts, as enter.ts would have chosen), which goes on moving while the flight arrives:
  *   the flight's curtain says how far along it is, over the picture. When the curtain lifts the flight's own canvas
  *   fades in over this one, and then this scene is let go whole: its textures, its buffers, its context.
- * - **Coming back out** (the Space Race crumb) is home.ts: the page is opened again at the address that names
- *   nothing, so a flight holds nothing of this and this nothing of a flight.
+ * - **Coming back out** (the Space Race crumb, or Back) is home.ts: the page is opened again at the address that names
+ *   nothing, so a flight holds nothing of this and this nothing of a flight. Going in is a step in the history like any
+ *   other (address.ts: `write`), so Back comes out here and Forward goes in again.
  */
 const scene = new FrontScene(document.body);
 scene.still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -62,7 +63,7 @@ async function enter(id: string): Promise<void> {
   const flight = flights.find((f) => f.id === id);
   if (!flight || entering) return;
   entering = true;
-  history.replaceState(null, '', formatAddress(id, 'gallery'));
+  write(formatAddress(id, 'gallery')); // (a step of the visitor's: Back comes out to this page again)
   document.body.classList.add('fronted');
   title.hide();
   whenLifted(() => {
@@ -87,9 +88,10 @@ async function enter(id: string): Promise<void> {
   }
 }
 
-// an address typed or gone back to that names a flight is that flight's page
-addEventListener('hashchange', () => {
-  if (!entering && !namesNothing(location.hash)) location.reload();
+// an address typed or gone back or forward to that names a flight is that flight's page; and Back while a flight is
+// on its way in is this page again, as it was before the flight was chosen
+onMoved(() => {
+  if (entering === namesNothing(where())) location.reload();
 });
 
 /** Seconds the page has been left alone; past IDLE_TITLE the words make way for the picture. */

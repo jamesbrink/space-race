@@ -236,13 +236,22 @@ def hang(obj: bpy.types.Object, on: bpy.types.Object) -> bpy.types.Object:
 # ----------------------------------------------------------------------- materials
 
 
-def materials() -> dict:
+# The lining of the cabin's wall. Vostok 1's flown cabin is lined in a yellow foam (the type's, and what every flight
+# has unless it says otherwise); the flown cabins of Vostok 5 and Vostok 6, as they are kept and photographed, are
+# lined in a white cloth. Both colours are judged from photographs of articles sixty years old.
+LININGS = {
+    "yellow": ("padding-yellow", (0.70, 0.52, 0.20)),
+    "white": ("padding-white", (0.80, 0.80, 0.76)),
+}
+
+
+def materials(lining: str = "yellow") -> dict:
     m = material
     return {
         # the sphere in orbit: its ablator under a blanket of insulation faced with aluminium foil
         "foil": m("insulation-foil", (0.74, 0.74, 0.72), 1.0, 0.4),
         "shell": m("aluminium-shell", (0.58, 0.59, 0.58), 1.0, 0.5, double_sided=True),
-        "padding": m("padding-yellow", (0.70, 0.52, 0.20), 0.0, 0.92),
+        "padding": m(*LININGS[lining], 0.0, 0.92),
         "frame": m("aluminium", (0.62, 0.62, 0.61), 1.0, 0.45),
         "sheet": m("aluminium-sheet", (0.56, 0.57, 0.57), 0.9, 0.6, double_sided=True),
         "steel": m("steel", (0.36, 0.36, 0.37), 1.0, 0.4),
@@ -1028,13 +1037,15 @@ def build(
     stowed: bool = False,
     film_camera: bool = False,
     television: bool = False,
+    lining: str = "yellow",
 ) -> str:
     """Build the spacecraft. `pilot(parent, place)` builds the man in the seat (a suit's `build_seated`); left out, the seat is empty.
     `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs. `film_camera` puts
     a Konvas in the cabin, as a node of its own: Vostok 2 was the first to carry one. `television` builds the two Seliger
     cameras as they were photographed, as a node of their own, in place of the cabin's two plain barrels: Vostok 3 and 4,
-    whose picture was the first to be broadcast."""
-    M = materials()
+    whose picture was the first to be broadcast. `lining` is the colour of the cabin's wall (LININGS): white on Vostok 5 and
+    Vostok 6, whose flown cabins show it."""
+    M = materials(lining)
     build_descent_module(M)
     build_hatches(M)
     build_cabin(M, tv_standins=not television)
