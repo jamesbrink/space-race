@@ -960,11 +960,12 @@ const crewParts: Part[] = [
     summary: 'Zipped to the sleeves; one straight finger.',
     detail:
       'Four fingers are curved to rest on the hand controller. The middle finger is straight, for pushing ' +
-      'buttons. On this flight the gloves were zipped directly to the sleeves, so the wrists could not turn; ' +
-      'the bearing-and-lock-ring wrist arrived on the next flight.',
+      'buttons. On this flight each glove joined its sleeve by a zipper round the wrist, over a bearing that ' +
+      'Shepard found in his way: turning his right hand to yaw, it bumped the parachute on his chest. The ' +
+      'quick-removal ring, turning on ball bearings, arrived on the next flight.',
     facts: [
       ['Attachment on MR-3', 'zipper'],
-      ['From MR-4', 'ring lock with wrist bearing'],
+      ['From MR-4', 'quick-removal bearing ring'],
     ],
     explode: [0, 0, 0],
     order: 0,
