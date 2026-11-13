@@ -66,8 +66,9 @@ export const LC5: SiteDef = {
     value: 295,
     confidence: 'estimated',
     source:
-      'the hatch side is square to the rails, which run 025/205 degrees true (OpenStreetMap, within 1 degree); which of the ' +
-      'two sides it was is read from TM X-53107 Figure 7-6 and liftoff photograph 6100884 (lc-5.md)',
+      'square to the rails, which run 025/205 degrees true (OpenStreetMap, within 1 degree), on the side the blockhouse and the ' +
+      'cherry picker’s truck are (TM X-53107 Figure 7-6; liftoff photograph 6100884). It is not the way the capsule’s hatch faced: the ' +
+      'vehicle stood turned to its azimuth on the launcher, the hatch 55 or 60 degrees round from here (lc-5.md, "Which way round the vehicle stood")',
   },
   region: {
     name: 'cape-canaveral',

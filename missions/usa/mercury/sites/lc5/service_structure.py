@@ -74,7 +74,7 @@ AXLE = 2.6  # each truck's two axles, either side of its centre
 WHEEL_R = 1.5
 SIDE_X = (7.6, 13.4)  # the base's two side girders, one over each pair of rails
 # Getting up it (see ../lc-5.md, "Getting about on foot", for what each rests on). The lift is an
-# open mesh cage that runs up the outboard face of the hatch side's leg, boarded from the pad
+# open mesh cage that runs up the outboard face of the blockhouse side's leg, boarded from the pad
 # (FHSU F19_051, "Emergency Egress Exercise for MR-4"; NASA 61-MR4-45). Ladders climb the legs in
 # stages between small landings (FHSU F19_004), and a last one goes up the head of the mast to the
 # crane. A deck between the legs joins the two halves of each level behind the vehicle.
@@ -269,18 +269,28 @@ def platform(parts: Parts, n: int, s: int) -> None:
         # floor was open there follows from the photographs' heights; no view shows its edge), a rail on each half
         # so that nobody walks into it: on the half that is cut, along the cut's front and far sides to the
         # vehicle's hole; on the other, along the split opposite.
+        # Which half that is, and which way round the strip lies, follow the launcher's turn (site.aim): the rail goes
+        # from the split to the strip's foremost corner, then round its outboard side until it is 0.45 ft outside the
+        # vehicle's hole.
         cut = package_cut(0.25)
         front = min(y for _, y in cut)
         if s * sum(x for x, _ in cut) > 0:
-            # (the corner at the front, the one furthest out, and along the far side to 0.45 ft outside the vehicle's hole)
-            (xa, ya), (xb, yb), (xc, _) = cut[0], cut[1], cut[2]
+            lo = min(range(4), key=lambda i: cut[i][1])
+            step = 1 if s * cut[(lo + 1) % 4][0] > s * cut[(lo - 1) % 4][0] else -1
             reach = NOTCH[n] + 0.45
-            k = next(k / 200 for k in range(201) if math.hypot(xb + (xa - xb) * k / 200, yb + (ya - yb) * k / 200) <= reach)
-            end = (xb + (xa - xb) * k, yb + (ya - yb) * k)
-            handrail(rails, [L(s * 0.3, front, zf), L(xc, front, zf), L(xb, yb, zf), L(*end, zf)])
+            path, i = [L(s * 0.3, front, zf), L(*cut[lo], zf)], lo
+            for _ in range(3):
+                (xa, ya), (xb, yb) = cut[i], cut[(i + step) % 4]
+                k = next((k / 200 for k in range(1, 201) if math.hypot(xa + (xb - xa) * k / 200, ya + (yb - ya) * k / 200) <= reach), None)
+                if k is not None:
+                    path.append(L(xa + (xb - xa) * k, ya + (yb - ya) * k, zf))
+                    break
+                path.append(L(xb, yb, zf))
+                i = (i + step) % 4
+            handrail(rails, path)
         else:
             handrail(rails, [L(s * 0.3, front, zf), L(s * 0.3, -(NOTCH[n] + 0.25), zf)])
-        if s < 0:  # a bench along the back wall, seen through the windows (the hatch side's has the lift's door)
+        if s < 0:  # a bench along the back wall, seen through the windows (the blockhouse side's has the lift's door)
             sbox(fit, s, CABIN_IN + 3.0, X - 0.5, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
         sbox(fit, s, X - 2.4, X - 0.35, DECK_FRONT + 2.0, DECK_FRONT + 4.5, zf, zf + 5.5)  # a cabinet
     elif n == 3:  # the white room: blue-green panels in a white frame, round the capsule
@@ -446,7 +456,7 @@ def access(parts: Parts) -> None:
         lbox(deck, (x, DECK_BACK + 0.02, z - 0.2), (x + CAR_W, y0 - 0.05, z))
 
     # ---- at each level a deck between the legs, joining the halves behind the vehicle, and behind the
-    # hatch side's leg a landing for the ladders. Each ladder run stands on one landing and comes up
+    # blockhouse side's leg a landing for the ladders. Each ladder run stands on one landing and comes up
     # through a gap in the next, beside the floor it steps off on to.
     floors = [BASE_Z + 0.3, *LEVELS.values(), TOP_LEVEL]
     arrive = leg_x(floors[1]) + 3.25  # where the first run stands, on the base's deck
@@ -546,7 +556,7 @@ def build(parts: Parts) -> None:
         seed=11,
     )
     interiors.clock(parts, g, axes(L(-3.8, 31.68, 15.3), (1, 0, 0), (0, -1, 0)))
-    # the stairs up to the base's deck from the pad, at the back on the hatch side (the photographs
+    # the stairs up to the base's deck from the pad, at the back on the blockhouse side (the photographs
     # show a flight here; where it stood on the base is estimated)
     # (NASA 61-MR4-45: a straight flight at the outboard end of the base, descending away from the
     # vehicle). Its foot is 9 in under the pad's surface: inside the hardstand while the structure
@@ -618,7 +628,7 @@ def build(parts: Parts) -> None:
             beam(red, jib(i, y1), jib(j, y1), 0.3)
             beam(red, jib(i, y0), jib(j, y1), 0.26)
     lbox(deck, (-3.6, jy[0], zc1 + 0.3), (3.6, jy[-1], zc1 + 0.6))  # the walkway on top
-    handrail(  # open on the hatch side where the ladder comes up
+    handrail(  # open on the blockhouse side where the ladder comes up
         white,
         [L(3.4, CRANE_LADDER[1] - 1.7, zc1 + 0.6), L(3.4, jy[0] + 0.2, zc1 + 0.6), L(-3.4, jy[0] + 0.2, zc1 + 0.6), L(-3.4, jy[-1] - 0.2, zc1 + 0.6)],
         2.9,

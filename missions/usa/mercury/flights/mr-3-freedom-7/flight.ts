@@ -21,11 +21,14 @@ import {
   hutLeaves,
   held,
   LC5_SPECS,
+  launcherSpec,
+  launcherTurn,
   lc5Parts,
   type PadNode,
   type PartWords,
   spareTrailerLeaves,
   swing,
+  TOWER,
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
@@ -282,6 +285,7 @@ const vehicleParts: Part[] = [
       ['Length', '37.50 ft (11.43 m)'],
       ['Alcohol tank', '18.8 ft · 3,348 US gal'],
       ['Oxygen tank', '16.83 ft · 3,072 US gal'],
+      ['Marked', 'UNITED STATES down the two sides abeam of the flight’s line; MR 7 on a plate over each fin'],
       ['Skin', '0.063 in and 0.080 in aluminium'],
       ['Fuel', 'ethyl alcohol, cut with water'],
     ],
@@ -338,14 +342,23 @@ const PEDESTAL = 5.5 * 0.3048; // the launcher's support level (lc5/site.py: LAU
 const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 
 /**
- * Where the pilot stands in every scene: on open concrete nine and a half metres from the launcher, on
- * the side opposite the hatch, with nothing between him and a camera in front of him. (Where he
+ * The flight's azimuth, degrees true (`trajectory.azimuth` has its sources), and how the vehicle therefore stood on
+ * the launcher: the table turned until the pitch plane lay on the azimuth, the capsule's hatch 55 degrees round from
+ * the site's +X toward the structure's side (sites/lc-5.parts.ts `launcherTurn`; sites/lc-5.md, "Which way round the
+ * vehicle stood"). model/pad.py builds the launcher, the cable masts and the umbilical turned by the same figure.
+ */
+const AZIMUTH = 105;
+const PAD_TURN = launcherTurn(AZIMUTH) * (Math.PI / 180);
+
+/**
+ * Where the pilot stands in every scene: on open concrete ten metres from the launcher, across the pad
+ * from the cherry picker, with nothing between him and a camera in front of him. (Where he
  * actually stood is not the point: he walked from the transfer van to the structure's lift.) He is
- * 1.6 m and more from anything standing on the pad: the chevron drum (lc5/ground_equipment.py), placed
- * after him, stood where he was, with his back to it and his ventilator against its foot.
+ * 1.6 m and more from anything standing on the pad, and 4 m to one side of where the capsule's cable
+ * mast comes down (it falls along 170 degrees round from +X: he stood under it until November 2026).
  */
 const PILOT_FACING = -Math.PI / 2; // toward -X, the sunlit side that morning, his back to the vehicle
-const PILOT = { position: [-9.4, 0, -1.1] as [number, number, number], rotationY: PILOT_FACING };
+const PILOT = { position: [-9.4, 0, 3.2] as [number, number, number], rotationY: PILOT_FACING };
 /** A direction to look at the pilot from: in front of him, turned `aside` radians, `lift` up. */
 const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [
   Math.sin(PILOT_FACING + aside),
@@ -369,6 +382,8 @@ const vehicle: ModelDef = {
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts: vehicleParts,
   position: [0, VEHICLE_Y, 0],
+  // turned with the launcher's table to the flight's azimuth: the model's own frame has the hatch on +X (model/vehicle.py)
+  rotationY: PAD_TURN,
   // The two cabin floodlights: "on full white light" in flight (Postlaunch Report, section 7.3, p. 65). Two, fluorescent,
   // four watts each, is the capsule's (SEDR 104 of December 1959, 10-44 and 10-47, capsules 2 to 8); where they hung is
   // not in anything read: the model has the two fittings above and either side of the pilot's head (the orbital capsule's
@@ -842,7 +857,7 @@ const PAD_WORDS: Record<PadNode, PartWords> = {
       ['Platforms', 'four, each in two halves'],
       ['Moves', 'on rails, under its own power'],
       ['Rolled back', '06:37 EST, T−55 min'],
-      ['Lift', 'an open cage up the hatch side’s leg, from the pad'],
+      ['Lift', 'an open cage up the blockhouse side’s leg, from the pad'],
     ],
   },
   CherryPicker: {
@@ -856,7 +871,7 @@ const PAD_WORDS: Record<PadNode, PartWords> = {
       'such a tower travels, not something the record shows.',
     facts: [
       ['Reach', '125 ft (38 m)'],
-      ['Stood', 'about 65 ft from the launcher, on the hatch side'],
+      ['Stood', 'about 65 ft from the launcher, on the blockhouse side'],
       ['At the hatch', 'from T−55 min'],
       ['Cab lowered', 'T−4 min, or T−2:30 (sources differ)'],
       ['Control', 'ground, cab, or blockhouse'],
@@ -905,11 +920,12 @@ const padParts: Part[] = lc5Parts({
   platforms: [1, 2, 4, 3].map((level, i) => [level, T.platforms + i * 0.025, T.platforms + 0.05 + i * 0.025]),
   tower: [
     // standing by, clear of the structure, until it has gone; the cab hangs level whatever the jib does
-    held('CherryPicker_Jib', Z, 29.94),
-    held('CherryPicker_Cab', Z, -29.94),
-    swing('CherryPicker_Jib', Z, -29.94, T.cabIn, T.cabIn + 0.09),
-    swing('CherryPicker_Cab', Z, 29.94, T.cabIn, T.cabIn + 0.09),
+    held('CherryPicker_Jib', Z, TOWER.standby),
+    held('CherryPicker_Cab', Z, -TOWER.standby),
+    swing('CherryPicker_Jib', Z, -TOWER.standby, T.cabIn, T.cabIn + 0.09),
+    swing('CherryPicker_Cab', Z, TOWER.standby, T.cabIn, T.cabIn + 0.09),
   ],
+  azimuth: AZIMUTH,
   cleared: [
     // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
     { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11 },
@@ -1598,13 +1614,14 @@ const body: Body = {
     rcs: { supplies: RCS_SUPPLIES, thrusters: RCS_THRUSTERS },
     base: guess(CAPSULE_CG * IN, 'the tip of the heat shield, 25 in below the centre of mass assumed above'),
     chuteArm: guess(1.8, 'the parachutes pull at the top of the recovery compartment, about 1.8 m from the centre of mass assumed above'),
-    earthward: guess(
-      125,
+    earthward: derived(
+      180,
       'the periscope’s side. The record has the spacecraft yawed 180 degrees to go heat shield first and held at 34 degrees ' +
-        '(Results of the First U.S. Manned Suborbital Space Flight, the flight plan, page 13 of the NTRS file) with the pilot watching the Earth in the periscope; which side that is ' +
-        'on the pad is the model’s: the hatch’s middle bearing 295 degrees true (LC-5’s bearing, itself estimated) and 315 degrees round from the pilot’s right, ' +
-        'the periscope under his feet at 90, 135 degrees from the hatch, and the model’s angles fall on the compass as they grow, so it bears 295 - 135 = 160 true; the body’s +Z bears 285, against the ' +
-        '105 degree azimuth: 285 - 160 = 125 degrees between them. (80 until November 2026, when the hatch was at the pilot’s right hand: photographs of the flown capsule put it 45 degrees nearer his head)',
+        '(Results of the First U.S. Manned Suborbital Space Flight, the flight plan, page 13 of the NTRS file) with the pilot watching the Earth in the periscope. ' +
+        'On the pad that side lay down range: the Redstone tilted in a plane fixed in the vehicle and did not roll (TM X-53107 4.4, Figure 4-8), so the launcher’s table ' +
+        'was turned until that plane lay on the azimuth (7.1.3: "positioned to flight azimuth"), and the capsule rode with the pilot’s feet and the periscope under them ' +
+        'down range, so that pitched over he was head up. The body’s +Z points against the azimuth, so the periscope’s side is 180 degrees from it. ' +
+        '(125 until November 2026, while the model stood the vehicle square to the rails, the hatch bearing 295 degrees true; 80 before that)',
     ),
     side: {
       dragArea: guess(
@@ -1882,7 +1899,7 @@ const heating: Heating = {
 const trajectory: Trajectory = {
   winds: WINDS,
   azimuth: doc(
-    105,
+    AZIMUTH,
     'NASA TM X-53107, section 7.2: a 105-degree launch azimuth; the Postlaunch Report has the Earth-fixed heading at separation as 105.23',
   ),
   liftoffMass: doc(LIFTOFF_MASS, `${TMX_8_1}: weight at liftoff 66,098 lb`),
@@ -2310,6 +2327,7 @@ export const flight: Flight = {
     },
     // (the pad's own figures are the site's, the same for every flight from it: sites/lc-5.parts.ts, from lc-5.md)
     ...LC5_SPECS,
+    launcherSpec(AZIMUTH),
   ],
   motors: [
     {

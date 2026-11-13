@@ -4,12 +4,15 @@ import {
   held,
   hutLeaves,
   LC5_SPECS,
+  launcherSpec,
+  launcherTurn,
   lc5Parts,
   type PadNode,
   type PadStops,
   type PartWords,
   spareTrailerLeaves,
   swing,
+  TOWER,
   X,
   Z,
 } from '../../sites/lc-5.parts.ts';
@@ -313,6 +316,7 @@ const parts: Part[] = [
       ['Length', '37.50 ft (11.43 m)'],
       ['Alcohol tank', '18.8 ft · 3,348 US gal'],
       ['Oxygen tank', '16.83 ft · 3,072 US gal'],
+      ['Marked', 'UNITED STATES down the two sides abeam of the flight’s line; MR 8 on a plate over each fin'],
       ['Oxygen loaded', 'from T-180 min'],
     ],
     explode: [0, 4.6, 0],
@@ -364,7 +368,7 @@ const BASE = 716.0 * IN;
 const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Window', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
 
 /**
- * Where the pilot stands: on the hardstand on the hatch side, 8 m from the launcher, between the transfer van that
+ * Where the pilot stands: on the hardstand on the blockhouse side, 8 m from the launcher, between the transfer van that
  * brought him and the emergency shower, turned toward the lift he is walking to. It is where NASA's photograph of
  * 21 July has him (61-MR4-83: "strolls toward the loxing Mercury-Redstone 4 as it stands in its gantry", the shower
  * at his left hand): the place read off it, to a couple of metres. Open concrete: 2.6 m from the shower, 2 m from the
@@ -377,6 +381,16 @@ const facingPilot = (lift: number, aside = 0.12, behind = false): [number, numbe
   lift,
   Math.cos(PILOT.rotationY + aside + (behind ? Math.PI : 0)),
 ];
+
+/**
+ * The flight's azimuth, degrees true (TM X-53107 7.4.3 and 8.3.2: 100 degrees for MR-4), and how the vehicle therefore
+ * stood on the launcher: the table turned until the pitch plane lay on the azimuth, the capsule's hatch 60 degrees
+ * round from the site's +X toward the structure's side (sites/lc-5.parts.ts `launcherTurn`; sites/lc-5.md, "Which way
+ * round the vehicle stood": photographs of 3, 19 and 21 July 1961 put it between 50 and 75). model/pad.py builds the
+ * launcher, the cable masts and the umbilical turned by the same figure.
+ */
+const AZIMUTH = 100;
+const PAD_TURN = launcherTurn(AZIMUTH) * DEG;
 
 const vehicle: ModelDef = {
   id: 'vehicle',
@@ -391,6 +405,8 @@ const vehicle: ModelDef = {
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts,
   position: [0, PEDESTAL + BASE, 0],
+  // turned with the launcher's table to the flight's azimuth: the model's own frame has the hatch on +X (model/vehicle.py)
+  rotationY: PAD_TURN,
   // the two cabin lights (the panel's switch reads BOTH, OFF, L.H. ONLY): put toward the middle of the cabin, as Freedom 7's
   // are, either side of the pilot's head, in the frame the capsule stands in (turned by STAND)
   lights: [
@@ -616,7 +632,7 @@ const PAD_WORDS: Record<PadNode, PartWords> = {
       ['Platforms', 'four, each in two halves; level 1 open from T−200'],
       ['Moves', 'on rails, under its own power'],
       ['Rolled back', 'T−55 min: 05:05 EST by the count and its holds'],
-      ['Lift', 'an open cage up the hatch side’s leg, from the pad'],
+      ['Lift', 'an open cage up the blockhouse side’s leg, from the pad'],
     ],
   },
   CherryPicker: {
@@ -631,7 +647,7 @@ const PAD_WORDS: Record<PadNode, PartWords> = {
       'afterwards, at the end of the slider, is how such a tower travels, not something the record shows.',
     facts: [
       ['Reach', '125 ft (38 m)'],
-      ['Stood', 'about 65 ft from the launcher, on the hatch side'],
+      ['Stood', 'about 65 ft from the launcher, on the blockhouse side'],
       ['Through the night', 'folded on its truck'],
       ['At the hatch', 'from T−55 min, once the structure had gone'],
       ['Cab lowered', 'T−4 min, or T−2:30 (sources differ)'],
@@ -731,17 +747,18 @@ const padParts: Part[] = lc5Parts({
   // the cab at the truck's tail. The angles are the stow's (sites/lc-5.md, "Moving parts"). Once the structure has
   // gone it is raised and the cab brought to the hatch; the cab hangs level throughout.
   tower: [
-    held('CherryPicker_Mast', Z, -65.59),
-    held('CherryPicker_Jib', Z, 70.11),
-    held('CherryPicker_Cab', Z, -4.52),
-    swing('CherryPicker_Mast', Z, 65.59, T.cabIn, T.cabIn + 0.09),
-    swing('CherryPicker_Jib', Z, -70.11, T.cabIn, T.cabIn + 0.09),
-    swing('CherryPicker_Cab', Z, 4.52, T.cabIn, T.cabIn + 0.09),
+    held('CherryPicker_Mast', Z, -TOWER.stow),
+    held('CherryPicker_Jib', Z, TOWER.lower - TOWER.fold),
+    held('CherryPicker_Cab', Z, TOWER.stow + TOWER.fold - TOWER.lower),
+    swing('CherryPicker_Mast', Z, TOWER.stow, T.cabIn, T.cabIn + 0.09),
+    swing('CherryPicker_Jib', Z, TOWER.fold - TOWER.lower, T.cabIn, T.cabIn + 0.09),
+    swing('CherryPicker_Cab', Z, TOWER.lower - TOWER.fold - TOWER.stow, T.cabIn, T.cabIn + 0.09),
   ],
+  azimuth: AZIMUTH,
   mastEnds: ['on its rest', 'back on its rest'],
   cleared: [
     // T-85: the shower, disconnected, is wheeled from the structure's base to the pad's north edge, clear of the
-    // cameras: along the hatch side, then along the edge. When is documented; where to is where May's photographs
+    // cameras: along the blockhouse side, then along the edge. When is documented; where to is where May's photographs
     // have it stowed (estimated)
     { kind: 'slide', node: 'GroundEquipment_Shower', by: [0, 0, 26.67], from: T.platforms, to: T.platforms + 0.03 },
     { kind: 'slide', node: 'GroundEquipment_Shower', by: [-23.165, 0, 0], from: T.platforms + 0.03, to: T.platforms + 0.06 },
@@ -1223,6 +1240,7 @@ export const flight: Flight = {
       note: '4.6 psi, held by the suit regulator only if the cabin loses pressure (SEDR 104); on this flight the cabin held about 5 psi and the suit was never inflated',
     },
     ...LC5_SPECS,
+    launcherSpec(AZIMUTH),
   ],
   motors: [
     {

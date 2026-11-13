@@ -203,7 +203,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   at its own times on a model whose slider takes it apart (the periscope's door) has `clocked`
   moves instead, in seconds from launch: the model is built as it stood at liftoff, the gallery
   shows it so, and the launch site and the flight play them on the clock.
-- A site has its own frame (the hatch on +X) and lies at an angle to the compass. Scenery is laid
+- A site has its own frame (at Complex 5, +X square to the rails on the blockhouse's side) and lies at an angle to the
+  compass; a vehicle that was laid on its azimuth by turning its launcher stands turned in it (`rotationY`, worked
+  from the azimuth: sites/lc-5.parts.ts `launcherTurn`), and its pad is built turned to match. Scenery is laid
   out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is where it
   was: `src/world` computes it from the flight's `site` and `launch`.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears

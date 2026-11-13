@@ -3,9 +3,15 @@ as the sources give them. The geometry helpers the pieces share are tools/blende
 passed on from here so that a piece imports everything from its site.
 
 Frame (Blender): the origin is the launcher's centre on the hardstand's surface. +Z is up. +X is
-the side the capsule hatch faces: WNW, about 295 deg true, uprange and toward the blockhouse.
-+Y runs along the service structure's rails toward its parking places, SSW (205 deg true). True
-north is (sin 25 deg, -cos 25 deg, 0) = (0.423, -0.906, 0): 25 deg from -Y toward +X. See ../lc-5.md.
+square to the rails on the blockhouse's side, where the cherry picker's truck stands: WNW, about
+295 deg true, uprange. +Y runs along the service structure's rails toward its parking places, SSW
+(205 deg true). True north is (sin 25 deg, -cos 25 deg, 0) = (0.423, -0.906, 0): 25 deg from -Y
+toward +X. See ../lc-5.md.
+
+The vehicle does not stand square to that frame. The launcher's table was turned to the flight's
+azimuth (`aim`), and the vehicle, its tail plugs and the two cable masts with it: everything that is
+placed round the VEHICLE here is given in degrees from the capsule hatch's middle and put on the pad
+by `round_vehicle`.
 """
 
 from __future__ import annotations
@@ -62,6 +68,9 @@ ftp = profile  # a lathe profile given in feet
 
 __all__ = [
     "MASTS",
+    "aim",
+    "launcher_turn",
+    "round_vehicle",
     "P",
     "Parts",
     "Wall",
@@ -111,22 +120,54 @@ __all__ = [
 # --------------------------------------------------------------------------- the site
 
 TRUE_NORTH = (math.sin(math.radians(25.0)), -math.cos(math.radians(25.0)), 0.0)
+BEARING_X = 295.0  # what +X bears, degrees true (estimated: ../lc-5.ts `bearingX`, which is where the viewer reads it)
+
+# How the vehicle stood on the launcher. A Redstone had no roll programme: it tilted in a plane fixed in the vehicle
+# (TM X-53107 4.4, Figure 4-8: "plane in which tilting occurs", "direction of flight"), so that plane was laid on the
+# flight's azimuth on the ground, by turning the launcher's table: "Booster arrival and erection on launcher. Cable
+# masts erected, vertical alignment, and positioned to flight azimuth" (TM X-53107 7.1.3, L-25), checked again at
+# T-130 ("Perform launch azimuth check"). The capsule rode with its own pitch plane in the booster's and the pilot's
+# feet down range, so that pitched over he is head up and the periscope, under his feet, looks at the Earth: the
+# periscope's meridian, 135 degrees round from the hatch's middle, is the one that lies down range, and a fin with it
+# (the fins are at 45 + 90k). So the hatch's middle stands (BEARING_X - azimuth) - 135 degrees round from +X toward +Y:
+# derived, from the documented azimuth, this frame's estimated bearing and the capsule's own angles. Photographs agree
+# to within what they can say (50 to 75 degrees for MR-4: ../lc-5.md, "Which way round the vehicle stood").
+PITCH_PLANE = 135.0  # the meridian of the capsule that lies down range, degrees round from the hatch's middle: the periscope's
+_turn = 0.0  # what the pad being built has the launcher's table turned by, degrees from +X toward +Y (0: the hatch on +X)
+
+
+def launcher_turn(azimuth: float) -> float:
+    """How far the launcher's table is turned for a flight on `azimuth` (degrees true): where the hatch's middle then
+    stands, degrees round from +X toward +Y."""
+    return (BEARING_X - azimuth - PITCH_PLANE) % 360.0
+
+
+def aim(azimuth: float | None) -> float:
+    """Set the launcher for the pad being built: turned to `azimuth`, or (None) left square, the hatch on +X."""
+    global _turn
+    _turn = 0.0 if azimuth is None else launcher_turn(azimuth)
+    return _turn
+
+
+def round_vehicle(degrees: float = 0.0) -> float:
+    """A place round the vehicle, given in degrees from the hatch's middle, as an angle in the site's frame: radians
+    from +X toward +Y, with the launcher turned as the pad being built has it."""
+    return math.radians(degrees + _turn)
+
+
 # The launcher's support pads, where the fins' bottoms rest. Estimated 4.9 to 6.0 ft off S63-02651
-# (MR-4 at ignition, ground level): the booster's 70 in body gives 23.5 px/ft at the tail.
+# (ground level: the booster's 70 in body gives 23.5 px/ft at the tail). That photograph is MR-1 as its engine lit on
+# 21 November 1960, which NASA's archive has as MR-4 (docs/sources.md): the launcher is taken to be the same one.
 LAUNCHER_TOP = 5.5
 # The capsule: the vehicle's origin (the heat shield's plane of maximum diameter) is 716.0 in above
 # the fins; the hatch centre 32.8 in above that. The umbilical's receptacle is under the periscope's lens, inside
-# its door: 135 degrees round from the hatch's middle (the hatch on +X), 31.2 in up the cone, on the skin (estimated,
-# from photographs of the flown capsule and of No. 11: mr-3-freedom-7/spacecraft.md, "Round the cone"). It was
-# taken until November 2026 to be on -Y, 8 in up the cone.
+# its door: 135 degrees round from the hatch's middle, 31.2 in up the cone, on the skin (estimated, from photographs
+# of the flown capsule and of No. 11: mr-3-freedom-7/spacecraft.md, "Round the cone"). It was taken until November
+# 2026 to be on -Y, 8 in up the cone.
 SHIELD_Z = LAUNCHER_TOP + 716.0 / 12
 HATCH_Z = LAUNCHER_TOP + (716.0 + 32.8) / 12
-UMBILICAL_AT = (math.radians(135.0), 31.2)  # (round from +X, station in inches)
-UMBILICAL = (
-    (37.25 - UMBILICAL_AT[1] * math.tan(math.radians(20.0))) / 12 * math.cos(UMBILICAL_AT[0]),
-    (37.25 - UMBILICAL_AT[1] * math.tan(math.radians(20.0))) / 12 * math.sin(UMBILICAL_AT[0]),
-    LAUNCHER_TOP + (716.0 + UMBILICAL_AT[1]) / 12,
-)
+HATCH_R = (37.25 - 32.8 * math.tan(math.radians(20.0))) / 12  # the skin at the hatch's middle, from the axis
+UMBILICAL_AT = (PITCH_PLANE, 31.2)  # (degrees round from the hatch's middle, station in inches)
 VEHICLE_TIP = LAUNCHER_TOP + 83.38  # escape tower's tip (Hammack & Heberlig, Figure 18)
 
 
@@ -160,7 +201,8 @@ def receptacle() -> tuple[float, float, float]:
     ]
     station = stations[0] if stations else UMBILICAL_AT[1]  # (between the two flights nothing stood there: No. 7's is kept)
     out = (37.25 - station * math.tan(math.radians(20.0))) / 12
-    return (out * math.cos(UMBILICAL_AT[0]), out * math.sin(UMBILICAL_AT[0]), LAUNCHER_TOP + (716.0 + station) / 12)
+    a = round_vehicle(UMBILICAL_AT[0])
+    return (out * math.cos(a), out * math.sin(a), LAUNCHER_TOP + (716.0 + station) / 12)
 
 
 HARDSTAND = 200.0  # side of the square: OSM outline 195 to 202 ft; TM X-53107 Figure 7-6, 157 px at 1.274 ft/px
@@ -202,7 +244,8 @@ STRUCTURE_TOP = 135.0  # to the crane deck's top rail: LC-26 twin 111 ft 9 in + 
 PLATFORM_PART = 4.5  # how far each half of a platform slides out, either way, to open (estimated)
 
 # The two cable masts stand on the launcher's table close against the vehicle, and are placed round the VEHICLE:
-# degrees from the hatch's middle (+X here) toward +Y, and feet from the axis to the pole's middle. Derived, by
+# degrees from the hatch's middle toward the periscope (anticlockwise from above; `round_vehicle` puts them on the
+# pad), and feet from the axis to the pole's middle. Derived, by
 # triangulation, from three photographs of MR-4 with the structure rolled back (FHSU Project Mercury items 466 and
 # 468, 19 July 1961; 333, 21 July). The camera's place round the vehicle is read off the capsule's own paint
 # (UNITED STATES at 178, the flag at 106, LIBERTY BELL 7 at 315: the flight's spacecraft.md) and the booster's fins
@@ -221,8 +264,9 @@ BOOSTER_BAND = LAUNCHER_TOP + 561.24 / 12  # the foot of the booster's chequered
 
 
 def mast_frame(which: str) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
-    """A mast's place (x, y), the way out from the vehicle there, and the way round it (toward +Y from +X): unit vectors."""
-    a, r = math.radians(MASTS[which][0]), MASTS[which][1]
+    """A mast's place (x, y), the way out from the vehicle there, and the way round it (anticlockwise from above): unit
+    vectors, in the site's frame with the launcher turned as the pad being built has it."""
+    a, r = round_vehicle(MASTS[which][0]), MASTS[which][1]
     out = (math.cos(a), math.sin(a))
     return (r * out[0], r * out[1]), out, (-out[1], out[0])
 
