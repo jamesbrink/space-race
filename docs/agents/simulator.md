@@ -263,6 +263,10 @@ never adjusted to bring a check in.
   nothing is offered but, on a stage that has left, to follow it down (camera.md): nobody gets out and walks, and the
   view is not sent to a place the vehicle has left. A new thing
   the pilot could work (the periscope) is a new `Command` on its part and a case in `ask` and `can`.
+  The same menu, and **Y** anywhere, takes the vehicle's skin off and puts it back: the cutaway (`ModelDef.cutaway`,
+  `Stage.setCutaway`), which on a pad or in the gallery cuts a quarter of every shell away and on the vehicle in flight
+  takes the shells off whole (their materials not drawn; the cut's planes stand in the place and a vehicle that has
+  left is not between them), from outside or from the seat. Choosing an `inside` part opens it as it always has.
 - **The cabin is the flight deck too** (`ModelDef.cabin`, types.ts: `CabinDef`; `viewer/cabin.ts`; `viewer/gauges.ts`
   for the arithmetic, tested). The model's own needles, counter wheels and lamps read the run on show at the clock's
   instant: the flight being flown (the cockpit hands every sample over, `cockpit.listen`) or the record's
