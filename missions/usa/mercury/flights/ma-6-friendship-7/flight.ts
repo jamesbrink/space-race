@@ -1,5 +1,6 @@
 import type { Flight, ModelDef, Part } from '../../../../../src/types';
 import { LC14 } from '../../sites/lc-14.ts';
+import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
 const FT = 0.3048;
@@ -28,6 +29,33 @@ const along = (az: number, lift: number, by = 1): [number, number, number] => [
 ];
 
 const RESULTS = 'Results of the First United States Manned Orbital Space Flight (NASA MSC, 1962)';
+
+/**
+ * Friendship 7's periscope, out and in (vehicles/periscope.ts): when, as this flight went. How it moves is the model's
+ * own, and No. 11's (mercury_capsule.ScopeWorks: no photograph of this side of No. 13 has been read).
+ * - Out on the pad: Glenn looked through it after 7:10 that morning (This New Ocean, p. 423). Drawn in when the
+ *   umbilical was thrown off at T-35 s (the README's count): that it went in then is the programme (SEDR 104, 12-2),
+ *   assumed of this capsule as of No. 11; the report does not say it.
+ * - Out at separation, 00:05:03.6 (Results, Table 6-II, p. 71): "Capsule did damp okay and turned around. Scope has
+ *   extended, okay", in the minute after (the transcript, p. 150). Documented that it was out by then; the instant is
+ *   the programme's.
+ * - In by hand at 04:40:30: the retropack was kept on, which stopped the sequence that would have drawn it in thirty
+ *   seconds after the pack went, so "retract the scope manually at this time", "Roger, retracting scope manually"
+ *   (p. 189); "The periscope was retracted by pumping the manual retraction lever" (the pilot's report, p. 133).
+ * - Out by hand from 04:49:34: the drogue came out at 04:49:17.2 and the periscope did not follow it, "Scope did not
+ *   come out" at 04:49:31, "Roger, pumping the scope out" at 04:49:34 (p. 191); extending it was one of the events
+ *   left to the pilot (p. 115).
+ * The times are documented. How long the pumping took either way is not in the record: each is drawn as the motor's
+ * five seconds (periscope.ts, TAKES), which is estimated.
+ */
+const PERISCOPE_EVENTS: [number, boolean][] = [
+  [ON_THE_PAD, true],
+  [-35, false],
+  [303.6, true],
+  [16830, false],
+  [17374, true],
+];
+const PERISCOPE = periscopeMoves(PERISCOPE_EVENTS);
 
 const parts: Part[] = [
   {
@@ -151,8 +179,11 @@ const parts: Part[] = [
       'Grissom’s had been stencilled; he wanted this one done by hand, and Cecelia Bibby, an artist working at the ' +
       'Cape, lettered it in the gantry in white script with a red 7 through it, under the window. UNITED STATES ' +
       'stands on the cone twice, each with a flag under it: to the left of the window and round to the right of ' +
-      'the hatch. The periscope’s door is shut, as at liftoff. The paint is placed from photographs taken on the ' +
-      'pad and at liftoff; the script is a typeface, not her hand; the shingles are laid out as Liberty Bell 7’s.',
+      'the hatch. The periscope’s door is shut, as at liftoff: it opened at separation, on a link from the ' +
+      'periscope as that came out. With the retropack kept on, nothing drew it in for the entry, and Glenn pumped it ' +
+      'in with the hand lever; under the drogue it did not come out, and he pumped it out again. The paint is placed ' +
+      'from photographs taken on the pad and at liftoff; the script is a typeface, not her hand; the shingles and ' +
+      'the periscope’s door are laid out as Liberty Bell 7’s.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -160,6 +191,8 @@ const parts: Part[] = [
       ['Paint', 'Friendship 7; UNITED STATES and the flag, twice'],
       ['Lettered by', 'Cecelia Bibby, by hand'],
     ],
+    // the periscope as this flight went (vehicles/periscope.ts): played on the clock, where there is one
+    clocked: PERISCOPE,
     explode: [0, 4.9, 0],
     order: 4,
   },
@@ -411,6 +444,8 @@ const vehicle: ModelDef = {
   cutaway: true,
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts,
+  // the periscope as it went on this flight (vehicles/periscope.ts): nothing works it by hand yet, the flight having no flight deck
+  mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   position: [0, BASE, 0],
   // the two cabin lights, as Liberty Bell 7's: either side of the pilot's head, in the frame the capsule stands in
   lights: [

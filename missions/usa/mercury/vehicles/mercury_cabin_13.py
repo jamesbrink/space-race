@@ -57,8 +57,9 @@ PLUNGER = (
 
 def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling: float, suit, window: dict, scope_z: float) -> dict:
     """Everything inside capsule 13's pressure vessel but the pilot: capsule 11's fit (mercury_cabin_11.build, with the
-    same arguments), then this capsule's words on it."""
-    out = mercury_cabin_11.build(parent, vessel, M, font, pilot, hip, hatch, ceiling, suit, window, scope_z)
+    same arguments), then this capsule's words on it. Its pilot is seated in Shepard's suit, which has no mirror, so the
+    cabin lays one on his chest (mercury_cabin_11.chest_mirror)."""
+    out = mercury_cabin_11.build(parent, vessel, M, font, pilot, hip, hatch, ceiling, suit, window, scope_z, mirror=True)
     mercury_cabin_11.name_things(parent)
     name_things(parent)
     return out

@@ -158,9 +158,11 @@ weather station have not been looked up, as they were for Liberty Bell 7.
   an orbit and an entry as data (`Flight.orbital`, as Vostok 1 has); the control modes, with a jet
   that fails; the retropack kept on, and burning; and a landing forty miles short for the reason it
   was.
-- **The periscope's motions.** The door is shut and the objective in, as at liftoff. On this
-  flight it was drawn in by hand before the entry and came out again at about 17,000 ft
-  (*This New Ocean*, pp. 431 and 433); with no clock in the gallery nothing moves.
+- **The periscope is not seen to move.** Its door, objective and the link between them are built as
+  one linkage and carry their motion, and `flight.ts` has when each went on this flight (out at
+  separation; in by hand at 04:40:30; "Scope did not come out" under the drogue, and pumped out by
+  hand from 04:49:34: *Results*, pp. 71, 133, 150, 189 and 191). With no clock in the gallery
+  nothing plays them: the door is shut and the objective in, as at liftoff.
 
 ## Where sources disagree
 
