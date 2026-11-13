@@ -417,6 +417,17 @@ test('the shed bodies of the record’s programme come down, and say where', (t)
   );
 });
 
+/** Two values the same in shape, their numbers within 1e-12 of their size (and exactly the same where not numbers). */
+function same(actual, expected, path = 'value') {
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    assert.ok(Math.abs(actual - expected) <= 1e-12 * Math.max(1, Math.abs(expected)), `${path}: ${actual} against ${expected}`);
+  } else if (expected && typeof expected === 'object') {
+    assert.equal(typeof actual, 'object', path);
+    assert.deepEqual(Object.keys(actual ?? {}).sort(), Object.keys(expected).sort(), `${path}: the same fields`);
+    for (const k of Object.keys(expected)) same(actual[k], expected[k], `${path}.${k}`);
+  } else assert.deepEqual(actual, expected, path);
+}
+
 test('a shed body’s flight is the same however it is asked for, and is kept for showing again', () => {
   const release = partings.find((p) => p.gone[0].on === 'separation').gone[0];
   const make = () => new ShedRun(shedder(TR, SITE, SEA, def('separation'), release));
@@ -424,11 +435,14 @@ test('a shed body’s flight is the same however it is asked for, and is kept fo
   a.upTo(release.t + 400);
   for (let t = release.t; t < release.t + 400; t += 0.0166) b.upTo(t); // a frame at a time
   b.upTo(release.t + 400);
-  assert.deepEqual(b.now, a.now);
+  // The same to the last few bits, not to the last bit: flown a frame at a time on CI's x86 Linux, the attitude came out
+  // a unit in the last place apart from the same flight flown at once (the position and speed bit for bit), where on
+  // arm64 both were bit for bit. A difference of 1e-12 of a value is a flight that is the same however it is asked for.
+  same(b.now, a.now);
   // shown again at an earlier instant, it is where it was
   const then = a.at(release.t + 37.3);
   const fresh = make();
-  assert.deepEqual(fresh.at(release.t + 37.3), then);
+  same(fresh.at(release.t + 37.3), then);
   assert.equal(a.at(release.t - 1), null, 'it is nowhere before it left');
   // between kept states the cubic is within a centimetre of the flight itself
   const body = shedder(TR, SITE, SEA, def('separation'), release);
