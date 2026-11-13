@@ -15,6 +15,10 @@ stowage, the periscope, the attitude indicator, the clock and the instruments' f
 panel with its Earth-path indicator and time-to-retrograde clock) adds its own tables here and its own section there;
 it does not edit No. 7's.
 
+Spacecraft No. 13's (Friendship 7) is [mercury_cabin_13.py](mercury_cabin_13.py): No. 11's fit whole, since the report
+of the flight prints No. 11's panel as its own, with the hatch's seventieth bolt in and this flight's words on what
+is pointed at. Its record is [that flight's spacecraft.md, "Cabin"](../flights/ma-6-friendship-7/spacecraft.md).
+
 ## What the viewer is promised
 
 | Node | What it is | Extras |

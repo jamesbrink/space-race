@@ -24,6 +24,12 @@ its source. That the shared parts were in fact the same on No. 11 is, for the sh
 bag and the periscope, documented there; for the canister, the tower and the retropack it rests on
 nothing read saying otherwise.
 
+**The orbital capsules.** Spacecraft No. 13 (Friendship 7, MA-6) is built from this module, from Liberty Bell 7's own
+script for the window, the hatch and the shingles round them (which No. 11 was the first to have), and from
+[mercury_orbital.py](mercury_orbital.py) for what the capsules that went into orbit had and these two had not: the
+ablation heat shield, and a name painted by hand. Its record is
+[Friendship 7's spacecraft.md](../flights/ma-6-friendship-7/spacecraft.md).
+
 ## Two ways of building shingles
 
 - `shingle_row`: a ring of shingles with their beads along the meridian. Only the recovery

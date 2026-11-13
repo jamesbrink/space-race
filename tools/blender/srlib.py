@@ -340,14 +340,16 @@ def arc_profile(cx: float, cz: float, radius: float, a0: float, a1: float, n: in
     ]
 
 
-def text_mesh(body: str, size: float, font: bpy.types.VectorFont | None = None, cuts: int = 3):
+def text_mesh(body: str, size: float, font: bpy.types.VectorFont | None = None, cuts: int = 3, offset: float = 0.0):
     """Flat text as (verts, faces) in the XY plane, origin at left baseline.
 
     Faces are triangulated and each edge cut `cuts` times: a letter wrapped round a cylinder
-    must bend with it, or the middle of every stroke sinks under the skin."""
+    must bend with it, or the middle of every stroke sinks under the skin. `offset` moves every
+    outline outward by that much (in the text's own units), about where it stands: a letter's edging."""
     curve = bpy.data.curves.new("txt", "FONT")
     curve.body = body
     curve.size = size
+    curve.offset = offset
     curve.resolution_u = 3
     if font is not None:
         curve.font = font

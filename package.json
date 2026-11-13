@@ -28,6 +28,7 @@
     "globe:weather": "node tools/globe-weather.mjs missions/usa/mercury/sites/lc-5.ts",
     "model:mr-3": "node tools/build-model.mjs usa/mercury/mr-3-freedom-7",
     "model:mr-4": "node tools/build-model.mjs usa/mercury/mr-4-liberty-bell-7",
+    "model:ma-6": "node tools/build-model.mjs usa/mercury/ma-6-friendship-7",
     "model:vostok-1": "node tools/build-model.mjs ussr/vostok/vostok-1",
     "model:lc-5": "node tools/build-model.mjs usa/mercury/sites/lc5",
     "model:site-1": "node tools/build-model.mjs ussr/vostok/sites/site1",
