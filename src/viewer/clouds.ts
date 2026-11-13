@@ -969,9 +969,15 @@ const OVER = /* glsl */ `
     vec2 slope = kind == 0 ? gDeckSlope : vec2(0.0);
     float shaded = kind == 0 ? gDeckShade : 1.0;
     // looked along, a sheet is as many times thicker as the ray is longer in it
-    a = 1.0 - pow(1.0 - a, min(1.0 / cosv, uEyeH < height ? 2.2 : kind == 0 ? 5.0 : 3.5));
+    float along = min(1.0 / cosv, uEyeH < height ? 2.2 : kind == 0 ? 5.0 : 3.5);
+    a = 1.0 - pow(1.0 - a, along);
     // (and the eye goes through it, not into a wall: nothing of it close by)
-    a *= limb * smoothstep(0.0, kind == 0 ? 3000.0 : 8000.0, tm);
+    float fade = limb * smoothstep(0.0, kind == 0 ? 3000.0 : 8000.0, tm);
+    a *= fade;
+    // (a drawing's cloudlets and their mean, apart: below)
+    float body = kind == 0 ? (1.0 - pow(1.0 - gDeckBody, along)) * fade : 0.0;
+    float mean = kind == 0 ? (1.0 - pow(1.0 - gDeckMean, along)) * fade : 0.0;
+    float nearBy = kind == 0 ? gDeckNear : 0.0;
     float sunUp = dot(up, uSun);
     vec3 sunWhite = sunOn(height, up, v);
     bool under = uEyeH < height;
@@ -990,12 +996,19 @@ const OVER = /* glsl */ `
     // drawn: the deck cut at about half opacity (its opacity is already as soft as a pixel at its rim: deckAt) in two
     // flat tones, its sides away from the Sun in the darker; a drawing has no cirrus: a wash is not a shape. (No
     // fwidth here: a pixel beside one that returned early has no derivative, and each cloudlet had a hairline round it.)
-    // (Its cloudlets are left at their mean at twice the pixel a shaded deck's are, gDeckCel: cut sharp, a cloudlet
-    // under four pixels came and went as the eye moved; softening the cut instead flickered more.)
+    // Its cloudlets are cut sharp at half their own opacity, each on its own with the sea between (softening the cut
+    // flickered more); where they are too small for that they are left at their mean at twice the pixel a shaded
+    // deck's are (deckAt), and the mean is not cut: cut at half, a patch's mean was a white sheet with the sea
+    // showing through it in round holes. It is a paler sea instead, one flat wash over the patch with an edge:
+    // the sky's light added at an eighth where the patch has cloud.
     if (kind != 0) return vec4(0.0);
-    float cut = smoothstep(0.4, 0.5, a);
+    float cut = smoothstep(0.4, 0.5, body - 0.6 * (1.0 - nearBy));   // (going to its mean, each shrinks away flat: faded, a band of ghosts)
+    float wash = 0.12 * smoothstep(0.08, 0.11, mean) * (1.0 - nearBy);
     float l = under ? 0.3 : 0.9 * facing * shaded * (0.85 + 0.15 * thick);
-    return vec4(celTone(l, 0.03, hz), 1.0) * (cut * shown);
+    // (the wash is added light and covers nothing: the sea under it is the same sea, a tone lighter and bluer, where
+    // laid over it as a colour it was a grey sheet)
+    vec3 tone = celTone(l, 0.03, hz), pale = mix(uSkyLight, uHaze, hz);
+    return vec4(tone * cut + pale * wash * (1.0 - cut), cut) * shown;
   }
 
   float w4(int k, vec2 fr) { return ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y); }

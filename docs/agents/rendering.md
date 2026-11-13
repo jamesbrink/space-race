@@ -533,7 +533,13 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   two run together over five pixels' worth at the least and a rim is as soft as two (a crease or an edge of one pixel
   between cloudlets 2 pixels a frame apart is what flipped); how many stand is read for the pixel (`DECK_PRESENCE` has
   a row a pixel size), since the broader union covers more; and in the cel look, which cuts each sharp, the cloudlets
-  go to their mean at twice the pixel (`gDeckCel`: softening the cut flickered more, not less).
+  go to their mean at three and a half times the pixel, and one under three pixels across is not drawn (`gDeckCel`:
+  softening the cut flickered more, not less). In the cel look the union is three pixels' worth, not five (cut at half,
+  so broad a union ran the cloudlets into one white sheet with the sea in round holes), each cloudlet shrinks away flat
+  as it goes to the mean (faded, they were a band of ghosts), and the mean is not cut but added as light, the sky's at
+  an eighth over each patch with an edge (`gDeckBody`, `gDeckMean`, `gDeckNear`): near, separate cloudlets with the sea
+  between; far, the same sea a tone lighter. (In the flip count every hard edge of the cel look scores, along the sides of
+  each cloudlet, as if the count's chase view swayed a little between its frames: fewer, larger shapes lower it.)
 - **The deck's shadow is its patches', on everything, from above.** `deckShadeAt` (weather.ts) is the deck where the
   ray to the Sun crosses it, as its patches with the share of each that is cloud, not its cloudlets (whose shadows the
   Sun's disc blurs by 33 m): a soft grey dapple 3 km from each patch away from the Sun at liftoff (Sun at 50 degrees).

@@ -379,6 +379,9 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
   vec2 gDeckSlope;    // and how its top slopes there (rise over run, along the scene's x and z): 0 where it is too fine to light
   vec3 gDeckSun = vec3(0.0, 0.0, 1e3);   // toward the Sun along the scene's x and z (a unit vector), and the tangent of its height: set before deckAt
   bool gDeckCel = false;   // the deck is drawn in the cel look: set before deckAt
+  float gDeckNear;   // how much of the deck where deckAt last looked is its cloudlets, not their mean (0 to 1)
+  float gDeckBody;   // its opacity as its cloudlets alone, and as their mean alone: deckAt's is the two mixed by gDeckNear
+  float gDeckMean;
   float gDeckShade = 1.0;   // how much of the Sun reaches the deck where deckAt last looked: under one where a cloudlet beside it shades it
   // the level a cloudlet's chance must be under for it to stand, for its cloudlets to cover \`fill\` with the pixel
   // \`fs\` (on their 250 m plane): DECK_PRESENCE
@@ -403,10 +406,12 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
     // The cloudlets' own detail is worked out on a plane shrunk to their size: \`xs\` and \`fs\` are the place and the
     // pixel as if the cloudlets were 250 m apart, which is what every figure below was made and measured for.
     vec2 xs = xz * ${(250 / DECK_CELL).toFixed(4)};
-    // (a drawing's cloudlets are cut sharp at half their opacity, so each is left at its mean at twice the pixel a
-    // shaded one is: under four pixels across, a cut cloudlet came and went as the eye moved: gDeckCel)
-    float fs = fp * ${(250 / DECK_CELL).toFixed(4)} * (gDeckCel ? 2.0 : 1.0);
-    float near = 1.0 - smoothstep(35.0, 90.0, fs);
+    float fs = fp * ${(250 / DECK_CELL).toFixed(4)};
+    // (a drawing's cloudlets are cut sharp at half their opacity, so they are left at their mean at three and a half times
+    // the pixel a shaded deck's are, gDeckCel: under four pixels across, a cut cloudlet came and went as the eye moved; and
+    // clouds.ts draws that mean as a paler sea, not cut, which was a white sheet with the sea in holes)
+    float near = gDeckCel ? 1.0 - smoothstep(10.0, 24.0, fs) : 1.0 - smoothstep(35.0, 90.0, fs);
+    float body = fill;
     if (near > 0.0 && a > 0.0) {   // (only where there is deck: most of the sky has none)
       // Altocumulus from above is cloudlets a hundred or two metres across (an element of it is 1 to 5 degrees wide
       // from the ground under it, WMO International Cloud Atlas: at 3,600 m, 60 to 300 m), so that from 7 to 25 km up a
@@ -440,10 +445,13 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
       vec2 toSun = mat2(0.7986, 0.6018, -0.6018, 0.7986) * gDeckSun.xy * 0.3;
       float rise = 0.3 * gDeckSun.z;
       bool shading = fs < 30.0;
-      float k = 0.12 + 5.0 * fs / 250.0;   // (two run together over five pixels' worth at the least: a narrower crease flickered as the eye moved)
+      // (two run together over five pixels' worth at the least: a narrower crease flickered as the eye moved. In a
+      // drawing, which cuts them at half, over three: so broad a union ran them into one sheet there)
+      float k = gDeckCel ? 0.12 + 3.0 * fs / 250.0 : 0.12 + 5.0 * fs / 250.0;
       float h = -1.0, hs = -1.0;
       vec2 g = vec2(0.0);
       ivec2 lj = ivec2(floor(lp));
+      float sinkCel = 0.0;
       for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         ivec2 c = lj + ivec2(dx, dy);
         vec2 d = lp - (vec2(c) + 0.5 + 0.7 * (vec2(${prefix}hash2(c, 507), ${prefix}hash2(c, 508)) - 0.5));
@@ -454,7 +462,14 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
         if (born <= 0.0) continue;
         float u = ${prefix}hash2(c, 519);
         float r = min((0.3 + 0.4 * u * u * u) * (0.8 + 1.4 * there), 0.9) * (0.35 + 0.65 * born);
-        float sink = 1.05 * r * (1.0 - born);
+        // (in a drawing a cloudlet under three pixels across is not drawn, cut sharp it came and went as the eye moved;
+        // the paler sea its patch is washed with holds it: clouds.ts)
+        if (gDeckCel) {
+          float seen = smoothstep(1.0, 1.6, r * 250.0 / max(fs, 1e-3));
+          if (seen <= 0.0) continue;
+          sinkCel = 1.0 - seen;
+        }
+        float sink = 1.05 * r * (1.0 - born) + 1.05 * r * sinkCel;
         float hb = r - dot(d, d) / r - sink;
         float s = clamp(0.5 + 0.5 * (hb - h) / k, 0.0, 1.0);
         h = mix(h, hb, s) + k * s * (1.0 - s);
@@ -499,15 +514,20 @@ export const sheetsGlsl = (prefix: string): string => /* glsl */ `
       if (fine > 0.0) h += fine * 0.12 * (${prefix}noise2(xs / 45.0 + 2.7, 525) - 0.5);
       // (its rim as soft as two pixels are broad: the dome falls by about two of its units a unit at its rim; as soft as
       // one, its edge flickered as the eye moved)
-      float blur = 0.06 + 4.0 * fs / 250.0;
+      float blur = gDeckCel ? 0.03 + fs / 250.0 : 0.06 + 4.0 * fs / 250.0;
       float thick = smoothstep(0.02, 0.45, h);
       // (thin and grey at its rim, thinning to nothing over the outer fifth of it or so: it frays, it is not cut out)
-      lets = mix(fill, smoothstep(-blur, 0.3 + blur, h) * (0.4 + 0.6 * thick), near);
+      body = smoothstep(-blur, 0.3 + blur, h) * (0.4 + 0.6 * thick);
+      lets = mix(fill, body, near);
       gDeckThick = mix(fill, thick, near);
       // (lit by its slope only while a cloudlet is several pixels across: smaller, its light is its mean)
       gDeckSlope = 1.3 * g * near * (1.0 - smoothstep(12.0, 30.0, fs));
     }
-    return a * mix(0.94 * lets, 0.98, smoothstep(0.62, 0.9, cover));
+    float solid = smoothstep(0.62, 0.9, cover);
+    gDeckNear = near;
+    gDeckBody = a * mix(0.94 * body, 0.98, solid);
+    gDeckMean = a * mix(0.94 * fill, 0.98, solid);
+    return a * mix(0.94 * lets, 0.98, solid);
   }
   float cirrusAt(vec2 xz, float fp, float amount) {
     if (amount <= 0.004) return 0.0;
