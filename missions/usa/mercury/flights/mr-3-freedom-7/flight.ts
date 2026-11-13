@@ -2057,6 +2057,14 @@ const body: Body = {
       'not in anything read. The main had to open with the drogue failed, the spacecraft falling alone at its terminal speed: its weight over its own drag area, 4.0 kPa at any height. A quarter over that. Ours',
     ),
     torn: guess(0.05, 'a canopy torn or streaming is taken to keep a twentieth of its drag area: chosen, not recorded'),
+    pull: {
+      main: guess(
+        80_000,
+        'not in anything read: no strength of the ringsail’s lines or riser is in the reports here. Flown here, the main pulls 42 kN at most as it fills behind the drogue (4.0 g) and 52 kN ' +
+          'when it has to open with the drogue failed (5.1 g), the case it was built for; half as much again as that. Full, it would pull as hard in 340 Pa, which it never meets ' +
+          'unless it is let out above the air and carried into it. Ours',
+      ),
+    },
   },
 };
 

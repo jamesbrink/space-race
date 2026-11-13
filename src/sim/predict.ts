@@ -77,6 +77,8 @@ export interface Start {
   v: Vec3;
   mass: number;
   phase: Phase;
+  /** The parachute out at the start as it is (a live state's: still filling, or torn). Without it, one that is out is full and whole. */
+  chute?: { full: number; was: number; at: number; fills: number };
 }
 
 /** The engine kept burning: the axis the thrust is held along at each instant, in the frame that does not turn, and when it stops. */
@@ -307,8 +309,15 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
   let chute = { full: 0, was: 0, at: 0, fills: 1 };
   let drogue = start.phase === 'drogue' || start.phase === 'main';
   let main = start.phase === 'main';
-  if (main) chute = { full: tr.main.dragArea.value, was: tr.main.dragArea.value, at: t, fills: 1 };
-  else if (drogue) chute = { full: tr.drogue.dragArea.value, was: tr.drogue.dragArea.value, at: t, fills: 1 };
+  if (main) chute = start.chute ?? { full: tr.main.dragArea.value, was: tr.main.dragArea.value, at: t, fills: 1 };
+  else if (drogue) chute = start.chute ?? { full: tr.drogue.dragArea.value, was: tr.drogue.dragArea.value, at: t, fills: 1 };
+  // what the parachutes can take (vehicle.ts `worn`): one that is out tears in more air than its cloth or its lines hold
+  const limits = tr.body?.limits ?? null;
+  // (one that is out at the start with nothing said of how far it has filled is taken as it is and held to nothing: full at once
+  // in the air it was let out in, it would be torn by a pull it never had)
+  let torn = start.chute
+    ? (main && chute.full < tr.main.dragArea.value) || (drogue && !main && chute.full < tr.drogue.dragArea.value)
+    : drogue || main;
 
   const fixed = (p: Vec3, at: number): Vec3 => inertialToEcef(p, EARTH_ROTATION_RATE * at);
   const place = (p: Vec3, at: number): Geodetic => ecefToGeodetic(fixed(p, at));
@@ -318,6 +327,12 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
       ? padHeight
       : 0;
 
+  /** The dynamic pressure at a state, Pa. */
+  const pressure = (p: Vec3, u: Vec3, at: number, altitude: number): number => {
+    const over = sub(u, cross(SPIN, p));
+    const wind = blow ? sub(over, blowing(blow, place(p, at), altitude, at)) : over;
+    return 0.5 * atmosphere(altitude).density * dot(wind, wind);
+  };
   /** The acceleration at a state; how quickly drag is changing the speed there (1/s); and what is felt there, m/s² (all but gravity). */
   let stiff = 0;
   let felt = 0;
@@ -508,13 +523,25 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
         drogue = true;
         crossed(tr.drogue.altitude.value);
         chute = { full: tr.drogue.dragArea.value, was: 0, at: t, fills: tr.drogue.fills.value };
+        torn = false;
         note('drogue');
       }
       if (chutes && drogue && !main && altitude <= tr.main.altitude.value) {
         main = true;
         crossed(tr.main.altitude.value);
-        chute = { full: tr.main.dragArea.value, was: tr.drogue.dragArea.value, at: t, fills: tr.main.fills.value };
+        chute = { full: tr.main.dragArea.value, was: chute.full, at: t, fills: tr.main.fills.value };
+        torn = false;
         note('main');
+      }
+    }
+    if (limits && !riding && !torn && (drogue || main) && altitude < AIR_TOP) {
+      const which = main ? 'main' : 'drogue';
+      const q = pressure(r, v, t, altitude);
+      const area = chuteArea(chute, t);
+      if (q > limits[which].value || q * area > (limits.pull?.[which]?.value ?? Infinity)) {
+        const left = Math.min(area, tr[which].dragArea.value * limits.torn.value);
+        chute = { full: left, was: left, at: t, fills: 1 };
+        torn = true;
       }
     }
 

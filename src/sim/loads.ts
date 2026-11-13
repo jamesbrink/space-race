@@ -18,8 +18,9 @@
  * What happens past a limit is fixed here, the same for every vehicle, and chosen, not recorded:
  *   caution    from CAUTION of the limit.
  *   failure    over the limit for HOLDS seconds together, or at SNAPS times it at once.
- * A parachute let out in more dynamic pressure than its limit tears (vehicle.ts leaves it `torn`
- * of its drag area). A load on the spacecraft past its own limit breaks nothing: it is reported.
+ * A parachute in more dynamic pressure than its limit tears, as it is let out or at any time after,
+ * and so does one whose pull (that pressure times the drag area it has filled to) passes what its
+ * lines take, where the flight gives that (vehicle.ts leaves it `torn` of its drag area). A load on the spacecraft past its own limit breaks nothing: it is reported.
  */
 import { G0 } from './fly.ts';
 

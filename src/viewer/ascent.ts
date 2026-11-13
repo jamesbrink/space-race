@@ -67,6 +67,8 @@ export interface Run {
   live: boolean;
   /** When each parachute came out: Infinity for one that has not. */
   out: { drogue: number; main: number };
+  /** When each parachute tore (sim/vehicle.ts `tore`): Infinity, or nothing at all, for one that has not. */
+  torn?: { drogue: number; main: number };
   /** What it has let go, each flown beside it (sim/shed.ts): a live run's. The record's are made here. */
   sheds?: Sheds;
 }
@@ -76,6 +78,8 @@ export interface ChuteMoment {
   /** Seconds since it came out, and how long the simulator takes to fill it. */
   since: number;
   fills: number;
+  /** Seconds since it tore, or -1 for one that is whole: torn, it streams. */
+  torn: number;
   /** What it hangs from is moving through the air this way, m/s in the scene's frame: it streams the other way. */
   air: THREE.Vector3;
   /** Up, where it is. */
@@ -225,6 +229,7 @@ export class Ascent {
     const moment: ChuteMoment = {
       since: Math.min(t, landed ? run.duration : Infinity) - at,
       fills: tr[def.on].fills.value,
+      torn: t >= (run.torn?.[def.on] ?? Infinity) ? t - run.torn![def.on] : -1,
       air: new THREE.Vector3(),
       up: new THREE.Vector3(0, 1, 0),
       seen: 1,

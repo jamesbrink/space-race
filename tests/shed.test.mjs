@@ -15,9 +15,10 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
 import { autopilot, blend } from '../src/sim/autopilot.ts';
-import { coast, fly, G0 } from '../src/sim/fly.ts';
+import { chuteArea, coast, fly, G0 } from '../src/sim/fly.ts';
 import { airForces, part } from '../src/sim/forces.ts';
 import { CAUTION, HOLDS, SNAPS, standing, strain, UNSTRAINED } from '../src/sim/loads.ts';
+import { predict } from '../src/sim/predict.ts';
 import { aboutAxis, turn } from '../src/sim/rigid.ts';
 import { recordRelease, ShedRun, Sheds, shedder } from '../src/sim/shed.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
@@ -594,4 +595,111 @@ test('a parachute let out in more pressure than it can take tears, and does not 
     `it met the sea at ${end.landing.vertical.toFixed(1)} m/s, where a good main brings it down at ${landed.landing.vertical.toFixed(1)}`,
   );
   assert.ok(end.landing.vertical > 3 * landed.landing.vertical, 'and it comes down hard');
+});
+
+// A parachute is held to what it can take for as long as it is out. The bounds were set before these were run:
+//   - a tick is 0.01 s and the air comes on over tens of seconds, so one that tears does so within a per cent of its limit;
+//   - a streaming canopy keeps a twentieth of its area (`limits.torn`), so a spacecraft under one falls at several times
+//     the speed a whole main gives it, and a main that never tore would be the record's landing to the centimetre a second.
+test('a drogue let out above the air is torn by the air it is carried into; the main still saves it', () => {
+  const v = vehicle(TR, SITE, SEA);
+  const auto = autopilot(v);
+  let whole = 0; // how long it was out and whole
+  const end = run(
+    v,
+    (s) => (s.shed.retropack ? blend(auto(s), { drogue: true }) : auto(s)),
+    () => false,
+    (_, after) => {
+      if (after.drogueAt !== null && !after.torn.drogue && after.mainAt === null) whole = after.t - after.drogueAt;
+    },
+  );
+  const tear = end.tore.drogue;
+  const limit = TR.body.limits.drogue.value;
+  assert.ok(tear, 'it tore');
+  assert.equal(tear.by, 'pressure');
+  assert.ok(whole > 60, `it was whole for ${whole.toFixed(0)} s above the air: it was not torn as it came out`);
+  assert.ok(tear.q > limit && tear.q < 1.01 * limit, `it tore as the pressure passed its limit: ${tear.q.toFixed(0)} Pa against ${limit}`);
+  assert.ok(end.mainAt !== null && !end.torn.main, 'the main came out at its height, whole');
+  near(end.landing.vertical, landed.landing.vertical, 0.01, 'and the landing is the record’s');
+});
+
+test('a main let out above the air pulls its lines apart as the air comes on, and the landing is not survivable', (t) => {
+  const v = vehicle(TR, SITE, SEA);
+  const auto = autopilot(v);
+  let most = 0;
+  let predicted = null;
+  const end = run(
+    v,
+    (s) => (s.shed.retropack ? blend(auto(s), { main: true }) : auto(s)),
+    () => false,
+    (_, after) => {
+      if (after.mainAt === null) return;
+      if (!after.torn.main) most = Math.max(most, v.sample(after).q * chuteArea(after.chute, after.t));
+      // what the path ahead is told, a minute after it is out, full and whole and still above the air
+      if (predicted === null && after.t >= after.mainAt + 60) {
+        const m = v.sample(after);
+        predicted = predict(TR, SITE, SEA, { t: after.t, r: m.centre, v: after.v, mass: m.mass, phase: m.phase, chute: m.chute });
+      }
+    },
+  );
+  const tear = end.tore.main;
+  const limit = TR.body.limits.pull.main.value;
+  assert.ok(tear, 'it tore');
+  assert.equal(tear.by, 'pull');
+  assert.ok(tear.q < TR.body.limits.main.value, 'in less pressure than its cloth takes: it was full');
+  assert.ok(
+    tear.pull > limit && tear.pull < 1.01 * limit,
+    `as the pull passed what its lines take: ${tear.pull.toFixed(0)} N against ${limit}`,
+  );
+  assert.ok(most <= limit, 'and it never pulled harder than that');
+  near(end.chute.full, TR.main.dragArea.value * TR.body.limits.torn.value, 1e-9, 'a twentieth of it is left');
+  assert.ok(end.drogueAt === null, 'no drogue came out after it');
+  const lives = TR.body.capsule.limits.landingSpeed.value;
+  assert.ok(end.landing.vertical > 2 * lives, `it met the sea at ${end.landing.vertical.toFixed(1)} m/s, where ${lives} is survivable`);
+  assert.ok(end.landing.t < landed.landing.t, 'and sooner than the record’s landing: it did not float down from sixty kilometres');
+  // the path shown ahead says the same, from when the canopy was still whole
+  assert.equal(predicted.outcome, 'impact');
+  near(predicted.impact.t, end.landing.t, 20, 'the predicted time down');
+  assert.ok(predicted.impact.speed > 2 * lives, `and the predicted landing is as hard: ${predicted.impact.speed.toFixed(1)} m/s`);
+  t.diagnostic(
+    `torn at T+${tear.t.toFixed(0)} s in ${tear.q.toFixed(0)} Pa, pulling ${(tear.pull / 1000).toFixed(1)} kN; down at ${end.landing.vertical.toFixed(1)} m/s`,
+  );
+});
+
+test('a drogue let out going up, inside what it can take, pulls against the climb', (t) => {
+  // an abort at T+20 s; the tower let go by hand once its rocket is out, and then, or not, the drogue, while it is still climbing
+  const fly = (chute) => {
+    const v = vehicle(TR, SITE, SEA);
+    const auto = autopilot(v);
+    let top = 0;
+    let out = null;
+    const end = run(
+      v,
+      (s) => {
+        let c = auto(s);
+        if (s.t >= 20 && s.abortAt === null) c = blend(c, { abort: true });
+        if (s.abortAt !== null && s.t > s.abortAt + 3)
+          c = blend({ ...c, automatic: false }, { tower: true, ...(chute && s.shed.tower ? { drogue: true } : {}) });
+        return c;
+      },
+      () => false,
+      (before, after) => {
+        const m = v.sample(after);
+        top = Math.max(top, m.altitude);
+        if (after.drogueAt !== null && before.drogueAt === null) out = m;
+      },
+    );
+    return { end, top, out };
+  };
+  const without = fly(false);
+  const drogue = fly(true);
+  assert.ok(drogue.out.groundClimb > 45, `it was let out climbing ${drogue.out.groundClimb.toFixed(0)} degrees above the level`);
+  assert.ok(drogue.out.q < TR.body.limits.drogue.value && !drogue.end.torn.drogue, 'inside its limit, and it held');
+  // 1.3 sq m in six kilopascals on a spacecraft of a tonne and more is two thirds of a g, over the few seconds left of the climb
+  const cut = without.top - drogue.top;
+  assert.ok(cut > 5 && cut < 60, `the climb is cut short by ${cut.toFixed(1)} m`);
+  assert.ok(drogue.end.landing.vertical < without.end.landing.vertical - 5, 'and it comes down slower under it than with nothing');
+  t.diagnostic(
+    `out at ${drogue.out.altitude.toFixed(0)} m in ${drogue.out.q.toFixed(0)} Pa; top ${drogue.top.toFixed(0)} m against ${without.top.toFixed(0)}`,
+  );
 });

@@ -34,6 +34,8 @@ import type { ChuteMoment } from './ascent';
 export const FILLED = 2 / 3;
 /** How wide the mouth is while it streams, of its full width. */
 export const STREAM = 0.04;
+/** Seconds a canopy that tears takes to go from the mouth it had to a streamer: judged, not recorded. */
+export const TEARS = 0.4;
 /** Seconds it takes to let its air go and settle after a landing. */
 export const COLLAPSE = 6;
 /** How the crown is rounded: the cloth's turn from flat at the apex to upright at the shoulder goes as this power of the way there (1 is a hemisphere; more is a flatter crown and a fuller shoulder). */
@@ -84,6 +86,11 @@ export function mouth(def: Pick<ChuteDef, 'reefed' | 'stretch'>, since: number, 
   const held = Math.max(STREAM, Math.min(1, reef.mouth.value));
   if (since <= reef.until.value) return STREAM + (held - STREAM) * smooth((since - stretch) / ((reef.until.value - stretch) / 3));
   return held + (1 - held) * smooth((since - reef.until.value) / (fills - reef.until.value));
+}
+
+/** The mouth of a canopy that tore `torn` seconds ago with its mouth `open`: it lets its air go and streams. Whole (`torn` < 0), `open`. */
+export function tornMouth(open: number, torn: number): number {
+  return torn < 0 ? open : STREAM + (open - STREAM) * (1 - smooth(torn / TEARS));
 }
 
 /** How far out it has been paid, 0 to 1 of its lines' and riser's length, `since` seconds after it was thrown out. */
@@ -365,7 +372,8 @@ export class Chute {
     this.node.updateWorldMatrix(true, false);
     group.position.copy(this.fast).applyMatrix4(this.node.matrixWorld);
     group.scale.setScalar(m.seen);
-    const open = mouth(def, m.since, m.fills);
+    // (torn, it had the mouth it had filled to when it tore, and has let it go since)
+    const open = tornMouth(mouth(def, m.torn >= 0 ? m.since - m.torn : m.since, m.fills), m.torn);
     const out = paid(def, m.since);
     const lay = m.down >= 0 ? smooth(m.down / COLLAPSE) : 0;
     const table = line(open);

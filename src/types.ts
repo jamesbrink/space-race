@@ -872,10 +872,20 @@ export interface Limits {
    */
   qAlpha: Measure;
   joint: string;
-  /** The greatest dynamic pressure each parachute can be let out in, Pa. Let out in more, it tears: `torn` of its drag area is left. */
+  /**
+   * The greatest dynamic pressure each parachute's cloth can take, Pa. In more, it tears, whether it is being let out
+   * or has been out for a minute: `torn` of its drag area is left.
+   */
   drogue: Measure;
   main: Measure;
   torn: Measure;
+  /**
+   * The greatest pull each parachute's lines and riser can take, N: the dynamic pressure times the drag area it has
+   * filled to. Past it, it tears the same way. A canopy that is full pulls far harder at a given pressure than one
+   * still filling, so this is what gives when one let out where there is no air meets the air full. Left out for a
+   * parachute: only its cloth's limit holds.
+   */
+  pull?: { drogue?: Measure; main?: Measure };
 }
 
 /**

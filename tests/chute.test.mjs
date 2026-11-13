@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { bands, Chute, FILLED, mouth, paid, profile, STREAM } from '../src/viewer/chute.ts';
+import { bands, Chute, FILLED, mouth, paid, profile, STREAM, TEARS, tornMouth } from '../src/viewer/chute.ts';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -15,6 +15,7 @@ const moment = (since, fills, more = {}) => ({
   fills,
   air: new THREE.Vector3(0, -9, 0),
   up: new THREE.Vector3(0, 1, 0),
+  torn: -1,
   seen: 1,
   down: -1,
   floor: 0,
@@ -175,4 +176,19 @@ test('it breathes on the simulator’s seconds: the same instant is the same clo
   const most = Math.max(...a.map((v, i) => Math.abs(v - b[i])));
   assert.ok(most < 0.03 * def.diameter.value, `gently: ${most.toFixed(3)} m at most`);
   assert.deepEqual(at(100), a, 'and back at the same second it is the same shape');
+});
+
+test('a canopy that tears lets its air go and streams, from the mouth it had', () => {
+  for (const open of [1, 0.25]) {
+    assert.equal(tornMouth(open, -1), open, 'whole, it is as open as it was');
+    assert.equal(tornMouth(open, 0), open, 'at the instant it tears, the same: nothing jumps');
+    assert.equal(tornMouth(open, TEARS), STREAM, 'a streamer once it has gone');
+    assert.equal(tornMouth(open, 60), STREAM, 'and it stays one');
+    let last = open;
+    for (let t = 0; t <= TEARS; t += TEARS / 20) {
+      const m = tornMouth(open, t);
+      assert.ok(m <= last + 1e-12, 'closing all the way');
+      last = m;
+    }
+  }
 });

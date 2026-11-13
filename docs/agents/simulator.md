@@ -155,8 +155,12 @@ never adjusted to bring a check in.
   angle of attack against `body.limits.qAlpha`; caution from 80 per cent, and over the limit for
   half a second (or at 150 per cent at once) it breaks at `limits.joint`: the engine stops, the
   booster becomes a shed body, and a spacecraft with its escape rocket aboard is pulled clear on
-  it. A parachute let out in more dynamic pressure than `limits.drogue`/`main` tears to
-  `limits.torn` of its drag area. The limits are `estimated` (no structural figure has been
+  it. A parachute is held to what it can take for as long as it is out, not only as it is let out:
+  in more dynamic pressure than `limits.drogue`/`main` its cloth tears, and where `limits.pull` gives
+  one, so do its lines when the pressure times the area it has filled to passes that (a main let out
+  above the air and carried full into it goes at 340 Pa); `limits.torn` of its drag area is left, it
+  is drawn streaming (`Run.torn`, `chute.ts` `tornMouth`), and the path ahead tears it likewise
+  (`predict.ts`). `VehicleState.tore` says when and by which. The limits are `estimated` (no structural figure has been
   read); the constants of consequence are chosen and say so. On the record's programme the load
   peaks at 26 per cent of the limit in the day's wind (10 in still air); hands off from 60 s the
   stack as estimated diverges and breaks up at 80 s in still air, and from the pad in the day's

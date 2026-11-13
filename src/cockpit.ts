@@ -554,6 +554,7 @@ export class Cockpit {
     if (state.shed.tower && !before.shed.tower) this.towerAt = state.t;
     if (state.shed.retropack && !before.shed.retropack) this.retropackAt = state.t;
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
+    run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
     const when = { tower: this.towerAt, separation: state.separation?.t ?? Infinity, retropack: this.retropackAt, ...run.out };
     run.dropped = this.flight.flies!.drops.map((d) => (d.on ? when[d.on] : Infinity));
     // an event asked for has happened: the hand lets go of it
@@ -890,14 +891,24 @@ export class Cockpit {
         ? ''
         : `<p class="cockpit-verdict${end.survivable ? '' : ' lost'}">${end.survivable ? 'Survivable.' : 'Not survivable.'} ${end.against}</p>`;
     // what the structure and the parachutes did not take (sim/loads.ts), and where what was let go came down (sim/shed.ts)
-    const { broke, torn } = this.state!;
+    const { broke, tore } = this.state!;
+    const names = { drogue: 'drogue', main: 'main parachute' } as const;
+    const tears = (['drogue', 'main'] as const).flatMap((which) => {
+      const tear = tore[which];
+      if (!tear) return [];
+      const out = which === 'drogue' ? this.state!.drogueAt : this.state!.mainAt;
+      // (torn as it came out, or by the air it was carried into afterwards)
+      const how =
+        tear.by === 'pull'
+          ? `the pull on its lines came to ${(tear.pull / 1000).toFixed(0)} kN`
+          : `${tear.t - (out ?? tear.t) < 0.02 ? 'let out in' : 'carried into'} ${(tear.q / 1000).toFixed(1)} kPa of dynamic pressure`;
+      return [`The ${names[which]} tore at T+${tear.t.toFixed(0)} s: ${how}, more than it can take.`];
+    });
     const lost = [
       broke
         ? `Broke up at T+${broke.t.toFixed(0)} s: bending load ${(100 * broke.load).toFixed(0)} per cent of the limit at ${(broke.q / 1000).toFixed(0)} kPa, ${broke.alpha.toFixed(0)} degrees off the wind.`
         : '',
-      torn.drogue || torn.main
-        ? `The ${torn.drogue && torn.main ? 'parachutes' : torn.drogue ? 'drogue' : 'main parachute'} tore: let out in more dynamic pressure than ${torn.drogue && torn.main ? 'they' : 'it'} can take.`
-        : '',
+      ...tears,
     ].filter(Boolean);
     const fell = (this.run.sheds?.all ?? []).map((body) => {
       const down = body.finish();
