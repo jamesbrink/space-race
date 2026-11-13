@@ -4,6 +4,9 @@ model/pad.py; see ./site-1.md for every dimension, its confidence and source, an
 The pieces are in ./site1/, one module each; each is one or more top-level nodes in pad.glb:
   Platform, FlamePit   platform.py        the slab on its pylons, its fence; the pit's lining and ground
   LaunchRing           launch_system.py   the turning ring, with Support_1..4 and Guide_1..4 under it
+  ServiceTrusses       service_trusses.py the two service trusses, ServiceTruss_North and _South, hinged on the ring
+  UpperCableMast       cable_mast.py      the cable mast to the third stage, hinged on the ring
+  Erector              erector.py         the erector on the centre track, its boom up beside the rocket, with the lift
 
 Frame: origin at the rocket's axis on the platform's deck, metres. +X is due east, out over the pit;
 +Y is north. The rocket and the ring stand turned to the launch azimuth (site.TURN).
@@ -12,7 +15,7 @@ Frame: origin at the rocket's axis on the platform's deck, metres. +X is due eas
 from __future__ import annotations
 
 import sitelib
-from site1 import launch_system, platform
+from site1 import cable_mast, erector, launch_system, platform, service_trusses
 from site1.site import AZIMUTH, TAIL_Z, TIP_Z, TURN, Parts, materials
 
 __all__ = ["AZIMUTH", "TAIL_Z", "TIP_Z", "TURN", "build"]
@@ -24,6 +27,11 @@ def build(date: str | None = None) -> str:
     parts = Parts(materials())
     platform.build(parts)
     launch_system.build(parts)
+    # what served the rocket that morning and was taken away before it left (each is built as it stood at the start)
+    service_trusses.build(parts)
+    cable_mast.build(parts)
+    erector.build(parts)
     parts.build()
     print(sitelib.standing())
-    return f"{platform.summary()}, rocket's tail {TAIL_Z:.2f} m, load ring {TIP_Z:.2f} m"
+    served = f"{service_trusses.summary()}, {cable_mast.summary()}, {erector.summary()}"
+    return f"{platform.summary()}, rocket's tail {TAIL_Z:.2f} m, load ring {TIP_Z:.2f} m, {served}"
