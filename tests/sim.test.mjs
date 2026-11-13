@@ -2,13 +2,14 @@
 // Mercury-Redstone 3 flown from flight.ts's `trajectory` against flight.ts's `checks`.
 //
 // No input is fitted. Where the run misses a documented result by more than its tolerance, the
-// miss is written down here (MISSES) with the input most likely responsible, and the test holds
+// miss is written down in src/sim/misses.ts (the debrief reads it too) with the input most likely responsible, and the test holds
 // the run to that record: a miss that is not recorded fails, and so does a recorded miss that
 // has quietly gone away or grown, so the list cannot drift from the truth either way.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
+import { MISSES as RECORDED } from '../src/sim/misses.ts';
 import { along, coast, fly, G0, gravity, J2, sampleAt } from '../src/sim/fly.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../src/world/bodies.ts';
 import {
@@ -144,36 +145,7 @@ test('standing on the pad it has the ground’s speed, and the same inputs give 
   near(along(flight.trajectory.tilt, 200), 41, 1e-9, 'and held at 41 degrees after the arrest');
 });
 
-/**
- * The recorded misses. `by` is how far out the run is, as a fraction of the documented value (or
- * in the check's own unit where `absolute`), give or take `slack`.
- */
-const BOOSTER =
-  'the powered flight ends 4 per cent too fast. It leaves the pad at only 1.19 g, so most of the thrust goes to holding it up and the speed gained is ' +
-  'four times as sensitive as the thrust: one per cent in thrust, flow or liftoff weight is 3 to 4 per cent in speed (see the last test). The engine is two figures ' +
-  'from a summary table (engine.thrust, engine.isp), held steady from liftoff to cutoff with no build-up, tail-off or jet-vane loss; the real vehicle was cut off by ' +
-  'its velocity integrator, which hid exactly this. The whole vehicle’s drag (ascentDrag) is the other unknown, but it would have to be half as much again';
-const MISSES = {
-  whole: {
-    separationSpeed: { by: 0.04, slack: 0.01, why: BOOSTER },
-    separationGroundSpeed: { by: 0.045, slack: 0.01, why: BOOSTER },
-    separationAltitude: { by: 0.078, slack: 0.015, why: BOOSTER },
-    apogee: { by: 0.077, slack: 0.015, why: `follows from the speed at separation: ${BOOSTER}` },
-    range: { by: 0.1, slack: 0.02, why: 'follows from the speed at separation' },
-    entryG: { by: 0.062, slack: 0.02, why: 'follows from the apogee: it falls from higher' },
-    entryAt: { by: 17, slack: 4, absolute: true, why: 'follows from the apogee: it is up longer' },
-    drogueAt: { by: 15, slack: 4, absolute: true, why: 'follows from the apogee' },
-    mainAt: { by: 16, slack: 4, absolute: true, why: 'follows from the apogee' },
-    duration: { by: 16, slack: 4, absolute: true, why: 'follows from the apogee' },
-  },
-  capsule: {
-    entryQ: {
-      by: -0.054,
-      slack: 0.01,
-      why: 'just outside 5 per cent: the capsule’s drag coefficient is read off a figure to 0.03, and the air is a standard year’s, not that day’s',
-    },
-  },
-};
+const MISSES = RECORDED[flight.id];
 
 function hold(results, misses, skip, t) {
   for (const c of flight.checks) {

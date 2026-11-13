@@ -4,6 +4,7 @@ import { autopilot, blend, Tally } from './sim/autopilot.ts';
 import { G0, type Results } from './sim/fly.ts';
 import { standing } from './sim/loads.ts';
 import { Lever, NOTCH } from './sim/lever.ts';
+import { MISSES } from './sim/misses.ts';
 import { Sheds } from './sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
 import { verdict } from './sim/verdict.ts';
@@ -869,9 +870,17 @@ export class Cockpit {
     const landing = this.state?.landing;
     if (!results || !landing) return;
     const said = (id: string) => this.flight.checks?.find((c) => c.id === id)?.value;
+    // where the simulator's own run of this flight is known to miss the record (sim/misses.ts), the figure says so and why
+    const known = MISSES[this.flight.id]?.whole ?? {};
     const row = (label: string, flown: number, id: string, per: number, unit: string, digits = 1) => {
       const record = said(id);
-      return `<tr><th>${label}</th><td>${(flown / per).toFixed(digits)} ${unit}</td><td>${record === undefined ? '' : `${(record / per).toFixed(digits)} ${unit}`}</td></tr>`;
+      const check = this.flight.checks?.find((c) => c.id === id);
+      const miss = known[id];
+      const note =
+        miss && check && Math.abs(flown - check.value) > check.tolerance
+          ? `<small class="cockpit-miss">a known miss: ${miss.short}</small>`
+          : '';
+      return `<tr><th>${label}${note}</th><td>${(flown / per).toFixed(digits)} ${unit}</td><td>${record === undefined ? '' : `${(record / per).toFixed(digits)} ${unit}`}</td></tr>`;
     };
     const end = verdict(this.state!, results, this.flight.trajectory!, this.tally.peakG);
     const lived =

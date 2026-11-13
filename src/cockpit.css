@@ -157,6 +157,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .cockpit-card table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .cockpit-card :is(th, td) { padding: 5px 0; border-bottom: 1px solid rgba(243, 239, 230, 0.07); text-align: right; font: 12px/1.4 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
 .cockpit-card th { text-align: left; font: 13px/1.4 var(--sans); color: var(--dim); }
+.cockpit-card th small { display: block; white-space: normal; max-width: 24em; font: 11.5px/1.35 var(--sans); color: var(--faint); }
 .cockpit-card thead td { font: 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
 .cockpit-card td:last-child { color: var(--dim); padding-left: 14px; }
 .cockpit-card .cockpit-why { display: block; margin: 0 0 6px; font-size: 12.5px; line-height: 1.45; color: var(--dim); }
