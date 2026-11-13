@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
+import { blowOf, windAt } from '../sim/forces.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
@@ -255,7 +256,10 @@ export class Ascent {
     const { r, v } = between(run.samples, clamped, run.live ? (s) => (s as LiveSample).centre : undefined);
     const spin = EARTH_ROTATION_RATE * clamped;
     const here = inertialToEcef(r, spin);
-    moment.air.copy(toThree(ecefToSiteDirection(this.site, inertialToEcefVelocity(r, v, spin))));
+    // (its motion through the air, as the simulator pulls on it: in the day's wind it drifts with the air, and a canopy drawn
+    // against its motion over the ground stood off to one side of a spacecraft hanging plumb)
+    const through = windAt(r, v, clamped, this.flight.site.seaLevel.value, blowOf(tr.winds)).wind;
+    moment.air.copy(toThree(ecefToSiteDirection(this.site, inertialToEcef(through, spin))));
     moment.up.copy(toThree(ecefToSiteDirection(this.site, unit(here))));
     if (moment.down >= 0) {
       moment.air.set(0, 0, 0);
