@@ -164,7 +164,9 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
   the reel, the strain gauge, the squibs, the nitrogen bottle and the folded balloon are not
   modelled. Under the flap it is hidden until the canister is cut open.
 - **The zero-gravity experiment's place is read off a sketch**, and its bracket is ours. On the
-  pad its liquid lies in the half behind the plate, where it cannot be seen.
+  pad its liquid lies in the half behind the plate, where it cannot be seen. It stands on the
+  pilot's right, which the gallery's cutaway does not open: it is seen from the couch, through the
+  window, or through the hatch's opening with the vehicle taken apart.
 - **The panel is No. 11's drawing with three blanks.** The "maneuver" switch, the dual steam-vent
   indicator, the voice switch's record position, the missing oxygen-quantity light are not on it.
 - **The pilot is Shepard's figure with Carpenter's name.** His pockets and life vest are not

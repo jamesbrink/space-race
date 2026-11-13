@@ -127,8 +127,8 @@ were below the horizon.
 240°, visibility 1 mile in ground fog and smoke, 77 °F, dewpoint 73 °F, humidity 88 per cent.
 "Clear blue sky," Carpenter said at 32 seconds, from above it. In the planned landing area at noon
 (USS *John R. Pierce*): cloud scattered at 1,000 ft, wind 11 knots from 096°, visibility 10 miles,
-waves 3 ft, the air 84 °F. No `weather.ts` is written for this flight: it has no site model for a
-sky to stand over.
+waves 3 ft, the air 84 °F. No `weather.ts` is written for this flight yet: it has no site model for a
+sky to stand over. These are the figures one would be written from.
 
 ## What is not built
 
