@@ -286,6 +286,8 @@ export class Stage {
   /** A walk through the eyes has ended and the camera is still inside the figure: it is drawn when the camera is out (`emerge`). */
   private emerging = -1;
   private readonly emergeBox = new THREE.Box3();
+  private readonly blockAt = new THREE.Vector3();
+  private readonly blockWay = new THREE.Vector3();
   /** While walking: what is being looked at from within reach, and where the ray met it. */
   private aim: { target: Target; hit: Hit; box?: THREE.Box3; vehicle?: THREE.Object3D } | null = null;
   /** A figure knocked off its feet by a long fall, tumbling (ragdoll.ts) until it lies still; and each level of detail's ragdoll, made once. */
@@ -1099,6 +1101,19 @@ export class Stage {
       maxPolar: () => this.setting.maxPolar,
       minPolar: () => this.setting.minPolar ?? 0,
       craft: () => this.craft(),
+      // (asked by the chase view as it is first framed, a few rays at most: the solids the near plane asks, less the vehicle)
+      blocked: (from, to) => {
+        const solids = this.walk.solids;
+        const was = solids.without;
+        solids.set(this.solidRoots());
+        solids.without = this.flier?.group ?? null;
+        const length = from.distanceTo(to);
+        const half = length / 2 + 1;
+        solids.gather(this.blockAt.lerpVectors(from, to, 0.5), half, half, half);
+        const hit = solids.cast(from, this.blockWay.subVectors(to, from).divideScalar(Math.max(length, 1e-9)), length);
+        solids.without = was;
+        return hit !== null;
+      },
       solidAt: (x, y) => {
         this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
         const { origin, direction } = this.raycaster.ray;

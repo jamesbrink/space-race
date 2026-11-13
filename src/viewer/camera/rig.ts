@@ -62,6 +62,11 @@ export interface World {
   minPolar?(): number;
   /** The flown vehicle, or null if the flight has none. */
   craft(): Craft | null;
+  /**
+   * Whether something solid other than the flown vehicle (a structure of the place, another model) stands on the line
+   * from `from` to `to`. Left out, nothing does.
+   */
+  blocked?(from: THREE.Vector3, to: THREE.Vector3): boolean;
 }
 
 /** What is common to every rig: stepped by `dt`, told what the hands did, asked where the camera is. */

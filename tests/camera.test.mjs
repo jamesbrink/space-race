@@ -417,6 +417,43 @@ test('the chase rig comes back as it was left, after the view has been on board 
   assert.ok(rig.handSet, 'and the distance is still the one the hands set');
 });
 
+test('the chase rig first frames the vehicle from a side with nothing between the eye and it', () => {
+  const craft = craftAt(V(0, 0, 0));
+  craft.flying = false;
+  // a tower 20 by 20 m, 30 m high, standing 40 m off the vehicle to the -z side
+  const tower = new THREE.Box3(V(-10, 0, -50), V(10, 30, -30));
+  const ray = new THREE.Ray();
+  const blocked = (from, to) => {
+    ray.origin.copy(from);
+    ray.direction.copy(to).sub(from).normalize();
+    const hit = ray.intersectBox(tower, new THREE.Vector3());
+    return hit !== null && hit.distanceTo(from) <= from.distanceTo(to);
+  };
+  const enter = (from) => {
+    const rig = new ChaseRig({ ...world(craft), blocked }, 35, 'chase');
+    rig.enter({ position: from, quaternion: new THREE.Quaternion(), fov: 35 }, V(0, 10, 0), false, true);
+    rig.update(0, NONE, false);
+    return posed(rig).position;
+  };
+  // the place's view, far off beyond the tower: the side is turned until the whole vehicle is in sight
+  const eye = enter(V(0, 120, -600));
+  const middle = V(0, 10, 0);
+  for (const to of [middle, V(0, 17.2, 0), V(0, 2.8, 0), V(7.2, 10, 0), V(-7.2, 10, 0)])
+    assert.ok(!blocked(eye, to), `in sight of ${to.toArray()}`);
+  const was = V(0, 110, -600).normalize();
+  const turned = Math.acos(eye.clone().sub(middle).normalize().dot(was));
+  assert.ok(turned > 0.1 && turned < Math.PI / 2, `turned by ${((turned * 180) / Math.PI).toFixed(0)} degrees, the least that clears it`);
+  // a side already clear is kept as it was
+  const open = enter(V(0, 120, 600));
+  assert.ok(
+    open
+      .clone()
+      .sub(middle)
+      .normalize()
+      .distanceTo(V(0, 110, 600).normalize()) < 1e-9,
+  );
+});
+
 test('the chase rig is carried with the vehicle: the view moves only as the hands move it', () => {
   const craft = craftAt(V(0, 5000, 0));
   const rig = new ChaseRig(world(craft), 35, 'chase');

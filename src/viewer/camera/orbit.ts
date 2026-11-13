@@ -492,10 +492,57 @@ export class ChaseRig extends OrbitRig {
     if (!near)
       from = {
         ...from,
-        position: (seen.lengthSq() > 1e-6 ? seen : seen.set(-0.62, 0.2, 0.78)).setLength(this.fit).add(this.middle).clone(),
+        position: this.inSight(seen.lengthSq() > 1e-6 ? seen.normalize() : seen.set(-0.62, 0.2, 0.78).normalize())
+          .multiplyScalar(this.fit)
+          .add(this.middle),
       };
     super.enter(from, this.middle);
     this.handSet = near;
+  }
+
+  /**
+   * The side nearest `way` (a unit vector from the vehicle's middle) from which, at the distance it is framed from, the
+   * whole vehicle is in sight: nothing of the place (a structure, another model) between the eye and its middle, its top,
+   * its lower part or either side. Turned about the plumb line a twelfth of a turn at a time, nearest first; if no side
+   * is clear, `way` as it was. A new vector.
+   */
+  private inSight(way: THREE.Vector3): THREE.Vector3 {
+    const blocked = this.world.blocked?.bind(this.world);
+    if (!blocked) return way.clone();
+    const up = this.world.upAt(this.middle, new THREE.Vector3());
+    const r = 0.6 * this.radius;
+    const eye = new THREE.Vector3();
+    const side = new THREE.Vector3();
+    const to = new THREE.Vector3();
+    const hidden = (d: THREE.Vector3): boolean => {
+      eye.copy(d).multiplyScalar(this.fit).add(this.middle);
+      side.crossVectors(d, up);
+      if (side.lengthSq() < 1e-9) side.set(1, 0, 0);
+      side.normalize();
+      for (const [s, u] of [
+        [0, 0],
+        [0, 1],
+        [0, -1],
+        [1, 0],
+        [-1, 0],
+      ] as const)
+        if (
+          blocked(
+            eye,
+            to
+              .copy(this.middle)
+              .addScaledVector(side, s * r)
+              .addScaledVector(up, u * r),
+          )
+        )
+          return true;
+      return false;
+    };
+    for (const k of [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6]) {
+      const d = way.clone().applyAxisAngle(up, (k * Math.PI) / 6);
+      if (!hidden(d)) return d;
+    }
+    return way.clone();
   }
 
   protected override frame(): void {

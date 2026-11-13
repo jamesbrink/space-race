@@ -33,7 +33,9 @@ flown by hand W A S D Q E are its keys and the camera has the arrows, R, F, 0 an
 Coming to the chase from near the vehicle, the view is taken up as it stands if its distance had
 been set by hand; from the place's own view at a distance nobody chose (`Rig.enter`'s `unset`), or
 from far off, it goes to where the whole vehicle is seen, from the side the last view saw its
-subject from. "The whole vehicle" is half the frame's height and never more than 85 per cent of
+subject from, turned about the plumb line by the least that leaves nothing of the place between the
+eye and the vehicle (`World.blocked`, the solids the near plane asks: a structure rolled back on
+its rails stands in the way from some sides). "The whole vehicle" is half the frame's height and never more than 85 per cent of
 what the controls leave clear, top and bottom (`Camera.clear`, from `Stage.setInset`), and a chase
 view nobody has set is framed again when that changes (the flight deck opening, a phone turned); back from on
 board or the pad camera it is as it was last left (`Rig.enter`'s `resume`). The pad camera stands
