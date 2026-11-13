@@ -35,7 +35,9 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const errors = [];
 page.on('console', (m) => ['error', 'warning'].includes(m.type()) && errors.push(m.text()));
 page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(`${url}#vehicle`); // (the launch site's page: an address that names nothing opens the gallery, which has one model and no `sr.show`)
+// (the launch site's page: an address that names nothing opens the gallery, which has one model and no `sr.show`. A url that
+// carries an address is opened as it is: `#vehicle` put after it made a flight's name no flight's, and the first flight's gallery was tested instead)
+await page.goto(url.includes('#') ? url : `${url}#vehicle`);
 await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'));
 // which stage is up: the gallery's (its own canvas) or the site's
 await page.waitForTimeout(600);
