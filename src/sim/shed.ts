@@ -106,9 +106,19 @@ interface Dyn {
   w: Vec3;
 }
 
+/**
+ * What flying a shed body needs of the flight that let it go: the area its drag figures are referred to, the day's winds,
+ * and the bodies it lets go. A ballistic flight's `Trajectory` is one; an orbital flight's ascent gives its own (sim/staged.ts).
+ */
+export interface ShedSource {
+  area: Trajectory['area'];
+  winds?: Trajectory['winds'];
+  body?: { sheds?: ShedBody[] };
+}
+
 /** One body, ready to be flown from its release. */
 export function shedder(
-  trajectory: Trajectory,
+  trajectory: ShedSource,
   site: Geodetic,
   seaLevel: number,
   def: ShedBody,
@@ -376,12 +386,12 @@ export class ShedRun {
 /** Everything one flight has let go, each flown: by the event that let it go. */
 export class Sheds {
   private readonly runs = new Map<string, ShedRun>();
-  private readonly trajectory: Trajectory;
+  private readonly trajectory: ShedSource;
   private readonly site: Geodetic;
   private readonly seaLevel: number;
   private readonly options: ShedOptions;
 
-  constructor(trajectory: Trajectory, site: Geodetic, seaLevel = 0, options: ShedOptions = {}) {
+  constructor(trajectory: ShedSource, site: Geodetic, seaLevel = 0, options: ShedOptions = {}) {
     this.trajectory = trajectory;
     this.site = site;
     this.seaLevel = seaLevel;

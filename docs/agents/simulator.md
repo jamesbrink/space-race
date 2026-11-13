@@ -23,8 +23,21 @@ never adjusted to bring a check in.
   and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
   says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in frames.ts's
   inertial frame of date on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its `MISSES` by the same rule as
-  below and prints what each undocumented input is worth. The powered ascent is recorded and not flown; a flight with only
-  `orbital` is not offered to be flown by hand. The flight's `mission.md` is the plan.
+  below and prints what each undocumented input is worth. The flight's `mission.md` is the plan.
+- **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from `orbital.stages` and `orbital.ascent`: stages
+  burning together and in turn (each `count` alike; vacuum thrust less exit area times the air's pressure, the exit area
+  derived from the two published thrusts unless given; flow from the vacuum figures; a `throttle` curve where one is
+  known; stopped at its cutoff or when its `usable` load is gone), each dropped at its `separation` as what it weighed
+  fuelled less what it burned, other drops (a fairing) by mass, drag on `ascent.drag`'s areas and curves. Attitude is a
+  **stated law**, not a stored programme, because none has been found: `Guidance` (orbital.ts) says it, and `steer`
+  solves its three unknowns (launch plane, pitch-over, the linear tangent's rate) for the design conditions at the last
+  cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
+  separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
+  pilot) down from the ejection height on its own parachutes. `tests/staged.test.mjs` holds the ascent's, the coast's and
+  the descent's checks with their own `MISSES`, lists every input that is not documented and prints what each moves, the
+  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
+  Vostok 1 as recorded comes out 142 m/s fast at the last cutoff (844 km apogee for 327): the flight's mission.md, "What
+  the ascent gives", says why and what owns it.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
   is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails

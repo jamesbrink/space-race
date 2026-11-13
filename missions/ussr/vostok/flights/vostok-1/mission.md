@@ -180,8 +180,8 @@ branch.
 | 3 | **Done.** `flyOrbit`: the coast from the published orbit, the burn aimed by the Sun, a ballistic sphere down to 7 km, checks and `MISSES` | the record (section 5) | physics |
 | 4 | Parachutes and two bodies down: the module's canopy, the seat with its drogue, the pilot under one canopy (the reserve as data), wind from a profile. Reuse `shed.ts` for the seat and hatch | landing times 10:48 and 10:53; 1.5 km apart; descent rates | physics; research for canopy figures |
 | 5 | Sphere drag from a source that is opened; free-molecule drag for decay over days; heating of the ball (below) | Bailey and Hiatt; the planned 2 to 7 day decay and S15's 30 days as checks | research, then physics |
-| 6 | **Staging types.** `OrbitalFlight.stages` flown: several engines at once, each with its own tanks, thrust by pressure between its sea-level and vacuum figures, a stage dropped when its time comes. A batch `flyAscent` on a prescribed pitch programme, as `fly.ts` is | propellant used against load by each cutoff; liftoff acceleration; Gagarin's loads | physics |
-| 7 | The pitch programme, derived (section 3), and the ascent's checks and misses | cutoff height, level flight, speed; apogee; the drop zones if found | physics; research for drop zones |
+| 6 | **Done.** **Staging types.** `OrbitalFlight.stages` flown: several engines at once, each with its own tanks, thrust by pressure between its sea-level and vacuum figures, a stage dropped when its time comes. A batch `flyAscent` on a prescribed pitch programme, as `fly.ts` is | propellant used against load by each cutoff; liftoff acceleration; Gagarin's loads | physics |
+| 7 | **Done**, as a stated law (src/sim/staged.ts: `steer`), with the ascent's checks and misses, and the descent's two bodies (`flyDown`) | cutoff height, level flight, speed; apogee; landing times and sink rates | physics |
 | 8 | Hand-over to the live vehicle: `vehicle.ts` in the inertial frame of date (it has the frame; it needs the sidereal time of launch, which the coast already uses), N engines, N sheds at once | `flyAscent` to 0.05 % as today | physics, with **sim** |
 | 9 | **Coasting fast.** Section "Time" below | drift bounds already measured | physics, with **sim** |
 | 10 | Attitude in orbit: free tumble, the gas jets (two sets of eight, 1.5 kgf), the solar sensor's law, the TDU's steering nozzles, the stuck throttle and the tumble as the record has it | gas used: 150 to 110 atm; rates 2 to 3 deg/s, 6 or 30 | physics |
@@ -463,3 +463,47 @@ What each input moves (from the same test): `retro.deltaV` +4 m/s (as programmed
 
 Not verified: the shadow against any published case (geometry only); the Sun-aimed push against
 anything but the record's words; the sphere's drag curve against its source.
+
+## 6. What the ascent gives
+
+`flyWhole` (src/sim/staged.ts): the ascent from the pad on the stated law, the coast from where it left the spacecraft,
+the two bodies down from 7 km; printed by `tests/staged.test.mjs`, which fails on a miss not recorded in its `MISSES`.
+The checks were set in orbital.ts before any of it was flown.
+
+| | Flown | Record | Tolerance | |
+| --- | --- | --- | --- | --- |
+| The law, solved | plane 66.58° at liftoff; pitch-over 9.37°; tangent falling 0.000526 a second | | | the launch plane is tilted 1.6° past the orbit's to take out the pad's own eastward motion |
+| Strap-ons leave, 119.5 s | 42.7 km, 68 km down range, 2,413 m/s (2,222 through the air), climbing 18.1° | | | Sputnik's (a different vehicle, two stages): 57.7 km, 54.8 km, 2,189 m/s Earth-fixed, 36.3° |
+| Greatest dynamic pressure | 49.6 kPa at 62 s | | | Soyuz's manual: 36 kPa at 66 s |
+| A minute up | 2.19 g | 3 to 4 g (Z, by feel) | 1 g about 3.5 | **misses by -1.3 g**: thrust and mass give 2.4; Soyuz shows 2.6 |
+| Greatest on the first stage | 5.25 g | about 5 (G, by feel) | 1 g | holds |
+| Core cuts off, 300 s | 135.5 km, 699 km down range, 5,810 m/s | about 5.5 km/s (Z) | 400 m/s | holds. At rated flow its 90.1 t is gone at 294.4 s: it coasts 5.6 s before Block E lights |
+| Last cutoff, 676 s | 180 km level, 7,986 m/s; 28.98° round from the pad (the coast's estimate: 27.5 ± 3) | | | |
+| Perigee, inclination | 180 km, 64.950° | 181 km, 64°57′ (R) | | hold **by construction**: they are the law's targets |
+| Apogee | **844 km** | 327 km (R) | 10 km | **misses by +517 km** |
+| Period | 94.72 min | 89.44 min (R) | 15 s | misses, with the apogee |
+| What the spacecraft weighs on leaving Block E, by the stages' own figures | 4,616 kg | 4,725 kg (RKK Energia) | | the record's masses do not quite sum (mission.md's sources disagree by 1 to 4 %) |
+| Then the coast: height at 10:36 | 327 km | 150 to 170 (L; S15) | 15 km | misses |
+| At 7 km | 10:48:58 | 10:42 (Z) | 60 s | misses by 7 min |
+| Landing | 325 km short along the track, 96 km to the left | 51°16′ N 45°59′ E (R) | 100 and 25 km | misses |
+| Module down; pilot down | 10:53:46, 9.0 m/s; 11:02:22, 4.5 m/s; 300 m apart | 10:48, 10 m/s; 10:53, 5 m/s; about 1.5 km (R; Bobkov; GCTC) | 120 s, 2 m/s, 1.5 m/s, 3 km | times miss, by the late arrival; sink rates and separation hold |
+
+**The finding: the vehicle as recorded is 142 m/s too fast.** It passes the speed the record's orbit needs at 180 km
+(7,844 m/s) 16 s before the recorded cutoff. Nothing was tuned to that or away from it. What owns it, from the same
+test, each with the law solved afresh:
+
+| Changed | Speed at cutoff | Apogee |
+| --- | --- | --- |
+| The core's load less its peroxide and nitrogen (3.12 t, Brügge) | -487 m/s | below the orbit |
+| The strap-ons' less theirs (1.47 t) | -192 m/s | below the orbit |
+| The tangent law from the core's cutoff, not the strap-ons' | -89 m/s | -327 km |
+| The drag curves x 1.3 | -71 m/s | -261 km |
+| The spacecraft 1 % heavier | -20 m/s | -74 km |
+| The vertical rise 5 s longer | -6 m/s | -24 km |
+| The core 1 % less thrust and flow; Block E 1 % less impulse | -2.5; +4.1 m/s | -9; +15 km |
+
+So the published loads alone are worth several times the miss either way: which part of each stage's load the engines
+burn is the input to find first, then the levels of the engines' intermediate and final stages of thrust (documented in
+kind; flown here at rated thrust, which overdraws the core's load by 1.7 t at its recorded cutoff), then a pitch
+programme. The real vehicle hid all of it: its integrators cut each stage on the velocity reached, and on 12 April that
+came out 25.43 m/s fast (B21), where this run, cut by the clock at the record's instants, is 142.

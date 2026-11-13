@@ -15,7 +15,7 @@ the pilot ejecting from the descent module and landing by parachute near the Vol
 | The place round the pad (April 1961) | **built** as the flight's `surroundings` ([site1/model/1961-04.py](../../sites/site1/model/1961-04.py), `pnpm model:site-1`; [site-1.md](../../sites/site-1.md), "The place round the pad"): the command bunker 207 m north with its four periscopes, the storage bunker's three bays, the propellant shed, the gas receivers, five more buildings, the nine positions round the pit's rim, the spoil heap, the cable conduit, the floodlight tower, the double fence with its lights and six towers, and the roads painted on the land. Its plan is the CIA's, off the U-2's photographs of 1957 and 1959, and today's map; every wall, door and colour is estimated, and no inside is modelled |
 | Crew (Gagarin in the SK-1, to be walked as) | built ([sk-1.md](../../crew/sk-1.md)): he stands on the platform's deck on the hatch side (where, estimated), and can be walked as there; he rides in the spacecraft's seat |
 | The mission as a record and a plan | [mission.md](mission.md); the numbers in [orbital.ts](orbital.ts) (`Flight.orbital`). The coast from the published orbit to 7 km is flown in tests (`flyOrbit`), with its misses recorded; the ascent is not |
-| Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies. What was found toward one is in [vostok-8k72k.md](../../vehicles/vostok-8k72k.md), "What a staged trajectory will need" |
+| Trajectory, checks, the flight as flown | the whole flight flown from the pad in tests (`flyWhole`): the ascent comes out 142 m/s fast and its orbit 180 by 844 km, a recorded miss with what owns it ([mission.md](mission.md), section 6). `flight.ts` has no `trajectory`: that is the ballistic shape, and this flight's is `orbital` |
 
 ### Against Freedom 7, place by place
 
@@ -33,7 +33,7 @@ both (November 2026), and whose work each gap is: **data** (in `flight.ts` and t
 | Launch site | walking, the crew on foot with V, the lift, the idle show's callouts | all of them work | done |
 | Launch site | the vehicle leaves the pad with the clock (`Flight.flies`, `trajectory`) | it stands on its pad whatever the clock says | code and data: this file's ascent, and `Ascent` for an orbital run |
 | Fly | lit: the flight deck, navball, predicted path, sound, plume, smoke, shake, heating's glow, the stages dropped as bodies of their own, parachutes, the debrief card, the Flown panel against the checks | **not lit** (`lacks`: no `trajectory` with a `body`) | code and data, below |
-| Fly | a record flown by the simulator from the pad and held to its checks | the coast from the published orbit only (`flyOrbit`) | code and data: done in this branch for the ascent (`sim/staged.ts`) |
+| Fly | a record flown by the simulator from the pad and held to its checks | **done**: the ascent on a stated law (`sim/staged.ts`), the coast from where it left the spacecraft, both bodies down from 7 km; checks and misses in `tests/staged.test.mjs` ([mission.md](mission.md), section 6) | code and data |
 
 So the gallery shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in
 the studio setting with nothing holding it up: to be turned, cut open and taken apart the way it
@@ -62,9 +62,9 @@ The orbit's top came out 97 km above the 230 km planned. Zak puts it to the core
 about half a second long; Siddiqi (2015), from the documents published in 2011, to a faulty valve
 on the third stage's engine. The OKB-1 report read here does not say.
 
-Not yet in this repo: the pitch programme, the launch azimuth as flown (37.5° east of north is
-derived from the orbit), any drag figure, and so any `trajectory`. The vehicle is shown standing;
-it does not fly.
+Not found: the pitch programme, the launch azimuth as flown, any drag figure, the levels of the
+engines' intermediate and final stages of thrust. The ascent is flown on a stated law in their place
+([mission.md](mission.md), sections 3 and 6).
 
 ## What happened
 
