@@ -9,7 +9,7 @@ orbital on the Atlas D, all in the one-man capsule McDonnell Aircraft built in S
 | Flight | Spacecraft | Pilot | Launch | Duration | In this repo |
 | --- | --- | --- | --- | --- | --- |
 | Mercury-Redstone 3 | No. 7, *Freedom 7* | Alan Shepard | 5 May 1961 | 15 min 22 s | [flight](flights/mr-3-freedom-7/README.md) |
-| Mercury-Redstone 4 | No. 11, *Liberty Bell 7* | Gus Grissom | 21 July 1961 | 15 min 37 s | [flight](flights/mr-4-liberty-bell-7/README.md): the vehicle and its launch site as it stood that morning |
+| Mercury-Redstone 4 | No. 11, *Liberty Bell 7* | Gus Grissom | 21 July 1961 | 15 min 37 s | [flight](flights/mr-4-liberty-bell-7/README.md): the vehicle, its launch site as it stood that morning, and Grissom in that morning's suit |
 | Mercury-Atlas 6 | No. 13, *Friendship 7* | John Glenn | 20 February 1962 | 4 h 55 min | |
 | Mercury-Atlas 7 | No. 18, *Aurora 7* | Scott Carpenter | 24 May 1962 | 4 h 56 min | |
 | Mercury-Atlas 8 | No. 16, *Sigma 7* | Wally Schirra | 3 October 1962 | 9 h 13 min | |
@@ -49,7 +49,7 @@ What the two Redstone capsules shared is built once: [mercury-capsule.md](vehicl
 | | In this repo |
 | --- | --- |
 | Launch Complex 5 (the Redstone flights), as it stood on 5 May and on 21 July 1961 | [lc-5.md](sites/lc-5.md) |
-| The Mark IV pressure suit | [mark-iv-suit.md](crew/mark-iv-suit.md) |
+| The Mark IV pressure suit, as Shepard wore it on 5 May 1961 and as Grissom wore it on 21 July | [mark-iv-suit.md](crew/mark-iv-suit.md) |
 
 ## Sources
 
