@@ -361,7 +361,10 @@ def build_hatch(M, node, prefix: str, where: tuple[float, float], window: float 
     bolts.build(f"{prefix}_Bolts", M["bolt"], node)
 
 
-def build_descent_module(M) -> None:
+def build_descent_module(M, pole: bool = True, technological: bool = True) -> None:
+    """`pole` is the housing of the forward antennas on the sphere's pole, with its two whips and rod: a Voskhod has its
+    reserve braking engine there instead. `technological` is hatch No. 3 as a Vostok had it, bolted on for good with the
+    Vzor's porthole in it: a Voskhod 3KD has its airlock on that opening."""
     g = group("DescentModule")
     skin = MeshBuilder()
     skin.lathe(pm([(R * math.cos(deg(-90 + 180 * i / 72)), Z_C + R * math.sin(deg(-90 + 180 * i / 72))) for i in range(73)]), 144)
@@ -378,7 +381,8 @@ def build_descent_module(M) -> None:
         if not interior():  # nothing is built inside: a dark disc stands in for the cabin
             void.lathe(pm([(r, INNER.z(r) - 30), (0, INNER.z(r) - 30)]), 48, matrix=ax)
     # No. 3, the technological hatch, stays on; the Vzor looks out through the porthole in it, under a deep hood
-    build_hatch(M, g, "DM_TechHatch", TECHNOLOGICAL, window=70.0)
+    if technological:
+        build_hatch(M, g, "DM_TechHatch", TECHNOLOGICAL, window=70.0)
     porthole(fit, glass, bolts, void, RIGHT_PORT)
 
     # the plate the cable mast plugs into: the instrument module's power and commands come through its sockets
@@ -393,7 +397,8 @@ def build_descent_module(M) -> None:
     # the top: the lock the four straps meet at, under the housing of the forward antennas
     top = Z_C + R
     fit.lathe(pm([(262, Z_C + OUTER.z(262) - 6), (262, Z_C + OUTER.z(262) + 16), (236, Z_C + OUTER.z(236) + 20)]), 64)
-    fit.lathe(pm([(232, Z_C + OUTER.z(232) - 6), (225, top + 20), (150, top + CAP_H - 40), (128, top + CAP_H), (0, top + CAP_H)]), 48)
+    if pole:
+        fit.lathe(pm([(232, Z_C + OUTER.z(232) - 6), (225, top + 20), (150, top + CAP_H - 40), (128, top + CAP_H), (0, top + CAP_H)]), 48)
     fit.build("DM_Fittings", M["frame"], g, sharp_angle=35)
     rings.build("DM_HatchRings", M["frame"], g, sharp_angle=30)
     glass.build("DM_Glass", M["glass"], g)
@@ -402,6 +407,8 @@ def build_descent_module(M) -> None:
     if void.verts:
         void.build("DM_WindowWells", M["void"], g)
 
+    if not pole:
+        return
     # two whips and a short mast from the housing on the pole
     ant = MeshBuilder()
     for sx in (-1, 1):
@@ -433,9 +440,11 @@ def cut_openings() -> None:
 # ------------------------------------------------------------------------ the cabin
 
 
-def build_cabin(M, tv_standins: bool = True) -> None:
+def build_cabin(M, tv_standins: bool = True, rails: bool = True, stores: bool = True, controls: bool = True) -> None:
     """`tv_standins` are the two plain barrels that stand for the television cameras on a flight that does not build
-    them (build_television does, as its own node)."""
+    them (build_television does, as its own node). `rails` are the ejection seat's two guides, `stores` the cases
+    and canisters laid out round that seat, and `controls` the panel at the pilot's left hand and the hand controller
+    at his right: a Voskhod, which had couches where the seat was and its controls moved to them, builds none of these."""
     g = group("Cabin")
     arc = [deg(-90 + 180 * i / 48) for i in range(49)]
     shell = MeshBuilder()
@@ -450,9 +459,10 @@ def build_cabin(M, tv_standins: bool = True) -> None:
 
     S = seat_frame()
     P = lambda x, y, z: Vector((x, y, z))  # noqa: E731
+    rails_wanted = rails
     rails, panel, black, gauges, globe, gear, lens, chute = (MeshBuilder() for _ in range(8))
     # the two guides the seat is fired along, bolted to the cabin's frames
-    for sx in (-1, 1):
+    for sx in (-1, 1) if rails_wanted else ():
         rails.box((34, 1500, 60), Matrix.Translation(P(sx * 318, 130, -262)))
         for y in (-420, 60, 520):
             rails.box((30, 60, 150), Matrix.Translation(P(sx * 318, y, -350)))
@@ -466,13 +476,15 @@ def build_cabin(M, tv_standins: bool = True) -> None:
     black.box((110, 190, 8), board @ Matrix.Translation(P(150, -40, 58)))  # the board of signal lamps
     # the control panel at his left hand: black, with the switches and the logic lock's keys
     left = Matrix.Translation(P(345, 60, 150)) @ Matrix.Rotation(deg(-78), 4, "Y")
-    black.box((300, 280, 60), left)
-    for i in range(10):
+    if controls:
+        black.box((300, 280, 60), left)
+    for i in range(10) if controls else ():
         gear.disc(left @ P(-100 + 50 * (i % 5), -50 + 100 * (i // 5), 30), left.to_3x3() @ P(0, 0, 1), 9, 14, 8)
     # the hand controller by his right hand: a grip on a ball, in a square housing
-    gear.box((110, 110, 80), Matrix.Translation(P(-345, 30, 150)))
-    gear.lathe(arc_profile(0, 0, 42, 0, 90, 6), 16, matrix=Matrix.Translation(P(-345, 30, 190)))
-    black.box((36, 120, 44), Matrix.Translation(P(-345, 30, 252)))
+    if controls:
+        gear.box((110, 110, 80), Matrix.Translation(P(-345, 30, 150)))
+        gear.lathe(arc_profile(0, 0, 42, 0, 90, 6), 16, matrix=Matrix.Translation(P(-345, 30, 190)))
+        black.box((36, 120, 44), Matrix.Translation(P(-345, 30, 252)))
     # the Vzor: an optical sight on the porthole beyond his feet
     vz = to_seat(INNER.frame(*TECHNOLOGICAL))
     gear.lathe([(PORT_R + 60, -46), (PORT_R + 60, -150), (PORT_R + 20, -230), (PORT_R - 20, -230)], 40, matrix=vz)
@@ -487,17 +499,21 @@ def build_cabin(M, tv_standins: bool = True) -> None:
     # equipment under and beside the seat: telemetry under it; air regeneration, the radio and the food locker at his right
     lockers = MeshBuilder()
     for x, y, z, sx, sy, sz in (
-        (0, 150, -560, 560, 700, 200),
-        (0, -470, -420, 460, 300, 220),
-        (-520, 250, -230, 240, 560, 320),
-        (-500, -330, 40, 220, 280, 300),
-        (500, -330, -160, 220, 300, 320),
+        (
+            (0, 150, -560, 560, 700, 200),
+            (0, -470, -420, 460, 300, 220),
+            (-520, 250, -230, 240, 560, 320),
+            (-500, -330, 40, 220, 280, 300),
+            (500, -330, -160, 220, 300, 320),
+        )
+        if stores
+        else ()
     ):
         lockers.box((sx, sy, sz), Matrix.Translation(P(x, y, z)))
         for dy in (-0.28, 0.28):  # each case's lid straps
             gear.box((sx + 8, 26, sz + 8), Matrix.Translation(P(x, y + sy * dy, z)))
     # two canisters of the air regeneration unit, at his right beside the cases
-    for y in (-60, 110):
+    for y in (-60, 110) if stores else ():
         gear.tube(P(-560, y - 60, 120), P(-560, y + 60, 120), 62, 20)
     # the descent module's own parachute, in its container behind hatch No. 2
     pax = to_seat(OUTER.axis(*PARACHUTE))
@@ -515,6 +531,8 @@ def build_cabin(M, tv_standins: bool = True) -> None:
         (lens, "Cabin_Lenses", "lens"),
         (chute, "Cabin_ParachuteContainer", "fabric"),
     ):
+        if not mb.verts:
+            continue
         obj = placed(mb, S).build(name, M[mat], g, sharp_angle=35)
         inside_cabin(obj)
 
