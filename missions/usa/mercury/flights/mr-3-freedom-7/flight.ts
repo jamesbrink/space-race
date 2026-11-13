@@ -110,12 +110,13 @@ const vehicleParts: Part[] = [
     detail:
       'The first design bolted the hatch on with 70 bolts, which would have left the pilot sealed in until ' +
       'someone came. Spacecraft No. 7 flew a heavier hatch held by mechanical latches, with a release handle ' +
-      'inside and out. It was lost in the sea during recovery. The explosive hatch, lighter at 23 lb, arrived ' +
-      'one flight later on Liberty Bell 7.',
+      'inside and a second for outside, carried stowed inside the hatch: outside there is only the small socket ' +
+      'a rescuer put it into, low on the hatch (where exactly is estimated). It was lost in the sea during ' +
+      'recovery. The explosive hatch, lighter at 23 lb, arrived one flight later on Liberty Bell 7.',
     facts: [
       ['Type', 'mechanical latch'],
       ['Latch mechanism', '69 lb (31 kg)'],
-      ['Release', 'handles inside and outside'],
+      ['Release', 'handle inside; socket outside'],
       ['Explosive hatch', '23 lb, from MR-4'],
     ],
     explode: [1.15, 9.9, 0],

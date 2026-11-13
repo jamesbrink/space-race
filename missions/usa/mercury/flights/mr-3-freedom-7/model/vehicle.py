@@ -81,7 +81,10 @@ Z_BOOSTER_BASE = -redstone_mrlv.LENGTH  # the Redstone's fin trailing edges
 HATCH = (deg(287.5), deg(342.5), 18.5, 44.0)
 JAMB = (deg(285), deg(345), 17.6, 44.9)  # the plain border round it
 HATCH_JOINT = 0.14  # the joint round the hatch's shingles, inches: as on capsule 11's model
-LATCH_INSET = 1.3  # how far in from the hatch's edge its eight latches are, inches: a placeholder, as the latches are
+SOCKET_Z = 21.0  # the outside release handle's socket, its station: estimated (Postlaunch Report, Figure 3.1-1, puts it low on the hatch)
+LATCH_INSET = (
+    1.3  # how far in from the hatch's edge its eight latches are, inside it (mercury_cabin.hatch_inside), inches: a placeholder, as the latches are
+)
 # The two ports, (angle, station): the lower one 30 degrees past the hatch's foot-side edge, the upper one high at the
 # pilot's left. A flat plate 10 in across round a hole in the skin, the pane set down inside it.
 PORTHOLES = ((deg(15), 28.5), (deg(232.5), 34.5))
@@ -129,7 +132,6 @@ SHELLS = (
     "Afterbody_Lettering",
     "Hatch_Shingles",
     "Hatch_Fasteners",
-    "Hatch_Latches",
     "Hatch_Structure",
     "Hatch_PressureSkin",
     "CrewCabin_PressureVessel",
@@ -163,7 +165,7 @@ def build_afterbody(M, font) -> Skin:
     g = group("Afterbody")
     hatch = group("Hatch")
     skin = Skin(CONE)
-    plates, hp, hb, latches = MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder()
+    plates, hp, hb, socket, bore = MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder()
 
     # a plain band above the shield's attach ring, riveted
     plates.lathe(prof([(CONE.r(2.05), 2.05), (CONE.r(BAND - 0.05), BAND - 0.05)]), 144)
@@ -209,17 +211,18 @@ def build_afterbody(M, font) -> Skin:
     mercury_capsule.fasten_round(skin, skin.bolts, DOOR_PLATE, inset=0.5, pitch=3.0)
 
     # The hatch: No. 7 carried the mechanical latch hatch (69 lb as installed), with release handles inside and out.
-    # Two shingles of its own; its latches and outside handle are placeholders (no drawing of the mechanism has been
-    # read, and the flown hatch was lost at recovery).
+    # Two shingles of its own. Its latches are inside (mercury_cabin.hatch_inside); outside there is only the socket the
+    # outside release handle went into, the handle itself carried stowed inside the hatch (Postlaunch Report, Figure
+    # 3.1-1: "External release handle socket (capsules 5 & 7)", "External release handle (stowed position)").
     half = (HATCH[0] + HATCH[1]) / 2
     skin.shingle(HATCH[0], half, HATCH[2], HATCH[3], panels=hp, bolts=hb, gap=HATCH_JOINT)
     skin.shingle(half, HATCH[1], HATCH[2], HATCH[3], panels=hp, bolts=hb, gap=HATCH_JOINT)
-    inset = LATCH_INSET
-    ta, tb = HATCH[0] + inset / CONE.r(HATCH[2]), HATCH[1] - inset / CONE.r(HATCH[2])
-    za, zb = HATCH[2] + inset, HATCH[3] - inset
-    for t, z in ((ta, za), (tb, za), (ta, zb), (tb, zb), (half, za), (half, zb), (ta, (za + zb) / 2), (tb, (za + zb) / 2)):
-        latches.box((1.5 * IN, 0.9 * IN, 0.6 * IN), CONE.frame(t, z, 0.05))  # latch housings, sunk well through the skin
-    latches.box((1.1 * IN, 6.5 * IN, 1.0 * IN), CONE.frame(half, (za + zb) / 2 - 3.0, 0.25))  # the outside release handle
+    # the socket: a ring standing 0.14 in, with a dark square bore, in the plain strip between the second shingle's
+    # two stacks of beads, low on the hatch: the figure has it at the hatch's edge toward the heat shield, two thirds of
+    # the way round from the head's side. Its place and size are estimated.
+    f = CONE.frame((half + HATCH[1]) / 2, SOCKET_Z)
+    socket.lathe(prof([(0.45, -0.3), (0.45, 0.1), (0.38, 0.14), (0.22, 0.14), (0.22, 0.07)]), 20, matrix=f)
+    bore.lathe(prof([(0.23, 0.07), (0.0, 0.07)]), 4, matrix=f)
 
     build_ports(M, g, skin)
     skin.panels.build("Afterbody_Shingles", M["shingle"], g, sharp_angle=None)
@@ -227,16 +230,14 @@ def build_afterbody(M, font) -> Skin:
     plates.build("Afterbody_Plates", M["shingle"], g, sharp_angle=None)
     hp.build("Hatch_Shingles", M["shingle"], hatch, sharp_angle=None)
     hb.build("Hatch_Fasteners", M["bolt"], hatch)
-    thing(
-        latches,
-        "Hatch_Latches",
-        M["bolt"],
-        hatch,
-        "Hatch latches and release handle",
-        "No. 7's hatch was held by a mechanical latch mechanism of 69 lb, worked by a handle inside or out; the explosive hatch came later. "
-        "These latches are placeholders: no drawing of the mechanism has been read, and the flown hatch was lost at recovery.",
-        smooth=False,
+    says = (
+        "Outside release handle socket",
+        "No. 7's hatch was held by a mechanical latch mechanism of 69 lb, inside it, worked by a handle inside or one put in from outside. "
+        "Outside there was only this socket: the outside handle was carried stowed inside the hatch, for a rescuer to have once the hatch was off "
+        "(Postlaunch Report, Figure 3.1-1). Where on the hatch and how big are estimated; the flown hatch was lost at recovery.",
     )
+    thing(socket, "Hatch_HandleSocket", M["steel"], hatch, *says)
+    thing(bore, "Hatch_HandleSocketBore", M["nozzle"], hatch, *says)
 
     # the structure under the shingles, left open under the hatch and the periscope's door (the ports are bored below)
     under = MeshBuilder()
