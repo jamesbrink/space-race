@@ -472,4 +472,20 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(august.moon.elevation / DEG, 50.6, 0.05, 'Moon elevation over Site 1, 6 August');
   near(august.moon.illuminated, 0.235, 0.005, 'Moon lit over Site 1, 6 August');
   assert.equal(august.moon.waxing, false, 'the Moon Titov called waning');
+  // Vostok 3 and Vostok 4: the figures quoted in their READMEs ("The sky at liftoff")
+  const vostok3 = flights.find((f) => f.id === 'ussr/vostok/vostok-3');
+  const first = skyFrom(siteFrame(vostok3.site), julianDate(vostok3.launch));
+  near(first.sun.azimuth / DEG, 197.8, 0.05, 'Sun azimuth over Site 1, 11 August 1962');
+  near(first.sun.elevation / DEG, 58.4, 0.05, 'Sun elevation over Site 1, 11 August 1962');
+  near(first.moon.azimuth / DEG, 90.5, 0.05, 'Moon azimuth over Site 1, 11 August 1962');
+  near(first.moon.elevation / DEG, -27.4, 0.05, 'Moon elevation over Site 1, 11 August 1962');
+  near(first.moon.illuminated, 0.766, 0.005, 'Moon lit over Site 1, 11 August 1962');
+  assert.equal(first.moon.waxing, true, 'the Moon Kamanin called almost full the evening before');
+  const vostok4 = flights.find((f) => f.id === 'ussr/vostok/vostok-4');
+  const second = skyFrom(siteFrame(vostok4.site), julianDate(vostok4.launch));
+  near(second.sun.azimuth / DEG, 185.1, 0.05, 'Sun azimuth over Site 1, 12 August 1962');
+  near(second.sun.elevation / DEG, 59.1, 0.05, 'Sun elevation over Site 1, 12 August 1962');
+  near(second.moon.azimuth / DEG, 76.3, 0.05, 'Moon azimuth over Site 1, 12 August 1962');
+  near(second.moon.elevation / DEG, -41.7, 0.05, 'Moon elevation over Site 1, 12 August 1962');
+  near(second.moon.illuminated, 0.848, 0.005, 'Moon lit over Site 1, 12 August 1962');
 });

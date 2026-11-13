@@ -11,14 +11,14 @@ parachute.
 | --- | --- | --- | --- | --- |
 | Vostok 1 | 3KA No. 3 | Yuri Gagarin | 12 April 1961 | [flight](flights/vostok-1/README.md): vehicle, launch site and crew built |
 | Vostok 2 | 3KA No. 4 | Gherman Titov | 6 August 1961 | [flight](flights/vostok-2/README.md): vehicle built (in the Gallery) |
-| Vostok 3 | 3KA | Andriyan Nikolayev | 11 August 1962 | |
-| Vostok 4 | 3KA | Pavel Popovich | 12 August 1962 | |
+| Vostok 3 | 3KA No. 5 | Andriyan Nikolayev | 11 August 1962 | [flight](flights/vostok-3/README.md): vehicle built (in the Gallery) |
+| Vostok 4 | 3KA No. 6 | Pavel Popovich | 12 August 1962 | [flight](flights/vostok-4/README.md): vehicle built (in the Gallery) |
 | Vostok 5 | 3KA | Valery Bykovsky | 14 June 1963 | |
 | Vostok 6 | 3KA | Valentina Tereshkova | 16 June 1963 | |
 
-Vostok 1's and Vostok 2's rows have been checked against sources read for this repo (Vostok 2's:
-the spacecraft's and launch vehicle's numbers in Siddiqi's launch log, the date and pilot in the
-TASS reports of the day; its README has where the sources disagree); the others are the
+The rows of Vostok 1 to 4 have been checked against sources read for this repo (Vostok 2's, 3's
+and 4's: the spacecraft's numbers in Siddiqi's launch log, the dates and pilots in the TASS
+reports of the days; each README has where the sources disagree); the others are the
 programme's well-known dates and are to be checked when each flight is built. Before them flew the
 prototypes (1K) and two full rehearsals of the crewed ship with a dog and a dummy, 3KA No. 1 and
 No. 2, in March 1961.

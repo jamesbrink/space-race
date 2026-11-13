@@ -9,7 +9,9 @@ the ejection seat's pose (`build_seated`), visor down, for the spacecraft's cabi
 Vostok 2 seats the same figure for Gherman Titov, who wore the same suit with the same lettering
 (*Komsomolskaya Pravda*, 8 August 1961: an orange suit and a helmet lettered СССР). No document
 with his height was found, so the stature is Gagarin's and is assumed
-([Vostok 2's spacecraft.md](../flights/vostok-2/spacecraft.md)).
+([Vostok 2's spacecraft.md](../flights/vostok-2/spacecraft.md)). Vostok 3 and Vostok 4 seat it again for
+Andriyan Nikolayev and Pavel Popovich, whose helmets carry the same letters in the film of their
+mornings (*Звёздные братья*, 1962); their heights were not found either.
 
 **It is a rescue suit.** The cabin held ordinary air at ordinary pressure; the suit would have
 inflated only if the cabin had failed. It was also what he landed in: Vostok's pilot left the
