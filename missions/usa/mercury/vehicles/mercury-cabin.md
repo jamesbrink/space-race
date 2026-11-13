@@ -31,6 +31,13 @@ its flight lists what was changed from No. 18 and restores none of it), with no 
 and the hand-held camera, a Hasselblad 500C, standing in its kit at the pilot's right below the hatch. Its record is
 [that flight's spacecraft.md, "Cabin"](../flights/ma-8-sigma-7/spacecraft.md).
 
+Spacecraft No. 20's (Faith 7) is [mercury_cabin_20.py](mercury_cabin_20.py): No. 11's fit with no periscope
+(`mercury_cabin_11.build`'s `periscope`: no display, housing or tube), its own centre panel in the display's place
+(`centre`, laid out from NASA SP-45's Figure 17-7(b)), its own column of sequence lights (`sequence`) and the control
+fuel gauge moved into that centre (`without=("ControlFuel",)`), and the television camera by the pilot's right hand.
+Its record is [that flight's spacecraft.md, "Cabin" and "Television"](../flights/ma-9-faith-7/spacecraft.md). The same
+holds: a capsule built with none of those arguments is built as before, to the byte.
+
 ## What the viewer is promised
 
 | Node | What it is | Extras |

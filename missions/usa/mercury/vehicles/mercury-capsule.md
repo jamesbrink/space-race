@@ -41,6 +41,13 @@ ablation panels laid on the recovery compartment's shingles this module builds, 
 stripes on the retropack and the dipole antenna's two units on it (`retropack_stripes`, `hf_dipole`), neither of which a capsule
 that does not ask for them is given. Its record is [Sigma 7's spacecraft.md](../flights/ma-8-sigma-7/spacecraft.md).
 
+Spacecraft No. 20 (Faith 7, MA-9) asks Liberty Bell 7's script for three things more, each of which a capsule that does not
+ask is built without, to the byte: no periscope (`periscope=False`: no door, objective, link or well, and nothing of
+`ScopeWorks`), a smaller opening in the plate at the pilot's feet for the umbilical's own door (`door`), and its own shingle
+seams from the pilot's feet round to the window (`rows`), as its photographs have them. From [mercury_orbital.py](mercury_orbital.py)
+it takes the balloon's container without Aurora 7's liners and the dipole antenna's two units; the beacon's canister and the
+Geiger tubes on its retropack are its own script's. Its record is [Faith 7's spacecraft.md](../flights/ma-9-faith-7/spacecraft.md).
+
 ## Two ways of building shingles
 
 - `shingle_row`: a ring of shingles with their beads along the meridian. Only the recovery
