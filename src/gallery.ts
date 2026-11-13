@@ -17,7 +17,7 @@ import {
 import { Callout } from './callout';
 import { CURTAIN, Curtain, follow } from './curtain';
 import { type Shot, tour } from './demo';
-import { dock, handle, hintOnce, narrow, viewHeight } from './fold';
+import { dock, fitName, handle, hintOnce, narrow, viewHeight } from './fold';
 import { prefs } from './prefs';
 import { type Sheet, sheet } from './sheet';
 import './slider';
@@ -723,6 +723,7 @@ export class Gallery {
     const controls = this.q('.controls');
     const measure = new ResizeObserver(() => this.measure());
     for (const el of [controls, this.q('.models'), panel, title, this.canvas]) measure.observe(el);
+    fitName(this.q('.title > h1'));
     new ResizeObserver(() => this.sized()).observe(this.q('[data-pane=View]'));
 
     // Any touch ends the show and puts off the next one (the mouse merely moving does not end one that is on). It is

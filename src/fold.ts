@@ -21,6 +21,34 @@ export const NARROW = '(max-width: 960px), (max-height: 520px)';
 export const narrow = (): boolean => typeof matchMedia === 'function' && matchMedia(NARROW).matches;
 
 /**
+ * A flight's name is one line in its title card whatever its length (style.css), and the card is only so wide: a name
+ * too long for it (a callsign with its Cyrillic beside it: "Berkut (Беркут)") is set smaller until all of it is on the
+ * card. It is fitted again when the card changes width or comes back from being tucked away. On a narrow page the top
+ * line has its own rule (fold.css) and the name is left to it.
+ */
+export function fitName(name: HTMLElement): void {
+  const card = name.parentElement;
+  if (!card || typeof ResizeObserver !== 'function') return;
+  let was = '';
+  const fit = (): void => {
+    // (its own change of size changes the card's height, which comes back here: only a new width or a new layout is acted on)
+    const now = `${card.clientWidth} ${name.offsetParent !== null} ${narrow()}`;
+    if (now === was) return;
+    was = now;
+    name.style.fontSize = '';
+    if (narrow() || !name.clientWidth || name.scrollWidth <= name.clientWidth) return;
+    const size = parseFloat(getComputedStyle(name).fontSize);
+    name.style.fontSize = `${Math.floor(((size * name.clientWidth) / name.scrollWidth) * 10 - 1) / 10}px`;
+  };
+  new ResizeObserver(fit).observe(card);
+  // (the face it is measured in arrives after the card does, and is asked for only once the name is on the page)
+  document.fonts?.addEventListener('loadingdone', () => {
+    was = '';
+    fit();
+  });
+}
+
+/**
  * While the page is narrow each block lives in its slot (a place in a pane of the sheet); while it is wide it is back
  * where it was made. `changed` is told each time they move, and once at the start.
  */
