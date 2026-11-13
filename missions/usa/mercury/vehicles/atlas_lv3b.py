@@ -64,6 +64,9 @@ VERNIER_LINE = (88.0, 3.0)  # the slender fairing above the first vernier's own:
 PRESSURE_LINE = 1.9  # the radius of the pressurisation line that runs from the second vernier to the top of the tank
 LETTERS = (648.0, 950.0, (13.0, 19.0))  # UNITED STATES down the tank: from, to, and a letter's height (round the tank) and width (along it)
 SERIAL_S = 1089.0  # the serial number's station
+INJECTOR_VANES = 6  # the radial baffles on a booster engine's injector, where a vehicle had them: counted off NASA TN D-4807, Figure 7
+INJECTOR_BAFFLE = 2.4  # how far they stand out of the injector's face: estimated
+IGNITER = (9.0, 0.85)  # a hypergolic igniter's container, its length and radius: scaled off the same report's Figure 8, estimated
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
 SHELLS = (
@@ -196,12 +199,23 @@ def _down(mb: MeshBuilder, surf: Surf, body: str, s0: float, s1: float, size, th
         )
 
 
-def build(base_z: float, font=None, serial: str = "10 9D", pods_at: float = deg(-45), insulation_bulkhead: bool = False) -> None:
+def build(
+    base_z: float,
+    font=None,
+    serial: str = "10 9D",
+    pods_at: float = deg(-45),
+    insulation_bulkhead: bool = False,
+    baffled_injectors: bool = False,
+    hypergolic_igniters: bool = False,
+) -> None:
     """Build the launch vehicle with its booster engines' exit plane at `base_z` (inches) of the flight's frame.
     `serial`: the vehicle's number as painted on the fuel tank, in two parts either side of a vernier's line.
     `pods_at`: the angle of the first equipment pod (the one the conduit from the adapter runs down to).
     `insulation_bulkhead`: whether the vehicle flew with the insulation under its intermediate bulkhead and the
-    bulkhead that kept it there: 109-D had them taken out on the pad, 107-D kept them (atlas-lv3b.md)."""
+    bulkhead that kept it there: 109-D had them taken out on the pad, 107-D kept them (atlas-lv3b.md).
+    `baffled_injectors`, `hypergolic_igniters`: what the booster engines had from Atlas 113-D on (NASA TN D-4807, p. 12
+    and Figures 7 and 8): an injector whose face is divided by baffles, seen up each booster engine's throat, and a
+    cartridge of hypergolic fluid on each chamber's head in place of a pyrotechnic igniter."""
     M = _reuse(materials())
     z = lambda s: base_z + (S_EXIT - s)  # noqa: E731  a station's height in the flight's frame
     detail = srlib.DETAIL
@@ -658,3 +672,58 @@ def build(base_z: float, font=None, serial: str = "10 9D", pods_at: float = deg(
     eng.build("BoosterEngines_Chambers", M["engine"], g, sharp_angle=35)
     noz.build("BoosterEngines_Nozzles", M["engine"], g, sharp_angle=35)
     pump.build("BoosterEngines_Turbopumps", M["alu"], g, sharp_angle=40)
+    if baffled_injectors and detail >= 0.75:
+        # The injector at the head of each booster chamber, its face divided by baffles standing out of it: a ring and
+        # radial vanes (NASA TN D-4807, Figure 7, a sketch: six vanes are counted off it). The chamber is the model's
+        # own, so the face is as wide as that; how far the baffles stand out is estimated.
+        face, vanes = MeshBuilder(), MeshBuilder()
+        zf, tall = gz - 6.0, INJECTOR_BAFFLE
+        for b in boosters_at:
+            m = Matrix.Translation(b * IN)
+            face.lathe(prof([(0.0, zf), (10.3, zf)]), 48, matrix=m)
+            # (the ring and the vanes are sunk through the face, so that no end of theirs lies on it)
+            vanes.lathe(_hoop(3.25, 3.55, zf - tall, zf + 0.3), 32, matrix=m)
+            for i in range(INJECTOR_VANES):
+                a = pods_at + TAU * (i + 0.5) / INJECTOR_VANES
+                mid = b + radial(a) * 6.82 + Vector((0, 0, zf + 0.15 - tall / 2))
+                vanes.box((6.86 * IN, 0.3 * IN, (tall + 0.3) * IN), Matrix.Translation(mid * IN) @ Matrix.Rotation(a, 4, "Z"))
+        says = (
+            "Baffled injector",
+            "Where kerosene and liquid oxygen are sprayed into a booster engine. A big chamber can sing: the burning couples "
+            "with the chamber's own sound and the pressure swings until something breaks, and an Atlas lost on the pad had done "
+            "that. From Atlas 113-D on, the booster engines' injectors had baffles standing out of the face, which break the "
+            "wave up. With them, and an igniter that could not light late, the vehicle no longer had to be held down for two "
+            "seconds while its engines were listened to. "
+            "That it had them is the report's; their number is counted off the report's sketch and their size is estimated.",
+        )
+        # (a paler metal than the chamber's, so that the face can be told from the wall up the throat: its colour is ours)
+        plate = material("injector-face", (0.50, 0.42, 0.34), 1.0, 0.45, double_sided=True)
+        _say(face.build("BoosterEngines_InjectorFaces", plate, g, sharp_angle=35), *says)
+        _say(vanes.build("BoosterEngines_InjectorBaffles", plate, g, sharp_angle=35), *says)
+    if hypergolic_igniters and detail >= 0.75:
+        # A cartridge of fluid that burns on meeting liquid oxygen, in a container bolted across each booster chamber's
+        # head, in the fuel's way to the injector (NASA TN D-4807, Figure 8: where on the head, and its size, are read
+        # off the figure's sketches and are estimated).
+        ign = MeshBuilder()
+        long, r = IGNITER
+        for b in boosters_at:
+            out = b.normalized()
+            across = Vector((-out.y, out.x, 0.0))
+            mid = b + out * (10.5 + r + 0.35) + Vector((0, 0, gz - 4.6))
+            ign.tube((mid - across * long / 2) * IN, (mid + across * long / 2) * IN, r * IN, 14)
+            # its retaining cap and handle at one end, and the two bosses it is bolted on by, sunk into the chamber's head
+            end = mid + across * (long / 2 + 0.5)
+            ign.tube((mid + across * (long / 2 - 0.2)) * IN, end * IN, (r + 0.25) * IN, 14)
+            grip = end + across * 0.45
+            ign.tube((end - across * 0.1) * IN, grip * IN, 0.16 * IN, 8, caps=False)
+            ign.tube((grip + Vector((0, 0, -1.1))) * IN, (grip + Vector((0, 0, 1.1))) * IN, 0.22 * IN, 8)
+            for k in (-0.28, 0.28):
+                foot = mid + across * long * k
+                ign.tube(foot * IN, (foot - out * (r + 1.6)) * IN, 0.5 * IN, 10)
+        _say(
+            ign.build("BoosterEngines_Igniters", M["alu"], g, sharp_angle=35),
+            "Hypergolic igniter",
+            "How a booster engine was lit from Atlas 113-D on: a cartridge of a fluid that bursts into flame on meeting liquid "
+            "oxygen, pushed ahead of the kerosene into the chamber. The pyrotechnic igniters before it could light late, into a "
+            "chamber already full. That it had them is the report's; the container's size and place are read off its sketch.",
+        )
