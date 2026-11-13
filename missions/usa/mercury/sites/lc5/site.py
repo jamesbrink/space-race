@@ -61,6 +61,7 @@ sitelib.use(FT)  # this site's drawings are in feet
 ftp = profile  # a lathe profile given in feet
 
 __all__ = [
+    "MASTS",
     "P",
     "Parts",
     "Wall",
@@ -199,9 +200,65 @@ STRUCTURE_LAUNCH = 173.0  # T-8:45: Figure 7-6's marker at 181 ft, less the 8 ft
 LEVELS = {1: SHIELD_Z - 19.6, 2: SHIELD_Z - 10.9, 3: SHIELD_Z - 0.6, 4: SHIELD_Z + 11.1}
 STRUCTURE_TOP = 135.0  # to the crane deck's top rail: LC-26 twin 111 ft 9 in + 23 ft (Noble), COE "140 feet"
 PLATFORM_PART = 4.5  # how far each half of a platform slides out, either way, to open (estimated)
-# Where the capsule's cable mast stands in the platforms' split, and the cut round it: behind the vehicle on the
-# receptacle's side (+Y, 45 degrees round from it), the one place on that side the parted platforms leave clear.
-MAST_NOTCH = (8.0, 0.7)
+
+# The two cable masts stand on the launcher's table close against the vehicle, and are placed round the VEHICLE:
+# degrees from the hatch's middle (+X here) toward +Y, and feet from the axis to the pole's middle. Derived, by
+# triangulation, from three photographs of MR-4 with the structure rolled back (FHSU Project Mercury items 466 and
+# 468, 19 July 1961; 333, 21 July). The camera's place round the vehicle is read off the capsule's own paint
+# (UNITED STATES at 178, the flag at 106, LIBERTY BELL 7 at 315: the flight's spacecraft.md) and the booster's fins
+# (45 + 90k): 151, 232 and 312.5 degrees, each to about 5. A pole p is seen p . (-sin a, cos a) to the right of the
+# axis from a camera at a; the booster's 70 in body is the scale. Read: the booster's mast +3.7 ft (466), +0.49 in
+# front of the vehicle (468), -3.5 (333); the capsule's -2.1 in front (466), -3.15 (468), hidden behind the vehicle
+# in 333. Least squares puts the booster's at 239.7 degrees and 3.67 ft (235 to 245, 3.6 to 3.8, over the cameras'
+# doubt) and the capsule's at 114.7 degrees and 3.55 ft (110 to 119, 3.4 to 3.8). MR-3's photograph at ignition
+# (S61-02407) has both hinged on the table in the same order round the fins, to within what one view can say.
+# The booster's is built at 241 degrees, inside that doubt, so that its foot stands clear of the launcher's fin clamp
+# as that is modelled (launcher.py: estimated); item 134 has the foot hard beside a fin's support.
+# See ../lc-5.md, "The two cable masts".
+MASTS = {"booster": (241.0, 3.7), "capsule": (115.0, 3.55)}
+MAST_HINGE_Z = LAUNCHER_TOP + 0.3  # the pin, half a foot over the table's deck (FHSU item 134: a lug on the table, the mast's foot forked over it)
+BOOSTER_BAND = LAUNCHER_TOP + 561.24 / 12  # the foot of the booster's chequered aft section: the top of its tanks (redstone-mrlv.md)
+
+
+def mast_frame(which: str) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+    """A mast's place (x, y), the way out from the vehicle there, and the way round it (toward +Y from +X): unit vectors."""
+    a, r = math.radians(MASTS[which][0]), MASTS[which][1]
+    out = (math.cos(a), math.sin(a))
+    return (r * out[0], r * out[1]), out, (-out[1], out[0])
+
+
+# What of each mast passes through each level's floor, as plan outlines in the site's frame: the platforms' halves are
+# cut round them (service_structure.inner_edge). A pole is a disc; the booster's cooling package, which hangs outboard
+# of its pole across level 2's floor, is the strip it and its coiled hose cover. Each with 0.3 ft to spare.
+POLE_R = {"booster": 0.27, "capsule": 0.16}  # 6.5 in and 3.8 in tubes: 13 px and 8 px across in item 468, where the booster's 70 in is 136
+PACKAGE_REACH = 2.6  # how far the package and the hose coiled behind it stand out from the pole's middle
+PACKAGE_HALF = 0.7  # and half their width across
+CUT_SPARE = 0.3  # what a floor is cut back from whatever stands through it
+
+
+def package_cut(grow: float = 0.0) -> list[tuple[float, float]]:
+    """The strip the booster's pole, its cooling package and the coiled hose cover in plan, with the floor's spare
+    and `grow` more all round: its four corners, anticlockwise, the two nearest the vehicle first and last."""
+    (x, y), (ox, oy), (tx, ty) = mast_frame("booster")
+    a, b, w = -(POLE_R["booster"] + CUT_SPARE + grow), PACKAGE_REACH + CUT_SPARE + grow, PACKAGE_HALF + CUT_SPARE + grow
+    return [(x + ox * u + tx * v, y + oy * u + ty * v) for u, v in ((a, -w), (b, -w), (b, w), (a, w))]
+
+
+def mast_cuts(level: int) -> list[list[tuple[float, float]]]:
+    """The outlines (convex, anticlockwise) of what stands through level `level`'s floor."""
+    cuts = []
+
+    def disc(which: str, r: float) -> list[tuple[float, float]]:
+        (x, y), _, _ = mast_frame(which)
+        return [(x + r * math.cos(math.tau * k / 16), y + r * math.sin(math.tau * k / 16)) for k in range(16)]
+
+    if level in (1, 2, 3):
+        cuts.append(disc("capsule", POLE_R["capsule"] + 0.24 + CUT_SPARE))  # the pole with the umbilical strapped to it
+    if level == 1:
+        cuts.append(disc("booster", POLE_R["booster"] + CUT_SPARE))
+    if level == 2:
+        cuts.append(package_cut())
+    return cuts
 
 
 def materials() -> dict:

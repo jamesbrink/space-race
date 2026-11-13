@@ -38,5 +38,10 @@ if __name__ == "__main__":
             ("pad-base.png", (7, -4, 2.2), 26, dict(azimuth=-28, elevation=7, res=(1600, 1100))),
             ("pad-van.png", (8.5, 8.0, 2.4), 30, dict(azimuth=38, elevation=7, res=(1600, 1100))),
             ("pad-hatch.png", (0.6, 0, 20.6), 9, dict(azimuth=-12, elevation=4, res=(1300, 1100))),
+            # the two cable masts under level 1, from where the photographs that place them were taken round the vehicle
+            # (FHSU items 466, 468 and 333: sites/lc5/site.py MASTS)
+            ("pad-masts-151.png", (0, 0, 8.0), 36, dict(azimuth=151, elevation=4, res=(1100, 1400))),
+            ("pad-masts-232.png", (0, 0, 8.0), 36, dict(azimuth=232, elevation=4, res=(1100, 1400))),
+            ("pad-masts-312.png", (0, 0, 8.0), 36, dict(azimuth=312.5, elevation=4, res=(1100, 1400))),
         ],
     )

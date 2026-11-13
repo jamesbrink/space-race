@@ -124,8 +124,10 @@ differs from Freedom 7's morning and how sure each difference is). What it still
   shower, walking to the lift, as NASA's photograph 61-MR4-83 has him), and no model takes it yet;
 - **a cabin to sit in**: the capsule's inside is modelled and cannot be boarded;
 - what July's photographs show and the pad does not have: the tail heater, the LOX trailers, the
-  M-113, the covers, and the two cable masts where the photographs put them (lc-5.md, the same
-  section).
+  M-113, the covers (lc-5.md, the same section). The two cable masts now stand where those
+  photographs put them, on the launcher against the vehicle; the same photographs say the vehicle
+  itself stood turned about 60° on the pad from how it is modelled, which is left open (lc-5.md, "An
+  open question: which way round the vehicle stood").
 
 **The flight.** To be flown it needs what Freedom 7 has in `flight.ts`: the booster's measured
 thrust and cutoff for MR-8, the tilt programme on 100°, the capsule's weights at each stage (the
