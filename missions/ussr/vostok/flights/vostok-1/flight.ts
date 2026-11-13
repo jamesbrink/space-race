@@ -1446,6 +1446,29 @@ export const flight: Flight = {
   ],
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
+  // the flight in the scene: the stack off the pad as staged.ts flies it, and what leaves it, each flown on (orbital.ts,
+  // `ascent.sheds`) or, for the hatch and the seat, let go unseen: what comes down with the pilot is not flown as a body
+  flies: {
+    model: 'vehicle',
+    datum: BASE,
+    engine: 'CoreEngine',
+    drops: [
+      { at: 119.5, nodes: BOOSTERS.map(([letter]) => `Booster_${letter}`), on: 'boosters' },
+      { at: 154.6, nodes: ['Fairing'], on: 'fairing' },
+      { at: 300, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'core' },
+      { at: orbital.events.find((e) => e.id === 'separation')!.at.value, nodes: ['BlockE'], on: 'separation' },
+      {
+        at: orbital.entry.separation.value,
+        nodes: ['InstrumentModule', 'RetroEngine', 'Antennas', 'GasBottles', 'RetainingStraps', 'CableMast'],
+        on: 'modules',
+      },
+      {
+        at: orbital.events.find((e) => e.id === 'ejection')!.at.value,
+        nodes: ['EntryHatch', 'EjectionSeat', 'ParachuteHatch'],
+        on: 'ejection',
+      },
+    ],
+  },
   models: [vehicle, pad, crew],
   // the place round the pad as it stood that April: the bunker, the buildings, the rim's positions, the fence (sites/site1/model/1961-04.py)
   surroundings: 'models/ussr/vostok/sites/site1/1961-04.glb',
