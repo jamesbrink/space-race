@@ -4008,7 +4008,8 @@ export class Stage {
         to.set(on.x + on.nx * 0.06, on.bottom + at[`Foot.${side}`] + sole, on.z + on.nz * 0.06).addScaledVector(left, s * 0.1);
         step(root, side, foot.getWorldPosition(now).lerp(to, k));
       }
-      const hand = this.jointOf(root, `Grip.${side}`) ?? this.jointOf(root, `Hand.${side}`);
+      // (a hand that carries something stays on what it carries: he climbs with the other)
+      const hand = walk.gait.load[side] > 0.5 ? null : (this.jointOf(root, `Grip.${side}`) ?? this.jointOf(root, `Hand.${side}`));
       if (hand) {
         to.set(on.x + on.nx * 0.02, on.bottom + at[`Hand.${side}`], on.z + on.nz * 0.02).addScaledVector(left, s * 0.15);
         reach(root, side, hand.getWorldPosition(now).lerp(to, k));

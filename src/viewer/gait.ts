@@ -930,13 +930,15 @@ export function pose(m: Moment): Pose {
       Spine: 0.06,
       Head: -0.25,
     } satisfies Record<Joint, number>;
-    for (const j of JOINTS) out[j] += (up[j] - out[j]) * k;
+    // (a hand that carries something is not on a rung: that arm hangs with its load, and he climbs with the other)
+    const busy = (j: Joint): number => (/^(UpperArm|LowerArm|Hand)\./.test(j) ? load[j.endsWith('.L') ? 'L' : 'R'] : 0);
+    for (const j of JOINTS) out[j] += (up[j] - out[j]) * k * (1 - busy(j));
     out.rise *= 1 - k;
     out.sag *= 1 - k;
     out.settle *= 1 - k;
     out.shift *= 1 - k;
     for (const j of JOINTS) {
-      if (out.sideways[j]) out.sideways[j] *= 1 - k;
+      if (out.sideways[j]) out.sideways[j] *= 1 - k * (1 - busy(j));
       if (out.twist[j]) out.twist[j] *= 1 - k;
     }
   }

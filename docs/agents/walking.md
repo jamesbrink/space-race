@@ -160,7 +160,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   `rungs`, by height alone, never by time: the left foot and the right hand go up two rungs while
   the others hold), put there by `Stage.onTheLadder` (`reach` for a hand, `step` for a foot). The
   ladder is known only by its box, so the rungs are taken to be where `srlib.ladder` puts them: a
-  foot apart from a foot above its foot.
+  foot apart from a foot above its foot. A hand that carries something is not put on a rung: that
+  arm hangs with its load and he climbs with the other (the pose's `load`, `onTheLadder`). That is
+  a rule of ours, estimated: on the day the pilot went up the structure by its lift, carrying the
+  ventilator, and climbed nothing.
 - **Stairs are walked, not hopped.** The floor is sensed under the middle of the body and four
   points round it, so open treads with daylight between them carry it; the body follows a flight
   as fast as the legs go (`settle`'s `rate`) and a step down is as deep as a step up is tall.

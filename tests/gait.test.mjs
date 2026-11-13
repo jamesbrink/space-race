@@ -480,3 +480,18 @@ test('on a ladder each hand and foot is on a rung, or on its way to the next but
   // and the same rungs coming down as going up
   assert.deepEqual(rungs(2.345), rungs(2.345));
 });
+
+test('on a ladder a hand that carries something is not put up to the rungs: that arm hangs with its load', () => {
+  for (const phase of [0, 0.25, 0.6]) {
+    const free = poseOf({ phase, speed: 0, climb: 1 });
+    const laden = poseOf({ phase, speed: 0, climb: 1, load: { L: 0, R: 1 } });
+    // the free arm is up (a turn of two radians forward at the shoulder), the laden one within a few degrees of hanging
+    assert.ok(free['UpperArm.R'] < -1.5 && laden['UpperArm.L'] < -1.5, `phase ${phase}: the free arms are up`);
+    assert.ok(
+      Math.abs(laden['UpperArm.R']) < 0.1 && Math.abs(laden['LowerArm.R']) < 0.15,
+      `phase ${phase}: the laden arm is ${laden['UpperArm.R']}, ${laden['LowerArm.R']}`,
+    );
+    // and the legs climb as they did
+    for (const j of ['UpperLeg.L', 'UpperLeg.R', 'LowerLeg.L', 'LowerLeg.R', 'Foot.L', 'Foot.R']) assert.equal(laden[j], free[j]);
+  }
+});
