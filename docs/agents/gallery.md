@@ -37,6 +37,19 @@ Every flight has the same three places, in the same order, and opens in the firs
   Earth's maps and the Moon's). Going into a flight fetches only what the gallery needs: the
   vehicle, in full. The site's models, scenery, globe and clouds are fetched when Launch site or
   Fly is first chosen, and kept.
+- **Back and Forward** go where the visitor was. One rule, in `address.ts` (`write`, `samePlace`): going to another
+  flight or another place (the front page, a flight's Gallery, Launch site, Fly) is a new entry in the history;
+  anything chosen within a place (a part, a section of the site, what stands in the gallery) rewrites the entry it is
+  on, and so does the page settling an address into its own form (`settle`: `#pad` becomes the flight's
+  `#…/site/pad`, a flight named with no place its gallery) and anything the idle show does. So Back is never pressed
+  twice to leave a place, and never traps. Taking the flight deck or leaving it by its own control (Fly it, L, Esc)
+  is going between places, so a step too; following an address (Back, Forward, a link) is never one, whatever the
+  page passes through on its way there (`following` in main.ts). Within a flight, Back and Forward between its places are followed in
+  place (`onMoved`), with no load: the site as it was left, the gallery as it was left. The front page and a flight
+  are two pages' worth of state, so Back or Forward across that line opens the page again at the address it lands on
+  (`home.ts`; `front.ts` for an address that names a flight), the same as a reload or a pasted link. The Space Race
+  crumb is a step like any other: Back comes into the flight again. `pnpm test:history` (tools/history-test.mjs)
+  goes through it with real clicks.
 - **Which page comes up** is decided in `enter.ts` by what the address names: `front.ts` for one
   that names nothing; otherwise, by the flight it is about (`flightFor`), `main.ts` for a flight
   with a site (the gallery beside it) and `only.ts` for one without (the gallery alone, and none
@@ -58,13 +71,14 @@ picture is of, world.md).
   and its picture is held still until told where to be (`sr.front.seek`), unless the address has `?demo`.
 - **Less motion** (the system's setting): one still picture, the Earth risen over a level horizon 80 seconds along
   the path, the clock stopped at the instant; nothing is drawn twice.
-- **Going into a flight** names it in the address at once (so a refresh lands there), takes the words away and
+- **Going into a flight** names it in the address at once, as a step in the history (so a refresh lands there, and
+  Back comes out to the front page again), takes the words away and
   brings that flight's page up *under* the picture, which goes on moving while the flight arrives. The flight's
   curtain is a card over the picture, not a black page, and nothing else of the flight's page shows until it lifts
   (`body.fronted`, front.css). When it lifts (`whenLifted`, curtain.ts) the flight's canvas fades in over the
   picture's as it always does, and a moment later the picture is let go whole: textures, buffers, the context, the
   canvas. No key acts meanwhile: the flight's curtain is up, and the curtain's own rule holds.
-- **Coming back out** (the Space Race crumb, or an address edited to name nothing) is `home.ts`: the page fades to
+- **Coming back out** (the Space Race crumb, Back, or an address edited to name nothing) is `home.ts`: the page fades to
   black and is opened again at the address that names nothing. A flight holds nothing of the front page and the
   front page nothing of a flight; the price is that the same flight gone into again is fetched from the browser's
   cache and its shaders built again.

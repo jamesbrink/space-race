@@ -21,8 +21,11 @@ import {
   parseAddress,
   plinths,
   plinthViews,
+  samePlace,
   scaleFigure,
+  settle,
   WHOLE_VIEW,
+  write,
 } from '../src/address.ts';
 import { flight as fixture } from './fixtures/vehicle-only/flight.ts';
 
@@ -254,5 +257,67 @@ test('the front page lists the flights there are and those to come, in the order
     assert.match(u.launch, /^\d{4}-\d{2}-\d{2}$/, `${u.id}: a day`);
     assert.ok(u.name && u.line && u.nation, `${u.id} says what it is`);
     assert.match(u.id, /^[a-z]+\/[a-z-]+\/[a-z0-9-]+$/, `${u.id}: an id like a flight's`);
+  }
+});
+
+test('one entry in the history is one flight at one place, whatever is on show there', () => {
+  const at = (place, what) => formatAddress(MR3, place, what);
+  assert.ok(samePlace(at('site', 'vehicle'), at('site', 'pad')), 'a section of the site is the site');
+  assert.ok(samePlace(at('gallery'), at('gallery', 'capsule')), 'a part in the gallery is the gallery');
+  assert.ok(samePlace('', '#'), 'the front page is the front page');
+  assert.ok(!samePlace(at('gallery'), at('site', 'vehicle')), 'the gallery and the site are two');
+  assert.ok(!samePlace(at('site', 'vehicle'), at('fly')), 'the site and the flight deck are two');
+  assert.ok(!samePlace('', at('gallery')), 'the front page and a flight are two');
+  assert.ok(!samePlace(at('gallery'), formatAddress('ussr/vostok/vostok-1', 'gallery')), 'two flights are two');
+  // read as written: an old link is not its flight's place until the page has settled it into that form
+  assert.ok(!samePlace('#pad', at('site', 'pad')));
+});
+
+test('going to another place is a step in the history; anything else rewrites the step it is on', () => {
+  // (the address bar, as a browser keeps it: the entries, and the one on show)
+  const entries = ['#'];
+  let on = 0;
+  const said = (url) => `#${url.split('#')[1] ?? ''}`;
+  globalThis.location = {
+    pathname: '/',
+    search: '',
+    get hash() {
+      return entries[on] === '#' ? '' : entries[on];
+    },
+  };
+  globalThis.history = {
+    pushState: (_s, _t, url) => {
+      entries.splice(++on, Infinity, said(url));
+    },
+    replaceState: (_s, _t, url) => {
+      entries[on] = said(url);
+    },
+  };
+  try {
+    const at = (place, what) => formatAddress(MR3, place, what);
+    write(at('gallery')); // into a flight from the front page
+    write(at('gallery', 'capsule')); // a part chosen
+    write(at('site', 'vehicle')); // the launch site
+    write(at('site', 'pad')); // a section of it
+    write(at('fly')); // the flight deck
+    write(at('fly')); // (said again: nothing)
+    assert.deepEqual(entries, ['#', at('gallery', 'capsule'), at('site', 'pad'), at('fly')]);
+    // Back, and the page follows it: the site, as it was left; the entries after it are kept for Forward
+    on = 2;
+    write(at('site', 'pad'));
+    assert.deepEqual(entries, ['#', at('gallery', 'capsule'), at('site', 'pad'), at('fly')]);
+    // an old link settled into its own form, and the front page come back to: no step at all
+    entries.splice(0, Infinity, '#pad');
+    on = 0;
+    settle(at('site', 'pad'));
+    assert.deepEqual(entries, [at('site', 'pad')]);
+    settle(at('gallery'));
+    assert.deepEqual(entries, [at('gallery')]);
+    // the way out to the front page is a step too, and writes the bare address
+    write('');
+    assert.deepEqual(entries, [at('gallery'), '#']);
+  } finally {
+    delete globalThis.location;
+    delete globalThis.history;
   }
 });
