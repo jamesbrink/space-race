@@ -8,6 +8,7 @@
 //   enters     a flight chosen is named in the address at once; its curtain is a card over the picture, which goes on
 //              moving; no key acts under it; when it lifts the picture's canvas and context are let go
 //   leaves     the Space Race crumb comes back to the front page, with nothing of the flight held
+//   steady     the list scrolled end to end by wheel and by touch moves nothing sideways, and there is nothing to scroll sideways
 //   old links  #pad is still Freedom 7's launch site, with no front page in the way
 //   idle       left alone half a minute the words make way for the picture, and come back at a touch (--no-idle skips the wait)
 //   holds      as a phone (390x844 at 3, touch): what the front page holds on the GPU, and the most while a flight
@@ -33,11 +34,11 @@ export const BUDGET = { front: 90, entering: 350 };
 const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 
 /** A page at `hash`. `search`: the address's query (`?demo`: not treated as a script, so the picture moves). */
-async function open(hash = '', { search = '', reduced = false, phone = false, slow = 0 } = {}) {
+async function open(hash = '', { search = '', reduced = false, phone = false, slow = 0, size = [1280, 800] } = {}) {
   const context = await browser.newContext(
     phone
       ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true }
-      : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, reducedMotion: reduced ? 'reduce' : 'no-preference' },
+      : { viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1, reducedMotion: reduced ? 'reduce' : 'no-preference' },
   );
   const page = await context.newPage();
   const errors = [];
@@ -206,6 +207,77 @@ await scenario('enters', async () => {
     check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
   }
   await context.close();
+});
+
+await scenario('steady', async () => {
+  // the list scrolled end to end and back, as a trackpad does it (wheel, with a little sideways in it, the pointer
+  // resting on the rows as they pass) and as a thumb does (a swipe that drifts); every frame, where everything stands
+  for (const [width, height, phone] of [
+    [1440, 900, false],
+    [820, 1180, false],
+    [390, 844, true],
+  ]) {
+    const { page, errors, context } = await open('', { phone, size: [width, height] });
+    await front(page);
+    await page.evaluate(() => {
+      const t = document.querySelector('#title');
+      const things = [
+        t,
+        document.querySelector('.title-mark'),
+        ...document.querySelectorAll('.title-flights > *'),
+        document.querySelector('.title-foot'),
+      ];
+      const at = () => things.map((e) => e.getBoundingClientRect().left);
+      const first = at();
+      window.__steady = { shift: 0, sideways: 0, wider: t.scrollWidth - t.clientWidth, top: 0 };
+      const tick = () => {
+        const s = window.__steady;
+        s.shift = Math.max(s.shift, ...at().map((x, i) => Math.abs(x - first[i])));
+        s.sideways = Math.max(
+          s.sideways,
+          t.scrollLeft,
+          document.documentElement.scrollLeft,
+          document.documentElement.scrollWidth - innerWidth,
+        );
+        s.wider = Math.max(s.wider, t.scrollWidth - t.clientWidth);
+        s.top = Math.max(s.top, t.scrollTop);
+        window.__steadyFrame = requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    if (phone) {
+      const cdp = await context.newCDPSession(page);
+      for (const dy of [-700, -700, -700, 700, 700, 700])
+        await cdp.send('Input.synthesizeScrollGesture', {
+          x: 200,
+          y: dy < 0 ? 760 : 120,
+          xDistance: dy < 0 ? -14 : 14,
+          yDistance: dy,
+          gestureSourceType: 'touch',
+        });
+    } else {
+      await page.mouse.move(width / 2, height * 0.7);
+      for (const dy of [60, -60])
+        for (let i = 0; i < 45; i++) {
+          await page.mouse.wheel(i % 3 ? -2 : 4, dy);
+          await page.waitForTimeout(16);
+        }
+    }
+    await page.waitForTimeout(300);
+    const s = await page.evaluate(() => {
+      cancelAnimationFrame(window.__steadyFrame);
+      return { ...window.__steady, room: document.querySelector('#title').scrollHeight - innerHeight };
+    });
+    const at = `${width}x${height}${phone ? ', by touch' : ''}`;
+    check(s.top >= s.room - 1, `${at}: the list scrolls end to end (${s.top.toFixed(0)} of ${s.room} px)`);
+    check(
+      s.wider <= 0 && s.sideways <= 0.5,
+      `and there is nothing to scroll sideways (${s.wider} px wider than the window, moved ${s.sideways} px)`,
+    );
+    check(s.shift <= 0.5, `and nothing on it moves sideways as it goes (${s.shift.toFixed(2)} px at most)`);
+    check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
+    await context.close();
+  }
 });
 
 await scenario('old links', async () => {
