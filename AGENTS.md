@@ -33,6 +33,7 @@ pnpm build            # typecheck, then a production bundle in dist/
 pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their Blender scripts
 pnpm model:mr-4       # rebuild Liberty Bell 7's vehicle
 pnpm model:lc-5       # rebuild the place round the pad (the site's own model)
+pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
 pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)
 pnpm models           # rebuild every flight's GLBs
 pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region
