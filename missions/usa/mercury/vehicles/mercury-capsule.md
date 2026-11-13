@@ -36,6 +36,11 @@ told that the shingle under the window has two stacks of beads and to leave its 
 and [mercury_orbital.py](mercury_orbital.py) lets the balloon experiment's container into the top of the antenna canister this module
 builds (`balloon_canister`). Its record is [Aurora 7's spacecraft.md](../flights/ma-7-aurora-7/spacecraft.md).
 
+Spacecraft No. 16 (Sigma 7, MA-8) is built the same way again: the same two arguments to Liberty Bell 7's script, its own paint, nine
+ablation panels laid on the recovery compartment's shingles this module builds, and from [mercury_orbital.py](mercury_orbital.py) the
+stripes on the retropack and the dipole antenna's two units on it (`retropack_stripes`, `hf_dipole`), neither of which a capsule
+that does not ask for them is given. Its record is [Sigma 7's spacecraft.md](../flights/ma-8-sigma-7/spacecraft.md).
+
 ## Two ways of building shingles
 
 - `shingle_row`: a ring of shingles with their beads along the meridian. Only the recovery

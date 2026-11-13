@@ -505,4 +505,13 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(midday.moon.elevation / DEG, -3.2, 0.05, 'Moon elevation over Site 1, 16 June 1963');
   near(midday.moon.illuminated, 0.337, 0.005, 'Moon lit over Site 1, 16 June 1963');
   assert.equal(midday.moon.waxing, false, 'a waning crescent, five days before new');
+  // Sigma 7: the figures quoted in its README ("The sky at liftoff")
+  const ma8 = flights.find((f) => f.id === 'usa/mercury/ma-8-sigma-7');
+  const october = skyFrom(siteFrame(ma8.site), julianDate(ma8.launch));
+  near(october.sun.azimuth / DEG, 101.2, 0.05, 'Sun azimuth over Complex 14, 3 October 1962');
+  near(october.sun.elevation / DEG, 12.0, 0.05, 'Sun elevation over Complex 14, 3 October 1962');
+  near(october.moon.azimuth / DEG, 88.3, 0.05, 'Moon azimuth over Complex 14, 3 October 1962');
+  near(october.moon.elevation / DEG, -38.9, 0.05, 'Moon elevation over Complex 14, 3 October 1962');
+  near(october.moon.illuminated, 0.195, 0.005, 'Moon lit over Complex 14, 3 October 1962');
+  assert.equal(october.moon.waxing, true, 'the young Moon Schirra found beside Venus on his third pass');
 });
