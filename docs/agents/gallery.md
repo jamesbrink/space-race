@@ -23,6 +23,9 @@ Every flight has the same three places, in the same order, and opens in the firs
   is coming, and the control is the same for every flight.
 - **The way back is always the same**: front page > flight > place, and the title card's crumbs
   say it (`crumbs`): "Space Race" is the front page, the flight's name its gallery.
+- **The flight's name is one line, whole.** A name too long for the title card at its usual size (a
+  callsign with its Cyrillic: "Berkut (Беркут)") is set smaller until it fits (`fitName` in
+  `fold.ts`, for the gallery's card and the site's); on a phone the top line's own rule holds.
 - **The address** carries it (`src/address.ts`, the only place that reads or writes one):
   `#<flight>` and `#<flight>/gallery[/<part or what stands there>]` the gallery;
   `#<flight>/site[/<vehicle|pad|crew>]` the launch site; `#<flight>/fly` the flight deck.

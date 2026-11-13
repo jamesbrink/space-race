@@ -1,4 +1,4 @@
-import { dock, handle, hintOnce, narrow, sayIn, viewHeight } from './fold';
+import { dock, fitName, handle, hintOnce, narrow, sayIn, viewHeight } from './fold';
 import { type Sheet, sheet } from './sheet';
 import './slider';
 import { CURTAIN, Curtain } from './curtain';
@@ -450,6 +450,8 @@ export class Ui {
     factsToggle.addEventListener('click', () => showFacts(!title.classList.contains('facts-open')));
     // the legend is never taller than the room under the title card
     new ResizeObserver(() => root.style.setProperty('--title-h', `${title.offsetHeight}px`)).observe(title);
+    const name = title.querySelector<HTMLElement>(':scope > h1');
+    if (name) fitName(name);
     window.addEventListener('keydown', (e) => {
       const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;

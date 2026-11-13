@@ -13,6 +13,8 @@ Top-level nodes:
     RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
 and, on a flight that carried one (build(film_camera=True)):
     FilmCamera
+and, on a flight whose television is built as its cameras were (build(television=True)):
+    TelevisionCameras
 """
 
 from __future__ import annotations
@@ -422,7 +424,9 @@ def cut_openings() -> None:
 # ------------------------------------------------------------------------ the cabin
 
 
-def build_cabin(M) -> None:
+def build_cabin(M, tv_standins: bool = True) -> None:
+    """`tv_standins` are the two plain barrels that stand for the television cameras on a flight that does not build
+    them (build_television does, as its own node)."""
     g = group("Cabin")
     arc = [deg(-90 + 180 * i / 48) for i in range(49)]
     shell = MeshBuilder()
@@ -466,6 +470,8 @@ def build_cabin(M) -> None:
     lens.lathe([(PORT_R - 20, -230), (0, -222)], 40, matrix=vz, flip=True)
     # television cameras: one beside the board watching his face, one at his side
     for at, turn in ((P(150, -520, 660), Matrix.Rotation(deg(-105), 4, "X")), (P(-400, 330, 330), Matrix.Rotation(deg(70), 4, "Y"))):
+        if not tv_standins:
+            break
         cam = Matrix.Translation(at) @ turn
         gear.lathe([(0, 0), (38, 0), (38, 150), (30, 160)], 16, matrix=cam)
         lens.lathe([(30, 160), (0, 160)], 16, matrix=cam)
@@ -615,6 +621,119 @@ def build_film_camera(M) -> None:
     body.tube(P(0, 12, -70), P(0, 12, -top), 30, 24)  # the motor, which is the grip
     for mb, name, mat in ((body, "FilmCamera_Body", "panel_black"), (barrels, "FilmCamera_Lenses", "frame"), (glass, "FilmCamera_Glass", "lens")):
         inside_cabin(placed(mb, S @ C).build(name, M[mat], g, sharp_angle=35))
+
+
+# The television cameras of the Seliger system (NII-380, Leningrad): two in the cabin, each a one-inch vidicon in a
+# ribbed case, 3 kg and 12 W. From Vostok 3 they sent 400 lines of 400 elements ten times a second, and the picture
+# went out on broadcast television. The case's form is read off the one published photograph of the camera (Efimov);
+# no dimension of it has been found, so every size below is estimated from that photograph, scaled by the one-inch
+# tube and its plug. One camera looks at the pilot's face from in front (the received frames show him so, from some
+# thirty degrees toward his feet); where the other was is not in anything read, and it is put at his right, level
+# with his head, for the view in profile that the system was first set up to give of the dogs.
+SELIGER_CASE = (104.0, 226.0, 118.0)  # across, along the lens, tall
+SELIGER_LENS_R = 26.0
+SELIGER_FACE = (0.0, 690.0, 150.0)  # what both look at, in the seat's frame: the front of his helmet
+SELIGER_AT = ((160.0, 280.0, 760.0), (-640.0, 590.0, 340.0))  # the middle of each case, in the seat's frame
+
+
+def rounded_box(mb: MeshBuilder, size: tuple[float, float, float], r: float, matrix: Matrix, n: int = 4) -> None:
+    """A box `size` across, along and tall whose four long edges (those along its own Y) are rounded to `r`."""
+    w, length, h = size
+    ring = []
+    x0, z0 = w / 2 - r, h / 2 - r
+    for cx, cz, a0 in ((x0, z0, 0.0), (-x0, z0, 90.0), (-x0, -z0, 180.0), (x0, -z0, 270.0)):
+        for i in range(n + 1):
+            a = deg(a0 + 90.0 * i / n)
+            ring.append((cx + r * math.cos(a), cz + r * math.sin(a)))
+    m = len(ring)
+    verts = [(x, -length / 2, z) for x, z in ring] + [(x, length / 2, z) for x, z in ring]
+    faces = [(i, (i + 1) % m, m + (i + 1) % m, m + i) for i in range(m)]
+    faces += [tuple(range(m)), tuple(reversed(range(m, 2 * m)))]
+    out = []
+    for f in faces:  # turned so that each looks outward: the shape is convex about its middle
+        a, b, c = (Vector(verts[i]) for i in f[:3])
+        mid = sum((Vector(verts[i]) for i in f), Vector()) / len(f)
+        out.append(f if (b - a).cross(c - a).dot(mid) > 0 else tuple(reversed(f)))
+    mb.add(verts, out, None, matrix)
+
+
+def beads(mb: MeshBuilder, face: Matrix, a: float, b: float, w: float = 6.0, proud: float = 2.5, gap: float = 1.5) -> None:
+    """The stiffening pressed into a panel: a rim `a` by `b` and a cross inside it, standing `proud`. `face` has its
+    origin on the panel, +Z out of it, +X along `a`. No two beads overlap: where they would cross, one stops short."""
+    bar = lambda length, x, y, turn=0.0: mb.box((length, w, 2 * proud), face @ Matrix.Translation((x, y, 0)) @ Matrix.Rotation(turn, 4, "Z"))  # noqa: E731
+    for sy in (-1, 1):
+        bar(a, 0, sy * (b - w) / 2)
+    for sx in (-1, 1):
+        bar(b - 2 * w, sx * (a - w) / 2, 0, math.pi / 2)
+    ai, bi = a - 2 * w, b - 2 * w
+    al = math.atan2(bi, ai)
+    half = min((ai / 2 - gap - w / 2 * math.sin(al)) / math.cos(al), (bi / 2 - gap - w / 2 * math.cos(al)) / math.sin(al))
+    bar(2 * half, 0, 0, al)
+    d = (w / 2 + gap + w / 2 * abs(math.cos(2 * al))) / math.sin(2 * al)
+    for s in (-1, 1):
+        mid = s * (half + d) / 2
+        bar(half - d, mid * math.cos(al), -mid * math.sin(al), -al)
+
+
+def build_television(M) -> None:
+    g = group("TelevisionCameras")
+    if not interior():
+        return
+    S = seat_frame()
+    P = lambda x, y, z: Vector((x, y, z))  # noqa: E731
+    enamel = material("enamel-grey-blue", (0.30, 0.37, 0.41), 0.3, 0.5)
+    braid = material("braid-violet", (0.16, 0.13, 0.30), 0.0, 0.85)
+    cases, fronts, glass, plugs, cables = (MeshBuilder() for _ in range(5))
+    w, length, h = SELIGER_CASE
+    r = 10.0
+    for at in SELIGER_AT:
+        # its own frame, in the seat's: +Y along the lens, at the pilot's face; +Z its top, as near the way his head lies as that leaves it
+        at = P(*at)
+        y = (P(*SELIGER_FACE) - at).normalized()
+        z = (P(0, 1, 0) - y * y.y).normalized()
+        C = Matrix((y.cross(z), y, z)).transposed().to_4x4()
+        C.translation = at
+        rounded_box(cases, SELIGER_CASE, r, C)
+        lengthwise = Matrix.Rotation(math.pi / 2, 4, "Z")  # a panel's own +X laid along the case
+        for sx in (-1, 1):  # the two sides, then the top and the bottom
+            side = Matrix.Translation((sx * w / 2, 0, 0)) @ Matrix.Rotation(sx * math.pi / 2, 4, "Y")
+            beads(cases, C @ side @ lengthwise, length - 30, h - 2 * r - 8)
+        for sz in (-1, 1):
+            lid = Matrix.Translation((0, 0, sz * h / 2)) @ Matrix.Rotation(math.pi * (sz < 0), 4, "Y")
+            beads(cases, C @ lid @ lengthwise, length - 30, w - 2 * r - 8)
+        # the front: a black plate, the bracket it hangs by across its top, and the lens below the middle
+        front = length / 2
+        fronts.box((w - 6, 6, h - 6), C @ Matrix.Translation(P(0, front + 3, 0)))
+        fronts.box((w + 40, 4, 34), C @ Matrix.Translation(P(0, front + 8, h / 2 - 24)))
+        for sx in (-1, 1):
+            for dz in (-9, 9):
+                fronts.disc(C @ P(sx * (w / 2 + 11), front + 10, h / 2 - 24 + dz), C.to_3x3() @ P(0, 1, 0), 4.5, 3.5, 8)
+            fronts.disc(C @ P(sx * (w / 2 - 13), front + 6, -(h / 2 - 13)), C.to_3x3() @ P(0, 1, 0), 4.0, 2.5, 8)  # the plate's own screws
+        rl = SELIGER_LENS_R
+        lens = C @ frame(P(0, front + 6, -14), (0, 1, 0))
+        barrel = [(rl, 0), (rl, 10), (rl + 3.5, 12), (rl + 3.5, 24), (rl, 26), (rl, 40), (rl + 4, 44), (rl + 4, 52), (rl - 2, 52), (rl - 2, 36)]
+        fronts.lathe(barrel, 32, matrix=lens)
+        glass.lathe([(rl - 2, 36), (0, 36)], 32, matrix=lens)
+        fronts.tube(C @ P(rl + 2, front + 24, -14), C @ P(rl + 17, front + 24, -14), 3.5, 8)  # the lever on its focusing ring
+        # the back: the socket, and the cable in its braid to the plug that joined it to the ship's harness
+        back = -length / 2
+        plugs.tube(C @ P(22, back + 4, 12), C @ P(22, back - 16, 12), 17, 20)
+        for sx in (-1, 1):  # the screws that hold its back cover
+            for sz in (-1, 1):
+                plugs.disc(C @ P(sx * (w / 2 - 14), back, sz * (h / 2 - 14)), C.to_3x3() @ P(0, -1, 0), 4.0, 2.5, 8)
+        path = [P(22, back - 16, 12), P(22, back - 42, 12), P(33, back - 68, 1), P(58, back - 82, -27), P(86, back - 86, -60)]
+        cables.loft([C @ p for p in path], [(7.0, 7.0)] * len(path), 10, ref=tuple(C.to_3x3() @ P(1, 0, 0)), resample=3)
+        end, along = C @ path[-1], (C.to_3x3() @ (path[-1] - path[-2])).normalized()
+        shell = [(0, -2), (10, -2), (13, 5), (19, 9), (19, 32), (21.5, 34), (21.5, 47), (16, 47), (16, 41), (0, 41)]
+        plugs.lathe(shell, 20, matrix=frame(end, along))
+    for mb, name, mat in (
+        (cases, "Tv_Cases", enamel),
+        (fronts, "Tv_Fronts", M["panel_black"]),
+        (glass, "Tv_Glass", M["lens"]),
+        (plugs, "Tv_Plugs", M["frame"]),
+        (cables, "Tv_Cables", braid),
+    ):
+        inside_cabin(placed(mb, S).build(name, mat, g, sharp_angle=35))
 
 
 # ------------------------------------------------ what joins the two modules together
@@ -904,18 +1023,27 @@ def build_retro_engine(M) -> None:
 # ---------------------------------------------------------------------------- main
 
 
-def build(pilot: Callable[[bpy.types.Object, Matrix], object] | None = None, stowed: bool = False, film_camera: bool = False) -> str:
+def build(
+    pilot: Callable[[bpy.types.Object, Matrix], object] | None = None,
+    stowed: bool = False,
+    film_camera: bool = False,
+    television: bool = False,
+) -> str:
     """Build the spacecraft. `pilot(parent, place)` builds the man in the seat (a suit's `build_seated`); left out, the seat is empty.
     `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs. `film_camera` puts
-    a Konvas in the cabin, as a node of its own: Vostok 2 was the first to carry one."""
+    a Konvas in the cabin, as a node of its own: Vostok 2 was the first to carry one. `television` builds the two Seliger
+    cameras as they were photographed, as a node of their own, in place of the cabin's two plain barrels: Vostok 3 and 4,
+    whose picture was the first to be broadcast."""
     M = materials()
     build_descent_module(M)
     build_hatches(M)
-    build_cabin(M)
+    build_cabin(M, tv_standins=not television)
     cut_openings()
     build_seat(M, pilot)
     if film_camera:
         build_film_camera(M)
+    if television:
+        build_television(M)
     build_straps(M)
     build_cable_mast(M)
     build_instrument_module(M, stowed)
