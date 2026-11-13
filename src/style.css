@@ -14,6 +14,11 @@
 
 * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; background: #000; color: var(--ink); font: 14px/1.45 var(--sans); overflow: hidden; overscroll-behavior: none; }
+/* a press held on a control is the control's, never the page's: no text selection or callout on a phone (it took the
+   roll buttons' hold and the deck's figures for text to copy); a mouse can still select the parts' prose to copy it */
+html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+@media (hover: hover) and (pointer: fine) { .panel section :is(p, li, dd) { -webkit-user-select: text; user-select: text; } }
 #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; opacity: 0; transition: opacity 1.4s ease; }
 /* the scene fades up once it is ready to move smoothly (main.ts: stage.warm) */
 body.scene-ready #stage { opacity: 1; }
