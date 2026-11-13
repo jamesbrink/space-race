@@ -155,7 +155,8 @@ SAYS = {
     "Periscope_Void": PERISCOPE,
     "Umbilical_Receptacle": (
         "Umbilical receptacle",
-        "Where the ground's umbilical was plugged in until just before liftoff: under the periscope's lens, inside its door. "
+        "Where the ground's umbilical was plugged in until it was thrown off 35 seconds before liftoff: under the periscope's lens, "
+        "inside its door. "
         "Placed as Liberty Bell 7's, whose photographs show it; no photograph of this capsule read shows this side.",
     ),
     "Retropack_Retro": (

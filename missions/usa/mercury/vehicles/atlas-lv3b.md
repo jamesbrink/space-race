@@ -92,10 +92,10 @@ they are here so that a later flight's model can tell what to look for.
 | Node | What it is |
 | --- | --- |
 | `AtlasAdapter` | the Mercury adapter: corrugated titanium over a titanium inner skin (SEDR 104, 2-14 and Figure 2-9: documented), the clamp ring of three segments and three explosive bolts with a fairing over each (2-15 and Figure 2-10: documented), the access door, the cup on three straps under the retropack. The clamp's band shows red in the liftoff photograph: its colour is that photograph's. The count of ribs (108) is off a photograph |
-| `AtlasTank` | the tank from the mating ring to the thrust cone's apex: frost on the oxygen tank and bare stainless below, the ring welds, the two bulkheads, the fibreglass shield and the boil-off valve inside the adapter, UNITED STATES and the vehicle's number |
+| `AtlasTank` | the tank from the mating ring to the thrust cone's apex: frost on the oxygen tank and bare stainless below, the ring welds, the two bulkheads, the fibreglass shield and the boil-off valve inside the adapter, the oxygen duct down the outside of the fuel tank, UNITED STATES and the vehicle's number |
 | `AtlasPods` | the long pod, the short pod, the wiring fairing and the rate gyro package |
 | `AtlasVerniers` | the two verniers, each under a hood; the slender fairing above one and the oxygen tank's pressurisation line above the other |
-| `AtlasSustainer` | the sustainer's chamber and bell, its pump, and the oxygen duct down the outside of the fuel tank |
+| `AtlasSustainer` | the sustainer's chamber and bell, its pump and its turbine's exhaust |
 | `AtlasBoosterSection` | the skirt, ribbed above and plain below, the two engine fairings, the radiation shield across the foot, a ring beam and two thrust barrels inside |
 | `AtlasBoosterEngines` | the two booster chambers and bells, their pumps and the gas generator's exhaust duct |
 
