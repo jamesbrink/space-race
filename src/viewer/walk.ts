@@ -1334,7 +1334,7 @@ export class Walker {
 
   /** Turn the head: radians to the right, and up. */
   look(right: number, up: number): void {
-    if (this.seat?.frame && !this.third) {
+    if (this.seat?.frame) {
       this.couch.turn(-right, up);
       this.moved = true;
       return;
