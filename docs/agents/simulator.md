@@ -260,7 +260,8 @@ never adjusted to bring a check in.
   to do now, from the flight's data (`Part.commands`, types.ts `Command`: a step `Cockpit.ask` sets off, offered only
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
   and goes with it (`Stage.lookAtCraft`: the chase view aimed there; 0 centres the vehicle again). Off the vehicle
-  nothing is offered: nobody gets out and walks, and the view is not sent to a place the vehicle has left. A new thing
+  nothing is offered but, on a stage that has left, to follow it down (camera.md): nobody gets out and walks, and the
+  view is not sent to a place the vehicle has left. A new thing
   the pilot could work (the periscope) is a new `Command` on its part and a case in `ask` and `can`.
 - **The cabin is the flight deck too** (`ModelDef.cabin`, types.ts: `CabinDef`; `viewer/cabin.ts`; `viewer/gauges.ts`
   for the arithmetic, tested). The model's own needles, counter wheels and lamps read the run on show at the clock's

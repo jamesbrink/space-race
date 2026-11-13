@@ -339,6 +339,12 @@ stage.onSpot = (page, point, floor, on) => {
   // somewhere the view can be sent while it is the vehicle's. What is offered is on the vehicle: what the part under the
   // pointer can be told to do now (Part.commands), and a look at it, which goes with the vehicle.
   if (cockpit.active) {
+    // (something it has let go, falling beside it: the view can go with that instead, all the way down)
+    if (on.shed) {
+      const { drop, name } = on.shed;
+      ui.menu(page.x, page.y, [{ label: `Follow the ${name.toLowerCase()}`, run: () => stage.followShed(drop) }]);
+      return;
+    }
     const spot = on.craft;
     if (!spot) return;
     const part = flight.models.find((m) => m.id === flight.flies?.model)?.parts.find((p) => p.node === on.node);
@@ -360,6 +366,8 @@ stage.onSpot = (page, point, floor, on) => {
   ]);
 };
 stage.onVisit = orbit; // the view drifts round whatever was last chosen
+stage.onFollow = (name) =>
+  name ? ui.say(`Following the ${name.toLowerCase()}`, '0 goes back to the spacecraft') : ui.say('Back with the spacecraft', '');
 // (from a seat a window is one to look out of, by name, and its key; from outside, one to look in at)
 stage.onHoverWindow = (over, name) =>
   ui.hint(

@@ -237,10 +237,12 @@ export class Stage {
     page: { x: number; y: number },
     point: THREE.Vector3,
     floor: boolean,
-    on: { craft: THREE.Vector3 | null; node: string | null },
+    on: { craft: THREE.Vector3 | null; node: string | null; shed: { drop: number; name: string } | null },
   ) => void = () => {};
   /** The reset key (0): back to where the section starts. */
   onHome: () => void = () => {};
+  /** The view has been sent to follow something the vehicle let go (its name), or is back with the vehicle (null). */
+  onFollow: (name: string | null) => void = () => {};
   /**
    * Walking on foot as one of the flight's figures (a model with a `walker`) is starting (called
    * before anything changes, so the caller can open that model's section first) or has ended
@@ -386,6 +388,12 @@ export class Stage {
    * taken out of the model's full level into a holder that stands where its parent would be, so it
    * keeps its own place and turn under it; `rel` is that parent in the model's frame.
    */
+  /**
+   * What the vehicle has let go that the view is following in place of the vehicle (an index into the ascent's drops),
+   * or null; and that piece as the camera needs it, measured once in its own frame.
+   */
+  private followed: number | null = null;
+  private shedCraft: (Craft & { drop: number }) | null = null;
   private readonly debris: { node: THREE.Object3D; parent: THREE.Object3D; drop: number; holder: THREE.Group; rel: THREE.Matrix4 }[] = [];
   private readonly ink = new InkPass();
   /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
@@ -560,6 +568,8 @@ export class Stage {
           if (how === 'move') this.onInteract();
         },
         home: () => this.onHome(),
+        // (following a stage that has left, the reset key comes back to the vehicle)
+        back: () => this.followed !== null && (this.followShed(null), true),
         rig: (id) => this.rigChanged(id),
       },
       this.lens,
@@ -1061,6 +1071,8 @@ export class Stage {
   }
 
   private rigChanged(id: RigId): void {
+    // (only the rigs that go with something can go with a stage that has left: any other is about the vehicle or the place)
+    if (this.followed !== null && id !== 'chase' && id !== 'locked' && id !== 'pad') this.unfollow();
     this.following = this.watched = null;
     this.onView(null);
     // on board, what would be in front of the eyes is not drawn (the seat's `hide`)
@@ -1441,6 +1453,10 @@ export class Stage {
   private craft(): Craft | null {
     const s = this.flier;
     if (!s) return null;
+    if (this.followed !== null) {
+      const shed = this.shedAsCraft(this.followed);
+      if (shed) return shed;
+    }
     const c = (this.crafted ??= {
       matrix: s.group.matrixWorld,
       centre: new THREE.Vector3(),
@@ -1500,6 +1516,81 @@ export class Stage {
     } else c.seat = null;
     return c;
   }
+  /**
+   * Something the vehicle has let go, as the camera needs it: the frame it is carried in (the vehicle's own, as it was
+   * when the piece left, moved and turned as its body has gone since), and the middle and size of its nodes in that
+   * frame, measured when the view is first sent to it. Null when none of it is drawn (the clock is back before it left).
+   */
+  private shedAsCraft(drop: number): Craft | null {
+    const pieces = this.debris.filter((d) => d.drop === drop && d.holder.visible);
+    const first = pieces[0];
+    if (!first) return null;
+    const frame = new THREE.Matrix4().copy(first.rel).invert().premultiply(first.holder.matrix);
+    let c = this.shedCraft;
+    if (!c || c.drop !== drop) {
+      const into = new THREE.Matrix4().copy(frame).invert();
+      const box = new THREE.Box3();
+      const each = new THREE.Box3();
+      const within = new THREE.Matrix4();
+      for (const d of pieces) {
+        d.node.traverse((o) => {
+          const geometry = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).geometry : null;
+          if (!geometry) return;
+          if (!geometry.boundingBox) geometry.computeBoundingBox();
+          // (from each mesh up to its holder, then the holder's own place: never through the world, as `craft` has it)
+          within.copy(o.matrix);
+          for (let up = o.parent; up && up !== d.holder; up = up.parent) within.premultiply(up.matrix);
+          within.premultiply(d.holder.matrix).premultiply(into);
+          box.union(each.copy(geometry.boundingBox!).applyMatrix4(within));
+        });
+      }
+      if (box.isEmpty()) return null;
+      c = this.shedCraft = {
+        drop,
+        matrix: new THREE.Matrix4(),
+        centre: box.getCenter(new THREE.Vector3()),
+        radius: box.getSize(new THREE.Vector3()).length() / 2,
+        shape: 1000 + drop,
+        flying: true,
+        seat: null,
+      };
+    }
+    c.matrix.copy(frame);
+    return c;
+  }
+
+  /**
+   * Send the view after something the vehicle has let go (a drop of the ascent's, by its index: `onSpot` names the one
+   * under a right click), or back to the vehicle (null). The flight goes on being flown; only what the chase view, the
+   * locked view and the pad camera are about changes, until the reset key, another rig, or the clock going back before
+   * the piece left.
+   */
+  followShed(drop: number | null): void {
+    if (drop === this.followed) return;
+    if (drop !== null && !this.debris.some((d) => d.drop === drop && d.holder.visible)) return;
+    this.followed = drop;
+    this.shedCraft = null;
+    this.cam.retake();
+    this.onFollow(drop === null ? null : this.dropTitle(drop));
+    this.shadowsOwed = true;
+    this.dirty = true;
+  }
+
+  /** Let go of what was being followed without moving the view: another rig has it now, or the piece is no longer there. */
+  private unfollow(): void {
+    if (this.followed === null) return;
+    this.followed = null;
+    this.shedCraft = null;
+    this.onFollow(null);
+  }
+
+  /** What a drop is called: its body's name where the flight gives one, or the part its first node is. */
+  private dropTitle(drop: number): string {
+    const node = this.ascent?.drops[drop]?.nodes[0];
+    const part = this.defs.find((m) => m.id === this.ascent?.model)?.parts.find((p) => p.node === node);
+    return this.ascent?.dropName(drop) ?? part?.name ?? 'stage';
+  }
+
   private crafted:
     | (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null; size: THREE.Vector3 })
     | null = null;
@@ -1509,7 +1600,8 @@ export class Stage {
 
   /** While a rig that is about the vehicle is in charge, the Sun's shadow map goes with the vehicle, so it shades itself all the way up. */
   private shadeCraft(): void {
-    const c = this.cam.rig === 'orbit' || this.cam.rig === 'free' ? null : this.crafted;
+    // (or with the stage that has left, while the view is following that)
+    const c = this.cam.rig === 'orbit' || this.cam.rig === 'free' ? null : (this.followed !== null && this.shedCraft) || this.crafted;
     if (!c) return;
     // (put where the vehicle is, not moved by how far it went: a sum of moves is a last bit out, and the map of a
     // vehicle that went and came back would not be the map it had)
@@ -1689,6 +1781,9 @@ export class Stage {
       d.holder.matrix.compose(at, turn, ONE.clone().multiplyScalar(ascent.seen(d.drop, t))).multiply(d.rel);
       d.holder.matrixWorldNeedsUpdate = true;
     }
+    // what the view was following is no longer there (the clock put back before it left, the flight begun again): back to the vehicle
+    const followed = this.followed;
+    if (followed !== null && !this.debris.some((d) => d.drop === followed && d.holder.visible)) this.followShed(null);
   }
 
   /** The flown vehicle's parachutes (`Flight.flies.chutes`), made the first time the vehicle flies, and its attitude jets (viewer/jets.ts). */
@@ -1789,6 +1884,7 @@ export class Stage {
 
   /** Bring the view back to what the camera is about; with a flight in the air and the view elsewhere, to the vehicle, wherever it has got to. */
   refind(): void {
+    if (this.followed !== null) return void this.followShed(null);
     this.cam.refind();
     this.dirty = true;
   }
@@ -3129,12 +3225,17 @@ export class Stage {
    * What is under the pointer, anywhere: on a model, in the place round it, or on the ground.
    * `floor` says whether it is something to stand on (it faces up).
    */
-  private spot(): { point: THREE.Vector3; floor: boolean; on: { craft: THREE.Vector3 | null; node: string | null } } | null {
+  private spot(): {
+    point: THREE.Vector3;
+    floor: boolean;
+    on: { craft: THREE.Vector3 | null; node: string | null; shed: { drop: number; name: string } | null };
+  } | null {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster
       .intersectObjects(
         [
           ...this.staged.map((s) => s.shown),
+          ...this.debris.filter((d) => d.holder.visible).map((d) => d.holder), // (what the vehicle has let go, falling beside it)
           ...(this.surroundings ? [this.surroundings] : []),
           ...(this.setting.floor ? [this.setting.floor] : []),
         ],
@@ -3143,6 +3244,11 @@ export class Stage {
       .find((h) => h.face && !(h.object as THREE.InstancedMesh).isInstancedMesh);
     if (!hit?.face) return null;
     const up = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).y;
+    let shed: { drop: number; name: string } | null = null;
+    for (let o: THREE.Object3D | null = hit.object; o && !shed; o = o.parent) {
+      const piece = this.debris.find((d) => d.holder === o);
+      if (piece) shed = { drop: piece.drop, name: this.dropTitle(piece.drop) };
+    }
     // the flown vehicle, off its pad, and which of its parts
     const flier = this.lifted.flying ? this.flier : null;
     const parts = flier ? this.defs[this.staged.indexOf(flier)]?.parts : undefined;
@@ -3153,7 +3259,7 @@ export class Stage {
       if (o === flier!.group) craft = true;
     }
     const local = craft ? flier!.group.worldToLocal(hit.point.clone()) : null;
-    return { point: hit.point.clone(), floor: up > 0.7, on: { craft: local, node: craft ? node : null } };
+    return { point: hit.point.clone(), floor: up > 0.7, on: { craft: local, node: craft ? node : null, shed } };
   }
 
   /** A right click's "Look at this" on a place: the view goes to the spot and turns about it. */

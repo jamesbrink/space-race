@@ -49,6 +49,8 @@ export interface Told {
   taken(how: 'move' | 'zoom' | 'tilt'): void;
   /** The reset key. */
   home(): void;
+  /** The reset key in a view that is about the vehicle: true if that was all it meant (the view came back to the vehicle from something else it was following). */
+  back?(): boolean;
   /** The rig in charge has changed. */
   rig(id: RigId): void;
 }
@@ -205,6 +207,23 @@ export class Cameras {
     this.handOver(from, snap);
     if (id === 'orbit') this.showPivot();
     this.told.rig(id);
+  }
+
+  /**
+   * What the rigs about the vehicle are about has become another body (the view was sent to a stage that has left, or
+   * back from one): the chase view takes it up afresh from the view as it stands, the whole of it framed from the side
+   * it is seen from now, and the handover carries the eye there.
+   */
+  retake(): void {
+    if (!this.scene.craft()) return;
+    const last = this.active;
+    this.refresh();
+    const from: Pose = { position: this.now.position.clone(), quaternion: this.now.quaternion.clone(), fov: this.now.fov };
+    this.chase.enter(from, last.pivot.clone(), false, true);
+    this.active = this.chase;
+    this.under = undefined;
+    this.handOver(from, false);
+    if (last !== this.chase) this.told.rig('chase');
   }
 
   /** What the orbiting rig turns about when it takes over: what the last rig was about, or, after flying free, what is in the middle of the view. */
@@ -573,7 +592,7 @@ export class Cameras {
       },
       home: () => {
         if (this.active === this.orbit || this.active === this.free) this.told.home();
-        else this.refind();
+        else if (!this.told.back?.()) this.refind();
       },
       clear: () => {
         this.keys.clear();

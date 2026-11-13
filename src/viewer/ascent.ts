@@ -367,6 +367,11 @@ export class Ascent {
   }
 
   /** The body flown for drop `i` (sim/shed.ts), if the flight gives one: the cockpit's on a flight flown by hand, else made here from the record's run as it left. */
+  /** What drop `i` is called, where the flight gives it a body (`ShedBody.name`): null where it does not. */
+  dropName(i: number): string | null {
+    return this.body(i)?.shedder.def.name ?? null;
+  }
+
   private body(i: number): ShedRun | undefined {
     const run = this.flown();
     const on = this.flight.flies!.drops[i]?.on;
