@@ -5,6 +5,7 @@ import { existsSync, globSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { faults } from '../src/world/sequence.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIDENCE = ['documented', 'derived', 'estimated'];
@@ -86,6 +87,16 @@ for (const file of files) {
           for (const file of [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')])
             assert.ok(allNodes(file).has(move.node), `${part.node}: no node ${move.node} in ${relative(root, file)}`);
         }
+      // what a part's moves and functions name is a node of the model too, at every level of detail: a motion on
+      // a node that is not there does nothing, and says nothing
+      for (const part of model.parts) {
+        const named = [...(part.moves ?? []).map((move) => move.node), ...(part.functions ?? []).flatMap((fn) => fn.nodes)];
+        for (const node of new Set(named.filter(Boolean)))
+          for (const file of [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')])
+            assert.ok(allNodes(file).has(node), `${part.node}: its moves name ${node}, which is not in ${relative(root, file)}`);
+      }
+      // a model that follows the clock: its keyframes in order, its slider from one end to the other
+      if (model.sequence) assert.deepEqual(faults(model.sequence), [], `${model.id}: sequence`);
       const parts = model.parts.map((p) => p.node);
       assert.equal(new Set(parts).size, parts.length, 'part nodes repeat');
       const views = model.views.map((v) => v.id);

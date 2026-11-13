@@ -157,6 +157,12 @@ The same GLB holds the launch vehicle's five nodes: [redstone-mrlv.md](../../veh
 - **The far side's paint**, above.
 - **The two round plates in the top row** (left out here): on Freedom 7 the like plates, at 45° and 135°, carry a large and a small nozzle each and are taken for the roll jets. This model still has its roll jets low on the cone (`mercury_capsule.roll_thrusters`); whether No. 11's plates are the same jets has not been checked against its photographs.
 
+**On the pad** (sites/lc-5.md, "5 May and 21 July 1961"): the capsule's umbilical is built to this
+capsule's receptacle (station 32.5; Freedom 7's is at 31.2), and the white room and the cherry
+picker's cab meet its hatch as they met Freedom 7's, both capsules standing with the hatch on +X.
+The pad's meshes were tested against this vehicle's in Blender with the periscope's door shut and
+open: none cross, and the umbilical's end is 26 mm from the receptacle.
+
 Settled in November 2026 from photographs of Freedom 7 as it is kept (its spacecraft.md, "Round the cone"): where the
 hatch was on both capsules (315°, as here: Freedom 7's model moved to it, and both capsules now stand with the hatch
 on +X), which way Freedom 7's beads run (round the cone, as here), and Freedom 7's periscope station (37, not 13; this
@@ -194,8 +200,9 @@ capsule's stays 41.5 from its own photographs).
 - **The clamp ring's bolt covers** are half an egg each; the hinge is not modelled.
 - **No mass properties, no trajectory.** The flight cannot be flown yet: see the flight's README.
 - **Its levels of detail change at the viewer's own distances.** They have not been measured for
-  this model (`tools/lod-thresholds.mjs --measure`): the gallery draws it in full, and it stands
-  nowhere else yet.
+  this model or for its pad (`tools/lod-thresholds.mjs --measure`): the gallery draws it in full; at
+  the launch site it and the pad change level at the viewer's own thresholds, which are what
+  Freedom 7's pad measured at.
 - Everything listed in Freedom 7's spacecraft.md for the parts the two share: the retropack's
   straps, the tower's bracing and single jettison nozzle, the landing bag as a flat ring.
 
