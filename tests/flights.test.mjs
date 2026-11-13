@@ -27,6 +27,12 @@ function allNodes(file) {
   return new Set(JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.map((n) => n.name));
 }
 
+/** Every node of a GLB by name, with its extras. */
+function extrasOf(file) {
+  const glb = readFileSync(file);
+  return new Map(JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.map((n) => [n.name, n.extras ?? {}]));
+}
+
 const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: root });
 assert.ok(files.length > 0, 'no flights found');
 const index = readFileSync(join(root, 'missions/index.ts'), 'utf8');
@@ -80,13 +86,91 @@ for (const file of files) {
         const lodNodes = topLevelNodes(lod);
         for (const part of model.parts) assert.ok(lodNodes.has(part.node), `part ${part.node} is missing from level ${level}`);
       }
-      // what moves on the clock is a node of its own, at every level of detail
+      // what moves on the clock is a node of its own, at every level of detail; and one that runs its own motion
+      // carries it there (its extras' `run`: seven figures a sample, beginning as it was built)
+      const levels = [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')];
+      const clockedNodes = new Set();
       for (const part of model.parts)
         for (const move of part.clocked ?? []) {
           assert.ok(move.node, `${part.node}: a clocked move names its node`);
-          for (const file of [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')])
+          assert.ok(move.to > move.from, `${part.node}: ${move.node} moves over no time`);
+          clockedNodes.add(move.node);
+          for (const file of levels) {
             assert.ok(allNodes(file).has(move.node), `${part.node}: no node ${move.node} in ${relative(root, file)}`);
+            if (move.kind !== 'run') continue;
+            const run = extrasOf(file).get(move.node)?.run;
+            assert.ok(
+              Array.isArray(run) && run.length >= 14 && run.length % 7 === 0,
+              `${move.node} has no motion of its own in ${relative(root, file)}`,
+            );
+            assert.ok(
+              run.slice(0, 7).every((v, i) => Math.abs(v - [0, 0, 0, 0, 0, 0, 1][i]) < 1e-9),
+              `${move.node}: its motion begins where it was built`,
+            );
+            for (let i = 3; i < run.length; i += 7)
+              assert.ok(
+                Math.abs(Math.hypot(run[i], run[i + 1], run[i + 2], run[i + 3]) - 1) < 1e-4,
+                `${move.node}: a turn is a unit quaternion`,
+              );
+          }
         }
+      // a mechanism (types.ts: MechanismDef): its nodes move on the clock, at its own events and for as long as it takes
+      for (const mechanism of model.mechanisms ?? []) {
+        for (const node of mechanism.nodes) assert.ok(clockedNodes.has(node), `mechanism ${mechanism.id}: ${node} has no clocked move`);
+        assert.ok(mechanism.takes > 0 && mechanism.says.length === 2);
+        const times = mechanism.events.map(([at]) => at);
+        assert.deepEqual(
+          times,
+          [...times].sort((a, b) => a - b),
+          `mechanism ${mechanism.id}: its events are in order`,
+        );
+        const at = mechanism.events.findIndex(([t, out]) => t === mechanism.from && out);
+        assert.ok(at > 0 && !mechanism.events[at - 1][1], `mechanism ${mechanism.id}: \`from\` is an event that sends it out from in`);
+        assert.ok(
+          (mechanism.events[at + 1]?.[0] ?? Infinity) - mechanism.from >= mechanism.takes,
+          `mechanism ${mechanism.id}: its travel from \`from\` is cut short`,
+        );
+        for (const part of model.parts)
+          for (const move of part.clocked ?? [])
+            if (mechanism.nodes.includes(move.node)) {
+              const event = mechanism.events.find(([t]) => t === move.from);
+              assert.ok(event, `mechanism ${mechanism.id}: ${move.node} moves at ${move.from}, which is none of its events`);
+              assert.equal(
+                move.to - move.from,
+                mechanism.takes,
+                `mechanism ${mechanism.id}: ${move.node}'s move takes as long as the mechanism does`,
+              );
+              assert.equal(
+                Boolean(move.back),
+                !event[1],
+                `mechanism ${mechanism.id}: ${move.node} runs out when it is sent out and back when sent in`,
+              );
+            }
+        if (model.cabin?.periscope?.mechanism) assert.ok(model.mechanisms.some((m) => m.id === model.cabin.periscope.mechanism));
+        for (const c of model.cabin?.controls ?? [])
+          if (c.works)
+            assert.ok(
+              model.mechanisms.some((m) => m.id === c.works),
+              `control ${c.node} works no mechanism called ${c.works}`,
+            );
+      }
+      // a command that works a mechanism by hand (types.ts Command, `work:<id>`) names one the model has, and says
+      // what drawing it in is called as well as putting it out; and a mechanism has one on some part, to be found by
+      for (const part of model.parts)
+        for (const c of part.commands ?? [])
+          if (c.ask.startsWith('work:')) {
+            assert.ok(
+              (model.mechanisms ?? []).some((m) => m.id === c.ask.slice(5)),
+              `${part.node}: a command works no mechanism called ${c.ask.slice(5)}`,
+            );
+            assert.ok(c.label && c.back && c.back !== c.label, `${part.node}: ${c.ask} says which way it is sent`);
+          }
+      if (flight.flies?.model === model.id)
+        for (const mechanism of model.mechanisms ?? [])
+          assert.ok(
+            model.parts.some((p) => (p.commands ?? []).some((c) => c.ask === `work:${mechanism.id}`)),
+            `mechanism ${mechanism.id}: no part offers it by hand`,
+          );
       // what a part's moves and functions name is a node of the model too, at every level of detail: a motion on
       // a node that is not there does nothing, and says nothing
       for (const part of model.parts) {

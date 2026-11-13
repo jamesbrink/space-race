@@ -133,10 +133,13 @@ SEQUENCE = (
 SWITCH_WAYS = {"RetroAtt": ("AUTO", "BYPASS"), "RetractScope": ("AUTO", "MAN")}
 
 
-def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling: float, suit, window: dict, scope_z: float) -> dict:
+def build(
+    parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling: float, suit, window: dict, scope_z: float, mirror: bool = False
+) -> dict:
     """Everything inside capsule 11's pressure vessel but the pilot. As mercury_cabin.build, with `window` where the
     flight's script put the inner panes (their frame, as a matrix) and `scope_z` the station the periscope's objective
-    leaves the cone at. Returns where things are, metres, in the capsule's frame."""
+    leaves the cone at. With `mirror`, a chest mirror is laid on a pilot whose own suit has none (chest_mirror: a later
+    capsule's pilot in an earlier flight's suit). Returns where things are, metres, in the capsule's frame."""
     mc._font = font
     if not interior():
         return {}
@@ -153,7 +156,7 @@ def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling:
 
     # (the frames as in capsule 7's model, but the lowest a little lower: it has no port to give way to here, and at
     # station 7 it would lie on a row of the wall's rivets)
-    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]))
+    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]), scope=scope_z)
     window_inside(c, window)
     mc.couch(c, pilot, seat)
     mc.neck_dam(c, seat, pilot)
@@ -165,8 +168,10 @@ def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling:
     consoles(c, P, side, faces)
     mc.controls(c, seat, pilot, out)
     if suit:
+        # (the convex mirror on Grissom's chest is the suit's own: crew/mark_iv_suit.py, MR_4)
         mc.restraints(c, suit, pilot, seat)
-        chest_mirror(c, suit, seat)
+        if mirror:
+            chest_mirror(c, suit, seat)
     # (what is known only from capsule 7 as it is kept is left out: the runs from its fuse panel, the camera by the head, the coiled cord)
     mc.stowage(c, (), out, lamps_at=LAMPS, fuse_wiring=False, panel_camera=False, cord=False)
     mc.dress(c, M, parent, P, pilot, seat, main, side, faces, out, more={"CrewCabin_WindowShroud": "cabin_paint", "CrewCabin_Mirror": "lever"})
@@ -528,13 +533,14 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         )
 
 
-# --------------------------------------------------------------------------- the pilot's own
+# --------------------------------------------------------------------------- a mirror for a suit without one
 
 
 def chest_mirror(c: Cabin, suit: dict, seat) -> None:
-    """The convex mirror strapped to the chest of Grissom's suit, so that the camera watching him also photographed
-    his instruments in it (This New Ocean, p. 368: the "hero's medal"). About 5 to 6 in across its rim: read off NASA
-    S61-03698. Laid on the seated figure's own chest."""
+    """A convex mirror strapped to the chest of the suit, so that the camera watching the pilot also photographed his
+    instruments in it (This New Ocean, p. 368: the "hero's medal"), for a pilot seated in a suit modelled without one:
+    Friendship 7's, who is Shepard's figure. Liberty Bell 7's pilot wears his own (mark_iv_suit.MR_4). About 5 to 6 in
+    across its rim: read off NASA S61-03698. Laid on the seated figure's own chest."""
     # (on the upper chest, between the shoulder straps and headward of the chest strap; seat-frame centimetres)
     chest = [p for name, pts in suit.items() if name.startswith("Torso") for p in pts if abs(p[0]) < 4.0 and abs(p[1] + 50.0) < 4.0]
     if not chest:

@@ -68,8 +68,9 @@ true): the pilot's head bears 340° true and the periscope 160°, where they bor
 The door "encloses the periscope lower lens flange and the capsule ground checkout umbilical receptacle" and,
 "mechanically linked to the periscope housing, automatically opens and closes with periscope extension and retraction"
 (SEDR 104, 2-3). The model is built as the capsule stood at liftoff, the door shut and the objective drawn in; the
-gallery shows it so. At the launch site and in flight the door (`Periscope_Door`, on its hinge) and the objective
-(`Periscope_Objective`) move on the clock (`flight.ts` `PERISCOPE`, `vehicles/periscope.ts`):
+gallery shows it so. At the launch site and in flight the door (`Periscope_Door`, on its hinge), the objective
+(`Periscope_Objective`) and the link between them (`Periscope_Link`) move on the clock (`flight.ts` `PERISCOPE`,
+`vehicles/periscope.ts`), and in a flight flown by hand the pilot can work them ("By hand", below):
 
 | When | What | Confidence | Source |
 | --- | --- | --- | --- |
@@ -78,8 +79,60 @@ gallery shows it so. At the launch site and in flight the door (`Periscope_Door`
 | 02:32.3, separation | out | documented | Results, p. 111 ("In another 5 seconds the periscope had extended"); Figure 7.3-2, 02:35.5: "Periscope is coming out" |
 | 06:44 | in, for the entry | documented | Results, p. 10; Figure 7.3-2, 06:44.5: "Periscope is retracting" |
 | 09:38.1, the drogue | out, and out at landing | documented | Results, p. 113 ("the drogue parachute came out on schedule as did the periscope"); Figure 7.3-2, 09:39; Postlaunch Report, 9.3: "The periscope was extended" on recovery |
-| Each motion | four seconds: the door first, then the objective; going in, the reverse | estimated | Shepard's five seconds after separation |
-| How far | the door swings 105°; the objective comes 5.65 in out along its tube | estimated | the photographs of it open; the depth is chosen to clear the door drawn in |
+| Each travel | five seconds, the door and the objective together; going in, the same motion the other way | documented for capsules 8 and 9 (below) | Shepard's five seconds after separation |
+| How far | the door swings 97°; the objective comes 5.65 in out along its tube | derived; estimated | below |
+
+**How it moves** (`mercury_capsule.ScopeWorks`, the same for both capsules). Only the objective cartridge moves: "the
+objective cartridge may be extended and retracted through a periscope door opening in the bottom of the capsule" by an
+electric motor and gear box on the lower housing, on roller guides (SEDR 104, 12-2, 12-18; Figure 12-1), and "a
+connecting link between the objective cartridge and the periscope door allows the door to move in unison with the
+telescopic motion of the objective cartridge" (12-19). So the model is one linkage, worked out by the build: the door
+on a hinge along its long edge toward the hatch (Figure 12-1 draws that edge toothed, read here as a piano hinge), the
+cartridge sliding out along its tube, and a link of fixed length from a lug on the cartridge to a clevis on the door,
+which pushes the door open as the cartridge comes out and draws it shut going in. Each of the three is a node with its
+own motion in its extras (`run`, seventeen steps: `mercury_capsule.periscope_run`), and `vehicles/periscope.ts` only
+says when it is played, forward or back.
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| That a link joins cartridge and door, and that they move as one | | documented | SEDR 104, 2-3, 12-19, Figure 12-1 ("MECHANICAL LINK", "PERISCOPE DOOR") |
+| How long a travel takes | 5 s | documented for capsules 8 and 9; taken as this capsule's | "PERISCOPE EXT. (5 SEC)", SEDR 104 Figures 10-9 and 10-12; Shepard, "in another 5 seconds the periscope had extended" (Results, p. 111). Until November 2026 the model took four |
+| The motor | comes up to speed over the first 12 per cent of the time and stops over the last | estimated | a 60 W motor (SEDR 104 of December 1959, Tables 10-2 and 10-3); nothing read gives its curve |
+| How far the cartridge comes out | 5.65 in along its tube | estimated | chosen so that drawn in it is wholly under the shut door; no travel is in anything read |
+| Hinge | a pin's line in the joint on the door's hatch side, 0.14 in from the leaf's edge, its barrel 0.14 in through; that joint 0.3 in wide, the others 0.15 | estimated | Figure 12-1's toothed edge |
+| Link | 4.49 in long, from a stud on the cartridge 2.8 in under the lens's rim (70° round its side from the hinge's side) to a clevis on the door 3.0 in from the hinge and 0.75 in under the skin | estimated | Figure 12-1 draws one link from the cartridge's lower end to the door's inner face: every figure here is ours, chosen so the door opens steadily through the whole travel |
+| How far the door opens | 97°, and 50° half way through | derived from the linkage above | the photographs of it open show it standing a little past square |
+| The door | a leaf 0.22 in thick on the cone's curve, pale inside, with an inner pan of insulation 0.45 in deep under two straps, stopping short of the umbilical's receptacle | documented (that it is part of the side insulation when shut: SEDR 109-7, 2-18); estimated (the rest) | Figure 12-1 draws a pan stepped in from the leaf's edge |
+| The lower housing's mouth | an opening 6 in across in the well's floor with a lip round it, and under it a bore 5.44 in across down the cartridge's line, through the pressure vessel and the lining | estimated | Figure 12-1 sheet 2 |
+
+**By hand.** What the pilot had (SEDR 104, 12-16; SEDR 109-7, 1-9, 2-19, 2-24): a ratchet handle "on the right side of
+the upper housing", "pulled up to place it in operating position", which drove the cartridge's gear box "through a
+manually operated clutch" either way (a pawl arm chose which); and the motor's switch-fuse on the fuse panel (PERISCOPE,
+NO. 1 or NO. 2). The failure procedure was "Fuse switch - OFF; Manual Engage lever - ENGAGED; Ratchet - AS REQUIRED;
+Manually extend or retract periscope", and with the fuse off the periscope stayed where it was past the programme's
+next moment; "returning it to NO. 1" let the automatic motion that was owed run. The RETRACT legend by the display is
+a pilot light (SEDR 104, Figure 12-2), not a control.
+In the model the handle is `Ctl_PeriscopeHandle`, stowed in the display's upper right corner (the display is flush in
+the panel here, so the side of its housing is behind the panel: its place is ours), with the engage lever's knob beside
+it. In a flight flown by hand a click on it, a right click on the afterbody (`Part.commands`), or the Periscope switch among the flight deck's keys sends the
+periscope the other way from where it is headed, wherever it is in its travel. **The rule** (`src/sim/mechanism.ts`):
+it stays where the hand sent it until the programme's next event, which takes it back; with the sequencer off, which
+here stands for the fuse, the programme's events pass unheard and it moves only when told; and with the sequencer
+switched back on it goes to where the programme has it by then, as the restored fuse let it. What is simplified: a
+click stands for the whole of the procedure (fuse off, clutch in, ratchet, clutch out), the travel by hand takes the
+motor's five seconds, and the programme keeps the record's own instants even in a flight whose events are set off at
+others. The RETRACT light is not lit.
+
+**From the couch** the periscope's screen shows the outside only while the objective is out (`cabin.periscope.mechanism`):
+nothing until the lens is clear of its door at 45 per cent of the travel, all of it from 85. Drawn in, for the climb and
+through the entry, it shows the reticle on a dark field: what the screen then showed is not in anything read (the
+objective looks at the inside of its door), so that is estimated.
+
+**Not simulated:** what the periscope out does to the flight. "If the periscope does not completely retract, the
+periscope door will not close causing the cabin to overheat during re-entry" (SEDR 109-7, 1-20), and it was drawn in
+"to prevent damage due to reentry heating", though "no heat damage would have occurred in this particular reentry"
+(Results, p. 10). No figure for its drag or heating has been read, so left out by hand through the entry it costs
+nothing here.
 
 ## Paint
 
@@ -200,15 +253,22 @@ apogee. From the couch at T+4:10, flown live, the periscope shows Florida and th
 roll 0.8, pitch -19.4, yaw 0.0 (with the old model and 80: -1.0, -19.2, 2.6). Going up the roll needle now reads about
 55 degrees, not 100.
 
+**Photographs of July 1961 bear on it** (`sites/lc-5.md`, "An open question: which way round the vehicle stood"): read for
+where the cable masts stood, they have MR-4 turned on the pad about 60 degrees from the model's stance, the hatch toward
+235 degrees true and the periscope down range to within about 10 degrees, which is what the 55 degrees above would be.
+Nothing was changed for it.
+
 What would settle it, looked for once in November 2026 and not found: a document on how the capsule was clocked to
 the booster or to the trajectory (the Postlaunch Report's roll trace through the turnaround, SEDR 104's axis figure),
 or a pad photograph that shows the hatch against the fins or the gantry with the azimuth known.
 
 **The umbilical on the pad followed the receptacle** (November 2026). The site's cable plugged in at 270 degrees in
 the pilot's frame and station 8, where the old model had the receptacle; it now reaches the receptacle under the
-periscope's lens (`sites/lc5/site.py` `UMBILICAL`). Its mast (`masts.py`), whose place is estimated, stands in the split
-the platforms part along on that side, behind the vehicle (+Y, 45 degrees round from the receptacle), where it stood on
--Y; it falls toward +Y. `sites/lc-5.md` gives the derivation.
+periscope's lens (`sites/lc5/site.py` `UMBILICAL`). Its mast (`masts.py`) stands on the launcher's table 3.55 ft from the
+vehicle's axis, 20 degrees round from the receptacle on the side away from the hatch, where photographs of July 1961
+put it (derived: `sites/lc-5.md`, "The two cable masts"); the umbilical goes from the mast's head, beside the heat
+shield's rim, up round the cone and under the periscope's open door to the receptacle, and the mast falls straight out
+from the vehicle. Until November 2026 it stood on the hardstand 8 ft behind the vehicle.
 
 ## Parts in the model
 
@@ -219,7 +279,7 @@ Top-level nodes in the GLB, bottom to top. These names are the `node` fields in 
 | `Retropack` | housing, three retrograde motors, three posigrade motors, three straps and fittings |
 | `HeatShield` | beryllium heat sink, edge fasteners |
 | `CrewCabin` | titanium pressure vessel with hatch opening, aft bulkhead stiffeners; and at full detail everything inside it: the painted lining, frames and port frames, the couch and the pilot, the main panel with its instruments (each needle a node of its own, `Gauge_...`), the left console in three parts and the right console, lamps (`Tele_...`) and controls (`Ctl_...`), the periscope with its screen (`Periscope_Screen`), cameras, stowage, the two cabin floodlights (their tubes `Lamp_Left`, `Lamp_Right`) and their switch (`Ctl_CabinLights`), two oxygen bottles, the folded landing bag, and `Seat_Pilot` at his eyes |
-| `Afterbody` | René 41 shingles and fasteners, the plain plates (the band at the foot, round each port, the hatch's border, round the periscope's door), structure, attach ring, portholes (plate, ring, glass), the periscope with its door and well, the umbilical receptacle, the roll jets' plates, lettering |
+| `Afterbody` | René 41 shingles and fasteners, the plain plates (the band at the foot, round each port, the hatch's border, round the periscope's door), structure, attach ring, portholes (plate, ring, glass), the periscope's well with the lower housing's mouth and bore and the hinge's fixed barrels, and its three moving nodes (`Periscope_Door`: leaf, liner, pan, clevis, the hinge's own barrels; `Periscope_Objective`: cartridge, lens, barrel; and under it `Periscope_Link`), the umbilical receptacle, the roll jets' plates, lettering |
 | `Hatch` | two shingles and their fasteners, the outside release handle's socket, inner and outer skins; at full detail its painted inner face, frame, latch mechanism (a placeholder) and internal release handle |
 | `RecoveryCompartment` | beryllium shingles, pitch and yaw thrusters, parachute canisters; the packed main and reserve parachutes |
 | `AntennaCanister` | housing, dielectric window, horizon scanners, drogue mortar, destabilising flap; the bicone antenna inside |
@@ -272,9 +332,12 @@ The same GLB also holds the launch vehicle's five nodes: see
   and how many No. 7's had and their make-up are not in anything read. No shutters, filters or "window pole"
   (Postlaunch Report, 5.3.1). From the couch the upper one is seen aslant, the lower past the panel's right edge with
   the earth-sky camera in front of it. A pane mirrors each of the cabin's lights as a point: a tube would be a bar.
-- **The periscope's door** opens to an angle of ours (105°), and from station 37 the edge of its leaf is in the corner
-  of the periscope's picture. Its leaf is a plain curved plate with a pale inside, its joint 0.15 in all round; each
-  motion takes four seconds, and a flight flown live keeps the record's times. The objective comes out along the last
+- **The periscope's door** opens as far as the model's own linkage takes it (97°), and from station 37 the edge of
+  its leaf is in the corner of the periscope's picture. Its outer face is a plain curved plate with a row of screws
+  down each long side; no latch, seal or spring is modelled, the hinge is a row of barrels on a pin's line, the link
+  is one flat bar that turns as a whole (its eyes are not modelled), and neither the motor, the gear box nor the
+  roller guides are drawn: the cartridge has two bands where guides would run. A flight flown live keeps the record's
+  times for its programme. The objective comes out along the last
   run of the periscope's tube in the cabin (`SCOPE_TUBE`, the cabin's own estimate), which on No. 7 leans 16.5° from
   square to the skin, and drawn in it sits inside that tube; the receptacle under it is sunk 0.95 in, so the pad's
   umbilical plug, placed at the skin, stops short of it by that much.
@@ -283,8 +346,8 @@ The same GLB also holds the launch vehicle's five nodes: see
   build (`mercury_cabin.shade`): at every vertex, how much of the two fittings is seen past everything else in the
   cabin and how open the point is to the room, kept as a colour the viewer multiplies the surface by; and a second
   figure beside it for the lamps out (how open the point is, and how much of the two ports and the periscope's
-  screen it sees), which the viewer goes over to as the CABIN LITES switch is thrown (a click on it from the couch, N,
-  or its button; it opens ON, as flown, and is not remembered between visits). So the dark behind the panel and in the
+  screen it sees), which the viewer goes over to as the CABIN LITES switch is thrown (a click on it from the couch, or
+  its button under the lookouts; it opens ON, as flown, and is not remembered between visits). So the dark behind the panel and in the
   corners is there, but nothing that moves casts a shadow, a large flat plate is shaded only at its corners, the wall
   is not darkened under what is fastened to it (a vertex there was a blot), and sunlight through a port is dimmed
   where the lamps' light is. Lamps out, the cabin is lit by the ports, the periscope's screen and the telelights; the
