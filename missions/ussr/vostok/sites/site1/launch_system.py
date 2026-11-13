@@ -109,10 +109,13 @@ def support(parts: Parts, n: int, az: float) -> None:
     for s in (-1, 1):
         beam(boom, corner(3 if s < 0 else 2, length * 0.86), about(az + s * (da - 4.0), r1 - 0.3, pz - 0.08), 0.14)
         beam(boom, tuple(about(az + s * 18.0, ro - 0.05, zt)), about(az + s * (da - 4.0), r0 + 0.3, pz - 0.08), 0.14)
-    # the counterweights: iron blocks either side of the boom's foot, behind the hinge, that pull it over
+    # the counterweights: iron slabs stacked either side of the boom's foot, behind the hinge, that pull it over (how many
+    # and how big is estimated: the film shows a dark mass there, not its make-up)
     for s in (-1, 1):
-        c = hinge + out * 0.75 + up * 0.95 + side * (s * 1.35)
-        obox(weight, tuple(c), tuple(out), (0, 0, 1), (1.3, 0.9, 1.5))
+        for k in range(3):
+            c = hinge + out * 0.75 + up * (0.95 - 0.5 + 0.25 + 0.5 * k) + side * (s * 1.35)
+            inset = 0.04 * (k % 2)
+            obox(weight, tuple(c), tuple(out), (0, 0, 1), (1.3 - inset, 0.9 - inset, 0.46))
 
 
 def guide(parts: Parts, n: int, az: float) -> None:

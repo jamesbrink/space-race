@@ -181,7 +181,8 @@ Each moving piece is its own node with its origin on its pivot.
 - Which of the rocket's planes lay along the launch azimuth is chosen (booster B's).
 - The supports do not fall back at liftoff: the vehicle does not leave the pad on the site yet (no
   trajectory), and a support that fell while the rocket hung on it would be wrong.
-- The counterweights are plain blocks; the supports' hinges, pins and the ring's drive are not modelled.
+- The counterweights are three stacked iron slabs a side, their number and size estimated (the film shows a dark mass);
+  the supports' hinges, pins and the ring's drive are not modelled.
 - Not modelled at all, though they stood there that morning or were moved away during it: the cable
   mast (away just before ignition), the service trusses, the erector on the centre track (drawn
   off at 08:35 to 08:37), the two masts 110 ft tall at the north-east and south-west corners, the
