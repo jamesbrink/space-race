@@ -191,7 +191,10 @@ export class Wheel {
     if (!this.isOpen) return;
     const buttons = [...this.ring.querySelectorAll<HTMLElement>('[data-item]')];
     this.el.classList.remove('listed');
-    for (const b of buttons) b.style.removeProperty('left'), b.style.removeProperty('top');
+    for (const b of buttons) {
+      b.style.removeProperty('left');
+      b.style.removeProperty('top');
+    }
     const sizes = buttons.map((b) => ({ w: b.offsetWidth, h: b.offsetHeight }));
     const hint = this.el.querySelector<HTMLElement>('.wheel-hint')!;
     // (the hint goes under the ring: the room the ring has is short by it, both ways, so the ring stays in the middle)

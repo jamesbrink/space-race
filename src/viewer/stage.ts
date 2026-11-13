@@ -569,7 +569,11 @@ export class Stage {
         },
         home: () => this.onHome(),
         // (following a stage that has left, the reset key comes back to the vehicle)
-        back: () => this.followed !== null && (this.followShed(null), true),
+        back: () => {
+          if (this.followed === null) return false;
+          this.followShed(null);
+          return true;
+        },
         rig: (id) => this.rigChanged(id),
       },
       this.lens,
