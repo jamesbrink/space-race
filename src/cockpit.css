@@ -325,7 +325,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 }
 
 /* the diagnostics line keeps clear of the deck: up in the corner, as far as the clock; on a small screen there is no room for it */
-#ui.piloting .stats { bottom: auto; top: var(--edge); max-width: calc(50vw - 250px - var(--edge)); overflow: hidden; text-overflow: ellipsis; }
+#ui.piloting .stats { white-space: nowrap; bottom: auto; top: var(--edge); max-width: calc(50vw - 250px - var(--edge)); overflow: hidden; text-overflow: ellipsis; }
 .cockpit.keys-open .deck-foot > [data-do='leave'] { display: none; }
 @media (max-width: 960px), (max-height: 520px) { #ui.piloting .stats { display: none; } }
 /* From the couch the model's own panel is in front of the pilot: the deck is put away unless it is asked for (P; main.ts panelOnly), and with it the navball and the path's labels */

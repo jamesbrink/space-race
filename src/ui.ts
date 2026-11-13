@@ -949,7 +949,13 @@ export class Ui {
 
   /** The diagnostics line: this is an early build, and the numbers are worth having in view. */
   setStats(text: string): void {
-    this.root.querySelector('.stats')!.textContent = text;
+    const stats = this.root.querySelector<HTMLElement>('.stats')!;
+    stats.textContent = text;
+    // Under the control block's own left edge it wraps rather than run beneath it (and the legend above it makes room for the lines)
+    const controls = this.root.querySelector<HTMLElement>('.controls')!.getBoundingClientRect();
+    const free = !this.root.classList.contains('piloting') && getComputedStyle(stats).position === 'absolute' && controls.width > 0;
+    stats.style.maxWidth = free ? `${Math.max(120, Math.floor(controls.left - stats.offsetLeft - 14))}px` : '';
+    this.root.style.setProperty('--stats-h', `${stats.offsetHeight}px`);
   }
 
   /**

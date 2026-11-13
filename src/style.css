@@ -76,10 +76,10 @@ dd { font-variant-numeric: tabular-nums; }
 
 /* --- diagnostics ----------------------------------------------------------------- */
 .stats { position: absolute; left: var(--edge); bottom: var(--edge); font: 10px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--ink); opacity: 0.7;
-  text-shadow: 0 0 4px #000, 0 0 2px #000; pointer-events: none !important; white-space: nowrap; }
+  text-shadow: 0 0 4px #000, 0 0 2px #000; pointer-events: none !important; }
 
 /* --- the legend: which keys and gestures do what. A "? Keys" tab until asked for; then the keys, the few things to know, and the rest behind "More" --- */
-.legend-keys { position: absolute; left: var(--edge); bottom: calc(var(--edge) + 24px); width: min(340px, 28vw); padding: 10px 14px 8px; display: flex; flex-direction: column;
+.legend-keys { position: absolute; left: var(--edge); bottom: calc(var(--edge) + 10px + var(--stats-h, 14px)); width: min(340px, 28vw); padding: 10px 14px 8px; display: flex; flex-direction: column;
   /* never taller than the room under the title card: past that it scrolls */
   max-height: calc(100dvh - var(--title-h, 300px) - 2 * var(--edge) - 38px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--faint) transparent;
   background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-radius: 3px;
