@@ -3,7 +3,7 @@ import type { Vec3 } from '../world/frames.ts';
 import { MOON_RADIUS } from '../world/moon.ts';
 
 /**
- * The Moon under the camera: its real ground, lit by the real Sun, from 110 km up to 80,000.
+ * The Moon under the camera: its real ground, lit by the real Sun, from 110 km up to 100,000.
  *
  * **The ground** is the laser altimeter's heights and the wide-angle camera's colour (NASA's CGI
  * Moon Kit; tools/front-moon.mjs bakes them and says how each byte is read): the relief of the

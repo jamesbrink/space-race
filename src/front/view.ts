@@ -15,8 +15,8 @@
  *
  * **The path** is one move outward. The camera starts 110 km over the far side (the height Apollo 8
  * and Kaguya photographed Earthrise from), a little behind the Moon's southern limb, with the
- * Earth's upper edge just clear of the horizon; it climbs, and the Earth rises because the horizon
- * falls away (Earthrise); it goes on out, always looking back, the horizon bending into the Moon's
+ * Earth half risen over the horizon; it climbs and draws back, and the Earth comes clear as the
+ * horizon falls away (Earthrise); it goes on out, always looking back, the horizon bending into the Moon's
  * limb (as Lunar Orbiter 1 and Zond 7 saw it), until five minutes later it settles 100,000 km behind
  * the Moon with the whole far side below and the whole Earth above it (as Chang'e 5-T1 and DSCOVR
  * saw the two together). It never stops dead and never cuts: its height is one smooth curve, and
@@ -75,9 +75,10 @@ export const PATH = {
   /** Seconds from the first frame to the settling. */
   seconds: 300,
   /**
-   * How far the Earth's centre stands above the Moon's limb, degrees: at the first frame (half of it clear
-   * of the horizon's hills, which stand a quarter of a degree over the limb); from `risen` seconds on; and where it settles, which it draws in to from `closing` seconds on
-   * (the Moon by then a ball of two degrees, and the Earth a degree clear of it).
+   * How far the Earth's centre stands above the Moon's limb, degrees: at the first frame (half of it clear of the
+   * horizon's hills, which stand a quarter of a degree over the limb); from `risen` seconds on; and where it
+   * settles, which it draws in to from `closing` seconds on (the Moon by then a ball of two degrees, and the Earth
+   * a degree clear of it).
    */
   rise: [0.3, 2.35, 1.9] as const,
   risen: 80,
@@ -89,7 +90,7 @@ export const PATH = {
    * instant, from behind the camera and to one side, so every crater has its shadow.
    */
   limb: 208,
-  /** The still frame anyone who has asked for less motion is given: this many seconds along the path (the Earth risen, the horizon nearly level). */
+  /** The still frame anyone who has asked for less motion is given: this many seconds along the path (the Earth risen over a level horizon, from 250 km). */
   still: 80,
 } as const;
 

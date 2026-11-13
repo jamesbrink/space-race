@@ -660,9 +660,10 @@ terms:
 - **A lost context there is not the page's end**: the picture is taken away and the list of flights stays, over
   black. No word is put up (lost.ts's is a stage's).
 
-What it costs (`pnpm test:front` says so each run; measured when written, on an M-series laptop under load, 1280 x
-800 at 1): a frame 2.8 to 3.0 ms from one end of the path to the other; 1.9 million triangles in two draw calls (0.5 million on the lighter tier). What it holds: "Memory", below.
-`pnpm bench` does not measure it (its harness turns a `Stage` over by hand).
+What it costs (`pnpm test:front` says so each run; measured when written on an M-series desk machine, 1280 x 800 at
+1): a frame 1.1 to 1.3 ms from one end of the path to the other, and 2.8 to 3.0 with the machine busy with other
+work; 1.9 million triangles in two draw calls (0.45 million on the lighter tier). What it holds: "Memory", above.
+`pnpm bench` does not measure it (its harness turns a `Stage` over by hand). It has not been run on a real phone.
 
 ## Texture units
 
