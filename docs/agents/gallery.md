@@ -12,7 +12,9 @@ Every flight has the same three places, in the same order, and opens in the firs
 | **Launch site** | where it flew from: the pad, the place, the crew, the day's sky, the clock, walking. Its sections are the flight's models there (Vehicle, Launch pad, Crew) | it has `site` and a model whose `backdrop` is a place, not `'studio'` |
 | **Fly** | the flight deck, at the site: the vehicle under your hands, and the recorded flight | it has the site, a `trajectory` with a `body`, and `flies` |
 
-- **The front page** has one entrance per flight, by date. It always opens that flight's gallery.
+- **The front page** is no flight's: it is what an address that names nothing shows (`front.ts`), the list of
+  flights over a picture of its own, the Earth seen from out by the Moon ("The front page", below). It has one
+  entrance per flight, by date, and a line for each flight to come. An entrance always opens that flight's gallery.
 - **Inside a flight** one switch, in the title card, shows the three places, the same control in
   the same spot in every place (`placesNav` in `gallery.ts`; on the flight deck, where the card
   makes way, the switch alone stays in its corner). A place the flight does not have yet is
@@ -26,18 +28,53 @@ Every flight has the same three places, in the same order, and opens in the firs
   `#<flight>/site[/<vehicle|pad|crew>]` the launch site; `#<flight>/fly` the flight deck.
   Addresses older than the places mean what they meant: `#<flight>/<model>` and a bare `#pad`,
   `#vehicle`, `#crew` (the first *listed* flight's: every tool and script uses them) are sections
-  of the site. So no model may be called `gallery`, `site` or `fly`. The front page names nothing:
-  the first *listed* flight shows itself behind it too (Freedom 7, the one that is whole: `flightFor`),
-  not the first by date, until Vostok 1's place is as whole.
-- **Loading follows the place.** Going into a flight fetches only what the gallery needs: the
+  of the site. So no model may be called `gallery`, `site` or `fly`. An address that names nothing
+  at all (`namesNothing`) is the front page's and is about no flight.
+- **Loading follows the place.** The front page fetches its own picture and no flight (6 MB: the
+  Earth's maps and the Moon's). Going into a flight fetches only what the gallery needs: the
   vehicle, in full. The site's models, scenery, globe and clouds are fetched when Launch site or
   Fly is first chosen, and kept.
-- **Which page comes up** is decided in `enter.ts` by the flight the address is about (`flightFor`):
-  `main.ts` for a flight with a site (the gallery beside it), `only.ts` for one without (the
-  gallery and the front page, and none of the code that needs a site).
+- **Which page comes up** is decided in `enter.ts` by what the address names: `front.ts` for one
+  that names nothing; otherwise, by the flight it is about (`flightFor`), `main.ts` for a flight
+  with a site (the gallery beside it) and `only.ts` for one without (the gallery alone, and none
+  of the code that needs a site). The front page brings a flight's page up itself when one is chosen.
 
 A flight with only a vehicle is complete enough to ship: it is in the gallery, and its site and
 Fly light up as they are built.
+
+## The front page
+
+`front.ts` is the page; `title.ts` its words (the mark, the list); `front/scene.ts` its picture, on a canvas and a
+renderer of its own that share nothing with a flight's stages (rendering.md, "The front page's picture"; what the
+picture is of, world.md).
+
+- **Left alone, this is the show, and nothing else starts.** No flight is picked for the visitor. The camera goes
+  out along its path for five minutes and settles; the Earth goes on turning. After half a minute without a touch
+  (`IDLE_TITLE`) the words fade away and the Earth is eased to the middle of a picture that is all its own; the first
+  movement, key or touch brings them back and eases it aside again. A browser driven by a script is not left alone
+  and its picture is held still until told where to be (`sr.front.seek`), unless the address has `?demo`.
+- **Less motion** (the system's setting): one still picture, the Earth risen over a level horizon 80 seconds along
+  the path, the clock stopped at the instant; nothing is drawn twice.
+- **Going into a flight** names it in the address at once (so a refresh lands there), takes the words away and
+  brings that flight's page up *under* the picture, which goes on moving while the flight arrives. The flight's
+  curtain is a card over the picture, not a black page, and nothing else of the flight's page shows until it lifts
+  (`body.fronted`, front.css). When it lifts (`whenLifted`, curtain.ts) the flight's canvas fades in over the
+  picture's as it always does, and a moment later the picture is let go whole: textures, buffers, the context, the
+  canvas. No key acts meanwhile: the flight's curtain is up, and the curtain's own rule holds.
+- **Coming back out** (the Space Race crumb, or an address edited to name nothing) is `home.ts`: the page fades to
+  black and is opened again at the address that names nothing. A flight holds nothing of the front page and the
+  front page nothing of a flight; the price is that the same flight gone into again is fetched from the browser's
+  cache and its shaders built again.
+- **The words are read over a picture that can be white.** Nothing veils or blurs the whole picture. Each thing
+  that is read has its own dark glass (`--title-glass`, 0.84 of near black: the smallest text keeps 4.5:1 over
+  white cloud), and the mark a soft dark behind it. Held upright, the top two fifths of the page are left to the
+  picture and the list scrolls over the rest; on its side or on a desk the Earth is put clear of the mark, to its
+  right (`compose` in front.ts measures the mark and tells the scene where the Earth is to be).
+
+`sr.front` is the handle: `sr.front.seek(120)` goes two minutes along the path, `sr.front.stats()` and
+`sr.front.cost()` say what it draws and what a frame costs, `sr.instant` the moment on show. `pnpm test:front`
+(tools/front-test.mjs, with `pnpm dev` running) checks all of the above in a real browser, and what the page holds
+as a phone. `tools/shot.mjs out.png "" "sr.front.seek(80)" 1440 900 --ui` takes its picture.
 
 ## One rule: nothing leaks
 
@@ -48,6 +85,9 @@ the vehicle on the pad, the selection, the camera, a figure walked somewhere and
 instant are, when it wakes, exactly as they were left; and the gallery, come back to, is as it
 was left too. Going to the gallery ends a walk (the figure stays where it stood), stops a running
 clock (started again on the way back), hushes the sound and leaves the flight deck.
+
+(The gallery was once also what showed behind the front page for a flight with no site, its show running there
+unasked: `GalleryHost.covered` is what is left of that, and is now never true.)
 
 Every key comes to the gallery first while it is up (a capturing listener in `gallery.ts`): the
 camera's keys go on to its own stage's camera, its own keys are acted on, and nothing goes

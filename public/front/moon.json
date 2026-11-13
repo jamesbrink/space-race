@@ -1,0 +1,87 @@
+{
+  "colour": {
+    "file": "moon.colour.jpg",
+    "width": 2048,
+    "height": 1024,
+    "mean": 0.307209
+  },
+  "whole": {
+    "file": "moon.whole.jpg",
+    "width": 2048,
+    "height": 1024,
+    "low": -8600,
+    "high": 10600
+  },
+  "wide": {
+    "file": "moon.wide.jpg",
+    "centre": [
+      -0.42005794743892516,
+      -0.43172897908632313,
+      -0.7982239093202347
+    ],
+    "east": [
+      0.7167281553655483,
+      -0.6973526735492583,
+      0
+    ],
+    "north": [
+      -0.5566435772554064,
+      -0.5721095500957686,
+      0.6023608474905401
+    ],
+    "half": 1.1035403318926436,
+    "side": 1024,
+    "metres": 3744.7089309185135,
+    "low": -8700,
+    "high": 9200,
+    "at": {
+      "longitude": -134.21499263187104,
+      "latitude": -52.960831330104774
+    }
+  },
+  "near": {
+    "file": "moon.near.jpg",
+    "centre": [
+      -0.059399626737809345,
+      -0.46944031181305507,
+      -0.880963948177376
+    ],
+    "east": [
+      0.9920895792721156,
+      -0.12553193497941767,
+      0
+    ],
+    "north": [
+      -0.11058910906181345,
+      -0.8739951527011948,
+      0.4731833915214369
+    ],
+    "half": 0.21262862861745602,
+    "side": 1536,
+    "metres": 481.0169002082918,
+    "low": -6900,
+    "high": 6500,
+    "at": {
+      "longitude": -97.21147538339939,
+      "latitude": -61.75886341014195
+    },
+    "height": "moon.near.height.png",
+    "heightMetres": 962.0338004165836,
+    "horizon": 0.7853981633974483,
+    "colour": "moon.near.colour.jpg"
+  },
+  "for": {
+    "instant": "1961-04-12T06:06:59.7Z",
+    "limb": 208,
+    "limbAt": {
+      "longitude": -86.71831450530043,
+      "latitude": -61.98528472974996
+    },
+    "sun": [
+      -0.7565074950997186,
+      -0.6536697999241304,
+      -0.02030277136493077
+    ]
+  },
+  "data": "NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit NASA/GSFC/Arizona State University. Fetched 2026-11-13"
+}

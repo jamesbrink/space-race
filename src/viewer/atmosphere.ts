@@ -302,12 +302,26 @@ export const atmosphereUniforms = {
   uTrueSun: { value: new THREE.Vector3(0, 1, 0) },
 };
 
-/** Make the tables for a haze (a few milliseconds, once: nothing if they are made for it already). */
+/** A set of the same uniforms that is nobody else's: for a scene with a renderer of its own (the front page's), whose tables are no use to another's. */
+export const ownAtmosphere = (): typeof atmosphereUniforms => ({
+  tAtmT: { value: null },
+  tAtmMS: { value: null },
+  uAtmHaze: { value: new THREE.Vector2(3.5e-5, 1400) },
+  uAtmSunLight: { value: new THREE.Color(4.5, 4.3, 4.0) },
+  uTrueSun: { value: new THREE.Vector3(0, 1, 0) },
+});
+
+/**
+ * Make the tables for a haze (a few milliseconds, once: nothing if they are made for it already). `into`: the
+ * uniforms they are put in, when they are not the shared ones (`ownAtmosphere`): those are made every time asked.
+ */
 let madeFor = '';
-export function makeAtmosphere(renderer: THREE.WebGLRenderer, haze: Haze): void {
+export function makeAtmosphere(renderer: THREE.WebGLRenderer, haze: Haze, into: typeof atmosphereUniforms = atmosphereUniforms): void {
   const key = `${haze.extinction} ${haze.scale}`;
-  if (key === madeFor) return;
-  madeFor = key;
+  if (into === atmosphereUniforms) {
+    if (key === madeFor) return;
+    madeFor = key;
+  }
   const table = (width: number, height: number) =>
     new THREE.WebGLRenderTarget(width, height, {
       type: THREE.HalfFloatType,
@@ -319,7 +333,7 @@ export function makeAtmosphere(renderer: THREE.WebGLRenderer, haze: Haze): void 
       depthBuffer: false,
       generateMipmaps: false,
     });
-  const u = atmosphereUniforms;
+  const u = into;
   u.tAtmT.value?.dispose();
   u.tAtmMS.value?.dispose();
   const transmittance = table(256, 64),

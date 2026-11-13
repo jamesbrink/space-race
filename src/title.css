@@ -1,14 +1,19 @@
-/* The front page: the mark over the scene, and the flights to go into. */
-#title { position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto auto; justify-items: center; align-items: center; gap: 28px;
-  padding: clamp(20px, 5vh, 56px) clamp(16px, 5vw, 56px); overflow-y: auto; color: var(--ink);
-  background: radial-gradient(120% 90% at 50% 38%, rgba(6, 8, 12, 0.5), rgba(6, 8, 12, 0.9) 70%), linear-gradient(rgba(6, 8, 12, 0.55), rgba(6, 8, 12, 0.82));
-  backdrop-filter: blur(5px) saturate(0.8); -webkit-backdrop-filter: blur(5px) saturate(0.8); transition: opacity 0.55s ease, backdrop-filter 0.55s ease; }
+/* The front page's words: the mark and the flights to go into, over the page's own picture (front/scene.ts: the Earth from out by the Moon).
+   The picture is left as it is (no veil, no blur over the whole): each thing that is read has its own dark glass, dense enough that the
+   smallest text keeps 4.5:1 with white cloud behind it (0.84 of near black over white is #343434; --faint on that is 4.9:1). */
+#title { --title-glass: rgba(8, 9, 12, 0.84); position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto auto; justify-items: center; align-items: center; gap: 28px;
+  padding: clamp(20px, 5vh, 56px) clamp(16px, 5vw, 56px); overflow-y: auto; color: var(--ink); transition: opacity 0.55s ease; }
 #title[hidden] { display: none; }
 #title.leaving { opacity: 0; pointer-events: none; }
+/* left alone, the words make way for the picture; the first movement brings them back (front.ts) */
+#title > * { transition: opacity 0.5s ease; }
+#title.tucked > * { opacity: 0; pointer-events: none; transition: opacity 2.4s ease; }
 /* while it is up, the page under it is not for using */
 body.titled #ui { visibility: hidden; }
 
-.title-mark { width: min(880px, 100%); align-self: end; text-align: center; }
+.title-mark { position: relative; width: min(760px, 58vw, 100%); align-self: end; text-align: center; }
+/* a soft dark behind the mark and its line, where the Moon's ground or the Earth would otherwise be behind them */
+.title-mark::before { content: ''; position: absolute; inset: -18% -8% -14%; z-index: -1; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.4) 55%, rgba(0, 0, 0, 0)); pointer-events: none; }
 .logo { display: block; width: 100%; height: auto; overflow: visible; color: var(--ink); filter: drop-shadow(0 6px 28px rgba(0, 0, 0, 0.6)); }
 .logo-trail { stroke-dasharray: 1; stroke-dashoffset: 1; animation: logo-fly 1.5s cubic-bezier(0.3, 0, 0.2, 1) 0.25s forwards; }
 .logo-trail.late { animation-delay: 0.55s; }
@@ -20,8 +25,8 @@ body.titled #ui { visibility: hidden; }
 
 .title-flights { width: min(720px, 100%); display: grid; gap: 10px; align-self: start; }
 .title-flights button { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; width: 100%; padding: 16px 20px; text-align: left;
-  background: var(--glass); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
-.title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.86); border-color: rgba(255, 196, 107, 0.6); transform: translateX(3px); }
+  background: var(--title-glass); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
+.title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.9); border-color: rgba(255, 196, 107, 0.6); transform: translateX(3px); }
 .title-flights .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--faint); }
 .title-flights .what { display: grid; gap: 3px; min-width: 0; }
 .title-flights .what b { font: 600 20px/1.15 var(--sans); color: var(--ink); letter-spacing: 0.01em; }
@@ -29,15 +34,21 @@ body.titled #ui { visibility: hidden; }
 .title-flights .when { font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: right; white-space: nowrap; }
 .title-flights .go { font: 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); padding: 9px 12px; border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
 /* a flight to come: a slimmer line among the ones that can be gone into, and not a button */
-.title-flights .to-come { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; margin: 0; padding: 7px 20px; border: 1px dashed var(--line); border-left: 2px solid var(--faint); border-radius: 3px; }
+.title-flights .to-come { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; margin: 0; padding: 7px 20px; background: var(--title-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px dashed var(--line); border-left: 2px solid var(--faint); border-radius: 3px; }
 .title-flights .to-come .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
 .title-flights .to-come .what b { font-size: 15px; font-weight: 500; color: var(--dim); }
 .title-flights .to-come .what em { font-size: 12px; color: var(--faint); }
 .title-flights .to-come .go { color: var(--faint); border-color: transparent; padding: 4px 12px; }
-.title-foot { max-width: 60ch; text-align: center; font-size: 12px; color: var(--faint); }
-.title-rights { font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.title-foot { max-width: 60ch; padding: 7px 14px; text-align: center; font-size: 12px; color: var(--faint); background: var(--title-glass); border-radius: 3px; }
+.title-rights { padding: 5px 10px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); background: var(--title-glass); border-radius: 3px; }
 
+/* held upright the picture has the top of the page to itself: the Earth over the Moon's horizon, then the mark and the list, which scrolls over it */
+@media (orientation: portrait) {
+  #title { grid-template-rows: auto auto auto auto; padding-top: 42vh; }
+  .title-mark { width: min(760px, 100%); }
+}
 @media (max-width: 620px) {
+  .title-mark { width: 100%; }
   .title-flights button { grid-template-columns: auto 1fr auto; padding: 14px; gap: 8px 12px; }
   .title-flights .to-come { grid-template-columns: auto 1fr auto; padding: 7px 14px; gap: 2px 12px; }
   .title-flights .when { grid-column: 2 / -1; grid-row: 2; text-align: left; white-space: normal; }

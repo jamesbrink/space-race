@@ -482,6 +482,14 @@ JavaScript heap and 125 MB of decoded pictures.
     each is somebody's picture. The shadow maps' colour attachments, which nothing reads, stay: three's
     WebGLRenderer makes no target without one (a `count` of 0 is WebGPURenderer's only), and they are one byte a
     texel (R8), a quarter of the depth's.
+- **The front page holds its own picture and nothing of a flight** (front/scene.ts): as a phone, 71 MiB (textures
+  45: the Earth's three cubes and the Moon's six maps; the Moon's mesh 9; the canvas 17, at 1.5 drawing pixels a CSS
+  pixel with its multisampling), where the front page had been Freedom 7's launch site behind a veil, 309. On a desk at 1440 x 900
+  at 1 it is 155 (the colours at full size, the mesh four times as fine, the canvas 31). `pnpm test:front` holds it
+  to 90 as a phone, and the most at any moment while a flight's gallery arrives over it to 350 (measured: 257, and
+  186 once the picture is let go): the picture is let go only when the flight is there to be seen, so for those
+  seconds the page holds both. A context that has been
+  let go is counted as holding nothing (mem.ts), which is what losing it means.
 - **A lost context is not a dead page** (`viewer/lost.ts`). `webglcontextlost` on a stage's canvas stops its loop for
   good and puts up a word with "Reload with lighter graphics" (which chooses the lighter tier and remembers it) and
   "Reload"; nothing reloads by itself, so there is no loop for the browser to give up on. An allocation the GPU
@@ -617,6 +625,44 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   cloud shapes and sizes with MODIS; compare colours with astronauts' photographs.
 - **Nothing costs on the ground that is not seen there.** The ball and the globe are not drawn until the eye
   can see past the site; the sheets and far cumulus are worked out only for pixels that meet their shells.
+
+## The front page's picture
+
+The Earth from out by the Moon (`src/front/`) is a scene of its own, on its own canvas and renderer, and not a
+`Stage`: it has no models, no looks, no picking, no post-processing. What it keeps of this file's rules, in its own
+terms:
+
+- **Drawn from the eye.** Positions are doubles in the Moon's frame (view.ts). The camera stays at the origin and
+  only turns; the Earth is placed by where it is from the eye and the Moon's ground by the eye's place over it, so a
+  float never holds 370,000 km and a metre together. The Earth's own arithmetic (where a pixel's ray meets its air
+  and its sea) is done in the Earth's frame, where every number is a few thousand kilometres.
+- **No fixed near plane.** The Moon's ground is the only thing with depth: the near plane is half the camera's
+  height over the highest ground, the far one past the Earth. The Earth is drawn without depth, before the Moon,
+  which is in front of it wherever both are; the stars before both, on a camera of their own (heavens.ts).
+- **Drawn only when the picture changes.** Every frame while the camera is on its way (five minutes); settled, when
+  the Earth has turned a quarter of a drawn pixel at its middle (two to five frames a second at a minute of the
+  world a second), when a map is coming in, when the window changes or the Earth is being eased to another place in the
+  picture. A still picture (less motion) is drawn once.
+- **A lower level of detail is a rebuild.** The Earth is the globe's own maps baked small, never the globe's 300 MiB
+  of them (`pnpm front:earth`); the Moon's relief is baked at three sizes and each is faded in over the coarser
+  from its edge (`pnpm front:moon`). Both bakes follow from view.ts's figures (the instant, the limb the camera
+  looks across) and tests/front.test.mjs fails until they are run again after those change.
+- **A change of level fades.** A map that arrives comes up over 1.2 s; the canvas fades up when the first whole
+  picture is drawn and out as a flight's fades in over it; the Moon's cast shadows, worked out for the Sun as it
+  stood at the instant, are let go as the Sun moves on (gone by 8 degrees, sixteen hours of the world).
+- **One exposure for both worlds**, as a photograph has: the Sun's light is the figure the globe is lit by above the
+  air, the Moon's ground is scaled to the Moon's albedo and dimmed by its phase, and the exposure is set by the
+  cloud. So the Moon is asphalt beside the Earth, as it is. Nothing is made larger or brighter to fill the frame:
+  the lens is a stated one (500 mm on 70 mm film, 6.3 degrees) and the Earth is a third of the frame across.
+- **What is simplified** is listed in earth.ts and moon.ts: the cloud is a reanalysis's and has no detail under a
+  quarter of a degree; the night side has no lights; nothing on the Moon is finer than 481 m, and only the finest
+  map casts shadows; the mid part of the path (10,000 to 20,000 km out) is drawn from the 3.7 km map and is soft.
+- **A lost context there is not the page's end**: the picture is taken away and the list of flights stays, over
+  black. No word is put up (lost.ts's is a stage's).
+
+What it costs (`pnpm test:front` says so each run; measured when written, on an M-series laptop under load, 1280 x
+800 at 1): a frame 2.8 to 3.0 ms from one end of the path to the other; 1.9 million triangles in two draw calls (0.5 million on the lighter tier). What it holds: "Memory", below.
+`pnpm bench` does not measure it (its harness turns a `Stage` over by hand).
 
 ## Texture units
 

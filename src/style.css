@@ -25,6 +25,8 @@ body.scene-ready #stage { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { #stage { transition: none; } }
 body.instant #stage { transition: none; }
 #stage:active { cursor: grabbing; }
+/* going out to the front page (home.ts): the flight fades to black and the page is opened again there */
+body.going-home > * { opacity: 0 !important; transition: opacity 0.2s ease !important; }
 #ui { position: fixed; inset: 0; pointer-events: none; }
 #ui > * { pointer-events: auto; }
 b { font-weight: 400; color: var(--faint); }
