@@ -1,5 +1,6 @@
 // Drives the running viewer's camera with real input and checks what it promises (AGENTS.md, "The camera").
-//   node tools/camera-test.mjs [url] [--seed <n>] [--events <n>] [--only <name>]      (default url: http://localhost:5180/)
+//   node tools/camera-test.mjs [url] [--seed <n>] [--events <n>] [--only <name>] [--throttle <x>]      (default url: http://localhost:5180/)
+//   (--throttle 4: the page's CPU four times slower once it has loaded, as a slow machine or a busy one: every promise is to hold at any frame rate)
 //
 // First the sequences that used to go wrong, each with its numbers: zooming out with the pointer anywhere, then in
 // again; a zoom set by hand and then a panel opening, a resize, the slider; a distance set by hand in the chase view
@@ -20,6 +21,7 @@ const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(
 const seed = Number(opt('--seed', 1));
 const EVENTS = Number(opt('--events', 350));
 const only = opt('--only', null);
+const THROTTLE = Number(opt('--throttle', 1));
 const url = args[0] ?? 'http://localhost:5180/';
 
 function seeded(from) {
@@ -107,6 +109,24 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
         turning: Boolean(window.__turning), // (the self-check's fault is being applied: soak's `fault`)
       };
     };
+    // Wait on the page's own time, not the wall's: until `done(probe)` holds or the camera has been given `seconds` of its
+    // time. The stage steps the camera by each frame's interval but never by more than a tenth of a second (Stage: `dt`),
+    // so a machine drawing three frames a second gives it a third of the wall's time; counted in the camera's own time,
+    // a slow machine is given what a fast one is, and keeps the same promise. (A minute of the wall is the ceiling.)
+    window.__until = (done, seconds) =>
+      new Promise((resolve) => {
+        const wall = performance.now();
+        let given = 0;
+        let last = wall;
+        const look = (now) => {
+          given += Math.min(Math.max(0, now - last) / 1000, 0.1);
+          last = now;
+          const p = window.__probe();
+          if (done(p) || given >= seconds || now - wall > 60000) resolve(p);
+          else requestAnimationFrame(look);
+        };
+        requestAnimationFrame(look);
+      });
     // (a frame's instant is when it began, as the page's own loop has it: taken after the frame's work instead, a frame
     // that ran long was followed by one that seemed short, and what the camera rightly made up in it read as a lurch)
     const loop = (began) => {
@@ -118,6 +138,7 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
     requestAnimationFrame(loop);
   });
   const cdp = await context.newCDPSession(page);
+  if (THROTTLE > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: THROTTLE });
   const wheel = (x, y, deltaY, ctrl = false) =>
     cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY, modifiers: ctrl ? 2 : 0, pointerType: 'mouse' });
   const fingers = async (from, to, steps) => {
@@ -160,6 +181,39 @@ const check = (ok, what) => {
   if (!ok) failed++;
   console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
 };
+
+/** What the separation's frames say: the booster left after the first was kept, drifted off, and the capsule kept its place. */
+function separation(frames) {
+  const sep = frames.findIndex((f) => f.shed.some((s) => s[0] === 1));
+  check(
+    sep > 0,
+    `the booster left at T+${frames[Math.max(0, sep)]?.clock.toFixed(2)} and is drawn (recorded from T+${frames[0]?.clock.toFixed(2)})`,
+  );
+  if (sep <= 0) return;
+  // the booster as seen from the capsule: it drifts off at a few metres a second, and never jumps
+  let jump = 0;
+  let fastest = 0;
+  for (let i = sep + 1; i < frames.length; i++) {
+    const [a, b] = [frames[i - 1], frames[i]];
+    const ba = a.shed.find((s) => s[0] === 1);
+    const bb = b.shed.find((s) => s[0] === 1);
+    if (!ba || !bb || b.clock <= a.clock) continue;
+    const step = len(sub(sub(bb.slice(1), ba.slice(1)), sub(b.craftAt, a.craftAt)));
+    jump = Math.max(jump, step);
+    fastest = Math.max(fastest, step / (b.clock - a.clock));
+  }
+  check(fastest < 25, `the booster from the capsule: never faster than ${fastest.toFixed(1)} m/s, ${jump.toFixed(2)} m in a frame at most`);
+  // the capsule comes to the middle of the frame and is never further from it than it was as the booster left
+  const off = (f) => Math.hypot(f.craftNdc[0] - f.pivotNdc[0], (f.craftNdc[1] - f.pivotNdc[1]) * 0.625);
+  const start = off(frames[sep]);
+  const most = Math.max(...frames.slice(sep).map(off));
+  const out = frames.slice(sep).some((f) => Math.abs(f.craftNdc[0]) > 1 || Math.abs(f.craftNdc[1]) > 1);
+  check(
+    !out && most <= start * 1.02 + 0.01,
+    `the capsule stays in frame: ${start.toFixed(3)} from the middle as it left, ${most.toFixed(3)} at most after`,
+  );
+  check(off(frames.at(-1)) < 0.02, `and is at the middle when the view has settled (${off(frames.at(-1)).toFixed(3)})`);
+}
 
 const sequences = {
   // The one that was reported: "zoom out and it'll just zoom back in at a totally random location". From above (a steep
@@ -297,54 +351,48 @@ const sequences = {
       sr.clock.setRate(25);
       sr.clock.play(true);
     });
-    await h.page.waitForFunction(() => window.sr.clock.t >= 149, null, { timeout: 120000, polling: 'raf' });
+    // At 25 times to some seconds short of the booster's leaving, then at life's pace and recording, decided in the page on
+    // the frame that gets there. (Decided from here, at T+149, it was a round trip late: a busy machine's page ran frames
+    // of 2.5 s of the flight each meanwhile, and the separation could be past before the first frame was kept, which
+    // failed this check and, left running, the next sequence's.)
     await h.page.evaluate(() => {
-      window.sr.clock.setRate(1);
-      window.sr.stage.cam.chase.home?.(); // (a view nobody has set: the one that frames what is left again)
-      window.__frames = [];
-      window.__recording = true;
+      const sr = window.sr;
+      const near = () => {
+        if (sr.clock.t < 140) return void requestAnimationFrame(near);
+        sr.clock.setRate(1);
+        sr.stage.cam.chase.home?.(); // (a view nobody has set: the one that frames what is left again)
+        window.__frames = [];
+        window.__recording = true;
+      };
+      requestAnimationFrame(near);
     });
-    await h.wait(10000);
+    // and on by the flight's own clock until ten seconds after it has gone, however many frames a second that takes
+    await h.page.waitForFunction(
+      () => {
+        if (!window.__recording) return false;
+        const gone = window.__frames.find((f) => f.shed.some((s) => s[0] === 1));
+        return gone ? window.sr.clock.t >= gone.clock + 10 : window.sr.clock.t >= 170;
+      },
+      null,
+      { timeout: 600000, polling: 500 },
+    );
     const frames = await h.page.evaluate(() => {
       window.__recording = false;
       return window.__frames;
     });
-    const sep = frames.findIndex((f) => f.shed.some((s) => s[0] === 1));
-    check(sep > 0, `the booster left at T+${frames[Math.max(0, sep)]?.clock.toFixed(2)} and is drawn`);
-    if (sep <= 0) return;
-    // the booster as seen from the capsule: it drifts off at a few metres a second, and never jumps
-    let jump = 0;
-    let fastest = 0;
-    for (let i = sep + 1; i < frames.length; i++) {
-      const [a, b] = [frames[i - 1], frames[i]];
-      const ba = a.shed.find((s) => s[0] === 1);
-      const bb = b.shed.find((s) => s[0] === 1);
-      if (!ba || !bb || b.clock <= a.clock) continue;
-      const step = len(sub(sub(bb.slice(1), ba.slice(1)), sub(b.craftAt, a.craftAt)));
-      jump = Math.max(jump, step);
-      fastest = Math.max(fastest, step / (b.clock - a.clock));
+    try {
+      separation(frames);
+    } finally {
+      // (put back whatever was found: a flight left running would be the next sequence's)
+      await h.page.evaluate(() => {
+        window.sr.cockpit.leave();
+        window.sr.clock.reset();
+        window.sr.stage.setCamera('orbit');
+      });
+      await h.wait(1500);
     }
-    check(
-      fastest < 25,
-      `the booster from the capsule: never faster than ${fastest.toFixed(1)} m/s, ${jump.toFixed(2)} m in a frame at most`,
-    );
-    // the capsule comes to the middle of the frame and is never further from it than it was as the booster left
-    const off = (f) => Math.hypot(f.craftNdc[0] - f.pivotNdc[0], (f.craftNdc[1] - f.pivotNdc[1]) * 0.625);
-    const start = off(frames[sep]);
-    const most = Math.max(...frames.slice(sep).map(off));
-    const out = frames.slice(sep).some((f) => Math.abs(f.craftNdc[0]) > 1 || Math.abs(f.craftNdc[1]) > 1);
-    check(
-      !out && most <= start * 1.02 + 0.01,
-      `the capsule stays in frame: ${start.toFixed(3)} from the middle as it left, ${most.toFixed(3)} at most after`,
-    );
-    check(off(frames.at(-1)) < 0.02, `and is at the middle when the view has settled (${off(frames.at(-1)).toFixed(3)})`);
-    await h.page.evaluate(() => {
-      window.sr.cockpit.leave();
-      window.sr.clock.reset();
-      window.sr.stage.setCamera('orbit');
-    });
-    await h.wait(1500);
   },
+
   // At the controls of the flight the mouse is still the camera's, in every rig offered, before ignition and after.
   async 'the mouse while flying'(h) {
     await h.page.evaluate(() => {
@@ -361,8 +409,8 @@ const sequences = {
         const about = rig === 'chase' || rig === 'locked';
         const a = await h.probe();
         await h.drag(720, 300, 840, 260);
-        await h.wait(600);
-        const b = await h.probe();
+        // (600 ms of the camera's time, as it was 600 ms of the wall's on a machine that draws every frame)
+        const b = await h.page.evaluate(() => window.__until(() => false, 0.6));
         // (beside the vehicle: it is moving, and the pad camera turns to follow it by itself)
         const turned =
           rig === 'pad'
@@ -372,8 +420,15 @@ const sequences = {
           await h.wheel(720, 300, about ? 120 : -120); // (out round the vehicle; a longer lens on board and at the pad camera)
           await h.wait(30);
         }
-        await h.wait(900);
-        const c = await h.probe();
+        // until the zoom has gone as far as it was asked, within a second of the camera's time (it was 900 ms of the wall's
+        // after the wheel's 150, which a slow machine spent in a few frames of a tenth of a second each)
+        const c = await h.page.evaluate(
+          ([b, about]) => {
+            const far = (s) => Math.hypot(s.p[0] - s.pivot[0], s.p[1] - s.pivot[1], s.p[2] - s.pivot[2]);
+            return window.__until((p) => (about ? far(p) > 1.3 * far(b) : p.fov < 0.87 * b.fov), 1.05);
+          },
+          [b, about],
+        );
         const zoomed = about ? far(c) > 1.3 * far(b) : c.fov < 0.87 * b.fov;
         check(
           turned && zoomed,
@@ -664,11 +719,12 @@ async function soak(name, { touch = false, at = -4, fault = false } = {}) {
   check(!h.errors.length, `errors on the page's console: ${h.errors.length}${h.errors.length ? ` e.g. ${h.errors[0]}` : ''}`);
 }
 
-if (!only || Object.keys(sequences).some((n) => n.includes(only))) {
+const named = (name) => !only || only.split('|').some((o) => name.includes(o));
+if (Object.keys(sequences).some(named)) {
   const h = await open();
   await h.page.evaluate(() => window.sr.stage.setAutoRotate(false));
   for (const [name, run] of Object.entries(sequences)) {
-    if (only && !name.includes(only)) continue;
+    if (!named(name)) continue;
     console.log(`\n${name}`);
     await run(h);
   }
@@ -681,6 +737,6 @@ const soaks = {
   'soak, fingers on a phone': { touch: true },
   'proof, a turn nobody asked for': { fault: true },
 };
-for (const [name, how] of Object.entries(soaks)) if (!only || name.includes(only)) await soak(name, how);
+for (const [name, how] of Object.entries(soaks)) if (named(name)) await soak(name, how);
 console.log(failed ? `\n${failed} failed` : '\nall held');
 process.exit(failed ? 1 : 0);
