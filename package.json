@@ -2,6 +2,7 @@
   "name": "space-race",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Every crewed spacecraft, modelled to scale and flown: starting with Freedom 7.",
   "type": "module",
   "scripts": {
