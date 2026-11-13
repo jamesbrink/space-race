@@ -95,6 +95,7 @@ class Fit:
     # What a later flight's suit had (each is in mark-iv-suit.md, "5 May and 21 July 1961", with its source):
     wrist_rings: bool = False  # the gloves lock to bearing rings at the wrists; without them they zip to the sleeves
     harness: bool = False  # the personal parachute harness, worn over the suit, and the tie-down strap run on down to the crotch
+    fork: bool = True  # the harness's leg straps and the tie-down's run to the fork: left off a figure in a couch, whose thighs lie on them
     mirror: bool = False  # the convex mirror on the chest
     microphones: int = 1  # in the helmet: one on a boom from the left ear, or one either side of the mouth
     lead: bool = False  # the helmet's communications lead, hanging on the right chest with its plug
@@ -978,8 +979,9 @@ def build_worn(M: dict, t: Tube) -> None:
     for side, sx in (("L", 1), ("R", -1)):
         # a leg strap from the fork up to each hip, front and back: the long strap's two ends are sewn over theirs
         (hip, a0), (_, a1) = chart[f"front{side}"][0], chart[f"rear{side}"][-1]
-        strap(web, [front(sx * x, low + z) for x, z in FORK] + [on_trunk(hip + 2.0, a0)], HARNESS_WEB, 0.28, what=f"leg{side}", dive=(1.1, 0.0))
-        strap(web, [rear(-sx * x, low + z) for x, z in FORK] + [on_trunk(hip + 2.0, a1)], HARNESS_WEB, 0.28, what=f"seat{side}", dive=(1.1, 0.0))
+        if FIT.fork:
+            strap(web, [front(sx * x, low + z) for x, z in FORK] + [on_trunk(hip + 2.0, a0)], HARNESS_WEB, 0.28, what=f"leg{side}", dive=(1.1, 0.0))
+            strap(web, [rear(-sx * x, low + z) for x, z in FORK] + [on_trunk(hip + 2.0, a1)], HARNESS_WEB, 0.28, what=f"seat{side}", dive=(1.1, 0.0))
         keys = [on_trunk(z, a) for z, a in along_chart(chart[f"front{side}"], 2.5)]
         keys += [_cloth.hit((sx * x, y, 200.0), (0, 0, -1)) for x, y in ((14.4, -6.0), (14.3, -3.0), (14.0, 0.0), (13.3, 3.0), (12.2, 6.0))]
         keys += [on_trunk(z, a) for z, a in along_chart(chart[f"rear{side}"], 2.5)]
@@ -987,8 +989,10 @@ def build_worn(M: dict, t: Tube) -> None:
         # webbing from the hip to the chest strap and from the shoulder blade to the other hip; between them, over the shoulder, the pad
         first = next(i for i, p in enumerate(run) if p.y < 0 and p.z > chest - 3.0)
         last = max(i for i, p in enumerate(run) if p.y > 0 and p.z > B.z_yoke - 10.0)
-        strap(web, run[: first + 5], HARNESS_WEB, 0.28, what=f"main{side}", dive=(0.0, 0.0))
-        strap(web, run[last - 4 :], HARNESS_WEB, 0.28, what=f"main{side}", dive=(0.0, 0.0))
+        # (without the leg straps to be sewn over, each end goes down into the cloth at its hip)
+        ends = 0.0 if FIT.fork else 1.2
+        strap(web, run[: first + 5], HARNESS_WEB, 0.28, what=f"main{side}", dive=(ends, 0.0))
+        strap(web, run[last - 4 :], HARNESS_WEB, 0.28, what=f"main{side}", dive=(0.0, ends))
         rails[sx] = strap(pad, run[first : last + 1], HARNESS_PAD, 0.62, what=f"pad{side}", dive=(0.0, 0.0), bevel=0.3)
     web.share = [_cloth.share_at(v) for v in web.verts]
     pad.share = [_cloth.share_at(v) for v in pad.verts]
@@ -1006,9 +1010,9 @@ def build_worn(M: dict, t: Tube) -> None:
     pad.share += [0.0] * (len(pad.verts) - len(pad.share))
 
     # the tie-down strap: from under the chest strap down the middle of the front to the fork, with its buckle
-    keys = [on_trunk(z, a) for z, a in along_chart(chart["tie"], 3.0)] + [
-        front(0.0, z) for z in (B.waist_z - 1.0, B.waist_z - 6.0, low + 7.0, low + 3.5, low + 1.2)
-    ]
+    keys = [on_trunk(z, a) for z, a in along_chart(chart["tie"], 3.0)]
+    if FIT.fork:
+        keys += [front(0.0, z) for z in (B.waist_z - 1.0, B.waist_z - 6.0, low + 7.0, low + 3.5, low + 1.2)]
     rail = strap(tie, keys, 2.2, 0.26, ignore=("chest", "zipper"), dive=(0.8, 1.1))
     c, nm, _ = min(rail, key=lambda r: abs(r[0].z - (chest - TIE_BUCKLE)))
     buckle(steel, tie, c + nm * 0.26, nm, (2.4, 3.6), spin=TAU / 4)

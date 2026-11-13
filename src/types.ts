@@ -98,12 +98,20 @@ export interface Drive {
  *        model puts a hinged piece's origin on its hinge.
  * slide  move by `by` metres.
  * drive  a wheeled vehicle follows a route, turning with it, wheels rolling and steering.
+ * run    the node's own motion, worked out by the script that built it and written in the node's extras (`run`: seven
+ *        figures a sample, evenly spaced through the motion: how far it has moved, x y z in metres, and how it has
+ *        turned, a quaternion x y z w, both in its parent's coordinates and from where it was built). A linkage: a
+ *        door on its hinge, the link that pushes it, the housing that carries the link, each a node with its own
+ *        `run`, all played over the same stretch so they stay joined. `back` plays it from its end to its start.
+ *        It is not eased (the samples carry the motor's own start and stop) and it does not add to other moves: the
+ *        node stands where the last `run` to have begun has it.
  *
  * Axes and offsets are in the node's parent's coordinates (viewer space: +Y up).
  */
 export type Move = { from: number; to: number; node?: string } & (
   | { kind: 'swing'; axis: [number, number, number]; angle: number }
   | { kind: 'slide'; by: [number, number, number] }
+  | { kind: 'run'; back?: boolean }
   | ({ kind: 'drive' } & Drive)
 );
 
@@ -229,10 +237,15 @@ export interface Part {
   order: number;
 }
 
-/** A step of the flight that can be set off by hand, and what the menu calls it on the part it belongs to. */
+/**
+ * A step of the flight that can be set off by hand, and what the menu calls it on the part it belongs to. `work:<id>`
+ * works a mechanism of the model by hand (`ModelDef.mechanisms`, by its id: a periscope), sending it the other way from
+ * where it is headed: `label` is then what putting it out is called and `back` what drawing it in is.
+ */
 export interface Command {
   label: string;
-  ask: 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main';
+  ask: 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main' | `work:${string}`;
+  back?: string;
 }
 
 /**
@@ -312,8 +325,10 @@ export interface CabinDef {
    * Controls that are the controls: a click on one does what the flight deck's key does (`does`: a command of
    * src/cockpit.ts: 'tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort'). One with no `does` is
    * there to be read about. How it moves when worked is in the node's extras (`pull` or `press`, metres along its axis).
+   * One with `works` works a mechanism of the model by hand (`ModelDef.mechanisms`, by its id): sent the other way
+   * from where it is headed, in a flight being flown by hand (src/cockpit.ts `work`).
    */
-  controls?: { node: string; name: string; about: string; does?: string }[];
+  controls?: { node: string; name: string; about: string; does?: string; works?: string }[];
   /**
    * Windows, as light: where each pane is (`at`) and the way it faces out of the model (`out`, a unit vector), in the
    * model's frame, and how wide its glass is, metres. What is outside each (sky, the Earth, black) is looked at a
@@ -342,12 +357,42 @@ export interface CabinDef {
     screen: string;
     name: string;
     about: string;
+    /**
+     * The mechanism that puts its objective out (`ModelDef.mechanisms`, by its id): the screen shows the outside only
+     * as far as that is out, and with it drawn in shows what the objective then looks at, the dark behind its door.
+     * Left out: the objective is always out.
+     */
+    mechanism?: string;
     at: [number, number, number];
     axis: [number, number, number];
     up: [number, number, number];
     top?: [number, number, number];
     fields: number[];
   };
+}
+
+/**
+ * A mechanism of a model that runs out and in to a programme on the flight's clock, and that the pilot of a flight
+ * flown by hand can work (src/sim/mechanism.ts): one motion with one figure, its travel, 0 drawn in and 1 out. Its
+ * motion is the model's own: the `Part.clocked` moves of `nodes`, which play the same travel at each of `events`
+ * (out, or in: the same motion the other way). Wherever there is a clock it follows `events`; in a flight flown by
+ * hand it follows them while the sequencer is on, a hand's command (its control in the cabin, its switch among the
+ * flight deck's keys, a `Command` on its part) sends it the other way and holds it there until the programme's next event, and with the sequencer
+ * off it moves only when told.
+ */
+export interface MechanismDef {
+  id: string;
+  name: string;
+  /** What its two ends are called: drawn in, and out. */
+  says: [string, string];
+  /** The nodes it moves: each has `Part.clocked` moves, timed by `events`. */
+  nodes: string[];
+  /** The instants it is sent out (true) or in (false), seconds from launch, in order. It is built drawn in. */
+  events: [number, boolean][];
+  /** How long the whole travel takes, seconds. */
+  takes: number;
+  /** An instant at which one of `events` sends it out from fully in: the clocked moves from there over `takes` are the travel itself. */
+  from: number;
 }
 
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
@@ -431,6 +476,8 @@ export interface ModelDef {
   }[];
   /** The inside of it as a place to be: instruments that read, lamps that light, controls that work, windows to look out of (CabinDef). */
   cabin?: CabinDef;
+  /** What of it runs to a programme on the flight's clock and can be taken by a hand (MechanismDef): a periscope and its door. */
+  mechanisms?: MechanismDef[];
   /** Where the model stands in the flight's one scene, metres (default: the origin). The floor is y = 0. */
   position?: [number, number, number];
   /** Which way it faces: radians about the vertical. */

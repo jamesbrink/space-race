@@ -17,29 +17,27 @@ import {
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
-import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
+import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
 
 /**
- * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts). The axes are mercury_capsule.periscope_hinge's for this
- * capsule (its door at 80 to 100 degrees round from the pilot's right, its tube's last run in the cabin, the hatch on +X).
+ * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
+ * objective and the link between them each carry their motion: mercury_capsule.periscope_run).
  * "At T-35 seconds, the spacecraft umbilical was [pulled] and the periscope was retracted", and at separation, ten seconds
- * after cutoff at 02:23, "the periscope was extended" (MR-4 Results, p. 6); "periscope is retracting" at 06:41 (p. 43);
- * "There's the drogue chute. The periscope has extended" at 09:41.5, the drogue at 09:41 (p. 44): it is put out with the
- * drogue, as SEDR 104 has it, and the call's half second is shorter than the motion's four. Documented.
+ * after cutoff at 02:23, "the periscope was extended" (MR-4 Results, p. 6); "periscope is retracting" at 06:41, thirty
+ * seconds and more after the retropack was let go at 06:07 (p. 43); "There's the drogue chute. The periscope has
+ * extended" at 09:41.5, the drogue at 09:41 (p. 44): it is put out with the drogue, as SEDR 104 has it, and the call's
+ * half second is shorter than the motion's five. Documented.
  */
-const PERISCOPE = periscopeMoves(
-  [0.1979, 0.9397, 0.2789],
-  [-0.0927, 0.0584, -0.0927],
-  [
-    [ON_THE_PAD, true],
-    [-35, false],
-    [153, true],
-    [401, false],
-    [581, true],
-  ],
-);
+const PERISCOPE_EVENTS: [number, boolean][] = [
+  [ON_THE_PAD, true],
+  [-35, false],
+  [153, true],
+  [401, false],
+  [581, true],
+];
+const PERISCOPE = periscopeMoves(PERISCOPE_EVENTS);
 const FT = 0.3048;
 const LBF = 4.4482216;
 const NMI = 1852;
@@ -396,6 +394,8 @@ const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/usa/mercury/mr-4-liberty-bell-7/vehicle.glb',
+  // the periscope on its programme (vehicles/periscope.ts): nothing works it by hand yet, this flight having no flight deck
+  mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   scale: '25.41 m tall · spacecraft 7.91 m · to scale',
   backdrop: 'cape-canaveral',
   slider: ['Assembled', 'Taken apart'],

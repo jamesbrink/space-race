@@ -165,15 +165,18 @@ the wall (hips 5.0 in off the axis) a 1.80 m man's boots clear it by 0.76 in onl
 tuck. With thighs at 65° to 75° and level shins the toes go through the wall by several inches.
 The real couch was moulded to each pilot; its angles were not found.
 
-**Grissom on the couch is not built yet.** Liberty Bell 7's cabin still seats Shepard's figure with
-the name changed (`mark_iv_suit.NAME = "V. I. GRISSOM"`) and lays its own mirror on him
-(`mercury_cabin_11.chest_mirror`). Passing `mark_iv_suit.MR_4` to `build_seated` in that flight's
-`model/vehicle.py` seats this Grissom instead, harness, mirror and rings with him. Run dry, he fits:
-2.0 in from the wall at his nearest (Shepard's figure 0.76), his eyes 4.7 cm nearer his feet
-(`Seat_Pilot` follows them), his palms 6 mm off the controllers' knobs, for which the elbow's angles
-would be set again. **It has not been built or looked at**: how the harness lies on a trunk carried
-to the couch is unknown, the cabin's own mirror would have to go, and in the couch the lead was
-plugged in (`dataclasses.replace(MR_4, lead=False)`).
+**Grissom on the couch** is Liberty Bell 7's pilot: that flight's `model/vehicle.py` passes
+`dataclasses.replace(mark_iv_suit.MR_4, lead=False, fork=False)` to `build_seated`, and the cabin lays nothing of its
+own on him but the couch's straps.
+
+| What | As built | Confidence | Basis |
+| --- | --- | --- | --- |
+| Fit | 2.0 in from the wall at his nearest (Shepard's figure 0.76) | derived | `seated_fits` |
+| Eyes | 4.74 cm nearer his feet than Shepard's (63.7 cm headward of the hips against 68.4); `Seat_Pilot` follows them | derived | his stature |
+| Joints | the same angles as Shepard's (`SEATED`) | estimated | the elbow's two angles cannot put his palm where Shepard's is: his arm is shorter and the shoulder is not posed, so the nearest they come is 7.9 mm (elbow 22.0°, toe-in 21.5°) against 8.4 mm with the angles left alone. Each cabin stands its controllers under its own pilot's palms (`mercury_cabin.controls`), so in No. 11 they are 8.4 mm from where No. 7 has them: 6 mm headward, 5 mm lower, 2 mm outboard. Both places are estimated |
+| Helmet lead | left off (`lead=False`) | estimated | in the couch it was plugged in; where its run went in the cabin is not in anything read |
+| Leg straps and the tie-down's run to the fork | left off (`fork=False`): the harness's two long straps end at the hips, the tie-down under its buckle | estimated | the thighs are folded up over where they ran: carried to the couch they lay in the crease of the lap, in one plane with the trousers. What the real straps did there was not found |
+| Harness, pads, V-rings, mirror, name tape | as on the standing figure: they are on the trunk, which does not move | as standing | |
 
 ## Joints
 

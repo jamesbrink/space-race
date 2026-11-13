@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
+import { travelAt } from '../sim/mechanism.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
-import type { CabinDef, ModelDef, Signal, SitedFlight } from '../types.ts';
+import type { CabinDef, MechanismDef, ModelDef, Signal, SitedFlight } from '../types.ts';
 import { siteFrame } from '../world/frames.ts';
 import { attitudeOf, drumAt, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
 import { tier } from './tier.ts';
@@ -53,6 +54,8 @@ export interface CabinThing {
   object: THREE.Object3D;
   /** What working it asks of the flight deck (CabinDef.controls[].does), if it is a control that does something. */
   does?: string;
+  /** The mechanism of the model it works by hand (CabinDef.controls[].works), if it is the control of one. */
+  works?: string;
   /** It is the switch of the cabin's own lights (CabinDef.lighting): worked, it goes to its next position (`Cabin.light`). */
   lights?: boolean;
   /** It is something to look out through: a window's pane or the periscope's screen. */
@@ -141,6 +144,10 @@ export class Cabin {
     next: number;
     owed: number;
     power: number;
+    /** The mechanism that puts the objective out, if it has one; how far a hand has it out (null: on its programme); and how much of the outside the screen shows for it, 0 to 1. */
+    mechanism: MechanismDef | null;
+    held: number | null;
+    sees: number;
   } | null = null;
 
   constructor(
@@ -160,12 +167,12 @@ export class Cabin {
     this.lights = lights.map((light) => ({ light, base: light.intensity, lit: 1, goal: 1 }));
     // What comes in at each window, and off the periscope's screen: a light apiece, there from the start (a light
     // added later would have every shader in the scene built again) and dark until someone is aboard to see by it.
-    const glow = (from: THREE.Vector3, out: THREE.Vector3, across: number, lamp: THREE.Vector3): void => {
+    const glow = (from: THREE.Vector3, out: THREE.Vector3, across: number, lamp: THREE.Vector3, screen = false): void => {
       // (well inside the pane and falling off with distance, not its square, as the lamps do: the wall round a port is not to burn)
       const light = new THREE.PointLight(0x000000, 1, 2.5, 1);
       light.position.copy(lamp);
       group.add(light);
-      this.glows.push({ light, from, out, area: (Math.PI * across * across) / 4, goal: new THREE.Color(0, 0, 0) });
+      this.glows.push({ light, from, out, area: (Math.PI * across * across) / 4, goal: new THREE.Color(0, 0, 0), screen });
     };
     for (const w of this.def.windows ?? []) {
       const at = new THREE.Vector3(...w.at);
@@ -219,7 +226,7 @@ export class Cabin {
     }
     for (const c of this.def.controls ?? []) {
       const node = find(c.node);
-      if (node) name(node, c.name, c.about, c.does ? { does: c.does } : {});
+      if (node) name(node, c.name, c.about, c.does ? { does: c.does } : c.works ? { works: c.works } : {});
     }
     // The cabin's own lights and their switch: a control like the others to the pointer, but what it does is the cabin's.
     const lighting = this.def.lighting;
@@ -342,14 +349,29 @@ export class Cabin {
       });
       screen.material = material;
       screen.userData.real = material;
-      this.scope = { screen, material, target, cube, at: new THREE.Vector3(...p.at), axis, up, next: 0, owed: 1, power: 0 };
+      const mechanism = model.mechanisms?.find((m) => m.id === p.mechanism) ?? null;
+      this.scope = {
+        screen,
+        material,
+        target,
+        cube,
+        at: new THREE.Vector3(...p.at),
+        axis,
+        up,
+        next: 0,
+        owed: 1,
+        power: 0,
+        mechanism,
+        held: null,
+        sees: 1,
+      };
       // (the screen gives back into the cabin what its objective sees: lit from just in front of the glass)
       const front = middle.clone().applyMatrix4(screen.matrixWorld).applyMatrix4(toModel);
       const facing = new THREE.Vector3()
         .crossVectors(material.uniforms.uAcross!.value, top)
         .transformDirection(screen.matrixWorld)
         .transformDirection(toModel);
-      glow(new THREE.Vector3(...p.at), axis, 2 * radius, front.addScaledVector(facing, 0.06));
+      glow(new THREE.Vector3(...p.at), axis, 2 * radius, front.addScaledVector(facing, 0.06), true);
       name(screen, p.name, p.about, { lookout: 'screen' });
     }
   }
@@ -438,7 +460,15 @@ export class Cabin {
     this.host.redraw();
   }
   private open = false;
-  private readonly glows: { light: THREE.PointLight; from: THREE.Vector3; out: THREE.Vector3; area: number; goal: THREE.Color }[] = [];
+  /** What comes in at each window and off the periscope's screen (`screen`: it gives back only what its objective sees). */
+  private readonly glows: {
+    light: THREE.PointLight;
+    from: THREE.Vector3;
+    out: THREE.Vector3;
+    area: number;
+    goal: THREE.Color;
+    screen: boolean;
+  }[] = [];
   private readonly probe = {
     target: new THREE.WebGLRenderTarget(PROBE, PROBE, { type: THREE.HalfFloatType }),
     camera: new THREE.PerspectiveCamera(110, 1, 0.2, 1000),
@@ -527,9 +557,17 @@ export class Cabin {
     this.probe.owed = on ? this.glows.length : 0;
     if (this.scope) {
       this.scope.owed = 1;
-      this.scope.material.uniforms.uOn!.value = on ? 1 : 0;
+      this.scope.material.uniforms.uOn!.value = on ? this.scope.sees : 0;
     }
     this.host.redraw();
+  }
+
+  /**
+   * A mechanism of the model is worked by hand and stands `travel` of the way out (null: back on its programme). If
+   * it is the periscope's, what the screen shows goes with it.
+   */
+  setMechanism(id: string, travel: number | null): void {
+    if (this.scope?.mechanism?.id === id) this.scope.held = travel;
   }
 
   /** The flight deck has taken the flight (every sample will come through `fly`), or given it back to the record. */
@@ -693,6 +731,19 @@ export class Cabin {
       lever.node.quaternion.copy(lever.home).multiply(q.setFromAxisAngle(AXIS_X, lever.now));
       moved = true;
     }
+    // The periscope shows the outside as far as its objective is out: nothing until the lens is clear of its door,
+    // all of it from a little before it stands out. Drawn in, the objective looks at the dark behind its door.
+    const sc = this.scope;
+    if (sc?.mechanism) {
+      const out = sc.held ?? travelAt(sc.mechanism, sample?.t ?? t);
+      const sees = THREE.MathUtils.smoothstep(out, SCOPE_CLEAR, SCOPE_OUT);
+      if (sees !== sc.sees) {
+        if (sees > 0 && sc.sees === 0) sc.owed = 1; // (its faces were not drawn while it saw nothing)
+        sc.sees = sees;
+        if (this.aboard) sc.material.uniforms.uOn!.value = sees;
+        moved = true;
+      }
+    }
     this.seen();
     if (this.aboard && this.probe.owed > 0) moved = true; // (a frame, so the next window is looked out of)
     // the windows' light and the screen's: toward what was last seen outside each, and out when nobody is aboard
@@ -796,8 +847,17 @@ export class Cabin {
     // Glanced at from the couch, where the screen is a hand's breadth on the page, it is one face a frame.
     s.next++;
     const round = AROUND[(s.next >> (this.watched ? 0 : 1)) % AROUND.length]!;
-    const todo: number[] = s.owed ? [...AROUND, AHEAD] : this.watched ? (s.power ? [AHEAD] : [AHEAD, round]) : [s.next % 2 ? AHEAD : round];
-    s.owed = 0;
+    // (drawn in, the objective sees nothing: no face is drawn for it)
+    const todo: number[] = !s.sees
+      ? []
+      : s.owed
+        ? [...AROUND, AHEAD]
+        : this.watched
+          ? s.power
+            ? [AHEAD]
+            : [AHEAD, round]
+          : [s.next % 2 ? AHEAD : round];
+    if (s.sees) s.owed = 0;
     const kept = {
       position: camera.position.clone(),
       target: renderer.getRenderTarget(),
@@ -854,7 +914,7 @@ export class Cabin {
           g += Math.min(BRIGHTEST, THREE.DataUtils.fromHalfFloat(pr.pixels[i + 1]!));
           b += Math.min(BRIGHTEST, THREE.DataUtils.fromHalfFloat(pr.pixels[i + 2]!));
         }
-        const k = (WINDOW_GAIN * due.area) / (PROBE * PROBE);
+        const k = ((due.screen ? s.sees : 1) * (WINDOW_GAIN * due.area)) / (PROBE * PROBE);
         due.goal.setRGB(r * k, g * k, b * k);
         sky.camera.fov = was.fov;
         sky.camera.updateProjectionMatrix();
@@ -933,6 +993,9 @@ const BRIGHTEST = 1;
 const LAMP_LIT = 1.6;
 /** The exposure the cabin's lights are set for: a day's on the pad. Away from it they are turned down or up by as much, so the cabin reads the same. */
 const DAY_EXPOSURE = 1;
+/** How far out a periscope's objective must be before its screen shows anything (its lens is then clear of its door), and to show it all. */
+const SCOPE_CLEAR = 0.45;
+const SCOPE_OUT = 0.85;
 /** How quickly a lamp comes on or goes out, and how quickly a switch's lever goes over, seconds. */
 const LAMP_TAU = 0.035;
 const SWITCH_TAU = 0.03;

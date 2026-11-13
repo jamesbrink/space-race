@@ -91,7 +91,7 @@ test('a sequence plays each motion over its own stretch, and goes back the way i
 test('what moves on the clock goes by the clock alone: the slider takes the part apart and leaves its door as the clock has it', async () => {
   const THREE = await import('three');
   const { Exploder } = await import('../src/viewer/explode.ts');
-  const { periscopeMoves } = await import('../missions/usa/mercury/vehicles/periscope.ts');
+  const { periscopeMoves, TAKES } = await import('../missions/usa/mercury/vehicles/periscope.ts');
   const root = new THREE.Group();
   const body = new THREE.Group();
   body.name = 'Afterbody';
@@ -99,30 +99,70 @@ test('what moves on the clock goes by the clock alone: the slider takes the part
   door.name = 'Periscope_Door';
   const lens = new THREE.Group();
   lens.name = 'Periscope_Objective';
+  const link = new THREE.Group();
+  link.name = 'Periscope_Link';
+  lens.add(link);
   body.add(door, lens);
   root.add(body);
-  const clocked = periscopeMoves(
-    [0, 1, 0],
-    [0.1, 0, 0],
-    [
-      [-1000, true],
-      [-35, false],
-      [150, true],
-    ],
-  );
+  // each node's own motion, as the model's script writes it (three samples: built, half way, out): the door turns a
+  // quarter about +Y, the objective slides 0.1 m along +X, the link stays as built
+  const quarter = Math.SQRT1_2;
+  door.userData.run = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, Math.sin(Math.PI / 8), 0, Math.cos(Math.PI / 8), 0, 0, 0, 0, quarter, 0, quarter];
+  lens.userData.run = [0, 0, 0, 0, 0, 0, 1, 0.02, 0, 0, 0, 0, 0, 1, 0.1, 0, 0, 0, 0, 0, 1];
+  link.userData.run = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1];
+  const clocked = periscopeMoves([
+    [-1000, true],
+    [-35, false],
+    [150, true],
+  ]);
   const part = { node: 'Afterbody', name: '', summary: '', detail: '', explode: [0, 5, 0], order: 0, clocked };
   const exploder = new Exploder(root, [part]);
   assert.ok(exploder.onTheClock);
   const turn = () => 2 * Math.acos(Math.min(1, Math.abs(door.quaternion.w)));
+  const near = (a, b) => Math.abs(a - b) < 1e-6;
   assert.ok(turn() < 1e-9 && lens.position.x === 0, 'as built (no clock): shut, drawn in');
   exploder.clock(-500);
-  assert.ok(Math.abs(turn() - (105 * Math.PI) / 180) < 1e-6 && Math.abs(lens.position.x - 0.1) < 1e-9, 'on the pad: open, out');
+  assert.ok(near(turn(), Math.PI / 2) && near(lens.position.x, 0.1), 'on the pad: open, out');
+  exploder.clock(-35 + TAKES / 2);
+  assert.ok(
+    near(turn(), Math.PI / 4) && near(lens.position.x, 0.02),
+    'half way in: where its own motion has it half way, not half of the whole',
+  );
+  exploder.clock(-35 + TAKES / 4);
+  assert.ok(near(turn(), (3 * Math.PI) / 8) && near(lens.position.x, 0.06), 'between two samples: straight from the one to the other');
   exploder.clock(0);
   assert.ok(turn() < 1e-6 && Math.abs(lens.position.x) < 1e-9, 'at liftoff: shut, drawn in');
+  exploder.clock(150 + TAKES / 2);
+  assert.ok(near(turn(), Math.PI / 4), 'and out again at separation, the same motion');
   exploder.clock(200);
   exploder.set(1);
   assert.ok(Math.abs(body.position.y - 5) < 1e-9, 'the slider still takes the part apart');
-  assert.ok(Math.abs(turn() - (105 * Math.PI) / 180) < 1e-6, 'and leaves the door as the clock has it');
+  assert.ok(near(turn(), Math.PI / 2), 'and leaves the door as the clock has it');
+  // worked by hand: held at an instant of its own, whatever the clock says, and given back
+  for (const node of ['Periscope_Door', 'Periscope_Objective', 'Periscope_Link']) exploder.work(node, 150 + TAKES / 2);
+  exploder.clock(200);
+  assert.ok(near(turn(), Math.PI / 4) && near(lens.position.x, 0.02), 'held half way out with the clock long past');
+  for (const node of ['Periscope_Door', 'Periscope_Objective', 'Periscope_Link']) exploder.work(node, null);
+  exploder.clock(200);
+  assert.ok(near(turn(), Math.PI / 2), 'and on the clock again');
+});
+
+test('a node’s own motion: its samples, evenly spaced, and straight between them', async () => {
+  const THREE = await import('three');
+  const { runAt } = await import('../src/viewer/explode.ts');
+  const by = new THREE.Vector3();
+  const turn = new THREE.Quaternion();
+  const run = [0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 0, 0, 0, 1, 2, 2, 3, 0, 0, 1, 0];
+  assert.ok(runAt(run, 0, by, turn) && by.length() === 0 && turn.w === 1);
+  assert.ok(runAt(run, 0.25, by, turn));
+  assert.deepEqual(by.toArray(), [0.5, 1, 1.5]);
+  assert.ok(runAt(run, 1, by, turn));
+  assert.deepEqual(by.toArray(), [2, 2, 3]);
+  assert.ok(Math.abs(turn.z - 1) < 1e-12, 'turned half round about Z at its end');
+  assert.ok(runAt(run, 0.75, by, turn) && Math.abs(turn.z - Math.SQRT1_2) < 1e-9, 'and a quarter round half way through its last step');
+  assert.ok(runAt(run, 7, by, turn) && by.x === 2, 'past its end it stays at its end');
+  assert.equal(runAt(undefined, 0.5, by, turn), false, 'a node with no motion of its own is left alone');
+  assert.equal(runAt([0, 0, 0, 0, 0, 0, 1], 0.5, by, turn), false, 'and one sample is not a motion');
 });
 
 test('every node that moves is a function of its part; the flight names them and puts nodes together', async () => {

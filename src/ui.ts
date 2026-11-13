@@ -206,7 +206,7 @@ function legendMarkup(f: Flight): string {
         ...(lookouts.length
           ? [[lookouts.map((_, i) => String(i + 1)), `lean to: ${lookouts.map((l) => l.name.toLowerCase()).join(' · ')}`] as LegendRow]
           : []),
-        ...(lighting ? [[['N'], lighting.name.toLowerCase()] as LegendRow, ['click', 'work a control'] as LegendRow] : []),
+        ['click', lighting ? `work a control · the ${lighting.name.toLowerCase()} switch` : 'work a control'],
         ...camera('look ahead'),
       ],
       more: rest([]),
@@ -235,7 +235,6 @@ function legendMarkup(f: Flight): string {
       ],
       more: [
         ['On a ladder', [['W · S', 'up · down']]],
-        ...(lighting ? [['In the couch', [[['N'], lighting.name.toLowerCase()] as LegendRow]] as [string, LegendRow[]]] : []),
         ['Clock', clock],
         ['Page', page],
       ],
@@ -1080,9 +1079,9 @@ export class Ui {
               `<button class="switch" data-lookout="${i}" aria-pressed="false" title="Lean to the ${esc(name.toLowerCase())} and look out; again, or Esc, to sit back (${i + 1})"><kbd>${i + 1}</kbd>${esc(name)}</button>`,
           )
           .join('') +
-        // the cabin's own lights: the switch on its console, as a switch here (N)
+        // the cabin's own lights: the switch on its console, as a switch here
         (lights
-          ? `<button class="switch" data-cabin-lights aria-pressed="false" title="Throw the ${esc(lights.name.toLowerCase())} switch (N)"><kbd>N</kbd><span></span></button>`
+          ? `<button class="switch" data-cabin-lights aria-pressed="false" title="Throw the ${esc(lights.name.toLowerCase())} switch: or click it on its console"><span></span></button>`
           : '');
     }
     bar.hidden = names.length === 0;

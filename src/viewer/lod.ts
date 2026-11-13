@@ -465,6 +465,7 @@ export class Staged {
     markDriven(object, this.parts);
     const exploder = new Exploder(object, this.parts);
     for (const [node, reading] of this.held) exploder.hold(node, reading);
+    for (const [node, instant] of this.worked) exploder.work(node, instant);
     for (const node of this.loose) exploder.loosen(node, true);
     exploder.set(this.t);
     if (this.clockT !== null) exploder.clock(this.clockT);
@@ -495,6 +496,22 @@ export class Staged {
     for (const e of this.exploders) e.clock(t);
     return true;
   }
+
+  /**
+   * Hold nodes' motions on the clock at an instant of their own, at every level of detail (null: let them follow the
+   * clock again), and show it: a mechanism worked by hand. Returns whether anything changed.
+   */
+  work(nodes: readonly string[], instant: number | null): boolean {
+    if (nodes.every((node) => (instant === null ? !this.worked.has(node) : this.worked.get(node) === instant))) return false;
+    for (const node of nodes) {
+      if (instant === null) this.worked.delete(node);
+      else this.worked.set(node, instant);
+      for (const e of this.exploders) e.work(node, instant);
+    }
+    if (this.clockT !== null) for (const e of this.exploders) e.clock(this.clockT);
+    return true;
+  }
+  private readonly worked = new Map<string, number>();
 
   /** Hold one node's motions at a slider reading of its own, at every level of detail (null: release it), and show it. */
   hold(node: string, reading: number | null): void {

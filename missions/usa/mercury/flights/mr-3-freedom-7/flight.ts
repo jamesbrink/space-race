@@ -32,30 +32,29 @@ import {
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
-import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
+import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
 
 /**
- * Freedom 7's periscope, out and in (vehicles/periscope.ts). The axes are mercury_capsule.periscope_hinge's for this
- * capsule (its door at 80 to 100 degrees round from the pilot's right, its tube's last run in the cabin, the hatch on +X).
+ * Freedom 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
+ * objective and the link between them each carry their motion: mercury_capsule.periscope_run).
  * Out on the pad until the umbilical was released at T-35 s, the door seen to shut on the film (Postlaunch Report,
  * 10.7.2; Shepard's report, 7.1: "the head of the boom start to drop away as the periscope retracted"); out at
- * separation, 02:32.3 ("Periscope is coming out", 02:35.5: Figure 7.3-2, the pilot's voice); in at 06:44 (Results, p. 10);
- * out with the drogue at 09:38.1 ("as did the periscope", Results, p. 113; "The periscope is out", 09:39, Figure 7.3-2).
+ * separation, 02:32.3 ("Periscope is coming out", 02:35.5: Figure 7.3-2, the pilot's voice); in at 06:44, thirty
+ * seconds after the retropack was let go at 06:13.6 (Results, p. 10; "Periscope is retracting", 06:44.5); out with the
+ * drogue at 09:38.1, at 21,000 ft, where this capsule's wiring put it ("as did the periscope", Results, p. 113; "The
+ * drogue is green at 21,000. The periscope is out", 09:39, Figure 7.3-2).
  * Documented, but for T-35 s, which is derived from TM X-53107's count.
  */
-const PERISCOPE = periscopeMoves(
-  [0.1979, 0.9397, 0.279],
-  [-0.1013, 0.0088, -0.1013],
-  [
-    [ON_THE_PAD, true],
-    [-35, false],
-    [152.3, true],
-    [404, false],
-    [578.1, true],
-  ],
-);
+const PERISCOPE_EVENTS: [number, boolean][] = [
+  [ON_THE_PAD, true],
+  [-35, false],
+  [152.3, true],
+  [404, false],
+  [578.1, true],
+];
+const PERISCOPE = periscopeMoves(PERISCOPE_EVENTS);
 const LBF = 4.4482216;
 const LB = 0.45359237;
 
@@ -150,8 +149,9 @@ const vehicleParts: Part[] = [
       'window, so the periscope was Shepard’s main view outside. Its door, under his feet, is shut here as it was at ' +
       'liftoff: the objective stood out on the pad and was drawn in, the door shutting over it, when the umbilical ' +
       'was pulled 35 seconds before. It came out at separation, went in for the entry and came out again with the ' +
-      'drogue; at the launch site and in flight it does so on the clock. When each motion happened is documented; ' +
-      'how long each took, and how far the door opens, are estimated.',
+      'drogue; at the launch site and in flight it does so on the clock, and flying the flight yourself you can ' +
+      'send it out or in by hand. When each motion happened is documented, and that a link from the periscope’s ' +
+      'cartridge worked the door; the linkage itself, and so how far the door opens, are estimated.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -160,6 +160,8 @@ const vehicleParts: Part[] = [
       ['Thrusters', 'roll: 6 lbf and 1 lbf'],
     ],
     clocked: PERISCOPE,
+    // flying it yourself, a right click on the afterbody offers the periscope by hand (vehicles/periscope.ts)
+    commands: [{ label: 'Extend the periscope', back: 'Retract the periscope', ask: 'work:periscope' }],
     explode: [0, 9.9, 0],
     order: 3,
   },
@@ -369,6 +371,8 @@ const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/usa/mercury/mr-3-freedom-7/vehicle.glb',
+  // the periscope on its programme, and in the pilot's hands in a flight flown by hand (vehicles/periscope.ts)
+  mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   scale: '25.41 m tall · spacecraft 7.91 m · to scale',
   backdrop: 'cape-canaveral',
   slider: ['Assembled', 'Exploded'],
@@ -645,6 +649,16 @@ vehicle.cabin = {
       name: 'Hand controller',
       about: 'Three axes in one hand: fore and aft for pitch, side to side for roll, a twist for yaw. It moves as the keys do.',
     },
+    {
+      // The manual extension-retraction handle (SEDR 104, 12-16; SEDR 109-7, 2-19): a ratchet on the periscope's upper
+      // housing that drove the cartridge through a clutch when its motor could not. Where the model has it is ours.
+      node: 'Ctl_PeriscopeHandle',
+      name: 'Periscope ratchet handle',
+      about:
+        'Pulled up and worked, it ratchets the periscope out or in by hand through a clutch, for when its motor will not. ' +
+        'Flying the flight yourself, it sends the periscope the other way; it goes back to its programme at the next programmed event.',
+      works: 'periscope',
+    },
   ],
   // The cabin floodlights' switch: CABIN LITES at the outboard top of the left console, OFF above and ON below
   // (Postlaunch Report, Figure 3.1-2), found ON after the flight (Figure 10.1-1); the model is built ON. Two four-watt
@@ -676,7 +690,10 @@ vehicle.cabin = {
     screen: 'Periscope_Screen',
     name: 'Periscope',
     about:
-      'An 8 in screen of the Earth under the capsule: with no window ahead, Shepard’s main view outside. Click to look into it, and again for high power.',
+      'An 8 in screen of the Earth under the capsule: with no window ahead, Shepard’s main view outside. Click to look into it, and again for high power. ' +
+      'It shows nothing while its objective is drawn in behind its door: for the climb, and through the entry.',
+    // (drawn in, the objective looks at the dark behind its door: what the screen then showed is not in anything read)
+    mechanism: 'periscope',
     // the objective's cartridge stands out of the cone under the pilot's feet, level with the upper line of UNITED STATES
     // (station 37, estimated from the flown capsule), 135 degrees from +X as the capsule stands
     at: [-0.494, 0.974, -0.494],
