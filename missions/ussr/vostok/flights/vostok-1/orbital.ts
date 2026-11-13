@@ -18,6 +18,9 @@ const guess = (value: number, source: string): Measure => m(value, 'estimated', 
 export const MSK = (h: number, min: number, s = 0): number => (h - 9) * 3600 + (min - 6) * 60 + (s - 59.7);
 
 const G0 = 9.80665;
+/** WGS 84's GM, m^3/s^2, and the reference ball the record's heights are over (`orbit.radius`), m: for the planned orbit's speed. */
+const GM = 3.986004418e14;
+const BALL = 6_371_000;
 const OKB1 =
   'OKB-1, preliminary report of 3 May 1961 (Korolev, Bushuyev, Tikhonravov; RKK Energia archive 13029; Wilson Center record 260547)';
 const GAGARIN = 'Gagarin’s report to the State Commission, 13 April 1961 (APRF f. 3, op. 47, d. 278; Wilson Center record 260544)';
@@ -128,6 +131,18 @@ export const orbital: OrbitalFlight = {
         MSK(9, 18, 28),
         `${OKB1}: “separated from the booster at 0918:28”. ${ZAK} notes 09:18:07 from another source (Novosti Kosmonavtiki)`,
       ),
+      // cut as its integrator cut it: at the speed the planned orbit needs, and the error the record gives for the day
+      velocity: {
+        speed: derived(
+          Math.sqrt(GM * (2 / (BALL + 180_000) - 1 / (BALL + (180_000 + 230_000) / 2))),
+          'the space-fixed speed the planned orbit needs at its perigee, level: √(GM (2/r_p − 1/a)) for 180 by 230 km (Zak’s table of the plan: secondary) over the record’s 6,371 km ball (`orbit.radius`), GM 3.986004418e14 m³/s² (WGS 84): 7,815.2 m/s. ' +
+            'The integrators were set for the planned orbit (Chertok, vol. 2, p. 304; vol. 3, p. 291); how each was set (each stage’s apparent velocity, from what instant) has not been found, so the speed the orbit asks of the whole is taken',
+        ),
+        over: doc(
+          25.43,
+          `${BATURIN}: «Суммарное завышение скорости носителя составило 25,43 м/с» — the core cut 0.46 s late by the autonomous system’s time mark, 22.0 m/s over; Block E 2.4 s longer than calculated. Chertok, vol. 3, p. 291: the integrator was “set for a velocity exceeding the design velocity for the radio system”`,
+        ),
+      },
     },
   ],
   events: [
@@ -417,6 +432,15 @@ export const orbital: OrbitalFlight = {
         tolerance: 5_000,
         confidence: 'documented',
         source: `${OKB1}: 181 km. NOT an independent check: the law is solved to put the cutoff level at the planned 180 km, so this holds by construction`,
+      },
+      {
+        id: 'cutoffAt',
+        label: 'Third stage cut off',
+        value: 676,
+        unit: 's',
+        tolerance: 3,
+        confidence: 'documented',
+        source: `${SIDDIQI}, p. 277: T+676 s. Added with the cut on velocity, before it was flown: 3 s is the record’s second and Baturin’s 2.4 s of over-burn`,
       },
       {
         id: 'apogee',

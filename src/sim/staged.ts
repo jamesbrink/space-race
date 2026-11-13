@@ -114,6 +114,8 @@ export interface AscentSummary {
   anomaly: number;
   /** What the spacecraft weighs when it leaves the last stage, by the record's stage figures, kg: against its own published mass. */
   massLeft: number;
+  /** When the last stage stopped, seconds from liftoff: its cutoff, or where it is cut on its velocity, the instant it reached it. */
+  cutoffAt: number;
 }
 
 export interface Ascended {
@@ -158,11 +160,16 @@ export function integral(curve: Curve | undefined, a: number, b: number): number
   return sum;
 }
 
-/** When each stage burns: its ignition, and when it stops (its cutoff, or when its usable propellant is gone if sooner). */
+/**
+ * When each stage burns: its ignition, and when it stops (its cutoff, or when its usable propellant is gone if sooner). A
+ * stage cut on its velocity (`StageRecord.velocity`) stops here only when it runs dry: the run finds when it reaches its
+ * speed, and that is its stop if it comes first.
+ */
 export function schedule(o: OrbitalFlight): { from: number; to: number; dry: boolean }[] {
   return o.stages.map((s) => {
     const from = s.ignition.value;
-    const cutoff = s.cutoff.value;
+    // (a stage cut on its velocity burns until it is dry at the latest: its load over its flow, at the least throttle there is, past that)
+    const cutoff = s.velocity ? from + (10 * (s.usable ?? s.propellant).value) / flowOf(s) : s.cutoff.value;
     const load = (s.usable ?? s.propellant).value;
     const burned = (t: number) => flowOf(s) * integral(s.throttle, from, t);
     if (burned(cutoff) <= load) return { from, to: cutoff, dry: false };
@@ -214,6 +221,8 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
   const tilted = (tilt: number): Vec3 => add(scale(upIn, Math.cos(tilt)), scale(down0, Math.sin(tilt)));
 
   const plan = schedule(o);
+  // a stage cut on its velocity: the space-fixed speed its integrator stops it at (the design's, and the error it had)
+  const cutAt = o.stages.map((st) => (st.velocity ? st.velocity.speed.value + (st.velocity.over?.value ?? 0) : Infinity));
   const flows = o.stages.map(flowOf);
   const areas = o.stages.map(exitAreaOf);
   const burned = (i: number, t: number) => flows[i]! * integral(o.stages[i]!.throttle, plan[i]!.from, Math.min(t, plan[i]!.to));
@@ -343,6 +352,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     arc: Number.NaN,
     anomaly: Number.NaN,
     massLeft: Number.NaN,
+    cutoffAt: Number.NaN,
   };
   // which stage's burn bounds each of the three loads read: the first stage's separation, the next stage's stop, the last's
   const firstOff = Math.min(...stageSep);
@@ -354,18 +364,35 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     const h = Math.min(STEP, mark - t);
     const gone = droppedBy(t);
     const m = mode;
+    const [before, t0] = [state, t];
     state = step(state, t, h, (s, tt) => forces(s, tt, m, gone).accel);
     t = Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
+    // a stage cut on its velocity, when it reaches it in this step: the step is flown again to the instant it does, found by
+    // the secant on the step's length (so the instant is a smooth function of the inputs, as the law's solution needs)
+    const crossing = o.stages.findIndex((st, i) => st.velocity && t > plan[i]!.from && t <= plan[i]!.to && length(state.v) >= cutAt[i]!);
+    if (crossing >= 0 && length(before.v) < cutAt[crossing]!) {
+      const want = cutAt[crossing]!;
+      const at = (k: number) => length(step(before, t0, h * k, (q, tt) => forces(q, tt, m, gone).accel).v) - want;
+      let [k0, f0, k1, f1] = [0, length(before.v) - want, 1, length(state.v) - want];
+      for (let n = 0; n < 8 && Math.abs(f1) > 1e-9; n++) {
+        const k2 = Math.min(1, Math.max(0, k1 - (f1 * (k1 - k0)) / (f1 - f0)));
+        [k0, f0, k1, f1] = [k1, f1, k2, at(k2)];
+      }
+      state = step(before, t0, h * k1, (q, tt) => forces(q, tt, m, gone).accel);
+      t = t0 + h * k1;
+      plan[crossing]!.to = t;
+    }
     const s = sample(state, t);
     // the loads, as they stand before whatever happens at this instant
     if (s.q > summary.maxQ) [summary.maxQ, summary.maxQAt] = [s.q, t];
     if (t <= firstOff) summary.firstG = Math.max(summary.firstG, s.g);
     else if (t <= coreOff) summary.coreG = Math.max(summary.coreG, s.g);
-    else if (t <= tEnd) summary.lastG = Math.max(summary.lastG, s.g);
+    else if (t <= plan[plan.length - 1]!.to) summary.lastG = Math.max(summary.lastG, s.g);
     if (t === 60) summary.minuteG = s.g;
     for (const e of o.events) if (e.at.value === t) at[e.id] = s;
-    if (t === tEnd) {
+    if (t === plan[plan.length - 1]!.to) {
       const el = elementsOf(state.r, state.v);
+      summary.cutoffAt = t;
       summary.perigee = el.a * (1 - el.e) - radius;
       summary.apogee = el.a * (1 + el.e) - radius;
       summary.inclination = el.i / DEG;

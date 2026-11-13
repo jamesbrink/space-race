@@ -507,3 +507,31 @@ burn is the input to find first, then the levels of the engines' intermediate an
 kind; flown here at rated thrust, which overdraws the core's load by 1.7 t at its recorded cutoff), then a pitch
 programme. The real vehicle hid all of it: its integrators cut each stage on the velocity reached, and on 12 April that
 came out 25.43 m/s fast (B21), where this run, cut by the clock at the record's instants, is 142.
+
+### Cut on velocity, as the integrators cut it
+
+The run above burned every stage to its recorded instant. The vehicle did not: its integrators cut each stage on the
+velocity reached. Block E is now cut when its space-fixed speed reaches what the planned orbit needs at its perigee
+(7,815.2 m/s, derived from Zak's 180 by 230 km over the 6,371 km ball) plus the documented 25.43 m/s over the design
+(B21): `StageRecord.velocity`. The strap-ons keep the integrator's documented 119.50 s; the core keeps its 300 s,
+because its design cutoff velocity has not been found. The recorded 676 s becomes a check (3 s, set before the run).
+
+| | Burned to the times | Cut on velocity | Record | |
+| --- | --- | --- | --- | --- |
+| Block E cut off | 676 s (input) | **659.3 s, 338 kg left** | 676 s (S) | **misses by -16.7 s**: the vehicle as recorded still has 142 m/s more than it needs, and now it shows here |
+| Orbit at cutoff | 180 by 844 km | 180 by 317 km, 89.33 min | 181 by 327 km, 89.44 min | apogee **misses by -10.04 km** (tolerance 10): the record's own figures do not quite agree (below) |
+| Apogee flown round | 864 km | 335 km | 327 km | misses by +8 km: the elements at cutoff and the orbit flown round differ by 18 km under J2 |
+| Height at 10:36 | 327 km | 132 km | 150 to 170 | misses by -23 km (the Sun-aimed burn, as in the coast from the published orbit) |
+| At 7 km | 10:48:58 | 10:45:29 | 10:42 | misses by 3.5 min |
+| Landing, across | 96 km left | **7 km left** | | **holds** (25 km) |
+| Landing, along | 325 km short | 559 km beyond | | misses |
+| Module, pilot down | 10:53:46, 11:02:22 | 10:50:17, 10:58:52 | 10:48, 10:53 | miss, by the late arrival at 7 km and the descent's own length |
+
+**The record does not quite add up.** The planned orbit needs 7,815.2 m/s at 180 km; 25.43 m/s over it is 7,840.6;
+the published 181 by 327 km needs 7,843.8. So cut where the record says, level at 180 km, the orbit is 317 km high at
+its top, not 327. Which figure is off (Zak's planned orbit, Baturin's 25.43, the reference ball, or what kind of
+elements the published orbit is) is not known, and nothing was changed.
+
+What moves the cutoff now (the law solved afresh): the core's load without its peroxide and nitrogen leaves Block E
+dry before its speed (-314 m/s, 19.7 s later); the strap-ons' likewise (-19 m/s); the law's shape 10 s; drag x 1.3, 8 s.
+

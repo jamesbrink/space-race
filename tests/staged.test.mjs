@@ -27,11 +27,15 @@ const where = (f) => [siteFrame(f.site), julianDate(f.launch), f.site.seaLevel.v
  * by check id: how far out (run less record, in the check's unit), give or take `slack`, and why.
  */
 const FAST =
-  'The ascent as recorded is too fast: at the last cutoff it has 7,986 m/s where the record’s orbit needs 7,844 at 180 km, 142 m/s over, and passes that speed 16 s before the recorded cutoff. ' +
-  'Nothing was tuned. The inputs that own it, each worth as much or more (the last test): which part of each stage’s published load goes through the chambers (Brügge counts 3.12 t of the core’s ' +
-  '90.1 t and 1.47 t of a strap-on’s 39.16 t as peroxide and nitrogen: taken out, the core alone is 487 m/s slower); the engines’ intermediate and final stages of thrust, documented in kind and ' +
-  'not in level, and so flown at rated thrust; the shape of the steering law (from the core’s cutoff rather than the strap-ons’: 89 m/s slower) and the estimated drag (x 1.3: 71 m/s). ' +
-  'On 12 April the vehicle was 25.43 m/s too fast (Baturin); the integrators that cut it are what this run does not have';
+  'The vehicle as recorded has more than it needs: burned to the recorded instants it is 142 m/s fast at its last cutoff (the comparison the test prints). Cut on its velocity, as its ' +
+  'integrator cut it, Block E reaches its speed 16.7 s before the recorded 676 s with 338 kg still aboard. Nothing was tuned. The inputs that own it (the last test): which part of each ' +
+  'stage’s published load goes through the chambers (Brügge counts 3.12 t of the core’s 90.1 t and 1.47 t of a strap-on’s 39.16 t as peroxide and nitrogen: taken out, Block E runs dry ' +
+  'before its speed and the cutoff comes 19.7 s later); the engines’ intermediate and final stages of thrust, documented in kind and not in level, and so flown at rated thrust; the shape of the ' +
+  'steering law (10 s) and the estimated drag (8 s)';
+const KEPLER =
+  'The record does not quite add up: the planned orbit (180 by 230 km, Zak) needs 7,815.2 m/s at its perigee, and 25.43 m/s over it (Baturin) is 7,840.6, where the published 181 by 327 km ' +
+  'needs 7,843.8. Cut at that speed, level at 180 km, the orbit at cutoff is 180 by 317 km over the 6,371 km ball. Which of the figures is off (the planned orbit as Zak tabulates it, ' +
+  'Baturin’s 25.43, the reference ball, or what kind of elements the published orbit is) is not known; nothing was changed to bring it in';
 const MISSES = {
   'ussr/vostok/vostok-1': {
     ascent: {
@@ -42,40 +46,50 @@ const MISSES = {
           'A minute up the run reads 2.19 g; Zak has Gagarin feeling 3 to 4. Thrust and mass alone give 2.4 g there (4.6 MN on 191 t), less 0.2 for the drag, and Soyuz’s manual shows 2.6 g ' +
           'at 60 s on the same first stages: the record’s figure is a man’s feeling, not an accelerometer’s',
       },
-      apogee: { by: 517_150, slack: 2_000, why: FAST },
-      period: { by: 316.7, slack: 2, why: `It follows from the apogee: ${FAST}` },
+      cutoffAt: { by: -16.7, slack: 0.5, why: FAST },
+      apogee: { by: -10_044, slack: 300, why: `44 m outside its 10 km: ${KEPLER}` },
     },
     whole: {
-      period: { by: 316.6, slack: 2, why: `The osculating period of the orbit the ascent left it in: ${FAST}` },
-      apogee: { by: 536_930, slack: 2_000, why: FAST },
-      separationAltitude: {
-        by: 172_240,
-        slack: 3_000,
-        why: `From an orbit 844 km high at its top the burn at the record’s time leaves it at 327 km at 10:36, not 150: ${FAST}`,
+      period: {
+        by: -6.85,
+        slack: 1,
+        why: `The osculating period of the orbit the ascent left it in, against the period the published heights give by Kepler, which the record matches only over its 6,371 km ball: ${KEPLER}`,
       },
-      ejectionAt: { by: 418.7, slack: 10, why: `Seven minutes late at 7 km, coming down from the higher orbit: ${FAST}` },
-      crossTrack: {
-        by: -95_770,
-        slack: 3_000,
-        why: 'It comes down 96 km to the left of the record’s landing: the braking burn pushes along the line from the Sun, 65 per cent of it across the track (the coast’s own MISSES, tests/orbital.test.mjs), from an orbit that is not the record’s',
+      apogee: {
+        by: 7_956,
+        slack: 300,
+        why: 'Flown round under J2 the orbit tops out 18 km above the 317 km its elements at cutoff say, at 335 km; the coast from the published elements does the same (tests/orbital.test.mjs, 345 km): what kind of elements the published orbit is decides it',
+      },
+      separationAltitude: {
+        by: -23_074,
+        slack: 1_500,
+        why: 'At 10:36 it is at 132 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170 (their reckonings, not measurements). The burn is aimed along the line from the Sun, 30 degrees below level, which brings it down early: `retro.aim`, as in the coast’s own misses',
+      },
+      ejectionAt: {
+        by: 209.3,
+        slack: 10,
+        why: 'It reaches 7 km at 10:45:29, 3.5 minutes after the record’s 10:42; a minute and more of it is the landing being 559 km long, the rest a descent slower than the flight’s, which points at `retro.aim` again',
       },
       alongTrack: {
-        by: -325_420,
+        by: 559_180,
         slack: 10_000,
-        why: `It comes down 325 km short along its own track: a higher, slower orbit brought round to a burn at the record’s instant: ${FAST}`,
+        why:
+          'It comes down 559 km beyond the record’s landing along the track, and 7 km across it (which holds: the plane flown from the pad is the record’s to a few km). Baturin has the real braking ' +
+          'burn short by a second and the ship 600 km long against the plan; here the burn is the record’s. What owns the rest: the burn’s aim along the line from the Sun (straight against the motion ' +
+          'it lands 453 km shorter in the coast from the published orbit), and the instant of the timer measured on an orbit 3 m/s off the record’s',
       },
     },
     descent: {
       'module.at': {
-        by: 347,
+        by: 137.5,
         slack: 10,
-        why: 'It reaches 7 km late, by the higher orbit (see the coast’s ejectionAt): the descent itself takes 6 min 10 s from 7 km against the record’s 6 at most',
+        why: 'Late by its late arrival at 7 km (see the coast’s ejectionAt): from 7 km the module takes 6 min 10 s, the record’s clocks at most 6',
       },
       'pilot.at': {
-        by: 562.3,
+        by: 353,
         slack: 10,
         why:
-          'Late by the higher orbit, as the module is; and from 7 km he takes 13 min 23 s, where R and Z’s clocks have 11 (10:42 to 10:53) and Baturin’s 4 (10:49). ' +
+          'Late by the late arrival at 7 km, and from 7 km he takes 13 min 23 s where R and Z’s clocks have 11 (10:42 to 10:53) and Baturin’s 4 (10:49). ' +
           'Four kilometres under a canopy at the record’s own 5 m/s (which the run holds) is 13 minutes by itself: the record’s clocks and its descent figures do not agree with one another',
       },
     },
@@ -149,8 +163,10 @@ for (const f of flown) {
         assert.ok(Math.abs(isp / s.isp.seaLevel.value - 1) < 0.002, `${s.name}: sea-level impulse ${isp.toFixed(1)} s`);
       }
     }
+    // (a stage cut on its velocity stops when the run says: shown with the run, below)
     const plan = schedule(o);
     o.stages.forEach((s, i) => {
+      if (s.velocity) return;
       const used = flowOf(s) * integral(s.throttle, plan[i].from, plan[i].to);
       const load = (s.usable ?? s.propellant).value;
       console.log(
@@ -184,6 +200,11 @@ for (const f of flown) {
     );
     console.log(
       `  #   at the last cutoff: ${(s.perigee / 1000).toFixed(1)} by ${(s.apogee / 1000).toFixed(1)} km, ${s.inclination.toFixed(3)} deg, ${(s.period / 60).toFixed(2)} min; ${s.cutoffSpeed.toFixed(1)} m/s; ${s.arc.toFixed(2)} deg round from the pad, true anomaly ${s.anomaly.toFixed(1)} deg`,
+    );
+    o.stages.forEach((st, i) =>
+      console.log(
+        `  #   ${st.name}: flown ${o.stages[i].ignition.value.toFixed(1)} to ${whole.ascent.stops[i].toFixed(1)} s${st.velocity ? ' (cut on its velocity)' : ''}, ${whole.ascent.left[i].toFixed(0)} kg left a unit`,
+      ),
     );
     console.log(
       `  #   the spacecraft leaves weighing ${s.massLeft.toFixed(0)} kg by the stages' figures (published: ${o.mass.value} kg); propellant left: ${whole.ascent.left.map((l) => l.toFixed(0)).join(', ')} kg a unit`,
@@ -235,7 +256,7 @@ for (const f of flown) {
       change(copy);
       const s = ascend(copy, site, jd, sea, steer(copy, site, jd, sea)).summary;
       console.log(
-        `  #   ${label.padEnd(58)} cutoff ${(s.cutoffSpeed - base.cutoffSpeed).toFixed(1).padStart(7)} m/s, apogee ${((s.apogee - base.apogee) / 1000).toFixed(0).padStart(5)} km`,
+        `  #   ${label.padEnd(58)} cutoff ${(s.cutoffAt - base.cutoffAt).toFixed(1).padStart(6)} s, ${(s.cutoffSpeed - base.cutoffSpeed).toFixed(1).padStart(7)} m/s, apogee ${((s.apogee - base.apogee) / 1000).toFixed(0).padStart(5)} km`,
       );
       return s;
     };
@@ -262,10 +283,15 @@ for (const f of flown) {
       3.986004418e14 *
         (2 / (o.orbit.radius.value + 180_000) - 1 / (o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2)),
     );
-    const reached = whole.ascent.samples.find((s) => s.t > 300 && s.speed >= need);
+    // The comparison that stays: every stage burned to the record's instants, no integrator. On 13 November 2026 that run was
+    // 142 m/s fast at its last cutoff and its orbit 180 by 844 km: the vehicle's figures, not the integrator, are what that measured.
+    const timed = structuredClone(o);
+    for (const st of timed.stages) delete st.velocity;
+    const t = ascend(timed, site, jd, sea, steer(timed, site, jd, sea)).summary;
     console.log(
-      `  #   the record’s orbit needs ${need.toFixed(1)} m/s at 180 km: the run has it at T+${reached?.t.toFixed(1)} s, ${(676 - (reached?.t ?? Number.NaN)).toFixed(1)} s before the recorded cutoff (${(base.cutoffSpeed - need).toFixed(1)} m/s over)`,
+      `  #   burned to the recorded times instead: ${t.cutoffSpeed.toFixed(1)} m/s at ${t.cutoffAt.toFixed(1)} s, ${(t.cutoffSpeed - need).toFixed(1)} over what the record's orbit needs (${need.toFixed(1)}), apogee ${(t.apogee / 1000).toFixed(0)} km`,
     );
+    assert.ok(t.cutoffSpeed - need > 100, 'the vehicle as recorded is still well over 100 m/s fast, burned to the time');
   });
 
   if (o.manual)

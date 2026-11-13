@@ -64,6 +64,11 @@ export interface StageRecord {
   usable?: Measure;
   /** The fraction of its rated thrust and flow it runs at, against seconds from liftoff: straight lines between. Left out: rated throughout. */
   throttle?: Curve;
+  /**
+   * Cut off as an integrator cut it: when the space-fixed speed reaches `speed` (what the design asked) plus `over` (the
+   * error it had on the day), m/s. With it, `cutoff` is the record's instant, held as a check and not flown to.
+   */
+  velocity?: { speed: Measure; over?: Measure };
 }
 
 /**

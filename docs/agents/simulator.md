@@ -36,8 +36,10 @@ never adjusted to bring a check in.
   pilot) down from the ejection height on its own parachutes. `tests/staged.test.mjs` holds the ascent's, the coast's and
   the descent's checks with their own `MISSES`, lists every input that is not documented and prints what each moves, the
   law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
-  Vostok 1 as recorded comes out 142 m/s fast at the last cutoff (844 km apogee for 327): the flight's mission.md, "What
-  the ascent gives", says why and what owns it.
+  A stage with `velocity` is cut as its integrator cut it, when the space-fixed speed reaches the design's plus the day's
+  error (found within the step by the secant, so the instant is smooth in the inputs), and its recorded `cutoff` becomes
+  a check. Vostok 1's Block E so cut stops 16.7 s before the recorded 676 s with 338 kg aboard: burned to the recorded
+  times instead (the test prints it) it is 142 m/s fast. The flight's mission.md, "What the ascent gives", says why.
 - **An orbital flight is flown on its own deck** (`src/orbitdeck.ts`, chosen in main.ts for a flight with
   `orbital.ascent` and no `trajectory`; `lacks` in address.ts lights Fly for it). It offers what that flight's pilot had
   and no more (`orbital.manual`). As flown, everything is automatic and the run is the record's (`flyWhole`), shown by
