@@ -1,10 +1,10 @@
 /**
- * The flights to come: those of the first twelve crewed spaceflights (the whole of Mercury and Vostok) that are not built yet, as the front page lists
- * them between the ones that are. One is dropped from the page the day a flight with its `id` is in `index.ts`, so
+ * The flights to come: those of the first crewed spaceflights (the whole of Mercury and Vostok, then the two Voskhods) that are not built yet,
+ * as the front page lists them between the ones that are. One is dropped from the page the day a flight with its `id` is in `index.ts`, so
  * nothing here has to be taken out by hand; the next ones are added as they are decided on.
  *
  * These are placeholders, not records: the names, pilots and dates are the programmes' own tables
- * (usa/mercury/README.md, ussr/vostok/README.md), which say they are set down from general knowledge and are checked
+ * (usa/mercury/README.md, ussr/vostok/README.md; the Voskhods have no programme page yet), set down from general knowledge and checked
  * against sources only when each flight is built. A date is a day, in UTC, and no more.
  */
 export interface Upcoming {
@@ -28,4 +28,12 @@ export const upcoming: Upcoming[] = [
   { id: 'usa/mercury/ma-9-faith-7', nation: 'USA', name: 'Faith 7', line: 'Mercury-Atlas 9 · Gordon Cooper', launch: '1963-05-15' },
   { id: 'ussr/vostok/vostok-5', nation: 'USSR', name: 'Vostok 5', line: 'Valery Bykovsky', launch: '1963-06-14' },
   { id: 'ussr/vostok/vostok-6', nation: 'USSR', name: 'Vostok 6', line: 'Valentina Tereshkova', launch: '1963-06-16' },
+  {
+    id: 'ussr/voskhod/voskhod-1',
+    nation: 'USSR',
+    name: 'Voskhod 1',
+    line: 'Vladimir Komarov · Konstantin Feoktistov · Boris Yegorov',
+    launch: '1964-10-12',
+  },
+  { id: 'ussr/voskhod/voskhod-2', nation: 'USSR', name: 'Voskhod 2', line: 'Pavel Belyayev · Alexei Leonov', launch: '1965-03-18' },
 ];
