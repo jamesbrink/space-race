@@ -401,7 +401,9 @@ def build_crew_cabin(M, window: dict) -> None:
     mercury_cabin_11.name_things(g)
     print(f"mr-4 cabin: {where}")
     mercury_capsule.oxygen_and_bag(M, g)
-    mercury_cabin.shade(g, where["lamps"], (bpy.data.objects["Hatch_Lining"],))
+    # (what lets light in with the lamps out: the window's inner panes and the periscope's screen)
+    openings = [(window["centre"], 0.5 * window["pane"][1] * IN), (where["periscope"]["screen"], where["periscope"]["radius"])]
+    mercury_cabin.shade(g, where["lamps"], mercury_cabin.inside_of("Hatch"), openings)
     mercury_capsule.keep_inside()
 
 
@@ -443,5 +445,25 @@ if __name__ == "__main__":
             ("capsule-crack.png", (0, 0, 0.9), 9, dict(azimuth=-125, elevation=6, res=(1300, 1300))),
             ("window-close.png", (0, -0.6, wz), 3.2, dict(azimuth=-80, elevation=18, res=(1300, 1300))),
             ("name-close.png", (0, -0.7, 0.45), 2.6, dict(azimuth=-96, elevation=4, res=(1300, 1300))),
+            # from the couch, as the pilot's eyes have it (Seat_Pilot), by the cabin's own two lights
+            ("cabin-ahead.png", (0, 0, 0), 0, dict(seat="Seat_Pilot", lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000))),
+            (
+                "cabin-left.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(70, 15), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            (
+                "cabin-right.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(-70, 15), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            (
+                "cabin-up.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(0, 50), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
         ],
     )

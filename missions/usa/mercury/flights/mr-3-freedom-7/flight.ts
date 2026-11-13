@@ -344,10 +344,11 @@ const vehicle: ModelDef = {
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts: vehicleParts,
   position: [0, VEHICLE_Y, 0],
-  // The two cabin floodlights: "on full white light" in flight (Postlaunch Report, p. 76). How many No. 7 had and where is
-  // not in anything read: the model has two fittings above and either side of the pilot's head (the orbital capsule's
-  // arrangement, SEDR 104, 10-19), at 100 and 82 degrees round from his right toward his head, clear of the hatch and the
-  // upper port. Each light is put toward the middle of the cabin, not at its fitting, 0.32 m out from the axis on its
+  // The two cabin floodlights: "on full white light" in flight (Postlaunch Report, section 7.3, p. 65). Two, fluorescent,
+  // four watts each, is the capsule's (SEDR 104 of December 1959, 10-44 and 10-47, capsules 2 to 8); where they hung is
+  // not in anything read: the model has the two fittings above and either side of the pilot's head (the orbital capsule's
+  // arrangement, SEDR 104 of 1962, 10-19), at 100 and 82 degrees round from his right toward his head, clear of the hatch
+  // and the upper port: the left hand one first (`cabin.lighting` names them by this order). Each light is put toward the middle of the cabin, not at its fitting, 0.32 m out from the axis on its
   // fitting's bearing: a bare point of light at the wall burns the wall beside it, where a floodlight's reflector spreads it
   // (for the same reason the viewer lets a cabin's light fall off with distance, not its square: cabin.ts). Strength chosen
   // by eye. The model's frame is the pilot's turned 45 degrees about the long axis (the hatch on +X: model/vehicle.py).
@@ -611,12 +612,29 @@ vehicle.cabin = {
       about: 'Three axes in one hand: fore and aft for pitch, side to side for roll, a twist for yaw. It moves as the keys do.',
     },
   ],
+  // The cabin floodlights' switch: CABIN LITES at the outboard top of the left console, OFF above and ON below
+  // (Postlaunch Report, Figure 3.1-2), found ON after the flight (Figure 10.1-1); the model is built ON. Two four-watt
+  // fluorescent floodlights, white, one on each hand, on the 115 V a-c fans bus (SEDR 104 of December 1959, 10-44, 10-47
+  // and Figure 10-7: capsules 2 to 8), with no dimmer and no red light on this capsule. `lights` above are the left
+  // hand one and the right hand one, in that order, and `Lamp_Left`, `Lamp_Right` their tubes.
+  lighting: {
+    control: 'Ctl_CabinLights',
+    name: 'Cabin lights',
+    about:
+      'CABIN LITES, off above and on below: two four-watt fluorescent floodlights, white, which were all the light the dials had. ' +
+      'Shepard flew with them on, and saw no stars for it.',
+    ways: [
+      { says: 'On', lit: [0, 1] },
+      { says: 'Off', lit: [] },
+    ],
+    fittings: ['Lamp_Left', 'Lamp_Right'],
+  },
   // the two portholes as light: where the model has them (model/vehicle.py PORTHOLES, which the build prints in this
-  // frame), 6.6 in of glass each. The lower first: 15 degrees round from the pilot's right toward his feet, station 28.5,
+  // frame, each at the middle of its inner pane on the port's own line), 6.6 in of glass each. The lower first: 15 degrees round from the pilot's right toward his feet, station 28.5,
   // 60 degrees from +X as the capsule stands; the upper at 232.5 degrees, station 34.5, 277.5 as it stands
   windows: [
-    { at: [0.32, 0.721, -0.554], out: [0.47, 0.342, -0.814], across: 0.168, name: 'Lower port' },
-    { at: [0.076, 0.874, 0.58], out: [0.123, 0.342, 0.932], across: 0.168, name: 'Upper port' },
+    { at: [0.32, 0.708, -0.554], out: [0.47, 0.342, -0.814], across: 0.168, name: 'Lower port' },
+    { at: [0.076, 0.86, 0.578], out: [0.123, 0.342, 0.932], across: 0.168, name: 'Upper port' },
   ],
   // how far it tips at full command is estimated; the axes are the node's own (X to his right, Y along the grip, Z toward his head)
   stick: { node: 'Ctl_HandController', throw: 0.23, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },

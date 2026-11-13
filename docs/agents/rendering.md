@@ -33,7 +33,16 @@ lights inside a model cast no shadows, and cannot: every shadow map is one more 
 scene, and the ground and the globe are at the GPU's sixteen already (a shadow-casting cabin lamp stopped both from
 compiling). A cabin's shadow is therefore the build's: `mercury_cabin.shade` casts rays in Blender and keeps the
 result at the vertices in a colour attribute named `Shade`, the only one `srlib.export_glb` exports, which three
-multiplies the surface by.
+multiplies the surface by. It is two figures in one colour: red, green and blue with the cabin's own lamps on, alpha
+with them off (how open the point is, and how much of what lets light in it sees). A viewer that knows no cabin
+multiplies by the first, which is right for anything not seen through; `Cabin.shadeBy` patches the materials of the
+meshes that carry four parts to mix the two by `uCabinLit`, which the lights' switch moves (`CabinDef.lighting`), so
+switching the lamps is two uniforms and the lamps' strength: no light is added or taken away, and no shader is built.
+A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
+indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
+surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray
+from one starts clear of what is fastened to it, or a vertex under a clip is a blot. To look at a cabin without the
+browser, a model's stills can be taken from its seat (`srlib.render_preview`: `seat`, `look`, `lens`, `lamps`, `hide`).
 
 ## No flicker
 
