@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import re
 
+import sitelib
+
 from .site import Parts
 
 DOOR = ("Door", "It opens and shuts on foot. Where the doors were, and their fittings, are estimated.")
@@ -146,6 +148,15 @@ TABLE: list[tuple[str, str, str]] = [
     ),
     ("GroundEquipment_TrailerSteps", "Trailer steps", "The trailer's door steps, folded up before it is towed. Estimated."),
     (
+        "GroundEquipment_TransferVan",
+        "Transfer van, NASA TV No 1",
+        "The van semi-trailer that brought the pilot from Hangar S, suited, his sensors on a recorder and his briefing given "
+        "on the way; he stepped down from it beside the structure at 03:55 on 21 July. Its lettering, its white tractor and "
+        "where it stood are from photographs of 6 and 19 July; its size is estimated, and it is not gone into: its "
+        "inside is not recorded. The count moves it to its launch position at T-80: where that was is not known.",
+    ),
+    ("GroundEquipment_TransferVanSteps", "Van steps", "The van's door steps, folded up before it is moved. Estimated."),
+    (
         r"GroundEquipment_Hut(\d)",
         "Hut {0}",
         "A hut on skids at the pad's edge, from a photograph of July 1961 (assumed for May), dragged off by a pickup "
@@ -233,10 +244,74 @@ TABLE: list[tuple[str, str, str]] = [
 ]
 
 
+# What is said instead from a date on, where the place's own record changed: (since, pattern, label, about), the first
+# match for the date being built coming before the table above. A state of the place before that date is told as it
+# was (the table), so a model built for an earlier flight says what it always said.
+LATER: list[tuple[str, str, str, str]] = [
+    (
+        "1961-07",
+        "ServiceStructure_Platform3_(Left|Right)",
+        "White room, {0} half",
+        "The enclosed, air-conditioned room on level 3 round the capsule, built February to May 1961; on 21 July Grissom "
+        "went in through it at 03:58. Its colour and size are estimated.",
+    ),
+    (
+        "1961-07",
+        "ServiceStructure_Lift",
+        "Lift car",
+        "An open mesh cage that ran up the leg to the working levels; Grissom rode it at 03:55 on 21 July, and is "
+        "photographed stepping out of it in a practice on the 7th. That there was a lift is documented; where its "
+        "guides ran and where it stopped are estimated.",
+    ),
+    (
+        "1961-07",
+        "CherryPicker",
+        "Mobile aerial tower (cherry picker)",
+        "A truck-mounted tower that held a cab at the capsule's hatch once the structure had gone, the pilot's way out "
+        "until the last minutes. Through the night's count it stood folded on its truck, as photographs taken "
+        "that night show it. Its reach (125 ft) is documented; its make and lengths are estimated.",
+    ),
+    (
+        "1961-07",
+        "GroundEquipment_Shower",
+        "Shower cart",
+        "The emergency shower on its cart. Through the count it stood connected beside the structure's base, by the "
+        "booster's tail, where photographs of 6, 19 and 21 July show it; at T-85 it was disconnected and stowed for "
+        "launch (documented). Where it was stowed is taken as the pad's edge, where May's photographs have it: estimated.",
+    ),
+    ("1961-07", "GroundEquipment_Barricade", "Barricade", "A striped barricade at the pad's corner, from a photograph of July 1961."),
+    (
+        "1961-07",
+        "GroundEquipment_Trailer",
+        "Trailer, NASA SP-No 1",
+        "A white trailer lettered NASA SP-No 1 beside the structure's base (documented, S61-03158; FHSU item 263 shows a "
+        "white trailer there in July), here fitted out as a test trailer of the period. The count has a spare parts "
+        "trailer moved at T-80, which SP is taken to stand for: that this is the one, and its route, are estimated.",
+    ),
+    (
+        "1961-07",
+        r"GroundEquipment_Hut(\d)",
+        "Hut {0}",
+        "A hut on skids at the pad's edge, from a photograph of July 1961, dragged off by a pickup before the rollback (estimated).",
+    ),
+    (
+        "1961-07",
+        "GroundEquipment_Tractor",
+        "Tractor unit",
+        "The truck that tows the trailer SP-No 1 away: a dark tractor of this kind is photographed coupled to it in July 1961. "
+        "That it took the trailer off that morning, and its colour, are estimated.",
+    ),
+    ("1961-07", "Yard", "Cable racks and scaffold stair", "Seen north of pad 5 in photographs of July 1961. Sizes are estimated."),
+    ("1961-07", "Vehicles", "Parked cars", "Cars at the blockhouse, chosen from a July 1961 photograph: types, not the cars."),
+]
+
+
 def apply(parts: Parts) -> None:
     """Give every node the table names its `label` and `about`, and every door its own."""
+    as_of = sitelib.AS_OF
+    table = [(pattern, label, about) for since, pattern, label, about in LATER if as_of is not None and since <= as_of] + TABLE
     for name, (obj, _) in parts.nodes.items():
-        for pattern, label, about in TABLE:
+        for pattern, label, about in table:
             m = re.fullmatch(pattern, name)
             if not m:
                 continue
