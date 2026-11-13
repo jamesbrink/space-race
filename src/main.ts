@@ -333,11 +333,21 @@ window.addEventListener('keydown', (e) => {
   }
 });
 // A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
-stage.onSpot = (page, point, floor) => {
+stage.onSpot = (page, point, floor, on) => {
   if (stage.aboard()) return; // (from the couch there is nowhere to walk from or fly to: the view is the pilot's own)
   // Flying it, there is nobody to get out and walk (no flight here has an EVA), and a spot on the ground or the pad is not
-  // somewhere the view can be sent while it is the vehicle's: nothing is offered.
-  if (cockpit.active) return;
+  // somewhere the view can be sent while it is the vehicle's. What is offered is on the vehicle: what the part under the
+  // pointer can be told to do now (Part.commands), and a look at it, which goes with the vehicle.
+  if (cockpit.active) {
+    const spot = on.craft;
+    if (!spot) return;
+    const part = flight.models.find((m) => m.id === flight.flies?.model)?.parts.find((p) => p.node === on.node);
+    ui.menu(page.x, page.y, [
+      ...(part?.commands ?? []).filter((c) => cockpit.can(c.ask)).map((c) => ({ label: c.label, run: () => cockpit.ask(c.ask) })),
+      { label: part ? `Look at the ${part.name.toLowerCase()}` : 'Look at this', run: () => stage.lookAtCraft(spot) },
+    ]);
+    return;
+  }
   const walker = flight.models.find((m) => m.walker);
   ui.menu(page.x, page.y, [
     ...(walker && floor
@@ -345,9 +355,7 @@ stage.onSpot = (page, point, floor) => {
       : []),
     {
       label: 'Look at this',
-      run: () => {
-        stage.visit(new Box3().setFromCenterAndSize(point, new Vector3(8, 4, 8)));
-      },
+      run: () => stage.lookAt(point),
     },
   ]);
 };

@@ -182,7 +182,7 @@ function legendMarkup(f: Flight): string {
         ['pair', ['R', 'F'], 'zoom'],
       ],
       main: [['drag', 'turn round it'], ['scroll · pinch', 'closer · further'], ...camera('centre the vehicle')],
-      more: rest([]),
+      more: rest([['Mouse', [['right-click a part', 'what it can do · look at it']]]]),
     },
     aboard: {
       pads: [

@@ -51,6 +51,7 @@ const vehicleParts: Part[] = [
     node: 'EscapeTower',
     group: 'Spacecraft',
     name: 'Launch escape tower',
+    commands: [{ label: 'Jettison the escape tower', ask: 'tower' }],
     summary: 'Pulls the capsule off a failing booster.',
     detail:
       'A welded steel-tube pylon about ten feet tall carrying a solid motor of 52,000 lbf that burns for under a ' +
@@ -70,6 +71,7 @@ const vehicleParts: Part[] = [
     node: 'AntennaCanister',
     group: 'Spacecraft',
     name: 'Antenna canister',
+    commands: [{ label: 'Deploy the drogue parachute', ask: 'drogue' }],
     summary: 'Bicone antenna, horizon scanners, drogue parachute.',
     detail:
       'The pale band is an 8-inch dielectric window: the metal above and below it are the two halves of a bicone ' +
@@ -88,6 +90,7 @@ const vehicleParts: Part[] = [
     node: 'RecoveryCompartment',
     group: 'Spacecraft',
     name: 'Recovery compartment',
+    commands: [{ label: 'Deploy the main parachute', ask: 'main' }],
     summary: 'Main and reserve parachutes; pitch and yaw thrusters.',
     detail:
       'A 32-inch cylinder holding a 63-foot ring-sail main parachute and its reserve, skinned in thick beryllium ' +
@@ -196,6 +199,10 @@ const vehicleParts: Part[] = [
     inside: true,
     group: 'Spacecraft',
     name: 'Retropack',
+    commands: [
+      { label: 'Fire the retrorockets', ask: 'retro' },
+      { label: 'Jettison the retropack', ask: 'retropack' },
+    ],
     summary: 'Three retrograde and three posigrade motors.',
     detail:
       'The small posigrade motors push the capsule away from the spent Redstone. The three large motors are the ' +
@@ -214,6 +221,7 @@ const vehicleParts: Part[] = [
     node: 'RedstoneAdapter',
     group: 'Launch vehicle',
     name: 'Spacecraft adapter',
+    commands: [{ label: 'Separate the spacecraft', ask: 'separate' }],
     summary: 'Joins a 74.5-inch capsule to a 70-inch booster.',
     detail:
       'A short flared ring with the retropack nested inside it. A Marman clamp at its top rim holds the capsule; ' +
@@ -271,6 +279,7 @@ const vehicleParts: Part[] = [
     node: 'RedstoneTailUnit',
     group: 'Launch vehicle',
     name: 'Tail unit',
+    commands: [{ label: 'Shut the engine down', ask: 'cutoff' }],
     summary: 'Four fins, four air rudders, the engine bay.',
     detail:
       'The fins keep the vehicle stable; the small rudders at their tips steer it while there is air to push ' +
@@ -290,6 +299,7 @@ const vehicleParts: Part[] = [
     group: 'Launch vehicle',
     inside: true,
     name: 'A-7 engine',
+    commands: [{ label: 'Shut the engine down', ask: 'cutoff' }],
     summary: '78,000 lbf, steered by vanes in its own exhaust.',
     detail:
       'Rocketdyne’s A-7, a direct descendant of the V-2’s engine: a single fixed chamber fed by a turbopump that ' +

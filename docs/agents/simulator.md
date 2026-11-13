@@ -256,6 +256,12 @@ never adjusted to bring a check in.
   the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is estimated, from the
   model's own bearings, and is listed with the other undocumented inputs (tests/vehicle.test.mjs); tests/turnaround.test.mjs
   holds it to three degrees through the top of the flight. A flight that names no side keeps the roll it had.
+- **A right click on the vehicle in flight is the part's own menu** (main.ts `stage.onSpot`): what that part can be told
+  to do now, from the flight's data (`Part.commands`, types.ts `Command`: a step `Cockpit.ask` sets off, offered only
+  while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
+  and goes with it (`Stage.lookAtCraft`: the chase view aimed there; 0 centres the vehicle again). Off the vehicle
+  nothing is offered: nobody gets out and walks, and the view is not sent to a place the vehicle has left. A new thing
+  the pilot could work (the periscope) is a new `Command` on its part and a case in `ask` and `can`.
 - **The cabin is the flight deck too** (`ModelDef.cabin`, types.ts: `CabinDef`; `viewer/cabin.ts`; `viewer/gauges.ts`
   for the arithmetic, tested). The model's own needles, counter wheels and lamps read the run on show at the clock's
   instant: the flight being flown (the cockpit hands every sample over, `cockpit.listen`) or the record's

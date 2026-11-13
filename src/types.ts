@@ -200,6 +200,12 @@ export interface Part {
   }[];
   /** What can be done to it from close by, on foot, beyond reading about it (see Action). */
   actions?: Action[];
+  /**
+   * What can be commanded of it while the flight is being flown, from a right click on it: each one of the steps the
+   * flight deck can set off (cockpit.ts `ask`), which this part is the hardware of. One is offered only while it can
+   * still be done (`Cockpit.can`), and does what the deck's own key or the cabin's own control would.
+   */
+  commands?: Command[];
   /** A heading in the parts list: parts with the same group are listed together under it. */
   group?: string;
   /** It is inside something: selecting it opens the cutaway so it can be seen. */
@@ -221,6 +227,12 @@ export interface Part {
   clocked?: Move[];
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
   order: number;
+}
+
+/** A step of the flight that can be set off by hand, and what the menu calls it on the part it belongs to. */
+export interface Command {
+  label: string;
+  ask: 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main';
 }
 
 /**

@@ -228,8 +228,17 @@ export class Stage {
   onVisit: () => void = () => {};
   /** The pointer is over a window of the section's model (a click looks in), or has left it. */
   onHoverWindow: (over: boolean, name?: string) => void = () => {};
-  /** A right click on something: where on the page, where in the world, and whether it can be stood on. */
-  onSpot: (page: { x: number; y: number }, point: THREE.Vector3, floor: boolean) => void = () => {};
+  /**
+   * A right click on something: where on the page, where in the world, whether it can be stood on, and whether it is
+   * the flown vehicle off its pad (`craft`: the spot in the vehicle's own frame, which is where it still is a moment
+   * later when the vehicle has gone on), with the part of it that was hit (`node`: Part.node, or null).
+   */
+  onSpot: (
+    page: { x: number; y: number },
+    point: THREE.Vector3,
+    floor: boolean,
+    on: { craft: THREE.Vector3 | null; node: string | null },
+  ) => void = () => {};
   /** The reset key (0): back to where the section starts. */
   onHome: () => void = () => {};
   /**
@@ -633,7 +642,7 @@ export class Stage {
       if (e.button !== 2 || !from || Math.hypot(e.clientX - from.x, e.clientY - from.y) >= 5) return;
       aim(e);
       const spot = this.spot();
-      if (spot) this.onSpot({ x: e.clientX, y: e.clientY }, spot.point, spot.floor);
+      if (spot) this.onSpot({ x: e.clientX, y: e.clientY }, spot.point, spot.floor, spot.on);
     });
     canvas.addEventListener('pointerdown', (e) => {
       if (this.walk.active) return; // on foot there is nothing to pick: a drag looks round
@@ -3120,7 +3129,7 @@ export class Stage {
    * What is under the pointer, anywhere: on a model, in the place round it, or on the ground.
    * `floor` says whether it is something to stand on (it faces up).
    */
-  private spot(): { point: THREE.Vector3; floor: boolean } | null {
+  private spot(): { point: THREE.Vector3; floor: boolean; on: { craft: THREE.Vector3 | null; node: string | null } } | null {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster
       .intersectObjects(
@@ -3134,7 +3143,35 @@ export class Stage {
       .find((h) => h.face && !(h.object as THREE.InstancedMesh).isInstancedMesh);
     if (!hit?.face) return null;
     const up = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).y;
-    return { point: hit.point.clone(), floor: up > 0.7 };
+    // the flown vehicle, off its pad, and which of its parts
+    const flier = this.lifted.flying ? this.flier : null;
+    const parts = flier ? this.defs[this.staged.indexOf(flier)]?.parts : undefined;
+    let craft = false;
+    let node: string | null = null;
+    for (let o: THREE.Object3D | null = flier ? hit.object : null; o; o = o.parent) {
+      if (node === null && parts?.some((p) => p.node === o.name)) node = o.name;
+      if (o === flier!.group) craft = true;
+    }
+    const local = craft ? flier!.group.worldToLocal(hit.point.clone()) : null;
+    return { point: hit.point.clone(), floor: up > 0.7, on: { craft: local, node: craft ? node : null } };
+  }
+
+  /** A right click's "Look at this" on a place: the view goes to the spot and turns about it. */
+  lookAt(point: THREE.Vector3): void {
+    this.visit(new THREE.Box3().setFromCenterAndSize(point, new THREE.Vector3(8, 4, 8)));
+  }
+
+  /**
+   * And on the flown vehicle in flight: the chase view, aimed at a spot on the vehicle (`local`, in the vehicle's own
+   * frame, as `onSpot` gave it) and carried with it. The spot is taken where the vehicle is now, not where it was
+   * when it was pointed at: at 300 m/s that is a hundred metres astern by the time the menu is answered.
+   */
+  lookAtCraft(local: THREE.Vector3): void {
+    const flier = this.lifted.flying ? this.flier : null;
+    if (!flier) return;
+    flier.group.updateWorldMatrix(true, false);
+    const point = flier.group.localToWorld(local.clone());
+    this.frameBox(new THREE.Box3().setFromCenterAndSize(point, new THREE.Vector3(2, 2, 2)), false, undefined, true);
   }
 
   /** The model being walked as, or null. */

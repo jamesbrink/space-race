@@ -7,7 +7,7 @@ import { MISSES } from './sim/misses.ts';
 import { Sheds } from './sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
 import { verdict } from './sim/verdict.ts';
-import type { SitedFlight } from './types';
+import type { Command, SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
 import type { Clock } from './world/clock.ts';
 import { angleBetween, DEG, siteFrame } from './world/frames.ts';
@@ -601,9 +601,32 @@ export class Cockpit {
     if (what === 'abort' || what === 'next') return void this.command(what);
     const s = this.state;
     if (!this.on || !s || s.landing || this.clock.t < s.t - TICK) return;
-    if (!['tower', 'separate', 'retro', 'retropack', 'drogue', 'main'].includes(what)) return;
-    this.hand[what as 'tower'] = true;
+    if (what === 'cutoff') {
+      // (the engine's own lever, where it has one: as Space does it)
+      if (!s.ignited || s.cutoff) return;
+      if (this.lever) this.setLever(0);
+      else this.hand.throttle = 0;
+    } else if (['tower', 'separate', 'retro', 'retropack', 'drogue', 'main'].includes(what)) this.hand[what as 'tower'] = true;
+    else return;
     if (!this.clock.running && s.ignited) this.clock.play(true);
+  }
+
+  /**
+   * Whether a step can be set off now (types.ts `Command`): the flight is being flown, at its own instant and not
+   * looked back at, and the simulator would hear the command (sim/vehicle.ts: no parachute past a tower, no
+   * retrorockets on a spacecraft still on its booster, nothing twice).
+   */
+  can(what: Command['ask']): boolean {
+    const s = this.state;
+    if (!this.on || !s || s.landing || s.held || this.clock.t < s.t - TICK) return false;
+    const alone = s.shed.booster;
+    if (what === 'cutoff') return s.ignited && !s.cutoff;
+    if (what === 'tower') return Boolean(this.flight.trajectory?.body?.tower) && !s.shed.tower;
+    if (what === 'separate') return !alone;
+    if (what === 'retro') return alone && s.retroAt === null && !s.shed.retropack;
+    if (what === 'retropack') return alone && !s.shed.retropack;
+    if (what === 'drogue') return alone && s.shed.tower && s.drogueAt === null && s.mainAt === null;
+    return alone && s.shed.tower && s.mainAt === null;
   }
 
   private command(what: string): void {
