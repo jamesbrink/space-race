@@ -779,7 +779,8 @@ and the model is built to the rule, not to the photographs' mean.
   attitude jets, the cabin's attitude needles and the periscope's view follow the turn with no change of their own:
   pitched over on its azimuth the periscope is underneath and the roll needle reads nought going up, where it read
   55°. The side the automatic control keeps toward the Earth (`earthward`) is the down-range one, 180° from the
-  body's +Z, and the turnaround is the record's yaw (docs/agents/simulator.md). tests/launcher.test.mjs holds the
+  body's +Z, and the turnaround is the record's yaw, flown live and in the record's own flight as the scene plays it
+  (docs/agents/simulator.md). tests/launcher.test.mjs holds the
   vehicle's turn, the launcher's, the masts' places and the periscope's bearing to one another for each flight.
 
 **The same photograph moves other things, which are not moved.** S61-02407 was taken, in this record, to be a view
@@ -1015,7 +1016,11 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   round from it, so the cab comes in beside the capsule and the pilot's way out of the hatch meets the cab's sill
   2.1 to 2.4 ft from the skin, at an angle. That is what the photographs of July 1961 show (the jib 40° to 60° round
   from the hatch's way out), but the cab's own form, an open end opposite the jib, is estimated, and no photograph
-  read shows how a man got from the hatch into it. The truck's place is Figure 7-6's to a few feet; on 19 and 21
+  read shows how a man got from the hatch into it. **The cab is not where item 466 has it**: seen from 211° round
+  from +X the real cab stands whole to the left of the capsule, its near edge at the capsule's limb, which puts its
+  middle some 80° to 90° round from +X, past the hatch; the model's is at 42°, hidden behind the capsule from there.
+  A truck's line 7 or 8 ft from the launcher's would put it so, but then the hatch looks at the cab's side wall, and
+  what door the real cab had there is not known. The truck's place is Figure 7-6's to a few feet; on 19 and 21
   July it stood 16° to 22° and about −18° round from +X, a different place each day.
 - **The launcher's legs and deflector stand square to the rails whatever the table is turned to.** That the
   Redstone's launcher turned a ring on a fixed base is how such launchers were made; nothing read shows it for this

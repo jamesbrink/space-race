@@ -261,7 +261,9 @@ recorded figures do not move (the tests that pin them to the Postlaunch Report p
 apogee is 106 m lower than it was with 125 and its range 260 m shorter (of 202.7 km and 537 km), and it has 0.34 kg more of the automatic supply left
 at apogee, because the turnaround is now one yaw through 180 degrees with the periscope toward the Earth all the way
 round, as the record has it, where it had been a pitch over and then a roll (`src/sim/autopilot.ts` `turnBoth`;
-tests/turnaround.test.mjs).
+tests/turnaround.test.mjs). The record's flight as the launch site plays it turns round the same way
+(`src/viewer/ascent.ts`). From the couch on it the needles read roll 0.4, pitch 76 and 52 at one and two minutes,
+and after the turnaround roll -0.2, yaw 1, pitch -44 easing to -23 at T+4:10, with the Earth in the periscope.
 
 **The lettering may be 8 degrees out.** S61-02407 puts the middle of UNITED STATES 36 to 41 degrees round from the
 fin that lay down range, where this model has it 51 degrees from the periscope and Liberty Bell 7's is 43. If the

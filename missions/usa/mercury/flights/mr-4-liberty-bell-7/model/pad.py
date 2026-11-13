@@ -49,7 +49,7 @@ if __name__ == "__main__":
             ("pad-from-151.png", (0, 0, 13.0), 62, dict(azimuth=151 + TURN, elevation=1, res=(1200, 1500))),
             ("pad-from-232.png", (0, 0, 13.0), 62, dict(azimuth=232 + TURN, elevation=1, res=(1200, 1500))),
             ("pad-from-312.png", (0, 0, 13.0), 62, dict(azimuth=312.5 + TURN, elevation=1, res=(1200, 1500))),
-            # the white room and the cab from above, the roofs cut away by the camera's near plane: where the hatch's side is
-            ("pad-level3-plan.png", (0, 0, 20.3), 16, dict(azimuth=-90, elevation=89, res=(1300, 1300))),
+            # level 2 from in front, under the white room: the opening round the booster's mast and its cooling package, and its rails
+            ("pad-level2.png", (0.6, -1.2, 16.9), 9, dict(azimuth=-80, elevation=22, res=(1500, 1000))),
         ],
     )

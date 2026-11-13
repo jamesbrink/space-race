@@ -262,7 +262,10 @@ never adjusted to bring a check in.
   down together), which end for end is a half turn about the plumb line: a yaw, as the record's turnaround was
   ("yawed 180 degrees"), the periscope toward the Earth throughout. Until November 2026 it turned the long axis the
   short way, pitching over, and then rolled to the side: the same end by a way the record does not have. A flight
-  that names no side still turns the long axis the short way and keeps the roll it had.
+  that names no side still turns the long axis the short way and keeps the roll it had. The scene turns the record's
+  own flight round the same way (`viewer/ascent.ts` `place`, `keel`): to the attitude with that side underneath, which
+  from how it rode the booster is the yaw. Until then it pitched the model over the top and left the pilot head down
+  from the turnaround on (the roll needle read 179). tests/ascent.test.mjs holds both runs to it.
 - **A right click on the vehicle in flight is the part's own menu** (main.ts `stage.onSpot`): what that part can be told
   to do now, from the flight's data (`Part.commands`, types.ts `Command`: a step `Cockpit.ask` sets off, offered only
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame

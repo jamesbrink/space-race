@@ -56,6 +56,30 @@ test('a flight flown live under the autopilot is placed where the record’s is,
   }
 });
 
+test('turned round, the record’s flight and the live one both have the periscope’s side underneath', () => {
+  const record = Ascent.of(flight);
+  const flown = Ascent.of(flight);
+  flown.use(live());
+  // the side that lay down range on the pad, in the scene's frame: where the model's periscope is as it stands there
+  const bearing = THREE.MathUtils.degToRad(TR.azimuth.value - flight.site.bearingX.value);
+  const keel = new THREE.Vector3(Math.cos(bearing), 0, Math.sin(bearing)).applyQuaternion(PAD.clone().invert());
+  const under = (q) => keel.clone().applyQuaternion(q).y;
+  // going up it is underneath as the stack tilts, and it is still underneath all the way round and after
+  for (const t of [60, 120]) assert.ok(under(at(record, t).q) < 0 && under(at(flown, t).q) < 0, `periscope side up at ${t} s`);
+  const turned = flight.flies.turned ?? TR.separation.at.value;
+  for (const t of [turned + 10, 200, 250, 300]) {
+    const a = at(record, t);
+    const b = at(flown, t);
+    assert.ok(under(a.q) < -0.7, `the record’s flight has the periscope’s side ${under(a.q).toFixed(2)} of the way down at ${t} s`);
+    assert.ok(under(b.q) < -0.7, `the live flight has the periscope’s side ${under(b.q).toFixed(2)} of the way down at ${t} s`);
+  }
+  // and half way through the record's turn the long axis lies across the flight's line: it went round by a yaw, not over the top
+  const half = at(record, (TR.separation.at.value + turned) / 2);
+  const nose = new THREE.Vector3(0, 1, 0).applyQuaternion(half.q);
+  assert.ok(Math.abs(nose.y) < 0.75, `half way round the nose is ${nose.y.toFixed(2)} of the way up: it pitched over`);
+  assert.ok(under(half.q) < -0.3, 'half way round the periscope’s side is not underneath');
+});
+
 test('a live flight’s model never jumps: not at cutoff, the tower, separation, retrofire, the parachutes', () => {
   const run = live();
   const ascent = Ascent.of(flight);
