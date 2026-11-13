@@ -37,6 +37,8 @@ pnpm model:ma-7       # rebuild Aurora 7's vehicle: spacecraft No. 18 on Atlas 1
 pnpm model:vostok-2   # rebuild Vostok 2's vehicle
 pnpm model:vostok-3   # rebuild Vostok 3's vehicle
 pnpm model:vostok-4   # rebuild Vostok 4's vehicle
+pnpm model:vostok-5   # rebuild Vostok 5's vehicle
+pnpm model:vostok-6   # rebuild Vostok 6's vehicle
 pnpm model:lc-5       # rebuild the place round the pad, each of its dated states (the site's own models)
 pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
 pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)

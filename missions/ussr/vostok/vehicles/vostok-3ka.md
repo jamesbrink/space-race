@@ -3,8 +3,9 @@
 What [vostok_3ka.py](vostok_3ka.py) builds, and how far to trust each number. The spacecraft type
 shared by the six crewed Vostoks; a flight's `model/vehicle.py` chooses what its own carried (today:
 the pilot in the seat; whether there is a film camera in the cabin: Vostok 2 was the first with
-one, `build(film_camera=True)`; and whether the two television cameras are built as they were
-photographed: Vostok 3 and 4, `build(television=True)`).
+one, `build(film_camera=True)`; whether the two television cameras are built as they were
+photographed: Vostok 3 to 6, `build(television=True)`; and the colour of the cabin's lining: white
+on Vostok 5 and 6, `build(lining="white")`).
 
 The model is in **millimetres**, the unit of every Soviet figure quoted. Station 0 is the exit plane
 of the braking engine's nozzle and +Z is toward the descent module, which rode forward under the
@@ -62,10 +63,11 @@ Keys used below; full entries are in [docs/sources.md](../../../../docs/sources.
 | Sun sensor | one, on the forward cone | documented (one); estimated (where, its shape) | Gagarin: "the central sensor" |
 | Braking engine | nozzle exit 280 mm across; four steering nozzles | estimated (sizes); documented (one chamber and four) | Encyclopedia Astronautica: "Chambers: 1 + 4"; the installation 1.13 m tall and 0.95 m across |
 | Propellant tank | a torus 950 mm across round the chamber | estimated | drawn to the installation's stated diameter; its real form has not been read |
+| Cabin lining (`lining`) | yellow, or white on Vostok 5 and Vostok 6 | estimated | yellow from F (Vostok 1's flown cabin). White from the flown descent modules of Vostok 5 (Tsiolkovsky museum, Kaluga) and Vostok 6 (RKK Energia's, photographed at the Science Museum in 2016), each seen through its hatch openings: a pale cloth in panels. What Vostok 2, 3 and 4 had is not known (the film of 1962 shows "a pale quilted lining") and they are left yellow |
 | Pilot | the flight's own: its script hands the spacecraft a seated figure (Vostok 1: Gagarin, 1,650 mm, documented; `crew/sk-1.md`) | | |
 | Pilot's hip joints | 87 mm in front of the seat frame's origin | estimated | so that his back lies on the parachute pack; neither's place has been read anywhere. See `PILOT_FORWARD` |
-| Television cameras (`television`: Vostok 3 and 4) | two Seliger cameras, each a case 104 × 118 × 226 mm with a pressed rim and cross on its long sides, a bracket, a lens and a cable to a plug | documented (two; 3 kg and 12 W each); **estimated** (every size, off the one photograph of the camera; the place of each) | [Vostok 3's spacecraft.md](../flights/vostok-3/spacecraft.md), "The television cameras". Without the option the cabin has two plain barrels in other places, which stand for the cameras of the flights not yet researched |
-| Film camera (`film_camera`: Vostok 2, 3 and 4) | a Konvas-Avtomat, 290 mm long and 260 mm tall | documented, tertiary (the camera type's overall size: 290 × 260 × 240 mm); estimated (its form, and its place: 560 mm to the pilot's right of the seat frame's origin, lenses toward the right porthole) | [Vostok 2's spacecraft.md](../flights/vostok-2/spacecraft.md), "The film camera" |
+| Television cameras (`television`: Vostok 3 to 6) | two Seliger cameras, each a case 104 × 118 × 226 mm with a pressed rim and cross on its long sides, a bracket, a lens and a cable to a plug | documented (two; 3 kg and 12 W each); **estimated** (every size, off the one photograph of the camera; the place of each) | [Vostok 3's spacecraft.md](../flights/vostok-3/spacecraft.md), "The television cameras". Without the option the cabin has two plain barrels in other places, which stand for the cameras of the flights not yet researched |
+| Film camera (`film_camera`: Vostok 2 to 6) | a Konvas-Avtomat, 290 mm long and 260 mm tall | documented, tertiary (the camera type's overall size: 290 × 260 × 240 mm); estimated (its form, and its place: 560 mm to the pilot's right of the seat frame's origin, lenses toward the right porthole) | [Vostok 2's spacecraft.md](../flights/vostok-2/spacecraft.md), "The film camera" |
 
 ## Parts in the model
 
@@ -120,6 +122,12 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   instead takes its guide shoes outside the hatch's opening. Which is right is not known.
 - **The seat is a few slabs and tubes.** Its real structure, its two solid rockets, the stabilising
   parachute and the survival pack are stood in for by boxes in about the right places.
+- **The lining is one flat colour**, yellow or white, on a plain ball: the real one is quilted or
+  in panels. Which flights had which is known for three of the six.
+- **The instrument board is not any flown ship's.** Vostok 6's flown cabin has its Globus in the
+  middle of the board over a row of four dials, with a block of lamps beside it and a column of
+  switches at the left; the model has the Globus to one side and five dials. Seen while building
+  Vostok 6 and not followed up.
 - **Cabin equipment is boxes.** The board has a globe and five dials; the left panel, the hand
   controller, the Vzor, the cameras and the parachute container are in the places the sources
   give or imply. The food locker, radio, regeneration unit and sanitary system are not told apart.

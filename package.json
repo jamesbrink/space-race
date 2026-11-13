@@ -39,6 +39,8 @@
     "model:vostok-2": "node tools/build-model.mjs ussr/vostok/vostok-2",
     "model:vostok-3": "node tools/build-model.mjs ussr/vostok/vostok-3",
     "model:vostok-4": "node tools/build-model.mjs ussr/vostok/vostok-4",
+    "model:vostok-5": "node tools/build-model.mjs ussr/vostok/vostok-5",
+    "model:vostok-6": "node tools/build-model.mjs ussr/vostok/vostok-6",
     "model:lc-5": "node tools/build-model.mjs usa/mercury/sites/lc5",
     "model:site-1": "node tools/build-model.mjs ussr/vostok/sites/site1",
     "model:cape": "node tools/build-model.mjs usa/mercury/sites/cape"
