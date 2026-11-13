@@ -144,9 +144,11 @@ SHELLS = (
 # --------------------------------------------------------------------------- parts
 
 
-def build_afterbody(M, font) -> Skin:
+def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True) -> Skin:
     """The cone's skin: shingles beaded round it, the plain plates round the window, the hatch and the periscope's
-    door, and the paint."""
+    door, and the paint. A later capsule built by this (model the flight, not the type) says what its own photographs
+    show otherwise: `name_stacks`, how many stacks of beads the shingle under the window carries, and `paint` False
+    for a capsule that puts its own paint on."""
     g = group("Afterbody")
     hatch = group("Hatch")
     skin = Skin(CONE)
@@ -163,7 +165,7 @@ def build_afterbody(M, font) -> Skin:
         t0, t1 = deg(15 + 30 * k), deg(45 + 30 * k)
         if k == 8:  # the window's column: a plate at the foot, the shingle with the name, the window's plate, a shingle above
             skin.panel(plates, t0, t1, BAND, NAME_FOOT)
-            skin.shingle(t0, t1, NAME_FOOT, SEAM_LOW, stacks=1)  # one bead across its whole width (MSFC-6116423)
+            skin.shingle(t0, t1, NAME_FOOT, SEAM_LOW, stacks=name_stacks)  # No. 11: one bead across its whole width (MSFC-6116423)
         elif k in (9, 10):  # the hatch's two columns
             skin.shingle(t0, t1, BAND, JAMB[2])
         else:
@@ -237,7 +239,8 @@ def build_afterbody(M, font) -> Skin:
 
     build_periscope(M, g, skin)
     mercury_capsule.roll_thrusters(M, g)
-    build_paint(M, g, skin, font)
+    if paint:
+        build_paint(M, g, skin, font)
     return skin
 
 

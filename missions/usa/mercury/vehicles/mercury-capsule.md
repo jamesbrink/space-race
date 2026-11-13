@@ -31,6 +31,11 @@ ablation heat shield, and a name painted by hand. Its periscope's door, cartridg
 (`ScopeWorks`, `periscope_mouth`, `periscope_run`), called from its own script with No. 11's door, station and tube. Its record is
 [Friendship 7's spacecraft.md](../flights/ma-6-friendship-7/spacecraft.md).
 
+Spacecraft No. 18 (Aurora 7, MA-7) is built the same way, with what its own photographs and report change: Liberty Bell 7's script is
+told that the shingle under the window has two stacks of beads and to leave its paint off (`build_afterbody(name_stacks=2, paint=False)`),
+and [mercury_orbital.py](mercury_orbital.py) lets the balloon experiment's container into the top of the antenna canister this module
+builds (`balloon_canister`). Its record is [Aurora 7's spacecraft.md](../flights/ma-7-aurora-7/spacecraft.md).
+
 ## Two ways of building shingles
 
 - `shingle_row`: a ring of shingles with their beads along the meridian. Only the recovery

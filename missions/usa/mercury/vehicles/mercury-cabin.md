@@ -20,6 +20,12 @@ Spacecraft No. 13's (Friendship 7) is [mercury_cabin_13.py](mercury_cabin_13.py)
 of the flight prints No. 11's panel as its own, with the hatch's seventieth bolt in and this flight's words on what
 is pointed at. Its record is [that flight's spacecraft.md, "Cabin"](../flights/ma-6-friendship-7/spacecraft.md).
 
+Spacecraft No. 18's (Aurora 7) is [mercury_cabin_18.py](mercury_cabin_18.py): No. 11's fit less what the report of its flight says it
+flew without (`mercury_cabin_11.build`'s `earth_path_indicator`, `without`, `knee_and_chest_straps`: a blank plate stands where each
+instrument was), with the zero-gravity experiment by the pilot's head and all seventy bolts in its hatch. Its record is
+[that flight's spacecraft.md, "Cabin" and "Zero-gravity experiment"](../flights/ma-7-aurora-7/spacecraft.md). A capsule built with
+none of those arguments is built as before, to the byte.
+
 ## What the viewer is promised
 
 | Node | What it is | Extras |

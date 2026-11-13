@@ -14,10 +14,11 @@ import math
 import os
 
 import bpy
+from mathutils import Matrix, Vector
 
 import mercury_capsule
 from mercury_capsule import Skin
-from srlib import MeshBuilder, material, text_mesh
+from srlib import IN, MeshBuilder, interior, material, prof, text_mesh
 
 # Meshes of this module's that enclose something (the viewer's cutaway slices these).
 SHELLS = ("HeatShield_Ablator", "HeatShield_Fasteners")
@@ -39,6 +40,60 @@ def build_ablation_shield(M: dict, about: str) -> None:
     shield = bpy.data.objects["HeatShield_HeatSink"]
     shield.name = shield.data.name = "HeatShield_Ablator"
     shield["label"], shield["about"] = "Ablation heat shield", about
+
+
+# The tethered balloon's container (MA-7, and wanted again later): "packaged in a cylindrical container located in the
+# antenna canister under the destabilizer flap" (NASA TN D-3814, p. 71). Its two liners were half-cylinders of balsa
+# "about 6 inches long and 3 inches wide" (the same page): the container is drawn round them. Where under the flap it
+# stood, and how deep, are estimated.
+BALLOON_LINER = (1.5, 6.0)  # a liner's radius and length, in: documented
+BALLOON_CAN = (1.75, 6.9)  # the container round them and the reel under them: its radius and depth, in: estimated
+# its axis in the canister's top, in: under the flap as mercury_capsule builds it, toward the end of it that the viewer's
+# cutaway opens (a capsule stood with its hatch on +X is cut along the line x + y = 0 here), so that the can is cut too
+BALLOON_AT = (-2.6, 2.75)
+
+
+def balloon_materials() -> dict:
+    """The liners' fluorescent paints (their second colour, black, is not drawn): colours of ours for Day-Glo orange and yellow."""
+    return {
+        "dayglo_orange": material("paint-dayglo-orange", (1.0, 0.22, 0.02), 0.0, 0.6),
+        "dayglo_yellow": material("paint-dayglo-yellow", (0.95, 0.85, 0.05), 0.0, 0.6),
+    }
+
+
+def balloon_canister(M: dict, about: str, liners: str) -> None:
+    """The balloon experiment's container, let into the top of the antenna canister under the destabilising flap: a
+    can with a lid, and in a cutaway the two balsa liners the folded balloon rode between, one orange and one yellow.
+    `about` is what the flight says of the container, `liners` of what is in it. Build the antenna canister first."""
+    g = bpy.data.objects["AntennaCanister"]
+    top = mercury_capsule.Z_CAN_TOP
+    (r, deep), (lr, ll) = BALLOON_CAN, BALLOON_LINER
+    at = Matrix.Translation((BALLOON_AT[0] * IN, BALLOON_AT[1] * IN, 0.0))
+    can = MeshBuilder()
+    # (its lid stands a sixteenth of an inch proud of the canister's top, under the flap; its wall and floor are inside)
+    lid = top + 0.07
+    can.lathe(prof([(r, top - deep), (r, lid - 0.05), (r - 0.05, lid), (0.0, lid)]), 32, matrix=at)
+    can.lathe(prof([(r, top - deep), (0.0, top - deep)]), 32, matrix=at, flip=True)
+    obj = can.build("Antenna_BalloonCanister", M["aluminium"], g, sharp_angle=35)
+    obj["label"], obj["about"] = "Balloon container", about
+    if not interior():
+        return
+    for name, mat, a0 in (("Orange", "dayglo_orange", 0.0), ("Yellow", "dayglo_yellow", math.pi)):
+        half = MeshBuilder()
+        z0 = top - deep + 0.5  # (the reel and the strain gauge are under them: not modelled)
+        gap = 0.06  # between the two liners' flat faces, in
+        arc = (a0 + math.asin(gap / lr), a0 + math.pi - math.asin(gap / lr))
+        half.lathe(prof([(lr, z0), (lr, z0 + ll)]), 16, matrix=at, arc=arc)
+        ends = [(lr * math.cos(arc[0] + (arc[1] - arc[0]) * i / 16), lr * math.sin(arc[0] + (arc[1] - arc[0]) * i / 16)) for i in range(17)]
+        for z, up in ((z0, False), (z0 + ll, True)):  # each end, and then the flat face
+            ring = [tuple(at @ (Vector((x, y, z)) * IN)) for x, y in ends]
+            fan = [(0, i, i + 1) if up else (0, i + 1, i) for i in range(1, 16)]
+            half.add(ring, fan)
+        (xa, ya), (xb, yb) = ends[0], ends[-1]
+        face = [tuple(at @ (Vector(p) * IN)) for p in ((xa, ya, z0), (xb, yb, z0), (xb, yb, z0 + ll), (xa, ya, z0 + ll))]
+        half.add(face, [(0, 1, 2, 3)])
+        obj = half.build(f"Antenna_BalloonLiner{name}", M[mat], g, sharp_angle=35)
+        obj["label"], obj["about"] = "Balloon liner", liners
 
 
 def script_font() -> bpy.types.VectorFont | None:
