@@ -728,6 +728,7 @@ def build(
         restraints(c, suit, pilot, seat)
     # (the two lights either side of his head, clear of the hatch and the upper port; the suit's hoses clear of the hatch's sill)
     stowage(c, portholes, out, lamps_at=(-100.0, -82.0), hoses_at=2.4)
+    fit_out(c, hatch, portholes)
     dress(c, M, parent, P, pilot, seat, main, side, faces, out)
     return out
 
@@ -760,6 +761,12 @@ def dress(c: Cabin, M: dict, parent, P: Matrix, pilot: dict, seat, main: Sheet, 
             "CrewCabin_Looms": "loom",
             "CrewCabin_Leads": "loom",
             "CrewCabin_Trunk": "loom",
+            "CrewCabin_Harness": "loom",
+            "CrewCabin_Risers": "loom",
+            "CrewCabin_WallClips": "lever",
+            "CrewCabin_WallCases": "equipment",
+            "CrewCabin_WallConnectors": "red",
+            "CrewCabin_WallPlates": "white_plastic",
             "CrewCabin_Connectors": "red",
             "CrewCabin_Clips": "lever",
             "CrewCabin_Straps": "couch_liner",
@@ -782,6 +789,8 @@ def dress(c: Cabin, M: dict, parent, P: Matrix, pilot: dict, seat, main: Sheet, 
             "CrewCabin_Looms",
             "CrewCabin_Leads",
             "CrewCabin_Trunk",
+            "CrewCabin_Harness",
+            "CrewCabin_Risers",
             "CrewCabin_Connectors",
             "CrewCabin_Pack",
             "CrewCabin_Stowage",
@@ -1110,13 +1119,20 @@ def telelight(c: Cabin, F: Matrix, faces: Sheet, name: str, legend: str, u: floa
     c.lenses.append(obj)
 
 
-def round_dial(c: Cabin, F: Matrix, faces: Sheet, name: str, spec: dict, u: float, v: float, r: float, w: float = 0.0, ppi: float = 125) -> None:
-    """A round instrument: its face a little behind the bezel's lip, a needle on its pivot, a glass over it."""
+def round_dial(
+    c: Cabin, F: Matrix, faces: Sheet, name: str, spec: dict, u: float, v: float, r: float, w: float = 0.0, ppi: float = 125, rim: bool = False
+) -> None:
+    """A round instrument: its face a little behind the bezel's lip, a needle on its pivot, a glass over it. With `rim`,
+    a bright ring round the glass on the bezel's lip, as the flown capsule's instruments have (NASM2021-00147)."""
     rg = faces.take(2 * r, 2 * r, ppi, -r, -r)
     draw_dial(rg, r * 0.92, spec["scale"], spec["majors"], spec["minor"], spec["titles"], sectors=spec.get("sectors", ()))
     c.turned("CrewCabin_Bezels", F, u, v, [(r + 0.14, 0.0), (r + 0.14, 0.3), (r * 0.94, 0.3), (r * 0.92, 0.06)], 32, w)
     c.disc("CrewCabin_Instruments", F, u, v, r * 0.93, w + 0.06, rg)
     c.disc("CrewCabin_InstrumentGlass", F, u, v, r * 0.93, w + 0.25, None, 20)
+    if rim:
+        c.turned(
+            "CrewCabin_PanelFittings", F, u, v, [(r * 0.955, 0.24), (r * 0.955, 0.37), (r * 0.99, 0.4), (r * 1.03, 0.37), (r * 1.03, 0.24)], 32, w
+        )
     pv = -r * 0.62 if spec.get("fan") else 0.0  # a fan-scale meter's needle is pivoted below its face
     rest = scale_at(spec["scale"], spec["rest"])
     shape = pointer(r * (1.5 if spec.get("fan") else 0.8), r * 0.09, r * (0.0 if spec.get("fan") else 0.22), hub=0.0 if spec.get("fan") else r * 0.13)
@@ -1177,7 +1193,7 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
 
     for name, spec in ROUND.items():
         (u, v), r = fig(*spec["at"]), spec["d"] * S / 2
-        round_dial(c, P, faces, name, spec, u, v, r)
+        round_dial(c, P, faces, name, spec, u, v, r, rim=True)
         c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)  # its case behind the panel
     # the blanked hole of an instrument not flown (Figure 3.1-2 draws it empty)
     u, v = fig(1632, 870)
@@ -1806,6 +1822,136 @@ def stowage(
             )
 
 
+# What stands on No. 7's wall besides what stowage() places, each (angle round from his right in degrees, station in
+# inches, size across, up the wall and out from it in inches, what it is). The kind and how densely they crowd the wall
+# are SEDR 104 Figure 1-2 (the orbital capsule's interior arrangement: cases and harnesses round the whole wall) and the
+# flown capsule's photographs (NASM2021-00147 and -00153); which case is which, where each is and how big are ours.
+WALL_CASES = (
+    (176.0, 27.5, 4.6, 3.2, 2.2, "a relay case"),
+    (186.0, 41.0, 5.2, 3.6, 2.4, "a junction case"),
+    (162.0, 42.0, 4.4, 3.0, 2.0, "a junction case"),
+    (8.0, 40.5, 4.8, 3.4, 2.2, "an amplifier case"),
+    (27.0, 42.0, 4.2, 3.0, 2.0, "a relay case"),
+)
+# The harnesses round the wall: along these frames, beside them on the side toward the pilot (FRAMES; SEDR 104 Figure 1-2 draws
+# the cabin's wiring following its frames round the wall), and two runs up the wall between them.
+HARNESS_FRAMES = (24.5, 34.5, 48.5)
+HARNESS_RISERS = (40.0, 200.0, 150.0)
+
+
+# The meshes fit_out() builds, which stand on the wall: a flight lists them with its shells.
+WALL_FIT = ("CrewCabin_Harness", "CrewCabin_Risers", "CrewCabin_WallClips", "CrewCabin_WallCases", "CrewCabin_WallConnectors", "CrewCabin_WallPlates")
+
+
+def fit_out(c: Cabin, hatch, portholes) -> None:
+    """No. 7's wall as it was fitted: harnesses laced along the frames and held to them by clips, runs up the wall
+    between frames, and the cases the wiring serves, each with its connector in a red cap and a data plate.
+    Every place and size is estimated (WALL_CASES); none of it is on No. 11's wall, which its own records leave bare."""
+    t0, t1, hz0, hz1 = hatch
+    v = c.vessel
+    rl = lambda z: v.r(z) - 0.12  # noqa: E731
+    deg = math.radians
+    # (all of it on the wall, so its own meshes, which the cutaway slices with the wall: WALL_FIT)
+    loom, clip = c.into("CrewCabin_Harness"), c.into("CrewCabin_WallClips")
+    case_, caps, plate = c.into("CrewCabin_WallCases"), c.into("CrewCabin_WallConnectors"), c.into("CrewCabin_WallPlates")
+    laced = lambda s, th: 0.18 if (s * 40) % 1.0 < 0.08 else 0.0  # noqa: E731
+    # a frame on the wall: x down the slant, y round the cone, z out of the wall
+    wallwise = lambda t: Matrix.Rotation(t, 4, "Z") @ Matrix.Rotation(math.pi / 2 - v.a, 4, "Y")  # noqa: E731
+    at = lambda t, z, inward: Vector((math.cos(t), math.sin(t), 0)) * ((rl(z) - inward) * IN) + Vector((0, 0, z * IN))  # noqa: E731
+
+    def free(t: float, z: float) -> bool:
+        """Whether a place on the wall is clear of the hatch, the ports, the panel and what stowage() has put there."""
+        a = math.degrees(t) % 360
+        if (t - t0 + 0.12) % TAU < (t1 - t0) + 0.24 and hz0 - 2.0 < z < hz1 + 2.0:
+            return False
+        p = Vector((math.cos(t), math.sin(t), 0)) * rl(z) + Vector((0, 0, z))
+        if any((p * IN - v.p(pt, pz)).length < (PORT_RING + 2.2) * IN for pt, pz in portholes):
+            return False
+        keep_out = (
+            (48, 132, 0, 44),  # the panel, its back and the periscope behind it
+            (245, 292, 18, 30),  # the cabin lights
+            (268, 290, 40, 48),  # the junction box above the panel
+            (190, 228, 0, 23),  # the survival kit
+            (160, 186, 0, 23),  # the fuse panel
+            (330, 360, 0, 29),  # the suit circuit's hoses
+            (0, 8, 0, 29),
+        )
+        return not any(a0 <= a <= a1 and z0 <= z <= z1 for a0, a1, z0, z1 in keep_out)
+
+    def runs(z: float, step: float = 2.0):
+        """The stretches of the wall at a station that are free, as lists of angles (radians)."""
+        out, cur = [], []
+        for k in range(int(360 / step)):
+            t = deg(k * step)
+            if free(t, z):
+                cur.append(t)
+            elif cur:
+                out.append(cur)
+                cur = []
+        if cur:
+            if out and abs(out[0][0]) < 1e-9:  # (round past 0)
+                out[0] = [t - TAU for t in cur] + out[0]
+            else:
+                out.append(cur)
+        return [r for r in out if len(r) >= 4]
+
+    # along the frames: a bundle of two, its clips standing off the frame's flange every 12 degrees or so
+    for zf in HARNESS_FRAMES:
+        zb = zf - 0.3 - 0.18 - 0.34  # (on the frame's near side, toward the pilot)
+        for run_ in runs(zb):
+            for k, (rad, dz, inward) in enumerate(((0.34, 0.0, 0.8), (0.17, -0.12, 1.5))):
+                pts = [at(t, zb + dz, inward) for t in run_[1:-1]]
+                if len(pts) >= 2:
+                    loom.loft(
+                        pts, [(rad * IN, rad * IN)] * len(pts), 10 if k == 0 else 6, ref=(0, 0, 1), resample=3, ripple=laced if k == 0 else None
+                    )
+            for t in run_[2:-2:6]:  # (each sunk in the frame's flange and standing clear round the two)
+                clip.box((1.1 * IN, 0.4 * IN, 1.4 * IN), Matrix.Translation(at(t, zf - 0.75, 1.05)) @ wallwise(t))
+    # up the wall between the frames, held by clips every four inches
+    for a in HARNESS_RISERS:
+        t = deg(a)
+        za, zb = HARNESS_FRAMES[0] - 1.0, HARNESS_FRAMES[-1] - 0.5
+        zs = [z for z in np.arange(za, zb + 0.01, 1.5)]
+        if not all(free(t, z) for z in zs):
+            continue
+        # (standing two inches off the wall, so that it passes over the frames and the harnesses along them)
+        pts = [at(t, z, 2.0) for z in zs]
+        c.into("CrewCabin_Risers").loft(pts, [(0.3 * IN, 0.3 * IN)] * len(pts), 10, ref=(-math.sin(t), math.cos(t), 0), resample=3, ripple=laced)
+        for z in zs[1:-1:3]:
+            if not any(abs(z - zf) < 1.6 for zf in HARNESS_FRAMES):
+                clip.box((0.35 * IN, 1.15 * IN, 2.1 * IN), Matrix.Translation(at(t, z, 1.45)) @ wallwise(t))
+    # The cabin air inlet valve of capsules 5 and 7 (Postlaunch Report, Figure 3.1-1, which draws it low on the cone's
+    # hatch side toward the nose, where the orbital capsule's is elsewhere): a valve body off the wall with its knob.
+    # Its place and size are estimated from the figure.
+    t, z = deg(22.0), 51.0
+    if free(t, z):
+        valve = MeshBuilder()
+        f = Matrix.Translation(at(t, z, 0.0)) @ wallwise(t) @ Matrix.Rotation(math.pi, 4, "X")  # (its +Z into the cabin)
+        valve.lathe([(1.2, -0.3), (1.2, 0.35), (1.0, 0.5), (1.0, 2.1), (0.8, 2.3), (0.0, 2.3)], 20, matrix=f @ Matrix.Scale(IN, 4))
+        valve.lathe([(0.32, 2.2), (0.32, 2.9), (0.75, 3.0), (0.75, 3.45), (0.0, 3.5)], 16, matrix=f @ Matrix.Scale(IN, 4))
+        valve.tube(f @ Vector((0.0, 1.0 * IN, 1.2 * IN)), f @ Vector((0.0, 2.3 * IN, 1.2 * IN)), 0.55 * IN, 14)  # its outlet
+        obj = valve.build("CrewCabin_AirInletValve", c.M["lever"], c.g, sharp_angle=35)
+        obj["label"], obj["about"] = (
+            "Cabin air inlet valve",
+            "Where the cabin took in outside air once it was low enough to breathe, on capsules 5 and 7 in this place "
+            "(Postlaunch Report, Figure 3.1-1). Its place and size are estimated from that figure.",
+        )
+    # the cases, each on the wall on its own feet, with a data plate and its connector toward the nearest frame
+    for a, z, w, h, d, _ in WALL_CASES:
+        t = deg(a)
+        if not free(t, z):
+            continue
+        lean = wallwise(t)  # (its back square to the cone's wall)
+        f = Matrix.Translation(at(t, z, 0.8 + d / 2)) @ lean
+        case_.box((h * IN, w * IN, d * IN), f)
+        plate.box(((h * 0.45) * IN, (w * 0.5) * IN, 0.06 * IN), f @ Matrix.Translation((0.0, 0.0, (d / 2 + 0.03) * IN)))
+        caps.tube(at(t, z + h / 2 - 0.2, 0.8 + d / 2), at(t, z + h / 2 + 0.75, 0.8 + d / 2), 0.32 * IN, 10)
+        lead = [at(t, z + h / 2 + 0.6, 0.8 + d / 2), at(t, z + h / 2 + 1.6, 1.1 + d / 3), at(t, z + h / 2 + 2.6, 0.8)]
+        loom.loft(lead, [(0.14 * IN, 0.14 * IN)] * len(lead), 6, resample=4)
+        for side in (-1, 1):  # its feet
+            case_.box(((h + 0.6) * IN, 0.5 * IN, 0.45 * IN), f @ Matrix.Translation((0, side * (w / 2 - 0.45) * IN, (d / 2 - 0.075) * IN)))
+
+
 def shade(parent, lamps, also=()) -> None:
     """The cabin's own shadow, kept at its vertices (a colour attribute named Shade, which the viewer multiplies the
     surface by): how much of the two floodlights each point sees past everything else in the cabin, and how open it
@@ -1951,6 +2097,30 @@ def hatch_latches(parent, inner: Surf, M: dict, hatch, inset: float) -> None:
 
     frame_ = MeshBuilder()
     frame_.grid(point, range(m), range(len(section)), closed_u=True)
+    # the inner skin's stiffeners inside the frame: two up the slant and one across, a hat section riveted down (ours)
+    hat = [(-0.42, 0.15), (-0.42, -0.3), (-0.3, -0.38), (0.3, -0.38), (0.42, -0.3), (0.42, 0.15)]
+    for path in ([(ta + (tb - ta) * k, za + 0.7 + (zb - za - 1.4) * i / 10) for i in range(11)] for k in (1 / 3, 2 / 3)):
+        cs = [inner.p(t, z) for t, z in path]
+
+        def rib(i, j, path=path, cs=cs):
+            i = int(i)
+            t, _ = path[i]
+            along = (cs[min(i + 1, len(cs) - 1)] - cs[max(i - 1, 0)]).normalized()
+            x, o = hat[j]
+            return cs[i] + (along.cross(n(t)).normalized() * x + n(t) * o) * IN
+
+        frame_.grid(rib, range(len(path)), range(len(hat)))
+    across = [(ta + 0.7 / rk(z0) + (tb - ta - 1.4 / rk(z0)) * i / 16, (za + zb) / 2 + 2.0) for i in range(17)]
+    cs = [inner.p(t, z) for t, z in across]
+
+    def bar(i, j):
+        i = int(i)
+        t, _ = across[i]
+        along = (cs[min(i + 1, len(cs) - 1)] - cs[max(i - 1, 0)]).normalized()
+        x, o = ((-0.42, 0.15), (-0.42, -0.42), (-0.3, -0.52), (0.3, -0.52), (0.42, -0.42), (0.42, 0.15))[j]  # (over the ribs)
+        return cs[i] + (along.cross(n(t)).normalized() * x + n(t) * o) * IN
+
+    frame_.grid(bar, range(len(across)), range(len(hat)))
     for i in range(0, m, 2):  # riveted down through its flanges
         t, z = loop[i]
         for side in (-0.28, 0.28):
@@ -1971,3 +2141,24 @@ def hatch_latches(parent, inner: Surf, M: dict, hatch, inset: float) -> None:
     for (ta_, za_), (tb_, zb_) in zip(places, places[1:] + places[:1]):
         mech.tube(inner.p(ta_, za_, -1.32), inner.p(tb_, zb_, -1.32), 0.11 * IN, 8)
     mech.build("Hatch_LatchMechanism", M["lever"], parent, sharp_angle=35)
+    # The outside release handle, stowed inside on the hatch (Postlaunch Report, Figure 3.1-1: "external release handle
+    # (stowed position)", capsules 5 and 7): a bar with a grip at its end in two spring clips. Its size and where on the
+    # hatch it lies are ours.
+    stow, grip = MeshBuilder(), MeshBuilder()
+    s0, s1 = (ta + (tb - ta) * 0.18, za + (zb - za) * 0.3), (ta + (tb - ta) * 0.62, za + (zb - za) * 0.3)
+    a, b = inner.p(*s0, -1.0), inner.p(*s1, -1.0)
+    stow.tube(a, b, 0.3 * IN, 12)
+    for k in (0.2, 0.8):
+        q = a.lerp(b, k)
+        stow.tube(q + n(s0[0]) * (0.95 * IN), q - n(s0[0]) * (0.6 * IN), 0.45 * IN, 10)
+    d = (b - a).normalized()
+    side = d.cross(n(s1[0])).normalized()
+    grip.tube(b + side * (1.6 * IN), b - side * (1.6 * IN), 0.42 * IN, 12)
+    stow.build("Hatch_StowedHandle", M["lever"], parent, sharp_angle=35)
+    grip.build("Hatch_StowedHandleGrip", M["grip"], parent)
+    obj = bpy.data.objects["Hatch_StowedHandle"]
+    obj["label"], obj["about"] = (
+        "Outside release handle, stowed",
+        "The handle a recovery crew put into the socket outside to open the hatch, carried stowed inside it (Postlaunch "
+        "Report, Figure 3.1-1, capsules 5 and 7). Where it lay and its size are estimated.",
+    )

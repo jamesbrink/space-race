@@ -380,7 +380,7 @@ def build() -> str:
     if where:
         report(where, turn)
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
-    mark_shells(SHELLS + tuple(THING_SHELLS) + redstone_mrlv.SHELLS)
+    mark_shells(SHELLS + tuple(THING_SHELLS) + mercury_cabin.WALL_FIT + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"
 
 
