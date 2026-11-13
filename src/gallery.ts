@@ -83,6 +83,7 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
   // (on a phone the switch is one control that says where you are, and opens to the three: fold.ts)
   const now = `<button class="places-now" aria-haspopup="true" aria-expanded="false" title="The places of this flight: ${PLACES.map((p) => PLACE_NAME[p]).join(', ')}"><span>${shortName(here)}</span><i class="chevron"></i></button>`;
   nav.innerHTML = `${now}${out}${PLACES.map(button).join('')}<p role="status" hidden></p>`;
+  fitPlaceName(nav);
   const says = nav.querySelector('p')!;
   const toggle = nav.querySelector<HTMLElement>('.places-now')!;
   const unfold = (open: boolean): void => {
@@ -105,6 +106,38 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
     else if (to.getAttribute('aria-pressed') !== 'true') go(to.dataset.place as Place);
   });
   return nav;
+}
+
+/**
+ * "Launch site" is "site" only where the whole name does not fit on the top line beside the flight's name (`short`: fold.css
+ * hides the "Launch " in the button and in the menu's list alike, so the one word is used in both). Wherever it fits it is whole.
+ */
+function fitPlaceName(nav: HTMLElement): void {
+  const fit = (): void => {
+    const title = nav.parentElement;
+    const now = nav.querySelector<HTMLElement>('.places-now');
+    nav.classList.remove('short');
+    if (!title || !now || getComputedStyle(now).display === 'none') return;
+    const size = (sel: string): number => {
+      const el = title.querySelector<HTMLElement>(sel);
+      return el && getComputedStyle(el).display !== 'none' ? el.scrollWidth : 0;
+    };
+    const gap = parseFloat(getComputedStyle(title).columnGap) || 0;
+    const kids = [...title.children].filter((c) => getComputedStyle(c).display !== 'none').length;
+    const need =
+      size(':scope > h1') +
+      size(':scope > .sub') +
+      nav.offsetWidth +
+      gap * Math.max(0, kids - 1) +
+      parseFloat(getComputedStyle(title).paddingLeft);
+    if (need > title.clientWidth) nav.classList.add('short');
+  };
+  // (its own size changes with the words in it, and the title's with the page)
+  const watch = new ResizeObserver(() => {
+    fit();
+    if (nav.parentElement) watch.observe(nav.parentElement);
+  });
+  watch.observe(nav);
 }
 
 /** A place's name, with what may go where there is no room for it ("Launch site" is "site" beside "gallery" and "fly"). */

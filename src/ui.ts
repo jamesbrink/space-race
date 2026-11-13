@@ -695,7 +695,10 @@ export class Ui {
       .join('');
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
     r.querySelector('.buttons')!.innerHTML =
-      `<span class="set" role="group" aria-label="View"><span class="set-items">${[...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]), ...m.views]
+      `<span class="set" role="group" aria-label="View"><span class="set-items">${[
+        ...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]),
+        ...m.views,
+      ]
         .map((v) => `<button data-view="${v.id}" aria-pressed="false" title="View: ${esc(v.label)}">${esc(v.label)}</button>`)
         .join('')}</span></span>` +
       `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside">Cutaway</button>' : ''}` +

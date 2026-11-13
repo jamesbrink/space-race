@@ -32,6 +32,7 @@
   /* one the flight does not have yet is listed, dimmed, and says why under its name */
   :is(#gallery, #ui) .places.open > [data-place][aria-disabled='true'] { opacity: 1; color: var(--faint); }
   :is(#gallery, #ui) .places i { display: inline; }
+  :is(#gallery, #ui) .places.short i:not(.chevron) { display: none; }
   :is(#gallery, #ui) .title .places p { display: none; }
 
   /* nothing else stands on the view: the control block is in the sheet (its View pane) */
@@ -94,7 +95,7 @@
   :is(#gallery, #ui) .panel.open > section:not([hidden]) { flex: 1 1 0; }
 }
 /* a phone held upright with no room beside its name for the date: the name and what it was, the date in the Specs */
-@media (max-width: 520px) and (min-height: 521px) { :is(#gallery, #ui) .title > .sub span, :is(#gallery, #ui) .places-now i { display: none; } }
+@media (max-width: 520px) and (min-height: 521px) { :is(#gallery, #ui) .title > .sub span { display: none; } }
 /* a wide page has none of a phone's pieces: no View tab (the control block is beside the view), no handle of its own */
 @media (min-width: 961px) and (min-height: 521px) { :is(#gallery, #ui) [data-tab='View'] { display: none; } #ui .panel > .handle { display: none; } }
 .say.long.going { animation-duration: 7s; }
