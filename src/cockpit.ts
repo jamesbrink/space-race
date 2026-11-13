@@ -1,5 +1,4 @@
 import './cockpit.css';
-import { prefs } from './prefs.ts';
 import { autopilot, blend, Tally } from './sim/autopilot.ts';
 import { G0, type Results } from './sim/fly.ts';
 import { standing } from './sim/loads.ts';
@@ -294,7 +293,7 @@ export class Cockpit {
       for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => set(false));
       window.addEventListener('blur', () => set(false));
     }
-    this.showKeys(prefs.get('deckKeys'), false);
+    this.showKeys(false);
 
     // the way in: beside the clock, which is always on show
     this.button = document.createElement('button');
@@ -315,9 +314,11 @@ export class Cockpit {
     return this.on;
   }
 
-  /** The list of every key and control, under the one line that is always there: opened or shut. Remembered. */
-  private showKeys(open: boolean, remember = true): void {
-    if (remember) prefs.set('deckKeys', open);
+  /**
+   * The list of every key and control, under the one line that is always there: opened or shut. It is not remembered:
+   * open, it covers a third of the view, so the deck is always entered with it shut and the world in front.
+   */
+  private showKeys(open: boolean): void {
     this.root.querySelector<HTMLElement>('.cockpit-keys')!.hidden = !open;
     this.root.querySelector('[data-do=keys]')!.setAttribute('aria-expanded', String(open));
     this.root.classList.toggle('keys-open', open);
@@ -388,6 +389,7 @@ export class Cockpit {
     if (!this.vehicle || this.on) return;
     this.on = true;
     this.root.hidden = false;
+    this.showKeys(false);
     this.button.querySelector('span')!.textContent = 'Leave';
     this.button.title = 'Leave the flight deck (Esc)';
     this.host.piloting(true);

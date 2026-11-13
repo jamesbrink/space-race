@@ -10,7 +10,6 @@ export type Pref =
   | 'legendOpen'
   | 'legendMore'
   | 'factsOpen'
-  | 'deckKeys'
   | 'timeOpen'
   | 'orbitOff'
   | 'cel'
