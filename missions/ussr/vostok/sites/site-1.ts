@@ -43,4 +43,15 @@ export const SITE1: SiteDef = {
   // The range and every report of the flight kept Moscow time, three hours ahead of UTC in 1961 (liftoff 09:06:59.7 is 06:06:59.7 UTC).
   // Clocks in the Kyzylorda region round it stood later; the flight's record does not use them.
   zone: { name: 'MSK', utcOffset: 3 },
+  // The sky a flight from here stands under when it has no record of its own day: the steppe's clear, dry air. Every
+  // figure is an estimate. Vostok 1 has its day's (its flight's weather.ts).
+  weather: {
+    observed: { where: 'nowhere: the steppe’s usual clear morning', at: '', source: 'no day’s record: an estimate of the place' },
+    wind: {
+      from: { value: 45, confidence: 'estimated', source: 'the steppe’s usual quarter in spring: the north-east' },
+      speed: { value: 2.5, confidence: 'estimated', source: 'a light breeze' },
+    },
+    visibility: { value: 60_000, confidence: 'estimated', source: 'dry air: clear' },
+    haze: { value: 1500, confidence: 'estimated', source: 'taken to thin over 1.5 km' },
+  },
 };

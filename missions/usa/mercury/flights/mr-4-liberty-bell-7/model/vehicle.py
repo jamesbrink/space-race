@@ -437,7 +437,7 @@ def build() -> str:
     turn = mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
     # (the periscope's door, cartridge and link: each one's motion into its node, now that the capsule stands as it will)
     mercury_capsule.periscope_run(scope, turn)
-    redstone_mrlv.build(Z_BOOSTER_BASE, font, clamp_covers="streamlined")
+    redstone_mrlv.build(Z_BOOSTER_BASE, font, clamp_covers="streamlined", number="8")  # MR-8
     mark_shells(SHELLS + tuple(THING_SHELLS) + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"
 
@@ -449,6 +449,9 @@ if __name__ == "__main__":
         build,
         [
             ("vehicle-stack.png", (0, 0, (Z_TOP + Z_BOOSTER_BASE) / 2 * IN), 70, dict(azimuth=-70, res=(700, 1600))),
+            # the booster from abeam of the flight's line, where UNITED STATES and a number plate face (225 degrees round from the hatch)
+            ("booster-lettering.png", (0, 0, (Z_BOOSTER_BASE + 330) * IN), 46, dict(azimuth=225, elevation=3, res=(700, 1600))),
+            ("booster-plate.png", (0, 0, (Z_BOOSTER_BASE + 150) * IN), 9, dict(azimuth=205, elevation=3, res=(1100, 1100))),
             ("capsule-window.png", (0, 0, 0.9), 9, dict(azimuth=-88, elevation=6, res=(1300, 1300))),
             ("capsule-hatch.png", (0, 0, 0.9), 9, dict(azimuth=-45, elevation=6, res=(1300, 1300))),
             ("capsule-periscope.png", (0, 0, 0.9), 9, dict(azimuth=100, elevation=6, res=(1300, 1300))),

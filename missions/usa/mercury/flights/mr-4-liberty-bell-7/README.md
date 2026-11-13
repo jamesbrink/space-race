@@ -109,29 +109,45 @@ weather station (the Skid Strip) reported the sky covered and no ceiling: one ok
 (coded cumulonimbus), two of altocumulus at 5,400 m, and a whole sky of thin cirrostratus above;
 wind from 200° at 2.1 m/s; visibility at the station's 16 km limit; 25.5 °C. An hour earlier it had a
 ceiling at 3,000 m. Patrick, 23 km south, had five oktas of altocumulus at 4,500 m at 07:00. That
-is the "existing overcast" the count was held 41 minutes for (*Results*, p. 50), and *This New
-Ocean* (p. 369) has all of northern Florida "obscured by high cirrus and lower patches of cumulus".
-Documented: NOAA's Integrated Surface Database, stations 74794012868 and 74795012867.
-**The viewer does not show it.** It has one sky for the Cape, set in `src/viewer/cape.ts` (`CLOUDS`)
-and `weather.ts` from the record of 5 May: a tenth of fair-weather cumulus at 720 m on a breeze from
-090°. A flight has nowhere to give its own day's cloud, so Liberty Bell 7 stands under Freedom 7's
-sky, which is wrong for it; the Sun, Moon and planets are its own.
+is the "existing overcast" the count was held 41 minutes for (*Results*, p. 50). From 190 km the
+pilot found that "high cirrus blotted out everything except an area from about Daytona Beach back
+inland to Orlando and Lakeland to Lake Okeechobee and down to the tip of Florida. Beyond this the
+Gulf of Mexico was visible" (*Results*, p. 37); he picked out the Cape and the Banana River through
+it, and the Gulf coast between Apalachicola and Mobile, "both a hazy blue" (p. 52), and never saw
+Cuba. *This New Ocean* (p. 369) has the outlook the launch was decided on: northern Florida under
+"high cirrus and lower patches of cumulus", southern Florida and Cuba "splotched by scattered
+cumulus". Documented: NOAA's Integrated Surface Database, stations 74794012868 and 74795012867.
+
+**The viewer shows it**, from [weather.ts](weather.ts) beside this file (`Flight.weather`: every
+figure with its confidence and source). The launch site stands under that morning's sky: an eighth
+of cumulus on a light wind from 200°, patches of altocumulus high over them, and over the whole sky
+the veil, milky, with the Sun's disc and a glow in it. The light is that day's: under the veil the
+Sun's is a little over half of what a clear sky would give at that height, the shadows are softer
+and the sky's own light is more; before sunrise the veil is lit while the pad is still dark. From
+height the veil is a white sheet over everything but the two stretches the pilot named. What is
+ours in it, all estimated and said so where it is set: the veil's height (not recorded; 10.5 km)
+and how thick it is (an optical depth of 0.4: thin, by the station's report of no ceiling under
+eight oktas), what that does to the light (`src/viewer/day.ts`), the cumulus's depth and size, how
+far past the stations' limits one could see (40 km), the bounds of each stretch of country the
+record names and the cover its words are taken to mean, and everything beyond what the record
+speaks of. It is the 07:00 sky throughout: the thicker cloud of an hour earlier, which the count
+was held for, is not shown thicker (lc-5.md, "What the model gets wrong or leaves out").
 
 ## What is not built
 
 **The launch site is built** ([lc-5.md](../../sites/lc-5.md), "5 May and 21 July 1961", has what
 differs from Freedom 7's morning and how sure each difference is). What it still lacks:
 
-- **the day's weather**: above. The viewer has no place for a flight's own cloud and wind;
 - **Grissom on the couch**: the pilot in the cabin's cutaway is still Shepard's figure with the name
   changed and a mirror laid on him. The standing figure's suit can be seated in his place
   (mark-iv-suit.md, "On the couch", says what would change and what has not been looked at);
 - **a cabin to sit in**: the capsule's inside is modelled and cannot be boarded;
 - what July's photographs show and the pad does not have: the tail heater, the LOX trailers, the
-  M-113, the covers (lc-5.md, the same section). The two cable masts now stand where those
-  photographs put them, on the launcher against the vehicle; the same photographs say the vehicle
-  itself stood turned about 60° on the pad from how it is modelled, which is left open (lc-5.md, "An
-  open question: which way round the vehicle stood").
+  M-113, the covers (lc-5.md, the same section). The two cable masts stand where those
+  photographs put them, on the launcher against the vehicle, and the vehicle stands as the same
+  photographs and the launcher's rule have it: turned to its 100° azimuth, the hatch 60° round from
+  the cherry picker's side and bearing 235° true (lc-5.md, "Which way round the vehicle stood"). The
+  blast screens and their tanks are probably on the wrong side of the pad (the same section).
 
 **The flight.** To be flown it needs what Freedom 7 has in `flight.ts`: the booster's measured
 thrust and cutoff for MR-8, the tilt programme on 100°, the capsule's weights at each stage (the

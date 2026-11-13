@@ -124,8 +124,21 @@ Computed by `src/world` from [site-1.ts](../../sites/site-1.ts) and the launch i
 | Sun | 142.1° | 46.9° |
 | Moon | 193.3° | 35.0°, 12% lit: a waning crescent three days before new |
 
-A clear mid-morning. JPL Horizons gives the same Sun and Moon for Baikonur at 06:07 UTC to a
-hundredth of a degree (the same test file).
+JPL Horizons gives the same Sun and Moon for Baikonur at 06:07 UTC to a hundredth of a degree (the
+same test file).
+
+**The weather, as recorded, and as shown.** No observation made at the range that morning has been
+read. The weather stations along the railway either side of it reported, in NOAA's Integrated Surface
+Database: at Kazalinsk, 97 km west, at 06:00 UTC (seven minutes before liftoff), seven oktas of the
+sky covered, no low or middle cloud, the high cloud "dense cirrus, in patches or entangled sheaves",
+the wind from 140° at 2.1 m/s, 12.2 °C; at Dzhusaly, 74 km south-east, at 03:00 UTC, the same seven
+oktas of the same cloud, calm; at Kzyl-Orda, 214 km south-east, at 06:00, the whole sky under
+cirrostratus; visibility 50 km at the last two. [weather.ts](weather.ts) (`Flight.weather`) takes
+the first two for the site between them, and the launch site is drawn under that: no cumulus, cirrus
+over seven eighths of the sky at 9 km, thin enough that the Sun casts its shadows through it
+(estimated: its height and its thickness are not recorded). The site was first drawn under a clear
+sky, from a reading of the film; the stations are preferred. It stays an open question until a
+report from the range itself is read ([site-1.md](../../sites/site-1.md), "The land").
 
 ## Sources
 

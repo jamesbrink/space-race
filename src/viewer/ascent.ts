@@ -460,8 +460,24 @@ export class Ascent {
       const air = toThree(ecefToSiteDirection(this.site, inertialToEcefVelocity(r, v, spin)));
       const back = air.lengthSq() > 1e-6 ? air.normalize().negate() : Y.clone();
       const k = turned > separation ? THREE.MathUtils.smoothstep(t, separation, turned) : 1;
-      // nearly end for end: the shortest turn between the two attitudes, not the pilot's path
-      this.arc.slerp(new THREE.Quaternion().setFromUnitVectors(Y, back), k);
+      // Nearly end for end. Where the spacecraft names the side it keeps toward the Earth (its periscope's: the pilot is
+      // then head up), the attitude it turns to has that side underneath, and the short way there from how it rode the
+      // booster, the same side underneath, is a half turn about the plumb line: the yaw the record has. Where it names
+      // none, the shortest turn of the long axis alone, which is a pitch over and leaves it as it falls.
+      const end = new THREE.Quaternion().setFromUnitVectors(Y, back);
+      const keel = this.keel();
+      if (keel) {
+        const down = toThree(ecefToSiteDirection(this.site, inertialToEcef(r, spin)))
+          .normalize()
+          .negate();
+        const under = down.addScaledVector(back, -down.dot(back));
+        if (under.lengthSq() > 1e-6) {
+          under.normalize();
+          const stood = new THREE.Matrix4().makeBasis(Y, keel, Y.clone().cross(keel)).transpose(); // (a rotation's inverse)
+          end.setFromRotationMatrix(new THREE.Matrix4().makeBasis(back, under, back.clone().cross(under)).multiply(stood));
+        }
+      }
+      this.arc.slerp(end, k);
     }
     quaternion.copy(this.arc).multiply(padTurn);
     // The point flown is the stack's base. Up to separation the model's origin is held up the axis from it, turning with
@@ -476,6 +492,22 @@ export class Ascent {
     }
     position.copy(toThree(at)).add(this.stood(t)).add(offset);
     return true;
+  }
+
+  /**
+   * The side the spacecraft keeps toward the Earth once it has turned round (`body.capsule.earthward`: degrees about
+   * the long axis from the body's +Z, which on the pad points against the azimuth), as it lay on the pad: a level
+   * direction in the site's frame. Null if the flight names none.
+   */
+  private keel(): THREE.Vector3 | null {
+    const tr = this.flight.trajectory;
+    const side = tr?.body?.capsule.earthward;
+    if (!tr || !side) return null;
+    const bearing = THREE.MathUtils.degToRad(tr.azimuth.value - this.flight.site.bearingX.value);
+    const downrange = new THREE.Vector3(Math.cos(bearing), 0, Math.sin(bearing));
+    const a = THREE.MathUtils.degToRad(side.value);
+    // (the body's +Y is the plumb line crossed with the way down range, its +Z the way back up range: `bodyFrame`)
+    return Y.clone().cross(downrange).multiplyScalar(-Math.sin(a)).addScaledVector(downrange, -Math.cos(a)).normalize();
   }
 
   /** The body's three axes at a sample (nose, left, against the azimuth: sim/vehicle.ts) as directions in the site's frame. */

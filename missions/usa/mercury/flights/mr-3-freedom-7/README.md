@@ -61,13 +61,26 @@ to 0.002° (`tests/world.test.mjs`). Elevations are geometric; air lifts the Moo
 
 | Body | Azimuth (true) | Elevation | Note |
 | --- | --- | --- | --- |
-| Sun | 098.8° | 50.2° | Behind the hatch side (the pad frame's +X faces 295°): the hatch was in shade |
+| Sun | 098.8° | 50.2° | Six degrees off the flight's azimuth, on the side the periscope faced. The hatch's middle bore 240° (the vehicle stood turned to its azimuth: lc-5.md, "Which way round the vehicle stood"), 141° round from the Sun: the hatch was in shade |
 | Moon | 245.2° | 4.6° | Low in the west-south-west, setting; waning gibbous, 74% lit, 0.54° across. Last quarter was two days later |
 | Venus | 154.5° | 66.4° | A 16% crescent near greatest brilliancy, magnitude about −4.1: in the sky but not to be seen without knowing where to look |
 | Jupiter, Saturn | 233.0°, 236.5° | 20.8°, 15.0° | Above the Moon, lost in daylight |
 | Mercury | 094.0° | 47.2° | Four degrees from the Sun |
 
 Mars, Uranus and Neptune were below the horizon.
+
+**The weather, as recorded, and as shown.** [weather.ts](weather.ts) beside this file
+(`Flight.weather`: every figure with its confidence and source) has the morning, and the launch
+site's sky is drawn from it and from nothing else: "1/10 cumulus" at liftoff (Postlaunch Report,
+10.3, p. 87), their bases at 720 m (the Skid Strip's median for May mornings; 750 m that day at
+07:00 and 10:00), one okta of altocumulus at 3,600 m (Patrick, 23 km south, at 10:00 EST), the
+wind from 090° at 10 knots (the Skid Strip, 09:00 EST), visibility at the station's 16 km limit. No
+high cloud is recorded over the Cape at those hours. What is ours, estimated: the cumulus's depth
+(650 m), their breadth and the wind at their height (7 m/s), how far past the limit one could see
+(80 km), and all the weather beyond the Cape ([lc-5.md](../../sites/lc-5.md), "What the model gets
+wrong or leaves out"). The report gives the surface wind at liftoff as 12 knots, from 070 by its
+profile: the simulator flies that (below); the plants and the clouds were drawn for the station's
+figure of half an hour earlier and are kept as they were.
 
 ## The flight as flown
 

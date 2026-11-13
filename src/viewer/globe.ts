@@ -16,13 +16,30 @@ import { RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
 import { type Clouds, cloudCutGlsl, cloudMiddle } from './air.ts';
 import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
+import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
+import { fieldAs } from './field.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Beyond } from './land';
 import { later } from './later.ts';
 import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
 import { tier } from './tier.ts';
-import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
+import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
 import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
+
+/**
+ * GLSL: the end of `globeShade`: what the day's two sheets leave of the Sun's light at a point of the globe, taken
+ * from `shade` (what the cumulus under them have left): the middle deck's patches (as the scene's own ground has
+ * them: deckShadeAt) and the high cloud, each read where the ray toward the Sun crosses its height (`lean`). The
+ * high cloud on a day whose record has it is that record's depth, as on the site's own ground (weather.ts:
+ * veilShade); on a day that has only the map's own cirrus, half of each fibre's opacity, and the text is what it was
+ * before a flight could give its day (weather.ts: `highOf`). Needs sheetsGlsl.
+ */
+const sheetsShade = (day: Day | null | undefined): string => /* glsl */ `
+            vec2 pd = world.xz + lean * ${(day?.deck.height ?? DECK_HEIGHT).toFixed(1)};
+            // (the deck's patches, as the scene's own ground has them: deckShadeAt)
+            shade *= deckShadeAt(vec3(world.x, 0.0, world.z), vec3(sun.x, max(mu, 0.08), sun.z), 0.0, deckCoverAt(weatherAt(pd), pd));
+            vec2 pc = world.xz + lean * ${(day?.high.height ?? HIGH_HEIGHT).toFixed(1)};
+            return shade * ${highOf(day) ? 'veilShade(highCoverAt(weatherAt(pc), pc), mu)' : '(1.0 - 0.5 * cirrusAt(pc, fp, weatherAt(pc).g))'};`;
 
 /**
  * The Earth as a globe, to scale, under a site: the sea and the land seen from height, and
@@ -522,6 +539,10 @@ export class Globe {
   private readonly hole: Hole | null;
   /** Whether the site's air has cumulus (air.ts), whose shadows fall on the globe too. */
   private readonly clouds: Clouds | null;
+  /** Whether its day has a middle deck or high cloud over the site and no cumulus (day.ts): their shade falls on the globe all the same. */
+  private readonly sheets: boolean;
+  /** The day the site's air is the air of (air.ts: `Air.day`): its sheets' heights and its high cloud are written into the shade. */
+  private readonly day: Day | null;
 
   /**
    * `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `hole`: the site's own ground;
@@ -532,7 +553,7 @@ export class Globe {
     site: Site,
     seaLevel: number,
     hole: Hole | null,
-    haze: { scale: number; clouds?: unknown } | null,
+    haze: { scale: number; clouds?: unknown; day?: Day } | null,
     region: string | null = null,
     /** The tone of the site's own ground seen whole, kept round it until the eye is well up: the Cape's canopy's green unless said. */
     tone: THREE.Color = LAND,
@@ -542,6 +563,8 @@ export class Globe {
     this.seaLevel = seaLevel;
     this.hole = hole;
     this.clouds = (haze?.clouds as Clouds | undefined) ?? null;
+    this.day = haze?.day ?? null;
+    this.sheets = !this.clouds && this.day !== null && (this.day.deck.cover > 0 || (this.day.high.cover ?? 0) > 0);
     onWeather(() => {
       this.arrived = true;
     });
@@ -1021,6 +1044,8 @@ export class Globe {
   private shade(material: THREE.MeshStandardMaterial): void {
     const uniforms = this.uniforms;
     const c = this.clouds;
+    const sheets = this.sheets;
+    const day = this.day;
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = shader.vertexShader
@@ -1068,10 +1093,10 @@ export class Globe {
           ${
             c
               ? /* glsl */ `#ifdef USE_FOG
-          ${WEATHER_GLSL}
+          ${weatherGlsl(day)}
           ${cloudCutGlsl()}
           ${cumulusBiasGlsl('air_')}
-          ${sheetsGlsl('air_')}
+          ${sheetsGlsl('air_', day)}
           ${cumulusCellsGlsl('air_')}
           // How much of the Sun's light reaches a point of the globe through the clouds over it: the cumulus as the
           // weather has them there (clouds.ts draws the same field: farCumulus), the middle deck and the cirrus, each
@@ -1095,15 +1120,22 @@ export class Globe {
             float fine = 1.0 - smoothstep(${(2 * c.size).toFixed(1)}, ${(8 * c.size).toFixed(1)}, fp);
             float gather = air_noise2((p - uCloudDrift.xz) / ${c.size.toFixed(1)} * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
             float even = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);
-            float shade = 1.0 - 0.8 * mix(dark, even, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
-            vec2 pd = world.xz + lean * ${DECK_HEIGHT.toFixed(1)};
-            // (the deck's patches, as the scene's own ground has them: deckShadeAt)
-            shade *= deckShadeAt(vec3(world.x, 0.0, world.z), vec3(sun.x, max(mu, 0.08), sun.z), 0.0, deckCoverAt(weatherAt(pd), pd));
-            vec2 pc = world.xz + lean * ${CIRRUS_HEIGHT.toFixed(1)};
-            return shade * (1.0 - 0.5 * cirrusAt(pc, fp, weatherAt(pc).g));
+            float shade = 1.0 - 0.8 * mix(dark, even, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));${sheetsShade(day)}
           }
           #endif`
-              : ''
+              : sheets
+                ? /* glsl */ `#ifdef USE_FOG
+          ${fieldAs('air_')}
+          ${weatherGlsl(day)}
+          ${sheetsGlsl('air_', day)}
+          // (a day with no cumulus: only the sheets over it)
+          float globeShade(vec3 world, vec3 sun, float mu, float fp) {
+            if (mu <= 0.02) return 1.0;
+            vec2 lean = sun.xz / max(mu, 0.08);
+            float shade = 1.0;${sheetsShade(day)}
+          }
+          #endif`
+                : ''
           }`,
         )
         .replace(
@@ -1146,7 +1178,7 @@ export class Globe {
             // them, and on the Sun's; worked out here, outside the branch, so the pixel's footprint is measured evenly
             float sceneShade = 1.0, sunShade = 1.0;
             ${
-              this.clouds
+              this.clouds || this.sheets
                 ? `#ifdef USE_FOG
             float footprint = length(fwidth(vFogWorld.xz));
             sceneShade = airShade;   // (the shared chunk's own, just worked out)

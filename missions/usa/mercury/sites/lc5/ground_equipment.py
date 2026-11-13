@@ -4,15 +4,16 @@ None of these positions is documented, and two things are dated: the emergency s
 prelaunch photograph of MR-3 with the cherry picker at the capsule, GPN-2000-001006, and KSC-61-4457
 of 2 May 1961, show it at the pad's edge: a tubular frame on a cart, its sign a red cross on a
 saltire) and the white trailer lettered "NASA SP-No 1" beside the structure's base (S61-03158). The
-huts at the hatch side's edge and the striped barricade are FHSU F16_017 and F16_015, of July 1961,
+huts at the blockhouse side's edge and the striped barricade are FHSU F16_017 and F16_015, of July 1961,
 and so are the floodlights' timber poles with two or three lamps on a crossarm. TM X-53107's countdown says the LOX topping trailer and the
 LN2 trailers stayed through liftoff (T-60 s "LOX topping Off"; secured after the launch). MR-3's
-liftoff photographs (S61-02407 at ignition, S61-01927, S61-02408) and MR-4's (S63-02651) show, behind
-the launcher on the side away from the hatch: two open-topped screens of white panels, the lower with
+liftoff photographs (S61-02407 at ignition, S61-01927, S61-02408) and MR-1's of November 1960 (S63-02651, which
+NASA's archive has as MR-4) show, behind the launcher, built here on the side away from the blockhouse (which is
+probably the wrong side: ../lc-5.md, "What the model gets wrong"): two open-topped screens of white panels, the lower with
 an orange tank lying behind it, the taller with a grey switch box on its face, three floodlights over
 it and a long white tank on a trailer behind; a drum painted in orange and black chevrons; tripod
 cameras, lattice camera towers, and floodlight poles with a crossarm carrying two lamps. All are
-placed off the rails' corridor and off the hatch side, where the cherry picker stood; all estimated.
+placed off the rails' corridor and off the blockhouse side, where the cherry picker stood; all estimated.
 
 Dated (sitelib.stood; ../lc-5.md, "What stood when"): from July 1961 the shower stands beside the structure's base
 through a count and the transfer van NASA TV No 1 beside it, as the Fort Hays State collection's photographs of
@@ -58,11 +59,13 @@ from .site import (
 FLOOD_POLES = ((-104.0, -62.0), (-104.0, 62.0), (-62.0, -104.0), (62.0, -104.0), (104.0, -70.0), (104.0, 66.0))  # in the grass at the pad's edge
 FLOOD_HEIGHT = 40.0
 CAMERA_TOWERS = ((-72.0, -38.0, 62.0), (-58.0, 78.0, 50.0))  # x, y, height
-TRIPODS = ((-40.0, -30.0), (-45.0, 25.0), (30.0, -45.0), (-25.0, -55.0))
+# (the third stood at (30, -45) until November 2026: the booster's cable mast, which falls along 296 to 301 degrees
+# round from +X with the launcher turned to its azimuth, came down within 1.3 ft of it. None of their places is recorded)
+TRIPODS = ((-40.0, -30.0), (-45.0, 25.0), (38.0, -40.0), (-25.0, -55.0))
 SHOWER_STOWED = (-58.0, -91.0)  # the emergency shower at the pad's north edge, where it stood once stowed for launch
-SHOWER_SERVICE = (18.0, -3.5)  # and through a count: beside the structure's base on the hatch side, by the booster's tail (estimated)
+SHOWER_SERVICE = (18.0, -3.5)  # and through a count: beside the structure's base on the blockhouse side, by the booster's tail (estimated)
 # The transfer van NASA TV No 1 as it stood on a launch morning (FHSU items 263 and 540): beside the structure's base on the
-# hatch side, its rear toward the launcher and its tractor toward the spare parts trailer. x from, x to; its rear; its front.
+# blockhouse side, its rear toward the launcher and its tractor toward the spare parts trailer. x from, x to; its rear; its front.
 VAN = (20.0, 28.0, 14.0, 40.0)
 
 
@@ -172,8 +175,9 @@ def handwheel(metal, at, out, radius: float = 0.42) -> None:
 
 
 def near_launcher(parts: Parts) -> None:
-    """What stood behind the launcher at liftoff, on the side away from the hatch (S61-02407, S61-01927, S61-02408 and,
-    for MR-4, S63-02651): a low white screen with an orange tank lying behind it; a taller white screen with a grey
+    """What stood behind the launcher at liftoff, built on the side away from the blockhouse (S61-02407, S61-01927,
+    S61-02408 and, at MR-1 in November 1960, S63-02651; FHSU items 331 and 339 for MR-4): a low white screen with an
+    orange tank lying behind it; a taller white screen with a grey
     switch box on its face and three floodlights over it, and behind that a long white tank on a trailer; and a drum
     painted in orange and black chevrons nearer the launcher. That they stood there, their colours and their outlines
     are the photographs'; every size is scaled off them against the booster's 70 in body, allowing for their standing
@@ -185,9 +189,9 @@ def near_launcher(parts: Parts) -> None:
     font = srlib.load_font()
     stood(
         "Blast screens, the tank behind each, and the chevron drum behind the launcher",
-        since="1961-05",
+        since="1960-11",
         confidence="documented",
-        source="S61-02407, S61-01927, S61-02408 (5 May 1961); S63-02651 shows the same in July. Sizes and places estimated",
+        source="S63-02651 (MR-1, November 1960); S61-02407, S61-01927, S61-02408 (5 May 1961); FHSU 331, 339 (21 July). Sizes, places estimated",
     )
 
     # ---- the low screen and the orange tank on its cart
@@ -348,7 +352,9 @@ def near_launcher(parts: Parts) -> None:
                 bag.lathe(shape, 12, matrix=lay)
 
     # ---- the drum painted in chevrons, 15 to 20 ft from the launcher (S61-01927: about 9 ft across and 4 ft high)
-    sx, sy, dr, dh = -20.5, 8.0, 4.6, 3.9  # clear of the service structure's base
+    # Clear of the service structure's base, and of the line the capsule's cable mast falls along (170 to 175 degrees
+    # round from +X): it stood 6.5 ft nearer the launcher's line until November 2026, under that mast.
+    sx, sy, dr, dh = -20.5, 14.5, 4.6, 3.9
     u = f"{g}_ChevronDrum"
     parts.node(u, g, (sx, sy, 0.0))
     black, stripe = parts(u, "black/drum", True), parts(u, "orange", True)
@@ -515,7 +521,7 @@ def furniture(parts: Parts) -> None:
 
     # ---- DANGER boards on stands by the cherry picker, and a striped barricade at the pad's corner
     white, dark, red, ink = parts(g, "sign"), parts(g, "chassis", True), parts(g, "signred"), parts(g, "black/lettering")
-    for k, (x, y, turn) in enumerate(((57.0, -13.0, 20.0), (58.5, 13.5, -15.0)), 1):
+    for k, (x, y, turn) in enumerate(((57.0, -8.4, 20.0), (58.5, 18.1, -15.0)), 1):  # either side of the truck's line (cherry_picker.ALONGSIDE)
         board = f"GroundEquipment_Danger{k}"
         parts.node(board, g, (x, y, 0.0))
         white, dark, red = parts(board, "sign"), parts(board, "chassis", True), parts(board, "signred")
@@ -648,9 +654,9 @@ def furniture(parts: Parts) -> None:
         box(frame, (tx1 - 0.02, ty0 + 0.3, 3.5), (tx1 + 0.07, ty0 + 8.6, 3.75))
         box(frame, (tx1 - 0.02, ty0 + 12.4, 3.5), (tx1 + 0.07, ty1 - 0.3, 3.75))
 
-    # ---- two huts at the hatch side's edge (F16_017)
+    # ---- two huts at the blockhouse side's edge (F16_017)
     if stood(
-        "Two huts at the pad's hatch-side edge", confidence="estimated", source="FHSU F16_017, July 1961; whether they stood in May is not known"
+        "Two huts at the pad's blockhouse-side edge", confidence="estimated", source="FHSU F16_017, July 1961; whether they stood in May is not known"
     ):
         hut(parts, "hut1", (87.0, 24.0, 97.5, 35.0), 3, 0)
         hut(parts, "hut2", (88.5, 40.0, 97.5, 49.0), 3, 2)
@@ -678,7 +684,7 @@ def furniture(parts: Parts) -> None:
 def transfer_van(parts: Parts) -> None:
     """The transfer van: the white van semi-trailer lettered NASA TV No 1 that brought the pilot from Hangar S, behind
     a white M275 tractor (FHSU items 263, 265 and 407, 6 and 7 July 1961; item 540, 19 July). Documented by those
-    photographs: that it parked beside the structure's base on the hatch side with its rear toward the launcher and
+    photographs: that it parked beside the structure's base on the blockhouse side with its rear toward the launcher and
     the emergency shower, its tractor toward the spare parts trailer; its lettering, with a small window behind it on
     the right side; a louvred panel forward of that; a door at the rear. Estimated: every size (scaled against the
     tractor, whose dimensions are the Army manual's), the door's steps, the running gear. Its roof's rounded nose, the

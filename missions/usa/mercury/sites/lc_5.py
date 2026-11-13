@@ -13,8 +13,10 @@ The pieces are in ./lc5/, one module each; each is one or more top-level nodes i
   CherryPicker     cherry_picker.py     the mobile aerial tower: truck, outriggers, mast, jib, cab
   GroundEquipment, CameraTowers, Floodlights   ground_equipment.py (from July 1961: the transfer van and its tractor)
 
-Frame: origin at the launcher's centre on the pad, feet in the sources' units. +X is the side the
-hatch faces (WNW); +Y runs along the rails toward the structure's parking places (SSW).
+Frame: origin at the launcher's centre on the pad, feet in the sources' units. +X is square to the
+rails on the blockhouse's side (WNW), where the cherry picker's truck stands; +Y runs along the rails
+toward the structure's parking places (SSW). The vehicle stands turned in that frame, as the launcher's
+table was set for the flight's azimuth: `build(date, azimuth)` (lc5/site.py: `aim`).
 """
 
 from __future__ import annotations
@@ -34,17 +36,31 @@ from lc5 import (
     service_structure,
     vehicles,
 )
-from lc5.site import HARDSTAND, LAUNCHER_TOP, STRUCTURE_LAUNCH, STRUCTURE_T55, STRUCTURE_TOP, TRUE_NORTH, Parts, materials, stood
+from lc5.site import HARDSTAND, LAUNCHER_TOP, STRUCTURE_LAUNCH, STRUCTURE_T55, STRUCTURE_TOP, TRUE_NORTH, Parts, aim, launcher_turn, materials, stood
 
 PEDESTAL_TOP = LAUNCHER_TOP  # where the fins rest: what the viewer stands the vehicle on
 
-__all__ = ["HARDSTAND", "PEDESTAL_TOP", "STRUCTURE_LAUNCH", "STRUCTURE_T55", "STRUCTURE_TOP", "TRUE_NORTH", "build", "build_place"]
+__all__ = [
+    "HARDSTAND",
+    "PEDESTAL_TOP",
+    "STRUCTURE_LAUNCH",
+    "STRUCTURE_T55",
+    "STRUCTURE_TOP",
+    "TRUE_NORTH",
+    "build",
+    "build_place",
+    "launcher_turn",
+]
 
 
-def build(date: str | None = None) -> dict:
-    """Build the pad as it stood on `date` ("1961-05-05"; None: everything). Returns the cherry
-    picker's pins and stow angles, for the record."""
+def build(date: str | None = None, azimuth: float | None = None) -> dict:
+    """Build the pad as it stood on `date` ("1961-05-05"; None: everything), its launcher set for a flight on
+    `azimuth` (degrees true; None: square to the rails, the hatch on +X). The vehicle, the two cable masts and the
+    umbilical stand turned with the launcher's table, and what met them is fitted to where they then are. Returns
+    the cherry picker's pins and stow angles, for the record."""
     sitelib.as_of(date)
+    turned = aim(azimuth)
+    print(f"launcher: set for {azimuth} degrees true: its table, the vehicle and the masts turned {turned:.1f} degrees from +X toward +Y")
     parts = Parts(materials())
     hardstand.build(parts)
     launcher.build(parts)
@@ -72,6 +88,7 @@ def build_place(date: str | None = None) -> None:
     Vehicles                        vehicles.py       the cars at the blockhouse
     """
     sitelib.as_of(date)
+    aim(None)  # nothing stood on pad 6's launcher on these days: it is built square
     parts = Parts(materials())
     if stood("Blockhouse and ready rooms", since="1955", confidence="documented", source="NHL nomination 84003872: built 1955; standing today"):
         blockhouse.build(parts)

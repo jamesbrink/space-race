@@ -77,20 +77,41 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
   stripes round the aft unit with a row of checks at top and bottom, a dark band round the tanks,
   dark stacked "UNITED STATES". The stripe count (16), the band's height and the tail's quartered
   pattern are read off or assumed. No source read gives colours; the red lettering is from memory
-  of colour photographs.
-- **An open question: where UNITED STATES is round the body.** The model has it on the 90° and 270° sides
-  (degrees round from the capsule's hatch, the fins at 45° + 90°k). Photographs of MR-4 on the pad, read in November
-  2026 for the cable masts (sites/lc-5.md, "The two cable masts", which gives how each camera's place round the vehicle
-  was got), have it on a fin's meridian instead: in FHSU item 468 (camera at 232°) the U is 13° left of centre, so at
-  219°; in item 466 (151°) it is at the right limb, 73° right, so at 224°; in item 241 (191°) 32° right, so at 223°;
-  in item 333 (312.5°) none shows, as neither would at 45° or 225°, both being at the limbs; and in item 331, taken
-  from the other side of the pad, one faces the camera, so there were two. That is 222° ± 4°, and its opposite: on
-  the meridians of the fins at 225° and 45°, 45° round from where the model has them. Each fin's meridian also
-  carries an MR-8 plate at the foot of the tanks (466, 468, 333), which the model does not have. MR-3's S61-02407
-  shows the same on MR-7: the lettering 69° right of the camera and an MR-7 plate 64° right, on one meridian, with a
-  second plate 27° left. By Freedom 7's UNITED STATES, which faces that camera (186° on its model), those fins would
-  be at 250° and 159°, not 225° and 135°: either the capsule's paint is 25° out on one of the two models, or the two
-  capsules were clocked differently to their boosters. Not changed: the lettering is where it was.
+  of colour photographs. Where the lettering and the number plates are is from the pad photographs
+  of 1961 (the next item).
+- **UNITED STATES is on the two fins' meridians that stand square to the pitch plane**: 45° and 225° round from the
+  capsule's hatch, the fins being at 45° + 90°k and the one at 135°, with the periscope, lying down range
+  (sites/lc-5.md, "Which way round the vehicle stood"). So each faces a camera abeam of the flight's line. Estimated,
+  from photographs of both boosters, each camera's place round the vehicle read off the capsule's paint and the fins:
+  - **MR-8** (Liberty Bell 7's). FHSU item 468 (camera at 232°): the U is 13° left of centre, so at 219°; item 466
+    (151°): at the right limb, 73° right, so at 224°; item 241 (191°): 32° right, so at 223°; item 333 (312.5°): none
+    shows, as neither would at 45° or 225°; item 331, from the other side of the pad: one faces the camera, so there
+    were two. 222° ± 4°. And against the pad, not the capsule: item 306 (3 July 1961, from pad 6's gantry down the
+    rails) has it facing 289° to 294° round from the pad's +X, where the fin's meridian is 285° with the vehicle turned
+    to its 100° azimuth.
+  - **MR-7** (Freedom 7's). S61-02407, taken from the north-east (222° round from the pad's +X): the lettering is 61°
+    to 69° right of the camera's line and an MR-7 plate 64° right, on one meridian, 286° round from +X, with a second
+    plate 27° left, at 195°: fins at 195° and 286°, where the 105° azimuth is 190° and a fin square to it 280°. The
+    same arrangement, to within the photograph.
+  - **The 25° that was left open** (the lettering against Freedom 7's capsule paint: by the capsule's UNITED STATES,
+    taken to face that camera at 186°, the fins came out at 250° and 159°). Two things account for it. The capsule's
+    lettering is not square to the camera in S61-02407 but 7° to 9° right of centre, which makes the fins 241° and
+    150°: 16° out. And the capsule's UNITED STATES is modelled 51° from the periscope on No. 7 where No. 11's is 43°;
+    painted as No. 11's it would be 8° out, inside what one photograph can say. Nothing shows the capsules clocked
+    differently on their boosters: both stood with a fin and the periscope down range. The capsule's paint is left as
+    it is (the flight's spacecraft.md, "Which way round the capsule stood").
+  - UNITED stands above the dark band and STATES below it, a letter's place left between them: the U 15 in under
+    the top of the tanks, 30 in from letter to letter (items 306 and 468: 30 to 32 in; S61-02407: 28). In July the
+    oxygen tank's frost hid most of STATES (466, 468); on 3 July, unfuelled, it is whole (306).
+  - **Each fin's meridian carries the vehicle's number on a plate** at the foot of the tanks: a white card edged in
+    black, MR over the number, about 14 in wide and 16 high (S61-02407: 42 by 50 px where the body's 70 in is 215).
+    MR-7's shows on two meridians a quarter turn apart, MR-8's on three (466, 468, 333); the fourth is assumed.
+    `build(number=)` in the script; the flight's `model/vehicle.py` gives "7" or "8".
+  - Until November 2026 the lettering was on the 90° and 270° sides, 25 in from letter to letter with the band
+    through the word, and there were no plates.
+- **The external conduits' meridians are from no photograph.** None read shows a conduit on the tanks at all. They
+  are on 0° and 180°, between the fins; they were on the fins' meridians at 45° and 225° until the lettering was
+  put there.
 - **Fin shape** is an estimate; the fins are flat wedges with no aerofoil. Their edges are rounded
   over the last 1.2 in, the same all round (the real leading edge's form is not known). The rows
   of flush fasteners on the fins (a root fitting, a spar 9 in behind the leading edge, a rib over
