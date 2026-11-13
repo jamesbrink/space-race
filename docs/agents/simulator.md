@@ -261,8 +261,13 @@ never adjusted to bring a check in.
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
   and goes with it (`Stage.lookAtCraft`: the chase view aimed there; 0 centres the vehicle again). Off the vehicle
   nothing is offered but, on a stage that has left, to follow it down (camera.md): nobody gets out and walks, and the
-  view is not sent to a place the vehicle has left. A new thing
-  the pilot could work (the periscope) is a new `Command` on its part and a case in `ask` and `can`.
+  view is not sent to a place the vehicle has left. A mechanism the pilot
+  can work (the periscope) is a `Command` on its part too: `work:<its id>`, offered as putting it out or drawing it in
+  by where it is headed (below).
+  The same menu, and **Y** anywhere, takes the vehicle's skin off and puts it back: the cutaway (`ModelDef.cutaway`,
+  `Stage.setCutaway`), which on a pad or in the gallery cuts a quarter of every shell away and on the vehicle in flight
+  takes the shells off whole (their materials not drawn; the cut's planes stand in the place and a vehicle that has
+  left is not between them), from outside or from the seat. Choosing an `inside` part opens it as it always has.
 - **The cabin is the flight deck too** (`ModelDef.cabin`, types.ts: `CabinDef`; `viewer/cabin.ts`; `viewer/gauges.ts`
   for the arithmetic, tested). The model's own needles, counter wheels and lamps read the run on show at the clock's
   instant: the flight being flown (the cockpit hands every sample over, `cockpit.listen`) or the record's
@@ -276,7 +281,21 @@ never adjusted to bring a check in.
   is, laid along its axis, a face or two a frame and only while someone is aboard, shown through a fisheye of the
   documented field. Indoors (`CabinDef.within`) the sky's light and reflection are cut to a tenth by an occlusion
   map of one shade, the model's lights fall off with distance, not its square, and are held against the exposure;
-  the Sun through a window is the scene's own. Each window (`CabinDef.windows`) and the periscope's screen is besides a small light whose colour is what is outside it, looked at through an 8 px picture every few frames while someone is aboard (`Cabin.see`); the lights are there from the load, dark, because a light added later rebuilds every shader. What is inside and not shell is drawn only when it can be seen (on board, cut open, or within 30 m) and casts a shadow only on board or cut open (`Cabin.seen`): from the chase view it was half the vehicle's triangles behind a closed hull, twice a frame. Nothing in cabin.ts or gauges.ts names a spacecraft.
+  the Sun through a window is the scene's own. Each window (`CabinDef.windows`) and the periscope's screen is besides a small light whose colour is what is outside it, looked at through an 8 px picture every few frames while someone is aboard (`Cabin.see`); the lights are there from the load, dark, because a light added later rebuilds every shader. The cabin's own lamps have their switch (`CabinDef.lighting`: a lever of the model with a turn for each position, what each position lights, and each lamp's tube): a click on it from the seat, or its button under the lookouts, throws it (it has no key: none is free on the flight deck) (`Cabin.light`), the lamps it names come on or go out in a few hundredths of a second, their tubes glow or not, and every surface the build shaded goes over to its lamps-out figure (rendering.md, "An inside to sit in"), so with them out the cabin is lit by its windows, its periscope's screen and its telelights. It opens as the model was built (as flown) and is not remembered: nothing else in a cabin is. What is inside and not shell is drawn only when it can be seen (on board, cut open, or within 30 m) and casts a shadow only on board or cut open (`Cabin.seen`): from the chase view it was half the vehicle's triangles behind a closed hull, twice a frame. Nothing in cabin.ts or gauges.ts names a spacecraft.
+- **A mechanism runs to its programme, and a hand can take it** (`ModelDef.mechanisms`, types.ts: `MechanismDef`;
+  `sim/mechanism.ts`, pure and tested). A periscope and its door: one motion with one figure, its travel. Its motion
+  is the model's own: each node that moves carries it in its extras, written by the script that built the linkage
+  (types.ts: `Move`, `run`), and the flight's `clocked` moves say only when it is played, out or back; so wherever
+  there is a clock it follows its programme at the record's instants. In a flight flown by hand `Cockpit.work` (its
+  control in the cabin, `CabinDef.controls[].works`; its switch among the deck's keys; a `Command` on its part, `work:<id>`,
+  in the part's right-click menu; no key, every letter being taken) sends it the other way from
+  where it is headed, and `Cockpit.travel` says how far out it is at any instant of that flight: the programme's
+  events while the sequencer is on, the hands' commands, and the sequencer's being switched back on (it then goes to
+  where the programme has it), each heard in order, a motor running between them. The stage holds the mechanism's
+  nodes at that travel (`Stage.setMechanism`: the clocked moves played at the instant that shows it) and gives them
+  back to the clock when the deck is left; the cabin's periscope shows the outside only as far as its objective is out
+  (`CabinDef.periscope.mechanism`). Nothing of it reaches the physics: no drag or heating figure for a periscope left
+  out has been read.
 - **The flight deck has a navball and a predicted path.** Both read what the cockpit shows
   (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
   clock has been put back) and nothing else of it. The navball (`src/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is

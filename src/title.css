@@ -28,11 +28,18 @@ body.titled #ui { visibility: hidden; }
 .title-flights .what em { font-style: normal; font-size: 13px; color: var(--dim); }
 .title-flights .when { font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: right; white-space: nowrap; }
 .title-flights .go { font: 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); padding: 9px 12px; border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
+/* a flight to come: a slimmer line among the ones that can be gone into, and not a button */
+.title-flights .to-come { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; margin: 0; padding: 7px 20px; border: 1px dashed var(--line); border-left: 2px solid var(--faint); border-radius: 3px; }
+.title-flights .to-come .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.title-flights .to-come .what b { font-size: 15px; font-weight: 500; color: var(--dim); }
+.title-flights .to-come .what em { font-size: 12px; color: var(--faint); }
+.title-flights .to-come .go { color: var(--faint); border-color: transparent; padding: 4px 12px; }
 .title-foot { max-width: 60ch; text-align: center; font-size: 12px; color: var(--faint); }
 .title-rights { font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 
 @media (max-width: 620px) {
   .title-flights button { grid-template-columns: auto 1fr auto; padding: 14px; gap: 8px 12px; }
+  .title-flights .to-come { grid-template-columns: auto 1fr auto; padding: 7px 14px; gap: 2px 12px; }
   .title-flights .when { grid-column: 2 / -1; grid-row: 2; text-align: left; white-space: normal; }
   .title-flights .go { grid-column: 3; grid-row: 1; }
 }

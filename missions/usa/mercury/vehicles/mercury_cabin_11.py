@@ -41,7 +41,10 @@ def fig(px: float, py: float) -> tuple[float, float]:
 # The window's opening through the pressure vessel and the lining: wider than the inner panes, because the well
 # between the two windows slopes through the wall (model/vehicle.py: build_window).
 WINDOW_OPENING = (math.radians(257.5), math.radians(282.5), 25.8, 44.0)
-LAMPS = (-128.0, -8.0)  # where the two cabin lights hang, degrees round the wall: estimated (CABIN LIGHTS: BOTH, OFF, L.H. ONLY)
+LAMPS = (
+    -128.0,
+    -8.0,
+)  # where the two cabin lights hang, degrees round the wall, the left hand one first: estimated (CABIN LIGHTS: BOTH, L.H. ONLY, OFF)
 
 MAIN_OUTLINE_PX = [
     (47, 1395),
@@ -130,10 +133,13 @@ SEQUENCE = (
 SWITCH_WAYS = {"RetroAtt": ("AUTO", "BYPASS"), "RetractScope": ("AUTO", "MAN")}
 
 
-def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling: float, suit, window: dict, scope_z: float) -> dict:
+def build(
+    parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling: float, suit, window: dict, scope_z: float, mirror: bool = False
+) -> dict:
     """Everything inside capsule 11's pressure vessel but the pilot. As mercury_cabin.build, with `window` where the
     flight's script put the inner panes (their frame, as a matrix) and `scope_z` the station the periscope's objective
-    leaves the cone at. Returns where things are, metres, in the capsule's frame."""
+    leaves the cone at. With `mirror`, a chest mirror is laid on a pilot whose own suit has none (chest_mirror: a later
+    capsule's pilot in an earlier flight's suit). Returns where things are, metres, in the capsule's frame."""
     mc._font = font
     if not interior():
         return {}
@@ -150,7 +156,7 @@ def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling:
 
     # (the frames as in capsule 7's model, but the lowest a little lower: it has no port to give way to here, and at
     # station 7 it would lie on a row of the wall's rivets)
-    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]))
+    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]), scope=scope_z)
     window_inside(c, window)
     mc.couch(c, pilot, seat)
     mc.neck_dam(c, seat, pilot)
@@ -162,8 +168,10 @@ def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling:
     consoles(c, P, side, faces)
     mc.controls(c, seat, pilot, out)
     if suit:
+        # (the convex mirror on Grissom's chest is the suit's own: crew/mark_iv_suit.py, MR_4)
         mc.restraints(c, suit, pilot, seat)
-        chest_mirror(c, suit, seat)
+        if mirror:
+            chest_mirror(c, suit, seat)
     # (what is known only from capsule 7 as it is kept is left out: the runs from its fuse panel, the camera by the head, the coiled cord)
     mc.stowage(c, (), out, lamps_at=LAMPS, fuse_wiring=False, panel_camera=False, cord=False)
     mc.dress(c, M, parent, P, pilot, seat, main, side, faces, out, more={"CrewCabin_WindowShroud": "cabin_paint", "CrewCabin_Mirror": "lever"})
@@ -184,10 +192,31 @@ def window_inside(c: Cabin, window: dict) -> None:
     to = wall.flat(*mid)
     F = window["frame"]
     rim = outline(trapezoid(*window["pane"], window["corner"], grow=1.0))  # (clear of the frame's own side all round)
-    angles = [TAU * i / 96 for i in range(96)]
-    a = [to(*_reach(edge, t)) for t in angles]
-    b = [F @ Vector((x * IN, y * IN, -1.15 * IN)) for x, y in (_reach(rim, t) for t in angles)]  # (level with the frame's inner face)
-    c.into("CrewCabin_WindowShroud").grid(lambda i, j: a[i] * (1 - j) + b[i] * j, range(96), (0.0, 0.5, 1.0), closed_u=True, flip=True)
+    under = outline(trapezoid(*window["pane"], window["corner"], grow=0.55))  # (and inside it: where the shroud's lip ends)
+    # Side to side and corner to corner: the opening is four-sided and so is the frame, but their corners lie at
+    # different bearings from the middle, and joined bearing for bearing each corner of the shroud was a twisted facet
+    # that stood out of it as a dark spike. Each side of the one is joined to the same side of the other.
+    length, low, high = window["pane"]
+    corners = lambda pts: [math.atan2(y, x) for x, y in pts]  # noqa: E731
+    span = lambda angles: [a if k == 0 else angles[0] + (a - angles[0]) % TAU for k, a in enumerate(angles)] + [angles[0] + TAU]  # noqa: E731
+    of_edge = span(corners(edge))
+    of_rim = span(
+        corners([(low / 2 + 1, -length / 2 - 1), (high / 2 + 1, length / 2 + 1), (-high / 2 - 1, length / 2 + 1), (-low / 2 - 1, -length / 2 - 1)])
+    )
+    per = 24
+    a, b, lip = [], [], []
+    for side in range(4):
+        for k in range(per):
+            f = k / per
+            a.append(to(*_reach(edge, of_edge[side] + (of_edge[side + 1] - of_edge[side]) * f)))
+            bearing = of_rim[side] + (of_rim[side + 1] - of_rim[side]) * f
+            # (a tenth of an inch short of the frame's inner face, and from there a lip in under the frame's side: the
+            # slot between the shroud and the frame is then a shallow rebate round it, where it was a way through)
+            b.append(F @ Vector((*(v * IN for v in _reach(rim, bearing)), -1.05 * IN)))
+            lip.append(F @ Vector((*(v * IN for v in _reach(under, bearing)), -1.05 * IN)))
+    shroud = c.into("CrewCabin_WindowShroud")
+    shroud.grid(lambda i, j: a[i] * (1 - j) + b[i] * j, range(4 * per), (0.0, 0.5, 1.0), closed_u=True, flip=True)
+    shroud.grid(lambda i, j: b[i] * (1 - j) + lip[i] * j, range(4 * per), (0.0, 1.0), closed_u=True, flip=True)
 
 
 # --------------------------------------------------------------------------- the main panel
@@ -331,7 +360,7 @@ def earth_path(c: Cabin, P: Matrix, faces: Sheet) -> None:
         c.turned("CrewCabin_Knobs", P, cu + x, cv + y, [(0.2, 0.14), (0.2, 0.5), (0.0, 0.5)], 12)
         if name:
             rg.text(name, x, y - 0.36, 0.075, WHITE)
-    c.into("CrewCabin_Equipment").box((2 * hw * IN, 2 * hh * IN, 3.6 * IN), P @ Matrix.Translation((cu, cv, -2.8)) @ Matrix.Scale(1 / IN, 4))
+    mc.chamfered(c.into("CrewCabin_Equipment"), (2 * hw, 2 * hh, 3.6), P @ Matrix.Translation((cu, cv, -2.8)) @ Matrix.Scale(1 / IN, 4), 0.15)
     # the glass over the globe: its own mesh, so that it can say what it is
     glass = MeshBuilder()
     glass.add([tuple(P @ Vector((cu + x, cv + y, 0.2))) for x, y in ((wx0, wy0), (wx1, wy0), (wx1, wy1), (wx0, wy1))], [(0, 1, 2, 3)])
@@ -422,7 +451,13 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         ((395, 1415), "", ("AUTO", "MAN"), ""),
     ):
         u, v = cfig(px, py)
-        toggle(c, Cx, u, v, "h")
+        if name == "CABIN LIGHTS":
+            # The floodlights' switch: BOTH at its left, L.H. ONLY in the middle (the figure writes a middle position
+            # under its switch, as it does RETRO HEAT's OFF), OFF at its right (Results of the Second flight, Figure
+            # 2-3). Built at BOTH: "cabin lights are both" (the same, p. 45). The viewer throws it (mercury_cabin.thrown).
+            mc.thrown(c, Cx, u, v, "CabinLights", "h", (-mc.TOGGLE_LEAN, 0.0, mc.TOGGLE_LEAN))
+        else:
+            toggle(c, Cx, u, v, "h")
         if name:
             rg2.text(name, u, v + 0.5, 0.1, INK)
         rg2.text(p0, u - 0.42, v, 0.09, INK, align="r")
@@ -498,13 +533,14 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
         )
 
 
-# --------------------------------------------------------------------------- the pilot's own
+# --------------------------------------------------------------------------- a mirror for a suit without one
 
 
 def chest_mirror(c: Cabin, suit: dict, seat) -> None:
-    """The convex mirror strapped to the chest of Grissom's suit, so that the camera watching him also photographed
-    his instruments in it (This New Ocean, p. 368: the "hero's medal"). About 5 to 6 in across its rim: read off NASA
-    S61-03698. Laid on the seated figure's own chest."""
+    """A convex mirror strapped to the chest of the suit, so that the camera watching the pilot also photographed his
+    instruments in it (This New Ocean, p. 368: the "hero's medal"), for a pilot seated in a suit modelled without one:
+    Friendship 7's, who is Shepard's figure. Liberty Bell 7's pilot wears his own (mark_iv_suit.MR_4). About 5 to 6 in
+    across its rim: read off NASA S61-03698. Laid on the seated figure's own chest."""
     # (on the upper chest, between the shoulder straps and headward of the chest strap; seat-frame centimetres)
     chest = [p for name, pts in suit.items() if name.startswith("Torso") for p in pts if abs(p[0]) < 4.0 and abs(p[1] + 50.0) < 4.0]
     if not chest:
@@ -527,7 +563,9 @@ def hatch_inside(parent, vessel: Surf, M: dict, hatch) -> None:
     t0, t1, hz0, hz1 = hatch
     inner = Surf(vessel.r0 - 0.12, vessel.z0, vessel.a)
     mb = MeshBuilder()
-    mb.lathe([(inner.r(z) * IN, z * IN) for z in (hz0, (hz0 + hz1) / 2, hz1)], round(math.degrees(t1 - t0) / 2.5), arc=(t0, t1), flip=True)
+    # (in rings as fine as the wall's: its shade is kept at its vertices)
+    rings = [hz0 + (hz1 - hz0) * i / round((hz1 - hz0) / 1.5) for i in range(round((hz1 - hz0) / 1.5) + 1)]
+    mb.lathe([(inner.r(z) * IN, z * IN) for z in rings], round(math.degrees(t1 - t0) / 2.5), arc=(t0, t1), flip=True)
     mb.build("Hatch_Lining", M["cabin_paint"], parent, sharp_angle=None)
 
     # seventy bolts round the sill: "Seventy 1/4-inch titanium bolts secure the hatch to the doorsill" (the MR-4 report, p. 4)
@@ -593,8 +631,8 @@ def hatch_inside(parent, vessel: Surf, M: dict, hatch) -> None:
     knife = MeshBuilder()
     kt, kz = (t0 + t1) / 2 + 3.0 / inner.r(hz0 + 9.0), hz0 + 9.0
     K = inner.frame(kt, kz) @ Matrix.Rotation(math.pi, 4, "X")
-    knife.box((1.5 * IN, 8.0 * IN, 0.5 * IN), K @ Matrix.Translation((0, 0, 0.3 * IN)))
-    knife.box((1.1 * IN, 4.2 * IN, 0.8 * IN), K @ Matrix.Translation((0, 6.0 * IN, 0.45 * IN)))
+    mc.chamfered(knife, (1.5, 8.0, 0.5), K @ Matrix.Translation((0, 0, 0.3 * IN)), 0.12)
+    mc.chamfered(knife, (1.1, 4.2, 0.8), K @ Matrix.Translation((0, 6.0 * IN, 0.45 * IN)), 0.15)
     obj = knife.build("Hatch_Knife", M["equipment"], parent, smooth=False)
     obj["label"] = "Survival knife"
     obj["about"] = (

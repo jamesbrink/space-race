@@ -113,6 +113,8 @@ function legendMarkup(f: Flight): string {
   const flies = Boolean(f.trajectory?.body && f.flies);
   // from the seat of what is flown: what can be looked out of, each by its digit (lookouts.ts)
   const lookouts = lookoutsOf(f.models.find((m) => m.id === f.flies?.model)?.cabin);
+  // and the cabin's own lights, if it has a switch for them (CabinDef.lighting)
+  const lighting = f.models.find((m) => m.id === f.flies?.model)?.cabin?.lighting;
   // what is the same whoever has the camera
   const go: LegendRow[] = [
     ...(walker ? [[['V'], 'walk as crew'] as LegendRow] : []),
@@ -136,6 +138,7 @@ function legendMarkup(f: Flight): string {
   const camera = (reset: string): LegendRow[] => [
     [['C'], 'next camera'],
     [['0'], reset],
+    [['Y'], 'skin off · on'],
     [['H'], 'hide panels'],
   ];
   const defs: Record<string, LegendDef> = {
@@ -186,7 +189,7 @@ function legendMarkup(f: Flight): string {
         [
           'Mouse',
           [
-            ['right-click a part', 'what it can do · look at it'],
+            ['right-click a part', 'what it can do · look at it · its skin off'],
             ['right-click a stage that has left', 'follow it'],
           ],
         ],
@@ -203,6 +206,7 @@ function legendMarkup(f: Flight): string {
         ...(lookouts.length
           ? [[lookouts.map((_, i) => String(i + 1)), `lean to: ${lookouts.map((l) => l.name.toLowerCase()).join(' · ')}`] as LegendRow]
           : []),
+        ['click', lighting ? `work a control · the ${lighting.name.toLowerCase()} switch` : 'work a control'],
         ...camera('look ahead'),
       ],
       more: rest([]),
@@ -474,6 +478,7 @@ export class Ui {
     root.querySelector('.lookouts')!.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-lookout]');
       if (b) this.onLookout(Number(b.dataset.lookout));
+      else if ((e.target as HTMLElement).closest('[data-cabin-lights]')) this.onCabinLights();
       (document.activeElement as HTMLElement | null)?.blur?.(); // (or Space would press it again: Space is the flight's next event)
     });
     this.wheel = new Wheel(root);
@@ -725,7 +730,7 @@ export class Ui {
       ]
         .map((v) => `<button data-view="${v.id}" aria-pressed="false" title="View: ${esc(v.label)}">${esc(v.label)}</button>`)
         .join('')}</span></span>` +
-      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside">Cutaway</button>' : ''}` +
+      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (Y)">Cutaway</button>' : ''}` +
       `<button data-camera title="${CAMERA_LABEL[this.cameraMode]}: the next camera (C)">${CAMERA_ICON}<span>${cameraName(this.cameraMode)}</span></button>` +
       `<button data-rotate class="switch" aria-pressed="${rotating}" title="The view drifts round what was last chosen">Auto-orbit</button>` +
       `<button data-cel class="switch" aria-pressed="${prefs.get('cel')}" title="Draw the scene as a cel-shaded drawing (T)">Cel shading</button>` +
@@ -1062,24 +1067,37 @@ export class Ui {
    * From a seat (on board, or a couch boarded on foot): what can be looked out of, each a switch that leans the pilot
    * to it and back (its digit is the key), lit while he leans to it. An empty list puts it away.
    */
-  setLookouts(names: string[], leaning: number | null): void {
+  setLookouts(names: string[], leaning: number | null, lights: { name: string; says: string; way: number } | null = null): void {
     const bar = this.root.querySelector<HTMLElement>('.lookouts')!;
-    const key = names.join('\n');
+    const key = [...names, lights?.name ?? ''].join('\n');
     if (bar.dataset.names !== key) {
       bar.dataset.names = key;
-      bar.innerHTML = names
-        .map(
-          (name, i) =>
-            `<button class="switch" data-lookout="${i}" aria-pressed="false" title="Lean to the ${esc(name.toLowerCase())} and look out; again, or Esc, to sit back (${i + 1})"><kbd>${i + 1}</kbd>${esc(name)}</button>`,
-        )
-        .join('');
+      bar.innerHTML =
+        names
+          .map(
+            (name, i) =>
+              `<button class="switch" data-lookout="${i}" aria-pressed="false" title="Lean to the ${esc(name.toLowerCase())} and look out; again, or Esc, to sit back (${i + 1})"><kbd>${i + 1}</kbd>${esc(name)}</button>`,
+          )
+          .join('') +
+        // the cabin's own lights: the switch on its console, as a switch here
+        (lights
+          ? `<button class="switch" data-cabin-lights aria-pressed="false" title="Throw the ${esc(lights.name.toLowerCase())} switch: or click it on its console"><span></span></button>`
+          : '');
     }
     bar.hidden = names.length === 0;
     for (const b of bar.querySelectorAll<HTMLElement>('[data-lookout]'))
       b.setAttribute('aria-pressed', String(Number(b.dataset.lookout) === leaning));
+    const b = bar.querySelector<HTMLElement>('[data-cabin-lights]');
+    if (b && lights) {
+      // (lit while the switch is as the cabin was built: its first position is the lamps as flown)
+      b.setAttribute('aria-pressed', String(lights.way === 0));
+      b.querySelector('span')!.textContent = `${lights.name} · ${lights.says}`;
+    }
   }
   /** One of `setLookouts` was asked for. */
   onLookout: (n: number) => void = () => {};
+  /** The cabin lights' switch in the lookouts bar was pressed. */
+  onCabinLights: () => void = () => {};
 
   /** A label beside the pointer for something that is not a part: a window to look through. */
   hint(text: [title: string, line: string] | null): void {

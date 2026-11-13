@@ -73,22 +73,35 @@ export const HARDWARE_WORDS: Pick<Record<PadNode, PartWords>, 'LaunchPedestal' |
   UmbilicalMast: {
     summary: 'Carries the capsule’s umbilical until T−35 seconds.',
     detail:
-      'A slender pole beside the vehicle carrying the capsule’s ground power, cooling and communications. ' +
-      'At T−35 seconds the umbilical was ejected and a bungee cord pulled the released mast over about its ' +
-      'foot, clear of the rocket.',
+      'Cable mast No. 2: a slender pole hinged on the launcher’s table, standing a hand’s breadth off the booster ' +
+      'and reaching to the capsule’s heat shield. The umbilical (ground power, cooling, communications) is strapped ' +
+      'up it and goes from the release head at its top round the cone to the receptacle under the periscope’s lens. ' +
+      'At T−35 seconds the plug was ejected, the periscope drew in and its door shut, and a bungee cord pulled the ' +
+      'released mast straight out from the rocket about its foot. Shepard, watching through the periscope, "saw the ' +
+      'head of the boom start to drop away". Where it stands round the vehicle is worked out from three photographs ' +
+      'of July 1961; its form and height are estimated.',
     facts: [
       ['Released', 'pneumatically, at T−35 s'],
       ['Pulled clear by', 'a bungee cord'],
-      ['Height', 'about 55–60 ft (estimated)'],
+      ['Stands', '3.55 ft from the vehicle’s axis, 20° round from the periscope (derived, ±0.3 ft and ±5°)'],
+      ['Height', '66.5 ft to the top of its head (estimated)'],
     ],
   },
   BoosterMast: {
     summary: 'Cooling and a plug for the booster; drops at about T−14 seconds.',
     detail:
-      'The second mast served the booster: a plug, and a cooling package fed with liquid nitrogen for the ' +
-      'instrument compartment. The countdown calls its release "boom drop". Its form and exact place are ' +
-      'the least certain things on this pad.',
-    facts: [['Boom drop', 'about T−14 s']],
+      'Cable mast No. 1 served the booster: its "boom plug", and the cooling package that kept the instrument ' +
+      'compartment between 10 and 40 °C through the count, drawing the compartment’s air out through a drop-off ' +
+      'plate, chilling it with liquid nitrogen and sending it back. The package hangs outboard of the pole at the ' +
+      'foot of the chequered section, a white vessel under its blower’s box, and the hoses arch from the pole’s top ' +
+      'in to the booster. The countdown calls its release "boom drop": it falls straight out from the rocket, hinged ' +
+      'on the launcher’s table beside a fin. Its place is worked out from three photographs of July 1961; its form ' +
+      'and height are estimated.',
+    facts: [
+      ['Boom drop', 'about T−14 s'],
+      ['Stands', '3.7 ft from the vehicle’s axis, beside a fin (derived, ±0.2 ft and ±5°)'],
+      ['Height', '57.8 ft, 5.5 ft above the foot of the chequered section (estimated)'],
+    ],
   },
   CameraTowers: {
     summary: 'Twenty engineering cameras watched the launch.',
@@ -124,6 +137,10 @@ export const swing = (node: string, axis: [number, number, number], degrees: num
 });
 /** A pose held from the start: the piece is built somewhere else and stands here until it moves. */
 export const held = (node: string, axis: [number, number, number], degrees: number): Move => swing(node, axis, degrees, -1, -0.5);
+/** Where each cable mast stands round the vehicle, degrees from the hatch's side (+X) toward the structure's (viewer -Z): sites/lc5/site.py `MASTS`. */
+const MAST_AT = { booster: 241, capsule: 115 };
+/** The axis a mast standing there falls about, straight out from the vehicle: its hinge pin, in the viewer's frame. */
+const fallAxis = (degrees: number): [number, number, number] => [-Math.sin(degrees * DEG), 0, -Math.cos(degrees * DEG)];
 const WHEEL_R = 0.457; // the structure's rail wheels
 const ROLL = [33.53, 19.2]; // metres: to the edge of the pad, then on to the launch position
 
@@ -327,9 +344,10 @@ export function lc5Parts(day: PadDay): Part[] {
       explode: [0, 0, 0],
       order: 0,
       moves: [
-        swing('UmbilicalMast', X, -88, T.umbilical, T.umbilical + 0.035), // (over away from the vehicle, toward +Y: it stands behind it)
-        // the umbilical swings down from the release head as the mast goes over, and hangs from it to the pad (estimated: how it fell is not recorded)
-        swing('UmbilicalMast_Cable', X, 145, T.umbilical, T.umbilical + 0.035),
+        // straight out from the vehicle about the pin, until its head is on the pad (masts.py: resting)
+        swing('UmbilicalMast', fallAxis(MAST_AT.capsule), 94.9, T.umbilical, T.umbilical + 0.035),
+        // the umbilical swings on over the head as the mast goes down, and lies from it on the pad (estimated: how it fell is not recorded)
+        swing('UmbilicalMast_Cable', fallAxis(MAST_AT.capsule), 49, T.umbilical, T.umbilical + 0.035),
       ],
     },
     {
@@ -338,7 +356,7 @@ export function lc5Parts(day: PadDay): Part[] {
       ...day.words.BoosterMast,
       explode: [0, 0, 0],
       order: 0,
-      moves: [swing('BoosterMast', X, 88, T.boom, T.boom + 0.035)],
+      moves: [swing('BoosterMast', fallAxis(MAST_AT.booster), 93.7, T.boom, T.boom + 0.035)],
     },
     {
       node: 'Hardstand',

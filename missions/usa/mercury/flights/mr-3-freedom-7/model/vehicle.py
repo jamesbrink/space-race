@@ -59,7 +59,6 @@ from srlib import (  # noqa: E402
     IN,
     TAU,
     MeshBuilder,
-    Surf,
     bore,
     deg,
     group,
@@ -88,7 +87,8 @@ LATCH_INSET = (
 # The two ports, (angle, station): the lower one 30 degrees past the hatch's foot-side edge, the upper one high at the
 # pilot's left. A flat plate 10 in across round a hole in the skin, the pane set down inside it.
 PORTHOLES = ((deg(15), 28.5), (deg(232.5), 34.5))
-PORT_PLATE, PORT_HOLE, PORT_GLASS, PORT_SET = 5.0, 3.7, 3.3, 0.9  # radii of the plate, the hole and the clear glass; how far in the pane sits
+PORT_PLATE, PORT_HOLE, PORT_GLASS, PORT_SET = 5.0, 3.7, 3.3, 0.9  # radii of the plate, the hole and the clear glass; how far in the pane's ring sits
+PORT_WELL = mercury_cabin.PORT_SLEEVE  # the well down to the pane, radius: the sleeve inside goes on from it (mercury_cabin.port_inside)
 # The periscope's door and its objective, level with the upper line of UNITED STATES; the umbilical under the lens.
 SCOPE_Z = mercury_cabin.SCOPE_STATION
 SCOPE_DOOR = (deg(80), deg(100), 27.5, 41.5)
@@ -138,6 +138,7 @@ SHELLS = (
     "CrewCabin_Lining",
     "CrewCabin_Frames",
     "CrewCabin_PortFrames",
+    "CrewCabin_PortSleeves",
     "Hatch_Lining",
     "Recovery_Shingles",
     "Recovery_Fasteners",
@@ -305,15 +306,18 @@ def build_ports(M, g, skin: Skin) -> None:
         # the well down to the pane and the ring that holds it, with its small bolts: flat, where the skin is round
         lip = -PORT_SET + 0.1
         # (it starts under the skin: the cone falls a quarter of an inch away from a flat ring at the port's sides)
-        ring.lathe(prof([(PORT_HOLE - 0.2, -0.28), (PORT_HOLE - 0.2, lip), (PORT_GLASS - 0.05, lip), (PORT_GLASS - 0.05, -PORT_SET)]), 48, matrix=f)
+        # (and its underside, which is what of it is seen from the cabin, through the pane it holds down)
+        well = [(PORT_WELL, -0.28), (PORT_WELL, lip), (PORT_GLASS - 0.05, lip), (PORT_GLASS - 0.05, -PORT_SET), (PORT_WELL, -PORT_SET)]
+        ring.lathe(prof(well), 64, matrix=f)
         for i in range(24):
             a = TAU * (i + 0.5) / 24
             ring.disc(f @ Vector((3.375 * math.cos(a) * IN, 3.375 * math.sin(a) * IN, lip * IN)), CONE.n(t), 0.06 * IN, 0.04 * IN)
-        # (out to the sleeve that lines the wall inside, so nothing is seen past its edge from the cabin)
-        glass.lathe(prof([(PORT_HOLE - 0.01, -PORT_SET - 0.02), (0.0, -PORT_SET - 0.02)]), 48, matrix=f)
+        # (under the ring, and out past the sleeve that lines the wall inside, so nothing is seen past its edge from the cabin)
+        pane = mercury_cabin.PORT_OUTER_PANE
+        glass.lathe(prof([(PORT_WELL + 0.04, pane), (0.0, pane)]), 48, matrix=f)
         if not interior():  # no cabin behind it: a dark disc stands in for one
             void.lathe(
-                prof([(PORT_GLASS + 0.02, -PORT_SET - 0.1), (0.0, -PORT_SET - 0.1)]), 48, matrix=f
+                prof([(PORT_GLASS + 0.02, pane - 0.1), (0.0, pane - 0.1)]), 48, matrix=f
             )  # (between the glass and the vessel, 2 mm and more from each)
         says = (
             "Porthole",
@@ -356,7 +360,9 @@ def build_crew_cabin(M) -> None:
     mercury_cabin.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, HATCH, latches=LATCH_INSET)
     mercury_capsule.oxygen_and_bag(M, g)
     # the cabin's own shadows, worked once everything in it stands where it will
-    mercury_cabin.shade(g, where["lamps"], (bpy.data.objects["Hatch_Lining"],))
+    # (what lets light in with the lamps out: the two ports' inner panes and the periscope's screen)
+    openings = [(port["at"], PORT_GLASS * IN) for port in where["ports"]] + [(where["periscope"]["screen"], where["periscope"]["radius"])]
+    mercury_cabin.shade(g, where["lamps"], mercury_cabin.inside_of("Hatch"), openings)
     mercury_capsule.keep_inside()
     return where
 
@@ -374,6 +380,9 @@ def build() -> str:
     if interior():  # the two ports go right through structure, pressure vessel and lining (their plates are made with the hole)
         for t, z in PORTHOLES:
             bore(("Afterbody_Structure", "CrewCabin_PressureVessel", "CrewCabin_Lining"), CONE.frame(t, z), mercury_cabin.PORT_BORE * IN, 3.0 * IN)
+    # the periscope's lower housing comes in through the pressure vessel (and the lining, where there is one) under its door
+    scope = mercury_capsule.ScopeWorks(SCOPE_DOOR, SCOPE_Z, SCOPE_TUBE)
+    mercury_capsule.periscope_mouth(("CrewCabin_PressureVessel", *(("CrewCabin_Lining",) if interior() else ())), scope)
     mercury_capsule.build_recovery_compartment(M)
     mercury_capsule.build_antenna_canister(M)
     mercury_capsule.build_escape_tower(M)
@@ -382,8 +391,8 @@ def build() -> str:
     turn = mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
     if where:
         report(where, turn)
-    out = mercury_capsule.scope_axis(SCOPE_Z, SCOPE_TUBE)[1]
-    print(f"mr-3 periscope door: {mercury_capsule.periscope_hinge(SCOPE_DOOR, (HATCH[0] + HATCH[1]) / 2, out)}")
+    # (the periscope's door, cartridge and link: each one's motion into its node, now that the capsule stands as it will)
+    mercury_capsule.periscope_run(scope, turn)
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
     mark_shells(SHELLS + tuple(THING_SHELLS) + mercury_cabin.WALL_FIT + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"
@@ -393,9 +402,9 @@ def report(where: dict, turn: Matrix) -> None:
     """What flight.ts quotes of the cabin, in the viewer's frame (x, up, -y of this one), metres, as the capsule stands."""
     view = lambda p: tuple(round(c, 3) for c in ((turn @ Vector(p)).x, (turn @ Vector(p)).z, -(turn @ Vector(p)).y))  # noqa: E731
     print(f"mr-3 cabin: room {where['room']:.2f} in; overhead {view((0, -1, 0))}")
-    for name, (t, z) in zip(("lower", "upper"), PORTHOLES):
-        inner = Surf(VESSEL.r0 - 0.12, VESSEL.z0, VESSEL.a)
-        print(f"mr-3 cabin: {name} port: at {view(inner.p(t, z, -0.3))}, out {view(CONE.n(t))}, across {2 * PORT_GLASS * IN:.3f}")
+    for name, port in zip(("lower", "upper"), where["ports"]):  # (each inner pane's middle, on the port's own line)
+        pane = f"at {view(port['at'])}, out {view(port['out'])}, across {2 * PORT_GLASS * IN:.3f}"
+        print(f"mr-3 cabin: {name} port: {pane}, panes {port['apart']:.2f} in apart")
     scope = CONE.p(deg(90), SCOPE_Z, 3.95)
     print(f"mr-3 cabin: periscope at {view(scope)}; its feet-ward direction {view((0, 1, 0))}; lamps {[view(p) for p in where['lamps']]}")
     print(f"mr-3 cabin: eye {view(Vector(where['eye']) * IN)}")
@@ -412,5 +421,50 @@ if __name__ == "__main__":
             ("capsule-periscope.png", (0, 0, 0.9), 9, dict(azimuth=150, elevation=6, res=(1300, 1300))),
             ("capsule-name.png", (0, 0, 0.9), 9, dict(azimuth=-80, elevation=6, res=(1300, 1300))),
             ("skin-close.png", (0.55, 0.45, 0.8), 3.0, dict(azimuth=40, elevation=4, res=(1300, 1300))),
+            # from the couch, as the pilot's eyes have it (Seat_Pilot), by the cabin's own two lights
+            ("cabin-ahead.png", (0, 0, 0), 0, dict(seat="Seat_Pilot", lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000))),
+            (
+                "cabin-left.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(70, 15), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            (
+                "cabin-right.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(-70, 15), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            (
+                "cabin-up.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(0, 50), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            (
+                "cabin-down.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(0, -55), lens=14, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            # the pilot in his couch with the cabin taken away: from his right, from his left, from over his chest, from his feet
+            *(
+                (
+                    f"pilot-{name}.png",
+                    "Seat_Pilot",
+                    2.6,
+                    dict(
+                        azimuth=az, elevation=el, lens=50, only=("CrewCabin_Pilot", "CrewCabin_Couch", "CrewCabin_Straps", "Ctl_"), res=(1500, 1100)
+                    ),
+                )
+                for name, az, el in (
+                    ("right", 0, 8),
+                    ("left", 180, 8),
+                    ("chest", -90, 12),
+                    ("above", -90, 62),
+                    ("feet", 90, 25),
+                    ("quarter", -45, 30),
+                )
+            ),
         ],
     )

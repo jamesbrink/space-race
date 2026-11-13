@@ -96,11 +96,11 @@ test('signals: what has happened by an instant', () => {
   assert.ok(s.separated && !s.main && !s.retro);
 });
 
-/** Every node of a GLB by name, with its extras. */
-function nodesOf(file) {
+/** Every node of a GLB by name, with its extras; and with `places`, where each stands in its parent instead. */
+function nodesOf(file, places = false) {
   const glb = readFileSync(file);
   const gltf = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
-  return new Map(gltf.nodes.map((n) => [n.name, n.extras ?? {}]));
+  return new Map(gltf.nodes.map((n) => [n.name, places ? (n.translation ?? [0, 0, 0]) : (n.extras ?? {})]));
 }
 
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) {
@@ -138,6 +138,39 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
             ['tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort', 'next'].includes(c.does),
             `${c.node}: ${c.does}`,
           );
+      }
+      if (cabin.lighting) {
+        // the lights' switch is a node with a turn for each position it has, the first as built; and each position
+        // lights lamps the model has, each with its tube in the file
+        const lever = nodes.get(cabin.lighting.control);
+        assert.ok(lever, `lighting: no control ${cabin.lighting.control} in ${model.url}`);
+        assert.ok(Array.isArray(lever.throw) && lever.throw[0] === 0, `${cabin.lighting.control}: its extras give no throw from as built`);
+        assert.equal(lever.throw.length, cabin.lighting.ways.length, `${cabin.lighting.control}: a position for every turn of its lever`);
+        assert.ok(new Set(lever.throw).size === lever.throw.length, `${cabin.lighting.control}: two positions at one turn`);
+        // and it stands on its switch, within reach of the seat: a lever left at the model's origin turns there, unseen
+        const places = nodesOf(join(root, 'public', model.url), true);
+        const seat = places.get(model.seats?.[0]?.node ?? '');
+        const at = places.get(cabin.lighting.control);
+        assert.ok(seat, `lighting: no seat to work ${cabin.lighting.control} from`);
+        const off = Math.hypot(at[0] - seat[0], at[1] - seat[1], at[2] - seat[2]);
+        assert.ok(
+          Math.hypot(...at) > 0.05 && off > 0.2 && off < 1.2,
+          `${cabin.lighting.control} is ${off.toFixed(2)} m from the seat, at ${at}`,
+        );
+        const lamps = model.lights ?? [];
+        for (const way of cabin.lighting.ways) {
+          assert.ok(way.says, 'a position says what it is');
+          for (const i of way.lit) assert.ok(lamps[i], `lighting: ${way.says} lights lamp ${i}, and the model has ${lamps.length}`);
+        }
+        assert.deepEqual(
+          cabin.lighting.ways[0].lit,
+          lamps.map((_, i) => i),
+          'as built, every lamp the model draws lit is lit',
+        );
+        assert.equal((cabin.lighting.fittings ?? []).length, lamps.length, 'lighting: a fitting for each lamp');
+        for (const fitting of cabin.lighting.fittings ?? [])
+          assert.ok(nodes.has(fitting), `lighting: no fitting ${fitting} in ${model.url}`);
+        assert.ok(cabin.lighting.name && cabin.lighting.about);
       }
       if (cabin.stick) {
         assert.ok(nodes.has(cabin.stick.node), `stick ${cabin.stick.node} is not in ${model.url}`);

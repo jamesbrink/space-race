@@ -1,4 +1,4 @@
-import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
+import type { Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
 import { orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
@@ -612,6 +612,114 @@ const crew: ModelDef = {
   ],
 };
 
+/** Seconds from liftoff (09:06:59.7) of a time on Moscow's clocks that morning. */
+const MSK = (h: number, m: number, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s - 59.7);
+
+// What served the rocket and was taken away before it left, as sites/site1/ has it (service_trusses.py, cable_mast.py,
+// erector.py: the numbers live there, and site-1.md tabulates the pivots). Angles round the site are from due east,
+// anticlockwise from above; the launch system stands turned TURN, so its north truss is 45 degrees on from that.
+/** Where each piece's hinge is round the site, degrees. */
+const TRUSS_NORTH = TURN / DEG + 45;
+const TRUSS_SOUTH = TURN / DEG + 225;
+const MAST_AT = TURN / DEG + 315;
+/** How far a service truss is lowered, and the cable mast swings (first as its plugs come out, then as the rocket leaves), degrees. */
+const TRUSS_FALL = 98;
+const MAST_AWAY = 4;
+const MAST_FALL = 22;
+/** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
+const BOOM_LEAN = 14;
+const BOOM_BACK = 20;
+const ERECTOR_ROLL = [30, 120];
+const ERECTOR_WHEEL = 0.475;
+const ERECTOR_AXLES = [1, 2, 3, 4, 5, 6];
+/** The lift's stops above its lowest, m: it rides the leaning boom, so each is 0.2493 of its height nearer the rocket. */
+const LIFT_STOPS: [name: string, up: number][] = [
+  ['Lift door, 15 steps up', 0],
+  ['Third stage', 19.6],
+  ['Upper platform, at the hatch', 23.12],
+];
+
+/**
+ * The pad's slider is the morning of 12 April 1961, from the pilot in his seat to the rocket leaving. These are the
+ * positions on it (0 to 1) at which things happen; the motions below are timed against them. The times are the
+ * transcript's, to the minute; how long each motion took is nowhere recorded, and how much of the slider it has is ours.
+ */
+const T = {
+  platforms: 0.04, // 08:15: "they are lowering the service platforms"
+  erector: 0.1, // 08:35: "now they will draw the erector off"
+  boomAway: 0.3, // 08:37: "the erector's boom has come away normally"
+  trusses: 0.45, // 08:40: "now we are drawing the trusses off"
+  boomDown: 0.55, // the boom is down on the wagon (not recorded)
+  cleared: 0.75, // the erector is off the pad and both trusses are down (not recorded)
+  mast: 0.8, // 09:06: "the cable mast is away"
+  mastOff: 0.86,
+  liftoff: 0.9, // 09:06:59.7
+};
+const TRANSCRIPT =
+  'the record of the exchanges between the cosmonaut and the control points, sent to the Central Committee on 25 April 1961 (Izvestiya TsK KPSS, 1991 No. 5)';
+const NOT_TIMED = 'not recorded: placed by us';
+const MORNING: Keyframe[] = [
+  {
+    at: MSK(7, 10),
+    slider: 0,
+    event: 'The pilot is in his seat: the first call on the radio',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}: it begins at 07:10`,
+  },
+  {
+    at: MSK(8, 15),
+    slider: T.platforms,
+    event: '08:15: the service platforms are lowered; the work on the trusses is finished',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}, Korolev at 08:15. What was lowered is not known, and nothing in the model moves for it`,
+  },
+  {
+    at: MSK(8, 35),
+    slider: T.erector,
+    event: '08:35: the erector is to be drawn off',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}, Kamanin at 08:35`,
+  },
+  {
+    at: MSK(8, 37),
+    slider: T.boomAway,
+    event: '08:37: the erector’s boom has come away',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}, Kamanin at 08:37`,
+  },
+  {
+    at: MSK(8, 40),
+    slider: T.trusses,
+    event: '08:40: the service trusses are drawn off',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}, Korolev at 08:40`,
+  },
+  { at: MSK(8, 42), slider: T.boomDown, event: 'The boom lies on its wagon', confidence: 'estimated', source: NOT_TIMED },
+  {
+    at: MSK(8, 45),
+    slider: T.cleared,
+    event: 'The erector is off the pad and the trusses are down',
+    confidence: 'estimated',
+    source: NOT_TIMED,
+  },
+  {
+    at: MSK(9, 6),
+    slider: T.mast,
+    event: '09:06: the cable mast is away',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}, Korolev at 09:06, to the minute`,
+  },
+  { at: MSK(9, 6, 10), slider: T.mastOff, event: 'The mast stands a few degrees off', confidence: 'estimated', source: NOT_TIMED },
+  { at: 0, slider: T.liftoff, event: 'Liftoff, 09:06:59.7', confidence: 'documented', source: 'Siddiqi, Challenge to Apollo, launch log' },
+  {
+    at: 4,
+    slider: 1,
+    event: 'The mast has fallen back',
+    confidence: 'estimated',
+    source: 'film of a Vostok leaving shows it leaning some twenty degrees; when it got there is not recorded',
+  },
+];
+
 const padParts: Part[] = [
   {
     node: 'Platform',
@@ -621,16 +729,67 @@ const padParts: Part[] = [
     detail:
       'The rocket was brought onto it lying down, along the tracks from the west, where the deck rests on the ground; its ' +
       'other three sides stand out over the flame pit on four pylons, and a low fence keeps people back from the drop. In ' +
-      'its middle is the round opening, 20 m across, that the launch system turns in and the rocket hangs through. ' +
-      'Nobody has published a drawing of it. Its size is what the CIA’s photographic interpreters measured off U-2 ' +
-      'pictures of 1957 to 1959, which agrees with the 40 by 40 m in Russian print; its thickness is read off their ' +
-      'elevation and is estimated. Sputnik left from it, and every crewed Vostok.',
+      'its middle is the round opening, 20 m across, that the launch system turns in and the rocket hangs through. Its ' +
+      'north-east corner is carried 10 ft further out, for one of the two masts; its south-east corner is cut off. On its ' +
+      'west side is a small building the CIA took for the head of a stair down into it: what is under it is not recorded, ' +
+      'and its door is shut. Nobody has published a drawing of the platform. Its size is what the CIA’s photographic ' +
+      'interpreters measured off U-2 pictures of 1957 to 1959, which agrees with the 40 by 40 m in Russian print; its ' +
+      'thickness is read off their elevation and is estimated (a Russian account has it three storeys of bridge trusses). ' +
+      'Sputnik left from it, and every crewed Vostok.',
     facts: [
       ['Deck', '135 ft (41.15 m) square'],
       ['Opening', '65 ft (19.8 m) across'],
-      ['Pylons', '4, each 30 by 10 ft'],
+      ['Pylons', '4, each 30 by 10 ft, 115 ft over the four'],
       ['Thickness', 'about 10 ft (estimated)'],
+      ['Lip', '10 ft out at the north-east corner'],
       ['In use', '1957 to 2019'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'DeckRails',
+    group: 'Site 1',
+    name: 'Tracks on the deck',
+    summary: 'The railway runs on to the platform and stops at the edge of the hole.',
+    detail:
+      'Everything came to this pad by rail, so the rails are laid in the concrete of the deck itself, their heads flush ' +
+      'with it, as a photograph of the morning shows. The centre track runs to the edge of the opening: the erector ' +
+      'brought the rocket along it and stood on it until 08:35. A track on the platform’s north part and one on its ' +
+      'south flank the launch system, for the propellant trains; a short spur between ends just on the abutment. Either ' +
+      'side of the centre track lies one more rail, 7 m apart: the CIA’s interpreters called them gantry tracks, and ' +
+      'nothing read says what rode them. Where each track lies is scaled off the CIA’s plan of March 1961, drawn from the ' +
+      'photographs of 1957 and 1959; today’s map agrees to about a metre. The gauge was 1,524 mm, as every Soviet ' +
+      'railway’s was until 1970.',
+    facts: [
+      ['Gauge', '1,524 mm (5 ft)'],
+      ['Centre track', 'to the opening’s edge, on the rocket’s axis'],
+      ['North and south tracks', '13.6 m and 12.4 m from it (scaled off the CIA’s plan)'],
+      ['Gantry rails', 'two, 23 ft (7.0 m) apart (scaled; the figure is redacted)'],
+      ['Heads', 'flush in the deck (9 mm proud in the model)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Masts',
+    group: 'Site 1',
+    name: 'Corner masts',
+    summary: 'Two masts 110 ft tall at opposite corners, which the CIA measured and could not explain.',
+    detail:
+      'One stands at the platform’s north-east corner, on a lip of concrete built out over the pit to carry it, the other ' +
+      'at the south-west, on the abutment: the same distance from the rocket, on one line through it. The CIA’s ' +
+      'interpreters measured them at 110 ft in 1957, with an array at the top at least 5 ft wide and 10 ft high, and took ' +
+      'them for collimation towers; by March 1961 they had talked themselves out of that and out of floodlights too, and ' +
+      'wrote that their function could not be determined. A photograph of the launch has one beside the rocket: a ' +
+      'slender lattice with a head near its top and a rod above it. They are drawn that way, the head as a bank of ' +
+      'floodlights under a lightning rod. The height, the array’s size and where they stand are the CIA’s; the lattice, ' +
+      'the lamps, the rod and the ladder are estimated.',
+    facts: [
+      ['Height', '110 ft (33.5 m)'],
+      ['Array', 'at least 5 ft wide and 10 ft high'],
+      ['Where', 'north-east and south-west corners, 29.4 m from the axis (scaled off the CIA’s plan)'],
+      ['What for', 'not established; drawn as floodlights (estimated)'],
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -639,17 +798,43 @@ const padParts: Part[] = [
     node: 'FlamePit',
     group: 'Site 1',
     name: 'Flame pit',
-    summary: 'No deflector: the pad stands on the edge of a quarry, and the flame falls into it.',
+    summary: 'The pad stands on the edge of a quarry 43 m deep, and the flame is turned out along its floor.',
     detail:
-      'The exhaust of twenty chambers went straight down past the rocket’s tail, into a slot between retaining walls under ' +
-      'the platform, and ran out east along the floor, which climbs back to the steppe at the pit’s point. Round the slot ' +
-      'the sides come down in two terraces. The outline is today’s map, which matches the 880 by 550 ft the CIA measured in ' +
-      '1957. The depth is in dispute: 43 m is modelled, the sum of two of the CIA’s figures, where Russian print gives 45 m ' +
-      'and "almost 50". The section is drawn from an interpreter’s elevation, not a survey, and is estimated.',
+      'Under the platform the pit is a slot between retaining walls 110 ft apart. East of it lies the pit base, 60 ft ' +
+      'wide between two concrete trenches that run 60 ft to a sump built into the floor, whose face stands 10 ft over ' +
+      'them: for the water that flushed the pit, the CIA thought, and for dumped propellant. From the sump the floor ' +
+      'climbs east to the pit’s point, and a road came down it from there. Round the slot the sides come down in two ' +
+      'terraces, and in 1959 a cut ran north out of the rim, beside which the cables to the bunker came in. The outline ' +
+      'is today’s map, which matches the 880 by 550 ft the CIA measured in 1957, with that cut put back. The depth is in ' +
+      'dispute: 43 m is modelled, the sum of two of the CIA’s figures, where Russian print gives 45 m and "almost 50". ' +
+      'The plan of the base is the CIA’s; the trenches’ depth, the road’s surface and the ladders are estimated.',
     facts: [
       ['Rim', '880 by 550 ft (268 by 168 m), as measured in 1957'],
       ['Depth', 'about 43 m under the deck (in dispute)'],
+      ['Pit base', '60 ft wide, between two trenches 60 ft long'],
+      ['Sump', '75 by 110 ft, its face 10 ft high'],
       ['Lining', 'concrete under the platform, gunite on the west'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'FlameDeflector',
+    group: 'Site 1',
+    name: 'Flame deflector',
+    summary: 'A curved chute under the opening that turns twenty chambers’ fire from straight down to due east.',
+    detail:
+      'The rocket’s tail hangs 6.75 m under the deck, and below it the back wall of the pit curves forward and down to ' +
+      'the floor: the exhaust strikes it and runs out along the pit base. No photograph taken from above could show it. ' +
+      'The CIA drew only a "possible base of flame deflector", and in 1959 saw a curved deflector plate being built in ' +
+      'the same place at the second pad. Its form here is from a scale model of the pad as it was in 1957: an arc from ' +
+      'the back wall, 16 m under the deck, to the pit base at the platform’s east edge, as wide as the slot. Every size ' +
+      'of it is estimated.',
+    facts: [
+      ['Form', 'a curved chute, back wall to pit base (off a scale model)'],
+      ['From', '16 m under the deck (estimated)'],
+      ['To', 'the pit base at the platform’s east edge, 43 m down'],
+      ['Arc', '44.9 m radius (derived from those two)'],
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -677,6 +862,148 @@ const padParts: Part[] = [
     explode: [0, 0, 0],
     order: 0,
   },
+  {
+    node: 'Erector',
+    group: 'Taken away before launch',
+    name: 'Erector',
+    summary: 'The wagon that stood the rocket up, and then was the way to the spacecraft.',
+    detail:
+      'A hydraulic rail erector of 87.5 t: the rocket came out along the centre track lying on its boom, tail first, and ' +
+      'was stood up into the launch system. A three-stage rocket stood taller than the launch system’s own service trusses ' +
+      'reached, so the boom stayed up beside it and carried the platforms round the third stage and the spacecraft, and ' +
+      'the lift. Gagarin "went up the fifteen steps of the stair, to the lift’s door", waved from the landing, and rode ' +
+      'it to the upper platform with the man who would bolt his hatch. At 08:35 Kamanin told him the erector would be ' +
+      'drawn off, and at 08:37 that its boom had come away; from the ground it was seen to ride slowly away along the ' +
+      'rails, lean over little by little, lay itself down on its wagon and be drawn off by a locomotive. Those words and ' +
+      'times are the record. Its shape is not: no drawing was found, and what is here is drawn from two photographs, with ' +
+      'a boom that leans in over the launch system’s support, which is our way of standing it there and may not be how ' +
+      'it stood. The rams, the cradles the rocket lay in and the locomotive are not modelled.',
+    facts: [
+      ['Kind', 'hydraulic, on rails (8U213, TsKBTM)'],
+      ['Mass', '87.5 t'],
+      ['To the lift', '15 steps'],
+      ['Upper platform', '26.1 m over the deck (estimated)'],
+      ['Lift', '"two or three minutes" to the top'],
+      ['Drawn off', '08:35 to 08:37 Moscow time'],
+    ],
+    actions: [
+      {
+        // The car rides the leaning boom's north face: `by` is from where it is built, at the stair's landing.
+        id: 'lift',
+        label: 'Lift',
+        on: 'Erector_Lift',
+        do: {
+          kind: 'lift',
+          node: 'Erector_Lift',
+          stops: LIFT_STOPS.map(([name, up]) => ({ name, by: [up * Math.tan(BOOM_LEAN * DEG), up, 0] as [number, number, number] })),
+          // 23 m in "a minute" by one of Ivanovsky's tellings and "two or three minutes" by another
+          speed: 0.3,
+        },
+      },
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    functions: [
+      { nodes: ['Erector_Boom'], name: 'Boom', ends: ['up at the rocket', 'down on the wagon'], seconds: 120 },
+      {
+        nodes: ['Erector', ...ERECTOR_AXLES.map((n) => `Erector_Wheel_${n}`)],
+        name: 'Along the track',
+        ends: ['at the rocket', 'drawn off'],
+        seconds: 150,
+        needs: [{ node: 'Erector_Boom', atLeast: 0.15, why: 'the boom is still against the rocket' }],
+      },
+    ],
+    moves: [
+      // the boom comes away (documented, 08:35 to 08:37), then goes down as the wagon rides off (documented that it
+      // did; how far it had gone before it lay down is ours), and the wagon is drawn on (documented; how far, ours)
+      { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: BOOM_BACK * DEG, from: T.erector, to: T.boomAway },
+      { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: (90 + BOOM_LEAN - BOOM_BACK) * DEG, from: T.boomAway, to: T.boomDown },
+      { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: T.boomAway, to: T.boomDown },
+      { kind: 'slide', by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0], from: T.boomDown, to: T.cleared },
+      ...ERECTOR_AXLES.flatMap((n): Move[] => [
+        {
+          kind: 'swing',
+          node: `Erector_Wheel_${n}`,
+          axis: [0, 0, 1],
+          angle: ERECTOR_ROLL[0]! / ERECTOR_WHEEL,
+          from: T.boomAway,
+          to: T.boomDown,
+        },
+        {
+          kind: 'swing',
+          node: `Erector_Wheel_${n}`,
+          axis: [0, 0, 1],
+          angle: (ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!) / ERECTOR_WHEEL,
+          from: T.boomDown,
+          to: T.cleared,
+        },
+      ]),
+    ],
+  },
+  {
+    node: 'ServiceTrusses',
+    group: 'Taken away before launch',
+    name: 'Service trusses',
+    summary: 'Two arms that close round the rocket with rings of platforms, and are laid down before it goes.',
+    detail:
+      'The launch system’s own way to the rocket: two trusses hinged on the turning ring, one to the north and one to ' +
+      'the south, each two curved beams that run into one. Raised, their half rings meet round the core above the ' +
+      'strap-ons’ tips; from them the rocket was fuelled and checked. At 08:15 Korolev told Gagarin "they are lowering ' +
+      'the service platforms; all the work on the trusses is finished" (he felt the rocket sway), and at 08:40 "now we ' +
+      'are drawing the trusses off". Lowered, each lies level out over the edge of the platform with its half rings ' +
+      'standing up, which is how a photograph shows them as a Vostok’s engines light. Their size is published (21.6 m ' +
+      'long, 7.9 m across, 20 m high, 56 t each); their members, the heights of their platforms against this rocket ' +
+      'and their ladders are estimated, and of the three platforms each had only two are here. These were the first ' +
+      'pair, built for the R-7 in 1957; the pair with lifts inside that stands there now came later.',
+    facts: [
+      ['Type', '8T119, TsKBTM, 1957'],
+      ['Each', '21.6 m long, 7.9 m across, 56 t'],
+      ['Standing', '20 m from hinge to head'],
+      ['Platforms', 'half rings at 17.65 and 19.8 m (estimated)'],
+      ['Lowered', '08:40 Moscow time'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    functions: [
+      { nodes: ['ServiceTruss_North'], name: 'North truss', ends: ['raised', 'lowered'], seconds: 90 },
+      { nodes: ['ServiceTruss_South'], name: 'South truss', ends: ['raised', 'lowered'], seconds: 90 },
+    ],
+    moves: [
+      // lowered about their hinges on the ring (documented that they were, and when they began; how long each took and
+      // which went first are ours)
+      outward('ServiceTruss_North', TRUSS_NORTH, TRUSS_FALL, T.trusses, T.cleared - 0.08),
+      outward('ServiceTruss_South', TRUSS_SOUTH, TRUSS_FALL, T.trusses + 0.06, T.cleared),
+    ],
+  },
+  {
+    node: 'UpperCableMast',
+    group: 'Taken away before launch',
+    name: 'Cable mast',
+    summary: 'The last thing to let go: the third stage’s cables, away a minute before ignition.',
+    detail:
+      'Power and commands for the third stage came up this mast from the ring and across its arm to plugs under the ' +
+      'fairing’s foot. "The pressurisation is going, the cable mast is away, all is normal," Korolev told Gagarin at ' +
+      '09:06; he answered that he had felt it, and heard the valves. Ignition was called at 09:07. The CIA’s ' +
+      'interpreters had found it a month before as a shadow on a U-2 photograph, "possibly an umbilical mast", 85 to ' +
+      '95 ft above the platform and ending in an oblong loop; the middle of that is modelled. A photograph of a Vostok ' +
+      'being raised shows two slender lattice legs with a head; film of one leaving shows the mast leaning back some ' +
+      'twenty degrees. Which side of the ring it stood on is not recorded: it is put on the east, opposite the ' +
+      'erector, where the service trusses do not sweep as they come down. The two lower cable masts at the rocket’s ' +
+      'tail, under the deck, are not built.',
+    facts: [
+      ['Height', '85 to 95 ft over the deck (90 ft, 27.4 m, modelled)'],
+      ['Away', '09:06 Moscow time'],
+      ['Then', 'ignition called at 09:07; liftoff 09:06:59.7 by the launch log'],
+      ['Swings', 'about 22° by the time the rocket leaves (estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    functions: [{ nodes: ['UpperCableMast'], name: 'Swing clear', ends: ['at the rocket', 'swung clear'], seconds: 8 }],
+    moves: [
+      outward('UpperCableMast', MAST_AT, MAST_AWAY, T.mast, T.mastOff),
+      outward('UpperCableMast', MAST_AT, MAST_FALL - MAST_AWAY, T.liftoff, 1),
+    ],
+  },
 ];
 
 const pad: ModelDef = {
@@ -685,6 +1012,8 @@ const pad: ModelDef = {
   url: 'models/ussr/vostok/vostok-1/pad.glb',
   scale: 'Site 1 · platform 41.15 m square over a pit 43 m deep · to scale',
   backdrop: 'tyuratam',
+  slider: ['Pilot aboard · 07:10', 'Liftoff · 09:07'],
+  sequence: MORNING,
   specGroups: ['Launch pad'],
   parts: padParts,
   // (the whole of it is the pit too, 270 m long: the launch system is what is come to see)
@@ -692,11 +1021,14 @@ const pad: ModelDef = {
   views: [
     { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
     { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
+    { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, -0.88] },
+    { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, -0.78] },
+    { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
+    { id: 'masts', label: 'Corner masts', nodes: ['Masts'], from: [-0.75, 0.12, 0.65] },
+    { id: 'deflector', label: 'Flame deflector', nodes: ['FlameDeflector'], from: [0.97, -0.1, 0.2] },
     { id: 'pit', label: 'Flame pit', nodes: ['FlamePit'], from: [-0.5, 0.55, 0.67] },
   ],
 };
-
-const MSK = (h: number, m: number, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s - 59.7);
 
 export const flight: Flight = {
   id: 'ussr/vostok/vostok-1',

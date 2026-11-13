@@ -6,6 +6,11 @@ it on 12 April 1961, standing, visor up, as on the way to the pad. The same scri
 the ejection seat's pose (`build_seated`), visor down, for the spacecraft's cabin; see
 [In the seat](#in-the-seat).
 
+Vostok 2 seats the same figure for Gherman Titov, who wore the same suit with the same lettering
+(*Komsomolskaya Pravda*, 8 August 1961: an orange suit and a helmet lettered СССР). No document
+with his height was found, so the stature is Gagarin's and is assumed
+([Vostok 2's spacecraft.md](../flights/vostok-2/spacecraft.md)).
+
 **It is a rescue suit.** The cabin held ordinary air at ordinary pressure; the suit would have
 inflated only if the cabin had failed. It was also what he landed in: Vostok's pilot left the
 capsule on his ejection seat at 7 km and came down under his own parachute, which is why the

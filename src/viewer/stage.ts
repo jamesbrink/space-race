@@ -14,6 +14,7 @@ import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { Bloom } from './bloom';
 import { bulkOf } from './bulk';
+import { readingFor } from '../sim/mechanism';
 import { Cabin, type CabinThing } from './cabin';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
@@ -169,6 +170,8 @@ export interface Thing {
 }
 
 /** A click on board that was on nothing. */
+/** A shell whose skin has been taken off (Stage.setCutaway, in flight): it is not drawn, so a ray goes through it. */
+const skinless = (o: THREE.Object3D): boolean => ((o as THREE.Mesh).material as THREE.Material | undefined)?.visible === false;
 const NO_THING: CabinThing = { label: '', about: null, object: new THREE.Object3D() };
 
 /** The nearest object at or above `o` that the model names (a `label`, or a vehicle's `vehicle`). */
@@ -569,7 +572,11 @@ export class Stage {
         },
         home: () => this.onHome(),
         // (following a stage that has left, the reset key comes back to the vehicle)
-        back: () => this.followed !== null && (this.followShed(null), true),
+        back: () => {
+          if (this.followed === null) return false;
+          this.followShed(null);
+          return true;
+        },
         rig: (id) => this.rigChanged(id),
       },
       this.lens,
@@ -984,17 +991,29 @@ export class Stage {
     return copy;
   }
 
-  /** Open or close the cutaway. With it open, shells show their inner faces too. */
+  /** Whether the cutaway is open. */
+  get cutaway(): boolean {
+    return this.cut;
+  }
+
+  /**
+   * Open or close the cutaway. With it open, shells show their inner faces too. On the vehicle while it is flying
+   * the skin is not cut but taken off whole: the cut is a pair of planes standing in the place, which a vehicle that
+   * has left and turned is no longer between, and what is wanted up there is the whole of what is inside, to scale.
+   */
   setCutaway(on: boolean): void {
     this.cut = on;
     this.cabin?.opened(on);
     this.dirty = true;
     const at = this.main?.position ?? new THREE.Vector3();
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
+    const whole = on && this.lifted.flying && this.def?.id === this.ascent?.model;
     // only the section's own model opens (and only its full level has an inside to show)
     for (const [url, shells] of this.shellMaterials) {
-      const open = on && url === this.def?.url;
+      const mine = on && url === this.def?.url;
+      const open = mine && !whole;
       for (const m of shells.values()) {
+        m.visible = !(mine && whole); // (not drawn, and no shadow from it: the Sun is on what is inside)
         if (Boolean(m.clippingPlanes) === open) continue;
         m.clippingPlanes = open ? this.cutPlanes : null;
         m.side = open ? THREE.DoubleSide : (m.userData.side as THREE.Side);
@@ -1057,6 +1076,23 @@ export class Stage {
     this.scene.fog = s.fog;
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
+  }
+
+  /**
+   * A mechanism of a model worked by hand (types.ts: MechanismDef; sim/mechanism.ts): its nodes stand `travel` of the
+   * way out (0 to 1) whatever the clock's programme has them at, or with null follow the clock again. The cabin is
+   * told, for what its periscope then sees.
+   */
+  setMechanism(id: string, travel: number | null): void {
+    const at = this.defs.findIndex((m) => m.mechanisms?.some((x) => x.id === id));
+    const mechanism = this.defs[at]?.mechanisms?.find((x) => x.id === id);
+    const staged = this.staged[at];
+    if (!mechanism || !staged) return;
+    if (staged.work(mechanism.nodes, travel === null ? null : readingFor(mechanism, mechanism.from, travel))) {
+      this.dirty = true;
+      this.shadowsOwed = true;
+    }
+    this.cabin?.setMechanism(id, travel);
   }
 
   /** Put a rig in charge of the camera (camera/rig.ts: RigId). The view itself does not jump on changing. */
@@ -1143,7 +1179,7 @@ export class Stage {
         const { origin, direction } = this.raycaster.ray;
         // a ray does not know about the cutaway: skip what has been cut away to reach what is inside
         const gone = (h: THREE.Intersection) =>
-          this.cut && h.object.userData.shell && this.cutPlanes.every((c) => c.distanceToPoint(h.point) < 0);
+          this.cut && h.object.userData.shell && (skinless(h.object) || this.cutPlanes.every((c) => c.distanceToPoint(h.point) < 0));
         const roots = [...this.staged.map((s) => s.shown), ...(this.surroundings ? [this.surroundings] : [])];
         const hit = through(this.raycaster, roots, this.pickTree, !this.cut).find((h) => !gone(h));
         // the ground is a height, not a mesh: where the ray comes down onto it
@@ -1729,6 +1765,7 @@ export class Stage {
     g.updateMatrixWorld(true);
     s.measure(); // levels of detail are chosen by the distance to it
     if (changed) this.fitBounds(); // (a vehicle in flight is left out of them, so they change only as it leaves and comes back)
+    if (changed && this.cut) this.setCutaway(true); // (cut open on its pad, its skin off in flight: as it leaves and comes back)
     this.dirty = true;
     // its shadow is drawn again only while it can fall inside the shadow map (which goes with it under the chase camera):
     // a rocket long gone from a map fitted to the pad casts nothing there
@@ -2908,7 +2945,7 @@ export class Stage {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     // a ray does not know about the cutaway: skip what has been cut away to reach what is inside
     const gone = (h: THREE.Intersection) =>
-      this.cut && h.object.userData.shell && this.cutPlanes.every((p) => p.distanceToPoint(h.point) < 0);
+      this.cut && h.object.userData.shell && (skinless(h.object) || this.cutPlanes.every((p) => p.distanceToPoint(h.point) < 0));
     // (what three's own intersectObjects gives, found through the hierarchies the walker keeps: pick.ts. With
     // nothing cut away the first thing met is the answer, and each mesh need only say where the ray first meets it.)
     const roots = [...this.staged.map((s) => s.shown), ...(this.surroundings ? [this.surroundings] : [])];

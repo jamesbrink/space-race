@@ -1,3 +1,4 @@
+import { type Upcoming, upcoming } from '../missions/upcoming.ts';
 import type { Flight, ModelDef, ViewDef } from './types';
 
 /**
@@ -66,6 +67,15 @@ type Dated = Pick<Flight, 'id' | 'launch'>;
 /** The flights in the order they flew: the front page's, whatever order they are listed in. */
 export const byDate = <F extends Dated>(flights: readonly F[]): F[] =>
   [...flights].sort((a, b) => Date.parse(a.launch) - Date.parse(b.launch));
+
+/**
+ * What the front page lists, in the order they flew: the flights there are, and between them those to come
+ * (missions/upcoming.ts) that no flight has taken the place of yet. One to come has no `callsign`: it is not a flight.
+ */
+export function listed<F extends Dated>(flights: readonly F[], coming: readonly Upcoming[] = upcoming): (F | Upcoming)[] {
+  const built = new Set(flights.map((f) => f.id));
+  return byDate<F | Upcoming>([...flights, ...coming.filter((u) => !built.has(u.id))]);
+}
 
 /**
  * The flight an address is about: the one it names; for one that names a place and no flight

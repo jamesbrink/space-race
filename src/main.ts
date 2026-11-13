@@ -121,8 +121,12 @@ const effects = new Effects(flight);
 effects.motion = MOTION[motion()];
 stage.effects = effects;
 stage.shaker = (camera, sky) => effects.shaker(camera, sky, stage.cameraMode === 'chase' && !stage.walk.active ? 1 : 0);
+// What of the flown vehicle runs to a programme and can be taken by a hand (its periscope): in a flight flown by hand
+// it stands where the programme, the hands and the sequencer have it (cockpit.travel), not where the record's clock does.
+const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
 const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
   heat: (t) => effects.reading(t),
+  say: (title, line) => ui.say(title, line),
   fly: (run) => {
     stage.flyRun(run);
     flown.fly(run); // its traces over the record's, as it grows
@@ -130,6 +134,7 @@ const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight,
   },
   piloting: (on) => {
     if (on && stage.walk.active) stage.exitWalk();
+    if (!on) for (const m of mechanisms) stage.setMechanism(m.id, null); // (back on the record's clock)
     stage.piloted = on;
     stage.crewAboard(on); // (he is in the couch from the moment the deck is taken: not also standing on the pad)
     document.querySelector('#ui')!.classList.toggle('piloting', on);
@@ -143,6 +148,9 @@ const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight,
   },
 });
 cockpit.listen((sample, state) => sound.follow(sample, state));
+cockpit.listen((sample) => {
+  for (const m of mechanisms) stage.setMechanism(m.id, cockpit.travel(m.id, sample.t));
+});
 // the cabin's own instruments read the same samples, and its controls are the flight deck's (viewer/cabin.ts)
 cockpit.listen((sample, state) => stage.cabin?.fly(sample, state));
 // From a seat, what can be looked out of: a switch apiece, and its digit (stage.leanTo)
@@ -150,7 +158,18 @@ const lookouts = () =>
   ui.setLookouts(
     stage.lookouts().map((l) => l.name),
     stage.leaning,
+    stage.cabin?.lighting ?? null,
   );
+// The cabin's own lights: the switch on its console (a click from the seat) and the button under the lookouts throw
+// the one switch (viewer/cabin.ts `light`). It has no key: the flight deck has taken every letter a pilot's hands are near.
+const cabinLights = (): void => {
+  const said = stage.cabin?.light();
+  const lighting = stage.cabin?.lighting;
+  if (!said || !lighting) return;
+  ui.say(lighting.name, said);
+  lookouts();
+};
+ui.onCabinLights = cabinLights;
 const leanTo = (n: number | null) => {
   const said = stage.leanTo(n);
   if (said && n !== null) ui.say(stage.lookouts()[n]?.name ?? 'Looking out', said);
@@ -167,7 +186,12 @@ window.addEventListener('keydown', (e) => {
   e.preventDefault();
 });
 stage.onCabin = (thing) => {
-  if (thing.does) {
+  if (thing.lights) cabinLights();
+  else if (thing.works) {
+    // a mechanism's own control: in a flight flown by hand it works it (the deck says where it is sent); otherwise it says why not
+    stage.cabin?.work(thing.object);
+    if (cockpit.work(thing.works) === null) ui.say(thing.label, 'It is on its programme: fly the flight yourself to work it by hand');
+  } else if (thing.does) {
     stage.cabin?.work(thing.object);
     cockpit.ask(thing.does);
     ui.say(thing.label, thing.about ?? '');
@@ -204,6 +228,14 @@ clock.listen(() => {
 
 /** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
 let autoCut = false;
+/** Open or close the cutaway as if its switch had been worked: asked for by hand, so it stays (and the switch shows it). */
+function cut(on: boolean): void {
+  ui.setCutaway(on);
+  if (stage.cutaway !== on) {
+    autoCut = false;
+    stage.setCutaway(on); // (no switch on the page just now to work it through)
+  }
+}
 
 /** Drift round whatever was just chosen, unless the user has said not to. */
 /** Auto-orbit, unless it is switched off; and not while a part is chosen, which is flown to and held in view (the switch is as it was). */
@@ -349,8 +381,15 @@ stage.onSpot = (page, point, floor, on) => {
     if (!spot) return;
     const part = flight.models.find((m) => m.id === flight.flies?.model)?.parts.find((p) => p.node === on.node);
     ui.menu(page.x, page.y, [
-      ...(part?.commands ?? []).filter((c) => cockpit.can(c.ask)).map((c) => ({ label: c.label, run: () => cockpit.ask(c.ask) })),
+      ...(part?.commands ?? [])
+        .filter((c) => cockpit.can(c.ask))
+        // (a mechanism worked by hand is offered by where it would now go: out, or back in)
+        .map((c) => ({ label: c.back && cockpit.headed(c.ask.slice(5)) ? c.back : c.label, run: () => cockpit.ask(c.ask) })),
       { label: part ? `Look at the ${part.name.toLowerCase()}` : 'Look at this', run: () => stage.lookAtCraft(spot) },
+      // (its skin off, to see what is under it and how little room there is: the cutaway, which in flight takes the whole skin)
+      ...(current.cutaway && current.id === flight.flies?.model
+        ? [{ label: stage.cutaway ? 'Put the skin back' : 'Take the skin off', run: () => cut(!stage.cutaway) }]
+        : []),
     ]);
     return;
   }
@@ -599,6 +638,12 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
   // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
   const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  // Y takes the skin off whatever is on show that can be opened (ModelDef.cutaway), and puts it back: cut open where it
+  // stands, the whole skin off the vehicle in flight, from outside it or from its seat
+  if (e.key.toLowerCase() === 'y' && ready && !title.showing && !typing && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (current.cutaway && !stage.walk.active && !gallery.active) cut(!stage.cutaway);
+    return;
+  }
   if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
     // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
     const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);

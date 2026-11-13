@@ -2,7 +2,8 @@
 
 What [vostok_3ka.py](vostok_3ka.py) builds, and how far to trust each number. The spacecraft type
 shared by the six crewed Vostoks; a flight's `model/vehicle.py` chooses what its own carried (today:
-the pilot's height and what is painted on his helmet).
+the pilot in the seat, and whether there is a film camera in the cabin: Vostok 2 was the first
+with one, `build(film_camera=True)`).
 
 The model is in **millimetres**, the unit of every Soviet figure quoted. Station 0 is the exit plane
 of the braking engine's nozzle and +Z is toward the descent module, which rode forward under the
@@ -62,6 +63,7 @@ Keys used below; full entries are in [docs/sources.md](../../../../docs/sources.
 | Propellant tank | a torus 950 mm across round the chamber | estimated | drawn to the installation's stated diameter; its real form has not been read |
 | Pilot | the flight's own: its script hands the spacecraft a seated figure (Vostok 1: Gagarin, 1,650 mm, documented; `crew/sk-1.md`) | | |
 | Pilot's hip joints | 87 mm in front of the seat frame's origin | estimated | so that his back lies on the parachute pack; neither's place has been read anywhere. See `PILOT_FORWARD` |
+| Film camera (`film_camera`: Vostok 2) | a Konvas-Avtomat, 290 mm long and 260 mm tall | documented, tertiary (the camera type's overall size: 290 × 260 × 240 mm); estimated (its form, and its place: 560 mm to the pilot's right of the seat frame's origin, lenses toward the right porthole) | [Vostok 2's spacecraft.md](../flights/vostok-2/spacecraft.md), "The film camera" |
 
 ## Parts in the model
 
@@ -74,6 +76,7 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | `ParachuteHatch` | hatch No. 2 | slides out along its own axis |
 | `Cabin` | pressure hull; and for the cutaway its lining, the seat's guides, instrument board with the Globus, left panel, hand controller, Vzor, two television cameras, equipment, the parachute container | |
 | `EjectionSeat` | seat, firing mechanisms, parachute and survival packs, oxygen bottles, and the pilot (built at detail 0.75 and above) | slides out along the rails |
+| `FilmCamera` | only with `film_camera`: the Konvas (body, turret and three lenses, magazine, viewfinder, motor), built at detail 0.75 and above | |
 | `RetainingStraps` | `Strap_1` to `Strap_4`, each a node hinged at its foot on the support ring, with its tensioner, lock fitting and antenna | each swings outward about its foot |
 | `CableMast` | `CableMast_Arm`, hinged on the forward cone: duct, cables, plug | swings outward about its foot |
 | `InstrumentModule` | both cones, the frame, support ring, shutters and their frames, jets, valves, covers, Sun sensor; the instrument frame inside | |
@@ -117,6 +120,8 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 - **Cabin equipment is boxes.** The board has a globe and five dials; the left panel, the hand
   controller, the Vzor, the cameras and the parachute container are in the places the sources
   give or imply. The food locker, radio, regeneration unit and sanitary system are not told apart.
+- **The film camera, where a flight has one, hangs in the cabin unsupported**: what held it is
+  not known. It is the camera type as sold, not as altered for flight.
 - **Inside the instrument module** the instrument frame, the tank and the turbopump are
   representative: the right kinds of thing, not a survey.
 - **The straps' travel and the cable mast's swing are ours.** That the straps let go at one lock

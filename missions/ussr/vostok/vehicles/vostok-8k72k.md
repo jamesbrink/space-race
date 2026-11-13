@@ -3,6 +3,8 @@
 The launch vehicle of the crewed Vostoks: Korolev's R-7 with a third stage. Model:
 [vostok_8k72k.py](vostok_8k72k.py), imported by a flight's `model/vehicle.py`. Vostok 1's was
 No. E103-16, with RD-0109 No. 17 on its third stage (Siddiqi, launch log; RussianSpaceWeb).
+Vostok 2's was No. E103-17 (Siddiqi, launch log); nothing read says it differed from E103-16 in
+anything that shows, and its flight's model is this one unchanged.
 
 **Five rockets and a sixth.** A core, Block A, burns for five minutes. Four tapered boosters,
 Blocks B, V, G and D, hang round it and burn for two. All five light on the ground, because in 1957

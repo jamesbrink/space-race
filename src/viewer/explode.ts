@@ -232,6 +232,28 @@ export function refusal(fn: Fn, value: (id: string) => number): string | null {
   return null;
 }
 
+const RUN_BY = new THREE.Vector3();
+const RUN_TURN = new THREE.Quaternion();
+const RUN_NEXT = new THREE.Quaternion();
+
+/**
+ * A node's own motion (types.ts: Move, `run`) at `through` of the way along it, 0 to 1: `run` is its extras' list,
+ * seven figures a sample (moved by x y z, turned by a quaternion x y z w), evenly spaced; between two samples it goes
+ * straight from the one to the other. Writes how far it has moved and how it has turned; false if the node has none.
+ */
+export function runAt(run: unknown, through: number, by: THREE.Vector3, turn: THREE.Quaternion): boolean {
+  if (!Array.isArray(run) || run.length < 14 || run.length % 7) return false;
+  const last = run.length / 7 - 1;
+  const at = Math.min(1, Math.max(0, through)) * last;
+  const i = Math.min(last - 1, Math.floor(at));
+  const f = at - i;
+  const a = 7 * i;
+  const b = a + 7;
+  by.set(run[a] + (run[b] - run[a]) * f, run[a + 1] + (run[b + 1] - run[a + 1]) * f, run[a + 2] + (run[b + 2] - run[a + 2]) * f);
+  turn.set(run[a + 3], run[a + 4], run[a + 5], run[a + 6]).slerp(RUN_NEXT.set(run[b + 3], run[b + 4], run[b + 5], run[b + 6]), f);
+  return true;
+}
+
 /**
  * A part that leaves as hardware does: a sequence of motions, each on a node of the part and
  * each over its own stretch of the slider (types.ts: Move).
@@ -277,6 +299,16 @@ export class Sequence {
     for (const { move, object, node, driver } of this.steps) {
       if (loose?.has(object.name)) continue;
       const at = held?.get(node) ?? k;
+      if (move.kind === 'run') {
+        // the node's own motion (its extras): where the last of these to have begun has it, from where it was built
+        if (at < move.from) continue;
+        const through = Math.min(1, (at - move.from) / Math.max(1e-6, move.to - move.from));
+        const rest = this.nodes.get(object)!;
+        if (!runAt(object.userData.run, move.back ? 1 - through : through, RUN_BY, RUN_TURN)) continue;
+        object.position.copy(rest.position).add(RUN_BY);
+        object.quaternion.copy(rest.quaternion).premultiply(RUN_TURN);
+        continue;
+      }
       const u = ease(Math.min(1, Math.max(0, (at - move.from) / Math.max(1e-6, move.to - move.from))));
       if (move.kind === 'swing') {
         // in the parent's frame, so it goes before whatever turn the node already has
@@ -320,10 +352,23 @@ export class Exploder {
     return this.clocked.length > 0;
   }
 
-  /** Play the parts' motions on the clock to where they are at `t`, seconds from launch. */
+  /**
+   * Play the parts' motions on the clock to where they are at `t`, seconds from launch; a node worked by hand
+   * (`work`) is played to the instant held for it instead.
+   */
   clock(t: number): void {
-    for (const sequence of this.clocked) sequence.set(t);
+    for (const sequence of this.clocked) sequence.set(t, this.worked);
   }
+
+  /**
+   * Hold a node's motions on the clock at an instant of its own (null: let it follow the clock again): a mechanism a
+   * hand has taken from its programme (sim/mechanism.ts). Takes effect at the next `clock`.
+   */
+  work(node: string, instant: number | null): void {
+    if (instant === null) this.worked.delete(node);
+    else this.worked.set(node, instant);
+  }
+  private readonly worked = new Map<string, number>();
 
   /** Hold a node's motions at a reading of the slider of its own (null: let it follow the slider again). Takes effect at the next `set`. */
   hold(node: string, reading: number | null): void {

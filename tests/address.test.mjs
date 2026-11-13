@@ -14,6 +14,7 @@ import {
   galleryAt,
   galleryFlight,
   lacks,
+  listed,
   opensIn,
   PLACES,
   parseAddress,
@@ -227,4 +228,27 @@ test('the gallery`s stage is given the vehicle alone, in the studio, with nothin
   }
   // the flight it was made from is not changed by it
   assert.ok(mr3.site && mr3.trajectory && exhibit(mr3).position);
+});
+
+test('the front page lists the flights there are and those to come, in the order they flew', async () => {
+  const { upcoming } = await import('../missions/upcoming.ts');
+  const all = listed(flights);
+  for (let i = 1; i < all.length; i++)
+    assert.ok(Date.parse(all[i - 1].launch) <= Date.parse(all[i].launch), `${all[i].id} is in its order`);
+  assert.equal(new Set(all.map((f) => f.id)).size, all.length, 'nothing is listed twice');
+  for (const f of flights) assert.ok(all.includes(f), `${f.id} is listed`);
+  // the first ten crewed flights are all there, built or to come
+  assert.ok(all.length >= 10, `${all.length} listed`);
+  // one to come gives way to the flight that takes its id, and to nothing else
+  const [first] = upcoming;
+  const built = { id: first.id, launch: `${first.launch}T06:00:00Z`, callsign: 'built' };
+  const after = listed([...flights, built]);
+  assert.ok(after.includes(built) && !after.includes(first), 'the flight has taken its place');
+  assert.equal(after.length, listed(flights).includes(first) ? all.length : all.length + 1);
+  // and each is a day, with a name and a line to say
+  for (const u of upcoming) {
+    assert.match(u.launch, /^\d{4}-\d{2}-\d{2}$/, `${u.id}: a day`);
+    assert.ok(u.name && u.line && u.nation, `${u.id} says what it is`);
+    assert.match(u.id, /^[a-z]+\/[a-z-]+\/[a-z0-9-]+$/, `${u.id}: an id like a flight's`);
+  }
 });

@@ -171,6 +171,8 @@ def make_materials() -> dict[str, bpy.types.Material]:
         "bottle": m("bottle-green", (0.10, 0.22, 0.13), 0.4, 0.4),
         "propellant": m("propellant-grain", (0.16, 0.13, 0.11), 0.0, 0.9),
         "copper": m("antenna-copper", (0.72, 0.42, 0.20), 1.0, 0.35),
+        # the periscope door's inner pan: insulation under a cloth facing (its colour is ours: no photograph read shows it close to)
+        "insulation": m("insulation-cloth", (0.6, 0.56, 0.46), 0.0, 0.92, double_sided=True),
     }
 
 
@@ -607,16 +609,42 @@ def attach_ring(M, g) -> None:
     lathe_obj("Afterbody_AttachRing", prof([(SHIELD_R, 0.02), (SHIELD_R + 0.05, 0.3), (CONE.r(2.0) + 0.12, 2.0)]), M["steel"], g, segs=160)
 
 
-# The periscope's door and objective as they moved (SEDR 104, 2-3 and 12-2): the door "mechanically linked to the
-# periscope housing, automatically opens and closes with periscope extension and retraction"; the objective is put out
-# on the pad, drawn in when the umbilical is released, put out at separation, drawn in for the entry and put out again
-# for the descent. The model is built as it stood at liftoff, shut and drawn in; a flight opens it on its clock.
+# The periscope's door and objective as they moved (SEDR 104, 2-3, 12-2, 12-18, 12-19 and Figure 12-1). Only the
+# objective cartridge moves: it "may be extended and retracted through a periscope door opening in the bottom of the
+# capsule" by an electric motor and gear box on the lower housing, on roller guides. The door "encloses the periscope
+# lower lens flange and the capsule ground checkout umbilical receptacle" and, "mechanically linked to the periscope
+# housing, automatically opens and closes with periscope extension and retraction": "a connecting link between the
+# objective cartridge and the periscope door allows the door to move in unison with the telescopic motion of the
+# objective cartridge". Figure 12-1 draws the door as a pan with a toothed long edge (read here as a piano hinge) and
+# the link from the cartridge's lower end to the door's inner face. So the model is one linkage (ScopeWorks): a door on
+# a hinge along its long edge, a cartridge that slides out, and a link of fixed length from a lug on the cartridge to
+# a clevis on the door, which pushes the door open as the cartridge comes out and draws it shut as it goes in. It is
+# built as it stood at liftoff, shut and drawn in; each moving piece is a node with its own motion in its extras
+# (`run`: periscope_run), which a flight plays on its clock.
+#
+# Documented: that there is a link between cartridge and door and that they move as one; that the door is part of the
+# capsule's side insulation when shut (SEDR 109-7, 2-18). Estimated, every one: how far the cartridge travels, where
+# the hinge, the lug and the clevis are, the link's length, and so how far the door opens (it comes out at 97 degrees
+# on No. 7 and 109 on No. 11: the photographs of it open show it standing a little past square).
 SCOPE_OUT = 5.65  # how far the objective comes out along its tube, in: from wholly under the shut door (its lens's dome is 4.8 in up the
 # cartridge) to standing out; chosen so that drawn in on either capsule no flat of it lies along a skin, the well's floor or an end of
 # the cabin's tube (estimated)
-SCOPE_DOOR_SWING = 105.0  # how far the door swings open, degrees: ours, from the photographs of it open
+SCOPE_RIM = 3.65  # the lens cell's rim, in up the cartridge from where its node is
+SCOPE_BODY = 2.1  # the cartridge's body, radius; its lens cell is 2.3 (Figure 12-4 draws a cylinder ending in a wider flanged cell)
 SCOPE_DOOR_JOINT = 0.15  # the joint round the shut door, in: estimated
 SCOPE_DOOR_THICK = 0.22  # the door's leaf, in: estimated
+SCOPE_DOOR_PAN = (
+    0.45  # the floor of the door's inner pan, in under the skin: its insulation (estimated; it shuts just clear of the umbilical's receptacle)
+)
+SCOPE_HINGE_JOINT = 0.3  # the joint on the door's hinged side, in: wider than the rest, with the hinge's barrel in it
+SCOPE_HINGE = (0.14, 0.03, 0.07)  # the hinge: its line's distance from the leaf's edge and under the skin, and its barrel's radius, in
+SCOPE_MOUTH = 3.0  # the opening in the well's floor that the cartridge and its link come up through, radius
+SCOPE_SLEEVE = 2.72  # the lower housing's bore under it, radius
+LINK_CLEVIS = (3.0, 0.75)  # the door's clevis: in from the hinge along the door, and under the skin
+LINK_ALONG = 0.0  # and along the hinge from the lug as it stands drawn in, in: level with it, so that the link comes up inside the housing's mouth
+LINK_LUG = (2.45, 2.8, math.radians(70.0))  # the cartridge's lug: in from its axis, under the lens's rim, and round from the side toward the hinge
+SCOPE_STEPS = 16  # how many steps the motion is written in (periscope_run)
+SCOPE_RAMP = 0.12  # how much of the motion the motor takes to come up to speed, and to stop
 UMBILICAL_SUNK = 0.95  # how far the receptacle sits under the skin, in, so that the door shuts over it (SEDR 104, 2-3: the door encloses it)
 
 
@@ -632,19 +660,189 @@ def scope_axis(station: float, toward) -> tuple[Vector, Vector]:
     return foot + d * s, d
 
 
-def periscope(M, g, station: float, about: str, toward) -> Vector:
-    """The periscope's objective, under the pilot's feet (the side that faces the Earth with him head up). The same
-    instrument as the screen on the panel (mercury_cabin): the lens here, a barrel behind it with its stop and a mirror at
-    the bottom, where the light turns up the tube toward the screen. `station` is where its tube meets the pressure
-    vessel and `toward` that tube's last bend (scope_axis); `about` is what the flight says of it. Built drawn in,
-    SCOPE_OUT inside where it stands when put out, on a node of its own (`Periscope_Objective`, at the lens's place on the
-    skin) that a flight slides out along the tube. Returns the way it comes out, in the pilot's frame."""
-    detail, glass, void, bore, mirror = (MeshBuilder() for _ in range(5))
-    at, out = scope_axis(station, toward)
+class ScopeWorks:
+    """The periscope's door, cartridge and link as one linkage, in inches in the pilot's frame. `door` is the opening
+    (angle from, angle to, station from, to); `station` and `toward` are the periscope's tube in the cabin (scope_axis)."""
+
+    def __init__(self, door, station: float, toward) -> None:
+        t0, t1, z0, z1 = door
+        self.door = door
+        zm = (z0 + z1) / 2
+        ta = self.ta = t0 + SCOPE_HINGE_JOINT / CONE.r(zm)
+        # the door's own directions at its hinged edge: across it from the hinge, along the hinge toward the nose, out of the skin
+        self.w = Vector((-math.sin(ta), math.cos(ta), 0.0))
+        self.h = Vector((-math.sin(CONE.a) * math.cos(ta), -math.sin(CONE.a) * math.sin(ta), math.cos(CONE.a)))
+        self.n = CONE.n(ta)
+        self.edge = CONE.p(ta, zm) / IN  # the middle of the hinged edge, on the skin
+        self.hinge = self.edge - self.w * SCOPE_HINGE[0] - self.n * SCOPE_HINGE[1]  # and of the hinge pin's line, in the joint beside it
+        self.at, self.out = scope_axis(station, toward)
+        toward_hinge = (-self.w - self.out * (-self.w).dot(self.out)).normalized()
+        r, down, turn = LINK_LUG
+        radial = toward_hinge * math.cos(turn) + self.out.cross(toward_hinge) * math.sin(turn)
+        self.lug = self.at + self.out * (SCOPE_RIM - SCOPE_OUT) + radial * r - self.out * down  # drawn in
+        b, c = LINK_CLEVIS
+        z_clevis = zm + ((self.lug - self.edge).dot(self.h) + LINK_ALONG) * math.cos(CONE.a)
+        self.clevis_at = (ta + b / CONE.r(z_clevis), z_clevis)  # (angle, station) on the cone: the door is curved as the cone is
+        self.clevis = CONE.p(*self.clevis_at, -c) / IN  # shut
+        self.length = (self.clevis - self.lug).length
+        # the motion: at each step how far out the cartridge is (the motor comes up to speed, runs, and stops) and
+        # how far open that has pushed the door
+        self.table: list[tuple[float, float]] = []
+        theta = 0.0
+        for i in range(SCOPE_STEPS + 1):
+            d = SCOPE_OUT * self.ramp(i / SCOPE_STEPS)
+            theta = self.opened(d, theta)
+            self.table.append((d, theta))
+
+    @staticmethod
+    def ramp(k: float) -> float:
+        """How far through its travel a motor is, `k` of the way through its time: a constant speed, reached and left over SCOPE_RAMP of the time."""
+        r = SCOPE_RAMP
+        if k < r:
+            return k * k / (2 * r * (1 - r))
+        if k > 1 - r:
+            return 1 - (1 - k) ** 2 / (2 * r * (1 - r))
+        return (k - r / 2) / (1 - r)
+
+    def swung(self, theta: float) -> Matrix:
+        """The door swung open by `theta` about its hinge pin (inches)."""
+        return Matrix.Translation(self.hinge) @ Matrix.Rotation(-theta, 4, self.h) @ Matrix.Translation(-self.hinge)
+
+    def opened(self, d: float, least: float = 0.0) -> float:
+        """How far open the door is with the cartridge `d` inches out: the first angle at or past `least` at which the
+        link, from the lug where it now is to the clevis where the door then has it, is its own length."""
+        lug = self.lug + self.out * d
+        miss = lambda theta: ((self.swung(theta) @ self.clevis) - lug).length - self.length  # noqa: E731
+        a, fa = least, miss(least)
+        if abs(fa) < 1e-9:
+            return least
+        for i in range(1, 241):
+            b = least + math.radians(0.25) * i
+            fb = miss(b)
+            if fa * fb <= 0:
+                for _ in range(50):
+                    mid = (a + b) / 2
+                    if fa * miss(mid) <= 0:
+                        b = mid
+                    else:
+                        a, fa = mid, miss(mid)
+                return (a + b) / 2
+            a, fa = b, fb
+        raise ValueError(f"the periscope's link jams with the cartridge {d:.2f} in out")
+
+    def motions(self, k: int) -> dict[str, Matrix]:
+        """How each piece has moved from where it was built at step `k`: metres, in the pilot's frame."""
+        d, theta = self.table[k]
+        metres = lambda m: Matrix.Translation(m.translation * IN) @ m.to_3x3().to_4x4()  # noqa: E731
+        lug = self.lug + self.out * d
+        clevis = self.swung(theta) @ self.clevis
+        turn = (self.clevis - self.lug).rotation_difference(clevis - lug).to_matrix().to_4x4()
+        link = Matrix.Translation(lug) @ turn @ Matrix.Translation(-self.lug)
+        return {
+            "Periscope_Objective": Matrix.Translation(self.out * (d * IN)),
+            "Periscope_Door": metres(self.swung(theta)),
+            "Periscope_Link": metres(link),
+        }
+
+
+def periscope_run(works: ScopeWorks, turn: Matrix) -> None:
+    """Write each moving piece's motion into its node's extras (`run`), for the viewer to play (types.ts: Move, `run`):
+    seven figures a step, how far it has moved (x, y, z, metres) and how it has turned (a quaternion x, y, z, w), in
+    its parent's frame as the file has it (+Y up) and from where it was built. Called once the capsule stands as it
+    will (`turn`: what mercury_capsule.stand gave it), since a node's parent may have been turned with it. The link is
+    the cartridge's child: its motion is what is left once the cartridge's own is taken off."""
+    bpy.context.view_layer.update()
+    back = turn.inverted()
+    for name, carried_by in (("Periscope_Objective", None), ("Periscope_Door", None), ("Periscope_Link", "Periscope_Objective")):
+        node = bpy.data.objects[name]
+        parent, placed = node.parent.matrix_world.copy(), node.matrix_local.translation.copy()
+        run: list[float] = []
+        for k in range(SCOPE_STEPS + 1):
+            moved = works.motions(k)
+            carried = turn @ moved[carried_by] @ back if carried_by else Matrix.Identity(4)
+            local = parent.inverted() @ carried.inverted() @ (turn @ moved[name] @ back) @ parent
+            by = local.to_3x3() @ placed + local.translation - placed
+            q = local.to_quaternion()
+            run += [round(v, 6) + 0.0 for v in (by.x, by.z, -by.y, q.x, q.z, -q.y, q.w)]  # (+ 0.0: no minus nought)
+        node["run"] = run
+    print(
+        f"periscope: the cartridge comes out {SCOPE_OUT:.2f} in and its link, {works.length:.2f} in long, "
+        f"opens the door {math.degrees(works.table[-1][1]):.1f} degrees ({math.degrees(works.table[SCOPE_STEPS // 2][1]):.0f} half way through)"
+    )
+
+
+def periscope_mouth(names, works: ScopeWorks) -> None:
+    """Cut the lower housing's way through the named skins (the pressure vessel, and the lining where there is one):
+    the cartridge and its link come up through it."""
+    # (square to the wall, as the well's own floor is cut, and as wide: a hole cut along the cartridge's leaning line
+    # would have its rim drawn off the wall's own surface)
+    up = CONE.n(deg(90))
+    middle = works.at - works.out * ((WALL + 0.06) / works.out.dot(up))
+    srlib.bore(names, frame(middle * IN, up), SCOPE_MOUTH * IN, 0.3 * IN)
+
+
+def chamfered(mb: MeshBuilder, size, matrix: Matrix, bevel: float = 0.08) -> None:
+    """A block with every edge chamfered (inches, like its size; `matrix` in metres): a case, a fitting, a dog. A plain
+    box has no edge to catch the light and is a flat shape close to; this has one along every side."""
+    h = [s_ / 2 for s_ in size]
+    b = min(bevel, *(0.45 * e for e in h))
+    verts: list = []
+    faces: list = []
+
+    def face(pts, out: bool) -> None:
+        faces.append(tuple(range(len(verts), len(verts) + len(pts))))
+        verts.extend(tuple(matrix @ (Vector(p) * IN)) for p in (pts if out else pts[::-1]))
+
+    def point(axis: int, va: float, u: int, vu: float, w: int, vw: float) -> list[float]:
+        p = [0.0, 0.0, 0.0]
+        p[axis], p[u], p[w] = va, vu, vw
+        return p
+
+    for axis in range(3):
+        u, w = (axis + 1) % 3, (axis + 2) % 3
+        for s_ in (1, -1):  # a face, inset by the chamfer
+            face([point(axis, s_ * h[axis], u, su * (h[u] - b), w, sw * (h[w] - b)) for su, sw in ((-1, -1), (1, -1), (1, 1), (-1, 1))], s_ > 0)
+        for su in (1, -1):  # an edge along this axis: the chamfer between the two faces that meet at it
+            for sw in (1, -1):
+                quad = [
+                    point(axis, -(h[axis] - b), u, su * h[u], w, sw * (h[w] - b)),
+                    point(axis, h[axis] - b, u, su * h[u], w, sw * (h[w] - b)),
+                    point(axis, h[axis] - b, u, su * (h[u] - b), w, sw * h[w]),
+                    point(axis, -(h[axis] - b), u, su * (h[u] - b), w, sw * h[w]),
+                ]
+                face(quad, su * sw < 0)
+    for sx in (1, -1):  # a corner: the triangle between three chamfers
+        for sy in (1, -1):
+            for sz in (1, -1):
+                tri = [
+                    (sx * h[0], sy * (h[1] - b), sz * (h[2] - b)),
+                    (sx * (h[0] - b), sy * h[1], sz * (h[2] - b)),
+                    (sx * (h[0] - b), sy * (h[1] - b), sz * h[2]),
+                ]
+                face(tri, sx * sy * sz > 0)
+    mb.add(verts, faces)
+
+
+def periscope(M, g, works: ScopeWorks, about: str) -> None:
+    """The periscope's objective cartridge, under the pilot's feet (the side that faces the Earth with him head up). The
+    same instrument as the screen on the panel (mercury_cabin): the lens here in its flanged cell, a body behind it with
+    its stop and a mirror at the bottom, where the light turns up the tube toward the screen. Built drawn in, SCOPE_OUT
+    inside where it stands when put out, on a node of its own (`Periscope_Objective`, at the lens's place on the skin)
+    that a flight slides out along the tube; and on a node of that one (`Periscope_Link`, its origin on the lug's pin)
+    the link to the door. `about` is what the flight says of it."""
+    detail, glass, void, bore, mirror, link = (MeshBuilder() for _ in range(6))
+    at, out = works.at, works.out
     f = frame((at - out * SCOPE_OUT) * IN, out)
-    detail.lathe(
-        prof([(2.3, 0.0), (2.3, 3.65), (2.05, 3.95), (1.9, 3.95), (1.9, 3.55)]), 32, matrix=f
-    )  # the cartridge, and the ring that holds the lens (2.3 in round: drawn in, it is inside the cabin's 2.5 in tube, clear of the frames)
+    # the cartridge: a body long enough to stand in the lower housing's bore when it is out, and its lens cell, wider,
+    # with the ring that holds the lens (drawn in, it is inside the cabin's tube, clear of the frames)
+    body = [(0.0, -2.6), (SCOPE_BODY, -2.6), (SCOPE_BODY, 3.15), (2.3, 3.3), (2.3, SCOPE_RIM), (2.05, 3.95), (1.9, 3.95), (1.9, 3.55)]
+    detail.lathe(prof(body), 32, matrix=f)
+    for z in (-1.4, 2.4):  # the bands its roller guides run on (SEDR 104, Figure 12-1 sheet 2: "roller guide"): two is ours
+        detail.lathe(
+            prof([(SCOPE_BODY - 0.02, z - 0.27), (SCOPE_BODY + 0.07, z - 0.18), (SCOPE_BODY + 0.07, z + 0.18), (SCOPE_BODY - 0.02, z + 0.27)]),
+            32,
+            matrix=f,
+        )
     glass.lathe(prof(arc_profile(0, 2.55, 2.25, 58, 90, 8)[::-1]), 32, matrix=f)  # the objective: a domed front element, 0.3 in proud at its middle
     if interior():
         glass.lathe(prof([(1.35, 2.3), (0.0, 2.42)]), 24, matrix=f)  # a second element down the barrel
@@ -654,6 +852,27 @@ def periscope(M, g, station: float, about: str, toward) -> Vector:
         mirror.lathe(prof([(1.15, 0.0), (0.0, 0.0)]), 24, matrix=tilt)  # the mirror that turns the light up the tube
     else:
         void.lathe(prof([(1.9, 3.2), (0.0, 3.2)]), 32, matrix=f)
+    # the lug the link is pinned to: a stud standing out of the cartridge's side, a boss at its root and a head on its end
+    foot = at - out * SCOPE_OUT
+    on_axis = foot + out * out.dot(works.lug - foot)
+    radial = (works.lug - on_axis).normalized()
+    reach = (works.lug - on_axis).length
+    stud = frame(on_axis * IN, radial)
+    detail.lathe(
+        prof(
+            [
+                (0.3, SCOPE_BODY - 0.1),
+                (0.3, reach - 0.2),
+                (0.1, reach - 0.14),
+                (0.1, reach + 0.12),
+                (0.16, reach + 0.14),
+                (0.16, reach + 0.2),
+                (0.0, reach + 0.2),
+            ]
+        ),
+        12,
+        matrix=stud,
+    )
     says = ("Periscope", about)
     built = (
         thing(detail, "Periscope_Cartridge", M["steel"], g, *says),
@@ -662,8 +881,19 @@ def periscope(M, g, station: float, about: str, toward) -> Vector:
         thing(mirror, "Periscope_Mirror", M["strap"], g, *says),
         thing(void, "Periscope_Void", M["void"], g, *says),
     )
-    pivot("Periscope_Objective", g, at * IN, built)
-    return out
+    node = pivot("Periscope_Objective", g, at * IN, built)
+    # the link: a flat bar with an eye at each end, from the lug's pin to the door's clevis, between the clevis's cheeks
+    along = works.clevis - works.lug
+    x = along.normalized()
+    z = (works.h - x * works.h.dot(x)).normalized()
+    bar = Matrix((x, z.cross(x), z)).transposed().to_4x4()
+    bar.translation = ((works.lug + works.clevis) / 2 - at) * IN  # (in the cartridge's node's own frame)
+    chamfered(link, (works.length + 0.4, 0.3, 0.14), bar, 0.05)
+    says = (
+        "Periscope door link",
+        "The link from the periscope's cartridge to its door: as the cartridge comes out it pushes the door open, and draws it shut going in.",
+    )
+    pivot("Periscope_Link", node, (works.lug - at) * IN, (thing(link, "Periscope_LinkBar", M["steel"], g, *says, shell=False),))
 
 
 def umbilical_receptacle(M, g, at: tuple[float, float], about: str, sunk: float = 0.0) -> None:
@@ -674,17 +904,20 @@ def umbilical_receptacle(M, g, at: tuple[float, float], about: str, sunk: float 
     thing(detail, "Umbilical_Receptacle", M["steel"], g, "Umbilical receptacle", about)
 
 
-def periscope_door(M, g, skin: Skin, door, scope_z: float, umbilical_z: float, about: str, umbilical_about: str, toward) -> None:
+def periscope_door(M, g, skin: Skin, door, scope_z: float, umbilical_z: float, about: str, umbilical_about: str, toward) -> ScopeWorks:
     """The periscope's door and its objective, with the umbilical's receptacle under the lens in the same opening, where
     the photographs have them (capsule 11: NASA S61-03705, on the pad, and as raised in 1999; capsule 7 as kept:
     NASM2021-00165). Built as the capsule stood at liftoff: the door shut flush with the plate round it, the objective
     drawn in under it (they were from the umbilical's release at T-35 s until separation: SEDR 104, 12-2; MR-3
-    Postlaunch Report, 10.7.2). The door is a node of its own with its origin on its hinge (`Periscope_Door`), on the
-    side toward the hatch, and the objective another (`Periscope_Objective`): the flight swings and slides them on its
-    clock (flight.ts, `clocked`). `door` is the opening: (angle from, angle to, station from, to); `scope_z` and `toward`
-    are the periscope's tube in the cabin (scope_axis)."""
+    Postlaunch Report, 10.7.2). The door is a node of its own with its origin on its hinge pin (`Periscope_Door`), on
+    the side toward the hatch; the objective another (`Periscope_Objective`), and the link between them a third
+    (`Periscope_Link`): each carries its motion (periscope_run), which the flight plays on its clock (flight.ts,
+    `clocked`). `door` is the opening: (angle from, angle to, station from, to); `scope_z` and `toward` are the
+    periscope's tube in the cabin (scope_axis). Returns the linkage, for the flight's build to finish (periscope_mouth,
+    periscope_run)."""
+    works = ScopeWorks(door, scope_z, toward)
     t0, t1, z0, z1 = door
-    well, leaf, liner = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    well, leaf, liner, pad, fit, fit_door, bolts, sleeve, hinge = (MeshBuilder() for _ in range(9))
     deep = 1.1  # inches: the opening's floor under the skin
     mid = ((t0 + t1) / 2, (z0 + z1) / 2)
     edge = skin.bounds(*mid, t0, t1, z0, z1)
@@ -697,12 +930,48 @@ def periscope_door(M, g, skin: Skin, door, scope_z: float, umbilical_z: float, a
     well.grid(lambda i, j: to(*ring[i], -deep * j), range(len(ring)), (0, 1), closed_u=True)
     well.grid(lambda t, z: CONE.p(t, z, -deep), [t0 + (t1 - t0) * i / 6 for i in range(7)], (z0, z1))
     well.build("Periscope_Well", M["underlay"], g, sharp_angle=40)
-    periscope(M, g, scope_z, about, toward)
+    # The lower housing's mouth in the well's floor, where the cartridge and its link come up: an opening square to the
+    # floor (the cartridge leans in it), a lip round it, and under it the housing's bore, dark, down the cartridge's line.
+    up = CONE.n(deg(90))
+    mouth = works.at - works.out * (deep / works.out.dot(up))
+    srlib.bore(("Periscope_Well",), frame(mouth * IN, up), SCOPE_MOUTH * IN, 0.5 * IN)
+    inner = SCOPE_MOUTH - 0.06  # (over the floor's cut edge)
+    lip = [(inner + 0.39, None), (inner + 0.39, 0.06), (inner + 0.33, 0.12), (inner + 0.06, 0.12), (inner, 0.06), (inner, None)]
+    l1, l2, _ = srlib.basis(up)
+
+    def lip_at(i: float, j: float) -> Vector:
+        r, rise = lip[int(j)]
+        p = mouth + (l1 * math.cos(TAU * i / 48) + l2 * math.sin(TAU * i / 48)) * r
+        if rise is None:  # (its foot on the floor, which is the cone's curve and not flat: a twentieth of an inch into it)
+            lo, hi = -1.0, 0.5
+            for _ in range(40):
+                mid = (lo + hi) / 2
+                q = p + up * mid
+                under = (CONE.r(q.z) - math.hypot(q.x, q.y)) * math.cos(CONE.a) > deep + 0.05
+                lo, hi = (mid, hi) if under else (lo, mid)
+            rise = lo
+        return (p + up * rise) * IN
+
+    fit.grid(lip_at, range(48), range(len(lip)), closed_u=True)
+    t1_, t2_, _ = srlib.basis(works.out)
+    n_s = 32
+
+    def bore_at(i: float, j: float) -> Vector:
+        a = TAU * i / n_s
+        radial = (t1_ * math.cos(a) + t2_ * math.sin(a)) * SCOPE_SLEEVE
+        if j == 2:
+            return (works.at - works.out * 8.4) * IN
+        # (its upper edge on the floor's own plane, a little under it; its foot 8.4 in down the line, closed)
+        s = -8.4 if j == 1 else (-(deep + 0.06) - radial.dot(up)) / works.out.dot(up)
+        return (works.at + radial + works.out * s) * IN
+
+    sleeve.grid(bore_at, range(n_s), (0, 1, 2), closed_u=True)
+    periscope(M, g, works, about)
     umbilical_receptacle(M, g, (deg(90), umbilical_z), umbilical_about, sunk=UMBILICAL_SUNK)
     # the door, shut: a leaf on the cone's own curve, its outer face level with the plate round it and a joint all round;
     # dark outside like the shingles and pale inside, as the photographs of it open show
-    j, thick = SCOPE_DOOR_JOINT, SCOPE_DOOR_THICK
-    ta, tb = t0 + j / CONE.r(mid[1]), t1 - j / CONE.r(mid[1])
+    j, thick, pan = SCOPE_DOOR_JOINT, SCOPE_DOOR_THICK, SCOPE_DOOR_PAN
+    ta, tb = works.ta, t1 - j / CONE.r(mid[1])
     za, zb = z0 + j * math.cos(CONE.a), z1 - j * math.cos(CONE.a)
     n = max(2, math.ceil(math.degrees(tb - ta) / 4.0))  # (no facet turns more than four degrees round the cone)
     ts = [ta + (tb - ta) * i / n for i in range(n + 1)]
@@ -712,33 +981,65 @@ def periscope_door(M, g, skin: Skin, door, scope_z: float, umbilical_z: float, a
     leaf.grid(lambda z, o: CONE.p(ta, z, o), (za, zb), (0.0, -thick))  # the hinged edge
     leaf.grid(lambda z, o: CONE.p(tb, z, o), (za, zb), (-thick, 0.0))  # the free edge
     liner.grid(lambda t, z: CONE.p(t, z, -thick), ts, (za, zb), flip=True)
+    # Its inner pan: "the periscope door forms a part of the capsule side insulation when it is closed" (SEDR 109-7,
+    # 2-18), and Figure 12-1 draws a pan stepped in from the leaf's edge. Set well in from the hinge, where the
+    # cartridge's rim comes up under it as it opens.
+    # It stops short of the umbilical's receptacle, which stands higher than the pan's floor at its sides (the pan is
+    # the cone's curve and the receptacle is flat).
+    rm = CONE.r(mid[1])
+    pa, pb = ta + 1.3 / rm, tb - 0.45 / rm
+    qa, qb = umbilical_z + (2.6 + 0.45) * math.cos(CONE.a), zb - 0.5
+    ps = [pa + (pb - pa) * i / n for i in range(n + 1)]
+    pad.grid(lambda t, z: CONE.p(t, z, -pan), ps, (qa, qb), flip=True)
+    pad.grid(lambda t, o: CONE.p(t, qa, o), ps, (-pan, -thick))
+    pad.grid(lambda t, o: CONE.p(t, qb, o), ps, (-thick, -pan))
+    pad.grid(lambda z, o: CONE.p(pa, z, o), (qa, qb), (-thick, -pan))
+    pad.grid(lambda z, o: CONE.p(pb, z, o), (qa, qb), (-pan, -thick))
+    # (held down by a strap across it at each third, as a blanket is: ours)
+    for k in (1, 2):
+        zk = qa + (qb - qa) * k / 3
+        fit_door.grid(lambda t, z: CONE.p(t, z, -pan - 0.045), ps, (zk - 0.22, zk + 0.22), flip=True)
+    # the clevis the link is pinned in, hung from the pan: two cheeks and a pin along the hinge
+    ct, cz = works.clevis_at
+    c_n, c_w = CONE.n(ct), Vector((-math.sin(ct), math.cos(ct), 0.0))
+    c_h = c_n.cross(c_w)
+    for side in (-0.2, 0.2):
+        cheek = Matrix((c_w, c_h, c_n)).transposed().to_4x4()
+        cheek.translation = (works.clevis + c_h * side + c_n * 0.085) * IN
+        chamfered(fit_door, (0.56, 0.16, 0.57), cheek, 0.05)
+    fit_door.tube((works.clevis - c_h * 0.34) * IN, (works.clevis + c_h * 0.34) * IN, 0.09 * IN, 10)
+    # The hinge, along the leaf's long edge toward the hatch (Figure 12-1 draws that edge toothed): a pin's line a tenth
+    # of an inch under the skin, its knuckles the door's and the frame's by turns.
+    half = (zb - za) / math.cos(CONE.a) / 2 - 0.35
+    count = 2 * round(half / 0.9) + 1
+    span = 2 * half / count
+    for k in range(count):
+        a, b = works.hinge + works.h * (-half + span * k + 0.05), works.hinge + works.h * (-half + span * (k + 1) - 0.05)
+        (fit_door if k % 2 else hinge).tube(a * IN, b * IN, SCOPE_HINGE[2] * IN, 10)
+    # screws through the leaf into the pan's frame, along both long edges (their number is ours)
+    for k in range(6):
+        z = qa + (qb - qa) * (k + 0.5) / 6
+        for t in (pa + 0.35 / rm, pb - 0.35 / rm):
+            skin.screw(bolts, t, z)
     says = (
         "Periscope door",
-        "The door the periscope's objective was put out through, with the umbilical's socket under it. It opened and shut with the objective, "
-        "linked to it: open on the pad until the umbilical was released 35 seconds before liftoff, shut for the climb, open from separation, "
-        "shut for the entry and open again under the drogue.",
+        "The door the periscope's objective was put out through, with the umbilical's socket under it. A link from the periscope's cartridge "
+        "pushed it open as the cartridge came out and drew it shut as it went in: open on the pad until the umbilical was released 35 seconds "
+        "before liftoff, shut for the climb, open from separation, shut for the entry and open again under the drogue.",
     )
+    thing(fit, "Periscope_Mouth", M["steel"], g, "Periscope", about, shell=False)
+    thing(sleeve, "Periscope_Housing", M["underlay"], g, "Periscope", about, shell=False, sharp_angle=40)
+    thing(hinge, "Periscope_Hinge", M["steel"], g, *says, shell=False)
     built = (
         thing(leaf, "Periscope_DoorLeaf", M["shingle"], g, *says, shell=False, sharp_angle=40),  # (curved as the plate round it is; its edges sharp)
-        thing(liner, "Periscope_DoorLiner", M["paint_white"], g, *says, shell=False),
+        thing(liner, "Periscope_DoorLiner", M["paint_white"], g, *says, shell=False, sharp_angle=40),
+        thing(pad, "Periscope_DoorPan", M["insulation"], g, *says, shell=False, sharp_angle=40),
+        thing(fit_door, "Periscope_DoorFittings", M["steel"], g, *says, shell=False),
+        thing(bolts, "Periscope_DoorScrews", M["bolt"], g, *says, shell=False),
     )
-    # (the hinge is the cone's straight line through the leaf's edge on the hatch's side)
-    pivot("Periscope_Door", g, CONE.p(ta, mid[1]), built)
-
-
-def periscope_hinge(door, hatch_mid: float, out: Vector) -> dict:
-    """What a flight needs to work the door and the objective (flight.ts, `clocked`), in the viewer's frame (x, z, -y of
-    this one) as the capsule stands (turned by `hatch_mid`, as `stand` turns it): the door's hinge line, toward the nose,
-    and the angle that opens it; `out`, the way the objective comes out (periscope_door's answer), and how far, metres.
-    Printed by the flight's build."""
-    t0, t1, z0, z1 = door
-    ta = t0 + SCOPE_DOOR_JOINT / CONE.r((z0 + z1) / 2) - hatch_mid
-    up = Vector((-math.sin(CONE.a) * math.cos(ta), -math.sin(CONE.a) * math.sin(ta), math.cos(CONE.a)))
-    out = Matrix.Rotation(-hatch_mid, 3, "Z") @ out
-    view = lambda v: [round(c, 4) for c in (v.x, v.z, -v.y)]  # noqa: E731
-    # (turned about the hinge line toward the nose, a negative angle swings the free edge out: right-handed, and the
-    # viewer's frame is this one turned, so the sign is the same in both)
-    return {"hinge": view(up), "swing": -SCOPE_DOOR_SWING, "out": view(out), "by": round(SCOPE_OUT * IN, 4)}
+    # (its origin on the hinge pin's line, at the middle of the leaf's edge on the hatch's side)
+    pivot("Periscope_Door", g, works.hinge * IN, built)
+    return works
 
 
 def roll_fittings(M, g, places, about: str) -> None:

@@ -11,6 +11,8 @@ Azimuths are measured about +Z from +X.
 Top-level nodes:
     DescentModule  EntryHatch  ParachuteHatch  Cabin  EjectionSeat
     RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
+and, on a flight that carried one (build(film_camera=True)):
+    FilmCamera
 """
 
 from __future__ import annotations
@@ -566,6 +568,55 @@ def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) ->
         assert off < HATCH_R - 12, f"{obj.name} is {off:.0f} mm off the rails' line: the hatch is {HATCH_R:.0f} mm in radius"
 
 
+# ------------------------------------------------------------ what a flight carried
+
+# A Konvas-Avtomat, the hand-held 35 mm reflex camera of Soviet newsreel men: three lenses on a turret, a round
+# magazine behind, a viewfinder along its left side, its motor below as the grip. Vostok 2 carried one, "modified
+# for space flight" (how is not known to us). The type's overall size is published; its form is read off photographs
+# of the camera kept as Titov's and of him holding one. Where it rode in the cabin is in nothing read: it is put at
+# the pilot's right hand, its lenses toward the right porthole.
+KONVAS_LENGTH = 290.0  # over the longest lens's hood and the eyecup
+KONVAS_HEIGHT = 260.0  # over the magazine and the motor
+KONVAS_AT = (-560.0, -150.0, 400.0)  # the middle of its body, in the seat's frame
+KONVAS_LENSES = ((90.0, 22.0, 52.0), (210.0, 25.0, 68.0), (330.0, 29.0, 85.0))  # round the turret: degrees, barrel radius, length
+
+
+def build_film_camera(M) -> None:
+    g = group("FilmCamera")
+    if not interior():
+        return
+    S = seat_frame()
+    P = lambda x, y, z: Vector((x, y, z))  # noqa: E731
+    # its own frame, in the seat's: +Y along the lenses, at the right porthole; +Z its top, as near the pilot's head as that leaves it
+    at = P(*KONVAS_AT)
+    y = (to_seat(INNER.frame(*RIGHT_PORT)).translation - at).normalized()
+    z = (P(0, 1, 0) - y * y.y).normalized()
+    C = Matrix((y.cross(z), y, z)).transposed().to_4x4()
+    C.translation = at
+    body, barrels, glass = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    body.box((104, 140, 150), Matrix.Identity(4))
+    front = 70.0 + 14.0  # the turret's face
+    turret = P(0, 70, 4)
+    body.lathe([(66, 0), (66, 14), (0, 14)], 40, matrix=frame(turret, (0, 1, 0)))
+    for a, r, length in KONVAS_LENSES:
+        m = frame(P(36 * math.cos(deg(a)), front, turret.z + 36 * math.sin(deg(a))), (0, 1, 0))
+        barrels.lathe([(r, 0), (r, length - 14), (r + 6, length - 10), (r + 6, length), (r - 2, length), (r - 2, length - 18)], 28, matrix=m)
+        glass.lathe([(r - 2, length - 18), (0, length - 18)], 28, matrix=m)
+    # the magazine: a drum on edge behind the body's top, with the boss of its take-up side
+    top = KONVAS_HEIGHT / 2
+    body.lathe([(0, 0), (80, 0), (80, 62), (50, 62), (50, 78), (0, 78)], 48, matrix=frame(P(-31, -30, top - 80), (1, 0, 0)))
+    # the viewfinder: a tube along the left side to an eyecup behind
+    back = front + KONVAS_LENSES[-1][2] - KONVAS_LENGTH
+    body.tube(P(-70, 30, 52), P(-70, back + 25, 52), 16, 20)
+    body.box((12, 50, 20), Matrix.Translation(P(-56, -10, 52)))
+    cup = frame(P(-70, back + 25, 52), (0, -1, 0))
+    body.lathe([(16, 0), (26, 18), (26, 25), (14, 25)], 20, matrix=cup)
+    glass.lathe([(14, 25), (0, 22)], 20, matrix=cup)
+    body.tube(P(0, 12, -70), P(0, 12, -top), 30, 24)  # the motor, which is the grip
+    for mb, name, mat in ((body, "FilmCamera_Body", "panel_black"), (barrels, "FilmCamera_Lenses", "frame"), (glass, "FilmCamera_Glass", "lens")):
+        inside_cabin(placed(mb, S @ C).build(name, M[mat], g, sharp_angle=35))
+
+
 # ------------------------------------------------ what joins the two modules together
 
 
@@ -853,15 +904,18 @@ def build_retro_engine(M) -> None:
 # ---------------------------------------------------------------------------- main
 
 
-def build(pilot: Callable[[bpy.types.Object, Matrix], object] | None = None, stowed: bool = False) -> str:
+def build(pilot: Callable[[bpy.types.Object, Matrix], object] | None = None, stowed: bool = False, film_camera: bool = False) -> str:
     """Build the spacecraft. `pilot(parent, place)` builds the man in the seat (a suit's `build_seated`); left out, the seat is empty.
-    `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs."""
+    `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs. `film_camera` puts
+    a Konvas in the cabin, as a node of its own: Vostok 2 was the first to carry one."""
     M = materials()
     build_descent_module(M)
     build_hatches(M)
     build_cabin(M)
     cut_openings()
     build_seat(M, pilot)
+    if film_camera:
+        build_film_camera(M)
     build_straps(M)
     build_cable_mast(M)
     build_instrument_module(M, stowed)

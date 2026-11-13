@@ -340,14 +340,16 @@ def arc_profile(cx: float, cz: float, radius: float, a0: float, a1: float, n: in
     ]
 
 
-def text_mesh(body: str, size: float, font: bpy.types.VectorFont | None = None, cuts: int = 3):
+def text_mesh(body: str, size: float, font: bpy.types.VectorFont | None = None, cuts: int = 3, offset: float = 0.0):
     """Flat text as (verts, faces) in the XY plane, origin at left baseline.
 
     Faces are triangulated and each edge cut `cuts` times: a letter wrapped round a cylinder
-    must bend with it, or the middle of every stroke sinks under the skin."""
+    must bend with it, or the middle of every stroke sinks under the skin. `offset` moves every
+    outline outward by that much (in the text's own units), about where it stands: a letter's edging."""
     curve = bpy.data.curves.new("txt", "FONT")
     curve.body = body
     curve.size = size
+    curve.offset = offset
     curve.resolution_u = 3
     if font is not None:
         curve.font = font
@@ -959,20 +961,59 @@ def stats() -> tuple[int, int]:
 
 
 def render_preview(
-    path: str, target: Sequence[float], distance: float, azimuth: float = 35.0, elevation: float = 12.0, res: tuple[int, int] = (900, 1400)
+    path: str,
+    target: Sequence[float] | str,
+    distance: float,
+    azimuth: float = 35.0,
+    elevation: float = 12.0,
+    res: tuple[int, int] = (900, 1400),
+    seat: str | None = None,
+    look: tuple[float, float] = (0.0, 0.0),
+    lens: float = 70.0,
+    lamps: str | None = None,
+    hide: str | tuple[str, ...] | None = None,
+    only: str | tuple[str, ...] | None = None,
 ) -> None:
-    """Quick EEVEE still, for eyeballing a build without opening the viewer."""
+    """Quick EEVEE still, for eyeballing a build without opening the viewer. With `seat` (an empty of the model whose +Z
+    looks ahead and +Y is overhead: a cabin's `Seat_...`) the still is taken from there, the head turned `look` degrees
+    (to the left, up) and seen through a `lens` of that many millimetres; `target` and `distance` are then not used.
+    `lamps` is the start of the names of the meshes that are its lights (a cabin's `Lamp_`): a point light is hung at
+    each, since the preview's two suns are outside the hull; `hide` is the start (or starts) of the names of what is
+    left out: what the eyes are inside of and the viewer does not draw from there (the pilot's own helmet), or a skin
+    taken off. `only` is the starts of the names of all that is drawn (a pilot and his couch, out of their cabin).
+    `target` may be an object's name: where it is."""
     scene = bpy.context.scene
     cam_data = bpy.data.cameras.new("PreviewCam")
-    cam_data.lens = 70
+    cam_data.lens = lens
     cam = bpy.data.objects.new("PreviewCam", cam_data)
     scene.collection.objects.link(cam)
     az, el = math.radians(azimuth), math.radians(elevation)
-    t = Vector(target)
-    cam.location = t + distance * Vector((math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el)))
-    cam.rotation_euler = (t - cam.location).to_track_quat("-Z", "Y").to_euler()
-    scene.camera = cam
     made = [cam]
+    meshes = [o for o in bpy.data.objects if o.type == "MESH" and not o.hide_render]
+    hidden = [o for o in meshes if (hide and o.name.startswith(hide)) or (only and not o.name.startswith(only))]
+    for obj in hidden:
+        obj.hide_render = True
+    if seat:
+        cam_data.clip_start = 0.02
+        yaw, pitch = (math.radians(a) for a in look)
+        # (the seat looks along its +Z with +Y overhead in the exported file, which here is its -Y and its +Z; a camera
+        # looks along its own -Z with +Y up)
+        to_seat = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0))).to_4x4()
+        cam.matrix_world = bpy.data.objects[seat].matrix_world @ to_seat @ Matrix.Rotation(yaw, 4, "Y") @ Matrix.Rotation(pitch, 4, "X")
+        for obj in [o for o in bpy.data.objects if lamps and o.name.startswith(lamps)]:
+            data = bpy.data.lights.new(f"PreviewLamp_{obj.name}", "POINT")
+            data.energy = 12.0
+            data.shadow_soft_size = 0.05
+            lamp = bpy.data.objects.new(data.name, data)
+            scene.collection.objects.link(lamp)
+            centre = obj.matrix_world @ (sum((Vector(c) for c in obj.bound_box), Vector()) / 8)
+            lamp.location = centre * 0.82 + Vector((0, 0, centre.z * 0.18))  # (a hand's breadth in from the wall, toward the long axis)
+            made.append(lamp)
+    else:
+        t = bpy.data.objects[target].matrix_world.translation.copy() if isinstance(target, str) else Vector(target)
+        cam.location = t + distance * Vector((math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el)))
+        cam.rotation_euler = (t - cam.location).to_track_quat("-Z", "Y").to_euler()
+    scene.camera = cam
     for i, (energy, a) in enumerate(((6.0, az + 0.9), (1.5, az - 1.4))):
         sun_data = bpy.data.lights.new(f"PreviewSun{i}", "SUN")
         sun_data.energy = energy
@@ -995,6 +1036,8 @@ def render_preview(
     bpy.ops.render.render(write_still=True)
     for obj in made:
         bpy.data.objects.remove(obj)
+    for obj in hidden:
+        obj.hide_render = False
 
 
 def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> None:

@@ -15,29 +15,27 @@ import {
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
 import { WEATHER } from './weather.ts';
-import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
+import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
 
 /**
- * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts). The axes are mercury_capsule.periscope_hinge's for this
- * capsule (its door at 80 to 100 degrees round from the pilot's right, its tube's last run in the cabin, the hatch on +X).
+ * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
+ * objective and the link between them each carry their motion: mercury_capsule.periscope_run).
  * "At T-35 seconds, the spacecraft umbilical was [pulled] and the periscope was retracted", and at separation, ten seconds
- * after cutoff at 02:23, "the periscope was extended" (MR-4 Results, p. 6); "periscope is retracting" at 06:41 (p. 43);
- * "There's the drogue chute. The periscope has extended" at 09:41.5, the drogue at 09:41 (p. 44): it is put out with the
- * drogue, as SEDR 104 has it, and the call's half second is shorter than the motion's four. Documented.
+ * after cutoff at 02:23, "the periscope was extended" (MR-4 Results, p. 6); "periscope is retracting" at 06:41, thirty
+ * seconds and more after the retropack was let go at 06:07 (p. 43); "There's the drogue chute. The periscope has
+ * extended" at 09:41.5, the drogue at 09:41 (p. 44): it is put out with the drogue, as SEDR 104 has it, and the call's
+ * half second is shorter than the motion's five. Documented.
  */
-const PERISCOPE = periscopeMoves(
-  [0.1979, 0.9397, 0.2789],
-  [-0.0927, 0.0584, -0.0927],
-  [
-    [ON_THE_PAD, true],
-    [-35, false],
-    [153, true],
-    [401, false],
-    [581, true],
-  ],
-);
+const PERISCOPE_EVENTS: [number, boolean][] = [
+  [ON_THE_PAD, true],
+  [-35, false],
+  [153, true],
+  [401, false],
+  [581, true],
+];
+const PERISCOPE = periscopeMoves(PERISCOPE_EVENTS);
 const FT = 0.3048;
 const LBF = 4.4482216;
 const NMI = 1852;
@@ -366,19 +364,26 @@ const BASE = 716.0 * IN;
 const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Window', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
 
 /**
- * Where the pilot is to stand when he is built (he is not: README.md, "What is not built"): on the hardstand on the
- * hatch side, 8 m from the launcher, between the transfer van that brought him and the emergency shower, turned
- * toward the lift he is walking to. It is where NASA's photograph of 21 July has him (61-MR4-83: "strolls toward the
- * loxing Mercury-Redstone 4 as it stands in its gantry", the shower at his left hand): the place read off it, to a
- * couple of metres. Open concrete: 2.6 m from the shower, 2 m from the launcher's cable, 4.5 m from the van's steps.
- * A model that takes it spreads it (`...PILOT`), as Freedom 7's does.
+ * Where the pilot stands: on the hardstand on the hatch side, 8 m from the launcher, between the transfer van that
+ * brought him and the emergency shower, turned toward the lift he is walking to. It is where NASA's photograph of
+ * 21 July has him (61-MR4-83: "strolls toward the loxing Mercury-Redstone 4 as it stands in its gantry", the shower
+ * at his left hand): the place read off it, to a couple of metres. Open concrete: 2.6 m from the shower, 2 m from the
+ * launcher's cable, 4.5 m from the van's steps. The crew model spreads it (`...PILOT`), as Freedom 7's does.
  */
 export const PILOT = { position: [7.92, 0, 1.83] as [number, number, number], rotationY: -2.618 };
+/** A direction to look at the pilot from: in front of him (or, with `behind`, at his back), turned `aside` radians, `lift` up. */
+const facingPilot = (lift: number, aside = 0.12, behind = false): [number, number, number] => [
+  Math.sin(PILOT.rotationY + aside + (behind ? Math.PI : 0)),
+  lift,
+  Math.cos(PILOT.rotationY + aside + (behind ? Math.PI : 0)),
+];
 
 const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/usa/mercury/mr-4-liberty-bell-7/vehicle.glb',
+  // the periscope on its programme (vehicles/periscope.ts): nothing works it by hand yet, this flight having no flight deck
+  mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   scale: '25.41 m tall · spacecraft 7.91 m · to scale',
   backdrop: 'cape-canaveral',
   slider: ['Assembled', 'Taken apart'],
@@ -769,6 +774,191 @@ const pad: ModelDef = {
   ],
 };
 
+/**
+ * Virgil Grissom as he walked to the lift on 21 July 1961: the suit of Freedom 7's crew model (crew/mark_iv_suit.py)
+ * on his own measures and with what this flight's had. crew/mark-iv-suit.md, "5 May and 21 July 1961", has each
+ * difference with its source and how sure it is; the texts below quote it.
+ */
+const crewParts: Part[] = [
+  {
+    node: 'Helmet',
+    name: 'Helmet',
+    summary: 'The same shell as Shepard’s, with new microphones.',
+    detail:
+      'Fibreglass, with a clear visor that closes on an inflatable seal. New for this flight are the microphones: ' +
+      'Electro-Voice units built into the helmet, one at each corner of the mouth where Shepard’s figure has a ' +
+      'single boom. The white lead hanging on his right chest is the helmet’s own: it is plugged in once he is ' +
+      'on the couch. After landing he unfastened the helmet to be ready to leave; when the hatch blew he lifted ' +
+      'it off and dropped it.',
+    facts: [
+      ['Microphones', 'two, Electro-Voice, new'],
+      ['Shell', 'fibreglass'],
+      ['Visor seal', 'pneumatic, fed at the left jaw'],
+      ['Lead', 'right side, unplugged on the walk'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Torso',
+    name: 'Torso',
+    summary: 'Aluminised nylon over a rubber bladder; a neck dam rolled under the ring.',
+    detail:
+      'B.F. Goodrich’s Navy Mark IV, as Shepard wore: one flow of oxygen in at the waist cools and feeds the pilot. ' +
+      'The roll under the neck ring is a rubber neck dam, to be pulled up round the neck once the helmet is off ' +
+      'so that a suit in the sea stays full of air. Grissom’s was not up tight, and he had left the inlet at his ' +
+      'waist unlocked: in the water the suit let its air go and he sank lower with every swell. Under it he wore ' +
+      'a urine reservoir, made the day before the flight.',
+    facts: [
+      ['Markings', 'NASA insignia, "V. I. GRISSOM"'],
+      ['Leak rate that morning', '175 cc/min; Shepard’s suit, 400'],
+      ['Oxygen inlet', 'left waist'],
+      ['Tie-down strap', 'neck ring to crotch'],
+      ['Pressure if the cabin fails', '4.6 psi'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Arms',
+    name: 'Arms',
+    summary: 'Laced to length; the pressure gauge on the left forearm.',
+    detail:
+      'Cords and lacing along each arm stop a pressurised sleeve ballooning and set its length to the man. The ' +
+      'gauge above the left wrist reads suit pressure; on this suit it sits in a thick white bezel. Shepard had ' +
+      'knocked his against the abort handle.',
+    facts: [['Gauge', 'left forearm, white bezel']],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Gloves',
+    name: 'Gloves',
+    summary: 'Locked to bearing rings: the wrists turn under pressure.',
+    detail:
+      'On Freedom 7 each glove joined its sleeve by a zipper round the wrist. For this flight Goodrich fitted ' +
+      'quick-removal rings sealed with nylon ball bearings, "permitting 360 degrees of wrist action when the suit ' +
+      'is inflated", and no change to the suit was needed to take them. The palms are dark leather; the middle ' +
+      'finger is cut straight for pushing buttons, the others curved to the hand controller.',
+    facts: [
+      ['Wrist', 'ball-bearing ring, new'],
+      ['On MR-3', 'zipper'],
+      ['Palms', 'dark leather'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Legs',
+    name: 'Legs',
+    summary: 'Cut to his measure; the biomedical port is the disc on the right thigh.',
+    detail:
+      'The round port in its reinforcing disc takes the lead from the sensors on his body: two heart leads, ' +
+      'breathing and temperature. His legs are the ones the flight surgeon measured that morning: 21 inches ' +
+      'round the right thigh and 15 7/8 round each calf, on a man of 150 pounds.',
+    facts: [
+      ['Thigh', '21 in (53 cm) round'],
+      ['Calf', '15 7/8 in (40 cm) round'],
+      ['Biomedical port', 'right thigh, front'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Boots',
+    name: 'Boots',
+    summary: 'Laced, aluminised leather over the suit’s feet.',
+    detail:
+      'Separate lace-up boots worn over the pressure suit’s socks, as on Freedom 7. He walked the carrier’s deck in them that morning, ' +
+      'still in the suit.',
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Harness',
+    name: 'Parachute harness',
+    summary: 'Worn over the suit, for a chest parachute he did not wear to the pad.',
+    detail:
+      'Two straps from the hips over the shoulders, crossed on the back, with leg straps through the crotch and a ' +
+      'strap across the chest. The ring on each padded shoulder strap is where a chest parachute would snap on. ' +
+      'Shepard’s wrist had bumped that parachute when he worked the hand controller, so for this flight the ' +
+      'harness was designed again to keep it out of the way. The white tape on the chest strap says whose it is.',
+    facts: [
+      ['Pads', 'quilted, slate blue'],
+      ['Webbing', 'olive brown'],
+      ['Name tape', 'GRISSOM, on the chest strap'],
+      ['Parachute', 'not worn to the pad'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Mirror',
+    name: 'Chest mirror',
+    summary: 'A five-inch convex mirror: the camera read the instruments in it.',
+    detail:
+      'A camera in the cabin watched the pilot’s face. With a convex mirror on his chest the same film also ' +
+      'showed the panel he was looking at. The astronauts called it the hero’s medal. Freedom 7 had none. It ' +
+      'went through the hatch and into the sea with him, and is still on his chest in the photographs taken on ' +
+      'the carrier.',
+    facts: [
+      ['Mirror', '5 in (12.7 cm), Plexiglas'],
+      ['Rim', 'about 15 cm across'],
+      ['Hung', 'between the shoulder straps'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Ventilator',
+    name: 'Portable ventilator',
+    summary: 'The white case in his right hand.',
+    detail:
+      'A sealed suit cannot shed heat, so from the suiting room to the capsule he carried his own cooling: "the ' +
+      'case containing air conditioning equipment to keep him comfortable in his space suit", as NASA’s caption ' +
+      'to the photograph of this walk has it. In the transfer van the van’s own system took over, and he was ' +
+      'briefed on the way to save a quarter of an hour; at the pad the case was plugged in again for the walk ' +
+      'to the lift.',
+    facts: [
+      ['Carried', 'right hand, by himself'],
+      ['Hose', 'to the inlet at the left waist'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+];
+
+const crew: ModelDef = {
+  id: 'crew',
+  name: 'Crew',
+  url: 'models/usa/mercury/mr-4-liberty-bell-7/crew.glb',
+  scale: 'Virgil I. Grissom · 1.70 m, 1.79 m suited · to scale',
+  backdrop: 'cape-canaveral',
+  parts: crewParts,
+  ...PILOT,
+  walker: {
+    eyes: 'Helmet_Eyes',
+    forward: [0, 1],
+    // the portable ventilator, in his right hand as in the photograph of this walk, its hose up to the inlet at his left waist
+    carries: [{ node: 'Ventilator', hand: 'R', hose: { mesh: 'Ventilator_Hose', from: 'Ventilator_HosePort', to: 'Inlet' } }],
+  },
+  wide: false,
+  specGroups: ['Pressure suit'],
+  home: 'walk',
+  views: [
+    // as NASA 61-MR4-83 has him: from behind and low, walking to the lift, the vehicle standing over him
+    { id: 'walk', label: 'Walk to the lift', centreY: 2.4, span: 6.2, from: facingPilot(-0.3, 0.35, true) },
+    { id: 'figure', label: 'Pilot', centreY: 0.92, span: 2.4, from: facingPilot(0.05) },
+    { id: 'helmet', label: 'Helmet', centreY: 1.62, span: 0.62, from: facingPilot(0.05) },
+    { id: 'chest', label: 'Mirror and harness', centreY: 1.3, span: 0.62, from: facingPilot(0.05) },
+    { id: 'back', label: 'Harness, behind', centreY: 1.15, span: 1.1, from: facingPilot(0.05, 0.12, true) },
+    { id: 'hands', label: 'Gloves', centreY: 0.88, span: 0.62, from: facingPilot(0.05) },
+    { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: facingPilot(0.2) },
+  ],
+  // just after rollback, so that he can be seen: when he walked to the lift, in the dark, the structure still stood round the rocket
+  with: [{ model: 'pad', at: ROLLED_BACK }],
+};
+
 export const flight: Flight = {
   id: 'usa/mercury/mr-4-liberty-bell-7',
   nation: 'USA',
@@ -984,6 +1174,54 @@ export const flight: Flight = {
       confidence: 'documented',
       note: '100° east of north, changed from the 102° of MR-2, MR-BD and MR-3 (TM X-53107, 8.3.2)',
     },
+    {
+      group: 'Pressure suit',
+      label: 'Pilot height',
+      value: 1.702,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Grissom is commonly given as 5 ft 7 in; no primary record of his height was found (not in the 1959 press conference, the MR-4 press kit or his NASA biography), and 5 ft 5 in and 5 ft 6 in are also printed',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Pilot weight',
+      value: 150.5 * 0.45359237,
+      unit: 'kg',
+      confidence: 'documented',
+      note: `150 lb 8 oz, nude, seven hours before the launch; 147 lb 3 oz aboard the carrier (${RESULTS}, Table 3-I)`,
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Round the thigh',
+      value: 21 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `21 in right, 20 3/4 in left, at the examination on the morning of the flight (${RESULTS}, p. 9)`,
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Round the calf',
+      value: 15.875 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `15 7/8 in, both (${RESULTS}, p. 9)`,
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Chest mirror',
+      value: 5 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '"the 5-inch plexiglas parabolic mirror attached to Grissom’s suit" (NASA’s caption to photograph 61-MR4-79); its rim, about 15 cm across, is read off the photographs',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Operating pressure',
+      value: 4.6 * 6.894757,
+      unit: 'kPa',
+      confidence: 'documented',
+      note: '4.6 psi, held by the suit regulator only if the cabin loses pressure (SEDR 104); on this flight the cabin held about 5 psi and the suit was never inflated',
+    },
     ...LC5_SPECS,
   ],
   motors: [
@@ -1062,6 +1300,6 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig)',
     },
   ],
-  models: [vehicle, pad],
+  models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
 };
