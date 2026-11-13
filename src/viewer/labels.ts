@@ -87,9 +87,10 @@ const OUT = 30;
  * right); a side's labels share one column, just beyond the widest part on that side, and are
  * spread down it in the order of their parts, no two closer than a label and a gap. A part off
  * the frame is not named; a column with more names than it has room for keeps as many as fit,
- * the ones nearest the middle of the frame.
+ * the ones nearest the middle of the frame. `bodies` is every part that is on show, named or not (a half-fairing that has
+ * not come clear yet is not named but is still there): the column stands beyond the widest of them, not only of the named.
  */
-export function layOut(anchors: readonly Anchor[], frame: Frame): Placed[] {
+export function layOut(anchors: readonly Anchor[], frame: Frame, bodies: readonly Anchor[] = anchors): Placed[] {
   const seen = anchors.filter((a) => a.x >= frame.left && a.x <= frame.right && a.y >= frame.top && a.y <= frame.bottom);
   if (!seen.length) return [];
   const xs = seen.map((a) => a.x).sort((a, b) => a - b);
@@ -106,7 +107,9 @@ export function layOut(anchors: readonly Anchor[], frame: Frame): Placed[] {
     }
     column.sort((a, b) => a.y - b.y);
     const widest = Math.max(...column.map((a) => a.width));
-    const edge = side === 'right' ? Math.max(...column.map((a) => a.x + a.r)) : Math.min(...column.map((a) => a.x - a.r));
+    const mine = bodies.filter((a) => (a.x < axis - Math.max(18, 0.5 * a.r) ? 'left' : 'right') === side);
+    const reach = [...column, ...mine];
+    const edge = side === 'right' ? Math.max(...reach.map((a) => a.x + a.r)) : Math.min(...reach.map((a) => a.x - a.r));
     // the column never leaves the frame: against its edge, a label lies over the part it names rather than off the page
     const x = side === 'right' ? Math.min(edge + OUT, frame.right - widest) : Math.max(edge - OUT, frame.left + widest);
     const ys = spread(
@@ -164,10 +167,11 @@ export const PIN_W = 26;
  * Whether a column of labels lies on the thing it names: its near edge is inside the reach of the parts (with `air`
  * pixels to spare). The names are then too wide for the room beside it, and numbers stand in for them (`Labels.pins`).
  */
-export function covers(anchors: readonly Anchor[], placed: readonly Placed[], air = 6): boolean {
+export function covers(anchors: readonly Anchor[], placed: readonly Placed[], air = 6, bodies: readonly Anchor[] = anchors): boolean {
   if (!anchors.length) return false;
-  const right = Math.max(...anchors.map((a) => a.x + a.r));
-  const left = Math.min(...anchors.map((a) => a.x - a.r));
+  const all = [...anchors, ...bodies];
+  const right = Math.max(...all.map((a) => a.x + a.r));
+  const left = Math.min(...all.map((a) => a.x - a.r));
   return placed.some((p) => (p.side === 'right' ? p.x < right + air : p.x > left - air));
 }
 

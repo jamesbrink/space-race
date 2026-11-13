@@ -146,3 +146,13 @@ test('names that fit beside the thing do not cover it; a column pushed in by the
   assert.equal(covers(pins, layOut(pins, phone)), false);
   assert.equal(covers([], []), false);
 });
+
+test('a part that is on show but not yet named still counts: the column stands beyond it, and covers sees it', () => {
+  const named = [0, 1, 2].map((i) => ({ id: `p${i}`, x: 195, y: 200 + 80 * i, r: 20, width: 100 }));
+  const fairing = { id: 'f', x: 260, y: 220, r: 40, width: 0 };
+  const frame = { left: 10, right: 380, top: 60, bottom: 780 };
+  const bare = layOut(named, frame);
+  assert.equal(covers(named, bare, 6, [...named, fairing]), true, 'the column of 100 px names at 245 lies on a fairing reaching 300');
+  const placed = layOut(named, frame, [...named, fairing]);
+  assert.ok(Math.min(...placed.map((p) => p.x)) >= Math.min(300 + 30, frame.right - 100), 'the column stands beyond the fairing');
+});

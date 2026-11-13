@@ -1148,14 +1148,17 @@ export class Gallery {
     const lay = (pins: boolean) => {
       this.labels.pins(pins);
       const anchors: Anchor[] = [];
+      const bodies: Anchor[] = [];
       parts.forEach((p, i) => {
-        const at = clear[i] ? stage.frameOf(p.node) : null;
-        if (at) anchors.push({ id: p.node, ...at, width: this.labels.width(p.node) });
+        const at = stage.frameOf(p.node);
+        if (!at) return;
+        bodies.push({ id: p.node, ...at, width: 0 });
+        if (clear[i]) anchors.push({ id: p.node, ...at, width: this.labels.width(p.node) });
       });
-      return { anchors, placed: layOut(anchors, this.clear) };
+      return { anchors, bodies, placed: layOut(anchors, this.clear, bodies) };
     };
     let laid = lay(false);
-    if (narrow() && covers(laid.anchors, laid.placed, this.labels.pinned ? 24 : 6)) laid = lay(true);
+    if (narrow() && covers(laid.anchors, laid.placed, this.labels.pinned ? 24 : 6, laid.bodies)) laid = lay(true);
     this.labels.place(laid.placed);
     this.mark();
   }
