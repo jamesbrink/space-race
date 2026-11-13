@@ -295,6 +295,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 /* views in one set, toggles in the other; the row wraps rather than hide anything */
 .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; max-width: 100%; }
 .set { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.set-items { display: contents; }
 .buttons button { flex: none; display: flex; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); letter-spacing: 0.1em; white-space: nowrap; }
 .buttons [data-camera] svg { margin-right: 8px; }
 /* a switch has a lamp before its name, lit while it is on: so what is a switch is told from what is a press, here and on the flight deck */
@@ -384,9 +385,11 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
   /* the View pane: taking it apart, the views on a line that scrolls sideways, the switches, the scale, the diagnostics */
   #ui .slot .buttons { display: grid; gap: 8px; width: auto; }
   #ui .slot .set { justify-content: flex-start; gap: 6px; }
-  #ui .slot .set[aria-label='View'] { flex-wrap: nowrap; align-items: center; gap: 6px; margin: 0 -12px; padding: 0 12px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x pan-y;
-    overscroll-behavior-x: contain; mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 28px), transparent); }
-  #ui .slot .set[aria-label='View']::-webkit-scrollbar { display: none; }
+  /* (the label holds its place at the row's start; the views scroll beside it) */
+  #ui .slot .set[aria-label='View'] { flex-wrap: nowrap; align-items: center; gap: 8px; margin: 0 -12px; padding: 0 0 0 12px; }
+  #ui .slot .set[aria-label='View'] > .set-items { display: flex; flex: 1 1 0; min-width: 0; gap: 6px; padding-right: 12px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x pan-y;
+    overscroll-behavior-x: contain; mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 28px), transparent); }
+  #ui .slot .set[aria-label='View'] > .set-items::-webkit-scrollbar { display: none; }
   #ui .slot .set[aria-label='View']::before { content: 'Views'; flex: none; width: 4.6em; font: 9.5px/1.3 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
   #ui .slot .buttons button { min-height: 44px; padding: 0 13px; }
   #ui .slot .scale { display: block; margin: 4px 0 0; text-align: left; }
