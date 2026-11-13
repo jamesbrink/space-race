@@ -286,12 +286,14 @@ const PEDESTAL = 5.5 * 0.3048; // the launcher's support level (lc5/site.py: LAU
 const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 
 /**
- * Where the pilot stands in every scene: on open concrete seven metres from the launcher, on the
- * side opposite the hatch, with nothing between him and a camera in front of him. (Where he
- * actually stood is not the point: he walked from the transfer van to the structure's lift.)
+ * Where the pilot stands in every scene: on open concrete nine and a half metres from the launcher, on
+ * the side opposite the hatch, with nothing between him and a camera in front of him. (Where he
+ * actually stood is not the point: he walked from the transfer van to the structure's lift.) He is
+ * 1.6 m and more from anything standing on the pad: the chevron drum (lc5/ground_equipment.py), placed
+ * after him, stood where he was, with his back to it and his ventilator against its foot.
  */
 const PILOT_FACING = -Math.PI / 2; // toward -X, the sunlit side that morning, his back to the vehicle
-const PILOT = { position: [-7, 0, -0.9] as [number, number, number], rotationY: PILOT_FACING };
+const PILOT = { position: [-9.4, 0, -1.1] as [number, number, number], rotationY: PILOT_FACING };
 /** A direction to look at the pilot from: in front of him, turned `aside` radians, `lift` up. */
 const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [
   Math.sin(PILOT_FACING + aside),
