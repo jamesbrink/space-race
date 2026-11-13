@@ -516,16 +516,29 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   (`gHaze`) instead of being drawn as a dot that is there or not by where a pixel's middle falls; the veil between
   cells has an edge as soft as the pixel. Flips a frame on the climb, straight down: 47 to 13 from 187 km, 21 to 12
   from 150.
-- **The middle deck is tufts, not tiles.** Round the site it is the record's eighth of altocumulus at 3,600 m (Patrick,
-  10:00 EST, NOAA ISD): patches over 0.3 of the sky, their cloudlets covering some 0.4 of a patch (`DECK_SITE`; the
-  patches had covered an eighth, and the cloud in them less than that). Near to, `deckAt` (weather.ts) draws it as domes on a scatter of points 250 m apart, of every
-  size, each heaped of puffs 85 m apart and frayed at its rim, standing apart where a patch is thin and run together
-  where it is thick; its slope is handed to clouds.ts (`gDeckSlope`), which lights its top by how it faces the Sun.
-  How many stand is what makes them cover the patch's share (`DECK_PRESENCE`, measured: change a dome's breadth or
-  its opacity and measure again), and each stands by the share at its own middle, so none is cut where the share
-  changes. It had been cells that each filled their ground with pixel-soft lanes between: a Voronoi mosaic, white
-  plates with ruled cracks, which the owner saw from the climb as ice floes: it was tuned by flips a frame and never
-  set beside a photograph. It is judged against photographs from airliners (docs/sources.md) as well as by its flicker.
+- **The middle deck is cloudlets of its own size, not tiles or puddles.** Round the site it is the record's eighth of
+  altocumulus at 3,600 m (Patrick, 10:00 EST, NOAA ISD): patches over 0.3 of the sky, their cloudlets covering some
+  0.4 of a patch (`DECK_SITE`). Near to, `deckAt` (weather.ts) draws domes on a scatter of points `DECK_CELL` (120 m)
+  apart, 70 to 220 m across (an altocumulus element is 1 to 5 degrees wide from under it: 60 to 300 m at that height),
+  each heaped of puffs and frayed at its rim, standing apart where a patch is thin and packed with dark creases where
+  it is thick: so from 7 to 25 km up a patch is a fine grain. Every figure of its detail was made on a plane where the
+  cloudlets are 250 m apart and is read through it (`xs`, `fs`). Its slope is handed to clouds.ts (`gDeckSlope`), which
+  lights its top by how it faces the Sun, and what lies in the shadow of the cloudlet beside it toward the Sun is
+  darker (`gDeckShade`, `gDeckSun`). How many stand is what makes them cover the patch's share (`DECK_PRESENCE`,
+  measured: change a dome's breadth, the puffs or the opacity and measure again), and each stands by the share at its
+  own middle. It had been cells that each filled their ground with pixel-soft lanes between (a Voronoi mosaic, white
+  plates with ruled cracks: the owner's ice floes, tuned by flips a frame and never set beside a photograph), and then
+  domes 250 m apart that ran together into puddles a kilometre across. It is judged against photographs from
+  airliners (docs/sources.md) as well as by its flicker. What keeps a field of small cloudlets still as the eye climbs:
+  two run together over five pixels' worth at the least and a rim is as soft as two (a crease or an edge of one pixel
+  between cloudlets 2 pixels a frame apart is what flipped); how many stand is read for the pixel (`DECK_PRESENCE` has
+  a row a pixel size), since the broader union covers more; and in the cel look, which cuts each sharp, the cloudlets
+  go to their mean at twice the pixel (`gDeckCel`: softening the cut flickered more, not less).
+- **The deck's shadow is its patches', on everything, from above.** `deckShadeAt` (weather.ts) is the deck where the
+  ray to the Sun crosses it, as its patches with the share of each that is cloud, not its cloudlets (whose shadows the
+  Sun's disc blurs by 33 m): a soft grey dapple 3 km from each patch away from the Sun at liftoff (Sun at 50 degrees).
+  The globe has it in `globeShade`, and every material that takes the haze in the shared chunk (air.ts), by
+  `deckShadeUniform`: none while the eye is under 1 km, all of it from 3 km up, so it costs nothing on foot.
 - **The field is organised by where it is.** The weather map's alpha is land (`pnpm globe:weather` bakes it):
   over land the streets are straight and strong; over the sea they are weak and bend, and clusters and arcs
   (`cumulusArcs`) are most of the pattern. All of it is in `cumulusBias`, which the bake, the far cover and the

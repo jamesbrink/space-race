@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { fieldAs, noise2 } from './field.ts';
+import { DECK_SITE, deckPatchGlsl } from './weather.ts';
 
 /**
  * The air between the eye and what it sees, for every material that takes the scene's fog.
@@ -68,6 +69,20 @@ export const setHazeAbove = (above: number): void => {
   ABOVE.x = above;
 };
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uHazeAbove = hazeAboveUniform;
+
+/**
+ * How much of the middle deck's shadow every material that takes the haze is given (x), 0 to 1: none while the eye is
+ * under 1 km, all of it from 3 km up (clouds.ts sets it by the eye's height). From the ground a one-okta deck's
+ * shadow is a faint dimming now and then, and reading the deck's patches on every surface of the site would cost
+ * every frame on foot; from above it is a soft grey dapple on the land and the sea, offset from each patch away from
+ * the Sun, and is drawn. Estimated, and a simplification: say so (lc-5.md).
+ */
+const DECK_SHADE = { x: 0, y: 0 };
+export const deckShadeUniform: THREE.IUniform<typeof DECK_SHADE> = { value: DECK_SHADE };
+export const setDeckShade = (amount: number): void => {
+  DECK_SHADE.x = amount;
+};
+for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uDeckShade = deckShadeUniform;
 
 let installed: Air | null = null;
 let wind: [number, number] = [0, 0];
@@ -176,6 +191,7 @@ const cloudField = (c: Clouds | undefined) =>
     ? /* glsl */ `
   ${fieldAs('air_')}
   ${cloudNoiseGlsl(c, 'air_')}
+  ${deckPatchGlsl('air_')}
   float cloudAt(vec2 xz) {
     return smoothstep(${edges(c)[0].toFixed(3)}, ${edges(c)[1].toFixed(3)}, cloudNoise(xz - uCloudDrift.xz));
   }
@@ -234,9 +250,11 @@ export function installAir(air: Air): void {
       #endif
       uniform vec4 uCloudDrift;
       uniform vec2 uHazeAbove;
+      uniform vec2 uDeckShade;
       // the haze's colour as seen from where the eye is: hazeAboveUniform
       vec3 hazeSeen() { return mix(fogColor, vec3(dot(fogColor, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.86, 0.95, 1.1) * 0.33, uHazeAbove.x); }
       ${cloudField(c)}
+      ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return deckShadeAt(world, toLight, ${air.base.toFixed(2)}, ${DECK_SITE.toFixed(2)}); }` : ''}
       // how much of the haze lies between the eye and a point, as a fraction of the light lost: 1 - exp(-tau)
       float airFog(vec3 at) {
         vec3 eye = cameraPosition + uOrigin;
@@ -254,6 +272,8 @@ export function installAir(air: Air): void {
       {
         vec3 toLight = transpose(mat3(viewMatrix)) * directionalLights[0].direction;
         airShade = cloudShade(vFogWorld, toLight, length(fwidth(vFogWorld.xz)));
+        // and the middle deck's, from above (deckShadeUniform): its patches near the site, where its cover is the record's
+        if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(vFogWorld, toLight), uDeckShade.x);
         reflectedLight.directDiffuse *= airShade;
         reflectedLight.directSpecular *= airShade;
       }

@@ -3,7 +3,7 @@ import type { BackdropKind, SitedFlight } from '../types';
 import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
-import { densityFor, installedAir, setHazeAbove } from './air';
+import { densityFor, installedAir, setDeckShade, setHazeAbove } from './air';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere';
 import { buildCape } from './cape';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
@@ -525,6 +525,7 @@ function capeCanaveral(renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
     const air = airAbove(height);
     globe.thin = 1 - air;
     setHazeAbove(globe.thin); // the haze seen from above, on the globe and the land round the site alike (air.ts)
+    setDeckShade(THREE.MathUtils.smoothstep(height, 1000, 3000)); // the middle deck's shadow on everything, from above (air.ts)
     const now = performance.now();
     // a jump (the clock put somewhere, not run there) is shown at once, not faded to
     const jumped = Math.abs(jdUT - askedAt) * 86_400 > SKY_STEP + 4000 * Math.max(0.1, (now - askedMs) / 1000);
