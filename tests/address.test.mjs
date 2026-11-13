@@ -83,16 +83,16 @@ test('the flight an address is about', () => {
   assert.equal(flightFor(listed, `#${vostok.id}/gallery`), vostok);
   assert.equal(flightFor(listed, `#${MR3}/pad`), mr3);
   for (const old of ['#pad', '#vehicle', '#crew', '#gallery', '#fly']) assert.equal(flightFor(listed, old), mr3, old);
-  // the front page names nothing: the first that flew turns behind it
-  assert.equal(flightFor(listed, ''), vostok);
-  assert.equal(flightFor(listed, '#'), vostok);
+  // the front page names nothing: the first listed, the one that is whole, shows itself behind it (not the first that flew)
+  assert.equal(flightFor(listed, ''), mr3);
+  assert.equal(flightFor(listed, '#'), mr3);
   assert.deepEqual(
     byDate(listed).map((f) => f.id),
     [vostok.id, MR3],
   );
   assert.deepEqual(listed, [mr3, vostok], 'the list itself is left in its order');
   // a flight nobody has heard of is the front page's
-  assert.equal(flightFor(listed, '#no/such/flight'), vostok);
+  assert.equal(flightFor(listed, '#no/such/flight'), mr3);
 });
 
 test('every flight has the same three places, and opens in its gallery', () => {

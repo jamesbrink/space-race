@@ -27,7 +27,8 @@ Every flight has the same three places, in the same order, and opens in the firs
   Addresses older than the places mean what they meant: `#<flight>/<model>` and a bare `#pad`,
   `#vehicle`, `#crew` (the first *listed* flight's: every tool and script uses them) are sections
   of the site. So no model may be called `gallery`, `site` or `fly`. The front page names nothing:
-  the first flight *by date* turns behind it, in its gallery.
+  the first *listed* flight shows itself behind it too (Freedom 7, the one that is whole: `flightFor`),
+  not the first by date, until Vostok 1's place is as whole.
 - **Loading follows the place.** Going into a flight fetches only what the gallery needs: the
   vehicle, in full. The site's models, scenery, globe and clouds are fetched when Launch site or
   Fly is first chosen, and kept.
