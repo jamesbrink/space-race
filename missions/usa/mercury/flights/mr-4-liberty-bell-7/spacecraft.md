@@ -192,6 +192,15 @@ Built by [vehicles/mercury_cabin_11.py](../../vehicles/mercury_cabin_11.py), whi
 | Hand controller and abort handle | under his palms, which puts them 8.4 mm from where No. 7's stand under Shepard's | estimated | both; mark-iv-suit.md, "On the couch" |
 | Survival kit | on the left wall | documented | *This New Ocean*, p. 369: "on a shelf ... near the astronaut's left arm" |
 
+## Which way round it stood on the pad
+
+The model's own frame has the hatch on +X. On the pad the vehicle stood turned to its 100 degree azimuth, the
+periscope down range and the pilot's head up range: the hatch's middle bore 235 degrees true, 60 degrees round from
+the side the cherry picker's truck stood on (`rotationY` in `flight.ts`, worked from the azimuth by `launcherTurn`).
+Derived, from the Redstone's want of a roll programme and the capsule's own axes; this capsule's paint and its
+booster's fins, in six photographs of July 1961, put the turn between 50 and 75 degrees. `sites/lc-5.md`, "Which way
+round the vehicle stood", has all of it.
+
 ## Parts in the model
 
 Top-level nodes in the GLB. These names are the `node` fields in `flight.ts`.

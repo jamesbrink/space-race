@@ -83,9 +83,9 @@ never adjusted to bring a check in.
   from above (`Globe.air`, a ball round the eye; `viewer/atmosphere.ts`: Rayleigh, haze, ozone
   and light scattered many times) makes the limb, the blue over the Earth and the pale band
   along the horizon, and comes in as the sky (backdrops.ts) and the scene's own haze go out.
-  Cloud goes on to the limb at every height: the cumulus as the weather has them (a map,
-  `viewer/weather.ts`: estimated, with the record's cover kept at the site), a middle deck and
-  cirrus on their own shells, all casting shadows on the globe. The site's ground (land.ts)
+  Cloud goes on to the limb at every height: the cumulus as the day's weather has them (a map
+  for the flight's own day, `viewer/weather.ts`: the flight's record where it speaks, estimated
+  elsewhere), a middle deck and the high cloud on their own shells, all casting shadows on the globe. The site's ground (land.ts)
   keeps the middle: the globe leaves a hole for it, and across its last kilometre and a
   half, inside its cover maps, the ground bends onto the curve and takes the globe's colours
   (`Land.meet`); from 3 km up all of it takes them, but for its made ground, wholly by 20 km
@@ -253,9 +253,19 @@ never adjusted to bring a check in.
   `flies` can be flown without being told how.
 - **Turned round, the spacecraft is rolled periscope side down.** `trajectory.body.capsule.earthward` names the side the
   automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
-  the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is estimated, from the
-  model's own bearings, and is listed with the other undocumented inputs (tests/vehicle.test.mjs); tests/turnaround.test.mjs
-  holds it to three degrees through the top of the flight. A flight that names no side keeps the roll it had.
+  the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay
+  down range on the pad, since the launcher was turned until the vehicle's pitch plane lay on the azimuth and the
+  capsule rode feet down range (derived: sites/lc-5.md, "Which way round the vehicle stood"; tests/launcher.test.mjs
+  holds the vehicle's turn in the scene, the pad's and this to one another). tests/turnaround.test.mjs holds it to
+  three degrees going up and through the top of the flight, and to ten through the turnaround. With a side named
+  the control makes one turn to the whole attitude (`turnBoth`: the long axis to where it is wanted and the keel
+  down together), which end for end is a half turn about the plumb line: a yaw, as the record's turnaround was
+  ("yawed 180 degrees"), the periscope toward the Earth throughout. Until November 2026 it turned the long axis the
+  short way, pitching over, and then rolled to the side: the same end by a way the record does not have. A flight
+  that names no side still turns the long axis the short way and keeps the roll it had. The scene turns the record's
+  own flight round the same way (`viewer/ascent.ts` `place`, `keel`): to the attitude with that side underneath, which
+  from how it rode the booster is the yaw. Until then it pitched the model over the top and left the pilot head down
+  from the turnaround on (the roll needle read 179). tests/ascent.test.mjs holds both runs to it.
 - **A right click on the vehicle in flight is the part's own menu** (main.ts `stage.onSpot`): what that part can be told
   to do now, from the flight's data (`Part.commands`, types.ts `Command`: a step `Cockpit.ask` sets off, offered only
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame

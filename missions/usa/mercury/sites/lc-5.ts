@@ -28,6 +28,35 @@ export const LC5: SiteDef = {
   },
   // Eastern Standard Time: Florida kept no daylight time in 1961, and every report of the flight gives its times in EST
   zone: { name: 'EST', utcOffset: -5 },
+  // The sky a flight from here stands under when it has no record of its own day: a fair morning at the Cape. Every
+  // figure is an estimate (only the cumulus's usual height is from a record), and no flight is shown under it yet:
+  // Freedom 7 and Liberty Bell 7 each have their day's (their flight's weather.ts).
+  weather: {
+    observed: { where: 'nowhere: the Cape’s usual fair morning', at: '', source: 'no day’s record: an estimate of the place' },
+    low: {
+      kind: 'cumulus',
+      cover: { value: 0.2, confidence: 'estimated', source: 'a fair morning at the Cape has scattered cumulus: two tenths taken' },
+      base: {
+        value: 720,
+        confidence: 'estimated',
+        source:
+          'the median base of the low cloud on May mornings, 1959 to 1963 (NOAA Integrated Surface Database, station 74794012868, ' +
+          'the Skid Strip): documented for those mornings, an estimate for any other',
+      },
+      depth: { value: 650, confidence: 'estimated', source: 'as fair-weather cumulus of a morning are' },
+      size: { value: 1500, confidence: 'estimated', source: 'as fair-weather cumulus are photographed' },
+      wind: {
+        from: { value: 90, confidence: 'estimated', source: 'the trade wind off the sea' },
+        speed: { value: 6, confidence: 'estimated', source: 'a little stronger than at the ground' },
+      },
+    },
+    wind: {
+      from: { value: 90, confidence: 'estimated', source: 'the trade wind off the sea' },
+      speed: { value: 4, confidence: 'estimated', source: 'a light breeze' },
+    },
+    visibility: { value: 60_000, confidence: 'estimated', source: 'clear sea air' },
+    haze: { value: 1400, confidence: 'estimated', source: 'about twice the height of the cumulus bases' },
+  },
   seaLevel: {
     value: -29,
     confidence: 'estimated',
@@ -37,8 +66,9 @@ export const LC5: SiteDef = {
     value: 295,
     confidence: 'estimated',
     source:
-      'the hatch side is square to the rails, which run 025/205 degrees true (OpenStreetMap, within 1 degree); which of the ' +
-      'two sides it was is read from TM X-53107 Figure 7-6 and liftoff photograph 6100884 (lc-5.md)',
+      'square to the rails, which run 025/205 degrees true (OpenStreetMap, within 1 degree), on the side the blockhouse and the ' +
+      'cherry picker’s truck are (TM X-53107 Figure 7-6; liftoff photograph 6100884). It is not the way the capsule’s hatch faced: the ' +
+      'vehicle stood turned to its azimuth on the launcher, the hatch 55 or 60 degrees round from here (lc-5.md, "Which way round the vehicle stood")',
   },
   region: {
     name: 'cape-canaveral',

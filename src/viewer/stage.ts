@@ -802,7 +802,10 @@ export class Stage {
         );
     });
     // (a flight with no site has no place and no hour: its models stand in a setting that needs neither)
-    this.setting = this.settings.get(flight.models[0]!.backdrop, flight.site ? { site: flight.site, launch: flight.launch } : undefined);
+    this.setting = this.settings.get(
+      flight.models[0]!.backdrop,
+      flight.site ? { site: flight.site, launch: flight.launch, weather: flight.weather } : undefined,
+    );
     this.applySetting();
     // the place round the pad arrives when it arrives: the flight can be studied without it
     for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) this.scene.remove(o);

@@ -155,7 +155,7 @@ def build(parts: Parts) -> None:
     half = HARDSTAND / 2
     cut = slots()
     field(parts, "Hardstand", cut=cut)
-    # the apron to the hatch side's road, slabs the same way
+    # the apron to the blockhouse side's road, slabs the same way
     x0a, x1a, wa = APRON
     for i in range(round((x1a - x0a) / SLAB)):
         for j in (-1, 0):

@@ -3,9 +3,10 @@ import type { BackdropKind, SitedFlight } from '../types';
 import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
-import { densityFor, installedAir, setDeckShade, setHazeAbove } from './air';
+import { densityFor, installedAir, setDeckShade, setHazeAbove, setVeilLight } from './air';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere';
 import { buildCape } from './cape';
+import { type Day, dayOf, VEIL_DOWN, veilShade } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
 import { chapman, Globe } from './globe';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
@@ -97,8 +98,9 @@ export const GROUND_Y = -0.12;
  * colours are uniforms, set for the Sun's height by daysky.ts, so the same shader is noon, dusk
  * and night. A cloud takes its light from uCloudLight and the haze from uHorizon.
  */
-const SKY = /* glsl */ `
+const SKY = (veil: boolean) => /* glsl */ `
   uniform vec3 uSun, uZenith, uHorizon, uGlow, uCloudLight, uSunLight, uUp; uniform float uWisps, uGlare; varying vec3 vDir;
+  ${veil ? 'uniform vec3 uVeilSun, uVeilAir; uniform float uVeilDepth;' : ''}
   ${NOISE}
   ${MOON_GLSL}
   vec3 sky(vec3 d, bool discs) {
@@ -119,6 +121,15 @@ const SKY = /* glsl */ `
     if (cloud > 0.0) cloud = smoothstep(0.6, 0.74, fbm(vec3(uv * 1.3, 0.0)) * 0.7 + fbm(vec3(uv * 5.0, 3.0)) * 0.3) * cloud / uWisps;
     float s = max(dot(d, uSun), 0.0);
     col = mix(col, uCloudLight * (0.9 + 0.35 * s), cloud * 0.45 * uWisps);   // (none once the eye is up among them)
+    ${
+      veil
+        ? /* glsl */ `// A veil of high cloud over the whole sky, as the reflections see it (the eye's is the cloud pass's sheet,
+    // clouds.ts: this is that sheet from under it, without its streaks): milky, brightest round the Sun, more of it
+    // the lower the eye looks, and lost in the haze along the horizon.
+    float veiled = (1.0 - exp(-uVeilDepth * min(1.0 / max(up, 0.05), 6.0))) * smoothstep(0.02, 0.12, up);
+    col = mix(col, uVeilSun * (0.8 + 0.9 * pow(s, 6.0)) + uVeilAir, veiled);`
+        : ''
+    }
     col = mix(low * 0.96, col, smoothstep(-0.004, 0.012, up));   // below the horizon: haze
     // the glare round the Sun is the air's (it goes as the air thins: uGlare); above the air what is left is the eye's or the lens's own, white and close round a hard disc (estimated)
     col += mix(vec3(1.0), vec3(1.0, 0.9, 0.75), uGlare) * uSunLight * (pow(s, 10.0) * 0.18 * uGlare + pow(s, 300.0) * 1.6 * uGlare + pow(s, 4000.0) * 5.0 * (1.0 - uGlare));
@@ -126,16 +137,35 @@ const SKY = /* glsl */ `
   }`;
 
 type SkyUniforms = Record<
-  'uSun' | 'uSunSize' | 'uZenith' | 'uHorizon' | 'uGlow' | 'uCloudLight' | 'uSunLight' | 'uWisps' | 'uUp' | 'uGlare',
+  | 'uSun'
+  | 'uSunSize'
+  | 'uZenith'
+  | 'uHorizon'
+  | 'uGlow'
+  | 'uCloudLight'
+  | 'uSunLight'
+  | 'uWisps'
+  | 'uUp'
+  | 'uGlare'
+  | 'uVeilSun'
+  | 'uVeilAir'
+  | 'uVeilDepth',
   THREE.IUniform
 >;
 
 /**
  * The sky's material. `discs`: with the Sun's disc and the Moon in it, as the eye sees it; without,
  * it is the light the sky sheds, for the reflections (where the Sun is a patch of its own).
- * `gain` scales what it draws (the reflections are baked at a day's brightness: see `Reflections`).
+ * `gain` scales what it draws (the reflections are baked at a day's brightness: see `Reflections`). `veil`: with the
+ * day's veil of high cloud in it (the reflections' sky: the eye's has it laid over by the cloud pass).
  */
-function skyMaterial(uniforms: SkyUniforms, h: Heavens, discs: boolean, gain: THREE.IUniform<number> = { value: 1 }): THREE.ShaderMaterial {
+function skyMaterial(
+  uniforms: SkyUniforms,
+  h: Heavens,
+  discs: boolean,
+  gain: THREE.IUniform<number> = { value: 1 },
+  veil = false,
+): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
@@ -145,7 +175,7 @@ function skyMaterial(uniforms: SkyUniforms, h: Heavens, discs: boolean, gain: TH
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
       uniform float uSunSize, uGain;
-      ${SKY}
+      ${SKY(veil)}
       void main() {
         vec3 d = normalize(vDir);
         vec3 col = sky(d, ${discs});
@@ -332,7 +362,7 @@ class DomeBackdrop implements Backdrop {
  * ephemeris.ts), in the site's own frame, which is the models', and `Setting.at` moves them to
  * any other instant. Nothing in the sky is placed by hand.
  */
-export type Occasion = Pick<SitedFlight, 'site' | 'launch'>;
+export type Occasion = Pick<SitedFlight, 'site' | 'launch' | 'weather'>;
 
 /**
  * The ground of a place on the Earth (cape.ts, tyuratam.ts): its land and what stands and grows on it, which a ground
@@ -349,8 +379,6 @@ interface Place {
   groundAt: (x: number, z: number) => number;
   plantsClear: (at: THREE.Vector3, within: number) => number;
   plantsOut: (at: THREE.Vector3, margin: number) => number;
-  /** How far the air there lets the eye see at the ground, metres (the haze's density: air.ts). */
-  visibility: number;
   /** How far from the pad there is something to walk to, and how far away the furthest thing placed is, metres (Setting). */
   reach: number;
   horizon: number;
@@ -398,21 +426,17 @@ const LOOK_STEP = 0.04;
 const apart = (a: number[], b: number[]): number =>
   a.length === b.length ? a.reduce((most, v, i) => Math.max(most, Math.abs(v - b[i]!) / Math.max(1, Math.abs(v))), 0) : Infinity;
 
-/**
- * Cape Canaveral's Missile Row from Launch Complex 5, at any hour: see `ground`. Visibility was at the Skid Strip's
- * 16 km cap at 09:00 (NOAA ISD), so how far past it is not recorded; 80 km taken, clear air: estimated.
- */
+/** Cape Canaveral's Missile Row from Launch Complex 5, at any hour, under the flight's own day: see `ground`. */
 const capeCanaveral = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
-  ground(renderer, when, 'cape-canaveral', () => ({
-    ...buildCape(renderer, GROUND_Y),
-    visibility: 80_000,
+  ground(renderer, when, 'cape-canaveral', (day) => ({
+    ...buildCape(renderer, GROUND_Y, day),
     reach: 2000, // the beach is 1.4 to 1.8 km east of pad 5: walkable
     horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
   }));
 
 /** Site 1 at Tyuratam, on the steppe by the Syr Darya, at any hour: see `ground` and tyuratam.ts. */
 const tyuratam = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
-  ground(renderer, when, 'tyuratam', () => buildTyuratam(renderer, GROUND_Y));
+  ground(renderer, when, 'tyuratam', (day) => buildTyuratam(renderer, GROUND_Y, day));
 
 /**
  * A place on the ground, at any hour, under its own sky. For Freedom 7 at the Cape (14:34:13 UTC,
@@ -423,10 +447,18 @@ const tyuratam = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
  * Directions, sizes and the Moon's phase are computed (heavens.ts). The light's colour and
  * strength, the sky's colours and the exposure follow the Sun's height (daysky.ts): a model
  * fitted by eye, whose mid-morning is the look the Cape was first tuned to.
+ *
+ * The weather is the flight's own day (types.ts: DayWeather; day.ts): the place is built under it, the clouds are
+ * laid out by it, and where it has high cloud over the site the light is that Sun's through it (`veil`, below).
  */
-function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name: string, build: () => Place): Setting {
+function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name: string, build: (day: Day) => Place): Setting {
   if (!when) throw new Error('a place on the ground needs a site and an instant: Settings.get(kind, flight)');
   const site = siteFrame(when.site);
+  const today = dayOf(when);
+  // High cloud over the site, by the record: it dims the Sun for everything under it and gives most of what it takes
+  // back as the sky's light (day.ts: veilShade, VEIL_DOWN). Null on a day whose record has none there.
+  const veil =
+    today.high.cover !== null && today.high.cover > 0 && today.high.depth > 0 ? { ...today.high, cover: today.high.cover } : null;
   const h = new Heavens(site, true, renderer.getPixelRatio());
   const uniforms: SkyUniforms = {
     uSun: { value: h.sunDir },
@@ -439,10 +471,13 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     uWisps: { value: 1 },
     uUp: { value: new THREE.Vector3(0, 1, 0) },
     uGlare: { value: 1 },
+    uVeilSun: { value: new THREE.Color() },
+    uVeilAir: { value: new THREE.Color() },
+    uVeilDepth: { value: veil ? veil.depth * veil.cover : 0 },
   };
   const envScene = new THREE.Scene();
   const envGain = { value: 1 };
-  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(uniforms, h, false, envGain)));
+  envScene.add(new THREE.Mesh(new THREE.SphereGeometry(50, 48, 24), skyMaterial(uniforms, h, false, envGain, veil !== null)));
   // Below the horizon there is sunlit sand and concrete, not more sky: without it bare metal
   // reflects blue from every side and reads as frosted glass.
   const below = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
@@ -450,7 +485,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), below), patch);
   let here = places.get(name);
-  if (!here) places.set(name, (here = build()));
+  if (!here) places.set(name, (here = build(today)));
   // the Earth past the place's own ground, which hands over to it across its last kilometre and a half
   const land = here.floor.userData.land as Land;
   here.floor.updateMatrixWorld();
@@ -465,14 +500,14 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
   );
   // (a development build says which lit materials have left too few texture units for lights: units.ts)
   if (import.meta.env.DEV) later(() => setTimeout(() => checkUnits(renderer), 4000));
-  // the weather the clouds and their shadows are laid out by (weather.ts): the record's cover at the site, the map's beyond
-  const cumulus = installedAir()?.clouds;
-  if (cumulus) placeWeather(site.bearingX, cumulus.cover, cumulus.wind, when.site.region?.name ?? null);
+  // the weather the clouds and their shadows are laid out by (weather.ts): the record's at the site, the day's map beyond
+  const cumulus = today.cumulus;
+  placeWeather(site.bearingX, today);
   // (by the edge of its cover maps, past which their last texels are smeared outward: Complex 34, the furthest built, is inside 9.5 km)
   const covered = land.uniforms.uFarSize!.value as number;
   land.meet(globe.beyond, covered - 1500, covered);
   // the haze at sea level, thinning upward (air.ts), as the place has it
-  const fog = new THREE.FogExp2(0, densityFor(here.visibility));
+  const fog = new THREE.FogExp2(0, densityFor(today.visibility));
   // The air seen from above it (atmosphere.ts), with this haze. The Sun's light above the air is white (the scene's
   // white is the Sun's) and as strong as makes its light on the ground, through the air, as bright as the scene's own
   // at the hour that was tuned for (daysky.ts: a Sun 50 degrees up): so sunlit ground, cloud and sky stand in the
@@ -548,6 +583,8 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     plantsClear: here.plantsClear,
     plantsOut: here.plantsOut,
     view: here.view,
+    // (under a veil the Sun is a disc in a glow some degrees across: a shadow's edge is that much softer. Estimated)
+    ...(veil ? { shadowRadius: 1 + 2 * veil.cover * Math.min(1, veil.depth / 0.4) } : {}),
   };
 
   /** `fade`: milliseconds to fade the bake in over; 0 puts it in at once. */
@@ -560,6 +597,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     stale = false;
   };
 
+  // what the veil's light is worked out from (`at`, below): the Sun's light at the hour the scene was tuned for, and
+  // the fill's two colours as the light takes them
+  const noonSun = ((noon) => noon.colour.map((c) => c * noon.intensity))(dayLight(50, null).light);
+  const fillSky = new THREE.Color(setting.fill[0]).toArray();
+  const fillGround = new THREE.Color(setting.fill[1]).toArray();
   let shownAir = 1;
   let shownRung = 0;
   setting.at = (jdUT, height = 0, atOnce = false) => {
@@ -615,6 +657,42 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     colour(uniforms.uSunLight.value, [0, 1, 2].map((c) => light.sun[c]! + (above[c]! - light.sun[c]!) * (1 - air)) as unknown as RGB);
     uniforms.uGlare.value = along;
     colour(fog.color, light.haze);
+    // (the one direct light's height, known here before it is put into the setting below: the Moon's while it is the
+    // light, else the Sun's own, which with neither up is under the horizon and not wherever the light last pointed)
+    const lightUp = light.light.from === 'moon' ? h.moonDir.y : h.sunDir.y;
+    // Under a veil of high cloud (the record's, at the site): what it leaves of the direct light for everything under
+    // it, for the Sun where it stands (air.ts takes it, and the clouds under it: clouds.ts); the haze lit by a whiter
+    // sky; and the veil as the reflections see it, lit as the cloud pass lights it from under (clouds.ts: sheet): by
+    // the Sun as it is at the veil's own height, which is up there before it is up on the ground, and the sky's
+    // own light. Every one of them a smooth rule of the Sun's height, so nothing steps as the clock runs.
+    const left = veil ? veilShade(veil.depth, veil.cover, Math.max(lightUp, 0)) : 1;
+    if (veil) {
+      // (the air along the horizon is lit by the sky over it, and under a veil that sky is white: the haze and the
+      // sky's own horizon lose their blue by as much of the veil as the eye looks through that low, most of it.
+      // clouds.ts: sheet, where a sight line under the veil is taken as up to six times its depth. Estimated)
+      // (only for an eye under it: the sky is followed up in steps of half a percent of the air, some 40 m at that height)
+      const under = 1 - THREE.MathUtils.smoothstep(height, veil.height - 1500, veil.height);
+      const pale = 0.85 * (1 - Math.exp(-veil.depth * veil.cover * 6)) * under;
+      const whiter = (c: THREE.Color): void => {
+        const grey = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+        c.setRGB(c.r + (grey - c.r) * pale, c.g + (grey - c.g) * pale, c.b + (grey - c.b) * pale);
+      };
+      whiter(fog.color);
+      whiter(uniforms.uHorizon.value);
+      const high = sunFrom(veil.height, h.sunElevation);
+      // What the veil gives back of what it takes from the beam, as the sky's light on the clouds under it: the Sun's
+      // light where the veil is (it stands higher there by the horizon's dip from that height, 3.3 degrees from 10.5
+      // km, so the veil is giving light before the Sun is up on the ground), less what gets through, VEIL_DOWN of it.
+      const dip = Math.acos(6_371_000 / (6_371_000 + veil.height));
+      const muHigh = Math.max(Math.sin(h.sunElevation * DEG + dip), 0);
+      const taken = VEIL_DOWN * (1 - veilShade(veil.depth, veil.cover, muHigh)) * muHigh;
+      setVeilLight(left, (installedAir()?.base ?? 0) + veil.height, [0, 1, 2].map((c) => taken * high[c]! * noonSun[c]!) as unknown as RGB);
+      const sun = [0, 1, 2].map((c) => (high[c]! * noonSun[c]!) / Math.PI);
+      const white = 0.2126 * sun[0]! + 0.7152 * sun[1]! + 0.0722 * sun[2]!;
+      colour(uniforms.uVeilSun.value, sun.map((v) => 0.75 * (v + (white - v) * 0.33)) as unknown as RGB);
+      const fill = 0.28 * light.ambient;
+      colour(uniforms.uVeilAir.value, [0, 1, 2].map((c) => fill * (0.9 * fillSky[c]! + 0.2 * fillGround[c]!)) as unknown as RGB);
+    }
 
     // the one direct light: with neither Sun nor Moon it keeps its last direction, at no strength
     globe.sun.copy(h.sunDir);
@@ -639,9 +717,14 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     setting.environmentIntensity = ENVIRONMENT * light.ambient;
     envGain.value = day;
     // the ground the reflections see is lit by that Sun and that sky
-    const lit = (0.75 * light.light.intensity * Math.max(setting.sunDir.y, 0)) / (3.9 * Math.sin(50 * DEG)) + 0.25 * light.ambient;
+    // (under a veil: the Sun's through it, and what the veil gives back of what it took, as the sky's: VEIL_DOWN)
+    const lit =
+      (0.75 * light.light.intensity * Math.max(setting.sunDir.y, 0) * (left + VEIL_DOWN * (1 - left))) / (3.9 * Math.sin(50 * DEG)) +
+      0.25 * light.ambient;
     below.color.setRGB((0.42 * lit + 0.0005) * day, (0.39 * lit + 0.0008) * day, (0.33 * lit + 0.0018) * day);
-    colour(patch.material.color, [30 * light.sun[0] * day, 27 * light.sun[1] * day, 22 * light.sun[2] * day]);
+    // (the Sun's patch through the veil, as the eye sees its disc through it: along the slant, clouds.ts)
+    const through = veil ? Math.exp(-veil.depth * veil.cover * Math.min(1 / Math.max(h.sunDir.y, 0.05), 6)) : 1;
+    colour(patch.material.color, [30 * light.sun[0] * day * through, 27 * light.sun[1] * day * through, 22 * light.sun[2] * day * through]);
     patch.position.copy(h.sunDir).multiplyScalar(46);
     // (and how much air is over the eye: it thins the sky the reflections see, above. Left out, a bake made from high up,
     // under a dark sky, was kept for good when the eye came back down to a clock that was not running: the pad lit
@@ -651,6 +734,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
       ...[...light.zenith, ...light.horizon, ...light.glow, ...light.sun, lit].map((v) => v * day),
       air,
       ...uniforms.uUp.value.toArray(),
+      ...(veil ? [...uniforms.uVeilSun.value.toArray(), ...uniforms.uVeilAir.value.toArray()].map((v) => v * day) : []),
     ];
     stale ||= light.light.from !== source || h.sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG || apart(look, bakedLook) > LOOK_STEP;
     const first = !setting.environment;

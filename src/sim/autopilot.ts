@@ -67,6 +67,45 @@ function turnTo(wanted: Vec3): Vec3 {
   return scale(axis, Math.atan2(sine, wanted[0]) / sine);
 }
 
+/**
+ * The one turn, as a vector in the body's axes, that takes the long axis to `wanted` and at the same time the side
+ * `keel` (a unit vector across the long axis) as near to `down` as that leaves it: all three directions in the
+ * body's axes. Close to where it is wanted this is `turnTo` with the roll that puts the keel down; far from it, it is
+ * the short way to the whole attitude and not just to where the long axis points. Turning a spacecraft end for end,
+ * that is a half turn about the plumb line, a yaw, which keeps the keel down throughout, where the long axis's own
+ * short way is to pitch over and arrive upside down.
+ */
+function turnBoth(wanted: Vec3, keel: Vec3, down: Vec3): Vec3 {
+  const x = unit(wanted);
+  const across = sub(down, scale(x, dot(down, x)));
+  if (length(across) < 1e-6) return turnTo(wanted);
+  const k = unit(across);
+  const t = cross(x, k);
+  const T = cross([1, 0, 0], keel);
+  // the rotation that takes +X to x, the keel to k and their cross to t: its matrix, then its quaternion (Shepperd's way)
+  const m = (i: number, j: number): number => x[i]! * (j === 0 ? 1 : 0) + k[i]! * keel[j]! + t[i]! * T[j]!;
+  const trace = m(0, 0) + m(1, 1) + m(2, 2);
+  let q: [number, number, number, number];
+  if (trace > 0) {
+    const s = 2 * Math.sqrt(trace + 1);
+    q = [(m(2, 1) - m(1, 2)) / s, (m(0, 2) - m(2, 0)) / s, (m(1, 0) - m(0, 1)) / s, s / 4];
+  } else if (m(0, 0) > m(1, 1) && m(0, 0) > m(2, 2)) {
+    const s = 2 * Math.sqrt(1 + m(0, 0) - m(1, 1) - m(2, 2));
+    q = [s / 4, (m(0, 1) + m(1, 0)) / s, (m(0, 2) + m(2, 0)) / s, (m(2, 1) - m(1, 2)) / s];
+  } else if (m(1, 1) > m(2, 2)) {
+    const s = 2 * Math.sqrt(1 + m(1, 1) - m(0, 0) - m(2, 2));
+    q = [(m(0, 1) + m(1, 0)) / s, s / 4, (m(1, 2) + m(2, 1)) / s, (m(0, 2) - m(2, 0)) / s];
+  } else {
+    const s = 2 * Math.sqrt(1 + m(2, 2) - m(0, 0) - m(1, 1));
+    q = [(m(0, 2) + m(2, 0)) / s, (m(1, 2) + m(2, 1)) / s, s / 4, (m(1, 0) - m(0, 1)) / s];
+  }
+  const sign = q[3] < 0 ? -1 : 1; // the short way round
+  const axis: Vec3 = [q[0] * sign, q[1] * sign, q[2] * sign];
+  const sine = length(axis);
+  if (sine < 1e-12) return [0, 0, 0];
+  return scale(axis, (2 * Math.atan2(sine, q[3] * sign)) / sine);
+}
+
 /** An autopilot for a vehicle: a `Pilot`, asked every tick. */
 export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pilot {
   const tr = vehicle.trajectory;
@@ -131,7 +170,8 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
         if (keel && Math.hypot(down[1], down[2]) > 0.1) {
           const a = keel.value * DEG;
           const side: Vec3 = [0, -Math.sin(a), Math.cos(a)];
-          error = [Math.atan2(side[1] * down[2] - side[2] * down[1], side[1] * down[1] + side[2] * down[2]), error[1], error[2]];
+          // one turn to the whole attitude: end for end it is a yaw about the plumb line, as the record's turnaround was
+          error = turnBoth(unturn(s.q, wanted), side, down);
         }
       }
       // once the air has it, the jets only damp

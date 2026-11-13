@@ -103,6 +103,12 @@ all rests on is in [docs/sources.md](docs/sources.md).
 Where this is going: a simulator in which you run a space programme (USA, USSR, and those that
 came later) from the first flights to the present, on hardware modelled to its real specifications.
 
+## Licence
+
+The code and the models are under the [MIT licence](LICENSE). The data baked into `public/` that
+came from others keeps its own terms (OpenStreetMap's ODbL, the Copernicus licence, NASA's
+guidelines), which [docs/sources.md](docs/sources.md) records beside each source.
+
 ---
 
 Copyright © 2026 James Brink

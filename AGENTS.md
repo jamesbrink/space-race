@@ -40,7 +40,7 @@ pnpm model:lc-5       # rebuild the place round the pad, each of its dated state
 pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
 pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)
 pnpm models           # rebuild every flight's GLBs
-pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region
+pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region; pnpm globe:weather each flight's day's weather map
 pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from public/globe/ and the hour's cloud; pnpm front:moon its Moon
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
@@ -93,7 +93,7 @@ Detail lives in `docs/agents/`. Read the one for what you are about to change; e
 | Before touching | Read | The rules in one line |
 |---|---|---|
 | Any file you cannot place | [layout.md](docs/agents/layout.md) | every file and what it is for; a flight's id is its path under `missions/`, `public/models/` and `pnpm model:*` |
-| Models, materials, the renderer | [rendering.md](docs/agents/rendering.md) | no two parallel faces within 1 mm (`check_clearance` fails the build), never a fixed near plane (`Stage.fitDepth`), positions are doubles drawn from the eye (`uOrigin`), anything that changes the screen sets `dirty`, anything put in the scene goes through `Looks.add`, a lower level of detail is a rebuild and never hand-edited; a change of level fades, never cuts; the Sun has two shadow maps and its depth bias is a length; nothing within the near plane is cut |
+| Models, materials, the renderer, the weather | [rendering.md](docs/agents/rendering.md) | the sky over a site is its flight's own day (`Flight.weather`), never a constant in a place's file; no two parallel faces within 1 mm (`check_clearance` fails the build), never a fixed near plane (`Stage.fitDepth`), positions are doubles drawn from the eye (`uOrigin`), anything that changes the screen sets `dirty`, anything put in the scene goes through `Looks.add`, a lower level of detail is a rebuild and never hand-edited; a change of level fades, never cuts; the Sun has two shadow maps and its depth bias is a length; nothing within the near plane is cut |
 | `src/world/`, the sky, the clock | [world.md](docs/agents/world.md) | pure TypeScript in doubles, tested against published values; nothing in the sky is placed by hand; time comes from the clock; light must never step |
 | `src/sim/`, the flight deck, flight effects | [simulator.md](docs/agents/simulator.md) | inputs are `Measure`s with confidence; nothing is fitted; a miss against the record is recorded in `MISSES`; the live simulator is the same physics, steered; the scene shows what was flown |
 | The camera | [camera.md](docs/agents/camera.md) | one camera, a set of rigs; zoom never surprises; once the user takes the camera only an explicit act moves it |
@@ -169,7 +169,12 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
    Record where it flew from: if the site is new, add `sites/<site>.ts` exporting a `SiteDef`
    (latitude and longitude in WGS 84 degrees, height above the ellipsoid, the bearing of the model
    frame's +X, the time zone kept that day, each with its confidence and source), set `site` in
-   `flight.ts` from it, and state the computed Sun and Moon in the flight's README.
+   `flight.ts` from it, and state the computed Sun and Moon in the flight's README. Record the weather
+   it stood under in a `weather.ts` beside `flight.ts` (types.ts: `DayWeather`: each layer of cloud, the
+   wind, the visibility, at the station and hour nearest liftoff, each figure with its confidence and
+   source), set `weather` from it and bake its map (`pnpm globe:weather`, which lists the flights): the
+   site's sky is drawn from it ([rendering.md](docs/agents/rendering.md), "The weather is a day's").
+   Without one the flight stands under its site's default sky, which is an estimate.
 2. In each model script, name every top-level node (`srlib.group`) for a part; those names are
    the `node` fields in `flight.ts`. +Z is up in Blender and becomes +Y in the viewer.
 3. Give each part a `summary`, a `detail` and a few `facts`. Write for someone choosing what to
@@ -200,7 +205,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   at its own times on a model whose slider takes it apart (the periscope's door) has `clocked`
   moves instead, in seconds from launch: the model is built as it stood at liftoff, the gallery
   shows it so, and the launch site and the flight play them on the clock.
-- A site has its own frame (the hatch on +X) and lies at an angle to the compass. Scenery is laid
+- A site has its own frame (at Complex 5, +X square to the rails on the blockhouse's side) and lies at an angle to the
+  compass; a vehicle that was laid on its azimuth by turning its launcher stands turned in it (`rotationY`, worked
+  from the azimuth: sites/lc-5.parts.ts `launcherTurn`), and its pad is built turned to match. Scenery is laid
   out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is where it
   was: `src/world` computes it from the flight's `site` and `launch`.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
