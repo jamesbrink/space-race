@@ -214,17 +214,28 @@ function ribbon(material: THREE.Material, size: THREE.Vector2): void {
         '#include <project_vertex>',
         /* glsl */ `#include <project_vertex>
         {
+          // A line that runs past the eye is cut at the near plane here, before anything is worked out on the screen: an end
+          // behind the eye has no place on the screen (its w is nothing or less), and a ribbon made from one was a sheet
+          // across the whole view, seen from close above the spacecraft with the riser going by. Both ends behind: not drawn.
           vec4 far = projectionMatrix * modelViewMatrix * vec4(aOther, 1.0);
-          vec2 along = (far.xy / max(far.w, 1e-6) - gl_Position.xy / max(gl_Position.w, 1e-6)) * uSize;
-          float len = length(along);
-          if (len > 1e-6) {
-            vec2 across = vec2(-along.y, along.x) / len;
-            // half its own width in pixels at this distance, or half the least: and one held at the least is drawn fainter by as
-            // much as it is thinner than that, so forty-eight lines a kilometre off are a haze of cord, not a white cone
-            float own = 0.5 * aSide.y * projectionMatrix[1][1] * uSize.y * 0.5 / max(gl_Position.w, 1e-6);
-            float half_ = max(own, ${(LEAST_PIXELS / 2).toFixed(3)});
-            vThin = clamp(own / half_, 0.12, 1.0);
-            gl_Position.xy += across * aSide.x * half_ * 2.0 / uSize * gl_Position.w;
+          float nearW = projectionMatrix[3][2] / (projectionMatrix[2][2] - 1.0);
+          vec4 here = gl_Position;
+          if (here.w < nearW && far.w > nearW) here = mix(here, far, (nearW - here.w) / (far.w - here.w));
+          if (far.w < nearW && here.w > nearW) far = mix(far, here, (nearW - far.w) / (here.w - far.w));
+          if (here.w < nearW) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          else {
+            gl_Position = here;
+            vec2 along = (far.xy / far.w - here.xy / here.w) * uSize;
+            float len = length(along);
+            if (len > 1e-6) {
+              vec2 across = vec2(-along.y, along.x) / len;
+              // half its own width in pixels at this distance, or half the least: and one held at the least is drawn fainter by as
+              // much as it is thinner than that, so forty-eight lines a kilometre off are a haze of cord, not a white cone
+              float own = 0.5 * aSide.y * projectionMatrix[1][1] * uSize.y * 0.5 / here.w;
+              float half_ = max(own, ${(LEAST_PIXELS / 2).toFixed(3)});
+              vThin = clamp(own / half_, 0.12, 1.0);
+              gl_Position.xy += across * aSide.x * half_ * 2.0 / uSize * here.w;
+            }
           }
         }`,
       );
