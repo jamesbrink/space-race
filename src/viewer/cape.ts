@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
-import { type Air, type Clouds, driftClouds, installAir } from './air';
+import { type Air, driftClouds, installAir } from './air';
+import { breeze, type Day } from './day.ts';
 import { buildCape1961, CLEARINGS, PAVED, COAST, HARBOR_EAST, HARBOR_WEST, HARBOUR, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
@@ -228,27 +229,11 @@ const SHARED = /* glsl */ `
     return d;
   }`;
 
-/**
- * How the haze thins with height, metres (air.ts). The Cape's May mornings are mixed up to the
- * cumulus bases, median 720 m (NOAA ISD, the Skid Strip, 1959 to 1963): the haze is taken to
- * fall off over about twice that. Estimated.
+/*
+ * The sky is not the Cape's but a day's: the haze, the cumulus, the decks over them and the wind are the flight's own
+ * record (its `weather` in flight.ts, each figure with its confidence and source; day.ts turns it into what is drawn),
+ * and a flight that has none stands under the site's default (missions/usa/mercury/sites/lc-5.ts), which is an estimate.
  */
-const HAZE_SCALE = 1400;
-
-/**
- * The cumulus at launch: scattered, no ceiling, at 09:00 EST (NOAA ISD, the Skid Strip); bases at
- * 720 m, the median for May mornings 1959 to 1963 (the 07:00 deck was at 750 m). The wind aloft is
- * taken as the surface's, from 090, a little stronger. Cover is the record's for liftoff: "1/10
- * cumulus" (MR-3 Postlaunch Report, 10.3, p. 87; documented), which is the flight's own observation
- * and so preferred to the station's "scattered" at 09:00. Their depth and size are estimated.
- */
-const CLOUDS: Clouds = {
-  height: 720,
-  depth: 650,
-  cover: 0.1,
-  size: 1500,
-  wind: [-7 * COS, 7 * SIN], // toward 270, in the pad's frame
-};
 
 /** The sea's surface, metres above the ground at the complex (GROUND_Y): the land there is about 9.5 ft above NAVD 88 (USGS 3DEP). */
 const SEA = -2.9;
@@ -616,12 +601,12 @@ const c = srgb;
  * hammock (1). Species and their order are published (Oddy and others 1999; FNAI 2010); the
  * shares, heights and colours are estimated from the photographs.
  */
-function floraSpec(): FloraSpec {
+function floraSpec(day: Day): FloraSpec {
   return {
     spacing: { woody: 1.7, herb: 2.2, tree: 10 },
     // salt-pruned near the sea: the strand's canopy "slants up away from the coast" (FNAI)
     stature: (zone) => Math.min(1, 0.45 + (zone / 0.42) * 0.55),
-    wind: { toward: THREE.MathUtils.degToRad(270), strength: 1 }, // the morning's breeze, from 090 at 10 knots (NOAA ISD, Cape station, 09:00 EST)
+    wind: breeze(day), // the day's wind at the ground (the flight's record): on 5 May 1961 from 090 at 10 knots
     species: [
       {
         name: 'saw-palmetto',
@@ -732,10 +717,11 @@ function floraSpec(): FloraSpec {
   };
 }
 
-/** Everything round the pad. `groundY` is the terrain's height; the pad's own surface is 0. */
+/** Everything round the pad, under a day's sky (day.ts). `groundY` is the terrain's height; the pad's own surface is 0. */
 export function buildCape(
   renderer: THREE.WebGLRenderer,
   groundY: number,
+  day: Day,
 ): {
   floor: THREE.Mesh;
   scenery: THREE.Object3D[];
@@ -753,11 +739,11 @@ export function buildCape(
   plantsClear: (at: THREE.Vector3, within: number) => number;
   plantsOut: (at: THREE.Vector3, margin: number) => number;
 } {
-  // the haze lies in the lowest air, under the cumulus at 720 m, and thins upward (air.ts)
-  const air: Air = { scale: HAZE_SCALE, base: groundY + SEA, clouds: CLOUDS };
+  // the haze lies in the lowest air, under the cumulus, and thins upward (air.ts)
+  const air: Air = { scale: day.haze, base: groundY + SEA, ...(day.cumulus ? { clouds: day.cumulus } : {}), day };
   installAir(air); // (the cumulus are drawn by the stage's cloud pass: clouds.ts)
   const land = new Land(renderer, landSpec(), groundY, COMPASS);
-  const flora = new Flora(floraSpec(), land);
+  const flora = new Flora(floraSpec(day), land);
   flora.group.position.y = groundY;
   const built = buildCape1961((x, z) => groundY + land.heightAt(x, z)); // the other complexes and the lighthouse, where they stood, each on its own ground
   // laid out on the compass, then turned as one to lie round the pad model

@@ -616,6 +616,9 @@ MR-3's photograph at ignition agrees with as far as one view can ("The two cable
 | When the trailer SP-No 1 leaves | while the platforms open (estimated) | at T−80 with the transfer van: "Move spare parts trailer", which SP is taken to stand for | documented (that a spare parts trailer moved at T−80); estimated (that SP-No 1 is it) | TM X-53107 p. 7-28 |
 | Searchlights | on through the night; when put out not recorded | put out in the hold at T−30, 06:00, in daylight | documented | MR-4 Results pp. 6, 50 |
 | Pad 6's gantry, the cable racks, the scaffold stair, the cars | built from July's photographs, assumed for May | the same things, told as seen in July; the gantry documented at pad 6 on the day | as "What stood when" | F16_015 to F16_017, F19_008; FHSU item 331 |
+| The sky | a tenth of cumulus at 720 m on a breeze from 090°, an eighth of altocumulus at 3,600 m, the air clear | an eighth of cumulus at 510 m on a light wind from 200°, two eighths of altocumulus at 5,400 m, a veil of cirrostratus over the whole sky; the light dimmed and softened under it | documented (each layer's cover, the lower two heights, the wind); estimated (the veil's height and thickness, visibility past the stations' limits) | each flight's `weather.ts`; "The land", below |
+
+The sky is not in either model: it is the viewer's, drawn from the flight's own weather.
 
 `1961-07.glb` therefore holds the same geometry as `1961-05.glb` (its levels of detail change at the
 thresholds measured for May's, copied to `1961-07.lod.json`); it differs in what its things say of
@@ -893,15 +896,16 @@ dense and how tall, and every colour, are estimated** from photographs of 1958 t
 | Worn ground at the pads and the blockhouse | sand for about 10 m beyond each pad's concrete (to 40 m from its centre) and round the blockhouse's paving (34 m from its middle), mown grass beyond | estimated: the egress test at pad 5 (21 April 1961) and F16_015 to F16_017 (July 1961) show grass up to the concrete with sand worn through near it, not graded aprons | the photographs |
 | The neighbouring pads | each in an oval of grass and sand 75 m beyond its pad | estimated | 63PC-0033 |
 | Firebreaks | straight sand lines on a grid square to the rails, about 270 by 240 m, some lengths left uncut | the kind is documented (every aerial of the period shows them); where each one ran is not, and these are invented | KSC-61C-0873, 650400 |
-| The breeze the plants move in | from 090° at about 10 knots | documented: the Skid Strip's 09:00 EST observation | NOAA ISD 74794012868 |
+| The breeze the plants move in | the day's wind at the ground, from the flight's own weather: on 5 May from 090° at about 10 knots; on 21 July from 200° at 4 knots, so they barely stir | documented: the Skid Strip's observations at 09:00 EST on 5 May and 07:00 EST on 21 July | NOAA ISD 74794012868; each flight's `weather.ts` |
 | Colours of sand, grass, leaf and litter | as in `cape.ts` | estimated from period colour film, which has shifted | the photographs above |
 | The lie of the land | the complex's ground (y = -0.12 m in the viewer) taken as 9.5 ft above NAVD 88; the sea's surface 2.9 m below it; inland, old beach ridges and swales about 110 m apart and half a metre deep; the foredune's crest about 1.9 m above the sea, 45 to 62 m inland of the waterline; the beach face rising 1.35 m in its first 30 m to a berm | heights derived from today's survey (USGS 3DEP along 28.4394° N: ground near Complex 5 about 9.5 ft, dune crest 6 to 8 ft about 60 m from the water); the ridges' spacing read off the 1950 aerial; that 1961's ground was the same as today's is assumed | USGS 3DEP; USGS aerial 1950 |
 | Level ground | exactly level at the complex's height over Complex 5/6's clearing and roads and within 85 m of every other complex's pad, easing to the natural lie over 40 m | a rule of the viewer (the models stand on a flat datum), not a survey | |
 | Beach and sea | beach 40 to 50 m from the waterline to the dune, with a wrack line 17 m up; the bed falling 2.2 m in 100 m with a bar 75 m out; a swell of 55 m crests every 7.7 s, about 1 m crest to trough offshore, breaking on the bar and at the shore, so two lines of breakers | the swell's period and height documented as May medians (NOAA buoy 41009, 2010 to 2019); two lines of breakers read off KSC-61C-0873 and 63PC-0033; the bed's slope, the bar's place and the beach's width estimated | |
 | The Banana River's water | flat, grey-green, with a marsh edge | its shore documented (OpenStreetMap, today's); its colour and the marsh's width estimated | |
 | The Banana River's width, Merritt Island, the Indian River | the river between its two shores (5.7 km wide abreast of pad 5, 1.7 km 12 km north), Merritt Island's land west of it, the Indian River in the ground's south-west corner | documented, today's (OpenStreetMap relation 1204544, the Indian River Lagoon, traced every 300 m to 1.8 km) | Today's port, causeways and the barge canal (cut 1962 to 1965) are stepped over, not drawn; Sykes Creek inside Merritt Island is left out; the river's bed falls 1.5 m in every 100 from either shore, as the sea's does (estimated: the real river is a metre or two deep) |
-| The air | haze thinning with height over 1.4 km above the sea (src/viewer/air.ts), so a distant tree line goes blue from the ground; from above, the air itself (src/viewer/atmosphere.ts: Rayleigh, this haze, ozone, light scattered many times) | that the morning was clear is documented (visibility at the Skid Strip's 16 km cap at 09:00 EST, NOAA ISD); the haze's profile and its density are estimated (80 km visibility at sea level: clear air, chosen so the coast and the far complexes read) | NOAA ISD 74794012868 |
-| The cumulus | flat-based at 720 m, tops to 650 m higher (heaps of 250 m, a few towers of 500, scraps), a tenth of the sky, standing in groups with clear air between, some growing and hard-edged and some fraying, drifting west with the 090 wind, their shadows on the ground; thin high cloud above | 1/10 cumulus at liftoff (preferred to the station's "scattered" at 09:00), no ceiling, and the 720 m base (May mornings' median, 1959 to 1963; 750 m at 07:00 that day) documented; depth, size and the wind aloft estimated; where each cloud was, how they were grouped and which were growing or going are not known (estimated: src/viewer/air.ts, clouds.ts); how a cloud is lit is a model fitted by eye to photographs of trade-wind cumulus, in the scene's own Sun and sky | MR-3 Postlaunch Report 10.3, p. 87; NOAA ISD; Kraft, p. 8 |
+| The air | the day's, from the flight's own weather: haze thinning with height (src/viewer/air.ts), so a distant tree line fades from the ground; from above, the air itself (src/viewer/atmosphere.ts: Rayleigh, this haze, ozone, light scattered many times). On 5 May 80 km at sea level, thinning over 1.4 km; on 21 July 40 km, thinning over 1.0 km, and whitened under the veil | that each morning was clear at the ground is documented (visibility at the Skid Strip's 16 km limit on both, and at Patrick's 24 km limit on 21 July); how far past the limit, and the haze's profile, are estimated (5 May: clear air, chosen so the coast and the far complexes read; 21 July: half of that, the air being humid, dew point 23.3 °C under 25.5 °C) | NOAA ISD 74794012868, 74795012867; each flight's `weather.ts` |
+| The cumulus, 5 May | flat-based at 720 m, tops to 650 m higher (heaps of 250 m, a few towers of 500, scraps), a tenth of the sky, standing in groups with clear air between, some growing and hard-edged and some fraying, drifting west with the 090 wind, their shadows on the ground | 1/10 cumulus at liftoff (preferred to the station's "scattered" at 09:00), no ceiling, and the 720 m base (May mornings' median, 1959 to 1963; 750 m at 07:00 that day) documented; depth, size and the wind aloft estimated; where each cloud was, how they were grouped and which were growing or going are not known (estimated: src/viewer/air.ts, clouds.ts); how a cloud is lit is a model fitted by eye to photographs of trade-wind cumulus, in the scene's own Sun and sky | MR-3 Postlaunch Report 10.3, p. 87; NOAA ISD; Kraft, p. 8; the flight's `weather.ts` |
+| The sky, 21 July | an eighth of cumulus with bases at 510 m, drifting north-north-east on the wind from 200°; two eighths of altocumulus at 5,400 m; over all of it a veil of cirrostratus, the whole sky, at 10.5 km: milky, the Sun's disc and a glow through it, whiter toward the horizon. Under it the Sun's light is a little over half what it would be at that height (0.57 at liftoff, the Sun 20.6° up), the shadows are softer, the sky's own light is more, and the haze is whiter. The veil is lit pink before the Sun is up on the ground | the three layers, their covers, the two lower heights and the wind documented (the Skid Strip, 07:00 EST: one, two and eight oktas; "sky covered, no ceiling"); the veil's height (not recorded) and its optical depth (0.4: a thin layer by the report, so under 0.7) estimated; what it does to the light is a stated rule, estimated (src/viewer/day.ts: `veilShade`); the cumulus's depth and size as 5 May's | NOAA ISD 74794012868, 12:00 UTC; *Results of the Second U.S. Manned Suborbital Space Flight*, p. 50; the flight's `weather.ts` |
 
 A thicket far from the eye is drawn as the ground itself lifted into a roof of crowns, not as
 plants (`land.ts`); within about 60 m of the eye the plants stand on the ground one by one.
@@ -938,8 +942,12 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   doors, marker lamps and the legend along its sill are not built; its tractor has no lettering or plate; its size is scaled off the tractor. It is not
   gone into. That it left by driving straight ahead along the track, and stands 80 m down it at liftoff, is ours: its "launch position" is not recorded.
 - **The emergency shower is wheeled across the pad in two straight legs** at T−85, with no hose or water line to disconnect; where it was stowed is May's place.
-- **21 July's sky is not 21 July's.** The viewer has one sky for the Cape (`src/viewer/cape.ts`: `CLOUDS`, a tenth of cumulus at 720 m on a breeze from
-  090°), which is 5 May's record, and no place where a flight gives its own: see the flight's README, "The sky at liftoff", for what the record has.
+- **Each day's sky is its own, and each is one station's at one hour.** The sky is drawn from the flight's own weather (`weather.ts` beside
+  its `flight.ts`): 5 May's for Freedom 7, 21 July's for Liberty Bell 7. It is the sky of the observation nearest liftoff (09:00 EST and the flight's
+  own report on 5 May; 07:00 EST on 21 July) for the whole morning: on 21 July the Skid Strip had a ceiling at 3,000 m at 06:00 and none at 07:00, and
+  the cloud the count was held 41 minutes for is not shown thicker during the hold than at liftoff. Patrick's five oktas of altocumulus at 4,500 m,
+  23 km south, are not drawn: the deck round the pad is the pad's own station's two. The station coded the low cloud cumulonimbus on both days; it is
+  drawn as cumulus on both. No halo is drawn in the veil: none is recorded.
 - **Only the structure's height and the cherry picker's reach are published.** Everything else is
   scaled off photographs or the site plan:
   - platform levels, widths and depths;
@@ -1047,20 +1055,34 @@ The rest of the complex:
   the trailer SP-No 1, the huts, the blast screens, the tank cart, the LOX trailer, the cameras, the camera towers,
   the searchlights; in the place, the cable racks, the scaffold stair, the huts, the generator
   building and its tank, the shed. The tractor and pickups are named by `vehicle`.
-- **The weather beyond the Cape is invented.** The cumulus are the record's at liftoff within 12 km of the pad
-  (1/10, bases at 720 m). Past 40 km the cover is a map made up for a fair May morning (`src/viewer/weather.ts`:
+- **The weather beyond the Cape is invented, but for what a record says of it.** The cumulus are the day's record
+  within 12 km of the pad. Past 40 km the cover is a map made up for a fair morning (`src/viewer/weather.ts`:
   more cumulus inland and over high ground, the sea clear beside a shore, clusters and lanes over the open sea,
-  streets along the wind, a front a thousand kilometres to the north-west with its cirrus): estimated, all of
-  it. No chart, sounding or reanalysis for 5 May 1961 has been read; the day's real weather would replace the
-  map. The middle deck is an eighth of altocumulus at 3,600 m round the site (Patrick, 10:00, NOAA ISD:
-  documented for that hour) and the map's elsewhere. How it looks is estimated: cloudlets 70 to 220 m across, 120 m
+  streets along the day's wind, a front a thousand kilometres to the north-west with its cirrus): estimated, all of
+  it, and each day's from another part of the same noise. No chart, sounding or reanalysis for either day has been
+  read; the day's real weather would replace the map. One map is baked for each day
+  (`public/globe/cape-canaveral.<date>.weather.png`). **21 July's has the record in it**: the station's veil over
+  the Cape as far as its report holds (60 km, gone by 90: an observer judges the sky down to some ten degrees);
+  the pilot's own account from 190 km ("High cirrus blotted out everything except an area from about Daytona
+  Beach back inland to Orlando and Lakeland to Lake Okeechobee and down to the tip of Florida. Beyond this the
+  Gulf of Mexico was visible": *Results*, p. 37), as high cloud over everything in view but those two stretches;
+  and the outlook the launch was decided on (*This New Ocean*, p. 369) for the low cloud: patches of cumulus
+  over northern Florida, scattered cumulus over southern Florida and Cuba. The words are the record's; the bounds
+  of each stretch and the cover each word is taken to mean (nine tenths for "blotted out", three for "patches",
+  two for "scattered") are ours, estimated, in the flight's `weather.ts`. The outlook's "completely obscured"
+  for northern Florida is not taken over the pilot's sight of the Gulf coast between Apalachicola and Mobile.
+  From the pad the veil's edge toward that clear stretch lies under ten degrees up in the west. The middle deck
+  is the day's record round the site (5 May: an eighth of altocumulus at 3,600 m, Patrick, 10:00, NOAA ISD,
+  documented for that hour; 21 July: two eighths at 5,400 m) and the map's elsewhere. How it looks is estimated: cloudlets 70 to 220 m across, 120 m
   apart (the WMO Atlas's 1 to 5 degrees from under it), in patches some kilometres wide over 0.3 of the sky, so that
   the cloud itself is the eighth; matched to photographs of altocumulus from airliners on other days
   (docs/sources.md). It is a sheet with a lit, lumpy top and the shadow of each cloudlet on the next, not a volume.
   Its shadow on the ground is its patches' dapple, not its cloudlets' (whose shadows the Sun's disc would blur by
   33 m), and is drawn only once the eye is over 1 km up (all of it from 3 km): from the ground the deck casts no
-  shadow on the site. The cirrus casts none on the site's own ground, only on the globe beyond it; its height
-  (10.5 km) and the high wind are estimated.
+  shadow on the site. On 5 May the cirrus (the map's own: the record has none at the Cape) casts none on the site's
+  own ground, only on the globe beyond it; on 21 July the veil dims the Sun evenly for everything under it, on the
+  site and the globe alike, and its streaks cast no shadows of their own. The high cloud's height (10.5 km) and the
+  high wind (the way its fibres and streaks lie) are estimated on both days.
 - **Paving stands a hand's breadth proud.** The viewer's ground is 0.12 m under the pad's
   surface (it was 0.45 m until November 2026, and the pads stood like table tops), and nothing may
   lie closer above it than that: parallel faces 5 to 6 cm apart flicker from across the site. So the

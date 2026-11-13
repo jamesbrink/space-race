@@ -69,6 +69,19 @@ to 0.002° (`tests/world.test.mjs`). Elevations are geometric; air lifts the Moo
 
 Mars, Uranus and Neptune were below the horizon.
 
+**The weather, as recorded, and as shown.** [weather.ts](weather.ts) beside this file
+(`Flight.weather`: every figure with its confidence and source) has the morning, and the launch
+site's sky is drawn from it and from nothing else: "1/10 cumulus" at liftoff (Postlaunch Report,
+10.3, p. 87), their bases at 720 m (the Skid Strip's median for May mornings; 750 m that day at
+07:00 and 10:00), one okta of altocumulus at 3,600 m (Patrick, 23 km south, at 10:00 EST), the
+wind from 090° at 10 knots (the Skid Strip, 09:00 EST), visibility at the station's 16 km limit. No
+high cloud is recorded over the Cape at those hours. What is ours, estimated: the cumulus's depth
+(650 m), their breadth and the wind at their height (7 m/s), how far past the limit one could see
+(80 km), and all the weather beyond the Cape ([lc-5.md](../../sites/lc-5.md), "What the model gets
+wrong or leaves out"). The report gives the surface wind at liftoff as 12 knots, from 070 by its
+profile: the simulator flies that (below); the plants and the clouds were drawn for the station's
+figure of half an hour earlier and are kept as they were.
+
 ## The flight as flown
 
 `src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts) (thrust, specific

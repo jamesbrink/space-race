@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import type { Day } from './day.ts';
 import { fieldAs, noise2 } from './field.ts';
-import { DECK_SITE, deckPatchGlsl } from './weather.ts';
+import { deckPatchGlsl } from './weather.ts';
 
 /**
  * The air between the eye and what it sees, for every material that takes the scene's fog.
@@ -25,6 +26,8 @@ export interface Air {
   base: number;
   /** Fair-weather cumulus, or none. */
   clouds?: Clouds;
+  /** The day the air is the air of (day.ts): its middle deck and its high cloud, for their shadows. Left out: neither. */
+  day?: Day;
 }
 
 /**
@@ -83,6 +86,26 @@ export const setDeckShade = (amount: number): void => {
   DECK_SHADE.x = amount;
 };
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uDeckShade = deckShadeUniform;
+
+/**
+ * What the high cloud leaves of the direct light for everything under it (x: day.ts `veilShade`, for the Sun where it
+ * stands; backdrops.ts sets it with the light) and the height it lies at (y: the world's). A veil of cirrostratus
+ * dims the Sun for the whole site at once, evenly, so it is one number and no reading of the cloud: what is under the
+ * veil takes it, what has climbed through it (the vehicle, 10 km up) is in the full Sun again.
+ */
+const VEIL = { x: 1, y: 1e9 };
+export const veilLightUniform: THREE.IUniform<typeof VEIL> = { value: VEIL };
+/**
+ * And what the veil gives back of what it took, as light from the whole sky on the clouds under it (clouds.ts): the
+ * sky's light there is that much more, in the units of the scene's fill. Nothing on a day with no veil.
+ */
+export const veilGlow = { r: 0, g: 0, b: 0 };
+export const setVeilLight = (left: number, height: number, glow: readonly [number, number, number]): void => {
+  VEIL.x = left;
+  VEIL.y = height;
+  [veilGlow.r, veilGlow.g, veilGlow.b] = glow;
+};
+for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uVeilLight = veilLightUniform;
 
 let installed: Air | null = null;
 let wind: [number, number] = [0, 0];
@@ -186,12 +209,12 @@ export const cloudNoiseGlsl = (c: Clouds, prefix: string): string => /* glsl */ 
   }`;
 export const cloudMiddle = (c: Clouds): number => 0.5 * (edges(c)[0] + edges(c)[1]);
 
-const cloudField = (c: Clouds | undefined) =>
+const cloudField = (c: Clouds | undefined, deckHeight: number) =>
   c
     ? /* glsl */ `
   ${fieldAs('air_')}
   ${cloudNoiseGlsl(c, 'air_')}
-  ${deckPatchGlsl('air_')}
+  ${deckPatchGlsl('air_', deckHeight)}
   float cloudAt(vec2 xz) {
     return smoothstep(${edges(c)[0].toFixed(3)}, ${edges(c)[1].toFixed(3)}, cloudNoise(xz - uCloudDrift.xz));
   }
@@ -215,9 +238,19 @@ const cloudField = (c: Clouds | undefined) =>
 export const installedAir = (): Air | null => installed;
 
 export function installAir(air: Air): void {
-  if (installed && installed.scale === air.scale && installed.base === air.base && installed.clouds === air.clouds) return;
+  if (
+    installed &&
+    installed.scale === air.scale &&
+    installed.base === air.base &&
+    installed.clouds === air.clouds &&
+    installed.day === air.day
+  )
+    return;
   installed = air;
   const c = air.clouds;
+  const deck = air.day?.deck ?? { cover: 0, height: 0 };
+  // (the record has high cloud over the site: its light is dimmed for what is under it)
+  const veiled = air.day != null && air.day.high.cover !== null && air.day.high.cover > 0 && air.day.high.depth > 0;
   if (c) {
     wind = c.wind;
     DRIFT.y = air.base + c.height;
@@ -250,11 +283,11 @@ export function installAir(air: Air): void {
       #endif
       uniform vec4 uCloudDrift;
       uniform vec2 uHazeAbove;
-      uniform vec2 uDeckShade;
+      uniform vec2 uDeckShade;${veiled ? '\n      uniform vec2 uVeilLight;' : ''}
       // the haze's colour as seen from where the eye is: hazeAboveUniform
       vec3 hazeSeen() { return mix(fogColor, vec3(dot(fogColor, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.86, 0.95, 1.1) * 0.33, uHazeAbove.x); }
-      ${cloudField(c)}
-      ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return deckShadeAt(world, toLight, ${air.base.toFixed(2)}, ${DECK_SITE.toFixed(2)}); }` : ''}
+      ${cloudField(c, deck.height)}
+      ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return deckShadeAt(world, toLight, ${air.base.toFixed(2)}, ${deck.cover.toFixed(2)}); }` : ''}
       // how much of the haze lies between the eye and a point, as a fraction of the light lost: 1 - exp(-tau)
       float airFog(vec3 at) {
         vec3 eye = cameraPosition + uOrigin;
@@ -266,14 +299,29 @@ export function installAir(air: Air): void {
       }
     #endif`;
   // the shadow of a cloud: the direct light is taken from wherever the ray toward it crosses the layer's middle
-  if (c && !chunks.lights_fragment_end.includes('cloudShade'))
+  // (and under a veil of high cloud all of it is dimmed alike: veilLightUniform)
+  const veil = veiled
+    ? /* glsl */ `
+        airShade *= mix(uVeilLight.x, 1.0, smoothstep(uVeilLight.y - 400.0, uVeilLight.y + 400.0, vFogWorld.y));`
+    : '';
+  // (added once: a page has one day. exhaust.ts adds the smoke's shadow to the same chunk)
+  const shaded = chunks.lights_fragment_end.includes('airShade');
+  if (c && !shaded)
     chunks.lights_fragment_end = /* glsl */ `${chunks.lights_fragment_end}
     #if defined( USE_FOG ) && NUM_DIR_LIGHTS > 0
       {
         vec3 toLight = transpose(mat3(viewMatrix)) * directionalLights[0].direction;
         airShade = cloudShade(vFogWorld, toLight, length(fwidth(vFogWorld.xz)));
         // and the middle deck's, from above (deckShadeUniform): its patches near the site, where its cover is the record's
-        if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(vFogWorld, toLight), uDeckShade.x);
+        if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(vFogWorld, toLight), uDeckShade.x);${veil}
+        reflectedLight.directDiffuse *= airShade;
+        reflectedLight.directSpecular *= airShade;
+      }
+    #endif`;
+  else if (veiled && !shaded)
+    chunks.lights_fragment_end = /* glsl */ `${chunks.lights_fragment_end}
+    #if defined( USE_FOG ) && NUM_DIR_LIGHTS > 0
+      {${veil}
         reflectedLight.directDiffuse *= airShade;
         reflectedLight.directSpecular *= airShade;
       }
