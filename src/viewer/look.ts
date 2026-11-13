@@ -193,6 +193,18 @@ export class InkPass extends ShaderPass {
           // one neighbour may lie on something else entirely: measure against the nearer side only
           return abs(a + b - 2.0 * d) / min(d, min(a, b));
         }
+        // A pixel standing out from both its neighbours along one axis, nearer than both or further than both: one
+        // pixel's width of something in front of what is behind it, or a pixel of what is behind between two of it.
+        float spike(float a, float c, float b) {
+          float t = 0.01 * c;
+          return step(t, a - c) * step(t, b - c) + step(t, c - a) * step(t, c - b);
+        }
+        // How many of this pixel and the two beside it along one axis are spikes: 1 beside a lone member, 2 or 3 where
+        // members and gaps alternate a pixel at a time (a lattice whose members are a pixel wide or less).
+        float spikes(float d, vec2 step) {
+          float m2 = depthAt(vUv - 2.0 * step), m1 = depthAt(vUv - step), p1 = depthAt(vUv + step), p2 = depthAt(vUv + 2.0 * step);
+          return spike(m2, m1, d) + spike(m1, d, p1) + spike(d, p1, p2);
+        }
         void main() {
           vec4 colour = texture2D(tDiffuse, vUv);
           float d = depthAt(vUv);
@@ -200,12 +212,24 @@ export class InkPass extends ShaderPass {
           edge = max(edge, 0.7 * max(bend(d, uTexel), bend(d, vec2(uTexel.x, -uTexel.y))));
           // lines thin out with distance, or far scrub and trusses turn solid black
           float ink = smoothstep(0.004, 0.012, edge) * (1.0 - smoothstep(350.0, 1400.0, d));
+          // A line is drawn on both sides of an edge: on the thing in front and on what is behind it. Past a few dozen
+          // metres only the near side keeps it, so a member a pixel or two wide is drawn as itself and not as a bar
+          // three or four pixels wide, which is what made a lattice tower a black column.
+          float nearest = min(min(depthAt(vUv - vec2(uTexel.x, 0.0)), depthAt(vUv + vec2(uTexel.x, 0.0))),
+                              min(depthAt(vUv - vec2(0.0, uTexel.y)), depthAt(vUv + vec2(0.0, uTexel.y))));
+          ink *= 1.0 - step(0.01 * d, d - nearest) * smoothstep(60.0, 200.0, d);
+          // Where members and gaps alternate pixel by pixel (a lattice whose members have fallen to a pixel or under) the
+          // frame's depth is one sample of each pixel and says nothing a line could follow: no line is drawn there, and
+          // the colour (every sample of the pixel, resolved) is the lattice as a lighter screen over what is behind it.
+          // (A crease found there is the same noise, so this is applied to both.)
+          float screen = 1.0 - smoothstep(1.5, 3.5, spikes(d, vec2(uTexel.x, 0.0)) + spikes(d, vec2(0.0, uTexel.y)));
           // a crease: the surface turns sharply without its depth jumping (a fin's edge, a box's
           // corner). Found by comparing the way the surface faces here with just up and left.
           vec3 n = facing(vUv, uTexel);
           float turn = min(dot(n, facing(vUv - vec2(uTexel.x, 0.0), uTexel)), dot(n, facing(vUv - vec2(0.0, uTexel.y), uTexel)));
           // only close to: far off, depth is too coarse to say which way anything faces
           ink = max(ink, (1.0 - smoothstep(0.55, 0.8, turn)) * (1.0 - smoothstep(40.0, 160.0, d)) * step(d, 0.5 * uFar));
+          ink *= screen;
           // The frame's outermost ring of pixels takes no ink. A neighbour past the edge is the edge's own depth given
           // back, so any slope there reads as a bend: the bottom row was inked from end to end over sloping ground.
           // (Done here, on the answer, and not in the lookups: a shader whose sums are written another way rounds another
