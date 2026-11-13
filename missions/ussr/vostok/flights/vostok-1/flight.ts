@@ -370,6 +370,7 @@ const launcherParts: Part[] = [
       ['Diameter', '2.58 m'],
       ['Mass', '7,984 kg fuelled, 1,472 kg burnt out'],
       ['Engine', 'RD-0109: 54.5 kN in vacuum, 121 kg'],
+      ['Engine’s size', '1,555 mm long; nozzle exit 733 mm across'],
       ['Steering', '8 nozzles on the turbine’s exhaust: 4 fixed, 4 turning'],
       ['Burned', 'about 300 to 676 s after liftoff'],
       ['Propellants', 'kerosene and liquid oxygen, 6.9 t'],
@@ -500,6 +501,45 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: turned(along(250, -32, 1)) },
   ],
 };
+
+/**
+ * The ejection seat as a place to be. `Seat_Pilot` is the model's own node (vehicles/vostok_3ka.py `seat_view`): an
+ * empty at the seated figure's eyes, a child of `EjectionSeat` (so it goes where the seat goes: out along the rails with
+ * the slider, and out of the ball at seven kilometres), looking at the middle of the instrument board, the top of his
+ * head overhead. There his own helmet and face are not drawn. Boarded through hatch No. 1: he was in the seat for the
+ * first call on the radio at 07:10 (the transcript: documented) and was sealed in at 07:50 (Siddiqi: documented); when
+ * he climbed in is not recorded, and the ten minutes before the first call are ours.
+ */
+const HELMET = [
+  'Shell',
+  'Liner',
+  'Head',
+  'Cap',
+  'MicrophoneBooms',
+  'Microphones',
+  'Eyes',
+  'Brows',
+  'Lips',
+  'Visor',
+  'VisorFrame',
+  'Fittings',
+  'Lettering',
+  'Collar',
+  'NeckBand',
+];
+vehicle.seats = [
+  {
+    node: 'Seat_Pilot',
+    label: 'the ejection seat',
+    from: 'EntryHatch',
+    open: [(7 - 9) * 3600 + (0 - 6) * 60 - 59.7, (7 - 9) * 3600 + (50 - 6) * 60 - 59.7],
+    hide: HELMET.map((mesh) => `Pilot_Helmet_${mesh}`),
+    // there is one Gagarin: the figure on the platform's deck is not drawn while he is in the seat
+    figure: 'crew',
+    // the hatch was bolted down from outside; in flight he left only with the seat, at seven kilometres, which is the flight's
+    egress: ['pad'],
+  },
+];
 
 // The cosmonaut on the platform's deck, on the hatch side, between where the bus stopped on the tracks and the launch
 // system, facing the rocket. Where he stood is not recorded to the metre: this place is ours (estimated).
@@ -1288,6 +1328,14 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'estimated',
       note: 'scaled off a photograph of the VDNKh vehicle from below (about 0.74 m); no published figure was read',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Third stage engine, nozzle exit',
+      value: 0.733,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'KBKhA gives the RD-0109 as 1,555 mm long and 733 mm across; nothing on a one-chamber engine is wider than its nozzle’s exit, so that is taken as the exit’s diameter. The published area ratio of 79.4 (Encyclopedia Astronautica) then gives a throat 82 mm across, which is what 54.5 kN at 5 MPa needs',
     },
     {
       group: 'Launch vehicle',

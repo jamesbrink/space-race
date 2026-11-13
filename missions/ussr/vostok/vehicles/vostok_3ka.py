@@ -11,6 +11,13 @@ Azimuths are measured about +Z from +X.
 Top-level nodes:
     DescentModule  EntryHatch  ParachuteHatch  Cabin  EjectionSeat
     RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
+Nodes under them that a flight asks for by name:
+    RetroEngine_Nozzle (in RetroEngine: the chamber's nozzle, its origin in the middle of its exit, its lowest point)
+    ParachuteContainer (in Cabin: its origin in the middle of its mouth under hatch No. 2, +Z out along the hatch's line)
+    Pilot (in EjectionSeat: the flight's seated figure)  Seat_Pilot (in EjectionSeat: an empty at his eyes)
+EntryHatch and ParachuteHatch have their origins where their lines meet the sphere, +Z outward; EjectionSeat has the
+seat frame's origin, +Z up the rails toward the entry hatch, -Y out of the pilot's chest (in the file: +Y up the rails,
++Z out of his chest): each is a body that leaves, along its own axis.
 and, on a flight that carried one (build(film_camera=True)):
     FilmCamera
 and, on a flight whose television is built as its cameras were (build(television=True)):
@@ -231,6 +238,35 @@ def hang(obj: bpy.types.Object, on: bpy.types.Object) -> bpy.types.Object:
     obj.data.transform(Matrix.Translation(-on.location))
     obj.parent = on
     return obj
+
+
+def rehome(obj: bpy.types.Object, node: bpy.types.Object, at: Matrix) -> None:
+    """Give `node` the frame `at` (the scene's, metres) and make `obj`, built in the scene's axes, its child without
+    moving it: the mesh's own points are taken into the node's frame, so the mesh has no transform of its own."""
+    node.matrix_local = at if node.parent is None else node.parent.matrix_local.inverted() @ at
+    obj.data.transform(at.inverted())
+    obj.parent = node
+
+
+def reframe(node: bpy.types.Object, at: Matrix, held: dict[str, Matrix] | None = None) -> None:
+    """Give a top-level node, built with everything under it in the scene's axes, the frame `at` (the scene's, metres)
+    without moving anything: each mesh's points are taken into it, a group under it keeps no transform and its own
+    children are taken likewise, and a node with a place of its own (`held`: name, its frame in the scene) is put
+    there. A part that leaves the vehicle then has its origin on itself and its own axes to leave along."""
+    back = at.inverted()
+
+    def take(obj: bpy.types.Object) -> None:
+        for child in obj.children:
+            if held and child.name in held:
+                child.matrix_parent_inverse = Matrix.Identity(4)
+                child.matrix_local = back @ held[child.name]
+            elif child.type == "MESH":
+                child.data.transform(back)
+            else:
+                take(child)
+
+    take(node)
+    node.matrix_local = at
 
 
 # ----------------------------------------------------------------------- materials
@@ -517,6 +553,11 @@ def build_cabin(M, tv_standins: bool = True) -> None:
     ):
         obj = placed(mb, S).build(name, M[mat], g, sharp_angle=35)
         inside_cabin(obj)
+    # The container is a node of its own (`ParachuteContainer`): its origin in the middle of its mouth, under hatch No. 2,
+    # its own +Z (the file's +Y) out along the hatch's line, so the top of its bounds is its mouth: where the descent
+    # module's parachute is made fast (`Flight.flies.chutes[].at`).
+    mouth = OUTER.axis(*PARACHUTE) @ Matrix.Translation(V(0, 0, zin - 50))
+    rehome(bpy.data.objects["Cabin_ParachuteContainer"], group("ParachuteContainer", g), mouth)
 
 
 def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:
@@ -539,10 +580,12 @@ def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:
 PILOT_FORWARD = 87.0
 
 
-def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) -> None:
+def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) -> dict[str, Matrix]:
+    """The seat, and the flight's pilot in it. Returns the nodes under it that have a place of their own (name, frame in
+    the scene): `Seat_Pilot`, at his eyes, where a pilot's builder says where they are."""
     g = group("EjectionSeat")
     if not interior():
-        return
+        return {}
     S = seat_frame()
     P = lambda x, y, z: Vector((x, y, z))  # noqa: E731
     seat, steel, pack, bottles = (MeshBuilder() for _ in range(4))
@@ -570,17 +613,65 @@ def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) ->
         (bottles, "Seat_Oxygen", "bottle"),
     ):
         placed(mb, S).build(name, M[mat], g, sharp_angle=35)
+    held = {}
     if pilot:
-        # The pilot is the flight's own (its suit, its man): he is handed the seat's node and where his hips are, in
-        # the figure library's seat frame (metres; head toward -Y, chest toward +Z, his right toward +X).
-        pilot(g, Matrix.Scale(MM, 4) @ S @ Matrix.Translation((0, 0, PILOT_FORWARD)) @ Matrix.Scale(1 / MM, 4) @ Matrix.Diagonal((-1, -1, 1, 1)))
+        # The pilot is the flight's own (its suit, its man): he is handed a node of his own in the seat (`Pilot`, so that
+        # he can be told from the seat he leaves at four kilometres) and where his hips are, in the figure library's seat
+        # frame (metres; head toward -Y, chest toward +Z, his right toward +X).
+        place = Matrix.Scale(MM, 4) @ S @ Matrix.Translation((0, 0, PILOT_FORWARD)) @ Matrix.Scale(1 / MM, 4) @ Matrix.Diagonal((-1, -1, 1, 1))
+        keys = pilot(group("Pilot", g), place)
+        if isinstance(keys, dict) and "eyes" in keys:
+            held["Seat_Pilot"] = seat_view(g, place @ (Vector(keys["eyes"]) * 0.01))
     # everything that rides out must clear the entry hatch's opening on its way
     s = S.to_3x3() @ Vector((0, 1, 0))
     c = V(0, 0, Z_C)
-    for obj in g.children:
+    for obj in (o for o in g.children_recursive if o.type == "MESH"):
         inside_cabin(obj, 6.0)
         off = max(((v.co - c) - s * (v.co - c).dot(s)).length for v in obj.data.vertices) / MM
         assert off < HATCH_R - 12, f"{obj.name} is {off:.0f} mm off the rails' line: the hatch is {HATCH_R:.0f} mm in radius"
+    return held
+
+
+# What the seated pilot looks at with his head at rest: the middle of the instrument board, in the seat's frame (mm).
+BOARD_AT = (0.0, -230.0, 765.0)
+
+
+def seat_view(seat: bpy.types.Object, eyes: Vector) -> Matrix:
+    """`Seat_Pilot`: an empty at the seated figure's eyes (the scene's metres), a child of the seat he rides out on. In
+    the file its +Z looks at the middle of the instrument board and its +Y is as near the top of his head as that
+    allows, which is what a seat's node promises (types.ts: `ModelDef.seats`). Returns its frame in the scene."""
+    S = Matrix.Scale(MM, 4) @ seat_frame()
+    look = (S @ Vector(BOARD_AT) - eyes).normalized()
+    head = S.to_3x3() @ Vector((0, 1, 0))
+    over = (head - look * look.dot(head)).normalized()
+    m = Matrix(((-look).cross(over), -look, over)).transposed().to_4x4()
+    m.translation = eyes
+    group("Seat_Pilot", seat)
+    e = to_seat(m).translation
+    far = (S @ Vector(BOARD_AT) - eyes).length / MM
+    down = math.degrees(look.angle(S.to_3x3() @ Vector((0, 0, 1))))
+    print(
+        f"seat: the pilot's eyes at ({e.x:.0f}, {e.y:.0f}, {e.z:.0f}) mm in the seat's frame, "
+        f"{far:.0f} mm from the middle of the board, looking {down:.1f} degrees toward his feet"
+    )
+    return m
+
+
+def seat_node() -> Matrix:
+    """The frame the seat's node has (the scene's, metres): its origin the seat frame's, its +Z (the file's +Y) up the
+    rails toward the pilot's head and the entry hatch, its -Y (the file's +Z) out of his chest, its +X to his left."""
+    S = seat_frame()
+    r = S.to_3x3()
+    left, rails, chest = r @ Vector((1, 0, 0)), r @ Vector((0, 1, 0)), r @ Vector((0, 0, 1))
+    m = Matrix((left, -chest, rails)).transposed().to_4x4()
+    m.translation = S.translation * MM
+    return m
+
+
+def hatch_node(where: tuple[float, float]) -> Matrix:
+    """The frame a hatch's node has (the scene's, metres): its origin where the hatch's line meets the sphere's outer
+    surface, its +Z (the file's +Y) outward along that line: the way it is thrown off."""
+    return OUTER.frame(*where)
 
 
 # ------------------------------------------------------------ what a flight carried
@@ -1007,8 +1098,11 @@ def build_retro_engine(M) -> None:
         segs=64,
         sharp_angle=30,
     )
-    noz, body = MeshBuilder(), MeshBuilder()
-    noz.lathe(pm([(140, 0), (128, 50), (100, 120), (62, 190), (36, 235), (34, 250)]), 48)
+    # The chamber's nozzle is a node of its own (`RetroEngine_Nozzle`), its origin on the axis in the plane of the exit,
+    # which is its lowest point and station 0: a flight hangs the braking burn's fire there.
+    nozzle = pivot("RetroEngine_Nozzle", g, V(0, 0, 0))
+    main, noz, body = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    main.lathe(pm([(140, 0), (128, 50), (100, 120), (62, 190), (36, 235), (34, 250)]), 48)
     body.lathe(pm([(34, 250), (60, 262), (86, 290), (86, 380), (60, 420), (0, 430)]), 40)
     body.lathe(pm([(0, 268), (186, 268), (194, 110), (205, 110)]), 48, flip=True)  # the plate that closes the skirt
     for i in range(4):
@@ -1016,7 +1110,8 @@ def build_retro_engine(M) -> None:
         m = Matrix.Translation(V(148 * math.cos(a), 148 * math.sin(a), 0))
         noz.lathe(pm([(28, 100), (23, 140), (12, 185), (10, 195)]), 20, matrix=m)
         body.lathe(pm([(10, 195), (20, 205), (20, 270)]), 16, matrix=m)
-    noz.build("Engine_Nozzles", M["nozzle"], g, sharp_angle=None)
+    hang(main.build("Engine_Nozzle", M["nozzle"], None, sharp_angle=None), nozzle)
+    noz.build("Engine_SteeringNozzles", M["nozzle"], g, sharp_angle=None)
     body.build("Engine_Chamber", M["steel"], g, sharp_angle=35)
     if interior():
         tanks, pump = MeshBuilder(), MeshBuilder()
@@ -1050,7 +1145,7 @@ def build(
     build_hatches(M)
     build_cabin(M, tv_standins=not television)
     cut_openings()
-    build_seat(M, pilot)
+    held = build_seat(M, pilot)
     if film_camera:
         build_film_camera(M)
     if television:
@@ -1061,4 +1156,8 @@ def build(
     build_gas_bottles(M)
     build_retro_engine(M)
     mark_shells(SHELLS)
+    # what leaves the descent module on the way down has its origin on itself and its own axes to leave along
+    reframe(bpy.data.objects["EntryHatch"], hatch_node(ENTRY))
+    reframe(bpy.data.objects["ParachuteHatch"], hatch_node(PARACHUTE))
+    reframe(bpy.data.objects["EjectionSeat"], seat_node(), held)
     return f"{LENGTH * MM:.3f} m nozzle to the top of the sphere's housing, {2 * MODULE_R * MM:.3f} m across"

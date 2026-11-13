@@ -34,9 +34,9 @@ import vostok_8k72k  # noqa: E402
 from srlib import mark_shells, run  # noqa: E402
 
 
-def pilot(parent, place) -> None:
+def pilot(parent, place) -> dict:
     """Gagarin in the seat: the SK-1 (../../../crew/sk_1.py) at his recorded 1.65 m, visor down, "СССР" on the helmet."""
-    sk_1.build_seated(parent, place, "Pilot")
+    return sk_1.build_seated(parent, place, "Pilot")
 
 
 def build() -> str:
@@ -53,6 +53,8 @@ if __name__ == "__main__":
     MM = 0.001
     base = vostok_8k72k.BASE_Z * MM
     mid = base + vostok_8k72k.LENGTH * MM / 2
+    centre = (0, 0, vostok_3ka.Z_C * MM)
+    seat = ("Seat_", "Pilot", "Cabin_SeatRails")
     run(
         "vostok-1 vehicle",
         build,
@@ -64,5 +66,17 @@ if __name__ == "__main__":
             ("tips.png", (0, 0, base + 19.8), 22, dict(azimuth=-45, elevation=12, res=(1500, 1300))),
             ("upper.png", (0, 0, base + 33.0), 40, dict(azimuth=150, elevation=8, res=(1200, 1700))),
             ("truss.png", (0, 0, base + 28.4), 16, dict(azimuth=-50, elevation=-6, res=(1500, 1200))),
+            # the third stage's engine, out of its stage; the braking engine from below; the seat and its pilot, out of the ball
+            ("block-e-engine.png", (0, 0, base + 28.9), 5.2, dict(azimuth=-50, elevation=-12, res=(1300, 1300), only=("RD0109", "BlockE_Steering"))),
+            ("block-e-base.png", (0, 0, base + 28.6), 9.0, dict(azimuth=-50, elevation=-38, res=(1400, 1200), only=("RD0109", "BlockE_"))),
+            ("retro-engine.png", (0, 0, 0.25), 3.4, dict(azimuth=-60, elevation=-36, res=(1300, 1200), only=("Engine_",))),
+            ("seat-right.png", centre, 4.4, dict(azimuth=225, elevation=10, res=(1500, 1300), only=seat)),
+            ("seat-front.png", centre, 4.4, dict(azimuth=315, elevation=38, res=(1500, 1300), only=seat)),
+            (
+                "seat-view.png",
+                "",
+                0,
+                dict(seat="Seat_Pilot", lens=18, res=(1500, 1100), hide=("Pilot_Helmet", "DM_", "EntryHatch", "Fairing", "Cabin_Pressure")),
+            ),
         ],
     )

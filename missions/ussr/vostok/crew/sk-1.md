@@ -120,6 +120,30 @@ and the hose's stub (`Helmet_Hose`); without `mirror`, `Arms` is the sleeves alo
 
 The cover is `suit-orange-cover`; the viewer adds its weave to any material named `suit*`.
 
+## Under his own parachute
+
+The pilot left the seat at about 4 km and came down under his own canopy. For that the standing
+figure's skeleton carries one more node, `Harness`, on the joint `Spine`: where a drawn parachute
+is made fast (`ChuteDef.at`), midway between the shoulder joints and 9 cm above them (estimated:
+about the top of the collar ring, where two risers from the shoulders would meet), its +Z (the
+file's +Y) up his back. Its extras carry the pose he hangs in, for the viewer to put the skeleton
+in: `hang_joints`, the joints' names in order, comma separated, and `hang`, four numbers for each,
+a quaternion (x, y, z, w) in the joint's own axes, which at rest are the file's (+X his left, +Y
+up, +Z the way he faces).
+
+| Joint | Swing about its own X | Then about the line he faces along | |
+| --- | --- | --- | --- |
+| Upper arms | 52° forward | 26° outward | hands up on the front risers |
+| Forearms | 100° forward | | |
+| Thighs | 10° forward | 3.5° inward | legs together |
+| Shins | 18° back | | a little bent, for the landing |
+| Feet | 10° | | |
+
+All of it is **estimated**: no photograph of a Vostok pilot under his canopy was found, and the
+pose is a parachutist's under a round canopy, by judgement. It was looked at on the skinned figure
+(stills, not the viewer). The parachute pack, its harness and its risers are not modelled: the
+canopy, lines and riser are the viewer's (`viewer/chute.ts`), from the flight's data.
+
 ## Joints
 
 The standing figure is skinned to the joints every crew figure has (`srlib.FIGURE`; the contract
@@ -154,6 +178,15 @@ toward his head and +X to his left, in millimetres, so `place` is that frame in 
 | Ankle | toes drawn 12° up | estimated | |
 | Elbow | 46°, hinge turned 24° in, forearm turned 30° | estimated | hands resting on the thighs; where his hands were is not known |
 | Seat of the suit | rolled 24° under | estimated | |
+
+`seated_key_points()` also gives `eyes`, midway between the irises, from which the spacecraft
+makes its seat's view (`Seat_Pilot`). `build_harness` lays the seat's straps on him (unless
+`build_seated(harness=False)`): one 44 mm strap over each shoulder, outside the helmet's collar
+ring, from the seat's back down the chest to a buckle 27 cm above the hip joints, and a belt across
+the lap 7 cm above them, under the forearms, each standing 5.5 mm off the cloth under it. That he
+was strapped in is the record (Kamanin's diary, 27 July 1962: «все десять операций по освобождению
+от подвесной системы»; the film still of Bykovskiy has a grey harness over the chest); every size
+and the run of each strap are **estimated**, and the buckles are plain plates.
 
 **He rides in Vostok 1's seat** (`flights/vostok-1/model/vehicle.py`). The spacecraft's own
 checks pass with him in it: nothing of him reaches the cabin's lining, and all of him is inside
@@ -226,7 +259,8 @@ in front of the seat frame's origin, so that his back lies on the parachute pack
 - **Moved, he is a jointed doll in one skin**, as the Mercury figure is: cloth stretches and
   shears at a joint instead of folding, and the helmet turns with `Head` though the real one was
   fixed to the suit.
-- No parachute harness, no survival gear, no mass properties.
+- No parachute harness or pack on the standing figure, no survival gear, no mass properties. The seated
+  figure's straps are the seat's, estimated, and stop at the seat's back and sides without fittings.
 
 ## Sources
 
