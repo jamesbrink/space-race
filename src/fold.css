@@ -22,11 +22,11 @@
   :is(#gallery, #ui) .places-now[aria-expanded='false'] > .chevron::before { transform: rotate(225deg); margin-top: -4px; }
   :is(#gallery, #ui) .places-now[aria-expanded='true'] > .chevron::before { transform: rotate(45deg); margin-top: 4px; }
   :is(#gallery, #ui) .places.open > [data-place] { display: block; position: absolute; right: -1px; z-index: 6; width: 230px; height: 54px; padding: 11px 16px 0; flex: none; white-space: nowrap; text-align: left; line-height: 1.3;
-    font-size: 11px; color: var(--ink); background: rgba(10, 11, 14, 0.96); border: 1px solid var(--line); border-top-width: 0; border-radius: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+    font-size: 11px; color: var(--ink); background: rgb(10, 11, 14); border: 1px solid var(--line); border-top-width: 0; border-radius: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
   :is(#gallery, #ui) .places.open > [data-place='gallery'] { top: calc(100% + 6px); border-top-width: 1px; border-radius: 3px 3px 0 0; }
   :is(#gallery, #ui) .places.open > [data-place='site'] { top: calc(100% + 61px); }
   :is(#gallery, #ui) .places.open > [data-place='fly'] { top: calc(100% + 115px); border-radius: 0 0 3px 3px; }
-  :is(#gallery, #ui) .places.open > [data-place][aria-pressed='true'] { color: var(--amber); background: rgba(34, 28, 16, 0.97); box-shadow: inset 3px 0 var(--amber), 0 10px 30px rgba(0, 0, 0, 0.35); }
+  :is(#gallery, #ui) .places.open > [data-place][aria-pressed='true'] { color: var(--amber); background: rgb(34, 28, 16); box-shadow: inset 3px 0 var(--amber), 0 10px 30px rgba(0, 0, 0, 0.35); }
   :is(#gallery, #ui) .places.open > [data-place]::after { content: attr(data-short); display: block; margin-top: 2px; font: 12px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--faint); overflow: hidden; text-overflow: ellipsis; }
   :is(#gallery, #ui) .places.open > [data-place][aria-pressed='true']::after { content: 'You are here'; }
   /* one the flight does not have yet is listed, dimmed, and says why under its name */
