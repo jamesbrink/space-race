@@ -78,6 +78,19 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
   dark stacked "UNITED STATES". The stripe count (16), the band's height and the tail's quartered
   pattern are read off or assumed. No source read gives colours; the red lettering is from memory
   of colour photographs.
+- **An open question: where UNITED STATES is round the body.** The model has it on the 90° and 270° sides
+  (degrees round from the capsule's hatch, the fins at 45° + 90°k). Photographs of MR-4 on the pad, read in November
+  2026 for the cable masts (sites/lc-5.md, "The two cable masts", which gives how each camera's place round the vehicle
+  was got), have it on a fin's meridian instead: in FHSU item 468 (camera at 232°) the U is 13° left of centre, so at
+  219°; in item 466 (151°) it is at the right limb, 73° right, so at 224°; in item 241 (191°) 32° right, so at 223°;
+  in item 333 (312.5°) none shows, as neither would at 45° or 225°, both being at the limbs; and in item 331, taken
+  from the other side of the pad, one faces the camera, so there were two. That is 222° ± 4°, and its opposite: on
+  the meridians of the fins at 225° and 45°, 45° round from where the model has them. Each fin's meridian also
+  carries an MR-8 plate at the foot of the tanks (466, 468, 333), which the model does not have. MR-3's S61-02407
+  shows the same on MR-7: the lettering 69° right of the camera and an MR-7 plate 64° right, on one meridian, with a
+  second plate 27° left. By Freedom 7's UNITED STATES, which faces that camera (186° on its model), those fins would
+  be at 250° and 159°, not 225° and 135°: either the capsule's paint is 25° out on one of the two models, or the two
+  capsules were clocked differently to their boosters. Not changed: the lettering is where it was.
 - **Fin shape** is an estimate; the fins are flat wedges with no aerofoil. Their edges are rounded
   over the last 1.2 in, the same all round (the real leading edge's form is not known). The rows
   of flush fasteners on the fins (a root fitting, a spar 9 in behind the leading edge, a rib over

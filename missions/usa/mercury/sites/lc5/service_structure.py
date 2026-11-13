@@ -32,7 +32,6 @@ from srlib import FT
 from .site import (
     GAUGE,
     LEVELS,
-    MAST_NOTCH,
     RAIL_PAIR_X,
     RAIL_TOP,
     STRUCTURE_TOP,
@@ -48,6 +47,8 @@ from .site import (
     fine,
     ftp,
     handrail,
+    mast_cuts,
+    package_cut,
     rail_clamp,
     ring,
     stair_rails,
@@ -112,15 +113,56 @@ def leg_x(z: float) -> float:
 # ------------------------------------------------------------------- platform halves
 
 
-def notched_half(mb, s: int, z0: float, z1: float, notches, x_in: float = 0.06, X: float = DECK_X) -> None:
-    """One half of a platform's deck or roof: x from the split to DECK_X on side s, with semicircles
-    cut from its inner edge where the vehicle (and the capsule's cable mast) stand. `notches` are
-    (y, radius) along the split."""
-    n = 10 if fine() else 6
+SPLIT = 0.06  # each half's inner edge stands this far from the line the two part along
+
+
+def inner_edge(n: int, s: int, masts: bool = True) -> list[tuple[float, float]]:
+    """The inner edge of one half of level n, from the back to the front: (how far it stands from the split's line on
+    the half's own side, y). The split, the hole the two halves close round the vehicle, and what of the two cable
+    masts stands through this floor (site.mast_cuts): a half slides straight out, so everything between a mast and
+    the split is cut away with it, and the half leaves the mast standing. `masts` False is a roof no mast reaches."""
+    r = NOTCH[n]
+    cuts = mast_cuts(n) if masts else []
+
+    def span(cut, y: float):
+        xs = []
+        for (x0, y0), (x1, y1) in zip(cut, cut[1:] + cut[:1]):
+            if (y0 - y) * (y1 - y) <= 0 and y0 != y1:
+                xs.append(x0 + (x1 - x0) * (y - y0) / (y1 - y0))
+        return (min(xs), max(xs)) if xs else None
+
+    def at(y: float) -> float:
+        d = SPLIT
+        if abs(y) < r:
+            d = max(d, math.sqrt(r * r - y * y))
+        for cut in cuts:
+            reach = span(cut, y)
+            if reach and max(s * reach[0], s * reach[1]) > d:
+                d = max(s * reach[0], s * reach[1])
+        return d
+
+    n_arc = 20 if fine() else 12
+    marks = {-r, r} | {y for cut in cuts for _, y in cut}
+    ys = {r * math.cos(math.pi * k / n_arc) for k in range(n_arc + 1)}  # the vehicle's hole, in even steps round it
+    ys |= {y + e for y in marks for e in (-1e-3, 1e-3)}  # either side of each corner, so a step in the edge is a step
+    for cut in cuts:  # and along each mast's cut
+        lo, hi = min(y for _, y in cut), max(y for _, y in cut)
+        ys |= {lo + (hi - lo) * k / 12 for k in range(13)}
+    ordered = []
+    for y in sorted(ys, reverse=True):
+        if not ordered or ordered[-1] - y > 5e-4:
+            ordered.append(y)
+    edge = [(at(y), y) for y in ordered]
+    # points along the split itself say nothing: keep each only beside one that stands off it
+    keep = [p for i, p in enumerate(edge) if p[0] > SPLIT or (i and edge[i - 1][0] > SPLIT) or (i + 1 < len(edge) and edge[i + 1][0] > SPLIT)]
+    return keep
+
+
+def notched_half(mb, s: int, z0: float, z1: float, edge=(), x_in: float = SPLIT, X: float = DECK_X) -> None:
+    """One half of a platform's deck or roof: x from the split to X on side s, its inner edge following `edge`
+    (inner_edge: back to front) where the vehicle and the cable masts stand."""
     yf, yb = DECK_FRONT, DECK_BACK
-    outline = [(x_in, yf), (X, yf), (X, yb), (x_in, yb)]
-    for yc, r in sorted(notches, reverse=True):  # down the split, top first, each arc bulging outward
-        outline += [(x_in + r * math.cos(a), yc + r * math.sin(a)) for a in (math.pi / 2 - math.pi * k / n for k in range(n + 1))]
+    outline = [(x_in, yf), (X, yf), (X, yb), (x_in, yb)] + [(max(x, x_in), y) for x, y in edge if yf < y < yb]
     tris = ear_clip(outline)
 
     def v(x, y, z):
@@ -195,14 +237,12 @@ def platform(parts: Parts, n: int, s: int) -> None:
     parts.node(name, "ServiceStructure", L(0.0, 0.0, zf))
     red, deck, white, glass = parts(name, "red"), parts(name, "deck"), parts(name, "white"), parts(name, "glass")
     rails, fit = parts(name, "white/rails"), parts(name, "grey/fittings")
-    r = NOTCH[n]
-    holes = [(0.0, r), MAST_NOTCH] if n < 3 else [(0.0, r)]
-    notched_half(deck, s, zf - 0.45, zf, holes, X=X)
+    notched_half(deck, s, zf - 0.45, zf, inner_edge(n, s), X=X)
     if n < 4:  # level 4's deck sits on the white room's roof
         under = parts(name, "yellow") if n == 3 else red  # the white room's underside showed yellow (6100884)
         for x in (4.6, 9.0, X - 0.3):  # joists, front to back
             sbox(under, s, x - 0.3, x + 0.3, DECK_FRONT + 0.1, DECK_BACK - 0.7, zf - 1.5, zf - 0.46)
-        for y in (DECK_FRONT + 0.6, -6.0):  # and across
+        for y in (DECK_FRONT + 0.6, -7.0):  # and across, clear of where the booster's cable mast stands through level 2
             sbox(under, s, 0.3, X - 0.05, y - 0.3, y + 0.3, zf - 1.2, zf - 0.47)
         sbox(red, s, 0.3, X - 0.05, DECK_BACK - 0.68, DECK_BACK - 0.02, zf - 1.6, zf - 0.47)  # the shoe it slides on
 
@@ -217,7 +257,7 @@ def platform(parts: Parts, n: int, s: int) -> None:
             sbox(red, s, CABIN_IN, CABIN_IN + 0.25, y0, y1, zf, zf + h)
         sbox(red, s, CABIN_IN, CABIN_IN + 0.25, -3.0, 0.0, zf + 6.8, zf + h)
         door(parts, f"{name}_Door", name, L(s * (CABIN_IN + 0.125), -0.02, zf), (0, -1), 2.96, 6.75, swing=s * 100.0, mat="white")  # into the cabin
-        notched_half(red, s, zf + h, zf + h + 0.35, [], x_in=CABIN_IN - 0.1, X=X + 0.2)  # the cabin's roof
+        notched_half(red, s, zf + h, zf + h + 0.35, x_in=CABIN_IN - 0.1, X=X + 0.2)  # the cabin's roof
         if fine():  # the cabin's steel frame showing on its panels: an upright at each window's edge, rails at sill and head
             frames(white, s, "x", X, [DECK_FRONT + 0.35, -9.0, -5.6, -3.4, 0.0, 2.2, 5.6, DECK_BACK - 0.35], zf, zf + h)
             frames(white, s, "y", DECK_FRONT, [CABIN_IN + 0.3, 10.0, 15.0, X - 0.4], zf, zf + h)
@@ -225,6 +265,21 @@ def platform(parts: Parts, n: int, s: int) -> None:
                 sbox(white, s, X - 0.3, X + 0.05, DECK_FRONT + 0.5, DECK_BACK - 0.5, zz, zz + 0.13)
                 sbox(white, s, CABIN_IN + 0.45, X - 0.55, DECK_FRONT - 0.05, DECK_FRONT + 0.3, zz, zz + 0.13)
         handrail(rails, [L(s * 1.0, DECK_FRONT + 0.25, zf), L(s * (CABIN_IN - 0.3), DECK_FRONT + 0.25, zf)])
+        # Round the opening the booster's cable mast stands through with its cooling package (estimated: that the
+        # floor was open there follows from the photographs' heights; no view shows its edge), a rail on each half
+        # so that nobody walks into it: on the half that is cut, along the cut's front and far sides to the
+        # vehicle's hole; on the other, along the split opposite.
+        cut = package_cut(0.25)
+        front = min(y for _, y in cut)
+        if s * sum(x for x, _ in cut) > 0:
+            # (the corner at the front, the one furthest out, and along the far side to 0.45 ft outside the vehicle's hole)
+            (xa, ya), (xb, yb), (xc, _) = cut[0], cut[1], cut[2]
+            reach = NOTCH[n] + 0.45
+            k = next(k / 200 for k in range(201) if math.hypot(xb + (xa - xb) * k / 200, yb + (ya - yb) * k / 200) <= reach)
+            end = (xb + (xa - xb) * k, yb + (ya - yb) * k)
+            handrail(rails, [L(s * 0.3, front, zf), L(xc, front, zf), L(xb, yb, zf), L(*end, zf)])
+        else:
+            handrail(rails, [L(s * 0.3, front, zf), L(s * 0.3, -(NOTCH[n] + 0.25), zf)])
         if s < 0:  # a bench along the back wall, seen through the windows (the hatch side's has the lift's door)
             sbox(fit, s, CABIN_IN + 3.0, X - 0.5, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
         sbox(fit, s, X - 2.4, X - 0.35, DECK_FRONT + 2.0, DECK_FRONT + 4.5, zf, zf + 5.5)  # a cabinet
@@ -238,7 +293,7 @@ def platform(parts: Parts, n: int, s: int) -> None:
         wall(skin, glass, s, "x", X, (DECK_FRONT, DECK_BACK), zf, zf + h, side_w, zf + sill, zf + head)
         wall(skin, glass, s, "y", DECK_FRONT, (0.06, X - 0.25), zf, zf + h, front_w, zf + sill, zf + head)
         back_wall(parts, name, skin, s, 0.06, X, zf, h)
-        notched_half(white, s, zf + h, zf + h + 0.35, holes)
+        notched_half(white, s, zf + h, zf + h + 0.35, inner_edge(n, s, masts=False))
         frames(white, s, "x", X, [DECK_FRONT + 0.35] + [e for w in side_w for e in w] + [DECK_BACK - 0.35], zf, zf + h)
         frames(white, s, "y", DECK_FRONT, [e for w in front_w for e in w] + [X - 0.4], zf, zf + h)
         for zz in (zf + sill - 0.16, zf + head + 0.03):
@@ -253,7 +308,7 @@ def platform(parts: Parts, n: int, s: int) -> None:
         wall(red, glass, s, "x", X, (DECK_FRONT, DECK_BACK), zf, zf + h, [(-8.0, -4.5), (-2.5, 1.0), (3.0, 6.5)], zf + 4.0, zf + 7.5)
         wall(red, glass, s, "y", DECK_FRONT, (0.06, X - 0.25), zf, zf + h, [(5.0, 10.5)], zf + 4.0, zf + 7.5)
         back_wall(parts, name, red, s, 0.06, X, zf, h)
-        notched_half(red, s, zf + h, zf + h + 0.35, [(0.0, NOTCH[4])])  # the roof: the tower's tip stands through it
+        notched_half(red, s, zf + h, zf + h + 0.35, inner_edge(n, s, masts=False))  # the roof: the tower's tip stands through it
         if fine():
             frames(white, s, "x", X, [DECK_FRONT + 0.35, -8.0, -4.5, -2.5, 1.0, 3.0, 6.5, DECK_BACK - 0.35], zf, zf + h)
             frames(white, s, "y", DECK_FRONT, [0.5, 5.0, 10.5, X - 0.4], zf, zf + h)

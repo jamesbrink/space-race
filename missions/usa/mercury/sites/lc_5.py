@@ -7,8 +7,8 @@ the moving parts' pivots, and what differed between the two dates ("What stood w
 The pieces are in ./lc5/, one module each; each is one or more top-level nodes in pad.glb:
   Hardstand        hardstand.py         slabs, painted circle, four rails, scale plate, trench, track
   LaunchPedestal   launcher.py          the launch ring, its legs, deflector, tail plugs and cables
-  UmbilicalMast    masts.py             cable mast No. 2, the capsule's (origin on its foot's hinge)
-  BoosterMast      masts.py             cable mast No. 1, the booster's (origin on its foot's hinge)
+  UmbilicalMast    masts.py             cable mast No. 2, the capsule's (origin on its hinge pin, on the launcher's table)
+  BoosterMast      masts.py             cable mast No. 1, the booster's (origin on its hinge pin, on the launcher's table)
   ServiceStructure service_structure.py the Noble A-frame structure, its platforms in halves, its wheels
   CherryPicker     cherry_picker.py     the mobile aerial tower: truck, outriggers, mast, jib, cab
   GroundEquipment, CameraTowers, Floodlights   ground_equipment.py (from July 1961: the transfer van and its tractor)
@@ -57,6 +57,8 @@ def build(date: str | None = None) -> dict:
     labels.apply(parts)
     parts.build()
     print(sitelib.standing())
+    for node, turn in masts.resting().items():
+        print(f"{node} lies on the pad {turn:.1f} degrees over")
     return pose
 
 

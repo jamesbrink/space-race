@@ -33,12 +33,14 @@ TABLE: list[tuple[str, str, str]] = [
     (
         "UmbilicalMast",
         "Capsule cable mast",
-        "Carried the capsule's umbilical until T-35 s, when a bungee pulled the released mast over. Its form and height are estimated.",
+        "Carried the capsule's umbilical until T-35 s, when a bungee pulled the released mast over. It is hinged on the launcher's "
+        "table and stands close against the vehicle: its place is derived from photographs, its form and height estimated.",
     ),
     (
         "BoosterMast",
         "Booster cable mast",
-        "Carried a plug and liquid-nitrogen cooling to the booster until the boom drop at about T-14 s. Its form and place are estimated.",
+        "Carried a plug and the instrument compartment's cooling package to the booster until the boom drop at about T-14 s. It is "
+        "hinged on the launcher's table: its place is derived from photographs, its form and height estimated.",
     ),
     (
         "ServiceStructure",

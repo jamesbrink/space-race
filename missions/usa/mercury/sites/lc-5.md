@@ -21,7 +21,7 @@ Origin: the launcher's centre on the pad. Feet, as the sources give them.
 
 | Axis | Points | Basis |
 | --- | --- | --- |
-| +X | the side the capsule hatch faces: WNW, about 295° true, uprange, toward the blockhouse | estimated: Figure 7-6 puts the mobile tower on the blockhouse side, and liftoff photograph 6100884 shows its cab there; 285° is the reciprocal of the 105° azimuth |
+| +X | the side the capsule hatch faces: WNW, about 295° true, uprange, toward the blockhouse | estimated: Figure 7-6 puts the mobile tower on the blockhouse side, and liftoff photograph 6100884 shows its cab there; 285° is the reciprocal of the 105° azimuth. Photographs of July 1961 have the vehicle turned about 60° from this, the hatch toward 235° true: "An open question: which way round the vehicle stood", not acted on |
 | +Y | along the rails toward the structure's parking places: SSW, 205° true | derived: OpenStreetMap's rails and pad outline, 25°/205° to within 1° |
 | True north | (0.423, −0.906, 0) in Blender, (0.423, 0, 0.906) in the viewer | derived from the two lines above |
 | Origin | 28.439426° N, 80.573292° W (WGS 84), about 27 m below the ellipsoid (2 m above the sea) | position documented: OpenStreetMap relation 16884747, traced from imagery, a few metres; no surveyed coordinate found. Height estimated: GNIS gives 6 ft, and the sea is about 29 m below the ellipsoid here |
@@ -146,9 +146,9 @@ that place, for the figure that is not yet built.
 | Top-level node | Module | Contains |
 | --- | --- | --- |
 | `Hardstand` | hardstand.py | 200 ft of 20 ft slabs, joints, burn and stain, painted 121 ft circle, four flat-bottomed rails let into channels with a flangeway on the gauge side, scale plate, trench covers, WNW apron and the ramp off its end, track on ballast: sleepers, tie plates, spikes, fishplated joints |
-| `LaunchPedestal` | launcher.py | the launch ring, support pads and fin clamps, four legs with struts and jack feet, four-sided deflector, tail-plug housing, two ground cables: each from a plug under the ring, hanging to the slab, lying in easy curves over the rails, up into a receptacle on its junction box |
-| `UmbilicalMast` | masts.py | cable mast No. 2 (the capsule's), its umbilical to the receptacle, eject line |
-| `BoosterMast` | masts.py | cable mast No. 1 (the booster's), cooling package, boom and boom plug, eject line |
+| `LaunchPedestal` | launcher.py | the launch ring, support pads and fin clamps, four legs with struts and jack feet, four-sided deflector, tail-plug housing, two ground cables: each from a plug under the ring, hanging to the slab, lying in easy curves over the rails, up into a receptacle on its junction box. On the ring's table, from masts.py, the two shoes the cable masts are pinned to |
+| `UmbilicalMast` | masts.py | cable mast No. 2 (the capsule's): its fork, pin and collar on the shoe that is bolted to the launcher's table, the pole to the heat shield, the umbilical strapped up it, the release head, the eject line; `UmbilicalMast_Cable`, the umbilical from the head round the cone to the receptacle |
+| `BoosterMast` | masts.py | cable mast No. 1 (the booster's): fork, pin and collar on its shoe on the launcher's table, the pole, its steady against the booster, the cooling package (a white vessel under its blower's box) with the hose coiled behind it, the hoses over the pole's top to the plate at the booster, the LN2 line, the eject line |
 | `ServiceStructure` | service_structure.py | base, four rail trucks, office (windowed, with a door, a desk and lockers), stairs from the pad to the base's deck, A-frame mast, platform brackets, the lift and its shaft, a railed way from the lift to every level with a ladder well in it, hammerhead crane with red obstruction lamps at its ends; work lamps under level 1 and a room lamp in each enclosed level (see "Lights at night"); child nodes below |
 | `CherryPicker` | cherry_picker.py | International Harvester R-series truck: glazed cab with a bench, pedals, handbrake, gear lever, dash and dials, the driver's door and steering wheel as nodes of their own; on the bed the hydraulic tank, gas bottles and the valve bank; at the tail the control station with its four levers (`CherryPicker_Controls`); child nodes below |
 | `GroundEquipment` | ground_equipment.py | behind the launcher, two open-topped blast screens of white panels (`GroundEquipment_TankScreen`, `…_LoxScreen`: posts, capping rail, foot plates, raking struts behind; the taller with a grey switch box and three floodlights on a post), the orange tank on its two-wheeled cart behind the lower (`…_TankCart`: saddles, straps, filler, relief valve, outlet valve and gauge, hose, drawbar), the LOX topping trailer behind the taller (`…_LoxTrailer`: a white tank with dished heads on a flatbed semi-trailer, tandem, landing legs, vent stack, manway, placards, the fill and topping lines with their valves and coupling at the rear, a gauge board, the hose coiled on the deck), and the chevron drum (`…_ChevronDrum`); four 35 mm cameras on wooden tripods (`GroundEquipment_Camera1..4`); the emergency shower on its cart, a packing case, two DANGER boards, a striped barricade, the white trailer lettered NASA SP-No 1, furnished as a test trailer (racks, a bench of test sets, a desk, stools, its lights `Light_Trailer`), and the M275 tractor coupled to it, two huts on skids and the pickup chained to each, three searchlights on their trailers. From July: the transfer van (`GroundEquipment_TransferVan`: the white van trailer lettered NASA TV No 1, its door steps, its bogie) and its white M275 tractor (`GroundEquipment_VanTractor`, in `GroundEquipment_VanBay`); the shower beside the structure's base; no packing case |
@@ -172,9 +172,9 @@ in the viewer is the Blender axis mapped the same way. Angles are right-handed a
 | `CherryPicker_Outrigger_1..4` | `CherryPicker` | each hinge pin | turns about +X | up beside the body: 1 and 3 (−Y side): −105°; 2 and 4 (+Y side): +105° | before the drive-off | estimated |
 | `CherryPicker_Wheel_1,2`, `CherryPicker_SteerWheel_1,2` | `CherryPicker` | hub centres | roll about their axle (Blender Y, viewer Z); steer about the vertical | — | drive-off | — |
 | `CherryPicker` | — | the rear axle's middle on the ground (71.5, 0, 0) | drives | faces +X (viewer (1, 0)); wheelbase 16.5 ft (5.029 m); tyre radius 1.73 ft (0.527 m) | after liftoff; the liftoff photographs show it still there | estimated |
-| `UmbilicalMast` | — | hinge pin (0, 8, 1) | turns about +X | −88° (top toward +Y, viewer −Z), away from the vehicle: lies on the pad | at the umbilical drop, ≈T−35 s (that it fell then is estimated) | mechanism documented (release valve, bungee); form and angle estimated (S61-02407) |
-| `UmbilicalMast_Cable` | `UmbilicalMast` | where the umbilical leaves the release head, (0, 7.55, 63.2) | turns about +X | +145° as the mast goes over, so that it hangs from the fallen head to the pad | with the mast | estimated: how the ejected umbilical fell is not recorded |
-| `BoosterMast` | — | hinge pin (−3, −13.5, 1) | turns about +X | +88° | "boom drop", ≈T−14 s | event documented; form estimated |
+| `UmbilicalMast` | — | its hinge pin on the launcher's table: 3.55 ft from the axis at 115° round from the hatch, (−1.50, 3.22, 5.8) | turns about the pin, which lies across the way out from the vehicle: Blender (−0.906, −0.423, 0), viewer (−0.906, 0, 0.423) | +94.9°: straight out from the vehicle until its head is 1.5 in off the pad, 66 ft from the launcher's centre | at the umbilical drop, T−35 s (that the mast went then: MR-3's photograph at ignition has it down) | mechanism documented (release valve, bungee); that it is hinged on the table and falls straight out: documented (S61-02407; FHSU items 118, 134); where round the vehicle: derived; the angle derived from estimated lengths (`masts.resting`) |
+| `UmbilicalMast_Cable` | `UmbilicalMast` | where the umbilical leaves the release head, (−1.42, 3.04, 66.4) | turns about the same axis | +49° more as the mast goes over, so that it lies from the fallen head on the pad, 3 in off it | with the mast | estimated: how the ejected umbilical fell is not recorded |
+| `BoosterMast` | — | its hinge pin on the launcher's table: 3.7 ft from the axis at 241°, beside the fin at 225°, (−1.79, −3.24, 5.8) | turns about its pin: Blender (0.875, −0.485, 0), viewer (0.875, 0, 0.485) | +93.7°: straight out until the coiled hose is 1.7 in off the pad, 56 ft from the launcher's centre | "boom drop", ≈T−14 s (S61-02407 has it a third of the way over as the engine lights) | event documented; hinged on the table and falling straight out: documented (S61-02407; FHSU items 118, 126, 134); where round the vehicle: derived; the angle derived from estimated lengths |
 | `CherryPicker_Controls_Mast`, `_Jib`, `_Cab`, `_Outriggers` | `CherryPicker_Controls` | each lever's pivot, (63.15, 1.6 to 2.8, 4.45), at the tail on the driver's side | swings about the node's Z (extras `lever`, `function`, `swing` 25, `axis` "z") | 25° either way, springing back to the middle | while the function it names is worked by hand (types.ts: `Function.lever`) | a station at the rear of the truck: documented (TM X-53107 7.3.3.1: "the controls ... at the rear of the transporter"); four levers, their order and which worked what: estimated |
 | `CherryPicker_Door_1` | `CherryPicker` | the driver's door's front edge at its foot, truck (15.45, 3.2, 3.6) | `door`, `swing` −70° about the vertical | 70° | opened on foot | estimated |
 | `GroundEquipment_Shower`, `GroundEquipment_Case` | `GroundEquipment` | their middles on the pad | slide | up the road toward pad 6, about 150 ft | 0.02 to 0.11 and 0.03 to 0.12 (06:03 to 06:31) | estimated throughout: nothing records that they left, or when |
@@ -198,9 +198,14 @@ Notes:
 - The platform halves clear the vehicle when parted: their inner edges are at ±4.56 ft against a
   booster radius of 2.92 ft and a capsule radius of 3.10 ft.
 - Built pose: the clearance check passes at detail 1.0, 0.6 and 0.3.
-- The vehicle's geometry was tested against the pad in Blender (BVH overlap) in four poses:
-  service; T−55; liftoff; and standby with the structure closed. Only the umbilical touches the
-  capsule, at its receptacle.
+- Each flight's vehicle was tested against its pad in Blender (BVH overlap, every mesh of the one against every
+  mesh of the other) in November 2026, with the masts where they now stand: as built, with the periscope's door
+  shut and open; the platforms parting in ten steps; the structure rolling away in half-foot steps to 40 ft and at
+  110 and 173 ft; and each mast falling in twenty steps with the structure at its launch position, against the
+  vehicle and against everything else on the pad. Nothing crosses anything but each mast's pin, which is through
+  its lug on the launcher. Nothing of the pad touches the vehicle: the umbilical stops 17 mm from the capsule at the
+  receptacle, the booster's steady and its plug plate 18 mm from the skin, the capsule's mast 26 mm from the
+  vehicle at its nearest. Fallen, the capsule's mast is 1.5 in off the pad at its lowest and the booster's 1.7 in.
 
 ## Dimensions
 
@@ -221,15 +226,16 @@ Notes:
 | Service structure height | 135 ft to the crane's top rail | derived | LC-26 twin "111 feet 9 inches to the top rail" (museum) + "about 23 feet" taller mast (Noble); COE: "towered 140 feet above the launch pad" (NHL p. 3) |
 | Mast | A-frame, legs 3 ft square, 21 ft apart at the base, 6 ft at the head | estimated | S61-03158, Hammack Figs 22 and 23, Figure 7-7 |
 | Base | girders over each rail pair, 48 ft long; four rail trucks of two axles | estimated (four trucks: museum) | Noble; LC-26 blueprint photograph |
-| Level floors | L1 45.1, L2 53.8, L3 64.6 (the white room), L4 75.8 ft | estimated | L3 at the capsule's heat-shield plane (vehicle stations); spacing scaled off Hammack Fig. 22 (L4 +11.7, L2 −10.4, L1 −19.2 ft) and Figure 7-7 |
+| Level floors | L1 45.6, L2 54.3, L3 64.6 (the white room), L4 76.3 ft | estimated | L3 0.6 ft under the capsule's heat-shield plane (vehicle stations); spacing scaled off Hammack Fig. 22 (L4 +11.7, L2 −10.3, L1 −19.0 ft) and Figure 7-7. FHSU item 468 (19 July 1961, the structure rolled back and parted) gives the same spacing to half a foot: L4 to L3 270 px, L3 to L2 235, L2 to L1 185, which with 11.7 ft for the first are 10.2 and 8.0 ft |
 | Platform widths | L1 37 ft, L2 35 ft, white room and L4 27 ft; 22 ft deep | estimated | Hammack Fig. 22: white room 4.6 to 5.5 vehicle diameters; L1 and L2 1.43 and 1.37 times the white room |
 | White room | 10.4 ft high, glazed blue-green panels in a white frame | estimated (built Feb to May 1961: documented) | TM X-53107 7.5.1.2; colour from 6100884 |
-| Platform cut-outs | L1, L2: 3.6 ft radius (booster 2.92); L3: 3.7 (capsule 3.10); L4: 2.4 (tower) | estimated | clears the vehicle by 0.6 to 0.7 ft |
+| Platform cut-outs | L1, L2: 3.6 ft radius (booster 2.92); L3: 3.7 (capsule 3.10); L4: 2.4 (tower). In the half on the side away from the hatch, levels 1 to 3 are cut back further round each cable mast that stands through them, from the mast to the split, each with 0.3 ft to spare: a round bite 0.7 ft in radius for the capsule's pole and its umbilical (levels 1, 2, 3), one of 0.57 ft for the booster's pole (level 1), and on level 2 the strip 3.5 by 2.0 ft that the booster's pole, its cooling package and its coiled hose cover. That strip's front and far sides are railed, and so is the other half's edge opposite it | estimated | clears the vehicle by 0.6 to 0.7 ft. That the floors were cut round the masts follows from where the photographs put the masts; no view shows a closed platform's plan |
 | Mobile aerial tower | reach 125 ft | documented | TM X-53107 7.3.3.1 |
 | Truck position | tail 64 ft from the launcher on +X | documented 65 ft (secondary) | *This New Ocean* p. 329 (MR-BD stand-in); Figure 7-6 ≈64 ft |
 | Mast, jib | 70 ft, 72 ft | estimated | sized so the jib alone puts the cab on the pad beside the truck, as at liftoff |
-| Capsule cable mast | 61 ft tube, 8 in tapering to 5 in, 8 ft from the axis, on +Y | estimated | S63-02651, Hammack Fig. 23 (its form). Its place is derived from two estimates: it stands in the split the platforms part along (no mast could stand in a platform's half and let it slide out) on the side of the capsule's umbilical receptacle, which is under the periscope's lens, 135° round from the hatch (photographs of the flown capsule: Freedom 7's spacecraft.md, "Round the cone"); +Y is the end of the split 45° from it. It stood on −Y, under a receptacle taken to be there, until November 2026. No photograph read shows the mast against the hatch side |
-| Capsule umbilical | from the mast's head along the split to the vehicle, up its side through level 3's deck past the shield's rim, round the cone and under the periscope's open door to the receptacle at station 31.2 | estimated | the colour pad photograph of 21 April 1961 has the umbilical's arm beside UNITED STATES, on the periscope's side; the route is ours |
+| Capsule cable mast (No. 2) | on the launcher's table 3.55 ft from the vehicle's axis, 115° round from the hatch toward the structure's side: 20° from the periscope, on the flag's side of it. A 3.8 in tube from its hinge (5.8 ft up) to 65.6 ft, 0.45 ft over the heat shield's plane, and a release head 0.8 ft tall on its top: 66.5 ft | place **derived** (3.4 to 3.8 ft, 110° to 119°: see "The two cable masts"); the tube's size, the height and the head estimated | FHSU items 466 and 468 (19 July 1961): the pole 8 px across where the booster's 70 in is 136; its top 0.9 and 1.3 ft over the shield. It stood on the hardstand 8 ft behind the vehicle until November 2026 |
+| Capsule umbilical | strapped up the mast's side to the release head; from the head it rises beside the heat shield's rim and goes up round the cone, under the periscope's open door, to the receptacle at station 31.2 (No. 7) or 32.5 (No. 11), 1.4 ft above the head: about 3 ft of it, 3.1 in across | estimated | item 466 shows a dark arm from the pole's top to the periscope's door, between the flag and UNITED STATES; the colour pad photograph of 21 April 1961 has the umbilical's arm on the same side of No. 7; Shepard, through the periscope: "I saw the head of the boom start to drop away" (Postlaunch Report, 7.1) |
+| Booster cable mast (No. 1) | on the launcher's table 3.7 ft from the axis at 241°, 16° past the fin at 225°. A 6.5 in tube from its hinge to 57.8 ft, 5.5 ft above the foot of the booster's chequered section (station 561.24, 52.27 ft); steadied against the skin by two struts and a shoe just under that foot; outboard of the pole, from 0.4 ft under the foot to 2.2 ft over it, the cooling package, 1.2 ft square: a white round-bottomed vessel under a dark box; a hose coiled behind it to 2.6 ft from the pole; from the package up the pole, over its top in a saddle and in to a plate at the booster 3.8 to 4.6 ft up the chequers, two 3 in air ducts and the boom plug's cable | place **derived** (3.6 to 3.8 ft, 235° to 245°; built at 241°, not the 239.7° of the fit, to clear the launcher's fin clamp as modelled); every size and height estimated | items 466, 468, 333: the pole 13 px across (468); its top 4.7 ft (466) and 6.1 ft (333) over the foot of the chequers; the package −0.5 to +2.2 ft (466), −0.2 to +2.2 (333); the hoses' arch to 5.0 and 6.5 ft and into the booster 2.7 to 4.8 ft up. What it carried: TM X-53107 4.2.3 ("a cooling package mounted on a cable mast": "the coolant container, blower, check valve, vent valve, control box"), T−380 ("Load LN2 boom tank"), T−530 ("booster boom plug"). S61-02407 shows the same head on MR-3. It stood on the hardstand at (−3, −13.5) with a boom at 49.3 ft until November 2026 |
 | Floodlights | 40 ft timber poles, six, three lamps each | estimated | FHSU F16_015 and F16_017 (July 1961): timber poles with two or three round floods on a crossarm, standing just off the slab |
 | Apron ramp | 14 ft long, down to the road | estimated | the model's pad stands 0.12 m above the viewer's ground |
 | Emergency shower | 3.2 ft square, 8.6 ft tall, on a cart | estimated (that it stood at the pad's edge: documented) | GPN-2000-001006 (MR-3, cherry picker at the capsule); KSC-61-4457 (2 May 1961) |
@@ -592,13 +598,15 @@ the roof's telemetry helix (F16_015), the striped barricade, the floodlights' ti
 What the July state builds differently, and what it only says differently. Everything else in both
 models is built the same for both dates; where that rests on July's photographs it was assumed for
 May, and where it rests on May's it is **assumed unchanged for July** (estimated): the hardstand, the
-launcher, the two cable masts, the service structure, the blast screens and their tanks (seen again
+launcher, the service structure, the blast screens and their tanks (seen again
 at MR-4's liftoff: S63-02651, FHSU items 331 and 339), the camera towers, the tripods, the trailer
 SP-No 1, the three searchlights' places, the track, road, trenches, blockhouse and outbuildings.
+The two cable masts go the other way: their places are July's measurement, built for May too, which
+MR-3's photograph at ignition agrees with as far as one view can ("The two cable masts", below).
 
 | Thing | 5 May | 21 July | Confidence | Source |
 | --- | --- | --- | --- | --- |
-| Capsule's umbilical | ends at No. 7's receptacle, station 31.2 | ends at No. 11's, station 32.5: 33 mm further up the cone. Tested in Blender against MR-4's vehicle with the periscope's door shut and open: no mesh of the pad crosses one of the vehicle, and the umbilical's end is 26 mm from the receptacle | derived, from two estimated stations | the two capsules' spacecraft.md |
+| Capsule's umbilical | ends at No. 7's receptacle, station 31.2 | ends at No. 11's, station 32.5: 33 mm further up the cone. Tested in Blender against each flight's vehicle with the periscope's door shut and open: no mesh of the pad crosses one of the vehicle, and the umbilical stops 17 mm from the capsule | derived, from two estimated stations | the two capsules' spacecraft.md |
 | White room and the cab's place at the hatch | built for a hatch on +X | the same, unchanged: both capsules now stand with the hatch on +X (their spacecraft.md), so the 45° the flight's README once asked for is not there to build | derived | the vehicles' scripts (`mercury_capsule.stand`) |
 | Emergency shower | at the pad's north edge from the start | beside the structure's base until T−85, then to the north edge | documented (its place in July, and T−85); estimated (where it was stowed) | above |
 | Packing case | beside the shower | not built | estimated | above |
@@ -622,16 +630,109 @@ enclosure put round the escape tower on 20 July (items 499, 460); the M-113 resc
 7 July: lettered FB-USAIS X1273); a 1961 Ford sedan and a NASA pickup on the pad (items 462, 468);
 a small caravan at the pad's west edge (item 333); netting hung on the cherry picker's cab (items
 333, 443, 445); a scaffold tower with floodlights at the pad's edge (items 466, 475, 544), which may
-be the scaffold stair of the place's `Yard` seen from the pad.
+be the scaffold stair of the place's `Yard` seen from the pad; four white tubes about 8 ft long and
+18 in across, each standing in the pad about 7 ft from the launcher's centre and leaning away from it
+(items 118, 126, 134, 333, 466, 468; one shows in S61-02407, so they were there in May: what they
+were is not recorded); the trestle the fallen capsule's mast lay on, and the cord that pulled it over
+(items 118, 333).
 
-**The two cable masts are not where July's photographs have them.** With the structure rolled back
-(FHSU items 468 and 466, 19 July; 333, 21 July) two slender poles stand close against the vehicle: one
-on the side toward pad 6 (model −Y), a little to the hatch side of the axis, about 8 ft out, its arm
-and a bundle of hoses at the foot of the booster's chequered band, 54 to 57 ft up; the other at the
-vehicle's limb on the side away from the hatch, reaching the capsule's heat shield. The model has the
-capsule's mast at (0, +8) and the booster's at (−3, −13.5) with its boom at 49.3 ft. That would put
-the booster's mast in the platforms' split on −Y and its plug 5 to 8 ft higher. Not changed here: it
-is not a difference between the two dates, and moving the masts would change May's pad.
+### The two cable masts
+
+Until November 2026 the capsule's mast stood on the hardstand 8 ft behind the vehicle and the booster's 14 ft in
+front of it with a boom at 49.3 ft, both placed before July's photographs were read. They now stand where the
+photographs put them: **hinged on the launcher's table, close against the vehicle**. They are placed round the
+vehicle (`lc5/site.py`, `MASTS`: degrees from the hatch's middle toward the structure's side, as the capsules' own
+azimuths are), so that if the vehicle is ever turned on the pad (the next section) they turn with it and the
+umbilical still meets its receptacle.
+
+**Where.** Three photographs show the vehicle with the structure rolled back and both masts standing: FHSU items 466
+and 468 (19 July 1961) and 333 (21 July). In each the camera's place round the vehicle is read off the vehicle's own
+markings (the capsule's paint as the flight's spacecraft.md has it; the booster's fins at 45° + 90°k, each with an
+MR-8 plate on its meridian), and each pole's distance to the left or right of the vehicle's axis is measured against
+the booster's 70 in body:
+
+| Photograph | Camera, degrees round from the hatch | Read from | Booster's mast | Capsule's mast |
+| --- | --- | --- | --- | --- |
+| 466 | 151 ± 4 | the flag (106°) 45° left of centre; UNITED STATES (178°) beginning at the centre; the periscope's door (135°) 16° left; an MR-8 plate 15° left | 3.7 ft right, at the limb | 2.1 ft left, in front of the vehicle |
+| 468 | 232 ± 5 | UNITED STATES' right end 26° left of centre and its left end at the limb; a fin edge-on 3° left; the plate 11.5° left | 0.49 ft right, in front | 3.15 ft left, outside the limb |
+| 333 | 312.5 ± 3 | LIBERTY BELL 7 (315°) 3° right of centre; a fin edge-on 2° right; the plate 3° right | 3.5 ft left, outside the limb | not seen: behind the vehicle |
+
+A point p is seen p · (−sin a, cos a) to the right of the axis from a camera at a. That is linear in p, so the three
+readings of the booster's mast and the two of the capsule's are solved by least squares: the booster's at 239.7° and
+3.67 ft, the capsule's at 114.7° and 3.55 ft. Moving the cameras through their doubt moves the booster's between 235°
+and 245° and 3.6 to 3.8 ft, and the capsule's between 110° and 119° and 3.4 to 3.8 ft. Both are **derived**. The
+booster's is built at 241°, inside that, so that its foot clears the launcher's fin clamp as modelled.
+
+Not used in the fit, and agreeing with it: in 468 the booster's pole stands 0.85 ft to the right of the fin that is
+edge-on to the camera, which at 3.7 ft is 11° to 15° past that fin; in FHSU item 241 (the structure round the vehicle
+on 19 July, its platforms parted, seen from in front; camera 191° round from the hatch by the capsule's UNITED
+STATES) the booster's head is 3.0 ft right of the axis, where 241° and 3.7 ft put it 2.8, and a thin pole stands at
+the left limb, where the capsule's would be 3.4 ft left; in 333 a thin line slants from behind the vehicle, at about
+the foot of the chequers, to the pad some 16 ft to the right, which is where a cord from the hidden capsule's mast
+to an anchor 50 ft out along its fall would be seen (the count's "capsule mast bunge cord", connected at T−45); and
+through the periscope, 20° round from where the capsule's mast is put, Shepard "saw the head of the boom start to
+drop away" (Postlaunch Report, 7.1).
+
+**Hinged on the launcher, falling straight out**: documented, by photographs. S61-02407 (MR-3 as the engine lights)
+has the capsule's mast lying on the pad from the table and the booster's a third of the way over, each in a plane
+through the vehicle's axis. FHSU items 118, 126 and 134 ("Post-Launch Damage to Launch Table and Boom", dated July
+1961 and 21 July by the catalogue: the launcher after MR-4 had gone) show both lying out from the table: the
+booster's foot forked over a lug on the table beside a fin's support, its head and cooling package on the pad; the
+capsule's the thinner of the two, its outer end on a trestle. The count has "Cable masts erected" with the booster's
+erection on the launcher (TM X-53107, L-25).
+
+**May and July.** Nothing distinguishes the two dates. S61-02407 has both masts on MR-3's launcher in the same order
+round the fins (the capsule's between two fins, the booster's just past the next fin round) and the same head on the
+booster's; one view cannot place them to better than about 15°, and within that they are where July's are. One
+arrangement is built for both dates, and it is July's measurement.
+
+**What follows for the structure.** Both masts stand through level 1, the booster's cooling package through level 2's
+floor and the capsule's pole through the white room's, so the halves on that side are cut back round them ("Platform
+cut-outs", above), and level 2's opening is railed. Level heights were checked against item 468 and left as they
+were. That the real floors were cut so is not shown by any photograph read.
+
+Estimated, not measured: the tubes' sizes beyond the poles' widths in the photographs; the hinge's parts; that the
+booster's steady is two struts and a shoe; the hoses' number and sizes; the release head's form; that each stops a
+finger's breadth off the pad.
+
+### An open question: which way round the vehicle stood
+
+The site's frame gives the hatch +X, the side the cherry picker's truck stands on, square to the rails ("The site's
+frame": estimated). The photographs that placed the masts say the vehicle did not stand so in July 1961. With the
+hatch on +X and each camera where the capsule's paint puts it, the model has the truck and the structure on the wrong
+side of the vehicle in every one:
+
+| Photograph | Camera round the vehicle | Seen | With the hatch on +X the model has |
+| --- | --- | --- | --- |
+| 466 | 151° | the truck to the right of the vehicle and beyond it, its jib nearly end-on | the truck to the left and beyond |
+| 468 | 232° | the structure, rolled back along the rails, to the right and beyond; the truck further right, about as far off as the vehicle | the structure to the left and nearer |
+| 333 | 312.5° | the truck to the left and nearer, seen from in front | the truck to the right and beyond |
+
+All of them come right if the vehicle is turned from where the model stands it, anticlockwise seen from above (from
++X toward +Y), by about 60°:
+
+| From | Turn |
+| --- | --- |
+| FHSU item 241 (19 July: the structure round the vehicle, platforms parted, seen from in front). UNITED STATES on the capsule is 13° left of centre: the camera is 191° round from the hatch. The gap between the parted halves, whose front edges are 12 ft nearer than the vehicle, stands 2.8 ft right of the vehicle's axis: the camera is about 12° left of the track's line, 258° in the site's frame | 67° ± 7° |
+| 468: the structure's way back (+Y) is 150° to 160° round from the camera, so 22° to 32° round from the hatch | 58° to 68° |
+| 466 and 468: the truck is 297° to 322° round from the hatch (if it stood on +X) | 38° to 63° |
+| 333: the truck is about 30° left of the line of sight, so about 282° round from the hatch (two days later: it may have been parked afresh) | about 78° |
+| FHSU item 331 (MR-4 lifting off, seen from 103° to 113° in the site's frame: pad 6's gantry behind and to the right, the cherry picker to the left): a UNITED STATES on the booster faces the camera, and the booster's are on the fins' meridians at 45° and 225° (redstone-mrlv.md) | 58° to 68° |
+| FHSU item 134 (after the launch, looking along the rails at the structure): the booster's mast lies out from the launcher toward the camera and to the right, between −Y and +X; it fell along 241° round from the hatch | 30° to 120° |
+| The periscope facing down range, where it must be to look at the Earth once the vehicle has pitched over: it is 135° round from the hatch, and the flights' azimuths, 105° true (MR-3) and 100° (MR-4), are 190° and 195° in the site's frame | 55° and 60° |
+
+So the hatch faced not the truck (295° true) but about 235° true, between the truck and the structure's way back along
+the rails, with the periscope down range to within about 10°. This is **estimated**: it comes from photographs read
+for something else, each line is good to about 10°, and the truck's place on the pad on those days is itself not
+measured. It answers what Freedom 7's spacecraft.md asks ("An open question: which way round the capsule stood": the
+model's stance leaves the periscope 55° off the flight's azimuth).
+
+**Not changed.** Turning the vehicle turns the white room's doorway, the cab at the hatch, the pilot's walk and the
+simulator's stance with it, and is to be decided with this in front of whoever decides. The masts are placed round
+the vehicle, so they are right either way round; what would change with a turn is which platform halves are cut for
+them. What would settle it: MR-3's and MR-4's photographs of the white room with the capsule in it (GPN-2000-001012;
+NASA 61-MR4-45; FHSU items 308 to 314, "Capsule Checkout on Pad 5 - Level 3"), which show the hatch against the
+structure; TM X-53107's Figure 7-6 for the truck.
 
 ## Getting about on foot
 
@@ -646,6 +747,7 @@ structure is built and labelled estimated.
 | --- | --- | --- |
 | Service structure: the lift | **an open cage of mesh panels**, boarded from the pad by two steps on the hatch side, outboard of the base. It rides the outboard face of that side's leg (`ServiceStructure_Lift`, origin at its floor's middle, built at the pad). Stops: the pad, levels 1 to 4, and the landing under the crane, at 0, 13.19, 15.84, 18.98, 22.55 and 33.44 m above the pad stop, each 0.2 to 0.7 m further in than the last as the leg leans | **documented**: that there were lifts ("elevators on each side", Noble's plans; "Elevators traveled up and down the mast, with stops at various work-levels, to a 15-ton hammerhead crane", Corps of Engineers history, both in *A Noble Endeavor*); that Shepard used one (NASA caption 71P-0270: "makes his way from the elevator to the cleanroom"; *Results* p. 77: "0515 ascend gantry"); the car, its mesh, its canopy and that it was boarded from the pad (FHSU F19_051, MR-4's egress exercise; NASA 61-MR4-45). **Estimated**: that it rode the leg's face (no photograph shows its guides), its size (4 by 2.9 by 7.2 ft), where it stopped, which side Shepard rode |
 | …from the lift into each level | level 1: straight on to the open deck. Levels 2, 3 (the white room) and 4: a door in the level's back wall where the car stops (`…Platform2_Right_LiftDoor`, `…Platform3_Right_LiftDoor`, `…Platform4_Right_LiftDoor`), opening inward | GPN-2000-001012 shows Shepard stepping through a narrow doorway into the white room: documented that there was one; its place estimated |
+| …round the opening in level 2's floor | where the booster's cable mast stands through it with its cooling package: a rail along the opening's front and far sides on the half that is cut, and along the other half's edge opposite | estimated: the opening follows from the photographs' heights (lc-5.md, "The two cable masts"); no view shows its edge or a rail |
 | …between the two halves of a level | a deck between the legs behind the vehicle, at every level | at level 1: documented (a catwalk with chain rails joins the halves; the 21 April egress-test photograph, 61-MR4-65). At the other levels: estimated |
 | …to the base's deck | stairs from the pad at the outboard end of the base on the hatch side, descending away from the vehicle: 17 risers of 7.1 in, going 11 in, 3 ft between the rails | documented (61-MR4-45; FHSU F19_004) |
 | …up without the lift | **ladders up the hatch side's leg in stages**, each run from one small railed landing behind the leg to the next: base deck to level 1 (36 ft), then to levels 2, 3, 4 and the landing under the crane at 112 ft | ladders in stages on the legs' outboard and rear faces with small landings: documented (F19_004, 61-MR4-45: an uncaged ladder from the deck to the lowest platform). Which face, the landings' sizes and that they stand at the levels: estimated. The real top run had safety hoops; none is built |
@@ -847,7 +949,8 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   - mast lengths and positions;
   - the "edge of pad" distance.
 - The hatch's bearing (WNW) is inferred from the cherry picker's side in Figure 7-6 and in one
-  liftoff photograph.
+  liftoff photograph. **July's photographs say the vehicle stood turned about 60° from that**, the
+  hatch toward 235° true: "An open question: which way round the vehicle stood". Not changed.
 - The platforms are drawn as sliding apart sideways. The photographs show them parted, not how they
   moved: hinge or slide is not known.
 - The LC-26 blueprint photograph shows the closed platform plan as a tapering six-sided enclosure.
@@ -861,8 +964,14 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
   beside the +X +Y fin. The tail-plug cover flaps (MR-2) are not modelled.
 - The flame deflector's size and shape are guessed: a pyramid, from "four-sided" (SP-4204,
   secondary).
-- Cable mast No. 1's form, height and place are estimated, and so is its boom at the booster.
-  Which photographed pole is which mast is not established. The bungee cords are not modelled.
+- The cable masts are placed from photographs to about 0.3 ft and 5°, and everything else about them is estimated
+  ("The two cable masts"). Each is one rigid piece: the booster's hoses stay as they were plugged in, where S61-02407
+  has them hanging in a loop from the pole's top as it falls; the capsule's umbilical is one stiff piece that swings
+  over the head. The bungee cord, its anchor and the trestle the capsule's mast came down on are not built, and both
+  masts stop just clear of the pad instead. After MR-4 the booster's pole lay bent a third of the way along (FHSU item
+  118, "Post-Launch Damage"): it is built straight, as S61-02407 has it. The four white tubes that stood round the
+  launcher, between which the masts fell, are not built. On level 2 the floor's opening for the booster's cooling
+  package is the strip it covers in plan, railed: ours, to keep the level walkable.
 - The cherry picker's make is assumed from photographs. Its mast and jib lengths are chosen to
   reproduce the liftoff pose (cab on the pad on the vehicle's side), not measured. The stowed pose
   and the drive-off are not documented: the liftoff photographs show the truck still on the pad

@@ -37,7 +37,7 @@ pressure vessel, every station and motor. This file is what was No. 11's own.
 | Antenna canister, escape tower, retropack | | no difference found in anything read | | Hammack and Heberlig's Figures 2 and 17 (October 1961) are the dimensions both models use |
 | Paint | FREEDOM 7; UNITED STATES; flags | LIBERTY BELL 7 under the window; a crack; UNITED STATES; a flag | documented by photographs; every place estimated | see "Paint" |
 | Booster | MR-7 | MR-8: 102 lb more damping compound in the instrument compartment; flown on 100° instead of 102° | documented | TM X-53107, 4.2.1 and 8.3.2 |
-| Pilot's suit | | wrist bearing rings, a convex chest mirror, a new parachute harness, new microphones, a urine reservoir | documented | *This New Ocean*, p. 368 |
+| Pilot's suit | | quick-removal wrist rings on ball bearings, a 5 in convex chest mirror, a new parachute harness, new microphones, a urine reservoir | documented | *This New Ocean*, p. 368; the MR-4 press kit (13 July 1961); NASA's caption to 61-MR4-79. Each as modelled on the standing figure: [mark-iv-suit.md](../../crew/mark-iv-suit.md), "5 May and 21 July 1961" |
 
 ## The window
 
@@ -160,8 +160,10 @@ The same GLB holds the launch vehicle's five nodes: [redstone-mrlv.md](../../veh
 **On the pad** (sites/lc-5.md, "5 May and 21 July 1961"): the capsule's umbilical is built to this
 capsule's receptacle (station 32.5; Freedom 7's is at 31.2), and the white room and the cherry
 picker's cab meet its hatch as they met Freedom 7's, both capsules standing with the hatch on +X.
-The pad's meshes were tested against this vehicle's in Blender with the periscope's door shut and
-open: none cross, and the umbilical's end is 26 mm from the receptacle.
+The umbilical comes from the capsule's cable mast, which stands on the launcher 20° round from the
+periscope on the flag's side, as FHSU item 466 shows it (lc-5.md, "The two cable masts"). The pad's
+meshes were tested against this vehicle's in Blender with the periscope's door shut and open, the
+masts standing and falling: none cross, and the umbilical stops 17 mm from the capsule.
 
 Settled in November 2026 from photographs of Freedom 7 as it is kept (its spacecraft.md, "Round the cone"): where the
 hatch was on both capsules (315°, as here: Freedom 7's model moved to it, and both capsules now stand with the hatch
@@ -189,9 +191,11 @@ capsule's stays 41.5 from its own photographs).
   only from capsule 7 as it is kept today is left out: the coiled cord on the left wall, the wiring
   down from the fuse panel, and the camera beside the pilot's head (the chest mirror was there so
   that one camera would do).
-- **The pilot's suit is Shepard's with the name changed and the mirror added.** The wrist bearing
-  rings, the new parachute harness and the new microphones are not modelled. There is no model of
-  Grissom standing: the gallery's figure for scale is an outline.
+- **The pilot in the cabin is Shepard's figure with the name changed and the mirror added.** The
+  wrist rings, the parachute harness and the new microphones are not on him. They are on Grissom
+  standing (the flight's crew model), whose suit can be seated here in his place: mark-iv-suit.md,
+  "On the couch". The mirror itself was 5 in across (NASA's caption to 61-MR4-79) in a rim of about
+  6 in: the cabin's is 5.2 in across its rim.
 - **The panel's faces are capsule 7's**, and the instrument with two needles is blank.
 - **The rate command system is not modelled** beyond its switch and handle on the console.
 - **The periscope's door opens to an angle of ours** (105°), each motion takes four seconds, and the objective comes out

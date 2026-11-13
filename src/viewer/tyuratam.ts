@@ -23,7 +23,14 @@ import { Land, type LandSpec, type Palette } from './land';
 const RIM: [number, number][] = [
   [-18, 59],
   [-15, 65.5],
-  [-6, 76],
+  // (the cut that ran north from the rim in 1959, filled today: PIC/JR-2/60 Figure 5)
+  [-13.5, 78],
+  [-10, 93],
+  [-4.5, 108],
+  [0, 114],
+  [3.5, 108],
+  [5, 96],
+  [4.5, 82],
   [18, 89.5],
   [29.5, 92.5],
   [44, 91],
@@ -54,6 +61,13 @@ const RIM: [number, number][] = [
  * from the west, on which the erector brought the rocket (way 37547653, its last 2.6 km), and the four spurs beside it
  * (ways 172441851, 172441854, 172441876, 172441879). HTA/JR-4/58 counts five spurs onto the pad in August 1957. The
  * other lines on today's map round the site are not drawn: when each was laid is not known to us.
+ *
+ * Near the platform they are not quite the map's. The map has its centre track 3.0 m north of the middle of its outline
+ * of the pad, which is this frame's origin; the rocket's axis was on that track, so the track is brought onto the axis
+ * over its last 160 m (the erector is drawn off along it), and the three beside it are brought, over their last 60 m,
+ * to where the CIA's plan of March 1961 has them on the platform (PIC/JR-2/61 Figure 1: sites/site1/deck.py, which
+ * lays the rails there), each within 1.5 m of the map's place measured from its own centre track. Their west ends are
+ * moved to stay on the lines they branch from. Keep in step with sites/site1/place.py (CENTRE_TRACK, SPURS).
  */
 const RAILS: [number, number][][] = [
   [
@@ -70,23 +84,27 @@ const RAILS: [number, number][][] = [
     [-1492.0, 7.9],
     [-1464.7, 9.8],
     [-1400.7, 10.6],
-    [-25.8, 3.0],
+    [-160.0, 0.0],
+    [-25.8, 0.0],
   ],
   [
-    [-33.9, 17.6],
-    [-212.6, 16.9],
+    [15.0, 13.564],
+    [-60.0, 13.564],
+    [-212.6, 15.2],
   ],
   [
-    [-204.5, -5.5],
-    [-26.5, -6.4],
+    [-204.5, -5.9],
+    [-60.0, -8.321],
+    [-26.8, -8.321],
   ],
   [
-    [13.6, -10.8],
+    [10.9, -12.375],
+    [-60.0, -12.375],
     [-155.4, -10.1],
-    [-286.2, 3.7],
+    [-286.2, 1.1],
   ],
   [
-    [-330.6, 4.7],
+    [-330.6, 1.5],
     [-121.8, 25.7],
     [-39.8, 28.9],
   ],
@@ -162,6 +180,11 @@ const ROADS: [number, number][][] = [
   [
     [-82.4, 230.3],
     [-92.0, 230.3],
+  ],
+  // (off the road round the pit's tip onto the road down into the pit, which the pit's own model carries on: platform.py)
+  [
+    [242.4, 0.0],
+    [235.0, 0.0],
   ],
 ];
 const ROAD_SEGMENTS: [number, number, number, number][] = ROADS.flatMap((line) =>
@@ -312,8 +335,8 @@ const OVERLAP = 3;
 
 /**
  * The site's own marks: the roads (concrete laid in slabs, a joint across every six metres and one down the middle), the
- * tracks' beds (grey stone ballast, sleepers, two rails at the Soviet gauge of 1,520 mm), and the hole where the flame
- * pit is. The rails are paint, not rails: a simplification (site-1.md).
+ * tracks' beds (grey stone ballast, sleepers, two rails at the Soviet gauge, 1,524 mm in 1961), and the hole where the flame
+ * pit is. The rails are paint, not rails, except where they come up to the platform (the place's model: deck.py).
  */
 const PAINT = /* glsl */ `
   void paint(vec2 p, vec4 A, vec4 B, inout Ground g) {

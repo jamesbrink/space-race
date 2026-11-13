@@ -17,10 +17,14 @@ a hatch he could blow off himself.
 | Duration | 15 min 37 s |
 | Recovery | the pilot by helicopter to USS *Randolph*; the spacecraft sank |
 
-**In this repo: the vehicle, in the gallery and at its launch site.** The spacecraft and its launch
-vehicle are modelled and can be turned, taken apart and cut open, and stand on Launch Complex 5 as it
-stood that morning, from the pilot going aboard at 03:58 to the pad standing empty. The pilot
-standing and the flight itself are not built: see "What is not built" below.
+**In this repo: the vehicle, in the gallery and at its launch site, and its pilot.** The spacecraft
+and its launch vehicle are modelled and can be turned, taken apart and cut open, and stand on Launch
+Complex 5 as it stood that morning, from the pilot going aboard at 03:58 to the pad standing empty.
+Grissom stands on the hardstand where NASA's photograph 61-MR4-83 has him, walking to the lift with
+his ventilator in his right hand, in the suit of that morning
+([mark-iv-suit.md](../../crew/mark-iv-suit.md), "5 May and 21 July 1961": the wrist rings, the chest
+mirror, the parachute harness, the new microphones, and his own legs), and can be walked as. The
+flight itself is not built: see "What is not built" below.
 
 ## What happened
 
@@ -119,13 +123,15 @@ sky, which is wrong for it; the Sun, Moon and planets are its own.
 differs from Freedom 7's morning and how sure each difference is). What it still lacks:
 
 - **the day's weather**: above. The viewer has no place for a flight's own cloud and wind;
-- **Grissom, standing**: the suit with its wrist rings, chest mirror and new harness. Where he is to
-  stand is set (`PILOT` in `flight.ts`: on the hatch side between the transfer van and the emergency
-  shower, walking to the lift, as NASA's photograph 61-MR4-83 has him), and no model takes it yet;
+- **Grissom on the couch**: the pilot in the cabin's cutaway is still Shepard's figure with the name
+  changed and a mirror laid on him. The standing figure's suit can be seated in his place
+  (mark-iv-suit.md, "On the couch", says what would change and what has not been looked at);
 - **a cabin to sit in**: the capsule's inside is modelled and cannot be boarded;
 - what July's photographs show and the pad does not have: the tail heater, the LOX trailers, the
-  M-113, the covers, and the two cable masts where the photographs put them (lc-5.md, the same
-  section).
+  M-113, the covers (lc-5.md, the same section). The two cable masts now stand where those
+  photographs put them, on the launcher against the vehicle; the same photographs say the vehicle
+  itself stood turned about 60° on the pad from how it is modelled, which is left open (lc-5.md, "An
+  open question: which way round the vehicle stood").
 
 **The flight.** To be flown it needs what Freedom 7 has in `flight.ts`: the booster's measured
 thrust and cutoff for MR-8, the tilt programme on 100°, the capsule's weights at each stage (the

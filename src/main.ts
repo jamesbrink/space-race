@@ -223,6 +223,14 @@ clock.listen(() => {
 
 /** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
 let autoCut = false;
+/** Open or close the cutaway as if its switch had been worked: asked for by hand, so it stays (and the switch shows it). */
+function cut(on: boolean): void {
+  ui.setCutaway(on);
+  if (stage.cutaway !== on) {
+    autoCut = false;
+    stage.setCutaway(on); // (no switch on the page just now to work it through)
+  }
+}
 
 /** Drift round whatever was just chosen, unless the user has said not to. */
 /** Auto-orbit, unless it is switched off; and not while a part is chosen, which is flown to and held in view (the switch is as it was). */
@@ -370,6 +378,10 @@ stage.onSpot = (page, point, floor, on) => {
     ui.menu(page.x, page.y, [
       ...(part?.commands ?? []).filter((c) => cockpit.can(c.ask)).map((c) => ({ label: c.label, run: () => cockpit.ask(c.ask) })),
       { label: part ? `Look at the ${part.name.toLowerCase()}` : 'Look at this', run: () => stage.lookAtCraft(spot) },
+      // (its skin off, to see what is under it and how little room there is: the cutaway, which in flight takes the whole skin)
+      ...(current.cutaway && current.id === flight.flies?.model
+        ? [{ label: stage.cutaway ? 'Put the skin back' : 'Take the skin off', run: () => cut(!stage.cutaway) }]
+        : []),
     ]);
     return;
   }
@@ -618,6 +630,12 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
   // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
   const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  // Y takes the skin off whatever is on show that can be opened (ModelDef.cutaway), and puts it back: cut open where it
+  // stands, the whole skin off the vehicle in flight, from outside it or from its seat
+  if (e.key.toLowerCase() === 'y' && ready && !title.showing && !typing && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (current.cutaway && !stage.walk.active && !gallery.active) cut(!stage.cutaway);
+    return;
+  }
   if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
     // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
     const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);

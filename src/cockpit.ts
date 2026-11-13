@@ -164,6 +164,7 @@ export class Cockpit {
           <div><h4>Show</h4><p>
             <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (J)"><kbd>J</kbd>Path</button>
             <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (I)"><kbd>I</kbd>Navball</button>
+            <button data-press="y" title="The vehicle's skin off, to see what is inside it and how little room there is, and out of it all round; again puts it back (Y)"><kbd>Y</kbd>Skin off · on</button>
             <button data-press="o" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (O)"><kbd>O</kbd>Surface · orbit</button>
             <button data-press="k" title="While the engine burns under guidance: the path if guidance flies on to the record's cutoff, or if the engine were cut now (K)"><kbd>K</kbd>Path · to cutoff · cut now</button>
           </p></div>
