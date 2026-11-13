@@ -13,7 +13,7 @@ orbital on the Atlas D, all in the one-man capsule McDonnell Aircraft built in S
 | Mercury-Atlas 6 | No. 13, *Friendship 7* | John Glenn | 20 February 1962 | 4 h 55 min 23 s | [flight](flights/ma-6-friendship-7/README.md): the vehicle, in the Gallery |
 | Mercury-Atlas 7 | No. 18, *Aurora 7* | Scott Carpenter | 24 May 1962 | 4 h 55 min 57 s | [flight](flights/ma-7-aurora-7/README.md): the vehicle, in the Gallery |
 | Mercury-Atlas 8 | No. 16, *Sigma 7* | Wally Schirra | 3 October 1962 | 9 h 13 min 11 s | [flight](flights/ma-8-sigma-7/README.md): the vehicle, in the Gallery |
-| Mercury-Atlas 9 | No. 20, *Faith 7* | Gordon Cooper | 15 May 1963 | 34 h 20 min | |
+| Mercury-Atlas 9 | No. 20, *Faith 7* | Gordon Cooper | 15 May 1963 | 34 h 19 min 49 s | [flight](flights/ma-9-faith-7/README.md): the vehicle, in the Gallery |
 
 ## The spacecraft, in general
 
