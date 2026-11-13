@@ -46,9 +46,9 @@ January 1967; NASA CR on NTRS 19670076796); **GIV** is *Gemini Program Mission R
 | First stage chamber exit | 44.8 in across | estimated | an expansion ratio of 8 and a throat sized from general figures for the engine (215,000 lbf, about 780 psia). No drawing of the engine has been read |
 | Second stage engine exit | 64.8 in across | estimated | an expansion ratio of 49.2, likewise |
 | First stage chambers' axes | 24 in either side of the vehicle's | estimated | two 44.8 in bells side by side |
-| External conduits | 6.8 in wide, 3.2 in proud | estimated | the liftoff photograph |
+| External conduits | 8.8 in wide, 2.8 in proud | estimated | the liftoff photograph |
 | Round holes in the first stage's forward skirt | 18, 6.8 in across, at station 635 | estimated | counted and scaled off NASA S65-21881 and the liftoff photograph |
-| Exhaust ports | four groups of four, each port 9° wide, from station 598.7 to 619.1 | estimated | the same photographs |
+| Exhaust ports | four groups of four, each port 10.5° wide, from station 598.7 to 619.1 | estimated | the same photographs |
 
 ## Which way round
 

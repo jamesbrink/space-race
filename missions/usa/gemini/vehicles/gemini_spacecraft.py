@@ -62,6 +62,7 @@ WALL = 2.4  # outer mould line to inner, through a hatch
 BEAD = (1.4, 0.18)  # the cabin's shingles: from one bead to the next round the cone, and how proud a bead stands
 RETRO = (6.5, 19.5, 84.0)  # a retrograde rocket: its case's radius, how far its axis is from the ship's, its middle's station
 SEAT_CANT = (deg(12), deg(8))  # the seats: outboard, and forward
+RCS_PLACES = tuple(deg(a) for a in (-12, 12, 65, 115, 168, 192, 245, 295))  # where the re-entry control chambers stand round the section
 
 
 @dataclass
@@ -434,23 +435,21 @@ def build_reentry_control(M) -> None:
     bolts.build("RCS_Fasteners", M["bolt"], g)
     inner.build("RCS_Structure", M["titanium"], g, sharp_angle=30)
     bpy.context.view_layer.update()
-    # the sixteen chambers: one of each ring at each of eight places round the section (the Gemini IV report's Figure
-    # 3-12), drawn as a pair side by side, the pairs at two stations by turns (the photograph of this ship)
-    for k in range(8):
-        mid = TAU * (k + 0.5) / 8
-        z = zz(Z_RCS + (6.0 if k % 2 == 0 else 12.0))
-        for da in (-deg(8), deg(8)):
-            a = mid + da
-            at = NECK.p(a, z)
-            port((skin.name,), frame(at, NECK.n(a)), 1.75 * IN, 2.0 * IN)
-            thruster(noz, cup, at, NECK.n(a), 1.25, 1.75)
+    # the sixteen chambers: one of the A ring and one of the B ring at each of eight places round the section, two
+    # places at the top, two at the bottom and two on each side (the Gemini IV report's Figure 3-12 and its inset;
+    # the angles are read off that inset and the photograph of this ship)
+    for mid in RCS_PLACES:
+        for dz in (5.0, 11.0):
+            at = NECK.p(mid, zz(Z_RCS + dz))
+            port((skin.name,), frame(at, NECK.n(mid)), 1.75 * IN, 2.0 * IN)
+            thruster(noz, cup, at, NECK.n(mid), 1.25, 1.75)
     say(
         noz.build("RCS_ThrustChambers", M["nozzle"], g, sharp_angle=35),
         "Re-entry control thrusters",
         "Sixteen chambers, two complete rings of eight, each ring with its own tanks: either can bring the ship home. They "
         "burn the same two liquids as the thrusters in the adapter, which ignite on meeting. That there are sixteen, at eight "
-        "places round the section, is documented; their 25 lbf is general knowledge of the type, and how each pair lies is read "
-        "off one photograph.",
+        "places round the section (two at the top, two at the bottom, two on each side), is documented; their 25 lbf is "
+        "general knowledge of the type, and the angles are read off a small drawing and one photograph.",
     )
     cup.build("RCS_Ports", M["titanium"], g, sharp_angle=35)
     if interior():

@@ -44,7 +44,7 @@ Range and Modified Configurations" (McDonnell, 30 September 1965), which covers 
 | Retrograde rockets | four, spherical, "approximately 13 inches in diameter", titanium cases, one in each quadrant of a cross of aluminium I-beams | documented; their place in the section estimated | pp. 2-23 and 11-71 |
 | Seats | ejection seats, canted 12° outboard and 8° forward | documented; every size estimated | p. 3-3; Figure 3-2 has no dimensions |
 | Thrust chambers, adapter | ten on the equipment section, six on the retrograde section | documented | p. 2-23 |
-| Thrust chambers, re-entry control | sixteen, an A ring and a B ring, at eight places | documented | GIV, Figure 3-12 |
+| Thrust chambers, re-entry control | sixteen, an A ring and a B ring, at eight places: 12° either side of the top and of the bottom, 25° above and below each side | documented; the angles estimated | GIV, Figure 3-12 and its inset; S65-13395 |
 
 ## Propulsion
 
@@ -93,9 +93,10 @@ thrust chambers' ports are rings and discs on the skin.
 - **The shingles' layout is read off one photograph** of one side. Seams, bead counts and fastener
   rows elsewhere repeat it. Access doors (Figure 2-7 numbers more than eighty on this ship) are not marked, nor the
   recovery light and hoist loop doors between the hatches.
-- **The re-entry thrusters' ports** are pairs side by side, as the photograph has them; which of a
-  pair is which ring's, and which way each chamber is canted, is not modelled. All sixteen point
-  straight out.
+- **The re-entry thrusters' ports** stand where GIV's Figure 3-12 and the photograph put them (two
+  places at the top, two at the bottom, two on each side, an A-ring and a B-ring chamber at each),
+  at angles read off a drawing an inch across. Which ring is the forward one, and which way each
+  chamber is canted, is not modelled: all sixteen point straight out.
 - **The adapter's thrusters point straight out too**, except the two that fire forward. The real
   pitch and yaw chambers fire along the ship's axes, not along radii.
 - **Inside the adapter everything is placed by guess**: the tanks' sizes, the battery module, the

@@ -53,17 +53,17 @@ EXIT_R1 = 22.4  # a first stage chamber's exit radius: from an area ratio of 8 (
 EXIT_R2 = 32.4  # the second stage's, with its ablative skirt: from an area ratio of 49.2
 CHAMBERS_AT = 24.0  # a first stage chamber's axis from the vehicle's, on the yaw axis
 ROLL_NOZZLE = (44.0, deg(30.65))  # the second stage's roll nozzle: its radius, and its angle from the pitch axis
-CONDUIT = (3.4, 3.2)  # an external conduit's half width, and how far it stands off the tank
+CONDUIT = (4.4, 2.8)  # an external conduit's half width, and how far it stands off the tank
 CONDUIT_1 = (S_OX1[0] + 6.0, S_FUEL1[1] - 2.0)  # the stations a first stage conduit runs between
 CONDUIT_2 = ((S_IFACE + 3.0, 337.0), (399.5, 450.0))  # the second stage's, in two pieces, one over each tank
 HOLES = (18, 3.4, S_TRANSPORT + 13.0)  # the round holes in the first stage's forward skirt: how many, their radius, their station
-PORTS = (4, 4, deg(9.0), deg(2.5))  # the exhaust ports: groups, ports in each, a port's width, the post between two
+PORTS = (4, 4, deg(10.5), deg(2.5))  # the exhaust ports: groups, ports in each, a port's width, the post between two
 
 # paint (titan-ii-glv.md, "Paint": every station here is read off two photographs)
 ROLL_RING_2 = 13.0  # the black ring at the head of the interstage, below the separation plane
 WHITE_BAND = (S_SPLICE1, 1035.0)
 ROLL_RING_1 = (1035.0, 1095.0)
-LETTERS = (655.0, 1004.0, (18.0, 14.0))  # UNITED STATES down the first stage: from, to, a letter's height and its widest letter's width
+LETTERS = (655.0, 1004.0, (20.0, 16.0))  # UNITED STATES down the first stage: from, to, a letter's height and its widest letter's width
 ARROW = (1012.0, 1029.0)  # the mark under the lettering
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
