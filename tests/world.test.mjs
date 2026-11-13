@@ -463,4 +463,13 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(over.moon.azimuth / DEG, 193.3, 0.05, 'Moon azimuth over Site 1');
   near(over.moon.elevation / DEG, 35.0, 0.06, 'Moon elevation over Site 1');
   near(over.moon.illuminated, 0.12, 0.005, 'Moon lit over Site 1');
+  // Vostok 2: the figures quoted in its README ("The sky at liftoff")
+  const vostok2 = flights.find((f) => f.id === 'ussr/vostok/vostok-2');
+  const august = skyFrom(siteFrame(vostok2.site), julianDate(vostok2.launch));
+  near(august.sun.azimuth / DEG, 132.0, 0.05, 'Sun azimuth over Site 1, 6 August');
+  near(august.sun.elevation / DEG, 52.6, 0.05, 'Sun elevation over Site 1, 6 August');
+  near(august.moon.azimuth / DEG, 234.3, 0.05, 'Moon azimuth over Site 1, 6 August');
+  near(august.moon.elevation / DEG, 50.6, 0.05, 'Moon elevation over Site 1, 6 August');
+  near(august.moon.illuminated, 0.235, 0.005, 'Moon lit over Site 1, 6 August');
+  assert.equal(august.moon.waxing, false, 'the Moon Titov called waning');
 });

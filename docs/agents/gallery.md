@@ -121,7 +121,8 @@ is paper whichever was chosen. Brightnesses are a design fitted by eye.
 
 ## To look at it
 
-`/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7` or `/#ussr/vostok/vostok-1`. While developing, `/?fixture#test/fixture/vehicle-only`
+`/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7`, `/#ussr/vostok/vostok-1` or `/#ussr/vostok/vostok-2` (a flight
+that is only its vehicle so far: its Launch site and Fly say so). While developing, `/?fixture#test/fixture/vehicle-only`
 shows the flight that is only a vehicle (`tests/fixtures/vehicle-only`), through `only.ts`.
 `sr.gallery` is the handle; `sr.gallery.stage` its stage. `pnpm test:places` (`tools/places-test.mjs`, with `pnpm dev`
 running) goes between the places with slow loads and real keys and checks what is promised above. `tools/shot.mjs out.png
