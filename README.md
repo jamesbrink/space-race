@@ -56,6 +56,7 @@ The legend at the bottom left of the page lists every key and gesture.
 | Vostok 4 (spacecraft and launch vehicle, so far) | USSR | 12 August 1962 | [flight](missions/ussr/vostok/flights/vostok-4/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-4/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-4/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
 | Vostok 5 (spacecraft and launch vehicle, so far) | USSR | 14 June 1963 | [flight](missions/ussr/vostok/flights/vostok-5/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-5/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-5/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
 | Vostok 6 (spacecraft and launch vehicle, so far) | USSR | 16 June 1963 | [flight](missions/ussr/vostok/flights/vostok-6/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-6/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-6/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
+| Gemini-Titan 3, "Molly Brown" (spacecraft and launch vehicle, so far) | USA | 23 March 1965 | [flight](missions/usa/gemini/flights/gt-3/README.md) · [spacecraft](missions/usa/gemini/flights/gt-3/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [where it flew from: not built](missions/usa/gemini/sites/lc-19.ts) | [spacecraft No. 3 on GLV-3](missions/usa/gemini/flights/gt-3/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) |
 
 ## Timeline
 
@@ -83,7 +84,7 @@ And the programmes after them:
 | Vostok | USSR | 1961 to 1963 | The first spacecraft; Baikonur | one spacecraft and its launch vehicle built |
 | Mercury | USA | 1961 to 1963 | Redstone and Atlas; Cape Canaveral | one flight built, a second's vehicle |
 | Voskhod | USSR | 1964 to 1965 | Three aboard; the first spacewalk | planned |
-| Gemini | USA | 1965 to 1966 | Two aboard, Titan II, rendezvous and docking | planned |
+| Gemini | USA | 1965 to 1966 | Two aboard, Titan II, rendezvous and docking | the first crewed flight's spacecraft and launch vehicle built ([Gemini-Titan 3](missions/usa/gemini/flights/gt-3/README.md)) |
 | Soyuz | USSR, Russia | 1967 onward | The longest-serving crewed spacecraft | planned |
 | Apollo | USA | 1968 to 1972 | Saturn IB and Saturn V; lunar orbit and the Moon | planned |
 | Salyut, Skylab, Apollo-Soyuz | USSR, USA | 1971 to 1986 | The first space stations | planned |
