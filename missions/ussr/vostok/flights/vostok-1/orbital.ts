@@ -26,6 +26,16 @@ const ZAK = 'Zak, RussianSpaceWeb';
 const ENERGOMASH = 'NPO Energomash’s table by vehicle, row 8K72K, as reproduced by Brügge (b14643.eu): secondary';
 const MINAKOV = 'Minakov, «Ракета, поднявшая в космос Ю. Гагарина», Modelist-Konstruktor';
 const ASTRONAUTIX = 'Encyclopedia Astronautica, Vostok 8K72K stage data: secondary';
+const PPP =
+  '«Первый пилотируемый полёт», book 2 (Davydov, ed., 2011), as quoted by page in Gammal and Tuchin, «Реконструкция траектории полёта КА «Восток-1»», Keldysh Institute preprint 2025 No. 15';
+const BATURIN =
+  'Baturin (co-editor of the 2011 documents), «Подлинная история полета Гагарина», Novaya Gazeta, 12 April 2021: secondary, no footnotes';
+const SOYUZ =
+  'Starsem, Soyuz User’s Manual ST-GTD-SUM-01, issue 3, 2001, Fig. 2-4 (pitch against time): a different vehicle on the same first two stages';
+const SPUTNIK =
+  'в/ч 11284, the reports of 17 October and 14 November 1957 on 8K71PS No. M1-1 (TsAMO f. 19, op. 110ss, d. 14), as published by rvsn.info: the same first two stages, two-stage, a different vehicle';
+const BOBKOV = 'Bobkov (OKB-1), «Космический корабль "Восток"», Krylya Rodiny 1991 No. 4 and 6: secondary';
+const GCTC = 'Gagarin Cosmonaut Training Centre, «Корабль "Восток"» (gctc.ru): secondary, unsigned';
 
 /** The command to the braking engine (OKB-1: "the TDU was turned on at 1025:04.2"), which everything about the burn is timed from. */
 const TDU = MSK(10, 25, 4.2);
@@ -60,10 +70,12 @@ export const orbital: OrbitalFlight = {
         'lit on the pad before liftoff, through a preliminary and an intermediate stage of thrust (Gagarin’s report); how many seconds before has not been read, and the propellant burned before liftoff is not known',
       ),
       cutoff: doc(
-        119,
-        `${SIDDIQI}, p. 277, and ${ZAK}: separation at T+119 s; the engines were throttled back before it (RKK Energia 1946–1996) by a profile that was not found. Rated burns in print: 118 s (Minakov), 120.5 s (Brügge, computed)`,
+        119.5,
+        `${PPP}, §4: «команда на разделение выдана интегратором на 119.50 секунде с её исполнением через 0.03 секунды». ${SIDDIQI}, p. 277, and ${ZAK}: 119 s. ` +
+          'The engines were throttled to their first intermediate stage some seconds before (RKK Energia 1946–1996; on Sputnik’s 8K71PS 7.1 s before: ' +
+          `${SPUTNIK}); the level of that stage has not been found, so it is not flown: rated thrust to the integrator’s command. Rated burns in print: 118 s (Minakov), 120.5 s (Brügge, computed)`,
       ),
-      separation: doc(119, `${SIDDIQI}, p. 277; ${ZAK}`),
+      separation: doc(119.5, `${PPP}: the integrator’s command at 119.50 s. ${SIDDIQI}, p. 277; ${ZAK}: 119 s`),
     },
     {
       name: 'Core, Block A',
@@ -120,20 +132,35 @@ export const orbital: OrbitalFlight = {
   ],
   events: [
     { id: 'liftoff', label: 'Liftoff', at: doc(0, `${SIDDIQI}, launch log: 09:06:59.7 Moscow time. ${OKB1}: 0906:59`) },
-    { id: 'boosters', label: 'The four strap-ons separate', at: doc(119, `${SIDDIQI}, p. 277; ${ZAK}`) },
+    {
+      id: 'boosters',
+      label: 'The four strap-ons separate',
+      at: doc(119.5, `${PPP}: the integrator’s command at 119.50 s, done 0.03 s later; Keldysh’s table: 09:08:59.2`),
+      also: '119 s (Siddiqi, p. 277; Zak)',
+    },
     {
       id: 'fairing',
       label: 'Fairing jettisoned',
-      at: doc(150, `${GAGARIN}: “At second 150 the fairing separated”: a round figure, from memory the next day`),
-      also: '154 s (Zak); 156 s (the figure in Siddiqi). Zak has the radio guidance’s power failing at 156 s',
+      at: doc(154.6, `${PPP}: «Сброс головного обтекателя» 09:09:34.3`),
+      also: '150 s (Gagarin: “At second 150 the fairing separated”, from memory the next day); 154 s (Zak); 156 s (the figure in Siddiqi). The radio guidance’s power failed at 156 s (Zak; Baturin)',
     },
-    { id: 'core', label: 'Core cut off; third stage alight', at: doc(300, `${SIDDIQI}, p. 277`), also: '299 s (Zak)' },
-    { id: 'orbit', label: 'Third stage cut off: in orbit', at: doc(676, `${SIDDIQI}, p. 277`) },
+    {
+      id: 'core',
+      label: 'Core cut off; third stage alight',
+      at: doc(300, `${SIDDIQI}, p. 277`),
+      also: '299 s (Zak). The telemetry recorded no instant for it (PPP p. 60, as Keldysh quotes it). Cut 0.46 s late by the autonomous system’s time mark, the radio command having failed: 22.0 m/s over the design (Baturin); Chertok, vol. 3, p. 291: “shut down by a command from the autonomous system integrator, which had been set for a velocity exceeding the design velocity for the radio system”',
+    },
+    {
+      id: 'orbit',
+      label: 'Third stage cut off: in orbit',
+      at: doc(676, `${SIDDIQI}, p. 277`),
+      also: 'It burned 2.4 s longer than calculated (Baturin); the whole over-speed was 25.43 m/s, and the apogee 327 km for 230',
+    },
     {
       id: 'separation',
       label: 'Spacecraft separates from the third stage; the Granit-5V timer starts',
       at: doc(MSK(9, 18, 28), `${OKB1}: 0918:28. Gagarin: “about 10 seconds” after the cutoff, and the clock and cycle 1 started with it`),
-      also: '09:18:07 (Zak, citing Novosti Kosmonavtiki)',
+      also: '09:18:26.8, T+687.1 s (PPP, telemetry); 09:18:07 (Zak, citing Novosti Kosmonavtiki)',
     },
     {
       id: 'orientation',
@@ -177,6 +204,146 @@ export const orbital: OrbitalFlight = {
       also: '10:55 (TASS, the marker put up at the place, and Major Gasiev); 10:52 by Private Pekarsky’s watch (Zak)',
     },
   ],
+  // The ascent as the simulator flies it (src/sim/staged.ts). No pitch programme, drag figure or throttle history of the
+  // 8K72K has been found (mission.md, "Inputs"): what stands in for each is stated, and labelled. The checks below were
+  // written before staged.ts had flown anything.
+  ascent: {
+    guidance: {
+      vertical: guess(
+        15,
+        `${SOYUZ}: within half a degree of the vertical at 19 s and 3.3 degrees off it at 29 s. The 8K72K’s own programme has not been found; its boosters reached their main stage of thrust 6 s after liftoff (as Sputnik’s did: ${SPUTNIK})`,
+      ),
+      kick: guess(10, 'how long the pitch-over takes: chosen. Its angle is solved, not chosen (staged.ts: steer)'),
+      turn: doc(
+        119.5,
+        `the law changes at the strap-ons’ separation (${PPP}: 119.50 s), above all but a tenth of a per cent of the air; the instant is documented, the choice to change the law there is ours`,
+      ),
+      target: {
+        at: 'orbit',
+        altitude: doc(
+          180_000,
+          `the planned perigee, over the record’s reference ball: Zak’s table of the plan, 180 by 230 km: secondary. Taken as the height the design put the last cutoff at`,
+        ),
+        climb: guess(0, 'level at the last cutoff, so that it is the perigee: the usual design for a direct ascent, not read for this one'),
+        inclination: doc(
+          64.95,
+          `${OKB1}: 64°57′. TASS on the day: 65°4′. ${SOYUZ}: Table 2-1 gives 34.8° of azimuth for 64.9° from Baikonur today`,
+        ),
+      },
+    },
+    drag: [
+      {
+        until: doc(119.5, `${PPP}: the strap-ons leave at 119.50 s`),
+        area: derived(
+          29.4,
+          'the cluster seen end on: the core’s 2.95 m (Minakov) and four strap-ons of 2.68 m (Minakov), π/4 (2.95² + 4 × 2.68²) = 29.4 m², their overlap left out',
+        ),
+        curve: {
+          points: [
+            [0, 0.25],
+            [0.8, 0.28],
+            [1.1, 0.5],
+            [1.5, 0.45],
+            [2.5, 0.33],
+            [4, 0.25],
+            [8, 0.2],
+          ],
+          confidence: 'estimated',
+          source:
+            'NOT FOUND for any R-7: no drag figure against Mach number for the 8K72K, the R-7 or Soyuz was found (mission.md). A curve of the usual form for a slender clustered vehicle on its frontal area, chosen: a transonic rise to 0.5 and falling to 0.2 at Mach 8. tests/staged.test.mjs says what ±30 % of it moves',
+        },
+      },
+      {
+        until: doc(676, `${SIDDIQI}, p. 277: to the last cutoff`),
+        area: derived(6.835, 'the core seen end on, 2.95 m (Minakov): Block E and the fairing are narrower'),
+        curve: {
+          points: [
+            [0, 0.25],
+            [0.8, 0.28],
+            [1.1, 0.5],
+            [1.5, 0.45],
+            [2.5, 0.33],
+            [4, 0.25],
+            [8, 0.2],
+          ],
+          confidence: 'estimated',
+          source: 'the same chosen curve as the whole stack’s; the air is a ten-thousandth of the ground’s by then',
+        },
+      },
+    ],
+    drops: [
+      {
+        id: 'fairing',
+        at: doc(154.6, `${PPP}: 09:09:34.3`),
+        mass: doc(800, `${ZAK}: 0.8 t. Brügge 0.64 t: secondary`),
+      },
+    ],
+    checks: [
+      {
+        id: 'minuteG',
+        label: 'Load a minute up',
+        value: 3.5,
+        unit: 'g',
+        tolerance: 1,
+        confidence: 'documented',
+        source: `${ZAK}, from Gagarin and the medical record: “3 to 4 g” a minute after liftoff. A man’s feeling and a round figure`,
+      },
+      {
+        id: 'firstG',
+        label: 'Greatest load on the first stage',
+        value: 5,
+        unit: 'g',
+        tolerance: 1,
+        confidence: 'documented',
+        source: `${GAGARIN}: “approximately five G” before the strap-ons left; ${BOBKOV}: “5 units for 100 seconds”. By feel. Soyuz’s manual has at most 4.3 g there (a heavier upper stage)`,
+      },
+      {
+        id: 'core.speed',
+        label: 'Speed as the core cut off',
+        value: 5_500,
+        unit: 'm/s',
+        tolerance: 400,
+        confidence: 'documented',
+        source: `${ZAK}: “about 5.5 km/s”. Round, and it does not say whether over the ground or space-fixed (they differ by some 250 m/s here): the run’s space-fixed figure is held to it, and 400 m/s allows for both`,
+      },
+      {
+        id: 'perigee',
+        label: 'Perigee at the last cutoff',
+        value: 181_000,
+        unit: 'm',
+        tolerance: 5_000,
+        confidence: 'documented',
+        source: `${OKB1}: 181 km. NOT an independent check: the law is solved to put the cutoff level at the planned 180 km, so this holds by construction`,
+      },
+      {
+        id: 'apogee',
+        label: 'Apogee at the last cutoff',
+        value: 327_000,
+        unit: 'm',
+        tolerance: 10_000,
+        confidence: 'documented',
+        source: `${OKB1}: 327 km, where 230 were planned. 25.43 m/s too fast made the 97 km (Baturin), so 10 km is under 3 m/s at the cutoff: a hard check of the stages’ figures, and the one that says whether the vehicle as recorded reaches the orbit it reached`,
+      },
+      {
+        id: 'inclination',
+        label: 'Inclination',
+        value: 64.95,
+        unit: 'deg',
+        tolerance: 0.05,
+        confidence: 'documented',
+        source: `${OKB1}: 64°57′. NOT an independent check: the launch plane is solved for it`,
+      },
+      {
+        id: 'period',
+        label: 'Period at the last cutoff',
+        value: 89.44 * 60,
+        unit: 's',
+        tolerance: 15,
+        confidence: 'documented',
+        source: `${OKB1}: 89.44 min. It follows from the heights; 15 s is some 5 km on the semi-major axis`,
+      },
+    ],
+  },
   orbit: {
     radius: derived(
       6_371_000,
@@ -252,6 +419,139 @@ export const orbital: OrbitalFlight = {
     },
   },
   ejection: { altitude: doc(7_000, `${GAGARIN}: “approximately at the altitude of 7,000 meters, the hatch cover of hatch Nº 1 ejected”`) },
+  // From 7 km down: the descent module on its own parachutes, and the pilot on his seat and then his canopies. The
+  // checks below were written before flyDown had flown anything.
+  descent: {
+    ground: doc(43, `${PPP} via Keldysh’s preprint: the landing place at 43 m. ${ZAK}: about 50 m above the sea`),
+    bodies: [
+      {
+        id: 'module',
+        label: 'The descent module, empty',
+        mass: guess(
+          2_272,
+          `the 2,460 kg of the module with its pilot aboard (${SIDDIQI}, p. 195) less the pilot in his suit (88 kg: his service record’s 68 kg and the SK-1’s 20 kg) and a seat taken as 100 kg (not found: Siddiqi’s 800 kg is not credible)`,
+        ),
+        dragArea: guess(
+          1.95,
+          'the 2.3 m ball’s disc, 4.15 m², at the sphere’s 0.47 below Mach 0.7 (the entry curve here, itself estimated)',
+        ),
+        chutes: [
+          {
+            name: 'pilot parachute',
+            after: doc(
+              0,
+              `${BOBKOV}: drawn out by the parachute container’s cover, shot off by the barometric sensors with the hatch, at about 7 km`,
+            ),
+            dragArea: guess(
+              1.1,
+              `1.5 m² of canopy (${BOBKOV}; ${GCTC}) at a drag coefficient of 0.75 on its cloth, which is the usual round canopy’s and is chosen`,
+            ),
+            fills: guess(1, 'chosen: no filling time found'),
+          },
+          {
+            name: 'braking parachute',
+            altitude: doc(4_000, `${BOBKOV}: “на высоте 4 км при скорости 200 м/с”; ${GCTC}`),
+            dragArea: guess(13.5, `18 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
+            fills: guess(2, 'chosen: no filling time found'),
+          },
+          {
+            name: 'main parachute',
+            altitude: doc(2_500, `${BOBKOV}; ${GCTC}: at 2.5 km`),
+            dragArea: guess(430, `574 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
+            fills: guess(6, 'chosen: no filling time found'),
+          },
+        ],
+      },
+      {
+        id: 'pilot',
+        label: 'Gagarin, on his seat and then under his canopies',
+        mass: guess(188, 'he in his suit, 88 kg (as for the module), and a seat taken as 100 kg: not found'),
+        dragArea: guess(0.6, 'a seated man and his seat, chosen'),
+        chutes: [
+          {
+            name: 'seat’s braking parachute',
+            after: doc(
+              0.5,
+              `ru.wikipedia, «Парашютная система космического корабля "Восток-1"»: “через полсекунды”, tertiary; ${BOBKOV}: as the seat leaves`,
+            ),
+            dragArea: guess(1.5, `2 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
+            fills: guess(1, 'chosen: no filling time found'),
+          },
+          {
+            name: 'main canopy',
+            altitude: doc(
+              4_000,
+              `${BOBKOV}: at 4 km, as he leaves the seat with its back, the reserve and the survival pack; ${BATURIN}: “Через 50 секунд на высоте примерно 4 км ввелся основной парашют, одновременно произошел сход пилота с кресла”`,
+            ),
+            dragArea: guess(62.6, `83.5 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
+            fills: guess(4, 'chosen: no filling time found'),
+            replaces: {
+              mass: guess(
+                131,
+                'he in his suit, 88 kg, with the survival pack, 43 kg (Baturin), which hung on its line and was then lost: carried to the ground here',
+              ),
+            },
+          },
+          {
+            name: 'reserve canopy',
+            altitude: doc(
+              3_000,
+              `${BATURIN}: “На высоте 3 км ввелся дополнительно запасной парашют”; ${BOBKOV}: put out automatically after the main, on this flight only`,
+            ),
+            dragArea: guess(42, `56 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
+            fills: guess(4, 'chosen: no filling time found'),
+          },
+        ],
+      },
+    ],
+    checks: [
+      {
+        id: 'module.at',
+        label: 'Descent module on the ground',
+        value: MSK(10, 48),
+        unit: 's',
+        tolerance: 120,
+        confidence: 'documented',
+        source: `${OKB1}: 1048, to the minute`,
+      },
+      {
+        id: 'pilot.at',
+        label: 'Gagarin on the ground',
+        value: MSK(10, 53),
+        unit: 's',
+        tolerance: 120,
+        confidence: 'documented',
+        source: `${OKB1}: 1053. TASS and the marker: 10:55; Pekarsky’s watch: 10:52`,
+      },
+      {
+        id: 'module.speed',
+        label: 'Descent module landing',
+        value: 10,
+        unit: 'm/s',
+        tolerance: 2,
+        confidence: 'documented',
+        source: `${BOBKOV}: “Скорость приземления спускаемого аппарата составляла 10 м/с”`,
+      },
+      {
+        id: 'pilot.speed',
+        label: 'Gagarin landing',
+        value: 5,
+        unit: 'm/s',
+        tolerance: 1.5,
+        confidence: 'documented',
+        source: `${GCTC}: 5 m/s; ${BOBKOV}: 6 m/s, on the main alone. He came down on two`,
+      },
+      {
+        id: 'apart',
+        label: 'The two landings apart',
+        value: 1_500,
+        unit: 'm',
+        tolerance: 3_000,
+        confidence: 'documented',
+        source: `${OKB1}: about 1.5 km; Gagarin thought four. No wind is flown, and the wind at 7 km was strong and westerly (Zak): the separation is mostly the wind’s`,
+      },
+    ],
+  },
   landing: {
     latitude: doc(
       51 + 16 / 60,

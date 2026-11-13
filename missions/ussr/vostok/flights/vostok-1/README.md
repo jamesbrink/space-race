@@ -17,6 +17,24 @@ the pilot ejecting from the descent module and landing by parachute near the Vol
 | The mission as a record and a plan | [mission.md](mission.md); the numbers in [orbital.ts](orbital.ts) (`Flight.orbital`). The coast from the published orbit to 7 km is flown in tests (`flyOrbit`), with its misses recorded; the ascent is not |
 | Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies. What was found toward one is in [vostok-8k72k.md](../../vehicles/vostok-8k72k.md), "What a staged trajectory will need" |
 
+### Against Freedom 7, place by place
+
+Freedom 7 is the one flight that is whole. What this one lacks beside it, from the two flights' data and from running
+both (November 2026), and whose work each gap is: **data** (in `flight.ts` and the record), **code** (`src/`), or
+**modelling** (a Blender script and its GLB).
+
+| Place | What Freedom 7 has | Vostok 1 | Kind |
+| --- | --- | --- | --- |
+| Gallery | the vehicle to turn, cut open and take apart, its parts read, the crew beside it for scale | the same: 20 parts, 11 views, the cutaway | done |
+| Gallery | a cabin to sit in, its instruments read from the run (`ModelDef.cabin`: 27 instruments, 21 lamps, 12 controls, two windows, the periscope's screen) | none: the board, the Globus, the Vzor, the hand controller and its lock are not nodes | modelling, then data |
+| Gallery and site | a seat to board (`ModelDef.seats`), from which the camera rides | none: the `EjectionSeat` node is there, no seat is declared, so nobody can board and the figure stays on the deck through the flight | data (the eye's place on the seat) |
+| Launch site | the pad's morning on the slider and on the clock, doors and a lift to work (19 keyframes, 9 actions) | the morning on the slider (11 keyframes); the erector's lift (1 action) | done, smaller |
+| Launch site | what leaves at liftoff, on the clock | the launch system's four supports do not fall back at liftoff | modelling (each support's truss as a node hinged at its foot), then data (`clocked`) |
+| Launch site | walking, the crew on foot with V, the lift, the idle show's callouts | all of them work | done |
+| Launch site | the vehicle leaves the pad with the clock (`Flight.flies`, `trajectory`) | it stands on its pad whatever the clock says | code and data: this file's ascent, and `Ascent` for an orbital run |
+| Fly | lit: the flight deck, navball, predicted path, sound, plume, smoke, shake, heating's glow, the stages dropped as bodies of their own, parachutes, the debrief card, the Flown panel against the checks | **not lit** (`lacks`: no `trajectory` with a `body`) | code and data, below |
+| Fly | a record flown by the simulator from the pad and held to its checks | the coast from the published orbit only (`flyOrbit`) | code and data: done in this branch for the ascent (`sim/staged.ts`) |
+
 So the gallery shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in
 the studio setting with nothing holding it up: to be turned, cut open and taken apart the way it
 staged, down to the spacecraft as it was in orbit; and the launch site shows it hanging in the

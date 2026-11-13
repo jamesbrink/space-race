@@ -489,6 +489,29 @@ flight, the FAI's record file and Encyclopedia Astronautica's Vostok 1 page (not
 to the primary reports); *Pervyi pilotiruemyi polet* (2011) and Lissov's articles in *Novosti
 Kosmonavtiki* (not online where looked for).
 
+### The ascent and the descent
+
+Read for the ascent flown (src/sim/staged.ts; the flight's `orbital.ts`, `ascent` and `descent`; vostok-8k72k.md, "What
+a staged trajectory will need"), 13 November 2026. Each text was downloaded and read unless it says otherwise.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Gammal and Tuchin, «Реконструкция траектории полёта КА "Восток-1"», Keldysh Institute of Applied Mathematics, preprint 2025 No. 15 (CC BY 4.0) | [keldysh.ru/papers/2025/prep2025_15.pdf](https://keldysh.ru/papers/2025/prep2025_15.pdf) | **«Первый пилотируемый полёт» (2011) quoted by page**: the strap-ons separated on the integrator's command at 119.50 s, done 0.03 s later; the fairing at 09:09:34.3; the spacecraft at 09:18:26.8; no instant for the core's cutoff in the telemetry (p. 60); NII-4's orbit "from the gyro platform's data and angle measurements", its time of osculation not stated (p. 42); landing 51°16′14″ N 45°59′50″ E, 43 m | Its own ascent is a Soyuz's from Guiana turned to Tyuratam, and its orbit is fitted to the landing: neither is used |
+| Baturin, «Подлинная история полета Гагарина», *Novaya Gazeta*, 12 April 2021 | [novayagazeta.ru](https://novayagazeta.ru/articles/2021/04/11/podlinnaia-istoriia-poleta-gagarina) | Why the apogee was 327 km: the radio guidance's power at 156 s, the core 0.46 s late, 22.0 m/s; Block E 2.4 s long; 25.43 m/s in all. The braking engine's normal running ended at 40.1 s, "an overshoot of 600 km". The descent: radar at 10:48, ejection at 10:49, the main 50 s later at 4 km, the reserve at 3 km; 12 g | An editor of the 2011 documents writing for a newspaper, with no footnotes. Its descent clock disagrees with R and Z |
+| Chertok, *Rockets and People*, vol. 2 (SP-2006-4110) pp. 301-305, 386, 443; vol. 3 (SP-2009-4110) pp. 73, 80-81, 291 | (entries above) | The launch sequence's stages of thrust; the three integrators voting two of three; the RKS and SOB regulators; Vostok 1's radio command failing and the integrator's cutoff; the braking engine's check valve and 132 for 136 m/s | A memoir. Vol. 3 p. 73's "0.25 meters per second" is, its editor notes, probably 25 |
+| в/ч 11284, reports of 17 October and 14 November 1957 on the launch of 8K71PS No. M1-1 (Sputnik), TsAMO f. 19, op. 110ss, d. 14 | [rvsn.info, doc 1028](https://rvsn.info/library/docs/doc_1_1028.html), [doc 1029](https://rvsn.info/library/docs/doc_1_1029.html) | **The same first two stages flown and measured**: the start's stages of thrust; the strap-ons to their first intermediate stage at 109.94 s, separated by the integrator at 116.38 s (57.7 km up, 54.8 km down range, 2,189 m/s); the core's cutoff at 295.6 s and 7,733 m/s; where the strap-ons fell (617 to 632 km); each engine's measured flow and impulse | **A different vehicle**: two stages, no Block E, a lighter payload. A comparison, never an input |
+| Starsem, *Soyuz User's Manual*, ST-GTD-SUM-01, issue 3, April 2001 | starsem.com (the PDF) | The Soyuz's ascent from Baikonur: pitch against time (Fig. 2-4, read off the drawing), height and speed against time, 34.8° of azimuth for 64.9°; the start's stages of thrust; Block I lit 2 s before the core's cutoff | **A different vehicle** on the same first two stages, with a far heavier upper stage. Used for the vertical rise's length only, labelled |
+| lpre.de, «РД-107 и РД-108», a compilation citing Gakhun et al., *Конструкция и проектирование ЖРД* (1989) and others | [lpre.de/energomash/RD-107](http://www.lpre.de/energomash/RD-107/index.htm) | The chambers' exits (720 mm main, 310 mm steering) and throats; the start and shutdown sequence; the RD-108's final stage on its steering chambers (10 s on the 8D75); that the 8K72K flew the 8D74 and 8D75 | A compilation: its cyclogram is not sourced and reads as the ICBM's |
+| KBKhA, «РД0109» | [kbkha.ru](https://kbkha.ru/deyatel-nost/raketnye-dvigateli-dlya-kosmicheskoy-otrasli/raketnye-dvigateli-ao-kbha/rd0109/) | The maker's page: 5.56 tf in vacuum, 323.5 s, engine No. 17 flew Gagarin | No nozzle size, no burn time |
+| Bobkov (OKB-1), «Космический корабль "Восток"», *Krylya Rodiny* 1991 No. 4 and 6 | testpilot.ru/espace/bibl/k-r/1991/4-5vostok.html | **The parachutes**: the module's 1.5, 18 and 574 m² at 7, 4 and 2.5 km, landing at 10 m/s; the pilot's 2, 83.5 and 56 m², the reserve put out automatically on this flight only, 6 m/s; the hatch at 7 km and 220 m/s and the seat 2 s later | A designer's article without footnotes. "3 s" and "4 km" for the main canopy cannot both hold |
+| Gagarin Cosmonaut Training Centre, «Корабль "Восток"» | [gctc.ru](https://www.gctc.ru/main.php?id=296) | The same parachute figures; the pilot down at 5 m/s | Unsigned |
+
+Not found anywhere tried: the 8K72K's pitch programme, a drag coefficient for any R-7, the levels of the engines'
+intermediate and final stages of thrust, the launch azimuth as flown, where Vostok 1's strap-ons and core fell, and the
+day's winds aloft at Tyuratam or Saratov. «Первый пилотируемый полёт» itself and Lissov and Afanasyev, «106 минут
+Гагарина в свете рассекреченных документов», *Novosti Kosmonavtiki* 2011 No. 6 (roscosmos.ru answered 403) are where
+they would be looked for next.
+
 ### Vostok 2
 
 Read for [Vostok 2](../missions/ussr/vostok/flights/vostok-2/README.md), 13 November 2026. Each
