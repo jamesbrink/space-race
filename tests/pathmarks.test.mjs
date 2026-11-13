@@ -3,7 +3,21 @@
 // and nothing that jumps from frame to frame.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { boxToSegment, clearArea, FIRST, GLYPH, labelBox, layChips, layMarks, MIDDLE, SECOND, SMALL } from '../src/viewer/pathmarks.ts';
+import {
+  boxToSegment,
+  clearArea,
+  crossFade,
+  FIRST,
+  GLYPH,
+  labelBox,
+  layChips,
+  layMarks,
+  layWords,
+  MIDDLE,
+  SECOND,
+  SMALL,
+  unseen,
+} from '../src/viewer/pathmarks.ts';
 
 const W = 1440;
 const H = 900;
@@ -275,4 +289,71 @@ test('on a phone the chips keep to the strip between the clock and the deck', ()
     'all shown',
   );
   chipsSound(out, f);
+});
+
+test('a marker is never laid out twice, nor drawn at two places: its chip and its label cross-fade in place', () => {
+  // the landing point wanders over the top edge of the deck and back, as it did at T+2:10 with the line near upright,
+  // then under the deck, behind the eye and back into view; the apogee and the next event go about too
+  const f = field({ panels: deck });
+  const ids = ['down', 'apogee', 'retro'];
+  const drawn = new Map(ids.map((id) => [id, unseen()]));
+  let before = {};
+  let handing = 0;
+  let rnd = 7;
+  const random = () => ((rnd = (rnd * 16807) % 2147483647) - 1) / 2147483646;
+  for (let k = 0; k < 4000; k++) {
+    const s = k / 60;
+    const points = {
+      down:
+        k < 2400 ? { x: 690 + 30 * Math.sin(s * 3), y: 662 + 14 * Math.sin(s * 7.3) + 4 * random() } : k < 3000 ? { x: 700, y: 760 } : null,
+      apogee: { x: 700 + 900 * Math.sin(s / 3), y: 120 + 80 * Math.cos(s) },
+      retro: k % 900 < 450 ? { x: 400 + 4 * random(), y: 400 } : { x: 400, y: 1000 },
+    };
+    const marks = [];
+    const chips = [];
+    for (const [i, id] of ids.entries()) {
+      const at = points[id];
+      const rank = [95, 100, 58][i];
+      if (at && at.x >= 0 && at.x <= W && at.y >= 0 && at.y <= H) marks.push({ id, x: at.x, y: at.y, rank, w: 130, h: 18 });
+      chips.push(chip(id, at, 600, 300, rank));
+    }
+    const out = layWords(marks, chips, f, 800, W / 2, H / 2, before);
+    before = { marks: new Map(out.marks.map((o) => [o.id, o])), chips: new Map(out.chips.map((o) => [o.id, o])) };
+    for (const id of ids) {
+      const m = before.marks.get(id);
+      const c = before.chips.get(id);
+      assert.ok(!(m?.glyph && c?.box), `frame ${k}: ${id} is laid on the line and as a chip`);
+      const w = drawn.get(id);
+      // (a frame of a sixtieth, against a fade of a fifth of a second; and now and then a long one)
+      crossFade(w, m?.box ? { x: m.box.x0, y: m.box.y0 } : null, c?.box ? { x: c.box.x0, y: c.box.y0 } : null, k % 97 ? 1 / 12 : 0.6);
+      if (w.label.op > 0 && w.chip.op > 0) handing++;
+      if (w.label.op > 0 && w.chip.op > 0)
+        assert.ok(w.label.x === w.chip.x && w.label.y === w.chip.y, `frame ${k}: ${id} is drawn at two places at once`);
+      if (c?.box && w.chip.op === 1 && !w.leap)
+        assert.deepEqual([w.chip.x, w.chip.y], [c.box.x0, c.box.y0], 'a chip shown is where it was laid');
+      if (m?.box && w.label.op === 1) assert.deepEqual([w.label.x, w.label.y], [m.box.x0, m.box.y0], 'a label shown is where it was laid');
+    }
+  }
+  assert.ok(handing > 50, `it handed over between the line and the edge (${handing} frames with both drawn)`);
+});
+
+test('the cross-fade: the one coming fades in where it belongs, the one going fades out over it there', () => {
+  const w = unseen();
+  const label = { x: 100, y: 200 };
+  const edge = { x: 140, y: 650 };
+  for (let i = 0; i < 10; i++) crossFade(w, null, edge, 0.25);
+  assert.deepEqual(w.chip, { ...edge, op: 1 });
+  // the marker comes onto the line: the chip goes, over the label, without its pointer
+  crossFade(w, label, edge, 0.25);
+  assert.deepEqual(w.label, { ...label, op: 0.25 });
+  assert.deepEqual(w.chip, { ...label, op: 0.75 });
+  assert.equal(w.own, false);
+  for (let i = 0; i < 3; i++) crossFade(w, label, null, 0.25);
+  assert.equal(w.chip.op, 0);
+  assert.equal(w.label.op, 1);
+  // and leaves it again: the label goes, over the chip
+  crossFade(w, null, edge, 0.25);
+  assert.deepEqual(w.chip, { ...edge, op: 0.25 });
+  assert.deepEqual(w.label, { ...edge, op: 0.75 });
+  assert.equal(w.own, true);
 });

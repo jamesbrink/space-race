@@ -362,3 +362,103 @@ export function layChips(
   }
   return chips.map((c) => out.get(c.id)!);
 }
+
+/**
+ * The markers and the chips laid together, as the page lays them: the markers on the line first, then a chip for each
+ * of `chips` whose marker has no glyph on the line, off what is on it. A marker is laid once: on the line or as a
+ * chip, never both. `cx, cy` is the middle of the view; `marks.before` and `chips.before` what the last frame laid.
+ */
+export function layWords(
+  marks: readonly MarkIn[],
+  chips: readonly ChipIn[],
+  field: Field,
+  span: number,
+  cx: number,
+  cy: number,
+  before?: { marks?: ReadonlyMap<string, MarkOut>; chips?: ReadonlyMap<string, ChipOut> },
+): { marks: MarkOut[]; chips: ChipOut[] } {
+  const laid = layMarks(marks, field, span, before?.marks);
+  const taken: Box[] = [];
+  const on = new Set<string>();
+  laid.forEach((o, i) => {
+    const m = marks[i]!;
+    if (o.glyph) {
+      on.add(o.id);
+      taken.push({ x0: m.x - GLYPH, y0: m.y - GLYPH, x1: m.x + GLYPH, y1: m.y + GLYPH });
+    }
+    if (o.box) taken.push(o.box);
+  });
+  return {
+    marks: laid,
+    chips: layChips(
+      chips.filter((c) => !on.has(c.id)),
+      field,
+      cx,
+      cy,
+      taken,
+      before?.chips,
+    ),
+  };
+}
+
+/*
+ * A marker's words are drawn in two ways, the label beside its glyph on the line and the chip at the edge, and it
+ * goes from one to the other by fading (`crossFade`). It is never drawn at two places at once: while both can be
+ * seen, the one going is drawn where the one coming is, so the hand-over is a cross-fade in place.
+ */
+
+/** One way of drawing a marker's words as it is now: its box's top left on the page, and how strongly it is drawn (0 to 1). */
+export interface Drawn {
+  x: number;
+  y: number;
+  op: number;
+}
+
+/** A marker's words as they are drawn. */
+export interface Words {
+  label: Drawn;
+  chip: Drawn;
+  /** The chip is where its own layout put it (and its pointer means something); false while it stands over the label, going. */
+  own: boolean;
+  /** The chip's place has leapt: it fades out where it is, and in again there. */
+  leap: boolean;
+}
+
+export const unseen = (): Words => ({ label: { x: 0, y: 0, op: 0 }, chip: { x: 0, y: 0, op: 0 }, own: true, leap: false });
+
+/**
+ * A step of `step` (the time passed over the time a fade takes) toward what the layout asks for: the label at `label`
+ * (null: not on the line), the chip at `chip` (null: none). Each fades in where it is asked for and out where it is
+ * not. If both are asked for the label is shown and the chip is not. While both can be seen they are at one place:
+ * the one coming where it belongs, the one going drawn over it there (both going, the chip over the label).
+ */
+export function crossFade(w: Words, label: { x: number; y: number } | null, chip: { x: number; y: number } | null, step: number): void {
+  const want = label ? null : chip;
+  // (a chip whose place has leapt fades out first, then comes in again at its new place)
+  const chipTo = want && !(w.leap && w.chip.op > 0) ? 1 : 0;
+  const toward = (d: Drawn, to: number) => {
+    d.op = to > d.op ? Math.min(to, d.op + step) : Math.max(to, d.op - step);
+  };
+  toward(w.label, label ? 1 : 0);
+  toward(w.chip, chipTo);
+  if (label) {
+    w.label.x = label.x;
+    w.label.y = label.y;
+  }
+  w.own = true;
+  if (want && chipTo) {
+    w.leap = false;
+    w.chip.x = want.x;
+    w.chip.y = want.y;
+  }
+  if (w.label.op > 0 && w.chip.op > 0) {
+    if (chipTo && !label) {
+      w.label.x = w.chip.x;
+      w.label.y = w.chip.y;
+    } else {
+      w.chip.x = w.label.x;
+      w.chip.y = w.label.y;
+      w.own = false;
+    }
+  }
+}

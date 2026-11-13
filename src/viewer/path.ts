@@ -16,7 +16,18 @@ import {
 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';
 import { atInstants, strip } from './pathline.ts';
-import { type Box, type ChipIn, type ChipOut, type Clear, GLYPH, layChips, layMarks, type MarkIn, type MarkOut } from './pathmarks.ts';
+import {
+  type Box,
+  type ChipIn,
+  type ChipOut,
+  type Clear,
+  crossFade,
+  layWords,
+  type MarkIn,
+  type MarkOut,
+  unseen,
+  type Words,
+} from './pathmarks.ts';
 
 /**
  * The predicted path, drawn: where the vehicle goes from here if nothing more is done (sim/predict.ts),
@@ -282,25 +293,28 @@ interface Mark {
   at: THREE.Vector3;
   t: number;
   figure: string;
+  /** Its glyph and label on the line; `ex, ey` where the glyph is on the page. */
   el: HTMLElement;
+  ex: number;
+  ey: number;
+  /** Where the layout puts its label on the page (the box's top left), or null if it is not on the line. */
+  label: { x: number; y: number } | null;
   /** Its chip at the edge of the view, for when it matters now and its place is not in view (pathmarks.ts: `layChips`). */
   chip: Chip;
+  /** Its words as drawn now, on the line and as the chip, faded from one to the other in place (pathmarks.ts: `crossFade`). */
+  words: Words;
+  written: string;
 }
 
-/** A chip as it is drawn: where it is going (from `layChips`, in the draw) and where it is now (faded in `tick`). */
+/** A chip as the layout asks for it (in the draw): the box's top left on the page, or null for none, and its pointer. */
 interface Chip {
   el: HTMLElement;
-  /** Shown, and where: the box's top left, the pointer and its way. */
-  want: boolean;
-  x: number;
-  y: number;
+  want: { x: number; y: number } | null;
   px: number;
   py: number;
   angle: number;
-  /** Its place has leapt since it was last drawn where it was going: it fades out, and in again there. */
-  leap: boolean;
-  /** As it is drawn now; `op` its opacity. */
-  at: { x: number; y: number; px: number; py: number; angle: number; op: number };
+  /** The pointer as it is drawn now. */
+  at: { px: number; py: number; angle: number };
   written: string;
 }
 
@@ -800,7 +814,12 @@ export class FlightPath {
         figure: m.figure,
         at: this.point(m.r, m.t, r.from, shown.frame, was?.at ?? new THREE.Vector3()),
         el,
+        ex: was?.ex ?? 0,
+        ey: was?.ey ?? 0,
+        label: was?.label ?? null,
         chip: was?.chip ?? this.chipOf(m.kind),
+        words: was?.words ?? unseen(),
+        written: was?.written ?? '',
       });
     }
     for (const gone of kept.values()) {
@@ -833,18 +852,7 @@ export class FlightPath {
     el.innerHTML = '<i></i><span></span>';
     el.style.opacity = '0';
     this.marksEl.append(el);
-    return {
-      el,
-      want: false,
-      x: 0,
-      y: 0,
-      px: 0,
-      py: 0,
-      angle: 0,
-      at: { x: 0, y: 0, px: 0, py: 0, angle: 0, op: 0 },
-      leap: false,
-      written: '',
-    };
+    return { el, want: null, px: 0, py: 0, angle: 0, at: { px: 0, py: 0, angle: 0 }, written: '' };
   }
 
   /** The line flown: a point for every second or so heard from the flight deck, kept in the frame that does not turn. */
@@ -1129,47 +1137,28 @@ export class FlightPath {
       panels: this.panels.map((b) => ({ x0: b.x0 - rect.left, y0: b.y0 - rect.top, x1: b.x1 - rect.left, y1: b.y1 - rect.top })),
       clear,
     };
-    const out = layMarks(ins, field, span, this.laid);
-    this.laid = new Map(out.map((o) => [o.id, o]));
+    // the markers on the line, then the chips for those not on it, off what is on it: a marker is laid once
+    const out = layWords(ins, chips, field, span, rect.width / 2, rect.height / 2, { marks: this.laid, chips: this.chipsLaid });
+    this.laid = new Map(out.marks.map((o) => [o.id, o]));
+    this.chipsLaid = new Map(out.chips.map((c) => [c.id, c]));
     for (const m of this.marks) {
       const o = this.laid.get(m.id);
       const at = where.get(m.id);
-      const el = m.el;
       const glyph = Boolean(o?.glyph && at);
-      el.classList.toggle('gone', !glyph);
+      m.el.classList.toggle('gone', !glyph);
+      m.label = glyph && at && o?.box ? { x: rect.left + o.box.x0, y: rect.top + o.box.y0 } : null;
       // (one going is moved on as it fades, while it has a place)
-      if (!at) continue;
-      el.style.transform = `translate(${(rect.left + at.x).toFixed(1)}px, ${(rect.top + at.y).toFixed(1)}px)`;
-      if (!glyph) continue;
-      const label = el.lastElementChild as HTMLElement;
-      label.classList.toggle('gone', !o?.box);
-      if (o?.box) label.style.transform = `translate(${(o.box.x0 - at.x).toFixed(1)}px, ${(o.box.y0 - at.y).toFixed(1)}px)`;
-    }
-    // the chips: off what is on the line, for those not on it
-    const taken: Box[] = [];
-    for (const o of out) {
-      const at = where.get(o.id);
-      if (o.glyph && at) taken.push({ x0: at.x - GLYPH, y0: at.y - GLYPH, x1: at.x + GLYPH, y1: at.y + GLYPH });
-      if (o.box) taken.push(o.box);
-    }
-    const laid = layChips(
-      chips.filter((c) => !this.laid.get(c.id)?.glyph),
-      field,
-      rect.width / 2,
-      rect.height / 2,
-      taken,
-      this.chipsLaid,
-    );
-    this.chipsLaid = new Map(laid.map((c) => [c.id, c]));
-    for (const m of this.marks) {
+      if (at) {
+        m.ex = rect.left + at.x;
+        m.ey = rect.top + at.y;
+        m.el.style.transform = `translate(${m.ex.toFixed(1)}px, ${m.ey.toFixed(1)}px)`;
+      }
       const c = this.chipsLaid.get(m.id);
       const chip = m.chip;
-      chip.want = Boolean(c?.box);
+      chip.want = c?.box ? { x: rect.left + c.box.x0, y: rect.top + c.box.y0 } : null;
       if (!c?.box) continue;
       // (a place that has leapt, round another chip or a panel, is gone to by fading out and in again, not by gliding over the page)
-      if (c.leap) chip.leap = true;
-      chip.x = rect.left + c.box.x0;
-      chip.y = rect.top + c.box.y0;
+      if (c.leap) m.words.leap = true;
       chip.px = c.px - c.box.x0;
       chip.py = c.py - c.box.y0;
       chip.angle = c.angle;
@@ -1177,42 +1166,47 @@ export class FlightPath {
   }
 
   /**
-   * Each frame (in `tick`, drawn or not): the chips where the layout last put them, faded in and out. A chip whose
-   * place has leapt fades out, and comes in again where it is going.
+   * Each frame (in `tick`, drawn or not): each marker's words where the layout last put them, on the line or as a chip,
+   * faded from one to the other in place (pathmarks.ts: `crossFade`), never at two places at once. A chip whose place
+   * has leapt fades out, and comes in again where it is going.
    */
   private drawChips(): void {
     const t = performance.now();
     const dt = Math.min(0.1, Math.max(0, (t - this.chipsAt) / 1000));
     this.chipsAt = t;
+    const on = !this.marksEl.hidden;
     for (const m of this.marks) {
       const c = m.chip;
+      const w = m.words;
+      const ahead = on && m.t > this.now;
+      crossFade(w, ahead ? m.label : null, ahead ? c.want : null, dt / CHIP_FADE);
+      // (the pointer is the layout's while the chip is where the layout put it)
+      if (w.own && c.want && w.chip.x === c.want.x && w.chip.y === c.want.y) {
+        c.at.px = c.px;
+        c.at.py = c.py;
+        c.at.angle = c.angle;
+      }
+      // (one not shown is written once, and not every frame)
+      const l = w.label;
+      const label =
+        l.op > 0
+          ? `opacity:${l.op.toFixed(3)};transform:translate(${(l.x - m.ex).toFixed(1)}px,${(l.y - m.ey).toFixed(1)}px)`
+          : 'opacity:0';
+      if (label !== m.written) {
+        m.written = label;
+        (m.el.lastElementChild as HTMLElement).setAttribute('style', label);
+      }
+      const ch = w.chip;
+      const box = ch.op > 0 ? `opacity:${ch.op.toFixed(3)};transform:translate(${ch.x.toFixed(1)}px,${ch.y.toFixed(1)}px)` : 'opacity:0';
       const a = c.at;
-      let to = c.want && !this.marksEl.hidden && m.t > this.now ? 1 : 0;
-      // where the layout puts it, as it puts it (its places from frame to frame are near one another: pathmarks.ts); but
-      // where that has leapt, it fades out where it was and in again where it is going, and it fades out where it is
-      // when it is no longer wanted (its marker has come into view on the line, or is past)
-      if (to && c.leap && a.op > 0) to = 0;
-      else if (to) {
-        c.leap = false;
-        a.x = c.x;
-        a.y = c.y;
-        a.px = c.px;
-        a.py = c.py;
-        a.angle = c.angle;
-      }
-      a.op = to > a.op ? Math.min(to, a.op + dt / CHIP_FADE) : Math.max(to, a.op - dt / CHIP_FADE);
-      if (a.op <= 0) {
-        // (one not shown is written once, and not every frame)
-        if (c.written !== '') c.el.setAttribute('style', 'opacity:0');
-        c.written = '';
-        continue;
-      }
-      const box = `opacity:${a.op.toFixed(3)};transform:translate(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px)`;
-      const pointer = `translate(${a.px.toFixed(1)}px,${a.py.toFixed(1)}px) rotate(${a.angle.toFixed(3)}rad) translateX(5px)`;
-      if (box + pointer === c.written) continue;
-      c.written = box + pointer;
+      // (standing over the label as it goes, it has no pointer: it is the label's words)
+      const pointer = w.own ? `translate(${a.px.toFixed(1)}px,${a.py.toFixed(1)}px) rotate(${a.angle.toFixed(3)}rad) translateX(5px)` : '';
+      if (`${box}|${pointer}` === c.written) continue;
+      c.written = `${box}|${pointer}`;
       c.el.setAttribute('style', box);
-      (c.el.firstElementChild as HTMLElement).style.transform = pointer;
+      const tip = c.el.firstElementChild as HTMLElement;
+      tip.style.transform = pointer;
+      tip.style.visibility = pointer ? '' : 'hidden';
     }
   }
 

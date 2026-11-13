@@ -62,14 +62,14 @@
 /* the path's markers: a diamond on the line and a label beside it, laid out together (pathmarks.ts). They lie under every panel and keep off them */
 #ui > .path-marks { position: fixed; inset: 0; pointer-events: none !important; overflow: hidden; }
 .path-marks[hidden] { display: none; }
-.path-mark { position: absolute; left: 0; top: 0; transition: opacity 0.18s; }
-.path-mark.gone { opacity: 0; }
+/* the glyph fades by its class; the label is faded by path.ts (crossFade), so that it and its chip are never at two places */
+.path-mark { position: absolute; left: 0; top: 0; }
+.path-mark.gone > i { opacity: 0; }
 .path-marks.aboard > .path-mark { display: none; }
-.path-mark > i { position: absolute; left: -4.5px; top: -4.5px; width: 9px; height: 9px; rotate: 45deg; background: var(--ink); border: 1.5px solid rgba(10, 11, 14, 0.9); box-sizing: border-box; }
+.path-mark > i { position: absolute; left: -4.5px; top: -4.5px; width: 9px; height: 9px; rotate: 45deg; background: var(--ink); border: 1.5px solid rgba(10, 11, 14, 0.9); box-sizing: border-box; transition: opacity 0.18s; }
 .path-apogee > i, .path-perigee > i { background: var(--amber); }
 .path-down > i, .path-impact > i { background: rgba(10, 11, 14, 0.7); border-color: var(--amber); }
-.path-mark > span { position: absolute; left: 0; top: 0; height: 18px; padding: 0 7px; border-radius: 2px; background: rgba(10, 11, 14, 0.55); font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; text-shadow: 0 0 2px rgba(10, 11, 14, 0.9); transition: opacity 0.18s; }
-.path-mark > span.gone { opacity: 0; transition: none; }
+.path-mark > span { position: absolute; left: 0; top: 0; height: 18px; padding: 0 7px; border-radius: 2px; background: rgba(10, 11, 14, 0.55); font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; text-shadow: 0 0 2px rgba(10, 11, 14, 0.9); opacity: 0; }
 .path-mark b { font-weight: 600; letter-spacing: 0.1em; color: var(--ink); }
 .path-apogee b, .path-perigee b, .path-down b, .path-impact b { color: var(--amber); }
 .path-mark em { font-style: normal; color: var(--dim); }
