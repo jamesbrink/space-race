@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
 import { type Sounds, silent } from '../audio.ts';
+import { Head, type Limits, type Lookout } from './camera/head.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
 
 /**
@@ -921,6 +922,13 @@ export interface Seat {
   facing(): number;
   /** Where the view from outside sits instead of over the shoulder: metres behind the eyes and above them (a vehicle's chase view). */
   chase?(): { back: number; up: number };
+  /**
+   * A couch: the frame of the sitter's eyes in the world (+Z where they rest, +Y the top of the head) into `out`. Given,
+   * the head is a person's strapped into it (camera/head.ts): it turns about the neck within `limits`, not freely about
+   * the world's vertical, and can lean to a port.
+   */
+  frame?(out: THREE.Matrix4): THREE.Matrix4;
+  limits?: Limits;
 }
 
 /** What the walker needs from the stage it walks on. */
@@ -1066,6 +1074,19 @@ export class Walker {
   /** What the figure is sitting in, if it is: see Seat. */
   private seat: Seat | null = null;
   private seatFaced = 0;
+  /** The head in a couch (Seat.frame): it turns and leans there, and the walker's own look is not used. */
+  private readonly couch = new Head({ side: 1.75, up: 0.95, down: 0.6 });
+  private readonly couchFrame = new THREE.Matrix4();
+  private couchLens = 0;
+  /** The head in the couch sat in, as the page asks of it: lean to something in the scene (or back), and whether it is leaning. */
+  readonly head = {
+    lean: (to: Lookout | null): void => {
+      if (!this.seat?.frame) return;
+      this.couch.leanIn(to, this.seat.frame(this.couchFrame), this.couchOwnLens());
+      this.moved = true;
+    },
+    looking: (): boolean => this.seat?.frame !== undefined && this.couch.out,
+  };
   /** What the body stands on or climbs, where on it (in the mesh's own coordinates) and how the mesh was turned: see ride. */
   private perch: { mesh: THREE.Mesh; at: THREE.Vector3; facing: number; stood: THREE.Vector3 } | null = null;
   private readonly ridden = new THREE.Matrix4();
@@ -1313,6 +1334,11 @@ export class Walker {
 
   /** Turn the head: radians to the right, and up. */
   look(right: number, up: number): void {
+    if (this.seat?.frame && !this.third) {
+      this.couch.turn(-right, up);
+      this.moved = true;
+      return;
+    }
     this.yaw -= right;
     this.pitch = THREE.MathUtils.clamp(this.pitch + up, -1.45, 1.45);
     this.moved = true;
@@ -1378,6 +1404,8 @@ export class Walker {
     this.vel.set(0, 0);
     this.perch = null;
     this.body.on = null;
+    this.couch.reset();
+    if (seat?.limits) this.couch.limits = { ...seat.limits };
     if (seat) {
       this.seatFaced = seat.facing();
       this.yaw = this.heading = this.seatFaced - Math.PI / 2;
@@ -1394,6 +1422,13 @@ export class Walker {
   get seated(): boolean {
     return this.seat !== null;
   }
+
+  /** The lens a couch's head sees through by itself: the walker's own. */
+  private couchOwnLens(): number {
+    return this.camera.aspect < 1 ? FOV_UPRIGHT : FOV;
+  }
+  private readonly couchPose = { eye: new THREE.Vector3(), quaternion: new THREE.Quaternion(), lens: 0 };
+  private readonly couchScale = new THREE.Vector3();
 
   /** Down (see `down`): the body is wherever the figure's hips are over the ground. */
   pin(at: THREE.Vector3): void {
@@ -1673,6 +1708,18 @@ export class Walker {
     this.peekK = THREE.MathUtils.clamp(k + (this.peekAt ? dt : -dt) / PEEK_SECONDS, 0, 1);
     if (this.peekK !== k) this.moved = true;
     camera.quaternion.setFromEuler(this.euler.set(this.pitch + nod, this.yaw, roll));
+    // in a couch the head is a strapped-in person's: about the neck, within limits, in the couch's own frame (head.ts)
+    const couch = this.seat?.frame ? this.seat.frame(this.couchFrame) : null;
+    if (couch) {
+      this.couch.calm = this.motion === 0;
+      this.couch.step(dt);
+      if (this.couch.moving) this.moved = true;
+      const pose = this.couch.pose(this.couchOwnLens(), this.couchPose);
+      couch.decompose(camera.position, camera.quaternion, this.couchScale);
+      camera.position.add(this.couchScale.copy(pose.eye).applyQuaternion(camera.quaternion));
+      camera.quaternion.multiply(pose.quaternion);
+      this.couchLens = pose.lens;
+    }
     const gaze = camera.getWorldDirection(this.gaze);
     // what the body could touch was gathered for its move; what the eyes, the hand and the camera can reach is gathered now
     const far = REACH + BOOM + 0.5;
@@ -1715,7 +1762,14 @@ export class Walker {
     }
     // what is straight ahead, within arm's reach of the figure: from behind it, the ray starts level with its head
     this.aimed = this.solids.cast(this.eyes.copy(camera.position).addScaledVector(gaze, back), gaze, REACH);
-    if (this.lens(dt)) this.moved = true;
+    if (couch && this.viewK === 0) {
+      // (the couch's lens: the walker's own, or what a lean has it at)
+      if (Math.abs(camera.fov - this.couchLens) > 1e-6) {
+        camera.fov = this.couchLens;
+        camera.updateProjectionMatrix();
+        this.moved = true;
+      }
+    } else if (this.lens(dt)) this.moved = true;
     const fov = camera.aspect < 1 ? FOV_UPRIGHT : FOV;
     // The near plane goes out as far as the nearest thing allows, as it does for the orbiting
     // camera and for the same reason (depth resolution across the site), but never past the

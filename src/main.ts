@@ -145,6 +145,27 @@ const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight,
 cockpit.listen((sample, state) => sound.follow(sample, state));
 // the cabin's own instruments read the same samples, and its controls are the flight deck's (viewer/cabin.ts)
 cockpit.listen((sample, state) => stage.cabin?.fly(sample, state));
+// From a seat, what can be looked out of: a switch apiece, and its digit (stage.leanTo)
+const lookouts = () =>
+  ui.setLookouts(
+    stage.lookouts().map((l) => l.name),
+    stage.leaning,
+  );
+const leanTo = (n: number | null) => {
+  const said = stage.leanTo(n);
+  if (said && n !== null) ui.say(stage.lookouts()[n]?.name ?? 'Looking out', said);
+};
+ui.onLookout = leanTo;
+stage.onLean = lookouts;
+stage.onSeat = lookouts;
+window.addEventListener('keydown', (e) => {
+  const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  if (!/^[1-9]$/.test(e.key) || e.repeat || typing || e.metaKey || e.ctrlKey || e.altKey || ui.wheel.isOpen) return;
+  const n = Number(e.key) - 1;
+  if (n >= stage.lookouts().length) return;
+  leanTo(n);
+  e.preventDefault();
+});
 stage.onCabin = (thing) => {
   if (thing.does) {
     stage.cabin?.work(thing.object);
@@ -312,6 +333,7 @@ window.addEventListener('keydown', (e) => {
 });
 // A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
 stage.onSpot = (page, point, floor) => {
+  if (stage.aboard()) return; // (from the couch there is nowhere to walk from or fly to: the view is the pilot's own)
   const walker = flight.models.find((m) => m.walker);
   ui.menu(page.x, page.y, [
     ...(walker && floor
@@ -326,7 +348,15 @@ stage.onSpot = (page, point, floor) => {
   ]);
 };
 stage.onVisit = orbit; // the view drifts round whatever was last chosen
-stage.onHoverWindow = (over) => ui.hint(over ? ['Window', 'Click to look inside'] : null);
+// (from a seat a window is one to look out of, by name, and its key; from outside, one to look in at)
+stage.onHoverWindow = (over, name) =>
+  ui.hint(
+    !over
+      ? null
+      : name
+        ? [name, `Click to lean to it and look out (${stage.lookouts().findIndex((l) => l.name === name) + 1})`]
+        : ['Window', 'Click to look inside'],
+  );
 // taking the camera pauses the drift; it starts again with the next thing chosen
 stage.onInteract = () => {
   stage.setAutoRotate(false);
@@ -337,6 +367,7 @@ stage.onView = (id) => ui.setView(id);
 stage.onRig = (id) => {
   ui.showCamera(id, !ready || demo.active);
   panelOnly();
+  lookouts();
 };
 /**
  * From the couch the panel is the panel: the flight deck's strip says the same things over the top of it, so on board
@@ -350,15 +381,17 @@ function panelOnly(): void {
   // (not on a touch screen: there the deck's buttons and stick are the only keys there are, and there is no P)
   root.classList.toggle('panel-only', aboard && !prefs.get('deckAboard') && !matchMedia('(pointer: coarse)').matches);
   root.classList.toggle('aboard', aboard);
-  if (aboard && !was && root.classList.contains('panel-only') && ready && !demo.active)
-    ui.say('From the couch', 'Click a control to work it, a window or the periscope to look out', 'P brings the flight deck back');
+  if (aboard && !was && root.classList.contains('panel-only') && ready && !demo.active) {
+    const n = stage.lookouts().length;
+    ui.say('From the couch', '', `${n ? `${n > 1 ? `1–${n}` : '1'} lean and look out · ` : ''}P brings the flight deck back`);
+  }
 }
 // Escape first lets go of a look out of a window or into the periscope; only then is it the flight deck's (which it leaves)
 window.addEventListener(
   'keydown',
   (e) => {
     if (e.key !== 'Escape' || !stage.lookingOut) return;
-    stage.lookOut(null);
+    stage.leanTo(null);
     e.stopImmediatePropagation();
     e.preventDefault();
   },

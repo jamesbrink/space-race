@@ -162,6 +162,14 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 /* on foot the view is the whole screen, whatever share a sheet had of it */
 body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }
 /* the reticle: a dot where the eyes point; within reach of something, a ring and its name */
+/* from a seat: what can be looked out of, at the right edge (on foot on a touch screen, at the left, clear of the walk's buttons) */
+.lookouts { position: absolute; right: calc(var(--edge) + env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--line); border-radius: 3px; }
+.lookouts[hidden] { display: none; }
+.lookouts button { display: flex; align-items: center; min-height: 32px; padding: 6px 10px; text-align: left; font: 11px/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); border-radius: 2px; white-space: nowrap; }
+.lookouts button:is(:hover, :focus-visible) { background: rgba(255, 196, 107, 0.14); outline: none; }
+.lookouts button[aria-pressed='true'] { color: var(--amber); }
+.lookouts kbd { margin-right: 8px; }
+@media (pointer: coarse) { .lookouts button { min-height: 44px; } #ui.walking .lookouts { right: auto; left: calc(var(--edge) + env(safe-area-inset-left)); top: 30%; transform: none; } }
 .reticle { display: none; position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none !important; }
 #ui.walking .reticle { display: block; }
 /* the rim of the helmet's visor, through the eyes, when chosen: a soft dark edge and the curve of the seal at the corners, drawn over either look */

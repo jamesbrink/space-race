@@ -7,6 +7,7 @@ import type { Confidence, Flight, ModelDef, Part } from './types';
 import { RIGS, type RigId } from './viewer/camera/rig.ts';
 import { functionsOf } from './viewer/explode';
 import { chooseTier, tier } from './viewer/tier';
+import { lookoutsOf } from './viewer/lookouts';
 import { Wheel } from './wheel';
 
 export interface UiHandlers {
@@ -110,6 +111,8 @@ const WASD = ['W', 'A', 'S', 'D'];
 function legendMarkup(f: Flight): string {
   const walker = f.models.find((m) => m.walker);
   const flies = Boolean(f.trajectory?.body && f.flies);
+  // from the seat of what is flown: what can be looked out of, each by its digit (lookouts.ts)
+  const lookouts = lookoutsOf(f.models.find((m) => m.id === f.flies?.model)?.cabin);
   // what is the same whoever has the camera
   const go: LegendRow[] = [
     ...(walker ? [[['V'], 'walk as crew'] as LegendRow] : []),
@@ -186,7 +189,14 @@ function legendMarkup(f: Flight): string {
         ['arrows', ARROWS, 'look'],
         ['pair', ['R', 'F'], 'zoom'],
       ],
-      main: [['drag', 'look round'], ['scroll · pinch', 'zoom'], ...camera('look ahead')],
+      main: [
+        ['drag', 'look round'],
+        ['scroll · pinch', 'zoom'],
+        ...(lookouts.length
+          ? [[lookouts.map((_, i) => String(i + 1)), `lean to: ${lookouts.map((l) => l.name.toLowerCase()).join(' · ')}`] as LegendRow]
+          : []),
+        ...camera('look ahead'),
+      ],
       more: rest([]),
     },
     tracking: {
@@ -349,6 +359,7 @@ export class Ui {
       <div class="stick" aria-hidden="true"><i></i></div>
       <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump title="Jump">Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-act hidden title="What can be done with what you are looking at">Act</button></div>
       <div class="reticle" aria-hidden="true"><i></i><p><kbd>E</kbd><span></span></p></div>
+      <nav class="lookouts" aria-label="Look out" hidden></nav>
       <aside class="walk-card" hidden aria-live="polite">
         <button class="card-close" aria-label="Close" title="Close">×</button>
         <h3></h3><p class="card-what"></p><p class="card-more"></p><div class="pf"></div>
@@ -452,6 +463,11 @@ export class Ui {
       if (key) window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
     });
     root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
+    root.querySelector('.lookouts')!.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-lookout]');
+      if (b) this.onLookout(Number(b.dataset.lookout));
+      (document.activeElement as HTMLElement | null)?.blur?.(); // (or Space would press it again: Space is the flight's next event)
+    });
     this.wheel = new Wheel(root);
     root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());
     root.querySelector('[data-walk-view]')!.addEventListener('click', () => on.walkView());
@@ -1033,6 +1049,29 @@ export class Ui {
     window.addEventListener('pointerdown', away, true);
     window.addEventListener('keydown', key, true);
   }
+
+  /**
+   * From a seat (on board, or a couch boarded on foot): what can be looked out of, each a switch that leans the pilot
+   * to it and back (its digit is the key), lit while he leans to it. An empty list puts it away.
+   */
+  setLookouts(names: string[], leaning: number | null): void {
+    const bar = this.root.querySelector<HTMLElement>('.lookouts')!;
+    const key = names.join('\n');
+    if (bar.dataset.names !== key) {
+      bar.dataset.names = key;
+      bar.innerHTML = names
+        .map(
+          (name, i) =>
+            `<button class="switch" data-lookout="${i}" aria-pressed="false" title="Lean to the ${esc(name.toLowerCase())} and look out; again, or Esc, to sit back (${i + 1})"><kbd>${i + 1}</kbd>${esc(name)}</button>`,
+        )
+        .join('');
+    }
+    bar.hidden = names.length === 0;
+    for (const b of bar.querySelectorAll<HTMLElement>('[data-lookout]'))
+      b.setAttribute('aria-pressed', String(Number(b.dataset.lookout) === leaning));
+  }
+  /** One of `setLookouts` was asked for. */
+  onLookout: (n: number) => void = () => {};
 
   /** A label beside the pointer for something that is not a part: a window to look through. */
   hint(text: [title: string, line: string] | null): void {

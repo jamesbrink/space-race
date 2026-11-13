@@ -418,8 +418,10 @@ vehicle.cabin = {
   // the top of the pilot's head: 45 degrees round from the hatch, which is on +X (model/vehicle.py)
   overhead: [Math.SQRT1_2, 0, Math.SQRT1_2],
   // a head in a helmet fixed to the suit, and the eyes' own turn: estimated, nothing read gives it. Down is from a gaze
-  // that already rests 40 degrees toward his feet: further, and he is looking into his own collar
-  head: { side: 1.75, up: 0.95, down: 0.6 },
+  // that already rests 40 degrees toward his feet, and is as far as keeps all of a 62 degree picture 12 cm or more from
+  // the eyes (measured in the model, and less over a shoulder: camera/head.ts): further, and the picture's lower edge is
+  // in the suit's collar and the couch's headrest, which the helmet would hide
+  head: { side: 1.75, up: 0.95, down: 0.3 },
   instruments: [
     {
       node: 'Gauge_Altimeter',
@@ -582,8 +584,8 @@ vehicle.cabin = {
   // frame), 6.6 in of glass each. The lower first: 15 degrees round from the pilot's right toward his feet, station 28.5,
   // 60 degrees from +X as the capsule stands; the upper at 232.5 degrees, station 34.5, 277.5 as it stands
   windows: [
-    { at: [0.32, 0.721, -0.554], out: [0.47, 0.342, -0.814], across: 0.168 },
-    { at: [0.076, 0.874, 0.58], out: [0.123, 0.342, 0.932], across: 0.168 },
+    { at: [0.32, 0.721, -0.554], out: [0.47, 0.342, -0.814], across: 0.168, name: 'Lower port' },
+    { at: [0.076, 0.874, 0.58], out: [0.123, 0.342, 0.932], across: 0.168, name: 'Upper port' },
   ],
   // how far it tips at full command is estimated; the axes are the node's own (X to his right, Y along the grip, Z toward his head)
   stick: { node: 'Ctl_HandController', throw: 0.23, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },

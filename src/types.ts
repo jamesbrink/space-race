@@ -297,9 +297,10 @@ export interface CabinDef {
   /**
    * Windows, as light: where each pane is (`at`) and the way it faces out of the model (`out`, a unit vector), in the
    * model's frame, and how wide its glass is, metres. What is outside each (sky, the Earth, black) is looked at a
-   * couple of times a second and comes in as a light of that colour and of the strength its area gives.
+   * couple of times a second and comes in as a light of that colour and of the strength its area gives. Each is also
+   * something to lean to and look out of on board (viewer/lookouts.ts), by `name` ("Window" if it has none).
    */
-  windows?: { at: [number, number, number]; out: [number, number, number]; across: number }[];
+  windows?: { at: [number, number, number]; out: [number, number, number]; across: number; name?: string }[];
   /** The hand controller: the node tips about these axes of its own (unit vectors) by `throw` radians at full command, and twists for yaw. */
   stick?: { node: string; throw: number; pitch: [number, number, number]; roll: [number, number, number]; yaw: [number, number, number] };
   /**

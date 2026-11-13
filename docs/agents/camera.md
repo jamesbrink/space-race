@@ -16,7 +16,7 @@ time, is told what the hands did, and says where the camera is. One is in charge
 | `free` | no subject: flies where it is pointed | W A S D E Q fly, drag and arrows look, wheel goes toward what the pointer is on by proportion, or back |
 | `chase` | orbit with the flown vehicle for its pivot, carried with it, level with the horizon | as orbit, without sliding |
 | `locked` | the chase view measured in the vehicle's own frame: it holds still and the world turns | the same |
-| `onboard` | first person from a seat in the vehicle (`ModelDef.seats[0]`: `node`, whose +Z looks ahead and +Y is overhead, and `eye` in its frame) | drag and arrows turn the head within limits, wheel changes the lens |
+| `onboard` | first person from a seat in the vehicle (`ModelDef.seats[0]`: `node`, whose +Z looks ahead and +Y is overhead, and `eye` in its frame) | drag and arrows turn the head within limits, wheel changes the lens, 1 2 3 (and the lookouts' buttons) lean to a port or the periscope and back |
 | `pad` | stands at one place on the ground and follows the vehicle, closing its lens as it goes (to a quarter of a degree) | wheel asks for a tighter or wider frame, drag puts the vehicle off the middle |
 
 C goes to the next of the rigs there are as things stand (`Cameras.available`): on the pad, orbit
@@ -38,14 +38,30 @@ board or the pad camera it is as it was last left (`Rig.enter`'s `resume`). The 
 where the orbiting or free view was, set down on the ground at tripod height, if that was within
 reach of the place; otherwise where it last stood, or to one side of the place (`Cameras.tripod`).
 The seat the camera sits in is the flight's data: Freedom 7's is the model's own `Seat_Pilot` node, at the seated
-figure's eyes, looking at the panel (a model without one may name a `standIn`, and says so). On board the head turns
-within the seat's own limits (`CabinDef.head`, set on `OnboardRig.limits`), and can be told to look at something in
-the cabin: `OnboardRig.lookAt(point, lens)` turns to it and holds it, in the seat's frame, until it is let go
-(`lookAt(null)` goes back to where the head was) or the hands turn the head. `Stage.lookOut` uses it for a window's
-pane (seen from the eye: the scene itself beyond the glass) and for the periscope's screen (brought to fill the view;
-asked again, its power changes). A click on board selects nothing and flies nowhere: it works a control, looks out,
-or lets go (`Stage.onCabin`); Escape lets go of a look before it is the flight deck's. Hover names only what is in the
-cabin, and what is not drawn (the pilot's own helmet) is not picked.
+figure's eyes, looking at the panel (a model without one may name a `standIn`, and says so).
+
+On board the head is a strapped-in person's (`camera/head.ts`, `Head`; the walker in a couch boarded on foot carries
+the same one, walking.md): it turns aside about the neck, the eyes going round with as much of the turn as is the
+head's (`HEAD_TURN`) and swivelling the rest, and a look up or down moves only the eyes. It turns within the seat's
+own limits (`CabinDef.head`, set on `OnboardRig.limits`), less far down the further it is turned aside and the wider
+the lens (`clampHead`): Freedom 7's are measured in the model so that no part of a 62 degree picture is nearer the
+eyes than 12 cm, which is where the suit's collar and the couch's headrest are, which a helmet would hide. Nothing of
+the pilot is then seen from inside or cut, and the near plane is not involved.
+
+What can be looked out of is the cabin's data (`lookouts.ts`: each of `CabinDef.windows`, by its `name`, then the
+periscope), and each is one explicit act: its digit, its button in the lookouts bar (`Ui.setLookouts`, right edge),
+or a click on its pane or the screen (`Stage.lookOut`). The pilot leans (`Stage.leanTo`, `Head.leanIn`): the head
+turns to it, the eyes go to it along a curve that comes in down the line it is looked through (`leanPath`), and the
+lens closes on it last (`leanPhases`), eased by time, never a cut; the same act or Escape (or 0, which also looks
+ahead) brings him back the same way. A port is leant to square to its pane where the model leaves room for a face
+there, else as square as it allows, else along the line from the eyes to it as far as there is room
+(`Stage.approach`, asked of the model's own meshes: what stands in a cabin is the cabin's, so the data cannot say),
+and what is seen is the scene itself from that place. The periscope is leant to until its screen fills the picture;
+clicked again, its power changes. While leaning the hands turn the look about what is leant to, within a glance
+(`GLANCE`), and never end it. A click on board selects nothing and flies nowhere (a right click offers nothing): it
+works a control, leans, or comes back (`Stage.onCabin`); Escape comes back from a lean before it is the flight deck's.
+Hover names only what is in the cabin, a window by the name it is leant to by, and what is not drawn (the pilot's own
+helmet) is not picked.
 
 What is promised, in every rig (`tests/camera.test.mjs` for the arithmetic and the rigs; the
 browser's check below for the page):

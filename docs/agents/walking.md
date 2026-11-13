@@ -244,7 +244,11 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
 - **Places can be taken.** `ModelDef.seats` (a couch) is boarded from the wheel at its `from`
   node while the clock is in its `open` window (the clock is not moved for it); `stage.seated`
   says where, E gets out where he got in. A model without the node can name a `standIn` mesh
-  for a placeholder until it has one. A seat's `figure` names the flight's model of whoever sits
+  for a placeholder until it has one. In a couch whose model has a cabin (`Seat.frame`) the
+  head is the on-board view's (`camera/head.ts`, camera.md): it turns about the neck within the
+  cabin's limits in the couch's own frame, not freely about the world's vertical, the cabin is
+  aboard (its periscope shows, its windows light it), and its ports and periscope are leant to
+  by the same digits and buttons as from the flight deck. A seat's `figure` names the flight's model of whoever sits
   there as he stands outside: there is one of him, so while the flight deck is taken that figure
   is not drawn on the pad (`Stage.crewAboard`), and comes back when the deck is left. A seat's
   `egress` says where it can be left for the outside: 'pad' (through the hatch while `open`: the
