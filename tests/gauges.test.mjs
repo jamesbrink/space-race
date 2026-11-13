@@ -139,6 +139,29 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
             `${c.node}: ${c.does}`,
           );
       }
+      if (cabin.lighting) {
+        // the lights' switch is a node with a turn for each position it has, the first as built; and each position
+        // lights lamps the model has, each with its tube in the file
+        const lever = nodes.get(cabin.lighting.control);
+        assert.ok(lever, `lighting: no control ${cabin.lighting.control} in ${model.url}`);
+        assert.ok(Array.isArray(lever.throw) && lever.throw[0] === 0, `${cabin.lighting.control}: its extras give no throw from as built`);
+        assert.equal(lever.throw.length, cabin.lighting.ways.length, `${cabin.lighting.control}: a position for every turn of its lever`);
+        assert.ok(new Set(lever.throw).size === lever.throw.length, `${cabin.lighting.control}: two positions at one turn`);
+        const lamps = model.lights ?? [];
+        for (const way of cabin.lighting.ways) {
+          assert.ok(way.says, 'a position says what it is');
+          for (const i of way.lit) assert.ok(lamps[i], `lighting: ${way.says} lights lamp ${i}, and the model has ${lamps.length}`);
+        }
+        assert.deepEqual(
+          cabin.lighting.ways[0].lit,
+          lamps.map((_, i) => i),
+          'as built, every lamp the model draws lit is lit',
+        );
+        assert.equal((cabin.lighting.fittings ?? []).length, lamps.length, 'lighting: a fitting for each lamp');
+        for (const fitting of cabin.lighting.fittings ?? [])
+          assert.ok(nodes.has(fitting), `lighting: no fitting ${fitting} in ${model.url}`);
+        assert.ok(cabin.lighting.name && cabin.lighting.about);
+      }
       if (cabin.stick) {
         assert.ok(nodes.has(cabin.stick.node), `stick ${cabin.stick.node} is not in ${model.url}`);
         for (const axis of [cabin.stick.pitch, cabin.stick.roll, cabin.stick.yaw]) near(Math.hypot(...axis), 1);

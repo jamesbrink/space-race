@@ -53,6 +53,8 @@ export interface CabinThing {
   object: THREE.Object3D;
   /** What working it asks of the flight deck (CabinDef.controls[].does), if it is a control that does something. */
   does?: string;
+  /** It is the switch of the cabin's own lights (CabinDef.lighting): worked, it goes to its next position (`Cabin.light`). */
+  lights?: boolean;
   /** It is something to look out through: a window's pane or the periscope's screen. */
   lookout?: 'pane' | 'screen';
   /** For a pane: where on it, and the way it faces (toward whoever looks). */
@@ -103,7 +105,17 @@ export class Cabin {
   private readonly needles: Needle[] = [];
   private readonly lamps: Lamp[] = [];
   private readonly things: { thing: CabinThing; reach: number; at: THREE.Vector3 }[] = [];
-  private readonly lights: { light: THREE.PointLight; base: number }[];
+  /** The cabin's own lamps: each light, its strength as the flight's data gives it, and how far it is lit (0 to 1, eased to `goal`). */
+  private readonly lights: { light: THREE.PointLight; base: number; lit: number; goal: number }[];
+  /** What glows with each lamp (its tube): its materials, and how brightly each glowed as built. */
+  private readonly fittings: { of: number; material: THREE.MeshStandardMaterial; glow: number }[] = [];
+  /** The lights' switch: its lever as built, the turn about its own X for each position, where it stands (`now`) and where it is going. */
+  private lever: { node: THREE.Object3D; home: THREE.Quaternion; throws: number[]; at: number; now: number } | null = null;
+  /**
+   * How much of the cabin's own light there is, 0 to 1, as every surface the build shaded reads it: the shade baked at
+   * its vertices is one figure with the lamps on and another with them off (`shadeBy`).
+   */
+  private readonly lit = { value: 1 };
   private stick: { node: THREE.Object3D; home: THREE.Quaternion; now: THREE.Vector3 } | null = null;
   private readonly worked: { node: THREE.Object3D; home: THREE.Vector3; by: THREE.Vector3; t: number }[] = [];
 
@@ -145,7 +157,7 @@ export class Cabin {
     this.group = group;
     // (a floodlight's reflector spreads its light: it falls off with distance, not its square, or what is near it burns)
     for (const light of lights) light.decay = 1;
-    this.lights = lights.map((light) => ({ light, base: light.intensity }));
+    this.lights = lights.map((light) => ({ light, base: light.intensity, lit: 1, goal: 1 }));
     // What comes in at each window, and off the periscope's screen: a light apiece, there from the start (a light
     // added later would have every shader in the scene built again) and dark until someone is aboard to see by it.
     const glow = (from: THREE.Vector3, out: THREE.Vector3, across: number, lamp: THREE.Vector3): void => {
@@ -209,6 +221,22 @@ export class Cabin {
       const node = find(c.node);
       if (node) name(node, c.name, c.about, c.does ? { does: c.does } : {});
     }
+    // The cabin's own lights and their switch: a control like the others to the pointer, but what it does is the cabin's.
+    const lighting = this.def.lighting;
+    const lever = lighting && find(lighting.control);
+    if (lighting && lever) {
+      const throws = Array.isArray(lever.userData.throw) ? (lever.userData.throw as number[]) : [0];
+      this.lever = { node: lever, home: lever.quaternion.clone(), throws, at: 0, now: 0 };
+      name(lever, lighting.name, lighting.about, { lights: true });
+      (lighting.fittings ?? []).forEach((fitting, of) => {
+        find(fitting)?.traverse((o) => {
+          const mesh = o as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          for (const material of new Set([mesh.userData.real, mesh.material] as (THREE.MeshStandardMaterial | undefined)[]))
+            if (material?.emissive) this.fittings.push({ of, material, glow: material.emissiveIntensity });
+        });
+      });
+    }
     const stick = this.def.stick && find(this.def.stick.node);
     if (stick) this.stick = { node: stick, home: stick.quaternion.clone(), now: new THREE.Vector3() };
 
@@ -220,12 +248,23 @@ export class Cabin {
         const material = (mesh.userData.real ?? mesh.material) as THREE.MeshStandardMaterial | undefined;
         if (mesh.isMesh && material?.isMeshStandardMaterial && !material.name.startsWith('glass')) inside.add(material);
       });
+    // What the build shaded as indoors is indoors, wherever in the model it hangs (a hatch's inner face is the hatch's
+    // node, not the cabin's): its shade is a colour of four parts, lamps on and lamps off (`shadeBy`).
+    full.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh || mesh.geometry.getAttribute('color')?.itemSize !== 4) return;
+      for (const material of new Set([mesh.userData.real, mesh.material] as (THREE.MeshStandardMaterial | undefined)[])) {
+        if (!material?.vertexColors || material.name.startsWith('glass')) continue;
+        if (material.isMeshStandardMaterial) inside.add(material);
+        this.shadeBy(material);
+      }
+    });
     // (an occlusion map of one shade: it takes the sky's light and its reflection off, and leaves every lamp and the Sun alone)
     const shade = new THREE.DataTexture(new Uint8Array([255 * INDOORS, 255 * INDOORS, 255 * INDOORS, 255]), 1, 1);
     shade.needsUpdate = true;
     for (const m of inside) {
       m.aoMap = shade;
-      m.aoMapIntensity = shaded(m, false);
+      m.aoMapIntensity = shaded(m, false, 1);
       m.needsUpdate = true;
     }
     this.inside = [...inside];
@@ -315,6 +354,58 @@ export class Cabin {
     }
   }
 
+  /**
+   * A material whose meshes carry the build's shade reads it by the cabin's lights: red (the same as green and blue)
+   * with them on, alpha with them off, mixed by how far they are lit. Without this three multiplies the colour by all
+   * four, which for a surface that is not seen through is the lamps-on figure: what a model with no cabin shows.
+   */
+  private readonly shaded = new Set<THREE.Material>();
+  private shadeBy(material: THREE.Material): void {
+    if (this.shaded.has(material)) return;
+    this.shaded.add(material);
+    const prior = material.onBeforeCompile;
+    const key = material.customProgramCacheKey();
+    material.onBeforeCompile = (shader, renderer) => {
+      prior.call(material, shader, renderer);
+      shader.uniforms.uCabinLit = this.lit;
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uCabinLit;').replace(
+        '#include <color_fragment>',
+        /* glsl */ `#if defined( USE_COLOR_ALPHA )
+          diffuseColor.rgb *= mix( vColor.a, vColor.r, uCabinLit );
+        #elif defined( USE_COLOR )
+          diffuseColor.rgb *= vColor;
+        #endif`,
+      );
+    };
+    material.customProgramCacheKey = () => `${key}|cabin-shade`;
+    material.needsUpdate = true;
+  }
+
+  /**
+   * The cabin's lights' switch is thrown to its next position (or to `to`): the lamps that position names are lit and
+   * the rest put out. Says what the switch now reads, or null if the cabin has no such switch.
+   */
+  light(to?: number): string | null {
+    const lighting = this.def.lighting;
+    if (!lighting?.ways.length) return null;
+    this.way = (to ?? this.way + 1) % lighting.ways.length;
+    const way = lighting.ways[this.way]!;
+    this.lights.forEach((l, i) => {
+      l.goal = way.lit.includes(i) ? 1 : 0;
+    });
+    if (this.lever) this.lever.at = this.lever.throws[this.way] ?? 0;
+    this.host.redraw();
+    return way.says;
+  }
+  /** Which of its positions the lights' switch is in (CabinDef.lighting.ways): the first is as the model was built. */
+  private way = 0;
+  /** The lights' switch as it stands: which position, and what that position is called. Null: the cabin has none. */
+  get lighting(): { way: number; says: string; name: string } | null {
+    const lighting = this.def.lighting;
+    const way = lighting?.ways[this.way];
+    return lighting && way ? { way: this.way, says: way.says, name: lighting.name } : null;
+  }
+
   /** The periscope's screen, for whoever wants to look into it: its middle and the way it faces, in the scene. */
   get screen(): { point: THREE.Vector3; normal: THREE.Vector3; radius: number } | null {
     const s = this.scope;
@@ -342,7 +433,7 @@ export class Cabin {
 
   /** The model has been cut open, or closed again: daylight comes in at the cut, so the inside is shaded less. */
   opened(on: boolean): void {
-    for (const m of this.inside) m.aoMapIntensity = shaded(m, on);
+    for (const m of this.inside) m.aoMapIntensity = shaded(m, on, this.lit.value);
     this.open = on;
     this.host.redraw();
   }
@@ -577,7 +668,31 @@ export class Cabin {
     // the cabin's own lamps read the same whatever the exposure outside has gone to: turned down as the eye opens at
     // dusk, and up when it has closed against sunlit cloud or the Earth from space
     const held = THREE.MathUtils.clamp(DAY_EXPOSURE / Math.max(exposure, 1e-3), 0.15, 8);
-    for (const { light, base } of this.lights) light.intensity = base * held;
+    // (a tube strikes and dies in a few hundredths of a second: quick, and still no step)
+    const strike = dt > 0 ? 1 - Math.exp(-dt / LAMP_TAU) : 1;
+    let all = 0;
+    for (const l of this.lights) {
+      if (l.lit !== l.goal) {
+        l.lit += (l.goal - l.lit) * strike;
+        if (Math.abs(l.goal - l.lit) < 1e-3) l.lit = l.goal;
+        moved = true;
+      }
+      l.light.intensity = l.base * held * l.lit;
+      all += l.lit;
+    }
+    const lit = this.lights.length ? all / this.lights.length : 1;
+    if (lit !== this.lit.value) {
+      this.lit.value = lit;
+      for (const m of this.inside) m.aoMapIntensity = shaded(m, this.open, lit);
+      for (const f of this.fittings) f.material.emissiveIntensity = f.glow * (this.lights[f.of]?.lit ?? lit);
+    }
+    const lever = this.lever;
+    if (lever && lever.now !== lever.at) {
+      lever.now += (lever.at - lever.now) * (dt > 0 ? 1 - Math.exp(-dt / SWITCH_TAU) : 1);
+      if (Math.abs(lever.at - lever.now) < 1e-3) lever.now = lever.at;
+      lever.node.quaternion.copy(lever.home).multiply(q.setFromAxisAngle(AXIS_X, lever.now));
+      moved = true;
+    }
     this.seen();
     if (this.aboard && this.probe.owed > 0) moved = true; // (a frame, so the next window is looked out of)
     // the windows' light and the screen's: toward what was last seen outside each, and out when nobody is aboard
@@ -783,10 +898,11 @@ const INDOORS = 0.1;
 const OPENED = 0.45;
 /**
  * How far a material indoors is shaded. Metal is shaded less: it is seen by what it mirrors, and with nothing left to
- * mirror an aluminised suit is black. (What it mirrors is the sky, dimmed, standing in for a cabin it cannot see.)
+ * mirror an aluminised suit is black. (What it mirrors is the sky, dimmed, standing in for a cabin it cannot see: so
+ * with the cabin's own lights out, `lit` 0, it is shaded nearly as far as paint is, or every lever shines in the dark.)
  */
-function shaded(m: THREE.MeshStandardMaterial, opened: boolean): number {
-  return (opened ? OPENED : 1) * (m.metalness > 0.3 ? 0.55 : 1);
+function shaded(m: THREE.MeshStandardMaterial, opened: boolean, lit: number): number {
+  return (opened ? OPENED : 1) * (m.metalness > 0.3 ? 0.55 + 0.37 * (1 - lit) : 1);
 }
 /** How near the eye must be for the inside to be drawn through a closed shell, metres: a 25 cm port is then a dozen pixels and more. */
 const NEAR = 30;
@@ -817,5 +933,8 @@ const BRIGHTEST = 1;
 const LAMP_LIT = 1.6;
 /** The exposure the cabin's lights are set for: a day's on the pad. Away from it they are turned down or up by as much, so the cabin reads the same. */
 const DAY_EXPOSURE = 1;
+/** How quickly a lamp comes on or goes out, and how quickly a switch's lever goes over, seconds. */
+const LAMP_TAU = 0.035;
+const SWITCH_TAU = 0.03;
 /** How long a worked control takes to go out and come back, seconds. */
 const WORK_SECONDS = 0.45;

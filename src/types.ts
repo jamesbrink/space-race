@@ -321,6 +321,15 @@ export interface CabinDef {
    * something to lean to and look out of on board (viewer/lookouts.ts), by `name` ("Window" if it has none).
    */
   windows?: { at: [number, number, number]; out: [number, number, number]; across: number; name?: string }[];
+  /**
+   * The cabin's own lights and their switch. `control` is a node of the model whose extras carry `throw`: a turn about
+   * its own X for each position the switch has, the first as it was built. `ways` says, position by position, what
+   * the switch reads there and which of the model's `lights` (by index) are lit. `fittings` are the meshes that glow
+   * with each of `lights`, in the same order, each with a material of its own: put out with its light. The cabin opens
+   * with the switch as it was built; what the build shaded is shaded for the lamps on and for the lamps off
+   * (viewer/cabin.ts), so a dark cabin is lit by its windows, its periscope and its telelights.
+   */
+  lighting?: { control: string; name: string; about: string; ways: { says: string; lit: number[] }[]; fittings?: string[] };
   /** The hand controller: the node tips about these axes of its own (unit vectors) by `throw` radians at full command, and twists for yaw. */
   stick?: { node: string; throw: number; pitch: [number, number, number]; roll: [number, number, number]; yaw: [number, number, number] };
   /**

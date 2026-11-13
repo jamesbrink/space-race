@@ -150,7 +150,25 @@ const lookouts = () =>
   ui.setLookouts(
     stage.lookouts().map((l) => l.name),
     stage.leaning,
+    stage.cabin?.lighting ?? null,
   );
+// The cabin's own lights: the switch on its console (a click from the seat), N, and the button under the lookouts all
+// throw the one switch (viewer/cabin.ts `light`).
+const cabinLights = (): void => {
+  const said = stage.cabin?.light();
+  const lighting = stage.cabin?.lighting;
+  if (!said || !lighting) return;
+  ui.say(lighting.name, said);
+  lookouts();
+};
+ui.onCabinLights = cabinLights;
+window.addEventListener('keydown', (e) => {
+  const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  if (e.key.toLowerCase() !== 'n' || e.repeat || typing || e.metaKey || e.ctrlKey || e.altKey || ui.wheel.isOpen) return;
+  if (!stage.lookouts().length) return; // (not in a seat: there is no switch within reach)
+  cabinLights();
+  e.preventDefault();
+});
 const leanTo = (n: number | null) => {
   const said = stage.leanTo(n);
   if (said && n !== null) ui.say(stage.lookouts()[n]?.name ?? 'Looking out', said);
@@ -167,7 +185,8 @@ window.addEventListener('keydown', (e) => {
   e.preventDefault();
 });
 stage.onCabin = (thing) => {
-  if (thing.does) {
+  if (thing.lights) cabinLights();
+  else if (thing.does) {
     stage.cabin?.work(thing.object);
     cockpit.ask(thing.does);
     ui.say(thing.label, thing.about ?? '');
