@@ -89,6 +89,7 @@ PORT_PLATE, PORT_HOLE, PORT_GLASS, PORT_SET = 5.0, 3.7, 3.3, 0.9  # radii of the
 # The periscope's door and its objective, level with the upper line of UNITED STATES; the umbilical under the lens.
 SCOPE_Z = mercury_cabin.SCOPE_STATION
 SCOPE_DOOR = (deg(80), deg(100), 27.5, 41.5)
+SCOPE_TUBE = (0.0, 15.5, 36.4)  # the last bend of the periscope's tube in the cabin (mercury_cabin.periscope's `run`): it comes out along that run
 UMBILICAL_Z = 31.2
 # Shingles: rows that part at these stations; the columns are in COLUMNS, below.
 BAND, SEAM_LOW, SEAM_HIGH, TOP = 3.4, 22.0, 42.0, CONE_H - 0.4
@@ -262,6 +263,7 @@ def build_afterbody(M, font) -> Skin:
         "Placed from the flown capsule as it is kept.",
         "Where the ground's umbilical was plugged in until it was pulled 35 seconds before liftoff: under the periscope's lens, inside its door "
         "(the manual has the receptacle under the periscope's door; a photograph of 21 April 1961 has the ground's line at this side).",
+        SCOPE_TUBE,
     )
     mercury_capsule.roll_fittings(
         M,
@@ -379,6 +381,8 @@ def build() -> str:
     turn = mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
     if where:
         report(where, turn)
+    out = mercury_capsule.scope_axis(SCOPE_Z, SCOPE_TUBE)[1]
+    print(f"mr-3 periscope door: {mercury_capsule.periscope_hinge(SCOPE_DOOR, (HATCH[0] + HATCH[1]) / 2, out)}")
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
     mark_shells(SHELLS + tuple(THING_SHELLS) + mercury_cabin.WALL_FIT + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"

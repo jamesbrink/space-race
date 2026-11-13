@@ -88,6 +88,43 @@ test('a sequence plays each motion over its own stretch, and goes back the way i
   assert.ok(turn() < 1e-9 && Math.abs(truck.position.x) < 1e-9, 'back where it was built');
 });
 
+test('what moves on the clock goes by the clock alone: the slider takes the part apart and leaves its door as the clock has it', async () => {
+  const THREE = await import('three');
+  const { Exploder } = await import('../src/viewer/explode.ts');
+  const { periscopeMoves } = await import('../missions/usa/mercury/vehicles/periscope.ts');
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  body.name = 'Afterbody';
+  const door = new THREE.Group();
+  door.name = 'Periscope_Door';
+  const lens = new THREE.Group();
+  lens.name = 'Periscope_Objective';
+  body.add(door, lens);
+  root.add(body);
+  const clocked = periscopeMoves(
+    [0, 1, 0],
+    [0.1, 0, 0],
+    [
+      [-1000, true],
+      [-35, false],
+      [150, true],
+    ],
+  );
+  const part = { node: 'Afterbody', name: '', summary: '', detail: '', explode: [0, 5, 0], order: 0, clocked };
+  const exploder = new Exploder(root, [part]);
+  assert.ok(exploder.onTheClock);
+  const turn = () => 2 * Math.acos(Math.min(1, Math.abs(door.quaternion.w)));
+  assert.ok(turn() < 1e-9 && lens.position.x === 0, 'as built (no clock): shut, drawn in');
+  exploder.clock(-500);
+  assert.ok(Math.abs(turn() - (105 * Math.PI) / 180) < 1e-6 && Math.abs(lens.position.x - 0.1) < 1e-9, 'on the pad: open, out');
+  exploder.clock(0);
+  assert.ok(turn() < 1e-6 && Math.abs(lens.position.x) < 1e-9, 'at liftoff: shut, drawn in');
+  exploder.clock(200);
+  exploder.set(1);
+  assert.ok(Math.abs(body.position.y - 5) < 1e-9, 'the slider still takes the part apart');
+  assert.ok(Math.abs(turn() - (105 * Math.PI) / 180) < 1e-6, 'and leaves the door as the clock has it');
+});
+
 test('every node that moves is a function of its part; the flight names them and puts nodes together', async () => {
   const { functionsOf, scriptedAt, sliderFor, refusal } = await import('../src/viewer/explode.ts');
   const part = {

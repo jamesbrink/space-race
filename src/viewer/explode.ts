@@ -290,6 +290,8 @@ export class Sequence {
 /** Moves a flight's parts between their assembled and exploded positions. */
 export class Exploder {
   private readonly entries: { object: THREE.Object3D; home: THREE.Vector3; part: Part; sequence?: Sequence }[] = [];
+  /** The parts' motions on the clock (Part.clocked), each a sequence in seconds from launch. */
+  private readonly clocked: Sequence[] = [];
   private readonly orders: number;
   /** Nodes being worked by hand: each is played to the slider reading held for it, whatever the slider says. */
   private readonly held = new Map<string, number>();
@@ -307,7 +309,20 @@ export class Exploder {
       // remember where it was built, so the model can be shown again later from a clean state
       const home = ((object.userData.home as THREE.Vector3 | undefined) ??= object.position.clone());
       this.entries.push({ object, home, part, sequence: part.moves && new Sequence(object, home, part.moves) });
+      // (each on a node of its own, never the part's: the part's own place is the slider's)
+      const clocked = part.clocked?.filter((m) => m.node);
+      if (clocked?.length) this.clocked.push(new Sequence(object, home, clocked));
     }
+  }
+
+  /** Has it anything that moves on the clock? */
+  get onTheClock(): boolean {
+    return this.clocked.length > 0;
+  }
+
+  /** Play the parts' motions on the clock to where they are at `t`, seconds from launch. */
+  clock(t: number): void {
+    for (const sequence of this.clocked) sequence.set(t);
   }
 
   /** Hold a node's motions at a reading of the slider of its own (null: let it follow the slider again). Takes effect at the next `set`. */

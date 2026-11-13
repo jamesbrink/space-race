@@ -100,9 +100,21 @@ STATES twice. No photograph read shows that side of No. 11, and the model has no
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
-| Objective | at station 41.5, level with the upper line of UNITED STATES | estimated | NASA S61-03705; the capsule as raised |
-| Door | 20° wide, stations 28.6 to 46.0, hinged on the side toward the hatch, pale inside | estimated | the same; how far it stood open is ours (105°) |
-| Umbilical receptacle | inside the same door, under the lens, at station 32.5 | estimated | S61-03705 shows the ground's hose plugged in there; SEDR 104 puts the receptacle under the periscope's door |
+| Objective | at station 41.5, level with the upper line of UNITED STATES (where its tube meets the vessel; it comes through the skin at 42.0) | estimated | NASA S61-03705; the capsule as raised |
+| Door | 20° wide, stations 28.6 to 46.0, hinged on the side toward the hatch, pale inside; shut at liftoff, opened and shut on the clock | estimated (the door); documented (when it moved, below) | the same; how far it opens is ours (105°) |
+| Umbilical receptacle | inside the same door, under the lens, at station 32.5, 0.95 in under the skin so the door shuts over it | estimated | S61-03705 shows the ground's hose plugged in there; SEDR 104 puts the receptacle under the periscope's door |
+
+The door and the objective moved together, "mechanically linked" (SEDR 104, 2-3). The model is built as the capsule
+stood at liftoff, shut and drawn in, and the gallery shows it so; in flight they move on the clock (`flight.ts`
+`PERISCOPE`, `vehicles/periscope.ts`), each motion four seconds (estimated):
+
+| When | What | Confidence | Source |
+| --- | --- | --- | --- |
+| On the pad, through the count | out, the door open, the umbilical plugged in | documented (that it was); estimated (since when) | SEDR 104, 12-2 |
+| T-35 s | in, the door shut | documented | MR-4 Results, p. 6: "At T-35 seconds, the spacecraft umbilical was [pulled] and the periscope was retracted" |
+| 02:33, separation | out | documented | p. 6: "The periscope was extended" |
+| 06:41 | in, for the entry | documented | p. 43: "OK, periscope is retracting, going to reentry attitude" |
+| 09:41, the drogue | out | documented | p. 44, 09:41.5: "There's the drogue chute. The periscope has extended" |
 
 Freedom 7's objective is at station 37 by its own photographs (it was at 13 in its model until November 2026);
 the two capsules' doors need not have been at the same station, and the photographs of each are followed.
@@ -176,7 +188,9 @@ capsule's stays 41.5 from its own photographs).
   Grissom standing: the gallery's figure for scale is an outline.
 - **The panel's faces are capsule 7's**, and the instrument with two needles is blank.
 - **The rate command system is not modelled** beyond its switch and handle on the console.
-- **The periscope's door stands open at an angle of ours**, and does not shut.
+- **The periscope's door opens to an angle of ours** (105°), each motion takes four seconds, and the objective comes out
+  5.65 in along the last run of the periscope's tube in the cabin (`SCOPE_TUBE`, the cabin's estimate), 4° from square to
+  the skin. The receptacle is sunk 0.95 in under the shut door.
 - **The clamp ring's bolt covers** are half an egg each; the hinge is not modelled.
 - **No mass properties, no trajectory.** The flight cannot be flown yet: see the flight's README.
 - **Its levels of detail change at the viewer's own distances.** They have not been measured for

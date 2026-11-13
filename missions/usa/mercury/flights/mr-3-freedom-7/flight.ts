@@ -18,8 +18,30 @@ import type {
   Trajectory,
 } from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
+import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
+
+/**
+ * Freedom 7's periscope, out and in (vehicles/periscope.ts). The axes are mercury_capsule.periscope_hinge's for this
+ * capsule (its door at 80 to 100 degrees round from the pilot's right, its tube's last run in the cabin, the hatch on +X).
+ * Out on the pad until the umbilical was released at T-35 s, the door seen to shut on the film (Postlaunch Report,
+ * 10.7.2; Shepard's report, 7.1: "the head of the boom start to drop away as the periscope retracted"); out at
+ * separation, 02:32.3 ("Periscope is coming out", 02:35.5: Figure 7.3-2, the pilot's voice); in at 06:44 (Results, p. 10);
+ * out with the drogue at 09:38.1 ("as did the periscope", Results, p. 113; "The periscope is out", 09:39, Figure 7.3-2).
+ * Documented, but for T-35 s, which is derived from TM X-53107's count.
+ */
+const PERISCOPE = periscopeMoves(
+  [0.1979, 0.9397, 0.279],
+  [-0.1013, 0.0088, -0.1013],
+  [
+    [ON_THE_PAD, true],
+    [-35, false],
+    [152.3, true],
+    [404, false],
+    [578.1, true],
+  ],
+);
 const LBF = 4.4482216;
 const LB = 0.45359237;
 
@@ -107,7 +129,11 @@ const vehicleParts: Part[] = [
     detail:
       'Corrugated nickel-alloy shingles, 0.016 inch thick and oxidised blue-black, each fastened through ' +
       'oversized holes so it can grow when hot. No. 7 has two 10-inch portholes instead of the later overhead ' +
-      'window, so the periscope was Shepard’s main view outside.',
+      'window, so the periscope was Shepard’s main view outside. Its door, under his feet, is shut here as it was at ' +
+      'liftoff: the objective stood out on the pad and was drawn in, the door shutting over it, when the umbilical ' +
+      'was pulled 35 seconds before. It came out at separation, went in for the entry and came out again with the ' +
+      'drogue; at the launch site and in flight it does so on the clock. When each motion happened is documented; ' +
+      'how long each took, and how far the door opens, are estimated.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -115,6 +141,7 @@ const vehicleParts: Part[] = [
       ['Portholes', '2, 10 in diameter'],
       ['Thrusters', 'roll: 6 lbf and 1 lbf'],
     ],
+    clocked: PERISCOPE,
     explode: [0, 9.9, 0],
     order: 3,
   },

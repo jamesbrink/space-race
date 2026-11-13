@@ -79,6 +79,13 @@ for (const file of files) {
         const lodNodes = topLevelNodes(lod);
         for (const part of model.parts) assert.ok(lodNodes.has(part.node), `part ${part.node} is missing from level ${level}`);
       }
+      // what moves on the clock is a node of its own, at every level of detail
+      for (const part of model.parts)
+        for (const move of part.clocked ?? []) {
+          assert.ok(move.node, `${part.node}: a clocked move names its node`);
+          for (const file of [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')])
+            assert.ok(allNodes(file).has(move.node), `${part.node}: no node ${move.node} in ${relative(root, file)}`);
+        }
       const parts = model.parts.map((p) => p.node);
       assert.equal(new Set(parts).size, parts.length, 'part nodes repeat');
       const views = model.views.map((v) => v.id);

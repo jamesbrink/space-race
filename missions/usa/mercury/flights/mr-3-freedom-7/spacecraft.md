@@ -53,8 +53,8 @@ anything built on them can be found.
 | --- | --- | --- | --- |
 | Hatch | middle at 315° (45° round from the head toward his right), 55° wide, stations 18.5 to 44 | two photographs measured on their own: 320 ± 10° and 316 to 326°; four stringer bays wide. It agrees with No. 11's photographs and with the MR-4 Results' "in the same location and of the same size" | 0°, at his right hand, 45° wide |
 | Shingles' beads | round the cone, one stack or two side by side in each shingle | plain in every photograph of the flown capsule (`mercury_capsule.Skin`, as Liberty Bell 7 is built) | along the meridian |
-| Periscope objective and door | 90°, objective at station 37, level with the upper line of UNITED STATES; door 20° wide, stations 27.5 to 41.5, hinged on the hatch's side and standing open | NASM2021-00160, -00165 | station 13 |
-| Umbilical receptacle | inside the periscope's door, under the lens, station 31.2 | No. 11's S61-03705 shows the ground's line plugged in there; the 21 April pad photograph has the umbilical's arm on this side of No. 7; SEDR 104 puts the receptacle under the periscope's door | 270° (the head's side), station 8 |
+| Periscope objective and door | 90°, objective at station 37, level with the upper line of UNITED STATES; door 20° wide, stations 27.5 to 41.5, hinged on the hatch's side; shut at liftoff, opened and shut on the clock ("The periscope's door", below) | NASM2021-00160, -00165 | station 13; standing open |
+| Umbilical receptacle | inside the periscope's door, under the lens, station 31.2, 0.95 in under the skin so the door shuts over it | No. 11's S61-03705 shows the ground's line plugged in there; the 21 April pad photograph has the umbilical's arm on this side of No. 7; SEDR 104 puts the receptacle under the periscope's door | 270° (the head's side), station 8 |
 | Lower port | 15°, station 28.5: 30° beyond the hatch's foot-side edge | NASM2021-00160, -00168 | 30°, station 13 |
 | Upper port | 232.5°, station 34.5: high at his left, toward his head | NASM2021-00147, -00161 | 235°, station 40 |
 | Roll jets | two round plates in the top row at 45° and 135°, station 50, each with a large and a small nozzle (6 and 1 lbf) | NASM2021-00160, -00161, DSH01; the 1961 pad photographs show the same fitting above UNITED STATES. That they are the roll jets is read from their two nozzles | at the base, at 90° and 270° |
@@ -62,6 +62,24 @@ anything built on them can be found.
 
 So the stance on the pad changes with it (`sites/lc-5.ts` is unchanged: the hatch faces the white room on +X, 295°
 true): the pilot's head bears 340° true and the periscope 160°, where they bore 25° and 205°.
+
+### The periscope's door
+
+The door "encloses the periscope lower lens flange and the capsule ground checkout umbilical receptacle" and,
+"mechanically linked to the periscope housing, automatically opens and closes with periscope extension and retraction"
+(SEDR 104, 2-3). The model is built as the capsule stood at liftoff, the door shut and the objective drawn in; the
+gallery shows it so. At the launch site and in flight the door (`Periscope_Door`, on its hinge) and the objective
+(`Periscope_Objective`) move on the clock (`flight.ts` `PERISCOPE`, `vehicles/periscope.ts`):
+
+| When | What | Confidence | Source |
+| --- | --- | --- | --- |
+| On the pad, through the count | out, the door open, the umbilical plugged in under the lens | documented (that it was); estimated (since when: the model has it out from the day before) | SEDR 104, 12-2: "begins with the periscope extended while the capsule and booster are still on the pad" |
+| T-35 s | in, the door shut, as the umbilical is ejected | documented; the second derived from the count | Postlaunch Report, 10.7.2 (the film: "Capsule umbilical ejection, periscope retraction, and door closure were clearly shown"); 7.1, Shepard: "I saw the head of the boom start to drop away as the periscope retracted electrically"; TM X-53107, p. 7-33 for T-35 s |
+| 02:32.3, separation | out | documented | Results, p. 111 ("In another 5 seconds the periscope had extended"); Figure 7.3-2, 02:35.5: "Periscope is coming out" |
+| 06:44 | in, for the entry | documented | Results, p. 10; Figure 7.3-2, 06:44.5: "Periscope is retracting" |
+| 09:38.1, the drogue | out, and out at landing | documented | Results, p. 113 ("the drogue parachute came out on schedule as did the periscope"); Figure 7.3-2, 09:39; Postlaunch Report, 9.3: "The periscope was extended" on recovery |
+| Each motion | four seconds: the door first, then the objective; going in, the reverse | estimated | Shepard's five seconds after separation |
+| How far | the door swings 105°; the objective comes 5.65 in out along its tube | estimated | the photographs of it open; the depth is chosen to clear the door drawn in |
 
 ## Paint
 
@@ -242,15 +260,19 @@ The same GLB also holds the launch vehicle's five nodes: see
   worn to the metal and recesses are dark only through the build's baked shade, not in the paint.
 - **Open: the porthole and screen lights have no direction.** Each lights the wall behind its pane as well as what
   is before it.
-- **The periscope does not retract**, has no filters, map or Sun and Moon index that turns, and its reticle is a few
-  lines of the real one's. What it shows is the scene's geometry and sky, without the clouds' volume.
+- **The periscope has no filters**, map or Sun and Moon index that turns, and its reticle is a few
+  lines of the real one's. Its screen goes on showing the view while the objective is drawn in (06:44 to the drogue). What it shows is the scene's geometry and sky, without the clouds' volume.
 - **The hatch's latch mechanism is not modelled**: the inner face is plain with one release handle. No drawing of it
   has been read, and the flown capsule's hatch was lost at recovery.
 - **The portholes have two panes**, an outer set down in the skin and an inner under the ring. No. 7's were multi-pane
   and heat resistant (Results, p. 19); how many panes and their make-up are not in anything read. From the couch the
   upper one is seen nearly edge on, the lower past the panel's right edge.
-- **The periscope's open door** stands at an angle of ours, and from station 37 the edge of its leaf is in the corner
-  of the periscope's picture.
+- **The periscope's door** opens to an angle of ours (105°), and from station 37 the edge of its leaf is in the corner
+  of the periscope's picture. Its leaf is a plain curved plate with a pale inside, its joint 0.15 in all round; each
+  motion takes four seconds, and a flight flown live keeps the record's times. The objective comes out along the last
+  run of the periscope's tube in the cabin (`SCOPE_TUBE`, the cabin's own estimate), which on No. 7 leans 16.5° from
+  square to the skin, and drawn in it sits inside that tube; the receptacle under it is sunk 0.95 in, so the pad's
+  umbilical plug, placed at the skin, stops short of it by that much.
 - **Cabin light is two lights hung in the middle of the cabin**, not at the fittings, falling off with distance and not
   its square, so that the wall beside a fitting does not burn; they cast no shadows. The shadow is worked once by the
   build (`mercury_cabin.shade`): at every vertex, how much of the two fittings is seen past everything else in the

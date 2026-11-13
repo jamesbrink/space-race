@@ -1933,6 +1933,12 @@ export class Stage {
         : dt * (CATCH_UP_PACE + 3 * Math.max(0, far - CATCH_UP_NEAR) + (clock.running ? Math.abs(clock.rate) : 0));
       this.shownT = far <= step ? clock.t : this.shownT + Math.sign(clock.t - this.shownT) * step;
     }
+    // what moves on the clock on a model whose slider is not the clock (a vehicle's periscope door), in step with the rest
+    for (const staged of this.staged)
+      if (staged?.clock(this.shownT)) {
+        this.dirty = true;
+        this.shadowsOwed = true;
+      }
     let following = false;
     this.defs.forEach((def, i) => {
       if (!def.sequence || !this.staged[i]) return;

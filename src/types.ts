@@ -211,6 +211,14 @@ export interface Part {
    * off), each timed against the slider, instead of one slide along `explode`.
    */
   moves?: Move[];
+  /**
+   * What the hardware did at its own times, on a model whose slider is something else (a vehicle's takes it apart):
+   * motions on the flight's clock, `from` and `to` in seconds from launch, each on a named node of the part (with its
+   * origin on its hinge, built where it stood at liftoff). Played wherever there is a clock (the launch site, the
+   * flight), in step with the hardware on it; where there is none (the gallery) the part stands as built. The periscope's
+   * door opening and shutting through the flight. A node moved here is not also moved by `moves`.
+   */
+  clocked?: Move[];
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
   order: number;
 }

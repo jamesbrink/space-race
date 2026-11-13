@@ -189,7 +189,10 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   a structure rolls on its rails, a jib lowers, a truck folds its legs and drives off with its
   wheels rolling and steering. The model builds each moving piece as its own node with its origin
   on its hinge, in the pose it has at the start of the slider or at the hatch; `lc-5.md` tabulates
-  them. Say in the part's text which motions are documented and which are not.
+  them. Say in the part's text which motions are documented and which are not. Hardware that moved
+  at its own times on a model whose slider takes it apart (the periscope's door) has `clocked`
+  moves instead, in seconds from launch: the model is built as it stood at liftoff, the gallery
+  shows it so, and the launch site and the flight play them on the clock.
 - A site has its own frame (the hatch on +X) and lies at an angle to the compass. Scenery is laid
   out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is where it
   was: `src/world` computes it from the flight's `site` and `launch`.

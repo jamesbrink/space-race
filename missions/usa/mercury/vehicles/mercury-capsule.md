@@ -12,7 +12,7 @@ on capsule No. 7 (Freedom 7, MR-3) and capsule No. 11 (Liberty Bell 7, MR-4). A 
 | Recovery compartment (`build_recovery_compartment`) | Paint |
 | Antenna canister (`build_antenna_canister`) | Where the periscope's door and the umbilical are |
 | Escape tower (`build_escape_tower`) | The cabin's fit: [mercury_cabin.py](mercury_cabin.py) (No. 7), [mercury_cabin_11.py](mercury_cabin_11.py) (No. 11) |
-| The periscope's objective (`periscope`), its door, well and the umbilical receptacle under it (`periscope_door`), the roll jets in the top row (`roll_fittings`, No. 7) or at the base (`roll_thrusters`, No. 11, as built before No. 7's were read), the attach ring | |
+| The periscope's objective (`periscope`), its door, well and the umbilical receptacle under it (`periscope_door`: built shut and drawn in, as at liftoff, the door and the objective each a node of its own that a flight moves on its clock, `vehicles/periscope.ts`), the roll jets in the top row (`roll_fittings`, No. 7) or at the base (`roll_thrusters`, No. 11, as built before No. 7's were read), the attach ring | |
 | Screws round a plain plate (`fasten_round`) | |
 | Standing the capsule on its booster (`stand`) | |
 | The pressure vessel round a hatch opening, the bulkhead stiffeners, oxygen bottles, landing bag | |

@@ -97,6 +97,7 @@ LANYARD = (deg(287.5), deg(294.5), 40.0, 45.4)  # the small cover over the outsi
 # The periscope's door, with the umbilical's receptacle under the lens (NASA S61-03705; the capsule as raised).
 SCOPE_Z = 41.5
 SCOPE_DOOR = (deg(80), deg(100), 28.6, 46.0)
+SCOPE_TUBE = (0.0, 16.5, 39.6)  # the last bend of the periscope's tube in the cabin (mercury_cabin_11's `run`): it comes out along that run
 UMBILICAL_Z = 32.5
 # Shingles: twelve columns of 30 degrees, in rows that part at these stations. Estimated from the same photographs.
 BAND, SEAM_LOW, SEAM_HIGH, TOP = 6.2, 24.8, 46.8, CONE_H - 0.4
@@ -251,7 +252,7 @@ def build_periscope(M, g, skin: Skin) -> None:
         "Where the ground's umbilical was plugged in until it was pulled 35 seconds before liftoff: under the periscope's lens, "
         "inside its door, as a photograph of the capsule being serviced shows it (NASA S61-03705)."
     )
-    mercury_capsule.periscope_door(M, g, skin, SCOPE_DOOR, SCOPE_Z, UMBILICAL_Z, about, umbilical)
+    mercury_capsule.periscope_door(M, g, skin, SCOPE_DOOR, SCOPE_Z, UMBILICAL_Z, about, umbilical, SCOPE_TUBE)
 
 
 def build_paint(M, g, skin: Skin, font) -> None:
@@ -422,6 +423,8 @@ def build() -> str:
     mercury_capsule.build_escape_tower(M)
     # the capsule is built in the pilot's frame; it stands on the booster with its hatch on +X, as every site's frame has it
     mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
+    out = mercury_capsule.scope_axis(SCOPE_Z, SCOPE_TUBE)[1]
+    print(f"mr-4 periscope door: {mercury_capsule.periscope_hinge(SCOPE_DOOR, (HATCH[0] + HATCH[1]) / 2, out)}")
     redstone_mrlv.build(Z_BOOSTER_BASE, font, clamp_covers="streamlined")
     mark_shells(SHELLS + tuple(THING_SHELLS) + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"

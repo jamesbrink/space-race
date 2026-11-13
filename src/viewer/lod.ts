@@ -429,6 +429,8 @@ export class Staged {
   private level = 0;
   private wanted = 0;
   private t = 0;
+  /** The clock's instant its parts' motions on the clock were last played to (null: never: they stand as built). */
+  private clockT: number | null = null;
   private readonly parts: Part[];
   private readonly fade = new Crossfade();
   private every = false;
@@ -465,6 +467,7 @@ export class Staged {
     for (const [node, reading] of this.held) exploder.hold(node, reading);
     for (const node of this.loose) exploder.loosen(node, true);
     exploder.set(this.t);
+    if (this.clockT !== null) exploder.clock(this.clockT);
     this.exploders.push(exploder);
     object.visible = this.every;
     this.show(this.wanted, fade && this.forced === null);
@@ -478,6 +481,19 @@ export class Staged {
   explode(t: number): void {
     this.t = t;
     for (const e of this.exploders) e.set(t);
+  }
+
+  /** Has it parts that move on the clock (Part.clocked)? */
+  get onTheClock(): boolean {
+    return this.exploders.some((e) => e.onTheClock);
+  }
+
+  /** Play its parts' motions on the clock to `t`, seconds from launch, at every level of detail. Returns whether anything was played. */
+  clock(t: number): boolean {
+    if (t === this.clockT || !this.onTheClock) return false;
+    this.clockT = t;
+    for (const e of this.exploders) e.clock(t);
+    return true;
   }
 
   /** Hold one node's motions at a slider reading of its own, at every level of detail (null: release it), and show it. */

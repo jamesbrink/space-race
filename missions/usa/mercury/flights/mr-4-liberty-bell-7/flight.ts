@@ -1,7 +1,28 @@
 import type { Flight, ModelDef, Part } from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
+import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
+
+/**
+ * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts). The axes are mercury_capsule.periscope_hinge's for this
+ * capsule (its door at 80 to 100 degrees round from the pilot's right, its tube's last run in the cabin, the hatch on +X).
+ * "At T-35 seconds, the spacecraft umbilical was [pulled] and the periscope was retracted", and at separation, ten seconds
+ * after cutoff at 02:23, "the periscope was extended" (MR-4 Results, p. 6); "periscope is retracting" at 06:41 (p. 43);
+ * "There's the drogue chute. The periscope has extended" at 09:41.5, the drogue at 09:41 (p. 44): it is put out with the
+ * drogue, as SEDR 104 has it, and the call's half second is shorter than the motion's four. Documented.
+ */
+const PERISCOPE = periscopeMoves(
+  [0.1979, 0.9397, 0.2789],
+  [-0.0927, 0.0584, -0.0927],
+  [
+    [ON_THE_PAD, true],
+    [-35, false],
+    [153, true],
+    [401, false],
+    [581, true],
+  ],
+);
 const FT = 0.3048;
 const LBF = 4.4482216;
 const NMI = 1852;
@@ -146,7 +167,11 @@ const parts: Part[] = [
       'Liberty Bell’s crack painted on it in white from the base toward the nose; the name is under the window in ' +
       'three lines. UNITED STATES stands beside the periscope’s door and the flag on its other side. The shingles ' +
       'are laid out as this capsule’s photographs show them, on the pad and as it was raised from the sea in 1999, ' +
-      'with their beads running round the cone.',
+      'with their beads running round the cone. The periscope’s door is shut here as it was at liftoff: the ' +
+      'objective was drawn in and the door shut over it when the umbilical was pulled 35 seconds before. It came out ' +
+      'at separation, went in for the entry and came out again with the drogue; at the launch site and in flight it ' +
+      'does so on the clock. When each motion happened is documented; how long each took, and how far the door ' +
+      'opens, are estimated.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -154,6 +179,7 @@ const parts: Part[] = [
       ['Paint', 'LIBERTY BELL 7, the crack, UNITED STATES, the flag'],
       ['Thrusters', 'roll: 6 lbf and 1 lbf'],
     ],
+    clocked: PERISCOPE,
     explode: [0, 9.9, 0],
     order: 3,
   },
