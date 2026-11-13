@@ -1,5 +1,5 @@
 /**
- * The flights to come: those of the first ten crewed spaceflights that are not built yet, as the front page lists
+ * The flights to come: those of the first twelve crewed spaceflights (the whole of Mercury and Vostok) that are not built yet, as the front page lists
  * them between the ones that are. One is dropped from the page the day a flight with its `id` is in `index.ts`, so
  * nothing here has to be taken out by hand; the next ones are added as they are decided on.
  *
@@ -26,4 +26,6 @@ export const upcoming: Upcoming[] = [
   { id: 'ussr/vostok/vostok-4', nation: 'USSR', name: 'Vostok 4', line: 'Pavel Popovich', launch: '1962-08-12' },
   { id: 'usa/mercury/ma-8-sigma-7', nation: 'USA', name: 'Sigma 7', line: 'Mercury-Atlas 8 · Wally Schirra', launch: '1962-10-03' },
   { id: 'usa/mercury/ma-9-faith-7', nation: 'USA', name: 'Faith 7', line: 'Mercury-Atlas 9 · Gordon Cooper', launch: '1963-05-15' },
+  { id: 'ussr/vostok/vostok-5', nation: 'USSR', name: 'Vostok 5', line: 'Valery Bykovsky', launch: '1963-06-14' },
+  { id: 'ussr/vostok/vostok-6', nation: 'USSR', name: 'Vostok 6', line: 'Valentina Tereshkova', launch: '1963-06-16' },
 ];
