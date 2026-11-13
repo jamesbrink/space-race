@@ -622,10 +622,19 @@ const MSK = (h: number, m: number, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s 
 const TRUSS_NORTH = TURN / DEG + 45;
 const TRUSS_SOUTH = TURN / DEG + 225;
 const MAST_AT = TURN / DEG + 315;
-/** How far a service truss is lowered, and the cable mast swings (first as its plugs come out, then as the rocket leaves), degrees. */
+/** How far a service truss is lowered, and the cable mast swings back at 09:06, degrees. */
 const TRUSS_FALL = 98;
-const MAST_AWAY = 4;
-const MAST_FALL = 22;
+const MAST_FALL = 40;
+/**
+ * The launch system's four supports (launch_system.py): where each hinge is round the site, how far each falls back
+ * (degrees), and when, in seconds from launch. That they fall back as the rocket rises is the record (Siddiqi; Chertok);
+ * the angle is read off a photograph of this launch with the rocket's tail some 20 m over the deck, in which they
+ * stand open, 14 to 21 degrees out of upright; the times are estimated, inside what that photograph allows (open by
+ * about three seconds) and what the rocket needs (the pose check, site-1.md: the strap-ons clear the heads).
+ */
+const SUPPORT_AT = [45, 135, 225, 315].map((az) => TURN / DEG + az);
+const SUPPORT_FALL = 45;
+const SUPPORTS_GO: [from: number, to: number] = [0.1, 2.6];
 /** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
 const BOOM_LEAN = 14;
 const BOOM_BACK = 20;
@@ -652,7 +661,7 @@ const T = {
   boomDown: 0.55, // the boom is down on the wagon (not recorded)
   cleared: 0.75, // the erector is off the pad and both trusses are down (not recorded)
   mast: 0.8, // 09:06: "the cable mast is away"
-  mastOff: 0.86,
+  mastOff: 0.86, // it has swung back (not recorded: ten seconds are given it)
   liftoff: 0.9, // 09:06:59.7
 };
 const TRANSCRIPT =
@@ -709,14 +718,22 @@ const MORNING: Keyframe[] = [
     confidence: 'documented',
     source: `${TRANSCRIPT}, Korolev at 09:06, to the minute`,
   },
-  { at: MSK(9, 6, 10), slider: T.mastOff, event: 'The mast stands a few degrees off', confidence: 'estimated', source: NOT_TIMED },
+  {
+    at: MSK(9, 6, 10),
+    slider: T.mastOff,
+    event: 'The mast has swung back',
+    confidence: 'estimated',
+    source:
+      'a photograph of the morning with the rocket still in the closed supports has the mast leaning well back already; how long it took is not recorded',
+  },
   { at: 0, slider: T.liftoff, event: 'Liftoff, 09:06:59.7', confidence: 'documented', source: 'Siddiqi, Challenge to Apollo, launch log' },
   {
-    at: 4,
+    at: SUPPORTS_GO[1],
     slider: 1,
-    event: 'The mast has fallen back',
+    event: 'The four supports have fallen back: the launch system stands open',
     confidence: 'estimated',
-    source: 'film of a Vostok leaving shows it leaning some twenty degrees; when it got there is not recorded',
+    source:
+      'a photograph of this launch with the rocket’s tail some 20 m over the deck (RussianSpaceWeb) shows them open; how long they took is not recorded',
   },
 ];
 
@@ -849,18 +866,27 @@ const padParts: Part[] = [
       'trusses that lean in to the core just under the strap-ons’ tips, where their thrust goes into it. The rocket is not ' +
       'bolted down. It hangs on the four heads by its own weight, its tail 6.75 m down in the pit, steadied lower down by ' +
       'four guides; as its thrust overcomes its weight the heads are unloaded and each truss falls back under its ' +
-      'counterweights, and the tulip opens. The ring and its heights are from a Soviet description of the later system ' +
+      'counterweights, and the tulip opens. That it works so is the record. How far the trusses fall is read off a ' +
+      'photograph of this launch, taken from across the pit with the rocket’s tail some 20 m over the deck: all four ' +
+      'stand open, 14 to 21° out of upright, which is 45° from where they held the rocket. How long they took is not ' +
+      'recorded: here they begin a tenth of a second after the rocket moves and are back in two and a half, in time ' +
+      'for the strap-ons, which widen downward, to pass the heads. The guides at the tail stand as they stood: what ' +
+      'they did is not in anything read. The ring and its heights are from a Soviet description of the later system ' +
       'for Soyuz; the trusses’ members, platforms and counterweights are drawn from the film of the morning and are ' +
-      'estimated, and their falling back is not yet shown.',
+      'estimated.',
     facts: [
       ['Ring', '14.92 m inside, 19.35 m over its corners'],
       ['Turning part', '20.35 m above the deck, 6.75 m below'],
       ['Supports', '4, at the strap-ons’ tips, 13 m above the deck'],
       ['Turned to', '37.5° east of north (derived)'],
       ['Let go', 'at liftoff, 09:06:59.7 Moscow time'],
+      ['Fall back', '45° (off a photograph of the launch), in about 2.5 s (estimated)'],
     ],
     explode: [0, 0, 0],
     order: 0,
+    // each about its hinge on the ring, its head going outward (documented that they do; the angle read off a photograph
+    // of the launch; the times estimated)
+    clocked: SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO)),
   },
   {
     node: 'Erector',
@@ -986,23 +1012,24 @@ const padParts: Part[] = [
       '09:06; he answered that he had felt it, and heard the valves. Ignition was called at 09:07. The CIA’s ' +
       'interpreters had found it a month before as a shadow on a U-2 photograph, "possibly an umbilical mast", 85 to ' +
       '95 ft above the platform and ending in an oblong loop; the middle of that is modelled. A photograph of a Vostok ' +
-      'being raised shows two slender lattice legs with a head; film of one leaving shows the mast leaning back some ' +
-      'twenty degrees. Which side of the ring it stood on is not recorded: it is put on the east, opposite the ' +
-      'erector, where the service trusses do not sweep as they come down. The two lower cable masts at the rocket’s ' +
-      'tail, under the deck, are not built.',
+      'being raised shows two slender lattice legs with a head. Two photographs of the morning, taken from across the ' +
+      'pit, show how far it went: in one the rocket still stands in the closed supports and the mast already leans ' +
+      'some 25° out of upright; in the other the rocket has left and the mast leans as it did. So it swung the whole ' +
+      'way at 09:06 and did not move again; 31° out of upright is modelled, so that the support under it falls back ' +
+      'inside its legs. Which side of the ring it stood on is not recorded: it is put on the east, opposite the ' +
+      'erector, where the service trusses do not sweep as they come down, though those photographs have it on what ' +
+      'would be the south. The lower cable masts are not built.',
     facts: [
       ['Height', '85 to 95 ft over the deck (90 ft, 27.4 m, modelled)'],
       ['Away', '09:06 Moscow time'],
       ['Then', 'ignition called at 09:07; liftoff 09:06:59.7 by the launch log'],
-      ['Swings', 'about 22° by the time the rocket leaves (estimated)'],
+      ['Swings', '40° from where it stood, to 31° out of upright (estimated: 25° or more in the photographs)'],
     ],
     explode: [0, 0, 0],
     order: 0,
-    functions: [{ nodes: ['UpperCableMast'], name: 'Swing clear', ends: ['at the rocket', 'swung clear'], seconds: 8 }],
-    moves: [
-      outward('UpperCableMast', MAST_AT, MAST_AWAY, T.mast, T.mastOff),
-      outward('UpperCableMast', MAST_AT, MAST_FALL - MAST_AWAY, T.liftoff, 1),
-    ],
+    functions: [{ nodes: ['UpperCableMast'], name: 'Swing clear', ends: ['at the rocket', 'swung clear'], seconds: 10 }],
+    // back the whole way at 09:06 (the minute documented; the angle and the ten seconds estimated)
+    moves: [outward('UpperCableMast', MAST_AT, MAST_FALL, T.mast, T.mastOff)],
   },
 ];
 

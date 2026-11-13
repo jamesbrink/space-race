@@ -16,9 +16,10 @@ with its lift to the hatch, the two service trusses, the upper cable mast ("What
 rocket", below). The place round the pad is built as well ("The place round the pad", below). What was fixed on
 the deck and in the pit is built: the rails in the deck, the two masts 110 ft tall, the small building,
 the flame deflector, the pit base with its two trenches and the sump, the road down the pit and the
-cut in its north rim ("The platform", "The flame pit", below). Still to come: the supports falling
-back at liftoff; the land's relief; then the place for later Vostoks. Each section below says what of
-it is in the model, and the last lists what is left out.
+cut in its north rim ("The platform", "The flame pit", below). The launch system lets go: the four
+supports fall back as the rocket leaves, on the flight's clock ("Moving parts", below). Still to come:
+the land's relief; then the place for later Vostoks. Each section below says what of it is in the
+model, and the last lists what is left out.
 
 The place round the pad is built as it stood that April (`site1/model/1961-04.py`, `pnpm model:site-1`,
 the flight's `surroundings`): the command bunker, the storage bunker, the buildings by the pad, the
@@ -191,7 +192,8 @@ system.
 | Supports | four trusses between the strap-ons, hinged on the ring, leaning in to the waist, counterweighted to fall back as the rocket rises | documented (that there are four and how they let go) | Siddiqi pp. 273-276; Chertok vol. 2 |
 | Their shape, members, platforms, counterweights | as built | estimated | the film of April 1961; the structure as it stands today |
 | Guides | four arms at the tail | documented (that there are four); estimated (their shape) | the Soviet description |
-| How far a support falls back | 45° | estimated | the film |
+| How far a support falls back | 45°: from 28° in of upright, holding the rocket, to 17° out | estimated (read off a photograph) | a photograph of the launch of 12 April 1961 taken from across the pit, the rocket's tail some 20 m over the deck (RussianSpaceWeb, the launch of Vostok 1): three of the four are seen, open, their booms 14°, 16° and 21° out of upright in projection, their heads some 12 m over the deck. The model's boom, fallen 45°, stands 17° out with its head 13.4 m up |
+| How long it takes | 2.5 s, beginning 0.1 s after the rocket moves | estimated | not recorded. The same photograph bounds it: the rocket's tail has risen some 21 m, which at the 4.2 m/s² its thrust and mass give is about 3.2 s after it moved, and the supports are back. The rocket needs them gone early: its strap-ons widen downward and the four heads close the ring but for 2° at each strap-on ("Moving parts": the pose check) |
 
 ### What served the rocket
 
@@ -217,7 +219,7 @@ storeys: the service platforms from which the launch vehicle is being fuelled"; 
 | Upper cable mast, its head | 85 to 95 ft above the platform; 90 ft (27.43 m) taken | documented (the range, measured from a shadow) | PIC/JR-2/61, "Possible Umbilical Mast": base "somewhere within the darkened circular area", ending "in an oblong loop" |
 | That there was one upper and two lower | "two lower and one upper cable masts for bringing in the lines" | documented | Afanasyev and Lavrenov, with KBOM's drawing of the launch system |
 | Its side, legs, arm, plugs | on the east, over the support there; two lattice legs 2.7 m either side of it; an arm to 1.5 m from the axis at 24.3 m | estimated | a photograph of a Vostok being raised (two slender lattice legs with a head, beyond the tail); the east is the one place neither truss sweeps as it comes down |
-| How far it swings | 4° once its plugs are out, 22° as the rocket leaves | estimated | the photograph at ignition (a few degrees off); film of a Vostok leaving (some twenty) |
+| How far it swings | 40° from where it stood, once, at 09:06: to 31° out of upright | estimated | two photographs of 12 April 1961 taken from across the pit (RussianSpaceWeb). In one the rocket still stands in the closed supports and the mast leans 24.7° out of upright (in projection); in the other the rocket's tail is some 20 m over the deck and it leans 21.5°. So it had gone the whole way before ignition and did not move as the rocket left (it was first modelled swinging 4° at 09:06 and on to 22° at liftoff: a misreading of the first photograph). 34° from standing is the least those allow; 40° is taken because the support under it, falling back, crosses its legs at 34° and clears them at 38° |
 | Erector (8U213) | hydraulic, on rails; 87.5 t; TsKBTM, built by the Podyomnik works, accepted 1960 | documented | as quoted by militaryrussia.ru |
 | The stair to the lift | 15 steps | documented | Ivanovsky: «поднялся на пятнадцать ступеней лестницы, к дверке лифта» |
 | Its riser, so the landing | 0.2 m; the lift's door 3.0 m up | estimated | |
@@ -357,14 +359,47 @@ and no drawing gives its section), and a level for the bunker's roof against the
 
 Each moving piece is its own node with its origin on its pivot.
 
-| Node | Pivot | Motion | Confidence |
-| --- | --- | --- | --- |
-| `Support_1..4` | the hinge on its base on the ring, 8.3 m from the axis, 1.6 m up | falls outward 45° at liftoff, 09:06:59.7 | the instant documented; the angle estimated |
-| `Erector_Boom` | its trunnion on the wagon's nose, 11.3 m west of the axis, 3.0 m up, its axis across the track | comes away 20° between 08:35 and 08:37; then down to the wagon, 104° in all, as the wagon rides off | the two minutes and that it "leaned over little by little and laid itself down" documented; the angles and how long it took estimated |
-| `Erector` (and `Erector_Wheel_1..6`, each on its axle) | | rides 30 m west along the centre track as the boom goes down, then is drawn on to 120 m | that it rode away along the rails and was drawn off by a locomotive documented; how far and how fast estimated |
-| `Erector_Lift` | the car's floor, at the stair's landing (under the boom, so it leans with it) | a lift: stops 19.60 and 23.12 m up the boom, each 0.2493 of its height nearer the rocket | the stops' places estimated; worked by hand, not by the slider |
-| `ServiceTruss_North`, `ServiceTruss_South` | each on its hinge line on the ring: 8.6 m from the axis, 0.9 m up, 97.5° and 277.5° round from east | lowered outward 98°, beginning at 08:40 (the north one first) | that they were lowered and when it began documented; the angle, the order and how long estimated |
-| `UpperCableMast` | its hinge line on the ring: 8.75 m from the axis, 0.7 m up, 7.5° round from east | swings out 4° at 09:06, and on to 22° as the rocket leaves | the minute documented; the angles and the second swing's timing estimated |
+Angles round the site are from due east (+X), anticlockwise from above; the launch system stands turned
+52.5° (`site.TURN`), so the piece at the rocket's own 45° is at 97.5°. Every swing is about a level axis through
+the piece's own origin, square to the way from the rocket's axis out to its hinge, the piece's top going outward:
+at a hinge on bearing *a* the axis is (-sin *a*, cos *a*, 0) in Blender and (-sin *a*, 0, -cos *a*) in the viewer
+(`outward` in flight.ts). Slider motions (`moves`) are eased between two readings of the pad's slider, which is
+the morning's clock ("The morning at the pad"); clocked motions (`clocked`) are in seconds from launch
+(09:06:59.7 Moscow time, 06:06:59.7 UTC) and are eased the same way (3u² - 2u³).
+
+| Node | Parent | Hinge (origin), metres from the axis and over the deck | Axis: its hinge's bearing | Angle | Starts | Takes | How it is played | Confidence and source |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `Support_1` | `LaunchRing` | 8.3 out, 1.6 up, at 97.5° (north): Blender (-1.083, 8.229, 1.6) | 97.5° | +45° | T+0.1 s | 2.5 s | `clocked` on the part `LaunchRing` | that it falls back as the rocket rises: documented (Siddiqi pp. 273-276; Chertok vol. 2). The angle: estimated, read off the photograph of the launch ("The launch system"). The times: estimated |
+| `Support_2` | `LaunchRing` | the same, at 187.5° (west): (-8.229, -1.083, 1.6) | 187.5° | +45° | T+0.1 s | 2.5 s | `clocked` | as Support_1 |
+| `Support_3` | `LaunchRing` | the same, at 277.5° (south): (1.083, -8.229, 1.6) | 277.5° | +45° | T+0.1 s | 2.5 s | `clocked` | as Support_1 |
+| `Support_4` | `LaunchRing` | the same, at 7.5° (east): (8.229, 1.083, 1.6) | 7.5° | +45° | T+0.1 s | 2.5 s | `clocked` | as Support_1 |
+| `Guide_1..4` | `LaunchRing` | each on its foot on the turning cage, 7.66 out, 5.45 under the deck, under its support | | none | | | | that there are four: documented. What they did as the rocket left is not in anything read: they stand, and the rocket clears them as it rises (the pose check) |
+| `UpperCableMast` | (top level) | its hinge line on the ring: 8.75 out, 0.7 up, at 7.5° (east): (8.675, 1.142, 0.7) | 7.5° | +40° | 09:06:00 (T-59.7 s) | 10 s | `moves`: slider 0.80 to 0.86 | the minute: documented (the transcript). That it went the whole way then: read off the two photographs. The angle and the ten seconds: estimated |
+| `ServiceTruss_North` | `ServiceTrusses` | its hinge line on the ring: 8.6 out, 0.9 up, at 97.5° | 97.5° | +98° | 08:40 | to about 08:44 | `moves`: slider 0.45 to 0.67 | that they were lowered and when it began: documented. The angle, the order and how long: estimated |
+| `ServiceTruss_South` | `ServiceTrusses` | the same, at 277.5° | 277.5° | +98° | a little after the north one | to 08:45 | `moves`: slider 0.51 to 0.75 | as the north one |
+| `Erector_Boom` | `Erector` | its trunnion on the wagon's nose, 11.3 m west of the axis, 3.0 up, its axis across the track | 180° (it goes down to the west) | +20°, then +84° (104° in all) | 08:35; then 08:37 | 2 min; then to 08:42 | `moves`: slider 0.10 to 0.30, then to 0.55 | the two minutes and that it "leaned over little by little and laid itself down": documented. The angles and how long the second took: estimated |
+| `Erector` (and `Erector_Wheel_1..6`, each about its axle) | (top level) | | slides west (-X) | 30 m, then on to 120 m | 08:37; then 08:42 | to 08:42; to 08:45 | `moves`: slider 0.30 to 0.55, then to 0.75 | that it rode away along the rails and was drawn off by a locomotive: documented. How far and how fast: estimated |
+| `Erector_Lift` | `Erector_Boom` | the car's floor, at the stair's landing | a lift: stops 19.60 and 23.12 m up the boom, each 0.2493 of its height nearer the rocket | | by hand | 0.3 m/s | an `action` of the part, not the slider | the stops' places estimated |
+
+**What the simulator can rely on.** At launch (T+0) the four supports stand closed with the rocket's weight on
+their heads, the cable mast is back, the service trusses are down and the erector is gone. From T+0.1 s to
+T+2.6 s each `Support_n` turns 45° about its hinge, eased; nothing else on the pad moves after launch. The
+supports are played wherever the flight's clock runs (the launch site, the flight), at every level of detail,
+and they are solid as posed (the walker's `Solids` ask the meshes where they are). In the gallery, which has no
+clock, they stand closed.
+
+**The pose check.** The pad and the flight's vehicle were put together in Blender (the two GLBs as published,
+the vehicle hung at 23.78 m and turned 52.5°), what was taken away before launch posed as it was left, and every
+moving piece taken through its motion in steps of a tenth of a second from T-1 s to T+3.1 s, with a triangle
+against triangle test (a BVH of each) of every moving piece against the vehicle, against every other mesh of
+the pad (the ring, the platform and the edge of its opening, the lowered trusses, the deck's rails and masts)
+and against each other moving piece; with the vehicle standing throughout, and with it rising from T+0 at 3,
+4.2 and 6 m/s² (its thrust and mass give 4.2). Nothing crosses anything, but each hinge pin in its own lug and
+the mast's feet in their pedestals, which cross as built. The vehicle rising alone crosses nothing that does not
+move (the guides, the ring, the opening). With the supports' fall stretched to 3.5 s it still holds at 6 m/s².
+With the supports left closed the strap-ons strike their heads from T+0.4 s: the motion is not decoration. The
+script is not in the repository (it needs both GLBs and Blender); the model's own clearance check
+(`check_clearance`) is of parallel faces as built, a different thing.
 
 The pad's slider is the morning from 07:10, when the transcript begins with the pilot in his
 seat, to four seconds after liftoff. At 08:15 the transcript has "they are lowering the service
@@ -396,7 +431,7 @@ Ivanovsky's account where it is his.
 | 09:02 | One minute's readiness | Korolev |
 | 09:03 | "Key to start. The purge is on" | Korolev |
 | 09:04, 09:05 | Key to drain; the drain valves have closed | Korolev |
-| 09:06 | "The pressurisation is going, the cable mast is away" | Korolev |
+| 09:06 | "The pressurisation is going, the cable mast is away" (the mast swings back the whole way: the photographs) | Korolev |
 | 09:07 | Ignition; preliminary, intermediate, main; liftoff (09:06:59.7 by the launch log) | Korolev |
 
 In his report the next day Gagarin said of it: "Before that I could hear the trusses being drawn
@@ -466,8 +501,22 @@ rocket can leave the erector out by its date.
 - The launch system is the later system's ring and heights, with trusses drawn from film: the
   members, the platforms and the counterweights are not the real ones.
 - Which of the rocket's planes lay along the launch azimuth is chosen (booster B's).
-- The supports do not fall back at liftoff: the vehicle does not leave the pad on the site yet (no
-  trajectory), and a support that fell while the rocket hung on it would be wrong.
+- The supports fall back on the clock, not by the rocket: each begins 0.1 s after launch and takes 2.5 s
+  whatever the vehicle is doing, where the real ones were let go by the rocket's own rise (how far it had
+  to rise is not in anything read) and fell at a rate nothing read gives. Their rests, and whatever
+  checked their fall, are not modelled: they stop where the photograph has them. The guides at the tail do
+  not move: what they did is not recorded.
+- The cable mast is on the wrong side, as far as two photographs can say. Both photographs of 12 April
+  1961 taken from across the pit (the 110 ft mast on the platform's north-east lip stands at their right,
+  so they look west) have the cable mast, swung back, on the rocket's left: the south. The model has it on
+  the east, toward the camera. It was put there because the model's service trusses, lowered at 08:40,
+  sweep the north and the south with their half rings while the mast still stood; how the real mast and
+  the south truss shared that side is not in anything read, and moving it means building both again.
+- A second, shorter mast stands beside the cable mast in both those photographs: some 17 m long, a head on
+  its top, 12° out of upright before the rocket left and after. It is not built. It may be one of the
+  "two lower" cable masts of KBOM's drawing; what it carried and where it met the rocket are not known.
+- The same photographs show only the north-east one of the two masts 110 ft tall, where the model's
+  south-west one would stand in view at the left.
 - The counterweights are three stacked iron slabs a side, their number and size estimated (the film shows a dark mass);
   the supports' hinges, pins and the ring's drive are not modelled.
 - The erector's form is drawn from three photographs, and its boom's lean is ours ("What served
@@ -483,9 +532,8 @@ rocket can leave the erector out by its date.
   rocket by 1961 is not known (they "were considerably reworked" before they were replaced).
 - The cable mast's side of the ring is chosen, and its plugs stop short of the third stage, whose
   plate is not modelled. Its cables down to the ring are straight runs.
-- The two lower cable masts at the rocket's tail (KBOM's drawing shows them under the ring) are
-  not built: one small reproduction of that drawing is all that shows them, and not where round
-  the ring they were.
+- The two lower cable masts (KBOM's drawing shows them under the ring) are not built: one small
+  reproduction of that drawing is all that shows them, and not where round the ring they were.
 - The service cabin (8U216: 16.92 by 19.06 m, 7.785 m high with its platforms down, 144 t, a
   turning ring of platforms under the rocket's tail that was run back into a niche before launch)
   is not built: it lived inside the platform, which is a solid slab here.
