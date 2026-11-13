@@ -2,8 +2,10 @@
 
 Not run by itself: an orbital flight's model/vehicle.py imports it beside mercury_capsule.py, which
 still builds everything the capsules had alike. What is here: the ablation heat shield (the Redstone
-flights' was a beryllium heat sink), and a name painted by hand in a script (theirs were stencilled
-capitals). Each flight's spacecraft.md says what each number rests on.
+flights' was a beryllium heat sink), a name painted by hand in a script (theirs were stencilled
+capitals), the balloon's container, the stripes painted on a retropack and the high-frequency dipole
+antenna hung on one. A flight builds what its own record gives it. Each flight's spacecraft.md says
+what each number rests on.
 
 Dimensions are inches, converted once with IN; stations and angles as mercury_capsule.py has them.
 """
@@ -18,7 +20,7 @@ from mathutils import Matrix, Vector
 
 import mercury_capsule
 from mercury_capsule import Skin
-from srlib import IN, MeshBuilder, interior, material, prof, text_mesh
+from srlib import IN, TAU, MeshBuilder, Surf, interior, material, prof, text_mesh
 
 # Meshes of this module's that enclose something (the viewer's cutaway slices these).
 SHELLS = ("HeatShield_Ablator", "HeatShield_Fasteners")
@@ -133,3 +135,82 @@ def hand_lettering(
     c, s = math.cos(rise), math.sin(rise)
     flat = [((x - cx) * k, (y - cy) * k * tall) for x, y, _ in plain]
     skin.paint(mb, [(x * c - y * s, x * s + y * c) for x, y in flat], faces, theta0, z0, lift=lift)
+
+
+# ------------------------------------------------------------------ the retropack, as an orbital flight's record has it
+
+# The retropack's wall, as mercury_capsule.build_retropack turns it: a cylinder of 13 in radius between these stations.
+PACK = Surf(13.0, 0.0, 0.0)
+PACK_WALL = (-19.5, -10.85)
+# Stripes painted down the retropack's wall, dark on light, to even out what the Sun and the shade did to the motors
+# in it. Photographs of spacecraft No. 16 before it was mated show them (NASA GPN-2000-001441; NASA SP-12, Figure 1-5):
+# how many there were and how wide are counted and scaled off the first, which shows half of them. Estimated.
+STRIPES = (44, 0.7)  # how many dark stripes round the pack, and a stripe's width, in
+STRIPE_LIFT = 0.06  # off the wall: a millimetre and a half, under the straps
+
+# The high-frequency dipole antenna (MA-8, and wanted again later): "mounted on the retropackage ... consisted of two
+# elements ... The extendable portion of the antenna was made of specially treated beryllium copper tape; and each
+# side, when deployed by the firing of a squib, measured 14 feet long and five-eighths inch in diameter" (NASA TN
+# D-4807, p. 61 and Figures 21 and 22). Documented: that there were two, on the retropack, and the tape's size. The
+# unit that held each tape rolled up is drawn from the report's Figure 22, which has no scale, and where round the
+# pack the two stood is not in anything read: opposite each other, between the straps. Estimated.
+DIPOLE_TAPE = (14.0 * 12.0, 0.625)  # an element, out: its length and diameter, in: documented (it is modelled rolled up)
+DIPOLE_UNIT = (4.6, 5.0)  # a unit's base plate, across the pack and along it, in: estimated
+DIPOLE_AT = (math.radians(90.0), math.radians(270.0))  # where the two stand round the pack, in the pilot's frame: estimated
+DIPOLE_Z = -15.2  # the middle of a unit's plate, the station: estimated
+
+
+def retropack_materials() -> dict:
+    return {
+        "stripe": material("paint-retropack-black", (0.02, 0.02, 0.022), 0.0, 0.6),
+        "reel": material("antenna-beryllium-copper", (0.72, 0.50, 0.26), 1.0, 0.38),
+    }
+
+
+def retropack_stripes(M: dict, about: str) -> None:
+    """The dark stripes down the retropack's wall (STRIPES). Build the retropack first. Only the wall is striped here:
+    the photographs show the stripes running on over the pack's lower end, between the nozzles, which is not drawn."""
+    g = bpy.data.objects["Retropack"]
+    count, wide = STRIPES
+    z0, z1 = PACK_WALL[0] + 0.25, PACK_WALL[1] - 0.2
+    half = wide / 2 / PACK.r0
+    mb = MeshBuilder()
+    for i in range(count):
+        t = TAU * (i + 0.5) / count
+        mb.grid(lambda u, z: PACK.p(u, z, STRIPE_LIFT), (t - half, t, t + half), (z0, z1))
+    # (paint on the housing: cut open with it)
+    mercury_capsule.thing(mb, "Retropack_Stripes", M["stripe"], g, "Retropack stripes", about, smooth=False)
+
+
+def hf_dipole(M: dict, about: str) -> None:
+    """The two elements of the high-frequency dipole antenna on the retropack's wall, as launched: each tape rolled up
+    on its reel in a unit bolted to the pack (DIPOLE_UNIT, DIPOLE_AT), its guide pointing straight out from the
+    capsule's axis, the way the tape ran when a squib let it go. Build the retropack first."""
+    g = bpy.data.objects["Retropack"]
+    across, along = DIPOLE_UNIT
+    tape_r = DIPOLE_TAPE[1] / 2
+    for k, t in enumerate(DIPOLE_AT):
+        # (in a unit's own frame: x across the pack, y toward the capsule's nose, z straight out from the axis)
+        F = PACK.frame(t, DIPOLE_Z)
+        at = lambda x, y, z, F=F: F @ (Vector((x, y, z)) * IN)  # noqa: E731
+        body, reel = MeshBuilder(), MeshBuilder()
+        # the plate it is bolted to the pack by, sunk into the wall along its middle, and its four bolts
+        mercury_capsule.chamfered(body, (across, along, 0.6), F @ Matrix.Translation((0.0, 0.0, 0.07 * IN)), 0.12)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                body.disc(at(sx * (across / 2 - 0.5), sy * (along / 2 - 0.5), 0.3), F.to_3x3() @ Vector((0, 0, 1)), 0.24 * IN, 0.2 * IN)
+        # the housing under the reel, with the guide the tape leaves by and the squib that lets it go
+        mercury_capsule.chamfered(body, (3.0, 2.3, 2.2), F @ Matrix.Translation((0.0, -1.1 * IN, 1.35 * IN)), 0.15)
+        body.tube(at(0.0, -1.1, 2.3), at(0.0, -1.1, 3.25), 0.5 * IN, 14)
+        body.tube(at(1.3, -1.75, 1.3), at(2.45, -1.75, 1.3), 0.42 * IN, 12)
+        body.tube(at(2.35, -1.75, 1.3), at(2.75, -1.75, 1.3), 0.3 * IN, 10)
+        # the two cheeks that carry the reel's axle
+        for sx in (-1, 1):
+            mercury_capsule.chamfered(body, (0.3, 2.5, 2.9), F @ Matrix.Translation((sx * 1.95 * IN, 1.15 * IN, 1.75 * IN)), 0.1)
+        # the reel: the tape wound flat on a drum between two flanges, and its end standing in the guide
+        reel.tube(at(-1.6, 1.15, 2.0), at(1.6, 1.15, 2.0), 1.05 * IN, 20)
+        for sx in (-1, 1):
+            reel.tube(at(sx * 1.45, 1.15, 2.0), at(sx * 1.7, 1.15, 2.0), 1.45 * IN, 20)
+        reel.tube(at(0.0, -1.1, 3.05), at(0.0, -1.1, 3.6), tape_r * IN, 12)
+        mercury_capsule.thing(body, f"Retropack_Dipole_{k}_Unit", M["aluminium"], g, "HF dipole antenna", about, shell=False, sharp_angle=35)
+        mercury_capsule.thing(reel, f"Retropack_Dipole_{k}_Reel", M["reel"], g, "HF dipole antenna", about, shell=False, sharp_angle=35)

@@ -35,6 +35,7 @@
     "model:mr-4": "node tools/build-model.mjs usa/mercury/mr-4-liberty-bell-7",
     "model:ma-6": "node tools/build-model.mjs usa/mercury/ma-6-friendship-7",
     "model:ma-7": "node tools/build-model.mjs usa/mercury/ma-7-aurora-7",
+    "model:ma-8": "node tools/build-model.mjs usa/mercury/ma-8-sigma-7",
     "model:vostok-1": "node tools/build-model.mjs ussr/vostok/vostok-1",
     "model:vostok-2": "node tools/build-model.mjs ussr/vostok/vostok-2",
     "model:vostok-3": "node tools/build-model.mjs ussr/vostok/vostok-3",
