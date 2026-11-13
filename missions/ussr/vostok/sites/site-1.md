@@ -336,11 +336,21 @@ pad against 104 to 107 m by the bunker), and the CIA says as much: the track "ap
 launching structure on a man-made embankment" (its height redacted), and the bunker's top was a
 little below the platform's level. The land here is drawn level with the deck, so the bunker and
 the buildings north of the tracks stand that much too high against the pad. Recorded, not yet
-modelled: it is the land's to put right, and everything on it would follow. Looked at again when
-the deck and the pit were built, and left: the embankment's height is redacted in every copy read,
-its section is in no drawing, and a 30 m grid cannot give the foot of a bank 20 m wide. To build it
-wants the embankment's crest width and side slope and the ground's level at the bunker, the shed and
-the fence; SRTM's 6 to 8 m is the only figure there is.
+modelled: it is the land's to put right, and everything on it would follow.
+
+Looked at again when the deck and the pit were built (SRTM on a 30 m grid from 240 m west to 30 m
+west of the axis and from 180 m south to 270 m north), and left. What it reads: 113 to 115 m all
+along the centre track; 114 to 117 m at 150 to 180 m south of it, so the ground south of the tracks
+is at the tracks' level and there is no bank on that side; 110 to 112 m at 30 m north, 104 to 109 m
+from 90 m north, 103 to 108 m at 240 to 270 m north. So it is not an embankment with two sides but a
+fall of 8 to 10 m to the north, most of it within 100 m of the centre track, and the pit's north rim,
+the conduit, the bunker and everything north of the tracks stand on the lower ground. (The grid also
+has today's large buildings in it, 118 to 125 m, north-west and south-west of the pad: it is the
+ground of 2000, not of 1961.) To build it, the land's height would need that fall, the same in
+JavaScript and GLSL, and every module of the place and the pit's own rim, which all stand at one level
+(`GROUND`), would need the ground's height where each stands. What is missing to do it honestly: the
+bank's line and slope in 1961 (the CIA's height for the embankment is redacted in every copy read,
+and no drawing gives its section), and a level for the bunker's roof against the deck.
 
 ## Moving parts
 
