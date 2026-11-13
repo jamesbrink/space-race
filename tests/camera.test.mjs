@@ -581,6 +581,27 @@ test('the pad camera stays where it stands, keeps the vehicle in frame, and its 
   assert.ok(posed(rig).fov < 0.5 * loose);
 });
 
+test('the pad camera sees the vehicle only above its horizon and within reach: not under its parachute far down the range', () => {
+  const craft = craftAt(V(0, 0, 0));
+  const rig = new TrackRig(world(craft));
+  const at = V(-40, 1.7, 90);
+  // (the scene is curved beyond the site: a point d metres off at height h stands h - d^2 / 2R above the level here)
+  const R = 6_371_000;
+  const out = (d, h) => craft.matrix.makeTranslation(-d, h - (d * d) / (2 * R), 0);
+  out(0, 30);
+  assert.ok(rig.sees(at), 'on its way up, over the pad');
+  out(300_000, 187_000);
+  assert.ok(rig.sees(at), 'at its apogee, 300 km off and high');
+  out(100_000, 3000);
+  assert.ok(rig.sees(at), 'low, but near enough to be above the horizon');
+  out(534_000, 2300);
+  assert.ok(!rig.sees(at), 'under the main parachute, 534 km out: below the horizon');
+  out(534_000, 0);
+  assert.ok(!rig.sees(at), 'down in the sea');
+  out(1_500_000, 400_000);
+  assert.ok(!rig.sees(at), 'above the horizon but too far for any lens');
+});
+
 test('on board, the eyes are the seat, turned with the vehicle, and the head turns only so far', () => {
   const craft = craftAt(V(100, 2000, 50));
   craft.seat = new THREE.Matrix4().compose(

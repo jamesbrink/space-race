@@ -13,8 +13,14 @@ const TRIM = 2.2;
 const LENS_TAU = 0.35;
 /** How far from the middle of the frame the vehicle can be put by a drag, in frame heights. */
 const OFF = 0.38;
+/**
+ * The furthest a camera on the ground is any use, metres: there a vehicle of a few metres is a few thousandths of the
+ * longest lens's frame, under a pixel. (Freedom 7 at its apogee was some 300 km from the pad.)
+ */
+export const TRACK_FAR = 1_000_000;
 
 const up = new THREE.Vector3();
+const to = new THREE.Vector3();
 const q = new THREE.Quaternion();
 
 /**
@@ -59,6 +65,18 @@ export class TrackRig implements Rig {
   /** Stand it here. */
   stand(at: THREE.Vector3): void {
     this.at.copy(at);
+  }
+
+  /**
+   * Whether a camera standing at `from` can see the vehicle: some of it above the level there (the scene is curved
+   * beyond the site, so a vehicle down the range sinks below it as the sea does), and no further than `TRACK_FAR`.
+   * Late in a flight, under its parachute hundreds of kilometres out, it cannot: the camera would look into the ground.
+   */
+  sees(from: THREE.Vector3): boolean {
+    const craft = this.world.craft();
+    if (!craft) return false;
+    to.copy(craft.centre).applyMatrix4(craft.matrix).sub(from);
+    return to.length() <= TRACK_FAR && to.dot(this.world.upAt(from, up)) > -craft.radius;
   }
 
   enter(from: Pose): void {

@@ -21,7 +21,9 @@ time, is told what the hands did, and says where the camera is. One is in charge
 
 C goes to the next of the rigs there are as things stand (`Cameras.available`): on the pad, orbit
 and free; with a flight in the air, chase, locked, on board (if the vehicle has a seat), pad and
-free; flying it by hand, those without free. Each change says the view's name across the screen
+free; flying it by hand, those without free. The pad camera is there only while it can see the vehicle
+(`TrackRig.sees`: some of it above the level where the camera stands, within 1000 km): down the range
+under a parachute the vehicle is below its horizon, and a pad camera in charge then hands over to the chase. Each change says the view's name across the screen
 (`RIGS`, `ui.showCamera`). When the vehicle leaves the pad while its section is being looked at the
 chase takes over by itself, and gives the view back to orbit when it is on the pad again; with a
 flight in the air and the camera elsewhere, "Find the vehicle" (and C) goes to it. 0 is the reset:

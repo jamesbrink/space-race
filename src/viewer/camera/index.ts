@@ -146,12 +146,22 @@ export class Cameras {
     return this.quiet;
   }
 
-  /** The rigs there are to choose from as things stand: on the pad, about the place; with a flight in the air, about the vehicle. */
+  /**
+   * The rigs there are to choose from as things stand: on the pad, about the place; with a flight in the air, about the
+   * vehicle. The pad camera only while it can see the vehicle (`padSees`): not once it is down the range below the horizon.
+   */
   available(): RigId[] {
     const craft = this.scene.craft();
-    const about: RigId[] = craft ? ['chase', 'locked', ...(craft.seat ? (['onboard'] as const) : []), 'pad'] : [];
+    const about: RigId[] = craft
+      ? ['chase', 'locked', ...(craft.seat ? (['onboard'] as const) : []), ...(this.padSees() ? (['pad'] as const) : [])]
+      : [];
     if (this.scene.piloted() && about.length) return about;
     return craft?.flying ? [...about, 'free'] : ['orbit', 'free'];
+  }
+
+  /** Whether the pad camera can see the vehicle from where it stands (or, not yet stood anywhere, from the place). */
+  private padSees(): boolean {
+    return this.pad.sees(this.stood ? this.pad.at : this.scene.reach().centre);
   }
 
   /** The rig C goes to next. */
@@ -170,7 +180,13 @@ export class Cameras {
    */
   set(id: RigId, snap = false): void {
     const craft = this.scene.craft();
-    if (id === this.active.id || (VEHICLE.includes(id) && !craft) || (id === 'onboard' && !craft?.seat)) return;
+    if (
+      id === this.active.id ||
+      (VEHICLE.includes(id) && !craft) ||
+      (id === 'onboard' && !craft?.seat) ||
+      (id === 'pad' && !this.padSees())
+    )
+      return;
     const last = this.active;
     this.refresh();
     const from: Pose = { position: this.now.position.clone(), quaternion: this.now.quaternion.clone(), fov: this.now.fov };
@@ -429,6 +445,9 @@ export class Cameras {
         if (!about) this.told.home();
       }
     }
+    // The vehicle has gone below the pad camera's horizon (or out of its reach) while it was being watched from there:
+    // the camera would look into the ground, so the chase takes over with the usual handover (C no longer offers it).
+    if (this.active === this.pad && flying && !this.pad.sees(this.pad.at)) this.set('chase');
     this.pad.aspect = this.camera.aspect;
     const keys = this.scene.piloted() ? this.unspoken() : this.keys;
     this.active.update(dt, keys, this.fast);
