@@ -1,4 +1,5 @@
 import type { Action, Flight, Move, Part } from '../../../../src/types';
+import { LC5 } from './lc-5.ts';
 
 /**
  * Launch Complex 5's pad as a flight's data: the parts of pad.glb (sites/lc_5.py), what each does and how it moves.
@@ -58,8 +59,10 @@ export const HARDWARE_WORDS: Pick<Record<PadNode, PartWords>, 'LaunchPedestal' |
   LaunchPedestal: {
     summary: 'A ring table on four legs over a flame deflector.',
     detail:
-      'The Redstone launch ring, turned to the flight azimuth and levelled before the count. The ' +
-      'Mercury-Redstone had no hold-down arms: it stood here under its own weight and left when thrust ' +
+      'The Redstone launch ring. A Redstone did not roll in flight: it tilted in a plane fixed in the vehicle, so ' +
+      'that plane was laid on the flight’s azimuth here, by turning the table the vehicle stood on, and levelled ' +
+      'before the count. The fin pads, the tail plugs and the two cable masts turned with it; the legs stand square ' +
+      'to the rails. The Mercury-Redstone had no hold-down arms: it stood here under its own weight and left when thrust ' +
       'exceeded it. Its last ties to the ground were two plugs on top of the ring under one fin, pulled out ' +
       'by the rising vehicle. On MR-1 it rose 3.8 inches, shut down, and settled back. The ring stands on a ' +
       'steel scale plate: the vehicle was weighed before and after each propellant was loaded.',
@@ -121,6 +124,8 @@ export interface PadDay {
   cleared: Move[];
   /** What the two ends of the mast's travel are called, where the tower did not wait with its mast up. */
   mastEnds?: [string, string];
+  /** The flight's azimuth, degrees true: what the launcher's table was turned to, and the two cable masts with it (`launcherTurn`). */
+  azimuth: number;
 }
 
 export const DEG = Math.PI / 180;
@@ -137,10 +142,29 @@ export const swing = (node: string, axis: [number, number, number], degrees: num
 });
 /** A pose held from the start: the piece is built somewhere else and stands here until it moves. */
 export const held = (node: string, axis: [number, number, number], degrees: number): Move => swing(node, axis, degrees, -1, -0.5);
-/** Where each cable mast stands round the vehicle, degrees from the hatch's side (+X) toward the structure's (viewer -Z): sites/lc5/site.py `MASTS`. */
+/**
+ * The meridian of a Mercury capsule that lay down range on the launcher, degrees round from the hatch's middle
+ * (anticlockwise from above): the periscope's, with a fin's. sites/lc5/site.py `PITCH_PLANE`.
+ */
+export const PITCH_PLANE = 135;
+/**
+ * How far the launcher's table stood turned for a flight on `azimuth` (degrees true), and the vehicle on it: degrees
+ * about the vertical, anticlockwise from above, from the site's +X to the capsule hatch's middle. The Redstone
+ * tilted in a plane fixed in the vehicle and had no roll programme (TM X-53107 4.4 and Figure 4-8), so it was
+ * "positioned to flight azimuth" on the launcher (7.1.3, L-25); the capsule rode with the pilot's feet, and the
+ * periscope under them, down range. Derived: the site's bearing is estimated. sites/lc5/site.py `launcher_turn`.
+ */
+export const launcherTurn = (azimuth: number): number => (((LC5.bearingX.value - azimuth - PITCH_PLANE) % 360) + 360) % 360;
+/** Where each cable mast stands round the vehicle, degrees from the hatch's middle (anticlockwise from above): sites/lc5/site.py `MASTS`. */
 const MAST_AT = { booster: 241, capsule: 115 };
-/** The axis a mast standing there falls about, straight out from the vehicle: its hinge pin, in the viewer's frame. */
+/** The axis a mast standing `degrees` round from the site's +X (toward the structure's side, viewer -Z) falls about, straight out from the vehicle: its hinge pin, in the viewer's frame. */
 const fallAxis = (degrees: number): [number, number, number] => [-Math.sin(degrees * DEG), 0, -Math.cos(degrees * DEG)];
+/**
+ * The cherry picker's angles, degrees about its pins (the viewer's +Z; lc5/cherry_picker.py `pose`, which each build
+ * returns): the jib lowering the cab to the pad from the hatch; the jib swung clear of the closed structure; the
+ * mast laid forward on its rest; the jib's last fold on to it.
+ */
+export const TOWER = { lower: 71.94, standby: 31.77, stow: 66.81, fold: 0.86 };
 const WHEEL_R = 0.457; // the structure's rail wheels
 const ROLL = [33.53, 19.2]; // metres: to the edge of the pad, then on to the launch position
 
@@ -155,6 +179,7 @@ export const doorAction = (id: string, node: string, degrees: number): Action =>
 /** The pad's parts for one morning. */
 export function lc5Parts(day: PadDay): Part[] {
   const T = day.T;
+  const turn = launcherTurn(day.azimuth);
   return [
     {
       node: 'ServiceStructure',
@@ -297,12 +322,12 @@ export function lc5Parts(day: PadDay): Part[] {
         // how it waits while the structure stands round the vehicle, and how it comes to the hatch: the day's
         ...day.tower,
         // away and down, by remote control
-        swing('CherryPicker_Jib', Z, 71.27, T.cabAway, T.cabAway + 0.12),
-        swing('CherryPicker_Cab', Z, -71.27, T.cabAway, T.cabAway + 0.12),
+        swing('CherryPicker_Jib', Z, TOWER.lower, T.cabAway, T.cabAway + 0.12),
+        swing('CherryPicker_Cab', Z, -TOWER.lower, T.cabAway, T.cabAway + 0.12),
         // afterwards: jib folded, mast laid forward on its rest, legs up, and away
-        swing('CherryPicker_Jib', Z, -1.16, T.stow, T.stow + 0.03),
-        swing('CherryPicker_Mast', Z, -65.59, T.stow, T.stow + 0.07),
-        swing('CherryPicker_Cab', Z, 66.75, T.stow, T.stow + 0.07),
+        swing('CherryPicker_Jib', Z, -TOWER.fold, T.stow, T.stow + 0.03),
+        swing('CherryPicker_Mast', Z, -TOWER.stow, T.stow, T.stow + 0.07),
+        swing('CherryPicker_Cab', Z, TOWER.fold + TOWER.stow, T.stow, T.stow + 0.07),
         swing('CherryPicker_Outrigger_1', X, -105, T.stow + 0.06, T.drive),
         swing('CherryPicker_Outrigger_3', X, -105, T.stow + 0.06, T.drive),
         swing('CherryPicker_Outrigger_2', X, 105, T.stow + 0.06, T.drive),
@@ -311,7 +336,7 @@ export function lc5Parts(day: PadDay): Part[] {
           kind: 'drive',
           from: T.drive,
           to: 1,
-          // out along the stub road on the hatch side, then round toward the blockhouse road
+          // out along the apron on the blockhouse side, then round toward the blockhouse road
           path: [
             [12, 0],
             [26, 1],
@@ -345,9 +370,9 @@ export function lc5Parts(day: PadDay): Part[] {
       order: 0,
       moves: [
         // straight out from the vehicle about the pin, until its head is on the pad (masts.py: resting)
-        swing('UmbilicalMast', fallAxis(MAST_AT.capsule), 94.9, T.umbilical, T.umbilical + 0.035),
+        swing('UmbilicalMast', fallAxis(MAST_AT.capsule + turn), 94.9, T.umbilical, T.umbilical + 0.035),
         // the umbilical swings on over the head as the mast goes down, and lies from it on the pad (estimated: how it fell is not recorded)
-        swing('UmbilicalMast_Cable', fallAxis(MAST_AT.capsule), 49, T.umbilical, T.umbilical + 0.035),
+        swing('UmbilicalMast_Cable', fallAxis(MAST_AT.capsule + turn), 49, T.umbilical, T.umbilical + 0.035),
       ],
     },
     {
@@ -356,7 +381,7 @@ export function lc5Parts(day: PadDay): Part[] {
       ...day.words.BoosterMast,
       explode: [0, 0, 0],
       order: 0,
-      moves: [swing('BoosterMast', fallAxis(MAST_AT.booster), 93.7, T.boom, T.boom + 0.035)],
+      moves: [swing('BoosterMast', fallAxis(MAST_AT.booster + turn), 93.7, T.boom, T.boom + 0.035)],
     },
     {
       node: 'Hardstand',
@@ -491,6 +516,20 @@ export const hutLeaves = (k: number, from: number, to: number): Move[] => [
  * The pad's own figures, as sites/lc-5.md and the model scripts have them (lc5/site.py): for a flight's `specs`,
  * under the heading 'Launch pad'.
  */
+/** How the vehicle stood on the launcher for a flight on `azimuth` (degrees true), for its `specs`. */
+export const launcherSpec = (azimuth: number): Flight['specs'][number] => ({
+  group: 'Launch pad',
+  label: 'Vehicle turned on the launcher',
+  value: launcherTurn(azimuth),
+  unit: 'deg',
+  confidence: 'derived',
+  note:
+    `the capsule hatch’s middle ${launcherTurn(azimuth)}° round from square to the rails on the blockhouse side, toward the service ` +
+    `structure’s parking place: bearing ${LC5.bearingX.value - launcherTurn(azimuth)}° true. The Redstone had no roll programme, so the launcher’s ` +
+    `table was turned until the vehicle’s pitch plane lay on the ${azimuth}° azimuth (TM X-53107 4.4, 7.1.3), with the periscope, ` +
+    `${PITCH_PLANE}° round from the hatch, down range. The site’s own bearing is estimated; photographs of July 1961 put Liberty Bell 7’s between 50° and 75° (sites/lc-5.md)`,
+});
+
 export const LC5_SPECS: Flight['specs'] = [
   {
     group: 'Launch pad',
@@ -514,7 +553,7 @@ export const LC5_SPECS: Flight['specs'] = [
     value: 5.5 * 0.3048,
     unit: 'm',
     confidence: 'estimated',
-    note: '5.5 ft: 4.9 to 6.0 ft scaled off NASA S63-02651 against the booster’s 70 in body',
+    note: '5.5 ft: 4.9 to 6.0 ft scaled off NASA S63-02651 against the booster’s 70 in body (that photograph is of MR-1 in November 1960, on the same launcher: NASA’s archive has it as MR-4)',
   },
   {
     group: 'Launch pad',

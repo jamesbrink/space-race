@@ -128,10 +128,11 @@ differs from Freedom 7's morning and how sure each difference is). What it still
   (mark-iv-suit.md, "On the couch", says what would change and what has not been looked at);
 - **a cabin to sit in**: the capsule's inside is modelled and cannot be boarded;
 - what July's photographs show and the pad does not have: the tail heater, the LOX trailers, the
-  M-113, the covers (lc-5.md, the same section). The two cable masts now stand where those
-  photographs put them, on the launcher against the vehicle; the same photographs say the vehicle
-  itself stood turned about 60° on the pad from how it is modelled, which is left open (lc-5.md, "An
-  open question: which way round the vehicle stood").
+  M-113, the covers (lc-5.md, the same section). The two cable masts stand where those
+  photographs put them, on the launcher against the vehicle, and the vehicle stands as the same
+  photographs and the launcher's rule have it: turned to its 100° azimuth, the hatch 60° round from
+  the cherry picker's side and bearing 235° true (lc-5.md, "Which way round the vehicle stood"). The
+  blast screens and their tanks are probably on the wrong side of the pad (the same section).
 
 **The flight.** To be flown it needs what Freedom 7 has in `flight.ts`: the booster's measured
 thrust and cutoff for MR-8, the tilt programme on 100°, the capsule's weights at each stage (the

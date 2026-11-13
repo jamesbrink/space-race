@@ -45,6 +45,7 @@ from .site import (
     mast_frame,
     obox,
     receptacle,
+    round_vehicle,
 )
 
 DECK = LAUNCHER_TOP - 0.2  # the launcher's table, where the shoes are bolted (launcher.py)
@@ -137,9 +138,9 @@ def capsule(parts: Parts) -> None:
     ux, uy, uz = receptacle()
 
     def round_cone(a: float, station: float, off: float) -> tuple[float, float, float]:
-        "A point `off` ft out from the capsule's skin, `a` degrees round from +X, at a station in inches."
+        "A point `off` ft out from the capsule's skin, `a` degrees round from the hatch's middle, at a station in inches."
         r = (37.25 - station * math.tan(math.radians(20.0))) / 12 + off
-        return (r * math.cos(math.radians(a)), r * math.sin(math.radians(a)), LAUNCHER_TOP + (716.0 + station) / 12)
+        return (r * math.cos(round_vehicle(a)), r * math.sin(round_vehicle(a)), LAUNCHER_TOP + (716.0 + station) / 12)
 
     out = math.hypot(ux, uy)
     pivot = at(-0.2, 0.0, top + HEAD + 0.02)

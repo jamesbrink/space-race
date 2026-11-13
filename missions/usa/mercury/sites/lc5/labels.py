@@ -28,7 +28,8 @@ TABLE: list[tuple[str, str, str]] = [
         "LaunchPedestal",
         "Launcher",
         "The Redstone launch ring on four legs over a four-sided flame deflector, with the two tail plugs under fin II "
-        "and the ground cables. The vehicle stood on it under its own weight. Its size is estimated from photographs.",
+        "and the ground cables. The vehicle stood on it under its own weight, turned to the flight's azimuth by turning "
+        "the table: the fin pads, the plugs and the cable masts stand turned with it. Its size is estimated from photographs.",
     ),
     (
         "UmbilicalMast",

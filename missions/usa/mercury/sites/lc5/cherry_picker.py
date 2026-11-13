@@ -3,8 +3,16 @@ ft; its cab stood at the capsule hatch from T-55 min, once the service structure
 it could be worked from the ground at the rear of the truck, from the cab, or from the blockhouse,
 whose pushbuttons "actuated a programmed descent away and down from the MERCURY-REDSTONE vehicle".
 It stood about 65 ft from the launcher (This New Ocean p. 329: MR-BD's stand-in truck), on the
-hatch side (Figure 7-6). At liftoff the truck was still there, boom up, its cab lowered to the pad
-beside it (S61-01927, S61-02408, 6100884).
+blockhouse's side (Figure 7-6). At liftoff the truck was still there, boom up, its cab lowered to the
+pad beside it (S61-01927, S61-02408, 6100884).
+
+The truck was not in line with the hatch. The vehicle stood turned to its azimuth (site.aim), the
+hatch's middle 55 or 60 degrees round from the truck's side, and the tower came in beside the capsule:
+the photographs of 19 and 21 July 1961 have the jib 40 to 60 degrees round from the hatch's own way
+out, passing a few feet from the vehicle's axis, with the cab's open end against the cone beside the
+hatch (FHSU items 333, 466, 468). So the truck stands a little to the structure's side of the
+launcher's line (ALONGSIDE; Figure 7-6 draws it some 10 ft that way) and the cab's open end takes
+the pilot's way straight out of the hatch about 2 ft from the skin.
 
 An International Harvester R-series truck carrying a turntable at its tail, a lattice mast raised
 by two rams, and a lattice jib hinged at the mast's head with the cab hung at its tip. Mast and
@@ -31,7 +39,11 @@ from srlib import FT, TAU
 
 from .site import HATCH_Z, P, Parts, arch, axes, beam, box, fine, ftp, hull, plate, truss
 
-REAR_AXLE = (71.5, 0.0)  # where the rear axle's middle stands
+# How far the tower's own plane, the truck's centre line, passes from the vehicle's axis, toward +Y: estimated, so
+# that the pilot's way straight out of the hatch (which stands 55 or 60 degrees round from +X) meets the cab's sill.
+# FHSU item 466 has the jib passing the capsule 3 ft or more from its axis on this side.
+ALONGSIDE = 4.6
+REAR_AXLE = (71.5, ALONGSIDE)  # where the rear axle's middle stands
 WHEELBASE = 16.5
 TRACK = 6.5  # between the centres of the front wheels, and of the rear dual pairs
 TYRE_R = 1.73  # a 10.00-20 truck tyre, 41.5 in across
@@ -39,7 +51,11 @@ PIVOT = (-4.5, 7.0)  # the mast's foot pin: behind the rear axle, and above the 
 MAST = 70.0  # foot pin to the head's pin
 JIB = 72.0  # head pin to the cab's hanger pin
 DECK_Z = 4.5
-CAB = Vector((6.6, 0.0, HATCH_Z + 1.2))  # the cab's middle, its open side 1.5 ft off the capsule at the hatch
+# The cab's middle at the hatch: brought in until its sill plate and its near corner post are 3.6 ft from the
+# vehicle's axis (the capsule is 3.1 ft at its widest, below the cab's floor): 5.16 ft along, 4.6 ft across. The
+# hatch's middle is then 2.1 ft (MR-3) and 2.4 ft (MR-4) from the sill's edge along its own way out, inside the
+# sill's width.
+CAB = Vector((5.16, ALONGSIDE, HATCH_Z + 1.2))
 HANG = CAB + Vector((3.3, 0.0, 2.3))  # the hanger pin, above the cab's back wall
 CAB_GROUND = 0.25  # the cab's floor on the pad when lowered
 
@@ -55,7 +71,7 @@ def pose() -> dict:
     # lowering: the jib alone turns until the cab's floor is on the pad (hanger pin 5.8 ft above the floor)
     drop = elbow.z - (CAB_GROUND + 5.8)
     reach = math.sqrt(JIB**2 - drop**2)
-    hang_down = Vector((elbow.x - reach, 0.0, CAB_GROUND + 5.8))
+    hang_down = Vector((elbow.x - reach, elbow.y, CAB_GROUND + 5.8))
 
     def ang(v):
         return math.atan2(v.z, v.x)

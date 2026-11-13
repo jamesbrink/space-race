@@ -4,9 +4,19 @@ no hold-down arms (TM X-53107 4.2.4). Its two tail plugs, a 60-pin control conne
 power connector with a ground strap, sat on the ring under fin II and pulled out as it rose
 (Figure 4-25). Two heavy cables run from the ring across the pad.
 
-Sizes are estimated: S63-02651 (MR-4 at ignition) gives a table about 10 ft across and support
-pads 4.9 to 6.0 ft up; S61-02408 and 6100884 show the legs, struts and splayed feet. The
-four-sided deflector is NASA SP-4204, ch. 2-4 (secondary); its size is not known.
+The table turns on its base. The vehicle was "positioned to flight azimuth" on the launcher once it
+was erected (TM X-53107 7.1.3, L-25), which the Redstone's launcher did by turning the ring the
+missile stood on until its reference fin lay on the line of fire. So what the vehicle stands on and
+is plugged into is built turned with it (site.aim: the fin pads and clamps, the tail plugs' housing,
+and in masts.py the two cable masts' shoes), and the base is not: the legs stand square to the rails
+on the scale plate, with the deflector between them and the ground cables. That it was the table
+that turned and not the whole launcher is estimated (the usual form of a launcher with a rotating
+ring; nothing read says which parts turned), and so is that the deflector stayed with the base.
+
+Sizes are estimated: S63-02651 (MR-1 on 21 November 1960, as its engine lights; NASA's archive has it
+as MR-4) gives a table about 10 ft across and support pads 4.9 to 6.0 ft up; S61-02408 and 6100884
+show the legs, struts and splayed feet. The four-sided deflector is NASA SP-4204, ch. 2-4
+(secondary); its size is not known.
 """
 
 from __future__ import annotations
@@ -17,17 +27,21 @@ from mathutils import Vector
 
 from srlib import FT, TAU
 
-from .site import LAUNCHER_TOP, RAIL_TOP, P, Parts, axes, beam, box, fine, ftp, obox, plate
+from .site import LAUNCHER_TOP, RAIL_TOP, P, Parts, axes, beam, box, fine, ftp, obox, plate, round_vehicle
 
 RING_R = (3.05, 5.0)  # the table's opening and its outside: about 10 ft across
 FOOT_R = 5.5  # where the feet stand, on the scale plate
-FIN_II = math.radians(45.0)  # which fin is II is not recorded against the model: the fin at +X +Y is taken
+FINS = 45.0  # the fins' meridians, degrees round from the capsule hatch's middle: 45 + 90k (vehicles/redstone_mrlv.py)
+FIN_II = 45.0  # which fin is II is not recorded against the model: the one 45 degrees round from the hatch is taken
 
 
-def build(parts: Parts, node: str = "LaunchPedestal", rail_top: float = RAIL_TOP) -> None:
-    """The launcher, at the origin. Pad 6's was the same Redstone ring: the scenery builds it under
-    another name and moves it there (Parts.shift)."""
-    parts.node(node)
+def build(parts: Parts, node: str = "LaunchPedestal", rail_top: float = RAIL_TOP, turn: float | None = None) -> None:
+    """The launcher, at the origin, its table turned `turn` degrees from +X toward +Y (left out: as the pad being
+    built has it, site.aim). Pad 6's was the same Redstone ring: the scenery builds it under another name, square
+    (nothing stood on it on these days), and moves it there (Parts.shift). The pad's own says how far its table is
+    turned (`turn` in the node's extras, degrees), for the flight's data to be held to (tests/flights.test.mjs)."""
+    turned = math.degrees(round_vehicle(0.0)) if turn is None else turn
+    parts.node(node, **({"turn": round(turned, 3)} if turn is None else {}))
     ring, legs = parts(node, "black", True), parts(node, "black/legs")
     defl, fittings, cable = parts(node, "scorched"), parts(node, "grey", True), parts(node, "cable", True)
     z1 = LAUNCHER_TOP
@@ -43,13 +57,13 @@ def build(parts: Parts, node: str = "LaunchPedestal", rail_top: float = RAIL_TOP
             obox(ring, (4.865 * radial[0], 4.865 * radial[1], (zr + z1 - 0.2) / 2), radial, (0, 0, 1), (0.13, 0.07, 0.5))  # between the flanges
     # the four pads the fins' bottoms rest on, and the fin clamps beside them (TM X-53107, T-390)
     for i in range(4):
-        t = math.radians(45 + 90 * i)
+        t = math.radians(turned + FINS + 90 * i)
         c, s = math.cos(t), math.sin(t)
         tang = (-s, c, 0)
         obox(fittings, (4.1 * c, 4.1 * s, z1 - 0.1), (c, s, 0), (0, 0, 1), (1.6, 0.9, 0.2))
         for side in (-1, 1):
             obox(fittings, (4.1 * c + side * 0.62 * tang[0], 4.1 * s + side * 0.62 * tang[1], z1 + 0.25), (c, s, 0), (0, 0, 1), (0.9, 0.12, 0.7))
-    # four legs, between the fins: a column under the ring, a strut out to a splayed foot
+    # four legs, square to the rails whatever the table is turned to: a column under the ring, a strut out to a splayed foot
     foot_z = 0.15
     for i in range(4):
         t = TAU * i / 4
@@ -81,8 +95,8 @@ def build(parts: Parts, node: str = "LaunchPedestal", rail_top: float = RAIL_TOP
             0.05,
         )
         beam(defl, tuple(a), (0, 0, apex - 0.02), 0.22)  # the seams, welded proud
-    # the tail plugs under fin II: a housing on the ring with the two connectors' receptacles
-    c, s = math.cos(FIN_II), math.sin(FIN_II)
+    # the tail plugs under fin II: a housing on the ring with the two connectors' receptacles, turned with the table
+    c, s = math.cos(math.radians(turned + FIN_II)), math.sin(math.radians(turned + FIN_II))
     hx, hy = 4.3 * c - 1.75 * s, 4.3 * s + 1.75 * c  # beside the fin's pad, clear of the fin
     obox(fittings, (hx, hy, z1 + 0.05), (c, s, 0), (0, 0, 1), (1.3, 1.9, 0.5))
     for off, rr in ((-0.45, 0.22), (0.45, 0.13)):  # 60-pin and 4-pin

@@ -61,7 +61,7 @@ to 0.002° (`tests/world.test.mjs`). Elevations are geometric; air lifts the Moo
 
 | Body | Azimuth (true) | Elevation | Note |
 | --- | --- | --- | --- |
-| Sun | 098.8° | 50.2° | Behind the hatch side (the pad frame's +X faces 295°): the hatch was in shade |
+| Sun | 098.8° | 50.2° | Six degrees off the flight's azimuth, on the side the periscope faced. The hatch's middle bore 240° (the vehicle stood turned to its azimuth: lc-5.md, "Which way round the vehicle stood"), 141° round from the Sun: the hatch was in shade |
 | Moon | 245.2° | 4.6° | Low in the west-south-west, setting; waning gibbous, 74% lit, 0.54° across. Last quarter was two days later |
 | Venus | 154.5° | 66.4° | A 16% crescent near greatest brilliancy, magnitude about −4.1: in the sky but not to be seen without knowing where to look |
 | Jupiter, Saturn | 233.0°, 236.5° | 20.8°, 15.0° | Above the Moon, lost in daylight |

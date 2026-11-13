@@ -184,30 +184,39 @@ the control fuel left. **Not simulated, and saying so when pointed at:** cabin p
 coolant, oxygen, volts and amps stand where their faces were drawn; "in retro attitude", "reserve deploy" and the
 warning lamps stay dark. The attitude angles are read off the model as the scene has it, by a convention that is the
 viewer's (`src/viewer/gauges.ts`): pitch is the small end's height above the horizon, yaw its heading from trailing,
-and roll is how far the pilot's head is from uppermost: nought in the attitude held for retrofire, and about 55 degrees going up, because the model's stance on the pad (the hatch at 295 degrees, estimated, and his head 45 degrees round from it) has him partly on his side to the 105 degree azimuth.
+and roll is how far the pilot's head is from uppermost: nought going up and in the attitude held for retrofire, since the vehicle stands on the pad turned to its azimuth with his head up range (below). It read about 55 degrees going up until November 2026, while the model stood the vehicle square to the rails.
 
-### An open question: which way round the capsule stood
+### Which way round the capsule stood
 
-Two estimates lean on each other. The hatch's bearing on the pad is 295 degrees true (`lc-5.ts`, estimated: square to
-the rails, and which of the two sides is read off a figure and one photograph). The hatch's middle is 45 degrees from
-the pilot's head toward his right and the periscope under his feet ("Round the cone"), so on the pad the periscope
-bears 160 degrees, 55 degrees round from the 105 degree azimuth, and the pilot's head 340. The simulator rolls the
-capsule after the turnaround to put the periscope toward the Earth: `trajectory.body.capsule.earthward`, measured from
-the body's +Z (bearing 285 on the pad), is 285 - 160 = 125 degrees (it was 80 while the hatch was at his right hand).
-Flown live with 125 against 80 nothing recorded moves: the turnaround test holds the periscope's side within three
-degrees of the Earth either way; apogee is 23 m higher, the range 73 m longer, the automatic supply 0.14 kg lower at
-apogee. From the couch at T+4:10, flown live, the periscope shows Florida and the Bahamas and the attitude needles read
-roll 0.8, pitch -19.4, yaw 0.0 (with the old model and 80: -1.0, -19.2, 2.6). Going up the roll needle now reads about
-55 degrees, not 100.
+On the pad the periscope lay down range, on the 105 degree azimuth, and the pilot's head up range: the hatch's
+middle, 135 degrees round from the periscope, bore 240 degrees true, 55 degrees round from the side the cherry
+picker's truck stood on. **Derived**, not documented: a Redstone tilted in a plane fixed in the vehicle and did not
+roll, so the launcher's table was turned until that plane lay on the azimuth (TM X-53107 4.4 and Figure 4-8; 7.1.3,
+"positioned to flight azimuth"), and the capsule rode feet down range, which is why the periscope looked at the Earth
+after a turnaround that was a yaw. `sites/lc-5.md`, "Which way round the vehicle stood", has the rule, the
+photographs that bear on it and where they disagree; MR-3's one photograph (S61-02407) agrees by its cable masts and
+its booster's fins and reads 11 degrees less by this capsule's UNITED STATES.
 
-**Photographs of July 1961 bear on it** (`sites/lc-5.md`, "An open question: which way round the vehicle stood"): read for
-where the cable masts stood, they have MR-4 turned on the pad about 60 degrees from the model's stance, the hatch toward
-235 degrees true and the periscope down range to within about 10 degrees, which is what the 55 degrees above would be.
-Nothing was changed for it.
+Until November 2026 the model stood the vehicle square to the rails, the hatch bearing 295 degrees (the site's
+`bearingX`, which is the rails' line and was taken for the hatch's), which left the periscope 55 degrees off the
+azimuth and the pilot partly on his side. What changed with the turn: the vehicle's `rotationY` in `flight.ts`
+(55 degrees, worked from the azimuth: `launcherTurn`), with this model and its angles round the cone untouched; the
+pad's launcher, masts, umbilical, platforms' cuts and cherry picker (`sites/lc-5.md`); and
+`trajectory.body.capsule.earthward`, the side the automatic control keeps toward the Earth, which is now the down-range
+one, 180 degrees from the body's +Z (it was 125, and 80 before the hatch was moved round the cone). Flown live the
+recorded figures do not move (the tests that pin them to the Postlaunch Report pass unchanged); the live flight's
+apogee is 106 m lower than it was with 125 and its range 260 m shorter (of 202.7 km and 537 km), and it has 0.34 kg more of the automatic supply left
+at apogee, because the turnaround is now one yaw through 180 degrees with the periscope toward the Earth all the way
+round, as the record has it, where it had been a pitch over and then a roll (`src/sim/autopilot.ts` `turnBoth`;
+tests/turnaround.test.mjs).
 
-What would settle it, looked for once in November 2026 and not found: a document on how the capsule was clocked to
-the booster or to the trajectory (the Postlaunch Report's roll trace through the turnaround, SEDR 104's axis figure),
-or a pad photograph that shows the hatch against the fins or the gantry with the azimuth known.
+**The lettering may be 8 degrees out.** S61-02407 puts the middle of UNITED STATES 36 to 41 degrees round from the
+fin that lay down range, where this model has it 51 degrees from the periscope and Liberty Bell 7's is 43. If the
+periscope was on that fin's meridian, as the rule has it, the lettering here is painted about 10 degrees too far
+from the periscope. Not changed: "Round the cone" places it from other photographs, to about 10 degrees.
+
+What would settle the clocking to the degree, looked for in November 2026 and not found: a drawing of how the
+capsule was indexed on the adapter, or the Postlaunch Report's roll trace through the turnaround.
 
 **The umbilical on the pad followed the receptacle** (November 2026). The site's cable plugged in at 270 degrees in
 the pilot's frame and station 8, where the old model had the receptacle; it now reaches the receptacle under the

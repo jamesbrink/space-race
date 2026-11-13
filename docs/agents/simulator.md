@@ -253,9 +253,16 @@ never adjusted to bring a check in.
   `flies` can be flown without being told how.
 - **Turned round, the spacecraft is rolled periscope side down.** `trajectory.body.capsule.earthward` names the side the
   automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
-  the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is estimated, from the
-  model's own bearings, and is listed with the other undocumented inputs (tests/vehicle.test.mjs); tests/turnaround.test.mjs
-  holds it to three degrees through the top of the flight. A flight that names no side keeps the roll it had.
+  the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay
+  down range on the pad, since the launcher was turned until the vehicle's pitch plane lay on the azimuth and the
+  capsule rode feet down range (derived: sites/lc-5.md, "Which way round the vehicle stood"; tests/launcher.test.mjs
+  holds the vehicle's turn in the scene, the pad's and this to one another). tests/turnaround.test.mjs holds it to
+  three degrees going up and through the top of the flight, and to ten through the turnaround. With a side named
+  the control makes one turn to the whole attitude (`turnBoth`: the long axis to where it is wanted and the keel
+  down together), which end for end is a half turn about the plumb line: a yaw, as the record's turnaround was
+  ("yawed 180 degrees"), the periscope toward the Earth throughout. Until November 2026 it turned the long axis the
+  short way, pitching over, and then rolled to the side: the same end by a way the record does not have. A flight
+  that names no side still turns the long axis the short way and keeps the roll it had.
 - **A right click on the vehicle in flight is the part's own menu** (main.ts `stage.onSpot`): what that part can be told
   to do now, from the flight's data (`Part.commands`, types.ts `Command`: a step `Cockpit.ask` sets off, offered only
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
