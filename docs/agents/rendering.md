@@ -503,7 +503,10 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     could give its day, and so is every pixel: tests/weather.test.mjs pins the sheets' and the map's text for
     Freedom 7's day, and the two builds were compared program by program and frame by frame when this was made
     (288 programs the same text; the sky from the pad and from 3, 8, 12 and 150 km the same to the last bit, in
-    both looks). Handed over as uniforms instead, with every new term nothing on such a day, five pixels in a
+    both looks). Two page loads can be compared so, whatever `pnpm bench` says of them, once what goes by the
+    time since the page opened is put to one instant in each: freeze the stage, then `setting.tick(120 - e)`
+    with `e` the seconds ticked so far, which the billows' rise gives (`stage.clouds.uniforms.uRise.value / 0.4`):
+    the clouds' drift, the surf and the plants' sway are all the setting's tick. Handed over as uniforms instead, with every new term nothing on such a day, five pixels in a
     million came out a level different: the compiler orders and fuses arithmetic by the whole expression, not by
     what its terms come to. The cloud pass's shader is therefore made when the day is known (`CloudPass.dress`:
     the first time there is air with clouds or sheets in it, under the curtain), not when the stage is.
@@ -522,7 +525,9 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   - **High cloud is fibres or a veil.** Cirrus is `cirrusAt`'s fibres, never more than half opaque. Cirrostratus
     over the whole sky is `veilAt`: a smooth sheet as deep as the record's optical depth, the Sun's disc and a
     glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look.
-    It is lit by the Sun at its own height (`highSun`: lit before sunrise on the ground). What is under it has
+    It is lit by the Sun at its own height and from the Sun's own direction (`highSun`, `uTrueSun`: lit before
+    sunrise on the ground; the scene's one light is the Moon by night and points nowhere in between, and a veil
+    lit by it stepped at sunrise). What is under it has
     the Sun through it by one rule (`veilShade`, day.ts and weather.ts: half the depth along the slant, since
     ice sends half of what it scatters on beside the beam) in four places that must agree: the shared chunk
     (air.ts: `veilLightUniform`, one number set with the light, for what is below the veil's height), the

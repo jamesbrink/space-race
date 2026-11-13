@@ -49,8 +49,14 @@ The weather over a site is its flight's own day (`Flight.weather`, types.ts: `Da
 [rendering.md](rendering.md), "The weather is a day's"). Where the record has high cloud over the site the
 light is that day's: the Sun's through it, the sky's with what the veil gives back, the haze and horizon
 whiter, the veil itself lit by the Sun at its own height. Each is a smooth rule of the Sun's height (day.ts:
-`veilShade`) worked out with the light in `Setting.at`, so it is held to the same check: the mean brightness
-of a still view under 21 July's veil runs from 03:58 through sunrise to liftoff without a step.
+`veilShade`) worked out with the light in `Setting.at`, so it is held to the same check. Under 21 July's
+veil, sampled each minute of the clock from 03:58 to liftoff on a frozen stage, in both looks, from the pad,
+from 3 km and from 150 km: the sky runs one way in every view; the most any third of a view changes in a
+minute is 9 levels of 255 (the sky toward the sunrise at 05:24 EST, as the veil catches the Sun a quarter of
+an hour before it rises on the ground); what falls is only the ground under a cumulus's shadow as the Sun
+climbs (3 levels a minute at most, 7 in the cel look's flat tones). The veil and the deck are lit from the
+Sun's own direction, not the scene's one light's: that light is the Moon by night and points nowhere when
+neither is up, and a veil lit by it had its glow in the wrong place until sunrise and then stepped.
 
 A model whose slider tells a sequence of events has a `sequence` (types.ts: `Keyframe`): the
 instants, in seconds from launch, at which the slider reads each value, each with confidence and

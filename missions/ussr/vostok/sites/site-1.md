@@ -329,3 +329,10 @@ is `stood(..., since="1957")` with no end; a later flight that finds one gone gi
   platform's edge (the rails on the deck itself are not modelled).
 - The pit's two trenches under the platform, the sump and the road down into the pit from the east
   are not modelled.
+- **The sky is the neighbouring stations', not the range's own** ("The land", above: the sky), and against an
+  earlier reading of the film as clear. The cirrus is drawn as fibres lying one way over seven eighths of the sky, the
+  same everywhere: which way they lay, how thick they were and whether there were gaps over the pad are not recorded.
+  They dim the Sun evenly (their own streaks cast no shadows). In the cel look they are one flat paler tone over the
+  sky. **From height the same cirrus lies over the whole Earth in view**: the site has no region and so no map of the
+  day's weather beyond it (`viewer/weather.ts`), and what stands in for one is the site's own sky everywhere, which
+  is an estimate and almost certainly wrong a few hundred kilometres off.

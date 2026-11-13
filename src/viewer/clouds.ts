@@ -683,6 +683,13 @@ export const overGlsl = (day: Day | null | undefined): string => {
     highHeight = (day?.high.height ?? HIGH_HEIGHT).toFixed(1);
   /** The sky's light on what is under the high cloud: with what it gives back, on a day that has any. */
   const sky = high ? 'skyLight' : 'uSkyLight';
+  /**
+   * Which way the Sun is from a sheet. On a day whose record has high cloud the sheets are lit by the Sun itself, as it
+   * stands at their height (\`highSun\`), so it is the Sun's own direction: the scene's one light is the Moon by night
+   * and keeps its last direction when neither is up, and a veil lit before sunrise had its glow where that pointed
+   * until the Sun rose on the ground, and then stepped. On any other day, the scene's light, as it was.
+   */
+  const sun = high ? 'uTrueSun' : 'uSun';
   return /* glsl */ `
   precision highp int;
   ${LAYER}
@@ -867,7 +874,7 @@ export const overGlsl = (day: Day | null | undefined): string => {
     float highHere = highCoverAt(w, uEyeXZ + v.xz);
     vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33) * uVeilLeft;   // (as the march has it)
     float deck = deckCoverAt(w, uEyeXZ + v.xz);
-    vec3 sunTop = sunOn(uLayer.y, up, v) * (1.0 - 0.7 * deck * mix(0.42, 1.0, smoothstep(0.3, 0.9, deck))) * veilShade(highHere, max(sunUp, 0.0));
+    vec3 sunTop = sunOn(uLayer.y, up, v) * (1.0 - 0.7 * deck * mix(0.42, 1.0, smoothstep(0.3, 0.9, deck))) * veilShade(highHere, max(dot(up, uTrueSun), 0.0));
     vec3 skyLight = uSkyLight + uVeilGlow * min(highHere / ${Math.max(high.cover, 1e-3).toFixed(3)}, 1.0);`
         : /* glsl */ `
     vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33);   // (as the march has it)
@@ -1024,8 +1031,8 @@ export const overGlsl = (day: Day | null | undefined): string => {
     vec2 xz = uEyeXZ + v.xz;
     vec3 w = weatherAt(xz);
     // (where the Sun is, along the deck: for the shadow a cloudlet casts on the one beside it)
-    float sunHigh = max(dot(up, uSun), 0.02);
-    gDeckSun = vec3(normalize(uSun.xz + vec2(1e-6, 0.0)), sunHigh / max(length(uSun.xz), 1e-3));
+    float sunHigh = max(dot(up, ${sun}), 0.02);
+    gDeckSun = vec3(normalize(${sun}.xz + vec2(1e-6, 0.0)), sunHigh / max(length(${sun}.xz), 1e-3));
     gDeckCel = uCel > 0.5;
 ${
   high
@@ -1059,7 +1066,7 @@ ${
     float body = kind == 0 ? (1.0 - pow(1.0 - gDeckBody, along)) * fade : 0.0;
     float mean = kind == 0 ? (1.0 - pow(1.0 - gDeckMean, along)) * fade : 0.0;
     float nearBy = kind == 0 ? gDeckNear : 0.0;
-    float sunUp = dot(up, uSun);
+    float sunUp = dot(up, ${sun});
 ${
   high
     ? /* glsl */ `    // (on a day whose record has high cloud each sheet is lit by the Sun as it is at its own height: the high cloud by
@@ -1075,9 +1082,9 @@ ${
     bool under = uEyeH < height;
     // from above, its lit top (the cirrus's ice a little brighter toward the Sun); from under, the light that comes
     // through it, most where the Sun is behind it, and the sky's
-    float toSun = max(dot(dir, uSun), 0.0);
+    float toSun = max(dot(dir, ${sun}), 0.0);
     vec3 normal = normalize(up - slope.x * vec3(1.0, 0.0, 0.0) - slope.y * vec3(0.0, 0.0, 1.0));
-    float facing = kind == 0 ? clamp((0.15 + 0.85 * max(dot(normal, uSun), 0.0)) / (0.15 + 0.85 * max(sunUp, 0.0)), 0.25, 1.5) : 1.0;
+    float facing = kind == 0 ? clamp((0.15 + 0.85 * max(dot(normal, ${sun}), 0.0)) / (0.15 + 0.85 * max(sunUp, 0.0)), 0.25, 1.5) : 1.0;
     vec3 light = under
       ? (sunWhite * (kind == 0 ? 0.6 : 0.75) * (0.8 + 0.9 * pow(toSun, 6.0)) + ${sky} * (kind == 0 ? 0.8 : 0.9) + uGroundLight * 0.2)
         * (kind == 0 ? 1.1 - 0.3 * thick : 1.0)   // (from under, a cloudlet's heart lets less through than its rim)

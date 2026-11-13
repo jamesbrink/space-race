@@ -657,8 +657,9 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     colour(uniforms.uSunLight.value, [0, 1, 2].map((c) => light.sun[c]! + (above[c]! - light.sun[c]!) * (1 - air)) as unknown as RGB);
     uniforms.uGlare.value = along;
     colour(fog.color, light.haze);
-    // (the one direct light's height, known here before it is put into the setting below)
-    const lightUp = light.light.from === 'sun' ? h.sunDir.y : light.light.from === 'moon' ? h.moonDir.y : setting.sunDir.y;
+    // (the one direct light's height, known here before it is put into the setting below: the Moon's while it is the
+    // light, else the Sun's own, which with neither up is under the horizon and not wherever the light last pointed)
+    const lightUp = light.light.from === 'moon' ? h.moonDir.y : h.sunDir.y;
     // Under a veil of high cloud (the record's, at the site): what it leaves of the direct light for everything under
     // it, for the Sun where it stands (air.ts takes it, and the clouds under it: clouds.ts); the haze lit by a whiter
     // sky; and the veil as the reflections see it, lit as the cloud pass lights it from under (clouds.ts: sheet): by

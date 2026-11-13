@@ -2,10 +2,10 @@
  * The weather round a site, as a map: how much of the sky the cumulus cover, where the high cloud
  * and the middle decks lie, over the two thousand kilometres a flight to 187 km can see.
  *
- * **All of it is estimated.** Nothing here is the analysed weather of any day: no chart or
- * reanalysis has been read. It is a plausible fair-weather morning built from what the repo does
- * know (where the land, the lakes and the sea are, how high the ground is, which way the wind blew
- * at the site) and from how such mornings are organised:
+ * **All of it is estimated, but for what a day's record says.** Nothing else here is the analysed weather
+ * of any day: no chart or reanalysis has been read. It is a plausible fair-weather morning built from what
+ * the repo does know (where the land, the lakes and the sea are, how high the ground is, which way the wind
+ * blew at the site that day) and from how such mornings are organised:
  *
  * - cumulus grow over land that the Sun has warmed, more the further inland, and most over high
  *   ground; lakes and the sea within a few tens of kilometres of a shore stay clear (cool water,
@@ -19,18 +19,19 @@
  *
  * - at the site, layer by layer: the record's cumulus cover replaces the map's within `NEAR[0]` of the site and
  *   gives way to it by `NEAR[1]` (`coverNear`); the middle deck's within 40 km, gone by 150 (`deckCoverAt`); the high
- *   cloud's as far as an observer under it sees it, and gone by twice that (day.ts: `reportReach`; `highCoverAt`
- *   here and in the shaders);
- * - over a stretch of country the record speaks of ("northern Florida obscured by high cirrus and lower patches of
- *   cumulus"), all over it: `weatherAt` puts the record's cover there in place of its own (`MapDay.beyond`).
+ *   cloud's as far as an observer under it judges the sky, and gone by half as far again (day.ts: `reportReach`;
+ *   `highCoverAt` in the shaders, and in the map itself);
+ * - over a stretch of country the record speaks of ("High cirrus blotted out everything except an area from about
+ *   Daytona Beach back inland to Orlando ..."), all over it: `weatherAt` puts the record's cover there in place of
+ *   its own (`MapDay.beyond`).
  *
  * **One map is baked for each region and day** (`<region>.<date>.weather.png`), from the flight's own record. Not one
  * map with the day's record blended in as it is drawn, and not parameters to the shaders: a day's weather is not
  * another day's with a number changed (the wind lies another way, so the streets do; the high cloud is over other
  * country), a record's stretch of country is a shape on the map and nothing a uniform says, and a map per day leaves
  * every shader that reads it as it was, with one texture and nothing more to work out for each pixel. So the first
- * day's map is the file it always was, byte for byte, and a later day costs its own file (0.9 MB, fetched only once
- * the eye is 1,500 m up) and nothing else. The estimated part of each day's map is taken from another part of the
+ * day's map is the file it always was, byte for byte, and a later day costs its own file (0.9 MB, asked for once
+ * the eye is 1,500 m up: globe.ts) and nothing else. The estimated part of each day's map is taken from another part of the
  * same noise (`MapDay.apart`), so two days do not have the same clusters in the same places.
  *
  * tools/globe-weather.mjs bakes `weatherAt` into `public/globe/<region>.<date>.weather.png`: red the
