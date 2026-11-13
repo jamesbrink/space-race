@@ -13,9 +13,12 @@ launch system with the rocket hanging in it, the steppe round it with the tracks
 the platform, and the sky of the morning. What served the rocket that morning and was taken away
 before it left is built too, and leaves on the pad's slider at the transcript's times: the erector
 with its lift to the hatch, the two service trusses, the upper cable mast ("What served the
-rocket", below). The place round the pad is built as well ("The place round the pad", below). Still to come: the
-supports falling back at liftoff; the two tall masts; then the place for later Vostoks. Each section
-below says what of it is in the model, and the last lists what is left out.
+rocket", below). The place round the pad is built as well ("The place round the pad", below). What was fixed on
+the deck and in the pit is built: the rails in the deck, the two masts 110 ft tall, the small building,
+the flame deflector, the pit base with its two trenches and the sump, the road down the pit and the
+cut in its north rim ("The platform", "The flame pit", below). Still to come: the supports falling
+back at liftoff; the land's relief; then the place for later Vostoks. Each section below says what of
+it is in the model, and the last lists what is left out.
 
 The place round the pad is built as it stood that April (`site1/model/1961-04.py`, `pnpm model:site-1`,
 the flight's `surroundings`): the command bunker, the storage bunker, the buildings by the pad, the
@@ -39,6 +42,14 @@ the map) and multiplied once ([site1/site.py](site1/site.py): `FT`, `MM`).
 | +X | due east, 090° true: along the centre track as it comes onto the platform, and out over the flame pit | derived: the centre track's last 60 m run on 090.1° (OpenStreetMap way 37547653); HTA/JR-4/58: the pit "is oriented along a west-east axis" |
 | +Y | due north, toward the command bunker | the same |
 | Origin | 45.92025° N, 63.34225° E (WGS 84), 78 m above the ellipsoid | position documented: OpenStreetMap way 172571408, the middle of its outline (a few metres); height estimated from SRTM and the EGM96 geoid (below) |
+
+**The centre track is on the axis, and the map does not have it there.** The origin is the middle of
+the map's outline of the pad, and the map's centre track comes on 3.0 m north of that. The erector
+carried the rocket along that track to the axis, so one of the two is out by 3 m (the outline is a
+loose rectangle 47.8 by 42.5 m; the track is a line traced along rails). The track is put on the axis
+for its last 160 m; everything else from the map stays where the map has it against its outline, so
+the pit, the bunker and the buildings may all lie some 3 m north of where they were against the
+rocket. Not resolved: the imagery read is 0.8 m a pixel.
 
 **The launch azimuth is not this bearing.** The platform, the pit and the tracks lie east and west.
 The rocket was aimed by turning the launch system's ring in the platform's opening, so the rocket,
@@ -81,13 +92,18 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 
 | Node | Module | What | In the model |
 | --- | --- | --- | --- |
-| Platform | platform.py | the slab on its four pylons, the abutment, the retaining walls, the fence | yes |
-| FlamePit | platform.py | the pit's lining and its own ground out to the rim, and a skirt under the land past it | yes |
+| Platform | platform.py | the slab on its four pylons, its lip and its cut corner, the abutment, the retaining walls, the fence; in its top, the flangeways beside the rails | yes |
+| StairHead (under Platform) | deck.py | the small building on the platform's west side | yes; its door shut |
+| DeckRails | deck.py | the rails in the deck: the centre track, the north and south tracks, the short spur, the two gantry rails | yes |
+| Masts (`Mast_NE`, `Mast_SW`) | deck.py | the two masts 110 ft tall, each with its head and its ladder | yes: their form estimated |
+| FlamePit | platform.py | the pit's lining and its own ground out to the rim, and a skirt under the land past it; the pit base, the two trenches, the sump's face and roof, the road down the floor, the cut in the north rim | yes |
+| FlameDeflector | platform.py | the curved chute under the opening | yes: its form off a scale model, its sizes estimated |
 | LaunchRing | launch_system.py | the turning ring, with `Support_1..4` and `Guide_1..4` | yes |
 | ServiceTrusses | service_trusses.py | the two service trusses, `ServiceTruss_North` and `ServiceTruss_South`, with their half-ring platforms and ladders | yes: two of each one's three platforms |
 | UpperCableMast | cable_mast.py | the cable mast to the third stage | yes; the two lower cable masts are not |
 | Erector | erector.py | the erector on the centre track, with `Erector_Boom` (the platforms, the stair's landing) and `Erector_Lift` | yes: its form estimated |
 | (the land) | src/viewer/tyuratam.ts | the steppe, the tracks and the roads painted on it, the pit cut out of it | yes |
+| Tracks | deck.py | the rails where they come up to the platform over the land: the centre track's last 130 m, the others' last 70 m | yes (the place) |
 | CommandBunker | bunker.py | the mound over the firing room, its four periscopes, three corner vents, the entrance, the smoking place | yes (the place); the rooms below are not |
 | StorageBunker | storage.py | three concrete bays with earth between, their gates, roof vents and aprons | yes (the place); gates shut |
 | PropellantShed | buildings.py | the shed over the northern spur's end, open to the north on six supports | yes (the place) |
@@ -112,13 +128,29 @@ vertical: the numbers live in [site1/site.py](site1/site.py) (`TAIL_Z`, `TURN`) 
 | Item | Value | Confidence | Source |
 | --- | --- | --- | --- |
 | Platform | 135 ft square (41.15 m) | documented (measured off photographs) | PIC/JR-2/60: "revised to 135 feet square"; RussianSpaceWeb: "40 by 40 m" |
-| Its thickness | 10 ft | estimated | the front elevation (PIC/JR-2/61 Figure 1) draws it about so; HTA/JR-4/58 thought "at least 50 feet", with working levels below, which the later reports did not repeat |
-| Pylons | four, 30 ft wide (east-west) and 10 ft thick, 55 ft apart in each row, 115 ft over the pair | documented (measured) | PIC/JR-2/60 (30 ft wide); PIC/JR-2/61 text and Figure 1 (10 ft thick, 30 and 55 ft, 115 ft) |
-| Pylon rows | 57.5 ft north and south of the axis | estimated | Figure 1 draws them under the platform's edges |
+| Its thickness | 10 ft | estimated | the front elevation (PIC/JR-2/61 Figure 1) draws it about so; HTA/JR-4/58 thought "at least 50 feet", with working levels below, which the later reports did not repeat. Zak (RussianSpaceWeb) has the platform as "a giant steel square 40 by 40 meters and three-story high" of sixteen railway bridge trusses: three storeys is more than 10 ft, and is not modelled |
+| Pylons | four, 30 ft wide (east-west) and 10 ft thick, 55 ft apart in each row, 115 ft over the four both ways | documented (measured) | PIC/JR-2/60 (30 ft wide; "believed to be 115 feet square"); PIC/JR-2/61 text and Figure 1 (10 ft thick; 30 and 55 ft east to west; 115 ft dimensioned north to south over the rows' outer faces) |
+| Pylon rows | their middles 52.5 ft north and south of the axis | derived | half of 115 ft, less half a pylon's 10 ft. (They were first built 5 ft further out, under the platform's edges.) |
 | Abutment | 25 ft deep, the platform's west side resting on it at grade | documented (measured) | PIC/JR-2/60: the rail embankment "terminates at an abutment measuring ... by 25 feet" |
 | The opening | a dark circle 65 ft across (19.81 m) | documented (measured) | PIC/JR-2/60; PIC/JR-2/61 found it "semi-opaque", perhaps grated |
 | Fence | low, wire, set in 15 ft from the edge on the three sides over the pit | documented | PIC/JR-2/61 |
 | The north-east corner | extended 10 ft out over the pit, for one of the two masts | documented | HTA/JR-4/58 ("a concrete lip which protrudes 10 feet"); PIC/JR-2/61 |
+| The lip's breadth and end | 8 ft along the north edge, its end rounded | estimated | scaled off PIC/JR-2/61 Figure 1 (4.73 px a foot at 500 dpi) |
+| The south-east corner | cut off, 10 ft along each edge | estimated | Figure 1 draws it so, and Figure 2 (the perspective); not in the text |
+| Small building | "on the west side of the launching platform, about 60 feet northwest of the servicing tower"; perhaps "a covered entryway for a stairway leading below the surface" | documented | PIC/JR-2/61 |
+| Its place and size | its middle 60.4 ft west and 25.6 ft north of the axis; 16 by 8.5 ft, 8 ft high | estimated | scaled off Figure 1's plan and front view: its dimensions are redacted |
+| Tracks on the platform | "served by four rail spurs": one "centered on the platform" leading "into the blackened launching area", one onto its northern section, one onto its southern, and a fourth between the centre and the southern that "extends onto the platform for only a short distance" | documented | HTA/JR-4/58; PIC/JR-2/61 Figure 1 draws all four |
+| The north track's end | "extended 10 feet farther east" between the two coverages | documented | PIC/JR-2/61 (PIC/JR-2/60 had thought it removed) |
+| Where each lies | centre: on the axis, to the opening's edge. North: 44.5 ft north, to 49 ft east of the axis. South: 40.6 ft south, to 35.8 ft east. Short spur: 27.3 ft south, ending 4.6 ft onto the abutment | derived | scaled off Figure 1, good to a foot or two. Today's map, measured from its own centre track, has 14.6 m, 13.8 m and 9.4 m (against 13.6, 12.4 and 8.3) and the same ends for the south track and the spur to 3 m |
+| Gantry tracks | "a gantry-crane track ... leads from the edge of the launching platform eastward toward the center of the servicing tower"; "the standard-gauge rail line ... passes between the gantry tracks" | documented | HTA/JR-4/58; PIC/JR-2/61 |
+| Their separation and length | two rails 23 ft apart, from 11 ft short of the abutment to the opening | estimated | scaled off Figure 1: the figure is redacted. **What rode them is not said in anything read**, and nothing is put on them |
+| Gauge | 1,524 mm between the rails' inner faces | documented (the standard) | the Soviet gauge was 5 ft (1,524 mm) until it was made 1,520 mm in 1970; that this track was laid to it is assumed. The CIA calls it "standard-gauge" |
+| The rails | heads flush with the concrete | documented (a photograph) | the pilot walking to the rocket, 12 April 1961 (RussianSpaceWeb): rails lying in the deck in the foreground |
+| Their section; how they are drawn | a flat-bottomed rail 146 mm high, head 70 mm (a Soviet R-50 was 152 mm, head 70 mm); the head 9 mm proud of the deck, a flangeway 60 mm wide and 45 mm deep on the gauge side of each running rail | estimated | sitelib's section; 9 mm keeps head and concrete apart in depth |
+| Masts | "two towers ... one at the northeast and the other at the southwest corner ... 110 feet high and have a large array on top at least 5 feet wide and 10 feet high" | documented (measured off shadows) | HTA/JR-4/58; "no change" in PIC/JR-2/60; 110 ft again on PIC/JR-2/61 Figure 1 |
+| Where they stand | the north-east one 4.9 ft past the platform's east edge and 3.9 ft in from its north edge, on the lip; the south-west one its mirror through the axis, which is on the abutment: each 29.4 m from the axis | derived | the first scaled off Figure 1; the second from PIC/JR-2/61: "positioned precisely equidistant from the center of the launching platform", "a line drawn between the two masts passes through the center of the servicing tower" (Figure 1 itself draws the south-west one at the abutment's corner, 5 m further out: a diagram) |
+| What they were | "probable collimation towers" (1958); "it is now felt that their function cannot be determined" (1961), neither collimation nor floodlights seeming sound to the interpreters | documented (that it was not known) | HTA/JR-4/58; PIC/JR-2/61 |
+| Their form | a slender square lattice 1.2 m across at the foot, a railed head 100 ft up, on it a frame 5 by 10 ft carrying six floodlights turned to the rocket, a rod 4 m above, a ladder up the side toward the slab | estimated | a photograph of the launch of 12 April 1961 (RussianSpaceWeb) has one beside the rocket: a pale, slender lattice with a wider head near its top and a thin rod above it. That the head is floodlights and the rod a lightning rod is our reading; a scale model of the pad as in 1957 has a short lattice with a box on it at each of the same two corners |
 
 ### The flame pit
 
@@ -126,9 +158,23 @@ vertical: the numbers live in [site1/site.py](site1/site.py) (`TAIL_Z`, `TURN`) 
 | --- | --- | --- | --- |
 | Rim | 880 by 550 ft, pear-shaped, its wide end under the platform | documented (measured) | HTA/JR-4/58; PIC/JR-2/60 |
 | Outline | 265 by 184 m (OpenStreetMap way 172441917, `flame_trench`), placed in the frame | derived | the map agrees with the CIA's figures to a few per cent |
+| The cut in the north rim | a tongue some 15 m wide narrowing to 8 m, from the rim to 114 m north of the axis, the old tray and the new conduit leaving the rim beside its mouth | derived | PIC/JR-2/60 Figure 5 (1959), scaled: good to some five metres. Filled today: not on the map. Its depth is the pit's own side slope, 1 in 1 (estimated) |
 | Depth | 43 m under the deck | derived | above |
-| Section | a slot between the pylon rows under the platform and 60 ft beyond it, its floor 43 m down; outside it two terraces (the lower 30 m down) up to the rim, each break eased over 3 m either way; the floor rising east to the pit's point, about 1 in 4.5 | estimated | HTA/JR-4/58: "excavated along two terrace levels", a road "from the raised eastern terminus ... to the base of the pit near the foot of the launching structure"; PIC/JR-2/61 Figure 1, front elevation (terraces, retaining walls, pit base) |
-| Lining | the west part surfaced "with a crude spray, possibly gunite"; the trench under the platform concrete, blackened | documented (west part); estimated (the rest) | HTA/JR-4/58; the 1957 photograph |
+| Section | a slot between retaining walls under the platform and beyond it, its floor 43 m down; outside it two terraces (the lower 30 m down) up to the rim, each break eased over 3 m either way; from the sump the floor rising east to the pit's point, 1 in 4.84 | estimated | HTA/JR-4/58: "excavated along two terrace levels"; PIC/JR-2/61 Figure 1, front elevation (terraces, retaining walls, pit base) |
+| Retaining walls | 110 ft apart | documented (measured) | PIC/JR-2/61 Figure 1 dimensions 110 ft across the pit base, both trenches and both shelves. Their thickness is redacted (1 m: estimated) |
+| Pit base | 60 ft wide, from the foot of the structure 60 ft east to the sump | documented (measured) | PIC/JR-2/60: what had been called the deflector plate "now appears to be part of the pit base construction. It is 60 feet wide"; Figure 1 |
+| Trenches | two, concrete, 60 ft long, "separated by a distance of at least 60 feet", from "the base of the launching structure to the two end compartments" of the sump | documented (measured) | PIC/JR-2/60; they had been "drainage sumps" in 1958 |
+| Their width | 17.5 ft: from the pit base's edge to the line of the pylons' inner faces | derived | PIC/JR-2/61: the north-east pylon's south side "appears to nearly coincide with the north side of the northernmost of the two trenches". Figure 1 draws a shelf between each trench and the retaining wall |
+| Their depth | 15 ft below the pit base | estimated | redacted; Figure 1's front view draws them about as deep as wide |
+| Sump | "underground", at the base of the pit; 75 ft wide; perhaps three compartments; its face toward the structure "rises vertically from the top of the trenches for at least 10 feet"; its roof with an "upward slope from west to east" | documented (measured) | PIC/JR-2/60 ("unidentified concrete structure" in 1958); 110 ft north to south on PIC/JR-2/61 Figure 1 |
+| As drawn | 75 ft east to west and as wide as the slot; its face 10 ft high; its roof the floor's own climb; each trench running on into the dark under its face | estimated (the roof's slope is redacted; what was inside is not recorded) | |
+| Road into the pit | "a road enters the pit from the raised eastern terminus and leads to the base of the pit near the foot of the launching structure" | documented | HTA/JR-4/58 |
+| Its line, width, surface | down the middle of the floor from the road round the pit's tip to the sump's roof; 6 m; rolled gravel | estimated | no drawing shows its line |
+| Flame deflector | not seen by the CIA: "possible base of flame deflector" on Figure 1, and "it is probable that a flame deflector is at a higher level than the top of the sump"; at the second pad, under construction in 1959, "a portion of a curved flame deflector plate ... in the center of the launching structure" and "no evidence to indicate it will protrude beyond the front" | documented (that there was one, curved, at the sister pad) | PIC/JR-2/60; PIC/JR-2/61 |
+| Its form | a curved chute from the back wall under the opening, down and forward to the pit's floor, between the two sides | documented (a model) | a scale model "of the original R-7 pad in Tyuratam circa 1957", photographed by A. Zak (RussianSpaceWeb, Site 1); which museum is not said |
+| As drawn | an arc from the abutment's face 16 m under the deck to the pit base at the platform's east edge, where it lies level: 44.9 m radius; as wide as the slot | estimated (the 16 m, off the model); derived (the radius) | |
+| Ladders | one out of each trench, one up the sump's face on the south shelf | estimated | not recorded: the way on foot from the road's end to the pit base |
+| Lining | the west part surfaced "with a crude spray, possibly gunite"; the slot concrete, blackened | documented (west part); estimated (the rest) | HTA/JR-4/58; the 1957 photograph |
 
 ### The launch system
 
@@ -177,7 +223,7 @@ storeys: the service platforms from which the launch vehicle is being fuelled"; 
 | Its riser, so the landing | 0.2 m; the lift's door 3.0 m up | estimated | |
 | The lift's ride | "two or three minutes" up; "a minute" by another of his tellings | documented | Ivanovsky. The model's car goes at 0.3 m/s: 77 s |
 | The upper platform | 26.12 m over the deck: the hatch's middle (27.32 m) at a standing man's chest | estimated | the film: the men at the hatch stand with it at chest height |
-| Track gauge | 1,520 mm | documented | the Soviet gauge |
+| Track gauge | 1,524 mm | documented (the standard) | the Soviet gauge until 1970 ("The platform", above); the wheels' treads bear on the rails' heads, 9 mm over the deck |
 | Everything else of it | a wagon 22.5 m long on six axles; a boom of plate girders with round holes at its foot and a box truss above, 30.5 m over the deck at its head, leaning 14° toward the rocket from a pivot 11.3 m west of the axis; a platform round the third stage at 22.6 m | estimated, and the lean is ours | the photograph of Gagarin at the stair's head (plate girders pierced with large round holes); one of a Vostok being raised (a deep girder with a pierced web and a decked head); one of a Vostok on the pad (the boom from behind, a cluster of platforms at the third stage, a head above the fairing's opening) |
 
 **The erector's lean is not from the record.** The boom has to stand on the same side of the ring
@@ -273,7 +319,7 @@ the sky. The 3 m is inside what the map's outline is good for.
 | Colours | grey-buff clay, silvery grey-green wormwood, a short spring green | estimated | read off photographs, then cleaned as the look asks |
 | Plants | wormwood clumps 0.25 to 0.5 m, saltwort 0.15 to 0.3 m, wide apart | estimated | as the cover |
 | Made ground | the apron on the platform's landward side (70 m), the tracks' beds, a margin round the rim: graded, nothing growing | estimated | the 1957 photograph shows bare ground round the pad and pit |
-| Tracks | the centre track from the west (its last 2.6 km) and the four spurs beside it, onto the platform; ballast, sleepers 0.55 m apart, two rails at the Soviet gauge of 1,520 mm | documented (their lines: OpenStreetMap ways 37547653, 172441851, 172441854, 172441876, 172441879; HTA/JR-4/58 counts five spurs in 1957; the gauge); estimated (the bed's width, the sleepers) | painted on the land, not modelled |
+| Tracks | the centre track from the west (its last 2.6 km) and the four spurs beside it, onto the platform; ballast, sleepers 0.55 m apart, two rails at the Soviet gauge (1,524 mm in 1961) | documented (their lines: OpenStreetMap ways 37547653, 172441851, 172441854, 172441876, 172441879; HTA/JR-4/58 counts five spurs in 1957; the gauge); estimated (the bed's width, the sleepers); near the platform the centre track is put on the axis and the three beside it brought to the CIA's plan ("The site's frame", "The platform") | painted on the land; where they come up to the platform the rails are modelled (`Tracks`) |
 | Roads | the road in from the south-west (its last 2 km), the road round the pit and back past the command bunker, the road from the storage bunker to the propellant shed, and short drives to the storage bays, the check-out shop's gate and the gas receivers; concrete in slabs, 6 m wide | documented (the three roads' lines: PIC/JR-2/60 Figure 5 and OpenStreetMap ways 54570611, 172571827, 172441909); estimated (the drives, the surface, the width; that the way round the pit's east end was a made road and not only the track beside its ditch) | painted on the land, not modelled: they lay flush with it |
 | The sky | clear: no cumulus, no high cloud | estimated | no observation of the morning has been read; the film shows a clear sky |
 | Visibility | 60 km, the haze thinning over 1.5 km of height | estimated | not recorded |
@@ -290,7 +336,11 @@ pad against 104 to 107 m by the bunker), and the CIA says as much: the track "ap
 launching structure on a man-made embankment" (its height redacted), and the bunker's top was a
 little below the platform's level. The land here is drawn level with the deck, so the bunker and
 the buildings north of the tracks stand that much too high against the pad. Recorded, not yet
-modelled: it is the land's to put right, and everything on it would follow.
+modelled: it is the land's to put right, and everything on it would follow. Looked at again when
+the deck and the pit were built, and left: the embankment's height is redacted in every copy read,
+its section is in no drawing, and a 30 m grid cannot give the foot of a bank 20 m wide. To build it
+wants the embankment's crest width and side slope and the ground's level at the bunker, the shed and
+the fence; SRTM's 6 to 8 m is the only figure there is.
 
 ## Moving parts
 
@@ -347,6 +397,13 @@ apart. There are soft blows through the rocket's structure. The rocket seemed to
 | --- | --- | --- | --- | --- |
 | Platform, pit, launch system | 1957 | today | documented | the U-2 photograph of 5 August 1957; the site was in use until 2019 |
 | The centre track and the four spurs onto the platform | 1957 | today | documented (five spurs in 1957: HTA/JR-4/58); their lines today's | OpenStreetMap |
+| Rails on the platform: centre track, north and south tracks, short spur, gantry tracks | 1957 | not known (the platform has been rebuilt) | documented for 1957 and 1959; the centre track's flush rails in a photograph of 12 April 1961 | HTA/JR-4/58; PIC/JR-2/61 Figure 1 |
+| The north track's last 10 ft | between August 1957 and 1959 | not known | documented | PIC/JR-2/61. Built as in 1959 for every date |
+| The two masts 110 ft tall | 1957 | not known | documented for 1957 and 1959; one in a photograph of the launch of 12 April 1961 | HTA/JR-4/58; PIC/JR-2/60; PIC/JR-2/61 |
+| Small building on the platform | between August 1957 and 1959 | not known | documented for 1959 (not reported in 1957); assumed for 1961 | PIC/JR-2/61 |
+| Flame deflector, pit base, trenches, sump | 1957 | not known | documented for 1957 and 1959 (the deflector itself never seen); assumed for 1961 | HTA/JR-4/58; PIC/JR-2/60; PIC/JR-2/61 |
+| Road down into the pit | 1957 | not known | documented for 1957; assumed for 1961 | HTA/JR-4/58 |
+| The cut in the pit's north rim | by 1959 | filled by today | documented for 1959; assumed for 1961 | PIC/JR-2/60 Figure 5. Built for every date: whether it was there in 1957 was not checked against the 1958 drawing |
 | Service trusses 8T119 (the first pair) | 1957 | not known | documented (that they were there from the first launch: the film of 15 May 1957); when the pair with lift columns replaced them is not in anything read | TsKBTM, as quoted by militaryrussia.ru |
 | Upper cable mast | 1957 | not known | documented (1957: KBOM's drawing; 1959 to 1960: PIC/JR-2/61; 1961: the transcript) | |
 | Erector 8U213, at the rocket with its boom up | with each rocket | drawn off before each launch: 08:35 on 12 April 1961 | documented | Ivanovsky; the transcript. The 8U213 was accepted into service in 1960; an R-7 was stood up by an erector from its first launch in 1957 |
@@ -377,8 +434,23 @@ rocket can leave the erector out by its date.
 ## What the model gets wrong or leaves out
 
 - The pit's section is not published: its terraces, slot and floor are drawn from the CIA's front
-  elevation, which is itself an interpretation of shadows. The two trenches under the platform, the
-  sump at the east end of the pit base and the flame deflector are not modelled.
+  elevation, which is itself an interpretation of shadows.
+- The flame deflector is a form taken from a photograph of a scale model and sized by eye: its top
+  16 m under the deck, its arc, its breadth and its blackened concrete are all ours. What it was
+  faced with is not known. The CIA's "possible base of flame deflector", a block 19 ft high between
+  the pylons on Figure 1, is not built: the model's chute comes down to the pit base instead.
+- The service level under the platform (the niche in the back wall above the deflector, the steel
+  galleries either side of it that the scale model shows, whatever the cable conduit ran into) is
+  not built: nothing read gives it.
+- The trenches' depth, the sump's roof and what was inside the sump are estimated or not recorded:
+  the sump is its face and its roof, and each trench ends in the dark under it. The "two objects
+  which could be the ends of two sluiceways" at the trenches' west ends are not built. The three
+  ladders in the pit are ours.
+- The road into the pit is a band of the floor in another material, straight down the middle: its
+  real line, width and surface are not recorded, and how vehicles got from it to the pit base past
+  the sump's face is not known (a ladder stands there).
+- Under the platform the slot's sides are walls up to the slab between the pylons, where the CIA's
+  figures show open bays between pylons and the scale model solid sides: not resolved.
 - The platform is a solid slab: whatever rooms the CIA suspected inside it are not known.
 - The launch system is the later system's ring and heights, with trusses drawn from film: the
   members, the platforms and the counterweights are not the real ones.
@@ -390,9 +462,8 @@ rocket can leave the erector out by its date.
 - The erector's form is drawn from three photographs, and its boom's lean is ours ("What served
   the rocket"). Not modelled on it: the rams that raised the boom, the cradles the rocket lay in,
   its jacks, whatever folded the platforms before it left (they go down with the boom as they
-  stood), the locomotive that drew it off. Its wheels run on the deck's surface, where the rails'
-  heads lay flush in the photograph of the morning; off the platform they hang 12 cm over the
-  painted track, as everything does that leaves a pad here.
+  stood), the locomotive that drew it off. Its wheels run on the rails' heads all the way: in the deck's
+  flangeways on the slab, and on the modelled rails of the centre track to where it is left.
 - The lift's car is open to the north at every stop, where its floors are, and has no door.
 - The service trusses have two of their three platforms: where the lower one stood against an
   8K72K is not known, and the supports' own head platforms stand where it may have been. What was
@@ -408,9 +479,18 @@ rocket can leave the erector out by its date.
   turning ring of platforms under the rocket's tail that was run back into a niche before launch)
   is not built: it lived inside the platform, which is a solid slab here.
 - The tank cars that stood on the spurs to fuel the rocket and left at 08:08 are not built.
-- Not modelled at all, though they stood there that morning: the two masts 110 ft tall at the
-  north-east and south-west corners, and the lip's array. Each is in the CIA's reports (above and
-  docs/sources.md); neither is built yet.
+- The two masts are a height, an array's size and two places from the CIA, and a silhouette from one
+  photograph: the lattice, the six floodlights, the rod and the ladder are ours, and so is the
+  reading that they were floodlight masts at all, which the CIA's interpreters doubted. The
+  south-west one stands where the text's symmetry puts it, not where Figure 1 draws it.
+- The rails stand 9 mm proud of the deck, where the photograph has them flush. The gantry rails have
+  no flangeways and nothing rides them: what they were for is not known. No buffer stops, no
+  points: none is recorded. The rail's section is not a Soviet one.
+- The small building on the platform is a plain concrete box with a shut door in its east end: which
+  end the door was in, and the stair the CIA supposed under it, are not recorded.
+- The platform's south edge has a small projection at its middle on Figure 1, and the fence's
+  corners are cut on it: neither is built. The slab is 10 ft thick, where a Russian account has
+  three storeys.
 - The place round the pad is a plan with estimated faces. Of every building the plan is the CIA's
   and the walls, doors, windows, roofs and colours are ours; their insides are not recorded, so
   every door is built shut and every window dark. The command bunker's five rooms and its stair of
@@ -418,8 +498,8 @@ rocket can leave the erector out by its date.
   are the ramps down into the storage bunker's bays: its gates stand at grade.
 - The cable conduit meets the structure some 6 m higher than the CIA's "60 feet below the top of the
   launching platform", because the pit model's terraces (estimated) stand higher there; and the
-  notch in the pit's north rim that it and the old tray came out of, which Figure 5 draws reaching
-  125 m north, is not cut: the pit's rim is today's map's.
+  cut in the pit's north rim that it and the old tray came out beside is the pit's own 1 in 1 slope
+  between two edges scaled off Figure 5: its floor, and whatever lay in it, are not recorded.
 - The observation positions on the pit's south side stand where Figure 5 has them, 10 to 30 m
   outside the mapped rim; position i is moved east of the road round the pit's tip, since the
   drawing has it where the pit model's floor comes up to the land.
@@ -435,7 +515,7 @@ rocket can leave the erector out by its date.
   and the steppe's cover does not grow on it.
 - The land is level with the deck, where the real ground north of the tracks lay 6 to 8 m lower
   ("The land", above): the bunker and the buildings stand too high against the pad by that much.
-- The tracks are paint on the land, flat: no rails stand on their sleepers, and they stop at the
-  platform's edge (the rails on the deck itself are not modelled).
-- The pit's two trenches under the platform, the sump and the road down into the pit from the east
-  are not modelled.
+- The tracks are paint on the land, flat, beyond 160 m (the centre track) and 100 m (the others)
+  from the axis; nearer, real rails stand on painted sleepers and ballast, and at those distances
+  their heads come down to the paint over 10 m, which no rail did. The centre track is moved 3 m
+  from where the map has it, and the three beside it by up to 4 m ("The site's frame").

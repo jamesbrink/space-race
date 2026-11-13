@@ -728,16 +728,67 @@ const padParts: Part[] = [
     detail:
       'The rocket was brought onto it lying down, along the tracks from the west, where the deck rests on the ground; its ' +
       'other three sides stand out over the flame pit on four pylons, and a low fence keeps people back from the drop. In ' +
-      'its middle is the round opening, 20 m across, that the launch system turns in and the rocket hangs through. ' +
-      'Nobody has published a drawing of it. Its size is what the CIA’s photographic interpreters measured off U-2 ' +
-      'pictures of 1957 to 1959, which agrees with the 40 by 40 m in Russian print; its thickness is read off their ' +
-      'elevation and is estimated. Sputnik left from it, and every crewed Vostok.',
+      'its middle is the round opening, 20 m across, that the launch system turns in and the rocket hangs through. Its ' +
+      'north-east corner is carried 10 ft further out, for one of the two masts; its south-east corner is cut off. On its ' +
+      'west side is a small building the CIA took for the head of a stair down into it: what is under it is not recorded, ' +
+      'and its door is shut. Nobody has published a drawing of the platform. Its size is what the CIA’s photographic ' +
+      'interpreters measured off U-2 pictures of 1957 to 1959, which agrees with the 40 by 40 m in Russian print; its ' +
+      'thickness is read off their elevation and is estimated (a Russian account has it three storeys of bridge trusses). ' +
+      'Sputnik left from it, and every crewed Vostok.',
     facts: [
       ['Deck', '135 ft (41.15 m) square'],
       ['Opening', '65 ft (19.8 m) across'],
-      ['Pylons', '4, each 30 by 10 ft'],
+      ['Pylons', '4, each 30 by 10 ft, 115 ft over the four'],
       ['Thickness', 'about 10 ft (estimated)'],
+      ['Lip', '10 ft out at the north-east corner'],
       ['In use', '1957 to 2019'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'DeckRails',
+    group: 'Site 1',
+    name: 'Tracks on the deck',
+    summary: 'The railway runs on to the platform and stops at the edge of the hole.',
+    detail:
+      'Everything came to this pad by rail, so the rails are laid in the concrete of the deck itself, their heads flush ' +
+      'with it, as a photograph of the morning shows. The centre track runs to the edge of the opening: the erector ' +
+      'brought the rocket along it and stood on it until 08:35. A track on the platform’s north part and one on its ' +
+      'south flank the launch system, for the propellant trains; a short spur between ends just on the abutment. Either ' +
+      'side of the centre track lies one more rail, 7 m apart: the CIA’s interpreters called them gantry tracks, and ' +
+      'nothing read says what rode them. Where each track lies is scaled off the CIA’s plan of March 1961, drawn from the ' +
+      'photographs of 1957 and 1959; today’s map agrees to about a metre. The gauge was 1,524 mm, as every Soviet ' +
+      'railway’s was until 1970.',
+    facts: [
+      ['Gauge', '1,524 mm (5 ft)'],
+      ['Centre track', 'to the opening’s edge, on the rocket’s axis'],
+      ['North and south tracks', '13.6 m and 12.4 m from it (scaled off the CIA’s plan)'],
+      ['Gantry rails', 'two, 23 ft (7.0 m) apart (scaled; the figure is redacted)'],
+      ['Heads', 'flush in the deck (9 mm proud in the model)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Masts',
+    group: 'Site 1',
+    name: 'Corner masts',
+    summary: 'Two masts 110 ft tall at opposite corners, which the CIA measured and could not explain.',
+    detail:
+      'One stands at the platform’s north-east corner, on a lip of concrete built out over the pit to carry it, the other ' +
+      'at the south-west, on the abutment: the same distance from the rocket, on one line through it. The CIA’s ' +
+      'interpreters measured them at 110 ft in 1957, with an array at the top at least 5 ft wide and 10 ft high, and took ' +
+      'them for collimation towers; by March 1961 they had talked themselves out of that and out of floodlights too, and ' +
+      'wrote that their function could not be determined. A photograph of the launch has one beside the rocket: a ' +
+      'slender lattice with a head near its top and a rod above it. They are drawn that way, the head as a bank of ' +
+      'floodlights under a lightning rod. The height, the array’s size and where they stand are the CIA’s; the lattice, ' +
+      'the lamps, the rod and the ladder are estimated.',
+    facts: [
+      ['Height', '110 ft (33.5 m)'],
+      ['Array', 'at least 5 ft wide and 10 ft high'],
+      ['Where', 'north-east and south-west corners, 29.4 m from the axis (scaled off the CIA’s plan)'],
+      ['What for', 'not established; drawn as floodlights (estimated)'],
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -746,17 +797,43 @@ const padParts: Part[] = [
     node: 'FlamePit',
     group: 'Site 1',
     name: 'Flame pit',
-    summary: 'No deflector: the pad stands on the edge of a quarry, and the flame falls into it.',
+    summary: 'The pad stands on the edge of a quarry 43 m deep, and the flame is turned out along its floor.',
     detail:
-      'The exhaust of twenty chambers went straight down past the rocket’s tail, into a slot between retaining walls under ' +
-      'the platform, and ran out east along the floor, which climbs back to the steppe at the pit’s point. Round the slot ' +
-      'the sides come down in two terraces. The outline is today’s map, which matches the 880 by 550 ft the CIA measured in ' +
-      '1957. The depth is in dispute: 43 m is modelled, the sum of two of the CIA’s figures, where Russian print gives 45 m ' +
-      'and "almost 50". The section is drawn from an interpreter’s elevation, not a survey, and is estimated.',
+      'Under the platform the pit is a slot between retaining walls 110 ft apart. East of it lies the pit base, 60 ft ' +
+      'wide between two concrete trenches that run 60 ft to a sump built into the floor, whose face stands 10 ft over ' +
+      'them: for the water that flushed the pit, the CIA thought, and for dumped propellant. From the sump the floor ' +
+      'climbs east to the pit’s point, and a road came down it from there. Round the slot the sides come down in two ' +
+      'terraces, and in 1959 a cut ran north out of the rim, beside which the cables to the bunker came in. The outline ' +
+      'is today’s map, which matches the 880 by 550 ft the CIA measured in 1957, with that cut put back. The depth is in ' +
+      'dispute: 43 m is modelled, the sum of two of the CIA’s figures, where Russian print gives 45 m and "almost 50". ' +
+      'The plan of the base is the CIA’s; the trenches’ depth, the road’s surface and the ladders are estimated.',
     facts: [
       ['Rim', '880 by 550 ft (268 by 168 m), as measured in 1957'],
       ['Depth', 'about 43 m under the deck (in dispute)'],
+      ['Pit base', '60 ft wide, between two trenches 60 ft long'],
+      ['Sump', '75 by 110 ft, its face 10 ft high'],
       ['Lining', 'concrete under the platform, gunite on the west'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'FlameDeflector',
+    group: 'Site 1',
+    name: 'Flame deflector',
+    summary: 'A curved chute under the opening that turns twenty chambers’ fire from straight down to due east.',
+    detail:
+      'The rocket’s tail hangs 6.75 m under the deck, and below it the back wall of the pit curves forward and down to ' +
+      'the floor: the exhaust strikes it and runs out along the pit base. No photograph taken from above could show it. ' +
+      'The CIA drew only a "possible base of flame deflector", and in 1959 saw a curved deflector plate being built in ' +
+      'the same place at the second pad. Its form here is from a scale model of the pad as it was in 1957: an arc from ' +
+      'the back wall, 16 m under the deck, to the pit base at the platform’s east edge, as wide as the slot. Every size ' +
+      'of it is estimated.',
+    facts: [
+      ['Form', 'a curved chute, back wall to pit base (off a scale model)'],
+      ['From', '16 m under the deck (estimated)'],
+      ['To', 'the pit base at the platform’s east edge, 43 m down'],
+      ['Arc', '44.9 m radius (derived from those two)'],
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -946,6 +1023,8 @@ const pad: ModelDef = {
     { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, -0.88] },
     { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, -0.78] },
     { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
+    { id: 'masts', label: 'Corner masts', nodes: ['Masts'], from: [-0.75, 0.12, 0.65] },
+    { id: 'deflector', label: 'Flame deflector', nodes: ['FlameDeflector'], from: [0.97, -0.1, 0.2] },
     { id: 'pit', label: 'Flame pit', nodes: ['FlamePit'], from: [-0.5, 0.55, 0.67] },
   ],
 };

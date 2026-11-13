@@ -36,11 +36,14 @@ from mathutils import Vector
 
 from sitelib import axes, stair_rails, stairs
 
-from .site import MM, TAIL_Z, Parts, beam, box, fine, handrail, obox, profile, stood, truss
+from .site import GAUGE, RAIL_TOP, TAIL_Z, Parts, beam, box, fine, handrail, obox, profile, stood, truss
 from .steel import arc, extra_materials, girder, poly_deck
 
-GAUGE = 1520.0 * MM  # the Soviet gauge, between the rails' inner faces
 WHEEL_R = 0.475  # a wheel's tread: the usual 950 mm (estimated)
+# An axle's height: the tread is coned, 3 mm larger at the flange than its nominal radius, and bears on the rail's head
+# at the inner edge of its flat top, where it is 2.4 mm larger (deck.py lays the rails, their heads RAIL_TOP proud of the
+# deck; the track's gauge is site.GAUGE)
+AXLE_Z = RAIL_TOP + WHEEL_R + 0.0024
 AXLES = [-13.2, -14.8, -16.4, -27.2, -28.8, -30.4]  # two bogies of three (estimated: 87.5 t and the rocket on six axles)
 FRAME = (-33.0, -10.5)  # the wagon's frame, west end and east end: its nose stops short of the ring
 DECK_Z = 1.93  # the wagon's deck
@@ -153,7 +156,7 @@ def wagon(parts: Parts) -> None:
 def wheelset(parts: Parts, k: int, x: float) -> None:
     """One axle and its two flanged wheels: its own node, origin on the axle, which lies across the track."""
     name = f"Erector_Wheel_{k}"
-    parts.node(name, "Erector", origin=(x, 0.0, WHEEL_R))
+    parts.node(name, "Erector", origin=(x, 0.0, AXLE_Z))
     steel = parts(name, "tread", True)
     # (radius, outward from the rail's inner face): the flange inside the rail, the tread, the web and the hub
     wheel = [
@@ -161,8 +164,8 @@ def wheelset(parts: Parts, k: int, x: float) -> None:
         (WHEEL_R + 0.003, 0.0), (WHEEL_R - 0.003, 0.13), (0.42, 0.13), (0.4, 0.06), (0.13, 0.06), (0.11, 0.16), (0.0, 0.16),
     ]  # fmt: skip
     for s in (-1, 1):
-        steel.lathe(profile(wheel), 32, matrix=axes((x, s * (GAUGE / 2 - 0.005), WHEEL_R), (1, 0, 0), (0, s, 0)))
-    steel.tube(Vector((x, -GAUGE / 2 + 0.03, WHEEL_R)), Vector((x, GAUGE / 2 - 0.03, WHEEL_R)), 0.09, 12)
+        steel.lathe(profile(wheel), 32, matrix=axes((x, s * (GAUGE / 2 - 0.005), AXLE_Z), (1, 0, 0), (0, s, 0)))
+    steel.tube(Vector((x, -GAUGE / 2 + 0.03, AXLE_Z)), Vector((x, GAUGE / 2 - 0.03, AXLE_Z)), 0.09, 12)
 
 
 # ------------------------------------------------------------------------------ the boom
