@@ -14,6 +14,7 @@ import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { Bloom } from './bloom';
 import { bulkOf } from './bulk';
+import { readingFor } from '../sim/mechanism';
 import { Cabin, type CabinThing } from './cabin';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
@@ -1035,6 +1036,23 @@ export class Stage {
     this.scene.fog = s.fog;
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
+  }
+
+  /**
+   * A mechanism of a model worked by hand (types.ts: MechanismDef; sim/mechanism.ts): its nodes stand `travel` of the
+   * way out (0 to 1) whatever the clock's programme has them at, or with null follow the clock again. The cabin is
+   * told, for what its periscope then sees.
+   */
+  setMechanism(id: string, travel: number | null): void {
+    const at = this.defs.findIndex((m) => m.mechanisms?.some((x) => x.id === id));
+    const mechanism = this.defs[at]?.mechanisms?.find((x) => x.id === id);
+    const staged = this.staged[at];
+    if (!mechanism || !staged) return;
+    if (staged.work(mechanism.nodes, travel === null ? null : readingFor(mechanism, mechanism.from, travel))) {
+      this.dirty = true;
+      this.shadowsOwed = true;
+    }
+    this.cabin?.setMechanism(id, travel);
   }
 
   /** Put a rig in charge of the camera (camera/rig.ts: RigId). The view itself does not jump on changing. */

@@ -420,13 +420,16 @@ def build() -> str:
     build_afterbody(M, font)
     window = build_window(M)
     build_crew_cabin(M, window)
+    # the periscope's lower housing comes in through the pressure vessel (and the lining, where there is one) under its door
+    scope = mercury_capsule.ScopeWorks(SCOPE_DOOR, SCOPE_Z, SCOPE_TUBE)
+    mercury_capsule.periscope_mouth(("CrewCabin_PressureVessel", *(("CrewCabin_Lining",) if interior() else ())), scope)
     mercury_capsule.build_recovery_compartment(M)
     mercury_capsule.build_antenna_canister(M)
     mercury_capsule.build_escape_tower(M)
     # the capsule is built in the pilot's frame; it stands on the booster with its hatch on +X, as every site's frame has it
-    mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
-    out = mercury_capsule.scope_axis(SCOPE_Z, SCOPE_TUBE)[1]
-    print(f"mr-4 periscope door: {mercury_capsule.periscope_hinge(SCOPE_DOOR, (HATCH[0] + HATCH[1]) / 2, out)}")
+    turn = mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
+    # (the periscope's door, cartridge and link: each one's motion into its node, now that the capsule stands as it will)
+    mercury_capsule.periscope_run(scope, turn)
     redstone_mrlv.build(Z_BOOSTER_BASE, font, clamp_covers="streamlined")
     mark_shells(SHELLS + tuple(THING_SHELLS) + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"

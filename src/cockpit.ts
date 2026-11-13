@@ -3,11 +3,12 @@ import { autopilot, blend, Tally } from './sim/autopilot.ts';
 import { G0, type Results } from './sim/fly.ts';
 import { standing } from './sim/loads.ts';
 import { Lever, NOTCH } from './sim/lever.ts';
+import { type Hand, type Span, sentBy, travelAt } from './sim/mechanism.ts';
 import { MISSES } from './sim/misses.ts';
 import { Sheds } from './sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
 import { verdict } from './sim/verdict.ts';
-import type { SitedFlight } from './types';
+import type { MechanismDef, SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
 import type { Clock } from './world/clock.ts';
 import { angleBetween, DEG, siteFrame } from './world/frames.ts';
@@ -72,6 +73,8 @@ export interface CockpitHost {
   fly(run: Run | null): void;
   /** The flight deck has been taken, or left: the page makes way and gives the view to the vehicle. */
   piloting(on: boolean): void;
+  /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
+  say?(title: string, line: string): void;
   /** The heat shield at `t` (viewer/effects.ts `reading`): its temperature and limit, K, and the stagnation-point heat flux, W/m2. */
   heat?(t: number): { name: string; temperature: number; limit: number; flux: number; warm: boolean; hot: boolean } | null;
 }
@@ -112,6 +115,11 @@ export class Cockpit {
   private trim = { pitch: 0, yaw: 0 };
   private towerAt = Infinity;
   private retropackAt = Infinity;
+  /** The flown model's mechanisms (types.ts: MechanismDef), and for each what the hands have told it, at the flight's instants. */
+  private readonly mechanisms: MechanismDef[];
+  private readonly hands = new Map<string, Hand[]>();
+  /** The stretches of this flight flown with the sequencer off: a mechanism's programme is not heard in them (sim/mechanism.ts). */
+  private unsequenced: Span[] = [];
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
     this.flight = flight;
@@ -120,6 +128,14 @@ export class Cockpit {
     const tr = flight.trajectory;
     this.vehicle = tr?.body && flight.flies ? vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value) : null;
     this.flow = tr ? tr.engine.thrust.value / (G0 * tr.engine.isp.value) : 0;
+    this.mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
+    // (each is a switch on the deck, lit while it is headed out; the first has the key)
+    const works = this.mechanisms
+      .map(
+        (m, i) =>
+          `<button data-work="${m.id}" class="switch" aria-pressed="false" title="${m.name}: ${m.says[1].toLowerCase()} or ${m.says[0].toLowerCase()} by hand. It goes back to its programme at the programme's next event${i ? '' : ' (Y)'}">${i ? '' : '<kbd>Y</kbd>'}${m.name}</button>`,
+      )
+      .join('');
 
     const root = (this.root = document.createElement('aside'));
     root.className = 'cockpit';
@@ -183,6 +199,7 @@ export class Cockpit {
           </p></div>
           <div><h4>Flight</h4><p>
             ${throttles ? '<button data-press="arrowup" title="Throttle up a notch (the up arrow)"><kbd>↑</kbd>Throttle up</button><button data-press="arrowdown" title="Throttle down a notch (the down arrow)"><kbd>↓</kbd>Down</button><button data-press="z" title="Full throttle (Z)"><kbd>Z</kbd>Full</button>' : ''}
+            ${works}
             <button data-do="again" title="A new flight: back to the pad (N)"><kbd>N</kbd>New flight</button>
             <button data-do="leave" title="Leave the flight deck (Esc)"><kbd>Esc</kbd>Leave</button>
           </p></div>
@@ -265,6 +282,7 @@ export class Cockpit {
     root.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (b?.dataset.do === 'keys') this.showKeys(!root.classList.contains('keys-open'));
+      else if (b?.dataset.work) this.work(b.dataset.work);
       else if (b?.dataset.do) this.command(b.dataset.do);
       else if (b?.dataset.press && !('held' in b.dataset)) {
         press(b.dataset.press, true);
@@ -424,6 +442,8 @@ export class Cockpit {
     this.kept = 0;
     this.eventAt = Number.NEGATIVE_INFINITY;
     this.towerAt = this.retropackAt = Infinity;
+    this.hands.clear();
+    this.unsequenced = this.sequence ? [] : [{ from: Number.NEGATIVE_INFINITY, to: Infinity }];
     this.run = {
       samples: [v.sample(this.state)],
       duration: Infinity,
@@ -605,13 +625,46 @@ export class Cockpit {
     if (!this.clock.running && s.ignited) this.clock.play(true);
   }
 
+  /**
+   * A mechanism of the vehicle worked by hand (its control in the cabin, its switch on the deck, its key): sent the
+   * other way from where it is headed, from this instant of the flight. Says where it is now sent, or null if there
+   * is nothing to work (no such mechanism, no flight being flown, or the clock put back to look at what was flown).
+   */
+  work(id: string): string | null {
+    const mechanism = this.mechanisms.find((m) => m.id === id);
+    const s = this.state;
+    if (!mechanism || !this.on || !s || this.clock.t < s.t - TICK) return null;
+    const hands = this.hands.get(id) ?? [];
+    const out = !sentBy(mechanism, s.t, hands, this.unsequenced);
+    this.hands.set(id, [...hands, { t: s.t, out }]);
+    this.show(this.at(Math.min(this.clock.t, s.t)));
+    this.host.say?.(mechanism.name, `${mechanism.says[out ? 1 : 0]} by hand`);
+    return mechanism.says[out ? 1 : 0];
+  }
+
+  /**
+   * How far out a mechanism is at `t` of the flight being flown, 0 to 1: its programme, what the hands have told it
+   * and the sequencer's being off, each heard at its instant (sim/mechanism.ts). Null: no such mechanism, or no flight.
+   */
+  travel(id: string, t: number): number | null {
+    const mechanism = this.mechanisms.find((m) => m.id === id);
+    if (!mechanism || !this.on) return null;
+    return travelAt(mechanism, t, this.hands.get(id), this.unsequenced);
+  }
+
   private command(what: string): void {
     if (!this.on) return;
     if (what === 'leave') this.leave();
     else if (what === 'again') this.fresh();
     else if (what === 'guidance') this.guidance = !this.guidance;
-    else if (what === 'sequence') this.sequence = !this.sequence;
-    else if (what === 'abort') {
+    else if (what === 'sequence') {
+      this.sequence = !this.sequence;
+      // (when in this flight it was off: a mechanism's programme is not heard then, and is taken up again where it is switched on)
+      const now = this.state?.t ?? 0;
+      const open = this.unsequenced.find((span) => span.to === Infinity);
+      if (this.sequence && open) open.to = now;
+      else if (!this.sequence && !open) this.unsequenced.push({ from: now, to: Infinity });
+    } else if (what === 'abort') {
       // guarded: the first press arms it and says so, the second within two seconds fires the rocket
       const s = this.state;
       const now = performance.now() / 1000;
@@ -673,6 +726,12 @@ export class Cockpit {
       this.setLever(key === 'z' ? this.lever.most : this.lever.at + (key === 'arrowup' ? NOTCH : -NOTCH));
       e.preventDefault();
       e.stopPropagation();
+      return;
+    }
+    if (key === 'y' && this.mechanisms[0]) {
+      e.preventDefault();
+      e.stopPropagation();
+      this.work(this.mechanisms[0].id);
       return;
     }
     const what = (
@@ -738,6 +797,10 @@ export class Cockpit {
     set('mode', replay ? 'Looking back at what was flown' : leans ? `Programme leaned${leans}` : !this.guidance ? 'Hands only' : '');
     this.root.querySelector('[data-do=guidance]')!.setAttribute('aria-pressed', String(this.guidance));
     this.root.querySelector('[data-do=sequence]')!.setAttribute('aria-pressed', String(this.sequence));
+    for (const m of this.mechanisms)
+      this.root
+        .querySelector(`[data-work="${m.id}"]`)!
+        .setAttribute('aria-pressed', String(sentBy(m, s.t, this.hands.get(m.id), this.unsequenced)));
     this.root.classList.toggle('thrusting', state.ignited && !state.cutoff && !replay);
     const heat = this.host.heat?.(s.t);
     this.cells.get('heat')!.hidden = !heat?.warm; // (it reads once the air has begun to heat it)

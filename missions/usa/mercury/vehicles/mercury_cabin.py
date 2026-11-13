@@ -27,7 +27,8 @@ from mathutils import Matrix, Vector
 from mathutils.geometry import tessellate_polygon
 
 import mercury_capsule
-from srlib import IN, TAU, MeshBuilder, Surf, frame, interior, material, prof
+from mercury_capsule import chamfered
+from srlib import IN, TAU, MeshBuilder, Surf, basis, frame, interior, material, prof
 
 # ------------------------------------------------------------------ the fit of capsule 7
 
@@ -719,7 +720,7 @@ def build(
         """A point of the seated pilot, in capsule inches."""
         return Vector((p[0] / 2.54, hip[0] + p[1] / 2.54, hip[1] + p[2] / 2.54))
 
-    lining(c, hatch, portholes, ceiling)
+    lining(c, hatch, portholes, ceiling, scope=SCOPE_STATION)
     couch(c, pilot, seat)
     neck_dam(c, seat, pilot)
     P = plane(Vector(PANEL_AT), Vector((1, 0, 0)), Vector((0, -math.cos(PANEL_TILT), math.sin(PANEL_TILT))))
@@ -889,7 +890,7 @@ def materials() -> dict:
 FRAMES = ((6.1, True), (24.5, False), (29.5, False), (34.5, False), (48.5, True), (53.5, True))
 
 
-def lining(c: Cabin, hatch, portholes, ceiling: float, openings=(), frames=FRAMES) -> None:
+def lining(c: Cabin, hatch, portholes, ceiling: float, openings=(), frames=FRAMES, scope: float | None = None) -> None:
     """The wall as the pilot sees it: the inner skin painted grey, the channelled frames that
     line it (SEDR 104, 2-3: how many and where is not in anything read), a frame round the hatch
     opening and a bolted ring round each porthole. `openings`: what else is cut through the wall, each
@@ -937,14 +938,18 @@ def lining(c: Cabin, hatch, portholes, ceiling: float, openings=(), frames=FRAME
             pieces = rest
         return [(a, b) for a, b in pieces if b - a > 0.05]
 
-    on_wall = [port_centre(v, pt, pz) for pt, pz in portholes]  # where each port's line meets the lining
+    # what stands on the wall that the frames and the rivet lines stop for: each port's frame (where its line meets the
+    # lining), and the periscope's lower housing, under the pilot's feet at `scope` (its station): (angle, station, radius)
+    on_wall = [(*port_centre(v, pt, pz), PORT_RING) for pt, pz in portholes]
+    if scope is not None:
+        on_wall.append((math.pi / 2, scope, mercury_capsule.SCOPE_SLEEVE + 0.9))
     for z, whole in frames:
         # a frame stops either side of a port's ring
         ports_ = [
             (pt - half, pt + half)
-            for pt, pz in on_wall
-            if abs(z - pz) < PORT_RING + 0.9
-            for half in [(math.sqrt((PORT_RING + 0.9) ** 2 - (z - pz) ** 2) + 0.4) / rl(z)]
+            for pt, pz, pr in on_wall
+            if abs(z - pz) < pr + 0.9
+            for half in [(math.sqrt((pr + 0.9) ** 2 - (z - pz) ** 2) + 0.4) / rl(z)]
         ]
         profile = prof([(rl(z + 0.3) + 0.1, z + 0.3), (rl(z + 0.3) - 0.75, z + 0.3), (rl(z - 0.3) - 0.75, z - 0.3), (rl(z - 0.3) + 0.1, z - 0.3)])
         arc = (0.0, TAU) if whole else (t1 + 0.05, t0 + TAU - 0.05)
@@ -993,7 +998,7 @@ def lining(c: Cabin, hatch, portholes, ceiling: float, openings=(), frames=FRAME
             if in_hatch and hz0 - 0.8 < z < hz1 + 0.8:
                 continue
             p = Vector((math.cos(t), math.sin(t), 0)) * rl(z) + Vector((0, 0, z))
-            if any((p * IN - v.p(pt, pz)).length < (PORT_RING + 0.6) * IN for pt, pz in on_wall) or not clear(t, z):
+            if any((p * IN - v.p(pt, pz)).length < (pr + 0.6) * IN for pt, pz, pr in on_wall) or not clear(t, z):
                 continue
             fr.disc(p * IN, (-math.cos(t), -math.sin(t), 0), 0.08 * IN, 0.035 * IN)
     for k, (t, z) in enumerate(portholes):
@@ -1094,48 +1099,6 @@ def port_inside(c: Cabin, t: float, z: float, k: int) -> None:
     obj = glass.build(f"CrewCabin_PortPane_{k}", c.M["glass"], c.g)
     obj["label"], obj["about"] = "Porthole", "The inner pane of one of spacecraft No. 7's two ports: the one that held the cabin's pressure."
     c.ports.append({"at": tuple(Fi @ Vector((0, 0, pane))), "out": tuple(-inward), "apart": PORT_OUTER_PANE - pane})
-
-
-def chamfered(mb: MeshBuilder, size, matrix: Matrix, bevel: float = 0.08) -> None:
-    """A block with every edge chamfered (inches, like its size; `matrix` in metres): a case, a fitting, a dog. A plain
-    box has no edge to catch the light and is a flat shape close to; this has one along every side."""
-    h = [s_ / 2 for s_ in size]
-    b = min(bevel, *(0.45 * e for e in h))
-    verts: list = []
-    faces: list = []
-
-    def face(pts, out: bool) -> None:
-        faces.append(tuple(range(len(verts), len(verts) + len(pts))))
-        verts.extend(tuple(matrix @ (Vector(p) * IN)) for p in (pts if out else pts[::-1]))
-
-    def point(axis: int, va: float, u: int, vu: float, w: int, vw: float) -> list[float]:
-        p = [0.0, 0.0, 0.0]
-        p[axis], p[u], p[w] = va, vu, vw
-        return p
-
-    for axis in range(3):
-        u, w = (axis + 1) % 3, (axis + 2) % 3
-        for s_ in (1, -1):  # a face, inset by the chamfer
-            face([point(axis, s_ * h[axis], u, su * (h[u] - b), w, sw * (h[w] - b)) for su, sw in ((-1, -1), (1, -1), (1, 1), (-1, 1))], s_ > 0)
-        for su in (1, -1):  # an edge along this axis: the chamfer between the two faces that meet at it
-            for sw in (1, -1):
-                quad = [
-                    point(axis, -(h[axis] - b), u, su * h[u], w, sw * (h[w] - b)),
-                    point(axis, h[axis] - b, u, su * h[u], w, sw * (h[w] - b)),
-                    point(axis, h[axis] - b, u, su * (h[u] - b), w, sw * h[w]),
-                    point(axis, -(h[axis] - b), u, su * (h[u] - b), w, sw * h[w]),
-                ]
-                face(quad, su * sw < 0)
-    for sx in (1, -1):  # a corner: the triangle between three chamfers
-        for sy in (1, -1):
-            for sz in (1, -1):
-                tri = [
-                    (sx * h[0], sy * (h[1] - b), sz * (h[2] - b)),
-                    (sx * (h[0] - b), sy * h[1], sz * (h[2] - b)),
-                    (sx * (h[0] - b), sy * (h[1] - b), sz * h[2]),
-                ]
-                face(tri, sx * sy * sz > 0)
-    mb.add(verts, faces)
 
 
 # --------------------------------------------------------------------------- the couch
@@ -1603,9 +1566,34 @@ def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict, box=None, station: f
     ):
         c.turned("CrewCabin_Knobs", P, ku, kv, [(r, 0.0), (r, 0.45), (r * 0.8, 0.6), (0.0, 0.6)], 14, -d)
         rg.text(name, ku + (1.0 if ku < 0 else -1.0) * (0.0 if name == "DRIFT" else 0.2), kv + r + 0.26, 0.13, WHITE if abs(ku) < 2 else INK)
+    # the RETRACT pilot light (SEDR 104, Figure 12-2: a light, not a button), as the Postlaunch Report's Figure 3.1-2 has it
     rg.rect(u0 + 0.35, v1 - 0.85, u0 + 1.55, v1 - 0.45, BLACK, r=0.05)
     rg.text("RETRACT", u0 + 0.95, v1 - 0.65, 0.12, WHITE)
     c.turned("CrewCabin_PanelFittings", P, u0 + 0.95, v1 - 1.35, [(0.26, 0.0), (0.26, 0.2), (0.0, 0.26)], 12, -d)
+    # The manual extension-retraction handle: a ratchet handle "on the right side of the upper housing", "pulled up to
+    # place it in operating position", which drives the cartridge's gear box through a clutch when the motor cannot
+    # (SEDR 104, 12-16; SEDR 109-7, 2-19: "Manual Engage lever - ENGAGED; Ratchet - AS REQUIRED; Manually extend or
+    # retract periscope"). The model's display is set flush in the panel, so the side of its housing is behind the
+    # panel: the handle is put where it can be reached, stowed in the display's upper right corner, with the clutch's
+    # engage lever beside it. Its place, shape and size are ours. A node of its own: the viewer pulls it (`pull`).
+    hu, hv = u1 - 0.55, v1 - 1.95
+    c.turned("CrewCabin_PanelFittings", P, hu, hv, [(0.3, 0.0), (0.3, 0.14), (0.16, 0.2)], 12, -d)
+
+    def handle(mb: MeshBuilder) -> None:
+        mb.tube((0, 0, 0.0), (0, 0, 0.3), 0.11, 8)
+        mb.tube((0, -0.1, 0.24), (0, 1.5, 0.3), 0.1, 8)
+        mb.lathe(
+            [(0.0, 0.0), (0.17, 0.04), (0.19, 0.5), (0.0, 0.56)],
+            10,
+            matrix=Matrix.Translation((0, 0.95, 0.3)) @ Matrix.Rotation(-math.pi / 2, 4, "X"),
+        )
+
+    c.node("Ctl_PeriscopeHandle", "lever", P, hu, hv, -d + 0.2, handle, pull=0.45 * IN)
+    c.turned(
+        "CrewCabin_RedCaps", P, hu - 0.75, hv + 0.2, [(0.13, 0.0), (0.13, 0.3), (0.2, 0.36), (0.2, 0.5), (0.0, 0.54)], 10, -d
+    )  # the engage lever's knob
+    rg.text("MANUAL", hu - 0.55, v1 - 0.38, 0.1, INK)
+    rg.text("EXT · RET", hu - 0.55, v1 - 0.62, 0.09, INK)
     # the upper housing behind the display, and the tube
     body = c.into("CrewCabin_Periscope")
     # (shallow: the pilot's thighs stand just behind its foot)
@@ -1618,7 +1606,26 @@ def periscope(c: Cabin, P: Matrix, sheet: Sheet, out: dict, box=None, station: f
     between = [Vector(p) for p in (run or ((0.0, 6.0, 35.2), (0.0, 15.5, 36.4)))]
     run_ = [top, *between, foot + (between[-1] - foot).normalized() * 1.2]
     body.loft([p * IN for p in run_], [(1.9 * IN, 1.9 * IN)] * len(run_), 16, ref=(1, 0, 0))
-    body.tube((foot - (foot - run_[-2]).normalized() * 6.5) * IN, foot * IN, 2.5 * IN, 20)  # the objective's cartridge
+    # The lower housing round the objective's cartridge: wide enough for the cartridge with its lug and link beside it
+    # (mercury_capsule.SCOPE_SLEEVE is its bore), closed at its inner end, and at its outer end run into the wall all
+    # round: the cartridge's line leans in the wall, so an end cut square would stand off it on one side.
+    line = (foot - run_[-2]).normalized()
+    across, up_, _ = basis(line)
+    wide = mercury_capsule.SCOPE_SLEEVE + 0.43
+
+    def housing(i: float, j: float) -> Vector:
+        a = TAU * i / 24
+        radial = (across * math.cos(a) + up_ * math.sin(a)) * wide
+        if j < 2:
+            return (foot - line * 7.0 + radial * j) * IN
+        lo, hi = -1.5, 3.5  # (how far past the foot this side of it meets the lining, and a little into it)
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            q = foot + radial + line * mid
+            lo, hi = (mid, hi) if math.hypot(q.x, q.y) < c.vessel.r(q.z) - 0.05 else (lo, mid)
+        return (foot + radial + line * lo) * IN
+
+    body.grid(housing, range(24), (0, 1, 2), closed_u=True)
     out["periscope"] = {"screen": tuple(P @ Vector((0, 0, -d + 0.06))), "radius": (SCREEN_R - 0.02) * IN}
     # the map case hangs below the display (SEDR 104, 12-27): a fabric pouch
     soft(c.into("CrewCabin_Stowage"), P @ Matrix.Translation((0.0, v0 - 3.0, -0.9)) @ Matrix.Scale(1 / IN, 4), (8.5, 5.6, 1.5), 0.6)

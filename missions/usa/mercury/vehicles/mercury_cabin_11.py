@@ -153,7 +153,7 @@ def build(parent, vessel: Surf, M: dict, font, pilot: dict, hip, hatch, ceiling:
 
     # (the frames as in capsule 7's model, but the lowest a little lower: it has no port to give way to here, and at
     # station 7 it would lie on a row of the wall's rivets)
-    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]))
+    mc.lining(c, hatch, (), ceiling, openings=(WINDOW_OPENING,), frames=((6.1, True), *mc.FRAMES[1:]), scope=scope_z)
     window_inside(c, window)
     mc.couch(c, pilot, seat)
     mc.neck_dam(c, seat, pilot)
