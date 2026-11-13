@@ -253,15 +253,22 @@ apogee. From the couch at T+4:10, flown live, the periscope shows Florida and th
 roll 0.8, pitch -19.4, yaw 0.0 (with the old model and 80: -1.0, -19.2, 2.6). Going up the roll needle now reads about
 55 degrees, not 100.
 
+**Photographs of July 1961 bear on it** (`sites/lc-5.md`, "An open question: which way round the vehicle stood"): read for
+where the cable masts stood, they have MR-4 turned on the pad about 60 degrees from the model's stance, the hatch toward
+235 degrees true and the periscope down range to within about 10 degrees, which is what the 55 degrees above would be.
+Nothing was changed for it.
+
 What would settle it, looked for once in November 2026 and not found: a document on how the capsule was clocked to
 the booster or to the trajectory (the Postlaunch Report's roll trace through the turnaround, SEDR 104's axis figure),
 or a pad photograph that shows the hatch against the fins or the gantry with the azimuth known.
 
 **The umbilical on the pad followed the receptacle** (November 2026). The site's cable plugged in at 270 degrees in
 the pilot's frame and station 8, where the old model had the receptacle; it now reaches the receptacle under the
-periscope's lens (`sites/lc5/site.py` `UMBILICAL`). Its mast (`masts.py`), whose place is estimated, stands in the split
-the platforms part along on that side, behind the vehicle (+Y, 45 degrees round from the receptacle), where it stood on
--Y; it falls toward +Y. `sites/lc-5.md` gives the derivation.
+periscope's lens (`sites/lc5/site.py` `UMBILICAL`). Its mast (`masts.py`) stands on the launcher's table 3.55 ft from the
+vehicle's axis, 20 degrees round from the receptacle on the side away from the hatch, where photographs of July 1961
+put it (derived: `sites/lc-5.md`, "The two cable masts"); the umbilical goes from the mast's head, beside the heat
+shield's rim, up round the cone and under the periscope's open door to the receptacle, and the mast falls straight out
+from the vehicle. Until November 2026 it stood on the hardstand 8 ft behind the vehicle.
 
 ## Parts in the model
 

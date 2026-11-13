@@ -214,8 +214,10 @@ The same GLB holds the launch vehicle's five nodes: [redstone-mrlv.md](../../veh
 **On the pad** (sites/lc-5.md, "5 May and 21 July 1961"): the capsule's umbilical is built to this
 capsule's receptacle (station 32.5; Freedom 7's is at 31.2), and the white room and the cherry
 picker's cab meet its hatch as they met Freedom 7's, both capsules standing with the hatch on +X.
-The pad's meshes were tested against this vehicle's in Blender with the periscope's door shut and
-open: none cross, and the umbilical's end is 26 mm from the receptacle.
+The umbilical comes from the capsule's cable mast, which stands on the launcher 20° round from the
+periscope on the flag's side, as FHSU item 466 shows it (lc-5.md, "The two cable masts"). The pad's
+meshes were tested against this vehicle's in Blender with the periscope's door shut and open, the
+masts standing and falling: none cross, and the umbilical stops 17 mm from the capsule.
 
 Settled in November 2026 from photographs of Freedom 7 as it is kept (its spacecraft.md, "Round the cone"): where the
 hatch was on both capsules (315°, as here: Freedom 7's model moved to it, and both capsules now stand with the hatch
