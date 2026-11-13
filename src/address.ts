@@ -26,7 +26,13 @@ import type { Flight, ModelDef, ViewDef } from './types';
  * section of the site, and a bare `#<model>` (or `#gallery`, `#site/<model>`, `#fly`) is the first
  * listed flight's. So no model may be called `gallery`, `site` or `fly`.
  *
- * Nothing here touches the page: it is all arithmetic on the flight's data (tests/address.test.mjs).
+ * Nothing here touches the page but the last four (`where`, `write`, `settle`, `onMoved`), which are the only
+ * things anywhere that read or write the address bar; the rest is arithmetic on the flight's data (tests/address.test.mjs).
+ *
+ * The history (docs/agents/gallery.md, "Back and Forward"): going to another flight or another place (the front page,
+ * a flight's Gallery, Launch site, Fly) is a new entry, so Back returns to exactly where the visitor was and Forward
+ * goes on again; what changes within a place (a part, a section, what stands there), and the page settling an address
+ * into its own form, rewrites the entry it is on. So `write` decides by `samePlace`, and `settle` never adds one.
  */
 export type Place = 'gallery' | 'site' | 'fly';
 
@@ -222,4 +228,39 @@ export function galleryFlight(flight: Flight): Flight {
 /** The figure that stands beside the vehicle for scale, where the flight has one: its first crew model. Null: an outline of a person does. */
 export function scaleFigure(flight: Pick<Flight, 'models'>): ModelDef | null {
   return flight.models.find((m) => m.walker) ?? null;
+}
+
+/**
+ * Whether two addresses are one entry's worth of the history: the same flight at the same place (or both the front
+ * page), whatever is on show there. Read as written: `#pad` and the flight's own `#…/site/pad` are not the same place
+ * until the page has settled the first into the second (`settle`).
+ */
+export function samePlace(a: string, b: string): boolean {
+  const [x, y] = [parseAddress(a), parseAddress(b)];
+  return x.flightId === y.flightId && x.place === y.place;
+}
+
+/** The address bar's fragment, with its `#` ('' for one that names nothing). */
+export const where = (): string => location.hash;
+
+const bar = (hash: string): string => hash || location.pathname + location.search;
+
+/**
+ * Say where the page is: a new entry in the history if it is another flight or place than the address says now (the
+ * visitor has gone somewhere: Back returns), otherwise the entry it is on rewritten (something chosen within a place).
+ */
+export function write(hash: string): void {
+  if (hash === where()) return;
+  if (samePlace(where(), hash)) history.replaceState(null, '', bar(hash));
+  else history.pushState(null, '', bar(hash));
+}
+
+/** Rewrite the entry the page is on, whatever it names: an address settled into its own form (`#pad`, a flight with no place), never a step of the visitor's. */
+export function settle(hash: string): void {
+  if (hash !== where()) history.replaceState(null, '', bar(hash));
+}
+
+/** `then` is called when the address is changed under the page: Back, Forward, or one typed or followed. (Not for `write` or `settle`.) */
+export function onMoved(then: () => void): void {
+  addEventListener('hashchange', then);
 }

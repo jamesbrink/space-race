@@ -19,6 +19,7 @@ build_seated() is the same man in the ejection seat's pose, visor down, for a ca
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import bpy
 from mathutils import Matrix, Vector
@@ -46,41 +47,118 @@ from figurelib import (
 )
 from srlib import TAU, MeshBuilder, arc_profile, frame, material, text_mesh
 
-STATURE = 165.0  # documented: his service record of 1960
-SIZE = STATURE / 180.3  # beside figurelib's man: what his hands and boots are scaled by
+
+@dataclass(frozen=True)
+class Wearer:
+    """Who is in the suit: the pilot's own measures, and what of the suit was made to them. The defaults are Gagarin's
+    (sk-1.md); a flight whose pilot is recorded otherwise gives its own and calls `wear` before it builds."""
+
+    stature: float = 165.0  # documented: his service record of 1960
+    breadth: float = 0.97  # distances from the midline, beside figurelib's man of 1.80 m
+    girth: float = 0.96  # every section's radii, beside the same man
+    bulk: tuple[float, float, float] = (1.3, 1.1, 0.6)  # the cover let out over the pressure suit: trunk, arms, legs, cm
+    shoulders: float = 1.0  # the chest and shoulders again, beside `breadth`
+    hips: float = 1.0  # the pelvis and the tops of the thighs again, beside `breadth`
+    boot: float = 0.93  # the shared boot's size: a 29 cm sole, a shade large for him, as a boot worn over a suit's foot is
+    glove: float = 1.0  # the gloves beside a hand of the pilot's own size: the SK-2's were thinner
+    # What of the suit itself differed (sk-1.md, "The SK-2, and the suits of June 1963"). Each is read off photographs.
+    valve: str = "plain"  # the round fitting at the right front of the collar: "plain", or a disc with a rim: "disc-black", "disc-pale"
+    neck: str = "grey"  # the pressure suit's own neck under the helmet's ring: "grey", or "pale"
+    gloves: str = "cover"  # the gloves' backs and fingers: the "cover"'s orange cloth, or "black" leather
+    mirror: bool = True  # the mirror sewn on the right sleeve
 
 
-def body() -> fl.Body:
-    """Gagarin: figurelib's man carried to 1.65 m, a little broader for his height (68 kg), in a
-    looser garment: the orange cover stands off the pressure suit by a centimetre or more."""
-    b = fl.man().scaled(stature=STATURE, heel=2.8 * SIZE, breadth=0.97, girth=0.96, bulk=(1.3, 1.1, 0.6), crotch_drop=4.0)
-    plain = fl.man().scaled(stature=STATURE, heel=2.8 * SIZE, breadth=0.97, girth=0.96)
+GAGARIN = Wearer()
+# Bykovskiy on 14 June 1963, in the last SK-1 made. No document with his height was found: he is the module's own
+# figure (in his suit he weighed 90.7 kg, which less the suit's 23 kg is Gagarin's 68). What is his own is read off
+# the film and photographs of that day and the suit Zvezda keeps: the valve's disc, the pale neck, black gloves.
+BYKOVSKY = Wearer(valve="disc-pale", neck="pale", gloves="black")
+# Tereshkova on 16 June 1963, in the SK-2: the SK-1 cut again for a woman, with "a decreased shoulder breadth" and "an
+# increased hip girth" (Abramov and Skoog, p. 58), gloves with thinner insulation, no mirror on the right sleeve (the
+# photographs of that morning). No document with her height was found: 1.64 m is what her proportion to her helmet
+# gives in the photograph of her reporting at the pad. Every amount here is estimated.
+TERESHKOVA = Wearer(
+    stature=164.0,
+    breadth=0.93,
+    girth=0.94,
+    shoulders=0.95,
+    hips=1.06,
+    boot=0.86,
+    glove=0.94,
+    valve="disc-black",
+    neck="pale",
+    gloves="black",
+    mirror=False,
+)
+BOOT_TOP = 28.0  # as on a man of 1.80 m: about mid-calf
+BOOT_LENGTH = 31.2
+HELMET_R = 15.2  # the shell is a ball from the crown down to the chin
+COLLAR_R = 11.4
+VISOR = (math.radians(62), 1.6, 8.6)  # the opening: half its width round the shell, its middle above the ball's, half its height
+VISOR_UP = 92.0  # degrees the visor is swung up over the crown when it is open
+LETTERS = "СССР"
+VALVE_R = 4.0  # the breathing valve's disc on the suits of June 1963: about 8 cm across, off the photographs
+VALVE_AT = (-34.0, 4.6)  # where it hangs: degrees round the collar toward the pilot's right, centimetres under the ring
+ELBOW_AT = -86.0  # the elbow fitting at the right of the ring
+LETTER_HEIGHT = 3.8  # estimated from the photographs of 12 April and of the suits kept since
+
+
+def body(who: Wearer = GAGARIN) -> fl.Body:
+    """The pilot: figurelib's man carried to his stature (Gagarin: 1.65 m, a little broader for his height at 68 kg), in
+    a looser garment: the orange cover stands off the pressure suit by a centimetre or more."""
+    size = who.stature / 180.3
+    b = fl.man().scaled(stature=who.stature, heel=2.8 * size, breadth=who.breadth, girth=who.girth, bulk=who.bulk, crotch_drop=4.0)
+    plain = fl.man().scaled(stature=who.stature, heel=2.8 * size, breadth=who.breadth, girth=who.girth)
     # where the cloth goes into something it is not let out: the neck into the helmet's collar, the cuffs into the gloves
     b.torso[-4:] = plain.torso[-4:]
     b.arm[-2:] = plain.arm[-2:]
     # the trouser legs hang over the boots' tops: full above them, and ending a little way down the outside of the shaft
     x, y, _, _, _ = b.leg[-1]
-    top = BOOT_TOP * BOOT_SIZE
+    top = BOOT_TOP * who.boot
     b.leg[-2:] = [(x, y, top + 5.5, 7.0, 7.3), (x, y, top + 1.6, 7.3, 7.6), (x, y, top - 0.6, 7.0, 7.3)]
+    if who.shoulders != 1.0 or who.hips != 1.0:
+        build_of(b, who.shoulders, who.hips)
+    if who.glove != 1.0:
+        b.hand *= who.glove
     return b
 
 
-BOOT_TOP = 28.0  # as on a man of 1.80 m: about mid-calf
-BOOT_LENGTH = 31.2
-BOOT_SIZE = 0.93  # a 29 cm sole: a shade large for him, as a boot worn over a suit's foot is
-B = body()
-fl.use(B)
+def build_of(b: fl.Body, shoulders: float, hips: float) -> None:
+    """A build that one figure for breadth does not give: the trunk from the waist up to the yoke, the armholes and
+    the arms that hang from them are made `shoulders` as wide, the pelvis and the thighs down to the knees `hips` as
+    wide. The neck goes into the same collar and the shins into the same boots, so neither moves."""
 
-HELMET_R = 15.2  # the shell is a ball from the crown down to the chin
-HELMET_AT = Vector((0, B.head_y - 1.3, B.head.z - 0.5))  # its centre: ahead of and under the middle of the skull, so that the chin is inside
-HELMET_TOP = HELMET_AT.z + HELMET_R
-HELMET_RIM = B.neck_z + 1.6  # its lower edge, on the collar
-COLLAR_R = 11.4
-VISOR = (math.radians(62), 1.6, 8.6)  # the opening: half its width round the shell, its middle above the ball's, half its height
-VISOR_UP = 92.0  # degrees the visor is swung up over the crown when it is open
-LETTERS = "СССР"
-LETTER_HEIGHT = 3.8  # estimated from the photographs of 12 April and of the suits kept since
-PORT = (B.waist_z + 9.0, -38.0)  # where the hoses leave the suit: (height, azimuth in degrees): his right abdomen
+    def across(z: float) -> float:
+        up = smooth(z, b.waist_z, b.z_pit) * (1 - smooth(z, b.z_yoke, b.neck_z))
+        down = 1 - smooth(z, b.z_crotch + 6.0, b.waist_z)
+        return 1 + (shoulders - 1) * up + (hips - 1) * down
+
+    b.torso = [(z, a * across(z), d) for z, a, d in b.torso]
+    b.pit_x *= shoulders
+    b.arm = [(x * shoulders, y, z, a, d) for x, y, z, a, d in b.arm]
+    b.hip_x *= hips
+    knee = b.leg[b.knee_at][2]
+    b.leg = [(x * (1 + (hips - 1) * smooth(z, knee, b.z_crotch)), y, z, a, d) for x, y, z, a, d in b.leg]
+
+
+def wear(who: Wearer) -> None:
+    """Whose suit is built from here on: everything below reads these, and they follow the pilot's measures."""
+    global WEARER, STATURE, SIZE, BOOT_SIZE, B, HELMET_AT, HELMET_TOP, HELMET_RIM, PORT
+    WEARER = who
+    STATURE = who.stature
+    SIZE = STATURE / 180.3  # beside figurelib's man: what his hands and boots are scaled by
+    BOOT_SIZE = who.boot
+    B = body(who)
+    fl.use(B)
+    HELMET_AT = Vector((0, B.head_y - 1.3, B.head.z - 0.5))  # its centre: ahead of and under the middle of the skull, so that the chin is inside
+    HELMET_TOP = HELMET_AT.z + HELMET_R
+    HELMET_RIM = B.neck_z + 1.6  # its lower edge, on the collar
+    PORT = (B.waist_z + 9.0, -38.0)  # where the hoses leave the suit: (height, azimuth in degrees): his right abdomen
+    _seated_points.clear()
+
+
+_seated_points: dict[float, dict[str, list[Vector]]] = {}
+wear(GAGARIN)
 
 
 def materials() -> dict:
@@ -115,6 +193,10 @@ def materials() -> dict:
         "tape": m("zipper-tape", (0.10, 0.10, 0.11), 0.0, 0.8),
         "cord": m("cord-cream", (0.74, 0.68, 0.52), 0.0, 0.85),
         "microphone": m("microphone-red-brown", (0.30, 0.07, 0.05), 0.0, 0.6),
+        # what only some suits have, made only for them
+        **({"liner": m("suit-pale-pressure-layer", (0.70, 0.71, 0.68), 0.0, 0.8)} if WEARER.neck == "pale" else {}),
+        **({"valve": m("valve-enamel-pale", (0.78, 0.78, 0.75), 0.1, 0.45)} if WEARER.valve == "disc-pale" else {}),
+        **({"glove": m("glove-leather-black", (0.03, 0.03, 0.03), 0.0, 0.5)} if WEARER.gloves == "black" else {}),
     }
 
 
@@ -208,11 +290,37 @@ def build_helmet(M: dict) -> None:
         48,
         matrix=Matrix.Translation((0, HELMET_AT.y, HELMET_RIM)),
     )
-    # the ventilation fitting at the right front of the collar, with the stub of its hose
-    phi = math.radians(-58)
-    at = Vector((COLLAR_R * math.sin(phi), HELMET_AT.y - COLLAR_R * math.cos(phi), HELMET_RIM - 0.4))
-    out = Vector((math.sin(phi), -math.cos(phi), -0.35)).normalized()
-    fit.lathe([(2.7, -0.6), (2.7, 1.0), (2.3, 1.3), (2.3, 1.9), (0.0, 1.9)], 28, matrix=frame(at, out))
+    valve_rim, valve_slots, hose = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    if WEARER.valve == "plain":
+        # the ventilation fitting at the right front of the collar, with the stub of its hose
+        phi = math.radians(-58)
+        at = Vector((COLLAR_R * math.sin(phi), HELMET_AT.y - COLLAR_R * math.cos(phi), HELMET_RIM - 0.4))
+        out = Vector((math.sin(phi), -math.cos(phi), -0.35)).normalized()
+        fit.lathe([(2.7, -0.6), (2.7, 1.0), (2.3, 1.3), (2.3, 1.9), (0.0, 1.9)], 28, matrix=frame(at, out))
+    else:
+        # The suits of June 1963, as the photographs and the film of those mornings have them: the breathing valve is a
+        # disc some 8 cm across hung on the neck piece under the ring at the pilot's right front, a thick rim round a
+        # metal cap with three slots; beside it, at the right of the ring, an elbow with the stub of a black hose.
+        phi = math.radians(VALVE_AT[0])
+        r = COLLAR_R + 0.5 + 0.44 * (VALVE_AT[1] - 4.2)  # the neck piece's own radius at that depth under the ring
+        at = Vector((r * math.sin(phi), HELMET_AT.y - r * math.cos(phi), HELMET_RIM - VALVE_AT[1]))
+        out = Vector((math.sin(phi), -math.cos(phi), -0.42)).normalized()
+        m = frame(at, out)
+        valve_rim.lathe([(VALVE_R, -0.8), (VALVE_R, 1.5), (VALVE_R - 0.5, 2.2), (2.45, 2.2), (2.45, 1.4)], 36, matrix=m)
+        fit.lathe([(2.4, 0.9), (2.4, 2.45), (1.7, 2.9), (0.0, 2.9)], 28, matrix=m)
+        for i in range(3 if srlib.DETAIL >= 0.75 else 0):
+            turn = Matrix.Rotation(TAU * i / 3 + 0.5, 4, "Z")
+            valve_slots.box((0.3, 1.0, 0.3), m @ turn @ Matrix.Translation((0, 1.15, 2.9)))
+        phi = math.radians(ELBOW_AT)
+        side = Vector((math.sin(phi), -math.cos(phi), 0.0))
+        root = Vector((0, HELMET_AT.y, HELMET_RIM - 0.2)) + side * (COLLAR_R + 0.4)
+        knee = root + side * 3.4 + Vector((0, 0, -0.6))
+        fit.lathe([(2.0, -0.4), (2.0, 0.9), (1.5, 1.2)], 20, matrix=frame(root, side))
+        Tube([root, root + side * 2.2, knee, knee + Vector((0, 0, -2.6))], [(1.3, 1.3)] * 4, resample=4).add(fit, 14)
+        fit.lathe([(1.75, 0.0), (1.75, 0.9), (1.3, 1.1)], 16, matrix=frame(knee + Vector((0, 0, -2.2)), (0, 0, -1)))
+        keys = [tuple(knee + Vector(v)) for v in ((0, 0, -3.2), (0.3, -0.5, -6.0), (1.2, -1.2, -9.0))]
+        pts = fl.polyline(keys, 0.5)
+        Tube(pts, [(1.2, 1.2)] * len(pts), resample=1, fold=lambda dd, _th: 0.07 * math.sin(TAU * dd / 1.2)).add(hose, 12)
 
     # the man inside: a head for the opening to have in it. Nobody's likeness (sk-1.md).
     head, cap, dark, eyes, hair, lips, mics = (MeshBuilder() for _ in range(7))
@@ -243,6 +351,11 @@ def build_helmet(M: dict) -> None:
     emit(red, "Helmet_Lettering", M["red"], g, smooth=False)
     emit(collar, "Helmet_Collar", M["aluminium"], g, sharp_angle=30)
     emit(band_, "Helmet_NeckBand", M["liner"], g)
+    if valve_rim.verts:
+        emit(valve_rim, "Helmet_ValveRim", M.get("valve", M["dark"]), g, sharp_angle=30)
+        emit(hose, "Helmet_Hose", M["dark"], g)
+    if valve_slots.verts:
+        emit(valve_slots, "Helmet_ValveSlots", M["dark"], g, smooth=False)
 
 
 # --------------------------------------------------------------------------- torso
@@ -369,6 +482,9 @@ def build_arms(M: dict, tubes: dict[int, Tube]) -> None:
         # the sleeve starts on the ring of points the shoulder's skin ends on; a band underneath backs the join
         t.mesh(sleeves, 32, t.rows(hem), caps=(False, True))
         t.mesh(sleeves, 32, [hem - 1.2, hem + 0.6], caps=(False, False), sunk=lambda _d: 0.25)
+    emit(sleeves, "Arms_Sleeves", M["cover"], g)
+    if not WEARER.mirror:
+        return
     # the mirror sewn on the right sleeve, for what he cannot see directly: a round glass in a cloth patch on the back of the forearm
     t = tubes[-1]
     dm = t.length - 10.6
@@ -377,8 +493,6 @@ def build_arms(M: dict, tubes: dict[int, Tube]) -> None:
     m = frame(t.at(dm, th, 0.0), t.normal(dm, th))
     steel.lathe([(2.5, 0.0), (2.5, 0.8), (2.2, 1.0), (2.05, 1.0), (2.05, 0.6)], 28, matrix=m)
     glass.lathe([(2.1, 0.75), (0.0, 0.75)], 28, matrix=m)
-
-    emit(sleeves, "Arms_Sleeves", M["cover"], g)
     emit(patch, "Arms_MirrorPatch", M["cover"], g)
     emit(steel, "Arms_MirrorRim", M["steel"], g, sharp_angle=30)
     emit(glass, "Arms_Mirror", M["mirror"], g)
@@ -403,7 +517,7 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
         band(rings, ring(palm, 0.6, 32), 2.3, 0.55, sink=0.5, bevel=0.3, closed=True)
         fl.fitted(rings, first, hand)
     shell.share = fingers
-    emit(shell, "Gloves_Shell", M["cover"], g)
+    emit(shell, "Gloves_Shell", M.get("glove", M["cover"]), g)
     emit(rings, "Gloves_WristRings", M["aluminium"], g, sharp_angle=30)
     emit(leather, "Gloves_Palms", M["palm"], g)
 
@@ -528,9 +642,6 @@ LAP = (-3.0, 12.0, 1.2)  # where a thigh pressed against the belly stops: figure
 def seated_rig() -> Rig:
     fl.use(B)
     return fl.seated_rig(SEATED, LAP)
-
-
-_seated_points: dict[float, dict[str, list[Vector]]] = {}
 
 
 def seated_points() -> dict[str, list[Vector]]:

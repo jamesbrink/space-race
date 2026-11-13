@@ -26,6 +26,11 @@ instrument was), with the zero-gravity experiment by the pilot's head and all se
 [that flight's spacecraft.md, "Cabin" and "Zero-gravity experiment"](../flights/ma-7-aurora-7/spacecraft.md). A capsule built with
 none of those arguments is built as before, to the byte.
 
+Spacecraft No. 16's (Sigma 7) is [mercury_cabin_16.py](mercury_cabin_16.py): No. 11's fit less what No. 18 flew without (the report of
+its flight lists what was changed from No. 18 and restores none of it), with no mirror on the pilot's chest, no zero-gravity experiment,
+and the hand-held camera, a Hasselblad 500C, standing in its kit at the pilot's right below the hatch. Its record is
+[that flight's spacecraft.md, "Cabin"](../flights/ma-8-sigma-7/spacecraft.md).
+
 ## What the viewer is promised
 
 | Node | What it is | Extras |
