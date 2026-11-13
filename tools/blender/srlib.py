@@ -962,7 +962,7 @@ def stats() -> tuple[int, int]:
 
 def render_preview(
     path: str,
-    target: Sequence[float],
+    target: Sequence[float] | str,
     distance: float,
     azimuth: float = 35.0,
     elevation: float = 12.0,
@@ -971,14 +971,17 @@ def render_preview(
     look: tuple[float, float] = (0.0, 0.0),
     lens: float = 70.0,
     lamps: str | None = None,
-    hide: str | None = None,
+    hide: str | tuple[str, ...] | None = None,
+    only: str | tuple[str, ...] | None = None,
 ) -> None:
     """Quick EEVEE still, for eyeballing a build without opening the viewer. With `seat` (an empty of the model whose +Z
     looks ahead and +Y is overhead: a cabin's `Seat_...`) the still is taken from there, the head turned `look` degrees
     (to the left, up) and seen through a `lens` of that many millimetres; `target` and `distance` are then not used.
     `lamps` is the start of the names of the meshes that are its lights (a cabin's `Lamp_`): a point light is hung at
-    each, since the preview's two suns are outside the hull; `hide` is the start of the names of what the eyes are inside
-    of and the viewer does not draw from there (the pilot's own helmet)."""
+    each, since the preview's two suns are outside the hull; `hide` is the start (or starts) of the names of what is
+    left out: what the eyes are inside of and the viewer does not draw from there (the pilot's own helmet), or a skin
+    taken off. `only` is the starts of the names of all that is drawn (a pilot and his couch, out of their cabin).
+    `target` may be an object's name: where it is."""
     scene = bpy.context.scene
     cam_data = bpy.data.cameras.new("PreviewCam")
     cam_data.lens = lens
@@ -986,12 +989,12 @@ def render_preview(
     scene.collection.objects.link(cam)
     az, el = math.radians(azimuth), math.radians(elevation)
     made = [cam]
-    hidden: list = []
+    meshes = [o for o in bpy.data.objects if o.type == "MESH" and not o.hide_render]
+    hidden = [o for o in meshes if (hide and o.name.startswith(hide)) or (only and not o.name.startswith(only))]
+    for obj in hidden:
+        obj.hide_render = True
     if seat:
         cam_data.clip_start = 0.02
-        hidden = [o for o in bpy.data.objects if hide and o.name.startswith(hide)]
-        for obj in hidden:
-            obj.hide_render = True
         yaw, pitch = (math.radians(a) for a in look)
         # (the seat looks along its +Z with +Y overhead in the exported file, which here is its -Y and its +Z; a camera
         # looks along its own -Z with +Y up)
@@ -1007,7 +1010,7 @@ def render_preview(
             lamp.location = centre * 0.82 + Vector((0, 0, centre.z * 0.18))  # (a hand's breadth in from the wall, toward the long axis)
             made.append(lamp)
     else:
-        t = Vector(target)
+        t = bpy.data.objects[target].matrix_world.translation.copy() if isinstance(target, str) else Vector(target)
         cam.location = t + distance * Vector((math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el)))
         cam.rotation_euler = (t - cam.location).to_track_quat("-Z", "Y").to_euler()
     scene.camera = cam

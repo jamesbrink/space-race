@@ -12,7 +12,7 @@ on capsule No. 7 (Freedom 7, MR-3) and capsule No. 11 (Liberty Bell 7, MR-4). A 
 | Recovery compartment (`build_recovery_compartment`) | Paint |
 | Antenna canister (`build_antenna_canister`) | Where the periscope's door and the umbilical are |
 | Escape tower (`build_escape_tower`) | The cabin's fit: [mercury_cabin.py](mercury_cabin.py) (No. 7), [mercury_cabin_11.py](mercury_cabin_11.py) (No. 11) |
-| The periscope's objective (`periscope`), its door, well and the umbilical receptacle under it (`periscope_door`: built shut and drawn in, as at liftoff, the door and the objective each a node of its own that a flight moves on its clock, `vehicles/periscope.ts`), the roll jets in the top row (`roll_fittings`, No. 7) or at the base (`roll_thrusters`, No. 11, as built before No. 7's were read), the attach ring | |
+| The periscope's objective (`periscope`), its door, well and the umbilical receptacle under it (`periscope_door`: built shut and drawn in, as at liftoff), as one linkage (`ScopeWorks`: the cartridge's travel, the door's hinge, the link between them), each moving piece a node of its own whose motion the build writes into its extras (`periscope_run`) and a flight plays on its clock (`vehicles/periscope.ts`); the lower housing's way through the pressure vessel (`periscope_mouth`); `chamfered`, the block every fitting here and in the cabins is made of; the roll jets in the top row (`roll_fittings`, No. 7) or at the base (`roll_thrusters`, No. 11, as built before No. 7's were read), the attach ring | |
 | Screws round a plain plate (`fasten_round`) | |
 | Standing the capsule on its booster (`stand`) | |
 | The pressure vessel round a hatch opening, the bulkhead stiffeners, oxygen bottles, landing bag | |
@@ -27,7 +27,8 @@ nothing read saying otherwise.
 **The orbital capsules.** Spacecraft No. 13 (Friendship 7, MA-6) is built from this module, from Liberty Bell 7's own
 script for the window, the hatch and the shingles round them (which No. 11 was the first to have), and from
 [mercury_orbital.py](mercury_orbital.py) for what the capsules that went into orbit had and these two had not: the
-ablation heat shield, and a name painted by hand. Its record is
+ablation heat shield, and a name painted by hand. Its periscope's door, cartridge and link are this module's
+(`ScopeWorks`, `periscope_mouth`, `periscope_run`), called from its own script with No. 11's door, station and tube. Its record is
 [Friendship 7's spacecraft.md](../flights/ma-6-friendship-7/spacecraft.md).
 
 ## Two ways of building shingles

@@ -107,7 +107,7 @@ record changes.
 | What this capsule's panel had that the drawing has not | lights showing which inverter fed the bus; a heat-exchanger exhaust temperature gauge; an oxygen partial pressure gauge | documented (that they were there); not modelled | Results, pp. 55 and 56; NASA SP-45, p. 12. Where they stood is in no figure read; photographs of the panel as it is kept (NASM) have not been read against the model |
 | Earth-path indicator | as No. 11's: case, window, two dials, three knobs; the globe a bare graticule | derived (layout); estimated (the rest) | as No. 11's; it worked on this flight |
 | Hatch | 70 bolts: No. 11's 69 and the seventieth in the place No. 11's model leaves empty | documented | *This New Ocean*, p. 423 |
-| Chest mirror | as Grissom's | documented by photograph | the colour photograph of Glenn going aboard |
+| Chest mirror | 5.2 in across its rim, laid on the chest by the cabin (`mercury_cabin_11.chest_mirror`, `mirror=True`): the pilot is Shepard's figure, whose suit has none. Grissom's own is now his suit's, hung on his parachute harness | documented by photograph (that he wore one); estimated (its size and how it was held) | the colour photograph of Glenn going aboard |
 | Cabin lights, couch, restraints, controllers, stowage | as No. 11's, which are No. 7's | estimated | nothing read; the new couch and the personal equipment container are not modelled |
 
 ## The pilot
@@ -154,8 +154,13 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
 - **The retropack's straps do not meet under the pack**, as on the other two capsules, and their
   fittings to the adapter's ring (slots every 120°, three striker brackets: SEDR 104, p. 2-23) are
   not modelled.
-- **The periscope does not move**: there is no clock in the gallery. On this flight it was drawn in
-  by hand before the entry.
+- **The periscope's works are No. 11's**: the door on its piano hinge, the cartridge, the link between
+  them, the well and the housing through the pressure vessel are `mercury_capsule.ScopeWorks` with
+  Liberty Bell 7's door, station and tube ([its spacecraft.md](../mr-4-liberty-bell-7/spacecraft.md),
+  "Periscope and umbilical": the linkage is estimated there, and how far the door opens is derived
+  from it). Nothing read shows this side of No. 13. When it moved on this flight is in `flight.ts`
+  (`PERISCOPE_EVENTS`), from the report; that it took five seconds each way when pumped by hand is
+  estimated. In the gallery there is no clock, so it stands shut.
 - **No mass properties, no orbit, no entry.** The flight cannot be flown: see the flight's README.
 - Everything listed in [Liberty Bell 7's spacecraft.md](../mr-4-liberty-bell-7/spacecraft.md) and
   [Freedom 7's](../mr-3-freedom-7/spacecraft.md) for the parts shared with them.

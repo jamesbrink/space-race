@@ -101,12 +101,12 @@ STATES twice. No photograph read shows that side of No. 11, and the model has no
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Objective | at station 41.5, level with the upper line of UNITED STATES (where its tube meets the vessel; it comes through the skin at 42.0) | estimated | NASA S61-03705; the capsule as raised |
-| Door | 20° wide, stations 28.6 to 46.0, hinged on the side toward the hatch, pale inside; shut at liftoff, opened and shut on the clock | estimated (the door); documented (when it moved, below) | the same; how far it opens is ours (105°) |
+| Door | 20° wide, stations 28.6 to 46.0, hinged on the side toward the hatch, pale inside; shut at liftoff, opened and shut on the clock | estimated (the door); documented (when it moved, below) | the same; how far it opens is the linkage's (109°, below) |
 | Umbilical receptacle | inside the same door, under the lens, at station 32.5, 0.95 in under the skin so the door shuts over it | estimated | S61-03705 shows the ground's hose plugged in there; SEDR 104 puts the receptacle under the periscope's door |
 
 The door and the objective moved together, "mechanically linked" (SEDR 104, 2-3). The model is built as the capsule
-stood at liftoff, shut and drawn in, and the gallery shows it so; in flight they move on the clock (`flight.ts`
-`PERISCOPE`, `vehicles/periscope.ts`), each motion four seconds (estimated):
+stood at liftoff, shut and drawn in, and the gallery shows it so; in flight the door, the objective and the link
+between them move on the clock (`flight.ts` `PERISCOPE`, `vehicles/periscope.ts`), each travel five seconds:
 
 | When | What | Confidence | Source |
 | --- | --- | --- | --- |
@@ -115,6 +115,58 @@ stood at liftoff, shut and drawn in, and the gallery shows it so; in flight they
 | 02:33, separation | out | documented | p. 6: "The periscope was extended" |
 | 06:41 | in, for the entry | documented | p. 43: "OK, periscope is retracting, going to reentry attitude" |
 | 09:41, the drogue | out | documented | p. 44, 09:41.5: "There's the drogue chute. The periscope has extended" |
+
+**How it moves** (`mercury_capsule.ScopeWorks`, the same for both capsules). Only the objective cartridge moves: "the
+objective cartridge may be extended and retracted through a periscope door opening in the bottom of the capsule" by an
+electric motor and gear box on the lower housing, on roller guides (SEDR 104, 12-2, 12-18; Figure 12-1), and "a
+connecting link between the objective cartridge and the periscope door allows the door to move in unison with the
+telescopic motion of the objective cartridge" (12-19). So the model is one linkage, worked out by the build: the door
+on a hinge along its long edge toward the hatch (Figure 12-1 draws that edge toothed, read here as a piano hinge), the
+cartridge sliding out along its tube, and a link of fixed length from a lug on the cartridge to a clevis on the door,
+which pushes the door open as the cartridge comes out and draws it shut going in. Each of the three is a node with its
+own motion in its extras (`run`, seventeen steps: `mercury_capsule.periscope_run`), and `vehicles/periscope.ts` only
+says when it is played, forward or back.
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| That a link joins cartridge and door, and that they move as one | | documented | SEDR 104, 2-3, 12-19, Figure 12-1 ("MECHANICAL LINK", "PERISCOPE DOOR") |
+| How long a travel takes | 5 s | documented for capsules 8 and 9; taken as this capsule's | "PERISCOPE EXT. (5 SEC)", SEDR 104 Figures 10-9 and 10-12. Until November 2026 the model took four |
+| The motor | comes up to speed over the first 12 per cent of the time and stops over the last | estimated | a 60 W motor (SEDR 104 of December 1959, Tables 10-2 and 10-3); nothing read gives its curve |
+| How far the cartridge comes out | 5.65 in along its tube | estimated | chosen so that drawn in it is wholly under the shut door; no travel is in anything read |
+| Hinge | a pin's line in the joint on the door's hatch side, 0.14 in from the leaf's edge, its barrel 0.14 in through; that joint 0.3 in wide, the others 0.15 | estimated | Figure 12-1's toothed edge |
+| Link | 3.88 in long, from a stud on the cartridge 2.8 in under the lens's rim (70° round its side from the hinge's side) to a clevis on the door 3.0 in from the hinge and 0.75 in under the skin | estimated | Figure 12-1 draws one link from the cartridge's lower end to the door's inner face: every figure here is ours, chosen so the door opens steadily through the whole travel |
+| How far the door opens | 109°, and 55° half way through | derived from the linkage above | the photographs of it open show it standing a little past square |
+| The door | a leaf 0.22 in thick on the cone's curve, pale inside, with an inner pan of insulation 0.45 in deep under two straps, stopping short of the umbilical's receptacle | documented (that it is part of the side insulation when shut: SEDR 109-7, 2-18); estimated (the rest) | Figure 12-1 draws a pan stepped in from the leaf's edge |
+| The lower housing's mouth | an opening 6 in across in the well's floor with a lip round it, and under it a bore 5.44 in across down the cartridge's line, through the pressure vessel and the lining | estimated | Figure 12-1 sheet 2 |
+
+**By hand.** What the pilot had (SEDR 104, 12-16; SEDR 109-7, 1-9, 2-19, 2-24): a ratchet handle "on the right side of
+the upper housing", "pulled up to place it in operating position", which drove the cartridge's gear box "through a
+manually operated clutch" either way (a pawl arm chose which); and the motor's switch-fuse on the fuse panel (PERISCOPE,
+NO. 1 or NO. 2). The failure procedure was "Fuse switch - OFF; Manual Engage lever - ENGAGED; Ratchet - AS REQUIRED;
+Manually extend or retract periscope", and with the fuse off the periscope stayed where it was past the programme's
+next moment; "returning it to NO. 1" let the automatic motion that was owed run. The RETRACT legend by the display is
+a pilot light (SEDR 104, Figure 12-2), not a control.
+In the model the handle is `Ctl_PeriscopeHandle`, stowed in the display's upper right corner (the display is flush in
+the panel here, so the side of its housing is behind the panel: its place is ours), with the engage lever's knob beside
+it. This flight cannot be flown yet, so nothing works it; when it can, a click on it, a right click on the afterbody, or the Periscope switch among the
+flight deck's keys will send the periscope the other way from where it is headed, as Freedom 7's does. **The rule** (`src/sim/mechanism.ts`):
+it stays where the hand sent it until the programme's next event, which takes it back; with the sequencer off, which
+here stands for the fuse, the programme's events pass unheard and it moves only when told; and with the sequencer
+switched back on it goes to where the programme has it by then, as the restored fuse let it. What is simplified: a
+click stands for the whole of the procedure (fuse off, clutch in, ratchet, clutch out), the travel by hand takes the
+motor's five seconds, and the programme keeps the record's own instants even in a flight whose events are set off at
+others. The RETRACT light is not lit.
+
+**From the couch** the periscope's screen shows the outside only while the objective is out (`cabin.periscope.mechanism`):
+nothing until the lens is clear of its door at 45 per cent of the travel, all of it from 85. Drawn in, for the climb and
+through the entry, it shows the reticle on a dark field: what the screen then showed is not in anything read (the
+objective looks at the inside of its door), so that is estimated.
+
+**Not simulated:** what the periscope out does to the flight. "If the periscope does not completely retract, the
+periscope door will not close causing the cabin to overheat during re-entry" (SEDR 109-7, 1-20), and it was drawn in
+"to prevent damage due to reentry heating", though "no heat damage would have occurred in this particular reentry"
+(Results of the First flight, p. 10: of Freedom 7's). No figure for its drag or heating has been read, so left out by hand through the entry it costs
+nothing here.
 
 Freedom 7's objective is at station 37 by its own photographs (it was at 13 in its model until November 2026);
 the two capsules' doors need not have been at the same station, and the photographs of each are followed.
@@ -135,7 +187,9 @@ Built by [vehicles/mercury_cabin_11.py](../../vehicles/mercury_cabin_11.py), whi
 | Where the panel stands, how the consoles are canted | as in capsule 7's model | estimated | nothing read places either |
 | Window's inner frame | a flat frame 0.6 in wider than the panes, bolted round, with a shroud to the wall | documented (frame: SEDR 104 Figure 2-3); estimated (the shroud) | |
 | Cabin lights | two fluorescent floodlights, as No. 7's fittings: one at the pilot's left, one at his right below the hatch. The CABIN LIGHTS switch on the left console is a lever of three positions, BOTH at its left, L.H. ONLY in the middle and OFF at its right, built at BOTH (`Ctl_CabinLights`; the tubes are `Lamp_Left`, `Lamp_Right`) | documented (two, and that the left could be lit alone; the switch and its legends; that it was at BOTH); estimated (where they hang; which legend is the middle position: the figure writes L.H. ONLY under the switch, as it writes RETRO HEAT's OFF under its) | MR-4 Results, Figure 2-3; "cabin lights are both" (the same, p. 45). The fitting is SEDR 104 of December 1959's (10-44, 10-47: capsules 2 to 8) and of 1962's (10-19). Nothing throws the switch yet: this flight has no cabin to sit in |
-| Pilot | the Mark IV suit as modelled for Shepard, with the tag reading V. I. GRISSOM and a convex mirror 5.2 in across its rim on his chest | documented (the mirror: *This New Ocean*, p. 368); estimated (its size: NASA S61-03698, where it looks nearer 6 in, made a little smaller to lie between the model's shoulder straps; the tag's initials, which the photograph hides) | |
+| Pilot | Grissom in the suit of 21 July 1961 (`mark_iv_suit.MR_4`): his stature, the parachute harness with its pads and V-rings, the 5 in convex mirror hung on it, two microphones, wrist rings, the neck dam. Without the helmet's lead, and without the harness's leg straps | documented (the mirror: *This New Ocean*, p. 368; the rest: mark-iv-suit.md, "5 May and 21 July 1961"); estimated (that the lead was plugged in and out of sight; the leg straps left off, which the folded thighs lie over) | mark-iv-suit.md, "On the couch" |
+| Couch straps over him | the chest strap 15 cm nearer his feet than No. 7's, clear of the mirror, the harness's own chest strap and the tie-down's buckle; the shoulder straps 10.5 cm off the middle (No. 7's 9), clear of the mirror's rim, over the mirror's tabs | estimated | a strap is not laid across a mirror; where the real ones ran with it there was not found |
+| Hand controller and abort handle | under his palms, which puts them 8.4 mm from where No. 7's stand under Shepard's | estimated | both; mark-iv-suit.md, "On the couch" |
 | Survival kit | on the left wall | documented | *This New Ocean*, p. 369: "on a shelf ... near the astronaut's left arm" |
 
 ## Parts in the model
@@ -191,16 +245,18 @@ capsule's stays 41.5 from its own photographs).
   only from capsule 7 as it is kept today is left out: the coiled cord on the left wall, the wiring
   down from the fuse panel, and the camera beside the pilot's head (the chest mirror was there so
   that one camera would do).
-- **The pilot in the cabin is Shepard's figure with the name changed and the mirror added.** The
-  wrist rings, the parachute harness and the new microphones are not on him. They are on Grissom
-  standing (the flight's crew model), whose suit can be seated here in his place: mark-iv-suit.md,
-  "On the couch". The mirror itself was 5 in across (NASA's caption to 61-MR4-79) in a rim of about
-  6 in: the cabin's is 5.2 in across its rim.
+- **The pilot's harness stops at his hips.** Its leg straps and the tie-down's run to the fork are left
+  off the seated figure (they lay in the crease of his lap, under the thighs), and the helmet's lead,
+  plugged in on the couch, is not run anywhere. The couch's lap strap rides over the suit's hose inlet
+  on his left, as No. 7's does.
 - **The panel's faces are capsule 7's**, and the instrument with two needles is blank.
 - **The rate command system is not modelled** beyond its switch and handle on the console.
-- **The periscope's door opens to an angle of ours** (105°), each motion takes four seconds, and the objective comes out
+- **The periscope's door opens as far as the model's linkage takes it** (109°), and the objective comes out
   5.65 in along the last run of the periscope's tube in the cabin (`SCOPE_TUBE`, the cabin's estimate), 4° from square to
-  the skin. The receptacle is sunk 0.95 in under the shut door.
+  the skin. The receptacle is sunk 0.95 in under the shut door. No latch, seal, motor or roller guide is drawn. This
+  capsule's RETRACT SCOPE telelight ("if the periscope does not retract 40 seconds after retro-package separation,
+  the RETRACT SCOPE telelight will go on": SEDR 104, 12-7) and its AUTO, MAN switch are on the console and do nothing:
+  the flight has no flight deck yet. The ratchet handle is modelled (`Ctl_PeriscopeHandle`), as No. 7's is.
 - **The clamp ring's bolt covers** are half an egg each; the hinge is not modelled.
 - **No mass properties, no trajectory.** The flight cannot be flown yet: see the flight's README.
 - **Its levels of detail change at the viewer's own distances.** They have not been measured for

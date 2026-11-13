@@ -380,6 +380,9 @@ def build() -> str:
     if interior():  # the two ports go right through structure, pressure vessel and lining (their plates are made with the hole)
         for t, z in PORTHOLES:
             bore(("Afterbody_Structure", "CrewCabin_PressureVessel", "CrewCabin_Lining"), CONE.frame(t, z), mercury_cabin.PORT_BORE * IN, 3.0 * IN)
+    # the periscope's lower housing comes in through the pressure vessel (and the lining, where there is one) under its door
+    scope = mercury_capsule.ScopeWorks(SCOPE_DOOR, SCOPE_Z, SCOPE_TUBE)
+    mercury_capsule.periscope_mouth(("CrewCabin_PressureVessel", *(("CrewCabin_Lining",) if interior() else ())), scope)
     mercury_capsule.build_recovery_compartment(M)
     mercury_capsule.build_antenna_canister(M)
     mercury_capsule.build_escape_tower(M)
@@ -388,8 +391,8 @@ def build() -> str:
     turn = mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
     if where:
         report(where, turn)
-    out = mercury_capsule.scope_axis(SCOPE_Z, SCOPE_TUBE)[1]
-    print(f"mr-3 periscope door: {mercury_capsule.periscope_hinge(SCOPE_DOOR, (HATCH[0] + HATCH[1]) / 2, out)}")
+    # (the periscope's door, cartridge and link: each one's motion into its node, now that the capsule stands as it will)
+    mercury_capsule.periscope_run(scope, turn)
     redstone_mrlv.build(Z_BOOSTER_BASE, font)
     mark_shells(SHELLS + tuple(THING_SHELLS) + mercury_cabin.WALL_FIT + redstone_mrlv.SHELLS)
     return f"{(Z_TOP - Z_BOOSTER_BASE) * IN:.3f} m tall on the pad, spacecraft {(Z_TOP - Z_RETRO_BOTTOM) * IN:.3f} m"
@@ -437,6 +440,31 @@ if __name__ == "__main__":
                 (0, 0, 0),
                 0,
                 dict(seat="Seat_Pilot", look=(0, 50), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            (
+                "cabin-down.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(0, -55), lens=14, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            # the pilot in his couch with the cabin taken away: from his right, from his left, from over his chest, from his feet
+            *(
+                (
+                    f"pilot-{name}.png",
+                    "Seat_Pilot",
+                    2.6,
+                    dict(
+                        azimuth=az, elevation=el, lens=50, only=("CrewCabin_Pilot", "CrewCabin_Couch", "CrewCabin_Straps", "Ctl_"), res=(1500, 1100)
+                    ),
+                )
+                for name, az, el in (
+                    ("right", 0, 8),
+                    ("left", 180, 8),
+                    ("chest", -90, 12),
+                    ("above", -90, 62),
+                    ("feet", 90, 25),
+                    ("quarter", -45, 30),
+                )
             ),
         ],
     )
