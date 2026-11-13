@@ -228,6 +228,14 @@ clock.listen(() => {
 
 /** True while the cutaway is open only because an inside part was chosen, not because it was asked for. */
 let autoCut = false;
+/** Open or close the cutaway as if its switch had been worked: asked for by hand, so it stays (and the switch shows it). */
+function cut(on: boolean): void {
+  ui.setCutaway(on);
+  if (stage.cutaway !== on) {
+    autoCut = false;
+    stage.setCutaway(on); // (no switch on the page just now to work it through)
+  }
+}
 
 /** Drift round whatever was just chosen, unless the user has said not to. */
 /** Auto-orbit, unless it is switched off; and not while a part is chosen, which is flown to and held in view (the switch is as it was). */
@@ -357,8 +365,34 @@ window.addEventListener('keydown', (e) => {
   }
 });
 // A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
-stage.onSpot = (page, point, floor) => {
+stage.onSpot = (page, point, floor, on) => {
   if (stage.aboard()) return; // (from the couch there is nowhere to walk from or fly to: the view is the pilot's own)
+  // Flying it, there is nobody to get out and walk (no flight here has an EVA), and a spot on the ground or the pad is not
+  // somewhere the view can be sent while it is the vehicle's. What is offered is on the vehicle: what the part under the
+  // pointer can be told to do now (Part.commands), and a look at it, which goes with the vehicle.
+  if (cockpit.active) {
+    // (something it has let go, falling beside it: the view can go with that instead, all the way down)
+    if (on.shed) {
+      const { drop, name } = on.shed;
+      ui.menu(page.x, page.y, [{ label: `Follow the ${name.toLowerCase()}`, run: () => stage.followShed(drop) }]);
+      return;
+    }
+    const spot = on.craft;
+    if (!spot) return;
+    const part = flight.models.find((m) => m.id === flight.flies?.model)?.parts.find((p) => p.node === on.node);
+    ui.menu(page.x, page.y, [
+      ...(part?.commands ?? [])
+        .filter((c) => cockpit.can(c.ask))
+        // (a mechanism worked by hand is offered by where it would now go: out, or back in)
+        .map((c) => ({ label: c.back && cockpit.headed(c.ask.slice(5)) ? c.back : c.label, run: () => cockpit.ask(c.ask) })),
+      { label: part ? `Look at the ${part.name.toLowerCase()}` : 'Look at this', run: () => stage.lookAtCraft(spot) },
+      // (its skin off, to see what is under it and how little room there is: the cutaway, which in flight takes the whole skin)
+      ...(current.cutaway && current.id === flight.flies?.model
+        ? [{ label: stage.cutaway ? 'Put the skin back' : 'Take the skin off', run: () => cut(!stage.cutaway) }]
+        : []),
+    ]);
+    return;
+  }
   const walker = flight.models.find((m) => m.walker);
   ui.menu(page.x, page.y, [
     ...(walker && floor
@@ -366,13 +400,13 @@ stage.onSpot = (page, point, floor) => {
       : []),
     {
       label: 'Look at this',
-      run: () => {
-        stage.visit(new Box3().setFromCenterAndSize(point, new Vector3(8, 4, 8)));
-      },
+      run: () => stage.lookAt(point),
     },
   ]);
 };
 stage.onVisit = orbit; // the view drifts round whatever was last chosen
+stage.onFollow = (name) =>
+  name ? ui.say(`Following the ${name.toLowerCase()}`, '0 goes back to the spacecraft') : ui.say('Back with the spacecraft', '');
 // (from a seat a window is one to look out of, by name, and its key; from outside, one to look in at)
 stage.onHoverWindow = (over, name) =>
   ui.hint(
@@ -604,6 +638,12 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
   // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
   const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  // Y takes the skin off whatever is on show that can be opened (ModelDef.cutaway), and puts it back: cut open where it
+  // stands, the whole skin off the vehicle in flight, from outside it or from its seat
+  if (e.key.toLowerCase() === 'y' && ready && !title.showing && !typing && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (current.cutaway && !stage.walk.active && !gallery.active) cut(!stage.cutaway);
+    return;
+  }
   if (e.key.toLowerCase() === 'v' && ready && !title.showing && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
     // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
     const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);

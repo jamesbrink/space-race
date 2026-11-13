@@ -27,11 +27,14 @@ export function verdict(state: VehicleState, results: Results, trajectory: Traje
     how = `Hit the ${landing.t < 30 ? 'ground' : 'surface'} with the booster at ${speed.toFixed(0)} m/s`;
     why.push(state.abortAt === null ? 'The spacecraft was never parted from it, and no abort was called.' : '');
   } else if (state.mainAt !== null) {
-    how = `Down under the main parachute at ${landing.vertical.toFixed(1)} m/s`;
+    how = state.torn.main
+      ? `Hit the sea at ${landing.vertical.toFixed(0)} m/s under what was left of the main parachute`
+      : `Down under the main parachute at ${landing.vertical.toFixed(1)} m/s`;
+    if (state.torn.main) why.push('The main parachute had torn.');
     if (!state.shed.retropack) why.push('The retropack was still on: it came down heavier, and faster, than the record’s landing.');
     if (state.drogueAt === null && state.abortAt === null) why.push('The drogue was never out: the main opened without it.');
   } else if (state.drogueAt !== null) {
-    how = `Hit the sea at ${landing.vertical.toFixed(0)} m/s under the drogue alone`;
+    how = `Hit the sea at ${landing.vertical.toFixed(0)} m/s under ${state.torn.drogue ? 'what was left of the drogue' : 'the drogue alone'}`;
     why.push('The main parachute was never deployed.');
   } else {
     how = `Hit the sea at ${landing.vertical.toFixed(0)} m/s`;

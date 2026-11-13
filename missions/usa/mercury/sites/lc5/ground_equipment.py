@@ -13,6 +13,10 @@ an orange tank lying behind it, the taller with a grey switch box on its face, t
 it and a long white tank on a trailer behind; a drum painted in orange and black chevrons; tripod
 cameras, lattice camera towers, and floodlight poles with a crossarm carrying two lamps. All are
 placed off the rails' corridor and off the hatch side, where the cherry picker stood; all estimated.
+
+Dated (sitelib.stood; ../lc-5.md, "What stood when"): from July 1961 the shower stands beside the structure's base
+through a count and the transfer van NASA TV No 1 beside it, as the Fort Hays State collection's photographs of
+MR-4's counts have them; the packing case beside the shower is May's alone.
 """
 
 from __future__ import annotations
@@ -55,6 +59,11 @@ FLOOD_POLES = ((-104.0, -62.0), (-104.0, 62.0), (-62.0, -104.0), (62.0, -104.0),
 FLOOD_HEIGHT = 40.0
 CAMERA_TOWERS = ((-72.0, -38.0, 62.0), (-58.0, 78.0, 50.0))  # x, y, height
 TRIPODS = ((-40.0, -30.0), (-45.0, 25.0), (30.0, -45.0), (-25.0, -55.0))
+SHOWER_STOWED = (-58.0, -91.0)  # the emergency shower at the pad's north edge, where it stood once stowed for launch
+SHOWER_SERVICE = (18.0, -3.5)  # and through a count: beside the structure's base on the hatch side, by the booster's tail (estimated)
+# The transfer van NASA TV No 1 as it stood on a launch morning (FHSU items 263 and 540): beside the structure's base on the
+# hatch side, its rear toward the launcher and its tractor toward the spare parts trailer. x from, x to; its rear; its front.
+VAN = (20.0, 28.0, 14.0, 40.0)
 
 
 def build(parts: Parts) -> None:
@@ -425,7 +434,7 @@ def furniture(parts: Parts) -> None:
         "Emergency shower on its cart",
         since="1961-05-02",
         confidence="documented",
-        source="KSC-61-4457 (2 May 1961); GPN-2000-001006. Not looked for in MR-4's photographs",
+        source="KSC-61-4457 (2 May 1961); GPN-2000-001006; FHSU items 263, 540 and 449 (6, 19 and 21 July 1961)",
     )
     stood(
         "Trailer NASA SP-No 1",
@@ -433,7 +442,19 @@ def furniture(parts: Parts) -> None:
         confidence="documented",
         source="S61-03158 (MR-3 on the pad at night); a white NASA trailer is beside the structure in July too (F16_017)",
     )
-    sx, sy = -58.0, -91.0
+    sx, sy = SHOWER_STOWED
+    # Through a count it stood connected beside the structure's base on the west (hatch) side, by the booster's tail,
+    # until it was disconnected and stowed for launch at T-85 (TM X-53107 pp. 7-23 and 7-27: "Reconnect safety shower on
+    # west side", "Disconnect safety shower and stow for launch"). July's photographs show it there; May's show it only
+    # stowed at the pad's edge, with the structure gone, so May's pad keeps it there.
+    if stood(
+        "Emergency shower beside the structure's base through the count, until T-85",
+        since="1961-07",
+        confidence="documented",
+        source="FHSU items 263 (6 July 1961), 540 (19 July) and 449 (21 July, NASA 61-MR4-83); TM X-53107 pp. 7-23, 7-27. "
+        "Its place there is estimated",
+    ):
+        sx, sy = SHOWER_SERVICE
     sh = "GroundEquipment_Shower"
     parts.node(sh, g, (sx, sy, 0.0), label="Emergency shower")
     white, dark, red, ink = parts(sh, "sign"), parts(sh, "chassis", True), parts(sh, "signred"), parts(sh, "black/lettering")
@@ -477,14 +498,20 @@ def furniture(parts: Parts) -> None:
         )
 
     # ---- a packing case beside it (GPN-2000-001006)
-    cs = "GroundEquipment_Case"
-    parts.node(cs, g, (-44.25, -92.85, 0.0), label="Packing case")
-    wood = parts(cs, "plank")
-    box(wood, (-48.0, -94.5, 0.0), (-40.5, -91.2, 2.7))
-    if fine():
-        for x in (-47.6, -44.25, -40.9):
-            box(wood, (x - 0.2, -94.58, 0.02), (x + 0.2, -91.12, 2.78))
-    box(wood, (-46.0, -93.8, 2.7), (-43.8, -92.2, 3.9))
+    if stood(
+        "Packing case beside the shower at the pad's edge",
+        until="1961-05",
+        confidence="documented",
+        source="GPN-2000-001006 (MR-3, May 1961); nothing stands beside the shower in FHSU items 369, 540 or 449 (7, 19 and 21 July 1961)",
+    ):
+        cs = "GroundEquipment_Case"
+        parts.node(cs, g, (-44.25, -92.85, 0.0), label="Packing case")
+        wood = parts(cs, "plank")
+        box(wood, (-48.0, -94.5, 0.0), (-40.5, -91.2, 2.7))
+        if fine():
+            for x in (-47.6, -44.25, -40.9):
+                box(wood, (x - 0.2, -94.58, 0.02), (x + 0.2, -91.12, 2.78))
+        box(wood, (-46.0, -93.8, 2.7), (-43.8, -92.2, 3.9))
 
     # ---- DANGER boards on stands by the cherry picker, and a striped barricade at the pad's corner
     white, dark, red, ink = parts(g, "sign"), parts(g, "chassis", True), parts(g, "signred"), parts(g, "black/lettering")
@@ -637,6 +664,99 @@ def furniture(parts: Parts) -> None:
             chain.tube(P(97.6, y, 0.45), P(101.2, y, 1.3), 0.03 * FT, 6)
             radius, base = truck.tyre[0] * 0.0254, truck.wheelbase * 0.0254  # what flight.ts needs for the drive
             print(f"  GroundEquipment_Tow{k}: wheel radius {radius:.3f} m, wheelbase {base:.3f} m, {built['triangles']:,} triangles")
+
+    if stood(
+        "Transfer van NASA TV No 1 beside the structure's base as the pilot goes aboard",
+        since="1961-07",
+        confidence="documented",
+        source="FHSU items 263 (LOD 61-6234, 6 July 1961) and 540 (19 July): the van and where it parked; MR-4 Results pp. 26 and 50: he "
+        "came in it at 03:55 on 21 July. That it parked there on the 21st is estimated. Where it parked in May is not recorded",
+    ):
+        transfer_van(parts)
+
+
+def transfer_van(parts: Parts) -> None:
+    """The transfer van: the white van semi-trailer lettered NASA TV No 1 that brought the pilot from Hangar S, behind
+    a white M275 tractor (FHSU items 263, 265 and 407, 6 and 7 July 1961; item 540, 19 July). Documented by those
+    photographs: that it parked beside the structure's base on the hatch side with its rear toward the launcher and
+    the emergency shower, its tractor toward the spare parts trailer; its lettering, with a small window behind it on
+    the right side; a louvred panel forward of that; a door at the rear. Estimated: every size (scaled against the
+    tractor, whose dimensions are the Army manual's), the door's steps, the running gear. Its roof's rounded nose, the
+    unit on its roof and its side doors are not built, and it is not gone into: what it held is known in kind (a
+    recorder for the pilot's sensors, his ventilation: MR-4 Results p. 26), not in layout, so its door is built shut
+    and its window dark. Its own node, origin under the middle of its bogie, so that it can be driven away."""
+    g = "GroundEquipment"
+    font = srlib.load_font()
+    x0, x1, y0, y1 = VAN
+    xm = (x0 + x1) / 2
+    floor, roof = 4.75, 12.6  # the floor rides over the tractor's fifth wheel, 52 in up
+    bogie = y0 + 4.55
+    tv = "GroundEquipment_TransferVan"
+    parts.node(tv, g, (xm, bogie, 0.0), label="Transfer van, NASA TV No 1")
+    van, frame, ink = parts(tv, "trailer/tv"), parts(tv, "chassis/tvframe"), parts(tv, "black/tvlettering")
+    sides = ring([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], 0.2)
+    door, pane = (2.5, 5.5, floor, floor + 6.6), (2.4, 4.4, 7.7, 10.5)  # in the rear wall; in the right side, near the rear
+    for i, w in enumerate(sides):
+        w.build(van, floor - 0.05, roof, [door] if i == 0 else [pane] if i == 1 else [])
+    wall_door(parts, f"{g}_TransferVanDoor", tv, sides[0], *door, mat="grey", works=False)
+    window(parts, tv, sides[1], *pane, pane="void")
+    box(parts(tv, "chassis/tvfloor"), (x0 + 0.1, y0 + 0.1, floor - 0.35), (x1 - 0.1, y1 - 0.1, floor - 0.06))
+    box(parts(tv, "trailer/tvroof"), (x0 - 0.1, y0 - 0.1, roof), (x1 + 0.1, y1 + 0.1, roof + 0.25))
+    # the lettering on its right side, forward of the window, and the louvred panel forward of that
+    lettering(ink, "NASA", 1.1, (x1 + 0.012, y0 + 8.6, 9.45), (0, 1, 0), (0, 0, 1), font)
+    lettering(ink, "TV No 1", 0.85, (x1 + 0.012, y0 + 8.6, 7.95), (0, 1, 0), (0, 0, 1), font)
+    vent, slat = parts(tv, "grey/tvvent"), parts(tv, "chassis/tvslats")
+    va, vb, vz0, vz1 = y0 + 16.8, y0 + 20.0, 7.0, 10.6
+    box(vent, (x1 - 0.05, va, vz0), (x1 + 0.05, vb, vz1))
+    for k in range(11):
+        z = vz0 + 0.28 + k * 0.3
+        box(slat, (x1 + 0.0, va + 0.15, z), (x1 + 0.11, vb - 0.15, z + 0.08))
+    if fine():
+        for y in (y0 + 0.04, y1 - 0.24):  # corner posts and a rub rail
+            for x in (x0 - 0.05, x1 - 0.15):
+                box(van, (x, y, floor - 0.03), (x + 0.2, y + 0.2, roof - 0.01))
+        for x in (x0 - 0.07, x1 - 0.02):
+            box(frame, (x, y0 + 0.3, floor + 0.1), (x + 0.09, y1 - 0.3, floor + 0.35))
+    # the frame under it, the bogie at the rear (each pair of tyres its own node on its hub, to roll), the landing legs wound up
+    for s in (-1, 1):
+        box(frame, (xm + s * 1.6 - 0.15, y0 + 0.5, 3.45), (xm + s * 1.6 + 0.15, y1 - 9.5, floor - 0.37))
+        beam(frame, (xm + s * 2.6, y1 - 11.0, 2.3), (xm + s * 2.6, y1 - 11.0, floor - 0.37), 0.35)
+        box(frame, (xm + s * 2.6 - 0.5, y1 - 11.5, 2.2), (xm + s * 2.6 + 0.5, y1 - 10.5, 2.32))
+    k = 0
+    for y in (bogie - 1.95, bogie + 1.95):
+        for s in (-1, 1):
+            k += 1
+            xa, xb = sorted((xm + s * 2.3, xm + s * 3.9))
+            wheel = f"{tv}_Wheel_{k}"
+            parts.node(wheel, tv, ((xa + xb) / 2, y, 1.55))
+            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, 16)
+            parts(wheel, "chassis", True).tube(P(xa - 0.03, y, 1.55), P(xb + 0.03, y, 1.55), 0.8 * FT, 10)
+        box(parts(tv, "chassis/tvaxles"), (xm - 2.3, y - 0.2, 1.35), (xm + 2.3, y + 0.2, 1.75))
+        for s in (-1, 1):  # a hanger from each axle up to the frame
+            box(frame, (xm + s * 1.6 - 0.12, y - 0.3, 1.76), (xm + s * 1.6 + 0.12, y + 0.3, 3.44))
+    # the steps down from its rear door: their own node, hinged at the top, folded up before it is moved (estimated)
+    st = "GroundEquipment_TransferVanSteps"
+    top = floor - 0.4
+    parts.node(st, tv, (xm, y0 - 0.1, top))
+    for j in range(6):
+        box(parts(st, "deck"), (xm - 1.5, y0 - 0.1 - (j + 1) * 0.85, top - j * 0.72 - 0.1), (xm + 1.5, y0 - 0.1 - j * 0.85, top - j * 0.72))
+    for x in (xm - 1.5, xm + 1.5):
+        beam(parts(st, "chassis"), (x, y0 - 0.2, top - 0.1), (x, y0 - 0.1 - 6 * 0.85, 0.0), 0.14)
+    # Coupled to it, the white tractor of the photographs (NASA, plate NA-8561): tools/blender/vehicles.py's M275, built
+    # facing its own +X under a node turned to face the way the van does (+Y). Its fifth wheel is 4 in ahead of the
+    # middle of its tandem, under the van's kingpin, 3 ft behind the van's front.
+    king = 4.0 / 12
+    bay = parts.node("GroundEquipment_VanBay", g, (xm, y1 - 3.0 - king, 0.0))
+    bay.rotation_euler = (0.0, 0.0, math.pi / 2)
+    tractor = cars.m275_tractor(
+        "white",
+        about="The white Army M275 2-1/2-ton 6x6 truck tractor, lettered for NASA, that photographs of 6 and 7 July 1961 show towing "
+        "the transfer van to pad 5. Its dimensions are the Army manual's; its shape is read off the photographs.",
+    )
+    built = tractor.build("GroundEquipment_VanTractor", bay, (0.0, 0.0, 0.0), 0.0)
+    radius, base = tractor.tyre[0] * 0.0254, tractor.wheelbase * 0.0254
+    print(f"  GroundEquipment_VanTractor: wheel radius {radius:.3f} m, wheelbase {base:.3f} m, {built['triangles']:,} triangles")
+    print(f"  GroundEquipment_TransferVan: bogie to kingpin {(y1 - 3.0 - bogie) * FT:.3f} m, tyre radius {1.55 * FT:.3f} m")
 
 
 FOOT_DEPTH = 2.5

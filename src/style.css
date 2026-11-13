@@ -196,17 +196,24 @@ body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }
 /* --- the wheel: a few things to do with one thing, set round a centre (wheel.ts) ---- */
 .wheel { position: absolute; inset: 0; z-index: 5; background: radial-gradient(circle at center, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.12) 46%, transparent 70%); }
 .wheel-title { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 118px; text-align: center; font: 600 13px/1.25 var(--sans); color: var(--ink); text-shadow: 0 0 6px #000; pointer-events: none; }
-.wheel-hint { position: absolute; left: 50%; top: calc(50% + 158px); transform: translateX(-50%); margin: 0; padding: 4px 10px; white-space: nowrap; font: 10px/1.6 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); background: rgba(10, 11, 14, 0.6); border-radius: 2px; pointer-events: none; }
+.wheel-hint { position: absolute; left: 50%; top: calc(50% + var(--reach, 142px) + 16px); transform: translateX(-50%); margin: 0; padding: 4px 10px; white-space: nowrap; font: 10px/1.6 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); background: rgba(10, 11, 14, 0.6); border-radius: 2px; pointer-events: none; }
 .wheel-hint kbd { min-width: 0; height: 16px; border-bottom-width: 1px; }
 .wheel-hint .touch { display: none; }
 @media (hover: none), (pointer: coarse) { .wheel-hint .keys { display: none; } .wheel-hint .touch { display: inline; } }
-.wheel-ring { position: absolute; left: 50%; top: 50%; width: 0; height: 0; --r: 124px; }
-.wheel-ring button { position: absolute; left: calc(var(--x) * var(--r)); top: calc(var(--y) * var(--r) * 0.82); transform: translate(-50%, -50%); display: flex; align-items: center; gap: 8px; width: max-content; max-width: 128px; min-height: 44px; padding: 8px 12px 8px 8px;
+/* (each choice is put where wheel.ts `spread` finds room for it: none ever lies on another) */
+.wheel-ring { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.wheel-ring button { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 8px; width: max-content; max-width: 128px; min-height: 44px; padding: 8px 12px 8px 8px;
   background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); border: 1px solid var(--faint); border-radius: 3px;
   font: 11px/1.3 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); text-align: left; }
 .wheel-ring button.hot { color: #0b0a07; background: var(--amber); border-color: var(--amber); }
 .wheel-ring button.hot kbd { color: #0b0a07; border-color: #0b0a07; }
 .wheel-ring button:focus-visible { outline-offset: 2px; }
+/* no room for a ring of them (a narrow window, many long names): a list down the middle */
+.wheel.listed { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 10px; }
+.wheel.listed .wheel-title, .wheel.listed .wheel-hint { position: static; transform: none; width: auto; margin: 0; }
+.wheel.listed .wheel-ring { position: static; width: min(300px, 100%); height: auto; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
+.wheel.listed .wheel-ring button { position: static; transform: none; width: 100%; max-width: none; }
+.wheel.listed::after { display: none; }
 /* where the captured mouse has been pushed to */
 .wheel::after { content: ''; position: absolute; left: calc(50% + var(--px, 0px)); top: calc(50% + var(--py, 0px)); width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--amber); opacity: 0; pointer-events: none; }
 .wheel.pushed::after { opacity: 0.9; }
@@ -377,7 +384,6 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
   input[type='range']::-webkit-slider-thumb { width: 5px; height: 25px; margin-top: -12px; }
   .walkbar { padding-left: 12px; gap: 10px; font-size: 10px; }
   .walk-card { top: 84px; left: 10px; right: 10px; width: auto; max-height: 38vh; }
-  .wheel-ring { --r: 108px; }
   .wheel-ring button { max-width: 112px; }
   .parts button { padding: 13px 16px; }
   .buttons { justify-content: flex-start; width: 100%; gap: 6px 10px; }

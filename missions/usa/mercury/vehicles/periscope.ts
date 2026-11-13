@@ -20,8 +20,8 @@ import type { MechanismDef, Move } from '../../../../src/types';
  *
  * By hand (the same manual, 12-16, and SEDR 109-7, 2-19): a ratchet handle on the upper housing drove the cartridge
  * through a clutch, either way, with the motor's switch-fuse off; with the fuse restored the motor took it to wherever
- * its relays then had it. Here the pilot of a flight flown by hand sends it out or in (the handle in the cabin, Y, its
- * switch on the flight deck) and it stays there until the programme's next event; with the sequencer off, which stands
+ * its relays then had it. Here the pilot of a flight flown by hand sends it out or in (the handle in the cabin, a
+ * right click on the afterbody, its switch among the flight deck's keys) and it stays there until the programme's next event; with the sequencer off, which stands
  * for the fuse, it moves only when told, and switched back on it goes to where the programme has it.
  */
 

@@ -72,7 +72,8 @@ def build(parts: Parts) -> None:
         "Pad 6's square-topped gantry, at the pad's south edge",
         since="1959",
         confidence="estimated",
-        source="A Noble Endeavor p. 10: on pad 6 in 1959; the museum: 8 March 1961; FHSU F19_008: July 1961. Where on the track is not recorded",
+        source="A Noble Endeavor p. 10: on pad 6 in 1959; the museum: 8 March 1961; FHSU F19_008: 7 July 1961; FHSU item 331: behind "
+        "MR-4 at liftoff, 21 July. Where on the track is not recorded",
     ):
         gantry(parts)
 

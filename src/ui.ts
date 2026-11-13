@@ -138,6 +138,7 @@ function legendMarkup(f: Flight): string {
   const camera = (reset: string): LegendRow[] => [
     [['C'], 'next camera'],
     [['0'], reset],
+    [['Y'], 'skin off · on'],
     [['H'], 'hide panels'],
   ];
   const defs: Record<string, LegendDef> = {
@@ -184,7 +185,15 @@ function legendMarkup(f: Flight): string {
         ['pair', ['R', 'F'], 'zoom'],
       ],
       main: [['drag', 'turn round it'], ['scroll · pinch', 'closer · further'], ...camera('centre the vehicle')],
-      more: rest([]),
+      more: rest([
+        [
+          'Mouse',
+          [
+            ['right-click a part', 'what it can do · look at it · its skin off'],
+            ['right-click a stage that has left', 'follow it'],
+          ],
+        ],
+      ]),
     },
     aboard: {
       pads: [
@@ -721,7 +730,7 @@ export class Ui {
       ]
         .map((v) => `<button data-view="${v.id}" aria-pressed="false" title="View: ${esc(v.label)}">${esc(v.label)}</button>`)
         .join('')}</span></span>` +
-      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside">Cutaway</button>' : ''}` +
+      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (Y)">Cutaway</button>' : ''}` +
       `<button data-camera title="${CAMERA_LABEL[this.cameraMode]}: the next camera (C)">${CAMERA_ICON}<span>${cameraName(this.cameraMode)}</span></button>` +
       `<button data-rotate class="switch" aria-pressed="${rotating}" title="The view drifts round what was last chosen">Auto-orbit</button>` +
       `<button data-cel class="switch" aria-pressed="${prefs.get('cel')}" title="Draw the scene as a cel-shaded drawing (T)">Cel shading</button>` +

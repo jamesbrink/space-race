@@ -12,7 +12,7 @@ import { Land, type LandSpec, type Palette } from './land';
  *
  * The pad, the flame pit and the launch system are not here: they are modelled in Blender, in the
  * same frame (sites/site1/). The land has the pit's outline cut out of it, where the pit's own model
- * is the ground, and the tracks that came onto the platform painted on it. What is documented and
+ * is the ground, and the tracks that came onto the platform and the roads painted on it. What is documented and
  * what is estimated is in missions/ussr/vostok/sites/site-1.md, "The land". In short: the pit's
  * rim and the tracks are today's map (OpenStreetMap), which the CIA's photographs of 1957 agree
  * with; the ground's colours, what grows on it and how thick are estimated, from photographs of
@@ -23,7 +23,14 @@ import { Land, type LandSpec, type Palette } from './land';
 const RIM: [number, number][] = [
   [-18, 59],
   [-15, 65.5],
-  [-6, 76],
+  // (the cut that ran north from the rim in 1959, filled today: PIC/JR-2/60 Figure 5)
+  [-13.5, 78],
+  [-10, 93],
+  [-4.5, 108],
+  [0, 114],
+  [3.5, 108],
+  [5, 96],
+  [4.5, 82],
   [18, 89.5],
   [29.5, 92.5],
   [44, 91],
@@ -54,6 +61,13 @@ const RIM: [number, number][] = [
  * from the west, on which the erector brought the rocket (way 37547653, its last 2.6 km), and the four spurs beside it
  * (ways 172441851, 172441854, 172441876, 172441879). HTA/JR-4/58 counts five spurs onto the pad in August 1957. The
  * other lines on today's map round the site are not drawn: when each was laid is not known to us.
+ *
+ * Near the platform they are not quite the map's. The map has its centre track 3.0 m north of the middle of its outline
+ * of the pad, which is this frame's origin; the rocket's axis was on that track, so the track is brought onto the axis
+ * over its last 160 m (the erector is drawn off along it), and the three beside it are brought, over their last 60 m,
+ * to where the CIA's plan of March 1961 has them on the platform (PIC/JR-2/61 Figure 1: sites/site1/deck.py, which
+ * lays the rails there), each within 1.5 m of the map's place measured from its own centre track. Their west ends are
+ * moved to stay on the lines they branch from. Keep in step with sites/site1/place.py (CENTRE_TRACK, SPURS).
  */
 const RAILS: [number, number][][] = [
   [
@@ -70,23 +84,27 @@ const RAILS: [number, number][][] = [
     [-1492.0, 7.9],
     [-1464.7, 9.8],
     [-1400.7, 10.6],
-    [-25.8, 3.0],
+    [-160.0, 0.0],
+    [-25.8, 0.0],
   ],
   [
-    [-33.9, 17.6],
-    [-212.6, 16.9],
+    [15.0, 13.564],
+    [-60.0, 13.564],
+    [-212.6, 15.2],
   ],
   [
-    [-204.5, -5.5],
-    [-26.5, -6.4],
+    [-204.5, -5.9],
+    [-60.0, -8.321],
+    [-26.8, -8.321],
   ],
   [
-    [13.6, -10.8],
+    [10.9, -12.375],
+    [-60.0, -12.375],
     [-155.4, -10.1],
-    [-286.2, 3.7],
+    [-286.2, 1.1],
   ],
   [
-    [-330.6, 4.7],
+    [-330.6, 1.5],
     [-121.8, 25.7],
     [-39.8, 28.9],
   ],
@@ -95,6 +113,85 @@ const RAILS: [number, number][][] = [
 const SEGMENTS: [number, number, number, number][] = RAILS.flatMap((line) =>
   line.slice(1).map((b, i): [number, number, number, number] => [line[i]![0], -line[i]![1], b[0], -b[1]]),
 );
+
+/**
+ * The roads, metres east and north: painted on the land as the tracks are, since they lay flush with it. Their lines are
+ * today's (OpenStreetMap, simplified to two metres), each one a road on the CIA's line drawing of the area as it was in
+ * 1959 (PIC/JR-2/60 Figure 5): the road in from the south-west (way 54570611), the road round the pit and back past the
+ * command bunker (way 172571827), the road from the storage bunker south to the propellant shed (way 172441909, as far
+ * as the northern spur: the drawing shows no crossing of the tracks), and the short drives off them to the storage
+ * bunker's three bays, the check-out shop's gate and the gas receivers by the platform, which are ours. That they were
+ * concrete, and six metres wide, is estimated. Keep in step with sites/site1/place.py (ROADS), which keeps posts off them.
+ */
+const ROADS: [number, number][][] = [
+  [
+    [-1851.8, -774.8],
+    [-1504.9, -117.6],
+    [-1482.1, -88.6],
+    [-1461.7, -70.7],
+    [-1415.4, -42.7],
+    [-1366.9, -27.2],
+    [-1335.8, -23.2],
+    [-603.8, -25.3],
+    [-85.6, -22.6],
+    [-48.0, -20.5],
+  ],
+  [
+    [-85.6, -22.6],
+    [-81.0, -33.8],
+    [-86.8, -91.8],
+    [-81.0, -109.3],
+    [-69.5, -121.0],
+    [-38.7, -132.4],
+    [-9.4, -134.8],
+    [58.9, -135.0],
+    [86.3, -126.0],
+    [222.3, -45.9],
+    [230.8, -37.7],
+    [238.2, -25.0],
+    [242.7, -3.0],
+    [241.7, 9.2],
+    [235.5, 29.9],
+    [219.6, 48.7],
+    [152.3, 83.7],
+    [69.8, 120.8],
+    [46.2, 135.1],
+    [36.9, 154.0],
+    [34.2, 225.0],
+    [31.3, 233.5],
+    [21.4, 245.4],
+    [5.7, 250.2],
+    [-82.7, 249.4],
+    [-81.7, 199.6],
+    [-83.5, 34.0],
+  ],
+  [
+    [-82.0, 186.06],
+    [-57.7, 186.06],
+  ],
+  [
+    [-82.0, 207.4],
+    [-57.7, 207.4],
+  ],
+  [
+    [-82.4, 228.74],
+    [-57.7, 228.74],
+  ],
+  [
+    [-82.4, 230.3],
+    [-92.0, 230.3],
+  ],
+  // (off the road round the pit's tip onto the road down into the pit, which the pit's own model carries on: platform.py)
+  [
+    [242.4, 0.0],
+    [235.0, 0.0],
+  ],
+];
+const ROAD_SEGMENTS: [number, number, number, number][] = ROADS.flatMap((line) =>
+  line.slice(1).map((b, i): [number, number, number, number] => [line[i]![0], -line[i]![1], b[0], -b[1]]),
+);
+/** Half a road's width, metres (estimated). */
+const ROAD_HALF = 3;
 
 /** Half the platform and the abutment behind it, metres (sites/site1/site.py: 135 ft square; platform.py: 25 ft). */
 const HALF = (135 * 0.3048) / 2;
@@ -135,6 +232,7 @@ const glsl = (v: number) => v.toFixed(3);
 const SHARED = /* glsl */ `
   uniform vec2 uRim[${RIM.length}];
   uniform vec4 uRails[${SEGMENTS.length}];
+  uniform vec4 uRoads[${ROAD_SEGMENTS.length}];
   float segment(vec2 p, vec4 s) {
     vec2 a = s.xy, b = s.zw, ab = b - a;
     return length(p - a - ab * clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0));
@@ -155,6 +253,13 @@ const SHARED = /* glsl */ `
   float rail(vec2 p) {
     float best = 1e9;
     for (int i = 0; i < ${SEGMENTS.length}; i++) best = min(best, segment(p, uRails[i]));
+    return best;
+  }
+  // the nearest road's middle line, metres (nothing is asked past the box the roads lie in)
+  float road(vec2 p) {
+    if (p.x < -1880.0 || p.x > 270.0 || p.y < -280.0 || p.y > 800.0) return 1e9;
+    float best = 1e9;
+    for (int i = 0; i < ${ROAD_SEGMENTS.length}; i++) best = min(best, segment(p, uRoads[i]));
     return best;
   }
   // the platform and its abutment: metres outside them (negative on them)
@@ -198,10 +303,13 @@ const COVER = /* glsl */ `
     float made = 1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5));
     made = max(made, 1.0 - smoothstep(3.0, 9.0, rail(p)));
     made = max(made, 1.0 - smoothstep(-2.0, 12.0, -inPit(p) - 6.0 * noise2(p * 0.05, 35)));
+    float way = road(p);
+    made = max(made, 1.0 - smoothstep(${glsl(ROAD_HALF + 0.5)}, ${glsl(ROAD_HALF + 4)}, way));
     woody *= 1.0 - made;
     herb *= 1.0 - 0.8 * made;
-    // nothing grows on the platform or down in the pit
+    // nothing grows on the platform, down in the pit or on a road
     float none = max(1.0 - smoothstep(-1.0, 1.0, platform(p)), smoothstep(-1.0, 1.0, inPit(p)));
+    none = max(none, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 0.6)}, way));
     woody *= 1.0 - none;
     herb *= 1.0 - none;
     return vec4(woody, herb, clamp(1.0 - woody - herb, 0.0, 1.0), 0.5);
@@ -209,6 +317,7 @@ const COVER = /* glsl */ `
   vec4 coverB(vec2 p) {
     float worked = 1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5));
     worked = max(worked, 1.0 - smoothstep(2.0, 6.0, rail(p)));
+    worked = max(worked, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 3)}, road(p)));
     return vec4(worked, 0.0, 0.0, 0.0);
   }`;
 
@@ -225,13 +334,32 @@ const CANOPY = /* glsl */ `
 const OVERLAP = 3;
 
 /**
- * The site's own marks: the tracks' beds (grey stone ballast, sleepers, two rails at the Soviet gauge of 1,520 mm), and
- * the hole where the flame pit is. The rails are paint, not rails: a simplification (site-1.md).
+ * The site's own marks: the roads (concrete laid in slabs, a joint across every six metres and one down the middle), the
+ * tracks' beds (grey stone ballast, sleepers, two rails at the Soviet gauge, 1,524 mm in 1961), and the hole where the flame
+ * pit is. The rails are paint, not rails, except where they come up to the platform (the place's model: deck.py).
  */
 const PAINT = /* glsl */ `
   void paint(vec2 p, vec4 A, vec4 B, inout Ground g) {
     // (a little inside the rim, over the pit's own slope: OVERLAP)
     if (inPit(p) > ${glsl(OVERLAP)}) discard;
+    float way = road(p);
+    float paved = 1.0 - smoothstep(${glsl(ROAD_HALF - 0.08)}, ${glsl(ROAD_HALF + 0.08)}, way + 0.06 * (noise(vec3(p * 1.5, 30.0)) - 0.5));
+    if (paved > 0.0) {
+      vec3 slab = vec3(0.50, 0.48, 0.44) * (0.86 + 0.28 * mix(0.5, noise(vec3(p * 2.5, 31.0)), seen(0.4)));
+      // (the joints: how far along its own stretch of road, and the line down the middle)
+      float joint = 1.0 - smoothstep(0.02, 0.05, way);
+      for (int i = 0; i < ${ROAD_SEGMENTS.length}; i++) {
+        vec4 s = uRoads[i];
+        vec2 ab = s.zw - s.xy;
+        float t = dot(p - s.xy, ab) / dot(ab, ab);
+        if (t < 0.0 || t > 1.0 || segment(p, s) > ${glsl(ROAD_HALF)}) continue;
+        joint = max(joint, 1.0 - smoothstep(0.02, 0.05, abs(fract(t * length(ab) / 6.0) - 0.5) * 6.0));
+      }
+      slab = mix(slab, vec3(0.12, 0.115, 0.105), joint * seen(0.08));
+      g.albedo = mix(g.albedo, slab, paved);
+      g.rough = mix(g.rough, 0.92, paved);
+      g.bump = mix(g.bump, 0.004 * (noise(vec3(p * 9.0, 32.0)) - 0.5), paved);
+    }
     float d = rail(p);
     float bed = 1.0 - smoothstep(1.6, 2.1, d + 0.3 * (noise(vec3(p * 0.8, 20.0)) - 0.5));
     if (bed > 0.0) {
@@ -273,6 +401,7 @@ function landSpec(): LandSpec {
     uniforms: {
       uRim: { value: RIM.map(([x, y]) => new THREE.Vector2(x, y)) },
       uRails: { value: SEGMENTS.map((s) => new THREE.Vector4(...s)) },
+      uRoads: { value: ROAD_SEGMENTS.map((s) => new THREE.Vector4(...s)) },
     },
     palette: PALETTE,
   };

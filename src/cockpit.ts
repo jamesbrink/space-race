@@ -8,7 +8,7 @@ import { MISSES } from './sim/misses.ts';
 import { Sheds } from './sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
 import { verdict } from './sim/verdict.ts';
-import type { MechanismDef, SitedFlight } from './types';
+import type { Command, MechanismDef, SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
 import type { Clock } from './world/clock.ts';
 import { angleBetween, DEG, siteFrame } from './world/frames.ts';
@@ -62,6 +62,8 @@ const GUARD = 1.5;
 /** How fast a held key leans the programme guidance flies, radians a second, and the most it may lean. */
 const TRIM = 3 * DEG;
 const TRIM_MOST = 30 * DEG;
+/** How a command that works a mechanism by hand begins (types.ts `Command`): the mechanism's id follows. */
+const WORK = 'work:';
 /** An abort is asked for twice: the second press within this many seconds of the first. */
 const ABORT_ARMED = 2;
 /** A supply under this much of what it held is shown amber. */
@@ -129,11 +131,11 @@ export class Cockpit {
     this.vehicle = tr?.body && flight.flies ? vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value) : null;
     this.flow = tr ? tr.engine.thrust.value / (G0 * tr.engine.isp.value) : 0;
     this.mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
-    // (each is a switch on the deck, lit while it is headed out; the first has the key)
+    // (each is a switch among the deck's keys, lit while it is headed out. It has no key: every letter is taken)
     const works = this.mechanisms
       .map(
-        (m, i) =>
-          `<button data-work="${m.id}" class="switch" aria-pressed="false" title="${m.name}: ${m.says[1].toLowerCase()} or ${m.says[0].toLowerCase()} by hand. It goes back to its programme at the programme's next event${i ? '' : ' (Y)'}">${i ? '' : '<kbd>Y</kbd>'}${m.name}</button>`,
+        (m) =>
+          `<button data-work="${m.id}" class="switch" aria-pressed="false" title="${m.name}: ${m.says[1].toLowerCase()} or ${m.says[0].toLowerCase()} by hand. It goes back to its programme at the programme's next event">${m.name}</button>`,
       )
       .join('');
 
@@ -180,6 +182,7 @@ export class Cockpit {
           <div><h4>Show</h4><p>
             <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (J)"><kbd>J</kbd>Path</button>
             <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (I)"><kbd>I</kbd>Navball</button>
+            <button data-press="y" title="The vehicle's skin off, to see what is inside it and how little room there is, and out of it all round; again puts it back (Y)"><kbd>Y</kbd>Skin off · on</button>
             <button data-press="o" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (O)"><kbd>O</kbd>Surface · orbit</button>
             <button data-press="k" title="While the engine burns under guidance: the path if guidance flies on to the record's cutoff, or if the engine were cut now (K)"><kbd>K</kbd>Path · to cutoff · cut now</button>
           </p></div>
@@ -574,6 +577,7 @@ export class Cockpit {
     if (state.shed.tower && !before.shed.tower) this.towerAt = state.t;
     if (state.shed.retropack && !before.shed.retropack) this.retropackAt = state.t;
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
+    run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
     const when = { tower: this.towerAt, separation: state.separation?.t ?? Infinity, retropack: this.retropackAt, ...run.out };
     run.dropped = this.flight.flies!.drops.map((d) => (d.on ? when[d.on] : Infinity));
     // an event asked for has happened: the hand lets go of it
@@ -618,15 +622,21 @@ export class Cockpit {
    */
   ask(what: string): void {
     if (what === 'abort' || what === 'next') return void this.command(what);
+    if (what.startsWith(WORK)) return void this.work(what.slice(WORK.length)); // (a mechanism worked by hand: types.ts `Command`)
     const s = this.state;
     if (!this.on || !s || s.landing || this.clock.t < s.t - TICK) return;
-    if (!['tower', 'separate', 'retro', 'retropack', 'drogue', 'main'].includes(what)) return;
-    this.hand[what as 'tower'] = true;
+    if (what === 'cutoff') {
+      // (the engine's own lever, where it has one: as Space does it)
+      if (!s.ignited || s.cutoff) return;
+      if (this.lever) this.setLever(0);
+      else this.hand.throttle = 0;
+    } else if (['tower', 'separate', 'retro', 'retropack', 'drogue', 'main'].includes(what)) this.hand[what as 'tower'] = true;
+    else return;
     if (!this.clock.running && s.ignited) this.clock.play(true);
   }
 
   /**
-   * A mechanism of the vehicle worked by hand (its control in the cabin, its switch on the deck, its key): sent the
+   * A mechanism of the vehicle worked by hand (its control in the cabin, its switch on the deck, its part's menu): sent the
    * other way from where it is headed, from this instant of the flight. Says where it is now sent, or null if there
    * is nothing to work (no such mechanism, no flight being flown, or the clock put back to look at what was flown).
    */
@@ -642,6 +652,13 @@ export class Cockpit {
     return mechanism.says[out ? 1 : 0];
   }
 
+  /** Where a mechanism is headed at this instant of the flight being flown: out (true) or in. Null: no such mechanism, or no flight. */
+  headed(id: string): boolean | null {
+    const mechanism = this.mechanisms.find((m) => m.id === id);
+    const s = this.state;
+    return mechanism && this.on && s ? sentBy(mechanism, s.t, this.hands.get(id), this.unsequenced) : null;
+  }
+
   /**
    * How far out a mechanism is at `t` of the flight being flown, 0 to 1: its programme, what the hands have told it
    * and the sequencer's being off, each heard at its instant (sim/mechanism.ts). Null: no such mechanism, or no flight.
@@ -650,6 +667,25 @@ export class Cockpit {
     const mechanism = this.mechanisms.find((m) => m.id === id);
     if (!mechanism || !this.on) return null;
     return travelAt(mechanism, t, this.hands.get(id), this.unsequenced);
+  }
+
+  /**
+   * Whether a step can be set off now (types.ts `Command`): the flight is being flown, at its own instant and not
+   * looked back at, and the simulator would hear the command (sim/vehicle.ts: no parachute past a tower, no
+   * retrorockets on a spacecraft still on its booster, nothing twice).
+   */
+  can(what: Command['ask']): boolean {
+    const s = this.state;
+    if (!this.on || !s || s.landing || s.held || this.clock.t < s.t - TICK) return false;
+    if (what.startsWith(WORK)) return this.mechanisms.some((m) => m.id === what.slice(WORK.length));
+    const alone = s.shed.booster;
+    if (what === 'cutoff') return s.ignited && !s.cutoff;
+    if (what === 'tower') return Boolean(this.flight.trajectory?.body?.tower) && !s.shed.tower;
+    if (what === 'separate') return !alone;
+    if (what === 'retro') return alone && s.retroAt === null && !s.shed.retropack;
+    if (what === 'retropack') return alone && !s.shed.retropack;
+    if (what === 'drogue') return alone && s.shed.tower && s.drogueAt === null && s.mainAt === null;
+    return alone && s.shed.tower && s.mainAt === null;
   }
 
   private command(what: string): void {
@@ -726,12 +762,6 @@ export class Cockpit {
       this.setLever(key === 'z' ? this.lever.most : this.lever.at + (key === 'arrowup' ? NOTCH : -NOTCH));
       e.preventDefault();
       e.stopPropagation();
-      return;
-    }
-    if (key === 'y' && this.mechanisms[0]) {
-      e.preventDefault();
-      e.stopPropagation();
-      this.work(this.mechanisms[0].id);
       return;
     }
     const what = (
@@ -953,14 +983,24 @@ export class Cockpit {
         ? ''
         : `<p class="cockpit-verdict${end.survivable ? '' : ' lost'}">${end.survivable ? 'Survivable.' : 'Not survivable.'} ${end.against}</p>`;
     // what the structure and the parachutes did not take (sim/loads.ts), and where what was let go came down (sim/shed.ts)
-    const { broke, torn } = this.state!;
+    const { broke, tore } = this.state!;
+    const names = { drogue: 'drogue', main: 'main parachute' } as const;
+    const tears = (['drogue', 'main'] as const).flatMap((which) => {
+      const tear = tore[which];
+      if (!tear) return [];
+      const out = which === 'drogue' ? this.state!.drogueAt : this.state!.mainAt;
+      // (torn as it came out, or by the air it was carried into afterwards)
+      const how =
+        tear.by === 'pull'
+          ? `the pull on its lines came to ${(tear.pull / 1000).toFixed(0)} kN`
+          : `${tear.t - (out ?? tear.t) < 0.02 ? 'let out in' : 'carried into'} ${(tear.q / 1000).toFixed(1)} kPa of dynamic pressure`;
+      return [`The ${names[which]} tore at T+${tear.t.toFixed(0)} s: ${how}, more than it can take.`];
+    });
     const lost = [
       broke
         ? `Broke up at T+${broke.t.toFixed(0)} s: bending load ${(100 * broke.load).toFixed(0)} per cent of the limit at ${(broke.q / 1000).toFixed(0)} kPa, ${broke.alpha.toFixed(0)} degrees off the wind.`
         : '',
-      torn.drogue || torn.main
-        ? `The ${torn.drogue && torn.main ? 'parachutes' : torn.drogue ? 'drogue' : 'main parachute'} tore: let out in more dynamic pressure than ${torn.drogue && torn.main ? 'they' : 'it'} can take.`
-        : '',
+      ...tears,
     ].filter(Boolean);
     const fell = (this.run.sheds?.all ?? []).map((body) => {
       const down = body.finish();

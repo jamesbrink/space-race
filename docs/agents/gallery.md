@@ -27,7 +27,8 @@ Every flight has the same three places, in the same order, and opens in the firs
   Addresses older than the places mean what they meant: `#<flight>/<model>` and a bare `#pad`,
   `#vehicle`, `#crew` (the first *listed* flight's: every tool and script uses them) are sections
   of the site. So no model may be called `gallery`, `site` or `fly`. The front page names nothing:
-  the first flight *by date* turns behind it, in its gallery.
+  the first *listed* flight shows itself behind it too (Freedom 7, the one that is whole: `flightFor`),
+  not the first by date, until Vostok 1's place is as whole.
 - **Loading follows the place.** Going into a flight fetches only what the gallery needs: the
   vehicle, in full. The site's models, scenery, globe and clouds are fetched when Launch site or
   Fly is first chosen, and kept.
@@ -120,7 +121,8 @@ is paper whichever was chosen. Brightnesses are a design fitted by eye.
 
 ## To look at it
 
-`/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7` or `/#ussr/vostok/vostok-1`. While developing, `/?fixture#test/fixture/vehicle-only`
+`/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7`, `/#ussr/vostok/vostok-1` or `/#ussr/vostok/vostok-2` (a flight
+that is only its vehicle so far: its Launch site and Fly say so). While developing, `/?fixture#test/fixture/vehicle-only`
 shows the flight that is only a vehicle (`tests/fixtures/vehicle-only`), through `only.ts`.
 `sr.gallery` is the handle; `sr.gallery.stage` its stage. `pnpm test:places` (`tools/places-test.mjs`, with `pnpm dev`
 running) goes between the places with slow loads and real keys and checks what is promised above. `tools/shot.mjs out.png

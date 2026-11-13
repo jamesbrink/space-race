@@ -89,6 +89,12 @@ browser's check below for the page):
   leaving the vehicle eases the chase pivot onto what is left and keeps a distance set by hand; a distance nobody set
   comes in with the pivot and never ahead of it, so what is left never goes further from the middle of the frame than
   it was as the stage left.
+- **The view can go with a stage that has left.** A right click on something the vehicle has let go offers to follow
+  it (`Stage.followShed`, by the ascent's drop): `Scene.craft()` then gives that piece (its nodes' bounds in the frame
+  it is carried in, measured once), the chase view takes it up afresh (`Cameras.retake`: the whole of it, from the side
+  it is seen from) and it, the locked view and the pad camera go with it; on board is not offered. The flight goes on
+  being flown. 0 (`told.back`), a rig that is not about a vehicle, or the clock going back before the piece left, gives
+  the view back to the vehicle, and a note says which it is with.
 - **Zoom is by proportion** (nepers): a notch of the wheel is a sixth, at 5 cm from a rivet (the
   eye stops `NEAREST` short of a surface) and at 400 km. One wheel event counts for at most 150
   pixels and the zoom runs at a set pace with a short lead (`Zoom`), so a trackpad's flick, which

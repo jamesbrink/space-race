@@ -1,3 +1,4 @@
+import { type Upcoming, upcoming } from '../missions/upcoming.ts';
 import type { Flight, ModelDef, ViewDef } from './types';
 
 /**
@@ -68,13 +69,24 @@ export const byDate = <F extends Dated>(flights: readonly F[]): F[] =>
   [...flights].sort((a, b) => Date.parse(a.launch) - Date.parse(b.launch));
 
 /**
+ * What the front page lists, in the order they flew: the flights there are, and between them those to come
+ * (missions/upcoming.ts) that no flight has taken the place of yet. One to come has no `callsign`: it is not a flight.
+ */
+export function listed<F extends Dated>(flights: readonly F[], coming: readonly Upcoming[] = upcoming): (F | Upcoming)[] {
+  const built = new Set(flights.map((f) => f.id));
+  return byDate<F | Upcoming>([...flights, ...coming.filter((u) => !built.has(u.id))]);
+}
+
+/**
  * The flight an address is about: the one it names; for one that names a place and no flight
- * (`#pad`, from when there was one flight), the first listed; for the front page, which names
- * nothing, the first that flew, whose gallery turns behind it.
+ * (`#pad`, from when there was one flight), the first listed; and for the front page, which names
+ * nothing, the first listed too, which is the one that is whole (missions/index.ts): its idle show
+ * plays behind the page. (For a while it was the first that flew, Vostok 1, whose place is not yet
+ * built out; it is Freedom 7 again until that one is as whole.)
  */
 export function flightFor<F extends Dated>(flights: readonly F[], hash: string): F {
   const to = parseAddress(hash);
-  return flights.find((f) => f.id === to.flightId) ?? (to.place ? flights[0]! : byDate(flights)[0]!);
+  return flights.find((f) => f.id === to.flightId) ?? flights[0]!;
 }
 
 /**

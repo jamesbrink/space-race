@@ -9,7 +9,9 @@ missions/                             the record: one folder per nation, program
     README.md                         the programme
     vehicles/  sites/  crew/          hardware shared by several flights: <name>.py builds it (a big
                                       one as a package of modules, e.g. sites/lc5/),
-                                      <name>.md records its dimensions, confidence, simplifications
+                                      <name>.md records its dimensions, confidence, simplifications;
+                                      sites/<site>.parts.ts is a pad's parts as flight data, said once for every flight
+                                      from it, each giving its own morning (lc-5.parts.ts: `lc5Parts`, `PadDay`)
     flights/<flight>/
       README.md                       the flight: what happened, timeline, sources
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified

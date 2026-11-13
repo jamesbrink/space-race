@@ -155,8 +155,12 @@ never adjusted to bring a check in.
   angle of attack against `body.limits.qAlpha`; caution from 80 per cent, and over the limit for
   half a second (or at 150 per cent at once) it breaks at `limits.joint`: the engine stops, the
   booster becomes a shed body, and a spacecraft with its escape rocket aboard is pulled clear on
-  it. A parachute let out in more dynamic pressure than `limits.drogue`/`main` tears to
-  `limits.torn` of its drag area. The limits are `estimated` (no structural figure has been
+  it. A parachute is held to what it can take for as long as it is out, not only as it is let out:
+  in more dynamic pressure than `limits.drogue`/`main` its cloth tears, and where `limits.pull` gives
+  one, so do its lines when the pressure times the area it has filled to passes that (a main let out
+  above the air and carried full into it goes at 340 Pa); `limits.torn` of its drag area is left, it
+  is drawn streaming (`Run.torn`, `chute.ts` `tornMouth`), and the path ahead tears it likewise
+  (`predict.ts`). `VehicleState.tore` says when and by which. The limits are `estimated` (no structural figure has been
   read); the constants of consequence are chosen and say so. On the record's programme the load
   peaks at 26 per cent of the limit in the day's wind (10 in still air); hands off from 60 s the
   stack as estimated diverges and breaks up at 80 s in still air, and from the pad in the day's
@@ -252,6 +256,18 @@ never adjusted to bring a check in.
   the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is estimated, from the
   model's own bearings, and is listed with the other undocumented inputs (tests/vehicle.test.mjs); tests/turnaround.test.mjs
   holds it to three degrees through the top of the flight. A flight that names no side keeps the roll it had.
+- **A right click on the vehicle in flight is the part's own menu** (main.ts `stage.onSpot`): what that part can be told
+  to do now, from the flight's data (`Part.commands`, types.ts `Command`: a step `Cockpit.ask` sets off, offered only
+  while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
+  and goes with it (`Stage.lookAtCraft`: the chase view aimed there; 0 centres the vehicle again). Off the vehicle
+  nothing is offered but, on a stage that has left, to follow it down (camera.md): nobody gets out and walks, and the
+  view is not sent to a place the vehicle has left. A mechanism the pilot
+  can work (the periscope) is a `Command` on its part too: `work:<its id>`, offered as putting it out or drawing it in
+  by where it is headed (below).
+  The same menu, and **Y** anywhere, takes the vehicle's skin off and puts it back: the cutaway (`ModelDef.cutaway`,
+  `Stage.setCutaway`), which on a pad or in the gallery cuts a quarter of every shell away and on the vehicle in flight
+  takes the shells off whole (their materials not drawn; the cut's planes stand in the place and a vehicle that has
+  left is not between them), from outside or from the seat. Choosing an `inside` part opens it as it always has.
 - **The cabin is the flight deck too** (`ModelDef.cabin`, types.ts: `CabinDef`; `viewer/cabin.ts`; `viewer/gauges.ts`
   for the arithmetic, tested). The model's own needles, counter wheels and lamps read the run on show at the clock's
   instant: the flight being flown (the cockpit hands every sample over, `cockpit.listen`) or the record's
@@ -271,7 +287,8 @@ never adjusted to bring a check in.
   is the model's own: each node that moves carries it in its extras, written by the script that built the linkage
   (types.ts: `Move`, `run`), and the flight's `clocked` moves say only when it is played, out or back; so wherever
   there is a clock it follows its programme at the record's instants. In a flight flown by hand `Cockpit.work` (its
-  control in the cabin, `CabinDef.controls[].works`; its switch among the deck's keys; Y) sends it the other way from
+  control in the cabin, `CabinDef.controls[].works`; its switch among the deck's keys; a `Command` on its part, `work:<id>`,
+  in the part's right-click menu; no key, every letter being taken) sends it the other way from
   where it is headed, and `Cockpit.travel` says how far out it is at any instant of that flight: the programme's
   events while the sequencer is on, the hands' commands, and the sequencer's being switched back on (it then goes to
   where the programme has it), each heard in order, a motor running between them. The stage holds the mechanism's

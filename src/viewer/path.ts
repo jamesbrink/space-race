@@ -242,6 +242,8 @@ export interface PathSample {
   mass: number;
   phase: Phase;
   centre?: Vec3;
+  /** The parachute out, as the live state has it (filling, or torn). */
+  chute?: { full: number; was: number; at: number; fills: number };
 }
 /** What of the live state (sim/vehicle.ts: VehicleState) the path reads: what is lit and done, and what has been let go. */
 export interface PathLive {
@@ -686,7 +688,7 @@ export class FlightPath {
     const tr = this.flight.trajectory!;
     if (this.shown?.key !== want.key && !this.wantedAt) this.wantedAt = performance.now();
     if (!this.job && this.shown?.key !== want.key && performance.now() - this.doneAt >= EVERY) {
-      const start = { t: s.t, r: s.centre ?? s.r, v: s.v, mass: s.mass, phase: s.phase };
+      const start = { t: s.t, r: s.centre ?? s.r, v: s.v, mass: s.mass, phase: s.phase, ...(s.chute ? { chute: s.chute } : {}) };
       const options = {
         points: MOST - 2,
         ...(want.burn ? { burn: want.burn } : {}),

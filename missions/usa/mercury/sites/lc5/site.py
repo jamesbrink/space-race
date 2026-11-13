@@ -69,6 +69,7 @@ __all__ = [
     "axle_cap",
     "box_girder",
     "rail_clamp",
+    "receptacle",
     "axes",
     "beam",
     "box",
@@ -126,6 +127,40 @@ UMBILICAL = (
     LAUNCHER_TOP + (716.0 + UMBILICAL_AT[1]) / 12,
 )
 VEHICLE_TIP = LAUNCHER_TOP + 83.38  # escape tower's tip (Hammack & Heberlig, Figure 18)
+
+
+def receptacle() -> tuple[float, float, float]:
+    """Where the capsule's umbilical plugs in on the date being built: the receptacle of whichever capsule
+    stood on the booster then. Both capsules' receptacles are under the periscope's lens, 135 degrees round
+    from the hatch; they differ in station, each from its own photographs (the flights' spacecraft.md):
+    No. 7's at 31.2 in (UMBILICAL, above), No. 11's at 32.5 in. The point is on the skin."""
+    # (which capsule, the station of its receptacle in inches, since, until, how sure, what says so)
+    capsules = (
+        (
+            "Capsule No. 7 on the booster: its umbilical receptacle at station 31.2",
+            31.2,
+            None,
+            "1961-05-05",
+            "documented",
+            "MR-3 flew No. 7 on 5 May 1961 (Postlaunch Report); the station is estimated (mr-3-freedom-7/spacecraft.md)",
+        ),
+        (
+            "Capsule No. 11 on the booster: its umbilical receptacle at station 32.5",
+            32.5,
+            "1961-06-30",
+            "1961-07-21",
+            "documented",
+            "FHSU item 314, LOD 61-6091, 30 June 1961: 'Capsule checkout on third level, Pad 5 (Caps #11)'; MR-4 Results p. 5: "
+            "21 days on the pad. The station is estimated (mr-4-liberty-bell-7/spacecraft.md)",
+        ),
+    )
+    stations = [
+        station for thing, station, since, until, sure, source in capsules if stood(thing, since=since, until=until, confidence=sure, source=source)
+    ]
+    station = stations[0] if stations else UMBILICAL_AT[1]  # (between the two flights nothing stood there: No. 7's is kept)
+    out = (37.25 - station * math.tan(math.radians(20.0))) / 12
+    return (out * math.cos(UMBILICAL_AT[0]), out * math.sin(UMBILICAL_AT[0]), LAUNCHER_TOP + (716.0 + station) / 12)
+
 
 HARDSTAND = 200.0  # side of the square: OSM outline 195 to 202 ft; TM X-53107 Figure 7-6, 157 px at 1.274 ft/px
 CIRCLE_R = 60.5  # the painted circle: 95 px on Figure 7-6 at 1.274 ft/px

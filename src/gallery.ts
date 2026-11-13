@@ -462,7 +462,7 @@ export class Gallery {
         <div class="buttons">
           <span class="set views" role="group" aria-label="View"></span>
           <span class="set shows" role="group" aria-label="Show">
-            ${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (X)">Cutaway</button>' : ''}
+            ${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (Y)">Cutaway</button>' : ''}
             <button data-names class="switch" aria-pressed="false" title="Name each part as it comes clear of the rest">Labels</button>
             <button data-measure class="switch" aria-pressed="false" title="A person and a range pole beside it, for scale (G)">Scale</button>
             <button data-rotate class="switch" aria-pressed="true" title="Turn slowly round what was last chosen">Turntable</button>
@@ -489,7 +489,7 @@ export class Gallery {
             <div><dt>click a part</dt><dd>go to it</dd></div>
             <div><dt>click a window</dt><dd>look inside</dd></div>
             <div><dt><kbd>N</kbd> <kbd>B</kbd></dt><dd>next part · the one before</dd></div>
-            ${m.cutaway ? '<div><dt><kbd>X</kbd></dt><dd>cutaway</dd></div>' : ''}
+            ${m.cutaway ? '<div><dt><kbd>Y</kbd></dt><dd>cutaway</dd></div>' : ''}
             <div><dt><kbd>G</kbd></dt><dd>a person for scale</dd></div>
             <div><dt><kbd>L</kbd></dt><dd>light · dark room</dd></div>
             <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
@@ -759,7 +759,8 @@ export class Gallery {
         if (key === 'escape') this.select(null);
         else if (key === 'n') this.step(1);
         else if (key === 'b') this.step(-1);
-        else if (key === 'x' && this.vehicle.cutaway) this.setCutaway(!this.cut, true);
+        // (Y, as everywhere a skin comes off; X is kept, having been the gallery's key for it)
+        else if ((key === 'y' || key === 'x') && this.vehicle.cutaway) this.setCutaway(!this.cut, true);
         else if (key === 'g') this.setMeasure(!this.studio.measured);
         else if (key === 'l') this.setLight(this.studio.tone !== 'light');
         else if (key === 't') this.setCel(!prefs.get('cel'));

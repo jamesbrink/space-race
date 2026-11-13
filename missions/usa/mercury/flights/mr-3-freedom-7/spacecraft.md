@@ -114,7 +114,7 @@ next moment; "returning it to NO. 1" let the automatic motion that was owed run.
 a pilot light (SEDR 104, Figure 12-2), not a control.
 In the model the handle is `Ctl_PeriscopeHandle`, stowed in the display's upper right corner (the display is flush in
 the panel here, so the side of its housing is behind the panel: its place is ours), with the engage lever's knob beside
-it. In a flight flown by hand a click on it, Y, or the Periscope switch among the flight deck's keys sends the
+it. In a flight flown by hand a click on it, a right click on the afterbody (`Part.commands`), or the Periscope switch among the flight deck's keys sends the
 periscope the other way from where it is headed, wherever it is in its travel. **The rule** (`src/sim/mechanism.ts`):
 it stays where the hand sent it until the programme's next event, which takes it back; with the sequencer off, which
 here stands for the fuse, the programme's events pass unheard and it moves only when told; and with the sequencer

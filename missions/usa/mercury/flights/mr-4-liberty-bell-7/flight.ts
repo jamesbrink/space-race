@@ -1,4 +1,18 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types';
+import type { Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import {
+  HARDWARE_WORDS,
+  held,
+  hutLeaves,
+  LC5_SPECS,
+  lc5Parts,
+  type PadNode,
+  type PadStops,
+  type PartWords,
+  spareTrailerLeaves,
+  swing,
+  X,
+  Z,
+} from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 
@@ -341,10 +355,27 @@ const parts: Part[] = [
   },
 ];
 
+/** The launcher's support level above the pad: 5.5 ft (lc5/site.py: LAUNCHER_TOP). */
+const PEDESTAL = 5.5 * FT;
 /** The fins' trailing edges below the model's origin (the capsule's plane of maximum diameter), m: it stands on them. */
 const BASE = 716.0 * IN;
 /** The spacecraft without its tower. */
 const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Window', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
+
+/**
+ * Where the pilot stands: on the hardstand on the hatch side, 8 m from the launcher, between the transfer van that
+ * brought him and the emergency shower, turned toward the lift he is walking to. It is where NASA's photograph of
+ * 21 July has him (61-MR4-83: "strolls toward the loxing Mercury-Redstone 4 as it stands in its gantry", the shower
+ * at his left hand): the place read off it, to a couple of metres. Open concrete: 2.6 m from the shower, 2 m from the
+ * launcher's cable, 4.5 m from the van's steps. The crew model spreads it (`...PILOT`), as Freedom 7's does.
+ */
+export const PILOT = { position: [7.92, 0, 1.83] as [number, number, number], rotationY: -2.618 };
+/** A direction to look at the pilot from: in front of him (or, with `behind`, at his back), turned `aside` radians, `lift` up. */
+const facingPilot = (lift: number, aside = 0.12, behind = false): [number, number, number] => [
+  Math.sin(PILOT.rotationY + aside + (behind ? Math.PI : 0)),
+  lift,
+  Math.cos(PILOT.rotationY + aside + (behind ? Math.PI : 0)),
+];
 
 const vehicle: ModelDef = {
   id: 'vehicle',
@@ -353,14 +384,12 @@ const vehicle: ModelDef = {
   // the periscope on its programme (vehicles/periscope.ts): nothing works it by hand yet, this flight having no flight deck
   mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   scale: '25.41 m tall · spacecraft 7.91 m · to scale',
-  // Launch Complex 5 is built as it stood for Freedom 7 eleven weeks earlier; as it stood on 21 July it is not built
-  // (README.md, "What the launch site would need"), so the vehicle is shown by itself in the gallery.
-  backdrop: 'studio',
+  backdrop: 'cape-canaveral',
   slider: ['Assembled', 'Taken apart'],
   cutaway: true,
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts,
-  position: [0, BASE, 0],
+  position: [0, PEDESTAL + BASE, 0],
   // the two cabin lights (the panel's switch reads BOTH, OFF, L.H. ONLY): put toward the middle of the cabin, as Freedom 7's
   // are, either side of the pilot's head, in the frame the capsule stands in (turned by STAND)
   lights: [
@@ -378,6 +407,555 @@ const vehicle: ModelDef = {
     { id: 'periscope', label: 'Periscope side', nodes: ['Afterbody'], from: along(PERISCOPE_AZ + 22, 0.2) },
     { id: 'engine', label: 'Engine', nodes: ['RedstoneTailUnit', 'RedstoneEngine'] },
   ],
+  // the pad as it was at liftoff: structure at its launch position, masts down, the cab lowered
+  with: [{ model: 'pad', at: 0 }],
+};
+
+/**
+ * The pad's slider is the morning of 21 July 1961, from the pilot going aboard to the pad standing empty. Its stops
+ * are the ones Freedom 7's morning is laid out on (sites/lc-5.parts.ts: PadStops); `MORNING` says when each fell.
+ */
+const T: PadStops = {
+  platforms: 0.0, // T-85 to T-60: platforms 2, 4 and 3 part (1 had opened at T-200)
+  rollback: 0.13, // T-55: the structure rolls to the edge of the pad
+  cabIn: 0.33, // the cherry picker is raised and its cab brought to the hatch
+  launchPosition: 0.48, // T-8:45: the structure rolls on to its launch position
+  cabAway: 0.58, // T-2:30: the cab is lowered "away and down" by remote control
+  umbilical: 0.72, // T-35 s: the capsule's umbilical is pulled and its mast goes over
+  boom: 0.76, // about T-14 s: "boom drop"
+  liftoff: 0.8, // 07:20:36 EST
+  stow: 0.82, // afterwards (not documented): the tower is folded down onto the truck
+  drive: 0.91, // and driven off
+};
+const MIN = 60;
+/** Seconds from liftoff (07:20:36 EST) of a time on the Cape's clocks that morning. */
+const est = (hours: number, minutes: number, seconds = 0): number => (hours * 60 + minutes) * 60 + seconds - (7 * 3600 + 20 * 60 + 36);
+const TMX = 'NASA TM X-53107, 7.2.3.2, the countdown for MR-4, pp. 7-25 to 7-33';
+const HOLDS = `the day’s three holds (${RESULTS}, p. 6; TM X-53107, 8.3.2): 30 minutes at T-45, 9 at T-30 and 41 at T-15`;
+/**
+ * When a time in the count fell, in seconds from liftoff: the count ran straight from T-180 at 03:00 but for three
+ * holds, so an event before T-45 was 80 minutes earlier than the count reads, one before T-30 50 minutes, one before
+ * T-15 41 minutes, and from T-15 on the count is the clock. Derived: no report gives these as times of day.
+ */
+const count = (minutes: number): number => -(minutes + (minutes > 45 ? 80 : minutes > 30 ? 50 : minutes > 15 ? 41 : 0)) * MIN;
+const BY_COUNT = `derived: its time in the count, and ${HOLDS}`;
+const NOT_RECORDED = 'not recorded: how long the motion took is ours, from its distance at a walking pace';
+const GANTRY_REMOVED = count(55);
+const ROLLED_BACK = GANTRY_REMOVED + 5 * MIN;
+/**
+ * The morning on the clock: when each stop on the pad's slider (T, above) happened, in seconds from liftoff, and the
+ * three holds, through which nothing on the pad moved. sites/lc-5.md, "Where things stood, and when (MR-4)".
+ */
+const MORNING: Keyframe[] = [
+  {
+    at: est(3, 58),
+    slider: T.platforms,
+    event: 'Pilot aboard, from the white room',
+    confidence: 'documented',
+    source: `${RESULTS}, pp. 6 and 50: in the spacecraft at 3:58 a.m. e.s.t., 3 hours 22 minutes before launch`,
+  },
+  {
+    at: count(85),
+    slider: T.platforms,
+    event: 'T-85: platform 2 opens; the emergency shower is disconnected and stowed for launch',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-27; ${BY_COUNT}`,
+  },
+  {
+    at: count(80),
+    slider: T.platforms + 0.03,
+    event: 'T-80: the spare parts trailer and the transfer van are moved',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-28: "Move spare parts trailer", "Move transfer van to launch position"; ${BY_COUNT}`,
+  },
+  {
+    at: count(65),
+    slider: T.platforms + 0.07,
+    event: 'T-65: platform 4 opens',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-28; ${BY_COUNT}`,
+  },
+  {
+    at: count(60),
+    slider: T.platforms + 0.1,
+    event: 'T-60: platform 3, the white room, opens',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-28; ${BY_COUNT}`,
+  },
+  {
+    at: GANTRY_REMOVED,
+    slider: T.rollback,
+    event: 'T-55: the structure starts for the edge of the pad',
+    confidence: 'derived',
+    source:
+      `${TMX}, p. 7-29: "Move structure to edge of pad and ready remote controls"; ${BY_COUNT}. No report gives the time it rolled ` +
+      'that morning: a photograph taken about sunrise, with the searchlights still burning, shows it gone (FHSU Project Mercury item 333, LOD 61-6452)',
+  },
+  {
+    at: ROLLED_BACK,
+    slider: T.cabIn - 0.01,
+    event: 'The structure stands at the edge of the pad',
+    confidence: 'estimated',
+    source: NOT_RECORDED,
+  },
+  {
+    at: ROLLED_BACK + 0.5 * MIN,
+    slider: T.cabIn,
+    event: 'The cherry picker is raised from its truck and its cab brought to the hatch',
+    confidence: 'estimated',
+    source: `${TMX}, p. 7-29: "Position cherry-picker for emergency egress operation", once the structure had gone; the minute is ours`,
+  },
+  { at: ROLLED_BACK + 4 * MIN, slider: T.cabIn + 0.09, event: 'The cab is at the hatch', confidence: 'estimated', source: NOT_RECORDED },
+  {
+    at: count(45) - 30 * MIN,
+    slider: T.cabIn + 0.1,
+    event: 'T-45: held 30 minutes: one of the hatch’s seventy bolts will not go in, and it is left out',
+    confidence: 'documented',
+    source: `${RESULTS}, p. 6: "A 30-minute hold was called at this time to install a misalined hatch bolt"; This New Ocean, p. 370. The time of day is derived from ${HOLDS}`,
+  },
+  {
+    at: count(30) - 9 * MIN,
+    slider: T.cabIn + 0.12,
+    event: 'T-30: held 9 minutes while the searchlights are put out: they upset the telemetry, and it is daylight',
+    confidence: 'documented',
+    source: `${RESULTS}, pp. 6 and 50; TM X-53107, 8.3.2. The time of day is derived from ${HOLDS}`,
+  },
+  {
+    at: count(15) - 41 * MIN,
+    slider: T.cabIn + 0.14,
+    event: 'T-15: held 41 minutes for the cloud to open, for the long-focus cameras',
+    confidence: 'documented',
+    source: `${RESULTS}, pp. 6 and 50: "the existing overcast"; TM X-53107, 8.3.2. The time of day is derived from ${HOLDS}`,
+  },
+  {
+    at: -(8 * MIN + 45),
+    slider: T.launchPosition,
+    event: 'T-8:45: the structure is driven on to its launch position',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-32: "Remotely move structure to launch position"; the count was not held after T-15`,
+  },
+  {
+    at: -(6 * MIN + 45),
+    slider: T.cabAway - 0.02,
+    event: 'The structure is at its launch position',
+    confidence: 'estimated',
+    source: NOT_RECORDED,
+  },
+  {
+    at: -(2 * MIN + 30),
+    slider: T.cabAway,
+    event: 'T-2:30: the cab is lowered away and down',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-33: "Remove cherry-picker to launch position" (7.3.3.1 has T-4); the count was not held after T-15`,
+  },
+  { at: -(1 * MIN + 30), slider: T.cabAway + 0.12, event: 'The cab is down', confidence: 'estimated', source: NOT_RECORDED },
+  {
+    at: -35,
+    slider: T.umbilical,
+    event: 'T-35 s: the capsule umbilical is pulled and the periscope drawn in',
+    confidence: 'documented',
+    source: `${RESULTS}, p. 6`,
+  },
+  {
+    at: -33,
+    slider: T.umbilical + 0.035,
+    event: 'The capsule mast is down',
+    confidence: 'estimated',
+    source: 'a mast pulled over by a bungee falls in a second or two',
+  },
+  {
+    at: -14,
+    slider: T.boom,
+    event: 'T-14 s: boom drop',
+    confidence: 'derived',
+    source: `${TMX}, p. 7-33 ("about"); the count was not held after T-15`,
+  },
+  { at: -12, slider: T.boom + 0.035, event: 'The booster mast is down', confidence: 'estimated', source: 'as the capsule mast' },
+  {
+    at: 0,
+    slider: T.liftoff,
+    event: 'Liftoff',
+    confidence: 'documented',
+    source: `${RESULTS}, Table 5-II (p. 31): 7:20:36 a.m. e.s.t.`,
+  },
+  {
+    at: 10 * MIN,
+    slider: T.stow,
+    event: 'The cherry picker is folded down',
+    confidence: 'estimated',
+    source: 'not documented: when the pad was cleared afterwards is ours',
+  },
+  { at: 13 * MIN, slider: T.drive, event: 'It drives off', confidence: 'estimated', source: 'not documented, as above' },
+  {
+    at: 13.5 * MIN,
+    slider: 1,
+    event: 'The pad is clear',
+    confidence: 'estimated',
+    source: 'not documented, as above; half a minute to cross the apron',
+  },
+];
+
+/** What this flight says of each part of the pad: the hardware is the site's (sites/lc-5.parts.ts). */
+const PAD_WORDS: Record<PadNode, PartWords> = {
+  ...HARDWARE_WORDS,
+  ServiceStructure: {
+    summary: 'The gantry: round the rocket through the night, rolled back at T−55 minutes.',
+    detail:
+      'The stand Freedom 7 left from eleven weeks before: a Noble Company open A-frame mast on a steel base that rides ' +
+      'four powered rail trucks, its work platforms closing round the vehicle in two halves each. Grissom came by the ' +
+      'transfer van at 03:55, rode the open mesh lift up its leg, and was in the capsule from the white room on level 3 ' +
+      'at 03:58. Then the hatch went on, with seventy bolts where Shepard’s had latched; one would not go in. By the ' +
+      'count the structure rolled to the edge of the pad at T−55 minutes and to its launch position at T−8:45. With the ' +
+      'three holds that followed, T−55 was 05:05 by the clock: that is worked from the count, not recorded, though a ' +
+      'photograph taken about sunrise shows it gone and the cherry picker’s cab at the capsule.',
+    facts: [
+      ['Height', 'about 135 ft (41 m); 140 ft is quoted'],
+      ['Built', 'Noble Co., Oakland; at this complex from 1955'],
+      ['White room', 'level 3, added February–May 1961'],
+      ['Platforms', 'four, each in two halves; level 1 open from T−200'],
+      ['Moves', 'on rails, under its own power'],
+      ['Rolled back', 'T−55 min: 05:05 EST by the count and its holds'],
+      ['Lift', 'an open cage up the hatch side’s leg, from the pad'],
+    ],
+  },
+  CherryPicker: {
+    summary: 'The “cherry picker”: folded on its truck through the night, at the hatch once the gantry had gone.',
+    detail:
+      'A truck-mounted tower that held a cab at the capsule hatch once the service structure had rolled back, so the ' +
+      'pilot could step across and be swung clear. It could reach 125 feet, and a push-button in the blockhouse sent ' +
+      'the cab "away and down" in the last minutes. Photographs of this count show how it waited: folded down on its ' +
+      'International truck beside the pad while the oxygen went aboard, the cab at the truck’s tail hung with netting; ' +
+      'then, with the structure gone and the Sun coming up, raised, the cab against the capsule. The rescue had been ' +
+      'practised here with it on 7 July. At liftoff its mast still stood, the cab down. Its folding and driving off ' +
+      'afterwards, at the end of the slider, is how such a tower travels, not something the record shows.',
+    facts: [
+      ['Reach', '125 ft (38 m)'],
+      ['Stood', 'about 65 ft from the launcher, on the hatch side'],
+      ['Through the night', 'folded on its truck'],
+      ['At the hatch', 'from T−55 min, once the structure had gone'],
+      ['Cab lowered', 'T−4 min, or T−2:30 (sources differ)'],
+      ['Control', 'ground, cab, or blockhouse'],
+    ],
+  },
+  Hardstand: {
+    summary: 'Two hundred feet of concrete; four rails for the service structure.',
+    detail:
+      'Pad 5 is one of two pads of Complex 5/6, 520 feet apart on one track, with a blockhouse whose point ' +
+      'is about 300 feet from each. The structure’s rails cross the slab flush either side of the launcher and run on to ' +
+      'its launch position. Twenty-three rockets left this pad between 1956 and 1961, and this was the last. Pad 6 had ' +
+      'flown its last Redstone on 27 June; after Liberty Bell 7 the complex never launched again.',
+    facts: [
+      ['Slab', 'about 200 ft square'],
+      ['Rails', 'four, in two pairs'],
+      ['Launch azimuth', '100° for MR-4'],
+    ],
+  },
+  GroundEquipment: {
+    summary: 'What stood round the launcher that morning, and what was taken away.',
+    detail:
+      'Beside the structure’s base as Grissom went aboard stood the emergency shower on its cart, connected, and the ' +
+      'white transfer van, NASA TV No 1, that had brought him from Hangar S: photographs of 6 and 19 July show the two ' +
+      'there together, and one of the 21st has him walking past the shower. The count stows the shower at T−85 and moves the van and the spare parts trailer at T−80. When is ' +
+      'documented; where to is not, and that the trailer lettered SP-No 1 is that trailer is our reading. Behind the ' +
+      'launcher, through liftoff: the liquid-oxygen topping trailer and a tank behind their blast screens, the chevron ' +
+      'drum, the cameras, as the liftoff photographs of both flights show them. Each hut is dragged off by a pickup, ' +
+      'which is estimated: nothing records how the huts were moved, or that they were. The searchlights lit the pad ' +
+      'through the night and stay where they stand: at T−30 the count was held nine minutes to put them out, because ' +
+      'they upset the telemetry, and by then it was daylight.',
+  },
+  Floodlights: {
+    summary: 'The count ran through the night.',
+    detail:
+      'Timber poles in the grass at the pad’s edge, each with a crossarm of floodlights; they are still burning in the ' +
+      'photographs of the liftoff. Grissom was woken at 01:10, came to the pad at 03:55 and was in the capsule at 03:58, ' +
+      'in the dark. He waited there three hours and twenty-two minutes.',
+  },
+};
+
+/** One of the transfer van's two halves driven straight ahead along the track's side: the tractor in its bay's frame, the van in the pad's. */
+const vanLeaves = (from: number, to: number): Move[] => [
+  {
+    kind: 'drive',
+    node: 'GroundEquipment_VanTractor',
+    from,
+    to,
+    // in the frame of the bay it stands in, which faces the way it does: x ahead
+    path: [
+      [4, 0],
+      [40, 0],
+      [82.6, 0],
+    ],
+    pivot: [0, 0.513, 0],
+    forward: [1, 0],
+    wheelRadius: 0.513,
+    wheelbase: 3.607,
+    wheels: 'GroundEquipment_VanTractor_Wheel',
+    steered: 'GroundEquipment_VanTractor_SteerWheel',
+    axle: 'z',
+  },
+  {
+    kind: 'drive',
+    node: 'GroundEquipment_TransferVan',
+    from,
+    to,
+    // the same way, in the pad's own frame: it faces along the rails toward the structure's parking places (viewer -Z)
+    path: [
+      [0, -4],
+      [0, -40],
+      [0, -82.6],
+    ],
+    pivot: [0, 0.472, 0],
+    forward: [0, -1],
+    wheelRadius: 0.472,
+    wheelbase: 5.624,
+    wheels: 'GroundEquipment_TransferVan_Wheel',
+    steered: 'GroundEquipment_TransferVan_NoSteer',
+    axle: 'x',
+  },
+];
+
+const padParts: Part[] = lc5Parts({
+  T,
+  words: PAD_WORDS,
+  // Level 1 had opened at T-200, before the pilot came (TM X-53107, p. 7-25; verified open at T-80): it is parted from
+  // the start. Then 2 at T-85, 4 at T-65 and 3, the white room, at T-60, as the count has them.
+  platforms: [
+    [1, -1, -0.5],
+    [2, T.platforms, T.platforms + 0.03],
+    [4, T.platforms + 0.07, T.platforms + 0.1],
+    [3, T.platforms + 0.1, T.platforms + 0.128],
+  ],
+  // Folded on its truck while the structure stands round the vehicle, as it is photographed through this count (FHSU
+  // Project Mercury items 443 and 445, 21 July; item 544, undated): the mast down on its rest, the jib back along it,
+  // the cab at the truck's tail. The angles are the stow's (sites/lc-5.md, "Moving parts"). Once the structure has
+  // gone it is raised and the cab brought to the hatch; the cab hangs level throughout.
+  tower: [
+    held('CherryPicker_Mast', Z, -65.59),
+    held('CherryPicker_Jib', Z, 70.11),
+    held('CherryPicker_Cab', Z, -4.52),
+    swing('CherryPicker_Mast', Z, 65.59, T.cabIn, T.cabIn + 0.09),
+    swing('CherryPicker_Jib', Z, -70.11, T.cabIn, T.cabIn + 0.09),
+    swing('CherryPicker_Cab', Z, 4.52, T.cabIn, T.cabIn + 0.09),
+  ],
+  mastEnds: ['on its rest', 'back on its rest'],
+  cleared: [
+    // T-85: the shower, disconnected, is wheeled from the structure's base to the pad's north edge, clear of the
+    // cameras: along the hatch side, then along the edge. When is documented; where to is where May's photographs
+    // have it stowed (estimated)
+    { kind: 'slide', node: 'GroundEquipment_Shower', by: [0, 0, 26.67], from: T.platforms, to: T.platforms + 0.03 },
+    { kind: 'slide', node: 'GroundEquipment_Shower', by: [-23.165, 0, 0], from: T.platforms + 0.03, to: T.platforms + 0.06 },
+    // T-80: the door steps of the spare parts trailer and of the transfer van fold up, and both are taken away: the
+    // trailer north off the pad past the cherry picker, the van straight ahead along the track's side. That they
+    // moved then is the count's; how and where to is estimated throughout
+    swing('GroundEquipment_TrailerSteps', Z, 95, T.platforms + 0.03, T.platforms + 0.038),
+    swing('GroundEquipment_TransferVanSteps', X, -95, T.platforms + 0.03, T.platforms + 0.038),
+    ...spareTrailerLeaves(T.platforms + 0.04, T.platforms + 0.125),
+    ...vanLeaves(T.platforms + 0.04, T.platforms + 0.125),
+    // each hut dragged off on its skids by a pickup, straight out across the pad's edge to the road behind (estimated)
+    ...[1, 2].flatMap((k) => hutLeaves(k, T.platforms + 0.03 * k, T.platforms + 0.03 * k + 0.08)),
+  ],
+});
+
+const pad: ModelDef = {
+  id: 'pad',
+  name: 'Launch pad',
+  url: 'models/usa/mercury/mr-4-liberty-bell-7/pad.glb',
+  scale: 'Launch Complex 5 · hardstand 61 m square · to scale',
+  backdrop: 'cape-canaveral',
+  slider: ['Pilot aboard · 03:58', 'Pad clear'],
+  sequence: MORNING,
+  specGroups: ['Launch pad'],
+  parts: padParts,
+  views: [
+    { id: 'pedestal', label: 'Launcher', nodes: ['LaunchPedestal'] },
+    { id: 'hatch', label: 'Hatch level', centreY: 21, span: 12 },
+    { id: 'truck', label: 'Cherry picker', nodes: ['CherryPicker'] },
+  ],
+};
+
+/**
+ * Virgil Grissom as he walked to the lift on 21 July 1961: the suit of Freedom 7's crew model (crew/mark_iv_suit.py)
+ * on his own measures and with what this flight's had. crew/mark-iv-suit.md, "5 May and 21 July 1961", has each
+ * difference with its source and how sure it is; the texts below quote it.
+ */
+const crewParts: Part[] = [
+  {
+    node: 'Helmet',
+    name: 'Helmet',
+    summary: 'The same shell as Shepard’s, with new microphones.',
+    detail:
+      'Fibreglass, with a clear visor that closes on an inflatable seal. New for this flight are the microphones: ' +
+      'Electro-Voice units built into the helmet, one at each corner of the mouth where Shepard’s figure has a ' +
+      'single boom. The white lead hanging on his right chest is the helmet’s own: it is plugged in once he is ' +
+      'on the couch. After landing he unfastened the helmet to be ready to leave; when the hatch blew he lifted ' +
+      'it off and dropped it.',
+    facts: [
+      ['Microphones', 'two, Electro-Voice, new'],
+      ['Shell', 'fibreglass'],
+      ['Visor seal', 'pneumatic, fed at the left jaw'],
+      ['Lead', 'right side, unplugged on the walk'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Torso',
+    name: 'Torso',
+    summary: 'Aluminised nylon over a rubber bladder; a neck dam rolled under the ring.',
+    detail:
+      'B.F. Goodrich’s Navy Mark IV, as Shepard wore: one flow of oxygen in at the waist cools and feeds the pilot. ' +
+      'The roll under the neck ring is a rubber neck dam, to be pulled up round the neck once the helmet is off ' +
+      'so that a suit in the sea stays full of air. Grissom’s was not up tight, and he had left the inlet at his ' +
+      'waist unlocked: in the water the suit let its air go and he sank lower with every swell. Under it he wore ' +
+      'a urine reservoir, made the day before the flight.',
+    facts: [
+      ['Markings', 'NASA insignia, "V. I. GRISSOM"'],
+      ['Leak rate that morning', '175 cc/min; Shepard’s suit, 400'],
+      ['Oxygen inlet', 'left waist'],
+      ['Tie-down strap', 'neck ring to crotch'],
+      ['Pressure if the cabin fails', '4.6 psi'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Arms',
+    name: 'Arms',
+    summary: 'Laced to length; the pressure gauge on the left forearm.',
+    detail:
+      'Cords and lacing along each arm stop a pressurised sleeve ballooning and set its length to the man. The ' +
+      'gauge above the left wrist reads suit pressure; on this suit it sits in a thick white bezel. Shepard had ' +
+      'knocked his against the abort handle.',
+    facts: [['Gauge', 'left forearm, white bezel']],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Gloves',
+    name: 'Gloves',
+    summary: 'Locked to bearing rings: the wrists turn under pressure.',
+    detail:
+      'On Freedom 7 each glove joined its sleeve by a zipper round the wrist. For this flight Goodrich fitted ' +
+      'quick-removal rings sealed with nylon ball bearings, "permitting 360 degrees of wrist action when the suit ' +
+      'is inflated", and no change to the suit was needed to take them. The palms are dark leather; the middle ' +
+      'finger is cut straight for pushing buttons, the others curved to the hand controller.',
+    facts: [
+      ['Wrist', 'ball-bearing ring, new'],
+      ['On MR-3', 'zipper'],
+      ['Palms', 'dark leather'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Legs',
+    name: 'Legs',
+    summary: 'Cut to his measure; the biomedical port is the disc on the right thigh.',
+    detail:
+      'The round port in its reinforcing disc takes the lead from the sensors on his body: two heart leads, ' +
+      'breathing and temperature. His legs are the ones the flight surgeon measured that morning: 21 inches ' +
+      'round the right thigh and 15 7/8 round each calf, on a man of 150 pounds.',
+    facts: [
+      ['Thigh', '21 in (53 cm) round'],
+      ['Calf', '15 7/8 in (40 cm) round'],
+      ['Biomedical port', 'right thigh, front'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Boots',
+    name: 'Boots',
+    summary: 'Laced, aluminised leather over the suit’s feet.',
+    detail:
+      'Separate lace-up boots worn over the pressure suit’s socks, as on Freedom 7. He walked the carrier’s deck in them that morning, ' +
+      'still in the suit.',
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Harness',
+    name: 'Parachute harness',
+    summary: 'Worn over the suit, for a chest parachute he did not wear to the pad.',
+    detail:
+      'Two straps from the hips over the shoulders, crossed on the back, with leg straps through the crotch and a ' +
+      'strap across the chest. The ring on each padded shoulder strap is where a chest parachute would snap on. ' +
+      'Shepard’s wrist had bumped that parachute when he worked the hand controller, so for this flight the ' +
+      'harness was designed again to keep it out of the way. The white tape on the chest strap says whose it is.',
+    facts: [
+      ['Pads', 'quilted, slate blue'],
+      ['Webbing', 'olive brown'],
+      ['Name tape', 'GRISSOM, on the chest strap'],
+      ['Parachute', 'not worn to the pad'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Mirror',
+    name: 'Chest mirror',
+    summary: 'A five-inch convex mirror: the camera read the instruments in it.',
+    detail:
+      'A camera in the cabin watched the pilot’s face. With a convex mirror on his chest the same film also ' +
+      'showed the panel he was looking at. The astronauts called it the hero’s medal. Freedom 7 had none. It ' +
+      'went through the hatch and into the sea with him, and is still on his chest in the photographs taken on ' +
+      'the carrier.',
+    facts: [
+      ['Mirror', '5 in (12.7 cm), Plexiglas'],
+      ['Rim', 'about 15 cm across'],
+      ['Hung', 'between the shoulder straps'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'Ventilator',
+    name: 'Portable ventilator',
+    summary: 'The white case in his right hand.',
+    detail:
+      'A sealed suit cannot shed heat, so from the suiting room to the capsule he carried his own cooling: "the ' +
+      'case containing air conditioning equipment to keep him comfortable in his space suit", as NASA’s caption ' +
+      'to the photograph of this walk has it. In the transfer van the van’s own system took over, and he was ' +
+      'briefed on the way to save a quarter of an hour; at the pad the case was plugged in again for the walk ' +
+      'to the lift.',
+    facts: [
+      ['Carried', 'right hand, by himself'],
+      ['Hose', 'to the inlet at the left waist'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+];
+
+const crew: ModelDef = {
+  id: 'crew',
+  name: 'Crew',
+  url: 'models/usa/mercury/mr-4-liberty-bell-7/crew.glb',
+  scale: 'Virgil I. Grissom · 1.70 m, 1.79 m suited · to scale',
+  backdrop: 'cape-canaveral',
+  parts: crewParts,
+  ...PILOT,
+  walker: {
+    eyes: 'Helmet_Eyes',
+    forward: [0, 1],
+    // the portable ventilator, in his right hand as in the photograph of this walk, its hose up to the inlet at his left waist
+    carries: [{ node: 'Ventilator', hand: 'R', hose: { mesh: 'Ventilator_Hose', from: 'Ventilator_HosePort', to: 'Inlet' } }],
+  },
+  wide: false,
+  specGroups: ['Pressure suit'],
+  home: 'walk',
+  views: [
+    // as NASA 61-MR4-83 has him: from behind and low, walking to the lift, the vehicle standing over him
+    { id: 'walk', label: 'Walk to the lift', centreY: 2.4, span: 6.2, from: facingPilot(-0.3, 0.35, true) },
+    { id: 'figure', label: 'Pilot', centreY: 0.92, span: 2.4, from: facingPilot(0.05) },
+    { id: 'helmet', label: 'Helmet', centreY: 1.62, span: 0.62, from: facingPilot(0.05) },
+    { id: 'chest', label: 'Mirror and harness', centreY: 1.3, span: 0.62, from: facingPilot(0.05) },
+    { id: 'back', label: 'Harness, behind', centreY: 1.15, span: 1.1, from: facingPilot(0.05, 0.12, true) },
+    { id: 'hands', label: 'Gloves', centreY: 0.88, span: 0.62, from: facingPilot(0.05) },
+    { id: 'boots', label: 'Boots', centreY: 0.2, span: 0.62, from: facingPilot(0.2) },
+  ],
+  // just after rollback, so that he can be seen: when he walked to the lift, in the dark, the structure still stood round the rocket
+  with: [{ model: 'pad', at: ROLLED_BACK }],
 };
 
 export const flight: Flight = {
@@ -389,7 +967,7 @@ export const flight: Flight = {
   callsign: 'Liberty Bell 7',
   spacecraft: 'Mercury spacecraft No. 11 (McDonnell Aircraft)',
   launchVehicle: 'Mercury-Redstone MRLV, MR-8',
-  // 07:20 EST (the MR-4 report, p. 6; TM X-53107, 8.3.2). The seconds are from secondary sources (07:20:36 EST): no primary read gives them.
+  // 07:20:36 EST: Results of the Second U.S. Manned Suborbital Space Flight, Table 5-II (p. 31); 07:20 on p. 6 and in TM X-53107, 8.3.2
   launch: '1961-07-21T12:20:36Z',
   launchSite: LC5.name,
   site: LC5,
@@ -594,6 +1172,55 @@ export const flight: Flight = {
       confidence: 'documented',
       note: '100° east of north, changed from the 102° of MR-2, MR-BD and MR-3 (TM X-53107, 8.3.2)',
     },
+    {
+      group: 'Pressure suit',
+      label: 'Pilot height',
+      value: 1.702,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Grissom is commonly given as 5 ft 7 in; no primary record of his height was found (not in the 1959 press conference, the MR-4 press kit or his NASA biography), and 5 ft 5 in and 5 ft 6 in are also printed',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Pilot weight',
+      value: 150.5 * 0.45359237,
+      unit: 'kg',
+      confidence: 'documented',
+      note: `150 lb 8 oz, nude, seven hours before the launch; 147 lb 3 oz aboard the carrier (${RESULTS}, Table 3-I)`,
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Round the thigh',
+      value: 21 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `21 in right, 20 3/4 in left, at the examination on the morning of the flight (${RESULTS}, p. 9)`,
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Round the calf',
+      value: 15.875 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `15 7/8 in, both (${RESULTS}, p. 9)`,
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Chest mirror',
+      value: 5 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '"the 5-inch plexiglas parabolic mirror attached to Grissom’s suit" (NASA’s caption to photograph 61-MR4-79); its rim, about 15 cm across, is read off the photographs',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Operating pressure',
+      value: 4.6 * 6.894757,
+      unit: 'kPa',
+      confidence: 'documented',
+      note: '4.6 psi, held by the suit regulator only if the cabin loses pressure (SEDR 104); on this flight the cabin held about 5 psi and the suit was never inflated',
+    },
+    ...LC5_SPECS,
   ],
   motors: [
     {
@@ -671,5 +1298,6 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig)',
     },
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew],
+  surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
 };

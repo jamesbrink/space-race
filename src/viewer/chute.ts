@@ -34,6 +34,8 @@ import type { ChuteMoment } from './ascent';
 export const FILLED = 2 / 3;
 /** How wide the mouth is while it streams, of its full width. */
 export const STREAM = 0.04;
+/** Seconds a canopy that tears takes to go from the mouth it had to a streamer: judged, not recorded. */
+export const TEARS = 0.4;
 /** Seconds it takes to let its air go and settle after a landing. */
 export const COLLAPSE = 6;
 /** How the crown is rounded: the cloth's turn from flat at the apex to upright at the shoulder goes as this power of the way there (1 is a hemisphere; more is a flatter crown and a fuller shoulder). */
@@ -84,6 +86,11 @@ export function mouth(def: Pick<ChuteDef, 'reefed' | 'stretch'>, since: number, 
   const held = Math.max(STREAM, Math.min(1, reef.mouth.value));
   if (since <= reef.until.value) return STREAM + (held - STREAM) * smooth((since - stretch) / ((reef.until.value - stretch) / 3));
   return held + (1 - held) * smooth((since - reef.until.value) / (fills - reef.until.value));
+}
+
+/** The mouth of a canopy that tore `torn` seconds ago with its mouth `open`: it lets its air go and streams. Whole (`torn` < 0), `open`. */
+export function tornMouth(open: number, torn: number): number {
+  return torn < 0 ? open : STREAM + (open - STREAM) * (1 - smooth(torn / TEARS));
 }
 
 /** How far out it has been paid, 0 to 1 of its lines' and riser's length, `since` seconds after it was thrown out. */
@@ -207,17 +214,28 @@ function ribbon(material: THREE.Material, size: THREE.Vector2): void {
         '#include <project_vertex>',
         /* glsl */ `#include <project_vertex>
         {
+          // A line that runs past the eye is cut at the near plane here, before anything is worked out on the screen: an end
+          // behind the eye has no place on the screen (its w is nothing or less), and a ribbon made from one was a sheet
+          // across the whole view, seen from close above the spacecraft with the riser going by. Both ends behind: not drawn.
           vec4 far = projectionMatrix * modelViewMatrix * vec4(aOther, 1.0);
-          vec2 along = (far.xy / max(far.w, 1e-6) - gl_Position.xy / max(gl_Position.w, 1e-6)) * uSize;
-          float len = length(along);
-          if (len > 1e-6) {
-            vec2 across = vec2(-along.y, along.x) / len;
-            // half its own width in pixels at this distance, or half the least: and one held at the least is drawn fainter by as
-            // much as it is thinner than that, so forty-eight lines a kilometre off are a haze of cord, not a white cone
-            float own = 0.5 * aSide.y * projectionMatrix[1][1] * uSize.y * 0.5 / max(gl_Position.w, 1e-6);
-            float half_ = max(own, ${(LEAST_PIXELS / 2).toFixed(3)});
-            vThin = clamp(own / half_, 0.12, 1.0);
-            gl_Position.xy += across * aSide.x * half_ * 2.0 / uSize * gl_Position.w;
+          float nearW = projectionMatrix[3][2] / (projectionMatrix[2][2] - 1.0);
+          vec4 here = gl_Position;
+          if (here.w < nearW && far.w > nearW) here = mix(here, far, (nearW - here.w) / (far.w - here.w));
+          if (far.w < nearW && here.w > nearW) far = mix(far, here, (nearW - far.w) / (here.w - far.w));
+          if (here.w < nearW) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          else {
+            gl_Position = here;
+            vec2 along = (far.xy / far.w - here.xy / here.w) * uSize;
+            float len = length(along);
+            if (len > 1e-6) {
+              vec2 across = vec2(-along.y, along.x) / len;
+              // half its own width in pixels at this distance, or half the least: and one held at the least is drawn fainter by as
+              // much as it is thinner than that, so forty-eight lines a kilometre off are a haze of cord, not a white cone
+              float own = 0.5 * aSide.y * projectionMatrix[1][1] * uSize.y * 0.5 / here.w;
+              float half_ = max(own, ${(LEAST_PIXELS / 2).toFixed(3)});
+              vThin = clamp(own / half_, 0.12, 1.0);
+              gl_Position.xy += across * aSide.x * half_ * 2.0 / uSize * here.w;
+            }
           }
         }`,
       );
@@ -365,7 +383,8 @@ export class Chute {
     this.node.updateWorldMatrix(true, false);
     group.position.copy(this.fast).applyMatrix4(this.node.matrixWorld);
     group.scale.setScalar(m.seen);
-    const open = mouth(def, m.since, m.fills);
+    // (torn, it had the mouth it had filled to when it tore, and has let it go since)
+    const open = tornMouth(mouth(def, m.torn >= 0 ? m.since - m.torn : m.since, m.fills), m.torn);
     const out = paid(def, m.since);
     const lay = m.down >= 0 ? smooth(m.down / COLLAPSE) : 0;
     const table = line(open);

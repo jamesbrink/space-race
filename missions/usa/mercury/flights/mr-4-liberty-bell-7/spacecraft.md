@@ -37,7 +37,7 @@ pressure vessel, every station and motor. This file is what was No. 11's own.
 | Antenna canister, escape tower, retropack | | no difference found in anything read | | Hammack and Heberlig's Figures 2 and 17 (October 1961) are the dimensions both models use |
 | Paint | FREEDOM 7; UNITED STATES; flags | LIBERTY BELL 7 under the window; a crack; UNITED STATES; a flag | documented by photographs; every place estimated | see "Paint" |
 | Booster | MR-7 | MR-8: 102 lb more damping compound in the instrument compartment; flown on 100° instead of 102° | documented | TM X-53107, 4.2.1 and 8.3.2 |
-| Pilot's suit | | wrist bearing rings, a convex chest mirror, a new parachute harness, new microphones, a urine reservoir | documented | *This New Ocean*, p. 368 |
+| Pilot's suit | | quick-removal wrist rings on ball bearings, a 5 in convex chest mirror, a new parachute harness, new microphones, a urine reservoir | documented | *This New Ocean*, p. 368; the MR-4 press kit (13 July 1961); NASA's caption to 61-MR4-79. Each as modelled on the standing figure: [mark-iv-suit.md](../../crew/mark-iv-suit.md), "5 May and 21 July 1961" |
 
 ## The window
 
@@ -148,7 +148,7 @@ next moment; "returning it to NO. 1" let the automatic motion that was owed run.
 a pilot light (SEDR 104, Figure 12-2), not a control.
 In the model the handle is `Ctl_PeriscopeHandle`, stowed in the display's upper right corner (the display is flush in
 the panel here, so the side of its housing is behind the panel: its place is ours), with the engage lever's knob beside
-it. This flight cannot be flown yet, so nothing works it; when it can, a click on it, Y, or the Periscope switch among the
+it. This flight cannot be flown yet, so nothing works it; when it can, a click on it, a right click on the afterbody, or the Periscope switch among the
 flight deck's keys will send the periscope the other way from where it is headed, as Freedom 7's does. **The rule** (`src/sim/mechanism.ts`):
 it stays where the hand sent it until the programme's next event, which takes it back; with the sequencer off, which
 here stands for the fuse, the programme's events pass unheard and it moves only when told; and with the sequencer
@@ -209,6 +209,12 @@ The same GLB holds the launch vehicle's five nodes: [redstone-mrlv.md](../../veh
 - **The far side's paint**, above.
 - **The two round plates in the top row** (left out here): on Freedom 7 the like plates, at 45° and 135°, carry a large and a small nozzle each and are taken for the roll jets. This model still has its roll jets low on the cone (`mercury_capsule.roll_thrusters`); whether No. 11's plates are the same jets has not been checked against its photographs.
 
+**On the pad** (sites/lc-5.md, "5 May and 21 July 1961"): the capsule's umbilical is built to this
+capsule's receptacle (station 32.5; Freedom 7's is at 31.2), and the white room and the cherry
+picker's cab meet its hatch as they met Freedom 7's, both capsules standing with the hatch on +X.
+The pad's meshes were tested against this vehicle's in Blender with the periscope's door shut and
+open: none cross, and the umbilical's end is 26 mm from the receptacle.
+
 Settled in November 2026 from photographs of Freedom 7 as it is kept (its spacecraft.md, "Round the cone"): where the
 hatch was on both capsules (315°, as here: Freedom 7's model moved to it, and both capsules now stand with the hatch
 on +X), which way Freedom 7's beads run (round the cone, as here), and Freedom 7's periscope station (37, not 13; this
@@ -235,9 +241,11 @@ capsule's stays 41.5 from its own photographs).
   only from capsule 7 as it is kept today is left out: the coiled cord on the left wall, the wiring
   down from the fuse panel, and the camera beside the pilot's head (the chest mirror was there so
   that one camera would do).
-- **The pilot's suit is Shepard's with the name changed and the mirror added.** The wrist bearing
-  rings, the new parachute harness and the new microphones are not modelled. There is no model of
-  Grissom standing: the gallery's figure for scale is an outline.
+- **The pilot in the cabin is Shepard's figure with the name changed and the mirror added.** The
+  wrist rings, the parachute harness and the new microphones are not on him. They are on Grissom
+  standing (the flight's crew model), whose suit can be seated here in his place: mark-iv-suit.md,
+  "On the couch". The mirror itself was 5 in across (NASA's caption to 61-MR4-79) in a rim of about
+  6 in: the cabin's is 5.2 in across its rim.
 - **The panel's faces are capsule 7's**, and the instrument with two needles is blank.
 - **The rate command system is not modelled** beyond its switch and handle on the console.
 - **The periscope's door opens as far as the model's linkage takes it** (109°), and the objective comes out
@@ -249,8 +257,9 @@ capsule's stays 41.5 from its own photographs).
 - **The clamp ring's bolt covers** are half an egg each; the hinge is not modelled.
 - **No mass properties, no trajectory.** The flight cannot be flown yet: see the flight's README.
 - **Its levels of detail change at the viewer's own distances.** They have not been measured for
-  this model (`tools/lod-thresholds.mjs --measure`): the gallery draws it in full, and it stands
-  nowhere else yet.
+  this model or for its pad (`tools/lod-thresholds.mjs --measure`): the gallery draws it in full; at
+  the launch site it and the pad change level at the viewer's own thresholds, which are what
+  Freedom 7's pad measured at.
 - Everything listed in Freedom 7's spacecraft.md for the parts the two share: the retropack's
   straps, the tower's bracing and single jettison nozzle, the landing bag as a flat ring.
 

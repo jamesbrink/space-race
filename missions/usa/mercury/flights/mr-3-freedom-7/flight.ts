@@ -1,6 +1,5 @@
 import type {
   AbortRecord,
-  Action,
   Body,
   Curve,
   Flight,
@@ -10,7 +9,6 @@ import type {
   MassPart,
   Measure,
   ModelDef,
-  Move,
   Part,
   RcsSupply,
   Signal,
@@ -18,6 +16,18 @@ import type {
   Trajectory,
   Winds,
 } from '../../../../../src/types';
+import {
+  HARDWARE_WORDS,
+  hutLeaves,
+  held,
+  LC5_SPECS,
+  lc5Parts,
+  type PadNode,
+  type PartWords,
+  spareTrailerLeaves,
+  swing,
+  Z,
+} from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 
@@ -50,6 +60,7 @@ const vehicleParts: Part[] = [
     node: 'EscapeTower',
     group: 'Spacecraft',
     name: 'Launch escape tower',
+    commands: [{ label: 'Jettison the escape tower', ask: 'tower' }],
     summary: 'Pulls the capsule off a failing booster.',
     detail:
       'A welded steel-tube pylon about ten feet tall carrying a solid motor of 52,000 lbf that burns for under a ' +
@@ -69,6 +80,7 @@ const vehicleParts: Part[] = [
     node: 'AntennaCanister',
     group: 'Spacecraft',
     name: 'Antenna canister',
+    commands: [{ label: 'Deploy the drogue parachute', ask: 'drogue' }],
     summary: 'Bicone antenna, horizon scanners, drogue parachute.',
     detail:
       'The pale band is an 8-inch dielectric window: the metal above and below it are the two halves of a bicone ' +
@@ -87,6 +99,7 @@ const vehicleParts: Part[] = [
     node: 'RecoveryCompartment',
     group: 'Spacecraft',
     name: 'Recovery compartment',
+    commands: [{ label: 'Deploy the main parachute', ask: 'main' }],
     summary: 'Main and reserve parachutes; pitch and yaw thrusters.',
     detail:
       'A 32-inch cylinder holding a 63-foot ring-sail main parachute and its reserve, skinned in thick beryllium ' +
@@ -133,8 +146,9 @@ const vehicleParts: Part[] = [
       'window, so the periscope was Shepard’s main view outside. Its door, under his feet, is shut here as it was at ' +
       'liftoff: the objective stood out on the pad and was drawn in, the door shutting over it, when the umbilical ' +
       'was pulled 35 seconds before. It came out at separation, went in for the entry and came out again with the ' +
-      'drogue; at the launch site and in flight it does so on the clock. When each motion happened is documented; ' +
-      'how long each took, and how far the door opens, are estimated.',
+      'drogue; at the launch site and in flight it does so on the clock, and flying the flight yourself you can ' +
+      'send it out or in by hand. When each motion happened is documented, and that a link from the periscope’s ' +
+      'cartridge worked the door; the linkage itself, and so how far the door opens, are estimated.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -143,6 +157,8 @@ const vehicleParts: Part[] = [
       ['Thrusters', 'roll: 6 lbf and 1 lbf'],
     ],
     clocked: PERISCOPE,
+    // flying it yourself, a right click on the afterbody offers the periscope by hand (vehicles/periscope.ts)
+    commands: [{ label: 'Extend the periscope', back: 'Retract the periscope', ask: 'work:periscope' }],
     explode: [0, 9.9, 0],
     order: 3,
   },
@@ -195,6 +211,10 @@ const vehicleParts: Part[] = [
     inside: true,
     group: 'Spacecraft',
     name: 'Retropack',
+    commands: [
+      { label: 'Fire the retrorockets', ask: 'retro' },
+      { label: 'Jettison the retropack', ask: 'retropack' },
+    ],
     summary: 'Three retrograde and three posigrade motors.',
     detail:
       'The small posigrade motors push the capsule away from the spent Redstone. The three large motors are the ' +
@@ -213,6 +233,7 @@ const vehicleParts: Part[] = [
     node: 'RedstoneAdapter',
     group: 'Launch vehicle',
     name: 'Spacecraft adapter',
+    commands: [{ label: 'Separate the spacecraft', ask: 'separate' }],
     summary: 'Joins a 74.5-inch capsule to a 70-inch booster.',
     detail:
       'A short flared ring with the retropack nested inside it. A Marman clamp at its top rim holds the capsule; ' +
@@ -270,6 +291,7 @@ const vehicleParts: Part[] = [
     node: 'RedstoneTailUnit',
     group: 'Launch vehicle',
     name: 'Tail unit',
+    commands: [{ label: 'Shut the engine down', ask: 'cutoff' }],
     summary: 'Four fins, four air rudders, the engine bay.',
     detail:
       'The fins keep the vehicle stable; the small rudders at their tips steer it while there is air to push ' +
@@ -289,6 +311,7 @@ const vehicleParts: Part[] = [
     group: 'Launch vehicle',
     inside: true,
     name: 'A-7 engine',
+    commands: [{ label: 'Shut the engine down', ask: 'cutoff' }],
     summary: '78,000 lbf, steered by vanes in its own exhaust.',
     detail:
       'Rocketdyne’s A-7, a direct descendant of the V-2’s engine: a single fixed chamber fed by a turbopump that ' +
@@ -798,35 +821,10 @@ const MORNING: Keyframe[] = [
     source: 'not documented, as above; half a minute to cross the apron',
   },
 ];
-const DEG = Math.PI / 180;
-const X: [number, number, number] = [1, 0, 0];
-const Z: [number, number, number] = [0, 0, 1];
-/** A hinged piece turning `degrees` about `axis` between two positions on the slider. */
-const swing = (node: string, axis: [number, number, number], degrees: number, from: number, to: number): Move => ({
-  kind: 'swing',
-  node,
-  axis,
-  angle: degrees * DEG,
-  from,
-  to,
-});
-/** A pose held from the start: the piece is built somewhere else and stands here until it moves. */
-const held = (node: string, axis: [number, number, number], degrees: number): Move => swing(node, axis, degrees, -1, -0.5);
-const WHEEL_R = 0.457; // the structure's rail wheels
-const ROLL = [33.53, 19.2]; // metres: to the edge of the pad, then on to the launch position
-
-/** A door leaf on its own hinged node, opened and shut on foot. `degrees` is its `swing` in the model: about the vertical, anticlockwise from above. */
-const doorAction = (id: string, node: string, degrees: number): Action => ({
-  id,
-  label: 'Open',
-  on: node,
-  do: { kind: 'toggle', moves: [swing(node, [0, 1, 0], degrees, 0, 1)], back: 'Close' },
-});
-
-const padParts: Part[] = [
-  {
-    node: 'ServiceStructure',
-    name: 'Service structure',
+/** What this flight says of each part of the pad: the hardware is the site's (sites/lc-5.parts.ts). */
+const PAD_WORDS: Record<PadNode, PartWords> = {
+  ...HARDWARE_WORDS,
+  ServiceStructure: {
     summary: 'The gantry: round the rocket until T−55 minutes, then rolled back.',
     detail:
       'A Noble Company "reclining single-mast" stand, modelled on an oil derrick: an open A-frame mast on a ' +
@@ -845,92 +843,8 @@ const padParts: Part[] = [
       ['Rolled back', '06:37 EST, T−55 min'],
       ['Lift', 'an open cage up the hatch side’s leg, from the pad'],
     ],
-    actions: [
-      {
-        // The car rides the leaning leg's outboard face, so each stop is a little further in than the one below.
-        // `by` is from where it is built, at the pad: metres across (toward the mast is negative) and up.
-        id: 'lift',
-        label: 'Lift',
-        on: 'ServiceStructure_Lift',
-        do: {
-          kind: 'lift',
-          node: 'ServiceStructure_Lift',
-          stops: [
-            { name: 'Pad', by: [0, 0, 0] },
-            { name: 'Level 1', by: [-1.415, 13.188, 0] },
-            { name: 'Level 2', by: [-1.585, 15.839, 0] },
-            { name: 'Level 3 · white room', by: [-1.787, 18.979, 0] },
-            { name: 'Level 4', by: [-2.015, 22.545, 0] },
-            { name: 'Crane', by: [-2.714, 33.437, 0] },
-          ],
-        },
-      },
-      doorAction('office-door', 'ServiceStructure_OfficeDoor', 100),
-      doorAction('level-2-lift-door', 'ServiceStructure_Platform2_Right_LiftDoor', 100),
-      doorAction('level-2-cabin-door', 'ServiceStructure_Platform2_Right_Door', 100),
-      doorAction('level-2-far-cabin-door', 'ServiceStructure_Platform2_Left_Door', -100),
-      doorAction('white-room-door', 'ServiceStructure_Platform3_Right_LiftDoor', 100),
-      doorAction('level-4-door', 'ServiceStructure_Platform4_Right_LiftDoor', 100),
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-    // what it does, each workable by hand: the four platform pairs, and the roll along the rails (which waits for them)
-    functions: [
-      ...[1, 2, 3, 4].map((level) => ({
-        nodes: [`ServiceStructure_Platform${level}_Left`, `ServiceStructure_Platform${level}_Right`],
-        name: level === 3 ? 'White room (level 3)' : `Level ${level} platforms`,
-        ends: ['closed', 'parted'] as [string, string],
-        seconds: 12,
-      })),
-      {
-        nodes: ['ServiceStructure', ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => `ServiceStructure_Wheel_${n}`)],
-        name: 'Roll along the rails',
-        ends: ['at the vehicle', 'rolled back'],
-        // 52.7 m at a walking pace
-        seconds: 110,
-        needs: [1, 2, 3, 4].map((level) => ({
-          node: `ServiceStructure_Platform${level}_Left`,
-          atLeast: 1,
-          why: 'the platforms are still closed round the rocket',
-        })),
-      },
-    ],
-    moves: [
-      // the platforms part, lowest first and the white room last, before anything rolls
-      ...[1, 2, 4, 3].flatMap((level, i): Move[] => [
-        {
-          kind: 'slide',
-          node: `ServiceStructure_Platform${level}_Left`,
-          by: [-1.372, 0, 0],
-          from: T.platforms + i * 0.025,
-          to: T.platforms + 0.05 + i * 0.025,
-        },
-        {
-          kind: 'slide',
-          node: `ServiceStructure_Platform${level}_Right`,
-          by: [1.372, 0, 0],
-          from: T.platforms + i * 0.025,
-          to: T.platforms + 0.05 + i * 0.025,
-        },
-      ]),
-      { kind: 'slide', by: [0, 0, -ROLL[0]!], from: T.rollback, to: T.cabIn - 0.01 },
-      { kind: 'slide', by: [0, 0, -ROLL[1]!], from: T.launchPosition, to: T.cabAway - 0.02 },
-      ...[1, 2, 3, 4, 5, 6, 7, 8].flatMap((n): Move[] => [
-        { kind: 'swing', node: `ServiceStructure_Wheel_${n}`, axis: X, angle: -ROLL[0]! / WHEEL_R, from: T.rollback, to: T.cabIn - 0.01 },
-        {
-          kind: 'swing',
-          node: `ServiceStructure_Wheel_${n}`,
-          axis: X,
-          angle: -ROLL[1]! / WHEEL_R,
-          from: T.launchPosition,
-          to: T.cabAway - 0.02,
-        },
-      ]),
-    ],
   },
-  {
-    node: 'CherryPicker',
-    name: 'Mobile aerial tower',
+  CherryPicker: {
     summary: 'The “cherry picker”: the pilot’s way out.',
     detail:
       'Once the service structure had rolled back, this truck-mounted tower held a cab at the capsule hatch so ' +
@@ -946,157 +860,8 @@ const padParts: Part[] = [
       ['Cab lowered', 'T−4 min, or T−2:30 (sources differ)'],
       ['Control', 'ground, cab, or blockhouse'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
-    actions: [doorAction('driver-door', 'CherryPicker_Door_1', -70)],
-    // What it does, each worked from its lever at the control station behind the cab (the model's
-    // `lever` marks). The interlocks are how any such truck is kept upright, not something the
-    // record shows of this one: it stood on its outriggers to raise the tower, and drove only with
-    // the tower down and the legs up.
-    functions: [
-      {
-        nodes: ['CherryPicker_Mast'],
-        name: 'Mast',
-        ends: ['raised', 'down on its rest'],
-        seconds: 40,
-        at: 'CherryPicker_Controls',
-        lever: 'CherryPicker_Controls_Mast',
-        needs: [{ node: 'CherryPicker_Outrigger_1', atMost: 0, why: 'the outriggers are up: it must stand on them first' }],
-      },
-      {
-        nodes: ['CherryPicker_Jib'],
-        name: 'Jib',
-        ends: ['standing by', 'folded'],
-        seconds: 40,
-        at: 'CherryPicker_Controls',
-        lever: 'CherryPicker_Controls_Jib',
-        needs: [{ node: 'CherryPicker_Outrigger_1', atMost: 0, why: 'the outriggers are up: it must stand on them first' }],
-      },
-      {
-        nodes: ['CherryPicker_Cab'],
-        name: 'Cab level',
-        ends: ['standing by', 'stowed'],
-        seconds: 30,
-        at: 'CherryPicker_Controls',
-        lever: 'CherryPicker_Controls_Cab',
-      },
-      {
-        nodes: [1, 2, 3, 4].map((n) => `CherryPicker_Outrigger_${n}`),
-        name: 'Outriggers',
-        ends: ['down', 'up'],
-        seconds: 15,
-        at: 'CherryPicker_Controls',
-        lever: 'CherryPicker_Controls_Outriggers',
-        needs: [{ node: 'CherryPicker_Mast', atLeast: 1, why: 'the mast is up: the legs hold it' }],
-      },
-      {
-        nodes: ['CherryPicker'],
-        name: 'Drive off',
-        ends: ['on station', 'gone'],
-        seconds: 40,
-        at: 'CherryPicker_SteeringWheel',
-        needs: [
-          { node: 'CherryPicker_Outrigger_1', atLeast: 1, why: 'the outriggers are down' },
-          { node: 'CherryPicker_Mast', atLeast: 1, why: 'the mast is up' },
-        ],
-      },
-    ],
-    moves: [
-      // standing by, clear of the structure, until it has gone; the cab hangs level whatever the jib does
-      held('CherryPicker_Jib', Z, 29.94),
-      held('CherryPicker_Cab', Z, -29.94),
-      swing('CherryPicker_Jib', Z, -29.94, T.cabIn, T.cabIn + 0.09),
-      swing('CherryPicker_Cab', Z, 29.94, T.cabIn, T.cabIn + 0.09),
-      // away and down, by remote control
-      swing('CherryPicker_Jib', Z, 71.27, T.cabAway, T.cabAway + 0.12),
-      swing('CherryPicker_Cab', Z, -71.27, T.cabAway, T.cabAway + 0.12),
-      // afterwards: jib folded, mast laid forward on its rest, legs up, and away
-      swing('CherryPicker_Jib', Z, -1.16, T.stow, T.stow + 0.03),
-      swing('CherryPicker_Mast', Z, -65.59, T.stow, T.stow + 0.07),
-      swing('CherryPicker_Cab', Z, 66.75, T.stow, T.stow + 0.07),
-      swing('CherryPicker_Outrigger_1', X, -105, T.stow + 0.06, T.drive),
-      swing('CherryPicker_Outrigger_3', X, -105, T.stow + 0.06, T.drive),
-      swing('CherryPicker_Outrigger_2', X, 105, T.stow + 0.06, T.drive),
-      swing('CherryPicker_Outrigger_4', X, 105, T.stow + 0.06, T.drive),
-      {
-        kind: 'drive',
-        from: T.drive,
-        to: 1,
-        // out along the stub road on the hatch side, then round toward the blockhouse road
-        path: [
-          [12, 0],
-          [26, 1],
-          [40, 8],
-          [50, 24],
-        ],
-        pivot: [0, 0.527, 0],
-        forward: [1, 0],
-        wheelRadius: 0.527,
-        wheelbase: 5.029,
-        // estimated: a 5 m wheelbase at about 35 degrees of lock
-        turningCircle: 18,
-        wheels: 'CherryPicker_Wheel',
-        steered: 'CherryPicker_SteerWheel',
-        axle: 'z',
-      },
-    ],
   },
-  {
-    node: 'LaunchPedestal',
-    name: 'Launcher',
-    summary: 'A ring table on four legs over a flame deflector.',
-    detail:
-      'The Redstone launch ring, turned to the flight azimuth and levelled before the count. The ' +
-      'Mercury-Redstone had no hold-down arms: it stood here under its own weight and left when thrust ' +
-      'exceeded it. Its last ties to the ground were two plugs on top of the ring under one fin, pulled out ' +
-      'by the rising vehicle. On MR-1 it rose 3.8 inches, shut down, and settled back. The ring stands on a ' +
-      'steel scale plate: the vehicle was weighed before and after each propellant was loaded.',
-    facts: [
-      ['Table', 'about 10 ft across, 5.5 ft high (estimated)'],
-      ['Hold-down arms', 'none'],
-      ['Tail plugs', '60-pin and 4-pin, under fin II'],
-      ['Flame deflector', 'four-sided'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'UmbilicalMast',
-    name: 'Capsule cable mast',
-    summary: 'Carries the capsule’s umbilical until T−35 seconds.',
-    detail:
-      'A slender pole beside the vehicle carrying the capsule’s ground power, cooling and communications. ' +
-      'At T−35 seconds the umbilical was ejected and a bungee cord pulled the released mast over about its ' +
-      'foot, clear of the rocket.',
-    facts: [
-      ['Released', 'pneumatically, at T−35 s'],
-      ['Pulled clear by', 'a bungee cord'],
-      ['Height', 'about 55–60 ft (estimated)'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-    moves: [
-      swing('UmbilicalMast', X, -88, T.umbilical, T.umbilical + 0.035), // (over away from the vehicle, toward +Y: it stands behind it)
-      // the umbilical swings down from the release head as the mast goes over, and hangs from it to the pad (estimated: how it fell is not recorded)
-      swing('UmbilicalMast_Cable', X, 145, T.umbilical, T.umbilical + 0.035),
-    ],
-  },
-  {
-    node: 'BoosterMast',
-    name: 'Booster cable mast',
-    summary: 'Cooling and a plug for the booster; drops at about T−14 seconds.',
-    detail:
-      'The second mast served the booster: a plug, and a cooling package fed with liquid nitrogen for the ' +
-      'instrument compartment. The countdown calls its release "boom drop". Its form and exact place are ' +
-      'the least certain things on this pad.',
-    facts: [['Boom drop', 'about T−14 s']],
-    explode: [0, 0, 0],
-    order: 0,
-    moves: [swing('BoosterMast', X, 88, T.boom, T.boom + 0.035)],
-  },
-  {
-    node: 'Hardstand',
-    name: 'Hardstand and rails',
+  Hardstand: {
     summary: 'Two hundred feet of concrete; four rails for the service structure.',
     detail:
       'Pad 5 is one of two pads of Complex 5/6, 520 feet apart on one track, with a blockhouse whose point ' +
@@ -1108,12 +873,8 @@ const padParts: Part[] = [
       ['Rails', 'four, in two pairs'],
       ['Launch azimuth', '105° for MR-3'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
   },
-  {
-    node: 'GroundEquipment',
-    name: 'Ground equipment',
+  GroundEquipment: {
     summary: 'What was still on the pad at liftoff.',
     detail:
       'The liquid-oxygen topping trailer, which fed the tank until a minute before launch, the nitrogen ' +
@@ -1126,131 +887,46 @@ const padParts: Part[] = [
       'estimated too: nothing records how the huts were moved, or that they were. The trailer leaves behind a ' +
       'tractor, north off the pad: also estimated; the tractor is an Army M275 of the kind photographed coupled to it. The three searchlights stay where they ' +
       'stand: the record has their crews clearing the area and the lights switched off ("secured"), not taken away.',
-    moves: [
-      // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
-      { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11 },
-      { kind: 'slide', node: 'GroundEquipment_Case', by: [2.51, 0, 42.4], from: T.platforms + 0.03, to: T.platforms + 0.12 },
-      // the trailer's door steps fold up first, so nothing hangs below its frame while it is towed (estimated)
-      swing('GroundEquipment_TrailerSteps', Z, 95, T.platforms, T.platforms + 0.008),
-      // the trailer taken away behind a tractor unit, north off the pad past the cherry picker (estimated throughout)
-      {
-        kind: 'drive',
-        node: 'GroundEquipment_Tractor',
-        from: T.platforms + 0.01,
-        to: T.platforms + 0.12,
-        // in the frame of the bay it stands in, which faces the way it does: x ahead, z to its right. It starts
-        // straight ahead (a route's first leg is the way it faces) and eases 12 ft to its left over 40 m, clear of
-        // the structure's stair, so that the trailer behind it tracks without cutting in
-        path: [
-          [4, 0],
-          [10, -0.4],
-          [20, -1.83],
-          [30, -3.26],
-          [36, -3.6],
-          [44, -3.66],
-          [82.6, -3.66],
-        ],
-        pivot: [0, 0.513, 0],
-        forward: [1, 0],
-        wheelRadius: 0.513,
-        wheelbase: 3.607,
-        wheels: 'GroundEquipment_Tractor_Wheel',
-        steered: 'GroundEquipment_Tractor_SteerWheel',
-        axle: 'z',
-      },
-      {
-        kind: 'drive',
-        node: 'GroundEquipment_Trailer',
-        from: T.platforms + 0.01,
-        to: T.platforms + 0.12,
-        // Its bogie heads always for the kingpin on the tractor's fifth wheel, 6.54 m ahead: the tractor's route
-        // worked through as a trailer follows it (a tractrix), so the two stay coupled to within 2 cm all the way
-        path: [
-          [0, 5.01],
-          [0.05, 8.01],
-          [0.17, 11],
-          [0.38, 13.99],
-          [0.67, 16.97],
-          [1.02, 19.95],
-          [1.41, 22.93],
-          [1.82, 25.91],
-          [2.24, 28.88],
-          [2.63, 31.86],
-          [2.95, 34.84],
-          [3.2, 37.82],
-          [3.36, 40.81],
-          [3.47, 43.81],
-          [3.54, 46.81],
-          [3.59, 49.81],
-          [3.62, 52.81],
-          [3.64, 55.81],
-          [3.65, 58.81],
-          [3.67, 66.81],
-          [3.67, 74.82],
-          [3.66, 82.6],
-        ],
-        pivot: [0, 0.472, 0],
-        forward: [0, 1],
-        wheelRadius: 0.472,
-        wheelbase: 6.54,
-        wheels: 'GroundEquipment_Trailer_Wheel',
-        steered: 'GroundEquipment_Trailer_NoSteer',
-        axle: 'x',
-      },
-      // each hut dragged off on its skids by a pickup, straight out across the pad's edge to the road behind (estimated)
-      ...[1, 2].flatMap((k): Move[] => [
-        { kind: 'slide', node: `GroundEquipment_Hut${k}`, by: [72, 0, 0], from: T.platforms + 0.03 * k, to: T.platforms + 0.03 * k + 0.08 },
-        {
-          kind: 'drive',
-          node: `GroundEquipment_Tow${k}`,
-          from: T.platforms + 0.03 * k,
-          to: T.platforms + 0.03 * k + 0.08,
-          path: [
-            [24, 0],
-            [48, 0],
-            [72, 0],
-          ],
-          pivot: [0, 0.361, 0],
-          forward: [1, 0],
-          wheelRadius: 0.361,
-          wheelbase: 2.794,
-          wheels: `GroundEquipment_Tow${k}_Wheel`,
-          steered: `GroundEquipment_Tow${k}_SteerWheel`,
-          axle: 'z',
-        },
-      ]),
-    ],
-    // (the two huts' doors stay shut: what they held is not recorded, so no inside is offered: ground_equipment.py)
-    actions: [doorAction('trailer-door', 'GroundEquipment_TrailerDoor', -100)],
-    explode: [0, 0, 0],
-    order: 0,
   },
-  {
-    node: 'CameraTowers',
-    name: 'Camera towers',
-    summary: 'Twenty engineering cameras watched the launch.',
-    detail: 'Slim lattice towers carrying some of the fixed cameras that filmed every launch from this pad for the engineers.',
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'Floodlights',
-    name: 'Floodlights',
+  Floodlights: {
     summary: 'The count ran through the night.',
     detail:
       'Timber poles in the grass at the pad’s edge, each with a crossarm of floodlights. ' +
       'Shepard was woken at 01:10, went up the gantry at 05:15 and was in the capsule at 05:20, before sunrise. ' +
       'He waited there four hours and fourteen minutes.',
-    explode: [0, 0, 0],
-    order: 0,
   },
-];
+};
+
+const padParts: Part[] = lc5Parts({
+  T,
+  words: PAD_WORDS,
+  // the platforms part, lowest first and the white room last, before anything rolls
+  platforms: [1, 2, 4, 3].map((level, i) => [level, T.platforms + i * 0.025, T.platforms + 0.05 + i * 0.025]),
+  tower: [
+    // standing by, clear of the structure, until it has gone; the cab hangs level whatever the jib does
+    held('CherryPicker_Jib', Z, 29.94),
+    held('CherryPicker_Cab', Z, -29.94),
+    swing('CherryPicker_Jib', Z, -29.94, T.cabIn, T.cabIn + 0.09),
+    swing('CherryPicker_Cab', Z, 29.94, T.cabIn, T.cabIn + 0.09),
+  ],
+  cleared: [
+    // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
+    { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11 },
+    { kind: 'slide', node: 'GroundEquipment_Case', by: [2.51, 0, 42.4], from: T.platforms + 0.03, to: T.platforms + 0.12 },
+    // the trailer's door steps fold up first, so nothing hangs below its frame while it is towed (estimated)
+    swing('GroundEquipment_TrailerSteps', Z, 95, T.platforms, T.platforms + 0.008),
+    // the trailer taken away behind a tractor unit, north off the pad past the cherry picker (estimated throughout)
+    ...spareTrailerLeaves(T.platforms + 0.01, T.platforms + 0.12),
+    // each hut dragged off on its skids by a pickup, straight out across the pad's edge to the road behind (estimated)
+    ...[1, 2].flatMap((k) => hutLeaves(k, T.platforms + 0.03 * k, T.platforms + 0.03 * k + 0.08)),
+  ],
+});
 
 const pad: ModelDef = {
   id: 'pad',
   name: 'Launch pad',
   url: 'models/usa/mercury/mr-3-freedom-7/pad.glb',
-  scale: 'Launch Complex 5 · hardstand 62 m square · to scale',
+  scale: 'Launch Complex 5 · hardstand 61 m square · to scale',
   backdrop: 'cape-canaveral',
   slider: ['Pilot aboard · 05:20', 'Pad clear'],
   sequence: MORNING,
@@ -1319,11 +995,12 @@ const crewParts: Part[] = [
     summary: 'Zipped to the sleeves; one straight finger.',
     detail:
       'Four fingers are curved to rest on the hand controller. The middle finger is straight, for pushing ' +
-      'buttons. On this flight the gloves were zipped directly to the sleeves, so the wrists could not turn; ' +
-      'the bearing-and-lock-ring wrist arrived on the next flight.',
+      'buttons. On this flight each glove joined its sleeve by a zipper round the wrist, over a bearing that ' +
+      'Shepard found in his way: turning his right hand to yaw, it bumped the parachute on his chest. The ' +
+      'quick-removal ring, turning on ball bearings, arrived on the next flight.',
     facts: [
       ['Attachment on MR-3', 'zipper'],
-      ['From MR-4', 'ring lock with wrist bearing'],
+      ['From MR-4', 'quick-removal bearing ring'],
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -2089,6 +1766,14 @@ const body: Body = {
       'not in anything read. The main had to open with the drogue failed, the spacecraft falling alone at its terminal speed: its weight over its own drag area, 4.0 kPa at any height. A quarter over that. Ours',
     ),
     torn: guess(0.05, 'a canopy torn or streaming is taken to keep a twentieth of its drag area: chosen, not recorded'),
+    pull: {
+      main: guess(
+        80_000,
+        'not in anything read: no strength of the ringsail’s lines or riser is in the reports here. Flown here, the main pulls 42 kN at most as it fills behind the drogue (4.0 g) and 52 kN ' +
+          'when it has to open with the drogue failed (5.1 g), the case it was built for; half as much again as that. Full, it would pull as hard in 340 Pa, which it never meets ' +
+          'unless it is let out above the air and carried into it. Ours',
+      ),
+    },
   },
 };
 
@@ -2621,62 +2306,8 @@ export const flight: Flight = {
       confidence: 'documented',
       note: '4.6 psi, held by the suit regulator only if the cabin loses pressure (SEDR 104; Results of the First U.S. Manned Suborbital Space Flight)',
     },
-    {
-      group: 'Launch pad',
-      label: 'Mobile aerial tower reach',
-      value: 125 * 0.3048,
-      unit: 'm',
-      confidence: 'documented',
-      note: '125 ft (TM X-53107, 7.3.3.1)',
-    },
-    {
-      group: 'Launch pad',
-      label: 'White room',
-      value: 3,
-      unit: 'level',
-      confidence: 'documented',
-      note: 'level 3 of the service structure',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Pedestal height',
-      value: 6 * 0.3048,
-      unit: 'm',
-      confidence: 'estimated',
-      note: '6 ft, scaled off photographs',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Service structure height',
-      value: 118 * 0.3048,
-      unit: 'm',
-      confidence: 'estimated',
-      note: '118 ft to the crane, scaled off TM X-53107 Figure 7-7',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Hardstand',
-      value: 204 * 0.3048,
-      unit: 'm',
-      confidence: 'derived',
-      note: 'about 204 ft square: Figure 7-6 scaled on the 535 ft between pads 5 and 6',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Service structure launch position',
-      value: 195 * 0.3048,
-      unit: 'm',
-      confidence: 'derived',
-      note: 'about 195 ft from the pad centre, same scaling',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Blockhouse',
-      value: 345 * 0.3048,
-      unit: 'm',
-      confidence: 'derived',
-      note: 'about 345 ft from each pad centre; drawn as scenery',
-    },
+    // (the pad's own figures are the site's, the same for every flight from it: sites/lc-5.parts.ts, from lc-5.md)
+    ...LC5_SPECS,
   ],
   motors: [
     {

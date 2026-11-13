@@ -1012,10 +1012,11 @@ def relax(verts: list[Vector], faces: Sequence[tuple[int, ...]], weight: dict[in
             verts[i] = p
 
 
-def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]], frozen: set[int]) -> None:
+def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]], frozen: set[int], ease: Callable[[Vector], float] | None = None) -> None:
     """Folds fanning out from each armpit across the chest and the back, where the cloth of a
     soft suit is gathered when the arms hang: valleys a few millimetres deep, pressed in along
-    the skin's own normal after the shoulders have been stitched on."""
+    the skin's own normal after the shoulders have been stitched on. `ease(point)` is how much of
+    a fold is left there, 0 to 1: under a strap drawn tight over the cloth there is none."""
     normal = [Vector() for _ in verts]
     for f in faces:
         nm = sum(((verts[f[i]] - verts[f[0]]).cross(verts[f[i + 1]] - verts[f[0]]) for i in range(1, len(f) - 1)), Vector())
@@ -1035,16 +1036,15 @@ def drape(verts: list[Vector], faces: Sequence[tuple[int, ...]], frozen: set[int
                 reach = v.length
                 psi = math.atan2(v.z, -v.x * sx)  # up from the horizontal, swinging in toward the chest's middle
                 fall = sum(-dep * math.exp(-(((psi - a - 0.12 * math.sin(reach / 3.0 + a * 7)) * reach / w) ** 2)) for a, dep, w in fan)
-                verts[i] = p + normal[i].normalized() * fall * smooth(reach, 2.5, 6.0) * (1 - smooth(reach, 11.5, 19.0)) * smooth(
-                    v.y * side, 0.5, 3.0
-                )
+                move = normal[i].normalized() * fall * smooth(reach, 2.5, 6.0) * (1 - smooth(reach, 11.5, 19.0)) * smooth(v.y * side, 0.5, 3.0)
+                verts[i] = p + (move * ease(p) if ease else move)
 
 
-def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
+def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube], ease: Callable[[Vector], float] | None = None) -> None:
     """The torso from the waist up and both shoulders as one skin. The torso is a grid with an armhole cut in each
     side; from each hole's edge a sleeve is lofted over the shoulder and down to SLEEVE_HEM on the
     upper arm, where the Arms node's sleeve carries on from the same ring of points. Stitched to the hole
-    and relaxed, the cloth runs from chest to arm without a crease."""
+    and relaxed, the cloth runs from chest to arm without a crease. `ease` is drape's: where the armpits' folds are pressed flat."""
     n = trunk_sides()
     rows = t.rows(B.waist_z - B.torso_z0, must=(B.z_pit - B.torso_z0, B.z_yoke - B.torso_z0))
     ra = min(range(len(rows)), key=lambda r: abs(rows[r] - (B.z_pit - B.torso_z0)))
@@ -1143,7 +1143,7 @@ def build_shell(mb: MeshBuilder, t: Tube, arms: dict[int, Tube]) -> None:
                 if reach < 7.0:
                     share[i] = 0.5 * (1 - smooth(reach, 0.0, 7.0))
     relax(verts, faces, weight, max(3, round(14 / grain())))
-    drape(verts, faces, frozen)
+    drape(verts, faces, frozen, ease)
     mb.share = [share.get(i, 0.0) for i in range(len(verts))]
     mb.add([tuple(v) for v in verts], faces, uvs)
 

@@ -561,6 +561,7 @@ test('which of the body’s inputs are not documented', (t) => {
     'body.limits.drogue (estimated)',
     'body.limits.main (estimated)',
     'body.limits.torn (estimated)',
+    'body.limits.pull.main (estimated)',
   ]);
   // how far the ones that steer and the ones that lift move the flight: a 5 % rise in each
   const base = live.results;

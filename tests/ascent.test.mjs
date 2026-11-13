@@ -256,3 +256,38 @@ test('what an abort off the pad leaves behind is still there: the booster, let g
   assert.equal(ascent.burn(0.3).on, 0);
   assert.equal(ascent.burn(2.5).on, 0);
 });
+
+test('under the main parachute in the day’s wind, the canopy stands over the spacecraft, not off to one side of it', async () => {
+  const { ecefToSiteDirection, inertialToEcef, inertialToEcefVelocity } = await import('../src/world/frames.ts');
+  const { EARTH_ROTATION_RATE } = await import('../src/world/bodies.ts');
+  const site = siteFrame(flight.site);
+  const run = live();
+  const ascent = Ascent.of(flight);
+  ascent.use(run);
+  const main = flight.flies.chutes.findIndex((c) => c.on === 'main');
+  // once it is full and the spacecraft has stopped swinging under it: the last minutes of the descent
+  const hanging = run.samples.filter((s) => s.phase === 'main' && s.t > run.out.main + 60 && s.t < run.duration - 1);
+  assert.ok(hanging.length > 100);
+  let worst = 0;
+  let drift = 0;
+  for (const s of hanging.filter((_, i) => i % 50 === 0)) {
+    const m = ascent.chute(main, s.t, PAD);
+    const lines = m.air.clone().normalize().negate(); // the way the lines run from the spacecraft
+    const spin = EARTH_ROTATION_RATE * s.t;
+    const axis = new THREE.Vector3(...ecefToSiteDirection(site, inertialToEcef(s.axis, spin)));
+    worst = Math.max(worst, lines.angleTo(axis));
+    // (and the wind is not nothing: over the ground it is going well off the vertical, which is where the canopy used to be drawn)
+    const ground = new THREE.Vector3(...ecefToSiteDirection(site, inertialToEcefVelocity(s.centre, s.v, spin))).normalize().negate();
+    drift = Math.max(drift, ground.angleTo(m.up));
+    assert.ok(
+      lines.angleTo(m.up) < (3 * Math.PI) / 180,
+      `at ${s.t.toFixed(0)} s the lines stand ${((lines.angleTo(m.up) * 180) / Math.PI).toFixed(1)} degrees off the plumb line`,
+    );
+  }
+  // three degrees: the spacecraft hangs along its motion through the air and swings a little about it (sim/vehicle.ts)
+  assert.ok(
+    worst < (3 * Math.PI) / 180,
+    `the lines are ${((worst * 180) / Math.PI).toFixed(1)} degrees off the spacecraft’s own axis at most`,
+  );
+  assert.ok(drift > (10 * Math.PI) / 180, `over the ground it drifts ${((drift * 180) / Math.PI).toFixed(0)} degrees off the vertical`);
+});

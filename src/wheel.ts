@@ -28,6 +28,60 @@ export function sector(dx: number, dy: number, count: number, dead = 0): number 
   return (((Math.floor(turn * count + 0.5) % count) + count) % count) as number;
 }
 
+/** A choice's size on the page, or the room there is for all of them, CSS pixels. */
+export interface Box {
+  w: number;
+  h: number;
+}
+
+/** The ring's least radii, across and down, pixels; the least clear space between two choices; and what is kept clear at the room's edges. */
+export const RING: readonly [number, number] = [124, 102];
+export const GAP = 8;
+export const MARGIN = 10;
+const LEAST = 48;
+
+/**
+ * Where the middle of each choice goes, pixels from the centre, so that no two overlap however many there are and
+ * however long their names: each sits outward of its seat on an ellipse (its near edge on the ellipse, so a long name
+ * grows away from the centre and not across it), and the ellipse is the smallest, from `RING` up, on which every pair
+ * is `GAP` apart and all are clear of `keep`, the title in the middle. `reach` is how far below the centre the lowest
+ * one ends. Null when no ellipse that fits in `room` will do (or only one so flat that a choice no longer lies the way
+ * its seat does): then they are a list.
+ */
+export function spread(sizes: readonly Box[], room: Box, keep: Box): { at: [number, number][]; reach: number } | null {
+  const count = sizes.length;
+  const seats = sizes.map((_, i) => seat(i, count));
+  // the most the ellipse can be, across and down, with every choice still inside the room
+  let [mostX, mostY] = [Infinity, Infinity];
+  sizes.forEach((b, i) => {
+    const [x, y] = seats[i]!.map(Math.abs) as [number, number];
+    if (x > 1e-9) mostX = Math.min(mostX, (room.w / 2 - MARGIN - ((1 + x) * b.w) / 2) / x);
+    else if (b.w / 2 > room.w / 2 - MARGIN) mostX = -1;
+    if (y > 1e-9) mostY = Math.min(mostY, (room.h / 2 - MARGIN - ((1 + y) * b.h) / 2) / y);
+    else if (b.h / 2 > room.h / 2 - MARGIN) mostY = -1;
+  });
+  const apart = (a: [number, number], sa: Box, b: [number, number], sb: Box): boolean =>
+    Math.abs(a[0] - b[0]) >= (sa.w + sb.w) / 2 + GAP - 1e-9 || Math.abs(a[1] - b[1]) >= (sa.h + sb.h) / 2 + GAP - 1e-9;
+  // (a narrow room has a narrower ring than `RING`, down to `LEAST`: under that it is no ring)
+  const [fromX, fromY] = [Math.min(RING[0], mostX), Math.min(RING[1], mostY)];
+  if (fromX < LEAST || fromY < LEAST) return null;
+  // wider first, then taller: a ring grows across before it grows down (names are wider than they are tall)
+  for (let ry = fromY; ry <= mostY + 1e-9; ry += 6) {
+    for (let rx = fromX; rx <= mostX + 1e-9 && rx <= Math.max(fromX, 2.2 * ry); rx += 6) {
+      const at = seats.map(([x, y], i): [number, number] => [x * (rx + sizes[i]!.w / 2), y * (ry + sizes[i]!.h / 2)]);
+      // (and each still lies the way its seat does, so a push toward it means it: a ring pulled too flat fails this)
+      const clear = at.every(
+        (a, i) =>
+          sector(a[0], a[1], count) === i &&
+          apart(a, sizes[i]!, [0, 0], keep) &&
+          at.every((b, j) => j <= i || apart(a, sizes[i]!, b, sizes[j]!)),
+      );
+      if (clear) return { at, reach: Math.max(...at.map((a, i) => a[1] + sizes[i]!.h / 2)) };
+    }
+  }
+  return null;
+}
+
 /** How far the captured mouse has to be pushed from the centre before it points at something, pixels; and the most it is let run. */
 const DEAD = 14;
 const LEASH = 60;
@@ -57,6 +111,7 @@ export class Wheel {
     this.title = this.el.querySelector('.wheel-title')!;
     this.ring = this.el.querySelector('.wheel-ring')!;
     parent.append(this.el);
+    window.addEventListener('resize', () => this.place());
     this.ring.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-item]');
       if (b) this.pick(Number(b.dataset.item));
@@ -76,7 +131,9 @@ export class Wheel {
         if (!this.isOpen || e.metaKey || e.ctrlKey || e.altKey) return;
         const key = e.key.toLowerCase();
         const arrows: Record<string, [number, number]> = { arrowup: [0, -1], arrowright: [1, 0], arrowdown: [0, 1], arrowleft: [-1, 0] };
-        if (arrows[key]) this.aim(...arrows[key]);
+        if (arrows[key] && this.listed)
+          this.point((this.at + (arrows[key][0] + arrows[key][1] > 0 ? 1 : this.items.length - 1)) % this.items.length);
+        else if (arrows[key]) this.aim(...arrows[key]);
         else if (key === 'enter' || key === ' ') this.pick(this.at);
         else if (key === 'tab') this.point((this.at + (e.shiftKey ? this.items.length - 1 : 1)) % this.items.length);
         else if (/^[1-9]$/.test(key) && Number(key) <= this.items.length) this.pick(Number(key) - 1);
@@ -95,6 +152,11 @@ export class Wheel {
     return !this.el.hidden;
   }
 
+  /** The choices are a list down the middle, there being no room for a ring of them. */
+  private get listed(): boolean {
+    return this.el.classList.contains('listed');
+  }
+
   /**
    * Show these choices under a title. `onPick` gets the id chosen; `onClose` is called however it
    * shuts, chosen or not, after `onPick`. `toggleKey` (lower case) is the key that opened it.
@@ -108,19 +170,43 @@ export class Wheel {
     this.title.textContent = title;
     this.el.setAttribute('aria-label', title);
     this.ring.innerHTML = items
-      .map((_, i) => {
-        const [x, y] = seat(i, items.length);
-        return `<button role="menuitem" data-item="${i}" style="--x:${x.toFixed(4)};--y:${y.toFixed(4)}"><kbd>${i + 1}</kbd><span></span></button>`;
-      })
+      .map((_, i) => `<button role="menuitem" data-item="${i}"><kbd>${i + 1}</kbd><span></span></button>`)
       .join('');
     this.ring.querySelectorAll('span').forEach((s, i) => (s.textContent = items[i]!.label));
     this.el.hidden = false;
+    this.place();
     this.openedAt = performance.now();
     this.el.classList.remove('pushed');
     this.el.style.removeProperty('--px');
     this.el.style.removeProperty('--py');
     this.pushX = this.pushY = 0;
     this.point(0);
+  }
+
+  /**
+   * Set the choices out: round the centre where a ring of them fits the window with none touching another (`spread`),
+   * and otherwise as a list down the middle. Measured as they stand, so it is their real sizes that are kept apart.
+   */
+  private place(): void {
+    if (!this.isOpen) return;
+    const buttons = [...this.ring.querySelectorAll<HTMLElement>('[data-item]')];
+    this.el.classList.remove('listed');
+    for (const b of buttons) {
+      b.style.removeProperty('left');
+      b.style.removeProperty('top');
+    }
+    const sizes = buttons.map((b) => ({ w: b.offsetWidth, h: b.offsetHeight }));
+    const hint = this.el.querySelector<HTMLElement>('.wheel-hint')!;
+    // (the hint goes under the ring: the room the ring has is short by it, both ways, so the ring stays in the middle)
+    const room = { w: this.el.clientWidth, h: this.el.clientHeight - 2 * (hint.offsetHeight + 16) };
+    const laid = spread(sizes, room, { w: this.title.offsetWidth, h: this.title.offsetHeight });
+    this.el.classList.toggle('listed', !laid);
+    if (!laid) return;
+    buttons.forEach((b, i) => {
+      b.style.left = `${laid.at[i]![0].toFixed(1)}px`;
+      b.style.top = `${laid.at[i]![1].toFixed(1)}px`;
+    });
+    this.el.style.setProperty('--reach', `${laid.reach.toFixed(1)}px`);
   }
 
   /** Shut it without choosing. */
@@ -143,7 +229,9 @@ export class Wheel {
     }
     this.el.style.setProperty('--px', `${this.pushX}px`);
     this.el.style.setProperty('--py', `${this.pushY}px`);
-    this.aim(this.pushX, this.pushY, DEAD);
+    // (down a list, the push picks by how far down it is)
+    if (this.listed) this.point(Math.round(((this.pushY + LEASH) / (2 * LEASH)) * (this.items.length - 1)));
+    else this.aim(this.pushX, this.pushY, DEAD);
   }
 
   /** Choose what is pointed at (a click with the mouse captured lands on no button). */

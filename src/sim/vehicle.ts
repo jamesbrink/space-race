@@ -25,7 +25,7 @@
  *             damping, since a surface far from the centre of mass moves sideways as the body turns.
  *   side      the cross-flow on the body's length (`body.side`, `capsule.side`), as the sine squared.
  *   parachute fly.ts's drag area, pulling at `capsule.chuteArm` along the air's motion past that
- *             place, so the spacecraft hangs. Let out in more pressure than it can take, it tears.
+ *             place, so the spacecraft hangs. In more air than it can take, as it is let out or after, it tears (`worn`).
  *   staging   whatever leaves (tower, booster, retropack) is one body made two (forces.ts: `part`),
  *             momentum kept, and is put in `released` for shed.ts to fly.
  *   loads     the stack's bending load (q alpha) against `body.limits` (loads.ts): past it the
@@ -95,7 +95,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
-import { along, axisOf, G0, gravity, MEAN_RADIUS, P0, type Phase, type Sample } from './fly.ts';
+import { along, axisOf, chuteArea, G0, gravity, MEAN_RADIUS, P0, type Phase, type Sample } from './fly.ts';
 import { airForces, blowOf, part, pieceOf, type Release, upAt, upOver, windAt as airAt } from './forces.ts';
 import { loadsOf, type Strain, strain, UNSTRAINED } from './loads.ts';
 import {
@@ -188,8 +188,10 @@ export interface VehicleState {
   strain: Strain;
   /** The stack broke: when, at what fraction of the limit, in what dynamic pressure (Pa) and how far off the wind (degrees), and at which joint. */
   broke: null | { t: number; load: number; q: number; alpha: number; joint: string };
-  /** A parachute let out in more dynamic pressure than it can take, and torn. */
+  /** A parachute torn by more air than it can take (`limits`), as it was let out or after. */
   torn: { drogue: boolean; main: boolean };
+  /** When each tore and by what: the dynamic pressure on its cloth, Pa, or the pull on its lines, N. */
+  tore: { drogue: Tear | null; main: Tear | null };
   /** When the escape rocket was fired, if it has been, and how high the vehicle was then, m above the sea. */
   abortAt: number | null;
   abortHeight: number | null;
@@ -211,8 +213,18 @@ export interface VehicleState {
   controls: Controls;
 }
 
+/** A parachute's tearing: when, by which limit, and the dynamic pressure, Pa, and its pull, N, at that instant. */
+export interface Tear {
+  t: number;
+  by: 'pressure' | 'pull';
+  q: number;
+  pull: number;
+}
+
 /** A sample as fly.ts gives them, and how the body lies. */
 export interface LiveSample extends Sample {
+  /** The parachute now out, as the state has it: what looks ahead (predict.ts) starts from it, filling or torn as it is. */
+  chute: { full: number; was: number; at: number; fills: number };
   /** The long axis in the frame that does not turn, and the whole attitude (body to frame). */
   axis: Vec3;
   attitude: Quat;
@@ -495,7 +507,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       );
       force = add(force, turn(d.q, f.force));
       torque = add(torque, f.torque);
-      const chute = s.chute.was + (s.chute.full - s.chute.was) * clamp((at - s.chute.at) / s.chute.fills, 0, 1);
+      const chute = chuteArea(s.chute, at);
       if (chute > 0) {
         // it streams along the air's motion past where it is made fast, which the body's turning adds to
         const arm = capsule.chuteArm.value - props.centre;
@@ -609,6 +621,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       strain: UNSTRAINED,
       broke: null,
       torn: { drogue: false, main: false },
+      tore: { drogue: null, main: null },
       abortAt: null,
       abortHeight: null,
       towerAt: null,
@@ -838,16 +851,41 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     }
     return s;
   };
-  /** A parachute let out in more dynamic pressure than it can take tears: `limits.torn` of its drag area is left. */
-  const tears = (s: VehicleState, which: 'drogue' | 'main'): boolean =>
-    limits !== null && windAt(s.r, s.v, s.t, seaLevel).q > limits[which].value;
+  /** A parachute let out in more dynamic pressure than it can take tears as it comes out: `limits.torn` of its drag area is left. */
+  const tears = (s: VehicleState, which: 'drogue' | 'main'): Tear | null => {
+    const q = windAt(s.r, s.v, s.t, seaLevel).q;
+    return limits !== null && q > limits[which].value ? { t: s.t, by: 'pressure', q, pull: 0 } : null;
+  };
   const drogue = (s: VehicleState): VehicleState => {
     const torn = tears(s, 'drogue');
     return {
       ...s,
       drogueAt: s.t,
       torn: torn ? { ...s.torn, drogue: true } : s.torn,
+      tore: torn ? { ...s.tore, drogue: torn } : s.tore,
       chute: { full: tr.drogue.dragArea.value * (torn ? limits!.torn.value : 1), was: 0, at: s.t, fills: tr.drogue.fills.value },
+    };
+  };
+  /**
+   * The parachute that is out, torn by the air it has since come into (`s` is as the step left it): by more dynamic
+   * pressure than its cloth takes, or by more pull than its lines do, which is that pressure times the area it has
+   * filled to. One let out where there is no air and carried full into the air goes this way. What is left streams:
+   * `limits.torn` of its drag area, or what it had filled to if that was less.
+   */
+  const worn = (s: VehicleState): VehicleState => {
+    const which = s.mainAt !== null ? 'main' : s.drogueAt !== null ? 'drogue' : null;
+    if (limits === null || which === null || s.torn[which]) return s;
+    const q = windAt(s.r, s.v, s.t, seaLevel).q;
+    const area = chuteArea(s.chute, s.t);
+    const pull = q * area;
+    const by = q > limits[which].value ? 'pressure' : pull > (limits.pull?.[which]?.value ?? Infinity) ? 'pull' : null;
+    if (by === null) return s;
+    const left = Math.min(area, tr[which].dragArea.value * limits.torn.value);
+    return {
+      ...s,
+      torn: { ...s.torn, [which]: true },
+      tore: { ...s.tore, [which]: { t: s.t, by, q, pull } },
+      chute: { full: left, was: left, at: s.t, fills: 1 },
     };
   };
   const main = (s: VehicleState): VehicleState => {
@@ -856,6 +894,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       ...s,
       mainAt: s.t,
       torn: torn ? { ...s.torn, main: true } : s.torn,
+      tore: torn ? { ...s.tore, main: torn } : s.tore,
       chute: {
         full: tr.main.dragArea.value * (torn ? limits!.torn.value : 1),
         was: s.drogueAt === null ? 0 : s.chute.full,
@@ -932,6 +971,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
         s.cutoff = true;
       }
     }
+    s = worn(s);
     if (s.rcs.firing !== QUIET) {
       const left = s.rcs.left.slice();
       s.rcs.firing.forEach((f, i) => {
@@ -1007,6 +1047,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       rates: s.w,
       alpha: f.airspeed > 1e-6 ? angleBetween(axis, f.wind) / DEG : 0,
       centre,
+      chute: s.chute,
       strain: s.shed.booster ? 0 : s.strain.load,
       lateral: s.held ? 0 : loadsOf(unturn(s.q, f.force), s.mass, f.q, 0).lateral,
       burning: [

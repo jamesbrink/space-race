@@ -208,6 +208,12 @@ export interface Part {
   }[];
   /** What can be done to it from close by, on foot, beyond reading about it (see Action). */
   actions?: Action[];
+  /**
+   * What can be commanded of it while the flight is being flown, from a right click on it: each one of the steps the
+   * flight deck can set off (cockpit.ts `ask`), which this part is the hardware of. One is offered only while it can
+   * still be done (`Cockpit.can`), and does what the deck's own key or the cabin's own control would.
+   */
+  commands?: Command[];
   /** A heading in the parts list: parts with the same group are listed together under it. */
   group?: string;
   /** It is inside something: selecting it opens the cutaway so it can be seen. */
@@ -229,6 +235,17 @@ export interface Part {
   clocked?: Move[];
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
   order: number;
+}
+
+/**
+ * A step of the flight that can be set off by hand, and what the menu calls it on the part it belongs to. `work:<id>`
+ * works a mechanism of the model by hand (`ModelDef.mechanisms`, by its id: a periscope), sending it the other way from
+ * where it is headed: `label` is then what putting it out is called and `back` what drawing it in is.
+ */
+export interface Command {
+  label: string;
+  ask: 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main' | `work:${string}`;
+  back?: string;
 }
 
 /**
@@ -359,8 +376,8 @@ export interface CabinDef {
  * flown by hand can work (src/sim/mechanism.ts): one motion with one figure, its travel, 0 drawn in and 1 out. Its
  * motion is the model's own: the `Part.clocked` moves of `nodes`, which play the same travel at each of `events`
  * (out, or in: the same motion the other way). Wherever there is a clock it follows `events`; in a flight flown by
- * hand it follows them while the sequencer is on, a hand's command (its control in the cabin, its button and key on
- * the flight deck) sends it the other way and holds it there until the programme's next event, and with the sequencer
+ * hand it follows them while the sequencer is on, a hand's command (its control in the cabin, its switch among the
+ * flight deck's keys, a `Command` on its part) sends it the other way and holds it there until the programme's next event, and with the sequencer
  * off it moves only when told.
  */
 export interface MechanismDef {
@@ -923,10 +940,20 @@ export interface Limits {
    */
   qAlpha: Measure;
   joint: string;
-  /** The greatest dynamic pressure each parachute can be let out in, Pa. Let out in more, it tears: `torn` of its drag area is left. */
+  /**
+   * The greatest dynamic pressure each parachute's cloth can take, Pa. In more, it tears, whether it is being let out
+   * or has been out for a minute: `torn` of its drag area is left.
+   */
   drogue: Measure;
   main: Measure;
   torn: Measure;
+  /**
+   * The greatest pull each parachute's lines and riser can take, N: the dynamic pressure times the drag area it has
+   * filled to. Past it, it tears the same way. A canopy that is full pulls far harder at a given pressure than one
+   * still filling, so this is what gives when one let out where there is no air meets the air full. Left out for a
+   * parachute: only its cloth's limit holds.
+   */
+  pull?: { drogue?: Measure; main?: Measure };
 }
 
 /**

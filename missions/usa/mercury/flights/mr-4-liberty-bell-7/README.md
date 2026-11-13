@@ -5,7 +5,7 @@ a hatch he could blow off himself.
 
 | | |
 | --- | --- |
-| Liftoff | 21 July 1961, 12:20 UTC (07:20 EST) |
+| Liftoff | 21 July 1961, 12:20:36 UTC (07:20:36 EST) |
 | Site | Cape Canaveral, Launch Complex 5: [lc-5.md](../../sites/lc-5.md) |
 | Pilot | Virgil I. "Gus" Grissom (backup: John Glenn) |
 | Spacecraft | Mercury No. 11, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
@@ -17,9 +17,14 @@ a hatch he could blow off himself.
 | Duration | 15 min 37 s |
 | Recovery | the pilot by helicopter to USS *Randolph*; the spacecraft sank |
 
-**In this repo: the vehicle, in the gallery.** The spacecraft and its launch vehicle are modelled
-and can be turned, taken apart and cut open. Its launch site as it stood that day and its flight
-are not built: see "What is not built" below.
+**In this repo: the vehicle, in the gallery and at its launch site, and its pilot.** The spacecraft
+and its launch vehicle are modelled and can be turned, taken apart and cut open, and stand on Launch
+Complex 5 as it stood that morning, from the pilot going aboard at 03:58 to the pad standing empty.
+Grissom stands on the hardstand where NASA's photograph 61-MR4-83 has him, walking to the lift with
+his ventilator in his right hand, in the suit of that morning
+([mark-iv-suit.md](../../crew/mark-iv-suit.md), "5 May and 21 July 1961": the wrist rings, the chest
+mirror, the parachute harness, the new microphones, and his own legs), and can be walked as. The
+flight itself is not built: see "What is not built" below.
 
 ## What happened
 
@@ -75,9 +80,13 @@ Times from liftoff, as *Results of the Second U.S. Manned Suborbital Space Fligh
 The same events, in seconds, are `timeline` in [flight.ts](flight.ts).
 
 On the pad (the same report, p. 6; TM X-53107, 8.3.2): the first half of the split count began at
-06:00 EST on 20 July; the pilot was in the spacecraft at 03:58 on the 21st, 3 hours 22 minutes
-before launch; holds of 30 minutes at T-45 (the hatch bolt), 9 minutes at T-30 (the searchlights)
-and 41 minutes at T-15 (cloud).
+06:00 EST on 20 July; liquid oxygen went aboard from T-180, at 03:00 on the 21st after a planned
+hour's hold for the weather; the pilot was in the spacecraft at 03:58, 3 hours 22 minutes before
+launch; holds of 30 minutes at T-45 (the hatch bolt), 9 minutes at T-30 (the searchlights) and 41
+minutes at T-15 (cloud). The whole morning on the clock, and what stood on the pad through it, is in
+[lc-5.md](../../sites/lc-5.md), "Where things stood, and when (MR-4, 21 July 1961)"; the same as
+data is `MORNING` in [flight.ts](flight.ts). (The report prints "2:30 a.m. e.s.t. on July 20" for
+the start of the count's second half, which cannot be: T-180 was reached at 02:00 on the 21st.)
 
 ## The sky at liftoff
 
@@ -91,26 +100,36 @@ launch instant, 12:20:36 UTC. All `derived`. Elevations are geometric.
 | Mercury | 085.1° | 39.6° | Lost in daylight |
 | Moon | | −68.7° | Below the horizon; a day past first quarter |
 
-Mars, Jupiter, Saturn, Uranus and Neptune were below the horizon.
+Mars, Jupiter, Saturn, Uranus and Neptune were below the horizon. Sunrise was at about 05:38 EST: the
+pilot went aboard in the dark, the structure rolled back in the first light (the Sun 7° under the
+horizon at T-55 by the count) and the searchlights were put out with the Sun 3.8° up.
+
+**The weather, as recorded, and as shown.** At 07:00 EST, twenty minutes before liftoff, the Cape's
+weather station (the Skid Strip) reported the sky covered and no ceiling: one okta of cloud at 510 m
+(coded cumulonimbus), two of altocumulus at 5,400 m, and a whole sky of thin cirrostratus above;
+wind from 200° at 2.1 m/s; visibility at the station's 16 km limit; 25.5 °C. An hour earlier it had a
+ceiling at 3,000 m. Patrick, 23 km south, had five oktas of altocumulus at 4,500 m at 07:00. That
+is the "existing overcast" the count was held 41 minutes for (*Results*, p. 50), and *This New
+Ocean* (p. 369) has all of northern Florida "obscured by high cirrus and lower patches of cumulus".
+Documented: NOAA's Integrated Surface Database, stations 74794012868 and 74795012867.
+**The viewer does not show it.** It has one sky for the Cape, set in `src/viewer/cape.ts` (`CLOUDS`)
+and `weather.ts` from the record of 5 May: a tenth of fair-weather cumulus at 720 m on a breeze from
+090°. A flight has nowhere to give its own day's cloud, so Liberty Bell 7 stands under Freedom 7's
+sky, which is wrong for it; the Sun, Moon and planets are its own.
 
 ## What is not built
 
-**The launch site.** Launch Complex 5 is modelled as it stood on 5 May 1961
-([lc-5.md](../../sites/lc-5.md)), and a site is built once and dated. For 21 July it needs:
+**The launch site is built** ([lc-5.md](../../sites/lc-5.md), "5 May and 21 July 1961", has what
+differs from Freedom 7's morning and how sure each difference is). What it still lacks:
 
-- its sky and Sun for 07:20 EST in July (computed above), and the day's weather: a broken deck
-  that held the count 41 minutes for the cameras;
-- the count as flown: liquid oxygen from T-180, not T-305; the three holds above; the pilot aboard
-  at 03:58, in the dark; the searchlights on until T-30 and then put out;
-- what `lc-5.md` already lists as known to differ and not built: pad 6 had flown its last Redstone
-  on 27 June;
-- the things photographed in July that the May model was built from (the Fort Hays State
-  collection is of MR-4's preparation): each to be checked for whether it stood there in May too,
-  and dated in the site's record;
-- the white room on level 3 round a capsule whose hatch and window are where this model has them:
-  the cherry picker's cab and the platform's opening are placed for Freedom 7's hatch, 45° round
-  from this one (spacecraft.md, "Open questions");
-- Grissom, standing: the suit with its wrist rings, chest mirror and new harness.
+- **the day's weather**: above. The viewer has no place for a flight's own cloud and wind;
+- **Grissom on the couch**: the pilot in the cabin's cutaway is still Shepard's figure with the name
+  changed and a mirror laid on him. The standing figure's suit can be seated in his place
+  (mark-iv-suit.md, "On the couch", says what would change and what has not been looked at);
+- **a cabin to sit in**: the capsule's inside is modelled and cannot be boarded;
+- what July's photographs show and the pad does not have: the tail heater, the LOX trailers, the
+  M-113, the covers, and the two cable masts where the photographs put them (lc-5.md, the same
+  section).
 
 **The flight.** To be flown it needs what Freedom 7 has in `flight.ts`: the booster's measured
 thrust and cutoff for MR-8, the tilt programme on 100°, the capsule's weights at each stage (the
@@ -128,7 +147,10 @@ the simulator would have to let the capsule fill and sink.
   three degrees". 100° is not in doubt.
 - **Cutoff velocity.** *Results* and TM X-53107 give 7,580 ft/s space-fixed; Hammack and Heberlig's
   table gives 7,516.
-- **The seconds of liftoff.** 12:20:36 UTC is in secondary sources only.
+- **The seconds of liftoff.** *Results* gives 7:20 a.m. in its text and 7:20:36 in the medical
+  countdown's table (Table 5-II, p. 31); TM X-53107 gives 0720.
+- **When the structure rolled back.** By the count, at T-55; *This New Ocean* has "a gantry
+  technician" finding the hatch bolt at T-45. The model follows the count (lc-5.md).
 
 ## Where the spacecraft is now
 

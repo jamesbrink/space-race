@@ -3,8 +3,11 @@
 The suit the Mercury pilots wore: B.F. Goodrich's U.S. Navy Mark IV full-pressure suit, reworked
 for the capsule. Model: [mark_iv_suit.py](mark_iv_suit.py), imported by each flight's
 `model/crew.py`. It is built as Alan Shepard wore it on the walk to the pad for MR-3, 5 May 1961,
-with the portable ventilator standing beside him. The same script also builds him on the couch
-(`build_seated`), for a cabin's cutaway; see [On the couch](#on-the-couch).
+with the portable ventilator standing beside him, and as Virgil Grissom wore it on the walk to the
+lift for MR-4, 21 July 1961: one script, and the flight's script says which
+(`mark_iv_suit.MR_3`, `mark_iv_suit.MR_4`; see [5 May and 21 July 1961](#5-may-and-21-july-1961)).
+The same script also builds the pilot on the couch (`build_seated`), for a cabin's cutaway; see
+[On the couch](#on-the-couch). Everything below is Shepard's figure unless it says otherwise.
 
 **It is a backup, not a spacesuit in the later sense.** The cabin held pressure; the suit would
 only have inflated, to 4.6 psi, if the cabin had failed. On MR-3 it never did.
@@ -26,7 +29,7 @@ suit was found.
 | Visor seal connector by the left jaw | | documented | Wikipedia |
 | Entry zipper diagonally across the chest | | documented | NASA fact sheet |
 | Which way the zipper runs (left collar to right waist) | | estimated | read off the Smithsonian's photographs of the flown suit (NASM2022-00512, SI-2008-8609), which show it this way round |
-| Gloves zipped to the sleeves, no wrist ring (MR-3) | | documented | Wikipedia; rings came with MR-4 |
+| Gloves zipped to the sleeves, no ring to be seen (MR-3) | | documented | the flown glove joins its sleeve by a zipper round the wrist (Smithsonian A19770563002; NASM2022-00520). There was a bearing in the wrist all the same: "the wrist seal bearing on the right wrist bumps into the parachute" (Shepard, MR-3 Postlaunch Report, p. 46; *This New Ocean*, p. 355). Wikipedia's "no wrist bearing" is not right; what MR-4 added was the quick-removal ring in the zipper's place |
 | Straight middle finger, other fingers curved | | documented | Wikipedia. NASA's sheet says the *left* middle finger only; the model straightens both |
 | Biomedical connector flap, right thigh | | documented | Wikipedia. NASA's sheet puts the receptacle "near astronaut's knee" |
 | Helmet tie-down strap at the front of the suit | | documented | NASA fact sheet, donning procedure |
@@ -57,10 +60,72 @@ suit was found.
 | Portable ventilator case | 42 x 16 x 30 cm | estimated | "briefcase-like"; every detail of it is invented to look plausible |
 | Ventilator hose | 3 cm across, about 1 m | estimated | |
 
+## 5 May and 21 July 1961
+
+A `Fit` in the script is one man and what his suit had on one day; a flight's `model/crew.py` passes
+it to `build`. `MR_3` is everything above. `MR_4` is Grissom on the morning of Mercury-Redstone 4.
+**Shepard's figure is not changed by any of it**: built again, its three GLBs are the committed ones
+byte for byte.
+
+**The man.** Every literal height in the script is Shepard's. Another man's go by his stature up to
+the shoulder line (as `figurelib.Body.scaled` carries a body); the helmet, its ring and the head in
+it are the same size on any man and come down with his crown; the slope of the shoulders between
+takes up the difference, so the shorter man has the shorter neck (`carried`).
+
+| Grissom | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| Stature | 5 ft 7 in (1.702 m) | estimated | the figure commonly given. No primary record was found: it is not in the 1959 press conference, the MR-4 press kit or his NASA biography, and 5 ft 5 in and 5 ft 6 in are also printed |
+| Weight | 150 lb 8 oz (68.3 kg), nude, seven hours before launch; 147 lb 3 oz aboard the carrier | documented | *Results of the Second U.S. Manned Suborbital Space Flight* (MR-4 Results), Table 3-I and p. 9. Not used: the trunk's sections are Shepard's figure's. 150 lb on a frame 10 cm shorter than a man of 160 would make them about 1% larger, less than the suit's slack |
+| Round the thigh | 21 in right, 20 3/4 in left (the model: 53.3 cm both) | documented | MR-4 Results, p. 9: the examination on the morning of the flight |
+| Round the calf | 15 7/8 in, both (40.3 cm) | documented | the same |
+| Leg sections | thigh 19.6 cm across and 22.3 deep at its largest, calf 16.3 by 17.4 | derived | each section's body (the section less 2 cm of suit all round, figurelib's premise) brought to the girth measured: the thigh's from the hip to above the knee, the calf's at the calf; the knee and the leg in the boot are the reference man's |
+| Standing height, helmet and boots | 1.788 m | derived | stature + 2.64 cm heel + 6.0 cm over the crown |
+| Hands, boots, heel | 0.944 of Shepard's figure's (sole 29.5 cm) | estimated | by stature; his glove and boot sizes were not found |
+| Shoulder breadth, trunk | as Shepard's figure | estimated | |
+
+**The suit.** What Grissom's figure has that Shepard's does not, or has differently:
+
+| Item | 5 May (MR-3) | 21 July (MR-4) | Confidence | Source |
+| --- | --- | --- | --- | --- |
+| Wrists | glove zipped to the sleeve | a quick-removal ring on each wrist, turning on nylon-sealed ball bearings: three bands of aluminium, 3.6 cm long, between sleeve and glove; no zipper | documented (that they were fitted, and why); estimated (their form) | MR-4 press kit, 13 July 1961, "MR-4 Design Changes" (1): "permitting 360 degrees of wrist action when the suit is inflated ... required no suit modifications"; *This New Ocean*, p. 368. Form from NASA 61-MR4-76 and S64-36915 (colour), where the ring is nearer 10 cm across than the model's 11, and has a red tab that is not modelled |
+| Chest mirror | none | a 5 in (12.7 cm) convex Plexiglas mirror in a metal rim about 15 cm across, in the middle of the chest, its middle 11 cm under the neck ring; hung between the shoulder straps by a tab of white webbing either side | documented (that it was worn, what for, 5 in, and that Shepard had none); estimated (rim, place, the 1.2 cm of its dome, mounting) | *This New Ocean*, p. 368 ("hero's medal"); NASA's captions to 61-MR4-79 ("the 5-inch plexiglas parabolic mirror attached to Grissom's suit") and 61-MR4-60(s) ("not included in the May 5 Shepard flight"). Rim: 13 cm in 61-MR4-76 and 16 in S61-02888, each beside the 24 cm neck ring |
+| Was the mirror on for the walk? | | modelled on | estimated | on in Hangar S (61-MR4-60(s)) and at level 3 (61-MR4-79), and still on him on the carrier's deck on 21 July (61-MR4-89, MSFC-6116421); the walk itself was photographed only from behind |
+| Parachute harness | worn (S61-02792), **not modelled** | two straps from the hips up the front, over the shoulders on quilted pads and crossed on the back to the other hip; a strap across the chest and one across the back; leg straps from each hip to the fork, front and back; a V-ring on each pad for a chest parachute's snaps; a white tape lettered GRISSOM on the chest strap | documented (that it was worn on the walk, and that it was new); estimated (its run, widths and colours) | worn: NASA 61-MR4-83 = S61-02889 and FHSU Project Mercury item 449 (21 July, from behind); "a new personal parachute harness was designed to keep the chute out of the way" (*This New Ocean*, p. 368). Front: S61-02845, S61-02888, 61-MR4-79. Colours (olive-brown webbing, slate-blue pads): S64-36915, the one colour photograph; the straps on the back are dark in black and white and taken to be the same. Webbing 4.4 cm, pads 5.4 cm, chest strap 3.2 cm, name tape 10.9 by 2.2 cm |
+| What was new about the harness | | not established | | Shepard's on 5 May (S61-02792) shows the same crossed straps from behind. No chest parachute was worn to the pad on either day |
+| Microphones | one on a boom from the left ear (a guess) | two, one at each corner of the mouth | documented (new, and in the helmet); estimated (form) | press kit (2): "New voice microphones by Electro-Voice, have been included as an integral part of the pilot's plastic helmet"; MR-4 Results, p. 24 ("the microphone of different configuration"); S61-02845, 61-MR4-76 |
+| Helmet lead | not modelled | a white lead from the helmet's right side, hanging down the right chest to the chest strap, a plug on its end | estimated | S61-02845, S61-02888, 61-MR4-79; taken to be "the helmet communications lead" of the pilot's report |
+| Name tag | A. B. SHEPARD | V. I. GRISSOM | documented | read whole in NASA LRC-1995-B701_P-05867 (27 March 1961) and in colour in S88-55875 (19 July) |
+| Insignia | 8 cm right of the middle, 9 cm under the ring | 9.3 cm right of the middle, 11 cm under the ring, half behind the mirror | estimated | S61-02888, 61-MR4-79 |
+| Tie-down strap | from the neck ring to the chest | from under the chest strap down the middle of the front to the fork, cream, its buckle 4.8 cm under the chest strap | estimated | S61-02888, 61-MR4-79, 61-MR4-89; cream in S88-55875. **Not a change of July**: the fitting photographs of 27 March show it running to the crotch, and Shepard's figure, which has only its upper end, was not checked against his |
+| Neck dam | not modelled | a roll of rubber under the neck ring | documented (that it was there, and stored rolled); estimated (size, colour) | MR-4 Results, Figure 7-6 (a) and the pilot's report. Orange in S64-36909 (date unknown), red-brown on the suit as kept |
+| Biomedical connector | under a flap, right thigh | a round port in a reinforcing disc 10.5 cm across, on the front of the right thigh two fifths of the way from crotch to knee | estimated | S61-02888, 61-MR4-79, S64-36915, 61-MR4-89 |
+| Pressure gauge | aluminium bezel, 4.8 cm | thick white bezel, 5.8 cm | estimated | 61-MR4-76, S88-55875, S64-36915 (in March its bezel was dark: LRC-1995-B701_P-05867) |
+| Glove palms | suit fabric | dark leather | estimated | S61-02888, 61-MR4-79; black in S64-36915 |
+| Portable ventilator | a metal case 42 by 16 by 30 cm, invented | a white box 21 cm across, 20 tall and 30 long, a handle on top, a dark panel and a round socket on its leading end; in his right hand, a black corrugated hose to the inlet at his left waist | documented (that he carried it himself that morning); estimated (everything about the box) | NASA's caption to 61-MR4-83: "carrying the case containing air conditioning equipment to keep him comfortable in his space suit"; MR-4 Results, p. 27 (the portable unit put on again at the pad). End face from S61-02889 beside the 26 cm helmet; panel from 61-MR4-79. **Its length is in no photograph read** |
+| Urine reservoir | | under the suit: nothing to see, not modelled | documented | *This New Ocean*, p. 368: "fabricated the day before the flight" |
+| Life vest | none | none | documented | none in any photograph; once in the helicopter "my first thought was to get on a life preserver" (the pilot's report) |
+| Boots | aluminised (not confirmed) | aluminised, laced | estimated | 61-MR4-89. Whether covers were worn over them on the walk cannot be made out in S61-02889 |
+
+**Which morning the photographs are of.** Only the walk to the lift (61-MR4-83 = S61-02889, FHSU 449)
+and the pictures at sea and on USS *Randolph* are certainly 21 July. The pictures at level 3
+(61-MR4-76, 61-MR4-79, S61-02888) are of the same suit on one of the three mornings: Johnson's
+captions date them to the scrub of 19 July, Kennedy's, written after the flight, to the 21st. The
+harness, the mirror, the name tape, the gauge and the port are all in the deck photographs of the
+21st, so nothing above rests on the level-3 pictures alone except the helmet lead, the glove palms
+and the ventilator's panel.
+
 ## Nodes
+
+MR-4's figure has two more, `Harness` and `Mirror`, and under the others what the table above gives
+it (`Gloves_WristRings` for the zipper, `Legs_BiomedDisc` for the flap, `Torso_TieDown`,
+`Torso_NeckDam`, `Helmet_Lead`). The harness's and the mirror's meshes are named `Torso_...` because
+a mesh is hung on the joints of the node its name begins with (`figurelib.emit`), and they ride on
+the trunk.
 
 | Node | What it is |
 | --- | --- |
+| `Harness` (MR-4) | the parachute harness: webbing, pads, V-rings, the name tape. Laid on the cloth as built (`Cloth`, `strap`), so it follows the shoulders' and the hips' own skin, and rides over the zipper, the waist strap and itself where they cross |
+| `Mirror` (MR-4) | the chest mirror: dome, rim and its two tabs |
 | `Helmet` | white fibreglass shell with earphone bulges, visor and frame, visor pivots, aluminium neck ring, suit outlet low on the right, seal connector by the left jaw; inside it the head, communications cap and lip microphone |
 | `Torso` | shell from the waist up with both shoulders (one skin, down to a hem on each upper arm), entry zipper, helmet tie-down strap, waist strap and its buckle, the waist inlet fitting, the NASA insignia and the name tag on the right chest |
 | `Arms` | sleeves from the hem down, lacing strips on upper arm and forearm, the pressure gauge and its strap on the left forearm |
@@ -76,8 +141,8 @@ carrying a picture drawn by the script (512 pixels across), as the capsule's fla
 
 ## On the couch
 
-`build_seated(parent, place, prefix)` builds the same figure in the Mercury couch position for a
-cabin: every mesh under the caller's node, no ventilator, a stub of hose at the waist inlet. The
+`build_seated(parent, place, prefix, fit)` builds the figure in the Mercury couch position for a
+cabin (without `fit`, whoever the suit was last made for: Shepard, until told): every mesh under the caller's node, no ventilator, a stub of hose at the waist inlet. The
 figure is modelled standing and carried to the pose by its joints (`SEATED`, degrees): each limb
 bends through an arc at hip, knee, ankle and elbow, and what is laid on it bends with it. The
 torso, shoulders and upper arms do not move.
@@ -99,6 +164,16 @@ torso, shoulders and upper arms do not move.
 the wall (hips 5.0 in off the axis) a 1.80 m man's boots clear it by 0.76 in only in this tight a
 tuck. With thighs at 65° to 75° and level shins the toes go through the wall by several inches.
 The real couch was moulded to each pilot; its angles were not found.
+
+**Grissom on the couch is not built yet.** Liberty Bell 7's cabin still seats Shepard's figure with
+the name changed (`mark_iv_suit.NAME = "V. I. GRISSOM"`) and lays its own mirror on him
+(`mercury_cabin_11.chest_mirror`). Passing `mark_iv_suit.MR_4` to `build_seated` in that flight's
+`model/vehicle.py` seats this Grissom instead, harness, mirror and rings with him. Run dry, he fits:
+2.0 in from the wall at his nearest (Shepard's figure 0.76), his eyes 4.7 cm nearer his feet
+(`Seat_Pilot` follows them), his palms 6 mm off the controllers' knobs, for which the elbow's angles
+would be set again. **It has not been built or looked at**: how the harness lies on a trunk carried
+to the couch is unknown, the cabin's own mirror would have to go, and in the couch the lead was
+plugged in (`dataclasses.replace(MR_4, lead=False)`).
 
 ## Joints
 
@@ -245,10 +320,29 @@ hand; keeping it hanging plumb is the viewer's to do.
   plain dark shell. The lip microphone and its boom are a guess at their shape. The visor frame
   is drawn as aluminium; its real finish was not checked.
 - No hose on the helmet outlet, and no seal bottle or its hose on the left-jaw connector.
-- No chest mirror on the standing figure (that came after MR-3), no wrist mirrors. Liberty Bell 7's cabin lays one on its
-  seated pilot (`mercury_cabin_11.chest_mirror`) and changes the name on the tag (`mark_iv_suit.NAME`): the rest of
-  Grissom's suit (wrist bearing rings, the new parachute harness, the new microphones) is not modelled, and there is
-  no standing figure of him.
+- No chest mirror on Shepard's figure (that came after MR-3), no wrist mirrors on either.
+- **Grissom's figure (MR-4), besides all of the above:**
+  - **The harness is its webbing and little else.** No quilting on the pads; no adapter, buckle or
+    hanging tail on the chest strap; no hooks on the V-rings; no hardware where a leg strap meets
+    the long strap at the hip (the one is laid over the other's end). The leg straps go down into
+    the cloth at the fork, front and back, and are not carried under it. The strap across the back
+    ends under each arm. Where it runs is read off five photographs, not a drawing of the harness.
+  - **The mirror's mounting is two tabs.** The real one was fastened to the tie-down assembly
+    ("Fasten and adjust the life vest and mirror to the helmet tie-down assembly", the MA-8 fact
+    sheet): the cables from the neck ring to the tie-down's pulley, which run under the mirror,
+    are not modelled, and the tie-down strap begins under the chest strap.
+  - **The wrist ring is the size of the model's cuff**, brought to his hand with the glove (0.944).
+  - **The lead is stiff**: its top turns with the head and from the neck ring down it lies with the
+    chest, hanging 2.5 cm clear of the cloth.
+  - **His trunk, arms and head are the reference man's** on his stature; only the legs are to his
+    measure. With them the calves are full: 40 cm round, and 2 cm of suit.
+  - The waist zipper (brass on dark tape in S88-55875) is the webbing strap of Shepard's figure;
+    the cream lacing strips and stretch panels are its grey ones; the tapes over the knees, the
+    boots' straps and the glove's lacing and snap straps are left out, as there.
+  - **The ventilator is a box.** Only its handle, its hose, its colour and the panel on its end
+    are from photographs.
+  - **The farthest level of detail** leaves out the neck dam and the loops that hold the V-rings,
+    cuts the straps' ends square and stands them 2 mm further off the coarser cloth.
 - **The insignia is drawn from the 1959 design, not traced from the patch**: a blue disc with a
   rim of thread, twelve stars placed by eye, the orbit as a plain tilted ellipse, the red vector
   as two straight wings whose points overhang the disc, and "NASA" in a bold serif from the build
@@ -305,5 +399,23 @@ hand; keeping it hanging plumb is the viewer's to do.
 - NASA photographs of 5 May 1961, on Wikimedia Commons: S61-02727 (on the carrier's deck, colour:
   the insignia and name tag as worn), S61-02775 (suited, helmet open), S61-02792 (at the capsule,
   from behind: the harness), and GPN-2000-001023 (suit checks).
+- For MR-4: *Results of the Second U.S. Manned Suborbital Space Flight* (NASA MSC, 1961): Table
+  3-I and p. 9 (weight, thigh and calf), p. 24 (the microphone), pp. 26 and 27 (suiting, leak
+  rates, the portable ventilating unit), Figure 7-6 and the pilot's report (the neck dam, the
+  helmet lead, the life preserver). NASA news release, the MR-4 press kit, 13 July 1961, "MR-4
+  Design Changes" (the wrist rings, the microphones). *This New Ocean* (NASA SP-4201), pp. 355 and
+  368. The MR-3 Postlaunch Report, p. 46 (Shepard on the wrist seal bearing): **read as OCR text
+  only**.
+- NASA photographs of Grissom's suit (images.nasa.gov): 61-MR4-83 = S61-02889 (21 July, the walk
+  to the lift, from behind); 61-MR4-89, MSFC-6116421, S61-02894 (21 July, USS *Randolph*);
+  61-MR4-76, 61-MR4-79, S61-02888 (level 3, with the mirror; 19 or 21 July); S61-02845 and
+  61-MR4-60(s) (Hangar S); S88-55875 and S64-36915 (colour, the suiting room; S64-36915 is
+  published mirror-reversed); S64-36909 (colour, the neck dam up; date unknown);
+  LRC-1995-B701_P-05866 to -05869 (27 March 1961, a fitting at Langley: the earlier gloves and
+  gauge). Fort Hays State University, Project Mercury Images, items 449 and 450 (61-MR4-83 and its
+  caption slip) and 462 (19 July, the harness from behind in daylight).
+- The Smithsonian's records of Shepard's glove (A19770563002) and of Grissom's flown suit
+  (A20030178000, transferred from NASA in 2003, not on display): **reported at second hand by a
+  search made for this model; neither page was read here.**
 - Drillis and Contini's body segment proportions (1966), as reproduced in Winter's
   *Biomechanics and Motor Control of Human Movement*: quoted from memory, not checked.

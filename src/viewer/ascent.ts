@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
+import { blowOf, windAt } from '../sim/forces.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
@@ -67,6 +68,8 @@ export interface Run {
   live: boolean;
   /** When each parachute came out: Infinity for one that has not. */
   out: { drogue: number; main: number };
+  /** When each parachute tore (sim/vehicle.ts `tore`): Infinity, or nothing at all, for one that has not. */
+  torn?: { drogue: number; main: number };
   /** What it has let go, each flown beside it (sim/shed.ts): a live run's. The record's are made here. */
   sheds?: Sheds;
 }
@@ -76,6 +79,8 @@ export interface ChuteMoment {
   /** Seconds since it came out, and how long the simulator takes to fill it. */
   since: number;
   fills: number;
+  /** Seconds since it tore, or -1 for one that is whole: torn, it streams. */
+  torn: number;
   /** What it hangs from is moving through the air this way, m/s in the scene's frame: it streams the other way. */
   air: THREE.Vector3;
   /** Up, where it is. */
@@ -225,6 +230,7 @@ export class Ascent {
     const moment: ChuteMoment = {
       since: Math.min(t, landed ? run.duration : Infinity) - at,
       fills: tr[def.on].fills.value,
+      torn: t >= (run.torn?.[def.on] ?? Infinity) ? t - run.torn![def.on] : -1,
       air: new THREE.Vector3(),
       up: new THREE.Vector3(0, 1, 0),
       seen: 1,
@@ -250,7 +256,10 @@ export class Ascent {
     const { r, v } = between(run.samples, clamped, run.live ? (s) => (s as LiveSample).centre : undefined);
     const spin = EARTH_ROTATION_RATE * clamped;
     const here = inertialToEcef(r, spin);
-    moment.air.copy(toThree(ecefToSiteDirection(this.site, inertialToEcefVelocity(r, v, spin))));
+    // (its motion through the air, as the simulator pulls on it: in the day's wind it drifts with the air, and a canopy drawn
+    // against its motion over the ground stood off to one side of a spacecraft hanging plumb)
+    const through = windAt(r, v, clamped, this.flight.site.seaLevel.value, blowOf(tr.winds)).wind;
+    moment.air.copy(toThree(ecefToSiteDirection(this.site, inertialToEcef(through, spin))));
     moment.up.copy(toThree(ecefToSiteDirection(this.site, unit(here))));
     if (moment.down >= 0) {
       moment.air.set(0, 0, 0);
@@ -358,6 +367,11 @@ export class Ascent {
   }
 
   /** The body flown for drop `i` (sim/shed.ts), if the flight gives one: the cockpit's on a flight flown by hand, else made here from the record's run as it left. */
+  /** What drop `i` is called, where the flight gives it a body (`ShedBody.name`): null where it does not. */
+  dropName(i: number): string | null {
+    return this.body(i)?.shedder.def.name ?? null;
+  }
+
   private body(i: number): ShedRun | undefined {
     const run = this.flown();
     const on = this.flight.flies!.drops[i]?.on;
