@@ -1850,6 +1850,7 @@ def stowage(
     panel_camera: bool = True,
     cord: bool = True,
     hoses_at: float = 0.0,
+    knee_strap: bool = True,
 ) -> None:
     """What else the record puts in the cabin, each where it says or, where it does not say, where the
     flown capsule has it today: cameras, the chest parachute, the survival kit, two cabin lights,
@@ -1933,8 +1934,10 @@ def stowage(
         c.into("CrewCabin_Lamps").tube(Vector((a0.x * 1.02, a0.y * 1.02, a0.z)) * IN, Vector((a0.x * reach, a0.y * reach, a0.z)) * IN, 0.45 * IN, 8)
     # The pilot's knee strap, one of the couch's restraints (shoulder, chest, lap and knee straps and toe caps: Postlaunch
     # Report, p. 38). Only this one is modelled: a band over both knees down to the couch either side; its run is estimated.
-    band = [(-9.2, 5.0, 21.5), (-8.0, 5.0, 27.5), (-4.8, 5.0, 31.25), (0.0, 5.0, 30.7), (4.8, 5.0, 31.25), (8.0, 5.0, 27.5), (9.2, 5.0, 21.5)]
-    c.into("CrewCabin_Straps").loft([Vector(p) * IN for p in band], [(0.9 * IN, 0.07 * IN)] * len(band), 8, ref=(0, 1, 0))
+    # (`knee_strap`: capsule 18 flew without its knee and chest straps: NASA TN D-3814, p. 5)
+    if knee_strap:
+        band = [(-9.2, 5.0, 21.5), (-8.0, 5.0, 27.5), (-4.8, 5.0, 31.25), (0.0, 5.0, 30.7), (4.8, 5.0, 31.25), (8.0, 5.0, 27.5), (9.2, 5.0, 21.5)]
+        c.into("CrewCabin_Straps").loft([Vector(p) * IN for p in band], [(0.9 * IN, 0.07 * IN)] * len(band), 8, ref=(0, 1, 0))
     # The suit circuit's two hoses on the right, from the environmental system under the couch up the wall toward the
     # pilot's head, corrugated, and a junction box above the panel with its leads into the tunnel: as the flown capsule
     # has them (NASM2021-00147, lower right and top), placed by eye.
@@ -2275,13 +2278,14 @@ def shade(parent, lamps, also=(), openings=()) -> None:
             layer.data[i].color = (on[i], on[i], on[i], off[i])
 
 
-def restraints(c: Cabin, suit: dict, pilot: dict, seat) -> None:
+def restraints(c: Cabin, suit: dict, pilot: dict, seat, chest_strap: bool = True) -> None:
     """The couch's harness over the pilot: two shoulder straps, a chest strap and a lap strap, and a cap over each toe
     (Postlaunch Report, p. 38, which lists them with the knee strap). Each is laid on the seated figure's own surface
     (`suit`: every vertex of it by mesh, seat-frame centimetres), an eighth of an inch clear; where each runs is estimated.
     A pilot who wears something hard on his chest (the mirror of Liberty Bell 7's, hung on his parachute harness) has
     the chest strap footward of it and of the harness's own chest strap and buckle, and the shoulder straps outboard of
-    it: a strap is not laid across a mirror."""
+    it: a strap is not laid across a mirror. Without `chest_strap` (capsule 18 flew without its knee and chest straps:
+    NASA TN D-3814, p. 5) the shoulder straps start where it would have lain."""
     worn = [tuple(p) for name, pts in suit.items() if name.startswith("Torso") for p in pts]
     # (a band with a point only at each end, the mirror's tabs out to the harness, is filled in along its length: a strap across it is to find it)
     for name, pts in suit.items():
@@ -2319,7 +2323,8 @@ def restraints(c: Cabin, suit: dict, pilot: dict, seat) -> None:
         chest += 0.5
     if mirror:
         out = max(out, max(abs(p[0]) for p in mirror) + 0.8 + half)
-    lay([(x, chest) for x in across], "x")  # chest
+    if chest_strap:
+        lay([(x, chest) for x in across], "x")  # chest
     lay([(x, -11.0) for x in across], "x")  # lap: across the belly, headward of where the thighs rise
     for sx in (-1, 1):  # shoulders: from the chest strap up over each shoulder
         lay([(sx * out, float(y)) for y in np.arange(chest - 4.0, -64.1, -3.0)], "y")
