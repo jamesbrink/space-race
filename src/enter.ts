@@ -1,5 +1,5 @@
 import { flights } from '../missions';
-import { entrances, flightFor, namesNothing } from './address';
+import { entrances, flightFor, namesNothing, where } from './address';
 
 /**
  * The way in. The front page (front.ts) is what an address that names nothing shows. A flight is shown at its site (main.ts: the pad, the crew, the day, the clock, the
@@ -19,5 +19,5 @@ if (new URLSearchParams(location.search).has('mem')) (await import('./mem')).ins
 
 // An address that names nothing is the front page's, which is no flight's: the Earth from out by the Moon, and the
 // list of flights over it (front.ts). It brings a flight's page up itself when one is chosen.
-if (namesNothing(location.hash)) void import('./front');
-else void (entrances(flightFor(flights, location.hash)).site ? import('./main') : import('./only'));
+if (namesNothing(where())) void import('./front');
+else void (entrances(flightFor(flights, where())).site ? import('./main') : import('./only'));

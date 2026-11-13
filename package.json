@@ -20,6 +20,7 @@
     "test:frozen": "node tools/frozen-test.mjs",
     "test:camera": "node tools/camera-test.mjs",
     "test:places": "node tools/places-test.mjs",
+    "test:history": "node tools/history-test.mjs",
     "test:mem": "node tools/mem-test.mjs",
     "test:front": "node tools/front-test.mjs",
     "bench": "node tools/bench.mjs",
