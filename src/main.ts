@@ -335,6 +335,9 @@ window.addEventListener('keydown', (e) => {
 // A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
 stage.onSpot = (page, point, floor) => {
   if (stage.aboard()) return; // (from the couch there is nowhere to walk from or fly to: the view is the pilot's own)
+  // Flying it, there is nobody to get out and walk (no flight here has an EVA), and a spot on the ground or the pad is not
+  // somewhere the view can be sent while it is the vehicle's: nothing is offered.
+  if (cockpit.active) return;
   const walker = flight.models.find((m) => m.walker);
   ui.menu(page.x, page.y, [
     ...(walker && floor
