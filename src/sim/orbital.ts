@@ -129,7 +129,10 @@ export interface EventRecord {
 
 /** Which way an engine pushed the vehicle: along (1) or against (-1) the line to the Sun, or its own motion in the frame that does not turn. */
 export interface Aim {
-  along: 'sun' | 'velocity';
+  /** 'fixed': along `vector`, as a hand aimed it (the flight deck's manual descent, orbitdeck.ts). */
+  along: 'sun' | 'velocity' | 'fixed';
+  /** For 'fixed': the line pushed along, a unit vector in frames.ts's inertial frame of date. */
+  vector?: Vec3;
   sense: 1 | -1;
   confidence: Confidence;
   source: string;
@@ -202,6 +205,12 @@ export interface OrbitalFlight {
   ejection: { altitude: Measure };
   /** What comes down from there, each body on its own (`flyDown`). Left out: the flight ends at the ejection height. */
   descent?: DescentRecord;
+  /**
+   * What a pilot could do by hand, where the spacecraft allowed it (the flight deck, orbitdeck.ts): the code that frees the
+   * hand controls, how fast the hand controller turns the spacecraft (deg/s), and the braking engine as a hand fires it:
+   * its thrust (N) and the impulse its integrator shuts it down at (m/s), the modules parting `parting` seconds after.
+   */
+  manual?: { code: Measure; rate: Measure; thrust: Measure; deltaV: Measure; parting: Measure };
   /** Where and when the record has the landing: degrees north and east, seconds from liftoff. */
   landing: {
     latitude: Measure;
@@ -456,7 +465,13 @@ export function flyOrbit(
   let state: State = from ? { r: from.r, v: from.v } : injectionState(o, site, launchJd);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
-  const aimAt = (s: State, at: number): Vec3 => scale(unit(o.retro.aim.along === 'sun' ? sub(sunAt(at), s.r) : s.v), o.retro.aim.sense);
+  const aimAt = (s: State, at: number): Vec3 =>
+    scale(
+      unit(
+        o.retro.aim.along === 'fixed' && o.retro.aim.vector ? o.retro.aim.vector : o.retro.aim.along === 'sun' ? sub(sunAt(at), s.r) : s.v,
+      ),
+      o.retro.aim.sense,
+    );
 
   const airAt = (s: State, at: number) => {
     const altitude = subpoint(s.r, gastAt(at)).height - seaLevel;

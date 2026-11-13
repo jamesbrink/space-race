@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { P0 } from '../src/sim/fly.ts';
-import { ascend, exitAreaOf, flowOf, flyWhole, integral, schedule, steer } from '../src/sim/staged.ts';
+import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, schedule, steer } from '../src/sim/staged.ts';
 import { DEG, siteFrame } from '../src/world/frames.ts';
 import { julianDate } from '../src/world/time.ts';
 
@@ -267,6 +267,38 @@ for (const f of flown) {
       `  #   the record’s orbit needs ${need.toFixed(1)} m/s at 180 km: the run has it at T+${reached?.t.toFixed(1)} s, ${(676 - (reached?.t ?? Number.NaN)).toFixed(1)} s before the recorded cutoff (${(base.cutoffSpeed - need).toFixed(1)} m/s over)`,
     );
   });
+
+  if (o.manual)
+    test(`${f.designation}: a burn by hand is the same physics: against the motion it comes down, along it it stays up`, () => {
+      const [site, jd, sea] = where(f);
+      const x = steer(o, site, jd, sea);
+      const at = o.retro.on.value;
+      const s = whole.coast.samples.find((p) => p.t >= at);
+      const back = byHand(
+        o,
+        s.t,
+        s.v.map((c) => -c / Math.hypot(...s.v)),
+      );
+      const down = flyWhole(back, site, jd, sea, x);
+      assert.equal(down.coast.samples.at(-1).phase, 'down', 'straight against the motion at the record’s instant, it comes down');
+      assert.ok(down.down?.landed.pilot, 'and the pilot lands');
+      const along = flyWhole(
+        byHand(
+          o,
+          s.t,
+          s.v.map((c) => c / Math.hypot(...s.v)),
+        ),
+        site,
+        jd,
+        sea,
+        x,
+      );
+      assert.notEqual(along.coast.samples.at(-1).phase, 'down', 'along the motion it does not');
+      const l = down.down.landed.pilot;
+      console.log(
+        `  #   by hand, straight against the motion at the record’s instant: down at ${l.latitude.toFixed(2)} N ${l.longitude.toFixed(2)} E, ${(down.coast.results.alongTrack / 1000).toFixed(0)} km along and ${(down.coast.results.crossTrack / 1000).toFixed(0)} km across the record’s landing`,
+      );
+    });
 
   if (o.descent)
     test(`${f.designation}: the two bodies down from the ejection against the record; every miss is recorded`, () => {

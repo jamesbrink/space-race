@@ -547,8 +547,8 @@ export function recordSamples(
   const ending = [
     ...whole.coast.samples
       .filter((s) => s.t > parted.t)
-      .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false })),
-    ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true })),
+      .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false, entering: s.phase === 'entry' })),
+    ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: false })),
   ];
   for (const s of ending) {
     const wind = sub(s.v, cross(spin, s.r));
@@ -564,7 +564,7 @@ export function recordSamples(
     out.push({
       ...blank,
       t: s.t,
-      phase: s.down ? 'main' : s.t >= parts ? 'entry' : 'capsule',
+      phase: s.down ? 'main' : s.entering ? 'entry' : 'capsule',
       altitude: here.height,
       range: angleBetween(inertialToEcef(s.r, gast), inertialToEcef(pad, gast0)) * MEAN_RADIUS,
       speed: length(s.v),
@@ -587,4 +587,22 @@ export function recordSamples(
     });
   }
   return out;
+}
+
+/**
+ * The record with the braking burn made by hand (`OrbitalFlight.manual`): lit at `t`, pushing along `aim` (a unit vector in
+ * frames.ts's inertial frame of date) for as long as the engine takes to give its integrator's impulse, and the modules
+ * parting `manual.parting` after. What the flight deck flies from a hand's burn (orbitdeck.ts); the rest is the record's.
+ */
+export function byHand(o: OrbitalFlight, t: number, aim: Vec3): OrbitalFlight {
+  const m = o.manual;
+  if (!m) throw new Error('this record says nothing of what a hand could do');
+  const burn = (o.mass.value * m.deltaV.value) / m.thrust.value;
+  const plan = structuredClone(o);
+  plan.retro.on.value = t;
+  plan.retro.off.value = t + burn;
+  plan.retro.deltaV.value = m.deltaV.value;
+  plan.retro.aim = { ...plan.retro.aim, along: 'fixed', sense: 1, vector: aim };
+  plan.entry.separation.value = t + burn + m.parting.value;
+  return plan;
 }

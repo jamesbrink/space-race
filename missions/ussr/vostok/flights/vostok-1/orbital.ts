@@ -521,6 +521,22 @@ export const orbital: OrbitalFlight = {
         'and lower than 0.47. Nothing published for the Vostok ball itself, charred and with its straps’ stubs, was found. Free-molecule drag above 120 km (about 2) is left out: it is worth nothing in ten minutes',
     },
   },
+  manual: {
+    code: doc(
+      125,
+      `${SIDDIQI}: the hand controller was locked by a three-digit code, 1-2-5, in an envelope aboard; with it, manual orientation by the Vzor and a manual command to the braking engine (mission.md)`,
+    ),
+    rate: guess(
+      2,
+      'how fast the hand controller turned the spacecraft, deg/s: not found. The automatic system’s rates in the record are 2 to 3 deg/s (Gagarin, before orientation)',
+    ),
+    thrust: doc(1614 * G0, `${SIDDIQI}, p. 197: the TDU-1, 1,614 kgf`),
+    deltaV: doc(136, 'Chertok, Rockets and People, vol. 3, p. 80: the integrator’s command at 136 m/s; Zak: 136 programmed'),
+    parting: guess(
+      10,
+      'the modules part ten to twelve seconds after a burn the integrator ends (the sequencer as planned: Siddiqi, The Space Review, 2015); ten taken',
+    ),
+  },
   ejection: { altitude: doc(7_000, `${GAGARIN}: “approximately at the altitude of 7,000 meters, the hatch cover of hatch Nº 1 ejected”`) },
   // From 7 km down: the descent module on its own parachutes, and the pilot on his seat and then his canopies. The
   // checks below were written before flyDown had flown anything.

@@ -38,6 +38,17 @@ never adjusted to bring a check in.
   law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
   Vostok 1 as recorded comes out 142 m/s fast at the last cutoff (844 km apogee for 327): the flight's mission.md, "What
   the ascent gives", says why and what owns it.
+- **An orbital flight is flown on its own deck** (`src/orbitdeck.ts`, chosen in main.ts for a flight with
+  `orbital.ascent` and no `trajectory`; `lacks` in address.ts lights Fly for it). It offers what that flight's pilot had
+  and no more (`orbital.manual`). As flown, everything is automatic and the run is the record's (`flyWhole`), shown by
+  the scene through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts `orbitalRecord`): what
+  it drops is flown from `orbital.ascent.sheds`. By hand, once the spacecraft is alone and before the timer's burn, the
+  code on the lock (its digits) frees the hand controls: W S A D Q E turn the spacecraft at `manual.rate`, the timer's
+  burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest is flown again from that
+  burn and shown with where the pilot came down against the record's landing. The turning is a hand's on the attitude,
+  not a rigid body's: no jets, no gas, no tumble. The ascent has no hand controls (Vostok's had none), no predicted path
+  and no navball target of its own; sound, shake and heating's glow are not hooked to an orbital run yet. The smoke is
+  laid no higher than 80 km (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
   is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails

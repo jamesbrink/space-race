@@ -49,6 +49,9 @@ import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { tier } from './tier';
 import { TRAIL_STEP, Trail } from './trail';
+
+/** No smoke is laid above this height over the ground, m: none is drawn there (trail.ts), and Freedom 7's engine was out by 60 km. */
+const TRAIL_TOP = 80_000;
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 
@@ -1865,6 +1868,8 @@ export class Stage {
     const trail = this.trail;
     const nozzle = this.plume?.mesh.position;
     if (!trail || !nozzle) return;
+    // (nothing is laid, and no head drawn, above TRAIL_TOP: no trail is drawn there, and an orbital flight's, laid on round
+    // the Earth, swelled the volume the smoke is marched in until the page stalled)
     const upTo = flying ? Math.min(t, ascent.cutoff) : -1;
     const at = new THREE.Vector3();
     const turn = new THREE.Quaternion();
@@ -1872,11 +1877,12 @@ export class Stage {
       const born = (trail.laid + 1) * TRAIL_STEP;
       if (!ascent.place(born, pad, at, turn)) break;
       at.add(nozzle.clone().applyQuaternion(turn));
+      if (at.y - GROUND_Y > TRAIL_TOP) break;
       const along = UP.clone().applyQuaternion(turn);
       trail.reach(at, along, born, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
     }
     // and from the last point to the nozzle as it is now, while it burns
-    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn)) {
+    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn) && at.y - GROUND_Y <= TRAIL_TOP) {
       at.add(nozzle.clone().applyQuaternion(turn));
       trail.head(at, UP.clone().applyQuaternion(turn), t, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
     } else trail.headless();
@@ -1911,10 +1917,14 @@ export class Stage {
     this.trail = null;
     const s = this.flier;
     const engine = flight.flies?.engine && s?.full.getObjectByName(flight.flies.engine);
-    // (an orbital flight's fire is its first stages', all lit together: their exits' area summed, sim/staged.ts)
+    // (an orbital flight's fire is drawn as one engine's: the stage whose nodes hold `flies.engine`, sim/staged.ts. One jet of
+    // that size stands for the cluster's twenty: the fire of all of them summed swells past what the volume can march)
     const exitArea =
       flight.trajectory?.engine.exitArea.value ??
-      flight.orbital?.stages.filter((st) => st.ignition.value <= 0).reduce((sum, st) => sum + st.count * exitAreaOf(st), 0);
+      (() => {
+        const stage = flight.orbital?.stages.find((st) => st.nodes.includes(flight.flies?.engine ?? ''));
+        return stage ? exitAreaOf(stage) : undefined;
+      })();
     if (!s || !engine || !exitArea) return;
     const box = new THREE.Box3().setFromObject(engine);
     const exit = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
