@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { choices, lookUp, nameOf, quiet, sameTarget, spaced } from '../src/actions.ts';
-import { seat, sector } from '../src/wheel.ts';
+import { GAP, MARGIN, seat, sector, spread } from '../src/wheel.ts';
 
 /** A flight with nothing of any real one in it: a machine with a part that can be worked, and two people. */
 const part = (node, extra = {}) => ({ node, name: `The ${node}`, summary: '', detail: '', explode: [0, 0, 0], order: 0, ...extra });
@@ -150,4 +150,58 @@ test('a push points at the seat nearest its direction, and a short one at nothin
   assert.equal(sector(0, 0, 4), null);
   assert.equal(sector(1, 0, 0), null);
   assert.equal(sector(-1, 0, 2), 0, 'exactly between two seats: one of them, never nothing');
+});
+
+test('the wheel’s choices never lie on one another, nor on the title, nor off the page: whatever their number and size', () => {
+  const TITLE = { w: 118, h: 34 };
+  const overlap = (a, sa, b, sb) =>
+    Math.abs(a[0] - b[0]) < (sa.w + sb.w) / 2 + GAP - 1e-6 && Math.abs(a[1] - b[1]) < (sa.h + sb.h) / 2 + GAP - 1e-6;
+  const holds = (sizes, room, what) => {
+    const laid = spread(sizes, room, TITLE);
+    if (!laid) return false;
+    laid.at.forEach((a, i) => {
+      assert.ok(!overlap(a, sizes[i], [0, 0], TITLE), `${what}: choice ${i + 1} lies on the title`);
+      assert.ok(Math.abs(a[0]) + sizes[i].w / 2 <= room.w / 2 - MARGIN + 1e-6, `${what}: choice ${i + 1} is off the side`);
+      assert.ok(Math.abs(a[1]) + sizes[i].h / 2 <= room.h / 2 - MARGIN + 1e-6, `${what}: choice ${i + 1} is off the top or bottom`);
+      for (let j = 0; j < i; j++) assert.ok(!overlap(a, sizes[i], laid.at[j], sizes[j]), `${what}: choices ${j + 1} and ${i + 1} overlap`);
+      // and each is still out toward its own seat, so the direction pushed means it
+      const [x, y] = seat(i, sizes.length);
+      assert.equal(sector(a[0], a[1], sizes.length), sector(x, y, sizes.length), `${what}: choice ${i + 1} is in its own sector`);
+    });
+    assert.ok(laid.reach >= Math.max(...laid.at.map((a) => a[1])), 'the reach is below every choice');
+    return true;
+  };
+  // the service structure's eight, as they were when they lay on one another: one line, and three lines 128 px wide
+  const eight = [
+    { w: 86, h: 44 },
+    { w: 128, h: 76 },
+    { w: 128, h: 76 },
+    { w: 128, h: 76 },
+    { w: 128, h: 76 },
+    { w: 128, h: 76 },
+    { w: 78, h: 44 },
+    { w: 104, h: 44 },
+  ];
+  assert.ok(holds(eight, { w: 1440, h: 760 }, 'eight on a desk’s window'), 'a desk’s window has room for a ring of them');
+  assert.ok(holds(eight, { w: 820, h: 900 }, 'eight on a tablet'), 'and a tablet’s');
+  assert.equal(spread(eight, { w: 390, h: 520 }, TITLE), null, 'a phone has not: they are a list');
+  assert.ok(
+    holds(
+      eight.slice(0, 3).map(() => ({ w: 96, h: 44 })),
+      { w: 390, h: 520 },
+      'three on a phone',
+    ),
+    'three short ones go round on a phone',
+  );
+  // any number of any sizes: a ring that is given is a good one (a seeded shuffle of sizes, so it is the same every run)
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  let rings = 0;
+  for (let n = 0; n < 400; n++) {
+    const count = 1 + Math.floor(rnd() * 9);
+    const sizes = Array.from({ length: count }, () => ({ w: 60 + Math.floor(rnd() * 80), h: [44, 60, 76][Math.floor(rnd() * 3)] }));
+    const room = { w: 360 + Math.floor(rnd() * 1300), h: 300 + Math.floor(rnd() * 700) };
+    if (holds(sizes, room, `${count} in ${room.w} by ${room.h}`)) rings++;
+  }
+  assert.ok(rings > 200, `most of them are rings: ${rings} of 400`);
 });
