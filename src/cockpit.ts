@@ -676,8 +676,10 @@ export class Cockpit {
    */
   can(what: Command['ask']): boolean {
     const s = this.state;
+    // (a mechanism can be worked whenever `work` would hear it: held on the pad and under the parachute as in flight)
+    if (what.startsWith(WORK))
+      return this.on && !!s && this.clock.t >= s.t - TICK && this.mechanisms.some((m) => m.id === what.slice(WORK.length));
     if (!this.on || !s || s.landing || s.held || this.clock.t < s.t - TICK) return false;
-    if (what.startsWith(WORK)) return this.mechanisms.some((m) => m.id === what.slice(WORK.length));
     const alone = s.shed.booster;
     if (what === 'cutoff') return s.ignited && !s.cutoff;
     if (what === 'tower') return Boolean(this.flight.trajectory?.body?.tower) && !s.shed.tower;

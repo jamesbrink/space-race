@@ -187,7 +187,9 @@ Built by [vehicles/mercury_cabin_11.py](../../vehicles/mercury_cabin_11.py), whi
 | Where the panel stands, how the consoles are canted | as in capsule 7's model | estimated | nothing read places either |
 | Window's inner frame | a flat frame 0.6 in wider than the panes, bolted round, with a shroud to the wall | documented (frame: SEDR 104 Figure 2-3); estimated (the shroud) | |
 | Cabin lights | two fluorescent floodlights, as No. 7's fittings: one at the pilot's left, one at his right below the hatch. The CABIN LIGHTS switch on the left console is a lever of three positions, BOTH at its left, L.H. ONLY in the middle and OFF at its right, built at BOTH (`Ctl_CabinLights`; the tubes are `Lamp_Left`, `Lamp_Right`) | documented (two, and that the left could be lit alone; the switch and its legends; that it was at BOTH); estimated (where they hang; which legend is the middle position: the figure writes L.H. ONLY under the switch, as it writes RETRO HEAT's OFF under its) | MR-4 Results, Figure 2-3; "cabin lights are both" (the same, p. 45). The fitting is SEDR 104 of December 1959's (10-44, 10-47: capsules 2 to 8) and of 1962's (10-19). Nothing throws the switch yet: this flight has no cabin to sit in |
-| Pilot | the Mark IV suit as modelled for Shepard, with the tag reading V. I. GRISSOM and a convex mirror 5.2 in across its rim on his chest | documented (the mirror: *This New Ocean*, p. 368); estimated (its size: NASA S61-03698, where it looks nearer 6 in, made a little smaller to lie between the model's shoulder straps; the tag's initials, which the photograph hides) | |
+| Pilot | Grissom in the suit of 21 July 1961 (`mark_iv_suit.MR_4`): his stature, the parachute harness with its pads and V-rings, the 5 in convex mirror hung on it, two microphones, wrist rings, the neck dam. Without the helmet's lead, and without the harness's leg straps | documented (the mirror: *This New Ocean*, p. 368; the rest: mark-iv-suit.md, "5 May and 21 July 1961"); estimated (that the lead was plugged in and out of sight; the leg straps left off, which the folded thighs lie over) | mark-iv-suit.md, "On the couch" |
+| Couch straps over him | the chest strap 15 cm nearer his feet than No. 7's, clear of the mirror, the harness's own chest strap and the tie-down's buckle; the shoulder straps 10.5 cm off the middle (No. 7's 9), clear of the mirror's rim, over the mirror's tabs | estimated | a strap is not laid across a mirror; where the real ones ran with it there was not found |
+| Hand controller and abort handle | under his palms, which puts them 8.4 mm from where No. 7's stand under Shepard's | estimated | both; mark-iv-suit.md, "On the couch" |
 | Survival kit | on the left wall | documented | *This New Ocean*, p. 369: "on a shelf ... near the astronaut's left arm" |
 
 ## Parts in the model
@@ -241,11 +243,10 @@ capsule's stays 41.5 from its own photographs).
   only from capsule 7 as it is kept today is left out: the coiled cord on the left wall, the wiring
   down from the fuse panel, and the camera beside the pilot's head (the chest mirror was there so
   that one camera would do).
-- **The pilot in the cabin is Shepard's figure with the name changed and the mirror added.** The
-  wrist rings, the parachute harness and the new microphones are not on him. They are on Grissom
-  standing (the flight's crew model), whose suit can be seated here in his place: mark-iv-suit.md,
-  "On the couch". The mirror itself was 5 in across (NASA's caption to 61-MR4-79) in a rim of about
-  6 in: the cabin's is 5.2 in across its rim.
+- **The pilot's harness stops at his hips.** Its leg straps and the tie-down's run to the fork are left
+  off the seated figure (they lay in the crease of his lap, under the thighs), and the helmet's lead,
+  plugged in on the couch, is not run anywhere. The couch's lap strap rides over the suit's hose inlet
+  on his left, as No. 7's does.
 - **The panel's faces are capsule 7's**, and the instrument with two needles is blank.
 - **The rate command system is not modelled** beyond its switch and handle on the console.
 - **The periscope's door opens as far as the model's linkage takes it** (109°), and the objective comes out

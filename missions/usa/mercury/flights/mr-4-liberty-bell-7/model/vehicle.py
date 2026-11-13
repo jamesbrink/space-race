@@ -25,6 +25,7 @@ and, from ../../../vehicles/redstone_mrlv.py, the launch vehicle:
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import os
 import sys
@@ -394,8 +395,11 @@ def build_crew_cabin(M, window: dict) -> None:
         return
     # The pilot: the suit model that stands on the pad (crew/mark_iv_suit.py), on the couch as in No. 7.
     P = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
-    mark_iv_suit.NAME = "V. I. GRISSOM"  # (the tag in the photographs ends ...GRISSOM: the initials are taken as given like Shepard's)
-    pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot")
+    # Grissom, in the suit of 21 July 1961 (mark_iv_suit.MR_4: his stature, the parachute harness, the chest mirror, two
+    # microphones, wrist rings). In the couch the helmet's lead was plugged in, so it does not hang on his chest; and
+    # the harness's leg straps and the tie-down's run to the fork are left off: his thighs are folded up over them.
+    grissom = dataclasses.replace(mark_iv_suit.MR_4, lead=False, fork=False)
+    pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot", grissom)
     where = mercury_cabin_11.build(g, VESSEL, M, load_font(), pilot, PILOT_HIP, HATCH, CONE_H - 0.3, mark_iv_suit.seated_points(), window, SCOPE_Z)
     mercury_cabin_11.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, HATCH)
     mercury_cabin_11.name_things(g)
@@ -467,6 +471,31 @@ if __name__ == "__main__":
                 (0, 0, 0),
                 0,
                 dict(seat="Seat_Pilot", look=(0, 50), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            (
+                "cabin-down.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(0, -55), lens=14, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            # the pilot in his couch with the cabin taken away: from his right, from his left, from over his chest, from his feet
+            *(
+                (
+                    f"pilot-{name}.png",
+                    "Seat_Pilot",
+                    2.6,
+                    dict(
+                        azimuth=az, elevation=el, lens=50, only=("CrewCabin_Pilot", "CrewCabin_Couch", "CrewCabin_Straps", "Ctl_"), res=(1500, 1100)
+                    ),
+                )
+                for name, az, el in (
+                    ("right", 0, 8),
+                    ("left", 180, 8),
+                    ("chest", -90, 12),
+                    ("above", -90, 62),
+                    ("feet", 90, 25),
+                    ("quarter", -45, 30),
+                )
             ),
         ],
     )

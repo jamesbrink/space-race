@@ -8,7 +8,8 @@ the pressure vessel, the seated pilot's key points (crew/mark_iv_suit.py), the p
 
 **The fit is a capsule's, not the type's.** This module holds spacecraft No. 7's (Freedom 7), whose panel is
 the Postlaunch Report's Figure 3.1-2. Spacecraft No. 11's (Liberty Bell 7) is [mercury_cabin_11.py](mercury_cabin_11.py): its own panel,
-consoles, window frame and hatch, calling this module for the lining, the couch, the restraints, the controllers, the
+consoles, window frame and hatch, calling this module for the lining, the couch, the restraints (laid on whatever the
+seated pilot wears, and kept off a mirror on his chest), the controllers, the
 stowage, the periscope, the attitude indicator, the clock and the instruments' faces. Its record is
 [that flight's spacecraft.md, "Cabin"](../flights/mr-4-liberty-bell-7/spacecraft.md). Every dimension, how sure it is and what is left out are in that flight's record:
 [spacecraft.md, "Cabin"](../flights/mr-3-freedom-7/spacecraft.md). A later capsule (No. 11's window, the orbital

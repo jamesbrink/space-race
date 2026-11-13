@@ -441,5 +441,30 @@ if __name__ == "__main__":
                 0,
                 dict(seat="Seat_Pilot", look=(0, 50), lens=18, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
             ),
+            (
+                "cabin-down.png",
+                (0, 0, 0),
+                0,
+                dict(seat="Seat_Pilot", look=(0, -55), lens=14, lamps="Lamp_", hide="CrewCabin_Pilot_Helmet", res=(1600, 1000)),
+            ),
+            # the pilot in his couch with the cabin taken away: from his right, from his left, from over his chest, from his feet
+            *(
+                (
+                    f"pilot-{name}.png",
+                    "Seat_Pilot",
+                    2.6,
+                    dict(
+                        azimuth=az, elevation=el, lens=50, only=("CrewCabin_Pilot", "CrewCabin_Couch", "CrewCabin_Straps", "Ctl_"), res=(1500, 1100)
+                    ),
+                )
+                for name, az, el in (
+                    ("right", 0, 8),
+                    ("left", 180, 8),
+                    ("chest", -90, 12),
+                    ("above", -90, 62),
+                    ("feet", 90, 25),
+                    ("quarter", -45, 30),
+                )
+            ),
         ],
     )

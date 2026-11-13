@@ -19,6 +19,7 @@ X, `drum` the digits on a counter's wheel.
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import bpy
@@ -1185,8 +1186,10 @@ def thrown(c: Cabin, F: Matrix, u: float, v: float, name: str, way: str, leans) 
         mb.lathe([(0.0, 0.0), (0.055, 0.0), (0.055, 0.64), (0.078, 0.7), (0.078, 0.79), (0.0, 0.82)], 8)
 
     # (the node's +Y is the way it leans: +v, or +u with the node turned a quarter)
-    obj = c.node(f"Ctl_{name}", "lever", F, u, v, 0.18, lever, spin=-math.pi / 2 if way == "h" else 0.0, throw=[leans[0] - a for a in leans])
-    obj.matrix_local = obj.matrix_local @ Matrix.Rotation(-leans[0], 4, "X")
+    spin = -math.pi / 2 if way == "h" else 0.0
+    obj = c.node(f"Ctl_{name}", "lever", F, u, v, 0.18, lever, spin=spin, throw=[leans[0] - a for a in leans])
+    # (the whole of where it stands, written out: a matrix read back from an object just made is not yet the one it was given)
+    obj.matrix_local = rigid(F @ Matrix.Translation((u, v, 0.18))) @ Matrix.Rotation(spin, 4, "Z") @ Matrix.Rotation(-leans[0], 4, "X")
     return obj
 
 
@@ -2275,8 +2278,18 @@ def shade(parent, lamps, also=(), openings=()) -> None:
 def restraints(c: Cabin, suit: dict, pilot: dict, seat) -> None:
     """The couch's harness over the pilot: two shoulder straps, a chest strap and a lap strap, and a cap over each toe
     (Postlaunch Report, p. 38, which lists them with the knee strap). Each is laid on the seated figure's own surface
-    (`suit`: every vertex of it by mesh, seat-frame centimetres), an eighth of an inch clear; where each runs is estimated."""
-    body = np.array([tuple(p) for name, pts in suit.items() if name.startswith("Torso") for p in pts], dtype=np.float64)
+    (`suit`: every vertex of it by mesh, seat-frame centimetres), an eighth of an inch clear; where each runs is estimated.
+    A pilot who wears something hard on his chest (the mirror of Liberty Bell 7's, hung on his parachute harness) has
+    the chest strap footward of it and of the harness's own chest strap and buckle, and the shoulder straps outboard of
+    it: a strap is not laid across a mirror."""
+    worn = [tuple(p) for name, pts in suit.items() if name.startswith("Torso") for p in pts]
+    # (a band with a point only at each end, the mirror's tabs out to the harness, is filled in along its length: a strap across it is to find it)
+    for name, pts in suit.items():
+        if name.startswith("Torso") and name.endswith("Tabs"):
+            for a, b in itertools.combinations([np.array(tuple(p)) for p in pts], 2):
+                if abs(a[0] - b[0]) > 3.0 and abs(a[1] - b[1]) < 2.5:
+                    worn += [tuple(a + (b - a) * k / 8) for k in range(1, 8)]
+    body = np.array(worn, dtype=np.float64)
     web = c.into("CrewCabin_Straps")
 
     def top(x: float, y: float, reach: float = 2.5) -> float | None:
@@ -2297,10 +2310,19 @@ def restraints(c: Cabin, suit: dict, pilot: dict, seat) -> None:
             web.loft([p * IN for p in run_], [(0.85 * IN, 0.1 * IN)] * len(run_), 8, ref=(0, 0, 1))
 
     across = [-18.0, -12.0, -6.0, 0.0, 6.0, 12.0, 18.0]
-    lay([(x, -40.0) for x in across], "x")  # chest
+    half = 0.85 * 2.54  # half a strap's width, centimetres
+    mirror = [p for name, pts in suit.items() if name.startswith("Torso_Mirror") and "Tabs" not in name for p in pts]
+    # (what the chest strap is kept off, with a mirror there: it, the tape with his name on the harness's chest strap, the tie-down's buckle)
+    hard = mirror and [p for name, pts in suit.items() if name.startswith(("Torso_HarnessNameTape", "Torso_TieDownBuckle")) for p in pts] + mirror
+    chest, out = -40.0, 9.0
+    while any(abs(p[1] - chest) < half + 0.6 for p in hard):
+        chest += 0.5
+    if mirror:
+        out = max(out, max(abs(p[0]) for p in mirror) + 0.8 + half)
+    lay([(x, chest) for x in across], "x")  # chest
     lay([(x, -11.0) for x in across], "x")  # lap: across the belly, headward of where the thighs rise
     for sx in (-1, 1):  # shoulders: from the chest strap up over each shoulder
-        lay([(sx * 9.0, float(y)) for y in np.arange(-44.0, -64.1, -3.0)], "y")
+        lay([(sx * out, float(y)) for y in np.arange(chest - 4.0, -64.1, -3.0)], "y")
         toe = seat(pilot["toes"]["left" if sx > 0 else "right"])
         soft(c.into("CrewCabin_Straps"), Matrix.Translation(Vector((toe.x, toe.y - 1.5, toe.z - 0.7)) * IN), (3.8, 2.6, 2.4), 0.9, 12, 7)
 

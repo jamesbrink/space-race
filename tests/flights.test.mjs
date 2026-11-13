@@ -154,6 +154,23 @@ for (const file of files) {
               `control ${c.node} works no mechanism called ${c.works}`,
             );
       }
+      // a command that works a mechanism by hand (types.ts Command, `work:<id>`) names one the model has, and says
+      // what drawing it in is called as well as putting it out; and a mechanism has one on some part, to be found by
+      for (const part of model.parts)
+        for (const c of part.commands ?? [])
+          if (c.ask.startsWith('work:')) {
+            assert.ok(
+              (model.mechanisms ?? []).some((m) => m.id === c.ask.slice(5)),
+              `${part.node}: a command works no mechanism called ${c.ask.slice(5)}`,
+            );
+            assert.ok(c.label && c.back && c.back !== c.label, `${part.node}: ${c.ask} says which way it is sent`);
+          }
+      if (flight.flies?.model === model.id)
+        for (const mechanism of model.mechanisms ?? [])
+          assert.ok(
+            model.parts.some((p) => (p.commands ?? []).some((c) => c.ask === `work:${mechanism.id}`)),
+            `mechanism ${mechanism.id}: no part offers it by hand`,
+          );
       // what a part's moves and functions name is a node of the model too, at every level of detail: a motion on
       // a node that is not there does nothing, and says nothing
       for (const part of model.parts) {
