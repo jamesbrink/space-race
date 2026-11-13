@@ -123,7 +123,8 @@ never adjusted to bring a check in.
   nothing else sees it. A new effect of the air goes in `effects.ts` and takes its numbers from
   the sample; it does not keep time or name a flight.
 - **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
-  because of it; the capsule flown from the report's separation passes all but one. The flight's
+  because of it (and an eleventh, the greatest dynamic pressure going up, by the day's tail wind);
+  the capsule flown from the report's separation passes all but one. The flight's
   README ("The flight as flown") states the numbers.
 - **Staging is physics, and so is what is shed.** One force model flies everything
   (`sim/forces.ts`): drag along the body's axis by whichever end leads, falling off as the cosine
@@ -140,6 +141,16 @@ never adjusted to bring a check in.
   (`Sheds.follow`); the record's are flown from fly.ts's run, lazily, as far as the clock asks. A
   new thing to shed is a `ShedBody` in the flight's data and an `on` in `flies.drops`: generic
   code names no part. Every drag area in them today is `estimated`, and says so.
+- **The air moves.** `trajectory.winds` (types.ts: `Winds`) is the day's sounding over the pad,
+  each level's speed and bearing a `Measure`; `blowOf` (forces.ts) turns it into the air's motion
+  east and north at a height, straight lines between levels in those parts (so a swing through
+  north is not a spin through south), the lowest held to the surface, falling evenly to nothing
+  from the highest to `calmAbove`. Every flier (fly.ts, vehicle.ts, shed.ts, predict.ts) takes its
+  drag and lift from the motion through that air and its speeds over the ground from the motion
+  over the ground: `Wind.wind` and `Wind.ground` are different things once there is wind. One
+  sounding stands for the whole flight; no gusts. A flight without `winds` is flown in air that
+  turns with the Earth and no more, and a test that asks something of the vehicle rather than
+  of the day (a static margin, an abort against another day's record) says so and flies still air.
 - **The air can break it.** `sim/loads.ts`: the stack's bending load is dynamic pressure times
   angle of attack against `body.limits.qAlpha`; caution from 80 per cent, and over the limit for
   half a second (or at 150 per cent at once) it breaks at `limits.joint`: the engine stops, the
@@ -147,8 +158,9 @@ never adjusted to bring a check in.
   it. A parachute let out in more dynamic pressure than `limits.drogue`/`main` tears to
   `limits.torn` of its drag area. The limits are `estimated` (no structural figure has been
   read); the constants of consequence are chosen and say so. On the record's programme the load
-  peaks at 10 per cent of the limit; hands off from 60 s the stack as estimated diverges and
-  breaks up at 80 s, so the greatest pressure has to be flown through.
+  peaks at 26 per cent of the limit in the day's wind (10 in still air); hands off from 60 s the
+  stack as estimated diverges and breaks up at 80 s in still air, and from the pad in the day's
+  wind at 36 s, so it has to be flown.
 - **Level is the ellipsoid's.** Climb angles, the retro attitude and a landing's vertical speed
   are measured from the geodetic normal (`upAt` in forces.ts), not from the line to the Earth's
   centre, which leans a sixth of a degree from it at the Cape.

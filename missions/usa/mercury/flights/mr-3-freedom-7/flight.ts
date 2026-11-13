@@ -16,6 +16,7 @@ import type {
   Signal,
   Thruster,
   Trajectory,
+  Winds,
 } from '../../../../../src/types';
 import { LC5 } from '../../sites/lc-5.ts';
 import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
@@ -1502,6 +1503,113 @@ const TMX_422 = 'Blanchard and Raper, NASA TM X-422 (1960)';
 const TMX_629 = 'Baber, Carter and English, NASA TM X-629';
 const SEDR_109 = 'McDonnell SEDR 109-7, the Capsule Flight Operations Manual for capsule 7 (1960)';
 
+const KT = 1852 / 3600;
+const WIND_FIGURE = `${PLR}, Figure 10.3-1 (p. 96), "Cape wind profile approximately 5 minutes after launch"`;
+/**
+ * The winds aloft over the Cape that morning, read off the report's figure: two hand-drawn traces, speed in knots and
+ * direction in degrees, against height to 60,000 ft. Each row is [height ft, speed kt, give or take kt, direction
+ * degrees, give or take degrees]: every 1,000 ft or so and every kink, read twice (by eye, and by tracing the ink with
+ * the grid masked) and reconciled; heights are good to 200 ft, so where a trace runs nearly level (the foot and the
+ * top of the jet, 44,000 to 45,500 and 51,000 to 56,500 ft) the speed is looser than its own figure says.
+ */
+const WIND_READ: [ft: number, kt: number, giveKt: number, from: number, giveDeg: number][] = [
+  [0, 12, 1, 70, 7],
+  [1000, 7.5, 0.7, 90, 4],
+  [2000, 5.3, 0.5, 100, 4],
+  [3000, 3, 0.5, 107, 4],
+  [4000, 1.2, 0.4, 75, 15],
+  [5000, 2.8, 0.5, 26, 4],
+  [6000, 5, 0.5, 38, 5],
+  [6800, 6.3, 0.4, 47, 4],
+  [8000, 4, 0.5, 63, 4],
+  [9000, 2.5, 0.4, 35, 5],
+  [10000, 2.2, 0.4, 84, 5],
+  [11000, 3.3, 0.5, 55, 8],
+  [12000, 4.7, 0.5, 35, 5],
+  [12500, 5.3, 0.5, 30, 4],
+  [13000, 6, 0.5, 38, 5],
+  [14000, 7.2, 0.4, 50, 5],
+  [14700, 6.4, 0.5, 59, 4],
+  [15000, 6, 0.5, 47, 8],
+  [16000, 4.3, 0.4, 8, 12],
+  [17000, 5.4, 0.5, 332, 5],
+  [18000, 7.6, 0.5, 326, 3],
+  [19000, 8.9, 0.4, 320, 3],
+  [20000, 7.1, 0.4, 310, 3],
+  [21000, 8.4, 0.5, 318, 3],
+  [22000, 9.9, 0.4, 325, 3],
+  [23000, 9, 0.5, 315, 6],
+  [24000, 7.1, 0.4, 295, 3],
+  [25000, 9, 0.6, 302, 4],
+  [26000, 11.8, 0.5, 308, 3],
+  [26500, 12.5, 0.4, 305, 4],
+  [27000, 12, 0.5, 290, 10],
+  [28000, 11.5, 0.4, 260, 3],
+  [29000, 13.5, 0.5, 273, 6],
+  [30000, 15.8, 0.5, 291, 4],
+  [30400, 16.5, 0.5, 294, 3],
+  [31000, 17.8, 0.5, 289, 4],
+  [32000, 19.6, 0.5, 278, 3],
+  [32500, 20.5, 0.5, 276, 3],
+  [34000, 22.8, 0.4, 280, 3],
+  [35600, 22, 0.4, 288, 3],
+  [36000, 22.1, 0.4, 289, 3],
+  [38000, 23.8, 0.4, 293, 3],
+  [40000, 25.1, 0.4, 303, 3],
+  [42000, 27.5, 0.5, 289, 4],
+  [43000, 29.5, 0.5, 277, 3],
+  [44000, 34, 3, 275, 3],
+  [44500, 42, 4, 275, 3],
+  [45000, 51, 4, 276, 3],
+  [46000, 57.8, 0.7, 283, 4],
+  [47000, 58.8, 0.5, 291, 3],
+  [48000, 57.1, 0.5, 292, 3],
+  [49000, 58, 0.5, 292, 3],
+  [50000, 60, 0.5, 293, 3],
+  [51000, 57, 1.5, 297, 3],
+  [52000, 50, 3, 302, 3],
+  [53000, 43.5, 1.5, 304, 3],
+  [54000, 42, 0.5, 307, 3],
+  [55000, 39.5, 2, 312, 3],
+  [56000, 32, 3, 324, 3],
+  [56400, 28.2, 1, 323, 3],
+  [57400, 26.4, 0.4, 317, 3],
+  [58000, 26.9, 0.4, 314, 3],
+  [59000, 28, 0.4, 314, 3],
+  [60000, 23, 2, 312, 3],
+];
+const WINDS: Winds = {
+  levels: [
+    ...WIND_READ.map(([ft, kt, giveKt, from, giveDeg]) => ({
+      height: ft * FT,
+      speed: doc(kt * KT, `${WIND_FIGURE}: ${kt} kt at ${ft.toLocaleString('en-US')} ft, read to ${giveKt} kt`),
+      from: doc(
+        from,
+        `${WIND_FIGURE}: ${from} degrees at ${ft.toLocaleString('en-US')} ft, read to ${giveDeg} degrees. The figure does not say which way the bearing is meant: taken as the bearing the wind blows from, ` +
+          'as a sounding gives it, which the Cape’s 12Z rawinsonde of the same morning bears out from 300 hPa up (IGRA USM00074794: 280 degrees at 58 kt at 45,900 ft against this figure’s 282 at 57.5)',
+      ),
+    })),
+    // above the figure: the Cape's routine sounding two and a half hours before liftoff, the only wind there is for those heights
+    ...(
+      [
+        [20_681, 4, 70, 50],
+        [23_915, 3, 120, 30],
+      ] as const
+    ).map(([m, speed, from, hPa]) => ({
+      height: m,
+      speed: doc(
+        speed,
+        `NOAA IGRA, station USM00074794 (Cape Kennedy), 5 May 1961 12Z, ${hPa} hPa at ${m.toLocaleString('en-US')} m: ${speed} m/s, given to the whole metre a second. Another balloon, 2 h 34 min before liftoff`,
+      ),
+      from: doc(from, `NOAA IGRA, station USM00074794, 5 May 1961 12Z, ${hPa} hPa: from ${from} degrees, given to ten degrees`),
+    })),
+  ],
+  calmAbove: guess(
+    30_000,
+    'no wind is recorded above 30 hPa (24 km). Taken as falling evenly to nothing by 30 km, where the air is a hundredth of the surface’s and what it does to the flight is past measuring. Ours',
+  ),
+};
+
 /** How fast the spacecraft and the booster parted: the trajectory's figure, and the booster's own push as a body let go. */
 const trajectoryPush = doc(30 * FT, `${PLR}, section 4.2: separation velocity approximately 30 plus or minus 3 ft/s, from AZUSA and radar`);
 
@@ -2054,6 +2162,7 @@ const heating: Heating = {
  * each result.
  */
 const trajectory: Trajectory = {
+  winds: WINDS,
   azimuth: doc(
     105,
     'NASA TM X-53107, section 7.2: a 105-degree launch azimuth; the Postlaunch Report has the Earth-fixed heading at separation as 105.23',

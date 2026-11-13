@@ -46,7 +46,9 @@
  *             spacecraft aside. Its propellant (`escape.propellant`) leaves as it burns.
  * Mass, centre of mass and inertia follow the propellant down the tanks (rigid.ts: massOf). The
  * terms that come of mass leaving a turning body (jet damping) and of the centre of mass moving
- * along it are left out, and so are slosh, bending, wind, thrust misalignment and the air rudders.
+ * along it are left out, and so are slosh, bending, thrust misalignment and the air rudders. The air
+ * moves with the day's winds aloft where the trajectory gives them (`winds`, forces.ts: `blowOf`):
+ * one sounding over the pad, taken as the same all along the flight, with no gusts.
  *
  * Time. The flight is integrated in ticks of TICK seconds by fourth-order Runge-Kutta, whatever
  * the frame's length: `step` keeps what is left of a frame for the next, so a flight is the same
@@ -94,7 +96,7 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, axisOf, G0, gravity, MEAN_RADIUS, P0, type Phase, type Sample } from './fly.ts';
-import { airForces, part, pieceOf, type Release, upAt, upOver, windAt } from './forces.ts';
+import { airForces, blowOf, part, pieceOf, type Release, upAt, upOver, windAt as airAt } from './forces.ts';
 import { loadsOf, type Strain, strain, UNSTRAINED } from './loads.ts';
 import {
   aboutAxis,
@@ -293,6 +295,9 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const earth: Vec3 = [0, 0, EARTH_ROTATION_RATE];
   const pad = geodeticToEcef(site);
   const padHeight = site.height - seaLevel;
+  // the day's wind: everything the air does here is done by air that moves with it
+  const blow = blowOf(tr.winds);
+  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(r, v, at, sea, blow);
   const programme = axisOf(tr, site);
   const up0 = programme(-1e9);
   // (level along the launch azimuth, from the azimuth itself: a programme that never tilts has no direction to give)
@@ -456,7 +461,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   /** Every force but gravity (N, in the frame) and the torque about the centre of mass (N m, in the body), with what the air is doing. */
   const forces = (d: Dyn, at: number, s: VehicleState) => {
     const props = massNow(s, d.mass);
-    const { altitude, air, wind, airspeed, mach, q } = windAt(d.r, d.v, at, seaLevel);
+    const { altitude, air, wind, airspeed, mach, q, ground } = windAt(d.r, d.v, at, seaLevel);
     const riding = !s.shed.booster;
     const escaping = s.abortAt !== null && !s.shed.tower;
     let force: Vec3 = [0, 0, 0];
@@ -532,7 +537,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
         torque = add(torque, scale(escapeArm, pull));
       }
     }
-    return { force, torque, q, mach, altitude, wind, airspeed, props };
+    return { force, torque, q, mach, altitude, wind, airspeed, ground, props };
   };
 
   const rate = (d: Dyn, at: number, s: VehicleState): Dyn => {
@@ -986,9 +991,9 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       altitude: here.height - seaLevel,
       range: rangeOf(s.separation ? s.r : point, s.t),
       speed: length(s.v),
-      groundSpeed: f.airspeed,
+      groundSpeed: length(f.ground),
       climb: climb(s.v),
-      groundClimb: climb(f.wind),
+      groundClimb: climb(f.ground),
       g: s.held ? 1 : length(f.force) / s.mass / G0,
       q: f.q,
       mach: f.mach,

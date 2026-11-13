@@ -64,7 +64,7 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, G0, gravity, MEAN_RADIUS, type Phase, thrustIn } from './fly.ts';
-import { upAt } from './forces.ts';
+import { blowing, blowOf, upAt } from './forces.ts';
 import { aboutAxis, turn } from './rigid.ts';
 
 /** Above this height, m, the air is left out. */
@@ -196,7 +196,7 @@ export interface Prediction {
   apogee: PathPlace | null;
   /** The least height, on an orbit. */
   perigee: PathPlace | null;
-  /** Where and when it meets the surface: the distance over the ground from the pad, m, and its speed through the air there, m/s. */
+  /** Where and when it meets the surface: the distance over the ground from the pad, m, and how fast it is coming down there, m/s (fly.ts's `landingSpeed`: the wind's carrying it along is not in it). */
   impact: (PathPlace & { range: number; speed: number }) | null;
   /** The orbit, when it is one: the elements at the start, which J2 and the air then change a little. */
   orbit: Elements | null;
@@ -262,6 +262,8 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
   const tr = trajectory;
   const pad = geodeticToEcef(site);
   const padHeight = site.height - seaLevel;
+  // (through the day's wind, as the flight itself is flown)
+  const blow = blowOf(tr.winds);
   const limit = options.limit ?? 6 * 3600;
   const most = Math.max(8, options.points ?? 480);
   const burn = options.burn && start.t < options.burn.until ? options.burn : null;
@@ -325,7 +327,8 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
     stiff = 0;
     const air = altitude < AIR_TOP || burning ? atmosphere(altitude) : null;
     if (air && altitude < AIR_TOP) {
-      const wind = sub(u, cross(SPIN, p));
+      const over = sub(u, cross(SPIN, p));
+      const wind = blow ? sub(over, blowing(blow, place(p, at), altitude, at)) : over;
       const speed = length(wind);
       if (speed > 0) {
         const area = dragArea(tr, riding, speed / air.soundSpeed) + (riding ? 0 : chuteArea(chute, at));
@@ -486,13 +489,30 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
     // what a spacecraft alone does by itself, coming down (vehicle.ts): the tower's shape gives way to the heat shield, the parachutes come out
     if (alone && falling) {
       riding = false;
+      // (each opens at the instant its height is passed, and not at the end of the step that passed it: a second's step
+      // falls a hundred metres here, and where the main opens is where it lands. The step is flown again to that
+      // instant, which is found along it, and the next begins there with the parachute out)
+      const crossed = (height: number): void => {
+        const part = Math.max(0, Math.min(1, (before.altitude - height) / (before.altitude - altitude || 1)));
+        const at = before.t + (t - before.t) * part;
+        if (at <= before.t + 1e-6 || at >= t - 1e-6) return;
+        [t, r, v, altitude] = [before.t, before.r, before.v, before.altitude];
+        const back = rk4(at - before.t, altitude);
+        t = at;
+        r = back.r;
+        v = back.v;
+        here = place(r, t);
+        altitude = here.height - seaLevel;
+      };
       if (chutes && !drogue && !main && altitude <= tr.drogue.altitude.value) {
         drogue = true;
+        crossed(tr.drogue.altitude.value);
         chute = { full: tr.drogue.dragArea.value, was: 0, at: t, fills: tr.drogue.fills.value };
         note('drogue');
       }
       if (chutes && drogue && !main && altitude <= tr.main.altitude.value) {
         main = true;
+        crossed(tr.main.altitude.value);
         chute = { full: tr.main.dragArea.value, was: tr.drogue.dragArea.value, at: t, fills: tr.main.fills.value };
         note('main');
       }
@@ -515,7 +535,7 @@ export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: numb
         latitude: g.latitude,
         longitude: g.longitude,
         range: angleBetween(fixed(where, at), pad) * MEAN_RADIUS,
-        speed: length(sub(speed, cross(SPIN, where))),
+        speed: -dot(sub(speed, cross(SPIN, where)), upAt(where, at)),
       };
       points.push({ t: at, r: where, v: speed, altitude: impact.altitude });
       outcome = 'impact';

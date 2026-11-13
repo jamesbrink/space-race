@@ -220,6 +220,8 @@ test('which inputs are not documented, and how far each moves the results', (t) 
     ['engine.thrust (documented)', (tr) => (tr.engine.thrust.value *= 1.05), tr0.engine.thrust.confidence],
     ['engine.isp (documented)', (tr) => (tr.engine.isp.value *= 1.05), tr0.engine.isp.confidence],
     ['liftoffMass (documented)', (tr) => (tr.liftoffMass.value *= 1.05), tr0.liftoffMass.confidence],
+    ['winds (documented)', (tr) => tr.winds.levels.forEach((l) => (l.speed.value *= 1.05)), tr0.winds.levels[0].speed.confidence],
+    ['winds.calmAbove (estimated)', (tr) => (tr.winds.calmAbove.value *= 1.05), tr0.winds.calmAbove.confidence],
   ];
   const shown = ['separationSpeed', 'apogee', 'range', 'entryG', 'duration'];
   t.diagnostic(`a 5 % rise in each input moves, in per cent: ${shown.join(', ')}`);
@@ -236,6 +238,11 @@ test('which inputs are not documented, and how far each moves the results', (t) 
   assert.ok(moved['ascentDrag (estimated)'][0] < -0.3, 'more drag, less speed');
   assert.ok(Math.abs(moved['drogue.dragArea (estimated)'][1]) < 0.01, 'the drogue has no say in the apogee');
   assert.ok(moved['main.dragArea (derived)'][4] > 0.5, 'a bigger main parachute, a longer flight');
+  // where the wind is taken to die away above the sounding is past mattering: the air there is a hundredth of the surface's
+  assert.ok(
+    moved['winds.calmAbove (estimated)'].every((x) => Math.abs(x) < 0.01),
+    'the calm above the sounding has no say',
+  );
   // nothing in the trajectory is marked documented that the record calls a guess
   const estimated = [];
   const walk = (o, path) => {
@@ -266,5 +273,6 @@ test('which inputs are not documented, and how far each moves the results', (t) 
     'retro.pitch',
     'separation.boosterMass',
     'tilt',
+    'winds.calmAbove',
   ]);
 });

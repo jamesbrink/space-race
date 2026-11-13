@@ -26,7 +26,7 @@
  * the instant, the wake of one part on another, roll damping, and all unsteady flow. A tumbling
  * body's drag is these three summed at each instant, which is the usual approximation and no more.
  */
-import type { AeroSurface, Body, MassPart, ShedBody } from '../types';
+import type { AeroSurface, Body, MassPart, ShedBody, Winds } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { add, cross, ecefToGeodetic, ecefToInertial, enuAxes, inertialToEcef, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import { type Air, atmosphere } from './atmosphere.ts';
@@ -91,25 +91,76 @@ export function airForces(shape: Shape, centre: number, through: Vec3, w: Vec3, 
 
 const EARTH_SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
+/** The air's own motion over the ground at a height, m above the sea: metres a second toward the east and toward the north. */
+export type Blow = (altitude: number) => readonly [east: number, north: number];
+
+const DEG = Math.PI / 180;
+
+/**
+ * A sounding as something to fly through (types.ts: `Winds`): each level's wind turned into the way the air moves
+ * (a wind FROM 090 moves the air west), straight lines between levels in those parts, the lowest held to the
+ * surface, and from the highest falling evenly to nothing at `calmAbove`. Null where there is no sounding: calm.
+ */
+export function blowOf(winds: Winds | undefined | null): Blow | null {
+  if (!winds?.levels.length) return null;
+  const levels = winds.levels
+    .map((l) => ({ h: l.height, e: -l.speed.value * Math.sin(l.from.value * DEG), n: -l.speed.value * Math.cos(l.from.value * DEG) }))
+    .sort((a, b) => a.h - b.h);
+  const top = levels[levels.length - 1]!;
+  const calm = Math.max(top.h, winds.calmAbove.value);
+  const still = [0, 0] as const;
+  return (altitude) => {
+    if (altitude >= calm) return still;
+    if (altitude <= levels[0]!.h) return [levels[0]!.e, levels[0]!.n];
+    if (altitude >= top.h) {
+      const k = (calm - altitude) / (calm - top.h);
+      return [top.e * k, top.n * k];
+    }
+    let lo = 0;
+    let hi = levels.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (levels[mid]!.h <= altitude) lo = mid;
+      else hi = mid;
+    }
+    const a = levels[lo]!;
+    const b = levels[hi]!;
+    const k = (altitude - a.h) / (b.h - a.h);
+    return [a.e + (b.e - a.e) * k, a.n + (b.n - a.n) * k];
+  };
+}
+
 /** The air at a place and what a body moving through it there meets: `r` and `v` in the frame that does not turn, `at` seconds from liftoff. */
 export interface Wind {
   /** Height above the sea, m. */
   altitude: number;
   air: Air;
-  /** The motion through air that turns with the Earth, m/s in the frame, and its size. */
+  /** The motion through the air (which turns with the Earth, and moves over it as the day's wind has it), m/s in the frame, and its size. */
   wind: Vec3;
   airspeed: number;
+  /** The motion over the ground, m/s in the frame: the same thing where there is no wind. */
+  ground: Vec3;
   mach: number;
   /** Dynamic pressure, Pa. */
   q: number;
 }
 
-export function windAt(r: Vec3, v: Vec3, at: number, seaLevel: number): Wind {
-  const altitude = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * at)).height - seaLevel;
+export function windAt(r: Vec3, v: Vec3, at: number, seaLevel: number, blow: Blow | null = null): Wind {
+  const place = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * at));
+  const altitude = place.height - seaLevel;
   const air = atmosphere(altitude);
-  const wind = sub(v, cross(EARTH_SPIN, r));
+  const ground = sub(v, cross(EARTH_SPIN, r));
+  const wind = blow ? sub(ground, blowing(blow, place, altitude, at)) : ground;
   const airspeed = length(wind);
-  return { altitude, air, wind, airspeed, mach: airspeed / air.soundSpeed, q: 0.5 * air.density * airspeed * airspeed };
+  return { altitude, air, wind, airspeed, mach: airspeed / air.soundSpeed, q: 0.5 * air.density * airspeed * airspeed, ground };
+}
+
+/** The air's motion over the ground at a place, as a vector in the frame that does not turn: level there, by the compass there. */
+export function blowing(blow: Blow, place: { latitude: number; longitude: number }, altitude: number, at: number): Vec3 {
+  const [east, north] = blow(altitude);
+  if (east === 0 && north === 0) return [0, 0, 0];
+  const axes = enuAxes(place);
+  return ecefToInertial(add(scale(axes.east, east), scale(axes.north, north)), EARTH_ROTATION_RATE * at);
 }
 
 /** Something let go, as it is the instant it leaves: a rigid body's whole state and what it weighs where. */

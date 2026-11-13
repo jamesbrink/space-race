@@ -45,6 +45,8 @@ const TOWER_LENGTH = Math.sqrt((12 * I_TOWER) / (TOWER * LB));
 
 export function padAbort(): Trajectory {
   const tr = structuredClone(flight.trajectory);
+  // in still air: the trial's wind is not in the report, and MR-3's two years later is no part of it
+  delete tr.winds;
   const body = tr.body!;
   // where the capsule's greatest diameter is on Freedom 7's stack: the fixture keeps the stack under it, which an abort off the pad leaves behind
   const plane = body.capsule.centre.value - (25 - 9.2) * IN;

@@ -40,7 +40,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { airForces, pieceOf, type Release, type Shape, upAt, windAt } from './forces.ts';
+import { airForces, blowOf, pieceOf, type Release, type Shape, upAt, windAt as airAt } from './forces.ts';
 import { G0, gravity, MEAN_RADIUS } from './fly.ts';
 import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
 import { TICK } from './vehicle.ts';
@@ -117,6 +117,9 @@ export function shedder(
 ): Shedder {
   const pad = geodeticToEcef(site);
   const padHeight = site.height - seaLevel;
+  // (the day's wind, as the vehicle that let it go flies through)
+  const blow = blowOf(trajectory.winds);
+  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(r, v, at, sea, blow);
   const floor =
     options.floor ??
     ((latitude: number, longitude: number): number => {
@@ -232,8 +235,9 @@ export function shedder(
     const d: Dyn = { r: release.r, v: release.v, q: release.q, w: release.w };
     const air = windAt(d.r, d.v, release.t, seaLevel);
     const state: ShedState = { t: release.t, ticks: 0, ...d, apogee: air.altitude, peakQ: air.q, landing: null };
-    // let go standing on the ground, or onto something that stands under it: it stays where it stands
-    if (release.stands || (air.airspeed < 0.5 && length(thrust(0)) <= mass * G0 && clear(d, release.t).by < 0.05))
+    // let go standing on the ground, or onto something that stands under it: it stays where it stands (still over the
+    // ground, whatever the wind is doing past it)
+    if (release.stands || (length(air.ground) < 0.5 && length(thrust(0)) <= mass * G0 && clear(d, release.t).by < 0.05))
       state.landing = landed(d, release.t);
     return state;
   };

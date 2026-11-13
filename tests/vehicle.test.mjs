@@ -23,11 +23,13 @@ const near = (got, want, tolerance, what) =>
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
 const TR = flight.trajectory;
+const CALM = { ...TR, winds: undefined };
 const LB = 0.45359237;
 
 /** The flight's trajectory with something changed. */
-function with_(change) {
-  const tr = structuredClone(TR);
+/** The trajectory changed for a test: the day's, or `still` (the day's less its wind). */
+function with_(change, still = false) {
+  const tr = structuredClone(still ? CALM : TR);
   change(tr);
   return tr;
 }
@@ -315,12 +317,14 @@ test('hands off, the stack does what its static margin says: it is stable, and w
   // The centre of pressure (nose and fins as estimated) is behind the centre of mass all the way up. That is the nose's
   // and the fins' push, which goes as the angle: the margin's own statement. So it is asked of the stack without the
   // cross-flow on its side (`body.side`, which goes as the angle squared, acts ahead of the centre of mass and is no
-  // part of a static margin) and with nothing to break; what the whole of it does is asked after.
+  // part of a static margin) and with nothing to break; what the whole of it does is asked after. All of it in still air:
+  // the margin is the airframe's, and a crosswind would turn the nose before the margin had its say (the day's wind is
+  // asked at the end).
   const slender = vehicle(
     with_((tr) => {
       delete tr.body.side;
       delete tr.body.limits;
-    }),
+    }, true),
     SITE,
     SEA,
   );
@@ -348,20 +352,34 @@ test('hands off, the stack does what its static margin says: it is stable, and w
   // With the cross-flow on its side, the margin of a few centimetres is not enough: past a degree or so the side's push,
   // ahead of the centre of mass, outgrows the fins', the nose swings off the wind through the greatest pressure, and
   // the stack breaks (sim/loads.ts). Left to itself from 60 s the vehicle as estimated does not get through: it has to be steered.
-  let w = whole.start();
-  const wholeAuto = autopilot(whole);
-  const wholeOff = autopilot(whole, { pitch: false, yaw: false, roll: false });
-  while (w.t < 140 && !w.broke) w = whole.tick(w, w.t < 60 ? wholeAuto : wholeOff);
+  const handsOffFrom = (v, from) => {
+    let w = v.start();
+    const on = autopilot(v);
+    const off = autopilot(v, { pitch: false, yaw: false, roll: false });
+    while (w.t < 140 && !w.broke) w = v.tick(w, w.t < from ? on : off);
+    return w;
+  };
+  const still = vehicle(CALM, SITE, SEA);
+  const w = handsOffFrom(still, 60);
   assert.ok(w.broke && w.broke.t > 65 && w.broke.t < 95, 'hands off, the whole of it breaks up in the greatest pressure');
   t.diagnostic(
     `with the cross-flow on its side, hands off from 60 s, it breaks up at ${w.broke.t.toFixed(1)} s, ${w.broke.alpha.toFixed(1)} deg off the wind`,
+  );
+  // In the day's wind it is the low wind across the pad (Figure 10.3-1: 3 to 12 knots from east of north) that finds the
+  // side's push: let go from liftoff it is turned off the air within the first minute and breaks. Let go at 60 s, already
+  // in the westerly that is behind it, it is not so turned before the greatest pressure, and gets through.
+  const early = handsOffFrom(whole, 0);
+  assert.ok(early.broke && early.broke.t < 60, 'in the day’s wind, hands off from the pad, it breaks up going through the low wind');
+  const late = handsOffFrom(whole, 60);
+  t.diagnostic(
+    `in the day's wind, hands off: from liftoff it breaks up at ${early.broke.t.toFixed(1)} s, ${early.broke.alpha.toFixed(1)} deg off the wind; from 60 s it ${late.broke ? `breaks up at ${late.broke.t.toFixed(1)} s` : 'gets through'}`,
   );
   // the same body with its fins taken off has its centre of pressure ahead: it will not hold its nose to the air
   const finless = vehicle(
     with_((tr) => {
       tr.body.surfaces = tr.body.surfaces.filter((f) => f.name !== 'fins');
       delete tr.body.limits;
-    }),
+    }, true),
     SITE,
     SEA,
   );
@@ -447,14 +465,17 @@ test('the rest of the flight happens: tower, separation, turnaround, retrofire, 
   for (const k of ['entryAt', 'drogueAt', 'mainAt', 'duration']) near(r[k], b[k], 3, `${k} within three seconds of fly.ts`);
   near(r.entryG / b.entryG, 1, 0.02, 'the same load coming down');
   near(s.landing.vertical, b.landingSpeed, 0.05, 'onto the sea at fly.ts’s speed');
-  assert.ok(s.landing.horizontal < 0.5, 'straight down, there being no wind');
+  // carried along by the day's surface wind: 12 knots (Postlaunch Report, section 10.3)
+  near(s.landing.horizontal, (12 * 1852) / 3600, 0.5, 'moving over the sea with the surface wind');
   assert.ok(s.landing.lean < 2, 'hanging upright under the parachute');
   assert.equal(live.samples.at(-1).phase, 'landed');
   t.diagnostic(
     `landed at ${s.landing.t.toFixed(1)} s, ${s.landing.vertical.toFixed(2)} m/s down, leaning ${s.landing.lean.toFixed(2)} deg`,
   );
   // nobody turning it round, it still comes through the air blunt end first: the shield's pressure is behind its centre of mass
-  const loose = flyLive(whole, autopilot(whole, { pitch: false, yaw: false, roll: false }));
+  // (in still air: hands off from the pad the day's wind breaks the stack before it is ever up there)
+  const calm = vehicle(CALM, SITE, SEA);
+  const loose = flyLive(calm, autopilot(calm, { pitch: false, yaw: false, roll: false }));
   const worst = loose.samples.reduce((a, x) => (x.phase === 'entry' && x.q > a.q ? x : a), { q: 0 });
   assert.ok(worst.alpha > 150, `left small end first, the air turns it round by the greatest pressure: ${worst.alpha.toFixed(0)} deg`);
   assert.ok(loose.state.landing, 'and it comes down');
@@ -709,7 +730,8 @@ test('the jets burn their thrust over g0 Isp, the spacecraft is lighter by it, a
   assert.equal(s.rcs.left[1], from.rcs.left[1], 'the manual supply is untouched');
 
   // nearly empty: the big chambers burn what there is and stop
-  const tr = with_((x) => (x.body.capsule.rcs.supplies[0].propellant.value = 0.05));
+  // (in still air: flown hands off from the pad, the day's wind would break the stack before it got there)
+  const tr = with_((x) => (x.body.capsule.rcs.supplies[0].propellant.value = 0.05), true);
   const dry = vehicle(tr, SITE, SEA);
   let d = until(dry, dry.start(), autopilot(dry, { pitch: false, yaw: false, roll: false }), TR.separation.at.value + 1);
   d = until(dry, d, { ...HANDS_OFF, pitch: 1 }, d.t + 5);
@@ -774,7 +796,8 @@ test('the autopilot’s whole flight is flown within the peroxide aboard', (t) =
 // with an engine nature it never had. It is a test's invention and is not data.
 const FIXTURE = (nature) =>
   vehicle(
-    with_((tr) => (tr.body.engine = { confidence: 'estimated', source: 'a test fixture: not a real engine', ...nature })),
+    // (in still air: these are flown hands off from the pad, which the day's wind does not allow)
+    with_((tr) => (tr.body.engine = { confidence: 'estimated', source: 'a test fixture: not a real engine', ...nature }), true),
     SITE,
     SEA,
   );

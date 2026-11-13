@@ -13,8 +13,9 @@
  *   thrust    along the vehicle's axis: the sea-level thrust plus the nozzle's exit area times
  *             the fall in air pressure. The flow is thrust over (g0 times specific impulse), steady
  *             from liftoff to cutoff: no build-up, no tail-off.
- *   drag      half rho v^2 Cd A against the motion through the air, which turns with the Earth.
- *             No wind. Cd by Mach number at no angle of attack.
+ *   drag      half rho v^2 Cd A against the motion through the air, which turns with the Earth and
+ *             moves over it with the day's winds aloft where the trajectory gives them (`winds`:
+ *             one sounding, the same all along the flight). Cd by Mach number at no angle of attack.
  *   air       atmosphere.ts.
  *
  * Attitude is prescribed, not flown. Going up, the axis is tilted from the launch vertical toward
@@ -47,7 +48,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
-import { upAt, upOver } from './forces.ts';
+import { blowing, blowOf, upAt, upOver } from './forces.ts';
 
 /** Standard gravity, m/s^2: what a "g" is, and what turns specific impulse into flow. */
 export const G0 = 9.80665;
@@ -189,6 +190,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
 
   const pad = geodeticToEcef(site);
   const axisAt = axisOf(tr, site);
+  const blow = blowOf(tr.winds);
 
   let t = 0;
   let phase: Phase = 'powered';
@@ -202,9 +204,11 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
 
   /** Every force but gravity, N, and what the air is doing, at a state. */
   const forces = (s: State, at: number): { force: Vec3; q: number; mach: number; altitude: number } => {
-    const altitude = ecefToGeodetic(fixed(s.r, at)).height - seaLevel;
+    const place = ecefToGeodetic(fixed(s.r, at));
+    const altitude = place.height - seaLevel;
     const air = atmosphere(altitude);
-    const wind = sub(s.v, cross(spin, s.r)); // motion through air that turns with the Earth
+    const ground = sub(s.v, cross(spin, s.r)); // motion over the ground
+    const wind = blow ? sub(ground, blowing(blow, place, altitude, at)) : ground; // motion through the air, which turns with the Earth and moves over it as the day's wind has it
     const airspeed = length(wind);
     const mach = airspeed / air.soundSpeed;
     const q = 0.5 * air.density * airspeed * airspeed;
@@ -223,7 +227,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     const burning = fires.filter((f) => at >= f && at < f + retroBurn).length;
     if (burning > 0 && !riding) {
       const up = upAt(s.r, at);
-      const level = unit(sub(wind, scale(up, dot(wind, up))));
+      const level = unit(sub(ground, scale(up, dot(ground, up))));
       const pitch = tr.retro.pitch.value * DEG;
       const push = sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)));
       force = add(force, scale(push, burning * tr.retro.thrust.value));

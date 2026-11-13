@@ -84,12 +84,12 @@ itself 4 % fast, so all of this is high and long with it):
 
 | Body | Leaves | Apogee | Greatest dynamic pressure | Down | Where | Speed at the sea |
 | --- | --- | --- | --- | --- | --- | --- |
-| Escape tower (537.6 kg) | 02:22.2, on its escape and jettison rockets together (Hammack and Heberlig, p. 15): 477 m/s ahead | 151.1 n. mi. | 75 kPa | 11:49 | 440.1 n. mi. downrange | 124 m/s |
-| Redstone booster (4,535 kg) | 02:32.3, 2.0 m/s back (its share of the 30 ft/s) | 108.4 n. mi. | 190 kPa | 09:27 | 309.2 n. mi. downrange | 170 m/s |
-| Retropack (125.3 kg) | 06:13.6, 0.9 m/s back | 100.7 n. mi. | 36 kPa | 11:06 | 289.7 n. mi. downrange | 74 m/s |
+| Escape tower (537.6 kg) | 02:22.2, on its escape and jettison rockets together (Hammack and Heberlig, p. 15): 477 m/s ahead | 151.0 n. mi. | 75 kPa | 11:54 | 442.9 n. mi. downrange | 122 m/s |
+| Redstone booster (4,535 kg) | 02:32.3, 2.0 m/s back (its share of the 30 ft/s) | 108.8 n. mi. | 187 kPa | 09:28 | 309.7 n. mi. downrange | 170 m/s |
+| Retropack (125.3 kg) | 06:13.6, 0.9 m/s back | 101.4 n. mi. | 34 kPa | 11:10 | 290.7 n. mi. downrange | 74 m/s |
 
 The booster, empty and heavy for its frontal area, weathercocks adapter first on its fins and
-outruns the spacecraft (289.4 n. mi. in the same run) by 20 n. mi.; the retropack tumbles at up
+outruns the spacecraft (290.5 n. mi. in the same run) by 19 n. mi.; the retropack tumbles at up
 to 110 degrees a second and comes down beside the spacecraft's track; the tower, whose centre
 of mass and centre of area are in the same place by our figures, neither weathercocks nor
 tumbles. It goes 150 n. mi. beyond the spacecraft because the escape rocket fires on it: 56,500 lb-s on 1,185 lb,
@@ -98,28 +98,62 @@ modelled; the tower's weight is not lightened as its rocket burns, so it is flow
 Every drag area here is `estimated` and none of this is in any report read: where the
 booster struck is not in the Postlaunch Report's sections used here, so there is nothing to hold
 it against, and no check has been written. The real booster would also have broken up or burned
-at 190 kPa; that is not modelled.
+at 187 kPa; that is not modelled.
 
 The structure has limits (`trajectory.body.limits`, `src/sim/loads.ts`), all `estimated`: a
 bending load of 4,000 lb/sq ft degrees (dynamic pressure times angle of attack), and 7 kPa and
-5 kPa for opening the drogue and the main. On the record's programme the bending load peaks at
-10 % of its limit (75.5 s, 0.03 g across the axis) and the parachutes open in 4.2 and 2.8 kPa.
+5 kPa for opening the drogue and the main. On the record's programme, in the day's winds aloft, the
+bending load peaks at 26 % of its limit (83.8 s, climbing into the jet stream, 0.09 g across the
+axis; in still air 10 % at 75.5 s) and the parachutes open in 4.2 and 2.8 kPa.
 
 | | Report | Flown whole | Capsule flown from the report's separation |
 | --- | --- | --- | --- |
-| Speed at separation, space-fixed | 2,251.9 m/s (7,388 ft/s) | 2,341.7 m/s, +4.0 % | (the report's, as the start) |
-| Speed at separation, Earth-fixed | 1,955.0 m/s (6,414 ft/s) | 2,043.5 m/s, +4.5 % | (the report's) |
-| Apogee | 187.4 km | 201.9 km, +7.7 % | 187.0 km |
-| Range | 487.3 km | 536.0 km, +10.0 % | 491.5 km |
-| Load going up, entry load | 6.3 g, 11.0 g | 6.29 g, 11.7 g | 10.7 g |
-| Landing | 15:22.0 | 15:38.0 | 15:22.2 |
+| Speed at separation, space-fixed | 2,251.9 m/s (7,388 ft/s) | 2,344.6 m/s, +4.1 % | (the report's, as the start) |
+| Speed at separation, Earth-fixed | 1,955.0 m/s (6,414 ft/s) | 2,046.3 m/s, +4.7 % | (the report's) |
+| Apogee | 187.4 km | 202.1 km, +7.8 % | 187.0 km |
+| Range | 487.3 km | 538.0 km, +10.4 % | 492.1 km |
+| Greatest dynamic pressure going up | 28.1 kPa (586 lb/sq ft) | 26.6 kPa, -5.0 % | |
+| Load going up, entry load | 6.3 g, 11.0 g | 6.29 g, 11.7 g | 10.8 g |
+| Landing | 15:22.0, 27°13.7′N 75°53′W | 15:38.1, 58.4 km from it | 15:22.1 |
 
 The powered flight ends 4 % fast, and everything after follows from that: leaving the pad at
 1.19 g, one per cent in thrust or weight is three to four in speed, and the engine is two figures
 from a summary table, held steady with no build-up or tail-off. Flown from the separation the
 report gives, the capsule's half agrees to a per cent, except the entry's greatest dynamic pressure
-(5.4 % low). Every miss is recorded with its likely cause in the test, which fails if one appears,
+(5.3 % low). Every miss is recorded with its likely cause in the test, which fails if one appears,
 grows or goes away.
+
+**The day's wind.** Everything is flown through the winds over the Cape that morning
+(`trajectory.winds`): the Postlaunch Report's Figure 10.3-1, "Cape wind profile approximately 5
+minutes after launch", read off by hand at 64 heights from the surface to 60,000 ft, each to the
+knot and the few degrees its trace allows, and above it the Cape's 12Z sounding of 5 May 1961 (NOAA
+IGRA, station USM00074794, 2 h 34 min before liftoff) at 50 and 30 hPa. The figure meets the surface
+at 12 knots from 070, as the report's text gives the surface wind (section 10.3); the light easterly
+and north-easterly to 16,000 ft turns westerly above, and the jet stream is 60 knots from 293 at 50,000 ft. The figure
+does not say which way its bearings run: they are taken as where the wind blows from, which the
+sounding bears out (280 at 58 knots at 45,900 ft against the figure's 282 at 57.5). Above 24 km
+nothing is recorded and the wind is taken to die away by 30 km (`calmAbove`, estimated: moving it
+changes nothing to a hundredth of a per cent). The westerly is mostly behind the flight:
+
+| Flown whole | Still air | The day's wind |
+| --- | --- | --- |
+| Apogee | +7.72 % | +7.85 % |
+| Range | +10.01 % | +10.42 % |
+| Greatest dynamic pressure going up | -3.27 % | -5.05 % (a miss, recorded) |
+| Speed at separation | +3.99 % | +4.12 % |
+| Entry load | +6.17 % | +6.49 % |
+| Landing | 15:37.9, 56.3 km from the record's point | 15:38.1, 58.4 km from it |
+
+So the wind takes each figure a little further from the record, and is kept: it is the day's, and
+nothing is fitted. It earns its place where the record shows it: the report's angle of attack going
+up (Figure 4.2-8, the gyros' pitch less the Earth-fixed flight-path angle) peaks at about 1.5° at
+about 01:32, and so does the live run's in the day's wind (1.60° at 91 s), where in still air it is
+0.96° at 54 s. Under the main parachute the capsule drifts 655 m west-south-west in five minutes and
+meets the sea moving at the surface wind. The greatest dynamic pressure is now 5.05 % low: the record's
+is "derived from AZUSA and FPS-16 radar data" and does not say whether a wind went into it
+(`src/sim/misses.ts`). Simplified: one sounding at one place stands for the whole flight (the landing
+area's own 12 knots has no direction in the report), with no gusts or turbulence, straight lines
+between the heights read, and the air's density a standard year's, not the day's.
 
 **Flown live.** `src/sim/vehicle.ts` flies the same inputs as a rigid body that is steered, by a
 hand or by an autopilot holding the tilt programme, and for that it needs figures the reports
@@ -158,11 +192,13 @@ above do not give (`trajectory.body` in [flight.ts](flight.ts)):
 By these the stack is stable all the way up, but only just: its centre of pressure is 0.45 m behind
 its centre of mass at liftoff and 0.08 m at about a minute, before the emptying tanks carry the
 centre of mass forward. Hands off it holds its nose to the air and falls into a gravity turn.
-Under the autopilot it holds the programme to 0.03° at an angle of attack under a degree through
-the greatest dynamic pressure. Against the run above (which has no lift) it separates 0.13 % slower
-and 0.26° steeper and reaches an apogee 0.5 % higher: the nose is held a little above the path, and
-the air lifts it. With that push switched off the two runs agree to 0.05 %
-(`tests/vehicle.test.mjs`).
+Under the autopilot it holds the programme to 0.03°, at an angle of attack of at most 2.1° (84 s,
+where the wind's shear under the jet stream is; under a degree in still air). Against the run above
+(which has no lift) it separates 0.05 % slower and 0.13° steeper and reaches an apogee 0.34 %
+higher: the nose is held a little above the path, and the air lifts it. With that push switched off
+the two runs agree to 0.12 % (`tests/vehicle.test.mjs`). Hands off from 60 s it breaks up at 80 s in
+still air and gets through in the day's wind, which is behind it by then; hands off from the pad the
+low wind across it turns the nose off the air and it breaks up at 36 s.
 
 **An abort** (X twice on the flight deck, while the tower is aboard) shuts the engine down and fires
 the escape rocket: the spacecraft leaves the booster with its tower on and its retropack dropped, the
@@ -175,7 +211,9 @@ is pulled and so carries it aside; which side is not recorded, and is taken as d
 pad that is 18.5 g, about two turns end over end, a top of 564 m (1,850 ft) at 9.8 s, and the surface
 at 59 s and 8.8 m/s, 231 m from the pad along the azimuth; with the line through the centre of mass it
 reaches 2,565 ft and comes back down on its own booster. At the greatest dynamic pressure (76 s,
-27 kPa) it is 14.3 g, a top of 14.1 km and down at 517 s.
+26.5 kPa) it is 14.3 g, a top of 14.1 km and down at 517 s. Those are in still air, as the records
+below are; in the day's wind (12 knots from 070 at the surface) an abort off the pad comes down 95 m
+from it, to the south, the wind being against the throw.
 
 Against the aborts that were flown (`tests/abort.test.mjs`; tolerances set first, nothing fitted):
 
@@ -206,10 +244,10 @@ the spacecraft with its tower on is the weakest part: one drag curve at no angle
 areas that are ours. TM X-491 has that configuration's stability in the tunnel and has not been read
 for it.
 
-**The jets.** Under the autopilot the whole flight uses 0.68 kg of the automatic system's 14.5 kg
-of peroxide (4.7 %): 0.32 kg turning round after separation, 0.15 kg holding attitude to retrofire,
-0.03 kg through it, 0.13 kg turning into the air after the pack has gone and 0.05 kg damping the
-entry. What MR-3 itself used has not been found in anything read, so this is held only to the tank;
+**The jets.** Under the autopilot the whole flight uses 1.45 kg of the automatic system's 14.5 kg
+of peroxide (10.0 %): 0.44 kg turning round after separation, 0.73 kg holding attitude to retrofire,
+0.06 kg through it to the pack's going, 0.17 kg turning into the air after that and 0.06 kg through
+the entry and the day's winds to the drogue. What MR-3 itself used has not been found in anything read, so this is held only to the tank;
 it is very likely low, since the autopilot here idles between pulses where the real system limit-cycled
 and the pilot exercised each axis by hand. A hand on the stick works the manual system from its own
 tank; fly-by-wire (a hand on the automatic chambers) is not offered.
@@ -245,18 +283,18 @@ comparison was seen before any tolerance was set, so none is claimed, and no inp
 
 | | Record (Hammack and Heberlig, p. 5) | Model | |
 | --- | --- | --- | --- |
-| Peak stagnation-point heating rate | "less than 5 Btu/ft²/sec" (57 kW/m²) | 6.9 Btu/ft² s (78.8 kW/m²) | high, by 38 % or more |
+| Peak stagnation-point heating rate | "less than 5 Btu/ft²/sec" (57 kW/m²) | 7.0 Btu/ft² s (79.0 kW/m²) | high, by 39 % or more |
 | Total heat input to the shield | 150 Btu/ft² (1.70 MJ/m²) | 1.63 MJ/m² at the stagnation point coming down; 0.9 of that over the face | about right |
 | Heat shield's rise in temperature | "25° to 30°" (F: 14 to 17 K) | 13 K | a little low |
-| Afterbody temperatures during exit | 300 to 400 °F (422 to 478 K) | 394 K (250 °F) at its hottest | cool, by 28 to 84 K |
+| Afterbody temperatures during exit | 300 to 400 °F (422 to 478 K) | 395 K (251 °F) at its hottest | cool, by 27 to 83 K |
 
 | | Flown |
 | --- | --- |
-| Greatest heat flux at the stagnation point, coming down | 78.8 kW/m² (6.9 Btu/ft² s) at 08:30, at 32.6 km and Mach 5.9 |
-| Greatest going up, on the booster | 17.0 kW/m² at 02:14.5; 3 to 5 kW/m² at the greatest dynamic pressure |
+| Greatest heat flux at the stagnation point, coming down | 79.0 kW/m² (7.0 Btu/ft² s) at 08:30, at 32.6 km and Mach 5.9 |
+| Greatest going up, on the booster | 17.1 kW/m² at 02:06; 3 to 5 kW/m² at the greatest dynamic pressure |
 | Heat load at the stagnation point | 2.62 MJ/m², 0.99 of it going up |
 | Heat shield at its hottest | 313 K at 08:47: a rise of 13 K, against 1,260 K to melting |
-| Afterbody shingles at their hottest | 394 K (121 °C), at separation: going up, nose first, not coming down |
+| Afterbody shingles at their hottest | 395 K (122 °C), at separation: going up, nose first, not coming down |
 | Booster skin (aft section) at its hottest | 310 K: a rise of 10 K |
 
 A suborbital flight asks almost nothing of a heat sink made for more: 140 kg of beryllium takes

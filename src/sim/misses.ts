@@ -29,6 +29,16 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       separationAltitude: { by: 0.078, slack: 0.015, why: BOOSTER, short: BURNOUT },
       apogee: { by: 0.077, slack: 0.015, why: `follows from the speed at separation: ${BOOSTER}`, short: BURNOUT },
       range: { by: 0.1, slack: 0.02, why: 'follows from the speed at separation', short: `${BURNOUT}, so it flies farther` },
+      exitQ: {
+        by: -0.05,
+        slack: 0.01,
+        why:
+          'just outside 5 per cent, low. In still air the run is 3.3 per cent under the record; the day’s winds aloft (Figure 10.3-1) are behind it ' +
+          'through the greatest pressure, 20 to 25 knots from the west-north-west at 30,000 to 40,000 ft, and take 1.8 per cent more off the air it meets. ' +
+          'The report’s 586 lb/sq ft is "derived from AZUSA and FPS-16 radar data" (section 4.2), and it does not say whether a wind went into it: ' +
+          'worked from the speed over the ground alone it would be the still-air figure that compares, and that is inside',
+        short: 'the day’s tail wind takes 2 per cent off; the record may leave the wind out',
+      },
       entryG: { by: 0.062, slack: 0.02, why: 'follows from the apogee: it falls from higher', short: 'it falls from the higher apogee' },
       entryAt: {
         by: 17,

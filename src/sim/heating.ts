@@ -116,7 +116,9 @@ function shareOf(surface: HeatedSurface, blunt: number, under: boolean): number 
 /** The air's part of an instant: everything but the surfaces. */
 function outside(heating: Heating, sample: Sample): { flux: number; enthalpy: number; gas: number; blunt: number } {
   const air = atmosphere(sample.altitude);
-  const speed = sample.groundSpeed; // through air that turns with the Earth
+  // through the air: which turns with the Earth and, where the trajectory gives a wind, moves over it (the sample's
+  // dynamic pressure is that speed's, in this same air)
+  const speed = air.density > 0 && sample.q > 0 ? Math.sqrt((2 * sample.q) / air.density) : sample.groundSpeed;
   return {
     flux: stagnationFlux(air.density, speed, heating.noseRadius.value),
     enthalpy: totalEnthalpy(air.temperature, speed),

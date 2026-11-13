@@ -508,6 +508,25 @@ export interface Curve {
   source: string;
 }
 
+/** The wind at one height: how fast, m/s, and the bearing it blows from, degrees clockwise from true north (a meteorologist's wind). */
+export interface WindLevel {
+  /** Metres above the sea. */
+  height: number;
+  speed: Measure;
+  from: Measure;
+}
+
+/**
+ * The winds aloft over the launch site on the day, as a sounding has them: levels in order of height, straight lines
+ * between (in the wind's east and north parts, so a swing through north is a swing and not a spin), the lowest held
+ * down to the surface, and above the highest falling evenly to nothing at `calmAbove` (metres above the sea), beyond
+ * which nothing is known and nothing is flown. The same wind is taken all along the flight: one sounding, at one place.
+ */
+export interface Winds {
+  levels: WindLevel[];
+  calmAbove: Measure;
+}
+
 /**
  * What the simulator flies a ballistic flight from (src/sim/fly.ts): one engine burn on a stored
  * tilt programme, then a capsule that separates, fires its retrorockets and comes down under
@@ -517,6 +536,8 @@ export interface Curve {
 export interface Trajectory {
   /** The bearing flown, degrees clockwise from true north. */
   azimuth: Measure;
+  /** The day's winds aloft (sim/forces.ts: `blowOf`): the air everything is flown through moves with them. Left out: the air turns with the Earth and no more. */
+  winds?: Winds;
   /** Everything that leaves the pad, kg. */
   liftoffMass: Measure;
   engine: {

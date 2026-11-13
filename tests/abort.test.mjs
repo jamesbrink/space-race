@@ -19,7 +19,9 @@ import { ELEVATION, padAbort, RECORD } from './fixtures/pad-abort/trajectory.ts'
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
 const PAD = SITE.height - SEA;
-const TR = flight.trajectory;
+// In still air: the records are the Beach Abort's (whose wind is not in anything read) and the maker's figure (which
+// has none); what MR-3's own wind does to an abort off its pad is asked at the end of 'it comes down clear of the pad'.
+const TR = { ...flight.trajectory, winds: undefined };
 const FT = 0.3048;
 const LB = 0.45359237;
 const near = (got, want, tolerance, what) =>
@@ -179,6 +181,17 @@ test('it comes down clear of the pad, by the thrust line alone', (t) => {
   t.diagnostic(
     `upright: ${(got.apogee / FT).toFixed(0)} ft up, ${got.range.toFixed(0)} m (${(got.range / FT).toFixed(0)} ft) from the pad on ${bearing.toFixed(0)} degrees, down at ${got.duration.toFixed(1)} s and ${got.landingSpeed.toFixed(2)} m/s; ` +
       `with no offset ${(straight.got.apogee / FT).toFixed(0)} ft and ${straight.got.range.toFixed(1)} m`,
+  );
+  // on the day, in the day's wind: the surface wind (12 knots from 070, Postlaunch Report, section 10.3 and Figure
+  // 10.3-1) blows against the throw downrange, and the spacecraft under its parachute goes with it
+  const day = abort(flight.trajectory);
+  assert.ok(
+    day.state.landing && day.got.range > 50,
+    `in the day's wind it still comes down clear of the pad: ${day.got.range.toFixed(0)} m`,
+  );
+  assert.ok(day.got.range < got.range, 'and nearer it, the wind being against the throw');
+  t.diagnostic(
+    `in the day's wind: ${(day.got.apogee / FT).toFixed(0)} ft up, ${day.got.range.toFixed(0)} m from the pad, down at ${day.got.duration.toFixed(1)} s`,
   );
 });
 
