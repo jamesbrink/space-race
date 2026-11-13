@@ -17,6 +17,7 @@ minutes after Nikolayev. Backup: Vladimir Komarov; reserve for both ships: Boris
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)), "СССР" on the helmet. His height was not found, so the figure is the one built to Gagarin's |
 | Launch site (Site 1 as it stood on 12 August 1962, a day after a launch) | not built for this flight. The place is Vostok 1's ([site-1.md](../../sites/site-1.md)) |
 | Crew to be walked as | not built |
+| The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. Nothing was read of the weather at Tyuratam on the 12th beyond the heat (35 °C in Kamanin's account of the two days) |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
 
 So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open

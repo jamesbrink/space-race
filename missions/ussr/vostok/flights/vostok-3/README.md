@@ -17,6 +17,7 @@ module and landing by parachute. Backup: Valeriy Bykovskiy; reserve for both shi
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)), "СССР" on the helmet. His height was not found, so the figure is the one built to Gagarin's |
 | Launch site (Site 1 as it stood in August 1962, rebuilt after the fire of 1 June) | not built for this flight. The place is Vostok 1's ([site-1.md](../../sites/site-1.md)); what the repairs changed has not been looked for |
 | Crew to be walked as | not built |
+| The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read: the forecast given to the State Commission at 07:30 on the 11th, an anticyclone, clear, wind 6 to 7 m/s (Kamanin). No station's report was looked for |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
 
 So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
