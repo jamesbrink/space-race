@@ -14,6 +14,7 @@ import {
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
+import { WEATHER } from './weather.ts';
 import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
@@ -781,6 +782,7 @@ export const flight: Flight = {
   launch: '1961-07-21T12:20:36Z',
   launchSite: LC5.name,
   site: LC5,
+  weather: WEATHER,
   crew: ['Virgil I. Grissom'],
   summary:
     'The second American in space. Fifteen minutes from Cape Canaveral into the Atlantic, in the first Mercury ' +

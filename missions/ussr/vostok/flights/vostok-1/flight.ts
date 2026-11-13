@@ -1,6 +1,7 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
 import { orbital } from './orbital.ts';
+import { WEATHER } from './weather.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -710,6 +711,7 @@ export const flight: Flight = {
   launch: '1961-04-12T06:06:59.7Z',
   launchSite: SITE1.name,
   site: SITE1,
+  weather: WEATHER,
   crew: ['Yuri A. Gagarin'],
   summary:
     'The first human spaceflight. One orbit of the Earth in 106 minutes from Tyuratam, flown automatically, ' +

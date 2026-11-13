@@ -29,6 +29,7 @@ import {
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
+import { WEATHER } from './weather.ts';
 import { ON_THE_PAD, periscopeMoves } from '../../vehicles/periscope.ts';
 
 const IN = 0.0254;
@@ -2046,6 +2047,7 @@ export const flight: Flight = {
   launch: '1961-05-05T14:34:13Z',
   launchSite: LC5.name,
   site: LC5,
+  weather: WEATHER,
   crew: ['Alan B. Shepard Jr.'],
   summary:
     'The first American in space. A fifteen-minute suborbital arc from Cape Canaveral into the Atlantic, ' +

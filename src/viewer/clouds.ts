@@ -1,12 +1,24 @@
 import * as THREE from 'three';
 import type { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
-import { type Clouds, cloudCutGlsl, cloudMiddle, cloudNoiseGlsl, cloudRise, cloudUniform, hazeAboveUniform, installedAir } from './air';
+import {
+  type Clouds,
+  cloudCutGlsl,
+  cloudMiddle,
+  cloudNoiseGlsl,
+  cloudRise,
+  cloudUniform,
+  hazeAboveUniform,
+  installedAir,
+  veilGlow,
+  veilLightUniform,
+} from './air';
 import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere';
 import { billowsData, DETAIL_SIDE, detailData, NOISE } from './cloudnoise';
 import { fieldAs } from './field';
 import { uOrigin } from './origin';
-import { CIRRUS_HEIGHT, cumulusBiasGlsl, cumulusCellsGlsl, DECK_HEIGHT, sheetsGlsl, WEATHER_GLSL } from './weather.ts';
+import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
+import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
 import { onWeather, weatherUniforms } from './weathermap';
 
 /** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
@@ -69,6 +81,15 @@ const VEIL_LAYER = 7;
  *
  * Nothing in it moves by itself between frames (no temporal jitter), so a still view of drifting
  * cloud does not shimmer. Glass, which writes no depth either, is still laid over by cloud behind it.
+ *
+ * Over the cumulus lie the day's two sheets (`sheet`, in OVER): the middle deck and the high cloud, each on a shell
+ * at the height the day's record has it (written into the shader: `overGlsl`), drawn at the frame's pixels. The high cloud
+ * is fibres of cirrus, or, where the record has cirrostratus over the sky, a veil: a smooth milky sheet the Sun's
+ * disc shows through with a glow round it, whiter the lower the eye looks (the sight line is longer in it), lit by
+ * the Sun as it stands at the veil's own height (so it is lit before sunrise on the ground and after sunset), and
+ * seen from above as a white sheet the land shows dimly through. What is under it (the cumulus, the deck, the
+ * ground: air.ts) has the Sun's light through it (`veilShade`), by one rule everywhere. A day with a sheet and no
+ * cumulus (Vostok 1's) is drawn with no march at all.
  */
 
 /** Texels a side of the baked field, and metres a texel: 131 km across, laid round the eye. */
@@ -182,14 +203,14 @@ const VERTEX = /* glsl */ `
  * slow noise in the field's own frame, broader than a cloud, so a cloud is mostly one or the other and keeps it
  * as it drifts: which cloud was which is not known.
  */
-const bakeShader = (c: Clouds) => /* glsl */ `
+const bakeShader = (c: Clouds, day: Day | null | undefined) => /* glsl */ `
   precision highp float; precision highp int;
   uniform vec2 uCorner;
   uniform vec2 uBakeDrift;   // the clouds' drift when this was baked: the field's frame to the scene's
   out vec4 oValue;
   ${fieldAs('bake_')}
   ${cloudNoiseGlsl(c, 'bake_')}
-  ${WEATHER_GLSL}
+  ${weatherGlsl(day)}
   ${cloudCutGlsl()}
   ${cumulusBiasGlsl('bake_')}
   void main() {
@@ -647,10 +668,22 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
 
 /**
  * The clouds laid over a pixel of the frame: premultiplied colour and opacity (`cloudsOver`), for the
- * output's shader to put over what is there (adopt), or for a pass of their own (COMPOSITE). The
+ * output's shader to put over what is there (adopt), or for a pass of their own (`composite`). The
  * volume comes from the march, the far cover (`farCover`) is worked out here, for this pixel.
+ *
+ * Compiled for the day (day.ts): its two sheets' heights and covers are written in, and what its record's high cloud
+ * does (the veil, the Sun through it, the light it gives back) is in the text only on a day that has any (weather.ts:
+ * `highOf`). On a day with none, the text is what it was before a flight could give its day, to the letter
+ * (tests/weather.test.mjs pins the sheets' and the map's part of it; rendering.md has how the whole was compared),
+ * and so is the picture.
  */
-const OVER = /* glsl */ `
+export const overGlsl = (day: Day | null | undefined): string => {
+  const high = highOf(day);
+  const deckHeight = (day?.deck.height ?? DECK_HEIGHT).toFixed(1),
+    highHeight = (day?.high.height ?? HIGH_HEIGHT).toFixed(1);
+  /** The sky's light on what is under the high cloud: with what it gives back, on a day that has any. */
+  const sky = high ? 'skyLight' : 'uSkyLight';
+  return /* glsl */ `
   precision highp int;
   ${LAYER}
   uniform sampler2D tCloud, tInfo, tFine, tFineInfo, tVeil, tVeilDepth;
@@ -668,10 +701,10 @@ const OVER = /* glsl */ `
   uniform vec2 uEyeXZ;       // the eye in the scene's frame
   ${fieldAs('over_')}
   ${cloudNoiseGlsl(UNIT, 'over_')}
-  ${WEATHER_GLSL}
+  ${weatherGlsl(day)}
   ${cloudCutGlsl()}
   ${cumulusBiasGlsl('over_')}
-  ${sheetsGlsl('over_')}
+  ${sheetsGlsl('over_', day)}
   ${cumulusCellsGlsl('over_')}
   // the field over its cut at a place (in cells): the noise's own, and by cells (0 to 1) its cells instead
   float gFpq;   // a pixel's breadth on the field, in cells: set by whoever reads the field
@@ -691,7 +724,13 @@ const OVER = /* glsl */ `
   ${ATMOSPHERE_COARSE_GLSL}
   const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
   uniform float uAbove;      // how far the eye is out of the air, 0 to 1
-  uniform vec3 uTrueSun;     // toward the Sun itself, whatever lights the scene
+  uniform vec3 uTrueSun;     // toward the Sun itself, whatever lights the scene${
+    high
+      ? /* glsl */ `
+  uniform float uVeilLeft;   // what the high cloud over the site leaves of the scene's direct light for what is under it
+  uniform vec3 uVeilGlow;    // and what it gives back of what it took, as light from the whole sky on the clouds under it (air.ts: veilGlow)`
+      : ''
+  }
   // A far cloud seen through the air, from above it: what the air between leaves of its light, and the air's own
   // light in front of it, over that much of the pixel (c: its light times its opacity, and its opacity).
   vec4 throughAir(vec4 c, vec3 dir, float tm) {
@@ -712,11 +751,29 @@ const OVER = /* glsl */ `
     vec3 scene = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33) * smoothstep(-0.05, 0.25, dot(up, uSun));
     vec3 true_ = uAtmSunLight * atmSunAt(h, dot(up, uTrueSun)) / 3.14159265;
     return mix(scene, mix(true_, vec3(dot(true_, LUMA)), 0.33), uAbove * smoothstep(60000.0, 300000.0, length(uEyeXZ + v.xz)));
+  }${
+    high
+      ? /* glsl */ `
+  // The Sun's light on a sheet on a day whose record has high cloud: the Sun as it stands at the sheet's own height,
+  // through the air above it, wherever the eye is. Ten kilometres up the Sun rises a quarter of an hour before it does
+  // on the ground and is far less reddened, so a veil is lit, pink then white, while the pad under it is still dark.
+  vec3 highSun(float h, vec3 up) {
+    vec3 true_ = uAtmSunLight * atmSunAt(h, dot(up, uTrueSun)) / 3.14159265;
+    return mix(true_, vec3(dot(true_, LUMA)), 0.33);
+  }`
+      : ''
   }
 
   // the cloud's two flat tones in the cel look, by how well lit it is, seen through the haze
-  vec3 celTone(float l, float edge, float hz) {
-    vec3 tone = mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, smoothstep(0.62 - edge, 0.62 + edge, l));
+  vec3 celTone(float l, float edge, float hz) {${
+    high
+      ? /* glsl */ `
+    // (under the day's high cloud: the Sun's through it, and the sky's with what it gives back)
+    vec3 sun = uSunLight * uVeilLeft, sky = uSkyLight + uVeilGlow;
+    vec3 tone = mix(sky * 1.1 + sun * 0.35, sun * 0.95 + sky, smoothstep(0.62 - edge, 0.62 + edge, l));`
+      : /* glsl */ `
+    vec3 tone = mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, smoothstep(0.62 - edge, 0.62 + edge, l));`
+  }
     return mix(tone, uHaze, hz);
   }
 
@@ -801,12 +858,23 @@ const OVER = /* glsl */ `
     float along = smoothstep(0.12 * uCumulus.x, 0.5 * uCumulus.x, fp);
     float even = smoothstep(0.12 * uCumulus.x, 0.6 * uCumulus.x, fpAcross);
     float sunUp = dot(up, uSun);
-    vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33);   // (as the march has it)
     // the sheets over them take some of the Sun (by how much of each there is thereabouts)
-    // (the deck's patches take 0.7 of it, and a patch is cloud over some 0.4 of it until the deck is a front's solid sheet)
+    // (the deck's patches take 0.7 of it, and a patch is cloud over some 0.4 of it until the deck is a front's solid sheet)${
+      high
+        ? /* glsl */ `
+    // (the day's high cloud: what its depth leaves of the Sun here, as on the ground under it (veilShade), and the
+    // sky's light with what it gives back, by how much of it there is here against the site's)
+    float highHere = highCoverAt(w, uEyeXZ + v.xz);
+    vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33) * uVeilLeft;   // (as the march has it)
     float deck = deckCoverAt(w, uEyeXZ + v.xz);
-    vec3 sunTop = sunOn(uLayer.y, up, v) * (1.0 - 0.7 * deck * mix(0.42, 1.0, smoothstep(0.3, 0.9, deck))) * (1.0 - 0.3 * w.g);
-    vec3 bases = sunWhite * 0.1 * max(sunUp, 0.0) + uSkyLight * 0.6 + uGroundLight * 0.5;
+    vec3 sunTop = sunOn(uLayer.y, up, v) * (1.0 - 0.7 * deck * mix(0.42, 1.0, smoothstep(0.3, 0.9, deck))) * veilShade(highHere, max(sunUp, 0.0));
+    vec3 skyLight = uSkyLight + uVeilGlow * min(highHere / ${Math.max(high.cover, 1e-3).toFixed(3)}, 1.0);`
+        : /* glsl */ `
+    vec3 sunWhite = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33);   // (as the march has it)
+    float deck = deckCoverAt(w, uEyeXZ + v.xz);
+    vec3 sunTop = sunOn(uLayer.y, up, v) * (1.0 - 0.7 * deck * mix(0.42, 1.0, smoothstep(0.3, 0.9, deck))) * (1.0 - 0.3 * w.g);`
+    }
+    vec3 bases = sunWhite * 0.1 * max(sunUp, 0.0) + ${sky} * 0.6 + uGroundLight * 0.5;
     vec4 acc = vec4(0.0);
     float lit = 0.0;   // (cel) how well lit, by opacity
     // (the edge is as soft as a pixel is broad; the cut is moved up with it, or the soft edge, lying where there is
@@ -880,7 +948,7 @@ const OVER = /* glsl */ `
         if (a <= 0.0) continue;
         // (a slice lower in the heap is its side, a little darker than its top)
         float sun = shape * (0.7 + 0.3 * y);
-        vec3 light = under ? bases : sunTop * sun + uSkyLight * (0.4 + 0.3 * y + 0.2 * thick);
+        vec3 light = under ? bases : sunTop * sun + ${sky} * (0.4 + 0.3 * y + 0.2 * thick);
         float t = (1.0 - acc.a) * a * rim;
         acc += t * vec4(light, 1.0);
         lit += t * (under ? 0.3 : sun);
@@ -894,11 +962,11 @@ const OVER = /* glsl */ `
       // 0.38, and the 0.9 of the cells too small to draw, keep a frame's mean level from 100 to 187 km within 2 %
       // of what it was with every cell drawn hard: measured)
       float veiled = 0.38 * cellsShare(fpAcross) * smoothstep(-0.075, 0.005 + 1.5 * wd, overHere) * (1.0 - along);
-      acc += (1.0 - acc.a) * veiled * vec4(sunTop * 0.62 + uSkyLight * 0.6, 1.0);
+      acc += (1.0 - acc.a) * veiled * vec4(sunTop * 0.62 + ${sky} * 0.6, 1.0);
       lit += (1.0 - acc.a) * veiled * 0.5;
       // and the cells too small to draw, as much of the pixel as they cover: lit evenly, as a small one is
       float grain = min(0.9 * small, 1.0) * (1.0 - along);
-      acc += (1.0 - acc.a) * grain * vec4(sunTop * 0.8 + uSkyLight * 0.6, 1.0);
+      acc += (1.0 - acc.a) * grain * vec4(sunTop * 0.8 + ${sky} * 0.6, 1.0);
       lit += (1.0 - acc.a) * grain * 0.8;
     }
     if (along > 0.0 && even < 1.0) {
@@ -917,7 +985,7 @@ const OVER = /* glsl */ `
       float a = 1.0 / (1.0 + exp(clamp(-1.7 * (n - uCumulus.y) / spread, -30.0, 30.0)));
       a = 1.0 - pow(1.0 - a, 1.0 + ${(0.7 * 0.45).toFixed(3)} * aslant);
       // (what is seen of them from here is their sides as much as their tops: toward the Sun or away from it)
-      vec3 light = under ? bases : sunTop * mix(0.62, 0.95, 0.5 + 0.5 * dot(normalize(dir.xz + 1e-6), -uSun.xz / max(length(uSun.xz), 1e-3)) * sqrt(max(1.0 - sunUp * sunUp, 0.0))) + uSkyLight * 0.8;
+      vec3 light = under ? bases : sunTop * mix(0.62, 0.95, 0.5 + 0.5 * dot(normalize(dir.xz + 1e-6), -uSun.xz / max(length(uSun.xz), 1e-3)) * sqrt(max(1.0 - sunUp * sunUp, 0.0))) + ${sky} * 0.8;
       acc = mix(acc, vec4(light, 1.0) * a, along);
       lit = mix(lit, a * 0.8, along);
     }
@@ -926,7 +994,7 @@ const OVER = /* glsl */ `
       float gather = over_noise2(q0 * 0.23 + vec2(1.7, 5.3), 94) - 0.5;
       float c = clamp(w.r * exp(fine * (5.0 * gather + 7.0 * streets)), 0.0, 1.0);
       float a = 1.0 - pow(1.0 - c, 1.0 + ${(0.7 * 0.45).toFixed(3)} * aslant);
-      vec3 light = under ? bases : sunTop * 0.9 + uSkyLight * 0.8;
+      vec3 light = under ? bases : sunTop * 0.9 + ${sky} * 0.8;
       acc = mix(acc, vec4(light, 1.0) * a, even);
       lit = mix(lit, a * 0.8, even);
     }
@@ -945,7 +1013,7 @@ const OVER = /* glsl */ `
   // (weather.ts), seen from above, from under, and along. Drawn here, at the frame's pixels: they are thin, and
   // have no depth to march.
   vec4 sheet(vec3 dir, int kind, float d, float dv, float veil) {
-    float height = kind == 0 ? ${DECK_HEIGHT.toFixed(1)} : ${CIRRUS_HEIGHT.toFixed(1)};
+    float height = kind == 0 ? ${deckHeight} : ${highHeight};
     float limb, tm = shellHit(dir, height, limb);
     if (tm < 0.0 || hidden(tm, d)) return vec4(0.0);
     vec3 v = dir * tm;
@@ -959,7 +1027,14 @@ const OVER = /* glsl */ `
     float sunHigh = max(dot(up, uSun), 0.02);
     gDeckSun = vec3(normalize(uSun.xz + vec2(1e-6, 0.0)), sunHigh / max(length(uSun.xz), 1e-3));
     gDeckCel = uCel > 0.5;
-    float a = kind == 0 ? deckAt(xz, fp, deckCoverAt(w, xz)) : cirrusAt(xz, fp, w.g);
+${
+  high
+    ? /* glsl */ `    // (the day's high cloud: how much of it there is here, and how much of that is a veil and not fibres: weather.ts)
+    float high = highCoverAt(w, xz);
+    float veiled = kind == 1 ? veilShare(high) : 0.0;
+    float a = kind == 0 ? deckAt(xz, fp, deckCoverAt(w, xz)) : highAt(xz, fp, high);`
+    : /* glsl */ `    float a = kind == 0 ? deckAt(xz, fp, deckCoverAt(w, xz)) : cirrusAt(xz, fp, w.g);`
+}
     if (a <= 0.0) return vec4(0.0);
     // (where it is thickest it is whitest: a cloudlet's heart, a fibre's middle)
     float thick = kind == 0 ? gDeckThick : smoothstep(0.15, 0.9, a);
@@ -969,7 +1044,13 @@ const OVER = /* glsl */ `
     vec2 slope = kind == 0 ? gDeckSlope : vec2(0.0);
     float shaded = kind == 0 ? gDeckShade : 1.0;
     // looked along, a sheet is as many times thicker as the ray is longer in it
-    float along = min(1.0 / cosv, uEyeH < height ? 2.2 : kind == 0 ? 5.0 : 3.5);
+    float along = min(1.0 / cosv, uEyeH < height ? 2.2 : kind == 0 ? 5.0 : 3.5);${
+      high?.veil
+        ? /* glsl */ `
+    // (a veil the more so from under it: it is whole, so toward the horizon the sky under it is white)
+    if (uEyeH < height) along = min(1.0 / cosv, mix(2.2, 6.0, veiled));`
+        : ''
+    }
     a = 1.0 - pow(1.0 - a, along);
     // (and the eye goes through it, not into a wall: nothing of it close by)
     float fade = limb * smoothstep(0.0, kind == 0 ? 3000.0 : 8000.0, tm);
@@ -979,7 +1060,18 @@ const OVER = /* glsl */ `
     float mean = kind == 0 ? (1.0 - pow(1.0 - gDeckMean, along)) * fade : 0.0;
     float nearBy = kind == 0 ? gDeckNear : 0.0;
     float sunUp = dot(up, uSun);
-    vec3 sunWhite = sunOn(height, up, v);
+${
+  high
+    ? /* glsl */ `    // (on a day whose record has high cloud each sheet is lit by the Sun as it is at its own height: the high cloud by
+    // all of it, the deck under it by what the high cloud leaves and what it gives back as the sky's light)
+    vec3 sunWhite = highSun(height, up);
+    vec3 skyLight = uSkyLight;
+    if (kind == 0) {
+      sunWhite *= veilShade(high, max(dot(up, uTrueSun), 0.0));
+      skyLight += uVeilGlow * min(high / ${Math.max(high.cover, 1e-3).toFixed(3)}, 1.0);
+    }`
+    : /* glsl */ `    vec3 sunWhite = sunOn(height, up, v);`
+}
     bool under = uEyeH < height;
     // from above, its lit top (the cirrus's ice a little brighter toward the Sun); from under, the light that comes
     // through it, most where the Sun is behind it, and the sky's
@@ -987,9 +1079,15 @@ const OVER = /* glsl */ `
     vec3 normal = normalize(up - slope.x * vec3(1.0, 0.0, 0.0) - slope.y * vec3(0.0, 0.0, 1.0));
     float facing = kind == 0 ? clamp((0.15 + 0.85 * max(dot(normal, uSun), 0.0)) / (0.15 + 0.85 * max(sunUp, 0.0)), 0.25, 1.5) : 1.0;
     vec3 light = under
-      ? (sunWhite * (kind == 0 ? 0.6 : 0.75) * (0.8 + 0.9 * pow(toSun, 6.0)) + uSkyLight * (kind == 0 ? 0.8 : 0.9) + uGroundLight * 0.2)
+      ? (sunWhite * (kind == 0 ? 0.6 : 0.75) * (0.8 + 0.9 * pow(toSun, 6.0)) + ${sky} * (kind == 0 ? 0.8 : 0.9) + uGroundLight * 0.2)
         * (kind == 0 ? 1.1 - 0.3 * thick : 1.0)   // (from under, a cloudlet's heart lets less through than its rim)
-      : sunWhite * (kind == 0 ? 0.98 * (0.5 + 0.5 * thick) : 0.92 * (0.7 + 0.3 * thick)) * facing * shaded + uSkyLight * (0.85 - 0.45 * (1.0 - dot(normal, up)));
+      : sunWhite * (kind == 0 ? 0.98 * (0.5 + 0.5 * thick) : 0.92 * (0.7 + 0.3 * thick)) * facing * shaded + ${sky} * (0.85 - 0.45 * (1.0 - dot(normal, up)));${
+        high?.veil
+          ? /* glsl */ `
+    // (and through a veil, from under it, the Sun stands in a glow a few degrees across: the light its ice sends on beside the beam)
+    if (under) light += sunWhite * (0.35 * veiled * pow(toSun, 300.0));`
+          : ''
+      }
     float hz = hazeTo(v);
     float shown = mix(1.0 - veil, 1.0, step(tm, dv));
     if (uCel < 0.5) return throughAir(vec4(mix(light, uHaze, hz), 1.0) * a, dir, tm) * shown;
@@ -1001,13 +1099,27 @@ const OVER = /* glsl */ `
     // deck's are (deckAt), and the mean is not cut: cut at half, a patch's mean was a white sheet with the sea
     // showing through it in round holes. It is a paler sea instead, one flat wash over the patch with an edge:
     // the sky's light added at an eighth where the patch has cloud.
-    if (kind != 0) return vec4(0.0);
+${
+  high
+    ? /* glsl */ `    // High cloud over most of the sky it does have, where the day's record has it (a veil, or cirrus over more than
+    // half the sky), as what that is to a drawing: one flat tone laid over the sky, paler than it, the same wherever
+    // the eye looks, with an edge where it ends; the Sun's disc shows through it. By how much of the record's depth
+    // the eye would see through: 0.4 deep, half the sky's tone from under it.
+    if (kind != 0) {
+      float washed = smoothstep(0.5, 0.9, high);
+      if (washed <= 0.0) return vec4(0.0);
+      float wash = ${(Math.min(high.depth, 0.6)).toFixed(3)} * (under ? 1.25 : 1.0) * smoothstep(0.45, 0.55, washed) * fade;
+      vec3 flat_ = under ? skyLight * 1.1 + sunWhite * 0.35 : sunWhite * 0.95 + skyLight;
+      return vec4(mix(flat_, uHaze, hz), 1.0) * (wash * shown);
+    }`
+    : /* glsl */ `    if (kind != 0) return vec4(0.0);`
+}
     float cut = smoothstep(0.4, 0.5, body - 0.6 * (1.0 - nearBy));   // (going to its mean, each shrinks away flat: faded, a band of ghosts)
     float wash = 0.12 * smoothstep(0.08, 0.11, mean) * (1.0 - nearBy);
     float l = under ? 0.3 : 0.9 * facing * shaded * (0.85 + 0.15 * thick);
     // (the wash is added light and covers nothing: the sea under it is the same sea, a tone lighter and bluer, where
     // laid over it as a colour it was a grey sheet)
-    vec3 tone = celTone(l, 0.03, hz), pale = mix(uSkyLight, uHaze, hz);
+    vec3 tone = celTone(l, 0.03, hz), pale = mix(${sky}, uHaze, hz);
     return vec4(tone * cut + pale * wash * (1.0 - cut), cut) * shown;
   }
 
@@ -1078,19 +1190,20 @@ const OVER = /* glsl */ `
     cloud += (1.0 - cloud.a) * farCumulus(dir, d, dv, veil);
     // the sheets: whichever of them the eye is over lie in front of the cumulus, the rest behind
     vec4 deck = sheet(dir, 0, d, dv, veil), cirrus = sheet(dir, 1, d, dv, veil);
-    vec4 all = uEyeH > ${CIRRUS_HEIGHT.toFixed(1)} ? cirrus : vec4(0.0);
-    if (uEyeH > ${DECK_HEIGHT.toFixed(1)}) all += (1.0 - all.a) * deck;
+    vec4 all = uEyeH > ${highHeight} ? cirrus : vec4(0.0);
+    if (uEyeH > ${deckHeight}) all += (1.0 - all.a) * deck;
     all += (1.0 - all.a) * cloud;
-    if (uEyeH <= ${DECK_HEIGHT.toFixed(1)}) all += (1.0 - all.a) * deck;
-    if (uEyeH <= ${CIRRUS_HEIGHT.toFixed(1)}) all += (1.0 - all.a) * cirrus;
+    if (uEyeH <= ${deckHeight}) all += (1.0 - all.a) * deck;
+    if (uEyeH <= ${highHeight}) all += (1.0 - all.a) * cirrus;
     return all;
   }`;
+};
 
 /** A pass of their own, laid over the frame where it is: blended onto what is there (one, one minus alpha). */
-const COMPOSITE = /* glsl */ `
+const composite = (over: string) => /* glsl */ `
   precision highp float; precision highp int;
   ${DEPTH}
-  ${OVER}
+  ${over}
   in vec2 vUv;
   out vec4 oColour;
   void main() {
@@ -1265,7 +1378,8 @@ export class CloudPass extends Pass {
     uBlock: { value: CELL / TEXEL },
     uOccupied: { value: 0 },
   });
-  private readonly composite: THREE.RawShaderMaterial;
+  /** The pass of their own, where the output has not adopted them: made for the day when it is known (`dress`). */
+  private composite: THREE.RawShaderMaterial | null = null;
   private readonly uniforms = {
     tDepth: { value: null as THREE.Texture | null },
     uProjInv: { value: new THREE.Matrix4() },
@@ -1307,9 +1421,15 @@ export class CloudPass extends Pass {
     uClouds: { value: 0 },
     uEyeXZ: { value: new THREE.Vector2() },
     uAbove: { value: 0 },
+    uVeilLeft: { value: 1 },
+    uVeilGlow: { value: new THREE.Color(0, 0, 0) },
     ...weatherUniforms,
     ...atmosphereUniforms,
   };
+  /** The Sun's light on the marched cumulus: the scene's, through whatever high cloud the record has over the site (air.ts: veilLightUniform). */
+  private readonly sunUnder = { value: new THREE.Color() };
+  /** And the sky's light on them: the scene's fill, with what that high cloud gives back of what it took (air.ts: veilGlow). */
+  private readonly skyUnder = { value: new THREE.Color() };
   /** What was baked: for which clouds, round which point of the field (its frame, metres). */
   private baked: { clouds: Clouds; x: number; z: number; driftX: number; driftZ: number } | null = null;
   /** The weather's map has arrived since the field was baked. */
@@ -1324,13 +1444,6 @@ export class CloudPass extends Pass {
     private readonly camera: THREE.PerspectiveCamera,
   ) {
     super();
-    this.composite = raw(COMPOSITE, this.uniforms);
-    this.composite.blending = THREE.CustomBlending;
-    this.composite.blendSrc = THREE.OneFactor;
-    this.composite.blendDst = THREE.OneMinusSrcAlphaFactor;
-    this.composite.blendSrcAlpha = THREE.ZeroFactor;
-    this.composite.blendDstAlpha = THREE.OneFactor;
-    this.composite.transparent = true;
     this.needsSwap = false;
     onWeather(() => {
       this.stale = true;
@@ -1341,27 +1454,59 @@ export class CloudPass extends Pass {
    * Lay the clouds over the frame in the output's own pass (three's OutputPass, the last, which draws
    * the frame to the screen), instead of in a pass of their own: a pass over the multisampled frame
    * costs a millisecond and a half on a dense screen, and the output reads every pixel anyway. They
-   * are then over the outline and the bloom as well as the scene. Call before the output is first drawn.
+   * are then over the outline and the bloom as well as the scene. Its shader is given the clouds when the day they
+   * are the day's is known (`dress`): until a place with air is on the stage it is three's own.
    */
   adopt(output: OutputPass): void {
+    this.output = output;
+    this.adopted = true;
+  }
+  private adopted = false;
+  private output: OutputPass | null = null;
+  private dressed = false;
+
+  /**
+   * Give whoever lays the clouds over the frame its shader, for the day the air is the air of (air.ts: `Air.day`):
+   * once, the first time there are clouds or sheets to lay (a flight is a page, so a page has one day). The output's
+   * shader is compiled again with them in it; that is under the curtain, where the scene is being warmed.
+   */
+  private dress(day: Day | null | undefined): void {
+    if (this.dressed) return;
+    this.dressed = true;
+    const over = overGlsl(day);
+    const output = this.output;
+    if (!output) {
+      const pass = (this.composite = raw(composite(over), this.uniforms));
+      pass.blending = THREE.CustomBlending;
+      pass.blendSrc = THREE.OneFactor;
+      pass.blendDst = THREE.OneMinusSrcAlphaFactor;
+      pass.blendSrcAlpha = THREE.ZeroFactor;
+      pass.blendDstAlpha = THREE.OneFactor;
+      pass.transparent = true;
+      return;
+    }
     const material = output.material;
     // (in GLSL ES 3.00, which the clouds' lookups need)
     material.glslVersion = THREE.GLSL3;
     material.vertexShader = material.vertexShader.replaceAll('attribute ', 'in ').replaceAll('varying ', 'out ');
+    // (over the glow, where the bloom has put it into this pass already (bloom.ts: adopt, which comes after `adopt`
+    // and before this): the clouds are laid over the frame with its glow, as they were when they came first)
+    const read = 'gl_FragColor = texture2D( tDiffuse, vUv );',
+      glow = 'if (uBloom > 0.5) gl_FragColor.rgb += texture2D(tBloom, vUv).rgb;';
+    const after = material.fragmentShader.includes(glow) ? glow : read;
     material.fragmentShader = material.fragmentShader
-      .replace('varying vec2 vUv;', `in vec2 vUv;\nout highp vec4 oOutput;\n${DEPTH}\n${OVER}\nuniform float uClouds;`)
+      .replace('varying vec2 vUv;', `in vec2 vUv;\nout highp vec4 oOutput;\n${DEPTH}\n${over}\nuniform float uClouds;`)
       .replace(
-        'gl_FragColor = texture2D( tDiffuse, vUv );',
-        `gl_FragColor = texture2D( tDiffuse, vUv );
+        after,
+        `${after}
         if (uClouds > 0.5) { vec4 clouds = cloudsOver(vUv); gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - clouds.a) + clouds.rgb; }`,
       )
       .replaceAll('texture2D(', 'texture(')
       .replaceAll('gl_FragColor', 'oOutput');
     if (!material.fragmentShader.includes('cloudsOver(vUv)')) throw new Error('clouds: the output pass has changed its shader');
     Object.assign(material.uniforms, this.uniforms);
-    this.adopted = true;
+    material.needsUpdate = true;
   }
-  private adopted = false;
 
   /**
    * Make what the clouds are drawn with before anyone is looking (Stage.warm): the two tiles of noise, by a worker
@@ -1372,6 +1517,11 @@ export class CloudPass extends Pass {
     const u = this.uniforms;
     const into = { billows: u.tBillows, detail: u.tDetail };
     if (TILES.every((t) => into[t.name].value)) return;
+    // (the output's shader, with the day's clouds in it, is to be compiled under the curtain too)
+    const air = installedAir();
+    if (air?.clouds || (air?.day && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0))) this.dress(air.day);
+    // (a day with no cumulus marches nothing, and its sheets read neither tile)
+    if (!air?.clouds) return;
     const worked = await new Promise<Record<'billows' | 'detail', Uint8Array<ArrayBuffer>> | null>((done) => {
       try {
         const worker = new Worker(new URL('./cloudnoise.worker.ts', import.meta.url), { type: 'module' });
@@ -1421,9 +1571,12 @@ export class CloudPass extends Pass {
   render(renderer: THREE.WebGLRenderer, _writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
     const air = installedAir();
     const clouds = air?.clouds;
+    // (a day with a deck or high cloud and no cumulus: the sheets are laid over the frame, and nothing is marched)
+    const sheets = air?.day != null && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0);
     const fog = this.scene.fog as THREE.FogExp2 | null;
     this.uniforms.uClouds.value = 0;
-    if (!air || !clouds || !fog || !this.mark.texture) return;
+    if (!air || !(clouds || sheets) || !fog || !this.mark.texture) return;
+    this.dress(air.day);
     this.fit(renderer, readBuffer);
     const u = this.uniforms;
     const camera = this.camera;
@@ -1432,12 +1585,14 @@ export class CloudPass extends Pass {
     const eye = this.eye.set(camera.position.x + o.x, camera.position.y + o.y, camera.position.z + o.z);
     const fx = eye.x - cloudUniform.value.x,
       fz = eye.z - cloudUniform.value.z;
-    this.bake(renderer, clouds, fx, fz);
-    const baked = this.baked!;
-    u.uEye.value.set(fx - baked.x + EXTENT / 2, fz - baked.z + EXTENT / 2);
+    if (clouds) {
+      this.bake(renderer, clouds, fx, fz);
+      const baked = this.baked!;
+      u.uEye.value.set(fx - baked.x + EXTENT / 2, fz - baked.z + EXTENT / 2);
+      u.uCumulus.value.set(clouds.size, cloudMiddle(clouds), clouds.cover);
+    }
     u.uField.value.set(fx, fz);
     u.uEyeXZ.value.set(eye.x, eye.z);
-    u.uCumulus.value.set(clouds.size, cloudMiddle(clouds), clouds.cover);
     u.uScale.value = air.scale;
     // the Earth's centre lies under the site's origin, its radius below the sea
     const cy = eye.y - (air.base - EARTH);
@@ -1445,8 +1600,10 @@ export class CloudPass extends Pass {
     u.uEyeH.value = r - EARTH;
     u.uRe.value = r;
     u.uUp.value.set(eye.x / r, cy / r, eye.z / r);
-    u.uLayer.value.set(clouds.height, clouds.height + clouds.depth);
-    u.uDome.value = clouds.depth / (TOWER * SIDE_PER_SIZE * clouds.size) ** DOME;
+    if (clouds) {
+      u.uLayer.value.set(clouds.height, clouds.height + clouds.depth);
+      u.uDome.value = clouds.depth / (TOWER * SIDE_PER_SIZE * clouds.size) ** DOME;
+    }
     u.uProjInv.value.copy(camera.projectionMatrixInverse);
     u.uRange.value.set(camera.near, camera.far);
     u.uTurn.value.setFromMatrix4(this.turn.extractRotation(camera.matrixWorld));
@@ -1457,18 +1614,29 @@ export class CloudPass extends Pass {
     // nearer than `least` (near()), and the shell (0.3 of the way up the layer) is that far off along one cone of rays
     // round the vertical: from under it, the far cover is below that cone and above the sea's horizon; from over it,
     // between that cone and level.
-    const shell = EARTH + clouds.height + 0.3 * clouds.depth;
-    const least = Math.min(FADE[0], SMALL[0] / u.uPixel.value);
-    const cone = (shell * shell - r * r - least * least) / (2 * r * least);
-    if (r < shell) u.uFarSpan.value.set(-Math.sqrt(Math.max(r - EARTH, 0) * (r + EARTH)) / r, cone);
-    else u.uFarSpan.value.set(cone, 0);
+    if (clouds) {
+      const shell = EARTH + clouds.height + 0.3 * clouds.depth;
+      const least = Math.min(FADE[0], SMALL[0] / u.uPixel.value);
+      const cone = (shell * shell - r * r - least * least) / (2 * r * least);
+      if (r < shell) u.uFarSpan.value.set(-Math.sqrt(Math.max(r - EARTH, 0) * (r + EARTH)) / r, cone);
+      else u.uFarSpan.value.set(cone, 0);
+    } else u.uFarSpan.value.set(1, -1); // (no cumulus: no ray is between these, and none is worked out)
     this.finer.uGrain.value = tall / this.finer.uLow.value.y;
     u.tDepth.value = this.mark.texture;
     u.uCel.value = Number(this.cel);
     this.light(fog);
+    if (!clouds) {
+      // (the march's targets are as they were made, empty: only the sheets are laid over the frame)
+      u.uVeils.value = Number(this.drawVeils(renderer, readBuffer));
+      u.uClouds.value = 1;
+      if (this.adopted) return;
+      this.lay(renderer, readBuffer);
+      return;
+    }
 
-    this.march ??= raw(marchShader(clouds, false), u);
-    this.sharpen ??= raw(marchShader(clouds, true), { ...u, ...this.finer });
+    // (the march's Sun is the scene's through the high cloud over the site, where the record has any: `light`)
+    this.march ??= raw(marchShader(clouds, false), { ...u, uSunLight: this.sunUnder, uSkyLight: this.skyUnder });
+    this.sharpen ??= raw(marchShader(clouds, true), { ...u, ...this.finer, uSunLight: this.sunUnder, uSkyLight: this.skyUnder });
     // (not warmed yet: made now, all at once)
     for (const tile of TILES) {
       const slot = tile.name === 'billows' ? u.tBillows : u.tDetail;
@@ -1508,15 +1676,18 @@ export class CloudPass extends Pass {
     u.uVeils.value = Number(this.drawVeils(renderer, readBuffer));
     u.uClouds.value = 1;
     if (this.adopted) return; // (the output lays them over)
+    this.lay(renderer, readBuffer);
+  }
 
-    // over the frame as it stands, in place
+  /** Lay the clouds over the frame as it stands, in place: where the output has not adopted them. */
+  private lay(renderer: THREE.WebGLRenderer, readBuffer: THREE.WebGLRenderTarget): void {
     // (the depth is the scene's still: it need not be resolved out of the multisampled buffer again)
     const autoClear = renderer.autoClear,
       resolve = readBuffer.resolveDepthBuffer;
     renderer.autoClear = false;
     readBuffer.resolveDepthBuffer = false;
     renderer.setRenderTarget(readBuffer);
-    this.quad.material = this.composite;
+    this.quad.material = this.composite!;
     this.quad.render(renderer);
     renderer.autoClear = autoClear;
     readBuffer.resolveDepthBuffer = resolve;
@@ -1650,7 +1821,7 @@ export class CloudPass extends Pass {
       cz = Math.round(z / SNAP) * SNAP;
     if (!b || b.clouds !== clouds) {
       this.bakeMaterial?.dispose();
-      this.bakeMaterial = raw(bakeShader(clouds), {
+      this.bakeMaterial = raw(bakeShader(clouds, installedAir()?.day), {
         uCorner: { value: new THREE.Vector2() },
         uBakeDrift: { value: new THREE.Vector2() },
         ...weatherUniforms,
@@ -1695,6 +1866,12 @@ export class CloudPass extends Pass {
       u.uSkyLight.value.copy(this.sky.color).multiplyScalar(this.sky.intensity);
       u.uGroundLight.value.copy(this.sky.groundColor).multiplyScalar(this.sky.intensity);
     }
+    // under high cloud over the site the cumulus have the Sun through it, and the light it gives back as the sky's
+    // (1 and nothing where the day has none: the same light)
+    u.uVeilLeft.value = veilLightUniform.value.x;
+    this.sunUnder.value.copy(u.uSunLight.value).multiplyScalar(u.uVeilLeft.value);
+    u.uVeilGlow.value.setRGB(veilGlow.r, veilGlow.g, veilGlow.b);
+    this.skyUnder.value.copy(u.uSkyLight.value).add(u.uVeilGlow.value);
     // air.ts's hazeSeen: from above, the haze sends back a neutral third of its light
     const c = fog.color;
     const grey = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;

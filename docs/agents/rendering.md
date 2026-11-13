@@ -490,10 +490,51 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   GDAL; downloads stay outside the repo). The colours are 2004's land, not 1961's: say so where it matters.
   A region names its `banks` (pale sand under clear water) in tools/globe-surface.mjs: the sea's colour is
   worked from depth (`globeWater`), bright only there.
-- **The weather is estimated and says so.** `viewer/weather.ts` is a plausible fair morning built from the
-  land map, the relief and the wind, baked by `pnpm globe:weather`; nothing in it is the day's analysed
-  weather. The record's cover replaces it within 12 km of the site (`coverNear`), so the documented clouds
-  are untouched. Bake it again after changing weather.ts, the land map or the relief.
+- **The weather is a day's, and the day is the flight's.** A flight's `weather` (types.ts: `DayWeather`; a
+  `weather.ts` beside its `flight.ts`) is what was observed at or nearest its site at the hour nearest liftoff:
+  the low cloud, the middle deck, the high cloud, the wind, how far one could see, each figure a `Measure`, and
+  `beyond` for what a report says of a stretch of country. `viewer/day.ts` turns it once into what is drawn
+  (`dayOf`), and nothing else in the viewer holds a figure of any day's sky: not `cape.ts`, not `weather.ts`. A
+  flight with none stands under its site's (`SiteDef.weather`), and then under a clear sky: both estimates.
+  - **A day is written into the shaders, not handed to them.** A flight is a page, so a page has one day: its
+    figures are text in the shaders that draw it (`sheetsGlsl`, `weatherGlsl`, `overGlsl`, the shared chunk in
+    air.ts, the globe's shade), and what a day does not have is not in the text at all (weather.ts: `highOf`).
+    So on a day whose record has no high cloud every shader is, comments aside, what it was before a flight
+    could give its day, and so is every pixel: tests/weather.test.mjs pins the sheets' and the map's text for
+    Freedom 7's day, and the two builds were compared program by program and frame by frame when this was made
+    (288 programs the same text; the sky from the pad and from 3, 8, 12 and 150 km the same to the last bit, in
+    both looks). Handed over as uniforms instead, with every new term nothing on such a day, five pixels in a
+    million came out a level different: the compiler orders and fuses arithmetic by the whole expression, not by
+    what its terms come to. The cloud pass's shader is therefore made when the day is known (`CloudPass.dress`:
+    the first time there is air with clouds or sheets in it, under the curtain), not when the stage is.
+  - **The record holds at the site, layer by layer, whatever lies round it**: the cumulus within 12 km
+    (`coverNear`), the deck within 40 km (`deckCoverAt`), the high cloud as far as an observer under it sees it
+    (`reportReach`, `highCoverAt`), and before the map has come in, everywhere. A record's stretch of country
+    holds all over it (`weatherAt`: `MapDay.beyond`; tests/weather.test.mjs holds 21 July's).
+  - **Everything else is estimated and says so**: `viewer/weather.ts` builds a plausible morning from the land
+    map, the relief and the day's wind; no chart or reanalysis of any day has been read.
+  - **One map is baked for each region and day** (`public/globe/<region>.<date>.weather.png`, `pnpm
+    globe:weather`, which takes the flights): not one map with the record blended in as it is drawn, and not
+    parameters to the shaders. weather.ts says why: a day's weather is not another's with a number changed, a
+    stretch of country is a shape on a map, and a map a day leaves every shader as it was (one texture, nothing
+    more for each pixel), so the first day's file and its pictures are what they were. Bake again after changing
+    weather.ts, a flight's weather, the land map or the relief.
+  - **High cloud is fibres or a veil.** Cirrus is `cirrusAt`'s fibres, never more than half opaque. Cirrostratus
+    over the whole sky is `veilAt`: a smooth sheet as deep as the record's optical depth, the Sun's disc and a
+    glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look.
+    It is lit by the Sun at its own height (`highSun`: lit before sunrise on the ground). What is under it has
+    the Sun through it by one rule (`veilShade`, day.ts and weather.ts: half the depth along the slant, since
+    ice sends half of what it scatters on beside the beam) in four places that must agree: the shared chunk
+    (air.ts: `veilLightUniform`, one number set with the light, for what is below the veil's height), the
+    marched cumulus (`sunUnder`), the far cumulus and the deck (clouds.ts), the globe (`sheetsShade`). What it
+    takes it mostly gives back as the sky's light (`VEIL_DOWN`): to the clouds under it (`veilGlow`) and to the
+    scene through the reflections' sky, which has the veil in it (backdrops.ts); the haze and the horizon lose
+    their blue under it. Shadows under it are softer (`Setting.shadowRadius`). All of it follows the Sun's
+    height smoothly: light must never step (world.md). Its opacity, its light and the half are estimated.
+  - **A day without cumulus still has its sheets** (Vostok 1: cirrus and nothing under it): nothing is marched,
+    the sheets are laid over the frame, and the chunk and the globe carry only the veil's shade.
+  - A new figure of a day goes in the flight's `weather.ts` with its source; a new way of drawing one goes in
+    day.ts as a stated rule. Never a constant in a place's file.
 - **One field, three readers.** The cumulus's noise, cut where the weather says (`cumulusBias`), is read by
   the march's bake, the far cover (`farCumulus`) and the globe's shadows (`globeShade`): change one, change
   all. The far cover is slices of the same heap the volume marches, then the field averaged along a pixel's
@@ -516,9 +557,10 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   (`gHaze`) instead of being drawn as a dot that is there or not by where a pixel's middle falls; the veil between
   cells has an edge as soft as the pixel. Flips a frame on the climb, straight down: 47 to 13 from 187 km, 21 to 12
   from 150.
-- **The middle deck is cloudlets of its own size, not tiles or puddles.** Round the site it is the record's eighth of
-  altocumulus at 3,600 m (Patrick, 10:00 EST, NOAA ISD): patches over 0.3 of the sky, their cloudlets covering some
-  0.4 of a patch (`DECK_SITE`). Near to, `deckAt` (weather.ts) draws domes on a scatter of points `DECK_CELL` (120 m)
+- **The middle deck is cloudlets of its own size, not tiles or puddles.** Round the site it is the day's record, at
+  the record's height (written into the shaders: `sheetsGlsl`): on 5 May 1961 an eighth of altocumulus at 3,600 m (Patrick, 10:00 EST, NOAA ISD),
+  which is patches over 0.30 of the sky, their cloudlets covering some 0.45 of a patch; on 21 July two eighths at
+  5,400 m, patches over 0.43 (day.ts: `deckPatches`, measured: `DECK_SHARE`). Near to, `deckAt` (weather.ts) draws domes on a scatter of points `DECK_CELL` (120 m)
   apart, 70 to 220 m across (an altocumulus element is 1 to 5 degrees wide from under it: 60 to 300 m at that height),
   each heaped of puffs and frayed at its rim, standing apart where a patch is thin and packed with dark creases where
   it is thick: so from 7 to 25 km up a patch is a fine grain. Every figure of its detail was made on a plane where the

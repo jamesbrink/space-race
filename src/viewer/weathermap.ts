@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DEG } from '../world/frames.ts';
+import type { Day } from './day.ts';
 import { later } from './later.ts';
 import { queued } from './pack.ts';
 import { EXTENT } from './weather.ts';
@@ -7,8 +8,9 @@ import { EXTENT } from './weather.ts';
 /**
  * The weather map (weather.ts) as the shaders read it: one texture and its placing, shared by
  * reference by the clouds (clouds.ts) and the globe under them (globe.ts), so both see the same
- * weather. Until a site's map has arrived it is one texel that says the site's cover everywhere
- * and no high cloud: the field as it was before there was any weather.
+ * weather. Until a site's map has arrived (and for a day that has none) it is one texel that says
+ * the site's cumulus cover everywhere, and with it the high cloud the record has over the site (weather.ts:
+ * weatherGlsl), so the sky a station reported whole is whole from the ground.
  */
 const pixel = new Uint8Array([26, 0, 0, 255]);
 const blank = new THREE.DataTexture(pixel, 1, 1, THREE.RGBAFormat);
@@ -36,16 +38,20 @@ export const onWeather = (then: () => void): void => {
 
 /**
  * The high wind's way, as a bearing it blows toward, degrees: from the west-south-west, as the upper westerlies
- * over Florida are in May on the whole. Estimated: no sounding for the day has been read.
+ * are over Florida in May and over the Syr Darya in April on the whole. Estimated: no sounding at the cirrus's height
+ * has been read for any day, and it is only the way the high cloud's fibres and streaks lie.
  */
 const HIGH_WIND = 70;
 
 /**
- * Place the weather for a site: its frame's bearing (degrees), the record's cumulus cover there and the low
- * wind's way (the scene's x and z); and fetch the region's map, if it has one.
+ * Place the weather for a site on a day: its frame's bearing (degrees) and the day (day.ts): the record's cumulus
+ * cover there and the low wind's way; and fetch the day's map, if it has one. (The day's two sheets are written into
+ * the shaders that draw them: weather.ts, `highOf`.)
  */
-export function placeWeather(bearingX: number, cover: number, wind: readonly [number, number], region: string | null): void {
+export function placeWeather(bearingX: number, day: Day): void {
   const b = bearingX * DEG;
+  const cover = day.cumulus?.cover ?? 0;
+  const wind = day.cumulus?.wind ?? [1, 0];
   weatherUniforms.uWeather.value.set(Math.sin(b), Math.cos(b), 1 / EXTENT, cover);
   const speed = Math.hypot(wind[0], wind[1]) || 1;
   weatherUniforms.uWeatherWind.value.set(wind[0] / speed, wind[1] / speed);
@@ -57,10 +63,11 @@ export function placeWeather(bearingX: number, cover: number, wind: readonly [nu
   );
   pixel[0] = Math.round(cover * 255);
   blank.needsUpdate = true;
-  if (!region) return;
+  const map = day.map;
+  if (!map) return;
   // (not seen from the site: within 12 km the cover is the record's, and the map's part lies along the horizon)
   const load = async (): Promise<void> => {
-    const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${region}.weather.png`)).blob();
+    const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${map}.weather.png`)).blob();
     const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
     const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
     texture.colorSpace = THREE.NoColorSpace;

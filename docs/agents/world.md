@@ -45,6 +45,13 @@ through nothing (daysky.ts), so shadows turn round unseen. Room lights are hande
 fading. A change to the light is checked by sampling a still view's mean brightness frame by frame
 through dusk and dawn at 1200x: it should run one way, without jumps.
 
+The weather over a site is its flight's own day (`Flight.weather`, types.ts: `DayWeather`; the rules are in
+[rendering.md](rendering.md), "The weather is a day's"). Where the record has high cloud over the site the
+light is that day's: the Sun's through it, the sky's with what the veil gives back, the haze and horizon
+whiter, the veil itself lit by the Sun at its own height. Each is a smooth rule of the Sun's height (day.ts:
+`veilShade`) worked out with the light in `Setting.at`, so it is held to the same check: the mean brightness
+of a still view under 21 July's veil runs from 03:58 through sunrise to liftoff without a step.
+
 A model whose slider tells a sequence of events has a `sequence` (types.ts: `Keyframe`): the
 instants, in seconds from launch, at which the slider reads each value, each with confidence and
 source. The times are the record; where they fall on the slider is layout. Such a model is on the

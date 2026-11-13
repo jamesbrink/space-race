@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { type Air, installAir } from './air';
+import { type Air, driftClouds, installAir } from './air';
+import { breeze, type Day } from './day.ts';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
@@ -177,13 +178,6 @@ const ABUTMENT = 25 * 0.3048;
 const APRON = 70;
 /** How far the ground is drawn: past the horizon from any height a person stands at (4.7 km at 1.7 m). */
 const FAR = 8000;
-
-/**
- * The haze: the air of the Syr Darya's steppe in April. No record of the visibility that morning has been read; the
- * film shows the horizon sharp and the sky clear. 60 km taken, thinning over 1.5 km of height. Estimated.
- */
-const VISIBILITY = 60_000;
-const HAZE_SCALE = 1500;
 
 /** A colour as an sRGB hex (three converts it to its linear working space). */
 const srgb = (hex: number) => new THREE.Color(hex);
@@ -387,12 +381,11 @@ function landSpec(): LandSpec {
 const c = srgb;
 
 /** What grows: wormwood and saltwort in low clumps, a hand to a knee high, wide apart. The species and their look are estimated. */
-function floraSpec(): FloraSpec {
+function floraSpec(day: Day): FloraSpec {
   return {
     spacing: { woody: 1.4, herb: 1.8, tree: 40 },
     stature: () => 1,
-    // the wind on the morning is not recorded: a light breeze from the north-east, the steppe's usual quarter in spring (estimated)
-    wind: { toward: THREE.MathUtils.degToRad(225), strength: 0.5 },
+    wind: breeze(day), // the day's wind at the ground: the flight's record (its `weather`)
     species: [
       {
         name: 'wormwood',
@@ -448,13 +441,12 @@ function inPit(x: number, z: number): number {
 /** Under the pit's floor (43 m) by a margin: inside the rim the open ground is this far down, and what is walked on is the pit's own model. */
 const UNDER_PIT = -60;
 
-/** Everything round the pad. `groundY` is the terrain's height; the platform's deck is 0. */
-export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number) {
-  // a clear morning: no cumulus (the film shows none; no observation has been read). Estimated
-  const air: Air = { scale: HAZE_SCALE, base: groundY };
+/** Everything round the pad, under a day's sky (day.ts: the flight's `weather`). `groundY` is the terrain's height; the platform's deck is 0. */
+export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, day: Day) {
+  const air: Air = { scale: day.haze, base: groundY, ...(day.cumulus ? { clouds: day.cumulus } : {}), day };
   installAir(air);
   const land = new Land(renderer, landSpec(), groundY, 0);
-  const flora = new Flora(floraSpec(), land);
+  const flora = new Flora(floraSpec(day), land);
   flora.group.position.y = groundY;
   const eye = new THREE.Vector3();
   const local = (at: THREE.Vector3) => {
@@ -465,12 +457,12 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number) {
   return {
     floor: land.mesh,
     scenery: [flora.group] as THREE.Object3D[],
-    visibility: VISIBILITY,
     reach: 1500,
     horizon: FAR,
     /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green. */
     tone: PALETTE.herbDry.clone().lerp(PALETTE.sand, 0.5),
     tick: (dt: number) => {
+      driftClouds(dt);
       land.tick(dt);
       flora.tick(dt);
     },

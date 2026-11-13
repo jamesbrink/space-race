@@ -17,12 +17,13 @@ missions/                             the record: one folder per nation, program
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
       orbital.ts  mission.md          an orbital flight's record as data (`Flight.orbital`), and the mission's record and plan in words
+      weather.ts                      the weather it stood under, as recorded (`Flight.weather`: types.ts DayWeather): its site's sky is drawn from it
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)
 public/globe/                         the globe's land and ice maps, six cube faces each (committed; tools/globe.mjs); its relief and its
                                       land's colours, six faces each (tools/globe-surface.mjs); and each site's region: <region>.near.png,
                                       .wide.png, .json (tools/globe-region.mjs), .relief.png, .colour.jpg, .surface.json (globe-surface.mjs),
-                                      .weather.png (tools/globe-weather.mjs)
+                                      and <region>.<date>.weather.png, one for each day flown from it (tools/globe-weather.mjs)
 docs/sources.md                       every source used or wanted, and what each is good for
 src/
   types.ts                            Flight, ModelDef, Part, Spec, Motor, Confidence
@@ -44,7 +45,9 @@ src/
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
   viewer/globemesh.ts                 the globe's mesh, written without allocating, and when it is owed again
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
-  viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground
+  viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground,
+                                      the Sun's light under a veil of high cloud
+  viewer/day.ts                       a day's weather as it is drawn: a flight's record (DayWeather) turned into the air, the clouds, the map and the light
   viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, their skin worn by finer lumps, lit as cloud is (the Sun's light
   viewer/cloudnoise.ts                the clouds' two tiles of noise as bytes (pinned by digest in tests/); cloudnoise.worker.ts makes them off the page's thread
                                       marched through them and scattered, the sky above, the ground below), ray-marched at a quarter of the pixels, laid over the frame
@@ -84,8 +87,8 @@ src/
                                       sea by its depth (ETOPO), the weather's shadows, the Sun's glint; the air seen from above, drawn on a ball
   viewer/atmosphere.ts                the air as it scatters light, ground to orbit: Rayleigh, haze, ozone, light scattered many times; two tables
                                       made once on the GPU, and the GLSL that walks a ray through it
-  viewer/weather.ts  weathermap.ts    the weather round a site as a map (estimated): cumulus cover, middle deck, cirrus; the sheets' textures; the
-                                      map as shared uniforms
+  viewer/weather.ts  weathermap.ts    the weather round a site on a day as a map (the record where it speaks, estimated elsewhere): cumulus cover,
+                                      middle deck, high cloud; the sheets' textures (cloudlets, fibres, a veil); the day and its map as shared uniforms
   world/relief.ts                     how a height is kept in a byte, for the relief maps and the shaders that read them
   viewer/pack.ts  units.ts            one-channel maps packed into one cube and one array texture on the GPU; the texture-unit budget and its check
   viewer/later.ts                     what the first view does not need, fetched once the scene is up
@@ -150,7 +153,7 @@ tools/
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces
   globe-region.mjs                    bakes a site's region (SiteDef.region) from OpenStreetMap's coast and lakes, as it stood on its date
   globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and a region's, finer; needs GDAL
-  globe-weather.mjs                   bakes a site's weather map from weather.ts, the land map and the relief
+  globe-weather.mjs                   bakes a flight's day's weather map (<region>.<date>.weather.png) from its record, weather.ts, the land map and the relief
   stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map)
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
   logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it

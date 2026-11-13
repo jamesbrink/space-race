@@ -25,7 +25,7 @@
     "globe:region": "node tools/globe-region.mjs missions/usa/mercury/sites/lc-5.ts",
     "globe:surface": "node tools/globe-surface.mjs",
     "stars": "node tools/stars.mjs",
-    "globe:weather": "node tools/globe-weather.mjs missions/usa/mercury/sites/lc-5.ts",
+    "globe:weather": "node tools/globe-weather.mjs missions/usa/mercury/flights/mr-3-freedom-7/flight.ts missions/usa/mercury/flights/mr-4-liberty-bell-7/flight.ts",
     "model:mr-3": "node tools/build-model.mjs usa/mercury/mr-3-freedom-7",
     "model:mr-4": "node tools/build-model.mjs usa/mercury/mr-4-liberty-bell-7",
     "model:vostok-1": "node tools/build-model.mjs ussr/vostok/vostok-1",
