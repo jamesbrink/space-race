@@ -31,12 +31,14 @@ FLOOR = GROUND + 0.15  # a building's floor: a step up from the land (estimated)
 
 # The tracks that cross the fence, and the roads: the same lines the land paints (src/viewer/tyuratam.ts: RAILS,
 # ROADS). Keep the two in step. Metres east and north.
-CENTRE_TRACK = [(-1400.7, 10.6), (-25.8, 3.0)]
+# The centre track is on the rocket's axis from 160 m out (the erector carried the rocket along it to the axis); the three
+# beside it are brought, over their last 60 m, to where the CIA's plan of March 1961 has them on the platform (deck.py).
+CENTRE_TRACK = [(-1400.7, 10.6), (-160.0, 0.0), (-25.8, 0.0)]
 SPURS = [
-    [(-33.9, 17.6), (-212.6, 16.9)],
-    [(-204.5, -5.5), (-26.5, -6.4)],
-    [(13.6, -10.8), (-155.4, -10.1), (-286.2, 3.7)],
-    [(-330.6, 4.7), (-121.8, 25.7), (-39.8, 28.9)],
+    [(15.0, 13.564), (-60.0, 13.564), (-212.6, 15.2)],
+    [(-204.5, -5.9), (-60.0, -8.321), (-26.8, -8.321)],
+    [(10.9, -12.375), (-60.0, -12.375), (-155.4, -10.1), (-286.2, 1.1)],
+    [(-330.6, 1.5), (-121.8, 25.7), (-39.8, 28.9)],
 ]
 # The road in from the south-west (OpenStreetMap way 54570611) to where the roads part at the pad's south-west.
 MAIN_ROAD = [(-1851.8, -774.8), (-1504.9, -117.6), (-1482.1, -88.6), (-1461.7, -70.7), (-1415.4, -42.7), (-1366.9, -27.2),
@@ -59,6 +61,7 @@ DRIVES = [
     [(-82.0, 207.4), (-57.7, 207.4)],
     [(-82.4, 228.74), (-57.7, 228.74)],
     [(-82.4, 230.3), (-92.0, 230.3)],
+    [(242.4, 0.0), (235.0, 0.0)],  # from the road round the pit's tip onto the road down into the pit (platform.py)
 ]
 
 ROADS = [MAIN_ROAD, RING_ROAD, BUNKER_ROAD, *DRIVES]

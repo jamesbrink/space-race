@@ -34,14 +34,23 @@ GROUND = -0.12  # the viewer's terrain under the deck's level (backdrops.ts: GRO
 PLATFORM = 135.0 * FT
 PLATFORM_T = 10.0 * FT
 PYLON_LONG, PYLON_GAP, PYLON_T = 30.0 * FT, 55.0 * FT, 10.0 * FT
-PYLON_Y = 57.5 * FT  # each row's centre line from the axis: set in 5 ft from the platform's edge (estimated)
+# Each row's centre line from the axis (derived): the four pylons are 115 ft over their outer faces north to south as
+# well as east to west (PIC/JR-2/61 Figure 1 dimensions both; PIC/JR-2/60: "believed to be 115 feet square"), so a row's
+# outer face is 57.5 ft out and its middle 5 ft less.
+PYLON_Y = 115.0 * FT / 2 - PYLON_T / 2
 FENCE_IN = 15.0 * FT  # the low fence on the three overhanging sides, set in from the edge (PIC/JR-2/61)
 # The hole in the platform: "a dark circle about 65 feet in diameter" (PIC/JR-2/60)
 OPENING_R = 65.0 * FT / 2
 
 # The flame pit. 880 by 550 ft at the rim (HTA/JR-4/58); its depth is not agreed (site-1.md): 43 m is taken.
 PIT_DEPTH = 43.0
-TRENCH = 60.0 * FT  # the pit's base between the retaining walls under the platform (PIC/JR-2/61 Figure 1)
+
+# The rails on the deck: their heads stand this far proud of the concrete, m (estimated: the photograph of the morning
+# shows them flush in the deck; 9 mm keeps head and concrete apart in depth). What rolls on them takes its height from this.
+RAIL_TOP = 0.009
+# The Soviet gauge between the rails' inner faces was 1,524 mm (5 ft) until 1970, when it was made 1,520 (documented:
+# the standard; that this track was laid to it is assumed).
+GAUGE = 1524.0 * MM
 
 # The launch system's rotating ring, from the Soviet description of the later system (17P32-6): the
 # ring is a frame 14,920 mm across its inside and 19,350 mm over its corners; the rotating part reaches
@@ -87,4 +96,10 @@ def materials() -> dict:
         "weight": m("iron-counterweight", (0.11, 0.115, 0.11), 0.4, 0.75),
         "lamp": m("lamp", (0.9, 0.9, 0.85), 0.0, 0.3, emission=(1.0, 0.95, 0.8), emission_strength=0.6),
         "cable": m("cable", (0.03, 0.03, 0.03), 0.0, 0.7),
+        # the road down into the pit: what it was made of is not recorded (estimated: rolled gravel)
+        "road": m("road-gravel", (0.43, 0.4, 0.35), 0.0, 1.0),
+        # a shut door and its frame, and the dark of what is not modelled behind an opening (as the place's: place.py)
+        "blast": m("steel-door-green", (0.11, 0.14, 0.1), 0.5, 0.6),
+        "frame": m("steel-window-frame", (0.07, 0.075, 0.075), 0.6, 0.55),
+        "void": m("window-void", (0.02, 0.022, 0.025), 0.0, 0.6),
     }

@@ -98,5 +98,16 @@ if __name__ == "__main__":
             ("service-mast.png", (5, 0.6, 16), 62, dict(azimuth=-28, elevation=6, res=(1200, 1500))),
             ("service-erector.png", (-20, 0, 9), 75, dict(azimuth=-118, elevation=7, res=(1600, 1200))),
             ("service-drawn-off.png", (-48, 0, 4), 62, dict(azimuth=-112, elevation=9, res=(1600, 1000))),
+            # what is fixed on the deck and in the pit: along the rails at a man's eye height, the masts against the sky,
+            # one mast's head, the small building; from the pit's floor up at the deflector, the trenches and the sump,
+            # the road down, the cut in the north rim
+            ("fixed-deck-eye.png", (-10, -3.5, 0.5), 20, dict(azimuth=185, elevation=3.2, res=(1600, 1100), lens=28.0)),
+            ("fixed-masts.png", (0, 0, 16), 150, dict(azimuth=-135, elevation=3, res=(1600, 1200))),
+            ("fixed-mast-head.png", (22, 19.4, 31.5), 15, dict(azimuth=205, elevation=8, res=(1200, 1400))),
+            ("fixed-stair-head.png", (-18.4, 7.8, 1.2), 16, dict(azimuth=-150, elevation=6, res=(1400, 1000))),
+            ("fixed-pit-floor.png", (0, 0, -24), 78, dict(azimuth=0, elevation=-12.5, res=(1500, 1300))),
+            ("fixed-trenches.png", (34, 0, -44), 64, dict(azimuth=25, elevation=33, res=(1600, 1100))),
+            ("fixed-road.png", (130, 0, -22), 170, dict(azimuth=-35, elevation=24, res=(1600, 1000))),
+            ("fixed-notch.png", (-2, 92, -4), 85, dict(azimuth=55, elevation=32, res=(1500, 1100))),
         ],
     )
