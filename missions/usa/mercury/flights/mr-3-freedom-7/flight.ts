@@ -284,6 +284,7 @@ const vehicleParts: Part[] = [
       ['Length', '37.50 ft (11.43 m)'],
       ['Alcohol tank', '18.8 ft · 3,348 US gal'],
       ['Oxygen tank', '16.83 ft · 3,072 US gal'],
+      ['Marked', 'UNITED STATES down the two sides abeam of the flight’s line; MR 7 on a plate over each fin'],
       ['Skin', '0.063 in and 0.080 in aluminium'],
       ['Fuel', 'ethyl alcohol, cut with water'],
     ],

@@ -315,6 +315,7 @@ const parts: Part[] = [
       ['Length', '37.50 ft (11.43 m)'],
       ['Alcohol tank', '18.8 ft · 3,348 US gal'],
       ['Oxygen tank', '16.83 ft · 3,072 US gal'],
+      ['Marked', 'UNITED STATES down the two sides abeam of the flight’s line; MR 8 on a plate over each fin'],
       ['Oxygen loaded', 'from T-180 min'],
     ],
     explode: [0, 4.6, 0],

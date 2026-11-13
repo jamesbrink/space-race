@@ -17,7 +17,7 @@ import math
 
 from mathutils import Matrix, Vector
 
-from srlib import IN, TAU, MeshBuilder, Surf, arc_profile, deg, frame, group, interior, lettering, material, prof
+from srlib import IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, frame, group, interior, lettering, material, prof
 
 BODY_R = 35.0  # 70 in diameter
 # Base to the spacecraft's plane of maximum diameter. Derived: the vehicle is 83.38 ft (1000.56 in)
@@ -57,6 +57,7 @@ SHELLS = (
     "CenterUnit_Conduits",
     "CenterUnit_TankDomes",
     "CenterUnit_Lettering",
+    "CenterUnit_NumberPlates",
     "TailUnit_SkinWhite",
     "TailUnit_SkinBlack",
     "TailUnit_ShieldsAndDoors",
@@ -219,8 +220,10 @@ def _fin(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: 
                 rivets.disc(at, normal, 0.2 * IN, 0.09 * IN)  # their heads stand 2 mm proud: closer, and the face would fight them
 
 
-def build(base_z: float, font=None, clamp_covers: str = "boxes") -> None:
+def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | None = None) -> None:
     """Build the booster with its base at station `base_z` (inches) of the flight's frame.
+    `number`: the vehicle's own, lettered MR over it on a plate at the foot of the tanks on each fin's meridian
+    ("7" for MR-3's booster, "8" for MR-4's); left out, no plates.
     `clamp_covers`: the fairings over the clamp ring's three explosive bolts. "boxes": the rectangular ones flown
     through MR-3; "streamlined": the rounded ones MR-4 carried (Results of the Second U.S. Manned Suborbital Space
     Flight, p. 4 and Figure 2-2: "a more streamlined shape ... to reduce buffeting"; their size is read off the figure)."""
@@ -403,23 +406,56 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes") -> None:
             prof([(3.6, up(s_mid + dome - 1.0)), (7.0, up(s_mid + dome + 1.5)), (7.0, up(s_mid + dome + 2.5)), (0.0, up(s_mid + dome + 2.5))]), 24
         )
         feed.build("CenterUnit_FuelFeedLine", M["alu"], g)
-    # external conduit carrying wiring and pressurisation lines past the tanks
-    for t in (deg(45), deg(225)):
+    # External conduit carrying wiring and pressurisation lines past the tanks. On which meridians is not from any
+    # photograph (none read shows them): between the fins, clear of the lettering, which is on the fins' at 45 and 225
+    # degrees where these were until November 2026.
+    for t in (deg(0), deg(180)):
         fit.box((5.0 * IN, (S_TANK - S_TAIL + 30) * IN, 2.4 * IN), body.frame(t, up((S_TANK + S_TAIL) / 2), 1.0))
     for t, s in ((deg(135), S_TAIL + 180), (deg(315), S_TAIL + 420)):  # LOX and alcohol fill and vent
         f = body.frame(t, up(s))
         fit.lathe(prof([(3.2, -0.2), (3.2, 0.5), (2.4, 0.5), (2.3, 0.2), (0, 0.2)]), 28, matrix=f)
+    # UNITED STATES, twice: stacked upright, one letter under the next, on the meridians of the two fins that stand
+    # square to the pitch plane, 45 and 225 degrees round from the capsule's hatch (the periscope's fin, 135, lies down
+    # range: sites/lc-5.md). So each faces a camera abeam of the flight's line. Estimated, read off photographs of both
+    # boosters: MR-8's is 222 +/- 4 degrees round from the hatch in FHSU items 241, 466 and 468 and faces 289 to 294
+    # degrees round from the pad's +X in item 306, where that fin's meridian is 285; MR-7's is on a fin's meridian too,
+    # with an MR-7 plate, in S61-02407. UNITED stands above the dark band and STATES below it, a letter's place left
+    # between them: U 15 in under the top of the tanks, 30 in from letter to letter (items 306 and 468: 30 to 32 in;
+    # S61-02407: 28). It was on the 90 and 270 degree sides, 25 in apart with the band through it, until November 2026.
     paint = MeshBuilder()
     word = "UNITED STATES"
-    pitch = 25.0
-    for t in (deg(90), deg(270)):  # stacked upright, one letter under the next
+    pitch = 30.0
+    for t in (deg(45), deg(225)):
         for i, ch in enumerate(word):
             if ch == " ":
                 continue
-            s = S_TAIL + 225 + (len(word) - 1) * pitch / 2 - i * pitch
+            s = S_TANK - 15.0 - i * pitch
             # scale by height: lettering() fits width, so size narrow letters down
             width = {"I": 5.0, "T": 16.0, "E": 15.0, "S": 16.5}.get(ch, 17.5)
             lettering(paint, body, ch, width, t, up(s), False, font)
+    assert S_TANK - 15.0 - 5 * pitch - 12.0 > band1 and S_TANK - 15.0 - 7 * pitch + 12.0 < band0  # D over the band, S under it
+    # The vehicle's number, on a plate at the foot of the tanks on each fin's meridian: a white card 14 in wide and 16
+    # high edged in black, MR over the number (S61-02407 shows two of MR-7's, a quarter turn apart, 42 by 50 px where
+    # the body's 70 in is 215; FHSU items 466, 468 and 333 show MR-8's on three of its fins' meridians; that the
+    # fourth had one is assumed). Estimated.
+    plates = MeshBuilder()
+    if number:
+        w, h, edge = 14.0, 16.0, 0.7
+        frame_quads = (
+            ((-w / 2, -h / 2), (w / 2, -h / 2 + edge)),
+            ((-w / 2, h / 2 - edge), (w / 2, h / 2)),
+            ((-w / 2, -h / 2 + edge), (-w / 2 + edge, h / 2 - edge)),
+            ((w / 2 - edge, -h / 2 + edge), (w / 2, h / 2 - edge)),
+        )
+        for k in range(4):
+            t, zc = deg(45 + 90 * k), up(S_TAIL + 12.0)
+            for (x0, y0), (x1, y1) in frame_quads:
+                n = max(1, round((x1 - x0) / 1.75))  # in short lengths round the body, so that none sinks into the skin
+                for j in range(n):
+                    xa, xb = x0 + (x1 - x0) * j / n, x0 + (x1 - x0) * (j + 1) / n
+                    decal(plates, body, t, zc, [(xa, y0, 0), (xb, y0, 0), (xb, y1, 0), (xa, y1, 0)], [(0, 1, 2, 3)], False)
+            lettering(plates, body, "MR", 8.6, t, zc + 3.4, False, font)
+            lettering(plates, body, number, 3.3, t, zc - 3.6, False, font)
     for i in range(6):  # longitudinal welds: each tank barrel is rolled from sheet
         # in two lengths, stopping short of the ring weld between the tanks: the two welds would
         # otherwise lie in each other's surface at a coarse level of detail
@@ -432,6 +468,8 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes") -> None:
     fit.build("CenterUnit_Conduits", M["white"], g, smooth=True, sharp_angle=30)
     caps.build("CenterUnit_TankDomes", M["alu"], g)
     paint.build("CenterUnit_Lettering", M["red"], g, smooth=False)
+    if number:
+        plates.build("CenterUnit_NumberPlates", M["black"], g, smooth=False)
 
     # ---------------------------------------------------------------- tail unit
     g = group("RedstoneTailUnit")

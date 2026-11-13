@@ -211,7 +211,8 @@ Notes:
   going down to the pad in twenty; and each mast falling in twenty steps with the structure at its launch position
   and the cab down, against the vehicle and against everything else on the pad. Nothing crosses anything but each
   mast's pin, which is through its lug on the launcher. Nothing of the pad touches the vehicle: the umbilical stops
-  17 mm from the capsule at the receptacle, the booster's steady and its plug plate 18 mm from the skin, the
+  17 mm from the capsule at the receptacle, the booster's steady and its plug plate 18 mm from the skin (11 mm from
+  the booster's lettering, which is painted 0.3 in proud under the steady's edge), the
   capsule's mast 27 to 29 mm from the vehicle at its nearest, the closed platforms 94 to 107 mm, the cab at the hatch
   135 mm (MR-3) and 163 mm (MR-4). Fallen, the capsule's mast is 1.5 in off the pad at its lowest and the booster's
   1.7 in; nothing stands within 3 ft of either as it lies.
