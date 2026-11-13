@@ -558,19 +558,22 @@ async function soak(name, { touch = false, at = -4, fault = false } = {}) {
     await h.wait(2200);
     await page.evaluate(() => {
       let n = 60;
-      window.__turning = true;
-      const st = window.sr.stage;
-      let last = st.camStepped;
-      const turn = () => {
-        // (18 radians a second of the time the rig is stepped through, which is what the check measures by: a turn of
-        // so much a frame was only 3 radians a second at ten frames a second, and under the check's 9)
-        st.cam.orbit.theta += 18 * (st.camStepped - last);
-        last = st.camStepped;
-        st.dirty = true;
-        if (--n > 0) requestAnimationFrame(turn);
-        else window.__turning = false;
+      const cam = window.sr.stage.cam;
+      const update = cam.update;
+      // 18 radians a second of the time the rig is stepped through, which is what the check measures by, put into the
+      // step itself: each frame's turn is 18 times that frame's own step, made before the rig says where the view is. (Turned
+      // from a frame callback of its own, by the step of the frame before, it landed a frame late: where one frame ran
+      // longer than the last the turn read as less than the check's 9 radians a second, and some 3 % of the faulted
+      // frames went unflagged at any load, 12 % on a busy machine. And a turn of so much a frame was only 3 radians a
+      // second at ten frames a second.)
+      cam.update = function (dt, ...rest) {
+        const faulted = n > 0 && cam.rig === 'orbit';
+        if (faulted) cam.orbit.theta += 18 * dt;
+        window.__turning = faulted;
+        if (n > 0) n--;
+        else cam.update = update;
+        return update.call(this, dt, ...rest);
       };
-      requestAnimationFrame(turn);
     });
     await h.wait(1500);
   }
@@ -630,6 +633,8 @@ async function soak(name, { touch = false, at = -4, fault = false } = {}) {
     'faster than the hands asked': [],
   };
   const rigs = {};
+  /** For the self-check: what each frame was, so a faulted frame that went unflagged can say why. */
+  const seen = [];
   let quiet = 9;
   let sinceIn = 9;
   let sinceAny = 9;
@@ -697,16 +702,34 @@ async function soak(name, { touch = false, at = -4, fault = false } = {}) {
         stepped > 0 ? len(sub(sub(b.p, a.p), carried)) / dist / stepped : len(sub(sub(b.p, a.p), carried)) > 1e-6 * dist ? Infinity : 0;
       if (rate > 9) fails['faster than the hands asked'].push([i, b.rig, rate.toFixed(1)]);
     }
+    if (fault) {
+      const stepped = b.stepped - a.stepped;
+      seen[i] = {
+        i,
+        rig: b.rig,
+        stepped: +stepped.toFixed(4),
+        between: +dt.toFixed(4),
+        rate: +(stepped > 0 ? len(sub(sub(b.p, a.p), carried)) / dist / stepped : 0).toFixed(2),
+        settled,
+        journey: a.journey || b.journey,
+        blend: a.blend || b.blend,
+        shape: +sinceShape.toFixed(2),
+        hands: !(sinceAny > 0.05),
+      };
+    }
   }
   const seconds = (frames.at(-1).t - frames[0].t) / 1000;
   console.log(
     `\n${name}: ${EVENTS} events, ${frames.length} frames in ${seconds.toFixed(0)} s, T${frames[0].clock.toFixed(0)} to T+${frames.at(-1).clock.toFixed(0)}, by rig ${JSON.stringify(rigs)}`,
   );
   if (fault) {
-    // (a frame and the one before it both drawn while the orbiting view was being turned: the frame's move is the fault's)
+    // (a frame whose step was turned by the fault, from one drawn in the same rig: the frame's move is the fault's)
     const turned = new Set();
-    for (let i = 1; i < frames.length; i++) if (frames[i].turning && frames[i - 1].turning && frames[i].rig === 'orbit') turned.add(i);
+    for (let i = 1; i < frames.length; i++)
+      if (frames[i].turning && frames[i].rig === 'orbit' && frames[i - 1].rig === 'orbit') turned.add(i);
     const caught = fails['faster than the hands asked'].filter(([i]) => turned.has(i)).length;
+    const flagged = new Set(fails['faster than the hands asked'].map(([i]) => i));
+    for (const i of turned) if (!flagged.has(i)) console.log('    unflagged', JSON.stringify(seen[i]));
     const share = turned.size ? caught / turned.size : 0;
     check(
       turned.size >= 10 && share >= 0.9,
