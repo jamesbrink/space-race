@@ -54,6 +54,7 @@ The legend at the bottom left of the page lists every key and gesture.
 | Vostok 4 (spacecraft and launch vehicle, so far) | USSR | 12 August 1962 | [flight](missions/ussr/vostok/flights/vostok-4/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-4/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-4/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
 | Vostok 5 (spacecraft and launch vehicle, so far) | USSR | 14 June 1963 | [flight](missions/ussr/vostok/flights/vostok-5/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-5/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-5/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
 | Vostok 6 (spacecraft and launch vehicle, so far) | USSR | 16 June 1963 | [flight](missions/ussr/vostok/flights/vostok-6/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-6/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-6/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
+| Voskhod 1 (spacecraft, crew and launch vehicle, so far) | USSR | 12 October 1964 | [flight](missions/ussr/voskhod/flights/voskhod-1/README.md) · [spacecraft](missions/ussr/voskhod/flights/voskhod-1/spacecraft.md) · [the Voskhod](missions/ussr/voskhod/vehicles/voskhod.md) · [launch vehicle](missions/ussr/voskhod/vehicles/voskhod-11a57.md) · [what the crew wore](missions/ussr/voskhod/crew/flight-suit.md) | [flight's fit](missions/ussr/voskhod/flights/voskhod-1/model/vehicle.py) · [spacecraft](missions/ussr/voskhod/vehicles/voskhod.py) · [launch vehicle](missions/ussr/voskhod/vehicles/voskhod_11a57/__init__.py) · [crew](missions/ussr/voskhod/crew/flight_suit.py) |
 
 ## Timeline
 
@@ -80,7 +81,7 @@ And the programmes after them:
 | --- | --- | --- | --- | --- |
 | Vostok | USSR | 1961 to 1963 | The first spacecraft; Baikonur | one spacecraft and its launch vehicle built |
 | Mercury | USA | 1961 to 1963 | Redstone and Atlas; Cape Canaveral | one flight built, a second's vehicle |
-| Voskhod | USSR | 1964 to 1965 | Three aboard; the first spacewalk | planned |
+| Voskhod | USSR | 1964 to 1965 | Three aboard; the first spacewalk | Voskhod 1’s spacecraft, crew and launch vehicle built ([programme](missions/ussr/voskhod/README.md)) |
 | Gemini | USA | 1965 to 1966 | Two aboard, Titan II, rendezvous and docking | planned |
 | Soyuz | USSR, Russia | 1967 onward | The longest-serving crewed spacecraft | planned |
 | Apollo | USA | 1968 to 1972 | Saturn IB and Saturn V; lunar orbit and the Moon | planned |
