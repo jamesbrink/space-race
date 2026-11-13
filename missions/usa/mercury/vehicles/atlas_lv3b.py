@@ -33,6 +33,7 @@ MATE_R = 35.0  # the tank's radius there: "approximately 70 inches" across
 S_SHOULDER = 642.0  # where the forward taper reaches the full 10 ft
 S_BULKHEAD = 958.0  # where the intermediate bulkhead meets the wall: oxygen above it, fuel below
 BULKHEAD_RISE = 45.0  # how far that bulkhead bulges forward into the oxygen
+INSULATION = 2.5  # the insulation under it, where a vehicle kept it, and its retaining bulkhead: how far below the bulkhead's crown: estimated
 DOME_RISE = 18.0  # how far the oxygen tank's forward dome stands above the mating ring, inside the adapter
 S_STAGING = 1133.0  # the plane the booster section parts from the tank at
 S_TANK_AFT = 1135.0  # the thrust ring, just under the staging plane, where the tank's wall turns in to the thrust cone
@@ -195,10 +196,12 @@ def _down(mb: MeshBuilder, surf: Surf, body: str, s0: float, s1: float, size, th
         )
 
 
-def build(base_z: float, font=None, serial: str = "10 9D", pods_at: float = deg(-45)) -> None:
+def build(base_z: float, font=None, serial: str = "10 9D", pods_at: float = deg(-45), insulation_bulkhead: bool = False) -> None:
     """Build the launch vehicle with its booster engines' exit plane at `base_z` (inches) of the flight's frame.
     `serial`: the vehicle's number as painted on the fuel tank, in two parts either side of a vernier's line.
-    `pods_at`: the angle of the first equipment pod (the one the conduit from the adapter runs down to)."""
+    `pods_at`: the angle of the first equipment pod (the one the conduit from the adapter runs down to).
+    `insulation_bulkhead`: whether the vehicle flew with the insulation under its intermediate bulkhead and the
+    bulkhead that kept it there: 109-D had them taken out on the pad, 107-D kept them (atlas-lv3b.md)."""
     M = _reuse(materials())
     z = lambda s: base_z + (S_EXIT - s)  # noqa: E731  a station's height in the flight's frame
     detail = srlib.DETAIL
@@ -357,6 +360,32 @@ def build(base_z: float, font=None, serial: str = "10 9D", pods_at: float = deg(
     domes.lathe(prof([((TANK_R - 1.4) * math.cos(a), z(S_BULKHEAD) + rise * math.sin(a)) for a in (math.pi / 2 * i / 12 for i in range(13))]), 64)
     domes.lathe(prof([(TANK_R - 1.6, z(S_BULKHEAD)), (TANK_R - 0.6, z(S_BULKHEAD))]), 64)
     domes.build("Tank_Bulkheads", M["stainless_in"], g, sharp_angle=None)
+    if insulation_bulkhead:
+        # Under the intermediate bulkhead, on the fuel's side: insulation between the cold oxygen and the kerosene, and
+        # a thin bulkhead that keeps it there. That a vehicle had them is its report's; how thick the insulation was and
+        # what the bulkhead was made of are not in anything read.
+        keep = MeshBuilder()
+        under = INSULATION + 0.6  # the retaining bulkhead's own depth under the insulation
+        keep.lathe(
+            prof(
+                [
+                    ((TANK_R - 1.4) * math.cos(a), z(S_BULKHEAD) + (rise - INSULATION) * math.sin(a) - under * (1.0 - math.sin(a)))
+                    for a in (math.pi / 2 * i / 12 for i in range(13))
+                ]
+            ),
+            64,
+        )
+        keep.lathe(prof([(TANK_R - 1.6, z(S_BULKHEAD) - under), (TANK_R - 0.6, z(S_BULKHEAD) - under)]), 64)
+        # (seen from the fuel's side, and from the oxygen's where the tank is cut: its own material, drawn both ways)
+        lagging = material("insulation-bulkhead", (0.50, 0.44, 0.30), 0.0, 0.85, double_sided=True)
+        _say(
+            keep.build("Tank_InsulationBulkhead", lagging, g, sharp_angle=None),
+            "Insulation bulkhead",
+            "Between the liquid oxygen above and the kerosene below there is one thin steel dome. On the fuel's side of it the Atlas "
+            "carried a layer of insulation, held up by a second, lighter bulkhead: this. On the vehicle before this one fuel was "
+            "found to have leaked into the insulation, and both were cut out on the pad; this vehicle kept them. "
+            "That it had them is documented; their thickness and material here are estimated.",
+        )
     # paint: UNITED STATES down the oxygen tank, beside the first vernier's line, and the vehicle's number above that
     # vernier, in two parts either side of the slender fairing that runs up from it
     paint, number = MeshBuilder(), MeshBuilder()

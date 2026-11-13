@@ -1,9 +1,9 @@
 # Mercury-Atlas launch vehicle (Atlas D, LV-3B)
 
 The booster for the four orbital Mercury flights, MA-6 to MA-9. Model:
-[atlas_lv3b.py](atlas_lv3b.py), imported by each flight's `model/vehicle.py`. Built so far for
-Atlas 109-D, which flew MA-6; another serial is another number painted on it (`build(serial=...)`)
-and whatever its photographs show to differ.
+[atlas_lv3b.py](atlas_lv3b.py), imported by each flight's `model/vehicle.py`. Built for Atlas 109-D,
+which flew MA-6, and for Atlas 107-D, which flew MA-7; another serial is another number painted on it
+(`build(serial=...)`) and whatever its record shows to differ ("One vehicle from the next", below).
 
 **It is a stage and a half.** All five engines are lit on the ground. About two minutes up the two
 booster engines, their pumps and the skirt that carries them are dropped as one piece, the booster
@@ -68,6 +68,20 @@ Convair's stations run in inches from the nose toward the tail; the model keeps 
 | Liftoff weight | about 260,000 lb | not established for 109-D: *This New Ocean* gives that figure for the missile. No weight is in the model or the flight's data |
 | Cutoffs on MA-6 | boosters 00:02:09.6, sustainer 00:05:01.4 | documented (Results, Table 6-II) |
 
+## One vehicle from the next
+
+| | Atlas 109-D (MA-6) | Atlas 107-D (MA-7) | Confidence | Source | In the model |
+| --- | --- | --- | --- | --- | --- |
+| Number on the fuel tank | 109 D | 107 D, in the same place: either side of the slender fairing above one vernier | documented by photograph | NASA S62-05531, 62PC-52, S62-02849 (MA-7 on the stand and leaving it) | yes: `serial` |
+| Insulation under the intermediate bulkhead, and the bulkhead that held it | cut out on the pad, after fuel was found in the insulation | retained | documented | NASA SP-45, pp. 12 and 13; NASA TN D-3814, p. 8; NASA SP-6, p. 13 | yes: `insulation_bulkhead`. Its depth under the intermediate bulkhead (2.5 in) and its material are estimated: nothing read gives either |
+| Staging time, as set | 131.3 s; backup 136 s | 130.1 s; backup 132.2 s | documented | NASA TN D-3814, p. 7; *This New Ocean*, p. 446 | in the flight's data |
+| Booster engines | | main oxidiser valves of stainless steel for aluminium; improved pneumatic regulators; servo stabilisation for their actuators | documented | NASA TN D-3814, p. 8 | no: inside |
+| Tank and propellant utilisation | | the boil-off valve's spring rate, the oxygen tank regulator's range, the propellant utilisation system's calibration and telemetry changed; a fuel drain fitting moved clear of the structure | documented | the same page | no |
+| Flight control | | its canisters replaced after the review of 16 May 1962 | documented | NASA TN D-3814, p. 16 | no |
+| Markings elsewhere, pods, lines, fairings | as photographed | taken as 109-D's | estimated | the photographs of 107-D read are from further off and show nothing to the contrary: UNITED STATES down the oxygen tank beside the same vernier's line, the long pod and the short one | as 109-D |
+
+Cutoffs on MA-7: boosters 00:02:08.6, sustainer 00:05:09.9 (NASA TN D-3814, Table XVI).
+
 ## What was changed for Mercury
 
 From NASA SP-45, pp. 92 to 95 and Figure 5-13. None of these shows on the outside but the adapter;
@@ -84,7 +98,8 @@ they are here so that a later flight's model can tell what to look for.
   their exhaust.
 - No vernier solo: the verniers stop with the sustainer.
 - A thinner boil-off valve on the dome; the insulation bulkhead under the intermediate bulkhead
-  removed; lighter telemetry; a new autopilot; baffled injectors; a wet start.
+  removed (not from every vehicle: "One vehicle from the next", above); lighter telemetry; a new
+  autopilot; baffled injectors; a wet start.
 - Thicker skins at the top of the oxygen tank and a stiffened adapter, after MA-1 broke up there.
 
 ## Sections
@@ -92,7 +107,7 @@ they are here so that a later flight's model can tell what to look for.
 | Node | What it is |
 | --- | --- |
 | `AtlasAdapter` | the Mercury adapter: corrugated titanium over a titanium inner skin (SEDR 104, 2-14 and Figure 2-9: documented), the clamp ring of three segments and three explosive bolts with a fairing over each (2-15 and Figure 2-10: documented), the access door, the cup on three straps under the retropack. The clamp's band shows red in the liftoff photograph: its colour is that photograph's. The count of ribs (108) is off a photograph |
-| `AtlasTank` | the tank from the mating ring to the thrust cone's apex: frost on the oxygen tank and bare stainless below, the ring welds, the two bulkheads, the fibreglass shield and the boil-off valve inside the adapter, the oxygen duct down the outside of the fuel tank, UNITED STATES and the vehicle's number |
+| `AtlasTank` | the tank from the mating ring to the thrust cone's apex: frost on the oxygen tank and bare stainless below, the ring welds, the two bulkheads (and under the intermediate one, on a vehicle that kept it, the insulation bulkhead), the fibreglass shield and the boil-off valve inside the adapter, the oxygen duct down the outside of the fuel tank, UNITED STATES and the vehicle's number |
 | `AtlasPods` | the long pod, the short pod, the wiring fairing and the rate gyro package |
 | `AtlasVerniers` | the two verniers, each under a hood; the slender fairing above one and the oxygen tank's pressurisation line above the other |
 | `AtlasSustainer` | the sustainer's chamber and bell, its pump and its turbine's exhaust |
@@ -137,4 +152,4 @@ aft; then the capsule from the adapter.
 
 ## Sources
 
-[docs/sources.md](../../../../docs/sources.md), "Mercury-Atlas 6".
+[docs/sources.md](../../../../docs/sources.md), "Mercury-Atlas 6" and "Mercury-Atlas 7".

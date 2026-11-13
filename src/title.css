@@ -1,8 +1,10 @@
 /* The front page's words: the mark and the flights to go into, over the page's own picture (front/scene.ts: the Earth from out by the Moon).
    The picture is left as it is (no veil, no blur over the whole): each thing that is read has its own dark glass, dense enough that the
    smallest text keeps 4.5:1 with white cloud behind it (0.84 of near black over white is #343434; --faint on that is 4.9:1). */
-#title { --title-glass: rgba(8, 9, 12, 0.84); position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto auto; justify-items: center; align-items: center; gap: 28px;
-  padding: clamp(20px, 5vh, 56px) clamp(16px, 5vw, 56px); overflow-y: auto; color: var(--ink); transition: opacity 0.55s ease; }
+/* It scrolls up and down and never sideways: nothing in it reaches past its sides (the mark's dark, the rows, which do not move when pointed
+   at), so a trackpad's sideways drift or a thumb's has nothing to move (tools/front-test.mjs, "steady"). */
+#title { --title-glass: rgba(8, 9, 12, 0.84); --title-side: clamp(16px, 5vw, 56px); position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto auto; justify-items: center; align-items: center; gap: 28px;
+  padding: clamp(20px, 5vh, 56px) var(--title-side); overflow-y: auto; color: var(--ink); transition: opacity 0.55s ease; }
 #title[hidden] { display: none; }
 #title.leaving { opacity: 0; pointer-events: none; }
 /* left alone, the words make way for the picture; the first movement brings them back (front.ts) */
@@ -13,7 +15,7 @@ body.titled #ui { visibility: hidden; }
 
 .title-mark { position: relative; width: min(760px, 58vw, 100%); align-self: end; text-align: center; }
 /* a soft dark behind the mark and its line, where the Moon's ground or the Earth would otherwise be behind them */
-.title-mark::before { content: ''; position: absolute; inset: -18% -8% -14%; z-index: -1; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.4) 55%, rgba(0, 0, 0, 0)); pointer-events: none; }
+.title-mark::before { content: ''; position: absolute; inset: -18% max(-8%, -1 * var(--title-side)) -14%; z-index: -1; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.4) 55%, rgba(0, 0, 0, 0)); pointer-events: none; }
 .logo { display: block; width: 100%; height: auto; overflow: visible; color: var(--ink); filter: drop-shadow(0 6px 28px rgba(0, 0, 0, 0.6)); }
 .logo-trail { stroke-dasharray: 1; stroke-dashoffset: 1; animation: logo-fly 1.5s cubic-bezier(0.3, 0, 0.2, 1) 0.25s forwards; }
 .logo-trail.late { animation-delay: 0.55s; }
@@ -25,8 +27,9 @@ body.titled #ui { visibility: hidden; }
 
 .title-flights { width: min(720px, 100%); display: grid; gap: 10px; align-self: start; }
 .title-flights button { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; width: 100%; padding: 16px 20px; text-align: left;
-  background: var(--title-glass); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
-.title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.9); border-color: rgba(255, 196, 107, 0.6); transform: translateX(3px); }
+  background: var(--title-glass); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; }
+/* pointed at, a row is lit where it stands (its amber edge thickens inside it): one that moved would slide to and fro under a still pointer as the list scrolled past it */
+.title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.9); border-color: rgba(255, 196, 107, 0.6); box-shadow: inset 3px 0 0 var(--amber); }
 .title-flights .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--faint); }
 .title-flights .what { display: grid; gap: 3px; min-width: 0; }
 .title-flights .what b { font: 600 20px/1.15 var(--sans); color: var(--ink); letter-spacing: 0.01em; }
