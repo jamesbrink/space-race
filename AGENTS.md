@@ -34,6 +34,7 @@ pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their
 pnpm model:mr-4       # rebuild Liberty Bell 7's GLBs (vehicle, pad)
 pnpm model:ma-6       # rebuild Friendship 7's vehicle: spacecraft No. 13 on Atlas 109-D
 pnpm model:ma-7       # rebuild Aurora 7's vehicle: spacecraft No. 18 on Atlas 107-D
+pnpm model:ma-9       # rebuild Faith 7's vehicle: spacecraft No. 20 on Atlas 130-D
 pnpm model:vostok-2   # rebuild Vostok 2's vehicle
 pnpm model:vostok-3   # rebuild Vostok 3's vehicle
 pnpm model:vostok-4   # rebuild Vostok 4's vehicle

@@ -102,9 +102,10 @@ Z_BOOSTER_BASE = -atlas_lv3b.LENGTH  # the booster engines' exit plane
 # for attitude reference"). On every capsule before, the ground's umbilical plugged in under the periscope's lens, in
 # the periscope's own opening; this one had "a spring-loaded mechanism ... for the closing of the spacecraft umbilical
 # door" (the MA-9 press kit, p. 33) and an UMBILICAL DOOR light at the head of its sequence lights (SP-45, Figure
-# 17-7(b)). So: a door for the umbilical alone. Where it was is not in anything read, and no photograph read shows
-# this side of No. 20: it is put where the umbilical had been on No. 11, in the plate the periscope's door had stood
-# in, and is as big as the receptacle wants. Estimated.
+# 17-7(b)). So: a door for the umbilical alone. Where it was is not in anything read. The one photograph read that
+# reaches this side of No. 20 (KSC-63-MA9-174, at the cone's limb) shows a plain plate there under the upper seam,
+# where the beads stop, and nothing of what is in it: the door is put in that plate where the umbilical had been on
+# No. 11, and is as big as the receptacle wants. Estimated.
 UMBILICAL_Z = no11.UMBILICAL_Z
 UMBILICAL_DOOR = (deg(83.5), deg(96.5), UMBILICAL_Z - 3.2, UMBILICAL_Z + 3.2)
 DOOR_JOINT = 0.15  # the joint round the shut door, in
@@ -112,6 +113,14 @@ DOOR_DEEP = 1.1  # the opening's floor under the skin, in
 
 # The shingle under the window: two stacks of beads, as No. 18's had. No photograph of No. 20 read shows it square on.
 NAME_STACKS = 2
+# The shingles from the pilot's feet round to the window part at other stations than No. 11's. KSC-63-MA9-174, taken
+# from above with the capsule in its collar, shows one seam running round that side just above the first UNITED, and
+# above it a single row of shingles to the top of the cone, the three white squares on one of them: "a single test
+# shingle located at the small end of the conical section" some twenty inches long. S63-07521 has a row of fasteners
+# at the foot of STATES, above the flag. So: seams at about stations 20.8 and 38.5 from 75 to 255 degrees (columns 2
+# to 7). Documented by photograph that they are not No. 11's; the stations are scaled off the two and are estimated.
+# To the right of the hatch GPN-2000-001335 shows No. 11's seams, at the hatch's head and foot.
+ROWS = {k: (20.8, 38.5) for k in range(2, 8)}
 
 # The paint. All of it is placed from photographs of this capsule (spacecraft.md, "Paint"); none of it is dimensioned.
 # UNITED STATES stood on it twice, each with a flag under it: to the left of the window, low on the cone, under the
@@ -130,7 +139,7 @@ FLAG = 12.0  # the flags' width
 # shingle are documented; that they stood one above the next over the U of the first UNITED, and the gaps between
 # them, are read off S63-06259 and S63-07521. The middle of the column round the cone, the station of the top
 # square's upper edge, a square's side, and the gap between two.
-PATCHES = (deg(185.5), 57.4, 6.0, 0.7)
+PATCHES = (deg(185), 57.4, 6.0, 0.7)
 
 # The emblem, on the shingle under the window: a white field with straight edges and points, FAITH across it in dark
 # capitals and a 7 under that. The only photographs of it read (S63-06259, S63-07521) see it almost edge on, at the
@@ -228,7 +237,7 @@ def build_afterbody(M, font) -> Skin:
     """The cone's skin as No. 11's script builds it (shingles, plates, hatch, roll jets) with no periscope, an opening
     for the umbilical's door in the plate the periscope's door had stood in, this capsule's shingle under the window,
     and No. 20's paint put on."""
-    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, paint=False, periscope=False, door=UMBILICAL_DOOR)
+    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, paint=False, periscope=False, door=UMBILICAL_DOOR, rows=ROWS)
     g = bpy.data.objects["Afterbody"]
     build_umbilical_door(M, g, skin)
     build_paint(M, g, skin, font)
@@ -243,16 +252,20 @@ def build_umbilical_door(M, g, skin: Skin) -> None:
     mid = ((t0 + t1) / 2, (z0 + z1) / 2)
     to = skin.flat(*mid)
     edge = skin.bounds(*mid, t0, t1, z0, z1)
-    ring = lambda pts, n=5: [  # noqa: E731  a four-sided outline, each side cut in n
-        (pts[i][0] + (pts[(i + 1) % 4][0] - pts[i][0]) * k / n, pts[i][1] + (pts[(i + 1) % 4][1] - pts[i][1]) * k / n) for i in range(4) for k in range(n)
-    ]
+
+    def ring(pts, n: int = 5) -> list[tuple[float, float]]:
+        """A four-sided outline, each side cut in n."""
+        step = lambda a, b, k: a + (b - a) * k / n  # noqa: E731
+        return [(step(pts[i][0], pts[(i + 1) % 4][0], k), step(pts[i][1], pts[(i + 1) % 4][1], k)) for i in range(4) for k in range(n)]
+
     says = (
         "Umbilical door",
-        "Until the last half minute the capsule was fed from the ground through one thick plug: power, cooling, the wires that told "
+        "Until just before liftoff the capsule was fed from the ground through one thick plug: power, cooling, the wires that told "
         "the blockhouse how it was. On every earlier capsule that plug went in under the periscope's lens, and the periscope's door "
         "shut over both. This capsule had no periscope, so the socket has a door to itself, sprung to snap shut when the plug is "
         "thrown off, and a light at the head of the pilot's sequence panel to say that it has. "
-        "That it had one is the record's; no photograph read shows this side of the capsule, and its place and size are ours.",
+        "That it had one is the record's; the one photograph read of this side shows a plain plate and no more, and the door's "
+        "place and size are ours.",
     )
     well, leaf, hinge = MeshBuilder(), MeshBuilder(), MeshBuilder()
     outer = ring(edge)
@@ -263,7 +276,7 @@ def build_umbilical_door(M, g, skin: Skin) -> None:
         M,
         g,
         (mid[0], UMBILICAL_Z),
-        "Where the ground's umbilical was plugged in until it was thrown off in the last half minute of the count. "
+        "Where the ground's umbilical was plugged in until it was thrown off at the end of the count. "
         "It lies under its own door, which is shut, as at liftoff. Placed as Liberty Bell 7's: nothing read places this capsule's.",
         sunk=mercury_capsule.UMBILICAL_SUNK,
     )
@@ -341,7 +354,8 @@ def build_paint(M, g, skin: Skin, font) -> None:
     up, length, tall = FAITH
     plain = text_mesh("FAITH", 1.0, font, cuts=0)[0]
     aspect = (max(v[0] for v in plain) - min(v[0] for v in plain)) / (max(v[1] for v in plain) - min(v[1] for v in plain))
-    mercury_orbital.hand_lettering(skin, name, "FAITH", length, st, sz + up * sr * math.cos(CONE.a), font, tall=tall * aspect / length, lift=lift + LAYER)
+    z_word = sz + up * sr * math.cos(CONE.a)
+    mercury_orbital.hand_lettering(skin, name, "FAITH", length, st, z_word, font, tall=tall * aspect / length, lift=lift + LAYER)
     down, high = SEVEN
     mercury_orbital.hand_lettering(skin, name, "7", high, st, sz + down * sr * math.cos(CONE.a), font, upright=True, lift=lift + LAYER)
     thing(field, "Afterbody_Star", M["paint_white"], g, *says, smooth=False)
@@ -374,7 +388,8 @@ def build_retropack_experiments(M) -> None:
         can.lathe(prof([(r, z - 0.3), (r + 0.1, z - 0.2), (r + 0.1, z + 0.2), (r, z + 0.3)]), 32, matrix=F)
     # its cover: two halves of a shallow cone over the open end, with a joint between them, held shut until the squib
     for a0 in (0.0, math.pi):
-        lids.lathe(prof([(r + 0.12, long - 0.35), (r + 0.12, long + 0.05), (0.35, long + 1.25)]), 12, matrix=F, arc=(a0 + 0.035, a0 + math.pi - 0.035))
+        half = (a0 + 0.035, a0 + math.pi - 0.035)
+        lids.lathe(prof([(r + 0.12, long - 0.35), (r + 0.12, long + 0.05), (0.35, long + 1.25)]), 12, matrix=F, arc=half)
     lids.lathe(prof([(0.42, long + 1.1), (0.42, long + 1.5), (0.0, long + 1.55)]), 12, matrix=F)  # the latch the squib let go
     thing(can, "Retropack_BeaconCanister", M["aluminium"], g, *says, sharp_angle=35)
     thing(lids, "Retropack_BeaconCover", M["aluminium"], g, *says, shell=False, sharp_angle=35)
@@ -460,12 +475,12 @@ def build_crew_cabin(M, window: dict) -> None:
     mercury_capsule.bulkhead_stiffeners(M, g)
     if not interior():
         return
-    # The pilot: the Mark IV suit as modelled (crew/mark_iv_suit.py), on the couch, as Cooper's own photographs show his:
-    # his stature as commonly given (5 ft 8 in: no primary record of it was found), the gloves locked to rings at the
-    # wrists, two microphones in the helmet, the biomedical connector a round port on the right thigh (NASA S63-01922).
-    # What his suit had that the model has not is in spacecraft.md ("The pilot").
+    # The pilot: the Mark IV suit as modelled (crew/mark_iv_suit.py), on the couch, as Cooper and his own photographs
+    # have it: his stature, 5 ft 9 in (The Triumph of Astronaut L. Gordon Cooper, Jr. and the Faith 7, p. 1: documented),
+    # the gloves locked to rings at the wrists, two microphones in the helmet, the biomedical connector a round port on
+    # the right thigh (NASA S63-01922). What his suit had that the model has not is in spacecraft.md ("The pilot").
     P = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
-    cooper = mark_iv_suit.Fit("MA-9", "L. G. COOPER", 172.7, wrist_rings=True, microphones=2, port=True)
+    cooper = mark_iv_suit.Fit("MA-9", "L. G. COOPER", 175.3, wrist_rings=True, microphones=2, port=True)
     pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot", cooper)
     where = mercury_cabin_20.build(g, VESSEL, M, load_font(), pilot, PILOT_HIP, HATCH, CONE_H - 0.3, mark_iv_suit.seated_points(), window)
     mercury_cabin_20.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, HATCH)

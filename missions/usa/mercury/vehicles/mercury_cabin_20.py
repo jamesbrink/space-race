@@ -54,7 +54,15 @@ SELECTORS = ((0.19, 0.44), (0.19, 0.81))  # the two rotary switches under it: SE
 # what each chose, round its knob (degrees clockwise from the top), so far as the figure can be read
 SELECTS = (
     (("PITCH\nUP", -62), ("YAW\nL", -28), ("YAW\nR", 28), ("ROLL\nCCW", 62), ("PITCH\nDOWN", -105), ("ROLL\nCW", 105), ("RETRO", -140)),
-    (("H2O2\nAUTO", -40), ("CABIN\nOUTLET", 40), ("H2O2\nMAN", -80), ("MAIN\nINVERT", 80), ("H2O2\nRES", -125), ("FANS\nINVERT", 112), ("STBY\nINVERT", 150)),
+    (
+        ("H2O2\nAUTO", -40),
+        ("CABIN\nOUTLET", 40),
+        ("H2O2\nMAN", -80),
+        ("MAIN\nINVERT", 80),
+        ("H2O2\nRES", -125),
+        ("FANS\nINVERT", 112),
+        ("STBY\nINVERT", 150),
+    ),
 )
 DUALS = ((0.57, 0.18, 0.92), (0.78, 0.18, 0.92))  # the two instruments with two needles each
 # the toggle switches: where, the legend over each (empty where the figure cannot be read), and its two positions
@@ -74,13 +82,13 @@ SWITCHES = (
 )
 RECORDING = (0.61, 0.84, 1.5, 0.75)  # the RECORDING light: where, and its size
 
-# The slow-scan television camera (NASA SP-45, p. 56 and Figure 3-12; the MA-9 press kit, pp. 22 to 24): "can be
+# The slow-scan television camera (NASA SP-45, p. 56 and Figure 3-12; the MA-9 press kit, pp. 20 to 22): "can be
 # hand-held or mounted on a bracket to the right of the pilot's hand controller", where "the camera is normally directed
 # at the pilot". Documented: that it was aboard, on a bracket there, looking at him. Its size is scaled off Figure 3-12
 # against nothing but the bench it lies on, and where the bracket stood is ours. Estimated.
 CAMERA = (1.35, 7.4)  # its body: radius and length
 CAMERA_LENS = (0.9, 1.9)  # the lens on its end
-CAMERA_AT = (16.2, 6.2, 17.6)  # the middle of its body, in the capsule
+CAMERA_AT = (18.6, 8.2, 19.4)  # the middle of its body, in the capsule: outboard of his forearm, and above it
 
 # What a visitor points at in this cabin says: No. 11's meshes (and No. 13's seventieth bolt), with this flight's words.
 THINGS = {
@@ -115,7 +123,7 @@ PLUNGER = (
 CENTRE = (
     "Centre panel",
     "Where every Mercury capsule before this one had the periscope's screen, eight inches across. With the periscope gone the space was "
-    "given to what a day in orbit needed watching: a temperature gauge that two rotary switches could point at any of fourteen places, "
+    "given to what a day in orbit needed watching: a temperature gauge that two rotary switches could point at a dozen and more places, "
     "from the thrusters to the peroxide tanks to the inverters; the fuel gauges; and switches for the programmer, the radiation "
     "experiment, the television camera, the tape recorder and the telemetry. It was these temperatures that Cooper read out, pass after "
     "pass. Laid out from one small drawing; legends that drawing does not let us read are left off.",
@@ -295,4 +303,3 @@ def name_things(parent) -> None:
         obj = bpy.data.objects.get(name)
         if obj is not None and obj.parent == parent:
             obj["label"], obj["about"] = label, about
-

@@ -144,14 +144,17 @@ SHELLS = (
 # --------------------------------------------------------------------------- parts
 
 
-def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True, periscope: bool = True, door=None) -> Skin:
+def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True, periscope: bool = True, door=None, rows=None) -> Skin:
     """The cone's skin: shingles beaded round it, the plain plates round the window, the hatch and the periscope's
     door, and the paint. A later capsule built by this (model the flight, not the type) says what its own photographs
     show otherwise: `name_stacks`, how many stacks of beads the shingle under the window carries, and `paint` False
     for a capsule that puts its own paint on. A capsule that flew without a periscope says `periscope` False: nothing
     of it is built, and the plate its door stood in is left whole, or has the opening `door` in it (angle from, angle
-    to, station from, to: for what that capsule had there, which its own script builds into it)."""
+    to, station from, to: for what that capsule had there, which its own script builds into it). `rows`: for a capsule
+    whose photographs show its shingles parting at other stations than No. 11's, the two stations by column (0 to 11,
+    the first from 15 degrees; not the window's column or the hatch's two): a column it does not name is No. 11's."""
     door = SCOPE_DOOR if periscope else door
+    seams = lambda k: (rows or {}).get(k, (SEAM_LOW, SEAM_HIGH))  # noqa: E731
     g = group("Afterbody")
     hatch = group("Hatch")
     skin = Skin(CONE)
@@ -172,10 +175,11 @@ def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True, periscope
         elif k in (9, 10):  # the hatch's two columns
             skin.shingle(t0, t1, BAND, JAMB[2])
         else:
-            skin.shingle(t0, t1, BAND, SEAM_LOW)
+            low, high = seams(k)
+            skin.shingle(t0, t1, BAND, low)
             if k != 2:  # (the periscope's door stands in this row of its column)
-                skin.shingle(t0, t1, SEAM_LOW, SEAM_HIGH)
-        skin.shingle(t0, t1, SEAM_HIGH, TOP)
+                skin.shingle(t0, t1, low, high)
+        skin.shingle(t0, t1, SEAM_HIGH if k in (8, 9, 10) else seams(k)[1], TOP)
 
     # the window's plate, with the pane's opening in it
     about = (WINDOW_T, WINDOW_Z)
@@ -190,10 +194,12 @@ def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True, periscope
             skin.screw(skin.bolts, t, z)
         for z in (JAMB[2] + 0.45, JAMB[3] - 0.65):
             skin.screw(skin.bolts, JAMB[0] + (JAMB[1] - JAMB[0]) * (i + 0.5) / 12, z)
-    door_plate = (deg(75), deg(105), SEAM_LOW, SEAM_HIGH)
+    door_plate = (deg(75), deg(105), *seams(2))
     if door:
         door_mid = ((door[0] + door[1]) / 2, (door[2] + door[3]) / 2)
-        skin.panel(plates, *door_plate, hole=skin.bounds(*door_mid, *door), about=door_mid)
+        # (a smaller opening than the periscope's leaves more plate round it: cut finer, so that no facet turns far round the cone)
+        finer = {} if periscope else {"rings": tuple(i / 8 for i in range(9))}
+        skin.panel(plates, *door_plate, hole=skin.bounds(*door_mid, *door), about=door_mid, **finer)
     else:
         skin.panel(plates, *door_plate)
     mercury_capsule.fasten_round(skin, skin.bolts, door_plate, inset=0.5, pitch=3.0, sides="blr")

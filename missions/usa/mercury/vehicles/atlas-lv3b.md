@@ -2,7 +2,7 @@
 
 The booster for the four orbital Mercury flights, MA-6 to MA-9. Model:
 [atlas_lv3b.py](atlas_lv3b.py), imported by each flight's `model/vehicle.py`. Built for Atlas 109-D,
-which flew MA-6, and for Atlas 107-D, which flew MA-7; another serial is another number painted on it
+which flew MA-6, for Atlas 107-D, which flew MA-7, and for Atlas 130-D, which flew MA-9; another serial is another number painted on it
 (`build(serial=...)`) and whatever its record shows to differ ("One vehicle from the next", below).
 
 **It is a stage and a half.** All five engines are lit on the ground. About two minutes up the two
@@ -81,6 +81,22 @@ Convair's stations run in inches from the nose toward the tail; the model keeps 
 | Markings elsewhere, pods, lines, fairings | as photographed | taken as 109-D's | estimated | the photographs of 107-D read are from further off and show nothing to the contrary: UNITED STATES down the oxygen tank beside the same vernier's line, the long pod and the short one | as 109-D |
 
 Cutoffs on MA-7: boosters 00:02:08.6, sustainer 00:05:09.9 (NASA TN D-3814, Table XVI).
+
+**Atlas 130-D (MA-9)**, against those two:
+
+| | Atlas 130-D | Confidence | Source | In the model |
+| --- | --- | --- | --- | --- |
+| Number on the fuel tank | 130 D, in the same place: 13 to one side of the fairing above a vernier, 0D to the other | documented by photograph | NASA 63C-1417 (GPN-2000-000998: on the pad, 14 May 1963) | yes: `serial="13 0D"` |
+| Insulation bulkhead | none: "A change in the production line stopped further installations of this material" | documented | NASA SP-45, p. 96 | yes: `insulation_bulkhead=False` |
+| Booster engines' alignment | offset, to cancel the roll at liftoff that had come near the abort limit on 113-D: "incorporated for MA-9 in Atlas 130D" | documented | NASA SP-45, pp. 96 and 97; *This New Ocean*, p. 491 | no: too small to draw; nothing read gives the angle |
+| Booster engines' injectors and ignition | baffled injectors; a hypergolic start; no hold-down beyond the two seconds between lock-in and release | documented | the MA-9 press kit, p. 46; NASA SP-45, pp. 13, 102 and 103 | no (see below) |
+| Propellant utilisation | "a slightly reshaped mandrel and improved calibration techniques" | documented | NASA SP-45, p. 103 | no |
+| Acceptance | rolled out on 30 January 1963, returned for rewiring, accepted on 15 March with no discrepancy recorded; at the Cape on 18 March, erected on the 22nd | documented | *This New Ocean*, pp. 490 and 491; the press kit, p. 44 | |
+| Markings elsewhere, pods, lines, fairings | taken as 109-D's | estimated | 63C-1417 shows UNITED STATES down the oxygen tank beside the vernier's line and the two pods, and nothing to the contrary | as 109-D |
+
+Cutoffs on MA-9: boosters 00:02:12.5, the booster section dropped at 00:02:15.4, sustainer 00:05:03.03 (NASA SP-45,
+p. 103). The baffled injectors and hypergolic igniters came in with Atlas 113-D (MA-8): 130-D's model does not show
+them until that vehicle's builder options are here to call.
 
 ## What was changed for Mercury
 

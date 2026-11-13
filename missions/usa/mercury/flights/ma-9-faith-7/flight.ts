@@ -46,9 +46,10 @@ const parts: Part[] = [
       'through three nozzles canted clear of the capsule. An Atlas could fail faster than a man could act, so an ' +
       'abort sensing system in the launch vehicle watched its tank pressures, its turning rates and its engines, ' +
       'and would have fired this by itself. That winter two Atlases of a later model had failed for reasons nobody ' +
-      'could give, and the men who ran Mercury said aloud that five good launches in a row made it too easy to ' +
-      'forget what the Atlas was. The sixth was the best of them. The tower was let go 154 seconds up, 22 seconds ' +
-      'after the booster engines stopped. As built for the Redstone flights: nothing read gives a difference.',
+      'could give, and Mercury’s operations director warned his staff of it: after five good launches in a row it ' +
+      'was easy to forget that the Atlas was a missile made over. The sixth went as well as any. The tower was ' +
+      'let go 154 seconds up, 22 seconds after the booster engines stopped. As built for the Redstone flights: ' +
+      'nothing read gives a difference.',
     facts: [
       ['Escape motor', '52,000 lbf for about 1 s'],
       ['Nozzles', '3, canted'],
@@ -67,8 +68,8 @@ const parts: Part[] = [
     detail:
       'The pale band is a dielectric window: the metal above and below it are the two halves of a bicone antenna ' +
       'for voice, telemetry and command. Two infrared scanners find the horizon in pitch and roll and keep the ' +
-      'attitude gyros true; on a flight that drifted for most of a day with the gyros off, they were seldom ' +
-      'asked. Under the flap on its top is a can three inches across with a 30 in orange balloon folded in it, a ' +
+      'attitude gyros true; on a flight spent mostly drifting, with the autopilot off, they were seldom asked. ' +
+      'Under the flap on its top is a can three inches across with a 30 in orange balloon folded in it, a ' +
       'second try at the experiment Aurora 7’s torn balloon had spoiled: tow it for an orbit on a hundred feet of ' +
       'line and weigh the pull of the air. At nine hours Cooper fired its squib, twice, and nothing came out. The ' +
       'canister is thrown away with the main parachute, so nobody ever found out why. He put the drogue out by ' +
@@ -160,15 +161,16 @@ const parts: Part[] = [
     summary: 'René 41 shingles, a white star that says FAITH 7, three squares of white paint, and no periscope.',
     detail:
       'Nickel-alloy shingles 0.016 in thick, oxidised blue-black, each stiffened by beads pressed across it and ' +
-      'held through oversized holes so that it can grow when hot. Under the window is the name Cooper took longest ' +
-      'of any pilot to choose, on a white field. UNITED STATES stands on the cone twice, each with a flag under ' +
+      'held through oversized holes so that it can grow when hot. Under the window is the name Cooper was months ' +
+      'in choosing, on a white field. UNITED STATES stands on the cone twice, each with a flag under ' +
       'it. Above the first are three six-inch squares of three white coatings, baked on to one shingle, to see ' +
       'which would come through the entry: a capsule that is to stay up for days should be white. What is missing ' +
       'is the periscope. Where its door had been, on the side of the pilot’s feet, there is only a small sprung ' +
       'door over the socket the ground’s umbilical plugged into. The paint is placed from photographs. The emblem ' +
       'is photographed only edge on, and is drawn as the star of the flight’s later insignia; the umbilical’s ' +
-      'door is where the umbilical was on Liberty Bell 7, there being no photograph of that side of this capsule; ' +
-      'the shingles are laid out as Liberty Bell 7’s.',
+      'door is where the umbilical was on Liberty Bell 7, the one photograph of that side showing a plain plate ' +
+      'and no more; the shingles’ seams on the side of the white squares are this capsule’s own, from a ' +
+      'photograph taken as it floated, and elsewhere Liberty Bell 7’s.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -335,8 +337,8 @@ const parts: Part[] = [
       'The tank has no frames to hang anything on, so the electronics ride in fairings on its skin: a long pod on ' +
       'one side, a short one opposite, each standing over a booster engine. Guidance, the autopilot, telemetry and ' +
       'the range safety receivers are here, and Mercury’s own addition, the abort sensing system. The count’s only ' +
-      'unplanned hold, four minutes at T-11:30, was for a flutter in the guidance signal that turned out to come ' +
-      'from somewhere else on the Cape. The autopilot’s gains were within limits but low, and the propellants ' +
+      'unplanned hold, four minutes at T-11:30, was for a flutter in the guidance signal that was put down to ' +
+      'some radio source outside it. The autopilot’s gains were within limits but low, and the propellants ' +
       'sloshed more than on most Mercury launches between 55 and 120 seconds; it damped out. Their outlines are ' +
       'scaled off a small drawing and the photographs of Atlas 109-D; what is in which pod is not established.',
     facts: [
