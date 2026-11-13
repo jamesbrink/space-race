@@ -191,8 +191,9 @@ const RELIEF = /* glsl */ `
 const COVER = /* glsl */ `
   vec4 coverA(vec2 p) {
     float clumps = fbm2(p * 0.05, 31, 3);
-    float woody = 0.18 + 0.22 * smoothstep(0.4, 0.7, clumps) - 0.15 * smoothstep(0.5, 0.75, fbm2(p * 0.006, 32, 3));
-    float herb = 0.35 + 0.35 * fbm2(p * 0.02, 33, 3);
+    // (sparse: the woody cover never closes over the ground, and the bare clay is most of what is seen)
+    float woody = 0.14 + 0.18 * smoothstep(0.4, 0.7, clumps) - 0.1 * smoothstep(0.5, 0.75, fbm2(p * 0.006, 32, 3));
+    float herb = 0.18 + 0.32 * fbm2(p * 0.02, 33, 3);
     // made ground: the apron round the platform's landward side, the tracks' beds and a margin round the pit's rim
     float made = 1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5));
     made = max(made, 1.0 - smoothstep(3.0, 9.0, rail(p)));

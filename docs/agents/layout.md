@@ -32,10 +32,11 @@ src/
   actions.ts                          on foot: what can be done with the thing being looked at (from flight data)
   wheel.ts                            a radial menu: a few choices round a centre
   viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
-  viewer/backdrops.ts                 the three settings: orbit, ground (the Cape), studio
+  viewer/backdrops.ts                 the settings: orbit, studio, and the ground under its sky for each place (the Cape, Tyuratam)
   viewer/studio.ts                    the studio: a sweep under three designed lights, dark, light or paper; a person and a pole for scale
   viewer/labels.ts                    names on the parts of a thing taken apart: which have come clear, where the labels go
   viewer/cape.ts                      Cape Canaveral's land as parameters: its plant communities, clearings, roads, palette, sea
+  viewer/tyuratam.ts                  the steppe round Site 1 as parameters: its cover, palette, plants, the tracks painted, the flame pit cut out
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
   viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin

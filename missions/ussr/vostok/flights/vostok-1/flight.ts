@@ -686,6 +686,8 @@ const pad: ModelDef = {
   backdrop: 'tyuratam',
   specGroups: ['Launch pad'],
   parts: padParts,
+  // (the whole of it is the pit too, 270 m long: the launch system is what is come to see)
+  home: 'tulip',
   views: [
     { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
     { id: 'support', label: 'Support truss', nodes: ['Support_1'] },

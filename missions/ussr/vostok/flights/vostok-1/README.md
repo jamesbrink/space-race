@@ -11,14 +11,15 @@ the pilot ejecting from the descent module and landing by parachute near the Vol
 | --- | --- |
 | Spacecraft (3KA No. 3, as in orbit) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py) |
 | Launch vehicle (8K72K: core, four strap-ons, lattice, Block E, fairing) | **built**, every station estimated: [vostok-8k72k.md](../../vehicles/vostok-8k72k.md) |
-| Launch site (Site 1) | not built; its position only: [site-1.md](../../sites/site-1.md) |
-| Crew (Gagarin in the SK-1, to be walked as) | built ([sk-1.md](../../crew/sk-1.md)): he stands beside the spacecraft in the gallery and rides in its seat; there is no site to walk him on yet |
+| Launch site (Site 1) | **first stage built** ([model/pad.py](model/pad.py); [site-1.md](../../sites/site-1.md)): the platform on its pylons, the flame pit to its mapped rim, the launch system's ring with its four supports and four guides, the vehicle hanging in them turned to the launch azimuth; the steppe round it with the tracks that came onto the platform, under the sky of 06:07 UTC. Not yet: the cable mast, the service trusses and the erector, the two tall masts, the bunker and every building, the roads; the supports do not yet fall back at liftoff (site-1.md lists it all) |
+| Crew (Gagarin in the SK-1, to be walked as) | built ([sk-1.md](../../crew/sk-1.md)): he stands on the platform's deck on the hatch side (where, estimated), and can be walked as there; he rides in the spacecraft's seat |
 | The mission as a record and a plan | [mission.md](mission.md); the numbers in [orbital.ts](orbital.ts) (`Flight.orbital`). The coast from the published orbit to 7 km is flown in tests (`flyOrbit`), with its misses recorded; the ascent is not |
 | Trajectory, checks, the flight as flown | not written: `flight.ts` has no `trajectory`, `checks` or `flies`, so the clock runs but nothing flies. What was found toward one is in [vostok-8k72k.md](../../vehicles/vostok-8k72k.md), "What a staged trajectory will need" |
 
-So the viewer shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in
+So the gallery shows the whole vehicle as it stood on the pad, the spacecraft under its fairing, in
 the studio setting with nothing holding it up: to be turned, cut open and taken apart the way it
-staged, down to the spacecraft as it was in orbit. Everything below is the record that the rest
+staged, down to the spacecraft as it was in orbit; and the launch site shows it hanging in the
+launch system at Site 1, its tail 6.75 m down in the platform's opening. Everything below is the record that the rest
 will be built from.
 
 ## The launch vehicle as flown

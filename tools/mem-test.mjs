@@ -7,6 +7,8 @@
 //   node tools/mem-test.mjs --query lighter=0      more for the address's query (the tier's switch)
 //   node tools/mem-test.mjs --gallery              come in through the gallery, then go to the site (two stages alive?)
 //   node tools/mem-test.mjs --json out.json        keep the whole account
+//   node tools/mem-test.mjs --flight ussr/vostok/vostok-1    another flight's launch site (Freedom 7's by default): one with no
+//                                                  flight deck is held to the budget ready, late, on foot and at its peak
 // The page counts for itself (src/mem.ts, `?mem`): every texture, renderbuffer and buffer by the bytes its format
 // says, and each canvas's drawing buffer. A phone's browser kills a tab by what it holds and says nothing, and a
 // desktop browser does not reproduce the kill, so the account is the evidence and the budget is the test.
@@ -22,7 +24,7 @@ const [, w, h, dpr] = /^(\d+)x(\d+)@([\d.]+)$/.exec(value('size', '390x844@3')) 
 const desktop = flag('desktop');
 const url = args.find((a) => /^https?:\/\//.test(a)) ?? process.env.SR_URL ?? 'http://localhost:5180/';
 const query = ['mem', value('query', '')].filter(Boolean).join('&');
-const flightId = 'usa/mercury/mr-3-freedom-7';
+const flightId = value('flight', 'usa/mercury/mr-3-freedom-7');
 
 /**
  * Accounted GPU memory the launch site may hold as a phone, MiB: with the curtain up, half a minute later, on foot,
@@ -130,18 +132,22 @@ await watch(5000, peak);
 await page.keyboard.up('w');
 await note('on foot');
 // the flight, straight from the walk (the walk's maps are still held): followed up to where the whole Earth's maps are wanted
-await page.evaluate(() => {
-  const sr = window.sr;
-  sr.stage.exitWalk();
-  sr.clock.seek(150);
-  sr.clock.play();
-  sr.stage.setCamera('chase');
-});
-await settle(60000);
-await note('in flight');
-await page.evaluate(() => window.sr.stage.setCamera('onboard'));
-await settle(20000);
-await note('aboard, in flight');
+// (a flight with no flight deck yet has nothing to follow: its launch site is all there is)
+const flies = await page.evaluate(() => Boolean(window.sr.flight.flies && window.sr.flight.trajectory?.body));
+if (flies) {
+  await page.evaluate(() => {
+    const sr = window.sr;
+    sr.stage.exitWalk();
+    sr.clock.seek(150);
+    sr.clock.play();
+    sr.stage.setCamera('chase');
+  });
+  await settle(60000);
+  await note('in flight');
+  await page.evaluate(() => window.sr.stage.setCamera('onboard'));
+  await settle(20000);
+  await note('aboard, in flight');
+} else console.log('(no flight deck: not followed into flight or aboard)');
 console.log(`peak ${peak.value.toFixed(0)} MiB`);
 if (value('json')) (await import('node:fs')).writeFileSync(value('json'), JSON.stringify({ device, peak: peak.value, stages }, null, 1));
 await browser.close();
@@ -156,7 +162,7 @@ if (!desktop && !flag('no-budget')) {
     ['flight', of('in flight')],
     ['aboard', of('aboard')],
     ['peak', peak.value],
-  ].filter(([k, v]) => v > BUDGET[k]);
+  ].filter(([k, v]) => v > BUDGET[k] && (flies || (k !== 'flight' && k !== 'aboard')));
   if (over.length || errors.length) {
     for (const [k, v] of over) console.error(`over budget at ${k}: ${v.toFixed(0)} MiB, ${BUDGET[k]} allowed`);
     process.exit(1);

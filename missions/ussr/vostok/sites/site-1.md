@@ -4,12 +4,16 @@ The R-7's first launch complex at NIIP-5, the range later called the Baikonur Co
 Vostok 1 and every crewed Vostok left from it. Model: [site_1.py](site_1.py), which puts together
 one module per piece in [site1/](site1/); built for a flight by its `model/pad.py` (the pad, with
 what stood on it that morning) and by [site1/model/](site1/model/) (the place round it, by date).
-Its position on the Earth is [site-1.ts](site-1.ts) (`SiteDef`).
+Its position on the Earth is [site-1.ts](site-1.ts) (`SiteDef`); the ground round it, its sky and
+its air are [src/viewer/tyuratam.ts](../../../../src/viewer/tyuratam.ts) ("The land", below).
 
-**Status.** Being built, in this order: the frame and the record (this file); the platform, the
-flame pit and the launch system with the rocket in it; the masts, service trusses, erector and
-rails; the bunker and the buildings near it; the land and what is far off; then the flight's data.
-Each section below says what of it is in the model.
+**Status.** The first stage is built and opens as Vostok 1's launch site
+(`#ussr/vostok/vostok-1/site`): the platform on its pylons, the flame pit to its mapped rim, the
+launch system with the rocket hanging in it, the steppe round it with the tracks that came onto
+the platform, and the sky of the morning. Still to come, in this order: the supports falling back
+at liftoff; the cable mast and the service trusses, and the erector on its track; the two tall
+masts; the bunker and the buildings near it; the roads; then the place for later Vostoks. Each
+section below says what of it is in the model, and the last lists what is left out.
 
 **Nobody has published a drawing of this place.** Its plan and heights are what the CIA's
 photographic interpreters measured off U-2 photographs of 1957 to 1959, the launch system's are a
@@ -70,9 +74,16 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 
 | Node | Module | What | In the model |
 | --- | --- | --- | --- |
-| Platform | platform.py | the slab on its four pylons, the abutment, the fence | yes |
-| FlamePit | platform.py | the pit's lining and its own ground out to the rim | yes |
+| Platform | platform.py | the slab on its four pylons, the abutment, the retaining walls, the fence | yes |
+| FlamePit | platform.py | the pit's lining and its own ground out to the rim, and a skirt under the land past it | yes |
 | LaunchRing | launch_system.py | the turning ring, with `Support_1..4` and `Guide_1..4` | yes |
+| (the land) | src/viewer/tyuratam.ts | the steppe, the tracks painted on it, the pit cut out of it | yes |
+| (the vehicle) | the flight's vehicle.glb | hung in the supports: `position` and `rotationY` in flight.ts | yes |
+| (the cosmonaut) | the flight's crew.glb | on the deck, 14.6 m west of the axis on the hatch side; where he stood is estimated | yes |
+
+In flight.ts the vehicle's origin (the spacecraft's braking nozzle) is 30.53 m above its nozzles'
+exits, so it stands at 30.53 - 6.75 = 23.78 m over the deck, turned 52.5° (90 - 37.5) about the
+vertical: the numbers live in [site1/site.py](site1/site.py) (`TAIL_Z`, `TURN`) and are quoted there.
 
 ## Dimensions
 
@@ -96,7 +107,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | Rim | 880 by 550 ft, pear-shaped, its wide end under the platform | documented (measured) | HTA/JR-4/58; PIC/JR-2/60 |
 | Outline | 265 by 184 m (OpenStreetMap way 172441917, `flame_trench`), placed in the frame | derived | the map agrees with the CIA's figures to a few per cent |
 | Depth | 43 m under the deck | derived | above |
-| Section | a slot between the pylon rows under the platform and 60 ft beyond it, its floor 43 m down; outside it two terraces (the lower 30 m down) up to the rim; the floor rising east to the pit's point, about 1 in 4.5 | estimated | HTA/JR-4/58: "excavated along two terrace levels", a road "from the raised eastern terminus ... to the base of the pit near the foot of the launching structure"; PIC/JR-2/61 Figure 1, front elevation (terraces, retaining walls, pit base) |
+| Section | a slot between the pylon rows under the platform and 60 ft beyond it, its floor 43 m down; outside it two terraces (the lower 30 m down) up to the rim, each break eased over 3 m either way; the floor rising east to the pit's point, about 1 in 4.5 | estimated | HTA/JR-4/58: "excavated along two terrace levels", a road "from the raised eastern terminus ... to the base of the pit near the foot of the launching structure"; PIC/JR-2/61 Figure 1, front elevation (terraces, retaining walls, pit base) |
 | Lining | the west part surfaced "with a crude spray, possibly gunite"; the trench under the platform concrete, blackened | documented (west part); estimated (the rest) | HTA/JR-4/58; the 1957 photograph |
 
 ### The launch system
@@ -116,6 +127,34 @@ system.
 | Guides | four arms at the tail | documented (that there are four); estimated (their shape) | the Soviet description |
 | How far a support falls back | 45° | estimated | the film |
 
+How the pit's ground is drawn: a 2 m grid (4 m at the coarsest level of detail), each cell cut
+along whichever diagonal lies nearer the true surface at its middle. Past the rim it runs on for
+8 m as a skirt 0.25 m under the land, then down into the ground, and the land is cut away 3 m inside
+the rim: the rim is a crest, a cell that crosses it is lower than the land by up to a metre or two,
+and without the overlap and the skirt a line of sight out of the pit passed under the land's edge to
+the sky. The 3 m is inside what the map's outline is good for.
+
+## The land
+
+[src/viewer/tyuratam.ts](../../../../src/viewer/tyuratam.ts): the land's frame is the site's (+X east, -Z north).
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| The ground | a river terrace of the Syr Darya, flat: level within 400 m of the pad, a swell of half a metre beyond | estimated | SRTM reads within a few metres everywhere round the site, below what its 30 m grid can resolve |
+| Cover | open steppe: clay and sand, bare between low clumps of wormwood and saltwort, green for a few weeks after the snow | estimated | descriptions and photographs of the place in spring; the film of the morning shows pale, bare ground round the pad |
+| Colours | grey-buff clay, silvery grey-green wormwood, a short spring green | estimated | read off photographs, then cleaned as the look asks |
+| Plants | wormwood clumps 0.25 to 0.5 m, saltwort 0.15 to 0.3 m, wide apart | estimated | as the cover |
+| Made ground | the apron on the platform's landward side (70 m), the tracks' beds, a margin round the rim: graded, nothing growing | estimated | the 1957 photograph shows bare ground round the pad and pit |
+| Tracks | the centre track from the west (its last 2.6 km) and the four spurs beside it, onto the platform; ballast, sleepers 0.55 m apart, two rails at the Soviet gauge of 1,520 mm | documented (their lines: OpenStreetMap ways 37547653, 172441851, 172441854, 172441876, 172441879; HTA/JR-4/58 counts five spurs in 1957; the gauge); estimated (the bed's width, the sleepers) | painted on the land, not modelled |
+| The sky | clear: no cumulus, no high cloud | estimated | no observation of the morning has been read; the film shows a clear sky |
+| Visibility | 60 km, the haze thinning over 1.5 km of height | estimated | not recorded |
+| The light | the Sun 142.1° and 46.9° up, the Moon 193.3° and 35.0° up, 12 % lit, at 06:06:59.7 UTC | derived | `src/world` from site-1.ts and the launch instant (the flight's README; tests/world.test.mjs) |
+| The land beyond, on the globe | the steppe's own tone, kept round the site until the eye is well up | estimated | as the colours |
+
+The other lines on today's map round the site (the loop to the north, the lines to Site 2 and
+beyond, the roads, the buildings to the west and north) are not drawn: when each was built is not
+known to us, and much of it is later than 1961.
+
 ## Moving parts
 
 Each moving piece is its own node with its origin on its pivot.
@@ -129,6 +168,7 @@ Each moving piece is its own node with its origin on its pivot.
 | Thing | From | Until | Confidence | Source |
 | --- | --- | --- | --- | --- |
 | Platform, pit, launch system | 1957 | today | documented | the U-2 photograph of 5 August 1957; the site was in use until 2019 |
+| The centre track and the four spurs onto the platform | 1957 | today | documented (five spurs in 1957: HTA/JR-4/58); their lines today's | OpenStreetMap |
 
 ## What the model gets wrong or leaves out
 
@@ -139,3 +179,17 @@ Each moving piece is its own node with its origin on its pivot.
 - The launch system is the later system's ring and heights, with trusses drawn from film: the
   members, the platforms and the counterweights are not the real ones.
 - Which of the rocket's planes lay along the launch azimuth is chosen (booster B's).
+- The supports do not fall back at liftoff: the vehicle does not leave the pad on the site yet (no
+  trajectory), and a support that fell while the rocket hung on it would be wrong.
+- The counterweights are plain blocks; the supports' hinges, pins and the ring's drive are not modelled.
+- Not modelled at all, though they stood there that morning or were moved away during it: the cable
+  mast (away just before ignition), the service trusses, the erector on the centre track (drawn
+  off at 08:35 to 08:37), the two masts 110 ft tall at the north-east and south-west corners, the
+  lip's array, the command bunker 200 m north, the storage bunker, the propellant shed, the roads,
+  the double fence and its lights, the observation posts round the rim, the spoil heap north-east
+  of the pit. Each is in the CIA's reports or the record of the morning (above and docs/sources.md);
+  none is built yet.
+- The tracks are paint on the land, flat: no rails stand on their sleepers, and they stop at the
+  platform's edge (the rails on the deck itself are not modelled).
+- The pit's two trenches under the platform, the sump and the road down into the pit from the east
+  are not modelled.

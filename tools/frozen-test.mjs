@@ -1,5 +1,7 @@
 // A frozen stage draws the same frame twice: checked in the running viewer, in both looks.
-//   node tools/frozen-test.mjs [url] [--shots <dir>] [--only <regex of pose names>]      (default url: http://localhost:5180/)
+//   node tools/frozen-test.mjs [url] [--shots <dir>] [--only <regex of pose names>] [--flight <id>]      (default url: http://localhost:5180/)
+// --flight takes another flight's launch site (its id, e.g. ussr/vostok/vostok-1): the poses on the ground before liftoff
+// only, since what flies is the first flight's.
 // --shots writes a map per pose that moved: the frame dimmed, the pixels that differed magenta.
 //
 // Everything that compares pictures (test:flicker, tools/lod-measure.mjs, `pnpm bench --shots`) sets `stage.frozen`
@@ -47,6 +49,8 @@ const POSES = [
 const args = process.argv.slice(2);
 const shotsAt = args.indexOf('--shots');
 const shots = shotsAt >= 0 ? args.splice(shotsAt, 2)[1] : null;
+const flightAt = args.indexOf('--flight');
+const flight = flightAt >= 0 ? args.splice(flightAt, 2)[1] : null;
 const onlyAt = args.indexOf('--only');
 const only = onlyAt >= 0 ? new RegExp(args.splice(onlyAt, 2)[1]) : null;
 const url = args[0] ?? 'http://localhost:5180/';
@@ -57,7 +61,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, dev
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(`${url}#vehicle`);
+await page.goto(`${url}#${flight ? `${flight}/site/vehicle` : 'vehicle'}`);
 await page.waitForFunction(() => window.sr?.stage && document.querySelector('.loading.done'), null, { timeout: 180_000 });
 await page.addStyleTag({ content: '#ui, #gallery { display: none !important }' });
 
@@ -247,6 +251,7 @@ for (const look of ['real', 'cel']) {
   if (!(await page.evaluate(() => window.quiet()))) console.log(`     (${look}: the page had not come to rest)`);
   for (const pose of POSES) {
     if (only && !only.test(pose.name)) continue;
+    if (flight && (pose.fly !== undefined || pose.rig || pose.t > 0)) continue;
     const r = await at(pose);
     if (!r.rest) {
       failed++;

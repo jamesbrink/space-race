@@ -328,7 +328,7 @@ Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's i
 | Input | Value | Confidence | Source |
 | --- | --- | --- | --- |
 | Liftoff | 06:06:59.7 UTC | documented | S launch log; R |
-| Site | 45.92025° N, 63.34225° E, 78 m | documented (place), estimated (height) | site-1.ts; **site1 is settling it** |
+| Site | 45.92025° N, 63.34225° E, 78 m | documented (place), estimated (height) | site-1.ts; the site's own frame and what stands in it: sites/site-1.md |
 | Liftoff mass | 287 t | documented | RKK Energia. 281.4 to 291.2 t in print |
 | Strap-on, each | 43.3 t; 3.75 t dry; 39.16 t propellant | documented, three sources that do not sum | Astronautix; Minakov; Brügge |
 | RD-107 | 815.9 kN and 256 s at the ground; 997.7 kN and 313 s in vacuum | documented, secondary | Energomash's table by way of Brügge |

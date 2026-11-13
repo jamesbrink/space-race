@@ -52,6 +52,7 @@ ABUTMENT = 25.0 * FT  # east-west, under the platform's west edge (PIC/JR-2/60)
 # the full depth, and the floor then climbs east at 1 in 4.5 to the pit's point.
 TERRACES = [(0.0, 0.0), (15.0, 15.0), (23.0, 15.0), (38.0, 30.0)]  # (metres in from the rim, metres down)
 LOWER = 30.0
+ROUND = 3  # metres over which each break of the section is eased, either way (estimated)
 SLOT = PYLON_Y - PYLON_T / 2 + 0.3  # the retaining wall's inner face, 0.3 m behind the pylons' inner faces
 WALL = 1.0  # its thickness
 SLOT_END = HALF + 60.0 * FT
@@ -80,11 +81,19 @@ def to_rim(x: float, y: float) -> float:
     return best if _inside(x, y) else -best
 
 
-def _terraced(d: float) -> float:
+def _profile(d: float) -> float:
     for (d0, z0), (d1, z1) in zip(TERRACES, TERRACES[1:]):
         if d <= d1:
             return z0 + (z1 - z0) * (d - d0) / (d1 - d0)
     return LOWER
+
+
+def _terraced(d: float) -> float:
+    """How far down the side is `d` metres in from the rim: the profile with its breaks eased over ROUND metres either way
+    (a slope worked in earth and gunite has no knife edge, and an edge eased over a few cells is not drawn as teeth where
+    the grid crosses it aslant), and never deeper than the side's own 1 in 1 from the rim."""
+    k = [i / 2 for i in range(-2 * ROUND, 2 * ROUND + 1)]
+    return max(0.0, min(d, sum(_profile(d + o) for o in k) / len(k)))
 
 
 def floor_depth(x: float) -> float:
