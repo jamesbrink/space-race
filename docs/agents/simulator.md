@@ -69,10 +69,17 @@ never adjusted to bring a check in.
   rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
   propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
   source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now (fliers.ts
-  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "Engines stopped now" beside
-  the figures); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe, or down to the
-  ejection height with the burn, its end, the modules' parting and the entry marked (it stops there whether a burn was
-  made or not, as flyOrbit does). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
+  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "if cut now" beside
+  the figures), or, under guidance with the last cutoff to come, where guidance would take it, chosen by the same control
+  as a ballistic flight's (To cutoff / Cut now, K: path.ts asks the deck's `guidable`): fliers.ts `guided`, the stated law's
+  axis leaned by the trim, the record's steps at their times while the sequencer is on (Block E cut where its integrator's
+  sum reaches its setting, found ahead in one sweep, `apparentBy` giving the record's run the sum the live vehicle keeps),
+  each stage dry when its load is gone, drawn dashed to the last cutoff, and from the parting the spacecraft as planned,
+  round the orbit or down (from the record's state at T+40, 150 and 400 s it parts within 70 m and 0.16 m/s of the batch
+  run: tests/staged.test.mjs); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe,
+  or down to the ejection height with the burn, its end, the modules' parting and the entry marked (it stops there
+  whether a burn was made or not, as flyOrbit does; begun within the burn, the burn goes on along the line it lit on,
+  from the run's own state then: `lit`). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
   the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
   ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
   braking engine is heard when the run on show burns it (its `fires`), as one burn of its length. Every engine burns
@@ -484,8 +491,8 @@ never adjusted to bring a check in.
   is drawn (its departure from the curve, its place and three times its velocity's over the time ahead: a coast's
   departure grows no faster), the plan unchanged, and a path that comes round still reaching most of the way round,
   that curve is its future and nothing is worked out again (path.ts `holds`); under thrust the flight leaves it within
-  a frame or two and it is worked again (on the launch vehicle of a flight into orbit the path is "if cut now": the
-  deck says so beside its figures); nothing is predicted while the path is off. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
+  a frame or two and it is worked again (on the launch vehicle of a flight into orbit the path is "if cut now" unless the
+  guided future is chosen: the deck says which beside its figures); nothing is predicted while the path is off. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
   is given one `Predictor` and one `Prediction` and knows nothing of which it was. A path that comes down is drawn over
   the ground (each point where it will be over the ground at its own instant); one that goes round is drawn in the
   navball's frame (O), in Orbit as it lies in the frame that does not turn. It is an instrument's line, and lunar-lift's

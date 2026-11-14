@@ -8,7 +8,8 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { spacecraft } from '../src/sim/fliers.ts';
+import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
+import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/sim/fly.ts';
 import { between, propagate } from '../src/sim/predict.ts';
 import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, published, schedule, steer } from '../src/sim/staged.ts';
@@ -362,9 +363,84 @@ for (const f of flown) {
       p.events.some((e) => e.kind === 'retro'),
       'and the burn on the way',
     );
+    // Begun within the burn, the burn in progress goes on along the line it lit on (from the run's own state as it lit):
+    // the same landing as the run. Without that state, the line is the one it would light on from the start, which is not
+    // the run's.
+    const on = o.retro.on.value;
+    const lit = shown.coast.samples.find((x) => x.t === on);
+    const mid = shown.coast.samples.find((x) => x.t > on + 5 && x.t < o.retro.off.value);
+    assert.ok(lit && mid, 'the run keeps its state as the burn lit, and one within it');
+    const from = { t: mid.t, r: flat(mid.r), v: flat(mid.v) };
+    const within = (options) => {
+      const j = propagate(spacecraft(o, jd, site, sea, from, options), from, { site, seaLevel: sea });
+      j.run();
+      return j.result.impact;
+    };
+    const held = within({ lit: { r: flat(lit.r), v: flat(lit.v) } });
+    const fresh = within({});
+    const kmOff = (i) =>
+      111.2 * Math.hypot(i.latitude - at.ejectionLatitude, (i.longitude - at.ejectionLongitude) * Math.cos(at.ejectionLatitude * DEG));
+    assert.ok(
+      Math.abs(held.t - at.ejectionAt) < 0.01 && kmOff(held) < 0.01,
+      `mid-burn, down with the run: ${(held.t - at.ejectionAt).toFixed(4)} s, ${(kmOff(held) * 1000).toFixed(1)} m`,
+    );
+    console.log(
+      `  #   predicted from T+${mid.t.toFixed(0)}, within the burn: ${(kmOff(held) * 1000).toFixed(1)} m from the run with the burn's line as it lit, ${(kmOff(fresh) * 1000).toFixed(1)} m with the line it would light on from there (aimed from the Sun, the line hardly turns in a burn: aimed along the motion it would)`,
+    );
     console.log(
       `  #   predicted from separation: apogee ${(p.apogee.altitude / 1000).toFixed(0)} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
     );
+  });
+
+  test(`${f.designation}: the path if guidance carries on is the ascent flown: from the record's state it parts where the batch run does`, () => {
+    const [site, jd, sea] = where(f);
+    const g = greenwichSiderealTime(jd);
+    const flat = (v) => [Math.cos(-g) * v[0] - Math.sin(-g) * v[1], Math.sin(-g) * v[0] + Math.cos(-g) * v[1], v[2]];
+    const x = whole.ascent.solved;
+    const vehicle = stagedVehicle(o, site, jd, sea, x);
+    const stops = whole.ascent.stops;
+    for (const t0 of [40, 150, 400]) {
+      const s = whole.ascent.samples.find((p) => p.t >= t0);
+      // the record's vehicle as it stood then: each stage lit, stopped and let go at the run's instants, the drops gone
+      const state = {
+        stages: o.stages.map((st, i) => ({
+          from: st.ignition.value <= s.t ? st.ignition.value : Infinity,
+          to: stops[i] <= s.t ? stops[i] : Infinity,
+          gone: (st.separation?.value ?? Infinity) <= s.t ? st.separation.value : Infinity,
+        })),
+        drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
+      };
+      state.apparent = apparentBy(o, vehicle, state, s.t);
+      const start = { t: s.t, r: flat(s.r), v: flat(s.v) };
+      const job = propagate(
+        guided(o, site, sea, start, {
+          vehicle,
+          solved: x,
+          state,
+          sequence: true,
+          thetaTurn: s.t > o.ascent.guidance.turn.value ? whole.ascent.thetaTurn : null,
+          plan: o,
+          launchJd: jd,
+        }),
+        start,
+        { site, seaLevel: sea },
+      );
+      job.run();
+      const p = job.result;
+      const parted = p.events.find((e) => e.kind === 'separation');
+      const cut = p.events.find((e) => e.kind === 'cutoff');
+      assert.ok(parted && cut && p.kind === 'guided', `from T+${t0}: the last cutoff and the parting are on the path`);
+      const sep = whole.ascent.separation;
+      const off = Math.hypot(...flat(sep.r).map((q, k) => q - parted.r[k]));
+      const dv = Math.hypot(...flat(sep.v).map((q, k) => q - parted.v[k]));
+      console.log(
+        `  #   if guidance carries on, from T+${t0}: cut off at T+${cut.t.toFixed(2)} (the run ${whole.ascent.stops.at(-1).toFixed(2)}), parted ${(off / 1000).toFixed(2)} km and ${dv.toFixed(2)} m/s from the run; ${p.outcome}, ${p.steps} steps in ${p.cost.toFixed(0)} ms`,
+      );
+      // (the batch run's mass is the record's stages' less what each burned; the live vehicle's, which this flies, is the
+      // same sum kept otherwise: tests/stagedlive.test.mjs holds the two to 0.03 m/s and 50 m at the last cutoff)
+      assert.ok(Math.abs(cut.t - whole.ascent.stops.at(-1)) < 0.5, 'Block E cut where its integrator cuts it');
+      assert.ok(off < 2000 && dv < 2, `parted where the run parts: ${off.toFixed(0)} m, ${dv.toFixed(2)} m/s`);
+    }
   });
 
   if (o.manual)

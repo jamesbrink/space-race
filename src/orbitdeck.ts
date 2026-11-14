@@ -1,6 +1,6 @@
 import { type CockpitHost, Deck, type DeckSpec, type Figure, tank } from './deck';
 import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from './sim/orbital.ts';
-import { spacecraft, stack } from './sim/fliers.ts';
+import { apparentBy, guided, spacecraft, stack } from './sim/fliers.ts';
 import { type Predictor, propagate } from './sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
 import { along } from './sim/fly.ts';
@@ -206,27 +206,77 @@ export class OrbitDeck extends Deck {
   /**
    * The path ahead from a sample, by the one propagator (sim/predict.ts): with the spacecraft alone, its coast as planned
    * (the timer's burn, a hand's, or none: sim/fliers.ts `spacecraft`), to the ejection height or once round; on the launch
-   * vehicle, under guidance or by hand, where it goes if the engines stopped now (`stack`: what it still carries, on the
-   * drag of the shape it has), to the ground or once round. Not "if guidance carries on": the ascent is four stages whose
-   * every step a hand may take at any instant, and the one future that presumes nothing of them is the one with nothing
-   * more done (the path's figures say so: `pathAs`).
+   * vehicle, where it goes if the engines stopped now (`stack`: what it still carries, on the drag of the shape it has), to
+   * the ground or once round; or, under guidance with a cutoff to come and asked for (`guided`, K on the path), where the
+   * guidance would take it (`guided`: the law, the record's steps while the sequencer is on, to the parting, then the
+   * spacecraft as planned).
    */
-  predict(start: { t: number; r: Vec3; v: Vec3; mass: number }, points?: number): Predictor | null {
+  predict(start: { t: number; r: Vec3; v: Vec3; mass: number }, points?: number, underGuidance = false): Predictor | null {
     const o = this.flight.orbital!;
     const site = siteFrame(this.flight.site);
     const sea = this.flight.site.seaLevel.value;
     const where = { site, seaLevel: sea };
     const options = points ? { points } : {};
-    if (start.t < this.parting) return propagate(stack(o, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
     const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? o);
-    return propagate(spacecraft(plan, julianDate(this.flight.launch), site, sea, start), start, where, options);
+    if (start.t < this.parting && underGuidance && this.guidable) {
+      const v = this.vehicleOf();
+      const flown = orbitalFlown(this.flight).ascent;
+      const live = this.mine !== null && this.state ? this.state : null;
+      // the record's vehicle as it stood at the instant (each stage lit, stopped and let go at the run's instants), or the user's
+      const stood = live ?? {
+        stages: o.stages.map((st, i) => ({
+          from: st.ignition.value <= start.t ? st.ignition.value : Number.POSITIVE_INFINITY,
+          to: flown.stops[i]! <= start.t ? flown.stops[i]! : Number.POSITIVE_INFINITY,
+          gone: (st.separation?.value ?? Number.POSITIVE_INFINITY) <= start.t ? st.separation!.value : Number.POSITIVE_INFINITY,
+        })),
+        drops: Object.fromEntries(o.ascent!.drops.filter((d) => d.at.value <= start.t).map((d) => [d.id, d.at.value])),
+        apparent: [] as number[],
+      };
+      const state = live ? live : { ...stood, apparent: apparentBy(o, v, stood, start.t) };
+      const turned = start.t > o.ascent!.guidance.turn.value;
+      return propagate(
+        guided(o, site, sea, start, {
+          vehicle: v,
+          solved: flown.solved,
+          state,
+          sequence: live ? this.sequence : true,
+          ...(live ? { trim: this.trim } : {}),
+          thetaTurn: live ? (this.options.memo?.thetaTurn ?? null) : turned ? flown.thetaTurn : null,
+          plan,
+          launchJd: julianDate(this.flight.launch),
+        }),
+        start,
+        where,
+        options,
+      );
+    }
+    if (start.t < this.parting) return propagate(stack(o, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
+    // (begun within the burn, the burn in progress: the line it was fixed on as it lit, from the run's own state then)
+    const on = plan.retro.on.value;
+    const was =
+      start.t > on && start.t < plan.retro.off.value
+        ? (this.run?.samples as readonly LiveSample[] | undefined)?.find((x) => Math.abs(x.t - on) < 1e-6)
+        : undefined;
+    const lit = was ? { lit: { r: was.centre ?? was.r, v: was.v } } : {};
+    return propagate(spacecraft(plan, julianDate(this.flight.launch), site, sea, start, lit), start, where, options);
+  }
+  /**
+   * Whether the path can show where guidance would take the launch vehicle (viewer/path.ts, K): before the parting, under
+   * guidance, with an engine burning and the last stage's cutoff still to come.
+   */
+  get guidable(): boolean {
+    const t = this.clock.t;
+    if (!(t > 0) || t >= this.parting || !this.steering.guidance) return false;
+    const live = this.mine !== null && this.state ? this.state : null;
+    if (live) return !live.parted && this.vehicleOf().thrust(live) > 0;
+    return t < (orbitalFlown(this.flight).ascent.stops.at(-1) ?? 0);
   }
   /** What the path on show is, in a word or two beside its figures and in full where the pointer rests (viewer/path.ts). */
   get pathAs(): { short: string; long: string } {
     if (this.clock.t < this.parting)
       return {
         short: 'if cut now',
-        long: 'Where it goes if the engines stopped now: the stack with what it still carries, on its own drag, nothing more lit or let go. Not where guidance would take it: every step of the ascent is a hand’s to take at any instant',
+        long: 'Where it goes if the engines stopped now: the stack with what it still carries, on its own drag, nothing more lit or let go. Under guidance, K shows where guidance would take it instead',
       };
     if (this.free && this.fired === null)
       return {
@@ -769,6 +819,7 @@ export class OrbitDeck extends Deck {
       left: v.left(s),
       separation: s.parted!,
       plane: v.plane,
+      thetaTurn: this.options.memo?.thetaTurn ?? orbitalFlown(this.flight).ascent.thetaTurn,
     };
     const plan = this.givenUp();
     this.flown = this.whole(plan);

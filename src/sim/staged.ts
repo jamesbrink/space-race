@@ -131,6 +131,8 @@ export interface Ascended {
   separation: { t: number; r: Vec3; v: Vec3 };
   /** The launch plane's pole (the law's thrust lies square to it): the vehicle's left, as it stood on the pad. */
   plane: Vec3;
+  /** The thrust's angle above the local level as the tangent law took over (`Guidance`), radians: what the law flies from there. */
+  thetaTurn: number;
 }
 
 /** The whole flight: ascent flown, then the coast from where it left the spacecraft. */
@@ -512,6 +514,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     left: o.stages.map((s, i) => (s.usable ?? s.propellant).value - burned(i, plan[i]!.to)),
     separation: { t: tPart, r: state.r, v: state.v },
     plane: n,
+    thetaTurn,
   };
 }
 

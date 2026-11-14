@@ -321,7 +321,9 @@ export interface PathSource {
    * deck has planned, in at most `points` points, and says what that plan is (`plan`: when it changes, the path is made
    * again) and, while engines burn, which future it shows (`pathAs`).
    */
-  predict?(start: Start, points: number): Predictor | null;
+  predict?(start: Start, points: number, guided?: boolean): Predictor | null;
+  /** Whether that deck can show the future under guidance now (its engines burn under guidance with a cutoff to come): K chooses it. */
+  readonly guidable?: boolean;
   readonly plan?: string;
   readonly pathAs?: { short: string; long: string } | null;
 }
@@ -728,7 +730,8 @@ export class FlightPath {
   /** Whether there is a choice of future to make (K): the engine burns, under guidance, with a programme left to fly. */
   private choosing(): boolean {
     const tr = this.flight.trajectory;
-    return this.burning() && this.source.steering.guidance && this.source.craft !== null && !!tr && (this.sample?.t ?? 0) < this.until();
+    if (!tr) return this.source.guidable === true;
+    return this.burning() && this.source.steering.guidance && this.source.craft !== null && (this.sample?.t ?? 0) < this.until();
   }
 
   /** When the engine stops if nobody stops it: the record's cutoff with the sequencer on; with it off, when it runs dry. */
@@ -757,15 +760,18 @@ export class FlightPath {
   }
 
   /** Which future is to be shown from the sample on show: null for none (off, not flying, down). */
-  private want(): { key: string; plan: string; burn: Burn | null; sequence: Sequence | undefined } | null {
+  private want(): { key: string; plan: string; burn: Burn | null; sequence: Sequence | undefined; guided?: boolean } | null {
     const s = this.sample;
     const tr = this.flight.trajectory;
     if (!s || !this.on || !this.source.active || s.phase === 'landed') return null;
     // (a flight into orbit: its deck predicts, from the sample on show and what it has planned)
-    if (!tr)
-      return this.source.predict && s.t > 0
-        ? { key: `${s.t}|${this.source.plan ?? ''}`, plan: this.source.plan ?? '', burn: null, sequence: undefined }
-        : null;
+    if (!tr) {
+      if (!this.source.predict || !(s.t > 0)) return null;
+      // (and under guidance, whichever future was asked for: K)
+      const guided = this.choosing() && this.guided;
+      const plan = `${this.source.plan ?? ''}|${guided ? 'guided' : 'cut'}`;
+      return { key: `${s.t}|${plan}`, plan, burn: null, sequence: undefined, guided };
+    }
     const craft = this.source.craft;
     const { trim, guidance } = this.source.steering;
     const until = this.until();
@@ -811,7 +817,9 @@ export class FlightPath {
         ...(want.burn ? { burn: want.burn } : {}),
         ...(want.sequence ? { sequence: want.sequence } : {}),
       };
-      const run = tr ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options) : this.source.predict!(start, MOST - 2);
+      const run = tr
+        ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options)
+        : this.source.predict!(start, MOST - 2, want.guided === true);
       if (!run) return;
       this.job = {
         run,
