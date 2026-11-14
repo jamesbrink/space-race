@@ -9,7 +9,8 @@ const args = process.argv.slice(2);
 const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
 const only = opt('--only', null);
 const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
-const FLIGHT = 'usa/mercury/mr-3-freedom-7';
+// (`--flight <id>` goes between another flight's places)
+const FLIGHT = opt('--flight', 'usa/mercury/mr-3-freedom-7');
 
 const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 

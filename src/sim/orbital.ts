@@ -35,6 +35,7 @@ import { elementsOf, period, planeThrough, type State, stateOf, step, subpoint, 
 import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, G0 } from './fly.ts';
+import { tearOf } from './loads.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -72,6 +73,18 @@ export interface StageRecord {
    * the record's instant, held as a check and not flown to.
    */
   velocity?: { speed: Measure; over?: Measure; apparent?: boolean };
+  /**
+   * How its engines can be started (sim/stagedlive.ts): how many times, and whether only on the ground (igniters put up
+   * the nozzles from the pad). Left out: once, anywhere. A hand that asks for more is told why not.
+   */
+  start?: { count: number; ground: boolean; confidence: Confidence; source: string };
+  /**
+   * Lit while the stage it stands on (the one before it in `stages`) is still joined, its jet strikes that stage's top
+   * (sim/staging.ts `hotStage`): `open`, the share of the joint's side the turned jet escapes through (the rest stopped by
+   * its structure); `turn`, the angle below the level at which what escapes leaves the deflector, degrees; `endures`, how
+   * many seconds at full thrust the stage below's top stands it, after which its tank fails and the stack breaks up.
+   */
+  hot?: { open: Measure; turn: Measure; endures: Measure };
 }
 
 /**
@@ -110,8 +123,22 @@ export interface AscentRecord {
   guidance: Guidance;
   /** The stack's drag: from liftoff, each entry until its `until` (seconds from liftoff; the last holds to the end), its reference area, m^2, and its coefficient against Mach number. */
   drag: { until: Measure; area: Measure; curve: Curve }[];
-  /** What leaves that is no stage (the fairing): when, and its mass, kg. */
-  drops: { id: string; at: Measure; mass: Measure }[];
+  /**
+   * What leaves that is no stage (the fairing): when, and its mass, kg. `q`: the most dynamic pressure it was made to be let
+   * go in, Pa (sim/stagedlive.ts says when a hand lets it go in more, and what is not modelled of it); `covers`: the
+   * spacecraft is inside it, and cannot leave while it is on.
+   */
+  drops: { id: string; at: Measure; mass: Measure; q?: Measure; covers?: boolean }[];
+  /**
+   * What the launch vehicle's structure stands going up (sim/loads.ts's rule, as a ballistic flight's `body.limits`): the
+   * dynamic pressure times the angle off the wind, Pa rad, and the load along the axis, g. Past either it breaks up.
+   */
+  limits?: { qAlpha: Measure; axial: Measure };
+  /**
+   * What the spacecraft's escape did if the launch vehicle failed, by the time it failed: each mode until `until` seconds
+   * from liftoff (its source there), in a few words. Said on the deck's card when the launch vehicle breaks up; not flown.
+   */
+  aborts?: { until: Measure; does: string }[];
   /**
    * What the live vehicle needs to be turned (sim/stagedlive.ts): the angular acceleration the stack's steering gives at
    * full throw while its engines burn, deg/s^2, about each axis alike. Without it the vehicle can be ridden but not steered.
@@ -528,7 +555,7 @@ export function flyDown(
         kept.set(filling.name, filling.area);
       }
       const p = pressure(q, h);
-      const tears = c.strength !== undefined && p > c.strength.value;
+      const tears = tearOf(p, 0, 0, { strength: c.strength?.value, torn: 0 }) !== null;
       if (tears) tore[c.name] = { t, by: 'pressure', q: p, pull: 0 };
       met[c.name] = { q: p, pull: 0 };
       filling = { area: c.dragArea.value * (tears ? (d.torn?.value ?? 0) : 1), at: t, fills: c.fills.value, name: c.name };
@@ -554,11 +581,11 @@ export function flyDown(
         m.q = Math.max(m.q, p);
         m.pull = Math.max(m.pull, pull);
         if (tore[c.name] || (!c.strength && !c.pull)) return;
-        const by = c.strength && p > c.strength.value ? 'pressure' : c.pull && pull > c.pull.value ? 'pull' : null;
-        if (!by) return;
-        tore[c.name] = { t, by, q: p, pull };
+        const tear = tearOf(p, area, c.dragArea.value, { strength: c.strength?.value, pull: c.pull?.value, torn: d.torn?.value ?? 0 });
+        if (!tear) return;
+        tore[c.name] = { t, by: tear.by, q: p, pull };
         // (what is left streams: a part of its drag area, or what it had filled to if that was less)
-        const left = Math.min(area, c.dragArea.value * (d.torn?.value ?? 0));
+        const left = tear.left;
         if (now) filling = null;
         else base -= area;
         base += left;

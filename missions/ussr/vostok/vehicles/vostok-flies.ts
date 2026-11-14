@@ -52,7 +52,10 @@ export function vostokCommands(day: DescentWords): Record<string, Command[]> {
     RetroEngine: [{ label: 'Fire the braking engine along the long axis (his, once the code had freed the hand controls)', ask: 'retro' }],
     Fairing: [{ label: `Drop the fairing (${OVER})`, ask: 'step:drop:fairing' }],
     BlockE: [
-      { label: `Light the third stage (${OVER})`, ask: 'step:ignite:2' },
+      {
+        label: `Light the third stage: hot staging, through the lattice with the core still on, as it flew (${OVER})`,
+        ask: 'step:ignite:2',
+      },
       { label: `Cut off the third stage (${OVER})`, ask: 'step:cut:2' },
       separate,
     ],
