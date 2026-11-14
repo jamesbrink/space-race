@@ -27,13 +27,16 @@ export function voskhodSeat(couch: Couch, whose: string, helmet: string[], open:
   };
 }
 
-/** The cabin, with its one lamp (`ModelDef.lights[0]`). `couches`: the model's couch nodes, whose men are indoors too. */
+/**
+ * The cabin, with its one lamp (`ModelDef.lights[0]`). `couches`: the model's couch nodes, whose men are indoors too,
+ * and whatever else of the model stands inside (the 3KD's hatch into the airlock, with the Vzor on its lid).
+ */
 export function voskhodCabin(couches: string[]): CabinDef {
   return {
     within: ['Cabin', ...couches],
-    // the top of the crew's heads: along the couches toward hatch No. 2 and the parachute container, square to the
-    // entry hatch's side (voskhod.py `couch_frame`: +Y), level
-    overhead: [Math.SQRT1_2, 0, -Math.SQRT1_2],
+    // the top of the crew's heads: along the couches toward hatch No. 2 and the parachute container, raised 24° as
+    // the Vostok seat's rails were (voskhod.py `couch_frame`: +Y)
+    overhead: [0.646, 0.4067, -0.646],
     // the Vostok seat's (estimated): a head on a couch's rest turns as far as one in a helmet fixed to its suit
     head: { side: 1.4, up: 0.7, down: 0.5 },
     instruments: [],

@@ -397,10 +397,11 @@ def build_hatch(M, node, prefix: str, where: tuple[float, float], window: float 
     bolts.build(f"{prefix}_Bolts", M["bolt"], node)
 
 
-def build_descent_module(M, pole: bool = True, technological: bool = True) -> None:
+def build_descent_module(M, pole: bool = True, technological: bool = True, hatches: tuple = (ENTRY, PARACHUTE, TECHNOLOGICAL)) -> None:
     """`pole` is the housing of the forward antennas on the sphere's pole, with its two whips and rod: a Voskhod has its
     reserve braking engine there instead. `technological` is hatch No. 3 as a Vostok had it, bolted on for good with the
-    Vzor's porthole in it: a Voskhod 3KD has its airlock on that opening."""
+    Vzor's porthole in it: a Voskhod 3KD has its airlock on that opening. `hatches` is where the three openings are
+    (No. 1, No. 2, No. 3: azimuth and latitude), for a ship that reads them off a drawing of its own."""
     g = group("DescentModule")
     skin = MeshBuilder()
     skin.lathe(pm([(R * math.cos(deg(-90 + 180 * i / 72)), Z_C + R * math.sin(deg(-90 + 180 * i / 72))) for i in range(73)]), 144)
@@ -408,7 +409,7 @@ def build_descent_module(M, pole: bool = True, technological: bool = True) -> No
 
     fit, rings, glass, void, bolts = (MeshBuilder() for _ in range(5))
     # each hatch's seat: a coaming round the opening and the jamb through the wall
-    for where in (ENTRY, PARACHUTE, TECHNOLOGICAL):
+    for where in hatches:
         ax = OUTER.axis(*where)
         r = HATCH_R
         rings.lathe(pm([(r + 52, OUTER.z(r + 52) - 8), *OUTER.cap(r + 52, r + 2, 12, 3), (r + 2, OUTER.z(r + 2) - 8)]), 96, matrix=ax)
@@ -418,7 +419,7 @@ def build_descent_module(M, pole: bool = True, technological: bool = True) -> No
             void.lathe(pm([(r, INNER.z(r) - 30), (0, INNER.z(r) - 30)]), 48, matrix=ax)
     # No. 3, the technological hatch, stays on; the Vzor looks out through the porthole in it, under a deep hood
     if technological:
-        build_hatch(M, g, "DM_TechHatch", TECHNOLOGICAL, window=70.0)
+        build_hatch(M, g, "DM_TechHatch", hatches[2], window=70.0)
     porthole(fit, glass, bolts, void, RIGHT_PORT)
 
     # the plate the cable mast plugs into: the instrument module's power and commands come through its sockets
@@ -455,16 +456,16 @@ def build_descent_module(M, pole: bool = True, technological: bool = True) -> No
     ant.build("DM_Antennas", M["antenna"], g, sharp_angle=None)
 
 
-def build_hatches(M) -> None:
-    build_hatch(M, group("EntryHatch"), "EntryHatch", ENTRY, window=16.0)
-    build_hatch(M, group("ParachuteHatch"), "ParachuteHatch", PARACHUTE)
+def build_hatches(M, hatches: tuple = (ENTRY, PARACHUTE, TECHNOLOGICAL)) -> None:
+    build_hatch(M, group("EntryHatch"), "EntryHatch", hatches[0], window=16.0)
+    build_hatch(M, group("ParachuteHatch"), "ParachuteHatch", hatches[1])
 
 
-def cut_openings() -> None:
+def cut_openings(hatches: tuple = (ENTRY, PARACHUTE, TECHNOLOGICAL)) -> None:
     """The three hatch openings and the side porthole, through the shield and the pressure hull."""
     bpy.context.view_layer.update()
     # the lining's openings are wider than the hull's: two rims drawn onto one circle would lie together
-    for where in (ENTRY, PARACHUTE, TECHNOLOGICAL):
+    for where in hatches:
         ball_bore({"DM_Insulation": R, "Cabin_PressureShell": R_IN}, where, HATCH_R, 0.45)
         if interior():
             ball_bore({"Cabin_Padding": R_IN - 14}, where, HATCH_R + 34, 0.45)
@@ -484,6 +485,10 @@ def build_cabin(
     stores: bool = True,
     controls: bool = True,
     lighting: bool = False,
+    hatches: tuple = (ENTRY, PARACHUTE, TECHNOLOGICAL),
+    board: Matrix | None = None,
+    vzor: bool = True,
+    container: bool = True,
 ) -> None:
     """`tv_standins` are the two plain barrels that stand for the television cameras on a flight that does not build
     them (build_television does, as its own node). `fit`: the cabin as a year's ships had it ("1961": vostok_cabin.py),
@@ -491,7 +496,11 @@ def build_cabin(
     `stores` the cases and canisters laid out round that seat, and `controls` the panel at the pilot's left hand and the
     hand controller at his right: a Voskhod, which had couches where the seat was and its controls moved to them, builds
     none of these. `lighting` gives the plain cabin the 1961 fit's two lamps and its lighting tumbler, on the plain
-    panel (vostok_cabin.lighting): the board, the panel and the rest stay the plain shapes."""
+    panel (vostok_cabin.lighting): the board, the panel and the rest stay the plain shapes. `hatches` is where the
+    three openings are, as build_descent_module's. `board` is the plain instrument board's own frame, in the seat's
+    millimetres (its face toward +Z, its top toward +Y), for a ship whose board is put by its own record; `vzor` and
+    `container` are the plain sight on hatch No. 3 and the parachute container behind hatch No. 2, which a ship that
+    builds its own leaves out."""
     g = group("Cabin")
     arc = [deg(-90 + 180 * i / 48) for i in range(49)]
     shell = MeshBuilder()
@@ -515,7 +524,8 @@ def build_cabin(
             rails.box((30, 60, 150), Matrix.Translation(P(sx * 318, y, -350)))
     if fit is None:
         # the instrument board, over his knees and facing his eyes
-        board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X")
+        if board is None:
+            board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X")
         panel.box((440, 320, 110), board)
         globe.lathe(arc_profile(0, 0, 62, -20, 90, 10), 28, matrix=board @ Matrix.Translation(P(-70, -30, 50)))  # the Globus
         panel.lathe([(82, 40), (82, 62), (62, 62)], 28, matrix=board @ Matrix.Translation(P(-70, -30, 0)))
@@ -534,9 +544,10 @@ def build_cabin(
             gear.lathe(arc_profile(0, 0, 42, 0, 90, 6), 16, matrix=Matrix.Translation(P(-345, 30, 190)))
             black.box((36, 120, 44), Matrix.Translation(P(-345, 30, 252)))
         # the Vzor: an optical sight on the porthole beyond his feet
-        vz = to_seat(INNER.frame(*TECHNOLOGICAL))
-        gear.lathe([(PORT_R + 60, -46), (PORT_R + 60, -150), (PORT_R + 20, -230), (PORT_R - 20, -230)], 40, matrix=vz)
-        lens.lathe([(PORT_R - 20, -230), (0, -222)], 40, matrix=vz, flip=True)
+        vz = to_seat(INNER.frame(*hatches[2]))
+        if vzor:
+            gear.lathe([(PORT_R + 60, -46), (PORT_R + 60, -150), (PORT_R + 20, -230), (PORT_R - 20, -230)], 40, matrix=vz)
+            lens.lathe([(PORT_R - 20, -230), (0, -222)], 40, matrix=vz, flip=True)
         # television cameras: one beside the board watching his face, one at his side
         for at, turn in ((P(150, -520, 660), Matrix.Rotation(deg(-105), 4, "X")), (P(-400, 330, 330), Matrix.Rotation(deg(70), 4, "Y"))):
             if not tv_standins:
@@ -564,9 +575,10 @@ def build_cabin(
     for y in (-60, 110) if stores else ():
         gear.tube(P(-560, y - 60, 120), P(-560, y + 60, 120), 62, 20)
     # the descent module's own parachute, in its container behind hatch No. 2
-    pax = to_seat(OUTER.axis(*PARACHUTE))
+    pax = to_seat(OUTER.axis(*hatches[1]))
     zin = INNER.z(HATCH_R)
-    chute.lathe([(0, zin - 440), (370, zin - 440), (400, zin - 400), (400, zin - 50), (0, zin - 50)], 48, matrix=pax)
+    if container:
+        chute.lathe([(0, zin - 440), (370, zin - 440), (400, zin - 400), (400, zin - 50), (0, zin - 50)], 48, matrix=pax)
 
     for mb, name, mat in (
         (rails, "Cabin_SeatRails", "steel"),
@@ -595,8 +607,9 @@ def build_cabin(
     # The container is a node of its own (`ParachuteContainer`): its origin in the middle of its mouth, under hatch No. 2,
     # its own +Z (the file's +Y) out along the hatch's line, so the top of its bounds is its mouth: where the descent
     # module's parachute is made fast (`Flight.flies.chutes[].at`).
-    mouth = OUTER.axis(*PARACHUTE) @ Matrix.Translation(V(0, 0, zin - 50))
-    rehome(bpy.data.objects["Cabin_ParachuteContainer"], group("ParachuteContainer", g), mouth)
+    if container:
+        mouth = OUTER.axis(*hatches[1]) @ Matrix.Translation(V(0, 0, zin - 50))
+        rehome(bpy.data.objects["Cabin_ParachuteContainer"], group("ParachuteContainer", g), mouth)
 
 
 def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:

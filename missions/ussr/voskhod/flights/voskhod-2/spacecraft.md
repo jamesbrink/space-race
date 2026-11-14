@@ -43,9 +43,9 @@ to be as the Vostok or the 3KV had it, for want of anything read.
 
 | Difference | Confidence | Source, and what the model does |
 | --- | --- | --- |
-| Two couches, "modified for spacesuited cosmonauts" | documented | Siddiqi p. 448. **Modelled**: two couches a little wider than the 3KV's; the one nearest hatch No. 3 gone. That it was that one is from a NASA diagram and from the hatch's cover needing the room (Altunin and Verba: it took "up to 30 %" of the cabin): estimated |
+| Two couches, "modified for spacesuited cosmonauts" | documented | Siddiqi p. 448. **Modelled**: two couches a little wider than the 3KV's; the one nearest hatch No. 3 gone. That it was that one is drawn in RKK Energia's film frame and OKB-1's section of the airlock on hatch No. 3 (Zak), and follows from the hatch's lid needing the room (Altunin and Verba: it took "up to 30 %" of the cabin; Leonov, 2005: it was made smaller to clear his couch's liner). Leonov's is the 3KV's middle couch, 40 mm lower than Belyayev's: [voskhod.md](../../vehicles/voskhod.md), "The fit" |
 | The Volga airlock on hatch No. 3 | documented | Siddiqi p. 448; Zak. **Modelled** |
-| The hatch into it opening inward, with the Vzor's porthole in its cover | documented, secondary | Zak. **Modelled as the Vostok's cover** with its porthole; its hinge and its 0.65 or 0.7 m opening are not |
+| The hatch into it opening inward, with the Vzor's porthole in its cover | documented, secondary | Zak; the State Commission's transcript (the cams, the lid that "lay on its plate", the Vzor's cover). **Modelled**: a hatchway of 0.65 m in a plate that closes the Vostok's metre, its lid hinged on the side toward the parachute container and swung 100° into the cabin, the Vzor on the lid. Its drive, hand wheel and the hose and tether stowed on it are not |
 | The ring left on the hull | documented | Kamanin, 26 February and 3 March 1965. **Modelled**, 34 mm proud |
 | Pressure suits and their air conditioning; an emergency oxygen supply for the landing | documented | Siddiqi p. 448. The suits are **modelled**; the systems are not |
 | The pack for the man going out | documented | **Modelled**, beside Leonov's couch; where it was stowed is not known |
@@ -82,8 +82,8 @@ being lowered onto a ship and of one let out in the works; Zak's photograph of a
 couches' grey-green pads in aluminium pans, the hatch into the airlock on the far wall); and the
 photographs of the two men at the pad and of the suits kept since.
 
-What does not match: the airlock leans 15° toward the nose where the drawing, the poster and
-Woods's drawing all have it leaning further (20 to 27° by the drawing); its tube is drawn in nine
+What does not match: the folded airlock stands square to its hatch, 21° toward the nose, where
+OKB-1's drawing cants its rings 9° back from that line; its tube is drawn in nine
 bands with a hoop at each, where the museum's cover has three or four hoops and falls in loose
 folds; its four bottles are spread round the nose side of its foot, where the museum's stand in a
 cluster on a frame; the head carries no lamps and no television cameras; and the folded stack is a
