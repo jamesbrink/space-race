@@ -345,7 +345,7 @@ export class Ascent {
     return {
       since: Math.min(t, on.landed) - at,
       fills: this.descentBody(id)?.chutes.find((c) => c.name === def.on)?.fills.value ?? 1,
-      torn: -1,
+      torn: t >= (d.torn?.[id]?.[def.on] ?? Number.POSITIVE_INFINITY) ? t - d.torn[id]![def.on]! : -1,
       air: on.air,
       up: on.up,
       seen: 1,
@@ -924,7 +924,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
     out: { drogue: Infinity, main: Infinity },
     sheds,
     fires: firesOf(flight, whole),
-    descent: descentOf(whole, jd, centre),
+    descent: descentOf(whole, jd, centre, o.descent?.ground.value),
   };
   orbitalRuns.set(o, run);
   return run;
@@ -952,7 +952,8 @@ export function orbitalEvents(
     out['retro-timer'] = Infinity;
     out.modules = hand.parting;
   }
-  const ejected = whole.coast.results.ejectionAt;
+  // (the ejection is when the descent had it: the barometric switch's height on the record's run, or when a hand gave it)
+  const ejected = whole.down ? whole.down.ejected : whole.coast.results.ejectionAt;
   out.ejection = Number.isFinite(ejected) ? ejected : Infinity;
   for (const [id, landed] of Object.entries(whole.down?.landed ?? {})) out[`${id}-down`] = landed.at;
   return out;

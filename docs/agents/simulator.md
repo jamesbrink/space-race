@@ -85,7 +85,27 @@ never adjusted to bring a check in.
   what was left behind as a body of its own (`leaves`: the seat), and one `instead` of another lets that one go; a figure
   of the flight's `hangs` from its harness under its body's canopy in the pose the figure carries; the run's own body
   turns to hang from where its parachute is made fast (`Ascent.hangsFrom`). How each hangs is drawn; the tracks are
-  points. The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
+  points. The globe is drawn at the sea's height, not the ground's, so each body's last kilometre is drawn lowered evenly
+  by the descent's `ground` until it rests on the drawn surface (staged.ts `settled`); the figures, and the card's height
+  of the landing place, are the flight's own.
+- **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:
+  the modules' parting (`entry.separation`), the ejection (`ejection.altitude`), and each body's parachutes; a body other
+  than the first (the entry body, which carries the pilot until the ejection and the instrument module until the modules
+  part) leaves it at the first of its `with` events. The automatic sequence (the timer, the barometric switches) acts only
+  while the sequencer is on (`switched`); what a hand gives (`given`, at the clock's instant) acts whatever it is. flyOrbit
+  hands over to flyDown at a hand's first event if that comes before the ejection height, and the modules' parting ends a
+  braking burn (the engine is on the instrument module). The entry body flies the coast's drag above the ejection height
+  and its own figure below; joined, it is heavier by the instrument module and no draggier (the coast's convention: no
+  figure for the joined ship's drag, nor for the heat that burned its cables through on the day). Every parachute is held
+  to the tear rule while out (`strength`, `pull`, `descent.torn`), and fills over its `fills`, so one let out too low does
+  not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
+  the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and
+  a flight that stays up to `decay` (the orbit's life in the standard air on a free-molecule drag coefficient, against
+  `supplies.days`). Nothing given, it is the record's run to the last bit (tests/descent.test.mjs). On the deck
+  (orbitdeck.ts) each event is `descent:<id>` (`can`, `ask`, `Part.commands`, offered on what is let go as well as on the
+  vehicle), Space gives the next in the record's order once no burn is to come, and B with the spacecraft alone and no
+  burn to come is the descent's sequencer (before the timer's burn it gives that burn up too); each override's label says
+  what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
   documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
   (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
 - **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,

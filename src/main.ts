@@ -375,7 +375,17 @@ stage.onSpot = (page, point, floor, on) => {
     // (something it has let go, falling beside it: the view can go with that instead, all the way down)
     if (on.shed) {
       const { drop, name } = on.shed;
-      ui.menu(page.x, page.y, [{ label: `Follow the ${name.toLowerCase()}`, run: () => stage.followShed(drop) }]);
+      // (and what its parts can still be told to do: the seat let go with him on it has his parachutes)
+      const nodes = flight.flies?.drops[drop]?.nodes ?? [];
+      const asks = flight.models
+        .find((m) => m.id === flight.flies?.model)
+        ?.parts.filter((p) => nodes.includes(p.node))
+        .flatMap((p) => p.commands ?? [])
+        .filter((c, i, all) => all.findIndex((k) => k.ask === c.ask) === i && cockpit.can(c.ask));
+      ui.menu(page.x, page.y, [
+        ...(asks ?? []).map((c) => ({ label: c.label, run: () => cockpit.ask(c.ask) })),
+        { label: `Follow the ${name.toLowerCase()}`, run: () => stage.followShed(drop) },
+      ]);
       return;
     }
     const spot = on.craft;

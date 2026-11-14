@@ -314,6 +314,30 @@ them. `Trajectory` has exactly two parachutes on one body; here there are two bo
 Wanted and not read: canopy areas (574 m² for the module, 83.5 m² for the pilot's: one tertiary
 source), the seat's rockets, sink rates.
 
+**By hand (November 2026).** Every event of the descent is now data on `descent` and can be given at
+any instant (flyDown with `DescentHands`): the modules' parting, the ejection (hatch No. 1 and the seat
+as one instant: the 2 s between them are not flown), the cover with the module's first parachute or
+the ejection (one command shot both hatches), leaving the seat (it is the main canopy's coming out:
+the record has the two together), and each parachute. The limits each is held to are **estimated**,
+none read: each canopy's cloth a quarter over its documented opening (7 km at 220 m/s for the small
+ones, 14.3 kPa; 4 km at 200 m/s for the braking parachute, 16.4 kPa) or twice its flown one where none
+is documented (the mains); its lines what it would pull full at that pressure, or half as much again
+as flown; a torn canopy keeping a twentieth (Freedom 7's figure). The pilot: 7 m/s for a landing in
+the ball (it came down at 10 m/s, which the ejection existed to spare him), 8 m/s under his canopy,
+30 kPa of blast on the open seat (twice the day's), 1,000 m/s through the air out of the ball (a man in
+a pressure suit came through Mach 3.2 at 24 km: Weaver, SR-71, 1966, from memory). Not modelled: the
+joined ship's drag (flown as weight), the heat that burned its cables through and the thermal
+backup's trigger (the record's 10:36 is flown; the sequencer off stops it), the heat on a man out of
+the ball. What the endings give (tests/descent.test.mjs, from the record's orbit): nothing given and
+the sequencer off, the ball into the ground at 151 m/s; never ejected, the module's three parachutes
+given at their heights, a landing in the ball at 9.6 m/s, past the 7 taken; the modules never parted,
+the heavier stack meets 7 km faster and all three of the module's parachutes tear (it lands at 56 m/s)
+while he, ejected at 17 kPa, comes down at 4.5 m/s; ejected at 100 km, out in the air at 7.7 km/s; at
+1 km, his main canopy tears at 11 kPa and he lands at 26 m/s. **The orbit that stays up**: supplies for
+ten days, the orbit chosen to decay within them (planned two to seven; section 1, "What it cost");
+`decay` flies it on in the standard air on a free-molecule drag coefficient of 2 (estimated) on the
+ball's disc: a forward burn from the record's orbit lasts more than thirty days.
+
 ### The verdict and the misses
 
 `verdict.ts` holds a landing to `capsule.limits`. For this flight the pilot's landing is his own

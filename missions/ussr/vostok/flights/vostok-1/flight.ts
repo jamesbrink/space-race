@@ -1,4 +1,4 @@
-import type { CabinDef, ChuteDef, Flight, Keyframe, Measure, ModelDef, Move, Part } from '../../../../../src/types';
+import type { CabinDef, ChuteDef, Command, Flight, Keyframe, Measure, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
 import { MSK, orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
@@ -83,9 +83,28 @@ const SHIP = 9;
 /** A reading of the spacecraft's own sequence (0 to 1, as it was timed when it was shown alone) on the whole vehicle's slider. */
 const later = (t: number) => (SHIP / (SHIP + 2)) * 0.5 + (1 - (SHIP / (SHIP + 2)) * 0.5) * t;
 
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
+const PART: Command = {
+  label: 'Part the modules (he could not: on the day the thermal backup did, 10:36)',
+  ask: 'descent:modules',
+};
+const EJECT: Command = {
+  label: 'Blow the hatch and eject (he could not: the barometric switch, 7 km)',
+  ask: 'descent:ejection',
+};
+const MODULE_CHUTES: Command[] = [
+  {
+    label: 'Module’s pilot parachute: the cover off (automatic: with the hatch, 7 km)',
+    ask: 'descent:module/pilot parachute',
+  },
+  { label: 'Module’s braking parachute (automatic: its barometric switch, 4 km)', ask: 'descent:module/braking parachute' },
+  { label: 'Module’s main parachute (automatic: its barometric switch, 2.5 km)', ask: 'descent:module/main parachute' },
+];
+
 const parts: Part[] = [
   {
     node: 'DescentModule',
+    commands: [PART, ...MODULE_CHUTES],
     group: 'Spacecraft',
     name: 'Descent module',
     summary: 'A ball 2.3 m across: the only part that came back.',
@@ -113,6 +132,7 @@ const parts: Part[] = [
   },
   {
     node: 'EntryHatch',
+    commands: [EJECT],
     group: 'Spacecraft',
     name: 'Hatch No. 1',
     summary: 'The way in, bolted shut behind him, and the way out at 7 km.',
@@ -134,6 +154,7 @@ const parts: Part[] = [
   },
   {
     node: 'ParachuteHatch',
+    commands: MODULE_CHUTES,
     group: 'Spacecraft',
     name: 'Hatch No. 2',
     summary: 'Covers the capsule’s own parachute.',
@@ -180,6 +201,21 @@ const parts: Part[] = [
   },
   {
     node: 'EjectionSeat',
+    commands: [
+      EJECT,
+      {
+        label: 'Seat’s stabilising parachute (automatic: its timer, half a second out)',
+        ask: 'descent:pilot/seat’s braking parachute',
+      },
+      {
+        label: 'Leave the seat: main canopy (automatic: its barometric switch, 4 km)',
+        ask: 'descent:pilot/main canopy',
+      },
+      {
+        label: 'Reserve canopy (automatic: by itself at 3 km, this flight only)',
+        ask: 'descent:pilot/reserve canopy',
+      },
+    ],
     group: 'Spacecraft',
     inside: true,
     name: 'Ejection seat and pilot',
@@ -261,6 +297,7 @@ const parts: Part[] = [
     node: 'InstrumentModule',
     commands: [
       { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
+      PART,
     ],
     group: 'Spacecraft',
     inside: true,
