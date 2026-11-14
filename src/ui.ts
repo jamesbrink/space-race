@@ -1069,32 +1069,8 @@ export class Ui {
    * From a seat (on board, or a couch boarded on foot): what can be looked out of, each a switch that leans the pilot
    * to it and back (its digit is the key), lit while he leans to it. An empty list puts it away.
    */
-  setLookouts(names: string[], leaning: number | null, lights: { name: string; says: string; way: number } | null = null): void {
-    const bar = this.root.querySelector<HTMLElement>('.lookouts')!;
-    const key = [...names, lights?.name ?? ''].join('\n');
-    if (bar.dataset.names !== key) {
-      bar.dataset.names = key;
-      bar.innerHTML =
-        names
-          .map(
-            (name, i) =>
-              `<button class="switch" data-lookout="${i}" aria-pressed="false" title="Lean to the ${esc(name.toLowerCase())} and look out; again, or Esc, to sit back (${i + 1})"><kbd>${i + 1}</kbd>${esc(name)}</button>`,
-          )
-          .join('') +
-        // the cabin's own lights: the switch on its console, as a switch here
-        (lights
-          ? `<button class="switch" data-cabin-lights aria-pressed="false" title="Throw the ${esc(lights.name.toLowerCase())} switch: or click it on its console"><span></span></button>`
-          : '');
-    }
-    bar.hidden = names.length === 0;
-    for (const b of bar.querySelectorAll<HTMLElement>('[data-lookout]'))
-      b.setAttribute('aria-pressed', String(Number(b.dataset.lookout) === leaning));
-    const b = bar.querySelector<HTMLElement>('[data-cabin-lights]');
-    if (b && lights) {
-      // (lit while the switch is as the cabin was built: its first position is the lamps as flown)
-      b.setAttribute('aria-pressed', String(lights.way === 0));
-      b.querySelector('span')!.textContent = `${lights.name} · ${lights.says}`;
-    }
+  setLookouts(names: string[], leaning: number | null, lights: CabinLights | null = null): void {
+    lookoutsBar(this.root.querySelector<HTMLElement>('.lookouts')!, names, leaning, lights);
   }
   /** One of `setLookouts` was asked for. */
   onLookout: (n: number) => void = () => {};
@@ -1176,5 +1152,61 @@ export class Ui {
     this.root.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => (p.hidden = p.dataset.pane !== name));
     this.root.querySelector('.panel')!.classList.toggle('on-view', name === 'View');
     this.sized();
+  }
+}
+
+/** The cabin's own lights as the bar shows them (viewer/cabin.ts `lighting`): its switch's position and what that reads; `built`, the switch is in the model to be clicked. */
+type CabinLights = { name: string; says: string; way: number; built?: boolean };
+
+/**
+ * The bar of what can be done from a seat (on board at a site, a couch boarded on foot, an exhibit's seat in the gallery):
+ * what can be looked out of, each a switch that leans to it and back (its digit is the key), lit while leant to; the
+ * cabin's own lights' switch, if it has one; and, in the gallery, the seats there are to move between and the way out
+ * (`seats`). Hidden while there is nothing on it.
+ */
+export function lookoutsBar(
+  bar: HTMLElement,
+  names: string[],
+  leaning: number | null,
+  lights: CabinLights | null = null,
+  seats: { labels: string[]; at: number | null } | null = null,
+): void {
+  const key = [...names, lights?.name ?? '', ...(seats ? ['', ...seats.labels] : [])].join('\n');
+  if (bar.dataset.names !== key) {
+    bar.dataset.names = key;
+    const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    bar.innerHTML =
+      // (one seat of several to move to: a switch apiece, lit for the one sat in; C goes round them)
+      (seats && seats.labels.length > 1
+        ? seats.labels
+            .map(
+              (label, i) =>
+                `<button class="switch" data-seat="${i}" aria-pressed="false" title="Sit in ${esc(label)} (C goes round the seats)">${esc(capital(label.replace(/^the /, '')))}</button>`,
+            )
+            .join('')
+        : '') +
+      names
+        .map(
+          (name, i) =>
+            `<button class="switch" data-lookout="${i}" aria-pressed="false" title="Lean to the ${esc(name.toLowerCase())} and look out; again, or Esc, to sit back (${i + 1})"><kbd>${i + 1}</kbd>${esc(name)}</button>`,
+        )
+        .join('') +
+      // the cabin's own lights: the switch on its console, as a switch here
+      (lights
+        ? `<button class="switch" data-cabin-lights aria-pressed="false" title="Throw the ${esc(lights.name.toLowerCase())} switch${lights.built === false ? '' : ': or click it on its console'}"><span></span></button>`
+        : '') +
+      (seats ? '<button data-unseat title="Get up out of the seat: back to the view you had (Esc)"><kbd>Esc</kbd>Get up</button>' : '');
+  }
+  // (at a site, nothing until there is something to look out of: the lights alone are no reason to show it)
+  bar.hidden = names.length === 0 && !seats;
+  for (const b of bar.querySelectorAll<HTMLElement>('[data-lookout]'))
+    b.setAttribute('aria-pressed', String(Number(b.dataset.lookout) === leaning));
+  for (const b of bar.querySelectorAll<HTMLElement>('[data-seat]'))
+    b.setAttribute('aria-pressed', String(Number(b.dataset.seat) === seats?.at));
+  const b = bar.querySelector<HTMLElement>('[data-cabin-lights]');
+  if (b && lights) {
+    // (lit while the switch is as the cabin was built: its first position is the lamps as flown)
+    b.setAttribute('aria-pressed', String(lights.way === 0));
+    b.querySelector('span')!.textContent = `${lights.name} · ${lights.says}`;
   }
 }

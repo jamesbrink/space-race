@@ -204,3 +204,6 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
 }
 @media (prefers-reduced-motion: reduce) { #gallery-stage { transition: none; } }
 #gallery > .notes { pointer-events: none; }
+/* from a seat, the bar of what can be done there (ui.ts lookoutsBar) stands beside the panel, not over it */
+@media (min-width: 961px) and (min-height: 521px) { #gallery:has(> .panel:not(.tucked)) > .lookouts { right: calc(2 * var(--edge) + min(360px, 30vw) + env(safe-area-inset-right)); } }
+@media (max-width: 960px), (max-height: 520px) { #gallery > .lookouts { top: calc(var(--top) + var(--line-h) + 8px); right: var(--right); transform: none; gap: 2px; padding: 4px; } #gallery > .lookouts button { min-height: 36px; padding: 4px 8px; font-size: 10px; } #gallery.seated > .notes { max-width: calc(100vw - var(--left) - var(--right) - 200px); } }
