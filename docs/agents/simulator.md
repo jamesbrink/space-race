@@ -439,18 +439,31 @@ never adjusted to bring a check in.
   0.05 g after retrofire, the greatest load before a parachute, drogue, main) and returns the path at instants of its
   own, multiples of a power-of-two step its bend allows (`gridStep`), so two predictions of the same flight share their
   points. A prediction is begun at most five times a second and worked in slices of 1.5 ms a frame
-  (`Predictor.run(budget)`; `sr.path.cost` says what the last one took); nothing is predicted while the path is off. A
-  path that comes down is drawn over the ground (each point where it will be over the ground at its own instant); one
-  that goes round is drawn in the navball's frame (O), in Orbit as it lies in the frame that does not turn, the mesh
-  turned back about the Earth's axis as the clock goes on. It is an instrument's line, and lunar-lift's
-  (../lunar-lift, js/predictor.js) is its model: a ribbon of constant width in pixels with a soft core (in the cel look a
-  flat line with an ink edge), drawn after the solid scene against its depth and writing none, so the vehicle, the
-  ground and the cabin's walls hide it and the Earth's bulk hides it beyond the far plane; it starts a gap ahead of the
-  vehicle and comes in over three more (lunar-lift's stops), and never within the vehicle's outline on the screen;
-  nothing of it nearer the eye than the near plane. Each frame only uniforms change: a new prediction is eased in over
-  0.3 s from where the line was, instant by instant (`viewer/pathline.ts`), so a prediction made again of the same flight
-  moves nothing. The line flown is drawn behind it, paler. Its markers are glyphs on the line with a name, a figure
-  and the time to it (apogee, the events, where it comes down, with a ring on the surface there), laid out together by
+  (`Predictor.run(budget)`; `sr.path.cost` says what the last one took), and only when it is wanted: while the flight
+  keeps to the curve on show (within a metre and a centimetre a second, the plan unchanged, and a path that comes round
+  still reaching most of the way round) that curve is its future and nothing is worked out again (`holds`); nothing is
+  predicted while the path is off. Whichever deck predicts (predict.ts here, the orbital deck's `orbitpath.ts`), path.ts
+  is given one `Predictor` and one `Prediction` and knows nothing of which it was. A path that comes down is drawn over
+  the ground (each point where it will be over the ground at its own instant); one that goes round is drawn in the
+  navball's frame (O), in Orbit as it lies in the frame that does not turn. It is an instrument's line, and lunar-lift's
+  (../lunar-lift, js/predictor.js) is its model, with KSP's for what it shows: one clean line from the vehicle to where
+  the path ends, the whole orbit once round when there is one. Its rules are the screen's and the path's own, the same
+  for every path (`viewer/pathline.ts`, path.ts's header): the prediction is a curve (its points with their velocities,
+  the cubic between them), cut each frame into chords until none strays more than 0.35 px from it as seen from the eye,
+  wherever the eye is, at multiples of a power of two seconds so the chords stay put as the clock runs; it starts at the
+  instant on the curve nearest the vehicle as drawn and is taken onto the vehicle there; it is a ribbon of constant
+  width in pixels (each chord pushed out across its own direction on the screen and mitred to the next, never thinned
+  with distance) with a soft core (in the cel look a flat line with an ink edge), drawn after the solid scene against
+  its depth and writing none, so the vehicle, the ground and the cabin's walls hide it; the Earth hides it by a sphere
+  (the polar radius) tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle and comes
+  in over three more (lunar-lift's stops), is kept off the vehicle's outline on the screen only where it passes in front
+  of the vehicle, and each chord is cut at a plane just past the near plane and fades in over the next doubling of the
+  distance, so nothing is drawn behind the eye. A new prediction is eased in over 0.3 s from where the line was, instant
+  by instant, and a prediction made again of the same flight lies on the same curve, so nothing moves. The line flown is
+  drawn behind it, paler, the same way. Its markers are glyphs on the line with a name, a figure
+  and the time to it (the next apoapsis and periapsis, found in the path itself where its radial speed changes sign
+  (predict.ts `apsides`), whatever it is; the events; where it comes down, with a ring on the surface there; one behind
+  the Earth is laid on its place, dimmed), laid out together by
   rank, off the panels, the vehicle and each other, keeping their places (`viewer/pathmarks.ts`); not drawn from the
   seat. The few that matter now (the apogee ahead, the next event, where it ends) have besides a chip at the edge of
   the clear part of the view, on the bearing to them, with a pointer, for when their place is off the window, under a
