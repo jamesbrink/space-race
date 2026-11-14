@@ -1117,9 +1117,12 @@ export class OrbitDeck extends Deck {
     if (ahead > MOST) this.clock.seek(s.t);
     this.dropsFrom(s);
     run.fires = this.fires();
-    // the plume is the engine `flies.engine` names: out when its stage stops
+    // the engines lit on the pad burn until the last of them stops (the sound's burn, and the trail's: viewer/ascent.ts `cutoff`)
     const o = this.flight.orbital!;
-    const engine = o.stages.findIndex((st) => st.nodes.includes(this.flight.flies?.engine ?? ''));
+    const engine = o.stages.reduce(
+      (last, st, i) => (st.ignition.value <= 0 && (last < 0 || st.cutoff.value > o.stages[last]!.cutoff.value) ? i : last),
+      -1,
+    );
     if (engine >= 0) {
       const st = s.stages[engine]!;
       run.cutoff = Number.isFinite(st.from) && !v.burning(s, engine) ? Math.min(st.to, v.dry(engine, st.from), st.gone) : Infinity;

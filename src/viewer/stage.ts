@@ -41,7 +41,8 @@ import { Outline } from './outline';
 import { Panes } from './panes';
 import { through, triangles } from './pick';
 import { fitIndices, fitPictures } from './pictures';
-import { Plume } from './plume';
+import { clusterOf, exitsOf, type Cluster } from './fires';
+import { lightFires, Plume } from './plume';
 import { Quality } from './quality';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
 import { ShadowCache } from './shadowcache';
@@ -433,8 +434,16 @@ export class Stage {
    */
   effects: Effects | null = null;
   shaker: ((camera: THREE.PerspectiveCamera, sky: THREE.Camera) => (() => void) | null) | null = null;
-  /** The flown vehicle's engine fire, hung at its nozzle's exit (plume.ts). */
-  private plume: Plume | null = null;
+  /**
+   * The flown vehicle's fires (plume.ts), one an engine: each hung at its nozzles' exit on the part that carries it
+   * (`owner`, a top-level node of the model, which may leave as a body of its own), at `offset` in that part's frame;
+   * `level`: its place in what `Ascent.fireLevels` gives; `share`: its steering chambers' share of its thrust.
+   */
+  private plumes: { plume: Plume; owner: THREE.Object3D; offset: THREE.Matrix4; level: number; share: number }[] = [];
+  /** Their one light (plume.ts `lightFires`), in the flown model's frame. */
+  private fireLight: THREE.PointLight | null = null;
+  /** Where the trail leaves the vehicle, in its frame as it stands: the middle of the fires lit at liftoff, by their exits' areas. */
+  private readonly trailFrom = new THREE.Vector3();
   /** The trail it leaves in the air while the engine burns (trail.ts), in the scene's frame. */
   private trail: Trail | null = null;
   private readonly lifted = {
@@ -1836,9 +1845,7 @@ export class Stage {
     }
     this.fall(ascent, s, pad, t, flying);
     this.hang(ascent, s, pad, t, flying);
-    const { on, vacuum, fire } = ascent.burn(t);
-    this.fireAt(fire);
-    this.plume?.set(on, vacuum, t, this.renderer.toneMappingExposure); // (its flicker is the clock's: the same instant is the same fire)
+    this.burnFires(ascent, t); // (their flicker is the clock's: the same instant is the same fire)
     this.layTrail(ascent, pad, t, flying);
     this.effects?.set(t, flying, g, s.full, this.clock.rate, this.renderer.toneMappingExposure, this.setting.sunIntensity, this.veils);
     this.lifted.by.subVectors(g.position, before);
@@ -2013,7 +2020,7 @@ export class Stage {
    */
   private layTrail(ascent: Ascent, pad: THREE.Quaternion, t: number, flying: boolean): void {
     const trail = this.trail;
-    const nozzle = this.plume?.mesh.position;
+    const nozzle = this.plumes.length ? this.trailFrom : undefined;
     if (!trail || !nozzle) return;
     // (nothing is laid, and no head drawn, above TRAIL_TOP: no trail is drawn there, and an orbital flight's, laid on round
     // the Earth, swelled the volume the smoke is marched in until the page stalled)
@@ -2054,64 +2061,177 @@ export class Stage {
     this.jets = null;
   }
 
-  /** Where each fire is hung and how wide its exit, measured on the pad: the first engine's, then `Flight.flies.fires`. */
-  private fires: { at: THREE.Vector3; radius: number }[] = [];
-  private fire = 0;
-
-  /** Move the one fire to the nozzle of the engine burning now (`burn`'s `fire`), as the stages hand over. */
-  private fireAt(i: number): void {
-    const f = this.fires[i];
-    if (!this.plume || !f || i === this.fire) return;
-    this.fire = i;
-    this.plume.mesh.position.copy(f.at);
-    this.plume.light.position.copy(f.at);
-    this.plume.radius = f.radius;
+  /**
+   * Burn each fire as the run on show has it at `t` (`Ascent.fireLevels`), where the part that carries it is now: on
+   * the vehicle, or on a booster swinging away, which takes its dying fire with it. Then their one light.
+   */
+  private burnFires(ascent: Ascent, t: number): void {
+    const root = this.root;
+    if (!root || !this.plumes.length) return;
+    const { vacuum, levels } = ascent.fireLevels(
+      t,
+      Array.from(
+        { length: Math.max(...this.plumes.map((h) => h.level)) + 1 },
+        (_, i) => this.plumes.find((h) => h.level === i)?.share ?? 0,
+      ),
+    );
+    root.updateWorldMatrix(true, false);
+    const into = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    for (const h of this.plumes) {
+      const l = levels[h.level] ?? { main: 0, steering: 0 };
+      h.owner.updateWorldMatrix(true, false);
+      h.plume.mesh.matrix.multiplyMatrices(into, h.owner.matrixWorld).multiply(h.offset);
+      h.plume.mesh.matrixWorldNeedsUpdate = true;
+      h.plume.set(l.main, vacuum, t, this.renderer.toneMappingExposure, l.steering);
+    }
+    if (this.fireLight)
+      lightFires(
+        this.fireLight,
+        this.plumes.map((h) => h.plume),
+      );
   }
 
-  /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
+  /**
+   * For tests (tools/fires-test.mjs): each fire hung, as it stands: the part that carries it, how hard it burns, whether
+   * it is drawn, its exit's middle and the part's bounds in the world, and how many chambers of each kind it has.
+   */
+  fireReport(): {
+    owner: string;
+    on: number;
+    steering: number;
+    drawn: boolean;
+    exit: number[];
+    box: number[][];
+    chambers: number[];
+  }[] {
+    return this.plumes.map((h) => {
+      h.plume.mesh.updateWorldMatrix(true, false);
+      const box = new THREE.Box3().setFromObject(h.owner);
+      let shown = h.plume.mesh.visible;
+      for (let o = h.plume.mesh.parent; o; o = o.parent) shown &&= o.visible;
+      return {
+        owner: h.owner.name,
+        on: h.plume.on,
+        steering: h.plume.steering,
+        drawn: shown,
+        exit: new THREE.Vector3().setFromMatrixPosition(h.plume.mesh.matrixWorld).toArray(),
+        box: [box.min.toArray(), box.max.toArray()],
+        chambers: [h.plume.cluster?.main.length ?? 1, h.plume.cluster?.steering.length ?? 0],
+      };
+    });
+  }
+
+  /**
+   * Hang the flown vehicle's fires, measured as it stands on the pad: `Flight.flies.engine`'s (one round exit at its
+   * node's lowest middle, its area the trajectory's or its stage's), then each of `flies.fires`: one round exit of the
+   * `radius` given, or, with none given, the nozzles found in the node's geometry (fires.ts `exitsOf`: an engine of
+   * several chambers, main and steering). Each is carried by the top-level part of the model that holds its node.
+   */
   private hangPlume(flight: FlightData): void {
-    const gone = [this.plume?.mesh, this.trail?.mesh];
+    const gone = [...this.plumes.map((h) => h.plume.mesh), this.trail?.mesh];
     this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => !gone.includes(o as THREE.Mesh)));
-    this.plume?.mesh.removeFromParent();
-    this.plume?.light.removeFromParent();
-    // (its mesh draws nothing, but the clouds' pass has drawn it among the veils, so the renderer holds its geometry)
-    this.plume?.mesh.geometry.dispose();
-    (this.plume?.mesh.material as THREE.Material | undefined)?.dispose();
-    this.plume = null;
+    // (their meshes draw nothing, but the clouds' pass has drawn them among the veils, so the renderer holds their geometry)
+    for (const h of this.plumes) h.plume.dispose();
+    this.plumes = [];
+    this.fireLight?.removeFromParent();
+    this.fireLight = null;
     this.trail?.mesh.removeFromParent();
     this.trail?.dispose();
     this.trail = null;
     const s = this.flier;
-    const engine = flight.flies?.engine && s?.full.getObjectByName(flight.flies.engine);
-    // (an orbital flight's fire is drawn as one engine's: the stage whose nodes hold `flies.engine`, sim/staged.ts. One jet of
-    // that size stands for the cluster's twenty: the fire of all of them summed swells past what the volume can march)
-    const exitArea =
-      flight.trajectory?.engine.exitArea.value ??
-      (() => {
-        const stage = flight.orbital?.stages.find((st) => st.nodes.includes(flight.flies?.engine ?? ''));
-        return stage ? exitAreaOf(stage) : undefined;
-      })();
-    if (!s || !engine || !exitArea) return;
-    const box = new THREE.Box3().setFromObject(engine);
-    const exit = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
-    this.plume = new Plume(Math.sqrt(exitArea / Math.PI));
-    this.plume.mesh.position.copy(s.group.worldToLocal(exit));
-    // and the later fires' nozzles, each the lowest middle of its node's bounds as the vehicle stands
-    this.fires = [{ at: this.plume.mesh.position.clone(), radius: this.plume.radius }];
-    for (const f of flight.flies?.fires ?? []) {
-      const node = s.full.getObjectByName(f.node);
-      if (!node) continue;
+    const root = this.root;
+    if (!s || !root || !flight.flies) return;
+    s.group.updateMatrixWorld(true);
+    const fromGroup = new THREE.Matrix4().copy(s.group.matrixWorld);
+    const intoGroup = fromGroup.clone().invert();
+    const light = new THREE.PointLight(0xffb468, 0, 0, 2);
+    light.name = 'PlumeLight';
+    // the lowest middle of a node's bounds as the vehicle stands, in its frame
+    const lowest = (node: THREE.Object3D): THREE.Vector3 => {
       const b = new THREE.Box3().setFromObject(node);
-      this.fires.push({
-        at: s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2)),
-        radius: f.radius,
-      });
+      return s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2));
+    };
+    const hang = (node: THREE.Object3D, level: number, radius: number, at: THREE.Vector3, cluster: Cluster | null): void => {
+      let owner = node;
+      while (owner.parent && owner.parent !== s.full) owner = owner.parent;
+      if (!owner.parent) owner = s.group;
+      owner.updateWorldMatrix(true, false);
+      const offset = new THREE.Matrix4()
+        .copy(owner.matrixWorld)
+        .invert()
+        .multiply(fromGroup)
+        .multiply(new THREE.Matrix4().makeTranslation(at));
+      const plume = new Plume(radius, cluster, light);
+      plume.mesh.matrixAutoUpdate = false;
+      plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
+      root.add(plume.mesh);
+      this.plumes.push({ plume, owner, offset, level, share: cluster?.steeringShare ?? 0 });
+    };
+    let level = 0;
+    if (flight.flies.engine) {
+      const engine = s.full.getObjectByName(flight.flies.engine);
+      const exitArea =
+        flight.trajectory?.engine.exitArea.value ??
+        (() => {
+          const stage = flight.orbital?.stages.find((st) => st.nodes.includes(flight.flies?.engine ?? ''));
+          return stage ? exitAreaOf(stage) : undefined;
+        })();
+      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), lowest(engine), null);
+      level++;
     }
-    this.fire = 0;
-    s.group.add(this.plume.mesh, this.plume.light); // (the light stays in the scene, at no strength until the engine burns: lighting it builds no shader)
-    this.trail = new Trail();
+    for (const f of flight.flies.fires ?? []) {
+      const node = s.full.getObjectByName(f.node);
+      if (node && f.radius) hang(node, level, f.radius, lowest(node), null);
+      else if (node) {
+        // every vertex under it, in the vehicle's frame as it stands
+        const points: number[] = [];
+        const p = new THREE.Vector3();
+        node.updateWorldMatrix(true, true);
+        node.traverse((o) => {
+          const position = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).geometry.getAttribute('position') : undefined;
+          if (!position) return;
+          const m = new THREE.Matrix4().multiplyMatrices(intoGroup, o.matrixWorld);
+          for (let i = 0; i < position.count; i++) points.push(...p.fromBufferAttribute(position, i).applyMatrix4(m).toArray());
+        });
+        const cluster = clusterOf(exitsOf(points));
+        if (cluster) {
+          const { x, y, z } = cluster.centre;
+          hang(
+            node,
+            level,
+            cluster.radius,
+            new THREE.Vector3(x, y, z),
+            cluster.main.length > 1 || cluster.steering.length ? cluster : null,
+          );
+        }
+      }
+      level++;
+    }
+    if (!this.plumes.length) return;
+    s.group.add(light); // (in the scene at no strength until a fire burns: lighting it builds no shader)
+    this.fireLight = light;
+    // the trail leaves from the middle of the fires lit at liftoff, as wide as they are spread
+    const ascent = this.ascent;
+    const lit = ascent?.fireLevels(
+      1,
+      Array.from({ length: level }, (_, i) => this.plumes.find((h) => h.level === i)?.share ?? 0),
+    ).levels;
+    const first = this.plumes.filter((h) => (lit?.[h.level]?.main ?? 0) > 0);
+    const from = first.length ? first : this.plumes.slice(0, 1);
+    const at = (h: (typeof this.plumes)[number]) =>
+      new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(intoGroup, h.owner.matrixWorld).multiply(h.offset));
+    let area = 0;
+    this.trailFrom.set(0, 0, 0);
+    for (const h of from) {
+      const a = h.plume.radius ** 2;
+      this.trailFrom.addScaledVector(at(h), a);
+      area += a;
+    }
+    this.trailFrom.divideScalar(area);
+    const spread = Math.max(...from.map((h) => Math.hypot(at(h).x - this.trailFrom.x, at(h).z - this.trailFrom.z)));
+    this.trail = new Trail(2.5 + spread);
     this.scene.add(this.trail.mesh);
-    this.veils.push(this.plume.mesh, this.trail.mesh); // (cloud behind them shows through them: clouds.ts)
+    this.veils.push(...this.plumes.map((h) => h.plume.mesh), this.trail.mesh); // (cloud behind them shows through them: clouds.ts)
   }
 
   /** Bring the view back to what the camera is about; with a flight in the air and the view elsewhere, to the vehicle, wherever it has got to. */
@@ -2416,7 +2536,7 @@ export class Stage {
     this.scenery?.everyLevel(true);
     this.rehearse();
     const covered = this.uncover(true);
-    if (this.plume) this.plume.mesh.visible = true; // the engine's fire too: it is first seen at liftoff
+    for (const h of this.plumes) h.plume.mesh.visible = true; // the engines' fires too: they are first seen at liftoff
     if (this.trail) this.trail.mesh.visible = true; // (and its trail: drawn empty, its shader is built)
     // (and what is drawn over the flight, the predicted path: each of its meshes, empty, so its shaders are built. It
     // wears no picture and its buffers are a few hundred kilobytes, so on either tier, tier.ts, this sends nothing to speak of)
@@ -2498,7 +2618,7 @@ export class Stage {
     for (const o of culled) o.frustumCulled = true;
     for (const s of this.staged) s.everyLevel(false);
     this.scenery?.everyLevel(false);
-    if (this.plume) this.plume.mesh.visible = false;
+    for (const h of this.plumes) h.plume.mesh.visible = false;
     if (this.trail) this.trail.mesh.visible = false;
     this.uncover(false, covered);
     for (const [o, visible] of overlaid) o.visible = visible;
