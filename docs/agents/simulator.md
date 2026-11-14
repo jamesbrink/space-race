@@ -63,11 +63,13 @@ never adjusted to bring a check in.
   (each stage lit, cut, let go; the fairing; the spacecraft parted), and once parted the spacecraft coasts from where that
   ascent left it (`flyOrbit` from `parted`), short of an orbit or not: the handover to the published orbit is the record's
   run's alone. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
-  rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight with the same
-  coast (`sim/orbitpath.ts`, given to path.ts as the source's `predict`): on the launch vehicle, where it goes if the
-  engines stopped now (drawn with the ball's drag, so a vehicle cut low comes down nearer than drawn); alone, once round
-  with Ap and Pe, or down to the ejection height with the burn and the entry marked (`flyOrbit` stops there whether a burn
-  was made or not). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
+  rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
+  propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
+  source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now (fliers.ts
+  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "Engines stopped now" beside
+  the figures); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe, or down to the
+  ejection height with the burn, its end, the modules' parting and the entry marked (it stops there whether a burn was
+  made or not, as flyOrbit does). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
   the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
   ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
   braking engine is heard when the run on show burns it (its `fires`), as one burn of its length. Every engine burns
@@ -431,7 +433,21 @@ never adjusted to bring a check in.
   mathematics and is tested; the canvas is redrawn only when the attitude has moved a twentieth
   of a degree, and not at all while tucked. The path (`src/sim/predict.ts`, drawn by
   `viewer/path.ts`, J: M is kept for a map) is where the centre of mass goes from the instant on show if the pilot
-  does nothing more: fly.ts's gravity and drag curves (`dragArea`, `chuteArea`, `thrustIn`), and what the sequencer
+  does nothing more. **One propagator for every vehicle** (`propagate`): it is given the vehicle as a `Flier`
+  (`sim/fliers.ts`: what pushes it at a state, with its own simulator's force functions; the next instant it has
+  scheduled; the height it next acts at coming down; what it does at each, as data: events to mark, a new velocity, an
+  end), adds gravity with J2, and steps them all alike: Dormand and Prince's 5(4) pair, each step's error held to a
+  millimetre and a hundredth of a millimetre a second, no step turning the motion by more than a degree (so the cubic
+  between two steps, which is what is drawn, keeps to the integrator's path within a centimetre), every step ending on
+  the flier's next instant (nothing a flier is changes within a step), each height and the ground found on the step's
+  cubic and the step flown again to there. The air's two marks are its own and every vehicle's: the first 0.05 g felt
+  coming down once nothing burns and no burn is to come, and the greatest load from there before a parachute. The
+  vehicles: `ballistic` (a `Trajectory`'s: Freedom 7), `spacecraft` (an orbital spacecraft alone: flyOrbit's
+  `shipPush` and `aimOf`), `stack` (a staged launch vehicle with its engines stopped). The differences between them are
+  the vehicles': drag curves and areas, what is scheduled, the retrorockets' line (against the motion over the ground)
+  against the braking engine's (fixed as it lights), parachutes. Each is a point mass with the attitude its forces need
+  prescribed: the Redstone's rigid body (vehicle.ts: its moments, its autopilot's lag behind its programme, under a
+  degree) is not stepped, nor the staged vehicle's turning. Freedom 7's prediction: fly.ts's gravity and drag curves (`dragArea`, `chuteArea`, `thrustIn`), and what the sequencer
   will do by itself (`Sequence`, from the live state: separation and its push, the retrorockets as fly.ts fires them,
   the pack, the parachutes at their heights; with the sequencer off, nothing, not even the parachutes, as the live
   simulator has it), until it meets the sea, has gone once round (then it is an orbit, with its osculating elements) or
@@ -447,7 +463,7 @@ never adjusted to bring a check in.
   (`Predictor.run(budget)`; `sr.path.cost` says what the last one took), and only when it is wanted: while the flight
   keeps to the curve on show (within a metre and a centimetre a second, the plan unchanged, and a path that comes round
   still reaching most of the way round) that curve is its future and nothing is worked out again (`holds`); nothing is
-  predicted while the path is off. Whichever deck predicts (predict.ts here, the orbital deck's `orbitpath.ts`), path.ts
+  predicted while the path is off. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
   is given one `Predictor` and one `Prediction` and knows nothing of which it was. A path that comes down is drawn over
   the ground (each point where it will be over the ground at its own instant); one that goes round is drawn in the
   navball's frame (O), in Orbit as it lies in the frame that does not turn. It is an instrument's line, and lunar-lift's

@@ -9,11 +9,20 @@
  *               heat shield first once it is alone and falling (fly.ts `dragArea`), through the day's wind (forces.ts
  *               `blowing`); what its sequencer will do (separation and its push, the retrorockets as fly.ts fires them,
  *               the pack); its parachutes at their heights, filling (`chuteArea`) and torn as vehicle.ts tears them.
+ *   spacecraft  an orbital flight's spacecraft alone (`OrbitalFlight`: Vostok 1's ship): flyOrbit's forces (orbital.ts
+ *               `shipPush`), the braking burn as planned along its line (`aimOf`), the modules' parting; it stops at the
+ *               height its pilot left at, as flyOrbit does.
+ *   stack       an orbital flight's staged launch vehicle with its engines stopped now: what it carries, on the drag of
+ *               the shape it has (staged.ts `stackOf`, which the batch ascent and the live staged vehicle fly on).
  *
  * What differs between them is the vehicles', not the predictor's: each is a point mass at its centre of mass whose
  * forces are its own simulator's, with the attitude those forces need prescribed (along the programme, against the
- * motion, heat shield first). Where a live vehicle is a rigid body (vehicle.ts: the Redstone's moments, its autopilot's
- * lag behind its programme, under a degree) the prediction holds the attitude its guidance asks for.
+ * motion, heat shield first, along the braking engine's line). Where a live vehicle is a rigid body (vehicle.ts: the
+ * Redstone's moments, its autopilot's lag behind its programme, under a degree; stagedlive.ts's turning by hand) the
+ * prediction holds the attitude its guidance asks for, or has no thrust to point. What was the two old predictors'
+ * and is no longer: their own steps (a fixed ladder of heights and a twentieth of a second in the air) and their own
+ * stopping rules; the orbital coast's drag on the launch vehicle (it was the spacecraft's ball's, so a vehicle cut low
+ * came down nearer than drawn); and a burn's end falling on a stage of the step that had it off.
  */
 import type { Trajectory } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';

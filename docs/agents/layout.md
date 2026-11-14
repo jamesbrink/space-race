@@ -135,7 +135,8 @@ src/
   viewer/cabin.ts                     a model's inside as somewhere to fly from: its needles and lamps read the flight, its controls work, its periscope shows outside
   viewer/gauges.ts                    what an instrument reads and where that puts its needle: scales, counter wheels, attitude from axes (pure, tested)
   navball.ts  navball.css             the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
-  sim/predict.ts                      looking ahead from a state: the path if nothing more is done (the sequencer's events with it), its apogee, events, impact or orbit (pure, in slices)
+  sim/predict.ts                      looking ahead from a state: one propagator for every vehicle (error-controlled, in slices), the path if nothing more is done, its apsides, events, impact or orbit (pure)
+  sim/fliers.ts                       the vehicles it flies: a ballistic flight's, an orbital spacecraft alone, a staged stack with its engines stopped; each with its own simulator's forces (pure)
   viewer/path.ts                      the predicted path, drawn: a ribbon of constant width ahead of the vehicle and the line flown behind, its markers and the ring where it comes down; its switch and figures
   viewer/pathline.ts                  the path's line as numbers: its ribbon's vertices, a prediction eased from the last by instant, the rules that keep it off the vehicle (pure)
   viewer/pathmarks.ts                 where the path's markers go on the page: by rank, off the panels, the vehicle and each other, and staying put; and the chips at the view's edge for those not in view (pure)
