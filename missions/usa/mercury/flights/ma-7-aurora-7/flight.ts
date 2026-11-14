@@ -189,7 +189,7 @@ const parts: Part[] = [
       'the white one ran 300 °F cooler; in the heat of the entry, 200 °F hotter. A new commutator read 28 such ' +
       'temperatures all the way round. The periscope’s door is shut, as at liftoff. The paint is placed from ' +
       'photographs; the 7 is a typeface’s, not her brush; the shingles and the periscope’s door are laid out as ' +
-      'Liberty Bell 7’s, but for the shingle under the window, which here has two stacks of beads.',
+      'Liberty Bell 7’s.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -590,10 +590,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Window, middle of the outer pane above the widest plane',
-      value: 35.8 * IN,
+      value: 31.5 * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: '35.8 in: as Liberty Bell 7’s, which was scaled off its own photographs; this capsule’s own (NASA S62-03907: the pane’s foot just above the seam the emblem’s shingle begins at) agree to the eye',
+      note: '31.5 in, give or take 1.5: as Nos. 13 and 20, on which it was measured from photographs (NASM A19670176000, NASA S63-07701); no document read gives it. This capsule’s own (NASA S62-03907) is too close to measure but agrees: the window’s plate ends level with the foot of the hatch’s opening, and its lower row of screws runs on as the seam under UNITED STATES. Until November 2026 the model had 35.8',
     },
     {
       group: 'Spacecraft',

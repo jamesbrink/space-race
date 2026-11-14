@@ -569,10 +569,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Window, middle of the outer pane above the widest plane',
-      value: 35.8 * IN,
+      value: 31.5 * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: '35.8 in: as Liberty Bell 7’s, which was scaled off its own photographs; this capsule as it is kept (NASM A19670176000) agrees to the eye',
+      note: '31.5 in, give or take 1.5: measured on this capsule as it is kept (NASM A19670176000: the glass from station 21.9 to 41.3, between the cone’s joint with the cylinder and the shield’s ring) and on No. 20 (NASA S63-07701). No document read gives it. Until November 2026 the model had 35.8, as Liberty Bell 7’s then was',
     },
     {
       group: 'Spacecraft',

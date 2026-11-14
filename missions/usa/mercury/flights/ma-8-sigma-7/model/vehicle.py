@@ -84,10 +84,12 @@ def _flight_script(flight: str):
     return module
 
 
-# Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch. Its script builds them where
-# its own photographs put them, and the shingles round them; No. 16's are built by it, on the strength of this capsule's
-# own photographs (NASA GPN-2000-001441, S62-06002, S62-06175: the window's plate, the hatch beside it on the pilot's
-# right, the seam at the window's foot), with what those photographs show otherwise. See spacecraft.md.
+# Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch. Its script builds them, and
+# the shingles round them; No. 16's are built by it, on the strength of this capsule's own photographs (NASA
+# GPN-2000-001441, S62-06002, S62-06175: the window's plate, the hatch beside it on the pilot's right, the seam at the
+# window's foot), with what those photographs show otherwise. Where the window stands is measured on Nos. 13 and 20
+# and taken as theirs (`WINDOW_Z` there); S62-06175, fitted to the cone, has this capsule's glass from 20.5 to 39.3,
+# give or take 1.5. See spacecraft.md.
 no11 = _flight_script("mr-4-liberty-bell-7")
 WINDOW_T, WINDOW_Z, HATCH = no11.WINDOW_T, no11.WINDOW_Z, no11.HATCH
 SCOPE_Z, SCOPE_DOOR, SCOPE_TUBE = no11.SCOPE_Z, no11.SCOPE_DOOR, no11.SCOPE_TUBE
@@ -97,31 +99,43 @@ Z_BOOSTER_BASE = -atlas_lv3b.LENGTH  # the booster engines' exit plane
 # ------------------------------------------------------------------ what was No. 16's own (in, degrees)
 
 # The shingle under the window carries two stacks of beads side by side, as No. 18's did: the shingle itself, as flown
-# and as it is kept (Commons: Flown Superalloy Shingle with Sigma 7 logo ...), eleven beads in each stack.
+# and as it is kept (Commons: Flown Superalloy Shingle with Sigma 7 logo ...), ten beads in each stack, 1.24 in apart.
+# It is one piece from the seam at the window's foot to the cone's foot: the beads, then a strip of rivets, then a
+# plain foot with two ports (J37, J20). Here the beaded part is run down to the plain band, where its beads end at
+# station 7.4; on the shingle as kept they end between 7.5 and 9.0, by where its first bead is taken to begin.
 NAME_STACKS = 2
+NAME_FOOT = no11.BAND
 
 # The paint. All of it is placed from photographs of this capsule (spacecraft.md, "Paint"); none of it is dimensioned.
 # UNITED STATES stood on it twice, each with a flag under it: to the left of the window (NASA S62-06144, on the
 # carrier's deck) and round to the right of the hatch (NASA GPN-2000-001441, in the hangar; KSC-62PC-0078, the liftoff).
 # Each: the middle of its two lines round the cone, and where its flag's middle is. The second's flag is in both of
 # its photographs; no photograph read shows the first's, which is put where No. 18's was.
+# Read again in November 2026, when the window was moved, each photograph's camera fitted to the cone: the second
+# pair on the capsule as it was shown at Houston (NASA S66-53205, square on: UNITED from 34.9 to 40.4, STATES from
+# 26.2 to 32.3, the flag from 14.8 to 20.9) and the first on the carrier's deck (S62-06144, soft: middles 37.2 and 28.5).
 UNITED_STATES = ((deg(212), deg(208)), (deg(20), deg(28)))
-LINES = (38.4, 31.3)  # the stations of the two lines
-LETTERS = (23.0, 6.0)  # a line's length and its letters' height
-FLAG = (20.2, 12.0)  # the flags' station, and their width
+LINES = (37.8, 29.2)  # the stations of the two lines
+LETTERS = (23.0, 5.8)  # a line's length and its letters' height
+FLAG = (18.0, 12.0)  # the flags' station, and their width
 # "A rectangular white-painted patch was added to the spacecraft to evaluate the effect on spacecraft shingle
 # temperatures" (NASA TN D-4807, p. 12: documented), as on No. 18. Its middle, and its size across and up the cone: read
 # off NASA S62-06144, a photograph taken from a distance after the flight, in which a pale rectangle the beads show
-# through stands above the first UNITED, between its U and its N, above the seam. Estimated, and the reading is not sure.
-PATCH = (deg(191), 50.3, 4.0, 4.0)
+# through stands above the first UNITED, between its U and its N, from 2.4 to 7.7 in above the seam. Estimated, and the
+# reading is not sure.
+PATCH = (deg(191), 46.5, 4.0, 5.0)
 
 # The emblem, on the shingle under the window: a sigma, and a 7 lying in its mouth. Laid out from the shingle's own
-# corner, the seam at the window's foot (station 24.8) where it meets the seam at 255 degrees, in inches to the right
-# and inches down the cone. Read off the shingle itself, photographed square on as it is kept, scaled by its width
-# (the model's is 16.3 in at its middle); its place under the window from NASA S62-06002, in which the sigma's bar
-# lies just under the fasteners at the window's foot.
+# corner, the seam at the window's foot (station 20.5) where it meets the seam at 255 degrees, in inches to the right
+# and inches down the cone. Read off the shingle itself, photographed square on as it is kept; its place under the
+# window from NASA S62-06002, in which the sigma's bar lies 1.1 in under the fasteners at the window's foot, level
+# with the top of the first bead. The outlines below are as they were first read, by the shingle's width on a model
+# shingle that was too narrow there; read again by its bolt lines (one column of 30 degrees apart), by its beads and
+# by the 20 by 18 in its sale gave it, the emblem is 1.12 times that, give or take 0.03: the sigma 8.7 in across and
+# 9.2 tall, the 7 6.4 by 7.0, the two together 10.8 by 11.3, filling the beads from their top to half an inch above their foot.
 CORNER = (deg(255), no11.SEAM_LOW)
-EMBLEM_AT = (2.9, 1.3)  # the sigma's upper left corner: inches right of the shingle's corner and inches down from it
+EMBLEM_AT = (2.8, 1.3)  # the sigma's upper left corner: inches right of the shingle's corner and inches down from it
+EMBLEM_SCALE = 1.12  # the outlines below, and their edges, are made this much bigger
 # (each outline: inches right and inches down from the sigma's upper left corner, walked round)
 SIGMA = (
     (0.0, 0.0),
@@ -156,7 +170,7 @@ SEVEN = (
     (3.7, 5.28),
 )
 EDGE = (0.13, 0.11)  # the pale edge painted round the sigma, and round the 7, inches
-LAYER = 0.07  # from the edges' paint to the colours' over it, inches: over a millimetre apart even on a bead's flank
+LAYER = 0.09  # from the edges' paint to the colours' over it, inches: over a millimetre apart even on a bead's flank, at every level of detail
 
 # The ablation experiment: "Each ablation panel, which was bonded to a beryllium shingle of the cylindrical section of
 # the spacecraft, was 15 inches long and 5 inches wide. The panel was centered on the shingle and was applied, starting
@@ -258,7 +272,7 @@ SAYS = {
 def build_afterbody(M, font) -> Skin:
     """The cone's skin as No. 11's script builds it (shingles, plates, hatch, periscope's door, roll jets) with this
     capsule's shingle under the window, and No. 16's paint put on."""
-    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, paint=False)
+    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, name_foot=NAME_FOOT, paint=False)
     build_paint(M, bpy.data.objects["Afterbody"], skin, font)
     return skin
 
@@ -341,8 +355,9 @@ def build_paint(M, g, skin: Skin, font) -> None:
         (SEVEN, EDGE[1], "Seven", "paint_white", "paint_yellow"),
     ):
         under, over = MeshBuilder(), MeshBuilder()
+        outline = [(x * EMBLEM_SCALE, y * EMBLEM_SCALE) for x, y in outline]
         skin.paint(under, *filled(outline), *at, lift=lift)
-        skin.paint(over, *filled(inset(outline, edge)), *at, lift=lift + LAYER)
+        skin.paint(over, *filled(inset(outline, edge * EMBLEM_SCALE)), *at, lift=lift + LAYER)
         mercury_capsule.thing(under, f"Afterbody_{name}Edge", M[pale], g, *says, smooth=False)
         mercury_capsule.thing(over, f"Afterbody_{name}", M[colour], g, *says, smooth=False)
 

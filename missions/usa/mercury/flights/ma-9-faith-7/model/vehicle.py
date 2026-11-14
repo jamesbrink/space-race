@@ -87,14 +87,14 @@ def _flight_script(flight: str):
     return module
 
 
-# Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch. Its script builds them where
-# its own photographs put them, and the shingles round them; No. 20's are built by it, on the strength of this capsule's
-# own photographs (NASA S63-06259 and S63-09676-E: the window's cover and the emblem under it, UNITED STATES to its left;
-# GPN-2000-001335: the hatch, and UNITED STATES to its right), with what those photographs show otherwise. See spacecraft.md.
+# Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch. Its script builds them, and
+# the shingles round them; No. 20's are built by it, on the strength of this capsule's own photographs (NASA
+# S63-06259 and S63-09676-E: the window's cover and the emblem under it, UNITED STATES to its left; GPN-2000-001335:
+# the hatch, and UNITED STATES to its right), with what those photographs show otherwise. See spacecraft.md.
 no11 = _flight_script("mr-4-liberty-bell-7")
-# (One thing they show otherwise is not followed: S63-07701 and S63-07521 have No. 20's window level with the first
-# UNITED STATES, some five inches nearer the heat shield than this, and the emblem under it lower by as much. The
-# window's place is every orbital capsule's here and is left as it is: spacecraft.md, "What the model gets wrong".)
+# (Where the window stands is measured on this capsule, on the carrier's deck: S63-07701 has its glass from station
+# 21.1 to 40.2, level with the first UNITED STATES, and that with No. 13's is the figure every capsule with the window
+# is built to: `WINDOW_Z` there, 31.5. Until November 2026 it was 35.8, against this photograph.)
 WINDOW_T, WINDOW_Z, HATCH = no11.WINDOW_T, no11.WINDOW_Z, no11.HATCH
 
 Z_BOOSTER_BASE = -atlas_lv3b.LENGTH  # the booster engines' exit plane
@@ -115,26 +115,41 @@ DOOR_JOINT = 0.15  # the joint round the shut door, in
 DOOR_DEEP = 1.1  # the opening's floor under the skin, in
 
 # The shingle under the window: two stacks of beads, as No. 18's had. No photograph of No. 20 read shows it square on.
+# On the carrier's deck (S63-07701) its beads end at about station 6.3, give or take 0.8: it is run down to the plain
+# band at the cone's foot, as No. 13's is.
 NAME_STACKS = 2
-# The shingles from the pilot's feet round to the window part at other stations than No. 11's. KSC-63-MA9-174, taken
-# from above with the capsule in its collar, shows one seam running round that side just above the first UNITED, and
-# above it a single row of shingles to the top of the cone, the three white squares on one of them: "a single test
-# shingle located at the small end of the conical section" some twenty inches long. S63-09676-E has a row of fasteners
-# at the foot of STATES, above the flag. So: seams at about stations 20.8 and 38.5 from 75 to 255 degrees (columns 2
-# to 7). Documented by photograph that they are not No. 11's; the stations are scaled off the two and are estimated.
-# To the right of the hatch GPN-2000-001335 shows No. 11's seams, at the hatch's head and foot.
-ROWS = {k: (20.8, 38.5) for k in range(2, 8)}
+NAME_FOOT = no11.BAND
+# The shingles part at the same two stations all round this capsule: the seams at the foot and the head of the
+# window's plate (20.5 and 42.5) run on from the window to the pilot's feet and round to the hatch. KSC-63-MA9-174,
+# taken from above with the capsule in its collar, shows one seam running round the window's side above the first
+# UNITED, and above it a single row of shingles to the top of the cone, the three white squares on one of them: "a
+# single test shingle located at the small end of the conical section". S63-07701, fitted to the cone, has those two
+# seams at 42.2 and 21.4, give or take 0.7 (the upper 2 to 3 in above UNITED's top, the lower 1.5 to 2 in under STATES'
+# foot), and S63-07521 has CAUTION THERMOCOUPLE stencilled on each beside the window's plate. To the right of the hatch
+# GPN-2000-001335, close and square on, shows the second UNITED STATES between two seams level with the head and foot
+# of the hatch's opening and its flag under the lower: taken as the same two. Documented by photograph that they run
+# so; the stations are the window's plate's. (Until November 2026: 20.8 and 38.5 from 75 to 255 degrees, read against
+# lettering that stood 2.5 in too low, and No. 11's elsewhere.) The hatch's own two columns are named for nothing:
+# the shingles above and below the hatch are No. 11's.
+ROWS = {k: (no11.SEAM_LOW, no11.SEAM_HIGH) for k in (11, 0, 1, 2, 3, 4)}
 
 # The paint. All of it is placed from photographs of this capsule (spacecraft.md, "Paint"); none of it is dimensioned.
 # UNITED STATES stood on it twice, each with a flag under it: to the left of the window, low on the cone, under the
 # white squares (NASA S63-06259, S63-09676-E, S63-07521, KSC-63-MA9-174), and round to the right of the hatch, level with it
 # (GPN-2000-001335, taken on the carrier's deck). Each: the middle of its two lines round the cone, the stations of
 # the two lines, and where its flag's middle is (angle, station).
+# Read again in November 2026, when the window was moved. The first pair on S63-07701, between the cone's ends: UNITED
+# from 32.9 to 38.6 and STATES from 24.15 to 30.2 by a camera fitted to the cone, 36.2 and 27.4 for their middles by
+# the cone's ends alone, give or take 0.5; letters 5.5 to 6.3 in; the lines' right ends at 241 degrees; the flag's top
+# at about 20, its middle 16.7. It had stood 2.5 in lower here, with letters of 6.9. The second pair on
+# GPN-2000-001335, roughly: UNITED's top an inch below the upper seam, so about 37.6 and 28.5, give or take 1.2,
+# where it had 42.4 and 31.9 against a hatch taken 4 in too tall; its flag is not measured and is put under the lower
+# seam, as that photograph has it.
 UNITED_STATES = (
-    (deg(208), (33.85, 24.55), (deg(209), 16.8)),
-    (deg(28), (42.4, 31.9), (deg(30), 18.6)),
+    (deg(215), (36.2, 27.4), (deg(215), 16.7)),
+    (deg(28), (37.6, 28.5), (deg(30), 17.2)),
 )
-LETTERS = (27.0, 6.9)  # a line's length and its letters' height
+LETTERS = (23.0, 6.0)  # a line's length and its letters' height: the stencil's size on Nos. 16 and 18
 FLAG = 12.0  # the flags' width
 # The white paint patches: "three test panels were 6-inch squares baked onto a single test shingle located at the small
 # end of the conical section" (The Triumph of Astronaut L. Gordon Cooper, Jr. and the Faith 7, p. 21), three kinds of
@@ -142,14 +157,22 @@ FLAG = 12.0  # the flags' width
 # shingle are documented; that they stood one above the next over the U of the first UNITED, and the gaps between
 # them, are read off S63-06259 and S63-09676-E. The middle of the column round the cone, the station of the top
 # square's upper edge, a square's side, and the gap between two.
-PATCHES = (deg(185), 57.4, 6.0, 0.7)
+# The squares end at the upper seam and begin at the cone's top (S63-07701, S63-06259, KSC-63-MA9-174): a row of 16.8
+# in along the cone, in which three squares of 6 in with gaps between them do not fit. They read about 5.1 in each.
+# So the two things the book says cannot both be had on this cone, and the shingle is kept: squares of 4.9 in, 0.6
+# apart, between the top of the cone and the seam at 42.5. Estimated; documented as 6 in.
+PATCHES = (deg(185), 57.6, 4.9, 0.6)
+PATCH_LIFT = mercury_capsule.PAINT_LIFT + 0.03  # how far they stand off the skin, inches
 
 # The emblem, on the shingle under the window: a white field with straight edges and points, FAITH across it in dark
 # capitals and a 7 under that. The only photographs of it read (S63-06259, S63-09676-E) see it almost edge on, at the
 # limb of the cone, where its outline is two points above and below a broad middle; it is drawn as the five-pointed
 # star the flight's later insignia has, with the insignia's lettering. The star's size is what fills the shingle as
 # those photographs have it filled. Estimated, all of it but that it was white, pointed, and said FAITH 7.
-STAR = (deg(270), 16.9, 7.6)  # its middle (angle, station) and the radius of its points
+# Its place is read off S63-07701 (the deck, from the window's side, the paint scorched to five pale lobes): its upper
+# point at station 20.1, 0.4 in under the seam at the window's foot, its side points at the shingle's two seams, its
+# lower points at 7.2. A regular star of that height has points 7.6 in from its middle and one of that width 8.6: 7.8.
+STAR = (deg(270), 12.8, 7.8)  # its middle (angle, station) and the radius of its points
 STAR_WAIST = math.sin(math.radians(18)) / math.sin(math.radians(54))  # a regular star's inner corners, as a part of that radius
 FAITH = (0.2, 8.6, 1.75)  # the word: its middle above the star's (as a part of its radius), its length and its letters' height
 SEVEN = (-0.3, 3.9)  # the 7: its middle below the star's, and its height
@@ -240,7 +263,7 @@ def build_afterbody(M, font) -> Skin:
     """The cone's skin as No. 11's script builds it (shingles, plates, hatch, roll jets) with no periscope, an opening
     for the umbilical's door in the plate the periscope's door had stood in, this capsule's shingle under the window,
     and No. 20's paint put on."""
-    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, paint=False, periscope=False, door=UMBILICAL_DOOR, rows=ROWS)
+    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, name_foot=NAME_FOOT, paint=False, periscope=False, door=UMBILICAL_DOOR, rows=ROWS)
     g = bpy.data.objects["Afterbody"]
     build_umbilical_door(M, g, skin)
     build_paint(M, g, skin, font)
@@ -327,7 +350,8 @@ def build_paint(M, g, skin: Skin, font) -> None:
     pt, top, side, gap = PATCHES
     square = [(-side / 2, -side / 2), (side / 2, -side / 2), (side / 2, side / 2), (-side / 2, side / 2)]
     for k in range(3):
-        skin.paint(patches, square, [(0, 1, 2, 3)], pt, top - (side / 2 + k * (side + gap)) * math.cos(CONE.a))
+        # (the row lies over the screws at its shingle's two ends: a little further off the skin than the lettering, to clear their heads)
+        skin.paint(patches, square, [(0, 1, 2, 3)], pt, top - (side / 2 + k * (side + gap)) * math.cos(CONE.a), lift=PATCH_LIFT)
     thing(
         patches,
         "Afterbody_Patches",

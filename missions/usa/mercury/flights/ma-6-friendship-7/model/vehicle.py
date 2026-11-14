@@ -78,9 +78,11 @@ def _flight_script(flight: str):
 
 
 # Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch, and the last before this one
-# to fly with a man in it. Its script builds them where its own photographs put them, and the shingles round them;
-# No. 13's are built by it, on the strength of the capsule as it is kept (NASM A19670176000: the window's plate, the
-# hatch beside it, the shingle under the window with the name, the same seams). See spacecraft.md, "What is assumed".
+# to fly with a man in it. Its script builds them, and the shingles round them; No. 13's are built by it, on the
+# strength of the capsule as it is kept (NASM A19670176000: the window's plate, the hatch beside it, the shingle under
+# the window with the name, the same seams). Where the window stands is measured on this capsule itself (the glass
+# from station 21.9 to 41.3 between the cone's ends) and is the figure every capsule with the window is built to
+# (`WINDOW_Z` there). See spacecraft.md, "What is assumed".
 no11 = _flight_script("mr-4-liberty-bell-7")
 WINDOW_T, WINDOW_Z, HATCH = no11.WINDOW_T, no11.WINDOW_Z, no11.HATCH
 SCOPE_Z, SCOPE_DOOR, SCOPE_TUBE = no11.SCOPE_Z, no11.SCOPE_DOOR, no11.SCOPE_TUBE
@@ -89,18 +91,32 @@ Z_BOOSTER_BASE = -atlas_lv3b.LENGTH  # the booster engines' exit plane
 
 # ------------------------------------------------------------------ what was No. 13's own (in, degrees)
 
+# The shingle under the window: two stacks of ten beads, running down to the plain plate at the cone's foot (the
+# capsule as kept: its beads end 14.1 in below the glass's foot, station 7.5, and the plate under them carries the
+# ports marked J37 and J20).
+NAME_STACKS = 2
+NAME_FOOT = no11.BAND
 # The paint. All of it is placed from photographs of this capsule on the pad and leaving it (NASA S62-00380,
-# GPN-2006-000027 and its colour twin, GPN-2000-000686); none of the places is dimensioned (spacecraft.md, "Paint").
+# GPN-2006-000027 and its colour twin, GPN-2000-000686) and of the capsule as it is kept, where its traces remain;
+# none of the places is dimensioned (spacecraft.md, "Paint"). Read again in November 2026, when the window was
+# moved: each photograph's camera was fitted to the cone (its joint with the cylinder, the ring at its foot) or to
+# hardware so placed, the skin unrolled, and each thing read by how far it stands from the glass.
 # UNITED STATES stood on it twice, each with a flag under it: to the left of the window, the flag under its first
 # letters, and round to the right of the hatch, the flag under its last. Each: the middle of its two lines round the
-# cone, and where its flag's middle is.
+# cone, and where its flag's middle is. The two pairs are at the same stations, to the 0.6 in they can be read to.
 UNITED_STATES = ((deg(217), deg(206)), (deg(24), deg(33)))
-LINES = (41.6, 33.2)  # the stations of the two lines
-LETTERS = (23.0, 6.0)  # a line's length and its letters' height
-FLAG = (23.5, 12.0)  # the flags' station, and their width
-NAME = (deg(272), 18.6, 17.5, deg(11))  # Friendship: under the window, a little toward the hatch; its length; how its line climbs
-SEVEN = (deg(275), 19.2, 9.0)  # the red 7 through it: its middle and its height
+LINES = (36.9, 28.0)  # the stations of the two lines: UNITED's top 1.6 in below the glass's head, STATES' foot 3.4 above its foot
+LETTERS = (23.0, 6.3)  # a line's length and its letters' height
+FLAG = (16.9, 12.0)  # the flags' station, and their width: the flag's top just under the seam at the window's foot
+# Friendship: low on the shingle under the window, level (the climb it was given until now was the camera's), from its
+# F's swash past the seam at 255 degrees to its p just over the one at 285; and the red 7 through it between the n and
+# the d, its top 4.7 in below the glass's foot and its foot just above the beads' foot.
+NAME = (deg(268.8), 11.8, 20.6, deg(0))  # its middle, its length, how its line climbs
+SEVEN = (deg(270.6), 12.4, 9.6)  # the red 7 through it: its middle and its height
 SEVEN_EDGE = 0.3  # the white edge round the 7, inches
+# from one layer of the name's paint to the next, inches: over a millimetre apart even where a coarser level of detail
+# bridges the beads otherwise for one layer than for the next (a sixteenth of an inch was not, once the 7 lay across more of them)
+LAYER = 0.08
 BRUSH = (1.8, 0.07)  # the hand's letters against the typeface's: how much taller for their width, and how much heavier (inches)
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
@@ -180,7 +196,7 @@ SAYS = {
 def build_afterbody(M, font) -> Skin:
     """The cone's skin as No. 11's script builds it (shingles, plates, hatch, periscope's door, roll jets), with No. 11's
     paint taken off again and No. 13's put on."""
-    skin = no11.build_afterbody(M, font)
+    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, name_foot=NAME_FOOT)
     g = bpy.data.objects["Afterbody"]
     for name in ("Afterbody_Lettering", "Afterbody_Crack", "Afterbody_Flag"):
         obj = bpy.data.objects[name]
@@ -222,10 +238,10 @@ def build_paint(M, g, skin: Skin, font) -> None:
     hand = mercury_orbital.script_font() or font
     lift = mercury_capsule.PAINT_LIFT
     st, sz, tall = SEVEN
-    # (each layer a sixteenth of an inch off the one under it: the white edge, the red on it, the word across both)
+    # (each layer LAYER off the one under it: the white edge, the red on it, the word across both)
     mercury_orbital.hand_lettering(skin, edge, "7", tall, st, sz, hand, upright=True, fatten=SEVEN_EDGE, lift=lift)
-    mercury_orbital.hand_lettering(skin, seven, "7", tall, st, sz, hand, upright=True, lift=lift + 0.0625)
-    mercury_orbital.hand_lettering(skin, name, "Friendship", length, nt, nz, hand, rise=rise, tall=BRUSH[0], fatten=BRUSH[1], lift=lift + 0.125)
+    mercury_orbital.hand_lettering(skin, seven, "7", tall, st, sz, hand, upright=True, lift=lift + LAYER)
+    mercury_orbital.hand_lettering(skin, name, "Friendship", length, nt, nz, hand, rise=rise, tall=BRUSH[0], fatten=BRUSH[1], lift=lift + 2 * LAYER)
     for mb, mesh, mat in (
         (edge, "Afterbody_SevenEdge", "paint_white"),
         (seven, "Afterbody_Seven", "paint_red"),

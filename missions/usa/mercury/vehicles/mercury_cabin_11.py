@@ -39,8 +39,9 @@ def fig(px: float, py: float) -> tuple[float, float]:
 
 
 # The window's opening through the pressure vessel and the lining: wider than the inner panes, because the well
-# between the two windows slopes through the wall (model/vehicle.py: build_window).
-WINDOW_OPENING = (math.radians(257.5), math.radians(282.5), 25.8, 44.0)
+# between the two windows slopes through the wall (model/vehicle.py: build_window). It stands where the window does
+# (`WINDOW_Z` there, 31.5: from 10.0 in below the outer pane's middle to 8.2 above), and moved with it in November 2026.
+WINDOW_OPENING = (math.radians(257.5), math.radians(282.5), 21.5, 39.7)
 LAMPS = (
     -128.0,
     -8.0,

@@ -200,8 +200,7 @@ const parts: Part[] = [
       'under the bare shingle beside it. Going up the bare metal ran 410 °F hotter; late in the entry, 110 °F ' +
       'cooler. A second patch, a triangle in three colours, was painted on to see what the entry did to each ' +
       'paint; where it was is in nothing read, and it is not modelled. The periscope’s door is shut, as at ' +
-      'liftoff. The shingles and the periscope’s door are laid out as Liberty Bell 7’s, but for the shingle under ' +
-      'the window, which has two stacks of beads.',
+      'liftoff. The shingles and the periscope’s door are laid out as Liberty Bell 7’s.',
     facts: [
       ['Half-angle', '20°'],
       ['Length', '58.4 in (1.48 m)'],
@@ -639,10 +638,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Window, middle of the outer pane above the widest plane',
-      value: 35.8 * IN,
+      value: 31.5 * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: '35.8 in: as Liberty Bell 7’s, which was scaled off its own photographs. The shingle under this capsule’s window, as it is kept, is about as tall as it is wide, where the model’s is half as tall again: the seam at the window’s foot is probably lower on the real capsule than here',
+      note: '31.5 in, give or take 1.5: as Nos. 13 and 20, on which it was measured from photographs (NASM A19670176000, NASA S63-07701); no document read gives it. This capsule’s own (NASA S62-06175) cannot be measured: it hangs tilted toward the camera. Until November 2026 the model had 35.8',
     },
     {
       group: 'Spacecraft',

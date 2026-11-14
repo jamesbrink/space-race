@@ -82,9 +82,9 @@ Nothing read says these differed from the capsule named; nothing read says they 
 
 | Item | Taken from | Why |
 | --- | --- | --- |
-| Where the window stands, its plate and rim | No. 11 | **against this capsule's photographs**: S63-06259 and S63-09676-E show the window's cover between UNITED STATES and the hatch with the emblem directly under it, as the model has them; but S63-07701 (on the carrier's deck, from the window's side) and S63-07521 show the window level with the first UNITED STATES, between about stations 20 and 40, where the model's is between 25 and 46. See "What the model gets wrong" |
+| Where the window stands, its plate and rim | No. 11's script, at the place measured on this capsule | the middle of its outer pane at station 31.5, the glass from 21.6 to 41.4 and the plate from 20.5 to 42.5: estimated, ±1.5 in. No document read gives the window a station. Measured on this capsule on the carrier's deck (NASA S63-07701, from the window's side, the camera some 7° above it and far off: on the window's own line the cone's joint with the cylinder, the glass's head and foot and the cone's foot, giving the glass from 21.1 to 40.2, ±1.0; the recovery compartment's 32 in checks the scale to 3 per cent) and on No. 13 as it is kept (NASM A19670176000: 21.9 to 41.3). S63-07521 agrees: the head of the window's cover is at the upper CAUTION THERMOCOUPLE stencil, level with UNITED's. Until November 2026 the model had 35.8, Liberty Bell 7's then, against these photographs |
 | Where the hatch is and its two shingles | No. 11 | the same photographs, and GPN-2000-001335: the seams at the hatch's head and foot run on under UNITED STATES beside it |
-| The shingle layout to the right of the hatch (columns of 30°, seams at stations 24.8 and 46.8) | No. 11 | GPN-2000-001335 agrees with it: the seams run on from the hatch's head and foot under UNITED STATES. From the pilot's feet round to the window it is this capsule's own: see "Shingles" |
+| The columns of shingles (twelve of 30°), and the shingles above and below the hatch | No. 11 | the seams they part at are this capsule's own: see "Shingles" |
 | Two stacks of beads on the shingle under the window | No. 18 | no photograph of No. 20's read shows it square on |
 | The roll jets, low on the cone | No. 11 | as built for No. 11 "by judgement" |
 | Heat shield, retropack housing and rockets, recovery compartment, antenna canister, escape tower, pressure vessel | No. 13 and No. 7 | nothing read |
@@ -95,7 +95,7 @@ Nothing read says these differed from the capsule named; nothing read says they 
 
 | Item | As modelled | Confidence | Basis |
 | --- | --- | --- | --- |
-| Seams from 75° to 255° | at stations 20.8 and 38.5, where No. 11's are at 24.8 and 46.8: one tall row of shingles above the upper seam to the top of the cone | documented by photograph (that they are not No. 11's); estimated (the stations) | KSC-63-MA9-174, from above with the capsule in its collar: one seam round that side just above UNITED, and a single row above it carrying the three white squares on one shingle, as *The Triumph* says (p. 21). S63-09676-E: a row of fasteners at the foot of STATES |
+| Seams | at the same two stations all round, 20.5 and 42.5, the foot and the head of the window's plate: one tall row of shingles above the upper seam to the top of the cone | documented by photograph (that they run so); estimated (the stations) | KSC-63-MA9-174, from above with the capsule in its collar: one seam round the window's side above UNITED, and a single row above it carrying the three white squares on one shingle, as *The Triumph* says (p. 21). S63-07701, its camera fitted to the cone: those two seams at 42.2 and 21.4, ±0.7. S63-07521: CAUTION THERMOCOUPLE stencilled on each of them beside the window's plate. GPN-2000-001335: to the right of the hatch the second UNITED STATES stands between two seams level with the head and the foot of the hatch's opening, its flag under the lower. Until November 2026: 20.8 and 38.5 from 75° to 255°, read against lettering that stood 2.5 in too low, and No. 11's elsewhere |
 | The plate at the pilot's feet | plain, 75° to 105°, between those seams | estimated | KSC-63-MA9-174 shows a plain plate at the cone's limb there, under the upper seam; how wide it is and how far down it goes cannot be told |
 | Columns | twelve of 30°, two stacks of beads each | estimated | No. 11's; the same photograph shows columns of about that width with two stacks |
 
@@ -105,13 +105,13 @@ All of it is placed from photographs; none of the places is dimensioned.
 
 | Item | As modelled | Basis |
 | --- | --- | --- |
-| The emblem | a white five-pointed star, one point toward the nose, its points 7.6 in from its middle, at 270°, station 16.9: filling the shingle under the window | NASA S63-06259 and S63-09676-E (the insertions of 14 and 15 May): a white field with straight edges, pointed toward the nose and toward the base, broad between, lying from the window's foot most of the way to the base. Both see it at the cone's limb, almost edge on. That it was a star is taken from the flight's later insignia (Commons: *Faith 7 insignia.jpg*); a shield or a diamond would look the same in them |
+| The emblem | a white five-pointed star, one point toward the nose, its points 7.8 in from its middle, at 270°, station 12.8: filling the shingle under the window, its upper point 0.4 in under the seam at the window's foot and its lower points at the beads' foot | NASA S63-06259 and S63-09676-E (the insertions of 14 and 15 May): a white field with straight edges, pointed toward the nose and toward the base, broad between, lying from the window's foot most of the way to the base. Both see it at the cone's limb, almost edge on. That it was a star is taken from the flight's later insignia (Commons: *Faith 7 insignia.jpg*); a shield or a diamond would look the same in them. Its place and size are read off S63-07701 (on the carrier's deck, the paint scorched to five pale lobes), its camera fitted to the cone: its upper point at station 20.1, its side points at the shingle's two seams, its lower points at 7.2, ±0.5 in. Until November 2026: 7.6 in at 16.9 |
 | its lettering | FAITH in dark capitals 8.6 in long and 1.75 in tall across the star above its middle, and a 7 of 3.9 in under it | the same two photographs, in which dark letters and a 7 with a long sloping stem can be made out; their arrangement is the insignia's. A typeface of ours. Whether the dark is black paint or the shingle left bare is not established: black |
-| UNITED STATES, first | two lines 27 in long, letters 6.9 in tall, centred on 208° at stations 33.85 and 24.55: low on the cone, under the white squares, ending 7 in from the window's plate | S63-06259, S63-09676-E; S63-07521 (close and square on: the lettering ends one stack of beads from the window's cover); KSC-63-MA9-174 (in the water, from above) |
-| its flag | 12 by 6.3 in at 209°, station 16.8 | the same |
-| UNITED STATES, second | the same size, centred on 28° at stations 42.4 and 31.9: beside the hatch and level with it, beginning 4.5 in from its border | GPN-2000-001335 (the egress on the carrier's deck, square on and close); the capsule as it hangs at Space Center Houston |
-| its flag | at 30°, station 18.6: under the seam at the hatch's foot | the same |
-| White paint patches | three 6 in squares 0.7 in apart in a column at 185°, the top one's upper edge at station 57.4: on one shingle, over the U and N of the first UNITED | documented: their number, their size, that they were on one shingle at the small end of the cone (*The Triumph*, p. 21). Their places and the gaps are read off S63-06259 and S63-09676-E. Each has a dark spot at its middle in the photographs, taken as its thermocouple's fastening: not modelled |
+| UNITED STATES, first | two lines 23 in long, letters 6.0 in tall, centred on 215° at stations 36.2 and 27.4: level with the window, under the white squares, its right end at 241° | S63-07701, between the cone's ends (36.2 and 27.4 by its ends alone, 35.8 and 27.2 by a camera fitted to it: ±0.5 in; letters 5.5 to 6.3 in); S63-06259, S63-09676-E; S63-07521 (close and square on: the lettering ends one stack of beads from the window's cover); KSC-63-MA9-174 (in the water, from above). Until November 2026: 27 in long with letters of 6.9 in, centred on 208° at 33.85 and 24.55, 2.5 in too low |
+| its flag | 12 by 6.3 in at 215°, station 16.7: its top just under the lower seam | the same: ±0.7 in. In S63-06259 it reads 9.5 to 10 in wide, at the cone's limb |
+| UNITED STATES, second | the same size, centred on 28° at stations 37.6 and 28.5: beside the hatch, UNITED's top an inch or two under the upper seam, beginning 4.5 in from the hatch's border | GPN-2000-001335 (the egress on the carrier's deck, square on and close), read roughly against the two seams: ±1.2 in; the capsule as it hangs at Space Center Houston. Until November 2026: 42.4 and 31.9, read against a hatch taken to be 4 in taller than its opening is |
+| its flag | at 30°, station 17.2: under the lower seam | the same; its station is not measured |
+| White paint patches | three squares of 4.9 in, 0.6 in apart, in a column at 185°, the top one's upper edge at station 57.6: on one shingle, from the top of the cone to the upper seam, over the U and N of the first UNITED | documented: their number, that they were 6 in squares, and that they were on one shingle at the small end of the cone (*The Triumph*, p. 21). The last two do not both fit this cone: S63-07701, S63-06259 and KSC-63-MA9-174 show the row running from the cone's top to the upper seam, 16.8 in, and the squares read about 5.1 in. The shingle is kept and the squares made to fit it: estimated. Their places and the gaps are read off S63-06259 and S63-09676-E. Each has a dark spot at its middle in the photographs, taken as its thermocouple's fastening: not modelled |
 
 Not modelled: the stencils low on the cone (S63-09676-E: "AUTO ... R/V VENT" and others) and
 CAUTION THERMOCOUPLE at the seams beside the window (S63-07521); a small louvred panel beside the S
@@ -194,7 +194,7 @@ Top-level nodes in the GLB. These names are the `node` fields in `flight.ts`.
 | `Retropack` | as Freedom 7's, and the beacon's canister with its cover and straps (`Retropack_Beacon*`: the ball, its lamps, the piston and spring are inside it), the Geiger tubes (`Retropack_GeigerTubes`), and the dipole antenna's two units (`Retropack_Dipole_*`) |
 | `RecoveryCompartment`, `EscapeTower` | as Freedom 7's |
 | `AntennaCanister` | as Freedom 7's, and the balloon's container (`Antenna_BalloonCanister`) |
-| `Afterbody` | No. 11's shingles, plates, structure, attach ring and roll jets, with no periscope, this capsule's seams from 75° to 255° and two stacks of beads under the window; the umbilical's door, well and receptacle (`Umbilical_*`); this capsule's lettering, flags, white squares (`Afterbody_Patches`) and emblem (`Afterbody_Star`, `Afterbody_Name`) |
+| `Afterbody` | No. 11's shingles, plates, structure, attach ring and roll jets, with no periscope, this capsule's seams and two stacks of beads under the window; the umbilical's door, well and receptacle (`Umbilical_*`); this capsule's lettering, flags, white squares (`Afterbody_Patches`) and emblem (`Afterbody_Star`, `Afterbody_Name`) |
 | `Window` | as No. 11's |
 | `Hatch` | as No. 11's, with seventy bolts |
 | `CrewCabin` | as No. 11's with no periscope: the centre panel (`CrewCabin_CentrePanel`) and what stands on it, this capsule's sequence lights, the television camera (`TV_*`), the hand-held camera in its kit (`Camera_*`), Cooper's name on the suit |
@@ -205,18 +205,14 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
 
 - **The outside is No. 11's with No. 20's paint and without its periscope.** Its window's and
   hatch's places and its roll jets are Liberty Bell 7's.
-- **The window stands about five inches too near the nose, and the emblem with it.** On the
-  carrier's deck (S63-07701) the window is level with the first UNITED STATES and no higher,
-  the hatch beside it reaches a little above it, and the emblem under it comes down nearly to
-  the base; in the model, which keeps Liberty Bell 7's place for the window as Friendship 7's,
-  Aurora 7's and Sigma 7's do, the window's top is level with the middle of the white squares.
-  Whether Liberty Bell 7's own window is placed right has not been looked at again. Moving it
-  means moving the window, its well, the opening in the pressure vessel and the cabin's shroud
-  together, for all five capsules or for this one: not done here.
-- **The shingles are laid out from three photographs.** From the pilot's feet round to the window
-  the seams are where KSC-63-MA9-174 and S63-09676-E have them, to an inch or two; to the right of
-  the hatch they are No. 11's, which GPN-2000-001335 bears out; between 345° and 75° on the far
-  side of that, and under the window and the hatch, they are No. 11's untested.
+- **The hatch is No. 11's, and may be too tall for this capsule's photographs.** On the carrier's deck (S63-07701) a
+  white line painted round the hatch's own shingles runs from station 20.3 to 42.0, and GPN-2000-001335 has the head
+  and the foot of the opening level with the two seams (42.5 and 20.5 here); the model's hatch reaches from 18.5 to
+  45.4, which is what the sill of No. 13's measures. Not settled: Liberty Bell 7's spacecraft.md, "The hatch". The
+  white line is not painted.
+- **The shingles are laid out from five photographs.** The two seams run all round at the stations of the window's
+  plate, to an inch; how wide the columns are, and the shingles above and below the hatch, are No. 11's. Between
+  345° and 75° no photograph read shows them. A round port above the window (S63-07701) is not modelled.
 - **The emblem is a guess at a shape seen edge on.** That it was white, pointed and lettered FAITH
   over a 7 is in the photographs; that it was a five-pointed star is the later insignia's. Its
   paint stands 0.1 to 0.17 in off the skin, in two layers.

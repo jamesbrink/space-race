@@ -63,7 +63,7 @@ by system. The last column says which reach the model.
 | Electrical, sequential, environmental, communications | | twenty-five, twelve and nine changes: fuses for switch-fuses, the Zener diode panel out, 15 lb more cooling water, the suit inlet hose shortened from 38 in to 18, one command receiver and the HF rescue set removed, a new helmet microphone, a hand-held transceiver in the survival kit | documented | TN D-4807, pp. 7 to 11 | no |
 | Weight | 4,244.09 lb at launch | 4,324.55 lb at launch; 3,028.89 in orbit; 2,732.50 at entry; 2,602.32 at main parachute; 2,441.43 afloat | documented | TN D-4807, Table I, p. 14 | not used |
 | Hatch | 70 bolts; never blown | 70 bolts; blown on the carrier's deck | documented | *This New Ocean*, p. 472; TN D-4807, pp. 2 and 69 | yes: 70 bolts |
-| Shingle under the window | two stacks of beads | two stacks of beads, eleven in each | documented by the shingle as kept | Commons: *Flown Superalloy Shingle with Sigma 7 logo* | yes: two stacks (the model's has ten beads) |
+| Shingle under the window | two stacks of beads | two stacks of beads, ten in each, 1.24 in apart | documented by the shingle as kept | Commons: *Flown Superalloy Shingle with Sigma 7 logo* | yes |
 | Paint | the Aurora 7 emblem; UNITED STATES twice; the white patch | the sigma and the 7; UNITED STATES twice; the white patch | documented by photographs; every place estimated | see "Paint" | yes |
 
 ## What is assumed the same
@@ -72,9 +72,9 @@ Nothing read says these differed from the capsule named; nothing read says they 
 
 | Item | Taken from | Why |
 | --- | --- | --- |
-| Where the window stands, its plate and rim | No. 11 | NASA GPN-2000-001441 and S62-06175 show the same plate between the same seams |
+| Where the window stands, its plate and rim | No. 11's script, at the place measured on Nos. 13 and 20 | the middle of its outer pane at station 31.5, the glass from 21.6 to 41.4 and the plate from 20.5 to 42.5: estimated, ±1.5 in. No document read gives the window a station; it is measured from photographs of No. 13 as kept (NASM A19670176000) and of No. 20 (NASA S63-07701), and this capsule is taken to be as they are. Its own photographs cannot be measured: in NASA S62-06175 the capsule hangs tilted toward the camera (the pane's 19.7 in reads as 12.9 against the cone). GPN-2000-001441 and S62-06175 show the same plate between the same seams. Until November 2026 the model had 35.8 |
 | Where the hatch is and its two shingles | No. 11 | GPN-2000-001441 has the hatch beside the window on the pilot's right, the second UNITED STATES beginning at its far edge |
-| The shingle layout elsewhere (twelve columns, seams at stations 24.8 and 46.8) | No. 11 | S62-06175 and S62-06144 show the two seams running round; see the last section for where it does not fit |
+| The shingle layout elsewhere (twelve columns) | No. 11 | S62-06175 and S62-06144 show the two seams running round on the window's side. The seams at the window's plate's foot and head (20.5 and 42.5) run on through the three columns beside it away from the hatch (165° to 255°) and moved with the window in November 2026; the shingles above the hatch begin at its border's head (46.8); the columns from the hatch round past the periscope to 165° keep the seams they had (24.8 and 46.8) |
 | Where the periscope's door and the umbilical are | No. 11 | no photograph of that side of No. 16 has been read |
 | The roll jets, low on the cone | No. 11 | as built for No. 11 "by judgement"; the shingle as kept has two round fittings at its foot marked J37 and J20, not modelled |
 | The panel without the Earth-path indicator and the humidity and coolant gauges | No. 18 | the report lists changes from No. 18 and restores none of them: derived |
@@ -87,15 +87,15 @@ All of it is placed from photographs; none of the places is dimensioned.
 
 | Item | As modelled | Basis |
 | --- | --- | --- |
-| The emblem | on the shingle under the window, its sigma's upper left corner 2.9 in right of the shingle's corner (255°, station 24.8) and 1.3 in down from it; the outlines are `SIGMA` and `SEVEN` | the shingle as it is kept, photographed square on in colour (Commons: *Flown Superalloy Shingle with Sigma 7 logo, from the MA-8 Mercury Spacecraft*), scaled by taking it as the model's 16.3 in wide at its middle; NASA S62-06002 (Schirra going aboard) for where it sits: the sigma's bar just under the fasteners at the window's foot |
-| its sigma | red, edged in cream 0.13 in wide: 7.85 in across and 8.2 in tall, a bar across the top hooked down at its right end, a broad stroke down to the middle, a narrow one back, a bar along the foot with a serif | the same two. Its upper half is plain in both; its lower half has flaked off the shingle and is cut off in the photograph, and is drawn as a printed sigma's would be: estimated |
-| its 7 | yellow, edged in white 0.11 in wide: 5.8 in across and 6.6 in tall, lying in the sigma's mouth, its bar a wedge thick at the left, its stem curving down to a foot under the sigma's | the same two |
+| The emblem | on the shingle under the window, its sigma's upper left corner 2.8 in right of the shingle's corner (255°, station 20.5) and 1.3 in down from it, level with the top of the first bead; the outlines are `SIGMA` and `SEVEN`, made 1.12 times as big (`EMBLEM_SCALE`): the two together 10.8 in wide and 11.3 tall | the shingle as it is kept, photographed square on in colour (Commons: *Flown Superalloy Shingle with Sigma 7 logo, from the MA-8 Mercury Spacecraft*), scaled three ways that agree to 2.5 per cent: by its two lines of bolt holes (one column of 30° apart), by its beads, and by the 20 by 18 in it was sold as. NASA S62-06002 (Schirra going aboard) for where it sits: the sigma's bar 1.1 in under the fasteners at the window's foot. Until November 2026 it was scaled by the width of the model's shingle, which was too narrow there, and hung 4.3 in higher with the window |
+| its sigma | red, edged in cream 0.15 in wide: 8.8 in across and 9.2 in tall, a bar across the top hooked down at its right end, a broad stroke down to the middle, a narrow one back, a bar along the foot with a serif | the same two. Its upper half is plain in both; its lower half has flaked off the shingle and is cut off in the photograph, and is drawn as a printed sigma's would be: estimated |
+| its 7 | yellow, edged in white 0.12 in wide: 6.5 in across and 7.4 in tall (it reads 6.4 by 7.0), lying in the sigma's mouth, its bar a wedge thick at the left, its stem curving down to a foot under the sigma's | the same two |
 | their colours | red (0.50, 0.02, 0.014), yellow (0.80, 0.50, 0.03), cream and white | read off the shingle as it is now, scorched by an entry: the red there is a dark brick and the yellow a mustard. What they were when fresh is not in anything read |
-| UNITED STATES, second | two lines 23 in long, letters 6 in tall, centred on 20° at stations 38.4 and 31.3: round to the right of the hatch | GPN-2000-001441 (in the hangar: its first letters at the hatch's edge); KSC-62PC-0078 (the liftoff, in colour, above "113 D"). The sizes are No. 18's |
-| its flag | 12 by 6.3 in at 28°, station 20.2: under the last letters | both photographs show a flag under the lines there |
-| UNITED STATES, first | the same size, centred on 212°: to the left of the window | NASA S62-06144 (on the carrier's deck, after the flight), in which the window is at its right |
-| its flag | at 208°, station 20.2 | **not seen**: no photograph read shows under the first lettering. Put where No. 18's was |
-| White paint patch | 4 in square, its middle at 191°, station 50.3: above the first UNITED, between its U and its N, above the seam | documented that there was one (TN D-4807, pp. 12 and 68). Its place and size are read off S62-06144, taken from a distance after the flight, in which a pale rectangle with the beads showing through it stands there. The reading is not sure |
+| UNITED STATES, second | two lines 23 in long, letters 5.8 in tall, centred on 20° at stations 37.8 and 29.2: round to the right of the hatch | GPN-2000-001441 (in the hangar: its first letters at the hatch's edge); KSC-62PC-0078 (the liftoff, in colour, above "113 D"); the capsule as it was shown at Houston (NASA S66-53205, square on), its camera fitted to the cone in November 2026: UNITED from 34.9 to 40.4 and STATES from 26.2 to 32.3, ±0.6. Until then: 38.4 and 31.3, No. 18's as they then were |
+| its flag | 12 by 6.3 in at 28°, station 18.0: under the last letters | both photographs show a flag under the lines there; S66-53205 has it from 14.8 to 20.9, ±0.8. Until November 2026: 20.2 |
+| UNITED STATES, first | the same size and stations, centred on 212°: to the left of the window | NASA S62-06144 (on the carrier's deck, after the flight), in which the window is at its right: soft, and fitted to the cone it reads 37.2 and 28.5, ±0.7 |
+| its flag | at 208°, station 18.0 | **not seen**: no photograph read shows under the first lettering. Put as the second's |
+| White paint patch | 4 in across and 5 up the cone, its middle at 191°, station 46.5: above the first UNITED, between its U and its N, from 2.4 to 7.7 in above the seam | documented that there was one (TN D-4807, pp. 12 and 68). Its place and size are read off S62-06144, taken from a distance after the flight, in which a pale rectangle with the beads showing through it stands there. The reading is not sure: ±1.2 in. Until November 2026: 4 in square at 50.3 |
 
 Not modelled: the triangular three-colour paint patch (above); the stencils on the shingle under
 the window (J37, J20). Not established: what was painted between 60° and 180°. No photograph read
@@ -167,13 +167,22 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
 
 - **The outside is No. 11's with No. 16's paint**, but for the shingle under the window. Its
   window's and hatch's places, its periscope door and its roll jets are Liberty Bell 7's.
-- **The shingle under the window is the wrong shape.** As it is kept it is about as tall as it is
-  wide (some 18 in each way if it is the model's width), plain foot and all, with eleven beads to a
-  stack; the model's, between the same seams as No. 11's and with the plain plate at its foot, is
-  16 in wide and 24 in tall with ten beads. So the seam at
-  the window's foot is probably lower on the real capsule than station 24.8, and the window and
-  hatch with it. The emblem is hung from the model's seam at its true size, and so sits higher
-  above the heat shield than it did, and fills less of its shingle.
+- **The shingle under the window is one piece on the capsule and three in the model.** As it is kept it runs from
+  the seam at the window's foot to the cone's foot: ten beads to a stack, then a strip of rivets, then a plain foot
+  with the two ports marked J37 and J20; 16.9 in tall in all, 16.7 in wide at its top and 19.7 at its foot. The
+  model's beaded shingle is 15.2 in tall, its ten beads spread over 12.6 in where the real ones take 11.9, and it
+  stands on the plain band every column has. Where the real beads end depends on where the first is taken to
+  begin: between stations 7.5 and 9.0, against the model's 7.4. Until November 2026 the window stood 4.3 in too
+  high and this shingle hung from it too tall and too narrow, which is what was wrong with its shape.
+- **Only the window's side was read again when the window was moved** (November 2026): the window, the seams of the
+  three columns beside it away from the hatch, the shingle under it, and the paint. The seams from the hatch round
+  past the periscope to 165° are where they were laid out before, against a window 4.3 in too high, so the rows step
+  at 165°; the periscope's door and the umbilical are No. 11's, which were placed the same way. They probably stand
+  some 4 in too high. The hatch's height is not settled either (Liberty Bell 7's spacecraft.md, "The hatch").
+  On this capsule as it was shown at Houston (S66-53205) the upper seam to the right of the hatch is at about 42,
+  and the lower ones at 26.3 and 17.6 (345° to 15°) and at 23.2 (the flag's column), where the model has 46.8 and 24.8;
+  and S62-06175 has the row of screws at the window's plate's foot running on across the foot of the hatch's
+  shingles, where the model's are 3 in apart.
 - **The emblem's lower half is partly guessed.** The foot of the sigma has flaked off the shingle
   and no photograph read shows it whole. Its colours are the scorched shingle's. Its paint stands
   0.1 and 0.17 in off the skin, in two layers; its outlines are straight where a brush's wavered.

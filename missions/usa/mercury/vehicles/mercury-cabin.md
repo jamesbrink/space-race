@@ -16,6 +16,15 @@ stowage, the periscope, the attitude indicator, the clock and the instruments' f
 panel with its Earth-path indicator and time-to-retrograde clock) adds its own tables here and its own section there;
 it does not edit No. 7's.
 
+**The window from inside** is No. 11's fit's, and so every later capsule's: the opening through the pressure vessel
+and the lining (`mercury_cabin_11.WINDOW_OPENING`: 257.5° to 282.5°, stations 21.5 to 39.7) and the shroud from it in
+to the inner frame (`window_inside`). They stand where the window does and moved with it in November 2026, 4.3 in
+toward the heat shield ([mercury-capsule.md](mercury-capsule.md), "Where the window stands"); the lining's frames at
+stations 24.5, 29.5 and 34.5 stop either side of the opening. From the couch the model's pilot then sees through the
+inner frame and the outer rim 27° to 33° up and down and 30° across at the middle, against the 33° and "approximately
+30°" of the MR-4 Results (p. 33) and the 30° of NASA SP-45's Figure 19-1; where the window stood before it was 14° to
+19° and 22° ([Liberty Bell 7's spacecraft.md](../flights/mr-4-liberty-bell-7/spacecraft.md), "The window").
+
 Spacecraft No. 13's (Friendship 7) is [mercury_cabin_13.py](mercury_cabin_13.py): No. 11's fit whole, since the report
 of the flight prints No. 11's panel as its own, with the hatch's seventieth bolt in and this flight's words on what
 is pointed at. Its record is [that flight's spacecraft.md, "Cabin"](../flights/ma-6-friendship-7/spacecraft.md).
