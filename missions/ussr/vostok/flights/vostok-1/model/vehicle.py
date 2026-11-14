@@ -86,7 +86,12 @@ if __name__ == "__main__":
             ("seat-left.png", "", 0, dict(seat="Seat_Pilot", lens=30, look=(38, 8), res=(1500, 1100), hide=out)),
             ("seat-right-hand.png", "", 0, dict(seat="Seat_Pilot", lens=30, look=(-42, -6), res=(1500, 1100), hide=out)),
             ("cabin-board.png", board, 1.5, dict(azimuth=hatch, elevation=-38, res=(1500, 1400), only=fit)),
-            ("cabin-panel.png", panel, 1.9, dict(azimuth=hatch - 62, elevation=-6, res=(1400, 1500), only=fit)),
-            ("cabin-fit.png", centre, 4.6, dict(azimuth=hatch + 28, elevation=-14, res=(1600, 1300), only=(*fit, *seat), hide=out)),
+            ("cabin-panel.png", panel, 1.9, dict(azimuth=hatch + 60, elevation=4, res=(1400, 1500), only=fit, hide=(*out, "Cabin_Parachute"))),
+            (
+                "cabin-fit.png",
+                centre,
+                4.6,
+                dict(azimuth=hatch + 28, elevation=-14, res=(1600, 1300), only=(*fit, *seat), hide=(*out, "Cabin_Parachute")),
+            ),
         ],
     )
