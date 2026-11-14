@@ -51,6 +51,8 @@ const SPUTNIK =
   'в/ч 11284, the reports of 17 October and 14 November 1957 on 8K71PS No. M1-1 (TsAMO f. 19, op. 110ss, d. 14), as published by rvsn.info: the same first two stages, two-stage, a different vehicle';
 const BOBKOV = 'Bobkov (OKB-1), «Космический корабль "Восток"», Krylya Rodiny 1991 No. 4 and 6: secondary';
 const GCTC = 'Gagarin Cosmonaut Training Centre, «Корабль "Восток"» (gctc.ru): secondary, unsigned';
+const MOLODTSOV =
+  'Molodtsov (OKB-1), «История проектирования корабля "Восток"», Космический альманах No. 5, 2001 (epizodsspace.narod.ru/bibl/akiem/5v-vostok.html): secondary';
 
 /** The command to the braking engine (OKB-1: "the TDU was turned on at 1025:04.2"), which everything about the burn is timed from. */
 const TDU = MSK(10, 25, 4.2);
@@ -108,6 +110,13 @@ export const orbital: OrbitalFlight = {
           `${SPUTNIK}); the level of that stage has not been found, so it is not flown: rated thrust to the integrator’s command. Rated burns in print: 118 s (Minakov), 120.5 s (Brügge, computed)`,
       ),
       separation: doc(119.5, `${PPP}: the integrator’s command at 119.50 s. ${SIDDIQI}, p. 277; ${ZAK}: 119 s`),
+      start: {
+        count: 1,
+        ground: true,
+        confidence: 'documented',
+        source:
+          'each of the 32 chambers lit by its own pyrotechnic igniter on a wooden stand pushed up the nozzle from the pad (Energia’s history: «в каждой из 32 камер сгорания»; vostok-8k72k.md; Terekhov, «32 березовые палки…», Habr, 2016: two pyrotechnic charges on a T-shaped wooden stand, «Одноразовость»): nothing aboard could light it again, which is an inference, no page saying so',
+      },
     },
     {
       name: 'Core, Block A',
@@ -156,6 +165,13 @@ export const orbital: OrbitalFlight = {
         300,
         `the third stage’s «Зажигание» at T+321.42 s (NIIP-5’s report, ${NK}, p. 4), whose fire through the lattice cuts the core loose: the separation itself was not recorded. The plan had the third stage started at 311.74 s, before the core’s main command; the 9.7 s between plan and record is not explained in anything read`,
       ),
+      start: {
+        count: 1,
+        ground: true,
+        confidence: 'documented',
+        source:
+          'each of the 32 chambers lit by its own pyrotechnic igniter on a wooden stand pushed up the nozzle from the pad (Energia’s history: «в каждой из 32 камер сгорания»; vostok-8k72k.md; Terekhov, «32 березовые палки…», Habr, 2016: two pyrotechnic charges on a T-shaped wooden stand, «Одноразовость»): nothing aboard could light it again, which is an inference, no page saying so',
+      },
     },
     {
       name: 'Third stage, Block E',
@@ -183,6 +199,29 @@ export const orbital: OrbitalFlight = {
         MSK(9, 18, 28),
         `${OKB1}: “separated from the booster at 0918:28”. ${ZAK} notes 09:18:07 from another source (Novosti Kosmonavtiki)`,
       ),
+      start: {
+        count: 1,
+        ground: false,
+        confidence: 'estimated',
+        source:
+          'once, in flight. How the RD-0109 was started (its turbine’s starter, its igniter) is NOT FOUND in anything read; Chertok (Rockets and People, vol. 2, p. 438) has the worry of the day, whether “ignition and startup would be reliably ensured in space”. One start is what every account implies',
+      },
+      // Hot staging: lit through the open lattice with the core still on (vostok-8k72k.md, "Staging"; the cyclogram's start
+      // command at 311.74 s a second before the core's main command at 312.74 s: mission.md, "The 2011 documents")
+      hot: {
+        open: guess(
+          0.67,
+          'of the lattice’s side, the model’s: 24 struts 64 mm across and 1.22 m long, two rings 60 mm deep and 24 feet on a cylinder 1.25 m in radius and 1.26 m high block 3.2 of its 9.9 m² (upper.py `build_interstage`, whose stations are estimated from photographs)',
+        ),
+        turn: guess(
+          24,
+          'degrees below the level that the jet leaves the deflector at: its cone’s outer face, 320 mm down over 710 mm out (upper.py, estimated from photographs). What escapes pushes the stack by the sine of it; the turn taken as losing no speed, so this is the most it could be',
+        ),
+        endures: guess(
+          5,
+          'seconds of the third stage’s full thrust the heat shield on the core’s top stands: NOT FOUND. It is there to protect the stage’s top and turn the jet out across the flight (Volkhonsky, lecture notes on launcher design, Moscow 2012: «Для защиты верхнего днища предыдущей ступени на нем устанавливается теплозащитный экран»); on Soyuz it is a titanium-covered cone over the instrument bay on the oxidiser tank (RussianSpaceWeb, “Stage II of Soyuz rocket”). The plan gave it about a second (the start command at 311.74 s, the core’s main command at 312.74 s and the separation after it); Soyuz 18a’s stack stayed joined about two seconds under its third stage’s thrust, and nothing burst (RussianSpaceWeb, “Soyuz 18-1”, from Energia’s history). Five seconds, a few times that, chosen',
+        ),
+      },
       // cut as its integrator cut it: at the speed the planned orbit needs, and the error the record gives for the day
       // cut as its integrator cut it: on the apparent velocity the flight task set for it
       velocity: {
@@ -371,8 +410,52 @@ export const orbital: OrbitalFlight = {
           800,
           `${ZAK}: 0.8 t. Brügge 0.64 t: secondary. ${NK}, p. 10, note 31: «Масса головного обтекателя составляла 582 кг», not flown yet (mission.md, "The 2011 documents")`,
         ),
+        q: guess(
+          1_000,
+          'Pa: NOT FOUND for the 8K72K. Let go at 154.6 s, where the ascent flown has 0.15 kPa: two halves on hinges at the foot, made to swing open in air too thin to throw them back. Soyuz-2 lets its fairing go once the air’s heating is under 1,135 W/m² (Arianespace, Soyuz CSG User’s Manual, issue 2, 2012, §3.4.3.2): another vehicle’s rule. A kilopascal, chosen',
+        ),
+        covers: true,
       },
     ],
+    // What the spacecraft's escape did if the launch vehicle failed, by when: said on the deck's card, not flown
+    aborts: [
+      {
+        until: doc(
+          40,
+          `${MOLODTSOV}: «до 40-й секунды по команде, подаваемой по командной радиолинии, производится аварийное катапультирование космонавта»; ${SIDDIQI}, p. 252`,
+        ),
+        does: 'the pilot ejected from the spacecraft on a radio command from the ground (the first 15 to 20 seconds had no satisfactory answer, Molodtsov writes)',
+      },
+      {
+        until: doc(
+          150,
+          `${MOLODTSOV}: «с 40-й по 150-ю секунду происходит аварийное выключение двигателей ракеты-носителя и при снижении падающей ракеты до 7 км производится аварийное катапультирование»`,
+        ),
+        does: 'the launch vehicle’s engines were shut down and the pilot ejected as it fell through 7 km',
+      },
+      {
+        until: doc(
+          700,
+          `${MOLODTSOV}: «со 150-й по 700-ю секунду от концевых контактов гироприборов происходит аварийное выключение двигателей», and the descent module separates`,
+        ),
+        does: 'the gyroscopes’ limit contacts shut the engines down and the descent module separated, to come down as from orbit',
+      },
+      {
+        until: doc(730, `${MOLODTSOV}: «с 700-й по 730-ю секунду» the third stage shut down and the whole spacecraft separated`),
+        does: 'the third stage was shut down and the whole spacecraft separated',
+      },
+    ],
+    // What the structure stands (src/sim/stagedlive.ts, by sim/loads.ts's rule). No figure for the R-7 has been read.
+    limits: {
+      qAlpha: guess(
+        3_340,
+        'Pa rad: NOT FOUND for the R-7. Soyuz-2 is held to 3 degrees off the wind about its greatest dynamic pressure, 34 to 45 kPa (Shakmaev et al., Инженерный журнал 2024 No. 3, Table 1: another vehicle’s tolerance, not a strength), which is 2.4 kPa rad; with a half again for strength over the tolerance it is the 4,000 lb/sq ft degrees (3,340 Pa rad) the launch vehicles of the time are credited with, the figure Freedom 7’s Redstone is given (mr-3-freedom-7/flight.ts). The ascent flown meets 1.0 kPa rad in the day’s wind',
+      ),
+      axial: guess(
+        6,
+        'g along the axis: NOT FOUND. The record’s greatest were 4.4 before the strap-ons were cut and 4.2 before the core was (NIIP-5’s report, NK p. 4; Soyuz-2’s are under 4.3: its manual, §3.2.1); the ascent flown reaches 4.7. A quarter over that, chosen',
+      ),
+    },
     // For the live vehicle flown by hand (src/sim/stagedlive.ts): how hard its steering chambers turn it. No figure read.
     steering: {
       authority: guess(

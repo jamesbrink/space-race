@@ -59,6 +59,24 @@ export function strain(before: Strain, load: number, dt: number): { strain: Stra
   return { strain: { load, most: Math.max(before.most, load), over }, fails: load >= SNAPS || over >= HOLDS - 1e-9 };
 }
 
+/**
+ * A parachute in the air (every flier's: vehicle.ts, fliers.ts, orbital.ts flyDown): torn by more dynamic pressure `q` than
+ * its cloth's `strength`, or by more pull (that pressure times the drag area it has filled to, `area`) than its lines'
+ * `pull`, where either is given. What is left streams: `torn` of its full drag area `full`, or what it had filled to if that
+ * was less. Let out, `area` is its full drag area: the test is then its cloth's alone. Null: it holds.
+ */
+export function tearOf(
+  q: number,
+  area: number,
+  full: number,
+  limit: { strength?: number; pull?: number; torn: number },
+): { by: 'pressure' | 'pull'; pull: number; left: number } | null {
+  const pull = q * area;
+  const by =
+    limit.strength !== undefined && q > limit.strength ? 'pressure' : limit.pull !== undefined && pull > limit.pull ? 'pull' : null;
+  return by ? { by, pull, left: Math.min(area, full * limit.torn) } : null;
+}
+
 /** 'safe', 'caution' from CAUTION of the limit, 'over' past it. */
 export function standing(load: number): 'safe' | 'caution' | 'over' {
   return load > 1 ? 'over' : load >= CAUTION ? 'caution' : 'safe';
