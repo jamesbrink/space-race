@@ -9,14 +9,40 @@
 
 import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
 import type { Confidence, Measure } from '../../../../../src/types';
-
-/** The strap-ons, each a body of its own when it leaves: its letter, its block, its bearing round the stack (as flight.ts's BOOSTERS). */
-const BOOSTERS: [letter: string, block: string, az: number][] = [
-  ['B', 'Б', 0],
-  ['V', 'В', 90],
-  ['G', 'Г', 180],
-  ['D', 'Д', 270],
-];
+import {
+  CREW,
+  ENTRY_AREA,
+  ENTRY_DRAG,
+  ENTRY_MASS,
+  HAND_RATE,
+  HATCHES,
+  HEATING,
+  MODULE_CHUTES,
+  MODULE_DRAG,
+  mainCanopy,
+  PARTING,
+  RAREFIED,
+  reserveCanopy,
+  SEAT_CHUTE,
+  SEATED_DRAG,
+  TDU_THRUST,
+  THROWN,
+  TORN,
+} from '../../vehicles/vostok-3ka.ts';
+import {
+  ascent8K72K,
+  BOBKOV,
+  GCTC,
+  KICK,
+  NK,
+  PPP,
+  SIDDIQI,
+  SOYUZ,
+  SPUTNIK,
+  stages8K72K,
+  VERTICAL,
+  ZAK,
+} from '../../vehicles/vostok-8k72k.ts';
 
 const m = (value: number, confidence: Confidence, source: string): Measure => ({ value, confidence, source });
 const doc = (value: number, source: string): Measure => m(value, 'documented', source);
@@ -26,31 +52,15 @@ const guess = (value: number, source: string): Measure => m(value, 'estimated', 
 /** Seconds from liftoff of a Moscow time on the morning of 12 April 1961. */
 export const MSK = (h: number, min: number, s = 0): number => (h - 9) * 3600 + (min - 6) * 60 + (s - 59.7);
 
-const G0 = 9.80665;
 const OKB1 =
   'OKB-1, preliminary report of 3 May 1961 (Korolev, Bushuyev, Tikhonravov; RKK Energia archive 13029; Wilson Center record 260547)';
 const GAGARIN = 'Gagarin’s report to the State Commission, 13 April 1961 (APRF f. 3, op. 47, d. 278; Wilson Center record 260544)';
-const SIDDIQI = 'Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
 const KAMANIN_LOCK =
   'Kamanin’s diary, 12 April 1961 (Skrytyi kosmos, book 1): «В 8 часов я вместе с ведущим инженером корабля на лифте поднялся к верху ракеты и проверил шифр (145) логического замка. Логический замок работал нормально.»';
-const ZAK = 'Zak, RussianSpaceWeb';
-const ENERGOMASH = 'NPO Energomash’s table by vehicle, row 8K72K, as reproduced by Brügge (b14643.eu): secondary';
-const MINAKOV = 'Minakov, «Ракета, поднявшая в космос Ю. Гагарина», Modelist-Konstruktor';
-const ASTRONAUTIX = 'Encyclopedia Astronautica, Vostok 8K72K stage data: secondary';
-const PPP =
-  '«Первый пилотируемый полёт», book 2 (Davydov, ed., 2011), as quoted by page in Gammal and Tuchin, «Реконструкция траектории полёта КА «Восток-1»», Keldysh Institute preprint 2025 No. 15';
-const NK =
-  'Lissov and Afanasyev, «106 минут Гагарина в свете рассекреченных документов», Novosti Kosmonavtiki 2011 No. 6, pp. 2–11, written page by page from «Первый пилотируемый полёт» (2011): the flight task (book 1, pp. 429–430), the launch cyclogram (book 1, p. 431) and NIIP-5’s operational report of 13 May 1961 (book 2, pp. 54–69): secondary';
 const TASK =
   'Gagarin’s flight task, its three sheets (ЦА РКВ, ф. 19, оп. 114сс, д. 15, лл. 126–128), as the Ministry of Defence published them in 2021 («Покорители космоса», 60cosmonauts.mil.ru)';
 const BATURIN =
   'Baturin (co-editor of the 2011 documents), «Подлинная история полета Гагарина», Novaya Gazeta, 12 April 2021: secondary, no footnotes';
-const SOYUZ =
-  'Starsem, Soyuz User’s Manual ST-GTD-SUM-01, issue 3, 2001, Fig. 2-4 (pitch against time): a different vehicle on the same first two stages';
-const SPUTNIK =
-  'в/ч 11284, the reports of 17 October and 14 November 1957 on 8K71PS No. M1-1 (TsAMO f. 19, op. 110ss, d. 14), as published by rvsn.info: the same first two stages, two-stage, a different vehicle';
-const BOBKOV = 'Bobkov (OKB-1), «Космический корабль "Восток"», Krylya Rodiny 1991 No. 4 and 6: secondary';
-const GCTC = 'Gagarin Cosmonaut Training Centre, «Корабль "Восток"» (gctc.ru): secondary, unsigned';
 
 /** The command to the braking engine (OKB-1: "the TDU was turned on at 1025:04.2"), which everything about the burn is timed from. */
 const TDU = MSK(10, 25, 4.2);
@@ -60,22 +70,8 @@ export const orbital: OrbitalFlight = {
     287_000,
     `RKK Energia 1946–1996, of this flight: «со стартовой массой 287 т»; Minakov; Siddiqi. ${NK}, p. 9: «Масса заправленного изделия 8К72 с кораблем 3КА №3 составила 291 619 кг»: not flown yet, being 4.9 t more than the blocks' figures add to (mission.md, "The 2011 documents"). Also in print: 290.5 t (Zak), 291.15 t (Brügge), 281.4 t (Astronautix)`,
   ),
-  stages: [
-    {
-      name: 'Strap-on boosters, Blocks B, V, G, D',
-      count: 4,
-      engine: 'RD-107 (8D74)',
-      nodes: ['Booster_B', 'Booster_V', 'Booster_G', 'Booster_D'],
-      mass: doc(43_300, `${ASTRONAUTIX}: 43.3 t each. Minakov’s table has 170 t for the four (42.5 t); Brügge 177.65 t (44.4 t)`),
-      dry: doc(3_750, `${MINAKOV}: 3.75 t. Astronautix has 3.71 t`),
-      propellant: derived(
-        39_550,
-        '43.3 t fuelled (Astronautix) less 3.75 t dry (Minakov): all that is not structure, as the 8K71’s own table counts it (militaryrussia.ru: 42,950 less 3,750 is 39,200 kg «топливо»). ' +
-          'The kerosene, oxygen, peroxide and nitrogen are not split for the 8K72K in anything found. The flow drawn from it is the engine’s whole flow, which is what its specific impulse is reckoned on: ' +
-          'thrust over kerosene, oxygen and peroxide together (lpre.de, from Gakhun et al. 1989: 1,000.3 kN over 326.2 kg/s is 3,066.5 m/s, the published 3,067); the 0.28 t of nitrogen (militaryrussia.ru) is not burned and is left in. ' +
-          'Brügge’s figures (b14643.eu) are not this vehicle’s: his block masses for every R-7 are Soyuz-ST’s, from Arianespace’s Soyuz CSG User’s Manual, issue 2, 2012, Fig. 1.5.1a, where a strap-on carries 27,900 kg of oxygen and 11,260 of kerosene (39.16 t) and a core 63,800 and 26,300 (90.10 t), the peroxide and nitrogen outside those (1.47 and 3.12 t)',
-      ),
-      // the strap-ons go to their first intermediate stage of thrust before they part (documented in kind); level and length are another R-7's
+  stages: stages8K72K({
+    boosters: {
       throttle: {
         points: [
           [0, 1],
@@ -89,18 +85,6 @@ export const orbital: OrbitalFlight = {
           'Neither its level nor its length on the 8K72K was found. The level is the 8K71’s and 8A91’s, 60 per cent (590.0 of 972.3 kN: Energomash’s table as Brügge copies it, secondary); the length is Sputnik’s, ' +
           `6.4 s (the command at 109.94 s, separation at 116.38 s: ${SPUTNIK}), put before the 8K72K’s 119.5 s`,
       },
-      thrust: {
-        seaLevel: doc(815_900, `${ENERGOMASH}: 815.9 kN. Minakov’s table: 82 tf (804 kN)`),
-        vacuum: doc(997_700, `${ENERGOMASH}: 997.7 kN`),
-      },
-      isp: {
-        seaLevel: doc(2510 / G0, `${ENERGOMASH}: 2,510 N·s/kg (256 s)`),
-        vacuum: doc(3069 / G0, `${ENERGOMASH}: 3,069 N·s/kg (313 s)`),
-      },
-      ignition: guess(
-        0,
-        'lit on the pad before liftoff, through a preliminary and an intermediate stage of thrust (Gagarin’s report); how many seconds before has not been read, and the propellant burned before liftoff is not known',
-      ),
       cutoff: doc(
         119.5,
         `${PPP}, §4: «команда на разделение выдана интегратором на 119.50 секунде с её исполнением через 0.03 секунды». ${SIDDIQI}, p. 277, and ${ZAK}: 119 s. ` +
@@ -109,20 +93,7 @@ export const orbital: OrbitalFlight = {
       ),
       separation: doc(119.5, `${PPP}: the integrator’s command at 119.50 s. ${SIDDIQI}, p. 277; ${ZAK}: 119 s`),
     },
-    {
-      name: 'Core, Block A',
-      count: 1,
-      engine: 'RD-108 (8D75)',
-      nodes: ['CoreStage', 'CoreEngine', 'Interstage'],
-      mass: doc(100_400, `${ASTRONAUTIX}: 100.4 t. Brügge 99.76 t; Minakov 102 t`),
-      dry: doc(6_800, `${ASTRONAUTIX}: 6.8 t. Minakov: 7 t for the 8K71’s core, 8 t in his 8K72 table`),
-      propellant: derived(
-        93_600,
-        '100.4 t fuelled less 6.8 t dry (both Astronautix, of the 8K72K’s core): all that is not structure, peroxide and nitrogen with the kerosene and oxygen, drawn at the engine’s whole flow (see the strap-ons). ' +
-          'Brügge’s figures (b14643.eu) are not this vehicle’s: his block masses for every R-7 are Soyuz-ST’s, from Arianespace’s Soyuz CSG User’s Manual, issue 2, 2012, Fig. 1.5.1a, where a strap-on carries 27,900 kg of oxygen and 11,260 of kerosene (39.16 t) and a core 63,800 and 26,300 (90.10 t), the peroxide and nitrogen outside those (1.47 and 3.12 t)',
-      ),
-      // the RD-108's main chambers stop at the preliminary command and it runs on its steering chambers alone until the main
-      // command: the final stage of thrust. Its instants are the cyclogram's, as late as the day had them; its level is estimated
+    core: {
       throttle: {
         points: [
           [0, 1],
@@ -138,15 +109,6 @@ export const orbital: OrbitalFlight = {
           '(lpre.de). Gagarin felt 10 to 15 s of weightlessness before the third stage lit, which the third stage’s ignition at 321.42 s explains. ' +
           'The level is not found: the four steering chambers at their rated 2.5 tf each (RKK Energia 1946–1996), 10 tf of the engine’s 96.4 in vacuum, 10.4 per cent, is the most it can be (“at a reduced setting”), and is taken; thrust and flow fall together here, which the steering chambers’ own lower impulse does not quite do',
       },
-      thrust: {
-        seaLevel: doc(744_300, `${ENERGOMASH}: 744.3 kN. Minakov’s table: 81.2 tf`),
-        vacuum: doc(945_400, `${ENERGOMASH}: 945.4 kN`),
-      },
-      isp: {
-        seaLevel: doc(2432 / G0, `${ENERGOMASH}: 2,432 N·s/kg (248 s)`),
-        vacuum: doc(3089 / G0, `${ENERGOMASH}: 3,089 N·s/kg (315 s)`),
-      },
-      ignition: guess(0, 'lit on the pad with the strap-ons, as theirs'),
       cutoff: guess(
         300,
         `the main command, which put out the steering chambers: planned at 312.74 s (the cyclogram, ${NK}, p. 4) and not recorded on the day; taken as late as the preliminary command was (0.51 s). ` +
@@ -157,20 +119,7 @@ export const orbital: OrbitalFlight = {
         `the third stage’s «Зажигание» at T+321.42 s (NIIP-5’s report, ${NK}, p. 4), whose fire through the lattice cuts the core loose: the separation itself was not recorded. The plan had the third stage started at 311.74 s, before the core’s main command; the 9.7 s between plan and record is not explained in anything read`,
       ),
     },
-    {
-      name: 'Third stage, Block E',
-      count: 1,
-      engine: 'RD-0109 (8D719)',
-      nodes: ['BlockE'],
-      // (NK's figures from the 2011 documents, 1,210 kg dry and 6,576 kg of propellant, are not flown yet: mission.md, "The 2011 documents")
-      mass: doc(
-        7_984,
-        `${MINAKOV}: 7,984 kg, of the 8K72’s stage. ${NK}, p. 10, note 31: 7,786 kg (1,210 dry, 4,482 + 2,088 + 6 kg filled), not flown yet. Astronautix 7,775 kg; RKK Energia “8 t”; Brügge 8.36 t`,
-      ),
-      dry: doc(1_472, `${MINAKOV}: 1,472 kg burnt out. ${NK}: 1,210 kg dry, not flown yet. Astronautix 1,440 kg; Zak 1.34 t dry`),
-      propellant: derived(6_512, 'Minakov’s two figures, 7,984 less 1,472 kg. Brügge has 6.93 t; NK 6,576 kg'),
-      thrust: { vacuum: doc(54_500, 'Brügge: 54.5 kN; Astronautix 54.52 kN: secondary') },
-      isp: { vacuum: doc(3172 / G0, 'Brügge: 3,172 N·s/kg (323.5 s); Astronautix 324 s: secondary') },
+    third: {
       ignition: doc(
         300,
         `NIIP-5’s report: «Запуск “головной двигательной установки” 3-й ступени произошел в T+321.42 сек (команда “Зажигание”)» (${NK}, p. 4). The cyclogram had its start command at 311.74 s. Gagarin felt 10 to 15 s of weightlessness between the core and the third stage (${GAGARIN}), which this explains; “about 300 s” (${SIDDIQI}; ${ZAK}) is not the documents’ figure`,
@@ -196,7 +145,7 @@ export const orbital: OrbitalFlight = {
         ),
       },
     },
-  ],
+  }),
   events: [
     { id: 'liftoff', label: 'Liftoff', at: doc(0, `${SIDDIQI}, launch log: 09:06:59.7 Moscow time. ${OKB1}: 0906:59`) },
     {
@@ -293,7 +242,7 @@ export const orbital: OrbitalFlight = {
   // The ascent as the simulator flies it (src/sim/staged.ts). No pitch programme, drag figure or throttle history of the
   // 8K72K has been found (mission.md, "Inputs"): what stands in for each is stated, and labelled. The checks below were
   // written before staged.ts had flown anything.
-  ascent: {
+  ascent: ascent8K72K({
     guidance: {
       azimuth: doc(
         34 + 37 / 60 + 59.2 / 3600,
@@ -301,11 +250,8 @@ export const orbital: OrbitalFlight = {
           'The aiming line’s bearing at the pad, which the launch system turned the vehicle to and the gyros held. (The 37.5° derived before was the plane’s in the frame that does not turn.) ' +
           'Soyuz’s manual has 34.8° for 64.9° from Baikonur today',
       ),
-      vertical: guess(
-        15,
-        `${SOYUZ}: within half a degree of the vertical at 19 s and 3.3 degrees off it at 29 s. The 8K72K’s own programme has not been found; its boosters reached their main stage of thrust 6 s after liftoff (as Sputnik’s did: ${SPUTNIK})`,
-      ),
-      kick: guess(10, 'how long the pitch-over takes: chosen. Its angle is solved, not chosen (staged.ts: steer)'),
+      vertical: VERTICAL,
+      kick: KICK,
       turn: doc(
         119.5,
         `the law changes at the strap-ons’ separation (${PPP}: 119.50 s), above all but a tenth of a per cent of the air; the instant is documented, the choice to change the law there is ours`,
@@ -323,205 +269,17 @@ export const orbital: OrbitalFlight = {
         ),
       },
     },
-    drag: [
-      {
-        until: doc(119.5, `${PPP}: the strap-ons leave at 119.50 s`),
-        area: derived(
-          29.4,
-          'the cluster seen end on: the core’s 2.95 m (Minakov) and four strap-ons of 2.68 m (Minakov), π/4 (2.95² + 4 × 2.68²) = 29.4 m², their overlap left out',
-        ),
-        curve: {
-          points: [
-            [0, 0.25],
-            [0.8, 0.28],
-            [1.1, 0.5],
-            [1.5, 0.45],
-            [2.5, 0.33],
-            [4, 0.25],
-            [8, 0.2],
-          ],
-          confidence: 'estimated',
-          source:
-            'NOT FOUND for any R-7: no drag figure against Mach number for the 8K72K, the R-7 or Soyuz was found (mission.md). A curve of the usual form for a slender clustered vehicle on its frontal area, chosen: a transonic rise to 0.5 and falling to 0.2 at Mach 8. tests/staged.test.mjs says what ±30 % of it moves',
-        },
-      },
-      {
-        until: doc(677.08, `NIIP-5’s report (${NK}, p. 4): to the last cutoff`),
-        area: derived(6.835, 'the core seen end on, 2.95 m (Minakov): Block E and the fairing are narrower'),
-        curve: {
-          points: [
-            [0, 0.25],
-            [0.8, 0.28],
-            [1.1, 0.5],
-            [1.5, 0.45],
-            [2.5, 0.33],
-            [4, 0.25],
-            [8, 0.2],
-          ],
-          confidence: 'estimated',
-          source: 'the same chosen curve as the whole stack’s; the air is a ten-thousandth of the ground’s by then',
-        },
-      },
-    ],
-    drops: [
-      {
-        id: 'fairing',
-        at: doc(154.6, `${PPP}: 09:09:34.3`),
-        mass: doc(
-          800,
-          `${ZAK}: 0.8 t. Brügge 0.64 t: secondary. ${NK}, p. 10, note 31: «Масса головного обтекателя составляла 582 кг», not flown yet (mission.md, "The 2011 documents")`,
-        ),
-      },
-    ],
-    // For the live vehicle flown by hand (src/sim/stagedlive.ts): how hard its steering chambers turn it. No figure read.
-    steering: {
-      authority: guess(
-        5,
-        'deg/s² at full throw, about each axis: NOT FOUND. Of the order the steering chambers give: the core’s four of 2.5 tf (RKK Energia 1946–1996) and the strap-ons’ eight, swung, ' +
-          '15 m or so from the centre of mass of a stack of 287 t and 30 m (about 2 × 10⁷ kg m² as a rod), a few degrees a second squared; taken as the same on every stage and at every mass, which it was not',
+    boostersGo: doc(119.5, `${PPP}: the strap-ons leave at 119.50 s`),
+    lastCutoff: doc(677.08, `NIIP-5’s report (${NK}, p. 4): to the last cutoff`),
+    fairing: doc(154.6, `${PPP}: 09:09:34.3`),
+    left: {
+      booster: derived(5_283, '3,750 kg dry (Minakov; Astronautix 3,710) and the 1,533 kg the ascent flown leaves in each'),
+      core: derived(
+        11_320,
+        'its 100.4 t fuelled less the 89.08 t the ascent flown burns: what the record’s figures leave (6.8 t dry, Astronautix)',
       ),
+      blockE: derived(1_518, '1,472 kg burnt out (Minakov) and the 46 kg the ascent flown leaves'),
     },
-    // For the scene: where the spacecraft's centre of mass is, and what leaves as a body of its own (sim/shed.ts). Stations
-    // are metres above the main nozzles' exits, as vostok-8k72k.md has them. Every drag figure is estimated; so is every
-    // centre and gyration, from the stations and masses there.
-    centre: guess(
-      1.6,
-      'the spacecraft’s centre of mass above its station 0 (the braking nozzle): about the instrument module’s top and the ball’s bottom, from the stations of vostok-3ka.md',
-    ),
-    sheds: [
-      // The four strap-ons, each a body of its own leaving from where it stood: its lower ties let go, the thrust left
-      // in its engine swings its tail out about the ball at its tip until the ball leaves its socket, and the vent on
-      // its oxidizer tank, opened as the ball comes free, pushes its nose away: the four fall back as a cross (sim/shed.ts
-      // `apart`). How it goes is documented in kind (Siddiqi, Challenge to Apollo, p. 130; the Soyuz CSG User's Manual,
-      // issue 2, A5.1.2; the MS-10 commission's findings as RussianSpaceWeb gives them); its figures are not, and are
-      // estimated. B stands down range, V on the stack's left, G up range, D on its right (vehicle.py, as the launch ring
-      // turned it: each strap-on's box on the pad, the stack's frame at liftoff).
-      ...BOOSTERS.map(([letter, block, az]) => ({
-        on: `boosters/${letter}`,
-        name: `Strap-on Block ${block} (${letter})`,
-        from: doc(0, 'the main nozzles’ exits (vostok-8k72k.md)'),
-        to: doc(19.8, `${ZAK}; Brügge: 19.8 m with the nozzles`),
-        radius: doc(1.34, `${MINAKOV}: 2.68 m across`),
-        mass: derived(5_283, '3,750 kg dry (Minakov; Astronautix 3,710) and the 1,533 kg the ascent flown leaves in each'),
-        centre: guess(8, 'about two fifths up a strap-on, empty: its engine and tail are the heaviest part'),
-        gyration: {
-          roll: guess(0.9, 'a shell 1.34 m in radius with its engine on the axis'),
-          across: guess(6, 'a 19.8 m block, its mass low'),
-        },
-        ahead: guess(4.5, 'its tip, 5.6 m², at 0.8'),
-        astern: guess(5.6, 'its tail, 5.6 m², at 1.0'),
-        side: {
-          dragArea: guess(35, '19.8 m × 2 m on average, at 0.9'),
-          from: doc(0, 'the body’s own stretch, as above'),
-          to: doc(19.8, 'the body’s own stretch, as above'),
-        },
-        // the vent: on the inner side of the cone, its jet at 45° to the axis and forward, so its push is back and away
-        // from the core (Zak, RussianSpaceWeb, Soyuz MS-10; Modelist-Konstruktor); opened as the ball leaves its socket
-        motors: [
-          {
-            name: 'oxidizer tank vent',
-            thrust: guess(
-              3_000,
-              'N: NOT FOUND. The tank’s ullage gas, a few bar, through a nozzle of the order of 10 cm: some kilonewtons, falling as the tank empties (taken as steady)',
-            ),
-            burn: guess(6, 's: NOT FOUND: until the tank’s pressure has gone'),
-            cant: derived(
-              135,
-              'degrees from the strap-on’s +X toward its outward +Z: the jet at 45° to the axis and forward (Zak), so its push is 45° back of outward',
-            ),
-            station: guess(16, 'the oxidizer tank’s top, under the cone (vostok-8k72k.md has the tank above the fuel’s)'),
-          },
-        ],
-        apart: {
-          bearing: az,
-          across: derived(2.78, 'its axis at the base, from the stack’s (vostok-8k72k.md)'),
-          pivot: {
-            station: guess(19.5, 'the ball at its tip, a little under the cone’s point (the model: 19.9 m with the nozzles)'),
-            across: guess(1.3, 'the ball in its socket on the core’s skin, under the core’s upper tank (the model)'),
-          },
-          tailOff: guess(
-            100_000,
-            'N: NOT FOUND. The RD-107 was cut from its last throttle level as the ties went; what was left as it swung, a tenth of its rated thrust, is taken',
-          ),
-          swing: guess(3, 'degrees: NOT FOUND: how far the tail swings before the ball rolls out of its socket'),
-        },
-      })),
-      {
-        on: 'fairing',
-        name: 'The fairing',
-        from: derived(31.73, 'on Block E’s adapter: 28.75 m (core with lattice) + 2.98 m (Block E with adapter), Minakov'),
-        to: doc(38.36, `${MINAKOV}: the whole vehicle’s length`),
-        radius: doc(1.35, `${MINAKOV}: 2.7 m across`),
-        mass: doc(800, `${ZAK}: 0.8 t; Brügge 0.64 t. Flown as one body: it was two halves`),
-        centre: guess(34.5, 'a little below the middle of a shell that narrows to its tip'),
-        gyration: { roll: guess(1.1, 'a thin shell 1.35 m in radius'), across: guess(2, 'a 6.6 m shell') },
-        ahead: guess(2.5, 'its nose, 5.7 m², at 0.45'),
-        astern: guess(6, 'its open foot, at 1.0'),
-        side: {
-          dragArea: guess(18, '6.6 m × 2.7 m at 1.0'),
-          from: derived(31.73, 'the body’s own stretch, as above'),
-          to: doc(38.36, 'the body’s own stretch, as above'),
-        },
-      },
-      {
-        on: 'core',
-        name: 'Block A, the core',
-        from: doc(0, 'the main nozzles’ exits'),
-        to: doc(28.75, `${MINAKOV}: the core with its lattice`),
-        radius: doc(1.475, `${MINAKOV}: 2.95 m across`),
-        mass: derived(
-          11_320,
-          'its 100.4 t fuelled less the 89.08 t the ascent flown burns: what the record’s figures leave (6.8 t dry, Astronautix)',
-        ),
-        centre: guess(9, 'below its middle: the engine and the empty tanks’ lower half'),
-        gyration: { roll: guess(1.0, 'a shell 1.2 to 1.5 m in radius'), across: guess(8, 'a 28.75 m block') },
-        ahead: guess(4, 'its lattice end, 5.2 m², at 0.8'),
-        astern: guess(5, 'its tail, 3.3 m², and the engine, at 1.5'),
-        side: {
-          dragArea: guess(70, '28.75 m × 2.5 m on average, at 1.0'),
-          from: doc(0, 'the body’s own stretch, as above'),
-          to: doc(28.75, 'the body’s own stretch, as above'),
-        },
-      },
-      {
-        on: 'separation',
-        name: 'Block E, the third stage',
-        from: doc(28.75, `${MINAKOV}: on the lattice’s top`),
-        to: derived(31.73, 'its adapter’s rim, 2.98 m higher (Minakov)'),
-        radius: doc(1.29, `${MINAKOV}: 2.58 m across`),
-        mass: derived(1_518, '1,472 kg burnt out (Minakov) and the 46 kg the ascent flown leaves'),
-        centre: guess(29.8, 'the engine in its tanks’ ring, low in the stage'),
-        gyration: { roll: guess(0.9, 'ring tanks 1.29 m in radius'), across: guess(1, 'a stage 3 m long') },
-        push: guess(
-          1,
-          'not found: the spacecraft left Block E’s adapter on pushers (spacecraft.md: four of them), at a speed nothing read gives; 1 m/s apart, of the order spring pushers give, is chosen. Block E’s venting of what was left in its tanks after cutoff, which would have moved it further, is not modelled',
-        ),
-        ahead: guess(5, 'its adapter’s open rim, at 1.0'),
-        astern: guess(5, 'its base, at 1.0'),
-        side: {
-          dragArea: guess(8, '3 m × 2.6 m at 1.0'),
-          from: doc(28.75, 'the body’s own stretch, as above'),
-          to: derived(31.73, 'the body’s own stretch, as above'),
-        },
-      },
-      {
-        on: 'modules',
-        name: 'The instrument module and braking engine',
-        from: derived(30.53, 'the spacecraft’s station 0, the braking nozzle (vostok-8k72k.md)'),
-        to: guess(32.8, 'the instrument module’s top, from RKK Energia’s drawing as vostok-3ka.md has it'),
-        radius: guess(1.25, 'its widest, 2.43 m (Siddiqi)'),
-        mass: doc(2_265, `${BOBKOV}: the instrument module, 2.265 t`),
-        centre: guess(31.5, 'the middle of its two cones'),
-        gyration: { roll: guess(0.8, 'two cones 1.2 m in radius'), across: guess(0.8, 'two cones 2.3 m long') },
-        ahead: guess(3, 'its concave top, 4.6 m², at 0.7'),
-        astern: guess(3, 'its base, at 0.7'),
-        side: {
-          dragArea: guess(5, '2.3 m × 2.2 m at 1.0'),
-          from: derived(30.53, 'the body’s own stretch, as above'),
-          to: guess(32.8, 'the body’s own stretch, as above'),
-        },
-      },
-    ],
     checks: [
       {
         id: 'minuteG',
@@ -596,7 +354,7 @@ export const orbital: OrbitalFlight = {
         source: `${OKB1}: 89.44 min. It follows from the heights; 15 s is some 5 km on the semi-major axis`,
       },
     ],
-  },
+  }),
   orbit: {
     radius: derived(
       6_371_000,
@@ -652,60 +410,33 @@ export const orbital: OrbitalFlight = {
   },
   entry: {
     separation: doc(MSK(10, 36), `${OKB1}: 1036. Gagarin: 10:35`),
-    mass: doc(2_460, `${SIDDIQI}, p. 195: 2.46 t for the type, the pilot and his seat aboard. No. 3’s own figure has not been found`),
-    area: derived(Math.PI * 1.15 ** 2, 'the disc of the 2.3 m ball (Siddiqi p. 195; RKK Energia’s drawing: Ø2300)'),
-    drag: {
-      points: [
-        [0, 0.47],
-        [0.7, 0.5],
-        [1, 0.75],
-        [1.5, 1.0],
-        [3, 0.95],
-        [6, 0.92],
-        [25, 0.92],
-      ],
-      confidence: 'estimated',
-      source:
-        'a smooth sphere’s drag coefficient against Mach number as the textbooks plot it (Hoerner, Fluid-Dynamic Drag; Bailey and Hiatt, AIAA Journal 1972), set down from memory: neither was opened, ' +
-        'so it is an estimate until one is. 0.92 above Mach 6 is the figure that matters (it sets the load and how far the ball carries); below Mach 1 a ball this size may be past its drag crisis ' +
-        'and lower than 0.47. Nothing published for the Vostok ball itself, charred and with its straps’ stubs, was found. Free-molecule drag above 120 km (about 2) is left out: it is worth nothing in ten minutes',
-    },
+    mass: ENTRY_MASS,
+    area: ENTRY_AREA,
+    drag: ENTRY_DRAG,
   },
   manual: {
     code: doc(
       145,
       `${KAMANIN_LOCK}: the code he checked on the ship that morning, in the diary of the day. ${SIDDIQI} and the later memoirs (Gallay, as Tyapchenko gives it) have 1-2-5: the record disagrees, and the diary is the nearer to the hardware (mission.md, "The lock's code"). With it, manual orientation by the Vzor and a manual command to the braking engine`,
     ),
-    rate: guess(
-      2,
-      'how fast the hand controller turned the spacecraft, deg/s: not found. The automatic system’s rates in the record are 2 to 3 deg/s (Gagarin, before orientation)',
-    ),
-    thrust: doc(1614 * G0, `${SIDDIQI}, p. 197: the TDU-1, 1,614 kgf`),
+    rate: HAND_RATE,
+    thrust: TDU_THRUST,
     deltaV: doc(136, 'Chertok, Rockets and People, vol. 3, p. 80: the integrator’s command at 136 m/s; Zak: 136 programmed'),
-    parting: guess(
-      10,
-      'the modules part ten to twelve seconds after a burn the integrator ends (the sequencer as planned: Siddiqi, The Space Review, 2015); ten taken',
-    ),
+    parting: PARTING,
   },
   supplies: {
     days: doc(
       10,
       'mission.md, “What it cost”: the answer to a failed braking engine was the orbit’s decay within the supplies’ ten days (planned: two to seven days, Ustinov’s memorandum of 30 March); S15 (Siddiqi, The Space Review, 2015): from the 327 km flown, about thirty days',
     ),
-    rarefied: guess(
-      2,
-      'a ball in free-molecule flow has a drag coefficient of about 2 (the entry curve’s own note: not read from a source, so estimated), on its disc; the joined ship on the ball’s disc as the coast flies it',
-    ),
+    rarefied: RAREFIED,
   },
   ejection: { altitude: doc(7_000, `${GAGARIN}: “approximately at the altitude of 7,000 meters, the hatch cover of hatch Nº 1 ejected”`) },
   // From 7 km down: the descent module on its own parachutes, and the pilot on his seat and then his canopies. The
   // checks below were written before flyDown had flown anything.
   heating: {
-    noseRadius: doc(1.15, 'the 2.3 m ball (Siddiqi p. 195; RKK Energia’s drawing: Ø2300): a sphere’s face is its own radius'),
+    ...HEATING,
     starts: guess(290, 'not read: the cabin’s 19 °C at launch (his report) taken for the outside; it is not used, there being no surface'),
-    // (no surfaces: the ablator's thickness, density, heat of ablation and the shield's temperatures have not been read)
-    surfaces: [],
-    round: true,
   },
   descent: {
     ground: doc(43, `${PPP} via Keldysh’s preprint: the landing place at 43 m. ${ZAK}: about 50 m above the sea`),
@@ -717,176 +448,41 @@ export const orbital: OrbitalFlight = {
           2_272,
           `the 2,460 kg of the module with its pilot aboard (${SIDDIQI}, p. 195) less the pilot in his suit (88 kg: his service record’s 68 kg and the SK-1’s 20 kg) and a seat taken as 100 kg (not found: Siddiqi’s 800 kg is not credible)`,
         ),
-        dragArea: guess(
-          1.95,
-          'the 2.3 m ball’s disc, 4.15 m², at the sphere’s 0.47 below Mach 0.7 (the entry curve here, itself estimated)',
-        ),
-        chutes: [
-          {
-            name: 'pilot parachute',
-            after: doc(
-              0,
-              `${BOBKOV}: drawn out by the parachute container’s cover, shot off by the barometric sensors with the hatch, at about 7 km`,
-            ),
-            dragArea: guess(
-              1.1,
-              `1.5 m² of canopy (${BOBKOV}; ${GCTC}) at a drag coefficient of 0.75 on its cloth, which is the usual round canopy’s and is chosen`,
-            ),
-            fills: guess(1, 'chosen: no filling time found'),
-            strength: guess(
-              18_000,
-              `not found. It came out with the hatch at 7 km and 220 m/s (${BOBKOV}), 14.3 kPa in the standard air (derived): a quarter over that. Ours`,
-            ),
-            pull: guess(16_000, 'not found: full at once in those 14.3 kPa it would pull 16 kN, taken as what its lines take. Ours'),
-          },
-          {
-            name: 'braking parachute',
-            altitude: doc(4_000, `${BOBKOV}: “на высоте 4 км при скорости 200 м/с”; ${GCTC}`),
-            dragArea: guess(13.5, `18 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
-            fills: guess(2, 'chosen: no filling time found'),
-            strength: guess(
-              20_000,
-              `not found. Built to open at 4 km at 200 m/s (${BOBKOV}), 16.4 kPa in the standard air (derived): a quarter over that. Ours`,
-            ),
-            pull: guess(
-              220_000,
-              'not found: full at once in those 16.4 kPa it would pull 221 kN, taken as what its lines take (flown, it opens nearer 145 m/s and pulls 71 kN). Ours',
-            ),
-            // (the usual train: the small parachute draws the next out and goes with it; not stated for Vostok in anything read)
-            instead: ['pilot parachute'],
-          },
-          {
-            name: 'main parachute',
-            altitude: doc(2_500, `${BOBKOV}; ${GCTC}: at 2.5 km`),
-            dragArea: guess(430, `574 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
-            fills: guess(6, 'chosen: no filling time found'),
-            strength: guess(
-              3_000,
-              'not found. It was let out behind the braking parachute, where the module falls at some 55 m/s at 2.5 km (1.5 kPa, as flown here): twice that. Without the braking parachute the ball falls at 155 m/s there, 11 kPa, and it tears. Ours',
-            ),
-            pull: guess(
-              100_000,
-              'not found: as flown here it pulls 69 kN at most as it fills (3.1 g on the empty module), and half as much again is taken as what its lines and riser take. Ours',
-            ),
-            instead: ['braking parachute'],
-          },
-        ],
+        dragArea: MODULE_DRAG,
+        chutes: MODULE_CHUTES,
       },
       {
         id: 'pilot',
         label: 'Gagarin, on his seat and then under his canopies',
         mass: guess(188, 'he in his suit, 88 kg (as for the module), and a seat taken as 100 kg: not found'),
-        dragArea: guess(0.6, 'a seated man and his seat, chosen'),
-        thrown: guess(
-          20,
-          `${BOBKOV} and ${GCTC} via mission.md: the seat left “at up to 20 m/s”, on its two rockets, two seconds after the hatch; taken at that bound, and at the hatch’s instant`,
-        ),
+        dragArea: SEATED_DRAG,
+        thrown: THROWN,
         chutes: [
-          {
-            name: 'seat’s braking parachute',
-            after: doc(
-              0.5,
-              `ru.wikipedia, «Парашютная система космического корабля "Восток-1"»: “через полсекунды”, tertiary; ${BOBKOV}: as the seat leaves`,
-            ),
-            dragArea: guess(1.5, `2 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
-            fills: guess(1, 'chosen: no filling time found'),
-            strength: guess(
-              18_000,
-              `not found: out half a second after the seat left at 7 km and 220 m/s (${BOBKOV}), 14.3 kPa: a quarter over that. Ours`,
-            ),
-            pull: guess(22_000, 'not found: full at once in those 14.3 kPa it would pull 21 kN, taken as what its lines take. Ours'),
-          },
-          {
-            name: 'main canopy',
-            altitude: doc(
+          SEAT_CHUTE,
+          mainCanopy(
+            doc(
               4_000,
               `${BOBKOV}: at 4 km, as he leaves the seat with its back, the reserve and the survival pack; ${BATURIN}: “Через 50 секунд на высоте примерно 4 км ввелся основной парашют, одновременно произошел сход пилота с кресла”`,
             ),
-            dragArea: guess(62.6, `83.5 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
-            fills: guess(4, 'chosen: no filling time found'),
-            strength: guess(
-              2_000,
-              'not found. Let out at 4 km as he left the seat, falling on it under its stabilising parachute at some 45 m/s (0.9 kPa, as flown here): twice that. Ours',
+            guess(
+              131,
+              'he in his suit, 88 kg, with the survival pack, 43 kg (Baturin), which hung on its line and was then lost: carried to the ground here',
             ),
-            pull: guess(
-              12_000,
-              'not found: as flown here it pulls 5.2 kN at most as it fills (4 g on him and his pack); some 9 g on 131 kg, 12 kN, is taken as what the canopy, its lines and his harness take. Ours',
-            ),
-            replaces: {
-              mass: guess(
-                131,
-                'he in his suit, 88 kg, with the survival pack, 43 kg (Baturin), which hung on its line and was then lost: carried to the ground here',
-              ),
-              leaves: {
-                id: 'seat',
-                label: 'The ejection seat',
-                dragArea: guess(
-                  1.8,
-                  'the empty seat, 0.3 m² (chosen), under its stabilising parachute, 1.5 m² as above, which stays with it: chosen',
-                ),
-              },
-            },
-          },
-          {
-            name: 'reserve canopy',
-            altitude: doc(
+          ),
+          reserveCanopy(
+            doc(
               3_000,
               `${BATURIN}: “На высоте 3 км ввелся дополнительно запасной парашют”; ${BOBKOV}: put out automatically after the main, on this flight only`,
             ),
-            dragArea: guess(42, `56 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
-            fills: guess(4, 'chosen: no filling time found'),
-            strength: guess(2_000, 'not found: as the main canopy, a canopy of the same make. Ours'),
-            pull: guess(12_000, 'not found: as the main canopy. Ours'),
-          },
+          ),
         ],
       },
-      {
-        id: 'hatch',
-        label: 'Hatch No. 1',
-        mass: guess(30, 'not found: a cover 1 m across in the clear, its heat shield and its lock, by judgement'),
-        dragArea: guess(0.8, 'a plate a little over 1 m across, tumbling: chosen'),
-        thrown: guess(
-          30,
-          'not found: blown off by its pyrotechnics at 7 km, two seconds before the seat; chosen to keep it ahead of the seat, which here leaves at the same instant',
-        ),
-        chutes: [],
-      },
-      {
-        id: 'cover',
-        label: 'Hatch No. 2, the parachute container’s cover',
-        mass: guess(25, 'not found: by judgement, as hatch No. 1'),
-        dragArea: guess(0.8, 'as hatch No. 1: chosen'),
-        thrown: guess(10, `not found: shot off with the hatch at about 7 km, drawing out the module’s small parachute (${BOBKOV}); chosen`),
-        // (one command shot both hatches; by hand, the module's parachute is let out by shooting this one off)
-        with: ['ejection', 'module/pilot parachute'],
-        chutes: [],
-      },
+      ...HATCHES,
     ],
     automatic:
       'Gagarin had no say in the descent: the modules’ parting (the sequencer’s, and on the day the thermal backup’s at 10:36), the hatches and the seat (the barometric switch at 7 km) and every parachute (their own barometric switches and timers) were the automatic system’s',
-    torn: guess(0.05, 'a canopy torn or streaming is taken to keep a twentieth of its drag area: chosen, not recorded (as Freedom 7’s)'),
-    crew: {
-      alone: 'pilot',
-      landing: {
-        aboard: guess(
-          7,
-          `not found. The descent module came down at 10 m/s (${BOBKOV}), which was not to be landed in: that is why he left it at 7 km (mission.md, "The verdict and the misses": tertiary). What the seat in the ball would have let him walk away from has not been read; 7 m/s is taken. Ours`,
-        ),
-        alone: guess(
-          8,
-          `not found. He came down at 5 m/s (${GCTC}; 6 on the main alone, ${BOBKOV}), a parachutist’s landing; 8 m/s is taken as the most he walks away from on his own legs. Ours`,
-        ),
-      },
-      blast: guess(
-        30_000,
-        `not found. He left at 7 km and 220 m/s (${BOBKOV}), 14.3 kPa (derived); twice that is taken as what a man in his suit on an open seat lives through, which is of the order the ejection seats of the time were built to. Ours. The heat of the air at speed on a man out of the ball is not modelled at all`,
-      ),
-      fastest: guess(
-        1_000,
-        'not found, and the heat of the air on a man is not modelled. A man in a pressure suit has come through the break-up of an aircraft at Mach 3.2 at 24 km (Weaver, SR-71, 1966: from memory, not read); out of the ball faster than 1,000 m/s through the air he is taken to die of it. Ours',
-      ),
-      aboard: 'the module’s own landing was 10 m/s (Bobkov, OKB-1), and the ejection existed to spare him it',
-    },
+    torn: TORN,
+    crew: CREW,
     checks: [
       {
         id: 'module.at',

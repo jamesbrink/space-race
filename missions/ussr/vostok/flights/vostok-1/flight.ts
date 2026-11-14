@@ -1,6 +1,20 @@
-import type { CabinDef, ChuteDef, Command, Flight, Keyframe, Measure, ModelDef, Move, Part, Runs } from '../../../../../src/types';
+import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import {
+  comes,
+  leaves,
+  ON_ROAD,
+  type PartWords,
+  type Site1Node,
+  SUPPORTS_GO,
+  site1Parts,
+  TAIL,
+  TURN,
+  turned,
+} from '../../sites/site-1.parts.ts';
 import { SITE1 } from '../../sites/site-1.ts';
 import { DUTY } from '../../vehicles/cabin.ts';
+import { BOOSTERS } from '../../vehicles/vostok-8k72k.ts';
+import { BASE, commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
 import { MSK, orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
@@ -32,32 +46,6 @@ const outward = (node: string, az: number, degrees: number, from: number, to: nu
 /** How far the descent module is lifted off the instrument module at full explode, m. */
 const LIFT = 1.5;
 
-// The launch vehicle, as vehicles/vostok_8k72k/ has it (heights above the main nozzles' exits; the spacecraft's own
-// station 0 is 30.53 m up). Quoted here for the motions and the views; the numbers live there.
-/** The main nozzles' exits below the model's origin (the spacecraft's braking nozzle), m. */
-const BASE = 30.53;
-
-// Where the vehicle hangs at Site 1, as sites/site1/site.py has it (the numbers live there; site-1.md): its nozzles' exits
-// 6.75 m under the platform's deck, level with the foot of the launch system's turning part, and the whole system turned
-// in the platform's opening to the launch azimuth, 37.5 degrees (derived), with booster B's plane along it (estimated).
-/** The nozzles' exits, m above the deck (site.TAIL_Z). */
-const TAIL = -6.75;
-/** The vehicle's own +X (booster B's plane) from the site's +X (due east), radians anticlockwise from above (site.TURN). */
-const TURN = (90 - 37.5) * DEG;
-/** A direction given in the vehicle's own frame, as it stands turned on the pad (a view's `from` is the scene's). */
-const turned = ([x, y, z]: [number, number, number]): [number, number, number] => [
-  x * Math.cos(TURN) + z * Math.sin(TURN),
-  y,
-  -x * Math.sin(TURN) + z * Math.cos(TURN),
-];
-
-/** Which way each strap-on stands, degrees about the long axis. Which block stood where is not known to us. */
-const BOOSTERS: [letter: string, block: string, az: number][] = [
-  ['B', 'Б', 0],
-  ['V', 'В', 90],
-  ['G', 'Г', 180],
-  ['D', 'Д', 270],
-];
 /**
  * The instrument module's ten antennas are built stowed under the fairing (vostok_3ka.py: STOWED) and slide out as
  * the vehicle is taken apart: each by this much, m, in the viewer's axes. They were really folded, which is not modelled.
@@ -84,28 +72,9 @@ const SHIP = 9;
 /** A reading of the spacecraft's own sequence (0 to 1, as it was timed when it was shown alone) on the whole vehicle's slider. */
 const later = (t: number) => (SHIP / (SHIP + 2)) * 0.5 + (1 - (SHIP / (SHIP + 2)) * 0.5) * t;
 
-// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
-const PART: Command = {
-  label: 'Part the modules (he could not: on the day the thermal backup did, 10:36)',
-  ask: 'descent:modules',
-};
-const EJECT: Command = {
-  label: 'Blow the hatch and eject (he could not: the barometric switch, 7 km)',
-  ask: 'descent:ejection',
-};
-const MODULE_CHUTES: Command[] = [
-  {
-    label: 'Module’s pilot parachute: the cover off (automatic: with the hatch, 7 km)',
-    ask: 'descent:module/pilot parachute',
-  },
-  { label: 'Module’s braking parachute (automatic: its barometric switch, 4 km)', ask: 'descent:module/braking parachute' },
-  { label: 'Module’s main parachute (automatic: its barometric switch, 2.5 km)', ask: 'descent:module/main parachute' },
-];
-
 const parts: Part[] = [
   {
     node: 'DescentModule',
-    commands: [PART, ...MODULE_CHUTES],
     group: 'Spacecraft',
     name: 'Descent module',
     summary: 'A ball 2.3 m across: the only part that came back.',
@@ -133,7 +102,6 @@ const parts: Part[] = [
   },
   {
     node: 'EntryHatch',
-    commands: [EJECT],
     group: 'Spacecraft',
     name: 'Hatch No. 1',
     summary: 'The way in, bolted shut behind him, and the way out at 7 km.',
@@ -155,7 +123,6 @@ const parts: Part[] = [
   },
   {
     node: 'ParachuteHatch',
-    commands: MODULE_CHUTES,
     group: 'Spacecraft',
     name: 'Hatch No. 2',
     summary: 'Covers the capsule’s own parachute.',
@@ -202,21 +169,6 @@ const parts: Part[] = [
   },
   {
     node: 'EjectionSeat',
-    commands: [
-      EJECT,
-      {
-        label: 'Seat’s stabilising parachute (automatic: its timer, half a second out)',
-        ask: 'descent:pilot/seat’s braking parachute',
-      },
-      {
-        label: 'Leave the seat: main canopy (automatic: its barometric switch, 4 km)',
-        ask: 'descent:pilot/main canopy',
-      },
-      {
-        label: 'Reserve canopy (automatic: by itself at 3 km, this flight only)',
-        ask: 'descent:pilot/reserve canopy',
-      },
-    ],
     group: 'Spacecraft',
     inside: true,
     name: 'Ejection seat and pilot',
@@ -296,10 +248,6 @@ const parts: Part[] = [
   },
   {
     node: 'InstrumentModule',
-    commands: [
-      { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
-      PART,
-    ],
     group: 'Spacecraft',
     inside: true,
     name: 'Instrument module',
@@ -343,7 +291,6 @@ const parts: Part[] = [
   },
   {
     node: 'RetroEngine',
-    commands: [{ label: 'Fire the braking engine along the long axis (his, once the code had freed the hand controls)', ask: 'retro' }],
     group: 'Spacecraft',
     inside: true,
     name: 'TDU-1 braking engine',
@@ -378,7 +325,6 @@ const BOOSTER_DETAIL =
 const launcherParts: Part[] = [
   {
     node: 'Fairing',
-    commands: [{ label: 'Drop the fairing (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:drop:fairing' }],
     group: 'Third stage',
     name: 'Fairing',
     summary: 'Two halves, and a round hole to be thrown out through.',
@@ -407,11 +353,6 @@ const launcherParts: Part[] = [
   },
   {
     node: 'BlockE',
-    commands: [
-      { label: 'Light the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:ignite:2' },
-      { label: 'Cut off the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:2' },
-      { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
-    ],
     group: 'Third stage',
     inside: true,
     name: 'Block E, the third stage',
@@ -457,10 +398,6 @@ const launcherParts: Part[] = [
   },
   {
     node: 'CoreStage',
-    commands: [
-      { label: 'Cut off the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:1' },
-      { label: 'Drop the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:1' },
-    ],
     group: 'Core, Block A',
     inside: true,
     name: 'Block A, the core',
@@ -485,10 +422,6 @@ const launcherParts: Part[] = [
   },
   {
     node: 'CoreEngine',
-    commands: [
-      { label: 'Cut off the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:1' },
-      { label: 'Drop the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:1' },
-    ],
     group: 'Core, Block A',
     inside: true,
     name: 'RD-108',
@@ -513,9 +446,6 @@ const launcherParts: Part[] = [
   ...BOOSTERS.map(
     ([letter, block, az], i): Part => ({
       node: `Booster_${letter}`,
-      commands: [
-        { label: 'Drop the strap-ons (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:0' },
-      ],
       group: 'Strap-on boosters',
       inside: true,
       name: `Block ${letter} (${block})`,
@@ -537,6 +467,9 @@ const launcherParts: Part[] = [
   ),
 ];
 
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
+const COMMANDS = vostokCommands({ parted: 'on the day the thermal backup did, 10:36', reserve: 'by itself at 3 km, this flight only' });
+
 const SPACECRAFT = ['DescentModule', 'InstrumentModule', 'RetroEngine', 'Antennas'];
 
 const vehicle: ModelDef = {
@@ -549,7 +482,7 @@ const vehicle: ModelDef = {
   slider: ['On the pad', 'Taken apart'],
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
-  parts: [...launcherParts, ...parts],
+  parts: commanded([...launcherParts, ...parts], COMMANDS),
   position: [0, BASE + TAIL, 0],
   rotationY: TURN,
   // The cabin's two lamps, the pilot's left hand one first (`cabin.lighting` names them by this order). How many there
@@ -577,91 +510,6 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: turned(along(250, -32, 1)) },
   ],
 };
-
-const EJECTION = orbital.events.find((e) => e.id === 'ejection')!.at.value;
-
-/**
- * The descent's parachutes as drawn (viewer/chute.ts), each on its body of `orbital.descent` (flown there: when it comes
- * out, its drag, how long it takes to fill). Their areas are the record's (Bobkov; the GCTC page: mission.md, "The last
- * minutes"); each is drawn as a flat round canopy of that area (its diameter derived), and every other figure of their
- * making (gores, lines, colours) is chosen and says so. The module's three are made fast at its parachute container; the
- * seat's stabilising parachute at the seat's top; the pilot's two at his harness.
- */
-const ROUND = (area: number, what: string): Measure => ({
-  value: Math.sqrt((4 * area) / Math.PI),
-  confidence: 'derived',
-  source: `${what}: ${area} m² of canopy laid flat as a circle (Bobkov; GCTC)`,
-});
-const chosen = (value: number, source: string): Measure => ({ value, confidence: 'estimated', source });
-const CLOTH = (value: string[], source: string): ChuteDef['colours'] => ({ value, confidence: 'estimated', source });
-const CHUTES: ChuteDef[] = [
-  {
-    on: 'pilot parachute',
-    body: 'module',
-    at: 'ParachuteContainer',
-    cut: 'solid',
-    diameter: ROUND(1.5, 'the module’s pilot parachute'),
-    gores: chosen(8, 'not read: drawn with eight'),
-    lines: chosen(1.5, 'not read: about its diameter'),
-    riser: chosen(4, 'not read: clear of the ball'),
-    colours: CLOTH(['#f0ece2'], 'not read: undyed'),
-  },
-  {
-    on: 'braking parachute',
-    body: 'module',
-    at: 'ParachuteContainer',
-    cut: 'solid',
-    diameter: ROUND(18, 'the module’s braking parachute'),
-    gores: chosen(16, 'not read: drawn with sixteen'),
-    lines: chosen(5, 'not read: about its diameter'),
-    riser: chosen(8, 'not read: some three of the ball’s diameters, clear of its wake'),
-    colours: CLOTH(['#f0ece2', '#e2622b'], 'not read: orange and white, as the later Vostoks’ canopies are shown on the ground'),
-  },
-  {
-    on: 'main parachute',
-    body: 'module',
-    at: 'ParachuteContainer',
-    cut: 'solid',
-    diameter: ROUND(574, 'the module’s main parachute'),
-    gores: chosen(28, 'not read: drawn with twenty-eight'),
-    lines: chosen(24, 'not read: a little under its diameter'),
-    riser: chosen(4, 'not read'),
-    colours: CLOTH(['#e2622b', '#f0ece2'], 'not read: orange and white, as the later Vostoks’ canopies are shown on the ground'),
-  },
-  {
-    on: 'seat’s braking parachute',
-    body: 'pilot',
-    at: 'EjectionSeat',
-    cut: 'solid',
-    diameter: ROUND(2, 'the seat’s stabilising parachute'),
-    gores: chosen(8, 'not read: drawn with eight'),
-    lines: chosen(1.8, 'not read: about its diameter'),
-    riser: chosen(3, 'not read'),
-    colours: CLOTH(['#f0ece2'], 'not read: undyed'),
-  },
-  {
-    on: 'main canopy',
-    body: 'pilot',
-    at: 'Harness',
-    cut: 'solid',
-    diameter: ROUND(83.5, 'the pilot’s main canopy'),
-    gores: chosen(24, 'not read: drawn with twenty-four'),
-    lines: chosen(8.5, 'not read: a little under its diameter, as a man’s canopy'),
-    riser: chosen(0.6, 'not read: from his shoulders to where the lines meet'),
-    colours: CLOTH(['#f0ece2', '#e2622b'], 'not read: orange and white'),
-  },
-  {
-    on: 'reserve canopy',
-    body: 'pilot',
-    at: 'Harness',
-    cut: 'solid',
-    diameter: ROUND(56, 'the pilot’s reserve canopy'),
-    gores: chosen(20, 'not read: drawn with twenty'),
-    lines: chosen(7, 'not read: a little under its diameter'),
-    riser: chosen(0.6, 'not read'),
-    colours: CLOTH(['#f0ece2'], 'not read: undyed'),
-  },
-];
 
 /**
  * The ejection seat as a place to be. `Seat_Pilot` is the model's own node (vehicles/vostok_3ka.py `seat_view`): an
@@ -1091,98 +939,6 @@ const crew: ModelDef = {
   ],
 };
 
-// What served the rocket and was taken away before it left, as sites/site1/ has it (service_trusses.py, cable_mast.py,
-// erector.py: the numbers live there, and site-1.md tabulates the pivots). Angles round the site are from due east,
-// anticlockwise from above; the launch system stands turned TURN, so its north truss is 45 degrees on from that.
-/** Where each piece's hinge is round the site, degrees. */
-const TRUSS_NORTH = TURN / DEG + 45;
-const TRUSS_SOUTH = TURN / DEG + 225;
-const MAST_AT = TURN / DEG + 315;
-/** How far a service truss is lowered, and the cable mast swings back at 09:06, degrees. */
-const TRUSS_FALL = 98;
-const MAST_FALL = 40;
-/**
- * The launch system's four supports (launch_system.py): where each hinge is round the site, how far each falls back
- * (degrees), and when, in seconds from launch. That they fall back as the rocket rises is the record (Siddiqi; Chertok);
- * the angle is read off a photograph of this launch with the rocket's tail some 20 m over the deck, in which they
- * stand open, 14 to 21 degrees out of upright. The times are a later launch's: film of a Soyuz leaving this pad in
- * 2019 (the same system, since modified) has the trusses begin 0.6 to 0.9 s after the rocket first moves and at rest
- * 1.7 to 2.0 s later, which the photograph of 1961 allows (open by about three seconds) and the rocket needs (the
- * pose check, site-1.md: the strap-ons clear the heads).
- */
-const SUPPORT_AT = [45, 135, 225, 315].map((az) => TURN / DEG + az);
-const SUPPORT_FALL = 45;
-const SUPPORTS_GO: [from: number, to: number] = [0.7, 2.6];
-/**
- * The four guides at the tail, each under its support: they "go back under their own weight" once the rocket's
- * brackets have left their grips, in 2.5 s at most (descriptions and trials of the later system). The model's guide
- * is an arm from the turning cage in to the tail, whose tip goes down: how far is estimated.
- */
-const GUIDE_FALL = -25;
-const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
-/**
- * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
- * line (metres east and south from where that bogie stood: sites/site1/place.py, SPURS and CENTRE_TRACK).
- */
-/** The fillers' wheels' radius where the coned tread bears on the rail's head: 950 mm wheels, 2.4 mm out (site1/tank_cars.py `AXLE_Z`). */
-const CAR_WHEEL = 0.475 + 0.0024;
-/**
- * What a railway wagon runs on (types.ts Runs): the model's own rails, on the deck (DeckRails) and where they come up to
- * the platform over the land (the place's Tracks); beyond the modelled rails the track is painted on the land, and
- * there it runs on that.
- */
-const ON_RAILS: Runs = { on: ['DeckRails', 'Tracks'], ground: true };
-/** What a road vehicle runs on: the land, which the roads and the apron are painted on, and a modelled rail it crosses. */
-const ON_ROAD: Runs = { on: ['Tracks'], ground: true };
-/**
- * A track's line as a route: its corners (place.py's polylines, which the model's rails follow straight from corner to
- * corner) with a point every few metres between them, so that the drive's smooth curve through its points (explode.ts
- * `Route`) keeps to the rails and does not bow off them between corners.
- */
-const alongTrack = (corners: [number, number][], step = 4): [number, number][] => {
-  const out: [number, number][] = [];
-  let [x0, z0] = [0, 0];
-  for (const [x, z] of corners) {
-    const n = Math.max(1, Math.ceil(Math.hypot(x - x0, z - z0) / step));
-    for (let i = 1; i <= n; i++) out.push([x0 + ((x - x0) * i) / n, z0 + ((z - z0) * i) / n]);
-    [x0, z0] = [x, z];
-  }
-  return out;
-};
-const carLeaves = (node: string, wheelbase: number, corners: [number, number][], from: number, to: number): Move => ({
-  kind: 'drive',
-  node,
-  from,
-  to,
-  path: alongTrack(corners),
-  pivot: [0, CAR_WHEEL, 0],
-  forward: [-1, 0],
-  wheelRadius: CAR_WHEEL,
-  wheelbase,
-  wheels: `${node}_Wheel_`,
-  steered: `${node}_Steered_`,
-  axle: 'z',
-  bogies: true,
-  runs: ON_RAILS,
-});
-/** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
-const BOOM_LEAN = 14;
-const BOOM_BACK = 20;
-const ERECTOR_ROLL = [30, 120];
-const ERECTOR_WHEEL = 0.475;
-const ERECTOR_AXLES = [1, 2, 3, 4, 5, 6];
-/**
- * The wagon on the model's rails all the way it goes (DeckRails, then the place's Tracks, modelled to where it is left).
- * Its wheels bear 2.4 mm out from the nominal radius, where the coned tread meets the rail's head (site1/erector.py `AXLE_Z`).
- */
-const ERECTOR_RUNS: Runs = { on: ['DeckRails', 'Tracks'], wheels: 'Erector_Wheel_', wheelRadius: ERECTOR_WHEEL + 0.0024, axle: 'z' };
-/** The lift's stops above its lowest, m: it rides the leaning boom, so each is 0.2493 of its height nearer the rocket. */
-const LIFT_STOPS: [name: string, up: number][] = [
-  ['Lift door, 15 steps up', 0],
-  ['Third stage', 19.6],
-  ['Upper platform, at the hatch', 23.12],
-];
-
 /**
  * The pad's slider is the morning of 12 April 1961, from the bus coming up the road to the rocket leaving. Its first
  * tenth is the pilot's arrival (06:49 to 07:10: the bus, the report, the walk to the stair, the lift); the rest runs
@@ -1328,15 +1084,6 @@ const MORNING: Keyframe[] = [
 ];
 
 /**
- * The people of the morning stand in groups, each a node of the pad, and are there when the record has them there:
- * a group that leaves is put out of sight between one frame and the next, 90 m under where it stood, and one that
- * comes is built there and brought up. (They do not walk away: the viewer walks one figure, the one being walked as.)
- * Seconds from launch, on the flight's clock.
- */
-const OUT_OF_SIGHT = 90;
-const leaves = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, -OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
-const comes = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
-/**
  * A road vehicle driven on the clock (road_vehicles.py): `path` is where its rear axle goes, metres ahead and to the
  * right of where the drive starts. A vehicle driven more than once is a nest of nodes, a drive to each, and its
  * wheels are named after the node.
@@ -1367,37 +1114,9 @@ const drives = (
 });
 const BUS = { wheelbase: 4.19, wheel: 0.525 };
 
-const padParts: Part[] = [
-  {
-    node: 'Platform',
-    group: 'Site 1',
-    name: 'Launch platform',
-    summary: 'A concrete deck 41 m square, three sides of it standing out over a pit.',
-    detail:
-      'The rocket was brought onto it lying down, along the tracks from the west, where the deck rests on the ground; its ' +
-      'other three sides stand out over the flame pit on four pylons, and a low fence keeps people back from the drop. In ' +
-      'its middle is the round opening, 20 m across, that the launch system turns in and the rocket hangs through. Its ' +
-      'north-east corner is carried 10 ft further out, for one of the two masts; its south-east corner is cut off. On its ' +
-      'west side is a small building the CIA took for the head of a stair down into it: what is under it is not recorded, ' +
-      'and its door is shut. Nobody has published a drawing of the platform. Its size is what the CIA’s photographic ' +
-      'interpreters measured off U-2 pictures of 1957 to 1959, which agrees with the 40 by 40 m in Russian print; its ' +
-      'thickness is read off their elevation and is estimated (a Russian account has it three storeys of bridge trusses). ' +
-      'Sputnik left from it, and every crewed Vostok.',
-    facts: [
-      ['Deck', '135 ft (41.15 m) square'],
-      ['Opening', '65 ft (19.8 m) across'],
-      ['Pylons', '4, each 30 by 10 ft, 115 ft over the four'],
-      ['Thickness', 'about 10 ft (estimated)'],
-      ['Lip', '10 ft out at the north-east corner'],
-      ['In use', '1957 to 2019'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'DeckRails',
-    group: 'Site 1',
-    name: 'Tracks on the deck',
+/** What this morning's record says of the pad's hardware (the site's own words for the rest: sites/site-1.parts.ts). */
+const PAD_WORDS: Partial<Record<Site1Node, PartWords>> = {
+  DeckRails: {
     summary: 'The railway runs on to the platform and stops at the edge of the hole.',
     detail:
       'Everything came to this pad by rail, so the rails are laid in the concrete of the deck itself, their heads flush ' +
@@ -1415,13 +1134,8 @@ const padParts: Part[] = [
       ['Gantry rails', 'two, 23 ft (7.0 m) apart (scaled; the figure is redacted)'],
       ['Heads', 'flush in the deck (9 mm proud in the model)'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
   },
-  {
-    node: 'Masts',
-    group: 'Site 1',
-    name: 'Corner mast',
+  Masts: {
     summary: 'A mast 110 ft tall that the CIA measured and could not explain. Its twin had gone by this morning.',
     detail:
       'It stands at the platform’s north-east corner, on a lip built out over the pit to carry it. The CIA’s interpreters ' +
@@ -1444,13 +1158,8 @@ const padParts: Part[] = [
       ['Head', 'railed, some 2.9 m over its lamps (off a photograph of the day)'],
       ['What for', 'not established; drawn as floodlights (estimated)'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
   },
-  {
-    node: 'DeckFittings',
-    group: 'Site 1',
-    name: 'On the deck',
+  DeckFittings: {
     summary: 'A wire railing at the edge, two cabinets, a loudspeaker: what a photograph taken through the fence shows.',
     detail:
       'Nothing published describes the deck’s furniture, so this is one photograph’s worth: taken from beyond the south ' +
@@ -1469,59 +1178,8 @@ const padParts: Part[] = [
       ['Loudspeaker', 'a horn on the narrower cabinet (that it was one is our reading)'],
       ['Slabs', 'rectangular, the rails flush (film); 6 m by 3 m here (estimated)'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
   },
-  {
-    node: 'FlamePit',
-    group: 'Site 1',
-    name: 'Flame pit',
-    summary: 'The pad stands on the edge of a quarry 43 m deep, and the flame is turned out along its floor.',
-    detail:
-      'Under the platform the pit is a slot between retaining walls 110 ft apart. East of it lies the pit base, 60 ft ' +
-      'wide between two concrete trenches that run 60 ft to a sump built into the floor, whose face stands 10 ft over ' +
-      'them: for the water that flushed the pit, the CIA thought, and for dumped propellant. From the sump the floor ' +
-      'climbs east to the pit’s point, and a road came down it from there. Round the slot the sides come down in two ' +
-      'terraces, and in 1959 a cut ran north out of the rim, beside which the cables to the bunker came in. The outline ' +
-      'is today’s map, which matches the 880 by 550 ft the CIA measured in 1957, with that cut put back. The depth is in ' +
-      'dispute: 43 m is modelled, the sum of two of the CIA’s figures, where Russian print gives 45 m and "almost 50". ' +
-      'The plan of the base is the CIA’s; the trenches’ depth, the road’s surface and the ladders are estimated.',
-    facts: [
-      ['Rim', '880 by 550 ft (268 by 168 m), as measured in 1957'],
-      ['Depth', 'about 43 m under the deck (in dispute)'],
-      ['Rim’s height', 'the deck’s level on the west and south, 8 m under it on the north (derived from SRTM)'],
-      ['Pit base', '60 ft wide, between two trenches 60 ft long'],
-      ['Sump', '75 by 110 ft, its face 10 ft high'],
-      ['Lining', 'concrete under the platform, gunite on the west'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'FlameDeflector',
-    group: 'Site 1',
-    name: 'Flame deflector',
-    summary: 'A curved chute under the opening that turns twenty chambers’ fire from straight down to due east.',
-    detail:
-      'The rocket’s tail hangs 6.75 m under the deck, and below it the back wall of the pit curves forward and down to ' +
-      'the floor: the exhaust strikes it and runs out along the pit base. No photograph taken from above could show it. ' +
-      'The CIA drew only a "possible base of flame deflector", and in 1959 saw a curved deflector plate being built in ' +
-      'the same place at the second pad. Its form here is from a scale model of the pad as it was in 1957: an arc from ' +
-      'the back wall, 16 m under the deck, to the pit base at the platform’s east edge, as wide as the slot. Every size ' +
-      'of it is estimated.',
-    facts: [
-      ['Form', 'a curved chute, back wall to pit base (off a scale model)'],
-      ['From', '16 m under the deck (estimated)'],
-      ['To', 'the pit base at the platform’s east edge, 43 m down'],
-      ['Arc', '44.9 m radius (derived from those two)'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'LaunchRing',
-    group: 'Site 1',
-    name: 'Launch system',
+  LaunchRing: {
     summary: 'Four arms that hold the rocket by its waist, and let it go.',
     detail:
       'Barmin’s launch system, the "tulip": a ring that turns in the platform’s opening to aim the rocket, and on it four ' +
@@ -1548,20 +1206,8 @@ const padParts: Part[] = [
       ['Fall back', '45° (off a photograph of the launch), from 0.7 s after liftoff to 2.6 s (off film of a later launch)'],
       ['Guides', '4 at the tail; they drop away as it leaves (documented for the later system)'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
-    // each support about its hinge on the ring, its head going outward (documented that they do; the angle read off a
-    // photograph of the launch; the times off film of the later system); each guide about its foot on the cage, its
-    // tip going down (documented for the later system that they fall away; the angle estimated)
-    clocked: [
-      ...SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO)),
-      ...SUPPORT_AT.map((az, i) => outward(`Guide_${i + 1}`, az, GUIDE_FALL, ...GUIDES_GO)),
-    ],
   },
-  {
-    node: 'TankCars',
-    group: 'Taken away before launch',
-    name: 'Railway fillers',
+  TankCars: {
     summary: 'The rocket was fuelled from railway cars, and an hour before it left they were drawn away.',
     detail:
       'Everything the rocket burned came to it by rail and was pumped aboard from cars standing either side of it. The ' +
@@ -1588,43 +1234,8 @@ const padParts: Part[] = [
       ['Colour', 'one pale grey with black stencils (a colour photograph of the morning); the other green (a drawing)'],
       ['Left', '08:08 Moscow time'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
-    functions: [
-      { nodes: ['TankCar_Oxygen'], name: 'Oxygen filler', ends: ['beside the rocket', 'drawn off'], seconds: 120 },
-      { nodes: ['TankCar_Kerosene'], name: 'Kerosene filler', ends: ['beside the rocket', 'drawn off'], seconds: 240 },
-    ],
-    moves: [
-      // west along the north track to short of its end (documented that they left, and when; how far and how fast are ours)
-      carLeaves(
-        'TankCar_Oxygen',
-        16.6,
-        [
-          [-66.3, 0],
-          [-196.3, -1.394],
-        ],
-        T.cars,
-        T.platforms,
-      ),
-      // west along the south track, onto the centre track where it joins it, and out through the fence
-      carLeaves(
-        'TankCar_Kerosene',
-        15.6,
-        [
-          [-64.8, 0],
-          [-160.2, -2.275],
-          [-291.0, -13.475],
-          [-524.8, -15.452],
-        ],
-        T.cars,
-        T.platforms,
-      ),
-    ],
   },
-  {
-    node: 'Erector',
-    group: 'Taken away before launch',
-    name: 'Erector',
+  Erector: {
     summary: 'The wagon that stood the rocket up, and then was the way to the spacecraft.',
     detail:
       'A hydraulic rail erector of 87.5 t: the rocket came out along the centre track lying on its boom, tail first, and ' +
@@ -1652,49 +1263,8 @@ const padParts: Part[] = [
       ['Lift', '"two or three minutes" to the top'],
       ['Drawn off', '08:35 to 08:37 Moscow time'],
     ],
-    actions: [
-      {
-        // The car rides the leaning boom's north face: `by` is from where it is built, at the stair's landing.
-        id: 'lift',
-        label: 'Lift',
-        on: 'Erector_Lift',
-        do: {
-          kind: 'lift',
-          node: 'Erector_Lift',
-          stops: LIFT_STOPS.map(([name, up]) => ({ name, by: [up * Math.tan(BOOM_LEAN * DEG), up, 0] as [number, number, number] })),
-          // 23 m in "a minute" by one of Ivanovsky's tellings and "two or three minutes" by another
-          speed: 0.3,
-        },
-      },
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-    functions: [
-      { nodes: ['Erector_Boom'], name: 'Boom', ends: ['up at the rocket', 'down on the wagon'], seconds: 120 },
-      {
-        nodes: ['Erector', ...ERECTOR_AXLES.map((n) => `Erector_Wheel_${n}`)],
-        name: 'Along the track',
-        ends: ['at the rocket', 'drawn off'],
-        seconds: 150,
-        needs: [{ node: 'Erector_Boom', atLeast: 0.15, why: 'the boom is still against the rocket' }],
-      },
-    ],
-    moves: [
-      // the boom comes away (documented, 08:35 to 08:37), then goes down as the wagon rides off (documented that it
-      // did; how far it had gone before it lay down is ours), and the wagon is drawn on (documented; how far, ours), on
-      // its rails and its wheels turning as it goes (ERECTOR_RUNS)
-      { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: BOOM_BACK * DEG, from: T.erector, to: T.boomAway },
-      { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: (90 + BOOM_LEAN - BOOM_BACK) * DEG, from: T.boomAway, to: T.boomDown },
-      { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: T.boomAway, to: T.boomDown, runs: ERECTOR_RUNS },
-      { kind: 'slide', by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0], from: T.boomDown, to: T.cleared, runs: ERECTOR_RUNS },
-    ],
-    // two of its crew at the wagon's rail (a colour photograph), until thirty minutes' readiness (the roster)
-    clocked: [leaves('Erector_Crew', MSK(8, 37))],
   },
-  {
-    node: 'ServiceTrusses',
-    group: 'Taken away before launch',
-    name: 'Service trusses',
+  ServiceTrusses: {
     summary: 'Two arms that close round the rocket with rings of platforms, and are laid down before it goes.',
     detail:
       'The launch system’s own way to the rocket: two trusses hinged on the turning ring, one to the north and one to ' +
@@ -1713,23 +1283,8 @@ const padParts: Part[] = [
       ['Platforms', 'half rings at 17.65 and 19.8 m (estimated)'],
       ['Lowered', '08:40 Moscow time'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
-    functions: [
-      { nodes: ['ServiceTruss_North'], name: 'North truss', ends: ['raised', 'lowered'], seconds: 90 },
-      { nodes: ['ServiceTruss_South'], name: 'South truss', ends: ['raised', 'lowered'], seconds: 90 },
-    ],
-    moves: [
-      // lowered about their hinges on the ring (documented that they were, and when they began; how long each took and
-      // which went first are ours)
-      outward('ServiceTruss_North', TRUSS_NORTH, TRUSS_FALL, T.trusses, seated(0.67)),
-      outward('ServiceTruss_South', TRUSS_SOUTH, TRUSS_FALL, seated(0.51), T.cleared),
-    ],
   },
-  {
-    node: 'UpperCableMast',
-    group: 'Taken away before launch',
-    name: 'Cable mast',
+  UpperCableMast: {
     summary: 'The last thing to let go: the third stage’s cables, away a minute before ignition.',
     detail:
       'Power and commands for the third stage came up this mast from the ring and across its arm to plugs under the ' +
@@ -1750,12 +1305,26 @@ const padParts: Part[] = [
       ['Then', 'ignition called at 09:07; liftoff 09:06:59.7 by the launch log'],
       ['Swings', '40° from where it stood, to 31° out of upright (estimated: 25° or more in the photographs)'],
     ],
-    explode: [0, 0, 0],
-    order: 0,
-    functions: [{ nodes: ['UpperCableMast'], name: 'Swing clear', ends: ['at the rocket', 'swung clear'], seconds: 10 }],
-    // back the whole way at 09:06 (the minute documented; the angle and the ten seconds estimated)
-    moves: [outward('UpperCableMast', MAST_AT, MAST_FALL, T.mast, T.mastOff)],
   },
+};
+
+const padParts: Part[] = [
+  ...site1Parts({
+    stops: {
+      cars: [T.cars, T.platforms],
+      erector: T.erector,
+      boomAway: T.boomAway,
+      boomDown: T.boomDown,
+      cleared: T.cleared,
+      north: [T.trusses, seated(0.67)],
+      south: [seated(0.51), T.cleared],
+      mast: [T.mast, T.mastOff],
+    },
+    words: PAD_WORDS,
+    // two of its crew at the wagon's rail (a colour photograph), until thirty minutes' readiness (the roster)
+    erectorCrew: MSK(8, 37),
+    fillers: true,
+  }),
   {
     node: 'Bus',
     group: 'The morning of 12 April',
@@ -2524,46 +2093,8 @@ export const flight: Flight = {
   flownNote:
     'The ascent as simulated falls 157 m/s short of the orbit Vostok 1 reached, because two stages of engine thrust the record documents only in kind, the strap-ons’ last seconds and the core’s last ten on its steering chambers, are flown at estimated levels, and each is worth more than the whole miss. ' +
     'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result.',
-  // the flight in the scene: the stack off the pad as staged.ts flies it, and what leaves it, each flown on (orbital.ts,
-  // `ascent.sheds`) or, for the hatch and the seat, let go unseen: what comes down with the pilot is not flown as a body
-  flies: {
-    model: 'vehicle',
-    datum: BASE,
-    // Every engine's fire from its own nozzles. The four strap-ons' RD-107s and the core's RD-108 burn from the pad, each
-    // node the engine's bells, whose chambers (four main and two or four steering) the viewer finds in the model's own
-    // geometry (viewer/fires.ts): each fire is sized from its nozzles' exits and burns at its stage's throttle. Then Block
-    // E's from its nozzle (733 mm across: KBKhA; that it is the exit's is derived), and the braking engine's (280 mm:
-    // estimated, vostok_3ka.py). Each burns what its engine burned, which gives its fire its look (viewer/flames.ts): the
-    // first three stages kerosene and oxygen, luminous with soot; the braking engine amine and nitric acid
-    fires: [
-      ...BOOSTERS.map(([letter]) => ({ node: `RD107_${letter}_Bells`, on: 'stage:0', burns: 'kerosene-lox' as const })),
-      { node: 'RD108_Bells', on: 'stage:1', burns: 'kerosene-lox' },
-      { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2', burns: 'kerosene-lox' },
-      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro', burns: 'amine-nitric' },
-    ],
-    drops: [
-      // each strap-on a body of its own (orbital.ts `ascent.sheds`: 'boosters/' and its letter), leaving at the stage's separation
-      ...BOOSTERS.map(([letter]) => ({ at: 119.5, nodes: [`Booster_${letter}`], on: `boosters/${letter}` })),
-      { at: 154.6, nodes: ['Fairing'], on: 'fairing' },
-      { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'core' },
-      { at: orbital.events.find((e) => e.id === 'separation')!.at.value, nodes: ['BlockE'], on: 'separation' },
-      {
-        at: orbital.entry.separation.value,
-        nodes: ['InstrumentModule', 'RetroEngine', 'Antennas', 'GasBottles', 'RetainingStraps', 'CableMast'],
-        on: 'modules',
-      },
-      // what leaves at the ejection height comes down on the descent's own bodies (orbital.ts `descent`, flown by flyDown)
-      { at: EJECTION, nodes: ['EntryHatch'], on: 'ejection', rides: [{ body: 'hatch' }] },
-      { at: EJECTION, nodes: ['ParachuteHatch'], on: 'ejection', rides: [{ body: 'cover' }] },
-      // the seat with him in it to 4 km, then the seat alone under its stabilising parachute: he has left it
-      { at: EJECTION, nodes: ['EjectionSeat'], on: 'ejection', rides: [{ body: 'pilot' }, { body: 'seat', hide: ['Pilot'] }] },
-    ],
-    // and from 4 km Gagarin himself, the figure in his suit, hanging in his harness under his own canopy
-    hangs: [{ model: 'crew', body: 'pilot', from: 'main canopy' }],
-    chutes: CHUTES,
-    // the shock layer stands off the ball's face: its brightness is the heat flux worked on its 1.15 m radius (orbital.ts `heating`)
-    air: { shield: 'DescentModule' },
-  },
+  // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
+  flies: vostokFlies(orbital),
   models: [vehicle, pad, crew],
   // the place round the pad as it stood that April: the bunker, the buildings, the rim's positions, the fence (sites/site1/model/1961-04.py)
   surroundings: 'models/ussr/vostok/sites/site1/1961-04.glb',
