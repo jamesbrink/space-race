@@ -219,6 +219,7 @@ export class OrbitDeck extends Deck {
     const sea = this.flight.site.seaLevel.value;
     const where = { site, seaLevel: sea };
     const options = points ? { points } : {};
+    if (this.state?.broke && start.t >= this.state.broke.t - 1e-9) return null; // (in pieces: nothing to predict)
     if (start.t < this.parting) return propagate(stack(o, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
     const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? o);
     return propagate(spacecraft(plan, julianDate(this.flight.launch), site, sea, start), start, where, options);
@@ -1267,7 +1268,9 @@ export class OrbitDeck extends Deck {
     const pushed = hands && this.fired === null ? this.push() : { pitch: 0, yaw: 0, roll: 0 };
     const news: DeckNews = { times: this.times, hand: pushed, holds: hands ? FREE : NONE };
     // (down at the run's end, whatever the descent's last moment of motion: the navball reads nought as the figures do)
-    const shown = t >= this.run.duration ? Object.assign({}, s, { down: true }) : s;
+    // (broken up in the air it is not down: its pieces fall on, and what the figures last read stands)
+    const broken = Boolean(this.state?.broke && t >= this.state.broke.t - 1e-9);
+    const shown = t >= this.run.duration && !broken ? Object.assign({}, s, { down: true }) : s;
     for (const fn of this.watchers) fn(shown, null, news);
     const set = (id: string, text: string) => this.put(id, text);
     const jd = julianDate(this.flight.launch);
@@ -1278,7 +1281,7 @@ export class OrbitDeck extends Deck {
     const ball = o.orbit.radius.value;
     // down: what it rode is on the ground (the run's end), standing still on it, in no orbit; the figures say so, as
     // the ballistic deck's do, and not the space-fixed speed and orbit of a point on the turning Earth
-    const down = t >= this.run.duration;
+    const down = t >= this.run.duration && !broken;
     const alone = t > this.parting && !down;
     const orbit = el.e < 1;
     this.figures(alone ? ORBITING : RISING);
@@ -1422,35 +1425,37 @@ export class OrbitDeck extends Deck {
       ? this.mine === null
         ? `Ready: ${lights} the engines; the flight is the record’s. G or B makes it yours`
         : `Ready: ${lights} the engines; the flight is yours`
-      : !alone
-        ? this.mine === null
-          ? hot
-            ? `Next, ${step!.label.toLowerCase()}: ${hot}`
-            : `Its pilot had no controls going up; behind the lock, orientation and the braking burn. G, B or Space takes it over`
-          : due && step
-            ? `${step.label} is due: Space${hot ? `. ${hot}` : ''}`
-            : hot
-              ? `Next, ${step!.label.toLowerCase()} (Space): ${hot}`
-              : this.guidance
-                ? 'Guidance flies the law: W S A D lean it'
-                : 'Hands only: W S pitch, A D yaw, Q E roll, while an engine burns'
-        : descending && (!auto || this.downMine !== null)
-          ? !descent
-            ? t >= this.over()
-              ? 'Down: the card says how it ended'
-              : 'Nothing left to give: the rest is the physics'
-            : !auto
-              ? `Sequencer off: nothing in the descent happens but what you give. ${descent.label}${due ? ' is due' : ' next'}: Space`
-              : `The automatic sequence flies the rest. Space: ${descent.label}, now`
-          : this.free
-            ? this.fired === null
-              ? this.mine !== null && !(orbit && el.a * (1 - el.e) > ball + 100_000)
-                ? 'Short of an orbit: it comes down, unless the braking engine pushes it on'
-                : 'Turn the long axis against the motion, then fire'
-              : this.outcome(t)
-            : code && t < o.retro.on.value
-              ? `The hand controls are locked: the code ${[...code].join('-')} frees them`
-              : 'The descent is automatic';
+      : broken
+        ? 'Broken up: the card says by what, against which limit'
+        : !alone
+          ? this.mine === null
+            ? hot
+              ? `Next, ${step!.label.toLowerCase()}: ${hot}`
+              : `Its pilot had no controls going up; behind the lock, orientation and the braking burn. G, B or Space takes it over`
+            : due && step
+              ? `${step.label} is due: Space${hot ? `. ${hot}` : ''}`
+              : hot
+                ? `Next, ${step!.label.toLowerCase()} (Space): ${hot}`
+                : this.guidance
+                  ? 'Guidance flies the law: W S A D lean it'
+                  : 'Hands only: W S pitch, A D yaw, Q E roll, while an engine burns'
+          : descending && (!auto || this.downMine !== null)
+            ? !descent
+              ? t >= this.over()
+                ? 'Down: the card says how it ended'
+                : 'Nothing left to give: the rest is the physics'
+              : !auto
+                ? `Sequencer off: nothing in the descent happens but what you give. ${descent.label}${due ? ' is due' : ' next'}: Space`
+                : `The automatic sequence flies the rest. Space: ${descent.label}, now`
+            : this.free
+              ? this.fired === null
+                ? this.mine !== null && !(orbit && el.a * (1 - el.e) > ball + 100_000)
+                  ? 'Short of an orbit: it comes down, unless the braking engine pushes it on'
+                  : 'Turn the long axis against the motion, then fire'
+                : this.outcome(t)
+              : code && t < o.retro.on.value
+                ? `The hand controls are locked: the code ${[...code].join('-')} frees them`
+                : 'The descent is automatic';
     if (prompt.textContent !== text) prompt.textContent = text;
     prompt.hidden = !text;
     prompt.classList.toggle('due', Boolean(due));
@@ -1506,7 +1511,7 @@ export class OrbitDeck extends Deck {
       const abort = o.ascent?.aborts?.find((x) => broke.t < x.until.value);
       el.innerHTML = `<h3>Broke up on the launch vehicle</h3><p class="cockpit-why"><b>${broke.text}.</b></p>${
         abort
-          ? `<p class="cockpit-why">What ${this.flight.callsign}’s escape did at that time, by the record: ${abort.does}. Not flown here: the flight ends at the breakup.</p>`
+          ? `<p class="cockpit-why">What the spacecraft’s escape did at that time, by the record: ${abort.does}. Not flown here: the flight ends at the breakup.</p>`
           : ''
       }<p class="cockpit-why">Not the flight of ${this.day}.</p>${buttons}`;
       return;
