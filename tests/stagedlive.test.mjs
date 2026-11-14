@@ -378,3 +378,35 @@ test('the structure: turned across the wind at its greatest dynamic pressure it 
   assert.ok(said(relit, 'Not lit'));
   assert.ok(Math.abs(relit.stages[0].to - 10) < 0.02);
 });
+
+test('the sequencer taken and handed back: off and on again with nothing due between, the record’s flight to the last bit; off over a step, that step comes when it is on again', () => {
+  const fly = (off, on) => {
+    const v = stagedVehicle(o, site, jd, sea, x);
+    const options = { guidance: true, sequence: true };
+    const pilot = stagedPilot(v, x, site, jd, sea, options);
+    let s = v.tick(v.start(), {
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+      steps: [
+        { kind: 'ignite', stage: 0 },
+        { kind: 'ignite', stage: 1 },
+      ],
+    });
+    while (!s.parted && !s.broke && s.t < 2000) {
+      // (the switch read every tick, as the deck's B throws it)
+      options.sequence = !(s.t >= off - 1e-9 && s.t < on - 1e-9);
+      s = v.tick(s, pilot);
+    }
+    return s;
+  };
+  const record = fly(Infinity, Infinity);
+  const between = fly(100, 110);
+  assert.deepEqual(between.parted, record.parted, 'off and on with nothing due: the same flight');
+  const over = fly(115, 125);
+  console.log(
+    `# the sequencer off from 115 to 125 s: the strap-ons went at ${over.stages[0].gone.toFixed(2)} s, not ${o.stages[0].separation.value}`,
+  );
+  assert.ok(Math.abs(over.stages[0].gone - 125) < 0.02);
+  assert.ok(over.stages[0].to <= 125 + 1e-9);
+});
