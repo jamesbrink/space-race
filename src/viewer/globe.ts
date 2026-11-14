@@ -887,6 +887,11 @@ export class Globe {
     return this.hole?.half ?? 0;
   }
 
+  /** The whole Earth's packed maps (red: the land's distance to the shore, over a half for land), once they are in: what a globe in a cabin is painted from. */
+  get landMap(): THREE.Texture | null {
+    return this.maps ? (this.uniforms.uGlobeMaps!.value as THREE.Texture) : null;
+  }
+
   /** The eye's height above the sea, metres (geodetic, as the simulator measures it). */
   altitude(eye: THREE.Vector3): number {
     return this.eyed(eye).height - this.seaLevel;

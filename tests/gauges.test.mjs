@@ -157,16 +157,30 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
       for (const l of cabin.lamps ?? []) {
         assert.ok(nodes.has(l.node), `lamp ${l.node} is not in ${model.url}`);
         assert.ok(l.shows || /not simulated|stays dark|not aboard/i.test(l.about), `${l.node} shows nothing, and does not say so`);
+        // (an event of an orbital flight's record, by its id; and what puts it out, likewise)
+        const ids = new Set((flight.orbital?.events ?? []).map((e) => e.id));
+        if (l.shows?.startsWith('event:')) assert.ok(ids.has(l.shows.slice(6)), `${l.node}: no event ${l.shows} in the record`);
+        if (l.until) assert.ok(ids.has(l.until), `${l.node}: no event ${l.until} in the record`);
       }
       for (const c of cabin.controls ?? []) {
         assert.ok(nodes.has(c.node), `control ${c.node} is not in ${model.url}`);
         if (c.does)
           assert.ok(
-            // (or a key of a logical lock, `code:<digit>`, which an orbital flight's deck hears: orbitdeck.ts `ask`)
-            ['tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort', 'next'].includes(c.does) || /^code:\d$/.test(c.does),
+            // (or a key of a logical lock, `code:<digit>`, or the manual orientation's switch, which an orbital flight's deck hears: orbitdeck.ts `ask`)
+            ['tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort', 'next', 'manual'].includes(c.does) ||
+              /^code:\d$/.test(c.does),
             `${c.node}: ${c.does}`,
           );
+        // a control that stands as a state of the deck has a position for each way: as built, and thrown
+        if (c.holds) {
+          const throws = nodes.get(c.node).throw;
+          assert.ok(Array.isArray(throws) && throws.length >= 2 && throws[0] === 0, `${c.node}: holds ${c.holds} and has no throw`);
+          assert.ok(['free'].includes(c.holds), `${c.node}: the deck has no state ${c.holds}`);
+        }
       }
+      if (cabin.globe) assert.ok(nodes.has(cabin.globe.node), `globe ${cabin.globe.node} is not in ${model.url}`);
+      if (cabin.periscope?.ring)
+        assert.ok(nodes.has(cabin.periscope.ring.mesh), `ring ${cabin.periscope.ring.mesh} is not in ${model.url}`);
       if (cabin.lighting) {
         // the lights' switch is a node with a turn for each position it has, the first as built; and each position
         // lights lamps the model has, each with its tube in the file

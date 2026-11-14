@@ -1,4 +1,4 @@
-import type { Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
 import { orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
@@ -576,6 +576,28 @@ const SIGNALS: [block: string, lamps: number, says: string][] = [
   ],
   ['TS3', 4, 'The lower block: among them, as reconstructed, starting the braking engine is permitted.'],
 ];
+// The Globus (IMP): what it showed and how, and how far the simulator's is the instrument (spacecraft.md, "Globus")
+const GLOBUS =
+  'The ship’s place over the Earth: a globe turned by a clockwork drive at the orbit’s period about the orbit’s pole and at the Earth’s rate about its own, set before launch, so that the point under the ship stood under the cross. ' +
+  'Here it is turned by where the ship is in the run (the point under it under the cross, its way over the ground up the board): the instrument working perfectly, with none of the clockwork’s drift that its correction counter (reading 510) was there to take out. Its map is the globe’s own, in two tones.';
+// The Vzor's view (CabinDef.periscope). Its axis is the model's: square out of hatch No. 3's porthole, whose latitude on the
+// ball is estimated (15 degrees toward the nose: vostok-3ka.md), so the axis on the Earth's centre leaves the long axis 15
+// degrees off level; the ring's angles and the screen's field are estimated (spacecraft.md, "The Vzor")
+const VZOR: NonNullable<CabinDef['periscope']> = {
+  screen: 'Vzor_Screen',
+  name: 'Vzor',
+  about:
+    'The optical orientator, on the porthole at his feet. Its ring of eight ports shows the horizon as a ring of even width only when the axis points at the Earth’s centre; in the middle the ground runs along the rulings, toward the arrows, only when the ship lies along its track with its braking engine forward. That is how the ship was turned by hand for the braking burn. ' +
+    'Here the screen shows the outside along the porthole’s axis and the ring the band round the horizon, each estimated (spacecraft.md says how it differs from the optics).',
+  // the objective just outside the porthole's glass, on its axis (vostok_cabin.py prints the porthole's place)
+  at: [0.82, 3.34, 0.82],
+  axis: [0.683013, 0.258819, 0.683013],
+  // the ship's nose (its long axis, toward the braking engine's push) at the top of the screen, where the arrows point
+  up: [0, 1, 0],
+  fields: [30],
+  reticle: false,
+  ring: { mesh: 'Vzor_Ring', from: 64, to: 84 },
+};
 vehicle.cabin = {
   within: ['Cabin', 'EjectionSeat'],
   // the top of the pilot's head: up the seat's rails, toward hatch No. 1 (vehicles/vostok_3ka.py `seat_node`)
@@ -662,7 +684,11 @@ vehicle.cabin = {
     {
       node: 'Ctl_ManualOrientation',
       name: 'Manual orientation',
-      about: 'Under the clear cover: with the lock open, it hands the ship’s attitude to the hand controller. Not simulated.',
+      about:
+        'Under the clear cover: with the lock open, it hands the ship’s attitude to the hand controller. On the flight deck the code on the lock throws it: it stands thrown while the hand controls are free.',
+      // (orbitdeck.ts: `manual` says whether it is on; it stands as the deck's hands are, `free`)
+      does: 'manual',
+      holds: 'free',
     },
     { node: 'Ctl_Descent3', name: 'Descent III', about: 'Under the clear cover: the descent cycle begun by the pilot. Not simulated.' },
     {
@@ -677,7 +703,7 @@ vehicle.cabin = {
       node: 'Ctl_HandController',
       name: 'Hand controller',
       about:
-        'A short stalk on a ball with a ribbed grip across it, at his right hand: it works the manual system’s gas jets, once the lock is open. Gagarin never used it. It moves as the keys do.',
+        'A short stalk on a ball with a ribbed grip across it, at his right hand: it works the manual system’s gas jets, once the lock is open. Gagarin never used it. On the flight deck, with the hand controls free, it moves as W S A D Q E turn the ship.',
     },
   ],
   // The cabin's lamps: one switch on the control panel, off, duty and working (the factory's photograph of the panel:
@@ -703,6 +729,12 @@ vehicle.cabin = {
   // The node's own axes: +Y up the stalk, +X along the grip. That it had two axes is the maker's history (Tyapchenko);
   // which two, how the third was commanded and how far it tipped are estimated
   stick: { node: 'Ctl_HandController', throw: 0.2, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
+  globe: {
+    node: 'Globus_Globe',
+    name: 'Globus',
+    about: GLOBUS,
+  },
+  periscope: VZOR,
 };
 
 // The cosmonaut on the platform's deck, on the hatch side, between where the bus stopped on the tracks and the launch

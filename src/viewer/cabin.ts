@@ -4,7 +4,8 @@ import { travelAt } from '../sim/mechanism.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, MechanismDef, ModelDef, Signal, SitedFlight } from '../types.ts';
 import { siteFrame } from '../world/frames.ts';
-import { attitudeOf, drumAt, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
+import { orbitalEvents, orbitalFlown, orbitalRecord } from './ascent.ts';
+import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
 import { tier } from './tier.ts';
 
 /**
@@ -41,6 +42,10 @@ export interface CabinHost {
   sky(): { scene: THREE.Scene; camera: THREE.PerspectiveCamera };
   /** The plumb line at a place in the scene. */
   upAt(p: THREE.Vector3, out: THREE.Vector3): THREE.Vector3;
+  /** The globe's map of land and sea (viewer/globe.ts `uGlobeMaps`), once there is one: what a globe in the cabin is painted from. */
+  earth?(): THREE.Texture | null;
+  /** What is drawn over the flight and is no part of it (the predicted path): not seen through a periscope. */
+  overlays?(): readonly THREE.Object3D[];
   /** Something on screen has changed. */
   redraw(): void;
   /** What casts a shadow has changed: the shadow maps are to be drawn again. */
@@ -85,10 +90,60 @@ interface Needle {
 
 interface Lamp {
   meshes: THREE.Mesh[];
-  shows?: Signal;
+  shows?: Signal | `event:${string}`;
+  until?: string;
   colour: THREE.Color;
   lit: number;
 }
+
+/**
+ * What a flight deck that flies no vehicle of sim/vehicle.ts (orbitdeck.ts) tells the cabin with each sample, beyond
+ * it: when each event of the flight's record happens on the run on show, which way the hand controller is pushed, and
+ * which of its states hold (CabinDef.controls[].holds).
+ */
+export interface DeckNews {
+  times?: Readonly<Record<string, number>>;
+  hand?: { pitch: number; yaw: number; roll: number };
+  holds?: ReadonlySet<string>;
+}
+
+/** GLSL: the Mercury periscope's reticle laid over the picture (`p` on the screen, `r` from its middle, `colour`): a cross at the middle, the drift lines, and the square the Earth's disc is fitted in for height. */
+const RETICLE = /* glsl */ `
+            float mark = max(line(p.x, 0.004), line(p.y, 0.004)) * step(r, 0.09);
+            for (int i = -2; i <= 2; i++) mark = max(mark, line(p.x - float(i) * 0.16, 0.0025) * step(abs(p.y), 0.72) * step(0.12, abs(p.y) + abs(float(i))));
+            vec2 sq = abs(p) - 0.56;
+            mark = max(mark, line(max(sq.x, sq.y), 0.003) * step(0.42, min(abs(p.x), abs(p.y))) * step(max(abs(p.x), abs(p.y)), 0.6));
+            colour = mix(colour, vec3(1.0, 0.82, 0.5) * (0.35 + 0.65 * uOn), mark * 0.55);`;
+
+/**
+ * GLSL: a ring of ports round a periscope's screen (CabinDef.periscope.ring). Each fragment sees the cube toward the
+ * bearing it stands at on the ring and the angle off the axis its distance from the middle gives, from the inner edge
+ * (`uAngles.x`) to the outer (`uAngles.y`).
+ */
+const RING = /* glsl */ `
+  uniform samplerCube uCube;
+  uniform vec3 uMiddle, uTop, uAcross;
+  uniform vec2 uSpan, uAngles;
+  uniform float uOn;
+  varying vec3 vAt;
+  void main() {
+    vec2 p = vec2(dot(vAt - uMiddle, uAcross), dot(vAt - uMiddle, uTop));
+    float r = length(p);
+    float k = clamp((r - uSpan.x) / max(uSpan.y - uSpan.x, 1e-6), 0.0, 1.0);
+    float angle = mix(uAngles.x, uAngles.y, k);
+    vec2 round = r > 1e-6 ? p / r : vec2(0.0, 1.0);
+    vec3 colour = textureCube(uCube, vec3(round * sin(angle), -cos(angle))).rgb * uOn;
+    colour *= 1.0 - 0.3 * (1.0 - 4.0 * k * (1.0 - k)); // each port darkens toward its rims
+    gl_FragColor = vec4(colour + vec3(0.004, 0.005, 0.006), 1.0);
+  }`;
+
+/**
+ * The globe's surface for a globe in the cabin (CabinDef.globe): its own colour for the sea and a buff for the land, read
+ * off the globe's map toward the direction each point of the ball stands in from its middle, which in the node's own
+ * axes is +Y north and +Z the meridian of Greenwich (so the Earth-fixed direction is those axes taken round: x from +Z,
+ * y from +X, z from +Y). The shore is the map's (red above half is land: globe.ts `globeField`), one pixel soft.
+ */
+const LAND = new THREE.Color(0xc9b483);
 
 const LIGHTER = tier().lighter;
 const FACE = tier().periscope; // pixels along a face of the periscope's cube (1024; half that on the lighter tier, tier.ts)
@@ -120,6 +175,15 @@ export class Cabin {
    */
   private readonly lit = { value: 1 };
   private stick: { node: THREE.Object3D; home: THREE.Quaternion; now: THREE.Vector3 } | null = null;
+  /** Controls that stand where a state of the flight deck has them (CabinDef.controls[].holds): the turn about their own X for each of their positions. */
+  private readonly holders: { node: THREE.Object3D; home: THREE.Quaternion; throws: number[]; holds: string; now: number }[] = [];
+  /** The globe that shows where the spacecraft is (CabinDef.globe): its node as built, and the turn it was last given. */
+  private globe: { node: THREE.Object3D; home: THREE.Quaternion; turn: THREE.Quaternion } | null = null;
+  /** The globe's map of land and sea, shared by the cabin's globe (CabinHost.earth). */
+  private readonly earth: { value: THREE.Texture | null } = { value: null };
+  /** On a flight into orbit flown on its deck: when each event of the run on show happens, and which of the deck's states hold. */
+  private events: Readonly<Record<string, number>> = {};
+  private holding: ReadonlySet<string> = new Set();
   private readonly worked: { node: THREE.Object3D; home: THREE.Vector3; by: THREE.Vector3; t: number }[] = [];
 
   private readings: Readings = {};
@@ -148,6 +212,11 @@ export class Cabin {
     mechanism: MechanismDef | null;
     held: number | null;
     sees: number;
+    /** The ring of ports round the screen, if it has one (CabinDef.periscope.ring). */
+    ring: THREE.ShaderMaterial | null;
+    /** How the vehicle was turned when its faces were last asked for, and how many frames more are wanted to draw them all again since it turned. */
+    turned: THREE.Quaternion;
+    stale: number;
   } | null = null;
 
   constructor(
@@ -221,12 +290,27 @@ export class Cabin {
       if (!node) continue;
       const meshes: THREE.Mesh[] = [];
       node.traverse((o) => (o as THREE.Mesh).isMesh && meshes.push(o as THREE.Mesh));
-      this.lamps.push({ meshes, colour: new THREE.Color(l.colour ?? 0x7dff9a), lit: -1, ...(l.shows ? { shows: l.shows } : {}) });
+      this.lamps.push({
+        meshes,
+        colour: new THREE.Color(l.colour ?? 0x7dff9a),
+        lit: -1,
+        ...(l.shows ? { shows: l.shows } : {}),
+        ...(l.until ? { until: l.until } : {}),
+      });
       name(node, l.name, l.about);
     }
     for (const c of this.def.controls ?? []) {
       const node = find(c.node);
-      if (node) name(node, c.name, c.about, c.does ? { does: c.does } : c.works ? { works: c.works } : {});
+      if (!node) continue;
+      name(node, c.name, c.about, c.does ? { does: c.does } : c.works ? { works: c.works } : {});
+      const throws = node.userData.throw;
+      if (c.holds && Array.isArray(throws)) this.holders.push({ node, home: node.quaternion.clone(), throws, holds: c.holds, now: 0 });
+    }
+    const globe = this.def.globe && find(this.def.globe.node);
+    if (this.def.globe && globe) {
+      this.globe = { node: globe, home: globe.quaternion.clone(), turn: new THREE.Quaternion() };
+      name(globe, this.def.globe.name, this.def.globe.about);
+      if ((globe as THREE.Mesh).isMesh) this.paint(globe as THREE.Mesh);
     }
     // The cabin's own lights and their switch: a control like the others to the pointer, but what it does is the cabin's.
     const lighting = this.def.lighting;
@@ -304,10 +388,15 @@ export class Cabin {
       screen.geometry.computeBoundingBox();
       const middle = screen.geometry.boundingBox!.getCenter(new THREE.Vector3());
       const normal = new THREE.Vector3().fromBufferAttribute(screen.geometry.getAttribute('normal'), 0);
-      const top = new THREE.Vector3(...(p.top ?? p.up))
-        .addScaledVector(normal, -normal.dot(new THREE.Vector3(...(p.top ?? p.up))))
-        .normalize();
+      // (the top is given in the model's frame: into the screen's own, which for a node turned as it was built is not the same)
+      const topOf = (node: THREE.Object3D, n: THREE.Vector3): THREE.Vector3 => {
+        const into = new THREE.Matrix4().copy(node.matrixWorld).invert().multiply(group.matrixWorld);
+        const t = new THREE.Vector3(...(p.top ?? p.up)).transformDirection(into);
+        return t.addScaledVector(n, -n.dot(t)).normalize();
+      };
+      const top = topOf(screen, normal);
       const radius = typeof screen.userData.screen_radius === 'number' ? screen.userData.screen_radius : 0.1;
+      const reticle = p.reticle !== false;
       const material = new THREE.ShaderMaterial({
         name: 'periscope-screen',
         uniforms: {
@@ -338,17 +427,44 @@ export class Cabin {
             // (the cube is laid along the periscope: its right and its top across, the axis into its far face)
             vec3 colour = textureCube(uCube, vec3(round * sin(angle), -cos(angle))).rgb * uOn;
             colour *= 1.0 - 0.35 * smoothstep(0.75, 1.0, r); // the field darkens toward its edge
-            // the reticle: a cross at the middle, the drift lines, and the square the Earth's disc is fitted in for height
-            float mark = max(line(p.x, 0.004), line(p.y, 0.004)) * step(r, 0.09);
-            for (int i = -2; i <= 2; i++) mark = max(mark, line(p.x - float(i) * 0.16, 0.0025) * step(abs(p.y), 0.72) * step(0.12, abs(p.y) + abs(float(i))));
-            vec2 sq = abs(p) - 0.56;
-            mark = max(mark, line(max(sq.x, sq.y), 0.003) * step(0.42, min(abs(p.x), abs(p.y))) * step(max(abs(p.x), abs(p.y)), 0.6));
-            colour = mix(colour, vec3(1.0, 0.82, 0.5) * (0.35 + 0.65 * uOn), mark * 0.55);
+            ${reticle ? RETICLE : ''}
             gl_FragColor = vec4(colour + vec3(0.004, 0.005, 0.006), 1.0);
           }`,
       });
       screen.material = material;
       screen.userData.real = material;
+      // the ring of ports round it, if it has one: the same cube, in the ring node's own frame (coaxial with the screen)
+      const ringMesh = p.ring ? (find(p.ring.mesh) as THREE.Mesh | null) : null;
+      let ring: THREE.ShaderMaterial | null = null;
+      if (p.ring && ringMesh?.isMesh) {
+        ringMesh.geometry.computeBoundingBox();
+        const middle = ringMesh.geometry.boundingBox!.getCenter(new THREE.Vector3());
+        const n = new THREE.Vector3().fromBufferAttribute(ringMesh.geometry.getAttribute('normal'), 0);
+        const top = topOf(ringMesh, n);
+        const pos = ringMesh.geometry.getAttribute('position');
+        const span = new THREE.Vector2(Infinity, 0);
+        for (let i = 0; i < pos.count; i++) {
+          const d = v.fromBufferAttribute(pos, i).sub(middle);
+          const radial = Math.sqrt(Math.max(0, d.lengthSq() - d.dot(n) ** 2));
+          span.set(Math.min(span.x, radial), Math.max(span.y, radial));
+        }
+        ring = new THREE.ShaderMaterial({
+          name: 'periscope-ring',
+          uniforms: {
+            uCube: material.uniforms.uCube!,
+            uOn: material.uniforms.uOn!,
+            uMiddle: { value: middle },
+            uTop: { value: top },
+            uAcross: { value: new THREE.Vector3().crossVectors(top, n).normalize() },
+            uSpan: { value: span },
+            uAngles: { value: new THREE.Vector2(THREE.MathUtils.degToRad(p.ring.from), THREE.MathUtils.degToRad(p.ring.to)) },
+          },
+          vertexShader: material.vertexShader,
+          fragmentShader: RING,
+        });
+        ringMesh.material = ring;
+        ringMesh.userData.real = ring;
+      }
       const mechanism = model.mechanisms?.find((m) => m.id === p.mechanism) ?? null;
       this.scope = {
         screen,
@@ -364,6 +480,9 @@ export class Cabin {
         mechanism,
         held: null,
         sees: 1,
+        ring,
+        turned: new THREE.Quaternion(),
+        stale: 0,
       };
       // (the screen gives back into the cabin what its objective sees: lit from just in front of the glass)
       const front = middle.clone().applyMatrix4(screen.matrixWorld).applyMatrix4(toModel);
@@ -381,6 +500,47 @@ export class Cabin {
    * with them on, alpha with them off, mixed by how far they are lit. Without this three multiplies the colour by all
    * four, which for a surface that is not seen through is the lamps-on figure: what a model with no cabin shows.
    */
+  /**
+   * The cabin's globe is painted from the globe's map (`LAND` on its own colour), on its real material and its cel twin
+   * alike: each its own copy, so nothing else that shares its material is painted.
+   */
+  private paint(mesh: THREE.Mesh): void {
+    const real = (mesh.userData.real ?? mesh.material) as THREE.MeshStandardMaterial;
+    if (!real?.isMaterial) return;
+    const patch = (m: THREE.Material): THREE.Material => {
+      const own = m.clone();
+      const prior = own.onBeforeCompile;
+      own.onBeforeCompile = (shader, renderer) => {
+        prior.call(own, shader, renderer);
+        shader.uniforms.uCabinEarth = this.earth;
+        shader.uniforms.uCabinLand = { value: LAND };
+        shader.vertexShader = shader.vertexShader
+          .replace('#include <common>', '#include <common>\nvarying vec3 vCabinGlobe;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCabinGlobe = position;');
+        shader.fragmentShader = shader.fragmentShader
+          .replace(
+            '#include <common>',
+            '#include <common>\nuniform samplerCube uCabinEarth;\nuniform vec3 uCabinLand;\nvarying vec3 vCabinGlobe;',
+          )
+          .replace(
+            '#include <color_fragment>',
+            /* glsl */ `#include <color_fragment>
+            {
+              vec3 d = normalize(vCabinGlobe);
+              float field = texture(uCabinEarth, vec3(d.z, d.x, d.y)).r - 0.502;
+              diffuseColor.rgb = mix(diffuseColor.rgb, uCabinLand, smoothstep(-0.5, 0.5, field / (fwidth(field) + 1e-4)));
+            }`,
+          );
+      };
+      own.customProgramCacheKey = () => `${m.customProgramCacheKey()}|cabin-globe`;
+      return own;
+    };
+    const painted = patch(real);
+    const twin = mesh.material !== real ? patch(mesh.material as THREE.Material) : null;
+    mesh.userData.real = painted;
+    mesh.material = twin ?? painted;
+  }
+
   private readonly shaded = new Set<THREE.Material>();
   private shadeBy(material: THREE.Material): void {
     if (this.shaded.has(material)) return;
@@ -574,13 +734,20 @@ export class Cabin {
   piloted(on: boolean): void {
     this.live = on;
     this.times = {};
+    this.events = {};
+    this.holding = new Set();
     this.sample = null;
     this.hand = { pitch: 0, yaw: 0, roll: 0 };
   }
 
   /** A sample of the flight being flown, with its state when it is the flight's own instant (not a look back). */
-  fly(sample: LiveSample, state: VehicleState | null): void {
+  fly(sample: LiveSample, state: VehicleState | null, news?: DeckNews): void {
     this.sample = sample;
+    if (news) {
+      if (news.times) this.events = news.times;
+      if (news.hand) this.hand = { ...news.hand };
+      if (news.holds) this.holding = news.holds;
+    }
     if (!state) return;
     const mark = (key: Signal, at: number | null | false): void => {
       if (at === null || at === false) delete this.times[key];
@@ -598,9 +765,27 @@ export class Cabin {
   }
 
   /** The record's run: when each thing happened, once. */
-  private recorded: { samples: readonly Sample[]; times: Partial<Record<Signal, number>> } | null = null;
-  private record(): { samples: readonly Sample[]; times: Partial<Record<Signal, number>> } | null {
+  private recorded: {
+    samples: readonly Sample[];
+    times: Partial<Record<Signal, number>>;
+    events?: Readonly<Record<string, number>>;
+  } | null = null;
+  private record(): {
+    samples: readonly Sample[];
+    times: Partial<Record<Signal, number>>;
+    events?: Readonly<Record<string, number>>;
+  } | null {
     const tr = this.flight.trajectory;
+    const o = this.flight.orbital;
+    if (!tr && o?.ascent && this.flight.flies) {
+      // a flight into orbit: its record flown (viewer/ascent.ts, the same run the scene shows), and its events' instants
+      this.recorded ??= {
+        samples: orbitalRecord(this.flight).samples,
+        times: {},
+        events: orbitalEvents(this.flight, orbitalFlown(this.flight)),
+      };
+      return this.recorded;
+    }
     if (!tr) return null;
     if (!this.recorded) {
       const { samples, results } = flownOnce(tr, siteFrame(this.flight.site), this.flight.site.seaLevel.value);
@@ -665,8 +850,21 @@ export class Cabin {
       else if (n.turn) n.node.quaternion.copy(n.home).multiply(q.setFromAxisAngle(AXIS_Y, n.now - scaleAt(n.turn, n.rest, n.wrap)));
       else if (n.slide) n.node.position.copy(n.at).add(v.set(n.now - scaleAt(n.slide, n.rest), 0, 0).applyQuaternion(n.home));
     }
+    // (an orbital flight's events: the deck's run's while it is flown, the record's otherwise)
+    const events = this.live ? this.events : (record?.events ?? {});
+    const at = sample?.t ?? t;
+    const happened = (id: string | undefined): boolean => id !== undefined && at >= (events[id] ?? Infinity);
     for (const lamp of this.lamps) {
-      const lit = lamp.shows && this.signals[lamp.shows] ? 1 : 0; // (a lamp that shows nothing simulated stays dark)
+      // (a lamp that shows nothing simulated stays dark)
+      const lit = !lamp.shows
+        ? 0
+        : lamp.shows.startsWith('event:')
+          ? happened(lamp.shows.slice(6)) && !happened(lamp.until)
+            ? 1
+            : 0
+          : this.signals[lamp.shows as Signal]
+            ? 1
+            : 0;
       if (lit === lamp.lit) continue;
       lamp.lit = lit;
       moved = true;
@@ -694,6 +892,33 @@ export class Cabin {
           s.node.quaternion.multiply(q.setFromAxisAngle(v.set(...axis).normalize(), amount * sd.throw));
         moved = true;
       }
+    }
+    // the controls that stand as the flight deck's state has them (the manual orientation's switch thrown once the hands are free)
+    for (const h of this.holders) {
+      const goal = h.throws[this.live && this.holding.has(h.holds) ? 1 : 0] ?? 0;
+      if (Math.abs(goal - h.now) < 1e-4) continue;
+      h.now += (goal - h.now) * (dt > 0 ? 1 - Math.exp(-dt / SWITCH_TAU) : 1);
+      if (Math.abs(goal - h.now) < 1e-3) h.now = goal;
+      h.node.quaternion.copy(h.home).multiply(q.setFromAxisAngle(AXIS_X, h.now));
+      moved = true;
+    }
+    // the globe: the point under the spacecraft under its cross, the way it is going up the board (gauges.ts globeTurn)
+    const gl = this.globe;
+    if (gl && sample) {
+      const turn = globeTurn(sample.r, sample.v, sample.t);
+      if (turn) {
+        q.set(...turn);
+        if (1 - Math.abs(q.dot(gl.turn)) > 1e-12) {
+          gl.turn.copy(q);
+          gl.node.quaternion.copy(gl.home).multiply(q);
+          moved = true;
+        }
+      }
+    }
+    const earth = this.host.earth?.() ?? null;
+    if (earth !== this.earth.value) {
+      this.earth.value = earth;
+      moved = true;
     }
     for (let i = this.worked.length - 1; i >= 0; i--) {
       const w = this.worked[i]!;
@@ -746,6 +971,15 @@ export class Cabin {
     }
     this.seen();
     if (this.aboard && this.probe.owed > 0) moved = true; // (a frame, so the next window is looked out of)
+    // (the vehicle has turned since its faces were drawn: frames are asked for until each has been drawn again, so a
+    // picture is not left half from the old attitude while the clock is stopped)
+    if (sc && this.aboard && sc.sees) {
+      if (1 - Math.abs(sc.turned.dot(this.group.quaternion)) > 1e-12) {
+        sc.turned.copy(this.group.quaternion);
+        sc.stale = 2 * AROUND.length + 1;
+      }
+      if (sc.stale > 0) moved = true;
+    }
     // the windows' light and the screen's: toward what was last seen outside each, and out when nobody is aboard
     const ease = dt > 0 ? 1 - Math.exp(-dt / 0.35) : 1;
     for (const g of this.glows) {
@@ -858,6 +1092,7 @@ export class Cabin {
             : [AHEAD, round]
           : [s.next % 2 ? AHEAD : round];
     if (s.sees) s.owed = 0;
+    if (s.stale > 0) s.stale--;
     const kept = {
       position: camera.position.clone(),
       target: renderer.getRenderTarget(),
@@ -876,6 +1111,9 @@ export class Cabin {
       f.updateProjectionMatrix();
     }
     s.screen.visible = false; // (it shows the cube it would be drawn into)
+    // (nor is the deck's predicted path out there to be seen through it)
+    const over = (this.host.overlays?.() ?? []).filter((o) => o.visible);
+    for (const o of over) o.visible = false;
     // every few frames one window (or the objective) is looked out of as well, very small, for the light it lets in
     const pr = this.probe;
     const due =
@@ -931,6 +1169,7 @@ export class Cabin {
       }
     });
     s.screen.visible = true;
+    for (const o of over) o.visible = true;
     camera.position.copy(kept.position);
     camera.updateMatrixWorld();
     sky.camera.quaternion.copy(kept.sky.q);
@@ -945,6 +1184,7 @@ export class Cabin {
     this.probe.target.dispose();
     this.scope?.target.dispose();
     this.scope?.material.dispose();
+    this.scope?.ring?.dispose();
   }
 }
 

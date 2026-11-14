@@ -6,6 +6,7 @@
  * position, in order of value. Between two pairs the needle goes in proportion; past either end it stays on the stop.
  */
 import type { Quantity, Signal } from '../types.ts';
+import { EARTH_ROTATION_RATE as EARTH_SPIN } from '../world/bodies.ts';
 
 export type Readings = Partial<Record<Quantity, number>>;
 export type Signals = Partial<Record<Signal, boolean>>;
@@ -106,6 +107,57 @@ export function ratesOf(
   const angle = 2 * Math.atan2(s, Math.abs(w));
   const k = s > 1e-12 ? (angle / s / dt) * DEG : 0;
   return [x * k, y * k, z * k];
+}
+
+/**
+ * The turn of a globe that shows where a spacecraft is (CabinDef.globe), as a quaternion [x, y, z, w] about the globe's
+ * own axes as built: the point under the spacecraft brought under the cross (+Z) and the way it is going over the
+ * ground brought up the board (+Y). The globe's own +Y is the Earth's axis to the north and its own +Z the meridian of
+ * Greenwich, so an Earth-fixed direction (x, y, z) is (y, z, x) in its axes. `r` and `v` are sim/fly.ts's: an
+ * Earth-centred frame that does not turn and is the Earth's own at liftoff; `t` is seconds from liftoff, by which the
+ * Earth has turned under it. Null where there is no way going (standing still over the ground).
+ */
+export function globeTurn(r: V3, v: V3, t: number): [number, number, number, number] | null {
+  const a = -EARTH_SPIN * t;
+  const [c, s] = [Math.cos(a), Math.sin(a)];
+  const turned = (p: V3): V3 => [c * p[0] - s * p[1], s * p[0] + c * p[1], p[2]];
+  // over the ground: the velocity less the Earth's own turning there, both into the Earth's axes of the instant
+  const fixed = turned(r);
+  const over = turned([v[0] + EARTH_SPIN * r[1], v[1] - EARTH_SPIN * r[0], v[2]]);
+  const unit = (p: V3): V3 | null => {
+    const n = Math.hypot(p[0], p[1], p[2]);
+    return n > 1e-9 ? [p[0] / n, p[1] / n, p[2] / n] : null;
+  };
+  const under = unit(fixed);
+  if (!under) return null;
+  const along = over[0] * under[0] + over[1] * under[1] + over[2] * under[2];
+  const ahead = unit([over[0] - along * under[0], over[1] - along * under[1], over[2] - along * under[2]]);
+  if (!ahead) return null;
+  // in the globe's own axes
+  const sl: V3 = [under[1], under[2], under[0]];
+  const nl: V3 = [ahead[1], ahead[2], ahead[0]];
+  const el: V3 = [nl[1] * sl[2] - nl[2] * sl[1], nl[2] * sl[0] - nl[0] * sl[2], nl[0] * sl[1] - nl[1] * sl[0]];
+  // the rotation whose rows are e, n, s (it takes e to +X, n to +Y, s to +Z), as a quaternion
+  const [m00, m01, m02, m10, m11, m12, m20, m21, m22] = [...el, ...nl, ...sl];
+  const trace = m00 + m11 + m22;
+  let x: number;
+  let y: number;
+  let z: number;
+  let w: number;
+  if (trace > 0) {
+    const k = 0.5 / Math.sqrt(trace + 1);
+    [w, x, y, z] = [0.25 / k, (m21 - m12) * k, (m02 - m20) * k, (m10 - m01) * k];
+  } else if (m00 > m11 && m00 > m22) {
+    const k = 2 * Math.sqrt(1 + m00 - m11 - m22);
+    [w, x, y, z] = [(m21 - m12) / k, 0.25 * k, (m01 + m10) / k, (m02 + m20) / k];
+  } else if (m11 > m22) {
+    const k = 2 * Math.sqrt(1 + m11 - m00 - m22);
+    [w, x, y, z] = [(m02 - m20) / k, (m01 + m10) / k, 0.25 * k, (m12 + m21) / k];
+  } else {
+    const k = 2 * Math.sqrt(1 + m22 - m00 - m11);
+    [w, x, y, z] = [(m10 - m01) / k, (m02 + m20) / k, (m12 + m21) / k, 0.25 * k];
+  }
+  return [x, y, z, w];
 }
 
 /** What has happened by `t`, given when each thing happened (Infinity or absent: not yet). `ready` is the pad before liftoff. */

@@ -1,15 +1,16 @@
 import './cockpit.css';
 import './orbitdeck.css';
 import type { CockpitHost } from './cockpit';
-import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
-import { byHand, flyWhole, type FlownWhole, held, recordSamples } from './sim/staged.ts';
-import type { LiveSample, VehicleState } from './sim/vehicle.ts';
-import { orbitPredictor } from './sim/orbitpath.ts';
 import type { OrbitalFlight } from './sim/orbital.ts';
+import { orbitPredictor } from './sim/orbitpath.ts';
 import type { Predictor } from './sim/predict.ts';
+import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
+import { byHand, type FlownWhole, flyWhole, held, recordSamples } from './sim/staged.ts';
+import type { LiveSample, VehicleState } from './sim/vehicle.ts';
 import type { SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
-import { firesOf, orbitalFlown, orbitalRecord } from './viewer/ascent';
+import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord } from './viewer/ascent';
+import type { DeckNews } from './viewer/cabin';
 import type { Clock } from './world/clock.ts';
 import { sunPosition } from './world/ephemeris.ts';
 import { DEG, siteFrame, type Vec3 } from './world/frames.ts';
@@ -35,6 +36,9 @@ import { greenwichSiderealTime, julianDate, terrestrialTime } from './world/time
  * The ascent has no hand controls: the vehicle had none.
  */
 const FT = 1000;
+/** The states of the deck a control in the cabin can stand by (CabinDef.controls[].holds): the hand controls freed, or not. */
+const FREE: ReadonlySet<string> = new Set(['free']);
+const NONE: ReadonlySet<string> = new Set();
 const KEYS: Record<string, [axis: Vec3, sense: number]> = {
   w: [[0, 1, 0], 1],
   s: [[0, 1, 0], -1],
@@ -51,7 +55,9 @@ export class OrbitDeck {
   private readonly root: HTMLElement;
   private readonly button: HTMLButtonElement;
   private readonly cells = new Map<string, HTMLElement>();
-  private readonly watchers: ((sample: LiveSample, live: VehicleState | null) => void)[] = [];
+  private readonly watchers: ((sample: LiveSample, live: VehicleState | null, news?: DeckNews) => void)[] = [];
+  /** When each of the record's events happens on the run on show (viewer/ascent.ts `orbitalEvents`): what the cabin's lamps read. */
+  private times: Record<string, number> = {};
   private on = false;
   /** The record's run, and the one on show (the record's, or one with a burn by hand). */
   private record: Run | null = null;
@@ -181,7 +187,7 @@ export class OrbitDeck {
   get steering(): { guidance: boolean; sequence: boolean; trim: { pitch: number; yaw: number } } {
     return { guidance: !this.free, sequence: !this.free, trim: { pitch: 0, yaw: 0 } };
   }
-  listen(fn: (sample: LiveSample, live: VehicleState | null) => void): void {
+  listen(fn: (sample: LiveSample, live: VehicleState | null, news?: DeckNews) => void): void {
     this.watchers.push(fn);
   }
   // (no mechanism, no part's command: the deck of a ballistic flight has them, this one does not yet)
@@ -197,10 +203,19 @@ export class OrbitDeck {
   can(_what: string): boolean {
     return false;
   }
-  /** A control in the cabin (CabinDef `does`): a key of the lock (`code:<digit>`), the same as its digit typed; the braking engine's button, the same as Space once the hands are free. */
+  /**
+   * A control in the cabin (CabinDef `does`): a key of the lock (`code:<digit>`), the same as its digit typed; the braking
+   * engine's button, the same as Space once the hands are free; the manual orientation's switch (`manual`), which the
+   * lock throws: it says whether the hand controller has the attitude.
+   */
   ask(what: string): void {
     if (!this.on) return;
     if (what.startsWith('code:')) this.digit(what.slice(5));
+    else if (what === 'manual')
+      this.host.say?.(
+        'Manual orientation',
+        this.free ? 'On: the hand controller has the attitude (W S A D Q E)' : 'Locked: the code on the lock frees it',
+      );
     else if (what === 'retro' && this.free && this.fired === null && this.hand) this.fire(this.clock.t);
     else if (what === 'retro') this.host.say?.('Braking engine', this.free ? 'Fired already' : 'Locked: the hand controls are not free');
   }
@@ -236,6 +251,7 @@ export class OrbitDeck {
     this.hand = null;
     this.fired = null;
     this.planned = null;
+    this.times = orbitalEvents(this.flight, orbitalFlown(this.flight));
     this.host.fly(this.run);
     this.show();
   }
@@ -302,6 +318,9 @@ export class OrbitDeck {
       return;
     }
     this.free = true;
+    // (the timer's burn given up: nothing of the descent happens until a hand fires the engine)
+    for (const id of ['retro-command', 'retro-on', 'retro-off', 'retro-timer', 'modules', 'ejection']) this.times[id] = Infinity;
+    for (const id of Object.keys(this.times)) if (id.endsWith('-down')) this.times[id] = Infinity;
     const s = this.sampleAt(this.clock.t);
     this.hand = { q: s.attitude, t: s.t, log: [{ t: s.t, q: s.attitude }] };
     this.host.say?.(
@@ -340,6 +359,7 @@ export class OrbitDeck {
     }
     const record = this.record!;
     this.fired = t;
+    this.times = orbitalEvents(this.flight, this.flown, { on: t, off: t + burn, parting: plan.entry.separation.value });
     // what leaves at the modules' parting and at the ejection leaves when this flight has them, or never
     const ejected = this.flown.coast.results.ejectionAt;
     const dropped = this.flight.flies!.drops.map((d, i) =>
@@ -432,7 +452,13 @@ export class OrbitDeck {
     const o = this.flight.orbital!;
     const t = Math.max(0, this.clock.t);
     const s = this.sampleAt(t);
-    for (const fn of this.watchers) fn(s, null);
+    const pushed = (a: string, b: string) => (this.held.has(a) ? 1 : 0) - (this.held.has(b) ? 1 : 0);
+    const hand =
+      this.free && this.fired === null
+        ? { pitch: pushed('w', 's'), yaw: pushed('a', 'd'), roll: pushed('e', 'q') }
+        : { pitch: 0, yaw: 0, roll: 0 };
+    const news: DeckNews = { times: this.times, hand, holds: this.free ? FREE : NONE };
+    for (const fn of this.watchers) fn(s, null, news);
     const set = (id: string, text: string) => {
       const el = this.cells.get(id);
       if (el && el.textContent !== text) el.textContent = text;

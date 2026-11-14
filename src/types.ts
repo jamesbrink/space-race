@@ -319,17 +319,23 @@ export interface CabinDef {
    * units, and stands there.
    */
   instruments: { node: string; name: string; about: string; reads?: Quantity; per?: number; value?: number }[];
-  /** Lamps: lit, in `colour`, while the signal holds. One with no signal shows something not simulated: it stays dark and says so. */
-  lamps?: { node: string; name: string; about: string; shows?: Signal; colour?: number }[];
+  /**
+   * Lamps: lit, in `colour`, while the signal holds. One with no signal shows something not simulated: it stays dark and says so.
+   * On a flight into orbit a lamp can show an event of its record (`event:` and the id of one of `orbital.events`), lit
+   * from its instant as the run on show has it (a burn by hand moves the burn's events) until the instant of `until`'s, if given.
+   */
+  lamps?: { node: string; name: string; about: string; shows?: Signal | `event:${string}`; until?: string; colour?: number }[];
   /**
    * Controls that are the controls: a click on one does what the flight deck's key does (`does`: a command of
    * src/cockpit.ts: 'tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort'; or of an orbital flight's deck,
    * src/orbitdeck.ts: 'retro', and `code:` and a numeral for a key of its logical lock). One with no `does` is
    * there to be read about. How it moves when worked is in the node's extras (`pull` or `press`, metres along its axis).
    * One with `works` works a mechanism of the model by hand (`ModelDef.mechanisms`, by its id): sent the other way
-   * from where it is headed, in a flight being flown by hand (src/cockpit.ts `work`).
+   * from where it is headed, in a flight being flown by hand (src/cockpit.ts `work`). One that `holds` a state of the
+   * flight deck (orbitdeck.ts `holds`: 'free', the hand controls freed) stands at the second of its `throw` positions
+   * (its node's extras) while the deck says that state holds, and at its first otherwise, so the cabin and the deck agree.
    */
-  controls?: { node: string; name: string; about: string; does?: string; works?: string }[];
+  controls?: { node: string; name: string; about: string; does?: string; works?: string; holds?: string }[];
   /**
    * Windows, as light: where each pane is (`at`) and the way it faces out of the model (`out`, a unit vector), in the
    * model's frame, and how wide its glass is, metres. What is outside each (sky, the Earth, black) is looked at a
@@ -346,6 +352,13 @@ export interface CabinDef {
    * (viewer/cabin.ts), so a dark cabin is lit by its windows, its periscope and its telelights.
    */
   lighting?: { control: string; name: string; about: string; ways: { says: string; lit: number[] }[]; fittings?: string[] };
+  /**
+   * A globe that shows where the spacecraft is (the Vostok's Globus): `node` turns about its own centre so that the point
+   * under the spacecraft at the clock's instant stands under the cross (the node's own +Z as built) with the way it is
+   * going toward the node's own +Y as built. The node's own +Y is the Earth's axis toward the north, and its own +Z is
+   * the meridian of Greenwich as built. Its surface shows the land and the sea from the globe's own map (viewer/globe.ts).
+   */
+  globe?: { node: string; name: string; about: string };
   /** The hand controller: the node tips about these axes of its own (unit vectors) by `throw` radians at full command, and twists for yaw. */
   stick?: { node: string; throw: number; pitch: [number, number, number]; roll: [number, number, number]; yaw: [number, number, number] };
   /**
@@ -369,6 +382,14 @@ export interface CabinDef {
     up: [number, number, number];
     top?: [number, number, number];
     fields: number[];
+    /** Its screen carries the Mercury periscope's reticle, drawn on it (default); false for a screen whose rulings are the model's own. */
+    reticle?: boolean;
+    /**
+     * A ring of ports round the screen (the Vzor's): `mesh` of the model, coaxial with the screen, shows what lies `from`
+     * to `to` degrees off the axis, the nearer the axis the nearer the middle, each port the bearing it stands at; so the
+     * horizon stands at one radius in every port only when the axis is on the Earth's centre.
+     */
+    ring?: { mesh: string; from: number; to: number };
   };
 }
 
