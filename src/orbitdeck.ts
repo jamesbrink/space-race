@@ -105,6 +105,8 @@ const ORBITING: Figure[] = [
 /** A stage's name, short: before its first comma ('Strap-on boosters, Blocks B, V, G, D' is 'Strap-ons'). */
 const short = (name: string) => name.split(',')[0]!.replace('Strap-on boosters', 'Strap-ons');
 const ENTER = 'Fly this flight: as flown, or take it over (L)';
+/** The months, for a time on another day than the launch's ('10:18:00 on 7 August'). */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export class OrbitDeck extends Deck {
   /** When each of the record's events happens on the run on show (viewer/ascent.ts `orbitalEvents`): what the cabin's lamps read. */
@@ -118,6 +120,9 @@ export class OrbitDeck extends Deck {
   private free = false;
   /** The hand's attitude (fly.ts's frame, body to frame) and when it was last turned; the burn by hand, once fired. */
   private hand: { q: Quat; t: number; log: { t: number; q: Quat }[] } | null = null;
+  /** Which of the record's own periods by hand (`manual.periods`) the hands are in, as flown, and the samples they turned from. */
+  private byPlan: number | null = null;
+  private planBase: readonly LiveSample[] | null = null;
   private fired: number | null = null;
   /** The record as this flight now has it: the record's own, its burn given up (hands free, nothing fired), or the hand's burn. */
   private planned: OrbitalFlight | null = null;
@@ -371,7 +376,7 @@ export class OrbitDeck extends Deck {
       if (!step || !this.can(what)) return;
       if (this.mine === null) {
         this.takeOver();
-        this.host.say?.('Taken over', `Not the flight of ${this.day}: Gagarin had no say over the launch vehicle`);
+        this.host.say?.('Taken over', `Not the flight of ${this.day}: ${this.flier} had no say over the launch vehicle`);
       }
       this.eventAt = performance.now() / 1000;
       this.asked.push(step);
@@ -398,6 +403,10 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     if (this.mine !== null) return this.ascended?.separation.t ?? Infinity;
     return o.stages[o.stages.length - 1]!.separation?.value ?? Infinity;
+  }
+  /** The record's pilot by his surname, as the deck says it ('Gagarin'): the last word of the flight's first crew member. */
+  private get flier(): string {
+    return this.flight.crew[0]?.split(' ').pop() ?? 'Its pilot';
   }
   /** The day of the record's flight, as the deck says it ('12 April'). */
   private get day(): string {
@@ -433,6 +442,8 @@ export class OrbitDeck extends Deck {
     this.typed = '';
     this.free = false;
     this.hand = null;
+    this.byPlan = null;
+    this.planBase = null;
     this.fired = null;
     this.planned = null;
     this.mine = this.guidance && this.sequence ? null : 0;
@@ -480,7 +491,7 @@ export class OrbitDeck extends Deck {
     if (this.mine === null && t <= this.parting && (t > 0 || this.clock.running)) {
       this.told = performance.now();
       this.host.say?.('No hand controls going up', `As on ${this.day}: G or B takes the flight over, and it is yours`);
-    } else if (!this.free && t > this.parting && this.fired === null) {
+    } else if (!this.free && this.byPlan === null && t > this.parting && this.fired === null) {
       this.told = performance.now();
       const code = String(this.flight.orbital!.manual?.code.value ?? '');
       this.host.say?.(
@@ -1122,6 +1133,47 @@ export class OrbitDeck extends Deck {
     });
   }
 
+  /**
+   * The record's own periods of flying by hand (`manual.periods`: Titov's, by plan, with the lock's code given him). Within
+   * one, as flown, the hands have the attitude without the lock, and the flight stays the record's (the timer's burn is
+   * kept: nothing a hand turns changes the coast). Out of it the lock is shut again, and what the hands left is held until
+   * the automatic orientation turns the ship to its burn over a minute, as the record's own drawing turns it
+   * (staged.ts `recordSamples`). Only the attitude is drawn: no jets, no gas.
+   */
+  private planHands(t: number): void {
+    const o = this.flight.orbital!;
+    const periods = o.manual?.periods ?? [];
+    if (!periods.length || !this.run) return;
+    const i = periods.findIndex((p) => t >= p.from.value && t < p.to.value);
+    const now = i >= 0 ? i : null;
+    if (now !== this.byPlan) {
+      if (now !== null) {
+        this.planBase ??= this.run.samples as readonly LiveSample[];
+        const s = this.sampleAt(t);
+        this.hand = { q: s.attitude, t, log: [{ t, q: s.attitude }] };
+        this.host.say?.('By hand, as flown', `${periods[now]!.what}: W S A D Q E turn the ship until ${this.wall(periods[now]!.to.value)}`);
+      } else if (this.byPlan !== null)
+        this.host.say?.('Hands off, as flown', `The hand controller off at ${this.wall(periods[this.byPlan]!.to.value)}`);
+      this.byPlan = now;
+    }
+    if (this.byPlan === null || !this.hand || !this.planBase) return;
+    this.turnTo(t);
+    const from = this.hand.log[0]!.t;
+    const q = this.hand.q;
+    const oriented = o.events.find((e) => e.id === 'orientation')?.at.value ?? o.retro.on.value - 60;
+    // (the hands' attitude from where they took it until the automatic orientation, then turned over a minute to the record's)
+    const samples = this.planBase.map((x) => {
+      if (x.t < from) return x;
+      const k = x.t < oriented ? 0 : Math.min(1, (x.t - oriented) / 60);
+      if (k >= 1) return x;
+      const sign = q[0] * x.attitude[0] + q[1] * x.attitude[1] + q[2] * x.attitude[2] + q[3] * x.attitude[3] < 0 ? -1 : 1;
+      const a = normalize([0, 1, 2, 3].map((j) => q[j]! + (sign * x.attitude[j]! - q[j]!) * k) as unknown as Quat);
+      return { ...x, attitude: a, axis: turn(a, [1, 0, 0]) };
+    });
+    this.run = { ...this.run, samples };
+    this.host.fly(this.run);
+  }
+
   /** Turn the hand's attitude on to `t` by the keys held and the finger's stick. */
   private turnTo(t: number): void {
     const h = this.hand;
@@ -1167,6 +1219,7 @@ export class OrbitDeck extends Deck {
       this.fly(t);
       return void this.show();
     }
+    if (!this.free && this.mine === null && this.fired === null && this.downMine === null) this.planHands(t);
     if (this.free && this.fired === null && this.hand) {
       this.turnTo(t);
       // the turned attitude is what the scene shows from here on
@@ -1283,7 +1336,14 @@ export class OrbitDeck extends Deck {
   }
   /** A time of the flight as a clock on the wall read it that day. */
   private wall(at: number): string {
-    return new Date(Date.parse(this.flight.launch) + at * 1000 + this.flight.site.zone.utcOffset * 3600_000).toISOString().slice(11, 19);
+    const local = (t: number) => new Date(Date.parse(this.flight.launch) + t * 1000 + this.flight.site.zone.utcOffset * 3600_000);
+    const when = local(at);
+    // (on a flight that runs past midnight, a time on another day than the launch's says which)
+    const day =
+      when.toISOString().slice(0, 10) === local(0).toISOString().slice(0, 10)
+        ? ''
+        : ` on ${when.getUTCDate()} ${MONTHS[when.getUTCMonth()]}`;
+    return when.toISOString().slice(11, 19) + day;
   }
 
   /** What each stage has left at `t` (all its units), and whether it is aboard and burning: the user's vehicle's, or the record's run's. */
@@ -1316,7 +1376,7 @@ export class OrbitDeck extends Deck {
     const live = this.state && this.pilot && !this.ascended ? this.state : null;
     const t = Math.max(0, live ? Math.min(this.clock.t, live.t) : this.clock.t);
     const s = this.sampleAt(t);
-    const hands = this.free || (this.mine !== null && !this.ascended);
+    const hands = this.free || this.byPlan !== null || (this.mine !== null && !this.ascended);
     const pushed = hands && this.fired === null ? this.push() : { pitch: 0, yaw: 0, roll: 0 };
     const news: DeckNews = { times: this.times, hand: pushed, holds: hands ? FREE : NONE };
     // (down at the run's end, whatever the descent's last moment of motion: the navball reads nought as the figures do)
@@ -1388,7 +1448,7 @@ export class OrbitDeck extends Deck {
             ? `Timer, ${this.wall(command)}`
             : 'Yours, once parted',
     );
-    set('lock', this.free ? 'Free' : 'Locked');
+    set('lock', this.free ? 'Free' : this.byPlan !== null ? 'Open, by plan' : 'Locked');
     for (const lamp of this.root.querySelectorAll<HTMLElement>('[data-digit]'))
       lamp.classList.toggle('on', this.free || Number(lamp.dataset.digit) < this.typed.length);
     set('motors', thrust > 0 ? `${burning.join(' + ') || 'braking'} ${(thrust / 1000).toFixed(0)} kN` : '–');
@@ -1505,9 +1565,11 @@ export class OrbitDeck extends Deck {
                   ? 'Short of an orbit: it comes down, unless the braking engine pushes it on'
                   : 'Turn the long axis against the motion, then fire'
                 : this.outcome(t)
-              : code && t < o.retro.on.value
-                ? `The hand controls are locked: the code ${[...code].join('-')} frees them`
-                : 'The descent is automatic';
+              : this.byPlan !== null
+                ? `By hand, as flown: W S A D Q E turn the ship until ${this.wall(o.manual!.periods![this.byPlan]!.to.value)}`
+                : code && t < o.retro.on.value
+                  ? `The hand controls are locked: the code ${[...code].join('-')} frees them`
+                  : 'The descent is automatic';
     if (prompt.textContent !== text) prompt.textContent = text;
     prompt.hidden = !text;
     prompt.classList.toggle('due', Boolean(due));
@@ -1604,7 +1666,7 @@ export class OrbitDeck extends Deck {
         const c = when(b.id);
         return c ? [`${c.label} at ${this.wall(c.value)}`] : [];
       }),
-      `the landing at Smelovka, ${o.landing.latitude.value.toFixed(2)}° N ${o.landing.longitude.value.toFixed(2)}° E, ${o.descent?.ground.value.toFixed(0) ?? 0} m above the sea`,
+      `the landing${o.landing.near ? ` near ${o.landing.near}` : ''}, ${o.landing.latitude.value.toFixed(2)}° N ${o.landing.longitude.value.toFixed(2)}° E, ${o.descent?.ground.value.toFixed(0) ?? 0} m above the sea`,
     ].join('; ');
     const show = (unit: string, x: number) =>
       unit === 'm' ? `${(x / 1000).toFixed(1)} km` : unit === 's' ? this.wall(x) : `${x.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;

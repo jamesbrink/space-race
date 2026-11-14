@@ -774,12 +774,15 @@ opens: what was behind each is not recorded.
 | Cascade (gas receivers) | between August 1957 and 1959 | not known | documented for 1959; assumed for 1961 | PIC/JR-2/60 ("the physical plant ... has been enlarged to include a probable cascade facility"); no longer "probable" in PIC/JR-2/61 |
 | Walls and a flat roof over the gas receivers, floodlights on the roof | between July 1959 and 12 April 1961 (`since="1961-04-12"`: for an earlier date the vessels stand in the open) | not known | documented for 12 April 1961 (that the low terracotta building stood there); estimated (that it is the receivers' enclosure) | the film of the morning; a colour photograph |
 | The cosmonauts' bus, a saloon car, a box-bodied truck on the apron | 12 April 1961, from about 06:50 | the car and the truck 08:05, the bus 08:37 (estimated) | documented that they stood there at 06:50 | the film. In `stood` they are of the day itself. The same bus brought every Vostok's pilot: a later flight builds it for its own morning |
+| The bus on 6 August 1961 | about 06:50 (the plan's 06:45 to 07:00 for the drive and the farewell) | 08:30, thirty minutes' readiness, with Nikolayev (RussianSpaceWeb; that it drove then is estimated) | documented (the film «Снова к звёздам», 21:04 to 21:45); its place April's, taken (not measured off the film) | road_vehicles.py builds it for each launch morning (`bus_days`); the car and the truck are April's alone (a dark car stood beyond the crowd in August, where is not known) |
+| The railway fillers on 6 August 1961 | with the rocket | not recorded for this flight (Vostok 1's interval before liftoff is taken: estimated) | documented that a filler stood on the south track at the farewell | RussianSpaceWeb's photographs of Smirnov and Titov, and of Korolev; tank_cars.py `DAYS` |
 | The people: the State Commission, the send-off, the launch crews | 12 April 1961 | each at its own time ("The morning's people and vehicles") | documented | the film; the roster. Of the day itself |
+| The people of 6 August 1961: some hundred at the bus, forty with him to the stair, in summer dress; Smirnov (now chairman) in a white jacket and straw hat; Korolev, Barmin; Nikolayev suited | 6 August 1961 | not recorded | documented (the film; a photograph; Titov, 1973), the counts estimated | **not built**: the figures have no summer dress ("What the model gets wrong or leaves out") |
 | Support building | between August 1957 and 1959 | today | documented | PIC/JR-2/60 ("has been added"); OpenStreetMap |
 | Check-out shop, security building | 1957 | today | documented | HTA/JR-4/58; OpenStreetMap |
 | South of the embankment: two gable-roofed buildings, a pump hut, two pairs of tanks; outside the south fence: a vehicle shed, a building with a mast (items 1 to 7) | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | NPIC/B-24/61 |
 | Six tents; a solid-fenced yard (items 11, 12) | between August 1957 and July 1959 | not known (the tents "not permanent") | documented for July 1959; assumed for 1961, the tents least surely | NPIC/B-24/61 |
-| Site 51: its pad, a building 50 ft square, its spur | by 9 April 1961 (new on the photographs of 1961) | today, rebuilt | documented | PIC/JR-8/61 pp. 13-14; the first R-9's launch |
+| Site 51: its pad, a building 50 ft square, its spur | by 9 April 1961 (new on the photographs of 1961) | 3 August 1961, burnt out when an R-9 fell back on it (`until="1961-08-02"`); rebuilt later | documented | PIC/JR-8/61 pp. 13-14; the first R-9's launch; Chertok, vol. 3, pp. 131 and 187 ("the last launch from Site No. 51"). How it looked after the fire is not recorded: nothing is built there from August 1961 |
 | Assembly and test building of Site 2 | 11 May 1957 | today (extended 1973 to 1974) | documented | PIC/JR-2/60 p. 16; OpenStreetMap |
 | Observation positions a to i | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; "remain unchanged" in PIC/JR-2/60 |
 | Spoil heap | 1957 | today | documented | HTA/JR-4/58; today's imagery; SRTM |
@@ -787,6 +790,7 @@ opens: what was behind each is not recorded.
 | Old cable tray | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; PIC/JR-2/60 |
 | Floodlight tower 400 ft west | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; Figure 5; PIC/JR-2/61 |
 | Double fence, light poles, guard towers | 1957 | not known (gone today; the line remains) | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; Figure 5 |
+| The double fence taken 1,300 ft north round Site 51; two new buildings by the check-out shop | by August 1961 (whether by April turns on which KEYHOLE mission PIC/JR-8/61 used: redacted) | not known | documented for August 1961 | PIC/JR-8/61 pp. 13-14 and its Figure 3. **Not built**: the new fence's line and the buildings' sizes are unmeasured, so 1961-08 keeps April's fence |
 | Roads | 1957 | today | documented | HTA/JR-4/58; Figure 5; OpenStreetMap |
 
 "Assumed for 1961" is the honest state of it: the photographs the CIA's three reports rest on are
@@ -798,6 +802,12 @@ The site's builders ask `sitelib.stood` of each of these, so a state of the plac
 rocket can leave the erector out by its date.
 
 ## What the model gets wrong or leaves out
+
+- **6 August 1961** (Vostok 2's morning, `site1/model/1961-08.py`, `flights/vostok-2/model/pad.py`): the farewell's crowd
+  in summer dress is not built, nor Nikolayev suited beside the bus, nor Smirnov in his straw hat; the ground party's
+  figures are dressed for April. The fence's extension north round Site 51 and the two new buildings by the check-out
+  shop (PIC/JR-8/61) are not built, being unmeasured; Site 51's burnt pad is left out, its look not recorded. The bus
+  stands in April's place; the fillers' and the erector's times are Vostok 1's intervals before liftoff.
 
 - The pit's section is not published: its terraces, slot and floor are drawn from the CIA's front
   elevation, which is itself an interpretation of shadows.

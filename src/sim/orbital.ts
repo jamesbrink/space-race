@@ -267,12 +267,26 @@ export interface OrbitalFlight {
    * hand controls, how fast the hand controller turns the spacecraft (deg/s), and the braking engine as a hand fires it:
    * its thrust (N) and the impulse its integrator shuts it down at (m/s), the modules parting `parting` seconds after.
    */
-  manual?: { code: Measure; rate: Measure; thrust: Measure; deltaV: Measure; parting: Measure };
+  manual?: {
+    code: Measure;
+    rate: Measure;
+    thrust: Measure;
+    deltaV: Measure;
+    parting: Measure;
+    /**
+     * The record's own periods of orientation by hand, by plan (Vostok 2's two: the lock's code given to the pilot), each
+     * from and to, seconds from liftoff, and what it was. As flown the deck gives the hands the attitude within them
+     * (orbitdeck.ts `planHands`) and the record's drawing turns the ship to its orbital orientation (staged.ts `recordSamples`).
+     */
+    periods?: { from: Measure; to: Measure; what: string }[];
+  };
   /** Where and when the record has the landing: degrees north and east, seconds from liftoff. */
   landing: {
     latitude: Measure;
     longitude: Measure;
     at: Measure;
+    /** The place, as the flight's card names it ('Smelovka'). */
+    near?: string;
   };
   checks: OrbitCheck[];
 }
@@ -948,7 +962,8 @@ export function flyOrbit(
   let before = samples[0]!;
   /** Where it was over as it came through the interface: the landing's miss is measured along the line from there. */
   let gate: Vec3 | null = null;
-  const LIMIT = t + 6 * 3600;
+  // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn)
+  const LIMIT = Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + 6 * 3600;
   const target = geodeticToEcef({ latitude: o.landing.latitude.value, longitude: o.landing.longitude.value, height: 0 });
 
   while (t < LIMIT) {

@@ -37,6 +37,7 @@ def build(parts: Parts) -> None:
     if not stood(
         "Site 51: an octagonal pad, a building 50 ft square, a rail spur",
         since="1961-04",
+        until="1961-08-02",
         confidence="documented",
         source="PIC/JR-8/61 (August 1961), pp. 13-14: new on the photographs of 1961; the first R-9 was launched from it on 9 April 1961 "
         "(ru.wikipedia, Р-9А; Zak, RussianSpaceWeb). When it was finished is not known: it stood by 9 April",

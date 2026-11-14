@@ -131,7 +131,7 @@ with an error on both tries). **T**: the TASS announcement of the day, as Z tabu
   at 10:45:41. **Three times for the ejection, not reconciled.** The descent system (Bobkov, OKB-1,
   1991; GCTC): the module's pilot parachute of 1.5 m² at about 7 km, braking parachute 18 m² at 4 km
   and 200 m/s, main 574 m² at 2.5 km, landing at 10 m/s; the pilot's braking parachute 2 m², main
-  83.5 m² at 4 km, reserve 56 m² (put out automatically after the main on this flight only), 5 to 6
+  83.5 m² at 4 km, reserve 56 m² (put out automatically after the main, as again on Vostok 2: Titov's report, doc. 192, p. 198), 5 to 6
   m/s; the hatch at 7 km and 220 m/s, the seat 2 s later at up to 20 m/s.
 - **Place.** R: 51°16′ N, 45°59′ E for the pilot; the module about 1.5 km off (G thought 4), "south
   of the city of Engels", the module 10 m from a ravine and the pilot some 9 km from the Volga (Z).

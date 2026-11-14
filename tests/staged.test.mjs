@@ -38,7 +38,50 @@ const SHORT =
   'The first reading (rated thrust to the recorded instants, Soyuz-ST’s loads) was 142 m/s fast: the documented throttling is worth more than the whole miss either way';
 const PUBLISHED =
   'The coast is flown from the published orbit, begun where the ascent left the spacecraft (staged.ts `published`), since the ascent as flown does not reach it';
+const SHORT_TYPE =
+  'Vostok 2’s ascent is the type’s, flown on Vostok 1’s instants and its third stage’s integrator setting (no document of E103-17’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
+  'at the last cutoff it is level at the planned 180 km with 7,698 m/s where 183 by 244 km needs some 7,840';
+const PHASE =
+  'The published orbit flown round from where the ascent left the spacecraft, as osculating elements under J2, crosses the equator northbound every 88.66 min: at 11:49:09 and 17:43:46, where TASS’s crossings are 11:48 and 17:42, 88.5 min apart. ' +
+  'Over seventeen orbits it falls four minutes behind the record’s orbit (its node opening the eighteenth at 09:58:55 against 09:54.9 reckoned from TASS and Titov’s Globus fixes: mission.md), and the burn, at the instant derived from the record, is four minutes early on it. ' +
+  'What owns it is how the published elements are read (Vostok 1’s apogee miss is the same thing) and the place on the orbit at cutoff, which is the type’s ascent and not this flight’s';
 const MISSES = {
+  'ussr/vostok/vostok-2': {
+    ascent: {
+      perigee: { by: -351_028, slack: 2_000, why: SHORT_TYPE },
+      apogee: { by: -64_000, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_TYPE}` },
+      inclination: {
+        by: 0.06,
+        slack: 0.01,
+        why: 'The aiming azimuth flown is Vostok 1’s (estimated: E103-17’s flight task is not published), and gives 64.99°, as it does on Vostok 1, against this flight’s determined 64°56′. The azimuth is owner',
+      },
+      period: { by: -249.16, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_TYPE}` },
+    },
+    whole: {
+      apogee: {
+        by: 20_943,
+        slack: 300,
+        why: `${PUBLISHED}. Flown round under J2 the published orbit taken as osculating where the ascent cut off tops out at 265 km, not 244: Vostok 1’s miss, the same reading of the published elements`,
+      },
+      crossTrack: {
+        by: -94_571,
+        slack: 3_000,
+        why: `${PUBLISHED}. ${PHASE}: four minutes early the Earth has turned a degree less under the track, and the plane flown is Vostok 1’s, 0.06° steeper`,
+      },
+      alongTrack: {
+        by: -1_493_390,
+        slack: 10_000,
+        why: `${PUBLISHED}. It comes down over Anatolia, 1,493 km short along the track: ${PHASE}. Flown at Titov’s own 09:57, which the record’s orbit rules out, it would come down 395 km beyond (mission.md, "The braking burn")`,
+      },
+    },
+    descent: {
+      'pilot.at': {
+        by: 339.85,
+        slack: 10,
+        why: 'Late by the type’s descent, as Vostok 1’s is: from the burn he is 32.6 min to the ground where the record’s 09:51 to 10:18 is 27, and four kilometres under a canopy at 5 m/s is 13 minutes by itself (Vostok 1’s miss)',
+      },
+    },
+  },
   'ussr/vostok/vostok-1': {
     ascent: {
       minuteG: {
@@ -91,6 +134,70 @@ const MISSES = {
       },
     },
   },
+};
+
+/**
+ * By flight, every input the ascent reads that is not documented (the last test's list): a new one must be added here. Vostok
+ * 2's are Vostok 1's and every instant of the ascent besides, its record having none of its own (its mission.md).
+ */
+const UNDOCUMENTED = {
+  'ussr/vostok/vostok-1': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    // (these four and the third stage's start and hot staging move nothing here: only the live vehicle hears what a hand
+    // does out of the record's order; tests/stagedlive.test.mjs holds each to its consequence)
+    'ascent.drops.0.q',
+    'ascent.guidance.kick',
+    'ascent.guidance.target.climb',
+    'ascent.guidance.vertical',
+    'ascent.limits.axial',
+    'ascent.limits.qAlpha',
+    // (moves nothing here: only the live vehicle is steered by it; tests/stagedlive.test.mjs says what it is worth there)
+    'ascent.steering.authority',
+    'stages.0.ignition',
+    'stages.0.propellant',
+    'stages.0.throttle',
+    'stages.1.cutoff',
+    'stages.1.ignition',
+    'stages.1.propellant',
+    'stages.1.throttle',
+    'stages.2.hot',
+    'stages.2.propellant',
+    'stages.2.start',
+  ],
+  'ussr/vostok/vostok-2': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.0.until',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.drag.1.until',
+    'ascent.drops.0.at',
+    'ascent.drops.0.q',
+    'ascent.guidance.azimuth',
+    'ascent.guidance.kick',
+    'ascent.guidance.target.climb',
+    'ascent.guidance.turn',
+    'ascent.guidance.vertical',
+    'ascent.limits.axial',
+    'ascent.limits.qAlpha',
+    'ascent.steering.authority',
+    'stages.0.cutoff',
+    'stages.0.ignition',
+    'stages.0.propellant',
+    'stages.0.throttle',
+    'stages.1.cutoff',
+    'stages.1.ignition',
+    'stages.1.propellant',
+    'stages.1.throttle',
+    'stages.2.cutoff',
+    'stages.2.hot',
+    'stages.2.ignition',
+    'stages.2.propellant',
+    'stages.2.start',
+  ],
 };
 
 /** Hold a set of results to checks: every miss recorded, every recorded miss still a miss and where it was. */
@@ -241,32 +348,7 @@ for (const f of flown) {
       for (const key of ['exitArea', 'usable', 'throttle', 'propellant', 'mass', 'dry', 'cutoff', 'ignition', 'start', 'hot'])
         if (s[key] && s[key].confidence !== 'documented') read.push(`stages.${i}.${key}`);
     });
-    assert.deepEqual(read.sort(), [
-      'ascent.drag.0.area',
-      'ascent.drag.0.curve',
-      'ascent.drag.1.area',
-      'ascent.drag.1.curve',
-      // (these four and the third stage's start and hot staging move nothing here: only the live vehicle hears what a hand
-      // does out of the record's order; tests/stagedlive.test.mjs holds each to its consequence)
-      'ascent.drops.0.q',
-      'ascent.guidance.kick',
-      'ascent.guidance.target.climb',
-      'ascent.guidance.vertical',
-      'ascent.limits.axial',
-      'ascent.limits.qAlpha',
-      // (moves nothing here: only the live vehicle is steered by it; tests/stagedlive.test.mjs says what it is worth there)
-      'ascent.steering.authority',
-      'stages.0.ignition',
-      'stages.0.propellant',
-      'stages.0.throttle',
-      'stages.1.cutoff',
-      'stages.1.ignition',
-      'stages.1.propellant',
-      'stages.1.throttle',
-      'stages.2.hot',
-      'stages.2.propellant',
-      'stages.2.start',
-    ]);
+    assert.deepEqual(read.sort(), UNDOCUMENTED[f.id], 'the inputs that are not documented, by flight (UNDOCUMENTED)');
     const [site, jd, sea] = where(f);
     const base = whole.ascent.summary;
     const weigh = (label, change) => {
@@ -336,8 +418,11 @@ for (const f of flown) {
     const [site, jd, sea] = where(f);
     const g = greenwichSiderealTime(jd);
     const flat = (v) => [Math.cos(-g) * v[0] - Math.sin(-g) * v[1], Math.sin(-g) * v[0] + Math.cos(-g) * v[1], v[2]];
+    // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
+    // minutes before it, which the propagator, going once round, then carries down
     const sep = published(o, whole.ascent.separation);
-    const start = { t: sep.t, r: flat(sep.r), v: flat(sep.v) };
+    const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= o.retro.on.value - 2400) : null;
+    const start = late ? { t: late.t, r: flat(late.r), v: flat(late.v) } : { t: sep.t, r: flat(sep.r), v: flat(sep.v) };
     const job = propagate(spacecraft(o, jd, site, sea, start), start, { site, seaLevel: sea });
     job.run();
     const p = job.result;
@@ -395,7 +480,7 @@ for (const f of flown) {
       `  #   predicted from T+${mid.t.toFixed(0)}, within the burn: ${(kmOff(held) * 1000).toFixed(1)} m from the run with the burn's line as it lit, ${(kmOff(fresh) * 1000).toFixed(1)} m with the line it would light on from there (aimed from the Sun, the line hardly turns in a burn: aimed along the motion it would)`,
     );
     console.log(
-      `  #   predicted from separation: apogee ${(p.apogee.altitude / 1000).toFixed(0)} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
+      `  #   predicted from ${late ? 'forty minutes before the burn' : 'separation'}: apogee ${(p.apogee.altitude / 1000).toFixed(0)} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
     );
   });
 

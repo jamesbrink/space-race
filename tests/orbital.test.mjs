@@ -31,10 +31,53 @@ const withInput = (o, path, value) => {
 };
 
 /**
+ * By flight, every derived or estimated input the coast reads (the last test's list): a new one must be added here. Vostok 2's
+ * are Vostok 1's and the injection's instant (the type's cutoff), the burn's velocity change and the ejection's height besides.
+ */
+const INPUTS = {
+  'ussr/vostok/vostok-1': [
+    ['orbit', 'radius'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['retro', 'on'],
+    ['retro', 'off'],
+    ['entry', 'area'],
+  ],
+  'ussr/vostok/vostok-2': [
+    ['orbit', 'radius'],
+    ['injection', 'at'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['retro', 'on'],
+    ['retro', 'off'],
+    ['retro', 'deltaV'],
+    ['entry', 'area'],
+    ['ejection', 'altitude'],
+  ],
+};
+
+/**
  * Checks the coast misses today, by flight: how far out (run less record, in the check's unit), give or take `slack`,
  * and which input is most likely to blame.
  */
 const MISSES = {
+  'ussr/vostok/vostok-2': {
+    apogee: {
+      by: 17_816,
+      slack: 500,
+      why: 'Flown round, the orbit tops out at 262 km, not 244: Vostok 1’s miss, the published heights taken as the osculating orbit at the cutoff. The cure is a stated conversion from mean to osculating elements, not a number changed',
+    },
+    crossTrack: {
+      by: -153_276,
+      slack: 3_000,
+      why: 'From the estimated injection (Vostok 1’s place at cutoff) the coast falls behind the record’s orbit over seventeen revolutions, as the coast from the ascent flown does (tests/staged.test.mjs, PHASE: the published elements read as osculating), and the Earth has turned less under the track; the Sun stood 38 degrees out of the plane at the burn, so a push along the line from it has much of itself across the track (`retro.aim`, as Vostok 1’s)',
+    },
+    alongTrack: {
+      by: -1_426_770,
+      slack: 10_000,
+      why: 'It comes down 1,427 km short along the track: the coast reaches the landing latitude some four minutes after the record’s orbit does (tests/staged.test.mjs, PHASE), so the burn, at the instant derived from the record, is four minutes early on it. `injection.arc` (no source) is worth 129 km a degree; the reading of `orbit` is the rest',
+    },
+  },
   'ussr/vostok/vostok-1': {
     apogee: {
       by: 18_000,
@@ -192,14 +235,7 @@ for (const f of orbiters) {
 
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
     // every derived or estimated input the coast reads, by where it is in the record: a new one must be added here
-    const inputs = [
-      ['orbit', 'radius'],
-      ['injection', 'arc'],
-      ['injection', 'anomaly'],
-      ['retro', 'on'],
-      ['retro', 'off'],
-      ['entry', 'area'],
-    ];
+    const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];
     const read = [
       ['orbit', 'radius'],
       ['orbit', 'perigee'],

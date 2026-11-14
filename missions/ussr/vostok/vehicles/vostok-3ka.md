@@ -90,6 +90,16 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | `GasBottles` | 14 bottles with their bands, cradles, valves and the main that joins them | |
 | `RetroEngine` | skirt, chamber, four steering nozzles; the tank, its pressure bottle and the turbopump inside; and `RetroEngine_Nozzle`, the chamber's nozzle as a node of its own: its origin is on the axis in the plane of the exit (station 0), which is its lowest point, so a flight hangs the braking burn's fire there | |
 
+## The descent's hardware as the simulator flies it
+
+[vostok-3ka.ts](vostok-3ka.ts) holds what every ship of the type came down on: the module's three parachutes, the seat's,
+the pilot's main canopy and his reserve, the two hatches, the entry body and its drag, and the limits a man was held to.
+The reserve canopy is the type's, put out by the automatic after the main whether the main had opened or not: "by the
+cyclogram" (Marinin, *Novosti Kosmonavtiki* 2011 No. 8, p. 7), as Gagarin's was (Baturin: at 3 km) and Titov's (its cover
+off at 1,000 m, his report, «Первый пилотируемый полёт», 2011, book 2, doc. 192, p. 198). It is not one flight's: every
+flight flies `reserveCanopy` with its own height, and the pilots of Vostoks 3 and 4 pinned it once the main was open
+(Kamanin, 16 August 1962), which those flights' data will give as their own.
+
 ## What the model gets wrong or leaves out
 
 - **The shape of the instrument module is scaled off one published cutaway and photographs.** Its

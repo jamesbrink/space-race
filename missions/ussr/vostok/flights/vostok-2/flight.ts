@@ -1,6 +1,12 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
+import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
+import { SITE1_SPECS, site1Vehicle } from '../../sites/site-1.parts.ts';
 import { SITE1 } from '../../sites/site-1.ts';
 import { vostokCabin, vostokLights, vostokSeat } from '../../vehicles/cabin.ts';
+import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
+import { MSK, orbital } from './orbital.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -69,9 +75,6 @@ const ANTENNAS: [number, number, number][] = [
 const SHIP = 9;
 /** A reading of the spacecraft's own sequence (0 to 1) on the whole vehicle's slider. */
 const later = (t: number) => (SHIP / (SHIP + 2)) * 0.5 + (1 - (SHIP / (SHIP + 2)) * 0.5) * t;
-
-/** Moscow time on 6 August (h) or, past midnight, 7 August (h + 24), as seconds from liftoff at 08:59:57. */
-const MSK = (h: number, m: number, s = 0) => (h - 8) * 3600 + (m - 59) * 60 + (s - 57);
 
 const parts: Part[] = [
   {
@@ -491,19 +494,25 @@ const launcherParts: Part[] = [
   ),
 ];
 
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
+const COMMANDS = vostokCommands({
+  parted: 'on the day the cable bundle held them until it burnt through in the entry, 10:07',
+  reserve: 'by itself after the main, as the type’s was',
+});
+
 const SPACECRAFT = ['DescentModule', 'InstrumentModule', 'RetroEngine', 'Antennas'];
 
-const vehicle: ModelDef = {
+/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's supports (`site1Vehicle`). */
+const built: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/ussr/vostok/vostok-2/vehicle.glb',
   scale: '38.36 m on the pad · 10.3 m across the rudders · to scale',
-  // The vehicle alone: Site 1 as it stood in August 1961 is not built for this flight yet, so it is shown in the gallery only.
   backdrop: 'studio',
   slider: ['On the pad', 'Taken apart'],
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
-  parts: [...launcherParts, ...parts],
+  parts: commanded([...launcherParts, ...parts], COMMANDS),
   // the cabin's two lamps (../../vehicles/cabin.ts)
   lights: vostokLights(),
   home: 'stack',
@@ -526,10 +535,33 @@ const vehicle: ModelDef = {
   ],
 };
 
-// The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). When he went aboard is
-// not in this flight's data and there is no launch site to board it at yet: the span is a placeholder (estimated).
-vehicle.seats = [vostokSeat([-3 * 3600, -3600])];
+// on the pad it hangs in the launch system's four supports, its tail below the deck; the gallery stands it on its nozzles
+const vehicle = site1Vehicle(built, BASE);
+
+// The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). Boarded on foot
+// through hatch No. 1 from 07:00, when the plan has him in the seat, until 07:40, when it has the hatch closing («График
+// подготовки космонавтов ... в день старта», 4 August 1961: «Первый пилотируемый полёт», 2011, book 2, doc 190, pp. 179-181).
+// Planned, not recorded: Titov's report says the day went to it.
+vehicle.seats = [vostokSeat([MSK(7, 0), MSK(7, 40)])];
 vehicle.cabin = vostokCabin();
+
+/** Titov, suited, on his way to the stair (crew/sk-1.parts.ts): the SK-1 as Gagarin's, the man in it not measured. */
+const crew = sk1Crew({
+  url: 'models/ussr/vostok/vostok-2/crew.glb',
+  scale: 'Gherman S. Titov · built 1.65 m, 1.72 m suited (his height not found) · to scale',
+  helmet: {
+    summary: 'White, part of the suit, lettered «СССР».',
+    detail:
+      'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings up over ' +
+      'the crown, as he wore it to the pad. The red "СССР" on the brow is the reports of the morning’s, as on Gagarin’s. At the ' +
+      'bus he and Nikolayev, both suited, knocked their helmets together for luck («„чокаемся“ гермошлемами»: Titov, 1973).',
+    facts: [
+      ['Shell', 'fixed to the suit'],
+      ['Visor', 'double, closes by itself on loss of pressure'],
+      ['Lettering', '"СССР", red (the reports of 6 August 1961)'],
+    ],
+  },
+});
 
 const PRAVDA = 'Pravda and Izvestiya, 7 to 12 August 1961 (JPL Astronautics Information Translation No. 24)';
 
@@ -542,17 +574,22 @@ export const flight: Flight = {
   callsign: 'Oryol (Орёл)',
   spacecraft: 'Vostok 3KA No. 4',
   launchVehicle: 'Vostok-K 8K72K, No. E103-17',
-  // 08:59:57 Moscow time (Zak, RussianSpaceWeb); every Soviet report, and Siddiqi's launch log, has 09:00, and Titov's
-  // report in the record file "6 hours 00 minutes Greenwich time". The three seconds move the Sun by a hundredth of a degree.
-  launch: '1961-08-06T05:59:57Z',
+  // 09:00:00 Moscow time: «Отрыв ракеты от стартового устройства произошел в 6 часов 00 минут 00 секунд по гринвичскому
+  // времени», the Central Aero Club's act for the record file («Первый пилотируемый полёт», 2011, book 2, doc 194, p. 221).
+  // RKK Energia's own page (its press release of 5 August 2011, archived 8 September 2011) and RussianSpaceWeb have 08:59:57
+  launch: '1961-08-06T06:00:00Z',
   launchSite: SITE1.name,
   site: SITE1,
+  // The launch site opens as the bus has stopped on the apron (06:50 by the plan's quarter hour for the drive and the
+  // farewell): this morning's crowd is not built, so the bus is what there is to see. Opened at liftoff, the deck is empty
+  opens: { at: MSK(6, 50), model: 'pad', view: 'bus' },
+  weather: WEATHER,
   crew: ['Gherman S. Titov'],
   summary:
     'The first day in space. Seventeen orbits in 25 hours from Tyuratam: the first meals, the first sleep and the first ' +
     'space sickness, the ship flown by hand for the first time, ending with the pilot ejecting and landing by parachute near Krasny Kut.',
   facts: [
-    { label: 'Liftoff', value: '6 August 1961, 05:59:57 UTC (09:00 Moscow time)' },
+    { label: 'Liftoff', value: '6 August 1961, 06:00:00 UTC (09:00 Moscow time)' },
     { label: 'Pilot', value: 'Gherman S. Titov, aged 25' },
     { label: 'Duration', value: '25 h 18 min to his landing; the ship 25 h 11 min' },
     { label: 'Orbits', value: '17 and a part' },
@@ -563,7 +600,7 @@ export const flight: Flight = {
   // Moscow times from the TASS reports of the day and Titov's own (Pravda, Izvestiya; his report to the State Commission of
   // 8 August as Zak and Pervushin quote it); the ascent's seconds were not found for this flight (docs/sources.md, README.md)
   timeline: [
-    { t: 0, event: 'Liftoff, 08:59:57 Moscow time (09:00 in every report of the day)' },
+    { t: 0, event: 'Liftoff, 09:00:00 Moscow time (the record file’s act)' },
     { t: MSK(9, 20), event: 'The tracking stations and Titov confirm the orbit; TASS is allowed to announce it' },
     { t: MSK(10, 0), event: 'In the Earth’s shadow Titov keys the lock and takes the ship by hand, the first to do so' },
     { t: MSK(10, 38), event: 'Over the Soviet Union on the second orbit: his report to Khrushchev; he films the Earth' },
@@ -778,6 +815,16 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'east of north, for an orbit inclined 64.93° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
+    ...SITE1_SPECS,
+    ...SK1_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Standing height, helmet and boots',
+      value: 1.725,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the figure’s, built to Gagarin’s 165 cm with a 2.6 cm heel and the helmet over the crown as his: Titov’s own height was not found',
+    },
   ],
   motors: [
     {
@@ -828,5 +875,15 @@ export const flight: Flight = {
       note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N). Worked by hand on this flight, on orbits 1 and 7',
     },
   ],
-  models: [vehicle],
+  // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
+  orbital,
+  flownNote:
+    'The ascent is the type’s, flown on Vostok 1’s instants (none of this flight’s was found), and like Vostok 1’s it falls short of the orbit reached. ' +
+    'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'The braking burn’s instant is derived (mission.md): Titov’s 09:57 is not possible on the documented orbit.',
+  // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
+  flies: vostokFlies(orbital),
+  models: [vehicle, pad, crew],
+  // the place round the pad as it stood that August: April's, less Site 51, burnt out three days before (sites/site1/model/1961-08.py)
+  surroundings: 'models/ussr/vostok/sites/site1/1961-08.glb',
 };

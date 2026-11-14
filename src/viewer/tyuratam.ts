@@ -7,7 +7,18 @@ import type { Day } from './day.ts';
 import { fbm2 } from './field';
 import { Flora } from './flora';
 import { Land, type LandSpec } from './land';
-import { STEPPE, STEPPE_CEL, STEPPE_CEL_GROUND, STEPPE_COVER, STEPPE_GROUND, STEPPE_PALETTE, STEPPE_TONE, steppeFlora } from './steppe.ts';
+import {
+  STEPPE,
+  STEPPE_COVER,
+  type SteppeSeason,
+  seasonOf,
+  steppeCel,
+  steppeCelGround,
+  steppeFlora,
+  steppeGround,
+  steppePalette,
+  steppeTone,
+} from './steppe.ts';
 import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
 import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms } from './tyuratamworks.ts';
 
@@ -754,7 +765,7 @@ const PAINT = /* glsl */ `
   }`;
 
 /** The ground, as land.ts takes it. */
-function landSpec(): LandSpec {
+function landSpec(season: SteppeSeason): LandSpec {
   return {
     near: 1024,
     texels: 1024,
@@ -780,9 +791,9 @@ function landSpec(): LandSpec {
       uKinds: { value: KINDS.texture },
       ...worksUniforms(),
     },
-    palette: STEPPE_PALETTE,
-    ground: STEPPE_GROUND,
-    cel: STEPPE_CEL_GROUND,
+    palette: steppePalette(season),
+    ground: steppeGround(season),
+    cel: steppeCelGround(season),
     // the scarp, the ramp and the plots are graded earth: smooth, not faceted
     smooth: true,
   };
@@ -812,7 +823,9 @@ const UNDER_PIT = -60;
 export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, day: Day, around?: SiteAround) {
   const air: Air = { scale: day.haze, base: groundY, ...(day.cumulus ? { clouds: day.cumulus } : {}), day };
   installAir(air);
-  const land = new Land(renderer, landSpec(), groundY, 0);
+  // the land in its season on the flight's day: the spring's flush, or the summer's straw (steppe.ts `seasonOf`)
+  const season = seasonOf(day.date);
+  const land = new Land(renderer, landSpec(season), groundY, 0);
   const flora = new Flora(steppeFlora(day), land);
   flora.group.position.y = groundY;
   // what stands round the site (the assembly building of Site 2): each on the highest of the land drawn under it, over
@@ -839,8 +852,8 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, da
     reach: 1500,
     horizon: FAR,
     /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green; and in the cel look. */
-    tone: STEPPE_TONE.clone(),
-    drawn: STEPPE_CEL.clone(),
+    tone: steppeTone(season),
+    drawn: steppeCel(season),
     tick: (dt: number) => {
       driftClouds(dt);
       land.tick(dt);

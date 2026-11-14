@@ -11,6 +11,7 @@ const FLIGHTS = {
   'usa/mercury/mr-3-freedom-7': ['Ignition', 'Engine cutoff'],
   'usa/mercury/mr-4-liberty-bell-7': ['Ignition', 'Engine cutoff'],
   'ussr/vostok/vostok-1': ['Ignition', 'Drop the strap-ons'],
+  'ussr/vostok/vostok-2': ['Ignition', 'Drop the strap-ons'],
 };
 const SIZES = [
   [1280, 800, false],

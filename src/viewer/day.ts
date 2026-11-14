@@ -45,6 +45,8 @@ export interface Day {
   apart: number;
   /** The stem of the day's baked map under public/globe/ (`<region>.<date>`), or null: the site has no region, or the day is the site's own default. */
   map: string | null;
+  /** The day itself, 'YYYY-MM-DD' (UTC): the land's season is read from it (steppe.ts `seasonOf`). */
+  date: string;
 }
 
 /**
@@ -158,6 +160,7 @@ export function dayOf(when: { site: SiteDef; launch: string; weather?: DayWeathe
     apart: Math.round((Date.parse(`${date}T00:00:00Z`) - FIRST) / DAY_MS),
     // (the day's own map only for a day of the flight's own: a site's default has none, and its cover stands everywhere)
     map: region && when.weather ? `${region}.${date}` : null,
+    date,
   };
 }
 
