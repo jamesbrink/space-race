@@ -828,6 +828,7 @@ const padParts: Part[] = [
     facts: [
       ['Rim', '880 by 550 ft (268 by 168 m), as measured in 1957'],
       ['Depth', 'about 43 m under the deck (in dispute)'],
+      ['Rim’s height', 'the deck’s level on the west and south, 8 m under it on the north (derived from SRTM)'],
       ['Pit base', '60 ft wide, between two trenches 60 ft long'],
       ['Sump', '75 by 110 ft, its face 10 ft high'],
       ['Lining', 'concrete under the platform, gunite on the west'],
@@ -1371,6 +1372,14 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'derived',
       note: 'under the deck: 80 ft and 60 ft, two CIA figures (PIC/JR-2/60), summed. Russian print gives 45 m and "almost 50"; the CIA’s own figure is redacted',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Steppe north of the tracks, below the deck',
+      value: 8,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'the pad stands on the brow of a scarp: SRTM (2000, a 30 m grid) reads 113 to 114 m along the tracks and 104 to 107 m from 65 m north of them, where the command bunker stands; the CIA has the track on "a man-made embankment", its height redacted. Good to some 2 m: sites/site-1.md, "The lie of the land"',
     },
     {
       group: 'Launch pad',

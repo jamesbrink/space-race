@@ -17,8 +17,9 @@ rocket", below). The place round the pad is built as well ("The place round the 
 the deck and in the pit is built: the rails in the deck, the two masts 110 ft tall, the small building,
 the flame deflector, the pit base with its two trenches and the sump, the road down the pit and the
 cut in its north rim ("The platform", "The flame pit", below). The launch system lets go: the four
-supports fall back as the rocket leaves, on the flight's clock ("Moving parts", below). Still to come:
-the land's relief; then the place for later Vostoks. Each section below says what of it is in the
+supports fall back as the rocket leaves, on the flight's clock ("Moving parts", below). The land has its
+relief: the pad on the brow of a scarp, the bunker and the buildings on the steppe 8 m under it ("The land",
+below). Still to come: the place for later Vostoks. Each section below says what of it is in the
 model, and the last lists what is left out.
 
 The place round the pad is built as it stood that April (`site1/model/1961-04.py`, `pnpm model:site-1`,
@@ -161,7 +162,7 @@ vertical: the numbers live in [site1/site.py](site1/site.py) (`TAIL_Z`, `TURN`) 
 | Outline | 265 by 184 m (OpenStreetMap way 172441917, `flame_trench`), placed in the frame | derived | the map agrees with the CIA's figures to a few per cent |
 | The cut in the north rim | a tongue some 15 m wide narrowing to 8 m, from the rim to 114 m north of the axis, the old tray and the new conduit leaving the rim beside its mouth | derived | PIC/JR-2/60 Figure 5 (1959), scaled: good to some five metres. Filled today: not on the map. Its depth is the pit's own side slope, 1 in 1 (estimated) |
 | Depth | 43 m under the deck | derived | above |
-| Section | a slot between retaining walls under the platform and beyond it, its floor 43 m down; outside it two terraces (the lower 30 m down) up to the rim, each break eased over 3 m either way; from the sump the floor rising east to the pit's point, 1 in 4.84 | estimated | HTA/JR-4/58: "excavated along two terrace levels"; PIC/JR-2/61 Figure 1, front elevation (terraces, retaining walls, pit base) |
+| Section | a slot between retaining walls under the platform and beyond it, its floor 43 m down; outside it two terraces (15 and 30 m under the deck's level) up to the rim, which lies at the land's height (0 to 8 m down: "The lie of the land"), each break eased over 3 m either way; from the sump the floor rising east to the pit's point, 1 in 5.6 | estimated | HTA/JR-4/58: "excavated along two terrace levels"; PIC/JR-2/61 Figure 1, front elevation (terraces, retaining walls, pit base) |
 | Retaining walls | 110 ft apart | documented (measured) | PIC/JR-2/61 Figure 1 dimensions 110 ft across the pit base, both trenches and both shelves. Their thickness is redacted (1 m: estimated) |
 | Pit base | 60 ft wide, from the foot of the structure 60 ft east to the sump | documented (measured) | PIC/JR-2/60: what had been called the deflector plate "now appears to be part of the pit base construction. It is 60 feet wide"; Figure 1 |
 | Trenches | two, concrete, 60 ft long, "separated by a distance of at least 60 feet", from "the base of the launching structure to the two end compartments" of the sump | documented (measured) | PIC/JR-2/60; they had been "drainage sumps" in 1958 |
@@ -288,7 +289,7 @@ windows dark. Positions are metres east and north of the rocket's axis.
 | Its height | 9 m | estimated | SRTM (2000) reads 114 m at its top against 105 to 107 m round it; a 30 m grid rounds a top off |
 | Cable conduit | built between 1957 and 1959: out of the pit's edge, two turns, to the structure "about 60 feet below the top of the launching platform", "supported by several small vertical pillars" | documented | PIC/JR-2/60 |
 | Its line | (8, 84), (8, 67), (-5, 58), then south to the structure | derived | Figure 5; today's concrete channel on the same slope follows it within a few metres |
-| Its section; where it arrives | 2.0 by 2.2 m; its middle arrives 12.5 m under the deck, not the CIA's 18.3 m (60 ft) | estimated | the diameter is redacted; the pit model's terraces (estimated) stand higher there than the CIA's level |
+| Its section; where it arrives | 2.0 by 2.2 m; it leaves the land at the north rim 10 m under the deck's level and its middle arrives 12.5 m under the deck, not the CIA's 18.3 m (60 ft) | estimated | the diameter is redacted; the pit model's terraces (estimated) stand higher there than the CIA's level |
 | Old cable tray | straight, "unsupported", "some 200 feet across the open pit" from the north rim to the platform | documented | HTA/JR-4/58; PIC/JR-2/60; Figure 5 |
 | Its section | a tube 0.9 m across | estimated | redacted |
 | Floodlight tower | 60 ft high, "approximately 400 feet west of the servicing tower" | documented (measured) | HTA/JR-4/58 (as a collimation tower, in line with the pad on 090°/270°); PIC/JR-2/61 ("probably supports floodlights") |
@@ -316,7 +317,7 @@ the sky. The 3 m is inside what the map's outline is good for.
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
-| The ground | a river terrace of the Syr Darya, flat: level within 400 m of the pad, a swell of half a metre beyond | estimated | SRTM reads within a few metres everywhere round the site, below what its 30 m grid can resolve |
+| The ground | the pad on the brow of a scarp: level with the tracks south of them, some 8 m down north of them, some 5.5 m down east of the pit ("The lie of the land", below); beyond 400 m a swell of half a metre | derived (the levels, from SRTM); estimated (the brow's line, the fall's breadth and section, the swell) | below |
 | Cover | open steppe: clay and sand, bare between low clumps of wormwood and saltwort, green for a few weeks after the snow | estimated | descriptions and photographs of the place in spring; the film of the morning shows pale, bare ground round the pad |
 | Colours | grey-buff clay, silvery grey-green wormwood, a short spring green | estimated | read off photographs, then cleaned as the look asks |
 | Plants | wormwood clumps 0.25 to 0.5 m, saltwort 0.15 to 0.3 m, wide apart | estimated | as the cover |
@@ -333,27 +334,55 @@ The other lines on today's map round the site (the railway's loop to the north, 
 and beyond, the roads and buildings that are not on the CIA's drawing of 1959) are not drawn: when
 each was built is not known to us, and much of it is later than 1961.
 
-**The land is flat, and the real ground was not.** SRTM reads the platform and the embankment the
-tracks came in on some 6 to 8 m above the steppe to the north (113 m on the embankment west of the
-pad against 104 to 107 m by the bunker), and the CIA says as much: the track "approaches the
-launching structure on a man-made embankment" (its height redacted), and the bunker's top was a
-little below the platform's level. The land here is drawn level with the deck, so the bunker and
-the buildings north of the tracks stand that much too high against the pad. Recorded, not yet
-modelled: it is the land's to put right, and everything on it would follow.
+### The lie of the land
 
-Looked at again when the deck and the pit were built (SRTM on a 30 m grid from 240 m west to 30 m
-west of the axis and from 180 m south to 270 m north), and left. What it reads: 113 to 115 m all
-along the centre track; 114 to 117 m at 150 to 180 m south of it, so the ground south of the tracks
-is at the tracks' level and there is no bank on that side; 110 to 112 m at 30 m north, 104 to 109 m
-from 90 m north, 103 to 108 m at 240 to 270 m north. So it is not an embankment with two sides but a
-fall of 8 to 10 m to the north, most of it within 100 m of the centre track, and the pit's north rim,
-the conduit, the bunker and everything north of the tracks stand on the lower ground. (The grid also
-has today's large buildings in it, 118 to 125 m, north-west and south-west of the pad: it is the
-ground of 2000, not of 1961.) To build it, the land's height would need that fall, the same in
-JavaScript and GLSL, and every module of the place and the pit's own rim, which all stand at one level
-(`GROUND`), would need the ground's height where each stands. What is missing to do it honestly: the
-bank's line and slope in 1961 (the CIA's height for the embankment is redacted in every copy read,
-and no drawing gives its section), and a level for the bunker's roof against the deck.
+The land is one function of place, written three times and held together by a test: [site1/relief.py](site1/relief.py)
+(what the place's models are built on), and [src/viewer/tyuratamrelief.ts](../../../../src/viewer/tyuratamrelief.ts)
+in JavaScript (what the walker and the plants stand on) and GLSL (the land's mesh). `tests/tyuratam.test.mjs` holds the
+JavaScript to the Python's own figures at 486 points, to a tenth of a millimetre. Heights are metres from the level of
+the tracks and the platform's deck.
+
+| Part of it | In the model | Confidence | What it rests on |
+| --- | --- | --- | --- |
+| The embankment: the tracks, the apron, the platform's landward side, everything south of the tracks to the fence | level, at the deck's level (0) | documented (that the track "approaches the launching structure on a man-made embankment": HTA/JR-4/58; its height redacted); derived (that the ground south of it is at its level) | SRTM 1 arc-second, read on its own grid (30.9 m north to south, 21.5 m east to west) for 560 m round the pad: 113 to 114 m along the centre track from 450 m west to the pad; 112 to 117 m from 60 to 180 m south |
+| The fall north of the tracks | from the brow down 8 m in 40 m (1 in 3.3 at its steepest), a smooth S | derived (8 m); estimated (40 m, the S) | SRTM: 104 to 107 m from 65 m north of the tracks out to 400 m north, between 100 m west and 170 m east (the bunker's and the storage bunker's own mounds stand 2 to 3 m over that). The CIA: "the north side of the rail embankment near the Probable Liquid Propellant Handling Shed" (PIC/JR-2/60); Figure 5 draws the embankment's sides in hachures along the tracks |
+| The brow's line | 5 to 7 m north of the northernmost track's bed; north of the propellant shed (which stood on the embankment: the spur ran into it); across the pit to its south rim at 166 m east; then south-east | estimated | where the tracks, the shed and the positions on the pit's south rim have to stand. SRTM cannot place it to better than a cell: at 34 m north it reads 107 to 110 m west of the shed, part way down |
+| North-west | 12 m down past 450 m west, the fall there spent over 120 m | derived | SRTM: 99 to 103 m north-west of the fence's corner, and a gentler fall (112, 108, 106, 105, 102 m at 3, 34, 65, 96 and 127 m north, 475 m west) |
+| East of the pit | 5.5 m down, the fall there spent over 100 m; the pit's point comes up to it | derived | SRTM: 107 to 109 m from the pit's point east to the fence. HTA/JR-4/58 has the road enter the pit "from the raised eastern terminus" |
+| The road's ramp | the road from the storage bunker comes up the fall on a bank of its own, 1 in 14 over 110 m, level for 5 m either side of its middle | documented (that there was one: a pipeline "runs under the road embankment", PIC/JR-2/60); estimated (its grade, length and section) | a road cannot climb 1 in 3 |
+| The pump house's plot | level, 4.15 m down, cut into the fall | estimated | a building stands on level ground; where the pump house is (from Figure 5, good to ten metres) is on the fall as modelled |
+| The pit's rim | at the land's height all the way round: 0 on the west and south, 3 to 8 m down along the north, 5.5 m down at the point | derived | the same function. The pit's sides go down from the rim to terraces that are level, so a side that starts lower is shorter. The floor's climb east of the sump is 1 in 5.6, to meet the land at the point (it was 1 in 4.8 to a rim at the deck's level) |
+| Beyond 900 m | the fall dies away, and by 2.5 km the ground is back at the tracks' level | estimated | nothing was read out there: it is so that the land meets the globe's surface without a step |
+
+What stands on the land is set down on it when the place is built (`place.settle`): a building, a bunker, a tower
+or a position goes down as it is, by the land's height at the middle of its plan; the fences, their light poles
+and the spoil heap go down vertex by vertex, so posts stay upright and the wire follows the ground. The tracks stay
+on the embankment. The cable conduit is built from the pit's rim as it lies, 8 m down: it leaves the land some 10 m
+under the deck's level and falls only 2 m to the structure.
+
+| Thing | Its ground, m from the deck's level |
+| --- | --- |
+| Command bunker, storage bunker, check-out shop, work shop, support building, the positions d, e and f on the north rim | -8.0 |
+| Pump house | -4.15 (its plot) |
+| Propellant shed, cascade, floodlight tower, security building, positions a, b, g and h | 0 |
+| Position c | -7.7 |
+| Position i, east of the pit's point | -5.8 |
+| Spoil heap | -5.5 to -7.2, its top 9 m over that: some 3 m over the deck's level |
+| Guard towers | south-west 0, south 0, south-east -2.7; north-west -12.0, north -8.0, north-east -5.5 |
+
+**What SRTM is, and is not.** The Shuttle Radar Topography Mission's 1 arc-second heights (tile N45E063, February 2000),
+above the EGM96 geoid. Each figure is a mean over some 30 m and is good to several metres; it is the ground of 2000,
+with that year's buildings in it (118 to 133 m where large ones stand north-west and south-east of the pad: left
+out of every figure above), and the pit itself reads 89 m at its deepest, half its depth, because a cell is as wide
+as its floor. Between 1961 and 2000 ground was moved here. The levels above are therefore good to some 2 m, and the
+brow's line to a cell.
+
+**Not built.** South of the fence SRTM has the ground rising about 3 m in 100 (116 m at 180 m south, 121 m at
+300 m, 125 m at 500 m): the model is level there. The ditches, the drainage basin and the "possible fuel burn-off
+pit" of the CIA's Figure 5 are not cut into the land: the land's mesh is half a metre a cell beside the walker and
+4 m a cell 300 m off, and a ditch 2 m wide would come and go with distance, which is worse than its absence. The
+embankment's south side, which Figure 5 hachures west of where the spurs part, is not built: SRTM has the ground
+south of the track at the track's level.
 
 ## Moving parts
 
@@ -556,7 +585,8 @@ rocket can leave the erector out by its date.
   sixty steps are not modelled (their plan is not published, and the land is not cut for them), nor
   are the ramps down into the storage bunker's bays: its gates stand at grade.
 - The cable conduit meets the structure some 6 m higher than the CIA's "60 feet below the top of the
-  launching platform", because the pit model's terraces (estimated) stand higher there; and the
+  launching platform", because the pit model's terraces (estimated) stand higher there, and since it leaves
+  the land at the north rim, 8 m down, it runs nearly level; and the
   cut in the pit's north rim that it and the old tray came out beside is the pit's own 1 in 1 slope
   between two edges scaled off Figure 5: its floor, and whatever lay in it, are not recorded.
 - The observation positions on the pit's south side stand where Figure 5 has them, 10 to 30 m
@@ -566,14 +596,19 @@ rocket can leave the erector out by its date.
   no leaf is modelled, and whether they stood open is not recorded. The wire is drawn only at the
   finest level of detail. The fence's east-west extent is today's map's, 27 m more than the CIA's.
 - On the CIA's drawing and not built: the ditches round the pit and the spoil, the drainage basin
-  and the "possible fuel burn-off pit" to the west (cuts in the land), the buried water lines and
+  and the "possible fuel burn-off pit" to the west (cuts in the land, narrower than the land's mesh can
+  hold at a distance: "The lie of the land"), the buried water lines and
   cables, the two support buildings south of the tracks (a gable-roofed building and a prefabricated
   store: their sizes are redacted and neither is on today's map), the building outside the fence,
   the vehicles by the check-out shop and the ten rail cars on the spurs (which moved).
 - The spoil heap is a smooth mound of one tone: its gullies and the ditches round it are not drawn,
   and the steppe's cover does not grow on it.
-- The land is level with the deck, where the real ground north of the tracks lay 6 to 8 m lower
-  ("The land", above): the bunker and the buildings stand too high against the pad by that much.
+- The land's relief is three levels and the falls between them, from a radar survey of 2000 on a 30 m grid
+  ("The lie of the land"): good to some 2 m in height and 30 m in plan. The brow's line, the fall's breadth and
+  section, the road's ramp and the pump house's plot are ours. The rise south of the fence is not built, nor the
+  embankment's south side west of the spurs. A building on the fall stands on its own level plot or is set down
+  by the land's height at its middle, so the ground meets its walls a little high on one side and low on the
+  other (under 0.3 m everywhere but the pump house, which has a plot).
 - The tracks are paint on the land, flat, beyond 160 m (the centre track) and 100 m (the others)
   from the axis; nearer, real rails stand on painted sleepers and ballast, and at those distances
   their heads come down to the paint over 10 m, which no rail did. The centre track is moved 3 m

@@ -64,6 +64,8 @@ def away() -> None:
     swing("UpperCableMast", Turned(cable_mast.AZ).out, cable_mast.FALL)
     swing("Erector_Boom", (-1.0, 0.0), 90.0 + math.degrees(erector.LEAN))
     bpy.data.objects["Erector"].location.x -= erector.ROLL[0]
+    for name in ("TankCar_Oxygen", "TankCar_Kerosene"):
+        bpy.data.objects[name].location.x -= 180.0
 
 
 def build() -> str:
