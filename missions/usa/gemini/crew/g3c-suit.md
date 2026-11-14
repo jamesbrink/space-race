@@ -8,9 +8,8 @@ garment module of its own: it is not the Mercury suit recoloured. It is parametr
 (`Wearer`, `wear`), so a later flight names its own man; the G4C that followed is a different
 cover layer on the same suit and would be a module beside this one.
 
-**The two men are modelled and are not yet in their seats.** The crew station as it is laid out
-([gemini-spacecraft.md](../vehicles/gemini-spacecraft.md), "Crew station") does not hold either
-man: see "Seated, and why they are not aboard" below.
+**Both men are aboard Gemini-Titan 3**, seated as for the launch: see "Seated" below. The crew
+station is fitted round them ([gemini-spacecraft.md](../vehicles/gemini-spacecraft.md), "Crew station").
 
 **Confidence**: *documented* is a published figure or statement; *derived* is computed from
 documented ones; *estimated* was read off photographs, or chosen to look right.
@@ -45,8 +44,8 @@ Full entries in [docs/sources.md](../../../../docs/sources.md), "Gemini".
 
 | | In the model | Confidence | Basis |
 | --- | --- | --- | --- |
-| Grissom's stature | 170.2 cm (5 ft 7 in) | **estimated** | as commonly given. No primary record of it was found: not NASA's biography, not the press kit's crew pages (which give neither man's height or weight), not the Gemini conferences' papers. [The Mercury suit](../../mercury/crew/mark-iv-suit.md) uses the same figure for him |
-| Young's stature | 175.3 cm (5 ft 9 in) | **estimated** | "5 feet 9 inches; 165 pounds" is how a search of NASA's biographical data sheet for him (as Kennedy Space Center's site carried it) returned it. The sheet itself could not be opened (the archives that hold it refused the request), so it is not counted as read |
+| Grissom's stature | 170.2 cm (5 ft 7 in) | **estimated** | as commonly given. No primary record of it was found. Looked for and not there: the press kit's crew pages (release 65-81: neither man's height or weight); NASA's biographical data sheet for him (Johnson Space Center's, opened: none); the NASA History Office's "Mercury Seven Astronaut Biographies", which gives Shepard's, Glenn's and Schirra's heights and weights and not his; the Gemini Midprogram Conference (SP-121) and Summary Conference (SP-138), whose medical papers give no man's stature (SP-138's Table 16-VIII has only weight lost: on Gemini III, 3 lb the command pilot and 3.5 lb the pilot). [The Mercury suit](../../mercury/crew/mark-iv-suit.md) uses the same figure for him |
+| Young's stature | 175.3 cm (5 ft 9 in) | **estimated** | "5 feet 9 inches; 165 pounds" is how a search of NASA's biographical data sheet for him returned it. The sheet itself could not be opened (two addresses for it on nasa.gov answered "not found"), so it is not counted as read; the conference papers and the press kit have nothing, as above |
 | Build | Grissom a little narrower than figurelib's man at his height, Young a little slighter | estimated | P |
 | Faces | the shared head, bare, hair cut short | estimated | nobody's likeness, as on the other flights' figures |
 
@@ -87,40 +86,47 @@ across) and is **estimated** unless it says otherwise.
 - **No life vest.** The Smithsonian lists one with the suit. None is to be seen on either man
   in the seat (S65-22665, S65-20605, S65-24719, S65-24721) or suiting up. None is built.
 
-## Seated, and why they are not aboard
+## Seated
 
 `build_seated` carries the figure to a seat by its joints (figurelib's seated pose, with each
 arm turned at the shoulder as well as the elbow) and returns where the seat's own restraint has
 to run over him: the reel's two straps over the shoulders to the harness's quick disconnects,
-the lap belt across the lap. [gemini_cabin.py](../vehicles/gemini_cabin.py) lays them, and puts
+the lap belt over the pelvis. [gemini_cabin.py](../vehicles/gemini_cabin.py) lays them, and puts
 each seat's node at the man's own eyes, when a flight's script says the men are aboard
 (`Fit.crew`; Gemini-Titan 3's `CREW_ABOARD`).
 
-It says they are not. With the seats where the crew station has them (laid out by eye in the
-pass before this one: no drawing of the pressure vessel was found), sitting on the cushions with
-his back to the backboard:
+**The posture is the launch's**, which is an ejection's: "during seat ejection, the pilot's feet
+must be in place" in the stirrups, where each "shoe heel will lock in place" on a short platform
+(SEDR 300, pp. 3-12, 3-13), and from the pad to 15,000 ft the seats were the way out. So each man
+sits with his heels on the stirrups' platforms and his knees raised: the seat's pan is only some
+13 in above the stirrups' platforms and a thigh is longer than that.
 
-| | Grissom | Young |
-| --- | --- | --- |
-| Helmet, under the hatch's inner skin | 1.7 in through it | 2.3 in through it |
-| Outboard arm, inside the vessel's side | 0.7 in through it | 0.9 in through it |
-| Feet, over the vessel's floor, in the posture built (thighs raised 104°, knees bent 112°) | 8.5 in through it at the toes, forward of the stirrups, where the floor rises with the cone | 9.3 in |
+| | Grissom | Young | |
+| --- | --- | --- | --- |
+| Thigh, raised from the plane of his back | 113° | 116° | **estimated**: solved so that his heels come 0.2 in over the platforms; Young's leg is longer and goes to the same stirrups |
+| Knee, bent | 120° | 125° | the same |
+| Ankle, toes drawn up | 26° | 30° | **estimated**: so that the soles lie along the vessel's floor, which rises with the cone under the toes |
+| Knees drawn in | 2° | 2° | **estimated** |
+| Left hand | on the abort handle, elbow at his side | on his left thigh | S65-23489 has Grissom's hand on the handle, below his elbow (a simulator, in a silver suit); Young's hands were not found in a photograph: **estimated** |
+| Right hand | on his right thigh, toward his lap | on his right thigh | S65-22665 has Grissom's right hand in his lap |
+| Visor | down | down | S65-22665, S65-20605, S65-24719, S65-24721 |
 
-(the vehicle's model script prints the figures as they then stand: run it in Blender to see
-them, since `tools/build-model.mjs` shows only its last line). No posture cures it: of
-160 tried (thighs raised 100° to 128°, knees bent 110° to 132°, toes drawn up, knees together),
-none brought the feet inside, and the best left them 1.8 in through with the seats moved 2 in
-toward the middle as well. Lowering the seats to clear the helmets puts the feet further
-through. Two things in the cabin are also out of a seated man's reach as they stand: the
-attitude hand controller is beside his elbow, not before his hand, and the abort handle is at
-the height of his shoulder (S65-23489 has the command pilot's hand on it below his elbow).
-
-So the vessel, the seats' place, the centre console and those two controls have to be laid
-out again round the two men, and that is a pass of its own. Until then the seats are empty:
-a man through a hatch is worse than no man.
+The crew station is fitted round the two men so seated, and what room each has is in
+[gemini-spacecraft.md](../vehicles/gemini-spacecraft.md), "Crew station": 0.9 in between
+Grissom's helmet and the hatch, 0.6 in for Young. Two things about the figure bear on that fit
+and are its own. Its seat does not flatten as a sitting man's does, so its sitting height is 0.85
+in more than a man's of its stature, and the cabin sets it that far into the seat's cushion. And
+its head is upright against the headrest, where every photograph of the day has the man looking
+down.
 
 ## What the model gets wrong or leaves out
 
+- **The visor is one clear pane**, as the photographs have it, with the face, the earphones'
+  pads and the microphones behind it; the viewer draws it with the sky on it, as it does every
+  visor.
+- **The lap belt is not seen across the lap.** With the thighs raised as the stirrups have them
+  the belt lies in the fold of the hips; the cabin builds it from the bucket's sides to that
+  fold and no further, and its buckle not at all.
 - **The gas hoses are not built.** In the seat each connector carried a hose in a white
   corrugated cover (S65-22665). Where they ran in the cabin was not found.
 - **The harness's loops round the thighs are left off** (he is sitting on them), and so is the

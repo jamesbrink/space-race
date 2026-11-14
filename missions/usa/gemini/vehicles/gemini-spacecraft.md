@@ -45,7 +45,7 @@ kept in the repository.
 | Heat shield's crown | Z94.40 | estimated | a station of Figure 2-4 that the figure does not name. A cap of that sphere 90 in across is 7.21 in deep, which puts its rim at Z101.61 |
 | Equipment section / retrograde section | divided at Z68.44 | documented | TS, Figure 1 (p. 5). Figure 2-4's Z66.74 and Z70.00 are the rings either side of it |
 | Mating section | Z13.44 to Z15.38 | documented | TS, Figure 1 |
-| Large pressure bulkhead; the hatch openings' aft sills | Z108.00 | estimated | a station of Figure 2-4 |
+| The hatch openings' aft sills | Z108.00 | estimated | a station of Figure 2-4, marked at the top of the cabin's aft end. The large pressure bulkhead is put 3 in aft of it ("Crew station") |
 | Hatches' forward edges | Z151.62 | documented station; that it is the hatches' forward edge estimated | TS, Figure 1 (p. 5), which draws the line there. In S65-13244 the trough crosses the forward sill still several inches deep, which a sill at this station gives |
 | Hatches' aft edges | Z106.0 | estimated | TS, Figure 1 draws the hatch from the heat shield's ring |
 | Hatch, inboard edge | 5.7 in from the top centreline: the beam between the hatches is 11.4 in wide | estimated | S65-13244, scaled on the trough's width |
@@ -87,36 +87,82 @@ Built by [gemini_cabin.py](gemini_cabin.py), only where an inside is built (full
 3's, from SEDR 300's Figure 3-5 sheets 1 and 2, both captioned "(S/C 3)". A point is (inches toward the top, inches
 to the crew's right, station).
 
-**The pressure vessel is laid out, not drawn.** Nothing read gives its dimensions, a seat's place in it or a panel's.
-It is laid out so that what is documented fits, and these are the fits it was made to keep: a seat 22 in wide and 54
-in tall, canted 12° outboard and 8° forward on rails on the large bulkhead, with the top of a helmet a third of an
-inch inside the hatch's inner skin and its stirrups half an inch off the floor; the panels at the sizes Figure 3-5
-scales to, their lower edge clear of the knees; a seated man's eyes 8° off the ship's axis from the middle of his
-window, so that he looks along the trough. Every figure in this table that is not marked documented follows from
-that, and is `estimated`.
+**The station is fitted round the two men, not drawn.** Nothing read gives the pressure vessel's dimensions, a
+seat's place in it or a panel's. What is documented is the outside (the cone, 90.00 in across to 38.66 in over 70.53
+in), the seat (its size and its cant), who sat in it, and what an ejection asks of him: "during seat ejection, the
+pilot's feet must be in place" in the stirrups (SEDR 300, p. 3-13), so that is how each man rode the launch. A man of
+known stature in his suit ([g3c-suit.md](../crew/g3c-suit.md)), sitting so on that seat under that cone, leaves very
+little to choose, and the station is laid out by what he leaves. The fit, with both men aboard:
+
+| | Grissom (170.2 cm) | Young (175.3 cm) |
+| --- | --- | --- |
+| Helmet, under the hatch's inner skin | 0.94 in | 0.61 in |
+| The least room anywhere between him and the vessel's sides and bilge (it is at the toe of his outboard boot, Z143) | 1.36 in | 1.61 in |
+| Boots, over the floor's flat | 4.6 in | 5.0 in |
+| His inboard arm, from the ship's middle | 1.8 in | 1.8 in |
+| Knees: the top of his thigh, against the panels' lower edge 3 in above the axis at Z141.5 | 1.2 in above the axis at Z135; the front of the knee at Z141.6, 0.9 in below the axis | 1.6 in at Z135; Z142, 0.1 in below |
+| Heels, over the stirrups' platforms | 0.2 in | 0.2 in |
+| Eyes (toward the top, off the middle, station) | 20.7, 18.1, Z128.6 | 21.3, 18.2, Z128.6 |
+
+(`gemini_cabin.seat` prints the first three at every build, aboard or not.) Each figure below that is not marked
+documented is set by that fit or read from the picture named, and is `estimated`. Four things in the sources bear on
+where the seats are, and the fit was held to them:
+
+- **SEDR 300's Figure 3-1**, lower view, looks aft at both seats inside the 90 in circle (8.94 pixels to the inch
+  at 200 dpi). It has the seats' tops 29.6 in above the axis and 20 in off the middle, the buckets' inboard edges
+  2 in off the middle and their outboard edges 21, and the vessel's sides flat, leaning 24° from upright, 38 in off
+  the middle at the hinge and 14 at a floor 32 in below the axis. As built: tops 31.3 in above and 20.4 off;
+  buckets 1.4 and 21.3; sides leaning 20° (the figure's upper view has 18°), 36.7 in off the middle at the hinge
+  and 15.3 at a floor 30 in below. **One misfit is recorded:** the figure draws the stirrups' feet 20 in below the
+  axis and they are built 26.3 in below it. The seat is 54 in tall and its top cannot go higher under the hatch, so
+  the figure's seat is some 6 in shorter than the Smithsonian's two; the figure is "typical" and carries no scale.
+- **S65-13244** looks down into this spacecraft on 6 January 1965 with a man in each seat. Its scale along the beam
+  between the hatches runs from 25 pixels to the inch at the openings' aft sills to 9 at their forward ends (on a
+  copy 1100 pixels wide) and is linear up the picture, which fixes stations along it: the face of the headrest's
+  pad stands 8 to 11 in forward of the aft sill (Z114 to Z119 by two ways of reading it), the seats' white shrouds
+  reach back to the sill, and the men's heads are in the aft third of the openings. As built the pad's face is at
+  Z119.6. The pass before this one had it at Z124.3, and the helmets through the hatch because the cone is 1.7 in
+  smaller there.
+- **The Smithsonian's side view of a seat** (A19690023000) has the bucket standing at about 100° to the back, not
+  square to it, measured on the picture (good to 5°). With the back canted 8°20' forward that leaves the pan very
+  nearly along the ship's axis, and the stirrups 3 in higher in the ship than a square bucket would have them.
+- **The same collection's front views** show that the lightening holes are in the sides of the back, which is a
+  tray 5 to 6 in deep with the backboard and the parachute in it, and that the box channel up the back is where
+  the rocket catapult stands behind. So a seat is 4.8 in deep behind the plane of its tray's front, not the 7.4 in
+  the pass before gave it (rails with holes behind the back), and stands that much further aft.
 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
-| Seats' cant | 12° outboard, 8° forward | documented | SEDR 300, p. 3-3 |
-| Seat | 22 in wide, 54 in tall | documented | Smithsonian A19710058000 ("22 x 55 in", a spare that was fitted in spacecraft 3) and A19690023001 (a training seat, 24 by 54 by 27 in) |
-| Seat's form | a back with a box channel up it and turned-up sides; a five-sided shroud over the head with a fitting at its peak, white; rails behind with lightening holes; a bucket with arm sides rounded down to the front; a guard before the shins; two stirrups of tube; arm loops of 1/2 in tube; the D-ring on the bucket's front | by photograph and figure | the Smithsonian's photographs of both seats; SEDR 300, Figure 3-2 and pp. 3-5 to 3-13; the white shrouds are S65-13244's |
-| Seat: pan to the shroud's top | 40.5 in | estimated | the Smithsonian's front view of A19690023001, scaled on its 54 in. The research for this pass read 36 in; 40.5 puts the shroud just over a seated man's helmet, which is where S65-13244 has it |
-| Seat: pan to the stirrups' foot | 10 in | estimated | the same photograph scales to 14; 10 is what the floor allows, with the seat where the helmet allows |
-| Seat's reference point (the pan's top at the back's front) | 12 in below the ship's axis, 13.2 in off the middle, Z117.0 | estimated | the fits above |
-| Seated eyes | 33.5 in up the back from the pan and 6.5 in forward of it: (19.6, ±19.9, Z128.1) | estimated | a seated eye height of 31 in on a 2.5 in egress kit. The crew's own measures are not in a primary source |
-| Vessel: flat sides | 28.4 in from the middle at Z108, 26.8 at Z131, 23.5 at Z150.8, 17 at Z160.2 | estimated | the fits above |
-| Vessel: floor | 29 in below the axis aft, rising with the cone forward; its lower corners let in below 17 in for the landing gear's wells | estimated | the cone, less 2.6 in |
-| Large and small pressure bulkheads | Z108.00 and Z160.20 | estimated | stations of Figure 2-4; the hatches end at Z151.62 and the vessel runs on under the fixed roof for the feet |
+| Seats' cant | 12° outboard, 8°20' forward | documented | SEDR 300, p. 3-3 ("12° outboard and 8° forward"); Technical Summary, p. 209 ("8 degrees 20 min forward"). Forward is toward the nose: the cant is "to provide required elevation" for an ejection off the pad, where the nose is up |
+| Seat | 22 in wide, 54 in tall, 27 in deep | documented | Smithsonian A19710058000 ("22 x 55 in", a spare that was fitted in spacecraft 3) and A19690023001 (a training seat, 24 by 54 by 27 in). As built 22 wide and 54.7 from the stirrups' feet to the head of the catapult's fitting. **Its depth is a misfit:** 28.9 in from the back of its tray to the front of the stirrups' platforms, 1.9 in more than the 27. The bucket's 19 in is the pass before's and was not derived again; a shallower bucket would bring the heels aft, where the cone leaves more room, so the fit errs on the tight side |
+| Seat's form | a tray for a back, beaded, with a box channel up it and lightening holes down its sides; a five-sided shroud over its head with the catapult's fitting at the peak, white; the rocket catapult behind the channel; tee rails on the bulkhead; a bucket with arm sides rounded down to the front; a guard before the shins; two stirrups, each a frame of tube with a short platform and an edge up its outboard side; arm loops of 1/2 in tube; the D-ring on the bucket's front | by photograph and figure | the Smithsonian's photographs of both seats; SEDR 300, Figure 3-2 and pp. 3-5 to 3-13; the white shrouds are S65-13244's |
+| Seat: pan to the shroud's top | 40.5 in | estimated | the Smithsonian's front view of A19690023001, scaled on its 54 in with the nearer parts allowed for |
+| Seat: pan to the stirrups' foot, down the bucket's front | 14.5 in | estimated | the same photograph scales to 14 to 15.5. With the bucket raked it makes the seat's 54 in |
+| Seat: the bucket's rake | 10° (the bucket at 100° to the back), about a line 8 in forward under the man's seat | estimated | the Smithsonian's side view, above |
+| Seat: stirrups | 4.9 in either side of the seat's middle; platforms 3 in deep | estimated | where the feet of a man sitting straight in it come; the Smithsonian's front view has them at about 4.5 |
+| Large pressure bulkhead | Z105.0, square to the ship's axis | estimated | at the head of the ring the heat shield is bolted to (Z104.94). SEDR 300's Figure 2-5 shows it directly behind the heat shield's rim. The pass before had it at Z108.00, which is only a station marked at the top of the cabin's aft end in Figure 2-4 and is kept for the hatch openings' aft sills. Derived from the fit: it is what puts the headrests where S65-13244 has them |
+| Seat's reference point (the pan's top, in the plane of the tray's front) | 9.9 in below the ship's axis, 11.6 in off the middle, Z111.45 | estimated | **Station**: as far aft as the bulkhead lets the canted seat stand, the catapult's foot 0.4 in off it. **Off the middle**: Figure 3-1, above (the buckets all but meet). **Height**: so that a man of 175.3 cm on it has 0.6 in between his helmet and the hatch's inner skin, which is as high as the seat can go; S65-22665 and S65-20605 show Grissom's helmet close under the sill's plane and level with the seat's top fitting, and no nearer measure could be taken from them |
+| Where a man sits | his back 3.2 in forward of the reference point, his seat 1.75 in above the pan | estimated | the backboard's cushion, and an egress kit some 2.5 in thick under him. The figure's seat does not flatten as a sitting man's does: it puts the top of his head 36.0 in above what he sits on where a man of 170.2 cm has about 35.2 (sitting height 0.525 of stature), so he is set 0.85 in into the kit and the kit's cushion is drawn that much thinner |
+| Empty seat's eye point | 33.5 in up the back from the pan and 12.4 in forward of it: (20.8, ±18.1, Z128.6) | derived | Grissom's own eyes, as seated |
+| Vessel: flat sides | leaning 20° from upright; at the height of a seat's pan 24.0 in from the middle at the large bulkhead and 22.2 at the small one | estimated | the lean from Figure 3-1 (24° in one view, 18° in the other); the distance so that the seats' backs (22.4 in off the middle at that height) clear by an inch or more. Forward the cone closes in and less and less of the side is left |
+| Vessel: floor and bilge | flat 30 in below the axis aft, 15.3 in either side; forward it rises with the cone and narrows to 8 in either side by Z140; between it and the sides the vessel follows the cone 2.0 in inside its mould line | estimated | Figure 3-1 for the aft end. The 2.0 in is what the men's boots leave: 0.4 in more than the frame under the shingles as built. Technical Summary Figure 2 names equipment doors under the cabin forward of the heat shield; what room they have under the forward floor is not established |
+| Small pressure bulkhead | Z160.20 | estimated | a station of Figure 2-4; the hatches end at Z151.62 and the vessel runs on under the fixed roof |
 | Each man's panel | 14.5 in along its lower edge and 12.7 in to the top of its tab; its inboard edge upright and its lower edge falling 12.6° outboard, as drawn; turned 14° toward him | size derived from the figure; the turn estimated | Figure 3-5 sheet 1 at 47 pixels to the inch, the scale its 5.05 in velocity indicator and 3.38 in keyboard give (SEDR VIII, pp. 8-164, 8-172, 8-252) |
 | Centre panel | 11.2 in wide, 18.5 in tall | derived | the same scale. The research for this pass had about 15 in wide; by the keyboard it is 11.2 |
 | Pedestal | 12.5 in long, tapering from 11.2 to 5.8 in | derived | the same |
-| Panels' place | lower edge 3 in above the axis at Z141.5, leaning back 30° | estimated | under the forward sill, as S65-13244 shows them; square to the eye |
+| Panels' place | lower edge 3 in above the axis at Z141.5, leaning back 30° | estimated | under the forward sill, as S65-13244 shows them; square to the eye. A seated man's knees come just under and aft of that edge |
 | What is on each panel | as listed in the module, instrument by instrument | documented | Figure 3-5 sheets 1 and 2; GIV 3.1.2.5 and 3.1.2.9.1 (no clock on the command pilot's panel; the re-entry control switches on the pilot's; ACME logic on the pedestal) |
 | Instruments' sizes | velocity indicator 3.25 by 5.05 in; readout 3.26 by 5.01; keyboard 3.38 square; clock 2 1/4 square | documented | SEDR VIII, pp. 8-164, 8-172, 8-218, 8-252 |
 | Instruments' graduations | accelerometer -6 to 16 g; altimeter one turn in ten; rate of descent 0 to 70 ft/s | estimated | read off the figure, which is too small to read a scale from |
-| Overhead, left and right switch and circuit breaker panels | 9.8 by 11.4 in; 12.5 by 8 in | derived from the figure; their places estimated | Figure 3-5 sheet 2; S65-13244 for the side panels |
-| Abort handle, water management panel, drinking water, stowage, floodlights, hatch curtains | where Figure 3-1 and the text say, to the nearest hand's breadth | documented that they are there; places estimated | SEDR 300, Figure 3-1 and pp. 2-19, 3-20, 3-26 to 3-31 |
-| The three-knob panel between the men | one panel, on the bulkhead between them at shoulder height, with the three valves of Figure 3-5 sheet 2 (condensate, water tank, waste) | **derived**: that SEDR 300's two panels are one | The manual names a three-knob panel twice. Figure 3-1 draws a "drinking control panel" between the seats' heads, and p. 3-26 has drinking controlled "by means of a 3-knob panel located between the pilots at approximately shoulder level". Figure 3-5 sheet 2 ("S/C 3") draws a "water management panel" with three valves, and p. 6-30 has "a three knob panel ... for managing, replenishing, and dumping waste water overboard", without saying where it is. No figure shows two. The model takes them for the same panel: Figure 3-5's three valves, standing where Figure 3-1 puts the drinking panel. If they were two, the drinking panel's own knobs are not built |
+| Overhead, left and right switch and circuit breaker panels | 9.8 by 11.4 in; 12.5 by 8 in | derived from the figure; their places estimated | Figure 3-5 sheet 2; S65-13244 for the side panels, which stand on the sides forward of the knees (Z139.5 to Z152, 20.3 in off the middle), where a knee in the stirrup posture leaves room |
+| Abort handle | on the left side at Z134, its knob 1 in below the axis and 22.1 in off the middle | documented that it is there; place estimated | SEDR 300, Figure 3-1 (below the left switch panel); S65-23489 has the command pilot's hand on it below his elbow. It is put where his left hand comes to it with his elbow at his side |
+| Attitude hand controller | on a console 3.6 in wide between the seats' buckets, Z127.3, its grip from 4 in below the axis to 1.8 above | documented that it is between the seats; place estimated | SEDR 300, Figure 3-1 (at the pedestal's foot). The console is as wide as the two buckets leave |
+| Manoeuvre hand controller | under the command pilot's panel, 7.1 in from the panel's outboard corner | documented that it is under that panel; **place contradicts the figure** | Figure 3-1 draws it under the panel about 4 in from its outboard end. That is where the command pilot's left knee is with his feet in the stirrups, so it is built 3 in further inboard, between his knees. The figure is a perspective sketch and "typical"; if it is right to the inch, the knee and the controller's housing touch |
+| Secondary oxygen shutoffs | a quadrant and lever on each side beside the seat's bucket, 6 in below the axis at Z126 | documented that there is one each side; place estimated | SEDR 300, Figure 3-1 ("ECS control, secondary O2", outboard of each seat); Figure 3-5 sheet 2 draws each beside its switch panel |
+| Drinking water | a container 5.8 in across and 16.8 in tall, upright on the large bulkhead between the seats' backs (2.2 to 19 in above the axis) | documented: 16 lb, "forward of the aft pressure bulkhead, between the seats" (p. 3-26); form and place estimated | the container's form was not found. Between the backs, above where the two seats all but meet, is where 16 lb of water has room |
+| Stowage, floodlights, hatch curtains | a box on the centreline over the water; one on each side outboard of the seats' backs, where Figure 3-1 draws the waste stowage; lights and curtains as before | documented that they are there; places estimated | SEDR 300, Figure 3-1 and pp. 2-19, 3-20, 3-26 to 3-31 |
+| Experiments on the hatches | each 20° round from the top, its aft end at Z134.5 | documented which hatch; place estimated | forward of a seated man's helmet, which is within an inch of the hatch from Z120 to Z134, and inboard of the window |
+| The three-knob panel between the men | one panel, on the front of the water container between them at shoulder height (13.4 to 17 in above the axis; Figure 3-1 has it at about 17), with the three valves of Figure 3-5 sheet 2 (condensate, water tank, waste) | **derived**: that SEDR 300's two panels are one | The manual names a three-knob panel twice. Figure 3-1 draws a "drinking control panel" between the seats' heads, and p. 3-26 has drinking controlled "by means of a 3-knob panel located between the pilots at approximately shoulder level". Figure 3-5 sheet 2 ("S/C 3") draws a "water management panel" with three valves, and p. 6-30 has "a three knob panel ... for managing, replenishing, and dumping waste water overboard", without saying where it is. No figure shows two. The model takes them for the same panel: Figure 3-5's three valves, standing where Figure 3-1 puts the drinking panel. If they were two, the drinking panel's own knobs are not built |
 
 **What the viewer is promised** is what the Mercury cabin promises
 ([mercury-cabin.md](../../mercury/vehicles/mercury-cabin.md)): `Seat_CommandPilot` and `Seat_Pilot`, empties at the
@@ -131,14 +177,22 @@ No flight deck reads them yet: nothing of the flight is simulated, so every need
 
 **The men** are a suit module's seated figures ([g3c-suit.md](../crew/g3c-suit.md)), built into a seat by the
 flight's script through `Fit.crew` (`gemini_cabin.seat`): with a man aboard the seat's restraint is laid over him
-(the reel's two straps over his shoulders to his harness's quick disconnects, the lap belt across his lap) and the
-seat's node is at his own eyes. Aboard or not, each build measures the room the cabin has for him and prints it.
-**As laid out above it has not enough**: Grissom's helmet is 1.7 in and Young's 2.3 in through the hatch's inner
-skin, each man's outboard arm is 0.7 to 0.9 in through the vessel's side, and both men's feet are through the floor
-forward of the stirrups, where it rises with the cone (8 to 9 in at the toes as posed, about 2 in at the best posture
-found); no posture brings them in, and lowering the seats for the helmets makes the feet worse. The attitude hand controller is beside
-a seated man's elbow and the abort handle at his shoulder. The vessel, the seats' place, the centre console and those
-two controls want laying out again round the two men; until then Gemini-Titan 3 leaves them out.
+(the reel's two straps over his shoulders to his harness's quick disconnects; the lap belt from the bucket's sides
+round his hips into the fold his raised thighs make, where the rest of it and its buckle are out of sight and not
+built) and the seat's node is at his own eyes. Aboard or not, each build measures the room the cabin has for him and
+prints it.
+
+**What each man sees and reaches**, seated: the middle of his window is 15 in before his eyes and within 2° of
+straight ahead (Grissom 0.9° above, Young 1.4° below); the window's forward, sunk edge is 7° to 9° below straight
+ahead, so the lowest line he sees through it runs out along the trough's floor, which falls 8° toward the nose. The
+command pilot's left hand is on the abort handle with his elbow at his side; the attitude controller is 16 in from his
+right shoulder, inboard of his right knee; the D-ring is between his thighs at the bucket's front; the panels'
+lower edge is over his knees and the centre panel an arm's length away. The pilot has the same, mirrored, without
+the abort handle.
+
+**Not fitted:** the legs stretched forward off the stirrups, as in orbit. Tried once (thighs 100° from the back,
+knees bent 48°) the heels come 2 to 3.6 in through the bilge at Z151, so the forward floor as laid out is the
+stirrup posture's and nothing more.
 
 ## Propulsion
 
@@ -171,17 +225,18 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
 
 ## What the model gets wrong or leaves out
 
-- **The pressure vessel is laid out, not drawn** ("Crew station", above). Its flat sides, its
-  floor and where the seats and panels stand in it are what the documented things allow, not what
-  McDonnell built; its double skins are single, its stiffeners are on the large bulkhead only, and
-  the equipment bays between it and the cone are empty but for the experiment's water tank.
-- **The seats are empty.** Grissom and Young are modelled in their G3C suits
-  ([g3c-suit.md](../crew/g3c-suit.md)) and are not in them: the crew station as laid out is too
-  small for either ("What the viewer is promised", above). The seat is the Smithsonian's two in form and size, with none of
-  what was packed on it (the parachute, the ballute, the raft, the survival kit, the drogue mortar,
-  the seat-man separator): the backboard is a cushion and the egress kit a pad. The harness lies
-  on the empty seat as two shoulder straps and a lap belt. Its stirrups hang 10 in below the pan,
-  not the 14 in the photograph scales to.
+- **The pressure vessel is fitted, not drawn** ("Crew station", above). Its flat sides, its
+  floor and where the seats and panels stand in it are what two seated men, the documented seat
+  and the cone allow, not what McDonnell built; its double skins are single, its stiffeners are
+  on the large bulkhead only, that bulkhead is flat and square to the axis where the real one's
+  form is not known, and the equipment bays between it and the cone are empty but for the
+  experiment's water tank.
+- **The seat** is the Smithsonian's two in form and size, with little of what was packed on it:
+  the parachute and the raft are one pad behind the backboard, the egress kit a thin pad (thinner
+  than the fit implies: "Crew station"), and there is no ballute, survival kit, drogue mortar,
+  seat-man separator, leg strap or elbow restraint. Its tee rails stand off the square bulkhead
+  on plain struts. The lap belt is built only as far as the fold of each hip, where a seated
+  man's raised thighs cover the rest and its buckle; the gas hoses to the suits are not built.
 - **The panels are the drawing's in layout and scale, and estimated in every graduation.** The
   figure is too small to read a scale or most legends from, so a face has the range its instrument
   is known to have and the legends that can be read. The event timer, the velocity indicator and

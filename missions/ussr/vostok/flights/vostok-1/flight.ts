@@ -943,9 +943,10 @@ vehicle.cabin = {
   periscope: VZOR,
 };
 
-// The cosmonaut on the platform's deck, on the hatch side, between where the bus stopped on the tracks and the launch
-// system, facing the rocket. Where he stood is not recorded to the metre: this place is ours (estimated).
-const COSMONAUT_AT: [number, number, number] = [-14, 0, 4];
+// The cosmonaut on the deck's west edge, on his way from where the bus stopped south of the tracks to the foot of the
+// erector's stair (which is on its south side: the film), facing the rocket. The film and a colour photograph have him
+// walking this way along the wagon's south side; where he is stood on it is ours (estimated).
+const COSMONAUT_AT: [number, number, number] = [-19.5, 0, 6.5];
 const COSMONAUT_FACING = Math.atan2(-COSMONAUT_AT[0], -COSMONAUT_AT[2]);
 /** A direction to look at him from: in front of him, turned `aside` radians, `lift` up. */
 const facingCosmonaut = (lift: number, aside = 0.2): [number, number, number] => [
@@ -1116,29 +1117,76 @@ const LIFT_STOPS: [name: string, up: number][] = [
 ];
 
 /**
- * The pad's slider is the morning of 12 April 1961, from the pilot in his seat to the rocket leaving. These are the
- * positions on it (0 to 1) at which things happen; the motions below are timed against them. The times are the
- * transcript's, to the minute; how long each motion took is nowhere recorded, and how much of the slider it has is ours.
+ * The pad's slider is the morning of 12 April 1961, from the bus coming up the road to the rocket leaving. Its first
+ * tenth is the pilot's arrival (06:49 to 07:10: the bus, the report, the walk to the stair, the lift); the rest runs
+ * from the pilot in his seat to four seconds after liftoff. These are the positions on it (0 to 1) at which things
+ * happen; the hardware's motions below are timed against them. The times from 07:10 on are the transcript's, to the
+ * minute; how long each motion took is nowhere recorded, and how much of the slider it has is ours.
  */
+const ARRIVAL = 0.1;
+/** A reading of the slider as it was when it began at 07:10, on the slider that begins with the bus. */
+const seated = (t: number) => ARRIVAL + (1 - ARRIVAL) * t;
 const T = {
-  cars: 0.02, // 08:08: "the railway cars are leaving now"
-  platforms: 0.04, // 08:15: "they are lowering the service platforms"
-  erector: 0.1, // 08:35: "now they will draw the erector off"
-  boomAway: 0.3, // 08:37: "the erector's boom has come away normally"
-  trusses: 0.45, // 08:40: "now we are drawing the trusses off"
-  boomDown: 0.55, // the boom is down on the wagon (not recorded)
-  cleared: 0.75, // the erector is off the pad and both trusses are down (not recorded)
-  mast: 0.8, // 09:06: "the cable mast is away"
-  mastOff: 0.86, // it has swung back (not recorded: ten seconds are given it)
-  liftoff: 0.9, // 09:06:59.7
+  bus: 0.03, // 06:50: the bus stops on the apron
+  walk: 0.055, // 06:58: the report is made; the pilot is walked to the erector (not timed)
+  wave: 0.07, // 07:01: on the stair's landing he turns and waves (not timed)
+  aloft: 0.09, // 07:08: the lift has gone up and the send-off has broken up (not timed)
+  seat: ARRIVAL, // 07:10: the transcript begins, the pilot in his seat
+  cars: seated(0.02), // 08:08: "the railway cars are leaving now"
+  platforms: seated(0.04), // 08:15: "they are lowering the service platforms"
+  erector: seated(0.1), // 08:35: "now they will draw the erector off"
+  boomAway: seated(0.3), // 08:37: "the erector's boom has come away normally"
+  trusses: seated(0.45), // 08:40: "now we are drawing the trusses off"
+  boomDown: seated(0.55), // the boom is down on the wagon (not recorded)
+  cleared: seated(0.75), // the erector is off the pad and both trusses are down (not recorded)
+  mast: seated(0.8), // 09:06: "the cable mast is away"
+  mastOff: seated(0.86), // it has swung back (not recorded: ten seconds are given it)
+  liftoff: seated(0.9), // 09:06:59.7
 };
 const TRANSCRIPT =
   'the record of the exchanges between the cosmonaut and the control points, sent to the Central Committee on 25 April 1961 (Izvestiya TsK KPSS, 1991 No. 5)';
 const NOT_TIMED = 'not recorded: placed by us';
+const FILM = 'the film of the morning («Первый рейс к звёздам», ЦСДФ 1961)';
 const MORNING: Keyframe[] = [
   {
-    at: MSK(7, 10),
+    at: MSK(6, 49),
     slider: 0,
+    event: 'The bus comes up the concrete road from the south-west',
+    confidence: 'estimated',
+    source: `${FILM}, 43:08: the bus on the road. The minute is ours: it reached the pad at about 06:50`,
+  },
+  {
+    at: MSK(6, 50),
+    slider: T.bus,
+    event: '06:50: the bus stops west of the rocket; the pilot steps down and reports to the State Commission',
+    confidence: 'documented',
+    source:
+      'Kamanin’s diary has the bus at the pad at 8:50 by the range’s clock, which ran two hours ahead of Moscow’s; Golovanov, Korolev: fakty i mify, p. 645, for the report',
+  },
+  {
+    at: MSK(6, 58),
+    slider: T.walk,
+    event: 'Korolev, Moskalenko and Kamanin walk him to the erector',
+    confidence: 'estimated',
+    source: `${FILM}, 43:42 to 44:03, and a colour photograph of the party walking. The minute is not recorded`,
+  },
+  {
+    at: MSK(7, 1),
+    slider: T.wave,
+    event: 'Fifteen steps up, he turns on the landing and waves',
+    confidence: 'estimated',
+    source: `${FILM}, 44:05, and a photograph; Ivanovsky for the fifteen steps. The minute is not recorded`,
+  },
+  {
+    at: MSK(7, 8),
+    slider: T.aloft,
+    event: 'The lift has gone up; the send-off breaks up',
+    confidence: 'estimated',
+    source: NOT_TIMED,
+  },
+  {
+    at: MSK(7, 10),
+    slider: T.seat,
     event: 'The pilot is in his seat: the first call on the radio',
     confidence: 'documented',
     source: `${TRANSCRIPT}: it begins at 07:10`,
@@ -1212,6 +1260,45 @@ const MORNING: Keyframe[] = [
   },
 ];
 
+/**
+ * The people of the morning stand in groups, each a node of the pad, and are there when the record has them there:
+ * a group that leaves is put out of sight between one frame and the next, 90 m under where it stood, and one that
+ * comes is built there and brought up. (They do not walk away: the viewer walks one figure, the one being walked as.)
+ * Seconds from launch, on the flight's clock.
+ */
+const OUT_OF_SIGHT = 90;
+const leaves = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, -OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
+const comes = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
+/**
+ * A road vehicle driven on the clock (road_vehicles.py): `path` is where its rear axle goes, metres ahead and to the
+ * right of where the drive starts. A vehicle driven more than once is a nest of nodes, a drive to each, and its
+ * wheels are named after the node.
+ */
+const drives = (
+  node: string,
+  from: number,
+  to: number,
+  path: [number, number][],
+  wheelbase: number,
+  wheelRadius: number,
+  reverse = false,
+): Move => ({
+  kind: 'drive',
+  node,
+  from,
+  to,
+  path,
+  pivot: [0, wheelRadius, 0],
+  forward: [1, 0],
+  reverse,
+  wheelRadius,
+  wheelbase,
+  wheels: `${node}_Wheel_`,
+  steered: `${node}_SteerWheel_`,
+  axle: 'z',
+});
+const BUS = { wheelbase: 4.19, wheel: 0.525 };
+
 const padParts: Part[] = [
   {
     node: 'Platform',
@@ -1266,22 +1353,53 @@ const padParts: Part[] = [
   {
     node: 'Masts',
     group: 'Site 1',
-    name: 'Corner masts',
-    summary: 'Two masts 110 ft tall at opposite corners, which the CIA measured and could not explain.',
+    name: 'Corner mast',
+    summary: 'A mast 110 ft tall that the CIA measured and could not explain. Its twin had gone by this morning.',
     detail:
-      'One stands at the platform’s north-east corner, on a lip of concrete built out over the pit to carry it, the other ' +
-      'at the south-west, on the abutment: the same distance from the rocket, on one line through it. The CIA’s ' +
-      'interpreters measured them at 110 ft in 1957, with an array at the top at least 5 ft wide and 10 ft high, and took ' +
+      'It stands at the platform’s north-east corner, on a lip built out over the pit to carry it. The CIA’s interpreters ' +
+      'measured two in 1957, this one and another at the south-west corner on the abutment, the same distance from the ' +
+      'rocket on one line through it, each 110 ft with an array at the top at least 5 ft wide and 10 ft high. They took ' +
       'them for collimation towers; by March 1961 they had talked themselves out of that and out of floodlights too, and ' +
-      'wrote that their function could not be determined. A photograph of the launch has one beside the rocket: a ' +
-      'slender lattice with a head near its top and a rod above it. They are drawn that way, the head as a bank of ' +
-      'floodlights under a lightning rod. The height, the array’s size and where they stand are the CIA’s; the lattice, ' +
-      'the lamps, the rod and the ladder are estimated.',
+      'wrote that their function could not be determined. The photographs of 12 April 1961 show only this one. Three ' +
+      'taken from the south have it at the right of the rocket and clear sky where the other would stand as far to the ' +
+      'left, so the south-west mast had been taken down since the U-2 last saw it in July 1959, and it is not built ' +
+      'for this day. What they show of this one is a slender cross-braced lattice, a railed head with lamps at its ' +
+      'corners, the lattice going on above the head to a rod. A photograph of a later launch has raking struts at its ' +
+      'foot and a ring of floodlights two fifths of the way up: the struts are built, as far as the lip holds them, and ' +
+      'the ring is not. The height, the array’s size and where it stands are the CIA’s; the lattice’s section, the ' +
+      'lamps’ number and aim, the rod and the ladder are estimated.',
     facts: [
       ['Height', '110 ft (33.5 m)'],
       ['Array', 'at least 5 ft wide and 10 ft high'],
-      ['Where', 'north-east and south-west corners, 29.4 m from the axis (scaled off the CIA’s plan)'],
+      ['Where', 'the north-east corner, 29.4 m from the axis (scaled off the CIA’s plan)'],
+      ['Its twin', 'at the south-west corner in 1957 and July 1959; absent on 12 April 1961 (photographs)'],
+      ['Head', 'railed, some 2.9 m over its lamps (off a photograph of the day)'],
       ['What for', 'not established; drawn as floodlights (estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'DeckFittings',
+    group: 'Site 1',
+    name: 'On the deck',
+    summary: 'A wire railing at the edge, two cabinets, a loudspeaker: what a photograph taken through the fence shows.',
+    detail:
+      'Nothing published describes the deck’s furniture, so this is one photograph’s worth: taken from beyond the south ' +
+      'fence on the morning of the flight, the rocket venting and the erector gone. It shows a low railing of posts and ' +
+      'wires along the platform’s edge, running to the south-east corner and on west past the south-west one; behind it, ' +
+      'near the south-west corner, two dark cabinets some 2.2 m high, one 2.7 m broad and one 1.1 m with a horn on its ' +
+      'side. The horn is taken for a loudspeaker: "the loudspeakers announce the operational time", Ivanovsky wrote of ' +
+      'that morning. What the cabinets held is not recorded, and how far in from the edge they stood cannot be seen from ' +
+      'the south. The film of the morning, looking down from the erector, shows the concrete laid in rectangular slabs ' +
+      'with the rails flush in it; the slabs’ size here, 6 m by 3 m, is estimated. The CIA’s plans, from the photographs ' +
+      'of 1957 and 1959, have a fence 15 ft in from the edge instead, which is built too: whether both stood in 1961 is ' +
+      'not known.',
+    facts: [
+      ['Railing', 'about 1.1 m high, at the edge (off a photograph of 12 April 1961)'],
+      ['Cabinets', '2.7 m and 1.1 m broad, 2.2 m high, 20 m and 17 m west of the axis (measured, to half a metre)'],
+      ['Loudspeaker', 'a horn on the narrower cabinet (that it was one is our reading)'],
+      ['Slabs', 'rectangular, the rails flush (film); 6 m by 3 m here (estimated)'],
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -1384,16 +1502,22 @@ const padParts: Part[] = [
       'long" with two tanks of 50 cubic metres, which on 12 April "took its position seven metres from the rocket". The ' +
       'CIA’s interpreters, looking down on such cars in 1957, took them for passenger coaches 80 ft long. At 08:08 ' +
       'Kamanin told Gagarin "the railway cars are leaving now": a rail tractor took them a kilometre off. Those ' +
-      'lengths, the eight axles and that hour are the record, and that they were green. Which track each stood on is ' +
-      'not: the oxygen is put to the north, where the shed over the spur sheltered the oxygen and nitrogen toppers, and ' +
-      'the kerosene to the south. One of each is built, where a drawing has three oxygen fillers end to end; their ' +
-      'height and every fitting are estimated. The hydrogen peroxide filler, the toppers under the shed, the transport ' +
-      'tanks behind them and the tractor are not built.',
+      'lengths, the eight axles and that hour are the record. A drawing has them green. A colour photograph of the ' +
+      'morning, of the party walking to the stair at about seven, has one that is not: on the track north of the ' +
+      'erector’s wagon stands a pale grey car, its side in panels, its roof a low arch with a rib at every joint, a ' +
+      'doorway at floor level with two men in it, and in black stencil «ОГНЕОПАСНО» (flammable) and the usual warning ' +
+      'against humping, under a number read as 64. The car on the north track is built so. Which filler it was is not ' +
+      'settled: the oxygen is put to the north, where the shed over the spur sheltered the oxygen and nitrogen toppers, ' +
+      'though "flammable" would sooner be said of kerosene; and the photograph has the grey car abreast of the wagon, ' +
+      'some 20 m further west than the filler stands here beside the rocket. One of each is built, where a drawing has ' +
+      'three oxygen fillers end to end; their height and every fitting but the photograph’s are estimated. The hydrogen ' +
+      'peroxide filler, the toppers under the shed, the transport tanks behind them and the tractor are not built.',
     facts: [
       ['Oxygen filler', '8G117: about 25 m over its couplers, 8 axles'],
       ['Kerosene filler', '8G119: 24 m, 8 axles, two tanks of 50 m³'],
       ['Breadth', '3.09 m (today’s 8G0119)'],
       ['From the rocket', '7 m (a memoir, of the kerosene filler)'],
+      ['Colour', 'one pale grey with black stencils (a colour photograph of the morning); the other green (a drawing)'],
       ['Left', '08:08 Moscow time'],
     ],
     explode: [0, 0, 0],
@@ -1442,13 +1566,20 @@ const padParts: Part[] = [
       'it to the upper platform with the man who would bolt his hatch. At 08:35 Kamanin told him the erector would be ' +
       'drawn off, and at 08:37 that its boom had come away; from the ground it was seen to ride slowly away along the ' +
       'rails, lean over little by little, lay itself down on its wagon and be drawn off by a locomotive. Those words and ' +
-      'times are the record. Its shape is not: no drawing was found, and what is here is drawn from two photographs, with ' +
-      'a boom that leans in over the launch system’s support, which is our way of standing it there and may not be how ' +
-      'it stood. The rams, the cradles the rocket lay in and the locomotive are not modelled.',
+      'times are the record. Its shape is not: no drawing was found, and what is here is drawn from photographs and the ' +
+      'film of the morning, with a boom that leans in over the launch system’s support, which is our way of standing it ' +
+      'there and may not be how it stood. The film and the photograph of him waving both look at the stair from the ' +
+      'south, the boom’s pierced girder at their left and the stair rising to the right, so the stair and the lift are ' +
+      'on the wagon’s south side. They show the lift as a tall car of ribbed sheet with two door leaves, standing at ' +
+      'its lowest stop in a booth of plate, and a gate of perforated plate at the landing; the car’s doors are built ' +
+      'open so that it can be walked into. A colour photograph of the party walking to the stair shows a red domed ' +
+      'cover and a horn loudspeaker on a red box on a low dark green rail machine beside them, with men standing at a ' +
+      'rail: it is taken for this wagon, and they are built on its deck. The rams, the cradles the rocket lay in and ' +
+      'the locomotive are not modelled.',
     facts: [
       ['Kind', 'hydraulic, on rails (8U213, TsKBTM)'],
       ['Mass', '87.5 t'],
-      ['To the lift', '15 steps'],
+      ['To the lift', '15 steps, on the south side (film; a photograph)'],
       ['Upper platform', '26.1 m over the deck (estimated)'],
       ['Lift', '"two or three minutes" to the top'],
       ['Drawn off', '08:35 to 08:37 Moscow time'],
@@ -1506,6 +1637,8 @@ const padParts: Part[] = [
         },
       ]),
     ],
+    // two of its crew at the wagon's rail (a colour photograph), until thirty minutes' readiness (the roster)
+    clocked: [leaves('Erector_Crew', MSK(8, 37))],
   },
   {
     node: 'ServiceTrusses',
@@ -1538,8 +1671,8 @@ const padParts: Part[] = [
     moves: [
       // lowered about their hinges on the ring (documented that they were, and when they began; how long each took and
       // which went first are ours)
-      outward('ServiceTruss_North', TRUSS_NORTH, TRUSS_FALL, T.trusses, T.cleared - 0.08),
-      outward('ServiceTruss_South', TRUSS_SOUTH, TRUSS_FALL, T.trusses + 0.06, T.cleared),
+      outward('ServiceTruss_North', TRUSS_NORTH, TRUSS_FALL, T.trusses, seated(0.67)),
+      outward('ServiceTruss_South', TRUSS_SOUTH, TRUSS_FALL, seated(0.51), T.cleared),
     ],
   },
   {
@@ -1572,6 +1705,304 @@ const padParts: Part[] = [
     // back the whole way at 09:06 (the minute documented; the angle and the ten seconds estimated)
     moves: [outward('UpperCableMast', MAST_AT, MAST_FALL, T.mast, T.mastOff)],
   },
+  {
+    node: 'Bus',
+    group: 'The morning of 12 April',
+    name: 'The cosmonauts’ bus',
+    summary: 'A cream and blue LAZ-695B brought the pilot, his back-up and eleven others to the foot of the rocket.',
+    detail:
+      'The film of the morning shows it twice: coming along the concrete road, and from the erector’s head a moment after ' +
+      'it has stopped, on the concrete west of the platform, facing the rocket, its right side a metre from the rail of a ' +
+      'track with another track beyond. It is a LAZ-695B, known by the wide air scoop at the back of its roof: 9.19 m ' +
+      'long, 2.5 m broad, 2.98 m high, cream above with a blue band under the windows and a blue skirt, curtains drawn ' +
+      'at its side windows. Thirteen came in it: Gagarin and Titov in their orange suits, two more cosmonauts standing ' +
+      'in leather jackets, doctors, cameramen. The cameramen jumped down first; a doctor in a white coat handed the ' +
+      'pilot down. Titov stayed aboard in his suit, in case. The cosmonauts and their doctor were to leave at thirty ' +
+      'minutes’ readiness for the measuring point, by the launch roster: here the bus backs out at 08:37 and goes. Its ' +
+      'type and colours are the film’s and its size the type’s; where it stood along the track is good to some eight ' +
+      'metres; its fittings, and that it was the bus that took them off, are estimated. This one was fitted out inside ' +
+      'with armchairs and a table, which are not drawn.',
+    facts: [
+      ['Type', 'LAZ-695B (the film: the roof’s air scoop)'],
+      ['Size', '9.19 by 2.50 by 2.98 m, wheelbase 4.19 m (the type’s figures)'],
+      ['Colours', 'cream over blue (the film; "white and blue", Golovanov)'],
+      ['Came', 'about 06:50 Moscow time (Kamanin’s diary, on the range’s clock)'],
+      ['Stood', 'a metre south of the south track, facing the rocket (the film)'],
+      ['Left', '08:37, thirty minutes’ readiness (the roster; that it was the bus is estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [
+      // in along the road and onto the apron; at thirty minutes' readiness, back out into the road round the pit, then away west
+      {
+        ...drives(
+          'Bus_In',
+          MSK(6, 49),
+          MSK(6, 50),
+          [
+            [60, 0],
+            [120, -0.45],
+            [144.4, -0.75],
+            [155, -1.75],
+            [164, -4.35],
+            [171, -7.15],
+            [174.61, -8.15],
+            [178.61, -8.15],
+          ],
+          BUS.wheelbase,
+          BUS.wheel,
+        ),
+      },
+      drives(
+        'Bus_Back',
+        MSK(8, 37),
+        MSK(8, 37, 45),
+        [
+          [-10.6, 0],
+          [-20.61, 2.3],
+          [-28.11, 6.3],
+          [-31.81, 12.8],
+          [-32.61, 20.8],
+          [-32.61, 26.8],
+        ],
+        BUS.wheelbase,
+        BUS.wheel,
+        true,
+      ),
+      drives(
+        'Bus_Away',
+        MSK(8, 37, 50),
+        MSK(8, 40),
+        [
+          [12, 0],
+          [16, -2],
+          [18.2, -7],
+          [18.7, -16],
+          [17.8, -216],
+          [17.0, -396],
+          [16.8, -428],
+        ],
+        BUS.wheelbase,
+        BUS.wheel,
+      ),
+    ],
+  },
+  {
+    node: 'Saloon',
+    group: 'The morning of 12 April',
+    name: 'Saloon car',
+    summary: 'A dark saloon stood a few metres off the bus’s door. What it was cannot be made out.',
+    detail:
+      'In the film’s view from the erector a dark car stands beside the bus, a few metres off its right side, at the ' +
+      'corner of a low building. Seen from above it is a three-box saloon; no more can be told. It is taken for a GAZ-21 ' +
+      'Volga, the likeliest of the three kinds it could be: a Pobeda is a fastback and a ZIM a metre longer, and Korolev ' +
+      'was driven in a Volga. Its size is that type’s; its black, and that it left at the hour’s readiness with most of ' +
+      'the pad’s people, are estimated.',
+    facts: [
+      ['Seen', 'beside the bus, from above (the film, 43:26)'],
+      ['Taken for', 'a GAZ-21 Volga: 4.83 by 1.80 by 1.62 m (estimated)'],
+      ['Left', '08:05, one hour’s readiness (estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [
+      drives(
+        'Saloon_Car',
+        MSK(8, 5),
+        MSK(8, 7),
+        [
+          [0.96, 0.08],
+          [2.32, 0.52],
+          [3.89, 1.61],
+          [5.5, 5.5],
+          [3.89, 9.39],
+          [-2.98, 14.57],
+          [-16.35, 21.0],
+          [-25.75, 28.0],
+          [-42.94, 45.33],
+          [-176.37, 180.6],
+          [-317.15, 322.65],
+          [-345.3, 351.08],
+        ],
+        2.7,
+        0.357,
+      ),
+    ],
+  },
+  {
+    node: 'Truck',
+    group: 'The morning of 12 April',
+    name: 'Box-bodied truck',
+    summary: 'A dark truck with a workshop body stood north of the tracks, its tail to the rocket.',
+    detail:
+      'The same frame of the film has a dark truck with a box body beyond the second track, a metre off its rail, its ' +
+      'tail toward the camera with white figures painted on it that cannot be read. It has a bonnet and two axles. The ' +
+      'launch roster of 10 April lists a driver for "GAZ-63 No. 34-55-23", and it is built as that: a GAZ-63 carrying a ' +
+      'workshop body, in army green, with the roster’s number on its tail. That the roster’s truck is the film’s is not ' +
+      'known. It is driven off at the hour’s readiness, west between the tracks and out by the road: estimated.',
+    facts: [
+      ['Seen', 'north of the tracks, from above (the film, 43:26)'],
+      ['Taken for', 'a GAZ-63 with a box body: 5.5 m chassis, 3.3 m wheelbase (estimated)'],
+      ['Number', '34-55-23 (the roster’s GAZ-63: that it is this truck is not known)'],
+      ['Left', '08:05, one hour’s readiness (estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [
+      drives(
+        'Truck_Lorry',
+        MSK(8, 5, 20),
+        MSK(8, 8),
+        [
+          [26.25, 0],
+          [56.25, 0.8],
+          [74.25, 0.8],
+          [84.25, -1.6],
+          [92.25, -7.6],
+          [99.25, -14.1],
+          [111.25, -17.6],
+          [136.25, -18.1],
+          [356.25, -19.2],
+          [456.25, -19.8],
+          [484.25, -19.95],
+        ],
+        3.3,
+        0.5,
+      ),
+    ],
+  },
+  {
+    node: 'StateCommission',
+    group: 'The morning of 12 April',
+    name: 'The State Commission',
+    summary: 'Ten metres from the bus’s door stood the men he had to report to.',
+    detail:
+      '"Comrade Chairman of the State Commission, pilot-cosmonaut Senior Lieutenant Gagarin is ready for the first flight ' +
+      'in the spaceship Vostok." The Commission stood "in a tight group" some ten metres from the bus, Golovanov writes, ' +
+      'and the pilot, turning first to the marshal, made his report to its chairman, Konstantin Rudnev. The film, ' +
+      'looking down from the erector as the bus stops, has a knot of four there, one in a pale coat. A colour photograph ' +
+      'gives two of them: Sergei Korolev, the chief designer, in a dark overcoat and a black velour hat, and Marshal ' +
+      'Kirill Moskalenko, commander of the rocket forces, in service dress with gold boards and a red-banded cap. Here ' +
+      'six stand: those two, Rudnev, General Nikolai Kamanin, who commanded the cosmonauts, Leonid Voskresensky, ' +
+      'Korolev’s deputy for testing, and one more. That those four were of the knot, what Rudnev, Kamanin and ' +
+      'Voskresensky wore and how any of them stood are estimated. At about 06:58 Korolev, Moskalenko and Kamanin ' +
+      'walked the pilot to the erector.',
+    facts: [
+      ['Where', 'some 10 m ahead of the bus’s door (Golovanov; the film)'],
+      ['Korolev', 'a dark overcoat, a black velour hat (a colour photograph; Golovanov)'],
+      ['Moskalenko', 'a marshal’s service dress, a red-banded cap (a colour photograph)'],
+      ['The others', 'who stood there, and in what: estimated'],
+      ['Until', 'about 06:58, when the pilot was walked to the stair (not timed)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [leaves('StateCommission_People', MSK(6, 58))],
+  },
+  {
+    node: 'SendOff',
+    group: 'The morning of 12 April',
+    name: 'The send-off',
+    summary: 'Some twenty-five people stood about the concrete as the bus stopped. No greatcoats: it was a mild morning.',
+    detail:
+      'The film’s view from the erector, the bus just stopped, has figures all over the concrete in loose groups: a row ' +
+      'of five well to the south-west, seven more nearer the bus, three by the car, a man beside the bus, one far out ' +
+      'toward the road, one north of the tracks by the truck. At eye height a minute later they are officers in tunics ' +
+      'and peaked caps, none in a greatcoat; men of the launch crew in navy hooded anoraks with red armbands; a doctor ' +
+      'in a white coat, who handed the pilot down from the bus; civilians in dark coats, felt hats and flat caps; a ' +
+      'cameraman walking backward with a camera at his eye. Each stands here where that frame has someone standing, to ' +
+      'two or three metres. Who each was is not recorded, and their clothes are shared out among them by us. There ' +
+      'were 688 people on the pad that morning by the roster, 381 of them soldiers: these are the ones the camera saw ' +
+      'at that moment. They do not walk: the group is here until about 07:08, when the lift had gone up, and then is not.',
+    facts: [
+      ['Seen', 'about 25 on the concrete as the bus stopped (the film, 43:26)'],
+      ['Dress', 'tunics and peaked caps, navy anoraks with red armbands, a white coat, dark coats and hats (the film)'],
+      ['On the pad that morning', '688, of them 381 soldiers (the roster)'],
+      ['Until', 'about 07:08 (not timed)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [leaves('SendOff_People', MSK(7, 8))],
+  },
+  {
+    node: 'StairParty',
+    group: 'The morning of 12 April',
+    name: 'At the stair’s foot',
+    summary: 'A dozen people waved back as he turned on the landing.',
+    detail:
+      'Korolev, Moskalenko and Kamanin "tore him away" from the crowd and walked him along the erector’s wagon to its ' +
+      'stair. He went up the fifteen steps, turned at the lift’s door and raised both arms; the film and a photograph ' +
+      'show the backs of those below, arms up, berets and peaked caps among them and one white coat, and two men on ' +
+      'the wagon’s deck waving too. Eleven stand here, in the places the photograph has backs, with the three who ' +
+      'walked him among them: which back is whose is not recorded. They are here from about 07:01 to 07:08; the minutes ' +
+      'are ours.',
+    facts: [
+      ['Seen', 'about eleven at the stair’s foot, waving (the film, 44:05; a photograph)'],
+      ['With him to the stair', 'Korolev, Moskalenko, Kamanin (Mikheev; Chertok)'],
+      ['When', 'about 07:01 to 07:08 (not timed)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [comes('StairParty_People', MSK(7, 1)), leaves('StairParty_People', MSK(7, 8))],
+  },
+  {
+    node: 'PadCrew',
+    group: 'The morning of 12 April',
+    name: 'The launch crew',
+    summary: 'Most of the pad’s people were sent away an hour before launch.',
+    detail:
+      'The launch roster, signed two days before, gives every man on the pad a readiness to leave at and a place to go ' +
+      'to: most at one hour or at thirty minutes, to a point 20 km off; the fuelling soldiers three hours and twenty ' +
+      'minutes before, to barracks; the fire crews at fifteen minutes, to the bunker; two water trucks last, at five ' +
+      'minutes, to the gate. Kamanin called one hour’s readiness to the pilot at 08:05. Six men stand for the crews ' +
+      'still on the deck until then: two pairs by the launch system, and two at the grey filler, one in its doorway, ' +
+      'where a colour photograph of the morning has two men standing. Where the others stood is not recorded.',
+    facts: [
+      ['Roster', 'who left at 1 h, 30 min, 15 min and 5 min, and for where (10 April 1961)'],
+      ['One hour', 'called at 08:05 Moscow time (the transcript)'],
+      ['In the filler’s doorway', 'two men (a colour photograph); one here, one below it'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [leaves('PadCrew_People', MSK(8, 5))],
+  },
+  {
+    node: 'TrussCrew',
+    group: 'The morning of 12 April',
+    name: 'On the service truss',
+    summary: 'The crews of the trusses and the upper belt stayed until half an hour before, then went to the bunker.',
+    detail:
+      'The roster sends "the upper belt’s and the trusses’ crews" away at thirty minutes’ readiness, to the bunker, ' +
+      '200 m north. Three men on the north truss’s platforms stand for them. At 08:15 Korolev told the pilot the work ' +
+      'on the trusses was finished, and at 08:40 that they were being drawn off; these are gone at 08:37. Where they ' +
+      'stood on the trusses is estimated.',
+    facts: [
+      ['Left', 'thirty minutes’ readiness, for the bunker (the roster)'],
+      ['Here', 'three, on the north truss (estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [leaves('TrussCrew_People', MSK(8, 37))],
+  },
+  {
+    node: 'HatchCrew',
+    group: 'The morning of 12 April',
+    name: 'At the hatch',
+    summary: 'The spacecraft’s lead designer saw him into the seat and bolted the hatch, twice.',
+    detail:
+      'Oleg Ivanovsky rode up in the lift with the pilot, helped him into the seat, and with the fitters bolted hatch ' +
+      'No. 1 down. At 07:58 the bunker reported that one of the hatch’s contacts did not show closed: ' +
+      'they took it off again, set the contact right and bolted it down a second time. The seal was ' +
+      'checked and held at 08:25, and they took the lift down. Two men stand at the hatch until then, with the film ' +
+      'cameraman’s lamps left out; which of them is Ivanovsky is ours to say.',
+    facts: [
+      ['Who', 'Ivanovsky and the fitters (his own account)'],
+      ['Hatch closed', '07:44; reopened and closed again from 07:58 (the transcript)'],
+      ['Left', 'after 08:25, by the lift'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [leaves('HatchCrew_People', MSK(8, 28))],
+  },
 ];
 
 const pad: ModelDef = {
@@ -1580,7 +2011,7 @@ const pad: ModelDef = {
   url: 'models/ussr/vostok/vostok-1/pad.glb',
   scale: 'Site 1 · platform 41.15 m square over a pit 43 m deep · to scale',
   backdrop: 'tyuratam',
-  slider: ['Pilot aboard · 07:10', 'Liftoff · 09:07'],
+  slider: ['The bus arrives · 06:49', 'Liftoff · 09:07'],
   sequence: MORNING,
   specGroups: ['Launch pad'],
   parts: padParts,
@@ -1589,13 +2020,17 @@ const pad: ModelDef = {
   views: [
     { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
     { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
-    { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, -0.88] },
+    // (the erector and the hatch level from the south-west: its stair and lift are on its south side)
+    { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, 0.88] },
     { id: 'cars', label: 'Railway fillers', nodes: ['TankCars'], from: [-0.3, 0.25, -0.92] },
-    { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, -0.78] },
+    { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, 0.78] },
     { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
-    { id: 'masts', label: 'Corner masts', nodes: ['Masts'], from: [-0.75, 0.12, 0.65] },
+    { id: 'masts', label: 'Corner mast', nodes: ['Masts'], from: [0.35, 0.12, 0.93] },
     { id: 'deflector', label: 'Flame deflector', nodes: ['FlameDeflector'], from: [0.97, -0.1, 0.2] },
     { id: 'pit', label: 'Flame pit', nodes: ['FlamePit'], from: [-0.5, 0.55, 0.67] },
+    // the morning's people and the bus, from the south-west as the film's cameraman on the ground had them
+    { id: 'send-off', label: 'The send-off', nodes: ['StateCommission', 'SendOff'], from: [-0.35, 0.16, 0.92] },
+    { id: 'bus', label: 'The bus', nodes: ['Bus'], from: [0.55, 0.14, 0.82] },
   ],
 };
 
