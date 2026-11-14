@@ -55,7 +55,8 @@ async function lateNeighbours(walk, workers = false) {
   await siteReady(page);
   await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving));
   if (walk) await page.evaluate(() => window.sr.stage.enterWalk());
-  const there = () => window.sr.stage.scene.getObjectByName('Neighbours_concrete').geometry.getAttribute('position').count > 3;
+  // (a complex's concrete at its first level: around.ts names each thing's meshes by its node and their material)
+  const there = () => Boolean(window.sr.stage.scene.getObjectByName('LC17_concrete'));
   // (still: nothing has asked for a shadow for a second)
   const read = () => {
     const st = window.sr.stage;

@@ -224,7 +224,10 @@ there is (`fitDetail`: the canvas's real height and the camera's field of view, 
 or a dense screen keeps the fine level further). A model that is cut open is always drawn in full. The place round the pad (`Flight.surroundings`)
 is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
 the level its own size on screen calls for, so the building beside the walker is always the finest;
-level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it.
+level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it. What stands round
+a place beyond its own model (`SiteDef.around`, the Cape's neighbouring complexes) is chosen by the same `Scenery`
+(viewer/around.ts `Around`: each thing a piece, its meshes joined a material a level, its coarser levels `ghost`s the
+walker does not stand on), and the stage asks every `Levelled` alike: the place's, and the setting's `levels`.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script and a threshold to `LOD_ABOVE` (the choosing takes any number); do not hand-edit geometry for them.
 

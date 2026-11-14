@@ -32,7 +32,7 @@ import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait';
 import { Jets } from './jets';
 import { ground, lay, layering } from './laid';
 import { Lamps } from './lamps';
-import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
+import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { type LookoutDef, lookoutsOf, windowAt } from './lookouts';
 import { refused, sayRefused, watchContext } from './lost';
@@ -540,6 +540,10 @@ export class Stage {
   private surroundings: THREE.Object3D | null = null;
   /** Its levels of detail, chosen building by building (lod.ts): `surroundings` is its level 0. */
   private scenery: Scenery | null = null;
+  /** What chooses its own levels of detail beyond the models: the place round the pad, and the setting's scenery round that (lod.ts `Levelled`). */
+  private get sceneries(): Levelled[] {
+    return [...(this.scenery ? [this.scenery] : []), ...(this.setting.levels ?? [])];
+  }
   /** The Sun's second shadow map: everything that stands at the place, coarsely (shadows.ts). */
   private readonly far: FarShadow;
   /** On foot, the fine map's still casters kept from one frame to the next, and only the figure drawn again (shadowcache.ts). */
@@ -2407,7 +2411,7 @@ export class Stage {
     this.looks.set(look);
     // (a level of detail giving way to another goes on doing so, in the materials of this look: lod.ts)
     for (const s of this.staged) s.relook();
-    this.scenery?.relook();
+    for (const s of this.sceneries) s.relook();
     this.ink.enabled = look === 'cel';
     this.light();
     this.dirty = true;
@@ -2685,7 +2689,7 @@ export class Stage {
       }
     });
     for (const s of this.staged) s.everyLevel(true);
-    this.scenery?.everyLevel(true);
+    for (const s of this.sceneries) s.everyLevel(true);
     this.rehearse();
     const covered = this.uncover(true);
     for (const h of this.plumes) h.plume.mesh.visible = true; // the engines' fires too: they are first seen at liftoff
@@ -2739,7 +2743,7 @@ export class Stage {
     const drawAll = (on: boolean) => {
       for (const o of culled) o.frustumCulled = !on;
       if (!on) for (const s of this.staged) s.everyLevel(false);
-      if (!on) this.scenery?.everyLevel(false);
+      if (!on) for (const s of this.sceneries) s.everyLevel(false);
     };
     for (const [i, [night, fading]] of passes.entries()) {
       // (nothing drawn while every level is out to be built: drawn, all of it would be sent)
@@ -2748,7 +2752,7 @@ export class Stage {
         drawAll(true);
       }
       for (const s of this.staged) s.everyLevel(true, fading);
-      this.scenery?.everyLevel(true, fading);
+      for (const s of this.sceneries) s.everyLevel(true, fading);
       this.lamps.set(night, 1);
       // Built for the buffer the scene is drawn into: a shader for the canvas (tone-mapped, in the screen's colours) is
       // another shader, and built for that every one of them was built again, one at a time, as the first frame was drawn.
@@ -2769,7 +2773,7 @@ export class Stage {
     onStep?.('settle', 0);
     for (const o of culled) o.frustumCulled = true;
     for (const s of this.staged) s.everyLevel(false);
-    this.scenery?.everyLevel(false);
+    for (const s of this.sceneries) s.everyLevel(false);
     for (const h of this.plumes) h.plume.mesh.visible = false;
     if (this.trail) this.trail.mesh.visible = false;
     this.uncover(false, covered);
@@ -3334,7 +3338,7 @@ export class Stage {
     this.staged.forEach((s, i) => {
       changed = s.choose(eye, scale, this.fullDetail || (i === this.current && this.cut), fade) || changed;
     });
-    if (this.scenery?.choose(eye, scale, fade)) changed = true;
+    for (const s of this.sceneries) if (s.choose(eye, scale, fade)) changed = true;
     if (!changed) return;
     this.dirty = true;
     this.renderer.shadowMap.needsUpdate = true;

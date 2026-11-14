@@ -930,14 +930,13 @@ rocket can leave the erector out by its date.
 - Site 51 is its pad, a square building and forty metres of rail: what stood on the pad (a launch table, a
   mast, an erector) is not described and is not built, the bank is drawn only under the pad, and its road and
   the rest of its spur are not drawn. The building's distance from the pad is ours.
-- **The assembly and test building of Site 2 is drawn at one level of detail.** Its three levels are built and
+- **The assembly and test building of Site 2 has the viewer's own thresholds.** Its three levels are built and
   measured ("On the horizon"; `tyuratam/model/1961-04.lod.json`: at 2.5 px a metre, the largest size measured that is
   under its own whole, 112 pixels differ between the first two and 419 between the last two, so its thresholds are
-  the viewer's own, 8 and 2 px a metre), and its GLB carries them; but what stands round a site is fetched as one
-  file and joined into a mesh a material (viewer/around.ts), so the full one is drawn at any distance. From the pad
-  it is 0.5 px a metre: the coarsest level is the one that belongs there. They were measured by putting each level's
-  geometry into those meshes in the page, since `lod-thresholds.mjs --measure` knows only models and the place's
-  pieces. Its form beyond its size, its shed and its gates' places is estimated. The other lines and roads of Site 2
+  the viewer's own, 8 and 2 px a metre), and its GLB carries them; it is drawn at the level its size on screen calls
+  for and changes level by the place's own fade (viewer/around.ts). From the pad it is 0.5 px a metre: the coarsest.
+  They were measured by putting each level's geometry into the page by hand, since `lod-thresholds.mjs --measure`
+  knows only models and the place's pieces. Its form beyond its size, its shed and its gates' places is estimated. The other lines and roads of Site 2
   round it are not drawn. The camera cannot be taken to it: its pivot is held within reach of the place.
 - **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
   roster has people, each there until its time and then gone between one frame and the next ("The morning's

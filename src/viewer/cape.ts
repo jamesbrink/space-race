@@ -6,6 +6,7 @@ import { buildCape1961, CLEARINGS, PAVED, COAST, HARBOR_EAST, HARBOR_WEST, HARBO
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
+import type { Levelled } from './lod';
 
 /**
  * Cape Canaveral round Launch Complex 5, May 1961, as scenery: the ground the complex stands on,
@@ -725,6 +726,8 @@ export function buildCape(
 ): {
   floor: THREE.Mesh;
   scenery: THREE.Object3D[];
+  /** What of the scenery chooses its own level of detail (lod.ts `Levelled`). */
+  levels: Levelled[];
   tick: (dt: number) => void;
   /** Draw the land and its plants in full, or simplified for the cel look. */
   simplify: (on: boolean) => void;
@@ -760,6 +763,8 @@ export function buildCape(
   return {
     floor: land.mesh,
     scenery: [site],
+    // (the neighbouring complexes at their levels of detail, each chosen by its size on screen: around.ts)
+    levels: built.levels,
     tick: (dt) => {
       driftClouds(dt);
       land.tick(dt);

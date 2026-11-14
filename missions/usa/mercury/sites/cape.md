@@ -78,9 +78,11 @@ either pad in the first week of May 1961, or AM-19G's processing log, would sett
   (documented that there were), the blockhouse's two 18 in ventilation stacks (documented; height not
   found), building 41109 (whether it stood in 1961 is not established), the trailers, trucks and the
   lattice stand seen on 26B's apron in January 1961, and the spur lines east of the track.
-- The file is drawn at its full level only: the two coarser levels the build writes beside it are not
-  used, and the far shadow map (`viewer/shadows.ts`) does not cover it, so from across the site it
-  casts no shadow; on foot beside it, it does.
+- Each complex is drawn at the level of detail its size on screen calls for, from the three the build
+  writes, and changes level by the same fade as the place's own buildings (viewer/around.ts); none has
+  thresholds of its own measured, so each has the viewer's 8 and 2 px a metre. The far shadow map
+  (`viewer/shadows.ts`) does not cover the file, so from across the site it casts no shadow; on foot
+  beside it, it does.
 
 ## Complex 30 (`cape/lc30.py`, node `LC30`)
 

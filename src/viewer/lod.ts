@@ -247,6 +247,19 @@ export class Crossfade {
   }
 }
 
+/**
+ * Something drawn at its levels of detail that chooses them for itself as the eye moves (`Scenery`; around.ts's
+ * `Around`, scenery beyond the place): what the stage asks of each every frame, when it warms, and when the look changes.
+ */
+export interface Levelled {
+  /** Each thing at the level its size on screen calls for (`Scenery.choose`). True if what is drawn changed, or is changing. */
+  choose(eye: Vector3, scale: number, dt?: number): boolean;
+  /** Every level drawn at once, the fade's shaders too if `fading` (Stage.warm); or back to what suits. */
+  everyLevel(on: boolean, fading?: boolean): void;
+  /** The look has changed (`Scenery.relook`). */
+  relook(): void;
+}
+
 /** One piece of the place round the pad: a top-level node, at each of its levels. */
 interface Piece {
   name: string;
@@ -281,7 +294,7 @@ function partsOf(node: THREE.Object3D): Box3[] {
  * walked on, lit, worked: a hidden node still answers a ray); the coarser levels are only drawn. A
  * piece that is driven (it carries a `vehicle`) is always drawn from level 0, which is the one that moves.
  */
-export class Scenery {
+export class Scenery implements Levelled {
   private readonly levels: (THREE.Object3D | undefined)[] = [];
   private readonly pieces: Piece[] = [];
   private every = false;
