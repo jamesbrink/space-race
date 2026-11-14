@@ -27,24 +27,12 @@
 import type { Trajectory } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import {
-  add,
-  cross,
-  dot,
-  ecefToGeodetic,
-  type Geodetic,
-  geodeticToEcef,
-  inertialToEcef,
-  length,
-  scale,
-  sub,
-  unit,
-  type Vec3,
-} from '../world/frames.ts';
+import { add, cross, dot, ecefToGeodetic, type Geodetic, inertialToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, G0, thrustIn } from './fly.ts';
-import { blowing, blowOf, upAt } from './forces.ts';
+import { blowing, blowOf, floorAt, upAt } from './forces.ts';
+import { tearOf } from './loads.ts';
 import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { stackOf } from './staged.ts';
@@ -53,12 +41,8 @@ const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
 /** The ground's height above the sea under a place (vehicle.ts's): the pad's own level within a kilometre of it, the sea beyond. */
 export function floorOf(site: Geodetic, seaLevel: number): (here: Geodetic) => number {
-  const pad = geodeticToEcef(site);
-  const padHeight = site.height - seaLevel;
-  return (here) =>
-    padHeight !== 0 && length(sub(geodeticToEcef({ latitude: here.latitude, longitude: here.longitude, height: site.height }), pad)) < 1000
-      ? padHeight
-      : 0;
+  const at = floorAt(site, seaLevel);
+  return (here) => at(here.latitude, here.longitude);
 }
 
 /** The next of a list of instants after `t`, in order (Infinity: none). */
@@ -231,8 +215,13 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
         const wind = windOf(p, u, t, altitude);
         const q = 0.5 * atmosphere(altitude).density * dot(wind, wind);
         const area = chuteArea(chute, t);
-        if (q > limits[which].value || q * area > (limits.pull?.[which]?.value ?? Infinity)) {
-          const left = Math.min(area, tr[which].dragArea.value * limits.torn.value);
+        const tear = tearOf(q, area, tr[which].dragArea.value, {
+          strength: limits[which].value,
+          pull: limits.pull?.[which]?.value,
+          torn: limits.torn.value,
+        });
+        if (tear) {
+          const left = tear.left;
           chute = { full: left, was: left, at: t, fills: 1 };
           torn = true;
         }

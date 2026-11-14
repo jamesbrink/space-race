@@ -96,8 +96,8 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, axisOf, chuteArea, G0, gravity, MEAN_RADIUS, P0, type Phase, type Sample } from './fly.ts';
-import { airForces, blowOf, part, pieceOf, type Release, upAt, upOver, windAt as airAt } from './forces.ts';
-import { loadsOf, type Strain, strain, UNSTRAINED } from './loads.ts';
+import { airForces, blowOf, floorAt, part, pieceOf, type Release, upAt, upOver, windAt as airAt } from './forces.ts';
+import { loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
 import { pressed } from './staging.ts';
 import {
   aboutAxis,
@@ -309,7 +309,6 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
   const earth: Vec3 = [0, 0, EARTH_ROTATION_RATE];
   const pad = geodeticToEcef(site);
-  const padHeight = site.height - seaLevel;
   // the day's wind: everything the air does here is done by air that moves with it
   const blow = blowOf(tr.winds);
   const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(r, v, at, sea, blow);
@@ -400,12 +399,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
 
   const fixed = (r: Vec3, at: number): Vec3 => inertialToEcef(r, EARTH_ROTATION_RATE * at);
   const rangeOf = (r: Vec3, at: number): number => angleBetween(fixed(r, at), pad) * MEAN_RADIUS;
-  const floor =
-    options.floor ??
-    ((latitude: number, longitude: number): number => {
-      const here = geodeticToEcef({ latitude, longitude, height: site.height });
-      return length(sub(here, pad)) < 1000 ? padHeight : 0;
-    });
+  const floor = options.floor ?? floorAt(site, seaLevel);
 
   const sheds = body.sheds ?? [];
   const limits = body.limits ?? null;
@@ -864,7 +858,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   /** A parachute let out in more dynamic pressure than it can take tears as it comes out: `limits.torn` of its drag area is left. */
   const tears = (s: VehicleState, which: 'drogue' | 'main'): Tear | null => {
     const q = windAt(s.r, s.v, s.t, seaLevel).q;
-    return limits !== null && q > limits[which].value ? { t: s.t, by: 'pressure', q, pull: 0 } : null;
+    return limits !== null && tearOf(q, 0, 0, { strength: limits[which].value, torn: 0 }) ? { t: s.t, by: 'pressure', q, pull: 0 } : null;
   };
   const drogue = (s: VehicleState): VehicleState => {
     const torn = tears(s, 'drogue');
@@ -887,10 +881,13 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     if (limits === null || which === null || s.torn[which]) return s;
     const q = windAt(s.r, s.v, s.t, seaLevel).q;
     const area = chuteArea(s.chute, s.t);
-    const pull = q * area;
-    const by = q > limits[which].value ? 'pressure' : pull > (limits.pull?.[which]?.value ?? Infinity) ? 'pull' : null;
-    if (by === null) return s;
-    const left = Math.min(area, tr[which].dragArea.value * limits.torn.value);
+    const tear = tearOf(q, area, tr[which].dragArea.value, {
+      strength: limits[which].value,
+      pull: limits.pull?.[which]?.value,
+      torn: limits.torn.value,
+    });
+    if (tear === null) return s;
+    const { by, pull, left } = tear;
     return {
       ...s,
       torn: { ...s.torn, [which]: true },

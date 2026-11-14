@@ -35,6 +35,7 @@ import { elementsOf, period, planeThrough, type State, stateOf, step, subpoint, 
 import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, G0 } from './fly.ts';
+import { tearOf } from './loads.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -540,7 +541,7 @@ export function flyDown(
         kept.set(filling.name, filling.area);
       }
       const p = pressure(q, h);
-      const tears = c.strength !== undefined && p > c.strength.value;
+      const tears = tearOf(p, 0, 0, { strength: c.strength?.value, torn: 0 }) !== null;
       if (tears) tore[c.name] = { t, by: 'pressure', q: p, pull: 0 };
       met[c.name] = { q: p, pull: 0 };
       filling = { area: c.dragArea.value * (tears ? (d.torn?.value ?? 0) : 1), at: t, fills: c.fills.value, name: c.name };
@@ -566,11 +567,11 @@ export function flyDown(
         m.q = Math.max(m.q, p);
         m.pull = Math.max(m.pull, pull);
         if (tore[c.name] || (!c.strength && !c.pull)) return;
-        const by = c.strength && p > c.strength.value ? 'pressure' : c.pull && pull > c.pull.value ? 'pull' : null;
-        if (!by) return;
-        tore[c.name] = { t, by, q: p, pull };
+        const tear = tearOf(p, area, c.dragArea.value, { strength: c.strength?.value, pull: c.pull?.value, torn: d.torn?.value ?? 0 });
+        if (!tear) return;
+        tore[c.name] = { t, by: tear.by, q: p, pull };
         // (what is left streams: a part of its drag area, or what it had filled to if that was less)
-        const left = Math.min(area, c.dragArea.value * (d.torn?.value ?? 0));
+        const left = tear.left;
         if (now) filling = null;
         else base -= area;
         base += left;

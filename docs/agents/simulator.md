@@ -182,6 +182,23 @@ never adjusted to bring a check in.
 
   Where the two kinds still differ for no physical reason: the ballistic deck offers nothing on the pad but ignition
   (the tower could have gone), and the orbital deck has no abort; both are left as they were and said here.
+- **One body of flight physics, and what is still apart.** One function each, which every flier calls: the tear rule
+  (loads.ts `tearOf`: vehicle.ts as a parachute is let out and while out, fliers.ts's prediction, orbital.ts flyDown's
+  bodies as each is let out and while out); the ground under a place (forces.ts `floorAt`: vehicle.ts, shed.ts,
+  fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`, which fly.ts's is); when a
+  load is spent (staged.ts `spentAt`, the batch run's schedule and the live vehicle's `dry`); a stage's flow
+  (`flowOf`); the staging rules (staging.ts) and the structure's (loads.ts `strain`) on both live vehicles. Each was the
+  same arithmetic in the same order, so no record's run moved a bit. Still apart, as the same physics in different
+  arithmetic (merging would move the printed figures in their last digits, so each wants its own commit and its own
+  diff): the air at a point (forces.ts `windAt`, staged.ts `airAt`, flyOrbit's own and fly.ts's written out, the same
+  formula with the Earth's angle taken differently), drag along the motion (the q form in fly.ts, staged.ts and
+  stagedlive.ts; the half rho v v form in fliers.ts, flyDown and `decay`), thrust in air (a Trajectory's from its
+  sea-level figure, a stage's from its vacuum one), the six-degree Runge-Kutta written twice (vehicle.ts, shed.ts),
+  the 0.05 g mark written four times, and the parachute's filling (fly.ts writes `chuteArea` out). Different physics, and
+  kept so: forces.ts `airForces` (axial, normal and broadside on a rigid body) against the point masses' drag;
+  flyDown's several canopies at once against a capsule's one at a time; shed.ts `apart` (a strap-on's swing about its
+  ball); leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust against weight). A new flight is data on
+  this: its stages, drops, limits and `hot` in `Flight.orbital`, or its `trajectory.body`; nothing names a vehicle.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
   is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails

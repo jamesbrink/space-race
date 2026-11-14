@@ -49,10 +49,22 @@ import {
 import { elementsOf, period, type State, step } from '../world/orbit.ts';
 import { greenwichSiderealTime } from '../world/time.ts';
 import { G0, MEAN_RADIUS } from './fly.ts';
+import { floorAt } from './forces.ts';
 import { type Strain, strain, UNSTRAINED } from './loads.ts';
 import type { OrbitalFlight } from './orbital.ts';
 import { aboutAxis, fromAxes, multiply, normalize, type Quat, turn, unturn } from './rigid.ts';
-import { type AscentSample, type AscentSummary, airAt, integral, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
+import {
+  type AscentSample,
+  type AscentSummary,
+  airAt,
+  flowOf,
+  integral,
+  lawOf,
+  type Mode,
+  type Solved,
+  spentAt,
+  stackOf,
+} from './staged.ts';
 import { hotStage, pressed } from './staging.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
 
@@ -191,7 +203,7 @@ export function stagedVehicle(
   const air = airAt(seaLevel, launchJd);
   const authority = authorityOverride ?? (a.steering?.authority.value ?? 0) * DEG;
   const last = o.stages.length - 1;
-  const padHeight = site.height - seaLevel;
+  const floor = floorAt(site, seaLevel);
   const pad0 = geodeticToEcef(site);
   // the body's axes on the pad: the plumb line, the plane's pole, and back up range
   const yIn = unit(sub(law.n, scale(law.up0, dot(law.n, law.up0))));
@@ -201,15 +213,8 @@ export function stagedVehicle(
   const dry = (i: number, from: number): number => {
     const load = full[i]!;
     const burned = (t: number) => stack.burned(i, from, t);
-    let hi = from + (10 * load) / stack.flows[i]!;
-    if (burned(hi) <= load) return Infinity;
-    let lo = from;
-    for (let k = 0; k < 60; k++) {
-      const mid = (lo + hi) / 2;
-      if (burned(mid) < load) lo = mid;
-      else hi = mid;
-    }
-    return lo;
+    const hi = from + (10 * load) / stack.flows[i]!;
+    return burned(hi) <= load ? Infinity : spentAt(burned, load, from, hi);
   };
   const dries = new Map<string, number>();
   const dryOf = (i: number, from: number) => {
@@ -480,9 +485,9 @@ export function stagedVehicle(
     const apparent = s.apparent.map((sum, i) => sum + ((vacuumPush(s, i, s.t) + vacuumPush(s, i, t)) / 2) * h);
     let landed: StagedState['landed'] = null;
     if (!held) {
-      const height = air({ r, v }, t).altitude;
-      const near = length(sub(inertialToEcef(r, gast0 + EARTH_ROTATION_RATE * t), pad0)) < 1000;
-      if (height < (near ? padHeight : 0) - 1 && dot(v, r) < 0) landed = { t, speed: length(sub(v, cross(spinE, r))) };
+      const here = air({ r, v }, t);
+      if (here.altitude < floor(here.here.latitude, here.here.longitude) - 1 && dot(v, r) < 0)
+        landed = { t, speed: length(sub(v, cross(spinE, r))) };
     }
     const next: StagedState = { ...s, t, ticks, r, v, q, w, held, apparent, landed };
     return held || landed ? next : loaded(s, next);
@@ -787,7 +792,7 @@ export function stagedPilot(
 /** What is left of a stage's propellant when it was lit at `from` and stopped at `to`, kg (all its units). */
 export function leftAfter(o: OrbitalFlight, i: number, from: number, to: number): number {
   const st = o.stages[i]!;
-  const flow = st.thrust.vacuum.value / (G0 * st.isp.vacuum.value);
+  const flow = flowOf(st);
   return st.count * Math.max(0, (st.usable ?? st.propellant).value - flow * integral(st.throttle, from, to));
 }
 
