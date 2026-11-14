@@ -140,7 +140,7 @@ export function downVerdict(
   let blast = false;
   if (!ejected) {
     how = module
-      ? `He rode the descent module down: on the ground at ${wall(module.at)}, ${km(module).toFixed(0)} km from Gagarin’s field, at ${module.speed.toFixed(1)} m/s`
+      ? `He rode the descent module down: on the ground at ${wall(module.at)}, ${km(module).toFixed(0)} km from the record’s landing, at ${module.speed.toFixed(1)} m/s`
       : 'He rode the descent module, and it is still up';
     why.push(`Never ejected: ${crew.aboard}.`);
     if (module) landing = { speed: module.speed, limit: crew.landing.aboard.value, confidence: crew.landing.aboard.confidence };
@@ -151,7 +151,7 @@ export function downVerdict(
     const hot = fast > crew.fastest.value;
     blast = peak > crew.blast.value || hot;
     how = alone
-      ? `He came down under his own canopy: on the ground at ${wall(alone.at)}, ${km(alone).toFixed(0)} km from Gagarin’s field, at ${alone.speed.toFixed(1)} m/s`
+      ? `He came down under his own canopy: on the ground at ${wall(alone.at)}, ${km(alone).toFixed(0)} km from the record’s landing, at ${alone.speed.toFixed(1)} m/s`
       : down.up.includes(crew.alone)
         ? 'He left the ship in orbit: nothing brings a man in his suit down'
         : 'He left the ship';

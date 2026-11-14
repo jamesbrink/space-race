@@ -730,11 +730,23 @@ export function recordSamples(
       .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false, entering: s.phase === 'entry', drawn: s.r })),
     ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: false, drawn: s.drawn })),
   ];
+  // the record's own periods by hand (`manual.periods`): turned over a minute to the orbital orientation the Vzor gives
+  // (the long axis back along the motion, the braking engine's push against it), held so as the ship goes round, and left
+  // there when the period ends; the slow turning that followed is not drawn
+  const periods = o.manual?.periods ?? [];
+  let rest = held;
+  let left: Quat | null = null;
   for (const s of ending) {
     const wind = sub(s.v, cross(spin, s.r));
     let q: Quat;
-    if (s.t < oriented) q = held;
-    else if (s.t <= o.retro.off.value) q = toward(held, aimed, Math.min(1, (s.t - oriented) / 60));
+    const by = s.t < oriented ? periods.find((p) => s.t >= p.from.value && s.t < p.to.value) : undefined;
+    if (!by && left) {
+      rest = left;
+      left = null;
+    }
+    if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
+    else if (s.t < oriented) q = rest;
+    else if (s.t <= o.retro.off.value) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / 60));
     else if (s.t < parts) q = aimed;
     else q = toward(aimed, length(wind) > 1 ? lie(scale(unit(wind), -1)) : aimed, Math.min(1, (s.t - parts) / 30));
     const axis = turnQ(q, [1, 0, 0]);
