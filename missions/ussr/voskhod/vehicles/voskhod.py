@@ -17,7 +17,7 @@ Top-level nodes:
     DescentModule  EntryHatch  ParachuteHatch  Cabin  ReserveEngine
     RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
 and for the 3KV:   CouchLeft  CouchCentre  CouchRight
-and for the 3KD:   CouchLeft  CouchRight  Airlock  AirlockRing  AirBottles
+and for the 3KD:   CouchLeft  CouchRight  Airlock  AirlockRing  AirlockHatch
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from collections.abc import Callable
 import bpy
 from mathutils import Matrix, Vector
 
+import srlib
 import vostok_3ka as vk
 from srlib import TAU, MeshBuilder, deg, frame, group, interior, mark_shells, material
 from vostok_3ka import MM, OUTER, R_IN, Z_C, R, V, inside_cabin, placed, pm
@@ -52,7 +53,8 @@ LENGTH = POLE + RESERVE_H
 # the instrument board and the Vzor are at the crew's left and the entry hatch at their right; their heads are toward
 # the parachute container. Where each stood in that plane is estimated: nothing with a dimension was found.
 COUCH_3KV = {"Left": (530.0, -70.0, -215.0), "Centre": (0.0, -150.0, -55.0), "Right": (-530.0, -70.0, -215.0)}
-COUCH_3KD = {"Left": (300.0, -40.0, -190.0), "Right": (-300.0, -40.0, -190.0)}
+# The 3KD had two: the couch nearest hatch No. 3 gave way to the airlock's hatch, whose cover swung in over its place.
+COUCH_3KD = {"Left": (230.0, -110.0, -190.0), "Right": (-470.0, -70.0, -215.0)}
 # The pose a couch holds a man in, as figurelib's joint angles in degrees (thighs raised from the line of the back,
 # shins laid over): estimated, off photographs of the couches.
 POSE = {"hip": 68.0, "knee": 88.0}
@@ -104,6 +106,7 @@ SECTION = [
     (-690.0, 200.0, 25.0),
 ]
 SHELL = 26.0  # the liner's thickness, down to the pan's own skin
+SUITED = (8.0, 10.0)  # how much further toward his head, and out of the couch, a suited man's hip joints lie
 
 SHELLS_COMMON = (
     "DM_Insulation",
@@ -142,6 +145,7 @@ SHELLS_COMMON = (
     "Bottles_Cradles",
     "Engine_Skirt",
 )
+SHELLS_3KD = (*SHELLS_COMMON, "AirlockHatch_Skin", "AirlockHatch_Shell", "AirlockHatch_Rim", "AirlockHatch_Bolts", "AirlockHatch_Glass")
 SHELLS_3KV = (*SHELLS_COMMON, "DM_TechHatch_Skin", "DM_TechHatch_Shell", "DM_TechHatch_Rim", "DM_TechHatch_Bolts", "DM_TechHatch_Glass")
 
 
@@ -354,6 +358,178 @@ def build_reserve_engine(M: dict) -> None:
     bolts.build("Reserve_Bolts", M["bolt"], g)
 
 
+# ----------------------------------------------------------------- the Volga airlock
+
+AIRLOCK = vk.TECHNOLOGICAL  # hatch No. 3: where a Vostok's technological hatch was, with the Vzor's porthole
+AIRLOCK_R = 600.0  # 1.2 m outside
+AIRLOCK_R_IN = 500.0  # 1.0 m inside
+AIRLOCK_STOWED = 700.0  # folded for launch
+AIRLOCK_LENGTH = 2500.0  # in orbit
+AIRLOCK_HATCH_R = 350.0  # its outer hatch: 700 mm (Zak), or 650 (Siddiqi)
+AIRLOCK_BASE = 120.0  # the lower assembly ring
+AIRLOCK_HEAD = 260.0  # the upper rigid part
+# The soft part is drawn in bands that stand inside one another when it is folded and are drawn out one from the next
+# as it fills: nine, each 240 mm, 10 mm apart when nested, each going 225 mm further than the one below. The real one
+# was folded cloth and rubber that straightened as its air beams filled; no two bands ever slid.
+SLEEVES = 9
+SLEEVE = 240.0
+SLEEVE_NEST = 10.0
+SLEEVE_TRAVEL = (AIRLOCK_LENGTH - AIRLOCK_STOWED) / (SLEEVES - 1)  # 225
+AIR_BEAMS = 40  # (Siddiqi; Altunin and Verba have 36)
+AIRLOCK_BOTTLE_R = 165.0  # four spheres round its foot (off the museum's article)
+
+
+def airlock_frame() -> Matrix:
+    """The airlock's own frame, metres: origin at the sphere's centre, +Z out along hatch No. 3's line."""
+    return OUTER.axis(*AIRLOCK)
+
+
+def airlock_foot() -> float:
+    """Where the airlock's lower ring begins, mm from the sphere's centre along its line: on the ring left on the hull."""
+    return OUTER.z(560.0) + 38.0
+
+
+def build_airlock(M: dict, extended: bool = False) -> None:
+    """The Volga airlock on hatch No. 3, folded as it rode under the fairing: the ring it leaves on the hull, the cover
+    of the hatch into the cabin (with the Vzor's porthole in it), the lower assembly ring with four bottles, the soft
+    tube, the rigid head with the outer hatch, a rail and the cine camera on its bracket. Each piece that moves is a
+    node with its origin where the airlock is made fast to the hull; `extended` builds it as it stood in orbit, for a
+    still (a flight builds it folded, and its data draws it out)."""
+    A = airlock_frame()
+    rot = A.to_3x3()
+    z0 = airlock_foot()
+    at = A @ (Vector((0, 0, z0)) * MM)
+    out = (rot @ Vector((0, 0, 1))).normalized()
+    cloth = material("airlock-cloth-tan", (0.60, 0.50, 0.34), 0.0, 0.92)
+    bladder = material("airlock-bladder-cream", (0.78, 0.75, 0.66), 0.0, 0.85)
+    grey = material("airlock-cap-grey", (0.42, 0.45, 0.50), 0.3, 0.55)
+    P = lambda r, th, zl: A @ (Vector((r * math.cos(th), r * math.sin(th), z0 + zl)) * MM)  # noqa: E731
+    prof = lambda pts: pm([(r, z0 + zl) for r, zl in pts])  # noqa: E731
+
+    # what stays on the hull: the ring it stood on, and the hatch's cover
+    ring = MeshBuilder()
+    ring.lathe(pm([(612, OUTER.z(612) - 8), (612, z0 - 4), (556, z0 - 4), (556, OUTER.z(556) - 8)]), 96, matrix=A)
+    ring.build("AirlockRing_Flange", M["frame"], group("AirlockRing"), sharp_angle=30)
+    vk.build_hatch(M, group("AirlockHatch"), "AirlockHatch", AIRLOCK, window=70.0)
+
+    g = group("Airlock")
+
+    def piece(name: str, travel: float) -> bpy.types.Object:
+        node = vk.pivot(name, g, at.copy())
+        if extended:
+            node.location = node.location + out * travel * MM
+        return node
+
+    def hang(mb: MeshBuilder, name: str, mat, node: bpy.types.Object, **kw) -> None:
+        """A mesh built where it stands folded, made a child of a piece's node (which may stand drawn out)."""
+        obj = mb.build(name, mat, None, **kw)
+        obj.data.transform(Matrix.Translation(-at))
+        obj.parent = node
+
+    # the lower assembly ring, and round it the four bottles: air for the beams, for filling the airlock again, and two in reserve
+    body = piece("Airlock_Body", 0.0)
+    base, tanks, steel = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    h = AIRLOCK_BASE
+    base.lathe(prof([(466, 0), (640, 0), (640, 46), (608, 56), (608, h - 2), (466, h - 2), (466, 0)]), 96, matrix=A)
+    for i in range(24):
+        a = TAU * (i + 0.5) / 24
+        steel.disc(P(626, a, 50), tuple(out), 9 * MM, 6 * MM)
+    # (they stand on the side toward the ship's nose, which is where there is room for them under the fairing)
+    up = rot.inverted() @ (Vector((0, 0, 1)) - out * out.z)
+    a_nose = math.atan2(up.y, up.x)
+    for i in range(4):
+        a = a_nose + deg(-66 + 44 * i)
+        m = Matrix.Translation(P(800, a, 40)) @ rot.to_4x4() @ Matrix.Rotation(a, 4, "Z")
+        r = AIRLOCK_BOTTLE_R
+        tanks.lathe(pm([(r * math.cos(deg(-90 + 180 * k / 14)), r * math.sin(deg(-90 + 180 * k / 14))) for k in range(15)]), 28, matrix=m)
+        steel.lathe(pm([(r + 1.5, -15), (r + 3.5, -13), (r + 3.5, 13), (r + 1.5, 15)]), 28, matrix=m @ Matrix.Rotation(math.pi / 2, 4, "Y"))
+        steel.box((150 * MM, 60 * MM, 60 * MM), m @ Matrix.Translation(V(-r - 40, 0, -10)))  # its cradle on the ring
+        steel.tube(P(800, a, 40 + r - 4), P(800, a, 40 + r + 34), 12 * MM, 8)  # its valve
+        steel.tube(P(800, a, 40 + r + 28), P(624, a, 90), 7 * MM, 8)  # and the pipe from it to the ring
+    hang(base, "Airlock_BaseRing", M["frame"], body, sharp_angle=35)
+    hang(tanks, "Airlock_Bottles", M["tank"], body, sharp_angle=None)
+    hang(steel, "Airlock_BaseFittings", M["steel"], body, sharp_angle=35)
+
+    # the soft tube: the cover outside, the bladder inside, the air beams between showing as flutes
+    n = AIR_BEAMS * (6 if srlib.DETAIL >= 1.0 else 3 if srlib.DETAIL >= 0.5 else 2)
+    us = [TAU * i / n for i in range(n)]
+    flute = lambda th: 3.0 * (1 - abs(math.cos(AIR_BEAMS * th / 2)))  # noqa: E731
+    for k in range(SLEEVES):
+        node = piece(f"Airlock_Tube_{k + 1}", SLEEVE_TRAVEL * k)
+        lo = AIRLOCK_BASE + SLEEVE_NEST * k
+        hi = lo + SLEEVE
+        ro, ri = AIRLOCK_R - 6.0 * k, AIRLOCK_R_IN - 48.0 + 6.0 * k
+        cover, inner, hoop = MeshBuilder(), MeshBuilder(), MeshBuilder()
+        cover.grid(lambda u, v, ro=ro, lo=lo, hi=hi: P(ro - flute(u), u, lo + (hi - lo) * v), us, [0.0, 1.0], closed_u=True)
+        inner.grid(lambda u, v, ri=ri, lo=lo, hi=hi: P(ri + flute(u), u, lo + (hi - lo) * v), us, [0.0, 1.0], closed_u=True, flip=True)
+        # its two ends, closing the wall between cover and bladder
+        wall = lambda u, v, ro=ro, ri=ri: ri + flute(u) + (ro - ri - 2 * flute(u)) * v  # noqa: E731
+        cover.grid(lambda u, v, hi=hi, wall=wall: P(wall(u, v), u, hi), us, [0.0, 1.0], closed_u=True, flip=True)
+        cover.grid(lambda u, v, lo=lo, wall=wall: P(wall(u, v), u, lo), us, [0.0, 1.0], closed_u=True)
+        # (the hoop is cut round at the cover's own stations, so that it stands off the cover alike at every level of detail)
+        band = [(ro - 9, hi - 24), (ro + 1.5, hi - 18), (ro + 1.5, hi - 3), (ro - 9, hi - 3)]
+        hoop.grid(lambda u, j, band=band: P(band[int(j)][0], u, band[int(j)][1]), us, [0, 1, 2, 3], closed_u=True)
+        hang(cover, f"Airlock_Tube_{k + 1}_Cover", cloth, node, sharp_angle=50)
+        hang(inner, f"Airlock_Tube_{k + 1}_Bladder", bladder, node, sharp_angle=50)
+        hang(hoop, f"Airlock_Tube_{k + 1}_Hoop", cloth, node, sharp_angle=35)
+
+    # the head: a ribbed ring, the plate the outer hatch seats in, the rail that crowns it, the cine camera on its bracket
+    head = piece("Airlock_Head", AIRLOCK_LENGTH - AIRLOCK_STOWED)
+    z1 = AIRLOCK_STOWED - AIRLOCK_HEAD
+    z2 = AIRLOCK_STOWED
+    hr = AIRLOCK_HATCH_R
+    shell, ribs, rail, cam, glass = (MeshBuilder() for _ in range(5))
+    shell.lathe(
+        prof(
+            [
+                (470, z1),
+                (606, z1),
+                (622, z1 + 12),
+                (622, z2 - 60),
+                (600, z2 - 32),
+                (560, z2),
+                (hr + 12, z2),
+                (hr + 12, z2 - 40),
+                (470, z2 - 40),
+                (470, z1),
+            ]
+        ),
+        96,
+        matrix=A,
+    )
+    for i in range(24):
+        a = TAU * i / 24
+        ribs.box((26 * MM, 150 * MM, 22 * MM), frame(P(629, a, (z1 + z2) / 2 - 24), tuple(rot @ Vector((math.cos(a), math.sin(a), 0)))))
+    rail.lathe(prof([(540 + 11 * math.cos(deg(t)), z2 + 70 + 11 * math.sin(deg(t))) for t in range(0, 361, 45)]), 72, matrix=A)
+    for i in range(6):
+        a = TAU * i / 6 + deg(30)
+        rail.tube(P(540, a, z2 - 4), P(540, a, z2 + 66), 9 * MM, 8)
+    # (the camera stands on the side toward the ship's nose, looking back across the hatch at the man coming out)
+    a_cam = a_nose
+    arm = [P(612, a_cam, z2 - 110), P(664, a_cam, z2 - 20), P(650, a_cam, z2 + 70)]
+    cam.loft(arm, [(14 * MM, 14 * MM)] * 3, 10, ref=tuple(out), resample=2)
+    look = (P(0, 0, z2 + 420) - arm[-1]).normalized()
+    C = frame(arm[-1] + out * 0.09, tuple(look))
+    vk.rounded_box(cam, (120 * MM, 210 * MM, 150 * MM), 18 * MM, C @ Matrix.Rotation(math.pi / 2, 4, "X"))
+    cam.lathe(pm([(34, 100), (34, 150), (40, 156), (40, 176), (30, 176), (30, 150)]), 24, matrix=C)
+    glass.lathe(pm([(30, 150), (0, 150)]), 24, matrix=C)
+    hang(shell, "Airlock_HeadRing", M["frame"], head, sharp_angle=35)
+    hang(ribs, "Airlock_HeadRibs", M["frame"], head, sharp_angle=35)
+    hang(rail, "Airlock_Rail", M["steel"], head, sharp_angle=35)
+    hang(cam, "Airlock_Camera", M["white"], head, sharp_angle=35)
+    hang(glass, "Airlock_CameraLens", M["lens"], head, sharp_angle=35)
+    # the outer hatch: a domed cover hinged at its rim on the side away from the camera, which opened inward
+    hinge = P(hr - 10, a_cam + math.pi, z2 - 14) - at
+    hatch = vk.pivot("Airlock_OuterHatch", head, hinge)
+    lid = MeshBuilder()
+    rise = lambda r: 70.0 * (1 - (r / hr) ** 2)  # noqa: E731
+    lid.lathe(prof([(hr, z2 - 30), (hr, z2 - 4), *[(hr * (1 - j / 10), z2 - 4 + rise(hr * (1 - j / 10))) for j in range(1, 11)]]), 64, matrix=A)
+    lid.lathe(prof([(hr * j / 10, z2 - 24 + rise(hr * j / 10)) for j in range(0, 10)] + [(hr, z2 - 30)]), 64, matrix=A, flip=True)
+    obj = lid.build("Airlock_OuterHatch_Lid", grey, None, sharp_angle=40)
+    obj.data.transform(Matrix.Translation(-(at + hinge)))
+    obj.parent = hatch
+
+
 # ---------------------------------------------------------------------------- main
 
 
@@ -372,10 +548,12 @@ def build(
     kind: str = "3KV",
     crew: Callable[[str, bpy.types.Object, Matrix], object] | None = None,
     stowed: bool = False,
+    airlock_extended: bool = False,
 ) -> str:
     """Build the spacecraft. `kind` is "3KV" or "3KD". `crew(place_name, node, place)` builds the man in each couch
     ("Left", "Centre", "Right": his couch's node, and where his hips are, in figurelib's seat frame); left out, the
-    couches are empty. `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs."""
+    couches are empty. `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs.
+    `airlock_extended` builds the 3KD's airlock as it stood in orbit, for a still."""
     assert kind in ("3KV", "3KD")
     M = materials()
     vk.build_descent_module(M, pole=False, technological=kind == "3KV")
@@ -385,12 +563,15 @@ def build(
     for name, at in (COUCH_3KV if kind == "3KV" else COUCH_3KD).items():
         node = build_couch(M, name, at, suited=kind == "3KD")
         if crew and interior():
-            crew(name, node, figure_place(at))
+            # (a man in a pressure suit lies a finger's breadth higher and further up the couch than one in cloth)
+            crew(name, node, figure_place(at if kind == "3KV" else (at[0], at[1] + SUITED[0], at[2] + SUITED[1])))
     build_reserve_engine(M)
+    if kind == "3KD":
+        build_airlock(M, airlock_extended)
     vk.build_straps(M)
     vk.build_cable_mast(M)
     vk.build_instrument_module(M, stowed)
     vk.build_gas_bottles(M)
     vk.build_retro_engine(M)
-    mark_shells(SHELLS_3KV if kind == "3KV" else SHELLS_COMMON)
+    mark_shells(SHELLS_3KV if kind == "3KV" else SHELLS_3KD)
     return f"{LENGTH * MM:.3f} m nozzle to the top of the reserve engine, {2 * vk.MODULE_R * MM:.3f} m across"

@@ -52,7 +52,7 @@ STEER_R = 1085.0  # the steering nozzles from the axis
 STEER_BELL = [(72, 0), (66, 60), (48, 170), (26, 250), (30, 272), (46, 290), (46, 370), (0, 384)]
 WALL = 18.0
 CONE_PIECES = 14  # straight pieces along the cone, as the 8K72K's ogive has: the builder's fittings are placed by them
-BLISTER = (760.0, 2300.0, 1150.0, 760.0)  # half its width; how far it runs toward the nose and toward the foot; how far it stands out
+BLISTER = (860.0, 2300.0, 1150.0, 620.0)  # half its width; how far it runs toward the nose and toward the foot; how far it stands out
 
 SHELLS = (
     "BlockI_Skin",
@@ -275,7 +275,7 @@ def build_blister(X: Matrix, M: dict, az: float, h: float) -> None:
     node = bpy.data.objects["Fairing_Right"]
     bpy.context.view_layer.update()
     hole = X @ frame(V(FAIRING_R * c, FAIRING_R * sn, h), (c, sn, 0))
-    bore(["Fairing_Right_Skin", "Fairing_Right_Wall"], hole, (half - 110) * 0.001, 0.3)
+    bore(["Fairing_Right_Skin", "Fairing_Right_Wall"], hole, (half - 50) * 0.001, 0.3)
     shell = Local(X)
 
     def point(u: float, v: float, off: float):
@@ -284,7 +284,7 @@ def build_blister(X: Matrix, M: dict, az: float, h: float) -> None:
         # a rounded section, fullest low down where the airlock's own end lies, drawn out to a point toward the nose
         full = (1 - v * v) ** (0.5 if v < 0 else 0.62)
         w = half * full
-        lift = (proud - off) * full ** (1.0 if v > 0 else 0.8) * (1 - u * u) ** 0.5
+        lift = (proud - off) * full ** (1.0 if v > 0 else 0.8) * (1 - u**4) ** 0.5  # (flat across its top, steep at its sides)
         a = az + math.asin(max(-1.0, min(1.0, u * w / FAIRING_R)))
         rr = FAIRING_R - 14 + lift
         return (rr * math.cos(a), rr * math.sin(a), h + along)

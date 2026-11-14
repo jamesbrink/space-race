@@ -11,7 +11,7 @@ both crews landed inside the descent module, the first to do so.
 | Flight | Spacecraft | Crew | Launch | In this repo |
 | --- | --- | --- | --- | --- |
 | Voskhod 1 | 3KV No. 3 | Vladimir Komarov, Konstantin Feoktistov, Boris Yegorov | 12 October 1964 | [flight](flights/voskhod-1/README.md): vehicle built, with its crew (in the Gallery) |
-| Voskhod 2 | 3KD No. 4 | Pavel Belyayev, Aleksey Leonov | 18 March 1965 | not built yet |
+| Voskhod 2 | 3KD No. 4 | Pavel Belyayev, Aleksey Leonov | 18 March 1965 | [flight](flights/voskhod-2/README.md): vehicle built, with its airlock and its crew (in the Gallery) |
 
 Both rows have been checked against sources read for this repo: the spacecraft's numbers in
 Siddiqi's text and launch log, in Kamanin's diary and, for Voskhod 2, in OKB-1's own report of
@@ -64,7 +64,7 @@ climb rescue would be "difficult".
 | Voskhod launch vehicle (11A57), with Block I | [voskhod-11a57.md](vehicles/voskhod-11a57.md): built on the Vostok launcher's core and boosters ([vostok-8k72k.md](../vostok/vehicles/vostok-8k72k.md)), with its own third stage, aft section and fairing |
 | Site 1, Tyuratam | the Vostoks' ([site-1.md](../vostok/sites/site-1.md)), built as it stood in April 1961. What had changed by 1964 has not been looked for, and neither flight has its launch site yet |
 | What Voskhod 1's crew wore | [flight-suit.md](crew/flight-suit.md): a grey wool suit and the headset's cap; built seated, in the couches |
-| The Berkut suit (Voskhod 2) | not built yet |
+| The Berkut suit | [berkut.md](crew/berkut.md): built seated, in the couches, to both men's documented statures; the pack Leonov wore outside built by itself |
 
 ## Sources
 

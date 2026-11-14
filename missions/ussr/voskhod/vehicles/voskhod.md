@@ -68,6 +68,25 @@ Keys used below; full entries are in [docs/sources.md](../../../../docs/sources.
 | Couch travel | 200 to 300 mm | documented, disputed | S p. 412; K has 20 to 40 mm. Not modelled: the struts do not move |
 | Pose | hips 68°, knees 88° | estimated | chosen to fit the ball |
 
+### The Volga airlock (3KD)
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| Where | on hatch No. 3, which on a Vostok was the technological hatch with the Vzor's porthole | documented | S p. 448: "The Volga airlock on hatch no. 3 on the descent apparatus"; Z: "mounted on the exterior of hatch No. 3 ... the Vzor navigation window was built into the new hatch" |
+| Its line | along hatch No. 3's: azimuth 315°, 15° toward the nose from square to the long axis | **estimated** | the Vostok model's hatch, which is an estimate. D-KD, read twice, has the folded airlock leaning 20 to 27°; Woods's drawing and the Soviet poster show a like lean. The hatch was left where the Vostok's model has it |
+| Length | 700 mm folded, 2,500 mm out | documented | S p. 449. Z: 740 mm; Pillet 73 cm; Wikipedia and Encyclopedia Astronautica 770 mm |
+| Diameter | 1,200 mm outside, 1,000 mm inside | documented | S pp. 449 and 450. In the model the bands step in 6 mm each: 1,200 at the foot, 1,104 under the head; inside 904 to 1,000 |
+| Hatches | 650 mm (S) or 700 mm (Z; Woods), both opening inward | documented, disputed | the model's outer hatch is 700 mm; the hatch into the cabin is the Vostok's 1 m cover |
+| Mass | 250 kg | documented | S p. 450 |
+| Wall | a rubber bladder inside a cloth cover, with air beams running its length between them | documented | A p. 62: "longitudinal air beams in the form of inflatable rubber cylinders with a cover made of a high-strength fabric"; S p. 450 |
+| Air beams | 40 drawn, as flutes 3 mm deep in the cover and the bladder | documented (40, in three sets); estimated (how they show) | S p. 450: "forty full-length partitions ... three independent sections; two were enough". G has 36. A photograph of an airlock without its cover shows the bladder fluted; the cover over it hangs in folds |
+| Lower ring | 120 mm tall, 1,280 mm across its flange | estimated | A's section; the museum's article |
+| Head | a ribbed aluminium ring 260 mm tall and 1,244 mm across, 24 ribs; the outer hatch's domed cover; a rail on six posts | documented (a rigid upper part with the hatch; a rail); estimated (every size, the ribs' number) | A p. 62: "an upper rigid portion with an EVA hatch"; Z: "crowned with a railing structure"; the museum's and the works' photographs |
+| Bottles | four spheres 330 mm across at its foot | documented (four); estimated (their size and places) | S p. 450: "Four tanks at the base of the Volga carried pressurized air"; the museum's article. They are put round the side toward the nose, which is where the model's fairing has room for them |
+| Camera | a cine camera in a white cover on a bracket at the head's rim, on the side toward the nose | documented (that there was one, on the rim, and that he took it in); estimated (its form and place) | S p. 450: "a third sixteen-millimeter camera was on a boom outward from the airlock"; Leonov's report; a photograph of an airlock without its cover |
+| Ring left on the hull | 34 mm proud | documented | Kamanin, 26 February 1965: «Кольцо выступает над поверхностью корабля на 27 миллиметров»; 3 March: 27 to 40 mm after a normal firing |
+| Colour | the cover a pale tan, the bladder cream, the head bare aluminium, the hatch's cover grey | estimated | the museum's article (tan cover with darker hoops); the works' photograph (cream). **What it looked like in orbit was not established** |
+
 ### Length
 
 The published length is a round five metres and the drawings say more. D-KV is to scale (1:10) and
@@ -87,6 +106,9 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | `DescentModule`, `EntryHatch`, `ParachuteHatch`, `Cabin`, `RetainingStraps`, `CableMast`, `InstrumentModule`, `Antennas`, `GasBottles`, `RetroEngine` | the Vostok's ([vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md)), less the housing on the pole and its three rods, the seat's rails, the cases laid out round the seat, the left-hand panel and the hand controller | as the Vostok's |
 | `ReserveEngine` | collar and gussets, case, bands and bolts, the hatch, duct, boss and stubs | |
 | `CouchLeft`, `CouchCentre`, `CouchRight` (3KV); `CouchLeft`, `CouchRight` (3KD) | each: liner, pan, sledge and posts, struts; and the man the flight puts in it (`Crew_<place>_...`), built at detail 0.75 and above | |
+| `Airlock` (3KD) | `Airlock_Body` (the lower ring, four bottles, their cradles and pipes); `Airlock_Tube_1` to `_9` (the soft tube's bands: cover, bladder, hoop); `Airlock_Head` (the ribbed ring, the rail, the camera) and under it `Airlock_OuterHatch`, hinged at its rim. Each a node with its origin where the airlock is made fast to the hull | built folded: a flight slides each band out 225 mm further than the one below and the head 1,800 mm, swings the outer hatch inward, and later slides the whole away along its line |
+| `AirlockRing` (3KD) | the ring it stood on | stays |
+| `AirlockHatch` (3KD) | the cover of hatch No. 3, with the Vzor's porthole | |
 
 ## What the model gets wrong or leaves out
 
@@ -114,5 +136,20 @@ Everything [vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md) lists for the sh
 - **The parachute container is the Vostok's**, though it now held two main parachutes and the rocket.
 - **The sphere is the Vostok's foil**: Voskhod 1 under its fairing shows crinkled foil; the test
   articles are painted or in a cloth cover.
+- **The airlock does not unfold; it is drawn out.** The real one was folded rubber and cloth that
+  straightened as its air beams filled. The model's soft tube is nine bands that stand inside one
+  another when it is folded and slide out one from the next, so that it tapers by 96 mm from foot
+  to head and shows a step and a hoop every 235 mm; the museum's cover has three or four hoops.
+- **The airlock leans too little.** It stands on the Vostok model's hatch No. 3, 15° toward the
+  nose; OKB-1's drawing has 20 to 27°. So the folded airlock reaches 1.84 m from the long axis
+  where the drawing has 1.66, and the fairing's blister is larger than it need have been.
+- **The hatch into the cabin is the Vostok's cover**, a metre across: the real opening was 0.65 or
+  0.7 m in a new cover that swung inward, and its hinge and drive were not found.
+- **Not built on the airlock**: its lamps, the two cine cameras and the panel inside it, the
+  television cameras, the line and its three fastenings, the drives of its hatches, the locks that
+  held it folded, the mechanism that shot it off.
+- **The 3KD's extra air bottles** on the outside of the instrument module are not built: neither
+  their number nor their place was found.
+- **Which couch the 3KD lost** is from a NASA diagram and from where the hatch's cover swung.
 - **The antennas** are the Vostok model's ten, withdrawn into the hull when stowed.
 - **Cabin equipment**: the Vostok's board, Vzor and parachute container only.

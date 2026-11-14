@@ -514,4 +514,13 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(noon.moon.elevation / DEG, -9.9, 0.05, 'Moon elevation over Site 1, 12 October 1964');
   near(noon.moon.illuminated, 0.376, 0.005, 'Moon lit over Site 1, 12 October 1964');
   assert.equal(noon.moon.waxing, true, 'waxing, not yet at first quarter');
+  // Voskhod 2: the figures quoted in its README ("The sky at liftoff")
+  const voskhod2 = flights.find((f) => f.id === 'ussr/voskhod/voskhod-2');
+  const march = skyFrom(siteFrame(voskhod2.site), julianDate(voskhod2.launch));
+  near(march.sun.azimuth / DEG, 161.5, 0.05, 'Sun azimuth over Site 1, 18 March 1965');
+  near(march.sun.elevation / DEG, 41.5, 0.05, 'Sun elevation over Site 1, 18 March 1965');
+  near(march.moon.azimuth / DEG, 327.1, 0.05, 'Moon azimuth over Site 1, 18 March 1965');
+  near(march.moon.elevation / DEG, -38.7, 0.05, 'Moon elevation over Site 1, 18 March 1965');
+  near(march.moon.illuminated, 0.99, 0.005, 'Moon lit over Site 1, 18 March 1965');
+  assert.equal(march.moon.waxing, false, 'the day after full');
 });
