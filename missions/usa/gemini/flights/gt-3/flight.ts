@@ -190,7 +190,8 @@ const parts: Part[] = [
     group: 'Spacecraft',
     inside: true,
     name: 'Crew station',
-    summary: 'Two ejection seats side by side before the panels this ship flew with. The seats are empty.',
+    summary:
+      'Two ejection seats side by side before the panels this ship flew with. The seats are empty: the two men are modelled, and do not fit yet.',
     detail:
       'Two men sit as in an aeroplane, the command pilot on the left, in pure oxygen at about 5 psi, each with a ' +
       'window before him and a hatch over him. The seats are ejection seats on rails on the bulkhead behind, ' +
@@ -206,8 +207,11 @@ const parts: Part[] = [
       'freeze-dried food he handed it to Grissom, who took a few bites and put it away because of the crumbs. ' +
       'Congress heard about it. No drawing read gives the pressure vessel’s dimensions: it is laid out so that ' +
       'the seats, the panels and a helmet fit, and a seated eye looks along the trough through its window. ' +
-      'Grissom and Young are not here, because their G3C suits have not been modelled and a Mercury suit would ' +
-      'be the wrong suit.',
+      'Grissom and Young are not in their seats. Each is modelled in the G3C suit he wore (helmet, harness and ' +
+      'all), and seated in this cabin as it is laid out neither fits: his helmet comes about two inches through ' +
+      'the hatch over him and his feet go through the floor, which rises with the cone under the panels. The ' +
+      'real cabin was famously made to Grissom’s measure and little more. Until this one is laid out again round ' +
+      'the men, they are left out rather than squeezed in.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
       ['Seats', 'ejection seats, 22 in wide, canted 12° outboard and 8° forward'],
@@ -437,8 +441,8 @@ const vehicle: ModelDef = {
   slider: ['Assembled', 'Taken apart'],
   cutaway: true,
   specGroups: ['Spacecraft', 'Launch vehicle'],
-  // Each seat's node is at a seated man's eyes (vehicles/gemini_cabin.py), which look along the trough through his
-  // window. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when the
+  // Each seat's node is at the eyes of a man sitting in it (vehicles/gemini_cabin.py: `EYE`, an empty seat's, laid out
+  // to look along the trough through his window; the two men's own eyes replace it when they are aboard). The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when the
   // hatches were shut is not in anything read, and twenty minutes are allowed: estimated.
   seats: [
     { node: 'Seat_CommandPilot', label: 'the command pilot’s seat', from: 'Hatches', open: [-7200, -6000], egress: ['pad'] },
@@ -446,6 +450,15 @@ const vehicle: ModelDef = {
   ],
   parts,
   position: [0, BASE, 0],
+  // The three cabin floodlights: one on each side and one at the centre (SEDR 300, p. 3-20); the model's fittings are
+  // `Lamp_Left`, `Lamp_Right` and `Lamp_Centre` (vehicles/gemini_cabin.py), their places estimated. Each light is put
+  // toward the middle of the cabin from its fitting, as Mercury's are, so that the wall beside it is not burnt. Colour
+  // and strength chosen by eye: estimated. The left one first (the command pilot's side is +Z in the viewer's axes).
+  lights: [
+    { position: [0.24, 0.8, 0.3], colour: 0xfff6ea, intensity: 0.55, reach: 3 },
+    { position: [0.24, 0.8, -0.3], colour: 0xfff6ea, intensity: 0.55, reach: 3 },
+    { position: [0.5, 0.78, 0], colour: 0xfff6ea, intensity: 0.45, reach: 3 },
+  ],
   home: 'stack',
   views: [
     // as the liftoff was photographed: the lettering toward the eye, the conduit to its left
@@ -459,6 +472,88 @@ const vehicle: ModelDef = {
     { id: 'interstage', label: 'Interstage', nodes: ['TitanInterstage'], from: along(CONDUIT_AZ + 20, 0.1) },
     { id: 'lettering', label: 'First stage', nodes: ['TitanStage1'], from: along(LETTERS_AZ - 6, 0.05) },
     { id: 'engines', label: 'Engines', nodes: ['TitanStage1Engine'], from: along(CONDUIT_AZ - 20, -0.6) },
+  ],
+};
+
+/**
+ * The crew station as somewhere to sit (types.ts: CabinDef; viewer/cabin.ts). The nodes are the model's
+ * (vehicles/gemini_cabin.py). Nothing here is flown yet: the flight has no simulator run, so every instrument stands
+ * where it was built and every lamp is dark, and each says so. What this gives is the cabin lit as indoors by its own
+ * three floodlights, its instruments and controls named, and its two windows to look out of.
+ */
+const NOT_FLOWN = 'Not simulated: this flight is not flown here yet, so it stands as built.';
+const DARK = 'Not simulated: this flight is not flown here yet, so it stays dark.';
+const instrument = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
+const lamp = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${DARK}` });
+vehicle.cabin = {
+  within: ['CrewStation'],
+  // the top of a seated man's head is toward the hatches, on +X (model/vehicle.py); the seats' 12° cant is not counted
+  overhead: [1, 0, 0],
+  instruments: [
+    instrument(
+      'Gauge_Accelerometer',
+      'Longitudinal accelerometer',
+      'Load along the ship’s axis, in g, at the top of the command pilot’s panel.',
+    ),
+    instrument(
+      'Gauge_Stage1Fuel',
+      'Stage I fuel tank pressure',
+      'The Titan’s first stage fuel tank pressure: one of four needles the command pilot watched for a reason to abort.',
+    ),
+    instrument('Gauge_Stage1Oxidiser', 'Stage I oxidiser tank pressure', 'The first stage oxidiser tank pressure.'),
+    instrument('Gauge_Stage2Fuel', 'Stage II fuel tank pressure', 'The second stage fuel tank pressure.'),
+    instrument('Gauge_Stage2Oxidiser', 'Stage II oxidiser tank pressure', 'The second stage oxidiser tank pressure.'),
+    instrument('Gauge_RangeRate', 'Range and range rate', 'For the rendezvous radar, which this ship did not carry.'),
+    instrument('Gauge_RateOfDescent', 'Rate of descent', 'Feet per second on the way down under the parachute.'),
+    instrument('Gauge_Altimeter', 'Altimeter', 'Barometric height for the landing.'),
+    instrument('Gauge_PropellantQuantity', 'Propellant quantity', 'How much manoeuvring propellant is left, per cent.'),
+    instrument('Gauge_ClockHours', 'Clock, hour hand', 'The pilot’s clock: the command pilot’s panel had none on this ship.'),
+    instrument('Gauge_ClockMinutes', 'Clock, minute hand', 'The pilot’s clock.'),
+    instrument('Gauge_CabinPressure', 'Cabin pressure', 'On the centre panel: pure oxygen at about 5 psi.'),
+    instrument('Gauge_SuitPressure', 'Suit pressure', 'On the centre panel.'),
+    instrument('Gauge_EcsOxygen', 'Oxygen quantity', 'The environmental control system’s oxygen.'),
+    instrument('Gauge_MainBusAmps1', 'Main bus current', 'The pilot’s ammeter.'),
+  ],
+  lamps: [
+    lamp(
+      'Tele_AbortCP',
+      'ABORT (command pilot)',
+      'Lit red from the ground or the range: the order to abort. The decision was still the crew’s.',
+    ),
+    lamp('Tele_AbortP', 'ABORT (pilot)', 'The same lamp on the pilot’s panel.'),
+    lamp('Tele_Engine1', 'ENGINE I', 'First stage chamber pressure low.'),
+    lamp('Tele_Engine2', 'ENGINE II', 'Second stage chamber pressure low: lit until that engine is up to thrust, and again at its cutoff.'),
+    lamp('Tele_AttRate', 'ATT RATE', 'The launch vehicle is turning faster than it should.'),
+    lamp('Tele_Guidance', 'GUIDANCE', 'The launch vehicle has gone over to its secondary guidance.'),
+    lamp('Tele_JettFairing', 'JETT FAIRING', 'Pressed after second stage cutoff on this ship, to throw off the nose and scanner fairings.'),
+    lamp('Tele_SepSpcft', 'SEP SPCFT', 'Pressed to cut the spacecraft from the second stage.'),
+    lamp('Tele_ArmAutoRetro', 'ARM AUTO RETRO', 'Lit amber when the retrograde sequence may be armed.'),
+    lamp('Tele_ManFireRetro', 'MAN FIRE RETRO', 'Pressed to fire the four retrograde rockets by hand.'),
+  ],
+  controls: [
+    { node: 'Ctl_Abort', name: 'Abort handle', about: 'By the command pilot’s left hand: normal, shutdown, abort.' },
+    {
+      node: 'Ctl_AttitudeController',
+      name: 'Attitude hand controller',
+      about: 'Between the seats, for either man: it turns the ship in pitch, roll and yaw.',
+    },
+    {
+      node: 'Ctl_ManeuverController',
+      name: 'Manoeuvre hand controller',
+      about: 'Under the command pilot’s panel: it thrusts the ship forward, aft, sideways, up and down. Pushed in, it stows.',
+    },
+    {
+      node: 'Ctl_EjectCommandPilot',
+      name: 'Ejection ring (command pilot)',
+      about: 'The D-ring between the knees. Either man’s fires both seats.',
+    },
+    { node: 'Ctl_EjectPilot', name: 'Ejection ring (pilot)', about: 'The D-ring between the knees. Either man’s fires both seats.' },
+  ],
+  // each hatch's window: the middle of its outer pane and the way the pane faces (vehicles/gemini_shell.py: Window),
+  // in the viewer's axes; about 14.8 in across (the part's facts)
+  windows: [
+    { at: [0.536, 1.02, 0.466], out: [0.433, 0.819, 0.376], across: 0.376, name: 'Left window' },
+    { at: [0.536, 1.02, -0.466], out: [0.433, 0.819, -0.376], across: 0.376, name: 'Right window' },
   ],
 };
 
@@ -805,7 +900,9 @@ export const flight: Flight = {
       burnS: 154,
       propellant: 'Aerozine 50 / nitrogen tetroxide',
       kind: 'liquid',
-      // the thrust is documented; the burn is derived, and the entry takes the weaker of the two
+      // One confidence to an entry, and it is the weaker figure's. The Redstone's and the Atlas's entries are documented
+      // because both their figures are published ones (a nominal burn, a recorded cutoff). Here the thrust is documented
+      // and this flight's burn is a difference of documented times, which is what derived means: so, derived.
       confidence: 'derived',
       note: `"about 430,000 pounds of thrust at lift-off" for the two, documented (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is liftoff to cutoff, and derived: the press kit’s planned staging at 2 min 36 s (p. 11) less the 1.70 s by which this vehicle’s first stage cut off early (${LAUNCH_SYSTEMS}, Table II.D-14, p. II.D-55), 154.3 s. It takes the press kit’s time to be the nominal one the table measures from; Grissom called "there was staging" at 2:35. The engines were started about 4 s before liftoff, by the plan`,
     },

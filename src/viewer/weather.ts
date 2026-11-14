@@ -72,7 +72,8 @@ export interface MapDay {
   /** Days from the first map's day: the estimated field is read that many times `APART` away in its noise, so each day has its own. */
   apart: number;
   /** The high cloud the record has at the site: how much of the sky, and how far the report holds (metres: all of it to the first, none by the second). */
-  high?: { cover: number; reach: readonly [number, number] };
+  /** `ragged`: fibres, not a veil: the record gives way along a lobed line (`heldDistance`), not a circle. */
+  high?: { cover: number; reach: readonly [number, number]; ragged?: true };
   /** What the record says of the sky over a stretch of country. */
   beyond: readonly WeatherBeyond[];
 }
@@ -84,7 +85,9 @@ export function mapDayOf(day: Day): MapDay {
   return {
     wind: [tidy(Math.sin(day.drift)), tidy(Math.cos(day.drift))],
     apart: day.apart,
-    ...(day.high.cover !== null ? { high: { cover: day.high.cover, reach: reportReach(day.high.height) } } : {}),
+    ...(day.high.cover !== null
+      ? { high: { cover: day.high.cover, reach: reportReach(day.high.height), ...(day.high.veil ? {} : { ragged: true as const }) } }
+      : {}),
     beyond: day.beyond,
   };
 }
@@ -207,9 +210,23 @@ export function weatherAt(east: number, north: number, place: Place, day: MapDay
     if (b.low) cumulus += (Math.min(MOST, b.low.value * (0.35 + 1.3 * smooth(0.3, 0.7, meso))) - cumulus) * k;
   }
   // And last, standing over those, the high cloud the station under it reported, as far as its report holds:
-  if (day.high) cirrus += (day.high.cover - cirrus) * (1 - smooth(day.high.reach[0], day.high.reach[1], Math.hypot(east, north)));
+  if (day.high) {
+    const held = day.high.ragged ? heldDistance(east, north) : Math.hypot(east, north);
+    cirrus += (day.high.cover - cirrus) * (1 - smooth(day.high.reach[0], day.high.reach[1], held));
+  }
   return { cumulus, cirrus, deck };
 }
+
+/**
+ * How far a place is from the site as the record of fibrous high cloud is taken to hold, metres: its distance, longer
+ * and shorter by up to a half in lobes 20 to 90 km across, so that the report gives way along a ragged line, as a
+ * field of cirrus thins out in sheaves, and not along a circle (which from height, and in the cel look with an edge,
+ * was a disc no cloud is). A veil keeps the circle: it covers the whole sky, and its edge is far off and soft. The same
+ * in the shaders (`highCoverAt`). Estimated.
+ */
+export const heldDistance = (east: number, north: number): number =>
+  Math.hypot(east, north) *
+  (0.5 + (0.55 * noise2(east / 90_000 + 3.7, north / 90_000 + 8.1, 519) + 0.45 * noise2(east / 22_000 + 1.3, north / 22_000 + 4.4, 523)));
 
 /** How far inside a record's stretch of country a place is: 1 within its bounds, 0 from FEATHER degrees outside them (or where the place is not given). */
 function within(place: Place, b: WeatherBeyond): number {
@@ -649,7 +666,16 @@ export const sheetsGlsl = (prefix: string, day: Day | null | undefined): string 
       ? /* glsl */ `
   // The high cloud of the day's record. How much of the sky it covers at a place: the record's as far as its report
   // holds from the site, the map's beyond.
-  float highCoverAt(vec3 w, vec2 xz) { return mix(${high.cover.toFixed(3)}, w.g, smoothstep(${high.reach[0].toFixed(1)}, ${high.reach[1].toFixed(1)}, length(xz))); }
+  ${
+    high.veil
+      ? `float highCoverAt(vec3 w, vec2 xz) { return mix(${high.cover.toFixed(3)}, w.g, smoothstep(${high.reach[0].toFixed(1)}, ${high.reach[1].toFixed(1)}, length(xz))); }`
+      : `// (fibres: given way along a ragged line, as the map has it: heldDistance)
+  float highHeld(vec2 xz) {
+    vec2 en = vec2(xz.x * uWeather.x + xz.y * uWeather.y, xz.x * uWeather.y - xz.y * uWeather.x);
+    return length(en) * (0.5 + (0.55 * ${prefix}noise2(en / 90000.0 + vec2(3.7, 8.1), 519) + 0.45 * ${prefix}noise2(en / 22000.0 + vec2(1.3, 4.4), 523)));
+  }
+  float highCoverAt(vec3 w, vec2 xz) { return mix(${high.cover.toFixed(3)}, w.g, smoothstep(${high.reach[0].toFixed(1)}, ${high.reach[1].toFixed(1)}, highHeld(xz))); }`
+  }
   // What it leaves of the Sun's light for what is under it, covering \`cover\` of the sky with the Sun \`mu\` up (its
   // sine): half its depth along the slant (day.ts: veilShade).
   float veilShade(float cover, float mu) { return exp(-${((1 - VEIL_FORWARD) * high.depth).toFixed(4)} * cover / max(mu, 0.08)); }${

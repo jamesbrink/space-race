@@ -84,6 +84,14 @@ export interface LandSpec {
   shore?: string;
   uniforms?: Record<string, THREE.IUniform>;
   palette: Palette;
+  /**
+   * GLSL `Ground ground(vec2 p, vec4 A, vec4 B)`: the ground's own look from the maps, for a place whose ground is not
+   * the default's sand, grass and leaf litter (the steppe's clay, crust and spring green: tyuratam.ts). May use `seen`,
+   * NOISE, FIELD and `shared`. Unless given, the default's.
+   */
+  ground?: string;
+  /** GLSL `vec3 groundCel(vec2 p, vec4 A, vec4 B, float roofed)`: the cel look's flat ground, with `ground`. Unless given, the default's. */
+  cel?: string;
 }
 
 /**
@@ -248,6 +256,113 @@ function patchGeometry(): THREE.InstancedBufferGeometry {
   geometry.setIndex(index);
   return geometry;
 }
+
+/** The ground's own look, unless a site gives its own (`LandSpec.ground`): bare sand, grass and what falls under shrubs. */
+const defaultGround = (
+  p: Palette,
+): string => /* glsl */ `          // Bare sand, grass and what falls under shrubs, from the maps, with the grain each has close to.
+          Ground ground(vec2 p, vec4 A, vec4 B) {
+            float woody = A.r, herb = A.g, worked = B.r, wet = B.g, loose = B.b;
+            Ground g;
+            g.water = 0.0;
+            // sand: paler and darker over tens of metres; scuffed, drifted and trodden over decimetres; grains
+            float drift = noise(vec3(p * 0.035, 1.0)) * 0.7 + noise(vec3(p * 0.21, 2.0)) * 0.3;
+            vec3 sand = mix(${vec3(p.sandDark)}, ${vec3(p.sand)}, drift);
+            // (each grain is worked out only where it can be made out: past that its share is nought, so nothing changes but the cost)
+            float tread = 0.5, grain = 0.5;
+            if (seen(0.12) > 0.0) tread = noise(vec3(p * 2.4, 5.0)) * 0.6 + noise(vec3(p * 7.0, 6.0)) * 0.4;
+            if (seen(0.004) > 0.0) grain = noise(vec3(p * 160.0, 2.0)) * 0.6 + noise(vec3(p * 430.0, 4.0)) * 0.4;
+            sand *= 1.0 + 0.24 * (tread - 0.5) * seen(0.12) + 0.24 * (grain - 0.5) * seen(0.004);
+            // loose dry sand lies in wind ripples, crests across the wind
+            // ripples: crests a hand apart, wandering and forking, stronger in patches where the wind has worked longest
+            float rip = 0.0, ripples = loose * (1.0 - smoothstep(0.05, 0.3, herb)) * seen(0.06);
+            if (ripples > 0.0) {
+              float ripWarp = noise(vec3(p * 0.6, 8.0)) * 0.35 + noise(vec3(p * 2.3, 8.5)) * 0.04;
+              rip = sin((p.x + ripWarp + 0.08 * p.y) * 62.8);
+              ripples *= smoothstep(0.3, 0.7, noise(vec3(p * 0.18, 8.9)));
+            }
+            sand *= 1.0 + 0.03 * rip * ripples;
+            g.bump = 0.003 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12);
+            // patches a stride across: damper and darker, or a dry pale crust
+            float patches = noise(vec3(p * 0.45, 24.0)) * 0.65 + noise(vec3(p * 1.3, 25.0)) * 0.35;
+            sand *= 1.0 + 0.22 * (patches - 0.5) * seen(0.5);
+            // worked ground: graded, and driven over; each vehicle's track two lines of pressed sand 1.5 m apart, wandering
+            float tyres = 0.0;
+            if (worked * seen(0.3) > 0.0) for (int k = 0; k < 2; k++) {
+              float a = 0.7 + 1.9 * float(k);
+              vec2 dir = vec2(cos(a), sin(a));
+              float across = dot(p, vec2(-dir.y, dir.x)) + 9.0 * noise(vec3(p * 0.025, 26.0 + float(k)));
+              float lane = floor(across / 23.0);
+              float f = across - (lane + 0.5) * 23.0;
+              float wheel = 1.0 - smoothstep(0.06, 0.15, abs(abs(f) - 0.75));
+              // a track runs for a while and gives out, pressed harder in places
+              float runs = smoothstep(0.45, 0.6, noise(vec3(dot(p, dir) * 0.03, lane, 27.0 + float(k))));
+              tyres = max(tyres, wheel * runs * (0.5 + 0.5 * noise(vec3(p * 0.7, 29.0 + float(k)))));
+            }
+            tyres *= worked * seen(0.3);
+            sand = mix(sand, sand * 0.9, tyres);
+            sand = mix(sand, sand * 1.05, worked);
+            g.bump += 0.02 * (patches - 0.5) * seen(0.5) - 0.012 * tyres;
+            g.albedo = sand;
+            g.rough = 1.0;
+            // grass: clumps of a hand's breadth to a stride, with sand between where it is thin
+            float clump = noise(vec3(p * 1.7, 9.0)) * 0.6 + noise(vec3(p * 5.5, 10.0)) * 0.4;
+            float grass = smoothstep(clump - 0.3, clump + 0.2, herb * 1.25 + 0.25 * (noise(vec3(p * 9.0, 41.0)) - 0.5) * seen(0.1));
+            grass = mix(herb, grass, seen(0.35));
+            vec3 straw = mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, smoothstep(0.25, 0.75, noise(vec3(p * 0.09, 11.0)) * 0.7 + clump * 0.3));
+            // the grass's colour by its clumps: no blades, just tone, faded by pixel size like everything else
+            straw *= 0.85 + 0.3 * (clump - 0.5) * seen(0.2) + 0.12 * (noise(vec3(p * 3.1, 12.0)) - 0.5) * seen(0.08);
+            g.albedo = mix(g.albedo, straw, grass);
+            g.bump += 0.01 * grass * (clump - 0.5) * seen(0.2);
+            // under shrubs: fallen leaves and shade
+            // (its edge wanders by a noise 1.25 m across, which goes to its mean once that is under two pixels: left in, it
+            // was a stipple of single dark pixels round every clearing from half a kilometre to six up, crawling as the eye moved)
+            float under = smoothstep(0.12, 0.55, woody + 0.3 * (noise(vec3(p * 0.8, 14.0)) - 0.5) * seen(2.5));
+            vec3 litter = ${vec3(p.litter)} * (0.75 + 0.5 * noise(vec3(p * 3.0, 15.0)) * mix(1.0, 0.6 + 0.8 * noise(vec3(p * 11.0, 16.0)), seen(0.05)));
+            g.albedo = mix(g.albedo, litter, under);
+            g.bump = mix(g.bump, 0.01 * (noise(vec3(p * 3.0, 15.0)) - 0.5), under);
+            // damp ground is darker and has a sheen
+            g.albedo *= 1.0 - 0.38 * wet;
+            g.rough = mix(g.rough, 0.55, wet);
+            return g;
+          }`;
+
+/** The cel look's ground, unless a site gives its own (`LandSpec.cel`). */
+const defaultCel = (p: Palette, crown: number): string => /* glsl */ `          if (uCel > 0.5) {
+            float wander = noise(vec3(landAt * 0.08, 50.0)) - 0.5;
+            float grassed = step(0.42, coverA.g + 0.35 * wander);
+            float under = step(0.45, coverA.r + 0.3 * wander);
+            vec3 flat_ = mix(${vec3(p.sand)} * 1.12, mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, 0.4) * 1.45, grassed);
+            flat_ = mix(flat_, ${vec3(p.litter)} * 1.3, under);
+            flat_ *= 1.0 - 0.1 * step(0.62, noise(vec3(landAt * 0.03, 51.0)));
+            // near the eye, the marks a pen makes for ground: short strokes in tufts where it is grassed, a stipple on sand
+            vec2 tc = landAt * 3.0, ti = floor(tc), tf = tc - ti;
+            float th = hash(vec3(ti, 52.0));
+            vec2 to = vec2(hash(vec3(ti, 53.0)), hash(vec3(ti, 54.0))) * 0.6 + 0.2;
+            float ta = 1.2 + 0.7 * (th - 0.5);
+            vec2 td = vec2(cos(ta), sin(ta));
+            vec2 tq = tf - to;
+            float clumped = noise(vec3(landAt * 0.7, 55.0));
+            float stroke = (1.0 - smoothstep(0.02, 0.05, abs(tq.x * td.y - tq.y * td.x))) * step(abs(dot(tq, td)), 0.12) * step(1.0 - clumped * 0.9, th);
+            float dot_ = (1.0 - smoothstep(0.025, 0.05, length(tq))) * step(0.8, th);
+            float mark = mix(dot_, stroke, grassed) * (1.0 - under) * seen(0.06);
+            flat_ = mix(flat_, flat_ * 0.7, mark);
+            if (roofed > 0.0) {
+              float crownCel = mix(0.6, crowns(landAt), seen(${crown.toFixed(2)}));
+              vec3 roof = mix(${vec3(p.leaf)} * 1.25, ${vec3(p.leafLit)} * 1.1, step(0.5, crownCel));
+              flat_ = mix(flat_, roof, step(0.5, roofed));
+            }
+            g.albedo = flat_;
+            g.bump = 0.0;
+          }
+`;
+
+/** A site's own cel ground, called where the default's block stands. */
+const CEL_HOOK = /* glsl */ `          if (uCel > 0.5) {
+            g.albedo = groundCel(landAt, coverA, coverB, roofed);
+            g.bump = 0.0;
+          }
+`;
 
 export class Land {
   readonly mesh: THREE.Mesh;
@@ -603,72 +718,7 @@ export class Land {
           vec3 landSun;      // the Sun's light here, its shadows taken
           ${spec.paint}
           ${spec.shore ? `#define LAND_SHORE\n${spec.shore}` : ''}
-          // Bare sand, grass and what falls under shrubs, from the maps, with the grain each has close to.
-          Ground ground(vec2 p, vec4 A, vec4 B) {
-            float woody = A.r, herb = A.g, worked = B.r, wet = B.g, loose = B.b;
-            Ground g;
-            g.water = 0.0;
-            // sand: paler and darker over tens of metres; scuffed, drifted and trodden over decimetres; grains
-            float drift = noise(vec3(p * 0.035, 1.0)) * 0.7 + noise(vec3(p * 0.21, 2.0)) * 0.3;
-            vec3 sand = mix(${vec3(p.sandDark)}, ${vec3(p.sand)}, drift);
-            // (each grain is worked out only where it can be made out: past that its share is nought, so nothing changes but the cost)
-            float tread = 0.5, grain = 0.5;
-            if (seen(0.12) > 0.0) tread = noise(vec3(p * 2.4, 5.0)) * 0.6 + noise(vec3(p * 7.0, 6.0)) * 0.4;
-            if (seen(0.004) > 0.0) grain = noise(vec3(p * 160.0, 2.0)) * 0.6 + noise(vec3(p * 430.0, 4.0)) * 0.4;
-            sand *= 1.0 + 0.24 * (tread - 0.5) * seen(0.12) + 0.24 * (grain - 0.5) * seen(0.004);
-            // loose dry sand lies in wind ripples, crests across the wind
-            // ripples: crests a hand apart, wandering and forking, stronger in patches where the wind has worked longest
-            float rip = 0.0, ripples = loose * (1.0 - smoothstep(0.05, 0.3, herb)) * seen(0.06);
-            if (ripples > 0.0) {
-              float ripWarp = noise(vec3(p * 0.6, 8.0)) * 0.35 + noise(vec3(p * 2.3, 8.5)) * 0.04;
-              rip = sin((p.x + ripWarp + 0.08 * p.y) * 62.8);
-              ripples *= smoothstep(0.3, 0.7, noise(vec3(p * 0.18, 8.9)));
-            }
-            sand *= 1.0 + 0.03 * rip * ripples;
-            g.bump = 0.003 * rip * ripples + 0.03 * (tread - 0.5) * seen(0.12);
-            // patches a stride across: damper and darker, or a dry pale crust
-            float patches = noise(vec3(p * 0.45, 24.0)) * 0.65 + noise(vec3(p * 1.3, 25.0)) * 0.35;
-            sand *= 1.0 + 0.22 * (patches - 0.5) * seen(0.5);
-            // worked ground: graded, and driven over; each vehicle's track two lines of pressed sand 1.5 m apart, wandering
-            float tyres = 0.0;
-            if (worked * seen(0.3) > 0.0) for (int k = 0; k < 2; k++) {
-              float a = 0.7 + 1.9 * float(k);
-              vec2 dir = vec2(cos(a), sin(a));
-              float across = dot(p, vec2(-dir.y, dir.x)) + 9.0 * noise(vec3(p * 0.025, 26.0 + float(k)));
-              float lane = floor(across / 23.0);
-              float f = across - (lane + 0.5) * 23.0;
-              float wheel = 1.0 - smoothstep(0.06, 0.15, abs(abs(f) - 0.75));
-              // a track runs for a while and gives out, pressed harder in places
-              float runs = smoothstep(0.45, 0.6, noise(vec3(dot(p, dir) * 0.03, lane, 27.0 + float(k))));
-              tyres = max(tyres, wheel * runs * (0.5 + 0.5 * noise(vec3(p * 0.7, 29.0 + float(k)))));
-            }
-            tyres *= worked * seen(0.3);
-            sand = mix(sand, sand * 0.9, tyres);
-            sand = mix(sand, sand * 1.05, worked);
-            g.bump += 0.02 * (patches - 0.5) * seen(0.5) - 0.012 * tyres;
-            g.albedo = sand;
-            g.rough = 1.0;
-            // grass: clumps of a hand's breadth to a stride, with sand between where it is thin
-            float clump = noise(vec3(p * 1.7, 9.0)) * 0.6 + noise(vec3(p * 5.5, 10.0)) * 0.4;
-            float grass = smoothstep(clump - 0.3, clump + 0.2, herb * 1.25 + 0.25 * (noise(vec3(p * 9.0, 41.0)) - 0.5) * seen(0.1));
-            grass = mix(herb, grass, seen(0.35));
-            vec3 straw = mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, smoothstep(0.25, 0.75, noise(vec3(p * 0.09, 11.0)) * 0.7 + clump * 0.3));
-            // the grass's colour by its clumps: no blades, just tone, faded by pixel size like everything else
-            straw *= 0.85 + 0.3 * (clump - 0.5) * seen(0.2) + 0.12 * (noise(vec3(p * 3.1, 12.0)) - 0.5) * seen(0.08);
-            g.albedo = mix(g.albedo, straw, grass);
-            g.bump += 0.01 * grass * (clump - 0.5) * seen(0.2);
-            // under shrubs: fallen leaves and shade
-            // (its edge wanders by a noise 1.25 m across, which goes to its mean once that is under two pixels: left in, it
-            // was a stipple of single dark pixels round every clearing from half a kilometre to six up, crawling as the eye moved)
-            float under = smoothstep(0.12, 0.55, woody + 0.3 * (noise(vec3(p * 0.8, 14.0)) - 0.5) * seen(2.5));
-            vec3 litter = ${vec3(p.litter)} * (0.75 + 0.5 * noise(vec3(p * 3.0, 15.0)) * mix(1.0, 0.6 + 0.8 * noise(vec3(p * 11.0, 16.0)), seen(0.05)));
-            g.albedo = mix(g.albedo, litter, under);
-            g.bump = mix(g.bump, 0.01 * (noise(vec3(p * 3.0, 15.0)) - 0.5), under);
-            // damp ground is darker and has a sheen
-            g.albedo *= 1.0 - 0.38 * wet;
-            g.rough = mix(g.rough, 0.55, wet);
-            return g;
-          }`,
+${spec.ground ?? defaultGround(p)}${spec.cel ?? ''}`,
         )
         .replace(
           '#include <map_fragment>',
@@ -695,34 +745,7 @@ export class Land {
           // Drawn: the land in a few flat tones with shapes of its own, not the real ground posterised. Each cover
           // is one colour, chosen by its map with an edge that wanders like a brush's; a second, darker tone lies in
           // patches tens of metres across; the canopy's crowns are lit or in shade. The grain is gone.
-          if (uCel > 0.5) {
-            float wander = noise(vec3(landAt * 0.08, 50.0)) - 0.5;
-            float grassed = step(0.42, coverA.g + 0.35 * wander);
-            float under = step(0.45, coverA.r + 0.3 * wander);
-            vec3 flat_ = mix(${vec3(p.sand)} * 1.12, mix(${vec3(p.herbDry)}, ${vec3(p.herbGreen)}, 0.4) * 1.45, grassed);
-            flat_ = mix(flat_, ${vec3(p.litter)} * 1.3, under);
-            flat_ *= 1.0 - 0.1 * step(0.62, noise(vec3(landAt * 0.03, 51.0)));
-            // near the eye, the marks a pen makes for ground: short strokes in tufts where it is grassed, a stipple on sand
-            vec2 tc = landAt * 3.0, ti = floor(tc), tf = tc - ti;
-            float th = hash(vec3(ti, 52.0));
-            vec2 to = vec2(hash(vec3(ti, 53.0)), hash(vec3(ti, 54.0))) * 0.6 + 0.2;
-            float ta = 1.2 + 0.7 * (th - 0.5);
-            vec2 td = vec2(cos(ta), sin(ta));
-            vec2 tq = tf - to;
-            float clumped = noise(vec3(landAt * 0.7, 55.0));
-            float stroke = (1.0 - smoothstep(0.02, 0.05, abs(tq.x * td.y - tq.y * td.x))) * step(abs(dot(tq, td)), 0.12) * step(1.0 - clumped * 0.9, th);
-            float dot_ = (1.0 - smoothstep(0.025, 0.05, length(tq))) * step(0.8, th);
-            float mark = mix(dot_, stroke, grassed) * (1.0 - under) * seen(0.06);
-            flat_ = mix(flat_, flat_ * 0.7, mark);
-            if (roofed > 0.0) {
-              float crownCel = mix(0.6, crowns(landAt), seen(${spec.crown.toFixed(2)}));
-              vec3 roof = mix(${vec3(p.leaf)} * 1.25, ${vec3(p.leafLit)} * 1.1, step(0.5, crownCel));
-              flat_ = mix(flat_, roof, step(0.5, roofed));
-            }
-            g.albedo = flat_;
-            g.bump = 0.0;
-          }
-          paint(landAt, coverA, coverB, g);
+${spec.cel ? CEL_HOOK : defaultCel(p, spec.crown)}          paint(landAt, coverA, coverB, g);
           #ifdef LAND_BEYOND
           // across the last stretch, and everywhere from high up but where the ground is made (worked: roads, aprons, clearings)
           float handed = max(vHanded, smoothstep(${beyond?.lift[0].toFixed(1)}, ${beyond?.lift[1].toFixed(1)}, uEye.y) * (1.0 - smoothstep(0.1, 0.35, coverB.r)));

@@ -20,6 +20,7 @@ Top-level nodes: NoseFairing  RendezvousRecovery  ReentryControl  Hatches  Scann
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import bpy
@@ -120,6 +121,7 @@ class Fit:
     water_tanks: int = 1  # drinking water tanks in the adapter
     experiments: tuple[str, ...] = ()  # of: "sea-urchin", "blood", "reentry-communications"
     names: tuple[str, str] = ("", "")  # the command pilot and the pilot, for what their seats say
+    crew: Callable | None = None  # builds the man in each seat (gemini_cabin.seat); without it the seats are empty
 
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
@@ -800,7 +802,7 @@ def build_crew_station(M, fit: Fit, font=None) -> None:
     inside it, flat sided, with the hatches for its roof; the space between its sides and the cone is the equipment bays."""
     import gemini_cabin
 
-    gemini_cabin.build(group("CrewStation"), M, font or srlib.load_font(), fit.names, say)
+    gemini_cabin.build(group("CrewStation"), M, font or srlib.load_font(), fit.names, say, fit.crew)
 
 
 # ------------------------------------------------------------------ the adapter

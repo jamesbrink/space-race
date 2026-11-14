@@ -212,10 +212,10 @@ These are the figures one would be written from.
 
 - **The launch site.** Complex 19 is [a site as numbers](../../sites/lc-19.ts): where it was, and
   which way the vehicle is taken to have faced on it, which is not settled.
-- **The crew.** The two ejection seats are empty. The two flown G3C suits are at the Smithsonian
-  and are photographed front and back, but a suit module to the standard of Mercury's has not been
-  built from them, and the Mercury suit is a different suit: no figures have been put in their
-  place. Each seat has its eye point, a seated man's of average build.
+- **The crew.** The two ejection seats are empty. Grissom and Young are modelled in their G3C
+  suits ([g3c-suit.md](../../crew/g3c-suit.md)), but the crew station as laid out is some two
+  inches too small for either man in his helmet, at the hatch and at the floor, and they are left
+  out until it is laid out again. Each seat has its eye point, a seated man's of average build.
 - **A flight deck.** The crew station is built as spacecraft 3 flew it, from McDonnell's drawing of
   this ship's panels, and its needles, pointers, lamps and controls are each a node of the model;
   nothing reads them yet, the cabin has no lights of its own, and its shadows are not baked. The
