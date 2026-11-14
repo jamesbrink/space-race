@@ -835,6 +835,17 @@ function between(samples: readonly Sample[], t: number, point: (s: Sample) => Ve
 }
 
 /**
+ * A shed body's velocity as it leaves an orbital flight's stack: the stack's, less its share of `def.push` (the pushers
+ * between it and what goes on: shared by the masses, back along the long axis `axis`). What goes on is the spacecraft of
+ * `mass` kg; its own share is not added to it: its flight is the record's, or the live vehicle's as it parted.
+ */
+export function pushedOff(def: { push?: { value: number }; mass?: { value: number } }, v: Vec3, axis: Vec3, mass: number): Vec3 {
+  const m = def.mass?.value ?? 0;
+  if (!def.push || m <= 0) return v;
+  return add(v, scale(unit(axis), (-def.push.value * mass) / (mass + m)));
+}
+
+/**
  * An orbital flight's record, flown (sim/staged.ts: the ascent on its law, the coast, the first body of the descent) and
  * made a run the scene places by its samples' own attitude, as a flight flown by hand is: so it is `live`, and stays
  * where it came down. What it drops is flown from the instant each leaves, as the flight's `orbital.ascent.sheds` give
@@ -892,7 +903,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
       on: def.on,
       t: at,
       r: add(r, scale(s.axis, def.centre.value)),
-      v,
+      v: pushedOff(def, v, s.axis, o.mass.value),
       q: s.attitude,
       w: [0, 0, 0],
       mass: m,

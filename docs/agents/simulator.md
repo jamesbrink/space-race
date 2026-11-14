@@ -52,7 +52,7 @@ never adjusted to bring a check in.
   both, Space is the next thing on both.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
   record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
-  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`. Its pilot had no controls going up, and the deck says
+  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
   `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest

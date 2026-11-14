@@ -450,6 +450,10 @@ export const orbital: OrbitalFlight = {
         mass: derived(1_518, '1,472 kg burnt out (Minakov) and the 46 kg the ascent flown leaves'),
         centre: guess(29.8, 'the engine in its tanks’ ring, low in the stage'),
         gyration: { roll: guess(0.9, 'ring tanks 1.29 m in radius'), across: guess(1, 'a stage 3 m long') },
+        push: guess(
+          1,
+          'not found: the spacecraft left Block E’s adapter on pushers (spacecraft.md: four of them), at a speed nothing read gives; 1 m/s apart, of the order spring pushers give, is chosen. Block E’s venting of what was left in its tanks after cutoff, which would have moved it further, is not modelled',
+        ),
         ahead: guess(5, 'its adapter’s open rim, at 1.0'),
         astern: guess(5, 'its base, at 1.0'),
         side: {

@@ -30,7 +30,7 @@ import {
 import { type LiveSample, TICK } from './sim/vehicle.ts';
 import type { SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
-import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord } from './viewer/ascent';
+import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from './viewer/ascent';
 import type { DeckNews } from './viewer/cabin';
 import type { Clock } from './world/clock.ts';
 import { sunPosition } from './world/ephemeris.ts';
@@ -547,7 +547,7 @@ export class OrbitDeck extends Deck {
         on: def.on,
         t: when,
         r: add(x.r, scale(x.axis, def.centre.value)),
-        v: x.v,
+        v: pushedOff(def, x.v, x.axis, o.mass.value),
         q: x.attitude,
         w: [0, 0, 0],
         mass: m,
@@ -669,13 +669,19 @@ export class OrbitDeck extends Deck {
     this.planned = plan;
     this.flown = this.whole(plan);
     const samples = this.samplesOf(plan, this.flown);
-    // as the hand turned it, to the burn's end, then as it falls
+    // as the hand turned it, to the burn's end; then as the hand left it, until the modules part; then turning from there over
+    // half a minute to lie along its motion through the air, as the record's rule turns it (staged.ts recordSamples)
     const log = this.hand!.log;
+    const left = log.at(-1)!.q;
+    const parts = plan.entry.separation.value;
     for (const sample of samples) {
-      if (sample.t < log[0]!.t || sample.t > t + burn) continue;
-      const at = log.filter((k) => k.t <= sample.t).at(-1) ?? log[0]!;
-      sample.attitude = at.q;
-      sample.axis = turn(at.q, [1, 0, 0]);
+      if (sample.t < log[0]!.t) continue;
+      let q: Quat;
+      if (sample.t <= t + burn) q = (log.filter((k) => k.t <= sample.t).at(-1) ?? log[0]!).q;
+      else if (sample.t < parts) q = left;
+      else q = towards(left, sample.attitude, Math.min(1, (sample.t - parts) / 30));
+      sample.attitude = q;
+      sample.axis = turn(q, [1, 0, 0]);
     }
     this.fired = t;
     this.times = orbitalEvents(this.flight, this.flown, { on: t, off: t + burn, parting: plan.entry.separation.value });
@@ -1116,4 +1122,12 @@ export class OrbitDeck extends Deck {
       <p class="cockpit-why">Amber rows are outside the tolerance the record sets. The flight as recorded misses several of them itself (the Flown panel, and the flight’s mission.md, say why).</p>
       ${buttons}`;
   }
+}
+
+/** An attitude part of the way from one to another: the straight blend made a rotation again, the short way round. */
+function towards(from: Quat, to: Quat, k: number): Quat {
+  const sign = from[0] * to[0] + from[1] * to[1] + from[2] * to[2] + from[3] * to[3] < 0 ? -1 : 1;
+  const q = [0, 1, 2, 3].map((i) => from[i]! + (sign * to[i]! - from[i]!) * k);
+  const n = Math.hypot(...q);
+  return [q[0]! / n, q[1]! / n, q[2]! / n, q[3]! / n];
 }
