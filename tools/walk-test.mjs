@@ -34,22 +34,23 @@ const ROUTES = {
     {
       name: 'the erector: fifteen steps, the lift, the upper platform at the hatch',
       at: V1_MORNING,
-      from: [-19, 0, -3.25],
+      // (the stair and the lift are on the erector's south side: the film of the morning)
+      from: [-19, 0, 3.25],
       legs: [
-        { to: [-16.2, -3.25], y: 0 },
-        { to: [-11.6, -3.25], y: 3.0, note: 'up the stair to the landing at the lift’s door' },
-        { to: [-11.3, -2.1], y: 3.0, note: 'into the car' },
+        { to: [-16.2, 3.25], y: 0 },
+        { to: [-11.6, 3.25], y: 3.0, note: 'up the stair to the landing at the lift’s door' },
+        { to: [-11.3, 2.1], y: 3.0, note: 'into the car, between its open doors' },
         { lift: { model: 'pad', part: 'Erector', action: 'lift', stop: 2 }, y: 26.12, note: 'the lift, to the upper platform' },
-        { to: [-5.5, -3.25], y: 26.12, note: 'out of the car, north, onto the walk' },
-        { to: [-3.9, -3.2], y: 26.12 },
-        { to: [-3.6, 0.3], y: 26.12, note: 'across the boom’s face' },
-        { to: [-2.0, 0.3], y: 26.12, note: 'out along the platform to the hatch' },
+        { to: [-5.5, 3.25], y: 26.12, note: 'out of the car, south, onto the walk' },
+        { to: [-3.9, 3.2], y: 26.12 },
+        { to: [-3.6, -0.3], y: 26.12, note: 'across the boom’s face' },
+        { to: [-2.0, -0.3], y: 26.12, note: 'out along the platform to the hatch' },
       ],
     },
     {
       name: 'round the deck: the abutment, the three sides over the pit, the rails',
       at: V1_MORNING + 70 * 60, // 08:20: the fillers have left the north and south tracks, the erector still stands
-      from: [-14, 0, 4],
+      from: [-19.5, 0, 6.5],
       legs: [
         { to: [-17, 14], y: 0 },
         { to: [0, 14.5], y: 0, note: 'along the south side, inside the fence' },
@@ -58,7 +59,7 @@ const ROUTES = {
         { to: [13.5, -12], y: 0 },
         { to: [0, -14.5], y: 0, note: 'along the north side, over its track' },
         { to: [-17, -13], y: 0 },
-        { to: [-24, -4.5], y: 0, note: 'back over the abutment to the erector’s north side' },
+        { to: [-24, -4.5], y: 0, note: 'back over the abutment, north of the erector' },
       ],
     },
     {

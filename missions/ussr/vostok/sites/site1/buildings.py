@@ -31,7 +31,11 @@ from .site import FT, GROUND, P, Parts, box, fine, profile, stood
 # (PIC/JR-2/60). Its width and height are redacted there and again in PIC/JR-2/61.
 SHED_LENGTH = 105.0 * FT
 SHED_WIDTH = 9.0  # m (estimated: Figure 5 draws it some 30 ft wide)
-SHED_EAVE = 6.5  # the roof's underside over the ground, m (estimated: HTA/JR-4/58 calls it "high"; a tank car stands 4.7 m)
+# The roof's underside over the ground, m (estimated). HTA/JR-4/58 calls the shed "high", and a tank car stands 4.7 m. The
+# colour photograph of the liftoff of 12 April 1961, taken from beyond the south fence, has a long white box at the
+# deck's level from 43 m west of the rocket's axis to the frame's edge at 57 m, which is where this shed's south wall is
+# seen from there: some 4.8 m of it stands over the deck's line (16.6 px a metre), its foot hidden. It was drawn 6.5 m.
+SHED_EAVE = 5.2
 SHED_END = SPURS[3][-1]  # the northern spur's end, which the shed stands over (OpenStreetMap way 172441879)
 SHED_HEADING = math.degrees(math.atan2(SPURS[3][-1][1] - SPURS[3][-2][1], SPURS[3][-1][0] - SPURS[3][-2][0]))
 
@@ -64,11 +68,12 @@ def shed(parts: Parts) -> None:
         g,
         "Propellant shed",
         "A shed 105 ft long over the end of the northern spur, open to the north on six supports, with earth banked against its east "
-        "end toward the pad: the CIA took it for where tank cars stood before fuelling. Its length is measured; its width, height and "
-        "walls are estimated.",
+        "end toward the pad: the CIA took it for where tank cars stood before fuelling. Its length is measured. It is white in the "
+        "colour photograph of the liftoff of 12 April 1961, taken from the south, which also gives its height to about a metre; its "
+        "width and its walls are estimated.",
     )
     k = Local()
-    conc, roof = k("concrete/shed"), k("tar")
+    conc, roof = k("white/shed"), k("tar")
     x0, x1, h = -SHED_LENGTH + 1.5, 1.5, SHED_WIDTH / 2
     ze = GROUND + SHED_EAVE
     box(conc, (x0, -h, -FOOTING), (x1, -h + 0.4, ze))  # the south wall

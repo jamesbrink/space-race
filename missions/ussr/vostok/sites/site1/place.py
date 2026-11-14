@@ -252,6 +252,11 @@ def materials() -> dict:
     M.update(
         {
             "plaster": m("concrete-plaster-whitewashed", (0.66, 0.64, 0.58), 0.0, 0.92),
+            # the one wall colour a photograph of the day shows: the long building west of the pad at the deck's level is
+            # white, in the colour photograph of the liftoff taken from the south (the propellant shed: buildings.py)
+            "white": m("wall-limewashed-white", (0.8, 0.79, 0.75), 0.0, 0.9),
+            # the fences' posts, pale in the photograph of the day taken through them (perimeter.py)
+            "post": m("concrete-post-pale", (0.7, 0.69, 0.65), 0.0, 0.9),
             "joint": m("concrete-joint", (0.07, 0.07, 0.065), 0.0, 1.0),
             "tar": m("roof-tar", (0.035, 0.035, 0.035), 0.0, 0.95),
             "blast": m("steel-door-green", (0.11, 0.14, 0.1), 0.5, 0.6),

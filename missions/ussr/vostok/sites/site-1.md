@@ -14,7 +14,7 @@ the platform, and the sky of the morning. What served the rocket that morning an
 before it left is built too, and leaves on the pad's slider at the transcript's times: the erector
 with its lift to the hatch, the two service trusses, the upper cable mast ("What served the
 rocket", below). The place round the pad is built as well ("The place round the pad", below). What was fixed on
-the deck and in the pit is built: the rails in the deck, the two masts 110 ft tall, the small building,
+the deck and in the pit is built: the rails in the deck, the mast 110 ft tall (its twin had gone by 1961), the small building,
 the flame deflector, the pit base with its two trenches and the sump, the road down the pit and the
 cut in its north rim ("The platform", "The flame pit", below). The launch system lets go: the four
 supports fall back as the rocket leaves, on the flight's clock ("Moving parts", below). The land has its
@@ -97,7 +97,8 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | Platform | platform.py | the slab on its four pylons, its lip and its cut corner, the abutment, the retaining walls, the fence; in its top, the flangeways beside the rails | yes |
 | StairHead (under Platform) | deck.py | the small building on the platform's west side | yes; its door shut |
 | DeckRails | deck.py | the rails in the deck: the centre track, the north and south tracks, the short spur, the two gantry rails | yes |
-| Masts (`Mast_NE`, `Mast_SW`) | deck.py | the two masts 110 ft tall, each with its head and its ladder | yes: their form estimated |
+| Masts (`Mast_NE`; `Mast_SW` for a date before July 1959) | deck.py | the mast 110 ft tall at the north-east corner, with its head, its lamps and its ladder; its twin at the south-west corner, which had gone by 12 April 1961 | yes: the form estimated; the south-west one dated and left out |
+| DeckFittings | deck_fittings.py | what a photograph of the day shows on the deck: the railing at its edge, two cabinets, a horn loudspeaker; the joints between its slabs | yes: sizes off the photograph, forms estimated |
 | FlamePit | platform.py | the pit's lining and its own ground out to the rim, and a skirt under the land past it; the pit base, the two trenches, the sump's face and roof, the road down the floor, the cut in the north rim | yes |
 | FlameDeflector | platform.py | the curved chute under the opening | yes: its form off a scale model, its sizes estimated |
 | LaunchRing | launch_system.py | the turning ring, with `Support_1..4` and `Guide_1..4` | yes |
@@ -118,7 +119,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | FloodlightTower | rim.py | the 60 ft tower west of the platform | yes (the place) |
 | OuterFence…, InnerFence… (North, East, South, West), LightPoles…, GuardTowers (`GuardTower_NW` …) | perimeter.py | the double fence, the light poles inside it, six guard towers | yes (the place) |
 | (the vehicle) | the flight's vehicle.glb | hung in the supports: `position` and `rotationY` in flight.ts | yes |
-| (the cosmonaut) | the flight's crew.glb | on the deck, 14.6 m west of the axis on the hatch side; where he stood is estimated | yes |
+| (the cosmonaut) | the flight's crew.glb | on the deck's west edge, 19.5 m west and 6.5 m south of the axis: on his way from the bus to the foot of the erector's stair; where he is stood is estimated | yes |
 
 In flight.ts the vehicle's origin (the spacecraft's braking nozzle) is 30.53 m above its nozzles'
 exits, so it stands at 30.53 - 6.75 = 23.78 m over the deck, turned 52.5° (90 - 37.5) about the
@@ -153,7 +154,27 @@ vertical: the numbers live in [site1/site.py](site1/site.py) (`TAIL_Z`, `TURN`) 
 | Masts | "two towers ... one at the northeast and the other at the southwest corner ... 110 feet high and have a large array on top at least 5 feet wide and 10 feet high" | documented (measured off shadows) | HTA/JR-4/58; "no change" in PIC/JR-2/60; 110 ft again on PIC/JR-2/61 Figure 1 |
 | Where they stand | the north-east one 4.9 ft past the platform's east edge and 3.9 ft in from its north edge, on the lip; the south-west one its mirror through the axis, which is on the abutment: each 29.4 m from the axis | derived | the first scaled off Figure 1; the second from PIC/JR-2/61: "positioned precisely equidistant from the center of the launching platform", "a line drawn between the two masts passes through the center of the servicing tower" (Figure 1 itself draws the south-west one at the abutment's corner, 5 m further out: a diagram) |
 | What they were | "probable collimation towers" (1958); "it is now felt that their function cannot be determined" (1961), neither collimation nor floodlights seeming sound to the interpreters | documented (that it was not known) | HTA/JR-4/58; PIC/JR-2/61 |
-| Their form | a slender square lattice 1.2 m across at the foot, a railed head 100 ft up, on it a frame 5 by 10 ft carrying six floodlights turned to the rocket, a rod 4 m above, a ladder up the side toward the slab | estimated | a photograph of the launch of 12 April 1961 (RussianSpaceWeb) has one beside the rocket: a pale, slender lattice with a wider head near its top and a thin rod above it. That the head is floodlights and the rod a lightning rod is our reading; a scale model of the pad as in 1957 has a short lattice with a box on it at each of the same two corners |
+| **The south-west one: gone by 12 April 1961** | stood in August 1957 and July 1959; absent on the day | documented (photographs of the day) | the two mirror each other through the axis, so from anywhere the south-west one is as far to one side of the rocket as the north-east one is to the other. Three photographs of 12 April 1961 taken from the south (before liftoff; the liftoff in colour; the cover of a booklet of 1961 lettered "12 IV 61", which reads the right way round) have the north-east mast at the right and clear sky where its twin would stand. PIC/JR-2/61 (March 1961) repeats the photographs of 1959. When it was taken down is not known: `stood(until="1959-07")`, the last date it is known standing |
+| That those photographs look north | from south of the pit, 240 m or more from the rocket, through the fence | derived | under the north-east corner the lip's bracket is seen side on, projecting to the right, and the lip projects east; the light on the rocket comes from the camera's right (the Sun stood at 142°); a row of fence posts crosses the foot of the frame. Mirrored copies of these photographs circulate |
+| Its form | a slender square lattice, cross-braced, 1.2 m across at the foot and 0.64 m under its head; a railed head 2.4 m square, 100 ft up, a lamp at each corner of its rail turned down to the launch system; the lattice going on above the head, slighter, to 110 ft; a rod 4 m above; a ladder up the side toward the slab | estimated, but the head's breadth (some 2.9 m over its lamps: measured off the photograph of the day taken before liftoff, 28 px a metre) | that photograph: a slender cross-braced lattice, a box of rails at its head with a dark lamp at each end of it, the lattice going on above. That the lamps are floodlights and the rod a lightning rod is our reading; a scale model of the pad as in 1957 has a short lattice with a box on it at each of the same two corners. It was first drawn with a frame of six floodlights on the head |
+| Its foot | four raking struts from 4.5 m up the legs out to plates 1.7 m apart | estimated | a photograph of a later launch (which is not known) shows struts splayed to some 4.5 m at its foot. The lip it stands on is 8 ft broad as scaled off the CIA's figure and cannot hold that: the struts are as wide as it does hold. In the photograph of the day the lip is carried on a steel bracket that reaches some 5.5 m east of the platform's edge, which is not built: the lip's real plan in 1961 is not known |
+| A ring of floodlights two fifths of the way up | not built | documented for 1961 to 1963 (two photographs, neither of 12 April) | the photograph of the day does not show it clearly |
+
+What stood on the deck on the day ([site1/deck_fittings.py](site1/deck_fittings.py)): from one photograph, taken from
+beyond the south fence before liftoff, the rocket venting and the erector gone (28 px a metre at the rocket, so good to
+some half a metre), and the film of the morning («Первый рейс к звёздам», ЦСДФ 1961).
+
+| Item | Value | Confidence | Source |
+| --- | --- | --- | --- |
+| Edge railing | posts and wires along the platform's edge, about 1.1 m high: along the north, east and south sides and on west along the abutment's south side | documented (the photograph: it runs to the south-east corner, which a fence set in 15 ft could not, and on west past the south-west one); its height measured to 0.2 m | the photograph of the day |
+| Its posts and wires | posts 2.5 m apart, four wires, 0.3 m in from the edge; open at the lip, for the mast's ladder; along the north and east sides as along the south | estimated | only the south side is seen |
+| The fence 15 ft in from the edge | kept, with the railing | documented for 1957 and 1959 (PIC/JR-2/61); assumed for 1961 | whether both stood in 1961 is not known: from the south a fence 4.6 m in cannot be told from one at the edge except at the corner |
+| Cabinets | two, dark, some 2.2 m high: one 2.7 m broad, its middle 20.4 m west of the axis; one 1.1 m broad, 16.7 m west | documented (measured off the photograph, to half a metre) | the photograph of the day |
+| How far north of the edge they stood | 2 m | estimated | cannot be seen from the south |
+| What they held; their doors, caps, plinths | not recorded; ours | estimated | |
+| Loudspeaker | a horn on the narrower cabinet's east side | documented (the horn); estimated (that it was a loudspeaker) | the photograph; Ivanovsky: "the loudspeakers announce the operational time"; a readiness report of March 1961 has the "loud-speaking communication" checked («Первый пилотируемый полёт», 2011, doc 85) |
+| Slabs | rectangular concrete slabs, the rails flush in them | documented | the film, looking down from the erector's head |
+| Their size on the platform | 6 m east to west by 3 m | estimated | the film shows the apron west of the platform, not the deck |
 
 ### The flame pit
 
@@ -230,6 +251,11 @@ storeys: the service platforms from which the launch vehicle is being fuelled"; 
 | How the later mast moves | "the moving part ... can turn in the vertical plane through 40°"; "the time of the moving part's going back from the working position ... under the action of the counterweight: not more than 12 s"; 32,150 mm high, 44 t | documented for the later cable and filling mast (SM-575) | the later launch system's description: a cross-check on the 40° and the ten seconds modelled here, which were chosen before it was read. Those who have studied the films say Gagarin's rocket was served by "two cable masts and a cable and filling mast", the last of the kind made for the Molniya, its head above the Vostok's fairing, and the low cable mast "a tube with a little ladder" (the Novosti Kosmonavtiki forum: not a document) |
 | Erector (8U213) | hydraulic, on rails; 87.5 t; TsKBTM, built by the Podyomnik works, accepted 1960 | documented | as quoted by militaryrussia.ru |
 | The stair to the lift | 15 steps | documented | Ivanovsky: «поднялся на пятнадцать ступеней лестницы, к дверке лифта» |
+| Which side the stair and the lift are on | the south | documented (film; photographs) | the film of the morning («Первый рейс к звёздам», 44:05) and the photograph of Gagarin waving from the landing (Kommersant KOG_053920) both have the boom's pierced girder at their left and the stair rising to the right, toward the rocket: seen from the south. A colour photograph (RussianSpaceWeb) has the party walking east along the wagon's south side; the film, looking down from the boom's head (43:45), has the boom to the party's north. It was first modelled on the north |
+| The lift's car | a tall car of ribbed sheet with two door leaves and an oversailing roof | documented (the film, 44:07 to 44:30) | its size (1.3 by 1.16 by 2.15 m) is estimated, and its doors are built open, folded back inside it, so that it can be walked into at every stop |
+| At the stair's head | a railed landing; a gate of perforated plate, held open in the film; behind the landing a booth of plate with round ports high in it, which the car stands in | documented (the film; the photograph at the stair's head) | their sizes are estimated; the gate's holes are far fewer and larger than the real plate's |
+| The landing's height | 3.0 m; 3.4 ± 0.5 m measured off the photograph | estimated | fifteen risers of 0.2 m |
+| On the wagon's deck | a red domed cover near its east end; a horn loudspeaker on a red-brown box further west; men standing at a rail | documented (a colour photograph of the party walking to the stair, RussianSpaceWeb); estimated (that the low dark green rail machine in it is this wagon; where on the deck each stands: where the boom, laid down, leaves room) | |
 | Its riser, so the landing | 0.2 m; the lift's door 3.0 m up | estimated | |
 | The lift's ride | "two or three minutes" up; "a minute" by another of his tellings | documented | Ivanovsky. The model's car goes at 0.3 m/s: 77 s |
 | The upper platform | 26.12 m over the deck: the hatch's middle (27.32 m) at a standing man's chest | estimated | the film: the men at the hatch stand with it at chest height |
@@ -245,7 +271,8 @@ The railway fillers ([site1/tank_cars.py](site1/tank_cars.py)):
 | Breadth | 3,088 mm | documented for the later car | today's 8G0119: 24,820 by 3,088 by 5,265 mm (kosmonavtika.com, after Barmin) |
 | From above | "Nine cars measure 80 feet in length and two are 50 feet ... appearance of standard Soviet passenger coaches" | documented (measured, August 1957) | HTA/JR-4/58. 80 ft is 24.4 m |
 | That they left, and when | 08:08: "the railway cars are leaving now"; by routine a rail tractor took the fillers a kilometre off | documented | the transcript; Mikheev |
-| Colour | green | estimated | a drawing in Cheremnykh; the film of 1961 as others describe it |
+| Colour | the car on the north track pale grey, with black stencils; the other green | documented (the grey car: a colour photograph of about 07:00 on the day, RussianSpaceWeb, the party walking to the stair); estimated (the green: a drawing in Cheremnykh; the film of 1961 as others describe it) | the photograph looks north over the erector's wagon: beyond it a pale grey car, its side in panels with a joint every two and a half metres or so, its roof a low arch with a rib at each joint, a doorway at floor level with two men in it, a small window beyond the door, «ОГНЕОПАСНО» and «НЕ СПУСК…» in black stencil under a number read as 64 |
+| Which car the grey one was; where it stood | built as the oxygen filler, where that stands | estimated | the stencils are the usual ones for dangerous freight, and "flammable" would sooner be said of kerosene. The photograph has the car abreast of the wagon, its middle some 20 m west of the rocket's axis: 20 m further west than the model's filler. Either it had been drawn back from the rocket by 07:00 or it is another car (the peroxide filler, a topper). Not settled |
 | Which track each stood on | oxygen north, kerosene south | estimated | the shed over the northern spur was the oxygen and nitrogen toppers' shelter (8G118 and 8G128 stood "under a protective canopy" and stayed through the launch: Cheremnykh), so the oxygen is put on that side. In the model the kerosene filler's near side is 10.8 m from the rocket's axis, some 7 m from its strap-ons at the deck's level: the memoir's seven metres |
 | How many; where along the track | one of each, its middle 2 to 3 m west of the rocket's axis | estimated | an artist's view in Cheremnykh has three oxygen fillers end to end on one track |
 | The body | floor 1.25 m over the rails, eave 3.55 m, roof's crown 4.25 m; bogies' middles 4.2 m in from each end, axles 1.3 m apart; 950 mm wheels | estimated | an all-metal coach's; today's car is 5.27 m high |
@@ -262,9 +289,10 @@ standing at a Vostok, such a lean would not show.
 
 Its plan is one drawing and one map. The drawing is **Figure 5 of PIC/JR-2/60** (CIA, February 1960):
 a line drawing of "Launch Area A" with a scale bar and a north arrow, from the U-2's photographs of
-August 1957 and of a second overflight whose date is redacted in every copy read (written "1959"
-throughout this file and the scripts: the U-2 flew over Tyuratam on 9 July 1959, a date set down
-from memory and not from anything read here), agreeing with the plan in HTA/JR-4/58. These are the last photographs of the place taken before the
+August 1957 and of a second overflight in **July 1959** (documented: NPIC/B-24/61, 9 September 1961, whose
+Figure 1 is one of those photographs, captioned "LAUNCH AREA AT LAUNCH COMPLEX A (July 1959)"; the date is
+redacted in the other reports read, and is written "1959" in places in this file and the scripts), agreeing
+with the plan in HTA/JR-4/58. These are the last photographs of the place taken before the
 flight; PIC/JR-2/61 (March 1961) measured some of them again. The map is today's (OpenStreetMap and
 satellite imagery of the 2020s), on which much of that plan still stands. **Where a thing is on both,
 its place is the map's (a few metres) and its size the CIA's; where it is only on the drawing, its
@@ -291,7 +319,8 @@ windows dark. Positions are metres east and north of the rocket's axis.
 | Its height, walls, gates | 4.5 m; walls 1 m; gates 3.4 m square, two steel leaves | estimated | the height is redacted; "at some points, walls are estimated to be 10 feet thick" |
 | Propellant shed | 105 ft long, open to the north on six equal supports, earth against its east end, a spur into it | documented (measured) | PIC/JR-2/60; PIC/JR-2/61 |
 | Where | over the end of the northern spur (39.8 m west, 28.9 m north), along it | documented | OpenStreetMap way 172441879; Figure 5 |
-| Its width and height | 9 m; roof 6.5 m | estimated | both redacted |
+| Its width and height | 9 m; roof's underside 5.2 m | estimated (the width, redacted); derived (the height, to about a metre) | the colour photograph of the liftoff of 12 April 1961, taken from the south, has a long white box at the deck's level from 43 m west of the axis to the frame's edge at 57 m, where this shed's south wall is seen from there: some 4.8 m of it over the deck's line, its foot hidden. A tank car stands 4.7 m. It was first drawn 6.5 m |
+| Its colour | white | documented | the same photograph: the one wall colour of the place seen on the day |
 | Cascade | a plot 55 by 40 ft; two banks of "8 to 10 tanks" each "approximately 40 by [redacted]" | documented (measured) | PIC/JR-2/60; PIC/JR-2/61 |
 | Where | its middle 38.6 m west, 23.3 m south: against the abutment's south-west corner | derived | Figure 5 (45 m from the axis); the text says "approximately 135 feet from the servicing tower" (41 m) |
 | The vessels | nine a bank, 37 ft long, 0.7 m across, on three cradles | estimated | what they held (the pad's compressed gas) is the interpreters' reading |
@@ -322,7 +351,8 @@ windows dark. Positions are metres east and north of the rocket's axis.
 | Light poles | "just inside the outer fence line ... spaced 120 feet apart" | documented | HTA/JR-4/58 |
 | How far inside; their height | 25 ft; 7.5 m | estimated | a dimension on the 1958 drawing read as 25 ft |
 | Guard towers | "at the four corners of the installation and at intervals along the outer fence": six on both drawings | documented | HTA/JR-4/58; Figure 5 |
-| What fence, pole and tower were | timber posts and seven strands of wire; a timber pole on a concrete stub with an enamel shade; a timber tower | estimated | no close view has been read |
+| The fence's posts | pale (white, or bare concrete in the sun), some 0.2 m thick, their tops pointed, 3.5 m apart | documented (that they were pale and pointed); derived (the spacing: 3.3 to 3.8 m if they are the inner fence's) | the photograph of 12 April 1961 taken through the fence from the south before liftoff: a row of them crosses its foot. No wire can be made out |
+| What wire, pole and tower were | seven strands of wire; a timber pole on a concrete stub with an enamel shade; a timber tower | estimated | no close view has been read |
 | Roads | the road in from the south-west; the road round the pit and past the bunker; the road from the storage bunker to the propellant shed ("probably the best in the Complex") | documented (their lines) | Figure 5; OpenStreetMap ways 54570611, 172571827, 172441909 |
 | Their surface and width | concrete slabs, 6 m | estimated | |
 
@@ -502,8 +532,8 @@ ways, every leg arriving with the feet where the floor or the ground is said to 
 
 | Way | How it goes | What was found |
 | --- | --- | --- |
-| The erector, to the hatch | from the deck north of the centre track up the fifteen steps of the stair (0.2 m risers) to the landing at the lift's door, 3.0 m up; into the car; the lift to the upper platform, 26.12 m, in 83 s; out to the north onto the walk, across the boom's face and along the platform to the fairing's opening | nothing to mend |
-| Round the deck, at 08:20 | from where the pilot stands, round the south side inside the fence, between the opening and the east fence, back along the north side over its track, and over the abutment | nothing to mend. Before 08:08 the fillers stand on the north and south tracks: there is 2.1 m between the oxygen filler and the opening and 0.9 m between the kerosene filler and it, and 0.9 and 2.1 m between each and the fence |
+| The erector, to the hatch | from the deck south of the centre track up the fifteen steps of the stair (0.2 m risers) to the landing at the lift's door, 3.0 m up; into the car between its open doors; the lift to the upper platform, 26.12 m, in 83 s; out to the south onto the walk, across the boom's face and along the platform to the fairing's opening | nothing to mend (walked again with the stair on the south side) |
+| Round the deck, at 08:20 | from where the pilot stands at the deck's west edge, round the south side inside the fence, between the opening and the east fence, back along the north side over its track, and over the abutment | nothing to mend. Before 08:08 the fillers stand on the north and south tracks: there is 2.1 m between the oxygen filler and the opening and 0.9 m between the kerosene filler and it, and 0.9 and 2.1 m between each and the fence |
 | Down the road into the pit | off the road round the pit's point, 170 m down the middle of the floor (1 in 5.6) to the sump's roof; across it to its face; down the ladder on the face (10 ft) to the pit base; along the pit base to the foot of the launching structure; down the ladder into the north trench (15 ft), along it and up again | **the sump's ladder led nowhere**: it stood on the shelf beyond the south trench, from which the only way to the pit base was a 15 ft drop into the trench and its ladder out. It now comes down at the pit base's south edge. The road's grade changed with the land (it was 1 in 4.8) |
 | The cut in the north rim | from the steppe 8 m under the deck's level into the cut's head, down it and out of its mouth onto the pit's upper terrace, and back | **the head could not be climbed**: it was the pit's own 1 in 1 slope on three sides, which goes down on foot and not up. Its head is now a step under the land for its first 11 m, from where its floor goes down 1 in 3, and its sides there are 1 in 2 (platform.py: `CUT_RAMP`, `CUT_GRADE`, `CUT_EASY`; estimated). The land is stood on for 3 m inside the rim, which at the cut's narrow head is all of it: a floor further under it than a step was a wall |
 | To the bunker and the buildings | west along the apron between the spurs, down the road's ramp (1 in 14) to the steppe, to the storage bunker's middle gate, the command bunker's door, the check-out shop's gate, the support building's door, the work shop's door, up to the pump house's door on its plot, and up the fall to the propellant shed's open side | nothing to mend. The propellant shed's earth bank at its east end can be walked up, and ends at the shed's wall |
@@ -523,7 +553,10 @@ opens: what was behind each is not recorded.
 | The centre track and the four spurs onto the platform | 1957 | today | documented (five spurs in 1957: HTA/JR-4/58); their lines today's | OpenStreetMap |
 | Rails on the platform: centre track, north and south tracks, short spur, gantry tracks | 1957 | not known (the platform has been rebuilt) | documented for 1957 and 1959; the centre track's flush rails in a photograph of 12 April 1961 | HTA/JR-4/58; PIC/JR-2/61 Figure 1 |
 | The north track's last 10 ft | between August 1957 and 1959 | not known | documented | PIC/JR-2/61. Built as in 1959 for every date |
-| The two masts 110 ft tall | 1957 | not known | documented for 1957 and 1959; one in a photograph of the launch of 12 April 1961 | HTA/JR-4/58; PIC/JR-2/60; PIC/JR-2/61 |
+| The north-east mast 110 ft tall | 1957 | not known | documented for 1957 and 1959, and in the photographs of the launch of 12 April 1961 | HTA/JR-4/58; PIC/JR-2/60; PIC/JR-2/61 |
+| The south-west mast 110 ft tall | 1957 | between July 1959 and 12 April 1961 (`until="1959-07"`: the last date it is known standing) | documented | HTA/JR-4/58; PIC/JR-2/60; absent from three photographs of 12 April 1961 taken from the south ("The platform") |
+| The deck's edge railing, two cabinets, a loudspeaker | not known (not on the CIA's plans from the photographs of 1957 and 1959) | not known | documented for 12 April 1961 (`since="1961-04-12"`: for an earlier date they are left out) | a photograph of the day |
+| The stair and lift on the erector's south side; the lift's car, booth and gate | not known | not known | documented for 12 April 1961 | the film of the morning; two photographs |
 | Small building on the platform | between August 1957 and 1959 | not known | documented for 1959 (not reported in 1957); assumed for 1961 | PIC/JR-2/61 |
 | Flame deflector, pit base, trenches, sump | 1957 | not known | documented for 1957 and 1959 (the deflector itself never seen); assumed for 1961 | HTA/JR-4/58; PIC/JR-2/60; PIC/JR-2/61 |
 | Road down into the pit | 1957 | not known | documented for 1957; assumed for 1961 | HTA/JR-4/58 |
@@ -607,8 +640,18 @@ rocket can leave the erector out by its date.
   photographs, that mast, and the CIA's 85 to 95 ft its head leaning back), the low one "a tube with a
   little ladder": a forum, not a document. What the short one carried and where it met the rocket are not
   known, and in the model its place is taken by the service trusses' half rings.
-- The same photographs show only the north-east one of the two masts 110 ft tall, where the model's
-  south-west one would stand in view at the left.
+- The north-east mast's lip is the CIA's of 1957 and 1959, a concrete tongue 10 ft out and 8 ft broad (the breadth
+  scaled off a drawing). The photograph of 12 April 1961 taken from the south shows it carried on a steel bracket
+  that reaches some 5.5 m east of the platform's edge, with a raking strut under it: not built. So the mast's foot
+  struts, splayed to 4.5 m in a photograph of a later launch, are only as wide as the model's lip holds (1.7 m), and
+  the ring of floodlights two fifths of the way up that mast in photographs of 1961 to 1963 is left out.
+- The deck's cabinets are where one photograph taken from the south puts them east to west; how far from the edge
+  they stood, what they held and every fitting of them are ours. The edge railing is seen along the south side
+  only, and is built the same along the north and east. Both it and the CIA's fence 15 ft in are built: whether
+  both stood in 1961 is not known. The slabs' size on the platform is ours.
+- Two things on the deck in photographs of the day are not built, because what they were is not known: a
+  terracotta block with a frame of at least six floodlights on it, beside the group that saw the pilot off; and
+  a pole some 8 m high seen 34 m west of the rocket's axis from the south in the colour photograph of the liftoff.
 - The counterweights are three stacked iron slabs a side, their number and size estimated (the film shows a dark mass);
   the supports' hinges, pins and the ring's drive are not modelled.
 - The erector's form is drawn from three photographs, and its boom's lean is ours ("What served
@@ -616,7 +659,13 @@ rocket can leave the erector out by its date.
   its jacks, whatever folded the platforms before it left (they go down with the boom as they
   stood), the locomotive that drew it off. Its wheels run on the rails' heads all the way: in the deck's
   flangeways on the slab, and on the modelled rails of the centre track to where it is left.
-- The lift's car is open to the north at every stop, where its floors are, and has no door.
+- The erector is drawn with its stair, landing and lift to the north and mirrored to the south, where the film has
+  them: everything else of it that was not symmetrical (the ladder to its deck, the gaps in its rails) went over
+  with them. The lift's car has its two door leaves built open, folded back inside it against its ends, which is
+  not how they stood open (the film does not show them open): a shut door could not be walked through. The gate at
+  the landing is pierced with 32 holes, where the real plate had hundreds. The booth the car stands in is carried
+  on the boom and goes down with it. The red dome and the loudspeaker on the wagon's deck are where the boom, laid
+  down, leaves room for them, not where the photograph (which shows the wagon's side) could place them across it.
 - The service trusses have two of their three platforms: where the lower one stood against an
   8K72K is not known, and the supports' own head platforms stand where it may have been. What was
   "lowered" at 08:15 is not known and nothing moves for it. Their ladders and landings are ours:
@@ -629,10 +678,14 @@ rocket can leave the erector out by its date.
 - The service cabin (8U216: 16.92 by 19.06 m, 7.785 m high with its platforms down, 144 t, a
   turning ring of platforms under the rocket's tail that was run back into a niche before launch)
   is not built: it lived inside the platform, which is a solid slab here.
-- Of the railway cars one oxygen filler and one kerosene filler are built, as plain green coaches on
-  eight axles: their lengths, their axles and their going at 08:08 are the record; which track each stood
-  on, how many there were (a drawing has three oxygen fillers end to end), their height and every fitting
-  are ours, and they have no hoses to the rocket. Not built: the hydrogen peroxide filler (made to look
+- Of the railway cars one oxygen filler and one kerosene filler are built, as coaches on eight axles: their
+  lengths, their axles and their going at 08:08 are the record; which track each stood on, how many there were
+  (a drawing has three oxygen fillers end to end), their height and every fitting but the grey car's are ours,
+  and they have no hoses to the rocket. The car on the north track is the pale grey one of the colour
+  photograph (its panels, ribs, doorway, window and stencils); that it is the oxygen filler and that it stood
+  beside the rocket are not the photograph's, which has it some 20 m further west ("What served the rocket").
+  The compartment behind its doorway is bare: what stood in it is not recorded. The other car's green is a
+  drawing's. Not built: the hydrogen peroxide filler (made to look
   like a passenger coach; no size is published), the oxygen and nitrogen toppers 8G118 and 8G128, which
   stood under the propellant shed (their "protective canopy") through the launch and are the 45 ft cars of
   the CIA's Figure 5 as likely as not, the transport tanks behind them, and the rail tractor that drew the

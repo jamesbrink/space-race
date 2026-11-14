@@ -12,10 +12,14 @@ side 484 m west, where the security building still stands "along the fence line"
 CIA's 1,622 ft to within 2 m. East to west it is 919 m against their 2,925 ft (891.5 m): the map is taken, and
 the difference recorded (site-1.md).
 
-Estimated: what the fence was (timber posts and seven strands of barbed wire, as the range's fences of those years
-are described; no close photograph of this one has been read), the poles' height and lamps, the towers' form, and
-that the gates stood open: where the road and the centre track cross the two fences a gap is left between taller
-posts, and no leaf is modelled.
+The posts. A photograph of 12 April 1961, taken through the fence from the south before liftoff, has a row of them
+across its foot: pale (white, or bare concrete in the sun), some 0.2 m thick, their tops pointed, some 3.3 to 3.8 m
+apart if they are the inner fence's (the photograph is 28 px a metre at the rocket and its camera stood 240 m or more
+from it). They are built so, 3.5 m apart. No wire can be made out between them.
+
+Estimated: the wire (seven strands of barbed wire, as the range's fences of those years are described), the posts'
+height, the poles' height and lamps, the towers' form, and that the gates stood open: where the road and the centre
+track cross the two fences a gap is left between taller posts, and no leaf is modelled.
 
 Nodes: OuterFenceNorth/East/South/West, InnerFenceNorth/East/South/West, LightPolesNorth/East/South/West,
 GuardTowers (with a child for each tower). A side is a piece of its own so that the viewer draws the far ones coarse.
@@ -36,7 +40,8 @@ NORTH = SOUTH + 1622.0 * FT  # the CIA's breadth north to south
 BETWEEN = 160.0 * FT  # the inner fence inside the outer (HTA/JR-4/58)
 POLES_IN, POLES_APART = 25.0 * FT, 120.0 * FT  # the light poles: inside the outer fence (read off the 1958 drawing), and apart (text)
 TOWER_WEST = -95.0  # the two towers on the long sides: m east of the rocket (scaled off Figure 5)
-POST, POST_APART, STRANDS = 2.3, 3.0, 7  # a fence post's height and spacing, m, and the strands of wire (all estimated)
+# A fence post's height (estimated) and spacing (off the photograph of the day, to half a metre), m, and the strands of wire (estimated)
+POST, POST_APART, STRANDS = 2.3, 3.5, 7
 CHUNK = 460.0  # a mesh of fence is no longer than this, m: the exporter's quantisation is by the mesh (under 2 mm at this)
 
 
@@ -67,11 +72,16 @@ def fence(parts: Parts, name: str, inset: float) -> None:
                 continue
             c = int(length * k / n / CHUNK)
             gate = not ok[k - 1] or not ok[min(n, k + 1)]  # the post beside a way through: taller and stouter
-            t, h = (0.2, POST + 0.7) if gate else (0.12, POST)
-            box(parts(g, f"timber/{c}"), (x - t / 2, y - t / 2, zs[k] - FOOTING), (x + t / 2, y + t / 2, zs[k] + h))
+            t, h = (0.26, POST + 0.7) if gate else (0.18, POST)
+            post = parts(g, f"post/{c}")
+            box(post, (x - t / 2, y - t / 2, zs[k] - FOOTING), (x + t / 2, y + t / 2, zs[k] + h - t * 0.6))
+            # its pointed top
+            zt = zs[k] + h - t * 0.6
+            base = [tuple(P(x + sx * t / 2, y + sy * t / 2, zt)) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+            post.add([*base, tuple(P(x, y, zs[k] + h))], [(0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)])
             if gate or k == 0:  # a strut either way along the fence, taking the wire's pull
                 for s in (-1, 1):
-                    obox_strut(parts(g, f"timber/{c}"), (x, y, zs[k]), (ux * s, uy * s), h)
+                    obox_strut(post, (x, y, zs[k]), (ux * s, uy * s), h)
         if srlib.DETAIL < 1.0:
             continue  # the wire is drawn only close to: a centimetre of wire is nothing at a hundred metres
         wire = lambda k: parts(g, f"wire/{int(length * k / n / CHUNK)}", True)  # noqa: E731

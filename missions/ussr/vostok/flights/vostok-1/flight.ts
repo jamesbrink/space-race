@@ -795,9 +795,10 @@ vehicle.cabin = {
   periscope: VZOR,
 };
 
-// The cosmonaut on the platform's deck, on the hatch side, between where the bus stopped on the tracks and the launch
-// system, facing the rocket. Where he stood is not recorded to the metre: this place is ours (estimated).
-const COSMONAUT_AT: [number, number, number] = [-14, 0, 4];
+// The cosmonaut on the deck's west edge, on his way from where the bus stopped south of the tracks to the foot of the
+// erector's stair (which is on its south side: the film), facing the rocket. The film and a colour photograph have him
+// walking this way along the wagon's south side; where he is stood on it is ours (estimated).
+const COSMONAUT_AT: [number, number, number] = [-19.5, 0, 6.5];
 const COSMONAUT_FACING = Math.atan2(-COSMONAUT_AT[0], -COSMONAUT_AT[2]);
 /** A direction to look at him from: in front of him, turned `aside` radians, `lift` up. */
 const facingCosmonaut = (lift: number, aside = 0.2): [number, number, number] => [
@@ -1118,22 +1119,53 @@ const padParts: Part[] = [
   {
     node: 'Masts',
     group: 'Site 1',
-    name: 'Corner masts',
-    summary: 'Two masts 110 ft tall at opposite corners, which the CIA measured and could not explain.',
+    name: 'Corner mast',
+    summary: 'A mast 110 ft tall that the CIA measured and could not explain. Its twin had gone by this morning.',
     detail:
-      'One stands at the platform’s north-east corner, on a lip of concrete built out over the pit to carry it, the other ' +
-      'at the south-west, on the abutment: the same distance from the rocket, on one line through it. The CIA’s ' +
-      'interpreters measured them at 110 ft in 1957, with an array at the top at least 5 ft wide and 10 ft high, and took ' +
+      'It stands at the platform’s north-east corner, on a lip built out over the pit to carry it. The CIA’s interpreters ' +
+      'measured two in 1957, this one and another at the south-west corner on the abutment, the same distance from the ' +
+      'rocket on one line through it, each 110 ft with an array at the top at least 5 ft wide and 10 ft high. They took ' +
       'them for collimation towers; by March 1961 they had talked themselves out of that and out of floodlights too, and ' +
-      'wrote that their function could not be determined. A photograph of the launch has one beside the rocket: a ' +
-      'slender lattice with a head near its top and a rod above it. They are drawn that way, the head as a bank of ' +
-      'floodlights under a lightning rod. The height, the array’s size and where they stand are the CIA’s; the lattice, ' +
-      'the lamps, the rod and the ladder are estimated.',
+      'wrote that their function could not be determined. The photographs of 12 April 1961 show only this one. Three ' +
+      'taken from the south have it at the right of the rocket and clear sky where the other would stand as far to the ' +
+      'left, so the south-west mast had been taken down since the U-2 last saw it in July 1959, and it is not built ' +
+      'for this day. What they show of this one is a slender cross-braced lattice, a railed head with lamps at its ' +
+      'corners, the lattice going on above the head to a rod. A photograph of a later launch has raking struts at its ' +
+      'foot and a ring of floodlights two fifths of the way up: the struts are built, as far as the lip holds them, and ' +
+      'the ring is not. The height, the array’s size and where it stands are the CIA’s; the lattice’s section, the ' +
+      'lamps’ number and aim, the rod and the ladder are estimated.',
     facts: [
       ['Height', '110 ft (33.5 m)'],
       ['Array', 'at least 5 ft wide and 10 ft high'],
-      ['Where', 'north-east and south-west corners, 29.4 m from the axis (scaled off the CIA’s plan)'],
+      ['Where', 'the north-east corner, 29.4 m from the axis (scaled off the CIA’s plan)'],
+      ['Its twin', 'at the south-west corner in 1957 and July 1959; absent on 12 April 1961 (photographs)'],
+      ['Head', 'railed, some 2.9 m over its lamps (off a photograph of the day)'],
       ['What for', 'not established; drawn as floodlights (estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+  },
+  {
+    node: 'DeckFittings',
+    group: 'Site 1',
+    name: 'On the deck',
+    summary: 'A wire railing at the edge, two cabinets, a loudspeaker: what a photograph taken through the fence shows.',
+    detail:
+      'Nothing published describes the deck’s furniture, so this is one photograph’s worth: taken from beyond the south ' +
+      'fence on the morning of the flight, the rocket venting and the erector gone. It shows a low railing of posts and ' +
+      'wires along the platform’s edge, running to the south-east corner and on west past the south-west one; behind it, ' +
+      'near the south-west corner, two dark cabinets some 2.2 m high, one 2.7 m broad and one 1.1 m with a horn on its ' +
+      'side. The horn is taken for a loudspeaker: "the loudspeakers announce the operational time", Ivanovsky wrote of ' +
+      'that morning. What the cabinets held is not recorded, and how far in from the edge they stood cannot be seen from ' +
+      'the south. The film of the morning, looking down from the erector, shows the concrete laid in rectangular slabs ' +
+      'with the rails flush in it; the slabs’ size here, 6 m by 3 m, is estimated. The CIA’s plans, from the photographs ' +
+      'of 1957 and 1959, have a fence 15 ft in from the edge instead, which is built too: whether both stood in 1961 is ' +
+      'not known.',
+    facts: [
+      ['Railing', 'about 1.1 m high, at the edge (off a photograph of 12 April 1961)'],
+      ['Cabinets', '2.7 m and 1.1 m broad, 2.2 m high, 20 m and 17 m west of the axis (measured, to half a metre)'],
+      ['Loudspeaker', 'a horn on the narrower cabinet (that it was one is our reading)'],
+      ['Slabs', 'rectangular, the rails flush (film); 6 m by 3 m here (estimated)'],
     ],
     explode: [0, 0, 0],
     order: 0,
@@ -1236,16 +1268,22 @@ const padParts: Part[] = [
       'long" with two tanks of 50 cubic metres, which on 12 April "took its position seven metres from the rocket". The ' +
       'CIA’s interpreters, looking down on such cars in 1957, took them for passenger coaches 80 ft long. At 08:08 ' +
       'Kamanin told Gagarin "the railway cars are leaving now": a rail tractor took them a kilometre off. Those ' +
-      'lengths, the eight axles and that hour are the record, and that they were green. Which track each stood on is ' +
-      'not: the oxygen is put to the north, where the shed over the spur sheltered the oxygen and nitrogen toppers, and ' +
-      'the kerosene to the south. One of each is built, where a drawing has three oxygen fillers end to end; their ' +
-      'height and every fitting are estimated. The hydrogen peroxide filler, the toppers under the shed, the transport ' +
-      'tanks behind them and the tractor are not built.',
+      'lengths, the eight axles and that hour are the record. A drawing has them green. A colour photograph of the ' +
+      'morning, of the party walking to the stair at about seven, has one that is not: on the track north of the ' +
+      'erector’s wagon stands a pale grey car, its side in panels, its roof a low arch with a rib at every joint, a ' +
+      'doorway at floor level with two men in it, and in black stencil «ОГНЕОПАСНО» (flammable) and the usual warning ' +
+      'against humping, under a number read as 64. The car on the north track is built so. Which filler it was is not ' +
+      'settled: the oxygen is put to the north, where the shed over the spur sheltered the oxygen and nitrogen toppers, ' +
+      'though "flammable" would sooner be said of kerosene; and the photograph has the grey car abreast of the wagon, ' +
+      'some 20 m further west than the filler stands here beside the rocket. One of each is built, where a drawing has ' +
+      'three oxygen fillers end to end; their height and every fitting but the photograph’s are estimated. The hydrogen ' +
+      'peroxide filler, the toppers under the shed, the transport tanks behind them and the tractor are not built.',
     facts: [
       ['Oxygen filler', '8G117: about 25 m over its couplers, 8 axles'],
       ['Kerosene filler', '8G119: 24 m, 8 axles, two tanks of 50 m³'],
       ['Breadth', '3.09 m (today’s 8G0119)'],
       ['From the rocket', '7 m (a memoir, of the kerosene filler)'],
+      ['Colour', 'one pale grey with black stencils (a colour photograph of the morning); the other green (a drawing)'],
       ['Left', '08:08 Moscow time'],
     ],
     explode: [0, 0, 0],
@@ -1294,13 +1332,20 @@ const padParts: Part[] = [
       'it to the upper platform with the man who would bolt his hatch. At 08:35 Kamanin told him the erector would be ' +
       'drawn off, and at 08:37 that its boom had come away; from the ground it was seen to ride slowly away along the ' +
       'rails, lean over little by little, lay itself down on its wagon and be drawn off by a locomotive. Those words and ' +
-      'times are the record. Its shape is not: no drawing was found, and what is here is drawn from two photographs, with ' +
-      'a boom that leans in over the launch system’s support, which is our way of standing it there and may not be how ' +
-      'it stood. The rams, the cradles the rocket lay in and the locomotive are not modelled.',
+      'times are the record. Its shape is not: no drawing was found, and what is here is drawn from photographs and the ' +
+      'film of the morning, with a boom that leans in over the launch system’s support, which is our way of standing it ' +
+      'there and may not be how it stood. The film and the photograph of him waving both look at the stair from the ' +
+      'south, the boom’s pierced girder at their left and the stair rising to the right, so the stair and the lift are ' +
+      'on the wagon’s south side. They show the lift as a tall car of ribbed sheet with two door leaves, standing at ' +
+      'its lowest stop in a booth of plate, and a gate of perforated plate at the landing; the car’s doors are built ' +
+      'open so that it can be walked into. A colour photograph of the party walking to the stair shows a red domed ' +
+      'cover and a horn loudspeaker on a red box on a low dark green rail machine beside them, with men standing at a ' +
+      'rail: it is taken for this wagon, and they are built on its deck. The rams, the cradles the rocket lay in and ' +
+      'the locomotive are not modelled.',
     facts: [
       ['Kind', 'hydraulic, on rails (8U213, TsKBTM)'],
       ['Mass', '87.5 t'],
-      ['To the lift', '15 steps'],
+      ['To the lift', '15 steps, on the south side (film; a photograph)'],
       ['Upper platform', '26.1 m over the deck (estimated)'],
       ['Lift', '"two or three minutes" to the top'],
       ['Drawn off', '08:35 to 08:37 Moscow time'],
@@ -1441,11 +1486,12 @@ const pad: ModelDef = {
   views: [
     { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
     { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
-    { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, -0.88] },
+    // (the erector and the hatch level from the south-west: its stair and lift are on its south side)
+    { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, 0.88] },
     { id: 'cars', label: 'Railway fillers', nodes: ['TankCars'], from: [-0.3, 0.25, -0.92] },
-    { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, -0.78] },
+    { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, 0.78] },
     { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
-    { id: 'masts', label: 'Corner masts', nodes: ['Masts'], from: [-0.75, 0.12, 0.65] },
+    { id: 'masts', label: 'Corner mast', nodes: ['Masts'], from: [0.35, 0.12, 0.93] },
     { id: 'deflector', label: 'Flame deflector', nodes: ['FlameDeflector'], from: [0.97, -0.1, 0.2] },
     { id: 'pit', label: 'Flame pit', nodes: ['FlamePit'], from: [-0.5, 0.55, 0.67] },
   ],

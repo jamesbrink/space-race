@@ -22,7 +22,19 @@ the ring and leans in over that support to the third stage, which no photograph 
 from behind, as in the one photograph of it at a Vostok, a lean toward the rocket does not show). The rams that
 raised the boom, its cradles for the rocket, its jacks, and the locomotive are not modelled. See ../site-1.md.
 
-Built standing at the rocket, in the site's own axes: the centre track runs along X, the rocket is to the east.
+**The stair and the lift are on its south side.** The film of the morning («Первый рейс к звёздам», 44:05) and the
+photograph of Gagarin waving from the landing both look at the stair with the boom's pierced girder at their left and
+the stair rising to the right, toward the rocket: seen from the south. A colour photograph has the party walking east
+along the wagon's south side to it, and the film, looking down from the boom's head, has the boom to the party's north.
+(The stair was first modelled on the north side.) The same frames show the lift: a tall car of ribbed sheet with two
+door leaves and an oversailing roof, riding between the pierced girder and the lattice; at the stair's head a railed
+landing and a gate of perforated plate, and behind the landing a booth of plate that the car stands in. The colour
+photograph shows, on the wagon, a red domed cover near its east end, a horn loudspeaker on a red-brown box further
+west, and men standing at a rail: that the low dark green machine in that photograph is this wagon is our reading.
+The car's doors are built open, folded back inside it, so that it can be walked into at every stop.
+
+Built standing at the rocket, in the site's own axes: the centre track runs along X, the rocket is to the east. It is
+drawn with the stair to the north and then mirrored (`to_south`): read every "north" below as built, south as it stands.
 
 Nodes: Erector (the wagon), with Erector_Boom (its origin on its pivot) and Erector_Wheel_1..6 (each an axle)
 under it, and Erector_Lift (the car, built at its lowest stop) under the boom.
@@ -36,6 +48,7 @@ from mathutils import Vector
 
 from sitelib import axes, stair_rails, stairs
 
+from . import deck_fittings
 from .site import GAUGE, RAIL_TOP, TAIL_Z, Parts, beam, box, fine, handrail, obox, profile, stood, truss
 from .steel import arc, extra_materials, girder, poly_deck
 
@@ -91,6 +104,23 @@ def build(parts: Parts) -> None:
     wagon(parts)
     boom(parts)
     lift(parts)
+    to_south(parts)
+
+
+def to_south(parts: Parts) -> None:
+    """Mirror everything built for the erector in the centre track's own line, so that the stair, the landing, the lift
+    and the walks beside it stand on the south side, where the film and the photographs of the day have them."""
+    for (node, _), (mb, _) in parts.meshes.items():
+        if node.startswith("Erector"):
+            mb.verts = [(x, -y, z) for x, y, z in mb.verts]
+            mb.faces = [f[::-1] for f in mb.faces]
+    for name, (obj, origin) in list(parts.nodes.items()):
+        if name.startswith("Erector"):
+            parts.nodes[name] = (obj, Vector((origin.x, -origin.y, origin.z)))
+            obj.location.y = -obj.location.y
+    for k, (node, key, foot, top, face, *rest) in enumerate(parts.ladders):
+        if node.startswith("Erector"):
+            parts.ladders[k] = (node, key, Vector((foot.x, -foot.y, foot.z)), Vector((top.x, -top.y, top.z)), (face[0], -face[1], face[2]), *rest)
 
 
 # ----------------------------------------------------------------------------- the wagon
@@ -151,6 +181,52 @@ def wagon(parts: Parts) -> None:
         beam(green, (x, y0 - 0.02, LANDING_Z - 0.14), (x, y1 - 0.05, LANDING_Z - 0.14), 0.1)
     xm = (foot[0] + top[0]) / 2
     beam(green, (xm, 1.42, 1.3), (xm, yc - 0.5, 1.36), 0.1)
+    # the gate at the lift's door: a leaf of perforated plate in an angle frame, hinged on the landing's end post and
+    # standing open along the landing's east rail (the film: a man holds it open as the pilot goes in). Close to, the
+    # plate is pierced; its holes are far fewer and larger than the real plate's.
+    gx = PIVOT[0] + 0.66
+    ga, gb = y0 + 0.03, y0 + 0.93
+    for y in (ga, gb):
+        beam(dark, (gx, y, LANDING_Z + 0.03), (gx, y, LANDING_Z + 2.0), 0.04)
+    for z in (LANDING_Z + 0.05, LANDING_Z + 1.98):
+        beam(dark, (gx, ga, z), (gx, gb, z), 0.04)
+    strips = 4
+    for i in range(strips):
+        y = ga + 0.02 + (gb - ga - 0.04) * (i + 0.5) / strips
+        girder(
+            dark,
+            (gx, y, LANDING_Z + 0.07),
+            (gx, y, LANDING_Z + 1.96),
+            (0, 1, 0),
+            (gb - ga - 0.04) / strips,
+            0.012,
+            web=0.008,
+            holes=8,
+            hole=0.06,
+            plate=0.004,
+        )
+
+    # On the deck, as a colour photograph of the morning has them (see the note at the head of this file): a red domed
+    # cover near the east end and a horn loudspeaker on a red-brown box further west. Each stands where the boom, laid
+    # down, leaves room: the dome between the girders' cross members at its foot, the box inside a bay of its truss.
+    red = parts(node, "red", True)
+    dome = [
+        (0.0, DECK_Z - 0.02),
+        (0.62, DECK_Z - 0.02),
+        (0.62, DECK_Z + 0.06),
+        (0.56, DECK_Z + 0.13),
+        (0.4, DECK_Z + 0.24),
+        (0.2, DECK_Z + 0.31),
+        (0.0, DECK_Z + 0.33),
+    ]
+    red.lathe(profile(dome), 24, matrix=axes((PIVOT[0] - 2.05, 0.0, 0.0), (1, 0, 0), (0, 0, 1)))
+    bx0, bx1, by0, by1 = PIVOT[0] - 9.1, PIVOT[0] - 7.95, 0.75, 1.2
+    crate = parts(node, "red/box")
+    box(crate, (bx0, by0, DECK_Z - 0.02), (bx1, by1, DECK_Z + 0.5))
+    for x in (bx0 + 0.12, bx1 - 0.12):  # two battens across its lid
+        box(dark, (x - 0.03, by0 - 0.02, DECK_Z + 0.49), (x + 0.03, by1 + 0.02, DECK_Z + 0.53))
+    beam(dark, ((bx0 + bx1) / 2, (by0 + by1) / 2, DECK_Z + 0.5), ((bx0 + bx1) / 2, (by0 + by1) / 2, DECK_Z + 0.78), 0.05)
+    deck_fittings.horn(parts, node, ((bx0 + bx1) / 2 - 0.12, (by0 + by1) / 2, DECK_Z + 0.82), (1.0, 0.25, 0.08), 1.15, key="/wagon")
 
 
 def wheelset(parts: Parts, k: int, x: float) -> None:
@@ -265,29 +341,72 @@ def lift(parts: Parts) -> None:
     parts.node(node, "Erector_Boom", origin=(xc, CAR_Y + CAR[1] / 2, z), lift=1, stops=table, stop_names=[n for n, _ in stops()])
     frame, floor = parts(node, "dark"), parts(node, "deck")
     x0, x1, y0, y1 = xc - CAR[0] / 2, xc + CAR[0] / 2, CAR_Y, CAR_Y + CAR[1]
+    top = z + CAR[2]
     box(floor, (x0, y0, z - TREAD), (x1, y1, z))
-    box(frame, (x0 - 0.03, y0 - 0.03, z + CAR[2]), (x1 + 0.03, y1 + 0.03, z + CAR[2] + 0.06))
-    waist = 1.05
+    # the roof: a plate oversailing the car, a lip turned down round it (the film)
+    box(frame, (x0 - 0.05, y0 - 0.03, top), (x1 + 0.05, y1 + 0.05, top + 0.05))
     for x in (x0 + 0.035, x1 - 0.035):
         for y in (y0 + 0.035, y1 - 0.035):
-            beam(frame, (x, y, z), (x, y, z + CAR[2]), 0.07)
-    # three sides closed to the waist with sheet, and crossed with bars above it; the fourth, to the north, is the way in
-    sides = [
-        ((x0 + 0.035, y0 + 0.07), (x0 + 0.035, y1 - 0.07)),
-        ((x1 - 0.035, y0 + 0.07), (x1 - 0.035, y1 - 0.07)),
-        ((x0 + 0.07, y0 + 0.035), (x1 - 0.07, y0 + 0.035)),
-    ]
-    for a, b in sides:
-        beam(frame, (*a, z + waist), (*b, z + waist), 0.05)
-        beam(frame, (*a, z + 0.04), (*b, z + 0.04), 0.05)
-        thick = (0.012, 0.0) if a[0] == b[0] else (0.0, 0.012)
-        box(frame, (a[0] - thick[0], a[1] - thick[1], z + 0.07), (b[0] + thick[0], b[1] + thick[1], z + waist - 0.03))
+            beam(frame, (x, y, z), (x, y, top), 0.07)
+    # three sides of ribbed sheet from the floor to the roof; the fourth, away from the boom, is the way in, with two
+    # door leaves of the same sheet. The leaves are built open, folded back inside the car against its ends.
+    rib = 0.13
+
+    def sheet(a, b, inward) -> None:
+        """A panel between two points at the floor, its ribs standing on the face away from `inward`."""
+        along = (b[0] - a[0], b[1] - a[1])
+        length = math.hypot(*along)
+        ux, uy = along[0] / length, along[1] / length
+        nx, ny = -inward[0], -inward[1]
+        t = 0.006
+        lo = (min(a[0], b[0]) - abs(nx) * t, min(a[1], b[1]) - abs(ny) * t, z + 0.02)
+        hi = (max(a[0], b[0]) + abs(nx) * t, max(a[1], b[1]) + abs(ny) * t, top - 0.01)
+        box(frame, lo, hi)
+        for h in (z + 0.05, z + 1.05, top - 0.05):
+            beam(frame, (a[0] + nx * 0.02, a[1] + ny * 0.02, h), (b[0] + nx * 0.02, b[1] + ny * 0.02, h), 0.035)
         if fine():
-            beam(frame, (*a, z + waist + 0.03), (*b, z + CAR[2] - 0.02), 0.03)
-            beam(frame, (*b, z + waist + 0.03), (*a, z + CAR[2] - 0.02), 0.03)
+            n = max(2, round(length / rib))
+            for i in range(1, n):
+                px, py = a[0] + ux * length * i / n, a[1] + uy * length * i / n
+                cx, cy = px + nx * 0.016, py + ny * 0.016
+                box(
+                    frame,
+                    (cx - 0.012 - abs(nx) * 0.004, cy - 0.012 - abs(ny) * 0.004, z + 0.09),
+                    (cx + 0.012 + abs(nx) * 0.004, cy + 0.012 + abs(ny) * 0.004, top - 0.09),
+                )
+
+    sheet((x0 + 0.035, y0 + 0.07), (x0 + 0.035, y1 - 0.07), (1, 0))
+    sheet((x1 - 0.035, y0 + 0.07), (x1 - 0.035, y1 - 0.07), (-1, 0))
+    sheet((x0 + 0.07, y0 + 0.035), (x1 - 0.07, y0 + 0.035), (0, 1))
+    leaf = (CAR[0] - 0.14) / 2 - 0.02
+    sheet((x0 + 0.115, y1 - 0.08 - leaf), (x0 + 0.115, y1 - 0.08), (-1, 0))
+    sheet((x1 - 0.115, y1 - 0.08 - leaf), (x1 - 0.115, y1 - 0.08), (1, 0))
+    for x in (x0 + 0.115, x1 - 0.115):  # a handle on each leaf's meeting edge
+        box(floor, (x - 0.02, y1 - 0.1 - leaf, z + 1.0), (x + 0.02, y1 - 0.06 - leaf, z + 1.2))
     # the shoes that hold it to the guides
     for h in (0.3, CAR[2] - 0.3):
         box(frame, (xc - 0.5, CAR_Y - 0.045, z + h - 0.06), (xc + 0.5, CAR_Y - 0.002, z + h + 0.06))
+    booth(parts, x0, x1, y0, y1)
+
+
+def booth(parts: Parts, x0: float, x1: float, y0: float, y1: float) -> None:
+    """What the car stands in at its lowest stop: two walls of plate either side of it, carried on the boom's foot, with
+    a head across them over the car's door (the film and the photograph at the stair's head: a plate box behind the
+    landing, round ports high in it). Open above, where the car rises out of it."""
+    green = parts("Erector_Boom", "green/booth")
+    z0, z1 = LANDING_Z - 0.1, LANDING_Z + CAR[2] + 0.3
+    for x, s in ((x0 - 0.11, -1), (x1 + 0.11, 1)):
+        # a wall: plate in an angle frame, two round ports near its top
+        ya, yb = y0 - 0.02, y1 + 0.02
+        girder(green, (x, (ya + yb) / 2, z1 - 0.62), (x, (ya + yb) / 2, z1), (0, 1, 0), yb - ya, 0.05, web=0.012, holes=1, hole=0.16, plate=0.04)
+        box(green, (x - 0.006, ya + 0.04, z0), (x + 0.006, yb - 0.04, z1 - 0.6))
+        for y in (ya + 0.02, yb - 0.02):
+            beam(green, (x, y, z0), (x, y, z1 - 0.62), 0.05)
+        beam(green, (x + s * 0.0, ya, z0 + 0.03), (x, yb, z0 + 0.03), 0.05)
+        # carried off the boom's side
+        for h in (z0 + 0.4, z1 - 0.3):
+            beam(green, (x, BOOM_W - 0.05, h), (x, ya + 0.03, h), 0.06)
+    beam(green, (x0 - 0.11, y1 + 0.02, z1 - 0.03), (x1 + 0.11, y1 + 0.02, z1 - 0.03), 0.06)
 
 
 def summary() -> str:

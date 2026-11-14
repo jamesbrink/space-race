@@ -78,38 +78,49 @@ def build() -> str:
 
 
 if __name__ == "__main__":
-    run(
-        "vostok-1 pad",
-        build,
-        [
-            ("pad-wide.png", (40, 0, -8), 330, dict(azimuth=-125, elevation=22, res=(1600, 1100))),
-            ("pad-platform.png", (0, 0, 8), 120, dict(azimuth=-150, elevation=14, res=(1600, 1100))),
-            ("pad-tulip.png", (0, 0, 9), 60, dict(azimuth=-60, elevation=8, res=(1200, 1300))),
-            ("pad-heads.png", (0, 0, 14), 26, dict(azimuth=-100, elevation=24, res=(1400, 1100))),
-            ("pad-below.png", (0, 0, -4), 60, dict(azimuth=20, elevation=-22, res=(1400, 1100))),
-            ("pad-pit.png", (40, 0, -25), 230, dict(azimuth=15, elevation=28, res=(1600, 1100))),
-            ("pad-slot.png", (0, 0, -25), 80, dict(azimuth=35, elevation=8, res=(1400, 1100))),
-            # what served the rocket: from across the deck, from a man's eye height, and each piece close to
-            ("service-wide.png", (-4, 0, 14), 135, dict(azimuth=-112, elevation=6, res=(1600, 1200))),
-            ("service-eye.png", (-6, 0, 14), 62, dict(azimuth=207, elevation=-11.5, res=(1400, 1400))),
-            ("service-north.png", (-14, 0, 12), 120, dict(azimuth=95, elevation=5, res=(1700, 1200))),
-            ("service-stairs.png", (-13, 3.2, 2.4), 13, dict(azimuth=150, elevation=-3.5, res=(1400, 1100))),
-            ("service-bridge.png", (-2.6, 0.4, 27), 15, dict(azimuth=128, elevation=14, res=(1400, 1100))),
-            ("service-trusses.png", (0, 0, 16), 52, dict(azimuth=38, elevation=12, res=(1400, 1300))),
-            ("service-rings.png", (0, 3, 19), 18, dict(azimuth=70, elevation=28, res=(1400, 1100))),
-            ("service-mast.png", (5, 0.6, 16), 62, dict(azimuth=-28, elevation=6, res=(1200, 1500))),
-            ("service-erector.png", (-20, 0, 9), 75, dict(azimuth=-118, elevation=7, res=(1600, 1200))),
-            ("service-drawn-off.png", (-48, 0, 4), 62, dict(azimuth=-112, elevation=9, res=(1600, 1000))),
-            # what is fixed on the deck and in the pit: along the rails at a man's eye height, the masts against the sky,
-            # one mast's head, the small building; from the pit's floor up at the deflector, the trenches and the sump,
-            # the road down, the cut in the north rim
-            ("fixed-deck-eye.png", (-10, -3.5, 0.5), 20, dict(azimuth=185, elevation=3.2, res=(1600, 1100), lens=28.0)),
-            ("fixed-masts.png", (0, 0, 16), 150, dict(azimuth=-135, elevation=3, res=(1600, 1200))),
-            ("fixed-mast-head.png", (22, 19.4, 31.5), 15, dict(azimuth=205, elevation=8, res=(1200, 1400))),
-            ("fixed-stair-head.png", (-18.4, 7.8, 1.2), 16, dict(azimuth=-150, elevation=6, res=(1400, 1000))),
-            ("fixed-pit-floor.png", (0, 0, -24), 78, dict(azimuth=0, elevation=-12.5, res=(1500, 1300))),
-            ("fixed-trenches.png", (34, 0, -44), 64, dict(azimuth=25, elevation=33, res=(1600, 1100))),
-            ("fixed-road.png", (130, 0, -22), 170, dict(azimuth=-35, elevation=24, res=(1600, 1000))),
-            ("fixed-notch.png", (-2, 92, -4), 85, dict(azimuth=55, elevation=32, res=(1500, 1100))),
-        ],
-    )
+    # `SR_STILLS=day-` in the environment takes only the stills whose names begin so (all of them is half a minute)
+    only = os.environ.get("SR_STILLS", "")
+    stills = [
+        ("pad-wide.png", (40, 0, -8), 330, dict(azimuth=-125, elevation=22, res=(1600, 1100))),
+        ("pad-platform.png", (0, 0, 8), 120, dict(azimuth=-150, elevation=14, res=(1600, 1100))),
+        ("pad-tulip.png", (0, 0, 9), 60, dict(azimuth=-60, elevation=8, res=(1200, 1300))),
+        ("pad-heads.png", (0, 0, 14), 26, dict(azimuth=-100, elevation=24, res=(1400, 1100))),
+        ("pad-below.png", (0, 0, -4), 60, dict(azimuth=20, elevation=-22, res=(1400, 1100))),
+        ("pad-pit.png", (40, 0, -25), 230, dict(azimuth=15, elevation=28, res=(1600, 1100))),
+        ("pad-slot.png", (0, 0, -25), 80, dict(azimuth=35, elevation=8, res=(1400, 1100))),
+        # what served the rocket: from across the deck, from a man's eye height, and each piece close to
+        ("service-wide.png", (-4, 0, 14), 135, dict(azimuth=-112, elevation=6, res=(1600, 1200))),
+        ("service-eye.png", (-6, 0, 14), 62, dict(azimuth=207, elevation=-11.5, res=(1400, 1400))),
+        ("service-north.png", (-14, 0, 12), 120, dict(azimuth=95, elevation=5, res=(1700, 1200))),
+        ("service-stairs.png", (-13, 3.2, 2.4), 13, dict(azimuth=150, elevation=-3.5, res=(1400, 1100))),
+        ("service-bridge.png", (-2.6, 0.4, 27), 15, dict(azimuth=128, elevation=14, res=(1400, 1100))),
+        ("service-trusses.png", (0, 0, 16), 52, dict(azimuth=38, elevation=12, res=(1400, 1300))),
+        ("service-rings.png", (0, 3, 19), 18, dict(azimuth=70, elevation=28, res=(1400, 1100))),
+        ("service-mast.png", (5, 0.6, 16), 62, dict(azimuth=-28, elevation=6, res=(1200, 1500))),
+        ("service-erector.png", (-20, 0, 9), 75, dict(azimuth=-118, elevation=7, res=(1600, 1200))),
+        ("service-drawn-off.png", (-48, 0, 4), 62, dict(azimuth=-112, elevation=9, res=(1600, 1000))),
+        # what is fixed on the deck and in the pit: along the rails at a man's eye height, the masts against the sky,
+        # one mast's head, the small building; from the pit's floor up at the deflector, the trenches and the sump,
+        # the road down, the cut in the north rim
+        ("fixed-deck-eye.png", (-10, -3.5, 0.5), 20, dict(azimuth=185, elevation=3.2, res=(1600, 1100), lens=28.0)),
+        ("fixed-masts.png", (0, 0, 16), 150, dict(azimuth=-135, elevation=3, res=(1600, 1200))),
+        ("fixed-mast-head.png", (22, 19.4, 31.5), 15, dict(azimuth=205, elevation=8, res=(1200, 1400))),
+        ("fixed-stair-head.png", (-18.4, 7.8, 1.2), 16, dict(azimuth=-150, elevation=6, res=(1400, 1000))),
+        ("fixed-pit-floor.png", (0, 0, -24), 78, dict(azimuth=0, elevation=-12.5, res=(1500, 1300))),
+        ("fixed-trenches.png", (34, 0, -44), 64, dict(azimuth=25, elevation=33, res=(1600, 1100))),
+        ("fixed-road.png", (130, 0, -22), 170, dict(azimuth=-35, elevation=24, res=(1600, 1000))),
+        ("fixed-notch.png", (-2, 92, -4), 85, dict(azimuth=55, elevation=32, res=(1500, 1100))),
+        # the day as its photographs have it, each from where its photograph was taken: from beyond the south fence
+        # before liftoff; the mast's foot and head; the cabinets; the stair and the lift from the south, and from
+        # below at the stair's foot; the grey filler over the erector's wagon; the wagon's deck; the deck's joints
+        ("day-south.png", (0, 0, 14.5), 262, dict(azimuth=-90, elevation=0.4, res=(1543, 1120), lens=170.0)),
+        ("day-mast-foot.png", (22.1, 19.4, 2.6), 15, dict(azimuth=-40, elevation=10, res=(1400, 1000))),
+        ("day-mast-head.png", (22.1, 19.4, 31.6), 14, dict(azimuth=-90, elevation=-4, res=(1200, 1200))),
+        ("day-cabinets.png", (-18.6, -18.5, 1.2), 7.5, dict(azimuth=62, elevation=8, res=(1400, 900), lens=40.0)),
+        ("day-lift.png", (-11.3, -2.4, 4.4), 12, dict(azimuth=-100, elevation=4, res=(1300, 1300))),
+        ("day-stair.png", (-12.6, -3.0, 3.2), 9.5, dict(azimuth=-128, elevation=-9, res=(1300, 1000), lens=40.0)),
+        ("day-filler.png", (-3, 12, 2.5), 27, dict(azimuth=-132, elevation=11, res=(1460, 990), lens=45.0)),
+        ("day-wagon.png", (-16, 0, 2.2), 15, dict(azimuth=-70, elevation=22, res=(1500, 1000))),
+        ("day-deck.png", (0, 0, 0), 75, dict(azimuth=-120, elevation=52, res=(1500, 1100))),
+    ]
+    run("vostok-1 pad", build, [still for still in stills if still[0].startswith(only)])

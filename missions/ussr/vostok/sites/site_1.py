@@ -5,7 +5,8 @@ The pieces are in ./site1/, one module each; each is one or more top-level nodes
   Platform, FlamePit,
   FlameDeflector       platform.py        the slab on its pylons, its fence; the pit's lining and ground, the trenches and
                                           the sump on its base; the deflector under the opening
-  DeckRails, Masts     deck.py            the rails in the deck; the two masts 110 ft high; the small building (under Platform)
+  DeckRails, Masts     deck.py            the rails in the deck; the masts 110 ft high; the small building (under Platform)
+  DeckFittings         deck_fittings.py   the deck's joints, the railing at its edge, two cabinets, a loudspeaker
   LaunchRing           launch_system.py   the turning ring, with Support_1..4 and Guide_1..4 under it
   ServiceTrusses       service_trusses.py the two service trusses, ServiceTruss_North and _South, hinged on the ring
   UpperCableMast       cable_mast.py      the cable mast to the third stage, hinged on the ring
@@ -22,7 +23,7 @@ Frame: origin at the rocket's axis on the platform's deck, metres. +X is due eas
 from __future__ import annotations
 
 import sitelib
-from site1 import cable_mast, deck, erector, launch_system, platform, service_trusses, tank_cars
+from site1 import cable_mast, deck, deck_fittings, erector, launch_system, platform, service_trusses, tank_cars
 from site1.site import AZIMUTH, TAIL_Z, TIP_Z, TURN, Parts, materials
 
 __all__ = ["AZIMUTH", "TAIL_Z", "TIP_Z", "TURN", "build", "build_place"]
@@ -34,6 +35,7 @@ def build(date: str | None = None) -> str:
     parts = Parts(materials())
     platform.build(parts, deck.slab_tracks())
     deck.build(parts)
+    deck_fittings.build(parts)
     launch_system.build(parts)
     # what served the rocket that morning and was taken away before it left (each is built as it stood at the start)
     service_trusses.build(parts)
