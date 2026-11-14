@@ -1,4 +1,4 @@
-import type { Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import type { Flight, FlightCheck, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
 import {
   HARDWARE_WORDS,
   held,
@@ -980,6 +980,91 @@ const crew: ModelDef = {
   with: [{ model: 'pad', at: ROLLED_BACK }],
 };
 
+const PSF = 47.880259; // pascals in a pound per square foot
+const TMX_8_1 = 'NASA TM X-53107, Table 8-1, column MR-4';
+const HH_20 = 'Hammack and Heberlig, Figure 20 ("Comparison of actual and planned flight parameters")';
+/**
+ * What the record says happened, for the simulator to be held against (tests/sim.test.mjs). Set from the reports before
+ * anything was flown, by Freedom 7's rule: 2 per cent on heights and distances, 1 per cent on speeds, 5 per cent on dynamic
+ * pressure, half a g, ten seconds. This flight's record is thinner than Freedom 7's: the Postlaunch Memorandum Report for
+ * MR-4, which has the conditions at separation to the tenth, has not been found, so there is no height or climb angle at
+ * separation and no 0.05 g time to hold it to. Where the reports disagree the check takes the Results' figure and says what
+ * the other gives.
+ */
+const check = (id: FlightCheck['id'], label: string, value: number, unit: string, tolerance: number, source: string): FlightCheck => ({
+  id,
+  label,
+  value,
+  unit,
+  tolerance,
+  confidence: 'documented',
+  source,
+});
+const checks: FlightCheck[] = [
+  check(
+    'apogee',
+    'Greatest height',
+    102.8 * NMI,
+    'm',
+    0.02 * 102.8 * NMI,
+    `${RESULTS}, Table 2-I: maximum altitude 102.8 nautical miles; ${TMX_8_1}: 102.76`,
+  ),
+  check(
+    'apogeeAt',
+    'Time of greatest height',
+    316,
+    's',
+    10,
+    `${RESULTS}, p. 6: the retro sequence "was initiated by timer at T+4 minutes 46 seconds, which was 30 seconds prior to the spacecraft reaching its apogee": 05:16`,
+  ),
+  check('range', 'Range', 262.5 * NMI, 'm', 0.02 * 262.5 * NMI, `${RESULTS}, Table 2-I: range 262.5 nautical miles; ${TMX_8_1}: the same`),
+  check('duration', 'Liftoff to landing', 937, 's', 10, `${RESULTS}, p. 6: "Landing occurred at T+15 minutes 37 seconds"`),
+  check(
+    'separationSpeed',
+    'Space-fixed speed at separation',
+    7580 * FT,
+    'm/s',
+    0.01 * 7580 * FT,
+    `${RESULTS}, Table 2-I: space-fixed velocity 7,580 ft/s; ${TMX_8_1} and Table 8-4 the same, "at cutoff". ` +
+      `The tables give MR-3's 7,388 in the same row, which its Postlaunch Report has at capsule separation: so the row is taken as at separation. ${HH_20} gives 7,516 for MR-4 (7,499 planned)`,
+  ),
+  check(
+    'separationGroundSpeed',
+    'Earth-fixed speed at separation',
+    6618 * FT,
+    'm/s',
+    0.01 * 6618 * FT,
+    `${RESULTS}, Table 2-I: Earth-fixed velocity 6,618 ft/s (TM X-53107, Table 8-4, the same, "at cutoff"); ${HH_20} gives 6,561 (6,540 planned)`,
+  ),
+  check(
+    'exitQ',
+    'Greatest dynamic pressure, going up',
+    605.5 * PSF,
+    'Pa',
+    0.05 * 605.5 * PSF,
+    `${RESULTS}, Table 2-I: maximum exit dynamic pressure 605.5 lb/sq ft; ${TMX_8_1}: 605`,
+  ),
+  // independent here, as it is not for Freedom 7: the nozzle's exit area is the A-7's, derived on MR-3's figures
+  check('exitG', 'Greatest load, going up', 6.3, 'g', 0.5, `${RESULTS}, Table 2-I: maximum exit longitudinal load factor 6.3 g`),
+  check('entryG', 'Greatest load, coming down', 11.1, 'g', 0.5, `${RESULTS}, Table 2-I: maximum reentry longitudinal load factor 11.1 g`),
+  check(
+    'drogueAt',
+    'Drogue parachute',
+    581,
+    's',
+    10,
+    `${RESULTS}, p. 6: "The drogue parachute was deployed at T+9 minutes 41 seconds"; the pilot, at 09:41.5: "There's the drogue chute" (p. 44)`,
+  ),
+  check(
+    'mainAt',
+    'Main parachute',
+    614,
+    's',
+    10,
+    `${RESULTS}, p. 6: "main parachute, at T+10 minutes 14 seconds"; the pilot, at 10:14: "There goes the main chute" (p. 44)`,
+  ),
+];
+
 export const flight: Flight = {
   id: 'usa/mercury/mr-4-liberty-bell-7',
   nation: 'USA',
@@ -1322,6 +1407,7 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig)',
     },
   ],
+  checks,
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
 };
