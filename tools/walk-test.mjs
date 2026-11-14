@@ -137,6 +137,38 @@ const ROUTES = {
         { to: [-52, -43], run: true, y: -0.2, tol: 0.4, note: 'up the fall to the propellant shed’s open side' },
       ],
     },
+    {
+      // (site1/south.py: what one photograph of July 1959 shows south of the tracks, inside the inner fence)
+      name: 'south of the embankment: round the two buildings to the pump hut',
+      at: V1_MORNING,
+      from: [-60, -0.12, 30],
+      legs: [
+        { to: [-150, 45], run: true, y: -0.12, tol: 0.3, note: 'south-west off the apron' },
+        { to: [-170, 60.3], y: -0.12, tol: 0.3, note: 'to the north wall of the gable-roofed building' },
+        { to: [-187, 66], y: -0.12, tol: 0.3, note: 'round its west end' },
+        { to: [-187, 81], y: -0.12, tol: 0.3 },
+        { to: [-161, 81], run: true, y: -0.12, tol: 0.3, note: 'between it and the store, clear of the store’s extensions' },
+        { to: [-144.8, 96], y: -0.12, tol: 0.3, note: 'to the door in the store’s east end' },
+        { to: [-117, 135.6], run: true, y: -0.12, tol: 0.3, note: 'to the pump hut’s door, the inner fence behind it' },
+      ],
+    },
+    {
+      name: 'outside the south fence: the vehicle shed, the building with a mast, the tents, the yard',
+      at: V1_MORNING,
+      from: [-60, -0.12, 240],
+      legs: [
+        { to: [-92, 250.4], run: true, y: -0.12, tol: 0.3, note: 'to the shed’s doors, along its north side' },
+        { to: [-116, 250.4], run: true, y: -0.12, tol: 0.3 },
+        { to: [-116, 270], y: -0.12, tol: 0.3, note: 'round its west end' },
+        { to: [-100, 277.6], y: -0.12, tol: 0.3, note: 'to the north wall of the building with a mast' },
+        { to: [-80, 277.6], run: true, y: -0.12, tol: 0.3 },
+        { to: [-80, 296], y: -0.12, tol: 0.3, note: 'round its east end, past the mast’s stays' },
+        { to: [-91, 318], run: true, y: -0.12, tol: 0.3, note: 'to the first tent’s end' },
+        { to: [-84, 362], run: true, y: -0.12, tol: 0.3, note: 'down the line of tents' },
+        { to: [-120, 414], run: true, y: -0.12, tol: 0.3, note: 'to the gap in the yard’s fence' },
+        { to: [-120, 427], y: -0.12, tol: 0.3, note: 'and in' },
+      ],
+    },
   ],
 };
 

@@ -120,6 +120,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | CableConduit | rim.py | the conduit from the rim to the structure on its piers, and the old tray beside it | yes (the place) |
 | FloodlightTower | rim.py | the 60 ft tower west of the platform | yes (the place) |
 | OuterFence…, InnerFence… (North, East, South, West), LightPoles…, GuardTowers (`GuardTower_NW` …) | perimeter.py | the double fence, the light poles inside it, six guard towers | yes (the place) |
+| SouthBuilding_1, SouthStore_2, PumpHut_3, SouthTanks, VehicleShed_6, SouthBuilding_7, Tents_11, FencedYard_12 | south.py | what one photograph of July 1959 shows south of the embankment and outside the south fence, the CIA's item numbers in their names: two gable-roofed buildings, a pump hut, two pairs of tanks, a vehicle shed, a building with a mast, six tents, a boarded yard; doors shut, windows dark | yes (the place) |
 | (the vehicle) | the flight's vehicle.glb | hung in the supports: `position` and `rotationY` in flight.ts | yes |
 | (the cosmonaut) | the flight's crew.glb | on the deck's west edge, 19.5 m west and 6.5 m south of the axis: on his way from the bus to the foot of the erector's stair; where he is stood is estimated | yes |
 
@@ -406,6 +407,27 @@ the rim: the rim is a crest, a cell that crosses it is lower than the land by up
 and without the overlap and the skirt a line of sight out of the pit passed under the land's edge to
 the sky. The 3 m is inside what the map's outline is good for.
 
+### South of the embankment
+
+[site1/south.py](site1/south.py). One source: **NPIC/B-24/61**, "Search for underground entrances, Launch Area of
+Launch Complex A" (CIA, 9 September 1961). Its Figure 1 is a vertical U-2 photograph of July 1959 with twelve items
+numbered, and its text describes each from the photographs of August 1957 and July 1959. **Documented for 1959,
+assumed for April 1961**: nothing later shows this ground before the flight. Places are measured off the figure's
+native scan (0.445 m a pixel, fixed by two of the model's own roads; the double fence's spacing measures 47.6 m
+on it against the documented 160 ft): good to ten metres. Metres east and north of the rocket's axis.
+
+| Item | What the report says | Where | Size | Confidence |
+| --- | --- | --- | --- | --- |
+| 1 | inside the inner fence, south of the embankment: one storey, gable roof, "light construction and possibly ... tar-paper-roofed, with no vents" | (-170, -66) | 29 by 9.5 m, eave 3.2 m | place derived; kind documented; size read off the print (redacted), eave estimated |
+| 2 | "similar to those used for food or grain storage": one storey, shallow gable, "five extensions spaced 10 feet apart on each side" | (-161, -96) | 29 by 9 m, eave 3.0 m; the extensions as buttresses 1.6 m broad | as item 1; what the extensions were is not said |
+| 3 | a possible pump house on a pipe line: one storey, flat roof | (-117, -139) | 20 by 15 ft | size documented |
+| 4, 5 | each "a structure or 2 horizontal tanks", at the ends of two pipes or paths from the embankment | (-163.5, -151) and (-174.2, -151) | 35 ft apart; each a pair of tanks 6 m long and 2.2 m across | the 35 ft documented (the print measures 28 m between them: the figure is trusted, about the measured middle); the tanks estimated |
+| 6 | outside the fence, "possibly a vehicle shed or storage building": one storey, gable roof, long axis east and west, a low flat-roofed extension square to it at its east end | (-92, -257) | 135 by 35 ft; the extension 40 by 20 ft | sizes documented; eave 3.6 m and its doors estimated |
+| 7 | outside the fence: one storey, gable roof, "a mast or tower ... along the south side" | (-100, -283) | 30 by 8 m; the mast 12 m | size read off the print; the mast's height estimated |
+| 11 | six ribbed tents in a staggered line; added after 1957; "not permanent" | (-98, -318) to (-98, -347) | each 12 by 4.6 m | size read off the print; that they stood in 1961 is the weakest assumption here |
+| 12 | a solid-fenced area, dark objects in its north-west corner; added after 1957 | (-120, -470), to thirty metres | 325 by 130 ft, long axis north and south | size documented; the fence as boards on posts, 2.2 m, estimated |
+| 8, 9, 10 | a semi-buried store, a building, a covered bunker | | | gone by 1959: not built |
+
 ## The land
 
 [src/viewer/tyuratam.ts](../../../../src/viewer/tyuratam.ts): the land's frame is the site's (+X east, -Z north).
@@ -640,7 +662,7 @@ apart. There are soft blows through the rocket's structure. The rocket seemed to
 
 ## Getting about on foot
 
-Walked in the running page with the real W key, by `pnpm test:walk` (tools/walk-test.mjs), which keeps it so: five
+Walked in the running page with the real W key, by `pnpm test:walk` (tools/walk-test.mjs), which keeps it so: eight
 ways, every leg arriving with the feet where the floor or the ground is said to be.
 
 | Way | How it goes | What was found |
@@ -650,6 +672,9 @@ ways, every leg arriving with the feet where the floor or the ground is said to 
 | Down the road into the pit | off the road round the pit's point, 170 m down the middle of the floor (1 in 5.6) to the sump's roof; across it to its face; down the ladder on the face (10 ft) to the pit base; along the pit base to the foot of the launching structure; down the ladder into the north trench (15 ft), along it and up again | **the sump's ladder led nowhere**: it stood on the shelf beyond the south trench, from which the only way to the pit base was a 15 ft drop into the trench and its ladder out. It now comes down at the pit base's south edge. The road's grade changed with the land (it was 1 in 4.8) |
 | The cut in the north rim | from the steppe 8 m under the deck's level into the cut's head, down it and out of its mouth onto the pit's upper terrace, and back | **the head could not be climbed**: it was the pit's own 1 in 1 slope on three sides, which goes down on foot and not up. Its head is now a step under the land for its first 11 m, from where its floor goes down 1 in 3, and its sides there are 1 in 2 (platform.py: `CUT_RAMP`, `CUT_GRADE`, `CUT_EASY`; estimated). The land is stood on for 3 m inside the rim, which at the cut's narrow head is all of it: a floor further under it than a step was a wall |
 | To the bunker and the buildings | west along the apron between the spurs, down the road's ramp (1 in 14) to the steppe, to the storage bunker's middle gate, the command bunker's door, the check-out shop's gate, the support building's door, the work shop's door, up to the pump house's door on its plot, and up the fall to the propellant shed's open side | nothing to mend. The propellant shed's earth bank at its east end can be walked up, and ends at the shed's wall |
+| The pilot's own way, at 06:55 | from the bus's door east past the State Commission's knot, over the tracks onto the abutment and the deck, to the foot of the fifteen steps | nothing to mend: it goes round the Commission's knot, between it and the south track |
+| South of the embankment | south-west off the apron to the gable-roofed building's north wall, round its west end, between it and the store clear of the store's extensions, to the door in the store's east end, to the pump hut's door with the inner fence behind it | nothing to mend: the ground is level there |
+| Outside the south fence | along the vehicle shed's doors, round its west end, along the building with a mast and round its east end past the mast's stays, down the line of tents, through the gap in the yard's fence and in | nothing to mend. It starts outside the fences: the south side has no gate, and the way round by the west gate is not walked |
 
 Not walked by the test, and what is known of each: the service trusses' ladders and half rings (built with
 ladders of ours: "What the model gets wrong"); the ladders up the two masts 110 ft tall and the floodlight tower;
@@ -689,6 +714,8 @@ opens: what was behind each is not recorded.
 | The people: the State Commission, the send-off, the launch crews | 12 April 1961 | each at its own time ("The morning's people and vehicles") | documented | the film; the roster. Of the day itself |
 | Support building | between August 1957 and 1959 | today | documented | PIC/JR-2/60 ("has been added"); OpenStreetMap |
 | Check-out shop, security building | 1957 | today | documented | HTA/JR-4/58; OpenStreetMap |
+| South of the embankment: two gable-roofed buildings, a pump hut, two pairs of tanks; outside the south fence: a vehicle shed, a building with a mast (items 1 to 7) | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | NPIC/B-24/61 |
+| Six tents; a solid-fenced yard (items 11, 12) | between August 1957 and July 1959 | not known (the tents "not permanent") | documented for July 1959; assumed for 1961, the tents least surely | NPIC/B-24/61 |
 | Observation positions a to i | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; "remain unchanged" in PIC/JR-2/60 |
 | Spoil heap | 1957 | today | documented | HTA/JR-4/58; today's imagery; SRTM |
 | Cable conduit to the bunker | between August 1957 and 1959 | today (its line) | documented | PIC/JR-2/60 |
@@ -856,6 +883,15 @@ rocket can leave the erector out by its date.
   hold at a distance: "The lie of the land"), the buried water lines and
   cables, the vehicles by the check-out shop and the ten rail cars on the spurs as they stood in 1959 (which
   moved: two fillers are built where they stood on the morning).
+- South of the embankment and outside the south fence ("South of the embankment"), everything is a place good to
+  ten metres, a kind ("one storey, gable roof, light construction") and for three of them a size, from one
+  photograph of July 1959: assumed for April 1961. The sizes of five are read off a half-tone print, to a few
+  metres. Every wall, door, window and colour is ours; the tents are "not permanent" and may have gone; the yard is
+  a fence and nothing in it; the two pipes or paths from the embankment to the tanks, the "dark objects" in the
+  yard's corner and the mast's height are not built or are guessed. Not built from the same report: the covered
+  passage or cable line from the bunker south to the embankment (seen; its form unknown), the open pit 15 ft
+  square "90 feet southwest of the new support building", and the six camera stations within 450 ft of the
+  platform beyond those the rim's positions stand for.
 - **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
   roster has people, each there until its time and then gone between one frame and the next ("The morning's
   people and vehicles"). Nobody walks to the stair, gets down from the bus or climbs the fifteen steps: the pilot's
