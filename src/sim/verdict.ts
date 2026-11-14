@@ -115,7 +115,7 @@ export function downVerdict(
       const met = x.by === 'pressure' ? `${(x.q / 1000).toFixed(1)} kPa on its cloth` : `${(x.pull / 1000).toFixed(1)} kN on its lines`;
       const limit =
         x.by === 'pressure' ? `${((c?.strength?.value ?? 0) / 1000).toFixed(1)} kPa` : `${((c?.pull?.value ?? 0) / 1000).toFixed(1)} kN`;
-      return `The ${name} tore at ${wall(x.t)}: ${met}, past the ${limit} taken (${(x.by === 'pressure' ? c?.strength : c?.pull)?.confidence ?? 'estimated'}).`;
+      return `${body === d.bodies[0]?.id ? 'The module’s' : body === crew.alone ? 'His' : 'The'} ${name} tore at ${wall(x.t)}: ${met}, past the ${limit} taken (${(x.by === 'pressure' ? c?.strength : c?.pull)?.confidence ?? 'estimated'}).`;
     });
   const never = (body: string) => {
     const b = d.bodies.find((x) => x.id === body);

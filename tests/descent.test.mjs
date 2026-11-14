@@ -136,3 +136,20 @@ test('a forward burn stays up, and the card says how long its orbit lasts agains
   assert.ok(lasts > 0);
   say('forward burn from the record’s orbit', w, lasts, plan);
 });
+
+test('as drawn, each body comes to rest on the drawn surface (the globe at the sea), not the ground’s 43 m above it', async () => {
+  const { descentOf } = await import('../src/sim/staged.ts');
+  const centre = (flight.flies?.datum ?? 0) + (o.ascent.centre?.value ?? 0);
+  const drawn = descentOf(shown, jd, centre, o.descent.ground.value);
+  const plain = descentOf(shown, jd, centre, 0);
+  // (fly.ts's frame that does not turn, back into the frame of date: the drawn point's height over the sea)
+  const [c, s] = [Math.cos(gast0), Math.sin(gast0)];
+  const height = (p) => heightOf({ t: p.t, r: [c * p.r[0] - s * p.r[1], s * p.r[0] + c * p.r[1], p.r[2]] });
+  for (const id of Object.keys(shown.down.landed)) {
+    const end = drawn.tracks[id].at(-1);
+    assert.ok(Math.abs(height(end)) < 0.5, `${id} at ${height(end).toFixed(2)} m over the drawn sea`);
+    // high up it is where it flew
+    const top = drawn.tracks[id][0];
+    if (height(plain.tracks[id][0]) > 2000) assert.deepEqual(top.r, plain.tracks[id][0].r);
+  }
+});

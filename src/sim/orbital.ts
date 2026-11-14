@@ -269,6 +269,8 @@ export interface DescentRecord {
   torn?: Measure;
   /** The pilot: where he rides, and what he is held to (the flight deck's verdict, orbitdeck.ts). Left out: no verdict. */
   crew?: DescentCrew;
+  /** What did each event of the descent on the day, and what the pilot could do about it: said where a hand is offered one. */
+  automatic?: string;
   /** Figures for the descent: `<body id>.at` (landing, s from liftoff), `<body id>.speed` (falling, m/s), `apart` (m between the first two bodies' landings). */
   checks: AscentCheck[];
 }

@@ -820,6 +820,8 @@ export const orbital: OrbitalFlight = {
         chutes: [],
       },
     ],
+    automatic:
+      'Gagarin had no say in the descent: the modules’ parting (the sequencer’s, and on the day the thermal backup’s at 10:36), the hatches and the seat (the barometric switch at 7 km) and every parachute (their own barometric switches and timers) were the automatic system’s',
     torn: guess(0.05, 'a canopy torn or streaming is taken to keep a twentieth of its drag area: chosen, not recorded (as Freedom 7’s)'),
     crew: {
       alone: 'pilot',

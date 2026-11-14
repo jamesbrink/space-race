@@ -718,12 +718,17 @@ export function recordSamples(
     const sign = from[0] * to[0] + from[1] * to[1] + from[2] * to[2] + from[3] * to[3] < 0 ? -1 : 1;
     return normalizeQ([0, 1, 2, 3].map((i) => from[i]! + (sign * to[i]! - from[i]!) * k) as unknown as Quat);
   };
-  const descent = whole.down ? (Object.values(whole.down.tracks)[0] ?? []).slice(1) : [];
+  // (the first body as it is drawn, at rest on the drawn surface: `settled`; its figures are the flight's own)
+  const track = whole.down ? (Object.values(whole.down.tracks)[0] ?? []) : [];
+  // (lowered by the ground's height, less what the offset already lowers it by at the landing: it rests on the drawn surface)
+  const lift = track.length ? dot(offset, unit(flat(track[track.length - 1]!.r))) : 0;
+  const drawn = settled(track, (o.descent?.ground.value ?? 0) + lift);
+  const descent = track.slice(1).map((s, i) => ({ ...s, drawn: drawn[i + 1]!.r }));
   const ending = [
     ...whole.coast.samples
       .filter((s) => s.t > parted.t)
-      .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false, entering: s.phase === 'entry' })),
-    ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: false })),
+      .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false, entering: s.phase === 'entry', drawn: s.r })),
+    ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: false, drawn: s.drawn })),
   ];
   for (const s of ending) {
     const wind = sub(s.v, cross(spin, s.r));
@@ -735,7 +740,7 @@ export function recordSamples(
     const axis = turnQ(q, [1, 0, 0]);
     const gast = gast0 + EARTH_ROTATION_RATE * s.t;
     const here = subpoint(s.r, gast);
-    const at = add(flat(s.r), offset);
+    const at = add(flat(s.drawn), offset);
     out.push({
       ...blank,
       t: s.t,
@@ -764,6 +769,25 @@ export function recordSamples(
   return out;
 }
 
+/**
+ * A descent body's track as the scene draws it. The globe is drawn at the sea's height (world/surface.ts), not the ground's,
+ * so what comes to rest `ground` metres above the sea is drawn lowered onto the drawn surface over its last kilometre: each
+ * point by `ground` (with what the scene's offset of the centre of mass already moves it, along the plumb line at the
+ * landing) times the part of that kilometre still to fall, along its own line from the Earth's centre (the plumb
+ * line's lean from it moves the landing a tenth of a metre). Under a canopy that is a fifth of a metre a second on five: it
+ * is not seen. The figures (the card's, the checks') are the flight's own; only where it is drawn moves.
+ */
+export function settled<P extends { t: number; r: Vec3 }>(track: readonly P[], ground: number): P[] {
+  const last = track[track.length - 1];
+  if (!last || !ground) return [...track];
+  const bottom = length(last.r);
+  return track.map((p) => {
+    const r = length(p.r);
+    const k = Math.max(0, 1 - (r - bottom) / 1000);
+    return k > 0 ? { ...p, r: scale(p.r, (r - ground * k) / r) } : p;
+  });
+}
+
 /** A descent as the scene draws it (`descentOf`). */
 export interface DrawnDescent {
   /** Each body's path in fly.ts's frame that does not turn, as `recordSamples` puts the spacecraft's centre of mass. */
@@ -771,6 +795,8 @@ export interface DrawnDescent {
   /** When each body's parachutes came out and were let go, s from liftoff (orbital.ts `DescentFlown`). */
   opened: Record<string, Record<string, number>>;
   gone: Record<string, Record<string, number>>;
+  /** When each tore, s from liftoff, by body and parachute: it streams from then. */
+  torn: Record<string, Record<string, number>>;
 }
 
 /**
@@ -778,7 +804,7 @@ export interface DrawnDescent {
  * (the run's own samples after the ejection are its first body's): every body's track, for the scene to carry what came
  * down on each (viewer/ascent.ts). Null where nothing came down.
  */
-export function descentOf(whole: FlownWhole, launchJd: number, centre: number): DrawnDescent | null {
+export function descentOf(whole: FlownWhole, launchJd: number, centre: number, ground = 0): DrawnDescent | null {
   if (!whole.down) return null;
   const gast0 = greenwichSiderealTime(launchJd);
   const [c, s0] = [Math.cos(-gast0), Math.sin(-gast0)];
@@ -787,8 +813,15 @@ export function descentOf(whole: FlownWhole, launchJd: number, centre: number): 
   const offset = scale(flat(last.axis), centre);
   const tracks: DrawnDescent['tracks'] = {};
   for (const [id, track] of Object.entries(whole.down.tracks))
-    tracks[id] = track.map((p) => ({ t: p.t, r: add(flat(p.r), offset), v: flat(p.v) }));
-  return { tracks, opened: whole.down.opened, gone: whole.down.gone };
+    tracks[id] = settled(
+      track.map((p) => ({ t: p.t, r: add(flat(p.r), offset), v: flat(p.v) })),
+      // (by the ground's height, less what the offset already lowers it by at the landing: it rests on the drawn surface)
+      ground && track.length ? ground + dot(offset, unit(flat(track[track.length - 1]!.r))) : 0,
+    );
+  const torn = Object.fromEntries(
+    Object.entries(whole.down.torn ?? {}).map(([id, of]) => [id, Object.fromEntries(Object.entries(of).map(([name, x]) => [name, x.t]))]),
+  );
+  return { tracks, opened: whole.down.opened, gone: whole.down.gone, torn };
 }
 
 /**

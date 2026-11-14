@@ -246,9 +246,20 @@ export interface Command {
   label: string;
   /**
    * What it asks: an event of a ballistic flight's (sim/vehicle.ts), a mechanism worked (`work:<id>`), or a step of an
-   * orbital flight's launch vehicle (`step:<ignite|cut|separate>:<stage index>`, `step:drop:<drop id>`: sim/stagedlive.ts).
+   * orbital flight's launch vehicle (`step:<ignite|cut|separate>:<stage index>`, `step:drop:<drop id>`: sim/stagedlive.ts), or an
+   * event of its descent (`descent:modules`, `descent:ejection`, `descent:<body id>/<parachute name>`: sim/orbital.ts flyDown).
    */
-  ask: 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main' | `work:${string}` | `step:${string}`;
+  ask:
+    | 'cutoff'
+    | 'tower'
+    | 'separate'
+    | 'retro'
+    | 'retropack'
+    | 'drogue'
+    | 'main'
+    | `work:${string}`
+    | `step:${string}`
+    | `descent:${string}`;
   back?: string;
 }
 
