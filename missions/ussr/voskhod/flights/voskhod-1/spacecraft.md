@@ -85,9 +85,9 @@ Everything in [voskhod.md](../../vehicles/voskhod.md) and, through it,
 
 | Level | Triangles (whole vehicle) | Meshes |
 | --- | --- | --- |
-| Full (1.0) | 717,053 | 210 |
-| 0.6 | 231,275 | 141 |
-| 0.3 | 110,154 | 142 |
+| Full (1.0) | 717,053 | 211 |
+| 0.6 | 231,275 | 142 |
+| 0.3 | 110,154 | 143 |
 
 The crew, the couches and the rest of the cabin's contents are left out below detail 0.75. The
 clearance check passes at all three.

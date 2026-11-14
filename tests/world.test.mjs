@@ -523,4 +523,22 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(march.moon.elevation / DEG, -38.7, 0.05, 'Moon elevation over Site 1, 18 March 1965');
   near(march.moon.illuminated, 0.99, 0.005, 'Moon lit over Site 1, 18 March 1965');
   assert.equal(march.moon.waxing, false, 'the day after full');
+  // Sigma 7: the figures quoted in its README ("The sky at liftoff")
+  const ma8 = flights.find((f) => f.id === 'usa/mercury/ma-8-sigma-7');
+  const october = skyFrom(siteFrame(ma8.site), julianDate(ma8.launch));
+  near(october.sun.azimuth / DEG, 101.2, 0.05, 'Sun azimuth over Complex 14, 3 October 1962');
+  near(october.sun.elevation / DEG, 12.0, 0.05, 'Sun elevation over Complex 14, 3 October 1962');
+  near(october.moon.azimuth / DEG, 88.3, 0.05, 'Moon azimuth over Complex 14, 3 October 1962');
+  near(october.moon.elevation / DEG, -38.9, 0.05, 'Moon elevation over Complex 14, 3 October 1962');
+  near(october.moon.illuminated, 0.195, 0.005, 'Moon lit over Complex 14, 3 October 1962');
+  assert.equal(october.moon.waxing, true, 'the young Moon Schirra found beside Venus on his third pass');
+  // Faith 7: the figures quoted in its README ("The sky at liftoff")
+  const ma9 = flights.find((f) => f.id === 'usa/mercury/ma-9-faith-7');
+  const may1963 = skyFrom(siteFrame(ma9.site), julianDate(ma9.launch));
+  near(may1963.sun.azimuth / DEG, 84.5, 0.05, 'Sun azimuth over Complex 14, 15 May 1963');
+  near(may1963.sun.elevation / DEG, 31.6, 0.05, 'Sun elevation over Complex 14, 15 May 1963');
+  near(may1963.moon.azimuth / DEG, 218.4, 0.05, 'Moon azimuth over Complex 14, 15 May 1963');
+  near(may1963.moon.elevation / DEG, 31.6, 0.05, 'Moon elevation over Complex 14, 15 May 1963');
+  near(may1963.moon.illuminated, 0.615, 0.005, 'Moon lit over Complex 14, 15 May 1963');
+  assert.equal(may1963.moon.waxing, false, 'a waning Moon, a day before last quarter, up in daylight');
 });

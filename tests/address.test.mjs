@@ -112,12 +112,15 @@ test('every flight has the same three places, and opens in its gallery', () => {
   }
 });
 
-test('Vostok 1 has its gallery and its launch site, and no flight deck yet', () => {
-  assert.deepEqual(entrances(vostok), { gallery: true, site: true, fly: false });
-  assert.equal(lacks(vostok, 'fly'), 'Fly: no trajectory yet');
+test('Vostok 1 has all three places: its flight deck is lit by its ascent to orbit, with no trajectory', () => {
+  assert.equal(vostok.trajectory, undefined);
+  assert.deepEqual(entrances(vostok), { gallery: true, site: true, fly: true });
   assert.equal(opensIn(vostok), 'gallery');
   assert.equal(opensIn(vostok, 'site'), 'site');
-  assert.equal(opensIn(vostok, 'fly'), 'gallery');
+  assert.equal(opensIn(vostok, 'fly'), 'fly');
+  // without its ascent it would not be
+  const { orbital, ...rest } = vostok;
+  assert.equal(lacks({ ...rest, orbital: { ...orbital, ascent: undefined } }, 'fly'), 'Fly: no trajectory yet');
 });
 
 test('Freedom 7 has all three places', () => {

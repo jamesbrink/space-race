@@ -43,6 +43,48 @@ Energia museum is the same sphere after entry, with the insulation and most of t
 Nothing else is known to us to have differed from the type on this flight; differences from the
 later Vostoks will be recorded when those are built.
 
+## Cabin
+
+What [vostok_cabin.py](../../vehicles/vostok_cabin.py) fits in the cabin (`vostok_3ka.build(fit="1961")`), in place
+of the plain board, panel, grip and sight the type has otherwise: the pilot's information display system SIS-1-3KA
+of the Flight Research Institute's laboratory 47 (Darevsky), delivered for this ship in December 1960. Places are
+given from the sphere's centre as (left, head, up), millimetres: toward the pilot's left, level toward hatch No. 1
+over his head, and up the long axis.
+
+**How it was laid out.** Zak's photograph of the flown cabin through hatch No. 1 (RussianSpaceWeb, *sa_interior*)
+is taken square to the long axis: the opening's ellipse is 0.87 as tall as wide, which is the cosine of 30°, and the
+hatch's line is 24° up in the model. Read so, the Vzor's middle is some 200 mm lower than the hatch's, which is
+where a porthole at 15° has it; the board's middle is 490 mm higher than the Vzor's; the black panel's raked side
+stands 275 to 420 mm to the left, from 70 to 520 mm higher than the Vzor; the hand controller 430 mm to the right
+and 120 mm higher. Depth along the line of sight is not in one photograph, so every place below is **estimated**,
+and each was then held to what else is in the cabin (the lining, the parachute container, the pilot's reach). A
+period photograph over the pilot's helmet (vostoksupersite, uncaptioned: flight or trainer unknown) has the same
+order down the forward wall: board, camera with its lamp at the left, Vzor.
+
+| Thing | What is built | Confidence | Basis |
+| --- | --- | --- | --- |
+| Instrument board PD-1-3KA | 400 × 350 mm, 86 mm deep, its lower edge notched between the clock and the lowest gauge; middle at (0, −520, 720), face at 45° to the long axis | estimated (size, place); documented, second hand (45°, "within 1,000 mm of the pilot": the model has it 1,064 mm from his eyes) | Tyapchenko, fig. 12 (the factory's photograph, numbered) and fig. 1; size "approximately 40 by 38 cm" (vostoksupersite), 40 by 33 scaled off a museum board square on: between the two; the angle from the installation drawing as vostoksupersite quotes it |
+| Globus (IMP) | plate 232 × 215 mm; a globe 127 mm across standing in a window 100 mm across under a crystal with a cross; correction window reading 510; the switch С, П, Л «КОРРЕКЦИЯ»; knobs Э and О; a window over the globe | documented (what is on it, by Tyapchenko's photograph; 510 by the transcript: «В окне коррекции цифра 510»); estimated (every size; the globe's 127 mm is the Voskhod instrument's) | Tyapchenko figs 12 and 16; the transcript of 12 April. **No latitude and longitude drum and no orbit counter**: those are later ships' (Tyapchenko), and Gagarin read 63° N, 97° E off the globe itself. The globe is plain sea with a graticule every 30°: no land is drawn |
+| Clock (IVK) | 78 mm face, twelve hours with hour, minute and second hands that run on Moscow time; crowns at three and six o'clock | documented (that it is there, twelve hours, the crowns); estimated (size, face) | Tyapchenko fig. 15; vostoksupersite. Its ring of flight time, its dial of days and its descent index are strokes that do not run |
+| Three gauges of three needles | 62 mm faces: cabin air (pressure 0 to 1.5 atm, humidity 30 to 90 %, temperature 0 to 40 °C); cabin gas (carbon dioxide 0 to 4 %, oxygen 0 to 40 %, the instrument module's pressure 0 to 2 atm); pressures (manual orientation 0 to 200 atm, the TDU's bottle 0 to 360, automatic orientation 0 to 200) | documented (which nine quantities, the ranges, by the board of a later Vostok at the Armed Forces Museum: Commons, *Vostokpanel.jpg*); estimated (size, where each scale's ends stand) | Each needle is built at what Gagarin read before launch where the transcript has it: 1.0, 65 %, 19 °C; 1.2; 155, 320, 155. Carbon dioxide and oxygen have no reading in the record and stand at 0 and 21. Tyapchenko's caption calls the gas gauge's third needle the oxygen bottle's pressure; the transcript's "отсек 1,2" is followed |
+| Signal lamps | three blocks down the right side, two columns: 10, 10 and 4 lenses, each its own node; red and amber in the first, amber and green in the second, green in the third | documented (three blocks, 5 × 2, 5 × 2, 2 × 2); **estimated** (colours); the legends are not lettered | Tyapchenko fig. 12. The words are a reconstruction (vostoksupersite, from RGANTD's 2011 volume, with doubts of its own) and which lens says which is not established: the flight's data gives each block's words and no lens its own |
+| Radiation and voltage indicators | none | | none is on the board in any source or photograph read |
+| Vzor | on hatch No. 3's porthole: bezel 300 mm, a ring of eight ports, a screen 160 mm across ruled with seven lines and three arrows | documented (a ring that shows the horizon and a ruled, arrowed screen: Tyapchenko; eight ports: Encyclopedia Astronautica, tertiary); estimated (sizes, off Zak's photograph, give or take 15 %; the rulings) | The screen is `Vzor_Screen` and the ring `Vzor_Ring`: nothing is drawn on them yet (below) |
+| Control panel PU-1-3KA | black, 330 × 470 × 75 mm, its face to the middle of the cabin at (270, −558, 460), its side toward the pilot's head raked 30° | documented, second hand (size "47 × 33 × 7.5 cm", the rake: vostoksupersite); estimated (place) | Tyapchenko figs 5 and 7. As far toward the pilot as the parachute container lets it come; its raked side is 760 mm from his left shoulder, which is a full reach |
+| its face | six rows as the factory's photograph reads: ТЕПЛЕЕ–ХОЛОДНЕЕ, ГАЗОАНАЛИЗАТОР; ГЛОБУС, ДАВЛЕНИЕ ОРИЕНТАЦИИ; КОНТРОЛЬ ЛАМП, ПОДСВЕТ, ШТОРКИ; ПЕРЕДАТЧИКИ, ЗВУК, СВЕТ ТЕЛЕВИД., ОСВЕЩЕНИЕ; МАГНИТОФОН, ТЕЛЕФОНЫ; ЛАРИНГ./МИКРОФОН, ГРОМКОСТЬ | documented (the groups and their order); estimated (each control's place within its row, and its kind where the photograph is too small: 14 tumblers, 3 buttons, 6 knobs and a lever are built; another count of the same photograph gives 11 tumblers, 3 rotary switches and 4 knobs) | Tyapchenko fig. 5. `Ctl_Lighting` is the lamps' tumbler |
+| its raked side | a slot for the code's plug, six keys in one column (`Ctl_Code1` to `6`), and under a clear cover manual orientation, descent III, the braking engine's start (red), oxygen and the alarm | documented (what is there; six keys, not nine); estimated (places; the keys in one column as the photograph has them, where the drawing staggers them) | Tyapchenko figs 4, 5, 7. The code: 1-2-5 (Gallay), 1-4-5 (Kamanin) |
+| Hand controller RU-1A | a domed box 95 mm square, a stalk on a ball, a ribbed grip 110 mm long across it; at (−400, −150, 330) | documented (its form, by the factory's photograph; "two-axis"); estimated (sizes, off a later RU-1B; place: 546 mm from his right shoulder) | Tyapchenko fig. 1 |
+| Television | a plain case with a lens under the board's lower edge, a round lamp at its left; a plain barrel at his right | documented (two cameras; one under the board with a lamp beside it, by the period photograph); estimated (every size and form) | Siddiqi p. 196; the period photograph |
+| Cabin lamps | two round fittings high on either side, worked by ОСВЕЩЕНИЕ: off, duty, working | documented (the switch and its three positions); **estimated** (that there were two, and where) | Tyapchenko fig. 5 |
+| Receiver | a case with a tuning scale, two knobs and a round clock, at (−455, −455, 470) | documented ("at the right": a broadcast receiver, an electric clock); estimated (its form and place) | Siddiqi p. 196; vostoksupersite names the ZB-17 and the AChS-1 |
+
+Left out or wrong: **the cabin is not shaded** (no shadow is baked at its vertices, as the Mercury cabin's is, so
+with its lamps off it is lit evenly); **the Vzor shows nothing** (the viewer's periscope draws a Mercury reticle,
+so the Vzor is not declared one: its screen and ring wait for a view of their own); the Globus does not turn and
+carries no land; the lamps' lenses are blank; the porthole blinds, the loudspeaker, the tape recorder, the food
+container, the water, the sanitary device and the log are not told apart from the type's plain cases; the telegraph
+key is not built; the seat is still the type's slabs, where the real one is a riveted tub with rollers.
+
 ## How it was checked
 
 Side by side with, in order of weight:

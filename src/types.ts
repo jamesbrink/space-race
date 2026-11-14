@@ -1130,7 +1130,7 @@ export interface Flight {
       at: number;
       nodes: string[];
       /** A parachute's coming out can let something go too: for those, `at` is the record's time and the run on show gives its own. */
-      on?: 'tower' | 'separation' | 'retropack' | 'drogue' | 'main';
+      on?: 'tower' | 'separation' | 'retropack' | 'drogue' | 'main' | (string & {});
       /** It leaves hanging under that parachute, which goes with it, instead of falling free. */
       under?: 'drogue' | 'main';
     }[];

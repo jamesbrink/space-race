@@ -110,7 +110,7 @@ const WASD = ['W', 'A', 'S', 'D'];
  */
 function legendMarkup(f: Flight): string {
   const walker = f.models.find((m) => m.walker);
-  const flies = Boolean(f.trajectory?.body && f.flies);
+  const flies = Boolean((f.trajectory?.body || f.orbital?.ascent) && f.flies);
   // from the seat of what is flown: what can be looked out of, each by its digit (lookouts.ts)
   const lookouts = lookoutsOf(f.models.find((m) => m.id === f.flies?.model)?.cabin);
   // and the cabin's own lights, if it has a switch for them (CabinDef.lighting)

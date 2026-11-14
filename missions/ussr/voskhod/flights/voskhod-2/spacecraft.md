@@ -103,9 +103,9 @@ Everything in [voskhod.md](../../vehicles/voskhod.md) and [berkut.md](../../crew
 
 | Level | Triangles (whole vehicle) | Meshes |
 | --- | --- | --- |
-| Full (1.0) | 708,803 | 246 |
-| 0.6 | 261,241 | 172 |
-| 0.3 | 130,704 | 172 |
+| Full (1.0) | 708,803 | 247 |
+| 0.6 | 261,241 | 173 |
+| 0.3 | 130,704 | 173 |
 
 The crew, the couches and the rest of the cabin's contents are left out below detail 0.75. The
 clearance check passes at all three.

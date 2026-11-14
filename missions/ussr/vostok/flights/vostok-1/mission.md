@@ -9,7 +9,10 @@ the story in [README.md](README.md). Sources in full: [docs/sources.md](../../..
 documented ones, with how), *estimated* (reckoned or chosen, and it says so). Times are Moscow time
 (UTC+3) as every report gives them, and seconds from liftoff, T+.
 
-Sources, by weight. **R**: OKB-1's preliminary report of 3 May 1961 (read in full, in translation).
+Sources, by weight. **PPP**: «Первый пилотируемый полёт», book 2 (2011), the documents themselves, not read
+at first hand: quoted by page in **K**, Gammal and Tuchin's reconstruction of the flight (Keldysh Institute preprint
+2025 No. 15, read in full; its own ascent is a Soyuz's from Guiana turned to Tyuratam, and is not used). **B21**:
+Baturin, Novaya Gazeta, 12 April 2021 (read in full; an editor of PPP, no footnotes). **R**: OKB-1's preliminary report of 3 May 1961 (read in full, in translation).
 **G**: Gagarin's report to the State Commission of 13 April and the questions put to him (read in
 full, in translation). **S**: Siddiqi, *Challenge to Apollo* (2000). **S15**: Siddiqi in The Space
 Review, 2015. **Z**: Zak, RussianSpaceWeb (its launch, orbit and landing pages, read in full), which
@@ -26,14 +29,14 @@ with an error on both tries). **T**: the TASS announcement of the day, as Z tabu
 | 07:50 or so | | Sealed in; hatch No. 1 taken off and refitted for a contact (30 screws) | documented | S; G |
 | 09:06:59.7 | 0 | Liftoff. Engines through preliminary, intermediate and main stages first | documented | S launch log. R: 09:06:59 |
 | | about 70 | Vibration changes: lower, larger | documented, loose | G |
-| | 119 | Strap-ons separate. "Approximately five G" before it, by feel | documented | S p. 277; Z. The load: G |
-| | 150 | Fairing off | documented, loose | G: "at second 150". **Z: 154. S's figure: 156** |
-| | 156 | Radio guidance's power fails; the autonomous system flies on | documented, secondary | Z, from the 2011 documents. One account of two |
+| 09:08:59.2 | 119.5 | Strap-ons separate, on the integrator's command at 119.50 s, done 0.03 s later. "Approximately five G" before it, by feel | documented | PPP p. (as K quotes it). S p. 277 and Z: 119. The load: G |
+| 09:09:34.3 | 154.6 | Fairing off | documented | PPP. **G: "at second 150". Z: 154. S's figure: 156** |
+| | 156 | Radio guidance's power converter fails; the autonomous system flies on | documented, secondary | Z; B21; Chertok vol. 3 p. 291 |
 | | 211 | Load "began to grow again" | documented | G |
-| | 300 | Core cut off; Block E alight | documented | S. **Z: 299**, and 0.5 s late |
+| | 300 | Core cut off; Block E alight | documented | S. **Z: 299.** No instant in the telemetry (PPP p. 60). B21: cut 0.46 s late by the autonomous system's time mark, 22.0 m/s over the design |
 | | 300 to 315 | "Weightlessness about 10-15 seconds until the third stage ignited" | documented | G. **Contradicts hot staging** (Minakov; RKK Energia), where Block E lights first. Not reconciled |
-| | 676 | Block E cut off, sharply: orbit | documented | S p. 277 |
-| 09:18:28 | 688.3 | Spacecraft separates; clock, Globus and Granit-5V cycle 1 start | documented | R. G: "after about 10 seconds". **Z notes 09:18:07 (L)** |
+| | 676 | Block E cut off, sharply: orbit | documented | S p. 277. B21: 2.4 s longer than calculated; 25.43 m/s over in all |
+| 09:18:28 | 688.3 | Spacecraft separates; clock, Globus and Granit-5V cycle 1 start | documented | R. **PPP: 09:18:26.8.** G: "after about 10 seconds". **Z notes 09:18:07 (L)** |
 | 09:25 to 09:29 | | Asks Zarya-3 (Yelizovo) for his orbit four times; is not told | documented | Z, transcript |
 | | | VHF lost at "about 30 degrees north latitude on the globus" | documented | G |
 | before 09:50 | | Into the Earth's shadow, "very sharp" | documented, untimed | G. No source read gives the minute |
@@ -75,10 +78,17 @@ with an error on both tries). **T**: the TASS announcement of the day, as Z tabu
 - **Not published anywhere read:** the node, the argument of perigee, the place or time of
   injection, the launch azimuth. So the orbit's plane and the spacecraft's place on it are not
   documented: see "Inputs".
-- **Why the apogee was 97 km high: two accounts, neither taken.** Z: the radio guidance failed at
-  156 s (or its cutoff signal came late) and the core ran about half a second long; L reckons 0.6
-  to 0.7 s is worth about 100 km. S15, from the documents published in 2011: a wrongly assembled
-  valve let Block E's engine burn long. R gives the orbit and no cause.
+- **Why the apogee was 97 km high: both accounts, together.** B21: the radio guidance's power
+  converter failed at 156 s, its cutoff command never came, the core was cut 0.46 s late by the
+  autonomous system's time mark (its preliminary command 0.51 s late), 22.0 m/s over the design; and
+  Block E burned 2.4 s longer than calculated: 25.43 m/s too fast in all, 327 km for 230. Chertok
+  (vol. 3, p. 291): the integrator cut the core "set for a velocity exceeding the design velocity for
+  the radio system"; (p. 73) an integrator error "caused the apogee altitude to increase by 40
+  kilometers". Z and S15 each had half of it. R gives the orbit and no cause.
+- **What kind of elements.** K (from PPP p. 42): built by NII-4 "from the gyro platform's data and
+  angle measurements", by a method that took in the field's non-centrality and drag; "the time of
+  osculation is not stated in the sources". K takes the heights over the Krasovsky ellipsoid's radius;
+  the repo's 6,371 km ball (Kepler against the period) is kept.
 - **What it cost.** The fallback for a failed braking engine was decay within the supplies' ten
   days (planned: two to seven days; Ustinov's memorandum of 30 March). S15: from 327 km, about
   thirty days.
@@ -99,7 +109,10 @@ with an error on both tries). **T**: the TASS announcement of the day, as Z tabu
   close to the estimated one" and the causes "have not been identified". 1,614 kgf for 38.5 s on
   4.7 t is 131 m/s (*derived*), which agrees.
 - **Why short.** A valve did not close fully at the start, fuel leaked past the chamber, the engine
-  starved a second early (Z, L). Because the integrator had not reached its count, the timer shut
+  starved a second early (Z, L; Chertok vol. 3 pp. 80-81: the check valve, "1 second before the
+  integrator generated the primary command", 132 for 136 m/s). B21: normal running ended 40.1 s
+  after the start (R: fuel pressure gone at 42.2 s), and "the consequence of this not-quite-second was
+  an overshoot of 600 km": **long, not short**, which is the sign `flyOrbit` gives (below). Because the integrator had not reached its count, the timer shut
   it down, the sequencer cancelled separation, and gas went on escaping through the main nozzle and
   the steering nozzles.
 - **The separation.** S (2000) has the lock opening on time and cables holding the modules; that is
@@ -111,6 +124,15 @@ with an error on both tries). **T**: the TASS announcement of the day, as Z tabu
   short by itself. That reasoning is ours; `flyOrbit` bears out its sign and not its size (4 m/s more
   burn lands 157 km shorter, not longer; the planned orbit and burn on the same clock land 66 km
   beyond the flown ones, not 300: section 5).
+- **The last minutes, by another clock.** B21: Engels' search radar saw the target at 10:48, 8 km up
+  and 33 km to the south-west; ejection at 10:49 at 7 km; the main canopy 50 s later at about 4 km, as
+  he left the seat; the reserve at 3 km. That puts the ejection seven minutes after Z's 10:42 and
+  against R's module landing at 10:48. K quotes PPP book 1, p. 431: contact lost at 10:38:15, ejection
+  at 10:45:41. **Three times for the ejection, not reconciled.** The descent system (Bobkov, OKB-1,
+  1991; GCTC): the module's pilot parachute of 1.5 m² at about 7 km, braking parachute 18 m² at 4 km
+  and 200 m/s, main 574 m² at 2.5 km, landing at 10 m/s; the pilot's braking parachute 2 m², main
+  83.5 m² at 4 km, reserve 56 m² (put out automatically after the main on this flight only), 5 to 6
+  m/s; the hatch at 7 km and 220 m/s, the seat 2 s later at up to 20 m/s.
 - **Place.** R: 51°16′ N, 45°59′ E for the pilot; the module about 1.5 km off (G thought 4), "south
   of the city of Engels", the module 10 m from a ravine and the pilot some 9 km from the Volga (Z).
   About 50 m above the sea, 7.5 °C (Z). Wind at 7 km westerly and strong (Z); at the ground 5 to
@@ -158,8 +180,8 @@ branch.
 | 3 | **Done.** `flyOrbit`: the coast from the published orbit, the burn aimed by the Sun, a ballistic sphere down to 7 km, checks and `MISSES` | the record (section 5) | physics |
 | 4 | Parachutes and two bodies down: the module's canopy, the seat with its drogue, the pilot under one canopy (the reserve as data), wind from a profile. Reuse `shed.ts` for the seat and hatch | landing times 10:48 and 10:53; 1.5 km apart; descent rates | physics; research for canopy figures |
 | 5 | Sphere drag from a source that is opened; free-molecule drag for decay over days; heating of the ball (below) | Bailey and Hiatt; the planned 2 to 7 day decay and S15's 30 days as checks | research, then physics |
-| 6 | **Staging types.** `OrbitalFlight.stages` flown: several engines at once, each with its own tanks, thrust by pressure between its sea-level and vacuum figures, a stage dropped when its time comes. A batch `flyAscent` on a prescribed pitch programme, as `fly.ts` is | propellant used against load by each cutoff; liftoff acceleration; Gagarin's loads | physics |
-| 7 | The pitch programme, derived (section 3), and the ascent's checks and misses | cutoff height, level flight, speed; apogee; the drop zones if found | physics; research for drop zones |
+| 6 | **Done.** **Staging types.** `OrbitalFlight.stages` flown: several engines at once, each with its own tanks, thrust by pressure between its sea-level and vacuum figures, a stage dropped when its time comes. A batch `flyAscent` on a prescribed pitch programme, as `fly.ts` is | propellant used against load by each cutoff; liftoff acceleration; Gagarin's loads | physics |
+| 7 | **Done**, as a stated law (src/sim/staged.ts: `steer`), with the ascent's checks and misses, and the descent's two bodies (`flyDown`) | cutoff height, level flight, speed; apogee; landing times and sink rates | physics |
 | 8 | Hand-over to the live vehicle: `vehicle.ts` in the inertial frame of date (it has the frame; it needs the sidereal time of launch, which the coast already uses), N engines, N sheds at once | `flyAscent` to 0.05 % as today | physics, with **sim** |
 | 9 | **Coasting fast.** Section "Time" below | drift bounds already measured | physics, with **sim** |
 | 10 | Attitude in orbit: free tumble, the gas jets (two sets of eight, 1.5 kgf), the solar sensor's law, the TDU's steering nozzles, the stuck throttle and the tumble as the record has it | gas used: 150 to 110 atm; rates 2 to 3 deg/s, 6 or 30 | physics |
@@ -359,16 +381,16 @@ Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's i
 | **What kind of elements the published orbit is** | not stated | Flown as osculating at cutoff, which the flown apogee shows to be wrong by 18 km. Next: read them as mean elements, through a stated first-order conversion (Kozai's, tested against a published case), and say so |
 | **Where on the orbit at cutoff** (`injection.arc`) | not found | **Estimated** today: 27.5° by hand, ±3°. Replaced by the flown ascent (step 7), when it becomes *derived*. Not to be solved from the landing point |
 | **Argument of perigee** (`injection.anomaly`) | not found | **Estimated**: perigee at cutoff. The ascent gives it. G's "apogee at Cape Horn" is a loose check, not an input |
-| **Pitch programme** | not found | **Derived**, from a stated family with the fewest constants: vertical for a stated time, a gravity turn (no angle of attack) while there is air, then the linear-tangent law in vacuum. Its constants are solved so that at the documented cutoff (676 s) the documented height (perigee, 181 km) is reached in level flight. **Speed at cutoff is then a result**, checked against the orbit's 7,842 m/s; so are the load history (G: about 5 g at 119 s, rising again from 211 s), the speed at core cutoff (Z: about 5.5 km/s), the horizon in the Vzor at 150 and 300 s (G), and the drop zones if a source gives them. It says "derived: this family, these two constraints" wherever shown. It is not the stored programme, which also had radio corrections until 156 s |
-| **Throttle** | not found; "throttled at the end of the first stage's flight" | **Derived** mean only: each stage's documented propellant over its documented burn. At rated flow the strap-ons use 38.7 t of 39.16 t in 119 s (so near rated to the end); the core's rated flow would use 91.8 t of 90.1 t in 300 s, so it ran below rated on average by at least 2 %. Flown at that constant mean, and said so; no profile is invented |
-| **Cutoff logic** | found in kind: a velocity integrator, and radio until it failed | Fly the record's time (676 s) and let apogee be a result. 0.6 s is worth 100 km of apogee (L), so **expect apogee in `MISSES`**, blamed on thrust and mass figures good to 1 to 4 %; do not tune. A second run cut on the planned orbit's speed shows what the integrator would have done |
-| **Nozzle exit areas** | not found | **Derived**: (vacuum thrust less sea-level thrust) over one atmosphere, from the documented pair: 1.79 m² for an RD-107, 1.98 m² for the RD-108 |
-| **Drag of the stack against Mach** | not found | **Estimated**, and labelled: a curve of the usual form on the base area, from a cited analogue if research finds one (a clustered-booster vehicle's published curve). The test prints what ±30 % of it moves. The simulator may refuse it: then the ascent stays a labelled estimate until a source is found |
+| **Pitch programme** | not found for the 8K72K (searched: Chertok vols 2 and 3, Siddiqi, Zak, K, B21, the 1957 reports of Sputnik's launch). Soyuz's from Baikonur is published (Starsem's manual, Fig. 2-4), a different vehicle | **A stated law**, `ascent.guidance` (src/sim/staged.ts): vertical for 15 s (estimated, from Soyuz's), a pitch-over over 10 s (estimated) to an angle that is solved, no angle of attack through the air to the strap-ons' separation, then the linear-tangent law to the last cutoff; the launch plane, the pitch-over's angle and the tangent's rate solved so that at 676 s it is level at the planned 180 km in a plane of 64.95°. So perigee and inclination are targets, not checks; **apogee, period, speeds and loads are results**. It is not the stored programme, which had radio corrections until 156 s |
+| **Throttle** | found in kind, not in figures: the strap-ons' first intermediate stage some seconds before separation (on Sputnik, from 109.94 s to 116.38 s), the core's final stage on its steering chambers alone for some seconds (10 s on the 8D75), and in flight the RKS and SOB regulators (lpre.de; Chertok vol. 2 p. 305; the 1957 reports) | **Rated thrust throughout**, and said so. At rated flow the loads in print do not last to the times flown (vostok-8k72k.md): the run says by how much |
+| **Cutoff logic** | found: the strap-ons by the integrator at 119.50 s (PPP); the core by the autonomous system 0.46 s late, the radio command having failed; Block E 2.4 s long; 25.43 m/s over (B21) | Fly the record's times (119.5, 300, 676 s) and let the orbit be a result. 0.6 s is worth 100 km of apogee (L), so **expect apogee in `MISSES`**, blamed on thrust and mass figures good to 1 to 4 %; do not tune |
+| **Nozzle exit areas** | the chambers' exits found (lpre.de, from Gakhun et al.): 720 mm main, 310 mm steering | **Derived** from the two thrusts, 1.794 and 1.985 m², which the geometry confirms to 1 and 3 % |
+| **Drag of the stack against Mach** | not found for any R-7 | **Estimated**, and labelled: a curve of the usual form on the cluster's frontal area (29.4 m², derived). The test prints what ±30 % of it moves |
 | **Drag of the sphere** | not read | **Estimated** from memory of the standard curve; becomes *documented* when Bailey and Hiatt or Hoerner is opened (step 5). 0.92 hypersonic |
 | **Mass at each event** | not found | **Derived** from the stage figures and flows; the stage figures' own spread (1 to 4 %) is carried as the uncertainty |
 | **Propellant burned before liftoff** | not found | left out, and said so |
 | **Separation's push, TDU's after-thrust, the tumble's torque** | not found | left out; listed with the simplifications |
-| **Parachute areas, sink rates, wind aloft** | tertiary or not found | step 4's research |
+| **Parachute areas, sink rates, wind aloft** | areas and heights found (Bobkov, OKB-1, 1991; GCTC; B21); wind aloft at Saratov not found | `descent` in orbital.ts: drag coefficients on the canopies' areas (0.75) and fill times chosen; no wind |
 | **Jets' places, gas mass, sensor law** | not found | estimated, labelled, step 10's research |
 
 ## 4. Risks, and who does what
@@ -441,3 +463,47 @@ What each input moves (from the same test): `retro.deltaV` +4 m/s (as programmed
 
 Not verified: the shadow against any published case (geometry only); the Sun-aimed push against
 anything but the record's words; the sphere's drag curve against its source.
+
+## 6. What the ascent gives
+
+`flyWhole` (src/sim/staged.ts): the ascent from the pad on the stated law, the coast from where it left the spacecraft,
+the two bodies down from 7 km; printed by `tests/staged.test.mjs`, which fails on a miss not recorded in its `MISSES`.
+The checks were set in orbital.ts before any of it was flown.
+
+| | Flown | Record | Tolerance | |
+| --- | --- | --- | --- | --- |
+| The law, solved | plane 66.58° at liftoff; pitch-over 9.37°; tangent falling 0.000526 a second | | | the launch plane is tilted 1.6° past the orbit's to take out the pad's own eastward motion |
+| Strap-ons leave, 119.5 s | 42.7 km, 68 km down range, 2,413 m/s (2,222 through the air), climbing 18.1° | | | Sputnik's (a different vehicle, two stages): 57.7 km, 54.8 km, 2,189 m/s Earth-fixed, 36.3° |
+| Greatest dynamic pressure | 49.6 kPa at 62 s | | | Soyuz's manual: 36 kPa at 66 s |
+| A minute up | 2.19 g | 3 to 4 g (Z, by feel) | 1 g about 3.5 | **misses by -1.3 g**: thrust and mass give 2.4; Soyuz shows 2.6 |
+| Greatest on the first stage | 5.25 g | about 5 (G, by feel) | 1 g | holds |
+| Core cuts off, 300 s | 135.5 km, 699 km down range, 5,810 m/s | about 5.5 km/s (Z) | 400 m/s | holds. At rated flow its 90.1 t is gone at 294.4 s: it coasts 5.6 s before Block E lights |
+| Last cutoff, 676 s | 180 km level, 7,986 m/s; 28.98° round from the pad (the coast's estimate: 27.5 ± 3) | | | |
+| Perigee, inclination | 180 km, 64.950° | 181 km, 64°57′ (R) | | hold **by construction**: they are the law's targets |
+| Apogee | **844 km** | 327 km (R) | 10 km | **misses by +517 km** |
+| Period | 94.72 min | 89.44 min (R) | 15 s | misses, with the apogee |
+| What the spacecraft weighs on leaving Block E, by the stages' own figures | 4,616 kg | 4,725 kg (RKK Energia) | | the record's masses do not quite sum (mission.md's sources disagree by 1 to 4 %) |
+| Then the coast: height at 10:36 | 327 km | 150 to 170 (L; S15) | 15 km | misses |
+| At 7 km | 10:48:58 | 10:42 (Z) | 60 s | misses by 7 min |
+| Landing | 325 km short along the track, 96 km to the left | 51°16′ N 45°59′ E (R) | 100 and 25 km | misses |
+| Module down; pilot down | 10:53:46, 9.0 m/s; 11:02:22, 4.5 m/s; 300 m apart | 10:48, 10 m/s; 10:53, 5 m/s; about 1.5 km (R; Bobkov; GCTC) | 120 s, 2 m/s, 1.5 m/s, 3 km | times miss, by the late arrival; sink rates and separation hold |
+
+**The finding: the vehicle as recorded is 142 m/s too fast.** It passes the speed the record's orbit needs at 180 km
+(7,844 m/s) 16 s before the recorded cutoff. Nothing was tuned to that or away from it. What owns it, from the same
+test, each with the law solved afresh:
+
+| Changed | Speed at cutoff | Apogee |
+| --- | --- | --- |
+| The core's load less its peroxide and nitrogen (3.12 t, Brügge) | -487 m/s | below the orbit |
+| The strap-ons' less theirs (1.47 t) | -192 m/s | below the orbit |
+| The tangent law from the core's cutoff, not the strap-ons' | -89 m/s | -327 km |
+| The drag curves x 1.3 | -71 m/s | -261 km |
+| The spacecraft 1 % heavier | -20 m/s | -74 km |
+| The vertical rise 5 s longer | -6 m/s | -24 km |
+| The core 1 % less thrust and flow; Block E 1 % less impulse | -2.5; +4.1 m/s | -9; +15 km |
+
+So the published loads alone are worth several times the miss either way: which part of each stage's load the engines
+burn is the input to find first, then the levels of the engines' intermediate and final stages of thrust (documented in
+kind; flown here at rated thrust, which overdraws the core's load by 1.7 t at its recorded cutoff), then a pitch
+programme. The real vehicle hid all of it: its integrators cut each stage on the velocity reached, and on 12 April that
+came out 25.43 m/s fast (B21), where this run, cut by the clock at the record's instants, is 142.

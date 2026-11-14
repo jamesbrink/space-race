@@ -2,7 +2,7 @@
 
 The booster for the four orbital Mercury flights, MA-6 to MA-9. Model:
 [atlas_lv3b.py](atlas_lv3b.py), imported by each flight's `model/vehicle.py`. Built for Atlas 109-D,
-which flew MA-6, and for Atlas 107-D, which flew MA-7; another serial is another number painted on it
+which flew MA-6, for Atlas 107-D, which flew MA-7, for Atlas 113-D, which flew MA-8, and for Atlas 130-D, which flew MA-9; another serial is another number painted on it
 (`build(serial=...)`) and whatever its record shows to differ ("One vehicle from the next", below).
 
 **It is a stage and a half.** All five engines are lit on the ground. About two minutes up the two
@@ -82,6 +82,42 @@ Convair's stations run in inches from the nose toward the tail; the model keeps 
 
 Cutoffs on MA-7: boosters 00:02:08.6, sustainer 00:05:09.9 (NASA TN D-3814, Table XVI).
 
+Atlas 113-D (MA-8) against 107-D, from the report of its flight (NASA TN D-4807, pp. 12 and 13; NASA SP-12, pp. 10 and 11):
+
+| | Atlas 113-D (MA-8) | Confidence | Source | In the model |
+| --- | --- | --- | --- | --- |
+| Number on the fuel tank | 113 D, in the same place: "11" and "3D" either side of the slender fairing above one vernier | documented by photograph | NASA KSC-62PC-0078, S62-06006 (the liftoff) | yes: `serial="11 3D"` |
+| Insulation bulkhead | "removed at the factory" | documented | TN D-4807, p. 12 | yes: built without (`insulation_bulkhead` left False) |
+| Booster engines' injectors | baffled, "for improved combustion characteristics" | documented; the baffles' number (six, counted off the report's sketch) and how far they stand out of the face (2.4 in) estimated | TN D-4807, p. 12 and Figure 7 | yes: `baffled_injectors`: a face in each booster chamber with a ring and six vanes, seen up the throat from under the engines (not in the gallery, where the vehicle stands on a floor and the cutaway's quarter misses both booster engines). The face is as wide as the model's chamber, which is representative; its paler metal is ours |
+| Booster engines' igniters | hypergolic, in place of pyrotechnic | documented; the container's size (9 in by 1.7 in) and place on the chamber's head estimated | TN D-4807, p. 12 and Figure 8 | yes: `hypergolic_igniters`: a cartridge container across each booster chamber's head |
+| Hold-down | none between the engines' start and release; 112 gallons of fuel taken off in the count to make up for it | documented | TN D-4807, pp. 12, 24, 25 and 105 | no: an event, not a shape |
+| Rough combustion cutoff | removed; its instruments kept | documented | TN D-4807, p. 13 | no |
+| Staging backup time | T+132.3 s, "changed from T + 136" | documented | TN D-4807, p. 12. TN D-3814 (p. 7) gives 107-D's as 132.2 s: the two reports disagree about 107-D | in the flight's data |
+| Guidance | steering to start 24 s after booster cutoff, not 25; the sustainer's pitch programme 16.5 s, not 20 | documented | TN D-4807, pp. 12, 13 and 106 | no |
+| Range safety receivers | changed so that a break in power at the switch to internal could not start a destruct | documented | TN D-4807, p. 13 | no |
+| Abort sensing lines, engine relay box, telemetry | the hydraulic sensing lines in the thrust section rerouted and better insulated; a second head-suppression control circuit; boattail temperatures | documented | TN D-4807, p. 13 | no |
+| Markings elsewhere, pods, lines, fairings | taken as 109-D's | estimated | KSC-62PC-0078 shows the long pod, the vernier's fairing and the number as on 107-D; it also shows a white panel and a round badge on the adapter under the capsule's second UNITED STATES, which are not modelled: what they were has not been read | as 109-D |
+
+Cutoffs on MA-8: boosters 00:02:08.6, sustainer 00:05:15.7 (NASA TN D-4807, Table XXII). At liftoff it rolled
+clockwise 2.52° at most, at up to 7.83°/s, from a misalignment of the two booster engines of 0.14° to 0.23° and the
+gas generator's exhaust (pp. 105 and 106).
+
+Atlas 130-D (MA-9), against those:
+
+| | Atlas 130-D | Confidence | Source | In the model |
+| --- | --- | --- | --- | --- |
+| Number on the fuel tank | 130 D, in the same place: 13 to one side of the fairing above a vernier, 0D to the other | documented by photograph | NASA 63C-1417 (GPN-2000-000998: on the pad, 14 May 1963) | yes: `serial="13 0D"` |
+| Insulation bulkhead | none: "A change in the production line stopped further installations of this material" | documented | NASA SP-45, p. 96 | yes: `insulation_bulkhead=False` |
+| Booster engines' alignment | offset, to cancel the roll at liftoff that had come near the abort limit on 113-D: "incorporated for MA-9 in Atlas 130D" | documented | NASA SP-45, pp. 96 and 97; *This New Ocean*, p. 491 | no: too small to draw; nothing read gives the angle |
+| Booster engines' injectors and ignition | baffled injectors; a hypergolic start; no hold-down beyond the two seconds between lock-in and release | documented | the MA-9 press kit, p. 46; NASA SP-45, pp. 13, 102 and 103 | yes: `baffled_injectors`, `hypergolic_igniters`, as built for 113-D |
+| Propellant utilisation | "a slightly reshaped mandrel and improved calibration techniques" | documented | NASA SP-45, p. 103 | no |
+| Acceptance | rolled out on 30 January 1963, returned for rewiring, accepted on 15 March with no discrepancy recorded; at the Cape on 18 March, erected on the 22nd | documented | *This New Ocean*, pp. 490 and 491; the press kit, p. 44 | |
+| Markings elsewhere, pods, lines, fairings | taken as 109-D's | estimated | 63C-1417 shows UNITED STATES down the oxygen tank beside the vernier's line and the two pods, and nothing to the contrary | as 109-D |
+
+Cutoffs on MA-9: boosters 00:02:12.5, the booster section dropped at 00:02:15.4, sustainer 00:05:03.03 (NASA SP-45,
+p. 103). At liftoff the roll was a "minor transient", corrected as the autopilot took hold (the same page), where
+113-D's had come to four fifths of the abort limit (p. 102).
+
 ## What was changed for Mercury
 
 From NASA SP-45, pp. 92 to 95 and Figure 5-13. None of these shows on the outside but the adapter;
@@ -136,6 +172,8 @@ aft; then the capsule from the adapter.
   modelled is where the Atlas D's drawing has a rate gyro.
 - **The engines are representative.** Bells, chambers, pumps and ducts are there; their forms are
   not from a drawing, the bells' tubes are a count of ours, and the booster engines' cant is left out.
+  The baffled injector a later vehicle is given (113-D) is a face, a ring and six vanes in a chamber of
+  that representative size, with none of its orifices, and its igniter a plain container.
 - **The booster section's ribs** (96), the fairings' exact section and the radiation shield's form
   are estimates. The jettison tracks, the latch, the helium bottles, the fill and drain fittings and
   the ground disconnects are left out.
@@ -152,4 +190,4 @@ aft; then the capsule from the adapter.
 
 ## Sources
 
-[docs/sources.md](../../../../docs/sources.md), "Mercury-Atlas 6" and "Mercury-Atlas 7".
+[docs/sources.md](../../../../docs/sources.md), "Mercury-Atlas 6", "Mercury-Atlas 7" and "Mercury-Atlas 8".
