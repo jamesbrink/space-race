@@ -145,7 +145,11 @@ export const THROWN: Measure = guess(
   `${BOBKOV} and ${GCTC} via mission.md: the seat left “at up to 20 m/s”, on its two rockets, two seconds after the hatch; taken at that bound, and at the hatch’s instant`,
 );
 
-/** The pilot's two canopies: the main as he leaves the seat, the reserve after it; `altitude` is when each came out, the flight's. */
+/**
+ * The pilot's two canopies: the main as he leaves the seat, the reserve after it, put out by the automatic whether the main
+ * had opened or not, "by the cyclogram" (Marinin, Novosti Kosmonavtiki 2011 No. 8, p. 7): the type's, on Vostoks 1 and 2
+ * alike. `altitude` is when each came out, the flight's.
+ */
 export const mainCanopy = (altitude: Measure, replaces: NonNullable<DescentChute['replaces']>['mass']): DescentChute => ({
   name: 'main canopy',
   altitude,

@@ -1,11 +1,15 @@
 import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import {
+  busPart,
   comes,
+  drives,
   leaves,
-  ON_ROAD,
   type PartWords,
+  SITE1_SPECS,
   type Site1Node,
   SUPPORTS_GO,
+  site1Pad,
   site1Parts,
   TAIL,
   TURN,
@@ -468,7 +472,7 @@ const launcherParts: Part[] = [
 ];
 
 // The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
-const COMMANDS = vostokCommands({ parted: 'on the day the thermal backup did, 10:36', reserve: 'by itself at 3 km, this flight only' });
+const COMMANDS = vostokCommands({ parted: 'on the day the thermal backup did, 10:36', reserve: 'by itself at 3 km, as again on Vostok 2' });
 
 const SPACECRAFT = ['DescentModule', 'InstrumentModule', 'RetroEngine', 'Antennas'];
 
@@ -827,118 +831,6 @@ vehicle.cabin = {
   periscope: VZOR,
 };
 
-// The cosmonaut on the deck's west edge, on his way from where the bus stopped south of the tracks to the foot of the
-// erector's stair (which is on its south side: the film), facing the rocket. The film and a colour photograph have him
-// walking this way along the wagon's south side; where he is stood on it is ours (estimated).
-const COSMONAUT_AT: [number, number, number] = [-19.5, 0, 6.5];
-const COSMONAUT_FACING = Math.atan2(-COSMONAUT_AT[0], -COSMONAUT_AT[2]);
-/** A direction to look at him from: in front of him, turned `aside` radians, `lift` up. */
-const facingCosmonaut = (lift: number, aside = 0.2): [number, number, number] => [
-  Math.sin(COSMONAUT_FACING + aside),
-  lift,
-  Math.cos(COSMONAUT_FACING + aside),
-];
-
-const crewParts: Part[] = [
-  {
-    node: 'Helmet',
-    name: 'Helmet',
-    summary: 'White, part of the suit, and lettered that morning.',
-    detail:
-      'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings ' +
-      'up over the crown, which is how it is here, as he wore it to the pad; if the cabin lost ' +
-      'pressure it would have come down by itself. The red "СССР" on the brow was painted by hand on the morning ' +
-      'of the flight, the story goes, so that whoever found him after landing would know whose pilot had come down ' +
-      'by parachute. Photographs taken that morning exist both with the letters and without.',
-    facts: [
-      ['Shell', 'fixed to the suit'],
-      ['Visor', 'double, closes by itself on loss of pressure'],
-      ['Lettering', '"СССР", red, by hand, 12 April 1961'],
-      ['Under it', 'a white headset cap with two microphones'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'Torso',
-    name: 'Torso',
-    summary: 'An orange cover over the suit that holds pressure.',
-    detail:
-      'What is seen is not the pressure suit. The SK-1 is two layers, a rubber bladder inside a restraint layer of ' +
-      'lavsan (polyester) cloth, and over them this orange cover, the colour chosen to be found by: Vostok’s pilot ' +
-      'left the cabin on his ejection seat and came down under his own parachute, anywhere along the track. The ' +
-      'grey at the neck is the suit itself. The hoses leave at his right side; on the way to the pad the suit was ' +
-      'ventilated from the bus.',
-    facts: [
-      ['Suit', 'SK-1, Zvezda (Tomilino)'],
-      ['Mass', '20 kg'],
-      ['Pressure if the cabin fails', '270 to 300 hPa'],
-      ['Markings', 'none but the helmet’s'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'Arms',
-    name: 'Arms',
-    summary: 'A mirror is sewn to the right sleeve.',
-    detail:
-      'Strapped into the seat in a helmet that does not turn far, he could not see everything in the cabin. The ' +
-      'mirror on the sleeve is for looking at what is out of sight: a switch, a gauge, the suit’s own fittings.',
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'Gloves',
-    name: 'Gloves',
-    summary: 'On metal rings, and off until he was in the cabin.',
-    detail:
-      'The gloves lock to metal rings at the wrists. Their palms are faced with leather; the backs are the cover’s orange. ' +
-      'They are modelled on, as flown.',
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'Legs',
-    name: 'Legs',
-    summary: 'One garment from the collar down, zipped to the crotch, a pocket on each thigh.',
-    detail:
-      'The cover is a loose overall. Its legs hang over the tops of the boots. What the thigh pockets held ' +
-      'has not been read in a source; survival gear rode in the seat.',
-    explode: [0, 0, 0],
-    order: 0,
-  },
-  {
-    node: 'Boots',
-    name: 'Boots',
-    summary: 'Black laced leather, worn over the suit’s feet.',
-    detail: 'Ordinary-looking high boots, laced on hooks, pulled on over the feet of the pressure suit.',
-    explode: [0, 0, 0],
-    order: 0,
-  },
-];
-
-const crew: ModelDef = {
-  id: 'crew',
-  name: 'Crew',
-  url: 'models/ussr/vostok/vostok-1/crew.glb',
-  scale: 'Yuri A. Gagarin · 1.65 m, 1.72 m suited · to scale',
-  backdrop: 'tyuratam',
-  parts: crewParts,
-  position: COSMONAUT_AT,
-  rotationY: COSMONAUT_FACING,
-  walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
-  wide: false,
-  specGroups: ['Pressure suit'],
-  home: 'figure',
-  views: [
-    { id: 'figure', label: 'Cosmonaut', centreY: 0.9, span: 2.4, from: facingCosmonaut(0.05) },
-    { id: 'helmet', label: 'Helmet', centreY: 1.57, span: 0.62, from: facingCosmonaut(0.05) },
-    { id: 'hands', label: 'Gloves', centreY: 0.86, span: 0.62, from: facingCosmonaut(0.05) },
-    { id: 'boots', label: 'Boots', centreY: 0.18, span: 0.62, from: facingCosmonaut(0.2) },
-  ],
-};
-
 /**
  * The pad's slider is the morning of 12 April 1961, from the bus coming up the road to the rocket leaving. Its first
  * tenth is the pilot's arrival (06:49 to 07:10: the bus, the report, the walk to the stair, the lift); the rest runs
@@ -1082,37 +974,6 @@ const MORNING: Keyframe[] = [
       'a photograph of this launch with the rocket’s tail some 20 m over the deck (RussianSpaceWeb) shows them open; how long they took is not recorded',
   },
 ];
-
-/**
- * A road vehicle driven on the clock (road_vehicles.py): `path` is where its rear axle goes, metres ahead and to the
- * right of where the drive starts. A vehicle driven more than once is a nest of nodes, a drive to each, and its
- * wheels are named after the node.
- */
-const drives = (
-  node: string,
-  from: number,
-  to: number,
-  path: [number, number][],
-  wheelbase: number,
-  wheelRadius: number,
-  reverse = false,
-): Move => ({
-  kind: 'drive',
-  node,
-  from,
-  to,
-  path,
-  pivot: [0, wheelRadius, 0],
-  forward: [1, 0],
-  reverse,
-  wheelRadius,
-  wheelbase,
-  wheels: `${node}_Wheel_`,
-  steered: `${node}_SteerWheel_`,
-  axle: 'z',
-  runs: ON_ROAD,
-});
-const BUS = { wheelbase: 4.19, wheel: 0.525 };
 
 /** What this morning's record says of the pad's hardware (the site's own words for the rest: sites/site-1.parts.ts). */
 const PAD_WORDS: Partial<Record<Site1Node, PartWords>> = {
@@ -1308,6 +1169,48 @@ const PAD_WORDS: Partial<Record<Site1Node, PartWords>> = {
   },
 };
 
+/** What this morning's record says of the pilot's helmet (the suit's other parts are the suit's: crew/sk-1.parts.ts). */
+const HELMET_WORDS: PartWords = {
+  summary: 'White, part of the suit, and lettered that morning.',
+  detail:
+    'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings ' +
+    'up over the crown, which is how it is here, as he wore it to the pad; if the cabin lost ' +
+    'pressure it would have come down by itself. The red "СССР" on the brow was painted by hand on the morning ' +
+    'of the flight, the story goes, so that whoever found him after landing would know whose pilot had come down ' +
+    'by parachute. Photographs taken that morning exist both with the letters and without.',
+  facts: [
+    ['Shell', 'fixed to the suit'],
+    ['Visor', 'double, closes by itself on loss of pressure'],
+    ['Lettering', '"СССР", red, by hand, 12 April 1961'],
+    ['Under it', 'a white headset cap with two microphones'],
+  ],
+};
+
+/** What this morning's record says of the bus. */
+const BUS_WORDS: PartWords = {
+  summary: 'A cream and blue LAZ-695B brought the pilot, his back-up and eleven others to the foot of the rocket.',
+  detail:
+    'The film of the morning shows it twice: coming along the concrete road, and from the erector’s head a moment after ' +
+    'it has stopped, on the concrete west of the platform, facing the rocket, its right side a metre from the rail of a ' +
+    'track with another track beyond. It is a LAZ-695B, known by the wide air scoop at the back of its roof: 9.19 m ' +
+    'long, 2.5 m broad, 2.98 m high, cream above with a blue band under the windows and a blue skirt, curtains drawn ' +
+    'at its side windows. Thirteen came in it: Gagarin and Titov in their orange suits, two more cosmonauts standing ' +
+    'in leather jackets, doctors, cameramen. The cameramen jumped down first; a doctor in a white coat handed the ' +
+    'pilot down. Titov stayed aboard in his suit, in case. The cosmonauts and their doctor were to leave at thirty ' +
+    'minutes’ readiness for the measuring point, by the launch roster: here the bus backs out at 08:37 and goes. Its ' +
+    'type and colours are the film’s and its size the type’s; where it stood along the track is good to some eight ' +
+    'metres; its fittings, and that it was the bus that took them off, are estimated. This one was fitted out inside ' +
+    'with armchairs and a table, which are not drawn.',
+  facts: [
+    ['Type', 'LAZ-695B (the film: the roof’s air scoop)'],
+    ['Size', '9.19 by 2.50 by 2.98 m, wheelbase 4.19 m (the type’s figures)'],
+    ['Colours', 'cream over blue (the film; "white and blue", Golovanov)'],
+    ['Came', 'about 06:50 Moscow time (Kamanin’s diary, on the range’s clock)'],
+    ['Stood', 'a metre south of the south track, facing the rocket (the film)'],
+    ['Left', '08:37, thirty minutes’ readiness (the roster; that it was the bus is estimated)'],
+  ],
+};
+
 const padParts: Part[] = [
   ...site1Parts({
     stops: {
@@ -1325,88 +1228,11 @@ const padParts: Part[] = [
     erectorCrew: MSK(8, 37),
     fillers: true,
   }),
-  {
-    node: 'Bus',
-    group: 'The morning of 12 April',
-    name: 'The cosmonauts’ bus',
-    summary: 'A cream and blue LAZ-695B brought the pilot, his back-up and eleven others to the foot of the rocket.',
-    detail:
-      'The film of the morning shows it twice: coming along the concrete road, and from the erector’s head a moment after ' +
-      'it has stopped, on the concrete west of the platform, facing the rocket, its right side a metre from the rail of a ' +
-      'track with another track beyond. It is a LAZ-695B, known by the wide air scoop at the back of its roof: 9.19 m ' +
-      'long, 2.5 m broad, 2.98 m high, cream above with a blue band under the windows and a blue skirt, curtains drawn ' +
-      'at its side windows. Thirteen came in it: Gagarin and Titov in their orange suits, two more cosmonauts standing ' +
-      'in leather jackets, doctors, cameramen. The cameramen jumped down first; a doctor in a white coat handed the ' +
-      'pilot down. Titov stayed aboard in his suit, in case. The cosmonauts and their doctor were to leave at thirty ' +
-      'minutes’ readiness for the measuring point, by the launch roster: here the bus backs out at 08:37 and goes. Its ' +
-      'type and colours are the film’s and its size the type’s; where it stood along the track is good to some eight ' +
-      'metres; its fittings, and that it was the bus that took them off, are estimated. This one was fitted out inside ' +
-      'with armchairs and a table, which are not drawn.',
-    facts: [
-      ['Type', 'LAZ-695B (the film: the roof’s air scoop)'],
-      ['Size', '9.19 by 2.50 by 2.98 m, wheelbase 4.19 m (the type’s figures)'],
-      ['Colours', 'cream over blue (the film; "white and blue", Golovanov)'],
-      ['Came', 'about 06:50 Moscow time (Kamanin’s diary, on the range’s clock)'],
-      ['Stood', 'a metre south of the south track, facing the rocket (the film)'],
-      ['Left', '08:37, thirty minutes’ readiness (the roster; that it was the bus is estimated)'],
-    ],
-    explode: [0, 0, 0],
-    order: 0,
-    clocked: [
-      // in along the road and onto the apron; at thirty minutes' readiness, back out into the road round the pit, then away west
-      {
-        ...drives(
-          'Bus_In',
-          MSK(6, 49),
-          MSK(6, 50),
-          [
-            [60, 0],
-            [120, -0.45],
-            [144.4, -0.75],
-            [155, -1.75],
-            [164, -4.35],
-            [171, -7.15],
-            [174.61, -8.15],
-            [178.61, -8.15],
-          ],
-          BUS.wheelbase,
-          BUS.wheel,
-        ),
-      },
-      drives(
-        'Bus_Back',
-        MSK(8, 37),
-        MSK(8, 37, 45),
-        [
-          [-10.6, 0],
-          [-20.61, 2.3],
-          [-28.11, 6.3],
-          [-31.81, 12.8],
-          [-32.61, 20.8],
-          [-32.61, 26.8],
-        ],
-        BUS.wheelbase,
-        BUS.wheel,
-        true,
-      ),
-      drives(
-        'Bus_Away',
-        MSK(8, 37, 50),
-        MSK(8, 40),
-        [
-          [12, 0],
-          [16, -2],
-          [18.2, -7],
-          [18.7, -16],
-          [17.8, -216],
-          [17.0, -396],
-          [16.8, -428],
-        ],
-        BUS.wheelbase,
-        BUS.wheel,
-      ),
-    ],
-  },
+  busPart('The morning of 12 April', BUS_WORDS, {
+    in: [MSK(6, 49), MSK(6, 50)],
+    back: [MSK(8, 37), MSK(8, 37, 45)],
+    away: [MSK(8, 37, 50), MSK(8, 40)],
+  }),
   {
     node: 'Saloon',
     group: 'The morning of 12 April',
@@ -1625,34 +1451,23 @@ const padParts: Part[] = [
   },
 ];
 
-const pad: ModelDef = {
-  id: 'pad',
-  name: 'Launch pad',
+const pad = site1Pad({
   url: 'models/ussr/vostok/vostok-1/pad.glb',
-  scale: 'Site 1 · platform 41.15 m square over a pit 43 m deep · to scale',
-  backdrop: 'tyuratam',
   slider: ['The bus arrives · 06:49', 'Liftoff · 09:07'],
   sequence: MORNING,
-  specGroups: ['Launch pad'],
   parts: padParts,
-  // (the whole of it is the pit too, 270 m long: the launch system is what is come to see)
-  home: 'tulip',
   views: [
-    { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
-    { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
-    // (the erector and the hatch level from the south-west: its stair and lift are on its south side)
-    { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, 0.88] },
-    { id: 'cars', label: 'Railway fillers', nodes: ['TankCars'], from: [-0.3, 0.25, -0.92] },
-    { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, 0.78] },
-    { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
-    { id: 'masts', label: 'Corner mast', nodes: ['Masts'], from: [0.35, 0.12, 0.93] },
-    { id: 'deflector', label: 'Flame deflector', nodes: ['FlameDeflector'], from: [0.97, -0.1, 0.2] },
-    { id: 'pit', label: 'Flame pit', nodes: ['FlamePit'], from: [-0.5, 0.55, 0.67] },
     // the morning's people and the bus, from the south-west as the film's cameraman on the ground had them
     { id: 'send-off', label: 'The send-off', nodes: ['StateCommission', 'SendOff'], from: [-0.35, 0.16, 0.92] },
     { id: 'bus', label: 'The bus', nodes: ['Bus'], from: [0.55, 0.14, 0.82] },
   ],
-};
+});
+
+const crew = sk1Crew({
+  url: 'models/ussr/vostok/vostok-1/crew.glb',
+  scale: 'Yuri A. Gagarin · 1.65 m, 1.72 m suited · to scale',
+  helmet: HELMET_WORDS,
+});
 
 export const flight: Flight = {
   id: 'ussr/vostok/vostok-1',
@@ -1957,46 +1772,7 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'east of north, for an orbit inclined 64.95° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
-    {
-      group: 'Launch pad',
-      label: 'Platform',
-      value: 41.15,
-      unit: 'm',
-      confidence: 'documented',
-      note: '135 ft square, measured off U-2 photographs (CIA PIC/JR-2/60); "40 by 40 m" (RussianSpaceWeb). No drawing has been published: sites/site-1.md',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Opening in the platform',
-      value: 19.81,
-      unit: 'm',
-      confidence: 'documented',
-      note: 'a dark circle 65 ft across (CIA PIC/JR-2/60); the launch system’s ring is 19.35 m over its corners (a Soviet description of the later system)',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Flame pit depth',
-      value: 43,
-      unit: 'm',
-      confidence: 'derived',
-      note: 'under the deck: 80 ft and 60 ft, two CIA figures (PIC/JR-2/60), summed. Russian print gives 45 m and "almost 50"; the CIA’s own figure is redacted',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Steppe north of the tracks, below the deck',
-      value: 8,
-      unit: 'm',
-      confidence: 'derived',
-      note: 'the pad stands on the brow of a scarp: SRTM (2000, a 30 m grid) reads 113 to 114 m along the tracks and 104 to 107 m from 65 m north of them, where the command bunker stands; the CIA has the track on "a man-made embankment", its height redacted. Good to some 2 m: sites/site-1.md, "The lie of the land"',
-    },
-    {
-      group: 'Launch pad',
-      label: 'Nozzles below the deck',
-      value: 6.75,
-      unit: 'm',
-      confidence: 'derived',
-      note: 'level with the foot of the launch system’s turning part, 6,750 mm below the zero mark (the later system’s description); "about 7 m below" in print',
-    },
+    ...SITE1_SPECS,
     {
       group: 'Pressure suit',
       label: 'Pilot height',
@@ -2013,22 +1789,7 @@ export const flight: Flight = {
       confidence: 'documented',
       note: 'the same service record',
     },
-    {
-      group: 'Pressure suit',
-      label: 'Suit mass',
-      value: 20,
-      unit: 'kg',
-      confidence: 'documented',
-      note: '20 kg (K. Thomas, NASA JSC, 2016, after Abramov and Skoog); 23 kg is also printed, perhaps with helmet, gloves and boots',
-    },
-    {
-      group: 'Pressure suit',
-      label: 'Operating pressure',
-      value: 28.5,
-      unit: 'kPa',
-      confidence: 'documented',
-      note: '270 to 300 hPa, held only if the cabin loses pressure (the same synopsis); the middle is shown',
-    },
+    ...SK1_SPECS,
     {
       group: 'Pressure suit',
       label: 'Standing height, helmet and boots',

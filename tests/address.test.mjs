@@ -379,7 +379,22 @@ test('a launch site opens at the instant its flight says, and every other at lif
   assert.equal(openingFor(vostok, { ...first, fly: true }), null);
   assert.equal(openingFor(vostok, { ...first, clockAt: -60 }), null);
   assert.equal(openingFor(vostok, { ...first, running: true }), null);
-  // every other flight opens as it always did: at liftoff, on what is asked for or its first section
-  for (const f of flights.filter((f) => f !== vostok)) assert.equal(openingFor(f, first), null, f.id);
+  // every flight that says how its site opens opens there: on one of its pad's own views, at a keyframe of its morning
+  // with its bus parked; every other opens as it always did, at liftoff, on what is asked for or its first section
+  for (const f of flights.filter((f) => f.opens)) {
+    const o = openingFor(f, first);
+    const section = f.models.find((m) => m.id === o.model);
+    assert.ok(
+      section.views.some((w) => w.id === o.view),
+      `${f.id}: the view is the section's own`,
+    );
+    assert.ok(
+      section.sequence?.some((k) => k.at === o.at),
+      `${f.id}: the instant is a keyframe of its morning`,
+    );
+    for (const m of section.parts.flatMap((p) => p.clocked ?? []).filter((m) => m.node === 'Bus_In'))
+      assert.ok(m.to <= o.at, `${f.id}: the bus is parked`);
+  }
+  for (const f of flights.filter((f) => !f.opens)) assert.equal(openingFor(f, first), null, f.id);
   assert.equal(openingFor(mr3, first), null);
 });

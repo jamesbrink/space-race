@@ -208,15 +208,20 @@ def wheelset(parts: Parts, car_node: str, k: int, x: float, y: float) -> None:
     steel.tube(Vector((x, y - GAUGE / 2 + 0.03, AXLE_Z)), Vector((x, y + GAUGE / 2 - 0.03, AXLE_Z)), 0.09, 12)
 
 
+# the launch mornings they are built for: of each day itself, not of the weeks between
+DAYS = ("1961-04-12", "1961-08-06")
+
+
 def build(parts: Parts) -> None:
     if not stood(
         "Railway fillers beside the rocket (oxygen 8G117, kerosene 8G119)",
         since="1961-04-12",
-        until="1961-04-12",
+        until="1961-08-06",
         confidence="documented",
         source="with each rocket, for its fuelling, and drawn off before it left: 08:08 on 12 April 1961 (the transcript, Kamanin: "
-        "'the railway cars are leaving now'); Cheremnykh (2011); Mikheev (2014)",
-    ):
+        "'the railway cars are leaving now'); Cheremnykh (2011); Mikheev (2014). On 6 August 1961 a filler stood on the south track "
+        "behind Smirnov and Titov at the farewell (RussianSpaceWeb's photographs, Vostok-2); when they left that day is not recorded",
+    ) or not (sitelib.AS_OF is None or sitelib.AS_OF in DAYS):
         return
     extra_materials(parts)
     parts.node(

@@ -1,4 +1,4 @@
-import type { Move, Part, Runs } from '../../../../src/types';
+import type { Flight, Keyframe, ModelDef, Move, Part, Runs } from '../../../../src/types';
 
 /**
  * Site 1's pad as a flight's data: the parts of a flight's pad.glb (sites/site_1.py), what each is and how it moves. The
@@ -135,6 +135,111 @@ const LIFT_STOPS: [name: string, up: number][] = [
 export const OUT_OF_SIGHT = 90;
 export const leaves = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, -OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
 export const comes = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
+
+/**
+ * A road vehicle driven on the clock (road_vehicles.py): `path` is where its rear axle goes, metres ahead and to the
+ * right of where the drive starts. A vehicle driven more than once is a nest of nodes, a drive to each, and its
+ * wheels are named after the node.
+ */
+export const drives = (
+  node: string,
+  from: number,
+  to: number,
+  path: [number, number][],
+  wheelbase: number,
+  wheelRadius: number,
+  reverse = false,
+): Move => ({
+  kind: 'drive',
+  node,
+  from,
+  to,
+  path,
+  pivot: [0, wheelRadius, 0],
+  forward: [1, 0],
+  reverse,
+  wheelRadius,
+  wheelbase,
+  wheels: `${node}_Wheel_`,
+  steered: `${node}_SteerWheel_`,
+  axle: 'z',
+  runs: ON_ROAD,
+});
+export const BUS = { wheelbase: 4.19, wheel: 0.525 };
+
+/**
+ * The cosmonauts' bus (road_vehicles.py: the same LAZ-695B brought each pilot), driven in along the road onto the apron, and
+ * at the time the flight gives backed out into the road round the pit and away west. `at`: each drive's start and end,
+ * seconds from launch. What is said of it, and the group it is listed under, are the flight's.
+ */
+export function busPart(
+  group: string,
+  words: PartWords,
+  at: { in: [number, number]; back: [number, number]; away: [number, number] },
+): Part {
+  return {
+    node: 'Bus',
+    group,
+    name: 'The cosmonauts’ bus',
+    ...words,
+    explode: [0, 0, 0],
+    order: 0,
+    clocked: [
+      // in along the road and onto the apron; at thirty minutes' readiness, back out into the road round the pit, then away west
+      {
+        ...drives(
+          'Bus_In',
+          at.in[0],
+          at.in[1],
+          [
+            [60, 0],
+            [120, -0.45],
+            [144.4, -0.75],
+            [155, -1.75],
+            [164, -4.35],
+            [171, -7.15],
+            [174.61, -8.15],
+            [178.61, -8.15],
+          ],
+          BUS.wheelbase,
+          BUS.wheel,
+        ),
+      },
+      drives(
+        'Bus_Back',
+        at.back[0],
+        at.back[1],
+        [
+          [-10.6, 0],
+          [-20.61, 2.3],
+          [-28.11, 6.3],
+          [-31.81, 12.8],
+          [-32.61, 20.8],
+          [-32.61, 26.8],
+        ],
+        BUS.wheelbase,
+        BUS.wheel,
+        true,
+      ),
+      drives(
+        'Bus_Away',
+        at.away[0],
+        at.away[1],
+        [
+          [12, 0],
+          [16, -2],
+          [18.2, -7],
+          [18.7, -16],
+          [17.8, -216],
+          [17.0, -396],
+          [16.8, -428],
+        ],
+        BUS.wheelbase,
+        BUS.wheel,
+      ),
+    ],
+  };
+}
 
 /** The pad's parts that are the site's hardware, by their nodes in pad.glb. */
 export type Site1Node =
@@ -447,4 +552,210 @@ export const SITE1_WORDS: Partial<Record<Site1Node, PartWords>> = {
       ['Arc', '44.9 m radius (derived from those two)'],
     ],
   },
+  // The rest as the site's hardware, the same on any morning: what each is, how it moved, what its sizes rest on. A flight
+  // adds what its own record says of its day (`Site1Day.adds`), or says all of it (`words`: Vostok 1's, from its own morning).
+  DeckRails: {
+    summary: 'The railway runs on to the platform and stops at the edge of the hole.',
+    detail:
+      'Everything came to this pad by rail, so the rails are laid in the concrete of the deck itself, their heads flush with ' +
+      'it. The centre track runs to the edge of the opening: the erector brought the rocket along it and stood on it until it ' +
+      'was drawn off. A track on the platform’s north part and one on its south flank the launch system, for the propellant ' +
+      'trains; a short spur between ends just on the abutment. Either side of the centre track lies one more rail, 7 m apart: ' +
+      'the CIA’s interpreters called them gantry tracks, and nothing read says what rode them. Where each track lies is scaled ' +
+      'off the CIA’s plan of March 1961; today’s map agrees to about a metre. The gauge was 1,524 mm, as every Soviet railway’s ' +
+      'was until 1970.',
+    facts: [
+      ['Gauge', '1,524 mm (5 ft)'],
+      ['Centre track', 'to the opening’s edge, on the rocket’s axis'],
+      ['North and south tracks', '13.6 m and 12.4 m from it (scaled off the CIA’s plan)'],
+      ['Gantry rails', 'two, 23 ft (7.0 m) apart (scaled; the figure is redacted)'],
+      ['Heads', 'flush in the deck (a photograph of 12 April 1961; 9 mm proud in the model)'],
+    ],
+  },
+  Masts: {
+    summary: 'A mast 110 ft tall that the CIA measured and could not explain.',
+    detail:
+      'It stands at the platform’s north-east corner, on a lip built out over the pit to carry it. The CIA’s interpreters ' +
+      'measured two in 1957, this one and another at the south-west corner, each 110 ft with an array at the top at least 5 ft ' +
+      'wide and 10 ft high, and by March 1961 wrote that their function could not be determined. The photographs of 12 April ' +
+      '1961 show only this one, so the south-west mast had been taken down since July 1959. What they show of it is a slender ' +
+      'cross-braced lattice and a railed head with lamps at its corners. The height, the array’s size and where it stands are ' +
+      'the CIA’s; the lattice’s section, the lamps’ number and aim, the rod and the ladder are estimated.',
+    facts: [
+      ['Height', '110 ft (33.5 m)'],
+      ['Where', 'the north-east corner, 29.4 m from the axis (scaled off the CIA’s plan)'],
+      ['Its twin', 'at the south-west corner in 1957 and July 1959; gone by 12 April 1961'],
+      ['What for', 'not established; drawn as floodlights (estimated)'],
+    ],
+  },
+  DeckFittings: {
+    summary: 'A wire railing at the edge, two cabinets, a loudspeaker.',
+    detail:
+      'Nothing published describes the deck’s furniture, so this is one photograph’s worth, taken from beyond the south fence on ' +
+      'the morning of 12 April 1961: a low railing of posts and wires along the platform’s edge, and near the south-west corner ' +
+      'two dark cabinets some 2.2 m high, one with a horn on its side, taken for a loudspeaker. When they came is not known; ' +
+      'nothing read says they went. The slabs’ size, 6 m by 3 m, is estimated.',
+    facts: [
+      ['Railing', 'about 1.1 m high, at the edge (a photograph of 12 April 1961)'],
+      ['Cabinets', '2.7 m and 1.1 m broad, 2.2 m high'],
+      ['Slabs', 'rectangular, the rails flush (film); 6 m by 3 m here (estimated)'],
+    ],
+  },
+  LaunchRing: {
+    summary: 'Four arms that hold the rocket by its waist, and let it go.',
+    detail:
+      'Barmin’s launch system, the "tulip": a ring that turns in the platform’s opening to aim the rocket, and on it four trusses ' +
+      'that lean in to the core just under the strap-ons’ tips, where their thrust goes into it. The rocket is not bolted down. ' +
+      'It hangs on the four heads by its own weight, its tail 6.75 m down in the pit, steadied lower down by four guides; as its ' +
+      'thrust overcomes its weight the heads are unloaded and each truss falls back under its counterweights, and the tulip ' +
+      'opens. That it works so is the record. How far the trusses fall is read off a photograph of Vostok 1’s launch (45° from ' +
+      'where they held the rocket); how long they took is read off film of a Soyuz leaving this pad in 2019, on the same system ' +
+      'since modified. The ring and its heights are from a Soviet description of the later system; the trusses’ members, ' +
+      'platforms and counterweights are drawn from film and are estimated.',
+    facts: [
+      ['Ring', '14.92 m inside, 19.35 m over its corners'],
+      ['Turning part', '20.35 m above the deck, 6.75 m below'],
+      ['Supports', '4, at the strap-ons’ tips, 13 m above the deck'],
+      ['Turned to', '37.5° east of north (derived)'],
+      ['Fall back', '45° (off a photograph), from 0.7 s after liftoff to 2.6 s (off film of a later launch)'],
+    ],
+  },
+  TankCars: {
+    summary: 'The rocket was fuelled from railway cars, which were drawn away before it left.',
+    detail:
+      'Everything the rocket burned came to it by rail and was pumped aboard from cars standing either side of it: the liquid ' +
+      'oxygen filler, 8G117, "about 25 m over its couplers", and the kerosene filler, 8G119, "an eight-axle car 24 metres long" ' +
+      'with two tanks of 50 cubic metres. A rail tractor took them off before the launch. One of each is built, the oxygen on ' +
+      'the north track and the kerosene on the south, as a colour photograph of 12 April 1961 has one of them; their height and ' +
+      'every fitting but that photograph’s are estimated.',
+    facts: [
+      ['Oxygen filler', '8G117: about 25 m over its couplers, 8 axles'],
+      ['Kerosene filler', '8G119: 24 m, 8 axles, two tanks of 50 m³'],
+      ['Breadth', '3.09 m (today’s 8G0119)'],
+    ],
+  },
+  Erector: {
+    summary: 'The wagon that stood the rocket up, and then was the way to the spacecraft.',
+    detail:
+      'A hydraulic rail erector of 87.5 t: the rocket came out along the centre track lying on its boom, tail first, and was ' +
+      'stood up into the launch system. A three-stage rocket stood taller than the launch system’s own service trusses reached, ' +
+      'so the boom stayed up beside it and carried the platforms round the third stage and the spacecraft, and the lift: fifteen ' +
+      'steps of stair on its south side to the lift’s door, and the lift to the upper platform at the hatch. Before the launch ' +
+      'its boom came away from the rocket, and it rode away along the rails and laid itself down on its wagon. No drawing was ' +
+      'found: its shape is drawn from photographs and film, with a boom that leans in over the launch system’s support, which ' +
+      'is our way of standing it there.',
+    facts: [
+      ['Kind', 'hydraulic, on rails (8U213, TsKBTM)'],
+      ['Mass', '87.5 t'],
+      ['To the lift', '15 steps, on the south side (film; a photograph)'],
+      ['Upper platform', '26.1 m over the deck (estimated)'],
+      ['Lift', '"two or three minutes" to the top'],
+    ],
+  },
+  ServiceTrusses: {
+    summary: 'Two arms that close round the rocket with rings of platforms, and are laid down before it goes.',
+    detail:
+      'The launch system’s own way to the rocket: two trusses hinged on the turning ring, one to the north and one to the south. ' +
+      'Raised, their half rings meet round the core above the strap-ons’ tips; from them the rocket was fuelled and checked. ' +
+      'Lowered, each lies level out over the edge of the platform with its half rings standing up. Their size is published ' +
+      '(21.6 m long, 7.9 m across, 20 m high, 56 t each); their members and the heights of their platforms are estimated. These ' +
+      'were the first pair, built for the R-7 in 1957.',
+    facts: [
+      ['Type', '8T119, TsKBTM, 1957'],
+      ['Each', '21.6 m long, 7.9 m across, 56 t'],
+      ['Standing', '20 m from hinge to head'],
+    ],
+  },
+  UpperCableMast: {
+    summary: 'The last thing to let go: the third stage’s cables, away a minute before ignition.',
+    detail:
+      'Power and commands for the third stage came up this mast from the ring and across its arm to plugs under the fairing’s ' +
+      'foot; it swung clear a minute before ignition. The CIA’s interpreters found it on a U-2 photograph, 85 to 95 ft above the ' +
+      'platform; the middle of that is modelled. How far it swung is read off two photographs of 12 April 1961. Which side of ' +
+      'the ring it stood on is not recorded: it is put on the east, opposite the erector.',
+    facts: [
+      ['Height', '85 to 95 ft over the deck (90 ft, 27.4 m, modelled)'],
+      ['Swings', '40° from where it stood (estimated)'],
+    ],
+  },
 };
+
+/** The views of the pad's hardware, the same for every flight from it; a flight adds its own morning's (its people, its bus). */
+export const SITE1_VIEWS: ModelDef['views'] = [
+  { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
+  { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
+  // (the erector and the hatch level from the south-west: its stair and lift are on its south side)
+  { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, 0.88] },
+  { id: 'cars', label: 'Railway fillers', nodes: ['TankCars'], from: [-0.3, 0.25, -0.92] },
+  { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, 0.78] },
+  { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
+  { id: 'masts', label: 'Corner mast', nodes: ['Masts'], from: [0.35, 0.12, 0.93] },
+  { id: 'deflector', label: 'Flame deflector', nodes: ['FlameDeflector'], from: [0.97, -0.1, 0.2] },
+  { id: 'pit', label: 'Flame pit', nodes: ['FlamePit'], from: [-0.5, 0.55, 0.67] },
+];
+
+/** A flight's pad model at Site 1: its file, its slider's two ends, its morning (`sequence`), its parts and its own views. */
+export const site1Pad = (m: {
+  url: string;
+  slider: [string, string];
+  sequence: Keyframe[];
+  parts: Part[];
+  views?: ModelDef['views'];
+}): ModelDef => ({
+  id: 'pad',
+  name: 'Launch pad',
+  url: m.url,
+  scale: 'Site 1 · platform 41.15 m square over a pit 43 m deep · to scale',
+  backdrop: 'tyuratam',
+  slider: m.slider,
+  sequence: m.sequence,
+  specGroups: ['Launch pad'],
+  parts: m.parts,
+  // (the whole of it is the pit too, 270 m long: the launch system is what is come to see)
+  home: 'tulip',
+  views: [...SITE1_VIEWS, ...(m.views ?? [])],
+});
+
+/** The pad's figures, the same for every flight from it (the specs' 'Launch pad' group). */
+export const SITE1_SPECS: Flight['specs'] = [
+  {
+    group: 'Launch pad',
+    label: 'Platform',
+    value: 41.15,
+    unit: 'm',
+    confidence: 'documented',
+    note: '135 ft square, measured off U-2 photographs (CIA PIC/JR-2/60); "40 by 40 m" (RussianSpaceWeb). No drawing has been published: sites/site-1.md',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Opening in the platform',
+    value: 19.81,
+    unit: 'm',
+    confidence: 'documented',
+    note: 'a dark circle 65 ft across (CIA PIC/JR-2/60); the launch system’s ring is 19.35 m over its corners (a Soviet description of the later system)',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Flame pit depth',
+    value: 43,
+    unit: 'm',
+    confidence: 'derived',
+    note: 'under the deck: 80 ft and 60 ft, two CIA figures (PIC/JR-2/60), summed. Russian print gives 45 m and "almost 50"; the CIA’s own figure is redacted',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Steppe north of the tracks, below the deck',
+    value: 8,
+    unit: 'm',
+    confidence: 'derived',
+    note: 'the pad stands on the brow of a scarp: SRTM (2000, a 30 m grid) reads 113 to 114 m along the tracks and 104 to 107 m from 65 m north of them, where the command bunker stands; the CIA has the track on "a man-made embankment", its height redacted. Good to some 2 m: sites/site-1.md, "The lie of the land"',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Nozzles below the deck',
+    value: 6.75,
+    unit: 'm',
+    confidence: 'derived',
+    note: 'level with the foot of the launch system’s turning part, 6,750 mm below the zero mark (the later system’s description); "about 7 m below" in print',
+  },
+];

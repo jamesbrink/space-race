@@ -14,13 +14,38 @@ oblast. Backup: Andriyan Nikolayev.
 | Spacecraft (3KA No. 4) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with what this flight is known to have added that can be drawn: the film camera |
 | Launch vehicle (8K72K No. E103-17) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's |
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)), "СССР" on the helmet. His height was not found, so the figure is the one built to Gagarin's |
-| Launch site (Site 1 as it stood in August 1961) | not built for this flight. The place is Vostok 1's ([site-1.md](../../sites/site-1.md)); what had changed there in sixteen weeks has not been looked for |
-| Crew to be walked as | not built |
+| Launch site (Site 1 as it stood on 6 August 1961) | **built**: [model/pad.py](model/pad.py) and the place [1961-08.py](../../sites/site1/model/1961-08.py), the site's modules at that date; the morning in [pad.ts](pad.ts). What changed since April, and what of this morning is built and what not, below ("The morning at the pad") |
+| Crew to be walked as | **built**: [model/crew.py](model/crew.py), the SK-1 figure as Gagarin's (Titov's height not found) |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
 
-So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
-and taken apart down to the spacecraft as it was in orbit. Its Launch site and Fly say they are
-not built yet.
+## The morning at the pad
+
+What the record gives of this morning, and so what the launch site shows (the research is
+summarised in [site-1.md](../../sites/site-1.md), "What stood when"):
+
+- **The times are the plan's.** Doc 190 of «Первый пилотируемый полёт» (2011), book 2, the
+  schedule of 4 August in local time (Moscow's plus two: derived), which Titov's report says the
+  day kept to: the drive to the pad, the farewell, the stair and the lift 06:45 to 07:00, in the
+  seat 07:00 to 07:40, hatch No. 1 closed 07:40 to 07:55. No transcript of the exchanges before
+  liftoff and no roster of the pad were found: the erector, the trusses, the cable mast and the
+  fillers are given Vostok 1's intervals before its liftoff, **estimated**, and say so.
+- **Liftoff 09:00:00**: the Central Aero Club's act for the record file (book 2, doc 194, p. 221);
+  RKK Energia's page of 2011 has 08:59:57.
+- **What stood**: the launching structure as in April (CIA PIC/JR-8/61, p. 13: "probably
+  unchanged"), the same LAZ-695B stopped about where April's did (the film «Снова к звёздам»;
+  its place taken from April's), a filler on the south track at the farewell (RussianSpaceWeb's
+  photographs). Site 51, 415 m north, burnt out when an R-9 fell back on it on 3 August
+  (Chertok, vol. 3, pp. 131, 187): how it looked afterwards is not recorded, and nothing is built
+  there.
+- **Not built: the people.** The film has about a hundred on the concrete as the bus stopped and
+  forty walking with him to the stair (counted off a 960 px copy: estimated), all in summer dress;
+  Smirnov, now the State Commission's chairman, in a white jacket and a straw hat; Korolev and
+  Barmin; Nikolayev suited at the bus, the two knocking helmets together. Kamanin and Gagarin
+  were abroad. The ground party's figures are dressed for April: summer clothes are new geometry,
+  listed for a modelling agent. April's people, car and truck are not shown.
+- **The land is the summer's**: the steppe "dried out ... a uniform reddish-gray" by June (Chertok,
+  vol. 2, p. 357), the tulips and the spring's green gone (src/viewer/steppe.ts, `SEASONS`).
+- **The weather**: [weather.ts](weather.ts), from the stations either side of the range.
 
 ## What happened
 
@@ -77,7 +102,7 @@ the Voskhod's soft landing and destroyed in a drop from an aircraft at Feodosiya
 
 | Moscow time | T+ | Event | Source |
 | --- | --- | --- | --- |
-| 6 August, 08:59:57 | 0 | Liftoff | RussianSpaceWeb. TASS, Titov's report in the record file, Siddiqi's launch log and Chertok: 09:00 |
+| 6 August, 09:00:00 | 0 | Liftoff | the record file's act (book 2, doc 194): 06 h 00 min 00 s GMT. RKK Energia's page of 2011 and RussianSpaceWeb: 08:59:57 |
 | | | Strap-ons, fairing, core cutoff, orbit, separation | **not found for this flight.** Vostok 1's were 119, about 150, 300, 676 and 688 s |
 | 09:20 | 20 min | Orbit confirmed by the tracking stations and by Titov | Chertok, vol. 3, p. 191 |
 | 10:00 | 1 h 00 | Manual control on, in the Earth's shadow; oriented by about 10:15 | Titov (Pravda, 12 August; his report of 8 August as RussianSpaceWeb gives it) |
@@ -117,10 +142,10 @@ of 3 May 1961 gives Vostok 1's orbit.
   183 by 244 in his table. The period 88.46 min does not go with 183 by 244 km: over a sphere of
   6,371 km those heights give 88.6 min by Kepler's third law, which is TASS's figure. `flight.ts`
   quotes 183, 244, 64.93° and 88.6.
-- **The liftoff second.** 08:59:57 is RussianSpaceWeb's alone and its page names no document for
-  it; everything else read says 09:00, and Titov's report in the record file "6 hours 00 minutes
-  Greenwich time". `flight.ts` takes 08:59:57: a rounded time would be printed as 09:00, and the
-  Sun is the same to a hundredth of a degree.
+- **The liftoff second.** 08:59:57 is RKK Energia's (its page of 2011, archived 8 September 2011,
+  which also has the landing at 10:18) and RussianSpaceWeb's, neither naming a document; the Central Aero Club's act for the record file has «6 часов 00 минут 00 секунд по
+  гринвичскому времени» («Первый пилотируемый полёт», 2011, book 2, doc 194, p. 221), and
+  `flight.ts` takes it. The Sun is the same to a hundredth of a degree either way.
 - **25 hours 11 or 18.** TASS, Keldysh and Titov's own report: more than 17 orbits in 25 h 18 min,
   landing at 10:18. The Great Soviet Encyclopedia, Roscosmos and Siddiqi's text: 25 h 11 min
   (Siddiqi's table has 25 h 18). Russian Wikipedia reads the two as the ship's landing and the
@@ -145,7 +170,7 @@ of 3 May 1961 gives Vostok 1's orbit.
 ## The sky at liftoff
 
 Computed by `src/world` from [site-1.ts](../../sites/site-1.ts) and the launch instant
-(05:59:57 UTC), and held to these figures by `tests/world.test.mjs`:
+(06:00:00 UTC), and held to these figures by `tests/world.test.mjs`:
 
 | | Azimuth | Elevation |
 | --- | --- | --- |
@@ -172,4 +197,4 @@ In order of weight; full entries in [docs/sources.md](../../../../../docs/source
 5. Zak, RussianSpaceWeb, "Vostok-2 mission": Titov's report to the State Commission of 8 August
    1961 at second hand, minute by minute.
 6. Pervushin, «Тяжёлый рейс», 2021: quotations from the same report in Russian.
-7. Kamanin's diary for 1961: the air drier before Vostok 1; the two fans.
+7. Kamanin's diary for 1961, by way of Siddiqi (p. 294, citing *Skrytyi kosmos* p. 84) for the two fans: the diary itself has no entries from 25 May to 14 September 1961 (he was abroad with Gagarin).

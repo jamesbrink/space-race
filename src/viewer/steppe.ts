@@ -10,7 +10,8 @@ import type { Palette } from './land';
  * "Designed, not photographic"). Nothing here knows a site: Tyuratam's Site 1 (tyuratam.ts) uses it, and so can the
  * next pad on the same steppe (Site 31, the later Soviet flights), each giving its own lie of the land and its own made
  * ground. Sources and confidence are set out in missions/ussr/vostok/sites/site-1.md, "The ground and what grows", and
- * docs/sources.md, "The steppe at Tyuratam". In short:
+ * docs/sources.md, "The steppe at Tyuratam". Its season is the flight's day's (`SEASONS`, `seasonOf`): the April flush
+ * below, or the summer's reddish-grey once the ephemerals have gone. In short:
  *
  * - **The ground** is grey-brown desert loam under a thick clay crust (Chertok's "steppe asphalt", which the builders'
  *   trucks of 1955 to 1957 ground to dust in ruts kilometres wide), with takyrs (bare cracked clay floors) and
@@ -27,6 +28,18 @@ import type { Palette } from './land';
  *   that month). The tulip is Borszczow's (Tulipa borszczowii), collected by Tyuratam station in 1930, yellow through
  *   orange to scarlet, 10 to 20 cm above the ground (Akhataeva and others 2024). How many to a square metre: estimated.
  */
+
+/**
+ * What the summer rests on: memoirs of this place, no botanist's. "The multicolored tulips were gone. The steppe dried out
+ * and began to scorch and take on a uniform reddish-gray color" (Chertok, Rockets and People, vol. 2, p. 357, of June
+ * 1957); "the steppe had turned green only to become parched and scorched once again in a couple of months" (vol. 3,
+ * p. 387); «на ее коричнево-сером фоне ... между сухими кустиками верблюжьей колючки или под большим кружевным шаром
+ * перекати-поле» (Mikheev, «Байконур. Ключ на старт!»). The film of 6 August 1961 («Снова к звёздам», 21:42) has bare,
+ * pale, cracked earth with sparse dry tufts by the road. That the spring's aspect is the ephemerals' is the floras'
+ * (Dimeeva and Salmukhanbetova 2025). Each plant's colour in August is estimated: its tone shifted toward the reddish grey.
+ */
+const SUMMER =
+  'Chertok, vol. 2, p. 357 ("a uniform reddish-gray color", June 1957) and vol. 3, p. 387; Mikheev («коричнево-серый»); the film of 6 August 1961. The colours estimated';
 
 /** A colour as an sRGB hex (three converts it to its linear working space). */
 const srgb = (hex: number) => new THREE.Color(hex);
@@ -58,22 +71,78 @@ export const STEPPE = {
   litter: srgb(0x8b806a),
 };
 
-/** The same as land.ts's Palette (its default ground is not used: `STEPPE_GROUND` is), for what reads the palette: the far tone, the canopy (none here). */
-export const STEPPE_PALETTE: Palette = {
+/**
+ * The steppe's season, by the flight's date: what the spring's plants are by then. The ground does not change; the sward
+ * does, and which plants stand. Each season says what it rests on (site-1.md, "The ground and what grows": the seasons).
+ */
+export interface SteppeSeason {
+  name: 'spring' | 'summer';
+  /** From this day of the year (month and day, 'MM-DD') until the next season's. */
+  from: string;
+  /** The sward's two tones, where it is thick and where it is thin (`STEPPE.herbGreen`, `herbDry` in the spring). */
+  herbGreen: THREE.Color;
+  herbDry: THREE.Color;
+  /** By species' name (`steppeFlora`): its colours, and its share times this (0: not standing, or not seen, then). */
+  species: Record<string, { colours?: [number, number]; share?: number }>;
+  confidence: 'documented' | 'derived' | 'estimated';
+  source: string;
+}
+
+export const SEASONS: SteppeSeason[] = [
+  {
+    name: 'spring',
+    from: '03-15',
+    herbGreen: STEPPE.herbGreen,
+    herbDry: STEPPE.herbDry,
+    species: {},
+    confidence: 'documented',
+    source:
+      'the April flush: the ephemerals and ephemeroids out, the steppe "almost green" (Chertok, April 1957), the tulips "earlier than usual" in April 1961 (Chertok); its colours estimated from colour photographs of the cosmodrome in April',
+  },
+  {
+    name: 'summer',
+    from: '06-01',
+    // the spring's sward dried where it stood: straw over the crust, paler where thin
+    herbGreen: srgb(0xb09f86),
+    herbDry: srgb(0xa6988a),
+    species: {
+      // the ephemerals' tufts dry on their roots as straw; the tulips and the wild rhubarb are below ground till spring
+      'meadow-grass': { colours: [0xb3a184, 0xc4b394] },
+      sedge: { colours: [0xae9e80, 0xbfb092] },
+      tulip: { share: 0 },
+      rhubarb: { share: 0 },
+      // the wormwood greyer in the drought; the saltworts still green, which turn only in the autumn
+      wormwood: { colours: [0x949684, 0xb1b2a0] },
+      biyurgun: { colours: [0x6f7558, 0x878c69] },
+    },
+    confidence: 'estimated',
+    source: SUMMER,
+  },
+];
+
+/** The season on a date ('1961-08-06'): the last whose `from` has come that year (before the first, the last of the year before). */
+export function seasonOf(date: string): SteppeSeason {
+  const day = date.slice(5, 10);
+  const sorted = [...SEASONS].sort((a, b) => a.from.localeCompare(b.from));
+  return [...sorted].reverse().find((x) => x.from <= day) ?? sorted[sorted.length - 1]!;
+}
+
+/** The same as land.ts's Palette (its default ground is not used: `steppeGround` is), for what reads the palette: the far tone, the canopy (none here). */
+export const steppePalette = (season: SteppeSeason): Palette => ({
   sand: STEPPE.loam,
   sandDark: STEPPE.loamDark,
-  herbDry: STEPPE.herbDry,
-  herbGreen: STEPPE.herbGreen,
+  herbDry: season.herbDry,
+  herbGreen: season.herbGreen,
   litter: STEPPE.litter,
   leaf: srgb(0x7f8670),
   leafLit: srgb(0xa9ad96),
   leafOther: srgb(0x8b9468),
-};
+});
 
 /** The steppe seen whole, as the globe keeps it round the site from height (globe.ts `tone`): crust, sward and wormwood together. */
-export const STEPPE_TONE = STEPPE.loam.clone().lerp(STEPPE.herbGreen, 0.3).lerp(STEPPE.litter, 0.15);
+export const steppeTone = (season: SteppeSeason) => STEPPE.loam.clone().lerp(season.herbGreen, 0.3).lerp(STEPPE.litter, 0.15);
 /** And in the cel look (globe.ts `celLand`): the ground's flat tone. */
-export const STEPPE_CEL = STEPPE.loam.clone().multiplyScalar(1.02).lerp(STEPPE.herbGreen, 0.2);
+export const steppeCel = (season: SteppeSeason) => STEPPE.loam.clone().multiplyScalar(1.02).lerp(season.herbGreen, 0.2);
 
 /**
  * GLSL for the cover's bake: `void steppe(vec2 p, float low, out ...)`, the steppe's own cover at p (metres) where the
@@ -130,7 +199,7 @@ export const STEPPE_COVER = /* glsl */ `
  * takyr). The site's `shared` defines `float rutsAt(vec2 p, out vec2 along)`: how much the ground at p lies in ruts
  * worn by wheels, 0 to 1, and the way they run.
  */
-export const STEPPE_GROUND = /* glsl */ `
+export const steppeGround = (season: SteppeSeason) => /* glsl */ `
   // the nearest crack of a floor cracked into polygons size metres across, metres; and the polygon's own shade, 0 to 1
   float steppeCracks(vec2 p, float size, out float tone) {
     vec2 c = p / size, i = floor(c), f = c - i;
@@ -226,7 +295,7 @@ export const STEPPE_GROUND = /* glsl */ `
     float clump = noise(vec3(p * 1.7, 9.0)) * 0.6 + noise(vec3(p * 5.5, 10.0)) * 0.4;
     float sward = smoothstep(clump - 0.3, clump + 0.2, herb * 1.2 + 0.25 * (noise(vec3(p * 9.0, 41.0)) - 0.5) * seen(0.1));
     sward = mix(herb, sward, seen(0.35)) * (1.0 - 0.85 * dusty) * (1.0 - crust);
-    vec3 green = mix(${vec3(STEPPE.herbDry)}, ${vec3(STEPPE.herbGreen)}, smoothstep(0.25, 0.75, noise(vec3(p * 0.07, 11.0)) * 0.7 + clump * 0.3));
+    vec3 green = mix(${vec3(season.herbDry)}, ${vec3(season.herbGreen)}, smoothstep(0.25, 0.75, noise(vec3(p * 0.07, 11.0)) * 0.7 + clump * 0.3));
     green *= 0.86 + 0.28 * (clump - 0.5) * seen(0.2) + 0.1 * (noise(vec3(p * 3.1, 12.0)) - 0.5) * seen(0.08);
     g.albedo = mix(g.albedo, green, 0.85 * sward);
     g.bump += 0.008 * sward * (clump - 0.5) * seen(0.2);
@@ -241,13 +310,13 @@ export const STEPPE_GROUND = /* glsl */ `
  * that wanders like a brush's, a darker tone in patches tens of metres across, and near the eye the marks a pen makes:
  * the takyr's polygons drawn, a stipple on the crust, short strokes where the sward is, the ruts as lines.
  */
-export const STEPPE_CEL_GROUND = /* glsl */ `
+export const steppeCelGround = (season: SteppeSeason) => /* glsl */ `
   vec3 groundCel(vec2 p, vec4 A, vec4 B, float roofed) {
     float wander = noise(vec3(p * 0.08, 50.0)) - 0.5;
     vec3 c = ${vec3(STEPPE.loam)} * 1.06;
     c = mix(c, mix(${vec3(STEPPE.loam)}, ${vec3(STEPPE.sand)}, 0.4) * 1.04, step(0.45, B.b + 0.3 * wander));
     float grassed = step(0.42, A.g + 0.35 * wander) * (1.0 - step(0.45, B.r + 0.3 * wander));
-    c = mix(c, mix(${vec3(STEPPE.herbDry)}, ${vec3(STEPPE.herbGreen)}, 0.45) * 1.1, grassed);
+    c = mix(c, mix(${vec3(season.herbDry)}, ${vec3(season.herbGreen)}, 0.45) * 1.1, grassed);
     float pan = step(0.5, B.a + 0.15 * wander);
     c = mix(c, ${vec3(STEPPE.takyr)} * 1.08, pan);
     c = mix(c, ${vec3(STEPPE.salt)}, step(0.55, B.g + 0.2 * wander));
@@ -425,10 +494,24 @@ export function steppeFlora(day: Day): FloraSpec {
       rough: 0.7,
     },
   ];
+  // the season's changes: colours, and what is not standing (or not seen) then
+  const season = seasonOf(day.date);
+  const seasonal = species.flatMap((sp): Species[] => {
+    const change = season.species[sp.name];
+    if (!change) return [sp];
+    if (change.share === 0) return [];
+    return [
+      {
+        ...sp,
+        ...(change.colours ? { colours: [c(change.colours[0]), c(change.colours[1])] as [THREE.Color, THREE.Color] } : {}),
+        ...(change.share !== undefined ? { abundance: sp.abundance.map(([z, a]): [number, number] => [z, a * change.share!]) } : {}),
+      },
+    ];
+  });
   return {
     spacing: { woody: 1.25, herb: 1.1, tree: 40 },
     stature: () => 1,
     wind: breeze(day), // the day's wind at the ground: the flight's record (its `weather`)
-    species,
+    species: seasonal,
   };
 }

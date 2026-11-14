@@ -472,7 +472,7 @@ export const orbital: OrbitalFlight = {
           reserveCanopy(
             doc(
               3_000,
-              `${BATURIN}: “На высоте 3 км ввелся дополнительно запасной парашют”; ${BOBKOV}: put out automatically after the main, on this flight only`,
+              `${BATURIN}: “На высоте 3 км ввелся дополнительно запасной парашют”; ${BOBKOV}: put out automatically after the main, as it was again on Vostok 2 (Titov’s report, «Первый пилотируемый полёт», 2011, book 2, doc. 192, p. 198); the pilots of Vostoks 3 and 4 pinned it once the main was open (Kamanin, 16 August 1962)`,
             ),
           ),
         ],
@@ -541,6 +541,7 @@ export const orbital: OrbitalFlight = {
       `${OKB1}: 45°59′ E: to the minute of arc, 1.2 km. The monument: 45.9973° E. Zak’s table prints “51.16 North, 45.58 East”, the minutes written as decimals`,
     ),
     at: doc(MSK(10, 48), `${OKB1}: the reentry apparatus at 1048, the pilot at 1053`),
+    near: 'Smelovka',
   },
   // Tolerances were set here before src/sim/orbital.ts could fly anything (see the file's history), from how well each figure is known.
   checks: [

@@ -621,19 +621,31 @@ def truck(parts: Parts) -> None:
 
 
 def build(parts: Parts) -> None:
-    if not stood(
-        "On the apron: the cosmonauts' bus, a saloon car, a box-bodied truck",
+    # The same bus brought each pilot: on 6 August 1961 the film of that morning has the same LAZ-695B stopped about where
+    # April's did (where, to ten metres: not measured off it, so April's place is taken). The car and the truck are April's
+    # alone: a dark car stood beyond the crowd in August, where is not known, and the August truck's place is not known.
+    bus_days = ("1961-04-12", "1961-08-06")
+    if stood(
+        "On the apron: the cosmonauts' bus",
+        since=bus_days[0],
+        until=bus_days[-1],
+        confidence="documented",
+        source="the film of 12 April («Первый рейс к звёздам», ЦСДФ 1961, 43:08 and 43:26); Golovanov, «Королёв: факты и мифы», p. 645; "
+        "the launch roster of 10 April 1961 («Первый пилотируемый полёт», 2011, doc 104); the film of 6 August («Снова к звёздам», "
+        "Моснаучфильм 1961, 21:04 to 21:45: the same LAZ-695B, stopped about where April's did; its place then estimated)",
+    ) and (sitelib.AS_OF is None or sitelib.AS_OF in bus_days):
+        bus(parts)
+    if stood(
+        "On the apron: a saloon car, a box-bodied truck",
         since="1961-04-12",
         until="1961-04-12",
         confidence="documented",
-        source="the film of the morning («Первый рейс к звёздам», ЦСДФ 1961, 43:08 and 43:26); Golovanov, «Королёв: факты и мифы», p. 645; "
-        "the launch roster of 10 April 1961 («Первый пилотируемый полёт», 2011, doc 104). The bus's type is the film's; the car's and "
-        "the truck's are estimated",
+        source="the film of the morning («Первый рейс к звёздам», ЦСДФ 1961, 43:08 and 43:26). Their types are estimated",
     ):
+        saloon(parts)
+        truck(parts)
+    if not (sitelib.AS_OF is None or sitelib.AS_OF in bus_days):
         return
-    bus(parts)
-    saloon(parts)
-    truck(parts)
     print("  routes for flight.ts (metres ahead and to the right of where each drive starts):")
     for name, path in routes().items():
         print(f"    {name}: {path}")
