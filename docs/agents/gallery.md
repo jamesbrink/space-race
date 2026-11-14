@@ -103,6 +103,12 @@ instant are, when it wakes, exactly as they were left; and the gallery, come bac
 was left too. Going to the gallery ends a walk (the figure stays where it stood), stops a running
 clock (started again on the way back), hushes the sound and leaves the flight deck.
 
+The launch site, gone to the first time, opens stopped at liftoff on its first section, unless the flight says how it
+first shows (`Flight.opens`: an instant, a section and a view; `openingFor` in `address.ts`). Vostok 1 opens at 06:50
+Moscow time on the pad's send-off, the scene the film shows from the erector's head, because at liftoff its deck is
+empty. The flight deck always starts at liftoff, a section named in the address keeps its section, and a clock already
+run or moved is left where it is.
+
 (The gallery was once also what showed behind the front page for a flight with no site, its show running there
 unasked: `GalleryHost.covered` is what is left of that, and is now never true.)
 

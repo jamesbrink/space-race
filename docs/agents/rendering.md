@@ -78,8 +78,9 @@ different one per pixel per frame. Three things stop it, and all three must stay
   in `site.py`). Change the two together and rebuild the pad and the place.
 - **A mesh without a `normal` attribute is flat-shaded.** Three decides that by the geometry, whatever the shader
   writes: the land's patches have none, so each triangle is lit by its own plane unless the site's `LandSpec` asks
-  `smooth` (Tyuratam does: its graded slopes showed every cell as a facet). The Cape's land does not yet, and its
-  thickets' roofs are lit per triangle; turning it on there changes the Cape's picture.
+  `smooth`. Both sites do: Tyuratam's graded slopes showed every cell as a facet, and the Cape's thickets' roofs were
+  lit triangle by triangle, a hard-edged facet in each crown near the eye; smooth, they are domes, and nothing the
+  facets gave is missed (the stills of November 2026, at eye height among the thickets and from 300 m, in both looks).
 
 - **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
   camera is close to something else, faces under about 5 cm apart fight. Scenery that is looked at
@@ -812,4 +813,7 @@ is under takes one. Today the site's ground reads 13 and the globe 11; a model's
   one array texture, each in its layer's corner (`packLayer`: the region's near, wide and relief maps are layers 0 to
   2 of `uGlobeFlat`). They are copied in on the GPU texel for texel as they arrive, so what is read is the file's own
   bytes; a map that has not arrived reads 0. A new one-channel map goes into a spare channel or layer, not a new sampler.
+- A site whose ground reads a table of its own bakes the land's cover maps in pairs (`LandSpec.paired`: A and B side
+  by side in one texture, each read half a texel inside its own half), so the land reads two maps where it would read
+  four. Tyuratam does, for its one table of heights and ways (`uWorks`, tyuratamworks.ts): 12 units. The Cape reads 13.
 - The output pass reads 13 (the clouds' composite 12, the glow 1) and is not lit: it is outside the budget, but is not to grow past 16.

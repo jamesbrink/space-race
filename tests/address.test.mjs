@@ -16,6 +16,7 @@ import {
   lacks,
   listed,
   namesNothing,
+  openingFor,
   opensIn,
   PLACES,
   parseAddress,
@@ -345,4 +346,40 @@ test('going to another place is a step in the history; anything else rewrites th
     delete globalThis.location;
     delete globalThis.history;
   }
+});
+
+test('a launch site opens at the instant its flight says, and every other at liftoff (Flight.opens)', () => {
+  const first = { fly: false, named: '', clockAt: 0, running: false };
+  // Vostok 1 opens on the morning the film shows at 43:26: the bus stopped, the Commission and the send-off on the apron
+  const v = openingFor(vostok, first);
+  assert.ok(v);
+  assert.equal(v.model, 'pad');
+  assert.equal(v.view, 'send-off');
+  const pad = vostok.models.find((m) => m.id === 'pad');
+  assert.ok(
+    pad.views.some((w) => w.id === v.view),
+    "the view is one of the section's own",
+  );
+  // the instant is one of the morning's keyframes, and the clock and the slider agree on it
+  const key = pad.sequence.find((k) => k.at === v.at);
+  assert.ok(key, "the instant is a keyframe of the pad's sequence");
+  assert.match(key.event, /bus stops/);
+  // the bus has come to a stop, and the Commission and the send-off have not yet gone
+  const clocked = (node) => pad.parts.flatMap((p) => p.clocked ?? []).filter((m) => m.node === node);
+  assert.ok(clocked('Bus_In').length > 0);
+  for (const m of clocked('Bus_In')) assert.ok(m.to <= v.at, 'the bus is parked');
+  for (const node of ['StateCommission_People', 'SendOff_People']) {
+    assert.ok(clocked(node).length > 0, node);
+    for (const m of clocked(node)) assert.ok(m.from >= v.at, `${node} is still there`);
+  }
+  // an address that names a section keeps it, at the same instant; the flight's own view is only for its own section
+  assert.deepEqual(openingFor(vostok, { ...first, named: 'vehicle' }), { at: v.at, model: 'vehicle', view: null });
+  assert.deepEqual(openingFor(vostok, { ...first, named: 'pad' }), v);
+  // the flight deck starts at liftoff; a clock run or moved already is the visitor's
+  assert.equal(openingFor(vostok, { ...first, fly: true }), null);
+  assert.equal(openingFor(vostok, { ...first, clockAt: -60 }), null);
+  assert.equal(openingFor(vostok, { ...first, running: true }), null);
+  // every other flight opens as it always did: at liftoff, on what is asked for or its first section
+  for (const f of flights.filter((f) => f !== vostok)) assert.equal(openingFor(f, first), null, f.id);
+  assert.equal(openingFor(mr3, first), null);
 });

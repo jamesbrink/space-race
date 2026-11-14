@@ -1215,6 +1215,13 @@ export interface Flight {
    */
   site?: SiteDef;
   /**
+   * How its launch site first shows: at the instant `at`, seconds from liftoff (negative before it), on the section
+   * `model` framed by its view `view` (both of the flight's own; left out, the first model and its home view). An
+   * address that names a section opens on that section, at `at`. Left out, liftoff, on the first model. Flying it
+   * starts at liftoff whatever this says (cockpit.ts): there is no countdown to fly. src/address.ts `openingFor`.
+   */
+  opens?: { at: number; model?: string; view?: string };
+  /**
    * The weather it stood under at liftoff, as recorded (DayWeather): its launch site's sky is drawn from it. Left out,
    * the site's own (`SiteDef.weather`), which is an estimate; with neither, a clear sky, which is one too.
    */

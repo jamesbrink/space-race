@@ -2054,6 +2054,10 @@ export const flight: Flight = {
   launch: '1961-04-12T06:06:59.7Z',
   launchSite: SITE1.name,
   site: SITE1,
+  // The launch site opens on the scene the film shows from the erector's head at 43:26: the bus has stopped on the apron,
+  // the State Commission and the send-off stand on the concrete. That is the keyframe of 06:50, the bus stopped and the
+  // pilot down to report (MORNING); the Commission is there until 06:58. Opened at liftoff, the deck would be empty.
+  opens: { at: MSK(6, 50), model: 'pad', view: 'send-off' },
   weather: WEATHER,
   crew: ['Yuri A. Gagarin'],
   summary:
