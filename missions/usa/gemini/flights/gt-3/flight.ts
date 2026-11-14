@@ -150,7 +150,7 @@ const parts: Part[] = [
     facts: [
       ['Covers', 'the horizon scanners, on the left side'],
       ['Lies', 'from Z166.5 to Z190.5, about two feet'],
-      ['Thrown off', 'with the nose fairing'],
+      ['Thrown off', 'with the nose fairing, after the second stage’s cutoff'],
     ],
     explode: along(LEFT_AZ, 4.2, 1.5),
     order: 8,
