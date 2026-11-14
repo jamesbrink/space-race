@@ -629,12 +629,40 @@ const MAST_FALL = 40;
  * The launch system's four supports (launch_system.py): where each hinge is round the site, how far each falls back
  * (degrees), and when, in seconds from launch. That they fall back as the rocket rises is the record (Siddiqi; Chertok);
  * the angle is read off a photograph of this launch with the rocket's tail some 20 m over the deck, in which they
- * stand open, 14 to 21 degrees out of upright; the times are estimated, inside what that photograph allows (open by
- * about three seconds) and what the rocket needs (the pose check, site-1.md: the strap-ons clear the heads).
+ * stand open, 14 to 21 degrees out of upright. The times are a later launch's: film of a Soyuz leaving this pad in
+ * 2019 (the same system, since modified) has the trusses begin 0.6 to 0.9 s after the rocket first moves and at rest
+ * 1.7 to 2.0 s later, which the photograph of 1961 allows (open by about three seconds) and the rocket needs (the
+ * pose check, site-1.md: the strap-ons clear the heads).
  */
 const SUPPORT_AT = [45, 135, 225, 315].map((az) => TURN / DEG + az);
 const SUPPORT_FALL = 45;
-const SUPPORTS_GO: [from: number, to: number] = [0.1, 2.6];
+const SUPPORTS_GO: [from: number, to: number] = [0.7, 2.6];
+/**
+ * The four guides at the tail, each under its support: they "go back under their own weight" once the rocket's
+ * brackets have left their grips, in 2.5 s at most (descriptions and trials of the later system). The model's guide
+ * is an arm from the turning cage in to the tail, whose tip goes down: how far is estimated.
+ */
+const GUIDE_FALL = -25;
+const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
+/**
+ * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
+ * line (metres east and south from where that bogie stood: sites/site1/place.py, SPURS and CENTRE_TRACK).
+ */
+const CAR_WHEEL = 0.475;
+const carLeaves = (node: string, wheelbase: number, path: [number, number][], from: number, to: number): Move => ({
+  kind: 'drive',
+  node,
+  from,
+  to,
+  path,
+  pivot: [0, CAR_WHEEL, 0],
+  forward: [-1, 0],
+  wheelRadius: CAR_WHEEL,
+  wheelbase,
+  wheels: `${node}_Wheel_`,
+  steered: `${node}_Steered_`,
+  axle: 'z',
+});
 /** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
 const BOOM_LEAN = 14;
 const BOOM_BACK = 20;
@@ -654,6 +682,7 @@ const LIFT_STOPS: [name: string, up: number][] = [
  * transcript's, to the minute; how long each motion took is nowhere recorded, and how much of the slider it has is ours.
  */
 const T = {
+  cars: 0.02, // 08:08: "the railway cars are leaving now"
   platforms: 0.04, // 08:15: "they are lowering the service platforms"
   erector: 0.1, // 08:35: "now they will draw the erector off"
   boomAway: 0.3, // 08:37: "the erector's boom has come away normally"
@@ -674,6 +703,13 @@ const MORNING: Keyframe[] = [
     event: 'The pilot is in his seat: the first call on the radio',
     confidence: 'documented',
     source: `${TRANSCRIPT}: it begins at 07:10`,
+  },
+  {
+    at: MSK(8, 8),
+    slider: T.cars,
+    event: '08:08: the railway cars leave',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}, Kamanin at 08:08. How long they took to go is not recorded: they are off the pad by 08:15`,
   },
   {
     at: MSK(8, 15),
@@ -869,10 +905,13 @@ const padParts: Part[] = [
       'four guides; as its thrust overcomes its weight the heads are unloaded and each truss falls back under its ' +
       'counterweights, and the tulip opens. That it works so is the record. How far the trusses fall is read off a ' +
       'photograph of this launch, taken from across the pit with the rocket’s tail some 20 m over the deck: all four ' +
-      'stand open, 14 to 21° out of upright, which is 45° from where they held the rocket. How long they took is not ' +
-      'recorded: here they begin a tenth of a second after the rocket moves and are back in two and a half, in time ' +
-      'for the strap-ons, which widen downward, to pass the heads. The guides at the tail stand as they stood: what ' +
-      'they did is not in anything read. The ring and its heights are from a Soviet description of the later system ' +
+      'stand open, 14 to 21° out of upright, which is 45° from where they held the rocket. How long they took in 1961 ' +
+      'is not recorded: the times here are read off film of a Soyuz leaving this pad in 2019, on the same system since ' +
+      'modified, in which the trusses begin some 0.7 s after the rocket first moves and are at rest 1.9 s later, in ' +
+      'time for the strap-ons, which widen downward, to pass the heads. Chertok has it that in the trials of 1956 the ' +
+      'four did not go together but one after another, tenths of a second apart; here they go together. The guides ' +
+      'at the tail drop away under their own weight once the rocket has left them, as the later system’s are ' +
+      'described doing; how far is estimated. The ring and its heights are from a Soviet description of the later system ' +
       'for Soyuz; the trusses’ members, platforms and counterweights are drawn from the film of the morning and are ' +
       'estimated.',
     facts: [
@@ -881,13 +920,75 @@ const padParts: Part[] = [
       ['Supports', '4, at the strap-ons’ tips, 13 m above the deck'],
       ['Turned to', '37.5° east of north (derived)'],
       ['Let go', 'at liftoff, 09:06:59.7 Moscow time'],
-      ['Fall back', '45° (off a photograph of the launch), in about 2.5 s (estimated)'],
+      ['Fall back', '45° (off a photograph of the launch), from 0.7 s after liftoff to 2.6 s (off film of a later launch)'],
+      ['Guides', '4 at the tail; they drop away as it leaves (documented for the later system)'],
     ],
     explode: [0, 0, 0],
     order: 0,
-    // each about its hinge on the ring, its head going outward (documented that they do; the angle read off a photograph
-    // of the launch; the times estimated)
-    clocked: SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO)),
+    // each support about its hinge on the ring, its head going outward (documented that they do; the angle read off a
+    // photograph of the launch; the times off film of the later system); each guide about its foot on the cage, its
+    // tip going down (documented for the later system that they fall away; the angle estimated)
+    clocked: [
+      ...SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO)),
+      ...SUPPORT_AT.map((az, i) => outward(`Guide_${i + 1}`, az, GUIDE_FALL, ...GUIDES_GO)),
+    ],
+  },
+  {
+    node: 'TankCars',
+    group: 'Taken away before launch',
+    name: 'Railway fillers',
+    summary: 'The rocket was fuelled from railway cars, and an hour before it left they were drawn away.',
+    detail:
+      'Everything the rocket burned came to it by rail and was pumped aboard from cars standing either side of it. The ' +
+      'liquid oxygen filler, 8G117, was "about 25 m over its couplers, as passenger coaches are", two vessels with a pump ' +
+      'compartment between them, on two four-axle bogies; the kerosene filler, 8G119, "an eight-axle car 24 metres ' +
+      'long" with two tanks of 50 cubic metres, which on 12 April "took its position seven metres from the rocket". The ' +
+      'CIA’s interpreters, looking down on such cars in 1957, took them for passenger coaches 80 ft long. At 08:08 ' +
+      'Kamanin told Gagarin "the railway cars are leaving now": a rail tractor took them a kilometre off. Those ' +
+      'lengths, the eight axles and that hour are the record, and that they were green. Which track each stood on is ' +
+      'not: the oxygen is put to the north, where the shed over the spur sheltered the oxygen and nitrogen toppers, and ' +
+      'the kerosene to the south. One of each is built, where a drawing has three oxygen fillers end to end; their ' +
+      'height and every fitting are estimated. The hydrogen peroxide filler, the toppers under the shed, the transport ' +
+      'tanks behind them and the tractor are not built.',
+    facts: [
+      ['Oxygen filler', '8G117: about 25 m over its couplers, 8 axles'],
+      ['Kerosene filler', '8G119: 24 m, 8 axles, two tanks of 50 m³'],
+      ['Breadth', '3.09 m (today’s 8G0119)'],
+      ['From the rocket', '7 m (a memoir, of the kerosene filler)'],
+      ['Left', '08:08 Moscow time'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    functions: [
+      { nodes: ['TankCar_Oxygen'], name: 'Oxygen filler', ends: ['beside the rocket', 'drawn off'], seconds: 120 },
+      { nodes: ['TankCar_Kerosene'], name: 'Kerosene filler', ends: ['beside the rocket', 'drawn off'], seconds: 240 },
+    ],
+    moves: [
+      // west along the north track to short of its end (documented that they left, and when; how far and how fast are ours)
+      carLeaves(
+        'TankCar_Oxygen',
+        16.6,
+        [
+          [-66.3, 0],
+          [-196.3, -1.394],
+        ],
+        T.cars,
+        T.platforms,
+      ),
+      // west along the south track, onto the centre track where it joins it, and out through the fence
+      carLeaves(
+        'TankCar_Kerosene',
+        15.6,
+        [
+          [-64.8, 0],
+          [-160.2, -2.275],
+          [-291.0, -13.475],
+          [-524.8, -15.452],
+        ],
+        T.cars,
+        T.platforms,
+      ),
+    ],
   },
   {
     node: 'Erector',
@@ -1050,6 +1151,7 @@ const pad: ModelDef = {
     { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
     { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
     { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, -0.88] },
+    { id: 'cars', label: 'Railway fillers', nodes: ['TankCars'], from: [-0.3, 0.25, -0.92] },
     { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, -0.78] },
     { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
     { id: 'masts', label: 'Corner masts', nodes: ['Masts'], from: [-0.75, 0.12, 0.65] },
