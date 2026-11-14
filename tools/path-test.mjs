@@ -71,49 +71,85 @@ let page = null;
 const errors = [];
 const turn = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
+/**
+ * In the page: wait until what is drawn is the settled answer for the instant on show, so that every run measures the
+ * same thing: no prediction being worked, the one on show made from the sample on show (or one the flight keeps to:
+ * path.ts `holds`, which gives it that sample's key), its ease over, and the line sampled since for the camera as it
+ * stands; or, where no path is wanted (on the pad unlit, down), none on show. Measured before this, a run caught the line
+ * part way through being made again or eased (a prediction begun a fifth of a second after the one before, or after the
+ * camera's move), so the failures wandered from run to run.
+ */
+const SETTLE = `(async () => {
+  const p = window.sr.path;
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
+  const began = performance.now();
+  while (performance.now() - began < 15000) {
+    await frame();
+    const want = p.want();
+    if (p.job) continue;
+    if (!want) {
+      if (!p.shown) break;
+      continue;
+    }
+    if (p.shown && p.shown.key === want.key && performance.now() - p.shown.began > 400) break;
+  }
+  for (let i = 0; i < 3; i++) await frame();
+})()`;
+
 /** Put the view where it is asked for: the chase camera, the orbit camera 60 m off the vehicle, or 26,000 km off the Earth's centre. */
 const view = (v) =>
-  page.evaluate(async (v) => {
-    const sr = window.sr;
-    const st = sr.stage;
-    st.setAutoRotate(false);
-    if (v === 'far') {
-      st.setCamera('orbit');
-      const c = sr.path.centre ?? { x: 0, y: -6.37e6, z: 0 };
-      st.pose(60, 35, 2.6e7, c.y, c.x, c.z);
-    } else st.setCamera(v);
-    // (the camera goes there, and the chips fade to where they are laid)
-    for (let i = 0; i < 300 && (st.cam.orbit?.journey || st.cam.blend); i++) await new Promise((r) => requestAnimationFrame(r));
-    await new Promise((r) => setTimeout(r, 500));
-  }, v);
+  page.evaluate(
+    async ([v, SETTLE]) => {
+      const sr = window.sr;
+      const st = sr.stage;
+      st.setAutoRotate(false);
+      if (v === 'far') {
+        st.setCamera('orbit');
+        const c = sr.path.centre ?? { x: 0, y: -6.37e6, z: 0 };
+        st.pose(60, 35, 2.6e7, c.y, c.x, c.z);
+      } else st.setCamera(v);
+      // (the camera goes there, and the chips fade to where they are laid)
+      for (let i = 0; i < 300 && (st.cam.orbit?.journey || st.cam.blend); i++) await new Promise((r) => requestAnimationFrame(r));
+      await new Promise((r) => setTimeout(r, 500));
+      // biome-ignore lint/security/noGlobalEval: the one wait, shared by the page's two steps
+      await eval(SETTLE);
+    },
+    [v, SETTLE],
+  );
 
-/** The flight flown live by its own sequence from the pad to `t` (the clock run fast, as the bench does), stopped there, and a prediction made from there and drawn. */
+/**
+ * The flight flown live by its own sequence from the pad to `t`, exactly: the clock put forward five seconds at a time
+ * (as far as a deck flies in a frame), the scene drawn each time, and stopped there; then a prediction made from there
+ * and drawn. A deck flies up to its clock in whole ticks of its own, so the flight at an instant is the same however the
+ * clock got there, and so is everything drawn from it. (Run at three hundred times life's rate, as it was, the flight
+ * stopped wherever the frames happened to leave it: "T+5" was T+5 in one run and T+8 in the next.)
+ */
 const seek = (t) =>
-  page.evaluate(async (t) => {
-    const sr = window.sr;
-    const c = sr.cockpit;
-    const st = sr.stage;
-    if (!window.__lit) {
-      window.__lit = true;
-      c.eventAt = -1e9;
-      c.command('next'); // ignition
-    }
-    sr.clock.setRate(300);
-    sr.clock.play(true);
-    for (let i = 0; i < 20000 && sr.clock.t < t && !c.state?.landing; i++) {
-      st.frame();
-      if (i % 20 === 0) await new Promise((r) => requestAnimationFrame(r));
-    }
-    sr.clock.pause();
-    const p = sr.path;
-    const began = performance.now();
-    while (performance.now() - began < 8000) {
-      await new Promise((r) => requestAnimationFrame(r));
-      if (p.shown && p.sample && !p.job && (!p.drawn || Math.abs(p.drawn.now - sr.clock.t) < 30)) break;
-    }
-    for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(r));
-    return { shown: Boolean(p.shown), t: sr.clock.t, live: Boolean(p.live) };
-  }, t);
+  page.evaluate(
+    async ([t, SETTLE]) => {
+      const sr = window.sr;
+      const c = sr.cockpit;
+      const st = sr.stage;
+      if (!window.__lit) {
+        window.__lit = true;
+        c.eventAt = -1e9;
+        c.command('next'); // ignition
+      }
+      sr.clock.pause();
+      for (let i = 0; i < 20000 && sr.clock.t < t - 1e-9 && !c.state?.landing; i++) {
+        const was = sr.clock.t;
+        sr.clock.seek(Math.min(t, was + 5));
+        st.frame();
+        if (i % 20 === 0) await new Promise((r) => requestAnimationFrame(r));
+        if (!(sr.clock.t > was)) break; // (down, or nowhere further to go)
+      }
+      // biome-ignore lint/security/noGlobalEval: the one wait, shared by the page's two steps
+      await eval(SETTLE);
+      const p = sr.path;
+      return { shown: Boolean(p.shown), t: sr.clock.t, live: Boolean(p.live) };
+    },
+    [t, SETTLE],
+  );
 
 /** What the page says of the line, the camera and the markers, measured from the line's own points where it gives them. */
 const measure = () =>
@@ -300,6 +336,8 @@ const pixels = async (name, fade = null, which = 'ahead') => {
       ([on, which]) => {
         // (one line at a time: the line ahead, or the line flown; the ring where it comes down, a loop of its own, hidden)
         const p = window.sr.path;
+        // (the line flown in the line ahead's colour and strength: the same line, told from the scene by the same measure)
+        p.flownAsAhead = which === 'flown';
         p.mesh.material.visible = which === 'ahead' && on;
         if (p.ringMesh) p.ringMesh.material.visible = false;
         if (p.flownMesh) p.flownMesh.material.visible = which === 'flown' && on;
@@ -322,6 +360,7 @@ const pixels = async (name, fade = null, which = 'ahead') => {
   const c = await shot(true);
   await page.evaluate(() => {
     const p = window.sr.path;
+    p.flownAsAhead = false;
     p.mesh.material.visible = true;
     if (p.flownMesh) p.flownMesh.material.visible = true;
     if (p.ringMesh) p.ringMesh.material.visible = true;
@@ -332,8 +371,8 @@ const pixels = async (name, fade = null, which = 'ahead') => {
   }, cut);
   await pixels.style.evaluate((el) => el.remove());
   if (shots && name) writeFileSync(join(shots, `${name}.png`), Buffer.from(a, 'base64'));
-  return page.evaluate(
-    async ([a, b, c, INK, DOT, BIT, fade]) => {
+  const got = await page.evaluate(
+    async ([a, b, c, INK, DOT, BIT, fade, keep]) => {
       const load = async (s) => {
         const img = new Image();
         img.src = `data:image/png;base64,${s}`;
@@ -431,10 +470,34 @@ const pixels = async (name, fade = null, which = 'ahead') => {
       }
       const dots = pieces.filter((p) => p.n < DOT && !p.open);
       const bits = pieces.filter((p) => p.n >= DOT && p.n < BIT && !p.open);
-      return { area, pieces: pieces.length, dots: dots.length, bits: bits.map((p) => `${p.n}px@${p.x0},${p.y0}`), frac: area / (w * h) };
+      // (with --shots, the line's own pixels as the measure sees them: white the line, grey what moves of itself)
+      let picture = null;
+      if (keep) {
+        const out = document.createElement('canvas');
+        out.width = w;
+        out.height = h;
+        const g = out.getContext('2d');
+        const img = g.createImageData(w, h);
+        for (let i = 0; i < w * h; i++) {
+          const v = mask[i] ? 255 : still[i] ? 0 : 70;
+          img.data.set([v, v, v, 255], i * 4);
+        }
+        g.putImageData(img, 0, 0);
+        picture = out.toDataURL('image/png').split(',')[1];
+      }
+      return {
+        area,
+        pieces: pieces.length,
+        dots: dots.length,
+        bits: bits.map((p) => `${p.n}px@${p.x0},${p.y0}`),
+        frac: area / (w * h),
+        picture,
+      };
     },
-    [a, b, c, INK, DOT, BIT, fade],
+    [a, b, c, INK, DOT, BIT, fade, Boolean(shots && name)],
   );
+  if (got.picture) writeFileSync(join(shots, `${name}-mask.png`), Buffer.from(got.picture, 'base64'));
+  return got;
 };
 
 /** As the clock runs at life's rate for a second, how far the line's point a minute ahead moves from one frame to the next, in pixels from the eye. */
@@ -490,7 +553,7 @@ async function inspect(where, v, look, W, H) {
   if (px.dots > 2) fail(where, `the line breaks into dots: ${px.dots} pieces under ${DOT} px`);
   if (px.bits.length > 1) fail(where, `fragments of line: ${px.bits.join(', ')}`);
   // the line flown, drawn alone: the same rules (it is paler, so fewer of its pixels pass the threshold: no count of them)
-  const fl = m.flownChords > 1 ? await pixels(null, m.fade, 'flown') : null;
+  const fl = m.flownChords > 1 ? await pixels(shots ? `${where.replaceAll(/[ +]/g, '-')}-flown` : null, m.fade, 'flown') : null;
   if (fl) {
     if (fl.frac > 0.2) fail(where, `the line flown covers ${(fl.frac * 100).toFixed(0)} % of the view: a sheet`);
     if (fl.dots > 2) fail(where, `the line flown breaks into dots: ${fl.dots} pieces under ${DOT} px`);
@@ -683,7 +746,24 @@ const outcome = async (where, end, tolerance) => {
   const p = await predicted();
   const from = await here();
   if (!p?.ecef) return fail(where, `no end predicted (${p?.outcome ?? 'no prediction'})`);
+  // (what burned after the prediction was made: on a staged vehicle, each stage lit and stopped; the path is the flight
+  // with nothing more done, so anything lit since means the hands did more, and the comparison says nothing of the path)
+  const lit = () =>
+    page.evaluate(() => {
+      const s = window.sr.cockpit.state;
+      return s?.stages ? s.stages.map((x) => ({ from: x.from, to: x.to, gone: x.gone })) : null;
+    });
+  const before = await lit();
   await end();
+  const after = await lit();
+  const since = (after ?? [])
+    .map((x, i) => ({ i, ...x }))
+    .filter(
+      (x) => (x.from > from.t + 1e-6 && Number.isFinite(x.from)) || (Number.isFinite(x.from) && x.to > from.t + 1e-6 && x.from <= from.t),
+    )
+    .map((x) => `stage ${x.i} lit ${x.from.toFixed(1)} to ${Number.isFinite(x.to) ? x.to.toFixed(1) : 'dry'}`);
+  if (since.length)
+    fail(where, `burned after the prediction at T+${from.t.toFixed(1)}: ${since.join('; ')} (before: ${JSON.stringify(before)})`);
   const got = await here();
   const miss = apart(p.ecef, got.ecef);
   const way = apart(from.ecef, got.ecef);
@@ -736,15 +816,18 @@ if (!quick && !at) {
         await views(`v1 hands ${n} pitched at T+${t1.toFixed(0)}`);
         await deck('sequence');
         // (Space walks the steps: the next is a stage's cut or its drop; each is taken until nothing is lit)
-        for (let k = 0; k < 6; k++) {
-          const lit = await page.evaluate(() => {
+        // (every step there is, if need be: a step may light a stage as well as cut one, Block E's ignition among them, and
+        // stopping after a fixed count could leave one burning, which the path, the flight with nothing more done, is not)
+        const lit = () =>
+          page.evaluate(() => {
             const c = window.sr.cockpit;
             return c.vehicle && c.state ? c.vehicle.thrust(c.state) > 0 : false;
           });
-          if (!lit) break;
+        for (let k = 0; k < 16 && (await lit()); k++) {
           await deck('next');
           await runTo((await page.evaluate(() => window.sr.clock.t)) + 1 + rand() * 4, 1);
         }
+        if (await lit()) fail(`v1 hands ${n}`, 'an engine is still lit after every step: the hands cannot let go');
         await views(`v1 hands ${n} cut`);
         await outcome(
           `v1 hands ${n} cut, then down`,

@@ -39,6 +39,7 @@ import { InkPass, type Look, Looks } from './look';
 import { type LookoutDef, lookoutsOf, windowAt } from './lookouts';
 import { refused, sayRefused, watchContext } from './lost';
 import { absolute, Origin } from './origin';
+import { OVERLAY_LAYER, OverlayPass } from './overlay';
 import { Outline } from './outline';
 import { Panes } from './panes';
 import { through, triangles } from './pick';
@@ -727,6 +728,15 @@ export class Stage {
     this.ink.enabled = false; // straight after the scene, while the frame's depth is still the scene's
     this.composer.addPass(this.ink);
     this.composer.addPass(new ExhaustPass(this.scene, this.camera, this.clouds)); // the engine's fire and its smoke, marched (exhaust.ts): over the ink, under the clouds and the bloom
+    // what is drawn over the flight (the predicted path): over the fire and the smoke, under the clouds (overlay.ts)
+    this.composer.addPass(
+      new OverlayPass(
+        this.scene,
+        this.camera,
+        () => this.overlays,
+        () => this.clouds.mark.texture,
+      ),
+    );
     this.composer.addPass(this.clouds);
     // (the frame's depth says where a part is hidden; glass and what the cutaway has opened are not in it)
     this.outline = new Outline(
@@ -1949,11 +1959,18 @@ export class Stage {
   }
 
   /**
-   * Something drawn over the flight that is no part of it (the predicted path, path.ts): put in the scene, where
-   * cloud behind it shows through it as through the fire. Given again, it has changed: the frame is drawn again.
+   * Something drawn over the flight that is no part of it (the predicted path, path.ts): put in the scene, drawn in a
+   * pass of its own after the fire and smoke (overlay.ts), where cloud behind it shows through it as through the fire.
+   * Given again, it has changed: the frame is drawn again.
    */
   overlay(object: THREE.Object3D): void {
-    if (object.parent !== this.scene) this.scene.add(object);
+    if (object.parent !== this.scene) {
+      this.scene.add(object);
+      object.traverse((o) => {
+        o.layers.disable(0);
+        o.layers.enable(OVERLAY_LAYER);
+      });
+    }
     if (!this.veils.includes(object)) this.veils.push(object);
     if (!this.overlays.includes(object)) this.overlays.push(object);
     this.dirty = true;

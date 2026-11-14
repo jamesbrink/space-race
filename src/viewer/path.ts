@@ -15,6 +15,7 @@ import type { SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE, WGS84_B } from '../world/bodies.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';
+import { sceneDepthGlsl, uDepthRange, uSceneDepth } from './overlay.ts';
 import { type Curve, curveAt, curveOf, limbPx, type Ribbon, ribbon, sample } from './pathline.ts';
 import {
   type Box,
@@ -63,11 +64,14 @@ import {
  *   across the screen); the line fades in over the next doubling of the distance from the eye, so where it passes the
  *   camera it is seen leaving, not cut. From inside the vehicle nothing within its radius of the eye is drawn, so the
  *   line is seen through the windows even while the vehicle drawn catches up with the flight after the clock has run fast.
- * - **Hidden by what is in front of it**: drawn after the solid scene, tested against its depth and writing none, a
- *   hundredth of the way nearer than it is (so the sea it comes down to does not hide its end); beyond the far plane
- *   it is at the far plane, behind everything; and the Earth hides it by a sphere, tested for every pixel of the
- *   ribbon (pathline.ts `limbPx`) with a pixel's soft edge, so where the line goes behind the limb it ends at the limb.
- *   The sphere is the Earth's polar radius: inside the surface everywhere, so it never hides what is on the ground.
+ * - **Hidden by what is in front of it**: drawn in a pass of its own after the scene and after the engines' fire and
+ *   smoke (overlay.ts: the smoke is marched to the scene's depth, which the line does not write, so drawn with the scene
+ *   it lay under the smoke behind it and came through the pad's dust and the trail pale and broken), tested against the
+ *   scene's depth in its own fragment shader and writing none, a hundredth of the way nearer than it is (so the sea it
+ *   comes down to does not hide its end); the clouds, laid over last, cover it where they are in front of it; and the
+ *   Earth hides it by a sphere, tested for every pixel of the ribbon (pathline.ts `limbPx`) with a pixel's soft edge, so
+ *   where the line goes behind the limb it ends at the limb. The sphere is the Earth's polar radius: inside the surface
+ *   everywhere, so it never hides what is on the ground.
  * - **Still when nothing changes, eased when it does**: a new prediction is eased in from where the last one had each
  *   instant over `EASE` seconds; a prediction made again of the same flight lies on the same curve, so nothing moves.
  * - **Drawn from the eye** (origin.ts): points are kept in doubles and given to the GPU as offsets from the vehicle,
@@ -107,6 +111,8 @@ const EVERY = 200;
 const CORE = 1.3;
 const HALF = 5;
 const FLOWN_CORE = 0.9;
+/** How much of the line flown is drawn: half, so it is the line ahead that is read (the flown line is where it has been). */
+const FLOWN_OPACITY = 0.5;
 /** Seconds a new prediction is eased in over; how old the one on show may be, while a newer one is wanted, before it is said to be stale. */
 const EASE = 0.3;
 const STALE = 1.5;
@@ -202,6 +208,7 @@ const VERT = /* glsl */ `
   }`;
 
 const FRAG = /* glsl */ `
+  ${sceneDepthGlsl}
   uniform vec3 uColour, uInk;
   uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uFade, uRatio;
   uniform vec3 uShip;         // the vehicle's middle in the view's frame
@@ -210,9 +217,13 @@ const FRAG = /* glsl */ `
   uniform vec3 uCentre;       // the Earth's centre in the view's frame
   uniform float uRadius;      // the sphere that hides the line, m
   uniform float uPxPerRad;    // pixels to a radian of the view
+  uniform vec2 uView;         // the target's size, pixels
   varying float vSide, vT;
   varying vec3 vView;
   void main() {
+    // behind what the scene has drawn (the vehicle, the ground, the cabin's walls): a hundredth nearer than it is, so the
+    // sea it comes down to does not hide its end (overlay.ts: in the cel look the frame it is drawn into has no depth)
+    if (behindScene(-vView.z * 0.99, uView)) discard;
     float px = abs(vSide) * uHalf;
     float c = uCore;
     vec3 colour = uColour;
@@ -499,6 +510,13 @@ export class FlightPath {
    * them took, the instant it starts at, how far it was taken to meet the vehicle, and the gap.
    */
   drawn = { ahead: 0, flown: 0, ms: 0, now: 0, pinned: 0, offset: 0, gap: 0, fade: 0 };
+  /**
+   * For the path test only: the line flown drawn in the line ahead's colour, width and strength, the same geometry and the
+   * same rules, so its own pixels can be told from a bright scene by the same measure (drawn pale at half strength, as it
+   * is, a stretch of it over white cloud or the pale smoke differs from the frame without it by less than the measure's
+   * threshold, and a whole line was counted as pieces).
+   */
+  flownAsAhead = false;
 
   /**
    * `parent` takes the markers; `readout` is where the switch and the figures go (beside the navball); `button` is the
@@ -526,6 +544,8 @@ export class FlightPath {
 
     this.uniforms = {
       uOrigin,
+      tSceneDepth: uSceneDepth,
+      uDepthRange,
       uView: { value: new THREE.Vector2(1, 1) },
       uHalf: { value: HALF },
       uClip: { value: 1 },
@@ -588,7 +608,7 @@ export class FlightPath {
       this.behind.geometry,
       'Flown path',
       11,
-      { uCore: { value: FLOWN_CORE }, uColour: { value: new THREE.Color() }, uOpacity: { value: 0.5 } },
+      { uCore: { value: FLOWN_CORE }, uColour: { value: new THREE.Color() }, uOpacity: { value: FLOWN_OPACITY } },
       { FLOWN: '' },
     );
     this.mesh = make(this.ahead.geometry, 'Predicted path', 12, {}, {});
@@ -1325,14 +1345,16 @@ export class FlightPath {
     u.uRatio!.value = ratio;
     u.uHalf!.value = HALF * ratio;
     u.uCore!.value = CORE * ratio;
-    (this.flownMesh.material as THREE.ShaderMaterial).uniforms.uCore!.value = FLOWN_CORE * ratio;
+    const flown = (this.flownMesh.material as THREE.ShaderMaterial).uniforms;
+    flown.uCore!.value = (this.flownAsAhead ? CORE : FLOWN_CORE) * ratio;
+    flown.uOpacity!.value = this.flownAsAhead ? u.uOpacity!.value : FLOWN_OPACITY;
     // the frame is exposed for the hour (daysky.ts) after this is drawn: the line is given what comes out as its colour whatever that is
     const exposure = 0.9 / Math.max(0.05, renderer.toneMappingExposure);
     const cel = this.host.look === 'cel';
     u.uCel!.value = cel ? 1 : 0;
     (u.uColour!.value as THREE.Color).copy(amber).multiplyScalar(exposure);
     (u.uInk!.value as THREE.Color).copy(ink).multiplyScalar(exposure);
-    ((this.flownMesh.material as THREE.ShaderMaterial).uniforms.uColour!.value as THREE.Color).copy(pale).multiplyScalar(exposure);
+    (flown.uColour!.value as THREE.Color).copy(this.flownAsAhead ? amber : pale).multiplyScalar(exposure);
 
     // the eye and the vehicle in the scene's frame (in the draw the scene stands with the eye at its origin: origin.ts)
     const eye = absolute(this.eye.copy(camera.position));
