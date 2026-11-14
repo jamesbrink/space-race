@@ -1113,6 +1113,16 @@ ${
     // the eye looks, with an edge where it ends; the Sun's disc shows through it. By how much of the record's depth
     // the eye would see through: 0.4 deep, half the sky's tone from under it.
     if (kind != 0) {
+      // Seen from above (from orbit, from a climbing flight) it is not a sky but a thing lying over the land, and a
+      // drawing gives a thing its shape: the fibres the real look has, cut into two flat tones (the sheaves, and the
+      // thinner sheet between them), thinning out in sheaves where the record's cover gives way (weather.ts
+      // heldDistance), so no line is drawn round it.
+      if (!under) {
+        float sheaves = step(0.34, a), between = step(0.1, a) * (1.0 - sheaves);
+        if (sheaves + between <= 0.0) return vec4(0.0);
+        vec3 lit = sunWhite * 0.95 + skyLight;
+        return vec4(mix(lit, uHaze, hz), 1.0) * ((0.78 * sheaves + 0.32 * between) * shown);
+      }
       float washed = smoothstep(0.5, 0.9, high);
       if (washed <= 0.0) return vec4(0.0);
       float wash = ${(Math.min(high.depth, 0.6)).toFixed(3)} * (under ? 1.25 : 1.0) * smoothstep(0.45, 0.55, washed) * fade;

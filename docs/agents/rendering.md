@@ -549,7 +549,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     weather.ts, a flight's weather, the land map or the relief.
   - **High cloud is fibres or a veil.** Cirrus is `cirrusAt`'s fibres, never more than half opaque. Cirrostratus
     over the whole sky is `veilAt`: a smooth sheet as deep as the record's optical depth, the Sun's disc and a
-    glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look.
+    glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look from under it and its fibres in two flat tones from above it.
     It is lit by the Sun at its own height and from the Sun's own direction (`highSun`, `uTrueSun`: lit before
     sunrise on the ground; the scene's one light is the Moon by night and points nowhere in between, and a veil
     lit by it stepped at sunrise). What is under it has

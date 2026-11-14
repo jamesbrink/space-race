@@ -974,11 +974,11 @@ rocket can leave the erector out by its date.
 - **The sky is the neighbouring stations', not the range's own** ("The land", above: the sky), and against an
   earlier reading of the film as clear. The cirrus is drawn as fibres lying one way over seven eighths of the sky, the
   same everywhere: which way they lay, how thick they were and whether there were gaps over the pad are not recorded.
-  They dim the Sun evenly (their own streaks cast no shadows). In the cel look they are one flat paler tone over the
+  They dim the Sun evenly (their own streaks cast no shadows). In the cel look, from under them, they are one flat paler tone over the
   sky. From height the record's cirrus holds over the site as far as the stations saw it (60 km, gone by 90: day.ts
   `reportReach`) and the day's map, estimated, lies beyond ("The country round, from height"). Where the report gives
   way is a lobed line 40 to 135 km out (weather.ts `heldDistance`), so from 150 km the cirrus is a patch with a ragged
-  edge, not a disc; its shape is estimated, and in the cel look it is still one flat sheet with an edge.
+  edge, not a disc; its shape is estimated. In the cel look, from above, it is its fibres cut into two flat tones (clouds.ts), thinning out in sheaves where the report gives way: no line is drawn round it.
 - The ground's kinds lie where a noise field over its cut puts them, more readily in the hollows: that takyrs, crusts
   and sand are here is documented, where each lies is not (no soil map of the cosmodrome has been read: Krechetov and
   others 2015 is known, not read). The ruts' lines, the worn ground's patches and the takyr's polygons are estimated.
