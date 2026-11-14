@@ -157,6 +157,62 @@ for (const [w, h, touch] of SIZES) {
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }
+  // the descent by hand (orbitdeck.ts `descent:` commands): offered when the simulator would hear it, B its sequencer, Space its steps
+  {
+    const where = `vostok-1's descent at ${w}`;
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto(`${url}#ussr/vostok/vostok-1/fly`);
+    await page.waitForFunction(() => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active, null, {
+      timeout: 120000,
+    });
+    const can = () =>
+      page.evaluate(() =>
+        Object.fromEntries(['descent:modules', 'descent:ejection', 'descent:pilot/main canopy'].map((a) => [a, window.sr.cockpit.can(a)])),
+      );
+    const seek = async (t) => {
+      await page.evaluate((x) => window.sr.clock.seek(x), t);
+      await page.waitForTimeout(300);
+    };
+    const label = () => page.evaluate(() => document.querySelector('[data-cell=next]').textContent);
+    await seek(600);
+    let c = await can();
+    if (Object.values(c).some(Boolean)) fail(where, `offered on the launch vehicle: ${JSON.stringify(c)}`);
+    await seek(4600); // (alone, the timer's burn still to come)
+    c = await can();
+    if (!c['descent:modules'] || c['descent:ejection']) fail(where, `before the burn: ${JSON.stringify(c)}`);
+    await seek(4800); // (the burn made)
+    c = await can();
+    if (!c['descent:ejection'] || c['descent:pilot/main canopy']) fail(where, `after the burn: ${JSON.stringify(c)}`);
+    await page.keyboard.press('KeyB');
+    await page.waitForTimeout(400);
+    const off = await page.evaluate(() => ({
+      pressed: document.querySelector('[data-do=sequence]').getAttribute('aria-pressed'),
+      mode: document.querySelector('[data-cell=mode]').textContent,
+      prompt: document.querySelector('[data-cell=prompt]').textContent,
+    }));
+    if (off.pressed !== 'false' || !/descent by hand/.test(off.mode) || !/Sequencer off/.test(off.prompt))
+      fail(where, `B did not switch the descent's sequence off: ${JSON.stringify(off)}`);
+    if ((await label()) !== 'Part the modules') fail(where, `Space is "${await label()}", not "Part the modules"`);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(1700);
+    if ((await label()) !== 'Eject') fail(where, `after the modules Space is "${await label()}", not "Eject"`);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(600);
+    c = await can();
+    if (c['descent:ejection'] || !c['descent:pilot/main canopy']) fail(where, `after the ejection: ${JSON.stringify(c)}`);
+    const next = await page.evaluate(() => {
+      const r = document.querySelector('[data-do=next]').getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    });
+    if (next.x < -1 || next.y < -1 || next.x + next.w > w + 1 || next.y + next.h > h + 1)
+      fail(where, `the step's button is cut off: ${JSON.stringify(next)}`);
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+    console.log(`  ${where}: offered when heard, B off, Space parted the modules and ejected him; next "${await label()}"`);
+    await ctx.close();
+  }
   // the same panels in the same corners on both flights
   const [a, b] = Object.values(seen);
   for (const p of ['nav', 'main', 'sys']) {
