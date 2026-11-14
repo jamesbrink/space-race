@@ -414,7 +414,8 @@ def build_couch(M: dict, name: str, at: tuple[float, float, float], suited: bool
 def build_reserve_engine(M: dict) -> None:
     """The reserve braking engine: a solid-propellant motor on the sphere's forward pole, where a Vostok had the housing
     of its forward antennas, standing in the lock the four straps meet at. Its outline is OKB-1's general drawing's: a
-    drum that narrows a little, a step, a smaller drum with a flat face. How its gas left it is in nothing read."""
+    drum that narrows a little, a step, a smaller drum with a flat face. How its gas left it is in nothing read: the boss
+    on its face is given the nozzle's node (below)."""
     g = group("ReserveEngine")
     case, band, mount, fit, bolts = (MeshBuilder() for _ in range(5))
     z0 = POLE
@@ -469,7 +470,19 @@ def build_reserve_engine(M: dict) -> None:
         (70 * MM, (h_step - h_mount - 150) * MM, 50 * MM),
         frame(V(mid * rad.x, mid * rad.y, z0 + (h_mount + h_step) / 2), (math.cos(slope) * rad.x, math.cos(slope) * rad.y, math.sin(slope))),
     )
-    fit.lathe(pm([(92, z0 + h_top - 6), (92, z0 + h_top + 34), (70, z0 + h_top + 46), (0, z0 + h_top + 46)]), 32)
+    # The engine's nozzle as a node (`ReserveEngine_Nozzle`): its origin on the axis in the plane of the boss's face, the
+    # engine's foremost, and its own +Z the way the engine pushes, toward the sphere, so its gas leaves along its -Z,
+    # forward, as `RetroEngine_Nozzle`'s leaves aft. That the gas left forward is derived (OKB-1's general drawing of
+    # the 3KV has two nozzle-like bodies lying along the engine with their mouths toward the nose, and an engine on the
+    # forward pole can brake no other way); that it left on the axis, through this boss, is estimated: the node is where
+    # the two would act together, and the boss in the middle of the face is hung under it so that it has a place.
+    boss = MeshBuilder()
+    boss.lathe(pm([(92, z0 + h_top - 6), (92, z0 + h_top + 34), (70, z0 + h_top + 46), (0, z0 + h_top + 46)]), 32)
+    at = Matrix.Translation(V(0, 0, z0 + h_top + 46)) @ Matrix.Rotation(math.pi, 4, "X")
+    nozzle = group("ReserveEngine_Nozzle", g)
+    nozzle.matrix_basis = at
+    closure = boss.build("Reserve_Nozzle", M["frame"], nozzle, sharp_angle=35)
+    closure.data.transform(at.inverted())
     for i in range(6):
         a = TAU * i / 6 + deg(15)
         fit.tube(V(215 * math.cos(a), 215 * math.sin(a), z0 + h_top - 8), V(215 * math.cos(a), 215 * math.sin(a), z0 + h_top + 57), 17 * MM, 12)

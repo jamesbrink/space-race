@@ -64,6 +64,7 @@ CAMERA_TOWERS = ((-72.0, -38.0, 62.0), (-58.0, 78.0, 50.0))  # x, y, height
 TRIPODS = ((-40.0, -30.0), (-45.0, 25.0), (38.0, -40.0), (-25.0, -55.0))
 SHOWER_STOWED = (-58.0, -91.0)  # the emergency shower at the pad's north edge, where it stood once stowed for launch
 SHOWER_SERVICE = (18.0, -3.5)  # and through a count: beside the structure's base on the blockhouse side, by the booster's tail (estimated)
+SHOWER_CASTOR = 0.42  # its four castors' radius, ft: 10 in across (estimated, off KSC-61-4457)
 # The transfer van NASA TV No 1 as it stood on a launch morning (FHSU items 263 and 540): beside the structure's base on the
 # blockhouse side, its rear toward the launcher and its tractor toward the spare parts trailer. x from, x to; its rear; its front.
 VAN = (20.0, 28.0, 14.0, 40.0)
@@ -463,12 +464,20 @@ def furniture(parts: Parts) -> None:
         sx, sy = SHOWER_SERVICE
     sh = "GroundEquipment_Shower"
     parts.node(sh, g, (sx, sy, 0.0), label="Emergency shower")
-    white, dark, red, ink = parts(sh, "sign"), parts(sh, "chassis", True), parts(sh, "signred"), parts(sh, "black/lettering")
+    white, red, ink = parts(sh, "sign"), parts(sh, "signred"), parts(sh, "black/lettering")
     tube = parts(sh, "white/shower", True)
+    k = 0
     for dx in (-1.6, 1.6):
         for dy in (-1.6, 1.6):
             tube.tube(P(sx + dx, sy + dy, 0.9), P(sx + dx, sy + dy, 8.6), 0.07 * FT, 8)
-            dark.tube(P(sx + dx * 1.15, sy + dy - 0.12, 0.42), P(sx + dx * 1.15, sy + dy + 0.12, 0.42), 0.42 * FT, 12)  # castors
+            # a castor: its own node on its axle, which lies along the pad's Y, so that the cart stands on its wheels as
+            # it is pushed (flight.ts: the slide's `runs.wheels`). They roll; they do not swivel (lc-5.md)
+            k += 1
+            castor = f"{sh}_Wheel_{k}"
+            parts.node(castor, sh, (sx + dx * 1.15, sy + dy, SHOWER_CASTOR))
+            parts(castor, "chassis", True).tube(
+                P(sx + dx * 1.15, sy + dy - 0.12, SHOWER_CASTOR), P(sx + dx * 1.15, sy + dy + 0.12, SHOWER_CASTOR), SHOWER_CASTOR * FT, 12
+            )
         tube.tube(P(sx + dx, sy - 1.6, 8.6), P(sx + dx, sy + 1.6, 8.6), 0.07 * FT, 8)
     for dy in (-1.6, 1.6):
         tube.tube(P(sx - 1.6, sy + dy, 8.6), P(sx + 1.6, sy + dy, 8.6), 0.07 * FT, 8)

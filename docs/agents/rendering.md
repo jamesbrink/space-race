@@ -45,7 +45,17 @@ mirrors) toward the lit lamps' colour by `uCabinTint` (white for lamps lit as bu
 to a dim duty light, is uniforms and the lamps' strength and colour: no light is added or taken away, and no shader is
 built. The shade has one lamps-on figure for all the lamps together: a way that lights some of them, or another bulb
 in the same fitting, is shaded as if all were lit and dimmed by their share. To be right for one lamp alone a model
-would bake a shade per lamp (a colour attribute each), which nothing does yet.
+would bake a shade per lamp, which nothing does yet. Looked at in November 2026 and left: only the Mercury cabins bake a
+shade at all (no Vostok, Voskhod or Gemini GLB carries a `Shade`), so the two ways that light less than every lamp (the
+Vostok's duty light, one lamp at a quarter; Gemini's red) have no shade to divide: they would first need the bake itself
+(`mercury_cabin.shade` is written round a cone, its lamps and its mesh names; their walls are not cut for it), which is
+a piece of work on each cabin and not a change to this one. Where there is a bake the division is small and costs no
+memory: `shade` already asks each lamp in turn and averages, so it can keep them apart, one lamp to a channel of the
+same attribute in the order of `ModelDef.lights` (red the first, green the second, blue the third; alpha the lamps off
+as now; a cabin of more than three lamps would need a second attribute). The viewer would then have to read it so
+everywhere such a model is drawn, since a material that multiplies by the three channels as a colour tints the surface:
+in place of `uCabinLit`'s mix, `mix(shade.a, dot(shade.rgb, uCabinLamps), lit)`, with `uCabinLamps` each lamp's share
+of the strength that is lit (they sum to one) and `lit` the share of the whole that is lit, as `uCabinLit` is now.
 A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
 indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
 surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray

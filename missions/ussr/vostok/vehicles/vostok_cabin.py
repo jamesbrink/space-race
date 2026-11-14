@@ -14,7 +14,7 @@ its own frame: origin in its middle, +X to its reader's right, +Y up its face, +
 What the viewer is promised (types.ts: CabinDef), the same names the Mercury cabin keeps to:
     Gauge_<Name>    a needle or hand, its origin on its pivot, turning about its face's normal: `turn` (value, radians
                     anticlockwise from straight up the face, pairs), `rest` (the value it was built at), `wrap`
-    Tele_<Name>     a signal lamp's lens, with a material of its own
+    Tele_<Name>     a signal lamp's lens, with a material of its own (Tele_Landing: the «Посадка» signaller over the Globus)
     Ctl_<Name>      a control: `press` (metres) for a key or a button, `throw` for a lever (radians about its own X)
     Lamp_<n>        a cabin lamp's lens, with a material of its own
     Vzor_Screen     the Vzor's central screen (`screen_radius`), and Vzor_Ring, its ring of eight ports
@@ -102,8 +102,10 @@ SCALES = {
     "CarbonDioxide": ("gas", (0.0, 0.26), 0.56, (0.0, -68.0), (4.0, 68.0), (0.0, 1.0, 2.0, 3.0, 4.0), 0.5, 0.0),
     "Oxygen": ("gas", (-0.44, -0.40), 0.43, (0.0, 152.0), (40.0, 28.0), (20.0, 30.0, 40.0), 5.0, 21.0),
     "ModulePressure": ("gas", (0.44, -0.40), 0.43, (0.0, -152.0), (2.0, -28.0), (0.5, 1.0, 1.5, 2.0), 0.25, 1.2),
-    # the gas for turning the ship, by hand and automatic, and the braking engine's bottle. Built at his readings: 155, 320, 155
-    "ManualGas": ("pressures", (0.0, 0.26), 0.56, (0.0, -68.0), (200.0, 68.0), (50.0, 100.0, 150.0, 200.0), 10.0, 155.0),
+    # the gas for turning the ship, by hand and automatic, and the braking engine's bottle. Built at his readings: the hand
+    # system's 175 as he read it before launch at 07:29 (the archive's record, in both its prints: where the flight's data
+    # starts it, so that the unpowered exhibit agrees with the record; a newspaper's print has 155), 320, 155
+    "ManualGas": ("pressures", (0.0, 0.26), 0.56, (0.0, -68.0), (200.0, 68.0), (50.0, 100.0, 150.0, 200.0), 10.0, 175.0),
     "RetroPressure": ("pressures", (-0.44, -0.40), 0.43, (0.0, 152.0), (360.0, 28.0), (100.0, 200.0, 300.0), 20.0, 320.0),
     "AutomaticGas": ("pressures", (0.44, -0.40), 0.43, (0.0, -152.0), (200.0, -28.0), (100.0, 200.0), 20.0, 155.0),
 }
@@ -436,10 +438,12 @@ def globus(c: Fit, F: Matrix) -> None:
         c.tick(cross, F, gu, gv, turn, -rw * 0.5, rw * 0.5, 0.6, top)
     c.turned(c.into("Cabin_Crystals", "crystal"), F, gu, gv, [(rw, 5.0), (rw * 0.86, top + 0.4), (rw * 0.5, top + 2.2), (0.0, top + 2.6)], 32)
     marks = c.into("Cabin_BoardMarks", "marks_dark")
-    # the window "landing place" over the globe
-    lu, lv = gu, gv + rw + 26.0
+    # The signaller «Посадка» (landing) over the globe: a lamp of its own (`Tele_Landing`), lit while the tumbler ГЛОБУС
+    # stands at МЕСТО ПОСАДКИ (Tyapchenko, fig. 16: «Сигнализатор «Посадка». Включается после переключения тумблера
+    # «Глобус» на пульте в положение «Место посадки»»: documented). Its lens is plain, as the blocks' are; its size and
+    # its colour unlit are estimated.
+    lu, lv = landing_at()
     c.block(c.into("Cabin_Bezels", "bezel"), F, lu, lv, 44.0, 13.0, 3.0, 6.0)
-    c.block(c.into("Cabin_Windows", "dial"), F, lu, lv, 38.0, 8.0, 6.0, 7.4)
     # the correction counter's window: Gagarin read 710 in it at 07:29 («коррекция цифра 710»: the transcript as the
     # archive's two prints have it; a newspaper's print has 510, and other figures of the same report wrong: spacecraft.md)
     cu, cv = on_board(232.0, 44.0)
@@ -458,6 +462,23 @@ def globus(c: Fit, F: Matrix) -> None:
         ku, kv = on_board(x, 214.0)
         c.turned(c.into("Cabin_Knobs", "knob"), F, ku, kv, [(11.0, 3.0), (9.0, 22.0), (0.0, 22.0)], 16)
         c.text(c.into("Cabin_HubLetters", "marks"), F, letter, ku, kv, 6.0, 23.4)
+
+
+def landing_at() -> tuple[float, float]:
+    """The middle of the «Посадка» signaller's window on the board: over the globe's ring."""
+    gu, gv = on_board(*GLOBE_AT)
+    return gu, gv + GLOBE_WINDOW + 26.0
+
+
+def landing_lamp(c: Fit, F: Matrix) -> None:
+    """The «Посадка» signaller's lens in its window (globus() builds the window's bezel): a node of its own in its own
+    material, as the blocks' lenses are. Built after them, so that their materials keep the names they had."""
+
+    def lens(mb: MeshBuilder) -> None:
+        mb.box((38.0, 8.0, 1.4), Matrix.Translation((0, 0, 0.7)))
+
+    lu, lv = landing_at()
+    c.node("Tele_Landing", "lamp_amber", F @ Matrix.Translation((lu, lv, 6.0)), lens, own=True)
 
 
 def lamp_blocks(c: Fit, F: Matrix) -> None:
@@ -492,6 +513,7 @@ def board(c: Fit) -> Matrix:
     c.flat(body, F @ Matrix.Translation((0, 0, -BOARD_DEEP)) @ Matrix.Rotation(math.pi, 4, "Y"), [(-u, v) for u, v in reversed(outline)], 0.0)
     globus(c, F)
     lamp_blocks(c, F)
+    landing_lamp(c, F)
     clock(c, F, *on_board(*CLOCK_AT))
     for name, at in GAUGES_AT.items():
         round_gauge(c, F, name, *on_board(*at))

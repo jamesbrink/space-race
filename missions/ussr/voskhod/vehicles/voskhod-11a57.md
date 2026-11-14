@@ -124,7 +124,7 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | Node | Contains | Leaves as |
 | --- | --- | --- |
 | `Fairing` | `Fairing_Left`, the half with the round opening, and `Fairing_Right` (which on Voskhod 2 carries the blister), each a node with its origin at its foot | each tips outward about its foot and falls away |
-| `BlockI` | the stage: skin, frost, the adapter and its stringers, the instrument bay's hatches, the shield under the engine, the RD-0108's four chambers and four steering nozzles; inside, the two tanks, the cone that carries the engine, the turbopump, five gas bottles, instruments | lifts off the lattice |
+| `BlockI` | the stage: skin, frost, the adapter and its stringers, the instrument bay's hatches, the shield under the engine, the RD-0108's four chambers and four steering nozzles (`RD0108_Bells`: the main bells and the steering nozzles' together, as the RD-107's and RD-108's are, so that a flight's fire hung on it finds both; `RD0108_Liners`; `RD0108_Steering`, the steering nozzles' trunnions, yokes and feed lines); inside, the two tanks, the cone that carries the engine, the turbopump, five gas bottles, instruments | lifts off the lattice |
 | `AftSection` | `AftSection_1` to `_3`, each a third of the skirt with its inner wall, a node with its origin at the middle of its foot | each is pushed off sideways and falls behind |
 | `Interstage` | the lattice and the deflector cone (the 8K72K's, to this vehicle's station) | stays on the core |
 | `CoreStage`, `CoreEngine`, `Booster_B`, `_V`, `_G`, `_D` | the 8K72K's | as the 8K72K's |

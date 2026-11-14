@@ -233,6 +233,28 @@ def hang(obj: bpy.types.Object, on: bpy.types.Object) -> bpy.types.Object:
     return obj
 
 
+def spout(name: str, parent, F: Matrix, mesh: bpy.types.Object | None = None, **props) -> bpy.types.Object:
+    """A node where gas leaves (a vent's nozzle, a turbine's exhaust): its origin on the nozzle's axis in the plane of
+    its mouth and its own +Z the way it pushes (`F`, in the scene's metres; in the exported file its own +Y), so the gas
+    leaves along its -Z, as the braking engine's `RetroEngine_Nozzle` has it. `mesh`, built in the scene's axes, is hung
+    under it without moving."""
+    obj = group(name, parent, **props)
+    obj.matrix_basis = F  # (not matrix_local, which is read back from a world matrix that is not worked out until the scene is)
+    if mesh is not None:
+        mesh.data.transform(F.inverted())
+        mesh.parent = obj
+    return obj
+
+
+def rehang(obj: bpy.types.Object, on: bpy.types.Object) -> bpy.types.Object:
+    """`hang`, for anything built in the scene's axes: a mesh, or a node with meshes of its own under it."""
+    if obj.type == "MESH":
+        return hang(obj, on)
+    obj.matrix_basis = Matrix.Translation(-on.location) @ obj.matrix_basis
+    obj.parent = on
+    return obj
+
+
 def fin(mb: Local, outline, thick_root: float, thick_tip: float, r_root: float, r_tip: float, m: Matrix) -> None:
     """A flat tapered surface: `outline` is (r, z) points in its own plane, which `m` stands on the block."""
     half = lambda r: (thick_root + (thick_tip - thick_root) * (r - r_root) / (r_tip - r_root)) / 2  # noqa: E731

@@ -14,7 +14,7 @@ from mathutils import Matrix
 
 from srlib import interior
 
-from .common import CHAMBER_AT, EXIT_R, STEER_EXIT_R, Local, at, facing
+from .common import CHAMBER_AT, EXIT_R, STEER_EXIT_R, Local, at, facing, spout
 
 # a main chamber, outside: (radius, station) from the exit up over the throat to the head
 BELL = [
@@ -42,6 +42,7 @@ STEER = [(STEER_EXIT_R, 0), (118, 70), (98, 200), (69, 330), (48, 410), (55, 450
 STEER_PIVOT = 560.0  # its trunnions, above its own exit
 STEER_DROP = 60.0  # how far its exit hangs above the main nozzles' plane
 PUMP_Z = 2500.0  # the turbopump's shaft
+EXHAUST = (150.0, 70.0, 470.0)  # the turbine's two exhaust ducts: each from the engine's axis, its radius, and its mouth's station
 
 
 def bell_r(z: float) -> float:
@@ -96,11 +97,18 @@ def build(E: Matrix, node, M: dict, prefix: str, steer: list[tuple[float, float,
             x, y = sx * CHAMBER_AT, sy * CHAMBER_AT
             steel.tube((x * 1.2, y * 1.2, HEAD - 110), (sx * 552, sy * 552, ring), 32, 10)
             steel.tube((x * 0.55, y * 0.55, 1500), (x * 1.0, y * 1.0, 1500), 22, 8)  # ties between the chambers
-    # steam from the turbine leaves through two ducts down the middle, between the chambers, and out below the shield
+    # Steam from the turbine leaves through two ducts down the middle, between the chambers, and out below the shield:
+    # a node of their own (`<prefix>_TurbineExhaust`), its origin midway between the two mouths in their plane and its
+    # own +Z the way they push, up the engine's axis (the steam leaves along its -Z). That it leaves through exhaust pipes, at 450 m/s, is
+    # documented (lpre.de); that there are two, 140 mm across, here, ending this far above the nozzles, is estimated.
+    ex_y, ex_r, ex_z = EXHAUST
+    exhaust = Local(E)
     for k in (-1, 1):
-        steel.tube((0, k * 150, 470), (0, k * 150, 1900), 70, 14, caps=False)
-        steel.lathe([(56, 470), (56, 900), (0, 900)], 14, at(0, k * 150, 0), flip=True)
-        steel.lathe([(56, 470), (70, 470)], 14, at(0, k * 150, 0))
+        exhaust.tube((0, k * ex_y, ex_z), (0, k * ex_y, 1900), ex_r, 14, caps=False)
+        exhaust.lathe([(ex_r - 14, ex_z), (ex_r - 14, 900), (0, 900)], 14, at(0, k * ex_y, 0), flip=True)
+        exhaust.lathe([(ex_r - 14, ex_z), (ex_r, ex_z)], 14, at(0, k * ex_y, 0))
+    ducts = exhaust.build(f"{prefix}_TurbineExhaust_Ducts", M["engine"], None, sharp_angle=35)
+    spout(f"{prefix}_TurbineExhaust", node, E @ at(0, 0, ex_z), ducts)
     if interior():
         # the turbopump lies across the top, between the heads: oxygen pump, turbine, fuel pump on one shaft
         z = PUMP_Z

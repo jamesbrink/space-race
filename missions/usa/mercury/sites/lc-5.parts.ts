@@ -179,6 +179,11 @@ const ON_RAILS: Runs = {
  * crossed, a deck plate over a trench), the road between the pads (the place's), and the land off them.
  */
 export const ON_ROAD: Runs = { on: ['Hardstand', 'Road'], ground: true };
+/**
+ * The emergency shower's cart on its four castors (`GroundEquipment_Shower_Wheel_1` to `_4`, each on its axle: lc5/ground_equipment.py):
+ * 10 in across (estimated). They roll with the way the cart goes; they do not swivel.
+ */
+export const SHOWER_RUNS: Runs = { ...ON_ROAD, wheels: 'GroundEquipment_Shower_Wheel_', wheelRadius: 0.42 * 0.3048, axle: 'z' };
 
 /** A door leaf on its own hinged node, opened and shut on foot. `degrees` is its `swing` in the model: about the vertical, anticlockwise from above. */
 export const doorAction = (id: string, node: string, degrees: number): Action => ({

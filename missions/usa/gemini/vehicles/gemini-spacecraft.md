@@ -154,7 +154,7 @@ where the seats are, and the fit was held to them:
 | What is on each panel | as listed in the module, instrument by instrument | documented | Figure 3-5 sheets 1 and 2; GIV 3.1.2.5 and 3.1.2.9.1 (no clock on the command pilot's panel; the re-entry control switches on the pilot's; ACME logic on the pedestal) |
 | Instruments' sizes | velocity indicator 3.25 by 5.05 in; readout 3.26 by 5.01; keyboard 3.38 square; clock 2 1/4 square | documented | SEDR VIII, pp. 8-164, 8-172, 8-218, 8-252 |
 | Instruments' graduations | accelerometer -6 to 16 g; altimeter one turn in ten; rate of descent 0 to 70 ft/s | estimated | read off the figure, which is too small to read a scale from |
-| Overhead, left and right switch and circuit breaker panels | 9.8 by 11.4 in; 12.5 by 8 in | derived from the figure; their places estimated | Figure 3-5 sheet 2; S65-13244 for the side panels, which stand on the sides forward of the knees (Z139.5 to Z152, 20.3 in off the middle), where a knee in the stirrup posture leaves room |
+| Overhead, left and right switch and circuit breaker panels | 9.8 by 11.4 in; 12.5 by 8 in | derived from the figure; their places estimated | Figure 3-5 sheet 2; S65-13244 for the side panels, which stand on the sides forward of the knees (Z139.5 to Z152, 20.3 in off the middle), where a knee in the stirrup posture leaves room. The five pull handles along the overhead panel's forward edge read CABIN RECIRC, SNORKEL, CABIN VENT, WATER SEAL and O2 HI RATE RECOCK, in the figure's order: documented (Figure 3-5 sheet 2, S/C 3) |
 | Abort handle | on the left side at Z134, its knob 1 in below the axis and 22.1 in off the middle | documented that it is there; place estimated | SEDR 300, Figure 3-1 (below the left switch panel); S65-23489 has the command pilot's hand on it below his elbow. It is put where his left hand comes to it with his elbow at his side |
 | Attitude hand controller | on a console 3.6 in wide between the seats' buckets, Z127.3, its grip from 4 in below the axis to 1.8 above | documented that it is between the seats; place estimated | SEDR 300, Figure 3-1 (at the pedestal's foot). The console is as wide as the two buckets leave |
 | Manoeuvre hand controller | under the command pilot's panel, 7.1 in from the panel's outboard corner | documented that it is under that panel; **place contradicts the figure** | Figure 3-1 draws it under the panel about 4 in from its outboard end. That is where the command pilot's left knee is with his feet in the stirrups, so it is built 3 in further inboard, between his knees. The figure is a perspective sketch and "typical"; if it is right to the inch, the knee and the controller's housing touch |
@@ -235,6 +235,10 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
   on the large bulkhead only, that bulkhead is flat and square to the axis where the real one's
   form is not known, and the equipment bays between it and the cone are empty but for the
   experiment's water tank.
+  Its roofs and the beam between the hatches follow the cone and are shaded as curves
+  (`gemini_cabin.round_off`); its sheets are shaded flat. The roof forward of the hatches is
+  cut in cells of about an inch and a half, so the wall of a trough let down into it (2 in wide)
+  is a cell or two: a crease where the real section is not known.
 - **The seat** is the Smithsonian's two in form and size, with little of what was packed on it:
   the parachute and the raft are one pad behind the backboard, the egress kit a thin pad (thinner
   than the fit implies: "Crew station"), and there is no ballute, survival kit, drogue mortar,
