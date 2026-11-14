@@ -12,6 +12,7 @@ import { chapman, Globe } from './globe';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens';
 import type { Land } from './land';
 import { later } from './later';
+import type { Levelled } from './lod';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
 import { studio } from './studio';
 import { buildTyuratam } from './tyuratam';
@@ -47,6 +48,8 @@ export interface Setting {
   fog: THREE.FogExp2 | null;
   /** Scenery that is part of the place rather than the model. */
   scenery: THREE.Object3D[];
+  /** Of that scenery, what is drawn at levels of detail and chooses them by its size on screen, as the place round the pad does (lod.ts `Levelled`). */
+  levels?: Levelled[];
   /** How far from the model there is something to look at, metres: the view can be walked and pulled back this far. */
   reach?: number;
   /** How far away the furthest thing in the place is, metres: the camera sees at least this far. Left out: only the model. */
@@ -371,6 +374,7 @@ export type Occasion = Pick<SitedFlight, 'site' | 'launch' | 'weather'>;
 interface Place {
   floor: THREE.Mesh;
   scenery: THREE.Object3D[];
+  levels: Levelled[];
   tick: (dt: number) => void;
   simplify: (on: boolean) => void;
   attend: (eye: THREE.Vector3) => boolean;
@@ -569,6 +573,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     exposure: 0.8,
     fog,
     scenery: here.scenery,
+    levels: here.levels,
     reach: here.reach,
     horizon: here.horizon,
     tick: here.tick,

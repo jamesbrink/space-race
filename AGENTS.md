@@ -61,6 +61,7 @@ pnpm test:fires       # needs `pnpm dev` running: every engine burning on the re
 pnpm test:history     # needs `pnpm dev` running: Back and Forward between the front page, flights and places, with real clicks
 pnpm test:seat        # needs `pnpm dev` running: every seat of every flight sat in from the gallery, by the control and by C, at 1280 and 390
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
+pnpm test:wheels      # needs `pnpm dev` running: every slide and drive at each site, each wheel on what it runs on, within 5 mm
 pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through both flights, seen from each rig and from far out, its line and chips checked
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
@@ -214,7 +215,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 - Parts leave as the hardware did. A part's `moves` (types.ts: `Move`) are swings, slides and
   drives, each on a named child node and each timed against the model's slider: platforms part,
   a structure rolls on its rails, a jib lowers, a truck folds its legs and drives off with its
-  wheels rolling and steering. The model builds each moving piece as its own node with its origin
+  wheels rolling and steering. A slide or a drive that runs on something says what (`runs`: the model's rails, a
+  road, the land; types.ts `Runs`) and stands on it at every instant, each wheel on what is under its tread
+  (src/viewer/runs.ts; `pnpm test:wheels` holds every wheel within 5 mm of it). The model builds each moving piece as its own node with its origin
   on its hinge, in the pose it has at the start of the slider or at the hatch; `lc-5.md` tabulates
   them. Say in the part's text which motions are documented and which are not. Hardware that moved
   at its own times on a model whose slider takes it apart (the periscope's door) has `clocked`

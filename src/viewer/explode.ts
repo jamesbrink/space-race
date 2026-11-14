@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Drive, Move, Part } from '../types';
+import { Rider, type Surfaces } from './runs.ts';
 
 /**
  * How far along its travel a part is when the explode slider reads `t`.
@@ -37,6 +38,8 @@ export interface RoutePoint {
  */
 export class Route {
   readonly length: number;
+  /** The way its first leg goes, radians from +z toward +x: what its headings are measured from. */
+  readonly start: number;
   private readonly samples: { s: number; x: number; z: number; h: number }[] = [];
 
   constructor(points: [number, number][]) {
@@ -55,6 +58,7 @@ export class Route {
     }
     // headings as one continuous turn, measured from the first
     const h0 = this.samples[0]!.h;
+    this.start = h0;
     let last = 0;
     for (const p of this.samples) {
       let d = p.h - h0;
@@ -63,6 +67,24 @@ export class Route {
       p.h = last = d;
     }
     this.length = s;
+  }
+
+  /** The point of the route nearest (x, z), looked for within `reach` metres of `near` along it: its distance along it. */
+  nearest(x: number, z: number, near: number, reach: number): number {
+    let best = near;
+    let least = Infinity;
+    for (const p of this.samples) {
+      if (p.s < near - reach || p.s > near + reach) continue;
+      const d = (p.x - x) ** 2 + (p.z - z) ** 2;
+      if (d < least) {
+        least = d;
+        best = p.s;
+      }
+    }
+    // (between that sample and its neighbours: the foot of the perpendicular on the route's own line there)
+    const a = this.at(best);
+    const h = a.heading + this.start;
+    return Math.min(this.length, Math.max(0, best + (x - a.x) * Math.sin(h) + (z - a.z) * Math.cos(h)));
   }
 
   at(distance: number): RoutePoint {
@@ -112,6 +134,8 @@ class Driver {
   private readonly object: THREE.Object3D;
   private readonly home: THREE.Vector3;
   private readonly drive: Drive;
+  /** Where each wheel was built, in the vehicle's frame (a rail wagon's are put on its rails from there). */
+  private readonly rests = new Map<THREE.Object3D, THREE.Vector3>();
 
   // (no parameter properties: the tests load this file with Node's type stripping, which cannot erase them)
   constructor(object: THREE.Object3D, home: THREE.Vector3, drive: Drive) {
@@ -132,13 +156,20 @@ class Driver {
       if (!steered && !named(drive.wheels, o.name)) return;
       o.rotation.order = this.axis === 'x' ? 'YXZ' : 'YZX'; // turned about the vertical, then rolled about the axle
       this.rolling.push(o);
+      this.rests.set(o, o.position.clone());
       if (steered) this.steering.push(o);
     });
+  }
+
+  private chord(distance: number): number {
+    return chordAt(this.route, distance, this.drive.wheelbase);
   }
 
   set(k: number): void {
     const distance = k * this.route.length;
     const p = this.route.at(distance);
+    // a rail wagon lies along the line between its bogies, both on the route (types.ts Drive `bogies`)
+    if (this.drive.bogies) p.heading = this.chord(distance) - this.chord(0);
     // turn about the rear axle, which is what follows the route
     const turned = this.pivot.clone().applyAxisAngle(UP, p.heading);
     this.object.rotation.y = p.heading;
@@ -148,7 +179,52 @@ class Driver {
     // the front wheels point where the route is going: one wheelbase ahead of the rear axle
     const steer = steerAlong(this.route, distance, this.drive.wheelbase) * (this.drive.reverse ? -1 : 1);
     for (const w of this.steering) w.rotation.y = steer;
+    for (const [w, rest] of this.rests) w.position.copy(rest);
+    if (this.drive.bogies) this.onRails(distance, p.heading);
   }
+
+  /**
+   * A rail wagon's wheel sets on its rails (the route is the track's line): each turned to the track where it stands and
+   * moved across to it, as a bogie's axles are by the rails, wherever the line between the bogies' middles leaves it (a
+   * set two metres from its bogie's middle just past a corner of the track).
+   */
+  private onRails(distance: number, heading: number): void {
+    const o = this.object;
+    const cos = Math.cos(heading);
+    const sin = Math.sin(heading);
+    // the route's frame: where the pivot is on it, in the frame the vehicle is placed in
+    const ox = this.home.x + this.pivot.x;
+    const oz = this.home.z + this.pivot.z;
+    for (const [w, rest] of this.rests) {
+      if (w.parent !== o) continue;
+      // where the set is, from the route's start (the vehicle turned by `heading` about the vertical: x' = x cos + z sin)
+      const x = o.position.x + rest.x * cos + rest.z * sin - ox;
+      const z = o.position.z - rest.x * sin + rest.z * cos - oz;
+      const s = this.route.nearest(x, z, distance, this.drive.wheelbase + 5);
+      const on = this.route.at(s);
+      // across to it, in the vehicle's own frame, and turned to the track there
+      const dx = on.x - x;
+      const dz = on.z - z;
+      w.position.x += dx * cos - dz * sin;
+      w.position.z += dx * sin + dz * cos;
+      w.rotation.y = on.heading - heading;
+    }
+  }
+}
+
+/** The heading of the line from a point of a route to the point `ahead` metres further on (the route carried on straight past its end). */
+export function chordAt(route: Route, distance: number, ahead: number): number {
+  const a = route.at(distance);
+  const far = distance + ahead;
+  const end = route.at(route.length);
+  const b =
+    far <= route.length
+      ? route.at(far)
+      : {
+          x: end.x + Math.sin(end.heading + route.start) * (far - route.length),
+          z: end.z + Math.cos(end.heading + route.start) * (far - route.length),
+        };
+  return Math.atan2(b.x - a.x, b.z - a.z);
 }
 
 function ease(x: number): number {
@@ -261,8 +337,12 @@ export function runAt(run: unknown, through: number, by: THREE.Vector3, turn: TH
 export class Sequence {
   private readonly nodes = new Map<THREE.Object3D, { position: THREE.Vector3; quaternion: THREE.Quaternion }>();
   private readonly steps: { move: Move; object: THREE.Object3D; node: string; driver?: Driver }[] = [];
+  /** What of it runs on something (Move `runs`: viewer/runs.ts), a rider a node, outermost first. */
+  private readonly riders = new Map<THREE.Object3D, Rider>();
+  private readonly surfaces: Surfaces | null;
 
-  constructor(part: THREE.Object3D, home: THREE.Vector3, moves: Move[]) {
+  constructor(part: THREE.Object3D, home: THREE.Vector3, moves: Move[], surfaces: Surfaces | null = null) {
+    this.surfaces = surfaces;
     for (const move of moves) {
       const object = move.node ? part.getObjectByName(move.node) : part;
       if (!object) {
@@ -283,6 +363,27 @@ export class Sequence {
         driver: move.kind === 'drive' ? new Driver(object, rest, move) : undefined,
       });
     }
+    // (a vehicle driven more than once is a nest of nodes: the outermost is stood first, and those inside it on that)
+    const depth = (o: THREE.Object3D): number => (o.parent ? depth(o.parent) + 1 : 0);
+    for (const { move, object } of [...this.steps].sort((a, b) => depth(a.object) - depth(b.object))) {
+      if (this.riders.has(object) || (move.kind !== 'slide' && move.kind !== 'drive') || !move.runs) continue;
+      const runs = move.runs;
+      this.riders.set(
+        object,
+        new Rider(
+          object,
+          runs,
+          move.kind === 'drive'
+            ? { prefixes: [move.wheels, move.steered], radius: move.wheelRadius, axle: move.axle, rolls: false }
+            : {
+                prefixes: runs.wheels ? [runs.wheels] : [],
+                radius: runs.wheelRadius ?? 0,
+                axle: runs.axle ?? 'z',
+                rolls: Boolean(runs.wheels),
+              },
+        ),
+      );
+    }
   }
 
   /**
@@ -296,6 +397,7 @@ export class Sequence {
       object.position.copy(rest.position);
       object.quaternion.copy(rest.quaternion);
     }
+    for (const rider of this.riders.values()) rider.slid.set(0, 0, 0);
     for (const { move, object, node, driver } of this.steps) {
       if (loose?.has(object.name)) continue;
       const at = held?.get(node) ?? k;
@@ -313,9 +415,14 @@ export class Sequence {
       if (move.kind === 'swing') {
         // in the parent's frame, so it goes before whatever turn the node already has
         object.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...move.axis).normalize(), move.angle * u));
-      } else if (move.kind === 'slide') object.position.add(new THREE.Vector3(...move.by).multiplyScalar(u));
-      else driver?.set(u);
+      } else if (move.kind === 'slide') {
+        const by = new THREE.Vector3(...move.by).multiplyScalar(u);
+        object.position.add(by);
+        this.riders.get(object)?.slid.add(by);
+      } else driver?.set(u);
     }
+    // and what runs on something is stood on it, as it has just been put
+    for (const [object, rider] of this.riders) if (!loose?.has(object.name)) rider.stand(this.surfaces);
   }
 }
 
@@ -330,7 +437,8 @@ export class Exploder {
   /** Nodes something else is moving (a vehicle being driven by hand): the slider leaves them where they are. */
   private readonly loose = new Set<string>();
 
-  constructor(root: THREE.Object3D, parts: Part[]) {
+  /** `surfaces`: where what runs on something is stood (viewer/runs.ts); left out, it moves level, as built. */
+  constructor(root: THREE.Object3D, parts: Part[], surfaces: Surfaces | null = null) {
     this.orders = Math.max(0, ...parts.map((p) => p.order));
     for (const part of parts) {
       const object = root.getObjectByName(part.node);
@@ -340,10 +448,10 @@ export class Exploder {
       }
       // remember where it was built, so the model can be shown again later from a clean state
       const home = ((object.userData.home as THREE.Vector3 | undefined) ??= object.position.clone());
-      this.entries.push({ object, home, part, sequence: part.moves && new Sequence(object, home, part.moves) });
+      this.entries.push({ object, home, part, sequence: part.moves && new Sequence(object, home, part.moves, surfaces) });
       // (each on a node of its own, never the part's: the part's own place is the slider's)
       const clocked = part.clocked?.filter((m) => m.node);
-      if (clocked?.length) this.clocked.push(new Sequence(object, home, clocked));
+      if (clocked?.length) this.clocked.push(new Sequence(object, home, clocked, surfaces));
     }
   }
 

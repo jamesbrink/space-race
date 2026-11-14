@@ -1,4 +1,4 @@
-import type { Action, Flight, Move, Part } from '../../../../src/types';
+import type { Action, Flight, Move, Part, Runs } from '../../../../src/types';
 import { LC5 } from './lc-5.ts';
 
 /**
@@ -167,6 +167,18 @@ const fallAxis = (degrees: number): [number, number, number] => [-Math.sin(degre
 export const TOWER = { lower: 71.94, standby: 31.77, stow: 66.81, fold: 0.86 };
 const WHEEL_R = 0.457; // the structure's rail wheels
 const ROLL = [33.53, 19.2]; // metres: to the edge of the pad, then on to the launch position
+/** What the structure rolls on (types.ts Runs): its rails, on the hardstand and on along the track beyond it (the place's). */
+const ON_RAILS: Runs = {
+  on: ['Hardstand/steel-rail', 'Track/steel-rail'],
+  wheels: 'ServiceStructure_Wheel_',
+  wheelRadius: WHEEL_R,
+  axle: 'x',
+};
+/**
+ * What a road vehicle, a cart or a hut on skids runs on: the hardstand's concrete and whatever of it lies on that (a rail
+ * crossed, a deck plate over a trench), the road between the pads (the place's), and the land off them.
+ */
+export const ON_ROAD: Runs = { on: ['Hardstand', 'Road'], ground: true };
 
 /** A door leaf on its own hinged node, opened and shut on foot. `degrees` is its `swing` in the model: about the vertical, anticlockwise from above. */
 export const doorAction = (id: string, node: string, degrees: number): Action => ({
@@ -244,19 +256,8 @@ export function lc5Parts(day: PadDay): Part[] {
           { kind: 'slide', node: `ServiceStructure_Platform${level}_Left`, by: [-1.372, 0, 0], from, to },
           { kind: 'slide', node: `ServiceStructure_Platform${level}_Right`, by: [1.372, 0, 0], from, to },
         ]),
-        { kind: 'slide', by: [0, 0, -ROLL[0]!], from: T.rollback, to: T.cabIn - 0.01 },
-        { kind: 'slide', by: [0, 0, -ROLL[1]!], from: T.launchPosition, to: T.cabAway - 0.02 },
-        ...[1, 2, 3, 4, 5, 6, 7, 8].flatMap((n): Move[] => [
-          { kind: 'swing', node: `ServiceStructure_Wheel_${n}`, axis: X, angle: -ROLL[0]! / WHEEL_R, from: T.rollback, to: T.cabIn - 0.01 },
-          {
-            kind: 'swing',
-            node: `ServiceStructure_Wheel_${n}`,
-            axis: X,
-            angle: -ROLL[1]! / WHEEL_R,
-            from: T.launchPosition,
-            to: T.cabAway - 0.02,
-          },
-        ]),
+        { kind: 'slide', by: [0, 0, -ROLL[0]!], from: T.rollback, to: T.cabIn - 0.01, runs: ON_RAILS },
+        { kind: 'slide', by: [0, 0, -ROLL[1]!], from: T.launchPosition, to: T.cabAway - 0.02, runs: ON_RAILS },
       ],
     },
     {
@@ -352,6 +353,7 @@ export function lc5Parts(day: PadDay): Part[] {
           wheels: 'CherryPicker_Wheel',
           steered: 'CherryPicker_SteerWheel',
           axle: 'z',
+          runs: ON_ROAD,
         },
       ],
     },
@@ -447,6 +449,7 @@ export const spareTrailerLeaves = (from: number, to: number): Move[] => [
     wheels: 'GroundEquipment_Tractor_Wheel',
     steered: 'GroundEquipment_Tractor_SteerWheel',
     axle: 'z',
+    runs: ON_ROAD,
   },
   {
     kind: 'drive',
@@ -486,12 +489,13 @@ export const spareTrailerLeaves = (from: number, to: number): Move[] => [
     wheels: 'GroundEquipment_Trailer_Wheel',
     steered: 'GroundEquipment_Trailer_NoSteer',
     axle: 'x',
+    runs: ON_ROAD,
   },
 ];
 
 /** Hut `k` (1 or 2) dragged off on its skids by its pickup, straight out across the pad's edge to the road behind (estimated). */
 export const hutLeaves = (k: number, from: number, to: number): Move[] => [
-  { kind: 'slide', node: `GroundEquipment_Hut${k}`, by: [72, 0, 0], from, to },
+  { kind: 'slide', node: `GroundEquipment_Hut${k}`, by: [72, 0, 0], from, to, runs: ON_ROAD },
   {
     kind: 'drive',
     node: `GroundEquipment_Tow${k}`,
@@ -509,6 +513,7 @@ export const hutLeaves = (k: number, from: number, to: number): Move[] => [
     wheels: `GroundEquipment_Tow${k}_Wheel`,
     steered: `GroundEquipment_Tow${k}_SteerWheel`,
     axle: 'z',
+    runs: ON_ROAD,
   },
 ];
 

@@ -76,8 +76,14 @@ export interface Drive {
   /** It backs along the route instead of driving nose first. */
   reverse?: boolean;
   wheelRadius: number;
-  /** Rear axle to front axle. */
+  /** Rear axle to front axle (a rail wagon's: its rear bogie's middle to its front one's). */
   wheelbase: number;
+  /**
+   * It is a rail wagon: both its bogies are on the route, the one `wheelbase` ahead of the rear as well, and the body
+   * lies along the line between them, as it does on a track (left out: a road vehicle, whose rear axle follows the
+   * route and which points along it). Beyond the route's end the front bogie goes on along its last heading.
+   */
+  bogies?: boolean;
   /**
    * Between kerbs at full lock, metres: what it can be driven round on foot (viewer/drive.ts).
    * A vehicle that drives itself off this way can also be got into and driven, if its model has
@@ -93,6 +99,37 @@ export interface Drive {
 }
 
 /**
+ * What a thing that slides or drives runs on (a `slide`'s or a `drive`'s `runs`), so that at every instant of its move
+ * it stands on it, neither in it nor over it (viewer/runs.ts): each wheel on what is under its tread, the body pitched
+ * and rolled between them, its height wherever that puts it. Without it a move is level, at the height it was built at.
+ * Say what the honest surface is: the model's own rails for a rail wagon, the land for a road painted on it.
+ */
+export interface Runs {
+  /**
+   * Nodes of the flight's models, the place round the pad among them, whose tops it runs on: a node's name ('DeckRails'),
+   * or `node/material` for only its meshes whose material's name begins so ('Hardstand/steel-rail'), since the viewer
+   * keys on materials and a node may hold the ties and the ballast with its rails.
+   */
+  on?: string[];
+  /**
+   * And the site's own ground, the land (Setting.groundAt): what a road or an apron painted on it lies on, and the track
+   * beyond the modelled rails. Where the highest thing under a tread is one `on` names (a rail's head), the land beside
+   * it is not what the wheel runs on (a flange over a flangeway the land only paints).
+   */
+  ground?: boolean;
+  /**
+   * A slide's wheels: nodes named this and a number (`_1`, `_2`), each with its origin on its axle (a drive's are its own
+   * `wheels` and `steered`). They roll with the distance run. Left out, it has none and stands on its own lowest points
+   * (a hut's skids, a cart's wheels that are not nodes of their own).
+   */
+  wheels?: string;
+  /** A slide's wheels' radius where the tread bears, metres. */
+  wheelRadius?: number;
+  /** Which of a slide's wheel's own axes is its axle. */
+  axle?: 'x' | 'z';
+}
+
+/**
  * One motion in a part's sequence, played over a stretch of the model's slider: `from` and `to`
  * are positions on it, 0 to 1, and the motion eases in and out between them. `node` is a
  * node inside the part (default: the part itself). Motions on one node add up, in order.
@@ -101,6 +138,8 @@ export interface Drive {
  *        model puts a hinged piece's origin on its hinge.
  * slide  move by `by` metres.
  * drive  a wheeled vehicle follows a route, turning with it, wheels rolling and steering.
+ *        Either, given `runs` (Runs), stands on what it runs on at every instant: its wheels on the rails or the ground
+ *        under them, its body pitched between them.
  * run    the node's own motion, worked out by the script that built it and written in the node's extras (`run`: seven
  *        figures a sample, evenly spaced through the motion: how far it has moved, x y z in metres, and how it has
  *        turned, a quaternion x y z w, both in its parent's coordinates and from where it was built). A linkage: a
@@ -113,9 +152,9 @@ export interface Drive {
  */
 export type Move = { from: number; to: number; node?: string } & (
   | { kind: 'swing'; axis: [number, number, number]; angle: number }
-  | { kind: 'slide'; by: [number, number, number] }
+  | { kind: 'slide'; by: [number, number, number]; runs?: Runs }
   | { kind: 'run'; back?: boolean }
-  | ({ kind: 'drive' } & Drive)
+  | ({ kind: 'drive'; runs?: Runs } & Drive)
 );
 
 /**
@@ -317,6 +356,13 @@ export type Quantity =
 export type Signal = 'ready' | 'tower' | 'separated' | 'retro' | 'retropack' | 'entry' | 'drogue' | 'main' | 'abort';
 
 /**
+ * A lamp lit by a position of the cabin's lights' switch (CabinDef.lighting): one of the model's `lights`, by its index,
+ * in its own colour at its whole strength; or `light` in `colour` at `level` of its strength (a red bulb in the same
+ * fitting, a dim duty light). Its fitting glows in the same colour, as brightly.
+ */
+export type CabinLamp = number | { light: number; colour?: number; level?: number };
+
+/**
  * A model's inside, as somewhere to sit and fly from (viewer/cabin.ts). Every node named is a node of the model at its
  * full level of detail. What each is called and what is said about it is read when the pointer is on it, on board or
  * in the cutaway. Nothing in the viewer knows any one spacecraft: a new one is described here.
@@ -362,8 +408,16 @@ export interface CabinDef {
    * from where it is headed, in a flight being flown by hand (src/cockpit.ts `work`). One that `holds` a state of the
    * flight deck (orbitdeck.ts `holds`: 'free', the hand controls freed) stands at the second of its `throw` positions
    * (its node's extras) while the deck says that state holds, and at its first otherwise, so the cabin and the deck agree.
+   *
+   * A thrown control. A control whose node carries `throw` in its extras (a toggle or a tumbler: a turn about its own X
+   * for each of its positions, the first as it was built) is a switch: a click throws it to its next position (and round
+   * to the first), the lever goes over as a switch's does, and it stays there. `says` names its positions, in order. What
+   * it switches says so by naming it as its `control` (`lighting.control`, `globe.control`), and is told each time it is
+   * thrown; one with `does` also asks the flight deck for that command when thrown; one that `holds` stands as the deck's
+   * state has it while the flight is flown by hand, and as the hand last threw it otherwise. Every switch that switches
+   * something is also a button in the seat's bar, as the lights' always was.
    */
-  controls?: { node: string; name: string; about: string; does?: string; works?: string; holds?: string }[];
+  controls?: { node: string; name: string; about: string; does?: string; works?: string; holds?: string; says?: string[] }[];
   /**
    * Windows, as light: where each pane is (`at`) and the way it faces out of the model (`out`, a unit vector), in the
    * model's frame, and how wide its glass is, metres. What is outside each (sky, the Earth, black) is looked at a
@@ -372,22 +426,34 @@ export interface CabinDef {
    */
   windows?: { at: [number, number, number]; out: [number, number, number]; across: number; name?: string }[];
   /**
-   * The cabin's own lights and their switch. `control` is a node of the model whose extras carry `throw`: a turn about
-   * its own X for each position the switch has, the first as it was built; left out where the model has no switch built
-   * for them yet (say so), and they are thrown from the page alone. `ways` says, position by position, what
-   * the switch reads there and which of the model's `lights` (by index) are lit. `fittings` are the meshes that glow
-   * with each of `lights`, in the same order, each with a material of its own: put out with its light. The cabin opens
-   * with the switch as it was built; what the build shaded is shaded for the lamps on and for the lamps off
-   * (viewer/cabin.ts), so a dark cabin is lit by its windows, its periscope and its telelights.
+   * The cabin's own lights and their switch. `control` is a thrown control of the model (its extras carry `throw`: a
+   * turn about its own X for each position the switch has, the first as it was built; `controls` above); left out where
+   * the model has no switch built for them yet (say so), and they are thrown from the page alone. `ways` says, position
+   * by position, what the switch reads there and which of the model's `lights` it lights (`CabinLamp`: by index, and in
+   * what colour and how brightly; the rest are dark). `fittings` are the meshes that glow with each of `lights`, in the
+   * same order, each with a material of its own: they glow in their lamp's colour and as brightly as it is lit. The
+   * cabin opens with the switch as it was built; what the build shaded is shaded for the lamps on and for the lamps off
+   * (viewer/cabin.ts), mixed by how much of the lamps' strength is lit, so a dark cabin is lit by its windows, its
+   * periscope and its telelights.
    */
-  lighting?: { control?: string; name: string; about: string; ways: { says: string; lit: number[] }[]; fittings?: string[] };
+  lighting?: { control?: string; name: string; about: string; ways: { says: string; lit: CabinLamp[] }[]; fittings?: string[] };
   /**
-   * A globe that shows where the spacecraft is (the Vostok's Globus): `node` turns about its own centre so that the point
-   * under the spacecraft at the clock's instant stands under the cross (the node's own +Z as built) with the way it is
-   * going toward the node's own +Y as built. The node's own +Y is the Earth's axis toward the north, and its own +Z is
-   * the meridian of Greenwich as built. Its surface shows the land and the sea from the globe's own map (viewer/globe.ts).
+   * A globe that shows where the spacecraft is (the Vostok's Globus): `node` turns about its own centre so that a point
+   * of the Earth stands under the cross (the node's own +Z as built) with the way the spacecraft goes over it toward the
+   * node's own +Y as built. The node's own +Y is the Earth's axis toward the north, and its own +Z is the meridian of
+   * Greenwich as built. Its surface shows the land and the sea from the globe's own map (viewer/globe.ts). Which point is
+   * its mode's (`modes`, the first as built; with none, `place`): `place`, the point under the spacecraft at the clock's
+   * instant; `landing`, where it would come down if the braking engine were fired now (the simulator's own prediction of
+   * that descent, viewer/cabin.ts `burnNow`). `control` is the thrown control (`controls`) that changes the mode, a
+   * position for each mode; `lamp`, a lamp of `lamps` lit while its mode is on.
    */
-  globe?: { node: string; name: string; about: string };
+  globe?: {
+    node: string;
+    name: string;
+    about: string;
+    control?: string;
+    modes?: { says: string; shows: 'place' | 'landing'; lamp?: string }[];
+  };
   /** The hand controller: the node tips about these axes of its own (unit vectors) by `throw` radians at full command, and twists for yaw. */
   stick?: { node: string; throw: number; pitch: [number, number, number]; roll: [number, number, number]; yaw: [number, number, number] };
   /**

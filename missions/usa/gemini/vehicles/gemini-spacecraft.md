@@ -252,10 +252,12 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
 - **The inside's shadows are not baked.** Its three floodlights are described to the viewer and
   light it as indoors, but nothing here casts the cabin's own shadows into its vertices as the
   Mercury cabin's are (`mercury_cabin.shade`).
-- **One switch for three floodlights, and no red light.** The CENTER LIGHT switch on the overhead panel was the
+- **One switch for three floodlights, and the red light estimated.** The CENTER LIGHT switch on the overhead panel was the
   centre lamp's alone; each side lamp had its own WHITE-OFF-RED selector and a rheostat on its fixture (SEDR 300,
-  p. 3-20). The fittings are plain blocks with a lens, so the one switch that is built throws all three, none can
-  be dimmed, and the red bulbs are not drawn: at RED the cabin is dark.
+  p. 3-20). The fittings are plain blocks with a lens, so the one switch that is built throws all three and none can
+  be dimmed. At RED each lamp lights from its own fitting in red at a third of its white strength (colour and
+  strength chosen by eye), and the cabin's shade is not baked at all (above), so nothing of the red's own shadow is
+  drawn.
 - **The windows are placed from one photograph.** Where each is, its outline and the trough's are
   S65-21090's, through a camera fitted to it: two inches and three degrees. SEDR 300's section
   (Figure 2-10) marks station Z136.50 at the pane's sunk end. The photographs and both of the

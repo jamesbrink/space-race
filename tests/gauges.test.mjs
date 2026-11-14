@@ -185,7 +185,34 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
           assert.ok(['free'].includes(c.holds), `${c.node}: the deck has no state ${c.holds}`);
         }
       }
+      // a thrown control that names its positions has as many as its lever has turns
+      for (const c of cabin.controls ?? [])
+        if (c.says) {
+          const throws = nodes.get(c.node).throw;
+          assert.ok(
+            Array.isArray(throws) && throws.length === c.says.length,
+            `${c.node}: ${c.says.length} positions named and ${throws?.length} turns`,
+          );
+        }
       if (cabin.globe) assert.ok(nodes.has(cabin.globe.node), `globe ${cabin.globe.node} is not in ${model.url}`);
+      // a globe of modes has its tumbler, a turn for each mode, the first as built; a mode's lamp is one of the cabin's
+      if (cabin.globe?.modes) {
+        const tumbler = nodes.get(cabin.globe.control ?? '');
+        assert.ok(
+          tumbler && Array.isArray(tumbler.throw) && tumbler.throw[0] === 0,
+          `globe: no tumbler ${cabin.globe.control} with a throw`,
+        );
+        assert.equal(tumbler.throw.length, cabin.globe.modes.length, 'globe: a turn of its tumbler for each mode');
+        assert.equal(cabin.globe.modes[0].shows, 'place', 'globe: built showing where the spacecraft is');
+        for (const m of cabin.globe.modes)
+          if (m.lamp)
+            assert.ok(
+              cabin.lamps?.some((l) => l.node === m.lamp),
+              `globe: no lamp ${m.lamp}`,
+            );
+        if (cabin.globe.modes.some((m) => m.shows === 'landing'))
+          assert.ok(flight.orbital?.manual, 'globe: a landing-place mode on a flight whose record says nothing of a burn by hand');
+      }
       if (cabin.periscope?.ring)
         assert.ok(nodes.has(cabin.periscope.ring.mesh), `ring ${cabin.periscope.ring.mesh} is not in ${model.url}`);
       // (a model with no switch built for its lights says so, and they are thrown from the page alone)
@@ -212,7 +239,13 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
         const lamps = model.lights ?? [];
         for (const way of cabin.lighting.ways) {
           assert.ok(way.says, 'a position says what it is');
-          for (const i of way.lit) assert.ok(lamps[i], `lighting: ${way.says} lights lamp ${i}, and the model has ${lamps.length}`);
+          for (const l of way.lit) {
+            // (a lamp by its index, or in a colour and at a share of its strength: types.ts CabinLamp)
+            const lamp = typeof l === 'number' ? { light: l } : l;
+            assert.ok(lamps[lamp.light], `lighting: ${way.says} lights lamp ${lamp.light}, and the model has ${lamps.length}`);
+            if (lamp.level !== undefined) assert.ok(lamp.level > 0 && lamp.level <= 1, `lighting: ${way.says}: a level of ${lamp.level}`);
+            if (lamp.colour !== undefined) assert.ok(Number.isInteger(lamp.colour) && lamp.colour > 0 && lamp.colour <= 0xffffff);
+          }
         }
         assert.deepEqual(
           cabin.lighting.ways[0].lit,

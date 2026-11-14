@@ -62,7 +62,7 @@ src/
   viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, their skin worn by finer lumps, lit as cloud is (the Sun's light
   viewer/cloudnoise.ts                the clouds' two tiles of noise as bytes (pinned by digest in tests/); cloudnoise.worker.ts makes them off the page's thread
                                       marched through them and scattered, the sky above, the ground below), ray-marched at a quarter of the pixels, laid over the frame
-  viewer/around.ts                    what stands round a site beyond its own place (SiteDef.around: Site 2's assembly building), fetched as scenery and set on the land
+  viewer/around.ts                    what stands round a place beyond its own model (SiteDef.around: Site 2's assembly building; the Cape's neighbouring complexes), fetched as scenery at its levels of detail and set on the land
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places: the near ones a model of their own
                                       (missions/usa/mercury/sites/cape/, `pnpm model:cape`), fetched and placed here; the far ones shapes made here
   viewer/lod.ts                       levels of detail: which one each model and each piece of the place is drawn at, and the fade from one to the next
@@ -89,6 +89,7 @@ src/
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
+  viewer/runs.ts                      what slides or drives stands on what it runs on: wheels on rails or ground, body pitched between them
   world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, rotation, mean orbits
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
@@ -163,6 +164,7 @@ tools/
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
+  wheels-test.mjs                     browser check that every slide and drive keeps each wheel on what it runs on, at each site
   walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor
   front-test.mjs                      browser check of the front page: what a bare address shows, going into a flight and back out, what it draws when, what it holds as a phone
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5

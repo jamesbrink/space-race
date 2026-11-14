@@ -833,7 +833,9 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, da
   };
   return {
     floor: land.mesh,
-    scenery: [flora.group, ...(far?.meshes ?? [])] as THREE.Object3D[],
+    scenery: [flora.group, ...(far ? [far.group] : [])] as THREE.Object3D[],
+    // (the building at its levels of detail, each chosen by its size on screen: around.ts)
+    levels: far ? [far] : [],
     reach: 1500,
     horizon: FAR,
     /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green; and in the cel look. */
@@ -853,7 +855,7 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, da
       land.attend(eye);
       return flora.attend(eye);
     },
-    arrived: far?.arrived ?? (() => false), // (the building round the site: something that casts a shadow where there was nothing)
+    arrived: () => far?.arrived() ?? false, // (the building round the site: something that casts a shadow where there was nothing)
     view: (camera: THREE.Camera) => land.view(camera),
     plantsClear: (at: THREE.Vector3, within: number) => flora.clear(local(at), within),
     plantsOut: (at: THREE.Vector3, margin: number) => {

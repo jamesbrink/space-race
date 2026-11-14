@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { Cabin, historyAt } from '../src/viewer/cabin.ts';
+import { burnNow, Cabin, historyAt } from '../src/viewer/cabin.ts';
 
 /** A cabin of the nodes given, with no flight to read: every instrument shows its own fixed `value`. */
 function cabin(nodes, instruments) {
@@ -252,4 +252,200 @@ test('the globe turns the point under the spacecraft under its cross, the way it
     there.distanceTo(new THREE.Vector3(0, 0, 1)) < 1e-6,
     `an hour on, the ground the Earth has turned under it: ${there.toArray()}`,
   );
+});
+
+test('a thrown control steps through its positions on a click, holds there, and its lever goes over as a switch’s does', () => {
+  const group = new THREE.Group();
+  const full = new THREE.Group();
+  group.add(full);
+  const tumbler = node('Ctl_Tumbler', { throw: [0, 0.4, 0.8] });
+  const ring = node('Ctl_Ring', { pull: 0.01 });
+  ring.position.set(1, 0, 0);
+  full.add(tumbler, ring);
+  const host = { camera: new THREE.PerspectiveCamera(), upAt: (_p, out) => out.set(0, 1, 0), redraw: () => {}, reshade: () => {} };
+  const flight = { site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
+  const controls = [
+    { node: 'Ctl_Tumbler', name: 'Tumbler', about: 'Three ways.', says: ['Up', 'Middle', 'Down'] },
+    { node: 'Ctl_Ring', name: 'Ring', about: 'Pulled.' },
+  ];
+  const cabin = new Cabin(host, flight, { cabin: { instruments: [], within: [], controls } }, group, full, []);
+  const thing = cabin.thingAt(new THREE.Vector3());
+  assert.equal(thing?.label, 'Tumbler');
+  assert.equal(thing.thrown, 0, 'the tumbler is a switch');
+  assert.equal(cabin.thingAt(new THREE.Vector3(1, 0, 0))?.thrown, undefined, 'the ring is not');
+  assert.deepEqual(cabin.throwSwitch(thing.thrown), { name: 'Tumbler', at: 1, says: 'Middle' });
+  for (let i = 0; i < 30; i++) cabin.step(0.02, 0, 2437402, 1);
+  assert.ok(Math.abs(turned(tumbler) - 0.4) < 1e-3, `over to the middle: ${turned(tumbler)}`);
+  assert.equal(cabin.throwSwitch(0).says, 'Down');
+  assert.equal(cabin.throwSwitch(0).says, 'Up', 'and round to the first');
+  assert.equal(cabin.throwSwitch(0, 2).says, 'Down', 'or to a position asked for');
+  assert.deepEqual(cabin.switched, [], 'a switch that switches nothing of the cabin’s is not in the seat’s bar');
+});
+
+test('a way of the lights can light a lamp in another colour and dimmer: its tube glows so, and the shade and the fill follow', () => {
+  const c = lit(
+    [
+      { says: 'White', lit: [0, 1] },
+      { says: 'Red', lit: [0, 1].map((light) => ({ light, colour: 0xff0000, level: 0.5 })) },
+      { says: 'Duty', lit: [{ light: 0, level: 0.25 }] },
+    ],
+    [0, -0.6, -1.2],
+  );
+  const shader = {
+    uniforms: {},
+    vertexShader: '',
+    fragmentShader: '#include <common>\n#include <color_fragment>\n#include <aomap_fragment>',
+  };
+  c.wall.material.onBeforeCompile(shader, null);
+  assert.match(shader.fragmentShader, /indirectDiffuse \*= uCabinTint/);
+  c.cabin.step(0, 0, 2437424.5, 1);
+  assert.deepEqual(shader.uniforms.uCabinTint.value.toArray(), [1, 1, 1], 'lit as built, nothing is tinted');
+  assert.equal(c.cabin.light(), 'Red');
+  c.cabin.step(0, 0, 2437424.5, 1);
+  assert.deepEqual(
+    c.lamps.map((l) => l.intensity),
+    [0.35, 0.25],
+    'each at half its strength',
+  );
+  assert.deepEqual(
+    c.lamps.map((l) => l.color.getHex()),
+    [0xff0000, 0xff0000],
+  );
+  for (const tube of c.tubes) {
+    assert.equal(tube.material.emissive.getHex(), 0xff0000, 'the tube glows red');
+    assert.ok(Math.abs(tube.material.emissiveIntensity - 0.3) < 1e-9, 'and as brightly as its lamp is lit');
+  }
+  assert.equal(shader.uniforms.uCabinLit.value, 0.5, 'the shade mixed by the share of the lamps’ strength that is lit');
+  const tint = shader.uniforms.uCabinTint.value;
+  assert.ok(tint.r === 1 && tint.g > 0.4 && tint.g < 0.6 && tint.b === tint.g, `the fill taken halfway to red: ${tint.toArray()}`);
+  assert.equal(c.cabin.light(), 'Duty');
+  c.cabin.step(0, 0, 2437424.5, 1);
+  assert.deepEqual(
+    c.lamps.map((l) => l.intensity),
+    [0.7 * 0.25, 0],
+  );
+  assert.deepEqual(
+    c.lamps.map((l) => l.color.getHex()),
+    [0xffffff, 0xffffff],
+    'back to its own colour',
+  );
+  assert.ok(Math.abs(shader.uniforms.uCabinLit.value - (0.7 * 0.25) / 1.2) < 1e-9);
+  assert.deepEqual(shader.uniforms.uCabinTint.value.toArray(), [1, 1, 1]);
+  assert.deepEqual(c.cabin.switched, [{ index: 0, name: 'Cabin lights', at: 2, says: 'Duty', built: true }]);
+});
+
+/** A cabin with a globe of two modes on a tumbler, a lamp lit in the second, and a landing place given by the host. */
+function modal(finder) {
+  const group = new THREE.Group();
+  const full = new THREE.Group();
+  group.add(full);
+  const tumbler = node('Ctl_Mode', { throw: [0, 0.84] });
+  const globe = Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshStandardMaterial()), { name: 'Globe' });
+  globe.position.set(1, 0, 0);
+  const lamp = Object.assign(new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ emissive: 0x000000 })), {
+    name: 'Tele_Landing',
+  });
+  lamp.position.set(0, 1, 0);
+  full.add(tumbler, globe, lamp);
+  const asked = [];
+  const host = {
+    camera: new THREE.PerspectiveCamera(),
+    upAt: (_p, out) => out.set(0, 1, 0),
+    redraw: () => {},
+    reshade: () => {},
+    landing: (start) => {
+      asked.push(start.t);
+      return finder(start);
+    },
+  };
+  const flight = { site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
+  const model = {
+    cabin: {
+      instruments: [],
+      within: [],
+      lamps: [{ node: 'Tele_Landing', name: 'Landing', about: '' }],
+      controls: [{ node: 'Ctl_Mode', name: 'Globe mode', about: '' }],
+      globe: {
+        node: 'Globe',
+        name: 'Globe',
+        about: '',
+        control: 'Ctl_Mode',
+        modes: [
+          { says: 'Present place', shows: 'place' },
+          { says: 'Landing place', shows: 'landing', lamp: 'Tele_Landing' },
+        ],
+      },
+    },
+  };
+  const cabin = new Cabin(host, flight, model, group, full, []);
+  cabin.piloted(true);
+  return { cabin, globe, lamp, asked };
+}
+
+test('a globe of modes: thrown, it turns to where a descent begun now comes down, carried round with the ship between workings', () => {
+  const R = 6.7e6;
+  const w = 7700 / R;
+  // an equatorial orbit; the descent begun at any instant comes down a quarter of the way round, 1500 s on
+  const at = (t) => ({ t, r: [R * Math.cos(w * t), R * Math.sin(w * t), 0], v: [-7700 * Math.sin(w * t), 7700 * Math.cos(w * t), 0] });
+  const c = modal((s) => {
+    const a = Math.atan2(s.r[1], s.r[0]) + Math.PI / 2;
+    return { t: s.t + 1500, r: [R * Math.cos(a), R * Math.sin(a), 0], v: [-7700 * Math.sin(a), 7700 * Math.cos(a), 0] };
+  });
+  const seen = (d) => new THREE.Vector3(d[1], d[2], d[0]).applyQuaternion(c.globe.quaternion);
+  const spin = 7.292115e-5;
+  /** The direction of an inertial place at `t`, in the Earth's own axes then. */
+  const fixed = (r, t) => {
+    const a = -spin * t;
+    const n = Math.hypot(...r);
+    return [(Math.cos(a) * r[0] - Math.sin(a) * r[1]) / n, (Math.sin(a) * r[0] + Math.cos(a) * r[1]) / n, r[2] / n];
+  };
+  const fly = (t) => {
+    c.cabin.fly(at(t), null, {});
+    c.cabin.step(1, t, 2437402, 1);
+  };
+  const under = (d) => seen(d).distanceTo(new THREE.Vector3(0, 0, 1));
+  fly(100);
+  assert.ok(under(fixed(at(100).r, 100)) < 1e-6, 'as built: the place under it');
+  assert.equal(glow(c.lamp), 0);
+  assert.deepEqual(c.cabin.globeMode, { mode: 0, says: 'Present place', shows: 'place' });
+  const thing = c.cabin.thingAt(new THREE.Vector3());
+  assert.equal(c.cabin.throwSwitch(thing.thrown).says, 'Landing place');
+  fly(100);
+  const landing = (t) => {
+    const a = w * t + Math.PI / 2;
+    return fixed([Math.cos(a), Math.sin(a), 0], t + 1500);
+  };
+  assert.ok(under(landing(100)) < 1e-6, 'thrown: where it would come down');
+  assert.ok(glow(c.lamp) > 0, 'and its lamp is lit');
+  // ten seconds on, not worked out again: the last answer carried round the arc flown since, and on in time
+  fly(110);
+  assert.deepEqual(c.asked, [100]);
+  assert.ok(under(landing(110)) < 1e-6, `carried round: ${under(landing(110))}`);
+  assert.deepEqual(
+    c.cabin.switched.map((s) => s.says),
+    ['Landing place'],
+  );
+  // and back to the present place
+  c.cabin.throwSwitch(thing.thrown);
+  fly(120);
+  assert.ok(under(fixed(at(120).r, 120)) < 1e-6);
+  assert.equal(glow(c.lamp), 0);
+});
+
+test('the simulator’s answer for a burn now: a Vostok fired against its way comes down, and one coming down already is let come', async () => {
+  const { flight } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+  const { orbitalRecord } = await import('../src/viewer/ascent.ts');
+  const { sampleAt } = await import('../src/sim/fly.ts');
+  const find = burnNow(flight);
+  const samples = orbitalRecord(flight).samples;
+  const s = sampleAt(samples, 4000);
+  const down = find({ t: s.t, r: s.r, v: s.v });
+  assert.ok(down && !down.begun, 'in orbit: a burn is added');
+  assert.ok(down.t > 4000 + 600 && down.t < 4000 + 3600, `it comes down some minutes on: ${down.t - 4000} s`);
+  assert.ok(Math.hypot(...down.r) < Math.hypot(...s.r) - 150e3, 'far below where it was');
+  // after the record's own burn, the descent under way
+  const late = sampleAt(samples, flight.orbital.retro.off.value + 60);
+  const begun = find({ t: late.t, r: late.r, v: late.v });
+  assert.ok(begun?.begun, 'coming down: the descent under way, nothing added');
+  assert.equal(burnNow({ ...flight, orbital: undefined }), null, 'no orbit, no answer');
 });

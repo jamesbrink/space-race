@@ -27,6 +27,22 @@ function allNodes(file) {
   return new Set(JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.map((n) => n.name));
 }
 
+/** The names of the materials of the meshes under a node of a GLB (the first of that name), or null if it has none such. */
+function materialsUnder(file, name) {
+  const glb = readFileSync(file);
+  const gltf = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
+  const start = gltf.nodes.findIndex((n) => n.name === name);
+  if (start < 0) return null;
+  const out = [];
+  const visit = (i) => {
+    const n = gltf.nodes[i];
+    for (const prim of n.mesh === undefined ? [] : gltf.meshes[n.mesh].primitives) out.push(gltf.materials?.[prim.material]?.name ?? '');
+    for (const c of n.children ?? []) visit(c);
+  };
+  visit(start);
+  return out;
+}
+
 /** Every node of a GLB by name, with its extras. */
 function extrasOf(file) {
   const glb = readFileSync(file);
@@ -237,6 +253,29 @@ for (const file of files) {
           for (const file of [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')])
             assert.ok(allNodes(file).has(node), `${part.node}: its moves name ${node}, which is not in ${relative(root, file)}`);
       }
+      // what a slide or a drive runs on (types.ts Runs) is in the flight's models or the place, with the material named;
+      // and a slide's wheels are nodes of the model at every level of detail
+      for (const part of model.parts)
+        for (const move of [...(part.moves ?? []), ...(part.clocked ?? [])]) {
+          if (!move.runs) continue;
+          for (const spec of move.runs.on ?? []) {
+            const [name, material] = spec.split('/');
+            const files = [
+              ...flight.models.map((m) => join(root, 'public', m.url)),
+              ...(flight.surroundings ? [join(root, 'public', flight.surroundings)] : []),
+            ];
+            assert.ok(
+              files.some((file) => materialsUnder(file, name)?.some((m) => !material || m.startsWith(material))),
+              `${part.node}: it runs on ${spec}, which is in none of the flight's models nor its place`,
+            );
+          }
+          if (move.kind === 'slide' && move.runs.wheels)
+            for (const file of levels)
+              assert.ok(
+                [...allNodes(file)].some((n) => n?.startsWith(move.runs.wheels) && /^_?\d+$/.test(n.slice(move.runs.wheels.length))),
+                `${part.node}: no wheel named ${move.runs.wheels} in ${relative(root, file)}`,
+              );
+        }
       // a model that follows the clock: its keyframes in order, its slider from one end to the other
       if (model.sequence) assert.deepEqual(faults(model.sequence), [], `${model.id}: sequence`);
       const parts = model.parts.map((p) => p.node);

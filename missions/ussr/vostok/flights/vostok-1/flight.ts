@@ -1,5 +1,6 @@
-import type { CabinDef, ChuteDef, Command, Flight, Keyframe, Measure, ModelDef, Move, Part } from '../../../../../src/types';
+import type { CabinDef, ChuteDef, Command, Flight, Keyframe, Measure, ModelDef, Move, Part, Runs } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
+import { DUTY } from '../../vehicles/cabin.ts';
 import { MSK, orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
@@ -726,7 +727,7 @@ const SIGNALS: [block: string, lamps: number, says: string][] = [
 // The Globus (IMP): what it showed and how, and how far the simulator's is the instrument (spacecraft.md, "Globus")
 const GLOBUS =
   'The ship’s place over the Earth: “it turns all the time, following the ship’s motion over the Earth, and the fixed cross in its ring shows over which point of the globe the ship is now” (Ponomareva). Set before launch with the orbit’s period as a three-figure number in its correction window and turned by its two knobs in the planes of the equator and of the orbit, it started at the separation (“the Globus stopped about the middle of the Mediterranean”, Gagarin) and was good to some 300 km (his report). ' +
-  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 710, as the archive’s record of the transcript has it in both its prints; a newspaper’s print has 510. Its landing-place mode (a tumbler on the control panel threw the globe on to where a burn now would land) is not simulated: the tumbler is there to be read about. Its map is the globe’s own, in two tones.';
+  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 710, as the archive’s record of the transcript has it in both its prints; a newspaper’s print has 510. Its two modes are the instrument’s (Tyapchenko, fig. 16; Ponomareva: «“переброс” “Глобуса”, и перекрестие указывает, куда ты сядешь, если включишь сейчас двигатель»): with the tumbler on the control panel at МЕСТО ПОСАДКИ the globe turns to where a burn fired now would bring the ship down. The real instrument did that by advancing the globe a fixed arc, set on the ground; here the arc is worked out, by the simulator flying that descent from the instant (a burn against the way the ship goes, a second from now; once the ship is coming down, the descent under way), and carried round with the ship between one working and the next. Its «Посадка» lamp is not in the model and does not light. Its map is the globe’s own, in two tones.';
 // The Vzor's view (CabinDef.periscope). Its axis is the model's: square out of hatch No. 3's porthole, whose latitude on the
 // ball is estimated (15 degrees toward the nose: vostok-3ka.md), so the axis on the Earth's centre leaves the long axis 15
 // degrees off level; the ring's angles and the screen's field are estimated (spacecraft.md, "The Vzor")
@@ -843,8 +844,14 @@ vehicle.cabin = {
     {
       node: 'Gauge_ManualGas',
       name: 'Gas for turning the ship by hand',
-      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. Never used: he read 150 to 155 throughout (175 before launch in one print, 155 in another), and it stands at 155 (${RADIO}). Not simulated: the record’s.`,
-      value: 155,
+      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. Never used. As he read it: 175 before launch at 07:29 (the archive’s record, in both its prints; a newspaper’s print has 155), 155 after the separation, 150 at 09:48, 155 at 10:04 and 150 at 10:23 (${RADIO}; mission.md, “The manual system’s gas”). Straight between his readings. Not simulated: the record’s.`,
+      history: [
+        { at: MSK(7, 29), value: 175 },
+        { at: 0, from: 'separation', value: 155 },
+        { at: MSK(9, 48), value: 150 },
+        { at: MSK(10, 4), value: 155 },
+        { at: MSK(10, 23), value: 150 },
+      ],
     },
     {
       node: 'Gauge_RetroPressure',
@@ -895,22 +902,34 @@ vehicle.cabin = {
       // (orbitdeck.ts: `manual` says whether it is on; it stands as the deck's hands are, `free`)
       does: 'manual',
       holds: 'free',
+      says: ['Off', 'On'],
     },
-    { node: 'Ctl_Descent3', name: 'Descent III', about: 'Under the clear cover: the descent cycle begun by the pilot. Not simulated.' },
+    {
+      node: 'Ctl_Descent3',
+      name: 'Descent III',
+      about: 'Under the clear cover: the descent cycle begun by the pilot. It throws and stays thrown; what it set going is not simulated.',
+      says: ['Off', 'On'],
+    },
     {
       node: 'Ctl_RetroFire',
       name: 'Start the braking engine',
       about: 'Red, under the clear cover: the pilot’s own command to the TDU, for a ship he has turned by the Vzor.',
       does: 'retro',
     },
-    { node: 'Ctl_Oxygen', name: 'Oxygen', about: 'Under the clear cover. What it switched is not in anything read. Not simulated.' },
+    {
+      node: 'Ctl_Oxygen',
+      name: 'Oxygen',
+      about:
+        'Under the clear cover. What it switched is not in anything read: it throws and stays thrown, and nothing follows. Not simulated.',
+      says: ['Off', 'On'],
+    },
     { node: 'Ctl_Alarm', name: 'Emergency signal', about: 'Under the clear cover: sends the alarm to the ground. Not simulated.' },
     {
-      // (its two positions are in its `throw` extras, vehicles/vostok_cabin.py; no command of the deck's throws the globe yet)
+      // (its two positions are in its `throw` extras, vehicles/vostok_cabin.py; it is the globe's `control`, below)
       node: 'Ctl_GlobusMode',
       name: 'Globus: present place or landing place',
       about:
-        'ГЛОБУС, on the control panel’s face: МЕСТО ПОЛОЖЕНИЯ, where the ship is, or МЕСТО ПОСАДКИ, where it would come down if the braking engine were started now (Tyapchenko; the instruction of January 1961 has the pilot throw it over and back as a check after reaching orbit). It stands at the present place, as it flew. The landing-place mode is not simulated.',
+        'ГЛОБУС, on the control panel’s face: МЕСТО ПОЛОЖЕНИЯ, where the ship is, or МЕСТО ПОСАДКИ, where it would come down if the braking engine were started now (Tyapchenko, fig. 16; the instruction of January 1961 has the pilot throw it over and back as a check after reaching orbit). Built at the present place, as it flew. Thrown, the globe turns to the landing place the simulator works out for a burn fired now: the real instrument advanced the globe by a fixed arc set on the ground.',
     },
     {
       node: 'Ctl_HandController',
@@ -925,10 +944,12 @@ vehicle.cabin = {
   lighting: {
     control: 'Ctl_Lighting',
     name: 'Cabin lighting',
-    about: 'One tumbler on the control panel: working, duty, off.',
+    about:
+      'One tumbler on the control panel: working, duty, off. The duty light is the left hand lamp at a quarter of its strength: that it was dimmer is in Titov’s report (too dim to write by), how dim is ours.',
+    // (the duty light: which lamp, and how dim, estimated)
     ways: [
       { says: 'Working', lit: [0, 1] },
-      { says: 'Duty', lit: [0] },
+      { says: 'Duty', lit: [{ light: 0, level: DUTY }] },
       { says: 'Off', lit: [] },
     ],
     fittings: ['Lamp_1', 'Lamp_2'],
@@ -942,10 +963,18 @@ vehicle.cabin = {
   // The node's own axes: +Y up the stalk, +X along the grip. That it had two axes is the maker's history (Tyapchenko);
   // which two, how the third was commanded and how far it tipped are estimated
   stick: { node: 'Ctl_HandController', throw: 0.2, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
+  // its two modes on the one tumbler (Tyapchenko, fig. 16's caption: documented); the landing place is the simulator's
+  // (derived: the real instrument advanced the globe by a fixed arc set on the ground). The «Посадка» lamp that lit with
+  // the second is not in the model (vehicles/vostok_cabin.py: the window over the globe is a plain block), so no `lamp`
   globe: {
     node: 'Globus_Globe',
     name: 'Globus',
     about: GLOBUS,
+    control: 'Ctl_GlobusMode',
+    modes: [
+      { says: 'Present place', shows: 'place' },
+      { says: 'Landing place', shows: 'landing' },
+    ],
   },
   periscope: VZOR,
 };
@@ -1095,13 +1124,37 @@ const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
  * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
  * line (metres east and south from where that bogie stood: sites/site1/place.py, SPURS and CENTRE_TRACK).
  */
-const CAR_WHEEL = 0.475;
-const carLeaves = (node: string, wheelbase: number, path: [number, number][], from: number, to: number): Move => ({
+/** The fillers' wheels' radius where the coned tread bears on the rail's head: 950 mm wheels, 2.4 mm out (site1/tank_cars.py `AXLE_Z`). */
+const CAR_WHEEL = 0.475 + 0.0024;
+/**
+ * What a railway wagon runs on (types.ts Runs): the model's own rails, on the deck (DeckRails) and where they come up to
+ * the platform over the land (the place's Tracks); beyond the modelled rails the track is painted on the land, and
+ * there it runs on that.
+ */
+const ON_RAILS: Runs = { on: ['DeckRails', 'Tracks'], ground: true };
+/** What a road vehicle runs on: the land, which the roads and the apron are painted on, and a modelled rail it crosses. */
+const ON_ROAD: Runs = { on: ['Tracks'], ground: true };
+/**
+ * A track's line as a route: its corners (place.py's polylines, which the model's rails follow straight from corner to
+ * corner) with a point every few metres between them, so that the drive's smooth curve through its points (explode.ts
+ * `Route`) keeps to the rails and does not bow off them between corners.
+ */
+const alongTrack = (corners: [number, number][], step = 4): [number, number][] => {
+  const out: [number, number][] = [];
+  let [x0, z0] = [0, 0];
+  for (const [x, z] of corners) {
+    const n = Math.max(1, Math.ceil(Math.hypot(x - x0, z - z0) / step));
+    for (let i = 1; i <= n; i++) out.push([x0 + ((x - x0) * i) / n, z0 + ((z - z0) * i) / n]);
+    [x0, z0] = [x, z];
+  }
+  return out;
+};
+const carLeaves = (node: string, wheelbase: number, corners: [number, number][], from: number, to: number): Move => ({
   kind: 'drive',
   node,
   from,
   to,
-  path,
+  path: alongTrack(corners),
   pivot: [0, CAR_WHEEL, 0],
   forward: [-1, 0],
   wheelRadius: CAR_WHEEL,
@@ -1109,6 +1162,8 @@ const carLeaves = (node: string, wheelbase: number, path: [number, number][], fr
   wheels: `${node}_Wheel_`,
   steered: `${node}_Steered_`,
   axle: 'z',
+  bogies: true,
+  runs: ON_RAILS,
 });
 /** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
 const BOOM_LEAN = 14;
@@ -1116,6 +1171,11 @@ const BOOM_BACK = 20;
 const ERECTOR_ROLL = [30, 120];
 const ERECTOR_WHEEL = 0.475;
 const ERECTOR_AXLES = [1, 2, 3, 4, 5, 6];
+/**
+ * The wagon on the model's rails all the way it goes (DeckRails, then the place's Tracks, modelled to where it is left).
+ * Its wheels bear 2.4 mm out from the nominal radius, where the coned tread meets the rail's head (site1/erector.py `AXLE_Z`).
+ */
+const ERECTOR_RUNS: Runs = { on: ['DeckRails', 'Tracks'], wheels: 'Erector_Wheel_', wheelRadius: ERECTOR_WHEEL + 0.0024, axle: 'z' };
 /** The lift's stops above its lowest, m: it rides the leaning boom, so each is 0.2493 of its height nearer the rocket. */
 const LIFT_STOPS: [name: string, up: number][] = [
   ['Lift door, 15 steps up', 0],
@@ -1303,6 +1363,7 @@ const drives = (
   wheels: `${node}_Wheel_`,
   steered: `${node}_SteerWheel_`,
   axle: 'z',
+  runs: ON_ROAD,
 });
 const BUS = { wheelbase: 4.19, wheel: 0.525 };
 
@@ -1620,29 +1681,12 @@ const padParts: Part[] = [
     ],
     moves: [
       // the boom comes away (documented, 08:35 to 08:37), then goes down as the wagon rides off (documented that it
-      // did; how far it had gone before it lay down is ours), and the wagon is drawn on (documented; how far, ours)
+      // did; how far it had gone before it lay down is ours), and the wagon is drawn on (documented; how far, ours), on
+      // its rails and its wheels turning as it goes (ERECTOR_RUNS)
       { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: BOOM_BACK * DEG, from: T.erector, to: T.boomAway },
       { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: (90 + BOOM_LEAN - BOOM_BACK) * DEG, from: T.boomAway, to: T.boomDown },
-      { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: T.boomAway, to: T.boomDown },
-      { kind: 'slide', by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0], from: T.boomDown, to: T.cleared },
-      ...ERECTOR_AXLES.flatMap((n): Move[] => [
-        {
-          kind: 'swing',
-          node: `Erector_Wheel_${n}`,
-          axis: [0, 0, 1],
-          angle: ERECTOR_ROLL[0]! / ERECTOR_WHEEL,
-          from: T.boomAway,
-          to: T.boomDown,
-        },
-        {
-          kind: 'swing',
-          node: `Erector_Wheel_${n}`,
-          axis: [0, 0, 1],
-          angle: (ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!) / ERECTOR_WHEEL,
-          from: T.boomDown,
-          to: T.cleared,
-        },
-      ]),
+      { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: T.boomAway, to: T.boomDown, runs: ERECTOR_RUNS },
+      { kind: 'slide', by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0], from: T.boomDown, to: T.cleared, runs: ERECTOR_RUNS },
     ],
     // two of its crew at the wagon's rail (a colour photograph), until thirty minutes' readiness (the roster)
     clocked: [leaves('Erector_Crew', MSK(8, 37))],
