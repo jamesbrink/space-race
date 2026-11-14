@@ -30,8 +30,8 @@ Not built: the hydrogen peroxide filler (made to look like a passenger coach: no
 nitrogen toppers 8G118 and 8G128 that stood under the shed through the launch, the transport tanks, the tractor.
 
 Nodes: TankCars, with TankCar_Oxygen and TankCar_Kerosene under it, each with its origin on the rails under the
-middle of its east bogie (what follows the track as it is drawn off to the west) and TankCar_<which>_Wheel_1..8,
-each on its axle.
+middle of its east bogie (what follows the track as it is drawn off to the west), TankCar_<which>_Wheel_1..8, each on
+its axle, and TankCar_<which>_Bogie_1 and _2 (east, west), each bogie's frame with its origin on its pivot.
 """
 
 from __future__ import annotations
@@ -126,15 +126,21 @@ def car(parts: Parts, node: str, length: float, track, middle: float) -> None:
                 z = FLOOR + 0.1 + k * 0.3
                 beam(dark, (x - 0.2, y + away * (w + 0.05), z), (x + 0.2, y + away * (w + 0.05), z), 0.025)
         handrail(dark, [(x0 + 1.0, y + 0.55, CROWN - 0.12), (x1 - 1.0, y + 0.55, CROWN - 0.12)], height=0.7, post=0.03, rail=0.03)
-    # the two bogies: a frame either side with its axle boxes, a bolster, and four wheelsets, each its own node
+    # The two bogies: a frame either side with its axle boxes, a bolster and the centre plate over it, a node of its own
+    # (`<car>_Bogie_1`, the east one, and `_2`), its origin on its pivot at the axles' height; and four wheelsets, each
+    # its own node. The wheelsets are the car's own children and not their bogie's: the viewer puts every wheelset that
+    # is the car's child on the track by itself (explode.ts `onRails`), and turns no bogie yet (site-1.md).
     n = 0
-    for bx in (middle + half - BOGIE_IN, middle - half + BOGIE_IN):  # the east one first
+    for b, bx in enumerate((middle + half - BOGIE_IN, middle - half + BOGIE_IN), 1):  # the east one first
+        bogie = f"{node}_Bogie_{b}"
+        parts.node(bogie, node, origin=(bx, y, AXLE_Z))
+        truck = parts(bogie, "dark")
         for s in (-1, 1):
-            box(dark, (bx - 2.6, y + s * 1.0 - 0.06, AXLE_Z - 0.03), (bx + 2.6, y + s * 1.0 + 0.06, AXLE_Z + 0.27))
+            box(truck, (bx - 2.6, y + s * 1.0 - 0.06, AXLE_Z - 0.03), (bx + 2.6, y + s * 1.0 + 0.06, AXLE_Z + 0.27))
             for ax in AXLES:
-                box(dark, (bx + ax - 0.16, y + s * 1.0 - 0.1, AXLE_Z - 0.15), (bx + ax + 0.16, y + s * 1.0 + 0.1, AXLE_Z + 0.14))
-        box(dark, (bx - 0.3, y - 0.93, AXLE_Z + 0.02), (bx + 0.3, y + 0.93, AXLE_Z + 0.26))
-        box(dark, (bx - 0.35, y - 0.35, AXLE_Z + 0.262), (bx + 0.35, y + 0.35, FLOOR - 0.3))
+                box(truck, (bx + ax - 0.16, y + s * 1.0 - 0.1, AXLE_Z - 0.15), (bx + ax + 0.16, y + s * 1.0 + 0.1, AXLE_Z + 0.14))
+        box(truck, (bx - 0.3, y - 0.93, AXLE_Z + 0.02), (bx + 0.3, y + 0.93, AXLE_Z + 0.26))
+        box(truck, (bx - 0.35, y - 0.35, AXLE_Z + 0.262), (bx + 0.35, y + 0.35, FLOOR - 0.3))
         for ax in AXLES[::-1]:
             n += 1
             wheelset(parts, node, n, bx + ax, y)

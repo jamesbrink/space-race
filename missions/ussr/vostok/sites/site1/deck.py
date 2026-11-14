@@ -62,7 +62,13 @@ EDGE = -HALF - ABUTMENT + 0.05  # just inside the abutment's west face: where th
 # heads come down to the land for it (ours): the centre track as far as the erector is drawn off, the others a hundred metres.
 LAND = {"centre": -160.0, "spur": -100.0}
 RAMP = 10.0
-SLEEPER = 0.015  # where the land's paint takes over, a rail's head is this far above it
+# Where the land's painted rails take over, a rail ends square with its head this far above the land: a flange's depth.
+# Beyond the modelled rails a wagon runs on the land the track is painted on, which has no flangeway, so it rides on its
+# flanges; a flange stands 30 mm under the nominal tread and the tread bears 2.4 mm out (tank_cars.wheelset, AXLE_Z), so a
+# wheel whose tread leaves a head 27.6 mm over the land comes onto its flange on the land at the same height: no step.
+# (At 15 mm, as it was, the fillers' wheels climbed 13 mm as they came off the rails' ends: pnpm test:wheels.) Ours: a
+# real track's rail stands a sleeper and a rail's height over the ballast, and its wheels never leave it.
+SLEEPER = 0.0276
 # The apron: from the abutment to 90 m west of the axis the ground is concrete slabs with the rails flush in them (the
 # film of the morning, looking down from the erector's head; the land paints the slabs, a band along each track and a
 # flangeway inside each rail: src/viewer/tyuratam.ts SLABS, whose west end this is). So over it a rail's head lies at
@@ -135,9 +141,12 @@ def _at(line, x: float) -> float:
 
 def _profile(line, heads) -> list[tuple[float, float, float]]:
     """A rail's path along a track's middle line: (x, y, its head's height) at each place a height is given (`heads`:
-    x and height, east to west) and at each bend of the line between the first and the last of them."""
+    x and height, east to west) and at each bend of the line between the first and the last of them. The bends are
+    corners, as the map's lines have them and as the land paints them (site-1.md: arcs were tried and taken out)."""
     (east, _), (west, _) = heads[0], heads[-1]
-    xs = sorted({*[x for x, _ in heads], *[x for x, _ in line if west < x < east]})
+    # (a point of the line within 5 cm of one where a height is given is left out: two that close are a sliver of rail)
+    given = [x for x, _ in heads]
+    xs = sorted({*given, *[x for x, _ in line if west < x < east and all(abs(x - g) > 0.05 for g in given)]})
 
     def top(x: float) -> float:
         for (xa, za), (xb, zb) in zip(heads, heads[1:]):
@@ -166,7 +175,7 @@ def land_rails(parts: Parts) -> None:
     steel = parts(g, "rail")
     low, flush = GROUND + SLEEPER, GROUND + RAIL_TOP
     # the centre track: level with the deck under the erector's wagon, down into the apron, flush across it, up onto the
-    # sleepers west of it, and down to the land's paint at its end
+    # sleepers west of it, and down to a flange's depth over the land's paint at its end
     far = LAND["centre"]
     heads = [
         (EDGE, RAIL_TOP),
@@ -182,7 +191,8 @@ def land_rails(parts: Parts) -> None:
     # level to where the paint takes over (10 to 20 m: a rail does not climb onto sleepers and come down again in that)
     far = LAND["spur"]
     for line in place.SPURS[:3]:
-        _pair(steel, _profile(line, [(EDGE, RAIL_TOP), (EDGE - DIP, flush), (APRON_WEST, flush), (far - RAMP, low)]), GAUGE / 2)
+        heads = [(EDGE, RAIL_TOP), (EDGE - DIP, flush), (APRON_WEST, flush), (far - RAMP, low)]
+        _pair(steel, _profile(line, heads), GAUGE / 2)
     # the gantry tracks' two rails, which begin 11 ft short of the abutment: down into the apron as the others are
     for s in (-1, 1):
         y = s * GANTRY / 2

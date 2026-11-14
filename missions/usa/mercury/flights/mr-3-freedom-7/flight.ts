@@ -25,6 +25,7 @@ import {
   launcherTurn,
   lc5Parts,
   ON_ROAD,
+  SHOWER_RUNS,
   type PadNode,
   type PartWords,
   spareTrailerLeaves,
@@ -929,7 +930,14 @@ const padParts: Part[] = lc5Parts({
   azimuth: AZIMUTH,
   cleared: [
     // cleared from the pad's north edge before the gantry is removed (estimated: nothing records it)
-    { kind: 'slide', node: 'GroundEquipment_Shower', by: [5.49, 0, 45.4], from: T.platforms + 0.02, to: T.platforms + 0.11, runs: ON_ROAD },
+    {
+      kind: 'slide',
+      node: 'GroundEquipment_Shower',
+      by: [5.49, 0, 45.4],
+      from: T.platforms + 0.02,
+      to: T.platforms + 0.11,
+      runs: SHOWER_RUNS,
+    },
     { kind: 'slide', node: 'GroundEquipment_Case', by: [2.51, 0, 42.4], from: T.platforms + 0.03, to: T.platforms + 0.12, runs: ON_ROAD },
     // the trailer's door steps fold up first, so nothing hangs below its frame while it is towed (estimated)
     swing('GroundEquipment_TrailerSteps', Z, 95, T.platforms, T.platforms + 0.008),
