@@ -3,6 +3,7 @@ import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, type Vect
 import type { Part } from '../types';
 import { markDriven } from './drive.ts';
 import { Exploder } from './explode.ts';
+import type { Surfaces } from './runs.ts';
 
 /**
  * Pixels per metre above which each level of detail is worth drawing. Level 0 is the model as
@@ -443,8 +444,12 @@ export class Staged {
   /** Its own thresholds (`thresholdsOf`). */
   above: readonly number[];
 
-  constructor(full: THREE.Object3D, parts: Part[]) {
+  /** Where what runs on something is stood (Move `runs`: viewer/runs.ts), the same for every level. */
+  private readonly surfaces: Surfaces | null;
+
+  constructor(full: THREE.Object3D, parts: Part[], surfaces: Surfaces | null = null) {
     this.parts = parts;
+    this.surfaces = surfaces;
     this.above = thresholdsOf(full.userData.lod_above);
     this.add(0, full);
   }
@@ -463,7 +468,7 @@ export class Staged {
     this.levels[level] = object;
     this.group.add(object);
     markDriven(object, this.parts);
-    const exploder = new Exploder(object, this.parts);
+    const exploder = new Exploder(object, this.parts, this.surfaces);
     for (const [node, reading] of this.held) exploder.hold(node, reading);
     for (const [node, instant] of this.worked) exploder.work(node, instant);
     for (const node of this.loose) exploder.loosen(node, true);
@@ -482,6 +487,14 @@ export class Staged {
   explode(t: number): void {
     this.t = t;
     for (const e of this.exploders) e.set(t);
+  }
+
+  /** What there is to run on has changed (the place round the pad has arrived): every level is posed again on it. */
+  resurface(): void {
+    for (const e of this.exploders) {
+      e.set(this.t);
+      if (this.clockT !== null) e.clock(this.clockT);
+    }
   }
 
   /** Has it parts that move on the clock (Part.clocked)? */

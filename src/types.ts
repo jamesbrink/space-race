@@ -73,8 +73,14 @@ export interface Drive {
   /** It backs along the route instead of driving nose first. */
   reverse?: boolean;
   wheelRadius: number;
-  /** Rear axle to front axle. */
+  /** Rear axle to front axle (a rail wagon's: its rear bogie's middle to its front one's). */
   wheelbase: number;
+  /**
+   * It is a rail wagon: both its bogies are on the route, the one `wheelbase` ahead of the rear as well, and the body
+   * lies along the line between them, as it does on a track (left out: a road vehicle, whose rear axle follows the
+   * route and which points along it). Beyond the route's end the front bogie goes on along its last heading.
+   */
+  bogies?: boolean;
   /**
    * Between kerbs at full lock, metres: what it can be driven round on foot (viewer/drive.ts).
    * A vehicle that drives itself off this way can also be got into and driven, if its model has
@@ -90,6 +96,37 @@ export interface Drive {
 }
 
 /**
+ * What a thing that slides or drives runs on (a `slide`'s or a `drive`'s `runs`), so that at every instant of its move
+ * it stands on it, neither in it nor over it (viewer/runs.ts): each wheel on what is under its tread, the body pitched
+ * and rolled between them, its height wherever that puts it. Without it a move is level, at the height it was built at.
+ * Say what the honest surface is: the model's own rails for a rail wagon, the land for a road painted on it.
+ */
+export interface Runs {
+  /**
+   * Nodes of the flight's models, the place round the pad among them, whose tops it runs on: a node's name ('DeckRails'),
+   * or `node/material` for only its meshes whose material's name begins so ('Hardstand/steel-rail'), since the viewer
+   * keys on materials and a node may hold the ties and the ballast with its rails.
+   */
+  on?: string[];
+  /**
+   * And the site's own ground, the land (Setting.groundAt): what a road or an apron painted on it lies on, and the track
+   * beyond the modelled rails. Where the highest thing under a tread is one `on` names (a rail's head), the land beside
+   * it is not what the wheel runs on (a flange over a flangeway the land only paints).
+   */
+  ground?: boolean;
+  /**
+   * A slide's wheels: nodes named this and a number (`_1`, `_2`), each with its origin on its axle (a drive's are its own
+   * `wheels` and `steered`). They roll with the distance run. Left out, it has none and stands on its own lowest points
+   * (a hut's skids, a cart's wheels that are not nodes of their own).
+   */
+  wheels?: string;
+  /** A slide's wheels' radius where the tread bears, metres. */
+  wheelRadius?: number;
+  /** Which of a slide's wheel's own axes is its axle. */
+  axle?: 'x' | 'z';
+}
+
+/**
  * One motion in a part's sequence, played over a stretch of the model's slider: `from` and `to`
  * are positions on it, 0 to 1, and the motion eases in and out between them. `node` is a
  * node inside the part (default: the part itself). Motions on one node add up, in order.
@@ -98,6 +135,8 @@ export interface Drive {
  *        model puts a hinged piece's origin on its hinge.
  * slide  move by `by` metres.
  * drive  a wheeled vehicle follows a route, turning with it, wheels rolling and steering.
+ *        Either, given `runs` (Runs), stands on what it runs on at every instant: its wheels on the rails or the ground
+ *        under them, its body pitched between them.
  * run    the node's own motion, worked out by the script that built it and written in the node's extras (`run`: seven
  *        figures a sample, evenly spaced through the motion: how far it has moved, x y z in metres, and how it has
  *        turned, a quaternion x y z w, both in its parent's coordinates and from where it was built). A linkage: a
@@ -110,9 +149,9 @@ export interface Drive {
  */
 export type Move = { from: number; to: number; node?: string } & (
   | { kind: 'swing'; axis: [number, number, number]; angle: number }
-  | { kind: 'slide'; by: [number, number, number] }
+  | { kind: 'slide'; by: [number, number, number]; runs?: Runs }
   | { kind: 'run'; back?: boolean }
-  | ({ kind: 'drive' } & Drive)
+  | ({ kind: 'drive'; runs?: Runs } & Drive)
 );
 
 /**
