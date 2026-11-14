@@ -140,9 +140,9 @@ rules are the screen's, the same for every path, never tuned to a flight:
   next doubling of the distance; nothing behind the eye is ever a vertex.
 - **Behind the Earth to a pixel**: a sphere (the polar radius) is tested for every pixel of the ribbon in the view's own
   frame, worked out in doubles, so the line ends at the limb however long its chords.
-- **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, or
-  12 px at it), then in from nothing over 40 px as seen at the vehicle, so a short path near a big vehicle (on the pad,
-  the first seconds of a climb) is seen leave it, and from far out the line leaves the dot.
+- **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, or a
+  tenth of the view's height at it), then in from nothing over 40 px as seen at the vehicle, so a short path near a big
+  vehicle (on the pad, the first seconds of a climb) is seen leave it.
 - **Predicted again only when it would be seen to move**: a prediction is worked in slices of 1.5 ms a frame, the path
   put at its own instants in a slice of its own; the curve on show stands while a prediction made again from the
   flight would lie within half a pixel of it wherever it is drawn (path.ts `holds`: the flight's departure from the

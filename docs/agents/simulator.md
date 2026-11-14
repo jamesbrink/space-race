@@ -485,7 +485,7 @@ never adjusted to bring a check in.
   with distance) with a soft core (in the cel look a flat line with an ink edge), drawn after the solid scene against
   its depth and writing none, so the vehicle, the ground and the cabin's walls hide it; the Earth hides it by a sphere
   (the polar radius) tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle (half its length and a
-  little, or 12 px at it) and comes in over 40 px more as seen at the vehicle (lunar-lift's stops), a rule of the screen
+  little, or a tenth of the view's height at it) and comes in over 40 px more as seen at the vehicle (lunar-lift's stops), a rule of the screen
   so a short path near a big vehicle is still seen leave it, is kept off the vehicle's outline on the screen only where it passes in front
   of the vehicle, and each chord is cut at a plane just past the near plane and fades in over the next doubling of the
   distance, so nothing is drawn behind the eye. A new prediction is eased in over 0.3 s from where the line was, instant

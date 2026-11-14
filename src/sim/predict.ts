@@ -489,6 +489,12 @@ export function propagate(
   };
 
   const end = (): void => {
+    done = true;
+    // (ended where it began: there is no path from here, as from below the height a pilot leaves at)
+    if (!(t > start.t)) {
+      outcome = 'none';
+      return;
+    }
     const g = place(r, t);
     impact = {
       t,
@@ -508,6 +514,11 @@ export function propagate(
   if (arrive('time')) {
     points.length = 1;
     end();
+  }
+  // Below the height the flier acts at, coming down, it acts now (a parachute out; or the path's end, which is then none)
+  if (!done && altitude <= flier.below() && dot(sub(v, cross(SPIN, r)), r) < 0 && arrive('height')) {
+    outcome = 'none';
+    done = true;
   }
   // Standing on the ground with nothing burning: there is nothing to say. (`r` is a centre of mass, which on a stack is
   // metres above what it stands on: at rest over the ground within a vehicle's height of it is taken as standing.)

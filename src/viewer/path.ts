@@ -46,9 +46,9 @@ import {
  *   is let go over the next ten gaps of the line, or a hundred times the offset (under a degree of bend), whichever is longer. A path further than two gaps from the vehicle is another path and is
  *   drawn where it is. The flown line ends at the vehicle the same way.
  * - **Clear of the vehicle.** Nothing of the line within a gap of the vehicle's middle (a little more than half its
- *   length, or `GAP_PX` at the vehicle, whichever is more), then it comes in from nothing over the next `FADE_PX` as
- *   seen at the vehicle (pathline.ts: `fadeIn`): a rule of the screen, so a short path near a big vehicle (on the pad,
- *   the first seconds of a climb) is seen leave it, and from far out the line leaves the dot; and on the screen
+ *   length, or a tenth of the view's height at the vehicle, whichever is more), then it comes in from nothing over the
+ *   next `FADE_PX` as seen at the vehicle (pathline.ts: `fadeIn`): a rule of the screen, so a short path near a big
+ *   vehicle (on the pad, the first seconds of a climb) is seen leave it; and on the screen
  *   nothing within the vehicle's outline, taken as a capsule along its long axis as broad as it is, and a margin.
  *   From inside the vehicle (on board) the outline is off and the cabin's own walls hide the line: it is seen through
  *   the windows, and no marker is laid over the cabin.
@@ -116,12 +116,9 @@ const RING_PX = 9;
 /** Seconds a chip at the edge fades in or out over. */
 const CHIP_FADE = 0.2;
 /**
- * The line's clearance from the vehicle, CSS pixels at the vehicle: nothing within `GAP_PX` of its middle (or half its
- * length and a little, when that is more), then in from nothing over `FADE_PX`. Pixels, not metres: a path a few times
- * the vehicle's size (on the pad, the first seconds of a climb) is seen leave it as a short arc, and from far out the
- * line is seen leave the dot.
+ * How far past its gap the line comes in from nothing, CSS pixels at the vehicle (`fadeOf`): pixels, not gaps, so a path
+ * a few times the vehicle's size (on the pad, the first seconds of a climb) is seen leave it as a short arc.
  */
-const GAP_PX = 12;
 const FADE_PX = 40;
 /** Gaps of the line: within this many of the vehicle it is taken onto the vehicle; over this many the offset is let go. */
 const PIN_WITHIN = 2;
@@ -130,8 +127,9 @@ const PIN_OVER = 10;
 const PIN_SLOPE = 100;
 /**
  * The curve on show stands while a new prediction would not move it on the screen (`holds`): by more than `MOVE_PX`
- * anywhere it is drawn, and, for a path that comes round, while it still reaches nineteen twentieths of the way round
- * ahead. With no view yet, within a metre and a centimetre a second.
+ * anywhere it is drawn, it passes within a metre of the flight (where the line starts), and, for a path that comes
+ * round, while it still reaches nineteen twentieths of the way round ahead. With no view yet, within a metre and a
+ * centimetre a second.
  */
 const MOVE_PX = 0.5;
 const HOLD_M = 1;
@@ -855,8 +853,11 @@ export class FlightPath {
     const r = s.centre ?? s.r;
     const dr = Math.hypot(at[0]! - r[0], at[1]! - r[1], at[2]! - r[2]);
     const dv = Math.hypot(vel[0]! - s.v[0], vel[1]! - s.v[1], vel[2]! - s.v[2]);
+    // (the line starts at the vehicle: the curve must pass within a metre of the flight, whatever the eye)
     const camera = this.camera;
-    if (!camera) return dr <= HOLD_M && dv <= HOLD_MS;
+    // (and a burn the prediction flies is held to the metre and the centimetre a second: the live vehicle's guidance lags
+    // its programme, under a degree, which a departure from the curve now does not foretell)
+    if (dr > HOLD_M || !camera || shown.result.kind === 'guided') return dr <= HOLD_M && dv <= HOLD_MS;
     const eye = absolute(this.eye.copy(camera.position));
     const vessel = this.host.vessel(this.ship, this.axis2);
     const tanHalf = Math.tan((camera.fov * Math.PI) / 360) / Math.max(camera.zoom, 1e-6);
@@ -1097,14 +1098,18 @@ export class FlightPath {
 
   /**
    * The gap the line keeps from the vehicle's middle (`prepare` gives it to the shader), m: a little more than half its
-   * length, so it is not seen leave the nose; or `GAP_PX` at the vehicle, when the vehicle is a few pixels.
+   * length, so it is not seen leave the nose; or, when the vehicle is a few pixels, a tenth of the view's height at it
+   * (a path a few pixels long there would be drawn as its fade alone, in dots).
    */
   private gapOf(half: number, toShip: number, tanHalf: number): number {
-    return Math.max(1.1 * half, (GAP_PX * toShip * tanHalf) / (this.size.y / 2));
+    return Math.max(1.1 * half, 0.2 * toShip * tanHalf);
   }
-  /** The span the line comes in over past the gap, m: `FADE_PX` at the vehicle, however near or far it is. */
-  private fadeOf(toShip: number, tanHalf: number): number {
-    return (FADE_PX * toShip * tanHalf) / (this.size.y / 2);
+  /** The span the line comes in over past the gap, m: `FADE_PX` at the vehicle while it is more than a tenth of the view. */
+  private fadeOf(half: number, toShip: number, tanHalf: number): number {
+    // (a vehicle smaller than a tenth of the view keeps the gap's own two more, lunar-lift's: a path a few pixels long
+    // beside a dot, faded over forty, would be its fade alone, in dots)
+    const far = 0.2 * toShip * tanHalf;
+    return far > 1.1 * half ? 2 * far : (FADE_PX * toShip * tanHalf) / (this.size.y / 2);
   }
 
   /** Find the instant on show where the vehicle is drawn, and sample both lines for the eye if anything has moved. */
@@ -1255,7 +1260,7 @@ export class FlightPath {
       pinned: pinned ? offset : 0,
       offset,
       gap,
-      fade: vessel ? this.fadeOf(toShip, tanHalf) : 0,
+      fade: vessel ? this.fadeOf(vessel.half, toShip, tanHalf) : 0,
     };
     this.host.overlay(this.mesh);
   }
@@ -1277,6 +1282,8 @@ export class FlightPath {
 
   /** The line ahead as last sampled, in the scene's frame: for the path test (`sr.path.line()`). */
   line(): { t: number[]; p: number[]; flown: number[]; flownT: number[] } {
+    // (nothing on show, nothing to give: the buffers keep the last line drawn)
+    if (!this.mesh.visible) return { t: [], p: [], flown: [], flownT: [] };
     return {
       t: [...this.ahead.t.subarray(0, this.ahead.n)],
       p: [...this.ahead.p.subarray(0, this.ahead.n * 3)],
@@ -1341,7 +1348,7 @@ export class FlightPath {
     // flight is, metres off)
     u.uClip!.value = Math.max(1.02 * camera.near, aboard && radius !== null ? radius : 0);
     u.uGap!.value = vessel === null ? 1 : this.gapOf(vessel.half, toShip, tanHalf);
-    u.uFade!.value = vessel === null ? 1 : this.fadeOf(toShip, tanHalf);
+    u.uFade!.value = vessel === null ? 1 : this.fadeOf(vessel.half, toShip, tanHalf);
     u.uPxPerRad!.value = this.size.y / 2 / tanHalf;
     // the Earth's centre and the vehicle in the view's frame, worked out in doubles
     this.unturn.copy(camera.quaternion).invert();
