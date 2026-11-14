@@ -46,8 +46,10 @@ export const SITE1: SiteDef = {
   zone: { name: 'MSK', utcOffset: 3 },
   // What is heard standing here with nothing running: the steppe's wind and a far hum of machinery, and no water: the
   // Aral Sea is 200 km off and the Syr Darya 30, and a flight from here comes down on land. Estimated, as every place's
-  // bed is (the wind and the hum are the Cape's own figures: nothing read gives this place's).
-  quiet: { wind: 0.05, surf: 0, hum: 0.006, sea: 0 },
+  // bed is. The wind is the Cape's figure scaled by the air that moved: 2.1 m/s at the neighbouring stations on the
+  // morning of 12 April 1961 (the flight's weather.ts) against the Cape's 5.1 m/s on 5 May, so 0.05 x 2.1 / 5.1; the
+  // hum is the Cape's own.
+  quiet: { wind: 0.02, surf: 0, hum: 0.006, sea: 0 },
   // The sky a flight from here stands under when it has no record of its own day: the steppe's clear, dry air. Every
   // figure is an estimate. Vostok 1 has its day's (its flight's weather.ts).
   weather: {
