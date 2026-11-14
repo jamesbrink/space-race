@@ -262,15 +262,19 @@ export interface Hearing {
   place: Place;
 }
 
-/** A place's quiet: gains for wind, surf and far-off machinery, heard at its ground. */
+/**
+ * A place's quiet: gains for wind, surf and far-off machinery, heard at its ground, and for the water round a spacecraft
+ * that has come down and stayed (`sea`: nought where its flights come down on land). A site's own data (`SiteDef.quiet`).
+ */
 export interface Place {
   wind: number;
   surf: number;
   hum: number;
+  sea: number;
 }
 
-/** A launch site by the sea on a calm morning. Estimated, and not yet a site's own data: the same wherever the ears are on the ground. */
-export const PLACE: Place = { wind: 0.05, surf: 0.035, hum: 0.006 };
+/** A launch site by the sea on a calm morning, its flights coming down in the sea. Estimated: what a site is given when it says nothing of its own; the same wherever the ears are on its ground. */
+export const PLACE: Place = { wind: 0.05, surf: 0.035, hum: 0.006, sea: 0.12 };
 
 /** What the engine (sound/engine.ts) is set to. Gains are of full scale. */
 export interface Mix {
@@ -385,7 +389,7 @@ export function mix(h: Hearing): Mix {
     jets,
     place: {
       wind: h.place.wind * Math.max(near, 0.8 * afloat),
-      water: Math.max(h.place.surf * near, 0.12 * afloat),
+      water: Math.max(h.place.surf * near, h.place.sea * afloat),
       hum: h.place.hum * near,
     },
     // whoever rides hears the vehicle's own instant: it is beside them, however far behind its sound in the air has fallen
