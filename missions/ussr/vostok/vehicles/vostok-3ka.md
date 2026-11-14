@@ -2,8 +2,9 @@
 
 What [vostok_3ka.py](vostok_3ka.py) builds, and how far to trust each number. The spacecraft type
 shared by the six crewed Vostoks; a flight's `model/vehicle.py` chooses what its own carried (today:
-the pilot in the seat; whether there is a film camera in the cabin: Vostok 2 was the first with
-one, `build(film_camera=True)`; whether the two television cameras are built as they were
+the pilot in the seat; how the cabin is fitted: Vostok 1 has the board, control panel, hand controller
+and Vzor of 1961, `build(fit="1961")`, which is [vostok_cabin.py](vostok_cabin.py); whether there is a
+film camera in the cabin: Vostok 2 was the first with one, `build(film_camera=True)`; whether the two television cameras are built as they were
 photographed: Vostok 3 to 6, `build(television=True)`; and the colour of the cabin's lining: white
 on Vostok 5 and 6, `build(lining="white")`).
 
@@ -76,10 +77,10 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | Node | Contains | Moves |
 | --- | --- | --- |
 | `DescentModule` | the sphere under its insulation, hatch No. 3 with the Vzor's porthole and hood, the right porthole, the three hatch coamings, the cable mast's socket plate, the strap lock and the housing on the pole with its three rods | |
-| `EntryHatch` | hatch No. 1: shield, pressure skin, rim, 30 bolts, porthole | slides out along the rails' line |
-| `ParachuteHatch` | hatch No. 2 | slides out along its own axis |
-| `Cabin` | pressure hull; and for the cutaway its lining, the seat's guides, instrument board with the Globus, left panel, hand controller, Vzor, two television cameras, equipment, the parachute container | |
-| `EjectionSeat` | seat, firing mechanisms, parachute and survival packs, oxygen bottles, and the pilot (built at detail 0.75 and above) | slides out along the rails |
+| `EntryHatch` | hatch No. 1: shield, pressure skin, rim, 30 bolts, porthole. The node's origin is where the hatch's line meets the sphere's outer surface, its +Z (the file's +Y) outward along that line | slides out along the rails' line; in flight it is thrown off first, along its own axis |
+| `ParachuteHatch` | hatch No. 2. Its origin and axes as `EntryHatch`'s, on its own line | slides out along its own axis |
+| `Cabin` | pressure hull; and for the cutaway its lining, the seat's guides, instrument board with the Globus, left panel, hand controller, Vzor, two television cameras, equipment (with `fit`, the cabin as a year's ships had it instead of those plain ones: for "1961", the needles `Gauge_…`, signal lamps `Tele_…`, controls `Ctl_…`, lamps `Lamp_…`, `Vzor_Screen`, `Vzor_Ring` and `Globus_Globe` that [Vostok 1's spacecraft.md, "Cabin"](../flights/vostok-1/spacecraft.md) records); and `ParachuteContainer`, the descent module's parachute container as a node of its own: its origin in the middle of its mouth under hatch No. 2, its +Z (the file's +Y) out along the hatch's line, so the top of its bounds is its mouth, where a flight makes the module's parachute fast (`Flight.flies.chutes[].at`) | |
+| `EjectionSeat` | seat, firing mechanisms, parachute and survival packs, oxygen bottles (built at detail 0.75 and above); `Pilot`, the flight's seated figure as a node of his own, with the seat's straps over him, so that he can be told from the seat he leaves; and `Seat_Pilot`, an empty at his eyes (in the file its +Z looks at the middle of the instrument board and its +Y is the top of his head: `ModelDef.seats`). The node's origin is the seat frame's (87 mm behind the middle of his hip joints); in the file its +Y is up the rails toward the entry hatch, its +Z out of his chest, its +X to his left | slides out along the rails; in flight it leaves along its own +Y |
 | `FilmCamera` | only with `film_camera`: the Konvas (body, turret and three lenses, magazine, viewfinder, motor), built at detail 0.75 and above | |
 | `TelevisionCameras` | only with `television`: the two Seliger cameras (cases, fronts and lenses, plugs, cables), built at detail 0.75 and above; the cabin's two stand-in barrels are then left out | |
 | `RetainingStraps` | `Strap_1` to `Strap_4`, each a node hinged at its foot on the support ring, with its tensioner, lock fitting and antenna | each swings outward about its foot |
@@ -87,7 +88,7 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | `InstrumentModule` | both cones, the frame, support ring, shutters and their frames, jets, valves, covers, Sun sensor; the instrument frame inside | |
 | `Antennas` | `Antenna_1` to `Antenna_10`, each a node with its origin at its root: the fan of three (1 to 3), the long whips (4 to 6), the ribbons (7 to 10) | built out, or with `stowed` each drawn back into the hull by `STOWED`'s vector, for a flight to slide out |
 | `GasBottles` | 14 bottles with their bands, cradles, valves and the main that joins them | |
-| `RetroEngine` | skirt, chamber, nozzle, four steering nozzles; the tank, its pressure bottle and the turbopump inside | |
+| `RetroEngine` | skirt, chamber, four steering nozzles; the tank, its pressure bottle and the turbopump inside; and `RetroEngine_Nozzle`, the chamber's nozzle as a node of its own: its origin is on the axis in the plane of the exit (station 0), which is its lowest point, so a flight hangs the braking burn's fire there | |
 
 ## What the model gets wrong or leaves out
 
@@ -114,7 +115,9 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 - **The pilot is the flight's crew figure, carried to the seat's pose** (`crew/sk_1.py`,
   `build_seated`): the same man and suit as the standing crew model, visor down, with no
   skeleton. His pose is read off the seat as it is laid out here, not from a drawing of the
-  seat; he wears no harness, and his hoses end in a stub. What that figure gets wrong is in
+  seat. The seat's straps over him (one over each shoulder to a buckle on the chest, a belt
+  across the lap) are there because he was strapped in; their run, width, colour and buckles
+  are estimated, and nothing is drawn of the parachute's own harness. His hoses end in a stub. What that figure gets wrong is in
   [sk-1.md](../crew/sk-1.md).
 - **The seat was laid out before the man.** Its back and the pack on it stood 56 mm behind the
   hips of the stand-in that used to ride here; a man's back is 140 mm behind his hip joints, so
@@ -124,10 +127,13 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   parachute and the survival pack are stood in for by boxes in about the right places.
 - **The lining is one flat colour**, yellow or white, on a plain ball: the real one is quilted or
   in panels. Which flights had which is known for three of the six.
-- **The instrument board is not any flown ship's.** Vostok 6's flown cabin has its Globus in the
-  middle of the board over a row of four dials, with a block of lamps beside it and a column of
-  switches at the left; the model has the Globus to one side and five dials. Seen while building
-  Vostok 6 and not followed up.
+- **Without `fit`, the instrument board is not any flown ship's.** Vostok 6's flown cabin has its
+  Globus in the middle of the board over a row of four dials, with a block of lamps beside it and a
+  column of switches at the left; the plain board has the Globus to one side and five dials, hangs
+  lower than the real one and has its panel and grip at the pilot's hips, where the flown cabin of
+  Vostok 1 has them on the far wall. Vostok 1 is fitted as it flew (`fit="1961"`); Vostok 2, which
+  flew the same set, and Vostok 3 to 6, which had a new board (Kamanin, 9 August 1962: «приборную
+  доску, разработанную Даревским»), keep the plain one until each is researched.
 - **Cabin equipment is boxes.** The board has a globe and five dials; the left panel, the hand
   controller, the Vzor, the cameras and the parachute container are in the places the sources
   give or imply. The food locker, radio, regeneration unit and sanitary system are not told apart.

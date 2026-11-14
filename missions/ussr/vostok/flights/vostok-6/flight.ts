@@ -452,6 +452,7 @@ const launcherParts: Part[] = [
       ['Diameter', '2.58 m'],
       ['Mass', '7,984 kg fuelled, 1,472 kg burnt out'],
       ['Engine', 'RD-0109: 54.5 kN in vacuum, 121 kg'],
+      ['Engine’s size', '1,555 mm long; nozzle exit 733 mm across'],
       ['Orbit reached', '180.9 × 231.1 km'],
       ['Seen', 'from the right porthole, after separation (her report)'],
     ],

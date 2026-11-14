@@ -79,6 +79,8 @@ launch vehicle".
 | Fairing's opening | round, 1,150 mm across, over hatch No. 1 | documented (that it is there, and why); estimated (size) | M; Z: for boarding and for ejection on the pad. Size off N and K |
 | Spacecraft's place | its frame (station 1,200 of the 3KA) on the adapter's top | documented (what rests on what); derived (the height) | M: «На ступень опирался шпангоут приборного отсека». N puts the opening's centre 34.07 m up, which is the same to 0.04 m |
 | Main nozzle exit | 720 mm | estimated | V scales to about 740. No published figure was read |
+| RD-0109 | 1,555 mm long; nozzle exit 733 mm across (`E_LENGTH`, `E_EXIT_R`); throat 82 mm | documented (KBKhA's page for the RD-0105 and RD-0109, as English Wikipedia quotes it: length 1,555 mm, diameter 733 mm, 121 kg; Encyclopedia Astronautica rounds to 1.58 and 0.76 m and gives the area ratio 79.4); derived (that the diameter is the exit's: nothing on a one-chamber engine is wider; the throat from the area ratio, which is what 54.5 kN at 5 MPa needs); estimated (the chamber's outline between, and where the exit hangs: 600 mm below the lattice's top) | KBKhA's page itself was not reached (404). **Russian Wikipedia gives the diameter as 766 mm** and Encyclopedia Astronautica 0.76 m: not resolved; with 766 the throat by the area ratio would be 86 mm, which fits the thrust as well |
+
 | Main chambers | four to an engine, on a 630 mm radius, in a square whose sides lie along and across the line to the core | estimated | V |
 | Steering chambers | two on each strap-on, either side of the rudder, 24° from it, 1,500 mm from the block's axis; four on the core, in line with the boosters, 1,270 mm from its axis | documented (the counts); estimated (the places) | counts: M; E. Places: V, which scales to 1,530 on a strap-on and about 1,330 on the core. The core's are drawn 60 mm further in than that, because as the boosters stand in the model their tails leave no more room |
 | Steering chamber's exit | 250 mm | derived, loosely | a steering chamber's 2.5 tf (E) is about an eighth of a main chamber's share of the thrust, so 0.35 of its 720 mm at a like expansion. V, where they wear covers, scales to about 330 |
@@ -218,7 +220,7 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | Node | Contains | Leaves as |
 | --- | --- | --- |
 | `Fairing` | `Fairing_Left`, the half with the round opening, and `Fairing_Right`, each a node with its origin at its foot | each tips outward about its foot and falls away |
-| `BlockE` | the stage: tanks, adapter the spacecraft stands on, engine, steering nozzles | lifts off the lattice |
+| `BlockE` | the stage: tanks, adapter the spacecraft stands on, steering nozzles; and `BlockE_Engine`, the RD-0109 as a node of its own (chamber, liner, turbopump): its origin is on the axis in the plane of the nozzle's exit, which is its lowest point, so a flight hangs the third stage's fire there (`Flight.flies.engine`) | lifts off the lattice |
 | `Interstage` | the lattice and the deflector cone | stays on the core |
 | `CoreStage` | Block A's airframe and tanks, and the four cups the boosters' tips push into | |
 | `CoreEngine` | the RD-108: four chambers, four steering chambers in their fairings, turbopump | |

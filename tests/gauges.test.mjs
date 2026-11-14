@@ -96,11 +96,38 @@ test('signals: what has happened by an instant', () => {
   assert.ok(s.separated && !s.main && !s.retro);
 });
 
-/** Every node of a GLB by name, with its extras; and with `places`, where each stands in its parent instead. */
+/**
+ * Every node of a GLB by name, with its extras; and with `places`, where each one's origin stands in the model's own
+ * frame instead, through whatever it hangs from (a seat's node may ride on a seat that has a frame of its own).
+ */
 function nodesOf(file, places = false) {
   const glb = readFileSync(file);
   const gltf = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
-  return new Map(gltf.nodes.map((n) => [n.name, places ? (n.translation ?? [0, 0, 0]) : (n.extras ?? {})]));
+  if (!places) return new Map(gltf.nodes.map((n) => [n.name, n.extras ?? {}]));
+  const parent = new Map();
+  gltf.nodes.forEach((n, i) => {
+    for (const child of n.children ?? []) parent.set(child, i);
+  });
+  // a point of a node's frame in its parent's: scaled, turned by the node's quaternion, moved
+  const up = (n, [x, y, z]) => {
+    const [sx, sy, sz] = n.scale ?? [1, 1, 1];
+    const [qx, qy, qz, qw] = n.rotation ?? [0, 0, 0, 1];
+    const v = [x * sx, y * sy, z * sz];
+    const t = [2 * (qy * v[2] - qz * v[1]), 2 * (qz * v[0] - qx * v[2]), 2 * (qx * v[1] - qy * v[0])];
+    const [tx, ty, tz] = n.translation ?? [0, 0, 0];
+    return [
+      v[0] + qw * t[0] + (qy * t[2] - qz * t[1]) + tx,
+      v[1] + qw * t[1] + (qz * t[0] - qx * t[2]) + ty,
+      v[2] + qw * t[2] + (qx * t[1] - qy * t[0]) + tz,
+    ];
+  };
+  return new Map(
+    gltf.nodes.map((n, i) => {
+      let at = [0, 0, 0];
+      for (let k = i; k !== undefined; k = parent.get(k)) at = up(gltf.nodes[k], at);
+      return [n.name, at];
+    }),
+  );
 }
 
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) {

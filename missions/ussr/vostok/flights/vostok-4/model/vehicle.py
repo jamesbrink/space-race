@@ -38,10 +38,10 @@ import vostok_8k72k  # noqa: E402
 from srlib import mark_shells, run  # noqa: E402
 
 
-def pilot(parent, place) -> None:
+def pilot(parent, place) -> dict:
     """Popovich in the seat: the SK-1 (../../../crew/sk_1.py), visor down, "СССР" on the helmet as the film of the
     morning shows it. The figure is the suit module's own, 1.65 m: no document with Popovich's height was found."""
-    sk_1.build_seated(parent, place, "Pilot")
+    return sk_1.build_seated(parent, place, "Pilot")
 
 
 def build() -> str:
