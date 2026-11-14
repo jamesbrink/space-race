@@ -322,11 +322,12 @@ const parts: Part[] = [
     detail:
       'An Aerojet YLR91-AJ-7, hung on a gimbal under the fuel tank and, until staging, inside the top of the first ' +
       'stage. Its propellants ignite on meeting, so it has no igniter and can be started at altitude without ' +
-      'ceremony. The upper third of its bell is tubes cooled by the fuel; below that it is an ablative skirt. One ' +
+      'ceremony. Its bell is tubes cooled by the fuel as far as half its width, and below that an ablative skirt. One ' +
       'engine cannot roll the stage, so the gas that has driven its pumps is let out through a small swivelling ' +
       'nozzle, and that is the roll control. It burned for about three minutes, and Young, who had not been in ' +
-      'space before, was taken with the horizon. The engine’s place is documented; its bell is sized from published ' +
-      'ratios, and its form is representative.',
+      'space before, was taken with the horizon. The engine’s place is documented, and so are the two expansion ' +
+      'ratios, 13 and 49.2, that put the joint in its bell where it is; the bell’s size is computed from them, and ' +
+      'the rest of its form is representative.',
     facts: [
       ['Thrust', 'about 100,000 lbf at altitude (445 kN)'],
       ['Engine', 'Aerojet YLR91-AJ-7'],
