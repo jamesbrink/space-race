@@ -37,10 +37,13 @@ pnpm model:ma-7       # rebuild Aurora 7's vehicle: spacecraft No. 18 on Atlas 1
 pnpm model:ma-8       # rebuild Sigma 7's vehicle: spacecraft No. 16 on Atlas 113-D
 pnpm model:ma-9       # rebuild Faith 7's vehicle: spacecraft No. 20 on Atlas 130-D
 pnpm model:vostok-2   # rebuild Vostok 2's vehicle
+pnpm model:gt-3       # rebuild Gemini-Titan 3's vehicle: spacecraft No. 3 on GLV-3 (a Titan II)
 pnpm model:vostok-3   # rebuild Vostok 3's vehicle
 pnpm model:vostok-4   # rebuild Vostok 4's vehicle
 pnpm model:vostok-5   # rebuild Vostok 5's vehicle
 pnpm model:vostok-6   # rebuild Vostok 6's vehicle
+pnpm model:voskhod-1  # rebuild Voskhod 1's vehicle: 3KV No. 3 on its 11A57
+pnpm model:voskhod-2  # rebuild Voskhod 2's vehicle: 3KD No. 4, the airlock folded under the fairing's blister
 pnpm model:lc-5       # rebuild the place round the pad, each of its dated states (the site's own models)
 pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
 pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)

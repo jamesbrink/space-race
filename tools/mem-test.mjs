@@ -133,7 +133,9 @@ await page.keyboard.up('w');
 await note('on foot');
 // the flight, straight from the walk (the walk's maps are still held): followed up to where the whole Earth's maps are wanted
 // (a flight with no flight deck yet has nothing to follow: its launch site is all there is)
-const flies = await page.evaluate(() => Boolean(window.sr.flight.flies && window.sr.flight.trajectory?.body));
+const flies = await page.evaluate(() =>
+  Boolean(window.sr.flight.flies && (window.sr.flight.trajectory?.body || window.sr.flight.orbital?.ascent)),
+);
 if (flies) {
   await page.evaluate(() => {
     const sr = window.sr;

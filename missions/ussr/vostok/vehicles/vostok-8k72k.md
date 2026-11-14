@@ -79,6 +79,8 @@ launch vehicle".
 | Fairing's opening | round, 1,150 mm across, over hatch No. 1 | documented (that it is there, and why); estimated (size) | M; Z: for boarding and for ejection on the pad. Size off N and K |
 | Spacecraft's place | its frame (station 1,200 of the 3KA) on the adapter's top | documented (what rests on what); derived (the height) | M: «На ступень опирался шпангоут приборного отсека». N puts the opening's centre 34.07 m up, which is the same to 0.04 m |
 | Main nozzle exit | 720 mm | estimated | V scales to about 740. No published figure was read |
+| RD-0109 | 1,555 mm long; nozzle exit 733 mm across (`E_LENGTH`, `E_EXIT_R`); throat 82 mm | documented (KBKhA's page for the RD-0105 and RD-0109, as English Wikipedia quotes it: length 1,555 mm, diameter 733 mm, 121 kg; Encyclopedia Astronautica rounds to 1.58 and 0.76 m and gives the area ratio 79.4); derived (that the diameter is the exit's: nothing on a one-chamber engine is wider; the throat from the area ratio, which is what 54.5 kN at 5 MPa needs); estimated (the chamber's outline between, and where the exit hangs: 600 mm below the lattice's top) | KBKhA's page itself was not reached (404). **Russian Wikipedia gives the diameter as 766 mm** and Encyclopedia Astronautica 0.76 m: not resolved; with 766 the throat by the area ratio would be 86 mm, which fits the thrust as well |
+
 | Main chambers | four to an engine, on a 630 mm radius, in a square whose sides lie along and across the line to the core | estimated | V |
 | Steering chambers | two on each strap-on, either side of the rudder, 24° from it, 1,500 mm from the block's axis; four on the core, in line with the boosters, 1,270 mm from its axis | documented (the counts); estimated (the places) | counts: M; E. Places: V, which scales to 1,530 on a strap-on and about 1,330 on the core. The core's are drawn 60 mm further in than that, because as the boosters stand in the model their tails leave no more room |
 | Steering chamber's exit | 250 mm | derived, loosely | a steering chamber's 2.5 tf (E) is about an eighth of a main chamber's share of the thrust, so 0.35 of its 720 mm at a like expansion. V, where they wear covers, scales to about 330 |
@@ -110,10 +112,10 @@ So the profile is consistent with the documented sizes and loads, and is not a s
 | Dry mass, whole vehicle | 29 t | documented | M. Z has 28.76 t |
 | Strap-on, dry | 3.75 t each | documented | M. A has 3.71 t |
 | Strap-on, at liftoff | 43.3 t each | documented, secondary | A. M's table has 170 t for the four; B 177.65 t |
-| Strap-on propellant | 39.16 t each | documented, secondary | B, which counts 1.47 t of that as peroxide and nitrogen |
+| Strap-on, all that is not structure | 39.55 t each | derived | 43.3 t (A) less 3.75 t (M). No split of kerosene, oxygen, peroxide and nitrogen was found for the 8K72K. **B's 39.16 t (and 1.47 t of peroxide and nitrogen) are Soyuz-ST's**, from Arianespace's Soyuz CSG User's Manual (2012), Fig. 1.5.1a: 27,900 kg of oxygen and 11,260 of kerosene, the peroxide and nitrogen outside them; B copies the same block masses into every R-7 |
 | Core, dry | 7 to 8 t | documented | M: 7 t for the 8K71's, 8 t in the 8K72 table. A has 6.8 t |
 | Core, at liftoff | 100 t | documented, secondary | A 100.4 t; B 99.76 t; M 102 t |
-| Core propellant | 90.1 t | documented, secondary | B, of which 3.12 t peroxide and nitrogen |
+| Core, all that is not structure | 93.6 t | derived | 100.4 t less 6.8 t (both A). **B's 90.1 t (and 3.12 t) are Soyuz-ST's** likewise: 63,800 kg of oxygen and 26,300 of kerosene |
 | Block E, fuelled | 7,984 kg | documented | M, of the 8K72's stage; A has 7,775 kg; E says 8 t; B 8.36 t |
 | Block E, burnt out | 1,472 kg | documented | M. A has 1,440 kg; Z 1.34 t dry |
 | Block E propellant | 6.93 t | documented, secondary | B. M's two figures differ by 6.51 t |
@@ -158,37 +160,43 @@ ground, each by its own pyrotechnic igniter on a wooden stand pushed up the nozz
 
 | Event | Time from liftoff | How |
 | --- | --- | --- |
-| Strap-ons separate | 119 s (S; Z) | Engines throttled back, steering chambers off; the ties at the foot let go and the blocks swing out on their tip balls under their own remaining thrust, come off the brackets as the core pulls ahead, and vent their oxygen tanks through nozzles in the nose cone to push the tips clear (M). Seen from the ground the four make a cross |
-| Fairing | 150 s (Gagarin); 154 s (Z); 156 s (S's figure) | Two halves, during the core's burn |
+| Strap-ons separate | 119.5 s (the 2011 documents: the integrator's command at 119.50 s); 119 s (S; Z) | Engines throttled back, steering chambers off; the ties at the foot let go and the blocks swing out on their tip balls under their own remaining thrust, come off the brackets as the core pulls ahead, and vent their oxygen tanks through nozzles in the nose cone to push the tips clear (M). Seen from the ground the four make a cross |
+| Fairing | 154.6 s (the 2011 documents: 09:09:34.3); 150 s (Gagarin); 154 s (Z); 156 s (S's figure) | Two halves, during the core's burn |
 | Block E lights, core shuts down | about 300 s (S: cutoff 300; Z: 299) | Hot staging: the upper engine starts through the open lattice onto a deflector on the core's top (M), then the core is cut loose. Gagarin felt 10 to 15 s of weightlessness between the two (Z), which the hot-staging account does not explain |
 | Block E shuts down | 676 s (S) | |
 | Spacecraft separates | 688 s, 09:18:28 Moscow time (OKB-1 report) | |
 
-**Why the orbit was high.** The apogee was 327 km where 230 was planned. Zak has the core's
-engine running about half a second long before its cutoff; Siddiqi (2015), from the documents
-published in 2011, has a faulty valve on the third stage's engine letting it burn long. The OKB-1
-report read here gives the orbit and not the cause. Both are recorded; neither is taken.
+**Why the orbit was high.** The apogee was 327 km where 230 was planned. Baturin (2021), one of
+the editors of the documents published in 2011, has both accounts at once: the radio guidance's
+power failed at 156 s, so its cutoff command never came and the core was cut 0.46 s late by the
+autonomous system, 22.0 m/s over the design; and Block E burned 2.4 s longer than calculated; 25.43
+m/s too fast in all. Chertok (vol. 3, pp. 73 and 291) has the radio command failing and the
+integrator cutting the core at a velocity set above the radio system's. The OKB-1 report gives the
+orbit and not the cause.
 
 ## What a staged trajectory will need
 
-This will be the simulator's first orbit. What was found, for `Flight.trajectory` when it is
-written:
+The simulator's first orbit. What was found for the ascent, November 2026 (the flight's `orbital.ts`, `ascent`,
+holds each figure with its source; [docs/sources.md](../../../../docs/sources.md), "The ascent", the sources):
 
 | Input | Found | Confidence |
 | --- | --- | --- |
 | Liftoff mass | 287 t | documented |
-| Stage masses and propellant | as "Masses" above | documented, with spreads of 1 to 4 % between sources |
-| Thrust and specific impulse, sea level and vacuum | as "Engines" above | documented, secondary |
-| Nozzle exit areas | none published was read; 20 exits of 720 mm scaled off a photograph | estimated. Better derived from the two thrusts: (vacuum less sea level) over one atmosphere |
-| Burn times | spreads above; flown: 119, 300, 676 s | documented (flown) |
-| Throttling | the boosters throttled before separation (E: after the third satellite's failure it was decided to throttle at the end of the first stage's flight); no profile | not found |
-| Fairing | 0.8 t, off at 150 to 156 s | documented, secondary |
-| Pitch programme | nothing | **not found** |
-| Launch azimuth as flown | nothing published was read. For 64.95° from 45.92° N: 37.5° east of north before the Earth's turning is allowed for | derived |
-| Drag | nothing | not found |
+| Stage masses and propellant | as "Masses" above: for the 8K72K only totals, fuelled and dry, so what each block can burn is everything that is not structure (derived). The engines' published specific impulses are reckoned on kerosene, oxygen and peroxide together (lpre.de, Gakhun et al.: the RD-107's 1,000.3 kN over 326.2 kg/s, 8.8 of it peroxide, is its 3,067 m/s), so the flow from thrust and impulse drains the peroxide too; the nitrogen (0.28 t a strap-on, 0.52 t the core: militaryrussia.ru, tertiary) is left in. Flown so, with the documented throttling below, the core has 4.5 t left at 300 s | derived |
+| Thrust and specific impulse, sea level and vacuum | as "Engines" above. lpre.de's compilation (from Gakhun et al., 1989) reads the 8K72K's engines as the 8D74 and 8D75 (83 and 102 tf; 76 and 96 tf; 2,508 and 3,067; 2,430 and 3,087 m/s), where Brügge's copy of Energomash's table has a row "8K72K": within 0.3 % in vacuum, not resolved | documented, secondary |
+| Nozzle exit areas | derived from the two thrusts, (vacuum less sea level) over one atmosphere: 1.794 m² an RD-107, 1.985 m² the RD-108. lpre.de's chamber tables (Gakhun et al.) give the exits: 720 mm a main chamber, 310 mm a steering chamber: 1.780 and 1.931 m², within 1 and 3 % | derived; the geometry documented, secondary |
+| Burn times | flown: the strap-ons to the integrator's command at 119.50 s, done in 0.03 s («Первый пилотируемый полёт», 2011, as Gammal and Tuchin quote it); the core to 300 s (Siddiqi; the telemetry has no instant for it); Block E to 676 s (Siddiqi) | documented |
+| Throttling | in kind: each RD-107 goes to its first intermediate stage of thrust some seconds before separation and its steering chambers stop (RKK Energia; lpre.de; on Sputnik's 8K71PS the command came at 109.94 s and separation at 116.38 s: the 1957 report); the RD-108 goes to a final stage on its steering chambers alone, at a reduced setting, for 10 s before cutoff on the 8D75 (lpre.de), and Gagarin felt 10 to 15 s of weightlessness before the third stage lit; in flight both are trimmed by the apparent-velocity regulator (RKS) and the tank-emptying system (SOB). **Levels not found for the 8K72K.** Flown: the strap-ons at 60 % (the 8K71's and 8A91's mode in Energomash's table) for Sputnik's 6.4 s; the core's last 10 s on its four steering chambers at their rated 2.5 tf, 10.4 %, which is the most "reduced" can be | in kind, documented; levels estimated |
+| Fairing | 0.8 t, off at 154.6 s (09:09:34.3: the 2011 documents) | documented |
+| Third stage's cutoff | **2,283.52 m/s of apparent velocity**, the setting of the KI22-8V-2 and I-22-8 at the main cutoff command (Gagarin's flight task, page 1, section VI: ЦА РКВ ф. 19, оп. 114сс, д. 15, pictured in Kommersant Nauka, 2021; the third numeral could be a 6). Flown so, Block E stops at 676.4 s, the recorded 676 | documented (read off a photograph) |
+| Pitch programme | **not found** for the 8K72K. Soyuz's, from Baikonur, is published (Starsem's manual, Fig. 2-4: vertical to about 20 s, 38 deg above level at 120 s, level at 440 s), on the same first two stages with a heavier upper stage: a comparison, not an input | not found |
+| Launch azimuth as flown | **34°37′59″.2**, the aiming line's azimuth (Gagarin's flight task, section IV). Flown, the orbit comes out at 64.99° against the published 64.95°. (Soyuz's manual: 34.8° for 64.9° today) | documented |
+| Drag | **not found**: no drag coefficient for any R-7 was found. Estimated, and labelled | estimated |
 | Orbit to hit | 181 by 327 km, 64°57′, 89.44 min | documented (OKB-1 report) |
 | Speed at core cutoff | about 5.5 km/s | Z, round |
-| Loads felt | 3 to 4 g a minute after liftoff (Z, from Gagarin) | documented, loose |
+| Loads felt | 3 to 4 g a minute after liftoff (Z, from Gagarin); about 5 g before the strap-ons left (Gagarin) | documented, loose |
+| Why the orbit was high | the radio guidance's power converter failed at 156 s; the core was cut 0.46 s late by the autonomous system's time mark (the preliminary command 0.51 s late): 22.0 m/s over the design. Block E burned 2.4 s longer than calculated. 25.43 m/s in all: 327 km for 230 (Baturin, 2021, an editor of the 2011 documents; Chertok, vol. 3, pp. 73 and 291, has the radio command failing and the integrator's cutoff) | documented, secondary |
+| Where the first stage fell | not found for Vostok. Sputnik's four strap-ons fell 617 to 632 km down range (calculated 610) | a different vehicle |
 
 ## Paint and markings
 
@@ -212,7 +220,7 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | Node | Contains | Leaves as |
 | --- | --- | --- |
 | `Fairing` | `Fairing_Left`, the half with the round opening, and `Fairing_Right`, each a node with its origin at its foot | each tips outward about its foot and falls away |
-| `BlockE` | the stage: tanks, adapter the spacecraft stands on, engine, steering nozzles | lifts off the lattice |
+| `BlockE` | the stage: tanks, adapter the spacecraft stands on, steering nozzles; and `BlockE_Engine`, the RD-0109 as a node of its own (chamber, liner, turbopump): its origin is on the axis in the plane of the nozzle's exit, which is its lowest point, so a flight hangs the third stage's fire there (`Flight.flies.engine`) | lifts off the lattice |
 | `Interstage` | the lattice and the deflector cone | stays on the core |
 | `CoreStage` | Block A's airframe and tanks, and the four cups the boosters' tips push into | |
 | `CoreEngine` | the RD-108: four chambers, four steering chambers in their fairings, turbopump | |

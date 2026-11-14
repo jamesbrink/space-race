@@ -10,6 +10,8 @@ helmet that does not come off, with "СССР" painted on its brow that morning,
 wrist rings, black laced boots.
 
 Top-level nodes: Helmet  Torso  Arms  Gloves  Legs  Boots  Skeleton
+and, on the skeleton's `Spine`, `Harness`: where his parachute's risers meet over his shoulders, with the pose he
+hangs in under it in its extras (`hang`).
 
 The standing figure is skinned to Skeleton, the joints every crew figure has (srlib.FIGURE), so
 the viewer can walk him, with the visor up over the crown as it was on the way to the pad.
@@ -616,8 +618,61 @@ def build() -> float:
     fl.use(B)
     fl.start()
     build_figure()
-    fl.rig_standing()
+    harness_anchor(fl.rig_standing())
     return max(v.co.z for o in bpy.data.objects if o.type == "MESH" for v in o.data.vertices)
+
+
+# ------------------------------------------------------------ under his own parachute
+
+# The pilot left the seat at about 4 km and came down under his own canopy, hanging in the harness of his parachute
+# system by two risers from his shoulders. `Harness` is where a drawn parachute is made fast: midway between his
+# shoulder joints, RISERS_MEET above them, on the joint `Spine`, its own +Z (the file's +Y) up his back.
+# HANGING is the pose he hangs in, for the viewer to put the skeleton in: each joint's turn from the standing pose,
+# degrees about its own X (positive takes a hanging limb backward: srlib.FIGURE) and then about the line he faces
+# along (positive takes a hanging limb toward his left). Legs together and a little bent for the landing, the arms up
+# and forward with the hands on the front risers. Nothing of it is from a record: no photograph of a Vostok pilot under
+# his canopy was found, and the pose is a parachutist's under a round canopy, by judgement.
+RISERS_MEET = 9.0  # centimetres above the shoulder joints: about the top of the collar ring
+HANGING = {
+    "UpperArm.L": (-52.0, 26.0),
+    "UpperArm.R": (-52.0, -26.0),
+    "LowerArm.L": (-100.0, 0.0),
+    "LowerArm.R": (-100.0, 0.0),
+    "UpperLeg.L": (-10.0, -3.5),
+    "UpperLeg.R": (-10.0, 3.5),
+    "LowerLeg.L": (18.0, 0.0),
+    "LowerLeg.R": (18.0, 0.0),
+    "Foot.L": (10.0, 0.0),
+    "Foot.R": (10.0, 0.0),
+}
+
+
+def hanging_turns() -> dict[str, list[float]]:
+    """HANGING as the file has it: each joint's turn as a quaternion (x, y, z, w) in the joint's own axes, which at
+    rest are the file's (+X his left, +Y up, +Z the way he faces): the swing about X first, then the turn about Z."""
+    out = {}
+    for joint, (swing, aside) in HANGING.items():
+        q = Matrix.Rotation(math.radians(aside), 3, "Z") @ Matrix.Rotation(math.radians(swing), 3, "X")
+        w, x, y, z = q.to_quaternion()
+        out[joint] = [round(x, 6), round(y, 6), round(z, 6), round(w, 6)]
+    return out
+
+
+def harness_anchor(skeleton: bpy.types.Object) -> bpy.types.Object:
+    """The standing figure's `Harness`: see HANGING. Its extras: `hang_joints`, the joints' names in order, comma
+    separated, and `hang`, four numbers for each."""
+    mid = (B.shoulder_point(1) + B.shoulder_point(-1)) / 2 + UP * RISERS_MEET
+    turns = hanging_turns()
+    return srlib.anchor(
+        "Harness",
+        skeleton,
+        mid * srlib.CM,
+        (0, 0, 1),
+        (0, 1, 0),
+        bone="Spine",
+        hang_joints=",".join(turns),
+        hang=[c for q in turns.values() for c in q],
+    )
 
 
 # ------------------------------------------------------------- in the ejection seat
@@ -665,10 +720,82 @@ def seated_key_points() -> dict:
         "heels": {side: tuple(rig.carry((sx * B.stance, 8.2 * BOOT_SIZE, 0.0), "leg")) for side, sx in sides_},
         "toes": {side: tuple(rig.carry((sx * B.stance, -23.0 * BOOT_SIZE, 1.8 * BOOT_SIZE), "leg")) for side, sx in sides_},
         "sole_y": max(p.y for p in pts["Boots_Soles"]),
+        # midway between the eyes' irises (figurelib.build_head puts each 3.15 cm off the middle): where a seat's view is from
+        "eyes": tuple(rig.carry((fl.head_point(3.15, 0.5) + fl.head_point(-3.15, 0.5)) / 2 + Vector((0, -0.2, 0.02)))),
     }
 
 
-def build_seated(parent: bpy.types.Object, place: Matrix, prefix: str = "Pilot") -> dict:
+# The straps that held him in the seat: one over each shoulder from the seat's back down the chest to a buckle, and a
+# belt across the lap. That he was strapped in is the record (Kamanin, 27 July 1962: "all ten operations of freeing
+# himself from the harness"; a film still of Bykovskiy has a grey harness over the chest); the run of each strap, its
+# width and its colour are estimated, and the buckles are plain plates.
+STRAP_WIDTH = 4.4
+STRAP_OFF = 0.55  # how far a strap's middle stands off the cloth under it, cm
+BUCKLE_AT = (-27.0, -7.0)  # along his body from the hip joints (toward the head is -Y): the chest's buckle, and the lap belt's line
+
+
+def build_harness(parent: bpy.types.Object, place: Matrix, prefix: str) -> None:
+    """The seat's harness laid on the seated figure, as children of `parent`: `<prefix>_Harness_Straps` and
+    `<prefix>_Harness_Buckles`. `place` is build_seated's."""
+    pts = seated_points()
+    cloth = [
+        p
+        for name, ps in pts.items()
+        if name.startswith(("Torso_", "Legs_Trousers", "Arms_Sleeves", "Helmet_Collar", "Helmet_NeckBand", "Helmet_Fittings"))
+        for p in ps
+    ]
+    trunk = pts["Torso_Shell"]
+
+    def over(x: float, y: float, reach: float = 2.6, of: list[Vector] = cloth) -> float:
+        """The cloth's height (toward +Z, out of his chest) at a place on him."""
+        near = [p.z for p in of if abs(p.x - x) < reach and abs(p.y - y) < reach]
+        return max(near) if near else 0.0
+
+    def lay(mb: MeshBuilder, path: list[Vector], resample: int, flat: tuple[float, float, float]) -> None:
+        """A strap along `path`, its width along `flat`, which the path never runs along."""
+        mb.loft(
+            [place @ (p * srlib.CM) for p in path],
+            [(0.16 * srlib.CM, STRAP_WIDTH / 2 * srlib.CM)] * len(path),
+            8,
+            ref=tuple((place.to_3x3() @ Vector(flat)).normalized()),
+            resample=resample,
+        )
+
+    straps, buckles = MeshBuilder(), MeshBuilder()
+    y_chest, y_lap = BUCKLE_AT
+    back = min(p.z for p in trunk)
+    for sx in (1, -1):
+        # over the shoulder between the helmet's collar ring and the armhole, clear of the ring
+        x0 = sx * max(B.pit_x * 0.62, COLLAR_R + 0.8 + STRAP_WIDTH / 2 + 1.2)
+        top = min((p for p in trunk if abs(p.x - x0) < 2.5), key=lambda p: p.y)  # the top of the shoulder there
+        path = [
+            Vector((x0, top.y + 5.0, back - 2.0)),
+            Vector((x0, top.y - STRAP_OFF, (back + top.z) / 2)),
+            Vector((x0, top.y - STRAP_OFF, top.z + 1.0)),
+        ]
+        n = 7
+        for i in range(1, n + 1):
+            u = i / n
+            x, y = x0 + (sx * 2.6 - x0) * u**1.4, top.y + 3.0 + (y_chest - top.y - 3.0) * u
+            path.append(Vector((x, y, over(x, y) + STRAP_OFF)))
+        lay(straps, path, 4, (1, 0, 0))
+    # the lap belt, from the seat's sides over the pelvis: it lies on the trunk, under his forearms
+    lap = [p for name, ps in pts.items() if name.startswith(("Torso_Shell", "Torso_Closure", "Legs_Trousers")) for p in ps]
+    half = max(abs(p.x) for p in lap if abs(p.y - y_lap) < 3.0 and p.z > 0) + 1.0
+    path = [Vector((-half - 1.0, y_lap, back + 2.0))]
+    path += [Vector((x, y_lap, over(x, y_lap, of=lap) + STRAP_OFF)) for x in (-half + half * 2 * i / 10 for i in range(11))]
+    path.append(Vector((half + 1.0, y_lap, back + 2.0)))
+    lay(straps, path, 3, (0, 1, 0))
+    for y, size, of in ((y_chest, (9.5, 5.6, 1.1), cloth), (y_lap, (6.4, 5.6, 1.1), lap)):
+        z = max(over(x, y, 3.2, of) for x in (-3.0, 0.0, 3.0)) + STRAP_OFF + 0.16 + size[2] / 2 + 0.15
+        buckles.box(tuple(c * srlib.CM for c in size), place @ Matrix.Translation(Vector((0, y, z)) * srlib.CM))
+    webbing = bpy.data.materials.get("webbing-grey") or material("webbing-grey", (0.42, 0.44, 0.42), 0.0, 0.85)
+    plate = bpy.data.materials.get("steel") or material("steel", (0.36, 0.36, 0.37), 1.0, 0.4)
+    straps.build(f"{prefix}_Harness_Straps", webbing, parent, sharp_angle=None)
+    buckles.build(f"{prefix}_Harness_Buckles", plate, parent, smooth=False)
+
+
+def build_seated(parent: bpy.types.Object, place: Matrix, prefix: str = "Pilot", harness: bool = True) -> dict:
     """The same figure in the ejection seat's pose, visor down, for a cabin: every mesh a child of
     `parent`, named `<prefix>_<Node>_<Mesh>`, with no skeleton.
 
@@ -678,8 +805,10 @@ def build_seated(parent: bpy.types.Object, place: Matrix, prefix: str = "Pilot")
     Vostok seat's own frame, vehicles/vostok_3ka.py `seat_frame`, has +Y toward his head and +X
     to his left and is in millimetres: `place = S @ Matrix.Diagonal((-1, -1, 1, 1))` with S its
     frame in metres.) Returns seated_key_points(). Nothing is built below the detail at which
-    interiors are shown."""
+    interiors are shown. `harness`: the seat's straps over him (build_harness)."""
     keys = seated_key_points()
     if srlib.interior():
         fl.build_posed(parent, place, prefix, seated_rig, build_figure)
+        if harness:
+            build_harness(parent, Matrix(place), prefix)
     return keys

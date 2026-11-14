@@ -4,10 +4,14 @@ import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { blowOf, windAt } from '../sim/forces.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
+import { type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
+import { sunPosition } from '../world/ephemeris.ts';
+import { julianDate, terrestrialTime } from '../world/time.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
+  add,
   cross,
   ecefToGeodetic,
   ecefToSite,
@@ -70,6 +74,8 @@ export interface Run {
   out: { drogue: number; main: number };
   /** When each parachute tore (sim/vehicle.ts `tore`): Infinity, or nothing at all, for one that has not. */
   torn?: { drogue: number; main: number };
+  /** When each of `Flight.flies.fires` burns on this run, in their order: its instants, from and to. */
+  fires?: { from: number; to: number }[];
   /** What it has let go, each flown beside it (sim/shed.ts): a live run's. The record's are made here. */
   sheds?: Sheds;
 }
@@ -137,7 +143,11 @@ export class Ascent {
 
   /** The flight's ascent, or null if it cannot be flown or names no model to fly. */
   static of(flight: Flight): Ascent | null {
-    const flown = flight.site && flight.trajectory && flight.flies && flight.models.some((m) => m.id === flight.flies!.model);
+    const flown =
+      flight.site &&
+      (flight.trajectory || flight.orbital?.ascent) &&
+      flight.flies &&
+      flight.models.some((m) => m.id === flight.flies!.model);
     return flown ? new Ascent(flight as SitedFlight) : null;
   }
 
@@ -151,6 +161,7 @@ export class Ascent {
   /** The run on show: the one being flown, or the record's, made the first time it is wanted (the readout has usually made it already: sim/fly.ts flownOnce). */
   private flown(): Run {
     if (this.live) return this.live;
+    if (!this.record && !this.flight.trajectory) this.record = orbitalRecord(this.flight);
     if (!this.record) {
       const tr = this.flight.trajectory!;
       const { samples, results } = flownOnce(tr, this.site, this.flight.site.seaLevel.value);
@@ -172,7 +183,7 @@ export class Ascent {
 
   /** Whether the vehicle is off its pad at `t`, seconds from liftoff. */
   flying(t: number): boolean {
-    if (!this.flight.trajectory || t <= 0) return false;
+    if (!(this.flight.trajectory || this.flight.orbital?.ascent) || t <= 0) return false;
     const run = this.flown();
     return run.live ? run.samples.length > 1 : t < run.duration;
   }
@@ -183,14 +194,17 @@ export class Ascent {
    * record: the run itself holds full thrust from liftoff to cutoff); `vacuum` from 0 in sea-level
    * air to 1 in none, from the standard air's pressure at the height flown.
    */
-  burn(t: number): { on: number; vacuum: number } {
-    if (!this.flying(t)) return { on: 0, vacuum: 0 };
-    const { cutoff } = this.flown();
-    const on = THREE.MathUtils.smoothstep(t, 0, 0.5) * (1 - THREE.MathUtils.smoothstep(t, cutoff, cutoff + 0.5));
-    if (on <= 0) return { on: 0, vacuum: 1 };
+  burn(t: number): { on: number; vacuum: number; fire: number } {
+    if (!this.flying(t)) return { on: 0, vacuum: 0, fire: 0 };
+    const { cutoff, fires = [] } = this.flown();
+    // (a later fire, where one burns now: an upper stage's, a braking engine's; 0 is the first engine's)
+    const later = fires.findIndex((f) => t >= f.from && t < f.to + 0.5);
+    const [from, to, fire] = later >= 0 ? [fires[later]!.from, fires[later]!.to, later + 1] : [0, cutoff, 0];
+    const on = THREE.MathUtils.smoothstep(t, from, from + 0.5) * (1 - THREE.MathUtils.smoothstep(t, to, to + 0.5));
+    if (on <= 0) return { on: 0, vacuum: 1, fire };
     const { r } = between(this.flown().samples, t);
     const height = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * t)).height - this.flight.site.seaLevel.value;
-    return { on, vacuum: 1 - (atmosphere(height).pressure / 101_325) ** 0.25 };
+    return { on, vacuum: 1 - (atmosphere(height).pressure / 101_325) ** 0.25, fire };
   }
 
   /** The parts that have left the vehicle by `t`. */
@@ -652,4 +666,86 @@ function between(samples: readonly Sample[], t: number, point: (s: Sample) => Ve
   const r: Vec3 = [0, 1, 2].map((i) => h00 * point(a)[i]! + h10 * h * a.v[i]! + h01 * point(b)[i]! + h11 * h * b.v[i]!) as unknown as Vec3;
   const v: Vec3 = [0, 1, 2].map((i) => a.v[i]! + (b.v[i]! - a.v[i]!) * s) as unknown as Vec3;
   return { r, v };
+}
+
+/**
+ * An orbital flight's record, flown (sim/staged.ts: the ascent on its law, the coast, the first body of the descent) and
+ * made a run the scene places by its samples' own attitude, as a flight flown by hand is: so it is `live`, and stays
+ * where it came down. What it drops is flown from the instant each leaves, as the flight's `orbital.ascent.sheds` give
+ * them, from the stack's base along the long axis to each one's centre of mass; the ejection's drop leaves when the run
+ * comes down through the ejection height, not at the record's minute. Made once a flight: it takes a second or so.
+ */
+const orbitalRuns = new WeakMap<object, Run>();
+/** When each of `flies.fires` burns on an orbital flight's run: a stage's from its ignition to where the run stopped it; the braking engine's between the record's instants of thrust. */
+export function firesOf(flight: SitedFlight, whole: FlownWhole, retro?: { on: number; off: number }): { from: number; to: number }[] {
+  const o = flight.orbital!;
+  return (flight.flies?.fires ?? []).map((f) => {
+    if (f.on === 'retro') return retro ? { from: retro.on, to: retro.off } : { from: o.retro.on.value, to: o.retro.off.value };
+    const i = Number(f.on.replace('stage:', ''));
+    return { from: o.stages[i]?.ignition.value ?? Infinity, to: whole.ascent.stops[i] ?? Infinity };
+  });
+}
+const orbitalWholes = new WeakMap<object, FlownWhole>();
+/**
+ * An orbital flight's record flown once (sim/staged.ts flyWhole, the coast kept every second), whoever asks first: the scene and the Flown panel show the
+ * same run. The ascent is the one flown; from the spacecraft's separation it is the published orbit, begun where the ascent left it (staged.ts `published`),
+ * since the ascent as flown falls short of it (the flight's mission.md, section 6).
+ */
+export function orbitalFlown(flight: SitedFlight): FlownWhole {
+  const o = flight.orbital!;
+  let whole = orbitalWholes.get(o);
+  if (!whole)
+    orbitalWholes.set(
+      o,
+      (whole = flyWhole(o, siteFrame(flight.site), julianDate(flight.launch), flight.site.seaLevel.value, undefined, 1, 'published')),
+    );
+  return whole;
+}
+export function orbitalRecord(flight: SitedFlight): Run {
+  const o = flight.orbital!;
+  const had = orbitalRuns.get(o);
+  if (had) return had;
+  const site = siteFrame(flight.site);
+  const jd = julianDate(flight.launch);
+  const whole = orbitalFlown(flight);
+  const centre = (flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
+  const samples = recordSamples(o, whole, jd, centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
+  const end = samples[samples.length - 1]!;
+  const ejected = whole.coast.results.ejectionAt;
+  const dropped = flight.flies!.drops.map((d) => (d.on === 'ejection' && Number.isFinite(ejected) ? ejected : d.at));
+  const sheds = new Sheds({ area: o.ascent!.drag[0]!.area, body: { sheds: o.ascent!.sheds ?? [] } }, site, flight.site.seaLevel.value);
+  for (const def of o.ascent!.sheds ?? []) {
+    const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
+    if (i < 0 || !def.mass || !def.centre || !def.gyration) continue;
+    const at = dropped[i]!;
+    const [a, b, k] = either(samples, at);
+    const s = k < 0.5 ? a : b;
+    const { r, v } = between(samples, at);
+    const m = def.mass.value;
+    sheds.add({
+      on: def.on,
+      t: at,
+      r: add(r, scale(s.axis, def.centre.value)),
+      v,
+      q: s.attitude,
+      w: [0, 0, 0],
+      mass: m,
+      roll: m * def.gyration.roll.value ** 2,
+      across: m * def.gyration.across.value ** 2,
+      centre: def.centre.value,
+    });
+  }
+  const run: Run = {
+    samples,
+    duration: end.t,
+    // (the fire is the first stages': Block E's small flame, 28 m up inside the lattice, is not drawn)
+    cutoff: o.stages[1]?.cutoff.value ?? o.stages[0]!.cutoff.value,
+    dropped,
+    live: true,
+    out: { drogue: Infinity, main: Infinity },
+    sheds,
+    fires: firesOf(flight, whole),
+  };
+  orbitalRuns.set(o, run);
+  return run;
 }

@@ -23,8 +23,41 @@ never adjusted to bring a check in.
   and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
   says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in frames.ts's
   inertial frame of date on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its `MISSES` by the same rule as
-  below and prints what each undocumented input is worth. The powered ascent is recorded and not flown; a flight with only
-  `orbital` is not offered to be flown by hand. The flight's `mission.md` is the plan.
+  below and prints what each undocumented input is worth. The flight's `mission.md` is the plan.
+- **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from `orbital.stages` and `orbital.ascent`: stages
+  burning together and in turn (each `count` alike; vacuum thrust less exit area times the air's pressure, the exit area
+  derived from the two published thrusts unless given; flow from the vacuum figures; a `throttle` curve where one is
+  known; stopped at its cutoff or when its `usable` load is gone), each dropped at its `separation` as what it weighed
+  fuelled less what it burned, other drops (a fairing) by mass, drag on `ascent.drag`'s areas and curves. Attitude is a
+  **stated law**, not a stored programme, because none has been found: `Guidance` (orbital.ts) says it, and `steer`
+  solves its three unknowns (launch plane, pitch-over, the linear tangent's rate) for the design conditions at the last
+  cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
+  separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
+  pilot) down from the ejection height on its own parachutes. `tests/staged.test.mjs` holds the ascent's, the coast's and
+  the descent's checks with their own `MISSES`, lists every input that is not documented and prints what each moves, the
+  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
+  A stage with `velocity` is cut as its integrator cut it, when the space-fixed speed reaches the design's plus the day's
+  error (found within the step by the secant, so the instant is smooth in the inputs), and its recorded `cutoff` becomes
+  a check. Vostok 1's Block E so cut stops 16.7 s before the recorded 676 s with 338 kg aboard: burned to the recorded
+  times instead (the test prints it) it is 142 m/s fast. The flight's mission.md, "What the ascent gives", says why.
+- **An orbital flight is flown on its own deck** (`src/orbitdeck.ts`, chosen in main.ts for a flight with
+  `orbital.ascent` and no `trajectory`; `lacks` in address.ts lights Fly for it). It offers what that flight's pilot had
+  and no more (`orbital.manual`). As flown, everything is automatic and the run is the record's (`flyWhole`), shown by
+  the scene through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts `orbitalRecord`): what
+  it drops is flown from `orbital.ascent.sheds`. By hand, once the spacecraft is alone and before the timer's burn, the
+  code on the lock (its digits) frees the hand controls: W S A D Q E turn the spacecraft at `manual.rate`, the timer's
+  burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest is flown again from that
+  burn and shown with where the pilot came down against the record's landing. The turning is a hand's on the attitude,
+  not a rigid body's: no jets, no gas, no tumble. The ascent has no hand controls (Vostok's had none). From the
+  spacecraft's separation the deck predicts its path with the same coast (`sim/orbitpath.ts`, given to path.ts as the
+  source's `predict`): once round with Ap and Pe, or down to the ejection height with the burn and the entry marked. The
+  Flown panel and the deck's card hold every check the orbital record sets (staged.ts `held`); sound and shake take the
+  first stages lit at liftoff as one engine (`liftoffEngine`); later fires burn from their own nozzles (`flies.fires`); a
+  cabin control's `does` of `code:` and a numeral is a key of the deck's lock. Because the ascent as recorded falls short of
+  the published orbit, what the scene and the deck show from separation is the published orbit begun where the ascent
+  left the spacecraft (`published`); the tests hold the ascent itself to the record as flown. Heating's glow, the
+  parachutes drawn and the cabin's Globus, Vzor, gauges and lamps are not hooked to an orbital run yet. The smoke is
+  laid no higher than 80 km (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
   is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails

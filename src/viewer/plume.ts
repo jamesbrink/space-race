@@ -50,7 +50,7 @@ export class Plume implements Flame {
   bright = 1;
 
   /** The nozzle exit's radius, metres. */
-  readonly radius: number;
+  radius: number;
 
   /** `exitRadius` in metres; the jet leaves the mesh's origin along its -Y. */
   constructor(exitRadius: number) {

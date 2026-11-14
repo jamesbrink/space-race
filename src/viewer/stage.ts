@@ -10,6 +10,7 @@ import { sameTarget, type Target, type Workings } from '../actions';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
+import { exitAreaOf } from '../sim/staged.ts';
 import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { Bloom } from './bloom';
@@ -48,6 +49,9 @@ import { wearTexture } from './space';
 import { grain, mark } from './surface';
 import { tier } from './tier';
 import { TRAIL_STEP, Trail } from './trail';
+
+/** No smoke is laid above this height over the ground, m: none is drawn there (trail.ts), and Freedom 7's engine was out by 60 km. */
+const TRAIL_TOP = 80_000;
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 
@@ -1757,7 +1761,8 @@ export class Stage {
     }
     this.fall(ascent, s, pad, t, flying);
     this.hang(ascent, s, pad, t, flying);
-    const { on, vacuum } = ascent.burn(t);
+    const { on, vacuum, fire } = ascent.burn(t);
+    this.fireAt(fire);
     this.plume?.set(on, vacuum, t, this.renderer.toneMappingExposure); // (its flicker is the clock's: the same instant is the same fire)
     this.layTrail(ascent, pad, t, flying);
     this.effects?.set(t, flying, g, s.full, this.clock.rate, this.renderer.toneMappingExposure, this.setting.sunIntensity, this.veils);
@@ -1864,6 +1869,8 @@ export class Stage {
     const trail = this.trail;
     const nozzle = this.plume?.mesh.position;
     if (!trail || !nozzle) return;
+    // (nothing is laid, and no head drawn, above TRAIL_TOP: no trail is drawn there, and an orbital flight's, laid on round
+    // the Earth, swelled the volume the smoke is marched in until the page stalled)
     const upTo = flying ? Math.min(t, ascent.cutoff) : -1;
     const at = new THREE.Vector3();
     const turn = new THREE.Quaternion();
@@ -1871,11 +1878,12 @@ export class Stage {
       const born = (trail.laid + 1) * TRAIL_STEP;
       if (!ascent.place(born, pad, at, turn)) break;
       at.add(nozzle.clone().applyQuaternion(turn));
+      if (at.y - GROUND_Y > TRAIL_TOP) break;
       const along = UP.clone().applyQuaternion(turn);
       trail.reach(at, along, born, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
     }
     // and from the last point to the nozzle as it is now, while it burns
-    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn)) {
+    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn) && at.y - GROUND_Y <= TRAIL_TOP) {
       at.add(nozzle.clone().applyQuaternion(turn));
       trail.head(at, UP.clone().applyQuaternion(turn), t, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
     } else trail.headless();
@@ -1895,6 +1903,20 @@ export class Stage {
     this.jets = null;
   }
 
+  /** Where each fire is hung and how wide its exit, measured on the pad: the first engine's, then `Flight.flies.fires`. */
+  private fires: { at: THREE.Vector3; radius: number }[] = [];
+  private fire = 0;
+
+  /** Move the one fire to the nozzle of the engine burning now (`burn`'s `fire`), as the stages hand over. */
+  private fireAt(i: number): void {
+    const f = this.fires[i];
+    if (!this.plume || !f || i === this.fire) return;
+    this.fire = i;
+    this.plume.mesh.position.copy(f.at);
+    this.plume.light.position.copy(f.at);
+    this.plume.radius = f.radius;
+  }
+
   /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
   private hangPlume(flight: FlightData): void {
     const gone = [this.plume?.mesh, this.trail?.mesh];
@@ -1910,12 +1932,31 @@ export class Stage {
     this.trail = null;
     const s = this.flier;
     const engine = flight.flies?.engine && s?.full.getObjectByName(flight.flies.engine);
-    const exitArea = flight.trajectory?.engine.exitArea.value;
+    // (an orbital flight's fire is drawn as one engine's: the stage whose nodes hold `flies.engine`, sim/staged.ts. One jet of
+    // that size stands for the cluster's twenty: the fire of all of them summed swells past what the volume can march)
+    const exitArea =
+      flight.trajectory?.engine.exitArea.value ??
+      (() => {
+        const stage = flight.orbital?.stages.find((st) => st.nodes.includes(flight.flies?.engine ?? ''));
+        return stage ? exitAreaOf(stage) : undefined;
+      })();
     if (!s || !engine || !exitArea) return;
     const box = new THREE.Box3().setFromObject(engine);
     const exit = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
     this.plume = new Plume(Math.sqrt(exitArea / Math.PI));
     this.plume.mesh.position.copy(s.group.worldToLocal(exit));
+    // and the later fires' nozzles, each the lowest middle of its node's bounds as the vehicle stands
+    this.fires = [{ at: this.plume.mesh.position.clone(), radius: this.plume.radius }];
+    for (const f of flight.flies?.fires ?? []) {
+      const node = s.full.getObjectByName(f.node);
+      if (!node) continue;
+      const b = new THREE.Box3().setFromObject(node);
+      this.fires.push({
+        at: s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2)),
+        radius: f.radius,
+      });
+    }
+    this.fire = 0;
     s.group.add(this.plume.mesh, this.plume.light); // (the light stays in the scene, at no strength until the engine burns: lighting it builds no shader)
     this.trail = new Trail();
     this.scene.add(this.trail.mesh);

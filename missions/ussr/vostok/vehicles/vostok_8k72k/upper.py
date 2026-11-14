@@ -45,28 +45,35 @@ SHELLS = (
 )
 E_SKIRT = TRUSS_TOP + 150.0  # where Block E's cylinder begins, above its base shield
 E_EXIT = TRUSS_TOP - 600.0  # the RD-0109's nozzle hangs into the lattice
-E_EXIT_R = 330.0
-# the RD-0109's chamber, outside: (radius, station)
+# The RD-0109 (8D719): one fixed chamber. KBKhA gives the engine as 1,555 mm long and 733 mm across; nothing on it is
+# wider than its nozzle's exit, so that is taken as the exit's diameter (the published area ratio of 79.4 then gives a
+# throat 82 mm across, which is what 54.5 kN at 5 MPa needs). The outline between is estimated.
+E_LENGTH = 1555.0
+E_EXIT_R = 733.0 / 2
+E_THROAT_R = E_EXIT_R / math.sqrt(79.4)  # 41 mm, inside
+E_WALL = 10.0
+# the chamber, outside: (radius, station)
 E_BELL = [
     (E_EXIT_R, E_EXIT),
-    (318, E_EXIT + 150),
-    (270, E_EXIT + 410),
-    (200, E_EXIT + 650),
-    (120, E_EXIT + 840),
-    (62, E_EXIT + 950),
-    (72, E_EXIT + 990),
+    (352, E_EXIT + 165),
+    (298, E_EXIT + 450),
+    (222, E_EXIT + 715),
+    (134, E_EXIT + 925),
+    (E_THROAT_R + E_WALL, E_EXIT + 1045),
+    (64, E_EXIT + 1090),
 ]
-E_HEAD = [(122, E_EXIT + 1050), (150, E_EXIT + 1110), (150, E_EXIT + 1330), (110, E_EXIT + 1390), (0, E_EXIT + 1410)]
+E_HEAD = [(122, E_EXIT + 1160), (150, E_EXIT + 1225), (150, E_EXIT + 1470), (110, E_EXIT + 1535), (0, E_EXIT + E_LENGTH)]
 FAIRING_WALL = 22.0
 OPENING_R = 575.0  # the round opening over hatch No. 1
 OGIVE = 14  # straight pieces in the nose's arc
 
 
-def build_interstage(X: Matrix, M: dict) -> None:
-    """The lattice: Block E lights while the core is still burning, and its fire leaves between the struts."""
+def build_interstage(X: Matrix, M: dict, top: float = TRUSS_TOP) -> None:
+    """The lattice: Block E lights while the core is still burning, and its fire leaves between the struts.
+    `top` is the station it ends at: the 11A57's, under a larger third stage, is its own (the Voskhod programme's)."""
     g = group("Interstage")
     truss, cone = Local(X), Local(X)
-    z0, z1 = CORE_TOP, TRUSS_TOP
+    z0, z1 = CORE_TOP, top
     r = CORE_R_TOP - 40
     for z in (z0 + 30, z1 - 30):  # a ring at each end
         truss.lathe([(r - 45, z - 30), (r + 40, z - 30), (r + 40, z + 30), (r - 45, z + 30), (r - 45, z - 30)], 72)
@@ -89,6 +96,9 @@ def build_block_e(X: Matrix, M: dict) -> None:
     """The third stage: two ring tanks one above the other with the engine in the hole, and above
     them the adapter the spacecraft's frame rests on."""
     g = group("BlockE")
+    # The engine is a node of its own inside the stage (`BlockE_Engine`), its origin on the axis in the plane of the
+    # nozzle's exit, which is its lowest point: a flight hangs the third stage's fire there (`Flight.flies.engine`).
+    engine = pivot("BlockE_Engine", g, X @ V(0, 0, E_EXIT))
     skin, wall, ribs, base, fit, bell, liner, steel, pod = (Local(X) for _ in range(9))
     top = BLOCK_E_TOP
     skin.lathe([(BLOCK_E_R, E_SKIRT), (BLOCK_E_R, top - 6)], 96)
@@ -105,12 +115,12 @@ def build_block_e(X: Matrix, M: dict) -> None:
         a = TAU * i / 4 + deg(22.5)
         fit.box((90, 120, 150), at((BLOCK_E_R - 70) * math.cos(a), (BLOCK_E_R - 70) * math.sin(a), top - 90) @ Matrix.Rotation(a, 4, "Z"))
     # the base: a dished shield round the nozzle, dark with its coating
-    hole = 215.0
+    hole = 262.0  # round the chamber, which is 244 mm in radius where it passes through
     base.lathe([(hole, TRUSS_TOP + 40), (700, TRUSS_TOP + 20), (BLOCK_E_R - 60, TRUSS_TOP + 90), (BLOCK_E_R, E_SKIRT)], 96)
     # RD-0109: one chamber, which does not turn
     bell.lathe(E_BELL + E_HEAD, 48)
-    bell.lathe([(E_EXIT_R - 10, E_EXIT), (E_EXIT_R, E_EXIT)], 48)
-    liner.lathe([(r - 10, z) for r, z in E_BELL] + [(112, E_EXIT + 1050), (112, E_EXIT + 1300), (0, E_EXIT + 1300)], 48, flip=True)
+    bell.lathe([(E_EXIT_R - E_WALL, E_EXIT), (E_EXIT_R, E_EXIT)], 48)
+    liner.lathe([(r - E_WALL, z) for r, z in E_BELL] + [(112, E_EXIT + 1160), (112, E_EXIT + 1440), (0, E_EXIT + 1440)], 48, flip=True)
     for z in (E_EXIT + 20, E_EXIT + 300, E_EXIT + 560):
         r = next(r0 + (r1 - r0) * (z - z0) / (z1 - z0) for (r0, z0), (r1, z1) in zip(E_BELL, E_BELL[1:]) if z0 <= z <= z1)
         bell.lathe([(r - 2, z - 18), (r + 9, z - 8), (r + 9, z + 8), (r - 2, z + 18)], 48)
@@ -124,8 +134,8 @@ def build_block_e(X: Matrix, M: dict) -> None:
         reach = 1372 if fixed else 1345
         steel.loft(
             [
-                (180 * c, 180 * s, TRUSS_TOP + 190),
-                (330 * c, 330 * s, TRUSS_TOP - 20),
+                (215 * c, 215 * s, TRUSS_TOP + 250),
+                (350 * c, 350 * s, TRUSS_TOP - 20),
                 (760 * c, 760 * s, TRUSS_TOP - 30),
                 (1200 * c, 1200 * s, TRUSS_TOP + 40),
                 ((reach - 10) * c, (reach - 10) * s, TRUSS_TOP + 60),
@@ -151,8 +161,8 @@ def build_block_e(X: Matrix, M: dict) -> None:
     ribs.build("BlockE_Stringers", M["pale"], g, smooth=False)
     base.build("BlockE_Base", M["dark"], g, sharp_angle=None)
     fit.build("BlockE_Fittings", M["pale"], g, smooth=False)
-    bell.build("RD0109_Bell", M["bell"], g, sharp_angle=35)
-    liner.build("RD0109_Liner", M["liner"], g, sharp_angle=35)
+    hang(bell.build("RD0109_Bell", M["bell"], None, sharp_angle=35), engine)
+    hang(liner.build("RD0109_Liner", M["liner"], None, sharp_angle=35), engine)
     steel.build("BlockE_Steering", M["steel"], g, sharp_angle=35)
     pod.build("BlockE_SteeringFairings", M["pale"], g, smooth=False)
     if interior():
@@ -161,24 +171,24 @@ def build_block_e(X: Matrix, M: dict) -> None:
         tanks.torus(800, 460, 480, TRUSS_TOP + 1440, 64, 28, power=3.0)  # the upper, drawn as the oxygen's
         tanks.lathe([(1150, TRUSS_TOP + 820), (1150, TRUSS_TOP + 1080)], 64)  # the cylinder that joins them
         # the turbopump and gas generator beside the chamber's head
-        pump.lathe([(0, -170), (95, -170), (95, 170), (0, 170)], 16, frame(V(0, 215, E_EXIT + 1330), (1, 0, 0)))
-        pump.ball((150, -160, E_EXIT + 1420), 85, 16, 8)
-        pump.tube((0, 0, E_EXIT + 1400), (0, 150, E_EXIT + 1380), 40, 10)
+        pump.lathe([(0, -170), (95, -170), (95, 170), (0, 170)], 16, frame(V(0, 215, E_EXIT + 1475), (1, 0, 0)))
+        pump.ball((150, -160, E_EXIT + 1565), 85, 16, 8)
+        pump.tube((0, 0, E_EXIT + 1545), (0, 150, E_EXIT + 1525), 40, 10)
         # the radio compartment, moved up here from the core: boxes round the adapter's wall
         for i in range(10):
             a = TAU * i / 10 + deg(8)
             gear.box((200, 330, 300 + 60 * (i % 2)), at(1120 * math.cos(a), 1120 * math.sin(a), TRUSS_TOP + 2380) @ Matrix.Rotation(a, 4, "Z"))
         tanks.build("BlockE_Tanks", M["tank"], g, sharp_angle=None)
-        pump.build("RD0109_Turbopump", M["engine"], g, sharp_angle=35)
+        hang(pump.build("RD0109_Turbopump", M["engine"], None, sharp_angle=35), engine)
         gear.build("BlockE_Instruments", M["equipment"], g, sharp_angle=35)
 
 
-def fairing_profile() -> list:
+def fairing_profile(foot: float = BLOCK_E_TOP, tip: float = LENGTH, cyl: float = FAIRING_CYL) -> list:
     """(radius, station) up the fairing's outside: a cylinder, then an ogive, which leaves the cylinder without a
-    corner and runs into a rounded tip. Points 1 to 1 + OGIVE are the ogive's."""
-    foot, tip = BLOCK_E_TOP, LENGTH
+    corner and runs into a rounded tip. Points 1 to 1 + OGIVE are the ogive's. The stations are the 8K72K's own
+    unless another vehicle's fairing of the same kind gives its own."""
     centre = tip - FAIRING_TIP_R
-    shoulder = foot + FAIRING_CYL
+    shoulder = foot + cyl
     rise = centre - shoulder
     # the arc's centre is level with the shoulder, and its radius is the one that touches the tip's sphere from inside
     rho = (FAIRING_R**2 + rise**2 - FAIRING_TIP_R**2) / (2 * (FAIRING_R - FAIRING_TIP_R))
@@ -190,13 +200,24 @@ def fairing_profile() -> list:
     return pts
 
 
-def build_fairing(X: Matrix, M: dict, hatch_az: float, hatch_h: float) -> None:
+def build_fairing(
+    X: Matrix,
+    M: dict,
+    hatch_az: float,
+    hatch_h: float,
+    foot: float = BLOCK_E_TOP,
+    tip: float = LENGTH,
+    cyl: float = FAIRING_CYL,
+    profile: list | None = None,
+) -> None:
     """Two halves that part along the plane square to the hatch. The round opening over hatch No. 1 is
-    how the pilot went aboard and how his seat would have left on the pad; `hatch_h` is its centre's station."""
+    how the pilot went aboard and how his seat would have left on the pad; `hatch_h` is its centre's station.
+    `foot`, `tip` and `cyl` are the stations of its foot and tip and its cylinder's height: the 8K72K's own, or
+    those of another fairing built the same way (the 11A57's, over a Voskhod), which may also give its own outline
+    as `profile`: (radius, station) points as fairing_profile() lists them, the first at the foot and as many."""
     g = group("Fairing")
-    prof_out = fairing_profile()
+    prof_out = profile or fairing_profile(foot, tip, cyl)
     prof_in = [(max(0.0, r - FAIRING_WALL), z if r > 1 else z - FAIRING_WALL) for r, z in prof_out]
-    foot = BLOCK_E_TOP
     for side, mid in (("Left", hatch_az), ("Right", hatch_az + math.pi)):
         arc = (mid - math.pi / 2, mid + math.pi / 2)
         node = pivot(f"Fairing_{side}", g, X @ V(FAIRING_R * math.cos(mid), FAIRING_R * math.sin(mid), foot))
@@ -230,7 +251,7 @@ def build_fairing(X: Matrix, M: dict, hatch_az: float, hatch_h: float) -> None:
                     (70, math.hypot(rb - ra, zb - za) * 0.8, 46),
                     aside @ frame(V(r * c, r * s, z), (math.cos(lean) * c, math.cos(lean) * s, math.sin(lean))),
                 )
-        for z in (foot + 60, foot + FAIRING_CYL - 40):  # frames at the foot and the shoulder
+        for z in (foot + 60, foot + cyl - 40):  # frames at the foot and the shoulder
             skin.lathe(
                 [(FAIRING_R - 3, z - 34), (FAIRING_R + 9, z - 24), (FAIRING_R + 9, z + 24), (FAIRING_R - 3, z + 34)],
                 48,

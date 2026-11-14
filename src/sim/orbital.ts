@@ -8,12 +8,12 @@
  * by the Sun, an entry from orbital speed. `Trajectory` (one engine, one tilt programme, a capsule
  * with retrorockets and two parachutes) is left as it is.
  *
- * What is flown from it today is the coast (`flyOrbit`, below): from the orbit as published,
- * round to the braking burn, down through the air to the height the pilot left at. The powered
- * ascent is recorded (`stages`, `events`) and not yet flown: it wants a pitch programme, drag and
- * a throttle history that have not been found (the flight's mission.md says what could stand in).
+ * What is flown here is the coast (`flyOrbit`, below): from the orbit as published, or from the
+ * state the ascent flown left it in, round to the braking burn, down through the air to the height
+ * the pilot left at. The powered ascent is flown by sim/staged.ts from `stages` and `ascent`, on a
+ * stated steering law where the programme flown has not been found.
  */
-import type { Confidence, Curve, Measure } from '../types';
+import type { Confidence, Curve, Measure, ShedBody } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import {
@@ -55,6 +55,80 @@ export interface StageRecord {
   cutoff: Measure;
   /** When it left what flew on. Left out: it was never dropped. */
   separation?: Measure;
+  /**
+   * For the ascent flown (sim/staged.ts). The nozzles' exit area, m^2, for one: the thrust in air is the vacuum thrust less
+   * this times the air's pressure. Left out, it is (vacuum less sea-level thrust) over one atmosphere, as `exitAreaOf` says.
+   */
+  exitArea?: Measure;
+  /** What of `propellant` goes through the chambers (less the turbopump's peroxide and the tanks' pressurising gas), kg: the engine stops when it is gone. Left out: all of it. */
+  usable?: Measure;
+  /** The fraction of its rated thrust and flow it runs at, against seconds from liftoff: straight lines between. Left out: rated throughout. */
+  throttle?: Curve;
+  /**
+   * Cut off as an integrator cut it: when the space-fixed speed reaches `speed` (what the design asked) plus `over` (the
+   * error it had on the day), m/s. `apparent`: what the integrator counts is instead the apparent velocity, the sensed
+   * acceleration (every force but gravity over the mass, along the axis) summed from this stage's ignition, which in
+   * vacuum is the rocket equation's own: its effective exhaust speed times the log of the mass ratio. With it, `cutoff` is
+   * the record's instant, held as a check and not flown to.
+   */
+  velocity?: { speed: Measure; over?: Measure; apparent?: boolean };
+}
+
+/**
+ * How the ascent is steered (sim/staged.ts): a stated law, not a stored programme, because the programme flown has not
+ * been found. It rises along the plumb line for `vertical` seconds; pitches over toward the launch plane's downrange at an
+ * even rate for `kick` seconds, to an angle the law solves for; holds that attitude until its motion through the air has
+ * turned as far, and is then flown along that motion (no angle of attack, so no bending load through the dense air)
+ * until `turn` seconds; from there to the last cutoff, by the linear-tangent law (the tangent of the thrust's angle above
+ * the local level falls evenly with time) at a rate it solves for. The launch plane's inclination, the pitch-over's angle
+ * and the tangent's rate are the three unknowns, solved so that at the last cutoff (`target.at`, an event) it is at
+ * `target.altitude` above the orbit's reference ball, climbing at `target.climb`, in an orbit of `target.inclination`:
+ * the design conditions, as a guidance designer's would be. They are results of the solution (`Steered.solved`), never
+ * inputs, and the three targets are therefore not independent checks of the flight.
+ */
+export interface Guidance {
+  /**
+   * The aiming azimuth, degrees east of north: the launch plane is the one through the plumb line and this bearing at the pad
+   * at liftoff, held by the gyros among the stars. Given, the plane is not solved for and the target's inclination is not
+   * aimed at: the orbit's inclination is then a result, and a check.
+   */
+  azimuth?: Measure;
+  vertical: Measure;
+  kick: Measure;
+  turn: Measure;
+  target: {
+    /** The event whose instant is the last cutoff: an `EventRecord.id`. */
+    at: string;
+    altitude: Measure;
+    climb: Measure;
+    inclination: Measure;
+  };
+}
+
+/** The ascent as the simulator flies it (sim/staged.ts): what it needs beyond the stages. */
+export interface AscentRecord {
+  guidance: Guidance;
+  /** The stack's drag: from liftoff, each entry until its `until` (seconds from liftoff; the last holds to the end), its reference area, m^2, and its coefficient against Mach number. */
+  drag: { until: Measure; area: Measure; curve: Curve }[];
+  /** What leaves that is no stage (the fairing): when, and its mass, kg. */
+  drops: { id: string; at: Measure; mass: Measure }[];
+  /** The spacecraft's centre of mass above the flown model's origin (`Flight.flies.datum`), m: what the scene turns it about once alone. */
+  centre?: Measure;
+  /** What leaves, each flown on as a body of its own in the scene (sim/shed.ts), by the `Flight.flies.drops[].on` that lets it go. Each gives its own mass, centre and gyration. */
+  sheds?: ShedBody[];
+  /** The ascent's own checks: an event's id and a field of `EventState` ('boosters.altitude'), or a field of `AscentSummary`. Tolerances set before it was flown. */
+  checks: AscentCheck[];
+}
+
+/** A figure the record gives for the ascent, to hold the flown one to. As `OrbitCheck`: SI, the tolerance set first. */
+export interface AscentCheck {
+  id: string;
+  label: string;
+  value: number;
+  unit: string;
+  tolerance: number;
+  confidence: Confidence;
+  source: string;
 }
 
 /** Something that happened at an instant, with how sure the instant is. `id` is for code to find it by; a flight's own words go in `label`. */
@@ -69,7 +143,10 @@ export interface EventRecord {
 
 /** Which way an engine pushed the vehicle: along (1) or against (-1) the line to the Sun, or its own motion in the frame that does not turn. */
 export interface Aim {
-  along: 'sun' | 'velocity';
+  /** 'fixed': along `vector`, as a hand aimed it (the flight deck's manual descent, orbitdeck.ts). */
+  along: 'sun' | 'velocity' | 'fixed';
+  /** For 'fixed': the line pushed along, a unit vector in frames.ts's inertial frame of date. */
+  vector?: Vec3;
   sense: 1 | -1;
   confidence: Confidence;
   source: string;
@@ -93,6 +170,8 @@ export interface OrbitalFlight {
   liftoffMass: Measure;
   /** The flight's instants, in order. */
   events: EventRecord[];
+  /** What flying the ascent needs beyond `stages` (sim/staged.ts). Left out: only the coast is flown, from the published orbit. */
+  ascent?: AscentRecord;
   /**
    * The orbit as published: heights of perigee and apogee in metres above a ball of `radius`
    * (the convention is the publisher's and is recorded with it), inclination in degrees, period
@@ -138,6 +217,14 @@ export interface OrbitalFlight {
   };
   /** The height above the sea at which the pilot left, m: the coast is flown down to it. */
   ejection: { altitude: Measure };
+  /** What comes down from there, each body on its own (`flyDown`). Left out: the flight ends at the ejection height. */
+  descent?: DescentRecord;
+  /**
+   * What a pilot could do by hand, where the spacecraft allowed it (the flight deck, orbitdeck.ts): the code that frees the
+   * hand controls, how fast the hand controller turns the spacecraft (deg/s), and the braking engine as a hand fires it:
+   * its thrust (N) and the impulse its integrator shuts it down at (m/s), the modules parting `parting` seconds after.
+   */
+  manual?: { code: Measure; rate: Measure; thrust: Measure; deltaV: Measure; parting: Measure };
   /** Where and when the record has the landing: degrees north and east, seconds from liftoff. */
   landing: {
     latitude: Measure;
@@ -145,6 +232,123 @@ export interface OrbitalFlight {
     at: Measure;
   };
   checks: OrbitCheck[];
+}
+
+/**
+ * From the ejection height down: each body (the pilot on his seat, the empty descent module) a point that starts where
+ * the coast ended, moving as it was, with its own mass and drag, and the parachutes it puts out in turn: each from a
+ * height (falling through it) or a time after the ejection, adding its drag area over the time it takes to fill. A
+ * parachute marked `replaces` takes the place of what was out before it (the pilot's canopy replaces the seat's drag
+ * and its stabilising parachute: he has left the seat). Ground at `ground` m above the sea.
+ */
+export interface DescentRecord {
+  ground: Measure;
+  bodies: {
+    id: string;
+    label: string;
+    mass: Measure;
+    /** Drag coefficient times area of the body alone, m^2. */
+    dragArea: Measure;
+    chutes: {
+      name: string;
+      /** Let out falling through this height above the sea, m, or this long after the ejection, s. */
+      altitude?: Measure;
+      after?: Measure;
+      dragArea: Measure;
+      fills: Measure;
+      /** What it leaves behind as it comes out: the body's own drag and every parachute before it (it is a new body: the man off his seat), with this mass now. */
+      replaces?: { mass: Measure };
+    }[];
+  }[];
+  /** Figures for the descent: `<body id>.at` (landing, s from liftoff), `<body id>.speed` (falling, m/s), `apart` (m between the landings). */
+  checks: AscentCheck[];
+}
+
+/** Where and when each body of the descent came down. */
+export interface Landed {
+  at: number;
+  speed: number;
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Fly the descent from the coast's end (`from`: its last sample's state and time). Point masses in the inertial frame of
+ * date under J2 gravity and the standard air turning with the Earth (no wind: the day's at Saratov has not been read),
+ * RK4 at 0.05 s. Returns each body's landing, by id, and `apart`, the distance between the first two, m.
+ */
+export function flyDown(
+  o: OrbitalFlight,
+  launchJd: number,
+  seaLevel: number,
+  from: { t: number; r: Vec3; v: Vec3 },
+): { landed: Record<string, Landed>; apart: number; tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]> } {
+  const d = o.descent;
+  if (!d) throw new Error('this orbital record has no `descent`');
+  const gast0 = greenwichSiderealTime(launchJd);
+  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const ground = d.ground.value;
+  const landed: Record<string, Landed> = {};
+  const tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]> = {};
+  for (const body of d.bodies) {
+    const track: { t: number; r: Vec3; v: Vec3 }[] = (tracks[body.id] = [{ t: from.t, r: from.r, v: from.v }]);
+    let t = from.t;
+    let s: State = { r: from.r, v: from.v };
+    let mass = body.mass.value;
+    let base = body.dragArea.value; // what is out for good: the body's own, and every parachute filled
+    let filling: { area: number; at: number; fills: number } | null = null;
+    const out = new Set<number>();
+    const heightOf = (q: State, at: number) => subpoint(q.r, gast0 + EARTH_ROTATION_RATE * at).height - seaLevel;
+    const areaAt = (at: number) => base + (filling ? filling.area * Math.min(1, Math.max(0, (at - filling.at) / filling.fills)) : 0);
+    const push = (q: State, at: number): Vec3 => {
+      const air = atmosphere(heightOf(q, at));
+      const wind = sub(q.v, cross(spin, q.r));
+      const speed = length(wind);
+      return speed > 0 ? scale(wind, (-0.5 * air.density * speed * areaAt(at)) / mass) : [0, 0, 0];
+    };
+    let h = heightOf(s, t);
+    for (let k = 0; k < 400_000 && h > ground; k++) {
+      const was = { s, t, h };
+      s = step(s, t, 0.05, push);
+      t += 0.05;
+      h = heightOf(s, t);
+      if (h <= ground) {
+        const part = (was.h - ground) / (was.h - h);
+        s = { r: add(was.s.r, scale(sub(s.r, was.s.r), part)), v: add(was.s.v, scale(sub(s.v, was.s.v), part)) };
+        t = was.t + 0.05 * part;
+        const here = subpoint(s.r, gast0 + EARTH_ROTATION_RATE * t);
+        const up = ecefToInertial(enuAxes(here).up, gast0 + EARTH_ROTATION_RATE * t);
+        landed[body.id] = { at: t, speed: -dot(sub(s.v, cross(spin, s.r)), up), latitude: here.latitude, longitude: here.longitude };
+        track.push({ t, r: s.r, v: s.v });
+        break;
+      }
+      if (k % 20 === 19) track.push({ t, r: s.r, v: s.v });
+      body.chutes.forEach((c, i) => {
+        if (out.has(i)) return;
+        const due = c.altitude ? h <= c.altitude.value && h < was.h : c.after ? t - from.t >= c.after.value : false;
+        if (!due) return;
+        out.add(i);
+        // what was filling is full now, or is left behind with the seat
+        if (c.replaces) {
+          base = 0;
+          mass = c.replaces.mass.value;
+        } else if (filling) base += filling.area;
+        filling = { area: c.dragArea.value, at: t, fills: c.fills.value };
+      });
+    }
+  }
+  const ids = d.bodies.map((b) => b.id);
+  const [a, b] = [landed[ids[0]!], landed[ids[1]!]];
+  const apart =
+    a && b
+      ? length(
+          sub(
+            geodeticToEcef({ latitude: a.latitude, longitude: a.longitude, height: 0 }),
+            geodeticToEcef({ latitude: b.latitude, longitude: b.longitude, height: 0 }),
+          ),
+        )
+      : Number.NaN;
+  return { landed, apart, tracks };
 }
 
 /** What the record gives figures for, as the coast has them. */
@@ -255,7 +459,14 @@ export function injectionState(o: OrbitalFlight, site: Geodetic, launchJd: numbe
  * Fixed steps of fourth-order Runge-Kutta: 10 s above 150 km, 1 s to 100 km and through the
  * burn, 0.05 s below, each cut to end on the next event, so one input gives one flight.
  */
-export function flyOrbit(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel = 0, every = 10): OrbitFlown {
+export function flyOrbit(
+  o: OrbitalFlight,
+  site: Geodetic,
+  launchJd: number,
+  seaLevel = 0,
+  every = 10,
+  from?: { t: number; r: Vec3; v: Vec3 },
+): OrbitFlown {
   const gast0 = greenwichSiderealTime(launchJd);
   const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
   const gastAt = (t: number): number => gast0 + EARTH_ROTATION_RATE * t;
@@ -263,11 +474,18 @@ export function flyOrbit(o: OrbitalFlight, site: Geodetic, launchJd: number, sea
   const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
   const braking = o.retro.deltaV.value / (off - on);
 
-  let t = o.injection.at.value;
-  let state = injectionState(o, site, launchJd);
+  // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
+  let t = from ? from.t : o.injection.at.value;
+  let state: State = from ? { r: from.r, v: from.v } : injectionState(o, site, launchJd);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
-  const aimAt = (s: State, at: number): Vec3 => scale(unit(o.retro.aim.along === 'sun' ? sub(sunAt(at), s.r) : s.v), o.retro.aim.sense);
+  const aimAt = (s: State, at: number): Vec3 =>
+    scale(
+      unit(
+        o.retro.aim.along === 'fixed' && o.retro.aim.vector ? o.retro.aim.vector : o.retro.aim.along === 'sun' ? sub(sunAt(at), s.r) : s.v,
+      ),
+      o.retro.aim.sense,
+    );
 
   const airAt = (s: State, at: number) => {
     const altitude = subpoint(s.r, gastAt(at)).height - seaLevel;
@@ -312,7 +530,7 @@ export function flyOrbit(o: OrbitalFlight, site: Geodetic, launchJd: number, sea
 
   const a0 = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
   const results: OrbitResults = {
-    period: period(a0),
+    period: period(from ? elementsOf(from.r, from.v).a : a0),
     apogee: 0,
     shadowIn: Number.NaN,
     shadowOut: Number.NaN,

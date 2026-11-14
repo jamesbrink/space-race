@@ -1,0 +1,21 @@
+/* The flight deck of a flight into orbit (orbitdeck.ts): the ballistic deck's panels (cockpit.css), with its own few readings and keys. */
+.orbit-deck .readings { grid-template-columns: 1fr; }
+.orbit-deck .deck-foot { gap: 8px; }
+.orbit-deck .deck-foot .deck-steer { flex: 1; min-width: 0; overflow-x: auto; }
+.orbit-deck .deck-foot > button { flex: none; }
+.orbit-deck .deck-foot > [data-do='keys'] { display: none; }
+.orbit-deck.free .deck-steer em { color: var(--amber); }
+@media (max-width: 960px), (max-height: 520px) {
+  .orbit-deck:not(.keys-open) .readings { display: grid; }
+  .orbit-deck .readings { grid-template-columns: 1fr 1fr; }
+  /* (it has no list of keys behind More: its few are its foot, which keeps its own line) */
+  .orbit-deck .deck-main > .deck-foot { grid-column: 1 / -1; padding: 2px 4px 2px 10px; }
+  .orbit-deck .deck-foot > .deck-steer { display: flex !important; flex-wrap: wrap; row-gap: 4px; }
+  .orbit-deck .deck-foot > [data-do='again'] { display: flex !important; }
+  .orbit-deck .deck-foot > [data-do='keys'] { display: flex !important; min-height: 36px; }
+}
+/* a finger: the lock's digits and the turning keys are its buttons, so their caps stay (they are what is pressed) */
+@media (hover: none), (pointer: coarse) {
+  .orbit-deck .deck-steer { display: flex !important; }
+  .orbit-deck .deck-steer kbd, .orbit-deck .deck-foot > [data-do='again'] kbd { display: inline-block !important; min-width: 36px; height: 36px; line-height: 36px; }
+}
