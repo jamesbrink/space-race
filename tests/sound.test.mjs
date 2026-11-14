@@ -261,6 +261,24 @@ test('the clock: stopped or backwards the flight is silent, fast it is a bed, an
   assert.ok(stopped.place.wind > 0 && stopped.place.water > 0 && stopped.place.hum > 0);
 });
 
+test('a site inland has no surf and no sea: nothing is heard at Tyuratam before an engine is lit but its wind and hum', async () => {
+  // (every Soviet flight so far leaves from this site: its bed is theirs)
+  const site = Object.values(await import('../missions/ussr/vostok/sites/site-1.ts')).find((v) => v?.quiet);
+  assert.ok(site, 'Site 1 says what its place sounds like, and does not fall back on a site by the sea');
+  const steppe = site.quiet;
+  assert.equal(steppe.surf, 0, 'no surf on the steppe');
+  assert.equal(steppe.sea, 0, 'and a flight from here comes down on land');
+  // standing on the pad a minute before liftoff: no engine, no air, no water; the wind and the hum as on any ground
+  const before = mix(hearing({ t: -60, running: true, ears: [150, 2, 0], place: steppe, burn: () => 0 }));
+  assert.equal(before.engine.gain, 0);
+  assert.equal(before.place.water, 0);
+  assert.ok(before.place.wind > 0 && before.place.hum > 0);
+  // and one that has come down there and stayed is on land: no sea round it, where the Cape's flights come down in theirs
+  const down = { t: results.duration + 60, stays: true, riding: 1, ears: [0, 2, 0] };
+  assert.equal(mix(hearing({ ...down, place: steppe })).place.water, 0);
+  assert.ok(mix(hearing(down)).place.water > 0, 'Freedom 7 is in the sea');
+});
+
 test('the place is heard on its ground and not from far above or far away', () => {
   const at = (ears) => mix(hearing({ t: 0, running: false, ears })).place;
   assert.ok(at([0, 2, 0]).water > at([0, 3000, 0]).water * 10);

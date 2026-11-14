@@ -29,9 +29,11 @@ plays until the page has been touched, and a hidden page is suspended.
   every timbre is a synthesised impression: all `estimated`, and said so at the top of both files.
   A loudspeaker cannot do 140 dB and surf together, so levels are compressed two decibels to one
   (`loudness`): exact in `spl`, squeezed in what is heard.
-- **The place's bed is a constant** (`PLACE`: wind, surf, a far hum), the same anywhere on the
-  site's ground and fading with height: it is not yet a site's own data, and the surf is no louder
-  toward the beach.
+- **The place's bed is the site's** (`SiteDef.quiet`: wind, surf, a far hum, and the water round a
+  spacecraft that has come down; `PLACE`, a site by the sea, where it gives none): the same anywhere
+  on the site's ground and fading with height, and the surf is no louder toward the beach. A site
+  inland has no surf and no sea: Tyuratam's was the Cape's until November 2026, and its surf was
+  heard as a rocket before any engine was lit.
 - **Measured, since an agent cannot hear.** `sr.sound.meter()` gives the output's level, peak and
   spectral centroid; the last stage is a soft clip that cannot pass full scale. After changing a
   level, measure at the pad, liftoff, max q, apogee, entry and under the main, from the pad view

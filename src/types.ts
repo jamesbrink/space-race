@@ -573,6 +573,12 @@ export interface SiteDef {
    * morning, every figure of it `estimated`. A flight's own day replaces all of it, never part.
    */
   weather?: DayWeather;
+  /**
+   * The place's quiet as it is heard (sound/model.ts `Place`): gains for the wind, the surf, a far hum of machinery, and
+   * the water round a spacecraft that has come down. All estimated. Left out, it is a launch site by the sea whose
+   * flights come down in it (`PLACE`): a site inland says so here, or a rocket is heard in the surf that is not there.
+   */
+  quiet?: { wind: number; surf: number; hum: number; sea: number };
 }
 
 /** A wind as a station reports it: the bearing it blows from, degrees clockwise from true north, and its speed, m/s. */
