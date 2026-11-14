@@ -682,3 +682,64 @@ test('the free camera closes on what it is pointed at by proportion and never go
   const back = posed(rig).position.sub(before);
   assert.ok(back.z > 0 && Math.hypot(back.x, back.y) < 1e-6, 'straight back along the line of sight');
 });
+
+test('an exhibit is sat in from the orbiting view and left back to it as it was; it offers no other view about it', async () => {
+  // (the camera's own few needs of a page: a mark for the pivot, and somewhere to listen for the hands)
+  const element = () => ({
+    style: {},
+    setAttribute() {},
+    getAnimations: () => [],
+    animate: () => ({}),
+    append() {},
+    addEventListener() {},
+  });
+  globalThis.document ??= { createElement: element };
+  globalThis.window ??= { addEventListener() {} };
+  const { Cameras } = await import('../src/viewer/camera/index.ts');
+  const eyes = new THREE.Matrix4().compose(V(0.5, 1.6, 0.4), new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), -0.3), V(1, 1, 1));
+  const exhibit = { ...craftAt(V(0, 0, 0), 3), flying: false, seat: eyes, exhibit: true };
+  let craft = exhibit;
+  const scene = { ...world(), craft: () => craft, solidAt: () => null, free: () => true, piloted: () => false, watching: () => true };
+  const rigs = [];
+  const camera = new THREE.PerspectiveCamera(35, 1.5, 0.1, 1e5);
+  const canvas = {
+    ...element(),
+    parentElement: element(),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 900, height: 600 }),
+    clientHeight: 600,
+  };
+  const cams = new Cameras(camera, canvas, scene, { taken() {}, home() {}, rig: (id) => rigs.push(id) }, 35);
+  cams.calm = true; // (nothing eases: each view is where it is going at once)
+  assert.deepEqual(cams.available(), ['orbit', 'onboard'], 'the view of it, and the view from its seat: nothing that follows a flight');
+  for (const id of ['chase', 'locked', 'pad']) {
+    cams.set(id);
+    assert.equal(cams.rig, 'orbit', `${id} is not offered for a thing standing still`);
+  }
+  // the hands have set a view of it
+  cams.place(V(0, 1, 0), V(6, 3, 8));
+  cams.update(1 / 60);
+  const was = { at: camera.position.clone(), q: camera.quaternion.clone() };
+  assert.equal(cams.next(), 'onboard');
+  cams.set('onboard');
+  cams.update(1 / 60);
+  assert.ok(camera.position.distanceTo(V(0.5, 1.6, 0.4)) < 1e-9, 'at the seat`s eyes');
+  // another seat: the eye goes to it, still on board
+  craft = { ...exhibit, seat: new THREE.Matrix4().makeTranslation(-0.5, 1.6, 0.4) };
+  cams.reseat();
+  cams.update(1 / 60);
+  assert.equal(cams.rig, 'onboard');
+  assert.ok(camera.position.distanceTo(V(-0.5, 1.6, 0.4)) < 1e-9, 'at the other seat`s eyes');
+  // out of the seat: the view is where the hands had it, not taken up from inside the cabin
+  cams.unseat();
+  cams.update(1 / 60);
+  assert.equal(cams.rig, 'orbit');
+  assert.ok(camera.position.distanceTo(was.at) < 1e-6, `back where it was: ${camera.position.toArray()}`);
+  assert.ok(Math.abs(camera.quaternion.angleTo(was.q)) < 1e-6, 'and turned as it was');
+  assert.equal(cams.next(), 'onboard', 'C goes in again');
+  // nothing to sit in (its part not on show): only the view of it
+  craft = { ...exhibit, seat: null };
+  assert.deepEqual(cams.available(), ['orbit']);
+  cams.set('onboard');
+  assert.equal(cams.rig, 'orbit');
+  assert.deepEqual(rigs, ['onboard', 'orbit']);
+});

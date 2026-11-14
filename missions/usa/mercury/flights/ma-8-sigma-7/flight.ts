@@ -1,6 +1,7 @@
 import type { Flight, ModelDef, Part } from '../../../../../src/types';
 import { LC14 } from '../../sites/lc-14.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
+import { mercuryCabin, mercurySeat, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
 
 const IN = 0.0254;
 const FT = 0.3048;
@@ -516,6 +517,18 @@ const vehicle: ModelDef = {
     { id: 'engines', label: 'Engines', nodes: ['AtlasBoosterEngines', 'AtlasSustainer'], from: along(VERNIER_AZ - 30, -0.7) },
   ],
 };
+
+// The couch as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). When he went aboard is
+// not in this flight's data and there is no launch site to board it at yet: the span is a placeholder (estimated).
+vehicle.seats = [mercurySeat([-4 * 3600, -3600])];
+vehicle.cabin = mercuryCabin({
+  window: 'Window',
+  periscope: {
+    about:
+      'An 8 in screen of the Earth under the capsule, through a wide-angle objective in the cone below the pilot’s feet. Click to look into it, and again for high power.',
+    at: OBJECTIVE_OUT,
+  },
+});
 
 export const flight: Flight = {
   id: 'usa/mercury/ma-8-sigma-7',

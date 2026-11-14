@@ -200,7 +200,7 @@ test('what can be looked out of is the cabin’s data, named as it names it: Fre
   assert.deepEqual(vehicle.cabin.head, { side: 1.75, up: 0.95, down: 0.3 });
 });
 
-test('a cabin with one window has one to look out of, named "Window"; Liberty Bell 7 has no cabin to sit in yet', () => {
+test('a cabin with one window has one to look out of, named "Window"; Liberty Bell 7 has its window and its periscope', () => {
   const one = {
     within: [],
     instruments: [],
@@ -216,11 +216,14 @@ test('a cabin with one window has one to look out of, named "Window"; Liberty Be
     lookoutsOf(two).map((l) => l.name),
     ['Window 1', 'Window 2'],
   );
-  // (its spacecraft has the big window ahead, but no CabinDef and no seat: when it has them, its window is found as above)
+  // its spacecraft has the big window ahead, and now a cabin and a seat (missions/usa/mercury/vehicles/cabin.ts): its
+  // window is found as above, then its periscope
   const lb7 = libertyBell7.models.find((m) => m.id === 'vehicle');
-  assert.equal(lb7.cabin, undefined);
-  assert.equal(lb7.seats, undefined);
-  assert.deepEqual(lookoutsOf(lb7.cabin), []);
+  assert.equal(lb7.seats[0].node, 'Seat_Pilot');
+  assert.deepEqual(
+    lookoutsOf(lb7.cabin).map((l) => l.name),
+    ['Window', 'Periscope'],
+  );
   // the one window, leant to: inside its pane, looking out
   const lean = portLean(V(...one.windows[0].at), V(...one.windows[0].out).normalize(), 0.25);
   assert.ok(lean.gaze.distanceTo(V(...one.windows[0].out).normalize()) < 1e-12);

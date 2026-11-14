@@ -87,10 +87,31 @@ const GLASS = new THREE.MeshPhysicalMaterial({
   depthWrite: false,
 });
 
-/** A helmet visor: the same pane, but the face behind it is in the helmet's shade and the sky is on the glass. */
+/**
+ * A helmet visor the model draws as dark glass (an opaque `glass-visor`: the Mark IV's, the SK-1's, the Berkut's): the
+ * same pane, but the face behind it is in the helmet's shade and the sky is on the glass.
+ */
 const VISOR = GLASS.clone();
 VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
+/**
+ * A visor the model draws clear (a `glass-visor` it blends, at its own opacity: the G3C's, 0.14): a pane like a window's,
+ * as much of it seen as the model says, so the face, the earphone pads and the microphones are seen through it. Before,
+ * every visor was `VISOR`, and a clear one read as dark smoked glass, near black over the face.
+ */
+const clearVisors = new Map<number, THREE.MeshPhysicalMaterial>();
+function visorOf(own: THREE.Material): THREE.MeshPhysicalMaterial {
+  if (!own.transparent) return VISOR;
+  const opacity = Math.round(own.opacity * 100) / 100;
+  let pane = clearVisors.get(opacity);
+  if (!pane) {
+    pane = GLASS.clone();
+    pane.name = 'glass-visor';
+    pane.opacity = opacity;
+    clearVisors.set(opacity, pane);
+  }
+  return pane;
+}
 /** A lens (`glass-lens`): thick glass over a dark barrel. Less of it is seen through and more of the sky is on it, and it is not a window to go and look in at. */
 const LENS = GLASS.clone();
 LENS.name = 'glass-lens';
@@ -835,10 +856,11 @@ export class Stage {
         staged.group.add(lamp);
         return lamp;
       });
-      if (def.cabin && flight.site) {
+      // (at a site the cabin reads the flight at the clock's instant; in the gallery, with no flight to read, it stands as built)
+      if (def.cabin) {
         if (def.cabin.head) this.cam.onboard.limits = { ...def.cabin.head };
         this.cabin?.dispose();
-        this.cabin = new Cabin(this.cabinHost(), { ...flight, site: flight.site }, def, staged.group, staged.full, lamps);
+        this.cabin = new Cabin(this.cabinHost(), flight, def, staged.group, staged.full, lamps);
       }
       return staged;
     });
@@ -1008,7 +1030,7 @@ export class Stage {
       const shell = Boolean(mesh.userData.shell);
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (mat.name.startsWith('glass')) {
-        const pane = mat.name.startsWith('glass-visor') ? VISOR : mat.name.startsWith('glass-lens') ? LENS : GLASS;
+        const pane = mat.name.startsWith('glass-visor') ? visorOf(mat) : mat.name.startsWith('glass-lens') ? LENS : GLASS;
         mesh.material = shell ? this.shellOf(pane, url) : pane;
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
@@ -1191,12 +1213,12 @@ export class Stage {
     this.following = this.watched = null;
     this.onView(null);
     // on board, what would be in front of the eyes is not drawn (the seat's `hide`)
-    const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
-    this.showSeatHidden(at, this.defs[at]?.seats?.[0]?.hide, id !== 'onboard');
+    const at = this.seatHolder;
+    this.showSeatHidden(at, this.defs[at]?.seats?.[this.seatAt]?.hide, id !== 'onboard');
     this.cabin?.board(id === 'onboard');
     // leaving the vehicle, the shadows go back to the section: fitted to it where the clock has it now (it may just have
     // been put back on its pad, and not yet been moved there by a frame)
-    if (id === 'orbit' || id === 'free') {
+    if (id === 'orbit' || id === 'free' || (id === 'onboard' && this.exhibit)) {
       this.lift();
       this.fitShadows();
     }
@@ -1313,8 +1335,98 @@ export class Stage {
     }
     if (this.cam.rig !== 'onboard') return null;
     const seat = this.craft()?.seat;
-    const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
+    const at = this.seatHolder;
     return seat && at >= 0 ? { def: this.defs[at]!, group: this.staged[at]!.group, eyes: seat } : null;
+  }
+
+  /**
+   * The model whose seats the on-board view is from: at a site the flown vehicle's; on a stage that shows an exhibit
+   * (`exhibit`: the gallery's), the model on show. -1: none.
+   */
+  private get seatHolder(): number {
+    if (this.ascent) return this.defs.findIndex((m) => m.id === this.ascent?.model);
+    return this.exhibit ? this.current : -1;
+  }
+
+  /**
+   * This stage shows an exhibit (the gallery's): nothing flies, and its seats (`ModelDef.seats`) can be sat in where it
+   * stands, one at a time (`sit`). At a site only the flown vehicle's first seat is sat in, and only in flight.
+   */
+  exhibit = false;
+  /** Which of the seat holder's seats the on-board view is from (the site's is always its first). */
+  private seatAt = 0;
+
+  /** What each of the exhibit's seats is called (`ModelDef.seats[].label`): empty where it has none, or nothing is an exhibit. */
+  get seatLabels(): string[] {
+    return this.exhibit ? (this.defs[this.seatHolder]?.seats ?? []).map((s) => s.label) : [];
+  }
+
+  /** The exhibit's seat being sat in (an index into `seatLabels`), or null. */
+  get seat(): number | null {
+    return this.exhibit && this.cam.rig === 'onboard' ? this.seatAt : null;
+  }
+
+  /** The exhibit's seat `n`'s node (ModelDef.seats[].node): the address's word for it. */
+  seatName(n: number): string | null {
+    return this.exhibit ? (this.defs[this.seatHolder]?.seats?.[n]?.node ?? null) : null;
+  }
+
+  /**
+   * Sit in the exhibit's seat `n`, or with null get out of the one sat in: back to the view the seat was taken from, as
+   * it was left (camera/index.ts `unseat`). From one seat to another the eye is carried across. Each is an explicit act:
+   * nothing else puts the camera in a seat. The seat's part must be on show (`Stage.only`): false if it is not.
+   */
+  sit(n: number | null): boolean {
+    if (!this.exhibit) return false;
+    const at = this.seatHolder;
+    const seats = this.defs[at]?.seats ?? [];
+    const on = this.cam.rig === 'onboard';
+    if (n === null) {
+      if (on) this.cam.unseat();
+      return true;
+    }
+    if (!seats[n]) return false;
+    if (on && n === this.seatAt) return true;
+    const was = this.seatAt;
+    this.seatAt = n;
+    if (!this.craft()?.seat) {
+      this.seatAt = was;
+      return false;
+    }
+    if (!on) {
+      this.cam.set('onboard');
+      return (this.cam.rig as RigId) === 'onboard';
+    }
+    // from one seat to the next: the other man's helmet is drawn again, this one's not
+    this.showSeatHidden(at, seats[was]?.hide, true);
+    this.showSeatHidden(at, seats[n]!.hide, false);
+    this.cam.reseat();
+    this.renderer.shadowMap.needsUpdate = true;
+    this.dirty = true;
+    this.onSeat();
+    return true;
+  }
+
+  /** The box round the seated model's cabin (`CabinDef.within`, else the part the seat is in), a metre added all round; null if there is none. */
+  private cabinBox(): THREE.Box3 | null {
+    const at = this.seatHolder;
+    const def = this.defs[at];
+    const full = this.staged[at]?.full;
+    if (!def || !full) return null;
+    const seat = def.seats?.[this.seatAt]?.node;
+    const names = def.cabin?.within ?? (seat ? [this.partOf(seat) ?? ''] : []);
+    const box = new THREE.Box3();
+    for (const n of names) {
+      const node = full.getObjectByName(n);
+      if (node) box.expandByObject(node);
+    }
+    return box.isEmpty() ? null : box.expandByScalar(1);
+  }
+
+  /** The part (a top-level node named in the model's parts) a node of the model on show is in, or null. */
+  partOf(name: string): string | null {
+    for (let o = this.staged[this.current]?.full.getObjectByName(name) ?? null; o; o = o.parent) if (this.parts.has(o.name)) return o.name;
+    return null;
   }
 
   /** What can be looked out of from the seat being sat in (lookouts.ts): its windows, then its periscope. Empty when not in one. */
@@ -1569,7 +1681,7 @@ export class Stage {
   /** The flown vehicle as the camera needs it (camera/rig.ts: Craft): its frame, the middle and size of what is left of it, a place to see from inside it. */
   private craft(): Craft | null {
     const s = this.flier;
-    if (!s) return null;
+    if (!s) return this.exhibited();
     if (this.followed !== null) {
       const shed = this.shedAsCraft(this.followed);
       if (shed) return shed;
@@ -1633,6 +1745,46 @@ export class Stage {
     } else c.seat = null;
     return c;
   }
+  /**
+   * The exhibit as the camera needs it (`exhibit`): where it stands, and the eyes of the seat chosen (`seatAt`), if its
+   * part is on show. It never flies.
+   */
+  private exhibited(): Craft | null {
+    if (!this.exhibit) return null;
+    const at = this.seatHolder;
+    const staged = this.staged[at];
+    const seat = this.defs[at]?.seats?.[this.seatAt];
+    if (!staged || !seat) return null;
+    const e = (this.exhibitCraft ??= {
+      matrix: staged.group.matrixWorld,
+      centre: new THREE.Vector3(),
+      radius: 1,
+      shape: 0,
+      flying: false,
+      seat: null,
+      exhibit: true,
+    });
+    const key = `${at}/${this.seatAt}`;
+    if (this.shownKey !== key) {
+      this.shownKey = key;
+      this.shownPlace = this.seatNode(at, seat);
+    }
+    e.matrix = staged.group.matrixWorld;
+    e.radius = this.bounds.radius;
+    const node = this.shownPlace;
+    const drawn = (o: THREE.Object3D | null): boolean => !o || (o.visible && drawn(o.parent));
+    if (node && drawn(node)) {
+      node.updateWorldMatrix(true, false);
+      e.seat = (e.seat ?? new THREE.Matrix4())
+        .copy(node.matrixWorld)
+        .multiply(new THREE.Matrix4().makeTranslation(...(seat.eye ?? ([0, 0, 0] as const))));
+    } else e.seat = null;
+    return e;
+  }
+  private exhibitCraft: Craft | null = null;
+  private shownKey = '';
+  private shownPlace: THREE.Object3D | null = null;
+
   /**
    * Something the vehicle has let go, as the camera needs it: the frame it is carried in (the vehicle's own, as it was
    * when the piece left, moved and turned as its body has gone since), and the middle and size of its nodes in that
@@ -2783,6 +2935,12 @@ export class Stage {
     own.explode(1);
     box.expandByObject(own.group);
     own.explode(this.apart[this.current] ?? 0);
+    // From an exhibit's seat the map is spent on the cabin and a metre round it, not on the whole vehicle: over a
+    // Gemini-Titan's 34 m a texel is 8 mm, and its softened edge stepped across the cabin's walls in blocks. Nothing
+    // outside the cabin is seen from the seat but through its windows. (Fitted on sitting and on getting up, never as
+    // the view moves.)
+    const cabin = this.exhibit && this.cam.rig === 'onboard' ? this.cabinBox() : null;
+    if (cabin) box.copy(cabin);
     const centre = box.getCenter(new THREE.Vector3());
     const radius = Math.min(
       this.bounds.radius,
@@ -3345,6 +3503,7 @@ export class Stage {
     this.follow(dt);
     this.lift();
     if (this.clock) this.cabin?.step(dt, this.clock.t, this.clock.jdUT, this.renderer.toneMappingExposure);
+    else if (this.exhibit) this.cabin?.step(dt, 0, Number.NaN, this.renderer.toneMappingExposure); // (no clock: it stands as built)
     this.settle(dt);
     this.runWorks(dt);
     this.runFunctions(dt);

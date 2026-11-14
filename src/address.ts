@@ -17,8 +17,9 @@ import type { Flight, ModelDef, ViewDef } from './types';
  *
  *   #                                    the front page: no flight's (front.ts)
  *   #<flight id>                         the flight: its gallery
- *   #<flight id>/gallery[/<what>]        the gallery, on a part (its node) or with one of the
- *                                        choices of what stands there (its id)
+ *   #<flight id>/gallery[/<what>]        the gallery, on a part (its node), with one of the
+ *                                        choices of what stands there (its id), or sitting in
+ *                                        one of the vehicle's seats (its node: `Seat_Pilot`)
  *   #<flight id>/site[/<model>]          the launch site, on one of its sections
  *   #<flight id>/fly                     the flight deck
  *
@@ -46,7 +47,7 @@ export interface Address {
   flightId: string;
   /** Null: the address does not say, and the flight opens where it opens (`opensIn`). */
   place: Place | null;
-  /** At the site, the section's model; in the gallery, a part's node or a choice's id. '' for neither. */
+  /** At the site, the section's model; in the gallery, a part's node, a choice's id or a seat's node. '' for none. */
   what: string;
 }
 
@@ -164,14 +165,20 @@ export function plinths(model: Pick<ModelDef, 'parts' | 'name'>): Plinth[] {
 }
 
 /**
- * What the gallery's address names: a part of the vehicle (shown whole, with that part chosen),
- * or one of the choices of what stands there. Anything else is the whole of it.
+ * What the gallery's address names: a part of the vehicle (shown whole, with that part chosen), one of the choices of
+ * what stands there, or one of its seats (`seat`, by its index in `ModelDef.seats`: sat in, in the whole vehicle).
+ * Anything else is the whole of it.
  */
-export function galleryAt(model: Pick<ModelDef, 'parts' | 'name'>, what: string): { plinth: Plinth; part: string | null } {
+export function galleryAt(
+  model: Pick<ModelDef, 'parts' | 'name' | 'seats'>,
+  what: string,
+): { plinth: Plinth; part: string | null; seat: number | null } {
   const all = plinths(model);
   const part = model.parts.find((p) => p.node === what);
-  if (part) return { plinth: all[0]!, part: part.node };
-  return { plinth: all.find((p) => p.id === what) ?? all[0]!, part: null };
+  if (part) return { plinth: all[0]!, part: part.node, seat: null };
+  const seat = (model.seats ?? []).findIndex((s) => s.node === what);
+  if (seat >= 0) return { plinth: all[0]!, part: null, seat };
+  return { plinth: all.find((p) => p.id === what) ?? all[0]!, part: null, seat: null };
 }
 
 /**
@@ -206,7 +213,8 @@ export const WHOLE_VIEW = 'gallery-whole';
 /**
  * The flight as the gallery's stage is given it: the vehicle alone, at the origin of a studio, as
  * built (its slider at rest, nothing asked of anything else), with no site, no clock to follow,
- * no trajectory, no seats to take and nobody to walk as.
+ * no trajectory and nobody to walk as. Its seats are kept, to be sat in where it stands (`Stage.sit`), with
+ * nobody standing outside them (`figure`): there is no one else in the gallery.
  */
 export function galleryFlight(flight: Flight): Flight {
   const vehicle = exhibit(flight);
@@ -215,7 +223,7 @@ export function galleryFlight(flight: Flight): Flight {
   const {
     sequence: _sequence,
     walker: _walker,
-    seats: _seats,
+    seats,
     with: _with,
     position: _position,
     rotationY: _rotationY,
@@ -223,7 +231,11 @@ export function galleryFlight(flight: Flight): Flight {
     ...model
   } = vehicle;
   const views = plinthViews(vehicle, plinths(vehicle)[0]!);
-  return { ...rest, models: [{ ...model, backdrop: 'studio', wide: false, home: WHOLE_VIEW, views }] };
+  const sat = seats?.map(({ figure: _figure, ...seat }) => seat);
+  return {
+    ...rest,
+    models: [{ ...model, ...(sat?.length ? { seats: sat } : {}), backdrop: 'studio', wide: false, home: WHOLE_VIEW, views }],
+  };
 }
 
 /** The figure that stands beside the vehicle for scale, where the flight has one: its first crew model. Null: an outline of a person does. */

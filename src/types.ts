@@ -370,13 +370,14 @@ export interface CabinDef {
   windows?: { at: [number, number, number]; out: [number, number, number]; across: number; name?: string }[];
   /**
    * The cabin's own lights and their switch. `control` is a node of the model whose extras carry `throw`: a turn about
-   * its own X for each position the switch has, the first as it was built. `ways` says, position by position, what
+   * its own X for each position the switch has, the first as it was built; left out where the model has no switch built
+   * for them yet (say so), and they are thrown from the page alone. `ways` says, position by position, what
    * the switch reads there and which of the model's `lights` (by index) are lit. `fittings` are the meshes that glow
    * with each of `lights`, in the same order, each with a material of its own: put out with its light. The cabin opens
    * with the switch as it was built; what the build shaded is shaded for the lamps on and for the lamps off
    * (viewer/cabin.ts), so a dark cabin is lit by its windows, its periscope and its telelights.
    */
-  lighting?: { control: string; name: string; about: string; ways: { says: string; lit: number[] }[]; fittings?: string[] };
+  lighting?: { control?: string; name: string; about: string; ways: { says: string; lit: number[] }[]; fittings?: string[] };
   /**
    * A globe that shows where the spacecraft is (the Vostok's Globus): `node` turns about its own centre so that the point
    * under the spacecraft at the clock's instant stands under the cross (the node's own +Z as built) with the way it is

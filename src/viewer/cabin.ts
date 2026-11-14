@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
-import type { CabinDef, MechanismDef, ModelDef, Signal, SitedFlight } from '../types.ts';
+import type { CabinDef, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
 import { siteFrame } from '../world/frames.ts';
 import { orbitalEvents, orbitalFlown, orbitalRecord } from './ascent.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
@@ -181,7 +181,8 @@ const m4 = new THREE.Matrix4();
 export class Cabin {
   private readonly def: CabinDef;
   private readonly host: CabinHost;
-  private readonly flight: SitedFlight;
+  /** The flight whose cabin it is. With no site (the gallery's exhibit) there is no flight to read: it stands as built, its lamps dark. */
+  private readonly flight: Flight;
   /** The model as it stands in the scene, and its full level of detail (the only one with an inside). */
   private readonly group: THREE.Object3D;
   private readonly needles: Needle[] = [];
@@ -243,14 +244,7 @@ export class Cabin {
     stale: number;
   } | null = null;
 
-  constructor(
-    host: CabinHost,
-    flight: SitedFlight,
-    model: ModelDef,
-    group: THREE.Object3D,
-    full: THREE.Object3D,
-    lights: THREE.PointLight[],
-  ) {
+  constructor(host: CabinHost, flight: Flight, model: ModelDef, group: THREE.Object3D, full: THREE.Object3D, lights: THREE.PointLight[]) {
     this.host = host;
     this.flight = flight;
     this.def = model.cabin!;
@@ -338,12 +332,15 @@ export class Cabin {
       if ((globe as THREE.Mesh).isMesh) this.paint(globe as THREE.Mesh);
     }
     // The cabin's own lights and their switch: a control like the others to the pointer, but what it does is the cabin's.
+    // (a model with no switch built for them yet has its lights thrown from the page alone: `Cabin.light`)
     const lighting = this.def.lighting;
-    const lever = lighting && find(lighting.control);
+    const lever = lighting?.control ? find(lighting.control) : null;
     if (lighting && lever) {
       const throws = Array.isArray(lever.userData.throw) ? (lever.userData.throw as number[]) : [0];
       this.lever = { node: lever, home: lever.quaternion.clone(), throws, at: 0, now: 0 };
       name(lever, lighting.name, lighting.about, { lights: true });
+    }
+    if (lighting && (lever || !lighting.control)) {
       (lighting.fittings ?? []).forEach((fitting, of) => {
         find(fitting)?.traverse((o) => {
           const mesh = o as THREE.Mesh;
@@ -607,10 +604,10 @@ export class Cabin {
   /** Which of its positions the lights' switch is in (CabinDef.lighting.ways): the first is as the model was built. */
   private way = 0;
   /** The lights' switch as it stands: which position, and what that position is called. Null: the cabin has none. */
-  get lighting(): { way: number; says: string; name: string } | null {
+  get lighting(): { way: number; says: string; name: string; built: boolean } | null {
     const lighting = this.def.lighting;
     const way = lighting?.ways[this.way];
-    return lighting && way ? { way: this.way, says: way.says, name: lighting.name } : null;
+    return lighting && way ? { way: this.way, says: way.says, name: lighting.name, built: this.lever !== null } : null;
   }
 
   /** The periscope's screen, for whoever wants to look into it: its middle and the way it faces, in the scene. */
@@ -811,18 +808,19 @@ export class Cabin {
   } | null {
     const tr = this.flight.trajectory;
     const o = this.flight.orbital;
-    if (!tr && o?.ascent && this.flight.flies) {
+    const f = this.flight;
+    if (!tr && o?.ascent && f.flies && f.site) {
       // a flight into orbit: its record flown (viewer/ascent.ts, the same run the scene shows), and its events' instants
-      this.recorded ??= {
-        samples: orbitalRecord(this.flight).samples,
-        times: {},
-        events: orbitalEvents(this.flight, orbitalFlown(this.flight)),
-      };
+      if (!this.recorded) {
+        const sited = { ...f, site: f.site };
+        this.recorded = { samples: orbitalRecord(sited).samples, times: {}, events: orbitalEvents(sited, orbitalFlown(sited)) };
+      }
       return this.recorded;
     }
-    if (!tr) return null;
+    const site = this.flight.site;
+    if (!tr || !site) return null;
     if (!this.recorded) {
-      const { samples, results } = flownOnce(tr, siteFrame(this.flight.site), this.flight.site.seaLevel.value);
+      const { samples, results } = flownOnce(tr, siteFrame(site), site.seaLevel.value);
       this.recorded = {
         samples,
         times: {
@@ -854,7 +852,8 @@ export class Cabin {
       r.g = sample.g;
     }
     r.elapsed = Math.max(0, sample && this.live ? sample.t : t);
-    r.timeOfDay = ((((jdUT + 0.5 + this.flight.site.zone.utcOffset / 24) % 1) + 1) % 1) * 86400;
+    const site = this.flight.site;
+    if (site) r.timeOfDay = ((((jdUT + 0.5 + site.zone.utcOffset / 24) % 1) + 1) % 1) * 86400;
     this.attitude(r, sample?.t ?? t);
     const left = (sample as LiveSample | null)?.rcs?.left;
     const supplies = this.flight.trajectory?.body?.capsule.rcs?.supplies ?? [];
@@ -862,7 +861,8 @@ export class Cabin {
       r[`supply${i}`] = left?.[i] !== undefined ? left[i]! / s.propellant.value : 1;
     });
     this.readings = r;
-    this.signals = signalsAt(this.live ? this.times : (record?.times ?? {}), sample?.t ?? t, lifted);
+    // (an exhibit is not powered: nothing it would tell has happened, and it is not on a pad waiting to go)
+    this.signals = site ? signalsAt(this.live ? this.times : (record?.times ?? {}), sample?.t ?? t, lifted) : {};
 
     // (an orbital flight's events: the deck's run's while it is flown, the record's otherwise)
     const events = this.live ? this.events : (record?.events ?? {});
@@ -1036,7 +1036,7 @@ export class Cabin {
       .toArray();
     const up = this.host.upAt(g.position, new THREE.Vector3());
     // level along the bearing flown: the site's +X is its stated bearing, +Z a quarter turn clockwise of it
-    const bearing = THREE.MathUtils.degToRad((this.flight.trajectory?.azimuth.value ?? 0) - this.flight.site.bearingX.value);
+    const bearing = THREE.MathUtils.degToRad((this.flight.trajectory?.azimuth.value ?? 0) - (this.flight.site?.bearingX.value ?? 0));
     const a = attitudeOf(nose, head, up.toArray(), [Math.cos(bearing), 0, Math.sin(bearing)]);
     Object.assign(r, a);
     const dt = t - this.last.t;

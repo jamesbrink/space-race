@@ -40,6 +40,11 @@ export interface Craft {
   flying: boolean;
   /** A place inside it to see from (ModelDef.seats), in the scene: null if it has none. */
   seat: THREE.Matrix4 | null;
+  /**
+   * It is an exhibit (the gallery's): it stands where it is and goes nowhere, and the only view about it is from its seat.
+   * Left out, it is a flight's vehicle.
+   */
+  exhibit?: boolean;
 }
 
 /** What a rig may ask of the world it is in. Lengths are metres in the scene's frame. */
