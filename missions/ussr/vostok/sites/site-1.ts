@@ -44,6 +44,10 @@ export const SITE1: SiteDef = {
   // The range and every report of the flight kept Moscow time, three hours ahead of UTC in 1961 (liftoff 09:06:59.7 is 06:06:59.7 UTC).
   // Clocks in the Kyzylorda region round it stood later; the flight's record does not use them.
   zone: { name: 'MSK', utcOffset: 3 },
+  // What is heard standing here with nothing running: the steppe's wind and a far hum of machinery, and no water: the
+  // Aral Sea is 200 km off and the Syr Darya 30, and a flight from here comes down on land. Estimated, as every place's
+  // bed is (the wind and the hum are the Cape's own figures: nothing read gives this place's).
+  quiet: { wind: 0.05, surf: 0, hum: 0.006, sea: 0 },
   // The sky a flight from here stands under when it has no record of its own day: the steppe's clear, dry air. Every
   // figure is an estimate. Vostok 1 has its day's (its flight's weather.ts).
   weather: {

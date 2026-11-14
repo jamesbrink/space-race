@@ -370,7 +370,7 @@ export class Sound {
       duration,
       stays: this.live !== null,
       padHeight: this.padHeight,
-      place: PLACE,
+      place: this.flight.site.quiet ?? PLACE,
     };
   }
 
