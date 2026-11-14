@@ -1,5 +1,6 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../../vostok/sites/site-1.ts';
+import { voskhodCabin, voskhodSeat } from '../../vehicles/cabin.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -633,6 +634,35 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -32, 1) },
   ],
 };
+
+// The two couches as somewhere to sit, and their cabin (../../vehicles/cabin.ts: from the model's own nodes). Each eye
+// point is at its man's own eyes and turned as his head is (vehicles/voskhod.py `seat_view`); from his couch his own
+// helmet and the head in it are not drawn (crew/berkut.py: every `Helmet_` mesh), and the man beside him is. The
+// commander's is first: the one an on-board view takes. Both were aboard by about 07:30 Moscow time, Leonov first
+// (README.md: the crew's report, its times faint in the copy read); the span is a quarter of an hour before that:
+// estimated. There is no launch site to board them at yet.
+const HELMET = [
+  'Shell',
+  'Liner',
+  'Head',
+  'Cap',
+  'Eyes',
+  'Irises',
+  'Brows',
+  'Lips',
+  'Visor',
+  'VisorFrame',
+  'Pivots',
+  'Lettering',
+  'NeckRing',
+  'Collar',
+];
+const BOARDING: [number, number] = [-9900, -9000];
+vehicle.seats = [
+  voskhodSeat('Right', 'Belyayev’s couch, by the hatch', HELMET, BOARDING),
+  voskhodSeat('Left', 'Leonov’s couch, by the airlock', HELMET, BOARDING),
+];
+vehicle.cabin = voskhodCabin(COUCHES);
 
 export const flight: Flight = {
   id: 'ussr/voskhod/voskhod-2',

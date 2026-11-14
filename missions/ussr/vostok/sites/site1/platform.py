@@ -41,6 +41,7 @@ from .site import (
     RAIL_TOP,
     P,
     Parts,
+    Welded,
     box,
     fine,
     handrail,
@@ -283,6 +284,7 @@ def build(parts: Parts, tracks=()) -> None:
     parts.node("FlamePit")
     lining, scorch, earth = parts("FlamePit", "lining", True), parts("FlamePit", "scorch", True), parts("FlamePit", "earth", True)
     road = parts("FlamePit", "road", True)
+    grid = {id(mb): Welded(mb) for mb in (lining, scorch, earth, road)}
     cell = CELL if fine() else 2 * CELL
     xs = _lines(-40.0, 248.0, [-HALF - 0.3, -HALF, HALF, SLOT_END, SUMP_END, WALL_END], cell)
     ys = _lines(-104.0, 126.0, [s * v for s in (-1, 1) for v in (SLOT + WALL, SLOT, TRENCH_OUT, PIT_BASE / 2, ROAD_HALF)], cell)
@@ -314,7 +316,9 @@ def build(parts: Parts, tracks=()) -> None:
             # crossing the grid aslant is followed and not drawn as a row of teeth
             mid = pit_z(cx, cy)
             along_02 = abs((zz[0] + zz[2]) / 2 - mid) <= abs((zz[1] + zz[3]) / 2 - mid)
-            mb.add(
+            # (welded: a grid point is one vertex of each surface it is in, so the cells round it are shaded as one surface)
+            grid[id(mb)].add(
+                [(i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1)],
                 [P(xs[i], ys[j], zz[0]), P(xs[i + 1], ys[j], zz[1]), P(xs[i + 1], ys[j + 1], zz[2]), P(xs[i], ys[j + 1], zz[3])],
                 [(0, 1, 2), (0, 2, 3)] if along_02 else [(0, 1, 3), (1, 2, 3)],
             )

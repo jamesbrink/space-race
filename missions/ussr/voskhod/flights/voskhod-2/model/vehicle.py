@@ -53,14 +53,15 @@ CREW = {"Left": berkut.LEONOV, "Right": berkut.BELYAYEV}
 PACK_AT = (700.0, -150.0, -60.0)
 
 
-def crew(name: str, node, place) -> None:
+def crew(name: str, node, place) -> dict:
     """The man in a couch, in his Berkut suit (../../../crew/berkut.py); and beside Leonov, his pack."""
-    berkut.build_seated(node, place, f"Crew_{name}", CREW[name])
+    keys = berkut.build_seated(node, place, f"Crew_{name}", CREW[name])
     if name == "Left":
         C = voskhod.couch_frame()
         C.translation = C.translation * 0.001
         turn = Matrix(((0, 0, 1), (0, 1, 0), (-1, 0, 0))).to_4x4()  # its outer face toward the crew's left, its top toward their heads
         berkut.build_pack(node, C @ Matrix.Translation(Vector(PACK_AT) * 0.001) @ turn, "Crew_Left_Pack")
+    return keys
 
 
 def build() -> str:

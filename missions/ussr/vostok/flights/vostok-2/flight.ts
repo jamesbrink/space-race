@@ -1,6 +1,6 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
-import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
+import { vostokCabin, vostokLights, vostokSeat } from '../../vehicles/cabin.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -504,8 +504,8 @@ const vehicle: ModelDef = {
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
   parts: [...launcherParts, ...parts],
-  // the cabin's lamp, over the instrument board
-  lights: [{ position: [0.14, 3.6, 0.14], colour: 0xffe4c0, intensity: 0.2, reach: 1.7 }],
+  // the cabin's two lamps (../../vehicles/cabin.ts)
+  lights: vostokLights(),
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },

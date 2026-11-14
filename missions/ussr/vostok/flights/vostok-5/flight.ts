@@ -1,6 +1,6 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
-import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
+import { vostokCabin, vostokLights, vostokSeat } from '../../vehicles/cabin.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -574,8 +574,8 @@ const vehicle: ModelDef = {
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
   parts: [...launcherParts, ...parts],
-  // the cabin's lamp, over the instrument board
-  lights: [{ position: [0.14, 3.6, 0.14], colour: 0xffe4c0, intensity: 0.2, reach: 1.7 }],
+  // the cabin's two lamps (../../vehicles/cabin.ts)
+  lights: vostokLights(),
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
@@ -600,7 +600,8 @@ const vehicle: ModelDef = {
 
 // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). When he went aboard is
 // not in this flight's data and there is no launch site to board it at yet: the span is a placeholder (estimated).
-vehicle.seats = [vostokSeat([-3 * 3600, -3600], ['Hose', 'ValveRim'])];
+// (the helmet's hose and its valve, crew/sk_1.py: each mesh by name, since a mesh the data names is a node of its own)
+vehicle.seats = [vostokSeat([-3 * 3600, -3600], ['Hose', 'ValveRim', 'ValveSlots'])];
 vehicle.cabin = vostokCabin();
 
 export const flight: Flight = {

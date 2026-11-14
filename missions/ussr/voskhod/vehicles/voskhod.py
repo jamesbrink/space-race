@@ -18,6 +18,7 @@ Top-level nodes:
     RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
 and for the 3KV:   CouchLeft  CouchCentre  CouchRight
 and for the 3KD:   CouchLeft  CouchRight  Airlock  AirlockRing  AirlockHatch
+In each couch that a flight lays a man in: Seat_Left, Seat_Centre or Seat_Right, an empty at his eyes.
 """
 
 from __future__ import annotations
@@ -162,6 +163,37 @@ def figure_place(at: tuple[float, float, float]) -> Matrix:
     """Where a seated figure goes for a couch whose hip point is `at` in the couches' plane: maps figurelib's seat
     frame (metres; head toward -Y, chest toward +Z, his right toward +X) into the scene."""
     return Matrix.Scale(MM, 4) @ couch_frame() @ Matrix.Translation(at) @ Matrix.Scale(1 / MM, 4) @ Matrix.Diagonal((-1, -1, 1, 1))
+
+
+def seat_view(couch: bpy.types.Object, name: str, place: Matrix, keys: dict) -> None:
+    """`Seat_<name>`: an empty at the eyes of the man in a couch, a child of the couch's node. In the file its +Z is the
+    way he looks and its +Y the top of his head, which is what a seat's node promises (types.ts: `ModelDef.seats`). Both
+    are his own head's, as the flight's figure holds it (figurelib.head_view: `keys`, in figurelib's seat frame, which
+    `place` puts in the scene): he lies with his head straight on his shoulders, so he looks out of his chest at the
+    cabin's wall over him. What that puts in front of each man is in voskhod.md, "The couches as seats"."""
+    turn = place.to_3x3()
+    eyes = place @ (Vector(keys["eyes"]) * 0.01)
+    look, over = (turn @ Vector(keys["look"])).normalized(), (turn @ Vector(keys["crown"])).normalized()
+    over = (over - look * look.dot(over)).normalized()
+    node = group(f"Seat_{name}", couch)
+    node.matrix_local = Matrix.Translation(eyes) @ Matrix(((-look).cross(over), -look, over)).transposed().to_4x4()
+    C = Matrix.Scale(MM, 4) @ couch_frame()
+    e = C.inverted() @ eyes
+    c = C.to_3x3().normalized().inverted() @ look
+    wall = to_lining(eyes / MM, look)
+    print(
+        f"voskhod: {name}'s eyes at ({e.x:.0f}, {e.y:.0f}, {e.z:.0f}) mm in the couches' plane, looking along "
+        f"({c.x:.2f}, {c.y:.2f}, {c.z:.2f}) of it; the lining is {wall:.0f} mm from them that way, and the scene's "
+        f"({eyes.x:.3f}, {eyes.y:.3f}, {eyes.z:.3f}) m is where they are"
+    )
+
+
+def to_lining(p: Vector, d: Vector) -> float:
+    """How far it is from `p` along the unit vector `d` to the pressure hull's inner face (a ball of R_IN about the
+    sphere's centre), millimetres."""
+    q = p - Vector((0, 0, Z_C))
+    b = q.dot(d)
+    return -b + math.sqrt(b * b - q.length_squared + R_IN * R_IN)
 
 
 # ----------------------------------------------------------------------- the couches
@@ -564,7 +596,11 @@ def build(
         node = build_couch(M, name, at, suited=kind == "3KD")
         if crew and interior():
             # (a man in a pressure suit lies a finger's breadth higher and further up the couch than one in cloth)
-            crew(name, node, figure_place(at if kind == "3KV" else (at[0], at[1] + SUITED[0], at[2] + SUITED[1])))
+            place = figure_place(at if kind == "3KV" else (at[0], at[1] + SUITED[0], at[2] + SUITED[1]))
+            keys = crew(name, node, place)
+            # a figure that says where its eyes are gives its couch an eye point: somewhere to sit
+            if isinstance(keys, dict) and "eyes" in keys:
+                seat_view(node, name, place, keys)
     build_reserve_engine(M)
     if kind == "3KD":
         build_airlock(M, airlock_extended)

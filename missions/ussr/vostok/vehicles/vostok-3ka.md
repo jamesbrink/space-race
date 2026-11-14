@@ -149,8 +149,24 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   and stay with the instrument module is documented; how far they sprang is not.
 - **Lightening holes in the support ring are square.**
 - **No lettering or markings.** None has been found for the flown article.
-- **Sat in from the gallery, Vostoks 2 to 6 have only the seat, the portholes and the lamp** (`../vehicles/cabin.ts`). The
-  cabin these build is shapes: no needle, telelight or control is a node of its own (`Gauge_*`, `Tele_*`, `Ctl_*`), there
-  is no Vzor screen or ring (`Vzor_Screen`, `Vzor_Ring`), no lamp fitting (`Lamp_*`) and no lighting tumbler
-  (`Ctl_Lighting` with `throw` extras), so none can be named, read, worked or looked into. Vostok 1's fit
-  (vehicles/vostok_cabin.py) has all of them; each later ship needs its own fit for its own cabin.
+- **Sat in from the gallery, Vostoks 2 to 6 have only the seat, the portholes, the lamps and their tumbler**
+  (`../vehicles/cabin.ts`). The cabin these build is still the plain stand-in: the instrument board, the Globus, the
+  control panel, the hand controller and the Vzor are shapes, no needle, telelight or control of theirs is a node of its
+  own (`Gauge_*`, `Tele_*`, `Ctl_*`), and there is no Vzor screen or ring (`Vzor_Screen`, `Vzor_Ring`), so none can be
+  named, read, worked or looked into. Vostok 1's fit (vehicles/vostok_cabin.py) has all of them; each later ship needs
+  its own fit for its own cabin (SIS-2-3KA: its board had a new Globus, its panel was changed and lost the lock after
+  Vostok 2), which is its own research and is not done. What they do have of that fit is the lighting, below.
+
+### Cabin lighting (Vostoks 2 to 6)
+
+`vostok_3ka.build(lighting=True)` gives the plain cabin Vostok 1's two lamp fittings (`Lamp_1`, `Lamp_2`, with
+`Cabin_LampCases`) and its lighting tumbler (`Ctl_Lighting`, a lever on its pivot with three positions in its `throw`
+extras, and its nut in `Cabin_Fittings`), built by the same code (`vostok_cabin.lighting`: `cabin_lamps` and
+`tumbler`), so a seat there has a light to switch. What that rests on:
+
+| What | Confidence | Basis |
+| --- | --- | --- |
+| That the ship had cabin lighting the pilot switched, with a working light and a duty one | documented for Vostok 2 and Vostok 6; **estimated** for Vostoks 3, 4 and 5 (nothing read speaks of theirs; Tyapchenko says only that the boards and panels of the whole series were "practically the same": «конструкция ПД и ПУ всех кораблей указанной серии практически одинаковы») | Titov's report after Vostok 2: «Освещение кабины. Рабочим освещением я пользовался, когда записывал данные в бортжурнал. При дежурном освещении в тени Земли нельзя записывать, оно ничего не дает. Приходилось переключать с дежурного на рабочее и записывать» («Первый пилотируемый полёт», 2011, book 2, doc. 192). Tereshkova's report after Vostok 6: «Освещение кабины хорошее» (Kamanin's diary, June 1963) |
+| The tumbler's three positions: working (as built), duty, off | **estimated**: carried over from Vostok 1's panel, where they are documented (ОСВЕЩЕНИЕ: ДЕЖУРН., РАБОЧЕЕ, ВЫКЛ, Tyapchenko fig. 5). Titov's words give the later panel a working and a duty light switched between and both able to be off; how its switch was lettered was not read (Tyapchenko's fig. 6 is the photograph of that panel) | as above |
+| Where the tumbler stands | **estimated**: on the plain panel's face, at its edge toward the board and above its knobs (`PLAIN_LIGHTING_AT`). The plain panel is itself a stand-in, and it lies behind the seated pilot's left arm: from the seat's eye point only the strip of its face nearest the board can be seen (a ray cast from the eyes to each place of the face, in Vostok 2 and Vostok 6), so that is where the tumbler is put, to be seen and worked from the seat. Where it stood on the real panel was not read | |
+| Two lamps, high on either side over the pilot's knees; working lights both, duty one | **estimated, and known to be wrong for Vostok 2**: these are Vostok 1's fittings, whose number and places are themselves in nothing read. Titov, asked whether the lighting was well placed: «Освещение расположено очень удобно, особенно 2-е дежурное, потому что, когда включаешь 2-ое дежурное, подсвечиваются все приборы и весь свет падает на приборную доску. Рабочее освещение хорошо расположено, оно сзади» (the same volume, doc. 193): so on his ship the working light was behind him and there were at least two duty lights, the second lighting the board. The model has neither a lamp behind the pilot nor a second duty light | |

@@ -476,13 +476,22 @@ def cut_openings() -> None:
 # ------------------------------------------------------------------------ the cabin
 
 
-def build_cabin(M, tv_standins: bool = True, fit: str | None = None, rails: bool = True, stores: bool = True, controls: bool = True) -> None:
+def build_cabin(
+    M,
+    tv_standins: bool = True,
+    fit: str | None = None,
+    rails: bool = True,
+    stores: bool = True,
+    controls: bool = True,
+    lighting: bool = False,
+) -> None:
     """`tv_standins` are the two plain barrels that stand for the television cameras on a flight that does not build
     them (build_television does, as its own node). `fit`: the cabin as a year's ships had it ("1961": vostok_cabin.py),
     in place of the plain board, panel, grip, sight and cameras built here. `rails` are the ejection seat's two guides,
     `stores` the cases and canisters laid out round that seat, and `controls` the panel at the pilot's left hand and the
     hand controller at his right: a Voskhod, which had couches where the seat was and its controls moved to them, builds
-    none of these."""
+    none of these. `lighting` gives the plain cabin the 1961 fit's two lamps and its lighting tumbler, on the plain
+    panel (vostok_cabin.lighting): the board, the panel and the rest stay the plain shapes."""
     g = group("Cabin")
     arc = [deg(-90 + 180 * i / 48) for i in range(49)]
     shell = MeshBuilder()
@@ -577,6 +586,12 @@ def build_cabin(M, tv_standins: bool = True, fit: str | None = None, rails: bool
         import vostok_cabin  # (here, not above: it builds on this module)
 
         vostok_cabin.build(g, M)
+    elif lighting:
+        import vostok_cabin  # (here, not above: it builds on this module)
+
+        assert controls, "the lighting's tumbler stands on the control panel"
+        # (the plain panel's face, where its knobs stand: +Z out of it at the pilot, +Y toward his head)
+        vostok_cabin.lighting(g, M, S @ left @ Matrix.Translation(P(0, 0, 30)))
     # The container is a node of its own (`ParachuteContainer`): its origin in the middle of its mouth, under hatch No. 2,
     # its own +Z (the file's +Y) out along the hatch's line, so the top of its bounds is its mouth: where the descent
     # module's parachute is made fast (`Flight.flies.chutes[].at`).
@@ -1163,6 +1178,7 @@ def build(
     television: bool = False,
     lining: str = "yellow",
     fit: str | None = None,
+    lighting: bool = False,
 ) -> str:
     """Build the spacecraft. `pilot(parent, place)` builds the man in the seat (a suit's `build_seated`); left out, the seat is empty.
     `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs. `film_camera` puts
@@ -1170,11 +1186,12 @@ def build(
     cameras as they were photographed, as a node of their own, in place of the cabin's two plain barrels: Vostok 3 and 4,
     whose picture was the first to be broadcast. `lining` is the colour of the cabin's wall (LININGS): white on Vostok 5 and
     Vostok 6, whose flown cabins show it. `fit` fits the cabin as a year's ships had it, in place of the plain board, panel,
-    grip and sight: "1961" is vostok_cabin.py, the board, control panel, hand controller and Vzor of Vostok 1."""
+    grip and sight: "1961" is vostok_cabin.py, the board, control panel, hand controller and Vzor of Vostok 1. `lighting`
+    gives a cabin that is not fitted that fit's two lamps and its lighting tumbler and nothing else of it: Vostoks 2 to 6."""
     M = materials(lining)
     build_descent_module(M)
     build_hatches(M)
-    build_cabin(M, tv_standins=not television, fit=fit)
+    build_cabin(M, tv_standins=not television, fit=fit, lighting=lighting)
     cut_openings()
     held = build_seat(M, pilot, fit)
     if film_camera:

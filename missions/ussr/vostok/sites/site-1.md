@@ -107,7 +107,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | Erector | erector.py | the erector on the centre track, with `Erector_Boom` (the platforms, the stair's landing) and `Erector_Lift` | yes: its form estimated |
 | TankCars | tank_cars.py | the railway fillers beside the rocket: `TankCar_Oxygen` (8G117) on the north track and `TankCar_Kerosene` (8G119) on the south, each with `..._Wheel_1..8` | yes: one of each; their form estimated |
 | (the land) | src/viewer/tyuratam.ts | the steppe, the tracks and the roads painted on it, the pit cut out of it | yes |
-| Tracks | deck.py | the rails where they come up to the platform over the land: the centre track's last 130 m, the others' last 70 m | yes (the place) |
+| Tracks | deck.py | the rails where they come up to the platform over the land: the centre track's last 140 m, the others' last 80 m; flush in the apron's slabs as far as 90 m west | yes (the place) |
 | CommandBunker | bunker.py | the mound over the firing room, its four periscopes, three corner vents, the entrance, the smoking place | yes (the place); the rooms below are not |
 | StorageBunker | storage.py | three concrete bays with earth between, their gates, roof vents and aprons | yes (the place); gates shut |
 | PropellantShed | buildings.py | the shed over the northern spur's end, open to the north on six supports | yes (the place) |
@@ -383,8 +383,13 @@ windows dark. Positions are metres east and north of the rocket's axis.
 | h | "a long linear bunker ... southeast of the launching structure": 41 m long on the drawing | documented; the length scaled | HTA/JR-4/58; Figure 5 |
 | Their forms | concrete, slits toward the structure, earth over the roof and against the ends, a steel door behind | estimated | |
 | Spoil heap | "a large pile some 800 feet to the northeast" | documented | HTA/JR-4/58; "spoil bank" on Figure 5; stands today |
-| Its outline | Figure 5's, fitted to its extent on today's imagery: 181 to 381 m east, 72 to 292 m north | derived | |
-| Its height | 9 m | estimated | SRTM (2000) reads 114 m at its top against 105 to 107 m round it; a 30 m grid rounds a top off |
+| Its outline | Figure 5's, fitted to its extent on today's imagery: 181 to 381 m east, 72 to 292 m north; its corners rounded | derived | the U-2's photograph of July 1959 (NPIC/B-24/61 Figure 1, some 2.7 px a metre as scanned) agrees: a rounded white mass from 200 to 384 m east and 45 to 313 m north, between two lines (ditches or tracks) that meet south of it |
+| Its height | 9 m at its middle | estimated | SRTM (2000) reads 114 m at its top against 105 to 107 m round it; a 30 m grid rounds a top off |
+| Its edge | fourteen lobes, 29 to 67 m broad, the bays between them bitten back 3.5 to 8.5 m on the west side and 1 to 2.5 m on the east | documented (that the west side is scalloped, some five bays in 230 m, and the east side nearly straight along its ditch: the U-2's photograph, where a dark band 30 to 40 m broad with a scalloped inner edge lies along the west side); estimated (each lobe's place and breadth, the bays' depths, the lobes on the north and south sides) | the print cannot place a single lobe: its scallops are a few pixels each |
+| Its face | 1 in 1.5 at its steepest, its foot eased over 3 m and its brow rounded over 4 m: 14.9 m from edge to brow | estimated | earth tipped from trucks lies at its angle of repose (30 to 37°). The U-2's print is burnt out to white all over the heap and the CORONA frames of 7 December 1960 and 30 May 1962 are 4 m a pixel as kept: neither shows a face. Whether the dark band along the west side is the face in shadow, its shadow on the ground or stained ground cannot be told |
+| Its gullies | one down each bay, 1 m deep and 5 m across at the face's middle; a rill 0.5 m deep down each flank of a lobe | estimated | what rain cuts in a bare clay bank in four years. None can be seen on anything read |
+| Its top | nearly level: a swell of 0.35 m either way, falling 1.2 m from the middle to the brow over the last 40 m | estimated | where the trucks ran and tipped from |
+| How it is built | a mesh that follows its form: a station every 2.5 m round the edge and a line from each up the face and over the top to the middle, every station one vertex (site1/rim.py `heap`); the inner fence's north side, which crosses it, rides it | | 9,800 triangles (2,660 at the coarsest level, a station every 5 m and no rills). `rim.heap_height` is the same surface for whatever stands on it |
 | Cable conduit | built between 1957 and 1959: out of the pit's edge, two turns, to the structure "about 60 feet below the top of the launching platform", "supported by several small vertical pillars" | documented | PIC/JR-2/60 |
 | Its line | (8, 84), (8, 67), (-5, 58), then south to the structure | derived | Figure 5; today's concrete channel on the same slope follows it within a few metres |
 | Its section; where it arrives | 2.0 by 2.2 m; it leaves the land at the north rim 10 m under the deck's level and its middle arrives 12.5 m under the deck, not the CIA's 18.3 m (60 ft) | estimated | the diameter is redacted; the pit model's terraces (estimated) stand higher there than the CIA's level |
@@ -440,8 +445,11 @@ on it against the documented 160 ft): good to ten metres. Metres east and north 
 | What else is described | a road from the west; a rail spur ending at a building 50 ft square south of the pad; road and rail on a fan-shaped bank some 1,000 ft long and 350 ft wide at its east end | documented | the same. Built: the pad on a metre of bank (its height estimated), the building (47 m south of the pad's middle, clear of its bank, 4.5 m to its roof: estimated), the spur's last 40 m ([site1/site51.py](site1/site51.py)) |
 | Whether it stood on 12 April 1961 | yes: the first R-9 left it on 9 April 1961 (and failed), the next on 21 April | documented | ru.wikipedia, Р-9А; Zak, RussianSpaceWeb. No rocket stood on it on the 12th |
 | The assembly and test building of Site 2 (МИК 2-1; the CIA's "Missile Assembly and Checkout Facility No 1") | 395 by 105 ft, 70 ft high (120.4 by 32.0 by 21.3 m), a shed 30 ft broad along its west side, three tracks through it; its middle at (-1941, -641): 2.04 km on bearing 252°, long axis on 028° | documented (the size: measured, PIC/JR-2/60 p. 16; the place: OpenStreetMap way 173526300 less its extension of 1973 to 1974 at the north-north-east end) | accepted 11 May 1957. Its top 13 m shows over the land from the deck |
-| Its roof, walls, colour | a low double-pitched roof, pale render, tall gates in its ends, a band of windows under the eaves | estimated | no photograph of it from 1957 to 1961 was found |
-| Where it is built | a model of its own, `public/models/ussr/vostok/sites/tyuratam/1961-04.glb` ([tyuratam/mik.py](tyuratam/mik.py), `pnpm model:tyuratam`): 2,380 triangles, in Site 1's frame | | drawn as scenery: site-1.ts `around` names the model, its node and what it wears; viewer/around.ts fetches it with the scene and sets it on the highest of the land under it (the land's swell there is under half a metre), out of the pad's shadow maps, which are fitted to the place's models |
+| Its shed | along the whole of its west side, 30 ft broad | documented (measured: the breadth; drawn: its length) | PIC/JR-2/60 p. 16 and Figure 8, the CIA's plan of the place, which draws it as a strip from end to end. Its roof (8.0 m at the wall, 5.5 m at its eave), doors and windows are estimated. It was first built a bay short of each end |
+| Its gates | three in each end, a track through each, 40 ft apart, the middle one on the building's axis; the middle one 11.5 m broad and 10.5 m high, the two beside it 4.8 by 6.5 m | documented (three tracks through it); derived (their spacing: scaled off Figure 8, some 1.3 ft a pixel, where the middle one lies within 5 ft of the axis; that the middle one is on the axis: today's map has one track through the building, on its axis, OpenStreetMap way 676662204, the line the rocket was rolled out on; the middle gate's breadth: the rocket on its erector is 10.3 m across its four boosters); estimated (the gates' heights, the side gates' breadth, that the two ends are alike) | they were first three alike, 4.8 by 7.5 m and 8 m apart, which the assembled rocket could not have left by |
+| Its roof, walls, colour | a low double-pitched roof, pale render, a band of windows under the eaves, pilasters between twenty bays | estimated | no photograph of it from 1957 to 1961 was found |
+| On the plan and not built | a rectangle some 53 by 31 ft inside its outline, on its axis, 59 ft from its north-north-east end | | Figure 8 draws it and does not name it: something on the roof, or a part that stood higher. Nor the other buildings in its fenced yard (one 160 by 55 ft, one 125 by 35 ft) |
+| Where it is built | a model of its own, `public/models/ussr/vostok/sites/tyuratam/1961-04.glb` ([tyuratam/mik.py](tyuratam/mik.py), `pnpm model:tyuratam`), in Site 1's frame: 2,380 triangles in full; 1,276 without the windows' mullions and the gates' frames; 772 without the pilasters either. Its outline, windows, gates and the shed's doors are the same at all three | | drawn as scenery: site-1.ts `around` names the model, its node and what it wears; viewer/around.ts fetches it with the scene and sets it on the highest of the land under it (the land's swell there is under half a metre), out of the pad's shadow maps, which are fitted to the place's models |
 | The line it was rolled out on | from its north gate round to the centre track 1.32 km west of the pad: drawn on the land as the other tracks are | derived (that this was the line out in 1961: it is the one line from the gate toward the pad); its course is today's map's | OpenStreetMap way 676662205 (`railway=abandoned`) and the first 76 m of way 676662204 (the track through the building), which the extension of 1973 to 1974 stands over. Rolled out to the pad on 11 April 1961 |
 | Left out | the building 75 ft square 1.43 km north-west (not dated to April 1961); the measuring point IP-1, 1.43 km south-west (only its tops show); Site 2's housing and the cottages (hidden by some 30 m of land); Site 31, 19 km off | | the research's sight lines (SRTM, eye 1.7 m over the deck) |
 
@@ -457,6 +465,7 @@ on it against the documented 160 ft): good to ten metres. Metres east and north 
 | Plants | eight species as designed forms ("The ground and what grows") | documented (the species); estimated (shares, colours) | below |
 | Made ground | the apron on the platform's landward side (70 m), the tracks' beds, a margin round the rim: graded, nothing growing; inside the outer fence the ground worn in patches, and turned round the spoil heap's foot (35 m) | estimated | the 1957 photograph shows bare ground round the pad and pit |
 | The apron | concrete slabs from the abutment's west face to 90 m west of the axis, 21 m south and 20 m north of the centre track; each 1.5 m along the tracks by 3 m across, in rows along them, a shade apart, darker in the middle than at the margins, the joints pale with sand; a pale band along each track with the rails flush in it and a flangeway inside each rail; the outer slabs under drifted dust, then bare trodden earth with wheel tracks | documented (slabs, rails flush, the bands, the stains, earth beyond: the film, 43:26 to 43:29, from the erector's head); derived (the south edge, 4 to 5 m beyond the bus's side, the bus's 2.5 m for a scale); estimated (the slabs' size, the west end, the north edge, which the frame does not reach) | tyuratam.ts `SLABS`. The CIA's photographs are too coarse to show it |
+| The rails over the apron | their heads 9 mm over the painted slabs, the rest of each rail under the land; no sleepers, no ballast. From the abutment's west face each comes down 0.12 m in 3 m (the land lies that far under the deck); the centre track's keep the deck's level to 31 m west, under the erector's wagon, whose last axle stands 30.4 m west until 08:37, and come down from there. At the apron's west end the centre track's climb 0.12 m in 3 m onto the painted sleepers, where they stand as before to 160 m west (the erector is left on them); the three spurs' stay at the land's level to where the paint takes over, 110 m west. The gantry tracks' two rails come down as the others do and end flush, 11 ft out from the abutment | documented (flush in the slabs, with a flangeway inside each rail: the film); estimated (the 9 mm: as on the deck, what keeps a head and the surface it lies in apart in depth; the 3 m: the real apron was level with the deck, and no rail came down to it or climbed off it) | site1/deck.py `land_rails` (`APRON_WEST`, `DIP`, `CENTRE_HELD`). The flangeway is the land's paint: nothing is cut |
 | Ruts | bands of braided wheel ruts in pale dust beside the road in from the south-west (70 m each side, fading) and along the centre track to the west (35 m) | documented (that the builders' trucks ground the crust to dust and "the dusty roads ... got to be two to three kilometers wide": Chertok, *Rockets and People* vol. II p. 314, of 1955 to 1957); estimated (that they were still worn in 1961, their lines and breadths) | `RUTS` in tyuratam.ts |
 | Tracks | the centre track from the west (its last 2.6 km) and the four spurs beside it, onto the platform; ballast, sleepers 0.55 m apart, two rails at the Soviet gauge (1,524 mm in 1961) | documented (their lines: OpenStreetMap ways 37547653, 172441851, 172441854, 172441876, 172441879; HTA/JR-4/58 counts five spurs in 1957; the gauge); estimated (the bed's width, the sleepers); near the platform the centre track is put on the axis and the three beside it brought to the CIA's plan ("The site's frame", "The platform") | painted on the land; where they come up to the platform the rails are modelled (`Tracks`) |
 | Roads | the road in from the south-west (its last 2 km), the road round the pit and back past the command bunker, the road from the storage bunker to the propellant shed, and short drives to the storage bays, the check-out shop's gate and the gas receivers; concrete in slabs, 6 m wide | documented (the three roads' lines: PIC/JR-2/60 Figure 5 and OpenStreetMap ways 54570611, 172571827, 172441909); estimated (the drives, the surface, the width; that the way round the pit's east end was a made road and not only the track beside its ditch) | painted on the land, not modelled: they lay flush with it |
@@ -922,8 +931,15 @@ rocket can leave the erector out by its date.
 - Site 51 is its pad, a square building and forty metres of rail: what stood on the pad (a launch table, a
   mast, an erector) is not described and is not built, the bank is drawn only under the pad, and its road and
   the rest of its spur are not drawn. The building's distance from the pad is ours.
-- **The assembly and test building of Site 2 has one level of detail** (2,380 triangles, drawn whole at any
-  distance), and its form is estimated ("On the horizon"). The other lines and roads of Site 2 round it are not drawn.
+- **The assembly and test building of Site 2 is drawn at one level of detail.** Its three levels are built and
+  measured ("On the horizon"; `tyuratam/model/1961-04.lod.json`: at 2.5 px a metre, the largest size measured that is
+  under its own whole, 112 pixels differ between the first two and 419 between the last two, so its thresholds are
+  the viewer's own, 8 and 2 px a metre), and its GLB carries them; but what stands round a site is fetched as one
+  file and joined into a mesh a material (viewer/around.ts), so the full one is drawn at any distance. From the pad
+  it is 0.5 px a metre: the coarsest level is the one that belongs there. They were measured by putting each level's
+  geometry into those meshes in the page, since `lod-thresholds.mjs --measure` knows only models and the place's
+  pieces. Its form beyond its size, its shed and its gates' places is estimated. The other lines and roads of Site 2
+  round it are not drawn. The camera cannot be taken to it: its pivot is held within reach of the place.
 - **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
   roster has people, each there until its time and then gone between one frame and the next ("The morning's
   people and vehicles"). Nobody walks to the stair, gets down from the bus or climbs the fifteen steps: the pilot's
@@ -945,20 +961,32 @@ rocket can leave the erector out by its date.
   that is ours. The saloon car is `tools/blender/vehicles.py`'s kind and can be got into and driven; the bus and
   the truck cannot.
 - **The apron is painted on the land** ("The apron", above), flat at the land's level, 12 cm under the deck's. Its
-  slabs' size, its west and north ends and the stain of each slab are estimated. **The modelled rails over it stand
-  on it, not in it**: `Tracks` (site1/deck.py `land_rails`) lays them on painted sleepers, the head some 15 cm over
-  the land, where the film has them flush. Over the apron (from the abutment to 90 m west, every track) their heads
-  belong at the land's level: a model change, not yet made.
+  slabs' size, its west and north ends and the stain of each slab are estimated. The rails lie flush in it ("The
+  rails over the apron"), and so have to come down 12 cm from the deck west of the abutment, in 3 m, where the real
+  ones ran level; the centre track's do it 3 m further west than the others, clear of the erector's wagon. A
+  flangeway is paint, not a groove.
+- **What rolls off over the apron rolls 12 cm above its rails.** The erector and the two fillers move level, at the
+  deck's height (a `slide` and a `drive` have no height: types.ts), so from where the rails come down (31 to 34 m
+  west) to the apron's west end their wheels are 12 cm over the heads: the fillers from 08:08 to 08:15, and on over
+  the paint as before; the erector between 08:37 and 08:45, until it is back on the standing rails past 93 m west,
+  where it is left. Nothing stands so: at rest every wheel is on a rail. It wants the viewer to set each axle on the
+  rail under it (a height along the route, and the wagon pitched between its bogies), which is not built.
 - **The film's frame from the erector does not agree with the clock.** Its shadows lie some 40° clockwise of the
   rails, as a Sun at azimuth 130° would throw them: that is about 08:15 Moscow time, not 06:55, when the Sun stood
   at 108°. Either the frame was shot later that morning (the pilot's suit in it argues not) or the rails in it run
   some 20° off east and west, which no map has. Not resolved; the bus is placed by the rails, not by the shadows.
-- The spoil heap is a mound of one tone: its gullies and the ditches round it are not drawn,
-  and the steppe's cover does not grow on it. **It and the pit's earth and lining show every cell as a facet**: each
-  cell of their grids is added as a quad of its own (`MeshBuilder.add` in site1/rim.py `_heap`'s loop and
-  site1/platform.py's pit loop), so its corners are not shared with its neighbours' and shading them smooth has nothing
-  to average. Welding the cells (one vertex per grid point, or a merge by distance before `shade_smooth`) fixes it:
-  a model change, not yet made.
+- The spoil heap is one tone: the ditches round it are not drawn, and the steppe's cover does not grow on it. Its
+  lobes, its face's slope, its gullies and its level top are a tipped heap's as we suppose one, drawn clean ("The
+  place round the pad": its edge, its face, its gullies, its top): only its outline, its height and the scallops of
+  its west side are from anything read. Its lobes are as regular as their rule; a real heap's are not. Both CORONA
+  frames and today's imagery have a bright mound some 60 by 110 m on the pit's north-east rim, from 110 to 185 m east
+  and 25 to 150 m north, which casts a shadow in 1960 and 1962 and is bare red earth today: it is not built, and what
+  it is has not been worked out.
+- The pit's earth, its lining and the heap are shaded smooth (each grid point one vertex: `site.Welded`), with an edge
+  kept wherever two faces meet at more than 30°: the slot's walls, the trenches, a bay of the heap. A break the grid
+  does not run along (the foot of the pit's sides where they meet its floor, the rim's lip under the land's edge,
+  each terrace's eased edge) is a band a cell or two broad (2 m; 4 m at the coarsest level) and not a line. Where
+  the lining ends and the clay begins (70 m east) the two are two meshes, each shaded to its own edge.
 - The fall's rills, its darker toe and the way worn along its brow are drawn on the land (tyuratam.ts `fall`,
   `RUTS`): estimated, as wear a bare clay earthwork four springs old has. No photograph close enough to show them
   has been read; the U-2 photograph of July 1959 (NPIC/B-24/61 Figure 1) shows wheel tracks all over the bare ground
@@ -969,9 +997,11 @@ rocket can leave the erector out by its date.
   embankment's south side west of the spurs. A building on the fall stands on its own level plot or is set down
   by the land's height at its middle, so the ground meets its walls a little high on one side and low on the
   other (under 0.3 m everywhere but the pump house, which has a plot).
-- The tracks are paint on the land, flat, beyond 160 m (the centre track) and 100 m (the others)
-  from the axis; nearer, real rails stand on painted sleepers and ballast, and at those distances
-  their heads come down to the paint over 10 m, which no rail did. The centre track is moved 3 m
+- The tracks are paint on the land, flat, beyond 170 m (the centre track) and 110 m (the others)
+  from the axis. Nearer, the centre track's rails are real ones standing on painted sleepers and ballast from
+  the apron's west end, where they climb onto them in 3 m, to 160 m, and their heads come down to the paint over
+  the last 10 m: no rail did either. The three spurs' rails keep the land's level from the apron to the paint, their
+  heads all that shows, over ballast and sleepers that are painted there. The centre track is moved 3 m
   from where the map has it, and the three beside it by up to 4 m ("The site's frame").
 - **The sky is the neighbouring stations', not the range's own** ("The land", above: the sky), and against an
   earlier reading of the film as clear. The cirrus is drawn as fibres lying one way over seven eighths of the sky, the
