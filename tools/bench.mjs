@@ -3,6 +3,7 @@
 //                        [--sizes 1440x900@1,1440x900@2,390x800@3] [--looks real,cel]
 //                        [--no-build] [--config <vite config>] [--profile] [--shots <dir>] [--no-load] [--no-soak] [--soak 60]
 //                        [--dist <dir>] [--query <search>] [--name a]            what is measured (default: this tree, built now)
+//                        [--flight <id>]                                         whose launch site (default: the first flight's)
 //                        [--b-dist <dir>] [--b-query <search>] [--b-name b]      and what it is measured against, turn about
 //   node tools/bench.mjs --compare old.json new.json      what moved by more than the noise (file.json#b: that variant of a run of two)
 //   node tools/bench.mjs --diff-shots <dir a> <dir b>     pixels that differ between two --shots runs
@@ -270,6 +271,8 @@ const SOAK = Number(opt('--soak', 60));
 // a switch thrown in the page for the pictures: `--toggle "sr.stage.glazing.enabled = true" --toggle-off "sr.stage.glazing.enabled = false"`
 const toggle = opt('--toggle', null);
 const toggleOff = opt('--toggle-off', '');
+// (another flight's launch site: its id, as the address has it: `--flight ussr/vostok/vostok-1`)
+const flightId = opt('--flight', null);
 const vite = join(ROOT, 'node_modules/.bin/vite');
 const BUILT = join(ROOT, 'node_modules/.bench', profile ? 'dist-profile' : 'dist');
 // what is measured, and what it is measured against: a build (this tree's unless another is given) and a switch in the address
@@ -353,7 +356,7 @@ for (const v of variants) {
   const s = servers.get(v.dist);
   v.url = s.url;
   v.weights = s.weights;
-  v.address = `${s.url}${v.query ? `?${v.query}` : ''}#pad`;
+  v.address = `${s.url}${v.query ? `?${v.query}` : ''}#${flightId ? `${flightId}/site/pad` : 'pad'}`;
 }
 const stop = () => {
   for (const s of servers.values()) s.child.kill();

@@ -48,10 +48,11 @@ src/
   viewer/studio.ts                    the studio: a sweep under three designed lights, dark, light or paper; a person and a pole for scale
   viewer/labels.ts                    names on the parts of a thing taken apart: which have come clear, where the labels go
   viewer/cape.ts                      Cape Canaveral's land as parameters: its plant communities, clearings, roads, palette, sea
-  viewer/tyuratam.ts                  the steppe round Site 1 as parameters: its cover, palette, plants, the tracks painted, the flame pit cut out
+  viewer/tyuratam.ts                  the land round Site 1: where the steppe lies low, the builders' ground (apron, worn ground, ruts), the tracks and roads painted, the flame pit cut out
+  viewer/steppe.ts                    the steppe on the lower Syr Darya in April as a kind of country: its ground (crust, takyr, salt, sand, spring green) and cel ground in GLSL, its palette and its plants, for any pad on it
   viewer/tyuratamrelief.ts            how high the ground is round Site 1 (the pad on a scarp's brow, the steppe 8 m under it), in JavaScript and GLSL; the place's models are built on the same figures (sites/site1/relief.py; tests/tyuratam.test.mjs)
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
-  viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind
+  viewer/flora.ts                     any site's plants: species built from forms (shrub, fan, palm, flower, rosette), placed by the cover map, near and far forms, wind
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
   viewer/globemesh.ts                 the globe's mesh, written without allocating, and when it is owed again
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
