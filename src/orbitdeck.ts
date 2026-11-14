@@ -998,10 +998,11 @@ export class OrbitDeck extends Deck {
     const code = String(o.manual?.code.value ?? '');
     const due = !this.sequence && this.mine !== null && step && !alone && t >= this.dueAt(step.step);
     const prompt = this.cells.get('prompt')!;
+    const lights = matchMedia('(hover: none), (pointer: coarse)').matches ? 'Ignition lights' : 'Space lights';
     const text = waiting
       ? this.mine === null
-        ? 'Ready: Space lights the engines; the flight is the record’s. G or B makes it yours'
-        : 'Ready: Space lights the engines; the flight is yours'
+        ? `Ready: ${lights} the engines; the flight is the record’s. G or B makes it yours`
+        : `Ready: ${lights} the engines; the flight is yours`
       : !alone
         ? this.mine === null
           ? `Its pilot had no controls going up; behind the lock, orientation and the braking burn. G, B or Space takes it over`
@@ -1013,7 +1014,7 @@ export class OrbitDeck extends Deck {
         : this.free
           ? this.fired === null
             ? this.mine !== null && !(orbit && el.a * (1 - el.e) > ball + 100_000)
-              ? 'Short of an orbit: it comes down whatever is done'
+              ? 'Short of an orbit: it comes down, unless the braking engine pushes it on'
               : 'Turn the long axis against the motion, then fire'
             : this.outcome(t)
           : code && t < o.retro.on.value
