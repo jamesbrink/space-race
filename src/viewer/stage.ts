@@ -1214,6 +1214,8 @@ export class Stage {
       draw: (render: () => void) => this.origin.draw(render),
       sky: () => this.setting.backdrop,
       upAt: (p: THREE.Vector3, out: THREE.Vector3) => this.setting.globe?.up(p, out) ?? out.copy(UP),
+      earth: () => this.setting.globe?.landMap ?? null,
+      overlays: () => this.overlays,
       redraw: () => {
         this.dirty = true;
       },
