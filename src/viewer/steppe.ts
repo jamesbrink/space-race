@@ -87,6 +87,7 @@ export const STEPPE_CEL = STEPPE.loam.clone().multiplyScalar(1.02).lerp(STEPPE.h
  * Needs FIELD (fbm2, noise2).
  */
 export const STEPPE_COVER = /* glsl */ `
+  void steppeOn(vec2 p, float takyr, float margin, float salt, float sand, out float shrub, out float herb, out float zone);
   void steppe(vec2 p, float low, out float shrub, out float herb, out float takyr, out float salt, out float sand, out float zone) {
     // the pans: where a field tens to hundreds of metres across is over its cut, more readily in the hollows
     float pans = fbm2(p * 0.0045, 62, 3) + 0.08 * low + 0.02 * (noise2(p * 0.03, 66) - 0.5);
@@ -95,6 +96,21 @@ export const STEPPE_COVER = /* glsl */ `
     salt = takyr * smoothstep(0.7, 0.72, pans + 0.04 * (noise2(p * 0.05, 64) - 0.5)) * step(0.45, noise2(p * 0.004, 65));
     // sand on the rises, away from the pans
     sand = smoothstep(0.6, 0.66, fbm2(p * 0.006, 63, 3) - 0.12 * low) * (1.0 - smoothstep(0.45, 0.55, pans));
+    steppeOn(p, takyr, margin, salt, sand, shrub, herb, zone);
+  }
+  // Where a map places the ground's kinds (a site's soil map): how far inside a mapped pan, salt crust and sand patch p
+  // is, metres (negative outside; very negative where nothing is mapped near). Each edge wanders a few metres as a
+  // drawn edge does not; the pan keeps its crisp rim and its ring of biyurgun.
+  void steppeMapped(vec2 p, float panIn, float saltIn, float sandIn, out float shrub, out float herb, out float takyr, out float salt, out float sand, out float zone) {
+    float wander = 7.0 * (noise2(p * 0.025, 66) - 0.5) + 2.5 * (noise2(p * 0.09, 67) - 0.5);
+    takyr = smoothstep(-0.6, 0.6, panIn + wander);
+    float margin = smoothstep(-28.0, 0.0, panIn + wander) * (1.0 - takyr);
+    salt = smoothstep(-0.6, 0.6, saltIn + 0.8 * wander + 3.0 * (noise2(p * 0.05, 64) - 0.5));
+    takyr = max(takyr, salt);
+    sand = smoothstep(-6.0, 6.0, sandIn + 2.0 * wander) * (1.0 - takyr);
+    steppeOn(p, takyr, margin, salt, sand, shrub, herb, zone);
+  }
+  void steppeOn(vec2 p, float takyr, float margin, float salt, float sand, out float shrub, out float herb, out float zone) {
     // the shrubs: thicker and thinner over tens of metres, gaps of a few metres between clumps
     shrub = 0.36 + 0.22 * (fbm2(p * 0.03, 31, 3) - 0.5) - 0.12 * smoothstep(0.55, 0.75, noise2(p * 0.12, 33));
     shrub = mix(shrub, 0.24, sand);

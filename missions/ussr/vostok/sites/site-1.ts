@@ -50,6 +50,13 @@ export const SITE1: SiteDef = {
   // morning of 12 April 1961 (the flight's weather.ts) against the Cape's 5.1 m/s on 5 May, so 0.05 x 2.1 / 5.1; the
   // hum is the Cape's own.
   quiet: { wind: 0.02, surf: 0, hum: 0.006, sea: 0 },
+  // The assembly and test building of Site 2, 2.04 km off on 252 degrees, whose top shows over the land from the deck
+  // (site-1.md, "On the horizon"; sites/tyuratam/mik.py, `pnpm model:tyuratam`).
+  around: {
+    model: 'models/ussr/vostok/sites/tyuratam/1961-04.glb',
+    nodes: ['AssemblyBuilding'],
+    wears: ['concrete-plaster-whitewashed', 'roof-felt-grey', 'steel-door-green', 'steel-window-frame', 'window-void'],
+  },
   // The sky a flight from here stands under when it has no record of its own day: the steppe's clear, dry air. Every
   // figure is an estimate. Vostok 1 has its day's (its flight's weather.ts).
   weather: {

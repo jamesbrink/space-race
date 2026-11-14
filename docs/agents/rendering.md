@@ -76,6 +76,10 @@ different one per pixel per frame. Three things stop it, and all three must stay
   half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (`GROUND_Y`, and `GROUND` in
   the site's builders: the pads and roads were at grade), and anything standing on the ground goes down past that (`FOOTING`
   in `site.py`). Change the two together and rebuild the pad and the place.
+- **A mesh without a `normal` attribute is flat-shaded.** Three decides that by the geometry, whatever the shader
+  writes: the land's patches have none, so each triangle is lit by its own plane unless the site's `LandSpec` asks
+  `smooth` (Tyuratam does: its graded slopes showed every cell as a facet). The Cape's land does not yet, and its
+  thickets' roofs are lit per triangle; turning it on there changes the Cape's picture.
 
 - **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
   camera is close to something else, faces under about 5 cm apart fight. Scenery that is looked at
@@ -159,6 +163,27 @@ ever made is kept.
 `Stage.root` holds the flight's models, and with them what a flight leaves in the air (what it
 shed, in its holders; the glow of entry; the ice). Only the models are measured (`modelsBox`): the
 place's bounds, and so the depth range and how far a view pulls back, are theirs.
+
+## Every engine its own fire
+
+Every engine that burns draws its fire (`viewer/fires.ts` decides which and how hard, `viewer/plume.ts` holds each,
+`viewer/exhaust.ts` marches them), so a flight lists each engine in `flies.fires`, never one standing for a cluster. An
+engine of several chambers names a node holding only its bells; its chambers are found in that geometry (each bell a
+piece apart from the others seen from below, its exit its lowest ring; a bell under 0.6 of the largest's radius is a
+steering chamber), so the nozzles are measured once, in the model script. The march takes up to six fires (`JETS`)
+and 32 chambers among them in one loop along each ray: a step works only the jets it lies in, and clear air between
+jets is crossed in strides, so a pixel that sees one jet costs what it did when there was one. A cluster is one jet
+(its main chambers' summed area) whose own chambers are drawn at its exit, each with its white core, merging into it
+over the stretch where their jets have widened to touch (`mergeOf`: a metre down at sea level, at once in vacuum); its
+steering chambers are small jets of their own beside it, and alone when its stage is throttled to their share (the
+RD-108's final stage). Drawing every chamber as a jet of its own was not chosen: twenty overlapping volumes near the
+exit cost several times the march for what reads, from the pad camera and the chase, as the five broad flames of the
+films with the steering chambers' thin jets beside them. The uniforms (five vectors a fire, two chambers a vector) keep
+the march under the 224 fragment uniform vectors WebGL 2 promises. The fires share one light at their middle (each
+light would be another shader variant for everything lit), as strong as one fire as large as all of them by the
+square root of the area (`LIGHT_BY_AREA`: estimated), and the trail leaves from the middle of the fires lit at liftoff,
+as broad as they are spread. The pad's cloud is still the one read off LC-5's photographs (trail.ts `blast`), drawn
+at Site 1 too: the flame pit, which takes an R-7's exhaust down and out of its open side, is not modelled.
 
 ## Levels of detail
 
@@ -548,7 +573,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     weather.ts, a flight's weather, the land map or the relief.
   - **High cloud is fibres or a veil.** Cirrus is `cirrusAt`'s fibres, never more than half opaque. Cirrostratus
     over the whole sky is `veilAt`: a smooth sheet as deep as the record's optical depth, the Sun's disc and a
-    glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look.
+    glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look from under it and its fibres in two flat tones from above it.
     It is lit by the Sun at its own height and from the Sun's own direction (`highSun`, `uTrueSun`: lit before
     sunrise on the ground; the scene's one light is the Moon by night and points nowhere in between, and a veil
     lit by it stepped at sunrise). What is under it has

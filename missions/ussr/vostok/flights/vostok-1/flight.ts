@@ -2481,9 +2481,14 @@ export const flight: Flight = {
   flies: {
     model: 'vehicle',
     datum: BASE,
-    engine: 'CoreEngine',
-    // Block E's own fire from its nozzle (733 mm across: KBKhA; that it is the exit's is derived), and the braking engine's (280 mm: estimated, vostok_3ka.py)
+    // Every engine's fire from its own nozzles. The four strap-ons' RD-107s and the core's RD-108 burn from the pad, each
+    // node the engine's bells, whose chambers (four main and two or four steering) the viewer finds in the model's own
+    // geometry (viewer/fires.ts): each fire is sized from its nozzles' exits and burns at its stage's throttle. Then Block
+    // E's from its nozzle (733 mm across: KBKhA; that it is the exit's is derived), and the braking engine's (280 mm:
+    // estimated, vostok_3ka.py)
     fires: [
+      ...BOOSTERS.map(([letter]) => ({ node: `RD107_${letter}_Bells`, on: 'stage:0' })),
+      { node: 'RD108_Bells', on: 'stage:1' },
       { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2' },
       { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro' },
     ],

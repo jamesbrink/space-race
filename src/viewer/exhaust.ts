@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 import { installedAir } from './air.ts';
 import { hash2 } from './field.ts';
+import { type Cluster, mergeOf } from './fires.ts';
 import { uOrigin } from './origin.ts';
+import { jetEdge } from './plume.ts';
 import type { Blast } from './trail.ts';
 
 /**
@@ -25,7 +27,13 @@ import type { Blast } from './trail.ts';
  *   smoke between it and the Sun (a few steps toward it), the sky's and the ground's, and the fire's
  *   own, falling off with the square of the distance.
  *
- * The fire is light, so it also lights: a point light at the nozzle (Plume.light), in the scene at
+ * Several fires can burn at once (an R-7's five engines at liftoff), each a jet of its own along its own axis, marched
+ * together along each ray in one loop: at each step only the jets the step lies in are worked, so a ray that crosses
+ * one jet costs what it did when there was one. An engine of several chambers (fires.ts) is one jet whose own chambers'
+ * jets are drawn at its exit, each with its bright core, and merge into it aft, where they have widened to touch; its
+ * steering chambers are small jets of their own beside it.
+ *
+ * The fire is light, so it also lights: one point light among the fires (Plume.light, plume.ts `lightFires`), in the scene at
  * no strength while the engine is out. The smoke shades: everything lit through three's own lights
  * (the ground, the pad, the vehicle) loses the Sun's direct light by how much smoke lies between it
  * and the Sun (`smokeShade`, in the lights chunk beside the clouds' shadow, air.ts). That is worked
@@ -45,13 +53,21 @@ import type { Blast } from './trail.ts';
 /** The most nodes of the trail drawn at once (Trail.nodes). */
 export const NODES = 64;
 
-/** The engine's fire, as plume.ts keeps it. */
+/** The most fires drawn at once, and the most chambers of clusters among them (two to a uniform vector). */
+export const JETS = 6;
+const CHAMBERS = 32;
+
+/** An engine's fire, as plume.ts keeps it. */
 export interface Flame {
-  /** At the nozzle's exit, the jet along its -Y; shown while it burns. */
+  /** At the nozzle's exit, the jet along its -Y; shown while it burns. A cluster's chambers lie across its X and Z. */
   readonly mesh: THREE.Object3D;
-  /** The exit's radius, metres. */
+  /** The exit's radius, metres: of a cluster, its main chambers' together. */
   readonly radius: number;
+  /** How hard its main chambers (or its one exit) burn, and its steering chambers. */
   on: number;
+  steering: number;
+  /** Its chambers (fires.ts), or null for one round exit. */
+  readonly cluster: Cluster | null;
   time: number;
   bright: number;
   readonly light: THREE.PointLight;
@@ -71,13 +87,23 @@ export interface Smoke {
   blast(): Blast;
 }
 
-let flame: Flame | null = null;
+/** The fires that can be drawn, in the order they were made. */
+const flames = new Set<Flame>();
 let smoke: Smoke | null = null;
 
-/** Have the fire or the smoke drawn (the last of each to say so is the one drawn), or no longer. */
+/** Have a fire or the smoke drawn (every fire so told, the last smoke to say so), or no longer. */
 export function tend(source: Flame | Smoke, on = true): void {
-  if ('radius' in source) flame = on ? source : flame === source ? null : flame;
-  else smoke = on ? source : smoke === source ? null : smoke;
+  if ('radius' in source) {
+    if (on) flames.add(source);
+    else flames.delete(source);
+  } else smoke = on ? source : smoke === source ? null : smoke;
+}
+
+/** The fires in the scene and shown, burning or (`all`) not. */
+function shownFires(all = false): Flame[] {
+  const out: Flame[] = [];
+  for (const f of flames) if (shown(f.mesh) && (all || f.on > 0.001 || f.steering > 0.001)) out.push(f);
+  return out;
 }
 
 /** In the scene and shown all the way up. */
@@ -197,12 +223,25 @@ const u = {
   uHaze: { value: new THREE.Color() },
   /** The haze: its density at the sea, the height over which it falls by e, the eye's height over the sea. */
   uAir: { value: new THREE.Vector3(0, 1400, 0) },
-  uNozzle: { value: new THREE.Vector3() },
-  uAxis: { value: new THREE.Vector3(0, -1, 0) },
-  /** The fire: the exit's radius, how hard it burns, how much air there is (0 to 1), the clock's seconds. */
+  /** The fires: the first's exit radius, whether any burns (1) or none (0), how much air there is (0 to 1), the clock's seconds. */
   uFlame: { value: new THREE.Vector4(1, 0, 1, 0) },
-  /** Its shape: how wide the free jet swells and how long it is (exit radii), a shock cell's length (exit radii), how far its eddies have run (metres). */
+  /** Their shape, which the air gives all of them alike: how wide the free jet swells and how long it is (exit radii), a shock cell's length (exit radii). */
   uShape: { value: new THREE.Vector4(1, 30, 3, 0) },
+  /** How many fires burn (at most JETS), and each one's: its exit from the eye and its radius; its way and how hard its main chambers burn. */
+  uJets: { value: 0 },
+  uJetP: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
+  uJetA: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
+  /** Its exit's own x (its chambers lie along it and along way × x), and how far its eddies have run, metres. */
+  uJetX: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
+  /** Its first chamber in uChamber; its main chambers and steering chambers (main + 16 steering; 0: one round exit); how hard the steering ones burn; their exit radius over its. */
+  uJetK: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
+  /**
+   * The radius about its axis it can reach and the length of the cylinder it lies in (from a fifth of its radius
+   * before the exit), metres; where its main chambers have merged into it, from and to, in a main chamber's radii.
+   */
+  uJetB: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
+  /** Each chamber's place across its exit, over the exit's radius: two to a vector, the main chambers of a fire first. */
+  uChamber: { value: Array.from({ length: CHAMBERS / 2 }, () => new THREE.Vector4()) },
   uBright: { value: 1 },
   /** The fire's light on the smoke: where it is from, and its colour by its candela over pi. */
   uGlowAt: { value: new THREE.Vector3() },
@@ -375,9 +414,13 @@ const MARCH = /* glsl */ `
   uniform vec2 uLow;         // this target's size, pixels
   uniform float uGrain;      // radians a pixel of it
   uniform vec3 uSun, uSunLight, uSkyLight, uGroundLight, uHaze, uAir;
-  uniform vec3 uNozzle, uAxis, uGlowAt, uGlow;
+  uniform vec3 uGlowAt, uGlow;
   uniform vec4 uFlame, uShape;
   uniform float uBright;
+  #define JETS ${JETS}
+  uniform int uJets;
+  uniform vec4 uJetP[JETS], uJetA[JETS], uJetX[JETS], uJetK[JETS], uJetB[JETS];
+  uniform vec4 uChamber[${CHAMBERS / 2}];
   in vec2 vUv;
   layout(location = 0) out vec4 oColour;   // light sent toward the eye (premultiplied), and cover
   layout(location = 1) out vec4 oInfo;     // where along the ray it begins and ends; the fire's brightness; the smoke's light
@@ -415,25 +458,28 @@ const MARCH = /* glsl */ `
     vec3 c = mix(vec3(1.0, 0.3, 0.05), vec3(1.0, 0.56, 0.15), smoothstep(0.03, 0.35, heat));
     return mix(c, vec3(1.0, 0.9, 0.62), smoothstep(0.35, 1.0, heat));
   }
-  // Light given off at q from the nozzle (rgb, by a metre of path over the exit's radius), and what is taken back (a).
-  vec4 fire(vec3 q) {
-    float R = uFlame.x, on = uFlame.y, air = uFlame.z;
-    float x = dot(q, uAxis) / R;
-    vec3 radial = q / R - uAxis * x;
+  // Light given off at q from the nozzle (rgb, by a metre of path over the exit's radius), and what is taken back (a), of
+  // a jet from an exit of radius R along A, burning at on, its eddies run flow metres aft. near: a cluster's own chambers
+  // there (chambers()): how far out q is against the nearest one's edge, its bright core, and how far they have merged
+  // into this jet (1: wholly, as one round exit always is).
+  vec4 fire(vec3 q, float R, float on, vec3 A, float flow, vec3 near) {
+    float air = uFlame.z;
+    float x = dot(q, A) / R;
+    vec3 radial = q / R - A * x;
     float r = length(radial);
     float L = uShape.y * mix(0.35, 1.0, on);
     if (x < -0.2 || x > L) return vec4(0.0);
     float b = edge(x), along = x / L;
     // eddies: noise drawn out along the jet and run aft with the clock, bigger as the jet widens
-    vec3 c = radial * (0.3 / sqrt(b)) + uAxis * (x * 0.13 - uShape.w / (7.7 * R));
+    vec3 c = radial * (0.3 / sqrt(b)) + A * (x * 0.13 - flow / (7.7 * R));
     // (three octaves of smooth noise keep near their middle: spread out to the whole of 0 to 1)
-    float n = clamp((texture(tNoise, c - uAxis * (x * 0.06)).r - 0.5) * 2.8 + 0.5, 0.0, 1.0);   // (the big ones longer still)
+    float n = clamp((texture(tNoise, c - A * (x * 0.06)).r - 0.5) * 2.8 + 0.5, 0.0, 1.0);   // (the big ones longer still)
     float fine = clamp((texture(tNoise, c * 3.1 + 0.37).r - 0.5) * 2.8 + 0.5, 0.0, 1.0);
     float rough = smoothstep(0.02, 0.3, along);            // smooth at the exit, torn further aft
     // the fire's own edge: the jet's, billowing, and in air drawn in to a ragged point where the burning is done
     float taper = mix(1.0, pow(max(1.0 - along, 0.0), 0.45), air);
     float rf = max(b * taper * (1.0 + (n - 0.5) * 1.1 * rough * (0.15 + 0.85 * air)), 0.05);
-    float rr = r / rf;
+    float rr = mix(near.x, r / rf, near.z);   // (a cluster's own chambers at its exit, merging aft into one jet)
     // the same gas over more area as the free jet swells: so much less light from each metre of it
     float jet = 1.0 + (uShape.x - 1.0) * (1.0 - exp(-max(x, 0.0) / (1.5 * uShape.x)));
     float gain = pow(jet, -1.5);
@@ -449,9 +495,9 @@ const MARCH = /* glsl */ `
     float loz = r / (b * (0.2 + 0.4 * (1.0 - wave)));
     float lozenge = exp(-loz * loz);
     heat *= 1.0 - held * 0.45 * (1.0 - wave) * exp(-rr * rr * 3.0);
-    float knot = held * pow(wave, 3.0) * lozenge;
+    float knot = held * pow(wave, 3.0) * lozenge * near.z;   // (no diamonds on the axis of chambers not yet merged)
     // the gas straight from the throat, white, for the first few radii whatever the air
-    float core = exp(-r * r * 1.6) * exp(-x / (3.0 + 2.0 * air));
+    float core = mix(near.y, exp(-r * r * 1.6) * exp(-x / (3.0 + 2.0 * air)), near.z);
     // in air it burns; in none the gas only glows, paler and bluer, over the whole balloon
     vec3 tint = mix(vec3(0.7, 0.8, 1.0), glow(heat), 0.2 + 0.8 * smoothstep(0.0, 0.4, air));
     float fade = mix(1.0 - smoothstep(0.35, 1.0, along), 1.0, air);   // (with no air to burn in it has no tip: it thins away)
@@ -461,32 +507,138 @@ const MARCH = /* glsl */ `
     float k = ((0.15 * body + heat * 0.45) * gain + core * 0.3) * lit;
     return vec4(e * (lit * on * uBright), k * on);
   }
+  // a chamber's place across its fire's exit, over the exit's radius
+  vec2 chamberAt(int i) {
+    vec4 c = uChamber[i / 2];
+    return (i - 2 * (i / 2)) == 0 ? c.xy : c.zw;
+  }
+  // A cluster's main chambers at q (from its exit's middle, x exit radii aft): how far out q is against the edge of the
+  // nearest one's own jet, the brightest of their cores there, and how far they have merged into the one jet (1: wholly).
+  vec3 chambers(int j, vec3 q, float x) {
+    vec4 K = uJetK[j];
+    int nm = int(mod(K.y + 0.5, 16.0));
+    if (nm < 2) return vec3(0.0, 0.0, 1.0);
+    vec3 A = uJetA[j].xyz, X = uJetX[j].xyz, Z = cross(A, X);
+    vec2 p = vec2(dot(q, X), dot(q, Z)) / uJetP[j].w;
+    float k = sqrt(float(nm));   // (the jet's radius is their summed area's: over one chamber's, the root of how many)
+    float xc = x * k, bc = edge(xc);
+    float rr = 1e3, core = 0.0;
+    for (int i = 0; i < 8; i++) {
+      if (i >= nm) break;
+      float d = length(p - chamberAt(int(K.x) + i)) * k;
+      rr = min(rr, d / bc);
+      core = max(core, exp(-d * d * 1.6));
+    }
+    float m0 = uJetB[j].z;
+    return vec3(rr, core * exp(-xc / (3.0 + 2.0 * uFlame.z)), smoothstep(m0, m0 * (3.0 / 0.7) + 1.0, xc));
+  }
+  // Every fire along the ray, marched together: each step is as long as the jets it lies in ask, and clear air between
+  // them is crossed in strides of how far off the nearest is. One jet alone is marched as it always was.
   Layer fireLayer(vec3 dir, float far) {
     Layer l = Layer(vec4(0.0), 0.0, 1e9, 0.0);
-    float R = uFlame.x;
-    if (uFlame.y <= 0.001) return l;
-    float L = uShape.y;
-    vec2 hit = inCylinder(vec3(0.0), dir, uNozzle - uAxis * (0.2 * R), uAxis, (L + 0.2) * R, edge(L) * 1.25 * R);
-    float t = max(hit.x, 0.0), t1 = min(hit.y, far);
+    if (uFlame.y <= 0.0) return l;
+    float t = 1e9, t1 = 0.0;
+    for (int j = 0; j < JETS; j++) {
+      if (j >= uJets) break;
+      vec4 P = uJetP[j], A = uJetA[j], B = uJetB[j];
+      vec2 hit = inCylinder(vec3(0.0), dir, P.xyz - A.xyz * (0.2 * P.w), A.xyz, B.y, B.x);
+      float h0 = max(hit.x, 0.0), h1 = min(hit.y, far);
+      if (h1 > h0) {
+        t = min(t, h0);
+        t1 = max(t1, h1);
+      }
+    }
     if (t1 <= t) return l;
+    float L = uShape.y;
     float T = 1.0, weight = 0.0;
     vec3 col = vec3(0.0);
-    for (int i = 0; i < 72; i++) {
-      if (t >= t1 || T < 0.02) break;
-      vec3 q = dir * t - uNozzle;
-      float x = dot(q, uAxis) / R, r = length(q / R - uAxis * x), b = edge(x);
-      // a step: an eighth of the jet's breadth there, longer the deeper in (looking along it); outside it, most of the way to its edge
-      float ds = 0.11 * max(b, 0.5) * R * (1.0 + 0.05 * float(i));
-      float out_ = (r - b * 1.25) * R;
-      if (out_ > 0.0) { t += max(0.5 * out_, ds); continue; }
+    int most = uJets > 1 ? 96 : 72;
+    for (int i = 0; i < 96; i++) {
+      if (i >= most || t >= t1 || T < 0.02) break;
+      vec3 p = dir * t;
+      // which jets (and steering chambers: five bits a fire) this step lies in, the step they ask, and how far off the rest are
+      int inside = 0;
+      float ds = 1e9, out_ = 1e9, dsOut = 0.0;
+      float grow = 1.0 + 0.05 * float(i);
+      for (int j = 0; j < JETS; j++) {
+        if (j >= uJets) break;
+        vec4 P = uJetP[j], A = uJetA[j], K = uJetK[j];
+        float R = P.w;
+        vec3 q = p - P.xyz;
+        float x = dot(q, A.xyz) / R, r = length(q / R - A.xyz * x), b = edge(x);
+        // a step: an eighth of the jet's breadth there, longer the deeper in (looking along it); outside it, most of the way to its edge
+        float dj = 0.11 * max(b, 0.5) * R * grow;
+        if (A.w > 0.001) {
+          // (a cluster's main chambers reach out past the merged jet's edge at the exit)
+          float o = max((r - max(b * 1.25, uJetB[j].w)) * R, max(x - L, -0.2 - x) * R);
+          if (o <= 0.0) {
+            inside |= 1 << (5 * j);
+            ds = min(ds, dj);
+          } else if (o < out_) {
+            out_ = o;
+            dsOut = dj;
+          }
+        }
+        int ns = int((K.y + 0.5) / 16.0);
+        if (ns > 0 && K.z > 0.001) {
+          vec3 X = uJetX[j].xyz, Z = cross(A.xyz, X);
+          vec2 pp = vec2(dot(q, X), dot(q, Z)) / R;
+          int first = int(K.x) + int(mod(K.y + 0.5, 16.0));
+          float xs = x / K.w, bs = edge(xs), rs = K.w * R;
+          float dsS = 0.11 * max(bs, 0.5) * rs * grow;
+          for (int s = 0; s < 4; s++) {
+            if (s >= ns) break;
+            float o = max((length(pp - chamberAt(first + s)) / K.w - bs * 1.25) * rs, max(xs - L, -0.2 - xs) * rs);
+            if (o <= 0.0) {
+              inside |= 1 << (5 * j + 1 + s);
+              ds = min(ds, dsS);
+            } else if (o < out_) {
+              out_ = o;
+              dsOut = dsS;
+            }
+          }
+        }
+      }
+      if (inside == 0) {
+        t += max(0.5 * out_, dsOut);
+        continue;
+      }
       ds = min(ds, t1 - t);
-      vec4 f = fire(dir * (t + 0.5 * ds) - uNozzle);
-      float w = T * dot(f.rgb, LUMA) * ds;
-      col += T * f.rgb * (ds / R);
+      vec3 m = dir * (t + 0.5 * ds);
+      vec3 lum = vec3(0.0), e = vec3(0.0);
+      float k = 0.0;
+      for (int j = 0; j < JETS; j++) {
+        if (j >= uJets) break;
+        if ((inside >> (5 * j)) % 32 == 0) continue;
+        vec4 P = uJetP[j], A = uJetA[j], K = uJetK[j];
+        float R = P.w;
+        vec3 q = m - P.xyz;
+        if (((inside >> (5 * j)) & 1) == 1) {
+          vec4 f = fire(q, R, A.w, A.xyz, uJetX[j].w, chambers(j, q, dot(q, A.xyz) / R));
+          lum += f.rgb;
+          e += f.rgb * (ds / R);
+          k += f.a / R;
+        }
+        int ns = int((K.y + 0.5) / 16.0);
+        vec3 X = uJetX[j].xyz, Z = cross(A.xyz, X);
+        int first = int(K.x) + int(mod(K.y + 0.5, 16.0));
+        float rs = K.w * R;
+        for (int s = 0; s < 4; s++) {
+          if (s >= ns) break;
+          if (((inside >> (5 * j + 1 + s)) & 1) == 0) continue;
+          vec2 c = chamberAt(first + s) * R;
+          vec4 f = fire(q - X * c.x - Z * c.y, rs, K.z, A.xyz, mod(uFlame.w * ${FLOW.toFixed(1)}, 7.7 * rs * 64.0), vec3(0.0, 0.0, 1.0));
+          lum += f.rgb;
+          e += f.rgb * (ds / rs);
+          k += f.a / rs;
+        }
+      }
+      float w = T * dot(lum, LUMA) * ds;
+      col += T * e;
       l.at += w * t;
       weight += w;
       if (w > 1e-4) { l.front = min(l.front, t); l.back = t + ds; }
-      T *= exp(-f.a * ds / R);
+      T *= exp(-k * ds);
       t += ds;
     }
     if (weight <= 0.0) return l;
@@ -854,19 +1006,64 @@ function place(camera: THREE.Camera): void {
   // the camera's is from the eye either way)
   const o = uOrigin.value;
   eye.set(camera.position.x + o.x, camera.position.y + o.y, camera.position.z + o.z);
-  const f = flame && shown(flame.mesh) ? flame : null;
+  const fires = shownFires().slice(0, JETS);
   u.uFlame.value.y = 0;
   u.uGlow.value.setScalar(0);
-  if (f) {
-    const m = f.mesh.matrixWorld.elements;
-    u.uNozzle.value.set(m[12]! - camera.position.x, m[13]! - camera.position.y, m[14]! - camera.position.z);
-    u.uAxis.value.set(-m[4]!, -m[5]!, -m[6]!).normalize();
-    const shape = f.shape();
-    u.uFlame.value.set(f.radius, f.on, shape.air, f.time);
-    u.uShape.value.set(shape.width, shape.length, shape.cell, (f.time * FLOW) % (7.7 * f.radius * 64));
-    u.uBright.value = f.bright;
-    u.uGlowAt.value.copy(u.uNozzle.value).addScaledVector(u.uAxis.value, 8 * f.radius);
-    u.uGlow.value.copy(f.light.color).multiplyScalar(f.light.intensity / Math.PI);
+  u.uJets.value = fires.length;
+  const first = fires[0];
+  if (first) {
+    const shape = first.shape();
+    u.uFlame.value.set(first.radius, 1, shape.air, first.time);
+    u.uShape.value.set(shape.width, shape.length, shape.cell, 0);
+    u.uBright.value = first.bright;
+    // (the fires share one light: plume.ts lightFires)
+    const g = first.light.matrixWorld.elements;
+    u.uGlowAt.value.set(g[12]! - camera.position.x, g[13]! - camera.position.y, g[14]! - camera.position.z);
+    u.uGlow.value.copy(first.light.color).multiplyScalar(first.light.intensity / Math.PI);
+    const L = shape.length;
+    let chamber = 0;
+    fires.forEach((f, j) => {
+      const m = f.mesh.matrixWorld.elements;
+      const R = f.radius;
+      u.uJetP.value[j]!.set(m[12]! - camera.position.x, m[13]! - camera.position.y, m[14]! - camera.position.z, R);
+      const a = v.set(-m[4]!, -m[5]!, -m[6]!).normalize();
+      u.uJetA.value[j]!.set(a.x, a.y, a.z, f.on);
+      const x = v.set(m[0]!, m[1]!, m[2]!).normalize();
+      u.uJetX.value[j]!.set(x.x, x.y, x.z, (f.time * FLOW) % (7.7 * R * 64));
+      // how far it can reach about its axis: its own edge where it is longest, or a cluster's chambers' at its exit, or its steering chambers' jets
+      let reach = jetEdge(shape, L) * 1.25 * R;
+      let envelope = 0;
+      let merge = 0;
+      const c = f.cluster;
+      const room = CHAMBERS - chamber;
+      const main = c && c.main.length >= 2 && c.main.length <= Math.min(8, room) ? c.main : [];
+      const steering = main.length && c && c.steering.length <= Math.min(4, room - main.length) ? c.steering : [];
+      if (c && main.length) {
+        const rc = R / Math.sqrt(main.length);
+        let gap = Infinity;
+        for (const [px, pz] of main) {
+          envelope = Math.max(envelope, (Math.hypot(px, pz) + 1.25 * rc) / R);
+          for (const [qx, qz] of main) if (qx !== px || qz !== pz) gap = Math.min(gap, Math.hypot(px - qx, pz - qz));
+        }
+        merge = mergeOf((xc) => jetEdge(shape, xc), gap / rc).start;
+        for (const [px, pz] of steering) reach = Math.max(reach, Math.hypot(px, pz) + jetEdge(shape, L) * 1.25 * c.steeringRadius);
+        reach = Math.max(reach, envelope * R);
+        [...main, ...steering].forEach(([px, pz], i) => {
+          const at = chamber + i;
+          const w = u.uChamber.value[at >> 1]!;
+          if (at % 2 === 0) w.setX(px / R).setY(pz / R);
+          else w.setZ(px / R).setW(pz / R);
+        });
+      }
+      u.uJetK.value[j]!.set(
+        chamber,
+        main.length + 16 * steering.length,
+        steering.length ? f.steering : 0,
+        c && steering.length ? c.steeringRadius / R : 1,
+      );
+      u.uJetB.value[j]!.set(reach, (L + 0.2) * R, merge, envelope);
+      chamber += main.length + steering.length;
+    });
   }
   const s = smoke && smoke.now !== null && shown(smoke.mesh) ? smoke : null;
   u.uBlastD.value.z = 0;
@@ -957,14 +1154,14 @@ export class ExhaustPass extends Pass {
 
   render(renderer: THREE.WebGLRenderer, _write: THREE.WebGLRenderTarget, frame: THREE.WebGLRenderTarget): void {
     u.uRect.value.set(0, 0, 0, 0);
-    const burning = !!flame && shown(flame.mesh) && flame.on > 0.001;
+    const burning = shownFires().length > 0;
     const smoking = !!smoke && smoke.now !== null && shown(smoke.mesh);
     const depth = this.clouds.mark.texture;
     if (!depth) return;
     if (!burning && !smoking) {
       // Before anyone is looking (Stage.warm shows the fire and the trail for a frame, with nothing burning) the
       // shaders are built, on one pixel: not at liftoff, in front of everyone.
-      if (!this.built && ((flame && shown(flame.mesh)) || (smoke && shown(smoke.mesh)))) {
+      if (!this.built && (shownFires(true).length > 0 || (smoke && shown(smoke.mesh)))) {
         this.built = true;
         place(this.camera);
         this.draw(renderer, frame, depth, new THREE.Vector4(-1, -1, -1, -1));
@@ -982,11 +1179,16 @@ export class ExhaustPass extends Pass {
     const px = camera.projectionMatrix.elements[0]!,
       py = camera.projectionMatrix.elements[5]!;
     const ball = (p: THREE.Vector3, r: number) => cover(rect, this.at.copy(p).applyMatrix3(back), r, px, py);
-    if (u.uFlame.value.y > 0) {
-      const R = u.uFlame.value.x,
+    for (let j = 0; j < u.uJets.value; j++) {
+      const P = u.uJetP.value[j]!,
+        A = u.uJetA.value[j]!,
         shape = u.uShape.value;
+      const R = P.w;
       const half = 0.5 * shape.y * R;
-      ball(v.copy(u.uNozzle.value).addScaledVector(u.uAxis.value, half), half + 1.3 * R * (shape.x + 0.05 * shape.y));
+      ball(
+        v.set(P.x, P.y, P.z).addScaledVector(this.at.set(A.x, A.y, A.z), half),
+        half + Math.max(1.3 * R * (shape.x + 0.05 * shape.y), u.uJetB.value[j]!.x),
+      );
     }
     const D = u.uBlastD.value;
     if (D.z > 0) ball(v.copy(u.uPad.value).add(this.at.set(D.x, 0.5 * D.w, D.y)), Math.hypot(D.z, 0.5 * D.w + 0.5));

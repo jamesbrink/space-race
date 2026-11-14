@@ -89,6 +89,35 @@ export function siteRelief(x: number, y: number): number {
 
 const f = (v: number) => (Number.isInteger(v) ? v.toFixed(1) : String(v));
 
+/**
+ * GLSL for what is drawn on the fall, not for its height: `float browFrame(vec2 q, out float along)`, how far q (metres
+ * east and north) is past the brow, as `pastBrow`, and how far along the brow it is from its west end, metres; and
+ * `float scarpBreadth(vec2 q)`, the fall's breadth there, as `siteScarp` has it. Keep in step with those two.
+ */
+export const SCARP_FRAME_GLSL = /* glsl */ `
+  float browFrame(vec2 q, out float along) {
+    vec2 brow[${BROW.length}] = vec2[${BROW.length}](${BROW.map(([x, y]) => `vec2(${f(x)}, ${f(y)})`).join(', ')});
+    float best = 1e12, side = 1.0, run = 0.0;
+    along = 0.0;
+    for (int i = 0; i < ${BROW.length - 1}; i++) {
+      vec2 a = brow[i], d = brow[i + 1] - a;
+      float t = clamp(dot(q - a, d) / dot(d, d), 0.0, 1.0);
+      vec2 e = q - a - t * d;
+      float r = dot(e, e);
+      if (r < best) {
+        best = r;
+        side = d.x * (q.y - a.y) - d.y * (q.x - a.x) > 0.0 ? 1.0 : -1.0;
+        along = run + t * length(d);
+      }
+      run += length(d);
+    }
+    return side * sqrt(best);
+  }
+  float scarpBreadth(vec2 q) {
+    float west = 1.0 - smoothstep(-450.0, -150.0, q.x);
+    return ${f(BREADTH)} + ${f(BREADTH_WEST)} * west + ${f(BREADTH_EAST)} * smoothstep(60.0, 200.0, q.x);
+  }`;
+
 /** The same in GLSL: `float siteRelief(vec2 q)`, q metres east and north. */
 export const SITE_RELIEF_GLSL = /* glsl */ `
   float pastBrow(vec2 q) {

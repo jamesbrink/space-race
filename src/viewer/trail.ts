@@ -38,8 +38,11 @@ const smooth = (x: number, a: number, b: number): number => {
   return k * k * (3 - 2 * k);
 };
 
-/** How far the smoke has spread from the path, metres, at `age` seconds: from the fire's own breadth, a metre and a half a second, to 90 m. */
-export const trailRadius = (age: number): number => Math.min(2.5 + 1.6 * Math.max(age, 0), 90);
+/**
+ * How far the smoke has spread from the path, metres, at `age` seconds: from the fire's own breadth (`breadth`: 2.5 m for
+ * one engine; a cluster's is as much more as its engines are spread), a metre and a half a second, to 90 m.
+ */
+export const trailRadius = (age: number, breadth = 2.5): number => Math.min(breadth + 1.6 * Math.max(age, 0), 90);
 
 /**
  * How much trail there is at a point laid `age` seconds ago in air thinned to `air` of sea level's,
@@ -47,10 +50,10 @@ export const trailRadius = (age: number): number => Math.min(2.5 + 1.6 * Math.ma
  * through the flight, which the clock has gone back before), coming in behind the fire, thinning as
  * it spreads and with age. Estimated: see the head of this file.
  */
-export function trailFade(age: number, air: number): number {
+export function trailFade(age: number, air: number, breadth = 2.5): number {
   if (age <= 0 || air <= 0) return 0;
   const height = -SCALE_HEIGHT * Math.log(Math.min(air, 1));
-  const spread = 2.5 / trailRadius(age);
+  const spread = breadth / trailRadius(age, breadth);
   // steam in the humid air near the ground: not in the first metres, where the fire's wash goes into the blast
   const low = 0.8 * smooth(height, 6, 40) * Math.exp(-height / 3000) * Math.exp(-age / 25) * spread ** 0.7;
   // the contrail: ice, which stays, and thins only as it spreads
@@ -157,8 +160,11 @@ export class Trail implements Smoke {
   /** The live end: the nozzle now, while it burns and the clock is ahead of all that is laid. */
   private readonly live = { on: false, at: new THREE.Vector3(), born: 0, air: 1 };
   now: number | null = null;
+  /** How broad the fire it leaves is, metres (`trailRadius`). */
+  private readonly breadth: number;
 
-  constructor() {
+  constructor(breadth = 2.5) {
+    this.breadth = breadth;
     this.mesh = veilMesh();
     this.mesh.visible = false;
     tend(this);
@@ -247,8 +253,8 @@ export class Trail implements Smoke {
     let made = 0;
     const put = (x: number, y: number, z: number, born: number, air: number, arc: number): void => {
       const age = now - born;
-      const radius = trailRadius(age);
-      out.set([x, y, z, radius, trailFade(age, air) / (1.1 * radius), arc % ALONG], made++ * 6);
+      const radius = trailRadius(age, this.breadth);
+      out.set([x, y, z, radius, trailFade(age, air, this.breadth) / (1.1 * radius), arc % ALONG], made++ * 6);
     };
     // newest first: the end, then the points laid, back to the first
     const at = this.at;
