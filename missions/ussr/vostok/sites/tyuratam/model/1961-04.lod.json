@@ -1,0 +1,9 @@
+{
+  "about": "Levels of detail: the size on screen (pixels a metre) above which each finer level is drawn, and the pixels of 1280 x 800 that differed between two levels as [size, pixels] pairs, smallest size first, up to the first at which too many did (first from level 0 to 1, then 1 to 2), in whichever of the two looks more differed. Allowed: 100 and 350. Measured as tools/lod-thresholds.mjs --measure measures a piece of a place, by hand: the viewer draws what stands round a site at one level (around.ts), so the three levels' geometry was put into its meshes in the page. \"\" is the model as a whole.",
+  "above": {
+    "AssemblyBuilding": [8, 2]
+  },
+  "measured": {
+    "AssemblyBuilding": [[[2.5, 112]], [[2.5, 419]]]
+  }
+}
