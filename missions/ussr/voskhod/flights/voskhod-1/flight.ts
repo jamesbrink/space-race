@@ -1,5 +1,6 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../../vostok/sites/site-1.ts';
+import { voskhodCabin, voskhodSeat } from '../../vehicles/cabin.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -616,6 +617,21 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -32, 1) },
   ],
 };
+
+// The three couches as somewhere to sit, and their cabin (../../vehicles/cabin.ts: from the model's own nodes). Each
+// eye point is at its man's own eyes and turned as his head is (vehicles/voskhod.py `seat_view`); from his couch his
+// own head, and the headset's cap, earphones, strap and microphones on it, are not drawn (crew/flight_suit.py: every
+// `Helmet_` mesh). The commander's is first: the one an on-board view takes. They went aboard between the bus reaching
+// the pad at 08:15 Moscow time and "all three aboard" at 08:35, Yegorov first and Komarov last (README.md, Kamanin's
+// times to the minute: derived); there is no launch site to board them at yet.
+const HEAD = ['Head', 'Cap', 'Earphones', 'ChinStrap', 'MicrophoneBooms', 'Microphones', 'Eyes', 'Brows', 'Lips'];
+const BOARDING: [number, number] = [-8101, -6901];
+vehicle.seats = [
+  voskhodSeat('Right', 'Komarov’s couch, by the hatch', HEAD, BOARDING),
+  voskhodSeat('Centre', 'Feoktistov’s couch, in the middle', HEAD, BOARDING),
+  voskhodSeat('Left', 'Yegorov’s couch, by the Vzor', HEAD, BOARDING),
+];
+vehicle.cabin = voskhodCabin(COUCHES);
 
 export const flight: Flight = {
   id: 'ussr/voskhod/voskhod-1',

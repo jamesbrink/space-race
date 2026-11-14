@@ -838,8 +838,15 @@ def side_panels(c: Station, P: dict, sheet: Sheet) -> None:
         v = Ht - 1.0 - j * 1.5
         breakers(c, F, rg, 2.3, v, 0.96, legends)
         rg.text(title, 5.6, v - 0.72, 0.075, mc.INK)
-        if j >= 3:
+        if 3 <= j < 6:
             toggle(c, F, 0.9, v, "v", True)
+    # The CENTER LIGHT switch, at the head of the row nearest the pull handles (SEDR 300 p. 3-20: "The center floodlight
+    # WHITE-OFF-RED control switch is in the forward row of the overhead panel"; Figure 3-5 sheet 2, S/C 3, draws it
+    # there with RED over OFF over WHT, beside the LIGHTS breakers): a lever the viewer throws (`Ctl_CabinLights`), built
+    # at WHT, which is toward the handles. How it stood at any instant of the flight is not in anything read.
+    v = Ht - 1.0 - 6 * 1.5
+    mc.thrown(c, F, 0.9, v, "CabinLights", "v", (-mc.TOGGLE_LEAN, 0.0, mc.TOGGLE_LEAN))
+    rg.text("RED\nOFF\nWHT", 0.42, v, 0.045, mc.INK, gap=5.0)
     rg.text("CENTER\nLIGHT", 0.9, Ht - 10.75, 0.06, mc.INK)
     for i, legend in enumerate(("CABIN\nRECIRC", "O2 HIGH\nRATE", "CABIN\nVENT", "WATER\nSEAL", "HI RATE\nRECOCK")):
         u = 1.3 + i * 1.8
