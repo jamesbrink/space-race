@@ -88,6 +88,7 @@ for (const flight of flights) {
       }
       return meshes;
     };
+    const TURNS = Array.from({ length: 17 }, (_, i) => ((i - 8) * 3 * Math.PI) / 180);
     const ray = new THREE.Ray();
     const DOWN = new THREE.Vector3(0, -1, 0);
     const inv = new THREE.Matrix4();
@@ -127,13 +128,20 @@ for (const flight of flights) {
         bearsOn = on[i] !== null && on[i] >= h;
       });
       let gap = null;
+      let at = null;
       points.forEach((p, i) => {
         const h = bearsOn ? on[i] : top(i);
         if (h === null || p.y - h > 0.5) return;
-        if (gap === null || p.y - h < gap) gap = p.y - h;
+        if (gap === null || p.y - h < gap) {
+          gap = p.y - h;
+          at = { x: +p.x.toFixed(3), z: +p.z.toFixed(3), low: +p.y.toFixed(4), on: on[i], land: land[i] };
+        }
       });
+      lastAt = at;
       return gap;
     };
+    let lastAt = null;
+    let lastWhere = null;
     const named = (prefix, name) => name.startsWith(prefix) && /^_?\d+$/.test(name.slice(prefix.length));
     /** Each wheel's own triangles in its frame, its axle and its middle, and its radius centimetre by centimetre: read once a level. */
     const wheelsOf = (object, prefixes, axle) => {
@@ -204,31 +212,64 @@ for (const flight of flights) {
           : [[lo, hi + 1]];
       let gap = null;
       for (const [from, to] of sides) {
+        // its rim's lowest line, and round its rim ahead and behind to 24 degrees, every 3 (a step's edge)
+        const ahead = new THREE.Vector3(-axis.z, 0, axis.x).normalize();
         const points = w.tread
           .filter(([u]) => u >= from && u < to)
-          .map(([u, r]) => {
+          .flatMap(([u, r]) => {
             const c = new THREE.Vector3();
             c.setComponent(w.k, u / 100);
             c.setComponent(w.others[0], w.mid[0]);
             c.setComponent(w.others[1], w.mid[1]);
             c.applyMatrix4(m);
-            return { x: c.x, y: c.y - r * drop, z: c.z };
+            return TURNS.map((t) => ({
+              x: c.x + ahead.x * r * Math.sin(t),
+              y: c.y - r * Math.cos(t) * drop,
+              z: c.z + ahead.z * r * Math.sin(t),
+            }));
           });
         const g = gapOf(points, meshes, ground);
-        if (g !== null && (gap === null || g < gap)) gap = g;
+        if (g !== null && (gap === null || g < gap)) {
+          gap = g;
+          lastWhere = lastAt;
+        }
       }
       return gap;
     };
     const boxGap = (object, meshes, ground) => {
+      // every face of it that looks down, sampled 10 cm apart (a skid's underside has vertices only at its ends)
       const cells = new Map();
+      const put = (v) => {
+        const key = `${Math.round(v.x * 10)},${Math.round(v.z * 10)}`;
+        const was = cells.get(key);
+        if (!was || v.y < was.y) cells.set(key, { x: v.x, y: v.y, z: v.z });
+      };
       object.traverse((m) => {
         if (!m.isMesh || !m.visible) return;
         const pos = m.geometry.getAttribute('position');
-        for (let i = 0; i < pos.count; i++) {
-          const v = pt.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
-          const key = `${Math.round(v.x * 10)},${Math.round(v.z * 10)}`;
-          const was = cells.get(key);
-          if (!was || v.y < was.y) cells.set(key, { x: v.x, y: v.y, z: v.z });
+        const index = m.geometry.getIndex();
+        const p = [];
+        for (let i = 0; i < pos.count; i++) p.push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld));
+        const count = index ? index.count : pos.count;
+        for (let i = 0; i + 2 < count; i += 3) {
+          const [a, b, c] = [0, 1, 2].map((e) => p[index ? index.getX(i + e) : i + e]);
+          const normal = new THREE.Vector3().crossVectors(b.clone().sub(a), c.clone().sub(a));
+          if (normal.y > -0.3 * normal.length() && normal.y < 0.3 * normal.length()) continue; // (a wall's face: its edges are enough)
+          const n = Math.max(1, Math.ceil(Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)) / 0.1));
+          if (n > 60) {
+            put(a);
+            put(b);
+            put(c);
+            continue;
+          }
+          for (let u = 0; u <= n; u++)
+            for (let w = 0; u + w <= n; w++)
+              put(
+                new THREE.Vector3()
+                  .addScaledVector(a, (n - u - w) / n)
+                  .addScaledVector(b, u / n)
+                  .addScaledVector(c, w / n),
+              );
         }
       });
       return gapOf([...cells.values()], meshes, ground);
@@ -270,16 +311,22 @@ for (const flight of flights) {
         stage.root.updateMatrixWorld(true);
         perLevel.forEach((l, li) => {
           if (!l) return;
+          const whereOf = {};
           const gaps = l.wheels.length
-            ? l.wheels.map((w) => [w.node.name, wheelGap(w, meshes, ground)])
+            ? l.wheels.map((w) => {
+                const g = wheelGap(w, meshes, ground);
+                whereOf[w.node.name] = lastWhere;
+                return [w.node.name, g];
+              })
             : [[nodeName, boxGap(l.object, meshes, ground)]];
+          if (!l.wheels.length) whereOf[nodeName] = lastAt;
           for (const [name, g] of gaps) {
             if (g === null) continue;
             checked++;
             if (Math.abs(g) > Math.abs(levelWorst[li])) levelWorst[li] = g;
             if (Math.abs(g) > Math.abs(worst)) {
               worst = g;
-              worstAt = { level: li, wheel: name, at: Number(at.toFixed(4)), step: i };
+              worstAt = { level: li, wheel: name, at: Number(at.toFixed(4)), step: i, where: whereOf[name] };
             }
           }
         });
@@ -306,7 +353,9 @@ for (const flight of flights) {
   for (const r of result) {
     const mm = (r.worst * 1000).toFixed(1);
     const tag = `${flight.id} ${r.model}/${r.node} ${r.kind}${r.clocked ? ' (clocked)' : ''} ${r.span.map((v) => +v.toFixed(4)).join('..')} ${r.travel} m`;
-    const where = r.worstAt ? ` at ${r.worstAt.at} (level ${r.worstAt.level}, ${r.worstAt.wheel})` : '';
+    const where = r.worstAt
+      ? ` at ${r.worstAt.at} (level ${r.worstAt.level}, ${r.worstAt.wheel}${process.env.WHERE ? ` ${JSON.stringify(r.worstAt.where)}` : ''})`
+      : '';
     const levels = r.levelWorst.map((g) => (g * 1000).toFixed(1)).join(' / ');
     console.log(`${tag}: worst ${mm} mm${where}; by level ${levels}${r.checked ? '' : ' (nothing under it found)'}`);
     rows.push({ flight: flight.id, ...r });

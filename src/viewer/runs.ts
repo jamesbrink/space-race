@@ -74,7 +74,7 @@ export class Surfaces {
   top(on: readonly string[] | undefined, x: number, y: number, z: number): number | null {
     if (!on?.length) return null;
     // (every level of detail asks at the same points: the first answers for all)
-    const key = `${on.join(',')}|${Math.round(x * 1e4)}|${Math.round(y * 1e4)}|${Math.round(z * 1e4)}`;
+    const key = `${on.join(',')}|${Math.round(x * 1e4)}|${Math.round(y * 1e2)}|${Math.round(z * 1e4)}`;
     const known = this.answers.get(key);
     if (known !== undefined) return known;
     if (this.answers.size > ANSWERS) this.answers.clear();
@@ -197,9 +197,9 @@ export function restOn(points: readonly { x: number; z: number; d: number }[]): 
 
 /** How far under the plane of a thing's contacts one may be and still be one it rests on, metres. */
 const RESTS = 0.002;
-/** A thing with no wheels: how near its lowest point a vertex must be to be one it stands on, and the squares its feet are taken in, metres. */
-const SOLE = 0.03;
-const FOOT = 0.25;
+/** A thing with no wheels: how far over its lowest point a face may reach and still be one it may come down on as it tilts, and the squares its feet are taken in, metres. */
+const SOLE = 0.3;
+const FOOT = 0.1;
 
 /** How far a wheel of radius `r` turns about its axle (unit, in the same frame) when what carries it moves by `by` over level ground: rolling, not sliding. */
 export function rollOf(by: THREE.Vector3, axle: THREE.Vector3, r: number): number {
@@ -274,6 +274,8 @@ interface Wheel {
   radii: number[][];
   /** A point on its axle's line, in the hub's frame (the middle of its reach across the axle). */
   axleAt: THREE.Vector3;
+  /** Its reach along its axle, metres. */
+  span: number;
 }
 
 /**
@@ -360,30 +362,46 @@ export class Rider {
         treads,
         radii,
         axleAt,
+        span: hi - lo,
       });
     });
     if (!this.wheels.length) {
-      // what it stands on: its lowest vertices (a skid's underside, a cart's wheels), the lowest in each square of FOOT
+      // what it stands on: its lowest faces (a skid's underside, a cart's wheels), points over each of them FOOT apart and
+      // at its corners, the lowest in each square of FOOT (a skid's middle is a face with no vertex in it)
       const into = new THREE.Matrix4().copy(object.matrixWorld).invert();
-      const points: THREE.Vector3[] = [];
+      const tris: THREE.Vector3[][] = [];
       let bottom = Infinity;
       object.traverse((c) => {
         const mesh = c as THREE.Mesh;
         const pos = mesh.isMesh ? mesh.geometry.getAttribute('position') : undefined;
         if (!pos) return;
         m4.multiplyMatrices(into, mesh.matrixWorld);
+        const p: THREE.Vector3[] = [];
         for (let n = 0; n < pos.count; n++) {
-          const at = new THREE.Vector3().fromBufferAttribute(pos, n).applyMatrix4(m4);
-          points.push(at);
-          bottom = Math.min(bottom, at.y);
+          p.push(new THREE.Vector3().fromBufferAttribute(pos, n).applyMatrix4(m4));
+          bottom = Math.min(bottom, p[n]!.y);
         }
+        const index = mesh.geometry.getIndex();
+        const count = index ? index.count : pos.count;
+        for (let n = 0; n + 2 < count; n += 3) tris.push([0, 1, 2].map((e) => p[index ? index.getX(n + e) : n + e]!));
       });
       const cells = new Map<string, THREE.Vector3>();
-      for (const at of points) {
-        if (at.y > bottom + SOLE) continue;
+      const put = (at: THREE.Vector3): void => {
         const key = `${Math.round(at.x / FOOT)},${Math.round(at.z / FOOT)}`;
         const was = cells.get(key);
         if (!was || at.y < was.y) cells.set(key, at);
+      };
+      for (const [a, b, c] of tris) {
+        if (Math.max(a!.y, b!.y, c!.y) > bottom + SOLE) continue;
+        const n = Math.max(1, Math.ceil(Math.max(a!.distanceTo(b!), b!.distanceTo(c!), c!.distanceTo(a!)) / FOOT));
+        for (let i = 0; i <= n; i++)
+          for (let j = 0; i + j <= n; j++)
+            put(
+              new THREE.Vector3()
+                .addScaledVector(a!, (n - i - j) / n)
+                .addScaledVector(b!, i / n)
+                .addScaledVector(c!, j / n),
+            );
       }
       this.feet.push(...cells.values());
     }
@@ -415,18 +433,50 @@ export class Rider {
       this.wheels.forEach((wh, i) => this.lift(wh, kept.lifts[i]!));
       return;
     }
-    // each contact: where it is, and how far it must rise (or fall) to be on what is under it
+    // twice: once from where it was played, and once more from where that put it, for a tread that has been carried over
+    // an edge (a slab's, a rail's end) by its own turning
+    const start = this.wheels.map((wh) => wh.base.clone());
+    const total = this.wheels.map(() => 0);
+    for (let pass = 0; pass < PASSES; pass++) {
+      const lifts = this.settle(surfaces);
+      if (!lifts) break;
+      lifts.forEach((l, i) => {
+        total[i]! += l;
+      });
+      for (const wh of this.wheels) wh.base.copy(wh.node.position);
+    }
+    if (total.length || this.feet.length) {
+      const last = this.touch(surfaces);
+      last.forEach((l, i) => {
+        total[i]! += l;
+      });
+    }
+    this.wheels.forEach((wh, i) => {
+      wh.base.copy(start[i]!);
+      this.lift(wh, total[i]!);
+    });
+    this.kept = { key, position: o.position.clone(), quaternion: o.quaternion.clone(), lifts: total };
+  }
+
+  /** Each of its wheels' treads' bearing and each of its feet, from where it stands now: where, and how far it must rise (or fall) to be on what is under it. */
+  private contacts(surfaces: Surfaces, fine = false): { x: number; y: number; z: number; d: number; of: number }[] {
+    const o = this.object;
     const contacts: { x: number; y: number; z: number; d: number; of: number }[] = [];
     const on = this.runs.on;
     this.wheels.forEach((wh, of) => {
       const frame = wh.hub.matrixWorld;
       const axis = w.copy(AXES[wh.axle]).transformDirection(frame);
       const lean = Math.sqrt(Math.max(0, 1 - axis.y * axis.y));
+      // the way it rolls: level, square to its axle
+      const ahead = new THREE.Vector3(-axis.z, 0, axis.x).normalize();
       wh.treads.forEach((tread, t) => {
         const radii = wh.radii[t]!;
         const rim = 0.8 * Math.max(...radii);
         // each point of its rim across the tread: where it is, its lowest, and what is under it
         const at: { x: number; z: number; low: number; on: number | null; land: number | null }[] = [];
+        const rims = tread.map((_, n) => n).filter((n) => radii[n]! >= rim);
+        const first = rims[0];
+        const last = rims[rims.length - 1];
         tread.forEach((u, n) => {
           if (radii[n]! < rim) return; // (the hub and the axle between the wheels bear on nothing)
           v.copy(wh.axleAt)
@@ -434,6 +484,17 @@ export class Rider {
             .applyMatrix4(frame);
           const low = v.y - radii[n]! * lean;
           at.push({ x: v.x, z: v.z, low, on: surfaces.top(on, v.x, low + REACH, v.z), land: null });
+          // a road wheel (a tyre, or twin tyres: narrower than a rail wagon's wheel set) is asked round its rim ahead and
+          // behind as well, at every other point across it: it climbs onto a slab's edge by the corner, before its lowest
+          // point is over it (a rail is the same along its length, and a wheel set's two treads are a gauge apart)
+          if (wh.span >= ROAD_WHEEL || (!fine && n !== last && (n - first!) % 2)) return;
+          for (const turn of fine ? AROUND_FINE : AROUND) {
+            const r = radii[n]!;
+            const x = v.x + ahead.x * r * Math.sin(turn);
+            const z = v.z + ahead.z * r * Math.sin(turn);
+            const lowAround = v.y - r * Math.cos(turn) * lean;
+            at.push({ x, z, low: lowAround, on: surfaces.top(on, x, lowAround + REACH, z), land: null });
+          }
         });
         if (this.runs.ground) for (const p of at) p.land = surfaces.land(p.x, p.z);
         const best = bearing(at);
@@ -447,8 +508,41 @@ export class Rider {
       const h = on1 === null ? land : land === null ? on1 : Math.max(on1, land);
       if (h !== null) contacts.push({ x: v.x, y: v.y, z: v.z, d: h - v.y, of: -1 });
     }
+    return contacts;
+  }
+
+  /**
+   * The last word, from where the settlings have left it: each road wheel lowered or raised by as much as the point of
+   * its rim that most needs it (a slab's edge it has been carried onto by the settling), so that it touches what is under
+   * it and is nowhere in it; a thing on its feet the same, as one.
+   */
+  private touch(surfaces: Surfaces): number[] {
+    this.object.updateWorldMatrix(true, true);
+    const need = this.wheels.map(() => -Infinity);
+    let feet = -Infinity;
+    for (const c of this.contacts(surfaces, true)) {
+      // (a rail wagon's wheel set is left as settled: its rails are smooth, and it bears on both at once)
+      if (c.of >= 0) {
+        if (this.wheels[c.of]!.span < ROAD_WHEEL) need[c.of] = Math.max(need[c.of]!, c.d);
+      } else feet = Math.max(feet, c.d);
+    }
+    if (Number.isFinite(feet)) {
+      const o = this.object;
+      v.set(0, feet, 0);
+      if (o.parent) v.transformDirection(n4.copy(o.parent.matrixWorld).invert()).multiplyScalar(feet);
+      o.position.add(v);
+    }
+    return need.map((d) => (Number.isFinite(d) ? d : 0));
+  }
+
+  /** One settling: the contacts asked from where it stands now, the body turned and lifted onto them, and each wheel lifted from its base; the lifts given, or null if nothing is under it. */
+  private settle(surfaces: Surfaces): number[] | null {
+    const o = this.object;
+    o.updateWorldMatrix(true, true);
+    const contacts = this.contacts(surfaces);
     const lifts = this.wheels.map(() => 0);
-    if (contacts.length) {
+    if (!contacts.length) return null;
+    {
       const fit = restOn(contacts);
       // what is left once the body is on the plane: each wheel takes up its own (the most of its treads', so neither is
       // in what it runs on); a thing on its feet is lifted by the most of its feet's
@@ -477,7 +571,7 @@ export class Rider {
       o.updateWorldMatrix(false, true);
       this.wheels.forEach((wh, i) => this.lift(wh, lifts[i]!));
     }
-    this.kept = { key, position: o.position.clone(), quaternion: o.quaternion.clone(), lifts };
+    return lifts;
   }
 
   /** A wheel raised `by` metres up from where it hangs this instant (in the world's up, carried into its own parent's frame). */
@@ -492,6 +586,14 @@ export class Rider {
   }
 }
 
+/** The turns round a tyre's rim from its lowest point, ahead and behind, at which it is asked what is under it, radians (6° apart: a step's edge found within 3 mm). */
+const AROUND = [-24, -18, -12, -6, 6, 12, 18, 24].map((d) => (d * Math.PI) / 180);
+/** A wheel narrower than this along its axle is a road wheel, metres: a rail wagon's wheel set is a gauge across. */
+const ROAD_WHEEL = 1;
+/** And for the last word (`touch`), at every point across it, 3° apart: within a millimetre of a step's edge. */
+const AROUND_FINE = Array.from({ length: 17 }, (_, i) => ((i - 8) * 3 * Math.PI) / 180).filter((t) => t !== 0);
+/** How many times a thing is settled onto what it runs on, each from where the last left it. */
+const PASSES = 2;
 /** How many answers are kept before they are let go (a few moves' worth of instants). */
 const ANSWERS = 20000;
 /** How far over a contact the surface is asked from, metres: enough for anything a wheel climbs onto between one instant and the next it is played at. */
