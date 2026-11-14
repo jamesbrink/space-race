@@ -590,14 +590,21 @@ vehicle.cabin = {
     { at: [0.536, 1.02, 0.466], out: [0.433, 0.819, 0.376], across: 0.376, name: 'Left window' },
     { at: [0.536, 1.02, -0.466], out: [0.433, 0.819, -0.376], across: 0.376, name: 'Right window' },
   ],
-  // The three floodlights (`lights`, in the same order as their fittings here). Their switch is not modelled (the model
-  // has no node for it), so they are thrown from the page alone; on and off is all that is given: estimated.
+  // The three floodlights (`lights`, in the same order as their fittings here) and the one switch for them the panels
+  // have: CENTER LIGHT, at the head of the overhead panel's forward row, RED over OFF over WHT (SEDR 300, p. 3-20 and
+  // Figure 3-5 sheet 2, S/C 3: documented). It was the centre lamp's alone: each side lamp had a WHITE-OFF-RED selector
+  // and a rheostat of its own on its fixture (p. 3-20), which the model's fittings do not have, so here the one switch
+  // throws all three (a simplification). Built at WHT. The lamps' red bulbs are not drawn: at RED the lever goes over
+  // and the cabin is as dark as at OFF, and says so.
   lighting: {
+    control: 'Ctl_CabinLights',
     name: 'Cabin lights',
-    about: 'The three floodlights, one each side and one at the centre (SEDR 300, p. 3-20). Their switch is not modelled.',
+    about:
+      'CENTER LIGHT, on the overhead panel: RED, OFF, WHT (SEDR 300, p. 3-20; Figure 3-5 sheet 2). Three floodlights, one each side and one at the centre, each with a white bulb and a red one. On the ship this switch was the centre lamp’s and each side lamp had its own on its fixture; here it throws all three, and the red bulbs are not drawn.',
     ways: [
-      { says: 'On', lit: [0, 1, 2] },
+      { says: 'White', lit: [0, 1, 2] },
       { says: 'Off', lit: [] },
+      { says: 'Red (not drawn: dark)', lit: [] },
     ],
     fittings: ['Lamp_Left', 'Lamp_Right', 'Lamp_Centre'],
   },
