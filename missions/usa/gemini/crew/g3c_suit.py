@@ -42,10 +42,10 @@ from srlib import CM, TAU, MeshBuilder, arc_profile, frame, material  # noqa: E4
 # forward at the shoulder, drawn in to the side, the elbow, its hinge turned in, the forearm turned palm down, the hand
 # closed 0 to 1). Chosen so that the man fits the seat as gemini_cabin.py lays it out: estimated.
 SEATED = {
-    "hip": 104.0,
-    "knee": 112.0,
-    "ankle": 14.0,
-    "knees_in": 0.0,
+    "hip": 113.0,
+    "knee": 120.0,
+    "ankle": 26.0,
+    "knees_in": 2.0,
     "pelvis": 10.0,
     "elbow": 70.0,
     "elbow_toe_in": 30.0,
@@ -53,7 +53,7 @@ SEATED = {
     "grip": 0.0,
 }
 LAP = (-3.0, 11.5, 1.2)  # where a thigh pressed against the belly stops: figurelib.seated_rig
-LAP_BELT = 3.0  # the lap belt crosses him this far toward his head from his hip joints
+LAP_BELT = 5.8  # the lap belt crosses him this far toward his head from his hip joints: over the pelvis, above the fold his raised thighs make
 REST = (10.0, 11.0, 70.0, 26.0, 52.0, 0.15)  # a hand lying on its own thigh
 
 
@@ -74,8 +74,19 @@ class Wearer:
 # 170.2 cm is 5 ft 7 in, as commonly given for Grissom (no primary record of it was found; the Mercury module uses the
 # same); 175.3 cm is 5 ft 9 in, from NASA's biographical data sheet for Young as a search of it returned it (the sheet
 # itself was not opened). Both estimated: g3c-suit.md, "The men".
-GRISSOM = Wearer("V.I. GRISSOM", 170.2, 0.98, 1.0)
-YOUNG = Wearer("J.W. YOUNG", 175.3, 0.99, 0.98)
+# Each man's arms are where gemini_cabin.py's station has something for them: Grissom's left hand on the abort handle
+# (S65-23489), the other three hands lying on the thighs (Grissom's right is in his lap in S65-22665; Young's were not
+# found in a photograph). The angles are solved for those places and are estimated.
+GRISSOM = Wearer("V.I. GRISSOM", 170.2, 0.98, 1.0, left=(0.0, 13.0, 95.0, 10.0, 70.0, 0.75), right=(2.0, 1.0, 85.0, 28.0, 52.0, 0.15))
+YOUNG = Wearer(
+    "J.W. YOUNG",
+    175.3,
+    0.99,
+    0.98,
+    left=(0.0, 0.5, 94.0, 38.0, 52.0, 0.15),
+    right=(0.5, 11.0, 97.0, 40.0, 52.0, 0.15),
+    seated={"hip": 116.0, "knee": 125.0, "ankle": 30.0},  # a longer leg to the same stirrups
+)
 
 REF = fl.man()
 BOOT_TOP = 27.0  # as on a man of 1.80 m: to the lower calf
@@ -148,7 +159,9 @@ def materials() -> dict:
         "suit": m("suit-nylon-satin-white", (0.80, 0.80, 0.78), 0.12, 0.42),
         "glove": m("glove-nylon-white", (0.78, 0.78, 0.75), 0.0, 0.6),
         "shell": m("helmet-fibreglass-white", (0.86, 0.86, 0.83), 0.0, 0.28),
-        "glass": m("glass-visor", (0.02, 0.03, 0.04), 0.0, 0.04),
+        # clear, as the photographs of the day have it (S65-20605, S65-24719, S65-24721): the face is seen through it.
+        # (The viewer draws any `glass-visor` as a pane of its own; this is what a still drawn by Blender shows.)
+        "glass": m("glass-visor", (0.72, 0.78, 0.8), 0.0, 0.04, alpha=0.14),
         "liner": m("helmet-liner", (0.06, 0.06, 0.06), 0.0, 0.9),
         "seal": m("rubber-grey", (0.42, 0.43, 0.44), 0.0, 0.7),
         "bright": m("aluminium-polished", (0.80, 0.81, 0.82), 1.0, 0.18),
@@ -779,12 +792,13 @@ def seated_key_points() -> dict:
     eyes = (fl.head_point(3.15, 0.5) + fl.head_point(-3.15, 0.5)) / 2 + Vector((0, -0.2, 0.02))
     disconnects = pts["Torso_HarnessDisconnects"]
     worn = {"lap": [], "reel": {}}
-    # the lap belt: over the top of each thigh at the fold of the hip, across the lap
+    # the lap belt: across the pelvis above the fold of the hips (his thighs are raised: the knees stand over the lap)
+    belly = [p for name, ps in pts.items() if name in ("Torso_Shell", "Torso_HarnessWebbing") for p in ps]
     for k in range(-12, 13):
         x = k * 0.158 * B.hip_x
-        near = [p for p in cloth if abs(p.x - x) < 1.6 and abs(p.y + LAP_BELT) < 2.2]
+        near = [p for p in belly if abs(p.x - x) < 1.6 and abs(p.y + LAP_BELT) < 2.2]
         if near:
-            worn["lap"].append((x, -LAP_BELT, max(p.z for p in near) + 0.45))
+            worn["lap"].append((x, -LAP_BELT, max(p.z for p in near) + 0.9))
     # the reel's two straps: from behind each shoulder over it and down to the harness's quick disconnect
     # (in the seat's frame his left is toward -X)
     for side, sx in (("left", 1), ("right", -1)):

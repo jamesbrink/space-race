@@ -33,7 +33,7 @@ changed from spacecraft 3; the **press kit**, NASA release 65-81.
 | Z100 separation sensor switches | fitted | removed | documented | GIV, 3.1.2.6 | no |
 | Panels | ACME logic switches on the pedestal; re-entry control shutoff switches on the pilot's panel; no G.m.t. clock on the command pilot's | moved, and a clock added | documented | GIV, 3.1.2.9.1 and 3.1.2.5; SEDR 300, Figure 3-5 sheets 1 and 2 "(S/C 3)" | yes: the panels are this ship's, with the blank where the clock came later, the re-entry control switches on the pilot's panel, ACME logic on the pedestal, and RE ENT ANT EXP on the right-hand wall |
 | Ejection seats | as built | a new riser retractor, a safety pin on the ejection handle, a lower egress kit | documented | GIV, 3.1.2.9.4 | the seat is the type's: the Smithsonian's A19710058000, a spare that had been fitted in this spacecraft, is one of the two it is drawn from |
-| Suits | G3C | G4C | documented | GIV, 3.1.2.9.2 | modelled ([g3c-suit.md](../../crew/g3c-suit.md)); the men are not aboard |
+| Suits | G3C | G4C | documented | GIV, 3.1.2.9.2 | modelled ([g3c-suit.md](../../crew/g3c-suit.md)); both men aboard |
 | Structure | "the same production configuration" as spacecraft 1, 2 and 4 | | documented | GIV, 3.1.1 | the type's |
 | Recovery light | came on with the main parachute's jettison | a switch added | documented | SEDR 300, p. 4-26; GIV, 3.1.2.11 | no |
 
@@ -84,15 +84,14 @@ and the rest are the press kit's round figures from a week before.
   not been found.
 - **The cover on the forward face** is as photographed on 6 January; whether it flew so is not
   established.
-- **The crew are not in their seats.** Grissom and Young are modelled in the G3C suits they wore,
-  from the Smithsonian's photographs of the two flown suits and NASA's of the day
-  ([g3c-suit.md](../../crew/g3c-suit.md)), and seated they do not fit the crew station as it is
-  laid out: Grissom's helmet is 1.7 in and Young's 2.3 in through the hatch's inner skin, and
-  both men's feet are through the vessel's floor forward of the stirrups. The model script keeps
-  them out (`CREW_ABOARD` in [model/vehicle.py](model/vehicle.py)) and every build prints the
-  misfit as it then stands; the cabin has to be laid out again round them first. The seats' eye
-  points are therefore still the empty seat's (a seated man of average build), not either man's
-  own. Neither man's stature is in a primary source that was read: 5 ft 7 in and 5 ft 9 in are
+- **The crew.** Grissom and Young are aboard (`CREW_ABOARD` in [model/vehicle.py](model/vehicle.py)),
+  each in the G3C suit he wore, from the Smithsonian's photographs of the two flown suits and
+  NASA's of the day ([g3c-suit.md](../../crew/g3c-suit.md)), seated as for the launch: heels in
+  the seat's stirrups, the command pilot's left hand on the abort handle, the other hands on the
+  thighs. The crew station is fitted round them
+  ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "Crew station"): Grissom's helmet
+  is 0.9 in under the hatch and Young's 0.6 in, and each seat's eye point is its man's own eyes.
+  Neither man's stature is in a primary source that was read: 5 ft 7 in and 5 ft 9 in are
   estimates.
 - **The flown ship** is at the Grissom Memorial at Mitchell, Indiana, and has not been compared.
 

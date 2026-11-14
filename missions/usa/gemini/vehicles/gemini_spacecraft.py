@@ -586,13 +586,18 @@ def build_hatches(M, fit: Fit) -> list[dict]:
     return windows
 
 
+# where an experiment rides on the inside of a hatch: round from the top, and the station of its aft end. Estimated: clear
+# of a seated man's helmet, which is within an inch of the hatch from Z120 to Z134, and inboard of the window
+EXPERIMENT_AT = (deg(20), 134.5)
+
+
 def build_experiments_on_hatches(M, g, fit: Fit) -> None:
     """What rode on the inside of the hatches on a flight that carried it."""
     if "sea-urchin" in fit.experiments:
         mb = MeshBuilder()
-        t = -deg(32)
-        a = CABIN.p(t, zz(124.0), -WALL - 2.0)
-        b = CABIN.p(t, zz(124.0 + 6.75 * math.cos(CABIN_A)), -WALL - 2.0)
+        t = -EXPERIMENT_AT[0]
+        a = CABIN.p(t, zz(EXPERIMENT_AT[1]), -WALL - 2.0)
+        b = CABIN.p(t, zz(EXPERIMENT_AT[1] + 6.75 * math.cos(CABIN_A)), -WALL - 2.0)
         mb.tube(a, b, 1.625 * IN, 20)
         mb.tube(b, b + (b - a).normalized() * 1.4 * IN, 0.5 * IN, 10)  # the handle that is turned
         say(
@@ -601,22 +606,24 @@ def build_experiments_on_hatches(M, g, fit: Fit) -> None:
             "A metal cylinder 3 1/4 in across and 6 3/4 in long on the inside of the left hatch, holding eight chambers of sea "
             "urchin eggs, sperm and a fixative. Turning the handle at its end was to fertilise the eggs, and turning it again "
             "later to stop them, so that it could be seen whether cells divide differently without weight. Grissom turned it; "
-            "the handle broke off in his hand. Its size and its hatch are the press kit's; where on the hatch is estimated.",
+            "the handle broke off in his hand. Its size and its hatch are the press kit's; where on the hatch is estimated: "
+            "forward of his helmet and inboard of the window, where there is room for it and his hand comes to it.",
         )
     if "blood" in fit.experiments:
         mb = MeshBuilder()
-        t = deg(32)
-        chamfered(mb, (3.7, 3.8, 1.3), frame(CABIN.p(t, zz(126.0), -WALL - 1.1), -CABIN.n(t)), 0.1)
-        mb.tube(CABIN.p(t, zz(128.3), -WALL - 1.1), CABIN.p(t, zz(129.5), -WALL - 1.1), 0.45 * IN, 10)
+        t, z = EXPERIMENT_AT[0], EXPERIMENT_AT[1] + 2.0
+        chamfered(mb, (3.7, 3.8, 1.3), frame(CABIN.p(t, zz(z), -WALL - 1.1), -CABIN.n(t)), 0.1)
+        mb.tube(CABIN.p(t, zz(z + 2.3), -WALL - 1.1), CABIN.p(t, zz(z + 3.5), -WALL - 1.1), 0.45 * IN, 10)
         for dz in (-1.2, 1.2):  # its two feet on the hatch
-            mb.tube(CABIN.p(t, zz(126.0 + dz), -WALL + 0.2), CABIN.p(t, zz(126.0 + dz), -WALL - 0.6), 0.4 * IN, 8)
+            mb.tube(CABIN.p(t, zz(z + dz), -WALL + 0.2), CABIN.p(t, zz(z + dz), -WALL - 0.6), 0.4 * IN, 8)
         say(
             mb.build("Experiment_BloodIrradiation", M["aluminium"], g, sharp_angle=35),
             "Blood irradiation experiment",
             "A sealed aluminium box 3.7 by 3.8 by 1.3 in on the inside of the right hatch, holding samples of human blood beside a "
             "source of phosphorus-32. Young twisted its handle to put the blood in the way of the radiation, and again to take it "
             "out; the same was done to a twin of it at the Cape. The blood that had been in orbit showed a little more damage. "
-            "Its size and its hatch are the press kit's; where on the hatch is estimated.",
+            "Its size and its hatch are the press kit's; where on the hatch is estimated: forward of his helmet and inboard "
+            "of the window.",
         )
 
 
