@@ -10,6 +10,7 @@ import {
   deckCutAt,
   deckPatchGlsl,
   deckTex,
+  heldDistance,
   highOf,
   landShare,
   MOST,
@@ -380,4 +381,16 @@ test('the Sun through high cloud: all of it through none, less through more and 
   const liftoff = veilShade(0.4, 1, Math.sin(20.6 * RAD));
   assert.ok(liftoff > 0.5 && liftoff < 0.65, `${liftoff}`);
   assert.ok(veilShade(0.4, 1, 1) > liftoff && veilShade(0.8, 1, 1) < veilShade(0.4, 1, 1));
+});
+
+test('fibrous high cloud gives way along a ragged line, a veil along a circle; the map and the shaders take the same line', () => {
+  assert.equal(mapDayOf(dayOf(vostok1)).high.ragged, true);
+  assert.equal(mapDayOf(dayOf(mr4)).high.ragged, undefined);
+  // half to one and a half times the distance, and not the same all round
+  const round = Array.from({ length: 72 }, (_, k) => heldDistance(75_000 * Math.sin(k * 0.0873), 75_000 * Math.cos(k * 0.0873)));
+  assert.ok(Math.min(...round) >= 75_000 * 0.5 && Math.max(...round) <= 75_000 * 1.5);
+  assert.ok(Math.max(...round) - Math.min(...round) > 15_000, 'lobed');
+  // the shaders' text has it on Vostok 1's day and not on Liberty Bell 7's
+  assert.match(sheetsGlsl('over_', dayOf(vostok1)), /highHeld\(xz\)/);
+  assert.doesNotMatch(sheetsGlsl('over_', dayOf(mr4)), /highHeld/);
 });

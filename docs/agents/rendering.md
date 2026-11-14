@@ -531,7 +531,9 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     the first time there is air with clouds or sheets in it, under the curtain), not when the stage is.
   - **The record holds at the site, layer by layer, whatever lies round it**: the cumulus within 12 km
     (`coverNear`), the deck within 40 km (`deckCoverAt`), the high cloud as far as an observer under it sees it
-    (`reportReach`, `highCoverAt`), and before the map has come in, everywhere. A record's stretch of country
+    (`reportReach`, `highCoverAt`; for fibres, not a veil, out to a lobed line, `heldDistance`, in the map and the
+    shaders alike: along a circle it was a disc from height, with an edge in the cel look), and before the map has
+    come in, everywhere. A record's stretch of country
     holds all over it (`weatherAt`: `MapDay.beyond`; tests/weather.test.mjs holds 21 July's).
   - **Everything else is estimated and says so**: `viewer/weather.ts` builds a plausible morning from the land
     map, the relief and the day's wind; no chart or reanalysis of any day has been read.

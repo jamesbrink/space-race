@@ -741,8 +741,9 @@ rocket can leave the erector out by its date.
   same everywhere: which way they lay, how thick they were and whether there were gaps over the pad are not recorded.
   They dim the Sun evenly (their own streaks cast no shadows). In the cel look they are one flat paler tone over the
   sky. From height the record's cirrus holds over the site as far as the stations saw it (60 km, gone by 90: day.ts
-  `reportReach`) and the day's map, estimated, lies beyond ("The country round, from height"): so from 150 km it is a
-  round patch, and in the cel look a disc with an edge, which no cirrus is.
+  `reportReach`) and the day's map, estimated, lies beyond ("The country round, from height"). Where the report gives
+  way is a lobed line 40 to 135 km out (weather.ts `heldDistance`), so from 150 km the cirrus is a patch with a ragged
+  edge, not a disc; its shape is estimated, and in the cel look it is still one flat sheet with an edge.
 - The ground's kinds lie where a noise field over its cut puts them, more readily in the hollows: that takyrs, crusts
   and sand are here is documented, where each lies is not (no soil map of the cosmodrome has been read: Krechetov and
   others 2015 is known, not read). The ruts' lines, the worn ground's patches and the takyr's polygons are estimated.
