@@ -84,10 +84,11 @@ def _flight_script(flight: str):
     return module
 
 
-# Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch. Its script builds them where
-# its own photographs put them, and the shingles round them; No. 18's are built by it, on the strength of this capsule's
-# own photographs (NASA S62-03907, 62-MA7-73, S62-04018: the window's plate, the hatch beside it, the beaded shingle
-# under the window, the seam at the window's foot), with what those photographs show otherwise. See spacecraft.md.
+# Capsule No. 11 (Liberty Bell 7) was the first with the window and the explosive hatch. Its script builds them, and
+# the shingles round them; No. 18's are built by it, on the strength of this capsule's own photographs (NASA
+# S62-03907, 62-MA7-73, S62-04018: the window's plate, the hatch beside it, the beaded shingle under the window, the
+# seam at the window's foot), with what those photographs show otherwise. Where the window stands is measured on
+# Nos. 13 and 20 and taken as theirs (`WINDOW_Z` there). See spacecraft.md.
 no11 = _flight_script("mr-4-liberty-bell-7")
 WINDOW_T, WINDOW_Z, HATCH = no11.WINDOW_T, no11.WINDOW_Z, no11.HATCH
 SCOPE_Z, SCOPE_DOOR, SCOPE_TUBE = no11.SCOPE_Z, no11.SCOPE_DOOR, no11.SCOPE_TUBE
@@ -96,39 +97,52 @@ Z_BOOSTER_BASE = -atlas_lv3b.LENGTH  # the booster engines' exit plane
 
 # ------------------------------------------------------------------ what was No. 18's own (in, degrees)
 
-# The shingle under the window carries two stacks of beads side by side, where No. 11's had one bead across its whole
-# width: NASA S62-03907 and the colour photograph of the emblem (Commons: Aurora 7 insignia proper.jpg).
+# The shingle under the window carries two stacks of beads side by side, as No. 11's proved to when its photographs
+# were read again: NASA S62-03907 and the colour photograph of the emblem (Commons: Aurora 7 insignia proper.jpg), which shows
+# the whole of it, ten beads to a stack, from the seam at the window's foot to the rows of rivets on the plain plate at
+# the cone's foot. Its beads end near station 7 (6.4 by counting beads, 7.8 by its width): it is run down to that plate.
 NAME_STACKS = 2
+NAME_FOOT = no11.BAND
 
 # The paint. All of it is placed from photographs of this capsule (spacecraft.md, "Paint"); none of it is dimensioned.
+# Read again in November 2026, when the window was moved: with the beads as a ruler (ten to the emblem's shingle, 1.3 in
+# apart along the cone, give or take a twentieth), each thing by how far it stands from the glass and from the seam
+# at the window's foot, which runs on to the left as one edge.
 # UNITED STATES stood on it twice, each with a flag under it: to the left of the window (NASA TN D-3814, Figure 25;
 # 62-MA7-73) and round to the right of the hatch (62PC-52, the liftoff). Each: the middle of its two lines round the
 # cone, and where its flag's middle is.
 UNITED_STATES = ((deg(212), deg(208)), (deg(20), deg(28)))
-LINES = (38.4, 31.3)  # the stations of the two lines
+LINES = (37.1, 27.9)  # the stations of the two lines: UNITED's top 0.9 in below the glass's head, STATES' foot 3.1 above its foot
 LETTERS = (23.0, 6.0)  # a line's length and its letters' height
-FLAG = (20.2, 12.0)  # the flags' station, and their width
+FLAG = (15.9, 13.7)  # the flags' station, and their width: its top 1.2 in under the seam
 # The white patch painted on one shingle beside an unpainted one, each with a thermocouple under it, to compare how hot
-# they ran (NASA TN D-3814, p. 66: documented): over the U of the first UNITED. Its middle, and its size across and up
-# the cone: read off Figure 25.
-PATCH = (deg(188.6), 44.2, 4.0, 4.0)
+# they ran (NASA TN D-3814, p. 66: documented): over the U of the first UNITED, its foot on the upper seam. Its middle,
+# and its size across and up the cone: read off Figure 25 and a colour photograph of the insertion (its middle at
+# station 44.0 there, the seam under it at 41.5: here it stands on the model's seam, at 42.5).
+PATCH = (deg(187), 45.05, 4.3, 5.0)
+PATCH_LIFT = mercury_capsule.PAINT_LIFT + 0.03  # how far it stands off the skin, inches
 
 # The emblem, on the shingle under the window: laid out from the shingle's own corner, the seam at the window's foot
-# (station 24.8) where it meets the seam at 255 degrees, in inches to the right and inches down the cone. Read off one
-# photograph taken square on, in colour (Commons: Aurora 7 insignia proper.jpg), scaled by the shingle's width.
+# (station 20.5) where it meets the seam at 255 degrees, in inches to the right and inches down the cone. Read off one
+# photograph taken square on, in colour (Commons: Aurora 7 insignia proper.jpg), scaled by the shingle's beads (and,
+# until November 2026, by its width on a shingle 15 in tall where this is 13: the rings then stood an inch higher and
+# the word 5 in). The emblem is 9.4 in wide and 12.6 from its highest ray to the 7's foot, which stands just above the
+# beads' foot; the word lies across the 7's stem and ends on the seam at the hatch's edge.
 CORNER = (deg(255), no11.SEAM_LOW)
 RINGS = (  # each: its middle, its radius and its colour; where two cross, the one named first is drawn over the other
-    ((3.70, 4.46), 3.40, "paint_cream"),
-    ((7.02, 2.94), 2.30, "paint_orange"),
-    ((4.27, 4.46), 1.30, "paint_orange"),
-    ((4.84, 5.60), 2.60, "paint_pale_blue"),
+    ((2.90, 5.60), 3.30, "paint_cream"),
+    ((5.90, 4.05), 2.30, "paint_orange"),
+    ((3.40, 5.60), 1.30, "paint_orange"),
+    ((4.00, 6.75), 2.50, "paint_pale_blue"),
 )
 RING_BAND = 0.1  # half the width of a ring's line
 RAY_PITCH = 0.3  # from one ray to the next round a ring, inches
 RING_BREAK = (0.3, 1.6)  # a ring stops this far short of one drawn over it, and no ring has rays within this of another's line, inches
-SEVEN = ((4.05, 7.60), 7.5, 9.75)  # the 7: its middle, its width and its height
+SEVEN = ((3.45, 8.70), 8.0, 10.6)  # the 7: its middle, its width and its height
 SEVEN_EDGE = 0.2  # the pale edge round it
-AURORA = (16.95, 16.4, 3.4, deg(287.0))  # the word: its station, its length, its letters' height, and where its last letter ends
+# (its letters read 3.3 in tall; at that height one of the level cuts the word is given, to bend at, runs along an edge
+# of a letter and leaves two faces of it in one place: 3.4, as they were, inside what the reading is good to)
+AURORA = (11.2, 16.9, 3.4, deg(285.0))  # the word: its station, its length, its letters' height, and where its last letter ends
 WAVER = (0.085, 1.15)  # how far the letters' sides waver, and over what length, inches: by rule, not her brush
 LAYER = 0.07  # from one layer of the emblem's paint to the next, inches: over a millimetre apart even on a bead's flank
 
@@ -217,7 +231,7 @@ SAYS = {
 def build_afterbody(M, font) -> Skin:
     """The cone's skin as No. 11's script builds it (shingles, plates, hatch, periscope's door, roll jets) with this
     capsule's shingle under the window, and No. 18's paint put on."""
-    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, paint=False)
+    skin = no11.build_afterbody(M, font, name_stacks=NAME_STACKS, name_foot=NAME_FOOT, paint=False)
     build_paint(M, bpy.data.objects["Afterbody"], skin, font)
     return skin
 
@@ -308,7 +322,8 @@ def build_paint(M, g, skin: Skin, font) -> None:
     flag.build("Afterbody_Flag", M["flag"], g, sharp_angle=None)
 
     pt, pz, pw, ph = PATCH
-    skin.paint(patch, [(-pw / 2, -ph / 2), (pw / 2, -ph / 2), (pw / 2, ph / 2), (-pw / 2, ph / 2)], [(0, 1, 2, 3)], pt, pz)
+    # (it lies over the row of screws at its shingle's foot: a little further off the skin than the lettering, to clear their heads)
+    skin.paint(patch, [(-pw / 2, -ph / 2), (pw / 2, -ph / 2), (pw / 2, ph / 2), (-pw / 2, ph / 2)], [(0, 1, 2, 3)], pt, pz, lift=PATCH_LIFT)
     mercury_capsule.thing(
         patch,
         "Afterbody_Patch",

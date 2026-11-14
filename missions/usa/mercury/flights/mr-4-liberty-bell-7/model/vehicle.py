@@ -76,21 +76,33 @@ Z_BOOSTER_BASE = -redstone_mrlv.LENGTH  # the Redstone's fin trailing edges
 # ------------------------------------------------------------------ what was No. 11's own (in, degrees)
 
 # The window. The panes' sizes are documented (NASA SP-45, Figure 19-1, "Mercury spacecraft window": the orbital
-# spacecraft's, whose panes' thicknesses are the ones the MR-4 report gives for No. 11); where the window stands
-# along the cone is estimated from photographs of this capsule (NASA 61-MR4-53, MSFC-6116423).
+# spacecraft's, whose panes' thicknesses are the ones the MR-4 report gives for No. 11). Where it stands along the
+# cone is in no document read (SEDR 104's stations diagram, Figure 1-3, draws the hatch, not the window): it is
+# estimated from photographs, to within 1.5 in. Two were measured against the cone's own ends: No. 20 on the carrier's
+# deck (NASA S63-07701: the glass from station 21.1 to 40.2) and No. 13 as it is kept (NASM A19670176000: 21.9 to
+# 41.3). No. 11's is carried from No. 13's through the hatch's opening, which both show beside it (the capsule at
+# Bonn, 2014: the glass's foot 2.4 in above the opening's foot and its head 3.7 in below its head, against 2.9 and 3.6
+# on No. 13); and its own close photographs (NASA 61-MR4-53, MSFC-6116423), their cameras solved for together with
+# the pane as the one thing of known size, agree: the glass's foot 21.3 in above the lower edge of the ring at the
+# cone's foot. One figure serves every capsule built from this script. Until November 2026 it was 35.8.
 WINDOW_T = deg(270)  # on the centreline, over the pilot's head
-WINDOW_Z = 35.8  # the middle of the outer pane
+WINDOW_Z = 31.5  # the middle of the outer pane: the glass from 21.6 to 41.4
 OUTER_PANE = (21.0, 11.254, 7.511)  # along the cone; across at the heat shield's end; across at the nose's end
 INNER_PANE = (12.95, 9.49, 7.30)
 PANE_CORNER = 1.75  # the inner panes' corner radius, 1 3/4 in; the outer pane's is taken as the same
 INNER_TILT = deg(26.0 - 20.0)  # the inner panes lie at 26 degrees to the axis where the skin lies at 20
 INNER_LOW = (0.9, 2.0)  # the inner panes' heat-shield end: up the cone from the outer pane's, and under the skin: estimated
-WINDOW_PANEL = (deg(255), deg(285), 24.8, 46.8)  # the plain plate the window is set in: estimated
-WINDOW_OPENING = (deg(257.5), deg(282.5), 25.6, 46.0)  # left out of the structure under it
+# the plain plate the window is set in: 1.1 in past the glass at either end (No. 13's, as kept: 1.8 in past its foot and 1.4 past its head). Estimated
+WINDOW_PANEL = (deg(255), deg(285), 20.5, 42.5)
+WINDOW_OPENING = (deg(257.5), deg(282.5), 21.3, 41.7)  # left out of the structure under it
 # The explosive hatch. "In the same location and of the same size" as No. 7's (the MR-4 report, p. 4), but placed
 # here where this capsule's photographs have it: its edge beside the window's plate, its middle 45 degrees round
 # from the window toward the pilot's right. Stations: SEDR 104 Figure 13-11 has thermocouples on the hatch's outer
 # edge at Z123.0 and Z146.0 and on the hatch at Z124.25 and Z147.25, so it reaches at least from 18.5 to 42.75.
+# What is read does not agree, and the hatch is left where it was (spacecraft.md, "The hatch"): SEDR 104 Figure 1-3
+# draws it from Z123.09 to Z146.126 (18.59 to 41.63, 23.04 in: the length of the opening inside the sill), Figure
+# 13-11 has a thermocouple on it above that, and No. 13's sill as it is kept measures from about 19.7 to 45.6. Its
+# head is not level with the window's plate's, as was taken here until November 2026: the plate's is some 2 in lower.
 HATCH = (deg(287.5), deg(342.5), 18.5, 45.4)
 JAMB = (deg(285), deg(345), 17.5, 46.8)  # the plain border round it
 HATCH_JOINT = 0.14  # the joint round the hatch's shingles, inches: estimated
@@ -100,14 +112,52 @@ SCOPE_Z = 41.5
 SCOPE_DOOR = (deg(80), deg(100), 28.6, 46.0)
 SCOPE_TUBE = (0.0, 16.5, 39.6)  # the last bend of the periscope's tube in the cabin (mercury_cabin_11's `run`): it comes out along that run
 UMBILICAL_Z = 32.5
-# Shingles: twelve columns of 30 degrees, in rows that part at these stations. Estimated from the same photographs.
-BAND, SEAM_LOW, SEAM_HIGH, TOP = 6.2, 24.8, 46.8, CONE_H - 0.4
-NAME_FOOT = 9.6  # the foot of the shingle the name is painted on
-# The painted crack: where it leaves the base, how far it leans from the meridian (away from the hatch), and the
-# station it reaches. Read off NASA 61-MR4-53, MSFC-6116423 and S61-03740: estimated.
-CRACK_FOOT = (deg(264.5), 2.3)
-CRACK_LEAN = deg(33)
-CRACK_TOP = 39.0
+# Shingles: twelve columns of 30 degrees (the k-th from 15 + 30 k), in rows that part at these stations. Estimated
+# from photographs. The seams at the foot and the head of the window's plate run on round the cone on the window's
+# side, away from the hatch (NASA 61-MR4-53; S62-03907 of No. 18; No. 13 as it is kept), and so moved with the window
+# in November 2026: the three columns the photographs reach, from 165 to 255 degrees. Above the hatch the shingles
+# begin at its border's head, which did not move. The columns the other side of the hatch and round to 165 degrees
+# were read before that against a window 4.3 in too high and have not been read again: they are as they were, and
+# probably as much too high (No. 16 as it was shown at Houston has the upper seam at about 42 there too, and No. 20's
+# photographs have both seams running right round: its script says so, in `rows`).
+BAND, TOP = 6.2, CONE_H - 0.4
+SEAM_LOW, SEAM_HIGH = WINDOW_PANEL[2], WINDOW_PANEL[3]  # 20.5 and 42.5: the window's column and the columns beside it
+WINDOW_SIDE = (5, 6, 7)  # the columns whose seams run on from the window's plate
+HATCH_HEAD = JAMB[3]  # 46.8: where the shingles above the hatch begin
+FAR_SEAMS = (24.8, 46.8)  # every other column's
+# The shingle the name is painted on, as 61-MR4-53 and MSFC-6116423 have it (solved together against the cone, the
+# outer pane the one thing of known size in them): its beads in two halves either side of a flat strip down its
+# middle, ten to a half, from station 19.5 down to 8.6; its foot at 7.6, between its lowest screws and the first of
+# two rows of rivets on the plain strip under it. Estimated, to half an inch. (Until November 2026: 9.6, and one
+# bead across its whole width.)
+NAME_FOOT = 7.6  # the foot of the shingle the name is painted on
+NAME_BEADS = 10  # how many beads that shingle carries, one above the next: counted on Nos. 11, 13, 16 and 18
+# The name: each line's length, its letters' height, where its middle is round the cone and its station. Read off the
+# same two photographs: LIBERTY from 16.0 to 19.0, 1.3 in under the row of screws at the window's foot; BELL from
+# 12.25 to 15.1; the 7 from 8.3 to 11.2, on the flat strip down the shingle's middle. Estimated, to 0.3 to 0.5 in.
+NAME = (("LIBERTY", 13.8, 3.0, deg(269.7), 17.5), ("BELL", 8.4, 2.85, deg(269.8), 13.65), ("7", 1.6, 2.95, deg(270.6), 9.75))
+# The painted crack: the course of its middle, as (degrees round the cone, station), and its width at stations along
+# it. Read off NASA 61-MR4-53, MSFC-6116423 and 61-MR4-76 (its lower course, to station 24.3, the three agreeing to
+# half a degree) and S61-02882 (its upper: from station 41.4 it runs up the joint between two shingles, tapering to a
+# point at 54.5, 13 in above the glass's head; 61-MR4-79 agrees at 53 to 55). Between 24.3 and 41.4 no photograph
+# read shows it (Grissom stands in front of it): it is taken on at the lean it has below until it meets that joint.
+# It leaves the base 12 degrees to the left of where it was drawn until November 2026, clear of the name's shingle,
+# flares where it touches that shingle's line of screws, leans 33 degrees from the meridian at first and 22 higher
+# up. Estimated: half a degree and half an inch below station 24, 2 degrees and 1.5 in at its top.
+CRACK = (
+    (252.5, 2.4),
+    (252.6, 5.5),
+    (250.9, 7.5),
+    (247.4, 10.0),
+    (244.1, 14.0),
+    (241.0, 17.7),
+    (237.9, 21.85),
+    (235.3, 24.3),
+    (224.3, 34.8),
+    (224.2, 41.4),
+    (224.1, 54.5),
+)
+CRACK_WIDE = ((2.4, 0.95), (5.0, 2.4), (6.5, 2.4), (9.0, 1.75), (14.0, 1.4), (17.7, 1.1), (41.4, 0.95), (54.5, 0.08))
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
 SHELLS = (
@@ -144,17 +194,21 @@ SHELLS = (
 # --------------------------------------------------------------------------- parts
 
 
-def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True, periscope: bool = True, door=None, rows=None) -> Skin:
+def build_afterbody(
+    M, font, name_stacks: int = 2, paint: bool = True, periscope: bool = True, door=None, rows=None, name_foot: float = NAME_FOOT
+) -> Skin:
     """The cone's skin: shingles beaded round it, the plain plates round the window, the hatch and the periscope's
     door, and the paint. A later capsule built by this (model the flight, not the type) says what its own photographs
-    show otherwise: `name_stacks`, how many stacks of beads the shingle under the window carries, and `paint` False
+    show otherwise: `name_stacks`, how many stacks of beads the shingle under the window carries; `name_foot`, the
+    station that shingle ends at (at the plain band, `BAND`, it has no plate of its own under it); and `paint` False
     for a capsule that puts its own paint on. A capsule that flew without a periscope says `periscope` False: nothing
     of it is built, and the plate its door stood in is left whole, or has the opening `door` in it (angle from, angle
     to, station from, to: for what that capsule had there, which its own script builds into it). `rows`: for a capsule
     whose photographs show its shingles parting at other stations than No. 11's, the two stations by column (0 to 11,
     the first from 15 degrees; not the window's column or the hatch's two): a column it does not name is No. 11's."""
+    assert name_foot >= BAND, "the shingle under the window cannot run down into the plain band"
     door = SCOPE_DOOR if periscope else door
-    seams = lambda k: (rows or {}).get(k, (SEAM_LOW, SEAM_HIGH))  # noqa: E731
+    seams = lambda k: (rows or {}).get(k, (SEAM_LOW, SEAM_HIGH) if k in WINDOW_SIDE else FAR_SEAMS)  # noqa: E731
     g = group("Afterbody")
     hatch = group("Hatch")
     skin = Skin(CONE)
@@ -170,8 +224,10 @@ def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True, periscope
     for k in range(12):
         t0, t1 = deg(15 + 30 * k), deg(45 + 30 * k)
         if k == 8:  # the window's column: a plate at the foot, the shingle with the name, the window's plate, a shingle above
-            skin.panel(plates, t0, t1, BAND, NAME_FOOT)
-            skin.shingle(t0, t1, NAME_FOOT, SEAM_LOW, stacks=name_stacks)  # No. 11: one bead across its whole width (MSFC-6116423)
+            if name_foot > BAND + 0.5:
+                skin.panel(plates, t0, t1, BAND, name_foot)
+            # (ten beads to a stack, as the photographs count them, whatever its height)
+            skin.shingle(t0, t1, max(name_foot, BAND), SEAM_LOW, stacks=name_stacks, beads=NAME_BEADS)
         elif k in (9, 10):  # the hatch's two columns
             skin.shingle(t0, t1, BAND, JAMB[2])
         else:
@@ -179,7 +235,7 @@ def build_afterbody(M, font, name_stacks: int = 1, paint: bool = True, periscope
             skin.shingle(t0, t1, BAND, low)
             if k != 2:  # (the periscope's door stands in this row of its column)
                 skin.shingle(t0, t1, low, high)
-        skin.shingle(t0, t1, SEAM_HIGH if k in (8, 9, 10) else seams(k)[1], TOP)
+        skin.shingle(t0, t1, SEAM_HIGH if k == 8 else HATCH_HEAD if k in (9, 10) else seams(k)[1], TOP)
 
     # the window's plate, with the pane's opening in it
     about = (WINDOW_T, WINDOW_Z)
@@ -276,28 +332,43 @@ def build_paint(M, g, skin: Skin, font) -> None:
     """The paint, as flown: the name under the window, the crack beside it, UNITED STATES and the flag either side of
     the periscope. Each is placed from photographs (spacecraft.md, "Paint"); none of the places is dimensioned."""
     paint, crack, flag = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    for body, length, tall, z in (("LIBERTY", 12.7, 2.9, 22.4), ("BELL", 8.1, 3.1, 18.4), ("7", 1.9, 3.6, 14.3)):
-        skin.lettering(paint, body, length, tall, WINDOW_T, z, font)
+    for body, length, tall, t, z in NAME:
+        skin.lettering(paint, body, length, tall, t, z, font)
     for body, z in (("UNITED", 42.6), ("STATES", 33.9)):
         skin.lettering(paint, body, 23.0, 6.5, deg(133), z, font)
     paint.build("Afterbody_Lettering", M["paint_white"], g, smooth=False)
 
-    # The crack: a white line from the base under the name's left edge, up and away from the hatch, two thirds of the
-    # way to the nose. Painted across the beads, it comes out wavy without being drawn so; it wanders a little besides.
-    t_mid, z_mid = deg(240), 20.0
-    r0, sin, cos = CONE.r(z_mid), math.sin(CONE.a), math.cos(CONE.a)
-    b0 = (CRACK_FOOT[1] - z_mid) / cos
-    start = Vector(((CRACK_FOOT[0] - t_mid) * (r0 - b0 * sin), b0))  # on the cone unrolled about (t_mid, z_mid)
-    along = Vector((-math.sin(CRACK_LEAN), math.cos(CRACK_LEAN)))
-    side = Vector((along.y, -along.x))
-    length = (CRACK_TOP - CRACK_FOOT[1]) / cos / along.y
-    n = round(length / 0.8)
-    verts, faces = [], []
+    # The crack: a white line from the base to the left of the name, up and away from the hatch, nearly to the top of
+    # the cone. Painted across the beads, it comes out wavy without being drawn so; its edges are a brush's besides.
+    t_mid, z_mid = deg(238), 28.0
+    cos = math.cos(CONE.a)
+    # (its course on the cone unrolled about (t_mid, z_mid), then stepped along every 0.8 in)
+    course = [Vector(((deg(a) - t_mid) * CONE.r(z), (z - z_mid) / cos)) for a, z in CRACK]
+    runs = [(b - a).length for a, b in zip(course, course[1:])]
+    n = round(sum(runs) / 0.8)
+    pts = []
     for i in range(n + 1):
-        s = length * i / n
-        wide = 0.55 + 0.1 * math.sin(s * 1.9) + 0.07 * math.sin(s * 0.67 + 1.0)  # half its width, inches: uneven, as a brush leaves it
-        p = start + along * s + side * (0.45 * math.sin(s * 0.33 + 0.4) + 0.2 * math.sin(s * 0.9 + 2.0))  # and not quite straight
-        verts += [tuple(p + side * wide), tuple(p - side * wide)]
+        s = sum(runs) * i / n
+        k = 0
+        while k < len(runs) - 1 and s > runs[k]:
+            s -= runs[k]
+            k += 1
+        pts.append(course[k].lerp(course[k + 1], min(1.0, s / runs[k])))
+
+    def wide(z: float) -> float:
+        """Its width at a station, inches."""
+        for (z0, w0), (z1, w1) in zip(CRACK_WIDE, CRACK_WIDE[1:]):
+            if z <= z1:
+                return w0 + (w1 - w0) * max(0.0, z - z0) / (z1 - z0)
+        return CRACK_WIDE[-1][1]
+
+    verts, faces = [], []
+    for i, p in enumerate(pts):
+        along = (pts[min(n, i + 1)] - pts[max(0, i - 1)]).normalized()  # (across a corner of its course: the two runs' mean)
+        side = Vector((along.y, -along.x))
+        s = 0.8 * i
+        half = wide(z_mid + p.y * cos) / 2 * (1.0 + 0.16 * math.sin(s * 1.9) + 0.1 * math.sin(s * 0.67 + 1.0))  # uneven, as a brush leaves it
+        verts += [tuple(p + side * half), tuple(p - side * half)]
         if i:
             faces.append((2 * i - 2, 2 * i, 2 * i + 1, 2 * i - 1))
     skin.paint(crack, verts, faces, t_mid, z_mid)
@@ -307,8 +378,8 @@ def build_paint(M, g, skin: Skin, font) -> None:
         M["paint_white"],
         g,
         "The painted crack",
-        "Grissom named his capsule for its shape and had the Liberty Bell's crack painted on it: a white line from the base toward the nose. "
-        "Its line here is read off three photographs taken on the pad.",
+        "Grissom named his capsule for its shape and had the Liberty Bell's crack painted on it: a white line from the base nearly to the nose. "
+        "Its line here is read off five photographs taken on the pad; a stretch of it behind the pilot's shoulder is in none of them.",
         smooth=False,
     )
 

@@ -49,8 +49,10 @@ pressure vessel, every station and motor. This file is what was No. 11's own.
 | Outer pane's lie | on the cone's own curve, at 20° to the axis | documented | SEDR 104, 2-5: "conforms to the curvature of the capsule conical section" |
 | Inner panes' lie | flat, at 26° to the axis: 6° steeper than the skin, nearest it at the heat shield's end | documented (the angle); estimated (that 26° is theirs, read off the figure's section) | SP-45, Figure 19-1 |
 | How far in the inner panes stand | 2.0 in under the skin at their heat-shield end, 0.9 in up the cone from the outer pane's end | estimated | the figure's section is not dimensioned there; set so that the flat frame clears the round wall |
-| Where the window stands | the middle of the outer pane at station 35.8, on the centreline | estimated | NASA 61-MR4-53 and MSFC-6116423, scaled by the pane's own 21 in: about 12 in of cone above it and 25 in below |
-| The plate it is set in | 30° wide, stations 24.8 to 46.8, plain, screwed round its edge | estimated | the same photographs |
+| Where the window stands | the middle of the outer pane at station 31.5 (the glass from 21.6 to 41.4), on the centreline | estimated, ±1.5 in | No document read gives it: SEDR 104 (2-5, and Figure 13-11, whose window thermocouples have no station), SP-45 and the MR-4 Results have no station for the window, and the trapezoid SEDR 104's Figure 1-3 draws on the cone is the hatch (below). From photographs: No. 20 on the carrier's deck (NASA S63-07701: the glass from 21.1 to 40.2, between the cone's joint with the cylinder and its foot) and No. 13 as it is kept (NASM A19670176000, Commons "Friendship 7 National Air and Space Museum": 21.9 to 41.3), carried to this capsule through the hatch's opening, which stands beside the window on both (Liberty Bell 7 at Bonn in 2014, Commons "Ankunft der Liberty Bell 7 (15224059479)": the glass's foot 2.4 in above the opening's foot and its head 3.7 in below its head, against 2.9 and 3.6 on No. 13). This capsule's own close photographs agree once their cameras are solved for: NASA 61-MR4-53 and MSFC-6116423, fitted together to the cone with the pane as the one thing of known size and its foot held at 21.6, put the lower edge of the ring at the cone's foot at station 0.3, so the glass's foot is 21.3 in above it on No. 11 itself. Scaled by the pane's own 21 in with nothing for perspective, as they were until November 2026, they read 2 to 4 in higher: the model had 35.8 |
+| The plate it is set in | 30° wide, stations 20.5 to 42.5 (1.1 in past the glass at either end), plain, screwed round its edge | estimated | No. 13's as it is kept: its rows of screws 1.8 in below the glass's foot and 1.4 in above its head. Its width round the cone is not measured |
+| The pilot's view through it | 33° up and down, about 30° across | documented | MR-4 Results, pp. 3 and 33: "33° in a vertical direction and approximately 30° horizontally"; at the orbit attitude "two-thirds of the window is filled with the earth's surface". NASA SP-45's Figure 19-1 draws 30° in section, its lower sight line parallel to the long axis, and the field as 30° high, 60° across at one end and 20° at the other for both eyes |
+| The same in the model | from the couch's eye point through the inner frame and the outer rim: 33° up and down (sight lines 4.8° to 37.8° out from the long axis), 30° across at the middle | derived, from an estimated eye point | Computed from the model's own figures (`WINDOW_Z`, the panes, the inner frame's opening and depth, the rim) and the seated figure's eyes (`Seat_Pilot`: 20.1 in off the axis at station 13.9, Grissom's). It is the only documented check there is on where the window stands, and it depends as much on where the eyes are, which is the seated figure's and estimated. With the window at 35.8, where it was until November 2026, the same gave 19° up and down and 23° across. The orbital capsules' pilots, 21.0 to 21.9 in off the axis, get 27° to 30° (1° to 33°) where they had 14° to 16° |
 | Retaining rim | 0.78 in wide, 0.09 in proud, pale metal | estimated | NASA S61-03698 |
 | The well between the panes | lined with crinkled foil | estimated | NASA 61-MR4-53, MSFC-6116423 |
 
@@ -59,7 +61,8 @@ pressure vessel, every station and motor. This file is what was No. 11's own.
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Where it is | its edge beside the window's plate; its middle 45° round from the window toward the pilot's right; 55° wide | estimated | NASA 61-MR4-53, S61-02881, MSFC-6116423: with the hatch off, its sill stands 2 to 3 in from the window's plate. Width from SEDR 104 Figure 2-2's proportions |
-| Stations | 18.5 to 45.4 | estimated, within documented bounds | SEDR 104 Figure 13-11 (capsule 9): thermocouples on the "emergency egress hatch, outer edge" at Z123.0 and Z146.0 and on the hatch at Z124.25 and Z147.25, so it reaches at least from 18.5 to 42.75; its top is level with the window plate's in the photographs |
+| Stations | 18.5 to 45.4 | estimated, within documented bounds | SEDR 104 Figure 13-11 (capsule 9): thermocouples on the "emergency egress hatch, outer edge" at Z123.0 and Z146.0 and on the hatch at Z124.25 and Z147.25, so it reaches at least from 18.5 to 42.75. No. 13's sill as it is kept measures from about 19.7 to 45.6 (NASM A19670176000), which the model's is within the error of |
+| Stations: what does not agree | the hatch is left where it was | open | SEDR 104's stations diagram, Figure 1-3 (the same in the editions of December 1959 and November 1961), draws the hatch on the cone from Z123.09 to Z146.126: stations 18.59 to 41.63, 23.04 in. That is the length of the opening inside the sill (22.4 to 22.6 in on Nos. 13 and 11) but 1 to 3 in lower than the photographs have that opening, and Figure 13-11's thermocouple on the hatch at Z147.25 (42.75) is above its head. The hatch's head is not level with the window's plate's, as this table took it until November 2026: on Nos. 11 and 13 the glass's head is about 3.5 in below the sill's and the plate's about 2.2 in. The window keeps its place against the hatch in every photograph, so if the hatch were ever put where Figure 1-3 draws it the window would go about 2 in lower still. Read again in November 2026 with cameras fitted to the cone, the later capsules do not settle it: No. 13's opening in the skin runs from 18.7 to 44.6 (NASM), No. 16's border as it was shown at Houston from 16.5 to 47.0 (S66-53205), and on No. 20 a white line painted round the hatch's own shingles runs from 20.3 to 42.0 (S63-07701) with the head and foot of its opening level with the two row seams (GPN-2000-001335) |
 | Shingles | two, fastened only to the hatch | documented | SEDR 104, 2-4 |
 | Joint round its shingles | 0.14 in, three times the joint between the capsule's own | estimated | chosen so that the hatch can be told from the skin round it; no photograph read shows the hatch on |
 | Lanyard cover | a plate 2.6 by 5.7 in in the corner toward the window and the nose | documented (that there was one); estimated (which corner, how big) | *This New Ocean*, p. 367; SEDR 104 Figure 2-2; MR-4 Results Figure 2-1 |
@@ -76,9 +79,9 @@ the cone"), where its model had had it at the pilot's right hand.
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Beads | pressed across each shingle, running round the cone, one above the next at 1.3 in | estimated (the pitch, and 0.14 in high) | NASA 61-MR4-53, S61-03705, S61-03740; the capsule as raised (KSC, July 1999) and as shown at the Cosmosphere |
-| Columns | twelve, of 30° | estimated | the same: the window's plate is one column; most shingles carry two stacks of beads side by side, which would be 24 stringers under them |
-| Rows | seams at stations 24.8 and 46.8, and a plain riveted band from the shield's ring to 6.2 | estimated | the same |
-| The shingle with the name | one bead across its whole width; its foot at station 9.6 | estimated | MSFC-6116423 |
+| Columns | twelve, of 30° | estimated | the same: the window's plate is one column; most shingles carry two stacks of beads side by side, which would be 24 stringers under them. Left of the window the joints are 15° apart on this capsule (at 254°, 239° and 224°: 61-MR4-53, 61-MR4-76, S61-02882), so each of the model's stacks is a shingle of its own there |
+| Rows | seams at the foot and the head of the window's plate, stations 20.5 and 42.5, in the window's column and the three beside it away from the hatch (165° to 255°); the shingles above the hatch begin at its border's head, 46.8; every other column's seams at 24.8 and 46.8; a plain riveted band from the shield's ring to 6.2 | estimated | NASA 61-MR4-53 (and S62-03907 of No. 18, No. 13 as kept) show the seams running on from the window's plate on the side away from the hatch, so those moved with the window in November 2026. The columns from the hatch round past the periscope to 165° were read against the window where it was before and have not been read again |
+| The shingle with the name | from the seam at the window's foot down to station 7.6; its beads in two halves either side of a flat strip down its middle with three screws in it, ten to a half, from station 19.5 to 8.6; under it a plain strip with two rows of rivets, at 7.2 and 5.6 | estimated, ±0.5 in | NASA 61-MR4-53 and MSFC-6116423, solved together against the cone in November 2026. Until then: its foot at 9.6 and one bead across its whole width, read off MSFC-6116423 by eye. The model's beads end at 8.8, and its rivets are the band's, at 5.4 and 2.9 |
 | Fasteners | a screw in a dimpled washer every 2.6 in across each end of a shingle and every 3.4 in up one side | estimated | S61-03705 |
 | Gauge | René 41, 0.016 in | documented | Hammack and Heberlig |
 
@@ -88,13 +91,22 @@ All of it is placed from photographs; none of the places is dimensioned.
 
 | Item | As modelled | Basis |
 | --- | --- | --- |
-| LIBERTY BELL 7 | three lines under the window: 12.7, 8.1 and 1.9 in long, letters 2.9 to 3.6 in tall, at stations 22.4, 18.4 and 14.3 | NASA 61-MR4-53, MSFC-6116423, S61-03698 |
-| The crack | a white line 1 in wide from the base at 264°, under the name's left edge, up and away from the hatch at 33° to the meridian, to station 39 | NASA 61-MR4-53, MSFC-6116423, S61-03740. "About two-thirds toward the nose" is a secondary description |
+| LIBERTY BELL 7 | three lines under the window: LIBERTY 13.8 in long with letters 3.0 in tall at station 17.5; BELL 8.4 by 2.85 at 13.65; the 7 1.6 wide and 2.95 tall at 9.75, on the flat strip down the shingle's middle (270.6°) | NASA 61-MR4-53 and MSFC-6116423, solved together against the cone in November 2026: LIBERTY from 16.0 to 19.0, its top 1.3 in under the screws at the window's foot; BELL from 12.25 to 15.1; the 7 from 8.3 to 11.2. To 0.3 in for LIBERTY and 0.5 for the 7; 61-MR4-76 agrees. Until then they stood 4.5 to 4.9 in higher, hung from the window's plate where it then was and scaled by the pane, which is further from the camera than the name is |
+| The crack | a white line from the base at 252.5°, left of the name's shingle (and 2.4 in wide where it touches that shingle's line of screws), up and away from the hatch at 33° to the meridian and then 22°, 1.75 in wide narrowing to 1.1, to the joint between two shingles at 224°, which it runs up from station 41.4 to a point at 54.5, 13 in above the glass's head | its lower course, to station 24.3: NASA 61-MR4-53, MSFC-6116423 and 61-MR4-76, which agree to half a degree. Its upper course and its top: S61-02882 (61-MR4-79 agrees at 53 to 55), ±1.5 in and 2°. Between 24.3 and 41.4 no photograph read shows it (the pilot stands in front of it): taken on at the same lean. Until November 2026 it left the base at 264.5°, under the name, and stopped at station 39. "About two-thirds toward the nose" is a secondary description |
 | UNITED STATES | two lines, 23 in long, letters 6.5 in tall, centred on 133° at stations 42.6 and 33.9: beside the periscope's door, on the side away from the hatch | NASA S61-03705; S61-02824; the capsule as raised |
 | Flag | 12 by 6.3 in at 61°, station 40: the other side of the periscope's door | NASA S61-02824 (from the helicopter, small): size and place are rough |
 
 Not established: whether anything was painted between 165° and 225°. Freedom 7 carried UNITED
 STATES twice. No photograph read shows that side of No. 11, and the model has nothing there.
+
+**Not modelled: a second UNITED STATES, across the hatch.** With the hatch off for the insertion,
+61-MR4-53 and S61-02882 show a U and an S on the skin between the window's plate and the hatch's
+opening, cut off at the opening: the U from 283° at stations 36.9 to 42.3, the S from 284.5° at 28.2
+to 33.5 (letters 5.4 in; the lines' middles at 39.6 and 30.85; the two photographs agree to half an
+inch). The rest of the two words must have been on the hatch, which is in no photograph read; if they
+were centred on it they ran from 283° to 347°. They are left out until a photograph with the hatch on
+is read. Their stations are 3 in below those of the pair the model has at 133° (42.6 and 33.9), which
+was laid out against the window where it stood before and has not been read again.
 
 ## Periscope and umbilical
 
@@ -234,6 +246,14 @@ on +X), which way Freedom 7's beads run (round the cone, as here), and Freedom 7
 capsule's stays 41.5 from its own photographs).
 
 ## What the model gets wrong or leaves out
+
+- **Only the window's side was read again when the window was moved** (November 2026): the window, its plate, the
+  seams of the three columns beside it away from the hatch, the name, its shingle and the crack are where photographs
+  measured then put them. The far side is as it was laid out before, against a window 4.3 in too high: the seams from
+  the hatch round past the periscope to 165° (so the rows step at 165°), UNITED STATES at 133° and the flag at 61°,
+  the periscope's door and the umbilical. They probably stand 3 to 4 in too high. The plate the window is set in
+  reaches 1.1 in past the glass's head, where 61-MR4-53 has 0.6.
+- **A second UNITED STATES ran across the hatch** and is not painted ("Paint", above).
 
 - **The shingle layout is a regular one fitted to photographs of three sides.** Real shingles
   differ in size and are cut round fittings. The small plates with round fittings in the top row
