@@ -15,8 +15,8 @@ import type { Palette } from './land';
  * - **The ground** is grey-brown desert loam under a thick clay crust (Chertok's "steppe asphalt", which the builders'
  *   trucks of 1955 to 1957 ground to dust in ruts kilometres wide), with takyrs (bare cracked clay floors) and
  *   solonchaks (salt crusts) in the hollows and small patches of sand on the rises: the soils of the Syr Darya's desert
- *   valley (Veselova and others 2017). Where each lies here, how big and its colours are estimated: no soil map of the
- *   cosmodrome has been read.
+ *   valley (Veselova and others 2017). Where each lies round a site is the site's (tyuratam.ts: the maps, the Corona
+ *   frames and Krechetov's soil map of the cosmodrome, 2015); their colours are estimated.
  * - **What grows**: white-earth wormwood (Artemisia terrae-albae, 8 to 30 cm, grey-white felted) in complexes with
  *   biyurgun (Anabasis salsa), with teresken (Krascheninnikovia ceratoides), saltwort in the hollows and sedge
  *   (Carex physodes) on sand: the communities recorded on the cosmodrome's land (Lednev, plantarium.ru, 2017 and
@@ -49,7 +49,7 @@ export const STEPPE = {
   sand: srgb(0xcbb38a),
   sandDark: srgb(0xb39a73),
   /** Crust ground to dust by wheels: paler than the crust; the ruts pressed into it. */
-  dust: srgb(0xc3b8a0),
+  dust: srgb(0xd4c9af),
   rut: srgb(0x9d917a),
   /** The ephemerals' short sward: fresh green, and the grey-green where it is thin or the wormwood's felt shows through. */
   herbGreen: srgb(0x87994e),

@@ -703,3 +703,41 @@ test('a drogue let out going up, inside what it can take, pulls against the clim
     `out at ${drogue.out.altitude.toFixed(0)} m in ${drogue.out.q.toFixed(0)} Pa; top ${drogue.top.toFixed(0)} m against ${without.top.toFixed(0)}`,
   );
 });
+
+test('Vostok 1’s four strap-ons leave as a cross: each a body of its own, swung out and vented away, tumbling, down some 400 km along the track', async () => {
+  const { flight: vostok1 } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+  const { orbitalRecord } = await import('../src/viewer/ascent.ts');
+  const { length, sub, dot, unit } = await import('../src/world/frames.ts');
+  const run = orbitalRecord(vostok1);
+  const four = ['B', 'V', 'G', 'D'].map((l) => run.sheds.get(`boosters/${l}`));
+  assert.ok(four.every(Boolean), 'each strap-on is flown');
+  const t0 = four[0].from;
+  assert.equal(t0, 119.5, 'at the stage’s separation');
+  const at = (t) => four.map((b) => b.at(t));
+  const middle = (s) => s.map((x) => x.r).reduce((m, r) => m.map((v, i) => v + r[i] / 4), [0, 0, 0]);
+  // as they leave: each from its own place round the stack, 2.78 m out
+  const first = at(t0);
+  const m0 = middle(first);
+  for (const s of first) assert.ok(Math.abs(length(sub(s.r, m0)) - 2.78) < 0.05);
+  // and outward: five seconds on each is further from the four's middle, by much the same, the four still a cross
+  const later = at(t0 + 5);
+  const m5 = middle(later);
+  const out = later.map((s) => length(sub(s.r, m5)));
+  assert.ok(Math.min(...out) > 8, `spread: ${out.map((x) => x.toFixed(1))}`);
+  assert.ok(Math.max(...out) / Math.min(...out) < 1.15, 'evenly');
+  const ways = later.map((s) => unit(sub(s.r, m5)));
+  assert.ok(Math.abs(dot(ways[0], ways[2]) + 1) < 0.1 && Math.abs(dot(ways[1], ways[3]) + 1) < 0.1, 'B against G, V against D');
+  assert.ok(Math.abs(dot(ways[0], ways[1])) < 0.15, 'B and V square to each other');
+  // each turning end over end as it goes, not falling flat
+  for (const b of four) {
+    const [p, q] = [b.at(t0).q, b.at(t0 + 5).q];
+    const turned = (2 * Math.acos(Math.min(1, Math.abs(p.reduce((s, v, i) => s + v * q[i], 0))))) / (Math.PI / 180);
+    assert.ok(turned > 10, `turned ${turned.toFixed(1)} degrees in five seconds`);
+  }
+  // down in the drop zone: about 350 km from Site 1 for Soyuz's on 51.6° (derived: Interfax, Progress MS-06's), and the
+  // record gives none of its own for 64.95°: within 300 to 450 km down range is the check
+  for (const b of four) {
+    const l = b.finish();
+    assert.ok(l.range > 300_000 && l.range < 450_000, `down ${(l.range / 1000).toFixed(0)} km from the pad`);
+  }
+});

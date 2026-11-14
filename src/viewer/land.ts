@@ -52,6 +52,14 @@ export interface LandSpec {
   texels: number;
   /** Half the side of all the land, metres. */
   far: number;
+  /** Texels along a side of the coarse map out to `far`: unless given, 512. */
+  farTexels?: number;
+  /**
+   * Bake each map's two halves (`coverA`, `coverB`) side by side into one texture, so the land reads two textures where
+   * it would read four: for a place whose own GLSL reads textures of its own (tyuratam.ts), within the budget of
+   * texture units a lit material keeps (units.ts). Unless given, four.
+   */
+  paired?: boolean;
   /**
    * GLSL defining `vec4 coverA(vec2 p)` (woody cover, herb cover, bare ground, zone) and
    * `vec4 coverB(vec2 p)` (worked ground, wet, loose sand, spare), each 0 to 1, at `p` metres in the
@@ -161,7 +169,7 @@ function sunKept(): string {
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /** GLSL to read the two maps at a point, the detailed one blended into the coarse one at its edge. */
-const MAPS = /* glsl */ `
+const MAPS_FOUR = /* glsl */ `
   uniform sampler2D uNearA, uNearB, uFarA, uFarB;
   uniform float uNearSize, uFarSize;
   float nearWeight(vec2 p) {
@@ -181,6 +189,33 @@ const MAPS = /* glsl */ `
   vec4 landBf(vec2 p) {
     return mix(texture(uFarB, p / (2.0 * uFarSize) + 0.5), texture(uNearB, p / (2.0 * uNearSize) + 0.5), nearWeight(p));
   }`;
+/** The same, for maps baked in pairs (`LandSpec.paired`): A in each texture's left half, B in its right. */
+const MAPS_PAIRED = (nearTexels: number, farTexels: number) => /* glsl */ `
+  uniform sampler2D uNear, uFar;
+  uniform float uNearSize, uFarSize;
+  float nearWeight(vec2 p) {
+    vec2 q = abs(p / uNearSize);
+    return 1.0 - smoothstep(0.9, 0.985, max(q.x, q.y));
+  }
+  // where in its pair a map's point is: kept half a texel inside its own half, so its neighbour's edge never bleeds in
+  vec2 inPair(vec2 uv, float half_, float texels) {
+    return vec2((clamp(uv.x, 0.5 / texels, 1.0 - 0.5 / texels) + half_) * 0.5, uv.y);
+  }
+  vec2 nearAt(vec2 p, float half_) { return inPair(p / (2.0 * uNearSize) + 0.5, half_, ${nearTexels.toFixed(1)}); }
+  vec2 farAt(vec2 p, float half_) { return inPair(p / (2.0 * uFarSize) + 0.5, half_, ${farTexels.toFixed(1)}); }
+  vec4 landA(vec2 p) { return mix(textureLod(uFar, farAt(p, 0.0), 0.0), textureLod(uNear, nearAt(p, 0.0), 0.0), nearWeight(p)); }
+  vec4 landB(vec2 p) { return mix(textureLod(uFar, farAt(p, 1.0), 0.0), textureLod(uNear, nearAt(p, 1.0), 0.0), nearWeight(p)); }
+  // (filtered for the pixel's footprint: the derivatives of the point in its own half, so the seam between the halves is not a jump)
+  #ifdef LAND_FRAGMENT
+  vec4 landAf(vec2 p) {
+    vec2 f = p / (2.0 * uFarSize) * vec2(0.5, 1.0), n = p / (2.0 * uNearSize) * vec2(0.5, 1.0);
+    return mix(textureGrad(uFar, farAt(p, 0.0), dFdx(f), dFdy(f)), textureGrad(uNear, nearAt(p, 0.0), dFdx(n), dFdy(n)), nearWeight(p));
+  }
+  vec4 landBf(vec2 p) {
+    vec2 f = p / (2.0 * uFarSize) * vec2(0.5, 1.0), n = p / (2.0 * uNearSize) * vec2(0.5, 1.0);
+    return mix(textureGrad(uFar, farAt(p, 1.0), dFdx(f), dFdy(f)), textureGrad(uNear, nearAt(p, 1.0), dFdx(n), dFdy(n)), nearWeight(p));
+  }
+  #endif`;
 
 /** GLSL: the domes of a closed canopy, one crown to a cell of `size` metres, each a little off its middle: 0 between them, 1 on top. */
 const crowns = (size: number) => /* glsl */ `
@@ -199,9 +234,15 @@ const crowns = (size: number) => /* glsl */ `
     return top;
   }`;
 
-/** Render the site's cover into a square map `half` metres each way of the origin. */
-function bake(renderer: THREE.WebGLRenderer, spec: LandSpec, which: 'A' | 'B', half: number, texels: number): THREE.WebGLRenderTarget {
-  const target = new THREE.WebGLRenderTarget(texels, texels, {
+/** Render the site's cover into a square map `half` metres each way of the origin; with `AB`, A and B side by side (`LandSpec.paired`). */
+function bake(
+  renderer: THREE.WebGLRenderer,
+  spec: LandSpec,
+  which: 'A' | 'B' | 'AB',
+  half: number,
+  texels: number,
+): THREE.WebGLRenderTarget {
+  const target = new THREE.WebGLRenderTarget(which === 'AB' ? 2 * texels : texels, texels, {
     depthBuffer: false,
     generateMipmaps: true,
     minFilter: THREE.LinearMipmapLinearFilter,
@@ -221,8 +262,14 @@ function bake(renderer: THREE.WebGLRenderer, spec: LandSpec, which: 'A' | 'B', h
       ${spec.reliefGlsl}
       ${spec.cover}
       void main() {
-        vec2 p = (gl_FragCoord.xy / uTexels * 2.0 - 1.0) * uHalf;
-        gl_FragColor = clamp(cover${which}(p), 0.0, 1.0);
+        ${
+          which === 'AB'
+            ? `bool b = gl_FragCoord.x >= uTexels;
+        vec2 p = ((gl_FragCoord.xy - vec2(b ? uTexels : 0.0, 0.0)) / uTexels * 2.0 - 1.0) * uHalf;
+        gl_FragColor = clamp(b ? coverB(p) : coverA(p), 0.0, 1.0);`
+            : `vec2 p = (gl_FragCoord.xy / uTexels * 2.0 - 1.0) * uHalf;
+        gl_FragColor = clamp(cover${which}(p), 0.0, 1.0);`
+        }
       }`,
     depthTest: false,
     depthWrite: false,
@@ -396,26 +443,40 @@ export class Land {
   /** Half the side of the square the land covers, metres: its patches tile out to here, a little past `LandSpec.far`. */
   readonly extent: number;
   private beyond: (Beyond & { from: { value: THREE.Vector2 } }) | null = null;
+  /** The GLSL that reads the maps: four of them, or two in pairs. */
+  private readonly maps: string;
 
   /** `baseY`: the height the land's relief is measured from, in the mesh's parent; `turn`: radians about the vertical from the land's frame to its parent's. */
   constructor(renderer: THREE.WebGLRenderer, spec: LandSpec, baseY: number, turn: number) {
     this.spec = spec;
-    const nearA = bake(renderer, spec, 'A', spec.near, spec.texels);
-    const nearB = bake(renderer, spec, 'B', spec.near, spec.texels);
-    const farTexels = 512;
-    const farA = bake(renderer, spec, 'A', spec.far, farTexels);
-    const farB = bake(renderer, spec, 'B', spec.far, farTexels);
+    const farTexels = spec.farTexels ?? 512;
     this.coverBytes = new Uint8Array(spec.texels * spec.texels * 4);
-    renderer.readRenderTargetPixels(nearA, 0, 0, spec.texels, spec.texels, this.coverBytes);
-
-    this.uniforms = {
-      uNearA: { value: nearA.texture },
-      uNearB: { value: nearB.texture },
-      uFarA: { value: farA.texture },
-      uFarB: { value: farB.texture },
-      uNearSize: { value: spec.near },
-      uFarSize: { value: spec.far },
-    };
+    if (spec.paired) {
+      const near = bake(renderer, spec, 'AB', spec.near, spec.texels);
+      const far = bake(renderer, spec, 'AB', spec.far, farTexels);
+      renderer.readRenderTargetPixels(near, 0, 0, spec.texels, spec.texels, this.coverBytes);
+      this.uniforms = {
+        uNear: { value: near.texture },
+        uFar: { value: far.texture },
+        uNearSize: { value: spec.near },
+        uFarSize: { value: spec.far },
+      };
+    } else {
+      const nearA = bake(renderer, spec, 'A', spec.near, spec.texels);
+      const nearB = bake(renderer, spec, 'B', spec.near, spec.texels);
+      const farA = bake(renderer, spec, 'A', spec.far, farTexels);
+      const farB = bake(renderer, spec, 'B', spec.far, farTexels);
+      renderer.readRenderTargetPixels(nearA, 0, 0, spec.texels, spec.texels, this.coverBytes);
+      this.uniforms = {
+        uNearA: { value: nearA.texture },
+        uNearB: { value: nearB.texture },
+        uFarA: { value: farA.texture },
+        uFarB: { value: farB.texture },
+        uNearSize: { value: spec.near },
+        uFarSize: { value: spec.far },
+      };
+    }
+    this.maps = spec.paired ? MAPS_PAIRED(spec.texels, farTexels) : MAPS_FOUR;
 
     const top = CELL * GRID * 2 ** this.rootLevel * 2; // a root's side
     const n = Math.ceil(spec.far / top);
@@ -635,7 +696,7 @@ export class Land {
           varying float vCanopy;          // how far the thicket's roof stands above the ground here, metres
           varying float vCrown;           // 0 between crowns, 1 on their tops
           ${beyond ? `#define LAND_BEYOND\n uniform vec2 uBeyond; varying float vHanded; varying vec3 vBeyond;\n${beyond.vertex}` : ''}
-          ${MAPS}
+          ${this.maps}
           ${NOISE}
           ${FIELD}
           ${spec.shared}
@@ -710,7 +771,7 @@ export class Land {
           uniform float uTime;
           uniform float uCel;
           uniform vec4 uEye;
-          ${MAPS}
+          ${spec.paired ? '#define LAND_FRAGMENT\n' : ''}${this.maps}
           ${NOISE}
           ${FIELD}
           ${spec.shared}

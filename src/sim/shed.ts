@@ -152,24 +152,40 @@ export function shedder(
       const burn = m.burn.value;
       const tail = m.impulse ? Math.max(0, (2 * (m.impulse.value - m.thrust.value * burn)) / m.thrust.value) : 0;
       const cant = ((m.cant?.value ?? 0) * Math.PI) / 180;
-      return { thrust: m.thrust.value, burn, tail, line: [Math.cos(cant), 0, Math.sin(cant)] as Vec3 };
+      // (off the centre of mass, canted, it turns the body: its arm along the body's +X)
+      const arm = m.station ? m.station.value - centre : 0;
+      return { thrust: m.thrust.value, burn, tail, line: [Math.cos(cant), 0, Math.sin(cant)] as Vec3, arm };
     });
   /** When the last of them is out, seconds from the release. */
   const out = motors.reduce((a, m) => Math.max(a, m.burn + m.tail), 0);
   const ZERO: Vec3 = [0, 0, 0];
+  /** One motor's thrust, N, `since` seconds after the release. */
+  const level = (m: (typeof motors)[number], since: number): number =>
+    since < m.burn ? m.thrust : m.tail > 0 ? m.thrust * Math.max(0, 1 - (since - m.burn) / m.tail) : 0;
   /** What they push with together, N, in the body's axes. */
   const thrust = (since: number): Vec3 => {
     if (since < 0 || since >= out) return ZERO;
     let sum = ZERO;
     for (const m of motors) {
-      const f = since < m.burn ? m.thrust : m.tail > 0 ? m.thrust * Math.max(0, 1 - (since - m.burn) / m.tail) : 0;
+      const f = level(m, since);
       if (f > 0) sum = add(sum, scale(m.line, f));
+    }
+    return sum;
+  };
+  /** How they turn it together, N m, in the body's axes: each one's arm along +X crossed with its push. */
+  const turning = motors.some((m) => m.arm !== 0);
+  const twist = (since: number): Vec3 => {
+    if (!turning || since < 0 || since >= out) return ZERO;
+    let sum = ZERO;
+    for (const m of motors) {
+      const f = level(m, since);
+      if (f > 0 && m.arm !== 0) sum = add(sum, cross([m.arm, 0, 0], scale(m.line, f)));
     }
     return sum;
   };
 
   /** `push`: its rockets' thrust, N, in its own axes, held through a tick at what it is at the tick's middle (so a burn that ends on a tick ends there, not a stage early). */
-  const forces = (d: Dyn, at: number, still: boolean, push: Vec3) => {
+  const forces = (d: Dyn, at: number, still: boolean, push: Vec3, turn0: Vec3 = ZERO) => {
     const air = windAt(d.r, d.v, at, seaLevel);
     let force: Vec3 = [0, 0, 0];
     let torque: Vec3 = [0, 0, 0];
@@ -179,10 +195,11 @@ export function shedder(
       torque = f.torque;
     }
     if (push !== ZERO) force = add(force, turn(d.q, push));
+    if (turn0 !== ZERO) torque = add(torque, turn0);
     return { force, torque, air };
   };
-  const rate = (d: Dyn, at: number, still: boolean, push: Vec3): Dyn => {
-    const f = forces(d, at, still, push);
+  const rate = (d: Dyn, at: number, still: boolean, push: Vec3, turn0: Vec3 = ZERO): Dyn => {
+    const f = forces(d, at, still, push, turn0);
     return { r: d.v, v: add(gravity(d.r), scale(f.force, 1 / mass)), q: spin(d.q, d.w), w: euler(d.w, f.torque, roll, across) };
   };
   const nudge = (d: Dyn, k: Dyn, h: number): Dyn => ({
@@ -193,10 +210,11 @@ export function shedder(
   });
   const rk4 = (d: Dyn, at: number, h: number, still: boolean): Dyn => {
     const push = thrust(at + h / 2 - release.t);
-    const k1 = rate(d, at, still, push);
-    const k2 = rate(nudge(d, k1, h / 2), at + h / 2, still, push);
-    const k3 = rate(nudge(d, k2, h / 2), at + h / 2, still, push);
-    const k4 = rate(nudge(d, k3, h), at + h, still, push);
+    const torque = twist(at + h / 2 - release.t);
+    const k1 = rate(d, at, still, push, torque);
+    const k2 = rate(nudge(d, k1, h / 2), at + h / 2, still, push, torque);
+    const k3 = rate(nudge(d, k2, h / 2), at + h / 2, still, push, torque);
+    const k4 = rate(nudge(d, k3, h), at + h, still, push, torque);
     const sum = (a: Vec3, b: Vec3, c: Vec3, e: Vec3): Vec3 => scale(add(add(a, scale(b, 2)), add(scale(c, 2), e)), 1 / 6);
     const next = nudge(
       d,
@@ -456,4 +474,38 @@ export function recordRelease(trajectory: Trajectory, def: ShedBody, t: number, 
     across: piece.across,
     centre: piece.centre,
   };
+}
+
+/**
+ * How a strap-on leaves (`ShedBody.apart`): from `release` as for any shed body (its centre of mass taken on the stack's
+ * axis at its station, with the stack's velocity and attitude, not turning), moved out to its own axis, turned so that
+ * its +Z points away from the stack, and given what its swing gave it. Its lower ties let go, the thrust its engine still
+ * gives (`thrust`, N: the stage's tail-off once it has been cut, or what it was burning at if it is let go while it
+ * burns) turns it about the ball joint at its tip, tail outward, against the joint's reaction; when it has turned
+ * `swing` degrees the ball leaves its socket and it flies on its own with the rate that left it, and the outward and
+ * backward speed its centre of mass had going round the joint. The swing itself (about a second) is not flown or drawn:
+ * it leaves as it stood, with the swing's rate and speed. Its vent, if it has one, is one of its motors.
+ *
+ * The same release, whatever the flight: each strap-on on its own bearing, the four of them leaving as a cross.
+ */
+export function apart(def: ShedBody, release: Release, thrust?: number): Release {
+  const a = def.apart;
+  if (!a) return release;
+  const along = turn(release.q, X);
+  const b = (a.bearing * Math.PI) / 180;
+  // the way out from the stack to this one, from the way down range (the body's -Z) toward its left (+Y)
+  const out = unit(turn(release.q, [0, Math.sin(b), -Math.cos(b)]));
+  const across = a.across.value;
+  const r = add(release.r, scale(out, across));
+  // the joint, from its centre of mass, and how hard the swing turns it about there
+  const arm = add(scale(along, a.pivot.station.value - release.centre), scale(out, a.pivot.across.value - across));
+  const pushed = thrust ?? a.tailOff.value;
+  const torque = Math.max(0, pushed) * (across - a.pivot.across.value);
+  const about = release.across + release.mass * dot(arm, arm);
+  const rate = Math.sqrt((2 * torque * ((a.swing.value * Math.PI) / 180)) / about);
+  // its own axes: +X the stack's way, +Z out; it turns about +Y, tail outward
+  const side = cross(out, along);
+  const q = fromAxes(along, side, out);
+  const spinning = scale(side, rate);
+  return { ...release, r, v: add(release.v, cross(spinning, scale(arm, -1))), q, w: [0, rate, 0] };
 }

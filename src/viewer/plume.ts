@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { type Flame, tend } from './exhaust.ts';
 import type { Cluster } from './fires.ts';
+import { FLAMES, type FlameLook, KINDS } from './flames.ts';
 
 /**
  * The engine's fire: where it is, how hard it burns and what shape the air lets it take. It is
@@ -79,9 +80,13 @@ export class Plume implements Flame {
   readonly cluster: Cluster | null;
 
   /** `exitRadius` in metres; the jet leaves the mesh's origin along its -Y. `light`: one shared with other fires (`lightFires`). */
-  constructor(exitRadius: number, cluster: Cluster | null = null, light?: THREE.PointLight) {
+  /** What it burns, as the fire's tables hold it (flames.ts `kindOf`): the alcohol flame unless told. */
+  readonly kind: number;
+
+  constructor(exitRadius: number, cluster: Cluster | null = null, light?: THREE.PointLight, kind = 0) {
     this.radius = exitRadius;
     this.cluster = cluster;
+    this.kind = kind;
     this.own = !light;
     this.light = light ?? new THREE.PointLight(0xffb468, 0, 0, 2);
     this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ visible: false }));
@@ -126,7 +131,9 @@ export class Plume implements Flame {
     // the light sits in the fire a little under the exit, and dims as the fire thins with the air
     this.light.position.copy(this.mesh.position);
     this.light.position.y -= 8 * this.radius;
-    this.light.intensity = CANDELA * this.on * this.bright * (0.25 + 0.75 * plumeShape(vacuum).air);
+    const look = lookOf(this);
+    this.light.color.setRGB(...look.light, THREE.SRGBColorSpace);
+    this.light.intensity = CANDELA * look.luminous * this.on * this.bright * (0.25 + 0.75 * plumeShape(vacuum).air);
     return changed;
   }
 }
@@ -140,6 +147,10 @@ function litArea(p: Plume): { now: number; all: number } {
 
 const at = new THREE.Vector3();
 const sum = new THREE.Vector3();
+const tint = new THREE.Vector3();
+const rgb = new THREE.Vector3();
+/** A fire's flame, by what it burns (flames.ts). */
+const lookOf = (p: Plume): FlameLook => FLAMES[KINDS[p.kind] ?? 'alcohol-lox'];
 
 /**
  * The one light of fires that burn together (each Plume made with it): in the fire a little under the exits, at their
@@ -151,8 +162,10 @@ export function lightFires(light: THREE.PointLight, plumes: readonly Plume[]): v
   let now = 0,
     all = 0,
     bright = 1,
-    air = 0;
+    air = 0,
+    luminous = 0;
   sum.set(0, 0, 0);
+  tint.set(0, 0, 0);
   for (const p of plumes) {
     if (!p.mesh.visible) continue;
     const a = litArea(p);
@@ -161,6 +174,10 @@ export function lightFires(light: THREE.PointLight, plumes: readonly Plume[]): v
     p.mesh.updateWorldMatrix(true, false);
     p.mesh.localToWorld(at.set(0, -8 * p.radius, 0));
     sum.addScaledVector(at, a.now);
+    // (each throws its own flame's light: the colour by how much of each burns, the strength by how bright each is)
+    const look = lookOf(p);
+    tint.addScaledVector(rgb.set(...look.light), a.now);
+    luminous += look.luminous * a.now;
     now += a.now;
     all += a.all;
     bright = p.bright;
@@ -173,5 +190,7 @@ export function lightFires(light: THREE.PointLight, plumes: readonly Plume[]): v
   sum.divideScalar(now);
   if (light.parent) light.parent.worldToLocal(sum);
   light.position.copy(sum);
-  light.intensity = CANDELA * (now / all) * (all / LIT_AREA) ** LIGHT_BY_AREA * bright * (0.25 + 0.75 * air);
+  tint.divideScalar(now);
+  light.color.setRGB(tint.x, tint.y, tint.z, THREE.SRGBColorSpace);
+  light.intensity = CANDELA * (luminous / now) * (now / all) * (all / LIT_AREA) ** LIGHT_BY_AREA * bright * (0.25 + 0.75 * air);
 }

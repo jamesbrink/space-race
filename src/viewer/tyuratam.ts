@@ -9,6 +9,7 @@ import { Flora } from './flora';
 import { Land, type LandSpec } from './land';
 import { STEPPE, STEPPE_CEL, STEPPE_CEL_GROUND, STEPPE_COVER, STEPPE_GROUND, STEPPE_PALETTE, STEPPE_TONE, steppeFlora } from './steppe.ts';
 import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
+import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms } from './tyuratamworks.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
@@ -272,6 +273,8 @@ const RUT_SEGMENTS = RUTS.flatMap(({ line, half, worn }) =>
 
 /** GLSL both the cover's bake and the terrain's shader use: the pit's rim, the tracks, the made ground. */
 const SHARED = /* glsl */ `
+  ${HEIGHTS_GLSL}
+  ${WAYS_GLSL}
   uniform vec2 uRim[${RIM.length}];
   uniform vec4 uRails[${SEGMENTS.length}];
   uniform vec4 uRoads[${ROAD_SEGMENTS.length}];
@@ -347,20 +350,35 @@ const SHARED = /* glsl */ `
  * keep the two in step. The pad stands on the brow of a scarp: the ground south of the tracks is at their level, the
  * steppe north of them some 8 m down and the ground east of the pit some 5 m (tyuratamrelief.ts, which the place's
  * models are built on too: sites/site1/relief.py). Over that, beyond 400 m, a swell of half a metre over hundreds
- * of metres (estimated).
+ * of metres (estimated). From 700 m to 1.5 km out the land goes over to SRTM's (tyuratamworks.ts `heightsAt`): the
+ * swell the pad stands on the north brow of, Kilinshek to the south-west, the hollow to the north and the Takyrsai's
+ * valley to the south. Inside 700 m nothing the place's models stand on has moved.
  */
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
+/** From here to here from the pad the land goes over from the place's own lie (tyuratamrelief.ts) to SRTM's, metres. */
+const SRTM_FROM: [number, number] = [700, 1500];
+/**
+ * And from here to here out (along the land's own axes, as its edge is a square) SRTM's lie comes back to the tracks'
+ * level, before the land bends onto the globe (backdrops.ts: its last 1.5 km): so the land's edge and the globe meet
+ * as they did, level, and the horizon's line does not hang on which of the land's cells are drawn.
+ */
+const SRTM_TO: [number, number] = [5200, 6400];
 function relief(x: number, z: number): number {
   const r = Math.hypot(x, z);
-  return siteRelief(x, -z) + 0.6 * (fbm2(x * 0.0025, z * 0.0025, 61, 3) - 0.45) * smooth(400, 900, r);
+  const w = smooth(SRTM_FROM[0], SRTM_FROM[1], r) * (1 - smooth(SRTM_TO[0], SRTM_TO[1], Math.max(Math.abs(x), Math.abs(z))));
+  const own = siteRelief(x, -z) + 0.6 * (fbm2(x * 0.0025, z * 0.0025, 61, 3) - 0.45) * smooth(400, 900, r);
+  return w > 0 ? own + (heightsAt(x, -z) - own) * w : own;
 }
 const RELIEF = /* glsl */ `
   ${SITE_RELIEF_GLSL}
   float relief(vec2 p) {
-    return siteRelief(vec2(p.x, -p.y)) + 0.6 * (fbm2(p * 0.0025, 61, 3) - 0.45) * smoothstep(400.0, 900.0, length(p));
+    float r = length(p);
+    float w = smoothstep(${glsl(SRTM_FROM[0])}, ${glsl(SRTM_FROM[1])}, r) * (1.0 - smoothstep(${glsl(SRTM_TO[0])}, ${glsl(SRTM_TO[1])}, max(abs(p.x), abs(p.y))));
+    float own = siteRelief(vec2(p.x, -p.y)) + 0.6 * (fbm2(p * 0.0025, 61, 3) - 0.45) * smoothstep(400.0, 900.0, r);
+    return w > 0.0 ? own + (heightsAt(vec2(p.x, -p.y)) - own) * w : own;
   }`;
 
 /**
@@ -370,29 +388,39 @@ const RELIEF = /* glsl */ `
  * list that follows of the things that come within reach of it; then every edge (x0, y0, x1, y1), metres east and north.
  * The grid is so that a texel asks only after the few things near it, not all of them.
  */
-/** How far out from a mapped thing its margin reaches, metres (a pan's ring of biyurgun: steppe.ts `steppeMapped`). */
+/** How far out from a mapped thing its margin reaches, metres (a pan's ring of biyurgun: steppe.ts `steppeMapped`; a worked area's edge). */
 const KINDS_REACH = 40;
+/** A railway's banks: how far its embankment reaches past its bed's half breadth, metres (estimated; tyuratamworks.ts draws them). */
+const RAIL_BANKS = 4;
 const KINDS_WIDE = 1024;
 const KINDS_GRID = 32;
 const KINDS = (() => {
-  const code = { takyr: 0, salt: 1, sand: 2, channel: 3 } as const;
-  const things = TYURATAM_GROUND;
+  // (the ground's kinds, then the worked ground: an area is closed, a way open, with half its breadth; a rail's banks are part of it)
+  const code = { takyr: 0, salt: 1, sand: 2, channel: 3, worn: 4, bare: 5, graded: 6, rail: 7, road: 8, track: 9 } as const;
+  const things: { kind: keyof typeof code; rings: [number, number][][]; open: boolean; half: number }[] = [
+    ...TYURATAM_GROUND.map((t) => ({ kind: t.kind, rings: [t.ring], open: t.kind === 'channel', half: (t.width ?? 0) / 2 })),
+    ...WORKS_FOR_KINDS.map((w) => ({
+      kind: w.kind,
+      rings: w.line ? [w.line] : w.rings,
+      open: Boolean(w.line),
+      half: w.half + (w.kind === 'rail' ? RAIL_BANKS : 0),
+    })),
+  ];
   const edges: number[][] = [];
   const heads: number[][] = [];
   const boxes: number[][] = [];
   for (const t of things) {
-    const ring = t.ring;
-    const closed = t.kind !== 'channel';
     const first = edges.length;
-    for (let i = 0; i + (closed ? 0 : 1) < ring.length; i++) {
-      const a = ring[i]!,
-        b = ring[(i + 1) % ring.length]!;
-      edges.push([a[0], a[1], b[0], b[1]]);
-    }
-    const xs = ring.map((p) => p[0]),
-      ys = ring.map((p) => p[1]);
+    for (const ring of t.rings)
+      for (let i = 0; i + (t.open ? 1 : 0) < ring.length; i++) {
+        const a = ring[i]!,
+          b = ring[(i + 1) % ring.length]!;
+        edges.push([a[0], a[1], b[0], b[1]]);
+      }
+    const xs = t.rings.flat().map((p) => p[0]),
+      ys = t.rings.flat().map((p) => p[1]);
     boxes.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]);
-    heads.push([first, edges.length - first, code[t.kind], (t.width ?? 0) / 2]);
+    heads.push([first, edges.length - first, code[t.kind], t.half]);
   }
   // each cell's list: every thing whose box, grown by how far a pan's margin reaches (KINDS_REACH) and half its breadth, touches it
   const cell = (2 * FAR) / KINDS_GRID;
@@ -429,6 +457,27 @@ const KINDS = (() => {
 })();
 
 /**
+ * How the cover follows the lie of the land, the soils and the worked ground (`cover` below). Estimated: no survey of
+ * the vegetation round the pad has been read; that growth is thicker in the steppe's hollows and thinner on its rises is
+ * the steppe's way (water gathers in the low ground: Krechetov 2015, p. 17, of the takyrs' hollows), how much is ours.
+ * - `hollow`: metres below the ground round it (LOW_REACH away) over which a hollow comes to count fully;
+ * - `herb`, `shrub`: how much more grows in a hollow and less on a rise (herb added, shrub as a share);
+ * - `sandyWest`: Krechetov's Fig. 1, unit 2 (grey-brown sandy and sandy-loam soils), west of this, m east (to a km);
+ * - `takyrs`: unit 4 (takyrs and takyr-like saline loams), east of the first figure and south of the second;
+ * - `worn`: how much of the shrubs and of the spring's growth a worn area has lost.
+ */
+const SITE_COVER = {
+  hollow: [0.4, 2.2],
+  herb: [0.3, 0.18],
+  shrub: [0.25, 0.2],
+  sandyWest: -5300,
+  takyrs: [2000, -2500],
+  worn: [0.75, 0.8],
+};
+/** How far round the ground at a point `lowness` looks, metres. */
+const LOW_REACH = 250;
+
+/**
  * What covers the ground: the steppe's own (steppe.ts: `steppeMapped`), told where the pans and the old channels are
  * (the maps and the Corona frames: tyuratam-ground.ts, `KINDS`). Over that, what the builders made: graded ground on the
  * apron, the tracks' beds and a margin round the pit; the ground inside the fence worn in patches by four years of
@@ -452,13 +501,15 @@ const COVER = /* glsl */ `
     return worn;
   }
   // The ground's kinds where the map has them (KINDS): how far inside the nearest mapped pan, salt crust, sand patch and
-  // old channel's bed p is, metres (-1e4 where none is near).
+  // old channel's bed p is, metres (-1e4 where none is near); and the same of the worked ground (tyuratam-works.ts): a
+  // worn area, a bare one, a graded strip, and the nearest railway, road or track with its banks and margin.
   uniform sampler2D uKinds;
   vec4 kindsAt(int row, int i) {
     return texelFetch(uKinds, ivec2(i % ${KINDS_WIDE}, row + i / ${KINDS_WIDE}), 0);
   }
-  void mappedKinds(vec2 p, out vec4 inside) {
+  void mappedKinds(vec2 p, out vec4 inside, out vec4 made) {
     inside = vec4(-1e4);
+    made = vec4(-1e4);
     vec2 q = vec2(p.x, -p.y);
     ivec2 g = ivec2(floor((q + ${glsl(FAR)}) / ${glsl((2 * FAR) / KINDS_GRID)}));
     if (g.x < 0 || g.y < 0 || g.x >= ${KINDS_GRID} || g.y >= ${KINDS_GRID}) return;
@@ -478,25 +529,69 @@ const COVER = /* glsl */ `
         best = min(best, segment(q, e));
         if ((e.y > q.y) != (e.w > q.y) && q.x < e.x + (e.z - e.x) * (q.y - e.y) / (e.w - e.y)) odd = !odd;
       }
-      float d = kind == 3 ? info.w - best : (odd ? best : -best);
+      float d = kind == 3 || kind >= 6 ? info.w - best : (odd ? best : -best);
       if (kind == 0) inside.x = max(inside.x, d);
       else if (kind == 1) inside.y = max(inside.y, d);
       else if (kind == 2) inside.z = max(inside.z, d);
-      else inside.w = max(inside.w, d);
+      else if (kind == 3) inside.w = max(inside.w, d);
+      else if (kind == 4) made.x = max(made.x, d);
+      else if (kind == 5) made.y = max(made.y, d);
+      else if (kind == 6) made.z = max(made.z, d);
+      else made.w = max(made.w, d);
     }
   }
-  void cover(vec2 p, out float shrub, out float herb, out float takyr, out float salt, out float sand, out float zone) {
-    vec4 inside;
-    mappedKinds(p, inside);
+  // How far the ground at p lies below the ground round it, metres (SRTM: tyuratamworks.ts), over some 250 m: positive
+  // in a hollow or a wash's bed, negative on a swell.
+  float lowness(vec2 p) {
+    vec2 q = vec2(p.x, -p.y);
+    float round_ = heightsAt(q + vec2(${glsl(LOW_REACH)}, 0.0)) + heightsAt(q - vec2(${glsl(LOW_REACH)}, 0.0)) + heightsAt(q + vec2(0.0, ${glsl(LOW_REACH)})) + heightsAt(q - vec2(0.0, ${glsl(LOW_REACH)}));
+    return 0.25 * round_ - heightsAt(q);
+  }
+  void cover(vec2 p, out float shrub, out float herb, out float takyr, out float salt, out float sand, out float zone, out float works) {
+    vec4 inside, made;
+    mappedKinds(p, inside, made);
     steppeMapped(p, inside.x, inside.y, inside.z, shrub, herb, takyr, salt, sand, zone);
     // an old channel's bed: the thaw's water lies longest there, so it is greener, ringed with the hollows' shrubs
     float bed = smoothstep(-4.0, 4.0, inside.w + 6.0 * (noise2(p * 0.03, 68) - 0.5));
     herb = mix(herb, min(1.0, herb + 0.3), bed * (1.0 - takyr));
     zone = mix(zone, 0.8, bed * (1.0 - takyr) * (1.0 - sand));
+    // The lie of the land: the snow's water gathers in the low ground and runs off the swells, so the spring's growth is
+    // thicker and greener in a hollow and thinner on a rise, where more of the crust shows (SITE_COVER)
+    float low = lowness(p);
+    float hollow = smoothstep(${glsl(SITE_COVER.hollow[0])}, ${glsl(SITE_COVER.hollow[1])}, low) * (1.0 - takyr);
+    float rise = smoothstep(${glsl(SITE_COVER.hollow[0])}, ${glsl(SITE_COVER.hollow[1])}, -low) * (1.0 - takyr);
+    herb = clamp(herb + ${glsl(SITE_COVER.herb[0])} * hollow - ${glsl(SITE_COVER.herb[1])} * rise, 0.0, 1.0);
+    shrub = clamp(shrub * (1.0 + ${glsl(SITE_COVER.shrub[0])} * hollow - ${glsl(SITE_COVER.shrub[1])} * rise), 0.0, 1.0);
+    zone = mix(zone, 0.8, 0.45 * hollow * (1.0 - sand));
+    // The soils (Krechetov 2015, placed to a kilometre: SITE_COVER): sandy loams to the west, with more teresken and
+    // sedge; the takyrs' complexes to the south-east, with more biyurgun and saltwort and thinner growth
+    vec2 q = vec2(p.x, -p.y);
+    float sandy = 1.0 - smoothstep(${glsl(SITE_COVER.sandyWest - 600)}, ${glsl(SITE_COVER.sandyWest + 600)}, q.x);
+    float takyrs = smoothstep(${glsl(SITE_COVER.takyrs[0] - 600)}, ${glsl(SITE_COVER.takyrs[0] + 600)}, q.x) * (1.0 - smoothstep(${glsl(SITE_COVER.takyrs[1] - 600)}, ${glsl(SITE_COVER.takyrs[1] + 600)}, q.y));
+    zone = mix(zone, 0.3, 0.5 * sandy * (1.0 - takyr));
+    zone = mix(zone, 0.8, 0.35 * takyrs * (1.0 - takyr));
+    herb *= 1.0 - 0.15 * takyrs;
+    // The worked ground (tyuratam-works.ts): over a worn area the crust is ground to dust and most of what grew is gone;
+    // a bare one, a graded strip and a way are bare; each edge wanders a little, as worn ground does
+    float wander = 10.0 * (noise2(p * 0.02, 160) - 0.5) + 4.0 * (noise2(p * 0.08, 161) - 0.5);
+    float worn = smoothstep(-10.0, 10.0, made.x + wander);
+    float bare = max(smoothstep(-8.0, 8.0, made.y + wander), smoothstep(-1.5, 1.5, made.z));
+    float way = smoothstep(-1.0, 1.0, made.w);
+    float verge = smoothstep(-6.0, 0.0, made.w) * (1.0 - way);
+    // (worn in patches: here stripped, there a few clumps of wormwood left between the ruts)
+    worn *= 0.75 + 0.25 * smoothstep(0.35, 0.65, noise2(p * 0.03, 162));
+    shrub *= (1.0 - ${glsl(SITE_COVER.worn[0])} * worn) * (1.0 - 0.9 * bare) * (1.0 - way) * (1.0 - 0.6 * verge);
+    herb *= (1.0 - ${glsl(SITE_COVER.worn[1])} * worn) * (1.0 - 0.85 * bare) * (1.0 - way) * (1.0 - 0.4 * verge);
+    works = max(max(0.5 * worn, 0.85 * bare), max(way, 0.3 * verge));
+    // the fans' tracks over the worn ground: their wheels have left nothing growing (the paint draws them: WORKS_PAINT)
+    float across, lane;
+    float tracks = fansAt(q, across, lane) * smoothstep(0.12, 0.4, works) * smoothstep(-20.0, 20.0, -fenced(p));
+    shrub *= 1.0 - 0.8 * tracks;
+    herb *= 1.0 - 0.6 * tracks;
   }
   vec4 coverA(vec2 p) {
-    float shrub, herb, takyr, salt, sand, zone;
-    cover(p, shrub, herb, takyr, salt, sand, zone);
+    float shrub, herb, takyr, salt, sand, zone, works;
+    cover(p, shrub, herb, takyr, salt, sand, zone, works);
     float made = madeGround(p), worn = wornGround(p);
     shrub *= (1.0 - made) * (1.0 - 0.75 * worn);
     herb *= (1.0 - 0.85 * made) * (1.0 - 0.6 * worn);
@@ -509,12 +604,12 @@ const COVER = /* glsl */ `
     return vec4(shrub, herb, clamp(1.0 - shrub - herb, 0.0, 1.0), zone);
   }
   vec4 coverB(vec2 p) {
-    float shrub, herb, takyr, salt, sand, zone;
-    cover(p, shrub, herb, takyr, salt, sand, zone);
-    float made = madeGround(p);
+    float shrub, herb, takyr, salt, sand, zone, works;
+    cover(p, shrub, herb, takyr, salt, sand, zone, works);
+    float made = max(madeGround(p), smoothstep(0.8, 1.0, works));
     float worked = max(1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5)), 1.0 - smoothstep(2.0, 6.0, rail(p)));
     worked = max(worked, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 3)}, road(p)));
-    worked = max(worked, wornGround(p));
+    worked = max(worked, max(wornGround(p), works));
     // graded ground is neither pan nor crust nor sand: the builders scraped it
     float kept = 1.0 - made;
     return vec4(worked, salt * kept, sand * kept, takyr * kept);
@@ -539,6 +634,7 @@ const OVERLAP = 3;
  */
 const PAINT = /* glsl */ `
   ${SCARP_FRAME_GLSL}
+  ${WORKS_PAINT}
   // The graded fall: four springs' thaw on bare clay. Rills down it where it is steep, a stride or two apart, each
   // starting below the brow, deepest on the steepest part and fanning out at the foot; and the toe darker, where the
   // fines wash to and the thaw's water stands. Their spacing, breadth and tone are estimated (site-1.md, "The lie of
@@ -574,6 +670,7 @@ const PAINT = /* glsl */ `
     // (a little inside the rim, over the pit's own slope: OVERLAP)
     if (inPit(p) > ${glsl(OVERLAP)}) discard;
     fall(p, g);
+    paintWorks(p, B, g);
     float way = road(p);
     float paved = 1.0 - smoothstep(${glsl(ROAD_HALF - 0.08)}, ${glsl(ROAD_HALF + 0.08)}, way + 0.06 * (noise(vec3(p * 1.5, 30.0)) - 0.5));
     if (paved > 0.0) {
@@ -662,6 +759,10 @@ function landSpec(): LandSpec {
     near: 1024,
     texels: 1024,
     far: FAR,
+    // (the worked ground's areas and the ways reach 6 km: a texel of 16 m keeps a worn area's edge and a road's line)
+    farTexels: 1024,
+    // (it reads a table of its own, the heights and the ways: tyuratamworks.ts)
+    paired: true,
     shared: SHARED,
     cover: COVER,
     relief,
@@ -677,6 +778,7 @@ function landSpec(): LandSpec {
       uRuts: { value: RUT_SEGMENTS.map((r) => new THREE.Vector4(...r.s)) },
       uRutKind: { value: RUT_SEGMENTS.map((r) => new THREE.Vector2(r.half, r.worn)) },
       uKinds: { value: KINDS.texture },
+      ...worksUniforms(),
     },
     palette: STEPPE_PALETTE,
     ground: STEPPE_GROUND,

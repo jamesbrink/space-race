@@ -228,6 +228,11 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 
 ## What the model gets wrong or leaves out
 
+- **The strap-ons' separation is flown in kind, its figures estimated** (orbital.ts, `boosters/B` to `/D`): the
+  tail-off that swings each tail out, the swing before the ball leaves its socket, the vent's thrust and time. The swing
+  itself (about a second) is not drawn: each leaves as it stood, with the rate and speed the swing gave it. The vent is
+  taken as steady; it falls as the tank empties. The model has no vent nozzle on the cone and no ball and socket to see.
+
 - **Every station along the core and the boosters is estimated**, as set out above. The overall
   lengths, the three diameters and the lattice's length are the only documented dimensions in it.
 - **The core's shape below the boosters' tips has not been seen.** It is drawn as a straight taper

@@ -47,7 +47,43 @@ const SKY_SIZE = tier().shadow.sky;
 /** How much of the sky's light is left under a roof: what comes in at doors and windows and off the walls. Estimated, by eye in the firing rooms by day: at 0.22 a console's dials were lost. */
 const UNDER = 0.28;
 /** Where across the fine map (0 its middle, 1 its edge) the far one comes in, from and to. */
-const BAND = [0.78, 0.96] as const;
+export const BAND = [0.78, 0.96] as const;
+
+/**
+ * How far the fine map is faded out everywhere (`x`: 0 not at all, 1 wholly, the far one read in its place): a stage
+ * that spends the fine map on a region of its own choosing (Stage.steerFocus, in the gallery) fades it out before
+ * fitting it somewhere else and in again after, so a shadow never changes grain in a cut. A plain object, as
+ * `uOrigin` is (origin.ts), so three's copying of each material's uniforms shares it; each stage sets it before it
+ * draws. A material that never had it reads nothing, which is the fine map in full.
+ */
+export const uShadowFade: THREE.IUniform<{ x: number; y: number }> = { value: { x: 0, y: 0 } };
+THREE.ShaderChunk.common = `${THREE.ShaderChunk.common}\nuniform vec2 uShadowFade;`;
+for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uShadowFade = uShadowFade;
+
+/**
+ * GLSL for a shadow-only surface (the gallery's floor, studio.ts): the Sun's shadow read as the lit materials read it,
+ * the fine map and over its outer band the far one, mixed, rather than three's product of every map (which counts a
+ * shadow twice where both maps hold it, and would draw the fine map's square on the floor wherever it reached it).
+ * Times the sky map, as three has it. Only with the three maps the stage always has; otherwise three's own mask.
+ */
+export const CASCADED_MASK = /* glsl */ `
+	float cascadedShadowMask() {
+		#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS == 3
+			DirectionalLightShadow s0 = directionalLightShadows[ 0 ];
+			DirectionalLightShadow s1 = directionalLightShadows[ 1 ];
+			DirectionalLightShadow s2 = directionalLightShadows[ 2 ];
+			vec3 fineAt = vDirectionalShadowCoord[ 0 ].xyz / vDirectionalShadowCoord[ 0 ].w;
+			float out0 = fineAt.z > 1.0 ? 2.0 : 2.0 * max( abs( fineAt.x - 0.5 ), abs( fineAt.y - 0.5 ) );
+			float farShare = max( smoothstep( ${BAND[0].toFixed(2)}, ${BAND[1].toFixed(2)}, out0 ), uShadowFade.x );
+			float lit = 1.0;
+			if ( farShare < 1.0 ) lit = getShadow( directionalShadowMap[ 0 ], s0.shadowMapSize, s0.shadowIntensity, s0.shadowBias, s0.shadowRadius, vDirectionalShadowCoord[ 0 ] );
+			if ( farShare > 0.0 ) lit = mix( lit, getShadow( directionalShadowMap[ 1 ], s1.shadowMapSize, s1.shadowIntensity, s1.shadowBias, s1.shadowRadius, vDirectionalShadowCoord[ 1 ] ), farShare );
+			return lit * getShadow( directionalShadowMap[ 2 ], s2.shadowMapSize, s2.shadowIntensity, s2.shadowBias, s2.shadowRadius, vDirectionalShadowCoord[ 2 ] );
+		#else
+			return getShadowMask();
+		#endif
+	}
+`;
 
 // The shader. Two directional lights with shadows are the Sun and this: the first reads both maps, the second gives nothing.
 /** three's loop over the directional lights, as lights_fragment_begin has it: each light's shadow, then its light. */
@@ -69,7 +105,7 @@ const CASCADED = /* glsl */ `
 				vec3 fineAt = vDirectionalShadowCoord[ 0 ].xyz / vDirectionalShadowCoord[ 0 ].w;
 				// how far out across the fine map: 0 at its middle, 1 at its edge (and past its far plane, outside it)
 				float out0 = fineAt.z > 1.0 ? 2.0 : 2.0 * max( abs( fineAt.x - 0.5 ), abs( fineAt.y - 0.5 ) );
-				float farShare = smoothstep( ${BAND[0].toFixed(2)}, ${BAND[1].toFixed(2)}, out0 );
+				float farShare = max( smoothstep( ${BAND[0].toFixed(2)}, ${BAND[1].toFixed(2)}, out0 ), uShadowFade.x );
 				float lit = 1.0;
 				if ( farShare < 1.0 ) lit = getShadow( directionalShadowMap[ 0 ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ 0 ] );
 				if ( farShare > 0.0 ) {

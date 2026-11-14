@@ -45,12 +45,15 @@ from vostok_8k72k.common import FAIRING_R  # noqa: E402
 EXTENDED = os.environ.get("VOSKHOD_AIRLOCK") == "extended"
 
 
-# Who lay where. Leonov went aboard first and Belyayev after him (Belyayev's report), so Leonov's couch is the one
-# further from the entry hatch: at the crew's left, next to the airlock's hatch.
+# Who lay where. Leonov went aboard first and Belyayev after him (Belyayev's report); Belyayev lay by hatch No. 1, which
+# he opened after landing, and Leonov by the hatch into the airlock: the couch that was the middle one of three, the
+# place nearest hatch No. 3 being the one left empty (vehicles/voskhod.md, "What the record fixes"). The module calls
+# his "Left" as it is at the crew's left.
 CREW = {"Left": berkut.LEONOV, "Right": berkut.BELYAYEV}
-# Where the pack Leonov wore outside is put: on edge at the cabin's left, in the place the third couch had left,
-# its outer face toward the wall. In the couches' plane, millimetres. Where it was really stowed was not found.
-PACK_AT = (700.0, -150.0, -60.0)
+# Where the pack Leonov wore outside is put: on edge at the cabin's left, in the place the third couch had left, low,
+# clear of where the airlock's lid swings in. In the couches' plane, millimetres. The crew's report has it "freed
+# from its fastening" in the cabin; where that fastening was, was not found.
+PACK_AT = (600.0, -280.0, -190.0)
 
 
 def crew(name: str, node, place) -> dict:

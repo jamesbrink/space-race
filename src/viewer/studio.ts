@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Backdrop, Setting } from './backdrops';
+import { CASCADED_MASK } from './shadows';
 
 /**
  * The studio: the setting a thing is shown in when it is shown nowhere (the gallery, src/gallery.ts).
@@ -161,7 +162,10 @@ function shadowFloor(opacity: THREE.IUniform<number>): THREE.Mesh {
   const material = new THREE.ShaderMaterial({
     uniforms: { ...THREE.UniformsUtils.clone(shader.uniforms), opacity },
     vertexShader: shader.vertexShader,
-    fragmentShader: shader.fragmentShader,
+    // (the Sun's shadow as the lit surfaces read it: the fine map, the far one over its band, the sky's; shadows.ts)
+    fragmentShader: shader.fragmentShader
+      .replace('getShadowMask()', 'cascadedShadowMask()')
+      .replace('#include <shadowmask_pars_fragment>', `#include <shadowmask_pars_fragment>\n${CASCADED_MASK}`),
     lights: true,
     transparent: true,
     depthWrite: false,

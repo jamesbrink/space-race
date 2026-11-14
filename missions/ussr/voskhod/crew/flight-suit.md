@@ -31,7 +31,7 @@ Grey or "dark" is the only disagreement. So in the cabin: the wool suit, no jack
 | Cap | white cloth, close over the head and ears, an opening round the face; an earphone in a round cup at each ear; a chin strap; a microphone at each corner of the mouth on a short boom, orange-brown | documented (white caps, earphones, microphones); estimated (their form) | the photographs in the cabin, all taken from the men's left: a flat white arm from the left earpiece to a disc microphone. **The right side was not seen**, and the second microphone is the Vostok headset's, assumed |
 | Hands | bare | documented, by photograph | the cabin photographs |
 | Shoes | dark, low, with a pale sole | **estimated** | "slippers", "suede slippers"; no photograph of them was found |
-| Pose | lying in the couch: thighs raised 68°, knees at 88°, forearms laid up over the belly | estimated | the couch's ([voskhod.md](../vehicles/voskhod.md)) |
+| Pose | lying in the couch: thighs raised 68°, knees at 88°, forearms laid up over the belly, **elbows drawn 30 mm in toward the sides** from where figurelib's standing man holds them (`ELBOWS_IN`) | estimated | the couch's ([voskhod.md](../vehicles/voskhod.md)); the elbows by the fit of three abreast ("The fit" there) |
 
 ## What the model gets wrong or leaves out
 
