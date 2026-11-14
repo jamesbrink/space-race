@@ -107,19 +107,20 @@ export function exhibit(flight: Pick<Flight, 'models' | 'flies'>): ModelDef | nu
   return hardware.find((m) => m.id === flight.flies?.model) ?? hardware[0] ?? null;
 }
 
-type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'trajectory'>;
+type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'trajectory'> & { orbital?: { ascent?: unknown } };
 
 /**
  * Why a flight cannot be gone to at a place, or null if it can. It has a gallery when it has a
  * vehicle; a launch site when it says where that is (`site`) and has something that stands
  * there (a model whose backdrop is a place, not the studio); and it can be flown when it has that
- * site, a trajectory with a body to fly, and says which model flies (`flies`).
+ * site, a trajectory with a body to fly (or, into orbit, an ascent to fly), and says which model flies (`flies`).
  */
 export function lacks(flight: Placed, place: Place): string | null {
   if (place === 'gallery') return exhibit(flight) ? null : 'Gallery: no vehicle built yet';
   const sited = Boolean(flight.site) && flight.models.some((m) => m.backdrop !== 'studio');
   if (place === 'site') return sited ? null : 'Launch site: not built yet';
-  if (!flight.trajectory?.body || !flight.flies) return 'Fly: no trajectory yet';
+  // (a flight into orbit is flown from its record's stages and ascent: sim/staged.ts, orbitdeck.ts)
+  if (!(flight.trajectory?.body || flight.orbital?.ascent) || !flight.flies) return 'Fly: no trajectory yet';
   return sited ? null : 'Fly: its launch site is not built yet';
 }
 

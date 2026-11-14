@@ -4,6 +4,7 @@ import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from
 import { flightFor, formatAddress, namesNothing, onMoved, opensIn, type Place, parseAddress, settle, where, write } from './address';
 import { Callout } from './callout';
 import { Cockpit } from './cockpit';
+import { OrbitDeck } from './orbitdeck';
 import { follow } from './curtain';
 import { Demo } from './demo';
 import { Flown } from './flown';
@@ -124,7 +125,9 @@ stage.shaker = (camera, sky) => effects.shaker(camera, sky, stage.cameraMode ===
 // What of the flown vehicle runs to a programme and can be taken by a hand (its periscope): in a flight flown by hand
 // it stands where the programme, the hands and the sequencer have it (cockpit.travel), not where the record's clock does.
 const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
-const cockpit = new Cockpit(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
+// (a flight into orbit has its own deck, orbitdeck.ts: what its pilot could do, which is not a ballistic flight's)
+const Deck = !flight.trajectory && flight.orbital?.ascent ? OrbitDeck : Cockpit;
+const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
   heat: (t) => effects.reading(t),
   say: (title, line) => ui.say(title, line),
   fly: (run) => {
