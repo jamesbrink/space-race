@@ -61,7 +61,7 @@ photograph of it was found.
 
 Everything listed in [Vostok 3's spacecraft.md](../vostok-3/spacecraft.md#what-is-simplified-for-this-flight-in-particular)
 applies here unchanged: the cameras that hang in the air and are sized off one photograph, the
-second camera's guessed place, no lamps, loudspeakers, microphones or fixed film cameras, the film
+second camera's guessed place, no television lamps, loudspeakers, microphones or fixed film cameras, the film
 camera assumed to be Vostok 2's, the type's cabin and launcher. Besides those:
 
 - **The pilot is Gagarin's figure with Popovich's name**: the same stature, the same suit, visor

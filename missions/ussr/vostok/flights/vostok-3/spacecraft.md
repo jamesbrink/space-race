@@ -104,7 +104,9 @@ model gets wrong or leaves out", and for the launcher in
   is not known. Their cables end at their plugs.
 - **Every size of the cameras is read off one small photograph.** The second camera's place is a
   guess; so are the first's distance and side.
-- **No lamps, loudspeakers or microphones**, though all three are on record for this flight.
+- **No lamps for the television, loudspeakers or microphones**, though all three are on record for this flight.
+  The cabin's own two lamps and their tumbler are Vostok 1's, carried over as an estimate: nothing read speaks of this
+  ship's lighting ([vostok-3ka.md](../../vehicles/vostok-3ka.md), "Cabin lighting").
 - **No fixed film cameras**, though they are on record.
 - **The film camera is Vostok 2's**, by assumption, and hangs unsupported as there.
 - **The pilot is Gagarin's figure with Nikolayev's name**: the same stature, the same suit, visor

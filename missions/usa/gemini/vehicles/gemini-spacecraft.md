@@ -171,7 +171,11 @@ pivots with their scales in their extras; `Gauge_ClockHours` and `Gauge_ClockMin
 (`Gauge_Stage1Fuel` and the rest), each sliding along its own X; `Ball_CommandPilot` and `Ball_Pilot`, the two
 attitude balls, each a node at its own middle; `Tele_...` lamps, each with its own material; `Ctl_Abort`,
 `Ctl_AttitudeController`, `Ctl_ManeuverController`, `Ctl_EjectCommandPilot`, `Ctl_EjectPilot`; `Lamp_Left`,
-`Lamp_Right` and `Lamp_Centre`, the three floodlights' lenses. Gemini-Titan 3 declares them (`flight.ts`: `lights`,
+`Lamp_Right` and `Lamp_Centre`, the three floodlights' lenses; `Ctl_CabinLights`, the CENTER LIGHT switch's lever
+at the head of the overhead panel's forward row, its origin on its pivot and its `throw` extras its three positions
+(WHT as built, OFF, RED: SEDR 300 p. 3-20, "The center floodlight WHITE-OFF-RED control switch is in the forward row
+of the overhead panel", and Figure 3-5 sheet 2, which draws it there with RED over OFF over WHT: documented; how far
+the lever leans is the Mercury toggle's: estimated). Gemini-Titan 3 declares them (`flight.ts`: `lights`,
 `cabin`): the inside is lit as indoors by the three floodlights and the instruments, lamps and controls are named.
 No flight deck reads them yet: nothing of the flight is simulated, so every needle stands as built and says so.
 
@@ -247,7 +251,11 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
   are left out, and so are the stowage boxes on the side walls.
 - **The inside's shadows are not baked.** Its three floodlights are described to the viewer and
   light it as indoors, but nothing here casts the cabin's own shadows into its vertices as the
-  Mercury cabin's are (`mercury_cabin.shade`), and the floodlights have no switch.
+  Mercury cabin's are (`mercury_cabin.shade`).
+- **One switch for three floodlights, and no red light.** The CENTER LIGHT switch on the overhead panel was the
+  centre lamp's alone; each side lamp had its own WHITE-OFF-RED selector and a rheostat on its fixture (SEDR 300,
+  p. 3-20). The fittings are plain blocks with a lens, so the one switch that is built throws all three, none can
+  be dimmed, and the red bulbs are not drawn: at RED the cabin is dark.
 - **The windows are placed from one photograph.** Where each is, its outline and the trough's are
   S65-21090's, through a camera fitted to it: two inches and three degrees. SEDR 300's section
   (Figure 2-10) marks station Z136.50 at the pane's sunk end. The photographs and both of the
