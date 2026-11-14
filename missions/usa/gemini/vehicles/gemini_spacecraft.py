@@ -49,8 +49,10 @@ from gemini_shell import (
     WINDOWS,
     Z0,
     Z_BASE,
+    Z_DIVISION,
     Z_HATCH_AFT,
     Z_HATCH_FWD,
+    Z_MATING_TOP,
     Z_NOSE,
     Z_RCS,
     Z_RR,
@@ -72,14 +74,22 @@ from gemini_shell import (
     zz,
 )
 from mercury_capsule import chamfered
-from srlib import IN, TAU, MeshBuilder, Surf, bore, deg, frame, group, interior, lettering, material, prof
+from srlib import IN, TAU, MeshBuilder, Surf, deg, frame, group, interior, lettering, material, prof
 
 # What the ship's stations and surfaces are, and what its skins are made of, is in gemini_shell.py.
 
-Z_EQUIP_TOP = 66.74  # the head of the equipment section's skin
-Z_RETRO_FOOT = 70.0  # the foot of the retrograde section's: the ring between the two is where the adapter is cut
 RETRO = (6.5, 19.5, 84.0)  # a retrograde rocket: its case's radius, how far its axis is from the ship's, its middle's station
 SEAT_CANT = (deg(12), deg(8))  # the seats: outboard, and forward
+
+# The orbit attitude and maneuver system's sixteen chambers, by SEDR 300's Figure 8-72 and its table. Which way each
+# fires is documented; these places are read off the figure, which is a sketch in perspective: estimated.
+OAMS_ATTITUDE = (deg(36), deg(54))  # a cluster's two chambers at the adapter's foot, round from the top or the bottom
+OAMS_ATTITUDE_Z = 27.0  # their station
+OAMS_AFT = (0.0, math.pi)  # 9 and 10, which push the ship forward: at the foot, top and bottom
+OAMS_FORWARD = (deg(78), 95.5)  # 11 and 12, which slow it: round from the top on either side, and their station
+OAMS_LATERAL = 86.0  # 13 to 16: the station they push through
+# its tanks, as (inches to the crew's right, inches toward the top, station): fuel, oxidiser, helium
+OAMS_TANKS = ((9.0, 21.0, 44.0), (20.0, 2.0, 44.0), (-8.0, -2.0, 46.0))
 
 # What is read off NASA S65-21090 (the ship on the launch vehicle, 23 March 1965) through a fitted camera, but the lettering:
 # estimated.
@@ -224,10 +234,12 @@ def hoop(r0: float, r1: float, z0: float, z1: float) -> list[tuple[float, float]
     return prof([(r0, z0), (r1, z0), (r1, z1), (r0, z1), (r0, z0)])
 
 
-def sphere(mb: MeshBuilder, centre: Vector, r: float, segs: int = 24) -> None:
-    n = 12 if srlib.DETAIL >= 1.0 else 8
+def sphere(mb: MeshBuilder, centre: Vector, r: float, segs: int = 32) -> None:
+    """A ball: its middle and its radius in metres. (The first model of this ship gave the radius in metres to a
+    profile that took inches, and every tank in it was a fortieth of its size.)"""
+    n = 16 if srlib.DETAIL >= 1.0 else 8
     mb.lathe(
-        prof([(r * math.cos(a), r * math.sin(a)) for a in (-math.pi / 2 + math.pi * i / n for i in range(n + 1))]),
+        [(r * math.cos(a), r * math.sin(a)) for a in (-math.pi / 2 + math.pi * i / n for i in range(n + 1))],
         segs,
         matrix=Matrix.Translation(centre),
     )
@@ -257,26 +269,6 @@ def plates(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, z1: f
             for i in range(1, across):
                 t = theta(i / across, z)
                 bolts.disc(surf.p(t, z, lift), surf.n(t), 0.2 * IN, 0.07 * IN)
-
-
-def port(names, matrix: Matrix, radius: float, depth: float) -> None:
-    if holes():
-        bore(names, matrix, radius, depth)
-
-
-def thruster(noz: MeshBuilder, cup: MeshBuilder, at: Vector, out: Vector, exit_r: float, hole: float = 0.0, sunk: float = 0.3) -> None:
-    """A thrust chamber in its port: a cup let into the skin and the chamber's bell in it, its exit just under the skin.
-    `at` (metres) is on the skin, `out` the way it fires; `hole` is the radius the skin was bored to (the cup's lip
-    stands clear of what the boring did to the skin round it)."""
-    f = frame(at, out)
-    lip = max(exit_r + 1.3, 1.6 * hole)
-    if not holes():  # from far off: a ring on the skin and a dark disc in it
-        cup.lathe(prof([(lip, -0.9), (lip, 0.35), (exit_r + 0.45, 0.35)]), 20, matrix=f)
-        noz.lathe(prof([(exit_r + 0.45, 0.3), (0.0, 0.3)]), 20, matrix=f)
-        return
-    cup.lathe(prof([(exit_r + 0.75, 0.35), (exit_r + 0.45, 0.35), (exit_r + 0.45, -exit_r * 3.4), (0.0, -exit_r * 3.4)]), 20, matrix=f, flip=True)
-    cup.lathe(prof([(exit_r + 0.75, 0.35), (lip, 0.35), (lip, -0.9)]), 20, matrix=f)
-    noz.lathe(prof([(exit_r * 0.35, -exit_r * 3.2), (exit_r * 0.6, -exit_r * 2.0), (exit_r * 0.9, -exit_r * 0.9), (exit_r, -sunk)]), 16, matrix=f)
 
 
 # ------------------------------------------------------------------ the re-entry module
@@ -964,21 +956,18 @@ def build_crew_station(M, fit: Fit) -> None:
 # ------------------------------------------------------------------ the adapter
 
 
-def adapter_skin(M, g, prefix: str, s0: float, s1: float, ports=()) -> tuple:
+def adapter_skin(M, g, prefix: str, s0: float, s1: float) -> tuple:
     """A length of the adapter's skin from station s0 up to s1: magnesium, white outside, aluminium foil inside, with the
-    stringers that carry the coolant on its inner face. `ports`: (angle, station, radius) holes for thrust chambers."""
-    skin, foil, rings, stringers = (MeshBuilder() for _ in range(4))
+    stringers that carry the coolant on its inner face."""
+    skin_, foil, rings, stringers = (MeshBuilder() for _ in range(4))
     z0, z1 = zz(s0), zz(s1)
     n = max(6, round((z1 - z0) / 2.6))
     zs = [z0 + (z1 - z0) * i / n for i in range(n + 1)]
-    skin.lathe(prof([(ADAPTER.r(z), z) for z in zs]), 144)
+    skin_.lathe(prof([(ADAPTER.r(z), z) for z in zs]), 144)
     fs = [z0 + 1.6 + (z1 - z0 - 3.2) * i / n for i in range(n + 1)]  # (between the rings at its ends)
     foil.lathe(prof([(ADAPTER.r(z) - 0.5, z) for z in fs]), 144, flip=True)
-    skin_obj = skin.build(f"{prefix}_Skin", M["white"], g, sharp_angle=None)
+    skin_obj = skin_.build(f"{prefix}_Skin", M["white"], g, sharp_angle=None)
     foil_obj = foil.build(f"{prefix}_Foil", M["foil"], g, sharp_angle=None)
-    bpy.context.view_layer.update()
-    for a, s, r in ports:  # (the foil is not cut: it faces inward only, and a chamber's cup stands through it)
-        port((skin_obj.name,), frame(ADAPTER.p(a, zz(s)), ADAPTER.n(a)), r * IN, 3.0 * IN)
     for z, wide in ((z0, 1.6), (z1, 1.6)):
         lo, hi = (z, z + wide) if z == z0 else (z - wide, z)
         rings.lathe(
@@ -1006,106 +995,162 @@ def adapter_skin(M, g, prefix: str, s0: float, s1: float, ports=()) -> tuple:
             "has taken the heat from the cabin and the electronics is pumped through the bulbs; the white skin they are fastened "
             "to gives the heat to space. Their section is SEDR 300's; their number here is a guess.",
         )
+    bpy.context.view_layer.update()
     return skin_obj, foil_obj
+
+
+def i_beam(mb: MeshBuilder, along: Matrix, length: float, deep: float, flange: float) -> None:
+    """A beam of I section lying along its frame's x, `deep` along its z: a web, a flange top and bottom, and stiffeners
+    across the web."""
+    chamfered(mb, (length - 0.2, 0.3, deep - 0.5), along, 0.05)
+    for s in (-1, 1):
+        chamfered(mb, (length, flange, 0.35), along @ Matrix.Translation(Vector((0.0, 0.0, s * (deep / 2 - 0.17))) * IN), 0.06)
+    n = max(2, round(length / 9.0))
+    for i in range(n + 1):
+        x = -length / 2 + 1.0 + (length - 2.0) * i / n
+        if abs(x) < 3.0:
+            continue
+        chamfered(mb, (0.25, flange * 0.8, deep - 0.8), along @ Matrix.Translation(Vector((x, 0.0, 0.0)) * IN), 0.04)
 
 
 def build_retro_section(M, fit: Fit) -> None:
     """The adapter's upper part: the four retrograde rockets, and six of the OAMS's thrust chambers. It stays on until
     the rockets have fired."""
     g = group("RetroSection")
-    lateral = [(deg(a), 86.0, 2.9) for a in (0, 90, 180, 270)]  # the four that translate up, right, down, left
-    forward = [(deg(a), 98.5, 2.7) for a in (72, -72)]  # the two that fire forward, to slow the ship
-    adapter_skin(M, g, "Retro", Z_EQUIP_TOP, Z0, [*lateral, *forward])
-    band = MeshBuilder()  # the ring the adapter is cut round before retrofire: it shows as a band standing a little proud
+    skin_obj, _ = adapter_skin(M, g, "Retro", Z_DIVISION, Z0)
+    band = MeshBuilder()  # where the adapter is cut round before retrofire: the two sections' rings meet in a band
     band.lathe(
         prof(
             [
                 (ADAPTER.r(zz(s)) + o, zz(s))
-                for s, o in ((Z_EQUIP_TOP - 0.3, -0.05), (Z_EQUIP_TOP, 0.16), (Z_RETRO_FOOT, 0.16), (Z_RETRO_FOOT + 0.3, -0.05))
+                for s, o in ((Z_DIVISION - 1.5, -0.05), (Z_DIVISION - 1.2, 0.16), (Z_DIVISION + 1.2, 0.16), (Z_DIVISION + 1.5, -0.05))
             ]
         ),
         144,
     )
     band.build("Retro_SeparationBand", M["white"], g, sharp_angle=30)
     noz, cup, dummy = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    for a, s, _r in lateral:
-        thruster(noz if fit.lateral_thrusters else dummy, cup, ADAPTER.p(a, zz(s)), ADAPTER.n(a), 2.3, _r)
-    for a, s, _r in forward:
-        out = (ADAPTER.n(a) * 0.82 + Vector((0, 0, 0.57))).normalized()
-        thruster(noz, cup, ADAPTER.p(a, zz(s)), out, 2.1, _r)
+    skins = (skin_obj.name,)
+    # 13 to 16, which move the ship bodily to the right, to the left, up and down: each on the far side from the way it
+    # pushes, firing straight out, at the station of the ship's centre of gravity (SEDR 300, Figure 8-72)
+    for theta in (deg(-90), deg(90), deg(180), 0.0):
+        chamber(noz if fit.lateral_thrusters else dummy, cup, skins, ADAPTER, theta, zz(OAMS_LATERAL), radial(theta), 2.3, 2.9)
+    # 11 and 12, which slow it: one on each side, firing forward and out
+    forward = MeshBuilder()
+    for side in (1, -1):
+        theta = side * OAMS_FORWARD[0]
+        out = (radial(theta) * 0.82 + Vector((0.0, 0.0, 0.57))).normalized()
+        chamber(forward, cup, skins, ADAPTER, theta, zz(OAMS_FORWARD[1]), out, 2.1, 2.7)
+    tidy(skins, ADAPTER)
     cup.build("Retro_Ports", M["titanium"], g, sharp_angle=35)
     say(
-        noz.build("Retro_ForwardThrusters", M["nozzle"], g, sharp_angle=35),
+        forward.build("Retro_ForwardThrusters", M["nozzle"], g, sharp_angle=35),
         "Forward-firing thrusters",
-        "Two chambers of 85 lbf that fire toward the nose, to slow the ship. An hour and a half after the launch Grissom held "
-        "them on for 75 seconds, took 15 metres a second off the ship's speed, and Gemini 3 was in a different orbit: the first "
-        "time a crew had changed the path they were on. Their thrust is documented; where they stand is read off SEDR 300's "
-        "small drawing.",
+        "Chambers 11 and 12: two of 85 lbf, one on each side, that fire toward the nose to slow the ship. An hour and a half "
+        "after the launch Grissom held them on for 75 seconds, took 15 metres a second off the ship's speed, and Gemini 3 was "
+        "in a different orbit: the first time a crew had changed the path they were on. Their thrust is documented; where "
+        "they stand is read off SEDR 300's sketch of the system, and how far they lean forward is estimated.",
     )
+    if noz.verts:
+        say(
+            noz.build("Retro_LateralThrusters", M["nozzle"], g, sharp_angle=35),
+            "Lateral thrusters",
+            "Four chambers of 100 lbf that move the ship bodily.",
+        )
     if dummy.verts:
         say(
             dummy.build("Retro_LateralThrusters", M["steel"], g, sharp_angle=35),
             "Lateral thrusters (dummies)",
-            "Four chambers of 100 lbf belong here, pointing out to the sides, up and down through the ship's centre of gravity, to "
-            "move it bodily without turning it. On this ship all four were dummies: it could go forward and back, and nothing "
-            "else. So when the plan called for a push sideways, to tilt the orbit by a fiftieth of a degree, Grissom turned the "
-            "whole ship square to its path and used the forward and aft thrusters. The next ship had real ones.",
+            "Chambers 13 to 16: four of 100 lbf belong here, pointing out to the sides, up and down through the ship's centre of "
+            "gravity, to move it bodily without turning it. McDonnell's manual says it in a note on the drawing: inoperative on "
+            "spacecraft 3. It could go forward and back, and nothing else. So when the plan called for a push sideways, to tilt "
+            "the orbit by a fiftieth of a degree, Grissom turned the whole ship square to its path and used the forward and aft "
+            "thrusters. The next ship had real ones. What stood in the ports of this one is not recorded; here they are the "
+            "chambers' shapes in plain steel.",
         )
     if not interior():
         return
     r, at, mid = RETRO
-    case, bell, beam = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    case, bell, beam, fit_ = (MeshBuilder() for _ in range(4))
     for k in range(4):
-        c = radial(deg(45) + TAU * k / 4) * at + Vector((0, 0, zz(mid)))
+        a = deg(45) + TAU * k / 4
+        c = radial(a) * at + Vector((0, 0, zz(mid)))
         sphere(case, c * IN, r * IN)
         m = Matrix.Translation(c * IN)
         bell.lathe(prof([(1.4, -r + 1.0), (2.2, -r - 1.5), (3.6, -r - 5.5), (4.3, -r - 8.0)][::-1]), 20, matrix=m)
-        case.lathe(hoop(2.0, 3.2, -r - 0.3, -r + 1.2), 16, matrix=m)
-    for a in (0.0, deg(90)):  # the cross of beams they are bolted to
+        case.lathe(hoop(2.0, 3.4, -r - 0.5, -r + 1.2), 16, matrix=m)  # the flange the nozzle is bolted to
+        for i in range(12):
+            b = TAU * i / 12
+            fit_.disc(m @ (Vector((2.75 * math.cos(b), 2.75 * math.sin(b), -r - 0.5)) * IN), (0, 0, -1), 0.2 * IN, 0.2 * IN)
+        # the igniter beside the nozzle, and a lug to the beam on either hand
+        ig = c + radial(a + deg(90)) * 3.9 + Vector((0, 0, -r + 0.6))
+        fit_.tube(ig * IN, (ig + Vector((0, 0, -2.6))) * IN, 0.8 * IN, 10)
+        for da in (-deg(45), deg(45)):
+            e = radial(a + da)
+            foot = e * e.dot(c) + Vector((0, 0, zz(mid)))  # the nearest point of that beam's web
+            start = c + (foot - c).normalized() * (r - 0.3)
+            fit_.tube(start * IN, (foot - (foot - c).normalized() * 0.15) * IN, 0.55 * IN, 8)
+            chamfered(fit_, (2.2, 1.0, 2.2), frame(foot * IN, (c - foot).normalized()) @ Matrix.Translation(Vector((0, 0, 0.5)) * IN), 0.1)
+    span = 2 * (ADAPTER.r(zz(mid + 7.0)) - 3.4)
+    for a, pieces in ((0.0, ((0.0, span),)), (deg(90), ((span / 4 + 0.9, span / 2 - 1.8), (-span / 4 - 0.9, span / 2 - 1.8)))):
+        # the cross of beams they hang in: one whole, the other in two halves that meet it
         e = radial(a)
-        along = Matrix((e, Vector((-e.y, e.x, 0.0)), Vector((0, 0, 1)))).transposed().to_4x4()
-        along.translation = Vector((0, 0, zz(mid + 2.0))) * IN
-        beam.box((2 * (ADAPTER.r(zz(mid + 7.0)) - 3.2) * IN, 0.4 * IN, 9.0 * IN), along)
-    beam.tube(Vector((0, 0, zz(mid - 3.5))) * IN, Vector((0, 0, zz(mid + 7.5))) * IN, 2.2 * IN, 16)
+        for at_, length in pieces:
+            along = Matrix((e, Vector((-e.y, e.x, 0.0)), Vector((0, 0, 1)))).transposed().to_4x4()
+            along.translation = (e * at_ + Vector((0, 0, zz(mid + 1.0)))) * IN
+            i_beam(beam, along, length, 11.0, 3.2)
+    beam.tube(Vector((0, 0, zz(mid - 5.0))) * IN, Vector((0, 0, zz(mid + 7.0))) * IN, 2.4 * IN, 16)
     say(
         case.build("Retro_Rockets", M["case"], g, sharp_angle=None),
         "Retrograde rockets",
         "Four solid rockets in titanium balls about 13 in across, one in each quarter of a cross of beams. Each gives about "
         "2,500 lbf for five and a half seconds, and they are fired one after another: a ripple, not a blow. At 4 hours 33 "
         "minutes 23 seconds they brought Gemini 3 down. Going up they have a second use: fired together, they pull the ship "
-        "off a failing Titan. Their size is SEDR 300's; where they sit in the section is read off its small figure.",
+        "off a failing Titan. Their size is SEDR 300's; where they sit in the section is read off its figure.",
     )
     bell.build("Retro_RocketNozzles", M["nozzle"], g, sharp_angle=35)
-    beam.build("Retro_Beams", M["aluminium"], g, sharp_angle=35)
+    fit_.build("Retro_RocketFittings", M["steel"], g, sharp_angle=35)
+    say(
+        beam.build("Retro_Beams", M["aluminium"], g, sharp_angle=35),
+        "Retrograde rocket beams",
+        "A cross of aluminium I-beams across the section, each rocket hung in one of its quarters by lugs. The beams and the "
+        "rockets on them are SEDR 300's figure; the beams' depth and the flanges' width are estimated from it.",
+    )
 
 
 def build_equipment_section(M, fit: Fit) -> None:
     """The adapter's lower part: what is needed only in orbit. It is cut away just before retrofire."""
     g = group("EquipmentSection")
-    places = [deg(a) for a in (40, 140, 220, 320)]  # the four places the attitude chambers stand at, two to a place
-    ports = [(a + da, 27.0, 1.9) for a in places for da in (-deg(4.5), deg(4.5))]
-    adapter_skin(M, g, "Equipment", Z_BASE + 1.6, Z_EQUIP_TOP, ports)
+    skin_obj, _ = adapter_skin(M, g, "Equipment", Z_MATING_TOP, Z_DIVISION)
     ring = MeshBuilder()  # the machined ring at its foot, bolted to the launch vehicle with twenty bolts
-    ring.lathe(hoop(BASE_R - 2.4, BASE_R + 0.45, zz(Z_BASE), zz(Z_BASE + 1.6)), 144)
+    ring.lathe(hoop(BASE_R - 2.4, BASE_R + 0.45, zz(Z_BASE), zz(Z_MATING_TOP)), 144)
     for i in range(20):
         a = TAU * (i + 0.5) / 20
-        ring.disc(ADAPTER.p(a, zz(Z_BASE + 0.8), 0.45), radial(a), 0.55 * IN, 0.35 * IN)
+        ring.disc(ADAPTER.p(a, zz((Z_BASE + Z_MATING_TOP) / 2), 0.45), radial(a), 0.55 * IN, 0.35 * IN)
     ring.build("Equipment_MatingRing", M["aluminium"], g, sharp_angle=30)
     noz, cup = MeshBuilder(), MeshBuilder()
-    for a, s, _r in ports:
-        # each chamber fires square to the ship's axis, along the top-bottom line or the left-right one by turns
-        thruster(noz, cup, ADAPTER.p(a, zz(s)), ADAPTER.n(a), 1.25, _r)
+    skins = (skin_obj.name,)
+    # 1 to 8, which turn the ship: four clusters at the foot, on the diagonals. In each, the chamber nearer the top or
+    # the bottom fires along the ship's top-to-bottom line and pitches it; the other fires sideways and yaws it; a pair
+    # in opposite corners rolls it (SEDR 300, Figure 8-72 and its table). None fires out along a radius.
+    for top in (1, -1):
+        for side in (1, -1):
+            for k, a in enumerate(OAMS_ATTITUDE):
+                theta = side * a if top > 0 else side * (math.pi - a)
+                out = Vector((top, 0.0, 0.0)) if k == 0 else Vector((0.0, side, 0.0))
+                chamber(noz, cup, skins, ADAPTER, theta, zz(OAMS_ATTITUDE_Z), out, 1.25, 1.9, lip=0.4)
+    tidy(skins, ADAPTER)
     cup.build("Equipment_Ports", M["titanium"], g, sharp_angle=35)
     say(
         noz.build("Equipment_AttitudeThrusters", M["nozzle"], g, sharp_angle=35),
         "Attitude thrusters",
-        "Eight chambers of 25 lbf in pairs at four places round the adapter's foot: one of each pair pitches the ship, the "
-        "other yaws it, and fired crosswise they roll it. They are part of the orbit attitude and maneuver system, whose "
-        "propellants are in this section. Their number and thrust are documented; their places are read off drawings and one "
-        "photograph, and here all eight point straight out, which the real ones do not.",
+        "Chambers 1 to 8: eight of 25 lbf in four clusters round the adapter's foot. In each cluster one fires along the ship's "
+        "top-to-bottom line, to pitch it, and the other sideways, to yaw it; fired in opposite corners they roll it. They are "
+        "part of the orbit attitude and maneuver system, whose propellants are in this section. Their number, thrust and which "
+        "way each fires are documented; where the clusters stand round the foot is read off SEDR 300's sketch.",
     )
     aft = MeshBuilder()
-    for a in (deg(90), deg(-90)):  # the two that fire aft, at the foot, into the launch vehicle's scuppers on the pad
+    for a in OAMS_AFT:  # 9 and 10, which push the ship forward: at the foot, top and bottom, firing aft
         c = radial(a) * 49.0 + Vector((0, 0, zz(Z_BASE + 9.0)))
         aft.lathe(
             prof([(1.0, 7.0), (1.6, 4.0), (2.6, 1.5), (3.1, 0.0)][::-1]),
@@ -1115,10 +1160,11 @@ def build_equipment_section(M, fit: Fit) -> None:
     say(
         aft.build("Equipment_AftThrusters", M["nozzle"], g, sharp_angle=35),
         "Aft-firing thrusters",
-        "Two chambers of 100 lbf at the adapter's foot, firing backward. When the Titan's engine had stopped and a charge "
-        "had cut the ship free, Grissom held these on to push it clear and into orbit. He held them a little long. At "
+        "Chambers 9 and 10: two of 100 lbf at the adapter's foot, firing backward. When the Titan's engine had stopped and a "
+        "charge had cut the ship free, Grissom held these on to push it clear and into orbit. He held them a little long. At "
         "4 hours 21 minutes he used them again, for two and a half minutes, to bring the low point of the orbit down into the "
-        "air: had the retrograde rockets then failed, the ship would have come home anyway.",
+        "air: had the retrograde rockets then failed, the ship would have come home anyway. SEDR 300's sketch puts one at "
+        "the top of the foot and one at the bottom; there they lean outward, and here they fire straight aft.",
     )
     cover = MeshBuilder()
     cover.lathe(prof([(0.0, zz(Z_BASE + 13.0)), (30.0, zz(Z_BASE + 10.0)), (BASE_R - 3.0, zz(Z_BASE + 2.2))]), 72)
@@ -1132,7 +1178,7 @@ def build_equipment_section(M, fit: Fit) -> None:
     if not interior():
         return
     shield = MeshBuilder()
-    shield.lathe(prof([(0.0, zz(Z_EQUIP_TOP - 3.0)), (ADAPTER.r(zz(Z_EQUIP_TOP - 3.0)) - 2.8, zz(Z_EQUIP_TOP - 3.0))]), 72)
+    shield.lathe(prof([(0.0, zz(Z_DIVISION - 3.0)), (ADAPTER.r(zz(Z_DIVISION - 3.0)) - 2.8, zz(Z_DIVISION - 3.0))]), 72)
     say(
         shield.build("Equipment_BlastShield", M["honeycomb"], g, sharp_angle=None),
         "Blast shield",
@@ -1140,16 +1186,21 @@ def build_equipment_section(M, fit: Fit) -> None:
         "the ship off a failing launch vehicle, this section and the Titan's oxidiser tank would be straight below them.",
     )
     tanks, frames_, gear, batt = (MeshBuilder() for _ in range(4))
-    # the OAMS: an oxidiser tank and a fuel tank either side, and the gas that pushes them between
-    sphere(tanks, P(-22.0, 6.0, 44.0), 11.0 * IN)
-    sphere(tanks, P(22.0, 6.0, 44.0), 11.0 * IN)
-    sphere(tanks, P(0.0, 24.0, 40.0), 8.0 * IN)
+    # the OAMS's own: a fuel tank, an oxidiser tank and the helium that pushes them, each a ball (SEDR 300, section
+    # VIII: 21.13, 21.12 and 16.20 in across). Spacecraft 3 has one of each
+    for (right, top, station), across in zip(OAMS_TANKS, (21.13, 21.12, 16.20)):
+        sphere(tanks, P(right, top, station), across / 2 * IN)
+        # (a boss at each pole, where the lines come in)
+        for s in (-1, 1):
+            tanks.tube(P(right, top, station + s * (across / 2 - 0.3)), P(right, top, station + s * (across / 2 + 1.1)), 1.1 * IN, 12)
     say(
         tanks.build("Equipment_OamsTanks", M["tank"], g, sharp_angle=None),
         "OAMS propellant tanks",
-        "The orbit attitude and maneuver system: an oxidiser tank, a fuel tank, and a bottle of helium to push them, feeding "
-        "sixteen thrust chambers round the adapter. About 300 lb of propellant on this flight. With it Gemini 3 changed its "
-        "orbit three times. The tanks' sizes and places here are estimated.",
+        "The orbit attitude and maneuver system: a fuel tank 21.13 in across, an oxidiser tank 21.12 in across and a ball "
+        "of helium 16.20 in across to push them, feeding sixteen thrust chambers round the adapter. About 300 lb of "
+        "propellant on this flight. With it Gemini 3 changed its orbit three times. The sizes are SEDR 300's; the sketch of "
+        "the system shows the two propellant tanks together on one side and the helium near the middle, and exactly where "
+        "they are here is estimated.",
     )
     oxygen = MeshBuilder()
     sphere(oxygen, P(-24.0, -22.0, 42.0), 9.0 * IN)
@@ -1161,7 +1212,7 @@ def build_equipment_section(M, fit: Fit) -> None:
     )
     n = fit.adapter_batteries
     for i in range(n):
-        batt.box((8.0 * IN, 15.0 * IN, 10.0 * IN), Matrix.Translation(P(14.0 + 0.0, -24.0, 40.0) + Vector((0.0, (i - (n - 1) / 2) * 9.0, 0.0)) * IN))
+        chamfered(batt, (12.0, 7.4, 10.0), Matrix.Translation(P(16.0 + (i - (n - 1) / 2) * 8.6, -26.0, 40.0)), 0.3)
     if n:
         say(
             batt.build("Equipment_Batteries", M["battery"], g, sharp_angle=35),
@@ -1172,14 +1223,14 @@ def build_equipment_section(M, fit: Fit) -> None:
             "documented; their size and place here are estimated.",
         )
     for i in range(fit.water_tanks):
-        gear.tube(P(-6.0 + 9.0 * i, -30.0, 34.0), P(-6.0 + 9.0 * i, -30.0, 46.0), 3.6 * IN, 16)
+        gear.tube(P(-6.0 - 9.0 * i, -30.0, 34.0), P(-6.0 - 9.0 * i, -30.0, 46.0), 3.6 * IN, 16)
     for right, top, size in (
         (-34.0, -4.0, (9.0, 12.0, 14.0)),
-        (34.0, -6.0, (9.0, 14.0, 12.0)),
-        (0.0, -12.0, (14.0, 10.0, 9.0)),
-        (10.0, 34.0, (12.0, 8.0, 10.0)),
+        (36.0, -18.0, (9.0, 14.0, 12.0)),
+        (-26.0, 14.0, (12.0, 9.0, 10.0)),
+        (-16.0, 34.0, (12.0, 8.0, 10.0)),
     ):
-        gear.box(tuple(s * IN for s in size), Matrix.Translation(P(right, top, 40.0)))
+        chamfered(gear, size, Matrix.Translation(P(right, top, 40.0)), 0.25)
     gear.build("Equipment_Modules", M["equipment"], g, sharp_angle=35)
     zf = Z_BASE + 17.5
     for a in (TAU * i / 6 for i in range(6)):  # the frame the modules hang on: spokes from a hub to the adapter's wall

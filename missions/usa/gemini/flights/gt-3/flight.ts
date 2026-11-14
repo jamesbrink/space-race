@@ -234,13 +234,13 @@ const parts: Part[] = [
     name: 'Adapter: retrograde section',
     summary: 'Four solid rockets to come home on, and thrusters that on this ship were dummies.',
     detail:
-      'The upper third of the white adapter. Inside, on a cross of aluminium beams, are four solid rockets in ' +
+      'The upper two fifths of the white adapter, from station Z68.44. Inside, on a cross of aluminium I-beams, are four solid rockets in ' +
       'titanium balls about 13 in across, each of about 2,500 lbf for five and a half seconds, fired one after ' +
       'another. At 4 hours 33 minutes 23 seconds they slowed Gemini 3 out of orbit; then the section itself was ' +
       'cut loose, and the heat shield was bare for the first time. In its skin are six thrusters of the ' +
-      'manoeuvring system: two that fire forward, and four that push the ship sideways, up and down. On this ship ' +
-      'those four were dummies, so it could go only forward and back; to shift its orbit sideways Grissom turned ' +
-      'the whole ship square to its path.',
+      'manoeuvring system: two that fire forward, and four that push the ship sideways, up and down. McDonnell’s ' +
+      'manual has a note on its drawing of them: chambers 13, 14, 15 and 16 inoperative on spacecraft 3. So it ' +
+      'could go only forward and back; to shift its orbit sideways Grissom turned the whole ship square to its path.',
     facts: [
       ['Retrograde rockets', '4 × about 2,500 lbf, 5.5 s each'],
       ['Fired', '4 h 33 min 23 s after liftoff'],
@@ -258,20 +258,22 @@ const parts: Part[] = [
     name: 'Adapter: equipment section',
     summary: 'Propellant, oxygen, batteries and a radiator: everything wanted only in orbit.',
     detail:
-      'The lower two thirds of the adapter, 10 ft across at the foot, where it is bolted to the Titan with twenty ' +
+      'The lower three fifths of the adapter, 10 ft across at the foot, where it is bolted to the Titan with twenty ' +
       'bolts. It holds what a ship needs in orbit and not afterwards: the propellant for the manoeuvring thrusters, ' +
       'the oxygen the crew breathe, the coolant pumps, and the power, which on this ship was three silver-zinc ' +
       'batteries, the fuel cells not being ready. The skin is itself the radiator: coolant runs through hollow ' +
       'stringers on its inner face and the white paint gives the heat to space. Ten thrusters are let into it: ' +
-      'eight small ones that turn the ship, and two at the foot that push it forward. With those two Grissom ' +
+      'eight small ones in four clusters that turn the ship, each firing along one of its axes and not straight ' +
+      'out, and two at the foot that push it forward. With those two Grissom ' +
       'finished the climb to orbit, and with their opposite numbers he changed the orbit an hour and a half later: ' +
-      'the first time a crew had done so. The whole section is cut off just before retrofire. The equipment inside ' +
-      'is placed by guess.',
+      'the first time a crew had done so. The whole section is cut off just before retrofire. The three tanks of ' +
+      'the manoeuvring system are McDonnell’s sizes, 21 in and 16 in across; the rest of what is inside is placed ' +
+      'by guess.',
     facts: [
       ['Base diameter', '120.00 in (3.05 m)'],
       ['Attitude thrusters', '8 × 25 lbf'],
       ['Aft-firing thrusters', '2 × 100 lbf'],
-      ['Propellant', 'about 300 lb'],
+      ['Propellant', 'about 300 lb, in two 21 in tanks'],
       ['Batteries', '3 silver-zinc, 400 Ah each'],
       ['Cut away', 'just before retrofire'],
     ],

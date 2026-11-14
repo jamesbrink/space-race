@@ -43,7 +43,8 @@ kept in the repository.
 | Nose fairing | 5.31 in, Z233.97 to Z239.28 | documented | Figure 2-3 |
 | Heat shield | 90 in across, 144 in spherical radius | documented | Figure 2-3; p. 2-18 |
 | Heat shield's crown | Z94.40 | estimated | a station of Figure 2-4 that the figure does not name. A cap of that sphere 90 in across is 7.21 in deep, which puts its rim at Z101.61 |
-| Equipment section / retrograde section | divided between Z66.74 and Z70.00 | estimated which | both are stations of Figure 2-4; the model puts the ring between them on the retrograde section |
+| Equipment section / retrograde section | divided at Z68.44 | documented | TS, Figure 1 (p. 5). Figure 2-4's Z66.74 and Z70.00 are the rings either side of it |
+| Mating section | Z13.44 to Z15.38 | documented | TS, Figure 1 |
 | Large pressure bulkhead; the hatch openings' aft sills | Z108.00 | estimated | a station of Figure 2-4 |
 | Hatches' forward edges | Z151.62 | documented station; that it is the hatches' forward edge estimated | TS, Figure 1 (p. 5), which draws the line there. In S65-13244 the trough crosses the forward sill still several inches deep, which a sill at this station gives |
 | Hatches' aft edges | Z106.0 | estimated | TS, Figure 1 draws the hatch from the heat shield's ring |
@@ -70,9 +71,12 @@ kept in the repository.
 | Stringers | bulb-tee, the bulb a path for the coolant | documented; their number (40) a guess | p. 2-21 |
 | Mating ring | machined aluminium, 120 in, twenty bolts | documented | p. 2-23 |
 | Retaining straps | three, titanium, with a fairing over each | documented; their places estimated | p. 2-21 and Figures 2-5 and 2-11; SP-121, p. 16 |
-| Retrograde rockets | four, spherical, "approximately 13 inches in diameter", titanium cases, one in each quadrant of a cross of aluminium I-beams | documented; their place in the section estimated | pp. 2-23 and 11-71 |
+| Retrograde rockets | four, spherical, "approximately 13 inches in diameter", titanium cases, one in each quadrant of a cross of aluminium I-beams, each hung by lugs, with its nozzle aft and an igniter beside it | documented; their station (Z84), their distance from the axis (19.5 in) and the beams' depth (11 in) and flanges (3.2 in) estimated | pp. 2-23 and 11-71; Figure 11-32 (p. 11-70) |
 | Seats | ejection seats, canted 12° outboard and 8° forward | documented; every size estimated | p. 3-3; Figure 3-2 has no dimensions |
-| Thrust chambers, adapter | ten on the equipment section, six on the retrograde section | documented | p. 2-23 |
+| Thrust chambers, adapter: which and where | 1 to 8 (attitude) in four clusters at the equipment section's foot; 9 and 10 (forward) at the foot, top and bottom, firing aft; 11 and 12 (aft) on the retrograde section, one each side, firing forward; 13 to 16 (right, left, up, down) on the retrograde section at the left, the right, the bottom and the top; ten on the equipment section, six on the retrograde section | documented in number and in which way each pushes (SEDR VIII, Figure 8-72 and its table, p. 8-256; p. 2-23); the places are read off Figure 8-72, which is a sketch in perspective: estimated | 36° and 54° from the top or bottom at Z27 for the attitude clusters; 78° at Z95.5 for 11 and 12; Z86 for 13 to 16 |
+| Thrust chambers, adapter: which way they fire | 5, 6 toward the top and 1, 2 toward the bottom (pitch); 3, 4 toward the crew's right and 7, 8 toward the left (yaw); 3 with 7 and 4 with 8 (roll); none along a radius | the table documented; that an aft chamber which pitches the nose up must fire toward the top is derived from it | SEDR VIII, Figure 8-72 |
+| Chambers 13 to 16 on spacecraft 3 | inoperative | documented | SEDR VIII, Figure 8-72's note and p. 8-258 |
+| OAMS tanks | fuel 21.13 in, oxidiser 21.12 in, helium 16.20 in across, one of each on spacecraft 3 | documented; where each is in the section estimated from Figure 8-72 | SEDR VIII, pp. 8-263, 8-271, 8-273 |
 | Thrust chambers, re-entry control: which way they fire | 1, 2 toward the top (pitch down); 5, 6 toward the bottom; 3, 4 toward the crew's left (yaw right); 7, 8 toward the right; roll by 3 with 7 or 4 with 8 | documented | SEDR VIII, Figure 8-84 and its inset (p. 8-281) |
 | Thrust chambers, re-entry control: where | four clusters on the diagonals, each a pitch and a yaw chamber side by side, 34° and 55° from the top or the bottom, each there twice (A ring and B ring) at Z183.4 and Z188.1 | the clusters documented (Figure 8-84; GIV, Figure 3-12); angles and stations estimated | S65-21090 through the fitted camera: 33° to 37° and 52° to 62°, Z183.2 to Z184.3 and Z187.7 to Z189.8. TS Figure 1's side view scales to 30° and 52° |
 | Thrust chambers, re-entry control: splay | each turned 10° from the axis it fires along | estimated | the inset draws the arrows a little apart |
@@ -83,7 +87,7 @@ kept in the repository.
 | | | Confidence |
 | --- | --- | --- |
 | OAMS attitude | eight chambers of 25 lbf | documented (SP-121, p. 16, where the figure is misprinted "95"; *Chronology*, p. 191) |
-| OAMS translation | two of 85 lbf firing forward, two of 100 lbf firing aft, four of 100 lbf sideways, up and down | documented (SP-121, p. 16; which numbers do what: GIV, Figure 3-13) |
+| OAMS translation | two of 85 lbf firing forward, two of 100 lbf firing aft, four of 100 lbf sideways, up and down | documented (SEDR VIII, p. 8-260: "six one-hundred pound and two eighty-five pound"; SP-121, p. 16; which numbers do what: Figure 8-72) |
 | Re-entry control | sixteen chambers; 25 lbf each | documented (SEDR VIII, p. 8-284) |
 | Retrograde rockets | about 2,500 lbf for 5.5 s each, fired one after another | documented (press kit, p. 8) |
 | Propellants | monomethylhydrazine and nitrogen tetroxide | documented (SEDR VIII, p. 8-260) |
@@ -100,8 +104,8 @@ kept in the repository.
 | `Cabin` | the beaded shingles in their cells, the troughs before the windows, the plain plates, the frame under them, the cable cover, the white disc, UNITED STATES and the flag on each side, the three strap fairings, the fluid injection nozzles' plate |
 | `CrewStation` | the pressure vessel (floor, sides, the two bulkheads, the beam between the hatches), the two seats, the panels, the pedestal, the attitude hand controller |
 | `HeatShield` | the ablator and the structure behind it |
-| `RetroSection` | skin, foil, rings and stringers; the band it is cut at; six chambers; inside, the four rockets on their beams |
-| `EquipmentSection` | skin, foil, rings and stringers; the mating ring and its bolts; ten chambers; the gold cover across the foot; inside, the blast shield, the tanks, the batteries, the modules |
+| `RetroSection` | skin, foil, rings and stringers; the band it is cut at; six chambers in their ports (13 to 16 dummies on this ship); inside, the four rockets with their nozzles, igniters and lugs on a cross of I-beams |
+| `EquipmentSection` | skin, foil, rings and stringers; the mating ring and its bolts; ten chambers (eight in oval ports, two at the foot); the gold cover across the foot; inside, the blast shield, the three OAMS tanks, the oxygen, the batteries, the modules |
 
 Below three-quarters detail nothing inside is built and the windows are dark panes; below full
 detail the beads are half as many; below half there are none, and the thrust chambers' ports are
@@ -146,11 +150,16 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
   off the photograph. In the photograph the ports are longer ovals than the model's, which says the
   chambers lean further from the skin's normal than the 10° of splay given them, or are canted
   along the ship as well; that is not in anything read. Which ring is the forward one is not known.
-- **The adapter's thrusters point straight out too**, except the two that fire forward. The real
-  pitch and yaw chambers fire along the ship's axes, not along radii.
-- **Inside the adapter everything is placed by guess**: the tanks' sizes, the battery module, the
-  modules' frame. The plumbing, the wiring, the coolant pumps and the radar transponder are left
-  out. The rockets' I-beams are plain webs.
+- **The adapter's chambers are placed from a sketch.** Which way each fires is the table's; where
+  each stands is read off Figure 8-72, drawn in perspective with no stations. Chambers 9 and 10
+  lean outward in it and fire straight aft here. What stood in the ports of 13 to 16 on this ship,
+  where the chambers were inoperative, is not recorded: here they are the chambers' own shapes in
+  steel.
+- **Inside the adapter the tanks are the right size and in roughly the right place**; everything
+  else is placed by guess: the oxygen bottle, the battery module, the electronics, the modules'
+  frame. The plumbing, the wiring, the coolant pumps and the radar transponder are left out.
+  The first model of this ship built every ball in the adapter (tanks and rockets) a fortieth of
+  its size, by giving metres to a profile that took inches; that is put right.
 - **The gold cover** is a smooth shallow cone; the real one is a quilted blanket.
 - **The scanner fairing** is a box of the size, place and colour the photograph gives, with none of
   its detail (it is stepped, and has a foot on the cabin). **The strap fairings** are blisters of
