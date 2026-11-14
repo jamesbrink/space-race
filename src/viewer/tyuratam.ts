@@ -5,7 +5,7 @@ import { fbm2 } from './field';
 import { Flora } from './flora';
 import { Land, type LandSpec } from './land';
 import { STEPPE_CEL, STEPPE_CEL_GROUND, STEPPE_COVER, STEPPE_GROUND, STEPPE_PALETTE, STEPPE_TONE, steppeFlora } from './steppe.ts';
-import { SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
+import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
@@ -223,6 +223,17 @@ const SPOIL: [number, number, number, number] = [181, 381, 72, 292];
 const RUTS: { line: [number, number][]; half: number; worn: number }[] = [
   { line: ROADS[0]!, half: 70, worn: 0.75 },
   { line: RAILS[0]!.slice(0, -1), half: 35, worn: 0.5 },
+  // along the embankment's brow north of the tracks, 3 m in from it (tyuratamrelief.ts BROW): the way along the top of the fall
+  {
+    line: [
+      [-335, 5],
+      [-125, 28],
+      [-75, 38],
+      [40, 38],
+    ],
+    half: 3,
+    worn: 0.45,
+  },
 ];
 const RUT_SEGMENTS = RUTS.flatMap(({ line, half, worn }) =>
   line.slice(1).map((b, i) => ({ s: [line[i]![0], -line[i]![1], b[0], -b[1]] as [number, number, number, number], half, worn })),
@@ -389,9 +400,42 @@ const OVERLAP = 3;
  * pit is. The rails are paint, not rails, except where they come up to the platform (the place's model: deck.py).
  */
 const PAINT = /* glsl */ `
+  ${SCARP_FRAME_GLSL}
+  // The graded fall: four springs' thaw on bare clay. Rills down it where it is steep, a stride or two apart, each
+  // starting below the brow, deepest on the steepest part and fanning out at the foot; and the toe darker, where the
+  // fines wash to and the thaw's water stands. Their spacing, breadth and tone are estimated (site-1.md, "The lie of
+  // the land"): no photograph of the fall close enough to show them has been read.
+  void fall(vec2 p, inout Ground g) {
+    if (dot(p, p) > 1.44e6) return;
+    vec2 q = vec2(p.x, -p.y);
+    float along, past = browFrame(q, along);
+    float u = past / scarpBreadth(q);   // 0 at the brow, 1 at the foot
+    if (u < 0.05 || u > 1.5) return;
+    float steep = length(landUp.xz) / max(landUp.y, 0.2);   // rise over run, as the ground is lit
+    float toe = smoothstep(0.75, 1.0, u) * (1.0 - smoothstep(1.05, 1.45, u + 0.15 * (noise(vec3(p * 0.05, 72.0)) - 0.5)));
+    g.albedo *= 1.0 - 0.09 * toe;
+    float spacing = 3.6;
+    float a = along + 2.4 * (noise(vec3(along * 0.12, past * 0.09, 70.0)) - 0.5);
+    float lane = floor(a / spacing);
+    // (each wanders on its own as it goes down, a hand's breadth at its head and a stride where it spills at the foot)
+    a += 0.9 * (noise(vec3(lane * 3.1, past * 0.45, 74.0)) - 0.5) + 0.25 * (noise(vec3(lane * 5.7, past * 1.6, 75.0)) - 0.5);
+    float off = a - (lane + 0.5) * spacing + 0.9 * (hash(vec3(lane, 0.0, 73.0)) - 0.5) * spacing;
+    float width = mix(0.08, 0.5, smoothstep(0.15, 1.05, u)) * (0.6 + 0.8 * hash(vec3(lane, 1.0, 73.0)));
+    float rill = (1.0 - smoothstep(width * 0.5, width, abs(off))) * step(0.35, hash(vec3(lane, 2.0, 73.0)));
+    rill *= smoothstep(0.08 + 0.2 * hash(vec3(lane, 3.0, 73.0)), 0.35, u) * (1.0 - smoothstep(0.9, 1.15, u)) * smoothstep(0.1, 0.22, steep);
+    if (uCel > 0.5) {
+      g.albedo = mix(g.albedo, g.albedo * 0.72, step(0.5, rill) * seen(0.3));
+      return;
+    }
+    rill *= seen(0.25);
+    vec3 cut = g.albedo * vec3(0.82, 0.8, 0.78);
+    g.albedo = mix(g.albedo, cut, rill);
+    g.bump += -0.05 * rill;
+  }
   void paint(vec2 p, vec4 A, vec4 B, inout Ground g) {
     // (a little inside the rim, over the pit's own slope: OVERLAP)
     if (inPit(p) > ${glsl(OVERLAP)}) discard;
+    fall(p, g);
     float way = road(p);
     float paved = 1.0 - smoothstep(${glsl(ROAD_HALF - 0.08)}, ${glsl(ROAD_HALF + 0.08)}, way + 0.06 * (noise(vec3(p * 1.5, 30.0)) - 0.5));
     if (paved > 0.0) {
@@ -458,6 +502,8 @@ function landSpec(): LandSpec {
     palette: STEPPE_PALETTE,
     ground: STEPPE_GROUND,
     cel: STEPPE_CEL_GROUND,
+    // the scarp, the ramp and the plots are graded earth: smooth, not faceted
+    smooth: true,
   };
 }
 

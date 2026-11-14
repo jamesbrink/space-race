@@ -73,6 +73,10 @@ different one per pixel per frame. Three things stop it, and all three must stay
   half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (`GROUND_Y`, and `GROUND` in
   the site's builders: the pads and roads were at grade), and anything standing on the ground goes down past that (`FOOTING`
   in `site.py`). Change the two together and rebuild the pad and the place.
+- **A mesh without a `normal` attribute is flat-shaded.** Three decides that by the geometry, whatever the shader
+  writes: the land's patches have none, so each triangle is lit by its own plane unless the site's `LandSpec` asks
+  `smooth` (Tyuratam does: its graded slopes showed every cell as a facet). The Cape's land does not yet, and its
+  thickets' roofs are lit per triangle; turning it on there changes the Cape's picture.
 
 - **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
   camera is close to something else, faces under about 5 cm apart fight. Scenery that is looked at

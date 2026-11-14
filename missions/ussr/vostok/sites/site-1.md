@@ -949,8 +949,16 @@ rocket can leave the erector out by its date.
   rails, as a Sun at azimuth 130° would throw them: that is about 08:15 Moscow time, not 06:55, when the Sun stood
   at 108°. Either the frame was shot later that morning (the pilot's suit in it argues not) or the rails in it run
   some 20° off east and west, which no map has. Not resolved; the bus is placed by the rails, not by the shadows.
-- The spoil heap is a smooth mound of one tone: its gullies and the ditches round it are not drawn,
-  and the steppe's cover does not grow on it.
+- The spoil heap is a mound of one tone: its gullies and the ditches round it are not drawn,
+  and the steppe's cover does not grow on it. **It and the pit's earth and lining show every cell as a facet**: each
+  cell of their grids is added as a quad of its own (`MeshBuilder.add` in site1/rim.py `_heap`'s loop and
+  site1/platform.py's pit loop), so its corners are not shared with its neighbours' and shading them smooth has nothing
+  to average. Welding the cells (one vertex per grid point, or a merge by distance before `shade_smooth`) fixes it:
+  a model change, not yet made.
+- The fall's rills, its darker toe and the way worn along its brow are drawn on the land (tyuratam.ts `fall`,
+  `RUTS`): estimated, as wear a bare clay earthwork four springs old has. No photograph close enough to show them
+  has been read; the U-2 photograph of July 1959 (NPIC/B-24/61 Figure 1) shows wheel tracks all over the bare ground
+  round the pit, at a scale that cannot show a rill.
 - The land's relief is three levels and the falls between them, from a radar survey of 2000 on a 30 m grid
   ("The lie of the land"): good to some 2 m in height and 30 m in plan. The brow's line, the fall's breadth and
   section, the road's ramp and the pump house's plot are ours. The rise south of the fence is not built, nor the

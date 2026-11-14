@@ -92,6 +92,12 @@ export interface LandSpec {
   ground?: string;
   /** GLSL `vec3 groundCel(vec2 p, vec4 A, vec4 B, float roofed)`: the cel look's flat ground, with `ground`. Unless given, the default's. */
   cel?: string;
+  /**
+   * Light the ground by the normal the vertex shader works out from the relief, smooth across the triangles. Unless
+   * given, three lights each triangle by its own plane (a mesh with no `normal` attribute is drawn flat-shaded): on
+   * ground with slopes (graded earth, a scarp) that shows every triangle of the mesh as a facet.
+   */
+  smooth?: boolean;
 }
 
 /**
@@ -417,6 +423,8 @@ export class Land {
     for (let i = -n; i < n; i++) for (let j = -n; j < n; j++) this.roots.push([i * top, j * top]);
 
     this.geometry = patchGeometry();
+    // (the attribute's values are never read: the vertex shader writes the normal; its presence is what keeps three from flat shading)
+    if (spec.smooth) this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array(3 * (GRID + 1) ** 2), 3));
     this.patches = new THREE.InstancedBufferAttribute(new Float32Array(4 * 4096), 4);
     this.patches.setUsage(THREE.DynamicDrawUsage);
     this.geometry.setAttribute('aPatch', this.patches);
@@ -715,7 +723,7 @@ export class Land {
           float landWater;
           float landRough;
           float landGlint;   // how much of the Sun's own lobe gives way to what lies beyond's glint (Beyond)
-          vec3 landSun;      // the Sun's light here, its shadows taken
+          vec3 landSun;      // the Sun's light here, its shadows taken${spec.smooth ? "\n          vec3 landUp;       // the ground's own normal here, in the scene's axes: for the paint, which may follow the slope" : ''}
           ${spec.paint}
           ${spec.shore ? `#define LAND_SHORE\n${spec.shore}` : ''}
 ${spec.ground ?? defaultGround(p)}${spec.cel ?? ''}`,
@@ -724,7 +732,7 @@ ${spec.ground ?? defaultGround(p)}${spec.cel ?? ''}`,
           '#include <map_fragment>',
           /* glsl */ `
           vec2 landAt = vLand.xz;
-          landPixel = max(length(fwidth(landAt)), 1e-5);
+          landPixel = max(length(fwidth(landAt)), 1e-5);${spec.smooth ? '\n          landUp = normalize((vec4(vNormal, 0.0) * viewMatrix).xyz);' : ''}
           vec4 coverA = landAf(landAt), coverB = landBf(landAt);
           Ground g = ground(landAt, coverA, coverB);
           // the thicket's roof: leaf masses on each crown, deep shade between them
