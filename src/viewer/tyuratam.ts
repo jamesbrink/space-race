@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import type { SiteAround } from '../types';
 import { type Air, driftClouds, installAir } from './air';
+import { buildAround } from './around';
 import type { Day } from './day.ts';
 import { fbm2 } from './field';
 import { Flora } from './flora';
@@ -112,6 +114,23 @@ const RAILS: [number, number][][] = [
     [-330.6, 1.5],
     [-121.8, 25.7],
     [-39.8, 28.9],
+  ],
+  // The line the rocket came by: out of the assembly building's north gate (around.ts; site-1.md, "On the horizon") and
+  // round to join the centre track 1.32 km west of the pad. Today's map has it as an abandoned line (way 676662205), cut
+  // by the building's extension of 1973 to 1974, whose length (76 m) the first stretch here crosses (way 676662204, the
+  // track through the building). That it was the way out in 1961 is derived: it is the one line from the gate to the pad.
+  [
+    [-1912.4, -587.8],
+    [-1877.0, -520.3],
+    [-1754.5, -284.4],
+    [-1673.8, -150.8],
+    [-1620.6, -95.7],
+    [-1566.5, -56.2],
+    [-1495.9, -21.4],
+    [-1462.0, -9.8],
+    [-1423.5, -1.9],
+    [-1384.2, 2.5],
+    [-1319.1, 9.5],
   ],
 ];
 /** Each a segment (x0, z0, x1, z1) in the land's frame (+Z is south). */
@@ -585,12 +604,22 @@ function inPit(x: number, z: number): number {
 const UNDER_PIT = -60;
 
 /** Everything round the pad, under a day's sky (day.ts: the flight's `weather`). `groundY` is the terrain's height; the platform's deck is 0. */
-export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, day: Day) {
+export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, day: Day, around?: SiteAround) {
   const air: Air = { scale: day.haze, base: groundY, ...(day.cumulus ? { clouds: day.cumulus } : {}), day };
   installAir(air);
   const land = new Land(renderer, landSpec(), groundY, 0);
   const flora = new Flora(steppeFlora(day), land);
   flora.group.position.y = groundY;
+  // what stands round the site (the assembly building of Site 2): each on the highest of the land drawn under it, over
+  // the site's relief at its middle, which its model stands on (site1/relief.py); its walls go down 0.48 m into the land
+  const far = around
+    ? buildAround(around, (x, z, half) => {
+        let top = Number.NEGATIVE_INFINITY;
+        for (let i = -1; i <= 1; i++)
+          for (let j = -1; j <= 1; j++) top = Math.max(top, land.heightAt(x + 0.7 * half * i, z + 0.7 * half * j));
+        return top - siteRelief(x, -z);
+      })
+    : null;
   const eye = new THREE.Vector3();
   const local = (at: THREE.Vector3) => {
     eye.copy(at);
@@ -599,7 +628,7 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, da
   };
   return {
     floor: land.mesh,
-    scenery: [flora.group] as THREE.Object3D[],
+    scenery: [flora.group, ...(far?.meshes ?? [])] as THREE.Object3D[],
     reach: 1500,
     horizon: FAR,
     /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green; and in the cel look. */
@@ -619,7 +648,7 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, da
       land.attend(eye);
       return flora.attend(eye);
     },
-    arrived: () => false,
+    arrived: far?.arrived ?? (() => false), // (the building round the site: something that casts a shadow where there was nothing)
     view: (camera: THREE.Camera) => land.view(camera),
     plantsClear: (at: THREE.Vector3, within: number) => flora.clear(local(at), within),
     plantsOut: (at: THREE.Vector3, margin: number) => {

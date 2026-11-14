@@ -590,6 +590,18 @@ export interface SiteDef {
    * flights come down in it (`PLACE`): a site inland says so here, or a rocket is heard in the surf that is not there.
    */
   quiet?: { wind: number; surf: number; hum: number; sea: number };
+  /** What stands beyond the site's own place and is seen from it, modelled apart (viewer/around.ts). */
+  around?: SiteAround;
+}
+
+/**
+ * A model of things round a site (a path under public/, as a flight's model urls are), built in the site's frame with
+ * each thing's node origin at its middle on the ground; the nodes to draw; and every material it wears, by name.
+ */
+export interface SiteAround {
+  model: string;
+  nodes: string[];
+  wears: string[];
 }
 
 /** A wind as a station reports it: the bearing it blows from, degrees clockwise from true north, and its speed, m/s. */
