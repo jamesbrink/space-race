@@ -57,3 +57,65 @@ test('Site 1: the brow runs west to east with the low ground on its left', () =>
   assert.ok(BROW.every((p, i) => i === 0 || p[0] > BROW[i - 1][0]));
   assert.ok(pastBrow(0, 100) > 0 && pastBrow(0, 0) < 0 && pastBrow(300, 0) > 0 && pastBrow(100, -150) < 0);
 });
+
+// The country past the place's own ground (viewer/tyuratamworks.ts): SRTM's lie of the land, and the worked ground off
+// the Corona frames of December 1960 and May 1962 (missions/ussr/vostok/sites/tyuratam-works.ts).
+const { heightsAt } = await import('../src/viewer/tyuratamworks.ts');
+const { TYURATAM_WORKS, FANS } = await import('../missions/ussr/vostok/sites/tyuratam-works.ts');
+const { TYURATAM_HEIGHTS } = await import('../missions/ussr/vostok/sites/tyuratam-heights.ts');
+
+test('Site 1: the land beyond holds the country’s form, against the sheet and the record', () => {
+  const H = TYURATAM_HEIGHTS;
+  assert.equal(Buffer.from(H.bytes, 'base64').length, H.n * H.n);
+  assert.ok(H.half >= 8000 + 2 * H.step, 'the grid reaches past the land’s edge, with the spline’s margin');
+  // Kilinshek: 132.6 m on the 1:100,000 sheet L-41-79, 1.2 km west and 1.4 km south of the pad
+  const top = heightsAt(-1200, -1400) + H.level;
+  assert.ok(Math.abs(top - 132.6) < 2, `Kilinshek at ${top.toFixed(1)} m`);
+  // the steppe north of the pad 7 to 8 m below the deck (site-1.md: SRTM 104 to 107 m from 65 to 400 m north)
+  assert.ok(heightsAt(0, 400) < -5 && heightsAt(0, 400) > -10);
+  // the hollow to the north and the Takyrsai's valley to the south lie low
+  assert.ok(heightsAt(500, 5500) < -8);
+  assert.ok(heightsAt(0, -4000) < -10);
+});
+
+test('Site 1: the land beyond is smooth: no step and no crease along its grid, and nowhere a cliff', () => {
+  let worst = 0;
+  let bend = 0;
+  const e = 0.5;
+  for (let x = -7900; x <= 7900; x += 37.3)
+    for (let y = -7900; y <= 7900; y += 410.7) {
+      const a = heightsAt(x - e, y),
+        b = heightsAt(x, y),
+        c = heightsAt(x + e, y);
+      worst = Math.max(worst, Math.abs(c - a) / (2 * e));
+      bend = Math.max(bend, Math.abs(c - 2 * b + a) / (e * e));
+    }
+  assert.ok(worst < 0.12, `steepest slope ${worst.toFixed(3)}`);
+  assert.ok(bend < 0.01, `sharpest bend ${bend.toFixed(4)} per metre`);
+});
+
+test('Site 1: every piece of the worked ground was there in April 1961, says where it is from, and is drawable', () => {
+  const kinds = new Set(['worn', 'bare', 'graded', 'rail', 'road', 'track']);
+  assert.ok(TYURATAM_WORKS.length > 20);
+  const ids = new Set();
+  for (const w of TYURATAM_WORKS) {
+    assert.ok(!ids.has(w.id), `${w.id} twice`);
+    ids.add(w.id);
+    assert.ok(kinds.has(w.kind), w.id);
+    // on both frames, which bracket the flight: anything on the frame of 1962 alone is left out
+    assert.equal(w.frames, 'both', w.id);
+    assert.ok(['documented', 'derived', 'estimated'].includes(w.confidence), w.id);
+    assert.match(w.source, /CORONA/, w.id);
+    assert.ok(w.note.length > 20, w.id);
+    const pts = w.ring ?? w.line;
+    assert.ok(pts && pts.length >= (w.ring ? 3 : 2), w.id);
+    for (const [x, y] of [...pts, ...(w.holes ?? []).flat()])
+      assert.ok(Math.abs(x) <= 8000 && Math.abs(y) <= 8000, `${w.id} at ${x}, ${y}`);
+    if (w.line) assert.ok(w.width > 0 && w.width <= 60, `${w.id}: a way has a breadth`);
+    else assert.equal(w.width, undefined, w.id);
+  }
+  // the ways the frames show: the main line and the spur to Site 51, the roads, the tracks
+  for (const id of ['rail-main', 'rail-site51', 'road-station', 'road-site2-south-east', 'track-east', 'track-west-south'])
+    assert.ok(ids.has(id), id);
+  for (const f of FANS) assert.ok(Math.hypot(...f.at) < 3000 && f.name.length > 5);
+});

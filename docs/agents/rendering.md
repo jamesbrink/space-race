@@ -78,8 +78,9 @@ different one per pixel per frame. Three things stop it, and all three must stay
   in `site.py`). Change the two together and rebuild the pad and the place.
 - **A mesh without a `normal` attribute is flat-shaded.** Three decides that by the geometry, whatever the shader
   writes: the land's patches have none, so each triangle is lit by its own plane unless the site's `LandSpec` asks
-  `smooth` (Tyuratam does: its graded slopes showed every cell as a facet). The Cape's land does not yet, and its
-  thickets' roofs are lit per triangle; turning it on there changes the Cape's picture.
+  `smooth`. Both sites do: Tyuratam's graded slopes showed every cell as a facet, and the Cape's thickets' roofs were
+  lit triangle by triangle, a hard-edged facet in each crown near the eye; smooth, they are domes, and nothing the
+  facets gave is missed (the stills of November 2026, at eye height among the thickets and from 300 m, in both looks).
 
 - **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
   camera is close to something else, faces under about 5 cm apart fight. Scenery that is looked at
@@ -209,8 +210,23 @@ films with the steering chambers' thin jets beside them. The uniforms (five vect
 the march under the 224 fragment uniform vectors WebGL 2 promises. The fires share one light at their middle (each
 light would be another shader variant for everything lit), as strong as one fire as large as all of them by the
 square root of the area (`LIGHT_BY_AREA`: estimated), and the trail leaves from the middle of the fires lit at liftoff,
-as broad as they are spread. The pad's cloud is still the one read off LC-5's photographs (trail.ts `blast`), drawn
-at Site 1 too: the flame pit, which takes an R-7's exhaust down and out of its open side, is not modelled.
+as broad as they are spread.
+
+**A fire looks as what it burns** (`viewer/flames.ts`, `flies.fires[].burns`, `flies.burns`). The shape is the air's and
+the nozzle's; the colours, the light given and how much of what is behind it a fire hides are the chemistry's, one entry
+a propellant pair: kerosene and oxygen glow with soot (yellow-white, opaque for their first lengths, far brighter than
+the alcohol flame), the hydrazines and nitrogen tetroxide hardly at all (peach, seen through), alcohol and oxygen as the
+Redstone's fire was first drawn, which is the unit and is unchanged. Each fire carries its entry to the march
+(`uJetF`: its light, its opacity, how much its body glows, and its row in the colour tables built from the file), and the
+fires' one light takes the colour and strength of what burns, by area. The temperatures in the table are the reason the
+entries differ and are cited; every look is estimated and says what film or photograph it was judged on.
+
+**Where the exhaust goes is the site's** (`SiteDef.exhaust`, trail.ts `blast`). Left out, it strikes a deflector under
+the stand and is thrown out over the concrete (LC-5's cloud, read off its photographs). Site 1's is a flame pit: the
+fires go down through the opening in the deck, along the pit's floor between its retaining walls and up out of its open
+eastern side, so the cloud (`pitBlast`) starts in the pit past the slot's end, rises out of it within three seconds and
+spreads only on the side away from the rocket (`uBlastE`: where its middle is, the fan it fills, how deep it reaches),
+with a fifth of LC-5's puff on the deck. Its sizes are estimated from photographs and film of R-7s leaving the pad.
 
 ## Levels of detail
 
@@ -272,7 +288,7 @@ has 8 and 2.
 
 **Shadows reach as far as the place does.** The Sun has two maps. Its own (`fitShadows`,
 `fitWalkShadows`) is fine and spent where it is looked at: the section's model, 52 m of ground
-round the walker, or, from an exhibit's seat in the gallery, the cabin and a metre round it. The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
+round the walker, or in the gallery what is looked at closely (below). The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
 the place, coarsely, and is fitted once, so it never shifts under a walker; the shader's
 directional light reads the fine map and, over its outer part and beyond, the far one, mixed
 across the band. (Before, nothing past the fine map's edge had a shadow, and on foot that edge
@@ -282,6 +298,25 @@ that gives no light; it is drawn only when something it would show asked for the
 (`FarShadow.nearOnly`), and on foot in a frame of its own with that figure's shadow off, or it
 would keep his shadow where he had been. Two directional lights with shadows mean exactly this
 pair to the shader: a third would need the patch widened.
+
+**In the gallery the fine map goes where the eye is close** (`Stage.focusWanted`, `steerFocus`). The far map holds the
+whole exhibit (as far apart as the slider goes, while it is taken apart): a centimetre a texel for a 34 m Gemini-Titan,
+the grain one map over the whole vehicle had, which stepped across a cabin's walls in blocks when it was cut open and
+looked at from a few metres. The fine map is spent on a square round the camera's pivot wide enough to hold all that is
+in view at the pivot's distance (inside the band where the far map takes over), in steps of a root of two down from the
+section's reach, or, from a seat, on the cabin: so the floor keeps the whole vehicle's shadow from the far map while the
+cabin's are as fine as the view (cut open on Gemini 3's crew station from 5 m, 2.1 mm a texel for 8.4, a pixel there being
+4 mm). It never moves in a cut: it fades out (`uShadowFade`, shadows.ts: the far map read in its place everywhere, the
+grain the gallery had before), waits until the camera is at rest and the wish has held still, is fitted again and fades
+back in; a frozen stage moves it at once. Its depth still runs back over the whole section, so what stands between a part
+and the Sun casts into it. The floor reads the two maps as the lit surfaces do (`CASCADED_MASK`), not three's product of
+every map, which counted a shadow twice and would draw the fine map's square on the floor. No map is added: the gallery's
+stage always had the far map and drew it over the same vehicle. At a site the fine map stays on the section, since there
+the far map is 16 cm a texel and what stands round a part looked at closely (the gantry, the pad) is in view.
+`tools/seat-test.mjs` holds it, cut open on each seat's part: the map's texel at the pivot no coarser than a pixel there,
+and on Gemini 3's cabin the shadow's own grain (its departure from its 3 x 3 mean where the shadowless picture is smooth:
+stepped edges, blotches, acne) at most 7 (8.8 with one map over the vehicle, 5.5 now). What is left of the grain in a cut
+cabin is the sky's map over what is under a roof (`skyOpen`), 3 cm a texel over a Gemini-Titan, which this does not touch.
 
 **A shadow's depth bias is a length** (`depthBias` in shadows.ts: 2.5 texels of its map, at least
 2 cm), never a share of the shadow camera's depth: as a share it came to 29 cm on foot and 60 cm
@@ -787,4 +822,7 @@ is under takes one. Today the site's ground reads 13 and the globe 11; a model's
   one array texture, each in its layer's corner (`packLayer`: the region's near, wide and relief maps are layers 0 to
   2 of `uGlobeFlat`). They are copied in on the GPU texel for texel as they arrive, so what is read is the file's own
   bytes; a map that has not arrived reads 0. A new one-channel map goes into a spare channel or layer, not a new sampler.
+- A site whose ground reads a table of its own bakes the land's cover maps in pairs (`LandSpec.paired`: A and B side
+  by side in one texture, each read half a texel inside its own half), so the land reads two maps where it would read
+  four. Tyuratam does, for its one table of heights and ways (`uWorks`, tyuratamworks.ts): 12 units. The Cape reads 13.
 - The output pass reads 13 (the clouds' composite 12, the glow 1) and is not lit: it is outside the budget, but is not to grow past 16.

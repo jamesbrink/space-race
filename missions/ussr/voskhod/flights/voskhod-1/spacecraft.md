@@ -79,7 +79,11 @@ Everything in [voskhod.md](../../vehicles/voskhod.md) and, through it,
 - **One figure three times**, in a suit of a kind and not known to be theirs.
 - **Nothing of the experiments**: the ion engines, the sextant, the Polinom set, the cameras.
 - **The reserve engine is white**, as one photograph of this ship has it; another shows it bare.
-- **The couches' places are what fits**, not what was measured.
+- **The couches' places are what fits**, not what was measured: [voskhod.md](../../vehicles/voskhod.md),
+  "The fit", has the room each man is left and the three things the photographs of this ship and of the trainer
+  say against it (the middle couch's displacement, the container's depth, the couches' height).
+- **The pilot's panel and the hand controller**, which this ship still has across the cabin just inside hatch
+  No. 1 (Pillet's photographs), are not built.
 
 ## Level of detail
 

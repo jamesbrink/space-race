@@ -107,14 +107,35 @@ export interface Blast {
   thin: number;
   /** Whether there is any of it to draw. */
   amount: number;
+  /**
+   * Where a flame pit takes the exhaust (`Pit`): the ring's middle from the stand, metres (the scene's x and z), round
+   * which it runs out only on the side away from the stand (the cosine of half the angle it fills; under -1 all round),
+   * and how far under the stand its base can be. All nought for a stand over a deck.
+   */
+  mouth: [number, number];
+  fan: number;
+  deep: number;
+}
+
+/**
+ * A site whose exhaust goes down into a flame pit and out of its open side (SiteDef.exhaust): the way toward the open
+ * side (a unit vector in the scene's x and z), how deep the pit is, how far from the stand the gas comes along its floor
+ * to where it can rise (the end of the slot under the deck), and the slot's width, metres.
+ */
+export interface Pit {
+  toward: [number, number];
+  depth: number;
+  out: number;
+  width: number;
 }
 
 /** Of the clouds' wind (cape.ts), what blows over the concrete: the ground slows it (estimated). */
 export const SURFACE_WIND = 0.6;
 
 /** The cloud over the pad `t` seconds after liftoff, in a surface wind of `wind` m/s (toward, the scene's x and z). Estimated: see `Blast`. */
-export function blast(at: number, wind: readonly [number, number] = [0, 0]): Blast {
+export function blast(at: number, wind: readonly [number, number] = [0, 0], pit?: Pit): Blast {
   const t = Math.max(at, 0) || 0;
+  if (pit) return pitBlast(t, wind, pit);
   // the puff: up at once, about 20 m across and 5 m high by T+1.5, blown off the stand by T+3
   const grow = 1 - Math.exp(-t / 0.6);
   const puff = 1.2 * smooth(t, 0, 0.8) * Math.exp(-Math.max(t - 1, 0) / 0.8);
@@ -145,6 +166,62 @@ export function blast(at: number, wind: readonly [number, number] = [0, 0]): Bla
     rise: 0.6 * t,
     thin: smooth(t, 2.5, 10),
     amount: left > 0 ? amount : 0,
+    mouth: [0, 0],
+    fan: -2,
+    deep: 0,
+  };
+}
+
+/**
+ * The cloud at liftoff where the exhaust goes into a flame pit (an R-7 at Site 1). The deck has an opening over the pit
+ * and no deflector of its own: the five fires go down through it onto the curved deflector under it, which turns them
+ * along the pit's floor toward its open side, and the cloud rolls up out of the pit there, far larger than LC-5's and
+ * away from the rocket, with little on the deck itself. Its geometry is the site's (`Pit`: site-1.md, "The flame pit");
+ * the cloud's growth and size are estimated, from photographs and film of R-7s leaving Site 1 (the launch of 12 April
+ * 1961 from across the pit, RussianSpaceWeb; colour film of Soyuz launches from the same pad): a wall of cloud rising
+ * out of the pit's eastern part within two or three seconds, some 30 m above the deck by the time the rocket clears the
+ * towers and 80 m and more along the pit, drifting off and thinning over half a minute.
+ *
+ * The gas comes along the floor from the slot's end (`out`) and runs on east over the sump and up the rising floor: the
+ * ring's middle runs from there 25 m further, and it spreads only on the side away from the stand (a fan of 150
+ * degrees: the pit's walls hold it in, and nothing comes back over the deck). Its head starts deep in the pit and rises
+ * out of it. A little steam and smoke comes up through the opening round the vehicle (a fifth of LC-5's puff).
+ *
+ * What it leaves out: the pit's own walls do not shape it (the fan and the rise stand for them); the gas is not seen
+ * going down the deflector; the cloud is the white of LC-5's where film shows the R-7's grey-brown with the steppe's
+ * dust; and the engines' run on the pad before liftoff (the preliminary stage) puts no cloud there before T+0.
+ */
+function pitBlast(t: number, wind: readonly [number, number], pit: Pit): Blast {
+  const grow = 1 - Math.exp(-t / 0.6);
+  const puff = 0.2 * 1.2 * smooth(t, 0, 0.8) * Math.exp(-Math.max(t - 1, 0) / 0.8);
+  // out along the floor and up, a mass rather than a ring: its front 8 m out at once, 40 m by T+3, 52 m by T+6, its
+  // head 13 m tall at first, 32 m by T+3 and 41 m by T+6, so that there is little hole in its middle
+  const ringRadius = 0.25 * pit.width + 50 * (1 - Math.exp(-t / 3));
+  const head = 8 + 0.6 * ringRadius + 0.5 * Math.max(t - 2, 0);
+  const run = pit.out + 25 * (1 - Math.exp(-t / 2.5));
+  const fed = smooth(t, 0.1, 1.0);
+  const after = Math.max(t - 4, 0);
+  const ring = 1.2 * fed * (0.8 * Math.exp(-after / 3) + 0.2 * Math.exp(-after / 12));
+  const blown = Math.max(t - 2, 0);
+  const amount = Math.max(puff / 1.2, ring);
+  const left = smooth(amount, 0.02, 0.06);
+  return {
+    puffRadius: 2 + 4 * grow,
+    puffHeight: 2 + 2 * grow,
+    puff: puff * left,
+    ringRadius,
+    head,
+    ring: ring * left,
+    // up out of the pit: its head's foot from most of the way down to the rim by T+3, and on up as it warms
+    lift: Math.min(-0.8 * pit.depth + 12 * t, 0.5 * Math.max(t - 3, 0)),
+    dust: 0,
+    drift: [wind[0] * blown, wind[1] * blown],
+    rise: 0.8 * t,
+    thin: smooth(t, 4, 20),
+    amount: left > 0 ? amount : 0,
+    mouth: [pit.toward[0] * run, pit.toward[1] * run],
+    fan: Math.cos((75 * Math.PI) / 180),
+    deep: pit.depth,
   };
 }
 
@@ -163,8 +240,12 @@ export class Trail implements Smoke {
   /** How broad the fire it leaves is, metres (`trailRadius`). */
   private readonly breadth: number;
 
-  constructor(breadth = 2.5) {
+  /** Where the site sends the exhaust, if into a flame pit (`Pit`); else the deck's cloud. */
+  private readonly pit: Pit | undefined;
+
+  constructor(breadth = 2.5, pit?: Pit) {
     this.breadth = breadth;
+    this.pit = pit;
     this.mesh = veilMesh();
     this.mesh.visible = false;
     tend(this);
@@ -219,7 +300,7 @@ export class Trail implements Smoke {
   /** The cloud over the pad at the instant shown, in the day's wind. */
   blast(): Blast {
     const wind = installedAir()?.clouds?.wind ?? [0, 0];
-    return blast(this.now ?? 0, [SURFACE_WIND * wind[0], SURFACE_WIND * wind[1]]);
+    return blast(this.now ?? 0, [SURFACE_WIND * wind[0], SURFACE_WIND * wind[1]], this.pit);
   }
 
   /** Where the blast is: on the ground (the models' y = 0) under where the nozzle was when it lit. Null before anything is known. */

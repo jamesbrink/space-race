@@ -232,3 +232,58 @@ test("Freedom 7's one fire is what it always was: the Redstone's, from liftoff t
     if (burn.on > 0) assert.equal(vacuum, burn.vacuum);
   }
 });
+
+test('a fire looks as what it burns: the Redstone’s alcohol flame as it always was, the R-7’s kerosene brighter and thicker, Titan’s hydrazine fainter', async () => {
+  const { FLAMES, KINDS, kindOf } = await import('../src/viewer/flames.ts');
+  // the alcohol flame is the unit, and its colours are those the fire was first drawn with (exhaust.ts before flames.ts)
+  const a = FLAMES['alcohol-lox'];
+  assert.deepEqual([a.luminous, a.opacity, a.body], [1, 1, 1]);
+  assert.deepEqual(
+    [a.cool, a.warm, a.hot, a.core, a.vacuum],
+    [
+      [1, 0.3, 0.05],
+      [1, 0.56, 0.15],
+      [1, 0.9, 0.62],
+      [1, 0.93, 0.78],
+      [0.7, 0.8, 1],
+    ],
+  );
+  assert.equal(kindOf(undefined), 0, 'with nothing said, the alcohol flame');
+  assert.equal(KINDS[kindOf('kerosene-lox')], 'kerosene-lox');
+  const k = FLAMES['kerosene-lox'];
+  const h = FLAMES['hydrazine-n2o4'];
+  assert.ok(k.luminous > 2 && k.opacity > 2, 'soot: far brighter, and opaque near the nozzles');
+  assert.ok(h.luminous < 1 && h.opacity < 1, 'no soot: fainter and seen through');
+  for (const id of KINDS) {
+    const f = FLAMES[id];
+    assert.ok(
+      f.temperature.source.length > 20 && ['documented', 'derived', 'estimated'].includes(f.temperature.confidence),
+      `${id}: its temperature cited`,
+    );
+    assert.ok(f.look.length > 20, `${id}: what its look was judged on`);
+  }
+  // the flights say what each engine burned: Freedom 7's Redstone alcohol, Vostok 1's stages kerosene and its braking engine nitric acid
+  assert.equal(freedom7.flies.burns, 'alcohol-lox');
+  const fires = vostok1.flies.fires;
+  assert.ok(fires.filter((f) => f.on.startsWith('stage:')).every((f) => f.burns === 'kerosene-lox'));
+  assert.equal(fires.find((f) => f.on === 'retro').burns, 'amine-nitric');
+});
+
+test('at Site 1 the exhaust goes down into the flame pit and its cloud rises out of the pit’s open side, away from the rocket', async () => {
+  const { blast } = await import('../src/viewer/trail.ts');
+  const { SITE1 } = await import('../missions/ussr/vostok/sites/site-1.ts');
+  const way = SITE1.exhaust;
+  assert.equal(way.way, 'pit');
+  const pit = { toward: [1, 0], depth: way.depth.value, out: way.out.value, width: way.width.value };
+  const deck = blast(3);
+  assert.deepEqual([deck.mouth, deck.fan, deck.deep], [[0, 0], -2, 0], 'over a deck: all round, on the concrete (LC-5’s cloud unchanged)');
+  const early = blast(0.5, [0, 0], pit);
+  const later = blast(4, [0, 0], pit);
+  assert.ok(early.lift < -20, 'at first its head is deep in the pit');
+  assert.ok(later.lift >= 0, 'by T+4 it has risen out of it');
+  assert.ok(later.mouth[0] > way.out.value && later.mouth[1] === 0, 'it comes out east of the slot’s end, along the pit');
+  assert.ok(later.fan > -1 && later.fan < 1, 'on the side away from the stand only');
+  assert.ok(early.puff <= 0.21 * blast(0.5).puff, 'little on the deck');
+  assert.ok(later.ringRadius > blast(4).ringRadius, 'a greater cloud than LC-5’s');
+  assert.equal(blast(90, [0, 0], pit).amount, 0, 'gone in a minute and a half');
+});

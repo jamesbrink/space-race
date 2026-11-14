@@ -48,6 +48,9 @@ FACE = (math.radians(58), -2.6, 8.6)  # the cap's opening round the face: half i
 # The pose a Voskhod couch holds a man in, as joint angles in degrees (vehicles/voskhod.py: POSE has the first two).
 SEATED = {"hip": 68.0, "knee": 88.0, "ankle": 8.0, "knees_in": 0.0, "pelvis": 22.0, "elbow": 66.0, "elbow_toe_in": 40.0, "pronate": 36.0, "grip": 0.0}
 LAP = (-3.0, 12.0, 1.2)  # where a thigh pressed against the belly stops: figurelib.seated_rig
+# How far each elbow is drawn in toward his side, cm on a man of 180.3 cm: estimated, by the fit of three abreast
+# (vehicles/voskhod.md, "The fit").
+ELBOWS_IN = 3.0
 
 
 def body(who: Wearer) -> fl.Body:
@@ -56,6 +59,10 @@ def body(who: Wearer) -> fl.Body:
     b = fl.man().scaled(stature=who.stature, heel=1.2 * size, breadth=who.breadth, girth=who.girth, bulk=(0.5, 0.5, 0.4), crotch_drop=3.0)
     # the sleeves end loose over the wrists, and the trouser legs over the shoes' tops
     b.arm[-2:] = [(x, y, z, 5.4, 5.5) for x, y, z, _, _ in b.arm[-2:]]
+    # His arms lie in against his sides, as three men abreast in a ball 2.2 m across have them: figurelib's man stands
+    # with his elbows 8 cm outside his shoulder joints, and here they are drawn in by ELBOWS_IN, the upper arm turned
+    # about the shoulder and the forearm carried with it. He is only ever built lying in his couch.
+    b.arm = [(x - ELBOWS_IN * size * min(1.0, max(0.0, (i - 1) / (b.elbow_at - 1))), y, z, rx, ry) for i, (x, y, z, rx, ry) in enumerate(b.arm)]
     x, y, _, _, _ = b.leg[-1]
     b.leg[-2:] = [(x, y, 31.0 * size, 6.6, 6.9), (x, y, 17.5 * size, 6.7, 7.0), (x, y, 13.5 * size, 6.5, 6.8)]
     return b

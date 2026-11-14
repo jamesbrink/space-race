@@ -571,6 +571,8 @@ function landSpec(): LandSpec {
     canopy: CANOPY,
     crown: 2.6,
     paint: PAINT,
+    // the thickets' roofs lit as the domes of crowns they are, not triangle by triangle (rendering.md)
+    smooth: true,
     shore: 'float shoreMetres(vec2 p) { return min(inland(p), riverward(p)); }',
     uniforms: {
       uCoast: { value: COAST.map(([n, x]) => new THREE.Vector2(n, x)) },

@@ -8,8 +8,14 @@ const KGF = 9.80665;
 // Where things are on the model, as vehicles/voskhod.py and the Vostok's vostok_3ka.py have them: azimuths about the
 // long axis from the model's +X, latitudes on the sphere above the plane square to that axis. The numbers live there.
 const ENTRY = { az: 135, lat: 24 }; // hatch No. 1: at the crew's right
-const PARACHUTE = { az: 45, lat: 30 }; // hatch No. 2: beyond their heads
-const LOCK = { az: 315, lat: 15 }; // hatch No. 3, and the airlock's line: at the crew's left
+const PARACHUTE = { az: 45, lat: 21 }; // hatch No. 2: beyond their heads (vehicles/voskhod.py: off OKB-1's drawings)
+const LOCK = { az: 315, lat: 21 }; // hatch No. 3, and the airlock's line: at the crew's left (vehicles/voskhod.py: off OKB-1's drawings)
+/** The hatch into the airlock swings inward about a hinge on its side toward hatch No. 2: the line of that hinge, in the viewer's axes. */
+const LID_HINGE: [number, number, number] = [
+  -Math.sin(LOCK.lat * DEG) * Math.cos(LOCK.az * DEG),
+  Math.cos(LOCK.lat * DEG),
+  Math.sin(LOCK.lat * DEG) * Math.sin(LOCK.az * DEG),
+];
 const STRAPS = [0, 90, 180, 270];
 const MAST_AZ = 202.5;
 /** The way the crew's feet point, which is where the viewer's cutaway opens the ball. */
@@ -300,16 +306,23 @@ const parts: Part[] = [
       'On a Vostok this hatch was bolted on for good and the Vzor looked out through a porthole in it. Here its ' +
       'cover opens into the cabin, toward the parachute container, and the Vzor’s porthole is built into the cover. ' +
       'Both this hatch and the outer one could be worked from Belyayev’s panel or by hand from a small panel inside ' +
-      'the airlock; both, he reported, opened “very easily, without any jerk”. It is built as the Vostok’s cover, a ' +
-      'metre across with its porthole: the real opening was 0.65 or 0.7 m, and how the cover was hinged was not ' +
-      'found.',
+      'the airlock; both, he reported, opened “very easily, without any jerk”. Leonov watched the cams draw back ' +
+      'and the lid go, and it “lay on its plate”. The hatchway is built 0.65 m across in a plate that closes the ' +
+      'Vostok’s metre, its lid hinged on the side toward the container; the lid’s drive, the hand wheel in the ' +
+      'cabin and the hose and tether stowed on it are not built, and which side the hinge was on is from Zak’s ' +
+      'one sentence.',
     facts: [
-      ['Opening', '0.65 m (Siddiqi) or 0.7 m (Zak); 1 m as built here'],
+      ['Opening', '0.65 m (Siddiqi; Zak’s table), as built; 0.7 m in Zak’s text'],
+      ['Room at Leonov’s shoulders', '20 mm each side (Leonov, 2005)'],
       ['Opens', 'inward, toward the parachute container (Zak)'],
       ['In its cover', 'the Vzor’s porthole'],
     ],
     explode: [0, LIFT, 0],
-    moves: [{ kind: 'slide', by: along(LOCK.az, LOCK.lat, 1.2), from: later(0.44), to: later(0.62) }],
+    moves: [
+      // the lid opens into the cabin once the airlock is out, before the outer hatch does
+      { kind: 'swing', node: 'AirlockHatch_Lid', axis: LID_HINGE, angle: -100 * DEG, from: 0.37, to: 0.4 },
+      { kind: 'slide', by: along(LOCK.az, LOCK.lat, 1.2), from: later(0.44), to: later(0.62) },
+    ],
     order: SHIP + 1,
   },
   {
@@ -662,7 +675,7 @@ vehicle.seats = [
   voskhodSeat('Right', 'Belyayev’s couch, by the hatch', HELMET, BOARDING),
   voskhodSeat('Left', 'Leonov’s couch, by the airlock', HELMET, BOARDING),
 ];
-vehicle.cabin = voskhodCabin(COUCHES);
+vehicle.cabin = voskhodCabin([...COUCHES, 'AirlockHatch']);
 
 export const flight: Flight = {
   id: 'ussr/voskhod/voskhod-2',
@@ -856,10 +869,10 @@ export const flight: Flight = {
     {
       group: 'Airlock and the walk',
       label: 'Airlock’s lean toward the nose, as modelled',
-      value: 15,
+      value: 21,
       unit: 'deg',
       confidence: 'estimated',
-      note: 'it stands on hatch No. 3, which the Vostok’s model has 15° above the plane square to the long axis (an estimate). OKB-1’s general drawing of the 3KD, read twice, has the folded airlock’s line 20 to 27° above it. The Vostok’s hatch was left where it was',
+      note: 'it stands on hatch No. 3, square to it. OKB-1’s general drawing of the 3KD (April 1965) has that hatch 20.8° above the plane square to the long axis and hatch No. 2 20.9°, by ellipses fitted to the sheet; the 3KV’s drawing has 21.2°. The same sheet draws the folded airlock’s own rings canted 9° back from that line, which is not modelled',
     },
     {
       group: 'Airlock and the walk',

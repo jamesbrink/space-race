@@ -3,11 +3,11 @@
 // with the inside at full detail, the man in that seat not drawn where his eyes are and the other beside him drawn; the
 // cabin's lights switch; each numbered view leans to what it says and back; getting up puts the camera back where the
 // hands had it; the address names the seat and is rewritten, never a step, and Back and Forward follow it; and at 390
-// wide the control is there in the sheet with nothing in the control block hidden.
+// wide the control is there in the sheet with nothing in the control block hidden. Then, cut open on the first seat's
+// part, the Sun's shadow is as fine as the view: the map's texel at the pivot no coarser than a pixel there.
 //   node tools/seat-test.mjs [url] [--only <flight id part>] [--shots <dir>]     (default url: http://localhost:5180/)
 // `--shots` also writes a picture from every seat in both looks, and of each seated man's visor from beside him.
-import { mkdirSync } from 'node:fs';
-import { globSync } from 'node:fs';
+import { globSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
@@ -146,6 +146,75 @@ async function picture(page, name) {
   await page.screenshot({ path: join(shots, `${name}.jpg`), type: 'jpeg', quality: 85 });
   await hide.evaluate((el) => el.remove());
 }
+
+/**
+ * In the page: choose the part the first seat is in (which opens the cutaway), let the gallery settle, and measure the
+ * Sun's shadow there: the same frozen frame with the Sun's shadows and with its two maps' strength at nothing, their
+ * ratio the shadow alone. Its grain is how far that ratio departs from its 3 x 3 mean, over the middle of the frame, where
+ * the picture without shadows is smooth (a geometric edge is not counted; a stepped shadow edge, a texel's blotch or
+ * acne is), in thousandths.
+ */
+const grain = async () => {
+  const g = window.sr.gallery;
+  const st = g.stage;
+  const part = st.partOf(st.defs[st.current].seats[0].node);
+  g.go(part, true);
+  await new Promise((done) => setTimeout(done, 3500));
+  st.frozen = true;
+  const src = st.renderer.domElement;
+  const copy = document.createElement('canvas');
+  const pen = copy.getContext('2d', { willReadFrequently: true });
+  const grab = async () => {
+    for (let i = 0; i < 3; i++) {
+      st.dirty = true;
+      st.renderer.shadowMap.needsUpdate = true;
+      await new Promise((done) => requestAnimationFrame(done));
+    }
+    copy.width = src.width;
+    copy.height = src.height;
+    pen.drawImage(src, 0, 0);
+    return pen.getImageData(0, 0, copy.width, copy.height).data;
+  };
+  const lit = await grab();
+  const maps = [st.sun, st.far.light]; // (the Sun's two: the sky's map over what is under a roof is another matter, and is left as it is in both frames)
+  for (const l of maps) l.shadow.intensity = 0;
+  const bare = await grab();
+  for (const l of maps) l.shadow.intensity = 1;
+  st.frozen = false;
+  const W = copy.width;
+  const H = copy.height;
+  const lum = (d, i) => 0.2126 * d[4 * i] + 0.7152 * d[4 * i + 1] + 0.0722 * d[4 * i + 2];
+  const B = new Float32Array(W * H);
+  const S = new Float32Array(W * H).fill(1);
+  for (let i = 0; i < W * H; i++) {
+    B[i] = lum(bare, i);
+    if (B[i] > 12) S[i] = Math.min(1.2, lum(lit, i) / B[i]);
+  }
+  const mean = (A, x, y) => {
+    let sum = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) sum += A[(y + dy) * W + x + dx];
+    return sum / 9;
+  };
+  let sum = 0;
+  let n = 0;
+  for (let y = Math.round(H / 4); y < (3 * H) / 4; y++)
+    for (let x = Math.round(W / 3); x < (2 * W) / 3; x++) {
+      const i = y * W + x;
+      if (B[i] <= 12 || Math.abs(B[i] - mean(B, x, y)) > 1.5) continue;
+      sum += Math.abs(S[i] - mean(S, x, y));
+      n++;
+    }
+  const cam = st.camera;
+  const along = cam.position.distanceTo(st.cam.pivot);
+  const box = st.sun.shadow.camera;
+  return {
+    part,
+    cut: st.cutaway,
+    grain: (1000 * sum) / Math.max(1, n),
+    texelMm: (1000 * (box.right - box.left)) / st.sun.shadow.mapSize.x,
+    pixelMm: (1000 * 2 * along * Math.tan((cam.fov * Math.PI) / 360)) / H,
+  };
+};
 
 for (const flight of flights) {
   console.log(`${flight.id}: ${flight.seats.length} seat(s)`);
@@ -304,6 +373,28 @@ for (const flight of flights) {
     const s = await read(page);
     if (s.rig !== 'orbit' || far(s.eye, was.eye) > 1e-3) fail(`${flight.id} at 390: Esc did not get up to where the camera was`);
     if (errors.length) fail(`${flight.id} at 390: console errors: ${errors.slice(0, 3).join(' | ')}`);
+    await close();
+  }
+  // --- cut open, close: the Sun's shadow inside the cabin is as fine as the view (rendering.md, "Shadows reach as far as the place does") ---
+  {
+    const { page, errors, close } = await open(`${flight.id}/gallery`, 1280, 800);
+    // (the panels away, so the view is framed in the whole window, as on the shots compared)
+    await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
+    const m = await page.evaluate(grain);
+    // The fine map's texel where the view turns is no coarser than a pixel there; and on the known wall (Gemini 3's
+    // cabin from its crew station, cut open) the shadow's own grain, its stepped edges, blotches and acne, is under
+    // what one map over the whole vehicle drew (8.8 on main, 8.4 mm a texel; 5.5 with the map spent on the cabin).
+    console.log(
+      `  ${slug} cut open on ${m.part}: ${m.texelMm.toFixed(1)} mm a texel at the pivot, ${m.pixelMm.toFixed(1)} mm a pixel; grain ${m.grain.toFixed(2)}`,
+    );
+    if (!m.cut) fail(`${flight.id}: choosing ${m.part} did not open the cutaway`);
+    if (m.texelMm > m.pixelMm)
+      fail(
+        `${flight.id} cut open: the shadow map's texel at the pivot is ${m.texelMm.toFixed(1)} mm, a pixel there ${m.pixelMm.toFixed(1)}`,
+      );
+    if (flight.id.endsWith('/gt-3') && m.grain > 7)
+      fail(`${flight.id} cut open: the shadow's grain on the cabin is ${m.grain.toFixed(2)} (at most 7)`);
+    if (errors.length) fail(`${flight.id} cut open: console errors: ${errors.slice(0, 3).join(' | ')}`);
     await close();
   }
 }
