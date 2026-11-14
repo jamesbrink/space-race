@@ -636,42 +636,44 @@ export function propagate(
   /**
    * The path at instants of its own (`gridStep`): its first and last points as the integrator has them, and between
    * them every multiple of the step that the bend there allows, at most `most` in all (the bend allowed is doubled until
-   * they fit, and past a tenth of a radian the longest step too).
+   * they fit, and past a tenth of a radian the longest step too). Worked in slices like the rest, until `until` (at least
+   * one piece of the path each time): null until it is done.
    */
-  const sampled = (): PathPoint[] => {
-    const at = (bend: number, longest: number): PathPoint[] | null => {
-      const out: PathPoint[] = [points[0]!];
-      let last = points[0]!.t;
-      for (let i = 0; i + 1 < points.length; i++) {
-        const a = points[i]!;
-        const b = points[i + 1]!;
-        const h = b.t - a.t;
-        if (!(h > 0)) continue;
-        const speed = length(a.v);
-        const ahead = speed > 0 ? scale(a.v, 1 / speed) : null;
-        const pull = scale(sub(b.v, a.v), 1 / h);
-        const across = ahead ? sub(pull, scale(ahead, dot(pull, ahead))) : pull;
-        const step = gridStep(speed, length(across) / Math.max(speed, 1e-3), bend, longest);
-        for (let g = (Math.floor(last / step + 1e-9) + 1) * step; g < b.t - 1e-6; g += step) {
-          if (g < a.t - 1e-9) continue;
-          const p = between(a.t, a.r, a.v, b.t, b.r, b.v, g);
-          out.push({ t: g, r: p.r, v: p.v, altitude: a.altitude + ((b.altitude - a.altitude) * (g - a.t)) / h });
-          last = g;
-          if (out.length >= most) return null;
-        }
+  let grid: { out: PathPoint[]; i: number; last: number; bend: number; longest: number } | null = null;
+  const sampled = (until: number): PathPoint[] | null => {
+    grid ??= { out: [points[0]!], i: 0, last: points[0]!.t, bend: BEND, longest: 16 };
+    const g = grid;
+    for (let k = 0; g.i + 1 < points.length; g.i++, k++) {
+      if (k > 0 && k % 16 === 0 && now() > until) return null;
+      const a = points[g.i]!;
+      const b = points[g.i + 1]!;
+      const h = b.t - a.t;
+      if (!(h > 0)) continue;
+      const speed = length(a.v);
+      const ahead = speed > 0 ? scale(a.v, 1 / speed) : null;
+      const pull = scale(sub(b.v, a.v), 1 / h);
+      const across = ahead ? sub(pull, scale(ahead, dot(pull, ahead))) : pull;
+      const step = gridStep(speed, length(across) / Math.max(speed, 1e-3), g.bend, g.longest);
+      for (let at = (Math.floor(g.last / step + 1e-9) + 1) * step; at < b.t - 1e-6; at += step) {
+        if (at < a.t - 1e-9) continue;
+        const q = between(a.t, a.r, a.v, b.t, b.r, b.v, at);
+        g.out.push({ t: at, r: q.r, v: q.v, altitude: a.altitude + ((b.altitude - a.altitude) * (at - a.t)) / h });
+        g.last = at;
+        if (g.out.length >= most) break;
       }
-      if (points.length > 1) out.push(points[points.length - 1]!);
-      return out;
-    };
-    // (a long path that will not fit at the longest step is given longer ones: an orbit of hours in 480 points)
-    for (let bend = BEND, longest = 16; ; bend *= 2, longest *= bend > 0.2 ? 2 : 1) {
-      const out = at(bend, longest);
-      if (out) return out;
+      if (g.out.length >= most) {
+        // (a long path that will not fit at the longest step is given longer ones: an orbit of hours in 480 points)
+        const bend = g.bend * 2;
+        grid = { out: [points[0]!], i: 0, last: points[0]!.t, bend, longest: g.longest * (bend > 0.2 ? 2 : 1) };
+        return sampled(until);
+      }
     }
+    if (points.length > 1) g.out.push(points[points.length - 1]!);
+    return g.out;
   };
 
   let answer: Prediction | null = null;
-  const finish = (): Prediction => {
+  const finish = (sampledPoints: PathPoint[]): Prediction => {
     const orbit = outcome === 'orbit';
     const last = (): PathPlace => {
       const p = points[points.length - 1]!;
@@ -690,7 +692,7 @@ export function propagate(
       kind: flier.kind,
       from: start.t,
       cutoff: flier.cutoff,
-      points: outcome === 'none' ? points : sampled(),
+      points: sampledPoints,
       outcome,
       // going round, the highest and lowest of the whole turn; otherwise the top of the climb ahead, if there is one
       // (a turn begun at one end of the orbit comes back to that end as its last point, which is then no turning point of the path)
@@ -709,14 +711,19 @@ export function propagate(
     run(budget) {
       if (answer) return true;
       const began = now();
+      const until = budget === undefined ? Number.POSITIVE_INFINITY : began + budget;
       while (!done) {
         advance();
-        if (budget !== undefined && now() - began >= budget) break;
+        if (now() >= until) break;
       }
-      if (done) answer = finish();
+      // (then the path put at its own instants, in the same slices)
+      if (done && (outcome === 'none' || now() < until || budget === 0 || grid)) {
+        const out = outcome === 'none' ? points : sampled(until);
+        if (out) answer = finish(out);
+      }
       cost += now() - began;
       if (answer) answer.cost = cost;
-      return done;
+      return answer !== null;
     },
     get done() {
       return answer !== null;

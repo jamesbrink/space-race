@@ -313,14 +313,14 @@ export function limbPx(eye: readonly number[], p: readonly number[], centre: rea
 }
 
 /**
- * How much of the line is drawn `d` metres from the vehicle, when the gap is `gap`: nothing within
- * the gap, all of it from three gaps on, between them on a curve in the distance's logarithm through
- * lunar-lift's stops (../lunar-lift, js/predictor.js: a seventh, two fifths and four fifths of it at
- * 1.4, 2 and 2.8 gaps of its four), drawn in to three gaps so that a close view sees the line whole
- * sooner. The fragment shader in path.ts does the same.
+ * How much of the line is drawn `d` metres from the vehicle, when the gap is `gap` and it comes in over `span`:
+ * nothing within the gap, all of it from `span` beyond, between them on lunar-lift's curve (../lunar-lift,
+ * js/predictor.js: a seventh, two fifths and four fifths of it at 1.4, 2 and 2.8 gaps of its four), drawn in to the
+ * span. path.ts gives a span of so many pixels at the vehicle, so the fade is a rule of the screen; its fragment shader
+ * does the same.
  */
-export function fadeIn(d: number, gap: number): number {
-  const x = Math.min(1, Math.max(0, 0.631 * Math.log2(Math.max(d, 1e-3) / gap)));
+export function fadeIn(d: number, gap: number, span = 2 * gap): number {
+  const x = Math.min(1, Math.max(0, 0.631 * Math.log2(1 + (2 * Math.max(d - gap, 0)) / Math.max(span, 1e-9))));
   return x * x * (3 - 2 * x);
 }
 

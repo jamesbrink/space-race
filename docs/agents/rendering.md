@@ -140,8 +140,17 @@ rules are the screen's, the same for every path, never tuned to a flight:
   next doubling of the distance; nothing behind the eye is ever a vertex.
 - **Behind the Earth to a pixel**: a sphere (the polar radius) is tested for every pixel of the ribbon in the view's own
   frame, worked out in doubles, so the line ends at the limb however long its chords.
-- `tools/path-test.mjs` (`pnpm test:path`) holds it in the page: from the vehicle, no chord over 1 px off, no dots or
-  fragments, no sheet, nothing jumping between frames, chips off the panels and pointing at their places.
+- **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, or
+  12 px at it), then in from nothing over 40 px as seen at the vehicle, so a short path near a big vehicle (on the pad,
+  the first seconds of a climb) is seen leave it, and from far out the line leaves the dot.
+- **Predicted again only when it would be seen to move**: a prediction is worked in slices of 1.5 ms a frame, the path
+  put at its own instants in a slice of its own; the curve on show stands while a prediction made again from the
+  flight would lie within half a pixel of it wherever it is drawn (path.ts `holds`: the flight's departure from the
+  curve, its place and three times its velocity's over the time ahead), so a coast is not worked again and a burn is.
+- `tools/path-test.mjs` (`pnpm test:path`) holds it in the page, at 1280, 820 and 390 wide: from the vehicle, no chord
+  over 1 px off (the line ahead and the line flown), no dots or fragments, no sheet, nothing jumping between frames,
+  chips off the panels and pointing at their places, the apsides where the path's radial speed changes sign; and each
+  flight taken over at seeded instants and flown by scripted hands, then run on to its end against where the path said.
 
 ## Drawing only what changed
 

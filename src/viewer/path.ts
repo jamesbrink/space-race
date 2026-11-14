@@ -46,8 +46,9 @@ import {
  *   is let go over the next ten gaps of the line, or a hundred times the offset (under a degree of bend), whichever is longer. A path further than two gaps from the vehicle is another path and is
  *   drawn where it is. The flown line ends at the vehicle the same way.
  * - **Clear of the vehicle.** Nothing of the line within a gap of the vehicle's middle (a little more than half its
- *   length, or a fifth of the view's half height at the vehicle, whichever is more), then it comes in from nothing
- *   over the next two gaps on lunar-lift's curve (pathline.ts: `fadeIn`), measured in the scene; and on the screen
+ *   length, or `GAP_PX` at the vehicle, whichever is more), then it comes in from nothing over the next `FADE_PX` as
+ *   seen at the vehicle (pathline.ts: `fadeIn`): a rule of the screen, so a short path near a big vehicle (on the pad,
+ *   the first seconds of a climb) is seen leave it, and from far out the line leaves the dot; and on the screen
  *   nothing within the vehicle's outline, taken as a capsule along its long axis as broad as it is, and a margin.
  *   From inside the vehicle (on board) the outline is off and the cabin's own walls hide the line: it is seen through
  *   the windows, and no marker is laid over the cabin.
@@ -114,19 +115,30 @@ const RING = 48;
 const RING_PX = 9;
 /** Seconds a chip at the edge fades in or out over. */
 const CHIP_FADE = 0.2;
+/**
+ * The line's clearance from the vehicle, CSS pixels at the vehicle: nothing within `GAP_PX` of its middle (or half its
+ * length and a little, when that is more), then in from nothing over `FADE_PX`. Pixels, not metres: a path a few times
+ * the vehicle's size (on the pad, the first seconds of a climb) is seen leave it as a short arc, and from far out the
+ * line is seen leave the dot.
+ */
+const GAP_PX = 12;
+const FADE_PX = 40;
 /** Gaps of the line: within this many of the vehicle it is taken onto the vehicle; over this many the offset is let go. */
 const PIN_WITHIN = 2;
 const PIN_OVER = 10;
 /** And over at least this many times the offset itself: so taking it onto the vehicle bends the line by under a degree. */
 const PIN_SLOPE = 100;
 /**
- * The curve on show stands while the flight keeps to it (`holds`): within a metre and a centimetre a second (the same
- * coast worked again agrees to centimetres over an orbit), and, for a path that comes round, while it still reaches
- * nineteen twentieths of the way round ahead.
+ * The curve on show stands while a new prediction would not move it on the screen (`holds`): by more than `MOVE_PX`
+ * anywhere it is drawn, and, for a path that comes round, while it still reaches nineteen twentieths of the way round
+ * ahead. With no view yet, within a metre and a centimetre a second.
  */
+const MOVE_PX = 0.5;
 const HOLD_M = 1;
 const HOLD_MS = 0.01;
 const HOLD_ROUND = 0.95;
+/** How fast a coast's departure from a curve grows, times its difference in velocity: an orbit's along its track, 3 dv t, the fastest. */
+const GROWTH = 3;
 
 const VERT = /* glsl */ `
   #include <common>
@@ -193,7 +205,7 @@ const VERT = /* glsl */ `
 
 const FRAG = /* glsl */ `
   uniform vec3 uColour, uInk;
-  uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uRatio;
+  uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uFade, uRatio;
   uniform vec3 uShip;         // the vehicle's middle in the view's frame
   uniform vec4 uShipSeg;      // and on the target: its long axis from end to end, pixels
   uniform float uShipW;       // and how far round that the line keeps off, pixels (0: not at all)
@@ -226,9 +238,10 @@ const FRAG = /* glsl */ `
     }
     float eye = length(vView);
   #ifndef RING
-    // clear of the vehicle: along the line in the scene, coming in from nothing over three gaps; and on the screen, outside its ring
+    // clear of the vehicle: along the line in the scene, coming in from nothing over a span that is so many pixels at the
+    // vehicle (pathline.ts fadeIn); and on the screen, outside its ring
     float d = distance(vView, uShip);
-    float x = clamp(0.631 * log2(max(d, 1e-3) / uGap), 0.0, 1.0);
+    float x = clamp(0.631 * log2(1.0 + 2.0 * max(d - uGap, 0.0) / max(uFade, 1e-6)), 0.0, 1.0);
     a *= x * x * (3.0 - 2.0 * x);
     if (uShipW > 0.0) {
       vec2 p = gl_FragCoord.xy - uShipSeg.xy;
@@ -301,7 +314,7 @@ export interface PathSource {
    */
   predict?(start: Start, points: number): Predictor | null;
   readonly plan?: string;
-  readonly pathAs?: string;
+  readonly pathAs?: { short: string; long: string } | null;
 }
 
 const clock = (seconds: number): string => {
@@ -461,7 +474,7 @@ export class FlightPath {
   /** The sample on show and the live state's part in it. */
   private sample: PathSample | null = null;
   private live: PathLive | null = null;
-  private job: { run: Predictor; key: string; plan: string; began: number } | null = null;
+  private job: { run: Predictor; key: string; plan: string; began: number; ready?: boolean } | null = null;
   private shown: Shown | null = null;
   private wantedAt = 0;
   private doneAt = 0;
@@ -487,7 +500,7 @@ export class FlightPath {
    * The line as last sampled, for whoever asks (`sr.path.drawn`, the path test): chords ahead and flown, what sampling
    * them took, the instant it starts at, how far it was taken to meet the vehicle, and the gap.
    */
-  drawn = { ahead: 0, flown: 0, ms: 0, now: 0, pinned: 0, offset: 0, gap: 0 };
+  drawn = { ahead: 0, flown: 0, ms: 0, now: 0, pinned: 0, offset: 0, gap: 0, fade: 0 };
 
   /**
    * `parent` takes the markers; `readout` is where the switch and the figures go (beside the navball); `button` is the
@@ -529,6 +542,7 @@ export class FlightPath {
       uCel: { value: 0 },
       uCore: { value: CORE },
       uGap: { value: 10 },
+      uFade: { value: 10 },
       uRatio: { value: 1 },
       uShip: { value: new THREE.Vector3() },
       uShipSeg: { value: new THREE.Vector4() },
@@ -779,9 +793,12 @@ export class FlightPath {
     if (this.job) {
       const began = performance.now();
       const done = this.job.run.run(SLICE);
-      this.spent.slice = Math.max(this.spent.slice, performance.now() - began);
+      const spent = performance.now() - began;
+      this.spent.slice = Math.max(this.spent.slice, spent);
       this.spent.frames++;
-      if (done) {
+      // (a prediction finished late in its slice is laid along in the next frame: the line's making is work of its own)
+      if (done && spent > SLICE / 2 && !this.job.ready) this.job.ready = true;
+      else if (done) {
         const result = this.job.run.result;
         this.cost = { ms: result.cost, slice: this.spent.slice, frames: this.spent.frames, steps: result.steps };
         this.build(result, this.job.key, this.job.plan, true);
@@ -820,10 +837,13 @@ export class FlightPath {
   }
 
   /**
-   * Whether the curve on show is still the flight's future from this sample: the sample lies on it, within `HOLD_M`
-   * metres and `HOLD_MS` metres a second (a coast is; under thrust the prediction's own future departs within a frame
-   * or two, unless it is the burn the prediction flies), and, if it comes round, it still reaches most of the way round
-   * ahead. The same physics from the same state gives the same curve, so it is not worked out again.
+   * Whether the curve on show is still the flight's future from this sample, as far as anyone can see. The sample is
+   * `dr` from the curve at its instant and `dv` off its velocity; a prediction made again from it would lie within
+   * dr + `GROWTH` dv tau of the curve at each instant tau ahead (a coast's departure grows no faster: under thrust it
+   * grows each frame, so the curve goes as soon as it is seen to). While that is under `MOVE_PX` as seen from the eye at
+   * every point of the curve that is drawn where it is (past the stretch that is taken onto the vehicle, `PIN_OVER`
+   * gaps), the curve stands; and one that comes round must still reach most of the way round. The same physics from the
+   * same state gives the same curve, so it is not worked out again.
    */
   private holds(shown: Shown, s: PathSample): boolean {
     const c = shown.curve;
@@ -833,11 +853,30 @@ export class FlightPath {
     const vel = [0, 0, 0];
     curveAt(c, s.t, at, 0, 0, vel);
     const r = s.centre ?? s.r;
-    return (
-      Math.hypot(at[0]! - r[0], at[1]! - r[1], at[2]! - r[2]) <= HOLD_M &&
-      Math.hypot(vel[0]! - s.v[0], vel[1]! - s.v[1], vel[2]! - s.v[2]) <= HOLD_MS
-    );
+    const dr = Math.hypot(at[0]! - r[0], at[1]! - r[1], at[2]! - r[2]);
+    const dv = Math.hypot(vel[0]! - s.v[0], vel[1]! - s.v[1], vel[2]! - s.v[2]);
+    const camera = this.camera;
+    if (!camera) return dr <= HOLD_M && dv <= HOLD_MS;
+    const eye = absolute(this.eye.copy(camera.position));
+    const vessel = this.host.vessel(this.ship, this.axis2);
+    const tanHalf = Math.tan((camera.fov * Math.PI) / 360) / Math.max(camera.zoom, 1e-6);
+    const pxPerRad = this.size.y / 2 / tanHalf;
+    const toShip = vessel ? this.ship.distanceTo(eye) : Number.POSITIVE_INFINITY;
+    const near = vessel ? PIN_OVER * this.gapOf(vessel.half, toShip, tanHalf) : 0;
+    const q = this.holdAt;
+    // (at most a couple of hundred of the curve's points, evenly: the curve is fine enough that between two the bound changes little)
+    const every = Math.max(1, Math.floor(c.n / 200));
+    for (let i = 0; i < c.n; i += every) {
+      const tau = c.t[i]! - s.t;
+      if (tau < 0) continue;
+      this.sceneOf(c.r, i * 3, c.t[i]!, shown.frame, s.t, q, 0);
+      if (vessel && Math.hypot(q[0]! - this.ship.x, q[1]! - this.ship.y, q[2]! - this.ship.z) < near) continue;
+      const d = Math.max(Math.hypot(q[0]! - eye.x, q[1]! - eye.y, q[2]! - eye.z), camera.near);
+      if (((dr + GROWTH * dv * tau) / d) * pxPerRad > MOVE_PX) return false;
+    }
+    return true;
   }
+  private readonly holdAt = new Float64Array(3);
 
   /** Lay the line along a prediction, eased from where the one on show has it now (`ease`). */
   private build(result: Prediction, key: string, plan: string, ease: boolean): void {
@@ -1056,10 +1095,16 @@ export class FlightPath {
   private readonly pinBy = new Float64Array(3);
   private readonly lineSize = new THREE.Vector2(1, 1);
 
-  /** The gap the line keeps from the vehicle (`prepare` gives it to the shader): its radius and a half, or a fifth of the half height of the view at it. */
+  /**
+   * The gap the line keeps from the vehicle's middle (`prepare` gives it to the shader), m: a little more than half its
+   * length, so it is not seen leave the nose; or `GAP_PX` at the vehicle, when the vehicle is a few pixels.
+   */
   private gapOf(half: number, toShip: number, tanHalf: number): number {
-    // (a tenth of the distance through an ordinary lens; through the pad camera's long one, so much less that the line is seen leave it)
-    return Math.max(1.1 * half, 0.2 * toShip * tanHalf);
+    return Math.max(1.1 * half, (GAP_PX * toShip * tanHalf) / (this.size.y / 2));
+  }
+  /** The span the line comes in over past the gap, m: `FADE_PX` at the vehicle, however near or far it is. */
+  private fadeOf(toShip: number, tanHalf: number): number {
+    return (FADE_PX * toShip * tanHalf) / (this.size.y / 2);
   }
 
   /** Find the instant on show where the vehicle is drawn, and sample both lines for the eye if anything has moved. */
@@ -1180,26 +1225,20 @@ export class FlightPath {
     // behind: the line flown, from its first point to the vehicle, in the frame the path is drawn in
     const behind = this.behind;
     behind.n = 0;
+    this.alongFlown = null;
     if (flown) {
       const f1 = Math.min(now, flown.t[flown.n - 1]!);
       const v = this.at3;
-      behind.n = sample(
-        (t, out, o) => {
-          curveAt(flown, t, v, 0);
-          this.sceneOf(v, 0, t, shown.frame, now, out, o);
-          if (pinned) {
-            const w = weight(f1 - t);
-            for (let k = 0; k < 3; k++) out[o + k] = out[o + k]! + pin[k]! * w;
-          }
-        },
-        flown.t,
-        flown.t[0]!,
-        f1,
-        lens,
-        FLOWN_MOST,
-        behind.t,
-        behind.p,
-      );
+      const alongFlown = (t: number, out: Float64Array, o: number) => {
+        curveAt(flown, t, v, 0);
+        this.sceneOf(v, 0, t, shown.frame, now, out, o);
+        if (pinned) {
+          const w = weight(f1 - t);
+          for (let k = 0; k < 3; k++) out[o + k] = out[o + k]! + pin[k]! * w;
+        }
+      };
+      this.alongFlown = alongFlown;
+      behind.n = sample(alongFlown, flown.t, flown.t[0]!, f1, lens, FLOWN_MOST, behind.t, behind.p);
     }
     upload(behind, anchor, 0);
     this.mesh.position.set(...anchor);
@@ -1216,6 +1255,7 @@ export class FlightPath {
       pinned: pinned ? offset : 0,
       offset,
       gap,
+      fade: vessel ? this.fadeOf(toShip, tanHalf) : 0,
     };
     this.host.overlay(this.mesh);
   }
@@ -1227,13 +1267,21 @@ export class FlightPath {
     return [...out];
   }
   private along: ((t: number, out: Float64Array, o: number) => void) | null = null;
+  /** The same of the line flown. */
+  flownWhere(t: number): number[] {
+    const out = new Float64Array(3);
+    this.alongFlown?.(t, out, 0);
+    return [...out];
+  }
+  private alongFlown: ((t: number, out: Float64Array, o: number) => void) | null = null;
 
   /** The line ahead as last sampled, in the scene's frame: for the path test (`sr.path.line()`). */
-  line(): { t: number[]; p: number[]; flown: number[] } {
+  line(): { t: number[]; p: number[]; flown: number[]; flownT: number[] } {
     return {
       t: [...this.ahead.t.subarray(0, this.ahead.n)],
       p: [...this.ahead.p.subarray(0, this.ahead.n * 3)],
       flown: [...this.behind.p.subarray(0, this.behind.n * 3)],
+      flownT: [...this.behind.t.subarray(0, this.behind.n)],
     };
   }
 
@@ -1293,6 +1341,7 @@ export class FlightPath {
     // flight is, metres off)
     u.uClip!.value = Math.max(1.02 * camera.near, aboard && radius !== null ? radius : 0);
     u.uGap!.value = vessel === null ? 1 : this.gapOf(vessel.half, toShip, tanHalf);
+    u.uFade!.value = vessel === null ? 1 : this.fadeOf(toShip, tanHalf);
     u.uPxPerRad!.value = this.size.y / 2 / tanHalf;
     // the Earth's centre and the vehicle in the view's frame, worked out in doubles
     this.unturn.copy(camera.quaternion).invert();
@@ -1493,6 +1542,8 @@ export class FlightPath {
     for (const b of this.readout.querySelectorAll<HTMLElement>('[data-path=guided], [data-path=coast]'))
       b.setAttribute('aria-pressed', String((b.dataset.path === 'guided') === this.guided));
     const sequencer = this.source.steering.sequence !== false;
+    // (a deck that predicts for itself says what its path is)
+    const own = !this.flight.trajectory ? (this.source.pathAs ?? null) : null;
     set(
       'as',
       !this.on
@@ -1505,13 +1556,15 @@ export class FlightPath {
               : 'no plan'
             : choosing
               ? ''
-              : this.burning()
-                ? 'if cut now'
-                : !this.live
-                  ? 'looking back'
-                  : sequencer
-                    ? 'as sequenced'
-                    : 'hands off',
+              : own
+                ? own.short
+                : this.burning()
+                  ? 'if cut now'
+                  : !this.live
+                    ? 'looking back'
+                    : sequencer
+                      ? 'as sequenced'
+                      : 'hands off',
     );
     // (said in full where the pointer rests: the line has room for a word or two)
     const as = this.readout.querySelector<HTMLElement>('[data-path-cell=as]')!;
@@ -1523,13 +1576,15 @@ export class FlightPath {
           ? this.source.steering.guidance
             ? 'On the pad: the path guidance will fly, the record’s programme to the record’s cutoff, then the sequencer’s events'
             : 'Guidance is off (G): there is no plan to show until the engine is lit'
-          : this.burning() && !choosing
-            ? 'The path if the engine were cut now (guidance is off, so there is no plan to show)'
-            : !this.live
-              ? 'Looking back at what was flown: the path from that instant with nothing done by the pilot or the sequencer, the parachutes coming out at their heights'
-              : sequencer
-                ? 'What happens from here if the pilot does nothing more: the sequencer sets off each event at the record’s time, and the parachutes come out at their heights'
-                : 'The sequencer is off (B): nothing happens by itself, no retrofire and no parachute, so the path falls as it is';
+          : own
+            ? own.long
+            : this.burning() && !choosing
+              ? 'The path if the engine were cut now (guidance is off, so there is no plan to show)'
+              : !this.live
+                ? 'Looking back at what was flown: the path from that instant with nothing done by the pilot or the sequencer, the parachutes coming out at their heights'
+                : sequencer
+                  ? 'What happens from here if the pilot does nothing more: the sequencer sets off each event at the record’s time, and the parachutes come out at their heights'
+                  : 'The sequencer is off (B): nothing happens by itself, no retrofire and no parachute, so the path falls as it is';
     row('apogee', this.on);
     row('end', this.on);
     if (!result || result.outcome === 'none') {

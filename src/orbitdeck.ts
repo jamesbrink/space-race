@@ -220,9 +220,22 @@ export class OrbitDeck extends Deck {
     const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? o);
     return propagate(spacecraft(plan, julianDate(this.flight.launch), site, sea, start), start, where, options);
   }
-  /** What the path says it is while the engines burn: the deck's own words beside its figures. */
-  get pathAs(): string {
-    return 'Engines stopped now';
+  /** What the path on show is, in a word or two beside its figures and in full where the pointer rests (viewer/path.ts). */
+  get pathAs(): { short: string; long: string } {
+    if (this.clock.t < this.parting)
+      return {
+        short: 'if cut now',
+        long: 'Where it goes if the engines stopped now: the stack with what it still carries, on its own drag, nothing more lit or let go. Not where guidance would take it: every step of the ascent is a hand’s to take at any instant',
+      };
+    if (this.free && this.fired === null)
+      return {
+        short: 'hands off',
+        long: 'The hands are free and nothing is planned: the coast with no burn, down to the height the pilot leaves at or once round',
+      };
+    return {
+      short: this.fired !== null ? 'as fired' : 'as planned',
+      long: `The coast from here with the braking burn ${this.fired !== null ? 'the hand fired' : 'the timer has set'}, the modules parting after it, down to the height the pilot leaves at`,
+    };
   }
   /** The shape the stack flies at `t` on the flight on show (StagedVehicle.shape): the latest record separation among the stages let go by then. */
   private goneAt(t: number): number {
