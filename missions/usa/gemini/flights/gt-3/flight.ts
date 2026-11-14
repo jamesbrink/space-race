@@ -481,9 +481,10 @@ const vehicle: ModelDef = {
  * where it was built and every lamp is dark, and each says so. What this gives is the cabin lit as indoors by its own
  * three floodlights, its instruments and controls named, and its two windows to look out of.
  */
-const NOT_FLOWN = 'It stands as built: this flight is not flown here yet.';
+const NOT_FLOWN = 'Not simulated: this flight is not flown here yet, so it stands as built.';
+const DARK = 'Not simulated: this flight is not flown here yet, so it stays dark.';
 const instrument = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
-const lamp = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
+const lamp = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${DARK}` });
 vehicle.cabin = {
   within: ['CrewStation'],
   // the top of a seated man's head is toward the hatches, on +X (model/vehicle.py); the seats' 12° cant is not counted
