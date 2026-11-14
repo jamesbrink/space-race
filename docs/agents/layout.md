@@ -48,7 +48,7 @@ src/
   viewer/studio.ts                    the studio: a sweep under three designed lights, dark, light or paper; a person and a pole for scale
   viewer/labels.ts                    names on the parts of a thing taken apart: which have come clear, where the labels go
   viewer/cape.ts                      Cape Canaveral's land as parameters: its plant communities, clearings, roads, palette, sea
-  viewer/tyuratam.ts                  the land round Site 1: where the steppe lies low, the builders' ground (apron, worn ground, ruts), the tracks and roads painted, the flame pit cut out
+  viewer/tyuratam.ts                  the land round Site 1: where the steppe lies low, the builders' ground (the apron's slabs, worn ground, ruts, the fall's rills), the tracks and roads painted, the flame pit cut out
   viewer/steppe.ts                    the steppe on the lower Syr Darya in April as a kind of country: its ground (crust, takyr, salt, sand, spring green) and cel ground in GLSL, its palette and its plants, for any pad on it
   viewer/tyuratamrelief.ts            how high the ground is round Site 1 (the pad on a scarp's brow, the steppe 8 m under it), in JavaScript and GLSL; the place's models are built on the same figures (sites/site1/relief.py; tests/tyuratam.test.mjs)
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
@@ -62,6 +62,7 @@ src/
   viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, their skin worn by finer lumps, lit as cloud is (the Sun's light
   viewer/cloudnoise.ts                the clouds' two tiles of noise as bytes (pinned by digest in tests/); cloudnoise.worker.ts makes them off the page's thread
                                       marched through them and scattered, the sky above, the ground below), ray-marched at a quarter of the pixels, laid over the frame
+  viewer/around.ts                    what stands round a site beyond its own place (SiteDef.around: Site 2's assembly building), fetched as scenery and set on the land
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places: the near ones a model of their own
                                       (missions/usa/mercury/sites/cape/, `pnpm model:cape`), fetched and placed here; the far ones shapes made here
   viewer/lod.ts                       levels of detail: which one each model and each piece of the place is drawn at, and the fade from one to the next
@@ -112,6 +113,7 @@ src/
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
   viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take, its light on the pad
+  viewer/fires.ts                     which fires burn when and how hard, and an engine's chambers found in its geometry (pure: tests/fires.test.mjs)
   viewer/trail.ts                     the smoke it leaves as data: the trail along the path flown (steam low down, a contrail in the cold), the cloud over the pad at liftoff
   viewer/exhaust.ts                   fire and smoke drawn as volumes (the one thing here meant to look real): marched at a quarter of the pixels, laid over the frame; the smoke's shadow
   viewer/chute.ts                     the parachutes, drawn from Flight.flies.chutes: out, filling, reefed, full, and down on the sea

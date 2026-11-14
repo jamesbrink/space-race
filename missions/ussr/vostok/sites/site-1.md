@@ -122,7 +122,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | OuterFence…, InnerFence… (North, East, South, West), LightPoles…, GuardTowers (`GuardTower_NW` …) | perimeter.py | the double fence, the light poles inside it, six guard towers | yes (the place) |
 | SouthBuilding_1, SouthStore_2, PumpHut_3, SouthTanks, VehicleShed_6, SouthBuilding_7, Tents_11, FencedYard_12 | south.py | what one photograph of July 1959 shows south of the embankment and outside the south fence, the CIA's item numbers in their names: two gable-roofed buildings, a pump hut, two pairs of tanks, a vehicle shed, a building with a mast, six tents, a boarded yard; doors shut, windows dark | yes (the place) |
 | Site51 | site51.py | the R-9's pad 415 m north-north-west, outside the north fence: an octagonal pad on its bank, a square building, the end of a rail spur; no rocket | yes (the place) |
-| AssemblyBuilding | [tyuratam/mik.py](tyuratam/mik.py) | Site 2's assembly and test building, 2 km west-south-west | built as a model of its own (`sites/tyuratam/1961-04.glb`); **not shown**: the viewer does not fetch it |
+| AssemblyBuilding | [tyuratam/mik.py](tyuratam/mik.py) | Site 2's assembly and test building, 2 km west-south-west | built as a model of its own (`sites/tyuratam/1961-04.glb`), drawn round the site as scenery (`around` in site-1.ts) |
 | (the vehicle) | the flight's vehicle.glb | hung in the supports: `position` and `rotationY` in flight.ts | yes |
 | (the cosmonaut) | the flight's crew.glb | on the deck's west edge, 19.5 m west and 6.5 m south of the axis: on his way from the bus to the foot of the erector's stair; where he is stood is estimated | yes |
 
@@ -440,7 +440,8 @@ on it against the documented 160 ft): good to ten metres. Metres east and north 
 | Whether it stood on 12 April 1961 | yes: the first R-9 left it on 9 April 1961 (and failed), the next on 21 April | documented | ru.wikipedia, Р-9А; Zak, RussianSpaceWeb. No rocket stood on it on the 12th |
 | The assembly and test building of Site 2 (МИК 2-1; the CIA's "Missile Assembly and Checkout Facility No 1") | 395 by 105 ft, 70 ft high (120.4 by 32.0 by 21.3 m), a shed 30 ft broad along its west side, three tracks through it; its middle at (-1941, -641): 2.04 km on bearing 252°, long axis on 028° | documented (the size: measured, PIC/JR-2/60 p. 16; the place: OpenStreetMap way 173526300 less its extension of 1973 to 1974 at the north-north-east end) | accepted 11 May 1957. Its top 13 m shows over the land from the deck |
 | Its roof, walls, colour | a low double-pitched roof, pale render, tall gates in its ends, a band of windows under the eaves | estimated | no photograph of it from 1957 to 1961 was found |
-| Where it is built | a model of its own, `public/models/ussr/vostok/sites/tyuratam/1961-04.glb` ([tyuratam/mik.py](tyuratam/mik.py), `pnpm model:tyuratam`): 2,380 triangles, in Site 1's frame | | **not shown**: the viewer does not fetch it yet ("What the model gets wrong") |
+| Where it is built | a model of its own, `public/models/ussr/vostok/sites/tyuratam/1961-04.glb` ([tyuratam/mik.py](tyuratam/mik.py), `pnpm model:tyuratam`): 2,380 triangles, in Site 1's frame | | drawn as scenery: site-1.ts `around` names the model, its node and what it wears; viewer/around.ts fetches it with the scene and sets it on the highest of the land under it (the land's swell there is under half a metre), out of the pad's shadow maps, which are fitted to the place's models |
+| The line it was rolled out on | from its north gate round to the centre track 1.32 km west of the pad: drawn on the land as the other tracks are | derived (that this was the line out in 1961: it is the one line from the gate toward the pad); its course is today's map's | OpenStreetMap way 676662205 (`railway=abandoned`) and the first 76 m of way 676662204 (the track through the building), which the extension of 1973 to 1974 stands over. Rolled out to the pad on 11 April 1961 |
 | Left out | the building 75 ft square 1.43 km north-west (not dated to April 1961); the measuring point IP-1, 1.43 km south-west (only its tops show); Site 2's housing and the cottages (hidden by some 30 m of land); Site 31, 19 km off | | the research's sight lines (SRTM, eye 1.7 m over the deck) |
 
 ## The land
@@ -454,6 +455,7 @@ on it against the documented 160 ft): good to ten metres. Metres east and north 
 | Colours | grey-buff crust, paler cooler takyr, white salt, warmer sand, pale dust in the ruts, grey-green wormwood, fresh spring green, tulips yellow to scarlet | estimated (the tulips' range documented) | read off colour photographs of the cosmodrome's steppe in spring, then cleaned as the look asks (src/viewer/steppe.ts) |
 | Plants | eight species as designed forms ("The ground and what grows") | documented (the species); estimated (shares, colours) | below |
 | Made ground | the apron on the platform's landward side (70 m), the tracks' beds, a margin round the rim: graded, nothing growing; inside the outer fence the ground worn in patches, and turned round the spoil heap's foot (35 m) | estimated | the 1957 photograph shows bare ground round the pad and pit |
+| The apron | concrete slabs from the abutment's west face to 90 m west of the axis, 21 m south and 20 m north of the centre track; each 1.5 m along the tracks by 3 m across, in rows along them, a shade apart, darker in the middle than at the margins, the joints pale with sand; a pale band along each track with the rails flush in it and a flangeway inside each rail; the outer slabs under drifted dust, then bare trodden earth with wheel tracks | documented (slabs, rails flush, the bands, the stains, earth beyond: the film, 43:26 to 43:29, from the erector's head); derived (the south edge, 4 to 5 m beyond the bus's side, the bus's 2.5 m for a scale); estimated (the slabs' size, the west end, the north edge, which the frame does not reach) | tyuratam.ts `SLABS`. The CIA's photographs are too coarse to show it |
 | Ruts | bands of braided wheel ruts in pale dust beside the road in from the south-west (70 m each side, fading) and along the centre track to the west (35 m) | documented (that the builders' trucks ground the crust to dust and "the dusty roads ... got to be two to three kilometers wide": Chertok, *Rockets and People* vol. II p. 314, of 1955 to 1957); estimated (that they were still worn in 1961, their lines and breadths) | `RUTS` in tyuratam.ts |
 | Tracks | the centre track from the west (its last 2.6 km) and the four spurs beside it, onto the platform; ballast, sleepers 0.55 m apart, two rails at the Soviet gauge (1,524 mm in 1961) | documented (their lines: OpenStreetMap ways 37547653, 172441851, 172441854, 172441876, 172441879; HTA/JR-4/58 counts five spurs in 1957; the gauge); estimated (the bed's width, the sleepers); near the platform the centre track is put on the axis and the three beside it brought to the CIA's plan ("The site's frame", "The platform") | painted on the land; where they come up to the platform the rails are modelled (`Tracks`) |
 | Roads | the road in from the south-west (its last 2 km), the road round the pit and back past the command bunker, the road from the storage bunker to the propellant shed, and short drives to the storage bays, the check-out shop's gate and the gas receivers; concrete in slabs, 6 m wide | documented (the three roads' lines: PIC/JR-2/60 Figure 5 and OpenStreetMap ways 54570611, 172571827, 172441909); estimated (the drives, the surface, the width; that the way round the pit's east end was a made road and not only the track beside its ditch) | painted on the land, not modelled: they lay flush with it |
@@ -528,9 +530,10 @@ Cape's do (flora.ts) and the ground carries their tones to the horizon. Sources:
 | --- | --- | --- | --- |
 | The soils | grey-brown desert loam under a clay crust; takyrs and solonchaks "widespread"; small sand massifs | documented (of the Syr Darya's desert valley) | Veselova and others 2017, pp. 3-4 |
 | The crust | pale; ground by wheels to dust | documented (memoir) | Chertok vol. II p. 314: tulips "on the thick clay crust", the trucks' "steppe asphalt" |
-| Takyrs | bare clay floors in pans 100 to 400 m across with sharp edges, more in the hollows (the scarp's low side, the swell's lows beyond 900 m); cracked into polygons 0.42 m across | documented (that they are here); estimated (where, how big, the polygons: no source gives their size) | Veselova 2017; a takyr photographed at the river crossing (Danilevsky, plantarium.ru) |
-| Salt crusts | white, in the lowest middles of some pans | documented (solonchaks in closed hollows: Danilevsky); estimated (where) | as above |
-| Sand | warmer patches on the rises, low ripples where bare | documented (sand massifs in the valley; wormwood-sedge on sand on the cosmodrome's land, 26 April 2018: Lednev); estimated (where) | Veselova 2017; Lednev |
+| Takyrs | bare clay floors with crisp rims, ringed with biyurgun, where the maps and photographs have them ([tyuratam-ground.ts](tyuratam-ground.ts): 289 pans and a hollow, 5 to 125 ha, and the closed hollow 4 to 7 km north, one pale flat 6 km long). Round the pad there are almost none: 0.5 % of the ground within 2 km, 6.5 % from 2 to 4 km, 8 % beyond, in a belt 3 to 8.5 km south (the Takyrsai), a cluster 2 to 7 km east and the far north-east; cracked into polygons 0.42 m across | documented (71, by the sign on the 1:100 000 sheet L-41-79, their outlines off the photographs); estimated (218 and the hollow, read off the Corona frames of December 1960 and May 1962 as pale pans still pale today; the polygons' size) | the sheet; Corona KH-2 and KH-4; Krechetov 2015; docs/sources.md |
+| Salt crusts | none drawn: no map or photograph of 1960 to 1962 shows one within 8 km of the pad (the one white crust today, on the north hollow's floor, was dark in 1960) | documented (that none is known) | as above |
+| Sand | none drawn: no sand sign on the sheets; Krechetov's sandy soils on the square's west edge are a soil under the steppe, placed to a kilometre, not bare sand | documented (that none is known) | as above |
+| Old channels | five, as gullies 15 to 20 m broad: greener beds where the thaw lies longest | documented (three: the sheet's gully sign); estimated (two, off today's imagery) | as above |
 | Cover | shrubs about 0.36 of the loam, the spring sward about half of it | derived: total cover 40 to 45 %, wormwood 24 to 40 %, the spring aspect 60 to 70 % in a desert of the same kind 200 km north-west | Dimeeva and Salmukhanbetova 2025 |
 | White-earth wormwood (*Artemisia terrae-albae*) | a low grey-green felted cushion, 0.12 to 0.3 m, on the loam | documented (species, 8 to 30 cm, grey-white felt; communities on the cosmodrome's land) | Jin and others 2025; Lednev 2017 |
 | Biyurgun (*Anabasis salsa*) | small dark grey-green clumps, 0.08 to 0.2 m, with the wormwood and round the pans | documented (species, in complexes with the wormwood); estimated (height) | Lednev; Dimeeva 2025 |
@@ -918,9 +921,8 @@ rocket can leave the erector out by its date.
 - Site 51 is its pad, a square building and forty metres of rail: what stood on the pad (a launch table, a
   mast, an erector) is not described and is not built, the bank is drawn only under the pad, and its road and
   the rest of its spur are not drawn. The building's distance from the pad is ours.
-- **The assembly and test building of Site 2 is built and not shown** ("On the horizon"): it stands 2 km off, and
-  the place's model cannot hold it without moving the place's coarse shadow map off the pad. It waits for the
-  viewer to place it, as the Cape's far complexes are placed.
+- **The assembly and test building of Site 2 has one level of detail** (2,380 triangles, drawn whole at any
+  distance), and its form is estimated ("On the horizon"). The other lines and roads of Site 2 round it are not drawn.
 - **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
   roster has people, each there until its time and then gone between one frame and the next ("The morning's
   people and vehicles"). Nobody walks to the stair, gets down from the bus or climbs the fifteen steps: the pilot's
@@ -941,16 +943,25 @@ rocket can leave the erector out by its date.
   the measuring point and to 20 km, beyond what is modelled. The bus's three drives are a way of turning it round
   that is ours. The saloon car is `tools/blender/vehicles.py`'s kind and can be got into and driven; the bus and
   the truck cannot.
-- **The apron's surface is the land's paint, not the film's.** The film shows the ground west of the platform, where
-  the bus stood, laid in concrete slabs with the rails flush in them, for at least 45 m west of the abutment and
-  35 m south of the centre track. The land there is drawn as graded earth with ballasted track, and the modelled
-  rails stand 13 cm over it.
+- **The apron is painted on the land** ("The apron", above), flat at the land's level, 12 cm under the deck's. Its
+  slabs' size, its west and north ends and the stain of each slab are estimated. **The modelled rails over it stand
+  on it, not in it**: `Tracks` (site1/deck.py `land_rails`) lays them on painted sleepers, the head some 15 cm over
+  the land, where the film has them flush. Over the apron (from the abutment to 90 m west, every track) their heads
+  belong at the land's level: a model change, not yet made.
 - **The film's frame from the erector does not agree with the clock.** Its shadows lie some 40° clockwise of the
   rails, as a Sun at azimuth 130° would throw them: that is about 08:15 Moscow time, not 06:55, when the Sun stood
   at 108°. Either the frame was shot later that morning (the pilot's suit in it argues not) or the rails in it run
   some 20° off east and west, which no map has. Not resolved; the bus is placed by the rails, not by the shadows.
-- The spoil heap is a smooth mound of one tone: its gullies and the ditches round it are not drawn,
-  and the steppe's cover does not grow on it.
+- The spoil heap is a mound of one tone: its gullies and the ditches round it are not drawn,
+  and the steppe's cover does not grow on it. **It and the pit's earth and lining show every cell as a facet**: each
+  cell of their grids is added as a quad of its own (`MeshBuilder.add` in site1/rim.py `_heap`'s loop and
+  site1/platform.py's pit loop), so its corners are not shared with its neighbours' and shading them smooth has nothing
+  to average. Welding the cells (one vertex per grid point, or a merge by distance before `shade_smooth`) fixes it:
+  a model change, not yet made.
+- The fall's rills, its darker toe and the way worn along its brow are drawn on the land (tyuratam.ts `fall`,
+  `RUTS`): estimated, as wear a bare clay earthwork four springs old has. No photograph close enough to show them
+  has been read; the U-2 photograph of July 1959 (NPIC/B-24/61 Figure 1) shows wheel tracks all over the bare ground
+  round the pit, at a scale that cannot show a rill.
 - The land's relief is three levels and the falls between them, from a radar survey of 2000 on a 30 m grid
   ("The lie of the land"): good to some 2 m in height and 30 m in plan. The brow's line, the fall's breadth and
   section, the road's ramp and the pump house's plot are ours. The rise south of the fence is not built, nor the
@@ -964,14 +975,12 @@ rocket can leave the erector out by its date.
 - **The sky is the neighbouring stations', not the range's own** ("The land", above: the sky), and against an
   earlier reading of the film as clear. The cirrus is drawn as fibres lying one way over seven eighths of the sky, the
   same everywhere: which way they lay, how thick they were and whether there were gaps over the pad are not recorded.
-  They dim the Sun evenly (their own streaks cast no shadows). In the cel look they are one flat paler tone over the
+  They dim the Sun evenly (their own streaks cast no shadows). In the cel look, from under them, they are one flat paler tone over the
   sky. From height the record's cirrus holds over the site as far as the stations saw it (60 km, gone by 90: day.ts
   `reportReach`) and the day's map, estimated, lies beyond ("The country round, from height"). Where the report gives
   way is a lobed line 40 to 135 km out (weather.ts `heldDistance`), so from 150 km the cirrus is a patch with a ragged
-  edge, not a disc; its shape is estimated, and in the cel look it is still one flat sheet with an edge.
-- The ground's kinds lie where a noise field over its cut puts them, more readily in the hollows: that takyrs, crusts
-  and sand are here is documented, where each lies is not (no soil map of the cosmodrome has been read: Krechetov and
-  others 2015 is known, not read). The ruts' lines, the worn ground's patches and the takyr's polygons are estimated.
+  edge, not a disc; its shape is estimated. In the cel look, from above, it is its fibres cut into two flat tones (clouds.ts), thinning out in sheaves where the report gives way: no line is drawn round it.
+- The pans are where the maps and the Corona frames put them, as rings simplified to some 30 m; each rim wanders a few metres that are ours, and anything under some 80 m across is not drawn. Neither frame is of April 1961 and the sheet is of the 1970s: the outlines are good to some 30 m and their kind (takyr, not salt crust) is, for 218 of them, a reading of black-and-white photographs. Nothing is mapped inside the ground the range had turned by December 1960 (from 4.3 km west to 0.7 km east, 1.3 km north to 2.7 km south, and a patch 6.5 to 8.6 km east), nor north-east of the 1962 frame's edge but by the 1960 frame. The ruts' lines, the worn ground's patches and the takyr's polygons are estimated.
 - The plants are eight species as designed forms in three variants each; the river's floodplain plants (tamarisk,
   reeds, the tugai) are not drawn, being 30 km off and on the region's map from height. How many tulips stood to a
   square metre is not recorded.

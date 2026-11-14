@@ -591,6 +591,18 @@ export interface SiteDef {
    * flights come down in it (`PLACE`): a site inland says so here, or a rocket is heard in the surf that is not there.
    */
   quiet?: { wind: number; surf: number; hum: number; sea: number };
+  /** What stands beyond the site's own place and is seen from it, modelled apart (viewer/around.ts). */
+  around?: SiteAround;
+}
+
+/**
+ * A model of things round a site (a path under public/, as a flight's model urls are), built in the site's frame with
+ * each thing's node origin at its middle on the ground; the nodes to draw; and every material it wears, by name.
+ */
+export interface SiteAround {
+  model: string;
+  nodes: string[];
+  wears: string[];
 }
 
 /** A wind as a station reports it: the bearing it blows from, degrees clockwise from true north, and its speed, m/s. */
@@ -1225,14 +1237,20 @@ export interface Flight {
     turned?: number;
     /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */
     datum?: number;
-    /** The node whose lowest point is the nozzle's exit: the engine's fire is drawn from there while it burns. */
+    /**
+     * A ballistic flight's one engine: the node whose lowest point is the nozzle's exit, its area the trajectory's. Its
+     * fire is drawn from there from liftoff to the cutoff.
+     */
     engine?: string;
     /**
-     * Fires after the first, each from its own nozzle (the node whose lowest point is its exit; `radius` the exit's, m)
-     * while it burns: an upper stage, a braking engine. `on` names the event of the flight's record whose instants it burns
-     * between where the run has them (an orbital flight's: `stage:<index>` for a stage, `retro` for the braking burn).
+     * Every other fire, each an engine (viewer/fires.ts), drawn while it burns: each engine of a stage (all of them,
+     * strap-ons and core alike), an upper stage, a braking engine. `on` names the event of the flight's record whose
+     * instants it burns between where the run has them (an orbital flight's: `stage:<index>` for a stage, at its
+     * throttle, or `retro` for the braking burn). `node`: with `radius` (the exit's, m), a node whose lowest point is
+     * one round exit; without, a node holding only the engine's nozzles (its bells), whose every chamber, main or
+     * steering, is found in the model's geometry and drawn from its own exit.
      */
-    fires?: { node: string; radius: number; on: string }[];
+    fires?: { node: string; radius?: number; on: string }[];
     /** The parachutes, drawn (viewer/chute.ts) when the simulator lets each out. */
     chutes?: ChuteDef[];
     /** What the air does to it that is drawn (viewer/effects.ts), by the nodes and materials it happens to. */
