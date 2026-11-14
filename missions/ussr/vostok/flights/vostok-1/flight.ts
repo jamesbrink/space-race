@@ -1295,7 +1295,7 @@ export const flight: Flight = {
       value: 43300,
       unit: 'kg',
       confidence: 'documented',
-      note: '43.3 t each, 3.71 t empty (Encyclopedia Astronautica); Minakov has 3.75 t empty; Brügge 39.16 t of propellant',
+      note: '43.3 t each, 3.71 t empty (Encyclopedia Astronautica); Minakov has 3.75 t empty. (Brügge’s 39.16 t of propellant is Soyuz-ST’s oxygen and kerosene, from Arianespace’s manual: not this vehicle’s)',
     },
     {
       group: 'Launch vehicle',
@@ -1303,7 +1303,7 @@ export const flight: Flight = {
       value: 100400,
       unit: 'kg',
       confidence: 'documented',
-      note: '100.4 t, 6.8 t empty (Encyclopedia Astronautica); Brügge 99.76 t with 90.1 t of propellant; Minakov 102 t and 7 to 8 t',
+      note: '100.4 t, 6.8 t empty (Encyclopedia Astronautica); Minakov 102 t and 7 to 8 t. (Brügge’s 99.76 t with 90.1 t of propellant are Soyuz-ST’s, from Arianespace’s manual: not this vehicle’s)',
     },
     {
       group: 'Launch vehicle',

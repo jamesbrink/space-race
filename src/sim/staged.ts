@@ -27,7 +27,7 @@
  * flight to the last bit.
  */
 import type { Curve } from '../types';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { EARTH, EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   add,
   angleBetween,
@@ -212,9 +212,17 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
   const radius = o.orbit.radius.value;
 
   const pad = ecefToInertial(geodeticToEcef(site), gast0);
-  const n = planeThrough(pad, x.plane, o.injection.heading === 'north');
-  if (!n) throw new Error(`no plane inclined ${x.plane / DEG} degrees passes over the pad`);
   const up0 = ecefToInertial(enuAxes(site).up, gast0); // the plumb line at liftoff, held by the gyros
+  // the launch plane: through the plumb line and the aiming azimuth, where the record gives it; else the one solved for
+  const aimed = (() => {
+    if (!g.azimuth) return null;
+    const { east, north } = enuAxes(site);
+    const a = g.azimuth.value * DEG;
+    const bearing = ecefToInertial(add(scale(east, Math.sin(a)), scale(north, Math.cos(a))), gast0);
+    return unit(cross(up0, bearing));
+  })();
+  const n = aimed ?? planeThrough(pad, x.plane, o.injection.heading === 'north');
+  if (!n) throw new Error(`no plane inclined ${x.plane / DEG} degrees passes over the pad`);
   const upIn = unit(sub(up0, scale(n, dot(n, up0)))); // the same, in the launch plane
   const down0 = unit(cross(n, unit(pad))); // level in the plane, the way it will go
   const tiltOf = (d: Vec3) => Math.atan2(dot(d, down0), dot(d, upIn));
@@ -232,6 +240,22 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
   const tTurn = g.turn.value;
   const tEnd = instant(o, g.target.at);
   const tPart = parting(o);
+  // a stage cut on its apparent velocity: the instant its integrator reaches its setting, found here from the mass flown
+  // (the rocket's own thrust over its mass, summed from its ignition; in vacuum, with nothing else pushing, that is all an
+  // accelerometer along the axis senses), before anything is flown. The stage's own thrust in vacuum: it is lit above the air
+  const apparentCut = (i: number): number => {
+    const st = o.stages[i]!;
+    let sum = 0;
+    const h = 0.01;
+    const massAt = (t: number) => o.liftoffMass.value - droppedBy(t) - o.stages.reduce((m, s, j) => m + s.count * burned(j, t), 0);
+    const pushAt = (t: number) => (st.count * throttle(i, t) * st.thrust.vacuum.value) / massAt(t);
+    for (let t = plan[i]!.from; t < plan[i]!.to; t += h) {
+      const step = ((pushAt(t) + pushAt(t + h)) / 2) * h;
+      if (sum + step >= cutAt[i]!) return t + (h * (cutAt[i]! - sum)) / step;
+      sum += step;
+    }
+    return plan[i]!.to;
+  };
   const stageSep = o.stages.map((s) => (s.separation ? s.separation.value : Infinity));
   // what has left by an instant: a stage drops its fuelled mass less what it burned; another drop its own
   const droppedBy = (t: number) => {
@@ -242,6 +266,9 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     for (const d of a.drops) if (d.at.value <= t) m += d.mass.value;
     return m;
   };
+  o.stages.forEach((st, i) => {
+    if (st.velocity?.apparent) plan[i]!.to = Math.min(plan[i]!.to, apparentCut(i));
+  });
 
   let mode: Mode = 'vertical';
   let thetaTurn = 0; // the thrust's angle above the local level as the tangent law takes over
@@ -369,7 +396,9 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     t = Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     // a stage cut on its velocity, when it reaches it in this step: the step is flown again to the instant it does, found by
     // the secant on the step's length (so the instant is a smooth function of the inputs, as the law's solution needs)
-    const crossing = o.stages.findIndex((st, i) => st.velocity && t > plan[i]!.from && t <= plan[i]!.to && length(state.v) >= cutAt[i]!);
+    const crossing = o.stages.findIndex(
+      (st, i) => st.velocity && !st.velocity.apparent && t > plan[i]!.from && t <= plan[i]!.to && length(state.v) >= cutAt[i]!,
+    );
     if (crossing >= 0 && length(before.v) < cutAt[crossing]!) {
       const want = cutAt[crossing]!;
       const at = (k: number) => length(step(before, t0, h * k, (q, tt) => forces(q, tt, m, gone).accel).v) - want;
@@ -443,6 +472,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
 export function steer(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel = 0): Solved {
   const g = o.ascent!.guidance;
   const want = [o.orbit.radius.value + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
+  if (g.azimuth) return steer2(o, site, launchJd, seaLevel, want);
   const miss = (x: Solved): number[] => {
     const s = ascend(o, site, launchJd, seaLevel, x, Infinity).summary;
     return [(s.cutoffAltitude + o.orbit.radius.value - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
@@ -472,6 +502,30 @@ export function steer(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLev
   throw new Error('the ascent’s steering law did not reach its target');
 }
 
+/** The law with its plane given by the aiming azimuth: two unknowns, the pitch-over and the tangent's rate, for height and climb. */
+function steer2(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel: number, want: number[]): Solved {
+  const miss = (v: number[]): number[] => {
+    const s = ascend(o, site, launchJd, seaLevel, { plane: Number.NaN, kick: v[0]!, rate: v[1]! }, Infinity).summary;
+    return [(s.cutoffAltitude + o.orbit.radius.value - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!];
+  };
+  let v = [8 * DEG, 1e-3];
+  const eps = [1e-6, 1e-9];
+  for (let k = 0; k < 30; k++) {
+    const f = miss(v);
+    if (Math.hypot(...f) < 1e-8) return { plane: Number.NaN, kick: v[0]!, rate: v[1]! };
+    const J = [0, 1].map((j) => {
+      const w = [...v];
+      w[j]! += eps[j]!;
+      return miss(w).map((y, i) => (y - f[i]!) / eps[j]!);
+    }); // J[j][i] = d f_i / d x_j
+    const det = J[0]![0]! * J[1]![1]! - J[1]![0]! * J[0]![1]!;
+    const d = [(-f[0]! * J[1]![1]! + f[1]! * J[1]![0]!) / det, (-f[1]! * J[0]![0]! + f[0]! * J[0]![1]!) / det];
+    const most = Math.max(Math.abs(d[0]!) / (2 * DEG), 1);
+    v = v.map((y, i) => y + d[i]! / most);
+  }
+  throw new Error('the ascent’s steering law did not reach its target');
+}
+
 /** Cramer's rule for three equations. */
 function solve3(A: number[][], b: number[]): number[] {
   const det = (m: number[][]) =>
@@ -483,13 +537,41 @@ function solve3(A: number[][], b: number[]): number[] {
 }
 
 /** Fly the whole flight: the ascent on its solved law, then the coast from the spacecraft's separation (orbital.ts: flyOrbit). */
-export function flyWhole(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel = 0, solved?: Solved, every = 10): FlownWhole {
+export function flyWhole(
+  o: OrbitalFlight,
+  site: Geodetic,
+  launchJd: number,
+  seaLevel = 0,
+  solved?: Solved,
+  every = 10,
+  handover: 'flown' | 'published' = 'flown',
+): FlownWhole {
   const x = solved ?? steer(o, site, launchJd, seaLevel);
   const ascent = ascend(o, site, launchJd, seaLevel, x);
-  const coast = flyOrbit(o, site, launchJd, seaLevel, every, ascent.separation);
+  const coast = flyOrbit(
+    o,
+    site,
+    launchJd,
+    seaLevel,
+    every,
+    handover === 'published' ? published(o, ascent.separation) : ascent.separation,
+  );
   const end = coast.samples[coast.samples.length - 1]!;
   const down = o.descent && end.phase === 'down' ? flyDown(o, launchJd, seaLevel, end) : null;
   return { ascent, coast, down };
+}
+
+/**
+ * The spacecraft where the ascent flown left it, moving as fast as the published orbit has it there (vis-viva on its
+ * semi-major axis, over the record's reference ball) along the way the ascent flown left it going. For a flight whose
+ * ascent as flown does not reach the published orbit: the coast and what follows are then the record's orbit's, begun from
+ * the place and instant the ascent gives instead of the estimated `injection`. What the scene and the deck show
+ * (viewer/ascent.ts `orbitalFlown`), and the run the coast's and the descent's checks are held to (tests/staged.test.mjs).
+ */
+export function published(o: OrbitalFlight, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
+  const a = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
+  const speed = Math.sqrt(EARTH.gm.value * (2 / length(at.r) - 1 / a));
+  return { t: at.t, r: at.r, v: scale(unit(at.v), speed) };
 }
 
 /**
@@ -632,4 +714,52 @@ export function byHand(o: OrbitalFlight, t: number, aim: Vec3): OrbitalFlight {
   plan.retro.aim = { ...plan.retro.aim, along: 'fixed', sense: 1, vector: aim };
   plan.entry.separation.value = t + burn + m.parting.value;
   return plan;
+}
+
+/** A check of an orbital flight's, with what the run gave for it: the ascent's, the coast's and the descent's in turn. */
+export interface Held {
+  id: string;
+  label: string;
+  value: number;
+  unit: string;
+  tolerance: number;
+  got: number;
+}
+
+/** Every check an orbital record sets, against a whole flight flown (`flyWhole`): for the Flown panel and the debrief. */
+export function held(o: OrbitalFlight, whole: FlownWhole): Held[] {
+  const ascent = (id: string): number => {
+    const [event, field] = id.split('.');
+    if (!field) return (whole.ascent.summary as unknown as Record<string, number>)[id] ?? Number.NaN;
+    return (whole.ascent.at[event!] as unknown as Record<string, number> | undefined)?.[field] ?? Number.NaN;
+  };
+  const down = (id: string): number => {
+    if (id === 'apart') return whole.down?.apart ?? Number.NaN;
+    const [body, field] = id.split('.');
+    return (whole.down?.landed[body!] as unknown as Record<string, number> | undefined)?.[field!] ?? Number.NaN;
+  };
+  const of = (c: { id: string; label: string; value: number; unit: string; tolerance: number }, got: number): Held => ({
+    id: c.id,
+    label: c.label,
+    value: c.value,
+    unit: c.unit,
+    tolerance: c.tolerance,
+    got,
+  });
+  return [
+    ...(o.ascent?.checks ?? []).map((c) => of(c, ascent(c.id))),
+    ...o.checks.map((c) => of(c, whole.coast.results[c.id])),
+    ...(o.descent?.checks ?? []).map((c) => of(c, down(c.id))),
+  ];
+}
+
+/**
+ * The engines lit at liftoff as one, for what the ear and the eye are given of them (viewer/effects.ts, sound/): their
+ * summed sea-level thrust, N; the exhaust speed of that thrust over their summed flow, m/s; and their summed exit area, m^2.
+ */
+export function liftoffEngine(o: OrbitalFlight): { thrust: number; exhaustSpeed: number; exitArea: number } {
+  const lit = o.stages.filter((s) => s.ignition.value <= 0 && s.thrust.seaLevel);
+  const thrust = lit.reduce((sum, s) => sum + s.count * s.thrust.seaLevel!.value, 0);
+  const flow = lit.reduce((sum, s) => sum + s.count * flowOf(s), 0);
+  return { thrust, exhaustSpeed: flow > 0 ? thrust / flow : 0, exitArea: lit.reduce((sum, s) => sum + s.count * exitAreaOf(s), 0) };
 }
