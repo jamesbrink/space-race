@@ -505,6 +505,24 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(midday.moon.elevation / DEG, -3.2, 0.05, 'Moon elevation over Site 1, 16 June 1963');
   near(midday.moon.illuminated, 0.337, 0.005, 'Moon lit over Site 1, 16 June 1963');
   assert.equal(midday.moon.waxing, false, 'a waning crescent, five days before new');
+  // Voskhod 1: the figures quoted in its README ("The sky at liftoff")
+  const voskhod1 = flights.find((f) => f.id === 'ussr/voskhod/voskhod-1');
+  const noon = skyFrom(siteFrame(voskhod1.site), julianDate(voskhod1.launch));
+  near(noon.sun.azimuth / DEG, 179.0, 0.05, 'Sun azimuth over Site 1, 12 October 1964');
+  near(noon.sun.elevation / DEG, 36.6, 0.05, 'Sun elevation over Site 1, 12 October 1964');
+  near(noon.moon.azimuth / DEG, 115.55, 0.05, 'Moon azimuth over Site 1, 12 October 1964');
+  near(noon.moon.elevation / DEG, -9.9, 0.05, 'Moon elevation over Site 1, 12 October 1964');
+  near(noon.moon.illuminated, 0.376, 0.005, 'Moon lit over Site 1, 12 October 1964');
+  assert.equal(noon.moon.waxing, true, 'waxing, not yet at first quarter');
+  // Voskhod 2: the figures quoted in its README ("The sky at liftoff")
+  const voskhod2 = flights.find((f) => f.id === 'ussr/voskhod/voskhod-2');
+  const march = skyFrom(siteFrame(voskhod2.site), julianDate(voskhod2.launch));
+  near(march.sun.azimuth / DEG, 161.5, 0.05, 'Sun azimuth over Site 1, 18 March 1965');
+  near(march.sun.elevation / DEG, 41.5, 0.05, 'Sun elevation over Site 1, 18 March 1965');
+  near(march.moon.azimuth / DEG, 327.1, 0.05, 'Moon azimuth over Site 1, 18 March 1965');
+  near(march.moon.elevation / DEG, -38.7, 0.05, 'Moon elevation over Site 1, 18 March 1965');
+  near(march.moon.illuminated, 0.99, 0.005, 'Moon lit over Site 1, 18 March 1965');
+  assert.equal(march.moon.waxing, false, 'the day after full');
   // Sigma 7: the figures quoted in its README ("The sky at liftoff")
   const ma8 = flights.find((f) => f.id === 'usa/mercury/ma-8-sigma-7');
   const october = skyFrom(siteFrame(ma8.site), julianDate(ma8.launch));

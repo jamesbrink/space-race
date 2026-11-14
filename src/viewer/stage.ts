@@ -1761,7 +1761,8 @@ export class Stage {
     }
     this.fall(ascent, s, pad, t, flying);
     this.hang(ascent, s, pad, t, flying);
-    const { on, vacuum } = ascent.burn(t);
+    const { on, vacuum, fire } = ascent.burn(t);
+    this.fireAt(fire);
     this.plume?.set(on, vacuum, t, this.renderer.toneMappingExposure); // (its flicker is the clock's: the same instant is the same fire)
     this.layTrail(ascent, pad, t, flying);
     this.effects?.set(t, flying, g, s.full, this.clock.rate, this.renderer.toneMappingExposure, this.setting.sunIntensity, this.veils);
@@ -1902,6 +1903,20 @@ export class Stage {
     this.jets = null;
   }
 
+  /** Where each fire is hung and how wide its exit, measured on the pad: the first engine's, then `Flight.flies.fires`. */
+  private fires: { at: THREE.Vector3; radius: number }[] = [];
+  private fire = 0;
+
+  /** Move the one fire to the nozzle of the engine burning now (`burn`'s `fire`), as the stages hand over. */
+  private fireAt(i: number): void {
+    const f = this.fires[i];
+    if (!this.plume || !f || i === this.fire) return;
+    this.fire = i;
+    this.plume.mesh.position.copy(f.at);
+    this.plume.light.position.copy(f.at);
+    this.plume.radius = f.radius;
+  }
+
   /** Hang the engine's fire under the flown vehicle's nozzle (`Flight.flies.engine`), measured as it stands on the pad. */
   private hangPlume(flight: FlightData): void {
     const gone = [this.plume?.mesh, this.trail?.mesh];
@@ -1930,6 +1945,18 @@ export class Stage {
     const exit = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
     this.plume = new Plume(Math.sqrt(exitArea / Math.PI));
     this.plume.mesh.position.copy(s.group.worldToLocal(exit));
+    // and the later fires' nozzles, each the lowest middle of its node's bounds as the vehicle stands
+    this.fires = [{ at: this.plume.mesh.position.clone(), radius: this.plume.radius }];
+    for (const f of flight.flies?.fires ?? []) {
+      const node = s.full.getObjectByName(f.node);
+      if (!node) continue;
+      const b = new THREE.Box3().setFromObject(node);
+      this.fires.push({
+        at: s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2)),
+        radius: f.radius,
+      });
+    }
+    this.fire = 0;
     s.group.add(this.plume.mesh, this.plume.light); // (the light stays in the scene, at no strength until the engine burns: lighting it builds no shader)
     this.trail = new Trail();
     this.scene.add(this.trail.mesh);

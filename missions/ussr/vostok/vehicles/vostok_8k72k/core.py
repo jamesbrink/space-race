@@ -114,7 +114,11 @@ def dome(mb: Local, h: float, r: float, depth: float, up: bool, segs: int = 64, 
     mb.lathe(pts if up else pts[::-1], segs)
 
 
-def build(base_z: float, M: dict) -> None:
+def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
+    """`web_foot` is how far under the frame each bracket's two webs end. At 250 their lower edges lie in the plane of
+    the under side of the bracket's foot: two faces in one place, which the clearance check passes at the 8K72K's
+    stations only by rounding. It is left so, so that the Vostoks' built models do not change; a vehicle built on
+    this core at other stations (the 11A57) ends the webs short of the foot's under side."""
     X = core_frame(base_z)
     g = group("CoreStage")
     skin, frost, shield, wall, fit, bolts, steel, bracket = (Local(X) for _ in range(8))
@@ -181,7 +185,7 @@ def build(base_z: float, M: dict) -> None:
         for k in (-1, 1):  # two webs carrying the plate's load down into the frame
             fin(
                 arm,
-                [(r - 12, h - 250), (r + 60, h - 250), (reach, h + 120), (reach, h + 214), (r - 12, h + 214)],
+                [(r - 12, h - web_foot), (r + 60, h - web_foot), (reach, h + 120), (reach, h + 214), (r - 12, h + 214)],
                 30,
                 30,
                 r,

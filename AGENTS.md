@@ -42,6 +42,8 @@ pnpm model:vostok-3   # rebuild Vostok 3's vehicle
 pnpm model:vostok-4   # rebuild Vostok 4's vehicle
 pnpm model:vostok-5   # rebuild Vostok 5's vehicle
 pnpm model:vostok-6   # rebuild Vostok 6's vehicle
+pnpm model:voskhod-1  # rebuild Voskhod 1's vehicle: 3KV No. 3 on its 11A57
+pnpm model:voskhod-2  # rebuild Voskhod 2's vehicle: 3KD No. 4, the airlock folded under the fairing's blister
 pnpm model:lc-5       # rebuild the place round the pad, each of its dated states (the site's own models)
 pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
 pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)
@@ -56,6 +58,7 @@ pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same 
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
 pnpm test:history     # needs `pnpm dev` running: Back and Forward between the front page, flights and places, with real clicks
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
+pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
 ```
 

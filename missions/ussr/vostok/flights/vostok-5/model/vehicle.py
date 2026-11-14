@@ -39,10 +39,10 @@ import vostok_8k72k  # noqa: E402
 from srlib import mark_shells, run  # noqa: E402
 
 
-def pilot(parent, place) -> None:
+def pilot(parent, place) -> dict:
     """Bykovskiy in the seat: the SK-1 (../../../crew/sk_1.py) as he wore it that day, visor down, "СССР" on the helmet."""
     sk_1.wear(sk_1.BYKOVSKY)
-    sk_1.build_seated(parent, place, "Pilot")
+    return sk_1.build_seated(parent, place, "Pilot")
 
 
 def build() -> str:

@@ -8,12 +8,16 @@ What is recorded: that the launch system had one upper cable mast and two lower 
 launch system, in Afanasyev); a shadow the CIA's interpreters read in March 1961 as a "possible umbilical mast",
 its base "somewhere within the darkened circular area" and its top "anywhere between 85 and 95 feet above the
 launching platform", ending "in an oblong loop"; the minute it came away. A photograph of a Vostok being raised
-shows it as two slender lattice legs with a head, standing beyond the rocket's tail; film of a Vostok leaving shows
-it leaning back some twenty degrees.
+shows it as two slender lattice legs with a head, standing beyond the rocket's tail. Two photographs of 12 April
+1961 taken from across the pit (RussianSpaceWeb) show where it had gone to: in the first the rocket still stands in
+the closed supports and the mast already leans some 25 degrees out of upright; in the second the rocket's tail is
+some 20 m over the deck and the mast leans as it did. So it went the whole way back at 09:06, a minute before
+liftoff, and did not move as the rocket left.
 
 Estimated: which side it stood on (the east, over the support there: the only place the two service trusses do not
-sweep as they are lowered, and the side the photographs agree with), its legs' line, every member, the arm at its
-head and where on the third stage its plugs went, how far it swung and how fast. See ../site-1.md.
+sweep as they are lowered; the two photographs, taken from the east, have it on the rocket's left, which is the
+south: see ../site-1.md, what the model gets wrong), its legs' line, every member, the arm at its head and where on
+the third stage its plugs went, how far it swung and how fast. See ../site-1.md.
 
 The two lower cable masts, under the deck at the rocket's tail, are not built: one small reproduction of a drawing
 shows that they were there and nothing read shows where.
@@ -35,8 +39,12 @@ FOOT = 2.7  # each leg's foot, either side of the support
 HEAD_R, HEAD_A = 4.75, 0.55  # the legs' line at the head: out from the axis, and half their spread
 ARM_Z = 24.3  # the arm's tip, against the third stage under the fairing's foot (estimated)
 ARM_R = 1.5  # how near the axis the plugs come: the third stage's skin is at 1.29
-AWAY = 4.0  # degrees it stands off once its plugs are out, at 09:06 (estimated: off a photograph of a Vostok at ignition)
-FALL = 22.0  # degrees from where it stood to where it leans as the rocket leaves (estimated: off the film)
+# Degrees from where it stood to where it leans once it is away, at 09:06 (estimated). Standing, its legs lean 8.9
+# degrees in; the photographs of the morning have it at least 25 degrees out of upright (in projection: 24.7 with the
+# rocket standing, 21.5 with it risen), which is 34 from standing or more. 40 is taken, 31 degrees out of upright: the
+# least at which the support under it, falling back at liftoff, passes inside its legs with room (the pose check: it
+# crosses them at 34 and clears at 38).
+FALL = 40.0
 LEG = 0.24  # half a leg's section
 
 

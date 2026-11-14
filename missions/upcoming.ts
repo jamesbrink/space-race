@@ -4,7 +4,7 @@
  * nothing here has to be taken out by hand; the next ones are added as they are decided on.
  *
  * These are placeholders, not records: the names, pilots and dates are the programmes' own tables
- * (usa/mercury/README.md, ussr/vostok/README.md; the Voskhods have no programme page yet), set down from general knowledge and checked
+ * (usa/mercury/README.md, ussr/vostok/README.md, ussr/voskhod/README.md), set down from general knowledge and checked
  * against sources only when each flight is built. A date is a day, in UTC, and no more.
  */
 export interface Upcoming {

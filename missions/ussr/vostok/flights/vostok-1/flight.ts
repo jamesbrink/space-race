@@ -152,17 +152,23 @@ const parts: Part[] = [
     summary: 'Ordinary air, a globe that turned with the Earth, and controls locked by a code.',
     detail:
       'Air at sea-level pressure, kept breathable by superoxide that gives up oxygen as it takes in carbon dioxide and ' +
-      'water, with ten days of food and water in case the braking engine failed and the orbit had to decay by itself. On the ' +
-      'board over his knees a small globe, the Globus, turned to show the point on the Earth below him. Beyond his feet ' +
-      'the Vzor, an optical sight on a porthole, by which the ship could be levelled against the horizon and pointed ' +
-      'along its track by eye. The flight was automatic. To fly it by hand he would ' +
-      'first have had to key 1-2-5 into a lock, the number sealed in an envelope on board.',
+      'water, with ten days of food and water in case the braking engine failed and the orbit had to decay by itself. Above ' +
+      'his knees hangs the board: the Globus, a small globe that turned to show the place on the Earth below him, a clock, ' +
+      'three gauges of three needles each and three blocks of signal lamps. Under it, on the porthole at his feet, the ' +
+      'Vzor: a ring of eight ports in which the horizon stood as a ring when the ship was level, round a ruled screen on ' +
+      'which the ground ran. At his left the black control panel, its raked side toward him with six keys: the flight ' +
+      'was automatic, and to fly it by hand he would first have had to key 1-2-5 into that lock, the number sealed in an ' +
+      'envelope on board. At his right the hand controller, which he never touched. The fit is the first ships’ own, by ' +
+      'Darevsky’s laboratory at the Flight Research Institute; its places and sizes here are read off photographs.',
     facts: [
       ['Atmosphere', 'air, 755 to 775 mm Hg'],
       ['Regeneration', 'alkali metal superoxide'],
       ['Supplies', '10 days'],
+      ['Instrument board', 'PD-1-3KA: Globus, clock, three gauges, 24 signal lamps'],
+      ['He read before launch', '1.0 atm, 65 %, 19 °C; 155, 320 and 155 atm of gas'],
+      ['Globus correction window', '510'],
       ['Vzor field of view', '7°'],
-      ['Manual control code', '1-2-5'],
+      ['Manual control code', '1-2-5, on six keys'],
     ],
     explode: [0, LIFT, 0],
     order: SHIP + 1,
@@ -370,6 +376,7 @@ const launcherParts: Part[] = [
       ['Diameter', '2.58 m'],
       ['Mass', '7,984 kg fuelled, 1,472 kg burnt out'],
       ['Engine', 'RD-0109: 54.5 kN in vacuum, 121 kg'],
+      ['Engine’s size', '1,555 mm long; nozzle exit 733 mm across'],
       ['Steering', '8 nozzles on the turbine’s exhaust: 4 fixed, 4 turning'],
       ['Burned', 'about 300 to 676 s after liftoff'],
       ['Propellants', 'kerosene and liquid oxygen, 6.9 t'],
@@ -481,8 +488,14 @@ const vehicle: ModelDef = {
   parts: [...launcherParts, ...parts],
   position: [0, BASE + TAIL, 0],
   rotationY: TURN,
-  // the cabin's lamp, over the instrument board
-  lights: [{ position: [0.14, 3.6, 0.14], colour: 0xffe4c0, intensity: 0.2, reach: 1.7 }],
+  // The cabin's two lamps, the pilot's left hand one first (`cabin.lighting` names them by this order). How many there
+  // were and where they hung is in nothing read: the fittings are high on either side, over his knees (vehicles/vostok_cabin.py,
+  // which prints these). Each light is put toward the middle of the cabin, not at its fitting: a bare point at the wall
+  // burns the wall beside it. Strength chosen by eye.
+  lights: [
+    { position: [0.182, 3.68, -0.04], colour: 0xffe4c0, intensity: 0.14, reach: 2.4 },
+    { position: [-0.04, 3.68, 0.182], colour: 0xffe4c0, intensity: 0.14, reach: 2.4 },
+  ],
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
@@ -499,6 +512,197 @@ const vehicle: ModelDef = {
     { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles', 'Antennas'] },
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: turned(along(250, -32, 1)) },
   ],
+};
+
+/**
+ * The ejection seat as a place to be. `Seat_Pilot` is the model's own node (vehicles/vostok_3ka.py `seat_view`): an
+ * empty at the seated figure's eyes, a child of `EjectionSeat` (so it goes where the seat goes: out along the rails with
+ * the slider, and out of the ball at seven kilometres), looking at the middle of the instrument board, the top of his
+ * head overhead. There his own helmet and face are not drawn. Boarded through hatch No. 1: he was in the seat for the
+ * first call on the radio at 07:10 (the transcript: documented) and was sealed in at 07:50 (Siddiqi: documented); when
+ * he climbed in is not recorded, and the ten minutes before the first call are ours.
+ */
+const HELMET = [
+  'Shell',
+  'Liner',
+  'Head',
+  'Cap',
+  'MicrophoneBooms',
+  'Microphones',
+  'Eyes',
+  'Brows',
+  'Lips',
+  'Visor',
+  'VisorFrame',
+  'Fittings',
+  'Lettering',
+  'Collar',
+  'NeckBand',
+];
+vehicle.seats = [
+  {
+    node: 'Seat_Pilot',
+    label: 'the ejection seat',
+    from: 'EntryHatch',
+    open: [(7 - 9) * 3600 + (0 - 6) * 60 - 59.7, (7 - 9) * 3600 + (50 - 6) * 60 - 59.7],
+    hide: HELMET.map((mesh) => `Pilot_Helmet_${mesh}`),
+    // there is one Gagarin: the figure on the platform's deck is not drawn while he is in the seat
+    figure: 'crew',
+    // the hatch was bolted down from outside; in flight he left only with the seat, at seven kilometres, which is the flight's
+    egress: ['pad'],
+  },
+];
+
+/**
+ * The cabin as somewhere to fly from (types.ts: CabinDef; viewer/cabin.ts). The nodes are the model's
+ * (vehicles/vostok_cabin.py, the fit of 1961), each needle with its scale in its own extras; this says what each reads.
+ * What each thing rests on is spacecraft.md, "Cabin". Only the clock reads anything yet: the board's three gauges stand
+ * at what Gagarin read off them before launch, and say so.
+ */
+const NOT_SIMULATED = 'Not simulated: the needle stands where it was built.';
+const READ = 'the transcript of 12 April (Izvestiya TsK KPSS, 1991 No. 5)';
+// which lens carries which words is not established: the words are a reconstruction (vostoksupersite, from archive
+// documents it names, with doubts of its own), so each lens says its block's and stays dark
+const SIGNALS: [block: string, lamps: number, says: string][] = [
+  [
+    'TS1',
+    10,
+    'The upper block, warnings: among them, as reconstructed, cabin pressure low, carbon dioxide, start the braking engine or cancel the descent, gas for one descent, prepare to eject, the seat’s locks; sound, and the emergency signal being sent.',
+  ],
+  [
+    'TS2',
+    10,
+    'The middle block: among them, as reconstructed, fly by hand, orientation on the Sun, transmission under way, a call to the radio; VHF transmitting, the gas analyser, manual orientation, and descent I, II and III.',
+  ],
+  ['TS3', 4, 'The lower block: among them, as reconstructed, starting the braking engine is permitted.'],
+];
+vehicle.cabin = {
+  within: ['Cabin', 'EjectionSeat'],
+  // the top of the pilot's head: up the seat's rails, toward hatch No. 1 (vehicles/vostok_3ka.py `seat_node`)
+  overhead: [-0.646, 0.407, -0.646],
+  // a head in a helmet fixed to the suit, and the eyes' own turn: estimated, nothing read gives it. Down is far enough
+  // to bring the Vzor, 26 degrees under the board, to the middle of the view
+  head: { side: 1.4, up: 0.7, down: 0.5 },
+  instruments: [
+    {
+      node: 'Gauge_ClockHour',
+      name: 'Clock',
+      about:
+        'The board’s clock, on Moscow time, twelve hours round. Its ring of flight time, its small dial of days and its index for the descent programme are drawn and do not run.',
+      reads: 'timeOfDay',
+    },
+    { node: 'Gauge_ClockMinute', name: 'Clock', about: 'Minutes.', reads: 'timeOfDay' },
+    { node: 'Gauge_ClockSecond', name: 'Clock', about: 'Seconds.', reads: 'timeOfDay' },
+    {
+      node: 'Gauge_CabinPressure',
+      name: 'Cabin pressure',
+      about: `Atmospheres, 0 to 1.5. It stands at 1.0, as he read it before launch (${READ}). ${NOT_SIMULATED}`,
+      value: 1.0,
+    },
+    { node: 'Gauge_Humidity', name: 'Cabin humidity', about: `Per cent. It stands at the 65 he read. ${NOT_SIMULATED}`, value: 65 },
+    {
+      node: 'Gauge_Temperature',
+      name: 'Cabin temperature',
+      about: `Degrees Celsius, 0 to 40. It stands at the 19 he read. ${NOT_SIMULATED}`,
+      value: 19,
+    },
+    {
+      node: 'Gauge_CarbonDioxide',
+      name: 'Carbon dioxide',
+      about: `Per cent of the cabin’s air, 0 to 4. No reading of it is in the record: it stands at nothing. ${NOT_SIMULATED}`,
+      value: 0,
+    },
+    {
+      node: 'Gauge_Oxygen',
+      name: 'Oxygen',
+      about: `Per cent of the cabin’s air. No reading of it is in the record: it stands at ordinary air’s 21. ${NOT_SIMULATED}`,
+      value: 21,
+    },
+    {
+      node: 'Gauge_ModulePressure',
+      name: 'Instrument module pressure',
+      about: `Atmospheres, 0 to 2: the sealed compartment behind the ball. It stands at the 1.2 he read. ${NOT_SIMULATED}`,
+      value: 1.2,
+    },
+    {
+      node: 'Gauge_ManualGas',
+      name: 'Gas for turning the ship by hand',
+      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. It stands at the 155 he read. ${NOT_SIMULATED}`,
+      value: 155,
+    },
+    {
+      node: 'Gauge_RetroPressure',
+      name: 'Braking engine’s bottle',
+      about: `Atmospheres in the bottle that pressurises the TDU. It stands at the 320 he read. ${NOT_SIMULATED}`,
+      value: 320,
+    },
+    {
+      node: 'Gauge_AutomaticGas',
+      name: 'Gas for the automatic orientation',
+      about: `Atmospheres, 0 to 200: the first or the second set of bottles, by a tumbler on the control panel. It stands at the 155 he read of the first (157 of the second). ${NOT_SIMULATED}`,
+      value: 155,
+    },
+  ],
+  lamps: SIGNALS.flatMap(([block, lamps, says]) =>
+    Array.from({ length: lamps }, (_, i) => ({
+      node: `Tele_${block}_${i + 1}`,
+      name: 'Signal lamp',
+      about: `${says} Which lens says which is not established. Not simulated: it stays dark.`,
+    })),
+  ),
+  controls: [
+    ...[1, 2, 3, 4, 5, 6].map((key) => ({
+      node: `Ctl_Code${key}`,
+      name: `Logical lock, key ${key}`,
+      about:
+        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-2-5 (Gallay; Kamanin’s diary has 1-4-5). On the flight deck a key pressed here is the same as its digit typed: the code frees the hand controls once the ship is alone in orbit.',
+      // (the flight deck's lock, orbitdeck.ts: pressed here or typed there, the same key)
+      does: `code:${key}`,
+    })),
+    {
+      node: 'Ctl_ManualOrientation',
+      name: 'Manual orientation',
+      about: 'Under the clear cover: with the lock open, it hands the ship’s attitude to the hand controller. Not simulated.',
+    },
+    { node: 'Ctl_Descent3', name: 'Descent III', about: 'Under the clear cover: the descent cycle begun by the pilot. Not simulated.' },
+    {
+      node: 'Ctl_RetroFire',
+      name: 'Start the braking engine',
+      about: 'Red, under the clear cover: the pilot’s own command to the TDU, for a ship he has turned by the Vzor.',
+      does: 'retro',
+    },
+    { node: 'Ctl_Oxygen', name: 'Oxygen', about: 'Under the clear cover. What it switched is not in anything read. Not simulated.' },
+    { node: 'Ctl_Alarm', name: 'Emergency signal', about: 'Under the clear cover: sends the alarm to the ground. Not simulated.' },
+    {
+      node: 'Ctl_HandController',
+      name: 'Hand controller',
+      about:
+        'A short stalk on a ball with a ribbed grip across it, at his right hand: it works the manual system’s gas jets, once the lock is open. Gagarin never used it. It moves as the keys do.',
+    },
+  ],
+  // The cabin's lamps: one switch on the control panel, off, duty and working (the factory's photograph of the panel:
+  // documented); how many lamps there were and where they hung is in nothing read, and the two fittings high on either
+  // side are ours. Built at working. `lights` above are the left hand one and the right hand one.
+  lighting: {
+    control: 'Ctl_Lighting',
+    name: 'Cabin lighting',
+    about: 'One tumbler on the control panel: working, duty, off.',
+    ways: [
+      { says: 'Working', lit: [0, 1] },
+      { says: 'Duty', lit: [0] },
+      { says: 'Off', lit: [] },
+    ],
+    fittings: ['Lamp_1', 'Lamp_2'],
+  },
+  // the two portholes that can be looked out of, as light (vehicles/vostok_cabin.py prints them in this frame): the one in
+  // hatch No. 1 over his head and the one at his right. The third is behind the Vzor
+  windows: [
+    { at: [-0.711, 3.477, -0.711], out: [-0.646, 0.407, -0.646], across: 0.2, name: 'Hatch porthole' },
+    { at: [-0.379, 3.546, 0.894], out: [-0.345, 0.469, 0.813], across: 0.2, name: 'Right porthole' },
+  ],
+  // The node's own axes: +Y up the stalk, +X along the grip. That it had two axes is the maker's history (Tyapchenko);
+  // which two, how the third was commanded and how far it tipped are estimated
+  stick: { node: 'Ctl_HandController', throw: 0.2, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
 };
 
 // The cosmonaut on the platform's deck, on the hatch side, between where the bus stopped on the tracks and the launch
@@ -622,10 +826,47 @@ const MSK = (h: number, m: number, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s 
 const TRUSS_NORTH = TURN / DEG + 45;
 const TRUSS_SOUTH = TURN / DEG + 225;
 const MAST_AT = TURN / DEG + 315;
-/** How far a service truss is lowered, and the cable mast swings (first as its plugs come out, then as the rocket leaves), degrees. */
+/** How far a service truss is lowered, and the cable mast swings back at 09:06, degrees. */
 const TRUSS_FALL = 98;
-const MAST_AWAY = 4;
-const MAST_FALL = 22;
+const MAST_FALL = 40;
+/**
+ * The launch system's four supports (launch_system.py): where each hinge is round the site, how far each falls back
+ * (degrees), and when, in seconds from launch. That they fall back as the rocket rises is the record (Siddiqi; Chertok);
+ * the angle is read off a photograph of this launch with the rocket's tail some 20 m over the deck, in which they
+ * stand open, 14 to 21 degrees out of upright. The times are a later launch's: film of a Soyuz leaving this pad in
+ * 2019 (the same system, since modified) has the trusses begin 0.6 to 0.9 s after the rocket first moves and at rest
+ * 1.7 to 2.0 s later, which the photograph of 1961 allows (open by about three seconds) and the rocket needs (the
+ * pose check, site-1.md: the strap-ons clear the heads).
+ */
+const SUPPORT_AT = [45, 135, 225, 315].map((az) => TURN / DEG + az);
+const SUPPORT_FALL = 45;
+const SUPPORTS_GO: [from: number, to: number] = [0.7, 2.6];
+/**
+ * The four guides at the tail, each under its support: they "go back under their own weight" once the rocket's
+ * brackets have left their grips, in 2.5 s at most (descriptions and trials of the later system). The model's guide
+ * is an arm from the turning cage in to the tail, whose tip goes down: how far is estimated.
+ */
+const GUIDE_FALL = -25;
+const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
+/**
+ * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
+ * line (metres east and south from where that bogie stood: sites/site1/place.py, SPURS and CENTRE_TRACK).
+ */
+const CAR_WHEEL = 0.475;
+const carLeaves = (node: string, wheelbase: number, path: [number, number][], from: number, to: number): Move => ({
+  kind: 'drive',
+  node,
+  from,
+  to,
+  path,
+  pivot: [0, CAR_WHEEL, 0],
+  forward: [-1, 0],
+  wheelRadius: CAR_WHEEL,
+  wheelbase,
+  wheels: `${node}_Wheel_`,
+  steered: `${node}_Steered_`,
+  axle: 'z',
+});
 /** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
 const BOOM_LEAN = 14;
 const BOOM_BACK = 20;
@@ -645,6 +886,7 @@ const LIFT_STOPS: [name: string, up: number][] = [
  * transcript's, to the minute; how long each motion took is nowhere recorded, and how much of the slider it has is ours.
  */
 const T = {
+  cars: 0.02, // 08:08: "the railway cars are leaving now"
   platforms: 0.04, // 08:15: "they are lowering the service platforms"
   erector: 0.1, // 08:35: "now they will draw the erector off"
   boomAway: 0.3, // 08:37: "the erector's boom has come away normally"
@@ -652,7 +894,7 @@ const T = {
   boomDown: 0.55, // the boom is down on the wagon (not recorded)
   cleared: 0.75, // the erector is off the pad and both trusses are down (not recorded)
   mast: 0.8, // 09:06: "the cable mast is away"
-  mastOff: 0.86,
+  mastOff: 0.86, // it has swung back (not recorded: ten seconds are given it)
   liftoff: 0.9, // 09:06:59.7
 };
 const TRANSCRIPT =
@@ -665,6 +907,13 @@ const MORNING: Keyframe[] = [
     event: 'The pilot is in his seat: the first call on the radio',
     confidence: 'documented',
     source: `${TRANSCRIPT}: it begins at 07:10`,
+  },
+  {
+    at: MSK(8, 8),
+    slider: T.cars,
+    event: '08:08: the railway cars leave',
+    confidence: 'documented',
+    source: `${TRANSCRIPT}, Kamanin at 08:08. How long they took to go is not recorded: they are off the pad by 08:15`,
   },
   {
     at: MSK(8, 15),
@@ -709,14 +958,22 @@ const MORNING: Keyframe[] = [
     confidence: 'documented',
     source: `${TRANSCRIPT}, Korolev at 09:06, to the minute`,
   },
-  { at: MSK(9, 6, 10), slider: T.mastOff, event: 'The mast stands a few degrees off', confidence: 'estimated', source: NOT_TIMED },
+  {
+    at: MSK(9, 6, 10),
+    slider: T.mastOff,
+    event: 'The mast has swung back',
+    confidence: 'estimated',
+    source:
+      'a photograph of the morning with the rocket still in the closed supports has the mast leaning well back already; how long it took is not recorded',
+  },
   { at: 0, slider: T.liftoff, event: 'Liftoff, 09:06:59.7', confidence: 'documented', source: 'Siddiqi, Challenge to Apollo, launch log' },
   {
-    at: 4,
+    at: SUPPORTS_GO[1],
     slider: 1,
-    event: 'The mast has fallen back',
+    event: 'The four supports have fallen back: the launch system stands open',
     confidence: 'estimated',
-    source: 'film of a Vostok leaving shows it leaning some twenty degrees; when it got there is not recorded',
+    source:
+      'a photograph of this launch with the rocket’s tail some 20 m over the deck (RussianSpaceWeb) shows them open; how long they took is not recorded',
   },
 ];
 
@@ -811,6 +1068,7 @@ const padParts: Part[] = [
     facts: [
       ['Rim', '880 by 550 ft (268 by 168 m), as measured in 1957'],
       ['Depth', 'about 43 m under the deck (in dispute)'],
+      ['Rim’s height', 'the deck’s level on the west and south, 8 m under it on the north (derived from SRTM)'],
       ['Pit base', '60 ft wide, between two trenches 60 ft long'],
       ['Sump', '75 by 110 ft, its face 10 ft high'],
       ['Lining', 'concrete under the platform, gunite on the west'],
@@ -849,18 +1107,92 @@ const padParts: Part[] = [
       'trusses that lean in to the core just under the strap-ons’ tips, where their thrust goes into it. The rocket is not ' +
       'bolted down. It hangs on the four heads by its own weight, its tail 6.75 m down in the pit, steadied lower down by ' +
       'four guides; as its thrust overcomes its weight the heads are unloaded and each truss falls back under its ' +
-      'counterweights, and the tulip opens. The ring and its heights are from a Soviet description of the later system ' +
+      'counterweights, and the tulip opens. That it works so is the record. How far the trusses fall is read off a ' +
+      'photograph of this launch, taken from across the pit with the rocket’s tail some 20 m over the deck: all four ' +
+      'stand open, 14 to 21° out of upright, which is 45° from where they held the rocket. How long they took in 1961 ' +
+      'is not recorded: the times here are read off film of a Soyuz leaving this pad in 2019, on the same system since ' +
+      'modified, in which the trusses begin some 0.7 s after the rocket first moves and are at rest 1.9 s later, in ' +
+      'time for the strap-ons, which widen downward, to pass the heads. Chertok has it that in the trials of 1956 the ' +
+      'four did not go together but one after another, tenths of a second apart; here they go together. The guides ' +
+      'at the tail drop away under their own weight once the rocket has left them, as the later system’s are ' +
+      'described doing; how far is estimated. The ring and its heights are from a Soviet description of the later system ' +
       'for Soyuz; the trusses’ members, platforms and counterweights are drawn from the film of the morning and are ' +
-      'estimated, and their falling back is not yet shown.',
+      'estimated.',
     facts: [
       ['Ring', '14.92 m inside, 19.35 m over its corners'],
       ['Turning part', '20.35 m above the deck, 6.75 m below'],
       ['Supports', '4, at the strap-ons’ tips, 13 m above the deck'],
       ['Turned to', '37.5° east of north (derived)'],
       ['Let go', 'at liftoff, 09:06:59.7 Moscow time'],
+      ['Fall back', '45° (off a photograph of the launch), from 0.7 s after liftoff to 2.6 s (off film of a later launch)'],
+      ['Guides', '4 at the tail; they drop away as it leaves (documented for the later system)'],
     ],
     explode: [0, 0, 0],
     order: 0,
+    // each support about its hinge on the ring, its head going outward (documented that they do; the angle read off a
+    // photograph of the launch; the times off film of the later system); each guide about its foot on the cage, its
+    // tip going down (documented for the later system that they fall away; the angle estimated)
+    clocked: [
+      ...SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO)),
+      ...SUPPORT_AT.map((az, i) => outward(`Guide_${i + 1}`, az, GUIDE_FALL, ...GUIDES_GO)),
+    ],
+  },
+  {
+    node: 'TankCars',
+    group: 'Taken away before launch',
+    name: 'Railway fillers',
+    summary: 'The rocket was fuelled from railway cars, and an hour before it left they were drawn away.',
+    detail:
+      'Everything the rocket burned came to it by rail and was pumped aboard from cars standing either side of it. The ' +
+      'liquid oxygen filler, 8G117, was "about 25 m over its couplers, as passenger coaches are", two vessels with a pump ' +
+      'compartment between them, on two four-axle bogies; the kerosene filler, 8G119, "an eight-axle car 24 metres ' +
+      'long" with two tanks of 50 cubic metres, which on 12 April "took its position seven metres from the rocket". The ' +
+      'CIA’s interpreters, looking down on such cars in 1957, took them for passenger coaches 80 ft long. At 08:08 ' +
+      'Kamanin told Gagarin "the railway cars are leaving now": a rail tractor took them a kilometre off. Those ' +
+      'lengths, the eight axles and that hour are the record, and that they were green. Which track each stood on is ' +
+      'not: the oxygen is put to the north, where the shed over the spur sheltered the oxygen and nitrogen toppers, and ' +
+      'the kerosene to the south. One of each is built, where a drawing has three oxygen fillers end to end; their ' +
+      'height and every fitting are estimated. The hydrogen peroxide filler, the toppers under the shed, the transport ' +
+      'tanks behind them and the tractor are not built.',
+    facts: [
+      ['Oxygen filler', '8G117: about 25 m over its couplers, 8 axles'],
+      ['Kerosene filler', '8G119: 24 m, 8 axles, two tanks of 50 m³'],
+      ['Breadth', '3.09 m (today’s 8G0119)'],
+      ['From the rocket', '7 m (a memoir, of the kerosene filler)'],
+      ['Left', '08:08 Moscow time'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    functions: [
+      { nodes: ['TankCar_Oxygen'], name: 'Oxygen filler', ends: ['beside the rocket', 'drawn off'], seconds: 120 },
+      { nodes: ['TankCar_Kerosene'], name: 'Kerosene filler', ends: ['beside the rocket', 'drawn off'], seconds: 240 },
+    ],
+    moves: [
+      // west along the north track to short of its end (documented that they left, and when; how far and how fast are ours)
+      carLeaves(
+        'TankCar_Oxygen',
+        16.6,
+        [
+          [-66.3, 0],
+          [-196.3, -1.394],
+        ],
+        T.cars,
+        T.platforms,
+      ),
+      // west along the south track, onto the centre track where it joins it, and out through the fence
+      carLeaves(
+        'TankCar_Kerosene',
+        15.6,
+        [
+          [-64.8, 0],
+          [-160.2, -2.275],
+          [-291.0, -13.475],
+          [-524.8, -15.452],
+        ],
+        T.cars,
+        T.platforms,
+      ),
+    ],
   },
   {
     node: 'Erector',
@@ -986,23 +1318,24 @@ const padParts: Part[] = [
       '09:06; he answered that he had felt it, and heard the valves. Ignition was called at 09:07. The CIA’s ' +
       'interpreters had found it a month before as a shadow on a U-2 photograph, "possibly an umbilical mast", 85 to ' +
       '95 ft above the platform and ending in an oblong loop; the middle of that is modelled. A photograph of a Vostok ' +
-      'being raised shows two slender lattice legs with a head; film of one leaving shows the mast leaning back some ' +
-      'twenty degrees. Which side of the ring it stood on is not recorded: it is put on the east, opposite the ' +
-      'erector, where the service trusses do not sweep as they come down. The two lower cable masts at the rocket’s ' +
-      'tail, under the deck, are not built.',
+      'being raised shows two slender lattice legs with a head. Two photographs of the morning, taken from across the ' +
+      'pit, show how far it went: in one the rocket still stands in the closed supports and the mast already leans ' +
+      'some 25° out of upright; in the other the rocket has left and the mast leans as it did. So it swung the whole ' +
+      'way at 09:06 and did not move again; 31° out of upright is modelled, so that the support under it falls back ' +
+      'inside its legs. Which side of the ring it stood on is not recorded: it is put on the east, opposite the ' +
+      'erector, where the service trusses do not sweep as they come down, though those photographs have it on what ' +
+      'would be the south. The lower cable masts are not built.',
     facts: [
       ['Height', '85 to 95 ft over the deck (90 ft, 27.4 m, modelled)'],
       ['Away', '09:06 Moscow time'],
       ['Then', 'ignition called at 09:07; liftoff 09:06:59.7 by the launch log'],
-      ['Swings', 'about 22° by the time the rocket leaves (estimated)'],
+      ['Swings', '40° from where it stood, to 31° out of upright (estimated: 25° or more in the photographs)'],
     ],
     explode: [0, 0, 0],
     order: 0,
-    functions: [{ nodes: ['UpperCableMast'], name: 'Swing clear', ends: ['at the rocket', 'swung clear'], seconds: 8 }],
-    moves: [
-      outward('UpperCableMast', MAST_AT, MAST_AWAY, T.mast, T.mastOff),
-      outward('UpperCableMast', MAST_AT, MAST_FALL - MAST_AWAY, T.liftoff, 1),
-    ],
+    functions: [{ nodes: ['UpperCableMast'], name: 'Swing clear', ends: ['at the rocket', 'swung clear'], seconds: 10 }],
+    // back the whole way at 09:06 (the minute documented; the angle and the ten seconds estimated)
+    moves: [outward('UpperCableMast', MAST_AT, MAST_FALL, T.mast, T.mastOff)],
   },
 ];
 
@@ -1022,6 +1355,7 @@ const pad: ModelDef = {
     { id: 'tulip', label: 'Launch system', nodes: ['LaunchRing'] },
     { id: 'support', label: 'Support truss', nodes: ['Support_1'] },
     { id: 'erector', label: 'Erector', nodes: ['Erector'], from: [-0.45, 0.12, -0.88] },
+    { id: 'cars', label: 'Railway fillers', nodes: ['TankCars'], from: [-0.3, 0.25, -0.92] },
     { id: 'hatch', label: 'Hatch level', centreY: 26.6, span: 10, from: [-0.6, 0.18, -0.78] },
     { id: 'trusses', label: 'Service trusses', nodes: ['ServiceTrusses'], from: [0.75, 0.2, 0.63] },
     { id: 'masts', label: 'Corner masts', nodes: ['Masts'], from: [-0.75, 0.12, 0.65] },
@@ -1291,11 +1625,19 @@ export const flight: Flight = {
     },
     {
       group: 'Launch vehicle',
+      label: 'Third stage engine, nozzle exit',
+      value: 0.733,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'KBKhA gives the RD-0109 as 1,555 mm long and 733 mm across; nothing on a one-chamber engine is wider than its nozzle’s exit, so that is taken as the exit’s diameter. The published area ratio of 79.4 (Encyclopedia Astronautica) then gives a throat 82 mm across, which is what 54.5 kN at 5 MPa needs',
+    },
+    {
+      group: 'Launch vehicle',
       label: 'Strap-on at liftoff',
       value: 43300,
       unit: 'kg',
       confidence: 'documented',
-      note: '43.3 t each, 3.71 t empty (Encyclopedia Astronautica); Minakov has 3.75 t empty; Brügge 39.16 t of propellant',
+      note: '43.3 t each, 3.71 t empty (Encyclopedia Astronautica); Minakov has 3.75 t empty. (Brügge’s 39.16 t of propellant is Soyuz-ST’s oxygen and kerosene, from Arianespace’s manual: not this vehicle’s)',
     },
     {
       group: 'Launch vehicle',
@@ -1303,7 +1645,7 @@ export const flight: Flight = {
       value: 100400,
       unit: 'kg',
       confidence: 'documented',
-      note: '100.4 t, 6.8 t empty (Encyclopedia Astronautica); Brügge 99.76 t with 90.1 t of propellant; Minakov 102 t and 7 to 8 t',
+      note: '100.4 t, 6.8 t empty (Encyclopedia Astronautica); Minakov 102 t and 7 to 8 t. (Brügge’s 99.76 t with 90.1 t of propellant are Soyuz-ST’s, from Arianespace’s manual: not this vehicle’s)',
     },
     {
       group: 'Launch vehicle',
@@ -1344,6 +1686,14 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'derived',
       note: 'under the deck: 80 ft and 60 ft, two CIA figures (PIC/JR-2/60), summed. Russian print gives 45 m and "almost 50"; the CIA’s own figure is redacted',
+    },
+    {
+      group: 'Launch pad',
+      label: 'Steppe north of the tracks, below the deck',
+      value: 8,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'the pad stands on the brow of a scarp: SRTM (2000, a 30 m grid) reads 113 to 114 m along the tracks and 104 to 107 m from 65 m north of them, where the command bunker stands; the CIA has the track on "a man-made embankment", its height redacted. Good to some 2 m: sites/site-1.md, "The lie of the land"',
     },
     {
       group: 'Launch pad',
@@ -1446,12 +1796,20 @@ export const flight: Flight = {
   ],
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
+  flownNote:
+    'The ascent as simulated falls 157 m/s short of the orbit Vostok 1 reached, because two stages of engine thrust the record documents only in kind, the strap-ons’ last seconds and the core’s last ten on its steering chambers, are flown at estimated levels, and each is worth more than the whole miss. ' +
+    'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result.',
   // the flight in the scene: the stack off the pad as staged.ts flies it, and what leaves it, each flown on (orbital.ts,
   // `ascent.sheds`) or, for the hatch and the seat, let go unseen: what comes down with the pilot is not flown as a body
   flies: {
     model: 'vehicle',
     datum: BASE,
     engine: 'CoreEngine',
+    // Block E's own fire from its nozzle (733 mm across: KBKhA; that it is the exit's is derived), and the braking engine's (280 mm: estimated, vostok_3ka.py)
+    fires: [
+      { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2' },
+      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro' },
+    ],
     drops: [
       { at: 119.5, nodes: BOOSTERS.map(([letter]) => `Booster_${letter}`), on: 'boosters' },
       { at: 154.6, nodes: ['Fairing'], on: 'fairing' },
