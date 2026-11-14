@@ -73,6 +73,12 @@ export interface Run {
   live: boolean;
   /** When each parachute came out: Infinity for one that has not. */
   out: { drogue: number; main: number };
+  /**
+   * A spacecraft flown by hand that floods afloat (its hatch blown: `Flight.flies.hatch`): from `at` it goes down evenly to
+   * out of sight in `under` seconds, and is drawn no deeper (the cameras that follow it stay above the sea; how far it
+   * went is the debrief's to tell). Drawn only: nothing of it is flown.
+   */
+  sinks?: { at: number; under: number };
   /** When each parachute tore (sim/vehicle.ts `tore`): Infinity, or nothing at all, for one that has not. */
   torn?: { drogue: number; main: number };
   /** When each of `Flight.flies.fires` burns on this run, in their order: its instants, from and to. */
@@ -718,6 +724,7 @@ export class Ascent {
     quaternion: THREE.Quaternion,
   ): boolean {
     const last = samples[samples.length - 1]!;
+    const asked = t;
     // The cockpit flies whole ticks, to the one nearest the clock, so the clock is up to half a tick past the last of them.
     // The model is drawn at the clock's instant all the same, carried on from that tick by its own motion, as what it has
     // shed is flown to that instant (sim/shed.ts): held at the tick, it was drawn a few milliseconds behind the clock in
@@ -762,6 +769,12 @@ export class Ascent {
       .add(toThree(ecefToSiteDirection(this.site, inertialToEcef(now, spin))))
       .add(offset);
     this.underCanopy(t, middle, position, quaternion);
+    // flooded afloat, it goes down: out of sight (its own height, 3.5 m, under the sea) in `under` seconds
+    const sinks = this.live?.sinks;
+    if (sinks && asked > sinks.at) {
+      const depth = SUNK_OUT * Math.min(1, (asked - sinks.at) / sinks.under);
+      position.addScaledVector(toThree(ecefToSiteDirection(this.site, inertialToEcef(unit(centre), spin))), -depth);
+    }
     return true;
   }
 
@@ -850,6 +863,8 @@ const EASES = 1;
 const LOST = 8;
 /** Seconds of flight over which the height of the launcher's support under the stack is eased out of where the model is drawn (`Ascent.stand`). */
 const SETTLES = 5;
+/** How far under the sea a flooded spacecraft is out of sight, m: its own height, the heat shield to the canister's top. */
+const SUNK_OUT = 3.5;
 const toThree = (v: Vec3) => new THREE.Vector3(v[0], v[1], v[2]);
 
 /** Position and velocity at `t` between the run's samples: a cubic Hermite through the two either side. */

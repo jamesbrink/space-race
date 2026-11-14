@@ -210,6 +210,29 @@ the history has the main out at 12,300 ft, and from there the record's 5 min 23 
 ft/s. Flown from the record's speed at separation the capsule comes to its top on the record's
 second; it is still high, because the height and climb it starts from are the run's own.
 
+## The end of the flight
+
+The simulator's physics ends where Freedom 7's does: the spacecraft down in the sea under its main
+parachute. This flight's end is after that, and the deck offers it: **Blow the hatch** (Space once it
+is down, a right click on the hatch, or the plunger by the pilot's right arm from the couch; `flies.hatch`
+in [flight.ts](flight.ts)). Blown afloat, the hatch is gone, the clock runs on at life's pace, and the
+spacecraft goes under in 45 seconds, drawn so until it is out of sight (`estimated`: the history has it
+"sinking fast" and gone from sight as the helicopter hooked on), and the card tells the rest from the record:
+the hatch blew some ten minutes after the landing, after Grissom's last words at 26:09 ("then I'll power
+down and blow the hatch"); he said he had not touched the plunger, and no test made a hatch fire by itself;
+he was in the water three or four minutes (*Results*, p. 7; four or five in *This New Ocean*), his suit
+filling through an inlet he had left open; the flooded capsule, over 5,000 lb, was a thousand more than
+the helicopter could lift, and it let go. Left on, the card says what happened to the real one. Blown in
+flight it goes, and the flight is flown on as if the cabin were closed: what an entry with a hole in the
+side does is not in anything read, and the card says so.
+
+**What the ending lacks**: the flooding is not flown (no figure for the sill's height, the inflow or the
+buoyancy has been read: the time to go under is ours), the hatch is not flown as a body when it leaves
+(it vanishes; the history has it "skipping over the waves"), there is no sea to see under (the globe's sea
+is a surface, and the spacecraft goes through it), no helicopter, no Grissom in the water, and the record's
+own run ends at the landing with the hatch on. Which of the plunger, a stray lanyard or static fired the
+hatch on the day is disputed and nothing here takes a side: on the deck it blows when it is told to.
+
 ## Where sources disagree
 
 - **The hatch bolt.** *Results* (p. 6) and TM X-53107 call the hold at T-45 one "to install a
@@ -218,10 +241,15 @@ second; it is still high, because the height and climb it starts from are the ru
 - **The launch azimuth.** TM X-53107 gives 100° for MR-4 and 102° for MR-3 in one place (8.3.2)
   and 105° as the original in another (7.4.3); *This New Ocean* says the azimuth was "changed by
   three degrees". 100° is not in doubt.
-- **Cutoff velocity.** *Results* and TM X-53107 give 7,580 ft/s space-fixed; Hammack and Heberlig's
-  table gives 7,516.
 - **The seconds of liftoff.** *Results* gives 7:20 a.m. in its text and 7:20:36 in the medical
   countdown's table (Table 5-II, p. 31); TM X-53107 gives 0720.
+- **How long he was in the water.** *Results* (p. 7) and Hammack and Heberlig say three or four
+  minutes; *This New Ocean* (p. 375) four or five.
+- **The main's height.** *This New Ocean* (p. 372) has 12,300 ft, "about 1000 feet higher than the
+  design nominal"; Hammack and Heberlig's design figure is 10,000 ft, 2,300 lower, and the record's times
+  (10:14 to 15:37 under it) fit 10,000 better than 12,300 ("The flight as flown").
+- **Cutoff velocity and the Earth-fixed velocity.** *Results* and TM X-53107 give 7,580 and 6,618 ft/s;
+  Hammack and Heberlig's Figure 20 gives 7,516 and 6,561. The checks take *Results*'.
 - **When the structure rolled back.** By the count, at T-55; *This New Ocean* has "a gantry
   technician" finding the hatch bolt at T-45. The model follows the count (lc-5.md).
 

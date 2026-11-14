@@ -31,7 +31,7 @@ import { angleBetween, DEG, siteFrame } from './world/frames.ts';
  */
 
 /** What Space does next, in the order a flight goes. */
-type Step = 'ignite' | 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main';
+type Step = 'ignite' | 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main' | 'hatch';
 const STEPS: Record<Step, string> = {
   ignite: 'Ignition',
   cutoff: 'Engine cutoff',
@@ -41,6 +41,7 @@ const STEPS: Record<Step, string> = {
   retropack: 'Jettison the retropack',
   drogue: 'Drogue parachute',
   main: 'Main parachute',
+  hatch: 'Blow the hatch',
 };
 const PHASES: Record<LiveSample['phase'], string> = {
   powered: 'Powered flight',
@@ -57,6 +58,8 @@ const KEEP = 0.1;
 const MOST = 5;
 /** The clock runs on this long after the landing, at life's pace, for what is still moving to come to rest (the parachute lying down: viewer/chute.ts), and then stops. */
 const AFTER = 12;
+/** Seconds the clock runs on after the spacecraft has gone under, where its hatch was blown afloat. */
+const SUNK = 20;
 /** Seconds after one event before Space will set off the next: a second press of the same finger. */
 const GUARD = 1.5;
 /** How fast a held key leans the programme guidance flies, radians a second, and the most it may lean. */
@@ -102,6 +105,8 @@ export class Cockpit extends Deck {
   private trim = { pitch: 0, yaw: 0 };
   private towerAt = Infinity;
   private retropackAt = Infinity;
+  /** When the hatch was blown, where the flight has one to blow (`flies.hatch`): Infinity while it is on. */
+  private hatchAt = Infinity;
   /** The flown model's mechanisms (types.ts: MechanismDef), and for each what the hands have told it, at the flight's instants. */
   private readonly mechanisms: MechanismDef[];
   private readonly hands = new Map<string, Hand[]>();
@@ -232,7 +237,7 @@ export class Cockpit extends Deck {
     this.abortArmed = Number.NEGATIVE_INFINITY;
     this.kept = 0;
     this.eventAt = Number.NEGATIVE_INFINITY;
-    this.towerAt = this.retropackAt = Infinity;
+    this.towerAt = this.retropackAt = this.hatchAt = Infinity;
     this.hands.clear();
     this.unsequenced = this.sequence ? [] : [{ from: Number.NEGATIVE_INFINITY, to: Infinity }];
     this.run = {
@@ -311,9 +316,10 @@ export class Cockpit extends Deck {
     if (ahead <= 0 || !begun || state.landing) {
       // put back, or waiting on the pad, or down: show the moment the clock is at, as it was flown
       if (!begun && t > 0) this.clock.seek(0);
-      if (state.landing && t > state.landing.t + AFTER) {
+      const over = this.over(state);
+      if (state.landing && t > over) {
         this.clock.pause();
-        this.clock.seek(state.landing.t + AFTER);
+        this.clock.seek(over);
       }
       this.show(this.at(Math.min(t, state.t)));
       return;
@@ -369,7 +375,13 @@ export class Cockpit extends Deck {
     if (state.shed.retropack && !before.shed.retropack) this.retropackAt = state.t;
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
     run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
-    const when = { tower: this.towerAt, separation: state.separation?.t ?? Infinity, retropack: this.retropackAt, ...run.out };
+    const when = {
+      tower: this.towerAt,
+      separation: state.separation?.t ?? Infinity,
+      retropack: this.retropackAt,
+      hatch: this.hatchAt,
+      ...run.out,
+    };
     run.dropped = this.flight.flies!.drops.map((d) => (d.on ? ((when as Record<string, number>)[d.on] ?? Infinity) : Infinity));
     // an event asked for has happened: the hand lets go of it
     if (state.abortAt !== null) delete this.hand.abort;
@@ -394,7 +406,9 @@ export class Cockpit extends Deck {
   private next(): Step | null {
     const s = this.state;
     const tr = this.flight.trajectory!;
-    if (!s || s.landing) return null;
+    // (down, all that is left is a hatch to blow, where there is one)
+    if (s?.landing) return this.can('hatch') ? 'hatch' : null;
+    if (!s) return null;
     if (!s.ignited && s.abortAt === null) return 'ignite';
     if (!s.cutoff) return 'cutoff';
     if (tr.body?.tower && !s.shed.tower) return 'tower';
@@ -414,6 +428,7 @@ export class Cockpit extends Deck {
   ask(what: string): void {
     if (what === 'abort' || what === 'next') return void this.command(what);
     if (what.startsWith(WORK)) return void this.work(what.slice(WORK.length)); // (a mechanism worked by hand: types.ts `Command`)
+    if (what === 'hatch') return void this.blow();
     const s = this.state;
     if (!this.on || !s || s.landing || this.clock.t < s.t - TICK) return;
     if (what === 'cutoff') {
@@ -443,6 +458,35 @@ export class Cockpit extends Deck {
     return mechanism.says[out ? 1 : 0];
   }
 
+  /**
+   * Blow the hatch (`flies.hatch`), now: in flight it goes and the flight flies on, the debrief saying what that meant; afloat
+   * the spacecraft floods, and the clock runs on at life's pace until it has gone under (`Run.sinks`). Nothing of it reaches
+   * the physics.
+   */
+  private blow(): void {
+    const hatch = this.flight.flies?.hatch;
+    const s = this.state;
+    if (!hatch || !s || !this.can('hatch')) return;
+    const afloat = Boolean(s.landing);
+    this.hatchAt = afloat ? Math.max(this.clock.t, s.landing!.t) : s.t;
+    const i = this.flight.flies!.drops.findIndex((d) => d.on === 'hatch');
+    if (i >= 0) this.run.dropped[i] = this.hatchAt;
+    if (afloat) this.run.sinks = { at: this.hatchAt, under: hatch.under.value };
+    this.host.say?.(hatch.label, afloat ? hatch.afloat : hatch.aloft);
+    if (afloat) {
+      this.clock.setRate(1);
+      this.clock.play(true);
+      this.card(this.tally.results);
+    } else if (!this.clock.running) this.clock.play(true);
+  }
+
+  /** When the flight is over: a few seconds after it is down, or after it has gone under where the hatch was blown afloat. */
+  private over(state: VehicleState): number {
+    const down = state.landing ? state.landing.t : Infinity;
+    const sinks = this.run.sinks;
+    return Math.max(down + AFTER, sinks ? sinks.at + sinks.under + SUNK : -Infinity);
+  }
+
   /** Where a mechanism is headed at this instant of the flight being flown: out (true) or in. Null: no such mechanism, or no flight. */
   headed(id: string): boolean | null {
     const mechanism = this.mechanisms.find((m) => m.id === id);
@@ -470,6 +514,11 @@ export class Cockpit extends Deck {
     // (a mechanism can be worked whenever `work` would hear it: held on the pad and under the parachute as in flight)
     if (what.startsWith(WORK))
       return this.on && !!s && this.clock.t >= s.t - TICK && this.mechanisms.some((m) => m.id === what.slice(WORK.length));
+    // (the hatch, with the spacecraft alone: in flight, and afloat after it is down)
+    if (what === 'hatch')
+      return (
+        Boolean(this.flight.flies?.hatch) && this.on && !!s && s.shed.booster && this.hatchAt === Infinity && this.clock.t >= s.t - TICK
+      );
     if (!this.on || !s || s.landing || s.held || this.clock.t < s.t - TICK) return false;
     const alone = s.shed.booster;
     if (what === 'cutoff') return s.ignited && !s.cutoff;
@@ -530,7 +579,8 @@ export class Cockpit extends Deck {
       } else if (step === 'cutoff') {
         if (this.lever) this.setLever(0);
         else this.hand.throttle = 0;
-      } else this.hand[step] = true;
+      } else if (step === 'hatch') return void this.blow();
+      else this.hand[step] = true;
       if (!this.clock.running && step !== 'ignite') this.clock.play(true);
     }
     if (this.state) this.show(this.at(Math.min(this.clock.t, this.state.t)));
@@ -791,9 +841,14 @@ export class Cockpit extends Deck {
       const down = body.finish();
       return `${body.shedder.def.name}: ${down.t <= body.from ? 'stayed where it stood' : `down ${(down.range / 1000).toFixed(0)} km from the pad at ${down.speed.toFixed(0)} m/s, T+${down.t.toFixed(0)} s`}.`;
     });
+    // the hatch, where it was blown: what it meant, and on a spacecraft afloat what the record has after
+    const hatch = this.flight.flies?.hatch;
+    const blown = !hatch || this.hatchAt === Infinity ? [] : this.run.sinks ? [hatch.afloat, hatch.record] : [hatch.aloft];
+    const kept = hatch && this.hatchAt === Infinity ? [`The hatch stayed on. ${hatch.record}`] : [];
     el.innerHTML = `
-      <h3>${end.how}</h3>
-      ${[...lost, ...end.why].map((w) => `<p class="cockpit-why">${w}</p>`).join('')}
+      <h3>${end.how}${this.run.sinks ? '; lost with its hatch blown' : ''}</h3>
+      ${[...lost, ...end.why, ...blown].map((w) => `<p class="cockpit-why">${w}</p>`).join('')}
+      ${kept.map((w) => `<p class="cockpit-fell">${w}</p>`).join('')}
       ${fell.length ? `<p class="cockpit-fell">${fell.join(' ')}</p>` : ''}
       ${lived}
       <table>

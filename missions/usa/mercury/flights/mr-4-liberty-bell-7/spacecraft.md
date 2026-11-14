@@ -286,6 +286,9 @@ capsule's stays 41.5 from its own photographs).
   capsule's RETRACT SCOPE telelight ("if the periscope does not retract 40 seconds after retro-package separation,
   the RETRACT SCOPE telelight will go on": SEDR 104, 12-7) and its AUTO, MAN switch are on the console and do nothing:
   the RETRACT SCOPE light has no event in the simulator to show. The ratchet handle (`Ctl_PeriscopeHandle`) works the periscope, as No. 7's does.
+- **The hatch blown on the flight deck** (`flies.hatch`) is not flown as a body: it vanishes (the history has it strike
+  the water five feet off and skip over the waves), the opening is the model's sill with nothing in it, and no water is
+  drawn coming in; afloat the spacecraft is drawn going under in an estimated 45 s, no further.
 - **The clamp ring's bolt covers** are half an egg each; the hinge is not modelled.
 - **No mass properties of its own.** No. 11's weights, centre of mass and inertia are its Postlaunch Memorandum Report's,
   which has not been found: it is flown at No. 7's weights less the hatch's 46 lb, and on No. 7's estimated centre of

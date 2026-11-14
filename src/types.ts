@@ -299,6 +299,7 @@ export interface Command {
     | 'retropack'
     | 'drogue'
     | 'main'
+    | 'hatch'
     | `work:${string}`
     | `step:${string}`
     | `descent:${string}`;
@@ -1353,6 +1354,15 @@ export interface Flight {
     hangs?: { model: string; body: string; from: string }[];
     /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
     turned?: number;
+    /**
+     * A hatch the pilot can blow (No. 11's explosive hatch): its node in the flown model (hidden once it has gone), what
+     * the deck calls blowing it, and what it means. Nothing of it reaches the physics. Blown in flight (`aloft`: the
+     * cabin open to space, the entry with a hole in the side) the flight flies on, and the debrief says what that would
+     * have meant; blown afloat the spacecraft floods (`afloat`) and goes under in `under` seconds, drawn so, and the
+     * debrief tells what the record has after (`record`). Offered with the spacecraft alone and after
+     * it is down (cockpit.ts `can('hatch')`).
+     */
+    hatch?: { node: string; label: string; aloft: string; afloat: string; under: Measure; record: string };
     /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */
     datum?: number;
     /**

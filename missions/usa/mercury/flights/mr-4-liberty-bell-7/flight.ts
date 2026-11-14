@@ -1096,6 +1096,7 @@ const COMMANDS: Record<string, Command[]> = {
     { label: 'Fire the retrorockets', ask: 'retro' },
     { label: 'Jettison the retropack', ask: 'retropack' },
   ],
+  Hatch: [{ label: 'Blow the hatch', ask: 'hatch' }],
   RedstoneAdapter: [{ label: 'Separate the spacecraft', ask: 'separate' }],
   RedstoneTailUnit: [{ label: 'Shut the engine down', ask: 'cutoff' }],
   RedstoneEngine: [{ label: 'Shut the engine down', ask: 'cutoff' }],
@@ -1627,7 +1628,28 @@ export const flight: Flight = {
       { at: TRAJECTORY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
       // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it
       { at: 614, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
+      // blown by hand, on a flight flown here (`hatch`, below): the record's run lands with it on, as the capsule did
+      { at: Number.POSITIVE_INFINITY, nodes: ['Hatch'], on: 'hatch' },
     ],
+    hatch: {
+      node: 'Hatch',
+      label: 'Blow the hatch',
+      aloft:
+        'The hatch is gone and the cabin is open to space. Grissom’s suit would have held him at 4.6 psi; the hatch was not made to come off in flight, ' +
+        'and what an entry with a hole in the side does to the cabin is not in anything read: the flight is flown on as if it were closed.',
+      afloat:
+        'The hatch is gone, the sea comes in over the sill, and the spacecraft fills and goes down. Grissom went out through the hatch in a moment; ' +
+        'the helicopter already hooked on to it could not lift it full of water, and let it go.',
+      under: guess(
+        45,
+        'not recorded to the second. The history has the hatch fly off, Grissom out at once, and the helicopter’s copilot clip the antenna and hook on as the capsule "sank out of sight" (This New Ocean, p. 373): under within a minute. Ours',
+      ),
+      record:
+        'On the day the hatch blew some ten minutes after the landing, after Grissom’s last words at 26:09 ("then I’ll power down and blow the hatch": Results, p. 46). ' +
+        'He said he had not touched the plunger; no test made a hatch fire by itself. He was in the water three or four minutes, his suit filling through an inlet he had left open, ' +
+        'while the first helicopter held the flooded capsule, over 5,000 lb, a thousand beyond what it could lift, until a warning light made its pilot let go. ' +
+        'It sank where the sea is about 2,800 fathoms deep, and was raised on 20 July 1999.',
+    },
     // in the orbit attitude, heat shield first: "I'm in orbit attitude" at 03:02 (Results, p. 42), the turnaround having begun at 02:38
     turned: 182,
     datum: CAPSULE_PLANE * IN,
@@ -1723,6 +1745,13 @@ vehicle.cabin = {
       Ctl_RetroFire: 'Guarded push button. Grissom fired them himself, on Cap Com’s count, at 05:10; here the guard is off.',
     }),
     { node: 'Ctl_Snorkel', name: 'Snorkel', about: 'Pull ring: opens the cabin’s air inlets by hand. Not simulated.' },
+    {
+      node: 'Hatch_Plunger',
+      name: 'Hatch plunger',
+      about:
+        'With its cover off and the safety pin out, a blow of five or six pounds fires the fuse round the sill and the hatch blows off (Results, p. 4). Click it to blow the hatch: in flight, or afloat, where the sea comes in.',
+      does: 'hatch',
+    },
   ],
   stick: MERCURY_STICK,
 };
