@@ -479,7 +479,16 @@ export class OrbitDeck {
                   ? 'Down'
                   : 'Under the parachutes';
     set('phase', phase);
-    set('mode', this.free ? 'Manual descent: not the flight of 12 April' : 'As flown: automatic');
+    // (from the spacecraft's separation the run is the published orbit begun where the simulated ascent left it: said, so it is not taken for a result)
+    const handed = t > (o.stages[o.stages.length - 1]!.separation?.value ?? Infinity);
+    set(
+      'mode',
+      this.free
+        ? 'Manual descent: not the flight of 12 April'
+        : handed
+          ? 'Automatic, on the published orbit: the simulated ascent fell short (Flown)'
+          : 'As flown: automatic',
+    );
     const alone = t > (o.stages[o.stages.length - 1]!.separation?.value ?? Infinity);
     set(
       'next',
