@@ -123,6 +123,11 @@ const measure = () =>
     const ship = new V();
     const vessel = sr.stage.vessel(ship);
     out.ship = vessel ? toPage(toView(ship.x, ship.y, ship.z)) : null;
+    // the ball of three gaps round the vehicle, where the line comes in from nothing, as it is seen
+    if (vessel && p.drawn && out.ship.front) {
+      const d = ship.distanceTo(cam.position);
+      out.fade = { x: out.ship.x, y: out.ship.y, r: Math.atan2(3 * p.drawn.gap, Math.max(d - 3 * p.drawn.gap, 1e-3)) * pxPerRad };
+    }
     if (out.probe) {
       const L = p.line();
       const d = p.drawn;
@@ -220,7 +225,7 @@ const measure = () =>
   }, CHORD_PX);
 
 /** The line's own pixels: the frame with it and without it, the clock stopped and the camera still, the page's panels hidden. */
-const pixels = async (name) => {
+const pixels = async (name, fade = null) => {
   await page
     .addStyleTag({ content: '#ui > :not(.path-marks), #gallery, #title { visibility: hidden !important }' })
     .then((h) => (pixels.style = h));
@@ -258,7 +263,7 @@ const pixels = async (name) => {
   await pixels.style.evaluate((el) => el.remove());
   if (shots && name) writeFileSync(join(shots, `${name}.png`), Buffer.from(a, 'base64'));
   return page.evaluate(
-    async ([a, b, c, INK, DOT, BIT]) => {
+    async ([a, b, c, INK, DOT, BIT, fade]) => {
       const load = async (s) => {
         const img = new Image();
         img.src = `data:image/png;base64,${s}`;
@@ -350,13 +355,15 @@ const pixels = async (name) => {
               }
             }
         }
+        // (and one within the vehicle's three gaps as seen, where the line comes in from nothing, may be its faint tail)
+        if (fade && Math.hypot(Math.max(fade.x - x1, 0, x0 - fade.x), Math.max(fade.y - y1, 0, y0 - fade.y)) < fade.r) open = true;
         pieces.push({ n, x0, y0, x1, y1, open });
       }
       const dots = pieces.filter((p) => p.n < DOT && !p.open);
       const bits = pieces.filter((p) => p.n >= DOT && p.n < BIT && !p.open);
       return { area, pieces: pieces.length, dots: dots.length, bits: bits.map((p) => `${p.n}px@${p.x0},${p.y0}`), frac: area / (w * h) };
     },
-    [a, b, c, INK, DOT, BIT],
+    [a, b, c, INK, DOT, BIT, fade],
   );
 };
 
@@ -431,7 +438,7 @@ for (const [key, f] of Object.entries(FLIGHTS)) {
         const m = await measure();
         if (!m.probe) fail(where, 'the page gives no line to measure (sr.path.line, sr.path.where, sr.path.drawn)');
         for (const issue of m.issues) fail(where, issue);
-        const px = await pixels(shots ? `${key}-${t}-${v}${look === 'cel' ? '-cel' : ''}` : null);
+        const px = await pixels(shots ? `${key}-${t}-${v}${look === 'cel' ? '-cel' : ''}` : null, m.fade);
         // (the line's pixels run about eight wide, its core, casing and glow over the threshold, closed by a pixel each side)
         // (from the seat the cabin's walls hide it but for the windows: not counted there)
         if (v !== 'onboard' && m.expect > 150 && px.area / 8 < 0.25 * m.expect)
