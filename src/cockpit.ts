@@ -1,5 +1,5 @@
 import { type CockpitHost, Deck, type DeckSpec, tank } from './deck';
-import { autopilot, blend, Tally } from './sim/autopilot.ts';
+import { autopilot, blend, rateCommand, Tally } from './sim/autopilot.ts';
 import { G0, type Results } from './sim/fly.ts';
 import { Lever, NOTCH } from './sim/lever.ts';
 import { standing } from './sim/loads.ts';
@@ -93,6 +93,8 @@ export class Cockpit extends Deck {
   private kept = 0;
   private guidance = true;
   private sequence = true;
+  /** The capsule's rate command mode, where it has one (types.ts `rcs.rate`): on, the stick asks for rates on the spacecraft alone. */
+  private rate = false;
   /** What the hands are asking: axes while keys are held, events once asked for. */
   private hand: Partial<Controls> = {};
   private eventAt = Number.NEGATIVE_INFINITY;
@@ -127,6 +129,11 @@ export class Cockpit extends Deck {
       )
       .join('');
     const throttles = Boolean(flight.trajectory?.body?.engine?.throttle);
+    // (a capsule with a rate command mode has its switch among the deck's keys: it has no key, every letter being taken)
+    const rate = flight.trajectory?.body?.capsule.rcs?.rate;
+    const rated = rate
+      ? `<button data-do="rate" class="switch" aria-pressed="false" title="Rate command: on the spacecraft alone the stick asks for a rate of turn, ${rate.full.value} degrees a second at full throw, and the manual jets hold it to ${rate.deadband.value}; let go, they damp the rates and hold no attitude. Off, the stick works the jets as it is pushed">Rate command</button>`
+      : '';
     return {
       figures: [
         { id: 'altitude', label: 'Height', unit: 'km', about: 'Height above the sea' },
@@ -145,7 +152,7 @@ export class Cockpit extends Deck {
       sequence: "Sequencer: events happen at the record's times. Off, each is set off by hand with Space",
       choose: true,
       flightKeys: `${throttles ? '<button data-press="arrowup" title="Throttle up a notch (the up arrow)"><kbd>↑</kbd>Throttle up</button><button data-press="arrowdown" title="Throttle down a notch (the down arrow)"><kbd>↓</kbd>Down</button><button data-press="z" title="Full throttle (Z)"><kbd>Z</kbd>Full</button>' : ''}
-            ${works}`,
+            ${works}${rated}`,
       enter: 'Fly this flight yourself (L)',
     };
   }
@@ -273,6 +280,9 @@ export class Cockpit extends Deck {
       const own = (v: number): number | undefined => (v !== 0 ? v : this.guidance ? undefined : 0);
       // an engine with a lever runs where the lever stands, from the moment it is lit; the sequencer's cutoff at the record's time is not undone by it
       const cut = this.sequence && s.abortAt === null && s.t >= this.flight.trajectory!.engine.cutoff.value - 1e-9;
+      // rate command, on the spacecraft alone: the stick is a rate asked for on every axis, held through the manual jets
+      const rated = this.rate && s.shed.booster ? this.flight.trajectory!.body!.capsule.rcs?.rate : undefined;
+      if (rated) return blend(auto(s), { ...this.hand, ...rateCommand(s, { pitch, yaw, roll }, rated), automatic: this.sequence });
       return blend(auto(s), {
         ...this.hand,
         ...(this.lever && s.abortAt === null ? { throttle: this.lever.asks(cut) } : {}),
@@ -476,6 +486,7 @@ export class Cockpit extends Deck {
     if (what === 'leave') this.leave();
     else if (what === 'again') this.fresh();
     else if (what === 'guidance') this.guidance = !this.guidance;
+    else if (what === 'rate' && this.flight.trajectory?.body?.capsule.rcs?.rate) this.rate = !this.rate;
     else if (what === 'sequence') {
       this.sequence = !this.sequence;
       // (when in this flight it was off: a mechanism's programme is not heard then, and is taken up again where it is switched on)
@@ -585,9 +596,22 @@ export class Cockpit extends Deck {
     set('next', replay ? 'Run on' : step ? STEPS[step] : 'Nothing left to do');
     this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !replay && !step;
     // (the two switches say how it is being flown; this line is for what is out of the ordinary)
-    set('mode', replay ? 'Looking back at what was flown' : leans ? `Programme leaned${leans}` : !this.guidance ? 'Hands only' : '');
+    const rated = this.rate && state.shed.booster;
+    set(
+      'mode',
+      replay
+        ? 'Looking back at what was flown'
+        : leans
+          ? `Programme leaned${leans}`
+          : rated
+            ? 'Rate command'
+            : !this.guidance
+              ? 'Hands only'
+              : '',
+    );
     this.root.querySelector('[data-do=guidance]')!.setAttribute('aria-pressed', String(this.guidance));
     this.root.querySelector('[data-do=sequence]')!.setAttribute('aria-pressed', String(this.sequence));
+    this.root.querySelector('[data-do=rate]')?.setAttribute('aria-pressed', String(this.rate));
     for (const m of this.mechanisms)
       this.root
         .querySelector(`[data-work="${m.id}"]`)!

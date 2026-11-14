@@ -1057,7 +1057,16 @@ export interface Body {
     /** The torque its attitude jets give about each axis at full command, N m: used only where the jets are not given as hardware (`rcs`). */
     jets?: { roll: Measure; pitch: Measure; yaw: Measure };
     /** The reaction control system as hardware: what feeds it and every chamber. */
-    rcs?: { supplies: RcsSupply[]; thrusters: Thruster[] };
+    rcs?: {
+      supplies: RcsSupply[];
+      thrusters: Thruster[];
+      /**
+       * A rate command mode, where the capsule had one (No. 11 on): the hand's stick asks for a rate of turn, `full`
+       * degrees a second at full throw, and the system works the manual chambers to hold it within `deadband` degrees a
+       * second, damping to none with the stick let go (sim/autopilot.ts `rateCommand`; the deck's Rate command switch).
+       */
+      rate?: { full: Measure; deadband: Measure };
+    };
     /** How far its blunt end is from its centre of mass, m: that end is what meets the ground or the sea. Without it, the centre of mass does. */
     base?: Measure;
     /** How far from its centre of mass, toward the small end, a parachute pulls, m. */

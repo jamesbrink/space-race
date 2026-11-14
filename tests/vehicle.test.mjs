@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { BALLISTIC } from './ballistic.mjs';
-import { autopilot, BOOSTER_GAINS, blend, flyLive, steer, Tally } from '../src/sim/autopilot.ts';
+import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
 import { coast, fly, G0, sampleAt } from '../src/sim/fly.ts';
 import { aboutAxis, fromAxes, massOf, multiply, turn, unturn } from '../src/sim/rigid.ts';
 import { HANDS_OFF, TICK, vehicle } from '../src/sim/vehicle.ts';
@@ -1008,7 +1008,7 @@ test('level is the ellipsoid’s: straight up along the plumb line at the pad is
 const BODY_DIFFERS = {
   // No. 11's weights are estimated (its Postlaunch Memorandum Report has not been found), and so is the posigrades' push on MR-4
   'usa/mercury/mr-4-liberty-bell-7': {
-    more: ['body.parts.7 "spacecraft" (estimated)', 'body.sheds.1.push (estimated)'],
+    more: ['body.parts.7 "spacecraft" (estimated)', 'body.capsule.rcs.rate.full (estimated)', 'body.sheds.1.push (estimated)'],
     fewer: [],
   },
 };
@@ -1062,6 +1062,33 @@ for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
     assert.equal(end[1], full[1], 'the manual supply is untouched');
     t.diagnostic(`in all ${(full[0] - end[0]).toFixed(3)} kg of ${full[0].toFixed(2)} kg`);
   });
+
+  if (tr.body.capsule.rcs.rate)
+    test(`${name}: rate command holds the rate the stick asks for, within its deadband, and damps to none let go`, (t) => {
+      const rate = tr.body.capsule.rcs.rate;
+      const full = rate.full.value * DEG;
+      const dead = rate.deadband.value * DEG;
+      let s = until(v, v.start(), autopilot(v), tr.separation.at.value + 40);
+      const auto = s.rcs.left[0];
+      const manual = s.rcs.left[1];
+      // the stick full forward for twenty seconds: the pitch rate comes to what it asks and stays within the deadband of it
+      const asking = (stick) => (x) => blend(autopilot(v, { pitch: false, yaw: false, roll: false })(x), rateCommand(x, stick, rate));
+      s = until(v, s, asking({ pitch: 1, yaw: 0, roll: 0 }), s.t + 20);
+      t.diagnostic(
+        `asking ${(full / DEG).toFixed(1)} deg/s in pitch: ${(s.w[1] / DEG).toFixed(2)} deg/s, roll ${(s.w[0] / DEG).toFixed(2)}, yaw ${(s.w[2] / DEG).toFixed(2)}`,
+      );
+      assert.ok(Math.abs(s.w[1] - full) <= dead + 1e-3, 'the pitch rate is the rate asked for, to the deadband');
+      assert.ok(Math.abs(s.w[0]) <= dead + 1e-3 && Math.abs(s.w[2]) <= dead + 1e-3, 'and the other two are held near none');
+      // let go: the rates damp to within the deadband, and it is the manual system's peroxide that does it
+      s = until(v, s, asking({ pitch: 0, yaw: 0, roll: 0 }), s.t + 20);
+      t.diagnostic(`let go: ${s.w.map((w) => (w / DEG).toFixed(2)).join(', ')} deg/s`);
+      assert.ok(
+        s.w.every((w) => Math.abs(w) <= dead + 1e-3),
+        'damped to within the deadband',
+      );
+      assert.ok(s.rcs.left[1] < manual, 'the manual supply is spent');
+      assert.equal(s.rcs.left[0], auto, 'and the automatic is not');
+    });
 
   test(`${name}: which of the body’s inputs are not documented, against Freedom 7’s`, (t) => {
     const list = (o, path, found = []) => {

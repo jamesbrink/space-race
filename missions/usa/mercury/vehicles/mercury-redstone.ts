@@ -434,7 +434,7 @@ export function stack(o: Stack): Body {
             `The slope, 0.5 per radian, is a guess at ${TMX_491}’s curves, not a reading of them`,
         },
       ],
-      rcs: { supplies: RCS_SUPPLIES, thrusters: RCS_THRUSTERS },
+      rcs: { supplies: RCS_SUPPLIES, thrusters: RCS_THRUSTERS, ...(o.rate ? { rate: o.rate } : {}) },
       base: guess(CAPSULE_CG * IN, 'the tip of the heat shield, 25 in below the centre of mass assumed above'),
       chuteArm: guess(1.8, 'the parachutes pull at the top of the recovery compartment, about 1.8 m from the centre of mass assumed above'),
       earthward: o.earthward,
@@ -730,6 +730,8 @@ export interface Stack {
   push: Measure;
   /** The retropack as it fell away, kg. */
   retropackMass: Measure;
+  /** The capsule's rate command mode, if it had one (types.ts `rcs.rate`). */
+  rate?: { full: Measure; deadband: Measure };
 }
 
 /** A flight of the stack: its day and its vehicle's own figures. The rest is the hardware's, above. */

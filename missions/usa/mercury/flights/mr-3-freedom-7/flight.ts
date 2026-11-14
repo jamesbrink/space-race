@@ -1,4 +1,4 @@
-import type { Flight, FlightCheck, Keyframe, ModelDef, Part, Signal, Trajectory, Winds } from '../../../../../src/types';
+import type { Flight, FlightCheck, Keyframe, ModelDef, Part, Trajectory, Winds } from '../../../../../src/types';
 import {
   HARDWARE_WORDS,
   held,
@@ -16,6 +16,7 @@ import {
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
+import { MERCURY_STICK, mercuryControls, mercuryInstruments, NOT_SIMULATED, sequenceLamp } from '../../vehicles/cabin.ts';
 import {
   CAPSULE_PLANE,
   CHUTES,
@@ -471,15 +472,7 @@ vehicle.seats = [
  * (vehicles/mercury_cabin.py), each needle with its scale in its own extras; this says what each reads.
  * The layout is the Postlaunch Report's Figure 3.1-2; the faces are as the flown capsule's read today.
  */
-const NOT_SIMULATED = 'Not simulated: the needle stands where its face was drawn.';
 const FIG = 'Postlaunch Report, Figure 3.1-2';
-const sequenceLamp = (node: string, name: string, shows: Signal | undefined, about: string) => ({
-  node: `Tele_${node}`,
-  name,
-  about,
-  colour: 0x58ff8a,
-  ...(shows ? { shows } : {}),
-});
 vehicle.cabin = {
   within: ['CrewCabin'],
   // the top of the pilot's head: 45 degrees round from the hatch, which is on +X (model/vehicle.py)
@@ -489,93 +482,10 @@ vehicle.cabin = {
   // the eyes (measured in the model, and less over a shoulder: camera/head.ts): further, and the picture's lower edge is
   // in the suit's collar and the couch's headrest, which the helmet would hide
   head: { side: 1.75, up: 0.95, down: 0.3 },
-  instruments: [
-    {
-      node: 'Gauge_Altimeter',
-      name: 'Altimeter',
-      about: 'Thousands of feet, to 100: above that it is on its stop. MAIN at 10, SNORKEL at 20.',
-      reads: 'altitude',
-      per: 304.8,
-    },
-    {
-      node: 'Gauge_DescentRate',
-      name: 'Rate of descent',
-      about: 'Feet a second downward. Shepard read "about 35 ft/sec" on it under the main parachute.',
-      reads: 'descent',
-      per: 0.3048,
-    },
-    {
-      node: 'Gauge_Accelerometer',
-      name: 'Longitudinal accelerometer',
-      about: 'G units along the capsule, -9 to +12: 6 at burnout and 11 coming back in.',
-      reads: 'g',
-    },
-    {
-      node: 'Gauge_Roll',
-      name: 'Roll attitude',
-      about: 'One of three needles where a later craft has a ball. Degrees from wings level.',
-      reads: 'roll',
-    },
-    {
-      node: 'Gauge_Pitch',
-      name: 'Pitch attitude',
-      about: 'Degrees the small end is above the horizon. RETRO marks the 34 degrees held to fire the retrorockets.',
-      reads: 'pitch',
-    },
-    { node: 'Gauge_Yaw', name: 'Yaw attitude', about: 'Degrees the small end is off the line flown.', reads: 'yaw' },
-    {
-      node: 'Gauge_RollRate',
-      name: 'Roll rate',
-      about: 'The rate needles in the middle square. Their full travel is taken as 6 degrees a second: estimated.',
-      reads: 'rollRate',
-    },
-    { node: 'Gauge_PitchRate', name: 'Pitch rate', about: 'Degrees a second, the bar that rises and falls.', reads: 'pitchRate' },
-    { node: 'Gauge_YawRate', name: 'Yaw rate', about: 'Degrees a second.', reads: 'yawRate' },
-    {
-      node: 'Gauge_ClockHour',
-      name: 'Clock',
-      about: 'A twelve-hour watch, here on Cape time: the Redstone flights had no time-to-retrograde counter.',
-      reads: 'timeOfDay',
-    },
-    { node: 'Gauge_ClockMinute', name: 'Clock', about: 'Minutes.', reads: 'timeOfDay' },
-    { node: 'Gauge_ClockSecond', name: 'Clock', about: 'Seconds.', reads: 'timeOfDay' },
-    ...[0, 1, 2, 3, 4].map((place) => ({
-      node: `Gauge_Counter${place}`,
-      name: 'Seconds from launch',
-      about: 'Started by the lift-off signal, or by the TIME ZERO button if that failed.',
-      reads: 'elapsed' as const,
-    })),
-    {
-      node: 'Gauge_FuelAuto',
-      name: 'Control fuel, automatic',
-      about: 'Hydrogen peroxide left for the automatic jets, percent of 32 lb.',
-      reads: 'supply0',
-      per: 0.01,
-    },
-    {
-      node: 'Gauge_FuelManual',
-      name: 'Control fuel, manual',
-      about: 'Hydrogen peroxide left for the hand controller’s own jets, percent of 23 lb.',
-      reads: 'supply1',
-      per: 0.01,
-    },
-    { node: 'Gauge_CabinPressure', name: 'Cabin pressure', about: `Pounds a square inch. ${NOT_SIMULATED}` },
-    { node: 'Gauge_CabinAir', name: 'Cabin air temperature', about: `Degrees Fahrenheit. ${NOT_SIMULATED}` },
-    {
-      node: 'Gauge_Humidity',
-      name: 'Cabin humidity',
-      about: `Listed among what was aboard (Postlaunch Report, Figure 10.1-1); its face is ours. ${NOT_SIMULATED}`,
-    },
-    {
-      node: 'Gauge_Coolant',
-      name: 'Coolant quantity',
-      about: `Water for the suit and cabin heat exchangers, percent left. ${NOT_SIMULATED}`,
-    },
-    { node: 'Gauge_Oxygen', name: 'Oxygen quantity', about: `Percent left, with the emergency supply’s sector. ${NOT_SIMULATED}` },
-    { node: 'Gauge_DCVolts', name: 'D.C. volts', about: `Whichever battery the selector below is on. ${NOT_SIMULATED}` },
-    { node: 'Gauge_DCAmps', name: 'D.C. amps', about: NOT_SIMULATED },
-    { node: 'Gauge_ACVolts', name: 'A.C. volts', about: `The fans’ or the control system’s inverter. ${NOT_SIMULATED}` },
-  ],
+  instruments: mercuryInstruments({
+    Gauge_DescentRate: 'Feet a second downward. Shepard read "about 35 ft/sec" on it under the main parachute.',
+    Gauge_Humidity: `Listed among what was aboard (Postlaunch Report, Figure 10.1-1); its face is ours. ${NOT_SIMULATED}`,
+  }),
   lamps: [
     // "A green light will show that the function occurred and a red light will indicate some failure" (Results of the First U.S. Manned Suborbital Space Flight, p. 23)
     sequenceLamp('TowerJett', 'Tower jettison', 'tower', 'Green when the escape tower has gone. The ring beside it does it by hand.'),
@@ -615,48 +525,10 @@ vehicle.cabin = {
     { node: 'Tele_RetroCold', name: 'Retro rockets cold', about: 'Not simulated: it stays dark.' },
     { node: 'Tele_LandingBag', name: 'Landing bag', about: 'Not simulated: it stays dark.' },
   ],
-  controls: [
-    {
-      node: 'Ctl_TowerJett',
-      name: 'Jettison tower',
-      about: 'Pull ring. Found pulled out after the flight (Postlaunch Report, p. 98).',
-      does: 'tower',
-    },
-    {
-      node: 'Ctl_CapsuleSep',
-      name: 'Separate capsule',
-      about: 'Pull ring: fires the clamp ring and the posigrade rockets.',
-      does: 'separate',
-    },
-    { node: 'Ctl_RetroSeq', name: 'Start retro sequence', about: 'Push button.', does: 'retro' },
-    {
-      node: 'Ctl_RetroFire',
-      name: 'Fire retrorockets',
-      about: 'Guarded push button. Shepard fired them himself as a check; here the guard is off.',
-      does: 'retro',
-    },
-    { node: 'Ctl_JettRetro', name: 'Jettison retropack', about: 'Guarded push button.', does: 'retropack' },
-    { node: 'Ctl_PointZeroFiveG', name: '.05 g override', about: 'Push button. Not simulated.' },
-    { node: 'Ctl_Drogue', name: 'Deploy drogue', about: 'Push button.', does: 'drogue' },
-    { node: 'Ctl_MainDeploy', name: 'Deploy main parachute', about: 'Pull ring.', does: 'main' },
-    { node: 'Ctl_ReserveDeploy', name: 'Deploy reserve parachute', about: 'Pull ring. Not simulated: there is no reserve to deploy.' },
-    { node: 'Ctl_Abort', name: 'Abort handle', about: 'Twisted, it fires the escape rocket. Click twice: it has a lock.', does: 'abort' },
-    {
-      node: 'Ctl_HandController',
-      name: 'Hand controller',
-      about: 'Three axes in one hand: fore and aft for pitch, side to side for roll, a twist for yaw. It moves as the keys do.',
-    },
-    {
-      // The manual extension-retraction handle (SEDR 104, 12-16; SEDR 109-7, 2-19): a ratchet on the periscope's upper
-      // housing that drove the cartridge through a clutch when its motor could not. Where the model has it is ours.
-      node: 'Ctl_PeriscopeHandle',
-      name: 'Periscope ratchet handle',
-      about:
-        'Pulled up and worked, it ratchets the periscope out or in by hand through a clutch, for when its motor will not. ' +
-        'Flying the flight yourself, it sends the periscope the other way; it goes back to its programme at the next programmed event.',
-      works: 'periscope',
-    },
-  ],
+  controls: mercuryControls({
+    Ctl_TowerJett: 'Pull ring. Found pulled out after the flight (Postlaunch Report, p. 98).',
+    Ctl_RetroFire: 'Guarded push button. Shepard fired them himself as a check; here the guard is off.',
+  }),
   // The cabin floodlights' switch: CABIN LITES at the outboard top of the left console, OFF above and ON below
   // (Postlaunch Report, Figure 3.1-2), found ON after the flight (Figure 10.1-1); the model is built ON. Two four-watt
   // fluorescent floodlights, white, one on each hand, on the 115 V a-c fans bus (SEDR 104 of December 1959, 10-44, 10-47
@@ -681,8 +553,7 @@ vehicle.cabin = {
     { at: [0.32, 0.708, -0.554], out: [0.47, 0.342, -0.814], across: 0.168, name: 'Lower port' },
     { at: [0.076, 0.86, 0.578], out: [0.123, 0.342, 0.932], across: 0.168, name: 'Upper port' },
   ],
-  // how far it tips at full command is estimated; the axes are the node's own (X to his right, Y along the grip, Z toward his head)
-  stick: { node: 'Ctl_HandController', throw: 0.23, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
+  stick: MERCURY_STICK,
   periscope: {
     screen: 'Periscope_Screen',
     name: 'Periscope',

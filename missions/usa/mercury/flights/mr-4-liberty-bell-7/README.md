@@ -160,7 +160,10 @@ the sequencer sets off cutoff and the tower at 02:23, separation at 02:33, retro
 is open to the hand: G gives up the platform (W S A D Q E then are the vanes and, on the spacecraft
 alone, the manual jets), B the sequencer (Space then sets off each event in turn, whenever it is
 pressed), a right click on a part offers what that part can do, and the cabin's rings and buttons do it
-from the couch. What a hand does has its consequences in the same physics: pitched hard over at T+40
+from the couch. What No. 11 had that Freedom 7 did not is offered too: the **Rate command** switch (on the
+spacecraft alone the stick asks for a rate of turn and the manual jets hold it within ±3 degrees a second,
+as Grissom flew the entry from 05:43), the **window** (1 from the couch, or through it from the chase
+camera), and the panel rearranged, its needles and sequence lights reading the flight. What a hand does has its consequences in the same physics: pitched hard over at T+40
 with the platform off, the stack breaks up at T+42 on its bending limit and the escape rocket pulls the
 spacecraft clear.
 

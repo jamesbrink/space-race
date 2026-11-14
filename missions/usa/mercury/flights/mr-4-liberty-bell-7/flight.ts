@@ -18,7 +18,15 @@ import {
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
-import { mercuryCabin, mercurySeat, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
+import {
+  MERCURY_STICK,
+  mercuryCabin,
+  mercuryControls,
+  mercuryInstruments,
+  mercurySeat,
+  OBJECTIVE_OUT,
+  sequenceLamp,
+} from '../../vehicles/cabin.ts';
 import {
   CAPSULE_PLANE,
   CHUTES,
@@ -1242,6 +1250,16 @@ const TRAJECTORY: Trajectory = mercuryRedstone({
         '"counter clockwise" (Results, Figure 2-5), into the orbit attitude of 34 degrees (p. 6)',
     ),
     push: guess(30 * FT, `not recorded for MR-4: Freedom 7’s, ${PLR}, section 4.2, approximately 30 plus or minus 3 ft/s`),
+    rate: {
+      deadband: doc(
+        3,
+        `${RESULTS}, p. 3: the rate stabilization and control system "damps to the commanded rate to within ±3 deg/sec. Without manual command, it damps to zero rate within ±3 deg/sec"; the pilot, p. 52: "This system had a deadband of ±3 deg/sec"`,
+      ),
+      full: guess(
+        10,
+        'the rate asked for at full throw of the stick is not in anything read (the record says only that "design turning rates were not achieved with full stick deflection", p. 7, blamed on the linkage): ten degrees a second is ours',
+      ),
+    },
     retropackMass: derived(
       (2855.14 - 2579.0) * LB,
       `the same pack as Freedom 7’s: ${PLR}, section 3.1, its "orbit" weight less its re-entry weight, 276.14 lb, burned propellant with it (so the pack as it fell was lighter): flown at the whole figure`,
@@ -1622,14 +1640,89 @@ export const flight: Flight = {
   surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
 };
 
-// The couch as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes).
+// The couch as somewhere to sit, and its cabin: No. 11's panel (vehicles/mercury_cabin_11.py, Results Figure 2-3 as Hammack and
+// Heberlig print it), its needles reading the flight being flown or the record's, its sequence lights lighting on the
+// simulator's events and its rings and buttons asking the deck for them (vehicles/cabin.ts: the instruments and controls
+// every capsule of the Redstone flights had, the same nodes as Freedom 7's).
 // aboard at 3:58 a.m. e.s.t. (MORNING, above) until the gantry left: as the morning has it
 vehicle.seats = [mercurySeat([est(3, 58), GANTRY_REMOVED])];
-vehicle.cabin = mercuryCabin({
-  window: 'Window',
-  periscope: {
-    about:
-      'An 8 in screen of the Earth under the capsule, through a wide-angle objective in the cone below the pilot’s feet. Click to look into it, and again for high power.',
-    at: OBJECTIVE_OUT,
-  },
-});
+const DARK = 'Not simulated: it stays dark.';
+vehicle.cabin = {
+  ...mercuryCabin({
+    window: 'Window',
+    periscope: {
+      about:
+        'An 8 in screen of the Earth under the capsule, through a wide-angle objective in the cone below the pilot’s feet. Click to look into it, and again for high power. ' +
+        'It shows nothing while its objective is drawn in behind its door: for the climb, from half a minute after the retropack went, and through the entry.',
+      at: OBJECTIVE_OUT,
+    },
+  }),
+  instruments: mercuryInstruments({
+    Gauge_DescentRate: 'Feet a second downward. Under the main Grissom read "30 feet per, 32 feet per second" on it (Results, p. 44).',
+    Gauge_ClockHour:
+      'A twelve-hour watch, here on Cape time, under the attitude indicator where No. 11’s panel put it: the Redstone flights had no time-to-retrograde counter.',
+  }),
+  // the sequence lights in one column down the left console, each beside what does it by hand (Results, p. 5: "the rearrangement
+  // of controls and indicators"), and the warning lights down the right of the main panel. "A green light will show that the
+  // function occurred and a red light will indicate some failure" (Results of the First U.S. Manned Suborbital Space Flight, p. 23)
+  lamps: [
+    sequenceLamp('TowerJett', 'Tower jettison', 'tower', 'Green when the escape tower has gone. The ring beside it does it by hand.'),
+    sequenceLamp(
+      'CapsuleSep',
+      'Capsule separation',
+      'separated',
+      'Green when the spacecraft has left the booster: "cap. sep. is green" at 02:42.5.',
+    ),
+    sequenceLamp(
+      'RetroSeq',
+      'Retro sequence',
+      'retro',
+      'Green when the retrorockets’ sequence has begun: by the timer at 04:46 on the day.',
+    ),
+    sequenceLamp(
+      'RetroAtt',
+      'Retro attitude',
+      undefined,
+      `Whether the capsule is at 34 degrees for retrofire: "retro attitude is still green" at 05:01.5. ${DARK}`,
+    ),
+    sequenceLamp('RetroFire', 'Retro fire', 'retro', 'Green when the first retrorocket has lit.'),
+    sequenceLamp('JettRetro', 'Jettison retro', 'retropack', 'Green when the pack has been dropped.'),
+    sequenceLamp('RetractScope', 'Retract scope', undefined, `The periscope drawn in for the entry. ${DARK}`),
+    sequenceLamp('PointZeroFiveG', '.05 g', 'entry', 'Green when the air is first felt coming down: a twentieth of a g.'),
+    sequenceLamp('Drogue', 'Drogue', 'drogue', 'Green when the drogue parachute is out: "we have a green drogue here" at 09:45.'),
+    sequenceLamp('Snorkel', 'Snorkel', undefined, `The cabin’s air inlets opened at 20,000 ft. ${DARK}`),
+    sequenceLamp('MainDeploy', 'Main', 'main', 'Green when the main parachute is out.'),
+    sequenceLamp('ReserveDeploy', 'Reserve', undefined, `The reserve parachute: not simulated, it stays dark.`),
+    sequenceLamp(
+      'LandingBag',
+      'Landing bag',
+      undefined,
+      `Green when the bag has dropped: "the landing bag is out green" at 10:14. ${DARK}`,
+    ),
+    { node: 'Tele_Abort', name: 'Abort', about: 'Warns the astronaut of an abort.', shows: 'abort', colour: 0xff4a36 },
+    ...(
+      [
+        ['FuelQuan', 'Fuel quantity'],
+        ['O2Quan', 'Oxygen quantity'],
+        ['CabinPress', 'Cabin pressure'],
+        ['ExcessCabinWater', 'Excess cabin water'],
+        ['ExcessSuitWater', 'Excess suit water'],
+        ['O2Emerg', 'O2 emergency'],
+        ['RetroWarn', 'Retro warning'],
+        ['RetroReset', 'Retro reset'],
+        ['StandbyAC', 'Standby A.C. auto'],
+        ['StandbyDC', 'Standby D.C. auto'],
+        ['HeatersOn', 'Retro heaters on'],
+        ['RetroCold', 'Retro rockets cold'],
+        ['RescueAids', 'Rescue aids'],
+      ] as const
+    ).map(([node, name]) => ({ node: `Tele_${node}`, name, about: DARK })),
+  ],
+  controls: [
+    ...mercuryControls({
+      Ctl_RetroFire: 'Guarded push button. Grissom fired them himself, on Cap Com’s count, at 05:10; here the guard is off.',
+    }),
+    { node: 'Ctl_Snorkel', name: 'Snorkel', about: 'Pull ring: opens the cabin’s air inlets by hand. Not simulated.' },
+  ],
+  stick: MERCURY_STICK,
+};
