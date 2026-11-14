@@ -1,6 +1,6 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
-import { SITE1_SPECS, TAIL, TURN, turned } from '../../sites/site-1.parts.ts';
+import { SITE1_SPECS, site1Vehicle } from '../../sites/site-1.parts.ts';
 import { SITE1 } from '../../sites/site-1.ts';
 import { vostokCabin, vostokLights, vostokSeat } from '../../vehicles/cabin.ts';
 import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
@@ -502,40 +502,41 @@ const COMMANDS = vostokCommands({
 
 const SPACECRAFT = ['DescentModule', 'InstrumentModule', 'RetroEngine', 'Antennas'];
 
-const vehicle: ModelDef = {
+/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's supports (`site1Vehicle`). */
+const built: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/ussr/vostok/vostok-2/vehicle.glb',
   scale: '38.36 m on the pad · 10.3 m across the rudders · to scale',
-  // on the pad it hangs in the launch system's four supports, its tail below the deck; the gallery stands it on its nozzles
-  backdrop: 'tyuratam',
+  backdrop: 'studio',
   slider: ['On the pad', 'Taken apart'],
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
   parts: commanded([...launcherParts, ...parts], COMMANDS),
-  position: [0, BASE + TAIL, 0],
-  rotationY: TURN,
   // the cabin's two lamps (../../vehicles/cabin.ts)
   lights: vostokLights(),
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
-    // (heights are the scene's: the nozzles' exits are at TAIL; directions are the vehicle's own, turned as it stands)
-    { id: 'base', label: 'Engines', centreY: 1.0 + TAIL, span: 9.5, from: turned(along(35, 4, 1)) },
-    { id: 'booster', label: 'Strap-on', nodes: ['Booster_B'], from: turned(along(-55, 6, 1)) },
-    { id: 'tips', label: 'Tip joints', centreY: 19.6 + TAIL, span: 4.6, from: turned(along(-40, 14, 1)) },
-    { id: 'third', label: 'Third stage', nodes: ['Interstage', 'BlockE'], from: turned(along(60, 4, 1)) },
-    { id: 'fairing', label: 'Fairing', nodes: ['Fairing'], from: turned(along(ENTRY.az, 10, 1)) },
+    // (heights are from the model's origin, the spacecraft's braking nozzle: the main nozzles' exits are BASE below it)
+    { id: 'base', label: 'Engines', centreY: 1.0 - BASE, span: 9.5, from: along(35, 4, 1) },
+    { id: 'booster', label: 'Strap-on', nodes: ['Booster_B'], from: along(-55, 6, 1) },
+    { id: 'tips', label: 'Tip joints', centreY: 19.6 - BASE, span: 4.6, from: along(-40, 14, 1) },
+    { id: 'third', label: 'Third stage', nodes: ['Interstage', 'BlockE'], from: along(60, 4, 1) },
+    { id: 'fairing', label: 'Fairing', nodes: ['Fairing'], from: along(ENTRY.az, 10, 1) },
     // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
     { id: 'spacecraft', label: 'Spacecraft', nodes: SPACECRAFT },
     { id: 'descent', label: 'Descent module', nodes: ['DescentModule'] },
-    { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: turned(along(ENTRY.az, 12, 1)) },
+    { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: along(ENTRY.az, 12, 1) },
     // (from a little aft of his right side, through the cutaway's opening: the turret, the magazine and the viewfinder all show)
-    { id: 'konvas', label: 'Film camera', nodes: ['FilmCamera'], from: turned(along(RIGHT - 32, 24, 1)) },
+    { id: 'konvas', label: 'Film camera', nodes: ['FilmCamera'], from: along(RIGHT - 32, 24, 1) },
     { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles', 'Antennas'] },
-    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: turned(along(250, -32, 1)) },
+    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -32, 1) },
   ],
 };
+
+// on the pad it hangs in the launch system's four supports, its tail below the deck; the gallery stands it on its nozzles
+const vehicle = site1Vehicle(built, BASE);
 
 // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). Boarded on foot
 // through hatch No. 1 from 07:00, when the plan has him in the seat, until 07:40, when it has the hatch closing («График

@@ -759,3 +759,23 @@ export const SITE1_SPECS: Flight['specs'] = [
     note: 'level with the foot of the launch system’s turning part, 6,750 mm below the zero mark (the later system’s description); "about 7 m below" in print',
   },
 ];
+
+/**
+ * A vehicle built to stand in the studio (its views in the model's own frame: heights from the spacecraft's braking nozzle,
+ * directions the vehicle's own), hung in Site 1's launch system: its nozzles' exits `TAIL` under the deck, turned to the
+ * launch azimuth, its views moved into the pad's frame. `base`: how far the main nozzles' exits are below the model's
+ * origin (the 8K72K's 30.53 m: vehicles/vostok-flies.ts `BASE`). The gallery stands it on its nozzles whatever this says.
+ */
+export function site1Vehicle(model: ModelDef, base: number): ModelDef {
+  return {
+    ...model,
+    backdrop: 'tyuratam',
+    position: [0, base + TAIL, 0],
+    rotationY: TURN,
+    views: model.views.map((v) => ({
+      ...v,
+      ...(v.centreY !== undefined ? { centreY: v.centreY + base + TAIL } : {}),
+      ...(v.from ? { from: turned(v.from) } : {}),
+    })),
+  };
+}

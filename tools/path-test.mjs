@@ -51,6 +51,11 @@ const EDGE = 24;
 const FLIGHTS = {
   f7: { id: 'usa/mercury/mr-3-freedom-7', instants: [5, 60, 142, 200, 300, 420, 560, 700] },
   v1: { id: 'ussr/vostok/vostok-1', instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500] },
+  // (a day in orbit: the first revolutions, the periods by hand, the night, the burn at 09:51 on the 7th and the descent)
+  v2: {
+    id: 'ussr/vostok/vostok-2',
+    instants: [5, 60, 125, 330, 700, 3000, 4000, 30_600, 60_000, 87_000, 89_400, 89_480, 90_000, 90_400, 90_800],
+  },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];
 

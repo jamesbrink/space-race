@@ -119,3 +119,19 @@ test('Site 1: every piece of the worked ground was there in April 1961, says whe
     assert.ok(ids.has(id), id);
   for (const f of FANS) assert.ok(Math.hypot(...f.at) < 3000 && f.name.length > 5);
 });
+
+// The steppe's season is the flight's day's (viewer/steppe.ts `SEASONS`): Vostok 1's April flush, Vostok 2's August straw.
+test('the steppe in its season: the spring flush in April, the summer’s reddish grey in August, each with a source', async () => {
+  const { SEASONS, seasonOf, STEPPE } = await import('../src/viewer/steppe.ts');
+  assert.equal(seasonOf('1961-04-12').name, 'spring');
+  assert.equal(seasonOf('1961-08-06').name, 'summer');
+  assert.equal(seasonOf('1962-08-11').name, 'summer');
+  // the spring's sward is the steppe's own colours, so Vostok 1's ground is as it was drawn
+  const spring = SEASONS.find((x) => x.name === 'spring');
+  assert.ok(spring.herbGreen.equals(STEPPE.herbGreen) && spring.herbDry.equals(STEPPE.herbDry));
+  for (const x of SEASONS) assert.ok(['documented', 'derived', 'estimated'].includes(x.confidence) && x.source.length > 20, x.name);
+  // in August the tulips and the rhubarb are below ground
+  const summer = SEASONS.find((x) => x.name === 'summer');
+  assert.equal(summer.species.tulip.share, 0);
+  assert.equal(summer.species.rhubarb.share, 0);
+});

@@ -120,7 +120,11 @@ export const SEASONS: SteppeSeason[] = [
   },
 ];
 
-/** The season on a date ('1961-08-06'): the last whose `from` has come that year (before the first, the last of the year before). */
+/**
+ * The season on a date ('1961-08-06'): the last whose `from` has come that year (before the first, the last of the year
+ * before). Only these two are drawn: the autumn (Voskhod 1, October) and the end of the winter (Voskhod 2, March) are not
+ * yet their own, and take the summer's and the spring's ground.
+ */
 export function seasonOf(date: string): SteppeSeason {
   const day = date.slice(5, 10);
   const sorted = [...SEASONS].sort((a, b) => a.from.localeCompare(b.from));

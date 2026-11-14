@@ -172,6 +172,9 @@ const ROUTES = {
   ],
 };
 
+// Vostok 2's morning at the same pad (6 August 1961): the same ways, at the same minutes before its liftoff as Vostok 1's are
+// walked before its own (07:10 then is 07:00 now); the bus stands where April's did and no crowd stands round it
+ROUTES['ussr/vostok/vostok-2'] = ROUTES['ussr/vostok/vostok-1'].map((r) => ({ ...r, at: r.at - V1_MORNING - 2 * 3600 }));
 const routes = (ROUTES[flight] ?? []).filter((r) => !only || new RegExp(only).test(r.name));
 if (!routes.length) {
   console.error(`walk-test: no routes for ${flight}${only ? ` matching ${only}` : ''}`);

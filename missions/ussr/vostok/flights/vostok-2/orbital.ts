@@ -201,7 +201,7 @@ export const orbital: OrbitalFlight = {
       label: 'Braking engine commanded on: the third command',
       at: derived(
         TDU,
-        'derived from the orbit (mission.md, "The braking burn"): Titov’s «В 9 час. 57 мин. прошла третья команда» puts the ship near 8° N, twelve minutes short; 09:51 is where the type’s burn arc puts it before the planned landing latitude',
+        'derived two ways, neither from the landing place (mission.md, "The braking burn"): the type’s burn arc, 70.7° before the landing latitude, before the programme’s 51° N on the record’s orbit gives 09:51 to 09:52; the pilot’s landing at 10:18 less Vostok 1’s 27.9 min from command to landing gives 09:50. Titov’s «В 9 час. 57 мин. прошла третья команда» puts the ship near 8° N, twelve minutes short of the landing latitude, on the documented orbit',
       ),
       also: `09:57 (${REPORT}, p. 196; ${ANSWERS}, p. 205: «примерно в 9.57»): not possible on the documented orbit`,
     },
@@ -534,7 +534,7 @@ export const orbital: OrbitalFlight = {
       unit: 'm',
       tolerance: 100_000,
       confidence: 'documented',
-      source: `${FAI}, p. 222. NOT independent: the burn’s instant is derived from the planned landing latitude, 51° N (the programme), through the type’s burn arc (mission.md)`,
+      source: `${FAI}, p. 222. Not wholly independent: the burn’s instant is derived from the programme’s landing latitude, 51° N, and the pilot’s landing time (mission.md), not from this place`,
     },
   ],
 };

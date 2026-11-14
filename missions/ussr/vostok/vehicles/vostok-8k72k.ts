@@ -225,7 +225,7 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
           'the cluster seen end on: the core’s 2.95 m (Minakov) and four strap-ons of 2.68 m (Minakov), π/4 (2.95² + 4 × 2.68²) = 29.4 m², their overlap left out',
         ),
         curve: {
-          points: CURVE,
+          points: CURVE.map(([x, y]): [number, number] => [x, y]), // (each its own: one changed is not the other)
           confidence: 'estimated',
           source:
             'NOT FOUND for any R-7: no drag figure against Mach number for the 8K72K, the R-7 or Soyuz was found (mission.md). A curve of the usual form for a slender clustered vehicle on its frontal area, chosen: a transonic rise to 0.5 and falling to 0.2 at Mach 8. tests/staged.test.mjs says what ±30 % of it moves',
@@ -235,7 +235,7 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
         until: day.lastCutoff,
         area: derived(6.835, 'the core seen end on, 2.95 m (Minakov): Block E and the fairing are narrower'),
         curve: {
-          points: CURVE,
+          points: CURVE.map(([x, y]): [number, number] => [x, y]), // (each its own: one changed is not the other)
           confidence: 'estimated',
           source: 'the same chosen curve as the whole stack’s; the air is a ten-thousandth of the ground’s by then',
         },

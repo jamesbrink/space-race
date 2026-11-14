@@ -16,7 +16,8 @@ oblast. Backup: Andriyan Nikolayev.
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)), "СССР" on the helmet. His height was not found, so the figure is the one built to Gagarin's |
 | Launch site (Site 1 as it stood on 6 August 1961) | **built**: [model/pad.py](model/pad.py) and the place [1961-08.py](../../sites/site1/model/1961-08.py), the site's modules at that date; the morning in [pad.ts](pad.ts). What changed since April, and what of this morning is built and what not, below ("The morning at the pad") |
 | Crew to be walked as | **built**: [model/crew.py](model/crew.py), the SK-1 figure as Gagarin's (Titov's height not found) |
-| Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
+| The flight as data, flown | **written**: [orbital.ts](orbital.ts), [mission.md](mission.md): the orbit determined, the two periods by hand, the burn (its instant derived), the descent. The ascent is the type's on Vostok 1's instants (none of this flight's was found). Fly is lit: the record as flown by default, everything a hand can do on Vostok 1, and Titov's two periods by hand as the record has them |
+| The cabin | the plain stand-in board of Vostoks 2 to 6 ([vostok-3ka.md](../../vehicles/vostok-3ka.md)): the seat's view, the two lamps and their tumbler, the portholes. No instrument reads the flight: this ship's own board, its Globus, its Vzor and the hand controller are not built (listed for a modelling agent) |
 
 ## The morning at the pad
 
@@ -46,6 +47,9 @@ summarised in [site-1.md](../../sites/site-1.md), "What stood when"):
 - **The land is the summer's**: the steppe "dried out ... a uniform reddish-gray" by June (Chertok,
   vol. 2, p. 357), the tulips and the spring's green gone (src/viewer/steppe.ts, `SEASONS`).
 - **The weather**: [weather.ts](weather.ts), from the stations either side of the range.
+
+So the flight has all three places: the Gallery; the Launch site on the morning of 6 August; and Fly, on the
+shared flight deck (src/orbitdeck.ts), with nothing in its code that is this flight's.
 
 ## What happened
 
