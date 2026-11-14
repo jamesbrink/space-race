@@ -142,8 +142,9 @@ const EARTH = 6_371_000;
 /**
  * GLSL: the globe's colour toward a direction from the Earth's centre (ECEF), with its roughness.
  * Uniforms uGlobeMaps, uGlobeFlat (pack.ts), the colours, and the region's placings (`regionUniforms`).
+ * `drawn`: the land's one tone in the cel look (in two shades), the site's country seen whole: the Cape's green unless said.
  */
-const COLOUR = /* glsl */ `
+const colourGlsl = (drawn: THREE.Color) => /* glsl */ `
   // (packed, to leave texture units for lights: pack.ts)
   uniform samplerCube uGlobeMaps;   // red: the land's distance to the shore; green: the ice's; blue: the relief
   uniform highp sampler2DArray uGlobeFlat;   // the region's maps, each in its layer's corner: 0 near, 1 wide, 2 the surface's relief
@@ -253,7 +254,7 @@ const COLOUR = /* glsl */ `
     land = max(land, bank * smoothstep(0.3, 0.9, h));
     #ifdef TOON
       // drawn: the land in two greens, the sea in three blues (the deep, the shelf, the banks)
-      ground = mix(${vec3(LAND)} * 0.8, ${vec3(LAND)} * 1.15, step(0.07, dot(ground, vec3(0.2126, 0.7152, 0.0722))));
+      ground = mix(${vec3(drawn)} * 0.8, ${vec3(drawn)} * 1.15, step(0.07, dot(ground, vec3(0.2126, 0.7152, 0.0722))));
       water = mix(mix(${vec3(SEA_ABOVE)}, ${vec3(SEA_ABOVE)} * vec3(1.5, 1.35, 1.2), step(h, 0.0) * step(-180.0, h)), vec3(0.09, 0.42, 0.50), bank * step(-11.0, h) * step(h, 0.5));
     #else
       // The land's relief, lit by the true Sun: a slope toward it is brighter than level ground and one away from
@@ -286,7 +287,7 @@ const COLOUR = /* glsl */ `
 /**
  * GLSL: the Sun's glint on the sea (`globeGlint`) and how much of a light's own lobe it stands in for
  * (`globeGlinting`). The globe's sea and the site's own water (land.ts, through `beyond`) both use it, so the
- * highlight is one patch across where they meet. Needs uGlobeAbove (COLOUR declares it).
+ * highlight is one patch across where they meet. Needs uGlobeAbove (colourGlsl declares it).
  */
 const GLINT = /* glsl */ `
   // The Sun's glint on the sea, seen from above the air: the light a sea of waves sends from the Sun to the
@@ -557,7 +558,11 @@ export class Globe {
     region: string | null = null,
     /** The tone of the site's own ground seen whole, kept round it until the eye is well up: the Cape's canopy's green unless said. */
     tone: THREE.Color = LAND,
+    /** The land's tone in the cel look, from height (`colourGlsl`): the Cape's green unless said. */
+    celLand: THREE.Color = LAND,
   ) {
+    this.colour = colourGlsl(celLand);
+    this.drawnKey = celLand === LAND ? '' : `:${celLand.getHexString()}`;
     this.site = site;
     this.renderer = renderer;
     this.seaLevel = seaLevel;
@@ -741,6 +746,9 @@ export class Globe {
   /** The region's one-channel maps, packed in layers: near, wide, the surface's relief. Null until `base`. */
   private flat: THREE.WebGLArrayRenderTarget | null = null;
   private readonly region: string | null;
+  /** The globe's colour (`colourGlsl`) as this site has it, and what tells its program from another site's. */
+  private readonly colour: string;
+  private readonly drawnKey: string;
 
   /**
    * The region's maps, made and fetched: read where the globe is seen (from the site, along the horizon, once the eye
@@ -866,7 +874,7 @@ export class Globe {
       fragment: /* glsl */ `
         uniform vec3 uGlobeOrigin, uGlobeSun;
         uniform mat3 uGlobeAxes;
-        ${COLOUR}
+        ${this.colour}
         ${GLINT}
         vec3 beyondAlbedo(vec3 p, out float rough, out float sea) {
           vec3 c = globeAlbedo(normalize(uGlobeOrigin + uGlobeAxes * p), rough);
@@ -1078,7 +1086,7 @@ export class Globe {
           uniform float uGlobePixel;   // radians a pixel of the frame
           ${ATMOSPHERE_GLSL}
           float globeRough;
-          ${COLOUR}
+          ${this.colour}
           ${GLINT}
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
           float globeHeight(vec3 p) {
@@ -1240,6 +1248,6 @@ export class Globe {
           #endif`,
         );
     };
-    material.customProgramCacheKey = () => 'globe';
+    material.customProgramCacheKey = () => `globe${this.drawnKey}`;
   }
 }

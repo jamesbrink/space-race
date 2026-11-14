@@ -629,18 +629,28 @@ export interface RegionDef {
   asOf: string;
   /** What has been built since that changed the shore: each undone in the bake if built after `asOf`. */
   later: LaterWork[];
+  /**
+   * Rivers drawn as their channel along OpenStreetMap's middle line (waterway=river), where its water areas leave gaps:
+   * `match` a pattern for the way's name, `width` the channel's, metres.
+   */
+  rivers?: { match: string; width: number; source: string }[];
 }
 
-/** A causeway filled or a channel dug: the shore as it was before, along a line. */
+/**
+ * A causeway filled or a channel dug: the shore as it was before, along a line. Or a change over a whole area (a sea
+ * that has shrunk): what was there before, inside a closed `ring`, from a source of that time.
+ */
 export interface LaterWork {
   what: string;
-  /** The year it was finished. */
+  /** The year it was finished (for an area: the first year it was no longer as the ring has it). */
   built: number;
   /** What was there before it: water where a causeway now stands, land where a canal is now cut. */
   was: 'water' | 'land';
   /** The line it follows, [latitude, longitude] degrees, and the width put back along it, metres. */
-  path: [number, number][];
-  width: number;
+  path?: [number, number][];
+  width?: number;
+  /** Or the area it was, as one closed ring of [latitude, longitude] degrees: inside it the bake puts back what `was`. */
+  ring?: [number, number][];
   /** For the date, and for the line (read off OpenStreetMap unless it says otherwise). */
   source: string;
 }

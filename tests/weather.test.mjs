@@ -184,13 +184,14 @@ test('Liberty Bell 7’s day is its own: the record’s three layers, wind and a
   assert.ok(day.visibility < dayOf(mr3).visibility);
 });
 
-test('Vostok 1’s day has high cloud and nothing under it, and no map: its site has no region', () => {
+test('Vostok 1’s day has high cloud and nothing under it, and its own map over Site 1’s region', () => {
   const day = dayOf(vostok1);
   assert.equal(day.cumulus, null);
   assert.equal(day.deck.cover, 0);
   assert.equal(day.high.cover, 0.875);
   assert.equal(day.high.veil, false);
-  assert.equal(day.map, null);
+  // (without one its cirrus stood over the whole Earth in view from height)
+  assert.equal(day.map, 'tyuratam.1961-04-12');
 });
 
 test('a flight with no weather stands under its site’s, and with neither under a clear sky; neither has a map', () => {

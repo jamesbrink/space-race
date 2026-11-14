@@ -350,7 +350,7 @@ the sky. The 3 m is inside what the map's outline is good for.
 | The wind | from 140° at 2.1 m/s: the plants barely stir | estimated | Kazalinsk's at 06:00 UTC (documented there, 97 km away); Kzyl-Orda had 4.1 m/s from 020°. At the site it is not known |
 | Visibility | 50 km, the haze thinning over 1.5 km of height | estimated | 50 km at Dzhusaly (03:00 UTC) and Kzyl-Orda (06:00); Kazalinsk reports 20 km at every hour, which reads as its furthest mark. The haze's profile is not recorded |
 | The light | the Sun 142.1° and 46.9° up, the Moon 193.3° and 35.0° up, 12 % lit, at 06:06:59.7 UTC | derived | `src/world` from site-1.ts and the launch instant (the flight's README; tests/world.test.mjs) |
-| The land beyond, on the globe | the steppe's own tone, kept round the site until the eye is well up | estimated | as the colours |
+| The land beyond, on the globe | the region's maps ("The country round, from height", below); round the site the steppe's own tone, kept until the eye is well up | documented (the maps' sources); estimated (the tone) | below |
 
 The other lines on today's map round the site (the railway's loop to the north, the lines to Site 2
 and beyond, the roads and buildings that are not on the CIA's drawing of 1959) are not drawn: when
@@ -405,6 +405,32 @@ pit" of the CIA's Figure 5 are not cut into the land: the land's mesh is half a 
 4 m a cell 300 m off, and a ditch 2 m wide would come and go with distance, which is worse than its absence. The
 embankment's south side, which Figure 5 hachures west of where the spurs part, is not built: SRTM has the ground
 south of the track at the track's level.
+
+### The country round, from height
+
+From 3 km up the site's own ground gives way to the globe, and what is seen is the region's maps (`region` in
+[site-1.ts](site-1.ts); `public/globe/tyuratam.*`, baked by `pnpm globe:region`, `pnpm globe:surface` and `pnpm globe:weather`):
+the Syr Darya 30 km south with its green floodplain and old channels, the railway's town on its north bank as Blue Marble
+shows it, the river down past Kazalinsk to its delta, the Aral Sea 140 km west at its nearest, the Aral Karakum's sands to the
+north-west, takyrs and salt pans in the hollows, and the relief. Sources and licences: docs/sources.md, "The Earth and the sky"
+and "The Earth's surface from orbit".
+
+| What | Of 1961, or of today | Source |
+| --- | --- | --- |
+| Where the water is | the Aral as it stood in the late 1950s (level 53.4 m, 67,500 km²) put back over today's remnant; the rest is today's map | Natural Earth, Historic Lakes; OpenStreetMap's named waters (November 2026) |
+| The Syr Darya's channel | today's course, 150 m wide (estimated) where the map has no water area | OpenStreetMap's middle line |
+| The land's colour | April **2004** at 500 m | Blue Marble Next Generation |
+| The relief | today's (ETOPO 2022), 450 m a texel | NOAA NCEI |
+| The day's cloud over it | 12 April 1961: the record's cirrus over the site and as far as the stations saw it, estimated beyond | the flight's `weather.ts`; viewer/weather.ts |
+
+**What the region gets wrong.** The colours are 2004's: the irrigated rice of the Syr Darya's valley (expanded after 1961:
+when, not found), the later cosmodrome's sites and the town of Baikonur, grown since 1961, are in them as specks at 500 m; the
+Aral's dry floor is under the 1961 water and is not seen. The river's course has moved since 1961 in places; the Chardara
+reservoir (1965) and the dam above Kazalinsk (1974) are outside the region or under a pixel. The Aral of 1961 has no islands and
+its shore is good to a kilometre or two. Sarygamysh, a lake that filled from irrigation drainage after 1961, lies south of the
+region's own maps and is drawn by the globe's (Natural Earth's today's). The railway and the roads are not drawn from height: at
+450 m a texel they are under a pixel, and no line map of them is baked. The day's weather map takes its land and sea from the
+globe's cube, which has today's Aral: it matters only to how cumulus would organise, and there was none that morning.
 
 ## Moving parts
 

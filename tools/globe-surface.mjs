@@ -1,6 +1,6 @@
 // Bakes what the Earth's surface is like, for the globe seen from orbit (viewer/globe.ts): how high
 // the ground and how deep the sea's bed (relief), and what colour the land is (colour).
-//   node tools/globe-surface.mjs [--cache <dir>] [--size 2048] [--only globe|region]
+//   node tools/globe-surface.mjs [--cache <dir>] [--size 2048] [--only globe|region] [--region <name>]
 //
 // Written to public/globe/:
 //   relief.<face>.png              six cube faces, the same faces as land.<face>.png (tools/globe.mjs)
@@ -18,7 +18,7 @@
 // The sources, both public domain (docs/sources.md, "The Earth's surface from orbit"), are fetched
 // once into the cache (~/.cache/space-race/globe-surface, about 600 MB, with as much again
 // unpacked): NOAA's ETOPO 2022 at 60 arc-seconds for the globe and 15 for the regions, and NASA's
-// Blue Marble Next Generation for May 2004, without relief shading or bathymetry, at 21600 x 10800
+// Blue Marble Next Generation for May 2004 (a region may name another month of 2004: Tyuratam's is April), without relief shading or bathymetry, at 21600 x 10800
 // for the globe and the 500 m tile for the regions. GDAL unpacks them (gdal_translate and
 // gdalbuildvrt on PATH, or through `nix shell nixpkgs#gdal`) and ImageMagick's `magick` writes the
 // JPEGs; everything between is done here, so the projection is this file's and region.ts's alone.
@@ -40,7 +40,7 @@ const opt = (name, fallback) => {
 };
 
 const ETOPO = 'https://www.ngdc.noaa.gov/thredds/fileServer/global/ETOPO2022';
-const BMNG = 'https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/may';
+const BMNG = 'https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base';
 /** What the outputs say of themselves (the region's .json). */
 const DATA =
   'Relief: NOAA NCEI, ETOPO 2022 Global Relief Model (ice surface), doi:10.25921/fd45-gt74, CC0-1.0, not subject to copyright in the United States. ' +
@@ -86,9 +86,27 @@ const REGIONS = [
       [22.2, -73.5, 180], // Crooked Island, Acklins and the Caicos Bank's edge
     ],
   },
+  {
+    // Site 1 at Tyuratam: the lower Syr Darya, the Aral Sea of 1961 and the country round (missions/ussr/vostok/sites/site-1.ts).
+    // Its colours are April's, the month of every flight from it the region is drawn for: the steppe's short spring.
+    name: 'tyuratam',
+    south: 41,
+    north: 50,
+    west: 56,
+    east: 70,
+    centre: [45.5, 63.0],
+    metres: 450,
+    month: 'april',
+  },
 ];
-/** Blue Marble's 500 m tile over each region: its file and its north-west corner, degrees. Tiles are 90 degrees square, 240 pixels a degree. */
-const TILE = { file: 'world.200405.3x21600x21600.B1.jpg', west: -90, north: 90 };
+/** Blue Marble's months, as its folders and file stamps name them (2004). A region gives its own; the globe's cube is May's. */
+const MONTHS = { april: '200404', may: '200405' };
+/** Blue Marble's 500 m tiles: each 90 degrees square, 240 pixels a degree, named by a letter for its column (A from 180 W) and 1 or 2 (north or south). */
+const tileOf = (west, north, month) => {
+  const col = Math.floor((west + 180) / 90);
+  const row = north > 0 ? 1 : 2;
+  return { file: `world.${MONTHS[month]}.3x21600x21600.${'ABCD'[col]}${row}.jpg`, west: col * 90 - 180, north: row === 1 ? 90 : 0, month };
+};
 
 const cache = opt('cache', join(homedir(), '.cache', 'space-race', 'globe-surface'));
 const work = join(cache, 'work');
@@ -153,12 +171,12 @@ function unpack(name, source, type, grid, window = []) {
 function globeSources() {
   const grid = { width: 21600, height: 10800, west: -180, north: 90, per: 60 };
   const nc = fetched(`${ETOPO}/60s/60s_surface_elev_netcdf/ETOPO_2022_v1_60s_N90W180_surface.nc`);
-  const jpg = fetched(`${BMNG}/world.200405.3x21600x10800.jpg`);
+  const jpg = fetched(`${BMNG}/may/world.200405.3x21600x10800.jpg`);
   return { relief: unpack('etopo-60s', `NETCDF:"${nc}":z`, 'Float32', grid), colour: unpack('bmng-60s', jpg, 'Byte', grid) };
 }
 
 /** ETOPO's surface at 15 arc-seconds and Blue Marble's 500 m tile over a box of whole degrees: 240 cells a degree. */
-function regionSources(name, west, east, south, north) {
+function regionSources(name, west, east, south, north, month) {
   const per = 240;
   const grid = { width: (east - west) * per, height: (north - south) * per, west, north, per };
   // ETOPO's 15-second tiles are 15 degrees square and named by their north-west corner
@@ -171,10 +189,11 @@ function regionSources(name, west, east, south, north) {
   const vrt = join(work, `${name}-etopo-15s.vrt`);
   gdal('gdalbuildvrt', '-q', '-overwrite', vrt, ...tiles);
   const relief = unpack(`${name}-etopo-15s`, vrt, 'Float32', grid, ['-projwin', west, north, east, south].map(String));
+  const TILE = tileOf(west, north, month);
   if (west < TILE.west || east > TILE.west + 90 || north > TILE.north || south < TILE.north - 90)
     throw new Error(`${name}: outside Blue Marble tile ${TILE.file}`);
   const window = ['-srcwin', (west - TILE.west) * per, (TILE.north - north) * per, grid.width, grid.height].map(String);
-  const colour = unpack(`${name}-bmng-500m`, fetched(`${BMNG}/${TILE.file}`), 'Byte', grid, window);
+  const colour = unpack(`${name}-bmng-500m-${month}`, fetched(`${BMNG}/${month}/${TILE.file}`), 'Byte', grid, window);
   return { relief, colour };
 }
 
@@ -500,6 +519,7 @@ function bakeRegion(region) {
     Math.ceil(east + 0.01),
     Math.floor(south - 0.01),
     Math.ceil(north + 0.01),
+    region.month ?? 'may',
   );
   const { relief, colour } = sample(src, width, height, 0, COAST.region, toward);
   const files = { relief: `${region.name}.relief.png`, colour: `${region.name}.colour.jpg`, json: `${region.name}.surface.json` };
@@ -508,7 +528,10 @@ function bakeRegion(region) {
   const map = (file) => ({ file, width, height, metres: Number(metres.toFixed(3)) });
   const json = {
     region: region.name,
-    data: DATA,
+    data:
+      region.month && region.month !== 'may'
+        ? DATA.replace('May 2004', `${region.month[0].toUpperCase()}${region.month.slice(1)} 2004`)
+        : DATA,
     centre: region.centre,
     box: [x0, x1, y0, y1],
     relief: map(files.relief),
@@ -524,4 +547,6 @@ function bakeRegion(region) {
 
 const only = opt('only', null);
 if (only !== 'region') bakeGlobe(Number(opt('size', 2048)));
-if (only !== 'globe') for (const region of REGIONS) bakeRegion(region);
+// (--region <name> bakes that region alone: another's files are left as they were baked)
+const one = opt('region', null);
+if (only !== 'globe') for (const region of REGIONS) if (!one || region.name === one) bakeRegion(region);
