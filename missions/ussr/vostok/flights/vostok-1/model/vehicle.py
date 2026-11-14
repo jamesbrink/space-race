@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "crew"))
 import sk_1  # noqa: E402
 import vostok_3ka  # noqa: E402
 import vostok_8k72k  # noqa: E402
+import vostok_cabin  # noqa: E402
 from srlib import mark_shells, run  # noqa: E402
 
 
@@ -41,7 +42,8 @@ def pilot(parent, place) -> dict:
 
 def build() -> str:
     # under the fairing the instrument module's antennas were folded: they are built stowed, and the flight's data lets them out
-    vostok_3ka.build(pilot=pilot, stowed=True)
+    # the cabin is fitted as this ship flew: the board, control panel, hand controller and Vzor of 1961 (vehicles/vostok_cabin.py)
+    vostok_3ka.build(pilot=pilot, stowed=True, fit="1961")
     az, lat = vostok_3ka.ENTRY
     # the fairing's opening is over hatch No. 1, where the line from the sphere's middle through the hatch meets the fairing
     summary = vostok_8k72k.build(hatch_az=az, hatch_z=vostok_3ka.Z_C + vostok_8k72k.common.FAIRING_R * math.tan(lat))
@@ -55,6 +57,12 @@ if __name__ == "__main__":
     mid = base + vostok_8k72k.LENGTH * MM / 2
     centre = (0, 0, vostok_3ka.Z_C * MM)
     seat = ("Seat_", "Pilot", "Cabin_SeatRails")
+    # the eyes are inside the helmet, and the hull and the fairing are between the cabin and the preview's light
+    out = ("Pilot_Helmet", "DM_", "EntryHatch", "Fairing", "Cabin_Pressure", "Cabin_Padding", "ParachuteHatch")
+    fit = ("Cabin_", "Gauge_", "Tele_", "Ctl_", "Lamp_", "Vzor_", "Globus_")
+    hatch = math.degrees(vostok_3ka.HATCH_AZ)
+    board = tuple(vostok_cabin.place(*vostok_cabin.BOARD_AT) * MM)
+    panel = tuple(vostok_cabin.place(*vostok_cabin.PANEL_AT) * MM)
     run(
         "vostok-1 vehicle",
         build,
@@ -72,11 +80,13 @@ if __name__ == "__main__":
             ("retro-engine.png", (0, 0, 0.25), 3.4, dict(azimuth=-60, elevation=-36, res=(1300, 1200), only=("Engine_",))),
             ("seat-right.png", centre, 4.4, dict(azimuth=225, elevation=10, res=(1500, 1300), only=seat)),
             ("seat-front.png", centre, 4.4, dict(azimuth=315, elevation=38, res=(1500, 1300), only=seat)),
-            (
-                "seat-view.png",
-                "",
-                0,
-                dict(seat="Seat_Pilot", lens=18, res=(1500, 1100), hide=("Pilot_Helmet", "DM_", "EntryHatch", "Fairing", "Cabin_Pressure")),
-            ),
+            ("seat-view.png", "", 0, dict(seat="Seat_Pilot", lens=18, res=(1500, 1100), hide=out)),
+            ("seat-board.png", "", 0, dict(seat="Seat_Pilot", lens=62, res=(1500, 1300), hide=out)),
+            ("seat-vzor.png", "", 0, dict(seat="Seat_Pilot", lens=40, look=(0, -24), res=(1500, 1100), hide=out)),
+            ("seat-left.png", "", 0, dict(seat="Seat_Pilot", lens=30, look=(38, 8), res=(1500, 1100), hide=out)),
+            ("seat-right-hand.png", "", 0, dict(seat="Seat_Pilot", lens=30, look=(-42, -6), res=(1500, 1100), hide=out)),
+            ("cabin-board.png", board, 1.5, dict(azimuth=hatch, elevation=-38, res=(1500, 1400), only=fit)),
+            ("cabin-panel.png", panel, 1.9, dict(azimuth=hatch - 62, elevation=-6, res=(1400, 1500), only=fit)),
+            ("cabin-fit.png", centre, 4.6, dict(azimuth=hatch + 28, elevation=-14, res=(1600, 1300), only=(*fit, *seat), hide=out)),
         ],
     )

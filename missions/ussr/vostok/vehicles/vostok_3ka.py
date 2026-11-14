@@ -469,9 +469,10 @@ def cut_openings() -> None:
 # ------------------------------------------------------------------------ the cabin
 
 
-def build_cabin(M, tv_standins: bool = True) -> None:
+def build_cabin(M, tv_standins: bool = True, fit: str | None = None) -> None:
     """`tv_standins` are the two plain barrels that stand for the television cameras on a flight that does not build
-    them (build_television does, as its own node)."""
+    them (build_television does, as its own node). `fit`: the cabin as a year's ships had it ("1961": vostok_cabin.py),
+    in place of the plain board, panel, grip, sight and cameras built here."""
     g = group("Cabin")
     arc = [deg(-90 + 180 * i / 48) for i in range(49)]
     shell = MeshBuilder()
@@ -492,34 +493,35 @@ def build_cabin(M, tv_standins: bool = True) -> None:
         rails.box((34, 1500, 60), Matrix.Translation(P(sx * 318, 130, -262)))
         for y in (-420, 60, 520):
             rails.box((30, 60, 150), Matrix.Translation(P(sx * 318, y, -350)))
-    # the instrument board, over his knees and facing his eyes
-    board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X")
-    panel.box((440, 320, 110), board)
-    globe.lathe(arc_profile(0, 0, 62, -20, 90, 10), 28, matrix=board @ Matrix.Translation(P(-70, -30, 50)))  # the Globus
-    panel.lathe([(82, 40), (82, 62), (62, 62)], 28, matrix=board @ Matrix.Translation(P(-70, -30, 0)))
-    for x, y, rr in ((-150, 100, 36), (-60, 100, 36), (30, 100, 36), (120, 100, 36), (60, -70, 30)):
-        gauges.disc(board @ P(x, y, 55), board.to_3x3() @ P(0, 0, 1), rr, 4, 20)
-    black.box((110, 190, 8), board @ Matrix.Translation(P(150, -40, 58)))  # the board of signal lamps
-    # the control panel at his left hand: black, with the switches and the logic lock's keys
-    left = Matrix.Translation(P(345, 60, 150)) @ Matrix.Rotation(deg(-78), 4, "Y")
-    black.box((300, 280, 60), left)
-    for i in range(10):
-        gear.disc(left @ P(-100 + 50 * (i % 5), -50 + 100 * (i // 5), 30), left.to_3x3() @ P(0, 0, 1), 9, 14, 8)
-    # the hand controller by his right hand: a grip on a ball, in a square housing
-    gear.box((110, 110, 80), Matrix.Translation(P(-345, 30, 150)))
-    gear.lathe(arc_profile(0, 0, 42, 0, 90, 6), 16, matrix=Matrix.Translation(P(-345, 30, 190)))
-    black.box((36, 120, 44), Matrix.Translation(P(-345, 30, 252)))
-    # the Vzor: an optical sight on the porthole beyond his feet
-    vz = to_seat(INNER.frame(*TECHNOLOGICAL))
-    gear.lathe([(PORT_R + 60, -46), (PORT_R + 60, -150), (PORT_R + 20, -230), (PORT_R - 20, -230)], 40, matrix=vz)
-    lens.lathe([(PORT_R - 20, -230), (0, -222)], 40, matrix=vz, flip=True)
-    # television cameras: one beside the board watching his face, one at his side
-    for at, turn in ((P(150, -520, 660), Matrix.Rotation(deg(-105), 4, "X")), (P(-400, 330, 330), Matrix.Rotation(deg(70), 4, "Y"))):
-        if not tv_standins:
-            break
-        cam = Matrix.Translation(at) @ turn
-        gear.lathe([(0, 0), (38, 0), (38, 150), (30, 160)], 16, matrix=cam)
-        lens.lathe([(30, 160), (0, 160)], 16, matrix=cam)
+    if fit is None:
+        # the instrument board, over his knees and facing his eyes
+        board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X")
+        panel.box((440, 320, 110), board)
+        globe.lathe(arc_profile(0, 0, 62, -20, 90, 10), 28, matrix=board @ Matrix.Translation(P(-70, -30, 50)))  # the Globus
+        panel.lathe([(82, 40), (82, 62), (62, 62)], 28, matrix=board @ Matrix.Translation(P(-70, -30, 0)))
+        for x, y, rr in ((-150, 100, 36), (-60, 100, 36), (30, 100, 36), (120, 100, 36), (60, -70, 30)):
+            gauges.disc(board @ P(x, y, 55), board.to_3x3() @ P(0, 0, 1), rr, 4, 20)
+        black.box((110, 190, 8), board @ Matrix.Translation(P(150, -40, 58)))  # the board of signal lamps
+        # the control panel at his left hand: black, with the switches and the logic lock's keys
+        left = Matrix.Translation(P(345, 60, 150)) @ Matrix.Rotation(deg(-78), 4, "Y")
+        black.box((300, 280, 60), left)
+        for i in range(10):
+            gear.disc(left @ P(-100 + 50 * (i % 5), -50 + 100 * (i // 5), 30), left.to_3x3() @ P(0, 0, 1), 9, 14, 8)
+        # the hand controller by his right hand: a grip on a ball, in a square housing
+        gear.box((110, 110, 80), Matrix.Translation(P(-345, 30, 150)))
+        gear.lathe(arc_profile(0, 0, 42, 0, 90, 6), 16, matrix=Matrix.Translation(P(-345, 30, 190)))
+        black.box((36, 120, 44), Matrix.Translation(P(-345, 30, 252)))
+        # the Vzor: an optical sight on the porthole beyond his feet
+        vz = to_seat(INNER.frame(*TECHNOLOGICAL))
+        gear.lathe([(PORT_R + 60, -46), (PORT_R + 60, -150), (PORT_R + 20, -230), (PORT_R - 20, -230)], 40, matrix=vz)
+        lens.lathe([(PORT_R - 20, -230), (0, -222)], 40, matrix=vz, flip=True)
+        # television cameras: one beside the board watching his face, one at his side
+        for at, turn in ((P(150, -520, 660), Matrix.Rotation(deg(-105), 4, "X")), (P(-400, 330, 330), Matrix.Rotation(deg(70), 4, "Y"))):
+            if not tv_standins:
+                break
+            cam = Matrix.Translation(at) @ turn
+            gear.lathe([(0, 0), (38, 0), (38, 150), (30, 160)], 16, matrix=cam)
+            lens.lathe([(30, 160), (0, 160)], 16, matrix=cam)
     # equipment under and beside the seat: telemetry under it; air regeneration, the radio and the food locker at his right
     lockers = MeshBuilder()
     for x, y, z, sx, sy, sz in (
@@ -551,8 +553,13 @@ def build_cabin(M, tv_standins: bool = True) -> None:
         (lens, "Cabin_Lenses", "lens"),
         (chute, "Cabin_ParachuteContainer", "fabric"),
     ):
-        obj = placed(mb, S).build(name, M[mat], g, sharp_angle=35)
-        inside_cabin(obj)
+        if mb.verts:
+            obj = placed(mb, S).build(name, M[mat], g, sharp_angle=35)
+            inside_cabin(obj)
+    if fit == "1961":
+        import vostok_cabin  # (here, not above: it builds on this module)
+
+        vostok_cabin.build(g, M)
     # The container is a node of its own (`ParachuteContainer`): its origin in the middle of its mouth, under hatch No. 2,
     # its own +Z (the file's +Y) out along the hatch's line, so the top of its bounds is its mouth: where the descent
     # module's parachute is made fast (`Flight.flies.chutes[].at`).
@@ -580,7 +587,7 @@ def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:
 PILOT_FORWARD = 87.0
 
 
-def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) -> dict[str, Matrix]:
+def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None, fit: str | None = None) -> dict[str, Matrix]:
     """The seat, and the flight's pilot in it. Returns the nodes under it that have a place of their own (name, frame in
     the scene): `Seat_Pilot`, at his eyes, where a pilot's builder says where they are."""
     g = group("EjectionSeat")
@@ -621,7 +628,7 @@ def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) ->
         place = Matrix.Scale(MM, 4) @ S @ Matrix.Translation((0, 0, PILOT_FORWARD)) @ Matrix.Scale(1 / MM, 4) @ Matrix.Diagonal((-1, -1, 1, 1))
         keys = pilot(group("Pilot", g), place)
         if isinstance(keys, dict) and "eyes" in keys:
-            held["Seat_Pilot"] = seat_view(g, place @ (Vector(keys["eyes"]) * 0.01))
+            held["Seat_Pilot"] = seat_view(g, place @ (Vector(keys["eyes"]) * 0.01), fit)
     # everything that rides out must clear the entry hatch's opening on its way
     s = S.to_3x3() @ Vector((0, 1, 0))
     c = V(0, 0, Z_C)
@@ -636,19 +643,24 @@ def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) ->
 BOARD_AT = (0.0, -230.0, 765.0)
 
 
-def seat_view(seat: bpy.types.Object, eyes: Vector) -> Matrix:
+def seat_view(seat: bpy.types.Object, eyes: Vector, fit: str | None = None) -> Matrix:
     """`Seat_Pilot`: an empty at the seated figure's eyes (the scene's metres), a child of the seat he rides out on. In
     the file its +Z looks at the middle of the instrument board and its +Y is as near the top of his head as that
     allows, which is what a seat's node promises (types.ts: `ModelDef.seats`). Returns its frame in the scene."""
     S = Matrix.Scale(MM, 4) @ seat_frame()
-    look = (S @ Vector(BOARD_AT) - eyes).normalized()
+    board = Vector(BOARD_AT)
+    if fit == "1961":
+        import vostok_cabin
+
+        board = vostok_cabin.board_in_seat()
+    look = (S @ board - eyes).normalized()
     head = S.to_3x3() @ Vector((0, 1, 0))
     over = (head - look * look.dot(head)).normalized()
     m = Matrix(((-look).cross(over), -look, over)).transposed().to_4x4()
     m.translation = eyes
     group("Seat_Pilot", seat)
     e = to_seat(m).translation
-    far = (S @ Vector(BOARD_AT) - eyes).length / MM
+    far = (S @ board - eyes).length / MM
     down = math.degrees(look.angle(S.to_3x3() @ Vector((0, 0, 1))))
     print(
         f"seat: the pilot's eyes at ({e.x:.0f}, {e.y:.0f}, {e.z:.0f}) mm in the seat's frame, "
@@ -1133,19 +1145,21 @@ def build(
     film_camera: bool = False,
     television: bool = False,
     lining: str = "yellow",
+    fit: str | None = None,
 ) -> str:
     """Build the spacecraft. `pilot(parent, place)` builds the man in the seat (a suit's `build_seated`); left out, the seat is empty.
     `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs. `film_camera` puts
     a Konvas in the cabin, as a node of its own: Vostok 2 was the first to carry one. `television` builds the two Seliger
     cameras as they were photographed, as a node of their own, in place of the cabin's two plain barrels: Vostok 3 and 4,
     whose picture was the first to be broadcast. `lining` is the colour of the cabin's wall (LININGS): white on Vostok 5 and
-    Vostok 6, whose flown cabins show it."""
+    Vostok 6, whose flown cabins show it. `fit` fits the cabin as a year's ships had it, in place of the plain board, panel,
+    grip and sight: "1961" is vostok_cabin.py, the board, control panel, hand controller and Vzor of Vostok 1."""
     M = materials(lining)
     build_descent_module(M)
     build_hatches(M)
-    build_cabin(M, tv_standins=not television)
+    build_cabin(M, tv_standins=not television, fit=fit)
     cut_openings()
-    held = build_seat(M, pilot)
+    held = build_seat(M, pilot, fit)
     if film_camera:
         build_film_camera(M)
     if television:
