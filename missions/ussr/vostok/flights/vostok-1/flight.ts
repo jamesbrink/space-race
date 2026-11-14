@@ -259,6 +259,9 @@ const parts: Part[] = [
   },
   {
     node: 'InstrumentModule',
+    commands: [
+      { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
+    ],
     group: 'Spacecraft',
     inside: true,
     name: 'Instrument module',
@@ -302,6 +305,7 @@ const parts: Part[] = [
   },
   {
     node: 'RetroEngine',
+    commands: [{ label: 'Fire the braking engine along the long axis (his, once the code had freed the hand controls)', ask: 'retro' }],
     group: 'Spacecraft',
     inside: true,
     name: 'TDU-1 braking engine',
@@ -336,6 +340,7 @@ const BOOSTER_DETAIL =
 const launcherParts: Part[] = [
   {
     node: 'Fairing',
+    commands: [{ label: 'Drop the fairing (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:drop:fairing' }],
     group: 'Third stage',
     name: 'Fairing',
     summary: 'Two halves, and a round hole to be thrown out through.',
@@ -364,6 +369,11 @@ const launcherParts: Part[] = [
   },
   {
     node: 'BlockE',
+    commands: [
+      { label: 'Light the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:ignite:2' },
+      { label: 'Cut off the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:2' },
+      { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
+    ],
     group: 'Third stage',
     inside: true,
     name: 'Block E, the third stage',
@@ -409,6 +419,10 @@ const launcherParts: Part[] = [
   },
   {
     node: 'CoreStage',
+    commands: [
+      { label: 'Cut off the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:1' },
+      { label: 'Drop the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:1' },
+    ],
     group: 'Core, Block A',
     inside: true,
     name: 'Block A, the core',
@@ -433,6 +447,10 @@ const launcherParts: Part[] = [
   },
   {
     node: 'CoreEngine',
+    commands: [
+      { label: 'Cut off the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:1' },
+      { label: 'Drop the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:1' },
+    ],
     group: 'Core, Block A',
     inside: true,
     name: 'RD-108',
@@ -457,6 +475,9 @@ const launcherParts: Part[] = [
   ...BOOSTERS.map(
     ([letter, block, az], i): Part => ({
       node: `Booster_${letter}`,
+      commands: [
+        { label: 'Drop the strap-ons (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:0' },
+      ],
       group: 'Strap-on boosters',
       inside: true,
       name: `Block ${letter} (${block})`,

@@ -80,6 +80,8 @@ export interface Run {
   sheds?: Sheds;
   /** An orbital flight's bodies down from the ejection, each on its own track, with their parachutes (sim/staged.ts `descentOf`). */
   descent?: DrawnDescent | null;
+  /** A flight flown by hand: what it gave for each of the record's checks (by check id), for the Flown panel to set beside the record's run. */
+  held?: Record<string, number>;
 }
 
 /** A parachute at an instant, for viewer/chute.ts to draw. */

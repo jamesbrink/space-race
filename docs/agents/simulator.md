@@ -349,7 +349,11 @@ never adjusted to bring a check in.
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
   and goes with it (`Stage.lookAtCraft`: the chase view aimed there; 0 centres the vehicle again). Off the vehicle
   nothing is offered but, on a stage that has left, to follow it down (camera.md): nobody gets out and walks, and the
-  view is not sent to a place the vehicle has left. A mechanism the pilot
+  view is not sent to a place the vehicle has left. On a flight into orbit a part's commands are the launch vehicle's
+  steps (`step:<ignite|cut|separate>:<stage>`, `step:drop:<id>`: orbitdeck.ts `can` while the step is still to come or
+  undone, `ask` taking the flight over as Space does, the live vehicle doing what it does with it at that instant) and the
+  braking engine (`retro`, once the hands are free); each label says what the pilot could not do. The Flown panel sets a
+  flight flown by hand beside the record's run, check by check ("You": `Run.held`). A mechanism the pilot
   can work (the periscope) is a `Command` on its part too: `work:<its id>`, offered as putting it out or drawing it in
   by where it is headed (below).
   The same menu, and **Y** anywhere, takes the vehicle's skin off and puts it back: the cutaway (`ModelDef.cutaway`,
