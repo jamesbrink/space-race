@@ -541,4 +541,13 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(may1963.moon.elevation / DEG, 31.6, 0.05, 'Moon elevation over Complex 14, 15 May 1963');
   near(may1963.moon.illuminated, 0.615, 0.005, 'Moon lit over Complex 14, 15 May 1963');
   assert.equal(may1963.moon.waxing, false, 'a waning Moon, a day before last quarter, up in daylight');
+  // Gemini-Titan 3: the figures quoted in its README ("The sky at liftoff")
+  const gt3 = flights.find((f) => f.id === 'usa/gemini/gt-3');
+  const march1965 = skyFrom(siteFrame(gt3.site), julianDate(gt3.launch));
+  near(march1965.sun.azimuth / DEG, 113.5, 0.05, 'Sun azimuth over Complex 19, 23 March 1965');
+  near(march1965.sun.elevation / DEG, 38.1, 0.05, 'Sun elevation over Complex 19, 23 March 1965');
+  near(march1965.moon.azimuth / DEG, 235.4, 0.05, 'Moon azimuth over Complex 19, 23 March 1965');
+  near(march1965.moon.elevation / DEG, 11.3, 0.05, 'Moon elevation over Complex 19, 23 March 1965');
+  near(march1965.moon.illuminated, 0.645, 0.005, 'Moon lit over Complex 19, 23 March 1965');
+  assert.equal(march1965.moon.waxing, false, 'a waning gibbous Moon, going down in the south-west');
 });

@@ -45,6 +45,8 @@ January 1967; NASA CR on NTRS 19670076796); **GIV** is *Gemini Program Mission R
 | Tank domes' depth | 34 in | estimated | drawn as ellipses in a figure too small to scale; a 2:1 ellipse would be 30 in |
 | First stage chamber exit | 44.8 in across | estimated | an expansion ratio of 8 and a throat sized from general figures for the engine (215,000 lbf, about 780 psia). No drawing of the engine has been read |
 | Second stage engine exit | 64.8 in across | estimated | an expansion ratio of 49.2, likewise |
+| Second stage engine: tube bell to ablative skirt | at 0.514 of the exit's diameter: 33.3 in across | the ratios documented, the fraction derived | LSFR, p. II.C-23: 49.2:1 "achieved by use of an ablative extension from 13:1"; the square root of 13/49.2. Where along the bell that falls is estimated |
+| Second stage roll control | the turbine's exhaust through a swivelled nozzle | documented | the same page |
 | First stage chambers' axes | 24 in either side of the vehicle's | estimated | two 44.8 in bells side by side |
 | External conduits | 8.8 in wide, 2.8 in proud | estimated | the liftoff photograph |
 | Round holes in the first stage's forward skirt | 18, 6.8 in across, at station 635 | estimated | counted and scaled off NASA S65-21881 and the liftoff photograph |
@@ -151,7 +153,11 @@ In the gallery the vehicle comes apart as it staged.
 - **UNITED STATES is on one side**, where the photographs show it. Whether it was repeated on the
   other is not established.
 - **The stiffened skins** (the forward skirt's integral stiffening, the tanks' chemically milled
-  panels) are smooth.
+  panels) are smooth. In S65-21881 the milled panels show as a patchwork of tone on the bare
+  tank walls; how many there are and where their lands run is not in anything read, and they
+  are not drawn from the photograph.
+- **The first stage's expansion ratio of 8 is not from a primary source**; LSFR mentions a change
+  "to 12/1" that was considered. Both bells' exits, 44.8 and 64.8 in, stay estimated.
 - **No mass properties, no thrust curve.** The flight cannot be flown yet.
 - **Its levels of detail change at the viewer's own distances**: they have not been measured. Below
   half detail the ports and holes are dark discs, not openings.

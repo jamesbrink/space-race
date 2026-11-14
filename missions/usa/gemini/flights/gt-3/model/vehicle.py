@@ -4,7 +4,8 @@ Run headless:
     pnpm model:gt-3            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The flight's vehicle: spacecraft and launch vehicle, as they left the pad. The spacecraft is
-../../../vehicles/gemini_spacecraft.py and the launch vehicle ../../../vehicles/titan_ii_glv.py; what was this
+../../../vehicles/gemini_spacecraft.py (its skins in gemini_shell.py, its crew station in gemini_cabin.py) and the
+launch vehicle ../../../vehicles/titan_ii_glv.py; what was this
 ship's and this vehicle's own is said here (FIT, and the launch vehicle's arguments) and argued in ../spacecraft.md
 and ../../../vehicles/titan-ii-glv.md.
 
