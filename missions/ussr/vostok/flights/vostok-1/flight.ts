@@ -192,7 +192,7 @@ const parts: Part[] = [
       ['Supplies', '10 days'],
       ['Instrument board', 'PD-1-3KA: Globus, clock, three gauges, 24 signal lamps'],
       ['He read before launch', '1.0 atm, 65 %, 19 °C; 155, 320 and 155 atm of gas'],
-      ['Globus correction window', '510'],
+      ['Globus correction window', '710'],
       ['Vzor field of view', '7°'],
       ['Manual control code', '1-4-5, on six keys (Kamanin; 1-2-5 in later memoirs)'],
     ],
@@ -726,7 +726,7 @@ const SIGNALS: [block: string, lamps: number, says: string][] = [
 // The Globus (IMP): what it showed and how, and how far the simulator's is the instrument (spacecraft.md, "Globus")
 const GLOBUS =
   'The ship’s place over the Earth: “it turns all the time, following the ship’s motion over the Earth, and the fixed cross in its ring shows over which point of the globe the ship is now” (Ponomareva). Set before launch with the orbit’s period as a three-figure number in its correction window and turned by its two knobs in the planes of the equator and of the orbit, it started at the separation (“the Globus stopped about the middle of the Mediterranean”, Gagarin) and was good to some 300 km (his report). ' +
-  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 510, as one print of the transcript has it; the archive’s print has 710. Its landing-place mode (a tumbler threw the globe on to where a burn now would land) is not here, there being no node for the tumbler. Its map is the globe’s own, in two tones.';
+  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 710, as the archive’s record of the transcript has it in both its prints; a newspaper’s print has 510. Its landing-place mode (a tumbler on the control panel threw the globe on to where a burn now would land) is not simulated: the tumbler is there to be read about. Its map is the globe’s own, in two tones.';
 // The Vzor's view (CabinDef.periscope). Its axis is the model's: square out of hatch No. 3's porthole, whose latitude on the
 // ball is estimated (15 degrees toward the nose: vostok-3ka.md), so the axis on the Earth's centre leaves the long axis 15
 // degrees off level; the ring's angles and the screen's field are estimated (spacecraft.md, "The Vzor")
@@ -905,6 +905,13 @@ vehicle.cabin = {
     },
     { node: 'Ctl_Oxygen', name: 'Oxygen', about: 'Under the clear cover. What it switched is not in anything read. Not simulated.' },
     { node: 'Ctl_Alarm', name: 'Emergency signal', about: 'Under the clear cover: sends the alarm to the ground. Not simulated.' },
+    {
+      // (its two positions are in its `throw` extras, vehicles/vostok_cabin.py; no command of the deck's throws the globe yet)
+      node: 'Ctl_GlobusMode',
+      name: 'Globus: present place or landing place',
+      about:
+        'ГЛОБУС, on the control panel’s face: МЕСТО ПОЛОЖЕНИЯ, where the ship is, or МЕСТО ПОСАДКИ, where it would come down if the braking engine were started now (Tyapchenko; the instruction of January 1961 has the pilot throw it over and back as a check after reaching orbit). It stands at the present place, as it flew. The landing-place mode is not simulated.',
+    },
     {
       node: 'Ctl_HandController',
       name: 'Hand controller',

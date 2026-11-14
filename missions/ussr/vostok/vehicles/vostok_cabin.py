@@ -73,6 +73,8 @@ VZOR_PORTS = 8
 TV_AT = (-40.0, -705.0, 505.0)
 TV_LAMP_AT = (62.0, -705.0, 505.0)
 LAMPS_AT = ((235.0, -150.0, 850.0), (-235.0, -150.0, 850.0))
+# What the Globus's correction window read on the pad: the orbit's period as a three-figure code (spacecraft.md, "Globus").
+GLOBUS_CORRECTION = "710"
 RADIO_AT = (-455.0, -455.0, 470.0)
 
 # ---------------------------------------------------------------------- what the gauges show
@@ -429,11 +431,12 @@ def globus(c: Fit, F: Matrix) -> None:
     lu, lv = gu, gv + rw + 26.0
     c.block(c.into("Cabin_Bezels", "bezel"), F, lu, lv, 44.0, 13.0, 3.0, 6.0)
     c.block(c.into("Cabin_Windows", "dial"), F, lu, lv, 38.0, 8.0, 6.0, 7.4)
-    # the correction counter's window: Gagarin read 510 in it
+    # the correction counter's window: Gagarin read 710 in it at 07:29 («коррекция цифра 710»: the transcript as the
+    # archive's two prints have it; a newspaper's print has 510, and other figures of the same report wrong: spacecraft.md)
     cu, cv = on_board(232.0, 44.0)
     c.block(c.into("Cabin_Bezels", "bezel"), F, cu, cv, 34.0, 15.0, 3.0, 6.0)
     c.block(c.into("Cabin_Windows", "dial"), F, cu, cv, 29.0, 10.0, 6.0, 7.4)
-    c.text(c.into("Cabin_DialMarks", "marks"), F, "510", cu, cv, 6.2, 8.9)
+    c.text(c.into("Cabin_DialMarks", "marks"), F, GLOBUS_CORRECTION, cu, cv, 6.2, 8.9)
     # the switch under it: С, П, Л round a black knob
     su, sv = on_board(238.0, 92.0)
     c.turned(c.into("Cabin_Knobs", "knob"), F, su, sv, [(13.0, 3.0), (13.0, 9.0), (8.0, 12.0), (8.0, 26.0), (0.0, 26.0)], 16)
@@ -568,7 +571,9 @@ def control_panel(c: Fit) -> dict:
     title("ГЛОБУС", -62.0, 134.0)
     title("МЕСТО ПОЛОЖЕНИЯ", -100.0, 122.0, 2.6)
     title("ВКЛ", -30.0, 122.0, 2.6)
-    tumbler(c, F, -100.0, 104.0)
+    # (the Globus's mode: built at "место положения", the place under the ship, as it flew; thrown to "место посадки",
+    # where a burn begun now would land: Tyapchenko, fig. 16's caption, «тумблера «Глобус» на пульте»)
+    tumbler(c, F, -100.0, 104.0, name="Ctl_GlobusMode", throw=(24.0, -24.0))
     tumbler(c, F, -30.0, 104.0)
     title("МЕСТО ПОСАДКИ", -100.0, 88.0, 2.6)
     title("ВЫКЛ", -30.0, 88.0, 2.6)
