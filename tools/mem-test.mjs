@@ -6,6 +6,8 @@
 //   node tools/mem-test.mjs --size 1440x900@2 --desktop    another size, with a mouse: no budget is held there
 //   node tools/mem-test.mjs --query lighter=0      more for the address's query (the tier's switch)
 //   node tools/mem-test.mjs --gallery              come in through the gallery, then go to the site (two stages alive?)
+//   node tools/mem-test.mjs --seated --flight usa/gemini/gt-3    the gallery alone, then sitting in each of the vehicle's
+//                                                  seats (the inside at full detail, a crew in it): held to `ready` and `aboard`
 //   node tools/mem-test.mjs --json out.json        keep the whole account
 //   node tools/mem-test.mjs --flight ussr/vostok/vostok-1    another flight's launch site (Freedom 7's by default): one with no
 //                                                  flight deck is held to the budget ready, late, on foot and at its peak
@@ -83,7 +85,8 @@ const note = async (name) => {
   return r;
 };
 
-const start = flag('gallery') ? `${flightId}/gallery` : `${flightId}/site/vehicle`;
+const seated = flag('seated');
+const start = flag('gallery') || seated ? `${flightId}/gallery` : `${flightId}/site/vehicle`;
 await page.goto(`${url}?${query}#${start}`);
 // (sampled while it loads: what is held for a moment during the load is where a phone is killed)
 const loading = (async () => {
@@ -116,47 +119,64 @@ async function settle(most) {
   }
 }
 
-if (flag('gallery')) {
+if (seated) {
+  // the gallery alone: ready, then in each seat in turn (C), the camera settled and the inside's pictures sent
+  await page.waitForFunction(() => window.sr.gallery?.ready, null, { timeout: 180000 });
+  await note('ready (gallery)');
+  const seats = await page.evaluate(() => window.sr.gallery.stage.seatLabels.length);
+  for (let n = 0; n < seats; n++) {
+    await page.keyboard.press('c');
+    await settle(20000);
+    await note(`aboard, seat ${n + 1}`);
+  }
+  if (!seats) console.log('(no seat: nothing to sit in)');
+  await page.keyboard.press('c');
+  await settle(10000);
+  await note('later, up again');
+} else if (flag('gallery')) {
   await note('gallery ready');
   await watch(4000, peak);
   await page.evaluate((id) => (location.hash = `#${id}/site/vehicle`), flightId);
   await page.waitForFunction(() => document.body.classList.contains('scene-ready'), null, { timeout: 180000 });
   await note('site, from gallery');
 } else await note('ready');
-await watch(Number(value('wait', '30')) * 1000, peak);
-await note('later (late maps)');
-await page.evaluate(() => window.sr.stage.enterWalk(window.sr.flight.models.find((m) => m.walker)?.id ?? 'crew'));
-await page.waitForTimeout(1500);
-await page.keyboard.down('w');
-await watch(5000, peak);
-await page.keyboard.up('w');
-await note('on foot');
-// the flight, straight from the walk (the walk's maps are still held): followed up to where the whole Earth's maps are wanted
-// (a flight with no flight deck yet has nothing to follow: its launch site is all there is)
-const flies = await page.evaluate(() =>
-  Boolean(window.sr.flight.flies && (window.sr.flight.trajectory?.body || window.sr.flight.orbital?.ascent)),
-);
-if (flies) {
-  await page.evaluate(() => {
-    const sr = window.sr;
-    sr.stage.exitWalk();
-    sr.clock.seek(150);
-    sr.clock.play();
-    sr.stage.setCamera('chase');
-  });
-  await settle(60000);
-  await note('in flight');
-  await page.evaluate(() => window.sr.stage.setCamera('onboard'));
-  await settle(20000);
-  await note('aboard, in flight');
-} else console.log('(no flight deck: not followed into flight or aboard)');
+if (!seated) await watch(Number(value('wait', '30')) * 1000, peak);
+let flies = false;
+if (!seated) {
+  await note('later (late maps)');
+  await page.evaluate(() => window.sr.stage.enterWalk(window.sr.flight.models.find((m) => m.walker)?.id ?? 'crew'));
+  await page.waitForTimeout(1500);
+  await page.keyboard.down('w');
+  await watch(5000, peak);
+  await page.keyboard.up('w');
+  await note('on foot');
+  // the flight, straight from the walk (the walk's maps are still held): followed up to where the whole Earth's maps are wanted
+  // (a flight with no flight deck yet has nothing to follow: its launch site is all there is)
+  flies = await page.evaluate(() =>
+    Boolean(window.sr.flight.flies && (window.sr.flight.trajectory?.body || window.sr.flight.orbital?.ascent)),
+  );
+  if (flies) {
+    await page.evaluate(() => {
+      const sr = window.sr;
+      sr.stage.exitWalk();
+      sr.clock.seek(150);
+      sr.clock.play();
+      sr.stage.setCamera('chase');
+    });
+    await settle(60000);
+    await note('in flight');
+    await page.evaluate(() => window.sr.stage.setCamera('onboard'));
+    await settle(20000);
+    await note('aboard, in flight');
+  } else console.log('(no flight deck: not followed into flight or aboard)');
+}
 console.log(`peak ${peak.value.toFixed(0)} MiB`);
 if (value('json')) (await import('node:fs')).writeFileSync(value('json'), JSON.stringify({ device, peak: peak.value, stages }, null, 1));
 await browser.close();
 if (errors.length) console.log(`console errors: ${errors.length}\n  ${errors.slice(0, 6).join('\n  ')}`);
 
 if (!desktop && !flag('no-budget')) {
-  const of = (name) => stages.find((s) => s.name.startsWith(name))?.total ?? 0;
+  const of = (name) => Math.max(0, ...stages.filter((s) => s.name.startsWith(name)).map((s) => s.total)); // (the most, over each seat)
   const over = [
     ['ready', of('ready') || of('site')],
     ['late', of('later')],
@@ -164,7 +184,7 @@ if (!desktop && !flag('no-budget')) {
     ['flight', of('in flight')],
     ['aboard', of('aboard')],
     ['peak', peak.value],
-  ].filter(([k, v]) => v > BUDGET[k] && (flies || (k !== 'flight' && k !== 'aboard')));
+  ].filter(([k, v]) => v > BUDGET[k] && (flies || (seated && k === 'aboard') || (k !== 'flight' && k !== 'aboard')));
   if (over.length || errors.length) {
     for (const [k, v] of over) console.error(`over budget at ${k}: ${v.toFixed(0)} MiB, ${BUDGET[k]} allowed`);
     process.exit(1);

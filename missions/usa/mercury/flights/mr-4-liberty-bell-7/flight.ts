@@ -19,6 +19,7 @@ import {
 import { LC5 } from '../../sites/lc-5.ts';
 import { WEATHER } from './weather.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
+import { mercuryCabin, mercurySeat, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
 
 const IN = 0.0254;
 
@@ -1321,3 +1322,15 @@ export const flight: Flight = {
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
 };
+
+// The couch as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes).
+// aboard at 3:58 a.m. e.s.t. (MORNING, above) until the gantry left: as the morning has it
+vehicle.seats = [mercurySeat([est(3, 58), GANTRY_REMOVED])];
+vehicle.cabin = mercuryCabin({
+  window: 'Window',
+  periscope: {
+    about:
+      'An 8 in screen of the Earth under the capsule, through a wide-angle objective in the cone below the pilot’s feet. Click to look into it, and again for high power.',
+    at: OBJECTIVE_OUT,
+  },
+});

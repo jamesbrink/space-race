@@ -86,14 +86,19 @@ export class Cameras {
   /** What is under the pointer for the zoom gesture going on: looked up once a gesture, when it first goes in. */
   private under: THREE.Vector3 | null | undefined;
 
-  constructor(
-    private readonly camera: THREE.PerspectiveCamera,
-    private readonly canvas: HTMLElement,
-    private readonly scene: Scene,
-    private readonly told: Told,
-    /** The lens views are framed for, degrees. */
-    private readonly lens: number,
-  ) {
+  private readonly camera: THREE.PerspectiveCamera;
+  private readonly canvas: HTMLElement;
+  private readonly scene: Scene;
+  private readonly told: Told;
+  /** The lens views are framed for, degrees. */
+  private readonly lens: number;
+
+  constructor(camera: THREE.PerspectiveCamera, canvas: HTMLElement, scene: Scene, told: Told, lens: number) {
+    this.camera = camera;
+    this.canvas = canvas;
+    this.scene = scene;
+    this.told = told;
+    this.lens = lens;
     this.orbit = new OrbitRig(scene, lens);
     this.chase = new ChaseRig(scene, lens, 'chase');
     this.locked = new ChaseRig(scene, lens, 'locked');
@@ -154,6 +159,8 @@ export class Cameras {
    */
   available(): RigId[] {
     const craft = this.scene.craft();
+    // (an exhibit stands still to be sat in: there is the view of it, and the view from its seat)
+    if (craft?.exhibit) return craft.seat ? ['orbit', 'onboard'] : ['orbit'];
     const about: RigId[] = craft
       ? ['chase', 'locked', ...(craft.seat ? (['onboard'] as const) : []), ...(this.padSees() ? (['pad'] as const) : [])]
       : [];
@@ -184,7 +191,7 @@ export class Cameras {
     const craft = this.scene.craft();
     if (
       id === this.active.id ||
-      (VEHICLE.includes(id) && !craft) ||
+      (VEHICLE.includes(id) && (!craft || (craft.exhibit && id !== 'onboard'))) ||
       (id === 'onboard' && !craft?.seat) ||
       (id === 'pad' && !this.padSees())
     )
@@ -194,19 +201,43 @@ export class Cameras {
     const from: Pose = { position: this.now.position.clone(), quaternion: this.now.quaternion.clone(), fov: this.now.fov };
     const next = this.rigOf(id);
     if (id === 'pad') this.pad.stand(this.tripod(last, from));
-    next.enter(
-      from,
-      id === 'orbit' ? this.pivotFor(last, from) : last.pivot.clone(),
-      last === this.onboard || last === this.pad,
-      // (the place's view at a distance nobody chose: a rig about the vehicle frames the vehicle, it does not inherit it)
-      last === this.orbit && !this.orbit.handSet,
-    );
+    // Out of an exhibit's seat to the view it was taken from: that view is as it was left (it has not been stepped since),
+    // and is taken up as it stands. Into one, the view it is taken from is remembered for that.
+    const back = last === this.onboard && id === this.seatedFrom && Boolean(craft?.exhibit);
+    this.seatedFrom = id === 'onboard' && craft?.exhibit && (last === this.orbit || last === this.free) ? last.id : null;
+    if (!back)
+      next.enter(
+        from,
+        id === 'orbit' ? this.pivotFor(last, from) : last.pivot.clone(),
+        last === this.onboard || last === this.pad,
+        // (the place's view at a distance nobody chose: a rig about the vehicle frames the vehicle, it does not inherit it)
+        last === this.orbit && !this.orbit.handSet,
+      );
     this.active = next;
-    if (next === this.orbit) this.orbit.centred = false;
+    if (next === this.orbit && !back) this.orbit.centred = false;
     this.under = undefined;
     this.handOver(from, snap);
     if (id === 'orbit') this.showPivot();
     this.told.rig(id);
+  }
+
+  /** The view an exhibit's seat was taken from (`set`): where leaving the seat goes back to, as it was left. */
+  private seatedFrom: RigId | null = null;
+
+  /** Out of an exhibit's seat: back to the view it was taken from, as that was left (the orbiting view, if none). */
+  unseat(): void {
+    if (this.active === this.onboard) this.set(this.seatedFrom ?? 'orbit');
+  }
+
+  /**
+   * The seat the on-board view is from has changed (another seat of the same exhibit): the head is a fresh one in it,
+   * and the handover carries the eye across, as a change of rig does.
+   */
+  reseat(): void {
+    if (this.active !== this.onboard || !this.scene.craft()?.seat) return;
+    const from: Pose = { position: this.now.position.clone(), quaternion: this.now.quaternion.clone(), fov: this.now.fov };
+    this.onboard.enter();
+    this.handOver(from, false);
   }
 
   /**

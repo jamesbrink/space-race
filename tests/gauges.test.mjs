@@ -188,7 +188,10 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
       if (cabin.globe) assert.ok(nodes.has(cabin.globe.node), `globe ${cabin.globe.node} is not in ${model.url}`);
       if (cabin.periscope?.ring)
         assert.ok(nodes.has(cabin.periscope.ring.mesh), `ring ${cabin.periscope.ring.mesh} is not in ${model.url}`);
-      if (cabin.lighting) {
+      // (a model with no switch built for its lights says so, and they are thrown from the page alone)
+      if (cabin.lighting && !cabin.lighting.control)
+        assert.match(cabin.lighting.about, /no switch|not modelled|not built/i, 'lighting: no control, and it does not say why');
+      if (cabin.lighting?.control) {
         // the lights' switch is a node with a turn for each position it has, the first as built; and each position
         // lights lamps the model has, each with its tube in the file
         const lever = nodes.get(cabin.lighting.control);

@@ -1,5 +1,6 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
+import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
 
 const DEG = Math.PI / 180;
 const KGF = 9.80665;
@@ -571,6 +572,11 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -32, 1) },
   ],
 };
+
+// The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). When he went aboard is
+// not in this flight's data and there is no launch site to board it at yet: the span is a placeholder (estimated).
+vehicle.seats = [vostokSeat([-3 * 3600, -3600])];
+vehicle.cabin = vostokCabin();
 
 export const flight: Flight = {
   id: 'ussr/vostok/vostok-4',

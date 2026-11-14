@@ -90,7 +90,7 @@ test('the cabin lights go by their switch: thrown, the lamps it names are lit, t
     [0.7, 0.5],
     'as built, each lamp at the strength the flight gives it',
   );
-  assert.deepEqual(c.cabin.lighting, { way: 0, says: 'On', name: 'Cabin lights' });
+  assert.deepEqual(c.cabin.lighting, { way: 0, says: 'On', name: 'Cabin lights', built: true });
   assert.equal(c.cabin.light(), 'Off');
   // (with no time passing, as under a frozen stage, it is there at once: nothing eases from the wall's clock)
   c.cabin.step(0, 0, 2437424.5, 1);

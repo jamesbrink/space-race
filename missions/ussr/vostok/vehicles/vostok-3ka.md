@@ -149,3 +149,8 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   and stay with the instrument module is documented; how far they sprang is not.
 - **Lightening holes in the support ring are square.**
 - **No lettering or markings.** None has been found for the flown article.
+- **Sat in from the gallery, Vostoks 2 to 6 have only the seat, the portholes and the lamp** (`../vehicles/cabin.ts`). The
+  cabin these build is shapes: no needle, telelight or control is a node of its own (`Gauge_*`, `Tele_*`, `Ctl_*`), there
+  is no Vzor screen or ring (`Vzor_Screen`, `Vzor_Ring`), no lamp fitting (`Lamp_*`) and no lighting tumbler
+  (`Ctl_Lighting` with `throw` extras), so none can be named, read, worked or looked into. Vostok 1's fit
+  (vehicles/vostok_cabin.py) has all of them; each later ship needs its own fit for its own cabin.

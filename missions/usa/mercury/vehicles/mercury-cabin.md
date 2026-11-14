@@ -89,3 +89,11 @@ for what is seen only from the seat), not a second script.
   a lamp, from 1.5 in off the surface, and evened between neighbours; what is transparent is not shaded.
 - **`floodlight`** is a four-watt fluorescent fitting; `thrown` a toggle the viewer throws. A capsule says where its
   lamps hang, which is the left hand one, and what its switch's positions are.
+
+## Sat in from the gallery
+
+Freedom 7's cabin is described in full in its flight.ts. The orbital-type capsules' (Liberty Bell 7 to Faith 7) are
+described by `cabin.ts` beside this file from what the models already have: the couch's eye point, the pilot's helmet
+hidden from inside it, the floodlights and their three-way switch, the window, and the periscope (none on Faith 7). Their
+instruments, telelights and controls are nodes of the model (`Gauge_*`, `Tele_*`, `Ctl_*`) but are not yet named in any
+flight's data, so the pointer names none of them and none reads anything: each flight needs its own words for them.

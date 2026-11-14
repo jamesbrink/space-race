@@ -183,14 +183,31 @@ test('what can stand in the gallery comes from the headings of the parts list', 
 
 test('a gallery address names a part, or what stands there', () => {
   const vehicle = exhibit(mr3);
-  assert.deepEqual(galleryAt(vehicle, ''), { plinth: plinths(vehicle)[0], part: null });
+  assert.deepEqual(galleryAt(vehicle, ''), { plinth: plinths(vehicle)[0], part: null, seat: null });
   const part = galleryAt(vehicle, 'CrewCabin');
   assert.equal(part.part, 'CrewCabin');
   assert.equal(part.plinth.id, 'whole');
   assert.equal(galleryAt(vehicle, 'spacecraft').plinth.id, 'spacecraft');
   assert.equal(galleryAt(vehicle, 'spacecraft').part, null);
   // what names nothing is the whole of it, not an error
-  assert.deepEqual(galleryAt(vehicle, 'NoSuchThing'), { plinth: plinths(vehicle)[0], part: null });
+  assert.deepEqual(galleryAt(vehicle, 'NoSuchThing'), { plinth: plinths(vehicle)[0], part: null, seat: null });
+});
+
+test('a gallery address names a seat to sit in, by its node, and it is a choice within the gallery', () => {
+  const gt3 = flights.find((f) => f.id === 'usa/gemini/gt-3');
+  const vehicle = exhibit(gt3);
+  // each of the vehicle's seats, by its node: sat in with the whole vehicle standing, nothing chosen
+  vehicle.seats.forEach((seat, i) => assert.deepEqual(galleryAt(vehicle, seat.node), { plinth: plinths(vehicle)[0], part: null, seat: i }));
+  // a link straight into Grissom's seat comes back to it, and is the gallery's own entry in the history
+  const into = formatAddress(gt3.id, 'gallery', 'Seat_CommandPilot');
+  assert.equal(into, '#usa/gemini/gt-3/gallery/Seat_CommandPilot');
+  assert.deepEqual(parseAddress(into), { flightId: gt3.id, place: 'gallery', what: 'Seat_CommandPilot' });
+  assert.ok(samePlace(into, formatAddress(gt3.id, 'gallery')), 'sitting down is not going anywhere');
+  assert.ok(samePlace(into, formatAddress(gt3.id, 'gallery', 'Seat_Pilot')), 'nor is moving to the other seat');
+  // a vehicle with no seats has none to name: the word is nothing, and the whole of it is shown
+  assert.equal(galleryAt({ ...vehicle, seats: undefined }, 'Seat_Pilot').seat, null);
+  // a part's node is a part before it is anything else
+  assert.equal(galleryAt(vehicle, 'CrewStation').part, 'CrewStation');
 });
 
 test('the views of what stands there are the vehicle`s own, of parts that are there', () => {
@@ -228,7 +245,12 @@ test('the gallery`s stage is given the vehicle alone, in the studio, with nothin
     assert.equal(model.backdrop, 'studio');
     assert.equal(model.home, WHOLE_VIEW);
     assert.ok(model.views.some((v) => v.id === WHOLE_VIEW));
-    for (const key of ['walker', 'seats', 'sequence', 'with', 'position', 'rotationY']) assert.equal(model[key], undefined, key);
+    for (const key of ['walker', 'sequence', 'with', 'position', 'rotationY']) assert.equal(model[key], undefined, key);
+    // its seats are kept to be sat in where it stands, each as the vehicle has it but for whoever stood outside it
+    assert.deepEqual(
+      model.seats,
+      exhibit(f).seats?.map(({ figure: _figure, ...seat }) => seat),
+    );
     for (const key of ['site', 'trajectory', 'checks', 'flies', 'surroundings']) assert.equal(staged[key], undefined, key);
     // the parts, the slider and the cutaway are the vehicle's own, untouched
     assert.deepEqual(model.parts, exhibit(f).parts);
