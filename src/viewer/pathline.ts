@@ -109,6 +109,8 @@ const DEEPEST = 24;
 /** Pieces the span is first cut into, at least; and the most of the curve's own points one chord may stand for unexamined. */
 const FIRST = 8;
 const KNOTS = 64;
+/** Pixels: the shortest chord drawn, as seen from the eye (`sample`). */
+export const SHORTEST_PX = 0.75;
 
 /**
  * The line to draw from `t0` to `t1`: instants into `outT` and places (in the scene, from `place`) into `outP`, at
@@ -226,7 +228,54 @@ export function sample(
       }
     }
   }
-  return n;
+  // no chord shorter than `SHORTEST_PX` as seen from the eye (but the last): where the line runs at the eye or away to a
+  // point, a chord shorter than a pixel has no direction on the screen to push its ribbon out across, and a run of them
+  // draws a scribble
+  // (a point is let go only if every one let go since the last kept stays within `error` of the chord that replaces them)
+  const within = (o: number, from: number, to: number, j: number): boolean => {
+    const ax = outP[o]!;
+    const ay = outP[o + 1]!;
+    const az = outP[o + 2]!;
+    const dx = outP[j * 3]! - ax;
+    const dy = outP[j * 3 + 1]! - ay;
+    const dz = outP[j * 3 + 2]! - az;
+    const dd = dx * dx + dy * dy + dz * dz;
+    // (each point let go, and the curve half way to the next: the chord stands for all of it)
+    for (let q = 2 * (from - 1) + 1; q < 2 * to - 1; q++) {
+      const m = q >> 1;
+      if (q & 1) place(0.5 * (outT[m]! + outT[m + 1]!), mid, 0);
+      else mid.set(outP.subarray(m * 3, m * 3 + 3));
+      const px = mid[0]! - ax;
+      const py = mid[1]! - ay;
+      const pz = mid[2]! - az;
+      const k = dd > 0 ? Math.min(1, Math.max(0, (px * dx + py * dy + pz * dz) / dd)) : 0;
+      const off = Math.hypot(px - dx * k, py - dy * k, pz - dz * k);
+      const far = Math.max(near, Math.hypot(ax + dx * k - ex, ay + dy * k - ey, az + dz * k - ez));
+      if ((off / far) * lens.pxPerRad > error) return false;
+    }
+    return true;
+  };
+  let kept = 1;
+  let since = 1;
+  for (let i = 1; i < n; i++) {
+    const o = (kept - 1) * 3;
+    const ax = outP[o]! - ex;
+    const ay = outP[o + 1]! - ey;
+    const az = outP[o + 2]! - ez;
+    const bx = outP[i * 3]! - ex;
+    const by = outP[i * 3 + 1]! - ey;
+    const bz = outP[i * 3 + 2]! - ez;
+    const across = Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx);
+    const angle = Math.atan2(across, ax * bx + ay * by + az * bz);
+    if (angle * lens.pxPerRad < SHORTEST_PX && i < n - 1 && within(o, since, i + 1, i + 1)) continue;
+    since = i + 1;
+    outT[kept] = outT[i]!;
+    outP[kept * 3] = outP[i * 3]!;
+    outP[kept * 3 + 1] = outP[i * 3 + 1]!;
+    outP[kept * 3 + 2] = outP[i * 3 + 2]!;
+    kept++;
+  }
+  return kept;
 }
 
 /**

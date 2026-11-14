@@ -12,9 +12,9 @@ import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { orbitPredictor } from '../src/sim/orbitpath.ts';
 import { apsides, predict } from '../src/sim/predict.ts';
-import { julianDate } from '../src/world/time.ts';
-import { siteFrame } from '../src/world/frames.ts';
 import { curveAt, curveOf, ERROR_PX, sample } from '../src/viewer/pathline.ts';
+import { siteFrame } from '../src/world/frames.ts';
+import { julianDate } from '../src/world/time.ts';
 
 /** A seeded generator (mulberry32), so the family is the same every run. */
 function seeded(seed) {
@@ -128,7 +128,7 @@ function drawn(name, curve, rand) {
       for (let q = 1; q < 6; q++) {
         const f = q / 6;
         place(T[i] + (T[i + 1] - T[i]) * f, m, 0);
-        const c = [0, 1, 2].map((j) => Pt[i * 3 + j] + (Pt[i * 3 + 3 + j] - Pt[i * 3 + j]) * f);
+        const c = nearest(Pt, i, m); // (what is seen: how far the curve is from the chord, wherever along it)
         const dist = Math.max(0.5, Math.hypot(m[0] - eye[0], m[1] - eye[1], m[2] - eye[2]));
         worst = Math.max(worst, (Math.hypot(c[0] - m[0], c[1] - m[1], c[2] - m[2]) / dist) * pxPerRad);
       }
@@ -136,6 +136,15 @@ function drawn(name, curve, rand) {
     if (k === 3) assert.ok(n < 1500, `${name}: from far out ${n} points`);
   }
 }
+
+/** The point of chord `i` (of the points in `P`) nearest `m`. */
+const nearest = (P, i, m) => {
+  const a = [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]];
+  const d = [P[i * 3 + 3] - a[0], P[i * 3 + 4] - a[1], P[i * 3 + 5] - a[2]];
+  const dd = d[0] ** 2 + d[1] ** 2 + d[2] ** 2;
+  const k = dd > 0 ? Math.min(1, Math.max(0, ((m[0] - a[0]) * d[0] + (m[1] - a[1]) * d[1] + (m[2] - a[2]) * d[2]) / dd)) : 0;
+  return [a[0] + d[0] * k, a[1] + d[1] * k, a[2] + d[2] * k];
+};
 
 test('the ballistic deck`s predictor on a family of states: the same invariants for every one', () => {
   const site = siteFrame(freedom7.site);

@@ -34,7 +34,7 @@ import {
  *   round reads as an ellipse), however coarsely the predictor kept it, and the chords stay put as the clock goes on.
  * - **From the vehicle.** The line starts at the instant on the path nearest the vehicle as the stage draws it, and is
  *   taken onto the vehicle there (the vehicle drawn and the flight differ by the stage's interpolation): the offset
- *   is let go over the next ten gaps of the line. A path further than two gaps from the vehicle is another path and is
+ *   is let go over the next ten gaps of the line, or a hundred times the offset (under a degree of bend), whichever is longer. A path further than two gaps from the vehicle is another path and is
  *   drawn where it is. The flown line ends at the vehicle the same way.
  * - **Clear of the vehicle.** Nothing of the line within a gap of the vehicle's middle (a little more than half its
  *   length, or a fifth of the view's half height at the vehicle, whichever is more), then it comes in from nothing
@@ -108,6 +108,8 @@ const CHIP_FADE = 0.2;
 /** Gaps of the line: within this many of the vehicle it is taken onto the vehicle; over this many the offset is let go. */
 const PIN_WITHIN = 2;
 const PIN_OVER = 10;
+/** And over at least this many times the offset itself: so taking it onto the vehicle bends the line by under a degree. */
+const PIN_SLOPE = 100;
 /**
  * The curve on show stands while the flight keeps to it (`holds`): within a metre and a centimetre a second (the same
  * coast worked again agrees to centimetres over an orbit), and, for a path that comes round, while it still reaches
@@ -1098,8 +1100,9 @@ export class FlightPath {
       if (offset > PIN_WITHIN * gap) pin.fill(0);
     }
     const pinned = pin[0] !== 0 || pin[1] !== 0 || pin[2] !== 0;
-    // (the offset let go over the next ten gaps of the line: as an interval of time at the speed there)
-    const over = pinned ? Math.max(1e-3, (PIN_OVER * gap) / Math.max(speed, 1e-3)) : 1;
+    // (the offset let go over the next ten gaps of the line, or a hundred times the offset if that is longer, so the line bends by
+    // under a degree: as an interval of time at the speed there)
+    const over = pinned ? Math.max(1e-3, Math.max(PIN_OVER * gap, PIN_SLOPE * offset) / Math.max(speed, 1e-3)) : 1;
     const weight = (dt: number) => {
       const x = Math.min(1, Math.abs(dt) / over);
       return 1 - x * x * (3 - 2 * x);

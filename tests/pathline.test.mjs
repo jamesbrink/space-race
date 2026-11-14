@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { apsides } from '../src/sim/predict.ts';
-import { clearOf, clipNear, curveAt, curveOf, ERROR_PX, fadeIn, limbPx, ribbon, sample } from '../src/viewer/pathline.ts';
+import { clearOf, clipNear, curveAt, curveOf, ERROR_PX, fadeIn, limbPx, ribbon, SHORTEST_PX, sample } from '../src/viewer/pathline.ts';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -36,6 +36,15 @@ const kept = (at, t0, t1, every) => {
   return points;
 };
 const R = 6_371_000;
+
+/** The point of chord `i` (of the points in `P`) nearest `m`. */
+const nearest = (P, i, m) => {
+  const a = [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]];
+  const d = [P[i * 3 + 3] - a[0], P[i * 3 + 4] - a[1], P[i * 3 + 5] - a[2]];
+  const dd = d[0] ** 2 + d[1] ** 2 + d[2] ** 2;
+  const k = dd > 0 ? Math.min(1, Math.max(0, ((m[0] - a[0]) * d[0] + (m[1] - a[1]) * d[1] + (m[2] - a[2]) * d[2]) / dd)) : 0;
+  return [a[0] + d[0] * k, a[1] + d[1] * k, a[2] + d[2] * k];
+};
 
 test('a curve: anywhere between points kept half a minute apart, it is where the orbit is, to centimetres', () => {
   for (const [a, e] of [
@@ -67,7 +76,7 @@ const worstStray = (place, t, p, n, eye, pxPerRad) => {
     for (let k = 1; k < 8; k++) {
       const f = k / 8;
       place(t[i] + (t[i + 1] - t[i]) * f, m, 0);
-      const c = [0, 1, 2].map((j) => p[i * 3 + j] + (p[i * 3 + 3 + j] - p[i * 3 + j]) * f);
+      const c = nearest(p, i, m); // (what is seen: how far the curve is from the chord, wherever along it)
       const d = Math.hypot(m[0] - eye[0], m[1] - eye[1], m[2] - eye[2]);
       worst = Math.max(worst, (Math.hypot(c[0] - m[0], c[1] - m[1], c[2] - m[2]) / d) * pxPerRad);
     }
@@ -77,6 +86,8 @@ const worstStray = (place, t, p, n, eye, pxPerRad) => {
 test('sampled for the eye: no chord strays more than the stated pixels, from beside the vehicle or from far out, and coarse where it can be', () => {
   const pxPerRad = 400 / Math.tan((25 * Math.PI) / 180); // an 800 pixel tall view through 50 degrees
   const most = 4096;
+  let shortKept = 0;
+  let chords = 0;
   const T = new Float64Array(most + 1);
   const P = new Float64Array((most + 1) * 3);
   // a family of paths: low and high, round and long, prograde and retrograde
@@ -102,10 +113,22 @@ test('sampled for the eye: no chord strays more than the stated pixels, from bes
       const n = sample(place, c.t, 100, period, { eye, pxPerRad, near: 1 }, most, T, P);
       assert.ok(n > 2 && n < most, `${name}: ${n} points`);
       const worst = worstStray(place, T, P, n, eye, pxPerRad);
+      // and no chord but the last so short as seen from the eye that it has no direction on the screen
+      for (let i = 0; i + 2 < n; i++) {
+        const a = [0, 1, 2].map((j) => P[i * 3 + j] - eye[j]);
+        const b = [0, 1, 2].map((j) => P[i * 3 + 3 + j] - eye[j]);
+        const angle = Math.acos(Math.min(1, (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (Math.hypot(...a) * Math.hypot(...b))));
+        if (angle * pxPerRad < SHORTEST_PX - 1e-3) {
+          // (unless letting its end go would have taken the chord further from the curve than the error allows)
+          shortKept++;
+        }
+      }
       assert.ok(worst <= 1.5 * ERROR_PX, `${name}, a = ${(a / 1e3).toFixed(0)} km: a chord strays ${worst.toFixed(2)} px`);
+      chords += n - 1;
       if (name === 'far out') assert.ok(n < 600, `from far out ${n} points: as coarse as the view allows`);
     }
   }
+  assert.ok(shortKept <= 0.02 * chords, `${shortKept} of ${chords} chords are under ${SHORTEST_PX} px as seen from the eye`);
 });
 
 test('the chords stay put as the instant on show moves on', () => {

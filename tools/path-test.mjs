@@ -153,8 +153,11 @@ const measure = () =>
           const b = toView(L.p[i * 3 + 3], L.p[i * 3 + 4], L.p[i * 3 + 5]);
           if (a.z > -near && b.z > -near) continue;
           const mv = toView(m[0], m[1], m[2]);
-          const mid = a.clone().add(b).multiplyScalar(0.5);
-          const px = (mid.distanceTo(mv) / Math.max(mv.length(), near)) * pxPerRad;
+          // (what is seen: how far the curve is from the chord, wherever along it)
+          const ab = b.clone().sub(a);
+          const k = Math.min(1, Math.max(0, mv.clone().sub(a).dot(ab) / Math.max(ab.lengthSq(), 1e-12)));
+          const mid = a.clone().addScaledVector(ab, k);
+          const px = (mid.distanceTo(mv) / Math.max(mid.length(), near)) * pxPerRad;
           if (px > worst) {
             worst = px;
             at = i;
