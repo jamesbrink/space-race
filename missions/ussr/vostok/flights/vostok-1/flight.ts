@@ -843,8 +843,14 @@ vehicle.cabin = {
     {
       node: 'Gauge_ManualGas',
       name: 'Gas for turning the ship by hand',
-      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. Never used: he read 150 to 155 throughout (175 before launch in one print, 155 in another), and it stands at 155 (${RADIO}). Not simulated: the record’s.`,
-      value: 155,
+      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. Never used. As he read it: 175 before launch at 07:29 (the archive’s record, in both its prints; a newspaper’s print has 155), 155 after the separation, 150 at 09:48, 155 at 10:04 and 150 at 10:23 (${RADIO}; mission.md, “The manual system’s gas”). Straight between his readings. Not simulated: the record’s.`,
+      history: [
+        { at: MSK(7, 29), value: 175 },
+        { at: 0, from: 'separation', value: 155 },
+        { at: MSK(9, 48), value: 150 },
+        { at: MSK(10, 4), value: 155 },
+        { at: MSK(10, 23), value: 150 },
+      ],
     },
     {
       node: 'Gauge_RetroPressure',
