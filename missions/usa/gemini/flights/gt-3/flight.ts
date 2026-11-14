@@ -37,13 +37,17 @@ const parts: Part[] = [
     summary: 'A glass-fibre cap over the ship’s forward face, thrown off on the way up.',
     detail:
       'The forward section ends in a flat face full of fittings, and going up through the air it wants a cover. This ' +
-      'one is laminated glass fibre, 5.31 in deep, and it is the tip of the whole vehicle. It was to go 3 minutes 15 ' +
-      'seconds after liftoff, with the second stage burning and the air behind: an ejector pushes it off and it ' +
-      'falls away. The cover over the horizon scanners goes at the same moment.',
+      'one is laminated glass fibre, 5.31 in deep, and it is the tip of the whole vehicle. The press kit had it going ' +
+      '3 minutes 15 seconds after liftoff, with the second stage burning. It did not. On this ship and the next the ' +
+      'command pilot pressed the switch only after the second stage had cut off, and here the ship was already ' +
+      'free of the Titan and in orbit: the ground reminded Grissom at 6 minutes 15 seconds, and at 6 minutes 21 ' +
+      'he called "There went all fairings". An ejector pushes it off and it drifts clear. The cover over the ' +
+      'horizon scanners goes on the same switch.',
     facts: [
       ['Depth', '5.31 in (0.13 m): Z233.97 to Z239.28'],
       ['Material', 'glass fibre reinforced plastic laminate'],
-      ['Thrown off', 'planned for 3 min 15 s after liftoff'],
+      ['Thrown off', 'in orbit, between 6 min 15 s and 6 min 21 s after liftoff'],
+      ['The plan', '3 min 15 s in the press kit; after second stage cutoff in McDonnell’s manual'],
     ],
     explode: [0, 9.4, 0],
     order: 5,
@@ -468,8 +472,9 @@ export const flight: Flight = {
   callsign: 'Molly Brown',
   spacecraft: 'Gemini spacecraft No. 3 (McDonnell Aircraft)',
   launchVehicle: 'Gemini Launch Vehicle 3, a Titan II (Martin)',
-  // 9:24:00 a.m. e.s.t. (NASA SP-4002, Appendix 1, Table A): 14:24:00 UTC. The fraction of the second is in the mission report, not read
-  launch: '1965-03-23T14:24:00Z',
+  // 9:24:00.064 a.m. e.s.t. (On the Shoulders of Titans, NASA SP-4203, Appendix B, p. 524): 14:24:00.064 UTC. The programme's
+  // table has it to the second (NASA SP-4002, Appendix 1, Table A)
+  launch: '1965-03-23T14:24:00.064Z',
   launchSite: LC19.name,
   site: LC19,
   crew: ['Virgil I. Grissom', 'John W. Young'],
@@ -478,7 +483,7 @@ export const flight: Flight = {
     'Earth in 4 hours 52 minutes 31 seconds, three burns of its own thrusters, and a landing well short of the ' +
     'ship waiting for it, because Gemini made less lift coming down than the wind tunnels had promised.',
   facts: [
-    { label: 'Liftoff', value: '23 March 1965, 14:24:00 UTC' },
+    { label: 'Liftoff', value: '23 March 1965, 14:24:00.064 UTC' },
     { label: 'Command pilot', value: 'Virgil I. Grissom' },
     { label: 'Pilot', value: 'John W. Young' },
     { label: 'Duration', value: '4 h 52 min 31 s' },
@@ -489,20 +494,62 @@ export const flight: Flight = {
     { label: 'Landing', value: '22°26′ N 70°51′ W, 60 nautical miles short' },
     { label: 'Recovery', value: 'USS Intrepid' },
   ],
-  // The programme's table (NASA SP-4002, Appendix 1, Table A) for the three times given to the second; the press kit's
-  // plan for the ascent, marked as planned; On the Shoulders of Titans (pp. 233 to 237) for the rest, which it gives
-  // in round figures. The mission report (MSC-G-R-65-2), which has every event to the tenth, has not been read.
+  // The flight as flown; README.md, "Timeline", gives each time its source and confidence. Second stage cutoff (334 s),
+  // separation (359 s) and retrofire (16,403 s) are the guidance reconstruction's (supplemental report 4 to the mission
+  // report, section 3.2 and PDF p. 79); insertion is the Midprogram Conference's (NASA SP-121, Table 4-IV, p. 33); the
+  // last burn's start and the landing are the programme's table (NASA SP-4002, Appendix 1, Table A). The rest are the
+  // times against the calls in the composite voice transcript (GT-3 Communications Transcript, NASA MSC, April 1965),
+  // to the second and a moment after the event. Staging alone is derived: the press kit's planned 2 min 36 s (release
+  // 65-81, p. 11) less the 1.70 s by which the first stage cut off early (Gemini Program Launch Systems Final Report,
+  // Table II.D-14, p. II.D-55), which takes the press kit's time to be the nominal one that table measures from. For
+  // the second stage's cutoff it is: the press kit's 5 min 38 s is 338 s, and SP-121's nominal insertion less its 20 s is
+  // 338.4 s. The mission report itself (MSC-G-R-65-2), which has every event to the tenth, has not been found.
   timeline: [
-    { t: 0, event: 'Liftoff, 09:24:00 EST' },
-    { t: 156, event: 'Staging: the second stage’s engine starts and the first stage is cut loose (planned time)' },
-    { t: 195, event: 'Nose fairing and scanner cover thrown off (planned time)' },
-    { t: 338, event: 'Second stage cutoff (planned time)' },
-    { t: 358, event: 'The spacecraft cuts itself free and thrusts into orbit (planned time)' },
-    { t: 1200, event: 'The oxygen pressure reading drops: an instrument power supply has failed, and Young finds it in 45 s (about)' },
-    { t: 5400, event: 'First burn: the forward thrusters for 75 s, 15 m/s off the speed, the orbit nearly round (about)' },
-    { t: 8100, event: 'Second burn: the ship turned square to its path, and the orbit’s plane shifted by a fiftieth of a degree (about)' },
-    { t: 15683, event: 'Third burn: two and a half minutes of the aft thrusters, perigee down to 72 km' },
+    { t: 0, event: 'Liftoff, 09:24:00.064 EST' },
+    { t: 12, event: 'The roll programme, as Grissom calls it; complete at 0:22, and the pitch programme begins at 0:25' },
+    {
+      t: 154,
+      event:
+        'Staging: the second stage’s engine starts and the first stage is cut loose (about: the planned 2 min 36 s less ' +
+        'the 1.70 s by which the first stage cut off early; Grissom called it at 2:35)',
+    },
+    { t: 334, event: 'Second stage cutoff, 4.68 s earlier than planned' },
+    { t: 353.8, event: 'Insertion as the tables reckon it, 20 s after cutoff: 25,682 ft/s, 15 ft/s short of the plan' },
+    { t: 359, event: 'The spacecraft cuts itself free and Grissom thrusts on with the aft thrusters; "We are separated" at 6:10' },
+    {
+      t: 381,
+      event:
+        'Nose fairing and scanner cover thrown off, after the second stage’s cutoff and not at the press kit’s 3:15: ' +
+        '"There went all fairings" (between 6:15 and 6:21)',
+    },
+    {
+      t: 1415,
+      event:
+        'The oxygen pressure reading drops; 39 s later Young has the cause, "Lost a primary converter", and the ' +
+        'instruments go over to the secondary supply',
+    },
+    {
+      t: 5580,
+      event:
+        'First burn: the forward-firing thrusters for 74 s, about 49 ft/s (15 m/s) off the speed by the velocity ' +
+        'indicator; the orbit nearly round, 85.6 by 92.6 nautical miles as the ground called it',
+    },
+    {
+      t: 8220,
+      event:
+        'Second burn (about): the ship yawed square to its path, 10 ft/s from the forward-firing thrusters and a ' +
+        'second of the aft ones; the orbit’s plane shifted by a fiftieth of a degree',
+    },
+    {
+      t: 15683,
+      event:
+        'Third burn: the aft thrusters for about 1 min 50 s, 97 ft/s on the velocity indicator burned to nothing; the ' +
+        'perigee down to 45 nautical miles (83 km) in vacuum',
+    },
     { t: 16403, event: 'Retrofire: four rockets, one after another' },
+    { t: 16455, event: 'The retrograde section is cut away, as called' },
+    { t: 17208, event: 'Drogue parachute: "There goes the drogue"' },
+    { t: 17327, event: 'On the main parachute; the swing to the landing attitude throws both men at their windows' },
     { t: 17551, event: 'Landing, 22°26′ N 70°51′ W' },
   ],
   specs: [
@@ -648,7 +695,7 @@ export const flight: Flight = {
       value: 87.0 * NMI,
       unit: 'm',
       confidence: 'documented',
-      note: `87.0 nautical miles (${CHRONOLOGY})`,
+      note: `87.0 nautical miles, against 87.1 planned (Gemini Midprogram Conference, NASA SP-121, Table 4-III, p. 33; ${CHRONOLOGY})`,
     },
     {
       group: 'Spacecraft',
@@ -656,17 +703,41 @@ export const flight: Flight = {
       value: 121.0 * NMI,
       unit: 'm',
       confidence: 'documented',
-      note: `121.0 nautical miles (the same table). ${TITANS}, p. 235, prints "122 by 175 kilometers" for this orbit, which agrees with neither`,
+      note: `121.0 nautical miles, against 130.1 planned (the same two tables). ${TITANS}, Appendix B, p. 524, has the same 224 km (121 n.m.) as the highest apogee; its narrative, p. 235, prints "122 by 175 kilometers" for this orbit, which agrees with nothing else read and is not followed. The first figure passed up to the crew, at 7 min 23 s, was "87 by 125"`,
     },
-    { group: 'Spacecraft', label: 'Period', value: 88.3 * 60, unit: 's', confidence: 'documented', note: '88.3 min (the same table)' },
+    { group: 'Spacecraft', label: 'Period', value: 88.3 * 60, unit: 's', confidence: 'documented', note: `88.3 min (${CHRONOLOGY})` },
     { group: 'Spacecraft', label: 'Inclination', value: 32.6, unit: 'deg', confidence: 'documented', note: '32.6° (the same table)' },
+    {
+      group: 'Spacecraft',
+      label: 'Speed at insertion',
+      value: 25682 * 12 * IN,
+      unit: 'm/s',
+      confidence: 'documented',
+      note: '25,682 ft/s at 353.8 s from liftoff, the flight path 0.01° above level; planned, 25,697 ft/s at 358.4 s (NASA SP-121, Table 4-IV, p. 33). Insertion in that table is 20 s after the second stage’s cutoff',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Perigee after the third burn',
+      value: 45 * NMI,
+      unit: 'm',
+      confidence: 'documented',
+      note: `a vacuum perigee of 45 nautical miles (83 km), from a burn finished 12 minutes before retrofire (Gemini Summary Conference, NASA SP-138, p. 163); the press kit planned "a perigee of 52 miles", statute as its other miles are, which is the same height (p. 10). ${TITANS}, p. 235, has 72 kilometers, which is 45 statute miles, and is not followed`,
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Retrofire, from liftoff',
+      value: 16403,
+      unit: 's',
+      confidence: 'documented',
+      note: `16,403 s, which is 4:33:23 (Inertial Guidance System Evaluation, Trajectory Reconstruction: supplemental report 4 to the mission report, PDF p. 79; ${CHRONOLOGY}); the count to it in the voice transcript ends at 4:33:23; planned for 4:33:30 (the press kit, p. 10)`,
+    },
     {
       group: 'Spacecraft',
       label: 'Duration, liftoff to landing',
       value: 4 * 3600 + 52 * 60 + 31,
       unit: 's',
       confidence: 'documented',
-      note: '4:52:31; retrofire at 4:33:23 and the burn before it at 4:21:23 (the same table)',
+      note: `4:52:31, and the burn before retrofire begun at 4:21:23 (${CHRONOLOGY}); the voice transcript has the same two to the second`,
     },
     {
       group: 'Spacecraft',
@@ -674,7 +745,7 @@ export const flight: Flight = {
       value: 60 * NMI,
       unit: 'm',
       confidence: 'documented',
-      note: `60 nautical miles (the same table; and the text, p. 189); ${TITANS}, p. 236, has "about 84 kilometers", which is 45`,
+      note: `60 nautical miles, with a navigation error of 0.8 (NASA SP-138, Table 13-I, p. 163; ${CHRONOLOGY}, and its text, p. 189; ${TITANS}, Appendix B, p. 524, as 111.1 km). ${TITANS}, p. 236, has "about 84 kilometers", which is 45 nautical miles: the figure SP-138 gives on the same page for the vacuum perigee before retrofire, a height and not a distance along the sea. It is not followed. The ship made about 35 per cent less lift for its drag than predicted, which cost about 160 nautical miles of reach`,
     },
     {
       group: 'Launch vehicle',
@@ -731,21 +802,23 @@ export const flight: Flight = {
       name: 'Aerojet YLR87-AJ-7, first stage chamber',
       count: 2,
       thrustN: 215000 * LBF,
-      burnS: 156,
+      burnS: 154,
       propellant: 'Aerozine 50 / nitrogen tetroxide',
       kind: 'liquid',
-      confidence: 'documented',
-      note: `"about 430,000 pounds of thrust at lift-off" for the two (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is the press kit’s planned staging time, 2 min 36 s; what this vehicle did is in a report not read`,
+      // the thrust is documented; the burn is derived, and the entry takes the weaker of the two
+      confidence: 'derived',
+      note: `"about 430,000 pounds of thrust at lift-off" for the two, documented (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is liftoff to cutoff, and derived: the press kit’s planned staging at 2 min 36 s (p. 11) less the 1.70 s by which this vehicle’s first stage cut off early (${LAUNCH_SYSTEMS}, Table II.D-14, p. II.D-55), 154.3 s. It takes the press kit’s time to be the nominal one the table measures from; Grissom called "there was staging" at 2:35. The engines were started about 4 s before liftoff, by the plan`,
     },
     {
       name: 'Aerojet YLR91-AJ-7, second stage',
       count: 1,
       thrustN: 100000 * LBF,
-      burnS: 182,
+      burnS: 180,
       propellant: 'Aerozine 50 / nitrogen tetroxide',
       kind: 'liquid',
-      confidence: 'documented',
-      note: '"about 100,000 pounds of thrust at altitude" (the same pages). The burn is the press kit’s plan, staging to cutoff at 5 min 38 s',
+      // the thrust and the cutoff are documented; the burn starts at a derived time, and the entry takes the weaker
+      confidence: 'derived',
+      note: '"about 100,000 pounds of thrust at altitude", documented (the same pages). The burn is staging to cutoff, and derived: cutoff at 334 s from liftoff (the guidance reconstruction, supplemental report 4 to the mission report, section 3.2; 4.68 s early by Table II.D-14; Grissom called "SECO" at 5:34) less staging at about 154 s, as above. The plan was 182 s',
     },
     {
       name: 'Retrograde rocket',
