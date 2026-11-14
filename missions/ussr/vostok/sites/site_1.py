@@ -12,6 +12,9 @@ The pieces are in ./site1/, one module each; each is one or more top-level nodes
   UpperCableMast       cable_mast.py      the cable mast to the third stage, hinged on the ring
   Erector              erector.py         the erector on the centre track, its boom up beside the rocket, with the lift
   TankCars             tank_cars.py       the oxygen and kerosene fillers on the north and south tracks, with their wheels
+  Bus, Saloon, Truck   road_vehicles.py   the cosmonauts' bus, a saloon car and a box-bodied truck on the apron
+  StateCommission, SendOff, StairParty,
+  PadCrew, TrussCrew, HatchCrew            morning.py: the people, in the groups they stood and left in (Erector_Crew is under Erector)
 
 The land they stand on is ./site1/relief.py: the pad on the brow of a scarp, the steppe north of the tracks 8 m under
 the deck's level. The pit's rim is built at the land's height, and the place is set down on it (place.settle).
@@ -42,9 +45,16 @@ def build(date: str | None = None) -> str:
     cable_mast.build(parts)
     erector.build(parts)
     tank_cars.build(parts)
+    # the morning itself: the bus, the car and the truck on the apron, and the people (each group is there until it left).
+    # (Brought in here and not at the head: they want the programme's crew/ on the path, which a pad's script has and
+    # the place's has no use for.)
+    from site1 import morning, road_vehicles
+
+    road_vehicles.build(parts)
+    morning.build(parts)
     parts.build()
     print(sitelib.standing())
-    served = f"{service_trusses.summary()}, {cable_mast.summary()}, {erector.summary()}, {tank_cars.summary()}"
+    served = f"{service_trusses.summary()}, {cable_mast.summary()}, {erector.summary()}, {tank_cars.summary()}, {road_vehicles.summary()}"
     return f"{platform.summary()}, {deck.summary()}, rocket's tail {TAIL_Z:.2f} m, load ring {TIP_Z:.2f} m, {served}"
 
 

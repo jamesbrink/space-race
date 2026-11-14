@@ -111,7 +111,9 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | CommandBunker | bunker.py | the mound over the firing room, its four periscopes, three corner vents, the entrance, the smoking place | yes (the place); the rooms below are not |
 | StorageBunker | storage.py | three concrete bays with earth between, their gates, roof vents and aprons | yes (the place); gates shut |
 | PropellantShed | buildings.py | the shed over the northern spur's end, open to the north on six supports | yes (the place) |
-| CascadeFacility | buildings.py | two banks of nine gas receivers on cradles, their manifold | yes (the place) |
+| CascadeFacility | buildings.py | the gas receivers: for April 1961 the low terracotta building with a flat roof and a frame of floodlights that the film has in their place (for an earlier date, two banks of nine vessels on cradles in the open) | yes (the place); doors shut |
+| Bus, Saloon, Truck | road_vehicles.py | the cosmonauts' bus (`Bus_In`, `Bus_Back`, `Bus_Away` under it, a node a drive), a saloon car (`Saloon_Car`), a box-bodied truck (`Truck_Lorry`) | yes (the pad): the bus's type documented, the others' estimated |
+| StateCommission, SendOff, StairParty, PadCrew, TrussCrew, HatchCrew (each with `<name>_People` under it); `Erector_Crew` under Erector | morning.py, with [../crew/ground_party.py](../crew/ground_party.py) | the people of the morning, 52 in seven groups, each there until it left | yes (the pad): they stand and do not walk |
 | PumpHouse, WorkShop, SupportBuilding, CheckoutShop, SecurityBuilding | buildings.py | the buildings the U-2's photographs show; doors shut, windows dark | yes (the place) |
 | ObservationPosts (`ObservationPost_A` to `_I`) | rim.py | the nine earth-covered positions round the pit, g with its covered way from the road | yes (the place) |
 | SpoilHeap | rim.py | the earth from the pit, north-east of it | yes (the place) |
@@ -285,6 +287,46 @@ place is not in anything read. The model stands the boom from a pivot outside th
 it in over the support to the third stage; seen from behind, as in the one photograph of it
 standing at a Vostok, such a lean would not show.
 
+### The morning's people and vehicles
+
+On the pad ([site1/road_vehicles.py](site1/road_vehicles.py), [site1/morning.py](site1/morning.py); the figures are
+[../crew/ground-party.md](../crew/ground-party.md)). The main source is the film «Первый рейс к звёздам» (ЦСДФ,
+1961): at 43:08 the bus on the road; at 43:26, looking down from the erector's head, the bus just stopped and everyone
+on the concrete; at 43:33 and 43:42 the same people at eye height; at 44:05 the stair. Places are measured off the
+43:26 frame against the bus (9.19 m long, 2.5 m broad), good to two or three metres across the tracks and some eight
+along them. Positions are metres east and north of the rocket's axis.
+
+| Item | Value | Confidence | Source |
+| --- | --- | --- | --- |
+| The bus's type | LAZ-695B | documented | the film: the wide air scoop at the back of the roof, which that model had (made 1958 to 1964) |
+| Its size | 9,190 by 2,500 by 2,980 mm, wheelbase 4,190 mm | documented (the type's published figures) | as quoted for the ЛАЗ-695 family |
+| Its colours | cream above, a blue band under the windows, a blue skirt; curtains at the side windows | documented | the film; "white and blue" (Golovanov) |
+| Its overhangs, wheels, fittings, inside | 2,700 mm behind the rear axle; 1,050 mm wheels; three roof hatches, a route board, bumpers, lamps; a few seats | estimated | the film's side view. It was fitted out for the cosmonauts with armchairs and a table (the film), which are not drawn; the curved lights in the roof's edge that the type had are not drawn |
+| Where it stood | its rear axle at (-51.4, -15.2), facing east: its right side 0.8 m south of the south track's rail, another track 4 m beyond | documented (across the tracks: the film has two tracks 3.7 to 4.1 m apart on its right, which only the south track and the short spur are); derived (along them: from the film's view, to some eight metres) | the film, 43:26 |
+| When | came about 06:50; here it leaves at 08:37 | documented (06:50); estimated (08:37: the roster sends "the cosmonauts and Karpov" to the measuring point at thirty minutes' readiness, and that the bus took them is ours) | Kamanin's diary; the roster |
+| The saloon car | dark, three-box, a few metres off the bus's right side, at the low building's corner: its rear axle at (-47.6, -21.3), heading south-east | documented (that it stood there); estimated (its heading) | the film, 43:26 and 43:33 |
+| Its type | taken for a GAZ-21 Volga: 4,830 by 1,800 by 1,620 mm, wheelbase 2,700 mm; black | estimated | a Pobeda is a fastback and a ZIM a metre longer; Korolev was driven in a Volga (Ivanovsky) |
+| The truck | dark, a box body, a bonnet, two axles; north of the short spur, a metre off its rail, its tail to the rocket, white figures on its tail: its rear axle at (-43.75, -5.4), heading west | documented | the film, 43:26 |
+| Its type and number | taken for a GAZ-63 (5,525 by 2,200 mm, wheelbase 3,300 mm) with a workshop body 3.45 m long; "34-55-23" on its tail | estimated | the roster lists a driver for "ГАЗ-63 №34-55-23". That it is the film's truck is not known: the film's figures cannot be read |
+| When the car and the truck left | 08:05, one hour's readiness | estimated | most of the pad's people left then (the roster) |
+| The State Commission | "in a tight group" some ten metres from the bus's door; the pilot reported to its chairman, Rudnev | documented | Golovanov p. 645. The film has a knot of four, one in a pale coat, 10 m east of the door: at (-36.3, -17.3) |
+| Korolev's and Moskalenko's dress | a dark overcoat and a black velour hat; a marshal's service tunic, gold boards, a red-banded cap | documented | Golovanov; a colour photograph (Wikimedia Commons, "Gagarin pered poletom") |
+| Who else stood in the knot, and in what | Rudnev, Kamanin, Voskresensky, one more: six in all | estimated | that Kamanin and Voskresensky walked with the pilot is Mikheev's and Chertok's |
+| The send-off | 22 more on the concrete: a row of five at (-58, -27), a group of seven at (-53, -25), four at the bus's door, three by the car, one beside the bus, one at (-65, -22), one north of the tracks at (-38, -7) | documented (that figures stood in those places: the film, 43:26); estimated (who each was, and each one's dress among the kinds the film shows) | the film |
+| Their dress | officers in tunics and peaked caps, no greatcoats; the launch crew in navy hooded anoraks with red armbands; a doctor in a white coat; civilians in dark coats and hats; a cameraman with a hand-held camera | documented | the film, 43:33 and 43:42; the colour photograph of the party walking |
+| At the stair's foot | eleven, their backs to the camera, arms up; berets, peaked caps, a white coat | documented (about eleven, waving); estimated (which is who) | the film, 44:05; a photograph (Kommersant KOG_053920) |
+| On the wagon's deck | two men at its rail | documented | the same two frames; the colour photograph |
+| In the grey filler's doorway | two men | documented | the colour photograph. One stands in the doorway here and one below it: the doorway is drawn 0.9 m wide |
+| At the hatch | Ivanovsky and the fitters, until the seal was checked at 08:25 | documented | Ivanovsky; the transcript. Two stand there |
+| On the service trusses | the upper-belt and truss crews, until thirty minutes | documented (that they left then, for the bunker); estimated (three men on the north truss) | the roster |
+| How many were on the pad | 688: 651 and 37 inspectors, 381 of them soldiers of unit 25741 | documented | the roster |
+| When each left, and for where | the fuelling soldiers at 3 h 20 min, to barracks; most at 1 h or 30 min, to a point 20 km off; the upper-belt and truss crews at 30 min, to the bunker; the erector's crew at 30 min, to the bend of the road; the cosmonauts and their doctor at 30 min, to the measuring point; the fire chief and fire crews at 15 min, to the bunker; two water-washing trucks at 5 min, to the gate | documented | the roster: «Первый пилотируемый полёт» (2011), book 1, doc 104, pp. 402-423 |
+
+**How they leave.** A group is one node and is there until the time above; then it is put out of sight, 90 m
+under where it stood, in a tenth of a second. Nobody walks. The viewer has a gait for the figure being walked as
+and no way to play one on scenery, and a figure slid across the concrete standing is worse than one that is
+simply not there. This is the largest thing wrong with the morning.
+
 ### The place round the pad
 
 Its plan is one drawing and one map. The drawing is **Figure 5 of PIC/JR-2/60** (CIA, February 1960):
@@ -322,7 +364,8 @@ windows dark. Positions are metres east and north of the rocket's axis.
 | Its width and height | 9 m; roof's underside 5.2 m | estimated (the width, redacted); derived (the height, to about a metre) | the colour photograph of the liftoff of 12 April 1961, taken from the south, has a long white box at the deck's level from 43 m west of the axis to the frame's edge at 57 m, where this shed's south wall is seen from there: some 4.8 m of it over the deck's line, its foot hidden. A tank car stands 4.7 m. It was first drawn 6.5 m |
 | Its colour | white | documented | the same photograph: the one wall colour of the place seen on the day |
 | Cascade | a plot 55 by 40 ft; two banks of "8 to 10 tanks" each "approximately 40 by [redacted]" | documented (measured) | PIC/JR-2/60; PIC/JR-2/61 |
-| Where | its middle 38.6 m west, 23.3 m south: against the abutment's south-west corner | derived | Figure 5 (45 m from the axis); the text says "approximately 135 feet from the servicing tower" (41 m) |
+| Where | its middle 34.9 m west, 27.0 m south (44 m from the axis): against the pit's south-west rim | derived | Figure 5 (45 m from the axis); the text says "approximately 135 feet from the servicing tower" (41 m): good to ten metres. Within that it is put where the film of 12 April 1961 leaves the concrete clear: a low building's north-west corner lies some 5 m south and a metre or two east of the bus's door, and south of the bus is open concrete with people on it. It was first put at (-38.6, -23.3), where the bus's party stood |
+| What stood there in April 1961 | a low building with terracotta walls, some 2.8 m high, a flat roof laid in strips with an upstand round it, a frame of at least six floodlights at a corner of the roof | documented (the film, 43:26 from above and 43:42 from the ground, a man standing on its roof; a colour photograph of Gagarin, Korolev and Moskalenko with the lamps on their white frame behind them) | that it is the gas receivers' enclosure is estimated: it stands where the CIA had them and is their plot's size. Its height is estimated off the film; its doors, plinth and cornice are ours; which corner the lamps stood at and where they pointed are estimated |
 | The vessels | nine a bank, 37 ft long, 0.7 m across, on three cradles | estimated | what they held (the pad's compressed gas) is the interpreters' reading |
 | Booster pump house | 40 by 35 ft | documented (measured) | PIC/JR-2/60; placed from Figure 5 (its middle 40.7 m west, 61.5 m north) |
 | Work shop | 24 by 35 ft | estimated (scaled off Figure 5; its size is redacted) | HTA/JR-4/58; PIC/JR-2/60 |
@@ -507,18 +550,27 @@ the morning's clock ("The morning at the pad"); clocked motions (`clocked`) are 
 | `Support_3` | `LaunchRing` | the same, at 277.5° (south): (1.083, -8.229, 1.6) | 277.5° | +45° | T+0.7 s | 1.9 s | `clocked` | as Support_1 |
 | `Support_4` | `LaunchRing` | the same, at 7.5° (east): (8.229, 1.083, 1.6) | 7.5° | +45° | T+0.7 s | 1.9 s | `clocked` | as Support_1 |
 | `Guide_1..4` | `LaunchRing` | each on its foot on the turning cage, 7.66 out, 5.45 under the deck, at its support's bearing (97.5°, 187.5°, 277.5°, 7.5°) | its support's bearing | -25°: its tip goes down and back from the tail | T+0.3 s | 2.0 s | `clocked` on the part `LaunchRing` | that they go back under their own weight once the rocket has left them, in 2.5 s at most: documented for the later system. The angle: estimated |
-| `TankCar_Oxygen` (and `TankCar_Oxygen_Wheel_1..8`, each about its axle) | `TankCars` | the rails under the middle of its east bogie: Blender (6.3, 13.564, 0.009) | follows the north track west (a `drive`: its east bogie on the track's line, the car turned to it) | 196 m | 08:08 | to 08:15 | `moves`: slider 0.02 to 0.04 | that the cars left, and when: documented. How far, how fast, and that this one stood here: estimated |
-| `TankCar_Kerosene` (and its eight wheels) | `TankCars` | the same: (4.8, -12.375, 0.009) | follows the south track west, onto the centre track and out through the fence | 525 m | 08:08 | to 08:15 | `moves`: slider 0.02 to 0.04 | as the oxygen filler |
-| `UpperCableMast` | (top level) | its hinge line on the ring: 8.75 out, 0.7 up, at 7.5° (east): (8.675, 1.142, 0.7) | 7.5° | +40° | 09:06:00 (T-59.7 s) | 10 s | `moves`: slider 0.80 to 0.86 | the minute: documented (the transcript). That it went the whole way then: read off the two photographs. The angle and the ten seconds: estimated |
-| `ServiceTruss_North` | `ServiceTrusses` | its hinge line on the ring: 8.6 out, 0.9 up, at 97.5° | 97.5° | +98° | 08:40 | to about 08:44 | `moves`: slider 0.45 to 0.67 | that they were lowered and when it began: documented. The angle, the order and how long: estimated |
-| `ServiceTruss_South` | `ServiceTrusses` | the same, at 277.5° | 277.5° | +98° | a little after the north one | to 08:45 | `moves`: slider 0.51 to 0.75 | as the north one |
-| `Erector_Boom` | `Erector` | its trunnion on the wagon's nose, 11.3 m west of the axis, 3.0 up, its axis across the track | 180° (it goes down to the west) | +20°, then +84° (104° in all) | 08:35; then 08:37 | 2 min; then to 08:42 | `moves`: slider 0.10 to 0.30, then to 0.55 | the two minutes and that it "leaned over little by little and laid itself down": documented. The angles and how long the second took: estimated |
-| `Erector` (and `Erector_Wheel_1..6`, each about its axle) | (top level) | | slides west (-X) | 30 m, then on to 120 m | 08:37; then 08:42 | to 08:42; to 08:45 | `moves`: slider 0.30 to 0.55, then to 0.75 | that it rode away along the rails and was drawn off by a locomotive: documented. How far and how fast: estimated |
-| `Erector_Lift` | `Erector_Boom` | the car's floor, at the stair's landing | a lift: stops 19.60 and 23.12 m up the boom, each 0.2493 of its height nearer the rocket | | by hand | 0.3 m/s | an `action` of the part, not the slider | the stops' places estimated |
+| `TankCar_Oxygen` (and `TankCar_Oxygen_Wheel_1..8`, each about its axle) | `TankCars` | the rails under the middle of its east bogie: Blender (6.3, 13.564, 0.009) | follows the north track west (a `drive`: its east bogie on the track's line, the car turned to it) | 196 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | that the cars left, and when: documented. How far, how fast, and that this one stood here: estimated |
+| `TankCar_Kerosene` (and its eight wheels) | `TankCars` | the same: (4.8, -12.375, 0.009) | follows the south track west, onto the centre track and out through the fence | 525 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | as the oxygen filler |
+| `UpperCableMast` | (top level) | its hinge line on the ring: 8.75 out, 0.7 up, at 7.5° (east): (8.675, 1.142, 0.7) | 7.5° | +40° | 09:06:00 (T-59.7 s) | 10 s | `moves`: slider 0.82 to 0.874 | the minute: documented (the transcript). That it went the whole way then: read off the two photographs. The angle and the ten seconds: estimated |
+| `ServiceTruss_North` | `ServiceTrusses` | its hinge line on the ring: 8.6 out, 0.9 up, at 97.5° | 97.5° | +98° | 08:40 | to about 08:44 | `moves`: slider 0.505 to 0.703 | that they were lowered and when it began: documented. The angle, the order and how long: estimated |
+| `ServiceTruss_South` | `ServiceTrusses` | the same, at 277.5° | 277.5° | +98° | a little after the north one | to 08:45 | `moves`: slider 0.559 to 0.775 | as the north one |
+| `Erector_Boom` | `Erector` | its trunnion on the wagon's nose, 11.3 m west of the axis, 3.0 up, its axis across the track | 180° (it goes down to the west) | +20°, then +84° (104° in all) | 08:35; then 08:37 | 2 min; then to 08:42 | `moves`: slider 0.19 to 0.37, then to 0.595 | the two minutes and that it "leaned over little by little and laid itself down": documented. The angles and how long the second took: estimated |
+| `Erector` (and `Erector_Wheel_1..6`, each about its axle) | (top level) | | slides west (-X) | 30 m, then on to 120 m | 08:37; then 08:42 | to 08:42; to 08:45 | `moves`: slider 0.37 to 0.595, then to 0.775 | that it rode away along the rails and was drawn off by a locomotive: documented. How far and how fast: estimated |
+| `Erector_Lift` | `Erector_Boom` | the car's floor, at the stair's landing (on the wagon's south side) | a lift: stops 19.60 and 23.12 m up the boom, each 0.2493 of its height nearer the rocket | | by hand | 0.3 m/s | an `action` of the part, not the slider | the stops' places estimated |
+| `Bus_In` (wheels `Bus_In_Wheel_1..2`, `Bus_In_SteerWheel_1..2`) | `Bus` | the ground under the middle of its rear axle, where the model first has it on the road: Blender (-230.0, -23.35, -0.12) | a `drive`: in along the road and onto the apron, 179 m, to (-51.39, -15.2) facing east | | 06:49 | to 06:50 | `clocked` on the part `Bus` | that it came by the concrete road and stopped there at about 06:50: documented (the film; Kamanin's diary). Its line on the road and the minute it takes: estimated |
+| `Bus_Back` (wheels `Bus_Back_Wheel_n`, `Bus_Back_SteerWheel_n`) | `Bus_In` | the same axle | a `drive`, backing: west and round into the road round the pit, 43 m, to (-84, -42) facing north | | 08:37 | 45 s | `clocked` | estimated: that the bus took the cosmonauts off at thirty minutes' readiness (the roster has them leave then for the measuring point), and how it turned |
+| `Bus_Away` (wheels `Bus_Away_Wheel_n`, `Bus_Away_SteerWheel_n`) | `Bus_Back` | the same axle | a `drive`: north to the road, west along it and out through the fences, 440 m, to (-512, -25), 28 m outside the outer fence, where the model leaves it | | 08:37:50 | to 08:40 | `clocked` | estimated |
+| `Saloon_Car` (tools/blender/vehicles.py's nodes under it) | `Saloon` | the ground under its rear axle: (-47.59, -21.31, -0.12), heading 315° | a `drive`: round to its right and out by the road, to (-540, -25) | | 08:05 | to 08:07 | `clocked` on the part `Saloon` | estimated throughout (the car is seen at 06:50 only) |
+| `Truck_Lorry` (wheels `Truck_Lorry_Wheel_n`, `Truck_Lorry_SteerWheel_n`) | `Truck` | the same: (-43.75, -5.4, -0.12), heading 180° | a `drive`: west between the tracks, over them where they are painted on the land, and out by the road, to (-528, -25) | | 08:05:20 | to 08:08 | `clocked` on the part `Truck` | estimated throughout |
+| `StateCommission_People`, `SendOff_People`, `PadCrew_People`, `TrussCrew_People`, `HatchCrew_People`; `Erector_Crew` | each under its part (`StateCommission` …); `Erector_Crew` under `Erector` | the middle of the group | a `slide` straight down, 90 m: out of sight between one frame and the next | | 06:58; 07:08; 08:05; 08:37; 08:28; 08:37 | 0.1 s | `clocked` | when each left: the roster's readinesses (documented) for the crews; estimated for the Commission and the send-off. That they vanish and do not walk: ours ("The morning's people and vehicles") |
+| `StairParty_People` | `StairParty` | built 90 m under where it stands | a `slide` up 90 m, and down again | | 07:01; 07:08 | 0.1 s | `clocked` | the minutes estimated |
 
 **What the simulator can rely on.** At launch (T+0) the four supports stand closed with the rocket's weight on
 their heads, the four guides stand at its tail, the cable mast is back, the service trusses are down and the
-erector and the fillers are gone. From T+0.3 s to T+2.3 s each `Guide_n` turns 25° down about its foot, and from
+erector and the fillers are gone; the deck and the apron are empty: every group of people has left (the last at
+08:37) and the bus, the car and the truck have driven out through the fences, where the model leaves them standing on
+the road just outside the west gate, 510 to 540 m west. From T+0.3 s to T+2.3 s each `Guide_n` turns 25° down about its foot, and from
 T+0.7 s to T+2.6 s each `Support_n` turns 45° out about its hinge, both eased; nothing else on the pad moves
 after launch. They are played wherever the flight's clock runs (the launch site, the flight), at every level of
 detail, and they are solid as posed (the walker's `Solids` ask the meshes where they are). In the gallery, which
@@ -541,19 +593,28 @@ closed the strap-ons strike their heads at once: the motion is not decoration. T
 script is not in the repository (it needs both GLBs and Blender); the model's own clearance check
 (`check_clearance`) is of parallel faces as built, a different thing.
 
-The pad's slider is the morning from 07:10, when the transcript begins with the pilot in his
-seat, to four seconds after liftoff. At 08:15 the transcript has "they are lowering the service
-platforms; all the work on the trusses is finished": what was lowered is not known, the model's
-platforms are rigid on their trusses, and nothing moves for it.
+The pad's slider is the morning from 06:49, the bus on the road, to four seconds after liftoff. Its first
+tenth is the pilot's arrival (to 07:10, when the transcript begins with him in his seat); the hardware's
+motions keep the places they had on the old slider, which began at 07:10, each at 0.1 + 0.9 of its old reading.
+The people and the road vehicles are not on the slider but on the clock (`clocked`, in seconds from launch),
+which the slider reads: so they cannot be worked by hand as the hardware can. At 08:15 the transcript has
+"they are lowering the service platforms; all the work on the trusses is finished": what was lowered is not
+known, the model's platforms are rigid on their trusses, and nothing moves for it.
 
 ## The morning at the pad
 
-Moscow time, from the record of the exchanges between Gagarin (Кедр) and the pad (Заря-1) that
+Moscow time. From 07:10, from the record of the exchanges between Gagarin (Кедр) and the pad (Заря-1) that
 was sent to the Central Committee on 25 April 1961 (*Izvestiya TsK KPSS*, 1991 No. 5), with
-Ivanovsky's account where it is his.
+Ivanovsky's account where it is his. Before it, from the film, the memoirs and Kamanin's diary. **The range's
+clock ran two hours ahead of Moscow's**, and the memoirs keep it: Kamanin's "bus at 8:50" is 06:50 Moscow
+(Mikheev: "it was nine in the morning, seven by Moscow time"). The Sun rose at about 04:05 Moscow time: the
+whole of this is in daylight, the Sun 27° up when the bus came.
 
 | Time | What | Who says |
 | --- | --- | --- |
+| about 06:50 | The bus comes up the concrete road and stops west of the rocket, facing it. The cameramen jump down first; a doctor in a white coat hands the pilot down. He reports to the chairman of the State Commission, which stands "in a tight group" ten metres off | Kamanin's diary (8:50 by the range's clock); Golovanov p. 645; the film |
+| about 06:58 (not timed) | Korolev, Moskalenko and Kamanin walk him along the erector's wagon to the stair | Mikheev; Chertok vol. 3 p. 71; the film; a colour photograph |
+| about 07:01 (not timed) | Fifteen steps up, he turns on the landing and waves; a dozen people at the stair's foot wave back. The lift takes him up with Ivanovsky | Ivanovsky; the film; a photograph |
 | 07:10 | The first call from the seat | the transcript begins |
 | 07:44 | "Now they will close hatch No. 1" | Gagarin |
 | 07:58 | One contact did not show closed: the hatch is taken off and put back | Korolev |
@@ -623,6 +684,9 @@ opens: what was behind each is not recorded.
 | Storage bunker of three bays | 1957 | today | documented | HTA/JR-4/58; PIC/JR-2/60; OpenStreetMap |
 | Propellant shed, pump house, work shop | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; PIC/JR-2/60; the shed again in PIC/JR-2/61 (March 1961), from the same photographs. None is on today's map where the drawing has it |
 | Cascade (gas receivers) | between August 1957 and 1959 | not known | documented for 1959; assumed for 1961 | PIC/JR-2/60 ("the physical plant ... has been enlarged to include a probable cascade facility"); no longer "probable" in PIC/JR-2/61 |
+| Walls and a flat roof over the gas receivers, floodlights on the roof | between July 1959 and 12 April 1961 (`since="1961-04-12"`: for an earlier date the vessels stand in the open) | not known | documented for 12 April 1961 (that the low terracotta building stood there); estimated (that it is the receivers' enclosure) | the film of the morning; a colour photograph |
+| The cosmonauts' bus, a saloon car, a box-bodied truck on the apron | 12 April 1961, from about 06:50 | the car and the truck 08:05, the bus 08:37 (estimated) | documented that they stood there at 06:50 | the film. In `stood` they are of the day itself. The same bus brought every Vostok's pilot: a later flight builds it for its own morning |
+| The people: the State Commission, the send-off, the launch crews | 12 April 1961 | each at its own time ("The morning's people and vehicles") | documented | the film; the roster. Of the day itself |
 | Support building | between August 1957 and 1959 | today | documented | PIC/JR-2/60 ("has been added"); OpenStreetMap |
 | Check-out shop, security building | 1957 | today | documented | HTA/JR-4/58; OpenStreetMap |
 | Observation positions a to i | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; "remain unchanged" in PIC/JR-2/60 |
@@ -679,12 +743,29 @@ rocket can leave the erector out by its date.
   the deck's level, some 20° from upright, and fall back to a stop 2.6 to 2.7 m under it. They drop 25°
   about their feet, which is a motion of the right kind and not the real one. Their grip on the tail is
   not modelled.
-- The cable mast is on the wrong side, as far as two photographs can say. Both photographs of 12 April
-  1961 taken from across the pit (the 110 ft mast on the platform's north-east lip stands at their right,
-  so they look west) have the cable mast, swung back, on the rocket's left: the south. The model has it on
-  the east, toward the camera. It was put there because the model's service trusses, lowered at 08:40,
-  sweep the north and the south with their half rings while the mast still stood; how the real mast and
-  the south truss shared that side is not in anything read, and moving it means building both again.
+- **The cable mast is on the wrong side: it stood on the west, and the model has it on the east.** Both
+  photographs of 12 April 1961 that show it have it, swung back, on the rocket's left, with the 110 ft mast of
+  the north-east lip at their right. Those photographs were first read as looking west (which would put the
+  cable mast on the south); they look north, from beyond the south fence ("The platform": the lip's bracket seen
+  side on, the light from the camera's right), and a third thing in them says so independently: the long white
+  building at the deck's level 43 to 57 m to the rocket's left in the colour one is the propellant shed, which
+  from the south is seen at 40 to 72 m west and from the east would be seen 24 to 34 m to the rocket's right.
+  So the tall mast's foot is some 9.8 m west of the axis and it leans some 22° west in them, swung perhaps 25°
+  from where it stood and not the model's 40°, with the short mast beside it (foot 7.6 m west, 15° out, some
+  14 m long). **It is left where it is.** A check against a third view was wanted before rebuilding and none
+  was had: the film's launch reel has no shot of the masts, and no KH-7 frame of Site 1 of 1963 to 1965 was
+  found on Wikimedia Commons (searched, November 2026). And on the west the mast shares its side of the ring
+  with the erector: a mast of two legs 2.7 m either side of the support there would have the boom between its
+  legs, the lift's car within a hand's breadth of one leg and the walk beside the car through it. How the real
+  mast and the real boom shared that side is not in anything read; moving the mast means rebuilding the mast,
+  the erector's upper works and the pose check with it, and the table in "Moving parts" stands as it was.
+- **The hatch may face south-south-west, not west.** In the photograph taken before liftoff the fairing's
+  opening is seen 0.51 of its radius to the left of the rocket's middle line, from the south: so it faces some
+  31° west of south, bearing about 211° (± 10°). The model has it at 187.5° round from east, which is bearing
+  262.5°, 7.5° south of west: some 50° further round. (The two figures are in different conventions; set side by
+  side as "211 against 187.5" they look 24° apart, and are not.) That would put booster B's plane somewhere
+  other than along the launch azimuth, or the azimuth elsewhere than 37.5°. It agrees with the stair and the
+  lift being on the erector's south side. Open: the vehicle is not turned.
 - A second, shorter mast stands beside the cable mast in both those photographs: some 17 m long, a head on
   its top, 12° out of upright before the rocket left and after. It is not built. Those who have studied
   the films have Gagarin's rocket served by two cable masts and a cable and filling mast, the tall one of
@@ -773,10 +854,36 @@ rocket can leave the erector out by its date.
 - On the CIA's drawing and not built: the ditches round the pit and the spoil, the drainage basin
   and the "possible fuel burn-off pit" to the west (cuts in the land, narrower than the land's mesh can
   hold at a distance: "The lie of the land"), the buried water lines and
-  cables, the two support buildings south of the tracks (a gable-roofed building and a prefabricated
-  store: their sizes are redacted and neither is on today's map), the building outside the fence,
-  the vehicles by the check-out shop and the ten rail cars on the spurs as they stood in 1959 (which moved: two
-  fillers are built where they stood on the morning).
+  cables, the vehicles by the check-out shop and the ten rail cars on the spurs as they stood in 1959 (which
+  moved: two fillers are built where they stood on the morning).
+- **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
+  roster has people, each there until its time and then gone between one frame and the next ("The morning's
+  people and vehicles"). Nobody walks to the stair, gets down from the bus or climbs the fifteen steps: the pilot's
+  own walk is the one the viewer walks as. The three who walked him to the stair are in two groups, at the bus and
+  at the stair's foot, and for three minutes (06:58 to 07:01) in neither. Who each figure is, beyond Korolev and
+  Moskalenko, and every stance, are ours. Of the 688 on the pad these are the fifty the camera saw or the roster
+  places; the soldiers, the fire crews and the guards are not drawn.
+- **After 07:10 the Commission is not drawn.** Korolev spoke to the pilot from a point on the pad until 08:40, when
+  "the talking point moves to the bunker": where that point was is not recorded, and nobody stands for it.
+- Not built, because the roster names them and gives no place: the fire engines (crews of two are listed, ten
+  engines and five washing trucks stood by for the launch of March 1961), the two water-washing trucks that left
+  last, at five minutes, for the gate, the ambulance that left at thirty minutes for the bend of the road, the
+  doctors' field car that came at dawn, the rail tractor that drew the erector and the fillers off, the evacuation
+  trains. The film crews' places (the upper platform, "a hillock", "a dugout") are named and not located.
+- The bus, the car and the truck drive on the flat: the land under the apron is level in the model. They cross no
+  modelled rail (the truck crosses two tracks where they are paint on the land), and when they have gone they
+  stand on the road just outside the west gate, 510 to 540 m from the pad, for as long as the clock runs (no further, so that the place's coarse shadow map stays over the pad): they went to
+  the measuring point and to 20 km, beyond what is modelled. The bus's three drives are a way of turning it round
+  that is ours. The saloon car is `tools/blender/vehicles.py`'s kind and can be got into and driven; the bus and
+  the truck cannot.
+- **The apron's surface is the land's paint, not the film's.** The film shows the ground west of the platform, where
+  the bus stood, laid in concrete slabs with the rails flush in them, for at least 45 m west of the abutment and
+  35 m south of the centre track. The land there is drawn as graded earth with ballasted track, and the modelled
+  rails stand 13 cm over it.
+- **The film's frame from the erector does not agree with the clock.** Its shadows lie some 40° clockwise of the
+  rails, as a Sun at azimuth 130° would throw them: that is about 08:15 Moscow time, not 06:55, when the Sun stood
+  at 108°. Either the frame was shot later that morning (the pilot's suit in it argues not) or the rails in it run
+  some 20° off east and west, which no map has. Not resolved; the bus is placed by the rails, not by the shadows.
 - The spoil heap is a smooth mound of one tone: its gullies and the ditches round it are not drawn,
   and the steppe's cover does not grow on it.
 - The land's relief is three levels and the falls between them, from a radar survey of 2000 on a 30 m grid

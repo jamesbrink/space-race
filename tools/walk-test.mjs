@@ -32,6 +32,18 @@ const V1_MORNING = -(1 * 3600 + 56 * 60 + 59.7);
 const ROUTES = {
   'ussr/vostok/vostok-1': [
     {
+      name: 'the pilot’s own way: from the bus’s door past the State Commission to the stair’s foot',
+      at: V1_MORNING - 15 * 60, // 06:55: the bus has stopped, the send-off and the Commission stand on the concrete
+      from: [-46.4, -0.12, 17.6],
+      legs: [
+        { to: [-38.6, 17.5], y: -0.12, tol: 0.2, note: 'east from the door to the Commission, ten metres off' },
+        { to: [-33.6, 15.0], y: -0.12, tol: 0.2, note: 'round the knot, between it and the south track' },
+        { to: [-26.8, 9.0], y: -0.03, tol: 0.2, note: 'over the tracks onto the abutment' },
+        { to: [-20.0, 5.6], y: 0, note: 'onto the deck' },
+        { to: [-16.6, 3.3], y: 0, note: 'to the foot of the fifteen steps' },
+      ],
+    },
+    {
       name: 'the erector: fifteen steps, the lift, the upper platform at the hatch',
       at: V1_MORNING,
       // (the stair and the lift are on the erector's south side: the film of the morning)

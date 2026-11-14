@@ -255,6 +255,10 @@ def materials() -> dict:
             # the one wall colour a photograph of the day shows: the long building west of the pad at the deck's level is
             # white, in the colour photograph of the liftoff taken from the south (the propellant shed: buildings.py)
             "white": m("wall-limewashed-white", (0.8, 0.79, 0.75), 0.0, 0.9),
+            # the low building by the apron, terracotta in the film and a colour photograph of the day (buildings.py)
+            "terracotta": m("wall-render-terracotta", (0.5, 0.27, 0.19), 0.0, 0.92),
+            "felt": m("roof-felt-grey", (0.3, 0.29, 0.28), 0.0, 0.95),
+            "canvas": m("canvas-tent-khaki", (0.36, 0.34, 0.24), 0.0, 0.95),
             # the fences' posts, pale in the photograph of the day taken through them (perimeter.py)
             "post": m("concrete-post-pale", (0.7, 0.69, 0.65), 0.0, 0.9),
             "joint": m("concrete-joint", (0.07, 0.07, 0.065), 0.0, 1.0),

@@ -43,7 +43,17 @@ SHED_HEADING = math.degrees(math.atan2(SPURS[3][-1][1] - SPURS[3][-2][1], SPURS[
 # [redacted]", on a plot 55 by 40 ft "near the southwest corner of the launching platform ... approximately 135 feet
 # from the servicing tower" (PIC/JR-2/60); confirmed, no longer "probable", in PIC/JR-2/61.
 CASCADE = (55.0 * FT, 40.0 * FT)  # east-west, north-south
-CASCADE_AT = (-38.6, -23.3)  # its middle, m: against the abutment's south-west corner (Figure 5; 45 m from the axis against the text's 41)
+# Its middle, m. Figure 5 has it 45 m from the axis and the text 41 m, against the abutment's south-west corner: good to
+# some ten metres. Within that it is put where the film of 12 April 1961 leaves the concrete clear: looking down from
+# the erector as the bus stops, a long low flat-roofed building's north-west corner lies some 5 m south and a metre or
+# two east of the bus's door, the bus a metre south of the south track, and south of the bus is open concrete with
+# people standing on it. (It was first put at (-38.6, -23.3), which is where the bus's party stood.)
+CASCADE_AT = (-34.9, -27.0)
+# What the film and a colour photograph show standing there in April 1961: a low building with terracotta walls and a
+# flat roof laid in strips, some 2.5 to 3 m high (a man stands on its roof behind the party), a frame of at least six
+# floodlights at a corner of the roof. That it is the gas receivers' enclosure is our reading: it stands where the CIA
+# had them, and is their plot's size.
+CASCADE_ROOF = 2.8  # its roof over the ground, m (estimated off the film)
 TANKS, TANK_LENGTH = 9, 37.0 * FT  # a bank's tanks ("8 to 10"), and one's length (the CIA's 40 ft less the manifold: estimated)
 TANK_R = 0.35  # m (estimated: nine side by side fill half the plot's breadth)
 
@@ -108,11 +118,22 @@ def cascade(parts: Parts) -> None:
         g,
         "Gas receivers (the 'cascade')",
         "Two banks of long pressure vessels beside the platform, which the CIA's interpreters called a cascade facility: compressed "
-        "gas for the pad. The plot (55 by 40 ft) and the count (8 to 10 a bank, 40 ft long) are theirs; the vessels' girth, the "
-        "cradles and the pipes are estimated.",
+        "gas for the pad. The plot (55 by 40 ft) and the count (8 to 10 a bank, 40 ft long) are theirs, off photographs of 1957 and "
+        "1959, which show the vessels in the open. The film of 12 April 1961 has a low terracotta building with a flat roof and a frame "
+        "of floodlights where they stood: it is taken for their enclosure (estimated), and its doors are shut.",
     )
     cx, cy = CASCADE_AT
     w, d = CASCADE
+    if stood(
+        "Walls and a flat roof over the gas receivers",
+        since="1961-04-12",
+        confidence="documented",
+        source="the film of 12 April 1961 («Первый рейс к звёздам», 43:26 and 43:42) and a colour photograph of the day: a low "
+        "terracotta building with a flat roof beside where the bus stopped, floodlights on a frame on its roof. That it is the gas "
+        "receivers' enclosure is estimated; the CIA's photographs of 1957 and 1959 show the vessels in the open. When it was built is not known",
+    ):
+        cascade_house(parts, g, (cx - w / 2, cy - d / 2, cx + w / 2, cy + d / 2))
+        return
     conc, tank, pipe = parts(g, "concrete/plot"), parts(g, "tank", True), parts(g, "grey/pipes", True)
     box(conc, (cx - w / 2, cy - d / 2, -FOOTING), (cx + w / 2, cy + d / 2, 0.0))
     pitch = 2 * TANK_R + 0.14
@@ -146,6 +167,73 @@ def cascade(parts: Parts) -> None:
     xd = ends[1][1] + 0.4
     pipe.tube(P(ends[1][1], ym, zc), P(xd, ym, zc), 0.045, 10)
     pipe.tube(P(xd, ym, zc + 0.04), P(xd, ym, -0.1), 0.045, 10)  # (into the plot: the line to the platform ran under the ground)
+
+
+def cascade_house(parts: Parts, g: str, rect) -> None:
+    """The gas receivers as the film of April 1961 has their place: terracotta walls, a flat roof laid in strips with
+    an upstand round it, a pair of steel doors toward the track, floodlights on a frame at the roof's north-west
+    corner. The vessels inside are not drawn: the doors are shut."""
+    x0, y0, x1, y1 = rect
+    eave = GROUND + CASCADE_ROOF
+    walls = sitelib.ring([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], 0.38)
+    skin = parts(g, "terracotta/walls")
+    gate = (6.4, 9.0, GROUND + 0.03, GROUND + 2.3)  # in the north wall, toward the track, from its east end
+    for i, w in enumerate(walls):
+        w.build(skin, -FOOTING, eave, [gate] if i == 2 else [])
+    double_door(parts, f"{g}_Gate", g, walls[2], *gate, depth=0.12)
+    for leaf in ("L", "R"):
+        obj = parts.nodes[f"{g}_Gate{leaf}"][0]
+        obj["label"] = "Doors, kept shut"
+        obj["about"] = "The gas receivers stood behind these walls: what else did is not recorded, so the doors stay shut."
+    wall, roof = parts(g, "terracotta/upstand"), parts(g, "felt/roof")
+    # the roof: a slab, an upstand round its edge, and the felt laid across it in strips, each lapped over the next
+    box(wall, (x0 - 0.12, y0 - 0.12, eave - 0.05), (x1 + 0.12, y1 + 0.12, eave + 0.16))
+    for a, b in (
+        ((x0 - 0.12, y0 - 0.12), (x1 + 0.12, y0 + 0.1)),
+        ((x0 - 0.12, y1 - 0.1), (x1 + 0.12, y1 + 0.12)),
+        ((x0 - 0.12, y0 + 0.1), (x0 + 0.1, y1 - 0.1)),
+        ((x1 - 0.1, y0 + 0.1), (x1 + 0.12, y1 - 0.1)),
+    ):
+        box(wall, (a[0], a[1], eave + 0.16), (b[0], b[1], eave + 0.42))
+    strips = max(4, round((x1 - x0 - 0.2) / 1.05))
+    for i in range(strips if fine() else 1):
+        xa = x0 + 0.1 + (x1 - x0 - 0.2) * i / (strips if fine() else 1)
+        xb = x0 + 0.1 + (x1 - x0 - 0.2) * (i + 1) / (strips if fine() else 1)
+        sitelib.solid(
+            roof,
+            [
+                [
+                    (xa, y, eave + 0.15),
+                    (xb + (0.04 if fine() else 0.0), y, eave + 0.15),
+                    (xb + (0.04 if fine() else 0.0), y, eave + 0.2),
+                    (xa, y, eave + 0.245),
+                ]
+                for y in (y0 + 0.1, y1 - 0.1)
+            ],
+        )
+    # a plinth course and a cornice, so that the wall has a foot and a head
+    for z0, z1, out in ((-FOOTING, GROUND + 0.35, 0.05), (eave - 0.3, eave - 0.06, 0.06)):
+        for a, b in (
+            ((x0 - out, y0 - out), (x1 + out, y0 + 0.02)),
+            ((x0 - out, y1 - 0.02), (x1 + out, y1 + out)),
+            ((x0 - out, y0 + 0.02), (x0 + 0.02, y1 - 0.02)),
+            ((x1 - 0.02, y0 + 0.02), (x1 + out, y1 - 0.02)),
+        ):
+            box(wall, (a[0], a[1], z0), (b[0], b[1], z1))
+    # the floodlights: a frame of two posts and three rails at the north-west corner, six lamps turned to the apron and
+    # the tracks (a colour photograph of the day: "at least six", on a white frame; where they pointed is estimated)
+    steel, lamps = parts(g, "sign/frame"), parts(g, "lamp/floods", True)
+    parts.mark(g, "lamp/floods", lens_out=1)
+    fx, fy = x0 + 0.6, y1 - 0.45
+    for dx in (0.0, 2.4):
+        sitelib.beam(steel, (fx + dx, fy, eave + 0.1), (fx + dx, fy, eave + 2.6), 0.07)
+        sitelib.beam(steel, (fx + dx, fy, eave + 1.7), (fx + dx, fy - 1.2, eave + 0.2), 0.05)
+    for z in (eave + 1.5, eave + 2.05, eave + 2.57):
+        sitelib.beam(steel, (fx - 0.1, fy, z), (fx + 2.5, fy, z), 0.05)
+    for row, z in enumerate((eave + 1.78, eave + 2.32)):
+        for k in range(3):
+            c = (fx + 0.4 + 0.8 * k, fy + 0.14, z)
+            sitelib.lamp_head(steel, lamps, c, (-0.55 + 0.35 * k, 1.0, -0.42 - 0.1 * row), 0.24)
 
 
 def _hut(parts: Parts, g: str, key: str, rect, eave: float, openings: dict, **kw) -> list:
