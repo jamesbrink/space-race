@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TYURATAM_GROUND } from '../../missions/ussr/vostok/sites/tyuratam-ground.ts';
 import type { SiteAround } from '../types';
 import { type Air, driftClouds, installAir } from './air';
 import { buildAround } from './around';
@@ -363,21 +364,79 @@ const RELIEF = /* glsl */ `
   }`;
 
 /**
- * What covers the ground: the steppe's own (steppe.ts: `steppe`), told where the ground lies low, which is where the
- * water of the thaw stands and the takyrs and salt crusts are: the low steppe north and east of the scarp
- * (tyuratamrelief.ts), and beyond the pad the hollows of the land's swell (`relief`). Over that, what the builders made:
- * graded ground on the apron, the tracks' beds and a margin round the pit; the ground inside the fence worn in patches
- * by four years of building and the round of work (the 1957 photograph shows bare ground round the pad and pit,
- * site-1.md); a ring of turned ground round the spoil heap; and nothing on the platform, in the pit or on a road.
+ * The mapped ground (missions/ussr/vostok/sites/tyuratam-ground.ts) as a table the cover's bake reads (`mappedKinds`),
+ * KINDS_WIDE texels a row: from row 0 each thing's box (west, south, east, north, m); then (its first edge, how many, its
+ * kind, half its breadth); then a grid of KINDS_GRID cells a side over the land, each (its first entry, how many) in the
+ * list that follows of the things that come within reach of it; then every edge (x0, y0, x1, y1), metres east and north.
+ * The grid is so that a texel asks only after the few things near it, not all of them.
+ */
+/** How far out from a mapped thing its margin reaches, metres (a pan's ring of biyurgun: steppe.ts `steppeMapped`). */
+const KINDS_REACH = 40;
+const KINDS_WIDE = 1024;
+const KINDS_GRID = 32;
+const KINDS = (() => {
+  const code = { takyr: 0, salt: 1, sand: 2, channel: 3 } as const;
+  const things = TYURATAM_GROUND;
+  const edges: number[][] = [];
+  const heads: number[][] = [];
+  const boxes: number[][] = [];
+  for (const t of things) {
+    const ring = t.ring;
+    const closed = t.kind !== 'channel';
+    const first = edges.length;
+    for (let i = 0; i + (closed ? 0 : 1) < ring.length; i++) {
+      const a = ring[i]!,
+        b = ring[(i + 1) % ring.length]!;
+      edges.push([a[0], a[1], b[0], b[1]]);
+    }
+    const xs = ring.map((p) => p[0]),
+      ys = ring.map((p) => p[1]);
+    boxes.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]);
+    heads.push([first, edges.length - first, code[t.kind], (t.width ?? 0) / 2]);
+  }
+  // each cell's list: every thing whose box, grown by how far a pan's margin reaches (KINDS_REACH) and half its breadth, touches it
+  const cell = (2 * FAR) / KINDS_GRID;
+  const cells: number[][] = [];
+  const list: number[] = [];
+  for (let gy = 0; gy < KINDS_GRID; gy++)
+    for (let gx = 0; gx < KINDS_GRID; gx++) {
+      const x0 = -FAR + gx * cell,
+        y0 = -FAR + gy * cell;
+      const start = list.length;
+      boxes.forEach((b, j) => {
+        const reach = KINDS_REACH + heads[j]![3]!;
+        if (b[0]! - reach < x0 + cell && b[2]! + reach > x0 && b[1]! - reach < y0 + cell && b[3]! + reach > y0) list.push(j);
+      });
+      cells.push([start, list.length - start]);
+    }
+  const rows = (n: number) => Math.max(1, Math.ceil(n / KINDS_WIDE));
+  const at = { heads: rows(things.length), cells: 0, list: 0, edges: 0, height: 0 };
+  at.cells = rows(things.length) + at.heads;
+  at.list = at.cells + rows(cells.length);
+  at.edges = at.list + rows(list.length);
+  at.height = at.edges + rows(edges.length);
+  const data = new Float32Array(KINDS_WIDE * at.height * 4);
+  const put = (row: number, i: number, v: number[]) =>
+    data.set(v, ((row + Math.floor(i / KINDS_WIDE)) * KINDS_WIDE + (i % KINDS_WIDE)) * 4);
+  boxes.forEach((v, j) => put(0, j, v));
+  heads.forEach((v, j) => put(at.heads, j, v));
+  cells.forEach((v, j) => put(at.cells, j, v));
+  list.forEach((v, j) => put(at.list, j, [v]));
+  edges.forEach((v, j) => put(at.edges, j, v));
+  const texture = new THREE.DataTexture(data, KINDS_WIDE, at.height, THREE.RGBAFormat, THREE.FloatType);
+  texture.needsUpdate = true;
+  return { at, texture };
+})();
+
+/**
+ * What covers the ground: the steppe's own (steppe.ts: `steppeMapped`), told where the pans and the old channels are
+ * (the maps and the Corona frames: tyuratam-ground.ts, `KINDS`). Over that, what the builders made: graded ground on the
+ * apron, the tracks' beds and a margin round the pit; the ground inside the fence worn in patches by four years of
+ * building and the round of work (the 1957 photograph shows bare ground round the pad and pit, site-1.md); a ring of
+ * turned ground round the spoil heap; and nothing on the platform, in the pit, on a road or on the apron's slabs.
  */
 const COVER = /* glsl */ `
   ${STEPPE_COVER}
-  // how low the ground lies here, 0 to 1: the scarp's low side near the pad, the swell's hollows beyond it
-  float lowGround(vec2 p) {
-    float site = 0.5 * clamp(-siteRelief(vec2(p.x, -p.y)) / 8.0, 0.0, 1.0);
-    float swell = 1.0 - smoothstep(0.36, 0.56, fbm2(p * 0.0025, 61, 3));
-    return max(site, swell * smoothstep(400.0, 900.0, length(p)));
-  }
   // the builders' ground: graded (1) where it was made, worn where it was worked over (the fence's inside, the spoil's foot)
   float madeGround(vec2 p) {
     float made = 1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5));
@@ -392,9 +451,52 @@ const COVER = /* glsl */ `
     worn = max(worn, (1.0 - smoothstep(0.0, 35.0, spoil(p) + 10.0 * (noise2(p * 0.04, 40) - 0.5))) * 0.85);
     return worn;
   }
+  // The ground's kinds where the map has them (KINDS): how far inside the nearest mapped pan, salt crust, sand patch and
+  // old channel's bed p is, metres (-1e4 where none is near).
+  uniform sampler2D uKinds;
+  vec4 kindsAt(int row, int i) {
+    return texelFetch(uKinds, ivec2(i % ${KINDS_WIDE}, row + i / ${KINDS_WIDE}), 0);
+  }
+  void mappedKinds(vec2 p, out vec4 inside) {
+    inside = vec4(-1e4);
+    vec2 q = vec2(p.x, -p.y);
+    ivec2 g = ivec2(floor((q + ${glsl(FAR)}) / ${glsl((2 * FAR) / KINDS_GRID)}));
+    if (g.x < 0 || g.y < 0 || g.x >= ${KINDS_GRID} || g.y >= ${KINDS_GRID}) return;
+    vec4 c = kindsAt(${KINDS.at.cells}, g.y * ${KINDS_GRID} + g.x);
+    int start = int(c.x + 0.5), n = int(c.y + 0.5);
+    for (int k = 0; k < n; k++) {
+      int j = int(kindsAt(${KINDS.at.list}, start + k).x + 0.5);
+      vec4 box = kindsAt(0, j);
+      vec4 info = kindsAt(${KINDS.at.heads}, j);
+      float reach = ${glsl(KINDS_REACH)} + info.w;
+      if (q.x < box.x - reach || q.x > box.z + reach || q.y < box.y - reach || q.y > box.w + reach) continue;
+      int first = int(info.x + 0.5), count = int(info.y + 0.5), kind = int(info.z + 0.5);
+      float best = 1e9;
+      bool odd = false;
+      for (int i = 0; i < count; i++) {
+        vec4 e = kindsAt(${KINDS.at.edges}, first + i);
+        best = min(best, segment(q, e));
+        if ((e.y > q.y) != (e.w > q.y) && q.x < e.x + (e.z - e.x) * (q.y - e.y) / (e.w - e.y)) odd = !odd;
+      }
+      float d = kind == 3 ? info.w - best : (odd ? best : -best);
+      if (kind == 0) inside.x = max(inside.x, d);
+      else if (kind == 1) inside.y = max(inside.y, d);
+      else if (kind == 2) inside.z = max(inside.z, d);
+      else inside.w = max(inside.w, d);
+    }
+  }
+  void cover(vec2 p, out float shrub, out float herb, out float takyr, out float salt, out float sand, out float zone) {
+    vec4 inside;
+    mappedKinds(p, inside);
+    steppeMapped(p, inside.x, inside.y, inside.z, shrub, herb, takyr, salt, sand, zone);
+    // an old channel's bed: the thaw's water lies longest there, so it is greener, ringed with the hollows' shrubs
+    float bed = smoothstep(-4.0, 4.0, inside.w + 6.0 * (noise2(p * 0.03, 68) - 0.5));
+    herb = mix(herb, min(1.0, herb + 0.3), bed * (1.0 - takyr));
+    zone = mix(zone, 0.8, bed * (1.0 - takyr) * (1.0 - sand));
+  }
   vec4 coverA(vec2 p) {
     float shrub, herb, takyr, salt, sand, zone;
-    steppe(p, lowGround(p), shrub, herb, takyr, salt, sand, zone);
+    cover(p, shrub, herb, takyr, salt, sand, zone);
     float made = madeGround(p), worn = wornGround(p);
     shrub *= (1.0 - made) * (1.0 - 0.75 * worn);
     herb *= (1.0 - 0.85 * made) * (1.0 - 0.6 * worn);
@@ -408,7 +510,7 @@ const COVER = /* glsl */ `
   }
   vec4 coverB(vec2 p) {
     float shrub, herb, takyr, salt, sand, zone;
-    steppe(p, lowGround(p), shrub, herb, takyr, salt, sand, zone);
+    cover(p, shrub, herb, takyr, salt, sand, zone);
     float made = madeGround(p);
     float worked = max(1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5)), 1.0 - smoothstep(2.0, 6.0, rail(p)));
     worked = max(worked, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 3)}, road(p)));
@@ -574,6 +676,7 @@ function landSpec(): LandSpec {
       uRoads: { value: ROAD_SEGMENTS.map((s) => new THREE.Vector4(...s)) },
       uRuts: { value: RUT_SEGMENTS.map((r) => new THREE.Vector4(...r.s)) },
       uRutKind: { value: RUT_SEGMENTS.map((r) => new THREE.Vector2(r.half, r.worn)) },
+      uKinds: { value: KINDS.texture },
     },
     palette: STEPPE_PALETTE,
     ground: STEPPE_GROUND,
