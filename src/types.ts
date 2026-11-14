@@ -244,7 +244,11 @@ export interface Part {
  */
 export interface Command {
   label: string;
-  ask: 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main' | `work:${string}`;
+  /**
+   * What it asks: an event of a ballistic flight's (sim/vehicle.ts), a mechanism worked (`work:<id>`), or a step of an
+   * orbital flight's launch vehicle (`step:<ignite|cut|separate>:<stage index>`, `step:drop:<drop id>`: sim/stagedlive.ts).
+   */
+  ask: 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main' | `work:${string}` | `step:${string}`;
   back?: string;
 }
 
@@ -569,6 +573,12 @@ export interface SiteDef {
    * morning, every figure of it `estimated`. A flight's own day replaces all of it, never part.
    */
   weather?: DayWeather;
+  /**
+   * The place's quiet as it is heard (sound/model.ts `Place`): gains for the wind, the surf, a far hum of machinery, and
+   * the water round a spacecraft that has come down. All estimated. Left out, it is a launch site by the sea whose
+   * flights come down in it (`PLACE`): a site inland says so here, or a rocket is heard in the surf that is not there.
+   */
+  quiet?: { wind: number; surf: number; hum: number; sea: number };
 }
 
 /** A wind as a station reports it: the bearing it blows from, degrees clockwise from true north, and its speed, m/s. */
@@ -802,8 +812,10 @@ export interface Heating {
   noseRadius: Measure;
   /** Every surface's temperature at liftoff, K. */
   starts: Measure;
-  /** The first is the one the instruments read (the heat shield). */
+  /** The first is the one the instruments read (the heat shield). None: only the flux and the shock layer are worked. */
   surfaces: HeatedSurface[];
+  /** A ball: its face is as blunt whichever way it meets the air, so its shock layer is whole at any attitude. */
+  round?: boolean;
 }
 
 /**
@@ -1079,12 +1091,21 @@ export interface Limits {
  * confidence all the same.
  */
 export interface ChuteDef {
-  /** Which of the simulator's parachutes it is. */
-  on: 'drogue' | 'main';
-  /** The node of the flown model it is made fast to: at the middle of the top of that node's bounds (+Y in its own frame). */
+  /** Which of the simulator's parachutes it is: the trajectory's 'drogue' or 'main', or with `body` that body's parachute's `name`. */
+  on: 'drogue' | 'main' | (string & {});
+  /**
+   * A body of an orbital flight's descent (`orbital.descent.bodies[].id`, sim/orbital.ts flyDown) whose parachute this is:
+   * out when flyDown lets it out, filling over its `fills`, gone when it is let go (`instead`, `replaces`), streaming
+   * against the motion through the air of whatever it is made fast to.
+   */
+  body?: string;
+  /**
+   * The node it is made fast to, in the flown model or in a figure carried down on a descent (`flies.hangs`): at the
+   * middle of the top of that node's bounds (+Y in its own frame), or its origin for a node with nothing under it.
+   */
   at: string;
-  /** How the cloth is cut: a ringsail's rings and sails with slots between, or a ribbon parachute's ribbons, more gap than cloth. */
-  cut: 'ringsail' | 'ribbon';
+  /** How the cloth is cut: a ringsail's rings and sails with slots between, a ribbon parachute's ribbons, more gap than cloth, or a solid round canopy. */
+  cut: 'ringsail' | 'ribbon' | 'solid';
   /** The canopy's diameter as made (laid flat), m. Filled, it is about two thirds of that across. */
   diameter: Measure;
   /** How many gores, and so how many suspension lines. */
@@ -1175,7 +1196,19 @@ export interface Flight {
       on?: 'tower' | 'separation' | 'retropack' | 'drogue' | 'main' | (string & {});
       /** It leaves hanging under that parachute, which goes with it, instead of falling free. */
       under?: 'drogue' | 'main';
+      /**
+       * It comes down on bodies of the orbital flight's descent (`orbital.descent`, sim/orbital.ts flyDown) rather than as a
+       * shed body: carried along each body's track in turn, each from where that body's track begins (a body left behind
+       * begins where it was left), turning as it goes to lie with its +Y against its motion through the air (where its
+       * parachute is made fast). `hide`: nodes of it not drawn from then on (the pilot, gone from the seat he left).
+       */
+      rides?: { body: string; hide?: string[] }[];
     }[];
+    /**
+     * A figure of the flight's (a model id) carried down on a body of the descent from when that body's parachute `from`
+     * comes out, in the pose its `Harness` node's extras give (`hang_joints`, `hang`: sk-1.md), its Harness where the body is.
+     */
+    hangs?: { model: string; body: string; from: string }[];
     /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
     turned?: number;
     /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */

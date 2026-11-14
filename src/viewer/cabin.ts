@@ -683,8 +683,9 @@ export class Cabin {
   everything(on: boolean): void {
     this.all = on;
     for (const { mesh, casts } of this.interior) {
-      mesh.visible = on || this.shown;
-      mesh.castShadow = casts && (on || this.casting);
+      const out = !within(mesh, this.group);
+      mesh.visible = on || this.shown || out;
+      mesh.castShadow = casts && (on || this.casting || out);
     }
     // (drawn for that, the inside's pictures went to the GPU with it: on the lighter tier they are let go again, as when
     // the inside goes out of sight, or a phone would hold them from the moment the page opened; tier.ts)
@@ -710,10 +711,16 @@ export class Cabin {
     // (sent ahead as the eye comes; on the lighter tier only once it is drawn, and let go again when it is not: tier.ts)
     if (this.unsent.length && (shown || (!LIGHTER && far < COMING * COMING))) this.send();
     const casting = this.aboard || this.open;
-    if (shown === this.shown && casting === this.casting) return;
+    // what has left the model (the seat, out of the ball at the ejection height: carried off in a holder of the stage's) is
+    // no longer inside anything, and is drawn as anything outside is
+    let away = 0;
+    for (const { mesh } of this.interior) if (!within(mesh, this.group)) away++;
+    if (shown === this.shown && casting === this.casting && away === this.away) return;
+    this.away = away;
     for (const { mesh, casts } of this.interior) {
-      mesh.visible = shown || this.all;
-      mesh.castShadow = casts && (casting || this.all);
+      const out = away > 0 && !within(mesh, this.group);
+      mesh.visible = shown || this.all || out;
+      mesh.castShadow = casts && (casting || this.all || out);
     }
     if (LIGHTER && !shown && this.shown) this.release();
     if (casting !== this.casting || (shown !== this.shown && casting)) this.host.reshade();
@@ -722,6 +729,8 @@ export class Cabin {
     this.host.redraw();
   }
   private inside: THREE.MeshStandardMaterial[] = [];
+  /** How many of the inside's meshes have left the model (`seen`). */
+  private away = 0;
 
   /**
    * Send the next of the inside's pictures to the GPU: one a frame, so the inside is ready by the time it is drawn and
@@ -1266,3 +1275,9 @@ const LAMP_TAU = 0.035;
 const SWITCH_TAU = 0.03;
 /** How long a worked control takes to go out and come back, seconds. */
 const WORK_SECONDS = 0.45;
+
+/** Whether `o` is still under `root`. */
+function within(o: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p === root) return true;
+  return false;
+}

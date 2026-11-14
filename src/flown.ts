@@ -96,6 +96,7 @@ export class Flown {
    */
   fly(run: Run | null): void {
     if (run) this.live = run;
+    this.tabulate();
     this.drawn = { count: -1, at: 0, t: -1 };
     this.root.classList.toggle('flying', run !== null);
     this.root.classList.toggle('flew', this.live !== null && this.live.samples.length > 1);
@@ -127,6 +128,36 @@ export class Flown {
     root.innerHTML = '<p class="fine flown-wait">Flying it…</p>';
     // a fifteen-minute flight is integrated in a tenth of a second, but not in the middle of the page opening
     setTimeout(() => this.build(), 300);
+  }
+
+  /** The checks, each with what the record's run gave and how far apart: and, once a flight has been flown by hand that gives its own (`Run.held`), what it gave, as "You". */
+  private rows: { id: string; label: string; value: number; unit: string; tolerance: number; got: number }[] = [];
+  private tabulate(): void {
+    const table = this.root.querySelector<HTMLElement>('.flown-checks');
+    if (!table) return;
+    const yours = this.live?.held;
+    const off = (c: { value: number; unit: string }, got: number): string => {
+      const by = got - c.value;
+      return c.unit === 's' || c.unit === 'deg' || c.unit === 'g'
+        ? `${by >= 0 ? '+' : '−'}${Math.abs(by).toFixed(1)} ${c.unit}`
+        : `${by >= 0 ? '+' : '−'}${Math.abs((by / c.value) * 100).toFixed(1)} %`;
+    };
+    const rows = this.rows
+      .map((c) => {
+        const got = c.got;
+        if (got === undefined || !Number.isFinite(got)) return '';
+        const out = Math.abs(got - c.value) > c.tolerance;
+        const mine = yours?.[c.id];
+        const you =
+          yours === undefined
+            ? ''
+            : mine === undefined || !Number.isFinite(mine)
+              ? '<td></td>'
+              : `<td${Math.abs(mine - c.value) > c.tolerance ? ' class="out"' : ''}>${shown(c, mine)}</td>`;
+        return `<tr${out ? ' class="out"' : ''}><th>${c.label}</th><td>${shown(c, c.value)}</td><td>${shown(c, got)}</td>${you}<td>${off(c, got)}</td></tr>`;
+      })
+      .join('');
+    table.innerHTML = `<thead><tr><th></th><td>Report</td><td>Flown</td>${yours ? '<td>You</td>' : ''}<td></td></tr></thead>${rows}`;
   }
 
   /** How long the flown flight lasts, seconds: 0 until it has been flown. */
@@ -174,26 +205,15 @@ export class Flown {
       return `<figure class="trace"><figcaption><span>${trace.label}</span><b></b></figcaption>
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${trace.label} against time">${marks}<polyline points="${line}" /><polyline class="yours" points="" /><line class="now" y1="0" y2="${H}" /></svg></figure>`;
     }).join('');
-    const rows = rowsOf
-      .map((c) => {
-        const got = c.got;
-        if (got === undefined || !Number.isFinite(got)) return '';
-        const off = got - c.value;
-        const out = Math.abs(off) > c.tolerance;
-        const by =
-          c.unit === 's' || c.unit === 'deg' || c.unit === 'g'
-            ? `${off >= 0 ? '+' : '−'}${Math.abs(off).toFixed(1)} ${c.unit}`
-            : `${off >= 0 ? '+' : '−'}${Math.abs((off / c.value) * 100).toFixed(1)} %`;
-        return `<tr${out ? ' class="out"' : ''}><th>${c.label}</th><td>${shown(c, c.value)}</td><td>${shown(c, got)}</td><td>${by}</td></tr>`;
-      })
-      .join('');
+    this.rows = rowsOf.map((c, i) => ({ ...c, id: checks[i]?.id ?? '' }));
     root.innerHTML = `
       <h2>Flown</h2>
       <p class="fine">The flight as the simulator integrates it from the figures in the record: thrust, flow, drag, gravity, the tilt programme. Nothing is fitted to the result.
         Dashed lines are what the reports give. <span class="flown-yours">The amber trace is the flight you flew by hand.</span> <span class="flown-phase"></span></p>
       <div class="traces" title="Drag to move the clock">${traces}</div>
-      <table class="flown-checks"><thead><tr><th></th><td>Report</td><td>Flown</td><td></td></tr></thead>${rows}</table>
+      <table class="flown-checks"></table>
       <p class="fine">Amber rows are outside the tolerance set for them. ${flight.flownNote ?? ''} In the view the vehicle flies this run from liftoff to landing; C to the chase camera follows it.</p>`;
+    this.tabulate();
     this.cursors = [...root.querySelectorAll<SVGLineElement>('line.now')];
     this.lines = [...root.querySelectorAll<SVGPolylineElement>('polyline.yours')];
     root.classList.toggle('flew', this.live !== null && this.live.samples.length > 1);

@@ -52,7 +52,7 @@ never adjusted to bring a check in.
   both, Space is the next thing on both.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
   record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
-  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`. Its pilot had no controls going up, and the deck says
+  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
   `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest
@@ -78,7 +78,15 @@ never adjusted to bring a check in.
   and the hand controller moves with the keys. Because
   the ascent as recorded falls short of the published orbit, what the record's run shows from separation is the published
   orbit begun where the ascent left the spacecraft (`published`); the tests hold the ascent itself to the record as flown.
-  Heating's glow and the parachutes drawn are not hooked to an orbital run yet. The smoke is laid no higher than 80 km
+  The descent is drawn from the run's own `descent` (staged.ts `descentOf`: flyDown's tracks in the scene's frame, when
+  each parachute came out and went): a drop that `rides` the descent's bodies is carried along each body's track in turn
+  and turned to hang against its motion through the air; a body's parachute (`ChuteDef.body`) is drawn by chute.ts from
+  flyDown's instants and streams against the air of what carries it; a parachute that `replaces` a body's drag can leave
+  what was left behind as a body of its own (`leaves`: the seat), and one `instead` of another lets that one go; a figure
+  of the flight's `hangs` from its harness under its body's canopy in the pose the figure carries; the run's own body
+  turns to hang from where its parachute is made fast (`Ascent.hangsFrom`). How each hangs is drawn; the tracks are
+  points. The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
+  documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
   (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
 - **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,
   engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts
@@ -341,7 +349,11 @@ never adjusted to bring a check in.
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
   and goes with it (`Stage.lookAtCraft`: the chase view aimed there; 0 centres the vehicle again). Off the vehicle
   nothing is offered but, on a stage that has left, to follow it down (camera.md): nobody gets out and walks, and the
-  view is not sent to a place the vehicle has left. A mechanism the pilot
+  view is not sent to a place the vehicle has left. On a flight into orbit a part's commands are the launch vehicle's
+  steps (`step:<ignite|cut|separate>:<stage>`, `step:drop:<id>`: orbitdeck.ts `can` while the step is still to come or
+  undone, `ask` taking the flight over as Space does, the live vehicle doing what it does with it at that instant) and the
+  braking engine (`retro`, once the hands are free); each label says what the pilot could not do. The Flown panel sets a
+  flight flown by hand beside the record's run, check by check ("You": `Run.held`). A mechanism the pilot
   can work (the periscope) is a `Command` on its part too: `work:<its id>`, offered as putting it out or drawing it in
   by where it is headed (below).
   The same menu, and **Y** anywhere, takes the vehicle's skin off and puts it back: the cutaway (`ModelDef.cutaway`,
