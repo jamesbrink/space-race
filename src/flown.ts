@@ -1,6 +1,8 @@
 import './time.css';
 import { flownOnce, type Sample, sampleAt } from './sim/fly.ts';
-import type { FlightCheck, SitedFlight } from './types';
+import { held } from './sim/staged.ts';
+import type { SitedFlight } from './types';
+import { orbitalFlown, orbitalRecord } from './viewer/ascent';
 import type { Run } from './viewer/ascent';
 import { type Clock, missionTime } from './world/clock.ts';
 import { siteFrame } from './world/frames.ts';
@@ -64,7 +66,7 @@ export function points(samples: readonly Sample[], of: (s: Sample) => number, du
 }
 
 /** How a check's value reads: in the units people use for it, whatever SI unit it is recorded in. */
-function shown(c: FlightCheck, value: number): string {
+function shown(c: { unit: string }, value: number): string {
   if (c.unit === 'm') return `${(value / 1000).toFixed(1)} km`;
   if (c.unit === 'm/s') return `${Math.round(value * 3.6).toLocaleString('en-GB')} km/h`;
   if (c.unit === 'Pa') return `${(value / 1000).toFixed(1)} kPa`;
@@ -121,7 +123,7 @@ export class Flown {
     this.root = root;
     this.clock = clock;
     this.flight = flight;
-    if (!flight.trajectory) return;
+    if (!flight.trajectory && !flight.orbital?.ascent) return;
     root.innerHTML = '<p class="fine flown-wait">Flying it…</p>';
     // a fifteen-minute flight is integrated in a tenth of a second, but not in the middle of the page opening
     setTimeout(() => this.build(), 300);
@@ -134,11 +136,27 @@ export class Flown {
 
   private build(): void {
     const { flight, root } = this;
-    const { samples, results } = flownOnce(flight.trajectory!, siteFrame(flight.site), flight.site.seaLevel.value);
+    // a ballistic flight's run and checks (sim/fly.ts), or an orbital one's: the whole record flown (sim/staged.ts), and every
+    // check its record sets, the ascent's, the coast's and the descent's, as one list
+    let samples: Sample[];
+    let rowsOf: { label: string; value: number; unit: string; tolerance: number; got: number }[];
+    let checks: { id: string; value: number }[];
+    if (flight.trajectory) {
+      const flown = flownOnce(flight.trajectory, siteFrame(flight.site), flight.site.seaLevel.value);
+      samples = flown.samples;
+      this.duration = flown.results.duration;
+      checks = flight.checks ?? [];
+      rowsOf = (flight.checks ?? []).map((c) => ({ ...c, got: flown.results[c.id] }));
+    } else {
+      const run = orbitalRecord(flight);
+      samples = run.samples as Sample[];
+      this.duration = run.duration;
+      const all = held(flight.orbital!, orbitalFlown(flight));
+      rowsOf = all;
+      checks = all.map((c) => ({ id: c.id, value: c.value }));
+    }
     this.samples = samples;
-    this.duration = results.duration;
-    const x = (t: number) => (t / results.duration) * W;
-    const checks = flight.checks ?? [];
+    const x = (t: number) => (t / this.duration) * W;
     const traces = TRACES.map((trace) => {
       const top =
         Math.max(...samples.map(trace.of), ...trace.marks.map((m) => (checks.find((c) => c.id === m.id)?.value ?? 0) * m.scale)) * 1.08;
@@ -156,9 +174,9 @@ export class Flown {
       return `<figure class="trace"><figcaption><span>${trace.label}</span><b></b></figcaption>
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${trace.label} against time">${marks}<polyline points="${line}" /><polyline class="yours" points="" /><line class="now" y1="0" y2="${H}" /></svg></figure>`;
     }).join('');
-    const rows = checks
+    const rows = rowsOf
       .map((c) => {
-        const got = results[c.id];
+        const got = c.got;
         if (got === undefined || !Number.isFinite(got)) return '';
         const off = got - c.value;
         const out = Math.abs(off) > c.tolerance;

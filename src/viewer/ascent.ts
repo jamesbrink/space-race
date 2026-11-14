@@ -4,7 +4,7 @@ import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { blowOf, windAt } from '../sim/forces.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
-import { flyWhole, recordSamples } from '../sim/staged.ts';
+import { type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
 import { sunPosition } from '../world/ephemeris.ts';
@@ -671,13 +671,29 @@ function between(samples: readonly Sample[], t: number, point: (s: Sample) => Ve
  * comes down through the ejection height, not at the record's minute. Made once a flight: it takes a second or so.
  */
 const orbitalRuns = new WeakMap<object, Run>();
+const orbitalWholes = new WeakMap<object, FlownWhole>();
+/**
+ * An orbital flight's record flown once (sim/staged.ts flyWhole, the coast kept every second), whoever asks first: the scene and the Flown panel show the
+ * same run. The ascent is the one flown; from the spacecraft's separation it is the published orbit, begun where the ascent left it (staged.ts `published`),
+ * since the ascent as flown falls short of it (the flight's mission.md, section 6).
+ */
+export function orbitalFlown(flight: SitedFlight): FlownWhole {
+  const o = flight.orbital!;
+  let whole = orbitalWholes.get(o);
+  if (!whole)
+    orbitalWholes.set(
+      o,
+      (whole = flyWhole(o, siteFrame(flight.site), julianDate(flight.launch), flight.site.seaLevel.value, undefined, 1, 'published')),
+    );
+  return whole;
+}
 export function orbitalRecord(flight: SitedFlight): Run {
   const o = flight.orbital!;
   const had = orbitalRuns.get(o);
   if (had) return had;
   const site = siteFrame(flight.site);
   const jd = julianDate(flight.launch);
-  const whole = flyWhole(o, site, jd, flight.site.seaLevel.value, undefined, 1);
+  const whole = orbitalFlown(flight);
   const centre = (flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
   const samples = recordSamples(o, whole, jd, centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;

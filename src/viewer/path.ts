@@ -259,6 +259,12 @@ export interface PathSource {
   readonly craft: { programme(t: number): Vec3; launch: { downrange: Vec3; left: Vec3 } } | null;
   readonly steering: { guidance: boolean; sequence?: boolean; trim: { pitch: number; yaw: number } };
   listen(fn: (sample: PathSample, live: PathLive | null) => void): void;
+  /**
+   * A flight with no `trajectory` (one into orbit: orbitdeck.ts) predicts its own path from a sample, with whatever its
+   * deck has planned, and says what that plan is (`plan`: when it changes, the path is made again).
+   */
+  predict?(start: { t: number; r: Vec3; v: Vec3 }): Predictor | null;
+  readonly plan?: string;
 }
 
 const clock = (seconds: number): string => {
@@ -652,7 +658,9 @@ export class FlightPath {
   private want(): { key: string; burn: Burn | null; sequence: Sequence | undefined } | null {
     const s = this.sample;
     const tr = this.flight.trajectory;
-    if (!s || !tr || !this.on || !this.source.active || s.phase === 'landed') return null;
+    if (!s || !this.on || !this.source.active || s.phase === 'landed') return null;
+    // (a flight into orbit: its deck predicts, from the sample on show and what it has planned)
+    if (!tr) return this.source.predict && s.t > 0 ? { key: `${s.t}|${this.source.plan ?? ''}`, burn: null, sequence: undefined } : null;
     const craft = this.source.craft;
     const { trim, guidance } = this.source.steering;
     const until = this.until();
@@ -685,7 +693,7 @@ export class FlightPath {
       return; // (asleep until the next sample, or a switch)
     }
     this.raf = requestAnimationFrame(() => this.tick());
-    const tr = this.flight.trajectory!;
+    const tr = this.flight.trajectory;
     if (this.shown?.key !== want.key && !this.wantedAt) this.wantedAt = performance.now();
     if (!this.job && this.shown?.key !== want.key && performance.now() - this.doneAt >= EVERY) {
       const start = { t: s.t, r: s.centre ?? s.r, v: s.v, mass: s.mass, phase: s.phase, ...(s.chute ? { chute: s.chute } : {}) };
@@ -694,8 +702,10 @@ export class FlightPath {
         ...(want.burn ? { burn: want.burn } : {}),
         ...(want.sequence ? { sequence: want.sequence } : {}),
       };
+      const run = tr ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options) : this.source.predict!(start);
+      if (!run) return;
       this.job = {
-        run: predictor(tr, this.site, this.flight.site.seaLevel.value, start, options),
+        run,
         key: want.key,
         began: performance.now(),
       };

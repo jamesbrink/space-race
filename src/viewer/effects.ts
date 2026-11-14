@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { flownOnce, G0, type Sample } from '../sim/fly.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
+import { liftoffEngine } from '../sim/staged.ts';
 import type { SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { ecefToSite, ecefToSiteDirection, inertialToEcef, inertialToEcefVelocity, type Site, siteFrame } from '../world/frames.ts';
-import type { Run } from './ascent';
+import { orbitalRecord, type Run } from './ascent';
 import { Collar, collarOf, Incandescence, ShockGlow, wakeOf } from './entry';
 import { buffetPressure, type Felt, joltStrength, type Shake, shake, soundPressure, still } from './shake';
 
@@ -77,11 +78,14 @@ export class Effects {
   private samples(): readonly Sample[] {
     if (this.live) return this.live.samples;
     const tr = this.flight.trajectory;
+    if (!tr && this.flight.orbital?.ascent && this.flight.flies) return orbitalRecord(this.flight).samples;
     return tr ? flownOnce(tr, this.site, this.flight.site.seaLevel.value).samples : [];
   }
 
   private cutoff(): number {
-    return this.live ? this.live.cutoff : (this.flight.trajectory?.engine.cutoff.value ?? 0);
+    if (this.live) return this.live.cutoff;
+    if (!this.flight.trajectory && this.flight.orbital?.ascent && this.flight.flies) return orbitalRecord(this.flight).cutoff;
+    return this.flight.trajectory?.engine.cutoff.value ?? 0;
   }
 
   /** The heating at `t` on the run on show, or null for a flight with none to work out. */
@@ -147,7 +151,7 @@ export class Effects {
   private events(): readonly Jolt[] {
     const samples = this.samples();
     const tr = this.flight.trajectory;
-    if (!tr) return [];
+    if (!tr && !this.flight.orbital?.ascent) return [];
     const fresh = samples !== this.joltsOf || samples.length < this.scanned;
     if (fresh) {
       this.joltsOf = samples;
@@ -176,7 +180,7 @@ export class Effects {
     const drops = this.flight.flies?.drops ?? [];
     const dropped = this.live ? this.live.dropped : drops.map((d) => d.at);
     drops.forEach((d, i) => void (d.under || named.push({ at: dropped[i] ?? Infinity, strength: 0.4 })));
-    if (!this.live) {
+    if (!this.live && tr) {
       for (const f of tr.retro.fires)
         named.push({ at: f.value, strength: joltStrength((tr.retro.thrust.value / tr.retropack.mass.value / G0) * 3) });
     }
@@ -198,7 +202,13 @@ export class Effects {
   felt(t: number, eye: THREE.Vector3, riding: number): Felt {
     const tr = this.flight.trajectory;
     const felt: Felt & { jolts: { since: number; strength: number }[] } = { sound: 0, buffet: 0, load: 1, jolts: [] };
-    if (!tr || !this.flying) return felt;
+    // (an orbital flight's engines as one: those lit on the ground, sim/staged.ts)
+    const engine = tr
+      ? { thrust: tr.engine.thrust.value, exhaustSpeed: tr.engine.isp.value * G0 }
+      : this.flight.orbital?.ascent
+        ? liftoffEngine(this.flight.orbital)
+        : null;
+    if (!engine || !this.flying) return felt;
     // the engine, as it was when the sound now arriving left it
     const from = new THREE.Vector3();
     let then = t;
@@ -208,7 +218,7 @@ export class Effects {
     if (on > 0) {
       const pair = this.either(then);
       const height = pair ? pair[0].altitude + (pair[1].altitude - pair[0].altitude) * pair[2] : 0;
-      felt.sound = on * soundPressure(tr.engine.thrust.value, tr.engine.isp.value * G0, from.distanceTo(eye), atmosphere(height).density);
+      felt.sound = on * soundPressure(engine.thrust, engine.exhaustSpeed, from.distanceTo(eye), atmosphere(height).density);
     }
     if (riding > 0) {
       const pair = this.either(t);

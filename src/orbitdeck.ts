@@ -1,11 +1,15 @@
 import './cockpit.css';
+import './orbitdeck.css';
 import type { CockpitHost } from './cockpit';
 import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
-import { byHand, flyWhole, type FlownWhole, recordSamples } from './sim/staged.ts';
+import { byHand, flyWhole, type FlownWhole, held, recordSamples } from './sim/staged.ts';
 import type { LiveSample, VehicleState } from './sim/vehicle.ts';
+import { orbitPredictor } from './sim/orbitpath.ts';
+import type { OrbitalFlight } from './sim/orbital.ts';
+import type { Predictor } from './sim/predict.ts';
 import type { SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
-import { orbitalRecord } from './viewer/ascent';
+import { orbitalFlown, orbitalRecord } from './viewer/ascent';
 import type { Clock } from './world/clock.ts';
 import { sunPosition } from './world/ephemeris.ts';
 import { DEG, siteFrame, type Vec3 } from './world/frames.ts';
@@ -59,6 +63,8 @@ export class OrbitDeck {
   /** The hand's attitude (fly.ts's frame, body to frame) and when it was last turned; the burn by hand, once fired. */
   private hand: { q: Quat; t: number; log: { t: number; q: Quat }[] } | null = null;
   private fired: number | null = null;
+  /** The record as this flight now has it: the record's own, its burn given up (hands free, nothing fired), or the hand's burn. */
+  private planned: OrbitalFlight | null = null;
   private readonly held = new Set<string>();
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
@@ -76,10 +82,11 @@ export class OrbitDeck {
     const code = String(flight.orbital?.manual?.code.value ?? '');
     root.innerHTML = `
       <section class="deck-main">
+        <div class="cockpit-card" hidden></div>
         <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span></p>
         <div class="gauges">
           ${cell('altitude', 'Height', 'km', 'Height above the sea')}
-          ${cell('speed', 'Speed', 'm/s', 'Speed in the frame that does not turn (space-fixed)')}
+          <div class="gauge" title="Speed over the turning Earth while the launch vehicle flies; once the spacecraft is alone, in the frame that does not turn (its orbital speed), as the navball's own modes have it"><span data-cell="speedframe">Surface</span><i>m/s</i><b data-cell="speed">0</b></div>
           ${cell('apogee', 'Apogee', 'km', 'The orbit’s highest point now, over the record’s reference ball')}
           ${cell('perigee', 'Perigee', 'km', 'The orbit’s lowest point now, over the same ball: under the ground, it comes down')}
           ${cell('g', 'Load', 'g', 'What an accelerometer reads')}
@@ -89,7 +96,7 @@ export class OrbitDeck {
           <p class="cockpit-prompt" data-cell="prompt" role="status"></p>
         </div>
         <p class="deck-foot">
-          <span class="for-keys">${code ? `${[...code].map((d) => `<button data-press="${d}" title="A digit of the lock’s code (${d})"><kbd>${d}</kbd></button>`).join('')}<em>lock</em>` : ''}
+          <span class="deck-steer">${code ? `${[...code].map((d) => `<button data-press="${d}" title="A digit of the lock’s code (${d})"><kbd>${d}</kbd></button>`).join('')}<em>lock</em>` : ''}
           ${Object.keys(KEYS)
             .map(
               (k) =>
@@ -97,6 +104,7 @@ export class OrbitDeck {
             )
             .join('')}<em>turn</em></span>
           <button data-do="again" title="A new flight: back to the pad (N)"><kbd>N</kbd></button>
+          <button data-do="keys" aria-expanded="false" title="On a narrow screen, the systems’ readings: shown or put away"><span>More</span><i class="chevron"></i></button>
           <button data-do="leave" class="for-keys" title="Leave the flight deck (Esc)"><kbd>Esc</kbd>Leave</button>
         </p>
       </section>
@@ -152,6 +160,24 @@ export class OrbitDeck {
   get craft(): null {
     return null;
   }
+  /** What the predicted path is made from (viewer/path.ts): this flight's plan, as it stands. */
+  get plan(): string {
+    return this.fired !== null ? `hand ${this.fired}` : this.free ? 'free' : 'record';
+  }
+
+  /** The path ahead from a sample of the spacecraft alone: none on the launch vehicle, whose law the path does not fly. */
+  predict(start: { t: number; r: Vec3; v: Vec3 }): Predictor | null {
+    const o = this.flight.orbital!;
+    if (start.t <= (o.stages[o.stages.length - 1]!.separation?.value ?? Infinity)) return null;
+    let plan = this.planned ?? o;
+    if (this.free && this.fired === null) {
+      // the timer's burn given up and none fired yet: it stays up, as far as anyone has said
+      plan = structuredClone(o);
+      plan.retro.on.value = plan.retro.off.value = plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
+    }
+    return orbitPredictor(plan, siteFrame(this.flight.site), julianDate(this.flight.launch), this.flight.site.seaLevel.value, start);
+  }
+
   get steering(): { guidance: boolean; sequence: boolean; trim: { pitch: number; yaw: number } } {
     return { guidance: !this.free, sequence: !this.free, trim: { pitch: 0, yaw: 0 } };
   }
@@ -203,6 +229,7 @@ export class OrbitDeck {
     this.free = false;
     this.hand = null;
     this.fired = null;
+    this.planned = null;
     this.host.fly(this.run);
     this.show();
   }
@@ -211,6 +238,11 @@ export class OrbitDeck {
     if (what === 'leave') this.leave();
     else if (what === 'again') this.fresh();
     else if (what === 'next') this.next();
+    else if (what === 'keys') {
+      const open = !this.root.classList.contains('keys-open');
+      this.root.classList.toggle('keys-open', open);
+      this.root.querySelector('[data-do=keys]')!.setAttribute('aria-expanded', String(open));
+    }
   }
 
   /** Space: liftoff from the pad; with the hand controls free and the burn not yet made, the braking engine. */
@@ -287,7 +319,8 @@ export class OrbitDeck {
     const aim: Vec3 = [c * x[0] - s * x[1], s * x[0] + c * x[1], x[2]];
     const plan = byHand(o, t, aim);
     const burn = plan.retro.off.value - t;
-    this.flown = flyWhole(plan, site, jd, this.flight.site.seaLevel.value, undefined, 1);
+    this.planned = plan;
+    this.flown = flyWhole(plan, site, jd, this.flight.site.seaLevel.value, undefined, 1, 'published');
     const samples = recordSamples(plan, this.flown, jd, (this.flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0), (at) =>
       sunPosition(terrestrialTime(jd + at / 86_400)),
     );
@@ -374,7 +407,7 @@ export class OrbitDeck {
     const down = this.flown?.down;
     const pilot = down ? (down.landed.pilot ?? Object.values(down.landed)[0]) : undefined;
     if (!pilot) return 'Still in orbit: it comes down only as the orbit decays, on ten days of supplies';
-    if (t < pilot.at) return 'Fired: what follows is flown from your burn';
+    if (!this.run || t < this.run.duration) return 'Fired: what follows is flown from your burn';
     const [la, lo] = [o.landing.latitude.value * DEG, o.landing.longitude.value * DEG];
     const [pa, po] = [pilot.latitude * DEG, pilot.longitude * DEG];
     const apart = 6_371 * Math.acos(Math.min(1, Math.sin(la) * Math.sin(pa) + Math.cos(la) * Math.cos(pa) * Math.cos(po - lo)));
@@ -399,7 +432,10 @@ export class OrbitDeck {
     const ball = o.orbit.radius.value;
     const flying = t > 0 && s.phase !== 'main';
     set('altitude', (s.altitude / FT).toFixed(1));
-    set('speed', s.speed.toFixed(0));
+    // (as a person expects: over the ground standing on the pad and going up, then the orbit's)
+    const orbiting = t > (o.stages[o.stages.length - 1]!.separation?.value ?? Infinity) && s.altitude > 100_000;
+    set('speedframe', orbiting ? 'Orbit' : 'Surface');
+    set('speed', (orbiting ? s.speed : t > 0 ? s.groundSpeed : 0).toFixed(0));
     set('apogee', flying && el.e < 1 ? ((el.a * (1 + el.e) - ball) / FT).toFixed(0) : '—');
     set('perigee', flying && el.e < 1 ? ((el.a * (1 - el.e) - ball) / FT).toFixed(0) : '—');
     set('g', t > 0 ? s.g.toFixed(2) : '1.00'); // (on the pad it stands on the launch system: one g)
@@ -458,5 +494,49 @@ export class OrbitDeck {
               : 'The descent is automatic',
     );
     this.root.classList.toggle('free', this.free);
+    this.card(t);
+  }
+
+  /**
+   * Down: the card of the flight against the record's, as the ballistic deck's is. The figures are the run's own (sim/staged.ts
+   * `held`), whoever flew it; a check the record's own run is known to miss is marked so, from tests/staged.test.mjs's reasons
+   * as mission.md states them, by name only.
+   */
+  private card(t: number): void {
+    const el = this.root.querySelector<HTMLElement>('.cockpit-card')!;
+    const whole = this.flown ?? orbitalFlown(this.flight);
+    const down = whole.down?.landed.pilot ?? (whole.down ? Object.values(whole.down.landed)[0] : undefined);
+    // (the run on show follows the descent module down; the pilot lands under his canopy some minutes after it)
+    const over = this.run !== null && down !== undefined && t >= this.run.duration;
+    if (el.hidden === !over && el.dataset.at === String(this.fired)) return;
+    el.hidden = !over;
+    el.dataset.at = String(this.fired);
+    if (!over) return;
+    const o = this.flight.orbital!;
+    const clock = (at: number) =>
+      new Date(Date.parse(this.flight.launch) + at * 1000 + this.flight.site.zone.utcOffset * 3600_000).toISOString().slice(11, 19);
+    const show = (unit: string, v: number) =>
+      unit === 'm' ? `${(v / 1000).toFixed(1)} km` : unit === 's' ? clock(v) : `${v.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;
+    // (the coast's and the descent's: what a pilot's hand can change. The ascent's are the Flown panel's)
+    const rows = held(o, whole)
+      .slice(o.ascent?.checks.length ?? 0)
+      .filter((c) => Number.isFinite(c.got) && c.id !== 'period')
+      .map(
+        (c) =>
+          `<tr${Math.abs(c.got - c.value) > c.tolerance ? ' class="out"' : ''}><th>${c.label}</th><td>${show(c.unit, c.got)}</td><td>${show(c.unit, c.value)}</td></tr>`,
+      )
+      .join('');
+    const [la, lo] = [o.landing.latitude.value * DEG, o.landing.longitude.value * DEG];
+    const [pa, po] = [down.latitude * DEG, down.longitude * DEG];
+    const apart = 6_371 * Math.acos(Math.min(1, Math.sin(la) * Math.sin(pa) + Math.cos(la) * Math.cos(pa) * Math.cos(po - lo)));
+    el.innerHTML = `
+      <h3>${this.fired !== null ? 'Down, by your own braking burn' : 'Down, as the automatic system flew it'}</h3>
+      <p class="cockpit-why">The descent module landed at ${clock(this.run!.duration)}; the pilot at ${clock(down.at)} Moscow time, ${down.latitude.toFixed(2)}° N ${down.longitude.toFixed(2)}° E, at ${down.speed.toFixed(1)} m/s: ${apart.toFixed(0)} km from where Gagarin came down.${this.fired !== null ? ' A manual descent: not the flight of 12 April.' : ''}</p>
+      <table>
+        <thead><tr><td></td><td>Flown</td><td>${this.flight.callsign}</td></tr></thead>
+        ${rows}
+      </table>
+      <p class="cockpit-why">Amber rows are outside the tolerance the record sets. The flight as recorded misses several of them itself (the Flown panel, and the flight’s mission.md, say why).</p>
+      <p><button data-do="again"><kbd>N</kbd> Fly it again</button><button data-do="leave"><kbd>Esc</kbd> Leave</button></p>`;
   }
 }
