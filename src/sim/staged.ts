@@ -49,7 +49,7 @@ import { elementsOf, period, planeThrough, type State, step, subpoint } from '..
 import { greenwichSiderealTime } from '../world/time.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, G0, MEAN_RADIUS, P0 } from './fly.ts';
-import { flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
+import { type DescentHands, flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 
@@ -605,6 +605,26 @@ export function flyWhole(
   const end = coast.samples[coast.samples.length - 1]!;
   const down = o.descent && end.phase === 'down' ? flyDown(o, launchJd, seaLevel, end) : null;
   return { ascent, coast, down };
+}
+
+/**
+ * The coast and the descent flown again from `from` (where the spacecraft parted, on the run on show) on `o` (the record as
+ * the flight now has it: its burn, its modules' parting) with what a hand gave in the descent (orbital.ts `DescentHands`):
+ * the flight deck's, after each event a hand gives (orbitdeck.ts). `ascent` is kept as it was.
+ */
+export function flyOn(
+  o: OrbitalFlight,
+  site: Geodetic,
+  launchJd: number,
+  seaLevel: number,
+  ascent: Ascended,
+  from: { t: number; r: Vec3; v: Vec3 },
+  hands?: DescentHands,
+  every = 1,
+): FlownWhole {
+  const coast = flyOrbit(o, site, launchJd, seaLevel, every, from, hands);
+  const end = coast.samples[coast.samples.length - 1]!;
+  return { ascent, coast, down: o.descent && end.phase === 'down' ? flyDown(o, launchJd, seaLevel, end, hands) : null };
 }
 
 /**

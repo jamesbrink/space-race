@@ -645,6 +645,16 @@ export const orbital: OrbitalFlight = {
       'the modules part ten to twelve seconds after a burn the integrator ends (the sequencer as planned: Siddiqi, The Space Review, 2015); ten taken',
     ),
   },
+  supplies: {
+    days: doc(
+      10,
+      'mission.md, “What it cost”: the answer to a failed braking engine was the orbit’s decay within the supplies’ ten days (planned: two to seven days, Ustinov’s memorandum of 30 March); S15 (Siddiqi, The Space Review, 2015): from the 327 km flown, about thirty days',
+    ),
+    rarefied: guess(
+      2,
+      'a ball in free-molecule flow has a drag coefficient of about 2 (the entry curve’s own note: not read from a source, so estimated), on its disc; the joined ship on the ball’s disc as the coast flies it',
+    ),
+  },
   ejection: { altitude: doc(7_000, `${GAGARIN}: “approximately at the altitude of 7,000 meters, the hatch cover of hatch Nº 1 ejected”`) },
   // From 7 km down: the descent module on its own parachutes, and the pilot on his seat and then his canopies. The
   // checks below were written before flyDown had flown anything.
@@ -681,12 +691,25 @@ export const orbital: OrbitalFlight = {
               `1.5 m² of canopy (${BOBKOV}; ${GCTC}) at a drag coefficient of 0.75 on its cloth, which is the usual round canopy’s and is chosen`,
             ),
             fills: guess(1, 'chosen: no filling time found'),
+            strength: guess(
+              18_000,
+              `not found. It came out with the hatch at 7 km and 220 m/s (${BOBKOV}), 14.3 kPa in the standard air (derived): a quarter over that. Ours`,
+            ),
+            pull: guess(16_000, 'not found: full at once in those 14.3 kPa it would pull 16 kN, taken as what its lines take. Ours'),
           },
           {
             name: 'braking parachute',
             altitude: doc(4_000, `${BOBKOV}: “на высоте 4 км при скорости 200 м/с”; ${GCTC}`),
             dragArea: guess(13.5, `18 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
             fills: guess(2, 'chosen: no filling time found'),
+            strength: guess(
+              20_000,
+              `not found. Built to open at 4 km at 200 m/s (${BOBKOV}), 16.4 kPa in the standard air (derived): a quarter over that. Ours`,
+            ),
+            pull: guess(
+              220_000,
+              'not found: full at once in those 16.4 kPa it would pull 221 kN, taken as what its lines take (flown, it opens nearer 145 m/s and pulls 71 kN). Ours',
+            ),
             // (the usual train: the small parachute draws the next out and goes with it; not stated for Vostok in anything read)
             instead: ['pilot parachute'],
           },
@@ -695,6 +718,14 @@ export const orbital: OrbitalFlight = {
             altitude: doc(2_500, `${BOBKOV}; ${GCTC}: at 2.5 km`),
             dragArea: guess(430, `574 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
             fills: guess(6, 'chosen: no filling time found'),
+            strength: guess(
+              3_000,
+              'not found. It was let out behind the braking parachute, where the module falls at some 55 m/s at 2.5 km (1.5 kPa, as flown here): twice that. Without the braking parachute the ball falls at 155 m/s there, 11 kPa, and it tears. Ours',
+            ),
+            pull: guess(
+              100_000,
+              'not found: as flown here it pulls 69 kN at most as it fills (3.1 g on the empty module), and half as much again is taken as what its lines and riser take. Ours',
+            ),
             instead: ['braking parachute'],
           },
         ],
@@ -717,6 +748,11 @@ export const orbital: OrbitalFlight = {
             ),
             dragArea: guess(1.5, `2 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
             fills: guess(1, 'chosen: no filling time found'),
+            strength: guess(
+              18_000,
+              `not found: out half a second after the seat left at 7 km and 220 m/s (${BOBKOV}), 14.3 kPa: a quarter over that. Ours`,
+            ),
+            pull: guess(22_000, 'not found: full at once in those 14.3 kPa it would pull 21 kN, taken as what its lines take. Ours'),
           },
           {
             name: 'main canopy',
@@ -726,6 +762,14 @@ export const orbital: OrbitalFlight = {
             ),
             dragArea: guess(62.6, `83.5 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
             fills: guess(4, 'chosen: no filling time found'),
+            strength: guess(
+              2_000,
+              'not found. Let out at 4 km as he left the seat, falling on it under its stabilising parachute at some 45 m/s (0.9 kPa, as flown here): twice that. Ours',
+            ),
+            pull: guess(
+              12_000,
+              'not found: as flown here it pulls 5.2 kN at most as it fills (4 g on him and his pack); some 9 g on 131 kg, 12 kN, is taken as what the canopy, its lines and his harness take. Ours',
+            ),
             replaces: {
               mass: guess(
                 131,
@@ -749,6 +793,8 @@ export const orbital: OrbitalFlight = {
             ),
             dragArea: guess(42, `56 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
             fills: guess(4, 'chosen: no filling time found'),
+            strength: guess(2_000, 'not found: as the main canopy, a canopy of the same make. Ours'),
+            pull: guess(12_000, 'not found: as the main canopy. Ours'),
           },
         ],
       },
@@ -769,9 +815,34 @@ export const orbital: OrbitalFlight = {
         mass: guess(25, 'not found: by judgement, as hatch No. 1'),
         dragArea: guess(0.8, 'as hatch No. 1: chosen'),
         thrown: guess(10, `not found: shot off with the hatch at about 7 km, drawing out the module’s small parachute (${BOBKOV}); chosen`),
+        // (one command shot both hatches; by hand, the module's parachute is let out by shooting this one off)
+        with: ['ejection', 'module/pilot parachute'],
         chutes: [],
       },
     ],
+    torn: guess(0.05, 'a canopy torn or streaming is taken to keep a twentieth of its drag area: chosen, not recorded (as Freedom 7’s)'),
+    crew: {
+      alone: 'pilot',
+      landing: {
+        aboard: guess(
+          7,
+          `not found. The descent module came down at 10 m/s (${BOBKOV}), which was not to be landed in: that is why he left it at 7 km (mission.md, "The verdict and the misses": tertiary). What the seat in the ball would have let him walk away from has not been read; 7 m/s is taken. Ours`,
+        ),
+        alone: guess(
+          8,
+          `not found. He came down at 5 m/s (${GCTC}; 6 on the main alone, ${BOBKOV}), a parachutist’s landing; 8 m/s is taken as the most he walks away from on his own legs. Ours`,
+        ),
+      },
+      blast: guess(
+        30_000,
+        `not found. He left at 7 km and 220 m/s (${BOBKOV}), 14.3 kPa (derived); twice that is taken as what a man in his suit on an open seat lives through, which is of the order the ejection seats of the time were built to. Ours. The heat of the air at speed on a man out of the ball is not modelled at all`,
+      ),
+      fastest: guess(
+        1_000,
+        'not found, and the heat of the air on a man is not modelled. A man in a pressure suit has come through the break-up of an aircraft at Mach 3.2 at 24 km (Weaver, SR-71, 1966: from memory, not read); out of the ball faster than 1,000 m/s through the air he is taken to die of it. Ours',
+      ),
+      aboard: 'the module’s own landing was 10 m/s (Bobkov, OKB-1), and the ejection existed to spare him it',
+    },
     checks: [
       {
         id: 'module.at',

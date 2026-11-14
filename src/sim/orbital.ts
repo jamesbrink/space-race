@@ -220,6 +220,12 @@ export interface OrbitalFlight {
     area: Measure;
     drag: Curve;
   };
+  /**
+   * How long the ship could stay up on what it carried, days, for a flight that does not come down (the card of the flight
+   * deck, against `decay`); and the ball's drag coefficient in the free-molecule flow of the high air, where the orbit
+   * decays (the entry's curve is for the air it enters, not for days at 180 km).
+   */
+  supplies?: { days: Measure; rarefied: Measure };
   /** The height above the sea at which the pilot left, m: the coast is flown down to it. */
   ejection: { altitude: Measure };
   /** What comes down from there, each body on its own (`flyDown`). Left out: the flight ends at the ejection height. */
@@ -253,10 +259,55 @@ export interface OrbitalFlight {
  */
 export interface DescentRecord {
   ground: Measure;
+  /**
+   * The first is the entry body itself (the descent module): it carries the pilot until the ejection, and the instrument
+   * module until the modules part, and is flown from where the coast hands over. Each other body leaves it at the first of
+   * its `with` events.
+   */
   bodies: DescentBody[];
+  /** What a canopy torn by the air keeps of its drag area (as `Limits.torn`, a ballistic flight's). */
+  torn?: Measure;
+  /** The pilot: where he rides, and what he is held to (the flight deck's verdict, orbitdeck.ts). Left out: no verdict. */
+  crew?: DescentCrew;
   /** Figures for the descent: `<body id>.at` (landing, s from liftoff), `<body id>.speed` (falling, m/s), `apart` (m between the first two bodies' landings). */
   checks: AscentCheck[];
 }
+
+/**
+ * The pilot in the descent. He rides the first body until the ejection, and then `alone` (his seat, and from it himself
+ * under his canopy). Each limit is what the verdict holds his flight to: a landing aboard (in his seat in the module), a
+ * landing under his own canopy, and the air's blast (the greatest dynamic pressure) once he is out in it.
+ */
+export interface DescentCrew {
+  alone: string;
+  landing: { aboard: Measure; alone: Measure };
+  blast: Measure;
+  /** The fastest he can be out in the air, m/s: past it, the heat (which is not modelled) is taken to kill him. */
+  fastest: Measure;
+  /** What a landing aboard meant, in the record's words: said beside the verdict on one. */
+  aboard: string;
+}
+
+/**
+ * What a hand gave in the descent (the flight deck, orbitdeck.ts): each event at an instant, seconds from liftoff, by id
+ * (`ejection`; `<body id>/<parachute name>`), and the automatic sequence's switch as it was thrown: from each instant on
+ * as it says, on before the first. The automatic sequence (the barometric switches, the timer) acts only while it is on;
+ * what a hand gives acts whatever it is. The modules' parting is the plan's own (`entry.separation`).
+ */
+export interface DescentHands {
+  given: Record<string, number>;
+  switched: { t: number; on: boolean }[];
+}
+
+/** Whether the automatic sequence is on at `t`. */
+export function automatic(hands: DescentHands | undefined, t: number): boolean {
+  let on = true;
+  for (const s of hands?.switched ?? []) if (s.t <= t) on = s.on;
+  return on;
+}
+
+/** The event that sets parachute `name` of body `id` out, as `DescentHands.given` names it. */
+export const chuteEvent = (id: string, name: string): string => `${id}/${name}`;
 
 /** One body of a descent (`DescentRecord.bodies`). */
 export interface DescentBody {
@@ -270,6 +321,8 @@ export interface DescentBody {
    * its rockets: the rails' own line, which leans from that, is not known to a point mass).
    */
   thrown?: Measure;
+  /** The events that set it loose from the first body, the first of them (`DescentHands.given`'s names). Left out: the ejection. */
+  with?: string[];
   chutes: DescentChute[];
 }
 
@@ -289,6 +342,21 @@ export interface DescentChute {
    * less this one (derived), on its own drag area, which counts the parachutes it keeps.
    */
   replaces?: { mass: Measure; leaves?: { id: string; label: string; dragArea: Measure } };
+  /**
+   * The tear rule (as a ballistic flight's `Limits`): the most dynamic pressure its cloth takes, Pa, and the most its lines
+   * pull, N (the pressure times the area it has filled to), whenever it is out. Past either it tears: `DescentRecord.torn`
+   * of its drag area is left. Left out: it never tears.
+   */
+  strength?: Measure;
+  pull?: Measure;
+}
+
+/** A parachute's tearing: when, by which limit, and the dynamic pressure, Pa, and its pull, N, at that instant. */
+export interface DescentTear {
+  t: number;
+  by: 'pressure' | 'pull';
+  q: number;
+  pull: number;
 }
 
 /** Where and when each body of the descent came down. */
@@ -310,107 +378,235 @@ export interface DescentFlown {
   /** When each body's parachutes came out, seconds from liftoff, by body and parachute name; and when each was let go (`instead`). */
   opened: Record<string, Record<string, number>>;
   gone: Record<string, Record<string, number>>;
+  /** Each parachute that tore, by body and name; and the most dynamic pressure, Pa, and pull, N, each met while out. */
+  torn: Record<string, Record<string, DescentTear>>;
+  worst: Record<string, Record<string, { q: number; pull: number }>>;
+  /** When the pilot left (the ejection), s from liftoff: NaN, never. */
+  ejected: number;
+  /** When the modules parted, s from liftoff (the plan's `entry.separation`, if it came before the first body landed): NaN, never. */
+  parted: number;
+  /** Each body's greatest dynamic pressure, Pa, load, g, and speed through the air, m/s, from when it began. */
+  peak: Record<string, { q: number; g: number; speed: number }>;
+  /** Bodies still up when the descent was given up: six hours on, in an orbit or near one. */
+  up: string[];
 }
 
 /**
- * Fly the descent from the coast's end (`from`: its last sample's state and time). Point masses in the inertial frame of
- * date under J2 gravity and the standard air turning with the Earth (no wind: the day's at Saratov has not been read),
- * RK4 at 0.05 s. Returns each body's landing, by id, and `apart`, the distance between the first two, m.
+ * Fly the descent from where the coast hands over (`from`: its last sample's state and time). Point masses in the inertial
+ * frame of date under J2 gravity and the standard air turning with the Earth (no wind: the day's at Saratov has not been
+ * read), RK4 at 0.05 s in the air (1 s above 100 km, 10 s above 150 km, for a body let go high), each step cut to end on
+ * an instant a hand gave. The first body is the entry body: it carries the pilot until the ejection (`entry.mass`; then its
+ * own), the instrument module until the modules part (the whole ship's mass less the entry body's, and no more drag: the
+ * coast's convention for the joined ship), and above the ejection height, where the coast would have flown it, it has the
+ * coast's drag (`entry.area` on `entry.drag`). Every other body leaves it at the first of its `with` events, thrown clear.
+ * Each event is the automatic sequence's (a parachute at its height or time after the ejection, the ejection at its
+ * height) while that is on, and a hand's whenever one gave it (`hands`). Returns each body's landing, by id, and `apart`,
+ * the distance between the first two, m.
  */
-export function flyDown(o: OrbitalFlight, launchJd: number, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }): DescentFlown {
+export function flyDown(
+  o: OrbitalFlight,
+  launchJd: number,
+  seaLevel: number,
+  from: { t: number; r: Vec3; v: Vec3 },
+  hands?: DescentHands,
+): DescentFlown {
   const d = o.descent;
   if (!d) throw new Error('this orbital record has no `descent`');
   const gast0 = greenwichSiderealTime(launchJd);
   const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
   const ground = d.ground.value;
+  const floor = o.ejection.altitude.value;
+  const parted = o.entry.separation.value;
+  const joined = o.mass.value - o.entry.mass.value; // (the instrument module, while it hangs on)
+  const given = hands?.given ?? {};
   const landed: Record<string, Landed> = {};
   const tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]> = {};
   const opened: Record<string, Record<string, number>> = {};
   const gone: Record<string, Record<string, number>> = {};
+  const torn: Record<string, Record<string, DescentTear>> = {};
+  const worst: Record<string, Record<string, { q: number; pull: number }>> = {};
+  const peak: Record<string, { q: number; g: number; speed: number }> = {};
+  const up: string[] = [];
+  let ejected = Number.NaN;
   const heightOf = (q: State, at: number) => subpoint(q.r, gast0 + EARTH_ROTATION_RATE * at).height - seaLevel;
-  // each body from the ejection, thrown clear against its motion through the air if it was; and what one leaves behind from there
-  const queue: { body: DescentBody; t: number; s: State }[] = d.bodies.map((body) => {
-    const wind = sub(from.v, cross(spin, from.r));
-    const speed = length(wind);
-    const v = body.thrown && speed > 0 ? sub(from.v, scale(wind, body.thrown.value / speed)) : from.v;
-    return { body, t: from.t, s: { r: from.r, v } };
-  });
+  const airOf = (q: State) => sub(q.v, cross(spin, q.r));
+  const [first, ...rest] = d.bodies;
+  if (!first) throw new Error('a descent needs its entry body');
+  const loose = new Set<string>();
+  /** The bodies an event sets loose from the first, each from its state then, thrown clear against its motion through the air. */
+  const queue: { body: DescentBody; t: number; s: State }[] = [{ body: first, t: from.t, s: { r: from.r, v: from.v } }];
+  const letLoose = (event: string, t: number, s: State) => {
+    for (const body of rest) {
+      if (loose.has(body.id) || !(body.with ?? ['ejection']).includes(event)) continue;
+      loose.add(body.id);
+      const wind = airOf(s);
+      const speed = length(wind);
+      const v = body.thrown && speed > 0 ? sub(s.v, scale(wind, body.thrown.value / speed)) : s.v;
+      queue.push({ body, t, s: { r: s.r, v } });
+    }
+  };
+  // the instants a hand gave, and the modules' parting, which a step ends on
+  const cuts = [...Object.values(given), parted].filter(Number.isFinite).sort((p, q) => p - q);
   for (let n = 0; n < queue.length; n++) {
     const { body, t: t0, s: s0 } = queue[n]!;
+    const entry = n === 0;
     const track: { t: number; r: Vec3; v: Vec3 }[] = (tracks[body.id] = [{ t: t0, r: s0.r, v: s0.v }]);
     const times: Record<string, number> = (opened[body.id] = {});
     const let_go: Record<string, number> = (gone[body.id] = {});
+    const tore: Record<string, DescentTear> = (torn[body.id] = {});
+    const met: Record<string, { q: number; pull: number }> = (worst[body.id] = {});
     let t = t0;
     let s: State = s0;
-    let mass = body.mass.value;
+    const most = (peak[body.id] = {
+      q: 0.5 * atmosphere(heightOf(s0, t0)).density * length(airOf(s0)) ** 2,
+      g: 0,
+      speed: length(airOf(s0)),
+    });
+    // (the entry body carries the pilot until he leaves)
+    let aboard = entry;
+    let mass = aboard ? o.entry.mass.value : body.mass.value;
     let base = body.dragArea.value; // what is out for good: the body's own, and every parachute filled
     let filling: { area: number; at: number; fills: number; name: string } | null = null;
     const kept = new Map<string, number>(); // (each parachute in `base`, by name, with its area: for `instead`)
     const out = new Set<number>();
-    const areaAt = (at: number) => base + (filling ? filling.area * Math.min(1, Math.max(0, (at - filling.at) / filling.fills)) : 0);
+    const massAt = (at: number) => mass + (entry && at < parted ? joined : 0);
+    const areaAt = (at: number, h: number, mach: number) =>
+      (entry && h > floor + 1 ? o.entry.area.value * along(o.entry.drag, mach) - body.dragArea.value : 0) +
+      base +
+      (filling ? filling.area * Math.min(1, Math.max(0, (at - filling.at) / filling.fills)) : 0);
     const push = (q: State, at: number): Vec3 => {
-      const air = atmosphere(heightOf(q, at));
-      const wind = sub(q.v, cross(spin, q.r));
+      const h = heightOf(q, at);
+      const air = atmosphere(h);
+      const wind = airOf(q);
       const speed = length(wind);
-      return speed > 0 ? scale(wind, (-0.5 * air.density * speed * areaAt(at)) / mass) : [0, 0, 0];
+      return speed > 0 ? scale(wind, (-0.5 * air.density * speed * areaAt(at, h, speed / air.soundSpeed)) / massAt(at)) : [0, 0, 0];
+    };
+    const pressure = (q: State, h: number) => 0.5 * atmosphere(h).density * length(airOf(q)) ** 2;
+    /** Parachute `c` (the `i`th of the body) out at `t`, torn at once in more air than its cloth takes. */
+    const let_out = (c: DescentChute, i: number, q: State, h: number) => {
+      out.add(i);
+      times[c.name] = t;
+      letLoose(chuteEvent(body.id, c.name), t, q);
+      // what was filling is full now, or is left behind with the seat
+      if (c.replaces) {
+        const leaves = c.replaces.leaves;
+        if (leaves)
+          queue.push({
+            body: {
+              id: leaves.id,
+              label: leaves.label,
+              mass: { value: mass - c.replaces.mass.value, confidence: 'derived', source: `${body.id}'s mass less what goes on` },
+              dragArea: leaves.dragArea,
+              chutes: [],
+            },
+            t,
+            s: q,
+          });
+        // (what was out goes with what is left behind, or, with nothing left behind, is let go)
+        if (!leaves) for (const name of [...kept.keys(), ...(filling ? [filling.name] : [])]) let_go[name] ??= t;
+        base = 0;
+        kept.clear();
+        mass = c.replaces.mass.value;
+      } else if (filling) {
+        base += filling.area;
+        kept.set(filling.name, filling.area);
+      }
+      const p = pressure(q, h);
+      const tears = c.strength !== undefined && p > c.strength.value;
+      if (tears) tore[c.name] = { t, by: 'pressure', q: p, pull: 0 };
+      met[c.name] = { q: p, pull: 0 };
+      filling = { area: c.dragArea.value * (tears ? (d.torn?.value ?? 0) : 1), at: t, fills: c.fills.value, name: c.name };
+      // what it takes the place of goes, with its drag
+      for (const name of c.instead ?? []) {
+        const area = kept.get(name);
+        if (area === undefined) continue;
+        base -= area;
+        kept.delete(name);
+        let_go[name] = t;
+      }
+    };
+    /** The air on what is out: a parachute in more than its cloth takes, or pulled harder than its lines take, tears. */
+    const wear = (q: State, h: number) => {
+      const p = pressure(q, h);
+      body.chutes.forEach((c, i) => {
+        if (!out.has(i) || let_go[c.name] !== undefined) return;
+        const now = filling?.name === c.name ? filling : null;
+        const area = now ? now.area * Math.min(1, Math.max(0, (t - now.at) / now.fills)) : kept.get(c.name);
+        if (area === undefined) return;
+        const pull = p * area;
+        const m = met[c.name]!;
+        m.q = Math.max(m.q, p);
+        m.pull = Math.max(m.pull, pull);
+        if (tore[c.name] || (!c.strength && !c.pull)) return;
+        const by = c.strength && p > c.strength.value ? 'pressure' : c.pull && pull > c.pull.value ? 'pull' : null;
+        if (!by) return;
+        tore[c.name] = { t, by, q: p, pull };
+        // (what is left streams: a part of its drag area, or what it had filled to if that was less)
+        const left = Math.min(area, c.dragArea.value * (d.torn?.value ?? 0));
+        if (now) filling = null;
+        else base -= area;
+        base += left;
+        kept.set(c.name, left);
+      });
+    };
+    /** What is due at the instant now reached: a hand's events, the ejection, the parachutes. */
+    const events = (q: State, h: number, falling: boolean, begun: boolean) => {
+      if (aboard) {
+        const due =
+          (given.ejection ?? Number.POSITIVE_INFINITY) <= t + 1e-9 || (automatic(hands, t) && falling && h <= floor + (begun ? 1e-3 : 0));
+        if (due) {
+          aboard = false;
+          ejected = t;
+          mass = body.mass.value;
+          letLoose('ejection', t, q);
+        }
+      }
+      // (a parachute by its height or its time after the ejection: none at the instant a body begins but what a hand gave then)
+      body.chutes.forEach((c, i) => {
+        if (out.has(i)) return;
+        const hand = (given[chuteEvent(body.id, c.name)] ?? Number.POSITIVE_INFINITY) <= t + 1e-9;
+        const auto =
+          !begun &&
+          automatic(hands, t) &&
+          (c.altitude ? h <= c.altitude.value && falling : c.after ? !Number.isNaN(ejected) && t - ejected >= c.after.value : false);
+        if (hand || auto) let_out(c, i, q, h);
+      });
     };
     let h = heightOf(s, t);
-    for (let k = 0; k < 400_000 && h > ground; k++) {
+    events(s, h, dot(airOf(s), s.r) < 0, true);
+    const limit = t0 + 6 * 3600;
+    let keptAt = t;
+    while (h > ground && t < limit) {
       const was = { s, t, h };
-      s = step(s, t, 0.05, push);
-      t += 0.05;
+      const most_step = h > 150_000 ? 10 : h > 100_000 ? 1 : 0.05;
+      const cut = cuts.find((c) => c > t + 1e-9);
+      const dt = cut !== undefined && cut - t < most_step ? cut - t : most_step;
+      s = step(s, t, dt, push);
+      t = cut !== undefined && Math.abs(t + dt - cut) < 1e-9 ? cut : t + dt;
       h = heightOf(s, t);
       if (h <= ground) {
         const part = (was.h - ground) / (was.h - h);
         s = { r: add(was.s.r, scale(sub(s.r, was.s.r), part)), v: add(was.s.v, scale(sub(s.v, was.s.v), part)) };
-        t = was.t + 0.05 * part;
+        t = was.t + dt * part;
         const here = subpoint(s.r, gast0 + EARTH_ROTATION_RATE * t);
         const up = ecefToInertial(enuAxes(here).up, gast0 + EARTH_ROTATION_RATE * t);
         landed[body.id] = { at: t, speed: -dot(sub(s.v, cross(spin, s.r)), up), latitude: here.latitude, longitude: here.longitude };
         track.push({ t, r: s.r, v: s.v });
         break;
       }
-      if (k % 20 === 19) track.push({ t, r: s.r, v: s.v });
-      body.chutes.forEach((c, i) => {
-        if (out.has(i)) return;
-        const due = c.altitude ? h <= c.altitude.value && h < was.h : c.after ? t - from.t >= c.after.value : false;
-        if (!due) return;
-        out.add(i);
-        times[c.name] = t;
-        // what was filling is full now, or is left behind with the seat
-        if (c.replaces) {
-          const leaves = c.replaces.leaves;
-          if (leaves)
-            queue.push({
-              body: {
-                id: leaves.id,
-                label: leaves.label,
-                mass: { value: mass - c.replaces.mass.value, confidence: 'derived', source: `${body.id}'s mass less what goes on` },
-                dragArea: leaves.dragArea,
-                chutes: [],
-              },
-              t,
-              s,
-            });
-          // (what was out goes with what is left behind, or, with nothing left behind, is let go)
-          if (!leaves) for (const name of [...kept.keys(), ...(filling ? [filling.name] : [])]) let_go[name] ??= t;
-          base = 0;
-          kept.clear();
-          mass = c.replaces.mass.value;
-        } else if (filling) {
-          base += filling.area;
-          kept.set(filling.name, filling.area);
-        }
-        filling = { area: c.dragArea.value, at: t, fills: c.fills.value, name: c.name };
-        // what it takes the place of goes, with its drag
-        for (const name of c.instead ?? []) {
-          const area = kept.get(name);
-          if (area === undefined) continue;
-          base -= area;
-          kept.delete(name);
-          let_go[name] = t;
-        }
-      });
+      if (t - keptAt >= 1 - 1e-9) {
+        track.push({ t, r: s.r, v: s.v });
+        keptAt = t;
+      }
+      most.q = Math.max(most.q, pressure(s, h));
+      most.g = Math.max(most.g, length(push(s, t)) / G0);
+      most.speed = Math.max(most.speed, length(airOf(s)));
+      events(s, h, h < was.h, false);
+      wear(s, h);
+    }
+    if (!landed[body.id]) {
+      up.push(body.id);
+      if (track.at(-1)!.t < t) track.push({ t, r: s.r, v: s.v });
     }
   }
   const ids = d.bodies.map((b) => b.id);
@@ -424,7 +620,39 @@ export function flyDown(o: OrbitalFlight, launchJd: number, seaLevel: number, fr
           ),
         )
       : Number.NaN;
-  return { landed, apart, tracks, opened, gone };
+  const down = landed[first.id]?.at ?? Number.POSITIVE_INFINITY;
+  return { landed, apart, tracks, opened, gone, torn, worst, ejected, parted: parted < down ? parted : Number.NaN, peak, up };
+}
+
+/**
+ * How long an orbit lasts: from `from` (a state in frames.ts's inertial frame of date, at seconds from liftoff) under J2
+ * gravity and the standard air turning with the Earth, the ship (whole, or the entry body once the modules have parted)
+ * on the ball's disc at `supplies.rarefied`, RK4 at 30 s, until it is down to 120 km (from there it comes down within the
+ * revolution) or `days` have gone. Seconds from `from.t` to there, or Infinity. The standard atmosphere is the mean: the
+ * day's Sun, which moves the density at 200 km several-fold, is not in it.
+ */
+export function decay(o: OrbitalFlight, launchJd: number, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
+  const gast0 = greenwichSiderealTime(launchJd);
+  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const cd = o.supplies?.rarefied.value ?? along(o.entry.drag, 25);
+  const parted = from.t >= o.entry.separation.value;
+  const mass = parted ? o.entry.mass.value : o.mass.value;
+  const k = (cd * o.entry.area.value) / mass;
+  const heightOf = (q: State, at: number) => subpoint(q.r, gast0 + EARTH_ROTATION_RATE * at).height - seaLevel;
+  const push = (q: State, at: number): Vec3 => {
+    const air = atmosphere(heightOf(q, at));
+    const wind = sub(q.v, cross(spin, q.r));
+    return scale(wind, -0.5 * air.density * length(wind) * k);
+  };
+  let s: State = { r: from.r, v: from.v };
+  let t = from.t;
+  const end = from.t + days * 86_400;
+  while (t < end) {
+    s = step(s, t, 30, push);
+    t += 30;
+    if (heightOf(s, t) < 120_000) return t - from.t;
+  }
+  return Number.POSITIVE_INFINITY;
 }
 
 /** What the record gives figures for, as the coast has them. */
@@ -527,11 +755,14 @@ export function injectionState(o: OrbitalFlight, site: Geodetic, launchJd: numbe
  * the height the pilot left at. `site` is where it was launched from and `launchJd` when (a Julian
  * date in UT), which between them fix the orbit's plane, the Earth's turning under it and the Sun.
  * `seaLevel` is the sea's height above the ellipsoid, taken as the same everywhere. `every`: how
- * often a sample is kept, s.
+ * often a sample is kept, s. With `hands` (the flight deck's descent by hand), the coast hands
+ * over to flyDown at the first event of the descent a hand gave, if that comes before the height.
  *
  * Forces: gravity with J2 (world/orbit.ts); the air of atmosphere.ts turning with the Earth, on
- * `entry`'s body throughout (before the modules part the whole ship is heavier and no rounder,
- * and is above the air that matters); the braking burn as an even acceleration. No lift, no wind.
+ * `entry`'s body throughout (before the modules part the whole ship is heavier and no rounder:
+ * no figure for the joined ship's drag has been read, and on the record it is above the air that
+ * matters); the braking burn as an even acceleration, which the modules' parting ends (the
+ * engine is on the instrument module). No lift, no wind.
  * Fixed steps of fourth-order Runge-Kutta: 10 s above 150 km, 1 s to 100 km and through the
  * burn, 0.05 s below, each cut to end on the next event, so one input gives one flight.
  */
@@ -542,6 +773,7 @@ export function flyOrbit(
   seaLevel = 0,
   every = 10,
   from?: { t: number; r: Vec3; v: Vec3 },
+  hands?: DescentHands,
 ): OrbitFlown {
   const gast0 = greenwichSiderealTime(launchJd);
   const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
@@ -578,7 +810,8 @@ export function flyOrbit(
     const mass = at >= parted ? o.entry.mass.value : o.mass.value;
     const drag: Vec3 =
       air.airspeed > 0 ? scale(air.wind, (-air.q * o.entry.area.value * along(o.entry.drag, air.mach)) / (air.airspeed * mass)) : [0, 0, 0];
-    return at >= on && at < off ? add(drag, scale(aim, braking)) : drag;
+    // (the braking engine is on the instrument module: parted, it pushes no more)
+    return at >= on && at < off && at < parted ? add(drag, scale(aim, braking)) : drag;
   };
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
     at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= 0.05 ? 'entry' : 'descent';
@@ -648,7 +881,9 @@ export function flyOrbit(
   /** The plumb line at a sample's place, in the inertial frame. */
   const upAt = (s: OrbitSample): Vec3 => ecefToInertial(enuAxes(s).up, gastAt(s.t));
 
-  const marks = [on, off, parted].sort((p, q) => p - q);
+  // (the coast hands over to the descent at the ejection height, or at the first event of the descent a hand gave: flyDown)
+  const handover = Math.min(...Object.values(hands?.given ?? {}).filter((g) => g > t));
+  const marks = [on, off, parted, handover].filter(Number.isFinite).sort((p, q) => p - q);
   const samples: OrbitSample[] = [sample()];
   let kept = t;
   let before = samples[0]!;
@@ -696,6 +931,11 @@ export function flyOrbit(
     {
       // (down through the ejection height, burn or no burn: a coast begun short of an orbit comes down without one)
       const floor = o.ejection.altitude.value;
+      if (t === handover) {
+        phase = 'down';
+        samples.push({ ...now, phase });
+        break;
+      }
       if (now.altitude <= floor && now.altitude < before.altitude) {
         // back along the last step to the instant it came through the height
         const part = (before.altitude - floor) / (before.altitude - now.altitude);
