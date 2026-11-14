@@ -68,11 +68,12 @@ OPENING_R = 575.0  # the round opening over hatch No. 1
 OGIVE = 14  # straight pieces in the nose's arc
 
 
-def build_interstage(X: Matrix, M: dict) -> None:
-    """The lattice: Block E lights while the core is still burning, and its fire leaves between the struts."""
+def build_interstage(X: Matrix, M: dict, top: float = TRUSS_TOP) -> None:
+    """The lattice: Block E lights while the core is still burning, and its fire leaves between the struts.
+    `top` is the station it ends at: the 11A57's, under a larger third stage, is its own (the Voskhod programme's)."""
     g = group("Interstage")
     truss, cone = Local(X), Local(X)
-    z0, z1 = CORE_TOP, TRUSS_TOP
+    z0, z1 = CORE_TOP, top
     r = CORE_R_TOP - 40
     for z in (z0 + 30, z1 - 30):  # a ring at each end
         truss.lathe([(r - 45, z - 30), (r + 40, z - 30), (r + 40, z + 30), (r - 45, z + 30), (r - 45, z - 30)], 72)
@@ -182,12 +183,12 @@ def build_block_e(X: Matrix, M: dict) -> None:
         gear.build("BlockE_Instruments", M["equipment"], g, sharp_angle=35)
 
 
-def fairing_profile() -> list:
+def fairing_profile(foot: float = BLOCK_E_TOP, tip: float = LENGTH, cyl: float = FAIRING_CYL) -> list:
     """(radius, station) up the fairing's outside: a cylinder, then an ogive, which leaves the cylinder without a
-    corner and runs into a rounded tip. Points 1 to 1 + OGIVE are the ogive's."""
-    foot, tip = BLOCK_E_TOP, LENGTH
+    corner and runs into a rounded tip. Points 1 to 1 + OGIVE are the ogive's. The stations are the 8K72K's own
+    unless another vehicle's fairing of the same kind gives its own."""
     centre = tip - FAIRING_TIP_R
-    shoulder = foot + FAIRING_CYL
+    shoulder = foot + cyl
     rise = centre - shoulder
     # the arc's centre is level with the shoulder, and its radius is the one that touches the tip's sphere from inside
     rho = (FAIRING_R**2 + rise**2 - FAIRING_TIP_R**2) / (2 * (FAIRING_R - FAIRING_TIP_R))
@@ -199,13 +200,24 @@ def fairing_profile() -> list:
     return pts
 
 
-def build_fairing(X: Matrix, M: dict, hatch_az: float, hatch_h: float) -> None:
+def build_fairing(
+    X: Matrix,
+    M: dict,
+    hatch_az: float,
+    hatch_h: float,
+    foot: float = BLOCK_E_TOP,
+    tip: float = LENGTH,
+    cyl: float = FAIRING_CYL,
+    profile: list | None = None,
+) -> None:
     """Two halves that part along the plane square to the hatch. The round opening over hatch No. 1 is
-    how the pilot went aboard and how his seat would have left on the pad; `hatch_h` is its centre's station."""
+    how the pilot went aboard and how his seat would have left on the pad; `hatch_h` is its centre's station.
+    `foot`, `tip` and `cyl` are the stations of its foot and tip and its cylinder's height: the 8K72K's own, or
+    those of another fairing built the same way (the 11A57's, over a Voskhod), which may also give its own outline
+    as `profile`: (radius, station) points as fairing_profile() lists them, the first at the foot and as many."""
     g = group("Fairing")
-    prof_out = fairing_profile()
+    prof_out = profile or fairing_profile(foot, tip, cyl)
     prof_in = [(max(0.0, r - FAIRING_WALL), z if r > 1 else z - FAIRING_WALL) for r, z in prof_out]
-    foot = BLOCK_E_TOP
     for side, mid in (("Left", hatch_az), ("Right", hatch_az + math.pi)):
         arc = (mid - math.pi / 2, mid + math.pi / 2)
         node = pivot(f"Fairing_{side}", g, X @ V(FAIRING_R * math.cos(mid), FAIRING_R * math.sin(mid), foot))
@@ -239,7 +251,7 @@ def build_fairing(X: Matrix, M: dict, hatch_az: float, hatch_h: float) -> None:
                     (70, math.hypot(rb - ra, zb - za) * 0.8, 46),
                     aside @ frame(V(r * c, r * s, z), (math.cos(lean) * c, math.cos(lean) * s, math.sin(lean))),
                 )
-        for z in (foot + 60, foot + FAIRING_CYL - 40):  # frames at the foot and the shoulder
+        for z in (foot + 60, foot + cyl - 40):  # frames at the foot and the shoulder
             skin.lathe(
                 [(FAIRING_R - 3, z - 34), (FAIRING_R + 9, z - 24), (FAIRING_R + 9, z + 24), (FAIRING_R - 3, z + 34)],
                 48,
