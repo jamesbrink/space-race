@@ -9,7 +9,7 @@
 //   - a point of the line jumping between frames as the clock runs at life's rate,
 //   - a marker away from its place, a chip for a place that is in view, a chip that points elsewhere than its place,
 //     or one that overlaps a panel or another chip.
-//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|v1] [--quick]
+//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|v1] [--quick] [--at 60,700]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -21,6 +21,7 @@ const flag = (name) => {
 };
 const shots = flag('--shots');
 const only = flag('--only');
+const at = flag('--at');
 const quick = args.includes('--quick') ? args.splice(args.indexOf('--quick'), 1) && true : false;
 const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
 if (shots) mkdirSync(shots, { recursive: true });
@@ -31,7 +32,7 @@ const CHORD_PX = 1;
 const INK = 60;
 const DOT = 20;
 const BIT = 80;
-/** Pixels a point of the line may move from one frame to the next as the clock runs at life's rate (the chase camera follows smoothly). */
+/** Pixels: as the clock runs at life's rate, a frame that moves a point of the line further than this, and three times as far as the frames round it, is a leap. */
 const JUMP_PX = 3;
 /** Degrees a chip's pointer may be off the bearing to its place; pixels a marker may be off its place. */
 const AIM = 15;
@@ -222,10 +223,10 @@ const pixels = async (name) => {
     .then((h) => (pixels.style = h));
   const shot = async (on) => {
     await page.evaluate((on) => {
-      // (the line ahead and the ring, the line flown hidden throughout: it is paler, and is measured with its own rules)
+      // (the line ahead; the line flown and the ring hidden throughout: it is paler, and is measured with its own rules)
       const p = window.sr.path;
       p.mesh.material.visible = on;
-      p.ringMesh && (p.ringMesh.material.visible = on);
+      p.ringMesh && (p.ringMesh.material.visible = on === null); // (and the ring where it comes down: a loop of its own)
       p.flownMesh && (p.flownMesh.material.visible = on === null);
       window.sr.stage.dirty = true;
     }, on);
@@ -245,6 +246,7 @@ const pixels = async (name) => {
   await page.evaluate(() => {
     const p = window.sr.path;
     if (p.flownMesh) p.flownMesh.material.visible = true;
+    if (p.ringMesh) p.ringMesh.material.visible = true;
   });
   await page.evaluate((cut) => {
     const u = window.sr.path.uniforms?.uCut;
@@ -366,7 +368,7 @@ const jumps = () =>
     sr.clock.setRate(1);
     sr.clock.play(true);
     let last = null;
-    let worst = 0;
+    const moves = [];
     for (let i = 0; i < 40; i++) {
       await new Promise((r) => requestAnimationFrame(r));
       const end = p.line().t.at(-1);
@@ -374,11 +376,22 @@ const jumps = () =>
       const w = p.where(T);
       const d = Math.hypot(w[0] - cam.position.x, w[1] - cam.position.y, w[2] - cam.position.z);
       const pxPerRad = innerHeight / 2 / (Math.tan((cam.fov * Math.PI) / 360) / cam.zoom);
-      if (last) worst = Math.max(worst, (Math.hypot(w[0] - last[0], w[1] - last[1], w[2] - last[2]) / d) * pxPerRad);
+      if (last) moves.push((Math.hypot(w[0] - last[0], w[1] - last[1], w[2] - last[2]) / d) * pxPerRad);
       last = w;
     }
     sr.clock.pause();
-    return worst;
+    // a leap: a frame that moves it more than JUMP_PX and three times as far as the frames round it do (under power the
+    // future itself moves, eased, frame by frame: that is motion, not a jump)
+    let worst = 0;
+    for (let i = 0; i < moves.length; i++) {
+      const round = moves
+        .slice(Math.max(0, i - 4), i + 5)
+        .filter((_, k) => k !== Math.min(i, 4))
+        .sort((a, b) => a - b);
+      const usual = round.length ? round[Math.floor(round.length / 2)] : 0;
+      if (moves[i] > 3 * usual) worst = Math.max(worst, moves[i]);
+    }
+    return { worst, usual: moves.length ? [...moves].sort((a, b) => a - b)[Math.floor(moves.length / 2)] : 0 };
   });
 
 const overlap = (a, b, m = 0) => a.x0 < b.x1 - m && b.x0 < a.x1 - m && a.y0 < b.y1 - m && b.y0 < a.y1 - m;
@@ -393,7 +406,11 @@ for (const [key, f] of Object.entries(FLIGHTS)) {
     window.sr.path.show(true, false);
     window.sr.navball?.tuck?.(false, false);
   });
-  const instants = quick ? f.instants.filter((_, i) => i % 3 === 0) : f.instants;
+  const instants = at
+    ? f.instants.filter((t) => at.split(',').map(Number).includes(t))
+    : quick
+      ? f.instants.filter((_, i) => i % 3 === 0)
+      : f.instants;
   for (const [k, t] of instants.entries()) {
     const looks = k % 4 === 1 ? ['real', 'cel'] : ['real'];
     for (const look of looks) {
@@ -413,7 +430,8 @@ for (const [key, f] of Object.entries(FLIGHTS)) {
         for (const issue of m.issues) fail(where, issue);
         const px = await pixels(shots ? `${key}-${t}-${v}${look === 'cel' ? '-cel' : ''}` : null);
         // (the line's pixels run about eight wide, its core, casing and glow over the threshold, closed by a pixel each side)
-        if (m.expect > 150 && px.area / 8 < 0.25 * m.expect)
+        // (from the seat the cabin's walls hide it but for the windows: not counted there)
+        if (v !== 'onboard' && m.expect > 150 && px.area / 8 < 0.25 * m.expect)
           fail(where, `only about ${(px.area / 8).toFixed(0)} px of the ${m.expect.toFixed(0)} px of line in view are drawn`);
         if (px.frac > 0.2) fail(where, `the line covers ${(px.frac * 100).toFixed(0)} % of the view: a sheet`);
         if (px.dots > 2) fail(where, `the line breaks into dots: ${px.dots} pieces under ${DOT} px`);
@@ -445,8 +463,13 @@ for (const [key, f] of Object.entries(FLIGHTS)) {
         }
         let jump = null;
         if (v === 'chase' && look === 'real') {
-          jump = await jumps();
-          if (jump !== null && jump > JUMP_PX) fail(where, `a point of the line jumps ${jump.toFixed(1)} px between frames`);
+          const j = await jumps();
+          jump = j?.worst ?? null;
+          if (j && j.worst > JUMP_PX)
+            fail(
+              where,
+              `a point of the line leaps ${j.worst.toFixed(1)} px in a frame (it moves ${j.usual.toFixed(1)} px a frame round it)`,
+            );
         }
         console.log(
           `  ${where}: ${m.chords ?? '?'} chords, ${m.expect !== undefined ? `${(px.area / 8).toFixed(0)}/${m.expect.toFixed(0)} px drawn, ` : ''}${m.worst !== undefined ? ` (worst ${m.worst.toFixed(2)} px)` : ''}, ${px.pieces} pieces, ${px.dots} dots, ${(px.frac * 100).toFixed(1)} % covered${m.drawn ? `, ${m.drawn.ms.toFixed(1)} ms` : ''}${jump !== null ? `, jump ${jump.toFixed(2)} px` : ''}, ${m.chips.length} chips`,

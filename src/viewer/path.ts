@@ -361,6 +361,8 @@ interface Shown {
   curve: Curve;
   began: number;
   was: Shown | null;
+  /** How far it had come from the one before when a newer one began to ease from it: it stays there. */
+  held?: number;
 }
 
 /** A line's buffers on the GPU and in doubles: the ribbon's, and the points it was last sampled at (scene frame). */
@@ -838,7 +840,12 @@ export class FlightPath {
       // (eased from the line on show as it is drawn now: from the one it was itself eased from, if that is still going)
       was: ease && old && old.curve.n > 1 && n > 0 ? old : null,
     };
-    if (next.was) next.was.was = null;
+    // (one still easing in is held where it is drawn now, and eased from: so a prediction every fifth of a second under
+    // power, sooner than the ease, moves the line on from where it is, never back to where the last one was going)
+    if (next.was) {
+      next.was.held = this.mixOf(next.was);
+      if (next.was.was) next.was.was.was = null;
+    }
     this.shown = next;
     this.uniforms.uCut!.value = result.cutoff === null ? -1 : result.cutoff - result.from;
     this.sampledFor = '';
@@ -848,6 +855,7 @@ export class FlightPath {
 
   /** How far the line on show has come from where it was eased from. */
   private mixOf(shown: Shown): number {
+    if (shown.held !== undefined) return shown.held;
     const k = Math.min(1, Math.max(0, (performance.now() - shown.began) / (EASE * 1000)));
     return k * k * (3 - 2 * k);
   }
@@ -967,18 +975,18 @@ export class FlightPath {
 
   private readonly at3 = new Float64Array(3);
   private readonly at3b = new Float64Array(3);
+  private readonly easeAt = new Float64Array(3);
   private readonly lensEye: [number, number, number] = [0, 0, 0];
 
-  /** Where the line on show puts instant `t` in the scene now, eased from the one before; and, if `pin`, taken onto the vehicle near it. */
+  /** Where the line on show puts instant `t` in the scene now, eased from the one before (and that from its own, held). */
   private alongAt(shown: Shown, t: number, out: Float64Array, o: number, mix: number): void {
-    const c = shown.curve;
-    curveAt(c, t, this.at3, 0);
+    curveAt(shown.curve, t, this.at3, 0);
     this.sceneOf(this.at3, 0, t, shown.frame, this.now, out, o);
     const was = shown.was;
     if (was && mix < 1 && t >= was.curve.t[0]! && t <= was.curve.t[was.curve.n - 1]!) {
-      curveAt(was.curve, t, this.at3, 0);
-      this.sceneOf(this.at3, 0, t, was.frame, this.now, this.at3b, 0);
-      for (let k = 0; k < 3; k++) out[o + k] = this.at3b[k]! + (out[o + k]! - this.at3b[k]!) * mix;
+      const from = was.was ? new Float64Array(3) : this.easeAt;
+      this.alongAt(was, t, from, 0, this.mixOf(was));
+      for (let k = 0; k < 3; k++) out[o + k] = from[k]! + (out[o + k]! - from[k]!) * mix;
     }
   }
 
