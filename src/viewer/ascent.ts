@@ -3,7 +3,7 @@ import { atmosphere } from '../sim/atmosphere.ts';
 import { along, axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { blowOf, windAt } from '../sim/forces.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
-import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
+import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
@@ -529,6 +529,12 @@ export class Ascent {
       const centre = new THREE.Vector3(0, body.shedder.release.centre - (this.flight.flies!.datum ?? 0), 0)
         .applyQuaternion(from.q)
         .add(from.p);
+      // (a strap-on's is on its own axis, out from the stack's the way its +Z points as it leaves: sim/shed.ts `apart`)
+      const apart = body.shedder.def.apart;
+      if (apart) {
+        const out = inertialToEcef(turn(body.shedder.release.q, [0, 0, 1]), EARTH_ROTATION_RATE * from.at);
+        centre.addScaledVector(toThree(ecefToSiteDirection(this.site, out)), apart.across.value);
+      }
       held = this.carried[i] = {
         at: from.at,
         body,
@@ -932,18 +938,21 @@ export function orbitalRecord(flight: SitedFlight): Run {
     const s = k < 0.5 ? a : b;
     const { r, v } = between(samples, at);
     const m = def.mass.value;
-    sheds.add({
-      on: def.on,
-      t: at,
-      r: add(r, scale(s.axis, def.centre.value)),
-      v: pushedOff(def, v, s.axis, o.mass.value),
-      q: s.attitude,
-      w: [0, 0, 0],
-      mass: m,
-      roll: m * def.gyration.roll.value ** 2,
-      across: m * def.gyration.across.value ** 2,
-      centre: def.centre.value,
-    });
+    // (a strap-on from where it stood, as its swing and its vent send it: sim/shed.ts `apart`)
+    sheds.add(
+      apart(def, {
+        on: def.on,
+        t: at,
+        r: add(r, scale(s.axis, def.centre.value)),
+        v: pushedOff(def, v, s.axis, o.mass.value),
+        q: s.attitude,
+        w: [0, 0, 0],
+        mass: m,
+        roll: m * def.gyration.roll.value ** 2,
+        across: m * def.gyration.across.value ** 2,
+        centre: def.centre.value,
+      }),
+    );
   }
   const run: Run = {
     samples,

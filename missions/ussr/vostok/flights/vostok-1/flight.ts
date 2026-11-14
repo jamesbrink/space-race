@@ -2485,15 +2485,17 @@ export const flight: Flight = {
     // node the engine's bells, whose chambers (four main and two or four steering) the viewer finds in the model's own
     // geometry (viewer/fires.ts): each fire is sized from its nozzles' exits and burns at its stage's throttle. Then Block
     // E's from its nozzle (733 mm across: KBKhA; that it is the exit's is derived), and the braking engine's (280 mm:
-    // estimated, vostok_3ka.py)
+    // estimated, vostok_3ka.py). Each burns what its engine burned, which gives its fire its look (viewer/flames.ts): the
+    // first three stages kerosene and oxygen, luminous with soot; the braking engine amine and nitric acid
     fires: [
-      ...BOOSTERS.map(([letter]) => ({ node: `RD107_${letter}_Bells`, on: 'stage:0' })),
-      { node: 'RD108_Bells', on: 'stage:1' },
-      { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2' },
-      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro' },
+      ...BOOSTERS.map(([letter]) => ({ node: `RD107_${letter}_Bells`, on: 'stage:0', burns: 'kerosene-lox' as const })),
+      { node: 'RD108_Bells', on: 'stage:1', burns: 'kerosene-lox' },
+      { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2', burns: 'kerosene-lox' },
+      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro', burns: 'amine-nitric' },
     ],
     drops: [
-      { at: 119.5, nodes: BOOSTERS.map(([letter]) => `Booster_${letter}`), on: 'boosters' },
+      // each strap-on a body of its own (orbital.ts `ascent.sheds`: 'boosters/' and its letter), leaving at the stage's separation
+      ...BOOSTERS.map(([letter]) => ({ at: 119.5, nodes: [`Booster_${letter}`], on: `boosters/${letter}` })),
       { at: 154.6, nodes: ['Fairing'], on: 'fairing' },
       { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'core' },
       { at: orbital.events.find((e) => e.id === 'separation')!.at.value, nodes: ['BlockE'], on: 'separation' },

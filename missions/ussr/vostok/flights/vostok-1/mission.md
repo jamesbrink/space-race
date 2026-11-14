@@ -277,9 +277,14 @@ bottles: in dispute), the sensor's field and the law's gains.
   with its engines as a list: thrust, specific impulse, start, cutoff or depletion, station, steering; and its own shed
   event), `vehicle.ts` sums thrust over the engines burning, and the Mercury flight is the one-stage case of it with
   `tests/vehicle.test.mjs` unchanged as the proof.
-- The strap-ons leave as four `ShedBody`s at once, swinging out on their tips: `part` already
-  conserves momentum for two bodies; four at one instant is four calls. Their residual thrust and
-  the oxygen vented from the nose (Minakov) are the push; neither has a figure.
+- The strap-ons leave as four `ShedBody`s at once (`boosters/B` to `/D`), each from where it stood, swung out on
+  its tip and vented away (sim/shed.ts `apart`; orbital.ts gives each its figures): the tail-off thrust, how far the
+  tail swings before the ball leaves its socket, and the vent's thrust and time have no figure found and are estimated
+  (100 kN, 3 degrees, 3 kN for 6 s). Flown, they spread evenly as a cross (each 17 m from the four's middle five
+  seconds on, 60 m at ten), tumbling, and come down 403 to 407 km from the pad at T+401 to T+403 s. No drop zone for
+  64.95 degrees was found: the 51.6-degree one for Soyuz is about 350 km from Site 1 (derived from Interfax's place for
+  Progress MS-06's strap-ons), and the check is 300 to 450 km (tests/shed.test.mjs). The core is flown as before: the
+  stage's mass goes at separation as it did; what the strap-ons' leaving does to the core beyond that is not flown.
 - Block E lights through the lattice while the core burns: for some tenths of a second two engines
   push on one stack and the upper's jet pushes back on the core's top. No figure for the overlap;
   flown as an instantaneous hand-over, and said so, with Gagarin's "10 to 15 seconds of
