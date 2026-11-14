@@ -537,6 +537,25 @@ pit"), November 2026:
 | The Soviet railway gauge | general reference | 1,524 mm (5 ft) until 1970, 1,520 mm since | Set down from general knowledge, not from a standard read here; that the range's track was laid to it is assumed |
 | OpenStreetMap, the tracks and the pad's outline again, in the site's frame | (entry above) | The centre track 3.0 m north of the middle of the pad's outline; the other tracks 9.4 m and 13.8 m south and 14.6 m north of the centre track, the south track ending 13.6 m east of the axis and the short spur 1.7 m onto the abutment: within about a metre of the CIA's plan | The outline is a loose rectangle (47.8 by 42.5 m). World Imagery at 0.8 m a pixel could not say which of the two is out |
 
+### The steppe at Tyuratam
+
+Read for the ground and what grows round Site 1 (src/viewer/steppe.ts; site-1.md, "The ground and what grows"), November 2026.
+Most dated photographs of "Baikonur" plants were taken on the left bank at the river crossing, 30 km south of the pad;
+only Lednev's and the 1930 specimen are from the right bank, where the pad is.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Veselova P.V. and others, "Антропофильный элемент флоры пустынной части долины р. Сырдарья", *Trudy Inst. Botaniki i Fitointrodukcii* 23(7), Almaty 2017, pp. 3-4 | botsad.kz | The Syr Darya's desert valley: grey-brown and light-brown soils, takyrs and solonchaks "widespread", small sand massifs; the channel 120 to 240 m with levees to 5 m, the floodplain to 15 km, old channels | Regional, not of the pad |
+| Chertok B., *Rockets and People*, vol. II (NASA SP-2006-4110), pp. 314, 335, 357; vol. III (NASA SP-2009-4110), ch. 3, p. 57 | NASA History Office | The clay crust ("steppe asphalt") and tulips on it; trucks grinding it to dust, the dusty roads "two to three kilometers wide" (1955 to 1957, from the builder Gurovich); "the almost green steppe of springtime" with tulips (April 1957); the steppe "burst into bloom with the stubby tulips earlier than usual" in April 1961; burnt "reddish-gray" by summer | A memoir written decades later |
+| Lednev, observations in Kyzylorda oblast, 3 August 2017 and 26 April 2018 | plantarium.ru | On the cosmodrome's own land: *Artemisia terrae-albae* with *Krascheninnikovia ceratoides*; *Anabasis salsa* with *Carex physodes*; wormwood with *Ceratocarpus*, *Carex subphysodes*, *Bassia prostrata*; *Salsola incanescens* in hollows; wormwood-sedge on sand; *Tulipa borszczowii* in flower | Photographs with notes, not a survey: no cover figures |
+| Danilevsky, observations round Baikonur, April 2009 to 2011 | plantarium.ru | A takyr and solonchaks in closed hollows; the floodplain's *Salicornia*, reeds, tamarisk, *Halostachys*, *Nitraria*; *Haloxylon aphyllum*, *Calligonum*, *Alhagi* on the left bank; early April flowering (*Gagea*, *Ceratocephala*, *Chorispora*, *Iris tenuifolia*) | The left bank: what is not on the right bank too is not drawn |
+| Dimeeva L.A., Salmukhanbetova Zh., *Eurasian J. Ecology* 84(3), 2025, pp. 86-89 | Al-Farabi Kazakh National University | Shalkar district (47.3 N), the same northern desert on brown desert soils: total cover 40 to 45 %, *A. terrae-albae* 24 to 40 %, 475 to 991 plants per 100 m², the spring ephemeroid aspect (*Rheum tataricum*, *Poa bulbosa*, *Alyssum*) 60 to 70 %; wormwood in complexes with biyurgun | 200 km north-west: derived, not of the pad |
+| Jin and others, *Phytotaxa* 686(1): 48-50, 2025 | | *Artemisia terrae-albae* 8 to 30 cm, grey-white felted | Of the species, not the place |
+| Akhataeva and others, *Eurasian J. Ecology* 79(2), 2024, pp. 72-76, doi:10.26577/EJE.2024.v79.i2-06 | | *Tulipa borszczowii*: the specimen "near Tyuratam station" (G. Dombrovsky, 25 April 1930); yellow through orange-red to scarlet with a dark base; about 30 cm, half of it under ground; late April to early May; in wormwood-biyurgun communities | How many to a square metre: not found |
+| Kubentayev and others, *PhytoKeys* 250: 95-163, 2024 | | The tulips of Kazakhstan: *T. borszczowii* not endemic (Uzbekistan too); *T. buhseana* flowering March to April | |
+| Kazaly (Kazalinsk) climate, from Pogoda.ru.net, as carried by en.wikipedia | | April mean 12.5 °C, March 2.0 °C: the snow gone by early April (derived) | |
+| Krechetov P.P., Koroleva T.V., Chernitsova O.V., "Почвенный покров космодрома Байконур...", *Vestnik MGU, ser. 5 Geografiya*, 2015 no. 3, pp. 12-24; Neronov and others, *Arid Ecosystems* 2: 186-196, 2012 | | The cosmodrome's soil map (1:300 000) and its first vegetation map | **Known, not read**: abstracts only. They would say where the takyrs, crusts and sands lie, which is estimated now |
+
 ### The launch vehicle (8K72K)
 
 Read for [vostok-8k72k.md](../missions/ussr/vostok/vehicles/vostok-8k72k.md). **No OKB-1 or

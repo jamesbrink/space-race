@@ -340,10 +340,11 @@ the sky. The 3 m is inside what the map's outline is good for.
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | The ground | the pad on the brow of a scarp: level with the tracks south of them, some 8 m down north of them, some 5.5 m down east of the pit ("The lie of the land", below); beyond 400 m a swell of half a metre | derived (the levels, from SRTM); estimated (the brow's line, the fall's breadth and section, the swell) | below |
-| Cover | open steppe: clay and sand, bare between low clumps of wormwood and saltwort, green for a few weeks after the snow | estimated | descriptions and photographs of the place in spring; the film of the morning shows pale, bare ground round the pad |
-| Colours | grey-buff clay, silvery grey-green wormwood, a short spring green | estimated | read off photographs, then cleaned as the look asks |
-| Plants | wormwood clumps 0.25 to 0.5 m, saltwort 0.15 to 0.3 m, wide apart | estimated | as the cover |
-| Made ground | the apron on the platform's landward side (70 m), the tracks' beds, a margin round the rim: graded, nothing growing | estimated | the 1957 photograph shows bare ground round the pad and pit |
+| Cover | the steppe in the second week of April: a clay crust over grey-brown loam, wormwood and biyurgun over a third of it, the spring's short green over half, takyrs and salt crusts in the hollows, sand on the rises ("The ground and what grows", below) | documented (the kinds of ground and the species, and that the steppe was green and the tulips out that April); estimated (where each lies, how big, how thick) | below |
+| Colours | grey-buff crust, paler cooler takyr, white salt, warmer sand, pale dust in the ruts, grey-green wormwood, fresh spring green, tulips yellow to scarlet | estimated (the tulips' range documented) | read off colour photographs of the cosmodrome's steppe in spring, then cleaned as the look asks (src/viewer/steppe.ts) |
+| Plants | eight species as designed forms ("The ground and what grows") | documented (the species); estimated (shares, colours) | below |
+| Made ground | the apron on the platform's landward side (70 m), the tracks' beds, a margin round the rim: graded, nothing growing; inside the outer fence the ground worn in patches, and turned round the spoil heap's foot (35 m) | estimated | the 1957 photograph shows bare ground round the pad and pit |
+| Ruts | bands of braided wheel ruts in pale dust beside the road in from the south-west (70 m each side, fading) and along the centre track to the west (35 m) | documented (that the builders' trucks ground the crust to dust and "the dusty roads ... got to be two to three kilometers wide": Chertok, *Rockets and People* vol. II p. 314, of 1955 to 1957); estimated (that they were still worn in 1961, their lines and breadths) | `RUTS` in tyuratam.ts |
 | Tracks | the centre track from the west (its last 2.6 km) and the four spurs beside it, onto the platform; ballast, sleepers 0.55 m apart, two rails at the Soviet gauge (1,524 mm in 1961) | documented (their lines: OpenStreetMap ways 37547653, 172441851, 172441854, 172441876, 172441879; HTA/JR-4/58 counts five spurs in 1957; the gauge); estimated (the bed's width, the sleepers); near the platform the centre track is put on the axis and the three beside it brought to the CIA's plan ("The site's frame", "The platform") | painted on the land; where they come up to the platform the rails are modelled (`Tracks`) |
 | Roads | the road in from the south-west (its last 2 km), the road round the pit and back past the command bunker, the road from the storage bunker to the propellant shed, and short drives to the storage bays, the check-out shop's gate and the gas receivers; concrete in slabs, 6 m wide | documented (the three roads' lines: PIC/JR-2/60 Figure 5 and OpenStreetMap ways 54570611, 172571827, 172441909); estimated (the drives, the surface, the width; that the way round the pit's east end was a made road and not only the track beside its ditch) | painted on the land, not modelled: they lay flush with it |
 | The sky | no low or middle cloud; high cloud over seven eighths of the sky: cirrus in fibres at 9 km, seen through, the Sun dimmed by a fifth under it (0.81 at liftoff) | derived (the cover and that nothing lay under it: the two weather stations either side of the range, below); estimated (its height, how thick it is, how its fibres lie) | **No observation at the range has been read.** NOAA's Integrated Surface Database has the three-hourly reports of the stations along the same railway: Kazalinsk (Kazaly, 97 km west) at 06:00 UTC, seven minutes before liftoff: seven oktas covered, no low or middle cloud, high cloud of type 2 ("dense cirrus, in patches or entangled sheaves"), wind from 140° at 2.1 m/s, 12.2 °C; Dzhusaly (Zhosaly, 74 km south-east) at 03:00, its only report of the morning: seven oktas, the same type, calm; Kzyl-Orda (214 km south-east) at 06:00: eight oktas of cirrostratus. The film of the morning was read, when the site was first drawn, as a sharp horizon under a clear sky, and the site was drawn clear; the stations are taken over that reading, with the cirrus thin enough to see the Sun through. The flight's `weather.ts` has each figure |
@@ -405,6 +406,31 @@ pit" of the CIA's Figure 5 are not cut into the land: the land's mesh is half a 
 4 m a cell 300 m off, and a ditch 2 m wide would come and go with distance, which is worse than its absence. The
 embankment's south side, which Figure 5 hachures west of where the spurs part, is not built: SRTM has the ground
 south of the track at the track's level.
+
+### The ground and what grows
+
+The steppe as a kind of country is [src/viewer/steppe.ts](../../../../src/viewer/steppe.ts), so the next pad on it (Site 31)
+can stand on the same; [tyuratam.ts](../../../../src/viewer/tyuratam.ts) says where on it the ground lies low and what the
+builders made of it. Every form is designed (clean masses, no blades or leaf cards); the plants thin with distance as the
+Cape's do (flora.ts) and the ground carries their tones to the horizon. Sources: docs/sources.md, "The steppe at Tyuratam".
+
+| Item | In the model | Confidence | Source |
+| --- | --- | --- | --- |
+| The soils | grey-brown desert loam under a clay crust; takyrs and solonchaks "widespread"; small sand massifs | documented (of the Syr Darya's desert valley) | Veselova and others 2017, pp. 3-4 |
+| The crust | pale; ground by wheels to dust | documented (memoir) | Chertok vol. II p. 314: tulips "on the thick clay crust", the trucks' "steppe asphalt" |
+| Takyrs | bare clay floors in pans 100 to 400 m across with sharp edges, more in the hollows (the scarp's low side, the swell's lows beyond 900 m); cracked into polygons 0.42 m across | documented (that they are here); estimated (where, how big, the polygons: no source gives their size) | Veselova 2017; a takyr photographed at the river crossing (Danilevsky, plantarium.ru) |
+| Salt crusts | white, in the lowest middles of some pans | documented (solonchaks in closed hollows: Danilevsky); estimated (where) | as above |
+| Sand | warmer patches on the rises, low ripples where bare | documented (sand massifs in the valley; wormwood-sedge on sand on the cosmodrome's land, 26 April 2018: Lednev); estimated (where) | Veselova 2017; Lednev |
+| Cover | shrubs about 0.36 of the loam, the spring sward about half of it | derived: total cover 40 to 45 %, wormwood 24 to 40 %, the spring aspect 60 to 70 % in a desert of the same kind 200 km north-west | Dimeeva and Salmukhanbetova 2025 |
+| White-earth wormwood (*Artemisia terrae-albae*) | a low grey-green felted cushion, 0.12 to 0.3 m, on the loam | documented (species, 8 to 30 cm, grey-white felt; communities on the cosmodrome's land) | Jin and others 2025; Lednev 2017 |
+| Biyurgun (*Anabasis salsa*) | small dark grey-green clumps, 0.08 to 0.2 m, with the wormwood and round the pans | documented (species, in complexes with the wormwood); estimated (height) | Lednev; Dimeeva 2025 |
+| Teresken (*Krascheninnikovia ceratoides*) | a taller silvery shrub, 0.35 to 0.7 m, here and there | documented (species); estimated (height, share) | Lednev 2017 |
+| Saltwort (*Salsola*) | yellow-green, round the pans | documented (*S. incanescens* in hollows); estimated (form) | Lednev |
+| Bulbous meadow grass and the ephemerals | low fresh tufts and the ground's green tone | documented (the spring aspect; "the almost green steppe of springtime", April 1957) | Dimeeva 2025; Chertok vol. II p. 335 |
+| Sedge (*Carex physodes*) | low tufts on the sand | documented | Lednev |
+| Borszczow's tulip (*Tulipa borszczowii*) | a closed cup 0.12 to 0.2 m above the ground on two or three leaves, yellow through orange to scarlet, scattered | documented (collected by Tyuratam station in 1930; flowering on the cosmodrome's land; its colours; and that in April 1961 the steppe "had burst into bloom with the stubby tulips earlier than usual"); estimated (how many) | Akhataeva and others 2024; Chertok vol. III p. 57 |
+| Wild rhubarb (*Rheum tataricum*) | two to four broad leaves flat on the clay, 0.35 to 0.6 m across, few | documented (in the spring aspect of the same desert); estimated (here) | Dimeeva 2025 |
+| Not drawn | camel thorn, tamarisk, saxaul and the river's tugai and reeds: recorded on the left bank and the floodplain, 30 km south, not on the pad's terrace; *Tulipa buhseana* (its colour here not confirmed) | | Danilevsky, plantarium.ru |
 
 ### The country round, from height
 
@@ -714,6 +740,12 @@ rocket can leave the erector out by its date.
   earlier reading of the film as clear. The cirrus is drawn as fibres lying one way over seven eighths of the sky, the
   same everywhere: which way they lay, how thick they were and whether there were gaps over the pad are not recorded.
   They dim the Sun evenly (their own streaks cast no shadows). In the cel look they are one flat paler tone over the
-  sky. **From height the same cirrus lies over the whole Earth in view**: the site has no region and so no map of the
-  day's weather beyond it (`viewer/weather.ts`), and what stands in for one is the site's own sky everywhere, which
-  is an estimate and almost certainly wrong a few hundred kilometres off.
+  sky. From height the record's cirrus holds over the site as far as the stations saw it (60 km, gone by 90: day.ts
+  `reportReach`) and the day's map, estimated, lies beyond ("The country round, from height"): so from 150 km it is a
+  round patch, and in the cel look a disc with an edge, which no cirrus is.
+- The ground's kinds lie where a noise field over its cut puts them, more readily in the hollows: that takyrs, crusts
+  and sand are here is documented, where each lies is not (no soil map of the cosmodrome has been read: Krechetov and
+  others 2015 is known, not read). The ruts' lines, the worn ground's patches and the takyr's polygons are estimated.
+- The plants are eight species as designed forms in three variants each; the river's floodplain plants (tamarisk,
+  reeds, the tugai) are not drawn, being 30 km off and on the region's map from height. How many tulips stood to a
+  square metre is not recorded.
