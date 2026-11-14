@@ -245,6 +245,12 @@ test("nothing within the gap, all of it from three gaps, and lunar-lift's stops 
     near(fadeIn(at(1.4), gap), 0.14, 0.04, 'at the first stop');
     near(fadeIn(at(2), gap), 0.42, 0.06, 'at the second');
     near(fadeIn(at(2.8), gap), 0.78, 0.06, 'at the third');
+    // over a span of its own (path.ts: so many pixels at the vehicle), the same curve from the gap to the span's end
+    for (const span of [0.05 * gap, 40 * gap]) {
+      assert.equal(fadeIn(gap, gap, span), 0, 'nothing at the gap');
+      assert.equal(fadeIn(gap + span, gap, span), 1, 'all of it a span on');
+      near(fadeIn(gap + span / 3, gap, span), fadeIn(at(2), gap), 1e-9, 'the second stop a third of the span on');
+    }
   }
 });
 
