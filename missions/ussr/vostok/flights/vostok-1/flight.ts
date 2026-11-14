@@ -152,17 +152,23 @@ const parts: Part[] = [
     summary: 'Ordinary air, a globe that turned with the Earth, and controls locked by a code.',
     detail:
       'Air at sea-level pressure, kept breathable by superoxide that gives up oxygen as it takes in carbon dioxide and ' +
-      'water, with ten days of food and water in case the braking engine failed and the orbit had to decay by itself. On the ' +
-      'board over his knees a small globe, the Globus, turned to show the point on the Earth below him. Beyond his feet ' +
-      'the Vzor, an optical sight on a porthole, by which the ship could be levelled against the horizon and pointed ' +
-      'along its track by eye. The flight was automatic. To fly it by hand he would ' +
-      'first have had to key 1-2-5 into a lock, the number sealed in an envelope on board.',
+      'water, with ten days of food and water in case the braking engine failed and the orbit had to decay by itself. Above ' +
+      'his knees hangs the board: the Globus, a small globe that turned to show the place on the Earth below him, a clock, ' +
+      'three gauges of three needles each and three blocks of signal lamps. Under it, on the porthole at his feet, the ' +
+      'Vzor: a ring of eight ports in which the horizon stood as a ring when the ship was level, round a ruled screen on ' +
+      'which the ground ran. At his left the black control panel, its raked side toward him with six keys: the flight ' +
+      'was automatic, and to fly it by hand he would first have had to key 1-2-5 into that lock, the number sealed in an ' +
+      'envelope on board. At his right the hand controller, which he never touched. The fit is the first ships’ own, by ' +
+      'Darevsky’s laboratory at the Flight Research Institute; its places and sizes here are read off photographs.',
     facts: [
       ['Atmosphere', 'air, 755 to 775 mm Hg'],
       ['Regeneration', 'alkali metal superoxide'],
       ['Supplies', '10 days'],
+      ['Instrument board', 'PD-1-3KA: Globus, clock, three gauges, 24 signal lamps'],
+      ['He read before launch', '1.0 atm, 65 %, 19 °C; 155, 320 and 155 atm of gas'],
+      ['Globus correction window', '510'],
       ['Vzor field of view', '7°'],
-      ['Manual control code', '1-2-5'],
+      ['Manual control code', '1-2-5, on six keys'],
     ],
     explode: [0, LIFT, 0],
     order: SHIP + 1,
@@ -370,6 +376,7 @@ const launcherParts: Part[] = [
       ['Diameter', '2.58 m'],
       ['Mass', '7,984 kg fuelled, 1,472 kg burnt out'],
       ['Engine', 'RD-0109: 54.5 kN in vacuum, 121 kg'],
+      ['Engine’s size', '1,555 mm long; nozzle exit 733 mm across'],
       ['Steering', '8 nozzles on the turbine’s exhaust: 4 fixed, 4 turning'],
       ['Burned', 'about 300 to 676 s after liftoff'],
       ['Propellants', 'kerosene and liquid oxygen, 6.9 t'],
@@ -481,8 +488,14 @@ const vehicle: ModelDef = {
   parts: [...launcherParts, ...parts],
   position: [0, BASE + TAIL, 0],
   rotationY: TURN,
-  // the cabin's lamp, over the instrument board
-  lights: [{ position: [0.14, 3.6, 0.14], colour: 0xffe4c0, intensity: 0.2, reach: 1.7 }],
+  // The cabin's two lamps, the pilot's left hand one first (`cabin.lighting` names them by this order). How many there
+  // were and where they hung is in nothing read: the fittings are high on either side, over his knees (vehicles/vostok_cabin.py,
+  // which prints these). Each light is put toward the middle of the cabin, not at its fitting: a bare point at the wall
+  // burns the wall beside it. Strength chosen by eye.
+  lights: [
+    { position: [0.182, 3.68, -0.04], colour: 0xffe4c0, intensity: 0.14, reach: 2.4 },
+    { position: [-0.04, 3.68, 0.182], colour: 0xffe4c0, intensity: 0.14, reach: 2.4 },
+  ],
   home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
@@ -499,6 +512,195 @@ const vehicle: ModelDef = {
     { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles', 'Antennas'] },
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: turned(along(250, -32, 1)) },
   ],
+};
+
+/**
+ * The ejection seat as a place to be. `Seat_Pilot` is the model's own node (vehicles/vostok_3ka.py `seat_view`): an
+ * empty at the seated figure's eyes, a child of `EjectionSeat` (so it goes where the seat goes: out along the rails with
+ * the slider, and out of the ball at seven kilometres), looking at the middle of the instrument board, the top of his
+ * head overhead. There his own helmet and face are not drawn. Boarded through hatch No. 1: he was in the seat for the
+ * first call on the radio at 07:10 (the transcript: documented) and was sealed in at 07:50 (Siddiqi: documented); when
+ * he climbed in is not recorded, and the ten minutes before the first call are ours.
+ */
+const HELMET = [
+  'Shell',
+  'Liner',
+  'Head',
+  'Cap',
+  'MicrophoneBooms',
+  'Microphones',
+  'Eyes',
+  'Brows',
+  'Lips',
+  'Visor',
+  'VisorFrame',
+  'Fittings',
+  'Lettering',
+  'Collar',
+  'NeckBand',
+];
+vehicle.seats = [
+  {
+    node: 'Seat_Pilot',
+    label: 'the ejection seat',
+    from: 'EntryHatch',
+    open: [(7 - 9) * 3600 + (0 - 6) * 60 - 59.7, (7 - 9) * 3600 + (50 - 6) * 60 - 59.7],
+    hide: HELMET.map((mesh) => `Pilot_Helmet_${mesh}`),
+    // there is one Gagarin: the figure on the platform's deck is not drawn while he is in the seat
+    figure: 'crew',
+    // the hatch was bolted down from outside; in flight he left only with the seat, at seven kilometres, which is the flight's
+    egress: ['pad'],
+  },
+];
+
+/**
+ * The cabin as somewhere to fly from (types.ts: CabinDef; viewer/cabin.ts). The nodes are the model's
+ * (vehicles/vostok_cabin.py, the fit of 1961), each needle with its scale in its own extras; this says what each reads.
+ * What each thing rests on is spacecraft.md, "Cabin". Only the clock reads anything yet: the board's three gauges stand
+ * at what Gagarin read off them before launch, and say so.
+ */
+const NOT_SIMULATED = 'Not simulated: the needle stands where it was built.';
+const READ = 'the transcript of 12 April (Izvestiya TsK KPSS, 1991 No. 5)';
+// which lens carries which words is not established: the words are a reconstruction (vostoksupersite, from archive
+// documents it names, with doubts of its own), so each lens says its block's and stays dark
+const SIGNALS: [block: string, lamps: number, says: string][] = [
+  [
+    'TS1',
+    10,
+    'The upper block, warnings: among them, as reconstructed, cabin pressure low, carbon dioxide, start the braking engine or cancel the descent, gas for one descent, prepare to eject, the seat’s locks; sound, and the emergency signal being sent.',
+  ],
+  [
+    'TS2',
+    10,
+    'The middle block: among them, as reconstructed, fly by hand, orientation on the Sun, transmission under way, a call to the radio; VHF transmitting, the gas analyser, manual orientation, and descent I, II and III.',
+  ],
+  ['TS3', 4, 'The lower block: among them, as reconstructed, starting the braking engine is permitted.'],
+];
+vehicle.cabin = {
+  within: ['Cabin', 'EjectionSeat'],
+  // the top of the pilot's head: up the seat's rails, toward hatch No. 1 (vehicles/vostok_3ka.py `seat_node`)
+  overhead: [-0.646, 0.407, -0.646],
+  // a head in a helmet fixed to the suit, and the eyes' own turn: estimated, nothing read gives it. Down is far enough
+  // to bring the Vzor, 26 degrees under the board, to the middle of the view
+  head: { side: 1.4, up: 0.7, down: 0.5 },
+  instruments: [
+    {
+      node: 'Gauge_ClockHour',
+      name: 'Clock',
+      about:
+        'The board’s clock, on Moscow time, twelve hours round. Its ring of flight time, its small dial of days and its index for the descent programme are drawn and do not run.',
+      reads: 'timeOfDay',
+    },
+    { node: 'Gauge_ClockMinute', name: 'Clock', about: 'Minutes.', reads: 'timeOfDay' },
+    { node: 'Gauge_ClockSecond', name: 'Clock', about: 'Seconds.', reads: 'timeOfDay' },
+    {
+      node: 'Gauge_CabinPressure',
+      name: 'Cabin pressure',
+      about: `Atmospheres, 0 to 1.5. It stands at 1.0, as he read it before launch (${READ}). ${NOT_SIMULATED}`,
+      value: 1.0,
+    },
+    { node: 'Gauge_Humidity', name: 'Cabin humidity', about: `Per cent. It stands at the 65 he read. ${NOT_SIMULATED}`, value: 65 },
+    {
+      node: 'Gauge_Temperature',
+      name: 'Cabin temperature',
+      about: `Degrees Celsius, 0 to 40. It stands at the 19 he read. ${NOT_SIMULATED}`,
+      value: 19,
+    },
+    {
+      node: 'Gauge_CarbonDioxide',
+      name: 'Carbon dioxide',
+      about: `Per cent of the cabin’s air, 0 to 4. No reading of it is in the record: it stands at nothing. ${NOT_SIMULATED}`,
+      value: 0,
+    },
+    {
+      node: 'Gauge_Oxygen',
+      name: 'Oxygen',
+      about: `Per cent of the cabin’s air. No reading of it is in the record: it stands at ordinary air’s 21. ${NOT_SIMULATED}`,
+      value: 21,
+    },
+    {
+      node: 'Gauge_ModulePressure',
+      name: 'Instrument module pressure',
+      about: `Atmospheres, 0 to 2: the sealed compartment behind the ball. It stands at the 1.2 he read. ${NOT_SIMULATED}`,
+      value: 1.2,
+    },
+    {
+      node: 'Gauge_ManualGas',
+      name: 'Gas for turning the ship by hand',
+      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. It stands at the 155 he read. ${NOT_SIMULATED}`,
+      value: 155,
+    },
+    {
+      node: 'Gauge_RetroPressure',
+      name: 'Braking engine’s bottle',
+      about: `Atmospheres in the bottle that pressurises the TDU. It stands at the 320 he read. ${NOT_SIMULATED}`,
+      value: 320,
+    },
+    {
+      node: 'Gauge_AutomaticGas',
+      name: 'Gas for the automatic orientation',
+      about: `Atmospheres, 0 to 200: the first or the second set of bottles, by a tumbler on the control panel. It stands at the 155 he read of the first (157 of the second). ${NOT_SIMULATED}`,
+      value: 155,
+    },
+  ],
+  lamps: SIGNALS.flatMap(([block, lamps, says]) =>
+    Array.from({ length: lamps }, (_, i) => ({
+      node: `Tele_${block}_${i + 1}`,
+      name: 'Signal lamp',
+      about: `${says} Which lens says which is not established. Not simulated: it stays dark.`,
+    })),
+  ),
+  controls: [
+    ...[1, 2, 3, 4, 5, 6].map((key) => ({
+      node: `Ctl_Code${key}`,
+      name: `Logical lock, key ${key}`,
+      about:
+        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-2-5 (Gallay; Kamanin’s diary has 1-4-5). Not simulated.',
+    })),
+    {
+      node: 'Ctl_ManualOrientation',
+      name: 'Manual orientation',
+      about: 'Under the clear cover: with the lock open, it hands the ship’s attitude to the hand controller. Not simulated.',
+    },
+    { node: 'Ctl_Descent3', name: 'Descent III', about: 'Under the clear cover: the descent cycle begun by the pilot. Not simulated.' },
+    {
+      node: 'Ctl_RetroFire',
+      name: 'Start the braking engine',
+      about: 'Red, under the clear cover: the pilot’s own command to the TDU, for a ship he has turned by the Vzor.',
+      does: 'retro',
+    },
+    { node: 'Ctl_Oxygen', name: 'Oxygen', about: 'Under the clear cover. What it switched is not in anything read. Not simulated.' },
+    { node: 'Ctl_Alarm', name: 'Emergency signal', about: 'Under the clear cover: sends the alarm to the ground. Not simulated.' },
+    {
+      node: 'Ctl_HandController',
+      name: 'Hand controller',
+      about:
+        'A short stalk on a ball with a ribbed grip across it, at his right hand: it works the manual system’s gas jets, once the lock is open. Gagarin never used it. It moves as the keys do.',
+    },
+  ],
+  // The cabin's lamps: one switch on the control panel, off, duty and working (the factory's photograph of the panel:
+  // documented); how many lamps there were and where they hung is in nothing read, and the two fittings high on either
+  // side are ours. Built at working. `lights` above are the left hand one and the right hand one.
+  lighting: {
+    control: 'Ctl_Lighting',
+    name: 'Cabin lighting',
+    about: 'One tumbler on the control panel: working, duty, off.',
+    ways: [
+      { says: 'Working', lit: [0, 1] },
+      { says: 'Duty', lit: [0] },
+      { says: 'Off', lit: [] },
+    ],
+    fittings: ['Lamp_1', 'Lamp_2'],
+  },
+  // the two portholes that can be looked out of, as light (vehicles/vostok_cabin.py prints them in this frame): the one in
+  // hatch No. 1 over his head and the one at his right. The third is behind the Vzor
+  windows: [
+    { at: [-0.711, 3.477, -0.711], out: [-0.646, 0.407, -0.646], across: 0.2, name: 'Hatch porthole' },
+    { at: [-0.379, 3.546, 0.894], out: [-0.345, 0.469, 0.813], across: 0.2, name: 'Right porthole' },
+  ],
+  // The node's own axes: +Y up the stalk, +X along the grip. That it had two axes is the maker's history (Tyapchenko);
+  // which two, how the third was commanded and how far it tipped are estimated
+  stick: { node: 'Ctl_HandController', throw: 0.2, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
 };
 
 // The cosmonaut on the platform's deck, on the hatch side, between where the bus stopped on the tracks and the launch
@@ -1288,6 +1490,14 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'estimated',
       note: 'scaled off a photograph of the VDNKh vehicle from below (about 0.74 m); no published figure was read',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Third stage engine, nozzle exit',
+      value: 0.733,
+      unit: 'm',
+      confidence: 'derived',
+      note: 'KBKhA gives the RD-0109 as 1,555 mm long and 733 mm across; nothing on a one-chamber engine is wider than its nozzle’s exit, so that is taken as the exit’s diameter. The published area ratio of 79.4 (Encyclopedia Astronautica) then gives a throat 82 mm across, which is what 54.5 kN at 5 MPa needs',
     },
     {
       group: 'Launch vehicle',

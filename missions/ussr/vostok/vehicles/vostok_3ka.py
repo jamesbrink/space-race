@@ -11,6 +11,13 @@ Azimuths are measured about +Z from +X.
 Top-level nodes:
     DescentModule  EntryHatch  ParachuteHatch  Cabin  EjectionSeat
     RetainingStraps  CableMast  InstrumentModule  Antennas  GasBottles  RetroEngine
+Nodes under them that a flight asks for by name:
+    RetroEngine_Nozzle (in RetroEngine: the chamber's nozzle, its origin in the middle of its exit, its lowest point)
+    ParachuteContainer (in Cabin: its origin in the middle of its mouth under hatch No. 2, +Z out along the hatch's line)
+    Pilot (in EjectionSeat: the flight's seated figure)  Seat_Pilot (in EjectionSeat: an empty at his eyes)
+EntryHatch and ParachuteHatch have their origins where their lines meet the sphere, +Z outward; EjectionSeat has the
+seat frame's origin, +Z up the rails toward the entry hatch, -Y out of the pilot's chest (in the file: +Y up the rails,
++Z out of his chest): each is a body that leaves, along its own axis.
 and, on a flight that carried one (build(film_camera=True)):
     FilmCamera
 and, on a flight whose television is built as its cameras were (build(television=True)):
@@ -233,6 +240,35 @@ def hang(obj: bpy.types.Object, on: bpy.types.Object) -> bpy.types.Object:
     return obj
 
 
+def rehome(obj: bpy.types.Object, node: bpy.types.Object, at: Matrix) -> None:
+    """Give `node` the frame `at` (the scene's, metres) and make `obj`, built in the scene's axes, its child without
+    moving it: the mesh's own points are taken into the node's frame, so the mesh has no transform of its own."""
+    node.matrix_local = at if node.parent is None else node.parent.matrix_local.inverted() @ at
+    obj.data.transform(at.inverted())
+    obj.parent = node
+
+
+def reframe(node: bpy.types.Object, at: Matrix, held: dict[str, Matrix] | None = None) -> None:
+    """Give a top-level node, built with everything under it in the scene's axes, the frame `at` (the scene's, metres)
+    without moving anything: each mesh's points are taken into it, a group under it keeps no transform and its own
+    children are taken likewise, and a node with a place of its own (`held`: name, its frame in the scene) is put
+    there. A part that leaves the vehicle then has its origin on itself and its own axes to leave along."""
+    back = at.inverted()
+
+    def take(obj: bpy.types.Object) -> None:
+        for child in obj.children:
+            if held and child.name in held:
+                child.matrix_parent_inverse = Matrix.Identity(4)
+                child.matrix_local = back @ held[child.name]
+            elif child.type == "MESH":
+                child.data.transform(back)
+            else:
+                take(child)
+
+    take(node)
+    node.matrix_local = at
+
+
 # ----------------------------------------------------------------------- materials
 
 
@@ -433,9 +469,10 @@ def cut_openings() -> None:
 # ------------------------------------------------------------------------ the cabin
 
 
-def build_cabin(M, tv_standins: bool = True) -> None:
+def build_cabin(M, tv_standins: bool = True, fit: str | None = None) -> None:
     """`tv_standins` are the two plain barrels that stand for the television cameras on a flight that does not build
-    them (build_television does, as its own node)."""
+    them (build_television does, as its own node). `fit`: the cabin as a year's ships had it ("1961": vostok_cabin.py),
+    in place of the plain board, panel, grip, sight and cameras built here."""
     g = group("Cabin")
     arc = [deg(-90 + 180 * i / 48) for i in range(49)]
     shell = MeshBuilder()
@@ -456,34 +493,35 @@ def build_cabin(M, tv_standins: bool = True) -> None:
         rails.box((34, 1500, 60), Matrix.Translation(P(sx * 318, 130, -262)))
         for y in (-420, 60, 520):
             rails.box((30, 60, 150), Matrix.Translation(P(sx * 318, y, -350)))
-    # the instrument board, over his knees and facing his eyes
-    board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X")
-    panel.box((440, 320, 110), board)
-    globe.lathe(arc_profile(0, 0, 62, -20, 90, 10), 28, matrix=board @ Matrix.Translation(P(-70, -30, 50)))  # the Globus
-    panel.lathe([(82, 40), (82, 62), (62, 62)], 28, matrix=board @ Matrix.Translation(P(-70, -30, 0)))
-    for x, y, rr in ((-150, 100, 36), (-60, 100, 36), (30, 100, 36), (120, 100, 36), (60, -70, 30)):
-        gauges.disc(board @ P(x, y, 55), board.to_3x3() @ P(0, 0, 1), rr, 4, 20)
-    black.box((110, 190, 8), board @ Matrix.Translation(P(150, -40, 58)))  # the board of signal lamps
-    # the control panel at his left hand: black, with the switches and the logic lock's keys
-    left = Matrix.Translation(P(345, 60, 150)) @ Matrix.Rotation(deg(-78), 4, "Y")
-    black.box((300, 280, 60), left)
-    for i in range(10):
-        gear.disc(left @ P(-100 + 50 * (i % 5), -50 + 100 * (i // 5), 30), left.to_3x3() @ P(0, 0, 1), 9, 14, 8)
-    # the hand controller by his right hand: a grip on a ball, in a square housing
-    gear.box((110, 110, 80), Matrix.Translation(P(-345, 30, 150)))
-    gear.lathe(arc_profile(0, 0, 42, 0, 90, 6), 16, matrix=Matrix.Translation(P(-345, 30, 190)))
-    black.box((36, 120, 44), Matrix.Translation(P(-345, 30, 252)))
-    # the Vzor: an optical sight on the porthole beyond his feet
-    vz = to_seat(INNER.frame(*TECHNOLOGICAL))
-    gear.lathe([(PORT_R + 60, -46), (PORT_R + 60, -150), (PORT_R + 20, -230), (PORT_R - 20, -230)], 40, matrix=vz)
-    lens.lathe([(PORT_R - 20, -230), (0, -222)], 40, matrix=vz, flip=True)
-    # television cameras: one beside the board watching his face, one at his side
-    for at, turn in ((P(150, -520, 660), Matrix.Rotation(deg(-105), 4, "X")), (P(-400, 330, 330), Matrix.Rotation(deg(70), 4, "Y"))):
-        if not tv_standins:
-            break
-        cam = Matrix.Translation(at) @ turn
-        gear.lathe([(0, 0), (38, 0), (38, 150), (30, 160)], 16, matrix=cam)
-        lens.lathe([(30, 160), (0, 160)], 16, matrix=cam)
+    if fit is None:
+        # the instrument board, over his knees and facing his eyes
+        board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X")
+        panel.box((440, 320, 110), board)
+        globe.lathe(arc_profile(0, 0, 62, -20, 90, 10), 28, matrix=board @ Matrix.Translation(P(-70, -30, 50)))  # the Globus
+        panel.lathe([(82, 40), (82, 62), (62, 62)], 28, matrix=board @ Matrix.Translation(P(-70, -30, 0)))
+        for x, y, rr in ((-150, 100, 36), (-60, 100, 36), (30, 100, 36), (120, 100, 36), (60, -70, 30)):
+            gauges.disc(board @ P(x, y, 55), board.to_3x3() @ P(0, 0, 1), rr, 4, 20)
+        black.box((110, 190, 8), board @ Matrix.Translation(P(150, -40, 58)))  # the board of signal lamps
+        # the control panel at his left hand: black, with the switches and the logic lock's keys
+        left = Matrix.Translation(P(345, 60, 150)) @ Matrix.Rotation(deg(-78), 4, "Y")
+        black.box((300, 280, 60), left)
+        for i in range(10):
+            gear.disc(left @ P(-100 + 50 * (i % 5), -50 + 100 * (i // 5), 30), left.to_3x3() @ P(0, 0, 1), 9, 14, 8)
+        # the hand controller by his right hand: a grip on a ball, in a square housing
+        gear.box((110, 110, 80), Matrix.Translation(P(-345, 30, 150)))
+        gear.lathe(arc_profile(0, 0, 42, 0, 90, 6), 16, matrix=Matrix.Translation(P(-345, 30, 190)))
+        black.box((36, 120, 44), Matrix.Translation(P(-345, 30, 252)))
+        # the Vzor: an optical sight on the porthole beyond his feet
+        vz = to_seat(INNER.frame(*TECHNOLOGICAL))
+        gear.lathe([(PORT_R + 60, -46), (PORT_R + 60, -150), (PORT_R + 20, -230), (PORT_R - 20, -230)], 40, matrix=vz)
+        lens.lathe([(PORT_R - 20, -230), (0, -222)], 40, matrix=vz, flip=True)
+        # television cameras: one beside the board watching his face, one at his side
+        for at, turn in ((P(150, -520, 660), Matrix.Rotation(deg(-105), 4, "X")), (P(-400, 330, 330), Matrix.Rotation(deg(70), 4, "Y"))):
+            if not tv_standins:
+                break
+            cam = Matrix.Translation(at) @ turn
+            gear.lathe([(0, 0), (38, 0), (38, 150), (30, 160)], 16, matrix=cam)
+            lens.lathe([(30, 160), (0, 160)], 16, matrix=cam)
     # equipment under and beside the seat: telemetry under it; air regeneration, the radio and the food locker at his right
     lockers = MeshBuilder()
     for x, y, z, sx, sy, sz in (
@@ -515,8 +553,18 @@ def build_cabin(M, tv_standins: bool = True) -> None:
         (lens, "Cabin_Lenses", "lens"),
         (chute, "Cabin_ParachuteContainer", "fabric"),
     ):
-        obj = placed(mb, S).build(name, M[mat], g, sharp_angle=35)
-        inside_cabin(obj)
+        if mb.verts:
+            obj = placed(mb, S).build(name, M[mat], g, sharp_angle=35)
+            inside_cabin(obj)
+    if fit == "1961":
+        import vostok_cabin  # (here, not above: it builds on this module)
+
+        vostok_cabin.build(g, M)
+    # The container is a node of its own (`ParachuteContainer`): its origin in the middle of its mouth, under hatch No. 2,
+    # its own +Z (the file's +Y) out along the hatch's line, so the top of its bounds is its mouth: where the descent
+    # module's parachute is made fast (`Flight.flies.chutes[].at`).
+    mouth = OUTER.axis(*PARACHUTE) @ Matrix.Translation(V(0, 0, zin - 50))
+    rehome(bpy.data.objects["Cabin_ParachuteContainer"], group("ParachuteContainer", g), mouth)
 
 
 def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:
@@ -539,10 +587,12 @@ def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:
 PILOT_FORWARD = 87.0
 
 
-def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) -> None:
+def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None, fit: str | None = None) -> dict[str, Matrix]:
+    """The seat, and the flight's pilot in it. Returns the nodes under it that have a place of their own (name, frame in
+    the scene): `Seat_Pilot`, at his eyes, where a pilot's builder says where they are."""
     g = group("EjectionSeat")
     if not interior():
-        return
+        return {}
     S = seat_frame()
     P = lambda x, y, z: Vector((x, y, z))  # noqa: E731
     seat, steel, pack, bottles = (MeshBuilder() for _ in range(4))
@@ -570,17 +620,70 @@ def build_seat(M, pilot: Callable[[bpy.types.Object, Matrix], object] | None) ->
         (bottles, "Seat_Oxygen", "bottle"),
     ):
         placed(mb, S).build(name, M[mat], g, sharp_angle=35)
+    held = {}
     if pilot:
-        # The pilot is the flight's own (its suit, its man): he is handed the seat's node and where his hips are, in
-        # the figure library's seat frame (metres; head toward -Y, chest toward +Z, his right toward +X).
-        pilot(g, Matrix.Scale(MM, 4) @ S @ Matrix.Translation((0, 0, PILOT_FORWARD)) @ Matrix.Scale(1 / MM, 4) @ Matrix.Diagonal((-1, -1, 1, 1)))
+        # The pilot is the flight's own (its suit, its man): he is handed a node of his own in the seat (`Pilot`, so that
+        # he can be told from the seat he leaves at four kilometres) and where his hips are, in the figure library's seat
+        # frame (metres; head toward -Y, chest toward +Z, his right toward +X).
+        place = Matrix.Scale(MM, 4) @ S @ Matrix.Translation((0, 0, PILOT_FORWARD)) @ Matrix.Scale(1 / MM, 4) @ Matrix.Diagonal((-1, -1, 1, 1))
+        keys = pilot(group("Pilot", g), place)
+        if isinstance(keys, dict) and "eyes" in keys:
+            held["Seat_Pilot"] = seat_view(g, place @ (Vector(keys["eyes"]) * 0.01), fit)
     # everything that rides out must clear the entry hatch's opening on its way
     s = S.to_3x3() @ Vector((0, 1, 0))
     c = V(0, 0, Z_C)
-    for obj in g.children:
+    for obj in (o for o in g.children_recursive if o.type == "MESH"):
         inside_cabin(obj, 6.0)
         off = max(((v.co - c) - s * (v.co - c).dot(s)).length for v in obj.data.vertices) / MM
         assert off < HATCH_R - 12, f"{obj.name} is {off:.0f} mm off the rails' line: the hatch is {HATCH_R:.0f} mm in radius"
+    return held
+
+
+# What the seated pilot looks at with his head at rest: the middle of the instrument board, in the seat's frame (mm).
+BOARD_AT = (0.0, -230.0, 765.0)
+
+
+def seat_view(seat: bpy.types.Object, eyes: Vector, fit: str | None = None) -> Matrix:
+    """`Seat_Pilot`: an empty at the seated figure's eyes (the scene's metres), a child of the seat he rides out on. In
+    the file its +Z looks at the middle of the instrument board and its +Y is as near the top of his head as that
+    allows, which is what a seat's node promises (types.ts: `ModelDef.seats`). Returns its frame in the scene."""
+    S = Matrix.Scale(MM, 4) @ seat_frame()
+    board = Vector(BOARD_AT)
+    if fit == "1961":
+        import vostok_cabin
+
+        board = vostok_cabin.board_in_seat()
+    look = (S @ board - eyes).normalized()
+    head = S.to_3x3() @ Vector((0, 1, 0))
+    over = (head - look * look.dot(head)).normalized()
+    m = Matrix(((-look).cross(over), -look, over)).transposed().to_4x4()
+    m.translation = eyes
+    group("Seat_Pilot", seat)
+    e = to_seat(m).translation
+    far = (S @ board - eyes).length / MM
+    down = math.degrees(look.angle(S.to_3x3() @ Vector((0, 0, 1))))
+    print(
+        f"seat: the pilot's eyes at ({e.x:.0f}, {e.y:.0f}, {e.z:.0f}) mm in the seat's frame, "
+        f"{far:.0f} mm from the middle of the board, looking {down:.1f} degrees toward his feet"
+    )
+    return m
+
+
+def seat_node() -> Matrix:
+    """The frame the seat's node has (the scene's, metres): its origin the seat frame's, its +Z (the file's +Y) up the
+    rails toward the pilot's head and the entry hatch, its -Y (the file's +Z) out of his chest, its +X to his left."""
+    S = seat_frame()
+    r = S.to_3x3()
+    left, rails, chest = r @ Vector((1, 0, 0)), r @ Vector((0, 1, 0)), r @ Vector((0, 0, 1))
+    m = Matrix((left, -chest, rails)).transposed().to_4x4()
+    m.translation = S.translation * MM
+    return m
+
+
+def hatch_node(where: tuple[float, float]) -> Matrix:
+    """The frame a hatch's node has (the scene's, metres): its origin where the hatch's line meets the sphere's outer
+    surface, its +Z (the file's +Y) outward along that line: the way it is thrown off."""
+    return OUTER.frame(*where)
 
 
 # ------------------------------------------------------------ what a flight carried
@@ -1007,8 +1110,11 @@ def build_retro_engine(M) -> None:
         segs=64,
         sharp_angle=30,
     )
-    noz, body = MeshBuilder(), MeshBuilder()
-    noz.lathe(pm([(140, 0), (128, 50), (100, 120), (62, 190), (36, 235), (34, 250)]), 48)
+    # The chamber's nozzle is a node of its own (`RetroEngine_Nozzle`), its origin on the axis in the plane of the exit,
+    # which is its lowest point and station 0: a flight hangs the braking burn's fire there.
+    nozzle = pivot("RetroEngine_Nozzle", g, V(0, 0, 0))
+    main, noz, body = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    main.lathe(pm([(140, 0), (128, 50), (100, 120), (62, 190), (36, 235), (34, 250)]), 48)
     body.lathe(pm([(34, 250), (60, 262), (86, 290), (86, 380), (60, 420), (0, 430)]), 40)
     body.lathe(pm([(0, 268), (186, 268), (194, 110), (205, 110)]), 48, flip=True)  # the plate that closes the skirt
     for i in range(4):
@@ -1016,7 +1122,8 @@ def build_retro_engine(M) -> None:
         m = Matrix.Translation(V(148 * math.cos(a), 148 * math.sin(a), 0))
         noz.lathe(pm([(28, 100), (23, 140), (12, 185), (10, 195)]), 20, matrix=m)
         body.lathe(pm([(10, 195), (20, 205), (20, 270)]), 16, matrix=m)
-    noz.build("Engine_Nozzles", M["nozzle"], g, sharp_angle=None)
+    hang(main.build("Engine_Nozzle", M["nozzle"], None, sharp_angle=None), nozzle)
+    noz.build("Engine_SteeringNozzles", M["nozzle"], g, sharp_angle=None)
     body.build("Engine_Chamber", M["steel"], g, sharp_angle=35)
     if interior():
         tanks, pump = MeshBuilder(), MeshBuilder()
@@ -1038,19 +1145,21 @@ def build(
     film_camera: bool = False,
     television: bool = False,
     lining: str = "yellow",
+    fit: str | None = None,
 ) -> str:
     """Build the spacecraft. `pilot(parent, place)` builds the man in the seat (a suit's `build_seated`); left out, the seat is empty.
     `stowed` draws the instrument module's ten antennas withdrawn, as a flight under its fairing needs. `film_camera` puts
     a Konvas in the cabin, as a node of its own: Vostok 2 was the first to carry one. `television` builds the two Seliger
     cameras as they were photographed, as a node of their own, in place of the cabin's two plain barrels: Vostok 3 and 4,
     whose picture was the first to be broadcast. `lining` is the colour of the cabin's wall (LININGS): white on Vostok 5 and
-    Vostok 6, whose flown cabins show it."""
+    Vostok 6, whose flown cabins show it. `fit` fits the cabin as a year's ships had it, in place of the plain board, panel,
+    grip and sight: "1961" is vostok_cabin.py, the board, control panel, hand controller and Vzor of Vostok 1."""
     M = materials(lining)
     build_descent_module(M)
     build_hatches(M)
-    build_cabin(M, tv_standins=not television)
+    build_cabin(M, tv_standins=not television, fit=fit)
     cut_openings()
-    build_seat(M, pilot)
+    held = build_seat(M, pilot, fit)
     if film_camera:
         build_film_camera(M)
     if television:
@@ -1061,4 +1170,8 @@ def build(
     build_gas_bottles(M)
     build_retro_engine(M)
     mark_shells(SHELLS)
+    # what leaves the descent module on the way down has its origin on itself and its own axes to leave along
+    reframe(bpy.data.objects["EntryHatch"], hatch_node(ENTRY))
+    reframe(bpy.data.objects["ParachuteHatch"], hatch_node(PARACHUTE))
+    reframe(bpy.data.objects["EjectionSeat"], seat_node(), held)
     return f"{LENGTH * MM:.3f} m nozzle to the top of the sphere's housing, {2 * MODULE_R * MM:.3f} m across"
