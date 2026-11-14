@@ -113,6 +113,7 @@ src/
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
   viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take, its light on the pad
+  viewer/fires.ts                     which fires burn when and how hard, and an engine's chambers found in its geometry (pure: tests/fires.test.mjs)
   viewer/trail.ts                     the smoke it leaves as data: the trail along the path flown (steam low down, a contrail in the cold), the cloud over the pad at liftoff
   viewer/exhaust.ts                   fire and smoke drawn as volumes (the one thing here meant to look real): marched at a quarter of the pixels, laid over the frame; the smoke's shadow
   viewer/chute.ts                     the parachutes, drawn from Flight.flies.chutes: out, filling, reefed, full, and down on the sea
