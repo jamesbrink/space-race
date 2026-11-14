@@ -4,7 +4,7 @@ import type { Day } from './day.ts';
 import { fbm2 } from './field';
 import { Flora } from './flora';
 import { Land, type LandSpec } from './land';
-import { STEPPE_CEL, STEPPE_CEL_GROUND, STEPPE_COVER, STEPPE_GROUND, STEPPE_PALETTE, STEPPE_TONE, steppeFlora } from './steppe.ts';
+import { STEPPE, STEPPE_CEL, STEPPE_CEL_GROUND, STEPPE_COVER, STEPPE_GROUND, STEPPE_PALETTE, STEPPE_TONE, steppeFlora } from './steppe.ts';
 import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
 
 /**
@@ -203,10 +203,21 @@ const HALF = (135 * 0.3048) / 2;
 const ABUTMENT = 25 * 0.3048;
 /** The ground cleared and graded round the platform's landward side, where the tracks come on, metres from its edge (estimated). */
 const APRON = 70;
+/**
+ * The apron: the ground west of the platform laid in concrete slabs with the rails flush in them, metres east and north
+ * (the film, «Первый рейс к звёздам», 43:26 to 43:29, looking down from the erector's head at about 06:55: site-1.md, "The
+ * apron"). From the abutment's west face (documented) west to beyond what the frame shows (its far end, 90 m, estimated);
+ * south to 21 m from the centre track, 4 m beyond the bus's side, where the film has bare earth begin (derived, from the
+ * bus's breadth for a scale: good to a few metres); north to 20 m, short of the propellant shed's bank (estimated: the
+ * film shows the north side only as far as the truck, 4 m from the centre track). Each slab 1.5 m along the tracks by 3 m
+ * across them, laid in rows along them (estimated, read off the film at the bus's scale).
+ */
+const SLABS = { east: -(HALF + ABUTMENT), west: -90, north: 20, south: -21, along: 1.5, across: 3 };
 /** How far the ground is drawn: past the horizon from any height a person stands at (4.7 km at 1.7 m). */
 const FAR = 8000;
 
 const glsl = (v: number) => v.toFixed(3);
+const colour = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /** The outer fence's sides, metres from the rocket's axis (site-1.md, "The place round the pad": derived from HTA/JR-4/58 and today's imagery). */
 const FENCE = { south: 191, east: 435, west: -484, north: 303 };
@@ -304,6 +315,11 @@ const SHARED = /* glsl */ `
     vec2 c = vec2(p.x + ${glsl(ABUTMENT / 2)}, p.y);
     vec2 q = abs(c) - vec2(${glsl(HALF + ABUTMENT / 2)}, ${glsl(HALF)});
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+  }
+  // the apron's slabs (SLABS): metres outside them (negative on them)
+  float apron(vec2 p) {
+    vec2 q = abs(p - vec2(${glsl((SLABS.east + SLABS.west) / 2)}, ${glsl(-(SLABS.north + SLABS.south) / 2)})) - vec2(${glsl((SLABS.east - SLABS.west) / 2)}, ${glsl((SLABS.north - SLABS.south) / 2)});
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
   }`;
 
 /**
@@ -363,9 +379,10 @@ const COVER = /* glsl */ `
     float made = madeGround(p), worn = wornGround(p);
     shrub *= (1.0 - made) * (1.0 - 0.75 * worn);
     herb *= (1.0 - 0.85 * made) * (1.0 - 0.6 * worn);
-    // nothing grows on the platform, down in the pit or on a road
+    // nothing grows on the platform, down in the pit, on a road or on the apron's slabs
     float none = max(1.0 - smoothstep(-1.0, 1.0, platform(p)), smoothstep(-1.0, 1.0, inPit(p)));
     none = max(none, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 0.6)}, road(p)));
+    none = max(none, 1.0 - smoothstep(-0.5, 1.5, apron(p)));
     shrub *= 1.0 - none;
     herb *= 1.0 - none;
     return vec4(shrub, herb, clamp(1.0 - shrub - herb, 0.0, 1.0), zone);
@@ -454,8 +471,48 @@ const PAINT = /* glsl */ `
       g.rough = mix(g.rough, 0.92, paved);
       g.bump = mix(g.bump, 0.004 * (noise(vec3(p * 9.0, 32.0)) - 0.5), paved);
     }
+    // The apron (SLABS), as the film shows it from the erector's head: rectangular slabs in rows along the tracks, each a
+    // little darker in its middle than at its margins and each a shade of its own, the joints pale with sand; a pale
+    // band of concrete along each track with the rails flush in it, a flangeway inside each rail; the steppe's dust
+    // drifted over the outer slabs, which give way to bare trodden earth.
     float d = rail(p);
+    float slabbed = 1.0 - smoothstep(-0.03, 0.03, apron(p) + 1.4 * smoothstep(-6.0, 0.0, apron(p)) * (noise(vec3(p * 0.16, 92.0)) - 0.35));
+    if (slabbed > 0.0) {
+      vec2 size = vec2(${glsl(SLABS.along)}, ${glsl(SLABS.across)});
+      vec2 s = (p - vec2(${glsl(SLABS.east)}, 0.0)) / size;
+      vec2 id = floor(s), f = s - id;
+      vec2 margin = min(f, 1.0 - f) * size;
+      float e = min(margin.x, margin.y);   // metres to the slab's edge
+      float tone = hash(vec3(id, 90.0));
+      vec3 slab = vec3(0.52, 0.505, 0.47) * (0.9 + 0.14 * tone);
+      // (the middle's stain is blotchy, not a rectangle: wet weathers in from the margins unevenly)
+      float stain = smoothstep(0.1, 0.6, e + 0.25 * (noise(vec3(p * 1.1, 94.0)) - 0.5)) * (0.04 + 0.14 * hash(vec3(id, 95.0)));
+      slab *= 1.0 - stain * seen(0.5);
+      slab *= 0.94 + 0.12 * mix(0.5, noise(vec3(p * 1.3, 91.0)) * 0.6 + noise(vec3(p * 0.35, 96.0)) * 0.4, seen(0.4));
+      // the steppe's dust blown into the margins
+      slab = mix(slab, ${colour(STEPPE.dust)}, 0.25 * (1.0 - smoothstep(0.0, 0.2, e)) * seen(0.2));
+      // along each track: the pale band with the rails in it
+      float band = 1.0 - smoothstep(1.15, 1.25, d);
+      slab = mix(slab, vec3(0.6, 0.585, 0.55) * (0.95 + 0.06 * noise(vec3(p * 0.7, 93.0))), band);
+      float joint = (1.0 - smoothstep(0.015, 0.035, e)) * (1.0 - band);
+      joint = max(joint, (1.0 - smoothstep(0.015, 0.035, abs(d - 1.2))) * step(d, 1.5));
+      slab = mix(slab, vec3(0.63, 0.59, 0.51), joint * seen(0.06));
+      float steel = 1.0 - smoothstep(0.03, 0.04, abs(d - 0.79));
+      float flange = (1.0 - smoothstep(0.02, 0.03, abs(d - 0.72))) * band;
+      slab = mix(slab, vec3(0.1, 0.09, 0.08), flange * seen(0.05));
+      slab = mix(slab, vec3(0.45, 0.43, 0.41), steel * band * seen(0.07));
+      if (uCel > 0.5) {
+        // drawn: two flat tones of slab, the band paler, the joints and the rails inked
+        slab = mix(vec3(0.6, 0.585, 0.55) * (tone > 0.62 ? 0.92 : 1.0), vec3(0.66, 0.645, 0.6), step(0.5, band));
+        slab = mix(slab, slab * 0.68, step(0.5, max(joint, steel * band)) * seen(0.06));
+      }
+      g.albedo = mix(g.albedo, slab, slabbed);
+      g.rough = mix(g.rough, mix(0.9, 0.45, steel * band), slabbed);
+      g.bump = mix(g.bump, (-0.008 * joint - 0.03 * flange) * seen(0.05), slabbed);
+      if (slabbed > 0.99) return;
+    }
     float bed = 1.0 - smoothstep(1.6, 2.1, d + 0.3 * (noise(vec3(p * 0.8, 20.0)) - 0.5));
+    bed *= 1.0 - slabbed;
     if (bed > 0.0) {
       vec3 ballast = vec3(0.33, 0.32, 0.30) * (0.8 + 0.4 * mix(0.5, noise(vec3(p * 22.0, 22.0)), seen(0.04)));
       g.albedo = mix(g.albedo, ballast, bed);
