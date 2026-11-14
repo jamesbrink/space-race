@@ -64,6 +64,14 @@ export interface StageRecord {
   usable?: Measure;
   /** The fraction of its rated thrust and flow it runs at, against seconds from liftoff: straight lines between. Left out: rated throughout. */
   throttle?: Curve;
+  /**
+   * Cut off as an integrator cut it: when the space-fixed speed reaches `speed` (what the design asked) plus `over` (the
+   * error it had on the day), m/s. `apparent`: what the integrator counts is instead the apparent velocity, the sensed
+   * acceleration (every force but gravity over the mass, along the axis) summed from this stage's ignition, which in
+   * vacuum is the rocket equation's own: its effective exhaust speed times the log of the mass ratio. With it, `cutoff` is
+   * the record's instant, held as a check and not flown to.
+   */
+  velocity?: { speed: Measure; over?: Measure; apparent?: boolean };
 }
 
 /**
@@ -79,6 +87,12 @@ export interface StageRecord {
  * inputs, and the three targets are therefore not independent checks of the flight.
  */
 export interface Guidance {
+  /**
+   * The aiming azimuth, degrees east of north: the launch plane is the one through the plumb line and this bearing at the pad
+   * at liftoff, held by the gyros among the stars. Given, the plane is not solved for and the target's inclination is not
+   * aimed at: the orbit's inclination is then a result, and a check.
+   */
+  azimuth?: Measure;
   vertical: Measure;
   kick: Measure;
   turn: Measure;

@@ -655,7 +655,9 @@ vehicle.cabin = {
       node: `Ctl_Code${key}`,
       name: `Logical lock, key ${key}`,
       about:
-        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-2-5 (Gallay; Kamanin’s diary has 1-4-5). Not simulated.',
+        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-2-5 (Gallay; Kamanin’s diary has 1-4-5). On the flight deck a key pressed here is the same as its digit typed: the code frees the hand controls once the ship is alone in orbit.',
+      // (the flight deck's lock, orbitdeck.ts: pressed here or typed there, the same key)
+      does: `code:${key}`,
     })),
     {
       node: 'Ctl_ManualOrientation',
@@ -1505,7 +1507,7 @@ export const flight: Flight = {
       value: 43300,
       unit: 'kg',
       confidence: 'documented',
-      note: '43.3 t each, 3.71 t empty (Encyclopedia Astronautica); Minakov has 3.75 t empty; Brügge 39.16 t of propellant',
+      note: '43.3 t each, 3.71 t empty (Encyclopedia Astronautica); Minakov has 3.75 t empty. (Brügge’s 39.16 t of propellant is Soyuz-ST’s oxygen and kerosene, from Arianespace’s manual: not this vehicle’s)',
     },
     {
       group: 'Launch vehicle',
@@ -1513,7 +1515,7 @@ export const flight: Flight = {
       value: 100400,
       unit: 'kg',
       confidence: 'documented',
-      note: '100.4 t, 6.8 t empty (Encyclopedia Astronautica); Brügge 99.76 t with 90.1 t of propellant; Minakov 102 t and 7 to 8 t',
+      note: '100.4 t, 6.8 t empty (Encyclopedia Astronautica); Minakov 102 t and 7 to 8 t. (Brügge’s 99.76 t with 90.1 t of propellant are Soyuz-ST’s, from Arianespace’s manual: not this vehicle’s)',
     },
     {
       group: 'Launch vehicle',
@@ -1662,6 +1664,11 @@ export const flight: Flight = {
     model: 'vehicle',
     datum: BASE,
     engine: 'CoreEngine',
+    // Block E's own fire from its nozzle (733 mm across: KBKhA; that it is the exit's is derived), and the braking engine's (280 mm: estimated, vostok_3ka.py)
+    fires: [
+      { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2' },
+      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro' },
+    ],
     drops: [
       { at: 119.5, nodes: BOOSTERS.map(([letter]) => `Booster_${letter}`), on: 'boosters' },
       { at: 154.6, nodes: ['Fairing'], on: 'fairing' },

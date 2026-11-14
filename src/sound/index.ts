@@ -18,10 +18,11 @@
 import { Quaternion, Vector3 } from 'three';
 import type { Footfall, Sounds } from '../audio';
 import { prefs } from '../prefs';
-import { flownOnce } from '../sim/fly.ts';
+import { flownOnce, G0 } from '../sim/fly.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { SitedFlight } from '../types';
-import { Ascent, type Run } from '../viewer/ascent';
+import { liftoffEngine } from '../sim/staged.ts';
+import { Ascent, orbitalRecord, type Run } from '../viewer/ascent';
 import type { Clock } from '../world/clock.ts';
 import { siteFrame } from '../world/frames.ts';
 import { Engine } from './engine';
@@ -92,7 +93,13 @@ export class Sound {
     this.host = host;
     this.ascent = Ascent.of(flight);
     const tr = flight.trajectory;
-    this.craft = tr ? craft(tr.engine.thrust.value, tr.engine.isp.value, tr.engine.exitArea.value) : null;
+    // (an orbital flight's engines lit on the ground, heard as one: sim/staged.ts)
+    const lit = !tr && flight.orbital?.ascent ? liftoffEngine(flight.orbital) : null;
+    this.craft = tr
+      ? craft(tr.engine.thrust.value, tr.engine.isp.value, tr.engine.exitArea.value)
+      : lit
+        ? craft(lit.thrust, lit.exhaustSpeed / G0, lit.exitArea)
+        : null;
     const def = flight.models.find((m) => m.id === flight.flies?.model);
     this.padTurn.setFromAxisAngle(new Vector3(0, 1, 0), def?.rotationY ?? 0);
     this.home = def?.position ?? [0, 0, 0];
@@ -341,6 +348,7 @@ export class Sound {
     let out = { drogue: Infinity, main: Infinity };
     let duration = Infinity;
     if (this.live) ({ samples, out, duration } = this.live);
+    else if (!tr && this.ascent && this.flight.orbital?.ascent) ({ samples, duration } = orbitalRecord(this.flight));
     else if (tr && this.ascent) {
       const flown = flownOnce(tr, siteFrame(this.flight.site), this.flight.site.seaLevel.value);
       samples = flown.samples;
@@ -369,7 +377,15 @@ export class Sound {
   /** The run's events, at its own times: the record's retrorockets at the record's times, a hand-flown flight's from when its first was lit. */
   private cues(h: Hearing): Cue[] {
     const tr = this.flight.trajectory;
-    if (!tr || !this.ascent) return [];
+    if (!this.ascent) return [];
+    // (an orbital flight's drops are heard; its braking engine is not yet)
+    if (!tr)
+      return score({
+        drops: this.ascent.drops.map((d, i) => ({ at: d.at, on: this.flight.flies!.drops[i]?.on })),
+        retro: null,
+        out: h.out,
+        duration: h.duration,
+      });
     const fires = tr.retro.fires.map((f) => f.value);
     const lit = this.live ? this.retroAt : fires[0]!;
     const drops = this.ascent.drops.map((d, i) => ({ at: d.at, on: this.flight.flies!.drops[i]?.on }));

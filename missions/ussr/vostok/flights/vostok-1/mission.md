@@ -376,13 +376,13 @@ Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's i
 
 | Input | State | Proposal |
 | --- | --- | --- |
-| **Launch azimuth as flown** | not found (site1 searched Chertok, Siddiqi, Kamanin, the transcript, Zak and three CIA photo-interpretation reports) | **Derived**: the plane of the documented inclination through the pad at liftoff (`planeThrough`): 37.5° in the frame that does not turn, about 35.6° over the ground. The CIA's reading of 1957 photography gives the pad's "probable primary direction of fire" as 40°, approximate. `SITE1.bearingX` is the structure's own lie (90°), not the heading flown |
+| **Launch azimuth as flown** | **found**: 34°37′59″.2, the aiming line's, in Gagarin's flight task (section 6) | Flown: the orbit comes out at 64.99° against 64.95° |
 | **The solar sensor's axis against the engine's** | not found | The record's words are flown as written (push straight from the Sun) and the miss recorded. Research first; no angle is to be chosen to bring the landing in |
 | **What kind of elements the published orbit is** | not stated | Flown as osculating at cutoff, which the flown apogee shows to be wrong by 18 km. Next: read them as mean elements, through a stated first-order conversion (Kozai's, tested against a published case), and say so |
 | **Where on the orbit at cutoff** (`injection.arc`) | not found | **Estimated** today: 27.5° by hand, ±3°. Replaced by the flown ascent (step 7), when it becomes *derived*. Not to be solved from the landing point |
 | **Argument of perigee** (`injection.anomaly`) | not found | **Estimated**: perigee at cutoff. The ascent gives it. G's "apogee at Cape Horn" is a loose check, not an input |
 | **Pitch programme** | not found for the 8K72K (searched: Chertok vols 2 and 3, Siddiqi, Zak, K, B21, the 1957 reports of Sputnik's launch). Soyuz's from Baikonur is published (Starsem's manual, Fig. 2-4), a different vehicle | **A stated law**, `ascent.guidance` (src/sim/staged.ts): vertical for 15 s (estimated, from Soyuz's), a pitch-over over 10 s (estimated) to an angle that is solved, no angle of attack through the air to the strap-ons' separation, then the linear-tangent law to the last cutoff; the launch plane, the pitch-over's angle and the tangent's rate solved so that at 676 s it is level at the planned 180 km in a plane of 64.95°. So perigee and inclination are targets, not checks; **apogee, period, speeds and loads are results**. It is not the stored programme, which had radio corrections until 156 s |
-| **Throttle** | found in kind, not in figures: the strap-ons' first intermediate stage some seconds before separation (on Sputnik, from 109.94 s to 116.38 s), the core's final stage on its steering chambers alone for some seconds (10 s on the 8D75), and in flight the RKS and SOB regulators (lpre.de; Chertok vol. 2 p. 305; the 1957 reports) | **Rated thrust throughout**, and said so. At rated flow the loads in print do not last to the times flown (vostok-8k72k.md): the run says by how much |
+| **Throttle** | found in kind, not in level: the strap-ons' intermediate stage before separation, the core's final stage on its steering chambers for 10 s (the 8D75's, lpre.de; Gagarin's 10 to 15 s of weightlessness), the RKS and SOB regulators | **Flown in kind at estimated levels** (section 6, "read again"): 60 % for the strap-ons' last 6.4 s, 10.4 % for the core's last 10 s. Worth more than the whole miss either way |
 | **Cutoff logic** | found: the strap-ons by the integrator at 119.50 s (PPP); the core by the autonomous system 0.46 s late, the radio command having failed; Block E 2.4 s long; 25.43 m/s over (B21) | Fly the record's times (119.5, 300, 676 s) and let the orbit be a result. 0.6 s is worth 100 km of apogee (L), so **expect apogee in `MISSES`**, blamed on thrust and mass figures good to 1 to 4 %; do not tune |
 | **Nozzle exit areas** | the chambers' exits found (lpre.de, from Gakhun et al.): 720 mm main, 310 mm steering | **Derived** from the two thrusts, 1.794 and 1.985 m², which the geometry confirms to 1 and 3 % |
 | **Drag of the stack against Mach** | not found for any R-7 | **Estimated**, and labelled: a curve of the usual form on the cluster's frontal area (29.4 m², derived). The test prints what ±30 % of it moves |
@@ -507,3 +507,68 @@ burn is the input to find first, then the levels of the engines' intermediate an
 kind; flown here at rated thrust, which overdraws the core's load by 1.7 t at its recorded cutoff), then a pitch
 programme. The real vehicle hid all of it: its integrators cut each stage on the velocity reached, and on 12 April that
 came out 25.43 m/s fast (B21), where this run, cut by the clock at the record's instants, is 142.
+
+### Cut on velocity, as the integrators cut it
+
+The run above burned every stage to its recorded instant. The vehicle did not: its integrators cut each stage on the
+velocity reached. Block E is now cut when its space-fixed speed reaches what the planned orbit needs at its perigee
+(7,815.2 m/s, derived from Zak's 180 by 230 km over the 6,371 km ball) plus the documented 25.43 m/s over the design
+(B21): `StageRecord.velocity`. The strap-ons keep the integrator's documented 119.50 s; the core keeps its 300 s,
+because its design cutoff velocity has not been found. The recorded 676 s becomes a check (3 s, set before the run).
+
+| | Burned to the times | Cut on velocity | Record | |
+| --- | --- | --- | --- | --- |
+| Block E cut off | 676 s (input) | **659.3 s, 338 kg left** | 676 s (S) | **misses by -16.7 s**: the vehicle as recorded still has 142 m/s more than it needs, and now it shows here |
+| Orbit at cutoff | 180 by 844 km | 180 by 317 km, 89.33 min | 181 by 327 km, 89.44 min | apogee **misses by -10.04 km** (tolerance 10): the record's own figures do not quite agree (below) |
+| Apogee flown round | 864 km | 335 km | 327 km | misses by +8 km: the elements at cutoff and the orbit flown round differ by 18 km under J2 |
+| Height at 10:36 | 327 km | 132 km | 150 to 170 | misses by -23 km (the Sun-aimed burn, as in the coast from the published orbit) |
+| At 7 km | 10:48:58 | 10:45:29 | 10:42 | misses by 3.5 min |
+| Landing, across | 96 km left | **7 km left** | | **holds** (25 km) |
+| Landing, along | 325 km short | 559 km beyond | | misses |
+| Module, pilot down | 10:53:46, 11:02:22 | 10:50:17, 10:58:52 | 10:48, 10:53 | miss, by the late arrival at 7 km and the descent's own length |
+
+**The record does not quite add up.** The planned orbit needs 7,815.2 m/s at 180 km; 25.43 m/s over it is 7,840.6;
+the published 181 by 327 km needs 7,843.8. So cut where the record says, level at 180 km, the orbit is 317 km high at
+its top, not 327. Which figure is off (Zak's planned orbit, Baturin's 25.43, the reference ball, or what kind of
+elements the published orbit is) is not known, and nothing was changed.
+
+What moves the cutoff now (the law solved afresh): the core's load without its peroxide and nitrogen leaves Block E
+dry before its speed (-314 m/s, 19.7 s later); the strap-ons' likewise (-19 m/s); the law's shape 10 s; drag x 1.3, 8 s.
+
+### The record read again: the flight task, the blocks' masses, the throttling
+
+Three corrections to the inputs, none of them fitting (sources: docs/sources.md, "The ascent and the descent"):
+
+- **Gagarin's flight task, page 1** (ЦА РКВ ф. 19, оп. 114сс, д. 15; pictured in Kommersant Nauka No. 9, 2021; read off a
+  1,200-pixel image): the aiming azimuth **34°37′59″.2**; the third stage's main cutoff at **2,283.52 m/s of apparent
+  velocity** (the third numeral could be a 6); the planned landing **52.5° N, 47.7° E**; the flight 1 h 46 min, 1.03 orbits.
+  Also on it, not yet used: the B-137M's charging times for "Разделение", 308.29 s, and "Наддув", 399.88 s. The azimuth now
+  sets the launch plane (the law solves two unknowns, not three) and Block E is cut on its apparent velocity.
+- **The blocks' propellant figures were Soyuz-ST's**: Brügge's 39.16 t, 90.10 t, 1.47 t and 3.12 t are Arianespace's
+  figures for Soyuz-ST, copied into every R-7. For the 8K72K only fuelled and dry masses exist: everything not structure is
+  taken as what a block can burn (39.55 t, 93.6 t: derived), drained at the engine's whole flow, which already counts the
+  turbine's peroxide (the RD-107's impulse is thrust over kerosene, oxygen and peroxide together: lpre.de).
+- **The throttling, in kind**: the strap-ons' intermediate stage before separation and the core's final stage on its
+  steering chambers for its last 10 s (the 8D75's, lpre.de; Gagarin's 10 to 15 s of weightlessness). Their levels for the
+  8K72K were not found: 60 % (the 8K71's) and 10.4 % (the four steering chambers at their rated thrust, the most it can be).
+
+| | Burned to the times (first reading) | Cut on the planned orbit's speed (second) | Read again (now) | Record | |
+| --- | --- | --- | --- | --- | --- |
+| Block E cut off | 676 s | 659.3 s | **676.4 s, 46 kg left** | 676 s | **holds**: the integrator's setting and Block E's figures agree with the recorded instant |
+| Inclination | 64.95° (target) | 64.95° (target) | **64.99°** | 64.95° | **holds**, and is now a check |
+| Core cut off | 5,810 m/s | 5,812 | 5,542 m/s, **4.5 t left** | about 5.5 km/s | holds |
+| At the last cutoff | 7,986 m/s | 7,841 | **7,686 m/s, 157 short** | 7,844 needed | **misses: does not reach orbit** (perigee -189 km) |
+| Most load, first stage | 5.25 g | 5.25 | 4.72 g | about 5 | holds |
+
+**The finding now.** With the third stage cut where its integrator was set and arriving at the recorded instant, the
+miss is the first two stages': 157 m/s short. Their throttling, documented in kind, is worth more than the whole miss either
+way (no core final stage: +443 m/s; 5 s of it, not 10: +221; no strap-on intermediate stage: +143), and the core carries 4.5 t
+to its cutoff, which a vehicle with tank-emptying regulators would not. So the core's load (100.4 less 6.8 t) and its final
+stage as the sources give them do not agree with one another; which is wrong is not known.
+
+**What is shown.** The scene, the deck and the coast's and descent's checks now fly the ascent as above and, from the
+spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
+instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
+ascent puts it at 27.84°). Flown so: period 89.44 min (holds), apogee flown round 346 km (+19), 138 km at 10:36, 10:45:40 at
+7 km, landing 465 km long and 13 km across (holds), module 10:50:28, pilot 10:59:04.
+

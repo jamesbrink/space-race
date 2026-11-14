@@ -53,10 +53,27 @@ export const orbital: OrbitalFlight = {
       nodes: ['Booster_B', 'Booster_V', 'Booster_G', 'Booster_D'],
       mass: doc(43_300, `${ASTRONAUTIX}: 43.3 t each. Minakov’s table has 170 t for the four (42.5 t); Brügge 177.65 t (44.4 t)`),
       dry: doc(3_750, `${MINAKOV}: 3.75 t. Astronautix has 3.71 t`),
-      propellant: doc(
-        39_160,
-        'Brügge: 39.16 t each, of which 1.47 t is peroxide and nitrogen: secondary. Mass less dry is 39.55 t: the three are from three sources and do not sum',
+      propellant: derived(
+        39_550,
+        '43.3 t fuelled (Astronautix) less 3.75 t dry (Minakov): all that is not structure, as the 8K71’s own table counts it (militaryrussia.ru: 42,950 less 3,750 is 39,200 kg «топливо»). ' +
+          'The kerosene, oxygen, peroxide and nitrogen are not split for the 8K72K in anything found. The flow drawn from it is the engine’s whole flow, which is what its specific impulse is reckoned on: ' +
+          'thrust over kerosene, oxygen and peroxide together (lpre.de, from Gakhun et al. 1989: 1,000.3 kN over 326.2 kg/s is 3,066.5 m/s, the published 3,067); the 0.28 t of nitrogen (militaryrussia.ru) is not burned and is left in. ' +
+          'Brügge’s figures (b14643.eu) are not this vehicle’s: his block masses for every R-7 are Soyuz-ST’s, from Arianespace’s Soyuz CSG User’s Manual, issue 2, 2012, Fig. 1.5.1a, where a strap-on carries 27,900 kg of oxygen and 11,260 of kerosene (39.16 t) and a core 63,800 and 26,300 (90.10 t), the peroxide and nitrogen outside those (1.47 and 3.12 t)',
       ),
+      // the strap-ons go to their first intermediate stage of thrust before they part (documented in kind); level and length are another R-7's
+      throttle: {
+        points: [
+          [0, 1],
+          [113.1, 1],
+          [113.11, 0.6],
+          [119.5, 0.6],
+        ],
+        confidence: 'estimated',
+        source:
+          'The RD-107 goes from its main to its first intermediate stage of thrust before the strap-ons part, and the 8D74K shut down through it (lpre.de; RKK Energia 1946–1996; Minakov: «маршевые двигатели переводились на режим малой тяги»). ' +
+          'Neither its level nor its length on the 8K72K was found. The level is the 8K71’s and 8A91’s, 60 per cent (590.0 of 972.3 kN: Energomash’s table as Brügge copies it, secondary); the length is Sputnik’s, ' +
+          '6.4 s (the command at 109.94 s, separation at 116.38 s: ${SPUTNIK}), put before the 8K72K’s 119.5 s',
+      },
       thrust: {
         seaLevel: doc(815_900, `${ENERGOMASH}: 815.9 kN. Minakov’s table: 82 tf (804 kN)`),
         vacuum: doc(997_700, `${ENERGOMASH}: 997.7 kN`),
@@ -84,10 +101,25 @@ export const orbital: OrbitalFlight = {
       nodes: ['CoreStage', 'CoreEngine', 'Interstage'],
       mass: doc(100_400, `${ASTRONAUTIX}: 100.4 t. Brügge 99.76 t; Minakov 102 t`),
       dry: doc(6_800, `${ASTRONAUTIX}: 6.8 t. Minakov: 7 t for the 8K71’s core, 8 t in his 8K72 table`),
-      propellant: doc(
-        90_100,
-        'Brügge: 90.1 t, of which 3.12 t is peroxide and nitrogen: secondary. Mass less dry is 93.6 t: from different sources, and they do not sum',
+      propellant: derived(
+        93_600,
+        '100.4 t fuelled less 6.8 t dry (both Astronautix, of the 8K72K’s core): all that is not structure, peroxide and nitrogen with the kerosene and oxygen, drawn at the engine’s whole flow (see the strap-ons). ' +
+          'Brügge’s figures (b14643.eu) are not this vehicle’s: his block masses for every R-7 are Soyuz-ST’s, from Arianespace’s Soyuz CSG User’s Manual, issue 2, 2012, Fig. 1.5.1a, where a strap-on carries 27,900 kg of oxygen and 11,260 of kerosene (39.16 t) and a core 63,800 and 26,300 (90.10 t), the peroxide and nitrogen outside those (1.47 and 3.12 t)',
       ),
+      // the RD-108's main chambers stop and it runs on its steering chambers alone for its last seconds: the final stage of thrust
+      throttle: {
+        points: [
+          [0, 1],
+          [290, 1],
+          [290.01, 0.104],
+          [300, 0.104],
+        ],
+        confidence: 'estimated',
+        source:
+          '«За несколько секунд до выключения двигателя РД-108 переводится на конечную ступень тяги, на которой работают только рулевые КС, и при том – на пониженном режиме» ' +
+          '(lpre.de); 10 s of it on the 8D75 and 22 s on the 8D75K (the same), the 8D75 being the 8K72K’s. Gagarin felt 10 to 15 s of weightlessness before the third stage lit. ' +
+          'The level is not found: the four steering chambers at their rated 2.5 tf each (RKK Energia 1946–1996), 10 tf of the engine’s 96.4 in vacuum, 10.4 per cent, is the most it can be (“at a reduced setting”), and is taken; thrust and flow fall together here, which the steering chambers’ own lower impulse does not quite do',
+      },
       thrust: {
         seaLevel: doc(744_300, `${ENERGOMASH}: 744.3 kN. Minakov’s table: 81.2 tf`),
         vacuum: doc(945_400, `${ENERGOMASH}: 945.4 kN`),
@@ -128,6 +160,18 @@ export const orbital: OrbitalFlight = {
         MSK(9, 18, 28),
         `${OKB1}: “separated from the booster at 0918:28”. ${ZAK} notes 09:18:07 from another source (Novosti Kosmonavtiki)`,
       ),
+      // cut as its integrator cut it: at the speed the planned orbit needs, and the error the record gives for the day
+      // cut as its integrator cut it: on the apparent velocity the flight task set for it
+      velocity: {
+        apparent: true,
+        speed: doc(
+          2_283.52,
+          '«Установочное значение кажущейся скорости в момент выдачи главной команды на выключение двигателя III ступени ... 2283,52 м/сек»: Gagarin’s flight task, page 1, section VI ' +
+            '(ЦА РКВ, ф. 19, оп. 114сс, д. 15), as pictured in Kommersant Nauka No. 9, 14 April 2021, read off a 1,200-pixel image: the third numeral could be a 6 (2,263.52). ' +
+            'The apparent velocity is the sensed acceleration summed over Block E’s burn, taken from its ignition (from when is not on the page): not a speed in any frame. ' +
+            'Baturin’s 25.43 m/s over the design (the core 0.46 s late, Block E 2.4 s long) is what the day made of it, a result here and not an input',
+        ),
+      },
     },
   ],
   events: [
@@ -209,6 +253,12 @@ export const orbital: OrbitalFlight = {
   // written before staged.ts had flown anything.
   ascent: {
     guidance: {
+      azimuth: doc(
+        34 + 37 / 60 + 59.2 / 3600,
+        '«Азимут линии прицеливания 34°37′59″,2»: Gagarin’s flight task, page 1, section IV (ЦА РКВ, ф. 19, оп. 114сс, д. 15), as pictured in Kommersant Nauka No. 9, 14 April 2021. ' +
+          'The aiming line’s bearing at the pad, which the launch system turned the vehicle to and the gyros held. (The 37.5° derived before was the plane’s in the frame that does not turn.) ' +
+          'Soyuz’s manual has 34.8° for 64.9° from Baikonur today',
+      ),
       vertical: guess(
         15,
         `${SOYUZ}: within half a degree of the vertical at 19 s and 3.3 degrees off it at 29 s. The 8K72K’s own programme has not been found; its boosters reached their main stage of thrust 6 s after liftoff (as Sputnik’s did: ${SPUTNIK})`,
@@ -296,8 +346,8 @@ export const orbital: OrbitalFlight = {
           'the four as one body: each 2.68 m across (Minakov), its axis 2.78 m out at the base (vostok-8k72k.md): 2.78 + 1.34',
         ),
         mass: derived(
-          16_250,
-          '4 × (3,750 kg dry (Minakov) + the 310 kg the ascent flown leaves in each): flown as one body, which they were not',
+          21_130,
+          '4 × (3,750 kg dry (Minakov) + the 1,533 kg the ascent flown leaves in each): flown as one body, which they were not',
         ),
         centre: guess(8, 'about two fifths up a strap-on, empty: its engine and tail are the heaviest part'),
         gyration: { roll: guess(2.9, 'four blocks 2.8 m out'), across: guess(6, 'a 19.8 m block, its mass low') },
@@ -333,8 +383,8 @@ export const orbital: OrbitalFlight = {
         to: doc(28.75, `${MINAKOV}: the core with its lattice`),
         radius: doc(1.475, `${MINAKOV}: 2.95 m across`),
         mass: derived(
-          10_300,
-          'its 100.4 t fuelled less the 90.1 t the ascent burns: what the record’s figures leave (6.8 t dry, Astronautix)',
+          11_320,
+          'its 100.4 t fuelled less the 89.08 t the ascent flown burns: what the record’s figures leave (6.8 t dry, Astronautix)',
         ),
         centre: guess(9, 'below its middle: the engine and the empty tanks’ lower half'),
         gyration: { roll: guess(1.0, 'a shell 1.2 to 1.5 m in radius'), across: guess(8, 'a 28.75 m block') },
@@ -352,7 +402,7 @@ export const orbital: OrbitalFlight = {
         from: doc(28.75, `${MINAKOV}: on the lattice’s top`),
         to: derived(31.73, 'its adapter’s rim, 2.98 m higher (Minakov)'),
         radius: doc(1.29, `${MINAKOV}: 2.58 m across`),
-        mass: derived(1_524, '1,472 kg burnt out (Minakov) and the 52 kg the ascent flown leaves'),
+        mass: derived(1_518, '1,472 kg burnt out (Minakov) and the 46 kg the ascent flown leaves'),
         centre: guess(29.8, 'the engine in its tanks’ ring, low in the stage'),
         gyration: { roll: guess(0.9, 'ring tanks 1.29 m in radius'), across: guess(1, 'a stage 3 m long') },
         ahead: guess(5, 'its adapter’s open rim, at 1.0'),
@@ -419,6 +469,15 @@ export const orbital: OrbitalFlight = {
         source: `${OKB1}: 181 km. NOT an independent check: the law is solved to put the cutoff level at the planned 180 km, so this holds by construction`,
       },
       {
+        id: 'cutoffAt',
+        label: 'Third stage cut off',
+        value: 676,
+        unit: 's',
+        tolerance: 3,
+        confidence: 'documented',
+        source: `${SIDDIQI}, p. 277: T+676 s. Added with the cut on velocity, before it was flown: 3 s is the record’s second and Baturin’s 2.4 s of over-burn`,
+      },
+      {
         id: 'apogee',
         label: 'Apogee at the last cutoff',
         value: 327_000,
@@ -434,7 +493,7 @@ export const orbital: OrbitalFlight = {
         unit: 'deg',
         tolerance: 0.05,
         confidence: 'documented',
-        source: `${OKB1}: 64°57′. NOT an independent check: the launch plane is solved for it`,
+        source: `${OKB1}: 64°57′. Independent since the flight task’s aiming azimuth is flown (until then the plane was solved for it)`,
       },
       {
         id: 'period',

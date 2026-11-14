@@ -323,7 +323,8 @@ export interface CabinDef {
   lamps?: { node: string; name: string; about: string; shows?: Signal; colour?: number }[];
   /**
    * Controls that are the controls: a click on one does what the flight deck's key does (`does`: a command of
-   * src/cockpit.ts: 'tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort'). One with no `does` is
+   * src/cockpit.ts: 'tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort'; or of an orbital flight's deck,
+   * src/orbitdeck.ts: 'retro', and `code:` and a numeral for a key of its logical lock). One with no `does` is
    * there to be read about. How it moves when worked is in the node's extras (`pull` or `press`, metres along its axis).
    * One with `works` works a mechanism of the model by hand (`ModelDef.mechanisms`, by its id): sent the other way
    * from where it is headed, in a flight being flown by hand (src/cockpit.ts `work`).
@@ -1140,6 +1141,12 @@ export interface Flight {
     datum?: number;
     /** The node whose lowest point is the nozzle's exit: the engine's fire is drawn from there while it burns. */
     engine?: string;
+    /**
+     * Fires after the first, each from its own nozzle (the node whose lowest point is its exit; `radius` the exit's, m)
+     * while it burns: an upper stage, a braking engine. `on` names the event of the flight's record whose instants it burns
+     * between where the run has them (an orbital flight's: `stage:<index>` for a stage, `retro` for the braking burn).
+     */
+    fires?: { node: string; radius: number; on: string }[];
     /** The parachutes, drawn (viewer/chute.ts) when the simulator lets each out. */
     chutes?: ChuteDef[];
     /** What the air does to it that is drawn (viewer/effects.ts), by the nodes and materials it happens to. */
