@@ -157,6 +157,9 @@ def breadth(station: float, top: float) -> float:
     return half[0][1] if top > half[0][0] else half[-2][1]
 
 
+ROUND = [0, 0, 0]  # the vessel's faces that follow the cone, first and one past the last, and how many faces it has: set by vessel()
+
+
 def vessel(c: Station) -> None:
     v = c.into("CrewStation_PressureVessel")
     stations = [Z_BULKHEAD, 108.5, 112.0, 118.0, 124.0, 131.0, 138.0, 143.0, 147.0, 150.8, 155.0, Z_ACCESS]
@@ -177,7 +180,10 @@ def vessel(c: Station) -> None:
         mid = sum(loop, Vector()) / len(loop)
         m = len(loop)
         v.add([tuple(mid)] + [tuple(p) for p in loop], [(0, 1 + (i + 1) % m, 1 + i) if out else (0, 1 + i, 1 + (i + 1) % m) for i in range(m)])
-    # the roof forward of the hatches, under the troughs; the roof aft of them, over the seats' heads; the beam between
+    # the roof forward of the hatches, under the troughs; the roof aft of them, over the seats' heads; the beam between.
+    # These three follow the cone, and are shaded as the curves they are (`ROUND`, `round_off`): the rest of the vessel
+    # is a welded box of flat sheets, each shaded by its own plane.
+    start = len(v.faces)
     nt = 40
     for za, zb, nz in ((zz(Z_HATCH_FWD) - 0.05, zz(Z_ACCESS), 6), (zz(Z_BULKHEAD), zz(Z_HATCH_AFT) + 0.05, 1)):
 
@@ -194,12 +200,27 @@ def vessel(c: Station) -> None:
         zs,
         flip=True,
     )
+    ROUND[:] = [start, len(v.faces), len(v.faces)]
     # stiffeners on the large bulkhead, behind the seats (its skins are double, with stiffeners spot-welded on: p. 2-8)
     ribs = c.into("CrewStation_Stiffeners")
     for y in (-16.0, -5.5, 5.5, 16.0):
         chamfered(ribs, (50.0, 1.2, 0.7), Matrix.Translation(V(3.0, y, Z_BULKHEAD + 0.35) * IN), 0.1)
     for x in (-20.0, -6.0, 8.0, 22.0):
         chamfered(ribs, (1.2, 2 * breadth(Z_BULKHEAD, x) - 2.4, 0.5), Matrix.Translation(V(x, 0.0, Z_BULKHEAD + 0.25) * IN), 0.1)
+
+
+def round_off() -> None:
+    """Shade the vessel's faces that follow the cone (`ROUND`: its roofs and the beam between the hatches) as curves:
+    each corner's normal the mean of the faces round it, with an edge kept where two meet at more than 35 degrees.
+    Every face of the vessel was shaded flat, by its own plane, which is right for its flat sheets and wrong for
+    these: the roof forward of the hatches, let down under the two troughs, was a chequer of facets, each quad its
+    own tone and the twisted ones folded along a diagonal (the stepped chevrons above the overhead panel)."""
+    mesh = bpy.data.objects["CrewStation_PressureVessel"].data
+    assert len(mesh.polygons) == ROUND[2], "the vessel's faces are not as they were built: the roofs cannot be told from the sheets"
+    for i in range(ROUND[0], ROUND[1]):
+        mesh.polygons[i].use_smooth = True
+    mesh.set_sharp_from_angle(angle=deg(35))
+    mesh.update()
 
 
 # ------------------------------------------------------------------ an ejection seat
@@ -848,7 +869,7 @@ def side_panels(c: Station, P: dict, sheet: Sheet) -> None:
     mc.thrown(c, F, 0.9, v, "CabinLights", "v", (-mc.TOGGLE_LEAN, 0.0, mc.TOGGLE_LEAN))
     rg.text("RED\nOFF\nWHT", 0.42, v, 0.045, mc.INK, gap=5.0)
     rg.text("CENTER\nLIGHT", 0.9, Ht - 10.75, 0.06, mc.INK)
-    for i, legend in enumerate(("CABIN\nRECIRC", "O2 HIGH\nRATE", "CABIN\nVENT", "WATER\nSEAL", "HI RATE\nRECOCK")):
+    for i, legend in enumerate(("CABIN\nRECIRC", "SNORKEL", "CABIN\nVENT", "WATER\nSEAL", "O2 HI RATE\nRECOCK")):
         u = 1.3 + i * 1.8
         c.into("CrewCabin_PanelFittings").tube(F @ Vector((u, -0.2, 0.2)), F @ Vector((u, -2.6, 0.9)), 0.11 * IN, 8)
         c.turned("CrewCabin_RedCaps", F @ Matrix.Translation((u, -2.6, 0.9)), 0.0, 0.0, [(0.34, -0.3), (0.34, 0.3), (0.0, 0.3)], 12)
@@ -967,12 +988,13 @@ def fittings(c: Station, say) -> None:
     cur, snaps = c.into("CrewCabin_HatchCurtains"), c.into("CrewCabin_PanelFittings")
     for side in (-1, 1):
         zs = [zz(109.0) + (zz(148.0) - zz(109.0)) * j / 12 for j in range(13)]
-        for j in range(12):
-            quad = []
-            for z, a in ((zs[j], HATCH_OUT - deg(1)), (zs[j + 1], HATCH_OUT - deg(1)), (zs[j + 1], HATCH_OUT - deg(8)), (zs[j], HATCH_OUT - deg(8))):
-                r = inner(side * a, z) - 0.35
-                quad.append(tuple(Vector((r * math.cos(side * a), r * math.sin(side * a), z)) * IN))
-            cur.add(quad, [(0, 1, 2, 3)])
+
+        def hang(a: float, z: float, side=side) -> Vector:
+            r = inner(side * a, z) - 0.35
+            return Vector((r * math.cos(side * a), r * math.sin(side * a), z)) * IN
+
+        # (one sheet, its corners shared from one length to the next, so that it is shaded as the cloth it is and not as twelve flats)
+        cur.grid(hang, (HATCH_OUT - deg(1), HATCH_OUT - deg(8)), zs, flip=True)
         for k in range(5):
             z = zz(113.0 + k * 8.0)
             a = side * (HATCH_OUT - deg(2.5))
@@ -1005,6 +1027,8 @@ SMOOTH = (
     "CrewCabin_WhiteCaps",
     "CrewCabin_InstrumentGlass",
     "CrewCabin_Stowage",
+    "CrewCabin_Equipment",  # (the water's container is a cylinder; the boxes keep their edges, which are over 35 degrees)
+    "CrewCabin_HatchCurtains",
 )
 
 
@@ -1016,6 +1040,7 @@ def build(parent, M: dict, font, names: tuple[str, str], say, crew=None) -> None
     if not interior():
         c.mb.pop("CrewStation_Stiffeners", None)
         c.finish({"CrewStation_PressureVessel": "titanium"})
+        round_off()
         return
     mc._font = font
     for key, mat in mc.materials().items():
@@ -1030,6 +1055,7 @@ def build(parent, M: dict, font, names: tuple[str, str], say, crew=None) -> None
     for name, side, who in (("CommandPilot", -1, names[0]), ("Pilot", 1, names[1])):
         seat(c, name, side, who, say, crew)
     c.finish(MATERIALS, smooth=SMOOTH)
+    round_off()
     for sh, key in ((sheet, "panel_main"), (faces, "faces")):
         img = sh.image()
         for k in (key, *(("telelight", "drum") if key == "faces" else ())):
