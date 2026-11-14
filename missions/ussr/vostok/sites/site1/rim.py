@@ -19,7 +19,7 @@ import math
 import sitelib
 import srlib
 
-from . import platform
+from . import platform, relief
 from .place import FOOTING, ROAD_HALF, ridge, to_road, toward_pad, turned
 from .site import FT, GROUND, PLATFORM, P, Parts, beam, box, fine, lattice, stood
 
@@ -255,7 +255,7 @@ def conduit(parts: Parts) -> None:
     # top, or just over the pit's modelled ground there if that is higher (the terraces' levels are estimated).
     ex, ey = CONDUIT[-1]
     end = max(-CONDUIT_END - h / 2, platform.pit_z(ex, ey + 2.0) + 0.6)
-    start = GROUND - 0.5 - h
+    start = GROUND + relief.ground(*CONDUIT[0]) - 0.5 - h  # (the land at the north rim lies some 8 m under the deck's level)
     loops, under = [], []
     for k, (x, y, s) in enumerate(pts):
         a, b = pts[max(0, k - 1)], pts[min(len(pts) - 1, k + 1)]
@@ -291,13 +291,14 @@ def conduit(parts: Parts) -> None:
             last = s
     # the old tray: one straight span, unsupported, from under the land at the rim to the platform's north edge
     (ax, ay), (bx, by) = TRAY
-    steel.tube(P(ax, ay, GROUND - 0.5 - TRAY_R), P(bx, by, -1.5), TRAY_R, 16)
+    az = GROUND + relief.ground(ax, ay) - 0.5 - TRAY_R
+    steel.tube(P(ax, ay, az), P(bx, by, -1.5), TRAY_R, 16)
     if fine():  # its joints: a band every 6 m
         n = int(math.hypot(bx - ax, by - ay) / 6.0)
         for k in range(1, n):
             t = k / n
-            c = (ax + (bx - ax) * t, ay + (by - ay) * t, GROUND - 0.5 - TRAY_R + (-1.5 - GROUND + 0.5 + TRAY_R) * t)
-            d = (bx - ax, by - ay, -1.5 - GROUND + 0.5 + TRAY_R)
+            c = (ax + (bx - ax) * t, ay + (by - ay) * t, az + (-1.5 - az) * t)
+            d = (bx - ax, by - ay, -1.5 - az)
             steel.lathe(
                 [(TRAY_R - 0.02, -0.06), (TRAY_R + 0.03, -0.06), (TRAY_R + 0.03, 0.06), (TRAY_R - 0.02, 0.06)], 16, matrix=srlib.frame(P(*c), d)
             )

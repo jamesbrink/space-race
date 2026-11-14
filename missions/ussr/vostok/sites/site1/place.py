@@ -23,7 +23,7 @@ import sitelib
 from sitelib import P, beam, obox, profile
 from srlib import MeshBuilder, material
 
-from . import site
+from . import relief, site
 from .site import GROUND, Parts
 
 FOOTING = 0.6  # how far under the deck's level whatever stands on the land goes down: the land is 0.12 m under it
@@ -124,6 +124,51 @@ def turned(at, heading: float, x: float, y: float) -> tuple[float, float]:
     """Where a point of a thing's own frame is on the site, once it is set down at `at` turned `heading` degrees."""
     c, s = math.cos(math.radians(heading)), math.sin(math.radians(heading))
     return at[0] + x * c - y * s, at[1] + x * s + y * c
+
+
+def settle(parts: Parts, *, draped=(), groups=(), left=()) -> list[tuple[str, float]]:
+    """Set everything built so far down on the land (relief.py). Every module of the place builds on one level, the
+    deck's; the ground north of the tracks lies some 8 m under that. A thing that stands in one spot (a building, a
+    tower, a bunker: a top-level node, or a child of one of `groups`) goes down as it is, by the land's height at the
+    middle of its plan. A thing that runs across the country (a fence, a row of poles, a heap of earth: `draped`) goes
+    down vertex by vertex, each by the land's height where it is, so posts stay upright and wires follow the ground.
+    `left` are not moved (what stands on the embankment, or was built on the land already). Returns what went down as
+    it was, and how far."""
+    top_of, unit_of = {}, {}
+    for name, (obj, _) in parts.nodes.items():
+        chain = [obj]
+        while chain[-1].parent is not None:
+            chain.append(chain[-1].parent)
+        top_of[name] = chain[-1].name
+        unit_of[name] = chain[-2].name if chain[-1].name in groups and len(chain) > 1 else chain[-1].name
+    boxes: dict[str, list[float]] = {}
+    for (node, _), (mb, _) in parts.meshes.items():
+        top = top_of[node]
+        if top in left or not mb.verts:
+            continue
+        if top in draped or unit_of[node] in groups:
+            mb.verts = [(x, y, z + relief.ground(x, y)) for x, y, z in mb.verts]
+            continue
+        b = boxes.setdefault(unit_of[node], [1e9, 1e9, -1e9, -1e9])
+        for x, y, _ in mb.verts:
+            b[0], b[1], b[2], b[3] = min(b[0], x), min(b[1], y), max(b[2], x), max(b[3], y)
+    drop = {unit: relief.ground((b[0] + b[2]) / 2, (b[1] + b[3]) / 2) for unit, b in boxes.items()}
+    for (node, _), (mb, _) in parts.meshes.items():
+        dz = drop.get(unit_of[node])
+        if dz and top_of[node] not in draped and unit_of[node] not in groups:
+            mb.verts = [(x, y, z + dz) for x, y, z in mb.verts]
+    for name, (obj, origin) in list(parts.nodes.items()):
+        dz = drop.get(unit_of[name])
+        if not dz:
+            continue
+        parts.nodes[name] = (obj, origin + Vector((0.0, 0.0, dz)))
+        if name == unit_of[name]:
+            obj.location.z += dz
+    for k, (node, key, foot, top, *rest) in enumerate(parts.ladders):
+        dz = drop.get(unit_of[node])
+        if dz:
+            parts.ladders[k] = (node, key, foot + Vector((0.0, 0.0, dz)), top + Vector((0.0, 0.0, dz)), *rest)
+    return sorted(drop.items())
 
 
 def bank(mb: MeshBuilder, outline, top: float, spread: float, *, foot: float | None = None) -> None:

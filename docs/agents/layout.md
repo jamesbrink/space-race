@@ -49,6 +49,7 @@ src/
   viewer/labels.ts                    names on the parts of a thing taken apart: which have come clear, where the labels go
   viewer/cape.ts                      Cape Canaveral's land as parameters: its plant communities, clearings, roads, palette, sea
   viewer/tyuratam.ts                  the steppe round Site 1 as parameters: its cover, palette, plants, the tracks painted, the flame pit cut out
+  viewer/tyuratamrelief.ts            how high the ground is round Site 1 (the pad on a scarp's brow, the steppe 8 m under it), in JavaScript and GLSL; the place's models are built on the same figures (sites/site1/relief.py; tests/tyuratam.test.mjs)
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
   viewer/flora.ts                     any site's plants: species built from forms, placed by the cover map, near and far forms, wind
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
@@ -158,6 +159,7 @@ tools/
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
+  walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor
   front-test.mjs                      browser check of the front page: what a bare address shows, going into a flight and back out, what it draws when, what it holds as a phone
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
   front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows

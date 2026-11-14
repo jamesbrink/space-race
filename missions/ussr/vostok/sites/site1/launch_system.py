@@ -90,7 +90,9 @@ def support(parts: Parts, n: int, az: float) -> None:
     bays = 7 if fine() else 4
     truss(boom, corner, [length * b / bays for b in range(bays + 1)], 0.2, 0.12)
     # the head: the sector of the load ring the rocket's weight sits on, and the frame that carries it
-    a0, a1 = TURN + math.radians(az - 44.0), TURN + math.radians(az + 44.0)
+    # (35 degrees either way: the four leave 20 degrees open at each strap-on, where its nose comes up between them
+    # before the trusses have begun to fall: the pose check, ../site-1.md)
+    a0, a1 = TURN + math.radians(az - 35.0), TURN + math.radians(az + 35.0)
     (ri, ro), (zb, zt) = SECTOR, SECTOR_Z
     dark.lathe(profile([(ri, zb), (ro, zb), (ro, zt), (ri, zt), (ri, zb)]), 24, arc=(a0, a1))
     for s in (-1, 1):

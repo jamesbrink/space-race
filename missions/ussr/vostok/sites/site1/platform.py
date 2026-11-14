@@ -24,6 +24,7 @@ import math
 
 from mathutils import geometry
 
+from . import relief
 from .site import (
     FENCE_IN,
     FT,
@@ -84,7 +85,11 @@ SLOT_END = HALF + 60.0 * FT  # the sump's face
 # redacted: the floor's own climb is taken for it.
 SUMP = (75.0 * FT, 10.0 * FT)
 SUMP_END = SLOT_END + SUMP[0]
-CLIMB = 4.84  # the floor rises 1 m in this many east of the sump's face, so as to come up to the land at the pit's point (estimated)
+# From the sump's face the floor climbs east and comes up to the land 7 m inside the pit's point (estimated). The land
+# there lies some 5.5 m under the deck's level (relief.py), so it rises 1 m in 5.6 (derived from those).
+FLOOR_END = 232.0
+LAND_AT_POINT = -relief.ground(FLOOR_END, 0.0)
+CLIMB = (FLOOR_END - (HALF + 60.0 * FT)) / (PIT_DEPTH - 10.0 * FT - LAND_AT_POINT)
 WALL_END = SLOT_END + (PIT_DEPTH - SUMP[1] - LOWER) * CLIMB  # where the floor has come up to the lower terrace
 DEEPEST = PIT_DEPTH + 0.5
 # The road "from the raised eastern terminus ... to the base of the pit near the foot of the launching structure"
@@ -98,6 +103,18 @@ ROAD_HALF = 3.0
 # platform's east edge, where it lies level; as wide as the slot.
 DEFLECTOR_TOP = 16.0
 DEFLECTOR_R = ((2 * HALF) ** 2 + (PIT_DEPTH - DEFLECTOR_TOP) ** 2) / (2 * (PIT_DEPTH - DEFLECTOR_TOP))  # the arc's radius (derived)
+# The cut in the north rim (RIM: the six points from (-13.5, 78) to (4.5, 82)): its head is at 114 m north, shallow, and
+# from 103 m north its floor goes down toward the pit 1 m in 3 until its own sides, 1 in 1 like the pit's, meet under it: a way
+# down on foot (estimated: what the cut was for is not recorded, and a head as steep as its sides cannot be walked up).
+# North of CUT_EASY its sides are 1 in 2, steepening to the pit's 1 in 1 over the 12 m south of that.
+CUT = (-16.0, 8.0, 78.0, 114.0)  # the cut's box: west, east, its mouth, its head
+CUT_GRADE = 3.0
+CUT_EASY = 100.0
+# North of CUT_RAMP the floor lies a step under the land, and from there it goes down: the land is drawn, and stood on,
+# for 3 m inside the rim (viewer/tyuratam.ts: OVERLAP), which at the cut's narrow head is all of it, and where the land
+# ends the floor must be within a step of it all the way across
+CUT_RAMP = 103.0
+CUT_STEP = 0.2
 SKIRT, SKIRT_DOWN = 8.0, 0.25  # the skirt under the land outside the rim: its breadth and how far under the land, m
 CELL = 2.0  # the pit's ground mesh, m (twice as coarse at a lower level of detail)
 # A flangeway beside each running rail on the slab, on the gauge side: m wide from the rail's inner face, and deep
@@ -141,7 +158,7 @@ def _terraced(d: float) -> float:
 def floor_depth(x: float) -> float:
     """How far under the deck the pit's floor is along its middle: the pit base as far as the sump's face, then the
     sump's roof and the floor beyond it, climbing east."""
-    return PIT_DEPTH if x <= SLOT_END else max(0.0, PIT_DEPTH - SUMP[1] - (x - SLOT_END) / CLIMB)
+    return PIT_DEPTH if x <= SLOT_END else max(LAND_AT_POINT, PIT_DEPTH - SUMP[1] - (x - SLOT_END) / CLIMB)
 
 
 def deflector_z(x: float) -> float:
@@ -160,16 +177,24 @@ def in_trench(x: float, y: float) -> bool:
 
 
 def pit_z(x: float, y: float) -> float:
-    """The pit's surface, metres from the deck. At the rim it is the land's own height (GROUND). Outside it a skirt runs
-    on under the land, a hand's breadth below it for SKIRT metres and then down into the ground: the land is cut away a
-    little inside the rim (viewer/tyuratam.ts: OVERLAP), and a line of sight that passes under the land's cut edge, out
-    of the pit, meets this and not the sky."""
+    """The pit's surface, metres from the deck. At the rim it is the land's own height, which is not the same all the
+    way round: the north rim lies some 8 m under the deck's level and the pit's point some 5.5 m (relief.py). The sides
+    go down from there to terraces that are level, so a side that starts lower reaches its terrace sooner. Outside the
+    rim a skirt runs on under the land, a hand's breadth below it for SKIRT metres and then down into the ground: the
+    land is cut away a little inside the rim (viewer/tyuratam.ts: OVERLAP), and a line of sight that passes under the
+    land's cut edge, out of the pit, meets this and not the sky."""
     d = to_rim(x, y)
     if in_slot(x, y):
         return GROUND - floor_depth(x)
+    land = -relief.ground(x, y)  # how far under the deck's level the land is (or was, before the pit was dug) here
     if d < 0:
-        return GROUND - SKIRT_DOWN - min(1.25, max(0.0, -d - SKIRT))
-    return GROUND - min(_terraced(d), floor_depth(x))
+        return GROUND - land - SKIRT_DOWN - min(1.25, max(0.0, -d - SKIRT))
+    if CUT[0] < x < CUT[1] and y > CUT[2]:
+        k = 0.5 + 0.5 * min(1.0, max(0.0, (CUT_EASY - y) / 12.0))
+        depth = min(_terraced(d * k + land), floor_depth(x), land + CUT_STEP + max(0.0, CUT_RAMP - y) / CUT_GRADE)
+    else:
+        depth = min(_terraced(d + land), floor_depth(x))
+    return GROUND - max(land, depth)
 
 
 def _lines(lo: float, hi: float, extra, cell: float) -> list[float]:
@@ -322,8 +347,10 @@ def build(parts: Parts, tracks=()) -> None:
     sump.add([P(SLOT_END, -half, base), P(SLOT_END, half, base), P(SLOT_END, half, top), P(SLOT_END, -half, top)], [(3, 2, 1, 0)])
     far = GROUND - floor_depth(SUMP_END)
     sump.add([P(SLOT_END, -half, top), P(SUMP_END, -half, far), P(SUMP_END, half, far), P(SLOT_END, half, top)], [(0, 1, 2, 3)])
-    # the ladder up its face, on the south shelf, out of the flame's way (not recorded: the way from the road's end to the pit base)
-    y = -(TRENCH_OUT + SLOT) / 2
+    # the ladder up its face, at the pit base's south edge, out of the flame's middle (not recorded: the way from the
+    # road's end to the pit base; it stood on the shelf beyond the south trench until it was walked: nothing led from
+    # that shelf to the pit base but a drop of 15 ft into the trench)
+    y = -(PIT_BASE / 2 - 0.8)
     parts.ladder("FlamePit", "sump", (SLOT_END - 0.1, y, base), (SLOT_END - 0.1, y, top), face=(1, 0, 0), mat="galv")
 
     # the flame deflector: the chute under the opening, from the abutment's face to the pit base, wall to wall
