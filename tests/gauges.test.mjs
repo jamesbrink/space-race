@@ -162,7 +162,8 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
         assert.ok(nodes.has(c.node), `control ${c.node} is not in ${model.url}`);
         if (c.does)
           assert.ok(
-            ['tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort', 'next'].includes(c.does),
+            // (or a key of a logical lock, `code:<digit>`, which an orbital flight's deck hears: orbitdeck.ts `ask`)
+            ['tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort', 'next'].includes(c.does) || /^code:\d$/.test(c.does),
             `${c.node}: ${c.does}`,
           );
       }

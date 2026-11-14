@@ -9,7 +9,7 @@ import type { OrbitalFlight } from './sim/orbital.ts';
 import type { Predictor } from './sim/predict.ts';
 import type { SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
-import { orbitalFlown, orbitalRecord } from './viewer/ascent';
+import { firesOf, orbitalFlown, orbitalRecord } from './viewer/ascent';
 import type { Clock } from './world/clock.ts';
 import { sunPosition } from './world/ephemeris.ts';
 import { DEG, siteFrame, type Vec3 } from './world/frames.ts';
@@ -197,7 +197,13 @@ export class OrbitDeck {
   can(_what: string): boolean {
     return false;
   }
-  ask(_what: string): void {}
+  /** A control in the cabin (CabinDef `does`): a key of the lock (`code:<digit>`), the same as its digit typed; the braking engine's button, the same as Space once the hands are free. */
+  ask(what: string): void {
+    if (!this.on) return;
+    if (what.startsWith('code:')) this.digit(what.slice(5));
+    else if (what === 'retro' && this.free && this.fired === null && this.hand) this.fire(this.clock.t);
+    else if (what === 'retro') this.host.say?.('Braking engine', this.free ? 'Fired already' : 'Locked: the hand controls are not free');
+  }
 
   enter(): void {
     if (!this.able || this.on) return;
@@ -345,7 +351,13 @@ export class OrbitDeck {
             : Infinity
           : record.dropped[i]!,
     );
-    this.run = { ...record, samples, dropped, duration: samples[samples.length - 1]!.t };
+    this.run = {
+      ...record,
+      samples,
+      dropped,
+      duration: samples[samples.length - 1]!.t,
+      fires: firesOf(this.flight, this.flown, { on: t, off: t + burn }),
+    };
     this.host.fly(this.run);
     this.host.say?.('Braking engine', `Fired by hand: ${burn.toFixed(0)} s to ${m.deltaV.value} m/s`);
   }
@@ -391,7 +403,8 @@ export class OrbitDeck {
       const copy = samples.map((s) =>
         s.t >= this.hand!.log[0]!.t ? { ...s, attitude: this.hand!.q, axis: turn(this.hand!.q, [1, 0, 0]) } : s,
       );
-      this.run = { ...this.run, samples: copy };
+      // (and the timer's burn given up: the braking engine does not fire at the record's instant)
+      this.run = { ...this.run, samples: copy, fires: firesOf(this.flight, orbitalFlown(this.flight), { on: Infinity, off: Infinity }) };
       this.host.fly(this.run);
     }
     if (t > this.run.duration + 12) {
