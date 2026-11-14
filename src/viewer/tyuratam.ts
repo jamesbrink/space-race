@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { type Air, driftClouds, installAir } from './air';
-import { breeze, type Day } from './day.ts';
+import type { Day } from './day.ts';
 import { fbm2 } from './field';
-import { Flora, type FloraSpec } from './flora';
-import { Land, type LandSpec, type Palette } from './land';
+import { Flora } from './flora';
+import { Land, type LandSpec } from './land';
+import { STEPPE_CEL, STEPPE_CEL_GROUND, STEPPE_COVER, STEPPE_GROUND, STEPPE_PALETTE, STEPPE_TONE, steppeFlora } from './steppe.ts';
 import { SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
 
 /**
@@ -17,8 +18,10 @@ import { SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
  * is the ground, and the tracks that came onto the platform and the roads painted on it. What is documented and
  * what is estimated is in missions/ussr/vostok/sites/site-1.md, "The land". In short: the pit's
  * rim and the tracks are today's map (OpenStreetMap), which the CIA's photographs of 1957 agree
- * with; the ground's colours, what grows on it and how thick are estimated, from photographs of
- * the place and of the morning.
+ * with. The ground itself and what grows on it are the steppe's (steppe.ts: the kind of country, its
+ * sources and what of it is estimated); this file says where on it the ground lies low, and what the
+ * builders made of it: the graded apron, the tracks' beds, the ground worn inside the fence and round
+ * the spoil heap, and the ruts beside the ways the traffic came.
  */
 
 /** The flame pit's rim, metres east and north of the rocket's axis: the same outline as sites/site1/platform.py (RIM). Keep the two in step. */
@@ -203,25 +206,27 @@ const APRON = 70;
 /** How far the ground is drawn: past the horizon from any height a person stands at (4.7 km at 1.7 m). */
 const FAR = 8000;
 
-/** A colour as an sRGB hex (three converts it to its linear working space). */
-const srgb = (hex: number) => new THREE.Color(hex);
-/**
- * The ground's colours, estimated: the pale grey-buff of the clay and sand of the Syr Darya's terraces, the silvery
- * grey-green of wormwood, and the short green the steppe has for a few weeks after the snow, read off photographs of
- * the place in spring and of the morning (site-1.md, The land), then cleaned as the look asks.
- */
-const PALETTE: Palette = {
-  sand: srgb(0xc6bdaa),
-  sandDark: srgb(0xa89f8b),
-  herbDry: srgb(0x9d9b86),
-  herbGreen: srgb(0x8b9569),
-  litter: srgb(0x6e6450),
-  leaf: srgb(0x6f7660),
-  leafLit: srgb(0x9da48a),
-  leafOther: srgb(0x7c8462),
-};
-
 const glsl = (v: number) => v.toFixed(3);
+
+/** The outer fence's sides, metres from the rocket's axis (site-1.md, "The place round the pad": derived from HTA/JR-4/58 and today's imagery). */
+const FENCE = { south: 191, east: 435, west: -484, north: 303 };
+/** The spoil heap's extent, metres east (from, to) and north (from, to): site-1.md (Figure 5 fitted to today's imagery). */
+const SPOIL: [number, number, number, number] = [181, 381, 72, 292];
+
+/**
+ * Where the wheels went off the made ways: bands of ruts beside them, as half a band's breadth (metres) and how worn
+ * (0 to 1), along lines metres east and north. That the builders' trucks ground the steppe's crust to dust and the
+ * dusty roads "got to be two to three kilometers wide" is Chertok's (Rockets and People, vol. II, p. 314, of 1955 to
+ * 1957); by 1961 the concrete road took the traffic, and the bands are drawn narrower and fading. Their lines (beside
+ * the road in from the south-west, and along the track west to the assembly building) and breadths are estimated.
+ */
+const RUTS: { line: [number, number][]; half: number; worn: number }[] = [
+  { line: ROADS[0]!, half: 70, worn: 0.75 },
+  { line: RAILS[0]!.slice(0, -1), half: 35, worn: 0.5 },
+];
+const RUT_SEGMENTS = RUTS.flatMap(({ line, half, worn }) =>
+  line.slice(1).map((b, i) => ({ s: [line[i]![0], -line[i]![1], b[0], -b[1]] as [number, number, number, number], half, worn })),
+);
 
 /** GLSL both the cover's bake and the terrain's shader use: the pit's rim, the tracks, the made ground. */
 const SHARED = /* glsl */ `
@@ -257,6 +262,32 @@ const SHARED = /* glsl */ `
     for (int i = 0; i < ${ROAD_SEGMENTS.length}; i++) best = min(best, segment(p, uRoads[i]));
     return best;
   }
+  // the ruts worn beside the ways the traffic came (RUTS): how much, 0 to 1, and the way they run
+  uniform vec4 uRuts[${RUT_SEGMENTS.length}];
+  uniform vec2 uRutKind[${RUT_SEGMENTS.length}];   // half the band's breadth, metres; how worn
+  float rutsAt(vec2 p, out vec2 along) {
+    along = vec2(1.0, 0.0);
+    float best = 0.0;
+    for (int i = 0; i < ${RUT_SEGMENTS.length}; i++) {
+      vec4 s = uRuts[i];
+      float d = segment(p, s);
+      float w = (1.0 - smoothstep(0.25, 1.0, d / uRutKind[i].x)) * uRutKind[i].y;
+      if (w > best) { best = w; along = normalize(s.zw - s.xy); }
+    }
+    // braided: the band's strands come and go along it
+    return best * smoothstep(0.3, 0.6, noise2(p * 0.012, 36) + 0.25 * noise2(p * 0.05, 37));
+  }
+  // how far inside the outer fence, metres (negative outside it)
+  float fenced(vec2 p) {
+    vec2 c = vec2(${glsl((FENCE.east + FENCE.west) / 2)}, ${glsl(-(FENCE.north - FENCE.south) / 2)});
+    vec2 q = abs(p - c) - vec2(${glsl((FENCE.east - FENCE.west) / 2)}, ${glsl((FENCE.north + FENCE.south) / 2)});
+    return -(length(max(q, 0.0)) + min(max(q.x, q.y), 0.0));
+  }
+  // how far outside the spoil heap's foot, metres
+  float spoil(vec2 p) {
+    vec2 q = abs(p - vec2(${glsl((SPOIL[0] + SPOIL[1]) / 2)}, ${glsl(-(SPOIL[2] + SPOIL[3]) / 2)})) - vec2(${glsl((SPOIL[1] - SPOIL[0]) / 2)}, ${glsl((SPOIL[3] - SPOIL[2]) / 2)}) + 40.0;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 40.0;
+  }
   // the platform and its abutment: metres outside them (negative on them)
   float platform(vec2 p) {
     vec2 c = vec2(p.x + ${glsl(ABUTMENT / 2)}, p.y);
@@ -286,36 +317,58 @@ const RELIEF = /* glsl */ `
   }`;
 
 /**
- * What covers the ground: open steppe of wormwood and saltwort on clay and sand, low and sparse, the bare ground showing
- * between the clumps, and green for a few weeks in spring. Round the pad, graded ground: the apron where the tracks came
- * on, the tracks' beds, the ground along the pit's rim. All estimated.
+ * What covers the ground: the steppe's own (steppe.ts: `steppe`), told where the ground lies low, which is where the
+ * water of the thaw stands and the takyrs and salt crusts are: the low steppe north and east of the scarp
+ * (tyuratamrelief.ts), and beyond the pad the hollows of the land's swell (`relief`). Over that, what the builders made:
+ * graded ground on the apron, the tracks' beds and a margin round the pit; the ground inside the fence worn in patches
+ * by four years of building and the round of work (the 1957 photograph shows bare ground round the pad and pit,
+ * site-1.md); a ring of turned ground round the spoil heap; and nothing on the platform, in the pit or on a road.
  */
 const COVER = /* glsl */ `
-  vec4 coverA(vec2 p) {
-    float clumps = fbm2(p * 0.05, 31, 3);
-    // (sparse: the woody cover never closes over the ground, and the bare clay is most of what is seen)
-    float woody = 0.14 + 0.18 * smoothstep(0.4, 0.7, clumps) - 0.1 * smoothstep(0.5, 0.75, fbm2(p * 0.006, 32, 3));
-    float herb = 0.18 + 0.32 * fbm2(p * 0.02, 33, 3);
-    // made ground: the apron round the platform's landward side, the tracks' beds and a margin round the pit's rim
+  ${STEPPE_COVER}
+  // how low the ground lies here, 0 to 1: the scarp's low side near the pad, the swell's hollows beyond it
+  float lowGround(vec2 p) {
+    float site = 0.5 * clamp(-siteRelief(vec2(p.x, -p.y)) / 8.0, 0.0, 1.0);
+    float swell = 1.0 - smoothstep(0.36, 0.56, fbm2(p * 0.0025, 61, 3));
+    return max(site, swell * smoothstep(400.0, 900.0, length(p)));
+  }
+  // the builders' ground: graded (1) where it was made, worn where it was worked over (the fence's inside, the spoil's foot)
+  float madeGround(vec2 p) {
     float made = 1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5));
     made = max(made, 1.0 - smoothstep(3.0, 9.0, rail(p)));
     made = max(made, 1.0 - smoothstep(-2.0, 12.0, -inPit(p) - 6.0 * noise2(p * 0.05, 35)));
-    float way = road(p);
-    made = max(made, 1.0 - smoothstep(${glsl(ROAD_HALF + 0.5)}, ${glsl(ROAD_HALF + 4)}, way));
-    woody *= 1.0 - made;
-    herb *= 1.0 - 0.8 * made;
+    made = max(made, 1.0 - smoothstep(${glsl(ROAD_HALF + 0.5)}, ${glsl(ROAD_HALF + 4)}, road(p)));
+    return made;
+  }
+  float wornGround(vec2 p) {
+    float inside = smoothstep(-10.0, 15.0, fenced(p));
+    float worn = inside * smoothstep(0.52, 0.68, fbm2(p * 0.012, 38, 3) + 0.1 * (noise2(p * 0.06, 39) - 0.5)) * 0.55;
+    worn = max(worn, (1.0 - smoothstep(0.0, 35.0, spoil(p) + 10.0 * (noise2(p * 0.04, 40) - 0.5))) * 0.85);
+    return worn;
+  }
+  vec4 coverA(vec2 p) {
+    float shrub, herb, takyr, salt, sand, zone;
+    steppe(p, lowGround(p), shrub, herb, takyr, salt, sand, zone);
+    float made = madeGround(p), worn = wornGround(p);
+    shrub *= (1.0 - made) * (1.0 - 0.75 * worn);
+    herb *= (1.0 - 0.85 * made) * (1.0 - 0.6 * worn);
     // nothing grows on the platform, down in the pit or on a road
     float none = max(1.0 - smoothstep(-1.0, 1.0, platform(p)), smoothstep(-1.0, 1.0, inPit(p)));
-    none = max(none, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 0.6)}, way));
-    woody *= 1.0 - none;
+    none = max(none, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 0.6)}, road(p)));
+    shrub *= 1.0 - none;
     herb *= 1.0 - none;
-    return vec4(woody, herb, clamp(1.0 - woody - herb, 0.0, 1.0), 0.5);
+    return vec4(shrub, herb, clamp(1.0 - shrub - herb, 0.0, 1.0), zone);
   }
   vec4 coverB(vec2 p) {
-    float worked = 1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5));
-    worked = max(worked, 1.0 - smoothstep(2.0, 6.0, rail(p)));
+    float shrub, herb, takyr, salt, sand, zone;
+    steppe(p, lowGround(p), shrub, herb, takyr, salt, sand, zone);
+    float made = madeGround(p);
+    float worked = max(1.0 - smoothstep(0.0, 25.0, platform(p) - ${glsl(APRON)} + 30.0 * (noise2(p * 0.02, 34) - 0.5)), 1.0 - smoothstep(2.0, 6.0, rail(p)));
     worked = max(worked, 1.0 - smoothstep(${glsl(ROAD_HALF)}, ${glsl(ROAD_HALF + 3)}, road(p)));
-    return vec4(worked, 0.0, 0.0, 0.0);
+    worked = max(worked, wornGround(p));
+    // graded ground is neither pan nor crust nor sand: the builders scraped it
+    float kept = 1.0 - made;
+    return vec4(worked, salt * kept, sand * kept, takyr * kept);
   }`;
 
 /** The steppe's shrubs are knee high at most: there is no thicket to stand up on the horizon. */
@@ -399,51 +452,12 @@ function landSpec(): LandSpec {
       uRim: { value: RIM.map(([x, y]) => new THREE.Vector2(x, y)) },
       uRails: { value: SEGMENTS.map((s) => new THREE.Vector4(...s)) },
       uRoads: { value: ROAD_SEGMENTS.map((s) => new THREE.Vector4(...s)) },
+      uRuts: { value: RUT_SEGMENTS.map((r) => new THREE.Vector4(...r.s)) },
+      uRutKind: { value: RUT_SEGMENTS.map((r) => new THREE.Vector2(r.half, r.worn)) },
     },
-    palette: PALETTE,
-  };
-}
-
-const c = srgb;
-
-/** What grows: wormwood and saltwort in low clumps, a hand to a knee high, wide apart. The species and their look are estimated. */
-function floraSpec(day: Day): FloraSpec {
-  return {
-    spacing: { woody: 1.4, herb: 1.8, tree: 40 },
-    stature: () => 1,
-    wind: breeze(day), // the day's wind at the ground: the flight's record (its `weather`)
-    species: [
-      {
-        name: 'wormwood',
-        form: { kind: 'shrub', masses: [3, 5], spread: 0.55 },
-        layer: 'woody',
-        abundance: [
-          [0, 1],
-          [1, 1],
-        ],
-        height: [0.25, 0.5],
-        colours: [c(0x7d846a), c(0xa3a88a)],
-        near: 25,
-        reach: 160,
-        sway: 0.3,
-        rough: 0.9,
-      },
-      {
-        name: 'saltwort',
-        form: { kind: 'shrub', masses: [2, 3], spread: 0.4 },
-        layer: 'herb',
-        abundance: [
-          [0, 0.35],
-          [1, 0.35],
-        ],
-        height: [0.15, 0.3],
-        colours: [c(0x7a8a50), c(0x98a262)],
-        near: 20,
-        reach: 90,
-        sway: 0.4,
-        rough: 0.85,
-      },
-    ],
+    palette: STEPPE_PALETTE,
+    ground: STEPPE_GROUND,
+    cel: STEPPE_CEL_GROUND,
   };
 }
 
@@ -472,7 +486,7 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, da
   const air: Air = { scale: day.haze, base: groundY, ...(day.cumulus ? { clouds: day.cumulus } : {}), day };
   installAir(air);
   const land = new Land(renderer, landSpec(), groundY, 0);
-  const flora = new Flora(floraSpec(day), land);
+  const flora = new Flora(steppeFlora(day), land);
   flora.group.position.y = groundY;
   const eye = new THREE.Vector3();
   const local = (at: THREE.Vector3) => {
@@ -485,8 +499,9 @@ export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, da
     scenery: [flora.group] as THREE.Object3D[],
     reach: 1500,
     horizon: FAR,
-    /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green. */
-    tone: PALETTE.herbDry.clone().lerp(PALETTE.sand, 0.5),
+    /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green; and in the cel look. */
+    tone: STEPPE_TONE.clone(),
+    drawn: STEPPE_CEL.clone(),
     tick: (dt: number) => {
       driftClouds(dt);
       land.tick(dt);

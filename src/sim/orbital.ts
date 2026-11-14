@@ -112,6 +112,11 @@ export interface AscentRecord {
   drag: { until: Measure; area: Measure; curve: Curve }[];
   /** What leaves that is no stage (the fairing): when, and its mass, kg. */
   drops: { id: string; at: Measure; mass: Measure }[];
+  /**
+   * What the live vehicle needs to be turned (sim/stagedlive.ts): the angular acceleration the stack's steering gives at
+   * full throw while its engines burn, deg/s^2, about each axis alike. Without it the vehicle can be ridden but not steered.
+   */
+  steering?: { authority: Measure };
   /** The spacecraft's centre of mass above the flown model's origin (`Flight.flies.datum`), m: what the scene turns it about once alone. */
   centre?: Measure;
   /** What leaves, each flown on as a body of its own in the scene (sim/shed.ts), by the `Flight.flies.drops[].on` that lets it go. Each gives its own mass, centre and gyration. */
@@ -616,6 +621,9 @@ export function flyOrbit(
         results.entryGAt = t;
       }
       results.entryQ = Math.max(results.entryQ, now.q);
+    }
+    {
+      // (down through the ejection height, burn or no burn: a coast begun short of an orbit comes down without one)
       const floor = o.ejection.altitude.value;
       if (now.altitude <= floor && now.altitude < before.altitude) {
         // back along the last step to the instant it came through the height

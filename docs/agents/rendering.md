@@ -504,7 +504,9 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 
 - **Data is baked, cited and dated.** Relief and the sea's bed are ETOPO 2022, the land's colours Blue Marble
   (May 2004), on the globe's cube and, finer, on a plane over the site's region (`pnpm globe:surface`; needs
-  GDAL; downloads stay outside the repo). The colours are 2004's land, not 1961's: say so where it matters.
+  GDAL; downloads stay outside the repo; `--region <name>` bakes one region and leaves the others' files as they
+  were). The colours are 2004's land, not 1961's: say so where it matters. A region may take another month of 2004
+  for the season of its flights (Tyuratam's is April's: the steppe's short green).
   A region names its `banks` (pale sand under clear water) in tools/globe-surface.mjs: the sea's colour is
   worked from depth (`globeWater`), bright only there.
 - **The weather is a day's, and the day is the flight's.** A flight's `weather` (types.ts: `DayWeather`; a
@@ -529,7 +531,9 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     the first time there is air with clouds or sheets in it, under the curtain), not when the stage is.
   - **The record holds at the site, layer by layer, whatever lies round it**: the cumulus within 12 km
     (`coverNear`), the deck within 40 km (`deckCoverAt`), the high cloud as far as an observer under it sees it
-    (`reportReach`, `highCoverAt`), and before the map has come in, everywhere. A record's stretch of country
+    (`reportReach`, `highCoverAt`; for fibres, not a veil, out to a lobed line, `heldDistance`, in the map and the
+    shaders alike: along a circle it was a disc from height, with an edge in the cel look), and before the map has
+    come in, everywhere. A record's stretch of country
     holds all over it (`weatherAt`: `MapDay.beyond`; tests/weather.test.mjs holds 21 July's).
   - **Everything else is estimated and says so**: `viewer/weather.ts` builds a plausible morning from the land
     map, the relief and the day's wind; no chart or reanalysis of any day has been read.
@@ -660,7 +664,8 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   waves and polish give way to the globe's sea at that rate, so the highlight is one patch across the edge of the
   site's ground at every height: change the glint in `GLINT` (globe.ts) and both follow.
 - **One coast from every height.** The globe's region map (tools/globe-region.mjs, with the works built since the
-  site's day undone: `region.later`) is the coast seen from above; the site's own ground has its own, finer, from the
+  site's day undone: `region.later`, along a line or, for a sea that has shrunk, over a `ring` from a source of the
+  time; a region with no coastline in it is land, and its `rivers` are drawn as channels along their middle lines) is the coast seen from above; the site's own ground has its own, finer, from the
   ground. Where the ground is handed over to the globe (by height, globe.ts `LIFT`, 3 to 20 km, its tones
   going on to the map's by 40 km, `LIFT_TONE`; and across the last of its square) the shore is one line moved from the one to the other: the land gives
   its own distance to its shore (`LandSpec.shore`) and the globe colours with the two mixed (`beyondShore`,

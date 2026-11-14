@@ -68,6 +68,12 @@ async function source() {
   const queries = {
     coastline: `[out:json][timeout:600];way["natural"="coastline"](${box});out body geom;`,
     water: `[out:json][timeout:900];(way["natural"="water"]["name"](${box});relation["natural"="water"]["name"](${box}););out body geom;`,
+    // the rivers the region names, as their middle lines: drawn as strips where the map has no water area for them
+    ...(region.rivers?.length
+      ? {
+          rivers: `[out:json][timeout:600];(${region.rivers.map((r) => `way["waterway"="river"]["name"~"${r.match}"](${box});`).join('')});out body geom;`,
+        }
+      : {}),
   };
   for (const [name, query] of Object.entries(queries)) {
     let body = null;
@@ -90,7 +96,7 @@ async function source() {
     }
     if (!body) throw new Error(`${name}: no Overpass server answered`);
     writeFileSync(join(dir, `${name}.json`), body);
-    console.log('fetched', name);
+    console.log('fetched', name, 'into', dir);
   }
   return dir;
 }
@@ -98,6 +104,7 @@ async function source() {
 const dir = await source();
 const coastline = JSON.parse(readFileSync(join(dir, 'coastline.json'), 'utf8'));
 const water = JSON.parse(readFileSync(join(dir, 'water.json'), 'utf8'));
+const riverWays = region.rivers?.length ? JSON.parse(readFileSync(join(dir, 'rivers.json'), 'utf8')).elements : [];
 
 /** The coastline's ways joined end to end into chains, each with the land on its left, as [lat, lon] lists; and whether each closes. */
 function chains(elements) {
@@ -256,7 +263,9 @@ function coastField(map, chainList) {
   let head = 0,
     tail = 0;
   for (let k = 0; k < w * h; k++) if (side[k]) queue[tail++] = k;
-  if (tail === 0) side.fill(-1); // no shore at all: sea
+  // no shore at all: all one side. Land, inland (a launch site stands on land, and the region is round it); the sea only
+  // where a coastline is fetched and none of it reaches the map
+  if (tail === 0) side.fill(chainList.length ? -1 : 1);
   while (head < tail) {
     const k = queue[head++];
     const i = k % w,
@@ -384,10 +393,36 @@ function bake(map, coast, lakeList, later, asOfYear) {
   const lakeDist = new Float32Array(w * h).fill(SPREAD * SPREAD);
   polylineDistance(map, rings, lakeDist);
   for (let k = 0; k < w * h; k++) field[k] = Math.min(field[k], (inLake[k] ? -1 : 1) * Math.sqrt(lakeDist[k]));
+  // the named rivers' channels, a strip of their width along each middle line (where the map draws the river as an
+  // area as well, the wider of the two is the water)
+  for (const river of region.rivers ?? []) {
+    const re = new RegExp(river.match);
+    const lines = riverWays
+      .filter((e) => e.type === 'way' && re.test(e.tags?.name ?? '') && e.geometry?.length >= 2)
+      .map((e) => e.geometry.map((p) => texel(map, p.lat, p.lon)));
+    const half = river.width / 2 / map.metres;
+    const d = new Float32Array(w * h).fill((half + SPREAD) ** 2);
+    polylineDistance(map, lines, d, half + SPREAD);
+    for (let k = 0; k < w * h; k++) field[k] = Math.min(field[k], Math.sqrt(d[k]) - half);
+  }
   // the works built since: undone along their lines
   let undone = 0;
   for (const work of later) {
     if (work.built <= asOfYear) continue;
+    if (work.ring) {
+      // an area as it was (a sea that has shrunk since): inside the ring what it `was`, by the distance to the ring's
+      // edge; where today's map has a shore inside it, that shore is gone
+      const xy = work.ring.map(([lat, lon]) => texel(map, lat, lon));
+      const inside = fillRings(map, [xy]);
+      const d = new Float32Array(w * h).fill(SPREAD * SPREAD);
+      polylineDistance(map, [xy], d);
+      for (let k = 0; k < w * h; k++) {
+        const s = (inside[k] ? -1 : 1) * Math.sqrt(d[k]); // positive outside the ring
+        field[k] = work.was === 'water' ? Math.min(field[k], s) : Math.max(field[k], -s);
+      }
+      undone++;
+      continue;
+    }
     const xy = work.path.map(([lat, lon]) => texel(map, lat, lon));
     const half = work.width / 2 / map.metres;
     const d = new Float32Array(w * h).fill((half + SPREAD) ** 2);
