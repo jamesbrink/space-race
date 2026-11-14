@@ -70,8 +70,11 @@ never adjusted to bring a check in.
   was made or not). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
   the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
   ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
-  braking engine is heard when the run on show burns it (its `fires`), as one burn of its length; later fires burn from
-  their own nozzles (`flies.fires`); a cabin control's `does` of `code:` and a numeral is a key of the deck's lock, and the
+  braking engine is heard when the run on show burns it (its `fires`), as one burn of its length. Every engine burns
+  from its own nozzles (`flies.fires`: each strap-on's RD-107 and the core's RD-108 as well as Block E and the braking
+  engine), between its stage's instants on the run on show and at its stage's throttle (`Ascent.fireLevels`, the
+  arithmetic in viewer/fires.ts, tests/fires.test.mjs): the strap-ons at their intermediate stage before they part and
+  gone with them, the core on its steering chambers alone through its final stage; a cabin control's `does` of `code:` and a numeral is a key of the deck's lock, and the
   deck hands the cabin, with each sample, the instants of the record's events on the run on show (`DeckNews`; ascent.ts
   `orbitalEvents`, moved by a burn by hand), the hands' push and whether they have the attitude, so its lamps light on those
   events, its gauges with a `history` follow the record's readings, the manual orientation's switch stands as the hands are
@@ -149,14 +152,16 @@ never adjusted to bring a check in.
   rigid body of its own from the instant it leaves, and the full level's own node is carried by it,
   turned about its own centre of mass, until the clock goes back. It is drawn while within 40 km
   of the eye or the vehicle and flown on to the sea regardless. Before liftoff and after
-  the landing it stands on its pad, whole: the inventory, which the idle show tours. While the engine burns its fire stands
-  under the node `flies.engine` names, and it and its smoke are the one thing here meant to look
+  the landing it stands on its pad, whole: the inventory, which the idle show tours. While an engine burns its fire stands
+  under its nozzles (a ballistic flight's one engine under the node `flies.engine` names; every other in `flies.fires`,
+  a cluster's main and steering chambers found in its bells' geometry, viewer/fires.ts), carried by the part that holds
+  it, so a strap-on's dying fire swings away with it; the fires and their smoke are the one thing here meant to look
   real, not designed: volumes, marched in one pass (`viewer/exhaust.ts`: after the ink, before the
   clouds, at a quarter of the pixels and only in the part of the frame they can be in; nothing
   when no flight shows any). `viewer/plume.ts` says what the fire is (an alcohol and oxygen flame:
   pale, seen through, shock diamonds while there is air to stand them up, opening into a wide faint
-  balloon as the air thins) and carries its light, a point light kept in the scene at no strength
-  while the engine is out; `viewer/trail.ts` says what smoke there is: the cloud over the pad at
+  balloon as the air thins) and carries its light, one point light for every fire at once (at their middle, by the area burning: `lightFires`),
+  kept in the scene at no strength while the engine is out; `viewer/trail.ts` says what smoke there is: the cloud over the pad at
   liftoff (a puff of steam round the stand, a ring rolled up at the front of the jet thrown out over
   the concrete, a low tan haze of dust: the sizes and how long it hung are read off MR-2, MR-3 and
   MR-4's photographs, and by T+6 the apron is clear but for wisps drifting downwind) and the trail
