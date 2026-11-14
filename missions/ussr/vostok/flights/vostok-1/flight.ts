@@ -162,7 +162,7 @@ const parts: Part[] = [
       'three gauges of three needles each and three blocks of signal lamps. Under it, on the porthole at his feet, the ' +
       'Vzor: a ring of eight ports in which the horizon stood as a ring when the ship was level, round a ruled screen on ' +
       'which the ground ran. At his left the black control panel, its raked side toward him with six keys: the flight ' +
-      'was automatic, and to fly it by hand he would first have had to key 1-2-5 into that lock, the number sealed in an ' +
+      'was automatic, and to fly it by hand he would first have had to key 1-4-5 into that lock, the number sealed in an ' +
       'envelope on board. At his right the hand controller, which he never touched. The fit is the first ships’ own, by ' +
       'Darevsky’s laboratory at the Flight Research Institute; its places and sizes here are read off photographs.',
     facts: [
@@ -173,7 +173,7 @@ const parts: Part[] = [
       ['He read before launch', '1.0 atm, 65 %, 19 °C; 155, 320 and 155 atm of gas'],
       ['Globus correction window', '510'],
       ['Vzor field of view', '7°'],
-      ['Manual control code', '1-2-5, on six keys'],
+      ['Manual control code', '1-4-5, on six keys (Kamanin; 1-2-5 in later memoirs)'],
     ],
     explode: [0, LIFT, 0],
     order: SHIP + 1,
@@ -825,7 +825,7 @@ vehicle.cabin = {
       node: `Ctl_Code${key}`,
       name: `Logical lock, key ${key}`,
       about:
-        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-2-5 (Gallay; Kamanin’s diary has 1-4-5). On the flight deck a key pressed here is the same as its digit typed: the code frees the hand controls once the ship is alone in orbit.',
+        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-4-5 by Kamanin’s diary, who checked it on the ship that morning; Gallay’s memoir and the histories that follow it have 1-2-5. On the flight deck a key pressed here is the same as its digit typed: the code frees the hand controls once the ship is alone in orbit.',
       // (the flight deck's lock, orbitdeck.ts: pressed here or typed there, the same key)
       does: `code:${key}`,
     })),

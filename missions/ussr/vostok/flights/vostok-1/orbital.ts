@@ -23,6 +23,8 @@ const OKB1 =
   'OKB-1, preliminary report of 3 May 1961 (Korolev, Bushuyev, Tikhonravov; RKK Energia archive 13029; Wilson Center record 260547)';
 const GAGARIN = 'Gagarin’s report to the State Commission, 13 April 1961 (APRF f. 3, op. 47, d. 278; Wilson Center record 260544)';
 const SIDDIQI = 'Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
+const KAMANIN_LOCK =
+  'Kamanin’s diary, 12 April 1961 (Skrytyi kosmos, book 1): «В 8 часов я вместе с ведущим инженером корабля на лифте поднялся к верху ракеты и проверил шифр (145) логического замка. Логический замок работал нормально.»';
 const ZAK = 'Zak, RussianSpaceWeb';
 const ENERGOMASH = 'NPO Energomash’s table by vehicle, row 8K72K, as reproduced by Brügge (b14643.eu): secondary';
 const MINAKOV = 'Minakov, «Ракета, поднявшая в космос Ю. Гагарина», Modelist-Konstruktor';
@@ -625,8 +627,8 @@ export const orbital: OrbitalFlight = {
   },
   manual: {
     code: doc(
-      125,
-      `${SIDDIQI}: the hand controller was locked by a three-digit code, 1-2-5, in an envelope aboard; with it, manual orientation by the Vzor and a manual command to the braking engine (mission.md)`,
+      145,
+      `${KAMANIN_LOCK}: the code he checked on the ship that morning, in the diary of the day. ${SIDDIQI} and the later memoirs (Gallay, as Tyapchenko gives it) have 1-2-5: the record disagrees, and the diary is the nearer to the hardware (mission.md, "The lock's code"). With it, manual orientation by the Vzor and a manual command to the braking engine`,
     ),
     rate: guess(
       2,
