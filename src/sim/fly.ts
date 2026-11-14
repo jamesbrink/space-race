@@ -197,8 +197,13 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
   /** Where the Earth-fixed axes have turned to: the frames coincide at liftoff. */
   const fixed = (r: Vec3, at: number): Vec3 => inertialToEcef(r, EARTH_ROTATION_RATE * at);
 
-  /** Every force but gravity, N, and what the air is doing, at a state. */
-  const forces = (s: State, at: number): { force: Vec3; q: number; mach: number; altitude: number } => {
+  /**
+   * Every force but gravity, N, and what the air is doing, at a state at `at`, with the retrorockets lit as they are from
+   * instant `as` (a step's start: a step ends on each one's lighting and burning out, so within it what burns is fixed).
+   * Read at each stage's own instant, the stage that ends a step on a lighting had that rocket lit and the one that ends a
+   * step on its burning out had it out: each burn began a sixth of a step early and ended as much short.
+   */
+  const forces = (s: State, at: number, as = at): { force: Vec3; q: number; mach: number; altitude: number } => {
     const place = ecefToGeodetic(fixed(s.r, at));
     const altitude = place.height - seaLevel;
     const air = atmosphere(altitude);
@@ -219,7 +224,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
       force = add(force, scale(axisAt(at), thrust));
     }
     // each retrorocket pushes against the motion over the ground, pitched below the level
-    const burning = fires.filter((f) => at >= f && at < f + retroBurn).length;
+    const burning = fires.filter((f) => as >= f && as < f + retroBurn).length;
     if (burning > 0 && !riding) {
       const up = upAt(s.r, at);
       const level = unit(sub(ground, scale(up, dot(ground, up))));
@@ -230,14 +235,17 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     return { force, q, mach, altitude };
   };
 
-  const rate = (s: State, at: number, m: number): State => ({ r: s.v, v: add(gravity(s.r), scale(forces(s, at).force, 1 / m)) });
+  const rate = (s: State, at: number, m: number, as: number): State => ({
+    r: s.v,
+    v: add(gravity(s.r), scale(forces(s, at, as).force, 1 / m)),
+  });
   const nudge = (s: State, d: State, h: number): State => ({ r: add(s.r, scale(d.r, h)), v: add(s.v, scale(d.v, h)) });
   const massAt = (at: number): number => (phase === 'powered' ? tr.liftoffMass.value - flow * Math.min(at, cutoff) : mass);
   const rk4 = (s: State, at: number, h: number): State => {
-    const k1 = rate(s, at, massAt(at));
-    const k2 = rate(nudge(s, k1, h / 2), at + h / 2, massAt(at + h / 2));
-    const k3 = rate(nudge(s, k2, h / 2), at + h / 2, massAt(at + h / 2));
-    const k4 = rate(nudge(s, k3, h), at + h, massAt(at + h));
+    const k1 = rate(s, at, massAt(at), at);
+    const k2 = rate(nudge(s, k1, h / 2), at + h / 2, massAt(at + h / 2), at);
+    const k3 = rate(nudge(s, k2, h / 2), at + h / 2, massAt(at + h / 2), at);
+    const k4 = rate(nudge(s, k3, h), at + h, massAt(at + h), at);
     return {
       r: add(s.r, scale(add(add(k1.r, scale(k2.r, 2)), add(scale(k3.r, 2), k4.r)), h / 6)),
       v: add(s.v, scale(add(add(k1.v, scale(k2.v, 2)), add(scale(k3.v, 2), k4.v)), h / 6)),

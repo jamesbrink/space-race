@@ -131,6 +131,8 @@ export interface Ascended {
   separation: { t: number; r: Vec3; v: Vec3 };
   /** The launch plane's pole (the law's thrust lies square to it): the vehicle's left, as it stood on the pad. */
   plane: Vec3;
+  /** The thrust's angle above the local level as the tangent law took over (`Guidance`), radians: what the law flies from there. */
+  thetaTurn: number;
 }
 
 /** The whole flight: ascent flown, then the coast from where it left the spacecraft. */
@@ -352,16 +354,21 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
   const localAt = law.localAt;
   const airOf = airAt(seaLevel, launchJd);
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => law.axisAt(s, t, m, wind, thetaTurn);
-  /** Every force but gravity over the mass, m/s^2, at a state, with the stages burning and what has left fixed for the step. */
-  const forces = (s: State, t: number, m: Mode, gone: number) => {
+  /**
+   * Every force but gravity over the mass, m/s^2, at a state at `t`, with what burns, what has left and the shape that
+   * flies all as they are from instant `as` (the step's start: a step ends on every instant they change at, so within it
+   * they are fixed). Read at each stage's own instant, the stage that ends a step on a cutoff had that engine off and the
+   * one that ends a step on an ignition had it lit: each burn was a sixth of a step late in starting and short at its end.
+   */
+  const forces = (s: State, t: number, m: Mode, gone: number, as = t) => {
     const air = airOf(s, t);
     let thrust = 0;
     let mass = o.liftoffMass.value - gone;
     o.stages.forEach((st, i) => {
       mass -= st.count * burned(i, t);
-      if (t >= plan[i]!.from && t < plan[i]!.to) thrust += stack.thrust(i, t, air.air.pressure);
+      if (as >= plan[i]!.from && as < plan[i]!.to) thrust += stack.thrust(i, t, air.air.pressure);
     });
-    const dragArea = stack.dragArea(t, air.mach);
+    const dragArea = stack.dragArea(as, air.mach);
     const axis = axisAt(s, t, m, air.wind);
     let f: Vec3 = scale(axis, thrust);
     if (air.airspeed > 0) f = add(f, scale(air.wind, (-air.q * dragArea) / air.airspeed));
@@ -404,6 +411,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
       ...plan.flatMap((p) => [p.from, p.to]),
       ...stageSep.filter(Number.isFinite),
       ...a.drops.map((d) => d.at.value),
+      ...a.drag.map((d) => d.until.value),
       ...o.events.map((e) => e.at.value),
     ]),
   ]
@@ -444,7 +452,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     const gone = droppedBy(t);
     const m = mode;
     const [before, t0] = [state, t];
-    state = step(state, t, h, (s, tt) => forces(s, tt, m, gone).accel);
+    state = step(state, t, h, (s, tt) => forces(s, tt, m, gone, t0).accel);
     t = Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     // a stage cut on its velocity, when it reaches it in this step: the step is flown again to the instant it does, found by
     // the secant on the step's length (so the instant is a smooth function of the inputs, as the law's solution needs)
@@ -453,13 +461,13 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     );
     if (crossing >= 0 && length(before.v) < cutAt[crossing]!) {
       const want = cutAt[crossing]!;
-      const at = (k: number) => length(step(before, t0, h * k, (q, tt) => forces(q, tt, m, gone).accel).v) - want;
+      const at = (k: number) => length(step(before, t0, h * k, (q, tt) => forces(q, tt, m, gone, t0).accel).v) - want;
       let [k0, f0, k1, f1] = [0, length(before.v) - want, 1, length(state.v) - want];
       for (let n = 0; n < 8 && Math.abs(f1) > 1e-9; n++) {
         const k2 = Math.min(1, Math.max(0, k1 - (f1 * (k1 - k0)) / (f1 - f0)));
         [k0, f0, k1, f1] = [k1, f1, k2, at(k2)];
       }
-      state = step(before, t0, h * k1, (q, tt) => forces(q, tt, m, gone).accel);
+      state = step(before, t0, h * k1, (q, tt) => forces(q, tt, m, gone, t0).accel);
       t = t0 + h * k1;
       plan[crossing]!.to = t;
     }
@@ -512,6 +520,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     left: o.stages.map((s, i) => (s.usable ?? s.propellant).value - burned(i, plan[i]!.to)),
     separation: { t: tPart, r: state.r, v: state.v },
     plane: n,
+    thetaTurn,
   };
 }
 

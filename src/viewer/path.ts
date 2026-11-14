@@ -15,7 +15,8 @@ import type { SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE, WGS84_B } from '../world/bodies.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';
-import { type Curve, curveAt, curveOf, limbPx, type Ribbon, ribbon, sample } from './pathline.ts';
+import { sceneDepthGlsl, uDepthRange, uSceneDepth } from './overlay.ts';
+import { type Curve, curveAt, curveOf, limbPx, type Ribbon, ribbon, sample, slope } from './pathline.ts';
 import {
   type Box,
   type ChipIn,
@@ -63,11 +64,14 @@ import {
  *   across the screen); the line fades in over the next doubling of the distance from the eye, so where it passes the
  *   camera it is seen leaving, not cut. From inside the vehicle nothing within its radius of the eye is drawn, so the
  *   line is seen through the windows even while the vehicle drawn catches up with the flight after the clock has run fast.
- * - **Hidden by what is in front of it**: drawn after the solid scene, tested against its depth and writing none, a
- *   hundredth of the way nearer than it is (so the sea it comes down to does not hide its end); beyond the far plane
- *   it is at the far plane, behind everything; and the Earth hides it by a sphere, tested for every pixel of the
- *   ribbon (pathline.ts `limbPx`) with a pixel's soft edge, so where the line goes behind the limb it ends at the limb.
- *   The sphere is the Earth's polar radius: inside the surface everywhere, so it never hides what is on the ground.
+ * - **Hidden by what is in front of it**: drawn in a pass of its own after the scene and after the engines' fire and
+ *   smoke (overlay.ts: the smoke is marched to the scene's depth, which the line does not write, so drawn with the scene
+ *   it lay under the smoke behind it and came through the pad's dust and the trail pale and broken), tested against the
+ *   scene's depth in its own fragment shader and writing none, a hundredth of the way nearer than it is (so the sea it
+ *   comes down to does not hide its end); the clouds, laid over last, cover it where they are in front of it; and the
+ *   Earth hides it by a sphere, tested for every pixel of the ribbon (pathline.ts `limbPx`) with a pixel's soft edge, so
+ *   where the line goes behind the limb it ends at the limb. The sphere is the Earth's polar radius: inside the surface
+ *   everywhere, so it never hides what is on the ground.
  * - **Still when nothing changes, eased when it does**: a new prediction is eased in from where the last one had each
  *   instant over `EASE` seconds; a prediction made again of the same flight lies on the same curve, so nothing moves.
  * - **Drawn from the eye** (origin.ts): points are kept in doubles and given to the GPU as offsets from the vehicle,
@@ -107,6 +111,8 @@ const EVERY = 200;
 const CORE = 1.3;
 const HALF = 5;
 const FLOWN_CORE = 0.9;
+/** How much of the line flown is drawn: half, so it is the line ahead that is read (the flown line is where it has been). */
+const FLOWN_OPACITY = 0.5;
 /** Seconds a new prediction is eased in over; how old the one on show may be, while a newer one is wanted, before it is said to be stale. */
 const EASE = 0.3;
 const STALE = 1.5;
@@ -202,6 +208,7 @@ const VERT = /* glsl */ `
   }`;
 
 const FRAG = /* glsl */ `
+  ${sceneDepthGlsl}
   uniform vec3 uColour, uInk;
   uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uFade, uRatio;
   uniform vec3 uShip;         // the vehicle's middle in the view's frame
@@ -210,9 +217,13 @@ const FRAG = /* glsl */ `
   uniform vec3 uCentre;       // the Earth's centre in the view's frame
   uniform float uRadius;      // the sphere that hides the line, m
   uniform float uPxPerRad;    // pixels to a radian of the view
+  uniform vec2 uView;         // the target's size, pixels
   varying float vSide, vT;
   varying vec3 vView;
   void main() {
+    // behind what the scene has drawn (the vehicle, the ground, the cabin's walls): a hundredth nearer than it is, so the
+    // sea it comes down to does not hide its end (overlay.ts: in the cel look the frame it is drawn into has no depth)
+    if (behindScene(-vView.z * 0.99, uView)) discard;
     float px = abs(vSide) * uHalf;
     float c = uCore;
     vec3 colour = uColour;
@@ -310,7 +321,9 @@ export interface PathSource {
    * deck has planned, in at most `points` points, and says what that plan is (`plan`: when it changes, the path is made
    * again) and, while engines burn, which future it shows (`pathAs`).
    */
-  predict?(start: Start, points: number): Predictor | null;
+  predict?(start: Start, points: number, guided?: boolean): Predictor | null;
+  /** Whether that deck can show the future under guidance now (its engines burn under guidance with a cutoff to come): K chooses it. */
+  readonly guidable?: boolean;
   readonly plan?: string;
   readonly pathAs?: { short: string; long: string } | null;
 }
@@ -388,6 +401,12 @@ interface Shown {
   was: Shown | null;
   /** How far it had come from the one before when a newer one began to ease from it: it stays there. */
   held?: number;
+  /**
+   * The piece of the curve last asked for (pathline.ts `curveAt`'s hint): the line is sampled along it in order of time,
+   * so each place is found from the last in a step or two. (Found from the first piece each time, as it was, a line of a
+   * few thousand chords over a curve of a few thousand points took tens of milliseconds a frame on a phone.)
+   */
+  hint: number;
 }
 
 /** A line's buffers on the GPU and in doubles: the ribbon's, and the points it was last sampled at (scene frame). */
@@ -452,7 +471,12 @@ export class FlightPath {
   private readonly behind = ribbonGeometry(FLOWN_MOST);
   /** The line flown: instants and places in the frame that does not turn, as heard from the flight deck. */
   private readonly flown = { t: new Float64Array(FLOWN), r: new Float64Array(FLOWN * 3), n: 0 };
-  private flownCurve: { curve: Curve; key: string } | null = null;
+  private readonly flownCurve = {
+    curve: { t: new Float64Array(FLOWN + 1), r: new Float64Array((FLOWN + 1) * 3), v: new Float64Array((FLOWN + 1) * 3), n: 0 } as Curve,
+    kept: -1,
+    last: Number.NaN,
+    at: Number.NaN,
+  };
   private readonly uniforms: Record<string, THREE.IUniform>;
   private readonly materials: THREE.ShaderMaterial[] = [];
   private readonly flight: SitedFlight;
@@ -480,6 +504,8 @@ export class FlightPath {
   /** The instant on the path the vehicle is drawn at, and what the line was last sampled for. */
   private now = 0;
   private sampledFor = '';
+  private readonly keyNow = new Float64Array(20).fill(Number.NaN);
+  private readonly markAt = new Float64Array(3);
   private marks: Mark[] = [];
   private laid = new Map<string, MarkOut>();
   private drawnAt = -1;
@@ -499,6 +525,13 @@ export class FlightPath {
    * them took, the instant it starts at, how far it was taken to meet the vehicle, and the gap.
    */
   drawn = { ahead: 0, flown: 0, ms: 0, now: 0, pinned: 0, offset: 0, gap: 0, fade: 0 };
+  /**
+   * For the path test only: the line flown drawn in the line ahead's colour, width and strength, the same geometry and the
+   * same rules, so its own pixels can be told from a bright scene by the same measure (drawn pale at half strength, as it
+   * is, a stretch of it over white cloud or the pale smoke differs from the frame without it by less than the measure's
+   * threshold, and a whole line was counted as pieces).
+   */
+  flownAsAhead = false;
 
   /**
    * `parent` takes the markers; `readout` is where the switch and the figures go (beside the navball); `button` is the
@@ -526,6 +559,8 @@ export class FlightPath {
 
     this.uniforms = {
       uOrigin,
+      tSceneDepth: uSceneDepth,
+      uDepthRange,
       uView: { value: new THREE.Vector2(1, 1) },
       uHalf: { value: HALF },
       uClip: { value: 1 },
@@ -588,7 +623,7 @@ export class FlightPath {
       this.behind.geometry,
       'Flown path',
       11,
-      { uCore: { value: FLOWN_CORE }, uColour: { value: new THREE.Color() }, uOpacity: { value: 0.5 } },
+      { uCore: { value: FLOWN_CORE }, uColour: { value: new THREE.Color() }, uOpacity: { value: FLOWN_OPACITY } },
       { FLOWN: '' },
     );
     this.mesh = make(this.ahead.geometry, 'Predicted path', 12, {}, {});
@@ -695,7 +730,8 @@ export class FlightPath {
   /** Whether there is a choice of future to make (K): the engine burns, under guidance, with a programme left to fly. */
   private choosing(): boolean {
     const tr = this.flight.trajectory;
-    return this.burning() && this.source.steering.guidance && this.source.craft !== null && !!tr && (this.sample?.t ?? 0) < this.until();
+    if (!tr) return this.source.guidable === true;
+    return this.burning() && this.source.steering.guidance && this.source.craft !== null && (this.sample?.t ?? 0) < this.until();
   }
 
   /** When the engine stops if nobody stops it: the record's cutoff with the sequencer on; with it off, when it runs dry. */
@@ -724,15 +760,18 @@ export class FlightPath {
   }
 
   /** Which future is to be shown from the sample on show: null for none (off, not flying, down). */
-  private want(): { key: string; plan: string; burn: Burn | null; sequence: Sequence | undefined } | null {
+  private want(): { key: string; plan: string; burn: Burn | null; sequence: Sequence | undefined; guided?: boolean } | null {
     const s = this.sample;
     const tr = this.flight.trajectory;
     if (!s || !this.on || !this.source.active || s.phase === 'landed') return null;
     // (a flight into orbit: its deck predicts, from the sample on show and what it has planned)
-    if (!tr)
-      return this.source.predict && s.t > 0
-        ? { key: `${s.t}|${this.source.plan ?? ''}`, plan: this.source.plan ?? '', burn: null, sequence: undefined }
-        : null;
+    if (!tr) {
+      if (!this.source.predict || !(s.t > 0)) return null;
+      // (and under guidance, whichever future was asked for: K)
+      const guided = this.choosing() && this.guided;
+      const plan = `${this.source.plan ?? ''}|${guided ? 'guided' : 'cut'}`;
+      return { key: `${s.t}|${plan}`, plan, burn: null, sequence: undefined, guided };
+    }
     const craft = this.source.craft;
     const { trim, guidance } = this.source.steering;
     const until = this.until();
@@ -778,7 +817,9 @@ export class FlightPath {
         ...(want.burn ? { burn: want.burn } : {}),
         ...(want.sequence ? { sequence: want.sequence } : {}),
       };
-      const run = tr ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options) : this.source.predict!(start, MOST - 2);
+      const run = tr
+        ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options)
+        : this.source.predict!(start, MOST - 2, want.guided === true);
       if (!run) return;
       this.job = {
         run,
@@ -890,6 +931,7 @@ export class FlightPath {
       result,
       frame,
       curve: curveOf(n ? result.points : []),
+      hint: 0,
       began: performance.now(),
       // (eased from the line on show as it is drawn now: from the one it was itself eased from, if that is still going)
       was: ease && old && old.curve.n > 1 && n > 0 ? old : null,
@@ -1017,13 +1059,24 @@ export class FlightPath {
     const f = this.flown;
     const s = this.sample;
     if (f.n < 1 || !s || !this.live) return null;
-    const key = `${f.n}|${f.t[f.n - 1]}|${s.t}`;
-    if (this.flownCurve?.key === key) return this.flownCurve.curve;
-    const points: { t: number; r: ArrayLike<number> }[] = [];
-    for (let i = 0; i < f.n; i++) points.push({ t: f.t[i]!, r: f.r.subarray(i * 3, i * 3 + 3) });
-    if (s.t > f.t[f.n - 1]! + 1e-6) points.push({ t: s.t, r: s.centre ?? s.r });
-    const curve = curveOf(points);
-    this.flownCurve = { curve, key };
+    const c = this.flownCurve;
+    const last = f.t[f.n - 1]!;
+    if (c.kept === f.n && c.last === last && c.at === s.t) return c.curve.n > 1 ? c.curve : null;
+    // (written into the same buffers each time: while the flight goes on it changes every frame, and a curve made anew
+    // each time was a few hundred small objects a frame for the collector)
+    const curve = c.curve;
+    curve.t.set(f.t.subarray(0, f.n));
+    curve.r.set(f.r.subarray(0, f.n * 3));
+    curve.n = f.n;
+    if (s.t > last + 1e-6) {
+      curve.t[f.n] = s.t;
+      curve.r.set(s.centre ?? s.r, f.n * 3);
+      curve.n++;
+    }
+    for (let i = 0; i < curve.n; i++) slope(curve, i);
+    c.kept = f.n;
+    c.last = last;
+    c.at = s.t;
     return curve.n > 1 ? curve : null;
   }
 
@@ -1034,7 +1087,7 @@ export class FlightPath {
 
   /** Where the line on show puts instant `t` in the scene now, eased from the one before (and that from its own, held). */
   private alongAt(shown: Shown, t: number, out: Float64Array, o: number, mix: number): void {
-    curveAt(shown.curve, t, this.at3, 0);
+    shown.hint = curveAt(shown.curve, t, this.at3, 0, shown.hint);
     this.sceneOf(this.at3, 0, t, shown.frame, this.now, out, o);
     const was = shown.was;
     if (was && mix < 1 && t >= was.curve.t[0]! && t <= was.curve.t[was.curve.n - 1]!) {
@@ -1173,38 +1226,28 @@ export class FlightPath {
     const e = camera.quaternion;
     const m = camera.projectionMatrix.elements;
     const flown = this.flownNow();
-    const key = [
-      eye.x,
-      eye.y,
-      eye.z,
-      e.x,
-      e.y,
-      e.z,
-      e.w,
-      m[0],
-      m[5],
-      m[8],
-      m[9],
-      camera.near,
-      this.lineSize.y,
-      now,
-      mix,
-      shown.key,
-      shown.frame,
-      this.vessel.x,
-      this.vessel.y,
-      this.vessel.z,
-      flown?.n ?? 0,
-      flown ? flown.t[flown.n - 1] : 0,
-    ].join();
+    // (compared number by number in a buffer kept for it: a string made of them every frame was garbage every frame)
+    const key = this.keyNow;
+    const values = [eye.x, eye.y, eye.z, e.x, e.y, e.z, e.w, m[0]!, m[5]!, m[8]!, m[9]!, camera.near, this.lineSize.y, now, mix];
+    let same = this.sampledFor === shown.key + shown.frame;
+    const put = (i: number, x: number) => {
+      if (key[i] !== x) same = false;
+      key[i] = x;
+    };
+    for (let i = 0; i < values.length; i++) put(i, values[i]!);
+    put(15, this.vessel.x);
+    put(16, this.vessel.y);
+    put(17, this.vessel.z);
+    put(18, flown?.n ?? 0);
+    put(19, flown ? flown.t[flown.n - 1]! : 0);
     // the markers where the line has them now
+    const a = this.markAt;
     for (const mk of this.marks) {
-      const a: number[] = [0, 0, 0];
       this.sceneOf(mk.r, 0, mk.t, shown.frame, now, a, 0);
       mk.at.set(a[0]!, a[1]!, a[2]!);
     }
-    if (key === this.sampledFor) return;
-    this.sampledFor = key;
+    if (same) return;
+    this.sampledFor = shown.key + shown.frame;
     const began = performance.now();
     this.lensEye[0] = eye.x;
     this.lensEye[1] = eye.y;
@@ -1234,8 +1277,9 @@ export class FlightPath {
     if (flown) {
       const f1 = Math.min(now, flown.t[flown.n - 1]!);
       const v = this.at3;
+      let hint = 0;
       const alongFlown = (t: number, out: Float64Array, o: number) => {
-        curveAt(flown, t, v, 0);
+        hint = curveAt(flown, t, v, 0, hint);
         this.sceneOf(v, 0, t, shown.frame, now, out, o);
         if (pinned) {
           const w = weight(f1 - t);
@@ -1325,14 +1369,16 @@ export class FlightPath {
     u.uRatio!.value = ratio;
     u.uHalf!.value = HALF * ratio;
     u.uCore!.value = CORE * ratio;
-    (this.flownMesh.material as THREE.ShaderMaterial).uniforms.uCore!.value = FLOWN_CORE * ratio;
+    const flown = (this.flownMesh.material as THREE.ShaderMaterial).uniforms;
+    flown.uCore!.value = (this.flownAsAhead ? CORE : FLOWN_CORE) * ratio;
+    flown.uOpacity!.value = this.flownAsAhead ? u.uOpacity!.value : FLOWN_OPACITY;
     // the frame is exposed for the hour (daysky.ts) after this is drawn: the line is given what comes out as its colour whatever that is
     const exposure = 0.9 / Math.max(0.05, renderer.toneMappingExposure);
     const cel = this.host.look === 'cel';
     u.uCel!.value = cel ? 1 : 0;
     (u.uColour!.value as THREE.Color).copy(amber).multiplyScalar(exposure);
     (u.uInk!.value as THREE.Color).copy(ink).multiplyScalar(exposure);
-    ((this.flownMesh.material as THREE.ShaderMaterial).uniforms.uColour!.value as THREE.Color).copy(pale).multiplyScalar(exposure);
+    (flown.uColour!.value as THREE.Color).copy(this.flownAsAhead ? amber : pale).multiplyScalar(exposure);
 
     // the eye and the vehicle in the scene's frame (in the draw the scene stands with the eye at its origin: origin.ts)
     const eye = absolute(this.eye.copy(camera.position));

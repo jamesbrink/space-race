@@ -263,18 +263,21 @@ export function stagedVehicle(
   const hotShare = o.stages.map((st) => (st.hot ? hotStage(st.hot) : 1));
   const joined = (s: StagedState, i: number, at: number) => i > 0 && s.stages[i - 1]!.gone > at;
   const firesInto = (s: StagedState, i: number, at: number) => hotShare[i] !== 1 && joined(s, i, at);
-  /** What stage `i` pushes the stack with, N: its thrust in this air, less what a joint below takes of it. */
-  const pushOf = (s: StagedState, i: number, at: number, pressure: number): number => {
-    if (!burning(s, i, at)) return 0;
+  /** What stage `i` pushes the stack with, N: its thrust in this air, less what a joint below takes of it, with what burns and what is joined as from instant `as`. */
+  const pushOf = (s: StagedState, i: number, at: number, pressure: number, as = at): number => {
+    if (!burning(s, i, as)) return 0;
     const f = stack.thrust(i, at, pressure);
-    return firesInto(s, i, at) ? f * hotShare[i]! : f;
+    return firesInto(s, i, as) ? f * hotShare[i]! : f;
   };
-  /** Every force but gravity over the mass, at a state, an instant and an axis. */
-  const accel = (st: State, at: number, s: StagedState, axis: Vec3, gone: number) => {
+  /**
+   * Every force but gravity over the mass, at a state, an instant and an axis, with what burns as it is from instant `as`
+   * (a step's start: a step ends on every instant something stops, so within it what burns is fixed).
+   */
+  const accel = (st: State, at: number, s: StagedState, axis: Vec3, gone: number, as = at) => {
     const here = air(st, at);
     let thrust = 0;
     o.stages.forEach((_, i) => {
-      if (burning(s, i, at)) thrust += pushOf(s, i, at, here.air.pressure);
+      thrust += pushOf(s, i, at, here.air.pressure, as);
     });
     const dragArea = stack.dragArea(gone, here.mach);
     let f = scale(axis, thrust);
@@ -475,9 +478,20 @@ export function stagedVehicle(
       q = normalize(multiply(turnE, q));
     } else {
       const along = c.prescribed ?? ((_: State, at: number) => turn(turned(s.q, s.w, alpha, at - s.t), X));
-      const next = step({ r, v }, s.t, h, (st, at) => accel(st, at, s, along(st, at), gone).accel);
-      r = next.r;
-      v = next.v;
+      // (a stage that runs dry within the tick: the tick is flown in two, to the instant it does and on from there, so
+      // its burn is all of its propellant and no more)
+      const dries = o.stages
+        .map((_, i) => (burning(s, i, s.t) ? stop(s, i) : Infinity))
+        .filter((x) => x > s.t + 1e-9 && x < t - 1e-9)
+        .sort((p, q) => p - q);
+      let at0 = s.t;
+      for (const to of [...dries, t]) {
+        const from = at0;
+        const next = step({ r, v }, from, to - from, (st, at) => accel(st, at, s, along(st, at), gone, from).accel);
+        r = next.r;
+        v = next.v;
+        at0 = to;
+      }
       q = c.prescribed ? along1(c.prescribed({ r, v }, t), law.n) : turned(s.q, s.w, alpha, h);
       w = [s.w[0] + alpha[0] * h, s.w[1] + alpha[1] * h, s.w[2] + alpha[2] * h];
     }

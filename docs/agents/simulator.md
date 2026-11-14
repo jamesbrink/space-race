@@ -7,7 +7,10 @@ Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 cutoff, the tilt programme, drag against Mach number, separation, retrofire, the parachutes, each a
 `Measure` with its confidence and source, in SI with the source's own units in `source`.
 `fly(trajectory, site, seaLevel)` integrates it (RK4 at 0.05 s, every step cut to end on the next
-event, so one input gives one flight to the last bit) in an Earth-centred frame that does not turn,
+event, so one input gives one flight to the last bit; within a step what burns and what is attached are as they are
+from the step's start, so a burn that ends on a step's end is pushed through all of it and one that lights there is
+not felt in it: every integrator here, batch, live and predicting, keeps that rule, and a live tick that holds a burn's
+end inside it is flown in two there) in an Earth-centred frame that does not turn,
 under J2 gravity, the 1976 standard atmosphere and drag through air that turns with the Earth, and
 returns samples and `Results`. Attitude is prescribed, not flown: the gyros' tilt going up, heat
 shield first coming down. `from` starts it at separation from a given state, so the capsule's half
@@ -66,10 +69,17 @@ never adjusted to bring a check in.
   rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
   propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
   source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now (fliers.ts
-  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "Engines stopped now" beside
-  the figures); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe, or down to the
-  ejection height with the burn, its end, the modules' parting and the entry marked (it stops there whether a burn was
-  made or not, as flyOrbit does). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
+  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "if cut now" beside
+  the figures), or, under guidance with the last cutoff to come, where guidance would take it, chosen by the same control
+  as a ballistic flight's (To cutoff / Cut now, K: path.ts asks the deck's `guidable`): fliers.ts `guided`, the stated law's
+  axis leaned by the trim, the record's steps at their times while the sequencer is on (Block E cut where its integrator's
+  sum reaches its setting, found ahead in one sweep, `apparentBy` giving the record's run the sum the live vehicle keeps),
+  each stage dry when its load is gone, drawn dashed to the last cutoff, and from the parting the spacecraft as planned,
+  round the orbit or down (from the record's state at T+40, 150 and 400 s it parts within 70 m and 0.16 m/s of the batch
+  run: tests/staged.test.mjs); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe,
+  or down to the ejection height with the burn, its end, the modules' parting and the entry marked (it stops there
+  whether a burn was made or not, as flyOrbit does; begun within the burn, the burn goes on along the line it lit on,
+  from the run's own state then: `lit`). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
   the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
   ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
   braking engine is heard when the run on show burns it (its `fires`), as one burn of its length. Every engine burns
@@ -540,16 +550,20 @@ never adjusted to bring a check in.
   points. A prediction is begun at most five times a second and worked in slices of 1.5 ms a frame, for every vehicle
   (`Predictor.run(budget)`, the path put at its own instants in a slice of its own; `sr.path.cost` says what the last
   one took): sliced, not a worker, because a vehicle is closures over its flight's data (a programme's axis, a plan)
-  that a worker would have to rebuild for every state. On a phone-class processor (Chrome's CPU slowed four times) the
-  longest slice, both flights by the record and by hand under thrust, was 2.4 to 4.4 ms in each run but one (19 ms
-  once, in Vostok 1's ascent: a pause of the page's, a whole cut-now prediction there taking 1 to 7 ms unslowed), where
+  that a worker would have to rebuild for every state. On a phone-class processor (Chrome's CPU slowed four times), both flights by the record and
+  by hand stepped through deterministically, the camera moving every frame, the longest slice was 1.6 to 3.1 ms, the
+  line's placing for the eye 4.9 to 7.6 ms and the path's whole frame 6.8 to 10.5 ms, one frame in a few hundred over
+  8 (November 2026; the 19 ms slice an earlier, real-time measurement saw once did not come again: the two things that
+  could make one long frame of it, the path laid out again at once when it did not fit its points and each place on the
+  curve found from its first piece, are gone: `sampled` begins again in a slice of its own, pathline.ts `pieceOf`
+  halves), where
   the orbital deck's old predictor took 135 ms in one frame (14 November 2026). It is worked out only when it is
   wanted: while a prediction made again from the flight would lie within half a pixel of the curve on show wherever that
   is drawn (its departure from the curve, its place and three times its velocity's over the time ahead: a coast's
   departure grows no faster), the plan unchanged, and a path that comes round still reaching most of the way round,
   that curve is its future and nothing is worked out again (path.ts `holds`); under thrust the flight leaves it within
-  a frame or two and it is worked again (on the launch vehicle of a flight into orbit the path is "if cut now": the
-  deck says so beside its figures); nothing is predicted while the path is off. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
+  a frame or two and it is worked again (on the launch vehicle of a flight into orbit the path is "if cut now" unless the
+  guided future is chosen: the deck says which beside its figures); nothing is predicted while the path is off. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
   is given one `Predictor` and one `Prediction` and knows nothing of which it was. A path that comes down is drawn over
   the ground (each point where it will be over the ground at its own instant); one that goes round is drawn in the
   navball's frame (O), in Orbit as it lies in the frame that does not turn. It is an instrument's line, and lunar-lift's
@@ -560,8 +574,9 @@ never adjusted to bring a check in.
   wherever the eye is, at multiples of a power of two seconds so the chords stay put as the clock runs; it starts at the
   instant on the curve nearest the vehicle as drawn and is taken onto the vehicle there; it is a ribbon of constant
   width in pixels (each chord pushed out across its own direction on the screen and mitred to the next, never thinned
-  with distance) with a soft core (in the cel look a flat line with an ink edge), drawn after the solid scene against
-  its depth and writing none, so the vehicle, the ground and the cabin's walls hide it; the Earth hides it by a sphere
+  with distance) with a soft core (in the cel look a flat line with an ink edge), drawn in a pass of its own after the
+  engines' fire and smoke and before the clouds (viewer/overlay.ts), against the scene's depth and writing none, so the
+  vehicle, the ground and the cabin's walls hide it and the smoke behind it does not; the Earth hides it by a sphere
   (the polar radius) tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle (half its length and a
   little, or a tenth of the view's height at it) and comes in over 40 px more as seen at the vehicle (lunar-lift's stops), a rule of the screen
   so a short path near a big vehicle is still seen leave it, is kept off the vehicle's outline on the screen only where it passes in front

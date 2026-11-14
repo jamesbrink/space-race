@@ -146,6 +146,11 @@ rules are the screen's, the same for every path, never tuned to a flight:
   next doubling of the distance; nothing behind the eye is ever a vertex.
 - **Behind the Earth to a pixel**: a sphere (the polar radius) is tested for every pixel of the ribbon in the view's own
   frame, worked out in doubles, so the line ends at the limb however long its chords.
+- **Over the fire and smoke, under the clouds**: it is drawn in a pass of its own (overlay.ts `OverlayPass`, on its own
+  layer) after the engines' fire and smoke are laid over the frame and before the clouds, tested against the scene's
+  depth in its fragment shader (in the cel look the frame by then is the ink's, with no depth of its own). The smoke is
+  marched as far as the scene's depth, which the line does not write: drawn with the scene, the line lay under the smoke
+  behind it, and through the pad's dust and the trail it came out pale and in pieces.
 - **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, or a
   tenth of the view's height at it), then in from nothing over 40 px as seen at the vehicle, so a short path near a big
   vehicle (on the pad, the first seconds of a climb) is seen leave it.
@@ -157,6 +162,12 @@ rules are the screen's, the same for every path, never tuned to a flight:
   over 1 px off (the line ahead and the line flown), no dots or fragments, no sheet, nothing jumping between frames,
   chips off the panels and pointing at their places, the apsides where the path's radial speed changes sign; and each
   flight taken over at seeded instants and flown by scripted hands, then run on to its end against where the path said.
+  It is deterministic: each instant is reached exactly (the clock put forward a deck's five seconds at a time; the deck
+  flies in whole ticks, so the flight there is the same however it got there), and nothing is measured until the
+  prediction on show is the one for that instant, its ease over and the line sampled for the camera as it stands. The
+  line flown is measured drawn in the line ahead's colour and strength (`FlightPath.flownAsAhead`): the same geometry
+  and rules, told from a bright scene by the same threshold, which its own pale, half-strength drawing over white cloud
+  is not.
 
 ## Drawing only what changed
 

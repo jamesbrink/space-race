@@ -56,7 +56,7 @@ const MISSES = {
       by: 225,
       slack: 10,
       why:
-        'It reaches 7 km at 10:45:45 Moscow time, where the record has the hatch going at 10:42 (to the minute) and the module on the ground at 10:48. A minute of it is the landing being 467 km long; ' +
+        'It reaches 7 km at 10:45:43 Moscow time, where the record has the hatch going at 10:42 (to the minute) and the module on the ground at 10:48. A minute of it is the landing being 448 km long; ' +
         'the rest is a descent that takes longer than the flight’s did, which points at `retro.aim` and `retro.deltaV` (a push only 59 per cent of which is against the motion) and at the orbit being read too high',
     },
     crossTrack: {
@@ -68,11 +68,11 @@ const MISSES = {
         'miss is 9 km. So `retro.aim` as the record words it (“the TDU was directed to the Sun”) cannot be the whole of how the engine’s axis lay: the sensor’s axis to the engine’s is the thing to find. Not adjusted',
     },
     alongTrack: {
-      by: 467_000,
+      by: 448_300,
       slack: 10_000,
       why:
-        'It comes down 467 km beyond the record’s landing along its own track. Three inputs are each worth as much: `injection.arc` (no source; reckoned by hand to 3 degrees, 129 km a degree), ' +
-        '`retro.aim` (straight against the motion it lands 453 km shorter, 14 km from the record: which is no proof, given the first) and the reading of `orbit` (see apogee). Not adjusted: ' +
+        'It comes down 448 km beyond the record’s landing along its own track. Three inputs are each worth as much: `injection.arc` (no source; reckoned by hand to 3 degrees, 129 km a degree), ' +
+        '`retro.aim` (straight against the motion it lands 450 km shorter, 2 km short of the record: which is no proof, given the first) and the reading of `orbit` (see apogee). Not adjusted: ' +
         'the ascent flown is what replaces the first, a source on the solar sensor the second',
     },
   },

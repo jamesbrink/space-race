@@ -673,10 +673,12 @@ export function propagate(
         if (g.out.length >= most) break;
       }
       if (g.out.length >= most) {
-        // (a long path that will not fit at the longest step is given longer ones: an orbit of hours in 480 points)
+        // (a long path that will not fit at the longest step is given longer ones: an orbit of hours in 480 points; begun
+        // again in a slice of its own unless there is no end to the slice, so a path laid out twice or three times over
+        // costs no frame more than its slices: done at once, it was a frame of 19 ms on a phone)
         const bend = g.bend * 2;
         grid = { out: [points[0]!], i: 0, last: points[0]!.t, bend, longest: g.longest * (bend > 0.2 ? 2 : 1) };
-        return sampled(until);
+        return until === Number.POSITIVE_INFINITY ? sampled(until) : null;
       }
     }
     if (points.length > 1) g.out.push(points[points.length - 1]!);

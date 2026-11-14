@@ -46,19 +46,34 @@ export function curveOf(points: readonly { t: number; r: ArrayLike<number>; v?: 
 }
 
 /** The velocity at point `i` from its neighbours (a run of places with no velocities: the line flown). */
-function slope(c: Curve, i: number): void {
+export function slope(c: Curve, i: number): void {
   const a = Math.max(0, i - 1);
   const b = Math.min(c.n - 1, i + 1);
   const dt = c.t[b]! - c.t[a]!;
   for (let k = 0; k < 3; k++) c.v[i * 3 + k] = dt > 0 ? (c.r[b * 3 + k]! - c.r[a * 3 + k]!) / dt : 0;
 }
 
-/** The piece of the curve an instant is in (the last whose start is at or before it), from `hint` on. */
+/**
+ * The piece of the curve an instant is in (the last whose start is at or before it): a step or two from `hint` (the
+ * line is sampled in order of time, so the last piece is the usual answer), else found by halving, so no instant costs
+ * more than the log of the curve's length.
+ */
 export function pieceOf(c: Curve, t: number, hint = 0): number {
-  let i = Math.min(Math.max(0, hint), Math.max(0, c.n - 2));
-  while (i > 0 && c.t[i]! > t) i--;
-  while (i < c.n - 2 && c.t[i + 1]! <= t) i++;
-  return i;
+  const last = Math.max(0, c.n - 2);
+  let i = Math.min(Math.max(0, hint), last);
+  for (let k = 0; k < 4; k++) {
+    if (i > 0 && c.t[i]! > t) i--;
+    else if (i < last && c.t[i + 1]! <= t) i++;
+    else return i;
+  }
+  let lo = 0;
+  let hi = last;
+  while (lo < hi) {
+    const m = (lo + hi + 1) >> 1;
+    if (c.t[m]! <= t) lo = m;
+    else hi = m - 1;
+  }
+  return lo;
 }
 
 /**

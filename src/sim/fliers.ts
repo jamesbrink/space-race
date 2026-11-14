@@ -27,7 +27,20 @@
 import type { Trajectory } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import { add, cross, dot, ecefToGeodetic, type Geodetic, inertialToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import {
+  add,
+  cross,
+  dot,
+  ecefToGeodetic,
+  ecefToInertial,
+  type Geodetic,
+  inertialToEcef,
+  length,
+  scale,
+  sub,
+  unit,
+  type Vec3,
+} from '../world/frames.ts';
 import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, G0, thrustIn } from './fly.ts';
@@ -35,7 +48,9 @@ import { blowing, blowOf, floorAt, upAt } from './forces.ts';
 import { tearOf } from './loads.ts';
 import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
-import { stackOf } from './staged.ts';
+import { aboutAxis, turn } from './rigid.ts';
+import { airAt, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
+import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
@@ -235,7 +250,9 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
  * (orbital.ts `shipPush`: the air on the entry body, the whole ship's mass until the modules part), the braking burn as the
  * plan has it (the timer's, a hand's, or none: `on` at or past `Number.MAX_SAFE_INTEGER` is none), its line fixed as it
  * lights (`aimOf`), and the modules' parting; and it stops where its pilot leaves, at the ejection height, burn or no burn,
- * as flyOrbit does. Begun within the burn, the line is the one it would have lit along from the state at the start.
+ * as flyOrbit does. Begun within the burn, the burn in progress goes on as it is: along the line it was fixed on as it
+ * lit, from where the ship was then (`lit`, the run's own state at the burn's start: the line is a function of that
+ * state and the Sun then, `aimOf`); without it, the line it would have lit along from the state at the start.
  */
 export function spacecraft(
   o: OrbitalFlight,
@@ -243,6 +260,7 @@ export function spacecraft(
   site: Geodetic,
   seaLevel: number,
   start: { t: number; r: Vec3; v: Vec3 },
+  options: { lit?: { r: Vec3; v: Vec3 } } = {},
 ): Flier {
   const gast0 = greenwichSiderealTime(launchJd);
   // (fly.ts's frame is frames.ts's inertial frame of date turned back by the sidereal time at liftoff)
@@ -253,7 +271,10 @@ export function spacecraft(
   const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 =>
     aimOf(o, r, v, () => flat(sunPosition(terrestrialTime(launchJd + t / 86_400))), flat);
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
-  let aim: Vec3 | null = burning ? aimAt(start.t, start.r, start.v) : null;
+  let aim: Vec3 | null = burning ? (options.lit ? aimAt(on, options.lit.r, options.lit.v) : aimAt(start.t, start.r, start.v)) : null;
+  // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
+  // there and not at a step's own instants, the last of which is the parting itself)
+  let since = start.t;
   return {
     kind: 'coast',
     cutoff: null,
@@ -262,11 +283,12 @@ export function spacecraft(
     radius: o.orbit.radius.value,
     ground: floorOf(site, seaLevel),
     burning: () => burning,
-    push: (at, p, u, altitude) => shipPush(o, at, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
+    push: (_at, p, u, altitude) => shipPush(o, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
     next: (t) => after(marks, t),
     below: () => o.ejection.altitude.value,
     arrive(t, r, v, _altitude, by): Arrival {
       if (by === 'height') return { end: true };
+      since = t;
       const events: EventKind[] = [];
       if (t === on && t < parted) {
         aim = aimAt(t, r, v);
@@ -314,4 +336,221 @@ export function stack(o: OrbitalFlight, site: Geodetic, seaLevel: number, mass: 
     below: () => Number.NEGATIVE_INFINITY,
     arrive: () => ({}),
   };
+}
+
+/** What a guided staged vehicle (`guided`) is given of the flight as it stands. */
+export interface GuidedNow {
+  /** The live vehicle (stagedlive.ts), whose stages, propellant and record sequence the future is flown on. */
+  vehicle: StagedVehicle;
+  /** The law's unknowns, as solved for the flight. */
+  solved: Solved;
+  /** The vehicle as it stands: each stage lit, stopped and let go, the drops let go, each integrator's sum. */
+  state: Pick<StagedState, 'stages' | 'drops' | 'apparent'>;
+  /** Whether the sequencer sets off the record's steps; with it off nothing is lit, cut or let go but what runs dry. */
+  sequence: boolean;
+  /** How far the hands have leaned the law, radians; and the law's angle as its tangent took over, where it has. */
+  trim?: { pitch: number; yaw: number };
+  thetaTurn?: number | null;
+  /** The plan the spacecraft flies once parted (its braking burn), and when the flight was launched (a Julian date). */
+  plan: OrbitalFlight;
+  launchJd: number;
+}
+
+/**
+ * A staged launch vehicle flown on by its guidance (above, `guided`): from `start` (fly.ts's frame) with `now` as it
+ * stands. The law is staged.ts's (`lawOf`), its axis worked in frames.ts's inertial frame of date as the live vehicle and
+ * the batch run work it; the forces are theirs (`stackOf`'s thrust, drag and shape flown, the live vehicle's mass). Its
+ * steps are at their instants, worked out first in one sweep over the time ahead (a stage cut on its apparent velocity at
+ * the instant its integrator's sum reaches the setting: its vacuum thrust over the mass, summed, as stagedlive.ts sums
+ * it), so the propagator ends a step on each; a stage runs dry when its load is gone. A stage cut on its space-fixed speed
+ * keeps the record's instant: no stage of the record's is cut so. The attitude is the law's, placed (the live vehicle's
+ * steering lag, a few hundredths of a degree, is not stepped), as the batch run places it.
+ */
+export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start: { t: number; r: Vec3; v: Vec3 }, now: GuidedNow): Flier {
+  const v = now.vehicle;
+  const stack = stackOf(o);
+  const gast0 = greenwichSiderealTime(now.launchJd);
+  const law = lawOf(o, site, now.launchJd, now.solved);
+  const airOf = airAt(seaLevel, now.launchJd);
+  const toDate = (u: Vec3): Vec3 => ecefToInertial(u, gast0);
+  const flat = (u: Vec3): Vec3 => inertialToEcef(u, gast0);
+  const last = o.stages.length - 1;
+  const trim = now.trim ?? { pitch: 0, yaw: 0 };
+  // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
+  const cur: StagedState = {
+    ...v.start(),
+    stages: now.state.stages.map((x) => ({ ...x })),
+    drops: { ...now.state.drops },
+    apparent: [...now.state.apparent],
+  };
+  const doneIn = (k: Step, s: StagedState): boolean =>
+    k.kind === 'drop'
+      ? Number.isFinite(s.drops[k.id] ?? Infinity)
+      : k.kind === 'ignite'
+        ? Number.isFinite(s.stages[k.stage]!.from)
+        : k.kind === 'cut'
+          ? Number.isFinite(s.stages[k.stage]!.to) || Number.isFinite(s.stages[k.stage]!.gone)
+          : Number.isFinite(s.stages[k.stage]!.gone);
+  const apply = (k: Step, t: number, into: StagedState): void => {
+    if (k.kind === 'drop') {
+      into.drops = { ...into.drops, [k.id]: t };
+      return;
+    }
+    const stages = into.stages.map((x) => ({ ...x }));
+    const st = stages[k.stage]!;
+    if (Number.isFinite(st.gone)) return;
+    if (k.kind === 'ignite' && !Number.isFinite(st.from)) st.from = t;
+    else if (k.kind === 'cut' && Number.isFinite(st.from) && st.to === Infinity) st.to = t;
+    // (let go and gone at once: the stagedlive.ts `settle` of a stage pressed on after its release is not predicted)
+    else if (k.kind === 'separate')
+      for (let j = 0; j <= k.stage; j++)
+        if (!Number.isFinite(stages[j]!.gone)) {
+          stages[j]!.gone = t;
+          stages[j]!.loose = Math.min(stages[j]!.loose, t);
+        }
+    into.stages = stages;
+  };
+  // The steps ahead and their instants: the record's, each at its time (one due already, at the start), a cut on the
+  // apparent velocity found by summing the integrator over the time ahead with the steps before it applied
+  const plan: { at: number; step: Step }[] = [];
+  if (now.sequence) {
+    const setting = (i: number): number | null => {
+      const st = o.stages[i]!;
+      return st.velocity?.apparent ? st.velocity.speed.value + (st.velocity.over?.value ?? 0) : null;
+    };
+    const ahead = v.sequence.filter((k) => !doneIn(k.step, cur)).map((k) => ({ at: Math.max(k.at, start.t), step: k.step }));
+    const summed = ahead.filter((k) => k.step.kind === 'cut' && setting(k.step.stage) !== null);
+    const timed = ahead.filter((k) => !summed.includes(k)).sort((a, b) => a.at - b.at);
+    const sweep: StagedState = { ...cur, stages: cur.stages.map((x) => ({ ...x })), drops: { ...cur.drops } };
+    const sums = [...cur.apparent];
+    const pushOf = (i: number, at: number) =>
+      v.burning(sweep, i, at) ? (o.stages[i]!.count * stack.throttle(i, at) * o.stages[i]!.thrust.vacuum.value) / v.mass(sweep, at) : 0;
+    // (the sum's step, s: the live vehicle sums every tick by the trapezoid; this is the same sum over whole seconds, whose
+    // error on a thrust over a mass that change smoothly is a few millimetres a second (a quarter of a millisecond on the cut); and only while a stage cut
+    // on it burns: before, the sweep goes from one step to the next)
+    const H = 1;
+    let k = 0;
+    const end = Math.max(start.t, ...timed.map((x) => x.at)) + 2000;
+    for (let t = start.t; t < end && (k < timed.length || summed.length > 0); ) {
+      while (k < timed.length && timed[k]!.at <= t + 1e-9) {
+        apply(timed[k]!.step, timed[k]!.at, sweep);
+        plan.push(timed[k]!);
+        k++;
+      }
+      const event = k < timed.length ? timed[k]!.at : Number.POSITIVE_INFINITY;
+      const summing = summed.some((x) => v.burning(sweep, (x.step as { stage: number }).stage, t));
+      const next = summing ? Math.min(t + H, event) : Math.min(event, end);
+      for (let j = summed.length - 1; j >= 0; j--) {
+        const i = (summed[j]!.step as { stage: number }).stage;
+        const want = setting(i)!;
+        const add = ((pushOf(i, t) + pushOf(i, next)) / 2) * (next - t);
+        if (add > 0 && sums[i]! + add >= want) {
+          const at = t + ((want - sums[i]!) / add) * (next - t);
+          plan.push({ at, step: summed[j]!.step });
+          apply(summed[j]!.step, at, sweep);
+          summed.splice(j, 1);
+        } else sums[i] = sums[i]! + add;
+      }
+      t = next;
+    }
+    plan.sort((a, b) => a.at - b.at);
+  }
+  const marks = [...new Set([...plan.map((p) => p.at), law.tVertical, law.tTurn].filter((x) => x > start.t))].sort((a, b) => a - b);
+  // the last stage's stop: the burn under guidance ends there (the path is drawn dashed to it)
+  const lastCut = plan.find((p) => p.step.kind === 'cut' && p.step.stage === last)?.at ?? null;
+  let since = start.t;
+  let thetaTurn = now.thetaTurn ?? null;
+  let alone: Flier | null = null;
+  const axisAt = (r: Vec3, u: Vec3, at: number): Vec3 => {
+    const s = { r: toDate(r), v: toDate(u) };
+    const mode: Mode = law.modeAt(since);
+    let axis = law.axisAt(s, at, mode === 'tangent' && thetaTurn === null ? 'turn' : mode, airOf(s, at).wind, thetaTurn ?? 0);
+    if (trim.pitch) axis = turn(aboutAxis(law.n, trim.pitch), axis);
+    if (trim.yaw) axis = turn(aboutAxis(unit(s.r), trim.yaw), axis);
+    return flat(axis);
+  };
+  const lit = (): boolean => o.stages.some((_, i) => v.burning(cur, i, since));
+  return {
+    kind: lastCut !== null ? 'guided' : 'coast',
+    cutoff: lastCut,
+    get quiet() {
+      return alone ? alone.quiet : Number.POSITIVE_INFINITY;
+    },
+    chute: false,
+    radius: o.orbit.radius.value,
+    ground: floorOf(site, seaLevel),
+    burning: () => (alone ? alone.burning() : lit()),
+    push(at, p, u, altitude) {
+      if (alone) return alone.push(at, p, u, altitude);
+      const air = atmosphere(altitude);
+      const wind = sub(u, cross(SPIN, p));
+      const airspeed = length(wind);
+      let thrust = 0;
+      for (let i = 0; i < o.stages.length; i++) if (v.burning(cur, i, since)) thrust += stack.thrust(i, at, air.pressure);
+      const mass = v.mass(cur, at);
+      let f: Vec3 = thrust > 0 ? scale(axisAt(p, u, at), thrust / mass) : [0, 0, 0];
+      if (airspeed > 0) {
+        const q = 0.5 * air.density * airspeed * airspeed;
+        f = add(f, scale(wind, (-q * stack.dragArea(v.shape(cur), airspeed / air.soundSpeed)) / (airspeed * mass)));
+      }
+      return f;
+    },
+    next(t) {
+      if (alone) return alone.next(t);
+      // (and each stage running dry, where its load runs out before its cut)
+      let n = after(marks, t);
+      for (let i = 0; i < o.stages.length; i++) {
+        if (!v.burning(cur, i, since)) continue;
+        const dry = v.dry(i, cur.stages[i]!.from);
+        if (dry > t + 1e-9 && dry < n) n = dry;
+      }
+      return n;
+    },
+    below: () => (alone ? alone.below() : Number.NEGATIVE_INFINITY),
+    arrive(t, r, u, altitude, by): Arrival {
+      if (alone) return alone.arrive(t, r, u, altitude, by);
+      const events: EventKind[] = [];
+      // the law's own change: the tangent takes over from the axis it had then (staged.ts `ascend`)
+      if (thetaTurn === null && law.modeAt(t) === 'tangent') {
+        const s = { r: toDate(r), v: toDate(u) };
+        const { u: up } = law.localAt(s.r);
+        thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, t, 'turn', airOf(s, t).wind, 0), up))));
+      }
+      for (const p of plan) {
+        if (p.at > t + 1e-9 || doneIn(p.step, cur)) continue;
+        apply(p.step, t, cur);
+        if (p.step.kind === 'cut' && p.step.stage === last) events.push('cutoff');
+        if (p.step.kind === 'separate' && p.step.stage === last) {
+          events.push('separation');
+          since = t;
+          alone = spacecraft(now.plan, now.launchJd, site, seaLevel, { t, r, v: u });
+          const then = alone.arrive(t, r, u, altitude, 'time');
+          return { events: [...events, ...(then.events ?? [])], ...(then.end ? { end: true } : {}) };
+        }
+      }
+      since = t;
+      return { events };
+    },
+  };
+}
+
+/**
+ * Each stage's integrator's sum by `t` (its vacuum thrust over the mass, summed from its ignition, as stagedlive.ts sums
+ * it every tick), for a vehicle whose stages stood as `state` has them: the record's run, which keeps no such sum, as the
+ * live vehicle would have it. Whole seconds, by the trapezoid (as `guided` sums it).
+ */
+export function apparentBy(o: OrbitalFlight, v: StagedVehicle, state: Pick<StagedState, 'stages' | 'drops'>, t: number): number[] {
+  const stack = stackOf(o);
+  const s = { ...v.start(), stages: state.stages, drops: state.drops } as StagedState;
+  return o.stages.map((st, i) => {
+    const from = state.stages[i]!.from;
+    if (!Number.isFinite(from) || !st.velocity?.apparent) return 0;
+    const push = (at: number) => (v.burning(s, i, at) ? (st.count * stack.throttle(i, at) * st.thrust.vacuum.value) / v.mass(s, at) : 0);
+    let sum = 0;
+    for (let a = from; a < t - 1e-9; a += 1) {
+      const b = Math.min(t, a + 1);
+      sum += ((push(a) + push(b)) / 2) * (b - a);
+    }
+    return sum;
+  });
 }
