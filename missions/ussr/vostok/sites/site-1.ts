@@ -1,4 +1,5 @@
 import type { SiteDef } from '../../../../src/types';
+import { ARAL_1960 } from './aral-1960.ts';
 
 /**
  * Site 1 at Tyuratam (NIIP-5, later the Baikonur Cosmodrome): the R-7's first pad, "Gagarin's Start".
@@ -53,5 +54,40 @@ export const SITE1: SiteDef = {
     },
     visibility: { value: 60_000, confidence: 'estimated', source: 'dry air: clear' },
     haze: { value: 1500, confidence: 'estimated', source: 'taken to thin over 1.5 km' },
+  },
+  region: {
+    name: 'tyuratam',
+    south: 43.2,
+    north: 48.6,
+    west: 57.9,
+    east: 67.2,
+    why:
+      'what is seen from over the pad up to 150 km: the Syr Darya and its floodplain 30 km south, with the railway and the town at ' +
+      'Tyuratam station on its north bank; the river down past Kazalinsk to its delta, and the Aral Sea as it was, 140 km west at its ' +
+      'nearest; the Aral Karakum sands north-west, the clay plains and the sands north and east, and Kyzylorda up the river',
+    asOf: '1961-04-12',
+    // What has changed on the map since 12 April 1961, put back. OpenStreetMap has today's Aral, a remnant of the sea of 1961 (its
+    // level fell from about 53 m in 1960 to under 30 m by the 2000s, as the rivers were taken for irrigation): the sea of the
+    // late 1950s from a period source, which holds today's remnant inside it.
+    later: [
+      {
+        what: 'the Aral Sea’s floor laid bare as the sea shrank, from the 1960s on',
+        built: 1962,
+        was: 'water',
+        ring: ARAL_1960,
+        source:
+          'Natural Earth, Historic Lakes (ne_10m_lakes_historic: "Aral Sea", dated "late 1950s"), 67,500 km2; the sea stood at 53 m and ' +
+          'about 67,500 km2 in 1960 and began to fall in 1961 (docs/sources.md, "The Aral Sea"). Its islands are not drawn',
+      },
+    ],
+    rivers: [
+      {
+        match: 'Сырдар|Syr ?Dar',
+        width: 150,
+        source:
+          'OpenStreetMap’s middle line of the Syr Darya (waterway=river), today’s course; its water areas cover only stretches of it. ' +
+          'The channel’s width is estimated (150 m), read off today’s imagery at Baikonur and Kazalinsk',
+      },
+    ],
   },
 };

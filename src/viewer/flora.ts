@@ -20,6 +20,9 @@ import { NOISE } from './space';
  *   a low pale clump).
  * - `fan`: a palmetto: a low core and a cluster of flat fans with serrated edges, leaning out.
  * - `palm`: a tree palm: a tapering trunk, a ball of old leaf bases, a star of arched flat fronds.
+ * - `flower`: a tulip: two or three broad leaves from the ground, a stem and a closed cup. The cup takes the
+ *   instance's colour (red to yellow); the leaves and stem keep their own green.
+ * - `rosette`: broad round leaves pressed flat to the ground round a short crown (a wild rhubarb).
  *
  * **Distance.** Each plant is drawn as its near form close to the eye (balls of 80 faces), its far
  * form further off (20 faces, fewer fans), and not at all beyond its reach; the near form gives way
@@ -34,7 +37,9 @@ import { NOISE } from './space';
 export type Form =
   | { kind: 'shrub'; masses: [number, number]; spread: number }
   | { kind: 'fan'; fans: [number, number]; blade: [number, number] }
-  | { kind: 'palm'; trunk: [number, number]; fronds: number };
+  | { kind: 'palm'; trunk: [number, number]; fronds: number }
+  | { kind: 'flower'; leaves: [number, number]; cup: number; leaf: THREE.Color }
+  | { kind: 'rosette'; leaves: [number, number] };
 
 export interface Species {
   name: string;
@@ -96,11 +101,15 @@ class Builder {
   colours: number[] = [];
   flex: number[] = [];
   indices: number[] = [];
+  /** Per vertex, 1 where it keeps its own colour and is not tinted by the instance's (a tulip's leaves): only a form that asks (`ownColours`). */
+  own: number[] = [];
+  ownNow = 0;
   vertex(p: THREE.Vector3, n: THREE.Vector3, c: THREE.Color, flex: number): number {
     this.positions.push(p.x, p.y, p.z);
     this.normals.push(n.x, n.y, n.z);
     this.colours.push(c.r, c.g, c.b);
     this.flex.push(flex);
+    this.own.push(this.ownNow);
     return this.positions.length / 3 - 1;
   }
   tri(a: number, b: number, c: number): void {
@@ -198,6 +207,7 @@ class Builder {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.colours, 3));
     g.setAttribute('aFlex', new THREE.Float32BufferAttribute(this.flex, 1));
+    if (this.own.some((o) => o > 0)) g.setAttribute('aOwn', new THREE.Float32BufferAttribute(this.own, 1));
     g.setIndex(this.indices);
     g.computeBoundingSphere();
     return g;
@@ -309,11 +319,92 @@ function buildPalm(form: Extract<Form, { kind: 'palm' }>, seed: number, near: bo
   return b.geometry();
 }
 
+/**
+ * A tulip: two or three broad leaves rising from the ground and curving out, a straight stem, and a closed cup on
+ * it, egg-shaped and a little taller than wide. 1 tall before scaling. The cup is white, for the instance's colour to
+ * be its colour; the leaves and the stem keep `leaf`, their own green (`aOwn`).
+ */
+function buildFlower(form: Extract<Form, { kind: 'flower' }>, seed: number, near: boolean): THREE.BufferGeometry {
+  const r = sequence(seed);
+  const b = new Builder();
+  const green = form.leaf;
+  b.ownNow = 1;
+  const leaves = Math.round(form.leaves[0] + r() * (form.leaves[1] - form.leaves[0]));
+  for (let i = 0; i < leaves; i++) {
+    const yaw = i * ((Math.PI * 2) / leaves) + r() * 0.6;
+    const out = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw));
+    const side = new THREE.Vector3(-out.z, 0, out.x);
+    // a broad strap leaf: up from the root, curving out, widest a third of the way along
+    const segs = near ? 4 : 2;
+    const length = 0.5 + 0.12 * r();
+    let last: [number, number] | null = null;
+    for (let k = 0; k <= segs; k++) {
+      const t = k / segs;
+      const at = new THREE.Vector3(0, 0, 0)
+        .addScaledVector(out, length * 0.55 * t * t)
+        .add(new THREE.Vector3(0, length * Math.sin(t * 1.3) * 0.8, 0));
+      const half = 0.075 * Math.sin(Math.PI * Math.min(1, t * 1.15 + 0.08)) * (1 - 0.5 * t);
+      const tangent = out
+        .clone()
+        .multiplyScalar(length * 1.1 * t)
+        .add(new THREE.Vector3(0, length * 1.04 * Math.cos(t * 1.3), 0));
+      const up = tangent.cross(side).normalize();
+      const a = b.vertex(at.clone().addScaledVector(side, half), up, green, 0.2 + 0.5 * t);
+      const c = b.vertex(at.clone().addScaledVector(side, -half), up, green, 0.2 + 0.5 * t);
+      if (last) {
+        b.tri(last[0], a, last[1]);
+        b.tri(last[1], a, c);
+      }
+      last = [a, c];
+    }
+  }
+  const top = new THREE.Vector3((r() - 0.5) * 0.06, 1 - form.cup * 1.3, (r() - 0.5) * 0.06);
+  b.shaft(new THREE.Vector3(0, 0, 0), top, 0.018, 0.014, green, 0, 0.8, near ? 5 : 3);
+  b.ownNow = 0;
+  b.ball(
+    top.clone().add(new THREE.Vector3(0, form.cup * 1.15, 0)),
+    new THREE.Vector3(form.cup, form.cup * 1.35, form.cup),
+    near ? 1 : 0,
+    new THREE.Color(1, 1, 1),
+    1,
+    seed,
+  );
+  return b.geometry();
+}
+
+/** A rosette of broad leaves pressed to the ground round a low crown, as wide as the plant's size: 1 across before scaling, a tenth of that high. */
+function buildRosette(form: Extract<Form, { kind: 'rosette' }>, seed: number, near: boolean): THREE.BufferGeometry {
+  const r = sequence(seed);
+  const b = new Builder();
+  b.ball(new THREE.Vector3(0, 0.03, 0), new THREE.Vector3(0.07, 0.05, 0.07), near ? 1 : -1, new THREE.Color(0.8, 0.75, 0.6), 0, seed);
+  const leaves = Math.round(form.leaves[0] + r() * (form.leaves[1] - form.leaves[0]));
+  for (let i = 0; i < leaves; i++) {
+    const yaw = i * ((Math.PI * 2) / leaves) + r() * 0.5;
+    const along = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw));
+    const facing = new THREE.Vector3(0, 1, 0).addScaledVector(along, -0.12).normalize();
+    const tone = new THREE.Color(1, 1, 1).multiplyScalar(0.85 + 0.3 * r());
+    b.fan(
+      new THREE.Vector3(0, 0.05, 0).addScaledVector(along, 0.05),
+      facing,
+      along,
+      0.36 + 0.1 * r(),
+      2.2 + 0.5 * r(),
+      near ? 5 : 3,
+      0.12,
+      tone,
+      0.3,
+    );
+  }
+  return b.geometry();
+}
+
 function build(species: Species, seed: number, form: 'near' | 'far'): THREE.BufferGeometry {
   const f = species.form;
   const near = form === 'near';
   if (f.kind === 'fan') return buildFan(f, seed, near);
   if (f.kind === 'shrub') return buildShrub(f, seed, near);
+  if (f.kind === 'flower') return buildFlower(f, seed, near);
+  if (f.kind === 'rosette') return buildRosette(f, seed, near);
   return buildPalm(f, seed, near);
 }
 
@@ -396,8 +487,14 @@ function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth')
         envMapIntensity: 0.5,
         side: THREE.DoubleSide,
       });
+  // (a form whose leaves keep their own colour: only its program has the attribute, so every other plant's is as it was)
+  const own = species.form.kind === 'flower' && !depth;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
+    if (own)
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float aOwn;')
+        .replace('#include <color_vertex>', '#include <color_vertex>\n\tvColor.rgb = mix(vColor.rgb, color.rgb, aOwn);');
     // the cel look's twin (look.ts) runs this same patch on a toon shader: there the forms are flat tones
     const cel = (shader as unknown as { shaderType: string }).shaderType === 'MeshToonMaterial';
     shader.vertexShader = shader.vertexShader
@@ -428,7 +525,7 @@ function plantMaterial(species: Species, shared: Shared, use: 'drawn' | 'depth')
         }`,
       );
   };
-  material.customProgramCacheKey = () => `plant:${use}`;
+  material.customProgramCacheKey = () => `plant:${use}${own ? ':own' : ''}`;
   return material;
 }
 

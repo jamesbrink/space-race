@@ -384,6 +384,8 @@ interface Place {
   horizon: number;
   /** The tone of its ground seen whole, which the globe keeps round the site until the eye is well up (globe.ts). */
   tone?: THREE.Color;
+  /** And its tone in the cel look, which the globe draws the country round it in from height (globe.ts: `colourGlsl`). */
+  drawn?: THREE.Color;
 }
 const places = new Map<string, Place>();
 
@@ -497,6 +499,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     installedAir(),
     when.site.region?.name ?? null,
     here.tone,
+    here.drawn,
   );
   // (a development build says which lit materials have left too few texture units for lights: units.ts)
   if (import.meta.env.DEV) later(() => setTimeout(() => checkUnits(renderer), 4000));

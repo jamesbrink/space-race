@@ -1,7 +1,7 @@
 // src/world/region.ts: the gnomonic plane a region's map is drawn on, against what a gnomonic projection
-// is (great circles straight, distance from the middle the tangent of the angle); and the Cape's baked
-// map (public/globe/cape-canaveral.*, tools/globe-region.mjs) against published places: land where
-// they are on land, water where they are on the water, and the shore as it stood in 1961.
+// is (great circles straight, distance from the middle the tangent of the angle); and the Cape's and
+// Tyuratam's baked maps (public/globe/<region>.*, tools/globe-region.mjs) against published places: land
+// where they are on land, water where they are on the water, and the shore as it stood in 1961.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -61,16 +61,23 @@ test('it is gnomonic: great circles are straight, and the distance from the midd
 });
 
 const root = join(import.meta.dirname, '..');
-const meta = JSON.parse(readFileSync(join(root, 'public/globe/cape-canaveral.json'), 'utf8'));
-const maps = Object.fromEntries(
-  meta.levels.map((l) => [
-    l.name,
-    { ...l, plane: planeAt(...l.centre), png: readGreyPng(readFileSync(join(root, 'public/globe', l.file))) },
-  ]),
-);
+/** A region's baked maps, by level. */
+function region(file) {
+  const meta = JSON.parse(readFileSync(join(root, 'public/globe', file), 'utf8'));
+  const maps = Object.fromEntries(
+    meta.levels.map((l) => [
+      l.name,
+      { ...l, plane: planeAt(...l.centre), png: readGreyPng(readFileSync(join(root, 'public/globe', l.file))) },
+    ]),
+  );
+  return { meta, maps };
+}
+const { meta, maps } = region('cape-canaveral.json');
+const tyuratam = region('tyuratam.json');
 /** The baked distance to the shore at a place, metres (positive on land), from one map, bilinear as the GPU reads it. */
-function shore(name, lat, lon) {
-  const m = maps[name];
+function shore(name, lat, lon, of = { meta, maps }) {
+  const { meta: info, maps: levels } = of;
+  const m = levels[name];
   const [x, y] = placeOnPlane(m.plane, lat, lon);
   const [x0, x1, y0, y1] = m.box;
   assert.ok(x > x0 && x < x1 && y > y0 && y < y1, `${lat}, ${lon} is on the ${name} map`);
@@ -82,7 +89,7 @@ function shore(name, lat, lon) {
     fy = ty - j;
   const at = (a, b) => m.png.data[b * m.width + a];
   const v = (at(i, j) * (1 - fx) + at(i + 1, j) * fx) * (1 - fy) + (at(i, j + 1) * (1 - fx) + at(i + 1, j + 1) * fx) * fy;
-  return ((v - 128) * meta.spread * m.metres) / 127;
+  return ((v - 128) * info.spread * m.metres) / 127;
 }
 
 test('the maps are what the viewer expects', () => {
@@ -127,4 +134,26 @@ test('the shore is drawn as it stood on 5 May 1961: later causeways gone, later 
   assert.ok(shore('near', 28.5835, -80.6435) > 40, "Complex 39's turning basin");
   // the SR 520 causeway (1941) stands: land along it across the Indian River
   assert.ok(shore('near', 28.3567, -80.712) > 0, 'Merritt Island Causeway, 1941');
+});
+
+test('Tyuratam: the steppe is land, the Syr Darya and the Aral of 1961 are water', () => {
+  assert.equal(tyuratam.meta.spread, 8);
+  assert.equal(tyuratam.meta.asOf, '1961-04-12');
+  const places = [
+    // [what, latitude, longitude, land?, maps]
+    ['Site 1 (sites/site-1.ts)', 45.92025, 63.34225, true, ['near', 'wide']],
+    ['the steppe 20 km north of the pad', 46.1, 63.34, true, ['near', 'wide']],
+    ['the Syr Darya at Baikonur (OpenStreetMap way 95384206)', 45.6219, 63.3297, false, ['near']],
+    ['Kazalinsk, on the river’s north bank (Wikipedia: 45 46 N, 62 06 E)', 45.7628, 62.1075, true, ['wide']],
+    // the Aral of the late 1950s: what is dry floor today was its water then
+    ['the Aral’s middle in 1960, dry today (the Aralkum)', 45.0, 60.3, false, ['wide']],
+    ['its eastern shallows, dry today', 45.3, 61.2, false, ['wide']],
+    ['the Small Aral, water then and now', 46.45, 61.0, false, ['wide']],
+    ['the Kyzylkum south of the sea, land then and now', 43.6, 62.0, true, ['wide']],
+  ];
+  for (const [what, lat, lon, land, on] of places)
+    for (const name of on) {
+      const d = shore(name, lat, lon, tyuratam);
+      assert.ok(land ? d > 0 : d < 0, `${what}: ${d.toFixed(0)} m from the shore on the ${name} map`);
+    }
 });

@@ -1,0 +1,28 @@
+{
+  "region": "tyuratam",
+  "data": "Relief: NOAA NCEI, ETOPO 2022 Global Relief Model (ice surface), doi:10.25921/fd45-gt74, CC0-1.0, not subject to copyright in the United States. Colour: NASA Earth Observatory, Blue Marble Next Generation, April 2004 (R. Stöckli), not copyrighted; credit NASA. Both fetched 2026-11-11",
+  "centre": [
+    45.5,
+    63
+  ],
+  "box": [
+    -0.09289594672335866,
+    0.09289594672335863,
+    -0.07866757409403119,
+    0.08246067025886544
+  ],
+  "relief": {
+    "file": "tyuratam.relief.png",
+    "width": 2633,
+    "height": 2284,
+    "metres": 450.031
+  },
+  "colour": {
+    "file": "tyuratam.colour.jpg",
+    "width": 2633,
+    "height": 2284,
+    "metres": 450.031
+  },
+  "fade": 0.008056412217644832,
+  "banks": []
+}

@@ -1,8 +1,8 @@
-import './cockpit.css';
+import { type CockpitHost, Deck, type DeckSpec, tank } from './deck';
 import { autopilot, blend, Tally } from './sim/autopilot.ts';
 import { G0, type Results } from './sim/fly.ts';
-import { standing } from './sim/loads.ts';
 import { Lever, NOTCH } from './sim/lever.ts';
+import { standing } from './sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from './sim/mechanism.ts';
 import { MISSES } from './sim/misses.ts';
 import { Sheds } from './sim/shed.ts';
@@ -70,31 +70,15 @@ const ABORT_ARMED = 2;
 const LOW = 0.2;
 const FT = 0.3048;
 
-export interface CockpitHost {
-  /** The run to show in the scene (viewer/ascent.ts), or null for the record's again. */
-  fly(run: Run | null): void;
-  /** The flight deck has been taken, or left: the page makes way and gives the view to the vehicle. */
-  piloting(on: boolean): void;
-  /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
-  say?(title: string, line: string): void;
-  /** The heat shield at `t` (viewer/effects.ts `reading`): its temperature and limit, K, and the stagnation-point heat flux, W/m2. */
-  heat?(t: number): { name: string; temperature: number; limit: number; flux: number; warm: boolean; hot: boolean } | null;
-}
+export type { CockpitHost } from './deck';
 
-export class Cockpit {
-  private readonly flight: SitedFlight;
-  private readonly clock: Clock;
-  private readonly host: CockpitHost;
-  private readonly root: HTMLElement;
-  private readonly button: HTMLButtonElement;
-  private readonly cells = new Map<string, HTMLElement>();
+export class Cockpit extends Deck {
   /** The greatest dynamic pressure flown through on the booster so far, Pa: for calling it. */
   private maxQ = 0;
   private readonly vehicle: Vehicle | null;
   /** Kilograms a second through the engine, and what there is to burn. */
   private readonly flow: number;
 
-  private on = false;
   private state: VehicleState | null = null;
   private run: Run & { samples: LiveSample[] } = {
     samples: [],
@@ -111,7 +95,6 @@ export class Cockpit {
   private sequence = true;
   /** What the hands are asking: axes while keys are held, events once asked for. */
   private hand: Partial<Controls> = {};
-  private readonly held = new Set<string>();
   private eventAt = Number.NEGATIVE_INFINITY;
   /** How far the hands have leaned the programme guidance flies, radians (sim/autopilot.ts `trim`). */
   private trim = { pitch: 0, yaw: 0 };
@@ -124,237 +107,53 @@ export class Cockpit {
   private unsequenced: Span[] = [];
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
-    this.flight = flight;
-    this.clock = clock;
-    this.host = host;
+    super(parent, flight, clock, host, Cockpit.spec(flight));
     const tr = flight.trajectory;
     this.vehicle = tr?.body && flight.flies ? vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value) : null;
     this.flow = tr ? tr.engine.thrust.value / (G0 * tr.engine.isp.value) : 0;
     this.mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
+    this.systems();
+    this.button.hidden = !this.vehicle;
+  }
+
+  /** What a ballistic flight puts on the deck: its five figures, its four readings, its throttle and its mechanisms' switches. */
+  private static spec(flight: SitedFlight): DeckSpec {
+    const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
     // (each is a switch among the deck's keys, lit while it is headed out. It has no key: every letter is taken)
-    const works = this.mechanisms
+    const works = mechanisms
       .map(
         (m) =>
           `<button data-work="${m.id}" class="switch" aria-pressed="false" title="${m.name}: ${m.says[1].toLowerCase()} or ${m.says[0].toLowerCase()} by hand. It goes back to its programme at the programme's next event">${m.name}</button>`,
       )
       .join('');
-
-    const root = (this.root = document.createElement('aside'));
-    root.className = 'cockpit';
-    root.hidden = true;
-    root.setAttribute('aria-label', 'Flight instruments');
-    const cell = (id: string, label: string, unit: string, about: string) =>
-      `<div class="gauge" title="${about}"><span>${label}</span><i>${unit}</i><b data-cell="${id}">0</b></div>`;
-    const pair = (id: string, label: string, unit: string, about: string) =>
-      `<div class="reading" title="${about}"><span>${label}</span><b><u data-cell="${id}">0</u>${unit ? `<i>${unit}</i>` : ''}</b></div>`;
-    // a key that steers, as a button: held, it is the key held (W S A D Q E)
-    const hold = (key: string, about: string) =>
-      `<button data-hold="${key}" title="${about} (${key.toUpperCase()})"><kbd>${key.toUpperCase()}</kbd></button>`;
     const throttles = Boolean(flight.trajectory?.body?.engine?.throttle);
-    // The deck is three panels: the navball's (navball.ts puts it in), this one in the middle, the systems on the right.
-    root.innerHTML = `
-      <section class="deck-main">
-        <div class="cockpit-card" hidden></div>
-        <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span>
-          <span class="deck-modes">
-            <button data-do="guidance" class="switch" aria-pressed="true" title="Guidance: the autopilot flies the record's tilt programme, and a key held takes its axis. Off, the hands fly alone (G)"><kbd>G</kbd>Guidance</button>
-            <button data-do="sequence" class="switch" aria-pressed="true" title="Sequencer: events happen at the record's times. Off, each is set off by hand with Space (B)"><kbd>B</kbd>Sequencer</button>
-          </span></p>
-        <div class="gauges">
-          ${cell('altitude', 'Height', 'km', 'Height above the sea')}
-          ${cell('speed', 'Speed', 'm/s', 'Speed over the turning Earth (Earth-fixed)')}
-          ${cell('climb', 'Climb', 'm/s', 'How fast it is rising')}
-          ${cell('g', 'Load', 'g', 'What an accelerometer reads')}
-          ${cell('mach', 'Mach', '', 'Speed through the air over the speed of sound there')}
-        </div>
-        <div class="deck-act">
-          <button data-do="next" class="cockpit-next" title="Set off the next event of the flight now (Space)"><kbd>Space</kbd><span data-cell="next"></span></button>
-          <p class="cockpit-prompt" data-cell="prompt" role="status" hidden></p>
-          <button data-do="abort" class="cockpit-abort" title="Abort on the escape rocket, while the tower is aboard: press twice (X, X)"><kbd>X</kbd><kbd>X</kbd><span data-cell="abort">Abort</span></button>
-        </div>
-        <p class="deck-foot">
-          <span class="deck-steer for-keys">${hold('w', 'Pitch the nose downrange')}${hold('s', 'Pitch the nose back')}<em>pitch</em>${hold('a', 'Yaw left')}${hold('d', 'Yaw right')}<em>yaw</em>${hold('q', 'Roll left')}${hold('e', 'Roll right')}<em>roll</em></span>
-          <span class="for-touch">Stick steers · ⟲ ⟳ roll</span>
-          <button data-do="leave" class="for-keys" title="Leave the flight deck (Esc)"><kbd>Esc</kbd>Leave</button>
-          <button data-do="keys" aria-expanded="false" title="Every key and control of the flight deck"><span class="for-keys">Keys</span><span class="for-touch">More</span><i class="chevron"></i></button>
-        </p>
-        <div class="cockpit-keys" hidden>
-          <div><h4>Show</h4><p>
-            <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (J)"><kbd>J</kbd>Path</button>
-            <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (I)"><kbd>I</kbd>Navball</button>
-            <button data-press="y" title="The vehicle's skin off, to see what is inside it and how little room there is, and out of it all round; again puts it back (Y)"><kbd>Y</kbd>Skin off · on</button>
-            <button data-press="o" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (O)"><kbd>O</kbd>Surface · orbit</button>
-            <button data-press="k" title="While the engine burns under guidance: the path if guidance flies on to the record's cutoff, or if the engine were cut now (K)"><kbd>K</kbd>Path · to cutoff · cut now</button>
-          </p></div>
-          <div><h4>Camera</h4><p>
-            <button data-press="c" title="The next camera (C)"><kbd>C</kbd>Next view</button>
-            <button data-press="0" title="Centre the vehicle (0)"><kbd>0</kbd>Centre</button>
-            <span class="deck-turn" title="Turn and tilt the view (the arrow keys)"><button data-press="arrowleft" data-held title="Turn the view left"><kbd>←</kbd></button><button data-press="arrowup" data-held title="Tilt the view up"><kbd>↑</kbd></button><button data-press="arrowdown" data-held title="Tilt the view down"><kbd>↓</kbd></button><button data-press="arrowright" data-held title="Turn the view right"><kbd>→</kbd></button><em>turn · tilt</em></span>
-            <span class="deck-turn"><button data-press="r" data-held title="Zoom in (R)"><kbd>R</kbd></button><button data-press="f" data-held title="Zoom out (F)"><kbd>F</kbd></button><em>zoom</em></span>
-            <button data-press="t" title="Cel shading (T)"><kbd>T</kbd>Cel</button>
-            <button data-press="h" class="for-keys" title="Hide every panel; H shows them again (H)"><kbd>H</kbd>Hide panels</button>
-          </p></div>
-          <div><h4>Clock</h4><p>
-            <button data-press="p" title="Run or stop the clock, and the flight with it (P)"><kbd>P</kbd>Run · stop</button>
-            <button data-press="[" title="Time runs slower ([)"><kbd>[</kbd>Slower</button>
-            <button data-press="]" title="Time runs faster (])"><kbd>]</kbd>Faster</button>
-            <button data-press="u" title="Sound on or off (U)"><kbd>U</kbd>Sound</button>
-          </p></div>
-          <div><h4>Flight</h4><p>
-            ${throttles ? '<button data-press="arrowup" title="Throttle up a notch (the up arrow)"><kbd>↑</kbd>Throttle up</button><button data-press="arrowdown" title="Throttle down a notch (the down arrow)"><kbd>↓</kbd>Down</button><button data-press="z" title="Full throttle (Z)"><kbd>Z</kbd>Full</button>' : ''}
-            ${works}
-            <button data-do="again" title="A new flight: back to the pad (N)"><kbd>N</kbd>New flight</button>
-            <button data-do="leave" title="Leave the flight deck (Esc)"><kbd>Esc</kbd>Leave</button>
-          </p></div>
-        </div>
-        <label class="cockpit-lever" hidden>Throttle <input type="range" min="0" max="1" step="0.01" value="1" data-lever title="The throttle lever (the up and down arrows; Z for full)" /></label>
-      </section>
-      <section class="deck-sys" aria-label="Systems">
-        <div class="systems" data-cell="systems"></div>
-        <div class="sys-rule"></div>
-        <div class="readings">
-          ${pair('q', 'Pressure', 'kPa', 'Dynamic pressure: the push of the air')}
-          ${pair('alpha', 'Off wind', '°', 'The angle between the nose and the motion through the air')}
-          ${pair('range', 'Range', 'km', 'Distance over the ground from the pad')}
-          ${pair('pitch', 'Pitch', '°', 'The nose above the level: 90 is straight up')}
-        </div>
-        <em data-cell="load" class="cockpit-load" hidden title="The bending load on the stack (dynamic pressure times the angle off the wind) against what it can take: amber past four fifths, red over. Half a second over, or half as much again at once, breaks it"></em>
-        <em data-cell="heat" hidden title="The heat shield's temperature against its limit, and the heat flux at its stagnation point: amber past four fifths of the limit"></em>
-      </section>
-      <div class="cockpit-stick" aria-hidden="true"><i></i></div>
-      <div class="cockpit-roll"><button data-roll="-1" aria-label="Roll left" title="Roll left">⟲</button><button data-roll="1" aria-label="Roll right" title="Roll right">⟳</button></div>`;
-    parent.append(root);
-    this.systems();
-    // a finger's stick, as the walk's (ui.ts): pushed up tips the nose downrange (W), left swings it left (A); the further, the harder
-    const pad = root.querySelector<HTMLElement>('.cockpit-stick')!;
-    const knob = pad.querySelector<HTMLElement>('i')!;
-    const push = (e: PointerEvent | null) => {
-      const r = pad.getBoundingClientRect();
-      const reach = r.width / 2;
-      let x = e ? (e.clientX - r.left - reach) / reach : 0;
-      let y = e ? (e.clientY - r.top - reach) / reach : 0;
-      const far = Math.hypot(x, y);
-      if (far > 1) {
-        x /= far;
-        y /= far;
-      }
-      knob.style.transform = `translate(${x * reach * 0.6}px, ${y * reach * 0.6}px)`;
-      this.finger.pitch = -y;
-      this.finger.yaw = -x;
+    return {
+      figures: [
+        { id: 'altitude', label: 'Height', unit: 'km', about: 'Height above the sea' },
+        { id: 'speed', label: 'Speed', unit: 'm/s', about: 'Speed over the turning Earth (Earth-fixed)' },
+        { id: 'climb', label: 'Climb', unit: 'm/s', about: 'How fast it is rising' },
+        { id: 'g', label: 'Load', unit: 'g', about: 'What an accelerometer reads' },
+        { id: 'mach', label: 'Mach', unit: '', about: 'Speed through the air over the speed of sound there' },
+      ],
+      readings: [
+        { id: 'q', label: 'Pressure', unit: 'kPa', about: 'Dynamic pressure: the push of the air' },
+        { id: 'alpha', label: 'Off wind', unit: '°', about: 'The angle between the nose and the motion through the air' },
+        { id: 'range', label: 'Range', unit: 'km', about: 'Distance over the ground from the pad' },
+        { id: 'pitch', label: 'Pitch', unit: '°', about: 'The nose above the level: 90 is straight up' },
+      ],
+      guidance: "Guidance: the autopilot flies the record's tilt programme, and a key held takes its axis. Off, the hands fly alone",
+      sequence: "Sequencer: events happen at the record's times. Off, each is set off by hand with Space",
+      choose: true,
+      flightKeys: `${throttles ? '<button data-press="arrowup" title="Throttle up a notch (the up arrow)"><kbd>↑</kbd>Throttle up</button><button data-press="arrowdown" title="Throttle down a notch (the down arrow)"><kbd>↓</kbd>Down</button><button data-press="z" title="Full throttle (Z)"><kbd>Z</kbd>Full</button>' : ''}
+            ${works}`,
+      enter: 'Fly this flight yourself (L)',
     };
-    pad.addEventListener('pointerdown', (e) => {
-      pad.setPointerCapture(e.pointerId);
-      push(e);
-    });
-    pad.addEventListener('pointermove', (e) => {
-      if (pad.hasPointerCapture(e.pointerId)) push(e);
-    });
-    for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) pad.addEventListener(end, () => push(null));
-    for (const b of root.querySelectorAll<HTMLButtonElement>('[data-roll]')) {
-      b.addEventListener('pointerdown', (e) => {
-        b.setPointerCapture(e.pointerId);
-        this.finger.roll = Number(b.dataset.roll);
-      });
-      for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const)
-        b.addEventListener(end, () => (this.finger.roll = 0));
-    }
-    // On a phone the deck shows the least, and a swipe up on it brings up the rest (as More does); a swipe down puts it away
-    const main = root.querySelector<HTMLElement>('.deck-main')!;
-    let swipe: { y: number; t: number } | null = null;
-    main.addEventListener('touchstart', (e) => (swipe = e.touches.length === 1 ? { y: e.touches[0]!.clientY, t: e.timeStamp } : null), {
-      passive: true,
-    });
-    const ended = (e: TouchEvent): void => {
-      const from = swipe;
-      swipe = null;
-      const y = e.changedTouches[0]?.clientY;
-      if (!from || y === undefined || e.timeStamp - from.t > 1000 || !matchMedia('(max-width: 960px), (max-height: 520px)').matches) return;
-      const open = root.classList.contains('keys-open');
-      if (y - from.y < -36 && !open) this.showKeys(true);
-      else if (y - from.y > 36 && open && root.scrollTop <= 0) this.showKeys(false);
-    };
-    main.addEventListener('touchend', ended);
-    main.addEventListener('touchcancel', ended);
-    const lever = root.querySelector<HTMLInputElement>('[data-lever]')!;
-    lever.addEventListener('input', () => this.setLever(Number(lever.value)));
-    for (const el of root.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(el.dataset.cell!, el);
-    // Every key the deck shows is also a button. One that is an event (Space, G, X...) is its command; one that is held
-    // (the six that steer) is that key held, for as long as the pointer is down on it; the rest press their key, so a
-    // click does exactly what the key does, whoever listens for it (the camera, the clock, the navball, the path).
-    const press = (key: string, down: boolean) => window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { key }));
-    root.addEventListener('click', (e) => {
-      const b = (e.target as HTMLElement).closest<HTMLElement>('button');
-      if (b?.dataset.do === 'keys') this.showKeys(!root.classList.contains('keys-open'));
-      else if (b?.dataset.work) this.work(b.dataset.work);
-      else if (b?.dataset.do) this.command(b.dataset.do);
-      else if (b?.dataset.press && !('held' in b.dataset)) {
-        press(b.dataset.press, true);
-        press(b.dataset.press, false);
-      }
-      (document.activeElement as HTMLElement | null)?.blur?.(); // or Space would press the button again
-    });
-    for (const b of root.querySelectorAll<HTMLButtonElement>('[data-hold], [data-held]')) {
-      const key = b.dataset.hold ?? b.dataset.press!;
-      const set = (down: boolean) => {
-        if (b.classList.contains('down') === down) return;
-        b.classList.toggle('down', down);
-        if (!b.dataset.hold) press(key, down);
-        else if (down) this.held.add(key);
-        else this.held.delete(key);
-      };
-      b.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); // (it takes no focus, so Space stays the next event's)
-        try {
-          b.setPointerCapture(e.pointerId); // (so that a pointer sliding off it still lets go here)
-        } catch {
-          // a pointer the browser no longer has: it lets go by itself
-        }
-        set(true);
-      });
-      for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => set(false));
-      window.addEventListener('blur', () => set(false));
-    }
-    this.showKeys(false);
-
-    // the way in: beside the clock, which is always on show
-    this.button = document.createElement('button');
-    this.button.className = 'cockpit-enter';
-    this.button.innerHTML = '<kbd>Esc</kbd><span>Fly it</span>';
-    this.button.title = 'Fly this flight yourself (L)';
-    this.button.hidden = !this.vehicle;
-    this.button.addEventListener('click', () => (this.on ? this.leave() : this.enter()));
-    (parent.querySelector('.time-row') ?? parent).append(this.button);
-
-    window.addEventListener('keydown', (e) => this.key(e, true));
-    window.addEventListener('keyup', (e) => this.key(e, false));
-    window.addEventListener('blur', () => this.held.clear());
-    clock.listen(() => this.follow());
-  }
-
-  get active(): boolean {
-    return this.on;
-  }
-
-  /**
-   * The list of every key and control, under the one line that is always there: opened or shut. It is not remembered:
-   * open, it covers a third of the view, so the deck is always entered with it shut and the world in front.
-   */
-  private showKeys(open: boolean): void {
-    this.root.querySelector<HTMLElement>('.cockpit-keys')!.hidden = !open;
-    this.root.querySelector('[data-do=keys]')!.setAttribute('aria-expanded', String(open));
-    this.root.classList.toggle('keys-open', open);
   }
 
   /** Whether this flight can be flown by hand: it has a trajectory with a body to steer, and a model to carry. */
   get able(): boolean {
     return this.vehicle !== null;
   }
-
-  /** For the instruments that are not this one's (navball.ts, viewer/path.ts): told every sample put on show, with the live state when it is the flight's own instant (null when looking back). */
-  listen(fn: (sample: LiveSample, live: VehicleState | null) => void): void {
-    this.watchers.push(fn);
-  }
-  private readonly watchers: ((sample: LiveSample, live: VehicleState | null) => void)[] = [];
 
   /** The vehicle being flown, and how it is flown: guidance on or off, the sequencer on or off, and the pilot's trim on the programme, radians. */
   get craft(): Vehicle | null {
@@ -364,14 +163,12 @@ export class Cockpit {
     return { guidance: this.guidance, sequence: this.sequence, trim: this.trim };
   }
 
-  /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */
-  private readonly finger = { pitch: 0, yaw: 0, roll: 0 };
   /** The throttle lever of an engine that throttles (sim/lever.ts): none where it does not. */
   private lever: Lever | null = null;
   private abortArmed = Number.NEGATIVE_INFINITY;
 
   /** Move the throttle lever, by the slider, the arrow keys or Z: only an engine whose nature has a range has one. */
-  private setLever(to: number): void {
+  protected override setLever(to: number): void {
     if (!this.lever) return;
     this.lever.move(to);
     const slider = this.root.querySelector<HTMLInputElement>('[data-lever]')!;
@@ -383,9 +180,6 @@ export class Cockpit {
     const tr = this.flight.trajectory;
     const el = this.cells.get('systems') ?? this.root.querySelector<HTMLElement>('[data-cell=systems]')!;
     if (!tr?.body) return;
-    // a supply is a bar of what is left, with the figure beside it
-    const tank = (id: string, label: string, about: string) =>
-      `<div class="tank" title="${about}"><span>${label}</span><u class="bar"></u><b data-cell="${id}"></b><i data-cell="${id}-kg"></i></div>`;
     const supplies = tr.body.capsule.rcs?.supplies ?? [];
     const axes = tr.body.capsule.rcs ? ['pitch', 'yaw', 'roll'] : [];
     el.innerHTML = `
@@ -408,26 +202,13 @@ export class Cockpit {
   /** Take the flight deck: the vehicle stands on its pad, the clock stopped at liftoff, waiting for ignition. */
   enter(): void {
     if (!this.vehicle || this.on) return;
-    this.on = true;
-    this.root.hidden = false;
-    this.showKeys(false);
-    this.button.querySelector('span')!.textContent = 'Leave';
-    this.button.title = 'Leave the flight deck (Esc)';
-    this.host.piloting(true);
+    this.opened();
     this.fresh();
   }
 
   leave(): void {
     if (!this.on) return;
-    this.on = false;
-    this.root.hidden = true;
-    this.button.querySelector('span')!.textContent = 'Fly it';
-    this.button.title = 'Fly this flight yourself (L)';
-    this.held.clear();
-    this.finger.pitch = this.finger.yaw = this.finger.roll = 0;
-    this.host.fly(null);
-    this.clock.reset();
-    this.host.piloting(false);
+    this.closed('Fly this flight yourself (L)');
   }
 
   /** A new flight: back on the pad. */
@@ -509,7 +290,7 @@ export class Cockpit {
   }
 
   /** The clock has moved (or been stopped, or put somewhere): bring the flight up to it. */
-  private follow(): void {
+  protected follow(): void {
     const v = this.vehicle;
     let state = this.state;
     if (!this.on || !v || !state) return;
@@ -690,7 +471,7 @@ export class Cockpit {
     return alone && s.shed.tower && s.mainAt === null;
   }
 
-  private command(what: string): void {
+  protected command(what: string): void {
     if (!this.on) return;
     if (what === 'leave') this.leave();
     else if (what === 'again') this.fresh();
@@ -744,35 +525,13 @@ export class Cockpit {
     if (this.state) this.show(this.at(Math.min(this.clock.t, this.state.t)));
   }
 
-  private key(e: KeyboardEvent, down: boolean): void {
-    const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
-    if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
-    const key = e.key.toLowerCase();
-    if (!this.on) {
-      if (down && key === 'l' && !e.repeat && this.vehicle && !this.button.hidden) this.enter();
-      return;
-    }
-    if (['w', 'a', 's', 'd', 'q', 'e'].includes(key)) {
-      if (down) this.held.add(key);
-      else this.held.delete(key);
-      this.root.querySelector(`[data-hold="${key}"]`)?.classList.toggle('down', down);
-      e.preventDefault();
-      return;
-    }
-    if (!down || e.repeat) return;
-    if (this.lever && ['arrowup', 'arrowdown', 'z'].includes(key)) {
-      this.setLever(key === 'z' ? this.lever.most : this.lever.at + (key === 'arrowup' ? NOTCH : -NOTCH));
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    const what = (
-      { ' ': 'next', g: 'guidance', b: 'sequence', n: 'again', escape: 'leave', l: 'leave', x: 'abort' } as Record<string, string>
-    )[key];
-    if (!what) return;
+  /** An engine with a lever: the up and down arrows move it a notch, Z puts it full. */
+  protected override extraKey(key: string, e: KeyboardEvent): boolean {
+    if (!this.lever || !['arrowup', 'arrowdown', 'z'].includes(key)) return false;
+    this.setLever(key === 'z' ? this.lever.most : this.lever.at + (key === 'arrowup' ? NOTCH : -NOTCH));
     e.preventDefault();
     e.stopPropagation();
-    this.command(what);
+    return true;
   }
 
   /** Put a sample on the instruments. Only what has changed touches the page. */

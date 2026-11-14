@@ -19,9 +19,9 @@ import { Quaternion, Vector3 } from 'three';
 import type { Footfall, Sounds } from '../audio';
 import { prefs } from '../prefs';
 import { flownOnce, G0 } from '../sim/fly.ts';
+import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { SitedFlight } from '../types';
-import { liftoffEngine } from '../sim/staged.ts';
 import { Ascent, orbitalRecord, type Run } from '../viewer/ascent';
 import type { Clock } from '../world/clock.ts';
 import { siteFrame } from '../world/frames.ts';
@@ -378,14 +378,28 @@ export class Sound {
   private cues(h: Hearing): Cue[] {
     const tr = this.flight.trajectory;
     if (!this.ascent) return [];
-    // (an orbital flight's drops are heard; its braking engine is not yet)
-    if (!tr)
+    // An orbital flight's drops, and its braking engine when the run on show burns it (`Run.fires`: the record's timer, a
+    // hand's, or none): heard as the retrorockets' cue is, one burn of its length at its thrust (the TDU-1's 1,614 kgf where the
+    // record gives it, else the impulse over the burn); its own timbre, a pressure-fed liquid engine's, is not synthesised apart
+    if (!tr) {
+      const o = this.flight.orbital;
+      const k = (this.flight.flies?.fires ?? []).findIndex((f) => f.on === 'retro');
+      const burn = k >= 0 ? this.live?.fires?.[k] : undefined;
+      const lit = burn && Number.isFinite(burn.from) && burn.to > burn.from ? burn : null;
       return score({
-        drops: this.ascent.drops.map((d, i) => ({ at: d.at, on: this.flight.flies!.drops[i]?.on })),
-        retro: null,
+        drops: this.ascent.drops.map((d, i) => ({ at: this.live?.dropped[i] ?? d.at, on: this.flight.flies!.drops[i]?.on })),
+        retro:
+          lit && o
+            ? {
+                fires: [lit.from],
+                burn: lit.to - lit.from,
+                thrust: o.manual?.thrust.value ?? (o.mass.value * o.retro.deltaV.value) / (lit.to - lit.from),
+              }
+            : null,
         out: h.out,
         duration: h.duration,
       });
+    }
     const fires = tr.retro.fires.map((f) => f.value);
     const lit = this.live ? this.retroAt : fires[0]!;
     const drops = this.ascent.drops.map((d, i) => ({ at: d.at, on: this.flight.flies!.drops[i]?.on }));
