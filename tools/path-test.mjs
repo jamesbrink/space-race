@@ -16,7 +16,7 @@
 // and its engine cut early; Vostok 1's ascent pitched and its stages cut early or late, its braking engine fired forward
 // and back in orbit), checked at each step as above, run on to its end with nothing more done, and where it ends held
 // against where the path said it would when the hands let go.
-//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|v1] [--quick] [--at 60,700] [--seed n] [--hands: the hands alone]
+//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|lb7|v1] [--quick] [--at 60,700] [--seed n] [--hands: the hands alone]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -49,7 +49,8 @@ const OFF = 3;
 const EDGE = 24;
 
 const FLIGHTS = {
-  f7: { id: 'usa/mercury/mr-3-freedom-7', instants: [5, 60, 142, 200, 300, 420, 560, 700] },
+  f7: { id: 'usa/mercury/mr-3-freedom-7', ballistic: true, instants: [5, 60, 142, 200, 300, 420, 560, 700] },
+  lb7: { id: 'usa/mercury/mr-4-liberty-bell-7', ballistic: true, instants: [5, 60, 143, 200, 310, 420, 580, 700] },
   v1: { id: 'ussr/vostok/vostok-1', instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500] },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];
@@ -702,7 +703,7 @@ const rand = seeded(Number(flag('--seed') ?? 1961));
 if (!quick && !at) {
   for (const [key, f] of Object.entries(FLIGHTS)) {
     if (only && only !== key) continue;
-    if (key === 'f7') {
+    if (f.ballistic) {
       for (let n = 0; n < 2; n++) {
         // guidance off and the nose pitched hard over, then the engine cut early (the sequencer off, Space), then
         // nothing more: the booster and the spacecraft come down together
@@ -711,15 +712,15 @@ if (!quick && !at) {
         await seek(t1);
         await deck('guidance');
         await hold('KeyW', 1 + rand() * 2);
-        await views(`f7 hands ${n} pitched at T+${t1.toFixed(0)}`);
+        await views(`${key} hands ${n} pitched at T+${t1.toFixed(0)}`);
         await runTo(t1 + 5 + rand() * 10, 2);
         await deck('sequence');
         await deck('next');
         await runTo((await page.evaluate(() => window.sr.clock.t)) + 2, 1);
-        await views(`f7 hands ${n} cut`);
+        await views(`${key} hands ${n} cut`);
         // (the live vehicle is a rigid body that tumbles as it falls; the path a point mass on the stack's drag, nose first)
         await outcome(
-          `f7 hands ${n} cut, then down`,
+          `${key} hands ${n} cut, then down`,
           () => runTo(4000, 40),
           (way) => 2000 + 0.02 * way,
         );

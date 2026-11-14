@@ -17,7 +17,7 @@ a hatch he could blow off himself.
 | Duration | 15 min 37 s |
 | Recovery | the pilot by helicopter to USS *Randolph*; the spacecraft sank |
 
-**In this repo: the vehicle, in the gallery and at its launch site, and its pilot.** The spacecraft
+**In this repo: the vehicle, in the gallery and at its launch site, its pilot, and the flight, to fly.** The spacecraft
 and its launch vehicle are modelled and can be turned, taken apart and cut open, and stand on Launch
 Complex 5 as it stood that morning, from the pilot going aboard at 03:58 to the pad standing empty.
 Grissom stands on the hardstand where NASA's photograph 61-MR4-83 has him, walking to the lift with
@@ -152,6 +152,17 @@ differs from Freedom 7's morning and how sure each difference is). What it still
 **The flight** is flown on the stack's own hardware, as Freedom 7's is: see "The flight as flown" below.
 
 ## The flight as flown
+
+**Fly it** (the third place, or L at the launch site): the flight deck Freedom 7 has, on this flight's data
+and no code of its own. By default the flight is the record's: the gyros fly the tilt programme on 100°,
+the sequencer sets off cutoff and the tower at 02:23, separation at 02:33, retrofire at 05:10, the pack at
+06:07, and the spacecraft's own sequence lets the parachutes out at 21,000 and 12,300 ft. Every part of it
+is open to the hand: G gives up the platform (W S A D Q E then are the vanes and, on the spacecraft
+alone, the manual jets), B the sequencer (Space then sets off each event in turn, whenever it is
+pressed), a right click on a part offers what that part can do, and the cabin's rings and buttons do it
+from the couch. What a hand does has its consequences in the same physics: pitched hard over at T+40
+with the platform off, the stack breaks up at T+42 on its bending limit and the escape rocket pulls the
+spacecraft clear.
 
 `src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts), which is this
 flight's own day and figures on the Mercury-Redstone's hardware

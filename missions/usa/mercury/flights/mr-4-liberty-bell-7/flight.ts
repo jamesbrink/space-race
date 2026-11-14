@@ -19,7 +19,16 @@ import {
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
 import { mercuryCabin, mercurySeat, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
-import { cutoffMass, derived, doc, guess, trajectory as mercuryRedstone, PLR } from '../../vehicles/mercury-redstone.ts';
+import {
+  CAPSULE_PLANE,
+  CHUTES,
+  cutoffMass,
+  derived,
+  doc,
+  guess,
+  trajectory as mercuryRedstone,
+  PLR,
+} from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 
@@ -399,7 +408,7 @@ const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/usa/mercury/mr-4-liberty-bell-7/vehicle.glb',
-  // the periscope on its programme (vehicles/periscope.ts): nothing works it by hand yet, this flight having no flight deck
+  // the periscope on its programme, and in the pilot's hands in a flight flown by hand (vehicles/periscope.ts)
   mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   scale: '25.41 m tall · spacecraft 7.91 m · to scale',
   backdrop: 'cape-canaveral',
@@ -1588,6 +1597,27 @@ export const flight: Flight = {
     'The powered flight ends 4 % too fast, as Freedom 7’s does and for the same reason (the booster’s modelled burn), and what follows is high and long: 12 % on the apogee, 16 % on the range. ' +
     'Flown from the record’s speed at separation (its height and climb there are not in the record read, so the run’s own are taken), the capsule comes to its top on the record’s second and lets its parachutes out within nine seconds of it; ' +
     'it lands a minute late, the main being let out at the 12,300 ft the history gives (tests/sim.test.mjs).',
+  flies: {
+    model: 'vehicle',
+    drops: [
+      { at: CUTOFF, nodes: ['EscapeTower'], on: 'tower' },
+      {
+        at: SEPARATION,
+        on: 'separation',
+        nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
+      },
+      { at: TRAJECTORY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
+      // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it
+      { at: 614, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
+    ],
+    // in the orbit attitude, heat shield first: "I'm in orbit attitude" at 03:02 (Results, p. 42), the turnaround having begun at 02:38
+    turned: 182,
+    datum: CAPSULE_PLANE * IN,
+    engine: 'RedstoneEngine',
+    burns: 'alcohol-lox',
+    air: { shield: 'HeatShield', collar: 'HeatShield', frost: ['frost-lox'] },
+    chutes: CHUTES,
+  },
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
 };

@@ -1,15 +1,15 @@
 // Goes between a flight's places in the running page as a visitor would, with slow loads and real keys, and checks
 // what the page promises of it (docs/agents/gallery.md): the latest place asked for is the one arrived at, the address
 // and what is on show agree, any touch ends a show, and what is remembered for both places is the same in both.
-//   node tools/places-test.mjs [url] [--only <name>]      (default url: http://localhost:5180/)
+//   node tools/places-test.mjs [url] [--only <name>] [--flight <id>]      (default url: http://localhost:5180/; Freedom 7)
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
 import { chromium } from 'playwright-core';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
 const only = opt('--only', null);
+const FLIGHT = opt('--flight', 'usa/mercury/mr-3-freedom-7');
 const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
-const FLIGHT = 'usa/mercury/mr-3-freedom-7';
 
 const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 
