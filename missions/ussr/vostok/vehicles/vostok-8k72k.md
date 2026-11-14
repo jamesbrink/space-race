@@ -226,12 +226,24 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | `CoreEngine` | the RD-108: four chambers, four steering chambers in their fairings, turbopump | |
 | `Booster_B`, `_V`, `_G`, `_D` | each strap-on whole, with its RD-107, air rudder, the two ties at its foot and the fitting on its nose it hangs by; the node's origin is the middle of its tip ball | swings out about its tip, then falls away |
 
+Nodes under them that a flight or the viewer can ask for by name. A nozzle's node has its origin on the nozzle's axis
+in the plane of its mouth and its own +Z (the exported file's +Y) the way it pushes: the gas leaves along its −Z, as
+the braking engine's `RetroEngine_Nozzle` has it.
+
+| Node | In | Origin | What it is, and how sure |
+| --- | --- | --- | --- |
+| `Booster_<letter>_Vent` | its booster | on the jet's axis where it crosses the nozzle's lip: 18,300 mm up the block's axis, 88.7 mm from it on the side toward the core, less the lip's 12 mm | The oxygen tank's pull-away nozzle: its jet at 45° to the block's axis, forward and toward the core, on the inner side of the nose cone: **documented, second hand** (the MS-10 commission's findings as Zak and Habr give them; M: «сопла, расположенные на внутренней стороне силового конуса»). Its station (900 mm above the tank's head), bore (80 mm), sleeve (90 mm) and that it is one scarfed nozzle sunk in the cone, its lip 12 mm proud: **estimated**; the cone lies 48 mm from the core's skin, so nothing can stand on it. At the two nearer levels of detail the skin is cut and the nozzle is in the hole (`Booster_<letter>_Vent_Nozzle`); at the far level the node is there with nothing under it |
+| `Booster_<letter>_Ball` | its booster | the ball's middle, which is the booster's own origin | The neck and the 168 mm ball at the tip that carries the block's thrust into the core: that it is a ball in a socket is M's; its size is **estimated** |
+| `Core_Socket_<letter>` | `CoreStage` | where the ball's middle is as the block hangs: 19,759 mm above the nozzles, 1,520 mm from the core's axis | The cup the ball pushes up into, under its bracket (`Core_Brackets` stays one mesh): **estimated** form |
+| `RD107_<letter>_TurbineExhaust`, `RD108_TurbineExhaust` | the booster; `CoreEngine` | on the engine's axis, 470 mm above the main nozzles' exits, midway between the two mouths | The turbine's exhaust: two ducts down the middle between the chambers, 140 mm across. That the spent steam leaves through exhaust pipes, at 450 m/s, 8.8 kg/s, giving 7 kN, is **documented** (lpre.de, citing Gakhun); that there are two, their size, that they come down the middle and where they end are **estimated** from photographs of museum engines from below. The geometry is what the engine's frame had; it is now a node of its own (`..._TurbineExhaust_Ducts` under it), so the viewer's fire finder, which reads `..._Bells`, does not take the ducts for chambers |
+
 ## What the model gets wrong or leaves out
 
 - **The strap-ons' separation is flown in kind, its figures estimated** (orbital.ts, `boosters/B` to `/D`): the
   tail-off that swings each tail out, the swing before the ball leaves its socket, the vent's thrust and time. The swing
   itself (about a second) is not drawn: each leaves as it stood, with the rate and speed the swing gave it. The vent is
-  taken as steady; it falls as the tank empties. The model has no vent nozzle on the cone and no ball and socket to see.
+  taken as steady; it falls as the tank empties. The vent nozzle, the ball and the socket are nodes ("Parts in the
+  model"); nothing is drawn leaving the vent yet.
 
 - **Every station along the core and the boosters is estimated**, as set out above. The overall
   lengths, the three diameters and the lattice's length are the only documented dimensions in it.
@@ -259,8 +271,11 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
   with a sliding dovetail joint beside them (M).
 - **The tip joint is a ball in a cup.** The bracket's real form and the separation switches are
   not drawn. The oxygen tank's vent, which M puts on the inner side of the load-bearing cone
-  («сопла, расположенные на внутренней стороне силового конуса»), is a single round port flush
-  with the skin; how many there were, their size and their station are not known to us.
+  («сопла, расположенные на внутренней стороне силового конуса»), is a single scarfed nozzle
+  at 45° to the axis, sunk in the cone; how many there were, their size and their station are
+  not known to us.
+- **The turbine's exhaust is two plain ducts down the middle.** Where the real pipes run and end
+  was not read off a drawing; nothing is drawn leaving them (7 kN an engine, by lpre.de).
 - **Nothing holds it up.** On the pad the vehicle hangs by the boosters' load-bearing fittings in
   the four arms of the launch system; the pad is not built, so in the viewer it stands on nothing.
 - **Frost is one clean white**, with a lower edge that wanders by a hand's breadth or two and a

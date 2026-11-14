@@ -13,7 +13,8 @@ import math
 import bpy
 from mathutils import Matrix, Vector
 
-from srlib import TAU, deg, frame, group, interior
+import srlib
+from srlib import TAU, bore, deg, frame, group, interior
 
 from . import engines
 from .common import (
@@ -40,8 +41,10 @@ from .common import (
     frost_foot,
     hang,
     pivot,
+    rehang,
     scalloped,
     segs,
+    spout,
 )
 
 SHELL_PARTS = ("Skin", "Frost", "Shield", "InnerWall", "Fittings", "Fasteners", "Rudder", "SteeringFairings")
@@ -50,6 +53,13 @@ NOSE = 19050.0  # where the cone ends in the neck that carries the ball
 STEER_AT = (1500.0, 24.0)  # each steering chamber: from the block's axis, and degrees either side of the rudder
 TAIL_SHIELD = 2700.0  # the polished steel on the side toward the core reaches this far up
 SHIELD_RIM = 160.0  # and this far all the way round, at the rim
+# The oxygen tank's vent, which pushes the tip clear when the block leaves: on the inner side of the nose cone, its jet
+# at 45 degrees to the block's axis, forward and toward the core (the MS-10 commission's findings as Zak and Habr give
+# them; Minakov: documented, second hand). Its station above the tank's head, its bore's radius, its sleeve's, and how
+# proud of the skin its lip stands are estimated: the cone lies 48 mm from the core's skin, so it is a scarfed nozzle,
+# sunk in the cone, and not a pipe standing on it.
+VENT = (900.0, 40.0, 45.0, 12.0)
+VENT_TILT = deg(45)
 
 
 def shells(letter: str) -> tuple:
@@ -114,11 +124,60 @@ def dome(mb: Local, s: float, r: float, depth: float, up: bool, segs: int = 48, 
     mb.lathe(pts if up else pts[::-1], segs)
 
 
+def vent(X: Matrix, name: str, M: dict, skin_name: str) -> bpy.types.Object:
+    """The vent's node (`<name>_Vent`: its origin on the nozzle's axis where it crosses the mouth, its own +Z the way it
+    pushes, the gas leaving along its -Z) and, where the skin is fine enough to cut (detail 0.5 and over), the nozzle in a hole through the skin:
+    a sleeve about the jet's axis, cut off `proud` of the cone all round, a straight bore and a throat behind it."""
+    above, ri, ro, proud = VENT
+    s0 = BOOSTER_LOX[1] + above
+    p0 = Vector((-booster_r(s0), 0.0, s0))  # on the skin, on the side toward the core
+    d = Vector((-math.sin(VENT_TILT), 0.0, math.cos(VENT_TILT)))
+    e1 = Vector((0.0, 1.0, 0.0))
+    e2 = d.cross(e1)
+
+    def place(r: float, u: float, z: float) -> Vector:
+        return p0 + r * (math.cos(u) * e1 + math.sin(u) * e2) + z * d
+
+    def mouth(r: float, u: float) -> float:
+        """How far along the jet's axis a line of the sleeve, `r` from it at the angle `u`, comes `proud` out of the cone."""
+        out = lambda z: (math.hypot(*place(r, u, z).xy) - booster_r(place(r, u, z).z)) * math.cos(CONE) - proud  # noqa: E731
+        lo, hi = -150.0, 200.0
+        assert out(lo) < 0 < out(hi)
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if out(mid) < 0 else (lo, mid)
+        return (lo + hi) / 2
+
+    F = X @ Matrix.Translation(V(*place(0.0, 0.0, mouth(0.0, 0.0)))) @ frame((0, 0, 0), -d)
+    if srlib.DETAIL < 0.5:
+        return spout(f"{name}_Vent", None, F)
+    bore([skin_name], X @ Matrix.Translation(V(*p0)) @ frame((0, 0, 0), d), (ro - 2.0) * MM, 110.0 * MM)
+    n = segs(24)
+    inner, foot = -75.0, -95.0  # the straight bore's inner end, and the sleeve's, both under the skin
+    rows = [
+        (ro, None, foot),
+        (ro, True, 0.0),
+        (ri, True, 0.0),
+        (ri, None, inner),
+        (30.0, None, inner - 45.0),
+        (16.0, None, inner - 85.0),
+        (0.0, None, inner - 85.0),
+    ]
+    noz = Local(X)
+    noz.grid(
+        lambda u, j: tuple(place(rows[j][0], u, mouth(rows[j][0], u) if rows[j][1] else rows[j][2])),
+        [TAU * i / n for i in range(n)],
+        range(len(rows)),
+        closed_u=True,
+    )
+    return spout(f"{name}_Vent", None, F, noz.build(f"{name}_Vent_Nozzle", M["steel"], None, sharp_angle=35))
+
+
 def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     X = booster_frame(base_z, az_deg)
     name = f"Booster_{letter}"
     node = pivot(name, None, X @ V(0, 0, BOOSTER_LENGTH))
-    skin, frost, shield, wall, fit, bolts, steel, rudder, fair = (Local(X) for _ in range(9))
+    skin, frost, shield, wall, fit, bolts, steel, rudder, fair, ball = (Local(X) for _ in range(10))
     lox0, lox1 = BOOSTER_LOX
     # the tail: lacquer outside, polished steel over asbestos on the side that faces the core's fire
     n = segs(96)
@@ -149,13 +208,12 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     for s in rings:
         band(frost, s, 12, 6)
     frames = [(s, half + proud) for s, half, proud in on_lacquer] + [(s, 18) for s in rings]
-    # the nose: a neck and the ball that carries the block's thrust into the core
-    steel.lathe([(booster_r(NOSE) + 4, NOSE - 60), (52, NOSE + 30), (40, NOSE + 60), (40, BOOSTER_LENGTH - 60)], 24)
-    steel.ball((0, 0, BOOSTER_LENGTH), 84, 24, 12)
-    # when the block leaves, the oxygen tank's pressure is let out through a nozzle on the inner side of this cone
-    # to push the tip clear (Minakov). It is drawn as a port flush with the skin, which lies 48 mm from the core's
-    r = booster_r(lox1 + 900)
-    steel.disc((-(r - 4), 0, lox1 + 900), (-math.cos(CONE), 0, math.sin(CONE)), 60, 14, 16)
+    # the nose: a neck and the ball that carries the block's thrust into the core (a node of their own, `<name>_Ball`,
+    # its origin the ball's middle, which is the block's own)
+    ball.lathe([(booster_r(NOSE) + 4, NOSE - 60), (52, NOSE + 30), (40, NOSE + 60), (40, BOOSTER_LENGTH - 60)], 24)
+    ball.ball((0, 0, BOOSTER_LENGTH), 84, 24, 12)
+    # (when the block leaves, the oxygen tank's pressure is let out through a nozzle on the inner side of this cone to
+    # push the tip clear: `vent`, below, once the skin it goes through is built)
     # On the pad the whole vehicle hangs from the launch system's four arms by a fitting on each block's nose cone
     # (RKK Energia's history: by the blocks' «силовые головки»). Where on the cone, and its form, are estimated.
     for k in (-1, 1):
@@ -259,6 +317,8 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
     e = group(f"{name}_Engine", None)  # the RD-107, built in the block's axes below its rim
     engines.build(X @ at(0, 0, -NOZZLES), e, M, f"RD107_{letter}", steer, BOOSTER_FUEL[0] + NOZZLES)
     meshes += list(e.children)
+    meshes.append(vent(X, name, M, f"{name}_Skin"))
     for obj in meshes:
-        hang(obj, node)
+        rehang(obj, node)
+    hang(ball.build(f"{name}_Ball_Tip", M["steel"], None, sharp_angle=35), node).parent = pivot(f"{name}_Ball", node, (0, 0, 0))
     bpy.data.objects.remove(e)

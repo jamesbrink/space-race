@@ -27,6 +27,7 @@ from .common import (
     MM,
     NOZZLES,
     Local,
+    V,
     at,
     booster_frame,
     core_frame,
@@ -34,6 +35,8 @@ from .common import (
     fin,
     frost_edge,
     frost_foot,
+    hang,
+    pivot,
 )
 
 SHELLS = ("Core_Skin", "Core_Frost", "Core_TailShield", "Core_InnerWall", "Core_Fittings", "Core_Fasteners", "CoreEngine_Fairings")
@@ -121,7 +124,7 @@ def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
     this core at other stations (the 11A57) ends the webs short of the foot's under side."""
     X = core_frame(base_z)
     g = group("CoreStage")
-    skin, frost, shield, wall, fit, bolts, steel, bracket = (Local(X) for _ in range(8))
+    skin, frost, shield, wall, fit, bolts, bracket = (Local(X) for _ in range(7))
     lox0, lox1 = CORE_LOX
     shield_top = 1500.0  # the tail's lower part is under polished steel over asbestos
     skin.lathe([(core_r(h), h) for h in (shield_top, CORE_TAPER, lox0)], 96)
@@ -170,13 +173,15 @@ def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
             r = core_r(h) + (16 if h == CORE_TOP - 40 else 6)
             bolts.disc((r * math.cos(a), r * math.sin(a), h), (math.cos(a), math.sin(a), 0), 9, 5)
     # the bracket each booster's tip ball pushes up into: a cup on an arm from the frame
-    for az in BOOSTER_AZ.values():
+    # (each cup is a node of its own, `Core_Socket_<letter>`, its origin where the ball's middle is as the block hangs)
+    for letter, az in BOOSTER_AZ.items():
         cup = Local(booster_frame(base_z, az))
-        cup.mb = steel.mb
         top = BOOSTER_LENGTH
         cup.lathe([(118, top - 40), (128, top + 70), (70, top + 132), (0, top + 140)], 24)
         cup.lathe([(100, top - 40), (100, top + 40), (50, top + 96), (0, top + 100)], 24, flip=True)
         cup.lathe([(100, top - 40), (118, top - 40)], 24)
+        socket = pivot(f"Core_Socket_{letter}", g, booster_frame(base_z, az) @ V(0, 0, top))
+        hang(cup.build(f"Core_Socket_{letter}_Cup", M["steel"], None, sharp_angle=35), socket)
         arm = Local(X @ Matrix.Rotation(deg(az), 4, "Z"))
         arm.mb = bracket.mb
         r, h, reach = core_r(BOOSTER_TIP_H), BOOSTER_TIP_H, BOOSTER_TIP_R + 150
@@ -200,7 +205,6 @@ def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
     wall.build("Core_InnerWall", M["wall"], g, sharp_angle=None)
     fit.build("Core_Fittings", M["lacquer"], g, smooth=False)
     bolts.build("Core_Fasteners", M["bolt"], g)
-    steel.build("Core_Cups", M["steel"], g, sharp_angle=35)
     bracket.build("Core_Brackets", M["pale"], g, smooth=False)
     if interior():
         tanks, pipes, gear = Local(X), Local(X), Local(X)
