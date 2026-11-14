@@ -87,10 +87,31 @@ const GLASS = new THREE.MeshPhysicalMaterial({
   depthWrite: false,
 });
 
-/** A helmet visor: the same pane, but the face behind it is in the helmet's shade and the sky is on the glass. */
+/**
+ * A helmet visor the model draws as dark glass (an opaque `glass-visor`: the Mark IV's, the SK-1's, the Berkut's): the
+ * same pane, but the face behind it is in the helmet's shade and the sky is on the glass.
+ */
 const VISOR = GLASS.clone();
 VISOR.name = 'glass-visor';
 VISOR.opacity = 0.5;
+/**
+ * A visor the model draws clear (a `glass-visor` it blends, at its own opacity: the G3C's, 0.14): a pane like a window's,
+ * as much of it seen as the model says, so the face, the earphone pads and the microphones are seen through it. Before,
+ * every visor was `VISOR`, and a clear one read as dark smoked glass, near black over the face.
+ */
+const clearVisors = new Map<number, THREE.MeshPhysicalMaterial>();
+function visorOf(own: THREE.Material): THREE.MeshPhysicalMaterial {
+  if (!own.transparent) return VISOR;
+  const opacity = Math.round(own.opacity * 100) / 100;
+  let pane = clearVisors.get(opacity);
+  if (!pane) {
+    pane = GLASS.clone();
+    pane.name = 'glass-visor';
+    pane.opacity = opacity;
+    clearVisors.set(opacity, pane);
+  }
+  return pane;
+}
 /** A lens (`glass-lens`): thick glass over a dark barrel. Less of it is seen through and more of the sky is on it, and it is not a window to go and look in at. */
 const LENS = GLASS.clone();
 LENS.name = 'glass-lens';
@@ -1009,7 +1030,7 @@ export class Stage {
       const shell = Boolean(mesh.userData.shell);
       const mat = mesh.material as THREE.MeshStandardMaterial;
       if (mat.name.startsWith('glass')) {
-        const pane = mat.name.startsWith('glass-visor') ? VISOR : mat.name.startsWith('glass-lens') ? LENS : GLASS;
+        const pane = mat.name.startsWith('glass-visor') ? visorOf(mat) : mat.name.startsWith('glass-lens') ? LENS : GLASS;
         mesh.material = shell ? this.shellOf(pane, url) : pane;
         mesh.castShadow = false;
         mesh.renderOrder = 2; // after everything opaque, so what is behind is already drawn
@@ -1197,7 +1218,7 @@ export class Stage {
     this.cabin?.board(id === 'onboard');
     // leaving the vehicle, the shadows go back to the section: fitted to it where the clock has it now (it may just have
     // been put back on its pad, and not yet been moved there by a frame)
-    if (id === 'orbit' || id === 'free') {
+    if (id === 'orbit' || id === 'free' || (id === 'onboard' && this.exhibit)) {
       this.lift();
       this.fitShadows();
     }
@@ -1384,6 +1405,22 @@ export class Stage {
     this.dirty = true;
     this.onSeat();
     return true;
+  }
+
+  /** The box round the seated model's cabin (`CabinDef.within`, else the part the seat is in), a metre added all round; null if there is none. */
+  private cabinBox(): THREE.Box3 | null {
+    const at = this.seatHolder;
+    const def = this.defs[at];
+    const full = this.staged[at]?.full;
+    if (!def || !full) return null;
+    const seat = def.seats?.[this.seatAt]?.node;
+    const names = def.cabin?.within ?? (seat ? [this.partOf(seat) ?? ''] : []);
+    const box = new THREE.Box3();
+    for (const n of names) {
+      const node = full.getObjectByName(n);
+      if (node) box.expandByObject(node);
+    }
+    return box.isEmpty() ? null : box.expandByScalar(1);
   }
 
   /** The part (a top-level node named in the model's parts) a node of the model on show is in, or null. */
@@ -2898,6 +2935,12 @@ export class Stage {
     own.explode(1);
     box.expandByObject(own.group);
     own.explode(this.apart[this.current] ?? 0);
+    // From an exhibit's seat the map is spent on the cabin and a metre round it, not on the whole vehicle: over a
+    // Gemini-Titan's 34 m a texel is 8 mm, and its softened edge stepped across the cabin's walls in blocks. Nothing
+    // outside the cabin is seen from the seat but through its windows. (Fitted on sitting and on getting up, never as
+    // the view moves.)
+    const cabin = this.exhibit && this.cam.rig === 'onboard' ? this.cabinBox() : null;
+    if (cabin) box.copy(cabin);
     const centre = box.getCenter(new THREE.Vector3());
     const radius = Math.min(
       this.bounds.radius,
