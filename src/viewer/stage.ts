@@ -46,6 +46,7 @@ import { fitIndices, fitPictures } from './pictures';
 import { lightFires, Plume } from './plume';
 import { Quality } from './quality';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
+import { Surfaces } from './runs';
 import { ShadowCache } from './shadowcache';
 import { BAND, depthBias, FarShadow, uShadowFade } from './shadows';
 import { wearTexture } from './space';
@@ -569,6 +570,8 @@ export class Stage {
   private walkEnded = 0;
   /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
+  /** What a thing that slides or drives runs on (Move `runs`: viewer/runs.ts): the flight's models, the place and the land. */
+  private readonly surfaces = new Surfaces((x, z) => this.groundAt(x, z));
   private defs: ModelDef[] = [];
   /** Which of them is the section being studied. */
   private current = 0;
@@ -867,9 +870,10 @@ export class Stage {
     for (const o of this.setting.scenery) this.scene.remove(o);
     if (this.setting.globe) this.scene.remove(this.setting.globe.group);
     this.defs = flight.models;
+    this.surfaces.set([]);
     this.staged = flight.models.map((def, i) => {
       rest(scenes[i]!);
-      const staged = new Staged(scenes[i]!, def.parts);
+      const staged = new Staged(scenes[i]!, def.parts, this.surfaces);
       staged.group.position.set(...(def.position ?? [0, 0, 0]));
       staged.group.rotation.y = def.rotationY ?? 0;
       const lamps = (def.lights ?? []).map((l) => {
@@ -927,6 +931,9 @@ export class Stage {
       flight.site ? { site: flight.site, launch: flight.launch, weather: flight.weather } : undefined,
     );
     this.applySetting();
+    // (what slides or drives stands on the models and the land: the place's rails and roads too once it has come)
+    this.surfaces.set(this.staged.map((s) => s.full));
+    for (const s of this.staged) s.resurface();
     // the place round the pad arrives when it arrives: the flight can be studied without it
     for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) this.scene.remove(o);
     this.surroundings = null;
@@ -939,6 +946,9 @@ export class Stage {
           this.surroundings = object;
           this.far.refit();
           this.scene.add(object);
+          object.updateMatrixWorld(true);
+          this.surfaces.set([...staged.map((s) => s.full), object]);
+          for (const s of staged) s.resurface();
           const scenery = (this.scenery = new Scenery(object));
           this.lamps.add(object, this.scene); // its floods, and a light in each room where the model hangs one (Light_<room>)
           this.renderer.shadowMap.needsUpdate = true;

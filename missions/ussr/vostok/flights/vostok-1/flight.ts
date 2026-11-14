@@ -1,4 +1,4 @@
-import type { CabinDef, ChuteDef, Command, Flight, Keyframe, Measure, ModelDef, Move, Part } from '../../../../../src/types';
+import type { CabinDef, ChuteDef, Command, Flight, Keyframe, Measure, ModelDef, Move, Part, Runs } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
 import { DUTY } from '../../vehicles/cabin.ts';
 import { MSK, orbital } from './orbital.ts';
@@ -1124,13 +1124,37 @@ const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
  * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
  * line (metres east and south from where that bogie stood: sites/site1/place.py, SPURS and CENTRE_TRACK).
  */
-const CAR_WHEEL = 0.475;
-const carLeaves = (node: string, wheelbase: number, path: [number, number][], from: number, to: number): Move => ({
+/** The fillers' wheels' radius where the coned tread bears on the rail's head: 950 mm wheels, 2.4 mm out (site1/tank_cars.py `AXLE_Z`). */
+const CAR_WHEEL = 0.475 + 0.0024;
+/**
+ * What a railway wagon runs on (types.ts Runs): the model's own rails, on the deck (DeckRails) and where they come up to
+ * the platform over the land (the place's Tracks); beyond the modelled rails the track is painted on the land, and
+ * there it runs on that.
+ */
+const ON_RAILS: Runs = { on: ['DeckRails', 'Tracks'], ground: true };
+/** What a road vehicle runs on: the land, which the roads and the apron are painted on, and a modelled rail it crosses. */
+const ON_ROAD: Runs = { on: ['Tracks'], ground: true };
+/**
+ * A track's line as a route: its corners (place.py's polylines, which the model's rails follow straight from corner to
+ * corner) with a point every few metres between them, so that the drive's smooth curve through its points (explode.ts
+ * `Route`) keeps to the rails and does not bow off them between corners.
+ */
+const alongTrack = (corners: [number, number][], step = 4): [number, number][] => {
+  const out: [number, number][] = [];
+  let [x0, z0] = [0, 0];
+  for (const [x, z] of corners) {
+    const n = Math.max(1, Math.ceil(Math.hypot(x - x0, z - z0) / step));
+    for (let i = 1; i <= n; i++) out.push([x0 + ((x - x0) * i) / n, z0 + ((z - z0) * i) / n]);
+    [x0, z0] = [x, z];
+  }
+  return out;
+};
+const carLeaves = (node: string, wheelbase: number, corners: [number, number][], from: number, to: number): Move => ({
   kind: 'drive',
   node,
   from,
   to,
-  path,
+  path: alongTrack(corners),
   pivot: [0, CAR_WHEEL, 0],
   forward: [-1, 0],
   wheelRadius: CAR_WHEEL,
@@ -1138,6 +1162,8 @@ const carLeaves = (node: string, wheelbase: number, path: [number, number][], fr
   wheels: `${node}_Wheel_`,
   steered: `${node}_Steered_`,
   axle: 'z',
+  bogies: true,
+  runs: ON_RAILS,
 });
 /** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
 const BOOM_LEAN = 14;
@@ -1145,6 +1171,11 @@ const BOOM_BACK = 20;
 const ERECTOR_ROLL = [30, 120];
 const ERECTOR_WHEEL = 0.475;
 const ERECTOR_AXLES = [1, 2, 3, 4, 5, 6];
+/**
+ * The wagon on the model's rails all the way it goes (DeckRails, then the place's Tracks, modelled to where it is left).
+ * Its wheels bear 2.4 mm out from the nominal radius, where the coned tread meets the rail's head (site1/erector.py `AXLE_Z`).
+ */
+const ERECTOR_RUNS: Runs = { on: ['DeckRails', 'Tracks'], wheels: 'Erector_Wheel_', wheelRadius: ERECTOR_WHEEL + 0.0024, axle: 'z' };
 /** The lift's stops above its lowest, m: it rides the leaning boom, so each is 0.2493 of its height nearer the rocket. */
 const LIFT_STOPS: [name: string, up: number][] = [
   ['Lift door, 15 steps up', 0],
@@ -1332,6 +1363,7 @@ const drives = (
   wheels: `${node}_Wheel_`,
   steered: `${node}_SteerWheel_`,
   axle: 'z',
+  runs: ON_ROAD,
 });
 const BUS = { wheelbase: 4.19, wheel: 0.525 };
 
@@ -1649,29 +1681,12 @@ const padParts: Part[] = [
     ],
     moves: [
       // the boom comes away (documented, 08:35 to 08:37), then goes down as the wagon rides off (documented that it
-      // did; how far it had gone before it lay down is ours), and the wagon is drawn on (documented; how far, ours)
+      // did; how far it had gone before it lay down is ours), and the wagon is drawn on (documented; how far, ours), on
+      // its rails and its wheels turning as it goes (ERECTOR_RUNS)
       { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: BOOM_BACK * DEG, from: T.erector, to: T.boomAway },
       { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: (90 + BOOM_LEAN - BOOM_BACK) * DEG, from: T.boomAway, to: T.boomDown },
-      { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: T.boomAway, to: T.boomDown },
-      { kind: 'slide', by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0], from: T.boomDown, to: T.cleared },
-      ...ERECTOR_AXLES.flatMap((n): Move[] => [
-        {
-          kind: 'swing',
-          node: `Erector_Wheel_${n}`,
-          axis: [0, 0, 1],
-          angle: ERECTOR_ROLL[0]! / ERECTOR_WHEEL,
-          from: T.boomAway,
-          to: T.boomDown,
-        },
-        {
-          kind: 'swing',
-          node: `Erector_Wheel_${n}`,
-          axis: [0, 0, 1],
-          angle: (ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!) / ERECTOR_WHEEL,
-          from: T.boomDown,
-          to: T.cleared,
-        },
-      ]),
+      { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: T.boomAway, to: T.boomDown, runs: ERECTOR_RUNS },
+      { kind: 'slide', by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0], from: T.boomDown, to: T.cleared, runs: ERECTOR_RUNS },
     ],
     // two of its crew at the wagon's rail (a colour photograph), until thirty minutes' readiness (the roster)
     clocked: [leaves('Erector_Crew', MSK(8, 37))],

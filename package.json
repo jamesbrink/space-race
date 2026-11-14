@@ -23,6 +23,7 @@
     "test:fires": "node tools/fires-test.mjs",
     "test:history": "node tools/history-test.mjs",
     "test:mem": "node tools/mem-test.mjs",
+    "test:wheels": "node tools/wheels-test.mjs",
     "test:seat": "node tools/seat-test.mjs",
     "test:walk": "node tools/walk-test.mjs",
     "test:front": "node tools/front-test.mjs",
