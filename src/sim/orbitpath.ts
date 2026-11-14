@@ -5,8 +5,9 @@
  * and the flight agree. Round once if it stays up; down to the ejection height if it comes down. In fly.ts's frame that
  * does not turn (Greenwich on +X at liftoff), as every run the scene shows.
  */
-import type { Geodetic, Vec3 } from '../world/frames.ts';
+import { angleBetween, type Geodetic, geodeticToEcef, type Vec3 } from '../world/frames.ts';
 import { greenwichSiderealTime } from '../world/time.ts';
+import { MEAN_RADIUS } from './fly.ts';
 import { flyOrbit, type OrbitalFlight } from './orbital.ts';
 import { elements, type PathEvent, type PathPlace, type PathPoint, type Prediction, type Predictor } from './predict.ts';
 
@@ -54,10 +55,13 @@ export function orbitPredictor(
     const r = flown.results;
     const events: PathEvent[] = [];
     const at = (t: number): PathPoint => points.reduce((best, p) => (Math.abs(p.t - t) < Math.abs(best.t - t) ? p : best), points[0]!);
-    if (plan.retro.on.value > start.t && plan.retro.on.value <= end) events.push({ ...at(plan.retro.on.value), kind: 'retro' });
+    // (an event is marked only where the path reaches it: a burn planned after it has come down is not on it)
+    const last = points[points.length - 1]!.t;
+    if (plan.retro.on.value > start.t && plan.retro.on.value <= Math.min(end, last))
+      events.push({ ...at(plan.retro.on.value), kind: 'retro' });
     if (Number.isFinite(r.entryAt) && r.entryAt > start.t) events.push({ ...at(r.entryAt), kind: 'entry' });
     if (Number.isFinite(r.entryGAt) && r.entryGAt > start.t) events.push({ ...at(r.entryGAt), kind: 'peak', value: r.entryG });
-    const last = kept[kept.length - 1]!;
+    const final = kept[kept.length - 1]!;
     return {
       kind: 'coast',
       from: start.t,
@@ -67,7 +71,14 @@ export function orbitPredictor(
       apogee: down && hi === kept.length - 1 ? null : place(points[hi]!, kept[hi]!),
       perigee: down ? null : place(points[lo]!, kept[lo]!),
       // (it ends where the pilot leaves, at the ejection height: the descent under parachutes is not predicted)
-      impact: down ? { ...place(points[points.length - 1]!, last), range: 0, speed: r.ejectionSpeed } : null,
+      impact: down
+        ? {
+            ...place(points[points.length - 1]!, final),
+            // (over the ground from the pad, as predict.ts gives it: the angle between the two from the Earth's centre)
+            range: angleBetween(geodeticToEcef({ ...final, height: 0 }), geodeticToEcef({ ...site, height: 0 })) * MEAN_RADIUS,
+            speed: r.ejectionSpeed,
+          }
+        : null,
       orbit: Number.isFinite(el.period)
         ? { ...el, apoapsisHeight: el.apoapsis - plan.orbit.radius.value, periapsisHeight: el.periapsis - plan.orbit.radius.value }
         : null,
