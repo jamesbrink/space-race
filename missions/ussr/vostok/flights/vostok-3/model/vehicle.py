@@ -45,7 +45,7 @@ def pilot(parent, place) -> dict:
 
 def build() -> str:
     # under the fairing the instrument module's antennas were folded: they are built stowed, and the flight's data lets them out
-    vostok_3ka.build(pilot=pilot, stowed=True, film_camera=True, television=True)
+    vostok_3ka.build(pilot=pilot, stowed=True, film_camera=True, television=True, lighting=True)
     az, lat = vostok_3ka.ENTRY
     # the fairing's opening is over hatch No. 1, where the line from the sphere's middle through the hatch meets the fairing
     summary = vostok_8k72k.build(hatch_az=az, hatch_z=vostok_3ka.Z_C + vostok_8k72k.common.FAIRING_R * math.tan(lat))

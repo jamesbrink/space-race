@@ -73,6 +73,13 @@ VZOR_PORTS = 8
 TV_AT = (-40.0, -705.0, 505.0)
 TV_LAMP_AT = (62.0, -705.0, 505.0)
 LAMPS_AT = ((235.0, -150.0, 850.0), (-235.0, -150.0, 850.0))
+# The lighting's tumbler: where its lever leans in each of its positions, degrees up the panel's face: working (as he
+# flew, and as it is built), duty, off.
+LIGHTING_THROW = (24.0, 0.0, -24.0)
+# Where that tumbler stands on the plain control panel of a ship whose cabin is not fitted (vostok_3ka.build_cabin), from
+# the middle of its face: toward the instrument board, and toward the pilot's head. It is in the row the panel's two rows
+# of knobs leave free, at the end toward the board, as PU-1-3KA has ОСВЕЩЕНИЕ at the right of its fourth row. Estimated.
+PLAIN_LIGHTING_AT = (100.0, 0.0)
 # What the Globus's correction window read on the pad: the orbit's period as a three-figure code (spacecraft.md, "Globus").
 GLOBUS_CORRECTION = "710"
 RADIO_AT = (-455.0, -455.0, 470.0)
@@ -604,7 +611,7 @@ def control_panel(c: Fit) -> dict:
     title("ОСВЕЩЕНИЕ", 112.0, 8.0, 3.0)
     title("ДЕЖУРН.   РАБОЧЕЕ", 112.0, -3.0, 2.2)
     # (built at "working", as he flew: three positions, working, duty, off)
-    tumbler(c, F, 112.0, -20.0, name="Ctl_Lighting", throw=(24.0, 0.0, -24.0))
+    tumbler(c, F, 112.0, -20.0, name="Ctl_Lighting", throw=LIGHTING_THROW)
     title("ВЫКЛ", -92.0, -38.0, 2.4)
     title("ВЫКЛ", 112.0, -38.0, 2.4)
     rule(-48.0)
@@ -811,6 +818,34 @@ def receiver(c: Fit) -> None:
 # ---------------------------------------------------------------------------------- build
 
 
+def told(v: Vector) -> str:
+    """A place or a direction of the scene as a flight's data writes it: the file's axes."""
+    # (Blender's +Z is the file's +Y and its +Y the file's -Z)
+    return f"[{v.x:.3f}, {v.z:.3f}, {-v.y:.3f}]"
+
+
+def tell_lamps(lamps: list[Vector]) -> None:
+    """Prints where each cabin lamp is and where a flight's data puts its light (`ModelDef.lights`), metres."""
+    middle = place(0, 0, 250.0)
+    for i, p in enumerate(lamps):
+        light = p + (middle - p).normalized() * 220.0  # (a hand's breadth and more in from the wall: a bare point at the wall burns it)
+        print(f"cabin: lamp {i + 1} at {told(p * MM)}; its light at {told(light * MM)}")
+
+
+def lighting(parent: bpy.types.Object, M: dict, panel: Matrix) -> None:
+    """The cabin's lamps and their tumbler by themselves, for a ship whose cabin is otherwise the type's plain one
+    (vostok_3ka.build(lighting=True): Vostoks 2 to 6). They are the 1961 fit's own: its two fittings where it has them
+    (cabin_lamps) and its `Ctl_Lighting`, with the same three positions, here on the face of the plain control panel
+    (`panel`: that face's frame, millimetres, +Z out of it at the pilot). That those ships had cabin lighting, worked
+    by the pilot, with a working light and a duty one, is documented for Vostok 2 and Vostok 6; everything about where
+    is carried over from Vostok 1, where it is itself estimated (../vostok-3ka.md, "Cabin lighting")."""
+    c = Fit(parent, materials(M))
+    lamps = cabin_lamps(c)
+    tumbler(c, panel, *PLAIN_LIGHTING_AT, name="Ctl_Lighting", throw=LIGHTING_THROW)
+    c.finish()
+    tell_lamps(lamps)
+
+
 def build(parent: bpy.types.Object, M: dict) -> None:
     """Fit the cabin. `parent` is the spacecraft's `Cabin` node; `M` its materials. Prints, in the file's axes and
     metres, what a flight's data needs to be told: the lamps' places and the windows'."""
@@ -823,15 +858,7 @@ def build(parent: bpy.types.Object, M: dict) -> None:
     lamps = cabin_lamps(c)
     receiver(c)
     c.finish()
-
-    def told(v: Vector) -> str:
-        # (Blender's +Z is the file's +Y and its +Y the file's -Z)
-        return f"[{v.x:.3f}, {v.z:.3f}, {-v.y:.3f}]"
-
-    middle = place(0, 0, 250.0)
-    for i, p in enumerate(lamps):
-        light = p + (middle - p).normalized() * 220.0  # (a hand's breadth and more in from the wall: a bare point at the wall burns it)
-        print(f"cabin: lamp {i + 1} at {told(p * MM)}; its light at {told(light * MM)}")
+    tell_lamps(lamps)
     for name, where in (("entry hatch's porthole", ka.ENTRY), ("right porthole", ka.RIGHT_PORT)):
         print(f"cabin: {name} at {told(ka.INNER.p(*where))}, out {told(ka.Ball.n(*where))}, {2 * ka.PORT_R * MM:.3f} m of glass")
     print(f"cabin: the Vzor looks out along {told(ka.Ball.n(*ka.TECHNOLOGICAL))} from {told(ka.OUTER.p(*ka.TECHNOLOGICAL))}")
