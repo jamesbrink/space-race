@@ -123,7 +123,7 @@ function outside(heating: Heating, sample: Sample): { flux: number; enthalpy: nu
     flux: stagnationFlux(air.density, speed, heating.noseRadius.value),
     enthalpy: totalEnthalpy(air.temperature, speed),
     gas: shockTemperature(air.temperature, speed),
-    blunt: bluntness(sample),
+    blunt: heating.round && !covered(sample) ? 1 : bluntness(sample),
   };
 }
 

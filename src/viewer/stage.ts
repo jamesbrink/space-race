@@ -5,18 +5,20 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
 import type { MeshBVH } from 'three-mesh-bvh';
 import { sameTarget, type Target, type Workings } from '../actions';
+import { readingFor } from '../sim/mechanism';
+import { exitAreaOf } from '../sim/staged.ts';
 import type { Action, Flight as FlightData, ModelDef } from '../types';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
-import { exitAreaOf } from '../sim/staged.ts';
 import { Ascent, type Run } from './ascent';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
 import { Bloom } from './bloom';
 import { bulkOf } from './bulk';
-import { readingFor } from '../sim/mechanism';
 import { Cabin, type CabinThing } from './cabin';
+import { AT_GLASS, ease, leanPath } from './camera/head.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
 import { Carry } from './carry';
@@ -33,7 +35,6 @@ import { Lamps } from './lamps';
 import { LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
 import { InkPass, type Look, Looks } from './look';
 import { type LookoutDef, lookoutsOf, windowAt } from './lookouts';
-import { AT_GLASS, ease, leanPath } from './camera/head.ts';
 import { refused, sayRefused, watchContext } from './lost';
 import { absolute, Origin } from './origin';
 import { Outline } from './outline';
@@ -52,6 +53,7 @@ import { TRAIL_STEP, Trail } from './trail';
 
 /** No smoke is laid above this height over the ground, m: none is drawn there (trail.ts), and Freedom 7's engine was out by 60 km. */
 const TRAIL_TOP = 80_000;
+
 import { EYE_FRACTION, type Hit, Walker } from './walk';
 import { Works } from './works';
 
@@ -99,6 +101,61 @@ const UP = new THREE.Vector3(0, 1, 0);
 const ONE = new THREE.Vector3(1, 1, 1);
 /** How far off something a vehicle has shed is still drawn, m: an 18 m booster is half a pixel at this distance. It is flown on beyond it (sim/shed.ts). */
 const SHED_SIGHT = 40_000;
+
+/**
+ * A figure for a descent (`flies.hangs`): its finest level copied, skeleton and all, and put in the pose its `Harness`
+ * node's extras give (`hang_joints`, `hang`: a quaternion in each joint's own axes, sk-1.md), with where its harness is in
+ * its own frame and how far below that its feet hang.
+ */
+function hangerOf(full: THREE.Object3D): { root: THREE.Object3D; harness: THREE.Vector3; foot: number } {
+  const root = cloneRigged(full);
+  // (a copy's userData went through JSON: the real material each mesh is drawn from is the original's, not a copy of it)
+  const made: THREE.Object3D[] = [];
+  full.traverse((o) => made.push(o));
+  let n = 0;
+  root.traverse((o) => {
+    const was = made[n++];
+    if (was && (o as THREE.Mesh).isMesh) {
+      o.userData = { ...was.userData };
+      (o as THREE.Mesh).material = (was as THREE.Mesh).material;
+    }
+  });
+  root.position.set(0, 0, 0);
+  root.quaternion.identity();
+  root.scale.setScalar(1);
+  const harness = root.getObjectByName('Harness');
+  const extras = harness?.userData as { hang_joints?: string; hang?: number[] } | undefined;
+  const joints = new Map<string, THREE.Object3D>();
+  root.traverse((o) => joints.set(jointKey(o.name), o));
+  (extras?.hang_joints ?? '').split(',').forEach((name, i) => {
+    const q = extras?.hang?.slice(i * 4, i * 4 + 4);
+    const joint = joints.get(jointKey(name.trim()));
+    if (joint && q?.length === 4) joint.quaternion.set(q[0]!, q[1]!, q[2]!, q[3]!);
+  });
+  root.updateMatrixWorld(true);
+  const at = harness ? harness.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.5, 0);
+  const feet = ['Foot.L', 'Foot.R'].map((f) => joints.get(jointKey(f))?.getWorldPosition(new THREE.Vector3()).y ?? 0);
+  root.traverse((o) => {
+    o.frustumCulled = false; // (posed away from its bounds as made)
+  });
+  return { root, harness: at, foot: Math.max(0, at.y - Math.min(...feet)) + 0.08 };
+}
+
+/** A node that rides a descent's body, as `Ascent.rideAt` needs it: the middle of its meshes and its +Y, in the flown model's frame (`rel`: its parent's place there). */
+function pieceOf(node: THREE.Object3D, rel: THREE.Matrix4): { centre: THREE.Vector3; lie: THREE.Vector3 } {
+  const own = rel.clone().multiply(node.matrix);
+  const box = new THREE.Box3();
+  node.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.geometry.boundingBox ?? mesh.geometry.computeBoundingBox();
+    const to = new THREE.Matrix4();
+    for (let p: THREE.Object3D | null = mesh; p && p !== node; p = p.parent) to.premultiply(p.matrix);
+    box.union(mesh.geometry.boundingBox!.clone().applyMatrix4(to));
+  });
+  const centre = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
+  return { centre: centre.applyMatrix4(own), lie: new THREE.Vector3(0, 1, 0).transformDirection(own) };
+}
 /** How long a vehicle's door is given to swing before the figure gets in or out through it, seconds. */
 const DOOR_SECONDS = 1.05;
 const DOWN = new THREE.Vector3(0, -1, 0);
@@ -401,7 +458,22 @@ export class Stage {
    */
   private followed: number | null = null;
   private shedCraft: (Craft & { drop: number }) | null = null;
-  private readonly debris: { node: THREE.Object3D; parent: THREE.Object3D; drop: number; holder: THREE.Group; rel: THREE.Matrix4 }[] = [];
+  /**
+   * What the vehicle has let go, each node in a holder of its own: by its drop's index, or for a figure carried down on a
+   * descent (`flies.hangs`) the number of drops and its own. What rides a descent's bodies has its `piece` measured once
+   * (its centre and +Y in the model's frame), and `hidden` what of it is not drawn on the leg it is on.
+   */
+  private readonly debris: {
+    node: THREE.Object3D;
+    parent: THREE.Object3D;
+    drop: number;
+    holder: THREE.Group;
+    rel: THREE.Matrix4;
+    piece?: { centre: THREE.Vector3; lie: THREE.Vector3 };
+    hidden?: THREE.Object3D[];
+  }[] = [];
+  /** The flight's figures that come down on a descent (`flies.hangs`), each posed as it hangs, made the first time the vehicle flies. */
+  private hangers: { root: THREE.Object3D; harness: THREE.Vector3; foot: number }[] | null = null;
   private readonly ink = new InkPass();
   /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
   readonly bloom = new Bloom(0.14, 0.6, 2.4);
@@ -1693,6 +1765,7 @@ export class Stage {
     for (const d of this.debris.splice(0)) {
       d.parent.add(d.node);
       d.holder.removeFromParent();
+      for (const o of d.hidden?.splice(0) ?? []) o.visible = true;
     }
     for (const o of this.lifted.hidden) o.visible = true;
     this.lifted.hidden = [];
@@ -1791,16 +1864,20 @@ export class Stage {
    * goes back before it left or the flight is over.
    */
   private fall(ascent: Ascent, s: Staged, pad: THREE.Quaternion, t: number, flying: boolean): void {
-    const gone = (i: number) => flying && t >= ascent.drops[i]!.at;
+    const drops = ascent.drops.length;
+    const gone = (i: number) =>
+      flying && (i < drops ? t >= ascent.drops[i]!.at : ascent.hangerAt(i - drops, t, pad, this.pieceOf) !== null);
     for (let k = this.debris.length - 1; k >= 0; k--) {
       const d = this.debris[k]!;
       if (gone(d.drop)) continue;
       d.parent.add(d.node);
       d.holder.removeFromParent();
+      for (const o of d.hidden?.splice(0) ?? []) o.visible = true;
       this.debris.splice(k, 1);
     }
     s.group.updateMatrixWorld(true);
     const into = new THREE.Matrix4().copy(s.group.matrixWorld).invert();
+    const riders = this.flightData?.flies?.drops ?? [];
     ascent.drops.forEach((drop, i) => {
       if (!gone(i) || this.debris.some((d) => d.drop === i)) return;
       for (const name of drop.nodes) {
@@ -1812,26 +1889,71 @@ export class Stage {
         this.root.add(holder);
         holder.add(node);
         node.visible = true; // (hidden with the rest of what was shed, at every level, a moment ago)
-        this.debris.push({ node, parent, drop: i, holder, rel: into.clone().multiply(parent.matrixWorld) });
+        const rel = into.clone().multiply(parent.matrixWorld);
+        this.debris.push({ node, parent, drop: i, holder, rel, piece: riders[i]?.rides ? pieceOf(node, rel) : undefined });
       }
+    });
+    // the figures carried down on a descent, as each comes to be (his canopy out: he has left the seat)
+    this.hangers?.forEach((h, j) => {
+      const drop = drops + j;
+      if (!gone(drop) || this.debris.some((d) => d.drop === drop) || !this.root) return;
+      const holder = new THREE.Group();
+      holder.matrixAutoUpdate = false;
+      this.root.add(holder);
+      const parent = h.root.parent ?? new THREE.Group();
+      holder.add(h.root);
+      this.debris.push({ node: h.root, parent, drop, holder, rel: new THREE.Matrix4() });
     });
     const at = new THREE.Vector3();
     const turn = new THREE.Quaternion();
     for (const d of this.debris) {
+      let shown: boolean;
+      if (d.drop >= drops) {
+        // a figure: his harness where the body is, the line up to his canopy through it, his feet coming down under it
+        const h = this.hangers![d.drop - drops]!;
+        const now = ascent.hangerAt(d.drop - drops, t, pad, this.pieceOf);
+        shown = now !== null;
+        if (now) {
+          turn.setFromUnitVectors(UP, now.line);
+          at.copy(now.harness)
+            .addScaledVector(now.line, h.foot * THREE.MathUtils.smoothstep(now.since, 0, 2))
+            .sub(h.harness.clone().applyQuaternion(turn));
+          d.holder.matrix.compose(at, turn, ONE);
+        }
+      } else if (d.piece) {
+        // on a descent's body: its centre along the body's track, its +Y against the air
+        const ride = ascent.rideAt(d.drop, t, pad, d.piece);
+        shown = ride !== null;
+        if (ride) {
+          at.copy(d.piece.centre).applyQuaternion(ride.turn).negate().add(ride.centre);
+          d.holder.matrix.compose(at, ride.turn, ONE).multiply(d.rel);
+          const hide = riders[d.drop]?.rides?.[ride.leg]?.hide ?? [];
+          if ((d.hidden?.length ?? 0) !== hide.length) {
+            for (const o of d.hidden?.splice(0) ?? []) o.visible = true;
+            d.hidden = hide.map((name) => d.node.getObjectByName(name)).filter((o): o is THREE.Object3D => Boolean(o?.visible));
+            for (const o of d.hidden) o.visible = false;
+            this.shadowsOwed = true;
+          }
+        }
+      } else {
+        shown = ascent.shed(d.drop, t, pad, at, turn);
+        // (what left under a parachute is lost to sight: drawn smaller, to nothing)
+        if (shown) d.holder.matrix.compose(at, turn, ONE.clone().multiplyScalar(ascent.seen(d.drop, t))).multiply(d.rel);
+      }
       // (what the flight gives no body for is not drawn; nor is anything past SHED_SIGHT of both the eye and the vehicle, which
       // the camera may be about to go to: it is under a pixel there, and is flown on all the same)
-      d.holder.visible =
-        ascent.shed(d.drop, t, pad, at, turn) &&
-        Math.min(at.distanceTo(this.camera.position), at.distanceTo(s.group.position)) < SHED_SIGHT;
-      if (!d.holder.visible) continue;
-      // (what left under a parachute is lost to sight: drawn smaller, to nothing)
-      d.holder.matrix.compose(at, turn, ONE.clone().multiplyScalar(ascent.seen(d.drop, t))).multiply(d.rel);
-      d.holder.matrixWorldNeedsUpdate = true;
+      const where = new THREE.Vector3().setFromMatrixPosition(d.holder.matrix);
+      d.holder.visible = shown && Math.min(where.distanceTo(this.camera.position), where.distanceTo(s.group.position)) < SHED_SIGHT;
+      if (d.holder.visible) d.holder.matrixWorldNeedsUpdate = true;
     }
     // what the view was following is no longer there (the clock put back before it left, the flight begun again): back to the vehicle
     const followed = this.followed;
     if (followed !== null && !this.debris.some((d) => d.drop === followed && d.holder.visible)) this.followShed(null);
   }
+
+  /** What drop `i` rides a descent on, as `fall` measured it (its first node's), for `Ascent.hangerAt`. */
+  private readonly pieceOf = (i: number): { centre: THREE.Vector3; lie: THREE.Vector3 } | null =>
+    this.debris.find((d) => d.drop === i && d.piece)?.piece ?? null;
 
   /** The flown vehicle's parachutes (`Flight.flies.chutes`), made the first time the vehicle flies, and its attitude jets (viewer/jets.ts). */
   private chutes: Chute[] | null = null;
@@ -1851,14 +1973,36 @@ export class Stage {
       s.group.add(this.jets.group);
     }
     this.jets?.set(flying ? ascent.jets(t) : null, this.renderer.toneMappingExposure);
+    if (!this.hangers) {
+      this.hangers = (this.flightData?.flies?.hangs ?? []).flatMap((h) => {
+        const figure = this.staged[this.defs.findIndex((m) => m.id === h.model)];
+        return figure ? [hangerOf(figure.full)] : [];
+      });
+      for (const h of this.hangers) this.looks.add(h.root);
+    }
     if (!ascent.chutes.length) return;
-    this.chutes ??= ascent.chutes.map((def) => {
-      // (the node may be away already, carried off in `fall`'s holder)
-      const chute = new Chute(def, s.full.getObjectByName(def.at) ?? this.debris.find((d) => d.node.name === def.at)?.node ?? s.full);
-      this.scene.add(chute.group);
-      this.looks.add(chute.group);
-      return chute;
-    });
+    if (!this.chutes) {
+      s.group.updateMatrixWorld(true);
+      const into = new THREE.Matrix4().copy(s.group.matrixWorld).invert();
+      const own = this.flightData?.orbital?.descent?.bodies[0]?.id;
+      this.chutes = ascent.chutes.map((def) => {
+        // (the node may be away already, carried off in `fall`'s holder, or on a figure carried down)
+        const node =
+          s.full.getObjectByName(def.at) ??
+          this.hangers?.map((h) => h.root.getObjectByName(def.at)).find(Boolean) ??
+          this.debris.map((d) => d.node.getObjectByName(def.at)).find(Boolean) ??
+          s.full;
+        const chute = new Chute(def, node);
+        // (the run's own body hangs from where its parachute is made fast: measured on the model as it stands now)
+        if (def.body && def.body === own && !ascent.hangsFrom && s.full.getObjectByName(def.at)) {
+          node.updateWorldMatrix(true, false);
+          ascent.hangsFrom = chute.anchor.clone().applyMatrix4(node.matrixWorld).applyMatrix4(into);
+        }
+        this.scene.add(chute.group);
+        this.looks.add(chute.group);
+        return chute;
+      });
+    }
     const light = this.setting.sunIntensity / 3 + 0.1;
     this.chutes.forEach((chute, i) => chute.set(flying ? ascent.chute(i, t, pad) : null, light));
   }
@@ -1900,6 +2044,11 @@ export class Stage {
       chute.dispose();
     }
     this.chutes = null;
+    for (const h of this.hangers ?? []) {
+      h.root.removeFromParent();
+      this.looks.remove(h.root);
+    }
+    this.hangers = null;
     this.jets?.group.removeFromParent();
     this.jets?.dispose();
     this.jets = null;
@@ -3894,7 +4043,10 @@ export class Stage {
   }
 
   private showSeatHidden(at: number, names: string[] | undefined, shown: boolean): void {
-    if (names?.length) this.staged[at]?.group.traverse((o) => names.includes(o.name) && (o.visible = shown));
+    if (!names?.length) return;
+    this.staged[at]?.group.traverse((o) => names.includes(o.name) && (o.visible = shown));
+    // (and on what has left the model with the seat: the seat out of the ball at the ejection height, its pilot in it)
+    for (const d of this.debris) d.node.traverse((o) => names.includes(o.name) && (o.visible = shown));
   }
 
   /** While driving: get out (the door opens first, and shuts behind), and stand beside the driver's door. */

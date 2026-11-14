@@ -57,6 +57,7 @@
 .flown-checks thead td { font: 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
 .flown-checks td { padding-left: 10px; }
 .flown-checks .out td:last-child, .flown-checks .out td:nth-child(3) { color: var(--amber); }
+.flown-checks td.out { color: var(--amber); }
 /* a second scrub in the clock, over the flight alone */
 .time-scrub + .time-scrub { margin-top: -2px; }
 /* sound: a speaker in the clock's row (always on show), and its volume with the clock's other controls */

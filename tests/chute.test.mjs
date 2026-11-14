@@ -192,3 +192,39 @@ test('a canopy that tears lets its air go and streams, from the mouth it had', (
     }
   }
 });
+
+// An orbital flight's descent drawn (types.ts ChuteDef.body, flies.drops[].rides, flies.hangs): each parachute and each piece
+// names what the simulator flies, and the seat left at the pilot's canopy comes down as a body of its own.
+test('Vostok 1’s descents: every parachute and every piece drawn names a body and a parachute flyDown flies', async () => {
+  const { flight: v } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+  const { flyWhole, descentOf } = await import('../src/sim/staged.ts');
+  const { siteFrame } = await import('../src/world/frames.ts');
+  const { julianDate } = await import('../src/world/time.ts');
+  const o = v.orbital;
+  const jd = julianDate(v.launch);
+  const whole = flyWhole(o, siteFrame(v.site), jd, v.site.seaLevel.value, undefined, 10, 'published');
+  const drawn = descentOf(whole, jd, (v.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0));
+  assert.ok(drawn, 'the record’s run comes down from the ejection height');
+  for (const c of v.flies.chutes.filter((c) => c.body)) {
+    const body = o.descent.bodies.find((b) => b.id === c.body);
+    assert.ok(
+      body?.chutes.some((p) => p.name === c.on),
+      `${c.on} is a parachute of ${c.body}`,
+    );
+    assert.ok(Number.isFinite(drawn.opened[c.body][c.on]), `${c.on} comes out on the record’s run`);
+    assert.ok(
+      Math.abs(c.diameter.value ** 2 * (Math.PI / 4) - body.chutes.find((p) => p.name === c.on).dragArea.value / 0.75) < 1,
+      `${c.on}: drawn with the area its drag is worked on`,
+    );
+  }
+  for (const d of v.flies.drops.filter((d) => d.rides))
+    for (const r of d.rides) assert.ok(drawn.tracks[r.body]?.length > 1, `${d.nodes[0]} rides ${r.body}, which is flown`);
+  for (const h of v.flies.hangs) assert.ok(Number.isFinite(drawn.opened[h.body][h.from]), `the figure comes in as ${h.from} comes out`);
+  // the seat begins where the pilot left it, with the stabilising parachute, and lands before him
+  const seat = drawn.tracks.seat;
+  assert.equal(seat[0].t, drawn.opened.pilot['main canopy']);
+  assert.ok(whole.down.landed.seat.at < whole.down.landed.pilot.at);
+  // each of the module's parachutes is let go as the next comes out
+  assert.equal(drawn.gone.module['pilot parachute'], drawn.opened.module['braking parachute']);
+  assert.equal(drawn.gone.module['braking parachute'], drawn.opened.module['main parachute']);
+});

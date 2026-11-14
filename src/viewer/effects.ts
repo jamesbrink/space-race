@@ -64,7 +64,7 @@ export class Effects {
   constructor(flight: SitedFlight) {
     this.flight = flight;
     this.site = siteFrame(flight.site);
-    const heating = flight.trajectory?.heating;
+    const heating = flight.trajectory?.heating ?? flight.orbital?.heating;
     this.log = heating ? new HeatLog(heating) : null;
     this.glow = heating ? new Incandescence(heating.surfaces.map((s) => s.materials)) : null;
   }
@@ -106,7 +106,7 @@ export class Effects {
    * four fifths of the limit.
    */
   reading(t: number): { name: string; temperature: number; limit: number; flux: number; warm: boolean; hot: boolean } | null {
-    const heating = this.flight.trajectory?.heating;
+    const heating = this.flight.trajectory?.heating ?? this.flight.orbital?.heating;
     const now = this.thermal(t);
     const surface = heating?.surfaces[0];
     if (!heating || !now || !surface) return null;
@@ -290,7 +290,7 @@ export class Effects {
     };
     group.updateMatrixWorld(true);
     const shield = air?.shield ? boxOf(() => true, full.getObjectByName(air.shield)) : null;
-    if (shield && !shield.isEmpty() && this.flight.trajectory?.heating) {
+    if (shield && !shield.isEmpty() && (this.flight.trajectory?.heating ?? this.flight.orbital?.heating)) {
       const radius = (shield.max.x - shield.min.x) / 2;
       this.shock = new ShockGlow();
       this.shield = shield;
@@ -346,7 +346,7 @@ export class Effects {
     const dim = 1 / Math.max(1, exposure / 0.8) ** 0.7; // (as the engine's fire: not a white blot by night)
     const light = Math.min(1, sun / 3 + 0.1);
     const now = flying ? this.thermal(t) : null;
-    const heating = this.flight.trajectory?.heating;
+    const heating = this.flight.trajectory?.heating ?? this.flight.orbital?.heating;
     if (this.glow && heating) {
       const cold = heating.starts.value;
       if (this.glow.set(group, now ? now.surfaces.map((s) => s.temperature) : heating.surfaces.map(() => cold), dim)) changed = true;
