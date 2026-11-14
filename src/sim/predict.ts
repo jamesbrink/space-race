@@ -159,6 +159,41 @@ export function between(t0: number, r0: Vec3, v0: Vec3, t1: number, r1: Vec3, v1
   return { r: [at(0), at(1), at(2)], v: [slope(0), slope(1), slope(2)] };
 }
 
+/**
+ * The apsides of any path, found from the path itself and nothing else: where its radial speed (the rate its distance
+ * from the Earth's centre changes) changes sign, an apoapsis where it goes from rising to falling, a periapsis the other
+ * way, each placed to a millisecond on the cubic between the two points either side (`between`). Whatever the path is
+ * (a lob, an ascent, an orbit once round, a fall), what it shows is what it does: a lob has its one apoapsis, an orbit
+ * its two, a fall none. Only those after `after`.
+ */
+export function apsides(
+  points: readonly PathPoint[],
+  after = Number.NEGATIVE_INFINITY,
+): { kind: 'apo' | 'peri'; t: number; r: Vec3; v: Vec3 }[] {
+  const out: { kind: 'apo' | 'peri'; t: number; r: Vec3; v: Vec3 }[] = [];
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    if (b.t <= after) continue;
+    const ra = dot(a.r, a.v);
+    const rb = dot(b.r, b.v);
+    if (!((ra > 0 && rb <= 0) || (ra < 0 && rb >= 0))) continue;
+    let lo = a.t;
+    let hi = b.t;
+    for (let k = 0; k < 40 && hi - lo > 1e-3; k++) {
+      const m = 0.5 * (lo + hi);
+      const s = between(a.t, a.r, a.v, b.t, b.r, b.v, m);
+      if (Math.sign(dot(s.r, s.v)) === Math.sign(ra)) lo = m;
+      else hi = m;
+    }
+    const t = 0.5 * (lo + hi);
+    if (t <= after) continue;
+    const s = between(a.t, a.r, a.v, b.t, b.r, b.v, t);
+    out.push({ kind: ra > 0 ? 'apo' : 'peri', t, r: s.r, v: s.v });
+  }
+  return out;
+}
+
 /** A place on the path worth naming. */
 export interface PathPlace extends PathPoint {
   latitude: number;

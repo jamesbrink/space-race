@@ -125,6 +125,24 @@ a hemisphere light's direction). So:
 - `sr.stage.origin.enabled = false` draws the old way: the two must look the same (checked from
   fixed views, frozen: a few dozen pixels in 640,000 differ, by one level, from rounding).
 
+## The predicted path
+
+The path (`viewer/path.ts`, its numbers in `viewer/pathline.ts`) is an instrument's line drawn over the scene, and its
+rules are the screen's, the same for every path, never tuned to a flight:
+
+- **Sampled for the eye.** The prediction is a curve (points with velocities, the cubic between them); each time the eye,
+  the instant or the prediction moves it is cut into chords until none strays more than `ERROR_PX` (0.35 px) from the
+  curve as seen from the eye, starting from multiples of a power of two seconds so the chords stay put as the clock runs.
+- **A width on the screen that never thins**: each chord is a quad pushed out across its own direction as projected
+  (never a direction in the world, which near the eye projects to anything) and mitred to the next; a line under a
+  pixel wide breaks into dots, so it is faded, never thinned.
+- **Never at the eye**: each chord is cut at a plane just past the near plane in the vertex shader, and fades in over the
+  next doubling of the distance; nothing behind the eye is ever a vertex.
+- **Behind the Earth to a pixel**: a sphere (the polar radius) is tested for every pixel of the ribbon in the view's own
+  frame, worked out in doubles, so the line ends at the limb however long its chords.
+- `tools/path-test.mjs` (`pnpm test:path`) holds it in the page: from the vehicle, no chord over 1 px off, no dots or
+  fragments, no sheet, nothing jumping between frames, chips off the panels and pointing at their places.
+
 ## Drawing only what changed
 
 `Stage.frame` skips the draw when nothing has changed: the camera has not moved and nothing set
