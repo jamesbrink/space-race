@@ -8,7 +8,7 @@ const KGF = 9.80665;
 // Where things are on the model, as vehicles/voskhod.py and the Vostok's vostok_3ka.py have them: azimuths about the
 // long axis from the model's +X, latitudes on the sphere above the plane square to that axis. The numbers live there.
 const ENTRY = { az: 135, lat: 24 }; // hatch No. 1: at the crew's right
-const PARACHUTE = { az: 45, lat: 30 }; // hatch No. 2: beyond their heads
+const PARACHUTE = { az: 45, lat: 21 }; // hatch No. 2: beyond their heads (vehicles/voskhod.py: off OKB-1's drawings)
 const STRAPS = [0, 90, 180, 270];
 const MAST_AZ = 202.5;
 /** The way the crew's feet point, which is where the viewer's cutaway opens the ball. */
@@ -179,15 +179,19 @@ const parts: Part[] = [
       'sideways. Kamanin, at the hatch on 9 October, put the living space at a fifth of a Vostok’s. Without suits ' +
       'there was nothing between the crew and a leak, and the ship leaked more than a Vostok: 180 litres a minute by ' +
       'the designers’ forecast against 50. The air warmed from 15 °C to 21 °C over the first six orbits, which ' +
-      'worried Kamanin and nobody aboard. The wall is lined in white cloth, as the flown ball shows it. The couches’ ' +
-      'places, and everything about them, are estimated; where the hand controller and the radio panel went when ' +
-      'they were moved to the crew was not found, and they are not built.',
+      'worried Kamanin and nobody aboard. The wall is lined in white cloth, as the flown ball shows it. The couches ' +
+      'lie as OKB-1’s own figure of February 1964 draws them: heads toward the parachute container, the middle ' +
+      'one half a trunk toward the feet. Where each stands is fitted round three men of 1.70 m and is estimated: ' +
+      'the middle man’s crown comes 44 mm short of the container and his toes 18 mm short of the lining. The ' +
+      'pilot’s panel and the hand controller, which the flown ball has by the entry hatch, are not built.',
     facts: [
       ['Crew', '3, without pressure suits'],
       ['Room', '“a fifth” of a Vostok’s for each man (Kamanin)'],
       ['Leak, as forecast', '180 litres a minute (a Vostok: 50)'],
       ['Air', '15 °C at the start, 21 °C after six orbits'],
       ['Board and Vzor', 'where the Vostok’s were: at the crew’s left'],
+      ['Middle couch', '260 mm toward the feet, 100 mm proud (estimated, by the fit)'],
+      ['Parachute container', 'beyond the middle man’s crown, between the others’ heads'],
     ],
     explode: [0, LIFT, 0],
     order: SHIP + 1,
