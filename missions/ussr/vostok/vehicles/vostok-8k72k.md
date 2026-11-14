@@ -239,6 +239,15 @@ the braking engine's `RetroEngine_Nozzle` has it.
 
 ## What the model gets wrong or leaves out
 
+- **Hot staging is flown on the model's own lattice and deflector, both estimated** (vostok-1/orbital.ts, Block E's
+  `hot`; sim/staging.ts): lit with the core on, 0.67 of the lattice's side open and the jet leaving the deflector 24
+  degrees below the level, so 27 per cent of its thrust pushes the stack, the turn taken as losing no speed (an upper
+  bound: a text on launcher design has the jet turned across the flight, which would push nothing). How long the core's
+  top stands the jet (5 s) is chosen; past it the stack breaks up and the flight ends there: what came through it, and
+  the spacecraft's escape, are not flown. The jet's force on the joint, the lattice's locks and Soyuz 18a's kind of
+  failure (latches that held and broke) are not modelled; nor whether Block E would start in free fall.
+- **The structure's limits are estimated** (`ascent.limits`): bending 3.34 kPa rad and 6 g along the axis, none read for
+  the R-7; the fairing's 1 kPa likewise. Past the fairing's, what its halves struck is not modelled.
 - **The strap-ons' separation is flown in kind, its figures estimated** (orbital.ts, `boosters/B` to `/D`): the
   tail-off that swings each tail out, the swing before the ball leaves its socket, the vent's thrust and time. The swing
   itself (about a second) is not drawn: each leaves as it stood, with the rate and speed the swing gave it. The vent is

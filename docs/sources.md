@@ -653,6 +653,20 @@ day's winds aloft at Tyuratam or Saratov. «Первый пилотируемы�
 Гагарина в свете рассекреченных документов», *Novosti Kosmonavtiki* 2011 No. 6 (roscosmos.ru answered 403) are where
 they would be looked for next.
 
+Read for what a hand's staging does (sim/staging.ts; vostok-1/orbital.ts `hot`, `start`, `limits`, `aborts`, November 2026):
+
+| Source | Where | What it gave | What it is not |
+| --- | --- | --- | --- |
+| Molodtsov (OKB-1), «История проектирования корабля "Восток"», *Космический альманах* No. 5, 2001 | epizodsspace.narod.ru/bibl/akiem/5v-vostok.html | Vostok's ascent abort by time: the seat to 40 s, the engines shut and the seat at 7 km to 150 s, the gyros' limit contacts and the descent module's separation to 700 s, the whole ship to 730 s | Secondary, by an OKB-1 author; not flown |
+| Volkhonsky, lecture notes on launcher design (Moscow, 2012) | studfile.net/preview/8823953/page:26/ | That the heat shield on the stage below protects its top and turns the jet across the flight | Not of the R-7 by name; no figure |
+| Zak, RussianSpaceWeb, "Stage II of Soyuz rocket" and "Soyuz 18-1" | russianspaceweb.com/soyuz_lv_stage2.html, soyuz18-1.html | Soyuz's titanium-covered deflector cone over the instrument bay on the oxidiser tank; Soyuz 18a joined about 2 s under its third stage's thrust before the latches broke, nothing burst | Soyuz, not the 8K72K; secondary |
+| Terekhov, «32 березовые палки…», Habr, 4 April 2016 | habr.com | The R-7's igniters: two pyrotechnic charges on a T-shaped wooden stand in each chamber, single-use | Secondary; that nothing could relight them in flight is inferred |
+| Shakmaev et al., *Инженерный журнал* 2024 No. 3, DOI 10.18698/2308-6033-2024-3-2345 | the journal | Soyuz-2's greatest dynamic pressure (34 to 45 kPa) and its 3-degree tolerance off the wind there | Soyuz-2's tolerance, not a strength, and not the R-7's |
+| Arianespace, Soyuz CSG User's Manual, issue 2, 2012, §3.2.1, §3.4.3.2, §A5.1.4 | as above | Soyuz-2's longitudinal load (under 4.3 g), its fairing let go under 1,135 W/m², its third stage lit through the truss before separation | Forty years later |
+
+Not found: how long the 8K72K's deflector was made to take Block E's jet, any structural limit of the R-7 (q alpha, axial
+load, the fairing's dynamic pressure), and how the RD-0109 was started (its starter, its igniter, its number of starts).
+
 ### Vostok 2
 
 Read for [Vostok 2](../missions/ussr/vostok/flights/vostok-2/README.md), 13 November 2026. Each
