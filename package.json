@@ -27,6 +27,7 @@
     "test:walk": "node tools/walk-test.mjs",
     "test:front": "node tools/front-test.mjs",
     "test:deck": "node tools/deck-test.mjs",
+    "test:path": "node tools/path-test.mjs",
     "bench": "node tools/bench.mjs",
     "globe": "node tools/globe.mjs",
     "globe:region": "node tools/globe-region.mjs missions/usa/mercury/sites/lc-5.ts && node tools/globe-region.mjs missions/ussr/vostok/sites/site-1.ts",
