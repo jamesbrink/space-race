@@ -271,6 +271,13 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   shifts sideways as it rises, in metres in the car's parent's frame; `stop_names` names them.
   What a flight declares for a node is not offered a second time from the node's mark. A driven node has the same name at every level of detail and
   is not also in the part's slider `moves`.
+- **A site is walked by a test.** `pnpm test:walk` (tools/walk-test.mjs; needs the dev server) goes on foot in the
+  running page with the real W key held, steering for one point after another along ways a person could really have
+  gone, and fails a leg that does not arrive, that falls, that never takes hold of its ladder, or that ends with the
+  feet somewhere other than the floor or the ground is said to be. Its routes are data at its head, by flight: today
+  Site 1's (the erector's stair and lift to the hatch, round the deck, down the road into the pit and its trenches,
+  the cut in the north rim, the road's ramp to the bunker and the buildings). A structure built or changed gets a
+  leg; a new site gets its routes.
 - **The camera's rigs are off while walking** (`Stage.stepWalk`): no drift, bounds,
   picking or `fitDepth`, and the hands on the page are the walker's (`Scene.free`). When the walk ends
   the rig in charge takes the view up from where the walker's eyes were (`Cameras.adopt`). The walker sets its own near plane from the nearest surface (5 cm

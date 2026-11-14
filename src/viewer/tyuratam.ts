@@ -4,6 +4,7 @@ import { breeze, type Day } from './day.ts';
 import { fbm2 } from './field';
 import { Flora, type FloraSpec } from './flora';
 import { Land, type LandSpec, type Palette } from './land';
+import { SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
@@ -265,9 +266,10 @@ const SHARED = /* glsl */ `
 
 /**
  * The lie of the land, metres above the ground at the pad, in JavaScript (the walker, the plants) and GLSL (the mesh):
- * keep the two in step. The steppe here is a river terrace, flat to the eye: level within 400 m of the pad, where
- * everything was graded, and beyond it a swell of half a metre over hundreds of metres (estimated: SRTM's 30 m grid
- * reads within a few metres everywhere round the site, below what it can resolve).
+ * keep the two in step. The pad stands on the brow of a scarp: the ground south of the tracks is at their level, the
+ * steppe north of them some 8 m down and the ground east of the pit some 5 m (tyuratamrelief.ts, which the place's
+ * models are built on too: sites/site1/relief.py). Over that, beyond 400 m, a swell of half a metre over hundreds
+ * of metres (estimated).
  */
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -275,11 +277,12 @@ const smooth = (a: number, b: number, x: number) => {
 };
 function relief(x: number, z: number): number {
   const r = Math.hypot(x, z);
-  return 0.6 * (fbm2(x * 0.0025, z * 0.0025, 61, 3) - 0.45) * smooth(400, 900, r);
+  return siteRelief(x, -z) + 0.6 * (fbm2(x * 0.0025, z * 0.0025, 61, 3) - 0.45) * smooth(400, 900, r);
 }
 const RELIEF = /* glsl */ `
+  ${SITE_RELIEF_GLSL}
   float relief(vec2 p) {
-    return 0.6 * (fbm2(p * 0.0025, 61, 3) - 0.45) * smoothstep(400.0, 900.0, length(p));
+    return siteRelief(vec2(p.x, -p.y)) + 0.6 * (fbm2(p * 0.0025, 61, 3) - 0.45) * smoothstep(400.0, 900.0, length(p));
   }`;
 
 /**

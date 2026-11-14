@@ -10,6 +10,10 @@ The pieces are in ./site1/, one module each; each is one or more top-level nodes
   ServiceTrusses       service_trusses.py the two service trusses, ServiceTruss_North and _South, hinged on the ring
   UpperCableMast       cable_mast.py      the cable mast to the third stage, hinged on the ring
   Erector              erector.py         the erector on the centre track, its boom up beside the rocket, with the lift
+  TankCars             tank_cars.py       the oxygen and kerosene fillers on the north and south tracks, with their wheels
+
+The land they stand on is ./site1/relief.py: the pad on the brow of a scarp, the steppe north of the tracks 8 m under
+the deck's level. The pit's rim is built at the land's height, and the place is set down on it (place.settle).
 
 Frame: origin at the rocket's axis on the platform's deck, metres. +X is due east, out over the pit;
 +Y is north. The rocket and the ring stand turned to the launch azimuth (site.TURN).
@@ -18,7 +22,7 @@ Frame: origin at the rocket's axis on the platform's deck, metres. +X is due eas
 from __future__ import annotations
 
 import sitelib
-from site1 import cable_mast, deck, erector, launch_system, platform, service_trusses
+from site1 import cable_mast, deck, erector, launch_system, platform, service_trusses, tank_cars
 from site1.site import AZIMUTH, TAIL_Z, TIP_Z, TURN, Parts, materials
 
 __all__ = ["AZIMUTH", "TAIL_Z", "TIP_Z", "TURN", "build", "build_place"]
@@ -35,9 +39,10 @@ def build(date: str | None = None) -> str:
     service_trusses.build(parts)
     cable_mast.build(parts)
     erector.build(parts)
+    tank_cars.build(parts)
     parts.build()
     print(sitelib.standing())
-    served = f"{service_trusses.summary()}, {cable_mast.summary()}, {erector.summary()}"
+    served = f"{service_trusses.summary()}, {cable_mast.summary()}, {erector.summary()}, {tank_cars.summary()}"
     return f"{platform.summary()}, {deck.summary()}, rocket's tail {TAIL_Z:.2f} m, load ring {TIP_Z:.2f} m, {served}"
 
 
@@ -66,6 +71,13 @@ def build_place(date: str | None = None) -> str:
     if sitelib.stood("Tracks onto the platform", **seen, source="HTA/JR-4/58 (five spurs in 1957); PIC/JR-2/61 Figure 1; OpenStreetMap"):
         deck.land_rails(parts)
     perimeter.build(parts)
+    # Everything above is built on the deck's level; the land north of the tracks and east of the pit lies under it
+    # (relief.py). The fences, their poles and the spoil go down vertex by vertex, each thing that stands in one spot as
+    # it is; the tracks are on the embankment, and the conduit is built from the pit's rim as it lies.
+    fences = [f"{ring}Fence{side}" for ring in ("Outer", "Inner") for side in ("North", "East", "South", "West")]
+    poles = [f"LightPoles{side}" for side in ("North", "East", "South", "West")]
+    down = place.settle(parts, draped=("SpoilHeap", *fences, *poles), groups=("ObservationPosts", "GuardTowers"), left=("Tracks", "CableConduit"))
     parts.build()
     print(sitelib.standing())
+    print("on the land, m from the deck's level: " + ", ".join(f"{name} {dz:+.2f}" for name, dz in down))
     return "; ".join((bunker.summary(), storage.summary(), buildings.summary(), rim.summary(), perimeter.summary()))
