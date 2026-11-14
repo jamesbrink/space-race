@@ -1,8 +1,9 @@
-"""What was fixed on the launching platform's deck: the rails in it, the two tall masts at its north-east and
-south-west corners, and the small building on its west side. And the same rails where they run on over the land
-(the place's: `land_rails`).
+"""What was fixed on the launching platform's deck: the rails in it, the tall masts at its north-east and south-west
+corners, and the small building on its west side. And the same rails where they run on over the land (the place's:
+`land_rails`). What a photograph of the day shows standing on the deck is deck_fittings.py.
 
-Nodes in the pad: DeckRails; Masts, with Mast_NE and Mast_SW; StairHead under Platform. In the place: Tracks.
+Nodes in the pad: DeckRails; Masts, with Mast_NE (and Mast_SW, for a date on which it stood); StairHead under
+Platform. In the place: Tracks.
 
 The rails. PIC/JR-2/61 Figure 1 (March 1961, from the photographs of 1957 and 1959) draws them on the plan of the
 platform: the centre track into the opening, a track along the platform's north part to near its east fence and one
@@ -17,8 +18,21 @@ large array on top at least 5 feet wide and 10 feet high. The tower at the north
 lip" (HTA/JR-4/58); "positioned precisely equidistant from the center of the launching platform", on a line through
 it; their function "cannot be determined" (PIC/JR-2/61, which doubted that they were either collimation towers or
 floodlights). A photograph of the launch has one beside the rocket: a slender lattice with a head near its top and a rod
-above. They are drawn so: the height, the array's size and the places are the CIA's; the lattice, the head as a bank of
-floodlights, the rod and the ladder are ours.
+above. They are drawn so: the height, the array's size and the places are the CIA's; the lattice, the lamps, the rod
+and the ladder are ours.
+
+**The south-west mast was gone by 12 April 1961.** The two mirror each other through the rocket's axis, so from
+wherever a camera stands the south-west one is as far to one side of the rocket as the north-east one is to the other.
+Three photographs of the day taken from the south (one before liftoff, one of the liftoff in colour, and the cover of a
+booklet of 1961 lettered "12 IV 61", which reads the right way round) have the north-east mast at the right and clear
+sky where its twin would stand. The CIA saw both in August 1957 and July 1959, and its report of March 1961 repeats
+those photographs. So the south-west one is dated: it stood until July 1959 at the least, and not in April 1961.
+
+The north-east mast in those photographs is a slender cross-braced lattice with a railed head carrying lamps at its
+corners, the lattice going on above it to a rod. A photograph of a later launch (which one is not known) shows raking
+struts at its foot, splayed to some 4.5 m, and a ring of floodlights at two fifths of its height: the struts are built
+as far as the concrete lip can hold them (the lip's breadth is scaled off a drawing), and the ring is not built, since
+the photograph of the day does not show it.
 
 The small building: "on the west side of the launching platform, about 60 feet northwest of the servicing tower ...
 may serve as a covered entryway for a stairway leading below the surface" (PIC/JR-2/61). Its size is redacted and is
@@ -58,7 +72,15 @@ ARRAY = (5.0 * FT, 10.0 * FT)  # wide and high: "at least"
 # abutment (PIC/JR-2/61: "precisely equidistant", "a line drawn between the two masts passes through the center").
 MAST_AT = (HALF + 4.9 * FT, HALF - 3.9 * FT)
 MAST_BASE, MAST_HEAD = 0.6, 0.32  # half the lattice's breadth at its foot and under its head, m (estimated)
+MAST_TOP = 0.2  # and at its top, above the head, m (estimated)
 ROD = 4.0  # the rod above the array, m (estimated, off the photograph of the launch)
+HEAD = 1.2  # half the railed head's breadth, m (measured off the photograph of the day: some 2.9 m over its lamps)
+# The raking struts at the foot: from each leg, STRUT_Z up, out to a plate STRUT_OUT further from the mast's middle
+# along each axis. A photograph of a later launch has them splayed to some 4.5 m; the lip the mast stands on is 8 ft
+# broad (scaled off a drawing), and 0.85 m either side of the mast's middle is what it holds.
+STRUT_Z, STRUT_OUT = 4.5, 0.25
+# The south-west mast: last seen on the U-2's photographs of July 1959, absent from every photograph of 12 April 1961
+SW_UNTIL = "1959-07"
 
 # ---- the small building: its middle 60.4 ft west and 25.6 ft north of the axis, 16 by 8.5 ft, 8 ft high (scaled off
 # Figure 1's plan and front view: its dimensions are redacted)
@@ -140,9 +162,10 @@ def mast(parts: Parts, name: str, at, sign: int, foot: float) -> None:
         (x, y, 0.0),
         label="Mast, 110 ft",
         about=(
-            "One of the two masts at opposite corners of the platform, 110 ft high with an array at its top: the CIA measured "
-            "them in 1957 and by 1961 could not say what they were for. Drawn as the photograph of the launch has one: a slender "
-            "lattice, a head of floodlights, a rod above. The lattice, the lamps and the ladder are estimated."
+            "A mast 110 ft high at the platform's corner, with an array at its top: the CIA measured two of them in 1957, at "
+            "opposite corners, and by 1961 could not say what they were for. Drawn as the photographs of 12 April 1961 have the "
+            "north-east one: a slender cross-braced lattice, a railed head with lamps at its corners, the lattice going on above "
+            "it to a rod. The lattice's size, the lamps' number and aim, the struts at its foot and the ladder are estimated."
         ),
     )
     steel, lamps = parts(name, "galv/lattice"), parts(name, "lamp/floods", True)
@@ -158,11 +181,18 @@ def mast(parts: Parts, name: str, at, sign: int, foot: float) -> None:
     n = 20 if fine() else 10
     lattice(steel, corner, [foot + (under - foot) * k / n for k in range(n + 1)], 0.09, 0.05)
     plates = parts(name, "dark/feet")
-    for i in range(4):  # a foot plate under each leg, bolted down
+    for i in range(4):  # a foot plate under each leg, bolted down, and a raking strut from the leg out to a plate of its own
         cx, cy, _ = corner(i, foot)
         box(plates, (cx - 0.17, cy - 0.17, foot - 0.3), (cx + 0.17, cy + 0.17, foot + 0.04))
+        sx, sy = ((1, 1), (-1, 1), (-1, -1), (1, -1))[i]
+        ox, oy = cx + sx * STRUT_OUT, cy + sy * STRUT_OUT
+        beam(steel, corner(i, foot + STRUT_Z), (ox, oy, foot + 0.05), 0.08)
+        box(plates, (ox - 0.13, oy - 0.13, foot - 0.3), (ox + 0.13, oy + 0.13, foot + 0.05))
+        if fine():  # a tie from the strut back to the leg, half way up
+            mid = tuple((a + b) / 2 for a, b in zip(corner(i, foot + STRUT_Z), (ox, oy, foot + 0.05)))
+            beam(steel, mid, corner(i, foot + STRUT_Z / 2 - 0.4), 0.045)
     # the head: a deck with a rail, open where the ladder comes up (the side away from the rocket's quarter, toward the slab)
-    half = 0.8
+    half = HEAD
     floor = parts(name, "deck")
     lx = -sign  # the ladder's side: west of the north-east mast, east of the south-west one
     slot = MAST_HEAD + 0.06  # the deck is cut back to here on that side, between two wings, for the ladder to come up through
@@ -174,25 +204,31 @@ def mast(parts: Parts, name: str, at, sign: int, foot: float) -> None:
     e = half - 0.05
     ring = [(lx * e, -0.35), (lx * e, -e), (-lx * e, -e), (-lx * e, e), (lx * e, e), (lx * e, 0.35)]
     handrail(steel, [(x + a, y + b, deck_z) for a, b in ring], height=1.1, post=0.04, rail=0.035)
-    # the array: a frame 5 ft wide and 10 ft high on the deck's edge toward the rocket, six floods on it aimed at the
-    # rocket's waist, and the rod above
-    to = math.hypot(x, y)
-    ux, uy = -x / to, -y / to  # toward the axis
-    vx, vy = -uy, ux
-    fx, fy = x + ux * (half - 0.12), y + uy * (half - 0.12)
-    w, top = ARRAY[0] / 2, MAST_HEIGHT
-    for s in (-1, 1):
-        beam(steel, (fx + s * w * vx, fy + s * w * vy, deck_z), (fx + s * w * vx, fy + s * w * vy, top), 0.07)
-    rows = [deck_z + ARRAY[1] * k for k in (0.2, 0.5, 0.8)]
-    for z in (*rows, top - 0.035):
-        beam(steel, (fx - w * vx, fy - w * vy, z), (fx + w * vx, fy + w * vy, z), 0.06)
-    for z in rows:
-        for s in (-0.5, 0.5):
-            c = (fx + s * w * vx + ux * 0.16, fy + s * w * vy + uy * 0.16, z)
-            aim = (-c[0], -c[1], 16.0 - z)  # the rocket's waist, 16 m over the deck
-            sitelib.lamp_head(steel, lamps, c, aim, 0.3)
+    for s in (-1, 1):  # four brackets under the deck, out from the lattice
+        for t in (-1, 1):
+            beam(steel, (x + s * MAST_HEAD, y + t * MAST_HEAD, deck_z - 1.0), (x + s * (half - 0.2), y + t * (half - 0.2), deck_z - 0.07), 0.045)
+    # the lamps: one at each corner of the rail, on a short post, turned down to the launch system (the photograph of
+    # the day has them at the head's corners; how many there were and where they pointed are estimated)
+    for sx, sy in ((1, 1), (-1, 1), (-1, -1), (1, -1)):
+        c = (x + sx * (half - 0.03), y + sy * (half - 0.03), deck_z + 1.42)
+        beam(steel, (c[0], c[1], deck_z + 1.0), (c[0], c[1], c[2] - 0.1), 0.05)
+        aim = (-c[0], -c[1], 8.0 - c[2])  # the launch system's supports, 8 m over the deck
+        sitelib.lamp_head(steel, lamps, c, aim, 0.26)
+    # above the head the lattice goes on, slighter, to the mast's top (the CIA's "array ... 10 feet high"); the rod above
+    top = MAST_HEIGHT
+
+    def upper(i: int, z: float):
+        h = MAST_HEAD + (MAST_TOP - MAST_HEAD) * (z - deck_z) / (top - deck_z)
+        sx, sy = ((1, 1), (-1, 1), (-1, -1), (1, -1))[i]
+        return (x + sx * h, y + sy * h, z)
+
+    m = 4 if fine() else 2
+    # (open on the ladder's side, where a man comes up through the deck)
+    lattice(
+        steel, upper, [deck_z + 0.02 + (top - deck_z - 0.02) * k / m for k in range(m + 1)], 0.06, 0.035, faces=(0, 2, 3) if sign > 0 else (0, 1, 2)
+    )
     pole = parts(name, "galv/rod", True)
-    pole.tube(sitelib.P(x, y, deck_z - 0.3), sitelib.P(x, y, top + 0.3), 0.045, 8)
+    pole.tube(sitelib.P(x, y, top - 0.6), sitelib.P(x, y, top + 0.3), 0.045, 8)
     pole.tube(sitelib.P(x, y, top + 0.3), sitelib.P(x, y, top + ROD), 0.016, 6)
     # the ladder up the face toward the slab, to the gap in the head's rail
     parts.ladder(name, "up", (x + lx * (MAST_BASE + 0.14), y, foot), (x + lx * (MAST_HEAD + 0.14), y, deck_z), face=(-lx, 0, 0), mat="galv")
@@ -201,7 +237,15 @@ def mast(parts: Parts, name: str, at, sign: int, foot: float) -> None:
 def masts(parts: Parts) -> None:
     parts.node("Masts")
     mast(parts, "Mast_NE", MAST_AT, 1, 0.0)
-    mast(parts, "Mast_SW", (-MAST_AT[0], -MAST_AT[1]), -1, -0.03)
+    if stood(
+        "Mast 110 ft high at the platform's south-west corner",
+        since="1957",
+        until=SW_UNTIL,
+        confidence="documented",
+        source="HTA/JR-4/58 (August 1957); PIC/JR-2/60 (July 1959: 'no change'); PIC/JR-2/61 repeats those photographs. Absent from three "
+        "photographs of 12 April 1961 taken from the south, where its place is clear sky: when it was taken down is not known",
+    ):
+        mast(parts, "Mast_SW", (-MAST_AT[0], -MAST_AT[1]), -1, -0.03)
 
 
 def stair_head(parts: Parts) -> None:
@@ -240,10 +284,10 @@ def build(parts: Parts) -> None:
     ):
         rails(parts)
     if stood(
-        "Two masts 110 ft high at the platform's north-east and south-west corners",
+        "Mast 110 ft high at the platform's north-east corner",
         since="1957",
         confidence="documented",
-        source="HTA/JR-4/58; PIC/JR-2/60; PIC/JR-2/61; one is in a photograph of the launch of 12 April 1961",
+        source="HTA/JR-4/58; PIC/JR-2/60; PIC/JR-2/61; in the photographs of the launch of 12 April 1961",
     ):
         masts(parts)
     if stood(
@@ -257,6 +301,6 @@ def build(parts: Parts) -> None:
 
 def summary() -> str:
     return (
-        f"rails to {GAUGE * 1000:.0f} mm, gantry rails {GANTRY:.2f} m apart, masts {MAST_HEIGHT:.2f} m at "
-        f"({MAST_AT[0]:.2f}, {MAST_AT[1]:.2f}) and its mirror, lip {LIP[0]:.2f} by {LIP[1]:.2f} m"
+        f"rails to {GAUGE * 1000:.0f} mm, gantry rails {GANTRY:.2f} m apart, mast {MAST_HEIGHT:.2f} m at "
+        f"({MAST_AT[0]:.2f}, {MAST_AT[1]:.2f}) (its mirror until {SW_UNTIL}), lip {LIP[0]:.2f} by {LIP[1]:.2f} m"
     )

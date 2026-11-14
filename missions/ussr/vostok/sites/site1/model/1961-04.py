@@ -53,5 +53,12 @@ if __name__ == "__main__":
             ("place-fence.png", (-470, -180, 3), 60, dict(azimuth=40, elevation=10, res=(1600, 1100))),
             ("place-tower.png", (-122, 10, 9), 45, dict(azimuth=-60, elevation=8, res=(1100, 1400))),
             ("place-shops.png", (-100, 160, 3), 170, dict(azimuth=-20, elevation=22, res=(1600, 1100))),
+            # south of the embankment and outside the south fence (NPIC/B-24/61), the low building by the apron, Site 51
+            ("place-south.png", (-150, -105, 2), 120, dict(azimuth=-60, elevation=20, res=(1600, 1000))),
+            ("place-south-eye.png", (-165, -80, 1.6), 45, dict(azimuth=-20, elevation=3, res=(1600, 900))),
+            ("place-outside.png", (-100, -300, 2), 150, dict(azimuth=-150, elevation=24, res=(1600, 1000))),
+            ("place-yard.png", (-120, -470, 2), 150, dict(azimuth=60, elevation=20, res=(1600, 1000))),
+            ("place-cascade.png", (-35, -27, 2), 34, dict(azimuth=120, elevation=14, res=(1600, 1000))),
+            ("place-site51.png", (-101, 390, -8), 110, dict(azimuth=-70, elevation=22, res=(1600, 1000))),
         ],
     )

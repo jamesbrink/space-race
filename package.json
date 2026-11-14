@@ -50,6 +50,7 @@
     "model:voskhod-2": "node tools/build-model.mjs ussr/voskhod/voskhod-2",
     "model:lc-5": "node tools/build-model.mjs usa/mercury/sites/lc5",
     "model:site-1": "node tools/build-model.mjs ussr/vostok/sites/site1",
+    "model:tyuratam": "node tools/build-model.mjs ussr/vostok/sites/tyuratam",
     "model:cape": "node tools/build-model.mjs usa/mercury/sites/cape"
   },
   "engines": {

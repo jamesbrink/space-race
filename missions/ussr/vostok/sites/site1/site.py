@@ -102,4 +102,12 @@ def materials() -> dict:
         "blast": m("steel-door-green", (0.11, 0.14, 0.1), 0.5, 0.6),
         "frame": m("steel-window-frame", (0.07, 0.075, 0.075), 0.6, 0.55),
         "void": m("window-void", (0.02, 0.022, 0.025), 0.0, 0.6),
+        # what the photographs and the film of 12 April 1961 show on the deck and beside the rocket (deck_fittings.py,
+        # tank_cars.py, erector.py): the joints between slabs, a wire railing, a pale grey filler with black stencils,
+        # red-painted fittings on the erector's wagon. The tones are read off a colour photograph and the film, and cleaned.
+        "joint": m("concrete-joint", (0.07, 0.07, 0.065), 0.0, 1.0),
+        "wire": m("steel-wire", (0.17, 0.15, 0.13), 0.8, 0.6),
+        "filler": m("paint-filler-grey", (0.6, 0.61, 0.6), 0.1, 0.6),
+        "stencil": m("paint-stencil-black", (0.03, 0.03, 0.032), 0.0, 0.7),
+        "red": m("paint-fitting-red", (0.55, 0.07, 0.05), 0.1, 0.55),
     }

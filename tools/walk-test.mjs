@@ -32,24 +32,37 @@ const V1_MORNING = -(1 * 3600 + 56 * 60 + 59.7);
 const ROUTES = {
   'ussr/vostok/vostok-1': [
     {
+      name: 'the pilot’s own way: from the bus’s door past the State Commission to the stair’s foot',
+      at: V1_MORNING - 15 * 60, // 06:55: the bus has stopped, the send-off and the Commission stand on the concrete
+      from: [-46.4, -0.12, 17.6],
+      legs: [
+        { to: [-38.6, 17.5], y: -0.12, tol: 0.2, note: 'east from the door to the Commission, ten metres off' },
+        { to: [-33.6, 15.0], y: -0.12, tol: 0.2, note: 'round the knot, between it and the south track' },
+        { to: [-26.8, 9.0], y: -0.03, tol: 0.2, note: 'over the tracks onto the abutment' },
+        { to: [-20.0, 5.6], y: 0, note: 'onto the deck' },
+        { to: [-16.6, 3.3], y: 0, note: 'to the foot of the fifteen steps' },
+      ],
+    },
+    {
       name: 'the erector: fifteen steps, the lift, the upper platform at the hatch',
       at: V1_MORNING,
-      from: [-19, 0, -3.25],
+      // (the stair and the lift are on the erector's south side: the film of the morning)
+      from: [-19, 0, 3.25],
       legs: [
-        { to: [-16.2, -3.25], y: 0 },
-        { to: [-11.6, -3.25], y: 3.0, note: 'up the stair to the landing at the lift’s door' },
-        { to: [-11.3, -2.1], y: 3.0, note: 'into the car' },
+        { to: [-16.2, 3.25], y: 0 },
+        { to: [-11.6, 3.25], y: 3.0, note: 'up the stair to the landing at the lift’s door' },
+        { to: [-11.3, 2.1], y: 3.0, note: 'into the car, between its open doors' },
         { lift: { model: 'pad', part: 'Erector', action: 'lift', stop: 2 }, y: 26.12, note: 'the lift, to the upper platform' },
-        { to: [-5.5, -3.25], y: 26.12, note: 'out of the car, north, onto the walk' },
-        { to: [-3.9, -3.2], y: 26.12 },
-        { to: [-3.6, 0.3], y: 26.12, note: 'across the boom’s face' },
-        { to: [-2.0, 0.3], y: 26.12, note: 'out along the platform to the hatch' },
+        { to: [-5.5, 3.25], y: 26.12, note: 'out of the car, south, onto the walk' },
+        { to: [-3.9, 3.2], y: 26.12 },
+        { to: [-3.6, -0.3], y: 26.12, note: 'across the boom’s face' },
+        { to: [-2.0, -0.3], y: 26.12, note: 'out along the platform to the hatch' },
       ],
     },
     {
       name: 'round the deck: the abutment, the three sides over the pit, the rails',
       at: V1_MORNING + 70 * 60, // 08:20: the fillers have left the north and south tracks, the erector still stands
-      from: [-14, 0, 4],
+      from: [-19.5, 0, 6.5],
       legs: [
         { to: [-17, 14], y: 0 },
         { to: [0, 14.5], y: 0, note: 'along the south side, inside the fence' },
@@ -58,7 +71,7 @@ const ROUTES = {
         { to: [13.5, -12], y: 0 },
         { to: [0, -14.5], y: 0, note: 'along the north side, over its track' },
         { to: [-17, -13], y: 0 },
-        { to: [-24, -4.5], y: 0, note: 'back over the abutment to the erector’s north side' },
+        { to: [-24, -4.5], y: 0, note: 'back over the abutment, north of the erector' },
       ],
     },
     {
@@ -122,6 +135,38 @@ const ROUTES = {
         { to: [-52, -60], run: true, y: -4.4, tol: 0.6 },
         { to: [-40.7, -53], y: -4.27, tol: 0.4, note: 'up to the pump house’s door, on its plot' },
         { to: [-52, -43], run: true, y: -0.2, tol: 0.4, note: 'up the fall to the propellant shed’s open side' },
+      ],
+    },
+    {
+      // (site1/south.py: what one photograph of July 1959 shows south of the tracks, inside the inner fence)
+      name: 'south of the embankment: round the two buildings to the pump hut',
+      at: V1_MORNING,
+      from: [-60, -0.12, 30],
+      legs: [
+        { to: [-150, 45], run: true, y: -0.12, tol: 0.3, note: 'south-west off the apron' },
+        { to: [-170, 60.3], y: -0.12, tol: 0.3, note: 'to the north wall of the gable-roofed building' },
+        { to: [-187, 66], y: -0.12, tol: 0.3, note: 'round its west end' },
+        { to: [-187, 81], y: -0.12, tol: 0.3 },
+        { to: [-161, 81], run: true, y: -0.12, tol: 0.3, note: 'between it and the store, clear of the store’s extensions' },
+        { to: [-144.8, 96], y: -0.12, tol: 0.3, note: 'to the door in the store’s east end' },
+        { to: [-117, 135.6], run: true, y: -0.12, tol: 0.3, note: 'to the pump hut’s door, the inner fence behind it' },
+      ],
+    },
+    {
+      name: 'outside the south fence: the vehicle shed, the building with a mast, the tents, the yard',
+      at: V1_MORNING,
+      from: [-60, -0.12, 240],
+      legs: [
+        { to: [-92, 250.4], run: true, y: -0.12, tol: 0.3, note: 'to the shed’s doors, along its north side' },
+        { to: [-116, 250.4], run: true, y: -0.12, tol: 0.3 },
+        { to: [-116, 270], y: -0.12, tol: 0.3, note: 'round its west end' },
+        { to: [-100, 277.6], y: -0.12, tol: 0.3, note: 'to the north wall of the building with a mast' },
+        { to: [-80, 277.6], run: true, y: -0.12, tol: 0.3 },
+        { to: [-80, 296], y: -0.12, tol: 0.3, note: 'round its east end, past the mast’s stays' },
+        { to: [-91, 318], run: true, y: -0.12, tol: 0.3, note: 'to the first tent’s end' },
+        { to: [-84, 362], run: true, y: -0.12, tol: 0.3, note: 'down the line of tents' },
+        { to: [-120, 414], run: true, y: -0.12, tol: 0.3, note: 'to the gap in the yard’s fence' },
+        { to: [-120, 427], y: -0.12, tol: 0.3, note: 'and in' },
       ],
     },
   ],
