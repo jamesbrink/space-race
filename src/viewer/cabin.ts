@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
-import { orbitPredictor } from '../sim/orbitpath.ts';
-import { elements } from '../sim/predict.ts';
+import { spacecraft } from '../sim/fliers.ts';
+import { elements, propagate } from '../sim/predict.ts';
 import { byHand } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, CabinLamp, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
@@ -155,7 +155,7 @@ export interface Landing {
  * The simulator's answer for "fire the braking engine now" on a flight into orbit (`Flight.orbital` with `manual`, the
  * burn a hand can fire): the record's flight with its burn moved to a second from `start`, the engine pushing straight
  * against the way the spacecraft goes (as it was turned to fire), flown on from `start` by the one coast the record and
- * the predicted path are flown by (sim/orbitpath.ts `orbitPredictor`, sim/staged.ts `byHand`). Where the orbit already
+ * the predicted path are flown by (sim/predict.ts `propagate` on sim/fliers.ts `spacecraft`; sim/staged.ts `byHand`). Where the orbit already
  * reaches down into the air (a burn under way or done, the climb before orbit) the descent is begun already: it is flown
  * on as it is, with no burn added. Null for a flight with no such record.
  */
@@ -178,7 +178,10 @@ export function burnNow(flight: Flight): LandingFinder | null {
       const [x, y, z] = [-start.v[0] / n, -start.v[1] / n, -start.v[2] / n];
       plan = byHand(o, start.t + 1, [Math.cos(gast0) * x - Math.sin(gast0) * y, Math.sin(gast0) * x + Math.cos(gast0) * y, z]);
     }
-    const p = orbitPredictor(plan, frame, jd, site.seaLevel.value, start).result;
+    const sea = site.seaLevel.value;
+    const flown = propagate(spacecraft(plan, jd, frame, sea, start), start, { site: frame, seaLevel: sea });
+    flown.run();
+    const p = flown.result;
     const end = p.outcome === 'impact' ? p.points[p.points.length - 1] : undefined;
     return end ? { t: end.t, r: end.r, v: end.v, ...(down ? { begun: true } : {}) } : null;
   };
