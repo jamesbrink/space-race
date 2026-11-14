@@ -27,7 +27,7 @@ Every flight has the same three places, in the same order, and opens in the firs
   callsign with its Cyrillic: "Berkut (Беркут)") is set smaller until it fits (`fitName` in
   `fold.ts`, for the gallery's card and the site's); on a phone the top line's own rule holds.
 - **The address** carries it (`src/address.ts`, the only place that reads or writes one):
-  `#<flight>` and `#<flight>/gallery[/<part or what stands there>]` the gallery;
+  `#<flight>` and `#<flight>/gallery[/<part, what stands there, or a seat sat in>]` the gallery;
   `#<flight>/site[/<vehicle|pad|crew>]` the launch site; `#<flight>/fly` the flight deck.
   Addresses older than the places mean what they meant: `#<flight>/<model>` and a bare `#pad`,
   `#vehicle`, `#crew` (the first *listed* flight's: every tool and script uses them) are sections
@@ -134,6 +134,34 @@ Nothing new is asked of a flight. Everything comes from what a vehicle already d
   with the same shots the idle show takes of a section (`tour` in `demo.ts`).
 
 It is always drawn in full (`Stage.fullDetail`: the coarser levels are not even fetched).
+
+## A seat
+
+A vehicle whose data gives it `seats` can be sat in where it stands (the gallery's stage is an `exhibit`:
+`Stage.sit`, `Craft.exhibit` in camera/rig.ts). It is the on-board view the site has in flight, and the same code:
+
+- **In**: the "Sit in the cabin" switch among the others, C, or an address that names the seat
+  (`#usa/gemini/gt-3/gallery/Seat_CommandPilot`: `galleryAt` reads a seat's node as it reads a part's). Sitting stands
+  the whole vehicle if the seat's part is not on show, puts it together and closes the cutaway: from inside, the cabin
+  is the cabin. The camera goes to the seat's eyes with the usual handover; the seat's own `hide` (the man's helmet and
+  head) is not drawn, and the man beside him is.
+- **From the seat**, as on board at a site: drag and the arrows turn the head within `CabinDef.head`, the wheel and R F
+  change the lens, the digits (and the bar on the right) lean to each window and the periscope, 0 looks ahead, a click
+  works what is clicked (a control says what it is for: nothing is flown here), and the cabin's lights' switch is on its
+  console and in the bar. A cabin with no switch built for them says so (`lighting.control` left out) and they are thrown
+  from the bar alone. The cabin stands as built (`Cabin` with no site: needles at rest, telelights dark: an exhibit is not
+  powered). What is seen through the windows and the periscope is the studio, as it is: there is no sky to invent.
+- **Several seats**: C goes into the first, then each of the others (the eye carried across: `Cameras.reseat`), then
+  out; the bar has a switch for each.
+- **Out**: Esc (back from a lean first), C past the last seat, the switch, or Get up in the bar. The camera goes back to
+  the view it was taken from, exactly as the hands had left it (`Cameras.unseat`: that rig is not stepped while seated).
+  Choosing a part or a view from the seat is going out too, to it.
+- **The address**: sitting, changing seat and getting up are choices within the gallery: the entry is rewritten, never
+  a step; Back and Forward to an address that names a seat sit in it, and to one that does not get up.
+- The show waits while someone sits, and the scale's figures are not written over the cabin.
+
+`pnpm test:seat` (tools/seat-test.mjs, with a server running; `--shots <dir>` also takes a picture from every seat in both
+looks) sits in every seat of every flight that has one, by the control and by C, at 1280 and 390 wide.
 
 ## On a phone
 

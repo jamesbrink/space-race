@@ -41,7 +41,9 @@ view nobody has set is framed again when that changes (the flight deck opening, 
 board or the pad camera it is as it was last left (`Rig.enter`'s `resume`). The pad camera stands
 where the orbiting or free view was, set down on the ground at tripod height, if that was within
 reach of the place; otherwise where it last stood, or to one side of the place (`Cameras.tripod`).
-The seat the camera sits in is the flight's data: Freedom 7's is the model's own `Seat_Pilot` node, at the seated
+In the gallery the vehicle is an exhibit (`Craft.exhibit`): it never flies, and C goes between orbit and on board
+(one press per seat, `Cameras.reseat`); getting up (`Cameras.unseat`) gives the view back to the rig it was taken from as
+that rig was left, not taken up from inside the cabin (gallery.md, "A seat"). The seat the camera sits in is the flight's data: Freedom 7's is the model's own `Seat_Pilot` node, at the seated
 figure's eyes, looking at the panel (a model without one may name a `standIn`, and says so).
 
 On board the head is a strapped-in person's (`camera/head.ts`, `Head`; the walker in a couch boarded on foot carries

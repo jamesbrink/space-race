@@ -18,6 +18,9 @@ through skins (it divides the faces round the hole and removes those inside; a b
 a lathe with bulkheads as a solid). Frame the hole with a bezel or sleeve that overlaps its rim.
 Name the pane's material `glass...` and the viewer makes it a clear pane. Only where nothing is
 modelled behind (a lower level of detail, a distant building) does a dark `window-void` stand in.
+A helmet's visor is `glass-visor`: drawn as dark smoked glass (`VISOR`, half seen) where the model's own material is
+opaque (the Mark IV's, the SK-1's, the Berkut's), and as a clear pane at the model's own opacity where the model blends
+it (the G3C's, 0.14: `visorOf`), so the face, the earphones and the microphones are seen through it.
 
 ## An inside to sit in
 
@@ -234,8 +237,8 @@ lost them. **After changing what a level leaves out, measure again.** A thing wi
 has 8 and 2.
 
 **Shadows reach as far as the place does.** The Sun has two maps. Its own (`fitShadows`,
-`fitWalkShadows`) is fine and spent where it is looked at: the section's model, or 52 m of ground
-round the walker. The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
+`fitWalkShadows`) is fine and spent where it is looked at: the section's model, 52 m of ground
+round the walker, or, from an exhibit's seat in the gallery, the cabin and a metre round it. The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
 the place, coarsely, and is fitted once, so it never shifts under a walker; the shader's
 directional light reads the fine map and, over its outer part and beyond, the far one, mixed
 across the band. (Before, nothing past the fine map's edge had a shadow, and on foot that edge

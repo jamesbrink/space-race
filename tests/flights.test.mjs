@@ -33,6 +33,64 @@ function extrasOf(file) {
   return new Map(JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.map((n) => [n.name, n.extras ?? {}]));
 }
 
+/**
+ * Where things are in a GLB, read from its JSON (no geometry is decoded): each node's frame in the model's, and the box
+ * round a node's meshes and its children's (from each accessor's own bounds, carried through the frames).
+ */
+function framesOf(file) {
+  const glb = readFileSync(file);
+  const gltf = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
+  const times = (a, b) => {
+    const o = new Array(16).fill(0);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+    return o;
+  };
+  const own = (n) => {
+    if (n.matrix) return n.matrix;
+    const [x, y, z, w] = n.rotation ?? [0, 0, 0, 1];
+    const [sx, sy, sz] = n.scale ?? [1, 1, 1];
+    const [tx, ty, tz] = n.translation ?? [0, 0, 0];
+    return [
+      ...[(1 - 2 * (y * y + z * z)) * sx, 2 * (x * y + z * w) * sx, 2 * (x * z - y * w) * sx, 0],
+      ...[2 * (x * y - z * w) * sy, (1 - 2 * (x * x + z * z)) * sy, 2 * (y * z + x * w) * sy, 0],
+      ...[2 * (x * z + y * w) * sz, 2 * (y * z - x * w) * sz, (1 - 2 * (x * x + y * y)) * sz, 0],
+      ...[tx, ty, tz, 1],
+    ];
+  };
+  const frames = new Map();
+  const down = (i, parent) => {
+    const m = times(parent, own(gltf.nodes[i]));
+    frames.set(i, m);
+    for (const c of gltf.nodes[i].children ?? []) down(c, m);
+  };
+  for (const i of gltf.scenes[gltf.scene ?? 0].nodes) down(i, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  const at = (m, [x, y, z]) => [0, 1, 2].map((k) => m[k] * x + m[4 + k] * y + m[8 + k] * z + m[12 + k]);
+  const index = (name) => gltf.nodes.findIndex((n) => n.name === name);
+  return {
+    point: (name, p = [0, 0, 0]) => (index(name) < 0 ? null : at(frames.get(index(name)), p)),
+    box(name) {
+      const lo = [Infinity, Infinity, Infinity];
+      const hi = [-Infinity, -Infinity, -Infinity];
+      const visit = (i) => {
+        const n = gltf.nodes[i];
+        for (const prim of n.mesh === undefined ? [] : gltf.meshes[n.mesh].primitives) {
+          const { min, max } = gltf.accessors[prim.attributes.POSITION];
+          for (const c of [0, 1, 2, 3, 4, 5, 6, 7]) {
+            const q = at(frames.get(i), [c & 1 ? max[0] : min[0], c & 2 ? max[1] : min[1], c & 4 ? max[2] : min[2]]);
+            q.forEach((v, k) => {
+              lo[k] = Math.min(lo[k], v);
+              hi[k] = Math.max(hi[k], v);
+            });
+          }
+        }
+        for (const c of n.children ?? []) visit(c);
+      };
+      if (index(name) >= 0) visit(index(name));
+      return { lo, hi };
+    },
+  };
+}
+
 const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: root });
 assert.ok(files.length > 0, 'no flights found');
 const index = readFileSync(join(root, 'missions/index.ts'), 'utf8');
@@ -210,6 +268,24 @@ for (const file of files) {
           `seats: neither ${seat.node} nor a stand-in in ${model.url}`,
         );
         assert.ok(seat.open[0] < seat.open[1], `seats: ${seat.node} is open for no time`);
+        // and the eyes are inside the cabin: within the box round what the cabin calls indoors (with no cabin, round the
+        // model): a seat's node left at the model's origin is under the floor, and one in another model's frame is anywhere
+        if (seat.standIn) continue;
+        const frames = framesOf(glb);
+        const eye = frames.point(seat.node, seat.eye);
+        const within = model.cabin?.within ?? model.parts.map((p) => p.node);
+        const box = { lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] };
+        for (const n of within) {
+          const b = frames.box(n);
+          for (const k of [0, 1, 2]) {
+            box.lo[k] = Math.min(box.lo[k], b.lo[k]);
+            box.hi[k] = Math.max(box.hi[k], b.hi[k]);
+          }
+        }
+        assert.ok(
+          eye.every((v, k) => v > box.lo[k] && v < box.hi[k]),
+          `seats: ${seat.node}'s eyes at ${eye.map((v) => v.toFixed(3))} are not inside the cabin (${within.join(', ')})`,
+        );
       }
       const groups = new Set(flight.specs.map((s) => s.group));
       for (const g of model.specGroups ?? []) assert.ok(groups.has(g), `specGroups: no specs in group ${g}`);

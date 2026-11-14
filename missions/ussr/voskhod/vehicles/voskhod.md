@@ -153,3 +153,8 @@ Everything [vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md) lists for the sh
 - **Which couch the 3KD lost** is from a NASA diagram and from where the hatch's cover swung.
 - **The antennas** are the Vostok model's ten, withdrawn into the hull when stowed.
 - **Cabin equipment**: the Vostok's board, Vzor and parachute container only.
+- **No seat to sit in.** The couches and the men in them are modelled, but no couch has an eye-point node, so the
+  gallery offers no seat (it does not make one up). What is wanted, for each man, is a `Seat_<Left|Centre|Right>` node at
+  his eyes (between `Crew_<side>_Helmet_Eyes`), its +Z the way he looks and +Y the top of his head, as
+  vehicles/gemini_cabin.py does; then `seats` (with `hide`: his `Crew_<side>_Helmet_*`) and a `cabin` (`within`, the
+  portholes, the Vzor if the fit has one, the lamp) in each flight's flight.ts.
