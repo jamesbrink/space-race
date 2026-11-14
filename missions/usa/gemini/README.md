@@ -59,7 +59,7 @@ The first column, and the power, thrusters, umbilical and suit of the second, ar
 | | In this repo |
 | --- | --- |
 | Launch Complex 19: where it is and which way the vehicle is taken to have faced; its place is not built | [lc-19.ts](sites/lc-19.ts) |
-| The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). The ship's seats are still empty: the crew station as laid out does not hold the men |
+| The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). The crew station is fitted round the two men; the ship's seats are still empty |
 
 ## Sources
 

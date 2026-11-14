@@ -213,13 +213,12 @@ These are the figures one would be written from.
 - **The launch site.** Complex 19 is [a site as numbers](../../sites/lc-19.ts): where it was, and
   which way the vehicle is taken to have faced on it, which is not settled.
 - **The crew.** The two ejection seats are empty. Grissom and Young are modelled in their G3C
-  suits ([g3c-suit.md](../../crew/g3c-suit.md)), but the crew station as laid out is some two
-  inches too small for either man in his helmet, at the hatch and at the floor, and they are left
-  out until it is laid out again. Each seat has its eye point, a seated man's of average build.
+  suits ([g3c-suit.md](../../crew/g3c-suit.md)) and the crew station is fitted round them, but
+  they are not yet put aboard. Each seat has its eye point, where a seated Grissom's eyes come.
 - **A flight deck.** The crew station is built as spacecraft 3 flew it, from McDonnell's drawing of
   this ship's panels, and its needles, pointers, lamps and controls are each a node of the model;
   nothing reads them yet, the cabin has no lights of its own, and its shadows are not baked. The
-  pressure vessel it stands in is laid out, not drawn
+  pressure vessel it stands in is fitted round the crew, not drawn
   ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "Crew station").
 - **The flight.** Nothing here can be flown. It wants the Titan's weights and thrust, the pitch
   programme, an orbit and three burns as data, and a lifting entry whose lift is what was flown and

@@ -43,9 +43,10 @@ from srlib import CM, IN, load_font, mark_shells, material, run  # noqa: E402
 
 # Who sat where: the command pilot on the left (SEDR 300, p. 1-5).
 CREW = {"CommandPilot": g3c_suit.GRISSOM, "Pilot": g3c_suit.YOUNG}
-# The two men are modelled (the suit, and each seated) and are not yet aboard: the crew station as it is laid out
-# does not hold a man of either's size in his helmet (../spacecraft.md, "The crew"). Each build measures by how much
-# (gemini_cabin.seat prints it). True seats them, with the seats' restraint over them and each seat's node at his eyes.
+# The two men are modelled (the suit, and each seated) and the crew station is fitted round them
+# (../../../vehicles/gemini-spacecraft.md, "Crew station"); they are not yet put aboard. Each build prints the room
+# each would have (gemini_cabin.seat). True seats them, with the seats' restraint over them and each seat's node at
+# his eyes.
 CREW_ABOARD = False
 
 

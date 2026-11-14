@@ -5,10 +5,11 @@ gemini_spacecraft.build_crew_station calls build(). Dimensions are inches; a poi
 inches to the crew's right, McDonnell's Z station). The men sit with their backs to the large pressure bulkhead and
 their heads toward the hatches, facing the nose.
 
-Nothing read gives the pressure vessel's own dimensions, or a seat's place in it. The vessel is laid out here so that
-what is documented fits: the seats at 12 degrees outboard and 8 forward on the large bulkhead with a helmet clear of
-the hatch, the panels at the sizes Figure 3-5 scales to, the hatches' sills, and a seated eye that looks along the
-trough through its window. ./gemini-spacecraft.md, "Crew station", says what each figure rests on.
+Nothing read gives the pressure vessel's own dimensions, or a seat's place in it. The station is laid out round the
+two men who flew in it: a man of known stature in his suit, on a seat of the Smithsonian's sizes at the documented
+cant, under hatches whose outer mould line is documented, with his feet in the seat's stirrups as an ejection needs
+them. Where the seats stand is what SEDR 300's Figure 3-1 and the photograph S65-13244 show, and the rest follows
+from the fit. ./gemini-spacecraft.md, "Crew station", says what each figure rests on.
 
 What the viewer is promised is what the Mercury cabin promises (../../mercury/vehicles/mercury-cabin.md): `Seat_...`
 empties at the eyes, `Gauge_...` needles and bars with their scales in their extras, `Tele_...` lamps, `Ctl_...`
@@ -24,24 +25,40 @@ from mathutils import Matrix, Vector
 from mathutils.geometry import tessellate_polygon
 
 import mercury_cabin as mc
-from gemini_shell import CABIN, HATCH_OUT, IN, WALL, WINDOWS, Z0, Z_ACCESS, Z_HATCH_FWD, Z_SILL, depth, hatch_in, zz
+from gemini_shell import CABIN, HATCH_OUT, IN, WALL, WINDOWS, Z0, Z_ACCESS, Z_HATCH_AFT, Z_HATCH_FWD, depth, hatch_in, zz
 from mercury_cabin import Sheet, plane, pointer, rigid, round_dial, soft, telelight, toggle
 from mercury_capsule import chamfered
 from srlib import TAU, MeshBuilder, deg, frame, interior, prof
 
 # ------------------------------------------------------------------ the layout (all estimated but the seats' cant)
 
-SEAT_CANT = (deg(12), deg(8))  # the seats: outboard, and forward (SEDR 300, p. 3-3): documented
-SEAT_AT = (-12.0, 13.2, 117.0)  # a seat's reference point (the top of its pan, at the front of its back): toward the top, off the middle, station
-SEAT = dict(wide=22.0, top=40.5, drop=10.0, deep=19.0)  # the back's width; pan to the shroud's top; pan to the stirrups' foot; the bucket's depth
-EYE = (0.0, 6.5, 33.5)  # an empty seat's eye point, in its own frame (to his right, the way he faces, up his back): a man's own eyes replace it
-SIT = (3.2, 2.6)  # where a man's back and his seat meet the cushions: forward of the seat's reference point, and above it
+SEAT_CANT = (deg(12), deg(8 + 20 / 60))  # the seats: outboard (SEDR 300, p. 3-3), and forward (Technical Summary, p. 209): documented
+Z_BULKHEAD = 105.0  # the large pressure bulkhead's forward face: at the head of the ring the heat shield is bolted to
+SEAT_REAR = (4.8, 9.0)  # the seat's rearmost point, the foot of its catapult: behind its reference point, and below it
+# a seat's reference point (the top of its pan, in the plane of the tray's front): toward the top, off the middle, station.
+# Its station is as far aft as the bulkhead lets the canted seat stand, with 0.4 in between them
+SEAT_AT = (-9.9, 11.6, Z_BULKHEAD + 0.4 + SEAT_REAR[0] * math.cos(deg(8 + 20 / 60)) + SEAT_REAR[1] * math.sin(deg(8 + 20 / 60)))
+SEAT = dict(wide=22.0, top=40.5, drop=14.5, deep=19.0)  # the back's width; pan to the shroud's top; pan to the stirrups' foot; the bucket's depth
+STIRRUP = (3.0, 1.35, 4.9)  # a stirrup's platform: how far it stands forward, its top above the stirrup's foot, its middle off the seat's
+TRAY = 5.6  # how deep the back's tray is: the backboard, with the parachute on it, lies in it
+EYE = (0.0, 12.4, 33.5)  # an empty seat's eye point, in its own frame (to his right, the way he faces, up his back): a man's own eyes replace it
+SIT = (3.2, 1.75)  # where a man's back and his seat meet the cushions: forward of the seat's reference point, and above it
+CUSHION = 0.8  # the top of the egress kit's cushion as drawn, above the pan: under the lowest of a seated figure, whose seat does not flatten
+PAN_RAKE = (deg(10), 8.0)  # the bucket stands at 100 degrees to the back, its front up: by this much, about a point this far forward under his seat
 # figurelib's seat frame (his right, toward his feet, the way his chest faces) in the seat's own (his right, the way he faces, up his back)
 FIGURE = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
-WALLS = ((108.0, 28.4), (131.0, 26.8), (150.8, 23.5), (160.2, 17.0))  # the vessel's flat sides: station, and half the width between them
-FLOOR = (-29.0, 17.5)  # the floor's deepest, and half the width of its flat
-GEAR_BAY = -17.0  # below this the vessel's sides are let in for the landing gear's wells
-SKIN = 2.6  # the cone's skin to the vessel where it follows it
+SIDE_LEAN = deg(20)  # the vessel's flat sides lean outboard toward the top (SEDR 300, Figure 3-1)
+SIDES = ((Z_BULKHEAD, 24.0), (Z_ACCESS, 22.2))  # station, and how far from the middle a side is at the height of a seat's pan
+FLOOR = (-30.0, ((Z_BULKHEAD, 15.3), (126.0, 15.3), (140.0, 8.0), (Z_ACCESS, 8.0)))  # the floor's deepest; and station, half the width of its flat
+SKIN = 2.0  # the cone's skin to the vessel where it follows it
+CB_AT = (-6.0, 20.3, 139.5)  # a side panel's lower aft corner: toward the top, off the middle, station
+CONSOLE = (-4.0, 3.6, 116.5, 13.0)  # the centre console's top: toward the top; its width; where it begins; its length
+STICK = 10.8  # the attitude hand controller, along the console from its aft end
+ABORT = (-5.0, 134.0)  # the abort handle's quadrant on the left side: toward the top, station
+O2_AT = (-6.0, 126.0)  # a secondary oxygen shutoff, on the side beside a seat: toward the top, station
+ABORT_GRIP = (2.6, 0.9, 0.4)  # its lever, from the quadrant to its knob: toward the top, inboard, forward
+WATER = (2.2, 19.0, 2.9)  # the drinking water's container, upright between the seats' backs: its foot and its head toward the top, its radius
+MANEUVER = 7.1  # the manoeuvre hand controller under the command pilot's panel: from the panel's outboard lower corner
 PANEL_TILT = deg(30)  # the main panels lean back from square to the ship's axis, their tops forward
 PANEL_FOOT = (3.0, 141.5)  # their lower edge: toward the top, and its station
 PANEL_WRAP = deg(14)  # each man's panel is turned toward him
@@ -66,6 +83,13 @@ def inner(theta: float, z: float) -> float:
     return CABIN.r(z) - max(WALL, depth(theta, z) + (0.9 if z < zz(Z_HATCH_FWD) - 0.1 else 2.3))
 
 
+def lerp(table, station: float) -> float:
+    for (s0, w0), (s1, w1) in zip(table, table[1:]):
+        if station <= s1:
+            return w0 + (w1 - w0) * max(0.0, station - s0) / (s1 - s0)
+    return table[-1][1]
+
+
 class Station(mc.Cabin):
     """The Mercury cabin's builder, with nothing to say about how near the wall things are: this vessel is not a cone."""
 
@@ -76,26 +100,52 @@ class Station(mc.Cabin):
 # ------------------------------------------------------------------ the pressure vessel
 
 
-def half_width(station: float) -> float:
-    for (s0, w0), (s1, w1) in zip(WALLS, WALLS[1:]):
-        if station <= s1:
-            return w0 + (w1 - w0) * (station - s0) / (s1 - s0)
-    return WALLS[-1][1]
+def flat_side(station: float, top: float) -> float:
+    """A flat side's plane: how far from the middle it is at a station and a height."""
+    return lerp(SIDES, station) + (top - SEAT_AT[0]) * math.tan(SIDE_LEAN)
 
 
 def section(station: float) -> list[tuple[float, float]]:
     """Half the vessel's outline at a station, as (toward the top, to the right) from the hinge down to the middle of
-    the floor: the sill under the hinge, the shoulder, the flat side, the corner let in where the cone is close, the
-    floor."""
+    the floor: the sill's face under the hinge, the flat side leaning in below it, the corner where the cone is close,
+    the floor. Aft the side runs from the hinge to the floor as Figure 3-1 draws it; forward the cone closes in and
+    less and less of the side is left."""
     z = zz(station)
-    w = half_width(station)
     r = CABIN.r(z) - SKIN
     hinge = (inner(HATCH_OUT, z) * math.cos(HATCH_OUT), inner(HATCH_OUT, z) * math.sin(HATCH_OUT))
-    floor = max(FLOOR[0], -math.sqrt(max(1.0, r * r - FLOOR[1] ** 2)))
-    low = max(floor, GEAR_BAY, -math.sqrt(max(0.0, r * r - w * w)) + 0.4)  # where the flat side ends, going down
-    shoulder = min(hinge[0] - 3.0, max(low + 3.0, hinge[0] - 16.0)) if hinge[1] > w + 0.5 else hinge[0] - 3.0
-    top_w = min(w, hinge[1] - 0.2)
-    return [hinge, (shoulder, top_w), (low, top_w), (floor, min(FLOOR[1], top_w)), (floor, 0.0)]
+    flat = lerp(FLOOR[1], station)
+    floor = max(FLOOR[0], -math.sqrt(max(1.0, r * r - flat * flat)))
+    face = hinge[1] - 0.2  # the sill's face
+    # the shoulder: where the side, coming up, reaches the sill's face (or, forward, where the cone cuts the face off)
+    x = SEAT_AT[0] + (face - lerp(SIDES, station)) / math.tan(SIDE_LEAN)
+    x = min(hinge[0] - 3.0, max(x, -math.sqrt(max(0.0, r * r - face * face)) + 0.12 if face < r else hinge[0] - 3.0))
+    shoulder = (x, min(face, flat_side(station, x)))
+    corner = (floor, min(flat, flat_side(station, floor), shoulder[1]))
+    if math.hypot(*shoulder) > r - 0.15:  # the side is all outside the cone here: the vessel follows the cone
+        a0, a1 = math.atan2(shoulder[1], -shoulder[0]), math.atan2(corner[1], -corner[0])
+        am = (a0 + a1) / 2
+        waist = (-(r - 0.08) * math.cos(am), (r - 0.08) * math.sin(am))
+    else:
+        lo, hi = floor, shoulder[0]  # where the side, going down, comes to the cone, or to the floor
+        if math.hypot(lo, flat_side(station, lo)) <= r - 0.1:
+            hi = lo + 3.0
+        else:
+            for _ in range(40):
+                mid = (lo + hi) / 2
+                lo, hi = (mid, hi) if math.hypot(mid, flat_side(station, mid)) > r - 0.1 else (lo, mid)
+        hi = min(hi, shoulder[0] - 0.5)
+        waist = (hi, flat_side(station, hi))
+    # the bilge between the side and the floor's flat follows the cone
+    a0, a1 = math.atan2(waist[1], -waist[0]), math.atan2(corner[1], -corner[0])
+    bilge = []
+    for f in (0.25, 0.5, 0.75):
+        am = a0 + (a1 - a0) * f
+        rb = min(r - 0.08, max(math.hypot(*waist), math.hypot(*corner)))
+        q = (-rb * math.cos(am), rb * math.sin(am))
+        if q[1] > flat_side(station, q[0]) - 0.2 or q[0] < floor + 0.2:  # (aft the side comes down to the floor inside the cone)
+            q = (waist[0] + (corner[0] - waist[0]) * f, waist[1] + (corner[1] - waist[1]) * f)
+        bilge.append(q)
+    return [hinge, shoulder, waist, *bilge, corner, (floor, 0.0)]
 
 
 def breadth(station: float, top: float) -> float:
@@ -109,7 +159,7 @@ def breadth(station: float, top: float) -> float:
 
 def vessel(c: Station) -> None:
     v = c.into("CrewStation_PressureVessel")
-    stations = [Z_SILL, 112.0, 118.0, 124.0, 131.0, 137.0, 143.0, 150.8, 155.0, Z_ACCESS]
+    stations = [Z_BULKHEAD, 108.5, 112.0, 118.0, 124.0, 131.0, 138.0, 143.0, 147.0, 150.8, 155.0, Z_ACCESS]
     rings = []
     for s in stations:
         half = section(s)
@@ -127,16 +177,17 @@ def vessel(c: Station) -> None:
         mid = sum(loop, Vector()) / len(loop)
         m = len(loop)
         v.add([tuple(mid)] + [tuple(p) for p in loop], [(0, 1 + (i + 1) % m, 1 + i) if out else (0, 1 + i, 1 + (i + 1) % m) for i in range(m)])
-    # the roof forward of the hatches, under the troughs, and the beam between the hatches
-    za, zb = zz(Z_HATCH_FWD) - 0.05, zz(Z_ACCESS)
-    nz, nt = 6, 40
+    # the roof forward of the hatches, under the troughs; the roof aft of them, over the seats' heads; the beam between
+    nt = 40
+    for za, zb, nz in ((zz(Z_HATCH_FWD) - 0.05, zz(Z_ACCESS), 6), (zz(Z_BULKHEAD), zz(Z_HATCH_AFT) + 0.05, 1)):
 
-    def roof(i: int, j: int) -> Vector:
-        a, z = -HATCH_OUT + 2 * HATCH_OUT * i / nt, za + (zb - za) * j / nz
-        return Vector((inner(a, z) * math.cos(a), inner(a, z) * math.sin(a), z)) * IN
+        def roof(i: int, j: int, za=za, zb=zb, nz=nz) -> Vector:
+            a, z = -HATCH_OUT + 2 * HATCH_OUT * i / nt, za + (zb - za) * j / nz
+            return Vector((inner(a, z) * math.cos(a), inner(a, z) * math.sin(a), z)) * IN
 
-    v.grid(roof, range(nt + 1), range(nz + 1), flip=True)
-    zs = [zz(Z_SILL) + (za - zz(Z_SILL)) * j / 10 for j in range(11)]
+        v.grid(roof, range(nt + 1), range(nz + 1), flip=True)
+    za = zz(Z_HATCH_FWD) - 0.05
+    zs = [zz(Z_HATCH_AFT) + 0.05 + (za - zz(Z_HATCH_AFT) - 0.05) * j / 10 for j in range(11)]
     v.grid(
         lambda k, z: Vector(((CABIN.r(z) - WALL) * math.cos(k * hatch_in(z)), (CABIN.r(z) - WALL) * math.sin(k * hatch_in(z)), z)) * IN,
         [-1.0, -0.5, 0.0, 0.5, 1.0],
@@ -145,10 +196,10 @@ def vessel(c: Station) -> None:
     )
     # stiffeners on the large bulkhead, behind the seats (its skins are double, with stiffeners spot-welded on: p. 2-8)
     ribs = c.into("CrewStation_Stiffeners")
-    for y in (-18.0, -6.0, 6.0, 18.0):
-        chamfered(ribs, (56.0, 1.2, 0.7), Matrix.Translation(V(2.0, y, Z_SILL + 0.35) * IN), 0.1)
+    for y in (-16.0, -5.5, 5.5, 16.0):
+        chamfered(ribs, (50.0, 1.2, 0.7), Matrix.Translation(V(3.0, y, Z_BULKHEAD + 0.35) * IN), 0.1)
     for x in (-20.0, -6.0, 8.0, 22.0):
-        chamfered(ribs, (1.2, 46.0, 0.5), Matrix.Translation(V(x, 0.0, Z_SILL + 0.25) * IN), 0.1)
+        chamfered(ribs, (1.2, 2 * breadth(Z_BULKHEAD, x) - 2.4, 0.5), Matrix.Translation(V(x, 0.0, Z_BULKHEAD + 0.25) * IN), 0.1)
 
 
 # ------------------------------------------------------------------ an ejection seat
@@ -179,6 +230,12 @@ def seat_frame(side: int) -> Matrix:
     return Matrix.Translation(V(SEAT_AT[0], side * SEAT_AT[1], SEAT_AT[2]) * IN) @ to_ship @ cant @ Matrix.Scale(IN, 4)
 
 
+def bucket_frame() -> Matrix:
+    """The bucket's axes in the seat's: raked about a line across it under a man's seat. Inches."""
+    rake, at = PAN_RAKE
+    return Matrix.Translation((0, at, 0)) @ Matrix.Rotation(rake, 4, "X") @ Matrix.Translation((0, -at, 0))
+
+
 def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | None:
     """An ejection seat, as the Smithsonian's two are (A19690023001, A19710058000): a channelled back with a faceted
     shroud over the man's head, holed rails behind it, a bucket with arm sides, a guard before the shins and two
@@ -195,88 +252,115 @@ def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | N
     R = m.to_3x3().normalized()
     box = lambda mb, size, at, bevel=0.12: chamfered(mb, size, rigid(m) @ Matrix.Translation(Vector(at) * IN), bevel)  # noqa: E731
     tube = lambda mb, a, b, r, segs=10: mb.tube(m @ Vector(a), m @ Vector(b), r * IN, segs)  # noqa: E731
+    # the bucket's own frame: the seat's, raked
+    kb = m @ bucket_frame()
+    kbox = lambda mb, size, at, bevel=0.12: chamfered(mb, size, rigid(kb) @ Matrix.Translation(Vector(at) * IN), bevel)  # noqa: E731
+    ktube = lambda mb, a, b, r, segs=10: mb.tube(kb @ Vector(a), kb @ Vector(b), r * IN, segs)  # noqa: E731
     fr, pad, web, ring, rail, cap = (MeshBuilder() for _ in range(6))
     h, top, drop = SEAT["wide"] / 2, SEAT["top"], SEAT["drop"]
     back = top - 8.5  # where the shroud begins
-    # the back: a pan with turned-up sides and a box channel up its middle
-    box(fr, (2 * h, 0.5, back + 2.0), (0, -0.25, back / 2 - 1.0))
-    for sx in (-1, 1):
-        box(fr, (0.5, 4.6, back + 2.0), (sx * (h - 0.25), 2.0, back / 2 - 1.0))
-    box(fr, (4.4, 1.5, back - 1.5), (0, 0.7, back / 2 + 0.2), 0.3)
+    y0 = SIT[0] - 0.5 - TRAY  # the back pan's front: the tray's sides come forward of it to just behind a man's back
+    # the back: a tray, its pan beaded, a box channel up its middle (the catapult stands in it behind) and its sides
+    # deep, with lightening holes down them; the backboard and the parachute on it lie in it
+    box(fr, (2 * h, 0.5, back + 2.0), (0, y0 - 0.25, back / 2 - 1.0))
+    box(fr, (4.4, 1.5, back - 1.5), (0, y0 + 0.75, back / 2 + 0.2), 0.3)
     for z in (6.0, 14.0, 22.0):  # the beads pressed across it either side of the channel
         for sx in (-1, 1):
-            box(fr, (5.6, 0.6, 0.9), (sx * 6.2, 0.0, z), 0.15)
-    # the shroud over his head: five-sided, a fitting at its peak (the parachute's and the drogue's gear is under it)
-    hood = [(-h, back), (h, back), (3.2, top), (-3.2, top)]
-    prism(cap, m @ Matrix(((0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), [(x, z) for x, z in hood], -3.6, 2.5)
-    box(cap, (3.0, 2.4, 1.6), (0, 0.5, top + 0.6), 0.25)
-    # the rails behind the back, with their lightening holes, and the rocket catapult between them
+            box(fr, (5.6, 0.6, 0.9), (sx * 6.2, y0 + 0.05, z), 0.15)
     for sx in (-1, 1):
-        box(rail, (0.9, 5.6, back + drop - 1.5), (sx * 8.6, -3.4, (back - drop) / 2 + 0.25), 0.15)
-        for k in range(9):
-            z = -drop + 4.5 + k * 4.9
+        box(fr, (0.5, TRAY + 0.5, back + 2.0), (sx * (h - 0.25), y0 + TRAY / 2 - 0.25, back / 2 - 1.0))
+        for k in range(6):
+            z = 3.4 + k * 4.9
             for face in (-1, 1):
-                at_ = m @ Vector((sx * 8.6 + face * 0.47, -3.4, z))
+                at_ = m @ Vector((sx * (h - 0.25) + face * 0.27, y0 + TRAY / 2 - 0.25, z))
                 rail.lathe(prof([(1.5, -0.02), (1.5, 0.08), (1.25, 0.08), (1.2, 0.04), (0.0, 0.04)]), 16, matrix=frame(at_, R @ Vector((face, 0, 0))))
-    tube(rail, (0, -3.4, -drop + 1.0), (0, -3.4, top - 4.0), 2.1, 16)
-    tube(rail, (0, -3.4, top - 4.0), (0, -3.4, top - 1.5), 1.2, 12)
-    for sx in (-1, 1):  # the tee rails on the bulkhead that the seat's blocks slide in
-        box(rail, (1.6, 1.0, back + drop - 4.0), (sx * 8.6, -6.9, (back - drop) / 2), 0.12)
+    # the shroud over the tray's head: five-sided, a fitting at its peak where the seat hangs on its catapult
+    hood = [(-h, back), (h, back), (3.2, top), (-3.2, top)]
+    prism(cap, m @ Matrix(((0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1))), [(x, z) for x, z in hood], y0 - 0.5, y0 + TRAY)
+    box(cap, (3.0, 2.2, 1.6), (0, -SEAT_REAR[0] + 1.6, top + 0.6), 0.25)
+    # the rocket catapult behind the channel, the seat's one support (at its head); and the tee rails its blocks slide
+    # in, which stand off the large bulkhead on brackets since the bulkhead is square to the ship and they are not
+    cy = -SEAT_REAR[0] + 1.6
+    tube(rail, (0, cy, -SEAT_REAR[1]), (0, cy, top - 4.0), 1.6, 16)
+    tube(rail, (0, cy, top - 4.0), (0, cy, top - 0.2), 1.0, 12)
+    for sx in (-1, 1):
+        box(rail, (1.6, 0.8, back + 4.5), (sx * 8.6, y0 - 1.4, (back - 10.5) / 2 + 3.0), 0.12)
+        for z in (-4.0, 9.0, 22.0):
+            box(rail, (1.1, 0.7, 2.4), (sx * 8.6, y0 - 0.85, z), 0.1)  # a slide block
+            foot = m @ Vector((sx * 8.6, y0 - 1.7, z))
+            wall = Vector((foot.x, foot.y, zz(Z_BULKHEAD) * IN))
+            rail.tube(foot, wall, 0.45 * IN, 8)
+            rail.disc(wall, Vector((0, 0, 1)), 1.0 * IN, 0.18 * IN, 12)
     # the bucket: a pan, two arm sides with their tops rounded down to the front, a guard before the shins
-    box(fr, (2 * h - 2.6, SEAT["deep"] - 1.0, 0.6), (0, SEAT["deep"] / 2, -0.3))
+    kbox(fr, (2 * h - 2.6, SEAT["deep"] - 1.0, 0.6), (0, SEAT["deep"] / 2, -0.3))
     arm = [(-0.5, -4.5), (SEAT["deep"] - 1.5, -4.5), (SEAT["deep"], -2.0), (SEAT["deep"], 3.0), (SEAT["deep"] - 2.5, 7.0), (11.0, 8.6), (-0.5, 9.6)]
     for sx in (-1, 1):
-        prism(fr, m, arm, sx * (h - 1.1) - 0.3, sx * (h - 1.1) + 0.3)
+        prism(fr, kb, arm, sx * (h - 1.1) - 0.3, sx * (h - 1.1) + 0.3)
         for y in (3.0, 7.0, 11.0):  # the beads pressed in each side
-            box(fr, (0.3, 0.9, 6.0), (sx * (h - 0.72), y, 1.0), 0.12)
+            kbox(fr, (0.3, 0.9, 6.0), (sx * (h - 0.72), y, 1.0), 0.12)
         # the loop of half-inch tube his arm is held in if the seat goes
-        loop = [(sx * (h - 1.1), 5.0, 9.4), (sx * (h - 1.1), 5.5, 12.4), (sx * (h - 1.1), 9.5, 12.0), (sx * (h - 1.1), 10.5, 8.8)]
+        loop = [(sx * (h - 1.1), 0.8, 9.2), (sx * (h - 1.1), 1.3, 12.6), (sx * (h - 1.1), 5.3, 12.2), (sx * (h - 1.1), 6.3, 8.7)]
         for a, b in zip(loop, loop[1:]):
-            tube(ring, a, b, 0.25, 8)
+            ktube(ring, a, b, 0.25, 8)
     guard_y = SEAT["deep"] + 0.3
-    for x, wide in ((-(h - 4.6), 1.2), (0.0, 2.6), (h - 4.6, 1.2)):
-        box(fr, (wide, 0.5, drop - 4.0), (x, guard_y, -drop / 2 - 2.6))
+    for x, wide in ((-(h - 4.6), 1.2), (0.0, 1.0), (h - 4.6, 1.2)):
+        kbox(fr, (wide, 0.5, drop - 5.0), (x, guard_y, -(drop + 4.2) / 2))
     for z in (-4.9, -drop + 1.6):
-        box(fr, (2 * h - 8.0, 0.5, 1.2), (0, guard_y, z))
-    for sx in (-1, 1):  # the stirrups: a loop of tube under each foot
+        kbox(fr, (2 * h - 5.0, 0.5, 1.2), (0, guard_y, z))
+    for sx in (-1, 1):
+        # a stirrup: a frame of tube down from the guard, and at its foot a short platform the heel locks on, with an
+        # edge up its outboard side (SEDR 300, pp. 3-12, 3-13: "during seat ejection, the pilot's feet must be in place")
         u = [
-            (sx * 1.9, guard_y + 0.6, -drop + 5.0),
-            (sx * 1.9, guard_y + 0.9, -drop + 0.9),
-            (sx * 5.6, guard_y + 0.9, -drop + 0.9),
-            (sx * 5.6, guard_y + 0.6, -drop + 5.0),
+            (sx * (STIRRUP[2] - 2.75), guard_y + 0.6, -drop + 5.0),
+            (sx * (STIRRUP[2] - 2.75), guard_y + 0.9, -drop + 0.9),
+            (sx * (STIRRUP[2] + 2.95), guard_y + 0.9, -drop + 0.9),
+            (sx * (STIRRUP[2] + 2.95), guard_y + 0.6, -drop + 5.0),
         ]
         for a, b in zip(u, u[1:]):
-            tube(ring, a, b, 0.42, 10)
-    # what he sits on and against: the egress kit in the bucket, the backboard and its cushion, the headrest
-    soft(pad, rigid(m) @ Matrix.Translation(Vector((0, SEAT["deep"] / 2 + 0.2, 1.35)) * IN), (2 * h - 3.4, SEAT["deep"] - 2.0, 2.5), 0.8)
-    soft(pad, rigid(m) @ Matrix.Translation(Vector((0, 2.45, 14.5)) * IN), (15.0, 1.5, 23.0), 0.6)
-    soft(pad, rigid(m) @ Matrix.Translation(Vector((0, 1.75, back - 3.0)) * IN), (7.0, 2.6, 5.4), 0.7)
+            ktube(ring, a, b, 0.42, 10)
+        kbox(ring, (4.7, STIRRUP[0], 0.25), (sx * STIRRUP[2], guard_y + 1.2 + STIRRUP[0] / 2, -drop + STIRRUP[1] - 0.125), 0.08)
+        kbox(ring, (0.1, STIRRUP[0], 0.9), (sx * (STIRRUP[2] + 2.43), guard_y + 1.2 + STIRRUP[0] / 2, -drop + STIRRUP[1] + 0.3), 0.06)
+    # what he sits on and against: the egress kit in the bucket; in the tray the parachute and the raft, the backboard
+    # before them and its cushion before that; the headrest's pad on the shroud's face, where the back of a helmet comes
+    soft(
+        pad,
+        rigid(kb) @ Matrix.Translation(Vector((0, SEAT["deep"] / 2 + 0.2, (CUSHION + 0.1) / 2)) * IN),
+        (2 * h - 3.4, SEAT["deep"] - 2.0, CUSHION - 0.1),
+        0.35,
+    )
+    soft(pad, rigid(m) @ Matrix.Translation(Vector((0, SIT[0] - 0.9, 15.5)) * IN), (15.0, 1.2, 22.0), 0.5)  # (his harness lies between it and him)
+    box(ring, (17.0, 0.4, 25.0), (0, SIT[0] - 1.9, 16.0), 0.1)
+    soft(pad, rigid(m) @ Matrix.Translation(Vector((0, (y0 + 0.9 + SIT[0] - 2.4) / 2, 16.5)) * IN), (16.0, SIT[0] - 2.4 - y0 - 0.9, 23.0), 0.8)
+    soft(pad, rigid(m) @ Matrix.Translation(Vector((0, y0 + TRAY + 0.06, back + 2.4)) * IN), (7.6, 0.72, 7.0), 0.25)
     if man:
         # the restraint as worn: the reel's two straps over his shoulders to the quick disconnects of his harness, and
-        # the lap belt from the bucket's sides across his lap to its release at the middle
+        # the lap belt from the bucket's sides
         at = lambda p: man["place"] @ (Vector(p) * 0.01)  # noqa: E731
         for key, sx in (("left", -1), ("right", 1)):
-            run = [m @ Vector((sx * 2.4, 2.3, back - 6.4)), *(at(p) for p in man["worn"]["reel"][key])]
+            run = [m @ Vector((sx * 2.4, SIT[0] - 0.9, back - 6.4)), *(at(p) for p in man["worn"]["reel"][key])]
             web.ribbon(run, R @ Vector((1, 0, 0)), 1.75 * IN)
+        # (from the bucket's side behind each hip, round the hip and over the pelvis into the fold his raised thighs
+        # make with his belly: what crosses his lap is under them, the buckle with it, and is not built)
         lap = man["worn"]["lap"]
-        ends = [m @ Vector((sx * (h - 1.7), SIT[0] + 3.4, 3.6)) for sx in (-1, 1)]
-        web.ribbon([ends[0], *(at(p) for p in lap), ends[1]], R @ Vector((0, 1, 0)), 1.75 * IN)
-        mid = at(lap[len(lap) // 2]) + R @ Vector((0, 0.012, 0))
-        chamfered(ring, (2.6, 0.5, 2.2), rigid(m) @ Matrix.Translation(rigid(m).inverted() @ mid), 0.1)
+        for sx, part in ((-1, [p for p in lap if p[0] < -13.0]), (1, [p for p in lap if p[0] > 13.0][::-1])):
+            anchor = [kb @ Vector((sx * (h - 1.45), 3.4, 2.4)), kb @ Vector((sx * (h - 2.3), 5.6, 6.6))]
+            web.ribbon([*anchor, *(at(p) for p in part)], R @ Vector((0, 1, 0)), 1.75 * IN)
     else:
         for sx in (-1, 1):  # the shoulder straps down the backboard from the inertia reel, and the lap belt's two halves
             web.ribbon(
-                [m @ Vector(p) for p in ((sx * 2.4, 3.32, back - 6.2), (sx * 3.0, 3.32, 14.0), (sx * 3.6, 3.32, 4.0))],
+                [m @ Vector(p) for p in ((sx * 2.4, SIT[0] + 0.12, back - 6.2), (sx * 3.0, SIT[0] + 0.12, 14.0), (sx * 3.6, SIT[0] + 0.12, 4.0))],
                 R @ Vector((1, 0, 0)),
                 1.75 * IN,
             )
-            web.ribbon([m @ Vector(p) for p in ((sx * (h - 2.2), 3.0, 2.7), (sx * 1.2, 6.0, 2.7))], R @ Vector((0, 1, 0)), 1.75 * IN)
-    box(fr, (5.0, 1.4, 2.0), (0, 2.3, back - 7.6), 0.3)  # the inertia reel
+            web.ribbon(
+                [kb @ Vector(p) for p in ((sx * (h - 3.2), 3.6, CUSHION + 0.22), (sx * 1.2, 6.4, CUSHION + 0.22))], R @ Vector((0, 1, 0)), 1.75 * IN
+            )
+    box(fr, (5.0, 1.4, 2.0), (0, SIT[0] - 0.9, back - 7.6), 0.3)  # the inertia reel
     # the D-ring between his knees: pulled, it fires both seats
     mb = MeshBuilder()
-    mb.lathe(prof([(2.1 + 0.4 * math.cos(a), 0.4 * math.sin(a)) for a in (TAU * i / 8 for i in range(9))]), 20)
+    mb.lathe(prof([(1.4 + 0.33 * math.cos(a), 0.33 * math.sin(a)) for a in (TAU * i / 8 for i in range(9))]), 20)
     grip = mb.build(f"Ctl_Eject{name}", c.M["yellow"], c.g, sharp_angle=None)
-    grip.matrix_local = rigid(m @ Matrix.Translation(Vector((0, SEAT["deep"] - 0.4, 3.4)))) @ Matrix.Rotation(math.pi / 2, 4, "X")
+    grip.matrix_local = rigid(kb @ Matrix.Translation(Vector((0, SEAT["deep"] + 0.3, 1.5)))) @ Matrix.Rotation(math.pi / 2, 4, "X")
     grip["pull"] = 0.06
     grip["reach"] = 0.07
     say(grip, "Ejection control", "The D-ring between the knees. Pulled with both hands, it blows both hatches open and fires both seats.")
@@ -286,8 +370,10 @@ def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | N
     about += (
         "ejection seat on a rocket catapult, as in a fighter. Pulling the ring between the knees blows both hatches open and fires "
         "both seats up their rails on the bulkhead, which are canted 12° apart and 8° forward so that the two do not meet. Nobody "
-        "ever had to. Its form is the two seats the Smithsonian holds (one a spare that was fitted in this very spacecraft), 22 in "
-        "wide and 54 in tall; where it stands in the cabin is laid out so that a helmet clears the hatch."
+        "ever had to. For that reason the men rode the launch with their heels locked in the stirrups under the seat's front: "
+        "a seat that goes takes the legs with it. Its form is the two seats the Smithsonian holds (one a spare that was fitted "
+        "in this very spacecraft), 22 in wide and 54 in tall; it stands as far aft as the bulkhead lets it and as high as the "
+        "taller man's helmet lets it under the hatch."
     )
     say(fr.build(f"Seat{name}_Frame", c.M["seat"], c.g, sharp_angle=35), "Ejection seat", about)
     rail.build(f"Seat{name}_Rails", c.M["seat"], c.g, sharp_angle=35)
@@ -316,7 +402,7 @@ def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | N
         wall = min(breadth(p.z + Z0, p.x) - abs(p.y) for p in skin_ if p.x > section(p.z + Z0)[-1][0])
         floor = min(p.x - section(p.z + Z0)[-1][0] for p in skin_)
         print(
-            f"gemini cabin: {name} {'is aboard' if man else 'is NOT aboard: the cabin as laid out does not hold him'}; his helmet "
+            f"gemini cabin: {name} {'is aboard' if man else 'is not aboard (the seat is empty: this is the room he would have)'}; his helmet "
             f"{roof:.2f} in under the hatch's inner skin, his side {wall:.2f} in inside the vessel's, his feet {floor:.2f} in over its floor"
         )
     return man
@@ -351,15 +437,15 @@ def frames() -> dict:
     eo = Vector((math.sin(deg(20)), 0.0, -math.cos(deg(20))))
     out["overhead"] = plane(Vector((CABIN.r(zo) - WALL - under, -4.9, zo)), ex0, eo)
     # the switch and circuit breaker panels on the side walls, each leaning up toward its man
-    lean = deg(25)
+    lean = deg(4)
     for side, key in ((-1, "left_cb"), (1, "right_cb")):
         ex = Vector((0.0, 0.0, -side))
         ey = Vector((math.cos(lean), side * math.sin(lean), 0.0))
-        corner = V(-9.0, side * (half_width(142.0) - 4.8), 142.25 + side * 6.25)  # (forward of the seat's bucket, beside the knee)
+        corner = V(CB_AT[0], side * CB_AT[1], CB_AT[2] + 6.25 + side * 6.25)  # (forward of the seat's bucket, outboard of the knee)
         out[key] = plane(corner, ex, ey)
     # the centre console between the seats, read from above, and the water management panel on the bulkhead between them
-    out["console"] = plane(V(-5.0, -2.9, 116.0), ex0, Vector((0.0, 0.0, 1.0)))
-    out["water"] = plane(V(12.0, 2.4, Z_SILL + 1.2), Vector((0.0, -1.0, 0.0)), Vector((1.0, 0.0, 0.0)))
+    out["console"] = plane(V(CONSOLE[0], -CONSOLE[1] / 2, CONSOLE[2]), ex0, Vector((0.0, 0.0, 1.0)))
+    out["water"] = plane(V(WATER[1] - 5.6, 2.4, Z_BULKHEAD + 2 * WATER[2] + 1.6), Vector((0.0, -1.0, 0.0)), Vector((1.0, 0.0, 0.0)))
     return out
 
 
@@ -570,11 +656,11 @@ def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet) -> None:
     round_dial(c, F, faces, "Altimeter", ALTIMETER, 2.22, 1.84, 1.21, rim=True)
     tape(c, F, rg, faces, "PropellantQuantity", "PROP QTY", 4.92, 1.6, 0.7, 2.4, 100, 100)
     # the manoeuvre hand controller under the panel: pushed in, it stows
-    c.box("CrewCabin_PanelStructure", F, 3.6, -1.5, 3.4, 2.6, -1.0, 0.3)
+    c.box("CrewCabin_PanelStructure", F, MANEUVER, -1.5, 2.4, 2.6, -1.0, 0.3)
     hand = MeshBuilder()
     hand.lathe(prof([(0.3, 0.0), (0.3, 1.5), (0.75, 1.7), (0.85, 2.3), (0.6, 2.9), (0.0, 3.0)]), 16)
     stick = hand.build("Ctl_ManeuverController", c.M["grip"], c.g, sharp_angle=35)
-    stick.matrix_local = rigid(F @ Matrix.Translation((3.6, -1.6, 0.3)))
+    stick.matrix_local = rigid(F @ Matrix.Translation((MANEUVER, -1.6, 0.3)))
     stick["reach"] = 0.06
     # ---- the pilot's
     F = P["right"]
@@ -799,26 +885,29 @@ def side_panels(c: Station, P: dict, sheet: Sheet) -> None:
             rg.rect(Wd - 1.9, 2.9, Wd - 0.3, 4.6, (0.44, 0.45, 0.45), r=0.1)
             rg.text("RE ENT ANT\nEXP", Wd - 1.1, 4.25, 0.065, mc.INK)
             toggle(c, F, Wd - 1.1, 3.4, "v", False)
-        # the secondary oxygen shutoff beside it: a quadrant and a lever with a ball on it
-        c.turned("CrewCabin_PanelStructure", F, -2.2 if key == "left_cb" else Wd + 2.2, Ht / 2, [(1.9, -0.6), (1.9, 0.0), (0.0, 0.0)], 24)
-        u = -2.2 if key == "left_cb" else Wd + 2.2
-        c.into("CrewCabin_PanelFittings").tube(F @ Vector((u, Ht / 2, 0.0)), F @ Vector((u + 0.8, Ht / 2 + 1.5, 1.2)), 0.14 * IN, 8)
-        c.turned("CrewCabin_RedCaps", F @ Matrix.Translation((u + 0.8, Ht / 2 + 1.5, 1.2)), 0.0, 0.0, [(0.42, -0.35), (0.42, 0.35), (0.0, 0.35)], 12)
+        # the secondary oxygen shutoff: a quadrant and a lever with a ball on it, on the side beside the seat's bucket
+        # (Figure 3-1: "ECS control, secondary O2"; Figure 3-5 sheet 2 draws it by this panel)
+        side = -1 if key == "left_cb" else 1
+        Q = plane(V(O2_AT[0], side * (breadth(O2_AT[1], O2_AT[0]) - 0.45), O2_AT[1]), Vector((0.0, 0.0, -side)), Vector((1.0, 0.0, 0.0)))
+        c.turned("CrewCabin_PanelStructure", Q, 0.0, 0.0, [(1.9, -0.6), (1.9, 0.0), (0.0, 0.0)], 24)
+        c.into("CrewCabin_PanelFittings").tube(Q @ Vector((0.0, 0.0, 0.0)), Q @ Vector((-side * 0.8, 1.5, 0.6)), 0.14 * IN, 8)
+        c.turned("CrewCabin_RedCaps", Q @ Matrix.Translation((-side * 0.8, 1.5, 0.6)), 0.0, 0.0, [(0.42, -0.35), (0.42, 0.35), (0.0, 0.35)], 12)
     # ---- the centre console between the seats: the attitude hand controller at its forward end, the temperature controls
     F = P["console"]
-    rg = plate(c, F, [(0, 0), (5.8, 0), (5.8, 12.0), (0, 12.0)], sheet, 2.2)
-    rg.text("TEMP CONTROL", 2.9, 6.9, 0.075, mc.INK)
+    wd, mid = CONSOLE[1], CONSOLE[1] / 2
+    rg = plate(c, F, [(0, 0), (wd, 0), (wd, CONSOLE[3]), (0, CONSOLE[3])], sheet, 2.2)
+    rg.text("TEMP CONTROL", mid, 6.9, 0.075, mc.INK)
     for v, legend in ((5.6, "SUIT"), (3.6, "CABIN")):
-        knob(c, F, 2.9, v, 0.75)
-        rg.text(legend, 4.6, v, 0.065, mc.INK)
-    c.box("CrewCabin_PanelFittings", F, 2.9, 1.2, 1.6, 0.6, 0.0, 0.5)
-    rg.text("O2 HIGH RATE", 2.9, 2.0, 0.06, mc.INK)
+        knob(c, F, mid - 0.5, v, 0.7)
+        rg.text(legend, mid + 1.1, v, 0.065, mc.INK)
+    c.box("CrewCabin_PanelFittings", F, mid, 1.2, 1.6, 0.6, 0.0, 0.5)
+    rg.text("O2 HIGH RATE", mid, 2.0, 0.06, mc.INK)
     hand = MeshBuilder()
     hand.lathe(prof([(0.35, 0.0), (0.35, 2.4), (0.8, 2.7), (0.95, 4.6), (0.75, 5.6), (0.0, 5.8)]), 16)
     stick = hand.build("Ctl_AttitudeController", c.M["grip"], c.g, sharp_angle=35)
-    stick.matrix_local = rigid(F @ Matrix.Translation((2.9, 9.8, 0.0)))
+    stick.matrix_local = rigid(F @ Matrix.Translation((mid, STICK, 0.0)))
     stick["reach"] = 0.08
-    c.turned("CrewCabin_PanelStructure", F, 2.9, 9.8, [(1.5, 0.0), (1.3, 0.5), (0.5, 0.7)], 20)
+    c.turned("CrewCabin_PanelStructure", F, mid, STICK, [(1.5, 0.0), (1.3, 0.5), (0.5, 0.7)], 20)
     # ---- the water management panel on the bulkhead between the men, at shoulder height: three valves
     F = P["water"]
     rg = plate(c, F, [(0, 0), (4.8, 0), (4.8, 3.6), (0, 3.6)], sheet, 0.6)
@@ -830,13 +919,14 @@ def side_panels(c: Station, P: dict, sheet: Sheet) -> None:
 def fittings(c: Station, say) -> None:
     """What else is in the cabin: the abort handle, the water, the stowage, the lights, the curtains along the hinges."""
     eq, fab = c.into("CrewCabin_Equipment"), c.into("CrewCabin_Stowage")
-    # the abort handle on the left wall beside the command pilot's panel: a lever in a slotted quadrant
-    w = half_width(137.0)
-    base = V(4.0, -(w - 0.9), 137.0)
+    # the abort handle on the left side, below the left switch panel and forward of the seat's arm, where the command
+    # pilot's left hand falls (Figure 3-1; S65-23489 has his hand on it below his elbow): a lever in a slotted quadrant
+    w = breadth(ABORT[1], ABORT[0])
+    base = V(ABORT[0], -(w - 0.9), ABORT[1])
     chamfered(eq, (4.2, 1.6, 5.0), Matrix.Translation(base * IN), 0.2)
     lever = MeshBuilder()
-    lever.tube(Vector((0, 0, 0)), Vector((0.02, 0.07, 0.01)), 0.22 * IN, 8)
-    lever.lathe(prof([(0.0, -0.6), (0.6, -0.4), (0.6, 0.4), (0.0, 0.6)]), 14, matrix=Matrix.Translation(Vector((0.02, 0.085, 0.01))))
+    lever.tube(Vector((0, 0, 0)), Vector(ABORT_GRIP) * IN, 0.22 * IN, 8)
+    lever.lathe(prof([(0.0, -0.6), (0.6, -0.4), (0.6, 0.4), (0.0, 0.6)]), 14, matrix=Matrix.Translation(Vector(ABORT_GRIP) * IN * 1.15))
     handle = lever.build("Ctl_Abort", c.M["red"], c.g, sharp_angle=35)
     handle.matrix_local = Matrix.Translation((base + Vector((1.0, 0.8, 0.0))) * IN)
     handle["reach"] = 0.06
@@ -846,18 +936,20 @@ def fittings(c: Station, say) -> None:
         "By the command pilot's left hand: a lever in a slotted quadrant, normal at one end and abort at the other, with the "
         "engines' shutdown between. Gemini's aborts are the crew's to call. Below 15,000 ft the answer is the seats; above "
         "it, this handle shuts the Titan down and fires the retrograde rockets together to pull the ship off it. Its form is "
-        "SEDR 300's figure; where it is on the wall is laid out.",
+        "SEDR 300's figure; it is put where that figure has it and where his hand comes to it from the seat.",
     )
-    # sixteen pounds of drinking water in a container forward of the bulkhead between the seats (p. 3-26)
-    eq.tube(V(-9.0, 0.0, Z_SILL + 3.6) * IN, V(6.5, 0.0, Z_SILL + 3.6) * IN, 3.0 * IN, 20)
-    # the stowage: a box on the centreline, one aft on each hand, one on each side wall; the food and the cameras went in them
-    soft(fab, Matrix.Translation(V(18.5, 0.0, Z_SILL + 3.0) * IN), (7.0, 9.0, 4.6), 0.6)
+    # sixteen pounds of drinking water in a container forward of the bulkhead between the seats (p. 3-26): upright
+    # between the seats' backs, which is where the two seats leave room for sixteen pounds of water
+    eq.tube(V(WATER[0], 0.0, Z_BULKHEAD + WATER[2] + 0.5) * IN, V(WATER[1], 0.0, Z_BULKHEAD + WATER[2] + 0.5) * IN, WATER[2] * IN, 20)
+    # the stowage: a box on the centreline over the water, one aft on each hand outboard of the seats' backs
+    # (where Figure 3-1 draws the waste stowage); the food and the cameras went in them
+    soft(fab, Matrix.Translation(V(WATER[1] + 4.6, 0.0, Z_BULKHEAD + 2.8) * IN), (7.0, 9.0, 4.6), 0.6)
     for side in (-1, 1):
-        soft(fab, Matrix.Translation(V(24.0, side * 24.0, Z_SILL + 2.6) * IN), (5.0, 7.0, 4.0), 0.6)
+        soft(fab, Matrix.Translation(V(16.5, side * (breadth(Z_BULKHEAD + 2.5, 13.0) - 2.9), Z_BULKHEAD + 2.5) * IN), (7.0, 4.4, 4.0), 0.6)
     # a floodlight on each side and one at the centre (p. 3-20): their places estimated
     for name, at in (
-        ("Left", V(13.0, -half_width(139.0) + 0.9, 139.0)),
-        ("Right", V(13.0, half_width(139.0) - 0.9, 139.0)),
+        ("Left", V(13.0, -breadth(139.0, 13.0) + 0.9, 139.0)),
+        ("Right", V(13.0, breadth(139.0, 13.0) - 0.9, 139.0)),
         ("Centre", V(CABIN.r(zz(136.0)) - WALL - 1.6, 0.0, 136.0)),
     ):
         chamfered(eq, (1.4, 1.4, 3.4), Matrix.Translation(at * IN), 0.2)
@@ -867,7 +959,7 @@ def fittings(c: Station, say) -> None:
     # the hatch curtain along each hinge, held by five snaps (p. 2-19)
     cur, snaps = c.into("CrewCabin_HatchCurtains"), c.into("CrewCabin_PanelFittings")
     for side in (-1, 1):
-        zs = [zz(112.0) + (zz(148.0) - zz(112.0)) * j / 12 for j in range(13)]
+        zs = [zz(109.0) + (zz(148.0) - zz(109.0)) * j / 12 for j in range(13)]
         for j in range(12):
             quad = []
             for z, a in ((zs[j], HATCH_OUT - deg(1)), (zs[j + 1], HATCH_OUT - deg(1)), (zs[j + 1], HATCH_OUT - deg(8)), (zs[j], HATCH_OUT - deg(8))):
@@ -875,7 +967,7 @@ def fittings(c: Station, say) -> None:
                 quad.append(tuple(Vector((r * math.cos(side * a), r * math.sin(side * a), z)) * IN))
             cur.add(quad, [(0, 1, 2, 3)])
         for k in range(5):
-            z = zz(115.0 + k * 7.5)
+            z = zz(113.0 + k * 8.0)
             a = side * (HATCH_OUT - deg(2.5))
             r = inner(a, z) - 0.37
             p = Vector((r * math.cos(a), r * math.sin(a), z)) * IN
@@ -961,6 +1053,7 @@ PANELS_ABOUT = (
 VESSEL_ABOUT = (
     "The pressure vessel: a welded titanium box inside the cone, its sides and bulkheads double skins with stiffeners between, "
     "the hatches for its roof. The room between its flat sides and the cone is equipment bays. No drawing read gives its "
-    "dimensions: it is laid out here so that what is documented fits in it, the seats at their cant with a helmet clear of the "
-    "hatch, the panels at their sizes, and a seated eye that looks along the trough through its window."
+    "dimensions. Its form is McDonnell's figures': flat sides leaning in toward a narrow floor. Its sizes are fitted round "
+    "the two men who flew in it, each in his suit on a seat of known size under a hatch whose outside is documented: there "
+    "is an inch or less between the taller man's helmet and the hatch, and his boots lie along the cone."
 )
