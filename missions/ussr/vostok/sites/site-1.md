@@ -797,8 +797,11 @@ rocket can leave the erector out by its date.
   So the tall mast's foot is some 9.8 m west of the axis and it leans some 22° west in them, swung perhaps 25°
   from where it stood and not the model's 40°, with the short mast beside it (foot 7.6 m west, 15° out, some
   14 m long). **It is left where it is.** A check against a third view was wanted before rebuilding and none
-  was had: the film's launch reel has no shot of the masts, and no KH-7 frame of Site 1 of 1963 to 1965 was
-  found on Wikimedia Commons (searched, November 2026). And on the west the mast shares its side of the ring
+  was had. The film's launch reel has no shot of the masts: it cuts from the cabin to the rocket already clear of
+  the dust. The one KH-7 frame of the range found on Wikimedia Commons (mission 4018 of 1 June 1965, frame 11,
+  14,310 by 14,504 px, from the category "PD US NRO") was fetched and read at full size: it shows a rail yard, a
+  barracks grid and small pads, none with the three tracks and the great pit: Site 1 is not on it. The KH-4A frames of 1965 in
+  the same category are at some 2.7 m a pixel, on which a mast 1.5 m broad cannot be told from its shadow. And on the west the mast shares its side of the ring
   with the erector: a mast of two legs 2.7 m either side of the support there would have the boom between its
   legs, the lift's car within a hand's breadth of one leg and the walk beside the car through it. How the real
   mast and the real boom shared that side is not in anything read; moving the mast means rebuilding the mast,
