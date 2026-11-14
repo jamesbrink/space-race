@@ -59,6 +59,7 @@ pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same 
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
 pnpm test:history     # needs `pnpm dev` running: Back and Forward between the front page, flights and places, with real clicks
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
+pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through both flights, seen from each rig and from far out, its line and chips checked
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
