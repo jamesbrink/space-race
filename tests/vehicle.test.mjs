@@ -951,6 +951,19 @@ test('what goes wrong when it is done wrong comes of the physics', (t) => {
   );
 });
 
+test('the spacecraft let go while the booster still burns rides it until the engine stops, and parts then (staging.ts `pressed`)', () => {
+  const record = autopilot(whole);
+  const live = flyLive(whole, record);
+  const early = flyLive(whole, (s) => ({ ...record(s), separate: record(s).separate || s.t >= 100 }));
+  const cut = live.state.separation.t;
+  assert.ok(early.state.loose !== null && Math.abs(early.state.loose - 100) < 0.02, `let go at ${early.state.loose}`);
+  // it parted at the cutoff, not at 100 s: the booster's push held it on its adapter, and its engine was not cut by it
+  assert.ok(early.state.separation.t > 140 && early.state.separation.t < cut, `${early.state.separation.t} against ${cut}`);
+  console.log(
+    `# let go at T+100 s under thrust: parted at T+${early.state.separation.t.toFixed(2)} s; on the record at T+${cut.toFixed(2)} s`,
+  );
+});
+
 test('a tower let go early is not propellant burned: the engine runs as long', () => {
   // the programme flown by the autopilot, the engine never cut by anyone, and the tower let go at ten seconds or not at all
   const v = vehicle(TR, SITE, SEA);

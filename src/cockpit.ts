@@ -349,6 +349,14 @@ export class Cockpit extends Deck {
   private tick(before: VehicleState, pilot: Pilot): VehicleState {
     const v = this.vehicle!;
     const state = v.tick(before, pilot);
+    // (let go under thrust: said once, as it happens, and once more when it parts)
+    if (state.loose !== null && before.loose === null && !state.shed.booster)
+      this.host.say?.(
+        'Let go, still pushing',
+        'The spacecraft is let go, but the booster still pushes it: it rides on its adapter until the engine stops',
+      );
+    else if (state.loose !== null && state.shed.booster && !before.shed.booster)
+      this.host.say?.('Parted', 'The spacecraft parted at last, the booster’s push gone');
     if (state.ticks === before.ticks) return state;
     const s = v.sample(state);
     this.tally.note(s, state, v);

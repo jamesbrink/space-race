@@ -28,7 +28,20 @@
  */
 import type { AeroSurface, Body, MassPart, ShedBody, Winds } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
-import { add, cross, ecefToGeodetic, ecefToInertial, enuAxes, inertialToEcef, length, scale, sub, type Vec3 } from '../world/frames.ts';
+import {
+  add,
+  cross,
+  ecefToGeodetic,
+  ecefToInertial,
+  enuAxes,
+  type Geodetic,
+  geodeticToEcef,
+  inertialToEcef,
+  length,
+  scale,
+  sub,
+  type Vec3,
+} from '../world/frames.ts';
 import { type Air, atmosphere } from './atmosphere.ts';
 import { type MassProperties, massOf, type Quat, turn } from './rigid.ts';
 
@@ -143,6 +156,16 @@ export interface Wind {
   mach: number;
   /** Dynamic pressure, Pa. */
   q: number;
+}
+
+/** The ground's height above the sea under a place: the pad's own level within a kilometre of it (at the pad's height), the sea beyond. */
+export function floorAt(site: Geodetic, seaLevel: number): (latitude: number, longitude: number) => number {
+  const pad = geodeticToEcef(site);
+  const padHeight = site.height - seaLevel;
+  return (latitude, longitude) => {
+    const here = geodeticToEcef({ latitude, longitude, height: site.height });
+    return length(sub(here, pad)) < 1000 ? padHeight : 0;
+  };
 }
 
 export function windAt(r: Vec3, v: Vec3, at: number, seaLevel: number, blow: Blow | null = null): Wind {

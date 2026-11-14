@@ -408,7 +408,11 @@ const launcherParts: Part[] = [
   {
     node: 'BlockE',
     commands: [
-      { label: 'Light the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:ignite:2' },
+      {
+        label:
+          'Light the third stage: hot staging, through the lattice with the core still on, as it flew (he had no say over the launch vehicle: this takes the flight over)',
+        ask: 'step:ignite:2',
+      },
       { label: 'Cut off the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:2' },
       { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
     ],

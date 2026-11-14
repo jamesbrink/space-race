@@ -117,9 +117,9 @@ never adjusted to bring a check in.
   engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts
   `step`), in the same frame, stepped by sim/vehicle.ts's TICK. What it adds is the body's turning, a rigid body whose
   steering gives `ascent.steering.authority` (estimated) about each axis at full throw while an engine aboard burns (no
-  inertia, no aerodynamic moment, no structural limit: none read; drag acts along the motion, as in the batch run), and the
-  hands' say over every event (`StagedControls.steps`): nothing happens that is not asked for, a stage let go takes every
-  stage below it still on, its propellant and its thrust, an engine is started once and stops when cut or dry. The
+  inertia, no aerodynamic moment: none read; drag acts along the motion, as in the batch run; its structure held to
+  `ascent.limits`, below), and the hands' say over every event (`StagedControls.steps`): nothing happens that is not asked for, a stage let go takes every
+  stage below it still on, its propellant and its thrust, once nothing presses it on (below), an engine is started once and stops when cut or dry. The
   record's flight is a pilot (`stagedPilot`): the law's axis held by a critically damped turn (`OMEGA`, chosen) with the
   law's own turning fed forward, the steps at the record's times and a stage with `velocity` cut on its integrator's sum,
   read every tick from switches the deck throws; guidance on, W S A D lean the law as a ballistic deck's trim does. With
@@ -128,6 +128,77 @@ never adjusted to bring a check in.
   gravity turn: a recorded miss in `tests/stagedlive.test.mjs`, which also holds a stage let go early and an engine cut by
   hand to their consequences. Steered as well as the law steers it, a hand-flown ascent falls short of an orbit as the
   record's run does (perigee about -200 km at the cutoff): no input is changed to bring it in.
+- **Staging by hand is physics** (`sim/staging.ts`, the rules every vehicle is held to; the figures are the flight's).
+  *Pressed*: two bodies let go of each other part only once the one behind stops pushing the one in front (its thrust
+  over its mass against the other's; drag left out, no figure dividing it): a stage, or a spacecraft, let go under
+  thrust stays pressed on and pushes on until its push falls (stagedlive.ts `settle`, `loose` and `gone`; vehicle.ts
+  `loose`, so Freedom 7's capsule let go at T+100 rides the Redstone to its cutoff and its engine is not cut by it). A
+  stage's own separation command shuts its engines where the record has them stop at its separation (the strap-ons'
+  integrator command, the core's); what it takes along below it keeps burning. A drop that `covers` the spacecraft (the
+  fairing) keeps it in until it has gone. *Hot staging* (`StageRecord.hot`, `hotStage`): an engine lit while the stage it
+  stands on is joined fires into its top; only what escapes the joint's open side pushes, by its sine below the level
+  (Block E: 0.67 of the lattice open and 24 degrees, from the model's estimated geometry: 27 per cent, 14.9 of 54.5 kN),
+  and each second at full thrust is counted against what the top stands (`endures`, 5 s, estimated); past it the tank
+  under it fails and the stack breaks up (`Broke`, by `scorch`). *The structure* (`ascent.limits`, by loads.ts's rule,
+  as `body.limits` on a ballistic flight): bending (q alpha, 3,340 Pa rad) and the load along the axis (6 g), both
+  estimated; past either for half a second or at half again at once, it breaks up. Broken up, every engine stops and
+  every stage comes apart, the deck's card says by what figure against which limit and its confidence, and what the
+  record says the spacecraft's escape did at that instant (`ascent.aborts`, Molodtsov 2001), which is not flown.
+  *Starts* (`StageRecord.start`): how many and whether only on the pad (the R-7's 32 chambers each lit by a pyrotechnic
+  igniter on a wooden stand from the pad); a start asked for that the hardware could not make is refused and said. A
+  drop let go in more than its `q` is said, and what its pieces struck is not modelled. What the vehicle made of each
+  thing asked is in `StagedState.said`, which the deck says once each; the step that lights a stage hot says so where
+  it is offered ("hot staging, as it flew"). tests/stagedlive.test.mjs and tests/vehicle.test.mjs hold each rule.
+- **What a hand can do, and what happens.** Flown by script against stagedlive.ts and vehicle.ts (the record's law and
+  sequence with one thing done by hand; before is November 2026 ahead of `sim/staging.ts`):
+
+  | Vostok 1 (stagedlive.ts) | Allowed | Before | The hardware | Now, and from what |
+  | --- | --- | --- | --- | --- |
+  | Light the third stage on the pad | any time | 54.5 kN more for 379 s, with nothing to pay: perigee -2,933 km | jet into the core's top under its deflector | 27 % of its push reaches the stack; the core's top burns through at 5 s and it breaks up (estimated: `hot`) |
+  | Light it a minute early (240 s) | any time | free extra thrust: perigee -590 km | as above | breaks up at T+245 s, 5.0 s against 5 s (estimated); the card says so |
+  | Light it a second before the core goes (299 s) | any time | perigee -206 km | hot staging, as planned (start 311.74, the core's main command 312.74) | the same: 1.0 s on the core's top, no harm; said where offered |
+  | Relight a stage once cut (any, 10 and 12 s) | any time | ignored, said nothing | one-shot pyrotechnics; the first two only from the pad | refused and said (`start`: documented for the first two, estimated for Block E) |
+  | Cut every engine at T+10 | any time | falls back, lands at 81 m/s | falls back, tumbles | breaks up at 19.5 s falling tail first, q alpha 4.1 kPa rad (estimated limit) |
+  | Drop the strap-ons at 60 s | any time | thrust and mass leave; it flies on and lands at 1,367 m/s | the separation command shuts them | the same; it breaks up by bending at 131 s as it falls |
+  | Drop the core with the strap-ons on (60 s) | any time | everything below Block E gone at once, thrust and all | the strap-ons still burning push the lot against Block E | the core shuts, the strap-ons keep it pressed on until they go at 119.5 s (`pressed`) |
+  | Drop the fairing at max q (60 s) or on the pad | any time | no consequence: 800 kg less carried, perigee -171 km | two hinged halves made to open in thin air | the same flight, and said: 48 kPa against 1 kPa (estimated); where the halves went: not modelled |
+  | Separate the spacecraft at 60, 140 or 400 s | any time | parted at once, inside the fairing or under thrust | held in by the fairing; pressed on by Block E | held while the fairing is on and while anything pushes; parts at Block E's cutoff, 676.4 s |
+  | Turn across the wind at max q (hands, 50 s) | any time | no limit: 310 kPa rad, flew on to the ground | breaks up | breaks up at 51.9 s, 151 % of 3.34 kPa rad (estimated) |
+  | Never stage (sequencer off) | any time | down at 620 s at 263 m/s, 17 g | falls back, breaks up | breaks up by bending at 533 s, coming back down |
+  | Ask a step twice | any time | heard once | heard once | heard once |
+  | Braking engine before parting | not offered | | its nozzle in Block E's adapter | not offered: the hot-staging rule would be its case, no figure read |
+  | An abort | not offered ("not simulated") | | the seat to 40 s, then the spacecraft's separation (Molodtsov) | said on the breakup's card, not flown |
+
+  | Freedom 7 (vehicle.ts) | Allowed | Before | The hardware | Now, and from what |
+  | --- | --- | --- | --- | --- |
+  | Separate under thrust (100 s) | in flight | the Redstone's engine cut by it and the capsule off at once | the booster's push holds the capsule on its adapter | rides on to the cutoff, 141.8 s, and parts then (`pressed`) |
+  | Tower let go on the pad | not offered, ignored | | MR-1's escape rocket fired on its pad (21 November 1960) | not modelled: still not offered |
+  | Tower let go at max q | in flight | leaves; the flight goes on | as that | the same |
+  | Retrofire, retropack before separation | not offered, ignored | | into the adapter; interlocks not read | not modelled |
+  | Retrofire in the air | once alone | fires; the physics | as that | the same |
+  | A parachute at every regime | once alone, the tower gone | torn by pressure (13.5 kPa at 101 s) or by pull meeting the air full (main above the air: 35.8 m/s down) | as that | the same (`limits`, estimated) |
+  | Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
+  | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
+
+  Where the two kinds still differ for no physical reason: the ballistic deck offers nothing on the pad but ignition
+  (the tower could have gone), and the orbital deck has no abort; both are left as they were and said here.
+- **One body of flight physics, and what is still apart.** One function each, which every flier calls: the tear rule
+  (loads.ts `tearOf`: vehicle.ts as a parachute is let out and while out, fliers.ts's prediction, orbital.ts flyDown's
+  bodies as each is let out and while out); the ground under a place (forces.ts `floorAt`: vehicle.ts, shed.ts,
+  fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`, which fly.ts's is); when a
+  load is spent (staged.ts `spentAt`, the batch run's schedule and the live vehicle's `dry`); a stage's flow
+  (`flowOf`); the staging rules (staging.ts) and the structure's (loads.ts `strain`) on both live vehicles. Each was the
+  same arithmetic in the same order, so no record's run moved a bit. Still apart, as the same physics in different
+  arithmetic (merging would move the printed figures in their last digits, so each wants its own commit and its own
+  diff): the air at a point (forces.ts `windAt`, staged.ts `airAt`, flyOrbit's own and fly.ts's written out, the same
+  formula with the Earth's angle taken differently), drag along the motion (the q form in fly.ts, staged.ts and
+  stagedlive.ts; the half rho v v form in fliers.ts, flyDown and `decay`), thrust in air (a Trajectory's from its
+  sea-level figure, a stage's from its vacuum one), the six-degree Runge-Kutta written twice (vehicle.ts, shed.ts),
+  the 0.05 g mark written four times, and the parachute's filling (fly.ts writes `chuteArea` out). Different physics, and
+  kept so: forces.ts `airForces` (axial, normal and broadside on a rigid body) against the point masses' drag;
+  flyDown's several canopies at once against a capsule's one at a time; shed.ts `apart` (a strap-on's swing about its
+  ball); leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust against weight). A new flight is data on
+  this: its stages, drops, limits and `hot` in `Flight.orbital`, or its `trajectory.body`; nothing names a vehicle.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
   is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails
