@@ -34,10 +34,10 @@ import type { SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
 import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from './viewer/ascent';
 import type { DeckNews } from './viewer/cabin';
+import { EARTH_ROTATION_RATE } from './world/bodies.ts';
 import type { Clock } from './world/clock.ts';
 import { sunPosition } from './world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from './world/frames.ts';
-import { EARTH_ROTATION_RATE } from './world/bodies.ts';
 import { elementsOf, subpoint } from './world/orbit.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from './world/time.ts';
 
@@ -1201,7 +1201,9 @@ export class OrbitDeck extends Deck {
     const hands = this.free || (this.mine !== null && !this.ascended);
     const pushed = hands && this.fired === null ? this.push() : { pitch: 0, yaw: 0, roll: 0 };
     const news: DeckNews = { times: this.times, hand: pushed, holds: hands ? FREE : NONE };
-    for (const fn of this.watchers) fn(s, null, news);
+    // (down at the run's end, whatever the descent's last moment of motion: the navball reads nought as the figures do)
+    const shown = t >= this.run.duration ? Object.assign({}, s, { down: true }) : s;
+    for (const fn of this.watchers) fn(shown, null, news);
     const set = (id: string, text: string) => this.put(id, text);
     const jd = julianDate(this.flight.launch);
     const gast0 = greenwichSiderealTime(jd);
