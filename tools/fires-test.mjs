@@ -23,6 +23,8 @@ const EXPECTED = {
   'ussr/vostok/vostok-1': (t) =>
     t < 119.5 ? ['Booster_B', 'Booster_V', 'Booster_G', 'Booster_D', 'CoreEngine'] : t < 300 ? ['CoreEngine'] : t < 677 ? ['BlockE'] : [],
   'usa/mercury/mr-3-freedom-7': (t) => (t < 142 ? ['RedstoneEngine'] : []),
+  // cut off at 02:23 (Results of the Second U.S. Manned Suborbital Space Flight, p. 6)
+  'usa/mercury/mr-4-liberty-bell-7': (t) => (t < 143 ? ['RedstoneEngine'] : []),
 };
 
 let failed = 0;

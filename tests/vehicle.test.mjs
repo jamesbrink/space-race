@@ -12,7 +12,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { autopilot, BOOSTER_GAINS, blend, flyLive, steer, Tally } from '../src/sim/autopilot.ts';
+import { BALLISTIC } from './ballistic.mjs';
+import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
 import { coast, fly, G0, sampleAt } from '../src/sim/fly.ts';
 import { aboutAxis, fromAxes, massOf, multiply, turn, unturn } from '../src/sim/rigid.ts';
 import { HANDS_OFF, TICK, vehicle } from '../src/sim/vehicle.ts';
@@ -46,6 +47,9 @@ function until(v, state, pilot, t) {
 const whole = vehicle(TR, SITE, SEA);
 const live = flyLive(whole);
 const batch = fly(TR, SITE, SEA);
+// (the defaults `beside` takes: Freedom 7's, which most of this file is about)
+const TR_ = TR;
+const batch_ = batch;
 
 test('quaternions turn vectors the way the axes say', () => {
   const q = aboutAxis([0, 0, 1], 90 * DEG);
@@ -242,7 +246,7 @@ test('turning freely, the spacecraft keeps its angular momentum and energy, and 
 });
 
 /** The live run beside fly.ts's, at the instants and in the figures the powered flight is judged by. */
-function beside(t, run, tolerance, what) {
+function beside(t, run, tolerance, what, TR = TR_, batch = batch_) {
   const report = [];
   const rows = [
     ['speed', 'm/s', tolerance.speed, true],
@@ -1007,3 +1011,112 @@ test('level is the ellipsoid’s: straight up along the plumb line at the pad is
   const rising = { ...s, v: add(cross([0, 0, 7.292115e-5], s.r), scale(v.launch.up, 50)) };
   near(v.sample(rising).groundClimb, 90, 0.01, 'the climb angle of a rise along geodetic up');
 });
+
+// --- every other ballistic flight -----------------------------------------------------------------
+// What is said above of Freedom 7's live vehicle that is the simulator's and not that flight's own record, held for each
+// flight flown on a trajectory (tests/ballistic.mjs), with the same tolerances: the live run beside fly.ts's, its events in
+// order and on time, its attitude through retrofire and the air, its jets within their tanks, and what in its body is not documented.
+
+/** Where a ballistic flight's body is less sure than Freedom 7's, or surer: an argued list, as tests/sim.test.mjs's is. */
+const BODY_DIFFERS = {
+  // No. 11's weights are estimated (its Postlaunch Memorandum Report has not been found), and so is the posigrades' push on MR-4
+  'usa/mercury/mr-4-liberty-bell-7': {
+    more: ['body.parts.7 "spacecraft" (estimated)', 'body.capsule.rcs.rate.full (estimated)', 'body.sheds.1.push (estimated)'],
+    fewer: [],
+  },
+};
+
+for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
+  const site = siteFrame(other.site);
+  const sea = other.site.seaLevel.value;
+  const tr = other.trajectory;
+  const flown = fly(tr, site, sea);
+  const v = vehicle(tr, site, sea);
+  const run = flyLive(v);
+  const name = `${other.designation} (${other.callsign})`;
+
+  test(`${name}: the autopilot with no push from the air’s side is fly.ts’s powered flight, and with it a little off by its lift`, (t) => {
+    const flat = structuredClone(tr);
+    for (const x of flat.body.surfaces) x.slope = 0;
+    beside(t, flyLive(vehicle(flat, site, sea)), { speed: 0.002, height: 0.005, climb: 0.1 }, 'the same forces', tr, flown);
+    beside(t, run, { speed: 0.01, height: 0.02, climb: 0.5 }, 'with lift', tr, flown);
+  });
+
+  test(`${name}: the rest of the flight happens, on time and in order, as fly.ts has it`, (t) => {
+    const s = run.state;
+    assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
+    near(s.separation.t, tr.separation.at.value, 1e-9, 'separation on time');
+    const after = run.samples.find((x) => x.t > tr.separation.at.value);
+    near(after.mass, tr.separation.mass.value, 1e-9, 'the capsule alone');
+    near(s.retroAt, tr.retro.fires[0].value, 1e-9, 'retrofire on time');
+    const firing = run.samples.find((x) => x.t >= tr.retro.fires[0].value + 2);
+    const wind = sub(firing.v, cross([0, 0, 7.292115e-5], firing.centre));
+    const up = unit(firing.centre);
+    const level = unit(sub(wind, scale(up, dot(wind, up))));
+    const pitch = tr.retro.pitch.value * DEG;
+    near(angleBetween(firing.axis, sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)))) / DEG, 0, 2, 'the retro attitude');
+    const peak = run.samples.reduce((a, b) => (b.phase === 'entry' && b.q > a.q ? b : a), { q: 0 });
+    assert.ok(peak.alpha > 175, `blunt end first at the greatest pressure: ${peak.alpha.toFixed(1)} deg`);
+    assert.ok(s.drogueAt < s.mainAt && s.mainAt < s.landing.t, 'drogue, then main, then the sea');
+    for (const k of ['entryAt', 'drogueAt', 'mainAt', 'duration'])
+      near(run.results[k], flown.results[k], 3, `${k} within three seconds of fly.ts`);
+    near(run.results.entryG / flown.results.entryG, 1, 0.02, 'the same load coming down');
+    near(s.landing.vertical, flown.results.landingSpeed, 0.05, 'onto the sea at fly.ts’s speed');
+    assert.ok(s.landing.lean < 2, 'hanging upright under the parachute');
+    t.diagnostic(
+      `landed at ${s.landing.t.toFixed(1)} s, ${s.landing.vertical.toFixed(2)} m/s down, ${s.landing.horizontal.toFixed(2)} m/s over the sea`,
+    );
+  });
+
+  test(`${name}: the autopilot’s whole flight is flown within the peroxide aboard, the manual supply untouched`, (t) => {
+    const full = tr.body.capsule.rcs.supplies.map((u) => u.propellant.value);
+    const end = run.state.rcs.left;
+    assert.ok(end[0] > 0, 'the automatic supply lasts the flight');
+    assert.equal(end[1], full[1], 'the manual supply is untouched');
+    t.diagnostic(`in all ${(full[0] - end[0]).toFixed(3)} kg of ${full[0].toFixed(2)} kg`);
+  });
+
+  if (tr.body.capsule.rcs.rate)
+    test(`${name}: rate command holds the rate the stick asks for, within its deadband, and damps to none let go`, (t) => {
+      const rate = tr.body.capsule.rcs.rate;
+      const full = rate.full.value * DEG;
+      const dead = rate.deadband.value * DEG;
+      let s = until(v, v.start(), autopilot(v), tr.separation.at.value + 40);
+      const auto = s.rcs.left[0];
+      const manual = s.rcs.left[1];
+      // the stick full forward for twenty seconds: the pitch rate comes to what it asks and stays within the deadband of it
+      const asking = (stick) => (x) => blend(autopilot(v, { pitch: false, yaw: false, roll: false })(x), rateCommand(x, stick, rate));
+      s = until(v, s, asking({ pitch: 1, yaw: 0, roll: 0 }), s.t + 20);
+      t.diagnostic(
+        `asking ${(full / DEG).toFixed(1)} deg/s in pitch: ${(s.w[1] / DEG).toFixed(2)} deg/s, roll ${(s.w[0] / DEG).toFixed(2)}, yaw ${(s.w[2] / DEG).toFixed(2)}`,
+      );
+      assert.ok(Math.abs(s.w[1] - full) <= dead + 1e-3, 'the pitch rate is the rate asked for, to the deadband');
+      assert.ok(Math.abs(s.w[0]) <= dead + 1e-3 && Math.abs(s.w[2]) <= dead + 1e-3, 'and the other two are held near none');
+      // let go: the rates damp to within the deadband, and it is the manual system's peroxide that does it
+      s = until(v, s, asking({ pitch: 0, yaw: 0, roll: 0 }), s.t + 20);
+      t.diagnostic(`let go: ${s.w.map((w) => (w / DEG).toFixed(2)).join(', ')} deg/s`);
+      assert.ok(
+        s.w.every((w) => Math.abs(w) <= dead + 1e-3),
+        'damped to within the deadband',
+      );
+      assert.ok(s.rcs.left[1] < manual, 'the manual supply is spent');
+      assert.equal(s.rcs.left[0], auto, 'and the automatic is not');
+    });
+
+  test(`${name}: which of the body’s inputs are not documented, against Freedom 7’s`, (t) => {
+    const list = (o, path, found = []) => {
+      if (o && typeof o === 'object') {
+        if (o.confidence && o.confidence !== 'documented') found.push(`${path}${o.name ? ` "${o.name}"` : ''} (${o.confidence})`);
+        for (const [k, x] of Object.entries(o)) list(x, path ? `${path}.${k}` : k, found);
+      }
+      return found;
+    };
+    const mine = list(tr.body, 'body');
+    const theirs = list(TR.body, 'body');
+    const more = mine.filter((x) => !theirs.includes(x));
+    const fewer = theirs.filter((x) => !mine.includes(x));
+    t.diagnostic(`not documented here and documented on Freedom 7: ${more.join(', ') || 'none'}`);
+    t.diagnostic(`documented here and not on Freedom 7: ${fewer.join(', ') || 'none'}`);
+    assert.deepEqual({ more, fewer }, BODY_DIFFERS[other.id], `${other.callsign}: what its body stands on that Freedom 7’s does not`);
+  });
+}

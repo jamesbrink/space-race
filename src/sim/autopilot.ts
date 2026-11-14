@@ -183,6 +183,33 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
   };
 }
 
+/**
+ * A rate command system (`body.capsule.rcs.rate`): the stick's throw on each axis, -1 to 1, is a rate asked for, and while
+ * the body's rate is more than the system's deadband from it the manual chambers on that axis fire full the way that
+ * closes it, and within it none (an on-off system, as a deadband says: how the valves were worked is not in anything
+ * read). Let go, it damps the rates to within the deadband and holds no attitude. Not physics: the controls a hand would
+ * give, every axis through the manual system.
+ */
+export function rateCommand(
+  s: VehicleState,
+  stick: { pitch: number; yaw: number; roll: number },
+  rate: { full: { value: number }; deadband: { value: number } },
+): Pick<Controls, 'pitch' | 'yaw' | 'roll' | 'manual'> {
+  const full = rate.full.value * DEG;
+  const dead = rate.deadband.value * DEG;
+  const hold = (throw_: number, w: number): number => {
+    const off = Math.max(-1, Math.min(1, throw_)) * full - w;
+    return Math.abs(off) <= dead ? 0 : Math.sign(off);
+  };
+  // (the body's axes: roll about +X, pitch about +Y, yaw about +Z, as `steer` has them)
+  return {
+    roll: hold(stick.roll, s.w[0]),
+    pitch: hold(stick.pitch, s.w[1]),
+    yaw: hold(stick.yaw, s.w[2]),
+    manual: { pitch: true, yaw: true, roll: true },
+  };
+}
+
 /** The autopilot's controls with a hand's laid over them: whatever the hand gives wins, axis by axis and event by event. */
 export function blend(auto: Controls, hand: Partial<Controls>): Controls {
   const out: Controls = { ...auto };

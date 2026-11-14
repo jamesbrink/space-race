@@ -17,14 +17,14 @@ a hatch he could blow off himself.
 | Duration | 15 min 37 s |
 | Recovery | the pilot by helicopter to USS *Randolph*; the spacecraft sank |
 
-**In this repo: the vehicle, in the gallery and at its launch site, and its pilot.** The spacecraft
+**In this repo: the vehicle, in the gallery and at its launch site, its pilot, and the flight, to fly.** The spacecraft
 and its launch vehicle are modelled and can be turned, taken apart and cut open, and stand on Launch
 Complex 5 as it stood that morning, from the pilot going aboard at 03:58 to the pad standing empty.
 Grissom stands on the hardstand where NASA's photograph 61-MR4-83 has him, walking to the lift with
 his ventilator in his right hand, in the suit of that morning
 ([mark-iv-suit.md](../../crew/mark-iv-suit.md), "5 May and 21 July 1961": the wrist rings, the chest
 mirror, the parachute harness, the new microphones, and his own legs), and can be walked as. The
-flight itself is not built: see "What is not built" below.
+flight is flown by the simulator from the record: "The flight as flown", below.
 
 ## What happened
 
@@ -149,11 +149,89 @@ differs from Freedom 7's morning and how sure each difference is). What it still
   the cherry picker's side and bearing 235° true (lc-5.md, "Which way round the vehicle stood"). The
   blast screens and their tanks are probably on the wrong side of the pad (the same section).
 
-**The flight.** To be flown it needs what Freedom 7 has in `flight.ts`: the booster's measured
-thrust and cutoff for MR-8, the tilt programme on 100°, the capsule's weights at each stage (the
-MR-4 postlaunch memorandum report has them; it has not been found), and `flies` for what is shed
-and when. The rate command system would be a new control mode for the flight deck. After landing,
-the simulator would have to let the capsule fill and sink.
+**The flight** is flown on the stack's own hardware, as Freedom 7's is: see "The flight as flown" below.
+
+## The flight as flown
+
+**Fly it** (the third place, or L at the launch site): the flight deck Freedom 7 has, on this flight's data
+and no code of its own. By default the flight is the record's: the gyros fly the tilt programme on 100°,
+the sequencer sets off cutoff and the tower at 02:23, separation at 02:33, retrofire at 05:10, the pack at
+06:07, and the spacecraft's own sequence lets the parachutes out at 21,000 and 12,300 ft. Every part of it
+is open to the hand: G gives up the platform (W S A D Q E then are the vanes and, on the spacecraft
+alone, the manual jets), B the sequencer (Space then sets off each event in turn, whenever it is
+pressed), a right click on a part offers what that part can do, and the cabin's rings and buttons do it
+from the couch. What No. 11 had that Freedom 7 did not is offered too: the **Rate command** switch (on the
+spacecraft alone the stick asks for a rate of turn and the manual jets hold it within ±3 degrees a second,
+as Grissom flew the entry from 05:43), the **window** (1 from the couch, or through it from the chase
+camera), and the panel rearranged, its needles and sequence lights reading the flight. What a hand does has its consequences in the same physics: pitched hard over at T+40
+with the platform off, the stack breaks up at T+42 on its bending limit and the escape rocket pulls the
+spacecraft clear.
+
+`src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts), which is this
+flight's own day and figures on the Mercury-Redstone's hardware
+([mercury-redstone.ts](../../vehicles/mercury-redstone.ts): the A-7's nozzle, the tilt programme's
+curve, the drag curves, the escape rocket, the jets, the parachutes, how the weight lies along the
+stack, each with its confidence and source, the same for Freedom 7). Nothing is fitted;
+`tests/sim.test.mjs` holds the run to `checks`, which were set from the record before anything was
+flown, and keeps each miss with its cause in `src/sim/misses.ts`.
+
+What is MR-4's own: the winds aloft of the 07:00 balloon (IGRA, 21 July 1961 12Z, fourteen levels to
+31.4 km: light, southerly low down, easterly high up); the 100° azimuth; MR-8's 79,220 lbf, 217.4 s
+and 65,976 lb at liftoff (TM X-53107, Table 8-1); cutoff and the tower at 02:23, separation at 02:33,
+retrofire by the pilot at 05:10 and five seconds apart, held at 34°, the retropack at 06:07, the drogue
+at 21,000 ft and the main at 12,300 ft (*This New Ocean*, p. 372). **What the record read does not give**:
+No. 11's weights (in its Postlaunch Memorandum Report, not found), taken as No. 7's less the 46 lb its
+hatch saved, `estimated`; the posigrades' push, Freedom 7's 30 ft/s, `estimated`; the conditions at
+separation (height, climb, heading).
+
+| Check (*Results*, Table 2-I and p. 6) | Record | Flown whole | From the record's speed at separation |
+| --- | --- | --- | --- |
+| Greatest height | 102.8 nmi | +11.7 % | +5.8 % |
+| Its time | 05:16 | 05:21.6, holds | 05:16.0, holds |
+| Range | 262.5 nmi | +16.0 % | +7.9 % |
+| Space-fixed speed at separation | 7,580 ft/s | +4.3 % | (input) |
+| Earth-fixed speed at separation | 6,618 ft/s | +4.5 % | (input) |
+| Greatest pressure going up | 605.5 lb/sq ft | −6.7 % | |
+| Greatest load going up | 6.3 g | 6.39 g, holds | |
+| Greatest load coming down | 11.1 g | +11.5 % | +5.1 % |
+| Drogue | 09:41 | +23 s | +8 s, holds |
+| Main | 10:14 | +19 s | +5 s, holds |
+| Landing | 15:37 | +74 s | +59 s |
+
+The powered flight ends 4 % too fast, as Freedom 7's does and for the same reason: off the pad at
+1.20 g, one per cent in thrust or weight is three or four in speed, and the engine is two figures
+from a summary table held steady from liftoff to cutoff. Everything after follows from it. The load
+going up holds here, where on Freedom 7 it cannot be a check (the A-7's nozzle is derived from
+MR-3's 6.3 g). The greatest pressure going up is low by 6.7 %: the run gives the two flights nearly
+the same, the record has MR-4's 3 % above MR-3's, and why is not in anything read (the tilt
+programme's curve is the likeliest input). The landing is a minute late for a reason of its own:
+the history has the main out at 12,300 ft, and from there the record's 5 min 23 s to the sea is
+11.6 m/s on the average, where the canopy (derived on Freedom 7) gives 8.8 and Grissom read 30 to 32
+ft/s. Flown from the record's speed at separation the capsule comes to its top on the record's
+second; it is still high, because the height and climb it starts from are the run's own.
+
+## The end of the flight
+
+The simulator's physics ends where Freedom 7's does: the spacecraft down in the sea under its main
+parachute. This flight's end is after that, and the deck offers it: **Blow the hatch** (Space once it
+is down, a right click on the hatch, or the plunger by the pilot's right arm from the couch; `flies.hatch`
+in [flight.ts](flight.ts)). Blown afloat, the hatch is gone, the clock runs on at life's pace, and the
+spacecraft goes under in 45 seconds, drawn so until it is out of sight (`estimated`: the history has it
+"sinking fast" and gone from sight as the helicopter hooked on), and the card tells the rest from the record:
+the hatch blew some ten minutes after the landing, after Grissom's last words at 26:09 ("then I'll power
+down and blow the hatch"); he said he had not touched the plunger, and no test made a hatch fire by itself;
+he was in the water three or four minutes (*Results*, p. 7; four or five in *This New Ocean*), his suit
+filling through an inlet he had left open; the flooded capsule, over 5,000 lb, was a thousand more than
+the helicopter could lift, and it let go. Left on, the card says what happened to the real one. Blown in
+flight it goes, and the flight is flown on as if the cabin were closed: what an entry with a hole in the
+side does is not in anything read, and the card says so.
+
+**What the ending lacks**: the flooding is not flown (no figure for the sill's height, the inflow or the
+buoyancy has been read: the time to go under is ours), the hatch is not flown as a body when it leaves
+(it vanishes; the history has it "skipping over the waves"), there is no sea to see under (the globe's sea
+is a surface, and the spacecraft goes through it), no helicopter, no Grissom in the water, and the record's
+own run ends at the landing with the hatch on. Which of the plunger, a stray lanyard or static fired the
+hatch on the day is disputed and nothing here takes a side: on the deck it blows when it is told to.
 
 ## Where sources disagree
 
@@ -163,10 +241,15 @@ the simulator would have to let the capsule fill and sink.
 - **The launch azimuth.** TM X-53107 gives 100° for MR-4 and 102° for MR-3 in one place (8.3.2)
   and 105° as the original in another (7.4.3); *This New Ocean* says the azimuth was "changed by
   three degrees". 100° is not in doubt.
-- **Cutoff velocity.** *Results* and TM X-53107 give 7,580 ft/s space-fixed; Hammack and Heberlig's
-  table gives 7,516.
 - **The seconds of liftoff.** *Results* gives 7:20 a.m. in its text and 7:20:36 in the medical
   countdown's table (Table 5-II, p. 31); TM X-53107 gives 0720.
+- **How long he was in the water.** *Results* (p. 7) and Hammack and Heberlig say three or four
+  minutes; *This New Ocean* (p. 375) four or five.
+- **The main's height.** *This New Ocean* (p. 372) has 12,300 ft, "about 1000 feet higher than the
+  design nominal"; Hammack and Heberlig's design figure is 10,000 ft, 2,300 lower, and the record's times
+  (10:14 to 15:37 under it) fit 10,000 better than 12,300 ("The flight as flown").
+- **Cutoff velocity and the Earth-fixed velocity.** *Results* and TM X-53107 give 7,580 and 6,618 ft/s;
+  Hammack and Heberlig's Figure 20 gives 7,516 and 6,561. The checks take *Results*'.
 - **When the structure rolled back.** By the count, at T-55; *This New Ocean* has "a gantry
   technician" finding the hatch bolt at T-45. The model follows the count (lc-5.md).
 

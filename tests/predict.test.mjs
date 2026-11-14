@@ -16,6 +16,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
+import { BALLISTIC } from './ballistic.mjs';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { coast } from '../src/sim/fly.ts';
 import { AIR_TOP, elements, predict, predictor, programmeAxis } from '../src/sim/predict.ts';
@@ -225,7 +226,7 @@ test('it can be worked out in slices, to the same answer', (t) => {
 });
 
 /** The sequencer's plan from a state of the live flight, as viewer/path.ts asks for it. */
-const planOf = (s) => {
+const planOf = (s, TR) => {
   const late = (at) => Math.max(at, s.t);
   const offsets = TR.retro.fires.map((f) => f.value - TR.retro.fires[0].value);
   return {
@@ -237,53 +238,65 @@ const planOf = (s) => {
   };
 };
 
-test('Freedom 7 with its sequencer: predicted before separation, the landing the live simulator then flies', () => {
-  // the record's flight, sequencer and guidance on; the prediction from each instant is told what the sequencer will do
-  const live = [];
-  const pilot = autopilot(V);
-  let state = V.start();
-  while (!state.landing && state.t < 1200) {
-    const next = V.tick(state, pilot);
-    if (next.ticks === state.ticks) break;
-    state = next;
-    if (live.length === 0 || state.t - live[live.length - 1].t >= 1) live.push(state);
-  }
-  assert.ok(state.landing, 'it came down');
-  const flown = { range: V.sample(state).range, t: state.landing.t, drogue: state.drogueAt, main: state.mainAt, entry: state.enteredAt };
-  for (const t of [145, 200, 300]) {
-    const s = live.find((x) => x.t >= t);
+for (const flight of BALLISTIC) {
+  test(`${flight.callsign} with its sequencer: predicted before separation, the landing the live simulator then flies`, () => {
+    const TR = flight.trajectory;
+    const SITE = siteFrame(flight.site);
+    const SEA = flight.site.seaLevel.value;
+    const V = vehicle(TR, SITE, SEA);
+    // the record's flight, sequencer and guidance on; the prediction from each instant is told what the sequencer will do
+    const live = [];
+    const pilot = autopilot(V);
+    let state = V.start();
+    while (!state.landing && state.t < 1200) {
+      const next = V.tick(state, pilot);
+      if (next.ticks === state.ticks) break;
+      state = next;
+      if (live.length === 0 || state.t - live[live.length - 1].t >= 1) live.push(state);
+    }
+    assert.ok(state.landing, 'it came down');
+    const flown = { range: V.sample(state).range, t: state.landing.t, drogue: state.drogueAt, main: state.mainAt, entry: state.enteredAt };
+    for (const t of [145, 200, 300]) {
+      const s = live.find((x) => x.t >= t);
+      const sample = V.sample(s);
+      const p = predict(
+        TR,
+        SITE,
+        SEA,
+        { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
+        { sequence: planOf(s, TR) },
+      );
+      assert.equal(p.outcome, 'impact');
+      // (the range from the pad to the landing, the live sample's way: within half a per cent, 2.5 km)
+      near(
+        p.impact.range / flown.range,
+        1,
+        0.006,
+        `range predicted at T+${t}: ${(p.impact.range / 1000).toFixed(1)} km against ${(flown.range / 1000).toFixed(1)}`,
+      );
+      near(p.impact.t, flown.t, 15, `time down predicted at T+${t}`);
+      assert.ok(p.chute, 'under its parachute at the end');
+      const at = (kind) => p.events.find((e) => e.kind === kind);
+      near(at('drogue').t, flown.drogue, 6, `drogue predicted at T+${t}`);
+      near(at('main').t, flown.main, 8, `main predicted at T+${t}`);
+      near(at('entry').t, flown.entry, 6, `0.05 g predicted at T+${t}`);
+      assert.ok(at('peak').value > 5 && at('peak').value < 15, `peak load ${at('peak').value}`);
+      if (t < TR.retro.fires[0].value) near(at('retro').t, TR.retro.fires[0].value, 1e-6, 'retrofire at the record time');
+    }
+    // without the sequence (the pilot does nothing and the sequencer is off), no retrofire: it goes further
+    const s = live.find((x) => x.t >= 200);
     const sample = V.sample(s);
-    const p = predict(TR, SITE, SEA, { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase }, { sequence: planOf(s) });
-    assert.equal(p.outcome, 'impact');
-    // (the range from the pad to the landing, the live sample's way: within half a per cent, 2.5 km)
-    near(
-      p.impact.range / flown.range,
-      1,
-      0.006,
-      `range predicted at T+${t}: ${(p.impact.range / 1000).toFixed(1)} km against ${(flown.range / 1000).toFixed(1)}`,
+    const bare = predict(
+      TR,
+      SITE,
+      SEA,
+      { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
+      { sequence: { chutes: false } },
     );
-    near(p.impact.t, flown.t, 15, `time down predicted at T+${t}`);
-    assert.ok(p.chute, 'under its parachute at the end');
-    const at = (kind) => p.events.find((e) => e.kind === kind);
-    near(at('drogue').t, flown.drogue, 6, `drogue predicted at T+${t}`);
-    near(at('main').t, flown.main, 8, `main predicted at T+${t}`);
-    near(at('entry').t, flown.entry, 6, `0.05 g predicted at T+${t}`);
-    assert.ok(at('peak').value > 5 && at('peak').value < 15, `peak load ${at('peak').value}`);
-    if (t < TR.retro.fires[0].value) near(at('retro').t, TR.retro.fires[0].value, 1e-6, 'retrofire at the record time');
-  }
-  // without the sequence (the pilot does nothing and the sequencer is off), no retrofire: it goes further
-  const s = live.find((x) => x.t >= 200);
-  const sample = V.sample(s);
-  const bare = predict(
-    TR,
-    SITE,
-    SEA,
-    { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
-    { sequence: { chutes: false } },
-  );
-  assert.ok(bare.impact.range > flown.range + 10_000, 'with no retrofire it lands further on');
-  assert.ok(!bare.chute && !bare.events.some((e) => e.kind === 'drogue'), 'and no parachute comes out by itself');
-});
+    assert.ok(bare.impact.range > flown.range + 10_000, 'with no retrofire it lands further on');
+    assert.ok(!bare.chute && !bare.events.some((e) => e.kind === 'drogue'), 'and no parachute comes out by itself');
+  });
+}
 
 test('the path is given at instants of its own: two predictions a moment apart lie on the same points', () => {
   const run = flyLive(V, autopilot(V), 0.5, 260);

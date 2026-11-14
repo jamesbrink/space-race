@@ -160,8 +160,8 @@ next moment; "returning it to NO. 1" let the automatic motion that was owed run.
 a pilot light (SEDR 104, Figure 12-2), not a control.
 In the model the handle is `Ctl_PeriscopeHandle`, stowed in the display's upper right corner (the display is flush in
 the panel here, so the side of its housing is behind the panel: its place is ours), with the engage lever's knob beside
-it. This flight cannot be flown yet, so nothing works it; when it can, a click on it, a right click on the afterbody, or the Periscope switch among the
-flight deck's keys will send the periscope the other way from where it is headed, as Freedom 7's does. **The rule** (`src/sim/mechanism.ts`):
+it. Flying the flight yourself, a click on it, a right click on the afterbody, or the Periscope switch among the
+flight deck's keys sends the periscope the other way from where it is headed, as Freedom 7's does. **The rule** (`src/sim/mechanism.ts`):
 it stays where the hand sent it until the programme's next event, which takes it back; with the sequencer off, which
 here stands for the fuse, the programme's events pass unheard and it moves only when told; and with the sequencer
 switched back on it goes to where the programme has it by then, as the restored fuse let it. What is simplified: a
@@ -198,7 +198,7 @@ Built by [vehicles/mercury_cabin_11.py](../../vehicles/mercury_cabin_11.py), whi
 | Earth-path indicator | its case, window, two small dials and three knobs as the figure draws them; the globe a bare graticule | derived (layout); estimated (the rest) | Figure 6. Not working on MR-4 (MR-4 Results, p. 4) |
 | Where the panel stands, how the consoles are canted | as in capsule 7's model | estimated | nothing read places either |
 | Window's inner frame | a flat frame 0.6 in wider than the panes, bolted round, with a shroud to the wall | documented (frame: SEDR 104 Figure 2-3); estimated (the shroud) | |
-| Cabin lights | two fluorescent floodlights, as No. 7's fittings: one at the pilot's left, one at his right below the hatch. The CABIN LIGHTS switch on the left console is a lever of three positions, BOTH at its left, L.H. ONLY in the middle and OFF at its right, built at BOTH (`Ctl_CabinLights`; the tubes are `Lamp_Left`, `Lamp_Right`) | documented (two, and that the left could be lit alone; the switch and its legends; that it was at BOTH); estimated (where they hang; which legend is the middle position: the figure writes L.H. ONLY under the switch, as it writes RETRO HEAT's OFF under its) | MR-4 Results, Figure 2-3; "cabin lights are both" (the same, p. 45). The fitting is SEDR 104 of December 1959's (10-44, 10-47: capsules 2 to 8) and of 1962's (10-19). Nothing throws the switch yet: this flight has no cabin to sit in |
+| Cabin lights | two fluorescent floodlights, as No. 7's fittings: one at the pilot's left, one at his right below the hatch. The CABIN LIGHTS switch on the left console is a lever of three positions, BOTH at its left, L.H. ONLY in the middle and OFF at its right, built at BOTH (`Ctl_CabinLights`; the tubes are `Lamp_Left`, `Lamp_Right`) | documented (two, and that the left could be lit alone; the switch and its legends; that it was at BOTH); estimated (where they hang; which legend is the middle position: the figure writes L.H. ONLY under the switch, as it writes RETRO HEAT's OFF under its) | MR-4 Results, Figure 2-3; "cabin lights are both" (the same, p. 45). The fitting is SEDR 104 of December 1959's (10-44, 10-47: capsules 2 to 8) and of 1962's (10-19). Thrown from the couch, or its button under the lookouts |
 | Pilot | Grissom in the suit of 21 July 1961 (`mark_iv_suit.MR_4`): his stature, the parachute harness with its pads and V-rings, the 5 in convex mirror hung on it, two microphones, wrist rings, the neck dam. Without the helmet's lead, and without the harness's leg straps | documented (the mirror: *This New Ocean*, p. 368; the rest: mark-iv-suit.md, "5 May and 21 July 1961"); estimated (that the lead was plugged in and out of sight; the leg straps left off, which the folded thighs lie over) | mark-iv-suit.md, "On the couch" |
 | Couch straps over him | the chest strap 15 cm nearer his feet than No. 7's, clear of the mirror, the harness's own chest strap and the tie-down's buckle; the shoulder straps 10.5 cm off the middle (No. 7's 9), clear of the mirror's rim, over the mirror's tabs | estimated | a strap is not laid across a mirror; where the real ones ran with it there was not found |
 | Hand controller and abort handle | under his palms, which puts them 8.4 mm from where No. 7's stand under Shepard's | estimated | both; mark-iv-suit.md, "On the couch" |
@@ -285,9 +285,26 @@ capsule's stays 41.5 from its own photographs).
   the skin. The receptacle is sunk 0.95 in under the shut door. No latch, seal, motor or roller guide is drawn. This
   capsule's RETRACT SCOPE telelight ("if the periscope does not retract 40 seconds after retro-package separation,
   the RETRACT SCOPE telelight will go on": SEDR 104, 12-7) and its AUTO, MAN switch are on the console and do nothing:
-  the flight has no flight deck yet. The ratchet handle is modelled (`Ctl_PeriscopeHandle`), as No. 7's is.
+  the RETRACT SCOPE light has no event in the simulator to show. The ratchet handle (`Ctl_PeriscopeHandle`) works the periscope, as No. 7's does.
+- **The hatch blown on the flight deck** (`flies.hatch`) is not flown as a body: it vanishes (the history has it strike
+  the water five feet off and skip over the waves), the opening is the model's sill with nothing in it, and no water is
+  drawn coming in; afloat the spacecraft is drawn going under in an estimated 45 s, no further.
 - **The clamp ring's bolt covers** are half an egg each; the hinge is not modelled.
-- **No mass properties, no trajectory.** The flight cannot be flown yet: see the flight's README.
+- **No mass properties of its own.** No. 11's weights, centre of mass and inertia are its Postlaunch Memorandum Report's,
+  which has not been found: it is flown at No. 7's weights less the hatch's 46 lb, and on No. 7's estimated centre of
+  mass and gyration (vehicles/mercury-redstone.ts), all `estimated`. The window, the rate command system and the new
+  panel are not counted.
+- **The rate command system** is the deck's Rate command switch (`rcs.rate`, sim/autopilot.ts `rateCommand`): on the
+  spacecraft alone the stick asks for a rate, and the manual chambers fire full on an axis while its rate is more than the
+  deadband (±3 deg/s: *Results*, pp. 3 and 52) from it, none within. The rate at full throw (10 deg/s) is ours; how the
+  valves were worked is not recorded; the sluggish linkage of the day ("design turning rates were not achieved with full
+  stick deflection", p. 7) is not modelled. On No. 11 it was a switch on the panel; the model has no node for it, so it is
+  thrown from the deck alone.
+- **Of the panel, what reads the flight**: the attitude, rate, altimeter, descent, accelerometer, control fuel, clock and
+  counter needles, and eight sequence lights (tower, separation, retro sequence and fire, jettison retro, 0.05 g, drogue,
+  main) and the abort light. Dark, with no event to show: retro attitude, retract scope, snorkel, reserve, landing bag,
+  and the warning lights; the Earth-path indicator, which did not work on the day, stands still. The snorkel ring and the
+  0.05 g button do nothing.
 - **Its levels of detail change at the viewer's own distances.** They have not been measured for
   this model or for its pad (`tools/lod-thresholds.mjs --measure`): the gallery draws it in full; at
   the launch site it and the pad change level at the viewer's own thresholds, which are what

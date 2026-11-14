@@ -1,4 +1,4 @@
-import type { Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import type { Command, Flight, FlightCheck, Keyframe, ModelDef, Move, Part, Trajectory, Winds } from '../../../../../src/types';
 import {
   HARDWARE_WORDS,
   held,
@@ -18,9 +18,27 @@ import {
   Z,
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
-import { WEATHER } from './weather.ts';
+import {
+  MERCURY_STICK,
+  mercuryCabin,
+  mercuryControls,
+  mercuryInstruments,
+  mercurySeat,
+  OBJECTIVE_OUT,
+  sequenceLamp,
+} from '../../vehicles/cabin.ts';
+import {
+  CAPSULE_PLANE,
+  CHUTES,
+  cutoffMass,
+  derived,
+  doc,
+  guess,
+  trajectory as mercuryRedstone,
+  PLR,
+} from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
-import { mercuryCabin, mercurySeat, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
+import { WEATHER } from './weather.ts';
 
 const IN = 0.0254;
 
@@ -398,7 +416,7 @@ const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
   url: 'models/usa/mercury/mr-4-liberty-bell-7/vehicle.glb',
-  // the periscope on its programme (vehicles/periscope.ts): nothing works it by hand yet, this flight having no flight deck
+  // the periscope on its programme, and in the pilot's hands in a flight flown by hand (vehicles/periscope.ts)
   mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   scale: '25.41 m tall · spacecraft 7.91 m · to scale',
   backdrop: 'cape-canaveral',
@@ -980,6 +998,276 @@ const crew: ModelDef = {
   with: [{ model: 'pad', at: ROLLED_BACK }],
 };
 
+const PSF = 47.880259; // pascals in a pound per square foot
+const TMX_8_1 = 'NASA TM X-53107, Table 8-1, column MR-4';
+const HH_20 = 'Hammack and Heberlig, Figure 20 ("Comparison of actual and planned flight parameters")';
+/**
+ * What the record says happened, for the simulator to be held against (tests/sim.test.mjs). Set from the reports before
+ * anything was flown, by Freedom 7's rule: 2 per cent on heights and distances, 1 per cent on speeds, 5 per cent on dynamic
+ * pressure, half a g, ten seconds. This flight's record is thinner than Freedom 7's: the Postlaunch Memorandum Report for
+ * MR-4, which has the conditions at separation to the tenth, has not been found, so there is no height or climb angle at
+ * separation and no 0.05 g time to hold it to. Where the reports disagree the check takes the Results' figure and says what
+ * the other gives.
+ */
+const check = (id: FlightCheck['id'], label: string, value: number, unit: string, tolerance: number, source: string): FlightCheck => ({
+  id,
+  label,
+  value,
+  unit,
+  tolerance,
+  confidence: 'documented',
+  source,
+});
+const checks: FlightCheck[] = [
+  check(
+    'apogee',
+    'Greatest height',
+    102.8 * NMI,
+    'm',
+    0.02 * 102.8 * NMI,
+    `${RESULTS}, Table 2-I: maximum altitude 102.8 nautical miles; ${TMX_8_1}: 102.76`,
+  ),
+  check(
+    'apogeeAt',
+    'Time of greatest height',
+    316,
+    's',
+    10,
+    `${RESULTS}, p. 6: the retro sequence "was initiated by timer at T+4 minutes 46 seconds, which was 30 seconds prior to the spacecraft reaching its apogee": 05:16`,
+  ),
+  check('range', 'Range', 262.5 * NMI, 'm', 0.02 * 262.5 * NMI, `${RESULTS}, Table 2-I: range 262.5 nautical miles; ${TMX_8_1}: the same`),
+  check('duration', 'Liftoff to landing', 937, 's', 10, `${RESULTS}, p. 6: "Landing occurred at T+15 minutes 37 seconds"`),
+  check(
+    'separationSpeed',
+    'Space-fixed speed at separation',
+    7580 * FT,
+    'm/s',
+    0.01 * 7580 * FT,
+    `${RESULTS}, Table 2-I: space-fixed velocity 7,580 ft/s; ${TMX_8_1} and Table 8-4 the same, "at cutoff". ` +
+      `The tables give MR-3's 7,388 in the same row, which its Postlaunch Report has at capsule separation: so the row is taken as at separation. ${HH_20} gives 7,516 for MR-4 (7,499 planned)`,
+  ),
+  check(
+    'separationGroundSpeed',
+    'Earth-fixed speed at separation',
+    6618 * FT,
+    'm/s',
+    0.01 * 6618 * FT,
+    `${RESULTS}, Table 2-I: Earth-fixed velocity 6,618 ft/s (TM X-53107, Table 8-4, the same, "at cutoff"); ${HH_20} gives 6,561 (6,540 planned)`,
+  ),
+  check(
+    'exitQ',
+    'Greatest dynamic pressure, going up',
+    605.5 * PSF,
+    'Pa',
+    0.05 * 605.5 * PSF,
+    `${RESULTS}, Table 2-I: maximum exit dynamic pressure 605.5 lb/sq ft; ${TMX_8_1}: 605`,
+  ),
+  // independent here, as it is not for Freedom 7: the nozzle's exit area is the A-7's, derived on MR-3's figures
+  check('exitG', 'Greatest load, going up', 6.3, 'g', 0.5, `${RESULTS}, Table 2-I: maximum exit longitudinal load factor 6.3 g`),
+  check('entryG', 'Greatest load, coming down', 11.1, 'g', 0.5, `${RESULTS}, Table 2-I: maximum reentry longitudinal load factor 11.1 g`),
+  check(
+    'drogueAt',
+    'Drogue parachute',
+    581,
+    's',
+    10,
+    `${RESULTS}, p. 6: "The drogue parachute was deployed at T+9 minutes 41 seconds"; the pilot, at 09:41.5: "There's the drogue chute" (p. 44)`,
+  ),
+  check(
+    'mainAt',
+    'Main parachute',
+    614,
+    's',
+    10,
+    `${RESULTS}, p. 6: "main parachute, at T+10 minutes 14 seconds"; the pilot, at 10:14: "There goes the main chute" (p. 44)`,
+  ),
+];
+
+/**
+ * What each part can be told to do in flight (types.ts `Command`; the part's right-click menu on the flight deck): the
+ * same steps as Freedom 7's, on the same hardware.
+ */
+const COMMANDS: Record<string, Command[]> = {
+  EscapeTower: [{ label: 'Jettison the escape tower', ask: 'tower' }],
+  AntennaCanister: [{ label: 'Deploy the drogue parachute', ask: 'drogue' }],
+  RecoveryCompartment: [{ label: 'Deploy the main parachute', ask: 'main' }],
+  Afterbody: [{ label: 'Extend the periscope', back: 'Retract the periscope', ask: 'work:periscope' }],
+  Retropack: [
+    { label: 'Fire the retrorockets', ask: 'retro' },
+    { label: 'Jettison the retropack', ask: 'retropack' },
+  ],
+  Hatch: [{ label: 'Blow the hatch', ask: 'hatch' }],
+  RedstoneAdapter: [{ label: 'Separate the spacecraft', ask: 'separate' }],
+  RedstoneTailUnit: [{ label: 'Shut the engine down', ask: 'cutoff' }],
+  RedstoneEngine: [{ label: 'Shut the engine down', ask: 'cutoff' }],
+};
+for (const p of parts) if (COMMANDS[p.node]) p.commands = COMMANDS[p.node];
+
+const LB = 0.45359237;
+const KT_M = 0.1; // IGRA's speeds are in tenths of a metre a second
+const IGRA =
+  'NOAA IGRA v2, station USM00074794 (Cape Canaveral), 21 July 1961 12Z: the routine balloon at 07:00 EST, twenty minutes before liftoff';
+/**
+ * The winds aloft over the Cape that morning: the balloon's mandatory levels, [geopotential height m, pressure hPa, from
+ * degrees, speed in tenths of a metre a second], as the archive has them (its 50 hPa level has no wind and is left out).
+ * Nothing was drawn for this flight's report as MR-3's Figure 10.3-1 was: only these levels are known, and between them
+ * the wind is a straight line. Light all the way up: southerly under 8 km, northerly at 11 and 12, easterly above.
+ */
+const IGRA_LEVELS: [m: number, hPa: number, from: number, tenths: number][] = [
+  [3, 1017, 181, 20],
+  [154, 1000, 183, 40],
+  [1569, 850, 188, 60],
+  [3203, 700, 195, 50],
+  [5901, 500, 180, 40],
+  [7596, 400, 208, 50],
+  [10_925, 250, 5, 60],
+  [12_375, 200, 6, 70],
+  [14_142, 150, 75, 120],
+  [16_566, 100, 56, 70],
+  [18_720, 70, 86, 130],
+  [24_096, 30, 72, 150],
+  [26_743, 20, 89, 160],
+  [31_421, 10, 89, 240],
+];
+const WINDS: Winds = {
+  levels: IGRA_LEVELS.map(([m, hPa, from, tenths]) => ({
+    height: m,
+    speed: {
+      value: tenths * KT_M,
+      confidence: 'documented',
+      source: `${IGRA}, ${hPa} hPa at ${m.toLocaleString('en-US')} m: ${(tenths * KT_M).toFixed(1)} m/s. Geopotential height, taken as height above the sea`,
+    },
+    from: { value: from, confidence: 'documented', source: `${IGRA}, ${hPa} hPa: from ${from} degrees` },
+  })),
+  calmAbove: guess(
+    40_000,
+    'no wind is recorded above 10 hPa (31.4 km). Taken as falling evenly to nothing by 40 km, where the air is a three-hundredth of the surface’s and what it does to the flight is past measuring. Ours',
+  ),
+};
+
+/** MR-8 as measured (TM X-53107, Table 8-1, column MR-4). */
+const THRUST = 79_220 * LBF;
+const ISP = 217.4;
+const LIFTOFF = 65_976;
+/** Booster cutoff, with the tower; the spacecraft parted ten seconds later (Results, p. 6; the pilot's calls at 02:23 and 02:33, p. 42). */
+const CUTOFF = 143;
+const SEPARATION = 153;
+/**
+ * Pounds: capsule No. 11 with its tower and in its "orbit" configuration, and on re-entry. Its Postlaunch Memorandum Report
+ * has them and has not been found; nothing read gives them. Taken as No. 7's (MR-3's Postlaunch Report, 3.1) less the 46 lb
+ * the explosive hatch saved (23 lb against 69: Results, p. 4). What the window, the rate command system and the new panel
+ * weighed against No. 7's portholes and panel is not known, so these are estimates. A figure of 2,835 lb is printed
+ * without a source (Wikipedia, "Mercury-Redstone 4": "launch mass"); against the orbit weight here it is 26 lb, 1 per cent.
+ */
+const HATCH_SAVED = 69 - 23;
+const CAPSULE_LAUNCH = 4040.28 - HATCH_SAVED;
+const CAPSULE_ORBIT = 2855.14 - HATCH_SAVED;
+const CAPSULE_ENTRY = 2579.0 - HATCH_SAVED;
+const NO11 = `No. 11’s weights are in its Postlaunch Memorandum Report, which has not been found: taken as No. 7’s (${PLR}, 3.1) less the ${HATCH_SAVED} lb its explosive hatch saved (${RESULTS}, p. 4). The window, the rate command system and the new panel are not counted`;
+const TRAJECTORY: Trajectory = mercuryRedstone({
+  winds: WINDS,
+  azimuth: doc(
+    AZIMUTH,
+    'NASA TM X-53107, 8.3.2: "the launch azimuth was changed from the 102 degrees used for MR-2, BD, and 3 to 100 degrees east of north"; 7.4.3: "The MR-4 mission was launched at 100 degrees azimuth"',
+  ),
+  liftoffMass: doc(LIFTOFF * LB, `${TMX_8_1}: weight at liftoff 65,976 lb`),
+  thrust: doc(THRUST, `${TMX_8_1}: thrust, sea level, 79,220 lb (MR-3’s was 78,860)`),
+  isp: doc(
+    ISP,
+    `${TMX_8_1}: engine specific impulse, sea level, 217.4 s (so 364.4 lb/s, taken as the whole flow, turbine exhaust included)`,
+  ),
+  cutoff: doc(
+    CUTOFF,
+    `${RESULTS}, p. 6: "launch-vehicle cutoff occurred at T+2 minutes 23 seconds"; the pilot at 02:23: "There went the tower" (p. 42). To the second: the tenth is in the memorandum report, not found`,
+  ),
+  separation: {
+    at: doc(
+      SEPARATION,
+      `${RESULTS}, p. 6: "Ten seconds later, the spacecraft-to-launch-vehicle adapter clamp ring was separated"; the pilot at 02:33: "There went posigrades, capsule has separated" (p. 42)`,
+    ),
+    mass: guess(CAPSULE_ORBIT * LB, `${NO11}: ${CAPSULE_ORBIT.toFixed(2)} lb in the "orbit" configuration`),
+    boosterMass: guess(
+      cutoffMass(LIFTOFF * LB, THRUST, ISP, CUTOFF) - CAPSULE_LAUNCH * LB,
+      `the liftoff weight, less the flow for ${CUTOFF} s, less the capsule and tower at launch (${CAPSULE_LAUNCH.toFixed(2)} lb, estimated: ${NO11})`,
+    ),
+    speed: guess(
+      30 * FT,
+      `not recorded for MR-4. Freedom 7’s, the same posigrades on the same adapter: ${PLR}, section 4.2, separation velocity approximately 30 plus or minus 3 ft/s`,
+    ),
+  },
+  retro: {
+    fires: [
+      doc(
+        310,
+        `${RESULTS}, p. 6: "He initiated firing of the retrorockets at T+5 minutes 10 seconds"; the pilot at 05:11.5: "there’s 1 firing" (p. 43)`,
+      ),
+      ...[315, 320].map((t, i) =>
+        derived(
+          t,
+          `retro no. ${i + 2}: five seconds after the one before, as Figure 2-5 of ${RESULTS} has the motors ("5 SEC INTERVALS"); the pilot at 05:19: "There’s 2 firing … There went 3" (p. 43)`,
+        ),
+      ),
+    ],
+    pitch: doc(
+      34,
+      `${RESULTS}, pp. 35 and 36: "the attitudes were held very close to the proper retroattitude of 0° in roll and yaw and −34° in pitch" (Figure 6-3). The blunt end’s elevation, as Freedom 7’s: the push is rearward and 34 degrees below the level`,
+    ),
+  },
+  retropack: {
+    at: doc(367, `${RESULTS}, p. 6: "The retrorocket package was jettisoned at T+6 minutes 7 seconds"`),
+    mass: guess(CAPSULE_ENTRY * LB, `${NO11}: ${CAPSULE_ENTRY.toFixed(2)} lb in the re-entry configuration`),
+  },
+  drogue: doc(21_000 * FT, 'This New Ocean, p. 372: "The drogue parachute deployed on schedule at 21,000 feet"'),
+  main: doc(
+    12_300 * FT,
+    'This New Ocean, p. 372: "Main parachute deployment occurred at 12,300 feet, which was about 1000 feet higher than the design nominal altitude" (Hammack p. 9 has the design’s 10,000 ft, which is 2,300 lower: the history’s "about 1000" and its own two figures disagree)',
+  ),
+  starts: guess(
+    299,
+    'a July morning at the Cape, 25.5 C at the Skid Strip at 07:00 (weather.ts): what the shield and skin stood at on the pad is not in anything read',
+  ),
+  stack: {
+    booster: 'MR-8',
+    boosterDry: 8195,
+    compound: 442,
+    compoundSource: 'MR-8’s damping compound, 442 lb: MR-3’s and 102 lb more (TM X-53107, 4.2.1 and 8.3.2)',
+    liftoff: LIFTOFF,
+    fluids: 'estimated',
+    capsuleLaunch: CAPSULE_LAUNCH,
+    capsuleOrbit: CAPSULE_ORBIT,
+    orbitWeight: { confidence: 'estimated', source: `${NO11}: ${CAPSULE_ORBIT.toFixed(2)} lb in the "orbit" configuration` },
+    towerWeight: {
+      confidence: 'derived',
+      source: `the same tower as Freedom 7’s: ${PLR}, section 3.1, its launch weight less its "orbit" weight, 1,185 lb, which is the tower and whatever else left with it`,
+    },
+    tower: doc(
+      CUTOFF,
+      `${RESULTS}, p. 6: at cutoff, "the escape tower clamp ring was released, and escape tower was released by firing the escape and tower jettison rockets"`,
+    ),
+    earthward: derived(
+      180,
+      'the periscope’s side, by Freedom 7’s reasoning (its `earthward`): the vehicle stood on the launcher with its pitch plane on the azimuth, here 100 degrees ' +
+        '(sites/lc-5.md, "Which way round the vehicle stood"), so the spacecraft rode feet and periscope down range and was turned heat shield first by a yaw, ' +
+        '"counter clockwise" (Results, Figure 2-5), into the orbit attitude of 34 degrees (p. 6)',
+    ),
+    push: guess(30 * FT, `not recorded for MR-4: Freedom 7’s, ${PLR}, section 4.2, approximately 30 plus or minus 3 ft/s`),
+    rate: {
+      deadband: doc(
+        3,
+        `${RESULTS}, p. 3: the rate stabilization and control system "damps to the commanded rate to within ±3 deg/sec. Without manual command, it damps to zero rate within ±3 deg/sec"; the pilot, p. 52: "This system had a deadband of ±3 deg/sec"`,
+      ),
+      full: guess(
+        10,
+        'the rate asked for at full throw of the stick is not in anything read (the record says only that "design turning rates were not achieved with full stick deflection", p. 7, blamed on the linkage): ten degrees a second is ours',
+      ),
+    },
+    retropackMass: derived(
+      (2855.14 - 2579.0) * LB,
+      `the same pack as Freedom 7’s: ${PLR}, section 3.1, its "orbit" weight less its re-entry weight, 276.14 lb, burned propellant with it (so the pack as it fell was lighter): flown at the whole figure`,
+    ),
+  },
+});
+
 export const flight: Flight = {
   id: 'usa/mercury/mr-4-liberty-bell-7',
   nation: 'USA',
@@ -1322,18 +1610,148 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig)',
     },
   ],
+  trajectory: TRAJECTORY,
+  checks,
+  flownNote:
+    'The powered flight ends 4 % too fast, as Freedom 7’s does and for the same reason (the booster’s modelled burn), and what follows is high and long: 12 % on the apogee, 16 % on the range. ' +
+    'Flown from the record’s speed at separation (its height and climb there are not in the record read, so the run’s own are taken), the capsule comes to its top on the record’s second and lets its parachutes out within nine seconds of it; ' +
+    'it lands a minute late, the main being let out at the 12,300 ft the history gives (tests/sim.test.mjs).',
+  flies: {
+    model: 'vehicle',
+    drops: [
+      { at: CUTOFF, nodes: ['EscapeTower'], on: 'tower' },
+      {
+        at: SEPARATION,
+        on: 'separation',
+        nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
+      },
+      { at: TRAJECTORY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
+      // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it
+      { at: 614, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
+      // blown by hand, on a flight flown here (`hatch`, below): the record's run lands with it on, as the capsule did
+      { at: Number.POSITIVE_INFINITY, nodes: ['Hatch'], on: 'hatch' },
+    ],
+    hatch: {
+      node: 'Hatch',
+      label: 'Blow the hatch',
+      aloft:
+        'The hatch is gone and the cabin is open to space. Grissom’s suit would have held him at 4.6 psi; the hatch was not made to come off in flight, ' +
+        'and what an entry with a hole in the side does to the cabin is not in anything read: the flight is flown on as if it were closed.',
+      afloat:
+        'The hatch is gone, the sea comes in over the sill, and the spacecraft fills and goes down. Grissom went out through the hatch in a moment; ' +
+        'the helicopter already hooked on to it could not lift it full of water, and let it go.',
+      under: guess(
+        45,
+        'not recorded to the second. The history has the hatch fly off, Grissom out at once, and the helicopter’s copilot clip the antenna and hook on as the capsule "sank out of sight" (This New Ocean, p. 373): under within a minute. Ours',
+      ),
+      record:
+        'On the day the hatch blew some ten minutes after the landing, after Grissom’s last words at 26:09 ("then I’ll power down and blow the hatch": Results, p. 46). ' +
+        'He said he had not touched the plunger; no test made a hatch fire by itself. He was in the water three or four minutes, his suit filling through an inlet he had left open, ' +
+        'while the first helicopter held the flooded capsule, over 5,000 lb, a thousand beyond what it could lift, until a warning light made its pilot let go. ' +
+        'It sank where the sea is about 2,800 fathoms deep, and was raised on 20 July 1999.',
+    },
+    // in the orbit attitude, heat shield first: "I'm in orbit attitude" at 03:02 (Results, p. 42), the turnaround having begun at 02:38
+    turned: 182,
+    datum: CAPSULE_PLANE * IN,
+    engine: 'RedstoneEngine',
+    burns: 'alcohol-lox',
+    air: { shield: 'HeatShield', collar: 'HeatShield', frost: ['frost-lox'] },
+    chutes: CHUTES,
+  },
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
 };
 
-// The couch as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes).
+// The couch as somewhere to sit, and its cabin: No. 11's panel (vehicles/mercury_cabin_11.py, Results Figure 2-3 as Hammack and
+// Heberlig print it), its needles reading the flight being flown or the record's, its sequence lights lighting on the
+// simulator's events and its rings and buttons asking the deck for them (vehicles/cabin.ts: the instruments and controls
+// every capsule of the Redstone flights had, the same nodes as Freedom 7's).
 // aboard at 3:58 a.m. e.s.t. (MORNING, above) until the gantry left: as the morning has it
 vehicle.seats = [mercurySeat([est(3, 58), GANTRY_REMOVED])];
-vehicle.cabin = mercuryCabin({
-  window: 'Window',
-  periscope: {
-    about:
-      'An 8 in screen of the Earth under the capsule, through a wide-angle objective in the cone below the pilot’s feet. Click to look into it, and again for high power.',
-    at: OBJECTIVE_OUT,
-  },
-});
+const DARK = 'Not simulated: it stays dark.';
+vehicle.cabin = {
+  ...mercuryCabin({
+    window: 'Window',
+    periscope: {
+      about:
+        'An 8 in screen of the Earth under the capsule, through a wide-angle objective in the cone below the pilot’s feet. Click to look into it, and again for high power. ' +
+        'It shows nothing while its objective is drawn in behind its door: for the climb, from half a minute after the retropack went, and through the entry.',
+      at: OBJECTIVE_OUT,
+    },
+  }),
+  instruments: mercuryInstruments({
+    Gauge_DescentRate: 'Feet a second downward. Under the main Grissom read "30 feet per, 32 feet per second" on it (Results, p. 44).',
+    Gauge_ClockHour:
+      'A twelve-hour watch, here on Cape time, under the attitude indicator where No. 11’s panel put it: the Redstone flights had no time-to-retrograde counter.',
+  }),
+  // the sequence lights in one column down the left console, each beside what does it by hand (Results, p. 5: "the rearrangement
+  // of controls and indicators"), and the warning lights down the right of the main panel. "A green light will show that the
+  // function occurred and a red light will indicate some failure" (Results of the First U.S. Manned Suborbital Space Flight, p. 23)
+  lamps: [
+    sequenceLamp('TowerJett', 'Tower jettison', 'tower', 'Green when the escape tower has gone. The ring beside it does it by hand.'),
+    sequenceLamp(
+      'CapsuleSep',
+      'Capsule separation',
+      'separated',
+      'Green when the spacecraft has left the booster: "cap. sep. is green" at 02:42.5.',
+    ),
+    sequenceLamp(
+      'RetroSeq',
+      'Retro sequence',
+      'retro',
+      'Green when the retrorockets’ sequence has begun: by the timer at 04:46 on the day.',
+    ),
+    sequenceLamp(
+      'RetroAtt',
+      'Retro attitude',
+      undefined,
+      `Whether the capsule is at 34 degrees for retrofire: "retro attitude is still green" at 05:01.5. ${DARK}`,
+    ),
+    sequenceLamp('RetroFire', 'Retro fire', 'retro', 'Green when the first retrorocket has lit.'),
+    sequenceLamp('JettRetro', 'Jettison retro', 'retropack', 'Green when the pack has been dropped.'),
+    sequenceLamp('RetractScope', 'Retract scope', undefined, `The periscope drawn in for the entry. ${DARK}`),
+    sequenceLamp('PointZeroFiveG', '.05 g', 'entry', 'Green when the air is first felt coming down: a twentieth of a g.'),
+    sequenceLamp('Drogue', 'Drogue', 'drogue', 'Green when the drogue parachute is out: "we have a green drogue here" at 09:45.'),
+    sequenceLamp('Snorkel', 'Snorkel', undefined, `The cabin’s air inlets opened at 20,000 ft. ${DARK}`),
+    sequenceLamp('MainDeploy', 'Main', 'main', 'Green when the main parachute is out.'),
+    sequenceLamp('ReserveDeploy', 'Reserve', undefined, `The reserve parachute: not simulated, it stays dark.`),
+    sequenceLamp(
+      'LandingBag',
+      'Landing bag',
+      undefined,
+      `Green when the bag has dropped: "the landing bag is out green" at 10:14. ${DARK}`,
+    ),
+    { node: 'Tele_Abort', name: 'Abort', about: 'Warns the astronaut of an abort.', shows: 'abort', colour: 0xff4a36 },
+    ...(
+      [
+        ['FuelQuan', 'Fuel quantity'],
+        ['O2Quan', 'Oxygen quantity'],
+        ['CabinPress', 'Cabin pressure'],
+        ['ExcessCabinWater', 'Excess cabin water'],
+        ['ExcessSuitWater', 'Excess suit water'],
+        ['O2Emerg', 'O2 emergency'],
+        ['RetroWarn', 'Retro warning'],
+        ['RetroReset', 'Retro reset'],
+        ['StandbyAC', 'Standby A.C. auto'],
+        ['StandbyDC', 'Standby D.C. auto'],
+        ['HeatersOn', 'Retro heaters on'],
+        ['RetroCold', 'Retro rockets cold'],
+        ['RescueAids', 'Rescue aids'],
+      ] as const
+    ).map(([node, name]) => ({ node: `Tele_${node}`, name, about: DARK })),
+  ],
+  controls: [
+    ...mercuryControls({
+      Ctl_RetroFire: 'Guarded push button. Grissom fired them himself, on Cap Com’s count, at 05:10; here the guard is off.',
+    }),
+    { node: 'Ctl_Snorkel', name: 'Snorkel', about: 'Pull ring: opens the cabin’s air inlets by hand. Not simulated.' },
+    {
+      node: 'Hatch_Plunger',
+      name: 'Hatch plunger',
+      about:
+        'With its cover off and the safety pin out, a blow of five or six pounds fires the fuse round the sill and the hatch blows off (Results, p. 4). Click it to blow the hatch: in flight, or afloat, where the sea comes in.',
+      does: 'hatch',
+    },
+  ],
+  stick: MERCURY_STICK,
+};

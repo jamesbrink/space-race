@@ -444,6 +444,16 @@ never adjusted to bring a check in.
   live runs only). The Flown panel draws the run in amber over the record's as it grows
   (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `trajectory.body` and
   `flies` can be flown without being told how.
+- **A launch vehicle's flight data is said once** (`missions/<nation>/<programme>/vehicles/<stack>.ts`: the Mercury-Redstone's
+  is mercury-redstone.ts, `trajectory(day)`): the hardware's figures with their confidence, and each flight its own day
+  (`Day`: winds, azimuth, the booster's measured thrust and weights, the spacecraft's weights, its events). A new flight of
+  the stack is data; tests/ballistic.mjs finds every flight on a `trajectory`, and tests/sim.test.mjs, vehicle, predict,
+  turnaround, ascent and verdict hold each as they hold Freedom 7 (its misses in `MISSES`, its undocumented inputs listed).
+- **What a capsule had that another did not is data, not deck code.** A rate command mode (`rcs.rate`: the deck's Rate
+  command switch, autopilot.ts `rateCommand`: the stick asks for a rate and the manual chambers fire full on an axis while
+  its rate is more than the deadband from it); an explosive hatch (`flies.hatch`: `Command` 'hatch', Space once down, a
+  cabin control's `does`; nothing of it reaches the physics: blown in flight the debrief says what it meant, blown afloat
+  the spacecraft is drawn going under in `under` seconds, `Run.sinks`, and the clock runs on until it has).
 - **Turned round, the spacecraft is rolled periscope side down.** `trajectory.body.capsule.earthward` names the side the
   automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
   the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay

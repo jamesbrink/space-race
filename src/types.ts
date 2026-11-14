@@ -299,6 +299,7 @@ export interface Command {
     | 'retropack'
     | 'drogue'
     | 'main'
+    | 'hatch'
     | `work:${string}`
     | `step:${string}`
     | `descent:${string}`;
@@ -861,6 +862,11 @@ export interface Trajectory {
     boosterMass: Measure;
     /** How fast the two part, m/s, shared between them by their masses. */
     speed: Measure;
+    /**
+     * The Earth-fixed heading at separation, degrees true, where the record gives one. Neither simulator reads it:
+     * tests/sim.test.mjs starts the capsule's half from the record's separation, and takes the run's own heading where this is missing.
+     */
+    heading?: Measure;
   };
   retro: {
     /** When each retrorocket lights, seconds from liftoff. */
@@ -1052,7 +1058,16 @@ export interface Body {
     /** The torque its attitude jets give about each axis at full command, N m: used only where the jets are not given as hardware (`rcs`). */
     jets?: { roll: Measure; pitch: Measure; yaw: Measure };
     /** The reaction control system as hardware: what feeds it and every chamber. */
-    rcs?: { supplies: RcsSupply[]; thrusters: Thruster[] };
+    rcs?: {
+      supplies: RcsSupply[];
+      thrusters: Thruster[];
+      /**
+       * A rate command mode, where the capsule had one (No. 11 on): the hand's stick asks for a rate of turn, `full`
+       * degrees a second at full throw, and the system works the manual chambers to hold it within `deadband` degrees a
+       * second, damping to none with the stick let go (sim/autopilot.ts `rateCommand`; the deck's Rate command switch).
+       */
+      rate?: { full: Measure; deadband: Measure };
+    };
     /** How far its blunt end is from its centre of mass, m: that end is what meets the ground or the sea. Without it, the centre of mass does. */
     base?: Measure;
     /** How far from its centre of mass, toward the small end, a parachute pulls, m. */
@@ -1339,6 +1354,15 @@ export interface Flight {
     hangs?: { model: string; body: string; from: string }[];
     /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
     turned?: number;
+    /**
+     * A hatch the pilot can blow (No. 11's explosive hatch): its node in the flown model (hidden once it has gone), what
+     * the deck calls blowing it, and what it means. Nothing of it reaches the physics. Blown in flight (`aloft`: the
+     * cabin open to space, the entry with a hole in the side) the flight flies on, and the debrief says what that would
+     * have meant; blown afloat the spacecraft floods (`afloat`) and goes under in `under` seconds, drawn so, and the
+     * debrief tells what the record has after (`record`). Offered with the spacecraft alone and after
+     * it is down (cockpit.ts `can('hatch')`).
+     */
+    hatch?: { node: string; label: string; aloft: string; afloat: string; under: Measure; record: string };
     /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */
     datum?: number;
     /**
