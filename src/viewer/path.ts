@@ -1,7 +1,16 @@
 import * as THREE from 'three';
 import { prefs } from '../prefs.ts';
 import type { Phase } from '../sim/fly.ts';
-import { apsides, type Burn, type Prediction, type Predictor, predictor, programmeAxis, type Sequence } from '../sim/predict.ts';
+import {
+  apsides,
+  type Burn,
+  type Prediction,
+  type Predictor,
+  predictor,
+  programmeAxis,
+  type Sequence,
+  type Start,
+} from '../sim/predict.ts';
 import type { SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE, WGS84_B } from '../world/bodies.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
@@ -287,10 +296,12 @@ export interface PathSource {
   listen(fn: (sample: PathSample, live: PathLive | null) => void): void;
   /**
    * A flight with no `trajectory` (one into orbit: orbitdeck.ts) predicts its own path from a sample, with whatever its
-   * deck has planned, and says what that plan is (`plan`: when it changes, the path is made again).
+   * deck has planned, in at most `points` points, and says what that plan is (`plan`: when it changes, the path is made
+   * again) and, while engines burn, which future it shows (`pathAs`).
    */
-  predict?(start: { t: number; r: Vec3; v: Vec3 }): Predictor | null;
+  predict?(start: Start, points: number): Predictor | null;
   readonly plan?: string;
+  readonly pathAs?: string;
 }
 
 const clock = (seconds: number): string => {
@@ -755,7 +766,7 @@ export class FlightPath {
         ...(want.burn ? { burn: want.burn } : {}),
         ...(want.sequence ? { sequence: want.sequence } : {}),
       };
-      const run = tr ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options) : this.source.predict!(start);
+      const run = tr ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options) : this.source.predict!(start, MOST - 2);
       if (!run) return;
       this.job = {
         run,

@@ -16,8 +16,8 @@
  * drawn from) keeps to the integrator's own path. A step ends on every instant the flier has scheduled, so what happens
  * there happens at its instant, and nothing the flier does changes within a step: its configuration is a function of
  * its state between those instants. A height it acts at, and the ground, are found where the step's cubic crosses them
- * and the step is flown again to that instant. Height is worked out once a step and carried through its stages by the
- * change in distance from the Earth's centre.
+ * and the step is flown again to that instant. Every stage's height is the ellipsoid's own (frames.ts `ecefToGeodetic`:
+ * the sea's radius changes by hundreds of metres along a long step, and the air with it).
  *
  * Besides the path it names what happens on it (`events`): what the flier says at each instant and height, and two
  * things of the air worked out on the way, for any vehicle: the first 0.05 g felt coming down once nothing burns and no
@@ -381,8 +381,7 @@ export function propagate(
     return add(gravity(p), f);
   };
   /** One step of the pair from the state now: the state `h` on, and its error in place and speed. */
-  const pair = (h: number, altitude: number, first: Vec3): { r: Vec3; v: Vec3; er: number; ev: number } => {
-    const d0 = length(r);
+  const pair = (h: number, first: Vec3): { r: Vec3; v: Vec3; er: number; ev: number } => {
     kr[0] = v;
     kv[0] = first;
     let r1: Vec3 = r;
@@ -414,7 +413,7 @@ export function propagate(
         v1 = u;
       }
       kr[i] = u;
-      kv[i] = accel(t + C[i]! * h, p, u, altitude + length(p) - d0);
+      kv[i] = accel(t + C[i]! * h, p, u, ecefToGeodetic(p).height - seaLevel);
     }
     let er0 = 0;
     let er1 = 0;
@@ -532,7 +531,7 @@ export function propagate(
     const to = 0.5 * (lo + hi) - before.t;
     [t, r, v, altitude] = [before.t, before.r, before.v, before.altitude];
     if (to > 1e-9) {
-      const s = pair(to, altitude, accel(t, r, v, altitude));
+      const s = pair(to, accel(t, r, v, altitude));
       t = before.t + to;
       r = s.r;
       v = s.v;
@@ -556,13 +555,13 @@ export function propagate(
       step = mark - t;
       reaches = true;
     }
-    let next = pair(step, altitude, a0);
+    let next = pair(step, a0);
     let err = Math.max(next.er / TOL_R, next.ev / TOL_V);
     // (too much error: shorter, until it is within, or as short as a step goes)
     while (err > 1 && step > SHORTEST_STEP) {
       step = Math.max(SHORTEST_STEP, step * Math.max(0.2, 0.9 * err ** -0.2));
       reaches = false;
-      next = pair(step, altitude, a0);
+      next = pair(step, a0);
       err = Math.max(next.er / TOL_R, next.ev / TOL_V);
     }
     // the next step: as long as this one's error allows (one cut short to end on an instant does not shorten the next)

@@ -17,6 +17,7 @@
  */
 import type { Trajectory } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { sunPosition } from '../world/ephemeris.ts';
 import {
   add,
   cross,
@@ -31,10 +32,13 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
+import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, G0, thrustIn } from './fly.ts';
 import { blowing, blowOf, upAt } from './forces.ts';
+import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
+import { stackOf } from './staged.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
@@ -225,5 +229,91 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
         }
       }
     },
+  };
+}
+
+/**
+ * A spacecraft alone (`OrbitalFlight`: Vostok 1's ship) from any instant after it has parted: the coast's forces
+ * (orbital.ts `shipPush`: the air on the entry body, the whole ship's mass until the modules part), the braking burn as the
+ * plan has it (the timer's, a hand's, or none: `on` at or past `Number.MAX_SAFE_INTEGER` is none), its line fixed as it
+ * lights (`aimOf`), and the modules' parting; and it stops where its pilot leaves, at the ejection height, burn or no burn,
+ * as flyOrbit does. Begun within the burn, the line is the one it would have lit along from the state at the start.
+ */
+export function spacecraft(
+  o: OrbitalFlight,
+  launchJd: number,
+  site: Geodetic,
+  seaLevel: number,
+  start: { t: number; r: Vec3; v: Vec3 },
+): Flier {
+  const gast0 = greenwichSiderealTime(launchJd);
+  // (fly.ts's frame is frames.ts's inertial frame of date turned back by the sidereal time at liftoff)
+  const flat = (u: Vec3): Vec3 => inertialToEcef(u, gast0);
+  const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
+  const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
+  const marks = [on, off, parted].filter((x) => !never(x) && x >= start.t).sort((a, b) => a - b);
+  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 =>
+    aimOf(o, r, v, () => flat(sunPosition(terrestrialTime(launchJd + t / 86_400))), flat);
+  let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
+  let aim: Vec3 | null = burning ? aimAt(start.t, start.r, start.v) : null;
+  return {
+    kind: 'coast',
+    cutoff: null,
+    quiet: never(on) ? Number.NEGATIVE_INFINITY : off,
+    chute: false,
+    radius: o.orbit.radius.value,
+    ground: floorOf(site, seaLevel),
+    burning: () => burning,
+    push: (at, p, u, altitude) => shipPush(o, at, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
+    next: (t) => after(marks, t),
+    below: () => o.ejection.altitude.value,
+    arrive(t, r, v, _altitude, by): Arrival {
+      if (by === 'height') return { end: true };
+      const events: EventKind[] = [];
+      if (t === on && t < parted) {
+        aim = aimAt(t, r, v);
+        burning = true;
+        events.push('retro');
+      }
+      if (t === off && burning) {
+        burning = false;
+        events.push('burnout');
+      }
+      if (t === parted) {
+        burning = false;
+        events.push('separation');
+      }
+      return { events };
+    },
+  };
+}
+
+/**
+ * A staged launch vehicle with its engines stopped now (`OrbitalFlight.ascent`: Vostok 1's R-7 with what it still
+ * carries): a point mass of `mass` kg on the drag of the shape it has (staged.ts `stackOf`'s area for the record instant
+ * `gone`, the latest separation among what has been let go: `StagedVehicle.shape`), through the same air, nothing more
+ * let go and nothing lit, down to the ground or once round. What the deck shows on the launch vehicle (orbitdeck.ts).
+ */
+export function stack(o: OrbitalFlight, site: Geodetic, seaLevel: number, mass: number, gone: number): Flier {
+  const drag = stackOf(o).dragArea;
+  return {
+    kind: 'coast',
+    cutoff: null,
+    quiet: Number.NEGATIVE_INFINITY,
+    chute: false,
+    radius: o.orbit.radius.value,
+    ground: floorOf(site, seaLevel),
+    burning: () => false,
+    push(_at, p, u, altitude) {
+      const air = atmosphere(altitude);
+      const wind = sub(u, cross(SPIN, p));
+      const airspeed = length(wind);
+      if (!(airspeed > 0)) return [0, 0, 0];
+      const q = 0.5 * air.density * airspeed * airspeed;
+      return scale(wind, (-q * drag(gone, airspeed / air.soundSpeed)) / (airspeed * mass));
+    },
+    next: () => Infinity,
+    below: () => Number.NEGATIVE_INFINITY,
+    arrive: () => ({}),
   };
 }

@@ -1,7 +1,7 @@
 // The predicted path on states that vary, not on a flight's list: a seeded family of states (lobs of many ranges and
 // angles, climbs straight up and falls, circular and elliptical orbits low and high, prograde, polar and retrograde, a
-// state just short of orbit and just past it, one past escape), each predicted by both predictors there are (predict.ts,
-// the ballistic deck's; orbitpath.ts, the orbital deck's: one interface, one result), and each held to the same
+// state just short of orbit and just past it, one past escape), each predicted by the one propagator (predict.ts) for both
+// kinds of vehicle that coast there (sim/fliers.ts: the ballistic flight's and the orbital flight's spacecraft), each held to the same
 // invariants: the path starts at the state; its marks are where the propagation says (an apsis where the radial speed
 // changes sign and nowhere else, alternating; the end on the ground when it comes down; once round when it goes round);
 // and, drawn from eyes placed at random (beside the vehicle, beside the path, far out), no chord strays more than the
@@ -10,8 +10,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
-import { orbitPredictor } from '../src/sim/orbitpath.ts';
-import { apsides, predict } from '../src/sim/predict.ts';
+import { spacecraft } from '../src/sim/fliers.ts';
+import { apsides, predict, propagate } from '../src/sim/predict.ts';
 import { curveAt, curveOf, ERROR_PX, sample } from '../src/viewer/pathline.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { julianDate } from '../src/world/time.ts';
@@ -167,9 +167,12 @@ test('the orbital deck`s predictor on the same family: one result, the same inva
     // (the orbital deck's coast flies from above the air: a lob from low down is the ballistic deck's)
     if (Math.hypot(...s.r) - R < 100e3) continue;
     const start = { t: 1000, r: s.r, v: s.v };
-    const p = orbitPredictor(plan, site, jd, vostok1.site.seaLevel.value, start);
+    const p = propagate(spacecraft(plan, jd, site, vostok1.site.seaLevel.value, start), start, {
+      site,
+      seaLevel: vostok1.site.seaLevel.value,
+    });
     p.run();
-    const curve = holds(`orbitpath.ts, ${name}`, start, p.result);
-    if (curve) drawn(`orbitpath.ts, ${name}`, curve, rand);
+    const curve = holds(`spacecraft, ${name}`, start, p.result);
+    if (curve) drawn(`spacecraft, ${name}`, curve, rand);
   }
 });

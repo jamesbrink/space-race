@@ -1,7 +1,7 @@
 import { type CockpitHost, Deck, type DeckSpec, type Figure, tank } from './deck';
 import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from './sim/orbital.ts';
-import { orbitPredictor } from './sim/orbitpath.ts';
-import type { Predictor } from './sim/predict.ts';
+import { spacecraft, stack } from './sim/fliers.ts';
+import { type Predictor, propagate } from './sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
 import { Sheds } from './sim/shed.ts';
 import {
@@ -203,16 +203,37 @@ export class OrbitDeck extends Deck {
   }
 
   /**
-   * The path ahead from a sample: with the spacecraft alone, its coast as planned (the timer's burn, a hand's, or none);
-   * on the launch vehicle, where it goes if the engines stopped now, with nothing more done (no burn), flown by the same
-   * coast. That coast's drag is the spacecraft's ball's, not the stack's: low in the air the path is drawn as if the ball
-   * flew it, so where a vehicle cut low comes down is nearer than drawn (said here, and in the flight's README).
+   * The path ahead from a sample, by the one propagator (sim/predict.ts): with the spacecraft alone, its coast as planned
+   * (the timer's burn, a hand's, or none: sim/fliers.ts `spacecraft`), to the ejection height or once round; on the launch
+   * vehicle, under guidance or by hand, where it goes if the engines stopped now (`stack`: what it still carries, on the
+   * drag of the shape it has), to the ground or once round. Not "if guidance carries on": the ascent is four stages whose
+   * every step a hand may take at any instant, and the one future that presumes nothing of them is the one with nothing
+   * more done (the path's figures say so: `pathAs`).
    */
-  predict(start: { t: number; r: Vec3; v: Vec3 }): Predictor | null {
+  predict(start: { t: number; r: Vec3; v: Vec3; mass: number }, points?: number): Predictor | null {
     const o = this.flight.orbital!;
-    let plan = this.planned ?? o;
-    if (start.t <= this.parting || (this.free && this.fired === null)) plan = this.givenUp();
-    return orbitPredictor(plan, siteFrame(this.flight.site), julianDate(this.flight.launch), this.flight.site.seaLevel.value, start);
+    const site = siteFrame(this.flight.site);
+    const sea = this.flight.site.seaLevel.value;
+    const where = { site, seaLevel: sea };
+    const options = points ? { points } : {};
+    if (start.t < this.parting) return propagate(stack(o, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
+    const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? o);
+    return propagate(spacecraft(plan, julianDate(this.flight.launch), site, sea, start), start, where, options);
+  }
+  /** What the path says it is while the engines burn: the deck's own words beside its figures. */
+  get pathAs(): string {
+    return 'Engines stopped now';
+  }
+  /** The shape the stack flies at `t` on the flight on show (StagedVehicle.shape): the latest record separation among the stages let go by then. */
+  private goneAt(t: number): number {
+    const o = this.flight.orbital!;
+    const s = this.mine !== null ? this.state : null;
+    let at = 0;
+    o.stages.forEach((st, i) => {
+      const gone = s ? s.stages[i]!.gone : (st.separation?.value ?? Infinity);
+      if (gone <= t) at = Math.max(at, st.separation?.value ?? st.cutoff.value);
+    });
+    return at;
   }
 
   get steering(): { guidance: boolean; sequence: boolean; trim: { pitch: number; yaw: number } } {
