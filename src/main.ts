@@ -17,6 +17,7 @@ import { programmeAxis } from './sim/predict';
 import { Sound } from './sound';
 import { TimeBar } from './timebar';
 import type { SitedFlight } from './types';
+import type { DeckNews } from './viewer/cabin';
 import { Ui } from './ui';
 import { Effects } from './viewer/effects';
 import { uOrigin } from './viewer/origin';
@@ -155,7 +156,7 @@ cockpit.listen((sample) => {
   for (const m of mechanisms) stage.setMechanism(m.id, cockpit.travel(m.id, sample.t));
 });
 // the cabin's own instruments read the same samples, and its controls are the flight deck's (viewer/cabin.ts)
-cockpit.listen((sample, state) => stage.cabin?.fly(sample, state));
+cockpit.listen((sample, state, news?: DeckNews) => stage.cabin?.fly(sample, state, news));
 // From a seat, what can be looked out of: a switch apiece, and its digit (stage.leanTo)
 const lookouts = () =>
   ui.setLookouts(

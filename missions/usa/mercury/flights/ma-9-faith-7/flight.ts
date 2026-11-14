@@ -599,10 +599,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Window, middle of the outer pane above the widest plane',
-      value: 35.8 * IN,
+      value: 31.5 * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: '35.8 in: as Liberty Bell 7’s, which was scaled off its own photographs. This capsule’s do not agree: NASA S63-07701 and S63-07521 show its window level with the first UNITED STATES, its middle near 30 in. The model keeps 35.8, with every orbital capsule here',
+      note: '31.5 in, give or take 1.5: measured on this capsule on the carrier’s deck (NASA S63-07701: the glass from station 21.1 to 40.2, level with the first UNITED STATES) and on No. 13 as it is kept (NASM A19670176000). No document read gives it. Until November 2026 the model had 35.8',
     },
     {
       group: 'Spacecraft',

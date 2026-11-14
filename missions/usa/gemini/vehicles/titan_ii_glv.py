@@ -51,6 +51,9 @@ LENGTH = S_EXIT - S_IFACE  # 1071.278
 DOME = 34.0  # how far a tank's dome rises from where it meets the wall: estimated
 EXIT_R1 = 22.4  # a first stage chamber's exit radius: from an area ratio of 8 (titan-ii-glv.md)
 EXIT_R2 = 32.4  # the second stage's, with its ablative skirt: from an area ratio of 49.2
+# The second stage's tube bell ends at an area ratio of 13 and the ablative skirt takes it on to 49.2 (the Launch Systems
+# Final Report, p. II.C-23): so the joint is at the square root of 13/49.2, 0.514, of the exit's diameter.
+JOINT_R2 = EXIT_R2 * math.sqrt(13.0 / 49.2)  # 16.65
 CHAMBERS_AT = 24.0  # a first stage chamber's axis from the vehicle's, on the yaw axis
 ROLL_NOZZLE = (44.0, deg(30.65))  # the second stage's roll nozzle: its radius, and its angle from the pitch axis
 CONDUIT = (4.4, 2.8)  # an external conduit's half width, and how far it stands off the tank
@@ -365,9 +368,10 @@ def build(base_z: float, font=None, skirt_insulation: bool = True, conduit_at: f
     gz, ez = z(S_GIMBAL2), z(S_EXIT2)
     span = gz - ez
     eng.lathe(prof([(0.0, gz - 2.0), (6.0, gz - 2.5), (8.2, gz - 0.07 * span), (8.2, gz - 0.2 * span), (4.7, gz - 0.29 * span)][::-1]), 32)
-    fluted(noz, [(4.7, gz - 0.29 * span), (9.5, gz - 0.38 * span), (14.5, gz - 0.48 * span), (17.8, gz - 0.56 * span)][::-1], 64, 0.3)
-    noz.lathe(hoop(17.6, 19.0, gz - 0.56 * span - 0.7, gz - 0.56 * span + 0.7), 64)  # where the skirt is bolted on
-    skirt2.lathe(prof([(17.8, gz - 0.57 * span), (23.5, gz - 0.7 * span), (28.6, gz - 0.85 * span), (EXIT_R2, ez)][::-1]), 96)
+    j = JOINT_R2
+    fluted(noz, [(4.7, gz - 0.29 * span), (9.2, gz - 0.38 * span), (13.6, gz - 0.48 * span), (j, gz - 0.56 * span)][::-1], 64, 0.3)
+    noz.lathe(hoop(j - 0.2, j + 1.2, gz - 0.56 * span - 0.7, gz - 0.56 * span + 0.7), 64)  # where the skirt is bolted on
+    skirt2.lathe(prof([(j, gz - 0.57 * span), (22.9, gz - 0.7 * span), (28.4, gz - 0.85 * span), (EXIT_R2, ez)][::-1]), 96)
     side = radial(deg(90))
     pump.tube((side * 15.0 + up * (gz - 5.0)) * IN, (side * 15.0 + up * (gz - 27.0)) * IN, 5.5 * IN, 20)
     pump.tube((side * 15.0 + up * (gz - 13.0)) * IN, (side * 4.5 + up * (gz - 9.0)) * IN, 2.0 * IN, 12)
@@ -381,15 +385,18 @@ def build(base_z: float, font=None, skirt_insulation: bool = True, conduit_at: f
         12,
         ref=(0, 0, 1),
     )
-    roll.lathe(prof([(2.0, 0.0), (2.2, 4.0), (3.6, 9.0)]), 20, matrix=frame((rp + up * (gz - 30.0)) * IN, -up))
+    # (the nozzle swivels to roll the stage: a ball joint at its root, and the nozzle below it)
+    roll.lathe(prof([(0.0, -1.6), (2.2, -1.2), (2.9, 0.0), (2.2, 1.2), (0.0, 1.6)]), 20, matrix=frame((rp + up * (gz - 30.0)) * IN, -up))
+    roll.lathe(prof([(1.8, 1.0), (2.2, 4.4), (3.6, 9.4)]), 20, matrix=frame((rp + up * (gz - 30.0)) * IN, -up))
     eng.build("Stage2Engine_Chamber", M["engine"], g, sharp_angle=35)
     noz.build("Stage2Engine_Nozzle", M["engine"], g, sharp_angle=35)
     say(
         skirt2.build("Stage2Engine_AblativeSkirt", M["ablative"], g, sharp_angle=None),
         "Ablative skirt",
-        "The lower two thirds of the bell is not cooled by fuel as the upper third is: it is a moulded skirt that chars slowly "
-        "for the three minutes the engine burns. It widens the bell to the size that pays in a vacuum. Its size here is computed "
-        "from the engine's published expansion ratio.",
+        "The bell is tubes cooled by the fuel only as far as an expansion ratio of 13. Below that it is a moulded skirt that "
+        "chars slowly for the three minutes the engine burns, and takes the ratio on to 49.2: the size that pays in a vacuum. "
+        "So the joint is at half the exit's diameter, which is where it is here; the exit's own size is computed from the "
+        "ratio and general figures for the engine.",
     )
     pump.build("Stage2Engine_Turbopump", M["alu"], g, sharp_angle=40)
     say(

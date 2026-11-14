@@ -31,8 +31,8 @@ changed from spacecraft 3; the **press kit**, NASA release 65-81.
 | Extravehicular provisions | none | spacecraft 4 carried an umbilical, a ventilation control module and a hand-held manoeuvring unit | documented for spacecraft 4 as additions; not stated of spacecraft 3 in so many words | GIV, 3.1.2.3.1 to 3.1.2.3.3 | none modelled; no hand-holds |
 | Drogue mortar | steel breech | aluminium | documented | GIV, 3.1.2.8 | said on the part |
 | Z100 separation sensor switches | fitted | removed | documented | GIV, 3.1.2.6 | no |
-| Panels | ACME logic switches on the pedestal; re-entry control shutoff switches on the pilot's panel; no G.m.t. clock on the command pilot's | moved, and a clock added | documented | GIV, 3.1.2.9.1 and 3.1.2.5 | no: the panels are stand-ins |
-| Ejection seats | as built | a new riser retractor, a safety pin on the ejection handle, a lower egress kit | documented | GIV, 3.1.2.9.4 | the seat is the type's |
+| Panels | ACME logic switches on the pedestal; re-entry control shutoff switches on the pilot's panel; no G.m.t. clock on the command pilot's | moved, and a clock added | documented | GIV, 3.1.2.9.1 and 3.1.2.5; SEDR 300, Figure 3-5 sheets 1 and 2 "(S/C 3)" | yes: the panels are this ship's, with the blank where the clock came later, the re-entry control switches on the pilot's panel, ACME logic on the pedestal, and RE ENT ANT EXP on the right-hand wall |
+| Ejection seats | as built | a new riser retractor, a safety pin on the ejection handle, a lower egress kit | documented | GIV, 3.1.2.9.4 | the seat is the type's: the Smithsonian's A19710058000, a spare that had been fitted in this spacecraft, is one of the two it is drawn from |
 | Suits | G3C | G4C | documented | GIV, 3.1.2.9.2 | no crew |
 | Structure | "the same production configuration" as spacecraft 1, 2 and 4 | | documented | GIV, 3.1.1 | the type's |
 | Recovery light | came on with the main parachute's jettison | a switch added | documented | SEDR 300, p. 4-26; GIV, 3.1.2.11 | no |
@@ -43,7 +43,7 @@ changed from spacecraft 3; the **press kit**, NASA release 65-81.
 | --- | --- | --- | --- | --- |
 | Sea urchin egg growth (Ames; R. S. Young) | a metal cylinder 3 1/4 in across and 6 3/4 in long, 25.4 oz, "mounted inside the cabin on the left hatch" | documented; where on the hatch estimated | press kit, pp. 28 and 29 | yes, on the left hatch's inner face |
 | Zero gravity and radiation on white blood cells (Oak Ridge; M. Bender) | an aluminium box 3.7 by 1.3 by 3.8 in, about 1 lb, "on the right hatch inside the cabin" | documented; where on the hatch estimated | press kit, pp. 29 and 30 | yes, on the right hatch's inner face |
-| Re-entry communications (Langley) | "the inside surface of the spacecraft's right main landing gear door"; about 85 lb; a nitrogen-pressurised water tank, a timer and injection nozzles; a switch in the cabin, thrown by the pilot | documented; the door's place on the cone and the nozzle's place on it estimated | press kit, pp. 26 to 28 | a nozzle on the skin at 128° from the top and a tank behind it |
+| Re-entry communications (Langley) | "the inside surface of the spacecraft's right main landing gear door"; about 85 lb; a nitrogen-pressurised water tank, a timer and injection nozzles; a switch in the cabin, thrown by the pilot | documented; the door's place on the cone estimated; the nozzles' place on the door from NASA's drawing | press kit, pp. 26 to 28; NASA S64-04925 (the door, the plate of three "fluid injection nozzles" near its forward end, an arming receptacle half way along it; no dimensions) | the plate with its three nozzles on the right landing gear door at Z157, the arming receptacle at Z138, and a tank behind |
 
 The first failed when its handle broke; the other two worked (*Chronology*, pp. 189 to 191; *On the
 Shoulders of Titans*, pp. 235 and 236).
@@ -66,20 +66,29 @@ Shoulders of Titans*, pp. 235 and 236).
 | At launch | 7,111 lb | documented (*Chronology*, Appendix 1, Table A). The press kit: "approximately 7,000 pounds" |
 | Re-entry module at landing | "about 4,700 pounds" | documented as the plan (press kit, p. 39) |
 | OAMS propellant | "approximately 300 pounds" | documented as the plan (press kit, p. 8) |
-| Oxygen | primary 15.3 lb, secondary 13 lb | documented as the plan (the same page) |
+| OAMS propellant as flown, by the cabin's gauge | 84 per cent before the first burn and 65 after it; 66 and 61 round the second ("I'm not real sure of that before"); 50 before the third and 22 after it | documented, as called (the voice transcript, at 1:27:55, 1:35:05, 2:21:09, 4:21:17 and 4:24:18). A gauge's reading, not a weight |
+| Oxygen | primary 15.3 lb, secondary 13 lb | documented as the plan (press kit, p. 8) |
 | Centre of gravity offset in the entry | 1.43 in | documented (GIV, p. 5-4) |
+
+The weights as flown (at liftoff by item, at retrofire, at landing) are in the mission report,
+which has not been found. No other source read gives one: the 7,111 lb is the programme's table,
+and the rest are the press kit's round figures from a week before.
 
 ## What is assumed, and what is not known
 
 - **Everything the type's record lists** as estimated or left out is so of this ship:
   [gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md).
 - **The right side's paint** is the left's, mirrored.
-- **The panels as flown** are in the GT-3 mission report, which has not been read; the Gemini IV
-  report's Figure 3-14 is spacecraft 4's.
+- **The panels as flown** are SEDR 300's Figure 3-5 sheets 1 and 2, which are captioned for this
+  spacecraft; the GT-3 mission report, which would say what was changed before the flight, has
+  not been found.
 - **The cover on the forward face** is as photographed on 6 January; whether it flew so is not
   established.
-- **The crew are not in their seats.** The G3C suit, the helmets, and what Grissom and Young
-  carried are not modelled.
+- **The crew are not in their seats.** The two flown G3C suits are at the Smithsonian (Grissom's
+  A19680456000, Young's A19730226000) and are photographed front and back; a suit module to the
+  standard of Mercury's has not been built from them, and no other suit stands in. The seats'
+  eye points are a seated man's of average build, since neither man's measures are in a primary
+  source.
 - **The flown ship** is at the Grissom Memorial at Mitchell, Indiana, and has not been compared.
 
 ## Sources

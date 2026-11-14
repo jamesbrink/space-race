@@ -61,9 +61,9 @@ Nothing read says these differed from the capsule named; nothing read says they 
 
 | Item | Taken from | Why |
 | --- | --- | --- |
-| Where the window stands (its middle at station 35.8), its plate and rim | No. 11 | the pane's sizes are the orbital capsule's own drawing (NASA SP-45, Figure 19-1); the capsule as kept (NASM A19670176000) shows the same plate over the same shingle |
+| Where the window stands, its plate and rim | No. 11's script, at the place measured on this capsule | the middle of its outer pane at station 31.5, the glass from 21.6 to 41.4 and the plate from 20.5 to 42.5: estimated, ±1.5 in. No document read gives the window a station. Measured on this capsule as it is kept (NASM A19670176000, Commons *Friendship 7 National Air and Space Museum*: square on to the open hatch, the glass from 21.9 to 41.3 between the cone's joint with the cylinder and the shield's ring, after 0.7 in for perspective; its plate's rows of screws at 20.8 and 43.4; the bright sill of the hatch from 19.7 to 45.6) and on No. 20 (NASA S63-07701: 21.1 to 40.2). Until November 2026 the model had 35.8, Liberty Bell 7's then. The pane's sizes are the orbital capsule's own drawing (NASA SP-45, Figure 19-1) |
 | Where the hatch is (its middle 45° from the window, stations 18.5 to 45.4) and its two shingles | No. 11 | the pad photographs and the capsule as kept have the hatch beside the window on the pilot's right; its stations are SEDR 104's thermocouples, as for No. 11 |
-| The shingle layout (twelve columns, seams at stations 24.8 and 46.8, beads round the cone) | No. 11 | the capsule as kept shows beaded shingles in the same columns round the window and the hatch; the far side has not been compared |
+| The shingle layout (twelve columns, beads round the cone) | No. 11 | the capsule as kept shows beaded shingles in the same columns round the window and the hatch. The seams at the window's plate's foot and head (20.5 and 42.5) run on through the three columns beside it away from the hatch (165° to 255°) and moved with the window in November 2026; the shingles above the hatch begin at its border's head (46.8); the columns from the hatch round past the periscope to 165° keep the seams they had (24.8 and 46.8): the far side has not been compared |
 | Where the periscope's door and the umbilical are | No. 11 | no photograph of that side of No. 13 has been read |
 | The roll jets, low on the cone | No. 11 | as built for No. 11 "by judgement"; the capsule as kept has two round fittings low on the cone to the left of the window (marked J37 and J20), which are not modelled and may be something else |
 | Recovery compartment, antenna canister, escape tower, retropack, pressure vessel | No. 7 | the Results draw the same shapes (Figure 4-11) and the same stations apply (SEDR 104, Figure 1-3) |
@@ -85,13 +85,13 @@ All of it is placed from photographs; none of the places is dimensioned.
 
 | Item | As modelled | Basis |
 | --- | --- | --- |
-| *Friendship* | white script 17.5 in long, climbing 11° to the right, its middle at 272° and station 18.6: on the shingle under the window | NASA GPN-2006-000027 (Glenn going aboard) and the same view in colour; NASA S62-00380; the capsule as kept, where its traces remain |
-| The 7 | red, edged in white, 9 in tall, through the word between the n and the d, at 275° | the colour photograph. It looks nearer 10 in there; it is made to stand clear of the row of screws above it |
+| *Friendship* | white script 20.6 in long from its F's swash to its p, level, its middle at 268.8° and station 11.8: low on the shingle under the window, from 2.4 in left of the seam at 255° to just over the one at 285° | NASA GPN-2006-000027 (Glenn going aboard) and the same view in colour; NASA S62-00380; the capsule as kept, where its traces remain. Read again in November 2026 with each photograph's camera fitted to the cone and the skin unrolled: the word's box from station 8.9 to 14.7, ±0.4 in, and the traces on the capsule as kept within 0.2 in of that. Until then it stood at 18.6 and climbed 11° to the right: the height was the window's old place, the climb the camera's |
+| The 7 | red, edged in white, 9.6 in tall and 5.2 wide, through the word between the n and the d, at 270.6°, station 12.4: its top 4.7 in below the glass's foot, its foot just above the beads' foot | the same, ±0.3 in. It does not reach the plate: its tip stops 2.5 in under the shingle's top |
 | The lettering's hand | a chancery typeface, made taller and heavier (`BRUSH`) | Cecelia Bibby lettered it by hand (*This New Ocean*, ch. 13 note 22; NASA's caption to her photograph): the typeface is not her hand |
-| UNITED STATES, first | two lines 23 in long, letters 6 in tall, centred on 217° at stations 41.6 and 33.2: to the left of the window | the same photographs: the lines' right end stands 4 to 6 in from the window's plate |
-| its flag | 12 by 6.3 in at 206°, station 23.5: under the first letters of STATES | NASA S62-00380; the colour photograph |
-| UNITED STATES, second | the same size, centred on 24°: round to the right of the hatch | NASA GPN-2000-000686 (the liftoff, in colour), where it faces the camera with a vernier engine below it. Its place round the cone follows from where the Atlas's verniers are taken to stand, and is good to perhaps 15° |
-| its flag | at 33°: under the last letters of STATES | the same photograph |
+| UNITED STATES, first | two lines 23 in long, letters 6.3 in tall, centred on 217° at stations 36.9 and 28.0: to the left of the window, UNITED's top 1.6 in below the glass's head and STATES' foot 3.4 in above its foot | the same photographs, and the one of President Kennedy at the capsule (Commons: *JFK inspects Mercury capsule, 23 February 1962*), which has the lettering and the window together: ±0.5 in. The lines' right end is at 242°, 13° from the window's plate. Their length is not measured (only their last two letters are), and may be 24 to 29 in. Until November 2026: 41.6 and 33.2 |
+| its flag | 12 by 6.3 in at 206°, station 16.9: under the first letters of STATES, its top just under the seam at the window's foot | NASA S62-00380; the colour photograph; the Kennedy photograph (its top 0.9 of a bead under that seam): ±0.8 in. Its width is not measured. Until November 2026: 23.5 |
+| UNITED STATES, second | the same size and at the same stations, centred on 24°: round to the right of the hatch | NASA GPN-2000-000686 (the liftoff, in colour), where it faces the camera with a vernier engine below it; its stations from the capsule as kept, where the paint remains: UNITED from 33.7 to 39.7 and STATES from 25.3 to 31.0, ±0.6, the first pair's to within that. Its place round the cone follows from where the Atlas's verniers are taken to stand, and is good to perhaps 15°; on the capsule as kept its U begins at 358° |
+| its flag | at 33°: under the last letters of STATES | the same photograph, where it is a few pixels: ±2 in |
 
 Not established: what was painted between 60° and 190°. No photograph read shows that side.
 
@@ -135,6 +135,17 @@ Top-level nodes in the GLB. These names are the `node` fields in `flight.ts`.
 The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md).
 
 ## What the model gets wrong or leaves out
+
+- **Only the window's side was read again when the window was moved** (November 2026): the window, the seams of the
+  three columns beside it away from the hatch, the shingle under it, and the paint. The seams from the hatch round
+  past the periscope to 165° are where they were laid out before, against a window 4.3 in too high, so the rows step
+  at 165°; the periscope's door and the umbilical are No. 11's, which were placed the same way. They probably stand
+  some 4 in too high. The hatch's height is not settled either (Liberty Bell 7's spacecraft.md, "The hatch").
+- **The shingle under the window is one piece on the capsule**, from the seam at the window's foot to the ring at the
+  cone's foot: ten beads to a stack, then two rows of rivets, then a plain plate with the two ports marked J37 and
+  J20. The model's beaded shingle stands on the plain band every column has, and its ten beads end at station 7.4
+  where the real ones end at 7.5. Above the window's plate the capsule has a plain plate with a round cover, between
+  about stations 46 and 55: not modelled.
 
 - **The outside is No. 11's with No. 13's paint.** Its shingles, its window's and hatch's places,
   its periscope door and its roll jets are Liberty Bell 7's ("What is assumed the same"). What the

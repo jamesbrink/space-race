@@ -1,15 +1,14 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
-import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { blowOf, windAt } from '../sim/forces.ts';
+import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
-import { sunPosition } from '../world/ephemeris.ts';
-import { julianDate, terrestrialTime } from '../world/time.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { sunPosition } from '../world/ephemeris.ts';
 import {
   add,
   cross,
@@ -26,6 +25,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
+import { julianDate, terrestrialTime } from '../world/time.ts';
 
 /**
  * The vehicle off the pad: where the simulator (sim/fly.ts) has it at an instant, in the scene's
@@ -748,4 +748,32 @@ export function orbitalRecord(flight: SitedFlight): Run {
   };
   orbitalRuns.set(o, run);
   return run;
+}
+
+/**
+ * When each event of an orbital flight's record (`orbital.events`, by id) happens on a run of it: the record's instants,
+ * but for what the run itself decides. The ejection is when the run came down through its height, and each body's
+ * landing (`<id>-down`, for the descent's bodies by id) where flyDown put it. With `hand` (a braking burn fired by hand,
+ * from `on` to `off`), the burn's own events are the hand's, the timer's never comes, and the modules part when the plan
+ * has them part (`parting`).
+ */
+export function orbitalEvents(
+  flight: SitedFlight,
+  whole: FlownWhole,
+  hand?: { on: number; off: number; parting: number },
+): Record<string, number> {
+  const o = flight.orbital!;
+  const out: Record<string, number> = {};
+  for (const e of o.events) out[e.id] = e.at.value;
+  if (hand) {
+    out['retro-command'] = hand.on;
+    out['retro-on'] = hand.on;
+    out['retro-off'] = hand.off;
+    out['retro-timer'] = Infinity;
+    out.modules = hand.parting;
+  }
+  const ejected = whole.coast.results.ejectionAt;
+  out.ejection = Number.isFinite(ejected) ? ejected : Infinity;
+  for (const [id, landed] of Object.entries(whole.down?.landed ?? {})) out[`${id}-down`] = landed.at;
+  return out;
 }

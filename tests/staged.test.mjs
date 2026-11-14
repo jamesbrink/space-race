@@ -250,6 +250,7 @@ for (const f of flown) {
       'stages.0.ignition',
       'stages.0.propellant',
       'stages.0.throttle',
+      'stages.1.cutoff',
       'stages.1.ignition',
       'stages.1.propellant',
       'stages.1.throttle',

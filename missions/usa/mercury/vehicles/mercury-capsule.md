@@ -32,7 +32,7 @@ ablation heat shield, and a name painted by hand. Its periscope's door, cartridg
 [Friendship 7's spacecraft.md](../flights/ma-6-friendship-7/spacecraft.md).
 
 Spacecraft No. 18 (Aurora 7, MA-7) is built the same way, with what its own photographs and report change: Liberty Bell 7's script is
-told that the shingle under the window has two stacks of beads and to leave its paint off (`build_afterbody(name_stacks=2, paint=False)`),
+told where the shingle under its window ends and to leave its paint off (`build_afterbody(name_foot=..., paint=False)`),
 and [mercury_orbital.py](mercury_orbital.py) lets the balloon experiment's container into the top of the antenna canister this module
 builds (`balloon_canister`). Its record is [Aurora 7's spacecraft.md](../flights/ma-7-aurora-7/spacecraft.md).
 
@@ -44,9 +44,44 @@ that does not ask for them is given. Its record is [Sigma 7's spacecraft.md](../
 Spacecraft No. 20 (Faith 7, MA-9) asks Liberty Bell 7's script for three things more, each of which a capsule that does not
 ask is built without, to the byte: no periscope (`periscope=False`: no door, objective, link or well, and nothing of
 `ScopeWorks`), a smaller opening in the plate at the pilot's feet for the umbilical's own door (`door`), and its own shingle
-seams from the pilot's feet round to the window (`rows`), as its photographs have them. From [mercury_orbital.py](mercury_orbital.py)
+seams, the same two all round (`rows`), as its photographs have them. From [mercury_orbital.py](mercury_orbital.py)
 it takes the balloon's container without Aurora 7's liners and the dipole antenna's two units; the beacon's canister and the
 Geiger tubes on its retropack are its own script's. Its record is [Faith 7's spacecraft.md](../flights/ma-9-faith-7/spacecraft.md).
+
+## Where the window stands
+
+One figure for every capsule that has the window (Nos. 11, 13, 16, 18 and 20): the middle of the outer pane at
+station 31.5 (`WINDOW_Z` in Liberty Bell 7's script, which every orbital capsule's script takes it from), so the
+glass from 21.6 to 41.4 and the plate it is set in from 20.5 to 42.5. Estimated, to within 1.5 in: no document
+read gives the window a station, and it is measured from photographs of Nos. 20 and 13 between the cone's two
+ends and carried to No. 11 through the hatch beside it
+([Liberty Bell 7's spacecraft.md](../flights/mr-4-liberty-bell-7/spacecraft.md), "The window"). Until November 2026
+it was 35.8. What follows it: the outer pane and its rim, the well, the inner panes and their frame, the opening in
+the structure under the shingles, the opening in the pressure vessel and the lining and the shroud into the cabin
+([mercury_cabin_11.py](mercury_cabin_11.py), `WINDOW_OPENING`, stations 21.5 to 39.7), the seams of the shingles on
+the window's side, and each capsule's paint under and beside it. The hatch did not move.
+
+The shingle under the window is built by the same script for all five (`name_foot`, and ten beads to a stack,
+`NAME_BEADS`, which `Skin.shingle` takes as `beads`: a shingle that is not told how many it has carries as many as go
+at `PITCH`, as before). What was painted on it and beside it is each capsule's own, read again from its own
+photographs when the window was moved: each flight's spacecraft.md, "Paint". What was not read again is the far
+side: the seams from the hatch round past the periscope to 165°, the periscope's door and the umbilical, and
+Liberty Bell 7's lettering and flag there, all laid out before against the window where it then stood.
+
+## Open: where the cone meets the cylinder
+
+Two figures that cannot both be right, left as they are:
+
+| | Station | Where from |
+| --- | --- | --- |
+| As built here (`CONE_H`) | 58.38 | derived: (37.25 - 16) / tan 20°, from the 74.5 in diameter, the 32 in recovery compartment and the 20° half-angle, each documented |
+| SEDR 104, Figure 1-3 | 57.21 | documented: Z161.71 on the stations diagram of November 1961, less Z104.50 for the plane of the greatest diameter (Z161.82, so 57.32, in the edition of December 1959) |
+
+The cone probably does not begin at a radius of 37.25 in exactly at station 0 (74.5 in is the shield's diameter, and
+the cone's skin may begin a little inside or above it), or the 20° is a round figure. Changing `CONE_H` moves every
+capsule's skin, the recovery compartment, the antenna canister and the tower, so it is a change of its own and is
+not made here. The window's stations were measured on photographs with 58.38 as the cone's upper end; with 57.21
+they come out 0.6 to 1.1 in lower, inside the 1.5 in they are good to.
 
 ## Two ways of building shingles
 
